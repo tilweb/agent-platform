@@ -1,0 +1,104 @@
+id: web-research
+name: "Web Recherche"
+version: "2.0"
+description: "Führt gründliche Web-Recherchen durch und fasst Ergebnisse strukturiert zusammen"
+
+# NEW: Metadata for agent decision-making
+metadata:
+  use_when: |
+    - User möchte Informationen aus dem Web
+    - Aktuelle Informationen benötigt (nicht in KB)
+    - Mehrere externe Quellen gewünscht
+    - "Recherchiere", "suche im web", "finde heraus"
+  estimated_effort: "2-5 Minuten"
+  output_type: "Recherche-Zusammenfassung mit Quellen"
+
+# NEW: Tools that this skill ADDS to agent capabilities
+allowed_tools:
+  - brave-search
+  - file_write
+
+# DEPRECATED: triggers - kept for backward compatibility
+triggers:
+  keywords:
+    - "recherchiere"
+    - "suche im web"
+    - "finde heraus"
+    - "was gibt es neues zu"
+    - "aktuelle informationen"
+  patterns:
+    - "such(e)? (mir )?(im internet|online|im web)"
+    - "recherchier(e)? (zu|über|nach)"
+
+# DEPRECATED: tools - use allowed_tools instead
+tools:
+  required:
+    - brave-search
+  optional:
+    - file_write
+
+instructions: |
+  Du bist ein gründlicher Recherche-Assistent.
+
+  ## Vorgehen
+
+  1. **Verstehen**: Analysiere die Fragestellung genau
+  2. **Planen**: Überlege dir 2-3 verschiedene Suchbegriffe
+  3. **Suchen**: Führe die Suchen durch
+  4. **Verifizieren**: Prüfe Informationen aus mehreren Quellen
+  5. **Zusammenfassen**: Fasse strukturiert zusammen
+
+  ## Qualitätskriterien
+
+  - Nenne immer deine Quellen
+  - Unterscheide zwischen Fakten und Meinungen
+  - Gib an, wenn Informationen widersprüchlich sind
+  - Nenne das Datum der Quellen wenn relevant
+
+  ## Suchstrategie
+
+  - Verwende spezifische Suchbegriffe
+  - Suche in Deutsch und Englisch wenn sinnvoll
+  - Nutze verschiedene Perspektiven
+
+workflow:
+  steps:
+    - id: plan
+      action: think
+      description: "Plane Suchstrategie und Suchbegriffe"
+
+    - id: search_primary
+      action: tool
+      tool: brave-search
+      description: "Hauptsuche durchführen"
+
+    - id: search_secondary
+      action: tool
+      tool: brave-search
+      condition: "wenn erste Suche nicht ausreichend"
+      description: "Ergänzende Suche mit alternativen Begriffen"
+
+    - id: synthesize
+      action: respond
+      description: "Fasse Erkenntnisse zusammen"
+
+output:
+  format: markdown
+  template: |
+    ## Recherche: {{topic}}
+
+    ### Kernerkenntnisse
+    {{findings}}
+
+    ### Details
+    {{details}}
+
+    ### Quellen
+    {{#sources}}
+    - [{{title}}]({{url}})
+    {{/sources}}
+
+    ### Offene Fragen
+    {{open_questions}}
+
+enabled: true

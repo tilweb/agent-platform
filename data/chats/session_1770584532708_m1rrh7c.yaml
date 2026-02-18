@@ -1,0 +1,18 @@
+id: session_1770584532708_m1rrh7c
+title: Google Drive Verbindung für Dateien prüfen
+summary: "Der Nutzer fragt nach den neuesten Dateien in Google Drive, der Assistant bittet um Account-Verbindung."
+keywords:
+  - Google Drive
+  - Dateien
+  - Verbindung
+  - Account
+  - neueste Files
+  - cloud storage
+  - access
+createdAt: "2026-02-08T21:02:12.734Z"
+updatedAt: "2026-02-08T21:02:17.979Z"
+messages:
+  - role: user
+    content: "Was sind die neuesten Files in meinem Google Drive?"
+  - role: assistant
+    content: "Der Google Drive Dienst ist derzeit nicht verbunden. Bitte verbinde deinen Google Drive Account auf der Connections-Seite, damit ich auf deine Dateien zugreifen und die neuesten Dateien anzeigen kann."

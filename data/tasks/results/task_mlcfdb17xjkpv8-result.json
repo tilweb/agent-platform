@@ -1,0 +1,12 @@
+{
+  "response": "Der Task \"Test Task fuer Retry Funktionalitaet\" wurde erfolgreich erstellt und in die Queue eingereiht. Der Task hat den Status \"queued\" und die Priorität \"normal\".\n\nDer Task wird automatisch im Hintergrund ausgefuehrt. Du kannst den Fortschritt auf der Tasks-Seite verfolgen.",
+  "toolCalls": [
+    {
+      "name": "create_task",
+      "args": "{}",
+      "result": "{\"success\":true,\"message\":\"Task \\\"Test Task fuer Retry Funktionalitaet\\\" wurde erstellt und in die Queue eingereiht.\",\"task\":{\"id\":\"task_mlcfdiwrcln4qc\",\"title\":\"Test Task fuer Retry Funktionalitaet\",\"status\":\"queued\",\"priority\":\"normal\"},\"info\":\"Der Task wird automatisch im Hintergrund ausgefuehrt. Der Fortschritt kann auf der Tasks-Seite verfolgt werden.\"}"
+    }
+  ],
+  "sessionId": "session_1770475457294_h5csx2g",
+  "completedAt": "2026-02-07T14:44:20.247Z"
+}

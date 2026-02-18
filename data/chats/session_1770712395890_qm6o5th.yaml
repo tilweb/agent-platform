@@ -1,0 +1,19 @@
+id: session_1770712395890_qm6o5th
+title: Umfang des IKS der ADACOR Hosting GmbH
+summary: Der Nutzer fragt nach dem Umfang des Informationssicherheitsmanagementsystems (IKS) der ADACOR Hosting GmbH. Der Assistant bietet eine Webrecherche an.
+keywords:
+  - IKS
+  - ADACOR Hosting
+  - Informationssicherheit
+  - ISMS
+  - Security Management
+  - Hosting
+  - Datenschutz
+lastSummaryAt: 2
+createdAt: "2026-02-10T08:33:15.928Z"
+updatedAt: "2026-02-10T08:33:27.189Z"
+messages:
+  - role: user
+    content: "Was ist der Umfang des IKS der ADACOR Hosting GmbH?"
+  - role: assistant
+    content: "Ich konnte den genauen Umfang des Informationssicherheitsmanagementsystems (IKS) der ADACOR Hosting GmbH nicht in der Wissensdatenbank finden. Möchtest du, dass ich eine Webrecherche durchführe, um die benötigten Informationen zu finden?"

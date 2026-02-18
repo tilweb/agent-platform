@@ -1,0 +1,19 @@
+id: session_1771081319790_15bclkg
+userId: user_1770561498880_39ohgu5
+title: Unklare Anfrage zur Aussage
+summary: "Der Nutzer fragt nach einer Aussage, ohne sie zu spezifizieren. Der Assistent bittet um Klarstellung, da die Frage zu unbestimmt ist."
+keywords:
+  - Unklare Frage
+  - Aussage
+  - Klarstellung
+  - User-Anfrage
+  - Nachfrage
+  - Chat-Verlauf
+lastSummaryAt: 2
+createdAt: "2026-02-14T15:01:59.832Z"
+updatedAt: "2026-02-14T15:02:01.077Z"
+messages:
+  - role: user
+    content: "was wird gesagt?"
+  - role: assistant
+    content: "Ich verstehe deine Frage nicht vollständig. Könntest du bitte präzisieren, worauf du dich beziehst? Bist du auf eine bestimmte Nachricht, ein Dokument oder eine Aussage bezogen?"

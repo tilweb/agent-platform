@@ -1,0 +1,1 @@
+{"id":"audit_mlkvwvnj_70m6er","timestamp":"2026-02-13T12:49:24.799Z","category":"auth","action":"login_failed","username":"test","ipAddress":"unknown","userAgent":"curl/8.7.1","success":false,"errorMessage":"User not found"}

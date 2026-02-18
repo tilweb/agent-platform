@@ -1,0 +1,17 @@
+id: session_1770713192495_4h0rzhd
+title: Aktuelles Datum und Wochentag
+summary: "Der Nutzer erfragt das heutige Datum, der Assistant gibt Dienstag, 10. Februar 2026 an."
+keywords:
+  - Datum
+  - Wochentag
+  - 2026
+  - date
+  - day of the week
+lastSummaryAt: 2
+createdAt: "2026-02-10T08:46:32.529Z"
+updatedAt: "2026-02-10T08:46:33.952Z"
+messages:
+  - role: user
+    content: "Welches Datum haben wir heute?"
+  - role: assistant
+    content: "Heute ist Dienstag, der 10. Februar 2026."

@@ -1,0 +1,40 @@
+id: task_mle8rshqdex7ve
+title: LinkedIn Social Media Plan für KI Workplace
+description: |-
+  Erstelle einen detaillierten Social Media Plan für LinkedIn, der speziell auf die W3 Fair in Wetzlar am 18.02. ausgerichtet ist. Der Plan sollte folgende Elemente umfassen:
+
+  1. **Ziele**: Klare Ziele für die Social Media Präsenz während der W3 Fair definieren (z.B. Reichweite erhöhen, Netzwerken, Lead-Generierung).
+  2. **Zielgruppe**: Definition der Zielgruppe (z.B. Tech-Enthusiasten, potenzielle Geschäftspartner, Besucher der W3 Fair).
+  3. **Inhalte**: Planung der Inhalte für die LinkedIn-Posts (z.B. Vorankündigungen, Live-Updates, Nachbereitung).
+  4. **Zeitplan**: Detaillierter Zeitplan für die Posts vor, während und nach der W3 Fair.
+  5. **Engagement-Strategie**: Strategien zur Steigerung des Engagements (z.B. Kommentare, Nachrichten, Interaktion mit anderen Teilnehmern).
+  6. **Erfolgsmessung**: Kriterien zur Erfolgsmessung (z.B. Anzahl der Aufrufe, Likes, Shares, neue Verbindungen).
+
+  Der Plan sollte sicherstellen, dass die Präsenz auf LinkedIn während der W3 Fair maximiert wird, um die Sichtbarkeit und das Netzwerk des KI Workplace zu erhöhen.
+type: simple
+priority: normal
+created_by: supervisor
+trigger: chat
+created_at: 2026-02-08T21:14:59.197Z
+updated_at: 2026-02-08T21:15:46.176Z
+status: completed
+progress: 100
+current_step: 0
+total_steps: 0
+assigned_agent: supervisor
+steps: []
+config:
+  max_iterations: 50
+  timeout_minutes: 30
+  notify_on_complete: true
+  auto_retry_on_failure: false
+started_at: 2026-02-08T21:14:59.886Z
+result_file: /Users/andreasbachmann/Documents/Development/AgentWork/agent-platform/data/tasks/results/task_mle8rshqdex7ve-result.json
+result_summary: |-
+  Hier ist der detaillierte Social Media Plan für LinkedIn, der speziell auf die W3 Fair in Wetzlar am 18.02. ausgerichtet ist:
+
+  ### Social Media Plan für LinkedIn – W3 Fair Wetzlar
+
+  #### 1. Ziele
+  - **R...
+completed_at: 2026-02-08T21:15:46.175Z

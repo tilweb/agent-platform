@@ -1,0 +1,26 @@
+id: session_1771057401076_uhopqqc
+userId: user_1770561498880_39ohgu5
+title: Olympische Spiele 2024 in Paris
+summary: "Es wird bestätigt, dass die Olympischen Spiele 2024 in Paris stattfinden und Frankreich fiebert dem Ereignis entgegen."
+keywords:
+  - Olympische Spiele
+  - Paris 2024
+  - Frankreich
+  - Olympics
+  - Paris
+  - Sportereignis
+lastSummaryAt: 2
+createdAt: "2026-02-14T08:23:21.678Z"
+updatedAt: "2026-02-14T08:23:23.265Z"
+messages:
+  - role: user
+    content: "was wird da gesagt?"
+    attachments:
+      - id: att-1771057401076-n5haz9
+        type: audio
+        filename: a63600382ca5597f5fcd25de894417af.mp3
+        mimeType: audio/mpeg
+        url: /api/chats/session_1771057401076_uhopqqc/attachments/att-1771057401076-n5haz9/stream
+        transcription: " Die Olympischen Spiele 2024 finden in Paris statt und ganz Frankreich fiebert diesem großen Ereignis entgegen."
+  - role: assistant
+    content: "Die hochgeladene Audio-Transkription enthält den Satz:  \n**\"Die Olympischen Spiele 2024 finden in Paris statt und ganz Frankreich fiebert diesem großen Ereignis entgegen.\"**\n\nDies bedeutet, dass die Olympischen Spiele 2024 in Paris stattfinden und dass Frankreich insgesamt große Erwartungen und Vorfreude auf dieses Ereignis hat."

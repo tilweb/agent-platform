@@ -1,0 +1,131 @@
+id: change-projekt
+name: Change-Projekt (Organisationsentwicklung)
+description: Vorlage für organisatorische Veränderungsprojekte
+project_type: internal
+
+template:
+  project_type: internal
+  status: draft
+  current_step: 1
+
+  criteria:
+    - Neue Prozesse sind implementiert und dokumentiert
+    - Mitarbeiter sind geschult und akzeptieren die Veränderung
+    - Messbare Verbesserungen sind nachweisbar
+    - Change-Kommunikation ist abgeschlossen
+
+  in_scope:
+    - Ist-Analyse der aktuellen Prozesse
+    - Soll-Konzeption
+    - Change-Management und Kommunikation
+    - Schulung und Coaching
+    - Erfolgsmessung
+
+  out_scope:
+    - IT-Systementwicklung
+    - Personalabbau oder -aufbau
+    - Standortverlagerungen
+
+  milestones:
+    - id: m1
+      name: Projektstart
+      date: ""
+      description: Kick-off und Stakeholder-Alignment
+    - id: m2
+      name: Ist-Analyse abgeschlossen
+      date: ""
+      description: Aktuelle Situation ist vollständig erfasst
+    - id: m3
+      name: Soll-Konzept freigegeben
+      date: ""
+      description: Zielzustand ist definiert und abgestimmt
+    - id: m4
+      name: Pilotphase abgeschlossen
+      date: ""
+      description: Erste Bereiche sind erfolgreich umgestellt
+    - id: m5
+      name: Rollout abgeschlossen
+      date: ""
+      description: Alle Bereiche sind umgestellt
+    - id: m6
+      name: Stabilisierung abgeschlossen
+      date: ""
+      description: Veränderung ist nachhaltig verankert
+
+  tasks:
+    - id: t1
+      name: Stakeholder-Analyse durchführen
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 16
+      status: open
+    - id: t2
+      name: Ist-Prozesse dokumentieren
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 40
+      status: open
+    - id: t3
+      name: Soll-Konzept erarbeiten
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 32
+      status: open
+    - id: t4
+      name: Kommunikationsplan erstellen
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 16
+      status: open
+    - id: t5
+      name: Schulungskonzept entwickeln
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 24
+      status: open
+    - id: t6
+      name: Pilotierung durchführen
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 40
+      status: open
+    - id: t7
+      name: Rollout durchführen
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 60
+      status: open
+    - id: t8
+      name: Erfolgsmessung und Nachsteuerung
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 20
+      status: open
+
+  risks:
+    - id: r1
+      type: organizational
+      description: Widerstand der Mitarbeiter gegen Veränderungen
+      probability: high
+      impact: high
+      mitigation: Frühzeitige Einbindung und transparente Kommunikation
+    - id: r2
+      type: organizational
+      description: Fehlende Management-Unterstützung
+      probability: medium
+      impact: high
+      mitigation: Regelmäßige Steering Committee Meetings
+    - id: r3
+      type: schedule
+      description: Überlastung der Fachabteilungen im Tagesgeschäft
+      probability: high
+      impact: medium
+      mitigation: Realistische Zeitplanung und dedizierte Ressourcen

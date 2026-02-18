@@ -1,0 +1,123 @@
+# Knowledge Base: Schritt 3 - Inhalt & Umfang
+# Quelle: RUHR PM Masterclass Projektmanagement 4.0
+# Verwendung: Systemprompt für KI-gestützte Prüfung der Eingaben
+
+meta:
+  step: 3
+  title: "Inhalt & Umfang"
+  description: "Definition des Projektumfangs (Scope), was im Projekt enthalten ist und was nicht"
+
+kernkonzepte:
+  scope_management:
+    beschreibung: "Inhalt und Umfang begleitet das Projekt durch alle Phasen"
+    phasen:
+      initialisierung: "Übergabe der Projektidee"
+      definition: "Definition der Hauptaktivitäten als Bestandteil der Roadmap"
+      planung: "Projektstrukturplan bis zu steuerbaren Arbeitspaketen"
+      umsetzung: "Umsetzung von Leistungen, Erzeugung von Ergebnissen"
+      steuerung: "Blick auf Erreichtes und nächsten Umsetzungsschritt"
+      abschluss: "Übergabe der Projektergebnisse an Kunden/Endanwender"
+
+  anforderungen:
+    quellen:
+      - "Anforderungen des Auftraggebers"
+      - "Erarbeitete Projektziele mit Erfolgskriterien"
+      - "Projektidee und Rahmenbedingungen der Organisation"
+    praxistipps:
+      - "Nicht zu tief in Details gehen - das kommt in der Planungsphase"
+      - "Hauptanforderungen in Roadmap/Projektphasenplan übersichtlich darstellen"
+      - "Out of Scope früh festhalten"
+
+  in_scope:
+    beschreibung: "Was gehört zum Projekt"
+    input: "Projektidee, Aufgabenbeschreibung, Rahmenbedingungen, Projektziele"
+    output: "(Haupt-)Anforderungen, Statement of Work (SOW), MVP"
+    methoden: "Projekterfahrungen, Kreativitätstechniken, Workshops (Canvas)"
+
+  out_of_scope:
+    beschreibung: "Was gehört NICHT zum Projekt"
+    wichtigkeit: "Muss explizit definiert werden, um Scope Creep zu vermeiden"
+    praxistipp: "Wenn Du zu diesem Zeitpunkt schon Inhalte ausschließen kannst, halte es im Projektauftrag fest"
+
+  magisches_dreieck:
+    elemente:
+      scope: "Inhalt und Umfang - Was soll entstehen?"
+      time: "Zeitmanagement - Wie viel Zeit braucht das Projekt?"
+      budget: "Kostenmanagement - Welches Budget steht zur Verfügung?"
+      quality: "Qualitätsmanagement - Welche Qualität soll geliefert werden?"
+    kernaussage: "Diese Ebenen müssen ausbalanciert werden"
+
+  klassisch_vs_agil:
+    klassisch:
+      scope: "Fix"
+      budget_time: "Variabel"
+      anwendung: "Bekannte Situation, planbare Anforderungen"
+    agil:
+      scope: "Variabel"
+      budget_time: "Können fix sein"
+      anwendung: "Scope zu Beginn nur teilweise bekannt, häufige Änderungen"
+
+pruefkriterien:
+  scope_beschreibung:
+    - "Klar und verständlich formuliert"
+    - "Abgeleitet aus den Projektzielen"
+    - "Grenzt das Projekt eindeutig ab"
+    - "Nicht zu detailliert (kommt in Planungsphase)"
+
+  in_scope:
+    - "Hauptanforderungen/Hauptaktivitäten identifiziert"
+    - "Logische Verbindung zu den Projektzielen"
+    - "Realistisch im gegebenen Zeit- und Budgetrahmen"
+    - "Priorisierung erkennbar (was ist MVP?)"
+    - "Stakeholder-Anforderungen berücksichtigt"
+
+  out_of_scope:
+    - "Explizit definiert, nicht nur implizit"
+    - "Grenzt bekannte Erwartungen ab, die NICHT erfüllt werden"
+    - "Vermeidet spätere Scope-Diskussionen"
+    - "Typische Ausschlüsse: Folgeprojekte, benachbarte Systeme, Wartung"
+
+typische_fehler:
+  scope:
+    - "Zu vage: 'Digitalisierung verbessern'"
+    - "Zu detailliert für diese Phase"
+    - "Scope passt nicht zu Budget/Zeit"
+    - "Keine klare Priorisierung"
+
+  in_scope:
+    - "Aktivitäten statt Ergebnisse beschrieben"
+    - "Widersprüchliche Anforderungen"
+    - "Unrealistische Erwartungen"
+    - "MVP nicht definiert"
+
+  out_of_scope:
+    - "Gar nicht definiert"
+    - "Zu knapp ('keine weiteren Features')"
+    - "Wichtige Ausschlüsse vergessen"
+    - "Missverständliche Formulierungen"
+
+verbesserungsvorschlaege:
+  scope:
+    schlecht: "Neues System einführen"
+    besser: "Einführung einer digitalen Zeiterfassung für alle Mitarbeitenden"
+    optimal: "Entwicklung und Einführung einer ortsunabhängigen, digitalen Zeiterfassungslösung mit MVP-Pilotierung und anschließendem Rollout für 500 Mitarbeitende"
+
+  in_scope:
+    beispiele:
+      - "Anforderungsanalyse mit Fachbereichen"
+      - "Auswahl und Konfiguration der Softwarelösung"
+      - "Pilotierung mit Testgruppe (50 User)"
+      - "Schulung der Key-User"
+      - "Produktivgang für alle Mitarbeitenden"
+
+  out_of_scope:
+    beispiele:
+      - "Integration mit Gehaltsabrechnung (Folgeprojekt)"
+      - "Mobile App-Entwicklung"
+      - "Hardware-Beschaffung (Terminals)"
+      - "Betrieb und Wartung nach Go-Live"
+      - "Anbindung externer Dienstleister"
+
+  mvp_definition:
+    beschreibung: "Minimal Viable Product - die minimale Version mit Kernfunktionalität"
+    tipp: "MVP früh definieren, um bei Zeitdruck priorisieren zu können"

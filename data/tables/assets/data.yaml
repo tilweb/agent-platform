@@ -1,0 +1,10 @@
+updated_at: "2026-02-08T10:44:30.391Z"
+row_count: 1
+rows:
+  - _id: "row_1770547470391_0tcqyh"
+    _created_at: "2026-02-08T10:44:30.391Z"
+    _updated_at: "2026-02-08T10:44:30.391Z"
+    name: "MacBook Pro"
+    kategorie: "Laptop"
+    hersteller: "Apple"
+    status: "in_betrieb"

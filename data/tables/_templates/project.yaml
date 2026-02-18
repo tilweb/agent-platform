@@ -1,0 +1,197 @@
+id: project
+name: Projekt-Tracking
+description: Vorlage für Projektverwaltung mit Projekten, Meilensteinen und Aufgaben
+icon: "\U0001F4CB"
+
+tables:
+  - id: projekte
+    name: Projekte
+    description: Übersicht aller Projekte
+    icon: "\U0001F4C1"
+    columns:
+      - id: name
+        name: Projektname
+        type: text
+        required: true
+      - id: beschreibung
+        name: Beschreibung
+        type: text_long
+      - id: kunde
+        name: Kunde
+        type: text
+      - id: status
+        name: Status
+        type: select
+        options:
+          - planung
+          - aktiv
+          - pausiert
+          - abgeschlossen
+          - abgebrochen
+        default: planung
+      - id: prioritaet
+        name: Priorität
+        type: select
+        options:
+          - niedrig
+          - normal
+          - hoch
+          - kritisch
+        default: normal
+      - id: startdatum
+        name: Startdatum
+        type: date
+      - id: enddatum
+        name: Zieldatum
+        type: date
+      - id: budget
+        name: Budget
+        type: number
+        min: 0
+        decimals: 2
+      - id: tags
+        name: Tags
+        type: tags
+      - id: notizen
+        name: Notizen
+        type: text_long
+    settings:
+      primary_column: name
+      default_sort: startdatum
+      default_sort_direction: DESC
+      row_color_by: status
+      row_colors:
+        planung: "#fef3c7"
+        aktiv: "#dcfce7"
+        pausiert: "#f3f4f6"
+        abgeschlossen: "#dbeafe"
+        abgebrochen: "#fee2e2"
+    views:
+      - id: aktive
+        name: Aktive Projekte
+        filter: "status = 'aktiv'"
+        sort: prioritaet DESC
+      - id: alle-offen
+        name: Alle offenen Projekte
+        filter: "status = 'planung' OR status = 'aktiv' OR status = 'pausiert'"
+        sort: startdatum DESC
+
+  - id: meilensteine
+    name: Meilensteine
+    description: Wichtige Projektmeilensteine
+    icon: "\U0001F3AF"
+    columns:
+      - id: name
+        name: Meilenstein
+        type: text
+        required: true
+      - id: projekt
+        name: Projekt
+        type: relation
+        relation_table: projekte
+        relation_display_column: name
+        required: true
+      - id: beschreibung
+        name: Beschreibung
+        type: text_long
+      - id: deadline
+        name: Deadline
+        type: date
+      - id: status
+        name: Status
+        type: select
+        options:
+          - offen
+          - in_arbeit
+          - erledigt
+          - verschoben
+        default: offen
+      - id: erledigt_am
+        name: Erledigt am
+        type: date
+    settings:
+      primary_column: name
+      default_sort: deadline
+      row_color_by: status
+      row_colors:
+        offen: "#fef3c7"
+        in_arbeit: "#dbeafe"
+        erledigt: "#dcfce7"
+        verschoben: "#f3f4f6"
+
+  - id: aufgaben
+    name: Aufgaben
+    description: Einzelne Aufgaben und Tasks
+    icon: "\u2705"
+    columns:
+      - id: titel
+        name: Titel
+        type: text
+        required: true
+      - id: projekt
+        name: Projekt
+        type: relation
+        relation_table: projekte
+        relation_display_column: name
+      - id: meilenstein
+        name: Meilenstein
+        type: relation
+        relation_table: meilensteine
+        relation_display_column: name
+      - id: beschreibung
+        name: Beschreibung
+        type: text_long
+      - id: assignee
+        name: Zuständig
+        type: text
+      - id: status
+        name: Status
+        type: select
+        options:
+          - todo
+          - in_arbeit
+          - review
+          - erledigt
+          - blockiert
+        default: todo
+      - id: prioritaet
+        name: Priorität
+        type: select
+        options:
+          - niedrig
+          - normal
+          - hoch
+          - dringend
+        default: normal
+      - id: faellig_am
+        name: Fällig am
+        type: date
+      - id: geschaetzter_aufwand
+        name: Geschätzter Aufwand (h)
+        type: number
+        min: 0
+        decimals: 1
+      - id: tags
+        name: Tags
+        type: tags
+    settings:
+      primary_column: titel
+      default_sort: faellig_am
+      row_color_by: status
+      row_colors:
+        todo: "#f3f4f6"
+        in_arbeit: "#dbeafe"
+        review: "#fef3c7"
+        erledigt: "#dcfce7"
+        blockiert: "#fee2e2"
+    views:
+      - id: meine
+        name: Meine Aufgaben
+        description: Aufgaben nach Assignee filtern
+        sort: prioritaet DESC
+      - id: faellig-heute
+        name: Fällig heute
+        sort: faellig_am ASC
+      - id: blockiert
+        name: Blockierte Aufgaben
+        filter: "status = 'blockiert'"

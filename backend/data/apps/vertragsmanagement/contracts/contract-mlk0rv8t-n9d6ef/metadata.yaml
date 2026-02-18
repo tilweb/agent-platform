@@ -1,0 +1,156 @@
+id: contract-mlk0rv8t-n9d6ef
+contract_type: nda
+upload_filename: nda_2_einseitig_investor.md
+uploaded_at: 2026-02-12T22:18:02.291Z
+uploaded_by: user_default
+extracted:
+  vertragspartner:
+    partei_a: GreenBite GmbH
+    partei_b: FoodTech Ventures GmbH
+  geheimhaltung:
+    gegenstand: Vertrauliche Informationen umfassen insbesondere Technologie und
+      Entwicklung (Rezepturen, Herstellungsverfahren, Patente,
+      Forschungsergebnisse), Geschäftsinformationen (Geschäftsmodell,
+      Finanzinformationen, Kundenlisten), Personenbezogene Informationen
+      (Mitarbeiterstruktur, Vergütungsstrukturen) und rechtliche sowie
+      finanzielle Informationen (Verträge, Gesellschaftsverträge,
+      Investorenvereinbarungen).
+    dauer_jahre: 3
+  laufzeit:
+    beginn: 2024-02-01
+    ende: 2024-07-31
+  sanktionen:
+    konventionalstrafe: 100000
+    gerichtsstand: Hamburg
+computed:
+  party_a: GreenBite GmbH
+  party_b: FoodTech Ventures GmbH
+  start_date: 2024-02-01
+  end_date: 2024-07-31
+  annual_value: 100000
+  status: expired
+  days_to_expiry: -560
+obligations:
+  - party: party_b
+    category: confidentiality
+    description: Der Empfänger (FoodTech Ventures GmbH) verpflichtet sich, alle
+      Vertraulichen Informationen streng vertraulich zu behandeln und mit
+      mindestens der Sorgfalt eines ordentlichen Kaufmanns zu schützen.
+  - party: party_b
+    category: confidentiality
+    description: Der Empfänger darf Vertrauliche Informationen nur zum vereinbarten
+      Zweck (Investitionsprüfung) verwenden und darf sie nicht kopieren,
+      reproduzieren oder vervielfältigen, außer soweit für den Zweck
+      erforderlich.
+  - party: party_b
+    category: confidentiality
+    description: Der Empfänger darf Vertrauliche Informationen nur Personen
+      zugänglich machen, die für die Investitionsprüfung zwingend erforderlich
+      sind, und muss sicherstellen, dass diese Personen schriftlich zur
+      Vertraulichkeit verpflichtet sind.
+  - party: party_b
+    category: confidentiality
+    description: Der Empfänger darf Vertrauliche Informationen nicht an Dritte
+      weitergeben, insbesondere nicht an andere Portfolio-Unternehmen,
+      Co-Investoren oder Wettbewerber, ohne vorherige schriftliche Zustimmung
+      der Offenlegerin.
+  - party: party_b
+    category: confidentiality
+    description: Bei rechtlicher Verpflichtung zur Offenlegung von Vertraulichen
+      Informationen muss der Empfänger die Offenlegerin unverzüglich informieren
+      und den Umfang der Offenlegung auf das rechtlich erforderliche Minimum
+      beschränken.
+  - party: party_b
+    category: confidentiality
+    description: Die Geheimhaltungspflicht besteht für 3 Jahre ab Offenlegung der
+      jeweiligen Information, für Geschäftsgeheimnisse unbegrenzt.
+  - party: party_b
+    category: confidentiality
+    description: Der Empfänger ist verpflichtet, alle Vertraulichen Informationen
+      (einschließlich Kopien, Notizen, Analysen) innerhalb von 14 Tagen nach
+      Aufforderung zurückzugeben oder vollständig zu vernichten und dies
+      schriftlich zu bestätigen.
+  - party: party_b
+    category: confidentiality
+    description: Ein Exemplar darf für Rechts- und Compliance-Zwecke unter strikter
+      Zugriffsbeschränkung archiviert werden.
+  - party: party_b
+    category: compliance
+    description: Der Empfänger verpflichtet sich zur Einhaltung der DSGVO und des
+      BDSG bei der Verarbeitung personenbezogener Daten im Rahmen der
+      Investitionsprüfung.
+  - party: party_b
+    category: compliance
+    description: Der Empfänger verpflichtet sich, keine Pressemitteilungen oder
+      öffentlichen Bekanntmachungen über die Geschäftsbeziehung zu
+      veröffentlichen, ohne vorherige schriftliche Zustimmung der Offenlegerin.
+  - party: party_b
+    category: compliance
+    description: Der Empfänger verpflichtet sich, keine Social-Media-Posts über die
+      Offenlegerin oder die Verhandlungen zu veröffentlichen, ohne vorherige
+      schriftliche Zustimmung.
+  - party: party_b
+    category: compliance
+    description: Der Empfänger verpflichtet sich, keine direkten Kontakte
+      aufzunehmen zu Kunden, Lieferanten oder Mitarbeitern der Offenlegerin
+      außerhalb des designierten Investorenteams, ohne vorherige schriftliche
+      Zustimmung.
+  - party: party_b
+    category: compliance
+    description: Der Empfänger verpflichtet sich, für 12 Monate nach Beendigung der
+      Vereinbarung keine Mitarbeiter, Führungskräfte oder Berater der
+      Offenlegerin abzuwerben.
+  - party: party_b
+    category: compliance
+    description: Der Empfänger verpflichtet sich, für 18 Monate nach Erhalt der
+      Vertraulichen Informationen keine direkten Wettbewerber der Offenlegerin
+      im Bereich pflanzliche Proteine/Fermentationstechnologie in der
+      DACH-Region zu finanzieren.
+  - party: party_b
+    category: compliance
+    description: Der Empfänger verpflichtet sich, keine Geschäftsbeziehungen der
+      Offenlegerin (Kunden, Lieferanten) aktiv zu stören.
+  - party: party_b
+    category: compliance
+    description: Der Empfänger verpflichtet sich, keine Vertragsstrafe zu zahlen,
+      falls er schuldhaft wesentliche Pflichten aus dieser Vereinbarung verletzt
+      (z.B. unbefugte Weitergabe, unerlaubte Verwendung).
+  - party: party_b
+    category: compliance
+    description: Der Empfänger verpflichtet sich, bei Verletzung der Pflichten
+      Schadensersatzansprüche der Offenlegerin zu tragen, wobei gezahlte
+      Vertragsstrafen auf Schadensersatzansprüche angerechnet werden.
+  - party: party_b
+    category: other
+    description: Der Empfänger verpflichtet sich, die Vereinbarung schriftlich zu
+      ändern oder aufzuheben, wobei E-Mails nicht ausreichen; qualifizierte
+      elektronische Signaturen sind zulässig.
+  - party: party_b
+    category: other
+    description: Der Empfänger verpflichtet sich, die Vereinbarung ausschließlich
+      nach deutschem Recht zu unterliegen und Hamburg als ausschließlichen
+      Gerichtsstand zu akzeptieren.
+  - party: party_a
+    category: other
+    description: Die Offenlegerin (GreenBite GmbH) verpflichtet sich, die
+      Vertraulichen Informationen zur Verfügung zu stellen, die für die
+      Investitionsprüfung erforderlich sind.
+  - party: party_a
+    category: other
+    description: Die Offenlegerin verpflichtet sich, keine Garantie oder
+      Gewährleistung für die Vollständigkeit oder Richtigkeit der Vertraulichen
+      Informationen zu übernehmen.
+  - party: party_a
+    category: other
+    description: Die Offenlegerin verpflichtet sich, keine Exklusivität zu gewähren
+      und frei zu sein, Verhandlungen mit anderen Investoren zu führen.
+  - party: party_a
+    category: other
+    description: Die Offenlegerin verpflichtet sich, die Vereinbarung mit der
+      Schriftform zu ändern oder aufzuheben, wobei E-Mails nicht ausreichen;
+      qualifizierte elektronische Signaturen sind zulässig.
+  - party: party_a
+    category: other
+    description: Die Offenlegerin verpflichtet sich, die Vereinbarung ausschließlich
+      nach deutschem Recht zu unterliegen und Hamburg als ausschließlichen
+      Gerichtsstand zu akzeptieren.

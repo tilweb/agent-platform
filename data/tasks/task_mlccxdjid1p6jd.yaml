@@ -1,0 +1,24 @@
+id: task_mlccxdjid1p6jd
+title: Test Task fuer Retry Funktionalitaet
+description: Test Task fuer Retry Funktionalitaet
+type: simple
+priority: normal
+created_by: supervisor
+trigger: chat
+created_at: 2026-02-07T13:35:45.870Z
+updated_at: 2026-02-07T13:35:53.741Z
+status: completed
+progress: 100
+current_step: 0
+total_steps: 0
+assigned_agent: supervisor
+steps: []
+config:
+  max_iterations: 50
+  timeout_minutes: 30
+  notify_on_complete: true
+  auto_retry_on_failure: false
+started_at: 2026-02-07T13:35:50.774Z
+result_file: /Users/andreasbachmann/Documents/Development/AgentWork/agent-platform/data/tasks/results/task_mlccxdjid1p6jd-result.json
+result_summary: 'Der Test-Task "Test Task fuer Retry Funktionalitaet" wurde erfolgreich erstellt und in die Queue eingereiht. Der Task hat die ID `task_mlccxi90nr6ihb` und wird automatisch im Hintergrund ausgefuehrt. ... (Tools: create_task)'
+completed_at: 2026-02-07T13:35:53.741Z

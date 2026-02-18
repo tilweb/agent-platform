@@ -1,0 +1,154 @@
+id: contract-mlk0t0p5-lyo10w
+contract_type: dienstleistung
+upload_filename: dienstleistungsvertrag_1_it_support.md
+uploaded_at: 2026-02-12T22:18:55.740Z
+uploaded_by: user_default
+extracted:
+  vertragspartner:
+    auftraggeber: MedTech Solutions AG
+    auftragnehmer: CloudCare IT Services GmbH
+  leistung:
+    beschreibung: IT-Support und Managed Services
+    umfang: "Managed Services: Monitoring und Verwaltung der gesamten
+      IT-Infrastruktur (75 Arbeitsplätze), Server-Administration (5 Server,
+      davon 2 physisch, 3 virtuell), Netzwerk-Management,
+      Cloud-Services-Administration (Microsoft 365, Azure), Datensicherung und
+      Disaster Recovery, Patch-Management und Updates, IT-Sicherheit und
+      Firewall-Management. Support-Leistungen: 1st und 2nd Level IT-Support,
+      Remote-Support via Helpdesk, Vor-Ort-Support nach Bedarf,
+      Software-Installation und -Konfiguration, Hardware-Beschaffung und
+      -Austausch (auf Kostenbasis). Projektleistungen: Beratung bei
+      IT-Projekten, Migration und Systemimplementierung, Dokumentation der
+      IT-Infrastruktur."
+  laufzeit:
+    beginn: 2024-03-01
+    ende: 2027-02-28
+    kuendigungsfrist_monate: 6
+  verguetung:
+    betrag: 6800
+    zahlungsweise: monatlich im Voraus
+    zahlungsziel_tage: 14
+  sla:
+    verfuegbarkeit: 99,5%
+    reaktionszeit: "Priority 1: 30 Minuten, Priority 2: 2 Stunden, Priority 3: 4
+      Stunden, Priority 4: 8 Stunden"
+computed:
+  party_a: MedTech Solutions AG
+  party_b: CloudCare IT Services GmbH
+  start_date: 2024-03-01
+  end_date: 2027-02-28
+  annual_value: 6800
+  status: active
+  days_to_expiry: 382
+obligations:
+  - party: party_b
+    category: delivery
+    description: Erbringung von IT-Support- und Managed-Services gemäß
+      Leistungskatalog (Anlage 1), einschließlich Monitoring, Server- und
+      Netzwerk-Administration, Cloud-Management, Datensicherung,
+      Patch-Management, IT-Sicherheit und Supportleistungen.
+  - party: party_b
+    category: delivery
+    description: Erbringung von Projektarbeiten wie Beratung, Migration und
+      Systemimplementierung.
+  - party: party_b
+    category: delivery
+    description: Vor-Ort-Support bis zu 16 Stunden pro Monat im Rahmen der Grundvergütung.
+  - party: party_b
+    category: delivery
+    description: Abrechnung von über die Grundvergütung hinausgehenden Leistungen
+      (z.B. zusätzlicher Vor-Ort-Support, Projektarbeiten, Not-Support) nach
+      Aufwand.
+  - party: party_b
+    category: delivery
+    description: Hardware- und Softwarebeschaffung auf Kostenbasis mit 12% Aufschlag.
+  - party: party_b
+    category: maintenance
+    description: Regelmäßige Sicherheitsupdates und Patches (monatlich, kritische
+      Patches innerhalb von 72h).
+  - party: party_b
+    category: maintenance
+    description: Umsetzung des Backup-Konzepts (tägliche Backups, Retention 30 Tage).
+  - party: party_b
+    category: maintenance
+    description: Durchführung von Wartungsarbeiten und Monitoring der IT-Infrastruktur.
+  - party: party_b
+    category: maintenance
+    description: Jährliches IT-Sicherheitsaudit im vierten Quartal jedes Jahres.
+  - party: party_b
+    category: maintenance
+    description: Einhaltung der SLA-Vorgaben (Verfügbarkeit 99,5%, Reaktions- und
+      Lösungszeiten).
+  - party: party_b
+    category: payment
+    description: Erhalt der monatlichen Grundvergütung von 6.800,00 EUR (netto) im
+      Voraus bis zum 25. des Vormonats.
+    recurrence: monatlich
+  - party: party_b
+    category: payment
+    description: Abrechnung und Erhalt von Zusatzleistungen (Vor-Ort-Support,
+      Projektarbeiten, Not-Support) mit Zahlungsziel von 30 Tagen nach
+      Rechnungsdatum.
+  - party: party_b
+    category: payment
+    description: Anpassung der Vergütung ab 01.03.2025 und jährlich danach, maximal
+      um 5% jährlich, basierend auf dem Verbraucherpreisindex.
+  - party: party_b
+    category: reporting
+    description: Erstellung eines monatlichen Reports bis zum 5. Werktag des
+      Folgemonats mit Supportanfragen, SLA-Einhaltung, Wartungsarbeiten und
+      Empfehlungen.
+  - party: party_b
+    category: reporting
+    description: Durchführung von quartalsweisen Review-Meetings zur Besprechung von
+      Service-Qualität, IT-Planung und Verbesserungsmaßnahmen.
+  - party: party_b
+    category: confidentiality
+    description: Verpflichtung zur Vertraulichkeit über alle im Rahmen der
+      Leistungserbringung bekannt gewordenen Informationen gemäß NDA (Anlage 3).
+  - party: party_b
+    category: compliance
+    description: Einhaltung der Datenschutzvorschriften gemäß DSGVO durch Einhaltung
+      der Auftragsverarbeitungsvereinbarung (Anlage 2).
+  - party: party_b
+    category: compliance
+    description: Einhaltung der IT-Sicherheitsanforderungen, einschließlich
+      Incident-Response-Plan und jährlichem Sicherheitsaudit.
+  - party: party_b
+    category: compliance
+    description: Einhaltung der SLA-Vorgaben und Pönalen bei Verletzungen.
+  - party: party_b
+    category: other
+    description: Einhaltung des Wettbewerbsverbots für 2 Jahre nach Vertragsende im
+      50-km-Radius um Frankfurt im Bereich Medizintechnik.
+  - party: party_a
+    category: payment
+    description: Zahlung der monatlichen Grundvergütung von 6.800,00 EUR innerhalb
+      von 14 Tagen nach Rechnungsdatum.
+    recurrence: monatlich
+  - party: party_a
+    category: payment
+    description: Zahlung von Zusatzleistungen innerhalb von 30 Tagen nach Rechnungsdatum.
+  - party: party_a
+    category: payment
+    description: Zahlung der angepassten Vergütung gemäß Preisänderungsklausel ab
+      01.03.2025.
+  - party: party_a
+    category: other
+    description: "Erfüllung der Mitwirkungspflichten: Bereitstellung von
+      Ansprechpartnern, Zugang zu Systemen, zeitnahe Bereitstellung von
+      Informationen und Vorankündigung von Infrastrukturänderungen."
+  - party: party_a
+    category: other
+    description: Benennung von Eskalationskontakten (technischer, kaufmännischer,
+      Notfallkontakt).
+  - party: party_a
+    category: other
+    description: Teilnahme an monatlichen Berichts- und quartalsweisen Review-Meetings.
+  - party: party_a
+    category: other
+    description: Einhaltung der Schriftform bei Änderungen und Anpassungen des Vertrages.
+  - party: party_a
+    category: other
+    description: Nicht-Übertragung der Rechte und Pflichten aus dem Vertrag auf
+      Dritte ohne schriftliche Zustimmung des Auftragnehmers.

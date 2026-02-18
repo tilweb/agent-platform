@@ -1,0 +1,17 @@
+id: session_1770676850962_ss6ksag
+title: "Adacor: Rechenzentren und Informationsquellen"
+summary: "Der Nutzer fragt nach den Rechenzentren von Adacor, erhält aber keine konkreten Infos. Empfehlung: Website oder direkter Kontakt."
+keywords:
+  - Adacor
+  - Rechenzentren
+  - IT-Infrastruktur
+  - data centers
+  - cloud services
+lastSummaryAt: 2
+createdAt: "2026-02-09T22:40:50.997Z"
+updatedAt: "2026-02-09T22:41:31.443Z"
+messages:
+  - role: user
+    content: "Welche Rechenzentren nutzt adacor?"
+  - role: assistant
+    content: Ich habe leider keine Informationen zu den Rechenzentren die von Adacor genutzt werden gefunden. Du kannst gerne selbst auf der Adacor-Website nachschauen oder dich direkt an Adacor wenden.

@@ -1,0 +1,100 @@
+id: contract-mlk0idjk-7gcb7y
+contract_type: mietvertrag
+upload_filename: mietvertrag_beispiel.md
+uploaded_at: 2026-02-12T22:10:31.373Z
+uploaded_by: user_default
+extracted:
+  vertragspartner:
+    vermieter: Immobilien Mustermann GmbH
+    mieter: Max Mustermann
+  objekt:
+    adresse: Sonnenallee 789, 80331 München
+    flaeche_qm: 85
+  laufzeit:
+    beginn: 2024-01-01
+    ende: 2026-12-31
+    kuendigungsfrist_monate: 3
+  finanzen:
+    kaltmiete_monatlich: 1450
+    nebenkosten_monatlich: 250
+    kaution: 4350
+computed:
+  party_a: Immobilien Mustermann GmbH
+  party_b: Max Mustermann
+  start_date: 2024-01-01
+  end_date: 2026-12-31
+  annual_value: 17400
+  status: active
+  days_to_expiry: 323
+obligations:
+  - party: party_b
+    category: payment
+    description: Monatliche Zahlung der Gesamtmiete in Höhe von 1.700,00 EUR,
+      bestehend aus 1.450,00 EUR Kaltmiete und 250,00 EUR Nebenkosten, monatlich
+      im Voraus bis zum 3. Werktag eines jeden Monats.
+    recurrence: monatlich
+  - party: party_b
+    category: payment
+    description: Zahlung einer Kaution in Höhe von 4.350,00 EUR bei Vertragsabschluss.
+    recurrence: einmalig
+  - party: party_a
+    category: delivery
+    description: Übergabe der Wohnung in gebrauchsfähigem Zustand am 2024-01-01.
+  - party: party_b
+    category: delivery
+    description: Rückgabe der Wohnung besenrein und in dem Zustand, wie sie bei
+      Mietbeginn übernommen wurde.
+  - party: party_b
+    category: maintenance
+    description: Durchführung von Schönheitsreparaturen in Küche, Bad, Dusche alle 3
+      Jahre, in Wohn- und Schlafräumen sowie Fluren alle 5 Jahre und in anderen
+      Nebenräumen alle 7 Jahre.
+  - party: party_a
+    category: maintenance
+    description: Durchführung von größeren Instandhaltungen und Reparaturen.
+  - party: party_b
+    category: maintenance
+    description: Tragung kleiner Reparaturen bis 100 EUR selbst.
+  - party: party_b
+    category: reporting
+    description: Unverzügliche Information des Vermieters bei Mängeln an der Wohnung.
+  - party: party_a
+    category: reporting
+    description: Erstellung einer jährlichen Betriebskostenabrechnung bis spätestens
+      30. Juni des Folgejahres.
+  - party: party_a
+    category: reporting
+    description: Informierung des Mieters bei Arbeiten am Gebäude.
+  - party: party_b
+    category: compliance
+    description: Nutzung der Wohnung ausschließlich zu Wohnzwecken.
+  - party: party_b
+    category: compliance
+    description: Nichtgewerbliche Nutzung der Wohnung.
+  - party: party_b
+    category: compliance
+    description: Tierhaltung bedarf der vorherigen schriftlichen Zustimmung des Vermieters.
+  - party: party_b
+    category: compliance
+    description: Einhaltung der Hausordnung.
+  - party: party_b
+    category: compliance
+    description: Sorgen für ausreichende Belüftung und Beheizung der Wohnung.
+  - party: party_a
+    category: compliance
+    description: Erhaltung der Wohnung in vertragsgemäßem Zustand.
+  - party: party_a
+    category: compliance
+    description: Durchführung notwendiger Reparaturen zeitnah.
+  - party: party_b
+    category: other
+    description: Pflegliche Behandlung der Wohnung.
+  - party: party_a
+    category: other
+    description: Einrichtung eines Kautionskontos für die Kaution.
+  - party: party_a
+    category: other
+    description: Einhaltung der Schriftform bei Änderungen und Ergänzungen des Vertrages.
+  - party: party_b
+    category: other
+    description: Einhalten der Schriftform bei Kündigung.

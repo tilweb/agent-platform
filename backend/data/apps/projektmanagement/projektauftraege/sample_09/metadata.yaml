@@ -1,0 +1,353 @@
+id: sample_09
+name: Neuaufnahme Videos MC PM 4.0
+project_type: internal
+start_date: 2025-02-10
+end_date: 2025-08-15
+projektleiter: Robin van den Berg
+auftraggeber: Matthias Gärtner
+description: "Importiert aus: Neuaufnahme Videos MC PM 4.0"
+goals: >-
+  1. Qualitätsverbesserung. Das erste Hauptziel des Projekts ist, den
+  Teilnehmenden der Masterclass neue Projektmanagement-Fähigkeiten durch
+  verbesserte deutsche Videos erfolgreicher und effektiver zu vermitteln.
+
+  2. Pre-Sales Unterstützung. Das zweite Ziel dieses Projekts ist es, vier
+  englische Masterclass-Videos für Pre-Sales-Zwecke zu erstellen, um dadurch
+  englischen Videos von guter Qualität potenziellen Kunden zu zeigen.  
+
+  SMART Erfolgskriterien sind: 
+
+  1. Wir wollen die Qualität der deutschen Videos steigern. Wir benötigen dafür:
+
+  1.1 Qualitatives MC PM 4.0 Video-Präparation und Video-Aufnahme-Checkliste
+
+  1.2. Video-Content-Skript für jedes neue Video mit neuen didaktischen Grafiken
+  und Bildern im PPT-Format.
+
+  1.3. Deutsche Videos (32) neu produziert und im Memberspot, deutsche MC PM 4.0
+  hinterlegt.
+
+  1.4  Neue Video Aufnahme-Technik und Postproduktion-Technik
+
+
+  2. Das 2. Hauptziel des Projekts ist die MC PM 4.0 Pre-Sales Aktivitäten zu
+  unterstützen. Wir benötigen dafür:
+
+  2.1. Englische Videos (4) werden neu produziert (wie bei deutschen Videos) und
+  im englischen MC PM 4.0 Memberspot hinterlegt.
+
+
+  3. Um das oben stehende zu schaffen, brauchen wir ein gut funktionierendes
+  Projektteam, wo motivierend und konstruktiv zusammengearbeitet wird. 
+
+  3.1 Bei einer Änderung der Kapazität können wir uns gegenseitig unterstützen.
+criteria:
+  - Qualitätsverbesserung. Das erste Hauptziel des Projekts ist, den
+    Teilnehmenden der Masterclass neue Projektmanagement-Fähigkeiten durch
+    verbesserte deutsche Videos erfolgreicher und effektiver zu vermitteln.
+  - >-
+    Pre-Sales Unterstützung. Das zweite Ziel dieses Projekts ist es, vier
+    englische Masterclass-Videos für Pre-Sales-Zwecke zu erstellen, um dadurch
+    englischen Videos von guter Qualität potenziellen Kunden zu zeigen.  
+
+    SMART Erfolgskriterien sind:
+  - |-
+    Wir wollen die Qualität der deutschen Videos steigern. Wir benötigen dafür:
+    1.1 Qualitatives MC PM 4.0 Video-Präparation und Video-Aufnahme-Checkliste
+    1.
+  - >-
+    Video-Content-Skript für jedes neue Video mit neuen didaktischen Grafiken
+    und Bildern im PPT-Format.
+
+    1.
+  - >-
+    Deutsche Videos (32) neu produziert und im Memberspot, deutsche MC PM 4.0
+    hinterlegt.
+
+    1.4  Neue Video Aufnahme-Technik und Postproduktion-Technik
+  - >-
+    Hauptziel des Projekts ist die MC PM 4.0 Pre-Sales Aktivitäten zu
+    unterstützen. Wir benötigen dafür:
+
+    2.
+  - Englische Videos (4) werden neu produziert (wie bei deutschen Videos) und im
+    englischen MC PM 4.0 Memberspot hinterlegt.
+  - >-
+    Um das oben stehende zu schaffen, brauchen wir ein gut funktionierendes
+    Projektteam, wo motivierend und konstruktiv zusammengearbeitet wird. 
+
+    3.1 Bei einer Änderung der Kapazität können wir uns gegenseitig
+    unterstützen.
+scope: ""
+in_scope: []
+out_scope: []
+tasks: []
+milestones:
+  - id: MS-1
+    name: Projektinitialisierung
+    date: 2025-01-23
+    description: ""
+  - id: MS-2
+    name: Projektstart
+    date: 2025-02-10
+    description: ""
+  - id: MS-3
+    name: Genehmigung Projektauftrag
+    date: 2025-02-04
+    description: ""
+  - id: MS-4
+    name: Kommunikationsplan erstellt, Risiko Management Strategie erstellt
+    date: 2025-02-06
+    description: ""
+  - id: MS-5
+    name: Kick-off-Meeting mit Kernteam gemacht
+    date: 2025-02-18
+    description: ""
+  - id: MS-6
+    name: Video Produktion Manual genehmigt
+    date: 2025-02-07
+    description: ""
+  - id: MS-7
+    name: Pilot Video bereit und genehmigt
+    date: 2025-02-13
+    description: ""
+  - id: MS-8
+    name: Videos Kapitel 0-Alles rundum MC PM 4.0 bereit (2 videos) + (1 videos ENG)
+    date: 2025-02-21
+    description: ""
+  - id: MS-9
+    name: Videos Kapitel 1-Einstieg in das PM bereit (9 videos) (+ 1 videos ENG)
+    date: 2025-03-28
+    description: ""
+  - id: MS-10
+    name: Videos Kapitel 2-Auftrag als Grundlage bereit (5 videos + 2 videos ENG)
+    date: 2025-04-18
+    description: ""
+  - id: MS-11
+    name: Videos Kapitel 3-Das magische Dreieck bereit (6 videos)
+    date: 2025-05-09
+    description: ""
+  - id: MS-12
+    name: Videos Kapitel 4-Umgang mit Einflüßen,Kapitel 5-Projekt Organisation &
+      Komm. Bereit (7 videos)
+    date: 2025-06-30
+    description: ""
+  - id: MS-13
+    name: Videos Kapitel 6-Projektabschluss bereit (4 videos)
+    date: 2025-07-30
+    description: ""
+  - id: MS-14
+    name: Video Produktion abgeschlossen und genehmigt
+    date: 2025-08-15
+    description: ""
+budget:
+  - id: PB2
+    item: Projektaufwand
+    provider: Interne Mitarbeiter
+    amount: 42840
+  - id: RB1
+    item: Risikowert
+    provider: Interne Kosten
+    amount: 3750
+  - id: HW1
+    item: Hardware
+    provider: Amazon etc.
+    amount: 600
+risks:
+  - id: R-01
+    type: threat
+    description: Keyressource fällt aus
+    probability: high
+    impact: medium
+    mitigation: ""
+  - id: R-02
+    type: threat
+    description: Videoaufnahme Technik läuft nicht
+    probability: low
+    impact: medium
+    mitigation: ""
+  - id: R-03
+    type: threat
+    description: Postproduktion Technick läuft nicht
+    probability: low
+    impact: medium
+    mitigation: ""
+  - id: R-04
+    type: threat
+    description: Zeit-Planung reicht nicht aus
+    probability: high
+    impact: medium
+    mitigation: ""
+  - id: R-05
+    type: threat
+    description: Auftraggeber ändert Scope
+    probability: low
+    impact: medium
+    mitigation: ""
+  - id: C-01
+    type: opportunity
+    description: Kunde kauft englische MC PM 4.0 Kurs
+    probability: low
+    impact: medium
+    mitigation: ""
+organization:
+  - id: AG1
+    name: Matthias Gärtner
+    role: Auftraggeber - Leiter
+    email: ""
+  - id: LK1
+    name: Gudrun Kelp
+    role: Lenkungskreis - Leiter
+    email: ""
+  - id: PL
+    name: Robin van den Berg
+    role: Projektleitung - Leiter
+    email: ""
+  - id: KT1
+    name: Matthias Gärtner
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT2
+    name: Franziska Schacht
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT3
+    name: Werner Bohnen
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+stakeholders:
+  - id: SH1
+    name: Stefan Wozny
+    role: Agile Coach
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH2
+    name: MA RUHR PM
+    role: Mitarbeiter
+    interest: medium
+    influence: medium
+    expectations: ""
+created_at: 2026-02-15T21:31:22.749Z
+updated_at: 2026-02-15T21:31:22.749Z
+created_by: migration
+status: completed
+current_step: 9
+_source: Neuaufnahme Videos MC PM 4.0
+_lessons_learned: >-
+  Wissensgebiet	SWOT	Beschreibung	Auswirkung	Empfehlung
+
+  Organisation	Stärke	Crossfunktional	Hoche fachliche Abdeckung	
+
+  Organisation	Schwäche	Knowledge Monopol (Video-Schnitt-Experte)	Die Vergabe
+  von Key-Usern an andere Projekte ist nicht angesprochen worden durch PL und
+  wurde schlecht kompensiert. Verzögerung von Projekt.	Es empfiehlt sich, im
+  Vorfeld des Projekts für die kritischen Ressourcen auf dem kritischen Pfad
+  Alternativen und Lösungsansätze zu identifizieren und zu organisieren.
+
+  Organisation	Schwäche	Zusammenarbeit in formellen Team-Meetings
+  schwerig	Vertrauensverlust, Motivationsverlust	Es gilt, in Besprechungen vorab
+  die wichtigsten Werte zu definieren und deren Einhaltung zu gewährleisten. Es
+  ist wichtig, eine positive Meeting-Kultur zu fördern.
+
+  Organisation	Schwäche	Fehlendes Projektmanagement Know how	Lücken im
+  Risikomanagement und Stakeholdermanagement	Strukturiertes vorgehen mit
+  Toolbox 
+
+  Risiko	Schwäche	Risikomanagement von Anfang an	Risiken werden jedoch
+  frühzeitig nicht vollständig identifiziert.	Auftraggeber mit einbinden
+
+  Risiko 	Chance	Verbindlichkeit bei den Ressourcen schaffen	Planungssicherheit
+  für das Projektteam	Plan-Ist-Forecast regelmäßig kommunizieren,
+  Projekt-Aktivitäten im Vorfeld planen und kommunizieren.
+
+  Qualität	Risiko	Anforderungsanalyse		Die Kundenanforderungen an die gewünschte
+  Qualität der Projekt-Deliverables können früher und ausführlicher definiert
+  werden. Die Kunden können tiefer in die Pilot-Phase einbezogen werden, um
+  schneller, früher und mehr Feedback zu bekommen. 
+
+  Qualität	Stärke	Definieren von Prototyp und MVP	Erfolgreiche Produktion von
+  Kursmaterialien und gewünschte Qualitätskriterien werden erreicht.	
+
+  Kosten	Schwäche	Die Risikokosten wurden im Projektauftrag nicht
+  betrachtet	Durch das fehlende Budget gab es keinen Handlungsspielraum für die
+  Umsetzung von Maßnahmen zur Risikominimierung	Im Projektauftrag immer das
+  Risikobudget verankern
+
+  Kommunikation	Schwäche	Regelmäßige Kommunikation mit den Stakeholdern
+  (Auftraggeber, Fachbereiche etc.) fördert die Zusammenarbeit	Wir hatten
+  manchmal eine fehlende Kommunikation in Team-Meetings, was zu
+  Vertrauensverlust ins Team und einer schwierigen Zusammenarbeit führte.	Es
+  gilt, in Besprechungen vorab die wichtigsten Werte zu definieren und deren
+  Einhaltung zu gewährleisten. Es ist wichtig, eine positive Meeting-Kultur zu
+  fördern.
+
+  Termine	Stärke	Meeting- und Berichtskaskade, von Anfang an geplant, hat sehr
+  gut funktioniert 	Jeder Projektbeteiligte und Stakeholder wusste, wann er was
+  an Informationen erwarten konnte	Meeting- und Berichtskaskade sollte schon im
+  Projektauftrag verankert werden
+
+  Inhalt & Umfang	Stärke	Sehr gute fachliche Expertise im Projektteam	Die
+  Entwicklung der Kurs-Materialien entspricht den Anforderungen der
+  Anwender	Einbeziehung der späteren Kurs-Teilnehmern/ Kunden von Anfang an, um
+  deren Anforderungen besser umzusetzen
+
+  Qualität	Stärke	Die Erfolgskriterien der Projektziele zu den Abnahmenkriterien
+  zu machen war eine sehr gute Entscheidung	Die späteren Anwender waren von
+  Anfang an eingebunden und haben das Projektteam sehr gut
+  unterstützt	Erfolgskriterien zu Abnahmekriterien zu machen hilft bei der
+  Qualitätssicheung sehr
+
+  Qualität	Risiko	Ohne Erfolgskriterien werden die Qualitätsanforderungen nicht
+  transparent	Ohne Abnahmekriterien kann man schnell an den Anforderungen der
+  Anwender vorbei entwickeln	Einbezieheung der späteren Kunde schon bei der
+  Erstellung des Projektauftrages
+_summary: >+
+  Projekt- und Projektmanagementergebnisse
+
+  Time: Videos und Unterlagen werden nicht in zeitlichem Rahmen umgesetzt. Es
+  sind 2 Monate Verzögerung aufgetreten, weil die Key-Ressourcen (Techn.
+  Videoschneiden) auf anderen Projekten eingesetzt worden und weil der Aufwand
+  bei Videoschneiden-Aktivitäten zu positiv eingeschätzt ist. 
+
+  Scope: Scope: Die neuen deutschen MC-Videos und die dazugehörenden
+  Kursmaterialien sind produziert worden. Die ersten 4 englischen Videos für
+  Pre-Sales-Zwecke sind nicht produziert worden, weil die Auftraggeber diese
+  nicht nützlich fand.
+
+  Quality: Die Qualitätsanforderungen an die Videos und dazugehörenden
+  Kursmaterialien wurden erfüllt und die Stakeholder sind sehr zufrieden mit den
+  neuen MC-Kursmaterialien.
+
+  Budget: Aufwand und Kosten mussten im Projektverlauf 10% erhöht werden, weil
+  die Video-Schnitt-Aktivitäten zu kurz eingeplant worden waren.
+
+  Beschaffung: Es wurden einige kleine Dinge gekauft, um die Qualität von
+  Video-Bild und Video-Ton zu verbessern. Dieser Kaufprozess verlief
+  reibungslos. Das Projekt wurde weiterhin ausschließlich mit internen
+  Mitarbeitern realisiert. 
+
+  Stakeholder: Die Stakeholder wurden nur unzureichend betrachtet. Die
+  Auftraggeber und RUHR PM-Mitarbeiter wurden nicht genug einbezogen. Die
+  Stakeholder sind nicht genug einbezogen beim Feiern des Erreichens von
+  Projekt-Meilensteinen.
+
+  Risk: Risiken wurden nur unzureichend betrachtet. Der zeitliche Abzug einer
+  Key-Ressource hat Verzögerung verursacht und da war kein Risikomanagement-Plan
+  für einen Ersatz. Das Desinteresse beim Auftraggeber an der Produktion von
+  englischen Videos ist nicht als Risiko betrachtet worden.
+
+  Organisation: Die Projektorganisation (Auftraggeber, Lenkungskreis,
+  Projektleiter, Akademie-Leiterin, Video-Moderatoren und
+  Video-Produktions-Team) war einwandfrei aufgestellt und hat gut funktioniert.
+
+  Kommunikation: Die Kommunikation innerhalb des Projektes war schwierig bei den
+  formellen 2‑wöchentlichen Team-Meetings. Die Kommunikation innerhalb des Teams
+  bei den Video- Produktionsmomenten war gut. Die Statusberichte PL
+  (Projektleiter) – 14-tägig – und Statusberichte AG (Auftraggeber) –  14-tägig
+  – wurden durchgeführt und dokumentiert.
+
+  Integration: Die Zusammenführung der Ergebnisse aus den Wissensgebieten hat
+  sehr gut funktioniert. Der Projektfortschritt und die Prognose waren
+  transparent und nachvollziehbar.
+

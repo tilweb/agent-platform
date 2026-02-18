@@ -1,0 +1,326 @@
+id: sample_06
+name: Entwicklung Rasenmäher Roboter App GPS-R 4.0
+project_type: internal
+start_date: 2024-10-28
+end_date: 2025-04-30
+projektleiter: Ingrid Leitung
+auftraggeber: Ingo Auftrag
+description: "Importiert aus: SW GPS-4.0_SWO"
+goals: |-
+  WHY – Warum?
+  Das Projekt GPS-R
+criteria:
+  - Erfolgskriterium 1
+scope: ""
+in_scope: []
+out_scope: []
+tasks:
+  - id: HA-02
+    name: Projektauftrag erstellen
+    responsible: Ingrid Leitung
+    start_date: ""
+    end_date: ""
+    effort: 7
+    status: open
+  - id: HA-03
+    name: Design und Anforderungsphase
+    responsible: Ingrid Leitung
+    start_date: ""
+    end_date: ""
+    effort: 13
+    status: open
+  - id: HA-04
+    name: Umsetzung MVPs
+    responsible: Ingrid Leitung
+    start_date: ""
+    end_date: ""
+    effort: 16
+    status: open
+  - id: HA-05
+    name: Erweiterung und Intergration
+    responsible: Horst Pielonski
+    start_date: ""
+    end_date: ""
+    effort: 14
+    status: open
+  - id: HA-06
+    name: Projektabschluss
+    responsible: Ingrid Leitung
+    start_date: ""
+    end_date: ""
+    effort: 8
+    status: open
+  - id: HA-07
+    name: ""
+    responsible: ""
+    start_date: ""
+    end_date: ""
+    effort: 0
+    status: open
+milestones:
+  - id: MS-1
+    name: Projektinitialisierung
+    date: 2024-10-27
+    description: ""
+  - id: MS-2
+    name: Projektstart
+    date: 2024-10-28
+    description: ""
+  - id: MS-3
+    name: Genehmigung Projektauftrag
+    date: 2014-10-28
+    description: ""
+  - id: MS-4
+    name: Design Sprint abgeschlossen
+    date: 2025-01-20
+    description: ""
+  - id: MS-5
+    name: Registrierungsfunktion fertig
+    date: 2025-02-12
+    description: ""
+  - id: MS-6
+    name: GPS-Modul fertiggestellt
+    date: 2025-04-03
+    description: ""
+  - id: MS-7
+    name: Plannungstool bereit
+    date: 2025-04-20
+    description: ""
+  - id: MS-8
+    name: Projektabschluss
+    date: 2025-04-30
+    description: ""
+budget:
+  - id: PB1
+    item: Projektkosten
+    provider: Unsere Firma GmbH
+    amount: 6000
+risks:
+  - id: R-01
+    type: threat
+    description: Keyressource fällt aus
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: R-02
+    type: threat
+    description: Verzögerungen im Rollout, ineffiziente Abläufe
+    probability: high
+    impact: medium
+    mitigation: ""
+  - id: R-03
+    type: threat
+    description: Datenschutzrisiko
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: R-04
+    type: threat
+    description: Technische Inkompatibilitäten
+    probability: high
+    impact: medium
+    mitigation: ""
+  - id: R-05
+    type: threat
+    description: Zu hohe parallele Belastung des Projektteams
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: C-01
+    type: opportunity
+    description: Marketing-/PR-Effekt
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: C-02
+    type: opportunity
+    description: Schnelles Customer Feedback
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: C-03
+    type: opportunity
+    description: ""
+    probability: medium
+    impact: medium
+    mitigation: ""
+organization:
+  - id: AG1
+    name: Ingo Auftrag
+    role: Auftraggeber - Leiter
+    email: ""
+  - id: LK1
+    name: Monika Lenk
+    role: Lenkungsausschuss - Mitarbeiter
+    email: ""
+  - id: LK2
+    name: Willi Wutan
+    role: Lenkungsausschuss - Mitarbeiter
+    email: ""
+  - id: PL
+    name: Ingrid Leitung
+    role: Projektleitung - Leiter
+    email: ""
+  - id: KT1
+    name: Horst Pielonski
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT2
+    name: Dieter Dombrowski
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT3
+    name: Archibald Bauer
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT4
+    name: Dirk Döner
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT5
+    name: Ronny Grabowski
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT6
+    name: Barbara Maschine
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+stakeholders:
+  - id: SH1
+    name: MA Unsere Firma GmbH
+    role: PM und Agilisten
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH2
+    name: Betriebsrat
+    role: Betriebsrat
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH3
+    name: " Firma Schnelle Sichel"
+    role: Wettbewerber
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH4
+    name: Nutzer GPS Robot
+    role: Kunde
+    interest: medium
+    influence: medium
+    expectations: ""
+created_at: 2026-02-15T21:31:22.746Z
+updated_at: 2026-02-15T21:31:22.746Z
+created_by: migration
+status: completed
+current_step: 9
+_source: SW GPS-4.0_SWO
+_lessons_learned: >-
+  Wissensgebiet	SWOT	Beschreibung	Auswirkung	Empfehlung
+
+  Integration	Schwäche	Die Abstimmung zwischen Fachbereich, Architektur und
+  Entwicklung erfolgte zu spät, wodurch technische Abhängigkeiten erst verzögert
+  erkannt wurden.	Notwendige Anpassungen im Architekturentwurf und Mehraufwand
+  in der Umsetzung.	Architektur-Review verpflichtend vor Start der
+  Entwicklungsphase durchführen.
+
+  Integration	Chance	Die gemeinsame Sicht auf Anforderungen und technische
+  Konzepte während der Workshops führte zu besserer Klarheit im
+  Projektteam.	Reduzierte Fehlinterpretationen und zielgerichtetere
+  Umsetzung.	Fachlich-technische Workshops früh im Projekt fest etablieren.
+
+  Inhalt & Umfang	Chance	Die Einführung eines klar strukturierten Backlogs
+  erleichterte die Transparenz über Inhalte und Prioritäten.	Effizientere
+  Sprint-Planung und klarere Erwartungssteuerung.	Backlog-Pflege und
+  Priorisierung als Regeltermin einführen.
+
+  Inhalt & Umfang	Risiko	Unklare fachliche Anforderungen führten zu mehreren
+  nachträglichen Änderungswünschen. Einige neue Anforderungen kamen spät in der
+  Testphase dazu.	Potenzielle Verschiebung geplanter Meilensteine.	Detaillierte
+  Scope-Abstimmung und verbindliche Abnahme vor Entwicklungsstart.
+
+  Qualität	Stärke	Die technische Vorarbeit des Architekturteams führte zu einer
+  stabilen Grundlage für die Entwicklungsarbeiten.	Weniger technische Defekte
+  und geringere Nacharbeiten.	Architektur-Validierung als fester Meilenstein
+  einplanen.
+
+  Qualität	Schwäche	Testfälle wurden erst spät definiert, wodurch Fehler erst
+  kurz vor der Abnahme entdeckt wurden.	Höherer Testaufwand und Rückfragen kurz
+  vor Release.	Testfall-Definition parallel zur Anforderungsanalyse durchführen.
+
+  Kosten	Chance	Transparente Plan-Ist-Forecasts halfen, Engpässe im externen
+  Aufwand früh sichtbar zu machen.	Budget wurde eingehalten.	Wöchentliche
+  Forecast-Runden als Pflichttermin etablieren.
+
+  Kosten	Schwäche	Der Aufwand für IT-Sicherheit wurde zunächst
+  unterschätzt.	Zusätzliche 8 PT entstanden, die nicht budgetiert
+  waren.	Security-Aufwände in frühen Phasen mit standardisierten
+  Erfahrungswerten kalkulieren.
+
+  Kommunikation	Stärke	Das Projektteam hat wöchentliche Abstimmungen sehr
+  konsequent durchgeführt.	Hohe Transparenz über Status, Risiken und
+  Aufgaben.	Weekly-Format als Standard übernehmen.
+
+  Kommunikation	Schwäche	Einige Stakeholder wurden erst spät eingebunden,
+  insbesondere aus dem Betrieb.	Rückfragen beim Rollout und erhöhter
+  Abstimmungsbedarf.	Stakeholder-Map in der Initialisierungsphase gemeinsam
+  prüfen und freigeben.
+
+  Risiko	Risiko	Architektur-Risiken – insbesondere Abhängigkeiten zu Altsystemen
+  – wurden erst während der Feinspezifikation sichtbar.	Zusätzliche Planung,
+  potenzielle Verzögerung.	Architekturrisiken frühzeitig systematisch erfassen
+  und bewerten.
+
+  Risiko	Chance	Die frühe Identifikation technischer Risiken ermöglichte
+  rechtzeitige Gegenmaßnahmen.	Reduzierung potenzieller
+  Verzögerungen.	Risiko-Workshops regelmäßig im Projekt verankern.
+
+  Termine	Risiko	Die Abhängigkeit zu externen Testressourcen war anfänglich
+  unklar.	Potenzieller Verzug in der Testphase.	Abhängigkeiten bereits in der
+  MSP-Erstellung verbindlich dokumentieren.
+
+  Termine	Stärke	Die Prototyp-Sprints wurden sehr stabil eingehalten, kaum
+  Terminabweichungen.	Hohe Planbarkeit der IT-Entwicklung.	Kurze Sprints (2
+  Wochen) auch bei anderen Entwicklungsprojekten übernehmen.
+
+  Organisation	Schwäche	Die Rollen von PO, PL und fachlicher Führung waren zu
+  Beginn nicht klar abgegrenzt.	Doppelkommunikation und Mehraufwand in KW
+  3–4.	RACI oder Rollen-Canvas vor Projektstart ausfüllen.
+
+  Organisation	Stärke	Das Kernteam arbeitete eng und fokussiert zusammen, trotz
+  paralleler Linienaufgaben.	Hohe Umsetzungsgeschwindigkeit.	Kleine, stabile
+  Teams für GPS-Entwicklungsprojekte bevorzugen.
+
+  Beschaffung	Risiko	Verzögerungen bei der Bereitstellung der Testumgebungen
+  erschwerten den frühen Start der Qualitätssicherung.	Engpässe in der
+  Testphase.	Beschaffungs- und Setup-Plan frühzeitig abstimmen und tracken.
+
+  Stakeholder	Chance	Der Auftraggeber war sehr aktiv eingebunden und
+  priorisierte Entscheidungen schnell.	Hohe Geschwindigkeit in der
+  Umsetzung.	Gemeinsame Priorisierungssessions mit AG in kritischen Phasen
+  einplanen.
+_summary: "Projekt- und Projektmanagementergebnisse: Das Vorgehensmodell wurde
+  definiert, zentrale Rollen sind besetzt und die Arbeitspakete wurden
+  strukturiert. Der Meilensteinplan ist erstellt und abgestimmt. Initiale
+  Risiken, Stakeholder und Beschaffungsbedarfe sind dokumentiert.
+
+  Time: Bisher liegen keine Verzögerungen vor; die Planung wurde erstellt und
+  die Meilensteine zeitlich eingeordnet.
+
+  Scope: Der Scope umfasst die Weiterentwicklung der GPS-Software mit fachlichen
+  und technischen Anforderungen, Testphase, Freigabe und Bereitstellung der
+  neuen Version.
+
+  Quality: Qualitätssicherungsmaßnahmen wie Testplanung, Risikobetrachtung und
+  Architekturabstimmungen sind vorgesehen, jedoch noch nicht vollständig
+  ausgearbeitet.\vBudget: \vBeschaffung: \vStakeholder: Stakeholder aus
+  Fachbereich, IT, Architektur und Projektleitung sind benannt; zentrale Rollen
+  wie PL, PO und IT-Entwicklung sind klar zugeordnet.\vRisk:Es bestehen Risiken
+  im Bereich Ressourcenverfügbarkeit, technischer Architektur, Abstimmung der
+  Anforderungen und möglicher Verzögerungen durch externe
+  Abhängigkeiten.\vOrganisation:Die Projektorganisation ist aufgebaut, Rollen
+  wie Auftraggeber, Lenkungskreis, Projektleitung, PO und technische Rollen sind
+  zugewiesen.\vIntegration: Inhaltliche und technische Anforderungen werden über
+  die Strukturierung der Arbeitspakete zusammengeführt; die Integration ist
+  vorgesehen, aber noch nicht umgesetzt."

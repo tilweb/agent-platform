@@ -1,0 +1,132 @@
+id: it-projekt
+name: IT-Projekt (Standard)
+description: Vorlage für ein typisches IT-Entwicklungsprojekt mit agilen Elementen
+project_type: internal
+
+template:
+  project_type: internal
+  status: draft
+  current_step: 1
+
+  # Beispiel-Struktur
+  criteria:
+    - System ist produktiv und stabil
+    - Alle definierten Features sind implementiert
+    - Dokumentation ist vollständig
+    - Schulung der Anwender ist erfolgt
+
+  in_scope:
+    - Konzeption und Design
+    - Softwareentwicklung
+    - Testing und Qualitätssicherung
+    - Dokumentation
+    - Schulung
+
+  out_scope:
+    - Hardware-Beschaffung
+    - Betrieb und Wartung nach Go-Live
+    - Änderungen an Drittsystemen
+
+  milestones:
+    - id: m1
+      name: Projektstart
+      date: ""
+      description: Kick-off und Projektinitialisierung
+    - id: m2
+      name: Konzeptfreigabe
+      date: ""
+      description: Freigabe des fachlichen und technischen Konzepts
+    - id: m3
+      name: Design-Freeze
+      date: ""
+      description: Abschluss der Design-Phase
+    - id: m4
+      name: Feature-Complete
+      date: ""
+      description: Alle Features implementiert
+    - id: m5
+      name: Go-Live
+      date: ""
+      description: Produktivnahme des Systems
+    - id: m6
+      name: Projektabschluss
+      date: ""
+      description: Formaler Projektabschluss und Lessons Learned
+
+  tasks:
+    - id: t1
+      name: Anforderungsanalyse
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 40
+      status: open
+    - id: t2
+      name: Technisches Konzept erstellen
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 24
+      status: open
+    - id: t3
+      name: UI/UX Design
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 32
+      status: open
+    - id: t4
+      name: Backend-Entwicklung
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 80
+      status: open
+    - id: t5
+      name: Frontend-Entwicklung
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 60
+      status: open
+    - id: t6
+      name: Integration und Testing
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 40
+      status: open
+    - id: t7
+      name: Dokumentation
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 16
+      status: open
+    - id: t8
+      name: Schulung
+      responsible: ""
+      start_date: ""
+      end_date: ""
+      effort: 8
+      status: open
+
+  risks:
+    - id: r1
+      type: technical
+      description: Technische Komplexität unterschätzt
+      probability: medium
+      impact: high
+      mitigation: Frühe technische Spikes und Proof-of-Concepts
+    - id: r2
+      type: resource
+      description: Ressourcenengpässe bei Schlüsselpersonen
+      probability: medium
+      impact: medium
+      mitigation: Cross-Training und Wissenstransfer
+    - id: r3
+      type: schedule
+      description: Verzögerungen durch externe Abhängigkeiten
+      probability: low
+      impact: high
+      mitigation: Frühzeitige Abstimmung mit externen Teams

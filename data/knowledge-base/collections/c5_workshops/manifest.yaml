@@ -1,0 +1,21 @@
+# Manifest für Collection: C5 Workshops
+collection_id: "c5_workshops"
+collection_name: "C5 Workshops"
+description: "Protokolle und Ergebnisse der C5 Workshops"
+last_updated: "2026-02-11T08:24:40.240Z"
+
+documents:
+  - document_id: "doc-gdrive-iks-beschreibung-idw-ps-951-2021-pdf-1770712314559-1770712314563"
+    title: "IKS-Beschreibung IDW PS 951 2021.pdf"
+    source_file: "gdrive-IKS-Beschreibung-IDW-PS-951-2021.pdf-1770712314559.pdf"
+    path: "doc-gdrive-iks-beschreibung-idw-ps-951-2021-pdf-1770712314559-1770712314563"
+    indexed_date: "2026-02-10"
+  - document_id: "doc-gdrive-iks-beschreibung-idw-ps-951-2021-pdf-1770798229428-1770798229431"
+    title: "IKS-Beschreibung IDW PS 951 2021.pdf"
+    source_file: "gdrive-IKS-Beschreibung-IDW-PS-951-2021.pdf-1770798229428.pdf"
+    path: "doc-gdrive-iks-beschreibung-idw-ps-951-2021-pdf-1770798229428-1770798229431"
+    indexed_date: "2026-02-11"
+  - document_id: "doc-2025-11-managementbewertung-ism-s-v1-1769861116012-copy-1770798280238"
+    title: "2025-11-managementbewertung-ism-s-v1"
+    path: "doc-2025-11-managementbewertung-ism-s-v1-1769861116012-copy-1770798280238"
+    indexed_date: "2026-02-11"

@@ -1,0 +1,103 @@
+id: deep-research
+name: Deep Research
+description: Startet eine strukturierte, umfassende Recherche mit dem Deep Researcher
+version: "2.0"
+author: system
+
+# NEW: Metadata for agent decision-making
+metadata:
+  use_when: |
+    - User fragt nach ausführlicher Recherche
+    - Komplexes Thema mit mehreren Aspekten
+    - Quellenbasierte Analyse erforderlich
+    - "Recherchiere ausführlich", "finde alles über", "deep research"
+  estimated_effort: "5-15 Minuten"
+  output_type: "Strukturierter Research-Report"
+
+# NEW: Tools that this skill ADDS to agent capabilities
+allowed_tools:
+  - web_search
+  - file_write
+  - file_read
+  - file_list
+
+# DEPRECATED: triggers - kept for backward compatibility
+triggers:
+  keywords:
+    - deep research
+    - tiefenrecherche
+    - ausführliche recherche
+    - umfassende recherche
+    - recherchiere ausführlich
+    - untersuche gründlich
+  patterns:
+    - "recherchiere.*ausführlich"
+    - "finde alles.*über"
+    - "deep.*research"
+    - "umfassende.*analyse"
+    - "gründliche.*recherche"
+
+# DEPRECATED: tools - use allowed_tools instead
+tools:
+  required:
+    - web_search
+    - file_write
+    - file_read
+  optional:
+    - file_list
+
+workflow:
+  description: Umfassender Recherche-Prozess mit integrierter Planung
+  steps:
+    - action: delegate
+      target: researcher
+      description: Führe geplante Deep Research durch
+    - action: respond
+      description: Präsentiere Ergebnisse und Speicherort
+
+constraints:
+  maxIterations: 25
+  timeout: 300000
+
+instructions: |
+  # Deep Research Skill
+
+  Dieser Skill startet eine umfassende, strukturierte Recherche mit dem Deep Researcher.
+
+  ## Ablauf
+
+  Der Deep Researcher führt automatisch folgende Schritte durch:
+
+  ### 1. Planung
+  - Analysiert die Anfrage
+  - Identifiziert Kernfragen
+  - Plant konkrete Recherche-Schritte
+
+  ### 2. Recherche
+  - Führt systematische Web-Suchen durch
+  - Sammelt Informationen aus mehreren Quellen
+  - Prüft Quellenqualität und Aktualität
+
+  ### 3. Synthese
+  - Fasst Ergebnisse zusammen
+  - Identifiziert Widersprüche
+  - Dokumentiert Wissenslücken
+
+  ### 4. Dokumentation
+  - Erstellt strukturierten Bericht
+  - Speichert unter `results/research-[thema]-[datum].md`
+
+  ## Ausgabe
+
+  Nach Abschluss erhältst du:
+  - **Zusammenfassung**: Wichtigste Erkenntnisse direkt im Chat
+  - **Report-Datei**: Vollständiger Bericht mit allen Details und Quellen
+
+  ## Hinweise
+
+  - Der Prozess kann einige Minuten dauern
+  - Zwischenstände werden im Chat angezeigt
+  - Alle Ergebnisse werden persistent gespeichert
+  - Bei sehr komplexen Themen werden Wissenslücken transparent kommuniziert
+
+enabled: true

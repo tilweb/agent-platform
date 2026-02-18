@@ -1,0 +1,18 @@
+id: session_1769887654955_d9b5bty
+title: Verfügbare Collections in der Wissensdatenbank
+summary: "Der Nutzer erfragt verfügbare Dateien, der Assistant listet die Collection 'Compliance und Richtlinien' mit 3 Dokumenten auf."
+keywords:
+  - Wissensdatenbank
+  - Compliance
+  - Richtlinien
+  - Dokumente
+  - Collections
+  - knowledge base
+  - policies
+createdAt: "2026-01-31T19:27:34.963Z"
+updatedAt: "2026-01-31T19:27:41.643Z"
+messages:
+  - role: user
+    content: Zeige mir die verfügbaren Dateien
+  - role: assistant
+    content: "Hier sind die verfügbaren Collections in der Wissensdatenbank:\n\n1. **Compliance und Richtlinien**\n   - Enthält Richtlinien, Vorgaben und Compliance Konzepte\n   - 3 Dokumente\n\nMöchtest du mehr über eine bestimmte Collection oder ihre Dokumente erfahren?"

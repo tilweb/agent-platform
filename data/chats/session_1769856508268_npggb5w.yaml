@@ -1,0 +1,16 @@
+id: session_1769856508268_npggb5w
+title: "Verfügbare Dateien: Compliance & Richtlinien"
+summary: Der Nutzer erfragt verfügbare Dateien. Der Assistant listet eine Collection zu Compliance und Richtlinien mit einem Dokument auf und bietet weitere Hilfe an.
+keywords:
+  - Compliance
+  - Richtlinien
+  - Dokumentation
+  - policies
+  - regulations
+createdAt: "2026-01-31T10:48:28.273Z"
+updatedAt: "2026-01-31T10:48:34.253Z"
+messages:
+  - role: user
+    content: Zeige mir die verfügbaren Dateien
+  - role: assistant
+    content: "Die Wissensdatenbank enthält aktuell eine Collection mit dem Titel \"Compliance und Richtlinien\". Diese Collection umfasst 1 Dokument und behandelt Themen wie Richtlinien, Vorgaben und Compliance Konzepte.\n\nFalls du spezifische Fragen zu Compliance oder Richtlinien hast, kann ich dir gerne weiterhelfen!"

@@ -1,0 +1,59 @@
+id: knowledge-query
+name: Wissenssuche
+version: "2.0"
+description: Durchsucht die Knowledge Base nach Antworten auf Wissensfragen
+
+# NEW: Metadata for agent decision-making
+metadata:
+  use_when: |
+    - User fragt nach internen Dokumenten oder Richtlinien
+    - Informationen aus der Wissensdatenbank benötigt
+    - "Was steht in...", "laut Dokument", "in der Knowledge Base"
+  estimated_effort: "1-3 Minuten"
+  output_type: "Antwort mit Dokumenten-Referenzen"
+
+# NEW: Tools that this skill ADDS to agent capabilities
+allowed_tools:
+  - kb_search
+  - delegate_to_agent
+  - file_read
+
+# DEPRECATED: triggers - kept for backward compatibility
+triggers:
+  keywords:
+    - wissensdatenbank
+    - knowledge base
+    - nachschlagen
+    - in der dokumentation
+    - laut dokument
+    - was steht in
+  patterns:
+    - "was steht in.*dokument"
+    - "finde.*in der knowledge"
+    - "suche.*wissensdatenbank"
+    - "welche.*richtlinie"
+    - "laut.*vertrag"
+
+# DEPRECATED: tools - use allowed_tools instead
+tools:
+  required:
+    - kb_search
+    - delegate_to_agent
+  optional:
+    - file_read
+
+instructions: |
+  # Wissenssuche Skill
+
+  Dieser Skill wird aktiviert wenn der Benutzer nach Informationen aus der internen Wissensdatenbank fragt.
+
+  ## Arbeitsweise
+
+  1. Durchsuche die Collections der Knowledge Base
+  2. Identifiziere relevante Dokumente
+  3. Delegiere an kb-reader für detaillierte Analyse
+  4. Synthetisiere die Ergebnisse
+
+  Die Kernlogik ist im Knowledge-Orchestrator Agent implementiert.
+
+enabled: true

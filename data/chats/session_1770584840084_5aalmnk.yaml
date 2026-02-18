@@ -1,0 +1,16 @@
+id: session_1770584840084_5aalmnk
+title: Neueste Dateien in Google Drive anzeigen
+summary: "Der Nutzer erfragt die neuesten Dateien in seinem Google Drive. Der Assistant listet zwei Dateien mit Details wie Namen, Erstellungsdatum und Größe auf."
+keywords:
+  - Google Drive
+  - neueste Dateien
+  - Dateimanagement
+  - Cloud Storage
+  - File List
+createdAt: "2026-02-08T21:07:20.116Z"
+updatedAt: "2026-02-08T21:08:18.800Z"
+messages:
+  - role: user
+    content: "Was sind die neuesten Files in meinem Google Drive?"
+  - role: assistant
+    content: "Hier sind die neuesten Dateien in deinem Google Drive, sortiert nach dem neuesten Erstellungsdatum:\n\n1. **tickets_12579564_Terschelling_2026.pdf**\n   - Erstellungsdatum: 2026-02-08\n   - Dateigroesse: 3253 KB\n   - [Öffnen](https://drive.google.com/file/d/1zGW2hxwWicxWiSFhDl7ukIsaig8UyKsj/view?usp=drivesdk)\n\n2. **Collage of Gifts for Voucher**\n   - Erstellungsdatum: 2026-02-08\n   - Dateigroesse: 4726 KB\n   - [Öffnen](https://aistudio.google.com/app/prompts?state=%7B%22ids%22:%5B%221r7Styqw2kJbPEEhK0UMtDCbg2JsQgMg3%22%5D,%22action%22:%22open%22,%22userId%22:%22110707683174152025174%22,%22resourceKeys%22:%7B%7D%7D)\n\n3. **Young Professionals in Frankfurt**\n   - Erstellungsdatum: 2026-02-08\n   - Dateigroesse: 4864 KB\n   - [Öffnen](https://aistudio.google.com/app/prompts?state=%7B%22ids%22:%5B%221hjOGDzngzUSjlZWvt8o8LFjo51na34zb%22%5D,%22action%22:%22open%22,%22userId%22:%22110707683174152025174%22,%22resourceKeys%22:%7B%7D%7D)\n\n4. **Ausweiskopie.pdf**\n   - Erstellungsdatum: 2026-02-07\n   - Dateigroesse: 1082 KB\n   - [Öffnen](https://drive.google.com/file/d/1MbgAfKGtwaScJguuFHpccfkhkA4BR9Gc/view?usp=drivesdk)\n\n5. **Ausweiskopie.pdf**\n   - Erstellungsdatum: 2026-02-07\n   - Dateigroesse: 1082 KB\n   - [Öffnen](https://drive.google.com/file/d/1o6wVloq5upgEx8ZT7KIyZZ01ZKE0R1RS/view?usp=drivesdk)\n\n6. **Ausweiskopie Naporra (1).pdf**\n   - Erstellungsdatum: 2026-02-07\n   - Dateigroesse: 213 KB\n   - [Öffnen](https://drive.google.com/file/d/1__rvwIdsyHoQCZsST9RuEVuEbLJUjqa2/view?usp=drivesdk)\n\n7. **Gesellschaftsvertrag BJJ Center GbR 2009 (1).pdf**\n   - Erstellungsdatum: 2026-02-07\n   - Dateigroesse: 3942 KB\n   - [Öffnen](https://drive.google.com/file/d/1chfcsBY8DYRdZe-TH2-ySFTb7V-saR7J/view?usp=drivesdk)\n\n8. **registerauszug_R66BMC_db51e574-9ec1-44ff-8971-6bda1984b5e8 (1).pdf**\n   - Erstellungsdatum: 2026-02-07\n   - Dateigroesse: 876 KB\n   - [Öffnen](https://drive.google.com/file/d/1XqCZqojy_201NTRFar2kTrF8pz0sEpod/view?usp=drivesdk)\n\n9. **Commerzbank KYC 2026**\n   - Erstellungsdatum: 2026-02-07\n   - Ordner: [Öffnen](https://drive.google.com/drive/folders/1ohSeErUtJBv0NGjaG2Fg6sbTR3yAoKMy)\n\n10. **f99ed7cb-5d74-43e2-a4b7-3885bb591ce9 (unterschr.).pdf**\n    - Erstellungsdatum: 2026-02-07\n    - Dateigroesse: 8482 KB\n    - [Öffnen](https://drive.google.com/file/d/1jJ0h1SPEukakY168ZOh3XOr4lLnUzryZ/view?usp=drivesdk)"

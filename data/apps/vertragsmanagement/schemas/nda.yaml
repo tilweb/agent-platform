@@ -1,0 +1,59 @@
+id: nda
+name: Geheimhaltungsvereinbarung (NDA)
+icon: lock
+
+fields:
+  vertragspartner:
+    partei_a:
+      type: text
+      required: true
+      label: Partei A (Offenlegend)
+    partei_b:
+      type: text
+      required: true
+      label: Partei B (Empfangend)
+
+  gegenstand:
+    beschreibung:
+      type: text
+      required: true
+      label: Gegenstand der Geheimhaltung
+    zweck:
+      type: text
+      label: Zweck der Offenlegung
+
+  laufzeit:
+    beginn:
+      type: date
+      required: true
+      label: Vertragsbeginn
+    ende:
+      type: date
+      label: Vertragsende
+    geheimhaltungsdauer_jahre:
+      type: number
+      required: true
+      label: Geheimhaltungsdauer (Jahre nach Vertragsende)
+
+  sanktionen:
+    konventionalstrafe:
+      type: number
+      label: Konventionalstrafe (EUR)
+    schadensersatz_beschraenkt:
+      type: boolean
+      label: Schadensersatz beschränkt
+
+  optionen:
+    beidseitig:
+      type: boolean
+      label: Beidseitige Geheimhaltung
+    weitergabe_erlaubt:
+      type: boolean
+      label: Weitergabe an Dritte erlaubt
+
+mapping:
+  party_a: vertragspartner.partei_a
+  party_b: vertragspartner.partei_b
+  start_date: laufzeit.beginn
+  end_date: laufzeit.ende
+  value: sanktionen.konventionalstrafe

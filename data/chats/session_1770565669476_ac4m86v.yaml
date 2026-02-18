@@ -1,0 +1,22 @@
+id: session_1770565669476_ac4m86v
+title: "Frankfurter Dom: Geschichte, Architektur & Bedeutung"
+summary: Der Frankfurter Dom (Kaiserdom St. Bartholomäus) ist eine gotische Kirche aus dem 14. Jh. mit historischer Bedeutung für Krönungen und als Wahrzeichen Frankfurts.
+keywords:
+  - Frankfurter Dom
+  - Kaiserdom
+  - gotische Architektur
+  - Frankfurt am Main
+  - historische Kirche
+  - Kaiserkrönung
+  - Touristenziel
+createdAt: "2026-02-08T15:47:49.495Z"
+updatedAt: "2026-02-08T15:48:07.450Z"
+messages:
+  - role: user
+    content: "Was ist der Frankfurter Dom?"
+  - role: assistant
+    content: "Der Frankfurter Dom, auch Kaiserdom St. Bartholomäus genannt, ist eine bedeutende Kirche in Frankfurt am Main, Deutschland. Er wurde im 14. Jahrhundert erbaut und ist bekannt für seine gotische Architektur. Der Dom ist ein Symbol der Stadt und war historisch ein wichtiger Ort für die Krönung deutscher Könige und Kaiser. Heute ist er eine der Hauptsehenswürdigkeiten Frankfurts und ein beliebtes Touristenziel."
+  - role: user
+    content: /summarize
+  - role: assistant
+    content: "## Überblick\nDer Frankfurter Dom, auch Kaiserdom St. Bartholomäus genannt, ist eine bedeutende Kirche in Frankfurt am Main, Deutschland.\n\n## Hauptpunkte\n- Wurde im 14. Jahrhundert erbaut\n- Bekannt für seine gotische Architektur\n- Symbol der Stadt Frankfurt\n- Historischer Ort für die Krönung deutscher Könige und Kaiser\n- Beliebtes Touristenziel und Hauptsehenswürdigkeit\n\n## Fazit\nDer Frankfurter Dom ist ein architektonisch und historisch bedeutendes Bauwerk, das eine zentrale Rolle in der Geschichte und Kultur Frankfurts spielt."

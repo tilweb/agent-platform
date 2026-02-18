@@ -1,0 +1,18 @@
+id: session_1769963040311_c628a1q
+title: "Knowledge Base: Verfügbare Collections und Dokumente"
+summary: "Der Chat listet die zwei Collections der Knowledge Base auf: Compliance & Richtlinien (8 Dokumente) und C5 Workshops (leer)."
+keywords:
+  - Knowledge Base
+  - Compliance
+  - Dokumente
+  - Workshops
+  - Collections
+  - Richtlinien
+  - C5
+createdAt: "2026-02-01T16:24:00.362Z"
+updatedAt: "2026-02-01T16:24:08.159Z"
+messages:
+  - role: user
+    content: "Welche Dokumente haben wir in der Knowledge Base?"
+  - role: assistant
+    content: "In der Knowledge Base sind aktuell zwei Collections verfügbar:\n\n1. **Compliance und Richtlinien**\n   - Enthält Richtlinien, Vorgaben und Compliance Konzepte (8 Dokumente)\n\n2. **C5 Workshops**\n   - Enthält Protokolle und Ergebnisse der C5 Workshops (aktuell keine Dokumente)\n\nMöchtest du mehr über eine bestimmte Collection oder ihre Dokumente erfahren?"

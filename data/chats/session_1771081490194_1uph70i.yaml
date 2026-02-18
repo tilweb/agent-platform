@@ -1,0 +1,20 @@
+id: session_1771081490194_1uph70i
+userId: user_1770561498880_39ohgu5
+title: Unklare Anfrage – Nachfrage nach Klarstellung
+summary: "Der Nutzer stellt eine unklare Frage, woraufhin der Assistent um weitere Details bittet, um helfen zu können."
+keywords:
+  - Unklare Frage
+  - Nachfrage
+  - Klarstellung
+  - User-Anfrage
+  - Assistent
+  - Support
+  - Clarification
+lastSummaryAt: 2
+createdAt: "2026-02-14T15:04:50.255Z"
+updatedAt: "2026-02-14T15:04:51.903Z"
+messages:
+  - role: user
+    content: "was wird gesagt?"
+  - role: assistant
+    content: "Ich verstehe deine Frage nicht vollständig. Könntest du bitte präzisieren, worauf du dich beziehst?  \n\nBist du nach einer bestimmten Information, einem Dokument oder einer Aussage gefragt? Oder möchtest du, dass ich etwas aus einem bestimmten Kontext zusammenfasse?  \n\nBitte gib mir mehr Details, damit ich dir helfen kann."

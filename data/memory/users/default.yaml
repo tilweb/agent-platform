@@ -1,0 +1,8 @@
+user_id: default
+updated_at: 2026-02-17T08:52:23.888Z
+about: []
+instructions: []
+context: []
+settings:
+  include_in_prompt: true
+  max_items_per_section: 15

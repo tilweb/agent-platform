@@ -1,0 +1,15 @@
+{
+  "id": "att-1771078378902-snga03",
+  "sessionId": "session_1771078326767_6tsdg2p",
+  "filename": "Invoice-8EDCA9D0-0022.pdf",
+  "mimeType": "application/pdf",
+  "type": "document",
+  "storagePath": "/Users/andreasbachmann/Documents/Development/AgentWork/agent-platform/data/chat-uploads/session_1771078326767_6tsdg2p/att-1771078378902-snga03",
+  "markdownContent": "Document Invoice-8EDCA9D0-0022.pdf: \"\"\"Rechnung\n\nRechnungsnummer 8EDCA9D0\u00000022\n\nAusstellungsdatum 1. Oktober 2025\n1. Oktober 2025\nFällig am\n\nOpenAI, LLC\n\n1455 3rd Street\n\nSan Francisco, California 94158\n\nVereinigte Staaten\n\nar@openai.com\n\nEU OSS VAT EU372041333\n\nRechnungsempfänger\n\nAdacor Hosting GmbH\n\nEmmastraße 70a\n\n45130 Essen\n\nDeutschland\nandreas@bachmann.link\n\nDE VAT DE227648739\n\n990,00 $ fällig am 1. Oktober 2025\n\nOnline bezahlen\n\nBeschreibung\n\nMenge\n\nPreis pro Einheit\n\nChatGPT Business Subscription (je seat)\n\n33\n\n30,00 $\n\n30.09.2025\u000031.10.2025\n\nZwischensumme\n\nSumme\n\nFälliger Betrag\n\nSteuer\n\n\u00001\u0000\n\n0 %\n\nBetrag\n\n990,00 $\n\n990,00 $\n\n990,00 $\n\n990,00 $\n\n\u00001\u0000 Steuer zahlbar auf Reverse-Charge-Basis\n\nSeite 1 von 1\n\n\n\"\"\"",
+  "metadata": {
+    "size": 32966,
+    "pages": 1,
+    "convertedAt": "2026-02-14T14:13:01.098Z",
+    "originalPath": "/Users/andreasbachmann/Documents/Development/AgentWork/agent-platform/data/chat-uploads/session_1771078326767_6tsdg2p/att-1771078378902-snga03/original.pdf"
+  }
+}

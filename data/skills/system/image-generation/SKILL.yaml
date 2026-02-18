@@ -1,0 +1,89 @@
+id: image-generation
+name: "Bildgenerierung"
+version: "2.0"
+description: "Generiert Bilder aus Textbeschreibungen"
+
+# NEW: Metadata for agent decision-making
+metadata:
+  use_when: |
+    - User möchte ein Bild erstellt haben
+    - Kreative Visualisierung gewünscht
+    - "Erstelle ein Bild", "zeichne", "male", "generiere ein Bild"
+  estimated_effort: "1-2 Minuten"
+  output_type: "Generiertes Bild"
+
+# NEW: Tools that this skill ADDS to agent capabilities
+allowed_tools:
+  - generate_image
+
+# DEPRECATED: triggers - kept for backward compatibility
+triggers:
+  keywords:
+    - "generiere ein bild"
+    - "erstelle ein bild"
+    - "zeichne"
+    - "male"
+    - "erzeuge ein bild"
+    - "mach ein bild"
+    - "create an image"
+    - "generate an image"
+    - "draw"
+  patterns:
+    - "(generiere|erstelle|zeichne|male|erzeuge|mach)\\s+(mir\\s+)?(ein(e)?\\s+)?(bild|grafik|illustration|foto)"
+    - "(create|generate|draw|make)\\s+(me\\s+)?(an?\\s+)?(image|picture|illustration|photo)"
+
+# DEPRECATED: tools - use allowed_tools instead
+tools:
+  required:
+    - generate_image
+
+instructions: |
+  Du bist ein Bildgenerator-Assistent.
+
+  ## Vorgehen
+
+  1. **Verstehen**: Analysiere die Bildbeschreibung des Nutzers genau
+  2. **Optimieren**: Erweitere den Prompt um hilfreiche Details:
+     - Stil (fotorealistisch, digital art, Illustration, etc.)
+     - Komposition und Perspektive
+     - Beleuchtung und Stimmung
+     - Wichtige Details
+  3. **Generieren**: Rufe das generate_image Tool auf
+  4. **Präsentieren**: Zeige das generierte Bild
+
+  ## Prompt-Optimierung
+
+  Erweitere kurze Beschreibungen zu detaillierten Prompts, z.B.:
+  - "eine Katze" -> "Eine flauschige orangefarbene Katze sitzt auf einem sonnenbeschienenen Fensterbrett, warmes natürliches Licht, fotorealistischer Stil"
+  - "Sonnenuntergang" -> "Dramatischer Sonnenuntergang über dem Meer mit leuchtenden Orange- und Violetttönen, Silhouetten von Palmen am Strand, cinematische Komposition"
+
+  ## Aspektverhältnis
+
+  Wähle ein passendes Aspektverhältnis:
+  - "1:1" für Portraits, Icons, Social Media Posts
+  - "16:9" für Landschaften, Szenen, Desktop-Hintergründe
+  - "9:16" für Smartphone-Hintergründe, Stories
+  - "4:3" für klassische Fotos
+  - "3:4" für Portrait-Fotos
+
+workflow:
+  steps:
+    - id: analyze
+      action: think
+      description: "Analysiere Beschreibung und plane optimierten Prompt"
+
+    - id: generate
+      action: tool
+      tool: generate_image
+      description: "Generiere das Bild mit optimiertem Prompt"
+
+    - id: present
+      action: respond
+      description: "Präsentiere das generierte Bild"
+
+output:
+  format: markdown
+  markAsMaterial: true
+  materialTitle: "Generiertes Bild"
+
+enabled: true

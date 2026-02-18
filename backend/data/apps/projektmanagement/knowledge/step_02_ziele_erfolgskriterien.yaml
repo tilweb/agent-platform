@@ -1,0 +1,105 @@
+# Knowledge Base: Schritt 2 - Ziele & Erfolgskriterien
+# Quelle: RUHR PM Masterclass Projektmanagement 4.0
+# Verwendung: Systemprompt für KI-gestützte Prüfung der Eingaben
+
+meta:
+  step: 2
+  title: "Ziele & Erfolgskriterien"
+  description: "Definition des Projektziels und messbarer Erfolgskriterien"
+
+kernkonzepte:
+  golden_circle:
+    beschreibung: "Simon Sineks Modell: WHY → HOW → WHAT"
+    why: "Ziele, Erfolgskriterien - Warum wird das Projekt durchgeführt?"
+    how: "Hauptaktivitäten, Termine, Aufwand - Wie setzen wir um?"
+    what: "Konkrete Projektplanung - Was machen wir konkret?"
+    kernaussage: "Begeisternde Menschen beginnen mit dem WARUM"
+
+  projektziele:
+    definition: "Beschreiben den Zielzustand nach Abschluss des Projektes"
+    kernfragen:
+      - "Warum wird dieses Projekt durchgeführt?"
+      - "Wie sieht der Zielzustand am Ende des Projektes aus?"
+      - "Welcher konkrete Unterschied soll von IST zu SOLL erreicht werden?"
+    abgrenzung:
+      - "Ziele beschreiben das WARUM, nicht das WIE (Methodik)"
+      - "Ziele beschreiben das WARUM, nicht das WAS (konkrete Aktivitäten)"
+    anforderung: "Ziele müssen einen konkret zu erreichenden Zustand so beschreiben, dass sie JEDER im Projektteam versteht"
+
+  smart_methode:
+    beschreibung: "Methode zur Formulierung überprüfbarer Ziele und Erfolgskriterien"
+
+    spezifisch:
+      bedeutung: "Konkret und unmissverständlich"
+      erklaerung: "Keine Verallgemeinerungen, vage Formulierungen oder undeutliche Vorstellungen"
+      tipp: "Im Idealfall in einem prägnanten Satz zusammenfassen"
+      beispiel_schlecht: "Wir müssen unsere Zusammenarbeit optimieren"
+      beispiel_gut: "Die Bearbeitungszeit für Kundenanfragen wird auf max. 24h reduziert"
+
+    messbar:
+      bedeutung: "Kriterien festlegen, anhand derer Zielerreichung objektiv überprüfbar ist"
+      erklaerung: "Zahlenwerte bieten konkrete Ziellinien"
+      tipp: "Falls nicht mit Zahlen messbar: alternative Erhebungsmethoden (z.B. Kundenbefragungen)"
+      beispiel: "Return-Quote bis 31.12. um 3% senken"
+
+    attraktiv:
+      bedeutung: "Ambitioniert und von allen akzeptiert"
+      erklaerung: "Ziel muss erreichbar sein, alle Beteiligten müssen sich identifizieren können"
+      tipp: "Positive Formulierung wählen, 'nicht' und 'kein' vermeiden"
+      beispiel_schlecht: "Wir müssen die Unzufriedenheit der Kunden verringern"
+      beispiel_gut: "Die Kundenzufriedenheit soll verbessert werden"
+
+    realistisch:
+      bedeutung: "Herausfordernd, aber machbar"
+      erklaerung: "Im Bereich des Möglichen für Team und Ressourcen"
+      tipp: "Hängt eng mit 'Attraktiv' zusammen - zu hohe Erwartungen führen zu Enttäuschung"
+      beispiel_schlecht: "90% weniger Reklamationen im nächsten Jahr"
+      beispiel_gut: "Reklamationen im nächsten Jahr um 3% reduzieren"
+
+    terminiert:
+      bedeutung: "Zeitpunkt der Zielerreichung definiert"
+      erklaerung: "Konkrete Frist oder Termin"
+      tipp: "Klare Zeitstruktur hilft bei Motivation und Umsetzung"
+      beispiel: "Kundenzufriedenheit bis zum 31.12. so weit gesteigert, dass Reklamationen um 3% zurückgegangen sind"
+
+pruefkriterien:
+  projektziel:
+    - "Beschreibt einen konkreten Zielzustand (nicht Aktivitäten)"
+    - "Beantwortet das WARUM des Projekts"
+    - "Ist für alle Teammitglieder verständlich"
+    - "Schafft Sinnstiftung und Motivation"
+    - "Ist mit Unternehmenswerten und -zielen abgestimmt"
+
+  erfolgskriterien:
+    - "Sind SMART formuliert"
+    - "Ergänzen die Ziele durch überprüfbare Kriterien"
+    - "Können objektiv gemessen werden"
+    - "Haben einen konkreten Termin"
+    - "Sind realistisch erreichbar"
+
+typische_fehler:
+  projektziel:
+    - "Ziel beschreibt Aktivitäten statt Zielzustand"
+    - "Ziel ist zu vage oder allgemein"
+    - "Ziel ist nicht auf Unternehmensebene relevant"
+    - "Mehrere widersprüchliche Ziele"
+
+  erfolgskriterien:
+    - "Nicht messbar (keine Zahlen, Termine)"
+    - "Unrealistisch hoch oder niedrig angesetzt"
+    - "Negative Formulierung"
+    - "Kein Bezug zum Projektziel"
+    - "Zu viele Kriterien (max. 5-7 empfohlen)"
+
+verbesserungsvorschlaege:
+  ziel:
+    schlecht: "Wir führen ein CRM-System ein"
+    besser: "Wir wollen unsere Kundenbindung verbessern"
+    optimal: "Durch verbesserte Kundenbetreuung wollen wir die Wiederkaufrate unserer Bestandskunden um 15% steigern"
+
+  erfolgskriterium:
+    schlecht: "Das System funktioniert gut"
+    besser: "Das System ist einsatzbereit"
+    optimal: "Das System ist ab 01.07. für alle 500 Mitarbeiter produktiv nutzbar mit einer Verfügbarkeit von 99,5%"
+
+  anzahl: "5-7 Erfolgskriterien sind ideal - weniger ist oft mehr"

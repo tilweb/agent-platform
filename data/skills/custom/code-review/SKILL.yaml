@@ -1,0 +1,109 @@
+id: code-review
+name: Code Review
+version: "2.0"
+description: Führt strukturierte Code Reviews durch mit Fokus auf Qualität, Sicherheit und Best Practices
+metadata:
+  use_when: |
+    - User möchte Code überprüft haben
+    - Code-Qualität bewerten
+    - Security Review oder Best Practices Check
+    - "Review", "prüfe den Code", "schau dir an"
+  output_type: Strukturiertes Code-Review Feedback
+  estimated_effort: 2-5 Minuten
+allowed_tools:
+  - file_read
+  - file_list
+  - brave-search
+knowledge:
+  files:
+    - IKS-Beschreibung IDW PS 951 2021.pdf
+  collections:
+    - c5_workshops
+triggers:
+  keywords:
+    - review
+    - prüfe den code
+    - code check
+    - überprüfe
+  patterns:
+    - review(e)? (die |den |das |diese )?.*\.(ts|js|tsx|jsx|py|go|rs)
+    - schau dir .* an
+tools:
+  required:
+    - file_read
+  optional:
+    - file_list
+    - brave-search
+instructions: |
+  Du führst ein professionelles Code Review durch.
+
+  ## Prüfkriterien
+
+  1. **Korrektheit**
+     - Funktioniert der Code wie beabsichtigt?
+     - Gibt es logische Fehler?
+     - Werden Edge Cases behandelt?
+
+  2. **Lesbarkeit**
+     - Sind Namen aussagekräftig?
+     - Ist der Code gut strukturiert?
+     - Sind Kommentare hilfreich (wo nötig)?
+
+  3. **Wartbarkeit**
+     - Ist der Code DRY (Don't Repeat Yourself)?
+     - Sind Funktionen/Klassen angemessen groß?
+     - Ist die Architektur sinnvoll?
+
+  4. **Sicherheit**
+     - Gibt es Input-Validierung?
+     - Werden sensible Daten geschützt?
+     - SQL Injection, XSS, etc.?
+
+  5. **Performance**
+     - Offensichtliche Performance-Probleme?
+     - Unnötige Berechnungen oder Schleifen?
+
+  ## Vorgehen
+
+  1. Lies zuerst die Datei vollständig
+  2. Verstehe den Kontext und Zweck
+  3. Analysiere systematisch nach obigen Kriterien
+  4. Gib konstruktives, umsetzbares Feedback
+workflow:
+  steps:
+    - id: read_file
+      action: tool
+      tool: file_read
+      description: Lies die zu prüfende Datei
+    - id: analyze
+      action: think
+      description: Analysiere den Code nach den Prüfkriterien
+    - id: respond
+      action: respond
+      description: Gib strukturiertes Feedback
+output:
+  format: markdown
+  template: |
+    ## Code Review: {{filename}}
+
+    ### Zusammenfassung
+    {{summary}}
+
+    ### Findings
+
+    #### Kritisch
+    {{#critical}}
+    - **Zeile {{line}}**: {{description}}
+    {{/critical}}
+
+    #### Verbesserungsvorschläge
+    {{#suggestions}}
+    - {{description}}
+    {{/suggestions}}
+
+    ### Positives
+    {{positives}}
+
+    ### Empfehlungen
+    {{recommendations}}
+enabled: true

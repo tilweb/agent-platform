@@ -1,0 +1,63 @@
+# Knowledge Base - Collections Index
+# Wird automatisch vom Indexer aktualisiert
+
+collections:
+  - id: "compliance"
+    name: "Compliance und Richtlinien"
+    description: "Richtlinien, Vorgaben und Compliance Konzepte"
+    document_count: 8
+    activate_when:
+      - "Compliance-Fragen"
+      - "Richtlinien-Fragen"
+      - "Informationssicherheits-Vorgaben"
+      - "Compliance-Vorgaben"
+    never_activate_when: []
+
+# Beispiel-Eintrag:
+# collections:
+#   - id: compliance
+#     name: Compliance & Richtlinien
+#     description: Unternehmensrichtlinien, SLAs und Compliance-Dokumente
+#     document_count: 0
+#     activate_when:
+#       - Fragen zu Richtlinien
+#       - SLA-Anfragen
+#       - Compliance-Themen
+#     never_activate_when:
+#       - Allgemeine Smalltalk-Fragen
+  - id: "c5_workshops"
+    name: "C5 Workshops"
+    description: "Protokolle und Ergebnisse der C5 Workshops"
+    document_count: 3
+    activate_when:
+      - "C5-Workshop"
+      - "C5"
+      - "Workshop"
+    never_activate_when: []
+  - id: "zukunftstag_2026"
+    name: "Zukunftstag 2026"
+    description: "Alle Materialien und Planungen für unseren Messestand und Masterclass zu unserem Produkt KI-Workplace beim BVMW "
+    document_count: 0
+    activate_when:
+      - "Messe"
+      - "Messe-Planung"
+      - "Zukunftstag 2026"
+    never_activate_when: []
+  - id: "iks"
+    name: "IKS (internes dienstleistungsbezogenes Kontrollsystem)"
+    description: "Beschreibung und Dokumentation des IKS - dienstleistungsbezogenen Kontrollsystems der Adacor"
+    document_count: 1
+    activate_when:
+      - "Kontrollsystem"
+      - "IKS"
+      - "Kontrollen"
+      - "Maßnahmen"
+      - "PS 951"
+      - "ISAE 3401"
+      - "Informationssicherheit"
+      - "SOC2"
+      - "Incident Management"
+      - "Problem Management"
+      - "Capacity Management"
+      - "Risikomanagement"
+    never_activate_when: []

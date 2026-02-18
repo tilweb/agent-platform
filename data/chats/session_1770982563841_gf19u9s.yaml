@@ -1,0 +1,20 @@
+id: session_1770982563841_gf19u9s
+userId: user_1770561498880_39ohgu5
+title: Anfrage zur Transkription von Inhalten
+summary: "Der Nutzer bittet um eine Transkription, gibt aber keine spezifischen Details an. Der Assistent fordert ergänzende Informationen zur Art des zu transkribierenden Materials."
+keywords:
+  - Transkription
+  - Transcribe
+  - Anfrage
+  - Content
+  - Dokument
+  - Audio
+  - Video
+lastSummaryAt: 2
+createdAt: "2026-02-13T11:36:03.880Z"
+updatedAt: "2026-02-13T11:36:05.091Z"
+messages:
+  - role: user
+    content: Transkribiere bitte
+  - role: assistant
+    content: "Ich benötige mehr Informationen, um zu wissen, was transkribiert werden soll. Bitte gib an, welches Dokument, Audio oder Video du transkribiert haben möchtest."

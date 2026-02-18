@@ -1,0 +1,12 @@
+{
+  "response": "Der Task \"Test Task fuer Retry Funktionalitaet\" wurde erfolgreich erstellt und in die Queue eingereiht. Der Task hat die ID `task_mlcdqbuwse7gdy` und wird automatisch im Hintergrund ausgefuehrt. Du kannst den Fortschritt auf der Tasks-Seite verfolgen.",
+  "toolCalls": [
+    {
+      "name": "create_task",
+      "args": "{}",
+      "result": "{\"success\":true,\"message\":\"Task \\\"Test Task fuer Retry Funktionalitaet\\\" wurde erstellt und in die Queue eingereiht.\",\"task\":{\"id\":\"task_mlcdqbuwse7gdy\",\"title\":\"Test Task fuer Retry Funktionalitaet\",\"status\":\"queued\",\"priority\":\"normal\"},\"info\":\"Der Task wird automatisch im Hintergrund ausgefuehrt. Der Fortschritt kann auf der Tasks-Seite verfolgt werden.\"}"
+    }
+  ],
+  "sessionId": "session_1770472695535_ndhj682",
+  "completedAt": "2026-02-07T13:58:18.430Z"
+}

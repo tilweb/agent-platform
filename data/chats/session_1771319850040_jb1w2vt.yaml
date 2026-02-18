@@ -1,0 +1,20 @@
+id: session_1771319850040_jb1w2vt
+userId: user_1770561498880_39ohgu5
+title: Bildgenerierung anfordern und beschreiben
+summary: Der Nutzer möchte ein Bild generieren lassen und erhält Anleitung zur detaillierten Beschreibung des gewünschten Bildinhalts.
+keywords:
+  - Bildgenerierung
+  - Image Generation
+  - Prompt
+  - Künstliche Intelligenz
+  - AI
+  - Bildbeschreibung
+  - Visualisierung
+lastSummaryAt: 2
+createdAt: "2026-02-17T09:17:30.069Z"
+updatedAt: "2026-02-17T09:17:33.125Z"
+messages:
+  - role: user
+    content: /image-generation
+  - role: assistant
+    content: "Ich verstehe, dass du ein Bild generieren möchtest. Bitte beschreibe, was du gerne sehen würdest — zum Beispiel eine Szene, ein Objekt, eine Person oder eine bestimmte Atmosphäre. Je detaillierter du bist, desto besser kann ich den Bild-Generator anweisen.\n\nBeispiele:\n- \"Erstelle ein fotorealistisches Bild einer Winterlandschaft mit schneebedeckten Bergen und einem zugefrorenen See im Vordergrund.\"\n- \"Mache daraus ein Sommerbild: Ersetze Schnee durch grüne Wiesen und füge Blumen hinzu.\"\n- \"Zeichne mir ein futuristisches Stadtpanorama bei Sonnenuntergang mit fliegenden Autos.\"\n\nGib mir deine Vorstellung, und ich lasse den Bild-Generator loslegen."

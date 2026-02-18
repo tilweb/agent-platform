@@ -1,0 +1,18 @@
+id: session_1770621602364_oqosu5f
+title: "Warum ist der Himmel blau? - Erklärung der Rayleigh-Streuung"
+summary: "Erklärung, warum der Himmel blau erscheint: Sonnenlicht wird in der Atmosphäre nach dem Rayleigh-Streuung-Prinzip zerstreut, wobei blaues Licht stärker abgelenkt wird."
+keywords:
+  - Himmel blau
+  - Rayleigh-Streuung
+  - Lichtstreuung
+  - Atmosphäre
+  - blaues Licht
+  - Sonnenlicht
+  - Wellenlänge
+createdAt: "2026-02-09T07:20:02.409Z"
+updatedAt: "2026-02-09T07:20:04.935Z"
+messages:
+  - role: user
+    content: "Warum ist der Himmel blau?"
+  - role: assistant
+    content: "Der Himmel erscheint blau, weil die Erdatmosphäre das Sonnenlicht streut. Sonnenlicht besteht aus allen Farben des sichtbaren Spektrums, die zusammen weißes Licht ergeben. Wenn das Licht auf Luftmoleküle und kleine Partikel in der Atmosphäre trifft, wird es nach dem **Rayleigh‑Streuung**‑Prinzip zerstreut. Dabei werden kurze Wellenlängen (blaues und violettes Licht) stärker abgelenkt als lange Wellenlängen (rot, orange, gelb).\n\nUnser Auge ist empfindlicher für Blau als für Violett, und ein Teil des violetten Lichts wird von der oberen Atmosphäre absorbiert. Deshalb dominiert das blaue Licht, das in alle Richtungen gestreut wird, und wir sehen den Himmel als blau. \n\nBei Sonnenuntergang und -aufgang durchläuft das Licht eine längere Strecke durch die Atmosphäre, wodurch das blaue Licht noch stärker gestreut und das rote Licht dominant wird – daher die rötlichen Farben zu diesen Zeiten."

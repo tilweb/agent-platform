@@ -1,0 +1,33 @@
+id: contract-mlk0ujmz-xs4a3o
+contract_type: dienstleistung
+upload_filename: 20250403-Adacor Vertriebsvertrag-YNEO_SD_signed.pdf
+uploaded_at: 2026-02-12T22:20:30.839Z
+uploaded_by: user_default
+extracted:
+  vertragspartner:
+    auftraggeber: Adacor Hosting GmbH
+    auftragnehmer: YNEO.ai UG
+  leistung:
+    beschreibung: Vertrieb von Adacor Dienstleistungen und Produkten durch YNEO
+    umfang: Vertrieb der in Anlage 1 aufgeführten Produkte und Dienstleistungen,
+      einschließlich Adacor KI Workplace und Adacor KI Modell API
+  laufzeit:
+    beginn: 2025-08-01
+    ende: null
+    kuendigungsfrist_monate: 1
+  verguetung:
+    betrag: 0
+    zahlungsweise: quartalsweise
+    zahlungsziel_tage: 30
+  sla:
+    verfuegbarkeit: null
+    reaktionszeit: null
+computed:
+  party_a: Adacor Hosting GmbH
+  party_b: YNEO.ai UG
+  start_date: 2025-08-01
+  end_date: ""
+  annual_value: 0
+  status: active
+  days_to_expiry: null
+obligations: []

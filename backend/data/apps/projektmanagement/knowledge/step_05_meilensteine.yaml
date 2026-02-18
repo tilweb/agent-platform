@@ -1,0 +1,154 @@
+# Knowledge Base: Schritt 5 - Meilensteine
+# Quelle: RUHR PM Masterclass Projektmanagement 4.0
+# Verwendung: Systemprompt für KI-gestützte Prüfung der Eingaben
+
+meta:
+  step: 5
+  title: "Meilensteine"
+  description: "Definition wichtiger Projektereignisse und Zwischenziele mit Terminen"
+
+kernkonzepte:
+  meilenstein_definition:
+    beschreibung: "Ein Meilenstein ist ein wesentlicher Punkt oder ein wichtiges Ereignis in einem Projekt, Programm oder Portfolio"
+    funktion: "Zwischenziele zur Unterteilung des Projektes in einzelne Phasen"
+    ableitung: "Lassen sich üblicherweise aus den Anforderungen des Projektes ableiten"
+
+  terminmanagement:
+    beschreibung: "Umfasst die Prozesse für fristgerechten Projektabschluss"
+    phasen:
+      definition: "Festlegung der Meilensteine als Bestandteil der Roadmap"
+      planung: "Festlegung der Zwischenziele mit Terminen, Unterteilung in steuerbare Abschnitte"
+      umsetzung: "Die Zeit vergeht von allein - Fokus auf Ergebnisse"
+      steuerung: "Abgleich der Abweichungen zum Terminplan (Earned Value Analyse)"
+
+  meilensteine_festlegen:
+    zeitpunkt: "Während der Definitionsphase mit dem Kernteam"
+    ergebnis: "Eckpunkte des Projektes für den Projektauftrag"
+    darstellung: "Liste mit Start- und Enddatum, Ampel für Erreichungsgrad"
+
+  arten_von_meilensteinen:
+    pm_meilensteine:
+      beschreibung: "Für jedes Projektvorgehen gleich"
+      beispiele:
+        - "Projektstart"
+        - "Genehmigung Projektauftrag"
+        - "Kick-off"
+        - "Abschluss Planung"
+        - "Projektabschluss"
+    inhaltliche_meilensteine:
+      beschreibung: "Individuell pro Projekt"
+      beispiele:
+        - "Anforderungen abgestimmt"
+        - "Konzept genehmigt"
+        - "MVP fertiggestellt"
+        - "Testphase abgeschlossen"
+        - "Go-Live"
+
+  roadmap:
+    beschreibung: "Übersicht der Anforderungen und Hauptaktivitäten"
+    inhalt:
+      - "Zeitliche Reihenfolge"
+      - "Abhängigkeiten voneinander"
+      - "Hauptaktivitäten je Phase"
+      - "Meilensteine als Übergänge"
+
+  faustregel_anzahl:
+    empfehlung: "Anzahl der Meilensteine (ohne Start und Ende) sollte die Anzahl der Monate der Gesamtlaufzeit nicht überschreiten"
+    beispiel: "6 Monate Laufzeit → max. 6-8 Meilensteine"
+
+  abhängigkeiten:
+    arten:
+      - "Nach Termin (Reihenfolge)"
+      - "Nach Inhalt (Output einer Phase ist Input der nächsten)"
+      - "Nach Ressourcen (gleiche Personen benötigt)"
+    beachtung: "Abhängigkeiten nach Termin, Inhalt und Ressourcen der Projektphasen berücksichtigen"
+
+pruefkriterien:
+  meilensteine:
+    - "Alle wichtigen Projektereignisse definiert"
+    - "Logische Reihenfolge"
+    - "Realistische Terminabstände"
+    - "Messbare Ergebnisse je Meilenstein"
+    - "Abhängigkeiten berücksichtigt"
+
+  termine:
+    - "Konkrete Daten (nicht 'Ende Q2')"
+    - "Realistisch im Gesamtkontext"
+    - "Puffer zwischen kritischen Meilensteinen"
+    - "Feiertage/Urlaubszeiten berücksichtigt"
+
+  vollstaendigkeit:
+    - "Projektstart enthalten"
+    - "Genehmigung Projektauftrag enthalten"
+    - "Kick-off enthalten"
+    - "Go-Live/Produktivgang enthalten"
+    - "Projektabschluss enthalten"
+
+  steuerbarkeit:
+    - "Nicht zu viele Meilensteine (Faustregel beachten)"
+    - "Nicht zu wenige (Steuerung ermöglichen)"
+    - "Klare Abnahmekriterien je Meilenstein"
+
+typische_fehler:
+  meilensteine:
+    - "Zu viele Meilensteine (jede Woche einer)"
+    - "Zu wenige Meilensteine (nur Start und Ende)"
+    - "Nur PM-Meilensteine, keine inhaltlichen"
+    - "Meilensteine ohne klare Ergebnisdefinition"
+    - "Kick-off fehlt"
+
+  termine:
+    - "Unrealistisch eng getaktet"
+    - "Keine Puffer eingeplant"
+    - "Abhängigkeiten nicht berücksichtigt"
+    - "Kritischer Pfad nicht erkannt"
+    - "Urlaubs-/Ferienzeiten ignoriert"
+
+  formulierung:
+    - "Vage Meilensteine: 'System fertig'"
+    - "Aktivitäten statt Ergebnisse: 'Entwicklung durchführen'"
+    - "Keine messbaren Kriterien"
+
+verbesserungsvorschlaege:
+  standard_meilensteine:
+    projekt_6_monate:
+      - name: "Projektstart"
+        woche: 0
+      - name: "Genehmigung Projektauftrag"
+        woche: 2
+      - name: "Kick-off"
+        woche: 3
+      - name: "Anforderungen abgestimmt"
+        woche: 6
+      - name: "Konzept genehmigt"
+        woche: 10
+      - name: "Entwicklung abgeschlossen"
+        woche: 18
+      - name: "Testphase abgeschlossen"
+        woche: 22
+      - name: "Go-Live"
+        woche: 24
+      - name: "Projektabschluss"
+        woche: 26
+
+  formulierung:
+    schlecht: "Entwicklung"
+    besser: "Entwicklung abgeschlossen"
+    optimal: "MVP mit Kernfunktionen implementiert und intern getestet"
+
+  meilenstein_definition:
+    muster: "[Ergebnis/Zustand] [erreicht/abgeschlossen/genehmigt]"
+    beispiele:
+      - "Projektauftrag genehmigt"
+      - "Anforderungskatalog abgestimmt"
+      - "Testphase erfolgreich abgeschlossen"
+      - "Schulung aller Key-User durchgeführt"
+      - "System produktiv im Einsatz"
+
+  earned_value:
+    beschreibung: "Methode zur Messung des Projektfortschritts"
+    formel: "SPI (Schedule Performance Index) zeigt Termintreue"
+    interpretation:
+      spi_1: "Projekt im Plan"
+      spi_kleiner_1: "Projekt hinter Plan"
+      spi_groesser_1: "Projekt vor Plan"

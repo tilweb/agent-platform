@@ -1,0 +1,17 @@
+{
+  "id": "example-joke-api",
+  "name": "Witz Generator",
+  "description": "Generiert einen zufälligen Witz. Verwende dieses Tool wenn der Nutzer nach einem Witz fragt.",
+  "category": "fun",
+  "enabled": true,
+  "endpoint": "https://official-joke-api.appspot.com/random_joke",
+  "method": "GET",
+  "parameters": [],
+  "auth": {
+    "type": "none"
+  },
+  "responseType": "json",
+  "responseTemplate": "🎭 Witz:\n\n{{setup}}\n\n... {{punchline}}",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

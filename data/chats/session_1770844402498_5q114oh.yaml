@@ -1,0 +1,21 @@
+id: session_1770844402498_5q114oh
+userId: user_1770561498880_39ohgu5
+projectId: proj_mlhxf5pqv097z
+title: Funktionsübersicht des Supervisor-Agents
+summary: "Der User erhält eine Übersicht über die Fähigkeiten des Supervisor-Agents, einschließlich Aufgabenkoordination, Informationsverwaltung und Task-Management."
+keywords:
+  - Supervisor-Agent
+  - Agent Platform
+  - Aufgabenkoordination
+  - Task-Management
+  - AI-Agent
+  - Funktionsübersicht
+  - Agenten-System
+lastSummaryAt: 2
+createdAt: "2026-02-11T21:13:22.523Z"
+updatedAt: "2026-02-11T21:13:27.817Z"
+messages:
+  - role: user
+    content: "Was kannst du alles?"
+  - role: assistant
+    content: "Ich bin der Supervisor-Agent der Agent Platform und koordiniere alle Aufgaben. Hier ist eine Übersicht über meine Fähigkeiten und die verfügbaren Agenten:\n\n**Was ich kann:**\n- Ich analysiere Anfragen und entscheide, welcher Agent die beste Wahl ist\n- Ich koordiniere komplexe Aufgaben über mehrere Agenten hinweg\n- Ich speichere wichtige Informationen über dich (Termine, Projekte, Firma, etc.)\n- Ich erstelle Hintergrund-Tasks für umfangreiche Aufgaben\n- Ich antworte direkt auf einfache Fragen oder wenn Kontext-Dokumente geladen sind\n\n**Verfügbare Agenten:**\n- **general**: Allgemeine Aufgaben und Dateiverwaltung\n- **kb-indexer**: Dokumente in die Wissensdatenbank einfügen\n- **planner**: Recherche-Pläne erstellen\n- **connections**: Zugriff auf externe Dienste (Google Drive, Confluence)\n- **writer**: Texte, E-Mails und Berichte schreiben\n- **knowledge**: Fragen zur Wissensdatenbank beantworten\n- **researcher**: Web-Recherchen durchführen\n- **chat-document-reader**: Hochgeladene Dokumente analysieren\n- **vision-analyzer**: Bilder analysieren und Text erkennen\n\n**Beispiele für Aufgaben:**\n- \"Erstelle einen Recherche-Plan für das Thema KI Workplace\"\n- \"Schreibe eine E-Mail zur W3 Fair Präsentation\"\n- \"Finde Informationen über den EU AI Act\"\n- \"Analysiere dieses Dokument über Sandboxes\"\n\nWenn du eine Aufgabe hast, beschreibe sie einfach, und ich kümmere mich um die richtige Bearbeitung."

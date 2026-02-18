@@ -1,0 +1,17 @@
+id: proj_mlhxf5pqv097z
+name: Website Redesign
+icon: briefcase
+color: "#9333ea"
+createdAt: 2026-02-11T11:08:18.734Z
+updatedAt: 2026-02-11T11:08:18.734Z
+createdBy: user_1770561498880_39ohgu5
+members:
+  - userId: user_1770561498880_39ohgu5
+    role: owner
+    addedAt: 2026-02-11T11:08:18.734Z
+    addedBy: user_1770561498880_39ohgu5
+settings:
+  include_memory_in_prompt: true
+  include_kb_in_prompt: true
+  default_chat_visibility: project
+archived: false

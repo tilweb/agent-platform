@@ -1,0 +1,40 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+out/
+build/
+*.tgz
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+*.lcov
+
+# Cache
+.cache/
+*.tsbuildinfo
+.eslintcache
+
+# Temporary files
+tmp/
+temp/

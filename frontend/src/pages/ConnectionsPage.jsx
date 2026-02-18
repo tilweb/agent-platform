@@ -1,0 +1,470 @@
+import { useState } from 'react';
+import { useConnections } from '../hooks/useConnections';
+import { theme } from '../config/theme';
+import ReactMarkdown from 'react-markdown';
+import { getProviderIcon } from '../components/Icons';
+
+const styles = {
+  container: {
+    padding: theme.spacing['2xl'],
+    width: '100%',
+  },
+  header: {
+    marginBottom: theme.spacing['2xl'],
+  },
+  title: {
+    fontSize: theme.typography.sizes['2xl'],
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+  },
+  subtitle: {
+    fontSize: theme.typography.sizes.base,
+    color: theme.colors.textMuted,
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+    gap: theme.spacing.xl,
+  },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    border: `1px solid ${theme.colors.border}`,
+    padding: theme.spacing.xl,
+    transition: `border-color ${theme.transitions.fast}`,
+  },
+  cardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+  },
+  icon: {
+    width: '48px',
+    height: '48px',
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.background,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: theme.colors.primary,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardName: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text,
+  },
+  cardDescription: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
+  },
+  status: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+  },
+  statusConnected: {
+    backgroundColor: `${theme.colors.success}15`,
+    color: theme.colors.success,
+  },
+  statusDisconnected: {
+    backgroundColor: `${theme.colors.textMuted}15`,
+    color: theme.colors.textMuted,
+  },
+  statusError: {
+    backgroundColor: `${theme.colors.error}15`,
+    color: theme.colors.error,
+  },
+  statusDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: 'currentColor',
+  },
+  statusText: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+  },
+  userInfo: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
+  },
+  button: {
+    width: '100%',
+    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+    borderRadius: theme.borderRadius.md,
+    border: 'none',
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+  },
+  connectButton: {
+    backgroundColor: theme.colors.primary,
+    color: 'white',
+  },
+  disconnectButton: {
+    backgroundColor: 'transparent',
+    color: theme.colors.error,
+    border: `1px solid ${theme.colors.error}30`,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+  },
+  loading: {
+    textAlign: 'center',
+    padding: theme.spacing['2xl'],
+    color: theme.colors.textMuted,
+  },
+  error: {
+    backgroundColor: `${theme.colors.error}15`,
+    border: `1px solid ${theme.colors.error}30`,
+    color: theme.colors.error,
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.xl,
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: theme.spacing['3xl'],
+    color: theme.colors.textMuted,
+  },
+  setupButton: {
+    width: '100%',
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    marginTop: theme.spacing.sm,
+    backgroundColor: 'transparent',
+    color: theme.colors.textSecondary,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.xs,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+  },
+  modal: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing['2xl'],
+    maxWidth: '700px',
+    width: '90%',
+    maxHeight: '80vh',
+    overflow: 'auto',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  modalTitle: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text,
+  },
+  modalCloseButton: {
+    background: 'none',
+    border: 'none',
+    fontSize: theme.typography.sizes.xl,
+    color: theme.colors.textMuted,
+    cursor: 'pointer',
+    padding: theme.spacing.sm,
+  },
+  markdownContent: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text,
+    lineHeight: 1.6,
+  },
+};
+
+function getStatusStyle(status) {
+  if (!status) return styles.statusDisconnected;
+  switch (status.status) {
+    case 'connected':
+      return styles.statusConnected;
+    case 'error':
+    case 'expired':
+      return styles.statusError;
+    default:
+      return styles.statusDisconnected;
+  }
+}
+
+function getStatusText(status) {
+  if (!status) return 'Not connected';
+  switch (status.status) {
+    case 'connected':
+      return 'Connected';
+    case 'error':
+      return status.error || 'Connection error';
+    case 'expired':
+      return 'Token expired';
+    default:
+      return 'Not connected';
+  }
+}
+
+// getProviderIcon imported from Icons.jsx
+
+function ConnectionCard({ provider, onConnect, onDisconnect, loading, onShowSetup }) {
+  const isConnected = provider.status?.status === 'connected';
+  const statusStyle = { ...styles.status, ...getStatusStyle(provider.status) };
+
+  return (
+    <div style={styles.card}>
+      <div style={styles.cardHeader}>
+        <div style={styles.icon}>
+          {getProviderIcon(provider.id, { size: 24 })}
+        </div>
+        <div style={styles.cardInfo}>
+          <div style={styles.cardName}>{provider.name}</div>
+          <div style={styles.cardDescription}>{provider.description}</div>
+        </div>
+      </div>
+
+      <div style={statusStyle}>
+        <div style={styles.statusDot} />
+        <span style={styles.statusText}>{getStatusText(provider.status)}</span>
+      </div>
+
+      {isConnected && provider.status?.userInfo && (
+        <div style={styles.userInfo}>
+          Connected as: {provider.status.userInfo.name || provider.status.userInfo.email}
+        </div>
+      )}
+
+      {isConnected ? (
+        <button
+          style={{ ...styles.button, ...styles.disconnectButton, ...(loading ? styles.buttonDisabled : {}) }}
+          onClick={() => onDisconnect(provider.id)}
+          disabled={loading}
+        >
+          {loading ? 'Disconnecting...' : 'Disconnect'}
+        </button>
+      ) : (
+        <button
+          style={{ ...styles.button, ...styles.connectButton, ...(loading ? styles.buttonDisabled : {}) }}
+          onClick={() => onConnect(provider.id)}
+          disabled={loading}
+        >
+          {loading ? 'Connecting...' : 'Connect'}
+        </button>
+      )}
+
+      {provider.setupGuide && (
+        <button
+          style={styles.setupButton}
+          onClick={() => onShowSetup(provider)}
+          onMouseEnter={(e) => {
+            e.target.style.borderColor = theme.colors.primary;
+            e.target.style.color = theme.colors.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.borderColor = theme.colors.border;
+            e.target.style.color = theme.colors.textSecondary;
+          }}
+        >
+          Setup-Anleitung anzeigen
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SetupGuideModal({ provider, onClose }) {
+  if (!provider) return null;
+
+  return (
+    <div style={styles.modal} onClick={onClose}>
+      <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHeader}>
+          <h2 style={{ ...styles.modalTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            {getProviderIcon(provider.id, { size: 24 })} {provider.name} Setup
+          </h2>
+          <button style={styles.modalCloseButton} onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <div style={styles.markdownContent}>
+          <ReactMarkdown
+            components={{
+              h2: ({ children }) => (
+                <h2 style={{ fontSize: theme.typography.sizes.lg, fontWeight: 600, marginTop: theme.spacing.xl, marginBottom: theme.spacing.md, color: theme.colors.text }}>
+                  {children}
+                </h2>
+              ),
+              h3: ({ children }) => (
+                <h3 style={{ fontSize: theme.typography.sizes.base, fontWeight: 600, marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm, color: theme.colors.text }}>
+                  {children}
+                </h3>
+              ),
+              p: ({ children }) => (
+                <p style={{ marginBottom: theme.spacing.md, color: theme.colors.textSecondary }}>
+                  {children}
+                </p>
+              ),
+              ol: ({ children }) => (
+                <ol style={{ marginBottom: theme.spacing.md, paddingLeft: theme.spacing.xl, color: theme.colors.textSecondary }}>
+                  {children}
+                </ol>
+              ),
+              ul: ({ children }) => (
+                <ul style={{ marginBottom: theme.spacing.md, paddingLeft: theme.spacing.xl, color: theme.colors.textSecondary }}>
+                  {children}
+                </ul>
+              ),
+              li: ({ children }) => (
+                <li style={{ marginBottom: theme.spacing.xs }}>
+                  {children}
+                </li>
+              ),
+              code: ({ inline, children }) => (
+                inline ? (
+                  <code style={{ backgroundColor: theme.colors.surfaceHover, padding: '2px 6px', borderRadius: theme.borderRadius.sm, fontFamily: theme.typography.fontMono, fontSize: '0.9em' }}>
+                    {children}
+                  </code>
+                ) : (
+                  <pre style={{ backgroundColor: theme.colors.surfaceHover, padding: theme.spacing.md, borderRadius: theme.borderRadius.md, overflow: 'auto', marginBottom: theme.spacing.md }}>
+                    <code style={{ fontFamily: theme.typography.fontMono, fontSize: theme.typography.sizes.sm }}>
+                      {children}
+                    </code>
+                  </pre>
+                )
+              ),
+              pre: ({ children }) => <>{children}</>,
+              a: ({ href, children }) => (
+                <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: theme.colors.primary, textDecoration: 'underline' }}>
+                  {children}
+                </a>
+              ),
+            }}
+          >
+            {provider.setupGuide}
+          </ReactMarkdown>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ConnectionsPage({ embedded = false }) {
+  const { providers, loading, error, connect, disconnect, refresh } = useConnections();
+  const [actionLoading, setActionLoading] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [setupProvider, setSetupProvider] = useState(null);
+
+  const handleConnect = async (providerId) => {
+    setActionLoading(providerId);
+    setActionError(null);
+
+    try {
+      await connect(providerId);
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDisconnect = async (providerId) => {
+    setActionLoading(providerId);
+    setActionError(null);
+
+    try {
+      await disconnect(providerId);
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={embedded ? { width: '100%' } : styles.container}>
+        <div style={styles.loading}>Loading connections...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={embedded ? { width: '100%' } : styles.container}>
+      {!embedded && (
+        <div style={styles.header}>
+          <h1 style={styles.title}>Connections</h1>
+          <p style={styles.subtitle}>
+            Connect external services to enable additional tools and capabilities.
+          </p>
+        </div>
+      )}
+
+      {embedded && (
+        <div style={{ marginBottom: theme.spacing.xl }}>
+          <h2 style={{ fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, marginBottom: theme.spacing.xs, display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.colors.primary} strokeWidth="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+            Connections
+          </h2>
+          <p style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+            Verbinde externe Dienste für zusätzliche Tools und Funktionen.
+          </p>
+        </div>
+      )}
+
+      {(error || actionError) && (
+        <div style={styles.error}>
+          {error || actionError}
+        </div>
+      )}
+
+      {providers.length === 0 ? (
+        <div style={styles.emptyState}>
+          <p>No connection providers available.</p>
+        </div>
+      ) : (
+        <div style={styles.grid}>
+          {providers.map((provider) => (
+            <ConnectionCard
+              key={provider.id}
+              provider={provider}
+              onConnect={handleConnect}
+              onDisconnect={handleDisconnect}
+              loading={actionLoading === provider.id}
+              onShowSetup={setSetupProvider}
+            />
+          ))}
+        </div>
+      )}
+
+      {setupProvider && (
+        <SetupGuideModal
+          provider={setupProvider}
+          onClose={() => setSetupProvider(null)}
+        />
+      )}
+    </div>
+  );
+}

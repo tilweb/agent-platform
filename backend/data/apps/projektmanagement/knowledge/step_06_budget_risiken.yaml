@@ -1,0 +1,177 @@
+# Knowledge Base: Schritt 6 - Budget & Risiken
+# Quelle: RUHR PM Masterclass Projektmanagement 4.0
+# Verwendung: Systemprompt für KI-gestützte Prüfung der Eingaben
+
+meta:
+  step: 6
+  title: "Budget & Risiken"
+  description: "Budgetplanung mit Kostenarten und Risikoanalyse mit Maßnahmen"
+
+kernkonzepte:
+  kostenmanagement:
+    beschreibung: "Prozesse der Budgetierung, Schätzung, Planung und Überwachung von Kosten"
+    ziel: "Projekt unter Einhaltung des genehmigten Budgets abschließen"
+    phasen:
+      definition: "Schätzung und Genehmigung des Budgets"
+      planung: "Planung des Aufwandes und der Kosten"
+      umsetzung: "Erfassung des Ist-Aufwandes und der Ist-Kosten"
+      steuerung: "Abgleich mit Earned Value Analyse"
+
+  kostenkategorien:
+    business_case: "Euro-Wert, der durch den Auftraggeber bereitgestellt wird"
+    genehmigtes_budget: "Im Projektauftrag dokumentiert, enthält bekannte Risiken"
+    plankosten: "Verteilung auf Projektzeitraum (monatlich)"
+    ist_kosten: "Tatsächlich angefallene Kosten"
+    forecast: "Prognose für weiteren Verlauf"
+    fertigstellungswert: "Bisher erbrachte Leistung (Earned Value)"
+
+  budget_schaetzen:
+    input: "Anforderungen, Terminplan, Projektorganisation, Erfolgskriterien, Business Case"
+    output: "Budgetplan"
+    praxistipps:
+      - "Betrachte nicht nur externe Kosten, sondern auch internen Aufwand"
+      - "Bekannte Risiken mit Risikowerten ins Budget aufnehmen"
+      - "Bei Abweichung von AG-Vorgaben: verhandeln oder 'fit to budget' erarbeiten"
+
+  kostenarten:
+    interne_kosten:
+      beschreibung: "Interne Personalkosten, oft in PT gerechnet"
+      tipp: "Auch planen und steuern, wenn nicht üblich - wichtig für Folgeprojekte"
+      betriebsrat: "Prozentualen Projektaufwand verwenden (z.B. 40% = 2 Tage/Woche)"
+    externe_kosten:
+      beschreibung: "Beratung, Dienstleister, Lizenzen, Hardware"
+      tipp: "Obligo statt Rechnungseingang erfassen"
+    risikobudget:
+      beschreibung: "Puffer für bekannte Risiken"
+      empfehlung: "10-15% als Aufschlag oder konkrete Risikowerte"
+
+  risikomanagement:
+    definition: "Förderung positiver Ereignisse (Chancen) und Verringerung negativer Ereignisse (Bedrohungen)"
+    ziel: "Risiken und deren Einfluss kennen, um entsprechende Maßnahmen zu ergreifen"
+
+  risiko_definition:
+    beschreibung: "Unbestimmte Ereignisse oder Bedingungen"
+    arten:
+      chance: "Positive Auswirkung auf Projektziele"
+      bedrohung: "Negative Auswirkung auf Projektziele"
+    typen:
+      known_risks: "Bei Projektstart bekannt - gehören ins Budget"
+      unknown_risks: "Treten später auf - Budget muss beantragt werden"
+
+  risikobewertung:
+    formel: "Risikowert (RW) = Eintrittswahrscheinlichkeit (EW) × Schadenhöhe (H)"
+    skalen:
+      wahrscheinlichkeit: "0% - 100% oder NIEDRIG/MITTEL/HOCH"
+      auswirkung: "In Euro oder NIEDRIG/MITTEL/HOCH/KRITISCH"
+    bezug: "Immer auf das Projekt, nicht auf die gesamte Organisation"
+
+  risikostrategien:
+    bedrohungen:
+      vermeiden: "Ursache beseitigen (oft hoher Aufwand)"
+      vermindern: "Wahrscheinlichkeit oder Auswirkung reduzieren"
+      uebertragen: "An Dritte übertragen (z.B. Versicherung)"
+      akzeptieren: "Bewusst tragen"
+    chancen:
+      nutzen: "Aktiv herbeiführen"
+      verstaerken: "Wahrscheinlichkeit erhöhen"
+      teilen: "Mit Partner teilen"
+      akzeptieren: "Abwarten"
+
+  massnahmen:
+    planung: "Maßnahmen zur Risikobewältigung sind Projektaufgaben"
+    kosten_nutzen: "Kosten der Maßnahme am Risikowert messen"
+    beispiel: "SH=50T€, EW=40% → RW=20T€. Maßnahme für 10T€ senkt EW auf 10% → neuer RW=5T€"
+    verantwortung: "Für jedes Risiko eine verantwortliche Person"
+    steuerung: "Monatlich durch Projektleitung"
+
+pruefkriterien:
+  budget:
+    - "Alle Kostenarten berücksichtigt (intern, extern, Lizenzen, Hardware)"
+    - "Realistisch geschätzt"
+    - "Summe passt zu Aufwandsschätzung der Aufgaben"
+    - "Risikobudget enthalten (10-15%)"
+    - "Interne Personalkosten nicht vergessen"
+
+  budget_positionen:
+    - "Klare Bezeichnung der Budgetposition"
+    - "Anbieter/Lieferant benannt"
+    - "Betrag plausibel"
+    - "Keine doppelten Positionen"
+
+  risiken:
+    - "Wesentliche Risiken identifiziert"
+    - "Wahrscheinlichkeit bewertet"
+    - "Auswirkung bewertet"
+    - "Maßnahmen definiert"
+    - "Verantwortliche zugeordnet"
+
+  risikoabdeckung:
+    typische_risiken:
+      - "Ressourcenausfall (Keyressourcen)"
+      - "Technische Probleme"
+      - "Scope-Änderungen"
+      - "Zeitverzug"
+      - "Budgetüberschreitung"
+      - "Akzeptanzprobleme"
+
+typische_fehler:
+  budget:
+    - "Interne Kosten vergessen"
+    - "Zu optimistisch geschätzt"
+    - "Kein Risikobudget"
+    - "Infrastruktur/Lizenzen vergessen"
+    - "Schulungskosten nicht eingeplant"
+
+  risiken:
+    - "Keine Risiken identifiziert ('alles läuft gut')"
+    - "Nur negative Risiken, keine Chancen"
+    - "Keine konkreten Maßnahmen"
+    - "Keine Verantwortlichen"
+    - "Risikowerte nicht im Budget berücksichtigt"
+
+  bewertung:
+    - "Alle Risiken als 'HOCH' bewertet"
+    - "Keine differenzierte Betrachtung"
+    - "Auswirkung nicht auf Projekt bezogen"
+
+verbesserungsvorschlaege:
+  budget_struktur:
+    kategorien:
+      - item: "Interne Personalkosten"
+        berechnung: "Anzahl PT × Tagessatz"
+      - item: "Externe Beratung/Entwicklung"
+        berechnung: "Nach Angebot"
+      - item: "Software-Lizenzen"
+        berechnung: "Anzahl User × Lizenzkosten"
+      - item: "Hardware/Infrastruktur"
+        berechnung: "Nach Bedarf"
+      - item: "Schulung"
+        berechnung: "Anzahl Schulungen × Kosten"
+      - item: "Risikobudget"
+        berechnung: "10-15% der Gesamtkosten oder Summe Risikowerte"
+
+  risiko_beispiele:
+    - description: "Keyressource fällt aus"
+      probability: "MITTEL"
+      impact: "HOCH"
+      mitigation: "Backup-Ressourcen identifizieren, Wissenstransfer dokumentieren"
+
+    - description: "Technische Inkompatibilität"
+      probability: "MITTEL"
+      impact: "MITTEL"
+      mitigation: "Frühzeitige Integrationstests, Proof of Concept"
+
+    - description: "Anforderungen ändern sich"
+      probability: "HOCH"
+      impact: "MITTEL"
+      mitigation: "Change-Request-Prozess, Puffer einplanen"
+
+    - description: "Akzeptanz bei Nutzern fehlt"
+      probability: "MITTEL"
+      impact: "HOCH"
+      mitigation: "Frühzeitige Einbindung, Pilotgruppe, Schulung"
+
+    - description: "Lieferant liefert nicht termingerecht"
+      probability: "NIEDRIG"
+      impact: "HOCH"
+      mitigation: "Vertragsklauseln, alternative Lieferanten identifizieren"

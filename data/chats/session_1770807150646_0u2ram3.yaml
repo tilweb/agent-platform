@@ -1,0 +1,18 @@
+id: session_1770807150646_0u2ram3
+userId: user_1770561498880_39ohgu5
+title: "Warum ist der Himmel blau? Rayleigh-Streuung erklärt"
+summary: "Erklärung, warum der Himmel blau erscheint: Rayleigh-Streuung, Lichtwellenlängen und menschliche Wahrnehmung."
+keywords:
+  - Rayleigh-Streuung
+  - Himmel blau
+  - Lichtstreuung
+  - blue sky
+  - Wellenlängen
+lastSummaryAt: 2
+createdAt: "2026-02-11T10:52:30.685Z"
+updatedAt: "2026-02-11T10:52:34.782Z"
+messages:
+  - role: user
+    content: "warum ist der Himmel blau?"
+  - role: assistant
+    content: "Der Himmel erscheint uns blau aufgrund eines Phänomens, das als Rayleigh-Streuung bekannt ist. Wenn Sonnenlicht auf die Erdatmosphäre trifft, wird es in verschiedene Farben (Wellenlängen) zerlegt. Shorter wavelengths of light, like blue and violet, are scattered more than other colors like red, yellow, or green. Although violet light is scattered even more than blue light, the sky appears blue to our eyes because our eyes are more sensitive to blue light and because the sun emits more blue light than violet light. Therefore, the dominant color that is scattered down to our eyes is blue, making the sky appear blue to us."

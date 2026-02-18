@@ -1,0 +1,134 @@
+# Knowledge Base: Schritt 4 - Hauptaufgaben
+# Quelle: RUHR PM Masterclass Projektmanagement 4.0
+# Verwendung: Systemprompt für KI-gestützte Prüfung der Eingaben
+
+meta:
+  step: 4
+  title: "Hauptaufgaben"
+  description: "Definition der wesentlichen Arbeitspakete mit Verantwortlichen und Aufwandsschätzung"
+
+kernkonzepte:
+  hauptaufgaben:
+    beschreibung: "Hauptaktivitäten in den jeweiligen Projektphasen für den Projektauftrag"
+    granularitaet: "Nicht zu detailliert - Details kommen erst in der Planungsphase"
+    darstellung: "Sollten sich in Roadmap/Projektphasenplan übersichtlich darstellen lassen"
+
+  projektstrukturplan:
+    beschreibung: "Hilft beim 'Aufbrechen' der Hauptaktivitäten auf einzelne Strukturelemente"
+    matrix: "Übliche Matrix nach Inhalt und Organisation"
+    zweck: "Zerlegung des Weges vom Start bis zum Projektergebnis in steuerbare Abschnitte"
+
+  aufwandsschaetzung:
+    einheiten:
+      - "PT (Personentage) oder Stunden für interne Ressourcen"
+      - "Euro für externe Kosten"
+    methoden:
+      - "Projekterfahrungen aus vergleichbaren Projekten"
+      - "Expertenschätzungen (Kernteam einbeziehen)"
+      - "Bottom-up: Einzelaufgaben schätzen und summieren"
+      - "Top-down: Gesamtbudget auf Phasen verteilen"
+
+  planungstiefe:
+    empfehlung: "5-8 Arbeitspakete pro Team über zwei Wochen"
+    grenzen:
+      zeitdauer: ">= 2 Tage und <= 5 Tage"
+      aufwand: ">= 5 PT und <= 10 PT"
+      kosten: ">= 0,5 T€ und <= 5 T€"
+      ressourcen: ">= 1 und <= 3 pro Arbeitspaket"
+
+  verantwortlichkeiten:
+    kernteam: "Begleitet das gesamte Projekt von Definition bis Abschluss"
+    idealgroesse: "Maximal 7 Personen (mehr erschwert Kommunikation)"
+    zusammensetzung: "Nicht nur fachliche Eignung, auch persönliche und soziale Kompetenz"
+    freigabe: "Bei größeren Projekten: Kernteam-Mitglieder teilweise für Projektarbeit freistellen"
+
+  aufgabentypen:
+    ha: "Hauptaufgabe - fließt in PMO-Bericht"
+    ak: "Aktivität - Detailaufgabe"
+    ms: "Meilenstein - erscheint im Meilensteinplan"
+    op: "Offene Punkte - in OPL (Offene Punkte Liste)"
+
+pruefkriterien:
+  hauptaufgaben:
+    - "Alle wesentlichen Arbeitspakete identifiziert"
+    - "Logische Reihenfolge erkennbar"
+    - "Deckung des gesamten Projektumfangs (in_scope)"
+    - "Granularität angemessen (nicht zu detailliert)"
+    - "Abhängigkeiten berücksichtigt"
+
+  verantwortliche:
+    - "Für jede Aufgabe ein Verantwortlicher benannt"
+    - "Verantwortliche haben passende Kompetenzen"
+    - "Keine Überlastung einzelner Personen"
+    - "Kernteam-Mitglieder bevorzugt"
+
+  aufwandsschaetzung:
+    - "Realistisch geschätzt (nicht zu optimistisch)"
+    - "Alle Aufgaben mit Aufwand versehen"
+    - "Summe passt zum Gesamtbudget"
+    - "Puffer für Unvorhergesehenes einkalkuliert"
+    - "Verhältnis intern/extern plausibel"
+
+  vollstaendigkeit:
+    - "Projektmanagement-Aufgaben enthalten (Statusberichte, Meetings)"
+    - "Qualitätssicherung/Tests berücksichtigt"
+    - "Schulung/Dokumentation eingeplant"
+    - "Projektabschluss-Aktivitäten vorhanden"
+
+typische_fehler:
+  aufgaben:
+    - "Zu viele kleine Aufgaben (Micromanagement)"
+    - "Zu wenige große Aufgaben (nicht steuerbar)"
+    - "PM-Aufgaben vergessen (Kommunikation, Reporting)"
+    - "Qualitätssicherung/Tests nicht eingeplant"
+    - "Puffer fehlt komplett"
+
+  verantwortliche:
+    - "Keine Verantwortlichen zugeordnet"
+    - "Alles auf eine Person (Überlastung)"
+    - "Auftraggeber als Verantwortlicher für operative Aufgaben"
+    - "Nicht verfügbare Ressourcen eingeplant"
+
+  aufwand:
+    - "Zu optimistisch geschätzt (Planungsfehler häufen sich in Startphase)"
+    - "Interner Aufwand nicht berücksichtigt"
+    - "Schätzungen ohne Erfahrungswerte"
+    - "Kein Puffer (10-15% empfohlen)"
+
+verbesserungsvorschlaege:
+  struktur:
+    tipp: "Aufgaben nach Projektphasen gliedern"
+    beispiel:
+      phase_1: "Projektinitialisierung & Definition"
+      phase_2: "Analyse & Konzeption"
+      phase_3: "Entwicklung/Umsetzung"
+      phase_4: "Test & Qualitätssicherung"
+      phase_5: "Rollout & Schulung"
+      phase_6: "Projektabschluss"
+
+  aufgaben_beispiele:
+    pm_aufgaben:
+      - name: "Projektauftrag erstellen"
+        aufwand: "5-10 PT"
+      - name: "Statusberichte und Kommunikation"
+        aufwand: "10% der Gesamtlaufzeit"
+      - name: "Risikomanagement"
+        aufwand: "2-5 PT"
+      - name: "Projektabschluss"
+        aufwand: "5 PT"
+
+    fachliche_aufgaben:
+      - name: "Anforderungsanalyse"
+        aufwand: "Abhängig von Komplexität"
+      - name: "Konzeption/Design"
+        aufwand: "15-20% des Gesamtaufwands"
+      - name: "Umsetzung/Entwicklung"
+        aufwand: "40-50% des Gesamtaufwands"
+      - name: "Test und QA"
+        aufwand: "15-20% des Gesamtaufwands"
+      - name: "Schulung/Dokumentation"
+        aufwand: "5-10% des Gesamtaufwands"
+
+  aufwand_faustregel:
+    projektauftrag: "Ca. 10% der Gesamtlaufzeit für Erstellung des Projektauftrags"
+    puffer: "10-15% als Risikopuffer einplanen"

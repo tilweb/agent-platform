@@ -1,0 +1,99 @@
+# Knowledge Base: Schritt 1 - Basis-Informationen
+# Quelle: RUHR PM Masterclass Projektmanagement 4.0
+# Verwendung: Systemprompt für KI-gestützte Prüfung der Eingaben
+
+meta:
+  step: 1
+  title: "Basis-Informationen"
+  description: "Grundlegende Projektdaten wie Name, ID, Typ, Laufzeit, Projektleiter und Auftraggeber"
+
+kernkonzepte:
+  projektdefinition:
+    din_69901: >
+      Ein Projekt ist ein Vorhaben, das im Wesentlichen durch Einmaligkeit der Bedingungen
+      in seiner Gesamtheit gekennzeichnet ist: Zielvorgabe, zeitliche, finanzielle, personelle
+      Bedingungen, Abgrenzung gegenüber anderen Vorhaben und projektspezifische Organisation.
+    pmi_pmbok: >
+      Ein Projekt ist ein zeitlich begrenztes Vorhaben, das unternommen wird, um ein einzigartiges
+      Produkt, eine einzigartige Dienstleistung oder ein einzigartiges Ergebnis zu erstellen.
+    kernmerkmale:
+      - Zeitlich begrenzt (definierter Start und Ende)
+      - Einmaliges Ergebnis/Produkt/Dienstleistung
+      - Projektspezifische Organisation
+      - Definierte Ressourcen und Rahmenbedingungen
+
+  projektgroessen:
+    beschreibung: "Projektgrößen werden in Konfektionsgrößen eingeteilt (S, M, L, XL)"
+    was_aendert_sich:
+      - Umfang, Kosten, Kommunikation
+      - Zeitbedarf, Organisation, Beschaffung
+      - Bei kleinen Projekten: weniger Statusberichte, Stakeholder- und Risikomanagement
+    was_bleibt_gleich:
+      - Qualitätsmanagement
+      - Projektauftrag und Koordination
+
+  projektphasen:
+    initialisierung: "Projektidee beschreiben, relevante Informationen dokumentieren"
+    definition: "Projektauftrag erstellen, abstimmen und genehmigen lassen"
+    planung: "Nach Genehmigung: Kick-Off, detaillierte Planung"
+    umsetzung: "Aufgaben umsetzen, Projektergebnisse erzeugen"
+    steuerung: "Zielerreichung gewährleisten, Statusberichte, Anpassungen"
+    abschluss: "Formale Beendigung, Übergabe an Auftraggeber/Anwender"
+
+  umsetzungsarten:
+    klassisch:
+      merkmale: "Scope fix, Budget und Time variabel"
+      geeignet_fuer: "Bekannte Situation, planbare Einflüsse"
+    agil:
+      merkmale: "Scope variabel, Budget und Time können fix sein"
+      geeignet_fuer: "Unklarer Scope, ständig neue Anforderungen"
+      methoden: ["Scrum", "Kanban"]
+    hybrid:
+      merkmale: "Kombination beider Ansätze"
+
+pruefkriterien:
+  projektname:
+    - "Aussagekräftig und eindeutig"
+    - "Beschreibt das Projektergebnis oder -ziel"
+    - "Unterscheidbar von anderen Projekten"
+
+  projekt_id:
+    - "Eindeutige Kennung"
+    - "Konsistent mit Unternehmensstandards"
+
+  projekttyp:
+    - "Passend zur Art des Vorhabens (IT, Beratung, Marketing, etc.)"
+    - "Beeinflusst Vorgehensweise und Methodik"
+
+  laufzeit:
+    - "Realistischer Zeitrahmen für den Scope"
+    - "Start- und Endtermin definiert"
+    - "Berücksichtigt Urlaubszeiten, Feiertage"
+
+  projektleiter:
+    - "Namentlich benannt"
+    - "Hat Befugnisse für Planung und Steuerung"
+    - "Verantwortlich für Projekterfolg"
+
+  auftraggeber:
+    - "Namentlich benannt"
+    - "Übergibt Projektidee"
+    - "Genehmigt Projektauftrag"
+    - "Unterstützt bei Eskalationen"
+
+typische_fehler:
+  - "Projektname zu allgemein oder nichtssagend"
+  - "Laufzeit unrealistisch kurz oder lang"
+  - "Projektleiter und Auftraggeber identisch (Interessenkonflikt)"
+  - "Keine klare Abgrenzung zu anderen Vorhaben"
+  - "Projekttyp passt nicht zum Vorhaben"
+
+verbesserungsvorschlaege:
+  projektname:
+    schwach: "IT-Projekt"
+    besser: "Einführung digitale Zeiterfassung"
+    optimal: "Einführung digitale Zeiterfassung für Remote- und Büro-Mitarbeitende"
+
+  laufzeit:
+    faustregel: "Für Projektauftrag ca. 10% der Gesamtlaufzeit einplanen"
+    hinweis: "75% der Fehler entstehen in der Startphase"

@@ -1,0 +1,219 @@
+# Knowledge Base: Schritt 7 - Organisation & Stakeholder
+# Quelle: RUHR PM Masterclass Projektmanagement 4.0
+# Verwendung: Systemprompt für KI-gestützte Prüfung der Eingaben
+
+meta:
+  step: 7
+  title: "Organisation & Stakeholder"
+  description: "Projektorganisation mit Rollen und Stakeholder-Analyse"
+
+kernkonzepte:
+  projektorganisation:
+    beschreibung: "Das Kernteam und die Projektorganisation sind besondere Stakeholder des Projektes"
+    grundsatz: "Den Projektauftrag sollte der Projektleiter nicht allein machen"
+    einbeziehen:
+      - "Auftraggeber und/oder dessen Fachexperten"
+      - "Kernteam mit fachlichen Experten"
+      - "Spätere Mitglieder der Projektorganisation"
+
+  rollen_im_projekt:
+    auftraggeber:
+      aufgaben:
+        - "Übergibt die Projektidee an Projektleiter"
+        - "Setzt bei Bedarf Lenkungskreis ein"
+        - "Stimmt Projektauftrag ab und genehmigt diesen"
+        - "Lässt sich regelmäßig (4-8 Wochen) Projektstatus vorstellen"
+        - "Unterstützt Projektleiter bei der Umsetzung"
+        - "Genehmigt Anpassungen des Projektauftrages"
+        - "Genehmigt Projektabschlussbericht"
+
+    lenkungskreis:
+      beschreibung: "Gremium aus Experten, die Auftraggeber unterstützen"
+      aufgaben:
+        - "Übernimmt Aufgaben des Auftraggebers bei Bedarf"
+        - "Erhält Befugnis im Sinne der Auftraggebenden zu entscheiden"
+
+    projektleiter:
+      aufgaben:
+        - "Übernimmt Projektidee vom Auftraggeber"
+        - "Setzt Kernteam für Projektauftrag ein"
+        - "Stimmt Projektauftrag ab und lässt genehmigen"
+        - "Berichtet regelmäßig (4-8 Wochen) an Auftraggeber/Lenkungskreis"
+        - "Verantwortlich für Planung, Umsetzung und Steuerung"
+        - "Lässt sich vom Projektteam regelmäßig (ca. 2 Wochen) Status vorstellen"
+        - "Unterstützt Projektteam"
+        - "Bereitet Projektabschluss vor"
+
+    kernteam:
+      beschreibung: "Team aus Experten, die Projektleiter bei Projektauftrag unterstützen"
+      groesse: "Maximal 7 Personen (mehr erschwert Kommunikation)"
+      kriterien: "Nicht nur fachliche Eignung, auch persönliche und soziale Kompetenz"
+
+    projektoffice:
+      beschreibung: "Unterstützt Projektleiter im organisatorischen und methodischen PM"
+
+    projektteam:
+      beschreibung: "Bei größeren Projekten mehrere Teams (Teilprojekte, agile Teams)"
+      aufgaben:
+        - "Plant Aktivitäten für steuerbare Abschnitte"
+        - "Setzt geplante Aktivitäten um"
+        - "Berichtet regelmäßig über Ergebnisse"
+        - "Fordert Unterstützung bei Entscheidungen über Befugnisse ein"
+
+    agile_rollen:
+      product_owner:
+        - "Entwickelt Produktvision"
+        - "Interessenvertretung der Kunden"
+        - "Verantwortlich für Produktwert-Maximierung"
+        - "Management des Product Backlogs"
+      scrum_master:
+        - "Servant Leader für Scrum-Team"
+        - "Beschützt Team vor Störungen"
+        - "Optimiert Zusammenarbeit"
+        - "Sichert agile Prinzipien"
+
+  stakeholdermanagement:
+    definition: "Interaktion mit Personen, Gruppen oder Organisationen, die Einfluss auf das Projekt haben oder davon betroffen sein könnten"
+    ziel: "Erwartungen und Einfluss kennen, um positive Auswirkungen zu fördern und negative zu vermeiden"
+
+  stakeholder_definition:
+    beschreibung: "Einzelpersonen, Gruppen oder Organisationen, die"
+    kriterien:
+      - "auf ein Projekt einwirken"
+      - "von dessen Auswirkungen betroffen sein können"
+      - "der Ansicht sind, betroffen zu sein oder zu werden"
+
+  stakeholder_prozess:
+    initialisierung: "Identifikation der Stakeholder"
+    definition: "Bewertung nach Einfluss und Interesse"
+    planung: "Einbindung der Stakeholder planen"
+    umsetzung: "Stakeholder informieren und Maßnahmen umsetzen"
+    steuerung: "Einbindung analysieren und Maßnahmen einleiten"
+
+  stakeholder_bewertung:
+    dimensionen:
+      einfluss: "Wie stark kann der Stakeholder das Projekt beeinflussen?"
+      interesse: "Wie stark ist das Interesse am Projekt?"
+    skala: "1 (gering) bis 9 (sehr hoch)"
+    segmente:
+      a_hoch_hoch: "Gut informieren und einbeziehen"
+      b_hoch_niedrig: "Umfangreich informieren und einbeziehen"
+      c_niedrig_hoch: "Regelmäßig informieren"
+      d_niedrig_niedrig: "Ausreichend informieren"
+
+  teamentwicklung:
+    tuckman_phasen:
+      forming: "Team lernt sich kennen, Vertrauen aufbauen"
+      storming: "Grüppchen, Konflikte, Machtspielchen"
+      norming: "Regeln klar, Wir-Gefühl entsteht"
+      performing: "Höchstleistung, gute Zusammenarbeit"
+      adjourning: "Ende der Zusammenarbeit, Rückkehr in Linie"
+
+    disg_modell:
+      dominant_rot: "Zielgerichtet, durchsetzungsstark, direkt"
+      initiativ_gelb: "Kontaktfreudig, begeisterungsfähig, kreativ"
+      stetig_gruen: "Einfühlsam, loyal, hilfsbereit"
+      gewissenhaft_blau: "Systematisch, analytisch, präzise"
+
+pruefkriterien:
+  projektorganisation:
+    - "Alle wesentlichen Rollen besetzt"
+    - "Auftraggeber klar benannt"
+    - "Projektleiter mit Befugnissen"
+    - "Kernteam zusammengestellt"
+    - "Keine Rollenüberschneidungen"
+
+  rollen:
+    - "Klare Rollenbeschreibung"
+    - "Verantwortlichkeiten definiert"
+    - "Keine Interessenkonflikte (z.B. AG ≠ PL)"
+    - "Stellvertreterregelungen bei Bedarf"
+
+  stakeholder:
+    - "Alle relevanten Stakeholder identifiziert"
+    - "Nach Einfluss und Interesse bewertet"
+    - "Kommunikationsstrategie je Segment"
+    - "Keine wichtigen Gruppen vergessen"
+
+  vollstaendigkeit:
+    typische_stakeholder:
+      - "Auftraggeber/Geschäftsführung"
+      - "Lenkungskreis"
+      - "Fachbereiche"
+      - "IT-Abteilung"
+      - "Betriebsrat"
+      - "Endanwender"
+      - "Externe Partner/Lieferanten"
+      - "Kunden"
+
+typische_fehler:
+  organisation:
+    - "Auftraggeber nicht klar benannt"
+    - "Projektleiter ohne Befugnisse"
+    - "Kernteam zu groß (> 7 Personen)"
+    - "Nur fachliche Kompetenz berücksichtigt"
+    - "Keine Lenkungsebene definiert"
+
+  stakeholder:
+    - "Nur positive Stakeholder berücksichtigt"
+    - "Betriebsrat vergessen"
+    - "Endanwender nicht einbezogen"
+    - "Keine Bewertung nach Einfluss/Interesse"
+    - "Wettbewerber nicht berücksichtigt"
+
+  kommunikation:
+    - "Alle Stakeholder gleich behandelt"
+    - "Keine Kommunikationsstrategie"
+    - "Wichtige Stakeholder nicht regelmäßig informiert"
+
+verbesserungsvorschlaege:
+  organisation_struktur:
+    auftraggeber_ebene:
+      - rolle: "Auftraggeber"
+        beschreibung: "Geschäftsführer/Bereichsleiter"
+      - rolle: "Lenkungskreis"
+        beschreibung: "Bereichsleiter, Fachexperten"
+
+    projekt_ebene:
+      - rolle: "Projektleiter"
+        beschreibung: "Gesamtverantwortung"
+      - rolle: "Projektoffice"
+        beschreibung: "PM-Unterstützung"
+
+    team_ebene:
+      - rolle: "Kernteam"
+        beschreibung: "Fachexperten aller relevanten Bereiche"
+      - rolle: "Erweitertes Team"
+        beschreibung: "Temporäre Mitarbeit nach Bedarf"
+
+  stakeholder_beispiele:
+    intern:
+      - name: "Geschäftsführung"
+        rolle: "Auftraggeber, strategische Entscheidungen"
+      - name: "Fachbereich X"
+        rolle: "Anforderungsgeber, Abnahme"
+      - name: "IT-Abteilung"
+        rolle: "Technische Umsetzung, Betrieb"
+      - name: "Betriebsrat"
+        rolle: "Mitbestimmung bei personellen Themen"
+      - name: "Mitarbeiter"
+        rolle: "Endanwender, Akzeptanz"
+
+    extern:
+      - name: "Kunden"
+        rolle: "Endnutzer, Feedback"
+      - name: "Lieferanten"
+        rolle: "Leistungserbringung"
+      - name: "Partner"
+        rolle: "Kooperation"
+      - name: "Wettbewerber"
+        rolle: "Marktbeobachtung"
+
+  kommunikation_matrix:
+    segment_a: "Wöchentliche Updates, aktive Einbindung in Entscheidungen"
+    segment_b: "Monatliche Berichte, Einbindung bei wichtigen Meilensteinen"
+    segment_c: "Regelmäßige Newsletter, Informationsveranstaltungen"
+    segment_d: "Projektwebsite, gelegentliche Updates"
+
+  praxistipp:
+    vertraulichkeit: "Mach die Bewertung von Einzelpersonen nicht transparent - fasse zu Gruppen zusammen"

@@ -1,0 +1,222 @@
+providers:
+  - id: adacor
+    name: Adacor AI
+    api_mode: openai
+    base_url: https://api.adacor.ai/chat/privateai/v1
+    api_key_env: ADACOR_AI_API_KEY
+    enabled: true
+    protected: true
+    company_region: germany
+    datacenter_country: DE
+    models:
+      - id: mistral-3-24b-128k
+        name: Mistral 3 24B (128K)
+        type: vllm
+        capabilities:
+          - chat
+          - function_calling
+          - vision
+        context_length: 128000
+        default: true
+        protected: true
+      - id: qwen3-a3b-30b-256k
+        name: Qwen 3 30B (256k)
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+          - vision
+        default: false
+      - id: qwen3-a3bthinking-30b-256k
+        name: Qwen 3 Thinking 30B (256k)
+        type: llm
+        capabilities:
+          - chat
+        default: false
+  - id: openai
+    name: OpenAI
+    api_mode: openai
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    enabled: false
+    company_region: world
+    datacenter_country: US
+    models:
+      - id: gpt-4o
+        name: GPT-4o
+        type: vllm
+        capabilities:
+          - chat
+          - function_calling
+          - vision
+      - id: gpt-4o-mini
+        name: GPT-4o Mini
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+        default: true
+      - id: whisper-1
+        name: Whisper
+        type: stt
+        capabilities:
+          - transcription
+      - id: tts-1
+        name: TTS-1
+        type: tts
+        capabilities:
+          - speech
+      - id: tts-1-hd
+        name: TTS-1 HD
+        type: tts
+        capabilities:
+          - speech
+  - id: anthropic
+    name: Anthropic
+    api_mode: openai
+    base_url: https://api.anthropic.com/v1
+    api_key_env: ANTHROPIC_API_KEY
+    enabled: false
+    company_region: world
+    datacenter_country: US
+    models:
+      - id: claude-3-5-sonnet-20241022
+        name: Claude 3.5 Sonnet
+        type: vllm
+        capabilities:
+          - chat
+          - vision
+        default: true
+      - id: claude-3-5-haiku-20241022
+        name: Claude 3.5 Haiku
+        type: llm
+        capabilities:
+          - chat
+  - id: ollama
+    name: Ollama (Local)
+    api_mode: ollama
+    base_url: http://localhost:11434
+    api_key_env: null
+    enabled: false
+    company_region: germany
+    datacenter_country: DE
+    models:
+      - id: llama3.2
+        name: Llama 3.2
+        type: llm
+        capabilities:
+          - chat
+        default: true
+      - id: llama3.2:70b
+        name: Llama 3.2 70B
+        type: llm
+        capabilities:
+          - chat
+      - id: llava
+        name: LLaVA
+        type: vllm
+        capabilities:
+          - chat
+          - vision
+      - id: mistral
+        name: Mistral
+        type: llm
+        capabilities:
+          - chat
+      - id: codellama
+        name: Code Llama
+        type: llm
+        capabilities:
+          - chat
+  - id: nebius-token-factory
+    name: Nebius Token Factory
+    api_mode: openai
+    base_url: https://api.tokenfactory.nebius.com/v1/
+    api_key_env: NEBIUS_API_KEY
+    enabled: true
+    company_region: eu
+    datacenter_country: FI
+    models:
+      - id: openai/gpt-oss-120b
+        name: OpenAI GPT-OSS 120B (131k)
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+        default: true
+  - id: adacor-ai-audio
+    name: Adacor AI Audio
+    api_mode: openai
+    base_url: https://api.adacor.ai/audio/whisper/v1/transcriptions
+    api_key_env: ADACOR_AI_API_KEY
+    enabled: true
+    company_region: germany
+    datacenter_country: DE
+    models:
+      - id: whisper-v3-large-30s
+        name: Whisper V3 Large (30s)
+        type: stt
+        capabilities:
+          - transcription
+        default: true
+  - id: google-gemini-imagen
+    name: Google Gemini Imagen
+    api_mode: google_gemini
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    api_key_env: GOOGLE_AI_API_KEY
+    enabled: true
+    company_region: world
+    datacenter_country: US
+    models:
+      - id: gemini-2.5-flash-image
+        name: Gemini 2.5 Flash Image
+        type: image_gen
+        capabilities:
+          - text_to_image
+          - image_to_image
+        supported_aspects:
+          - 1:1
+          - 16:9
+          - 9:16
+          - 4:3
+          - 3:4
+        max_images_per_request: 4
+        default: true
+  - id: nebius-flux
+    name: Nebius Flux.1
+    api_mode: openai_images
+    base_url: https://api.studio.nebius.com/v1
+    api_key_env: NEBIUS_API_KEY
+    enabled: true
+    company_region: eu
+    datacenter_country: FI
+    models:
+      - id: black-forest-labs/flux-schnell
+        name: Flux.1 Schnell
+        type: image_gen
+        capabilities:
+          - text_to_image
+        supported_sizes:
+          - 1024x1024
+          - 512x512
+        max_images_per_request: 1
+        default: true
+active:
+  chat:
+    provider_id: adacor
+    model_id: qwen3-a3b-30b-256k
+  vision:
+    provider_id: adacor
+    model_id: mistral-3-24b-128k
+  tts:
+    provider_id: null
+    model_id: null
+  stt:
+    provider_id: adacor-ai-audio
+    model_id: whisper-v3-large-30s
+  text_to_image:
+    provider_id: nebius-flux
+    model_id: black-forest-labs/flux-schnell
+  image_to_image:
+    provider_id: google-gemini-imagen
+    model_id: gemini-2.5-flash-image

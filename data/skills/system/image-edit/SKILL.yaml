@@ -1,0 +1,101 @@
+id: image-edit
+name: "Bildbearbeitung"
+version: "2.0"
+description: "Bearbeitet hochgeladene Bilder basierend auf Anweisungen"
+
+# NEW: Metadata for agent decision-making
+metadata:
+  use_when: |
+    - User möchte ein hochgeladenes Bild bearbeiten
+    - Stiländerung, Farbänderung oder Objektänderung gewünscht
+    - "Bearbeite das Bild", "ändere das Bild", "transformiere"
+  estimated_effort: "1-3 Minuten"
+  output_type: "Bearbeitetes Bild"
+
+# NEW: Tools that this skill ADDS to agent capabilities
+allowed_tools:
+  - edit_image
+  - read-chat-attachment
+
+# DEPRECATED: triggers - kept for backward compatibility
+triggers:
+  keywords:
+    - "verändere das bild"
+    - "bearbeite das bild"
+    - "ändere das bild"
+    - "modifiziere das bild"
+    - "transformiere das bild"
+    - "edit the image"
+    - "modify the image"
+    - "change the image"
+  patterns:
+    - "(verändere|bearbeite|ändere|modifiziere|transformiere)\\s+.*(bild|foto|grafik)"
+    - "(edit|modify|change|transform)\\s+.*(image|picture|photo)"
+    - "mach.*aus dem bild"
+    - "wandle.*bild.*um"
+
+# DEPRECATED: tools - use allowed_tools instead
+tools:
+  required:
+    - edit_image
+    - read-chat-attachment
+
+instructions: |
+  Du bist ein Bildbearbeitungs-Assistent.
+
+  ## Vorgehen
+
+  1. **Bild identifizieren**: Finde das hochgeladene Bild im Chat
+     - Verwende read-chat-attachment um die attachment_id zu finden
+  2. **Anweisungen verstehen**: Analysiere was der Nutzer ändern möchte
+  3. **Prompt formulieren**: Erstelle klare Bearbeitungsanweisungen
+  4. **Bearbeiten**: Rufe edit_image mit attachment_id und prompt auf
+  5. **Präsentieren**: Zeige das bearbeitete Bild
+
+  ## Bearbeitungsmöglichkeiten
+
+  - Stiländerungen (Comic, Aquarell, Ölgemälde, etc.)
+  - Farbänderungen (Schwarzweiß, Sepia, etc.)
+  - Objektänderungen (Hinzufügen, Entfernen, Ändern von Elementen)
+  - Hintergrundänderungen
+  - Stimmungsänderungen (heller, dunkler, dramatischer)
+
+  ## Prompt-Formulierung
+
+  Formuliere präzise Anweisungen, z.B.:
+  - "Wandle das Bild in einen Cartoon-Stil um"
+  - "Ändere den Hintergrund in einen Strand bei Sonnenuntergang"
+  - "Entferne die Person und fülle den Bereich natürlich auf"
+
+  ## Hinweise
+
+  - Das edit_image Tool funktioniert nur mit Modellen die image_to_image unterstützen
+  - Google Gemini Imagen unterstützt Bildbearbeitung
+  - Bei Fehlern den Nutzer informieren und ggf. alternatives Modell vorschlagen
+
+workflow:
+  steps:
+    - id: find_image
+      action: tool
+      tool: read-chat-attachment
+      description: "Finde das hochgeladene Bild"
+
+    - id: analyze
+      action: think
+      description: "Analysiere Bearbeitungswunsch und formuliere Prompt"
+
+    - id: edit
+      action: tool
+      tool: edit_image
+      description: "Bearbeite das Bild"
+
+    - id: present
+      action: respond
+      description: "Präsentiere das bearbeitete Bild"
+
+output:
+  format: markdown
+  markAsMaterial: true
+  materialTitle: "Bearbeitetes Bild"
+
+enabled: false

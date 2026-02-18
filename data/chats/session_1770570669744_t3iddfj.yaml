@@ -1,0 +1,18 @@
+id: session_1770570669744_t3iddfj
+title: Zusammenfassung des Grobkonzepts für Adacor-Szenarien
+summary: "Das Dokument beschreibt fünf wertvolle Szenarien für Adacor, bewertet nach Zeitersparnis, Häufigkeit und strategischem Hebel. Fokus auf 'Intelligent Incident Context' zur Automatisierung von Supportprozessen."
+keywords:
+  - Adacor
+  - Grobkonzept
+  - Incident Management
+  - Automatisierung
+  - Support
+  - Time Savings
+  - Strategic Leverage
+createdAt: "2026-02-08T17:11:13.264Z"
+updatedAt: "2026-02-08T17:11:26.514Z"
+messages:
+  - role: user
+    content: "Fasse \"Grobkonzept.pdf\" zusammen"
+  - role: assistant
+    content: "Das Dokument \"Grobkonzept.pdf\" beschreibt die fünf wertvollsten Szenarien für Adacor, wobei die Bewertungskriterien Zeitersparnis, Häufigkeit und strategischer Hebel sind.\n\nDas erste Szenario, \"Intelligent Incident Context\", wird detailliert beschrieben. Aktuell müssen Support-Mitarbeiter bei einem Ticket wie \"Server reagiert nicht\" verschiedene Systeme durchsuchen, um den Kontext zu verstehen, was 10-20 Minuten in Anspruch nehmen kann. Die vorgeschlagene Lösung ist ein automatischer Sofort-Kontext, der relevante Informationen aus verschiedenen Quellen wie SLA, betroffenem System, gebuchten Services, Vertragsstatus und Monitoring-Daten der letzten 24 Stunden bereitstellt. Zusätzlich werden Abhängigkeiten aus Netbox angezeigt.\n\nMöchtest du noch weitere Details zu einem bestimmten Teil des Dokuments?"

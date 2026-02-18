@@ -1,0 +1,23 @@
+id: task_mlc9zh4hs77dte
+title: Wichtiger Research-Task
+description: "Dringend: AI Governance recherchieren"
+type: simple
+priority: high
+created_by: user
+trigger: api
+created_at: 2026-02-07T12:13:24.977Z
+updated_at: 2026-02-07T12:27:55.310Z
+status: completed
+progress: 100
+current_step: 0
+total_steps: 0
+steps: []
+config:
+  max_iterations: 50
+  timeout_minutes: 30
+  notify_on_complete: true
+  auto_retry_on_failure: false
+started_at: 2026-02-07T12:27:09.886Z
+result_file: /Users/andreasbachmann/Documents/Development/AgentWork/agent-platform/data/tasks/results/task_mlc9zh4hs77dte-result.json
+result_summary: Ich habe den Research-Agenten mit der dringenden Recherche zum Thema "AI Governance" beauftragt. Leider kann ich keine Web-Recherchen durchführen, da mir die notwendigen Tools dafür fehlen. Ich kann I...
+completed_at: 2026-02-07T12:27:55.309Z

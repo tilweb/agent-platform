@@ -1,0 +1,62 @@
+id: dienstleistung
+name: Dienstleistungsvertrag
+icon: briefcase
+
+fields:
+  vertragspartner:
+    auftraggeber:
+      type: text
+      required: true
+      label: Auftraggeber
+    auftragnehmer:
+      type: text
+      required: true
+      label: Auftragnehmer
+
+  leistung:
+    beschreibung:
+      type: text
+      required: true
+      label: Leistungsbeschreibung
+    umfang:
+      type: text
+      label: Leistungsumfang
+
+  laufzeit:
+    beginn:
+      type: date
+      required: true
+      label: Vertragsbeginn
+    ende:
+      type: date
+      label: Vertragsende
+    kuendigungsfrist_monate:
+      type: number
+      label: Kündigungsfrist (Monate)
+
+  verguetung:
+    betrag:
+      type: number
+      required: true
+      label: Vergütung
+    zahlungsweise:
+      type: text
+      label: Zahlungsweise
+    zahlungsziel_tage:
+      type: number
+      label: Zahlungsziel (Tage)
+
+  sla:
+    verfuegbarkeit:
+      type: text
+      label: Verfügbarkeit
+    reaktionszeit:
+      type: text
+      label: Reaktionszeit
+
+mapping:
+  party_a: vertragspartner.auftraggeber
+  party_b: vertragspartner.auftragnehmer
+  start_date: laufzeit.beginn
+  end_date: laufzeit.ende
+  value: verguetung.betrag

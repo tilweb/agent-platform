@@ -1,0 +1,69 @@
+id: arbeitsvertrag
+name: Arbeitsvertrag
+icon: user
+
+fields:
+  vertragspartner:
+    arbeitgeber:
+      type: text
+      required: true
+      label: Arbeitgeber
+    arbeitnehmer:
+      type: text
+      required: true
+      label: Arbeitnehmer
+
+  position:
+    bezeichnung:
+      type: text
+      required: true
+      label: Stellenbezeichnung
+    abteilung:
+      type: text
+      label: Abteilung
+    vorgesetzter:
+      type: text
+      label: Vorgesetzter
+
+  laufzeit:
+    beginn:
+      type: date
+      required: true
+      label: Arbeitsbeginn
+    ende:
+      type: date
+      label: Befristung bis
+    probezeit_monate:
+      type: number
+      label: Probezeit (Monate)
+    kuendigungsfrist_monate:
+      type: number
+      label: Kündigungsfrist (Monate)
+
+  verguetung:
+    bruttogehalt_monatlich:
+      type: number
+      required: true
+      label: Bruttogehalt (monatlich)
+    sonderzahlungen:
+      type: text
+      label: Sonderzahlungen
+
+  arbeitszeit:
+    wochenstunden:
+      type: number
+      required: true
+      label: Wochenstunden
+    urlaubstage:
+      type: number
+      label: Urlaubstage pro Jahr
+    arbeitsort:
+      type: text
+      label: Arbeitsort
+
+mapping:
+  party_a: vertragspartner.arbeitgeber
+  party_b: vertragspartner.arbeitnehmer
+  start_date: laufzeit.beginn
+  end_date: laufzeit.ende
+  value: verguetung.bruttogehalt_monatlich * 12

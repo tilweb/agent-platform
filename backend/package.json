@@ -1,0 +1,27 @@
+{
+  "name": "backend",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "mcp-server": "bun run src/mcp/server/index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pdfmake": "^0.3.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.9",
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "docx": "^9.4.1",
+    "exceljs": "^4.4.0",
+    "hono": "^4.11.7",
+    "pdfmake": "^0.2.18",
+    "yaml": "^2.8.2"
+  }
+}

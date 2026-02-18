@@ -1,0 +1,18 @@
+id: session_1771318407539_mmrp6sc
+userId: user_1770561498880_39ohgu5
+title: Winterlandschaft per KI generieren
+summary: Ein Bild einer Winterlandschaft wird mit einem KI-Image-Generator erstellt. Der Prozess wird beschrieben.
+keywords:
+  - Winterlandschaft
+  - KI-Bildgenerierung
+  - Image Generator
+  - Winter
+  - AI Art
+lastSummaryAt: 2
+createdAt: "2026-02-17T08:53:27.574Z"
+updatedAt: "2026-02-17T08:53:28.826Z"
+messages:
+  - role: user
+    content: Generiere ein Bild mit einer Winterlandschaft
+  - role: assistant
+    content: Ich lasse den Image-Generator ein Bild einer Winterlandschaft erstellen. Einen Moment bitte.

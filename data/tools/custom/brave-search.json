@@ -1,0 +1,46 @@
+{
+  "id": "brave-search",
+  "name": "Brave Web Suche",
+  "description": "Durchsucht das Web mit der Brave Search API. Verwende dieses Tool um aktuelle Informationen aus dem Internet zu finden, die nicht in deinem Trainingswissen enthalten sind.",
+  "category": "search",
+  "enabled": true,
+  "endpoint": "https://api.search.brave.com/res/v1/web/search",
+  "method": "GET",
+  "parameters": [
+    {
+      "name": "q",
+      "type": "string",
+      "description": "Die Suchanfrage",
+      "required": true,
+      "location": "query"
+    },
+    {
+      "name": "count",
+      "type": "number",
+      "description": "Anzahl der Ergebnisse (1-20, Standard: 5)",
+      "required": false,
+      "location": "query",
+      "default": "5"
+    },
+    {
+      "name": "search_lang",
+      "type": "string",
+      "description": "Sprachcode für die Suche (z.B. de, en)",
+      "required": false,
+      "location": "query",
+      "default": "de"
+    }
+  ],
+  "auth": {
+    "type": "api-key",
+    "location": "header",
+    "keyName": "X-Subscription-Token",
+    "envVar": "BRAVE_API_KEY"
+  },
+  "responseType": "json",
+  "responseTemplate": "Suchergebnisse für \"{{query.original}}\":\n\n{{#web.results}}\n{{@index}}. {{title}}\n   {{description}}\n   URL: {{url}}\n\n{{/web.results}}",
+  "jsonPath": "",
+  "timeout": 10000,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

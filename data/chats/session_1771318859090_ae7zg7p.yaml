@@ -1,0 +1,20 @@
+id: session_1771318859090_ae7zg7p
+userId: user_1770561498880_39ohgu5
+title: "Warum ist der Himmel blau? - Erklärung der Lichtstreuung"
+summary: "Erklärung, warum der Himmel blau erscheint: Sonnenlicht wird in der Atmosphäre gestreut, wobei blaues Licht stärker als rotes Licht gestreut wird."
+keywords:
+  - Himmel blau
+  - Lichtstreuung
+  - Rayleigh-Streuung
+  - blaues Licht
+  - Atmosphäre
+  - Sonne
+  - Wellenlänge
+lastSummaryAt: 2
+createdAt: "2026-02-17T09:00:59.133Z"
+updatedAt: "2026-02-17T09:01:02.280Z"
+messages:
+  - role: user
+    content: "Warum ist der Himmel blau?"
+  - role: assistant
+    content: "Der Himmel erscheint blau, weil das Sonnenlicht auf die Moleküle in der Erdatmosphäre trifft. Das Licht der Sonne besteht aus allen Farben des Regenbogens, die zusammen weißes Licht ergeben. Wenn dieses Licht auf die Atmosphäre trifft, wird es gestreut. Kurze Wellenlängen, wie die des blauen Lichts, werden stärker gestreut als längere Wellenlängen, wie die des roten Lichts. Deshalb sehen wir den Himmel blau."

@@ -1,0 +1,27 @@
+id: session_1771206040342_pia4g5z
+userId: user_1770561498880_39ohgu5
+title: Bildumwandlung in Sommerlandschaft
+summary: "Benutzer möchte ein Bild in eine Sommerlandschaft umwandeln, doch die Google API ist überlastet. Alternative Lösungen werden vorgeschlagen."
+keywords:
+  - Bildumwandlung
+  - Sommerlandschaft
+  - Google API
+  - Bildbearbeitung
+  - Alternative Lösung
+  - Image Generation
+  - Summer Scene
+lastSummaryAt: 2
+createdAt: "2026-02-16T01:40:40.384Z"
+updatedAt: "2026-02-17T09:18:44.133Z"
+messages:
+  - role: user
+    content: "Was wird da gesagt?"
+    attachments:
+      - id: att-1771319920961-iddpvg
+        type: audio
+        filename: recording-1771319896318.m4a
+        mimeType: audio/mp4
+        url: /api/chats/session_1771206040342_pia4g5z/attachments/att-1771319920961-iddpvg/stream
+        transcription: " Direkt eine Audioaufnahme starten, die dann auch direkt transkribiert wird."
+  - role: assistant
+    content: "Es wurde eine Audioaufnahme namens `recording-1771319896318.m4a` hochgeladen, die direkt transkribiert wurde. Allerdings ist der Inhalt der Transkription in deinem aktuellen Kontext nicht sichtbar. Ich kann daher nicht sagen, was in der Aufnahme gesagt wird.\n\nWenn du möchtest, dass ich den Inhalt der Transkription analysiere oder eine Frage dazu beantworte, teile mir bitte den Text der Transkription mit. Dann kann ich dir weiterhelfen."

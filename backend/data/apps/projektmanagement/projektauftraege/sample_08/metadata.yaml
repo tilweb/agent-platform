@@ -1,0 +1,276 @@
+id: sample_08
+name: orange
+project_type: internal
+start_date: 2023-06-05
+end_date: 2024-01-29
+projektleiter: Andrea Schröpke
+auftraggeber: Dr. Dieter Glöckchen
+description: "Importiert aus: Projekt orange_SWO"
+goals: Das Ziel des Projektes ist es, die Stadtwerke Oxenfurth am See durch
+  professionelle Projektarbeit zukunftsfähig und erfolgreich aufzustellen und
+  die Erwartungen der Stakeholder zu erfüllen. Wir wollen die
+criteria:
+  - Erfolgskriterium 1
+scope: "Das Stufenkonzept sieht folgende Arbeitspakete vor:"
+in_scope: []
+out_scope: []
+tasks:
+  - id: HA-01
+    name: Projektauftrag erstellen
+    responsible: Andrea Schröpke
+    start_date: ""
+    end_date: ""
+    effort: 8
+    status: open
+  - id: HA-03
+    name: '"Kick-Off" Veranstaltung durchgeführt '
+    responsible: Andrea Schröpke
+    start_date: ""
+    end_date: ""
+    effort: 7
+    status: open
+  - id: HA-04
+    name: Projektportfolio erstellt
+    responsible: Annika Schrepping
+    start_date: ""
+    end_date: ""
+    effort: 9.5
+    status: open
+  - id: HA-05
+    name: Projektportfolio bewertet und Berichtswesen etabliert
+    responsible: Andrea Schröpke
+    start_date: ""
+    end_date: ""
+    effort: 20.5
+    status: open
+  - id: HA-06
+    name: Etablierung Projektportfolio-Management
+    responsible: Andrea Schröpke
+    start_date: ""
+    end_date: ""
+    effort: 20.5
+    status: open
+  - id: HA-07
+    name: "Projektabschluss "
+    responsible: Andrea Schröpke
+    start_date: ""
+    end_date: ""
+    effort: 7.5
+    status: open
+milestones:
+  - id: MS-1
+    name: Projektstart
+    date: 2023-06-05
+    description: ""
+  - id: MS-2
+    name: Start Projektauftrag
+    date: 2023-06-07
+    description: ""
+  - id: MS-3
+    name: Genehmigung Projektauftrag
+    date: 2023-08-18
+    description: ""
+  - id: MS-4
+    name: '"Kick-Off" Veranstaltung'
+    date: 2023-08-31
+    description: ""
+  - id: MS-5
+    name: Projektportfolio erstellt
+    date: 2023-09-22
+    description: ""
+  - id: MS-6
+    name: Projektportfolio bewertet
+    date: 2023-10-15
+    description: ""
+  - id: MS-8
+    name: 1. Statusbericht "Projekt orange" erstellt
+    date: 2023-10-15
+    description: ""
+  - id: MS-10
+    name: Statusberichte "PPM-Board" etabliert
+    date: 2024-01-15
+    description: ""
+  - id: MS-12
+    name: Projektabschluss
+    date: 2024-01-29
+    description: ""
+budget: []
+risks:
+  - id: R-01
+    type: threat
+    description: "geringe Akzeptanz "
+    probability: low
+    impact: medium
+    mitigation: ""
+  - id: R-02
+    type: threat
+    description: geringe Bereitschaft und fehlende Rahmenbedingungen für Projektarbeit
+    probability: low
+    impact: medium
+    mitigation: ""
+  - id: R-03
+    type: threat
+    description: Abqualifizierung als überflüssig
+    probability: low
+    impact: medium
+    mitigation: ""
+  - id: C-01
+    type: opportunity
+    description: Agilität
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: C-02
+    type: opportunity
+    description: "Erfolge feiern können "
+    probability: medium
+    impact: medium
+    mitigation: ""
+organization:
+  - id: AG1
+    name: Carsten Schröder
+    role: Auftraggeber - Leiter
+    email: ""
+  - id: AG2
+    name: Dr. Dieter Glöckchen
+    role: Auftraggeber - Leiter
+    email: ""
+  - id: PL
+    name: Andrea Schröpke
+    role: Projektleitung - Leiter
+    email: ""
+  - id: PC
+    name: Matthias Gärtner
+    role: Projektoffice - Leiter
+    email: ""
+  - id: PO
+    name: Anna Mae Schmidt
+    role: Projektoffice - Mitarbeiter
+    email: ""
+  - id: KT1
+    name: Sandra Leise
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT2
+    name: Martin Spreewald
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT3
+    name: Dieter Dombrowski
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT4
+    name: Ronny Schneider
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT5
+    name: Kevin Schulze
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+stakeholders:
+  - id: SH1
+    name: Mitarbeiter SWH
+    role: Mitarbeitende
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH2
+    name: Anteilseigner
+    role: Stakeholder
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH3
+    name: Kunden
+    role: Stakeholder
+    interest: medium
+    influence: medium
+    expectations: ""
+created_at: 2026-02-15T21:31:22.748Z
+updated_at: 2026-02-15T21:31:22.748Z
+created_by: migration
+status: completed
+current_step: 9
+_source: Projekt orange_SWO
+_lessons_learned: >-
+  Wissensgebiet	SWOT	Beschreibung	Auswirkung	Empfehlung
+
+  Wissensgebiet	SWOT	Beschreibung	Auswirkung	Empfehlung
+
+  Integration	Stärke	Die klare Strukturierung der Arbeitspakete erleichterte die
+  Integration der Projektinhalte.	Hohe Transparenz über Abhängigkeiten und
+  Fortschritt.	Projektstrukturpläne früh und vollständig aufsetzen.
+
+  Integration	Schwäche	Abhängigkeiten zwischen einzelnen Arbeitspaketen waren
+  nicht sofort sichtbar.	Nachsteuerungsbedarf im Projektplan.	Abhängigkeiten
+  explizit im Projektplan kennzeichnen.
+
+  Inhalt & Umfang	Schwäche	Der Projektumfang wurde zu Beginn nur auf hoher Ebene
+  beschrieben.	Rückfragen bei der Umsetzung einzelner Arbeitspakete.	Scope
+  frühzeitig detaillieren und verbindlich abstimmen.
+
+  Inhalt & Umfang	Chance	Die klare Trennung von Haupt- und Teilaufgaben
+  verbesserte die Übersicht.	Bessere Priorisierung der Aufgaben.	Struktur
+  konsequent beibehalten.
+
+  Qualität	Stärke	Abnahmepunkte pro Arbeitspaket unterstützten die
+  Qualitätssicherung.	Weniger Nacharbeit am Projektende.	Abnahmekriterien
+  verbindlich definieren.
+
+  Risiko	Risiko	Termin- und Ressourcenrisiken wurden erst im Projektverlauf
+  konkret.	Erhöhter Steuerungsaufwand.	Risiken regelmäßig bewerten und
+  nachhalten.
+
+  Risiko	Chance	Die strukturierte Projektplanung erleichterte die Identifikation
+  von Risiken.	Frühzeitige Gegenmaßnahmen möglich.	Risikolog dauerhaft im
+  Projekt verankern.
+
+  Termine	Risiko	Engpässe bei Ressourcen können zu Terminverschiebungen
+  führen.	Gefährdung einzelner Meilensteine.	Frühzeitige Kapazitätsabstimmung
+  mit der Linienorganisation.
+
+  Termine	Stärke	Der Meilensteinplan schuf früh Klarheit über den zeitlichen
+  Ablauf.	Gute Planbarkeit der Projektphasen.	Meilensteine regelmäßig überprüfen
+  und aktualisieren.
+
+  Organisation	Schwäche	Rollenabgrenzungen zwischen Projektleitung und
+  Projektteam waren nicht immer eindeutig.	Doppelarbeit bei einzelnen
+  Aufgaben.	Rollen und Verantwortlichkeiten klar dokumentieren.
+
+  Organisation	Stärke	Das Projektteam arbeitete strukturiert entlang des
+  Projektplans.	Stabiler Projektfortschritt.	Projektorganisation als Blaupause
+  für Folgeprojekte nutzen.
+
+  Stakeholder	Schwäche	Nicht alle Stakeholder waren zu Projektbeginn aktiv
+  eingebunden.	Späterer Abstimmungsaufwand.	Stakeholderanalyse frühzeitig
+  durchführen und regelmäßig aktualisieren.
+
+  Stakeholder	Chance	Der Auftraggeber war regelmäßig in Entscheidungsprozesse
+  eingebunden.	Schnelle Freigaben und klare Prioritäten.	Entscheidungsroutinen
+  beibehalten.
+_summary: >-
+  Projekt- und Projektmanagementergebnisse: Ein vollständiger Projektauftrag,
+  ein strukturierter Projektplan sowie ein abgestimmter Meilensteinplan wurden
+  erstellt. Die Projektorganisation, Rollen und Kommunikationsformate sind
+  definiert und dokumentiert.
+
+  Time: Der Projektzeitplan ist erstellt und Meilensteine sind terminiert.
+  Abhängigkeiten zwischen Arbeitspaketen sind berücksichtigt.
+
+  Scope: Der Projektumfang umfasst die definierten Arbeitspakete gemäß
+  Projektstrukturplan inklusive Planung, Umsetzung und Abschluss.
+
+  Quality: Qualität wird über klare Anforderungen, abgestimmte Arbeitspakete und
+  definierte Abnahmepunkte sichergestellt.
+
+  Stakeholder: Zentrale Stakeholder wie Auftraggeber, Projektleitung und
+  Projektteam sind identifiziert und in der Projektorganisation abgebildet.
+
+  Risk: Risiken bestehen insbesondere in Abhängigkeiten zwischen Arbeitspaketen,
+  Ressourcenverfügbarkeit und Terminverschiebungen.
+
+  Organisation: Die Projektorganisation ist aufgebaut; Rollen und
+  Verantwortlichkeiten sind festgelegt und den Arbeitspaketen zugeordnet.
+
+  Integration: Die Integration der einzelnen Arbeitspakete erfolgt über den
+  Projektstrukturplan und den abgestimmten Meilensteinplan.

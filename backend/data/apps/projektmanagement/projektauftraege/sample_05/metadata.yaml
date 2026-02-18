@@ -1,0 +1,392 @@
+id: sample_05
+name: Einführung Kernsystem Insurance
+project_type: infrastructure
+start_date: 2016-09-01
+end_date: 2022-01-15
+projektleiter: Jörg Schneider
+auftraggeber: ""
+description: "Importiert aus: 08 NSC20 MGT"
+goals: Einführung eines enheitlichen Insurance-System für mehrere
+  Verbundgesellschaften in die Zielarchitektur des Verbundes.
+criteria:
+  - Erfolgskriterium 1
+scope: Es gibt die gesetzliche Vorgabe, die Areitszeiten von Mitarbeitenden zu
+  erfassen. Wir möchten dafür eine moderne Cloudlösung einführen, damit Remote
+  und Büroarbeitszeiten gleichermaßen erfasst werden können. Die
+  Erfassungsgeräte befinden sich bei den Mitarbeitenden und eine einfach
+  Handhabung ist sichergestellt. Das System ist für die Mitarbeitenden atrraktiv
+  und daher nutzen sie es verlässlich,wobei keine zusätzliche Belastung
+  entsteht.
+in_scope: []
+out_scope: []
+tasks:
+  - id: HA-01
+    name: Projektauftrag erstellen
+    responsible: Ingrid Leitung
+    start_date: ""
+    end_date: ""
+    effort: 7
+    status: open
+  - id: HA-02
+    name: Prototyp
+    responsible: Monika Lenk
+    start_date: ""
+    end_date: ""
+    effort: 16
+    status: open
+  - id: HA-03
+    name: Testphase
+    responsible: Tom Müller
+    start_date: ""
+    end_date: ""
+    effort: 14
+    status: open
+  - id: HA-04
+    name: Technische Basis erstellen
+    responsible: Axel Schreiber
+    start_date: ""
+    end_date: ""
+    effort: 46
+    status: open
+  - id: HA-05
+    name: Stakeholderkommunikation
+    responsible: Jana Helfer
+    start_date: ""
+    end_date: ""
+    effort: 3
+    status: open
+  - id: HA-06
+    name: Risikomanagement
+    responsible: Ingrid Leitung
+    start_date: ""
+    end_date: ""
+    effort: 6
+    status: open
+milestones:
+  - id: MS-1
+    name: Projektstart
+    date: 2016-09-01
+    description: ""
+  - id: MS-2
+    name: Entwicklung Basissystem abgeschlossen
+    date: 2017-12-31
+    description: ""
+  - id: MS-3
+    name: Entwicklung Sparte K abgeschlossen
+    date: 2018-03-31
+    description: ""
+  - id: MS-4
+    name: Entwicklung Sparte S abgeschlossen
+    date: 2019-03-31
+    description: ""
+  - id: MS-5
+    name: Entwicklung Sparte H abgeschlossen
+    date: 2020-03-31
+    description: ""
+  - id: MS-6
+    name: Entwicklung Sparte R abgeschlossen
+    date: 2020-12-31
+    description: ""
+  - id: MS-7
+    name: Entwicklung Sparte U abgeschlossen
+    date: 2021-12-31
+    description: ""
+  - id: MS-8
+    name: Projektabschluss
+    date: 2022-01-15
+    description: ""
+  - id: MS-9
+    name: ""
+    date: ""
+    description: ""
+budget:
+  - id: PB1
+    item: Projektkosten
+    provider: Externe Partner
+    amount: 336000
+  - id: PB2
+    item: Projektaufwand
+    provider: Interne Mitarbeiter
+    amount: 352000
+  - id: RB1
+    item: Risikowert
+    provider: Interne Kosten
+    amount: 10330
+  - id: TL1
+    item: Lizenzen
+    provider: DigiZeit AG
+    amount: 870
+  - id: HW1
+    item: Hardware
+    provider: Stechuhr GmbH
+    amount: 800
+risks:
+  - id: R-01
+    type: threat
+    description: Technik ist teurer
+    probability: low
+    impact: medium
+    mitigation: ""
+  - id: R-02
+    type: threat
+    description: Lieferschwierigkeiten der Technik
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: R-03
+    type: threat
+    description: Testteam fällt kleiner aus
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: R-04
+    type: threat
+    description: Testphase dauert länger
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: R-05
+    type: threat
+    description: Lieferant erhöht Preise für Material
+    probability: high
+    impact: medium
+    mitigation: ""
+  - id: C-01
+    type: opportunity
+    description: Technik ist günstiger
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: C-02
+    type: opportunity
+    description: Testphase läuft kürzer
+    probability: low
+    impact: medium
+    mitigation: ""
+  - id: C-03
+    type: opportunity
+    description: Hohe Integration der Software gegeben
+    probability: medium
+    impact: medium
+    mitigation: ""
+organization:
+  - id: AG
+    name: Ingo Auftrag
+    role: Auftraggeber - Leiter
+    email: ""
+  - id: LK1
+    name: Klaus Frickel
+    role: Lenkungskreis - Leiter
+    email: ""
+  - id: LK2
+    name: Rita Kundig
+    role: Lenkungskreis - Mitarbeiter
+    email: ""
+  - id: LK3
+    name: Monika Lenk
+    role: Lenkungskreis - Mitarbeiter
+    email: ""
+  - id: PL
+    name: Jörg Schneider
+    role: Projektleitung - Leiter
+    email: ""
+  - id: PO
+    name: Rita Müller
+    role: Projektleitung - Mitarbeiter
+    email: ""
+  - id: KT1
+    name: Axel Schreiber
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT2
+    name: Jana Helfer
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT3
+    name: Tanja Liebich
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: IT1
+    name: Klaus Lenker
+    role: IT-Entwicklung - Leiter
+    email: ""
+stakeholders:
+  - id: SH1
+    name: Eigene Mitarbeiter
+    role: PM und Agilisten
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH2
+    name: aktuelle Kunden
+    role: mit laufenden Projekten
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH3
+    name: ehemalige Kunden
+    role: mit abgeschlossenen Projekten
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH4
+    name: Netzwerk
+    role: Multiplikatoren
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH5
+    name: Verbände
+    role: Bitkom, PMI etc.
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH6
+    name: Wettbewerber
+    role: (offen Marktanalyse)
+    interest: medium
+    influence: medium
+    expectations: ""
+  - id: SH7
+    name: Partner
+    role: Multiplikatoren
+    interest: medium
+    influence: medium
+    expectations: ""
+created_at: 2026-02-15T21:31:22.744Z
+updated_at: 2026-02-15T21:31:22.744Z
+created_by: migration
+status: completed
+current_step: 9
+_source: 08 NSC20 MGT
+_lessons_learned: >-
+  Wissensgebiet	SWOT	Beschreibung	Auswirkung	Empfehlung
+
+  Integration	Stärke	Zusammenarbeit zwischen Auftraggeber und Projektleitung war
+  sehr gut organisiert	Hohe Transparenz zum Projektfortschritt und bei der
+  Findung gemeinsamer Entscheidungen	Lenkungskreise empfängergerecht vorbereiten
+  und Entscheidungsbedarfe vorher transparent zu machen
+
+  Integration	Schwäche	Zusammenarbeit zwischen Projektleitung und Projektteam
+  war nicht so gut	Projektteam hat teilweise nicht im Sinne des Projektauftrages
+  agiert	Binde auch das (Kern-)Projekteam in die Entwicklung und Genehmigung des
+  Projektauftrages mit ein
+
+  Inhalt & Umfang	Schwäche	Inhalt wurde durch die IT (ohne Fachbereich)
+  vorgegeben	im Projektverlauf hat der Fachbereich die Ergebnisse (IT-Anwendung)
+  nicht angenommen und akzeptiert	Endanwender schon in der Konzeptphase, aber
+  spätestens bei der Erstellung des Projektauftrages einbinden
+
+  Inhalt & Umfang	Risiko	Inhalt wird als Basissystem und weiteren Ausprägungen
+  eingeführt	Die erste nutzbare Anwendung konnte erst nach 4,5 Jahren produktiv
+  genutzt werden	Große Eigententwicklungen mit Design Thinking austesten und
+  stufenweise Einführung planen
+
+  Qualität	Stärke	Qualitätsanforderungen (z.B. Anwortdauer der Anwendung por
+  Maske < 1 sec.) frühzeitig definiert	Test- und Abnahmekriterien wurden damit
+  frühzeitig festgelegt und in der Entwicklung
+  berücksichtigt	Qualitätsanforderungen als Erfolgskriterien bereits im
+  Projektauftrag mit den Projektzielen verknüpfen 
+
+  Qualität	Risiko	Qualitätsanforderungen nur durch die IT und ohne den
+  Endanwender festlegen 	Fehlende Akzeptanz im Projektverlauf durch die Tester
+  und späteren Anwender	Nutzer und Anwender des Projektergebnisses bereits in
+  der Konzeption und beim Projektauftrag mit einbinden
+
+  Kosten	Stärke	Aufwand und Kosten wurden von Anfang an bis auf Mitarbeiterebene
+  geplant und gesteuert	Hohe Transparenz des Aufwandes und der Kosten in Bezug
+  auf den Projektfortschritt	Aufwands- und Kostenmanagement ist bei großen
+  Projekten und wichtiges Steuerungsinstrument und sollte nicht nach "Außen"
+  (z.B. Controlling) abgegeben werden
+
+  Kosten	Chance	Nutzung der Aufwandplanung auch für interne Mitarbeitende
+  machen	Die Verfügbarkeit der zugesicherten Ressourcen(Plan = 80% und Ist =
+  40%) konnte frühzeitung erreicht werden	Aufwands- und Kostenmanagement
+  (teilweise auch Eraned Value Management) in die Berichterstattung an die
+  Auftraggeber mit aufnehmen
+
+  Kommunikation	Stärke	Aufbereitung der Präsentationen für den Auftraggeber
+  waren sehr strukturiert	Der Status des großen Projektes konnte so, sehr
+  schnell vermittelt werden	Stelle den Bezug zum Projektauftrag bei dem bericht
+  an den Auftraggeber her
+
+  Kommunikation	Schwäche	Einbindung der Stakeholder wurde anfangs geplant, aber
+  nicht konsequent umgesetzt	Insbesondere der spätere Nutzer des Systems war
+  nicht entsprechend seine Rolle eingebunden	Binde den späteren Nutzer des
+  Projektergebnisses frühzeitig n die Projektorganisation ein
+
+  Risiko	Stärke	Risikomanagement wurde frühzeitig gemacht und in die
+  Berichterstattung eingebunden	Hohe Transparenz und Einbeziehung der
+  Auftraggeber erreicht	Dieses wichtige Hilfmittel für die Unterstützung durch
+  die Auftraggeber nicht ungenutzt lassen
+
+  Risiko	Risiko	Abnutzungsgefahr durch immer wieder gleiche Risiken, die gezeigt
+  werden	"Kennen wir schon, hatten wir schon, wir müssen nichts
+  unternehmen"	Fokus der Berichterstatung auf die Veränderungen
+  (Eintrittswahrscheinlichkeit und Schadenshöhe) legen
+
+  Termine	Stärke	Roadmap mit den Meilensteinen und Abhängikeiten transparent
+  machen und Veränderungen aufzeigen	Unterstützung der Auftraggeber bei der
+  Einordnung der Auswirkungen auf die eigene Strategie-Roadmap	Es ist hilfreich
+  die "umliegenden" Projekte und deren Abhängigkeiten zu kennen (AG und PL
+  kontaktieren)
+
+  Termine	Schwäche	Die Neuplanung der Roadmap und Meilensteine zu optimistisch
+  angegangen	Auch in den weiteren Phasen kam es wieder zu Verschiebungen, weil
+  die Projektperformance nicht besser wurde	Nutze Earned Value Manegement (CPI
+  uns SPI), um die eigene Projektperformance zu kennen und einzubeziehen
+
+  Organisation	Schwäche	Zusammenspiel von agiler Umsetzung und Projektmanagement
+  hat nicht so gut funktioniert	Teilweise wurde die abgestimmte Roadmap nicht in
+  der Sprintplanung mit berücksichtigt	Binde die Product Owner von agilen
+  Umsetzungsteams mt in die Planung der Roadmap des Projektes mit ein
+
+  Beschaffung	Schwäche	Bereitstellung von internen Mitarbeitern nicht konsequent
+  vereinbart	Zugesicherte Ressourcen für das Projekt waren noch in andere
+  Aufgaben eingebunden und fehlten	Vereinbarungen mit den zuständigen Bereichen
+  treffen und ggf. über den Lenkungskreis eskalieren
+
+  Stakeholder	Schwäche	Fachbereich als späteren Anwender des Projektergebnisses
+  nich richtig eingebunden	Fachbereich hat die Einführung der neuen Applikation
+  durch unzureichende Nutzung verhindert	Eskalation über die Auftraggeber
+  veranlassen (hat in dem Fall nicht funktioniert - ein Vorstand für Fachbereich
+  und Projektteam verantwortlich)
+
+  Stakeholder	Chance	Projektmarketing von Anfang an in die Kommunikationsplanung
+  mit aufnehmen	Interesse der betroffenen Stakholder und damit den positiven
+  Einfluss steigern	Wichtiger Punkt für die Kommunikationsstrategie für die
+  unterschiedlichen Stakeholdergruppen
+_summary: >-
+  Projekt- und Projektmanagementergebnisse
+
+  Time: Der Roll Out der Basisversion hat sich verzögert. Damit verzögert sich
+  auch die Weiterentwicklung von 6 unterschiedlichen Ausprägungen.
+
+  Scope: Die Inhalte wurden entsprechend der Planung der IT umgesetzt, aber
+  nicht vom Fachbereich angenommen
+
+  Quality: Qualitätsanforderungen im Kern erfüllt. Es gab kleinere Ausreißer.
+
+  Budget: Aufwand und Kosten mussten im Projektverlauf mehrfach erhöht werden,
+  da die Komplexität der IT-Landschaft unterschätzt wurde.
+
+  Beschaffung: Das Projekt wurde überwiegend mit internen Kräften umgesetzt,
+  sodass die Beschaffung von externen Ressourcen gut funktionierte.
+
+  Stakeholder: SH wurden nur unzureichend betrachtet. Insbesondere wurde der
+  Fachbereich, als späterer Nutzer des Systems, nicht verpflichtend einbezogen.
+
+  Risk: Der Fokus der Risikobetrachtungen lag auf der Umsetzung des Scopes.
+  Übergreifende Betrachtungen auf den Projektverlauf und die spätere Nutzung
+  kamen zu kurz.
+
+  Organisation: Die Projektorganisation (AG, LK, PL, KT, PT) war sehr gut
+  aufgestellt und hat funktioniert.
+
+  Kommunikation: Die Kommunikation innerhalb des Projektes war sehr gut. Die
+  Einbeziehung der Stakeholder hat nicht stattgefunden. Die Statusberichte PL
+  (14-tägig) und AG (aller 6 Wochen) wurden durchgeführt und dokumentiert.
+
+  Integration: Die Zusammenführung der Ergebnisse aus den Wissensgebieten hat
+  sehr gut funktioniert. Der Projektfortschritt und die Prognose waren
+  transparent und nachvollziehbar.

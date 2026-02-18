@@ -1,0 +1,23 @@
+id: task_mlcb1vh6s84krb
+title: SSE Test Task
+description: Sage Hallo Welt
+type: simple
+priority: high
+created_by: user
+trigger: api
+created_at: 2026-02-07T12:43:16.506Z
+updated_at: 2026-02-07T12:43:19.169Z
+status: completed
+progress: 100
+current_step: 0
+total_steps: 0
+steps: []
+config:
+  max_iterations: 50
+  timeout_minutes: 30
+  notify_on_complete: true
+  auto_retry_on_failure: false
+started_at: 2026-02-07T12:43:18.252Z
+result_file: /Users/andreasbachmann/Documents/Development/AgentWork/agent-platform/data/tasks/results/task_mlcb1vh6s84krb-result.json
+result_summary: Hallo! Wie kann ich Ihnen heute helfen?
+completed_at: 2026-02-07T12:43:19.169Z

@@ -1,0 +1,23 @@
+id: session_1770677889711_f20rupc
+title: "Adacor: Genutzte Rechenzentren und Informationsquellen"
+summary: "Adacor mietet Rechenzentrumsflächen, aber die genauen Standorte sind nicht im Dokument 'IKS-Beschreibung IDW PS 951 2021.pdf' genannt. Recherche möglich."
+keywords:
+  - Adacor
+  - Rechenzentren
+  - Standorte
+  - IKS-Beschreibung
+  - data centers
+  - cloud infrastructure
+  - research
+lastSummaryAt: 2
+createdAt: "2026-02-09T22:58:17.556Z"
+updatedAt: "2026-02-09T22:59:11.519Z"
+messages:
+  - role: user
+    content: "Welche Rechenzentren nutzt Adacor?"
+  - role: assistant
+    content: "Im geladenen Dokument \"IKS-Beschreibung IDW PS 951 2021.pdf\" wird beschrieben, dass Adacor Rechenzentrumsflächen anmietet, aber die genauen Standorte oder Namen der genutzten Rechenzentren werden nicht explizit genannt.\n\nFalls du detailliertere Informationen zu den genutzten Rechenzentren benötigst, kann ich eine Recherche durchführen oder in anderen Quellen suchen. Möchtest du, dass ich das tue?"
+  - role: user
+    content: "Welche Maßnahmen zum Capacity Management sind beschrieben?"
+  - role: assistant
+    content: "Im Dokument \"IKS-Beschreibung IDW PS 951 2021.pdf\" werden unter Abschnitt 5.2.2 Capacity Management (KA-CAP) folgende Maßnahmen zum Capacity Management beschrieben:\n\n1. **Planung und Steuerung der Kapazitäten**:\n   - Adacor plant und steuert die Kapazitäten der IT-Infrastruktur, um die vereinbarten Service-Level zu erfüllen.\n   - Dies umfasst die Bereitstellung ausreichender Ressourcen (z. B. Server, Speicher, Netzwerk) zur Unterstützung der Geschäftsprozesse der Kunden.\n\n2. **Monitoring und Analyse**:\n   - Die Kapazitäten werden kontinuierlich überwacht und analysiert, um Engpässe frühzeitig zu erkennen und zu vermeiden.\n   - Adacor nutzt Monitoring-Tools, um die Auslastung der Ressourcen zu überwachen und Prognosen für zukünftige Kapazitätsanforderungen zu erstellen.\n\n3. **Kapazitätsplanung**:\n   - Adacor führt eine regelmäßige Kapazitätsplanung durch, um sicherzustellen, dass die IT-Infrastruktur den aktuellen und zukünftigen Anforderungen gerecht wird.\n   - Dies umfasst die Analyse von Wachstumstrends, die Planung von Upgrades und die Bereitstellung zusätzlicher Ressourcen.\n\n4. **Ressourcenmanagement**:\n   - Adacor verwaltet die Ressourcen effizient, um eine optimale Auslastung zu gewährleisten und unnötige Kosten zu vermeiden.\n   - Dies umfasst die Zuweisung von Ressourcen an verschiedene Projekte und Kunden sowie die Freigabe von Ressourcen, die nicht mehr benötigt werden.\n\n5. **Dokumentation und Berichterstattung**:\n   - Adacor dokumentiert die Kapazitätsplanung und -steuerung sowie die Ergebnisse des Monitorings und der Analysen.\n   - Regelmäßige Berichte werden erstellt, um den Status der Kapazitäten und die Einhaltung der Service-Level zu überwachen.\n\nDiese Maßnahmen stellen sicher, dass die IT-Infrastruktur von Adacor den Anforderungen der Kunden entspricht und eine hohe Verfügbarkeit und Performance gewährleistet."

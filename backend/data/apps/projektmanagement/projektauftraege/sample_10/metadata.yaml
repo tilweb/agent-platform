@@ -1,0 +1,294 @@
+id: sample_10
+name: Entwicklung Prototyp Projektportfolio-Management
+project_type: internal
+start_date: 2025-05-27
+end_date: 2025-12-19
+projektleiter: Franziska Schacht
+auftraggeber: Steffen Carls
+description: "Importiert aus: 10 SW Zehdenick"
+goals: >-
+  WHY – Warum?
+
+  Die Stadtwerke Zehdenick benötigen Transparenz und Struktur im
+  Projektmanagement, da aktuell Übersicht, Standards, klare Aufgabenverteilung
+  und Dokumentation fehlen.
+
+
+  HOW – Wie?
+
+  Durch die gemeinsame Entwicklung eines digitalen Prototyps auf Basis von MS
+  Teams und Excel Pivot zur Standardisierung von Prozessen und Berichten.
+
+
+  WHAT – Was?
+
+  Ein funktionsfähiger Prototyp für das Projektportfoliomanagement inklusive
+  Vorlagen, Ablagestrukturen, Reporting und Schulung der Mitarbeitenden.
+criteria:
+  - Erfolgskriterium 1
+scope: ""
+in_scope: []
+out_scope: []
+tasks:
+  - id: HA-02
+    name: Projektauftrag erstellen
+    responsible: Franziska Schacht
+    start_date: ""
+    end_date: ""
+    effort: 7
+    status: open
+  - id: HA-03
+    name: Bestandsaufnahme laufende Projekte, Überarbeitung PA
+    responsible: Franziska Schacht
+    start_date: ""
+    end_date: ""
+    effort: 8
+    status: open
+  - id: HA-04
+    name: Erstellung von Statusberichten, Abbildung PPM in MS Teams
+    responsible: Franziska Schacht
+    start_date: ""
+    end_date: ""
+    effort: 16
+    status: open
+  - id: HA-05
+    name: Dokumentenablage Standards
+    responsible: Robin van den Berg
+    start_date: ""
+    end_date: ""
+    effort: 8
+    status: open
+  - id: HA-06
+    name: Aufbereitung des Berichtswesens
+    responsible: Robin van den Berg
+    start_date: ""
+    end_date: ""
+    effort: 8
+    status: open
+  - id: HA-07
+    name: Einführende Begleitung in PPM
+    responsible: Franziska Schacht
+    start_date: ""
+    end_date: ""
+    effort: 8
+    status: open
+  - id: HA-08
+    name: Projektabschluss
+    responsible: Franziska Schacht
+    start_date: ""
+    end_date: ""
+    effort: 8
+    status: open
+milestones:
+  - id: MS-1
+    name: Projektinitialisierung
+    date: 2025-05-27
+    description: ""
+  - id: MS-2
+    name: Projektstart
+    date: 2025-05-27
+    description: ""
+  - id: MS-3
+    name: Genehmigung Projektauftrag
+    date: 2025-06-17
+    description: ""
+  - id: MS-4
+    name: Erstellung von Statusberichten
+    date: 2025-07-01
+    description: ""
+  - id: MS-5
+    name: Abbildung PPM in MS Teams
+    date: 2025-08-04
+    description: ""
+  - id: MS-6
+    name: Dokumentenablage Standards
+    date: 2025-08-15
+    description: ""
+  - id: MS-7
+    name: Aufbereitung des Berichtswesens
+    date: 2025-08-22
+    description: ""
+  - id: MS-8
+    name: Projektabschluss
+    date: 2025-12-19
+    description: ""
+budget:
+  - id: PB1
+    item: Projektkosten
+    provider: RUHR PM
+    amount: 6000
+risks:
+  - id: R-01
+    type: threat
+    description: Keyressource fällt aus
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: R-02
+    type: threat
+    description: Unklare Rollen und Verantwortlichkeiten
+    probability: high
+    impact: medium
+    mitigation: ""
+  - id: R-03
+    type: threat
+    description: Widerstand der Mitarbeitenden
+    probability: low
+    impact: medium
+    mitigation: ""
+  - id: R-04
+    type: threat
+    description: Technische Inkompatibilitäten (z. B. mit MS Teams)
+    probability: high
+    impact: medium
+    mitigation: ""
+  - id: R-05
+    type: threat
+    description: Zu hohe parallele Belastung des Projektteams
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: C-01
+    type: opportunity
+    description: Hohe Beteiligung der Fachbereiche
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: C-02
+    type: opportunity
+    description: Schnell verfügbare interne Ressourcen
+    probability: medium
+    impact: medium
+    mitigation: ""
+  - id: C-03
+    type: opportunity
+    description: Frühe Quick Wins
+    probability: medium
+    impact: medium
+    mitigation: ""
+organization:
+  - id: AG1
+    name: Steffen Carls
+    role: Auftraggeber - Leiter
+    email: ""
+  - id: PL
+    name: Franziska Schacht
+    role: Projektleitung - Leiter
+    email: ""
+  - id: KT1
+    name: Jenna Benzin
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+  - id: KT2
+    name: Robin van den Berg
+    role: Projektkernteam - Mitarbeiter
+    email: ""
+stakeholders:
+  - id: SH1
+    name: Mitarbeitende
+    role: Stakeholder
+    interest: medium
+    influence: medium
+    expectations: ""
+created_at: 2026-02-15T21:31:22.750Z
+updated_at: 2026-02-15T21:31:22.750Z
+created_by: migration
+status: completed
+current_step: 9
+_source: 10 SW Zehdenick
+_lessons_learned: >-
+  Kategorie	Typ	Lesson Learned	Auswirkung	Empfehlung
+
+  Integration	Schwäche	Projektmanagement-Strukturen waren definiert, wurden
+  jedoch aufgrund begrenzter Zeitinvestition nicht konsequent genutzt	Begrenzter
+  Nutzen der PM-Instrumente und erhöhter Abstimmungsaufwand	Verbindliche Nutzung
+  zentraler PM-Strukturen und klare Erwartungen festlegen
+
+  Integration	Stärke	Zentrale Bündelung von Projekt-, Risiko- und
+  Statusinformationen schuf Transparenz	Reduzierte Rückfragen und besserer
+  Überblick	Zentrale Projektablage und Statusformate beibehalten
+
+  Inhalt & Umfang	Schwäche	Projektaufgaben wurden aufgrund knapper Ressourcen
+  und geringer Priorisierung teilweise nur oberflächlich
+  bearbeitet	Eingeschränkte inhaltliche Tiefe und Nachsteuerungsbedarf	Umfang
+  realistisch planen und Prioritäten früh klar festlegen
+
+  Qualität	Risiko	Begrenzte Zeit und Motivation wirkten sich auf die konsequente
+  Qualitätsabsicherung aus	Qualitätssicherung erforderte zusätzliche
+  Abstimmungen	Qualitätsanforderungen klar festlegen und verbindlich einfordern
+
+  Kosten	Schwäche	Ressourcenknappheit führte zu ineffizientem Einsatz
+  verfügbarer Kapazitäten	Indirekter Mehraufwand und eingeschränkte
+  Wirtschaftlichkeit	Ressourcen realistisch planen und Engpässe früh adressieren
+
+  Kommunikation	Schwäche	Geringe Verfügbarkeit der Beteiligten für
+  Abstimmungen	Eingeschränkter Informationsfluss und
+  Missverständnisse	Verbindliche Kommunikations- und Abstimmungsformate
+  festlegen
+
+  Kommunikation	Risiko	Widerstand, zusätzliche Zeit für Projektmanagement zu
+  investieren	Geringe Akzeptanz von PM-Aktivitäten und Strukturen	Mehrwert von
+  Projektmanagement früh transparent machen
+
+  Risiko	Schwäche	Risiken aus Ressourcenknappheit und Verfügbarkeit wurden
+  initial unterschätzt	Reaktive Steuerung im Projektverlauf	Risiken früh
+  identifizieren und regelmäßig überprüfen
+
+  Termine	Risiko	Abhängigkeit von einzelnen Personen bei eingeschränkter
+  Verfügbarkeit	Erhöhtes Termin- und Verzögerungsrisiko	Vertretungsregelungen
+  und Wissenstransfer sicherstellen
+
+  Organisation	Schwäche	Motivation im Projektteam und bei der Projektleitung war
+  nicht durchgängig gegeben	Reduzierte Umsetzungsgeschwindigkeit	Projektziele,
+  Nutzen und Erwartungen regelmäßig klar kommunizieren
+
+  Organisation	Risiko	Widerstand gegen Veränderungen im Projektumfeld	Verzögerte
+  Umsetzung von Maßnahmen	Veränderungen früh adressieren und aktiv begleiten
+
+  Stakeholder	Risiko	Verfügbarkeit zentraler Stakeholder war nicht durchgängig
+  gegeben	Erschwerte Entscheidungsfindung	Stakeholder-Verfügbarkeit früh
+  verbindlich klären
+_summary: >
+  Projekt- und Projektmanagementergebnisse
+
+  Time:Die Umsetzung erfolgte überwiegend im geplanten Zeitraum. Verzögerungen
+  ergaben sich durch eingeschränkte Verfügbarkeit von Projektbeteiligten,
+  Ressourcenknappheit sowie erhöhten Abstimmungsbedarf. Das Projektende wurde
+  entsprechend angepasst.
+
+  Scope:Der definierte Projektumfang (Projektauftrag, Statusberichte,
+  Dokumentenablage, Reporting- und PPM-Strukturen auf Basis von MS Teams und
+  Excel Pivot) wurde umgesetzt. Der entwickelte Prototyp bildet die Grundlage
+  für eine weitere Standardisierung und Skalierung.
+
+  Quality:Die definierten Qualitätsanforderungen wurden erreicht.
+  Standardisierte Vorlagen, Ablagestrukturen und Reportingformate wurden
+  erstellt, abgestimmt und freigegeben.
+
+  Budget:Der geplante Aufwand wurde eingehalten. Zusätzlicher Koordinations- und
+  Abstimmungsaufwand entstand durch begrenzte Ressourcenverfügbarkeit, konnte
+  jedoch innerhalb des vorgesehenen Rahmens kompensiert werden.
+
+  Beschaffung:Die Zusammenarbeit mit internen Beteiligten verlief grundsätzlich
+  zielgerichtet. Externe Unterstützungsleistungen waren punktuell erforderlich
+  und zweckmäßig eingesetzt.
+
+  Stakeholder:Relevante Stakeholder wurden eingebunden. Die Verfügbarkeit und
+  Priorisierung variierte jedoch, wodurch einzelne Abstimmungen verzögert
+  erfolgten und nachgesteuert werden mussten.
+
+  Risk:Risiken in Bezug auf Ressourcenverfügbarkeit, Motivation und Akzeptanz
+  von zusätzlichem Projektmanagement-Aufwand wurden initial unterschätzt. Dies
+  führte zu erhöhtem Steuerungs- und Kommunikationsaufwand im Projektverlauf.
+
+  Organisation:Die Projektorganisation war klar definiert und arbeitsfähig.
+  Rollen und Verantwortlichkeiten waren grundsätzlich geregelt, die zeitliche
+  Verfügbarkeit der Beteiligten jedoch begrenzt.
+
+  Kommunikation:Die interne Projektkommunikation erfolgte strukturiert über
+  Statusberichte und Abstimmungen. Aufgrund eingeschränkter Zeitbudgets der
+  Beteiligten war die Kommunikation nicht durchgängig konsistent.
+
+  Integration:Die Zusammenführung von Projektinformationen, Status und
+  Abhängigkeiten im Projektportfolio funktionierte. Transparenz und
+  Nachvollziehbarkeit wurden deutlich verbessert.

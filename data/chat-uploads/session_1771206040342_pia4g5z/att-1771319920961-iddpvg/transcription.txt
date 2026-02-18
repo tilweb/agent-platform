@@ -1,0 +1,1 @@
+ Direkt eine Audioaufnahme starten, die dann auch direkt transkribiert wird.

@@ -1,0 +1,14 @@
+id: session_1771205777696_8tmqlrw
+userId: user_1770561498880_39ohgu5
+title: Mach aus der Winterlandschaft eine Sommerlandschaft
+createdAt: "2026-02-16T01:36:17.725Z"
+updatedAt: "2026-02-16T01:36:28.287Z"
+messages:
+  - role: user
+    content: Mach aus der Winterlandschaft eine Sommerlandschaft
+    attachments:
+      - id: att-1771205777696-axzdn8
+        type: image
+        filename: img_1771204739019_u8pj6c.png
+        mimeType: image/webp
+        url: /api/chats/session_1771205777696_8tmqlrw/attachments/att-1771205777696-axzdn8/stream

@@ -1,0 +1,14 @@
+{
+  "id": "att-1770995270008-sxzmsg",
+  "sessionId": "session_1770995270008_3bdvznp",
+  "filename": "recording-1770995254284.webm",
+  "mimeType": "audio/webm",
+  "type": "audio",
+  "storagePath": "/Users/andreasbachmann/Documents/Development/AgentWork/agent-platform/data/chat-uploads/session_1770995270008_3bdvznp/att-1770995270008-sxzmsg",
+  "transcription": "[Fehler bei der Transkription: Transcription API error 400: {\"error\":{\"code\":400,\"message\":\"LLM model not found\",\"type\":\"invalid_request_error\"}}]",
+  "metadata": {
+    "size": 49459,
+    "convertedAt": "2026-02-13T15:07:50.076Z",
+    "originalPath": "/Users/andreasbachmann/Documents/Development/AgentWork/agent-platform/data/chat-uploads/session_1770995270008_3bdvznp/att-1770995270008-sxzmsg/original.webm"
+  }
+}

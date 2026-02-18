@@ -1,0 +1,88 @@
+id: lizenzvertrag
+name: Lizenzvertrag
+icon: document
+fields:
+  vertragspartner:
+    - type: text
+      required: true
+      label: Auftraggeber
+    - type: text
+      required: true
+      label: Lizenzgeber
+    - type: text
+      required: false
+      label: Rechtsform
+    - type: text
+      required: false
+      label: Anschrift
+    - type: text
+      required: false
+      label: Telefon
+    - type: text
+      required: false
+      label: E-Mail
+  laufzeit:
+    - type: date
+      required: true
+      label: Vertragsbeginn
+    - type: date
+      required: true
+      label: Vertragsende
+    - type: text
+      required: false
+      label: Verlängerungsoption
+  finanzen:
+    - type: number
+      required: true
+      label: Lizenzgebühr
+    - type: text
+      required: true
+      label: Zahlungsweise
+    - type: text
+      required: false
+      label: Zahlungstermin
+    - type: text
+      required: false
+      label: Rabattbedingungen
+  leistung:
+    - type: text
+      required: true
+      label: Lizenzart
+    - type: text
+      required: true
+      label: Nutzungsrechte
+    - type: text
+      required: false
+      label: Geografische Abdeckung
+    - type: text
+      required: false
+      label: Nutzungsdauer
+    - type: text
+      required: false
+      label: Einschränkungen
+  rechtliche:
+    - type: text
+      required: false
+      label: Haftungsausschluss
+    - type: text
+      required: false
+      label: Urheberrecht
+    - type: text
+      required: false
+      label: Geheimhaltung
+    - type: text
+      required: false
+      label: Streitbeilegung
+  sonstiges:
+    - type: text
+      required: false
+      label: Sondervereinbarungen
+    - type: text
+      required: false
+      label: Anhänge
+mapping:
+  party_a: vertragspartner.auftraggeber
+  party_b: vertragspartner.lizenzgeber
+  start_date: laufzeit.vertragsbeginn
+  end_date: laufzeit.vertragsende
+  value: finanzen.lizenzgebühr
