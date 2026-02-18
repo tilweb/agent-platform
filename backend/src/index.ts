@@ -77,28 +77,40 @@ initialize().catch(console.error);
 // Middleware
 app.use('*', logger());
 
-// CORS Configuration - explicit origin whitelist
-const ALLOWED_ORIGINS = [
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-  process.env.API_BASE_URL || 'http://localhost:3001',
-  // Add additional allowed origins here if needed
-].filter(Boolean) as string[];
+// CORS Configuration
+// In production with K8s Ingress: same-origin, no CORS needed.
+// In dev with Vite Proxy: same-origin via proxy, no CORS needed.
+// FRONTEND_URL can be set as fallback for setups without proxy/ingress.
+const frontendUrl = process.env.FRONTEND_URL;
+
+function buildOriginWhitelist(): string[] {
+  const origins = new Set<string>();
+  if (frontendUrl) {
+    origins.add(frontendUrl);
+    if (frontendUrl.includes('localhost')) {
+      origins.add(frontendUrl.replace('localhost', '127.0.0.1'));
+    } else if (frontendUrl.includes('127.0.0.1')) {
+      origins.add(frontendUrl.replace('127.0.0.1', 'localhost'));
+    }
+  }
+  return [...origins];
+}
+
+const ALLOWED_ORIGINS = buildOriginWhitelist();
 
 app.use('*', cors({
   origin: (origin) => {
     // No origin (same-origin requests, curl, etc.) - allow
-    if (!origin) {
-      return ALLOWED_ORIGINS[0] || null;
-    }
-    // Check against whitelist
-    if (ALLOWED_ORIGINS.includes(origin)) {
+    if (!origin) return null;
+    // If FRONTEND_URL is set, check against whitelist
+    if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) {
       return origin;
     }
-    // In development, also allow the default Vite port
-    if (process.env.NODE_ENV !== 'production' && origin === 'http://localhost:5173') {
-      return origin;
+    // No FRONTEND_URL configured — same-origin only (reject cross-origin)
+    if (ALLOWED_ORIGINS.length === 0) {
+      console.warn(`[CORS] Rejected cross-origin request from: ${origin} (set FRONTEND_URL to allow)`);
+      return null;
     }
-    // Reject unknown origins
     console.warn(`[CORS] Rejected origin: ${origin}`);
     return null;
   },

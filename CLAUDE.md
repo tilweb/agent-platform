@@ -1,0 +1,82 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Agent Platform is a multi-user AI agent platform with a React+Vite frontend and Bun+Hono backend. It features multi-provider LLM orchestration, an extensible tool ecosystem, RAG-based knowledge base, OAuth integrations, task queues, and image generation.
+
+## Development Commands
+
+### Backend (Bun + Hono)
+```bash
+cd backend
+bun install              # Install dependencies
+bun run dev              # Dev server with hot reload (port 3001)
+bun run start            # Production mode
+bun test                 # Run tests (bun:test)
+```
+
+### Frontend (React 19 + Vite)
+```bash
+cd frontend
+npm install              # Install dependencies
+npm run dev              # Dev server (port 5173)
+npm run build            # Production build (output: dist/)
+npm run lint             # ESLint
+npm run preview          # Preview production build
+```
+
+### Environment Setup
+```bash
+cp backend/.env.example backend/.env    # Configure API keys
+cp frontend/.env.example frontend/.env  # Set VITE_API_URL
+```
+
+## Architecture
+
+### Stack
+- **Backend**: TypeScript, Bun runtime, Hono framework. Uses file-based persistence (YAML/Markdown/JSON in `data/`), no database.
+- **Frontend**: JavaScript/JSX, React 19, Vite, React Router v7. Inline styles using `theme.js` design system. No CSS framework.
+
+### Key Backend Components (`backend/src/`)
+- **`routes/`** — Hono route handlers (chat, agents, auth, tasks, knowledge, providers, connections, rbac, tables, images, etc.)
+- **`services/`** — Business logic (LLM orchestration, agent execution, task queue, memory, search/indexing, image generation, document import/export, audit logging)
+- **`tools/`** — Tool registry with categories: local (file ops), API (web search, image gen), knowledge (RAG), tables, special (agent delegation), custom (user-defined, SSRF-protected), MCP
+- **`agents/loop.ts`** — Agentic execution loop with tool calling and streaming
+- **`middleware/`** — CORS, rate limiting, CSRF, security headers, SSRF protection
+- **`mcp/`** — Model Context Protocol server
+
+### Key Frontend Components (`frontend/src/`)
+- **`pages/`** — Route targets (ChatPage, SettingsPage, SearchPage, apps, etc.)
+- **`components/`** — Reusable UI (ChatWindow, Sidebar, Icons, GeneratedImage, etc.)
+- **`hooks/`** — 23+ custom hooks for business logic
+- **`context/`** — React Context providers (Auth, Agent, Notification)
+- **`config/theme.js`** — Complete design system (colors, typography, spacing, shadows)
+- **`utils/apiFetch.js`** — API client with credentials handling
+
+### Data Layer (`data/`)
+All persistence is file-based. Key directories: `config/` (providers.yaml, settings), `chats/`, `agents/`, `skills/`, `tasks/`, `knowledge-base/`, `auth/`, `connections/` (encrypted OAuth tokens).
+
+### Multi-Provider LLM System
+Configured in `data/config/providers.yaml`. Supports Adacor AI, OpenAI, Anthropic, Ollama, Nebius, Google Gemini. Each model declares capabilities (chat, vision, function_calling). Provider adapters in `backend/src/services/llm.ts`.
+
+## Coding Conventions
+
+### Language
+- **UI text**: German
+- **Code/variables**: English
+
+### Backend
+- Always use **Bun** (not Node.js) — `bun run`, `bun install`, `bun test`
+- Bun auto-loads `.env` — do not use dotenv
+- Prefer `Bun.file` over `node:fs` readFile/writeFile
+- Use Hono (not Express) for routing
+
+### Frontend
+- **Inline styles** with JS objects, always reference `theme.js` values — no hardcoded colors/spacing
+- Define styles as `const styles = {}` at the top of each file
+- Use **SVG icons** from `components/Icons.jsx` — no emojis (except country flags)
+- API calls must use `apiFetch` utilities (`apiGet`, `apiPost`, `apiPut`, `apiDelete` from `utils/apiFetch.js`)
+- Pages that can be embedded in Settings must support an `embedded` prop to hide their standalone header
+- See `frontend/CLAUDE.md` for detailed component patterns (tabs, buttons, cards, modals, forms, sidebar navigation, status badges, app detail headers)

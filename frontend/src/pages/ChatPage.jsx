@@ -9,7 +9,7 @@ import ChatSidebar from '../components/ChatSidebar';
 import { theme } from '../config/theme';
 import { apiPost, apiDelete } from '../utils/apiFetch';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const pageStyles = {
   container: {

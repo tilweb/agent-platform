@@ -91,10 +91,9 @@ export const SESSION_CONFIG = {
   // Cookie options
   cookieOptions: {
     httpOnly: true,
-    // Always use Secure flag - modern browsers (Chrome, Firefox, Edge) treat
-    // localhost as a "Secure Context" even over HTTP, so this works in development.
-    // Note: Safari may require actual HTTPS - use mkcert for local HTTPS if needed.
-    secure: true,
+    // In production, use Secure flag (requires HTTPS)
+    // In development, disable it so cookies work over HTTP with 127.0.0.1
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
     path: '/',
     maxAge: 3 * 24 * 60 * 60, // 3 days in seconds

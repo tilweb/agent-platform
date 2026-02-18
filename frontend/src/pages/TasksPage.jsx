@@ -12,7 +12,7 @@ import { useTasks, useTaskStream } from '../hooks/useTasks';
 import { useToast } from '../components/Toast';
 import { requestNotificationPermission, showBrowserNotification } from '../components/Toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Helper for relative time
 function getRelativeTime(dateString) {

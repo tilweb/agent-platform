@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { theme } from '../config/theme';
 import { PlugIcon } from '../components/Icons';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const styles = {
   container: {

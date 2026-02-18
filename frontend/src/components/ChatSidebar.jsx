@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { theme } from '../config/theme';
 import { SearchIcon, FolderIcon } from './Icons';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 function getTimeGroup(dateStr) {
   const now = new Date();
