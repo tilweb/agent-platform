@@ -7,7 +7,8 @@
 
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { authMiddleware, getCurrentUserId } from '../auth';
+import { authMiddleware, requireUserId } from '../auth';
+import { internalError } from '../utils/errorHandler';
 import {
   createTask,
   getTask,
@@ -61,7 +62,7 @@ export function emitTaskUpdate(taskId: string, event: string, data: any): void {
 // POST /api/tasks - Create a new task
 tasksRoutes.post('/', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const body = await c.req.json();
 
     const {
@@ -109,14 +110,14 @@ tasksRoutes.post('/', async (c) => {
     return c.json(task, 201);
   } catch (error: any) {
     console.error('Error creating task:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
 // GET /api/tasks - List all tasks for current user
 tasksRoutes.get('/', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const status = c.req.query('status') as TaskStatus | undefined;
     const type = c.req.query('type');
     const priority = c.req.query('priority') as TaskPriority | undefined;
@@ -185,7 +186,7 @@ tasksRoutes.post('/executor/start', async (c) => {
     return c.json({ status: 'started' });
   } catch (error: any) {
     console.error('Error starting executor:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -197,7 +198,7 @@ tasksRoutes.post('/executor/stop', async (c) => {
     return c.json({ status: 'stopped' });
   } catch (error: any) {
     console.error('Error stopping executor:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -209,7 +210,7 @@ tasksRoutes.put('/queue/settings', async (c) => {
     return c.json(settings);
   } catch (error: any) {
     console.error('Error updating queue settings:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -220,7 +221,7 @@ tasksRoutes.post('/queue/pause', async (c) => {
     return c.json({ paused: settings.paused });
   } catch (error: any) {
     console.error('Error pausing queue:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -231,7 +232,7 @@ tasksRoutes.post('/queue/resume', async (c) => {
     return c.json({ paused: settings.paused });
   } catch (error: any) {
     console.error('Error resuming queue:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -242,7 +243,7 @@ tasksRoutes.post('/recover', async (c) => {
     return c.json(result);
   } catch (error: any) {
     console.error('Error recovering tasks:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -255,7 +256,7 @@ tasksRoutes.post('/cleanup', async (c) => {
     return c.json({ deleted, older_than_days: days });
   } catch (error: any) {
     console.error('Error cleaning up tasks:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -306,7 +307,7 @@ tasksRoutes.get('/stream/all', async (c) => {
 
 // GET /api/tasks/:id - Get task details
 tasksRoutes.get('/:id', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
   try {
@@ -330,7 +331,7 @@ tasksRoutes.get('/:id', async (c) => {
 
 // GET /api/tasks/:id/result - Get full task result
 tasksRoutes.get('/:id/result', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
   try {
@@ -365,7 +366,7 @@ tasksRoutes.get('/:id/result', async (c) => {
 
 // PUT /api/tasks/:id - Update task
 tasksRoutes.put('/:id', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
   try {
@@ -388,13 +389,13 @@ tasksRoutes.put('/:id', async (c) => {
     return c.json(task);
   } catch (error: any) {
     console.error('Error updating task:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
 // DELETE /api/tasks/:id - Delete task
 tasksRoutes.delete('/:id', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
   try {
@@ -416,7 +417,7 @@ tasksRoutes.delete('/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting task:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -426,7 +427,7 @@ tasksRoutes.delete('/:id', async (c) => {
 
 // POST /api/tasks/:id/enqueue - Add task to queue
 tasksRoutes.post('/:id/enqueue', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
   try {
@@ -446,13 +447,13 @@ tasksRoutes.post('/:id/enqueue', async (c) => {
     return c.json(task);
   } catch (error: any) {
     console.error('Error enqueueing task:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
 // POST /api/tasks/:id/cancel - Cancel task
 tasksRoutes.post('/:id/cancel', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
   try {
@@ -480,13 +481,13 @@ tasksRoutes.post('/:id/cancel', async (c) => {
     return c.json(task);
   } catch (error: any) {
     console.error('Error cancelling task:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
 // POST /api/tasks/:id/pause - Pause task
 tasksRoutes.post('/:id/pause', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
   try {
@@ -510,13 +511,13 @@ tasksRoutes.post('/:id/pause', async (c) => {
     return c.json(task);
   } catch (error: any) {
     console.error('Error pausing task:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
 // POST /api/tasks/:id/resume - Resume paused task
 tasksRoutes.post('/:id/resume', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
   try {
@@ -540,13 +541,13 @@ tasksRoutes.post('/:id/resume', async (c) => {
     return c.json(task);
   } catch (error: any) {
     console.error('Error resuming task:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
 // POST /api/tasks/:id/retry - Retry failed task
 tasksRoutes.post('/:id/retry', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
   try {
@@ -568,7 +569,7 @@ tasksRoutes.post('/:id/retry', async (c) => {
     return c.json(task);
   } catch (error: any) {
     console.error('Error retrying task:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -633,7 +634,7 @@ export function broadcastTaskUpdate(taskId: string, event: string, data: any): v
 
 // GET /api/tasks/:id/stream - SSE stream for task updates
 tasksRoutes.get('/:id/stream', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
   // Check if task exists

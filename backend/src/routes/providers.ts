@@ -23,6 +23,7 @@ import { llmService } from '../services/llm';
 import { OpenAIAdapter } from '../services/llm/adapters/openai';
 import { OllamaAdapter } from '../services/llm/adapters/ollama';
 import { authMiddleware } from '../auth';
+import { internalError } from '../utils/errorHandler';
 import type {
   CreateProviderRequest,
   UpdateProviderRequest,
@@ -83,7 +84,7 @@ providers.post('/', adminMiddleware, async (c) => {
   } catch (error) {
     console.error('Error creating provider:', error);
     return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to create provider' },
+      { error: 'Fehler beim Erstellen des Providers' },
       400
     );
   }
@@ -134,7 +135,7 @@ providers.put('/active/:purpose', adminMiddleware, async (c) => {
   } catch (error) {
     console.error('Error setting active model:', error);
     return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to set active model' },
+      { error: 'Fehler beim Setzen des aktiven Modells' },
       400
     );
   }
@@ -181,7 +182,7 @@ providers.put('/:id', adminMiddleware, async (c) => {
   } catch (error) {
     console.error('Error updating provider:', error);
     return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to update provider' },
+      { error: 'Fehler beim Aktualisieren des Providers' },
       400
     );
   }
@@ -203,7 +204,7 @@ providers.delete('/:id', adminMiddleware, async (c) => {
   } catch (error) {
     console.error('Error deleting provider:', error);
     return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to delete provider' },
+      { error: 'Fehler beim Löschen des Providers' },
       400
     );
   }
@@ -232,7 +233,7 @@ providers.post('/:id/models', adminMiddleware, async (c) => {
   } catch (error) {
     console.error('Error adding model:', error);
     return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to add model' },
+      { error: 'Fehler beim Hinzufügen des Modells' },
       400
     );
   }
@@ -253,7 +254,7 @@ providers.put('/:id/models/:modelId', adminMiddleware, async (c) => {
   } catch (error) {
     console.error('Error updating model:', error);
     return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to update model' },
+      { error: 'Fehler beim Aktualisieren des Modells' },
       400
     );
   }
@@ -277,7 +278,7 @@ providers.delete('/:id/models/:modelId', adminMiddleware, async (c) => {
   } catch (error) {
     console.error('Error deleting model:', error);
     return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to delete model' },
+      { error: 'Fehler beim Löschen des Modells' },
       400
     );
   }
@@ -335,7 +336,7 @@ providers.post('/:id/test', async (c) => {
     console.error('Error testing provider:', error);
     return c.json({
       success: false,
-      message: error instanceof Error ? error.message : 'Test failed',
+      message: 'Provider-Test fehlgeschlagen',
     });
   }
 });

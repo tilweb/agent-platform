@@ -6,8 +6,13 @@
 import { Hono } from 'hono';
 import { commandRegistry } from '../commands/registry';
 import type { ExecuteCommandRequest } from '../commands/types';
+import { authMiddleware } from '../auth';
+import { uploadRateLimit } from '../middleware/rateLimit';
 
 export const commandRoutes = new Hono();
+
+// Require authentication for all command operations
+commandRoutes.use('/*', authMiddleware);
 
 /**
  * GET /api/commands
@@ -67,7 +72,7 @@ commandRoutes.get('/:id/options', async (c) => {
  * POST /api/commands/execute
  * Execute a command
  */
-commandRoutes.post('/execute', async (c) => {
+commandRoutes.post('/execute', uploadRateLimit, async (c) => {
   try {
     const body = await c.req.json<ExecuteCommandRequest>();
     const { command, optionId, args } = body;

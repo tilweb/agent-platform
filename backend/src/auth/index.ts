@@ -41,6 +41,7 @@ export {
   isAuthenticated,
   getCurrentUser,
   getCurrentUserId,
+  requireUserId,
 } from './middleware';
 
 // Groups

@@ -4,7 +4,8 @@
  */
 
 import { Hono } from 'hono';
-import { authMiddleware, getCurrentUserId } from '../auth';
+import { authMiddleware, requireUserId } from '../auth';
+import { internalError } from '../utils/errorHandler';
 import { canView, canEdit, canDelete, canManageAccess, listAccessibleResources } from '../rbac/accessControl';
 import { initializeResourceAccess, deleteResourceAccess, hasAccessEntries } from '../rbac/storage';
 import {
@@ -29,7 +30,7 @@ agentRoutes.use('/*', authMiddleware);
  */
 agentRoutes.get('/', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const allAgents = await listAgents();
 
     // Separate system agents (always visible) from user agents
@@ -84,7 +85,7 @@ agentRoutes.get('/', async (c) => {
  */
 agentRoutes.get('/:id/full', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const agentId = c.req.param('id');
 
     const agent = await getAgentFull(agentId);
@@ -116,7 +117,7 @@ agentRoutes.get('/:id/full', async (c) => {
  */
 agentRoutes.get('/:id', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const agentId = c.req.param('id');
 
     const agent = await loadAgent(agentId);
@@ -156,7 +157,7 @@ agentRoutes.get('/:id', async (c) => {
  */
 agentRoutes.post('/', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const body = await c.req.json();
     const { id, name, description, capabilities, tools, delegatable, systemPrompt, model } = body;
 
@@ -189,7 +190,7 @@ agentRoutes.post('/', async (c) => {
     });
   } catch (error: any) {
     console.error('Create agent error:', error);
-    return c.json({ error: error.message || 'Fehler beim Erstellen des Agents' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -199,7 +200,7 @@ agentRoutes.post('/', async (c) => {
  */
 agentRoutes.put('/:id', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const agentId = c.req.param('id');
 
     const agent = await loadAgent(agentId);
@@ -237,7 +238,7 @@ agentRoutes.put('/:id', async (c) => {
     });
   } catch (error: any) {
     console.error('Update agent error:', error);
-    return c.json({ error: error.message || 'Fehler beim Aktualisieren des Agents' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -247,7 +248,7 @@ agentRoutes.put('/:id', async (c) => {
  */
 agentRoutes.delete('/:id', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const agentId = c.req.param('id');
 
     const agent = await loadAgent(agentId);
@@ -275,7 +276,7 @@ agentRoutes.delete('/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Delete agent error:', error);
-    return c.json({ error: error.message || 'Fehler beim Löschen des Agents' }, 500);
+    return internalError(c, error);
   }
 });
 

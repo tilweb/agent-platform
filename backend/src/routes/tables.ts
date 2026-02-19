@@ -21,8 +21,13 @@ import type {
   ExportOptions,
   ImportOptions,
 } from '../tables/types';
+import { authMiddleware } from '../auth';
+import { internalError } from '../utils/errorHandler';
 
 export const tablesRoutes = new Hono();
+
+// Require authentication for all table operations
+tablesRoutes.use('/*', authMiddleware);
 
 // ============================================
 // Table CRUD
@@ -42,7 +47,7 @@ tablesRoutes.get('/', async (c) => {
     return c.json({ tables, count: tables.length });
   } catch (error: any) {
     console.error('Error listing tables:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -75,10 +80,10 @@ tablesRoutes.post('/', async (c) => {
     return c.json(table, 201);
   } catch (error: any) {
     console.error('Error creating table:', error);
-    if (error.message.includes('already exists')) {
-      return c.json({ error: error.message }, 409);
+    if (error instanceof Error && error.message.includes('already exists')) {
+      return c.json({ error: 'Eintrag existiert bereits' }, 409);
     }
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -89,7 +94,7 @@ tablesRoutes.get('/templates', async (c) => {
     return c.json({ templates });
   } catch (error: any) {
     console.error('Error listing templates:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -101,7 +106,7 @@ tablesRoutes.post('/templates/:id/apply', async (c) => {
     return c.json({ tables, count: tables.length });
   } catch (error: any) {
     console.error('Error applying template:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -126,7 +131,7 @@ tablesRoutes.get('/:id', async (c) => {
     return c.json(table);
   } catch (error: any) {
     console.error('Error getting table:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -150,7 +155,7 @@ tablesRoutes.put('/:id', async (c) => {
     return c.json(table);
   } catch (error: any) {
     console.error('Error updating table:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -178,7 +183,7 @@ tablesRoutes.delete('/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting table:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -203,10 +208,10 @@ tablesRoutes.post('/:id/columns', async (c) => {
     return c.json(table);
   } catch (error: any) {
     console.error('Error adding column:', error);
-    if (error.message.includes('already exists')) {
-      return c.json({ error: error.message }, 409);
+    if (error instanceof Error && error.message.includes('already exists')) {
+      return c.json({ error: 'Eintrag existiert bereits' }, 409);
     }
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -224,7 +229,7 @@ tablesRoutes.put('/:id/columns/:columnId', async (c) => {
     return c.json(table);
   } catch (error: any) {
     console.error('Error updating column:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -241,7 +246,7 @@ tablesRoutes.delete('/:id/columns/:columnId', async (c) => {
     return c.json(table);
   } catch (error: any) {
     console.error('Error deleting column:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -262,7 +267,7 @@ tablesRoutes.put('/:id/columns/order', async (c) => {
     return c.json(table);
   } catch (error: any) {
     console.error('Error reordering columns:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -288,10 +293,10 @@ tablesRoutes.get('/:id/rows', async (c) => {
     return c.json(result);
   } catch (error: any) {
     console.error('Error querying rows:', error);
-    if (error.message.includes('not found')) {
-      return c.json({ error: error.message }, 404);
+    if (error instanceof Error && error.message.includes('not found')) {
+      return c.json({ error: 'Nicht gefunden' }, 404);
     }
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -305,13 +310,13 @@ tablesRoutes.post('/:id/rows', async (c) => {
     return c.json(row, 201);
   } catch (error: any) {
     console.error('Error adding row:', error);
-    if (error.message.includes('not found')) {
-      return c.json({ error: error.message }, 404);
+    if (error instanceof Error && error.message.includes('not found')) {
+      return c.json({ error: 'Nicht gefunden' }, 404);
     }
-    if (error.message.includes('Validation failed')) {
-      return c.json({ error: error.message }, 400);
+    if (error instanceof Error && error.message.includes('Validation failed')) {
+      return c.json({ error: 'Validierungsfehler' }, 400);
     }
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -325,7 +330,7 @@ tablesRoutes.post('/:id/rows/query', async (c) => {
     return c.json(result);
   } catch (error: any) {
     console.error('Error querying rows:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -342,7 +347,7 @@ tablesRoutes.get('/:id/rows/:rowId', async (c) => {
     return c.json(row);
   } catch (error: any) {
     console.error('Error getting row:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -360,10 +365,10 @@ tablesRoutes.put('/:id/rows/:rowId', async (c) => {
     return c.json(row);
   } catch (error: any) {
     console.error('Error updating row:', error);
-    if (error.message.includes('Validation failed')) {
-      return c.json({ error: error.message }, 400);
+    if (error instanceof Error && error.message.includes('Validation failed')) {
+      return c.json({ error: 'Validierungsfehler' }, 400);
     }
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -390,7 +395,7 @@ tablesRoutes.delete('/:id/rows/:rowId', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting row:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -408,7 +413,7 @@ tablesRoutes.delete('/:id/rows', async (c) => {
     return c.json({ success: true, deleted: count });
   } catch (error: any) {
     console.error('Error deleting rows:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -424,7 +429,7 @@ tablesRoutes.get('/:id/views', async (c) => {
     return c.json({ views: tableViews });
   } catch (error: any) {
     console.error('Error listing views:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -442,10 +447,10 @@ tablesRoutes.post('/:id/views', async (c) => {
     return c.json(view, 201);
   } catch (error: any) {
     console.error('Error creating view:', error);
-    if (error.message.includes('already exists')) {
-      return c.json({ error: error.message }, 409);
+    if (error instanceof Error && error.message.includes('already exists')) {
+      return c.json({ error: 'Eintrag existiert bereits' }, 409);
     }
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -462,7 +467,7 @@ tablesRoutes.get('/:id/views/:viewId', async (c) => {
     return c.json(view);
   } catch (error: any) {
     console.error('Error getting view:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -477,7 +482,7 @@ tablesRoutes.put('/:id/views/:viewId', async (c) => {
     return c.json(view);
   } catch (error: any) {
     console.error('Error updating view:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -494,7 +499,7 @@ tablesRoutes.delete('/:id/views/:viewId', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting view:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -513,7 +518,7 @@ tablesRoutes.get('/:id/views/:viewId/rows', async (c) => {
     return c.json(result);
   } catch (error: any) {
     console.error('Error executing view:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -532,7 +537,7 @@ tablesRoutes.get('/:id/relations', async (c) => {
     return c.json({ outgoing, incoming });
   } catch (error: any) {
     console.error('Error getting relations:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -569,7 +574,7 @@ tablesRoutes.get('/:id/columns/:columnId/options', async (c) => {
     return c.json({ options });
   } catch (error: any) {
     console.error('Error getting relation options:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -604,7 +609,7 @@ tablesRoutes.post('/:id/export', async (c) => {
     });
   } catch (error: any) {
     console.error('Error exporting table:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -631,7 +636,7 @@ tablesRoutes.post('/:id/import', async (c) => {
     return c.json(result);
   } catch (error: any) {
     console.error('Error importing data:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -649,7 +654,7 @@ tablesRoutes.post('/:id/import/preview', async (c) => {
     return c.json(preview);
   } catch (error: any) {
     console.error('Error previewing import:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -667,7 +672,7 @@ tablesRoutes.post('/:id/backup', async (c) => {
     });
   } catch (error: any) {
     console.error('Error creating backup:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -684,9 +689,9 @@ tablesRoutes.post('/import/backup', async (c) => {
     return c.json(table, 201);
   } catch (error: any) {
     console.error('Error importing backup:', error);
-    if (error.message.includes('already exists')) {
-      return c.json({ error: error.message }, 409);
+    if (error instanceof Error && error.message.includes('already exists')) {
+      return c.json({ error: 'Eintrag existiert bereits' }, 409);
     }
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });

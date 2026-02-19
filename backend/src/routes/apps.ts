@@ -13,8 +13,12 @@ import {
 } from '../apps/registry';
 import { contractRoutes } from '../apps/vertragsmanagement/routes';
 import { projektmanagementRoutes } from '../apps/projektmanagement/routes';
+import { authMiddleware } from '../auth';
 
 const apps = new Hono();
+
+// Require authentication for all app operations
+apps.use('/*', authMiddleware);
 
 // ============== App Registry Endpoints ==============
 

@@ -13,14 +13,25 @@ import {
   listGeneratedImages,
   deleteGeneratedImage,
 } from '../services/imageStorage';
+import { authMiddleware } from '../auth';
+import { imageGenRateLimit } from '../middleware/rateLimit';
 
 export const imageRoutes = new Hono();
+
+// Require authentication for all image operations
+imageRoutes.use('/*', authMiddleware);
+
+// Validate resource IDs to prevent path traversal attacks
+const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+function isValidImageId(id: string): boolean {
+  return SAFE_ID_PATTERN.test(id) && id.length <= 128;
+}
 
 /**
  * POST /api/images/generate
  * Generate an image from a prompt
  */
-imageRoutes.post('/generate', async (c) => {
+imageRoutes.post('/generate', imageGenRateLimit, async (c) => {
   try {
     const body = await c.req.json();
     const { prompt, aspectRatio, size, numberOfImages, sessionId } = body;
@@ -29,6 +40,10 @@ imageRoutes.post('/generate', async (c) => {
       return c.json({ success: false, error: 'Prompt is required' }, 400);
     }
 
+    // Limit number of images per request
+    const maxImages = 4;
+    const imageCount = Math.min(Math.max(1, parseInt(numberOfImages) || 1), maxImages);
+
     // Ensure service is initialized
     await imageGenerationService.reload();
 
@@ -36,7 +51,7 @@ imageRoutes.post('/generate', async (c) => {
       prompt,
       aspectRatio,
       size,
-      numberOfImages: numberOfImages || 1,
+      numberOfImages: imageCount,
     });
 
     if (!result.success || result.images.length === 0) {
@@ -82,7 +97,7 @@ imageRoutes.post('/generate', async (c) => {
     console.error('[ImageRoutes] Generate error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Unknown error',
+      error: 'Fehler bei der Bildgenerierung',
     }, 500);
   }
 });
@@ -93,6 +108,10 @@ imageRoutes.post('/generate', async (c) => {
  */
 imageRoutes.get('/generated/:id', async (c) => {
   const id = c.req.param('id');
+
+  if (!isValidImageId(id)) {
+    return c.json({ error: 'Invalid image ID' }, 400);
+  }
 
   const imageBuffer = await getGeneratedImage(id);
   if (!imageBuffer) {
@@ -115,6 +134,10 @@ imageRoutes.get('/generated/:id', async (c) => {
  */
 imageRoutes.get('/generated/:id/metadata', async (c) => {
   const id = c.req.param('id');
+
+  if (!isValidImageId(id)) {
+    return c.json({ error: 'Invalid image ID' }, 400);
+  }
 
   const metadata = await getImageMetadata(id);
   if (!metadata) {
@@ -148,6 +171,10 @@ imageRoutes.get('/list', async (c) => {
  */
 imageRoutes.delete('/generated/:id', async (c) => {
   const id = c.req.param('id');
+
+  if (!isValidImageId(id)) {
+    return c.json({ error: 'Invalid image ID' }, 400);
+  }
 
   const deleted = await deleteGeneratedImage(id);
   if (!deleted) {

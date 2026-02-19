@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 
+settings.local.json
+
 # Dependencies
 node_modules/
 

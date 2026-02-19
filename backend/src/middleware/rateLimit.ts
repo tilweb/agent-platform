@@ -111,54 +111,52 @@ export function rateLimit(config: RateLimitConfig): MiddlewareHandler {
   };
 }
 
-// Preset configurations for common use cases
+// Helper to read rate limit from env with default
+function envInt(key: string, defaultVal: number): number {
+  const val = process.env[key];
+  return val ? parseInt(val, 10) || defaultVal : defaultVal;
+}
 
-/**
- * Strict rate limit for authentication routes
- * 5 requests per minute
- */
+// Preset configurations — all limits configurable via .env
+
+/** Auth routes (login/register) */
 export const authRateLimit = rateLimit({
-  limit: 5,
-  windowMs: 60 * 1000, // 1 minute
+  limit: envInt('RATE_LIMIT_AUTH', 5),
+  windowMs: 60 * 1000,
   keyGenerator: (c) => `auth:${getClientIp(c)}`,
 });
 
-/**
- * Standard rate limit for API routes
- * 100 requests per minute
- */
+/** Global API fallback */
 export const apiRateLimit = rateLimit({
-  limit: 100,
+  limit: envInt('RATE_LIMIT_API', 100),
   windowMs: 60 * 1000,
   keyGenerator: (c) => `api:${getClientIp(c)}`,
 });
 
-/**
- * Restrictive rate limit for uploads/expensive operations
- * 10 requests per minute
- */
+/** Uploads / expensive operations */
 export const uploadRateLimit = rateLimit({
-  limit: 10,
+  limit: envInt('RATE_LIMIT_UPLOAD', 10),
   windowMs: 60 * 1000,
   keyGenerator: (c) => `upload:${getClientIp(c)}`,
 });
 
-/**
- * Very strict rate limit for password reset/sensitive operations
- * 3 requests per 5 minutes
- */
+/** Password reset / sensitive operations (per 5 min) */
 export const sensitiveRateLimit = rateLimit({
-  limit: 3,
-  windowMs: 5 * 60 * 1000, // 5 minutes
+  limit: envInt('RATE_LIMIT_SENSITIVE', 3),
+  windowMs: 5 * 60 * 1000,
   keyGenerator: (c) => `sensitive:${getClientIp(c)}`,
 });
 
-/**
- * Chat/LLM rate limit
- * 30 requests per minute (to prevent API token abuse)
- */
+/** Image generation (expensive API calls) */
+export const imageGenRateLimit = rateLimit({
+  limit: envInt('RATE_LIMIT_IMAGE_GEN', 5),
+  windowMs: 60 * 1000,
+  keyGenerator: (c) => `imagegen:${getClientIp(c)}`,
+});
+
+/** Chat/LLM requests */
 export const chatRateLimit = rateLimit({
-  limit: 30,
+  limit: envInt('RATE_LIMIT_CHAT', 30),
   windowMs: 60 * 1000,
   keyGenerator: (c) => `chat:${getClientIp(c)}`,
 });

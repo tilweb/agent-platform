@@ -8,6 +8,7 @@
 
 import { Hono } from 'hono';
 import { authMiddleware, getCurrentUserId } from '../auth/middleware';
+import { internalError } from '../utils/errorHandler';
 import { listUsers } from '../auth/storage';
 import {
   getAllUserModelPreferences,
@@ -192,7 +193,7 @@ usersRoutes.put('/preferences/models/:purpose', async (c) => {
     });
   } catch (error: any) {
     console.error('Error setting user preference:', error);
-    return c.json({ error: error.message || 'Fehler beim Speichern' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -225,6 +226,6 @@ usersRoutes.delete('/preferences/models/:purpose', async (c) => {
     });
   } catch (error: any) {
     console.error('Error clearing user preference:', error);
-    return c.json({ error: error.message || 'Fehler beim Zurücksetzen' }, 500);
+    return internalError(c, error);
   }
 });

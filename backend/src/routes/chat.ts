@@ -5,6 +5,7 @@ import { chatRateLimit, uploadRateLimit } from '../middleware/rateLimit';
 import { generateSessionId, saveConversation, saveChatHistory, loadChatHistory, listChatHistories, searchChatHistories, deleteChatHistory, regenerateChatSummary, regenerateAllMissingSummaries, createShareLink, revokeShareLink, loadChatByShareToken, getShareInfo, loadChatFolders, createChatFolder, deleteChatFolder, updateChatFolders, getChatFolderIds, listChatsInFolder, getFolderChatCounts, addChatMaterial, removeChatMaterial, updateChatMaterials, type MessageAttachment, type ChatMaterial } from '../services/memory';
 import { listAgents, loadAgent, createAgent, updateAgent, deleteAgent, getAgentFull } from '../services/agents';
 import { authMiddleware, optionalAuthMiddleware, getCurrentUserId } from '../auth';
+import { internalError } from '../utils/errorHandler';
 import {
   loadSkills,
   getSkillById,
@@ -310,7 +311,7 @@ chatRoutes.post('/prepare-readers', authMiddleware, async (c) => {
     return c.json({
       sessionId: finalSessionId,
       prepared: false,
-      error: error.message,
+      error: 'Fehler bei der Vorbereitung',
     }, 500);
   }
 });
@@ -398,7 +399,7 @@ chatRoutes.get('/:id/stream', async (c) => {
       console.error('SSE Error:', error);
       await stream.writeSSE({
         event: 'error',
-        data: JSON.stringify({ error: error.message }),
+        data: JSON.stringify({ error: 'Ein Fehler ist aufgetreten' }),
       });
     } finally {
       clearInterval(heartbeat);
@@ -520,7 +521,7 @@ chatHistoryRoutes.get('/', authMiddleware, async (c) => {
 });
 
 // GET /api/chats/search?q=query - Search chat histories
-chatHistoryRoutes.get('/search', async (c) => {
+chatHistoryRoutes.get('/search', authMiddleware, async (c) => {
   const query = c.req.query('q') || '';
 
   if (query.length < 2) {
@@ -611,7 +612,7 @@ chatHistoryRoutes.get('/folders/:id/chats', authMiddleware, async (c) => {
 
 // POST /api/chats/regenerate-all-summaries - Regenerate summaries for all chats without summaries
 // IMPORTANT: Must be before /:id routes
-chatHistoryRoutes.post('/regenerate-all-summaries', async (c) => {
+chatHistoryRoutes.post('/regenerate-all-summaries', authMiddleware, async (c) => {
   try {
     const result = await regenerateAllMissingSummaries();
     return c.json({
@@ -1141,7 +1142,7 @@ _internalAgentRoutes.post('/', async (c) => {
     return c.json(agent, 201);
   } catch (error: any) {
     console.error('Error creating agent:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1155,7 +1156,7 @@ _internalAgentRoutes.put('/:id', async (c) => {
     return c.json(agent);
   } catch (error: any) {
     console.error('Error updating agent:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1168,12 +1169,15 @@ _internalAgentRoutes.delete('/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting agent:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
 // GET /api/skills - List all available skills (Enhanced Skills)
 export const skillRoutes = new Hono();
+
+// Require authentication for all skill operations
+skillRoutes.use('/*', authMiddleware);
 
 skillRoutes.get('/', async (c) => {
   try {
@@ -1268,7 +1272,7 @@ skillRoutes.post('/reload', async (c) => {
     });
   } catch (error: any) {
     console.error('Error reloading skills:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1311,7 +1315,7 @@ skillRoutes.post('/', async (c) => {
     return c.json(created, 201);
   } catch (error: any) {
     console.error('Error creating skill:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1325,7 +1329,7 @@ skillRoutes.put('/:id', async (c) => {
     return c.json(updated);
   } catch (error: any) {
     console.error('Error updating skill:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1338,7 +1342,7 @@ skillRoutes.delete('/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting skill:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1346,6 +1350,9 @@ skillRoutes.delete('/:id', async (c) => {
 // Tools Routes
 // ============================================
 export const toolRoutes = new Hono();
+
+// Require authentication for all tool operations
+toolRoutes.use('/*', authMiddleware);
 
 // Known API tool configurations (for documentation in UI)
 const apiToolEnvVars: Record<string, { envVar: string; docUrl?: string }> = {
@@ -1508,7 +1515,7 @@ toolRoutes.put('/:name/config', async (c) => {
     return c.json({ success: true, message: 'Configuration updated' });
   } catch (error: any) {
     console.error('Error updating tool config:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1516,6 +1523,9 @@ toolRoutes.put('/:name/config', async (c) => {
 // Custom Tools Routes
 // ============================================
 export const customToolRoutes = new Hono();
+
+// Require authentication for all custom tool operations
+customToolRoutes.use('/*', authMiddleware);
 
 // GET /api/tools/custom - List all custom tools
 customToolRoutes.get('/', async (c) => {
@@ -1601,7 +1611,7 @@ customToolRoutes.post('/', async (c) => {
     return c.json(created, 201);
   } catch (error: any) {
     console.error('Error creating custom tool:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1623,7 +1633,7 @@ customToolRoutes.put('/:id', async (c) => {
     return c.json(updated);
   } catch (error: any) {
     console.error('Error updating custom tool:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1641,7 +1651,7 @@ customToolRoutes.delete('/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting custom tool:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1658,7 +1668,7 @@ customToolRoutes.post('/:id/test', async (c) => {
     return c.json(result);
   } catch (error: any) {
     console.error('Error testing custom tool:', error);
-    return c.json({ success: false, error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1683,13 +1693,16 @@ customToolRoutes.post('/:id/toggle', async (c) => {
     return c.json({ enabled: updated.enabled });
   } catch (error: any) {
     console.error('Error toggling custom tool:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
 // Knowledge base routes moved to routes/knowledge.ts with RBAC support
 // Streaming routes are kept here and exported separately for mounting
 export const knowledgeStreamRoutes = new Hono();
+
+// Require authentication for all knowledge stream operations
+knowledgeStreamRoutes.use('/*', authMiddleware);
 
 // Simple YAML parser for known knowledge-base structures
 function parseCollectionsYaml(yaml: string): Array<{
@@ -1842,7 +1855,7 @@ knowledgeStreamRoutes.post('/collections', async (c) => {
     return c.json(JSON.parse(result), 201);
   } catch (error: any) {
     console.error('Error creating collection:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -1913,12 +1926,12 @@ knowledgeStreamRoutes.post('/collections/batch/stream', authMiddleware, async (c
               data: JSON.stringify({
                 step: 'create_collection',
                 status: 'error',
-                error: error.message,
+                error: 'Verarbeitung fehlgeschlagen',
               }),
             });
             await stream.writeSSE({
               event: 'error',
-              data: JSON.stringify({ error: error.message }),
+              data: JSON.stringify({ error: 'Ein Fehler ist aufgetreten' }),
             });
             return;
           }
@@ -1994,7 +2007,7 @@ knowledgeStreamRoutes.post('/collections/batch/stream', authMiddleware, async (c
             results.push({
               itemId: item.id,
               success: false,
-              error: error.message,
+              error: 'Verarbeitung fehlgeschlagen',
             });
 
             await stream.writeSSE({
@@ -2004,7 +2017,7 @@ knowledgeStreamRoutes.post('/collections/batch/stream', authMiddleware, async (c
                 itemId: item.id,
                 title: item.title,
                 status: 'error',
-                error: error.message,
+                error: 'Verarbeitung fehlgeschlagen',
                 current: i + 1,
                 total: items.length,
               }),
@@ -2031,14 +2044,14 @@ knowledgeStreamRoutes.post('/collections/batch/stream', authMiddleware, async (c
         console.error('Batch collection error:', error);
         await stream.writeSSE({
           event: 'error',
-          data: JSON.stringify({ error: error.message }),
+          data: JSON.stringify({ error: 'Ein Fehler ist aufgetreten' }),
         });
       }
     });
   } catch (error: any) {
     console.error('[batch/stream] Error parsing request:', error);
     console.error('[batch/stream] Error stack:', error.stack);
-    return c.json({ error: error.message || 'Unbekannter Fehler' }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -2139,7 +2152,7 @@ knowledgeStreamRoutes.post('/collections/:id/add/stream', authMiddleware, async 
             results.push({
               itemId: item.id,
               success: false,
-              error: error.message,
+              error: 'Verarbeitung fehlgeschlagen',
             });
 
             await stream.writeSSE({
@@ -2149,7 +2162,7 @@ knowledgeStreamRoutes.post('/collections/:id/add/stream', authMiddleware, async 
                 itemId: item.id,
                 title: item.title,
                 status: 'error',
-                error: error.message,
+                error: 'Verarbeitung fehlgeschlagen',
                 current: i + 1,
                 total: items.length,
               }),
@@ -2174,13 +2187,13 @@ knowledgeStreamRoutes.post('/collections/:id/add/stream', authMiddleware, async 
         console.error('[add/stream] SSE error:', error);
         await stream.writeSSE({
           event: 'error',
-          data: JSON.stringify({ error: error.message }),
+          data: JSON.stringify({ error: 'Ein Fehler ist aufgetreten' }),
         });
       }
     });
   } catch (error: any) {
     console.error('[add/stream] Error parsing request:', error);
-    return c.json({ error: error.message || 'Unbekannter Fehler' }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -2259,7 +2272,7 @@ knowledgeStreamRoutes.delete('/collections/:id', async (c) => {
     });
   } catch (error: any) {
     console.error('Error deleting collection:', error);
-    return c.json({ error: error.message || 'Failed to delete collection' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -2435,7 +2448,7 @@ knowledgeStreamRoutes.delete('/documents/:id', async (c) => {
     return c.json({ success: true, document_id: docId, collection_id: collectionId });
   } catch (error: any) {
     console.error('Error deleting document:', error);
-    return c.json({ error: error.message }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -2472,7 +2485,7 @@ knowledgeStreamRoutes.post('/index', async (c) => {
     return c.json(result, 201);
   } catch (error: any) {
     console.error('Error indexing document:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -2522,7 +2535,7 @@ mcpRoutes.post('/servers', async (c) => {
     return c.json(server, 201);
   } catch (error: any) {
     console.error('Error adding MCP server:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -2556,7 +2569,7 @@ mcpRoutes.put('/servers/:id', async (c) => {
     return c.json(server);
   } catch (error: any) {
     console.error('Error updating MCP server:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -2569,7 +2582,7 @@ mcpRoutes.delete('/servers/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting MCP server:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -2583,7 +2596,7 @@ mcpRoutes.post('/servers/:id/connect', async (c) => {
     return c.json(server);
   } catch (error: any) {
     console.error('Error connecting to MCP server:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -2597,7 +2610,7 @@ mcpRoutes.post('/servers/:id/disconnect', async (c) => {
     return c.json(server);
   } catch (error: any) {
     console.error('Error disconnecting from MCP server:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -2610,7 +2623,7 @@ mcpRoutes.post('/servers/:id/refresh', async (c) => {
     return c.json({ tools, count: tools.length });
   } catch (error: any) {
     console.error('Error refreshing MCP tools:', error);
-    return c.json({ error: error.message }, 400);
+    return internalError(c, error);
   }
 });
 
@@ -2639,6 +2652,6 @@ mcpRoutes.post('/tools/test', async (c) => {
     return c.json(result);
   } catch (error: any) {
     console.error('Error testing MCP tool:', error);
-    return c.json({ success: false, error: error.message }, 400);
+    return internalError(c, error);
   }
 });

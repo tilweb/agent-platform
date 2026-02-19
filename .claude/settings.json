@@ -1,4 +1,8 @@
 {
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -34,7 +38,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Wurden sicherheitskritische Dateien geändert (backend/src/routes/*, backend/src/middleware/*, backend/src/auth/*, backend/src/rbac/*, data/auth/*, data/connections/*)? Falls ja: {\"ok\": false, \"reason\": \"Security Review empfohlen\"}. Falls nein oder nur UI/Styling: {\"ok\": true}"
+            "prompt": "Prüfe ob sicherheitskritische Dateien geändert wurden (backend/src/routes/*, backend/src/middleware/*, backend/src/auth/*, backend/src/rbac/*, data/auth/*, data/connections/*). Antworte ausschließlich mit einem JSON-Objekt, ohne Codeblocks, ohne Erklärung. Bei sicherheitskritischen Änderungen: {\"ok\": false, \"reason\": \"Security Review empfohlen\"}. Bei unkritischen Änderungen oder nur UI/Styling: {\"ok\": true}"
           }
         ]
       }

@@ -3,6 +3,7 @@
  */
 
 import type { Context, Next } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { getCookie, setCookie } from 'hono/cookie';
 import { getSession, extendSession, deleteSession } from './session';
 import { loadUser } from './storage';
@@ -108,4 +109,16 @@ export function getCurrentUser(c: Context): UserWithoutPassword | undefined {
  */
 export function getCurrentUserId(c: Context): string | undefined {
   return c.get('userId');
+}
+
+/**
+ * Require current user ID from context — returns 401 if not authenticated.
+ * Use this instead of getCurrentUserId(c)! to avoid silent crashes.
+ */
+export function requireUserId(c: Context): string {
+  const userId = c.get('userId');
+  if (!userId) {
+    throw new HTTPException(401, { message: 'Nicht authentifiziert' });
+  }
+  return userId;
 }

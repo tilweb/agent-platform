@@ -6,7 +6,7 @@
 
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { authMiddleware, getCurrentUserId } from '../auth';
+import { authMiddleware, requireUserId } from '../auth';
 import {
   notificationService,
   type Notification,
@@ -24,7 +24,7 @@ notificationRoutes.use('/*', authMiddleware);
 // GET /api/notifications - List notifications
 notificationRoutes.get('/', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
 
     const limit = parseInt(c.req.query('limit') || '50', 10);
     const offset = parseInt(c.req.query('offset') || '0', 10);
@@ -46,7 +46,7 @@ notificationRoutes.get('/', async (c) => {
 // GET /api/notifications/count - Get unread count
 notificationRoutes.get('/count', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const unread = await notificationService.getUnreadCount(userId);
     return c.json({ unread });
   } catch (error: any) {
@@ -57,7 +57,7 @@ notificationRoutes.get('/count', async (c) => {
 
 // GET /api/notifications/stream - SSE stream for real-time updates
 notificationRoutes.get('/stream', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
 
   return streamSSE(c, async (stream) => {
     // Send initial unread count
@@ -106,7 +106,7 @@ notificationRoutes.get('/stream', async (c) => {
 // GET /api/notifications/:id - Get single notification
 notificationRoutes.get('/:id', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const notificationId = c.req.param('id');
     const notification = await notificationService.get(notificationId, userId);
 
@@ -124,7 +124,7 @@ notificationRoutes.get('/:id', async (c) => {
 // POST /api/notifications/:id/read - Mark as read
 notificationRoutes.post('/:id/read', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const notificationId = c.req.param('id');
     const success = await notificationService.markAsRead(notificationId, userId);
 
@@ -142,7 +142,7 @@ notificationRoutes.post('/:id/read', async (c) => {
 // POST /api/notifications/read-all - Mark all as read
 notificationRoutes.post('/read-all', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const count = await notificationService.markAllAsRead(userId);
     return c.json({ success: true, count });
   } catch (error: any) {
@@ -154,7 +154,7 @@ notificationRoutes.post('/read-all', async (c) => {
 // DELETE /api/notifications/:id - Delete notification
 notificationRoutes.delete('/:id', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const notificationId = c.req.param('id');
     const success = await notificationService.delete(notificationId, userId);
 

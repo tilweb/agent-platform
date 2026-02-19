@@ -8,7 +8,8 @@
  */
 
 import { Hono } from 'hono';
-import { authMiddleware, getCurrentUserId } from '../auth';
+import { authMiddleware, requireUserId } from '../auth';
+import { internalError } from '../utils/errorHandler';
 import {
   loadUserMemory,
   addAboutItem,
@@ -31,7 +32,7 @@ memoryRoutes.use('/*', authMiddleware);
 // GET /api/memory - Get all memory data
 memoryRoutes.get('/', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const memory = await loadUserMemory(userId);
     return c.json(memory);
   } catch (error: any) {
@@ -50,7 +51,7 @@ memoryRoutes.get('/sections', async (c) => {
 // PUT /api/memory/settings - Update memory settings
 memoryRoutes.put('/settings', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const body = await c.req.json();
     const settings = await updateMemorySettings(body, userId);
     return c.json(settings);
@@ -71,7 +72,7 @@ memoryRoutes.get('/:section', async (c) => {
   }
 
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const memory = await loadUserMemory(userId);
     return c.json({ section, items: memory[section as MemorySection] });
   } catch (error: any) {
@@ -83,7 +84,7 @@ memoryRoutes.get('/:section', async (c) => {
 // POST /api/memory/about - Add new about item
 memoryRoutes.post('/about', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const body = await c.req.json();
     const { content, source = 'manual' } = body;
 
@@ -95,14 +96,14 @@ memoryRoutes.post('/about', async (c) => {
     return c.json(item, 201);
   } catch (error: any) {
     console.error('Error adding about item:', error);
-    return c.json({ error: error.message || 'Failed to add item' }, 500);
+    return internalError(c, error);
   }
 });
 
 // POST /api/memory/instructions - Add new instruction
 memoryRoutes.post('/instructions', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const body = await c.req.json();
     const { content, priority = 'normal', source = 'manual' } = body;
 
@@ -119,14 +120,14 @@ memoryRoutes.post('/instructions', async (c) => {
     return c.json(item, 201);
   } catch (error: any) {
     console.error('Error adding instruction:', error);
-    return c.json({ error: error.message || 'Failed to add instruction' }, 500);
+    return internalError(c, error);
   }
 });
 
 // POST /api/memory/context - Add new context item
 memoryRoutes.post('/context', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const body = await c.req.json();
     const { name, description, active = true, source = 'manual' } = body;
 
@@ -138,13 +139,13 @@ memoryRoutes.post('/context', async (c) => {
     return c.json(item, 201);
   } catch (error: any) {
     console.error('Error adding context item:', error);
-    return c.json({ error: error.message || 'Failed to add context' }, 500);
+    return internalError(c, error);
   }
 });
 
 // PUT /api/memory/context/:id/active - Toggle context active status
 memoryRoutes.put('/context/:id/active', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const itemId = c.req.param('id');
 
   try {
@@ -170,7 +171,7 @@ memoryRoutes.put('/context/:id/active', async (c) => {
 
 // DELETE /api/memory/:section/:id - Delete an item from any section
 memoryRoutes.delete('/:section/:id', async (c) => {
-  const userId = getCurrentUserId(c)!;
+  const userId = requireUserId(c);
   const section = c.req.param('section');
   const itemId = c.req.param('id');
 

@@ -8,7 +8,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { readFile, writeFile, mkdir, readdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join, resolve } from 'path';
-import { authMiddleware, getCurrentUserId } from '../auth';
+import { authMiddleware, requireUserId } from '../auth';
 import { canView, canEdit, canDelete, canManageAccess, listAccessibleResources } from '../rbac/accessControl';
 import { initializeResourceAccess, deleteResourceAccess, hasAccessEntries } from '../rbac/storage';
 
@@ -16,6 +16,12 @@ const knowledgeRoutes = new Hono();
 
 const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
 const COLLECTIONS_FILE = join(KB_BASE, 'collections.yaml');
+
+// Validate resource IDs to prevent path traversal attacks
+const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+function isValidId(id: string): boolean {
+  return SAFE_ID_PATTERN.test(id) && id.length <= 128;
+}
 
 // Ensure auth on all routes
 knowledgeRoutes.use('/*', authMiddleware);
@@ -61,7 +67,7 @@ async function saveCollections(data: CollectionsFile): Promise<void> {
  */
 knowledgeRoutes.get('/collections', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const data = await loadCollections();
 
     // Get all collection IDs
@@ -95,8 +101,12 @@ knowledgeRoutes.get('/collections', async (c) => {
  */
 knowledgeRoutes.get('/collections/:id', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const collectionId = c.req.param('id');
+
+    if (!isValidId(collectionId)) {
+      return c.json({ error: 'Ungültige Collection-ID' }, 400);
+    }
 
     // Check access
     const accessResult = await canView(userId, 'collection', collectionId);
@@ -130,7 +140,7 @@ knowledgeRoutes.get('/collections/:id', async (c) => {
  */
 knowledgeRoutes.post('/collections', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const body = await c.req.json();
     const { id, name, description, activate_when, never_activate_when } = body;
 
@@ -198,8 +208,12 @@ knowledgeRoutes.post('/collections', async (c) => {
  */
 knowledgeRoutes.put('/collections/:id', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const collectionId = c.req.param('id');
+
+    if (!isValidId(collectionId)) {
+      return c.json({ error: 'Ungültige Collection-ID' }, 400);
+    }
 
     // Check edit permission
     const accessResult = await canEdit(userId, 'collection', collectionId);
@@ -258,8 +272,12 @@ knowledgeRoutes.put('/collections/:id', async (c) => {
  */
 knowledgeRoutes.delete('/collections/:id', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const collectionId = c.req.param('id');
+
+    if (!isValidId(collectionId)) {
+      return c.json({ error: 'Ungültige Collection-ID' }, 400);
+    }
 
     // Check delete permission
     const accessResult = await canDelete(userId, 'collection', collectionId);
@@ -300,8 +318,12 @@ knowledgeRoutes.delete('/collections/:id', async (c) => {
  */
 knowledgeRoutes.get('/collections/:id/documents', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const collectionId = c.req.param('id');
+
+    if (!isValidId(collectionId)) {
+      return c.json({ error: 'Ungültige Collection-ID' }, 400);
+    }
 
     // Check access
     const accessResult = await canView(userId, 'collection', collectionId);
@@ -334,9 +356,13 @@ knowledgeRoutes.get('/collections/:id/documents', async (c) => {
  */
 knowledgeRoutes.get('/collections/:id/documents/:docId', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const collectionId = c.req.param('id');
     const docId = c.req.param('docId');
+
+    if (!isValidId(collectionId) || !isValidId(docId)) {
+      return c.json({ error: 'Ungültige ID' }, 400);
+    }
 
     // Check access
     const accessResult = await canView(userId, 'collection', collectionId);
@@ -391,9 +417,13 @@ knowledgeRoutes.get('/collections/:id/documents/:docId', async (c) => {
  */
 knowledgeRoutes.delete('/collections/:id/documents/:docId', async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const collectionId = c.req.param('id');
     const docId = c.req.param('docId');
+
+    if (!isValidId(collectionId) || !isValidId(docId)) {
+      return c.json({ error: 'Ungültige ID' }, 400);
+    }
 
     // Check edit permission
     const accessResult = await canEdit(userId, 'collection', collectionId);

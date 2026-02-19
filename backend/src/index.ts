@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { bodyLimit } from 'hono/body-limit';
 import { apiRateLimit } from './middleware/rateLimit';
 import { csrfProtection } from './middleware/csrf';
 import { securityHeaders } from './middleware/securityHeaders';
@@ -34,6 +35,12 @@ import { registerCommands } from './commands';
 import { registerProviders } from './connections/providers';
 
 const app = new Hono();
+
+// Global error handler - catches unhandled errors and returns safe responses
+app.onError((err, c) => {
+  console.error('[Global Error]', err);
+  return c.json({ error: 'Interner Serverfehler' }, 500);
+});
 
 // Initialize tools, MCP, LLM, commands, and task executor
 async function initialize() {
@@ -133,6 +140,13 @@ app.use('/api/*', csrfProtection({
   skipPaths: [
     '/api/shared/',  // Public shared chat access
   ],
+}));
+
+// Body size limit for API requests (configurable via MAX_BODY_SIZE_MB, default 10 MB)
+const maxBodySizeMb = parseInt(process.env.MAX_BODY_SIZE_MB || '10', 10);
+app.use('/api/*', bodyLimit({
+  maxSize: maxBodySizeMb * 1024 * 1024,
+  onError: (c) => c.json({ error: `Request body zu groß (max. ${maxBodySizeMb} MB)` }, 413),
 }));
 
 // Health check (no rate limit, no CSRF)

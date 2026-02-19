@@ -3,7 +3,7 @@
  */
 
 import { Hono } from 'hono';
-import { authMiddleware, getCurrentUserId } from '../auth';
+import { authMiddleware, requireUserId } from '../auth';
 import {
   connectionRegistry,
   saveConnection,
@@ -73,7 +73,7 @@ function generateOAuthState(): string {
  */
 connectionRoutes.get('/', authMiddleware, async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const providers = await connectionRegistry.getProviderInfos(userId);
 
     return c.json({
@@ -91,7 +91,7 @@ connectionRoutes.get('/', authMiddleware, async (c) => {
  */
 connectionRoutes.get('/:id', authMiddleware, async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const providerId = c.req.param('id');
 
     const provider = connectionRegistry.get(providerId);
@@ -123,7 +123,7 @@ connectionRoutes.get('/:id', authMiddleware, async (c) => {
  */
 connectionRoutes.get('/:id/connect', authMiddleware, async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const providerId = c.req.param('id');
 
     // Check encryption is configured
@@ -295,7 +295,7 @@ connectionRoutes.get('/:id/callback', async (c) => {
  */
 connectionRoutes.post('/:id/disconnect', authMiddleware, async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const providerId = c.req.param('id');
 
     const deleted = await deleteConnection(userId, providerId);
@@ -316,7 +316,7 @@ connectionRoutes.post('/:id/disconnect', authMiddleware, async (c) => {
  */
 connectionRoutes.get('/:id/status', authMiddleware, async (c) => {
   try {
-    const userId = getCurrentUserId(c)!;
+    const userId = requireUserId(c);
     const providerId = c.req.param('id');
 
     const status = await connectionRegistry.validateConnection(userId, providerId);

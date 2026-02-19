@@ -61,6 +61,10 @@ All persistence is file-based. Key directories: `config/` (providers.yaml, setti
 ### Multi-Provider LLM System
 Configured in `data/config/providers.yaml`. Supports Adacor AI, OpenAI, Anthropic, Ollama, Nebius, Google Gemini. Each model declares capabilities (chat, vision, function_calling). Provider adapters in `backend/src/services/llm.ts`.
 
+## Git & Attribution
+
+- **Keine Co-Author Attribution**: Commits und PRs dürfen KEIN `Co-Authored-By`-Tag für Claude enthalten. Die Attribution-Settings in `.claude/settings.json` sind bewusst leer gesetzt und müssen respektiert werden.
+
 ## Coding Conventions
 
 ### Language

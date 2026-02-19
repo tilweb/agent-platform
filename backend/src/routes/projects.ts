@@ -6,6 +6,7 @@
 
 import { Hono } from 'hono';
 import { authMiddleware, getCurrentUserId } from '../auth/middleware';
+import { internalError } from '../utils/errorHandler';
 import {
   createProject,
   getProject,
@@ -417,7 +418,7 @@ projectRoutes.post('/:id/memory/about', async (c) => {
     return c.json(result.data, 201);
   } catch (error: any) {
     console.error('Error adding about item:', error);
-    return c.json({ error: error.message || 'Fehler beim Hinzufügen' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -460,7 +461,7 @@ projectRoutes.post('/:id/memory/instructions', async (c) => {
     return c.json(result.data, 201);
   } catch (error: any) {
     console.error('Error adding instruction:', error);
-    return c.json({ error: error.message || 'Fehler beim Hinzufügen' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -499,7 +500,7 @@ projectRoutes.post('/:id/memory/context', async (c) => {
     return c.json(result.data, 201);
   } catch (error: any) {
     console.error('Error adding context item:', error);
-    return c.json({ error: error.message || 'Fehler beim Hinzufügen' }, 500);
+    return internalError(c, error);
   }
 });
 

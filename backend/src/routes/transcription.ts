@@ -7,12 +7,16 @@ import { Hono } from 'hono';
 import { loadProvidersConfig, getProvider } from '../services/providers';
 import { uploadRateLimit } from '../middleware/rateLimit';
 import { internalError, validationError, serviceError, errorResponse, ErrorCode } from '../utils/errorHandler';
+import { authMiddleware } from '../auth';
 import { $ } from 'bun';
 import { randomUUID } from 'crypto';
 import { unlink, mkdir } from 'fs/promises';
 import path from 'path';
 
 const transcriptionRoutes = new Hono();
+
+// Require authentication for all transcription operations
+transcriptionRoutes.use('/*', authMiddleware);
 
 // Audio file size limit (in bytes)
 const MAX_AUDIO_SIZE = 25 * 1024 * 1024; // 25 MB
