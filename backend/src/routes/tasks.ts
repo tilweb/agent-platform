@@ -7,7 +7,7 @@
 
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { authMiddleware, requireUserId } from '../auth';
+import { authMiddleware, requireUserId, getCurrentUser } from '../auth';
 import { internalError } from '../utils/errorHandler';
 import {
   createTask,
@@ -178,8 +178,19 @@ tasksRoutes.get('/queue', async (c) => {
   }
 });
 
-// POST /api/tasks/executor/start - Start the executor
+// Admin guard for queue/executor management
+function requireAdmin(c: any): Response | null {
+  const user = getCurrentUser(c);
+  if (!user || user.role !== 'admin') {
+    return c.json({ error: 'Admin-Rechte erforderlich' }, 403);
+  }
+  return null;
+}
+
+// POST /api/tasks/executor/start - Start the executor (admin only)
 tasksRoutes.post('/executor/start', async (c) => {
+  const denied = requireAdmin(c);
+  if (denied) return denied;
   try {
     const { startExecutor } = await import('../services/taskExecutor');
     await startExecutor();
@@ -190,8 +201,10 @@ tasksRoutes.post('/executor/start', async (c) => {
   }
 });
 
-// POST /api/tasks/executor/stop - Stop the executor
+// POST /api/tasks/executor/stop - Stop the executor (admin only)
 tasksRoutes.post('/executor/stop', async (c) => {
+  const denied = requireAdmin(c);
+  if (denied) return denied;
   try {
     const { stopExecutor } = await import('../services/taskExecutor');
     stopExecutor();
@@ -202,8 +215,10 @@ tasksRoutes.post('/executor/stop', async (c) => {
   }
 });
 
-// PUT /api/tasks/queue/settings - Update queue settings
+// PUT /api/tasks/queue/settings - Update queue settings (admin only)
 tasksRoutes.put('/queue/settings', async (c) => {
+  const denied = requireAdmin(c);
+  if (denied) return denied;
   try {
     const body = await c.req.json();
     const settings = await updateQueueSettings(body);
@@ -214,8 +229,10 @@ tasksRoutes.put('/queue/settings', async (c) => {
   }
 });
 
-// POST /api/tasks/queue/pause - Pause the queue
+// POST /api/tasks/queue/pause - Pause the queue (admin only)
 tasksRoutes.post('/queue/pause', async (c) => {
+  const denied = requireAdmin(c);
+  if (denied) return denied;
   try {
     const settings = await updateQueueSettings({ paused: true });
     return c.json({ paused: settings.paused });
@@ -225,8 +242,10 @@ tasksRoutes.post('/queue/pause', async (c) => {
   }
 });
 
-// POST /api/tasks/queue/resume - Resume the queue
+// POST /api/tasks/queue/resume - Resume the queue (admin only)
 tasksRoutes.post('/queue/resume', async (c) => {
+  const denied = requireAdmin(c);
+  if (denied) return denied;
   try {
     const settings = await updateQueueSettings({ paused: false });
     return c.json({ paused: settings.paused });

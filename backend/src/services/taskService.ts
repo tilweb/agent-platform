@@ -225,6 +225,25 @@ async function ensureTasksDir(): Promise<void> {
 // Queue Management
 // ============================================
 
+// Simple in-memory mutex to prevent concurrent read-modify-write on queue.yaml
+let queueLock: Promise<void> = Promise.resolve();
+
+/**
+ * Execute a callback with exclusive access to the queue file.
+ * Prevents race conditions when multiple requests modify the queue simultaneously.
+ */
+export async function withQueueLock<T>(fn: () => Promise<T>): Promise<T> {
+  let release: () => void;
+  const prev = queueLock;
+  queueLock = new Promise<void>((resolve) => { release = resolve; });
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release!();
+  }
+}
+
 export async function loadQueue(): Promise<TaskQueue> {
   await ensureTasksDir();
 
@@ -266,10 +285,12 @@ export async function getQueueSettings(): Promise<QueueSettings> {
 }
 
 export async function updateQueueSettings(updates: Partial<QueueSettings>): Promise<QueueSettings> {
-  const queue = await loadQueue();
-  queue.settings = { ...queue.settings, ...updates };
-  await saveQueue(queue);
-  return queue.settings;
+  return withQueueLock(async () => {
+    const queue = await loadQueue();
+    queue.settings = { ...queue.settings, ...updates };
+    await saveQueue(queue);
+    return queue.settings;
+  });
 }
 
 // ============================================
@@ -530,86 +551,92 @@ export async function enqueueTask(taskId: string, priority?: TaskPriority): Prom
     throw new Error(`Task ${taskId} not found`);
   }
 
-  const queue = await loadQueue();
-  const taskPriority = priority || task.priority;
+  await withQueueLock(async () => {
+    const queue = await loadQueue();
+    const taskPriority = priority || task.priority;
 
-  // Check if already in queue
-  const inActive = queue.active.some(e => e.task_id === taskId);
-  const inPending = queue.pending.some(e => e.task_id === taskId);
+    // Check if already in queue
+    const inActive = queue.active.some(e => e.task_id === taskId);
+    const inPending = queue.pending.some(e => e.task_id === taskId);
 
-  if (inActive || inPending) {
-    return; // Already queued
-  }
+    if (inActive || inPending) {
+      return; // Already queued
+    }
 
-  // Add to pending queue
-  const entry: QueueEntry = {
-    task_id: taskId,
-    priority: taskPriority,
-    queued_at: new Date().toISOString(),
-  };
+    // Add to pending queue
+    const entry: QueueEntry = {
+      task_id: taskId,
+      priority: taskPriority,
+      queued_at: new Date().toISOString(),
+    };
 
-  queue.pending.push(entry);
+    queue.pending.push(entry);
 
-  // Sort pending by priority
-  queue.pending.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
+    // Sort pending by priority
+    queue.pending.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
 
-  // Update task status
-  task.status = 'queued';
-  await saveTask(task);
+    // Update task status
+    task.status = 'queued';
+    await saveTask(task);
 
-  await saveQueue(queue);
+    await saveQueue(queue);
+  });
 }
 
 export async function dequeueNextTask(): Promise<Task | null> {
-  const queue = await loadQueue();
+  return withQueueLock(async () => {
+    const queue = await loadQueue();
 
-  // Check if we can run more tasks
-  if (queue.settings.paused) {
-    return null;
-  }
+    // Check if we can run more tasks
+    if (queue.settings.paused) {
+      return null;
+    }
 
-  if (queue.active.length >= queue.settings.max_concurrent_tasks) {
-    return null;
-  }
+    if (queue.active.length >= queue.settings.max_concurrent_tasks) {
+      return null;
+    }
 
-  if (queue.pending.length === 0) {
-    return null;
-  }
+    if (queue.pending.length === 0) {
+      return null;
+    }
 
-  // Get next task (already sorted by priority)
-  const entry = queue.pending.shift()!;
-  const task = await getTask(entry.task_id);
+    // Get next task (already sorted by priority)
+    const entry = queue.pending.shift()!;
+    const task = await getTask(entry.task_id);
 
-  if (!task) {
-    // Task was deleted, try next
+    if (!task) {
+      // Task was deleted, save and try next (recursive call will acquire its own lock)
+      await saveQueue(queue);
+      return null;
+    }
+
+    // Move to active
+    queue.active.push({
+      task_id: entry.task_id,
+      priority: entry.priority,
+      started_at: new Date().toISOString(),
+    });
+
     await saveQueue(queue);
-    return dequeueNextTask();
-  }
 
-  // Move to active
-  queue.active.push({
-    task_id: entry.task_id,
-    priority: entry.priority,
-    started_at: new Date().toISOString(),
+    // Update task status
+    task.status = 'in_progress';
+    task.started_at = new Date().toISOString();
+    await saveTask(task);
+
+    return task;
   });
-
-  await saveQueue(queue);
-
-  // Update task status
-  task.status = 'in_progress';
-  task.started_at = new Date().toISOString();
-  await saveTask(task);
-
-  return task;
 }
 
 export async function removeFromQueue(taskId: string): Promise<void> {
-  const queue = await loadQueue();
+  return withQueueLock(async () => {
+    const queue = await loadQueue();
 
-  queue.active = queue.active.filter(e => e.task_id !== taskId);
-  queue.pending = queue.pending.filter(e => e.task_id !== taskId);
+    queue.active = queue.active.filter(e => e.task_id !== taskId);
+    queue.pending = queue.pending.filter(e => e.task_id !== taskId);
 
-  await saveQueue(queue);
+    await saveQueue(queue);
+  });
 }
 
 export async function getQueueStatus(): Promise<QueueStatus> {
@@ -848,41 +875,43 @@ export async function cleanupOldTasks(olderThanDays: number = 30): Promise<numbe
 // ============================================
 
 export async function recoverTasks(): Promise<{ recovered: number; failed: number }> {
-  const queue = await loadQueue();
-  let recovered = 0;
-  let failed = 0;
+  return withQueueLock(async () => {
+    const queue = await loadQueue();
+    let recovered = 0;
+    let failed = 0;
 
-  // Check active tasks - they were interrupted
-  for (const entry of queue.active) {
-    const task = await getTask(entry.task_id);
-    if (!task) {
-      failed++;
-      continue;
+    // Check active tasks - they were interrupted
+    for (const entry of queue.active) {
+      const task = await getTask(entry.task_id);
+      if (!task) {
+        failed++;
+        continue;
+      }
+
+      // Re-queue the task to resume
+      task.status = 'queued';
+      await saveTask(task);
+
+      // Move back to pending queue
+      queue.pending.unshift({
+        task_id: entry.task_id,
+        priority: entry.priority,
+        queued_at: new Date().toISOString(),
+      });
+
+      recovered++;
     }
 
-    // Re-queue the task to resume
-    task.status = 'queued';
-    await saveTask(task);
+    // Clear active queue
+    queue.active = [];
 
-    // Move back to pending queue
-    queue.pending.unshift({
-      task_id: entry.task_id,
-      priority: entry.priority,
-      queued_at: new Date().toISOString(),
-    });
+    // Sort pending by priority
+    queue.pending.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
 
-    recovered++;
-  }
+    await saveQueue(queue);
 
-  // Clear active queue
-  queue.active = [];
+    console.log(`Task recovery: ${recovered} tasks re-queued, ${failed} tasks not found`);
 
-  // Sort pending by priority
-  queue.pending.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
-
-  await saveQueue(queue);
-
-  console.log(`Task recovery: ${recovered} tasks re-queued, ${failed} tasks not found`);
-
-  return { recovered, failed };
+    return { recovered, failed };
+  });
 }
