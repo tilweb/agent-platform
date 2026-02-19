@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+docker-compose.env
 
 settings.local.json
 
@@ -46,9 +47,8 @@ temp/
 # Runtime / User Data (not in git)
 # ====================================
 # Config & templates in backend/data/ ARE tracked:
-#   backend/data/agents/, backend/data/apps/,
-#   backend/data/config/, backend/data/skills/,
-#   backend/data/tools/
+#   backend/data/agents/, backend/data/config/,
+#   backend/data/skills/system/, backend/data/tools/
 
 # Auth runtime data
 backend/data/auth/sessions/*
@@ -56,6 +56,7 @@ backend/data/auth/sessions/*
 backend/data/auth/users/*
 !backend/data/auth/users/.gitkeep
 backend/data/auth/groups/*
+!backend/data/auth/groups/.gitkeep
 backend/data/auth/oauth-states/*
 !backend/data/auth/oauth-states/.gitkeep
 
@@ -95,9 +96,11 @@ backend/data/usage/
 # Audit logs
 backend/data/audit/
 
-# App runtime data
-backend/data/apps/vertragsmanagement/contracts/
-backend/data/apps/projektmanagement/projektauftraege/
+# Apps (user-created and runtime data)
+backend/data/apps/
+
+# Custom skills (user-created)
+backend/data/skills/custom/
 
 # Misc runtime files
 backend/data/data/

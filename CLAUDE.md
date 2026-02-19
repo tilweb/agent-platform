@@ -29,8 +29,7 @@ npm run preview          # Preview production build
 
 ### Environment Setup
 ```bash
-cp backend/.env.example backend/.env    # Configure API keys
-cp frontend/.env.example frontend/.env  # Set VITE_API_URL
+cp .env.example .env    # Eine einzige .env im Root — alle Konfiguration hier
 ```
 
 ## Architecture
@@ -73,7 +72,7 @@ Configured in `data/config/providers.yaml`. Supports Adacor AI, OpenAI, Anthropi
 
 ### Backend
 - Always use **Bun** (not Node.js) — `bun run`, `bun install`, `bun test`
-- Bun auto-loads `.env` — do not use dotenv
+- `.env` liegt im **Root** (nicht `backend/`). Bun lädt sie via `--env-file=../.env` (siehe `package.json`). Kein dotenv verwenden
 - Prefer `Bun.file` over `node:fs` readFile/writeFile
 - Use Hono (not Express) for routing
 

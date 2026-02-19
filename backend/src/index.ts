@@ -188,7 +188,7 @@ app.route('/api/admin', adminRoutes);
 app.route('/api/images', imageRoutes);
 app.route('/api/notifications', notificationRoutes);
 
-const port = parseInt(process.env.PORT || '3001');
+const port = parseInt(process.env.BACKEND_PORT || '3001');
 
 console.log(`🚀 Server starting on port ${port}`);
 

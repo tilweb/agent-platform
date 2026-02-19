@@ -29,12 +29,8 @@ npm install
 ### 1. Configure Environment
 
 ```bash
-# Backend
-cp backend/.env.example backend/.env
-# Edit backend/.env and set your API keys
-
-# Frontend
-cp frontend/.env.example frontend/.env
+cp .env.example .env
+# Edit .env and set your API keys
 ```
 
 ### 2. Start Backend
@@ -112,7 +108,7 @@ Die Plattform unterstützt Bildgenerierung (Text-to-Image) und Bildbearbeitung (
 
 ### Konfiguration
 
-API-Keys in `backend/.env` setzen:
+API-Keys in `.env` (Root) setzen:
 
 ```env
 GOOGLE_AI_API_KEY=AIza...      # Für Google Gemini Imagen

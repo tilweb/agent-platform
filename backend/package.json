@@ -5,9 +5,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
-    "mcp-server": "bun run src/mcp/server/index.ts"
+    "dev": "bun --env-file=../.env run --watch src/index.ts",
+    "start": "bun --env-file=../.env run src/index.ts",
+    "mcp-server": "bun --env-file=../.env run src/mcp/server/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

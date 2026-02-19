@@ -400,8 +400,7 @@ bun run src/index.ts 2>&1 | tee /var/log/agent-platform/backend.log
 | Pfad | Priorität | Beschreibung |
 |------|-----------|--------------|
 | `data/` | KRITISCH | Alle Benutzerdaten |
-| `backend/.env` | KRITISCH | Konfiguration & Secrets |
-| `frontend/.env` | Mittel | Frontend-Konfiguration |
+| `.env` | KRITISCH | Konfiguration & Secrets |
 
 ### Backup-Script Beispiel
 
@@ -414,9 +413,7 @@ DATE=$(date +%Y%m%d_%H%M%S)
 tar -czf $BACKUP_DIR/data_$DATE.tar.gz data/
 
 # Konfiguration
-tar -czf $BACKUP_DIR/config_$DATE.tar.gz \
-  backend/.env \
-  frontend/.env
+tar -czf $BACKUP_DIR/config_$DATE.tar.gz .env
 
 # Alte Backups aufräumen (älter als 30 Tage)
 find $BACKUP_DIR -mtime +30 -delete
@@ -454,7 +451,7 @@ journalctl -u agent-platform-backend -n 100
 
 ```bash
 # CORS-Probleme
-# - FRONTEND_URL in backend/.env korrekt setzen
+# - FRONTEND_URL in .env korrekt setzen
 # - Keine trailing slashes verwenden
 
 # Network-Probleme

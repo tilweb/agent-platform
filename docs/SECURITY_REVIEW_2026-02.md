@@ -18,7 +18,7 @@
 ## KRITISCHE SICHERHEITSPROBLEME (P0)
 
 ### 1. Secrets in .env-Datei exponiert
-**Datei:** `backend/.env`
+**Datei:** `.env` (Root)
 **Problem:** API-Keys sind im Klartext sichtbar (ADACOR_AI_API_KEY, GOOGLE_CLIENT_SECRET, CONNECTION_ENCRYPTION_KEY, etc.)
 **Risiko:** Wenn in Git commitet, sind alle Secrets kompromittiert
 **Fix:**

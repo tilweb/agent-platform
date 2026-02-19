@@ -32,6 +32,7 @@ function healthPlugin() {
 
 export default defineConfig({
   plugins: [react(), healthPlugin()],
+  envDir: resolve(__dirname, '..'),
   resolve: {
     alias: {
       '@docs': resolve(__dirname, '../docs/anwenderdoku/docs'),
