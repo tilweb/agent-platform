@@ -132,9 +132,9 @@ data/
 │   └── sessions/         # Session-Dateien
 ├── agents/               # Agent-Definitionen (YAML)
 ├── apps/                 # App-spezifische Daten
-├── chat-folders.yaml     # Ordner-Struktur für Chats
 ├── chat-uploads/         # Hochgeladene Dateien in Chats
 ├── chats/                # Chat-Verläufe (YAML pro Session)
+│   └── chat-folders.yaml # Ordner-Struktur für Chats
 ├── config/               # System-Konfiguration
 │   └── providers.yaml    # LLM Provider-Einstellungen
 ├── connections/          # OAuth Tokens (verschlüsselt!)
