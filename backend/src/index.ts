@@ -149,8 +149,13 @@ app.use('/api/*', bodyLimit({
   onError: (c) => c.json({ error: `Request body zu groß (max. ${maxBodySizeMb} MB)` }, 413),
 }));
 
-// Health check (no rate limit, no CSRF)
-app.get('/health', (c) => c.json({ status: 'ok' }));
+// Health check (no rate limit, no CSRF, no auth)
+app.get('/health', (c) => c.json({
+  status: 'ok',
+  service: 'backend',
+  uptime: Math.floor(process.uptime()),
+  timestamp: new Date().toISOString(),
+}));
 
 // API routes
 app.route('/api/auth', authRoutes);
