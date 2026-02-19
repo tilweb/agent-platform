@@ -64,6 +64,7 @@ backend/data/auth/oauth-states/*
 backend/data/chats/
 backend/data/chat-uploads/
 backend/data/chat-folders.yaml
+backend/data/chats/chat-folders.yaml
 backend/data/conversations/
 
 # Knowledge base (user documents)

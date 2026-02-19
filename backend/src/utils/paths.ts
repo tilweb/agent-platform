@@ -20,7 +20,7 @@ export const OAUTH_STATES_DIR = join(AUTH_DIR, 'oauth-states');
 export const CHATS_DIR = join(DATA_DIR, 'chats');
 export const CONVERSATIONS_DIR = join(DATA_DIR, 'conversations');
 export const CHAT_UPLOADS_DIR = join(DATA_DIR, 'chat-uploads');
-export const CHAT_FOLDERS_FILE = join(DATA_DIR, 'chat-folders.yaml');
+export const CHAT_FOLDERS_FILE = join(CHATS_DIR, 'chat-folders.yaml');
 
 // Config
 export const CONFIG_DIR = join(DATA_DIR, 'config');
@@ -59,6 +59,12 @@ export const CONNECTIONS_DIR = join(DATA_DIR, 'connections');
 
 // Skills
 export const SKILLS_DIR = join(DATA_DIR, 'skills');
+
+// Plugins
+export const PLUGINS_DIR = join(DATA_DIR, 'plugins');
+export const PLUGINS_CONFIGS_DIR = join(PLUGINS_DIR, 'configs');
+export const PLUGINS_INSTALLED_DIR = join(PLUGINS_DIR, 'installed');
+export const PLUGINS_REGISTRY_FILE = join(PLUGINS_DIR, 'registry.yaml');
 
 // Tools
 export const CUSTOM_TOOLS_DIR = join(DATA_DIR, 'tools', 'custom');

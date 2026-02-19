@@ -118,9 +118,11 @@ fi
 # --- Check 4: DATA_DIR changes in paths.ts → docker-compose volumes ---
 
 if echo "$STAGED_FILES" | grep -q 'backend/src/utils/paths.ts'; then
+  # Only trigger when the DATA_DIR definition itself changes, not when other
+  # lines merely reference DATA_DIR (e.g. join(DATA_DIR, ...) -> join(CHATS_DIR, ...))
   data_dir_changed=$(git diff --cached -U0 -- backend/src/utils/paths.ts 2>/dev/null \
     | grep '^+' | grep -v '^+++' \
-    | grep 'DATA_DIR' || true)
+    | grep -E 'export\s+const\s+DATA_DIR\s*=' || true)
 
   if [ -n "$data_dir_changed" ]; then
     if ! echo "$STAGED_FILES" | grep -q 'docker-compose.yml'; then

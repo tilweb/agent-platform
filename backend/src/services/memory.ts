@@ -4,7 +4,15 @@ import { existsSync } from 'fs';
 import type { Message } from './llm';
 import { llmService } from './llm';
 import { saveProjectChat } from '../projects/storage';
-import { CONVERSATIONS_DIR, CHATS_DIR, CHAT_FOLDERS_FILE } from '../utils/paths';
+import { DATA_DIR, CONVERSATIONS_DIR, CHATS_DIR, CHAT_FOLDERS_FILE } from '../utils/paths';
+
+// One-time migration: move chat-folders.yaml from data/ to data/chats/
+const legacyFoldersPath = join(DATA_DIR, 'chat-folders.yaml');
+if (existsSync(legacyFoldersPath) && !existsSync(CHAT_FOLDERS_FILE)) {
+  const { rename } = await import('fs/promises');
+  await rename(legacyFoldersPath, CHAT_FOLDERS_FILE).catch(() => {});
+  console.log('[Migration] chat-folders.yaml moved to chats/');
+}
 
 // ============================================
 // File-level mutexes to prevent race conditions
