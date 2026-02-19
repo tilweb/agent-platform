@@ -10,6 +10,26 @@
 
 import { parse, stringify } from 'yaml';
 import { resolve } from 'path';
+
+// Mutex for provider config read-modify-write operations
+let providerLock: Promise<void> = Promise.resolve();
+
+/**
+ * Execute a function that modifies provider config under an exclusive lock.
+ * Clears the cache before loading to ensure fresh data from disk.
+ */
+export async function withProviderLock<T>(fn: () => Promise<T>): Promise<T> {
+  let release: () => void;
+  const prev = providerLock;
+  providerLock = new Promise<void>((resolve) => { release = resolve; });
+  await prev;
+  try {
+    configCache = null; // Force fresh read from disk
+    return await fn();
+  } finally {
+    release!();
+  }
+}
 import type {
   ProvidersConfig,
   ProviderConfig,
@@ -146,31 +166,33 @@ export async function getProvider(id: string): Promise<ProviderConfig | null> {
 export async function createProvider(
   request: CreateProviderRequest
 ): Promise<ProviderConfig> {
-  const config = await loadProvidersConfig();
+  return withProviderLock(async () => {
+    const config = await loadProvidersConfig();
 
-  const id = generateProviderId(request.name);
+    const id = generateProviderId(request.name);
 
-  // Check for duplicate ID
-  if (config.providers.some((p) => p.id === id)) {
-    throw new Error(`Provider with ID '${id}' already exists`);
-  }
+    // Check for duplicate ID
+    if (config.providers.some((p) => p.id === id)) {
+      throw new Error(`Provider with ID '${id}' already exists`);
+    }
 
-  const newProvider: ProviderConfig = {
-    id,
-    name: request.name,
-    api_mode: request.api_mode,
-    base_url: request.base_url,
-    api_key_env: request.api_key_env ?? null,
-    enabled: request.enabled ?? false,
-    company_region: request.company_region,
-    datacenter_country: request.datacenter_country,
-    models: request.models ?? [],
-  };
+    const newProvider: ProviderConfig = {
+      id,
+      name: request.name,
+      api_mode: request.api_mode,
+      base_url: request.base_url,
+      api_key_env: request.api_key_env ?? null,
+      enabled: request.enabled ?? false,
+      company_region: request.company_region,
+      datacenter_country: request.datacenter_country,
+      models: request.models ?? [],
+    };
 
-  config.providers.push(newProvider);
-  await saveProvidersConfig(config);
+    config.providers.push(newProvider);
+    await saveProvidersConfig(config);
 
-  return newProvider;
+    return newProvider;
+  });
 }
 
 /**
@@ -180,60 +202,64 @@ export async function updateProvider(
   id: string,
   updates: UpdateProviderRequest
 ): Promise<ProviderConfig> {
-  const config = await loadProvidersConfig();
+  return withProviderLock(async () => {
+    const config = await loadProvidersConfig();
 
-  const provider = config.providers.find((p) => p.id === id);
-  if (!provider) {
-    throw new Error(`Provider '${id}' not found`);
-  }
+    const provider = config.providers.find((p) => p.id === id);
+    if (!provider) {
+      throw new Error(`Provider '${id}' not found`);
+    }
 
-  const index = config.providers.indexOf(provider);
-  const updatedProvider: ProviderConfig = {
-    id: provider.id, // ID cannot be changed
-    name: updates.name ?? provider.name,
-    api_mode: updates.api_mode ?? provider.api_mode,
-    base_url: updates.base_url ?? provider.base_url,
-    api_key_env: updates.api_key_env !== undefined ? updates.api_key_env : provider.api_key_env,
-    enabled: updates.enabled ?? provider.enabled,
-    company_region: updates.company_region !== undefined ? updates.company_region : provider.company_region,
-    datacenter_country: updates.datacenter_country !== undefined ? updates.datacenter_country : provider.datacenter_country,
-    models: provider.models, // Models are managed separately
-  };
+    const index = config.providers.indexOf(provider);
+    const updatedProvider: ProviderConfig = {
+      id: provider.id, // ID cannot be changed
+      name: updates.name ?? provider.name,
+      api_mode: updates.api_mode ?? provider.api_mode,
+      base_url: updates.base_url ?? provider.base_url,
+      api_key_env: updates.api_key_env !== undefined ? updates.api_key_env : provider.api_key_env,
+      enabled: updates.enabled ?? provider.enabled,
+      company_region: updates.company_region !== undefined ? updates.company_region : provider.company_region,
+      datacenter_country: updates.datacenter_country !== undefined ? updates.datacenter_country : provider.datacenter_country,
+      models: provider.models, // Models are managed separately
+    };
 
-  config.providers[index] = updatedProvider;
-  await saveProvidersConfig(config);
+    config.providers[index] = updatedProvider;
+    await saveProvidersConfig(config);
 
-  return updatedProvider;
+    return updatedProvider;
+  });
 }
 
 /**
  * Delete a provider
  */
 export async function deleteProvider(id: string): Promise<void> {
-  const config = await loadProvidersConfig();
+  return withProviderLock(async () => {
+    const config = await loadProvidersConfig();
 
-  const provider = config.providers.find((p) => p.id === id);
-  if (!provider) {
-    throw new Error(`Provider '${id}' not found`);
-  }
-
-  // Prevent deletion of protected providers
-  if (provider.protected) {
-    throw new Error(`Provider '${provider.name}' ist ein Systemanbieter und kann nicht gelöscht werden`);
-  }
-
-  const index = config.providers.indexOf(provider);
-
-  // Clear active selections if they reference this provider
-  const purposes: Array<keyof typeof config.active> = ['chat', 'vision', 'tts', 'stt', 'text_to_image', 'image_to_image'];
-  for (const purpose of purposes) {
-    if (config.active[purpose].provider_id === id) {
-      config.active[purpose] = { provider_id: null, model_id: null };
+    const provider = config.providers.find((p) => p.id === id);
+    if (!provider) {
+      throw new Error(`Provider '${id}' not found`);
     }
-  }
 
-  config.providers.splice(index, 1);
-  await saveProvidersConfig(config);
+    // Prevent deletion of protected providers
+    if (provider.protected) {
+      throw new Error(`Provider '${provider.name}' ist ein Systemanbieter und kann nicht gelöscht werden`);
+    }
+
+    const index = config.providers.indexOf(provider);
+
+    // Clear active selections if they reference this provider
+    const purposes: Array<keyof typeof config.active> = ['chat', 'vision', 'tts', 'stt', 'text_to_image', 'image_to_image'];
+    for (const purpose of purposes) {
+      if (config.active[purpose].provider_id === id) {
+        config.active[purpose] = { provider_id: null, model_id: null };
+      }
+    }
+
+    config.providers.splice(index, 1);
+    await saveProvidersConfig(config);
+  });
 }
 
 // ============== Model CRUD ==============
@@ -245,22 +271,24 @@ export async function addModel(
   providerId: string,
   model: ModelConfig
 ): Promise<ModelConfig> {
-  const config = await loadProvidersConfig();
+  return withProviderLock(async () => {
+    const config = await loadProvidersConfig();
 
-  const provider = config.providers.find((p) => p.id === providerId);
-  if (!provider) {
-    throw new Error(`Provider '${providerId}' not found`);
-  }
+    const provider = config.providers.find((p) => p.id === providerId);
+    if (!provider) {
+      throw new Error(`Provider '${providerId}' not found`);
+    }
 
-  // Check for duplicate model ID
-  if (provider.models.some((m) => m.id === model.id)) {
-    throw new Error(`Model '${model.id}' already exists in provider '${providerId}'`);
-  }
+    // Check for duplicate model ID
+    if (provider.models.some((m) => m.id === model.id)) {
+      throw new Error(`Model '${model.id}' already exists in provider '${providerId}'`);
+    }
 
-  provider.models.push(model);
-  await saveProvidersConfig(config);
+    provider.models.push(model);
+    await saveProvidersConfig(config);
 
-  return model;
+    return model;
+  });
 }
 
 /**
@@ -271,72 +299,76 @@ export async function updateModel(
   modelId: string,
   updates: Partial<ModelConfig>
 ): Promise<ModelConfig> {
-  const config = await loadProvidersConfig();
+  return withProviderLock(async () => {
+    const config = await loadProvidersConfig();
 
-  const provider = config.providers.find((p) => p.id === providerId);
-  if (!provider) {
-    throw new Error(`Provider '${providerId}' not found`);
-  }
+    const provider = config.providers.find((p) => p.id === providerId);
+    if (!provider) {
+      throw new Error(`Provider '${providerId}' not found`);
+    }
 
-  const existingModel = provider.models.find((m) => m.id === modelId);
-  if (!existingModel) {
-    throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
-  }
+    const existingModel = provider.models.find((m) => m.id === modelId);
+    if (!existingModel) {
+      throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
+    }
 
-  const modelIndex = provider.models.indexOf(existingModel);
-  const updatedModel: ModelConfig = {
-    id: existingModel.id, // ID cannot be changed
-    name: updates.name ?? existingModel.name,
-    type: updates.type ?? existingModel.type,
-    capabilities: updates.capabilities ?? existingModel.capabilities,
-    default: updates.default ?? existingModel.default,
-    base_url: updates.base_url ?? existingModel.base_url,
-    context_length: updates.context_length ?? existingModel.context_length,
-    max_tokens: updates.max_tokens ?? existingModel.max_tokens,
-  };
+    const modelIndex = provider.models.indexOf(existingModel);
+    const updatedModel: ModelConfig = {
+      id: existingModel.id, // ID cannot be changed
+      name: updates.name ?? existingModel.name,
+      type: updates.type ?? existingModel.type,
+      capabilities: updates.capabilities ?? existingModel.capabilities,
+      default: updates.default ?? existingModel.default,
+      base_url: updates.base_url ?? existingModel.base_url,
+      context_length: updates.context_length ?? existingModel.context_length,
+      max_tokens: updates.max_tokens ?? existingModel.max_tokens,
+    };
 
-  provider.models[modelIndex] = updatedModel;
-  await saveProvidersConfig(config);
+    provider.models[modelIndex] = updatedModel;
+    await saveProvidersConfig(config);
 
-  return updatedModel;
+    return updatedModel;
+  });
 }
 
 /**
  * Delete a model
  */
 export async function deleteModel(providerId: string, modelId: string): Promise<void> {
-  const config = await loadProvidersConfig();
+  return withProviderLock(async () => {
+    const config = await loadProvidersConfig();
 
-  const provider = config.providers.find((p) => p.id === providerId);
-  if (!provider) {
-    throw new Error(`Provider '${providerId}' not found`);
-  }
-
-  const model = provider.models.find((m) => m.id === modelId);
-  if (!model) {
-    throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
-  }
-
-  // Prevent deletion of protected models
-  if (model.protected) {
-    throw new Error(`Modell '${model.name}' ist ein Systemmodell und kann nicht gelöscht werden`);
-  }
-
-  const modelIndex = provider.models.indexOf(model);
-
-  // Clear active selections if they reference this model
-  const purposes: Array<keyof typeof config.active> = ['chat', 'vision', 'tts', 'stt', 'text_to_image', 'image_to_image'];
-  for (const purpose of purposes) {
-    if (
-      config.active[purpose].provider_id === providerId &&
-      config.active[purpose].model_id === modelId
-    ) {
-      config.active[purpose] = { provider_id: null, model_id: null };
+    const provider = config.providers.find((p) => p.id === providerId);
+    if (!provider) {
+      throw new Error(`Provider '${providerId}' not found`);
     }
-  }
 
-  provider.models.splice(modelIndex, 1);
-  await saveProvidersConfig(config);
+    const model = provider.models.find((m) => m.id === modelId);
+    if (!model) {
+      throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
+    }
+
+    // Prevent deletion of protected models
+    if (model.protected) {
+      throw new Error(`Modell '${model.name}' ist ein Systemmodell und kann nicht gelöscht werden`);
+    }
+
+    const modelIndex = provider.models.indexOf(model);
+
+    // Clear active selections if they reference this model
+    const purposes: Array<keyof typeof config.active> = ['chat', 'vision', 'tts', 'stt', 'text_to_image', 'image_to_image'];
+    for (const purpose of purposes) {
+      if (
+        config.active[purpose].provider_id === providerId &&
+        config.active[purpose].model_id === modelId
+      ) {
+        config.active[purpose] = { provider_id: null, model_id: null };
+      }
+    }
+
+    provider.models.splice(modelIndex, 1);
+    await saveProvidersConfig(config);
+  });
 }
 
 // ============== Active Selection ==============
@@ -357,29 +389,31 @@ export async function setActiveModel(
   providerId: string | null,
   modelId: string | null
 ): Promise<void> {
-  const config = await loadProvidersConfig();
+  return withProviderLock(async () => {
+    const config = await loadProvidersConfig();
 
-  // Validate provider and model if specified
-  if (providerId && modelId) {
-    const provider = config.providers.find((p) => p.id === providerId);
-    if (!provider) {
-      throw new Error(`Provider '${providerId}' not found`);
+    // Validate provider and model if specified
+    if (providerId && modelId) {
+      const provider = config.providers.find((p) => p.id === providerId);
+      if (!provider) {
+        throw new Error(`Provider '${providerId}' not found`);
+      }
+      if (!provider.enabled) {
+        throw new Error(`Provider '${providerId}' is disabled`);
+      }
+      const model = provider.models.find((m) => m.id === modelId);
+      if (!model) {
+        throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
+      }
     }
-    if (!provider.enabled) {
-      throw new Error(`Provider '${providerId}' is disabled`);
-    }
-    const model = provider.models.find((m) => m.id === modelId);
-    if (!model) {
-      throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
-    }
-  }
 
-  config.active[purpose] = {
-    provider_id: providerId,
-    model_id: modelId,
-  };
+    config.active[purpose] = {
+      provider_id: providerId,
+      model_id: modelId,
+    };
 
-  await saveProvidersConfig(config);
+    await saveProvidersConfig(config);
+  });
 }
 
 // ============== Model Resolution ==============

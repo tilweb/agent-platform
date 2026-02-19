@@ -10,6 +10,22 @@ const REGISTRY_PATH = './data/apps/registry.yaml';
 
 let registryCache: AppsRegistry | null = null;
 
+// Mutex for registry read-modify-write
+let registryLock: Promise<void> = Promise.resolve();
+
+async function withRegistryLock<T>(fn: () => Promise<T>): Promise<T> {
+  let release: () => void;
+  const prev = registryLock;
+  registryLock = new Promise<void>((resolve) => { release = resolve; });
+  await prev;
+  try {
+    registryCache = null;
+    return await fn();
+  } finally {
+    release!();
+  }
+}
+
 /**
  * Get default registry with built-in apps
  */
@@ -108,60 +124,68 @@ export async function getApp(appId: string): Promise<AppInfo | null> {
  * Enable an app (admin only)
  */
 export async function enableApp(appId: string): Promise<AppConfig | null> {
-  const registry = await loadRegistry();
+  return withRegistryLock(async () => {
+    const registry = await loadRegistry();
 
-  if (!registry.apps[appId]) {
-    return null;
-  }
+    if (!registry.apps[appId]) {
+      return null;
+    }
 
-  registry.apps[appId].enabled = true;
-  await saveRegistry(registry);
-  return registry.apps[appId];
+    registry.apps[appId].enabled = true;
+    await saveRegistry(registry);
+    return registry.apps[appId];
+  });
 }
 
 /**
  * Disable an app (admin only)
  */
 export async function disableApp(appId: string): Promise<AppConfig | null> {
-  const registry = await loadRegistry();
+  return withRegistryLock(async () => {
+    const registry = await loadRegistry();
 
-  if (!registry.apps[appId]) {
-    return null;
-  }
+    if (!registry.apps[appId]) {
+      return null;
+    }
 
-  registry.apps[appId].enabled = false;
-  await saveRegistry(registry);
-  return registry.apps[appId];
+    registry.apps[appId].enabled = false;
+    await saveRegistry(registry);
+    return registry.apps[appId];
+  });
 }
 
 /**
  * Register a new app
  */
 export async function registerApp(config: AppConfig): Promise<AppConfig> {
-  const registry = await loadRegistry();
+  return withRegistryLock(async () => {
+    const registry = await loadRegistry();
 
-  if (registry.apps[config.id]) {
-    throw new Error(`App with ID "${config.id}" already exists`);
-  }
+    if (registry.apps[config.id]) {
+      throw new Error(`App with ID "${config.id}" already exists`);
+    }
 
-  registry.apps[config.id] = config;
-  await saveRegistry(registry);
-  return config;
+    registry.apps[config.id] = config;
+    await saveRegistry(registry);
+    return config;
+  });
 }
 
 /**
  * Unregister an app
  */
 export async function unregisterApp(appId: string): Promise<boolean> {
-  const registry = await loadRegistry();
+  return withRegistryLock(async () => {
+    const registry = await loadRegistry();
 
-  if (!registry.apps[appId]) {
-    return false;
-  }
+    if (!registry.apps[appId]) {
+      return false;
+    }
 
-  delete registry.apps[appId];
-  await saveRegistry(registry);
-  return true;
+    delete registry.apps[appId];
+    await saveRegistry(registry);
+    return true;
+  });
 }
 
 /**

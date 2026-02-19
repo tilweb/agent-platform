@@ -10,6 +10,21 @@ import { join } from 'path';
 const DATA_DIR = join(import.meta.dir, '../../../data');
 const USERS_DIR = join(DATA_DIR, 'auth/users');
 
+// Per-user mutex for read-modify-write operations
+const userLocks = new Map<string, Promise<void>>();
+
+async function withUserLock<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+  let release: () => void;
+  const prev = userLocks.get(userId) || Promise.resolve();
+  userLocks.set(userId, new Promise<void>((resolve) => { release = resolve; }));
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release!();
+  }
+}
+
 /**
  * Ensure the users directory exists
  */
@@ -149,19 +164,21 @@ export async function createUser(input: CreateUserInput & { role?: 'admin' | 'us
  * Update a user
  */
 export async function updateUser(userId: string, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | null> {
-  const user = await loadUser(userId);
-  if (!user) {
-    return null;
-  }
+  return withUserLock(userId, async () => {
+    const user = await loadUser(userId);
+    if (!user) {
+      return null;
+    }
 
-  const updatedUser: User = {
-    ...user,
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  };
+    const updatedUser: User = {
+      ...user,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
 
-  await saveUser(updatedUser);
-  return updatedUser;
+    await saveUser(updatedUser);
+    return updatedUser;
+  });
 }
 
 /**

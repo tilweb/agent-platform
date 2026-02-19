@@ -11,6 +11,22 @@ const DATA_DIR = join(import.meta.dir, '../../../data');
 const CONNECTIONS_DIR = join(DATA_DIR, 'connections');
 const OAUTH_STATE_DIR = join(DATA_DIR, 'auth/oauth-states');
 
+// Per-connection mutex for read-modify-write operations
+const connectionLocks = new Map<string, Promise<void>>();
+
+async function withConnectionLock<T>(userId: string, providerId: string, fn: () => Promise<T>): Promise<T> {
+  const key = `${userId}:${providerId}`;
+  let release: () => void;
+  const prev = connectionLocks.get(key) || Promise.resolve();
+  connectionLocks.set(key, new Promise<void>((resolve) => { release = resolve; }));
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release!();
+  }
+}
+
 /**
  * Ensure the connections directory exists for a user
  */
@@ -107,21 +123,23 @@ export async function updateConnectionStatus(
   providerId: string,
   status: ConnectionStatus
 ): Promise<boolean> {
-  const filePath = getConnectionFilePath(userId, providerId);
-  const file = Bun.file(filePath);
+  return withConnectionLock(userId, providerId, async () => {
+    const filePath = getConnectionFilePath(userId, providerId);
+    const file = Bun.file(filePath);
 
-  if (!(await file.exists())) {
-    return false;
-  }
+    if (!(await file.exists())) {
+      return false;
+    }
 
-  const content = await file.text();
-  const connection = parseYaml(content) as StoredConnection;
+    const content = await file.text();
+    const connection = parseYaml(content) as StoredConnection;
 
-  connection.status = status;
-  connection.updatedAt = new Date().toISOString();
+    connection.status = status;
+    connection.updatedAt = new Date().toISOString();
 
-  await Bun.write(filePath, stringifyYaml(connection));
-  return true;
+    await Bun.write(filePath, stringifyYaml(connection));
+    return true;
+  });
 }
 
 /**
@@ -132,21 +150,23 @@ export async function updateConnectionTokens(
   providerId: string,
   tokens: TokenSet
 ): Promise<boolean> {
-  const filePath = getConnectionFilePath(userId, providerId);
-  const file = Bun.file(filePath);
+  return withConnectionLock(userId, providerId, async () => {
+    const filePath = getConnectionFilePath(userId, providerId);
+    const file = Bun.file(filePath);
 
-  if (!(await file.exists())) {
-    return false;
-  }
+    if (!(await file.exists())) {
+      return false;
+    }
 
-  const content = await file.text();
-  const connection = parseYaml(content) as StoredConnection;
+    const content = await file.text();
+    const connection = parseYaml(content) as StoredConnection;
 
-  connection.tokens = await encryptTokens(tokens);
-  connection.updatedAt = new Date().toISOString();
+    connection.tokens = await encryptTokens(tokens);
+    connection.updatedAt = new Date().toISOString();
 
-  await Bun.write(filePath, stringifyYaml(connection));
-  return true;
+    await Bun.write(filePath, stringifyYaml(connection));
+    return true;
+  });
 }
 
 /**
