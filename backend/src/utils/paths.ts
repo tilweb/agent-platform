@@ -76,3 +76,7 @@ export const NOTIFICATIONS_DIR = join(DATA_DIR, 'notifications');
 
 // Temp
 export const TEMP_DIR = join(DATA_DIR, 'temp');
+
+// External API URLs (require explicit configuration, no hardcoded fallbacks)
+export const MARKITDOWN_API_URL = process.env.MARKITDOWN_API_URL || '';
+export const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';

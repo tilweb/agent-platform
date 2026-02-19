@@ -11,7 +11,7 @@ import { join, extname, basename, normalize } from 'path';
 import { validateUpload } from '../utils/fileTypeValidator';
 import { $ } from 'bun';
 import { randomUUID } from 'crypto';
-import { CHAT_UPLOADS_DIR as UPLOADS_BASE } from '../utils/paths';
+import { CHAT_UPLOADS_DIR as UPLOADS_BASE, MARKITDOWN_API_URL, MARKITDOWN_API_KEY } from '../utils/paths';
 
 // File size limits (in bytes) — configurable via MAX_UPLOAD_SIZE_MB env
 const MAX_FILE_SIZE_MB = parseInt(process.env.MAX_UPLOAD_SIZE_MB || '50', 10);
@@ -95,13 +95,8 @@ class AttachmentsService {
   private apiKey: string;
 
   constructor() {
-    this.markitdownUrl = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-    this.apiKey = process.env.ADACOR_AI_API_KEY || '';
-
-    // Warn if using default URL (should be configured in production)
-    if (!process.env.MARKITDOWN_API_URL) {
-      console.warn('[Attachments] MARKITDOWN_API_URL not set, using default. Configure in .env for production.');
-    }
+    this.markitdownUrl = MARKITDOWN_API_URL;
+    this.apiKey = MARKITDOWN_API_KEY;
   }
 
   /**

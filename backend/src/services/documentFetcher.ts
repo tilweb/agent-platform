@@ -12,11 +12,7 @@ import { readFile, writeFile, mkdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { loadChatHistory, type ChatHistory } from './memory';
-import { KB_BASE, TEMP_DIR, APPS_DIR } from '../utils/paths';
-
-// Markitdown API settings (same as indexer.ts)
-const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
+import { KB_BASE, TEMP_DIR, APPS_DIR, MARKITDOWN_API_URL as MARKITDOWN_URL, MARKITDOWN_API_KEY } from '../utils/paths';
 
 export interface ReaderItem {
   id: string;

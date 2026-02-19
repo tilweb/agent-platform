@@ -21,9 +21,8 @@ import {
 } from './storage';
 import { analyzeContract, computeDerivedFields } from './extraction';
 
-// Markitdown API configuration
-const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
+// Markitdown API configuration (centralized in utils/paths.ts)
+import { MARKITDOWN_API_URL as MARKITDOWN_URL, MARKITDOWN_API_KEY } from '../../utils/paths';
 
 // Supported MIME types
 const CONVERTIBLE_TYPES = [

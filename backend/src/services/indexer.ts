@@ -10,7 +10,7 @@ import { existsSync } from 'fs';
 import { join, basename, extname } from 'path';
 import { llmService, type Message } from './llm';
 import type { UsageContext } from './usageTracking';
-import { KB_BASE, KB_INCOMING_DIR as INCOMING_DIR } from '../utils/paths';
+import { KB_BASE, KB_INCOMING_DIR as INCOMING_DIR, MARKITDOWN_API_URL, MARKITDOWN_API_KEY } from '../utils/paths';
 
 export interface IndexResult {
   success: boolean;
@@ -32,8 +32,8 @@ class IndexerService {
   private apiKey: string;
 
   constructor() {
-    this.markitdownUrl = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-    this.apiKey = process.env.ADACOR_AI_API_KEY || '';
+    this.markitdownUrl = MARKITDOWN_API_URL;
+    this.apiKey = MARKITDOWN_API_KEY;
   }
 
   /**
