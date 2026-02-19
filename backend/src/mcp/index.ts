@@ -49,8 +49,9 @@ export * from './types';
 // Export client
 export { McpClient, mcpClient } from './client';
 
-// Export connection
+// Export connections
 export { McpConnection } from './connection';
+export { RemoteMcpConnection } from './remote-connection';
 
 // Export config functions
 export {

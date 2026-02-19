@@ -40,3 +40,7 @@ data:
   # SSRF protection
   SSRF_CHECK_MALWARE: {{ .Values.backend.config.ssrfCheckMalware | quote }}
   SSRF_ALLOW_LOCALHOST: {{ .Values.backend.config.ssrfAllowLocalhost | quote }}
+  # MCP Runner
+  {{- if .Values.mcpRunner.enabled }}
+  MCP_RUNNER_URL: {{ printf "http://%s:3002" (include "agent-platform.mcpRunner.fullname" .) | quote }}
+  {{- end }}

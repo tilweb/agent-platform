@@ -11,10 +11,31 @@ services:
         required: false
     environment:
       - TRUST_PROXY=true
+      - MCP_RUNNER_URL=http://mcp-runner:3002
+      - MCP_RUNNER_SECRET=${MCP_RUNNER_SECRET:-default-dev-secret}
     expose:
       - "3001"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      mcp-runner:
+        condition: service_healthy
+
+  mcp-runner:
+    build: ./mcp-runner
+    env_file:
+      - path: ./.env
+        required: true
+    environment:
+      - MCP_RUNNER_SECRET=${MCP_RUNNER_SECRET:-default-dev-secret}
+      - MCP_RUNNER_PORT=3002
+    expose:
+      - "3002"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3002/health"]
       interval: 10s
       timeout: 5s
       retries: 3

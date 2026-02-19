@@ -1,25 +1,24 @@
 /**
- * MCP Server Connection
+ * MCP Server Connection (stdio-based)
  *
- * Manages a connection to a single MCP server process.
+ * Adapted from backend/src/mcp/connection.ts for the runner context.
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { spawn, type ChildProcess } from 'child_process';
-import type { McpServerConfig, McpToolInfo, McpCallResult, IMcpConnection } from './types';
+import type { ConnectRequest, McpToolInfo, McpCallResult } from './types';
 
-export class McpConnection implements IMcpConnection {
-  private config: McpServerConfig;
-  private process: ChildProcess | null = null;
+export class McpConnection {
+  private config: ConnectRequest;
   private transport: StdioClientTransport | null = null;
   private client: Client | null = null;
   private tools: McpToolInfo[] = [];
   private _status: 'connected' | 'connecting' | 'disconnected' | 'error' = 'disconnected';
   private _error: string | null = null;
   private _connectedAt: number | null = null;
+  private _pid: number | null = null;
 
-  constructor(config: McpServerConfig) {
+  constructor(config: ConnectRequest) {
     this.config = config;
   }
 
@@ -43,9 +42,10 @@ export class McpConnection implements IMcpConnection {
     return this._connectedAt;
   }
 
-  /**
-   * Connect to the MCP server
-   */
+  get pid(): number | null {
+    return this._pid;
+  }
+
   async connect(): Promise<void> {
     if (this._status === 'connected') {
       return;
@@ -55,50 +55,30 @@ export class McpConnection implements IMcpConnection {
     this._error = null;
 
     try {
-      // Resolve environment variables
-      const env: Record<string, string> = { ...process.env } as Record<string, string>;
+      // Env is already resolved by the backend — use as-is plus inherit process.env
+      const env: Record<string, string> = { ...process.env as Record<string, string> };
       if (this.config.env) {
-        for (const [key, value] of Object.entries(this.config.env)) {
-          // Replace ${VAR} with actual env value
-          env[key] = value.replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] || '');
-        }
+        Object.assign(env, this.config.env);
       }
 
-      // Spawn the server process
-      this.process = spawn(this.config.command, this.config.args || [], {
-        env,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
-
-      // Handle process errors
-      this.process.on('error', (err) => {
-        console.error(`MCP server ${this.config.id} process error:`, err);
-        this._status = 'error';
-        this._error = err.message;
-      });
-
-      this.process.on('exit', (code) => {
-        console.log(`MCP server ${this.config.id} exited with code ${code}`);
-        if (this._status === 'connected') {
-          this._status = 'disconnected';
-        }
-      });
-
-      // Log stderr for debugging
-      this.process.stderr?.on('data', (data) => {
-        console.error(`MCP ${this.config.id} stderr:`, data.toString());
-      });
-
-      // Create transport
+      // Create transport (StdioClientTransport spawns the process internally)
       this.transport = new StdioClientTransport({
         command: this.config.command,
         args: this.config.args || [],
         env,
       });
 
+      // Capture PID when process starts
+      this.transport.onclose = () => {
+        if (this._status === 'connected') {
+          console.log(`MCP server ${this.config.id} transport closed`);
+          this._status = 'disconnected';
+        }
+      };
+
       // Create client
       this.client = new Client({
-        name: 'agent-platform',
+        name: 'mcp-runner',
         version: '1.0.0',
       }, {
         capabilities: {},
@@ -107,13 +87,23 @@ export class McpConnection implements IMcpConnection {
       // Connect
       await this.client.connect(this.transport);
 
+      // Try to capture PID from transport's internal process
+      try {
+        const proc = (this.transport as any)._process;
+        if (proc?.pid) {
+          this._pid = proc.pid;
+        }
+      } catch {
+        // PID capture is best-effort
+      }
+
       // List available tools
       await this.refreshTools();
 
       this._status = 'connected';
       this._connectedAt = Date.now();
 
-      console.log(`Connected to MCP server: ${this.config.name} (${this.tools.length} tools)`);
+      console.log(`Connected to MCP server: ${this.config.name} (${this.tools.length} tools, PID: ${this._pid})`);
     } catch (err: any) {
       this._status = 'error';
       this._error = err.message;
@@ -122,9 +112,6 @@ export class McpConnection implements IMcpConnection {
     }
   }
 
-  /**
-   * Disconnect from the MCP server
-   */
   async disconnect(): Promise<void> {
     try {
       if (this.client) {
@@ -137,14 +124,10 @@ export class McpConnection implements IMcpConnection {
         this.transport = null;
       }
 
-      if (this.process) {
-        this.process.kill();
-        this.process = null;
-      }
-
       this.tools = [];
       this._status = 'disconnected';
       this._connectedAt = null;
+      this._pid = null;
 
       console.log(`Disconnected from MCP server: ${this.config.name}`);
     } catch (err: any) {
@@ -152,11 +135,8 @@ export class McpConnection implements IMcpConnection {
     }
   }
 
-  /**
-   * Refresh the list of available tools
-   */
   async refreshTools(): Promise<McpToolInfo[]> {
-    if (!this.client || this._status !== 'connected' && this._status !== 'connecting') {
+    if (!this.client || (this._status !== 'connected' && this._status !== 'connecting')) {
       return [];
     }
 
@@ -178,55 +158,36 @@ export class McpConnection implements IMcpConnection {
     }
   }
 
-  /**
-   * Get all tools from this server
-   */
   getTools(): McpToolInfo[] {
     return this.tools;
   }
 
-  /**
-   * Call a tool on the MCP server
-   */
   async callTool(toolName: string, args: Record<string, any>): Promise<McpCallResult> {
     if (!this.client || this._status !== 'connected') {
       throw new Error(`MCP server ${this.config.id} is not connected`);
     }
 
-    try {
-      const result = await this.client.callTool({
-        name: toolName,
-        arguments: args,
-      });
+    const result = await this.client.callTool({
+      name: toolName,
+      arguments: args,
+    });
 
-      return {
-        content: result.content as McpCallResult['content'],
-        isError: Boolean(result.isError),
-      };
-    } catch (err: any) {
-      console.error(`MCP tool call failed (${this.config.id}/${toolName}):`, err);
-      throw err;
-    }
+    return {
+      content: result.content as McpCallResult['content'],
+      isError: Boolean(result.isError),
+    };
   }
 
-  /**
-   * Get server info
-   */
-  getInfo(): {
-    id: string;
-    name: string;
-    status: string;
-    error: string | null;
-    toolCount: number;
-    connectedAt: number | null;
-  } {
-    return {
-      id: this.config.id,
-      name: this.config.name,
-      status: this._status,
-      error: this._error,
-      toolCount: this.tools.length,
-      connectedAt: this._connectedAt,
-    };
+  getMemoryMB(): number | null {
+    if (!this._pid) return null;
+    try {
+      const proc = (this.transport as any)?._process;
+      if (proc?.memoryUsage) {
+        return Math.round(proc.memoryUsage().rss / 1024 / 1024);
+      }
+    } catch {
+      // Best-effort
+    }
+    return null;
   }
 }

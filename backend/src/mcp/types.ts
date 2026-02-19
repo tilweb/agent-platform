@@ -43,3 +43,50 @@ export interface McpCallResult {
   }>;
   isError?: boolean;
 }
+
+/**
+ * IMcpConnection — Common interface for local and remote MCP connections.
+ */
+export interface IMcpConnection {
+  readonly serverId: string;
+  readonly serverName: string;
+  readonly status: 'connected' | 'connecting' | 'disconnected' | 'error';
+  readonly error: string | null;
+  readonly connectedAt: number | null;
+
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  refreshTools(): Promise<McpToolInfo[]>;
+  getTools(): McpToolInfo[];
+  callTool(toolName: string, args: Record<string, any>): Promise<McpCallResult>;
+  getInfo(): {
+    id: string;
+    name: string;
+    status: string;
+    error: string | null;
+    toolCount: number;
+    connectedAt: number | null;
+  };
+}
+
+/**
+ * MCP Runner API Types
+ */
+export interface RunnerConnectRequest {
+  id: string;
+  name: string;
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+export interface RunnerServerStatus {
+  id: string;
+  name: string;
+  status: 'connected' | 'connecting' | 'disconnected' | 'error';
+  error?: string;
+  toolCount: number;
+  connectedAt?: number;
+  pid?: number;
+  memoryMB?: number;
+}

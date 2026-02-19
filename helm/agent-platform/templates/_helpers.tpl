@@ -94,6 +94,29 @@ Frontend image
 {{- printf "%s:%s" .Values.frontend.image.repository (default .Chart.AppVersion .Values.frontend.image.tag) }}
 {{- end }}
 
+{{/* ---- MCP Runner ---- */}}
+
+{{- define "agent-platform.mcpRunner.fullname" -}}
+{{- printf "%s-mcp-runner" (include "agent-platform.fullname" .) }}
+{{- end }}
+
+{{- define "agent-platform.mcpRunner.labels" -}}
+{{ include "agent-platform.labels" . }}
+app.kubernetes.io/component: mcp-runner
+{{- end }}
+
+{{- define "agent-platform.mcpRunner.selectorLabels" -}}
+{{ include "agent-platform.selectorLabels" . }}
+app.kubernetes.io/component: mcp-runner
+{{- end }}
+
+{{/*
+MCP Runner image
+*/}}
+{{- define "agent-platform.mcpRunner.image" -}}
+{{- printf "%s:%s" .Values.mcpRunner.image.repository (default .Chart.AppVersion .Values.mcpRunner.image.tag) }}
+{{- end }}
+
 {{/*
 Secret name (supports existingSecret)
 */}}

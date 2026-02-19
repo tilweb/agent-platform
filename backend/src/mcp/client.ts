@@ -2,18 +2,42 @@
  * MCP Client
  *
  * Manages connections to multiple MCP servers.
+ * Dual-mode: local (stdio) or remote (MCP Runner) based on MCP_RUNNER_URL.
  */
 
 import { McpConnection } from './connection';
-import type { McpServerConfig, McpServerStatus, McpToolInfo } from './types';
+import { RemoteMcpConnection } from './remote-connection';
+import type { McpServerConfig, McpServerStatus, McpToolInfo, IMcpConnection } from './types';
 
 export class McpClient {
-  private connections = new Map<string, McpConnection>();
+  private connections = new Map<string, IMcpConnection>();
+
+  private get runnerUrl(): string | undefined {
+    return process.env.MCP_RUNNER_URL || undefined;
+  }
+
+  private get runnerSecret(): string {
+    return process.env.MCP_RUNNER_SECRET || '';
+  }
+
+  private get useRunner(): boolean {
+    return Boolean(this.runnerUrl);
+  }
+
+  /**
+   * Create the appropriate connection type (local or remote)
+   */
+  private createConnection(config: McpServerConfig): IMcpConnection {
+    if (this.useRunner) {
+      return new RemoteMcpConnection(config, this.runnerUrl!, this.runnerSecret);
+    }
+    return new McpConnection(config);
+  }
 
   /**
    * Connect to an MCP server
    */
-  async connect(config: McpServerConfig): Promise<McpConnection> {
+  async connect(config: McpServerConfig): Promise<IMcpConnection> {
     // Check if already connected
     const existing = this.connections.get(config.id);
     if (existing && existing.status === 'connected') {
@@ -21,7 +45,7 @@ export class McpClient {
     }
 
     // Create and connect
-    const connection = new McpConnection(config);
+    const connection = this.createConnection(config);
     this.connections.set(config.id, connection);
 
     await connection.connect();
@@ -42,7 +66,7 @@ export class McpClient {
   /**
    * Reconnect to an MCP server
    */
-  async reconnect(config: McpServerConfig): Promise<McpConnection> {
+  async reconnect(config: McpServerConfig): Promise<IMcpConnection> {
     await this.disconnect(config.id);
     return this.connect(config);
   }
@@ -58,14 +82,14 @@ export class McpClient {
   /**
    * Get a connection by server ID
    */
-  getConnection(serverId: string): McpConnection | undefined {
+  getConnection(serverId: string): IMcpConnection | undefined {
     return this.connections.get(serverId);
   }
 
   /**
    * Get all connections
    */
-  getAllConnections(): McpConnection[] {
+  getAllConnections(): IMcpConnection[] {
     return Array.from(this.connections.values());
   }
 

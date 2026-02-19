@@ -78,6 +78,7 @@ backend:
       GOOGLE_AI_API_KEY: ""
       NEBIUS_API_KEY: ""
       TAVILY_API_KEY: ""
+      MCP_RUNNER_SECRET: ""
 
   resources:
     requests:
@@ -118,6 +119,26 @@ persistence:
   # -- Storage class name (leave empty for cluster default)
   # storageClass: ""
   annotations: {}
+
+# -- MCP Runner (dedicated container for MCP server processes)
+mcpRunner:
+  # -- Enable to offload MCP server processes to a separate container
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: ghcr.io/OWNER/agent-platform-mcp-runner
+    # -- Defaults to Chart.appVersion
+    tag: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
 
 # -- Ingress (path-based routing)
 ingress:
