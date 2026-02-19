@@ -19,7 +19,7 @@ fi
 jq -n '{
   hookSpecificOutput: {
     hookEventName: "PostToolUse",
-    additionalContext: "HINWEIS: Du hast gerade einen Commit erstellt. Falls Code- oder Feature-Änderungen enthalten sind, prüfe ob die Anwenderdokumentation aktualisiert werden muss. Führe dazu `/update-docs check` aus, um eine Gap-Analyse zu erhalten."
+    additionalContext: "HINWEIS: Du hast gerade einen Commit erstellt. Falls Code- oder Feature-Änderungen enthalten sind, prüfe ob die interne Projektdokumentation aktualisiert werden muss: README.md, DEPLOYMENT.md, CLAUDE.md, backend/CLAUDE.md, frontend/CLAUDE.md, docs/*.md. Erinnere den Benutzer daran, falls Änderungen nötig sind."
   }
 }'
 

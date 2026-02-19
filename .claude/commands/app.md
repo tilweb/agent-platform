@@ -16,7 +16,7 @@ Start both servers in the background.
 
 **Backend:**
 ```bash
-cd /Users/pfend/github/agent-platform/backend && bun run --watch src/index.ts &
+cd /Users/pfend/github/agent-platform/backend && bun --env-file=../.env run --watch src/index.ts &
 ```
 
 **Frontend:**
@@ -56,6 +56,6 @@ Report which services are running and which are stopped.
 
 ## Notes
 - The backend CWD must be `backend/` for paths to resolve correctly
-- Bun auto-loads `backend/.env`
+- Bun lädt `.env` aus dem Root via `--env-file=../.env`
 - After start, briefly check the output for errors (look for "error:" or stack traces)
 - Report the result to the user concisely in German (e.g. "Backend und Frontend gestartet" or "Backend gestoppt, Frontend läuft noch")
