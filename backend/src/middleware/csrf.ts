@@ -169,13 +169,12 @@ export function csrfProtection(config: CSRFConfig = {}): MiddlewareHandler {
         );
       }
 
-      // If neither Origin nor Referer, check if it's a same-site request
-      // This can happen with some browsers or non-browser clients
+      // If neither Origin nor Referer, only allow application/json
+      // (multipart/form-data and x-www-form-urlencoded can be sent cross-site by HTML forms)
       if (!refererOrigin) {
-        // For API clients without Origin/Referer, require valid Content-Type
-        // This prevents simple form submissions from other sites
-        if (!hasValidContentType(c)) {
-          console.warn(`[CSRF] Blocked request without origin and invalid content-type`);
+        const contentType = (c.req.header('content-type') || '').toLowerCase();
+        if (!contentType.includes('application/json')) {
+          console.warn(`[CSRF] Blocked request without origin/referer and non-JSON content-type: ${contentType}`);
           return c.json(
             { error: 'Forbidden', message: 'Missing origin header' },
             403

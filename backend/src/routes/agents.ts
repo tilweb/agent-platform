@@ -14,7 +14,6 @@ import {
   createAgent as createAgentService,
   updateAgent as updateAgentService,
   deleteAgent as deleteAgentService,
-  getAgentFull,
   loadAllAgents,
 } from '../services/agents';
 import type { AgentConfig } from '../services/agents';
@@ -88,7 +87,7 @@ agentRoutes.get('/:id/full', async (c) => {
     const userId = requireUserId(c);
     const agentId = c.req.param('id');
 
-    const agent = await getAgentFull(agentId);
+    const agent = await loadAgent(agentId);
     if (!agent) {
       return c.json({ error: 'Agent nicht gefunden' }, 404);
     }

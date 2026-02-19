@@ -29,6 +29,12 @@ export const tablesRoutes = new Hono();
 // Require authentication for all table operations
 tablesRoutes.use('/*', authMiddleware);
 
+// Runtime validation: ensure parsed JSON is a plain object (not array, null, string etc.)
+function requireObject(body: unknown): body is Record<string, unknown> {
+  return body !== null && typeof body === 'object' && !Array.isArray(body);
+}
+
+
 // ============================================
 // Table CRUD
 // ============================================
@@ -55,6 +61,9 @@ tablesRoutes.get('/', async (c) => {
 tablesRoutes.post('/', async (c) => {
   try {
     const body = await c.req.json();
+    if (!requireObject(body)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
     const { id, name, description, icon, columns, settings, views: tableViews } = body;
 
@@ -195,7 +204,10 @@ tablesRoutes.delete('/:id', async (c) => {
 tablesRoutes.post('/:id/columns', async (c) => {
   try {
     const tableId = c.req.param('id');
-    const column = await c.req.json() as ColumnDefinition;
+    const column = await c.req.json();
+    if (!requireObject(column)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
     if (!column.id || !column.name || !column.type) {
       return c.json({ error: 'id, name, and type are required' }, 400);
@@ -220,7 +232,10 @@ tablesRoutes.put('/:id/columns/:columnId', async (c) => {
   try {
     const tableId = c.req.param('id');
     const columnId = c.req.param('columnId');
-    const updates = await c.req.json() as Partial<ColumnDefinition>;
+    const updates = await c.req.json();
+    if (!requireObject(updates)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
     const table = await tableService.updateColumn(tableId, columnId, updates);
     if (!table) {
@@ -305,6 +320,9 @@ tablesRoutes.post('/:id/rows', async (c) => {
   try {
     const tableId = c.req.param('id');
     const data = await c.req.json();
+    if (!requireObject(data)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
     const row = await tableService.addRow(tableId, { data });
     return c.json(row, 201);
@@ -324,7 +342,10 @@ tablesRoutes.post('/:id/rows', async (c) => {
 tablesRoutes.post('/:id/rows/query', async (c) => {
   try {
     const tableId = c.req.param('id');
-    const options = await c.req.json() as QueryOptions;
+    const options = await c.req.json();
+    if (!requireObject(options)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
     const result = await tableService.queryRows(tableId, options);
     return c.json(result);
@@ -357,6 +378,9 @@ tablesRoutes.put('/:id/rows/:rowId', async (c) => {
     const tableId = c.req.param('id');
     const rowId = c.req.param('rowId');
     const data = await c.req.json();
+    if (!requireObject(data)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
     const row = await tableService.updateRow(tableId, { row_id: rowId, data });
     if (!row) {

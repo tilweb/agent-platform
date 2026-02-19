@@ -609,9 +609,4 @@ export async function deleteAgent(agentId: string): Promise<void> {
   await rm(agentDir, { recursive: true });
 }
 
-/**
- * Get full agent config including system prompt (for editing)
- */
-export async function getAgentFull(agentId: string): Promise<AgentConfig | null> {
-  return loadAgent(agentId);
-}
+

@@ -3,7 +3,7 @@ import { streamSSE } from 'hono/streaming';
 import { runAgentLoop, type AgentEvent, type AttachmentWithContent } from '../agents/loop';
 import { chatRateLimit, uploadRateLimit } from '../middleware/rateLimit';
 import { generateSessionId, saveConversation, saveChatHistory, loadChatHistory, listChatHistories, searchChatHistories, deleteChatHistory, regenerateChatSummary, regenerateAllMissingSummaries, createShareLink, revokeShareLink, loadChatByShareToken, getShareInfo, loadChatFolders, createChatFolder, deleteChatFolder, updateChatFolders, getChatFolderIds, listChatsInFolder, getFolderChatCounts, addChatMaterial, removeChatMaterial, updateChatMaterials, type MessageAttachment, type ChatMaterial } from '../services/memory';
-import { listAgents, loadAgent, createAgent, updateAgent, deleteAgent, getAgentFull } from '../services/agents';
+import { listAgents, loadAgent, createAgent, updateAgent, deleteAgent } from '../services/agents';
 import { authMiddleware, optionalAuthMiddleware, getCurrentUserId } from '../auth';
 import { internalError } from '../utils/errorHandler';
 import {
@@ -1107,7 +1107,7 @@ _internalAgentRoutes.get('/:id/full', async (c) => {
   const agentId = c.req.param('id');
 
   try {
-    const agent = await getAgentFull(agentId);
+    const agent = await loadAgent(agentId);
 
     if (!agent) {
       return c.json({ error: 'Agent not found' }, 404);
