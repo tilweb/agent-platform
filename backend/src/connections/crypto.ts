@@ -121,9 +121,15 @@ export async function decryptTokens(encrypted: EncryptedTokenSet): Promise<Token
     combined
   );
 
-  // Parse JSON
+  // Parse and validate JSON
   const json = new TextDecoder().decode(plaintext);
-  return JSON.parse(json) as TokenSet;
+  const parsed = JSON.parse(json);
+
+  if (!parsed || typeof parsed.accessToken !== 'string' || typeof parsed.tokenType !== 'string') {
+    throw new Error('Decrypted data is not a valid TokenSet');
+  }
+
+  return parsed as TokenSet;
 }
 
 /**

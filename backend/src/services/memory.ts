@@ -9,6 +9,44 @@ const CONVERSATIONS_DIR = resolve(process.cwd(), '../data/conversations');
 const SESSIONS_DIR = resolve(process.cwd(), '../data/memory/sessions');
 const CHATS_DIR = resolve(process.cwd(), '../data/chats');
 
+// ============================================
+// File-level mutexes to prevent race conditions
+// ============================================
+
+// Per-session locks for chat file read-modify-write
+const chatLocks = new Map<string, Promise<void>>();
+
+async function withChatLock<T>(sessionId: string, fn: () => Promise<T>): Promise<T> {
+  let release: () => void;
+  const prev = chatLocks.get(sessionId) || Promise.resolve();
+  chatLocks.set(sessionId, new Promise<void>((resolve) => { release = resolve; }));
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release!();
+    // Clean up lock entries for sessions no longer contended
+    if (chatLocks.get(sessionId) === undefined) {
+      chatLocks.delete(sessionId);
+    }
+  }
+}
+
+// Global lock for the shared chat-folders.yaml file
+let foldersLock: Promise<void> = Promise.resolve();
+
+async function withFoldersLock<T>(fn: () => Promise<T>): Promise<T> {
+  let release: () => void;
+  const prev = foldersLock;
+  foldersLock = new Promise<void>((resolve) => { release = resolve; });
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release!();
+  }
+}
+
 export interface ConversationSession {
   id: string;
   userId?: string;  // Owner of the session
@@ -812,6 +850,7 @@ Antworte NUR im folgenden JSON-Format:
 }
 
 export async function saveChatHistory(sessionId: string, userId?: string, projectId?: string, attachments?: MessageAttachment[], materials?: ChatMaterial[]): Promise<void> {
+  return withChatLock(sessionId, async () => {
   const session = getSession(sessionId);
   if (!session || session.messages.length === 0) return;
 
@@ -971,6 +1010,7 @@ export async function saveChatHistory(sessionId: string, userId?: string, projec
       console.error(`Failed to save chat to project ${chatProjectId}:`, err);
     }
   }
+  }); // end withChatLock
 }
 
 /**
@@ -1038,66 +1078,72 @@ export async function getChatOwnerId(sessionId: string): Promise<string | null> 
  * @param materials - The updated materials array
  */
 export async function updateChatMaterials(sessionId: string, userId: string, materials: ChatMaterial[]): Promise<boolean> {
-  const chat = await loadChatHistory(sessionId, userId);
-  if (!chat) return false;
+  return withChatLock(sessionId, async () => {
+    const chat = await loadChatHistory(sessionId, userId);
+    if (!chat) return false;
 
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  try {
-    chat.materials = materials;
-    chat.updatedAt = new Date().toISOString();
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-    return true;
-  } catch (err) {
-    console.error(`Error updating chat materials ${sessionId}:`, err);
-    return false;
-  }
+    const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
+    try {
+      chat.materials = materials;
+      chat.updatedAt = new Date().toISOString();
+      const yaml = formatChatAsYaml(chat);
+      await writeFile(filePath, yaml, 'utf-8');
+      return true;
+    } catch (err) {
+      console.error(`Error updating chat materials ${sessionId}:`, err);
+      return false;
+    }
+  });
 }
 
 /**
  * Add a single material to a chat
  */
 export async function addChatMaterial(sessionId: string, userId: string, material: ChatMaterial): Promise<boolean> {
-  const chat = await loadChatHistory(sessionId, userId);
-  if (!chat) return false;
+  return withChatLock(sessionId, async () => {
+    const chat = await loadChatHistory(sessionId, userId);
+    if (!chat) return false;
 
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  try {
-    if (!chat.materials) chat.materials = [];
-    // Avoid duplicates
-    if (!chat.materials.some(m => m.id === material.id)) {
-      chat.materials.push(material);
+    const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
+    try {
+      if (!chat.materials) chat.materials = [];
+      // Avoid duplicates
+      if (!chat.materials.some(m => m.id === material.id)) {
+        chat.materials.push(material);
+      }
+      chat.updatedAt = new Date().toISOString();
+      const yaml = formatChatAsYaml(chat);
+      await writeFile(filePath, yaml, 'utf-8');
+      return true;
+    } catch (err) {
+      console.error(`Error adding chat material ${sessionId}:`, err);
+      return false;
     }
-    chat.updatedAt = new Date().toISOString();
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-    return true;
-  } catch (err) {
-    console.error(`Error adding chat material ${sessionId}:`, err);
-    return false;
-  }
+  });
 }
 
 /**
  * Remove a material from a chat
  */
 export async function removeChatMaterial(sessionId: string, userId: string, materialId: string): Promise<boolean> {
-  const chat = await loadChatHistory(sessionId, userId);
-  if (!chat) return false;
+  return withChatLock(sessionId, async () => {
+    const chat = await loadChatHistory(sessionId, userId);
+    if (!chat) return false;
 
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  try {
-    if (chat.materials) {
-      chat.materials = chat.materials.filter(m => m.id !== materialId);
+    const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
+    try {
+      if (chat.materials) {
+        chat.materials = chat.materials.filter(m => m.id !== materialId);
+      }
+      chat.updatedAt = new Date().toISOString();
+      const yaml = formatChatAsYaml(chat);
+      await writeFile(filePath, yaml, 'utf-8');
+      return true;
+    } catch (err) {
+      console.error(`Error removing chat material ${sessionId}:`, err);
+      return false;
     }
-    chat.updatedAt = new Date().toISOString();
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-    return true;
-  } catch (err) {
-    console.error(`Error removing chat material ${sessionId}:`, err);
-    return false;
-  }
+  });
 }
 
 export interface ChatListResult {
@@ -1597,55 +1643,54 @@ export interface ShareResult {
  * Only the chat owner can create a share link.
  */
 export async function createShareLink(sessionId: string, userId?: string): Promise<ShareResult> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) {
-    return { success: false, error: 'Chat not found' };
-  }
-
-  try {
-    const content = await readFile(filePath, 'utf-8');
-    const chat = parseChatYaml(content);
-
-    if (!chat) {
-      return { success: false, error: 'Could not parse chat' };
+  return withChatLock(sessionId, async () => {
+    const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
+    if (!existsSync(filePath)) {
+      return { success: false, error: 'Chat not found' };
     }
 
-    // Only the owner can create a share link
-    if (chat.userId && chat.userId !== userId) {
-      console.log(`[createShareLink] Access denied: chat ${sessionId} belongs to ${chat.userId}, requested by ${userId || 'anonymous'}`);
-      return { success: false, error: 'Access denied' };
-    }
+    try {
+      const content = await readFile(filePath, 'utf-8');
+      const chat = parseChatYaml(content);
 
-    // If already shared, return existing token
-    if (chat.shareToken) {
+      if (!chat) {
+        return { success: false, error: 'Could not parse chat' };
+      }
+
+      // Only the owner can create a share link
+      if (chat.userId && chat.userId !== userId) {
+        return { success: false, error: 'Access denied' };
+      }
+
+      // If already shared, return existing token
+      if (chat.shareToken) {
+        return {
+          success: true,
+          shareToken: chat.shareToken,
+          shareUrl: `/shared/${chat.shareToken}`,
+        };
+      }
+
+      // Generate new share token
+      const shareToken = generateShareToken();
+      chat.shareToken = shareToken;
+      chat.sharedAt = new Date().toISOString();
+      chat.sharedBy = userId;
+
+      // Save updated chat
+      const yaml = formatChatAsYaml(chat);
+      await writeFile(filePath, yaml, 'utf-8');
+
       return {
         success: true,
-        shareToken: chat.shareToken,
-        shareUrl: `/shared/${chat.shareToken}`,
+        shareToken,
+        shareUrl: `/shared/${shareToken}`,
       };
+    } catch (err) {
+      console.error(`Error creating share link for ${sessionId}:`, err);
+      return { success: false, error: 'Failed to create share link' };
     }
-
-    // Generate new share token
-    const shareToken = generateShareToken();
-    chat.shareToken = shareToken;
-    chat.sharedAt = new Date().toISOString();
-    chat.sharedBy = userId;
-
-    // Save updated chat
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-
-    console.log(`[createShareLink] Created share link for chat ${sessionId}: ${shareToken}`);
-
-    return {
-      success: true,
-      shareToken,
-      shareUrl: `/shared/${shareToken}`,
-    };
-  } catch (err) {
-    console.error(`Error creating share link for ${sessionId}:`, err);
-    return { success: false, error: 'Failed to create share link' };
-  }
+  });
 }
 
 /**
@@ -1912,51 +1957,52 @@ async function saveChatFolders(folders: ChatFolder[]): Promise<void> {
  * Create a new chat folder
  */
 export async function createChatFolder(name: string, userId?: string, color?: string): Promise<ChatFolder> {
-  const folders = await loadAllChatFolders();
+  return withFoldersLock(async () => {
+    const folders = await loadAllChatFolders();
 
-  // Generate ID from name
-  const id = name.toLowerCase()
-    .replace(/[äöü]/g, c => ({ 'ä': 'ae', 'ö': 'oe', 'ü': 'ue' }[c] || c))
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '') + '_' + Date.now().toString(36);
+    // Generate ID from name
+    const id = name.toLowerCase()
+      .replace(/[äöü]/g, c => ({ 'ä': 'ae', 'ö': 'oe', 'ü': 'ue' }[c] || c))
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') + '_' + Date.now().toString(36);
 
-  const folder: ChatFolder = {
-    id,
-    name,
-    color,
-    userId,
-    createdAt: new Date().toISOString(),
-  };
+    const folder: ChatFolder = {
+      id,
+      name,
+      color,
+      userId,
+      createdAt: new Date().toISOString(),
+    };
 
-  folders.push(folder);
-  await saveChatFolders(folders);
+    folders.push(folder);
+    await saveChatFolders(folders);
 
-  console.log(`[createChatFolder] Created folder: ${id} (${name})`);
-  return folder;
+    return folder;
+  });
 }
 
 /**
  * Delete a chat folder
  */
 export async function deleteChatFolder(folderId: string, userId?: string): Promise<boolean> {
-  const allFolders = await loadAllChatFolders();
-  const folder = allFolders.find(f => f.id === folderId);
+  return withFoldersLock(async () => {
+    const allFolders = await loadAllChatFolders();
+    const folder = allFolders.find(f => f.id === folderId);
 
-  if (!folder) {
-    return false;
-  }
+    if (!folder) {
+      return false;
+    }
 
-  // Check ownership
-  if (folder.userId && folder.userId !== userId) {
-    console.log(`[deleteChatFolder] Access denied: folder ${folderId} belongs to ${folder.userId}, requested by ${userId || 'anonymous'}`);
-    return false;
-  }
+    // Check ownership
+    if (folder.userId && folder.userId !== userId) {
+      return false;
+    }
 
-  const remaining = allFolders.filter(f => f.id !== folderId);
-  await saveChatFolders(remaining);
+    const remaining = allFolders.filter(f => f.id !== folderId);
+    await saveChatFolders(remaining);
 
-  console.log(`[deleteChatFolder] Deleted folder: ${folderId}`);
-  return true;
+    return true;
+  });
 }
 
 /**
