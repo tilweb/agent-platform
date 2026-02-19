@@ -57,10 +57,21 @@ const NAV = [
   { section: 'Bilder', pages: [
     { slug: 'bilder/index', title: 'Bildgenerierung' },
   ]},
+  { section: 'Tools & MCP', pages: [
+    { slug: 'tools/index', title: 'Tools' },
+    { slug: 'mcp/index', title: 'MCP Server' },
+  ]},
+  { section: 'Benachrichtigungen', pages: [
+    { slug: 'benachrichtigungen/index', title: 'Benachrichtigungen' },
+  ]},
+  { section: 'Transkription', pages: [
+    { slug: 'transkription/index', title: 'Audio-Transkription' },
+  ]},
   { section: 'Einstellungen', pages: [
     { slug: 'einstellungen/profil', title: 'Profil & Modelle' },
     { slug: 'einstellungen/benutzer', title: 'Benutzerverwaltung' },
     { slug: 'einstellungen/provider', title: 'KI-Modelle & Provider' },
+    { slug: 'einstellungen/nutzung', title: 'Nutzungsstatistiken' },
     { slug: 'einstellungen/verbindungen', title: 'Verbindungen' },
     { slug: 'einstellungen/apps', title: 'Apps' },
     { slug: 'einstellungen/audit', title: 'Audit Log' },
@@ -81,6 +92,7 @@ const FEATURES = [
   { title: 'Tabellen', desc: 'Strukturierte Datenverwaltung direkt in der Plattform. Erstellen, bearbeiten und durchsuchen Sie Tabellen.', slug: 'tabellen/index' },
   { title: 'Bilder', desc: 'KI-Bildgenerierung aus Textbeschreibungen mit verschiedenen Bildmodellen.', slug: 'bilder/index' },
   { title: 'Skills', desc: 'Erweiterbare Arbeitsabläufe, die komplexe Aufgaben automatisieren.', slug: 'skills/index' },
+  { title: 'Tools', desc: 'Werkzeuge für KI-Agenten — von Websuche bis Tabellen-Zugriff. Erstellen Sie eigene API-Tools.', slug: 'tools/index' },
 ];
 
 const styles = {
