@@ -180,13 +180,19 @@ if echo "$STAGED_FILES" | grep -q 'backend/src/index.ts'; then
   fi
 fi
 
-# --- Check 7: docker-compose.yml changed but no helm/ file staged → warning ---
+# --- Check 7: docker-compose.yml structural change but no helm/ file staged → warning ---
 
 if echo "$STAGED_FILES" | grep -q 'docker-compose.yml'; then
   if [ -d "$HELM_DIR" ]; then
-    helm_staged=$(echo "$STAGED_FILES" | grep '^helm/' || true)
-    if [ -z "$helm_staged" ]; then
-      add_error "docker-compose.yml geaendert, aber keine Helm-Dateien staged. Pruefe ob helm/ Chart ebenfalls aktualisiert werden muss."
+    # Only warn on structural changes (ports, volumes, services, image), not env_file paths
+    structural_change=$(git diff --cached -U0 -- docker-compose.yml 2>/dev/null \
+      | grep '^[+-]' | grep -v '^[+-][+-][+-]' \
+      | grep -iE 'ports:|volumes:|image:|expose:|depends_on:|services:' || true)
+    if [ -n "$structural_change" ]; then
+      helm_staged=$(echo "$STAGED_FILES" | grep '^helm/' || true)
+      if [ -z "$helm_staged" ]; then
+        add_error "docker-compose.yml strukturell geaendert (ports/volumes/services), aber keine Helm-Dateien staged. Pruefe ob helm/ Chart ebenfalls aktualisiert werden muss."
+      fi
     fi
   fi
 fi

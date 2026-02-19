@@ -5,7 +5,10 @@ services:
       - ./data:/data                # Shared data (../data from backend cwd)
       - ./backend/data:/app/data    # Backend-specific data (audit, apps)
     env_file:
-      - ./backend/.env
+      - path: ./.env
+        required: true
+      - path: ./docker-compose.env
+        required: false
     environment:
       - TRUST_PROXY=true
     expose:
