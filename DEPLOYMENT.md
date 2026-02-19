@@ -9,11 +9,13 @@ Dieses Dokument beschreibt die Installation und den Betrieb der Agent Platform i
 3. [Datenverzeichnis](#3-datenverzeichnis)
 4. [Backend-Deployment](#4-backend-deployment)
 5. [Frontend-Deployment](#5-frontend-deployment)
-6. [Provider-Konfiguration](#6-provider-konfiguration)
-7. [Sicherheit](#7-sicherheit)
-8. [Health Checks & Monitoring](#8-health-checks--monitoring)
-9. [Backup & Recovery](#9-backup--recovery)
-10. [Troubleshooting](#10-troubleshooting)
+6. [Docker Compose](#6-docker-compose)
+7. [Kubernetes / Helm](#7-kubernetes--helm)
+8. [Provider-Konfiguration](#8-provider-konfiguration)
+9. [Sicherheit](#9-sicherheit)
+10. [Health Checks & Monitoring](#10-health-checks--monitoring)
+11. [Backup & Recovery](#11-backup--recovery)
+12. [Troubleshooting](#12-troubleshooting)
 
 ---
 
@@ -53,17 +55,21 @@ bun --version
 
 ## 2. Environment-Variablen
 
-### Backend (.env)
+### .env (Projekt-Root)
 
-Erstelle eine `.env` Datei im `backend/` Verzeichnis:
+Es gibt eine **einzige `.env`-Datei im Projekt-Root** — sie ist die zentrale Konfigurationsquelle für alle Deployment-Modi (lokal, Docker Compose, Kubernetes).
+
+```bash
+cp .env.example .env
+# Werte anpassen:
+```
 
 ```bash
 # ============================================
 # Server-Konfiguration
 # ============================================
-PORT=3001
-API_BASE_URL=https://api.example.com
-FRONTEND_URL=https://app.example.com
+BACKEND_PORT=3001
+API_BASE_URL=https://agent.example.com
 NODE_ENV=production
 
 # ============================================
@@ -76,15 +82,10 @@ CONNECTION_ENCRYPTION_KEY=<32-byte-hex-key>
 # LLM Provider (mindestens einer erforderlich)
 # ============================================
 
-# Option A: Adacor AI (lokal gehostet)
+# Adacor AI
+ADACOR_AI_API_URL=https://your-llm-api.example.com/v1
 ADACOR_AI_API_KEY=your-api-key
-ADACOR_AI_BASE_URL=https://your-llm-api.example.com/v1
-
-# Option B: OpenAI
-OPENAI_API_KEY=sk-...
-
-# Option C: Anthropic
-ANTHROPIC_API_KEY=sk-ant-...
+ADACOR_AI_MODEL=mistral-3-24b-128k
 
 # ============================================
 # OAuth Provider (optional)
@@ -110,13 +111,7 @@ SSRF_ALLOW_LOCALHOST=false    # NIEMALS in Produktion aktivieren!
 TRUST_PROXY=true
 ```
 
-### Frontend (.env)
-
-Erstelle eine `.env` Datei im `frontend/` Verzeichnis:
-
-```bash
-VITE_API_URL=https://api.example.com/api
-```
+Vollständige Referenz aller Variablen: siehe `.env.example`
 
 ### Wichtige Hinweise
 
@@ -185,14 +180,12 @@ chown -R <app-user>:<app-group> data/
 ### Installation
 
 ```bash
-cd backend/
-
-# Dependencies installieren
-bun install
-
-# Environment-Datei erstellen
+# Im Projekt-Root
 cp .env.example .env
 # ... Environment-Variablen anpassen
+
+cd backend/
+bun install
 ```
 
 ### Start-Befehle
@@ -272,13 +265,189 @@ Der Build wird in `frontend/dist/` erstellt.
 cp -r frontend/dist/* /var/www/agent-platform/
 ```
 
-#### Option B: Docker Container (Empfohlen)
+#### Option B: Docker / Kubernetes
 
-Siehe Beispiel-Dockerfile weiter unten.
+Siehe Abschnitte [Docker Compose](#6-docker-compose) und [Kubernetes / Helm](#7-kubernetes--helm).
 
 ---
 
-## 6. Provider-Konfiguration
+## 6. Docker Compose
+
+### Voraussetzungen
+
+- Docker >= 20.10
+- Docker Compose >= 2.0
+
+### Starten
+
+```bash
+cp .env.example .env          # Konfiguration anpassen
+docker compose up -d
+```
+
+Die Anwendung ist unter `http://localhost:8080` erreichbar.
+
+### Architektur
+
+```
+                    :8080
+  Browser ──────► nginx (Proxy)
+                    ├── /api/* ───► backend:3001
+                    ├── /health ──► backend:3001
+                    └── /* ───────► frontend:80
+```
+
+### Container-Details
+
+| Container | Image-Basis | Port | User |
+|-----------|-------------|------|------|
+| backend | `oven/bun:alpine` | 3001 | UID 1000 (non-root) |
+| frontend | `nginx:alpine` | 8080 | UID 101 (nginx) |
+
+### Volumes
+
+Das Backend-Datenverzeichnis wird als Bind-Mount eingebunden:
+
+```yaml
+volumes:
+  - ./data:/app/data          # Persistente Daten
+```
+
+### Docker-spezifische Overrides
+
+Für Container-spezifische Overrides (die nicht in die Haupt-`.env` gehören):
+
+```bash
+cp docker-compose.env.example docker-compose.env
+```
+
+Beispiel: `TRUST_PROXY=true` ist im Container immer nötig (nginx-Proxy davor).
+
+---
+
+## 7. Kubernetes / Helm
+
+### Voraussetzungen
+
+- Kubernetes >= 1.25
+- Helm >= 3.12
+- Ingress Controller (z.B. nginx-ingress)
+
+### Installation
+
+```bash
+# Minimale Installation
+helm install agent-platform ./helm/agent-platform \
+  --namespace agent-platform --create-namespace \
+  --set ingress.host=agent.example.com \
+  --set backend.secret.data.ADACOR_AI_API_KEY=your-key \
+  --set backend.secret.data.CONNECTION_ENCRYPTION_KEY=$(openssl rand -hex 32)
+
+# Oder mit eigener values-Datei
+helm install agent-platform ./helm/agent-platform \
+  -f my-values.yaml \
+  --namespace agent-platform --create-namespace
+```
+
+### Architektur
+
+```
+                    Ingress (nginx)
+  Browser ──────►   ├── /api/*    ───► backend-svc:3001
+                    ├── /health   ───► backend-svc:3001
+                    └── /*        ───► frontend-svc:80 ──► :8080
+                                        │
+                    PVC (10Gi) ◄────► backend-pod
+                                        │
+                    ConfigMap ──────► env vars (nicht-sensitiv)
+                    Secret ────────► env vars (API-Keys, OAuth)
+```
+
+### Konfiguration (values.yaml)
+
+Die wichtigsten Werte:
+
+```yaml
+# Container-Registry
+backend:
+  image:
+    repository: ghcr.io/OWNER/agent-platform-backend
+    tag: "0.1.0"
+
+frontend:
+  image:
+    repository: ghcr.io/OWNER/agent-platform-frontend
+    tag: "0.1.0"
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  host: agent.example.com
+  tls:
+    - secretName: agent-platform-tls
+      hosts:
+        - agent.example.com
+
+# Nicht-sensitive Konfiguration -> ConfigMap
+backend:
+  config:
+    nodeEnv: production
+    adacorAiApiUrl: "https://your-llm-api.example.com/v1"
+    adacorAiModel: "mistral-3-24b-128k"
+    platformModels:
+      PLATFORM_APPS_PROVIDER_ID: adacor
+      PLATFORM_APPS_MODEL_ID: mistral-3-24b-128k
+
+# Sensitive Daten -> Secret
+  secret:
+    create: true
+    data:
+      ADACOR_AI_API_KEY: "your-key"
+      CONNECTION_ENCRYPTION_KEY: "your-hex-key"
+
+# Persistenz
+persistence:
+  enabled: true
+  size: 10Gi
+  # storageClass: "managed-premium"
+```
+
+### External Secrets (Produktion)
+
+Für produktive Umgebungen empfohlen: Secrets nicht in `values.yaml`, sondern über External Secrets Operator:
+
+```yaml
+backend:
+  secret:
+    create: false
+    existingSecret: "agent-platform-external-secret"
+```
+
+### Container-Sicherheit
+
+Beide Container laufen gehärtet:
+
+- **Non-Root**: Backend UID 1000, Frontend UID 101
+- **ReadOnlyRootFilesystem**: Schreibzugriff nur auf explizite Volumes
+- **Drop ALL Capabilities**: Keine Linux-Capabilities
+- **Probes**: Liveness + Readiness auf `/health` (Backend) und `/` (Frontend)
+
+### Daten-Seeding
+
+Der Backend-Pod enthält einen InitContainer, der beim ersten Start Seed-Daten (config, agents, skills, apps, tools) aus dem Image in das PVC kopiert. Bestehende Daten werden dabei **nicht** überschrieben (`cp -rn`).
+
+### SSE/Streaming
+
+Das Ingress-Template setzt die nötigen nginx-Annotations für Server-Sent Events:
+
+- `proxy-buffering: off` — ohne das hängt SSE
+- `proxy-read-timeout: 3600` — Langläufer-Verbindungen für Chat
+- `proxy-request-buffering: off` — für Datei-Uploads
+
+---
+
+## 8. Provider-Konfiguration
 
 ### LLM Provider Setup
 
@@ -310,7 +479,7 @@ Die Plattform benötigt mindestens einen aktiven LLM-Provider. Ohne Provider sin
 
 ---
 
-## 7. Sicherheit
+## 9. Sicherheit
 
 ### Verschlüsselung
 
@@ -359,7 +528,7 @@ bun run scripts/migrate-to-multiuser.ts --admin-user=<userId>
 
 ---
 
-## 8. Health Checks & Monitoring
+## 10. Health Checks & Monitoring
 
 ### Health-Check Endpoint
 
@@ -393,7 +562,7 @@ bun run src/index.ts 2>&1 | tee /var/log/agent-platform/backend.log
 
 ---
 
-## 9. Backup & Recovery
+## 11. Backup & Recovery
 
 ### Wichtige Backup-Ziele
 
@@ -431,7 +600,7 @@ systemctl restart agent-platform-backend
 
 ---
 
-## 10. Troubleshooting
+## 12. Troubleshooting
 
 ### Häufige Probleme
 

@@ -57,6 +57,11 @@ cp .env.example .env    # Eine einzige .env im Root — alle Konfiguration hier
 ### Data Layer (`data/`)
 All persistence is file-based. Key directories: `config/` (providers.yaml, settings), `chats/`, `agents/`, `skills/`, `tasks/`, `knowledge-base/`, `auth/`, `connections/` (encrypted OAuth tokens).
 
+### Deployment (`helm/`, `docker-compose.yml`)
+- **Local Dev**: `bun run dev` + `npm run dev`
+- **Docker Compose**: `docker-compose.yml` mit Frontend (nginx), Backend (Bun), Proxy
+- **Kubernetes**: Helm Chart unter `helm/agent-platform/` mit Ingress, ConfigMap/Secret, PVC
+
 ### Multi-Provider LLM System
 Configured in `data/config/providers.yaml`. Supports Adacor AI, OpenAI, Anthropic, Ollama, Nebius, Google Gemini. Each model declares capabilities (chat, vision, function_calling). Provider adapters in `backend/src/services/llm.ts`.
 

@@ -82,6 +82,28 @@ agent-platform/
     └── conversations/# Saved conversations
 ```
 
+## Deployment
+
+Neben der lokalen Entwicklung gibt es zwei Deployment-Optionen:
+
+### Docker Compose
+
+```bash
+cp .env.example .env        # Konfiguration anpassen
+docker compose up -d
+# Erreichbar unter http://localhost:8080
+```
+
+### Kubernetes (Helm)
+
+```bash
+helm install agent-platform ./helm/agent-platform \
+  -f my-values.yaml \
+  --namespace agent-platform --create-namespace
+```
+
+Details: [DEPLOYMENT.md](DEPLOYMENT.md)
+
 ## Test Conversation
 
 ```
