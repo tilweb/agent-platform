@@ -9,6 +9,7 @@
  */
 
 import { Hono } from 'hono';
+import { internalError } from '../utils/errorHandler';
 import { authMiddleware, getCurrentUserId } from '../auth/middleware';
 import { loadUser } from '../auth/storage';
 import { loadGroup, listGroups } from '../auth/groups';
@@ -214,7 +215,7 @@ rbacRoutes.post('/:type/:id/access', async (c) => {
     return c.json(access, 201);
   } catch (error: any) {
     console.error('Error granting access:', error);
-    return c.json({ error: 'Fehler beim Hinzufügen der Berechtigung' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -283,7 +284,7 @@ rbacRoutes.put('/:type/:id/access/:principalType/:principalId', async (c) => {
     return c.json(updated);
   } catch (error: any) {
     console.error('Error updating access:', error);
-    return c.json({ error: 'Fehler beim Aktualisieren der Berechtigung' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -385,7 +386,7 @@ rbacRoutes.post('/:type/:id/access/transfer', async (c) => {
     return c.json({ success: true, newOwnerId });
   } catch (error: any) {
     console.error('Error transferring ownership:', error);
-    return c.json({ error: 'Fehler bei der Eigentümerübertragung' }, 500);
+    return internalError(c, error);
   }
 });
 

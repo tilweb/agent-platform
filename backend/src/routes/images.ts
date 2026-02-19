@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { internalError } from '../utils/errorHandler';
 import { imageGenerationService } from '../services/imageGeneration';
 import { parseIntSafe } from '../utils/parseIntSafe';
 import {
@@ -38,7 +39,7 @@ imageRoutes.post('/generate', imageGenRateLimit, async (c) => {
     const { prompt, aspectRatio, size, numberOfImages, sessionId } = body;
 
     if (!prompt) {
-      return c.json({ success: false, error: 'Prompt is required' }, 400);
+      return c.json({ error: 'Prompt is required' }, 400);
     }
 
     // Limit number of images per request
@@ -56,10 +57,7 @@ imageRoutes.post('/generate', imageGenRateLimit, async (c) => {
     });
 
     if (!result.success || result.images.length === 0) {
-      return c.json({
-        success: false,
-        error: result.error || 'Failed to generate image',
-      }, 500);
+      return c.json({ error: result.error || 'Failed to generate image' }, 500);
     }
 
     // Save all generated images
@@ -96,10 +94,7 @@ imageRoutes.post('/generate', imageGenRateLimit, async (c) => {
     });
   } catch (error: any) {
     console.error('[ImageRoutes] Generate error:', error);
-    return c.json({
-      success: false,
-      error: 'Fehler bei der Bildgenerierung',
-    }, 500);
+    return internalError(c, error);
   }
 });
 

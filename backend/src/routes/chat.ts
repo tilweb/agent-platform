@@ -90,13 +90,17 @@ chatRoutes.post('/', chatRateLimit, authMiddleware, async (c) => {
     const formData = await c.req.formData();
     const rawMessage = formData.get('message');
     message = typeof rawMessage === 'string' ? rawMessage : '';
-    existingSessionId = formData.get('sessionId') as string | undefined;
-    agentId = formData.get('agentId') as string | undefined;
-    const autoRouteStr = formData.get('autoRoute') as string | undefined;
+    const formStr = (key: string): string | undefined => {
+      const v = formData.get(key);
+      return typeof v === 'string' ? v : undefined;
+    };
+    existingSessionId = formStr('sessionId');
+    agentId = formStr('agentId');
+    const autoRouteStr = formStr('autoRoute');
     autoRoute = autoRouteStr !== 'false';
-    skillId = formData.get('skillId') as string | undefined;
-    projectId = formData.get('projectId') as string | undefined;
-    const readersStr = formData.get('readers') as string | undefined;
+    skillId = formStr('skillId');
+    projectId = formStr('projectId');
+    const readersStr = formStr('readers');
     if (readersStr) {
       try {
         readers = JSON.parse(readersStr);
@@ -105,7 +109,7 @@ chatRoutes.post('/', chatRateLimit, authMiddleware, async (c) => {
       }
     }
     // Model override for per-chat model selection
-    const modelOverrideStr = formData.get('modelOverride') as string | undefined;
+    const modelOverrideStr = formStr('modelOverride');
     if (modelOverrideStr) {
       try {
         modelOverride = JSON.parse(modelOverrideStr);
@@ -476,9 +480,9 @@ function formatEventData(event: AgentEvent): Record<string, any> {
       };
     case 'file_processing':
       return {
-        fileId: (event as any).fileId,
-        filename: (event as any).filename,
-        status: (event as any).status,
+        fileId: event.fileId,
+        filename: event.filename,
+        status: event.status,
       };
     case 'done':
       return { status: 'complete' };
@@ -1504,8 +1508,9 @@ toolRoutes.put('/:name/config', async (c) => {
     });
 
     // Also update the tool instance if it has updateConfig method
-    if ('updateConfig' in tool && typeof (tool as any).updateConfig === 'function') {
-      (tool as any).updateConfig(body);
+    const configurable = tool as Record<string, unknown>;
+    if (typeof configurable.updateConfig === 'function') {
+      (configurable.updateConfig as (config: Record<string, unknown>) => void)(body);
     }
 
     return c.json({ success: true, message: 'Configuration updated' });
@@ -2429,11 +2434,16 @@ knowledgeStreamRoutes.delete('/documents/:id', async (c) => {
 knowledgeStreamRoutes.post('/index', async (c) => {
   try {
     const formData = await c.req.formData();
-    const file = formData.get('document') as File | null;
-    const collectionId = formData.get('collection_id') as string;
-    const title = formData.get('title') as string | null;
-    const owner = formData.get('owner') as string | null;
-    const confidentiality = formData.get('confidentiality') as string | null;
+    const fileEntry = formData.get('document');
+    const file = fileEntry instanceof File ? fileEntry : null;
+    const rawCollectionId = formData.get('collection_id');
+    const collectionId = typeof rawCollectionId === 'string' ? rawCollectionId : '';
+    const rawTitle = formData.get('title');
+    const title = typeof rawTitle === 'string' ? rawTitle : null;
+    const rawOwner = formData.get('owner');
+    const owner = typeof rawOwner === 'string' ? rawOwner : null;
+    const rawConfidentiality = formData.get('confidentiality');
+    const confidentiality = typeof rawConfidentiality === 'string' ? rawConfidentiality : null;
 
     if (!file || !collectionId) {
       return c.json({ error: 'document file and collection_id are required' }, 400);

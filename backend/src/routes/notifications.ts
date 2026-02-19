@@ -6,6 +6,7 @@
 
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
+import { internalError } from '../utils/errorHandler';
 import { authMiddleware, requireUserId } from '../auth';
 import { parseIntSafe } from '../utils/parseIntSafe';
 import {
@@ -40,7 +41,7 @@ notificationRoutes.get('/', async (c) => {
     return c.json(result);
   } catch (error: any) {
     console.error('Error listing notifications:', error);
-    return c.json({ error: 'Failed to list notifications' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -52,7 +53,7 @@ notificationRoutes.get('/count', async (c) => {
     return c.json({ unread });
   } catch (error: any) {
     console.error('Error getting notification count:', error);
-    return c.json({ error: 'Failed to get notification count' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -118,7 +119,7 @@ notificationRoutes.get('/:id', async (c) => {
     return c.json(notification);
   } catch (error: any) {
     console.error('Error getting notification:', error);
-    return c.json({ error: 'Failed to get notification' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -136,7 +137,7 @@ notificationRoutes.post('/:id/read', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error marking notification as read:', error);
-    return c.json({ error: 'Failed to mark notification as read' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -148,7 +149,7 @@ notificationRoutes.post('/read-all', async (c) => {
     return c.json({ success: true, count });
   } catch (error: any) {
     console.error('Error marking all notifications as read:', error);
-    return c.json({ error: 'Failed to mark all notifications as read' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -166,6 +167,6 @@ notificationRoutes.delete('/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting notification:', error);
-    return c.json({ error: 'Failed to delete notification' }, 500);
+    return internalError(c, error);
   }
 });

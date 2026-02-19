@@ -86,7 +86,8 @@ async function convertToMp3(inputBuffer: ArrayBuffer, inputMimeType: string): Pr
 transcriptionRoutes.post('/', uploadRateLimit, async (c) => {
   try {
     const formData = await c.req.formData();
-    const file = formData.get('file') as File;
+    const fileEntry = formData.get('file');
+    const file = fileEntry instanceof File ? fileEntry : null;
 
     if (!file) {
       return validationError(c, 'Keine Audiodatei angegeben');
@@ -153,7 +154,8 @@ transcriptionRoutes.post('/', uploadRateLimit, async (c) => {
       : `${baseUrl}/transcriptions`;
 
     // Get optional language parameter (default: German)
-    const language = (formData.get('language') as string) || 'de';
+    const rawLang = formData.get('language');
+    const language = typeof rawLang === 'string' ? rawLang : 'de';
 
     // Convert audio to MP3 if needed (browser formats like WebM/OGG/M4A often not recognized by Whisper)
     let fileToSend: File = file;

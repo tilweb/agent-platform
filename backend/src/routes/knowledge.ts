@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { internalError } from '../utils/errorHandler';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { readFile, writeFile, mkdir, readdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
@@ -16,6 +17,21 @@ import { KB_BASE, KB_COLLECTIONS_FILE } from '../utils/paths';
 const knowledgeRoutes = new Hono();
 
 const COLLECTIONS_FILE = KB_COLLECTIONS_FILE;
+
+// Mutex for collections.yaml read-modify-write operations
+let collectionsLock: Promise<void> = Promise.resolve();
+
+async function withCollectionsLock<T>(fn: () => Promise<T>): Promise<T> {
+  let release: () => void;
+  const prev = collectionsLock;
+  collectionsLock = new Promise<void>((resolve) => { release = resolve; });
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release!();
+  }
+}
 
 // Validate resource IDs to prevent path traversal attacks
 const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
@@ -62,6 +78,18 @@ async function saveCollections(data: CollectionsFile): Promise<void> {
 }
 
 /**
+ * Atomically read-modify-write collections.yaml under lock.
+ */
+async function modifyCollections<T>(fn: (data: CollectionsFile) => Promise<T>): Promise<T> {
+  return withCollectionsLock(async () => {
+    const data = await loadCollections();
+    const result = await fn(data);
+    await saveCollections(data);
+    return result;
+  });
+}
+
+/**
  * GET /api/knowledge/collections
  * List all collections the user has access to
  */
@@ -91,7 +119,7 @@ knowledgeRoutes.get('/collections', async (c) => {
     return c.json({ collections });
   } catch (error: any) {
     console.error('List collections error:', error);
-    return c.json({ error: 'Fehler beim Laden der Collections' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -130,7 +158,7 @@ knowledgeRoutes.get('/collections/:id', async (c) => {
     });
   } catch (error: any) {
     console.error('Get collection error:', error);
-    return c.json({ error: 'Fehler beim Laden der Collection' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -153,41 +181,42 @@ knowledgeRoutes.post('/collections', async (c) => {
       return c.json({ error: 'ID darf nur Kleinbuchstaben, Zahlen, Bindestriche und Unterstriche enthalten' }, 400);
     }
 
-    // Check if collection already exists
-    const data = await loadCollections();
-    if (data.collections.find((col) => col.id === id)) {
-      return c.json({ error: 'Collection mit dieser ID existiert bereits' }, 409);
-    }
+    // Lock collections for read-modify-write
+    const newCollection = await modifyCollections(async (data) => {
+      if (data.collections.find((col) => col.id === id)) {
+        throw Object.assign(new Error('Collection mit dieser ID existiert bereits'), { status: 409 });
+      }
 
-    // Create collection directory
-    const collectionDir = join(KB_BASE, 'collections', id);
-    if (!existsSync(collectionDir)) {
-      await mkdir(collectionDir, { recursive: true });
-    }
+      // Create collection directory
+      const collectionDir = join(KB_BASE, 'collections', id);
+      if (!existsSync(collectionDir)) {
+        await mkdir(collectionDir, { recursive: true });
+      }
 
-    // Create manifest
-    const manifest = [
-      `# Manifest für Collection: ${name}`,
-      `collection_id: "${id}"`,
-      `collection_name: "${name}"`,
-      `description: "${description || ''}"`,
-      `last_updated: "${new Date().toISOString()}"`,
-      '',
-      'documents: []',
-    ].join('\n');
-    await writeFile(join(collectionDir, 'manifest.yaml'), manifest, 'utf-8');
+      // Create manifest
+      const manifest = [
+        `# Manifest für Collection: ${name}`,
+        `collection_id: "${id}"`,
+        `collection_name: "${name}"`,
+        `description: "${description || ''}"`,
+        `last_updated: "${new Date().toISOString()}"`,
+        '',
+        'documents: []',
+      ].join('\n');
+      await writeFile(join(collectionDir, 'manifest.yaml'), manifest, 'utf-8');
 
-    // Add to collections.yaml
-    const newCollection: Collection = {
-      id,
-      name,
-      description: description || '',
-      document_count: 0,
-      activate_when: activate_when || [],
-      never_activate_when: never_activate_when || [],
-    };
-    data.collections.push(newCollection);
-    await saveCollections(data);
+      // Add to collections.yaml
+      const col: Collection = {
+        id,
+        name,
+        description: description || '',
+        document_count: 0,
+        activate_when: activate_when || [],
+        never_activate_when: never_activate_when || [],
+      };
+      data.collections.push(col);
+      return col;
+    });
 
     // Initialize RBAC - creator becomes owner
     await initializeResourceAccess('collection', id, userId);
@@ -197,8 +226,11 @@ knowledgeRoutes.post('/collections', async (c) => {
       collection: newCollection,
     });
   } catch (error: any) {
+    if (error?.status === 409) {
+      return c.json({ error: error.message }, 409);
+    }
     console.error('Create collection error:', error);
-    return c.json({ error: 'Fehler beim Erstellen der Collection' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -224,16 +256,11 @@ knowledgeRoutes.put('/collections/:id', async (c) => {
     const body = await c.req.json();
     const { name, description, activate_when, never_activate_when } = body;
 
-    const data = await loadCollections();
-    const index = data.collections.findIndex((col) => col.id === collectionId);
+    const updated = await modifyCollections(async (data) => {
+      const index = data.collections.findIndex((col) => col.id === collectionId);
+      if (index < 0) return null;
 
-    if (index < 0) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
-    }
-
-    // Update collection
-    const existing = data.collections[index];
-    if (existing) {
+      const existing = data.collections[index];
       data.collections[index] = {
         ...existing,
         name: name ?? existing.name,
@@ -241,28 +268,32 @@ knowledgeRoutes.put('/collections/:id', async (c) => {
         activate_when: activate_when ?? existing.activate_when,
         never_activate_when: never_activate_when ?? existing.never_activate_when,
       };
-    }
 
-    await saveCollections(data);
+      // Update manifest as well
+      const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
+      if (existsSync(manifestPath)) {
+        const manifestContent = await readFile(manifestPath, 'utf-8');
+        const manifest = parseYaml(manifestContent) || {};
+        manifest.collection_name = name ?? manifest.collection_name;
+        manifest.description = description ?? manifest.description;
+        manifest.last_updated = new Date().toISOString();
+        await writeFile(manifestPath, stringifyYaml(manifest), 'utf-8');
+      }
 
-    // Update manifest as well
-    const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
-    if (existsSync(manifestPath)) {
-      const manifestContent = await readFile(manifestPath, 'utf-8');
-      const manifest = parseYaml(manifestContent) || {};
-      manifest.collection_name = name ?? manifest.collection_name;
-      manifest.description = description ?? manifest.description;
-      manifest.last_updated = new Date().toISOString();
-      await writeFile(manifestPath, stringifyYaml(manifest), 'utf-8');
+      return data.collections[index];
+    });
+
+    if (!updated) {
+      return c.json({ error: 'Collection nicht gefunden' }, 404);
     }
 
     return c.json({
       success: true,
-      collection: data.collections[index],
+      collection: updated,
     });
   } catch (error: any) {
     console.error('Update collection error:', error);
-    return c.json({ error: 'Fehler beim Aktualisieren der Collection' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -285,16 +316,17 @@ knowledgeRoutes.delete('/collections/:id', async (c) => {
       return c.json({ error: 'Keine Berechtigung zum Löschen' }, 403);
     }
 
-    const data = await loadCollections();
-    const index = data.collections.findIndex((col) => col.id === collectionId);
+    const found = await modifyCollections(async (data) => {
+      const index = data.collections.findIndex((col) => col.id === collectionId);
+      if (index < 0) return false;
 
-    if (index < 0) {
+      data.collections.splice(index, 1);
+      return true;
+    });
+
+    if (!found) {
       return c.json({ error: 'Collection nicht gefunden' }, 404);
     }
-
-    // Remove from collections.yaml
-    data.collections.splice(index, 1);
-    await saveCollections(data);
 
     // Delete collection directory
     const collectionDir = join(KB_BASE, 'collections', collectionId);
@@ -308,7 +340,7 @@ knowledgeRoutes.delete('/collections/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Delete collection error:', error);
-    return c.json({ error: 'Fehler beim Löschen der Collection' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -346,7 +378,7 @@ knowledgeRoutes.get('/collections/:id/documents', async (c) => {
     });
   } catch (error: any) {
     console.error('List documents error:', error);
-    return c.json({ error: 'Fehler beim Laden der Dokumente' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -407,7 +439,7 @@ knowledgeRoutes.get('/collections/:id/documents/:docId', async (c) => {
     });
   } catch (error: any) {
     console.error('Get document error:', error);
-    return c.json({ error: 'Fehler beim Laden des Dokuments' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -458,18 +490,18 @@ knowledgeRoutes.delete('/collections/:id/documents/:docId', async (c) => {
     manifest.last_updated = new Date().toISOString();
     await writeFile(manifestPath, stringifyYaml(manifest), 'utf-8');
 
-    // Update document count in collections.yaml
-    const data = await loadCollections();
-    const collection = data.collections.find((col) => col.id === collectionId);
-    if (collection) {
-      collection.document_count = manifest.documents.length;
-      await saveCollections(data);
-    }
+    // Update document count in collections.yaml (under lock)
+    await modifyCollections(async (data) => {
+      const collection = data.collections.find((col) => col.id === collectionId);
+      if (collection) {
+        collection.document_count = manifest.documents.length;
+      }
+    });
 
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Delete document error:', error);
-    return c.json({ error: 'Fehler beim Löschen des Dokuments' }, 500);
+    return internalError(c, error);
   }
 });
 

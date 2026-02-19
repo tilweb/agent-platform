@@ -4,6 +4,7 @@ import {
   type ToolCall,
   type StreamChunk,
   type ContentPart,
+  type TextContentPart,
   type MessageContent,
   type ChatOptions,
   createImageContent,
@@ -212,7 +213,7 @@ async function validateModelForAgent(
 }
 
 export interface AgentEvent {
-  type: 'thinking' | 'response_chunk' | 'reasoning_chunk' | 'tool_start' | 'tool_end' | 'done' | 'error' | 'delegation_start' | 'delegation_end' | 'agent_selected' | 'skill_activated' | 'workflow_step' | 'sub_agent_step' | 'model_info' | 'task_created';
+  type: 'thinking' | 'response_chunk' | 'reasoning_chunk' | 'tool_start' | 'tool_end' | 'done' | 'error' | 'delegation_start' | 'delegation_end' | 'agent_selected' | 'skill_activated' | 'workflow_step' | 'sub_agent_step' | 'model_info' | 'task_created' | 'file_processing';
   content?: string;
   toolName?: string;
   toolArgs?: string;
@@ -240,6 +241,10 @@ export interface AgentEvent {
   // Task created data
   taskId?: string;
   taskTitle?: string;
+  // File processing data
+  fileId?: string;
+  filename?: string;
+  status?: string;
 }
 
 // Attachment metadata type (from attachments service)
@@ -310,7 +315,7 @@ function injectImagesIntoMessages(
   const textContent = typeof userMessage.content === 'string'
     ? userMessage.content
     : Array.isArray(userMessage.content)
-      ? userMessage.content.filter(p => p.type === 'text').map(p => (p as any).text).join('\n')
+      ? userMessage.content.filter((p): p is TextContentPart => p.type === 'text').map(p => p.text).join('\n')
       : '';
 
   if (textContent) {

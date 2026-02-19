@@ -36,6 +36,7 @@ import {
   removeGroupMember,
 } from '../auth';
 import { randomBytes } from 'crypto';
+import { internalError } from '../utils/errorHandler';
 
 const authRoutes = new Hono();
 
@@ -95,7 +96,7 @@ authRoutes.post('/register', authRateLimit, async (c) => {
     });
   } catch (error: any) {
     console.error('Registration error:', error);
-    return c.json({ error: 'Registration failed' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -160,7 +161,7 @@ authRoutes.post('/login', authRateLimit, async (c) => {
     });
   } catch (error: any) {
     console.error('Login error:', error);
-    return c.json({ error: 'Login failed' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -191,7 +192,7 @@ authRoutes.post('/logout', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Logout error:', error);
-    return c.json({ error: 'Logout failed' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -224,7 +225,7 @@ authRoutes.get('/me', async (c) => {
     });
   } catch (error: any) {
     console.error('Get current user error:', error);
-    return c.json({ error: 'Failed to get current user' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -241,7 +242,7 @@ authRoutes.get('/status', async (c) => {
     });
   } catch (error: any) {
     console.error('Auth status error:', error);
-    return c.json({ error: 'Failed to check auth status' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -271,7 +272,7 @@ authRoutes.get('/users', authMiddleware, adminMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('List users error:', error);
-    return c.json({ error: 'Failed to list users' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -323,7 +324,7 @@ authRoutes.post('/users', authMiddleware, adminMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('Create user error:', error);
-    return c.json({ error: 'Failed to create user' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -363,7 +364,7 @@ authRoutes.put('/users/:id', authMiddleware, adminMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('Update user error:', error);
-    return c.json({ error: 'Failed to update user' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -403,7 +404,7 @@ authRoutes.post('/users/:id/reset-password', sensitiveRateLimit, authMiddleware,
     });
   } catch (error: any) {
     console.error('Reset password error:', error);
-    return c.json({ error: 'Failed to reset password' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -438,7 +439,7 @@ authRoutes.delete('/users/:id', authMiddleware, adminMiddleware, async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Delete user error:', error);
-    return c.json({ error: 'Failed to delete user' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -461,7 +462,7 @@ authRoutes.get('/groups', authMiddleware, adminMiddleware, async (c) => {
     return c.json({ groups });
   } catch (error: any) {
     console.error('List groups error:', error);
-    return c.json({ error: 'Failed to list groups' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -486,7 +487,7 @@ authRoutes.post('/groups', authMiddleware, adminMiddleware, async (c) => {
     return c.json({ success: true, group });
   } catch (error: any) {
     console.error('Create group error:', error);
-    return c.json({ error: 'Failed to create group' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -505,7 +506,7 @@ authRoutes.get('/groups/:id', authMiddleware, adminMiddleware, async (c) => {
     return c.json({ group });
   } catch (error: any) {
     console.error('Get group error:', error);
-    return c.json({ error: 'Failed to get group' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -533,7 +534,7 @@ authRoutes.put('/groups/:id', authMiddleware, adminMiddleware, async (c) => {
     return c.json({ success: true, group: updatedGroup });
   } catch (error: any) {
     console.error('Update group error:', error);
-    return c.json({ error: 'Failed to update group' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -553,7 +554,7 @@ authRoutes.delete('/groups/:id', authMiddleware, adminMiddleware, async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Delete group error:', error);
-    return c.json({ error: 'Failed to delete group' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -578,7 +579,7 @@ authRoutes.post('/groups/:id/members', authMiddleware, adminMiddleware, async (c
     return c.json({ success: true, group });
   } catch (error: any) {
     console.error('Add group member error:', error);
-    return c.json({ error: 'Failed to add member' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -598,7 +599,7 @@ authRoutes.delete('/groups/:id/members/:userId', authMiddleware, adminMiddleware
     return c.json({ success: true, group });
   } catch (error: any) {
     console.error('Remove group member error:', error);
-    return c.json({ error: 'Failed to remove member' }, 500);
+    return internalError(c, error);
   }
 });
 

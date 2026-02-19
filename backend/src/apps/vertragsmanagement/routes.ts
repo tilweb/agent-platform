@@ -33,8 +33,10 @@ const contracts = new Hono();
 contracts.post('/contracts', async (c) => {
   try {
     const formData = await c.req.formData();
-    const file = formData.get('file') as File | null;
-    const contractType = formData.get('contractType') as string | null;
+    const fileEntry = formData.get('file');
+    const file = fileEntry instanceof File ? fileEntry : null;
+    const rawContractType = formData.get('contractType');
+    const contractType = typeof rawContractType === 'string' ? rawContractType : null;
 
     if (!file) {
       return c.json({ error: 'No file uploaded' }, 400);

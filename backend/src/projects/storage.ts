@@ -575,8 +575,8 @@ export async function deleteProjectMemoryItem(
   const memory = await loadProjectMemory(projectId);
 
   const initialLength = memory[section].length;
-  (memory[section] as any[]) = (memory[section] as any[]).filter(
-    (item: any) => item.id !== itemId
+  (memory[section] as Array<{ id: string }>) = (memory[section] as Array<{ id: string }>).filter(
+    item => item.id !== itemId
   );
 
   if (memory[section].length === initialLength) {

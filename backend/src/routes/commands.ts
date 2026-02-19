@@ -8,6 +8,7 @@ import { commandRegistry } from '../commands/registry';
 import type { ExecuteCommandRequest } from '../commands/types';
 import { authMiddleware } from '../auth';
 import { uploadRateLimit } from '../middleware/rateLimit';
+import { internalError } from '../utils/errorHandler';
 
 export const commandRoutes = new Hono();
 
@@ -24,7 +25,7 @@ commandRoutes.get('/', async (c) => {
     return c.json({ commands });
   } catch (error) {
     console.error('Error listing commands:', error);
-    return c.json({ error: 'Failed to list commands' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -44,7 +45,7 @@ commandRoutes.get('/:id', async (c) => {
     return c.json({ command });
   } catch (error) {
     console.error('Error getting command:', error);
-    return c.json({ error: 'Failed to get command' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -64,7 +65,7 @@ commandRoutes.get('/:id/options', async (c) => {
     return c.json({ options });
   } catch (error) {
     console.error('Error getting command options:', error);
-    return c.json({ error: 'Failed to get command options' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -85,12 +86,6 @@ commandRoutes.post('/execute', uploadRateLimit, async (c) => {
     return c.json(result);
   } catch (error) {
     console.error('Error executing command:', error);
-    return c.json(
-      {
-        success: false,
-        message: `Fehler: ${(error as Error).message}`,
-      },
-      500
-    );
+    return internalError(c, error);
   }
 });

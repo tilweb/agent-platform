@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { internalError } from '../utils/errorHandler';
 import { unifiedSearch, smartKnowledgeSearch, smartContractSearch } from '../services/searchService';
 import { searchChatHistoriesWithScoring } from '../services/memory';
 import { smartChatSearch } from '../services/smartChatSearch';
@@ -55,7 +56,7 @@ searchRoutes.get('/', async (c) => {
     return c.json(results);
   } catch (error) {
     console.error('Search error:', error);
-    return c.json({ error: 'Search failed' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -137,7 +138,7 @@ searchRoutes.get('/sources', async (c) => {
     return c.json({ sources });
   } catch (error) {
     console.error('Error listing search sources:', error);
-    return c.json({ error: 'Failed to list sources' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -164,7 +165,7 @@ searchRoutes.get('/smart', async (c) => {
     return c.json(results);
   } catch (error) {
     console.error('Smart search error:', error);
-    return c.json({ error: 'Smart search failed' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -191,7 +192,7 @@ searchRoutes.get('/contracts/smart', async (c) => {
     return c.json(results);
   } catch (error) {
     console.error('Smart contract search error:', error);
-    return c.json({ error: 'Smart contract search failed' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -240,6 +241,6 @@ searchRoutes.get('/chats/smart', async (c) => {
     });
   } catch (error) {
     console.error('Smart chat search error:', error);
-    return c.json({ error: 'Smart chat search failed' }, 500);
+    return internalError(c, error);
   }
 });

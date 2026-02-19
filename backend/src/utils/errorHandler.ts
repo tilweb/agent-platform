@@ -141,7 +141,7 @@ export function errorResponse(c: Context, details: ErrorDetails) {
     };
   }
 
-  return c.json(response, status as any);
+  return c.json(response, status as 400 | 401 | 403 | 404 | 429 | 500 | 502 | 503);
 }
 
 /**

@@ -2,26 +2,16 @@
  * Session Management - YAML-based session persistence
  */
 
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { Session, User } from './types';
 import { SESSION_CONFIG } from './types';
-import { unlinkSync } from 'node:fs';
 import { join } from 'path';
 import { SESSIONS_DIR } from '../utils/paths';
+import { createYamlStore, loadYaml, deleteYaml } from '../utils/yamlStorage';
+
+const store = createYamlStore<Session>(SESSIONS_DIR);
 
 // In-memory session cache for performance
 const sessionCache = new Map<string, Session>();
-
-/**
- * Ensure the sessions directory exists
- */
-async function ensureSessionsDir(): Promise<void> {
-  try {
-    await Bun.write(join(SESSIONS_DIR, '.gitkeep'), '');
-  } catch {
-    // Directory might already exist
-  }
-}
 
 /**
  * Generate a secure session ID
@@ -35,18 +25,9 @@ function generateSessionId(): string {
 }
 
 /**
- * Get the file path for a session
- */
-function getSessionFilePath(sessionId: string): string {
-  return join(SESSIONS_DIR, `${sessionId}.yaml`);
-}
-
-/**
  * Create a new session for a user
  */
 export async function createSession(user: User, userAgent?: string, ipAddress?: string): Promise<Session> {
-  await ensureSessionsDir();
-
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_CONFIG.expiresInMs);
 
@@ -59,11 +40,7 @@ export async function createSession(user: User, userAgent?: string, ipAddress?: 
     ipAddress,
   };
 
-  // Save to file
-  const yaml = stringifyYaml(session);
-  await Bun.write(getSessionFilePath(session.id), yaml);
-
-  // Cache it
+  await store.save(session.id, session);
   sessionCache.set(session.id, session);
 
   return session;
@@ -76,26 +53,16 @@ export async function getSession(sessionId: string): Promise<Session | null> {
   // Check cache first
   if (sessionCache.has(sessionId)) {
     const cached = sessionCache.get(sessionId)!;
-
-    // Check if expired
     if (new Date(cached.expiresAt) < new Date()) {
       await deleteSession(sessionId);
       return null;
     }
-
     return cached;
   }
 
   // Load from file
-  const filePath = getSessionFilePath(sessionId);
-  const file = Bun.file(filePath);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  const session = parseYaml(content) as Session;
+  const session = await store.load(sessionId);
+  if (!session) return null;
 
   // Check if expired
   if (new Date(session.expiresAt) < new Date()) {
@@ -105,7 +72,6 @@ export async function getSession(sessionId: string): Promise<Session | null> {
 
   // Cache it
   sessionCache.set(sessionId, session);
-
   return session;
 }
 
@@ -121,49 +87,22 @@ export async function validateSession(sessionId: string): Promise<string | null>
  * Delete a session
  */
 export async function deleteSession(sessionId: string): Promise<boolean> {
-  // Remove from cache
   sessionCache.delete(sessionId);
-
-  // Delete file
-  const filePath = getSessionFilePath(sessionId);
-  const file = Bun.file(filePath);
-
-  if (!(await file.exists())) {
-    return false;
-  }
-
-  try {
-    unlinkSync(filePath);
-    return true;
-  } catch {
-    return false;
-  }
+  return store.delete(sessionId);
 }
 
 /**
  * Delete all sessions for a user
  */
 export async function deleteUserSessions(userId: string): Promise<number> {
-  await ensureSessionsDir();
-
+  const ids = await store.listIds();
   let deleted = 0;
-  const glob = new Bun.Glob('*.yaml');
 
-  for await (const file of glob.scan(SESSIONS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(SESSIONS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const session = parseYaml(content) as Session;
-
-    if (session.userId === userId) {
+  for (const id of ids) {
+    const session = await store.load(id);
+    if (session?.userId === userId) {
       sessionCache.delete(session.id);
-      try {
-        unlinkSync(filePath);
-        deleted++;
-      } catch {
-        // Ignore errors
-      }
+      if (await store.delete(id)) deleted++;
     }
   }
 
@@ -175,18 +114,11 @@ export async function deleteUserSessions(userId: string): Promise<number> {
  */
 export async function extendSession(sessionId: string): Promise<Session | null> {
   const session = await getSession(sessionId);
-  if (!session) {
-    return null;
-  }
+  if (!session) return null;
 
-  const now = new Date();
-  session.expiresAt = new Date(now.getTime() + SESSION_CONFIG.expiresInMs).toISOString();
+  session.expiresAt = new Date(Date.now() + SESSION_CONFIG.expiresInMs).toISOString();
 
-  // Update file
-  const yaml = stringifyYaml(session);
-  await Bun.write(getSessionFilePath(session.id), yaml);
-
-  // Update cache
+  await store.save(session.id, session);
   sessionCache.set(session.id, session);
 
   return session;
@@ -196,27 +128,15 @@ export async function extendSession(sessionId: string): Promise<Session | null> 
  * Clean up expired sessions
  */
 export async function cleanupExpiredSessions(): Promise<number> {
-  await ensureSessionsDir();
-
-  let cleaned = 0;
+  const ids = await store.listIds();
   const now = new Date();
-  const glob = new Bun.Glob('*.yaml');
+  let cleaned = 0;
 
-  for await (const file of glob.scan(SESSIONS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(SESSIONS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const session = parseYaml(content) as Session;
-
-    if (new Date(session.expiresAt) < now) {
+  for (const id of ids) {
+    const session = await store.load(id);
+    if (session && new Date(session.expiresAt) < now) {
       sessionCache.delete(session.id);
-      try {
-        unlinkSync(filePath);
-        cleaned++;
-      } catch {
-        // Ignore errors
-      }
+      if (await store.delete(id)) cleaned++;
     }
   }
 
@@ -227,20 +147,13 @@ export async function cleanupExpiredSessions(): Promise<number> {
  * Get all active sessions for a user
  */
 export async function getUserSessions(userId: string): Promise<Session[]> {
-  await ensureSessionsDir();
-
+  const ids = await store.listIds();
   const sessions: Session[] = [];
   const now = new Date();
-  const glob = new Bun.Glob('*.yaml');
 
-  for await (const file of glob.scan(SESSIONS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(SESSIONS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const session = parseYaml(content) as Session;
-
-    if (session.userId === userId && new Date(session.expiresAt) > now) {
+  for (const id of ids) {
+    const session = await store.load(id);
+    if (session?.userId === userId && new Date(session.expiresAt) > now) {
       sessions.push(session);
     }
   }

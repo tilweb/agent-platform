@@ -34,6 +34,7 @@ import {
   type CreateTaskParams,
   type TaskFilter,
   type TaskStatus,
+  type TaskType,
   type TaskPriority,
 } from '../services/taskService';
 
@@ -139,7 +140,7 @@ tasksRoutes.get('/', async (c) => {
     }
 
     if (type) {
-      filter.type = type as any;
+      filter.type = type as TaskType;
     }
 
     if (priority) {

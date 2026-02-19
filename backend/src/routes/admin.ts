@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import { authMiddleware, getCurrentUser } from '../auth/middleware';
 import { parseIntSafe } from '../utils/parseIntSafe';
+import { internalError } from '../utils/errorHandler';
 import {
   getAuditLogs,
   searchAuditLogs,
@@ -91,7 +92,7 @@ adminRoutes.get('/audit-logs', async (c) => {
     });
   } catch (error: any) {
     console.error('Error fetching audit logs:', error);
-    return c.json({ error: 'Fehler beim Laden der Audit Logs' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -212,7 +213,7 @@ adminRoutes.get('/audit-logs/stats', async (c) => {
     });
   } catch (error: any) {
     console.error('Error fetching audit stats:', error);
-    return c.json({ error: 'Fehler beim Laden der Statistiken' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -246,7 +247,7 @@ adminRoutes.get('/usage', async (c) => {
     return c.json(summary);
   } catch (error: any) {
     console.error('Error fetching usage summary:', error);
-    return c.json({ error: 'Fehler beim Laden der Nutzungsstatistik' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -266,7 +267,7 @@ adminRoutes.get('/usage/users', async (c) => {
     return c.json({ users: userTotals });
   } catch (error: any) {
     console.error('Error fetching user usage:', error);
-    return c.json({ error: 'Fehler beim Laden der Benutzer-Nutzung' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -287,7 +288,7 @@ adminRoutes.get('/usage/users/:id', async (c) => {
     return c.json({ userId, usage });
   } catch (error: any) {
     console.error('Error fetching user usage:', error);
-    return c.json({ error: 'Fehler beim Laden der Benutzer-Nutzung' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -307,7 +308,7 @@ adminRoutes.get('/usage/models', async (c) => {
     return c.json({ models: byModel });
   } catch (error: any) {
     console.error('Error fetching model usage:', error);
-    return c.json({ error: 'Fehler beim Laden der Model-Nutzung' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -333,6 +334,6 @@ adminRoutes.get('/usage/export', async (c) => {
     });
   } catch (error: any) {
     console.error('Error exporting usage:', error);
-    return c.json({ error: 'Fehler beim Exportieren der Nutzung' }, 500);
+    return internalError(c, error);
   }
 });

@@ -2,12 +2,13 @@
  * Connection Storage - Encrypted token persistence
  */
 
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { StoredConnection, TokenSet, ConnectionStatus, OAuthState } from './types';
 import { encryptTokens, decryptTokens } from './crypto';
-import { unlinkSync } from 'node:fs';
 import { join } from 'path';
 import { CONNECTIONS_DIR, OAUTH_STATES_DIR } from '../utils/paths';
+import { createYamlStore, ensureDir, loadYaml, saveYaml, deleteYaml, listYamlIds } from '../utils/yamlStorage';
+
+const oauthStore = createYamlStore<OAuthState>(OAUTH_STATES_DIR);
 
 // Per-connection mutex for read-modify-write operations
 const connectionLocks = new Map<string, Promise<void>>();
@@ -26,41 +27,10 @@ async function withConnectionLock<T>(userId: string, providerId: string, fn: () 
 }
 
 /**
- * Ensure the connections directory exists for a user
- */
-async function ensureConnectionsDir(userId: string): Promise<string> {
-  const userDir = join(CONNECTIONS_DIR, userId);
-  try {
-    await Bun.write(join(userDir, '.gitkeep'), '');
-  } catch {
-    // Directory might already exist
-  }
-  return userDir;
-}
-
-/**
- * Ensure the OAuth state directory exists
- */
-async function ensureOAuthStateDir(): Promise<void> {
-  try {
-    await Bun.write(join(OAUTH_STATES_DIR, '.gitkeep'), '');
-  } catch {
-    // Directory might already exist
-  }
-}
-
-/**
  * Get the file path for a connection
  */
 function getConnectionFilePath(userId: string, providerId: string): string {
   return join(CONNECTIONS_DIR, userId, `${providerId}.yaml`);
-}
-
-/**
- * Get the file path for an OAuth state
- */
-function getOAuthStateFilePath(state: string): string {
-  return join(OAUTH_STATES_DIR, `${state}.yaml`);
 }
 
 /**
@@ -72,7 +42,8 @@ export async function saveConnection(
   tokens: TokenSet,
   status: ConnectionStatus
 ): Promise<StoredConnection> {
-  await ensureConnectionsDir(userId);
+  const userDir = join(CONNECTIONS_DIR, userId);
+  await ensureDir(userDir);
 
   const encryptedTokens = await encryptTokens(tokens);
   const now = new Date().toISOString();
@@ -87,7 +58,7 @@ export async function saveConnection(
   };
 
   const filePath = getConnectionFilePath(userId, providerId);
-  await Bun.write(filePath, stringifyYaml(connection));
+  await saveYaml(filePath, connection);
 
   return connection;
 }
@@ -100,16 +71,11 @@ export async function loadConnection(
   providerId: string
 ): Promise<{ connection: StoredConnection; tokens: TokenSet } | null> {
   const filePath = getConnectionFilePath(userId, providerId);
-  const file = Bun.file(filePath);
+  const connection = await loadYaml<StoredConnection>(filePath);
 
-  if (!(await file.exists())) {
-    return null;
-  }
+  if (!connection) return null;
 
-  const content = await file.text();
-  const connection = parseYaml(content) as StoredConnection;
   const tokens = await decryptTokens(connection.tokens);
-
   return { connection, tokens };
 }
 
@@ -123,19 +89,13 @@ export async function updateConnectionStatus(
 ): Promise<boolean> {
   return withConnectionLock(userId, providerId, async () => {
     const filePath = getConnectionFilePath(userId, providerId);
-    const file = Bun.file(filePath);
-
-    if (!(await file.exists())) {
-      return false;
-    }
-
-    const content = await file.text();
-    const connection = parseYaml(content) as StoredConnection;
+    const connection = await loadYaml<StoredConnection>(filePath);
+    if (!connection) return false;
 
     connection.status = status;
     connection.updatedAt = new Date().toISOString();
 
-    await Bun.write(filePath, stringifyYaml(connection));
+    await saveYaml(filePath, connection);
     return true;
   });
 }
@@ -150,19 +110,13 @@ export async function updateConnectionTokens(
 ): Promise<boolean> {
   return withConnectionLock(userId, providerId, async () => {
     const filePath = getConnectionFilePath(userId, providerId);
-    const file = Bun.file(filePath);
-
-    if (!(await file.exists())) {
-      return false;
-    }
-
-    const content = await file.text();
-    const connection = parseYaml(content) as StoredConnection;
+    const connection = await loadYaml<StoredConnection>(filePath);
+    if (!connection) return false;
 
     connection.tokens = await encryptTokens(tokens);
     connection.updatedAt = new Date().toISOString();
 
-    await Bun.write(filePath, stringifyYaml(connection));
+    await saveYaml(filePath, connection);
     return true;
   });
 }
@@ -172,18 +126,7 @@ export async function updateConnectionTokens(
  */
 export async function deleteConnection(userId: string, providerId: string): Promise<boolean> {
   const filePath = getConnectionFilePath(userId, providerId);
-  const file = Bun.file(filePath);
-
-  if (!(await file.exists())) {
-    return false;
-  }
-
-  try {
-    unlinkSync(filePath);
-    return true;
-  } catch {
-    return false;
-  }
+  return deleteYaml(filePath);
 }
 
 /**
@@ -191,20 +134,12 @@ export async function deleteConnection(userId: string, providerId: string): Prom
  */
 export async function listUserConnections(userId: string): Promise<StoredConnection[]> {
   const userDir = join(CONNECTIONS_DIR, userId);
+  const ids = await listYamlIds(userDir);
   const connections: StoredConnection[] = [];
 
-  const glob = new Bun.Glob('*.yaml');
-  try {
-    for await (const file of glob.scan(userDir)) {
-      if (file === '.gitkeep') continue;
-
-      const filePath = join(userDir, file);
-      const content = await Bun.file(filePath).text();
-      const connection = parseYaml(content) as StoredConnection;
-      connections.push(connection);
-    }
-  } catch {
-    // Directory doesn't exist or is empty
+  for (const id of ids) {
+    const conn = await loadYaml<StoredConnection>(join(userDir, `${id}.yaml`));
+    if (conn) connections.push(conn);
   }
 
   return connections;
@@ -218,30 +153,21 @@ export async function hasConnection(userId: string, providerId: string): Promise
   return await Bun.file(filePath).exists();
 }
 
-// OAuth State Management
+// ── OAuth State Management ───────────────────────────────────────────
 
 /**
  * Save OAuth state for validation
  */
 export async function saveOAuthState(state: string, data: OAuthState): Promise<void> {
-  await ensureOAuthStateDir();
-  const filePath = getOAuthStateFilePath(state);
-  await Bun.write(filePath, stringifyYaml(data));
+  await oauthStore.save(state, data);
 }
 
 /**
  * Load and validate OAuth state
  */
 export async function loadOAuthState(state: string): Promise<OAuthState | null> {
-  const filePath = getOAuthStateFilePath(state);
-  const file = Bun.file(filePath);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  const data = parseYaml(content) as OAuthState;
+  const data = await oauthStore.load(state);
+  if (!data) return null;
 
   // Check if expired
   if (new Date(data.expiresAt) < new Date()) {
@@ -256,42 +182,21 @@ export async function loadOAuthState(state: string): Promise<OAuthState | null> 
  * Delete OAuth state after use
  */
 export async function deleteOAuthState(state: string): Promise<void> {
-  const filePath = getOAuthStateFilePath(state);
-  const file = Bun.file(filePath);
-
-  if (await file.exists()) {
-    try {
-      unlinkSync(filePath);
-    } catch {
-      // Ignore errors
-    }
-  }
+  await oauthStore.delete(state);
 }
 
 /**
  * Clean up expired OAuth states
  */
 export async function cleanupExpiredOAuthStates(): Promise<number> {
-  await ensureOAuthStateDir();
-
-  let cleaned = 0;
+  const ids = await oauthStore.listIds();
   const now = new Date();
-  const glob = new Bun.Glob('*.yaml');
+  let cleaned = 0;
 
-  for await (const file of glob.scan(OAUTH_STATES_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(OAUTH_STATES_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const data = parseYaml(content) as OAuthState;
-
-    if (new Date(data.expiresAt) < now) {
-      try {
-        unlinkSync(filePath);
-        cleaned++;
-      } catch {
-        // Ignore errors
-      }
+  for (const id of ids) {
+    const data = await oauthStore.load(id);
+    if (data && new Date(data.expiresAt) < now) {
+      if (await oauthStore.delete(id)) cleaned++;
     }
   }
 

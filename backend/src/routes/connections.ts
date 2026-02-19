@@ -15,6 +15,7 @@ import {
   isEncryptionConfigured,
 } from '../connections';
 import type { OAuthState } from '../connections';
+import { internalError } from '../utils/errorHandler';
 
 const connectionRoutes = new Hono();
 
@@ -82,7 +83,7 @@ connectionRoutes.get('/', authMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('List connections error:', error);
-    return c.json({ error: 'Failed to list connections' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -114,7 +115,7 @@ connectionRoutes.get('/:id', authMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('Get connection error:', error);
-    return c.json({ error: 'Failed to get connection' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -172,7 +173,7 @@ connectionRoutes.get('/:id/connect', authMiddleware, async (c) => {
     return c.json({ authUrl, state });
   } catch (error: any) {
     console.error('Start OAuth error:', error);
-    return c.json({ error: 'Failed to start OAuth flow' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -307,7 +308,7 @@ connectionRoutes.post('/:id/disconnect', authMiddleware, async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Disconnect error:', error);
-    return c.json({ error: 'Failed to disconnect' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -331,7 +332,7 @@ connectionRoutes.get('/:id/status', authMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('Check status error:', error);
-    return c.json({ error: 'Failed to check status' }, 500);
+    return internalError(c, error);
   }
 });
 

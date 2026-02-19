@@ -98,7 +98,7 @@ export async function setupTools(): Promise<void> {
   const webSearchConfig = toolsConfig.api.web_search;
   const webSearchTool = new WebSearchTool({
     apiKey: webSearchConfig?.apiKey,
-    provider: (webSearchConfig as any)?.provider || 'tavily',
+    provider: (webSearchConfig as Record<string, unknown>)?.provider as string || 'tavily',
   });
   toolRegistry.register(webSearchTool);
 

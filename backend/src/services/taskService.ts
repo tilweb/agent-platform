@@ -5,12 +5,13 @@
  * Tasks are persisted as YAML files in data/tasks/
  */
 
-import { readFile, writeFile, readdir, unlink, mkdir } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { resolve } from 'path';
+import { join } from 'path';
 import * as yaml from 'yaml';
 import { generateId } from '../utils/id';
 import { TASKS_DIR } from '../utils/paths';
+import { createYamlStore } from '../utils/yamlStorage';
 
 // ============================================
 // Types
@@ -186,7 +187,7 @@ export interface QueueStatus {
 // Constants
 // ============================================
 
-const QUEUE_FILE = resolve(TASKS_DIR, 'queue.yaml');
+const QUEUE_FILE = join(TASKS_DIR, 'queue.yaml');
 
 const DEFAULT_CONFIG: TaskConfig = {
   max_iterations: 50,
@@ -210,14 +211,13 @@ function generateTaskId(): string {
   return generateId('task');
 }
 
-function getTaskFilePath(taskId: string): string {
-  return resolve(TASKS_DIR, `${taskId}.yaml`);
-}
+const taskStore = createYamlStore<Task>(TASKS_DIR, {
+  yaml: { indent: 2, lineWidth: 0 },
+  prefix: 'task_',
+});
 
-async function ensureTasksDir(): Promise<void> {
-  if (!existsSync(TASKS_DIR)) {
-    await mkdir(TASKS_DIR, { recursive: true });
-  }
+function getTaskFilePath(taskId: string): string {
+  return taskStore.filePath(taskId);
 }
 
 // ============================================
@@ -244,7 +244,7 @@ export async function withQueueLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export async function loadQueue(): Promise<TaskQueue> {
-  await ensureTasksDir();
+  await taskStore.ensureDir();
 
   if (!existsSync(QUEUE_FILE)) {
     const defaultQueue: TaskQueue = {
@@ -267,7 +267,7 @@ export async function loadQueue(): Promise<TaskQueue> {
 }
 
 export async function saveQueue(queue: TaskQueue): Promise<void> {
-  await ensureTasksDir();
+  await taskStore.ensureDir();
   queue.updated_at = new Date().toISOString();
 
   const yamlContent = yaml.stringify(queue, {
@@ -297,7 +297,7 @@ export async function updateQueueSettings(updates: Partial<QueueSettings>): Prom
 // ============================================
 
 export async function createTask(params: CreateTaskParams): Promise<Task> {
-  await ensureTasksDir();
+  await taskStore.ensureDir();
 
   const now = new Date().toISOString();
   const queue = await loadQueue();
@@ -337,40 +337,21 @@ export async function createTask(params: CreateTaskParams): Promise<Task> {
 }
 
 export async function saveTask(task: Task): Promise<void> {
-  await ensureTasksDir();
   task.updated_at = new Date().toISOString();
-
-  const yamlContent = yaml.stringify(task, {
-    indent: 2,
-    lineWidth: 0,
-  });
-
-  await writeFile(getTaskFilePath(task.id), yamlContent, 'utf-8');
+  await taskStore.save(task.id, task);
 }
 
 export async function getTask(taskId: string): Promise<Task | null> {
-  const filePath = getTaskFilePath(taskId);
-
-  if (!existsSync(filePath)) {
-    return null;
-  }
-
-  const content = await readFile(filePath, 'utf-8');
-  return yaml.parse(content) as Task;
+  return taskStore.load(taskId);
 }
 
 export async function listTasks(filter?: TaskFilter): Promise<TaskListResult> {
-  await ensureTasksDir();
-
-  const files = await readdir(TASKS_DIR);
-  const taskFiles = files.filter(f => f.startsWith('task_') && f.endsWith('.yaml'));
-
+  const ids = await taskStore.listIds();
   const tasks: Task[] = [];
 
-  for (const file of taskFiles) {
-    const content = await readFile(resolve(TASKS_DIR, file), 'utf-8');
-    const task = yaml.parse(content) as Task;
-    tasks.push(task);
+  for (const id of ids) {
+    const task = await taskStore.load(id);
+    if (task) tasks.push(task);
   }
 
   // Filter by userId first for stats calculation (user should only see their own stats)
@@ -447,12 +428,6 @@ export async function updateTask(taskId: string, updates: Partial<Task>): Promis
 }
 
 export async function deleteTask(taskId: string): Promise<boolean> {
-  const filePath = getTaskFilePath(taskId);
-
-  if (!existsSync(filePath)) {
-    return false;
-  }
-
   // Remove from queue if present
   const queue = await loadQueue();
   queue.active = queue.active.filter(e => e.task_id !== taskId);
@@ -460,8 +435,7 @@ export async function deleteTask(taskId: string): Promise<boolean> {
   await saveQueue(queue);
 
   // Delete task file
-  await unlink(filePath);
-  return true;
+  return taskStore.delete(taskId);
 }
 
 // ============================================

@@ -14,6 +14,7 @@ import {
 import { contractRoutes } from '../apps/vertragsmanagement/routes';
 import { projektmanagementRoutes } from '../apps/projektmanagement/routes';
 import { authMiddleware } from '../auth';
+import { internalError } from '../utils/errorHandler';
 
 const apps = new Hono();
 
@@ -33,7 +34,7 @@ apps.get('/', async (c) => {
     return c.json({ apps: allApps });
   } catch (error) {
     console.error('Error listing apps:', error);
-    return c.json({ error: 'Failed to list apps' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -47,7 +48,7 @@ apps.get('/enabled', async (c) => {
     return c.json({ apps: enabledApps });
   } catch (error) {
     console.error('Error listing enabled apps:', error);
-    return c.json({ error: 'Failed to list enabled apps' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -73,7 +74,7 @@ apps.get('/:appId', async (c) => {
     return c.json({ app });
   } catch (error) {
     console.error('Error getting app:', error);
-    return c.json({ error: 'Failed to get app' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -93,7 +94,7 @@ apps.put('/:appId/enable', async (c) => {
     return c.json({ app });
   } catch (error) {
     console.error('Error enabling app:', error);
-    return c.json({ error: 'Failed to enable app' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -113,7 +114,7 @@ apps.put('/:appId/disable', async (c) => {
     return c.json({ app });
   } catch (error) {
     console.error('Error disabling app:', error);
-    return c.json({ error: 'Failed to disable app' }, 500);
+    return internalError(c, error);
   }
 });
 

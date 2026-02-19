@@ -335,10 +335,7 @@ providers.post('/:id/test', async (c) => {
     return c.json(result);
   } catch (error) {
     console.error('Error testing provider:', error);
-    return c.json({
-      success: false,
-      message: 'Provider-Test fehlgeschlagen',
-    });
+    return c.json({ error: 'Provider-Test fehlgeschlagen' }, 500);
   }
 });
 

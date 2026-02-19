@@ -150,6 +150,9 @@ tablesRoutes.put('/:id', async (c) => {
   try {
     const tableId = c.req.param('id');
     const body = await c.req.json();
+    if (!requireObject(body)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
     const updates: UpdateTableParams = {
       name: body.name,
@@ -270,7 +273,11 @@ tablesRoutes.delete('/:id/columns/:columnId', async (c) => {
 tablesRoutes.put('/:id/columns/order', async (c) => {
   try {
     const tableId = c.req.param('id');
-    const { columnIds } = await c.req.json();
+    const body = await c.req.json();
+    if (!requireObject(body)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
+    const { columnIds } = body;
 
     if (!Array.isArray(columnIds)) {
       return c.json({ error: 'columnIds array is required' }, 400);
@@ -299,7 +306,7 @@ tablesRoutes.get('/:id/rows', async (c) => {
     const options: QueryOptions = {
       filter_text: c.req.query('filter') || undefined,
       sort_by: c.req.query('sort_by') || undefined,
-      sort_direction: (c.req.query('sort_direction') as 'ASC' | 'DESC') || undefined,
+      sort_direction: (['ASC', 'DESC'].includes(c.req.query('sort_direction') || '') ? c.req.query('sort_direction') as 'ASC' | 'DESC' : undefined),
       offset: parseIntSafe(c.req.query('offset'), 0),
       limit: parseIntSafe(c.req.query('limit'), 50),
       resolve_relations: c.req.query('resolve_relations') === 'true',
@@ -428,7 +435,11 @@ tablesRoutes.delete('/:id/rows/:rowId', async (c) => {
 tablesRoutes.delete('/:id/rows', async (c) => {
   try {
     const tableId = c.req.param('id');
-    const { rowIds } = await c.req.json();
+    const body = await c.req.json();
+    if (!requireObject(body)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
+    const { rowIds } = body;
 
     if (!Array.isArray(rowIds)) {
       return c.json({ error: 'rowIds array is required' }, 400);
@@ -463,6 +474,9 @@ tablesRoutes.post('/:id/views', async (c) => {
   try {
     const tableId = c.req.param('id');
     const params = await c.req.json();
+    if (!requireObject(params)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
     if (!params.id || !params.name) {
       return c.json({ error: 'id and name are required' }, 400);
@@ -502,6 +516,9 @@ tablesRoutes.put('/:id/views/:viewId', async (c) => {
     const tableId = c.req.param('id');
     const viewId = c.req.param('viewId');
     const params = await c.req.json();
+    if (!requireObject(params)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
     const view = await views.updateView(tableId, viewId, params);
     return c.json(view);
@@ -611,11 +628,16 @@ tablesRoutes.get('/:id/columns/:columnId/options', async (c) => {
 tablesRoutes.post('/:id/export', async (c) => {
   try {
     const tableId = c.req.param('id');
-    const options = await c.req.json() as ExportOptions;
+    const body = await c.req.json();
+    if (!requireObject(body)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
-    if (!options.format) {
+    const format = typeof body.format === 'string' ? body.format : '';
+    if (!format || !['csv', 'json', 'yaml'].includes(format)) {
       return c.json({ error: 'format is required (csv, json, yaml)' }, 400);
     }
+    const options: ExportOptions = { format: format as ExportOptions['format'], ...body };
 
     const content = await importExport.exportTable(tableId, options);
 
@@ -643,6 +665,9 @@ tablesRoutes.post('/:id/import', async (c) => {
   try {
     const tableId = c.req.param('id');
     const body = await c.req.json();
+    if (!requireObject(body)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
 
     const { content, format, column_mapping, update_existing, skip_invalid } = body;
 
@@ -669,7 +694,11 @@ tablesRoutes.post('/:id/import', async (c) => {
 tablesRoutes.post('/:id/import/preview', async (c) => {
   try {
     const tableId = c.req.param('id');
-    const { content, format, limit = 10 } = await c.req.json();
+    const body = await c.req.json();
+    if (!requireObject(body)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
+    const { content, format, limit = 10 } = body;
 
     if (!content || !format) {
       return c.json({ error: 'content and format are required' }, 400);
@@ -704,7 +733,11 @@ tablesRoutes.post('/:id/backup', async (c) => {
 // POST /api/tables/import/backup - Import from backup
 tablesRoutes.post('/import/backup', async (c) => {
   try {
-    const { content, overwrite = false } = await c.req.json();
+    const body = await c.req.json();
+    if (!requireObject(body)) {
+      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+    }
+    const { content, overwrite = false } = body;
 
     if (!content) {
       return c.json({ error: 'content is required' }, 400);

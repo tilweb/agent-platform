@@ -2,12 +2,12 @@
  * User Storage - YAML-based user persistence
  */
 
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { User, CreateUserInput } from './types';
 import { hashPassword } from './password';
-import { unlinkSync } from 'node:fs';
-import { join } from 'path';
 import { USERS_DIR } from '../utils/paths';
+import { createYamlStore, listYamlIds } from '../utils/yamlStorage';
+
+const store = createYamlStore<User>(USERS_DIR);
 
 // Per-user mutex for read-modify-write operations
 const userLocks = new Map<string, Promise<void>>();
@@ -25,110 +25,47 @@ async function withUserLock<T>(userId: string, fn: () => Promise<T>): Promise<T>
 }
 
 /**
- * Ensure the users directory exists
- */
-async function ensureUsersDir(): Promise<void> {
-  const dir = Bun.file(USERS_DIR);
-  try {
-    await Bun.write(join(USERS_DIR, '.gitkeep'), '');
-  } catch {
-    // Directory might already exist
-  }
-}
-
-/**
  * Generate a unique user ID
  */
 function generateUserId(): string {
   return `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
-/**
- * Get the file path for a user
- */
-function getUserFilePath(userId: string): string {
-  return join(USERS_DIR, `${userId}.yaml`);
+/** Apply default role for legacy users */
+function withDefaults(user: User): User {
+  if (!user.role) user.role = 'user';
+  return user;
 }
 
 /**
  * Save a user to storage
  */
 export async function saveUser(user: User): Promise<void> {
-  await ensureUsersDir();
-  const filePath = getUserFilePath(user.id);
-  const yaml = stringifyYaml(user);
-  await Bun.write(filePath, yaml);
+  await store.save(user.id, user);
 }
 
 /**
  * Load a user by ID
  */
 export async function loadUser(userId: string): Promise<User | null> {
-  const filePath = getUserFilePath(userId);
-  const file = Bun.file(filePath);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  const user = parseYaml(content) as User;
-
-  // Default role for existing users without role
-  if (!user.role) {
-    user.role = 'user';
-  }
-
-  return user;
+  const user = await store.load(userId);
+  return user ? withDefaults(user) : null;
 }
 
 /**
  * Find a user by username
  */
 export async function findUserByUsername(username: string): Promise<User | null> {
-  await ensureUsersDir();
-
-  const glob = new Bun.Glob('*.yaml');
-  for await (const file of glob.scan(USERS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(USERS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const user = parseYaml(content) as User;
-
-    // Default role for existing users without role
-    if (!user.role) {
-      user.role = 'user';
-    }
-
-    if (user.username.toLowerCase() === username.toLowerCase()) {
-      return user;
-    }
-  }
-
-  return null;
+  const users = await listUsers();
+  return users.find(u => u.username.toLowerCase() === username.toLowerCase()) ?? null;
 }
 
 /**
  * Find a user by email
  */
 export async function findUserByEmail(email: string): Promise<User | null> {
-  await ensureUsersDir();
-
-  const glob = new Bun.Glob('*.yaml');
-  for await (const file of glob.scan(USERS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(USERS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const user = parseYaml(content) as User;
-
-    if (user.email?.toLowerCase() === email.toLowerCase()) {
-      return user;
-    }
-  }
-
-  return null;
+  const users = await listUsers();
+  return users.find(u => u.email?.toLowerCase() === email.toLowerCase()) ?? null;
 }
 
 /**
@@ -184,41 +121,19 @@ export async function updateUser(userId: string, updates: Partial<Omit<User, 'id
  * Delete a user
  */
 export async function deleteUser(userId: string): Promise<boolean> {
-  const filePath = getUserFilePath(userId);
-  const file = Bun.file(filePath);
-
-  if (!(await file.exists())) {
-    return false;
-  }
-
-  unlinkSync(filePath);
-  return true;
+  return store.delete(userId);
 }
 
 /**
  * List all users
  */
 export async function listUsers(): Promise<User[]> {
-  await ensureUsersDir();
-
+  const ids = await store.listIds();
   const users: User[] = [];
-  const glob = new Bun.Glob('*.yaml');
-
-  for await (const file of glob.scan(USERS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(USERS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const user = parseYaml(content) as User;
-
-    // Default role for existing users without role
-    if (!user.role) {
-      user.role = 'user';
-    }
-
-    users.push(user);
+  for (const id of ids) {
+    const user = await loadUser(id);
+    if (user) users.push(user);
   }
-
   return users;
 }
 
@@ -226,14 +141,6 @@ export async function listUsers(): Promise<User[]> {
  * Check if any users exist
  */
 export async function hasUsers(): Promise<boolean> {
-  await ensureUsersDir();
-
-  const glob = new Bun.Glob('*.yaml');
-  for await (const file of glob.scan(USERS_DIR)) {
-    if (file !== '.gitkeep') {
-      return true;
-    }
-  }
-
-  return false;
+  const ids = await listYamlIds(USERS_DIR);
+  return ids.length > 0;
 }
