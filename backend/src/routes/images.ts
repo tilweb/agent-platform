@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import { imageGenerationService } from '../services/imageGeneration';
+import { parseIntSafe } from '../utils/parseIntSafe';
 import {
   saveGeneratedImage,
   getGeneratedImage,
@@ -153,8 +154,8 @@ imageRoutes.get('/generated/:id/metadata', async (c) => {
  */
 imageRoutes.get('/list', async (c) => {
   const sessionId = c.req.query('sessionId');
-  const limit = parseInt(c.req.query('limit') || '50');
-  const offset = parseInt(c.req.query('offset') || '0');
+  const limit = parseIntSafe(c.req.query('limit'), 50);
+  const offset = parseIntSafe(c.req.query('offset'), 0);
 
   const result = await listGeneratedImages({
     sessionId,

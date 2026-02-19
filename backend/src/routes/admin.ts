@@ -7,6 +7,7 @@
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import { authMiddleware, getCurrentUser } from '../auth/middleware';
+import { parseIntSafe } from '../utils/parseIntSafe';
 import {
   getAuditLogs,
   searchAuditLogs,
@@ -56,8 +57,8 @@ adminRoutes.get('/audit-logs', async (c) => {
     const action = c.req.query('action') as AuditAction | undefined;
     const userId = c.req.query('userId');
     const successParam = c.req.query('success');
-    const limit = parseInt(c.req.query('limit') || '100', 10);
-    const offset = parseInt(c.req.query('offset') || '0', 10);
+    const limit = parseIntSafe(c.req.query('limit'), 100);
+    const offset = parseIntSafe(c.req.query('offset'), 0);
 
     // Parse success param
     let success: boolean | undefined;
@@ -101,7 +102,7 @@ adminRoutes.get('/audit-logs', async (c) => {
  */
 adminRoutes.get('/audit-logs/stats', async (c) => {
   try {
-    const days = parseInt(c.req.query('days') || '7', 10);
+    const days = parseIntSafe(c.req.query('days'), 7);
     const endDate = new Date();
     const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 

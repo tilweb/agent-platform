@@ -5,6 +5,7 @@
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { StoredConnection, TokenSet, ConnectionStatus, OAuthState } from './types';
 import { encryptTokens, decryptTokens } from './crypto';
+import { unlinkSync } from 'node:fs';
 import { join } from 'path';
 
 const DATA_DIR = join(import.meta.dir, '../../../data');
@@ -180,7 +181,6 @@ export async function deleteConnection(userId: string, providerId: string): Prom
     return false;
   }
 
-  const { unlinkSync } = await import('fs');
   try {
     unlinkSync(filePath);
     return true;
@@ -263,7 +263,6 @@ export async function deleteOAuthState(state: string): Promise<void> {
   const file = Bun.file(filePath);
 
   if (await file.exists()) {
-    const { unlinkSync } = await import('fs');
     try {
       unlinkSync(filePath);
     } catch {
@@ -290,7 +289,6 @@ export async function cleanupExpiredOAuthStates(): Promise<number> {
     const data = parseYaml(content) as OAuthState;
 
     if (new Date(data.expiresAt) < now) {
-      const { unlinkSync } = await import('fs');
       try {
         unlinkSync(filePath);
         cleaned++;

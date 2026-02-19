@@ -5,6 +5,7 @@
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { User, CreateUserInput } from './types';
 import { hashPassword } from './password';
+import { unlinkSync } from 'node:fs';
 import { join } from 'path';
 
 const DATA_DIR = join(import.meta.dir, '../../../data');
@@ -192,7 +193,6 @@ export async function deleteUser(userId: string): Promise<boolean> {
     return false;
   }
 
-  const { unlinkSync } = await import('fs');
   unlinkSync(filePath);
   return true;
 }

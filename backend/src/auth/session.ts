@@ -5,6 +5,7 @@
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { Session, User } from './types';
 import { SESSION_CONFIG } from './types';
+import { unlinkSync } from 'node:fs';
 import { join } from 'path';
 
 const DATA_DIR = join(import.meta.dir, '../../../data');
@@ -133,7 +134,6 @@ export async function deleteSession(sessionId: string): Promise<boolean> {
     return false;
   }
 
-  const { unlinkSync } = await import('fs');
   try {
     unlinkSync(filePath);
     return true;
@@ -160,7 +160,6 @@ export async function deleteUserSessions(userId: string): Promise<number> {
 
     if (session.userId === userId) {
       sessionCache.delete(session.id);
-      const { unlinkSync } = await import('fs');
       try {
         unlinkSync(filePath);
         deleted++;
@@ -214,7 +213,6 @@ export async function cleanupExpiredSessions(): Promise<number> {
 
     if (new Date(session.expiresAt) < now) {
       sessionCache.delete(session.id);
-      const { unlinkSync } = await import('fs');
       try {
         unlinkSync(filePath);
         cleaned++;

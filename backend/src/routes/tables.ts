@@ -5,6 +5,7 @@
  */
 
 import { Hono } from 'hono';
+import { parseIntSafe } from '../utils/parseIntSafe';
 import {
   tableService,
   views,
@@ -299,8 +300,8 @@ tablesRoutes.get('/:id/rows', async (c) => {
       filter_text: c.req.query('filter') || undefined,
       sort_by: c.req.query('sort_by') || undefined,
       sort_direction: (c.req.query('sort_direction') as 'ASC' | 'DESC') || undefined,
-      offset: c.req.query('offset') ? parseInt(c.req.query('offset')!, 10) : undefined,
-      limit: c.req.query('limit') ? parseInt(c.req.query('limit')!, 10) : undefined,
+      offset: parseIntSafe(c.req.query('offset'), 0),
+      limit: parseIntSafe(c.req.query('limit'), 50),
       resolve_relations: c.req.query('resolve_relations') === 'true',
     };
 
@@ -534,8 +535,8 @@ tablesRoutes.get('/:id/views/:viewId/rows', async (c) => {
     const viewId = c.req.param('viewId');
 
     const options: Partial<QueryOptions> = {
-      offset: c.req.query('offset') ? parseInt(c.req.query('offset')!, 10) : undefined,
-      limit: c.req.query('limit') ? parseInt(c.req.query('limit')!, 10) : undefined,
+      offset: parseIntSafe(c.req.query('offset'), 0),
+      limit: parseIntSafe(c.req.query('limit'), 50),
     };
 
     const result = await views.executeView(tableId, viewId, options);
@@ -571,7 +572,7 @@ tablesRoutes.get('/:id/columns/:columnId/options', async (c) => {
     const tableId = c.req.param('id');
     const columnId = c.req.param('columnId');
     const search = c.req.query('search') || undefined;
-    const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!, 10) : 50;
+    const limit = parseIntSafe(c.req.query('limit'), 50);
 
     // Get the column definition
     const table = await tableService.getTable(tableId);

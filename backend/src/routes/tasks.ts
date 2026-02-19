@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { authMiddleware, requireUserId, getCurrentUser } from '../auth';
 import { internalError } from '../utils/errorHandler';
+import { parseIntSafe } from '../utils/parseIntSafe';
 import {
   createTask,
   getTask,
@@ -146,11 +147,11 @@ tasksRoutes.get('/', async (c) => {
     }
 
     if (limit) {
-      filter.limit = parseInt(limit, 10);
+      filter.limit = parseIntSafe(limit, 50);
     }
 
     if (offset) {
-      filter.offset = parseInt(offset, 10);
+      filter.offset = parseIntSafe(offset, 0);
     }
 
     const result = await listTasks(filter);

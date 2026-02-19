@@ -7,6 +7,7 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { authMiddleware, requireUserId } from '../auth';
+import { parseIntSafe } from '../utils/parseIntSafe';
 import {
   notificationService,
   type Notification,
@@ -26,8 +27,8 @@ notificationRoutes.get('/', async (c) => {
   try {
     const userId = requireUserId(c);
 
-    const limit = parseInt(c.req.query('limit') || '50', 10);
-    const offset = parseInt(c.req.query('offset') || '0', 10);
+    const limit = parseIntSafe(c.req.query('limit'), 50);
+    const offset = parseIntSafe(c.req.query('offset'), 0);
     const unreadOnly = c.req.query('unread_only') === 'true';
 
     const result = await notificationService.list(userId, {
