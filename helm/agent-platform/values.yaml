@@ -1,0 +1,134 @@
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# -- Backend (Bun + Hono)
+backend:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/OWNER/agent-platform-backend
+    # -- Defaults to Chart.appVersion
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  # -- Non-sensitive config -> ConfigMap
+  config:
+    port: "3001"
+    nodeEnv: production
+    dataDir: /app/data
+    trustProxy: "true"
+    maxBodySizeMb: "10"
+    maxUploadSizeMb: "50"
+    apiBaseUrl: ""
+
+    # LLM Provider
+    adacorAiApiUrl: ""
+    adacorAiModel: ""
+    markitdownApiUrl: ""
+
+    # Platform-locked models (key = env var name)
+    platformModels: {}
+    #  PLATFORM_APPS_PROVIDER_ID: adacor
+    #  PLATFORM_APPS_MODEL_ID: mistral-3-24b-128k
+    #  PLATFORM_SEARCH_PROVIDER_ID: adacor
+    #  PLATFORM_SEARCH_MODEL_ID: mistral-3-24b-128k
+    #  PLATFORM_EMBEDDINGS_PROVIDER_ID: adacor
+    #  PLATFORM_EMBEDDINGS_MODEL_ID: bge-m3
+
+    # System agent models (key = env var name)
+    systemModels: {}
+    #  SYSTEM_VISION_PROVIDER_ID: adacor
+    #  SYSTEM_VISION_MODEL_ID: mistral-3-24b-128k
+    #  SYSTEM_CODE_PROVIDER_ID: adacor
+    #  SYSTEM_CODE_MODEL_ID: mistral-3-24b-128k
+    #  SYSTEM_RESEARCH_PROVIDER_ID: adacor
+    #  SYSTEM_RESEARCH_MODEL_ID: mistral-3-24b-128k
+    #  SYSTEM_SUPERVISOR_PROVIDER_ID: adacor
+    #  SYSTEM_SUPERVISOR_MODEL_ID: mistral-3-24b-128k
+
+    # Rate limits (key = env var name)
+    rateLimits: {}
+    #  RATE_LIMIT_AUTH: "5"
+    #  RATE_LIMIT_API: "100"
+    #  RATE_LIMIT_UPLOAD: "10"
+    #  RATE_LIMIT_SENSITIVE: "3"
+    #  RATE_LIMIT_IMAGE_GEN: "5"
+    #  RATE_LIMIT_CHAT: "30"
+
+    # SSRF protection
+    ssrfCheckMalware: "false"
+    ssrfAllowLocalhost: "false"
+
+  # -- Sensitive config -> Secret
+  secret:
+    # -- Create a Secret resource. Set to false when using existingSecret.
+    create: true
+    # -- Name of an existing Secret (e.g. from External Secrets Operator)
+    existingSecret: ""
+    # -- Secret values (only non-empty values are included)
+    data:
+      ADACOR_AI_API_KEY: ""
+      CONNECTION_ENCRYPTION_KEY: ""
+      GOOGLE_CLIENT_ID: ""
+      GOOGLE_CLIENT_SECRET: ""
+      CONFLUENCE_CLIENT_ID: ""
+      CONFLUENCE_CLIENT_SECRET: ""
+      PIPEDRIVE_CLIENT_ID: ""
+      PIPEDRIVE_CLIENT_SECRET: ""
+      GOOGLE_AI_API_KEY: ""
+      NEBIUS_API_KEY: ""
+      TAVILY_API_KEY: ""
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+  nodeSelector: {}
+  tolerations: []
+
+# -- Frontend (React + Nginx)
+frontend:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/OWNER/agent-platform-frontend
+    # -- Defaults to Chart.appVersion
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 64Mi
+
+  nodeSelector: {}
+  tolerations: []
+
+# -- Persistent storage for backend data/ directory
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  # -- Storage class name (leave empty for cluster default)
+  # storageClass: ""
+  annotations: {}
+
+# -- Ingress (path-based routing)
+ingress:
+  enabled: true
+  className: nginx
+  host: agent.example.com
+  maxBodySize: "50m"
+  # -- Extra annotations (e.g. cert-manager.io/cluster-issuer)
+  annotations: {}
+  # -- TLS configuration
+  tls: []
+  #  - secretName: agent-platform-tls
+  #    hosts:
+  #      - agent.example.com

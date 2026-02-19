@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agent-platform.backend.fullname" . }}
+  labels:
+    {{- include "agent-platform.backend.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3001
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "agent-platform.backend.selectorLabels" . | nindent 4 }}

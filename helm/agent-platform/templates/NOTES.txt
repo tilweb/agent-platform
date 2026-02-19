@@ -1,0 +1,36 @@
+Agent Platform has been deployed!
+
+{{- if .Values.ingress.enabled }}
+
+The application is available at:
+
+  http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}
+
+{{- else }}
+
+To access the application, forward the frontend service port:
+
+  kubectl port-forward svc/{{ include "agent-platform.frontend.fullname" . }} 8080:80
+
+Then open http://localhost:8080
+
+{{- end }}
+
+Health check:
+
+  kubectl exec deploy/{{ include "agent-platform.backend.fullname" . }} -- wget -qO- http://localhost:3001/health
+
+{{- if .Values.persistence.enabled }}
+
+Persistent storage:
+
+  PVC {{ include "agent-platform.fullname" . }}-data ({{ .Values.persistence.size }}, {{ .Values.persistence.accessMode }})
+
+{{- end }}
+
+{{- if and .Values.backend.secret.create (not .Values.backend.secret.existingSecret) }}
+
+NOTE: Remember to set your secret values in backend.secret.data (API keys, OAuth credentials).
+      For production, consider using an External Secrets Operator with backend.secret.existingSecret.
+
+{{- end }}

@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agent-platform.fullname" . }}
+  labels:
+    {{- include "agent-platform.labels" . | nindent 4 }}
+data:
+  # Server
+  PORT: {{ .Values.backend.config.port | quote }}
+  NODE_ENV: {{ .Values.backend.config.nodeEnv | quote }}
+  DATA_DIR: {{ .Values.backend.config.dataDir | quote }}
+  TRUST_PROXY: {{ .Values.backend.config.trustProxy | quote }}
+  MAX_BODY_SIZE_MB: {{ .Values.backend.config.maxBodySizeMb | quote }}
+  MAX_UPLOAD_SIZE_MB: {{ .Values.backend.config.maxUploadSizeMb | quote }}
+  {{- with .Values.backend.config.apiBaseUrl }}
+  API_BASE_URL: {{ . | quote }}
+  {{- end }}
+  # LLM Provider URLs
+  {{- with .Values.backend.config.adacorAiApiUrl }}
+  ADACOR_AI_API_URL: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.backend.config.adacorAiModel }}
+  ADACOR_AI_MODEL: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.backend.config.markitdownApiUrl }}
+  MARKITDOWN_API_URL: {{ . | quote }}
+  {{- end }}
+  # Platform-locked models
+  {{- range $key, $val := .Values.backend.config.platformModels }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+  # System agent models
+  {{- range $key, $val := .Values.backend.config.systemModels }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+  # Rate limits
+  {{- range $key, $val := .Values.backend.config.rateLimits }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+  # SSRF protection
+  SSRF_CHECK_MALWARE: {{ .Values.backend.config.ssrfCheckMalware | quote }}
+  SSRF_ALLOW_LOCALHOST: {{ .Values.backend.config.ssrfAllowLocalhost | quote }}
