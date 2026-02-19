@@ -1,9 +1,0 @@
-# Collection Template
-id: "{{collection_id}}"
-name: "{{collection_name}}"
-description: "{{collection_description}}"
-created: "{{created_date}}"
-document_count: 0
-activate_when: []
-never_activate_when: []
-tags: []

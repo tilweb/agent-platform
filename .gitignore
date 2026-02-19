@@ -40,3 +40,62 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# ====================================
+# Runtime / User Data (not in git)
+# ====================================
+# Config & templates in data/ ARE tracked:
+#   data/agents/, data/apps/, data/config/,
+#   data/skills/, data/tools/
+
+# Auth runtime data
+data/auth/sessions/*
+!data/auth/sessions/.gitkeep
+data/auth/users/*
+!data/auth/users/.gitkeep
+data/auth/groups/*
+data/auth/oauth-states/*
+!data/auth/oauth-states/.gitkeep
+
+# Chat data
+data/chats/
+data/chat-uploads/
+data/chat-folders.yaml
+data/conversations/
+
+# Knowledge base (user documents)
+data/knowledge-base/
+
+# Generated content
+data/generated-images/
+data/exports/
+
+# Task queue & results
+data/tasks/
+data/results/
+data/plans/
+
+# Project runtime data
+data/projects/
+
+# Table data
+data/tables/
+
+# User memory
+data/memory/
+
+# Connection tokens (encrypted)
+data/connections/
+
+# Usage tracking
+data/usage/
+
+# Misc runtime files at data root
+data/data/
+data/*.html
+data/*.docx
+
+# Backend runtime data
+backend/data/audit/
+backend/data/apps/vertragsmanagement/contracts/
+backend/data/apps/projektmanagement/projektauftraege/
