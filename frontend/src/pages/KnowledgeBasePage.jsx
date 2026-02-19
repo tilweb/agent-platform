@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
 import AccessManager from '../components/AccessManager';
+import { formatDate } from '../utils/dateFormat';
 
 // ==========================================
 // Helper Functions
@@ -101,15 +102,7 @@ function getFileTypeColor(type) {
   return colors[type] || { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' };
 }
 
-function formatDate(dateStr) {
-  if (!dateStr) return '-';
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  } catch {
-    return dateStr;
-  }
-}
+// formatDate is imported from utils/dateFormat
 
 // ==========================================
 // Styles

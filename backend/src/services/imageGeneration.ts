@@ -7,6 +7,7 @@ import { resolveActiveModel, resolveModel, getImageGenModels } from './providers
 import { generateWithGoogle } from './imageGeneration/adapters/google';
 import { generateWithOpenAI } from './imageGeneration/adapters/openai';
 import type { ResolvedModel, ProviderConfig, ModelConfig } from '../types/providers';
+import { generateId } from '../utils/id';
 
 export interface ImageGenerationRequest {
   prompt: string;
@@ -67,9 +68,7 @@ function getSizeFromAspectRatio(aspectRatio: string): { width: number; height: n
  * Generate a unique image ID
  */
 function generateImageId(): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
-  return `img_${timestamp}_${random}`;
+  return generateId('img');
 }
 
 export class ImageGenerationService {

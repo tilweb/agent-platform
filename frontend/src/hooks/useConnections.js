@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+import { apiGet, apiPost } from '../utils/apiFetch';
 
 export function useConnections() {
   const [providers, setProviders] = useState([]);
@@ -12,9 +11,7 @@ export function useConnections() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`${API_BASE}/connections`, {
-        credentials: 'include',
-      });
+      const res = await apiGet('/connections');
 
       if (!res.ok) {
         throw new Error('Failed to fetch connections');
@@ -36,9 +33,7 @@ export function useConnections() {
 
   const connect = useCallback(async (providerId) => {
     try {
-      const res = await fetch(`${API_BASE}/connections/${providerId}/connect`, {
-        credentials: 'include',
-      });
+      const res = await apiGet(`/connections/${providerId}/connect`);
 
       if (!res.ok) {
         const data = await res.json();
@@ -93,10 +88,7 @@ export function useConnections() {
 
   const disconnect = useCallback(async (providerId) => {
     try {
-      const res = await fetch(`${API_BASE}/connections/${providerId}/disconnect`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      const res = await apiPost(`/connections/${providerId}/disconnect`);
 
       if (!res.ok) {
         const data = await res.json();
@@ -112,9 +104,7 @@ export function useConnections() {
 
   const checkStatus = useCallback(async (providerId) => {
     try {
-      const res = await fetch(`${API_BASE}/connections/${providerId}/status`, {
-        credentials: 'include',
-      });
+      const res = await apiGet(`/connections/${providerId}/status`);
 
       if (!res.ok) {
         throw new Error('Failed to check status');

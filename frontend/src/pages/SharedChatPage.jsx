@@ -5,6 +5,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { theme } from '../config/theme';
 import { sanitizeUrl } from '../utils/sanitize';
+import { formatDateTime } from '../utils/dateFormat';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -310,17 +311,8 @@ function SharedChatPage() {
       });
   }, [token]);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  // formatDateTime is imported from utils/dateFormat
+  const formatDate = (dateString) => formatDateTime(dateString, '');
 
   if (loading) {
     return (

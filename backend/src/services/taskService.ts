@@ -9,6 +9,7 @@ import { readFile, writeFile, readdir, unlink, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { resolve } from 'path';
 import * as yaml from 'yaml';
+import { generateId } from '../utils/id';
 
 // ============================================
 // Types
@@ -206,9 +207,7 @@ const PRIORITY_ORDER: Record<TaskPriority, number> = {
 // ============================================
 
 function generateTaskId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 8);
-  return `task_${timestamp}${random}`;
+  return generateId('task');
 }
 
 function getTaskFilePath(taskId: string): string {

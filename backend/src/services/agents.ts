@@ -1,6 +1,7 @@
 import { readdir, readFile, writeFile, mkdir, rm } from 'fs/promises';
 import { join, resolve } from 'path';
 import { existsSync } from 'fs';
+import { parse as parseYaml } from 'yaml';
 
 // Lazy import to avoid circular dependencies
 let _connectionRegistry: typeof import('../connections/registry').connectionRegistry | null = null;
@@ -83,7 +84,6 @@ interface AgentFrontmatter {
 
 /**
  * Parse YAML frontmatter from markdown content
- * Supports: strings, booleans, arrays, and nested objects (one level)
  */
 function parseFrontmatter(content: string): { frontmatter: Record<string, any>; body: string } {
   const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
@@ -93,111 +93,12 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, any>; 
     return { frontmatter: {}, body: content };
   }
 
-  const yamlContent = match[1];
-  const body = match[2].trim();
-
-  // Simple YAML parser for our use case
-  const frontmatter: Record<string, any> = {};
-  const lines = yamlContent.split('\n');
-  let currentKey: string | null = null;
-  let currentArray: string[] | null = null;
-  let currentObject: Record<string, any> | null = null;
-  let inNestedObject = false;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // Check indentation for nested object
-    const indent = line.length - line.trimStart().length;
-
-    // Check for array item
-    if (trimmed.startsWith('- ') && currentKey && currentArray !== null) {
-      const item = trimmed.slice(2).trim();
-      console.log(`[parseFrontmatter] Adding array item to '${currentKey}': '${item}'`);
-      currentArray.push(item);
-      continue;
-    }
-
-    // Check for nested object property (indented with 2+ spaces)
-    if (indent >= 2 && inNestedObject && currentKey && currentObject !== null) {
-      const colonIndex = trimmed.indexOf(':');
-      if (colonIndex > 0) {
-        const nestedKey = trimmed.slice(0, colonIndex).trim();
-        const nestedValue = trimmed.slice(colonIndex + 1).trim();
-
-        if (nestedValue === 'true') {
-          currentObject[nestedKey] = true;
-        } else if (nestedValue === 'false') {
-          currentObject[nestedKey] = false;
-        } else if (nestedValue !== '') {
-          currentObject[nestedKey] = nestedValue;
-        }
-        continue;
-      }
-    }
-
-    // Check for key-value pair
-    const colonIndex = trimmed.indexOf(':');
-    if (colonIndex > 0) {
-      // Save previous array/object if exists (prefer array over empty object)
-      if (currentKey && currentArray !== null && currentArray.length > 0) {
-        frontmatter[currentKey] = currentArray;
-      } else if (currentKey && currentObject !== null && Object.keys(currentObject).length > 0) {
-        frontmatter[currentKey] = currentObject;
-      }
-
-      const key = trimmed.slice(0, colonIndex).trim();
-      const value = trimmed.slice(colonIndex + 1).trim();
-
-      if (value === '') {
-        // Could be start of array or nested object
-        // We'll determine based on the next line
-        currentKey = key;
-        currentArray = [];
-        currentObject = {};
-        inNestedObject = true;
-      } else if (value.startsWith('[') && value.endsWith(']')) {
-        // Inline array
-        const items = value.slice(1, -1).split(',').map(s => s.trim());
-        frontmatter[key] = items;
-        currentKey = null;
-        currentArray = null;
-        currentObject = null;
-        inNestedObject = false;
-      } else if (value === 'true') {
-        frontmatter[key] = true;
-        currentKey = null;
-        currentArray = null;
-        currentObject = null;
-        inNestedObject = false;
-      } else if (value === 'false') {
-        frontmatter[key] = false;
-        currentKey = null;
-        currentArray = null;
-        currentObject = null;
-        inNestedObject = false;
-      } else {
-        frontmatter[key] = value;
-        currentKey = null;
-        currentArray = null;
-        currentObject = null;
-        inNestedObject = false;
-      }
-    }
+  try {
+    const frontmatter = parseYaml(match[1]) || {};
+    return { frontmatter, body: match[2].trim() };
+  } catch {
+    return { frontmatter: {}, body: content };
   }
-
-  // Save last array/object if exists
-  if (currentKey && currentArray !== null && currentArray.length > 0) {
-    frontmatter[currentKey] = currentArray;
-  } else if (currentKey && currentObject !== null && Object.keys(currentObject).length > 0) {
-    frontmatter[currentKey] = currentObject;
-  }
-
-  // Debug: Log parsed frontmatter
-  console.log('[parseFrontmatter] Parsed:', JSON.stringify(frontmatter, null, 2));
-
-  return { frontmatter, body };
 }
 
 /**
@@ -285,7 +186,6 @@ async function getConnectionAgent(providerId: string): Promise<AgentConfig | nul
 async function getConnectionAgents(): Promise<AgentConfig[]> {
   const registry = await getConnectionRegistry();
   const providers = registry.getAll();
-  console.log(`getConnectionAgents: Found ${providers.length} providers`);
   const agents: AgentConfig[] = [];
 
   for (const provider of providers) {
@@ -417,9 +317,7 @@ export async function loadAllAgents(): Promise<Map<string, AgentConfig>> {
   // Then, add connection-based agents (they override file-based if same ID)
   try {
     const connectionAgents = await getConnectionAgents();
-    console.log(`Loading ${connectionAgents.length} connection agents`);
     for (const agent of connectionAgents) {
-      console.log(`  - Adding connection agent: ${agent.id}`);
       agents.set(agent.id, agent);
     }
   } catch (error) {

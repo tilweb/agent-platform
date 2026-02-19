@@ -5,6 +5,7 @@
 
 import { parse, stringify } from 'yaml';
 import type { ContractMetadata, ContractSchema } from '../types';
+import { generateId } from '../../utils/id';
 
 const BASE_PATH = './data/apps/vertragsmanagement';
 const CONTRACTS_PATH = `${BASE_PATH}/contracts`;
@@ -63,9 +64,7 @@ export async function saveSchema(schema: ContractSchema): Promise<void> {
  * Generate a unique contract ID
  */
 export function generateContractId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 8);
-  return `contract-${timestamp}-${random}`;
+  return generateId('contract');
 }
 
 /**

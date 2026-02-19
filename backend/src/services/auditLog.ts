@@ -8,6 +8,7 @@
 import { writeFile, readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { generateId } from '../utils/id';
 
 /**
  * Audit event categories
@@ -100,9 +101,7 @@ const AUDIT_LOG_DIR = join(process.cwd(), 'data', 'audit');
  * Generate unique ID for audit entry
  */
 function generateAuditId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).slice(2, 8);
-  return `audit_${timestamp}_${random}`;
+  return generateId('audit');
 }
 
 /**

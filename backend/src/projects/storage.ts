@@ -36,18 +36,10 @@ import type {
 } from './types';
 import { createDefaultSettings, createDefaultMemory, createDefaultKBLinks } from './types';
 import { initializeResourceAccess, deleteResourceAccess } from '../rbac/storage';
+import { generateId } from '../utils/id';
 
 // Base directory for projects storage
 const PROJECTS_BASE_DIR = resolve(process.cwd(), '../data/projects');
-
-/**
- * Generate a unique ID
- */
-export function generateId(prefix: string): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 7);
-  return `${prefix}_${timestamp}${random}`;
-}
 
 /**
  * Ensure the base projects directory exists

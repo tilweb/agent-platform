@@ -5,6 +5,7 @@
 
 import { parse, stringify } from 'yaml';
 import type { Projektauftrag, Vorlage } from './types';
+import { generateId } from '../../utils/id';
 
 const BASE_PATH = './data/apps/projektmanagement';
 const PROJEKTAUFTRAEGE_PATH = `${BASE_PATH}/projektauftraege`;
@@ -16,9 +17,7 @@ const VORLAGEN_PATH = `${BASE_PATH}/vorlagen`;
  * Generate a unique Projektauftrag ID
  */
 export function generateProjektauftragId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 8);
-  return `projekt-${timestamp}-${random}`;
+  return generateId('project');
 }
 
 /**

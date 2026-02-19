@@ -18,6 +18,7 @@ import SchemaEditor from '../apps/vertragsmanagement/SchemaEditor';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useProviders } from '../hooks/useProviders';
+import { formatDateTime } from '../utils/dateFormat';
 
 const styles = {
   container: {
@@ -370,17 +371,8 @@ function SettingsPage() {
     return user.username?.slice(0, 2).toUpperCase() || '?';
   };
 
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  // formatDateTime is imported from utils/dateFormat
+  const formatDate = formatDateTime;
 
   // User management handlers
   const handleCreateUser = async () => {

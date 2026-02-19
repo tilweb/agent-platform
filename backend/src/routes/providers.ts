@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono';
+import type { MiddlewareHandler } from 'hono';
 import {
   getProviders,
   getProvider,
@@ -34,10 +35,10 @@ import type {
 const providers = new Hono();
 
 // Admin middleware - requires admin role
-const adminMiddleware = async (c: any, next: any) => {
+const adminMiddleware: MiddlewareHandler = async (c, next) => {
   const user = c.get('user');
   if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Admin access required' }, 403);
+    return c.json({ error: 'Admin-Rechte erforderlich' }, 403);
   }
   return next();
 };

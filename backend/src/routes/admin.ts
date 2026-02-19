@@ -5,6 +5,7 @@
  */
 
 import { Hono } from 'hono';
+import type { MiddlewareHandler } from 'hono';
 import { authMiddleware, getCurrentUser } from '../auth/middleware';
 import {
   getAuditLogs,
@@ -23,13 +24,13 @@ adminRoutes.use('*', authMiddleware);
 /**
  * Admin-only middleware
  */
-async function requireAdmin(c: any, next: () => Promise<void>): Promise<Response | void> {
+const requireAdmin: MiddlewareHandler = async (c, next) => {
   const user = getCurrentUser(c);
   if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Admin access required' }, 403);
+    return c.json({ error: 'Admin-Rechte erforderlich' }, 403);
   }
   await next();
-}
+};
 
 // Apply admin check to all routes
 adminRoutes.use('*', requireAdmin);

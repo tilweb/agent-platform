@@ -9,6 +9,7 @@ import { theme } from '../../config/theme';
 import { useProjektmanagement } from '../../hooks/useProjektmanagement';
 import { LightningIcon, ClipboardIcon, BarChartIcon, CheckCircleIcon, AppsIcon } from '../../components/Icons';
 import ComingSoon from './components/ComingSoon';
+import { formatDate } from '../../utils/dateFormat';
 
 // Tab configuration
 const TABS = [
@@ -355,10 +356,7 @@ function ProjektePage() {
     }).format(value);
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('de-DE');
-  };
+  // formatDate is imported from utils/dateFormat
 
   const getStatusBadge = (status) => {
     switch (status) {

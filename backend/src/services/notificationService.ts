@@ -10,6 +10,7 @@ import { existsSync, createReadStream } from 'fs';
 import { resolve } from 'path';
 import * as readline from 'readline';
 import type { Task } from './taskService';
+import { generateId } from '../utils/id';
 
 // ============================================
 // Types
@@ -78,9 +79,7 @@ const NOTIFICATIONS_DIR = resolve(process.cwd(), '../data/notifications');
 // ============================================
 
 function generateNotificationId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 8);
-  return `notif_${timestamp}_${random}`;
+  return generateId('notif');
 }
 
 function getUserFilePath(userId: string): string {

@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { theme } from '../../../../config/theme';
 import { apiPost } from '../../../../utils/apiFetch';
+import { formatDate } from '../../../../utils/dateFormat';
 
 const styles = {
   container: {
@@ -463,14 +464,7 @@ function Step8Uebersicht({ data, stepAnalyses = null, gesamtbewertung = null, on
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
+  // formatDate is imported from utils/dateFormat
 
   const handleAnalyze = async () => {
     try {

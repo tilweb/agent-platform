@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { theme } from '../config/theme';
 import { UserIcon, ChatIcon, BookIcon, ClipboardIcon } from './Icons';
+import { formatDateLong as formatDate } from '../utils/dateFormat';
 
 const styles = {
   container: {},
@@ -115,16 +116,7 @@ const styles = {
   },
 };
 
-function formatDate(dateString) {
-  if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString('de-DE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+// formatDate (formatDateLong) is imported from utils/dateFormat
 
 export default function ProjectOverview({ project, onUpdate, onRefresh }) {
   const [name, setName] = useState(project.name);

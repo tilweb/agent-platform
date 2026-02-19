@@ -11,6 +11,7 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { resolve } from 'path';
 import * as yaml from 'yaml';
+import { generateId } from '../utils/id';
 
 // Types
 export type MemorySection = 'about' | 'instructions' | 'context';
@@ -59,14 +60,7 @@ export interface UserMemory {
 const MEMORY_BASE_DIR = resolve(process.cwd(), '../data/memory/users');
 const ALL_SECTIONS: MemorySection[] = ['about', 'instructions', 'context'];
 
-/**
- * Generate a unique ID for memory items
- */
-function generateId(prefix: string): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 7);
-  return `${prefix}_${timestamp}${random}`;
-}
+// generateId is imported from ../utils/id
 
 /**
  * Get the path to the user memory file

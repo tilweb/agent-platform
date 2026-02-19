@@ -16,6 +16,7 @@ import type {
   CreateTableParams,
   TableTemplate,
 } from './types';
+import { generateId } from '../utils/id';
 
 // ============================================
 // Constants
@@ -84,9 +85,7 @@ export function sanitizeTableId(id: string): string {
  * Generate a unique row ID
  */
 export function generateRowId(): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
-  return `row_${timestamp}_${random}`;
+  return generateId('row');
 }
 
 /**

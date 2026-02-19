@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useProjectChats } from '../hooks/useProjects';
 import { ChatIcon, TrashIcon } from './Icons';
+import { formatDateRelative } from '../utils/dateFormat';
 
 const styles = {
   container: {},
@@ -145,18 +146,7 @@ const styles = {
 };
 
 function formatDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-  }
-  if (diffDays === 1) return 'Gestern';
-  if (diffDays < 7) return `vor ${diffDays} Tagen`;
-  return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+  return formatDateRelative(dateString, { showTimeToday: true });
 }
 
 export default function ProjectChatsSection({ projectId, onLoadChat, onNewChat }) {

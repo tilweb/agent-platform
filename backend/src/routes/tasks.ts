@@ -179,6 +179,20 @@ tasksRoutes.get('/queue', async (c) => {
 });
 
 // Admin guard for queue/executor management
+import { HTTPException } from 'hono/http-exception';
+
+/**
+ * Verify task exists and belongs to the requesting user.
+ * Throws HTTPException (404) if not found or not owned.
+ */
+async function requireTaskOwnership(taskId: string, userId: string) {
+  const task = await getTask(taskId);
+  if (!task || (task.userId && task.userId !== userId)) {
+    throw new HTTPException(404, { message: 'Task not found' });
+  }
+  return task;
+}
+
 function requireAdmin(c: any): Response | null {
   const user = getCurrentUser(c);
   if (!user || user.role !== 'admin') {
@@ -330,21 +344,12 @@ tasksRoutes.get('/:id', async (c) => {
   const taskId = c.req.param('id');
 
   try {
-    const task = await getTask(taskId);
-
-    if (!task) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-
-    // Check ownership
-    if (task.userId && task.userId !== userId) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-
+    const task = await requireTaskOwnership(taskId, userId);
     return c.json(task);
   } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
     console.error('Error getting task:', error);
-    return c.json({ error: 'Failed to get task' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -354,16 +359,7 @@ tasksRoutes.get('/:id/result', async (c) => {
   const taskId = c.req.param('id');
 
   try {
-    const task = await getTask(taskId);
-
-    if (!task) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-
-    // Check ownership
-    if (task.userId && task.userId !== userId) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
+    const task = await requireTaskOwnership(taskId, userId);
 
     if (!task.result_file) {
       return c.json({ error: 'No result available' }, 404);
@@ -375,11 +371,12 @@ tasksRoutes.get('/:id/result', async (c) => {
       return c.json(result);
     } catch (err) {
       console.error('Error reading result file:', err);
-      return c.json({ error: 'Failed to read result' }, 500);
+      return c.json({ error: 'Ergebnis konnte nicht gelesen werden' }, 500);
     }
   } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
     console.error('Error getting task result:', error);
-    return c.json({ error: 'Failed to get task result' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -389,14 +386,7 @@ tasksRoutes.put('/:id', async (c) => {
   const taskId = c.req.param('id');
 
   try {
-    // Check ownership before update
-    const existingTask = await getTask(taskId);
-    if (!existingTask) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-    if (existingTask.userId && existingTask.userId !== userId) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
+    await requireTaskOwnership(taskId, userId);
 
     const body = await c.req.json();
     const task = await updateTask(taskId, body);
@@ -407,6 +397,7 @@ tasksRoutes.put('/:id', async (c) => {
 
     return c.json(task);
   } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
     console.error('Error updating task:', error);
     return internalError(c, error);
   }
@@ -418,15 +409,7 @@ tasksRoutes.delete('/:id', async (c) => {
   const taskId = c.req.param('id');
 
   try {
-    // Check ownership before delete
-    const existingTask = await getTask(taskId);
-    if (!existingTask) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-    if (existingTask.userId && existingTask.userId !== userId) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-
+    await requireTaskOwnership(taskId, userId);
     const deleted = await deleteTask(taskId);
 
     if (!deleted) {
@@ -435,6 +418,7 @@ tasksRoutes.delete('/:id', async (c) => {
 
     return c.json({ success: true });
   } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
     console.error('Error deleting task:', error);
     return internalError(c, error);
   }
@@ -450,14 +434,7 @@ tasksRoutes.post('/:id/enqueue', async (c) => {
   const taskId = c.req.param('id');
 
   try {
-    // Check ownership
-    const existingTask = await getTask(taskId);
-    if (!existingTask) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-    if (existingTask.userId && existingTask.userId !== userId) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
+    await requireTaskOwnership(taskId, userId);
 
     const body = await c.req.json().catch(() => ({}));
     await enqueueTask(taskId, body.priority);
@@ -465,6 +442,7 @@ tasksRoutes.post('/:id/enqueue', async (c) => {
     const task = await getTask(taskId);
     return c.json(task);
   } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
     console.error('Error enqueueing task:', error);
     return internalError(c, error);
   }
@@ -476,14 +454,7 @@ tasksRoutes.post('/:id/cancel', async (c) => {
   const taskId = c.req.param('id');
 
   try {
-    // Check ownership
-    const existingTask = await getTask(taskId);
-    if (!existingTask) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-    if (existingTask.userId && existingTask.userId !== userId) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
+    await requireTaskOwnership(taskId, userId);
 
     // First try to abort if running
     const { cancelRunningTask } = await import('../services/taskExecutor');
@@ -499,6 +470,7 @@ tasksRoutes.post('/:id/cancel', async (c) => {
 
     return c.json(task);
   } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
     console.error('Error cancelling task:', error);
     return internalError(c, error);
   }
@@ -510,14 +482,7 @@ tasksRoutes.post('/:id/pause', async (c) => {
   const taskId = c.req.param('id');
 
   try {
-    // Check ownership
-    const existingTask = await getTask(taskId);
-    if (!existingTask) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-    if (existingTask.userId && existingTask.userId !== userId) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
+    await requireTaskOwnership(taskId, userId);
 
     const task = await pauseTask(taskId);
 
@@ -529,6 +494,7 @@ tasksRoutes.post('/:id/pause', async (c) => {
 
     return c.json(task);
   } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
     console.error('Error pausing task:', error);
     return internalError(c, error);
   }
@@ -540,14 +506,7 @@ tasksRoutes.post('/:id/resume', async (c) => {
   const taskId = c.req.param('id');
 
   try {
-    // Check ownership
-    const existingTask = await getTask(taskId);
-    if (!existingTask) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-    if (existingTask.userId && existingTask.userId !== userId) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
+    await requireTaskOwnership(taskId, userId);
 
     const task = await resumeTask(taskId);
 
@@ -559,6 +518,7 @@ tasksRoutes.post('/:id/resume', async (c) => {
 
     return c.json(task);
   } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
     console.error('Error resuming task:', error);
     return internalError(c, error);
   }
@@ -570,14 +530,7 @@ tasksRoutes.post('/:id/retry', async (c) => {
   const taskId = c.req.param('id');
 
   try {
-    // Check ownership
-    const existingTask = await getTask(taskId);
-    if (!existingTask) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-    if (existingTask.userId && existingTask.userId !== userId) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
+    await requireTaskOwnership(taskId, userId);
 
     const task = await retryTask(taskId);
 
@@ -587,6 +540,7 @@ tasksRoutes.post('/:id/retry', async (c) => {
 
     return c.json(task);
   } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
     console.error('Error retrying task:', error);
     return internalError(c, error);
   }
@@ -656,16 +610,7 @@ tasksRoutes.get('/:id/stream', async (c) => {
   const userId = requireUserId(c);
   const taskId = c.req.param('id');
 
-  // Check if task exists
-  const task = await getTask(taskId);
-  if (!task) {
-    return c.json({ error: 'Task not found' }, 404);
-  }
-
-  // Check ownership
-  if (task.userId && task.userId !== userId) {
-    return c.json({ error: 'Task not found' }, 404);
-  }
+  const task = await requireTaskOwnership(taskId, userId);
 
   return streamSSE(c, async (stream) => {
     // Send initial state

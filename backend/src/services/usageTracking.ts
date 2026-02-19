@@ -8,6 +8,7 @@
 import { writeFile, readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { resolve, join } from 'path';
+import { generateId } from '../utils/id';
 
 // Usage context passed to LLM calls
 export interface UsageContext {
@@ -59,9 +60,7 @@ const USAGE_DIR = resolve(process.cwd(), '../data/usage');
  * Generate unique ID for usage entry
  */
 function generateUsageId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).slice(2, 8);
-  return `usage_${timestamp}_${random}`;
+  return generateId('usage');
 }
 
 /**

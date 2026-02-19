@@ -87,7 +87,8 @@ chatRoutes.post('/', chatRateLimit, authMiddleware, async (c) => {
   if (contentType.includes('multipart/form-data')) {
     // Handle FormData with file uploads
     const formData = await c.req.formData();
-    message = formData.get('message') as string;
+    const rawMessage = formData.get('message');
+    message = typeof rawMessage === 'string' ? rawMessage : '';
     existingSessionId = formData.get('sessionId') as string | undefined;
     agentId = formData.get('agentId') as string | undefined;
     const autoRouteStr = formData.get('autoRoute') as string | undefined;
@@ -317,7 +318,7 @@ chatRoutes.post('/prepare-readers', authMiddleware, async (c) => {
 });
 
 // GET /api/chat/:id/stream - SSE stream for responses
-chatRoutes.get('/:id/stream', async (c) => {
+chatRoutes.get('/:id/stream', authMiddleware, async (c) => {
   const sessionId = c.req.param('id');
 
   // Get and remove pending message
@@ -1377,7 +1378,6 @@ toolRoutes.get('/', async (c) => {
       // Check if tool is available/configured
       let available = true;
       let configRequired = false;
-      let configKeys: string[] = [];
       let envVar: string | undefined;
       let docUrl: string | undefined;
 
@@ -1388,10 +1388,6 @@ toolRoutes.get('/', async (c) => {
       // Check if this tool needs API configuration
       if (tool.type === 'api') {
         configRequired = true;
-        const apiConfig = toolsConfig.api[tool.name];
-        if (apiConfig) {
-          configKeys = Object.keys(apiConfig).filter(k => k !== 'apiKey' || apiConfig.apiKey);
-        }
         // Get env var info for documentation
         const envInfo = apiToolEnvVars[tool.name];
         if (envInfo) {

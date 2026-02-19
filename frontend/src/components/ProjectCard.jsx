@@ -6,6 +6,7 @@
 
 import { theme } from '../config/theme';
 import { BriefcaseIcon, UserIcon, ArchiveIcon } from './Icons';
+import { formatDateRelative as formatDate } from '../utils/dateFormat';
 
 const styles = {
   card: {
@@ -95,18 +96,7 @@ function getProjectColor(project) {
   return project.color || '#9333ea';
 }
 
-function formatDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Heute';
-  if (diffDays === 1) return 'Gestern';
-  if (diffDays < 7) return `vor ${diffDays} Tagen`;
-  return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
-}
+// formatDate (formatDateRelative) is imported from utils/dateFormat
 
 export default function ProjectCard({ project, onClick }) {
   const color = getProjectColor(project);
