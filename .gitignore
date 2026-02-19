@@ -10,6 +10,7 @@ node_modules/
 
 # Build outputs
 dist/
+dist-ssr/
 out/
 build/
 *.tgz
