@@ -33,6 +33,7 @@ const ContractUploadPage = lazy(() => import('./apps/vertragsmanagement/UploadPa
 const ContractDetailPage = lazy(() => import('./apps/vertragsmanagement/ContractDetail'));
 const ProjektePage = lazy(() => import('./apps/projektmanagement/ProjektePage'));
 const WizardPage = lazy(() => import('./apps/projektmanagement/WizardPage'));
+const DocsPage = lazy(() => import('./pages/DocsPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -176,6 +177,7 @@ function AppRoutes() {
                   <Route path="/apps/projektmanagement" element={<ProjektePage />} />
                   <Route path="/apps/projektmanagement/neu" element={<WizardPage />} />
                   <Route path="/apps/projektmanagement/:id" element={<WizardPage />} />
+                  <Route path="/docs/*" element={<DocsPage />} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>

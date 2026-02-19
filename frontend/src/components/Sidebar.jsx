@@ -238,6 +238,7 @@ const navIconColors = {
   settings: '#6b7280',
   apps: '#7c3aed',
   contract: '#0891b2',
+  docs: '#6366f1',
 };
 
 function Sidebar() {
@@ -346,6 +347,7 @@ function Sidebar() {
             </div>
             <span>Spaces</span>
           </Link>
+
         </div>
 
         {/* Management */}
@@ -466,6 +468,22 @@ function Sidebar() {
             ))}
           </div>
         )}
+
+        {/* Documentation link at bottom of scroll area */}
+        <div style={{ marginTop: 'auto', paddingTop: theme.spacing.md }}>
+          <Link
+            to="/docs"
+            style={{
+              ...sidebarStyles.navItem,
+              ...(currentPath.startsWith('/docs') ? sidebarStyles.navItemActive : {}),
+            }}
+          >
+            <div style={sidebarStyles.iconWrapper}>
+              <DocsIcon color={navIconColors.docs} />
+            </div>
+            <span>Dokumentation</span>
+          </Link>
+        </div>
       </div>
 
       {/* User Section */}
@@ -756,6 +774,15 @@ function ContractNavIcon({ color }) {
       <line x1="16" y1="13" x2="8" y2="13" />
       <line x1="16" y1="17" x2="8" y2="17" />
       <line x1="10" y1="9" x2="8" y2="9" />
+    </svg>
+  );
+}
+
+function DocsIcon({ color }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
     </svg>
   );
 }
