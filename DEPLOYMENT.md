@@ -100,6 +100,12 @@ GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret
 
 # ============================================
+# MCP Runner (optional)
+# ============================================
+# MCP_RUNNER_URL=http://mcp-runner:3002
+# MCP_RUNNER_SECRET=<shared-secret>
+
+# ============================================
 # Sicherheits-Optionen
 # ============================================
 
@@ -146,7 +152,7 @@ data/
 │   ├── sessions/         # In-Memory Session Backup
 │   └── users/            # Per-User Memory (YAML)
 ├── plans/                # Task-Pläne
-├── projects/             # Projekt-Daten
+├── spaces/               # Space-Daten
 ├── results/              # Task-Ergebnisse
 ├── skills/               # Skill-Definitionen
 ├── tables/               # Datenbank-Tabellen
@@ -295,14 +301,31 @@ Die Anwendung ist unter `http://localhost:8080` erreichbar.
                     ├── /api/* ───► backend:3001
                     ├── /health ──► backend:3001
                     └── /* ───────► frontend:80
+                                      │
+                    backend ──HTTP──► mcp-runner:3002 ──spawn──► MCP Server (stdio)
 ```
 
 ### Container-Details
 
-| Container | Image-Basis | Port | User |
-|-----------|-------------|------|------|
-| backend | `oven/bun:alpine` | 3001 | UID 1000 (non-root) |
-| frontend | `nginx:alpine` | 8080 | UID 101 (nginx) |
+| Container | Image-Basis | Port | User | Beschreibung |
+|-----------|-------------|------|------|--------------|
+| backend | `oven/bun:alpine` | 3001 | UID 1000 (non-root) | API + Business Logic |
+| mcp-runner | `oven/bun:alpine` + Node.js | 3002 | UID 1000 (non-root) | MCP Server Prozess-Management |
+| frontend | `nginx:alpine` | 80 | UID 101 (nginx) | React SPA |
+| proxy | `nginx:alpine` | 8080 | - | Reverse Proxy |
+
+### MCP Runner
+
+Der MCP Runner ist ein dedizierter Container, der MCP-Server-Prozesse isoliert vom Backend ausführt. Das Backend kommuniziert per HTTP mit dem Runner statt selbst Child-Prozesse zu spawnen.
+
+```yaml
+# Relevante Environment-Variablen
+MCP_RUNNER_URL=http://mcp-runner:3002   # Backend → Runner Verbindung
+MCP_RUNNER_SECRET=<shared-secret>        # Bearer Token Auth
+MCP_RUNNER_PORT=3002                     # Runner Listen-Port
+```
+
+**Lokal ohne Runner**: Ohne `MCP_RUNNER_URL` startet das Backend MCP-Server wie bisher als Child-Prozesse.
 
 ### Volumes
 
@@ -357,10 +380,10 @@ helm install agent-platform ./helm/agent-platform \
                     ├── /health   ───► backend-svc:3001
                     └── /*        ───► frontend-svc:80 ──► :8080
                                         │
-                    PVC (10Gi) ◄────► backend-pod
-                                        │
+                    PVC (10Gi) ◄────► backend-pod ──HTTP──► mcp-runner-svc:3002
+                                        │                    (optional)
                     ConfigMap ──────► env vars (nicht-sensitiv)
-                    Secret ────────► env vars (API-Keys, OAuth)
+                    Secret ────────► env vars (API-Keys, OAuth, MCP_RUNNER_SECRET)
 ```
 
 ### Konfiguration (values.yaml)
@@ -411,6 +434,13 @@ persistence:
   enabled: true
   size: 10Gi
   # storageClass: "managed-premium"
+
+# MCP Runner (optional)
+mcpRunner:
+  enabled: false            # Aktivieren für isolierte MCP-Server
+  image:
+    repository: ghcr.io/OWNER/agent-platform-mcp-runner
+    tag: "0.1.0"
 ```
 
 ### External Secrets (Produktion)
@@ -426,7 +456,7 @@ backend:
 
 ### Container-Sicherheit
 
-Beide Container laufen gehärtet:
+Alle Container laufen gehärtet:
 
 - **Non-Root**: Backend UID 1000, Frontend UID 101
 - **ReadOnlyRootFilesystem**: Schreibzugriff nur auf explizite Volumes
@@ -530,14 +560,16 @@ bun run scripts/migrate-to-multiuser.ts --admin-user=<userId>
 
 ## 10. Health Checks & Monitoring
 
-### Health-Check Endpoint
+### Health-Check Endpoints
 
 ```bash
 # Backend Health Check
 curl http://localhost:3001/health
-
-# Erwartete Antwort:
 # {"status":"ok","timestamp":"2024-..."}
+
+# MCP Runner Health Check (falls aktiviert)
+curl http://localhost:3002/health
+# {"status":"ok","servers":2,"connected":2,"uptime":3600}
 ```
 
 ### Wichtige Metriken

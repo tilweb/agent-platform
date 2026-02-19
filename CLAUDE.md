@@ -44,7 +44,7 @@ cp .env.example .env    # Eine einzige .env im Root — alle Konfiguration hier
 - **`tools/`** — Tool registry with categories: local (file ops), API (web search, image gen), knowledge (RAG), tables, special (agent delegation), custom (user-defined, SSRF-protected), MCP
 - **`agents/loop.ts`** — Agentic execution loop with tool calling and streaming
 - **`middleware/`** — CORS, rate limiting, CSRF, security headers, SSRF protection
-- **`mcp/`** — Model Context Protocol server
+- **`mcp/`** — Model Context Protocol client (connects to MCP servers, dual-mode: local stdio or remote via MCP Runner)
 
 ### Key Frontend Components (`frontend/src/`)
 - **`pages/`** — Route targets (ChatPage, SettingsPage, SearchPage, apps, etc.)
@@ -57,10 +57,13 @@ cp .env.example .env    # Eine einzige .env im Root — alle Konfiguration hier
 ### Data Layer (`data/`)
 All persistence is file-based. Key directories: `config/` (providers.yaml, settings), `chats/`, `agents/`, `skills/`, `tasks/`, `knowledge-base/`, `auth/`, `connections/` (encrypted OAuth tokens).
 
+### MCP Runner (`mcp-runner/`)
+Optional dedicated container for running MCP server processes in isolation. Backend communicates via HTTP instead of spawning child processes directly. Dual-mode: without `MCP_RUNNER_URL` everything runs locally as before.
+
 ### Deployment (`helm/`, `docker-compose.yml`)
 - **Local Dev**: `bun run dev` + `npm run dev`
-- **Docker Compose**: `docker-compose.yml` mit Frontend (nginx), Backend (Bun), Proxy
-- **Kubernetes**: Helm Chart unter `helm/agent-platform/` mit Ingress, ConfigMap/Secret, PVC
+- **Docker Compose**: `docker-compose.yml` mit Frontend (nginx), Backend (Bun), MCP Runner, Proxy
+- **Kubernetes**: Helm Chart unter `helm/agent-platform/` mit Ingress, ConfigMap/Secret, PVC. MCP Runner optional via `mcpRunner.enabled`
 
 ### Multi-Provider LLM System
 Configured in `data/config/providers.yaml`. Supports Adacor AI, OpenAI, Anthropic, Ollama, Nebius, Google Gemini. Each model declares capabilities (chat, vision, function_calling). Provider adapters in `backend/src/services/llm.ts`.
@@ -87,4 +90,5 @@ Configured in `data/config/providers.yaml`. Supports Adacor AI, OpenAI, Anthropi
 - Use **SVG icons** from `components/Icons.jsx` — no emojis (except country flags)
 - API calls must use `apiFetch` utilities (`apiGet`, `apiPost`, `apiPut`, `apiDelete` from `utils/apiFetch.js`)
 - Pages that can be embedded in Settings must support an `embedded` prop to hide their standalone header
-- See `frontend/CLAUDE.md` for detailed component patterns (tabs, buttons, cards, modals, forms, sidebar navigation, status badges, app detail headers)
+- See `frontend/CLAUDE.md` for detailed component patterns (tabs, buttons, cards, toggles, modals, forms, sidebar navigation, status badges, app detail headers)
+- **Design-Konsistenz**: Keine neuen UI-Patterns erfinden — immer die in `frontend/CLAUDE.md` dokumentierten Patterns verwenden. Bei Unsicherheit nachfragen statt eigene Lösungen bauen
