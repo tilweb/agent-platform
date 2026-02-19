@@ -28,8 +28,8 @@ interface ResourceAccessOptions {
  *
  * Usage:
  * ```typescript
- * app.get('/projects/:id', requireResourceAccess({
- *   resourceType: 'project',
+ * app.get('/spaces/:id', requireResourceAccess({
+ *   resourceType: 'space',
  *   permission: 'canView',
  *   getResourceId: (c) => c.req.param('id'),
  * }), async (c) => { ... });

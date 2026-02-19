@@ -48,8 +48,8 @@ export const EXPORTS_DIR = join(DATA_DIR, 'exports');
 export const MEMORY_SESSIONS_DIR = join(DATA_DIR, 'memory', 'sessions');
 export const MEMORY_USERS_DIR = join(DATA_DIR, 'memory', 'users');
 
-// Projects
-export const PROJECTS_DIR = join(DATA_DIR, 'projects');
+// Spaces
+export const SPACES_DIR = join(DATA_DIR, 'spaces');
 
 // Tables
 export const TABLES_DIR = join(DATA_DIR, 'tables');
@@ -62,7 +62,7 @@ export const SKILLS_DIR = join(DATA_DIR, 'skills');
 
 // Plugins
 export const PLUGINS_DIR = join(DATA_DIR, 'plugins');
-export const PLUGINS_CONFIGS_DIR = join(PLUGINS_DIR, 'configs');
+export const PLUGINS_CONFIGS_DIR = join(CONFIG_DIR, 'plugins');
 export const PLUGINS_INSTALLED_DIR = join(PLUGINS_DIR, 'installed');
 export const PLUGINS_REGISTRY_FILE = join(PLUGINS_DIR, 'registry.yaml');
 

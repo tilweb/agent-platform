@@ -51,8 +51,8 @@ export enum AuditAction {
   // Data Modification
   CHAT_CREATED = 'chat_created',
   CHAT_DELETED = 'chat_deleted',
-  PROJECT_CREATED = 'project_created',
-  PROJECT_DELETED = 'project_deleted',
+  SPACE_CREATED = 'space_created',
+  SPACE_DELETED = 'space_deleted',
   TOOL_CREATED = 'tool_created',
   TOOL_DELETED = 'tool_deleted',
 

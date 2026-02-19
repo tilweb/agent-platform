@@ -1,7 +1,7 @@
 /**
- * ProjectOverview Component
+ * SpaceOverview Component
  *
- * Overview tab content for project detail page.
+ * Overview tab content for space detail page.
  */
 
 import { useState } from 'react';
@@ -118,12 +118,12 @@ const styles = {
 
 // formatDate (formatDateLong) is imported from utils/dateFormat
 
-export default function ProjectOverview({ project, onUpdate, onRefresh }) {
-  const [name, setName] = useState(project.name);
-  const [description, setDescription] = useState(project.description || '');
+export default function SpaceOverview({ space, onUpdate, onRefresh }) {
+  const [name, setName] = useState(space.name);
+  const [description, setDescription] = useState(space.description || '');
   const [isSaving, setIsSaving] = useState(false);
 
-  const hasChanges = name !== project.name || description !== (project.description || '');
+  const hasChanges = name !== space.name || description !== (space.description || '');
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -141,7 +141,7 @@ export default function ProjectOverview({ project, onUpdate, onRefresh }) {
     }
   };
 
-  const memberCount = project.members?.length || 1;
+  const memberCount = space.members?.length || 1;
 
   return (
     <div style={styles.container}>
@@ -227,11 +227,11 @@ export default function ProjectOverview({ project, onUpdate, onRefresh }) {
         <div style={styles.infoRow}>
           <div style={styles.infoItem}>
             <span style={styles.infoLabel}>Erstellt:</span>
-            {formatDate(project.createdAt)}
+            {formatDate(space.createdAt)}
           </div>
           <div style={styles.infoItem}>
             <span style={styles.infoLabel}>Aktualisiert:</span>
-            {formatDate(project.updatedAt)}
+            {formatDate(space.updatedAt)}
           </div>
         </div>
       </div>

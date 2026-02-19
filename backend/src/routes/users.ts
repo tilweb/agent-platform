@@ -2,7 +2,7 @@
  * Users API Routes
  *
  * Endpoints for:
- * - User listing (for member selection in projects)
+ * - User listing (for member selection in spaces)
  * - User preferences (model selection per user)
  */
 
@@ -29,7 +29,7 @@ const VALID_PURPOSES: ModelPurpose[] = ['chat', 'vision', 'tts', 'stt', 'text_to
 /**
  * GET /api/users - List all active users
  *
- * Used for member selection dropdowns in project management.
+ * Used for member selection dropdowns in space management.
  * Returns minimal user info: id, username, displayName, email
  */
 usersRoutes.get('/', async (c) => {

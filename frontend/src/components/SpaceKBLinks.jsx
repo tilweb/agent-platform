@@ -1,12 +1,12 @@
 /**
- * ProjectKBLinks Component
+ * SpaceKBLinks Component
  *
- * Manage KB collection links for a project.
+ * Manage KB collection links for a space.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { theme } from '../config/theme';
-import { useProjectKBLinks } from '../hooks/useProjects';
+import { useSpaceKBLinks } from '../hooks/useSpaces';
 import { apiGet } from '../utils/apiFetch';
 import { BookIcon, LinkIcon, TrashIcon } from './Icons';
 
@@ -150,8 +150,8 @@ const styles = {
   },
 };
 
-export default function ProjectKBLinks({ projectId }) {
-  const { links, loading, error, linkCollection, unlinkCollection } = useProjectKBLinks(projectId);
+export default function SpaceKBLinks({ spaceId }) {
+  const { links, loading, error, linkCollection, unlinkCollection } = useSpaceKBLinks(spaceId);
   const [collections, setCollections] = useState([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
   const [selectedCollectionId, setSelectedCollectionId] = useState('');

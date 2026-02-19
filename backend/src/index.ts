@@ -16,7 +16,7 @@ import providerRoutes from './routes/providers';
 import { authRoutes } from './routes/auth';
 import { connectionRoutes } from './routes/connections';
 import { searchRoutes } from './routes/search';
-import { projectRoutes } from './routes/projects';
+import { spaceRoutes } from './routes/spaces';
 import { usersRoutes } from './routes/users';
 import { appsRoutes } from './routes/apps';
 import { transcriptionRoutes } from './routes/transcription';
@@ -32,7 +32,8 @@ import { startExecutor } from './services/taskExecutor';
 import { recoverTasks } from './services/taskService';
 import { llmService } from './services/llm';
 import { registerCommands } from './commands';
-import { registerProviders } from './connections/providers';
+import { loadAllPlugins } from './plugins';
+import { pluginRoutes } from './routes/plugins';
 
 const app = new Hono();
 
@@ -63,8 +64,8 @@ async function initialize() {
 
   await setupTools();
 
-  // Register connection providers (and their tools)
-  registerProviders();
+  // Load plugins, register connector providers and their tools
+  await loadAllPlugins();
 
   await mcpManager.initialize();
 
@@ -160,6 +161,7 @@ app.get('/health', (c) => c.json({
 // API routes
 app.route('/api/auth', authRoutes);
 app.route('/api/connections', connectionRoutes);
+app.route('/api/plugins', pluginRoutes);
 app.route('/api/chat', chatRoutes);
 app.route('/api/chats', chatHistoryRoutes);
 app.route('/api/shared', sharedChatRoutes);  // Public shared chat access (no auth)
@@ -178,7 +180,7 @@ app.route('/api/tables', tablesRoutes);
 app.route('/api/providers', providerRoutes);
 app.route('/api/commands', commandRoutes);
 app.route('/api/search', searchRoutes);
-app.route('/api/projects', projectRoutes);
+app.route('/api/spaces', spaceRoutes);
 app.route('/api/users', usersRoutes);
 app.route('/api/apps', appsRoutes);
 app.route('/api/transcribe', transcriptionRoutes);

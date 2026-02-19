@@ -1,12 +1,12 @@
 /**
- * ProjectChatsSection Component
+ * SpaceChatsSection Component
  *
- * Display and manage project chats.
+ * Display and manage space chats.
  */
 
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
-import { useProjectChats } from '../hooks/useProjects';
+import { useSpaceChats } from '../hooks/useSpaces';
 import { ChatIcon, TrashIcon } from './Icons';
 import { formatDateRelative } from '../utils/dateFormat';
 
@@ -149,9 +149,9 @@ function formatDate(dateString) {
   return formatDateRelative(dateString, { showTimeToday: true });
 }
 
-export default function ProjectChatsSection({ projectId, onLoadChat, onNewChat }) {
+export default function SpaceChatsSection({ spaceId, onLoadChat, onNewChat }) {
   const navigate = useNavigate();
-  const { chats, loading, error, deleteChat } = useProjectChats(projectId);
+  const { chats, loading, error, deleteChat } = useSpaceChats(spaceId);
 
   const handleNewChat = () => {
     if (onNewChat) {
@@ -159,7 +159,7 @@ export default function ProjectChatsSection({ projectId, onLoadChat, onNewChat }
       onNewChat();
     } else {
       // Standalone mode: navigate to separate page
-      navigate(`/projects/${projectId}/chat`);
+      navigate(`/spaces/${spaceId}/chat`);
     }
   };
 
@@ -169,7 +169,7 @@ export default function ProjectChatsSection({ projectId, onLoadChat, onNewChat }
       onLoadChat(chatId);
     } else {
       // Standalone mode: navigate to separate page
-      navigate(`/projects/${projectId}/chat?session=${chatId}`);
+      navigate(`/spaces/${spaceId}/chat?session=${chatId}`);
     }
   };
 

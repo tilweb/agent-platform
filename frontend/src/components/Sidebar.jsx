@@ -336,10 +336,10 @@ function Sidebar() {
           </Link>
 
           <Link
-            to="/projects"
+            to="/spaces"
             style={{
               ...sidebarStyles.navItem,
-              ...(currentPath.startsWith('/projects') ? sidebarStyles.navItemActive : {}),
+              ...(currentPath.startsWith('/spaces') ? sidebarStyles.navItemActive : {}),
             }}
           >
             <div style={sidebarStyles.iconWrapper}>

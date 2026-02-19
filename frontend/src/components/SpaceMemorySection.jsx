@@ -1,12 +1,12 @@
 /**
- * ProjectMemorySection Component
+ * SpaceMemorySection Component
  *
- * Memory management for projects (about, instructions, context).
+ * Memory management for spaces (about, instructions, context).
  */
 
 import { useState } from 'react';
 import { theme } from '../config/theme';
-import { useProjectMemory } from '../hooks/useProjects';
+import { useSpaceMemory } from '../hooks/useSpaces';
 import { UserIcon, ClipboardIcon, TargetIcon } from './Icons';
 
 const styles = {
@@ -203,7 +203,7 @@ const styles = {
   },
 };
 
-export default function ProjectMemorySection({ projectId }) {
+export default function SpaceMemorySection({ spaceId }) {
   const {
     memory,
     loading,
@@ -214,7 +214,7 @@ export default function ProjectMemorySection({ projectId }) {
     addContext,
     setContextActive,
     deleteItem,
-  } = useProjectMemory(projectId);
+  } = useSpaceMemory(spaceId);
 
   const [newAbout, setNewAbout] = useState('');
   const [newInstruction, setNewInstruction] = useState('');

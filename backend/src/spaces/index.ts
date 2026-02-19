@@ -1,19 +1,19 @@
 /**
- * Projects Module
+ * Spaces Module
  *
- * Re-exports all project-related types and services.
+ * Re-exports all space-related types and services.
  */
 
 // Types
 export type {
-  Project,
-  ProjectMember,
-  ProjectMemory,
-  ProjectSettings,
-  ProjectKBLinks,
-  ProjectChat,
-  ProjectChatMessage,
-  ProjectRole,
+  Space,
+  SpaceMember,
+  SpaceMemory,
+  SpaceSettings,
+  SpaceKBLinks,
+  SpaceChat,
+  SpaceChatMessage,
+  SpaceRole,
   MemorySection,
   Priority,
   MemorySource,
@@ -30,31 +30,31 @@ export { generateId } from '../utils/id';
 
 // Storage
 export {
-  loadProject,
-  saveProject,
-  createProject as storageCreateProject,
-  listProjects as storageListProjects,
-  loadProjectMemory,
-  saveProjectMemory,
-  formatProjectMemoryForPrompt,
-  loadProjectKBLinks,
-  saveProjectKBLinks,
-  listProjectChats,
-  loadProjectChat,
-  saveProjectChat,
+  loadSpace,
+  saveSpace,
+  createSpace as storageCreateSpace,
+  listSpaces as storageListSpaces,
+  loadSpaceMemory,
+  saveSpaceMemory,
+  formatSpaceMemoryForPrompt,
+  loadSpaceKBLinks,
+  saveSpaceKBLinks,
+  listSpaceChats,
+  loadSpaceChat,
+  saveSpaceChat,
 } from './storage';
 
 // Permissions
 export {
-  canViewProject,
-  canEditProject,
+  canViewSpace,
+  canEditSpace,
   canEditSettings,
   canWriteMemory,
   canViewChats,
   canManageMembers,
   canModifyMember,
-  canDeleteProject,
-  canArchiveProject,
+  canDeleteSpace,
+  canArchiveSpace,
   getUserPermissions,
   getUserRole,
   isMember,
@@ -62,12 +62,12 @@ export {
 
 // Service (main API)
 export {
-  createProject,
-  getProject,
-  updateProject,
-  archiveProject,
-  deleteProject,
-  listUserProjects,
+  createSpace,
+  getSpace,
+  updateSpace,
+  archiveSpace,
+  deleteSpace,
+  listUserSpaces,
   getMembers,
   addMember,
   updateMemberRole,
@@ -87,7 +87,7 @@ export {
   listChats,
   getChat,
   deleteChat,
-  getProjectContext,
+  getSpaceContext,
 } from './service';
 
 export type { ServiceResult } from './service';

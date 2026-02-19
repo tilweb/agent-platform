@@ -1,8 +1,8 @@
 /**
- * ProjectDetailPage
+ * SpaceDetailPage
  *
- * Project management page with 50/50 split layout:
- * - Left: ChatWindow with project context pre-selected
+ * Space management page with 50/50 split layout:
+ * - Left: ChatWindow with space context pre-selected
  * - Right: Tabs for Overview, Memory, KB, Chats, Members, Settings
  */
 
@@ -10,17 +10,17 @@ import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { apiGet } from '../utils/apiFetch';
-import { useProject } from '../hooks/useProjects';
+import { useSpace } from '../hooks/useSpaces';
 import { useStreaming } from '../hooks/useStreaming';
 import { useAgentContext } from '../context/AgentContext';
 import { BriefcaseIcon, ArrowLeftIcon } from '../components/Icons';
 import ChatWindow from '../components/ChatWindow';
-import ProjectMemorySection from '../components/ProjectMemorySection';
-// ProjectMembersList replaced by AccessManager for RBAC support
-import ProjectKBLinks from '../components/ProjectKBLinks';
-import ProjectChatsSection from '../components/ProjectChatsSection';
-import ProjectOverview from '../components/ProjectOverview';
-import ProjectSettings from '../components/ProjectSettings';
+import SpaceMemorySection from '../components/SpaceMemorySection';
+// SpaceMembersList replaced by AccessManager for RBAC support
+import SpaceKBLinks from '../components/SpaceKBLinks';
+import SpaceChatsSection from '../components/SpaceChatsSection';
+import SpaceOverview from '../components/SpaceOverview';
+import SpaceSettings from '../components/SpaceSettings';
 import AccessManager from '../components/AccessManager';
 
 const styles = {
@@ -177,13 +177,13 @@ const TABS = [
   { id: 'settings', label: 'Einstellungen' },
 ];
 
-export default function ProjectDetailPage() {
-  const { projectId } = useParams();
+export default function SpaceDetailPage() {
+  const { spaceId } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Project data
-  const { project, loading, error, refresh, updateProject, updateSettings } = useProject(projectId);
+  // Space data
+  const { space, loading, error, refresh, updateSpace, updateSettings } = useSpace(spaceId);
 
   // Chat/Streaming hooks
   const {
@@ -209,16 +209,16 @@ export default function ProjectDetailPage() {
     selectAutoRoute,
   } = useAgentContext();
 
-  // Send message handler with project context
+  // Send message handler with space context
   const handleSendMessage = useCallback((message, files, skillId) => {
     sendMessage(message, {
       agentId: selectedAgentId,
       autoRoute: isAutoRoute,
       files,
       skillId,
-      projectId: projectId,  // Pass project ID to backend
+      spaceId: spaceId,  // Pass space ID to backend
     });
-  }, [sendMessage, selectedAgentId, isAutoRoute, projectId]);
+  }, [sendMessage, selectedAgentId, isAutoRoute, spaceId]);
 
   // New chat handler
   const handleNewChat = useCallback(() => {
@@ -228,7 +228,7 @@ export default function ProjectDetailPage() {
   // Load existing chat handler
   const handleLoadChat = useCallback(async (chatId) => {
     try {
-      const response = await apiGet(`/projects/${projectId}/chats/${chatId}`);
+      const response = await apiGet(`/spaces/${spaceId}/chats/${chatId}`);
       if (response.ok) {
         const chat = await response.json();
         loadExistingChat(chat.messages || [], chatId);
@@ -236,7 +236,7 @@ export default function ProjectDetailPage() {
     } catch (err) {
       console.error('Failed to load chat:', err);
     }
-  }, [projectId, loadExistingChat]);
+  }, [spaceId, loadExistingChat]);
 
   if (loading) {
     return (
@@ -250,7 +250,7 @@ export default function ProjectDetailPage() {
     return (
       <div style={styles.pageWrapper}>
         <div style={styles.backLinkContainer}>
-          <button style={styles.backLink} onClick={() => navigate('/projects')}>
+          <button style={styles.backLink} onClick={() => navigate('/spaces')}>
             <ArrowLeftIcon size={16} /> Spaces
           </button>
         </div>
@@ -259,11 +259,11 @@ export default function ProjectDetailPage() {
     );
   }
 
-  if (!project) {
+  if (!space) {
     return (
       <div style={styles.pageWrapper}>
         <div style={styles.backLinkContainer}>
-          <button style={styles.backLink} onClick={() => navigate('/projects')}>
+          <button style={styles.backLink} onClick={() => navigate('/spaces')}>
             <ArrowLeftIcon size={16} /> Spaces
           </button>
         </div>
@@ -272,12 +272,12 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const color = project.color || '#9333ea';
+  const color = space.color || '#9333ea';
 
-  // Project object for ChatWindow
-  const projectContext = {
-    id: projectId,
-    name: project.name,
+  // Space object for ChatWindow
+  const spaceContext = {
+    id: spaceId,
+    name: space.name,
     color: color,
   };
 
@@ -285,30 +285,30 @@ export default function ProjectDetailPage() {
     switch (activeTab) {
       case 'overview':
         return (
-          <ProjectOverview
-            project={project}
-            onUpdate={updateProject}
+          <SpaceOverview
+            space={space}
+            onUpdate={updateSpace}
             onRefresh={refresh}
           />
         );
       case 'memory':
-        return <ProjectMemorySection projectId={projectId} />;
+        return <SpaceMemorySection spaceId={spaceId} />;
       case 'kb':
-        return <ProjectKBLinks projectId={projectId} />;
+        return <SpaceKBLinks spaceId={spaceId} />;
       case 'chats':
-        return <ProjectChatsSection projectId={projectId} onLoadChat={handleLoadChat} onNewChat={handleNewChat} />;
+        return <SpaceChatsSection spaceId={spaceId} onLoadChat={handleLoadChat} onNewChat={handleNewChat} />;
       case 'access':
         return (
           <AccessManager
-            resourceType="project"
-            resourceId={projectId}
-            resourceName={project.name}
+            resourceType="space"
+            resourceId={spaceId}
+            resourceName={space.name}
           />
         );
       case 'settings':
         return (
-          <ProjectSettings
-            project={project}
+          <SpaceSettings
+            space={space}
             onUpdateSettings={updateSettings}
             onRefresh={refresh}
           />
@@ -322,7 +322,7 @@ export default function ProjectDetailPage() {
     <div style={styles.pageWrapper}>
       {/* Back link */}
       <div style={styles.backLinkContainer}>
-        <button style={styles.backLink} onClick={() => navigate('/projects')}>
+        <button style={styles.backLink} onClick={() => navigate('/spaces')}>
           <ArrowLeftIcon size={16} /> Spaces
         </button>
       </div>
@@ -346,7 +346,7 @@ export default function ProjectDetailPage() {
             activeTasks={activeTasks}
             onTaskCompleted={onTaskCompleted}
             fileProcessingState={fileProcessingState}
-            project={projectContext}
+            project={spaceContext}
           />
         </div>
 
@@ -363,9 +363,9 @@ export default function ProjectDetailPage() {
               <BriefcaseIcon size={20} color={color} />
             </div>
             <div style={styles.headerContent}>
-              <div style={styles.title}>{project.name}</div>
-              {project.description && (
-                <div style={styles.subtitle}>{project.description}</div>
+              <div style={styles.title}>{space.name}</div>
+              {space.description && (
+                <div style={styles.subtitle}>{space.description}</div>
               )}
             </div>
           </div>

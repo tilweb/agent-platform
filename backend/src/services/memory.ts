@@ -3,7 +3,7 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import type { Message } from './llm';
 import { llmService } from './llm';
-import { saveProjectChat } from '../projects/storage';
+import { saveSpaceChat } from '../spaces/storage';
 import { DATA_DIR, CONVERSATIONS_DIR, CHATS_DIR, CHAT_FOLDERS_FILE } from '../utils/paths';
 
 // One-time migration: move chat-folders.yaml from data/ to data/chats/
@@ -260,7 +260,7 @@ export interface ChatMaterial {
 export interface ChatHistory {
   id: string;
   userId?: string;  // User who owns this chat (undefined = anonymous)
-  projectId?: string;  // Project this chat belongs to (if any)
+  spaceId?: string;  // Space this chat belongs to (if any)
   folderIds?: string[];  // Folders this chat belongs to (can be in multiple)
   title: string;
   summary?: string;
@@ -305,9 +305,9 @@ function formatChatAsYaml(chat: ChatHistory): string {
     lines.push(`userId: ${escapeYamlString(chat.userId)}`);
   }
 
-  // Add projectId if present
-  if (chat.projectId) {
-    lines.push(`projectId: ${escapeYamlString(chat.projectId)}`);
+  // Add spaceId if present
+  if (chat.spaceId) {
+    lines.push(`spaceId: ${escapeYamlString(chat.spaceId)}`);
   }
 
   // Add folderIds if present
@@ -476,13 +476,13 @@ function parseChatYaml(content: string): ChatHistory | null {
           continue;
         }
 
-        const projectIdMatch = line.match(/^projectId:\s*(.+)$/);
-        if (projectIdMatch) {
-          let val = projectIdMatch[1]!.trim();
+        const spaceIdMatch = line.match(/^spaceId:\s*(.+)$/);
+        if (spaceIdMatch) {
+          let val = spaceIdMatch[1]!.trim();
           if (val.startsWith('"') && val.endsWith('"')) {
             val = val.slice(1, -1);
           }
-          chat.projectId = val;
+          chat.spaceId = val;
           continue;
         }
 
@@ -854,7 +854,7 @@ Antworte NUR im folgenden JSON-Format:
   }
 }
 
-export async function saveChatHistory(sessionId: string, userId?: string, projectId?: string, attachments?: MessageAttachment[], materials?: ChatMaterial[]): Promise<void> {
+export async function saveChatHistory(sessionId: string, userId?: string, spaceId?: string, attachments?: MessageAttachment[], materials?: ChatMaterial[]): Promise<void> {
   return withChatLock(sessionId, async () => {
   const session = getSession(sessionId);
   if (!session || session.messages.length === 0) return;
@@ -963,8 +963,8 @@ export async function saveChatHistory(sessionId: string, userId?: string, projec
   // Determine userId: preserve existing or use new one
   const chatUserId = existingChat?.userId || userId;
 
-  // Determine projectId: preserve existing or use new one
-  const chatProjectId = existingChat?.projectId || projectId;
+  // Determine spaceId: preserve existing or use new one
+  const chatSpaceId = existingChat?.spaceId || spaceId;
 
   // Merge materials: existing + new (avoiding duplicates by id)
   let chatMaterials: ChatMaterial[] | undefined;
@@ -979,7 +979,7 @@ export async function saveChatHistory(sessionId: string, userId?: string, projec
   const chat: ChatHistory = {
     id: sessionId,
     userId: chatUserId,
-    projectId: chatProjectId,
+    spaceId: chatSpaceId,
     title,
     summary,
     keywords,
@@ -994,12 +994,12 @@ export async function saveChatHistory(sessionId: string, userId?: string, projec
   await writeFile(existingPath, yaml, 'utf-8');
   console.log(`Saved chat history to ${existingPath}`);
 
-  // Also save to project directory if projectId is present
-  if (chatProjectId) {
+  // Also save to space directory if spaceId is present
+  if (chatSpaceId) {
     try {
-      await saveProjectChat({
+      await saveSpaceChat({
         id: sessionId,
-        projectId: chatProjectId,
+        spaceId: chatSpaceId,
         userId: chatUserId || 'anonymous',
         title,
         summary,
@@ -1010,9 +1010,9 @@ export async function saveChatHistory(sessionId: string, userId?: string, projec
           content: m.content,
         })),
       });
-      console.log(`Saved chat to project ${chatProjectId}`);
+      console.log(`Saved chat to space ${chatSpaceId}`);
     } catch (err) {
-      console.error(`Failed to save chat to project ${chatProjectId}:`, err);
+      console.error(`Failed to save chat to space ${chatSpaceId}:`, err);
     }
   }
   }); // end withChatLock
@@ -1168,7 +1168,7 @@ export interface ChatListResult {
  * - If userId is provided: show user's own chats + anonymous chats
  * - If userId is undefined (anonymous): show only anonymous chats
  */
-export async function listChatHistories(limit?: number, offset: number = 0, userId?: string, projectId?: string): Promise<ChatListResult> {
+export async function listChatHistories(limit?: number, offset: number = 0, userId?: string, spaceId?: string): Promise<ChatListResult> {
   if (!existsSync(CHATS_DIR)) return { chats: [], total: 0, hasMore: false };
 
   try {
@@ -1182,13 +1182,13 @@ export async function listChatHistories(limit?: number, offset: number = 0, user
         const chat = parseChatYaml(content);
         if (!chat) continue;
 
-        // Filter by projectId if provided
-        if (projectId) {
-          // Only include chats that belong to this project
-          if (chat.projectId !== projectId) continue;
+        // Filter by spaceId if provided
+        if (spaceId) {
+          // Only include chats that belong to this space
+          if (chat.spaceId !== spaceId) continue;
         } else {
-          // When not filtering by project, exclude project chats
-          if (chat.projectId) continue;
+          // When not filtering by space, exclude space chats
+          if (chat.spaceId) continue;
         }
 
         // Access control filtering
@@ -1779,7 +1779,7 @@ export async function loadChatByShareToken(shareToken: string): Promise<SharedCh
         const chat = parseChatYaml(content);
 
         if (chat && chat.shareToken === shareToken) {
-          // Return chat without sensitive fields (userId, projectId)
+          // Return chat without sensitive fields (userId, spaceId)
           return {
             id: chat.id,
             title: chat.title,

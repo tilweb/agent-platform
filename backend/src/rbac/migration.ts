@@ -12,40 +12,40 @@ import { grantAccess, hasAccessEntries, initializeResourceAccess } from './stora
 import type { ResourceType, ResourceRole } from './types';
 import { DATA_DIR } from '../utils/paths';
 
-interface ProjectMember {
+interface SpaceMember {
   userId: string;
   role: 'owner' | 'admin' | 'editor' | 'viewer';
   addedAt: string;
   addedBy: string;
 }
 
-interface Project {
+interface Space {
   id: string;
   name: string;
   createdBy: string;
-  members: ProjectMember[];
+  members: SpaceMember[];
 }
 
 /**
- * Migrate project members to RBAC access entries
+ * Migrate space members to RBAC access entries
  */
-export async function migrateProjectMembers(): Promise<{
+export async function migrateSpaceMembers(): Promise<{
   migrated: number;
   skipped: number;
   errors: string[];
 }> {
-  const projectsDir = join(DATA_DIR, 'projects');
+  const spacesDir = join(DATA_DIR, 'spaces');
   const result = { migrated: 0, skipped: 0, errors: [] as string[] };
 
-  if (!existsSync(projectsDir)) {
-    console.log('[RBAC Migration] No projects directory found');
+  if (!existsSync(spacesDir)) {
+    console.log('[RBAC Migration] No spaces directory found');
     return result;
   }
 
-  // Read projects index
-  const indexPath = join(projectsDir, 'projects.yaml');
+  // Read spaces index
+  const indexPath = join(spacesDir, 'spaces.yaml');
   if (!existsSync(indexPath)) {
-    console.log('[RBAC Migration] No projects index found');
+    console.log('[RBAC Migration] No spaces index found');
     return result;
   }
 
@@ -53,61 +53,61 @@ export async function migrateProjectMembers(): Promise<{
     const indexContent = await readFile(indexPath, 'utf-8');
     const index = yaml.parse(indexContent);
 
-    if (!index?.projects) {
-      console.log('[RBAC Migration] Empty projects index');
+    if (!index?.spaces) {
+      console.log('[RBAC Migration] Empty spaces index');
       return result;
     }
 
-    for (const entry of index.projects) {
-      const projectPath = join(projectsDir, entry.id, 'project.yaml');
+    for (const entry of index.spaces) {
+      const spacePath = join(spacesDir, entry.id, 'space.yaml');
 
-      if (!existsSync(projectPath)) {
-        console.log(`[RBAC Migration] Project file not found: ${entry.id}`);
+      if (!existsSync(spacePath)) {
+        console.log(`[RBAC Migration] Space file not found: ${entry.id}`);
         continue;
       }
 
       try {
         // Check if already migrated
-        if (await hasAccessEntries('project', entry.id)) {
-          console.log(`[RBAC Migration] Project ${entry.id} already has RBAC entries, skipping`);
+        if (await hasAccessEntries('space', entry.id)) {
+          console.log(`[RBAC Migration] Space ${entry.id} already has RBAC entries, skipping`);
           result.skipped++;
           continue;
         }
 
-        const projectContent = await readFile(projectPath, 'utf-8');
-        const project = yaml.parse(projectContent) as Project;
+        const spaceContent = await readFile(spacePath, 'utf-8');
+        const space = yaml.parse(spaceContent) as Space;
 
-        if (!project.members || project.members.length === 0) {
+        if (!space.members || space.members.length === 0) {
           // No members, just initialize with creator as owner
-          if (project.createdBy) {
-            await initializeResourceAccess('project', project.id, project.createdBy);
-            console.log(`[RBAC Migration] Initialized access for project ${project.id} with creator ${project.createdBy}`);
+          if (space.createdBy) {
+            await initializeResourceAccess('space', space.id, space.createdBy);
+            console.log(`[RBAC Migration] Initialized access for space ${space.id} with creator ${space.createdBy}`);
             result.migrated++;
           }
           continue;
         }
 
         // Migrate each member
-        for (const member of project.members) {
+        for (const member of space.members) {
           await grantAccess(
-            'project',
-            project.id,
+            'space',
+            space.id,
             'user',
             member.userId,
             member.role as ResourceRole,
-            member.addedBy || project.createdBy
+            member.addedBy || space.createdBy
           );
         }
 
-        console.log(`[RBAC Migration] Migrated ${project.members.length} members for project ${project.id}`);
+        console.log(`[RBAC Migration] Migrated ${space.members.length} members for space ${space.id}`);
         result.migrated++;
       } catch (error: any) {
-        console.error(`[RBAC Migration] Error migrating project ${entry.id}:`, error);
+        console.error(`[RBAC Migration] Error migrating space ${entry.id}:`, error);
         result.errors.push(`${entry.id}: ${error.message}`);
       }
     }
   } catch (error: any) {
-    console.error('[RBAC Migration] Error reading projects index:', error);
+    console.error('[RBAC Migration] Error reading spaces index:', error);
     result.errors.push(`Index: ${error.message}`);
   }
 
@@ -223,14 +223,14 @@ export async function migrateAgents(): Promise<{
  * Run all migrations
  */
 export async function runAllMigrations(): Promise<{
-  projects: { migrated: number; skipped: number; errors: string[] };
+  spaces: { migrated: number; skipped: number; errors: string[] };
   skills: { migrated: number; skipped: number; errors: string[] };
   agents: { migrated: number; skipped: number; errors: string[] };
 }> {
   console.log('[RBAC Migration] Starting migrations...');
 
-  const projects = await migrateProjectMembers();
-  console.log(`[RBAC Migration] Projects: ${projects.migrated} migrated, ${projects.skipped} skipped, ${projects.errors.length} errors`);
+  const spaces = await migrateSpaceMembers();
+  console.log(`[RBAC Migration] Spaces: ${spaces.migrated} migrated, ${spaces.skipped} skipped, ${spaces.errors.length} errors`);
 
   const skills = await migrateSkills();
   console.log(`[RBAC Migration] Skills: ${skills.migrated} migrated, ${skills.skipped} skipped, ${skills.errors.length} errors`);
@@ -240,5 +240,5 @@ export async function runAllMigrations(): Promise<{
 
   console.log('[RBAC Migration] Migrations complete');
 
-  return { projects, skills, agents };
+  return { spaces, skills, agents };
 }

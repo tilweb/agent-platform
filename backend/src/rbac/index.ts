@@ -73,7 +73,7 @@ export {
 
 // Migration
 export {
-  migrateProjectMembers,
+  migrateSpaceMembers,
   migrateSkills,
   migrateAgents,
   runAllMigrations,

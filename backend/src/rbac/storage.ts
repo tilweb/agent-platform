@@ -2,7 +2,7 @@
  * RBAC Storage - YAML-based access persistence
  *
  * Stores access entries per resource in access.yaml files:
- * - data/projects/{id}/access.yaml
+ * - data/spaces/{id}/access.yaml
  * - data/knowledge-base/collections/{id}/access.yaml
  * - data/skills/public/{id}/access.yaml
  * - data/agents/{id}/access.yaml

@@ -43,7 +43,7 @@ import {
 import { addMessage, getMessages, generateSessionId } from '../services/memory';
 import { loadAgent, listAgents, type AgentConfig, type AgentModelConfig } from '../services/agents';
 import { loadUserMemory, formatMemoryForPrompt } from '../services/userMemory';
-import { getProjectContext } from '../projects/service';
+import { getSpaceContext } from '../spaces/service';
 import { readFile } from 'fs/promises';
 import { AGENTS_CONFIG } from '../utils/paths';
 import { existsSync } from 'fs';
@@ -272,7 +272,7 @@ export interface AgentLoopOptions {
   skillId?: string;  // Explicit skill to activate (bypasses matching)
   userId?: string;   // User ID for connection tools and personalization
   readerContexts?: DocumentContext[];  // Pre-loaded document contexts from search selection
-  projectId?: string;  // Project context for memory and KB injection
+  spaceId?: string;  // Space context for memory and KB injection
   modelOverride?: { providerId: string; modelId: string };  // Per-chat model override (highest priority)
 }
 
@@ -1212,7 +1212,7 @@ export async function* runAgentLoop(
   userMessage: string,
   options: AgentLoopOptions = {}
 ): AsyncGenerator<AgentEvent> {
-  const { agentId, delegationDepth = 0, attachments, skillId, userId, readerContexts, projectId } = options;
+  const { agentId, delegationDepth = 0, attachments, skillId, userId, readerContexts, spaceId } = options;
 
   // Load agent configuration
   let agent: AgentConfig | null = null;
@@ -1335,20 +1335,20 @@ export async function* runAgentLoop(
     console.log(`[AgentLoop] Injecting ${readerContexts.length} reader document(s) into context`);
   }
 
-  // Build project context section if projectId is provided
-  let projectContextSection = '';
-  if (projectId && userId) {
+  // Build space context section if spaceId is provided
+  let spaceContextSection = '';
+  if (spaceId && userId) {
     try {
-      const projectContext = await getProjectContext(projectId, userId);
-      if (projectContext.success && projectContext.data) {
-        const { formattedMemory, projectName } = projectContext.data;
+      const spaceContext = await getSpaceContext(spaceId, userId);
+      if (spaceContext.success && spaceContext.data) {
+        const { formattedMemory, spaceName } = spaceContext.data;
         if (formattedMemory) {
-          projectContextSection = `\n\n${formattedMemory}\n\n---\n`;
-          console.log(`[AgentLoop] Injecting project context for: ${projectName}`);
+          spaceContextSection = `\n\n${formattedMemory}\n\n---\n`;
+          console.log(`[AgentLoop] Injecting space context for: ${spaceName}`);
         }
       }
     } catch (error) {
-      console.warn('[AgentLoop] Failed to load project context:', error);
+      console.warn('[AgentLoop] Failed to load space context:', error);
     }
   }
 
@@ -1375,7 +1375,7 @@ export async function* runAgentLoop(
     console.warn('[AgentLoop] Failed to build skill metadata section:', error);
   }
 
-  let fullSystemPrompt = languageInstruction + contextInfo + projectContextSection + imageAnalysisSection + systemPrompt + skillMetadataSection + readerContextSection;
+  let fullSystemPrompt = languageInstruction + contextInfo + spaceContextSection + imageAnalysisSection + systemPrompt + skillMetadataSection + readerContextSection;
   let agentToolNames = agent?.tools || ['file_read', 'file_write', 'file_list'];
 
   // Initialize loop state for tracking loaded skills and temporary tools

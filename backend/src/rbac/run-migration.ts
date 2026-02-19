@@ -4,15 +4,15 @@
  * Run with: bun run src/rbac/run-migration.ts
  */
 
-import { migrateProjectMembers } from './migration';
+import { migrateSpaceMembers } from './migration';
 
 async function main() {
   console.log('='.repeat(60));
-  console.log('RBAC Migration - Migriere bestehende Project Members');
+  console.log('RBAC Migration - Migriere bestehende Space Members');
   console.log('='.repeat(60));
   console.log('');
 
-  const result = await migrateProjectMembers();
+  const result = await migrateSpaceMembers();
 
   console.log('');
   console.log('='.repeat(60));

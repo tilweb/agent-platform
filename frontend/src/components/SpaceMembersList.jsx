@@ -1,12 +1,12 @@
 /**
- * ProjectMembersList Component
+ * SpaceMembersList Component
  *
- * Manage project members with roles.
+ * Manage space members with roles.
  */
 
 import { useState } from 'react';
 import { theme } from '../config/theme';
-import { useProjectMembers } from '../hooks/useProjects';
+import { useSpaceMembers } from '../hooks/useSpaces';
 import { useUsers } from '../hooks/useUsers';
 import { useAuth } from '../context/AuthContext';
 import { UserIcon, TrashIcon } from './Icons';
@@ -204,9 +204,9 @@ function getInitials(displayName) {
   return displayName.slice(0, 2).toUpperCase();
 }
 
-export default function ProjectMembersList({ projectId }) {
+export default function SpaceMembersList({ spaceId }) {
   const { user: currentUser } = useAuth();
-  const { members, loading, error, addMember, updateMemberRole, removeMember } = useProjectMembers(projectId);
+  const { members, loading, error, addMember, updateMemberRole, removeMember } = useSpaceMembers(spaceId);
   const { users, loading: usersLoading } = useUsers();
 
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -214,7 +214,7 @@ export default function ProjectMembersList({ projectId }) {
   const [isAdding, setIsAdding] = useState(false);
   const [actionError, setActionError] = useState(null);
 
-  // Get current user's role in project
+  // Get current user's role in space
   const currentUserMember = members.find(m => m.userId === currentUser?.id);
   const canManageMembers = currentUserMember?.role === 'owner' || currentUserMember?.role === 'admin';
 

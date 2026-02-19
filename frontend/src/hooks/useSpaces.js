@@ -1,144 +1,144 @@
 /**
- * useProjects Hook
+ * useSpaces Hook
  *
- * Custom hook for managing projects via API.
+ * Custom hook for managing spaces via API.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 
-export function useProjects(includeArchived = false) {
-  const [projects, setProjects] = useState([]);
+export function useSpaces(includeArchived = false) {
+  const [spaces, setSpaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const loadProjects = useCallback(async () => {
+  const loadSpaces = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const url = includeArchived ? '/projects?includeArchived=true' : '/projects';
+      const url = includeArchived ? '/spaces?includeArchived=true' : '/spaces';
       const response = await apiGet(url);
       if (!response.ok) {
-        throw new Error('Failed to load projects');
+        throw new Error('Failed to load spaces');
       }
       const data = await response.json();
-      setProjects(data.projects || []);
+      setSpaces(data.spaces || []);
     } catch (err) {
       setError(err.message);
-      console.error('Error loading projects:', err);
+      console.error('Error loading spaces:', err);
     } finally {
       setLoading(false);
     }
   }, [includeArchived]);
 
   useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
+    loadSpaces();
+  }, [loadSpaces]);
 
-  const createProject = useCallback(async (name, options = {}) => {
+  const createSpace = useCallback(async (name, options = {}) => {
     try {
-      const response = await apiPost('/projects', { name, ...options });
+      const response = await apiPost('/spaces', { name, ...options });
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || 'Failed to create project');
+        throw new Error(err.error || 'Failed to create space');
       }
-      const project = await response.json();
-      setProjects(prev => [project, ...prev]);
-      return project;
+      const space = await response.json();
+      setSpaces(prev => [space, ...prev]);
+      return space;
     } catch (err) {
-      console.error('Error creating project:', err);
+      console.error('Error creating space:', err);
       throw err;
     }
   }, []);
 
-  const updateProject = useCallback(async (projectId, updates) => {
+  const updateSpace = useCallback(async (spaceId, updates) => {
     try {
-      const response = await apiPut(`/projects/${projectId}`, updates);
+      const response = await apiPut(`/spaces/${spaceId}`, updates);
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || 'Failed to update project');
+        throw new Error(err.error || 'Failed to update space');
       }
-      const project = await response.json();
-      setProjects(prev => prev.map(p => p.id === projectId ? project : p));
-      return project;
+      const space = await response.json();
+      setSpaces(prev => prev.map(p => p.id === spaceId ? space : p));
+      return space;
     } catch (err) {
-      console.error('Error updating project:', err);
+      console.error('Error updating space:', err);
       throw err;
     }
   }, []);
 
-  const deleteProject = useCallback(async (projectId) => {
+  const deleteSpace = useCallback(async (spaceId) => {
     try {
-      const response = await apiDelete(`/projects/${projectId}`);
+      const response = await apiDelete(`/spaces/${spaceId}`);
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || 'Failed to delete project');
+        throw new Error(err.error || 'Failed to delete space');
       }
-      setProjects(prev => prev.filter(p => p.id !== projectId));
+      setSpaces(prev => prev.filter(p => p.id !== spaceId));
       return true;
     } catch (err) {
-      console.error('Error deleting project:', err);
+      console.error('Error deleting space:', err);
       throw err;
     }
   }, []);
 
-  const archiveProject = useCallback(async (projectId) => {
+  const archiveSpace = useCallback(async (spaceId) => {
     try {
-      const response = await apiPost(`/projects/${projectId}/archive`);
+      const response = await apiPost(`/spaces/${spaceId}/archive`);
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || 'Failed to archive project');
+        throw new Error(err.error || 'Failed to archive space');
       }
-      const project = await response.json();
+      const space = await response.json();
       if (!includeArchived) {
-        setProjects(prev => prev.filter(p => p.id !== projectId));
+        setSpaces(prev => prev.filter(p => p.id !== spaceId));
       } else {
-        setProjects(prev => prev.map(p => p.id === projectId ? project : p));
+        setSpaces(prev => prev.map(p => p.id === spaceId ? space : p));
       }
-      return project;
+      return space;
     } catch (err) {
-      console.error('Error archiving project:', err);
+      console.error('Error archiving space:', err);
       throw err;
     }
   }, [includeArchived]);
 
-  const unarchiveProject = useCallback(async (projectId) => {
+  const unarchiveSpace = useCallback(async (spaceId) => {
     try {
-      const response = await apiPost(`/projects/${projectId}/unarchive`);
+      const response = await apiPost(`/spaces/${spaceId}/unarchive`);
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || 'Failed to unarchive project');
+        throw new Error(err.error || 'Failed to unarchive space');
       }
-      const project = await response.json();
-      setProjects(prev => prev.map(p => p.id === projectId ? project : p));
-      return project;
+      const space = await response.json();
+      setSpaces(prev => prev.map(p => p.id === spaceId ? space : p));
+      return space;
     } catch (err) {
-      console.error('Error unarchiving project:', err);
+      console.error('Error unarchiving space:', err);
       throw err;
     }
   }, []);
 
   return {
-    projects,
+    spaces,
     loading,
     error,
-    refresh: loadProjects,
-    createProject,
-    updateProject,
-    deleteProject,
-    archiveProject,
-    unarchiveProject,
+    refresh: loadSpaces,
+    createSpace,
+    updateSpace,
+    deleteSpace,
+    archiveSpace,
+    unarchiveSpace,
   };
 }
 
-export function useProject(projectId) {
-  const [project, setProject] = useState(null);
+export function useSpace(spaceId) {
+  const [space, setSpace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const loadProject = useCallback(async () => {
-    if (!projectId) {
-      setProject(null);
+  const loadSpace = useCallback(async () => {
+    if (!spaceId) {
+      setSpace(null);
       setLoading(false);
       return;
     }
@@ -146,74 +146,74 @@ export function useProject(projectId) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiGet(`/projects/${projectId}`);
+      const response = await apiGet(`/spaces/${spaceId}`);
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || 'Failed to load project');
+        throw new Error(err.error || 'Failed to load space');
       }
       const data = await response.json();
-      setProject(data);
+      setSpace(data);
     } catch (err) {
       setError(err.message);
-      console.error('Error loading project:', err);
+      console.error('Error loading space:', err);
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   useEffect(() => {
-    loadProject();
-  }, [loadProject]);
+    loadSpace();
+  }, [loadSpace]);
 
-  const updateProject = useCallback(async (updates) => {
+  const updateSpace = useCallback(async (updates) => {
     try {
-      const response = await apiPut(`/projects/${projectId}`, updates);
+      const response = await apiPut(`/spaces/${spaceId}`, updates);
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || 'Failed to update project');
+        throw new Error(err.error || 'Failed to update space');
       }
       const updated = await response.json();
-      setProject(updated);
+      setSpace(updated);
       return updated;
     } catch (err) {
-      console.error('Error updating project:', err);
+      console.error('Error updating space:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   const updateSettings = useCallback(async (settings) => {
     try {
-      const response = await apiPut(`/projects/${projectId}/settings`, settings);
+      const response = await apiPut(`/spaces/${spaceId}/settings`, settings);
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to update settings');
       }
       const updated = await response.json();
-      setProject(prev => prev ? { ...prev, settings: updated } : null);
+      setSpace(prev => prev ? { ...prev, settings: updated } : null);
       return updated;
     } catch (err) {
       console.error('Error updating settings:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   return {
-    project,
+    space,
     loading,
     error,
-    refresh: loadProject,
-    updateProject,
+    refresh: loadSpace,
+    updateSpace,
     updateSettings,
   };
 }
 
-export function useProjectMemory(projectId) {
+export function useSpaceMemory(spaceId) {
   const [memory, setMemory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const loadMemory = useCallback(async () => {
-    if (!projectId) {
+    if (!spaceId) {
       setMemory(null);
       setLoading(false);
       return;
@@ -222,7 +222,7 @@ export function useProjectMemory(projectId) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiGet(`/projects/${projectId}/memory`);
+      const response = await apiGet(`/spaces/${spaceId}/memory`);
       if (!response.ok) {
         throw new Error('Failed to load memory');
       }
@@ -234,7 +234,7 @@ export function useProjectMemory(projectId) {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   useEffect(() => {
     loadMemory();
@@ -242,7 +242,7 @@ export function useProjectMemory(projectId) {
 
   const addAbout = useCallback(async (content) => {
     try {
-      const response = await apiPost(`/projects/${projectId}/memory/about`, { content, source: 'manual' });
+      const response = await apiPost(`/spaces/${spaceId}/memory/about`, { content, source: 'manual' });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to add item');
@@ -257,11 +257,11 @@ export function useProjectMemory(projectId) {
       console.error('Error adding about item:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   const addInstruction = useCallback(async (content, priority = 'normal') => {
     try {
-      const response = await apiPost(`/projects/${projectId}/memory/instructions`, { content, priority, source: 'manual' });
+      const response = await apiPost(`/spaces/${spaceId}/memory/instructions`, { content, priority, source: 'manual' });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to add instruction');
@@ -276,11 +276,11 @@ export function useProjectMemory(projectId) {
       console.error('Error adding instruction:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   const addContext = useCallback(async (name, description = '', active = true) => {
     try {
-      const response = await apiPost(`/projects/${projectId}/memory/context`, { name, description, active, source: 'manual' });
+      const response = await apiPost(`/spaces/${spaceId}/memory/context`, { name, description, active, source: 'manual' });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to add context');
@@ -295,11 +295,11 @@ export function useProjectMemory(projectId) {
       console.error('Error adding context:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   const setContextActive = useCallback(async (itemId, active) => {
     try {
-      const response = await apiPut(`/projects/${projectId}/memory/context/${itemId}/active`, { active });
+      const response = await apiPut(`/spaces/${spaceId}/memory/context/${itemId}/active`, { active });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to update context');
@@ -315,11 +315,11 @@ export function useProjectMemory(projectId) {
       console.error('Error updating context:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   const deleteItem = useCallback(async (section, itemId) => {
     try {
-      const response = await apiDelete(`/projects/${projectId}/memory/${section}/${itemId}`);
+      const response = await apiDelete(`/spaces/${spaceId}/memory/${section}/${itemId}`);
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to delete item');
@@ -333,7 +333,7 @@ export function useProjectMemory(projectId) {
       console.error('Error deleting item:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   const stats = memory ? {
     about: memory.about?.length || 0,
@@ -356,13 +356,13 @@ export function useProjectMemory(projectId) {
   };
 }
 
-export function useProjectMembers(projectId) {
+export function useSpaceMembers(spaceId) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const loadMembers = useCallback(async () => {
-    if (!projectId) {
+    if (!spaceId) {
       setMembers([]);
       setLoading(false);
       return;
@@ -371,7 +371,7 @@ export function useProjectMembers(projectId) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiGet(`/projects/${projectId}/members`);
+      const response = await apiGet(`/spaces/${spaceId}/members`);
       if (!response.ok) {
         throw new Error('Failed to load members');
       }
@@ -383,7 +383,7 @@ export function useProjectMembers(projectId) {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   useEffect(() => {
     loadMembers();
@@ -391,7 +391,7 @@ export function useProjectMembers(projectId) {
 
   const addMember = useCallback(async (userId, role) => {
     try {
-      const response = await apiPost(`/projects/${projectId}/members`, { userId, role });
+      const response = await apiPost(`/spaces/${spaceId}/members`, { userId, role });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to add member');
@@ -409,11 +409,11 @@ export function useProjectMembers(projectId) {
       console.error('Error adding member:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   const updateMemberRole = useCallback(async (userId, role) => {
     try {
-      const response = await apiPut(`/projects/${projectId}/members/${userId}`, { role });
+      const response = await apiPut(`/spaces/${spaceId}/members/${userId}`, { role });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to update role');
@@ -426,11 +426,11 @@ export function useProjectMembers(projectId) {
       console.error('Error updating member role:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   const removeMember = useCallback(async (userId) => {
     try {
-      const response = await apiDelete(`/projects/${projectId}/members/${userId}`);
+      const response = await apiDelete(`/spaces/${spaceId}/members/${userId}`);
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to remove member');
@@ -441,7 +441,7 @@ export function useProjectMembers(projectId) {
       console.error('Error removing member:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   return {
     members,
@@ -454,13 +454,13 @@ export function useProjectMembers(projectId) {
   };
 }
 
-export function useProjectKBLinks(projectId) {
+export function useSpaceKBLinks(spaceId) {
   const [links, setLinks] = useState({ collections: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const loadLinks = useCallback(async () => {
-    if (!projectId) {
+    if (!spaceId) {
       setLinks({ collections: [] });
       setLoading(false);
       return;
@@ -469,7 +469,7 @@ export function useProjectKBLinks(projectId) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiGet(`/projects/${projectId}/collections`);
+      const response = await apiGet(`/spaces/${spaceId}/collections`);
       if (!response.ok) {
         throw new Error('Failed to load KB links');
       }
@@ -481,7 +481,7 @@ export function useProjectKBLinks(projectId) {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   useEffect(() => {
     loadLinks();
@@ -489,7 +489,7 @@ export function useProjectKBLinks(projectId) {
 
   const linkCollection = useCallback(async (collectionId) => {
     try {
-      const response = await apiPost(`/projects/${projectId}/collections`, { collectionId });
+      const response = await apiPost(`/spaces/${spaceId}/collections`, { collectionId });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to link collection');
@@ -504,11 +504,11 @@ export function useProjectKBLinks(projectId) {
       console.error('Error linking collection:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   const unlinkCollection = useCallback(async (collectionId) => {
     try {
-      const response = await apiDelete(`/projects/${projectId}/collections/${collectionId}`);
+      const response = await apiDelete(`/spaces/${spaceId}/collections/${collectionId}`);
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to unlink collection');
@@ -522,7 +522,7 @@ export function useProjectKBLinks(projectId) {
       console.error('Error unlinking collection:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   return {
     links,
@@ -534,13 +534,13 @@ export function useProjectKBLinks(projectId) {
   };
 }
 
-export function useProjectChats(projectId) {
+export function useSpaceChats(spaceId) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const loadChats = useCallback(async () => {
-    if (!projectId) {
+    if (!spaceId) {
       setChats([]);
       setLoading(false);
       return;
@@ -549,7 +549,7 @@ export function useProjectChats(projectId) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiGet(`/projects/${projectId}/chats`);
+      const response = await apiGet(`/spaces/${spaceId}/chats`);
       if (!response.ok) {
         throw new Error('Failed to load chats');
       }
@@ -561,7 +561,7 @@ export function useProjectChats(projectId) {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   useEffect(() => {
     loadChats();
@@ -569,7 +569,7 @@ export function useProjectChats(projectId) {
 
   const deleteChat = useCallback(async (chatId) => {
     try {
-      const response = await apiDelete(`/projects/${projectId}/chats/${chatId}`);
+      const response = await apiDelete(`/spaces/${spaceId}/chats/${chatId}`);
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to delete chat');
@@ -580,7 +580,7 @@ export function useProjectChats(projectId) {
       console.error('Error deleting chat:', err);
       throw err;
     }
-  }, [projectId]);
+  }, [spaceId]);
 
   return {
     chats,

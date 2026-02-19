@@ -23,9 +23,9 @@ const ConnectionsPage = lazy(() => import('./pages/ConnectionsPage'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
-const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
-const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
-const ProjectChatPage = lazy(() => import('./pages/ProjectChatPage'));
+const SpacesPage = lazy(() => import('./pages/SpacesPage'));
+const SpaceDetailPage = lazy(() => import('./pages/SpaceDetailPage'));
+const SpaceChatPage = lazy(() => import('./pages/SpaceChatPage'));
 const SharedChatPage = lazy(() => import('./pages/SharedChatPage'));
 const AppsPage = lazy(() => import('./pages/AppsPage'));
 const ContractsPage = lazy(() => import('./apps/vertragsmanagement/ContractsPage'));
@@ -167,9 +167,9 @@ function AppRoutes() {
                   <Route path="/providers" element={<ProvidersPage />} />
                   <Route path="/connections" element={<ConnectionsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/projects" element={<ProjectsPage />} />
-                  <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-                  <Route path="/projects/:projectId/chat" element={<ProjectChatPage />} />
+                  <Route path="/spaces" element={<SpacesPage />} />
+                  <Route path="/spaces/:spaceId" element={<SpaceDetailPage />} />
+                  <Route path="/spaces/:spaceId/chat" element={<SpaceChatPage />} />
                   <Route path="/apps" element={<AppsPage />} />
                   <Route path="/apps/vertragsmanagement" element={<ContractsPage />} />
                   <Route path="/apps/vertragsmanagement/upload" element={<ContractUploadPage />} />

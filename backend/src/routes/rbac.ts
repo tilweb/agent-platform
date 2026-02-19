@@ -31,7 +31,7 @@ export const rbacRoutes = new Hono();
 rbacRoutes.use('*', authMiddleware);
 
 // Valid resource types
-const VALID_RESOURCE_TYPES: ResourceType[] = ['project', 'collection', 'contract', 'skill', 'agent'];
+const VALID_RESOURCE_TYPES: ResourceType[] = ['space', 'collection', 'contract', 'skill', 'agent'];
 
 // Valid roles
 const VALID_ROLES: ResourceRole[] = ['owner', 'admin', 'editor', 'viewer'];

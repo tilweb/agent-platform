@@ -1,14 +1,14 @@
 /**
- * ProjectChatPage
+ * SpaceChatPage
  *
- * Chat page with project context injection.
- * Based on ChatPage but includes project context.
+ * Chat page with space context injection.
+ * Based on ChatPage but includes space context.
  */
 
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { theme } from '../config/theme';
-import { useProject } from '../hooks/useProjects';
+import { useSpace } from '../hooks/useSpaces';
 import { useAgentContext } from '../context/AgentContext';
 import { apiGet } from '../utils/apiFetch';
 import { BriefcaseIcon, ArrowLeftIcon, SendIcon } from '../components/Icons';
@@ -47,7 +47,7 @@ const styles = {
     cursor: 'pointer',
     transition: `all ${theme.transitions.fast}`,
   },
-  projectBadge: {
+  spaceBadge: {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing.sm,
@@ -55,7 +55,7 @@ const styles = {
     backgroundColor: '#9333ea15',
     borderRadius: theme.borderRadius.md,
   },
-  projectIcon: {
+  spaceIcon: {
     width: '24px',
     height: '24px',
     borderRadius: theme.borderRadius.sm,
@@ -64,7 +64,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  projectName: {
+  spaceName: {
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
     color: '#9333ea',
@@ -169,13 +169,13 @@ const styles = {
   },
 };
 
-export default function ProjectChatPage() {
-  const { projectId } = useParams();
+export default function SpaceChatPage() {
+  const { spaceId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session');
 
-  const { project, loading: projectLoading, error: projectError } = useProject(projectId);
+  const { space, loading: spaceLoading, error: spaceError } = useSpace(spaceId);
   const { selectedAgent } = useAgentContext();
 
   const [messages, setMessages] = useState([]);
@@ -233,7 +233,7 @@ export default function ProjectChatPage() {
           message,
           sessionId: currentSessionId || undefined,
           agentId: selectedAgent?.id || 'supervisor',
-          projectId,
+          spaceId,
         }),
       });
 
@@ -318,22 +318,22 @@ export default function ProjectChatPage() {
     }
   };
 
-  if (projectLoading) {
+  if (spaceLoading) {
     return <div style={styles.loading}>Lade Space...</div>;
   }
 
-  if (projectError || !project) {
+  if (spaceError || !space) {
     return (
       <div style={styles.error}>
         <div>Space konnte nicht geladen werden</div>
-        <button style={styles.errorButton} onClick={() => navigate('/projects')}>
+        <button style={styles.errorButton} onClick={() => navigate('/spaces')}>
           Zurueck zur Uebersicht
         </button>
       </div>
     );
   }
 
-  const color = project.color || '#9333ea';
+  const color = space.color || '#9333ea';
 
   return (
     <div style={styles.container}>
@@ -342,17 +342,17 @@ export default function ProjectChatPage() {
         <div style={styles.headerLeft}>
           <button
             style={styles.backButton}
-            onClick={() => navigate(`/projects/${projectId}`)}
+            onClick={() => navigate(`/spaces/${spaceId}`)}
             onMouseOver={(e) => e.currentTarget.style.backgroundColor = theme.colors.surfaceHover}
             onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <ArrowLeftIcon size={20} />
           </button>
-          <div style={styles.projectBadge}>
-            <div style={{ ...styles.projectIcon, backgroundColor: `${color}20` }}>
+          <div style={styles.spaceBadge}>
+            <div style={{ ...styles.spaceIcon, backgroundColor: `${color}20` }}>
               <BriefcaseIcon size={14} color={color} />
             </div>
-            <span style={{ ...styles.projectName, color }}>{project.name}</span>
+            <span style={{ ...styles.spaceName, color }}>{space.name}</span>
           </div>
         </div>
       </div>
@@ -373,7 +373,7 @@ export default function ProjectChatPage() {
                 Space-Chat
               </div>
               <div>
-                Starte eine Konversation im Kontext von "{project.name}".
+                Starte eine Konversation im Kontext von "{space.name}".
                 Der Assistent kennt das Space-Memory und die verknuepfte Knowledge Base.
               </div>
             </div>

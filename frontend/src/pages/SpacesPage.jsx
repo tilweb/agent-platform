@@ -1,5 +1,5 @@
 /**
- * ProjectsPage (Spaces)
+ * SpacesPage
  *
  * Overview page for all spaces (projects, initiatives, teams) the user has access to.
  */
@@ -7,8 +7,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
-import { useProjects } from '../hooks/useProjects';
-import ProjectCard from '../components/ProjectCard';
+import { useSpaces } from '../hooks/useSpaces';
+import SpaceCard from '../components/SpaceCard';
 import { BriefcaseIcon, SparklesIcon, ArchiveIcon } from '../components/Icons';
 
 const styles = {
@@ -205,38 +205,38 @@ const styles = {
   },
 };
 
-export default function ProjectsPage() {
+export default function SpacesPage() {
   const navigate = useNavigate();
   const [showArchived, setShowArchived] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newProjectName, setNewProjectName] = useState('');
-  const [newProjectDescription, setNewProjectDescription] = useState('');
+  const [newSpaceName, setNewSpaceName] = useState('');
+  const [newSpaceDescription, setNewSpaceDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  const { projects, loading, error, createProject } = useProjects(showArchived);
+  const { spaces, loading, error, createSpace } = useSpaces(showArchived);
 
-  const handleCreateProject = async (e) => {
+  const handleCreateSpace = async (e) => {
     e.preventDefault();
-    if (!newProjectName.trim()) return;
+    if (!newSpaceName.trim()) return;
 
     setIsCreating(true);
     try {
-      const project = await createProject(newProjectName.trim(), {
-        description: newProjectDescription.trim() || undefined,
+      const space = await createSpace(newSpaceName.trim(), {
+        description: newSpaceDescription.trim() || undefined,
       });
       setShowCreateModal(false);
-      setNewProjectName('');
-      setNewProjectDescription('');
-      navigate(`/projects/${project.id}`);
+      setNewSpaceName('');
+      setNewSpaceDescription('');
+      navigate(`/spaces/${space.id}`);
     } catch (err) {
-      console.error('Failed to create project:', err);
+      console.error('Failed to create space:', err);
     } finally {
       setIsCreating(false);
     }
   };
 
-  const handleProjectClick = (projectId) => {
-    navigate(`/projects/${projectId}`);
+  const handleSpaceClick = (spaceId) => {
+    navigate(`/spaces/${spaceId}`);
   };
 
   if (loading) {
@@ -291,7 +291,7 @@ export default function ProjectsPage() {
         </label>
       </div>
 
-      {projects.length === 0 ? (
+      {spaces.length === 0 ? (
         <div style={styles.emptyState}>
           <BriefcaseIcon size={48} style={styles.emptyIcon} />
           <div style={styles.emptyTitle}>Keine Spaces vorhanden</div>
@@ -309,17 +309,17 @@ export default function ProjectsPage() {
         </div>
       ) : (
         <div style={styles.grid}>
-          {projects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onClick={() => handleProjectClick(project.id)}
+          {spaces.map((space) => (
+            <SpaceCard
+              key={space.id}
+              space={space}
+              onClick={() => handleSpaceClick(space.id)}
             />
           ))}
         </div>
       )}
 
-      {/* Create Project Modal */}
+      {/* Create Space Modal */}
       {showCreateModal && (
         <div
           style={styles.modalOverlay}
@@ -330,15 +330,15 @@ export default function ProjectsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 style={styles.modalTitle}>Neuen Space erstellen</h2>
-            <form onSubmit={handleCreateProject}>
+            <form onSubmit={handleCreateSpace}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>Name</label>
                 <input
                   type="text"
                   style={styles.input}
                   placeholder="z.B. Marketing Team, Projekt Alpha, Initiative 2024"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
+                  value={newSpaceName}
+                  onChange={(e) => setNewSpaceName(e.target.value)}
                   autoFocus
                 />
               </div>
@@ -347,8 +347,8 @@ export default function ProjectsPage() {
                 <textarea
                   style={styles.textarea}
                   placeholder="Worum geht es in diesem Space?"
-                  value={newProjectDescription}
-                  onChange={(e) => setNewProjectDescription(e.target.value)}
+                  value={newSpaceDescription}
+                  onChange={(e) => setNewSpaceDescription(e.target.value)}
                 />
               </div>
               <div style={styles.modalButtons}>
@@ -362,7 +362,7 @@ export default function ProjectsPage() {
                 <button
                   type="submit"
                   style={styles.submitButton}
-                  disabled={isCreating || !newProjectName.trim()}
+                  disabled={isCreating || !newSpaceName.trim()}
                 >
                   {isCreating ? 'Erstelle...' : 'Erstellen'}
                 </button>

@@ -79,8 +79,8 @@ backend/data/tasks/
 backend/data/results/
 backend/data/plans/
 
-# Project runtime data
-backend/data/projects/
+# Space runtime data
+backend/data/spaces/
 
 # Table data
 backend/data/tables/

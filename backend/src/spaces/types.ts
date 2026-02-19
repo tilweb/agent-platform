@@ -1,33 +1,33 @@
 /**
- * Project Types
+ * Space Types
  *
- * TypeScript interfaces for the Projects feature.
- * Enables multi-user collaboration with project-specific memory and KB.
+ * TypeScript interfaces for the Spaces feature.
+ * Enables multi-user collaboration with space-specific memory and KB.
  */
 
 // Role types
-export type ProjectRole = 'owner' | 'admin' | 'editor' | 'viewer';
+export type SpaceRole = 'owner' | 'admin' | 'editor' | 'viewer';
 export type MemorySource = 'manual' | 'agent';
 export type Priority = 'high' | 'normal';
 export type MemorySection = 'about' | 'instructions' | 'context';
 
-// Project Member
-export interface ProjectMember {
+// Space Member
+export interface SpaceMember {
   userId: string;
-  role: ProjectRole;
+  role: SpaceRole;
   addedAt: string;
   addedBy: string;
 }
 
-// Project Settings
-export interface ProjectSettings {
+// Space Settings
+export interface SpaceSettings {
   include_memory_in_prompt: boolean;
   include_kb_in_prompt: boolean;
-  default_chat_visibility: 'project' | 'private';
+  default_chat_visibility: 'space' | 'private';
 }
 
-// Main Project Interface
-export interface Project {
+// Main Space Interface
+export interface Space {
   id: string;
   name: string;
   description?: string;
@@ -36,12 +36,12 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   createdBy: string;                // userId of creator
-  members: ProjectMember[];
-  settings: ProjectSettings;
+  members: SpaceMember[];
+  settings: SpaceSettings;
   archived: boolean;
 }
 
-// Project Memory Items (same structure as User Memory)
+// Space Memory Items (same structure as User Memory)
 export interface AboutItem {
   id: string;
   content: string;
@@ -66,9 +66,9 @@ export interface ContextItem {
   source: MemorySource;
 }
 
-// Project Memory
-export interface ProjectMemory {
-  projectId: string;
+// Space Memory
+export interface SpaceMemory {
+  spaceId: string;
   updatedAt: string;
   about: AboutItem[];
   instructions: InstructionItem[];
@@ -82,89 +82,89 @@ export interface KBCollectionLink {
   linkedBy: string;
 }
 
-// Project KB Links Storage
-export interface ProjectKBLinks {
-  projectId: string;
+// Space KB Links Storage
+export interface SpaceKBLinks {
+  spaceId: string;
   updatedAt: string;
   collections: KBCollectionLink[];
 }
 
-// Project Chat (stored per project)
-export interface ProjectChatMessage {
+// Space Chat (stored per space)
+export interface SpaceChatMessage {
   role: 'user' | 'assistant';
   content: string;
   agentId?: string;
   routedBy?: string;
 }
 
-export interface ProjectChat {
+export interface SpaceChat {
   id: string;
-  projectId: string;
+  spaceId: string;
   userId: string;           // Who initiated the chat
   title: string;
   summary?: string;
   keywords?: string[];
   createdAt: string;
   updatedAt: string;
-  messages: ProjectChatMessage[];
+  messages: SpaceChatMessage[];
 }
 
 // Role permission matrix
-export const ROLE_PERMISSIONS: Record<ProjectRole, {
-  canEditProject: boolean;
+export const ROLE_PERMISSIONS: Record<SpaceRole, {
+  canEditSpace: boolean;
   canEditSettings: boolean;
   canWriteMemory: boolean;
   canViewChats: boolean;
   canManageMembers: boolean;
-  canDeleteProject: boolean;
+  canDeleteSpace: boolean;
 }> = {
   owner: {
-    canEditProject: true,
+    canEditSpace: true,
     canEditSettings: true,
     canWriteMemory: true,
     canViewChats: true,
     canManageMembers: true,
-    canDeleteProject: true,
+    canDeleteSpace: true,
   },
   admin: {
-    canEditProject: false,
+    canEditSpace: false,
     canEditSettings: true,
     canWriteMemory: true,
     canViewChats: true,
     canManageMembers: true, // except owner
-    canDeleteProject: false,
+    canDeleteSpace: false,
   },
   editor: {
-    canEditProject: false,
+    canEditSpace: false,
     canEditSettings: false,
     canWriteMemory: true,
     canViewChats: true,
     canManageMembers: false,
-    canDeleteProject: false,
+    canDeleteSpace: false,
   },
   viewer: {
-    canEditProject: false,
+    canEditSpace: false,
     canEditSettings: false,
     canWriteMemory: false,
     canViewChats: true,
     canManageMembers: false,
-    canDeleteProject: false,
+    canDeleteSpace: false,
   },
 };
 
-// Default project settings
-export function createDefaultSettings(): ProjectSettings {
+// Default space settings
+export function createDefaultSettings(): SpaceSettings {
   return {
     include_memory_in_prompt: true,
     include_kb_in_prompt: true,
-    default_chat_visibility: 'project',
+    default_chat_visibility: 'space',
   };
 }
 
 // Default empty memory
-export function createDefaultMemory(projectId: string): ProjectMemory {
+export function createDefaultMemory(spaceId: string): SpaceMemory {
   return {
-    projectId,
+    spaceId,
     updatedAt: '',
     about: [],
     instructions: [],
@@ -173,9 +173,9 @@ export function createDefaultMemory(projectId: string): ProjectMemory {
 }
 
 // Default empty KB links
-export function createDefaultKBLinks(projectId: string): ProjectKBLinks {
+export function createDefaultKBLinks(spaceId: string): SpaceKBLinks {
   return {
-    projectId,
+    spaceId,
     updatedAt: '',
     collections: [],
   };

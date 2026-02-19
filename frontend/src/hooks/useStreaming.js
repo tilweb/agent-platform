@@ -72,7 +72,7 @@ export function useStreaming() {
   }, []);
 
   const sendMessage = useCallback(async (userMessage, options = {}) => {
-    const { agentId, autoRoute = true, files, skillId, readers, preparedSessionId, projectId } = options;
+    const { agentId, autoRoute = true, files, skillId, readers, preparedSessionId, spaceId } = options;
 
     // If a preparedSessionId is provided, use it (from prepare-readers call)
     if (preparedSessionId && !sessionIdRef.current) {
@@ -126,8 +126,8 @@ export function useStreaming() {
         if (readers && readers.length > 0) {
           formData.append('readers', JSON.stringify(readers));
         }
-        if (projectId) {
-          formData.append('projectId', projectId);
+        if (spaceId) {
+          formData.append('spaceId', spaceId);
         }
 
         // Append all files
@@ -147,7 +147,7 @@ export function useStreaming() {
           autoRoute,
           skillId,
           readers,
-          projectId,
+          spaceId,
         });
       }
 

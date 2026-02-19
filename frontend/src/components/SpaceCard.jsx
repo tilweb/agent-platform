@@ -1,7 +1,7 @@
 /**
- * ProjectCard Component
+ * SpaceCard Component
  *
- * Card for displaying a project in the overview grid.
+ * Card for displaying a space in the overview grid.
  */
 
 import { theme } from '../config/theme';
@@ -92,15 +92,15 @@ const styles = {
   },
 };
 
-function getProjectColor(project) {
-  return project.color || '#9333ea';
+function getSpaceColor(space) {
+  return space.color || '#9333ea';
 }
 
 // formatDate (formatDateRelative) is imported from utils/dateFormat
 
-export default function ProjectCard({ project, onClick }) {
-  const color = getProjectColor(project);
-  const memberCount = project.members?.length || 1;
+export default function SpaceCard({ space, onClick }) {
+  const color = getSpaceColor(space);
+  const memberCount = space.members?.length || 1;
 
   return (
     <div
@@ -125,9 +125,9 @@ export default function ProjectCard({ project, onClick }) {
           <BriefcaseIcon size={22} color={color} />
         </div>
         <div style={styles.content}>
-          <div style={styles.name}>{project.name}</div>
-          {project.description && (
-            <div style={styles.description}>{project.description}</div>
+          <div style={styles.name}>{space.name}</div>
+          {space.description && (
+            <div style={styles.description}>{space.description}</div>
           )}
         </div>
       </div>
@@ -138,14 +138,14 @@ export default function ProjectCard({ project, onClick }) {
           <span>{memberCount} {memberCount === 1 ? 'Mitglied' : 'Mitglieder'}</span>
         </div>
 
-        {project.archived ? (
+        {space.archived ? (
           <span style={styles.archivedBadge}>
             <ArchiveIcon size={12} />
             Archiviert
           </span>
         ) : (
           <span style={styles.updatedAt}>
-            {formatDate(project.updatedAt)}
+            {formatDate(space.updatedAt)}
           </span>
         )}
       </div>

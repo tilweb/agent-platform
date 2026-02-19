@@ -1,13 +1,13 @@
 /**
- * ProjectSettings Component
+ * SpaceSettings Component
  *
- * Project settings management.
+ * Space settings management.
  */
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
-import { useProjects } from '../hooks/useProjects';
+import { useSpaces } from '../hooks/useSpaces';
 import { TrashIcon, ArchiveIcon } from './Icons';
 
 const styles = {
@@ -116,13 +116,13 @@ const styles = {
   },
 };
 
-export default function ProjectSettings({ project, onUpdateSettings, onRefresh }) {
+export default function SpaceSettings({ space, onUpdateSettings, onRefresh }) {
   const navigate = useNavigate();
-  const { deleteProject, archiveProject, unarchiveProject } = useProjects();
+  const { deleteSpace, archiveSpace, unarchiveSpace } = useSpaces();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
 
-  const settings = project.settings || {};
+  const settings = space.settings || {};
 
   const handleSettingChange = async (key, value) => {
     try {
@@ -133,16 +133,16 @@ export default function ProjectSettings({ project, onUpdateSettings, onRefresh }
   };
 
   const handleArchive = async () => {
-    if (!confirm(project.archived
+    if (!confirm(space.archived
       ? 'Space wieder aktivieren?'
       : 'Space archivieren? Er wird nicht mehr in der Uebersicht angezeigt.')) return;
 
     setIsArchiving(true);
     try {
-      if (project.archived) {
-        await unarchiveProject(project.id);
+      if (space.archived) {
+        await unarchiveSpace(space.id);
       } else {
-        await archiveProject(project.id);
+        await archiveSpace(space.id);
       }
       onRefresh();
     } catch (err) {
@@ -153,7 +153,7 @@ export default function ProjectSettings({ project, onUpdateSettings, onRefresh }
   };
 
   const handleDelete = async () => {
-    const confirmText = `Space "${project.name}" wirklich loeschen? Diese Aktion kann nicht rueckgaengig gemacht werden!`;
+    const confirmText = `Space "${space.name}" wirklich loeschen? Diese Aktion kann nicht rueckgaengig gemacht werden!`;
     if (!confirm(confirmText)) return;
 
     // Double confirmation
@@ -161,8 +161,8 @@ export default function ProjectSettings({ project, onUpdateSettings, onRefresh }
 
     setIsDeleting(true);
     try {
-      await deleteProject(project.id);
-      navigate('/projects');
+      await deleteSpace(space.id);
+      navigate('/spaces');
     } catch (err) {
       console.error('Failed to delete:', err);
       alert('Fehler beim Loeschen: ' + err.message);
@@ -218,10 +218,10 @@ export default function ProjectSettings({ project, onUpdateSettings, onRefresh }
         <div style={styles.dangerRow}>
           <div>
             <div style={styles.dangerLabel}>
-              {project.archived ? 'Space reaktivieren' : 'Space archivieren'}
+              {space.archived ? 'Space reaktivieren' : 'Space archivieren'}
             </div>
             <div style={styles.dangerDescription}>
-              {project.archived
+              {space.archived
                 ? 'Der Space wird wieder in der Uebersicht angezeigt.'
                 : 'Archivierte Spaces werden ausgeblendet, bleiben aber erhalten.'}
             </div>
@@ -234,7 +234,7 @@ export default function ProjectSettings({ project, onUpdateSettings, onRefresh }
             <ArchiveIcon size={16} />
             {isArchiving
               ? 'Bitte warten...'
-              : project.archived
+              : space.archived
                 ? 'Reaktivieren'
                 : 'Archivieren'}
           </button>

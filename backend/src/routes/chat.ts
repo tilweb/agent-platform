@@ -54,7 +54,7 @@ import {
   type ChatExportOptions,
 } from '../services/documentGenerator';
 
-// Store for pending messages (sessionId -> { message, agentId, autoRoute, attachments, skillId, userId, readerContexts, projectId, modelOverride })
+// Store for pending messages (sessionId -> { message, agentId, autoRoute, attachments, skillId, userId, readerContexts, spaceId, modelOverride })
 interface PendingMessage {
   message: string;
   agentId?: string;
@@ -63,7 +63,7 @@ interface PendingMessage {
   skillId?: string;  // Explicit skill to activate
   userId?: string;   // User ID for connection tools
   readerContexts?: DocumentContext[];  // Pre-loaded document contexts for chat
-  projectId?: string;  // Project context for memory and KB injection
+  spaceId?: string;  // Space context for memory and KB injection
   modelOverride?: { providerId: string; modelId: string };  // Per-chat model override (highest priority)
 }
 const pendingMessages = new Map<string, PendingMessage>();
@@ -77,7 +77,7 @@ chatRoutes.post('/', chatRateLimit, authMiddleware, async (c) => {
   let autoRoute = true;
   let files: File[] = [];
   let skillId: string | undefined;
-  let projectId: string | undefined;
+  let spaceId: string | undefined;
   let modelOverride: { providerId: string; modelId: string } | undefined;
   const userId = getCurrentUserId(c);  // May be undefined if not authenticated
   console.log(`[Chat POST] userId from auth: ${userId}`);
@@ -99,7 +99,7 @@ chatRoutes.post('/', chatRateLimit, authMiddleware, async (c) => {
     const autoRouteStr = formStr('autoRoute');
     autoRoute = autoRouteStr !== 'false';
     skillId = formStr('skillId');
-    projectId = formStr('projectId');
+    spaceId = formStr('spaceId');
     const readersStr = formStr('readers');
     if (readersStr) {
       try {
@@ -129,7 +129,7 @@ chatRoutes.post('/', chatRateLimit, authMiddleware, async (c) => {
     agentId = body.agentId;
     autoRoute = body.autoRoute !== false;
     skillId = body.skillId;
-    projectId = body.projectId;
+    spaceId = body.spaceId;
     readers = body.readers || [];
     // Model override for per-chat model selection
     if (body.modelOverride?.providerId && body.modelOverride?.modelId) {
@@ -240,12 +240,12 @@ chatRoutes.post('/', chatRateLimit, authMiddleware, async (c) => {
     skillId,
     userId,
     readerContexts: readerContexts.length > 0 ? readerContexts : undefined,
-    projectId,
+    spaceId,
     modelOverride,
   });
 
-  if (projectId) {
-    console.log(`[Chat POST] Project context: ${projectId}`);
+  if (spaceId) {
+    console.log(`[Chat POST] Space context: ${spaceId}`);
   }
 
   // For frontend response, return metadata including URL and transcription for display
@@ -334,7 +334,7 @@ chatRoutes.get('/:id/stream', authMiddleware, async (c) => {
     return c.json({ error: 'No pending message for this session' }, 400);
   }
 
-  const { message: userMessage, agentId, attachments, userId, readerContexts, projectId, modelOverride } = pending;
+  const { message: userMessage, agentId, attachments, userId, readerContexts, spaceId, modelOverride } = pending;
 
   return streamSSE(c, async (stream) => {
     // Heartbeat to keep SSE connection alive during long-running delegations
@@ -370,7 +370,7 @@ chatRoutes.get('/:id/stream', authMiddleware, async (c) => {
         }
       }
 
-      for await (const event of runAgentLoop(sessionId, userMessage, { agentId, attachments, skillId: pending.skillId, userId, readerContexts, projectId, modelOverride })) {
+      for await (const event of runAgentLoop(sessionId, userMessage, { agentId, attachments, skillId: pending.skillId, userId, readerContexts, spaceId, modelOverride })) {
         const eventData = formatEventData(event);
 
         // Save conversation BEFORE sending done event to ensure chat is
@@ -389,7 +389,7 @@ chatRoutes.get('/:id/stream', authMiddleware, async (c) => {
             preview: att.markdownContent ? att.markdownContent.slice(0, 500) : undefined,
           }));
 
-          await saveChatHistory(sessionId, userId, projectId, messageAttachments);
+          await saveChatHistory(sessionId, userId, spaceId, messageAttachments);
         }
 
         await stream.writeSSE({

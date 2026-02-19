@@ -5,7 +5,7 @@
  * Three sections:
  * - about: Facts about the user (bio, background, role)
  * - instructions: How the assistant should behave
- * - context: Current projects and tasks
+ * - context: Current spaces and tasks
  */
 
 import type { Tool, ToolDefinition, ToolContext } from '../types';
@@ -52,7 +52,7 @@ export class UserMemoryTool implements Tool {
 Sektionen:
 - about: Fakten ueber den Benutzer (Beruf, Firma, Hintergrund, Faehigkeiten)
 - instructions: Wie du antworten sollst (Sprache, Stil, Format, Regeln)
-- context: Aktuelle Projekte und Aufgaben des Benutzers
+- context: Aktuelle Spaces und Aufgaben des Benutzers
 
 Beispiele:
 - "Ich bin AI Consultant bei TechCorp" -> section: about, content: "AI Consultant bei TechCorp"

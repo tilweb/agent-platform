@@ -1,60 +1,60 @@
 /**
- * Project Service
+ * Space Service
  *
- * High-level business logic for project operations.
+ * High-level business logic for space operations.
  * Combines storage operations with permission checks.
  */
 
 import type {
-  Project,
-  ProjectMember,
-  ProjectMemory,
-  ProjectSettings,
-  ProjectKBLinks,
-  ProjectRole,
+  Space,
+  SpaceMember,
+  SpaceMemory,
+  SpaceSettings,
+  SpaceKBLinks,
+  SpaceRole,
   MemorySection,
   Priority,
   MemorySource,
 } from './types';
 
 import {
-  createProject as storageCreateProject,
-  loadProject,
-  updateProject as storageUpdateProject,
-  deleteProject as storageDeleteProject,
-  listProjects as storageListProjects,
-  getProjectMembers as storageGetMembers,
-  addProjectMember as storageAddMember,
+  createSpace as storageCreateSpace,
+  loadSpace,
+  updateSpace as storageUpdateSpace,
+  deleteSpace as storageDeleteSpace,
+  listSpaces as storageListSpaces,
+  getSpaceMembers as storageGetMembers,
+  addSpaceMember as storageAddMember,
   updateMemberRole as storageUpdateMemberRole,
-  removeProjectMember as storageRemoveMember,
-  updateProjectSettings as storageUpdateSettings,
-  loadProjectMemory,
-  saveProjectMemory,
-  addProjectAboutItem,
-  addProjectInstruction,
-  addProjectContextItem,
-  deleteProjectMemoryItem,
-  setProjectContextActive,
-  formatProjectMemoryForPrompt,
-  loadProjectKBLinks,
+  removeSpaceMember as storageRemoveMember,
+  updateSpaceSettings as storageUpdateSettings,
+  loadSpaceMemory,
+  saveSpaceMemory,
+  addSpaceAboutItem,
+  addSpaceInstruction,
+  addSpaceContextItem,
+  deleteSpaceMemoryItem,
+  setSpaceContextActive,
+  formatSpaceMemoryForPrompt,
+  loadSpaceKBLinks,
   linkKBCollection as storageLinkKB,
   unlinkKBCollection as storageUnlinkKB,
-  getProjectKBCollectionIds,
-  listProjectChats,
-  loadProjectChat,
-  deleteProjectChat as storageDeleteChat,
+  getSpaceKBCollectionIds,
+  listSpaceChats,
+  loadSpaceChat,
+  deleteSpaceChat as storageDeleteChat,
 } from './storage';
 
 import {
-  canViewProject,
-  canEditProject,
+  canViewSpace,
+  canEditSpace,
   canEditSettings,
   canWriteMemory,
   canViewChats,
   canManageMembers,
   canModifyMember,
-  canDeleteProject,
-  canArchiveProject,
+  canDeleteSpace,
+  canArchiveSpace,
   getUserPermissions,
 } from './permissions';
 
@@ -66,13 +66,13 @@ export interface ServiceResult<T> {
 }
 
 // =============================================================================
-// Project CRUD
+// Space CRUD
 // =============================================================================
 
 /**
- * Create a new project
+ * Create a new space
  */
-export async function createProject(
+export async function createSpace(
   userId: string,
   name: string,
   options?: {
@@ -80,50 +80,50 @@ export async function createProject(
     icon?: string;
     color?: string;
   }
-): Promise<ServiceResult<Project>> {
+): Promise<ServiceResult<Space>> {
   if (!name || name.trim().length === 0) {
-    return { success: false, error: 'Projektname ist erforderlich' };
+    return { success: false, error: 'Space-Name ist erforderlich' };
   }
 
   if (name.length > 100) {
-    return { success: false, error: 'Projektname darf maximal 100 Zeichen haben' };
+    return { success: false, error: 'Space-Name darf maximal 100 Zeichen haben' };
   }
 
   try {
-    const project = await storageCreateProject(name.trim(), userId, options);
-    return { success: true, data: project };
+    const space = await storageCreateSpace(name.trim(), userId, options);
+    return { success: true, data: space };
   } catch (error: any) {
-    console.error('Error creating project:', error);
-    return { success: false, error: error.message || 'Fehler beim Erstellen des Projekts' };
+    console.error('Error creating space:', error);
+    return { success: false, error: error.message || 'Fehler beim Erstellen des Spaces' };
   }
 }
 
 /**
- * Get a project by ID
+ * Get a space by ID
  */
-export async function getProject(
-  projectId: string,
+export async function getSpace(
+  spaceId: string,
   userId: string
-): Promise<ServiceResult<Project>> {
-  const permission = await canViewProject(projectId, userId);
+): Promise<ServiceResult<Space>> {
+  const permission = await canViewSpace(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
-  const project = await loadProject(projectId);
-  if (!project) {
-    return { success: false, error: 'Projekt nicht gefunden' };
+  const space = await loadSpace(spaceId);
+  if (!space) {
+    return { success: false, error: 'Space nicht gefunden' };
   }
 
-  return { success: true, data: project };
+  return { success: true, data: space };
 }
 
 /**
- * Update a project
+ * Update a space
  */
-export async function updateProject(
-  projectId: string,
+export async function updateSpace(
+  spaceId: string,
   userId: string,
   updates: {
     name?: string;
@@ -131,8 +131,8 @@ export async function updateProject(
     icon?: string;
     color?: string;
   }
-): Promise<ServiceResult<Project>> {
-  const permission = await canEditProject(projectId, userId);
+): Promise<ServiceResult<Space>> {
+  const permission = await canEditSpace(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
@@ -140,95 +140,95 @@ export async function updateProject(
 
   if (updates.name !== undefined) {
     if (updates.name.trim().length === 0) {
-      return { success: false, error: 'Projektname ist erforderlich' };
+      return { success: false, error: 'Space-Name ist erforderlich' };
     }
     if (updates.name.length > 100) {
-      return { success: false, error: 'Projektname darf maximal 100 Zeichen haben' };
+      return { success: false, error: 'Space-Name darf maximal 100 Zeichen haben' };
     }
     updates.name = updates.name.trim();
   }
 
   try {
-    const project = await storageUpdateProject(projectId, updates);
-    if (!project) {
-      return { success: false, error: 'Projekt nicht gefunden' };
+    const space = await storageUpdateSpace(spaceId, updates);
+    if (!space) {
+      return { success: false, error: 'Space nicht gefunden' };
     }
-    return { success: true, data: project };
+    return { success: true, data: space };
   } catch (error: any) {
-    console.error('Error updating project:', error);
+    console.error('Error updating space:', error);
     return { success: false, error: error.message || 'Fehler beim Aktualisieren' };
   }
 }
 
 /**
- * Archive or unarchive a project
+ * Archive or unarchive a space
  */
-export async function archiveProject(
-  projectId: string,
+export async function archiveSpace(
+  spaceId: string,
   userId: string,
   archived: boolean
-): Promise<ServiceResult<Project>> {
-  const permission = await canArchiveProject(projectId, userId);
+): Promise<ServiceResult<Space>> {
+  const permission = await canArchiveSpace(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const project = await storageUpdateProject(projectId, { archived });
-    if (!project) {
-      return { success: false, error: 'Projekt nicht gefunden' };
+    const space = await storageUpdateSpace(spaceId, { archived });
+    if (!space) {
+      return { success: false, error: 'Space nicht gefunden' };
     }
-    return { success: true, data: project };
+    return { success: true, data: space };
   } catch (error: any) {
-    console.error('Error archiving project:', error);
+    console.error('Error archiving space:', error);
     return { success: false, error: error.message || 'Fehler beim Archivieren' };
   }
 }
 
 /**
- * Delete a project
+ * Delete a space
  */
-export async function deleteProject(
-  projectId: string,
+export async function deleteSpace(
+  spaceId: string,
   userId: string
 ): Promise<ServiceResult<void>> {
-  const permission = await canDeleteProject(projectId, userId);
+  const permission = await canDeleteSpace(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const deleted = await storageDeleteProject(projectId);
+    const deleted = await storageDeleteSpace(spaceId);
     if (!deleted) {
-      return { success: false, error: 'Projekt nicht gefunden' };
+      return { success: false, error: 'Space nicht gefunden' };
     }
     return { success: true };
   } catch (error: any) {
-    console.error('Error deleting project:', error);
+    console.error('Error deleting space:', error);
     return { success: false, error: error.message || 'Fehler beim Löschen' };
   }
 }
 
 /**
- * List projects for a user
+ * List spaces for a user
  */
-export async function listUserProjects(
+export async function listUserSpaces(
   userId: string,
   includeArchived: boolean = false
-): Promise<ServiceResult<Project[]>> {
+): Promise<ServiceResult<Space[]>> {
   try {
-    let projects = await storageListProjects(userId);
+    let spaces = await storageListSpaces(userId);
 
     if (!includeArchived) {
-      projects = projects.filter((p) => !p.archived);
+      spaces = spaces.filter((p) => !p.archived);
     }
 
-    return { success: true, data: projects };
+    return { success: true, data: spaces };
   } catch (error: any) {
-    console.error('Error listing projects:', error);
-    return { success: false, error: error.message || 'Fehler beim Laden der Projekte' };
+    console.error('Error listing spaces:', error);
+    return { success: false, error: error.message || 'Fehler beim Laden der Spaces' };
   }
 }
 
@@ -237,20 +237,20 @@ export async function listUserProjects(
 // =============================================================================
 
 /**
- * Get project members
+ * Get space members
  */
 export async function getMembers(
-  projectId: string,
+  spaceId: string,
   userId: string
-): Promise<ServiceResult<ProjectMember[]>> {
-  const permission = await canViewProject(projectId, userId);
+): Promise<ServiceResult<SpaceMember[]>> {
+  const permission = await canViewSpace(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const members = await storageGetMembers(projectId);
+    const members = await storageGetMembers(spaceId);
     return { success: true, data: members };
   } catch (error: any) {
     console.error('Error getting members:', error);
@@ -259,15 +259,15 @@ export async function getMembers(
 }
 
 /**
- * Add a member to a project
+ * Add a member to a space
  */
 export async function addMember(
-  projectId: string,
+  spaceId: string,
   userId: string,
   targetUserId: string,
-  role: ProjectRole
-): Promise<ServiceResult<ProjectMember>> {
-  const permission = await canModifyMember(projectId, userId, targetUserId);
+  role: SpaceRole
+): Promise<ServiceResult<SpaceMember>> {
+  const permission = await canModifyMember(spaceId, userId, targetUserId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
@@ -279,7 +279,7 @@ export async function addMember(
   }
 
   try {
-    const member = await storageAddMember(projectId, targetUserId, role, userId);
+    const member = await storageAddMember(spaceId, targetUserId, role, userId);
     if (!member) {
       return { success: false, error: 'Fehler beim Hinzufügen des Mitglieds' };
     }
@@ -294,12 +294,12 @@ export async function addMember(
  * Update a member's role
  */
 export async function updateMemberRole(
-  projectId: string,
+  spaceId: string,
   userId: string,
   targetUserId: string,
-  newRole: ProjectRole
+  newRole: SpaceRole
 ): Promise<ServiceResult<void>> {
-  const permission = await canModifyMember(projectId, userId, targetUserId);
+  const permission = await canModifyMember(spaceId, userId, targetUserId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
@@ -311,7 +311,7 @@ export async function updateMemberRole(
   }
 
   try {
-    const success = await storageUpdateMemberRole(projectId, targetUserId, newRole);
+    const success = await storageUpdateMemberRole(spaceId, targetUserId, newRole);
     if (!success) {
       return { success: false, error: 'Mitglied nicht gefunden' };
     }
@@ -323,30 +323,30 @@ export async function updateMemberRole(
 }
 
 /**
- * Remove a member from a project
+ * Remove a member from a space
  */
 export async function removeMember(
-  projectId: string,
+  spaceId: string,
   userId: string,
   targetUserId: string
 ): Promise<ServiceResult<void>> {
-  const permission = await canModifyMember(projectId, userId, targetUserId);
+  const permission = await canModifyMember(spaceId, userId, targetUserId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   // Check target is not owner
-  const project = await loadProject(projectId);
-  if (project) {
-    const targetMember = project.members.find((m) => m.userId === targetUserId);
+  const space = await loadSpace(spaceId);
+  if (space) {
+    const targetMember = space.members.find((m) => m.userId === targetUserId);
     if (targetMember?.role === 'owner') {
       return { success: false, error: 'Owner kann nicht entfernt werden' };
     }
   }
 
   try {
-    const success = await storageRemoveMember(projectId, targetUserId);
+    const success = await storageRemoveMember(spaceId, targetUserId);
     if (!success) {
       return { success: false, error: 'Mitglied nicht gefunden' };
     }
@@ -362,23 +362,23 @@ export async function removeMember(
 // =============================================================================
 
 /**
- * Update project settings
+ * Update space settings
  */
 export async function updateSettings(
-  projectId: string,
+  spaceId: string,
   userId: string,
-  updates: Partial<ProjectSettings>
-): Promise<ServiceResult<ProjectSettings>> {
-  const permission = await canEditSettings(projectId, userId);
+  updates: Partial<SpaceSettings>
+): Promise<ServiceResult<SpaceSettings>> {
+  const permission = await canEditSettings(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const settings = await storageUpdateSettings(projectId, updates);
+    const settings = await storageUpdateSettings(spaceId, updates);
     if (!settings) {
-      return { success: false, error: 'Projekt nicht gefunden' };
+      return { success: false, error: 'Space nicht gefunden' };
     }
     return { success: true, data: settings };
   } catch (error: any) {
@@ -392,20 +392,20 @@ export async function updateSettings(
 // =============================================================================
 
 /**
- * Get project memory
+ * Get space memory
  */
 export async function getMemory(
-  projectId: string,
+  spaceId: string,
   userId: string
-): Promise<ServiceResult<ProjectMemory>> {
-  const permission = await canViewProject(projectId, userId);
+): Promise<ServiceResult<SpaceMemory>> {
+  const permission = await canViewSpace(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const memory = await loadProjectMemory(projectId);
+    const memory = await loadSpaceMemory(spaceId);
     return { success: true, data: memory };
   } catch (error: any) {
     console.error('Error getting memory:', error);
@@ -414,15 +414,15 @@ export async function getMemory(
 }
 
 /**
- * Add an about item to project memory
+ * Add an about item to space memory
  */
 export async function addAbout(
-  projectId: string,
+  spaceId: string,
   userId: string,
   content: string,
   source: MemorySource = 'manual'
 ): Promise<ServiceResult<any>> {
-  const permission = await canWriteMemory(projectId, userId);
+  const permission = await canWriteMemory(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
@@ -433,7 +433,7 @@ export async function addAbout(
   }
 
   try {
-    const item = await addProjectAboutItem(projectId, content.trim(), source);
+    const item = await addSpaceAboutItem(spaceId, content.trim(), source);
     return { success: true, data: item };
   } catch (error: any) {
     console.error('Error adding about item:', error);
@@ -442,16 +442,16 @@ export async function addAbout(
 }
 
 /**
- * Add an instruction to project memory
+ * Add an instruction to space memory
  */
 export async function addInstruction(
-  projectId: string,
+  spaceId: string,
   userId: string,
   content: string,
   priority: Priority = 'normal',
   source: MemorySource = 'manual'
 ): Promise<ServiceResult<any>> {
-  const permission = await canWriteMemory(projectId, userId);
+  const permission = await canWriteMemory(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
@@ -462,7 +462,7 @@ export async function addInstruction(
   }
 
   try {
-    const item = await addProjectInstruction(projectId, content.trim(), priority, source);
+    const item = await addSpaceInstruction(spaceId, content.trim(), priority, source);
     return { success: true, data: item };
   } catch (error: any) {
     console.error('Error adding instruction:', error);
@@ -471,17 +471,17 @@ export async function addInstruction(
 }
 
 /**
- * Add a context item to project memory
+ * Add a context item to space memory
  */
 export async function addContext(
-  projectId: string,
+  spaceId: string,
   userId: string,
   name: string,
   description?: string,
   active: boolean = true,
   source: MemorySource = 'manual'
 ): Promise<ServiceResult<any>> {
-  const permission = await canWriteMemory(projectId, userId);
+  const permission = await canWriteMemory(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
@@ -492,8 +492,8 @@ export async function addContext(
   }
 
   try {
-    const item = await addProjectContextItem(
-      projectId,
+    const item = await addSpaceContextItem(
+      spaceId,
       name.trim(),
       description?.trim(),
       active,
@@ -510,19 +510,19 @@ export async function addContext(
  * Delete a memory item
  */
 export async function deleteMemoryItem(
-  projectId: string,
+  spaceId: string,
   userId: string,
   section: MemorySection,
   itemId: string
 ): Promise<ServiceResult<void>> {
-  const permission = await canWriteMemory(projectId, userId);
+  const permission = await canWriteMemory(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const success = await deleteProjectMemoryItem(projectId, section, itemId);
+    const success = await deleteSpaceMemoryItem(spaceId, section, itemId);
     if (!success) {
       return { success: false, error: 'Item nicht gefunden' };
     }
@@ -537,19 +537,19 @@ export async function deleteMemoryItem(
  * Toggle context item active status
  */
 export async function setContextActive(
-  projectId: string,
+  spaceId: string,
   userId: string,
   itemId: string,
   active: boolean
 ): Promise<ServiceResult<void>> {
-  const permission = await canWriteMemory(projectId, userId);
+  const permission = await canWriteMemory(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const success = await setProjectContextActive(projectId, itemId, active);
+    const success = await setSpaceContextActive(spaceId, itemId, active);
     if (!success) {
       return { success: false, error: 'Item nicht gefunden' };
     }
@@ -561,26 +561,26 @@ export async function setContextActive(
 }
 
 /**
- * Get formatted project memory for prompt injection
+ * Get formatted space memory for prompt injection
  */
 export async function getFormattedMemory(
-  projectId: string,
+  spaceId: string,
   userId: string
 ): Promise<ServiceResult<string>> {
-  const permission = await canViewProject(projectId, userId);
+  const permission = await canViewSpace(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
-  const project = await loadProject(projectId);
-  if (!project) {
-    return { success: false, error: 'Projekt nicht gefunden' };
+  const space = await loadSpace(spaceId);
+  if (!space) {
+    return { success: false, error: 'Space nicht gefunden' };
   }
 
   try {
-    const memory = await loadProjectMemory(projectId);
-    const formatted = formatProjectMemoryForPrompt(memory, project.name);
+    const memory = await loadSpaceMemory(spaceId);
+    const formatted = formatSpaceMemoryForPrompt(memory, space.name);
     return { success: true, data: formatted };
   } catch (error: any) {
     console.error('Error formatting memory:', error);
@@ -593,20 +593,20 @@ export async function getFormattedMemory(
 // =============================================================================
 
 /**
- * Get linked KB collections for a project
+ * Get linked KB collections for a space
  */
 export async function getKBLinks(
-  projectId: string,
+  spaceId: string,
   userId: string
-): Promise<ServiceResult<ProjectKBLinks>> {
-  const permission = await canViewProject(projectId, userId);
+): Promise<ServiceResult<SpaceKBLinks>> {
+  const permission = await canViewSpace(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const links = await loadProjectKBLinks(projectId);
+    const links = await loadSpaceKBLinks(spaceId);
     return { success: true, data: links };
   } catch (error: any) {
     console.error('Error getting KB links:', error);
@@ -615,21 +615,21 @@ export async function getKBLinks(
 }
 
 /**
- * Link a KB collection to a project
+ * Link a KB collection to a space
  */
 export async function linkKBCollection(
-  projectId: string,
+  spaceId: string,
   userId: string,
   collectionId: string
 ): Promise<ServiceResult<any>> {
-  const permission = await canWriteMemory(projectId, userId);
+  const permission = await canWriteMemory(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const link = await storageLinkKB(projectId, collectionId, userId);
+    const link = await storageLinkKB(spaceId, collectionId, userId);
     if (!link) {
       return { success: false, error: 'Fehler beim Verknüpfen' };
     }
@@ -641,21 +641,21 @@ export async function linkKBCollection(
 }
 
 /**
- * Unlink a KB collection from a project
+ * Unlink a KB collection from a space
  */
 export async function unlinkKBCollection(
-  projectId: string,
+  spaceId: string,
   userId: string,
   collectionId: string
 ): Promise<ServiceResult<void>> {
-  const permission = await canWriteMemory(projectId, userId);
+  const permission = await canWriteMemory(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const success = await storageUnlinkKB(projectId, collectionId);
+    const success = await storageUnlinkKB(spaceId, collectionId);
     if (!success) {
       return { success: false, error: 'Verknüpfung nicht gefunden' };
     }
@@ -667,10 +667,10 @@ export async function unlinkKBCollection(
 }
 
 /**
- * Get KB collection IDs for a project (for RAG prioritization)
+ * Get KB collection IDs for a space (for RAG prioritization)
  */
-export async function getKBCollectionIds(projectId: string): Promise<string[]> {
-  return getProjectKBCollectionIds(projectId);
+export async function getKBCollectionIds(spaceId: string): Promise<string[]> {
+  return getSpaceKBCollectionIds(spaceId);
 }
 
 // =============================================================================
@@ -678,20 +678,20 @@ export async function getKBCollectionIds(projectId: string): Promise<string[]> {
 // =============================================================================
 
 /**
- * List project chats
+ * List space chats
  */
 export async function listChats(
-  projectId: string,
+  spaceId: string,
   userId: string
 ): Promise<ServiceResult<any[]>> {
-  const permission = await canViewChats(projectId, userId);
+  const permission = await canViewChats(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const chats = await listProjectChats(projectId);
+    const chats = await listSpaceChats(spaceId);
     return { success: true, data: chats };
   } catch (error: any) {
     console.error('Error listing chats:', error);
@@ -700,21 +700,21 @@ export async function listChats(
 }
 
 /**
- * Get a project chat
+ * Get a space chat
  */
 export async function getChat(
-  projectId: string,
+  spaceId: string,
   userId: string,
   chatId: string
 ): Promise<ServiceResult<any>> {
-  const permission = await canViewChats(projectId, userId);
+  const permission = await canViewChats(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
   try {
-    const chat = await loadProjectChat(projectId, chatId);
+    const chat = await loadSpaceChat(spaceId, chatId);
     if (!chat) {
       return { success: false, error: 'Chat nicht gefunden' };
     }
@@ -726,32 +726,32 @@ export async function getChat(
 }
 
 /**
- * Delete a project chat
+ * Delete a space chat
  */
 export async function deleteChat(
-  projectId: string,
+  spaceId: string,
   userId: string,
   chatId: string
 ): Promise<ServiceResult<void>> {
-  const permission = await canViewChats(projectId, userId);
+  const permission = await canViewChats(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
-  // Only allow deletion by chat owner or project admins
-  const chat = await loadProjectChat(projectId, chatId);
+  // Only allow deletion by chat owner or space admins
+  const chat = await loadSpaceChat(spaceId, chatId);
   if (!chat) {
     return { success: false, error: 'Chat nicht gefunden' };
   }
 
-  const { role } = await getUserPermissions(projectId, userId);
+  const { role } = await getUserPermissions(spaceId, userId);
   if (chat.userId !== userId && role !== 'owner' && role !== 'admin') {
     return { success: false, error: 'Keine Berechtigung zum Löschen dieses Chats' };
   }
 
   try {
-    const success = await storageDeleteChat(projectId, chatId);
+    const success = await storageDeleteChat(spaceId, chatId);
     if (!success) {
       return { success: false, error: 'Chat nicht gefunden' };
     }
@@ -767,54 +767,54 @@ export async function deleteChat(
 // =============================================================================
 
 /**
- * Get full project context for chat integration
+ * Get full space context for chat integration
  * Returns formatted memory and KB collection IDs
  */
-export async function getProjectContext(
-  projectId: string,
+export async function getSpaceContext(
+  spaceId: string,
   userId: string
 ): Promise<ServiceResult<{
-  projectName: string;
+  spaceName: string;
   formattedMemory: string;
   kbCollectionIds: string[];
-  settings: ProjectSettings;
+  settings: SpaceSettings;
 }>> {
-  const permission = await canViewProject(projectId, userId);
+  const permission = await canViewSpace(spaceId, userId);
 
   if (!permission.allowed) {
     return { success: false, error: permission.reason };
   }
 
-  const project = await loadProject(projectId);
-  if (!project) {
-    return { success: false, error: 'Projekt nicht gefunden' };
+  const space = await loadSpace(spaceId);
+  if (!space) {
+    return { success: false, error: 'Space nicht gefunden' };
   }
 
   try {
-    const memory = await loadProjectMemory(projectId);
-    const formattedMemory = project.settings.include_memory_in_prompt
-      ? formatProjectMemoryForPrompt(memory, project.name)
+    const memory = await loadSpaceMemory(spaceId);
+    const formattedMemory = space.settings.include_memory_in_prompt
+      ? formatSpaceMemoryForPrompt(memory, space.name)
       : '';
 
-    const kbCollectionIds = project.settings.include_kb_in_prompt
-      ? await getProjectKBCollectionIds(projectId)
+    const kbCollectionIds = space.settings.include_kb_in_prompt
+      ? await getSpaceKBCollectionIds(spaceId)
       : [];
 
     return {
       success: true,
       data: {
-        projectName: project.name,
+        spaceName: space.name,
         formattedMemory,
         kbCollectionIds,
-        settings: project.settings,
+        settings: space.settings,
       },
     };
   } catch (error: any) {
-    console.error('Error getting project context:', error);
+    console.error('Error getting space context:', error);
     return { success: false, error: error.message || 'Fehler beim Laden des Kontexts' };
   }
 }
 
 // Re-export types and permissions for convenience
 export { getUserPermissions } from './permissions';
-export type { Project, ProjectMember, ProjectMemory, ProjectSettings, ProjectRole } from './types';
+export type { Space, SpaceMember, SpaceMemory, SpaceSettings, SpaceRole } from './types';

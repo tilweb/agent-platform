@@ -1,19 +1,19 @@
 /**
- * Projects API Routes
+ * Spaces API Routes
  *
- * REST endpoints for managing projects, members, memory, and KB links.
+ * REST endpoints for managing spaces, members, memory, and KB links.
  */
 
 import { Hono } from 'hono';
 import { authMiddleware, getCurrentUserId } from '../auth/middleware';
 import { internalError } from '../utils/errorHandler';
 import {
-  createProject,
-  getProject,
-  updateProject,
-  archiveProject,
-  deleteProject,
-  listUserProjects,
+  createSpace,
+  getSpace,
+  updateSpace,
+  archiveSpace,
+  deleteSpace,
+  listUserSpaces,
   getMembers,
   addMember,
   updateMemberRole,
@@ -31,42 +31,42 @@ import {
   listChats,
   getChat,
   deleteChat,
-  getProjectContext,
-} from '../projects';
-import type { ProjectRole, MemorySection, Priority, MemorySource } from '../projects';
+  getSpaceContext,
+} from '../spaces';
+import type { SpaceRole, MemorySection, Priority, MemorySource } from '../spaces';
 
-export const projectRoutes = new Hono();
+export const spaceRoutes = new Hono();
 
 // Apply auth middleware to all routes
-projectRoutes.use('*', authMiddleware);
+spaceRoutes.use('*', authMiddleware);
 
 // =============================================================================
-// Project CRUD
+// Space CRUD
 // =============================================================================
 
 /**
- * GET /api/projects - List projects for current user
+ * GET /api/spaces - List spaces for current user
  */
-projectRoutes.get('/', async (c) => {
+spaceRoutes.get('/', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
   const includeArchived = c.req.query('includeArchived') === 'true';
-  const result = await listUserProjects(userId, includeArchived);
+  const result = await listUserSpaces(userId, includeArchived);
 
   if (!result.success) {
     return c.json({ error: result.error }, 500);
   }
 
-  return c.json({ projects: result.data });
+  return c.json({ spaces: result.data });
 });
 
 /**
- * POST /api/projects - Create a new project
+ * POST /api/spaces - Create a new space
  */
-projectRoutes.post('/', async (c) => {
+spaceRoutes.post('/', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
@@ -88,7 +88,7 @@ projectRoutes.post('/', async (c) => {
       return c.json({ error: 'Beschreibung darf maximal 1000 Zeichen lang sein' }, 400);
     }
 
-    const result = await createProject(userId, name, { description, icon, color });
+    const result = await createSpace(userId, name, { description, icon, color });
 
     if (!result.success) {
       return c.json({ error: result.error }, 400);
@@ -96,22 +96,22 @@ projectRoutes.post('/', async (c) => {
 
     return c.json(result.data, 201);
   } catch (error: any) {
-    console.error('Error creating project:', error);
-    return c.json({ error: 'Fehler beim Erstellen des Projekts' }, 500);
+    console.error('Error creating space:', error);
+    return c.json({ error: 'Fehler beim Erstellen des Spaces' }, 500);
   }
 });
 
 /**
- * GET /api/projects/:id - Get project details
+ * GET /api/spaces/:id - Get space details
  */
-projectRoutes.get('/:id', async (c) => {
+spaceRoutes.get('/:id', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
-  const result = await getProject(projectId, userId);
+  const spaceId = c.req.param('id');
+  const result = await getSpace(spaceId, userId);
 
   if (!result.success) {
     const status = result.error?.includes('nicht gefunden') ? 404 : 403;
@@ -122,15 +122,15 @@ projectRoutes.get('/:id', async (c) => {
 });
 
 /**
- * PUT /api/projects/:id - Update project
+ * PUT /api/spaces/:id - Update space
  */
-projectRoutes.put('/:id', async (c) => {
+spaceRoutes.put('/:id', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
 
   try {
     const body = await c.req.json();
@@ -144,7 +144,7 @@ projectRoutes.put('/:id', async (c) => {
       return c.json({ error: 'Beschreibung darf maximal 1000 Zeichen lang sein' }, 400);
     }
 
-    const result = await updateProject(projectId, userId, { name, description, icon, color });
+    const result = await updateSpace(spaceId, userId, { name, description, icon, color });
 
     if (!result.success) {
       const status = result.error?.includes('nicht gefunden') ? 404 : 403;
@@ -153,22 +153,22 @@ projectRoutes.put('/:id', async (c) => {
 
     return c.json(result.data);
   } catch (error: any) {
-    console.error('Error updating project:', error);
+    console.error('Error updating space:', error);
     return c.json({ error: 'Fehler beim Aktualisieren' }, 500);
   }
 });
 
 /**
- * DELETE /api/projects/:id - Delete project
+ * DELETE /api/spaces/:id - Delete space
  */
-projectRoutes.delete('/:id', async (c) => {
+spaceRoutes.delete('/:id', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
-  const result = await deleteProject(projectId, userId);
+  const spaceId = c.req.param('id');
+  const result = await deleteSpace(spaceId, userId);
 
   if (!result.success) {
     const status = result.error?.includes('nicht gefunden') ? 404 : 403;
@@ -179,16 +179,16 @@ projectRoutes.delete('/:id', async (c) => {
 });
 
 /**
- * POST /api/projects/:id/archive - Archive project
+ * POST /api/spaces/:id/archive - Archive space
  */
-projectRoutes.post('/:id/archive', async (c) => {
+spaceRoutes.post('/:id/archive', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
-  const result = await archiveProject(projectId, userId, true);
+  const spaceId = c.req.param('id');
+  const result = await archiveSpace(spaceId, userId, true);
 
   if (!result.success) {
     const status = result.error?.includes('nicht gefunden') ? 404 : 403;
@@ -199,16 +199,16 @@ projectRoutes.post('/:id/archive', async (c) => {
 });
 
 /**
- * POST /api/projects/:id/unarchive - Unarchive project
+ * POST /api/spaces/:id/unarchive - Unarchive space
  */
-projectRoutes.post('/:id/unarchive', async (c) => {
+spaceRoutes.post('/:id/unarchive', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
-  const result = await archiveProject(projectId, userId, false);
+  const spaceId = c.req.param('id');
+  const result = await archiveSpace(spaceId, userId, false);
 
   if (!result.success) {
     const status = result.error?.includes('nicht gefunden') ? 404 : 403;
@@ -223,16 +223,16 @@ projectRoutes.post('/:id/unarchive', async (c) => {
 // =============================================================================
 
 /**
- * GET /api/projects/:id/members - List project members
+ * GET /api/spaces/:id/members - List space members
  */
-projectRoutes.get('/:id/members', async (c) => {
+spaceRoutes.get('/:id/members', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
-  const result = await getMembers(projectId, userId);
+  const spaceId = c.req.param('id');
+  const result = await getMembers(spaceId, userId);
 
   if (!result.success) {
     return c.json({ error: result.error }, 403);
@@ -242,15 +242,15 @@ projectRoutes.get('/:id/members', async (c) => {
 });
 
 /**
- * POST /api/projects/:id/members - Add a member
+ * POST /api/spaces/:id/members - Add a member
  */
-projectRoutes.post('/:id/members', async (c) => {
+spaceRoutes.post('/:id/members', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
 
   try {
     const body = await c.req.json();
@@ -260,12 +260,12 @@ projectRoutes.post('/:id/members', async (c) => {
       return c.json({ error: 'userId und role sind erforderlich' }, 400);
     }
 
-    const validRoles: ProjectRole[] = ['admin', 'editor', 'viewer'];
+    const validRoles: SpaceRole[] = ['admin', 'editor', 'viewer'];
     if (!validRoles.includes(role)) {
       return c.json({ error: 'Ungültige Rolle. Erlaubt: admin, editor, viewer' }, 400);
     }
 
-    const result = await addMember(projectId, userId, targetUserId, role);
+    const result = await addMember(spaceId, userId, targetUserId, role);
 
     if (!result.success) {
       return c.json({ error: result.error }, 403);
@@ -279,15 +279,15 @@ projectRoutes.post('/:id/members', async (c) => {
 });
 
 /**
- * PUT /api/projects/:id/members/:userId - Update member role
+ * PUT /api/spaces/:id/members/:userId - Update member role
  */
-projectRoutes.put('/:id/members/:userId', async (c) => {
+spaceRoutes.put('/:id/members/:userId', async (c) => {
   const currentUserId = getCurrentUserId(c);
   if (!currentUserId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
   const targetUserId = c.req.param('userId');
 
   try {
@@ -298,12 +298,12 @@ projectRoutes.put('/:id/members/:userId', async (c) => {
       return c.json({ error: 'role ist erforderlich' }, 400);
     }
 
-    const validRoles: ProjectRole[] = ['admin', 'editor', 'viewer'];
+    const validRoles: SpaceRole[] = ['admin', 'editor', 'viewer'];
     if (!validRoles.includes(role)) {
       return c.json({ error: 'Ungültige Rolle. Erlaubt: admin, editor, viewer' }, 400);
     }
 
-    const result = await updateMemberRole(projectId, currentUserId, targetUserId, role);
+    const result = await updateMemberRole(spaceId, currentUserId, targetUserId, role);
 
     if (!result.success) {
       return c.json({ error: result.error }, 403);
@@ -317,18 +317,18 @@ projectRoutes.put('/:id/members/:userId', async (c) => {
 });
 
 /**
- * DELETE /api/projects/:id/members/:userId - Remove member
+ * DELETE /api/spaces/:id/members/:userId - Remove member
  */
-projectRoutes.delete('/:id/members/:userId', async (c) => {
+spaceRoutes.delete('/:id/members/:userId', async (c) => {
   const currentUserId = getCurrentUserId(c);
   if (!currentUserId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
   const targetUserId = c.req.param('userId');
 
-  const result = await removeMember(projectId, currentUserId, targetUserId);
+  const result = await removeMember(spaceId, currentUserId, targetUserId);
 
   if (!result.success) {
     return c.json({ error: result.error }, 403);
@@ -342,19 +342,19 @@ projectRoutes.delete('/:id/members/:userId', async (c) => {
 // =============================================================================
 
 /**
- * PUT /api/projects/:id/settings - Update project settings
+ * PUT /api/spaces/:id/settings - Update space settings
  */
-projectRoutes.put('/:id/settings', async (c) => {
+spaceRoutes.put('/:id/settings', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
 
   try {
     const body = await c.req.json();
-    const result = await updateSettings(projectId, userId, body);
+    const result = await updateSettings(spaceId, userId, body);
 
     if (!result.success) {
       return c.json({ error: result.error }, 403);
@@ -372,16 +372,16 @@ projectRoutes.put('/:id/settings', async (c) => {
 // =============================================================================
 
 /**
- * GET /api/projects/:id/memory - Get project memory
+ * GET /api/spaces/:id/memory - Get space memory
  */
-projectRoutes.get('/:id/memory', async (c) => {
+spaceRoutes.get('/:id/memory', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
-  const result = await getMemory(projectId, userId);
+  const spaceId = c.req.param('id');
+  const result = await getMemory(spaceId, userId);
 
   if (!result.success) {
     return c.json({ error: result.error }, 403);
@@ -391,15 +391,15 @@ projectRoutes.get('/:id/memory', async (c) => {
 });
 
 /**
- * POST /api/projects/:id/memory/about - Add about item
+ * POST /api/spaces/:id/memory/about - Add about item
  */
-projectRoutes.post('/:id/memory/about', async (c) => {
+spaceRoutes.post('/:id/memory/about', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
 
   try {
     const body = await c.req.json();
@@ -409,7 +409,7 @@ projectRoutes.post('/:id/memory/about', async (c) => {
       return c.json({ error: 'content ist erforderlich' }, 400);
     }
 
-    const result = await addAbout(projectId, userId, content, source as MemorySource);
+    const result = await addAbout(spaceId, userId, content, source as MemorySource);
 
     if (!result.success) {
       return c.json({ error: result.error }, 400);
@@ -423,15 +423,15 @@ projectRoutes.post('/:id/memory/about', async (c) => {
 });
 
 /**
- * POST /api/projects/:id/memory/instructions - Add instruction
+ * POST /api/spaces/:id/memory/instructions - Add instruction
  */
-projectRoutes.post('/:id/memory/instructions', async (c) => {
+spaceRoutes.post('/:id/memory/instructions', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
 
   try {
     const body = await c.req.json();
@@ -447,7 +447,7 @@ projectRoutes.post('/:id/memory/instructions', async (c) => {
     }
 
     const result = await addInstruction(
-      projectId,
+      spaceId,
       userId,
       content,
       priority as Priority,
@@ -466,15 +466,15 @@ projectRoutes.post('/:id/memory/instructions', async (c) => {
 });
 
 /**
- * POST /api/projects/:id/memory/context - Add context item
+ * POST /api/spaces/:id/memory/context - Add context item
  */
-projectRoutes.post('/:id/memory/context', async (c) => {
+spaceRoutes.post('/:id/memory/context', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
 
   try {
     const body = await c.req.json();
@@ -485,7 +485,7 @@ projectRoutes.post('/:id/memory/context', async (c) => {
     }
 
     const result = await addContext(
-      projectId,
+      spaceId,
       userId,
       name,
       description,
@@ -505,15 +505,15 @@ projectRoutes.post('/:id/memory/context', async (c) => {
 });
 
 /**
- * DELETE /api/projects/:id/memory/:section/:itemId - Delete memory item
+ * DELETE /api/spaces/:id/memory/:section/:itemId - Delete memory item
  */
-projectRoutes.delete('/:id/memory/:section/:itemId', async (c) => {
+spaceRoutes.delete('/:id/memory/:section/:itemId', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
   const section = c.req.param('section');
   const itemId = c.req.param('itemId');
 
@@ -522,7 +522,7 @@ projectRoutes.delete('/:id/memory/:section/:itemId', async (c) => {
     return c.json({ error: 'Ungültige Section. Erlaubt: about, instructions, context' }, 400);
   }
 
-  const result = await deleteMemoryItem(projectId, userId, section as MemorySection, itemId);
+  const result = await deleteMemoryItem(spaceId, userId, section as MemorySection, itemId);
 
   if (!result.success) {
     return c.json({ error: result.error }, 404);
@@ -532,15 +532,15 @@ projectRoutes.delete('/:id/memory/:section/:itemId', async (c) => {
 });
 
 /**
- * PUT /api/projects/:id/memory/context/:itemId/active - Toggle context active
+ * PUT /api/spaces/:id/memory/context/:itemId/active - Toggle context active
  */
-projectRoutes.put('/:id/memory/context/:itemId/active', async (c) => {
+spaceRoutes.put('/:id/memory/context/:itemId/active', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
   const itemId = c.req.param('itemId');
 
   try {
@@ -551,7 +551,7 @@ projectRoutes.put('/:id/memory/context/:itemId/active', async (c) => {
       return c.json({ error: 'active muss ein boolean sein' }, 400);
     }
 
-    const result = await setContextActive(projectId, userId, itemId, active);
+    const result = await setContextActive(spaceId, userId, itemId, active);
 
     if (!result.success) {
       return c.json({ error: result.error }, 404);
@@ -569,16 +569,16 @@ projectRoutes.put('/:id/memory/context/:itemId/active', async (c) => {
 // =============================================================================
 
 /**
- * GET /api/projects/:id/collections - Get linked KB collections
+ * GET /api/spaces/:id/collections - Get linked KB collections
  */
-projectRoutes.get('/:id/collections', async (c) => {
+spaceRoutes.get('/:id/collections', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
-  const result = await getKBLinks(projectId, userId);
+  const spaceId = c.req.param('id');
+  const result = await getKBLinks(spaceId, userId);
 
   if (!result.success) {
     return c.json({ error: result.error }, 403);
@@ -588,15 +588,15 @@ projectRoutes.get('/:id/collections', async (c) => {
 });
 
 /**
- * POST /api/projects/:id/collections - Link a KB collection
+ * POST /api/spaces/:id/collections - Link a KB collection
  */
-projectRoutes.post('/:id/collections', async (c) => {
+spaceRoutes.post('/:id/collections', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
 
   try {
     const body = await c.req.json();
@@ -606,7 +606,7 @@ projectRoutes.post('/:id/collections', async (c) => {
       return c.json({ error: 'collectionId ist erforderlich' }, 400);
     }
 
-    const result = await linkKBCollection(projectId, userId, collectionId);
+    const result = await linkKBCollection(spaceId, userId, collectionId);
 
     if (!result.success) {
       return c.json({ error: result.error }, 400);
@@ -620,18 +620,18 @@ projectRoutes.post('/:id/collections', async (c) => {
 });
 
 /**
- * DELETE /api/projects/:id/collections/:collId - Unlink a KB collection
+ * DELETE /api/spaces/:id/collections/:collId - Unlink a KB collection
  */
-projectRoutes.delete('/:id/collections/:collId', async (c) => {
+spaceRoutes.delete('/:id/collections/:collId', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
   const collectionId = c.req.param('collId');
 
-  const result = await unlinkKBCollection(projectId, userId, collectionId);
+  const result = await unlinkKBCollection(spaceId, userId, collectionId);
 
   if (!result.success) {
     return c.json({ error: result.error }, 404);
@@ -645,16 +645,16 @@ projectRoutes.delete('/:id/collections/:collId', async (c) => {
 // =============================================================================
 
 /**
- * GET /api/projects/:id/chats - List project chats
+ * GET /api/spaces/:id/chats - List space chats
  */
-projectRoutes.get('/:id/chats', async (c) => {
+spaceRoutes.get('/:id/chats', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
-  const result = await listChats(projectId, userId);
+  const spaceId = c.req.param('id');
+  const result = await listChats(spaceId, userId);
 
   if (!result.success) {
     return c.json({ error: result.error }, 403);
@@ -664,18 +664,18 @@ projectRoutes.get('/:id/chats', async (c) => {
 });
 
 /**
- * GET /api/projects/:id/chats/:chatId - Get a project chat
+ * GET /api/spaces/:id/chats/:chatId - Get a space chat
  */
-projectRoutes.get('/:id/chats/:chatId', async (c) => {
+spaceRoutes.get('/:id/chats/:chatId', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
   const chatId = c.req.param('chatId');
 
-  const result = await getChat(projectId, userId, chatId);
+  const result = await getChat(spaceId, userId, chatId);
 
   if (!result.success) {
     const status = result.error?.includes('nicht gefunden') ? 404 : 403;
@@ -686,18 +686,18 @@ projectRoutes.get('/:id/chats/:chatId', async (c) => {
 });
 
 /**
- * DELETE /api/projects/:id/chats/:chatId - Delete a project chat
+ * DELETE /api/spaces/:id/chats/:chatId - Delete a space chat
  */
-projectRoutes.delete('/:id/chats/:chatId', async (c) => {
+spaceRoutes.delete('/:id/chats/:chatId', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
+  const spaceId = c.req.param('id');
   const chatId = c.req.param('chatId');
 
-  const result = await deleteChat(projectId, userId, chatId);
+  const result = await deleteChat(spaceId, userId, chatId);
 
   if (!result.success) {
     const status = result.error?.includes('nicht gefunden') ? 404 : 403;
@@ -712,16 +712,16 @@ projectRoutes.delete('/:id/chats/:chatId', async (c) => {
 // =============================================================================
 
 /**
- * GET /api/projects/:id/context - Get project context for chat
+ * GET /api/spaces/:id/context - Get space context for chat
  */
-projectRoutes.get('/:id/context', async (c) => {
+spaceRoutes.get('/:id/context', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const projectId = c.req.param('id');
-  const result = await getProjectContext(projectId, userId);
+  const spaceId = c.req.param('id');
+  const result = await getSpaceContext(spaceId, userId);
 
   if (!result.success) {
     return c.json({ error: result.error }, 403);

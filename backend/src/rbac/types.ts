@@ -2,14 +2,14 @@
  * RBAC Types - Unified Role-Based Access Control
  *
  * Central type definitions for the resource-based RBAC system
- * used across all features (Projects, Collections, Skills, Agents, etc.)
+ * used across all features (Spaces, Collections, Skills, Agents, etc.)
  */
 
 // Unified Resource Role - same for all features
 export type ResourceRole = 'owner' | 'admin' | 'editor' | 'viewer';
 
 // Resource Types that support RBAC
-export type ResourceType = 'project' | 'collection' | 'contract' | 'skill' | 'agent';
+export type ResourceType = 'space' | 'collection' | 'contract' | 'skill' | 'agent';
 
 // Principal (who has the permission)
 export type PrincipalType = 'user' | 'group';
@@ -121,7 +121,7 @@ export function getAssignableRoles(assignerRole: ResourceRole): ResourceRole[] {
  * Data directory paths per resource type
  */
 export const RESOURCE_DATA_DIRS: Record<ResourceType, string> = {
-  project: 'projects',
+  space: 'spaces',
   collection: 'knowledge-base/collections',
   contract: 'contracts',
   skill: 'skills/public',
