@@ -6,11 +6,11 @@
  */
 
 import type { ToolsConfig } from './types';
-import { resolve } from 'path';
+import { DATA_DIR } from '../utils/paths';
 
 export const toolsConfig: ToolsConfig = {
   // Data directory for local file tools
-  dataDir: resolve(process.cwd(), '../data'),
+  dataDir: DATA_DIR,
 
   // API configurations
   api: {

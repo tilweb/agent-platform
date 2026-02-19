@@ -4,8 +4,10 @@
  */
 
 import { parse } from 'yaml';
+import { join } from 'path';
+import { APPS_DIR } from '../../utils/paths';
 
-const KNOWLEDGE_PATH = './data/apps/projektmanagement/knowledge';
+const KNOWLEDGE_PATH = join(APPS_DIR, 'projektmanagement/knowledge');
 
 export interface StepKnowledge {
   meta: {

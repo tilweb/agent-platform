@@ -9,7 +9,7 @@
  */
 
 import { parse, stringify } from 'yaml';
-import { resolve } from 'path';
+import { PROVIDERS_CONFIG } from '../utils/paths';
 
 // Mutex for provider config read-modify-write operations
 let providerLock: Promise<void> = Promise.resolve();
@@ -43,7 +43,7 @@ import type {
 } from '../types/providers';
 import { getUserModelPreference, type ModelPurpose } from './userPreferences';
 
-const CONFIG_PATH = resolve(process.cwd(), '../data/config/providers.yaml');
+const CONFIG_PATH = PROVIDERS_CONFIG;
 
 // Default configuration if file doesn't exist
 const DEFAULT_CONFIG: ProvidersConfig = {

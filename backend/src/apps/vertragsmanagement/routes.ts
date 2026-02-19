@@ -19,6 +19,8 @@ import {
 } from './service';
 import { getContractOriginalPath } from './storage';
 import type { ContractFilters } from '../types';
+import { join } from 'path';
+import { APPS_DIR } from '../../utils/paths';
 
 const contracts = new Hono();
 
@@ -408,7 +410,7 @@ contracts.delete('/schemas/:type', async (c) => {
     }
 
     // Delete schema file
-    const schemaPath = `./data/apps/vertragsmanagement/schemas/${typeId}.yaml`;
+    const schemaPath = join(APPS_DIR, 'vertragsmanagement/schemas', `${typeId}.yaml`);
     await Bun.$`rm -f ${schemaPath}`;
 
     return c.json({ success: true, message: 'Schema deleted' });

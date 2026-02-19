@@ -4,10 +4,12 @@
  */
 
 import { parse, stringify } from 'yaml';
+import { join } from 'path';
 import type { ContractMetadata, ContractSchema } from '../types';
 import { generateId } from '../../utils/id';
+import { APPS_DIR } from '../../utils/paths';
 
-const BASE_PATH = './data/apps/vertragsmanagement';
+const BASE_PATH = join(APPS_DIR, 'vertragsmanagement');
 const CONTRACTS_PATH = `${BASE_PATH}/contracts`;
 const SCHEMAS_PATH = `${BASE_PATH}/schemas`;
 

@@ -10,6 +10,7 @@ import { existsSync } from 'fs';
 import { resolve } from 'path';
 import * as yaml from 'yaml';
 import { generateId } from '../utils/id';
+import { TASKS_DIR } from '../utils/paths';
 
 // ============================================
 // Types
@@ -185,7 +186,6 @@ export interface QueueStatus {
 // Constants
 // ============================================
 
-const TASKS_DIR = resolve(process.cwd(), '../data/tasks');
 const QUEUE_FILE = resolve(TASKS_DIR, 'queue.yaml');
 
 const DEFAULT_CONFIG: TaskConfig = {

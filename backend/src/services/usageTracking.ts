@@ -7,8 +7,9 @@
 
 import { writeFile, readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { resolve, join } from 'path';
+import { join } from 'path';
 import { generateId } from '../utils/id';
+import { USAGE_DIR } from '../utils/paths';
 
 // Usage context passed to LLM calls
 export interface UsageContext {
@@ -53,8 +54,6 @@ export interface UserUsageTotals {
   bySource: Record<string, number>;
   lastUsed: string;
 }
-
-const USAGE_DIR = resolve(process.cwd(), '../data/usage');
 
 /**
  * Generate unique ID for usage entry

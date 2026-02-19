@@ -5,10 +5,9 @@
 
 import { readFile, writeFile, readdir, mkdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import type { CustomToolConfig } from './types';
-
-const CUSTOM_TOOLS_DIR = resolve(process.cwd(), '../data/tools/custom');
+import { CUSTOM_TOOLS_DIR } from '../../utils/paths';
 
 // In-memory cache
 let toolsCache: Map<string, CustomToolConfig> | null = null;

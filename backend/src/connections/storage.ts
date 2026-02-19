@@ -7,10 +7,7 @@ import type { StoredConnection, TokenSet, ConnectionStatus, OAuthState } from '.
 import { encryptTokens, decryptTokens } from './crypto';
 import { unlinkSync } from 'node:fs';
 import { join } from 'path';
-
-const DATA_DIR = join(import.meta.dir, '../../../data');
-const CONNECTIONS_DIR = join(DATA_DIR, 'connections');
-const OAUTH_STATE_DIR = join(DATA_DIR, 'auth/oauth-states');
+import { CONNECTIONS_DIR, OAUTH_STATES_DIR } from '../utils/paths';
 
 // Per-connection mutex for read-modify-write operations
 const connectionLocks = new Map<string, Promise<void>>();
@@ -46,7 +43,7 @@ async function ensureConnectionsDir(userId: string): Promise<string> {
  */
 async function ensureOAuthStateDir(): Promise<void> {
   try {
-    await Bun.write(join(OAUTH_STATE_DIR, '.gitkeep'), '');
+    await Bun.write(join(OAUTH_STATES_DIR, '.gitkeep'), '');
   } catch {
     // Directory might already exist
   }
@@ -63,7 +60,7 @@ function getConnectionFilePath(userId: string, providerId: string): string {
  * Get the file path for an OAuth state
  */
 function getOAuthStateFilePath(state: string): string {
-  return join(OAUTH_STATE_DIR, `${state}.yaml`);
+  return join(OAUTH_STATES_DIR, `${state}.yaml`);
 }
 
 /**
@@ -281,10 +278,10 @@ export async function cleanupExpiredOAuthStates(): Promise<number> {
   const now = new Date();
   const glob = new Bun.Glob('*.yaml');
 
-  for await (const file of glob.scan(OAUTH_STATE_DIR)) {
+  for await (const file of glob.scan(OAUTH_STATES_DIR)) {
     if (file === '.gitkeep') continue;
 
-    const filePath = join(OAUTH_STATE_DIR, file);
+    const filePath = join(OAUTH_STATES_DIR, file);
     const content = await Bun.file(filePath).text();
     const data = parseYaml(content) as OAuthState;
 

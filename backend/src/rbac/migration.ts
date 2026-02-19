@@ -6,13 +6,11 @@
 
 import { readdir, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import * as yaml from 'yaml';
 import { grantAccess, hasAccessEntries, initializeResourceAccess } from './storage';
 import type { ResourceType, ResourceRole } from './types';
-
-// Use same path resolution as projects/storage.ts
-const DATA_DIR = resolve(process.cwd(), '../data');
+import { DATA_DIR } from '../utils/paths';
 
 interface ProjectMember {
   userId: string;

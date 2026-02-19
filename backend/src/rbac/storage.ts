@@ -10,14 +10,12 @@
  */
 
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import { existsSync } from 'fs';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import type { ResourceType, ResourceAccess, PrincipalType, ResourceRole } from './types';
 import { RESOURCE_DATA_DIRS } from './types';
-
-// Use same path resolution as projects/storage.ts
-const DATA_DIR = resolve(process.cwd(), '../data');
+import { DATA_DIR } from '../utils/paths';
 
 /**
  * Get the directory path for a resource

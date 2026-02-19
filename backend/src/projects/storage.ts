@@ -16,8 +16,9 @@
 
 import { readFile, writeFile, mkdir, readdir, unlink, rm } from 'fs/promises';
 import { existsSync } from 'fs';
-import { resolve, join } from 'path';
+import { join } from 'path';
 import * as yaml from 'yaml';
+import { PROJECTS_DIR } from '../utils/paths';
 import type {
   Project,
   ProjectMember,
@@ -39,7 +40,7 @@ import { initializeResourceAccess, deleteResourceAccess } from '../rbac/storage'
 import { generateId } from '../utils/id';
 
 // Base directory for projects storage
-const PROJECTS_BASE_DIR = resolve(process.cwd(), '../data/projects');
+const PROJECTS_BASE_DIR = PROJECTS_DIR;
 
 /**
  * Ensure the base projects directory exists

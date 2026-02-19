@@ -7,12 +7,10 @@
 
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, resolve, basename, extname } from 'path';
+import { join, basename, extname } from 'path';
 import { llmService, type Message } from './llm';
 import type { UsageContext } from './usageTracking';
-
-const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
-const INCOMING_DIR = join(KB_BASE, 'incoming');
+import { KB_BASE, KB_INCOMING_DIR as INCOMING_DIR } from '../utils/paths';
 
 export interface IndexResult {
   success: boolean;

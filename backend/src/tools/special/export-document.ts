@@ -7,7 +7,7 @@
 
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import type { Tool, ToolDefinition, ToolContext } from '../types';
 import {
   generateDocument,
@@ -15,9 +15,7 @@ import {
   type DocumentSection,
   type DocumentFormat,
 } from '../../services/documentGenerator';
-
-// Directory for temporary exports
-const EXPORTS_DIR = resolve(process.cwd(), '../data/exports');
+import { EXPORTS_DIR } from '../../utils/paths';
 
 interface ExportDocumentArgs {
   title: string;

@@ -45,58 +45,64 @@ temp/
 # ====================================
 # Runtime / User Data (not in git)
 # ====================================
-# Config & templates in data/ ARE tracked:
-#   data/agents/, data/apps/, data/config/,
-#   data/skills/, data/tools/
+# Config & templates in backend/data/ ARE tracked:
+#   backend/data/agents/, backend/data/apps/,
+#   backend/data/config/, backend/data/skills/,
+#   backend/data/tools/
 
 # Auth runtime data
-data/auth/sessions/*
-!data/auth/sessions/.gitkeep
-data/auth/users/*
-!data/auth/users/.gitkeep
-data/auth/groups/*
-data/auth/oauth-states/*
-!data/auth/oauth-states/.gitkeep
+backend/data/auth/sessions/*
+!backend/data/auth/sessions/.gitkeep
+backend/data/auth/users/*
+!backend/data/auth/users/.gitkeep
+backend/data/auth/groups/*
+backend/data/auth/oauth-states/*
+!backend/data/auth/oauth-states/.gitkeep
 
 # Chat data
-data/chats/
-data/chat-uploads/
-data/chat-folders.yaml
-data/conversations/
+backend/data/chats/
+backend/data/chat-uploads/
+backend/data/chat-folders.yaml
+backend/data/conversations/
 
 # Knowledge base (user documents)
-data/knowledge-base/
+backend/data/knowledge-base/
 
 # Generated content
-data/generated-images/
-data/exports/
+backend/data/generated-images/
+backend/data/exports/
 
 # Task queue & results
-data/tasks/
-data/results/
-data/plans/
+backend/data/tasks/
+backend/data/results/
+backend/data/plans/
 
 # Project runtime data
-data/projects/
+backend/data/projects/
 
 # Table data
-data/tables/
+backend/data/tables/
 
 # User memory
-data/memory/
+backend/data/memory/
 
 # Connection tokens (encrypted)
-data/connections/
+backend/data/connections/
 
 # Usage tracking
-data/usage/
+backend/data/usage/
 
-# Misc runtime files at data root
-data/data/
-data/*.html
-data/*.docx
-
-# Backend runtime data
+# Audit logs
 backend/data/audit/
+
+# App runtime data
 backend/data/apps/vertragsmanagement/contracts/
 backend/data/apps/projektmanagement/projektauftraege/
+
+# Misc runtime files
+backend/data/data/
+backend/data/temp/
+backend/data/notifications/
+backend/data/*.html
+backend/data/*.docx
+backend/data/*.md

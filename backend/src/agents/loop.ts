@@ -44,7 +44,7 @@ import { loadAgent, listAgents, type AgentConfig, type AgentModelConfig } from '
 import { loadUserMemory, formatMemoryForPrompt } from '../services/userMemory';
 import { getProjectContext } from '../projects/service';
 import { readFile } from 'fs/promises';
-import { resolve } from 'path';
+import { AGENTS_CONFIG } from '../utils/paths';
 import { existsSync } from 'fs';
 import { buildReaderContextSection, type DocumentContext } from '../services/documentFetcher';
 import {
@@ -428,7 +428,7 @@ ${analysisResults.join('\n\n---\n\n')}
 }
 
 async function loadLegacyAgentConfig(): Promise<string> {
-  const configPath = resolve(process.cwd(), '../data/config/agents.md');
+  const configPath = AGENTS_CONFIG;
 
   if (!existsSync(configPath)) {
     return `You are a helpful AI assistant. You can use tools to read and write files, and help users with various tasks.`;

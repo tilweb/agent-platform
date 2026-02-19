@@ -12,10 +12,9 @@ import { toolRegistry } from '../tools/registry';
 import { searchChatHistories, type ChatSearchResult } from './memory';
 import { readFile, readdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { resolve, join } from 'path';
+import { join } from 'path';
 import type { UsageContext } from './usageTracking';
-
-const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
+import { KB_BASE, APPS_DIR } from '../utils/paths';
 
 export interface SearchResult {
   id: string;
@@ -355,7 +354,7 @@ async function searchGDrive(query: string, userId: string): Promise<SearchResult
  * Search contracts from Vertragsmanagement
  */
 async function searchContracts(query: string): Promise<SearchResult[]> {
-  const CONTRACTS_BASE = resolve(process.cwd(), './data/apps/vertragsmanagement/contracts');
+  const CONTRACTS_BASE = join(APPS_DIR, 'vertragsmanagement/contracts');
   const results: SearchResult[] = [];
   const queryLower = query.toLowerCase();
 
@@ -566,7 +565,7 @@ Welche Dokumente sind für diese Suchanfrage relevant?`;
  */
 export async function smartContractSearch(query: string, triggeringUserId?: string): Promise<SmartSearchResponse> {
   const { llmService } = await import('./llm');
-  const CONTRACTS_BASE = resolve(process.cwd(), './data/apps/vertragsmanagement/contracts');
+  const CONTRACTS_BASE = join(APPS_DIR, 'vertragsmanagement/contracts');
 
   try {
     if (!existsSync(CONTRACTS_BASE)) {
@@ -724,7 +723,7 @@ interface ContractIndexItem {
  * Load all contracts for the LLM to analyze (with full metadata)
  */
 async function loadContractsIndex(): Promise<ContractIndexItem[]> {
-  const CONTRACTS_BASE = resolve(process.cwd(), './data/apps/vertragsmanagement/contracts');
+  const CONTRACTS_BASE = join(APPS_DIR, 'vertragsmanagement/contracts');
   const contracts: ContractIndexItem[] = [];
 
   try {

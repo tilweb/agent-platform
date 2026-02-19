@@ -7,15 +7,15 @@ import { Hono } from 'hono';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { readFile, writeFile, mkdir, readdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import { authMiddleware, requireUserId } from '../auth';
 import { canView, canEdit, canDelete, canManageAccess, listAccessibleResources } from '../rbac/accessControl';
 import { initializeResourceAccess, deleteResourceAccess, hasAccessEntries } from '../rbac/storage';
+import { KB_BASE, KB_COLLECTIONS_FILE } from '../utils/paths';
 
 const knowledgeRoutes = new Hono();
 
-const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
-const COLLECTIONS_FILE = join(KB_BASE, 'collections.yaml');
+const COLLECTIONS_FILE = KB_COLLECTIONS_FILE;
 
 // Validate resource IDs to prevent path traversal attacks
 const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;

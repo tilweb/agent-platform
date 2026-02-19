@@ -3,8 +3,9 @@
  */
 
 import { existsSync, mkdirSync } from 'fs';
-import { join, normalize, sep, resolve } from 'path';
+import { join, normalize, sep } from 'path';
 import type { Tool, ToolDefinition, ToolParameters, ToolContext, ToolMetadata } from '../types';
+import { DATA_DIR } from '../../utils/paths';
 
 export interface LocalToolOptions {
   name: string;
@@ -28,7 +29,7 @@ export abstract class LocalTool implements Tool {
     this.description = options.description;
     this.parameters = options.parameters;
     this.category = options.category || 'general';
-    this.dataDir = options.dataDir || resolve(process.cwd(), '../data');
+    this.dataDir = options.dataDir || DATA_DIR;
   }
 
   /**

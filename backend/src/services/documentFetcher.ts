@@ -10,11 +10,9 @@
 
 import { readFile, writeFile, mkdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import { loadChatHistory, type ChatHistory } from './memory';
-
-const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
-const TEMP_DIR = resolve(process.cwd(), '../data/temp');
+import { KB_BASE, TEMP_DIR, APPS_DIR } from '../utils/paths';
 
 // Markitdown API settings (same as indexer.ts)
 const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
@@ -365,7 +363,7 @@ async function fetchDocumentContent(
       case 'contract': {
         // Read contract document from vertragsmanagement storage
         const contractId = item.id;
-        const contractDocPath = resolve(process.cwd(), `data/apps/vertragsmanagement/contracts/${contractId}/document.md`);
+        const contractDocPath = join(APPS_DIR, 'vertragsmanagement/contracts', contractId, 'document.md');
 
         if (!existsSync(contractDocPath)) {
           return { ...baseResult, error: 'Vertragsdokument nicht gefunden', source: 'Vertragsmanagement' };

@@ -7,7 +7,7 @@
 
 import { readFile, writeFile, readdir, mkdir, rm, access, rename } from 'fs/promises';
 import { existsSync } from 'fs';
-import { resolve, join } from 'path';
+import { join, resolve } from 'path';
 import * as yaml from 'yaml';
 import type {
   TableSchema,
@@ -17,13 +17,13 @@ import type {
   TableTemplate,
 } from './types';
 import { generateId } from '../utils/id';
+import { TABLES_DIR } from '../utils/paths';
 
 // ============================================
 // Constants
 // ============================================
 
-const TABLES_DIR = resolve(process.cwd(), '../data/tables');
-const TEMPLATES_DIR = resolve(TABLES_DIR, '_templates');
+const TEMPLATES_DIR = join(TABLES_DIR, '_templates');
 const SCHEMA_FILE = 'schema.yaml';
 const DATA_FILE = 'data.yaml';
 

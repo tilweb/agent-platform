@@ -26,14 +26,12 @@ import { notificationService } from './notificationService';
 import { writeFile, mkdir } from 'fs/promises';
 import { resolve } from 'path';
 import { existsSync } from 'fs';
+import { TASK_RESULTS_DIR as RESULTS_DIR } from '../utils/paths';
 
 // Executor state
 let isRunning = false;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 const activeTasks = new Map<string, { abortController: AbortController; sessionId: string }>();
-
-// Results directory
-const RESULTS_DIR = resolve(process.cwd(), '../data/tasks/results');
 
 /**
  * Start the task executor

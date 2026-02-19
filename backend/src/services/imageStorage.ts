@@ -4,8 +4,7 @@
  */
 
 import { resolve } from 'path';
-
-const IMAGES_DIR = resolve(process.cwd(), '../data/generated-images');
+import { GENERATED_IMAGES_DIR as IMAGES_DIR } from '../utils/paths';
 
 export interface SavedImageMetadata {
   id: string;

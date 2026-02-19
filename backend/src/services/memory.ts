@@ -1,13 +1,10 @@
 import { writeFile, readFile, mkdir, readdir, unlink } from 'fs/promises';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import { existsSync } from 'fs';
 import type { Message } from './llm';
 import { llmService } from './llm';
 import { saveProjectChat } from '../projects/storage';
-
-const CONVERSATIONS_DIR = resolve(process.cwd(), '../data/conversations');
-const SESSIONS_DIR = resolve(process.cwd(), '../data/memory/sessions');
-const CHATS_DIR = resolve(process.cwd(), '../data/chats');
+import { CONVERSATIONS_DIR, CHATS_DIR, CHAT_FOLDERS_FILE } from '../utils/paths';
 
 // ============================================
 // File-level mutexes to prevent race conditions
@@ -1838,7 +1835,7 @@ export async function getShareInfo(sessionId: string, userId?: string): Promise<
 
 // ---- Chat Folders Functions ----
 
-const FOLDERS_FILE = resolve(process.cwd(), '../data/chat-folders.yaml');
+const FOLDERS_FILE = CHAT_FOLDERS_FILE;
 
 export interface ChatFolder {
   id: string;

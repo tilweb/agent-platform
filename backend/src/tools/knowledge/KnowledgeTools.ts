@@ -9,11 +9,10 @@
 
 import { readFile, readdir, stat, mkdir, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, resolve, normalize } from 'path';
+import { join, normalize } from 'path';
 import { LocalTool } from '../base/LocalTool';
 import type { ToolContext } from '../types';
-
-const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
+import { KB_BASE } from '../../utils/paths';
 
 function validateKbPath(requestedPath: string): string {
   const normalized = normalize(join(KB_BASE, requestedPath));

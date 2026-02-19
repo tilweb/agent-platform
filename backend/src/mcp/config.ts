@@ -6,11 +6,12 @@
 
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { dirname } from 'path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { McpServerConfig, McpServersConfig } from './types';
+import { MCP_SERVERS_CONFIG } from '../utils/paths';
 
-const CONFIG_PATH = join(process.cwd(), '../data/config/mcp-servers.yaml');
+const CONFIG_PATH = MCP_SERVERS_CONFIG;
 
 // Default servers (presets)
 export const MCP_SERVER_PRESETS: Record<string, Omit<McpServerConfig, 'id' | 'enabled'>> = {

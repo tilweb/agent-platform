@@ -9,6 +9,7 @@ import { writeFile, readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { generateId } from '../utils/id';
+import { AUDIT_DIR } from '../utils/paths';
 
 /**
  * Audit event categories
@@ -95,7 +96,7 @@ export interface AuditEntry {
 }
 
 // Audit log storage path
-const AUDIT_LOG_DIR = join(process.cwd(), 'data', 'audit');
+const AUDIT_LOG_DIR = AUDIT_DIR;
 
 /**
  * Generate unique ID for audit entry

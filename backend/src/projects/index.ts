@@ -25,9 +25,11 @@ export type {
 
 export { ROLE_PERMISSIONS, createDefaultSettings, createDefaultMemory, createDefaultKBLinks } from './types';
 
+// Utility re-export
+export { generateId } from '../utils/id';
+
 // Storage
 export {
-  generateId,
   loadProject,
   saveProject,
   createProject as storageCreateProject,

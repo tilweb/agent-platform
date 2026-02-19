@@ -1007,9 +1007,8 @@ sharedChatRoutes.get('/:token', async (c) => {
 
 import { readFile, writeFile, rm, readdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, resolve } from 'path';
-
-const EXPORTS_DIR = resolve(process.cwd(), '../data/exports');
+import { join } from 'path';
+import { EXPORTS_DIR, KB_BASE } from '../utils/paths';
 
 export const exportRoutes = new Hono();
 
@@ -1816,7 +1815,7 @@ function parseManifestYaml(yaml: string): {
 // GET /api/knowledge/collections - List all collections (parsed JSON)
 knowledgeStreamRoutes.get('/collections', async (c) => {
   try {
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
+    const kbBase = KB_BASE;
     const content = await readFile(`${kbBase}/collections.yaml`, 'utf-8');
     const collections = parseCollectionsYaml(content);
     return c.json({ collections });
@@ -2066,7 +2065,7 @@ knowledgeStreamRoutes.post('/collections/:id/add/stream', authMiddleware, async 
     }
 
     // Verify collection exists
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
+    const kbBase = KB_BASE;
     const collectionDir = `${kbBase}/collections/${collectionId}`;
 
     if (!existsSync(collectionDir)) {
@@ -2195,7 +2194,7 @@ knowledgeStreamRoutes.get('/collections/:id', async (c) => {
   const collectionId = c.req.param('id');
 
   try {
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
+    const kbBase = KB_BASE;
     const manifestYaml = await readFile(`${kbBase}/collections/${collectionId}/manifest.yaml`, 'utf-8');
     const manifest = parseManifestYaml(manifestYaml);
     return c.json(manifest);
@@ -2210,7 +2209,7 @@ knowledgeStreamRoutes.delete('/collections/:id', async (c) => {
   const collectionId = c.req.param('id');
 
   try {
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
+    const kbBase = KB_BASE;
 
     const collectionDir = `${kbBase}/collections/${collectionId}`;
 
@@ -2291,7 +2290,7 @@ knowledgeStreamRoutes.get('/documents/:id', async (c) => {
   const collectionId = c.req.query('collection_id');
 
   try {
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
+    const kbBase = KB_BASE;
 
     const docPath = await findDocumentPath(kbBase, docId, collectionId);
     if (!docPath) {
@@ -2320,7 +2319,7 @@ knowledgeStreamRoutes.get('/documents/:id/content', async (c) => {
   const collectionId = c.req.query('collection_id');
 
   try {
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
+    const kbBase = KB_BASE;
 
     const docPath = await findDocumentPath(kbBase, docId, collectionId);
     if (!docPath) {
@@ -2346,7 +2345,7 @@ knowledgeStreamRoutes.get('/documents/:id/index', async (c) => {
   const collectionId = c.req.query('collection_id');
 
   try {
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
+    const kbBase = KB_BASE;
 
     const docPath = await findDocumentPath(kbBase, docId, collectionId);
     if (!docPath) {
@@ -2376,7 +2375,7 @@ knowledgeStreamRoutes.delete('/documents/:id', async (c) => {
   }
 
   try {
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
+    const kbBase = KB_BASE;
 
     // 1. Delete document directory (now inside collection)
     const docDir = `${kbBase}/collections/${collectionId}/documents/${docId}`;
@@ -2441,7 +2440,7 @@ knowledgeStreamRoutes.post('/index', async (c) => {
     }
 
     // Save uploaded file to incoming/
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
+    const kbBase = KB_BASE;
     const incomingPath = `${kbBase}/incoming/${file.name}`;
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(incomingPath, buffer);

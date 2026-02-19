@@ -1,7 +1,8 @@
 import { readdir, readFile, writeFile, mkdir, rm } from 'fs/promises';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import { existsSync } from 'fs';
 import { parse as parseYaml } from 'yaml';
+import { AGENTS_DIR } from '../utils/paths';
 
 // Lazy import to avoid circular dependencies
 let _connectionRegistry: typeof import('../connections/registry').connectionRegistry | null = null;
@@ -13,8 +14,6 @@ async function getConnectionRegistry() {
   }
   return _connectionRegistry;
 }
-
-const AGENTS_DIR = resolve(process.cwd(), '../data/agents');
 
 /**
  * Agent Model Configuration

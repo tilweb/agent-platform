@@ -6,7 +6,6 @@
 
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { resolve } from 'path';
 import { LocalTool } from '../base/LocalTool';
 import type { ToolContext } from '../types';
 
@@ -26,7 +25,7 @@ export class FileReadTool extends LocalTool {
         required: ['path'],
       },
       category: 'filesystem',
-      dataDir: dataDir || resolve(process.cwd(), '../data'),
+      dataDir,
     });
   }
 

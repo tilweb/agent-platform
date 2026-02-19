@@ -7,9 +7,7 @@ import type { Session, User } from './types';
 import { SESSION_CONFIG } from './types';
 import { unlinkSync } from 'node:fs';
 import { join } from 'path';
-
-const DATA_DIR = join(import.meta.dir, '../../../data');
-const SESSIONS_DIR = join(DATA_DIR, 'auth/sessions');
+import { SESSIONS_DIR } from '../utils/paths';
 
 // In-memory session cache for performance
 const sessionCache = new Map<string, Session>();

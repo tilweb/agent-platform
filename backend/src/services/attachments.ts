@@ -7,17 +7,15 @@
 
 import { readFile, writeFile, mkdir, rm, readdir, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, resolve, extname, basename, normalize } from 'path';
+import { join, extname, basename, normalize } from 'path';
 import { validateUpload } from '../utils/fileTypeValidator';
 import { $ } from 'bun';
 import { randomUUID } from 'crypto';
+import { CHAT_UPLOADS_DIR as UPLOADS_BASE } from '../utils/paths';
 
-const DATA_BASE = resolve(process.cwd(), '../data');
-const UPLOADS_BASE = join(DATA_BASE, 'chat-uploads');
-
-// File size limits (in bytes)
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB for documents/images
-const MAX_FILE_SIZE_MB = 50;
+// File size limits (in bytes) — configurable via MAX_UPLOAD_SIZE_MB env
+const MAX_FILE_SIZE_MB = parseInt(process.env.MAX_UPLOAD_SIZE_MB || '50', 10);
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 export interface ChatAttachment {
   id: string;

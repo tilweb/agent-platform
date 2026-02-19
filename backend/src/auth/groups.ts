@@ -6,9 +6,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { readFile, writeFile, mkdir, unlink } from 'fs/promises';
-
-const DATA_DIR = join(import.meta.dir, '../../../data');
-const GROUPS_DIR = join(DATA_DIR, 'auth/groups');
+import { GROUPS_DIR } from '../utils/paths';
 
 export interface UserGroup {
   id: string;

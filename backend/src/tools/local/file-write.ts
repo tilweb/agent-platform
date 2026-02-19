@@ -6,7 +6,7 @@
 
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { dirname } from 'path';
 import { LocalTool } from '../base/LocalTool';
 import type { ToolContext } from '../types';
 
@@ -30,7 +30,7 @@ export class FileWriteTool extends LocalTool {
         required: ['path', 'content'],
       },
       category: 'filesystem',
-      dataDir: dataDir || resolve(process.cwd(), '../data'),
+      dataDir,
     });
   }
 

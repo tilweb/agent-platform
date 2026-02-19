@@ -12,6 +12,7 @@ import { existsSync } from 'fs';
 import { resolve } from 'path';
 import * as yaml from 'yaml';
 import { generateId } from '../utils/id';
+import { MEMORY_USERS_DIR as MEMORY_BASE_DIR } from '../utils/paths';
 
 // Types
 export type MemorySection = 'about' | 'instructions' | 'context';
@@ -57,7 +58,6 @@ export interface UserMemory {
 }
 
 // Constants
-const MEMORY_BASE_DIR = resolve(process.cwd(), '../data/memory/users');
 const ALL_SECTIONS: MemorySection[] = ['about', 'instructions', 'context'];
 
 // generateId is imported from ../utils/id

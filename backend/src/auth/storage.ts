@@ -7,9 +7,7 @@ import type { User, CreateUserInput } from './types';
 import { hashPassword } from './password';
 import { unlinkSync } from 'node:fs';
 import { join } from 'path';
-
-const DATA_DIR = join(import.meta.dir, '../../../data');
-const USERS_DIR = join(DATA_DIR, 'auth/users');
+import { USERS_DIR } from '../utils/paths';
 
 // Per-user mutex for read-modify-write operations
 const userLocks = new Map<string, Promise<void>>();

@@ -5,8 +5,9 @@
 
 import { parse, stringify } from 'yaml';
 import type { AppsRegistry, AppConfig, AppInfo } from './types';
+import { APPS_REGISTRY } from '../utils/paths';
 
-const REGISTRY_PATH = './data/apps/registry.yaml';
+const REGISTRY_PATH = APPS_REGISTRY;
 
 let registryCache: AppsRegistry | null = null;
 

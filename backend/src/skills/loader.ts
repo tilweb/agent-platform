@@ -6,12 +6,11 @@
  */
 
 import { readFile, readdir } from 'fs/promises';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import { existsSync } from 'fs';
 import { parse as parseYaml } from 'yaml';
 import type { EnhancedSkill, LegacySkill, SkillTriggers, SkillTools, SkillMetadata, SkillKnowledge, SkillSummary } from './types';
-
-const SKILLS_DIR = resolve(process.cwd(), '../data/skills');
+import { SKILLS_DIR } from '../utils/paths';
 
 /**
  * Parse YAML frontmatter from Markdown content

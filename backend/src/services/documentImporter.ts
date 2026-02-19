@@ -7,12 +7,10 @@
 
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import { loadChatHistory, type ChatHistory } from './memory';
 import { indexerService } from './indexer';
-
-const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
-const INCOMING_DIR = join(KB_BASE, 'incoming');
+import { KB_BASE, KB_INCOMING_DIR as INCOMING_DIR, APPS_DIR } from '../utils/paths';
 
 export interface ImportItem {
   id: string;
@@ -447,8 +445,8 @@ export async function importAndIndex(
       case 'contract': {
         // Import contract document from vertragsmanagement
         const contractId = item.id;
-        const contractDocPath = resolve(process.cwd(), `data/apps/vertragsmanagement/contracts/${contractId}/document.md`);
-        const contractMetaPath = resolve(process.cwd(), `data/apps/vertragsmanagement/contracts/${contractId}/metadata.yaml`);
+        const contractDocPath = join(APPS_DIR, 'vertragsmanagement/contracts', contractId, 'document.md');
+        const contractMetaPath = join(APPS_DIR, 'vertragsmanagement/contracts', contractId, 'metadata.yaml');
 
         if (!existsSync(contractDocPath)) {
           return { ...baseResult, error: 'Vertragsdokument nicht gefunden' };

@@ -11,6 +11,7 @@ import { resolve } from 'path';
 import * as readline from 'readline';
 import type { Task } from './taskService';
 import { generateId } from '../utils/id';
+import { NOTIFICATIONS_DIR } from '../utils/paths';
 
 // ============================================
 // Types
@@ -72,7 +73,6 @@ export type NotificationListener = (notification: Notification) => void;
 // Constants
 // ============================================
 
-const NOTIFICATIONS_DIR = resolve(process.cwd(), '../data/notifications');
 
 // ============================================
 // Helper Functions
