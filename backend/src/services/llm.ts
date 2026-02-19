@@ -144,21 +144,22 @@ export class LLMService {
 
     if (!this.resolvedModel) {
       // Fallback to environment variables for backwards compatibility
-      const apiUrl = process.env.ADACOR_AI_API_URL || 'https://api.adacor.cloud/v1';
+      const apiUrl = process.env.ADACOR_AI_API_URL;
       const apiKey = process.env.ADACOR_AI_API_KEY || '';
-      const model = process.env.ADACOR_AI_MODEL || 'gpt-4o-mini';
+      const model = process.env.ADACOR_AI_MODEL;
 
-      if (!apiKey) {
-        console.warn('Warning: No active chat model configured and ADACOR_AI_API_KEY not set');
+      if (!apiUrl || !apiKey) {
+        console.warn('Warning: No active chat model configured and ADACOR_AI_API_URL/ADACOR_AI_API_KEY not set. Configure a provider in Settings or set env vars.');
+        return;
       }
 
       this.openaiAdapter = new OpenAIAdapter({
         baseUrl: apiUrl,
-        apiKey: apiKey || null,
-        defaultModel: model,
+        apiKey,
+        defaultModel: model || 'gpt-4o-mini',
       });
 
-      console.log(`LLM Service initialized with fallback: ${apiUrl} (${model})`);
+      console.log(`LLM Service initialized with env fallback: ${apiUrl} (${model})`);
       return;
     }
 

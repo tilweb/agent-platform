@@ -30,7 +30,7 @@ searchRoutes.get('/', async (c) => {
     const sourcesParam = c.req.query('sources');
 
     // Get userId from auth middleware
-    const userId = c.get('userId') || 'default';
+    const userId = c.get('userId');
 
     // Validate query
     if (!query || query.length < 2) {

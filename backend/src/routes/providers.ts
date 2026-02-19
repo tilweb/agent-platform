@@ -308,7 +308,10 @@ providers.post('/:id/test', async (c) => {
 
     // Get a default model for testing
     const defaultModel = provider.models.find((m) => m.default) || provider.models[0];
-    const modelId = defaultModel?.id || 'gpt-4o-mini';
+    if (!defaultModel) {
+      return c.json({ error: 'Provider hat keine Modelle konfiguriert' }, 400);
+    }
+    const modelId = defaultModel.id;
 
     let result;
 

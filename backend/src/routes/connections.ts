@@ -145,7 +145,11 @@ connectionRoutes.get('/:id/connect', authMiddleware, async (c) => {
 
     // Generate state and redirect URI
     const state = generateOAuthState();
-    const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
+    const baseUrl = process.env.API_BASE_URL;
+    if (!baseUrl) {
+      console.error('[OAuth] API_BASE_URL environment variable is not set');
+      return c.json({ error: 'API_BASE_URL ist nicht konfiguriert. OAuth erfordert eine konfigurierte Base-URL.' }, 500);
+    }
 
     // Validate redirect URI base URL
     if (!validateRedirectUri(baseUrl)) {
