@@ -199,7 +199,7 @@ const styles = {
   },
   presetGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
     gap: theme.spacing.md,
     marginTop: theme.spacing.lg,
   },
@@ -221,6 +221,9 @@ const styles = {
     color: theme.colors.textMuted,
     fontFamily: theme.typography.fontMono,
     marginTop: theme.spacing.xs,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   docsSection: {
     marginTop: theme.spacing['2xl'],

@@ -154,6 +154,61 @@ statusMuted: {
 },
 ```
 
+### Enable/Disable Toggle (SVG Toggle-Icons)
+
+Für Aktivieren/Deaktivieren-Funktionalität **immer** die SVG Toggle-Icons (`ToggleOnIcon`/`ToggleOffIcon`) verwenden.
+
+Referenz-Implementation: `SettingsPage.jsx` ("Apps verwalten"), `ConnectionsPage.jsx`, `ToolsPage.jsx`, `ProvidersPage.jsx`
+
+```javascript
+// Toggle-Icons (in jeder Datei die sie braucht definiert)
+function ToggleOnIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={theme.colors.success} strokeWidth="2">
+      <rect x="1" y="5" width="22" height="14" rx="7" ry="7" />
+      <circle cx="16" cy="12" r="3" fill={theme.colors.success} />
+    </svg>
+  );
+}
+
+function ToggleOffIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="1" y="5" width="22" height="14" rx="7" ry="7" />
+      <circle cx="8" cy="12" r="3" />
+    </svg>
+  );
+}
+```
+
+Button-Style:
+```javascript
+toggleButton: {
+  display: 'flex',
+  alignItems: 'center',
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  padding: theme.spacing.xs,
+  borderRadius: theme.borderRadius.md,
+},
+```
+
+JSX:
+```jsx
+<button
+  style={styles.toggleButton}
+  onClick={() => handleToggle(item.id)}
+  title={item.enabled ? 'Deaktivieren' : 'Aktivieren'}
+  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+>
+  {item.enabled ? <ToggleOnIcon /> : <ToggleOffIcon />}
+</button>
+```
+
+**Wichtig:** Keine eigenen Toggle-Varianten (CSS-Schieberegler mit `position: absolute` und Dot, native Checkboxen, Text-Buttons) — immer diese SVG Toggle-Icons verwenden.
+
 ### Modals
 
 ```javascript
@@ -760,3 +815,39 @@ statusError: {
 
 - UI-Texte: **Deutsch**
 - Code/Variablen: **Englisch**
+
+---
+
+## Design-Konsistenz (Enforcement)
+
+### Goldene Regel
+
+**Keine neuen UI-Patterns erfinden.** Bevor du eine Komponente implementierst, prüfe ob ein passendes Pattern in dieser Datei dokumentiert ist. Verwende das bestehende Pattern exakt — keine Variationen, keine "Verbesserungen".
+
+### Checkliste vor jeder UI-Änderung
+
+1. **Pattern-Check**: Gibt es ein dokumentiertes Pattern für diese Komponente? (Buttons, Cards, Toggles, Badges, Modals, Tabs, Forms, Navigation)
+2. **Theme-Check**: Werden ausschließlich `theme.*`-Werte verwendet? Keine hardcoded Farben (`#xxx`), Abstände (`16px`), oder Font-Größen
+3. **Konsistenz-Check**: Sieht die Komponente aus wie vergleichbare Komponenten auf anderen Seiten?
+4. **Icon-Check**: SVG-Icons aus `Icons.jsx` statt Emojis oder andere Icon-Libraries
+
+### Verbotene Patterns
+
+| Verboten | Stattdessen verwenden |
+|----------|----------------------|
+| CSS Toggle-Switches / eigene Schieberegler | SVG Toggle-Icons (`ToggleOnIcon`/`ToggleOffIcon`) |
+| Hardcoded Farben (`#14b8a6`) | `theme.colors.primary` |
+| Hardcoded Abstände (`16px`, `1rem`) | `theme.spacing.lg` |
+| Emojis in der UI | SVG-Icons aus `Icons.jsx` |
+| Externe CSS-Dateien / Frameworks | Inline-Styles mit `const styles = {}` |
+| Eigene Font-Stacks | `theme.typography.fontFamily` |
+| Native Checkboxen für enable/disable | SVG Toggle-Icons (siehe Pattern oben) |
+| Neue Schatten-Werte | `theme.shadows.*` |
+
+### Bei Unsicherheit
+
+Wenn kein passendes Pattern existiert:
+1. **Frage nach** bevor du ein neues Pattern einführst
+2. Orientiere dich am **nächstliegenden bestehenden Pattern**
+3. Verwende ausschließlich **theme.js-Werte**
+4. Dokumentiere das neue Pattern in dieser Datei, damit es als Referenz dient
