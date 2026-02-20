@@ -1,3 +1,9 @@
+---
+name: api-audit
+description: Prüfe die Konsistenz zwischen Frontend API-Calls und Backend-Endpoints.
+argument-hint: "[orphaned-backend|orphaned-frontend|summary]"
+---
+
 # API-Audit
 
 Prüfe die Konsistenz zwischen Frontend API-Calls und Backend-Endpoints.

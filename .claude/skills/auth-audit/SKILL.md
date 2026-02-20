@@ -1,3 +1,9 @@
+---
+name: auth-audit
+description: Fuehre ein fokussiertes Auth-Audit aller Backend-Endpunkte durch.
+argument-hint: "[route-scope]"
+---
+
 Fuehre ein fokussiertes Auth-Audit aller Backend-Endpunkte durch.
 
 Optionaler Scope: $ARGUMENTS (default: alle Routes)

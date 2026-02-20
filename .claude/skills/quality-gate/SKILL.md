@@ -1,3 +1,9 @@
+---
+name: quality-gate
+description: Führe alle relevanten Qualitäts-Audits durch und erstelle einen konsolidierten Report mit Ampel-Ergebnis.
+argument-hint: "[quick|strict]"
+---
+
 # Quality Gate
 
 Führe alle relevanten Qualitäts-Audits durch und erstelle einen konsolidierten Report mit Ampel-Ergebnis.
@@ -148,4 +154,4 @@ Bei `$ARGUMENTS` = `strict` wird WARN wie FAIL behandelt — der Gate blockiert 
 - **Nur lesen und prüfen, nicht ändern** — der Quality Gate ist read-only
 - Findings mit **Datei und Zeilennummer** angeben
 - Bei FAIL: Konkrete Handlungsempfehlungen geben
-- Dieser Command wird automatisch als Pflichtschritt im `/release` Workflow aufgerufen
+- Dieser Skill wird automatisch als Pflichtschritt im `/release` Workflow aufgerufen

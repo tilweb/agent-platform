@@ -1,3 +1,10 @@
+---
+name: app
+description: Manage the Agent Platform (Backend + Frontend). Start, stop, restart, or check status of dev servers.
+argument-hint: "[start|stop|restart|status]"
+disable-model-invocation: true
+---
+
 Manage the Agent Platform (Backend + Frontend).
 
 ## Usage

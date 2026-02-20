@@ -1,3 +1,10 @@
+---
+name: test-scaffold
+description: Generiere Test-Boilerplate für eine bestimmte Datei oder ein Modul.
+argument-hint: "<file-path>"
+disable-model-invocation: true
+---
+
 # Test-Scaffold
 
 Generiere Test-Boilerplate für eine bestimmte Datei oder ein Modul.

@@ -1,3 +1,10 @@
+---
+name: test-coverage
+description: Analysiere die Testabdeckung, identifiziere Lücken, und erstelle oder aktualisiere Tests.
+argument-hint: "[report|fix|backend|frontend|<file-path>]"
+disable-model-invocation: true
+---
+
 # Test-Coverage
 
 Analysiere die Testabdeckung, identifiziere Lücken, und erstelle oder aktualisiere Tests.
@@ -124,7 +131,7 @@ Für jede existierende Test-Datei:
 Wenn `$ARGUMENTS` `fix` enthält oder ein Dateipfad angegeben ist:
 
 1. **Für Dateien ohne Tests**: Führe die Logik aus `/test-scaffold` aus
-   - Lies `.claude/commands/test-scaffold.md` für die vollständige Anleitung
+   - Lies `.claude/skills/test-scaffold/SKILL.md` für die vollständige Anleitung
    - Erstelle `__tests__/` Verzeichnis falls nötig
    - Generiere Test-Datei mit realistischen Tests
 

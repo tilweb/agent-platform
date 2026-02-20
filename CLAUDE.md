@@ -133,9 +133,38 @@ Prompt-Inhalt für den Agenten...
 - `project` — Shared mit dem Hauptagenten, persistiert in `.claude/memory/`
 - `local` — Nur für diesen Agenten sichtbar, eigener Speicher
 
-### Slash Commands (`.claude/commands/`)
+### Skills (`.claude/skills/`)
 
-Benutzerdefinierte Befehle, aufrufbar via `/command-name`. Liegen als Markdown-Dateien in `.claude/commands/`. Aktuelle Commands: `quality-gate`, `app`, `auth-audit`, `design-audit`, `consistency-audit`, `api-audit`, `test-scaffold`, `test-coverage`, `critical-code-audit`, `update-docs`, `release`.
+Benutzerdefinierte Skills, aufrufbar via `/skill-name`. Liegen als `SKILL.md` in `.claude/skills/<name>/`. Skills sind das bevorzugte Format gegenüber Commands (`.claude/commands/`), da sie YAML-Frontmatter (description, argument-hint, disable-model-invocation), Begleitdateien und automatische Entdeckung durch Claude unterstützen.
+
+**Immer Skills statt Commands verwenden** — neue Automatisierungen als `.claude/skills/<name>/SKILL.md` anlegen, nicht als `.claude/commands/<name>.md`.
+
+| Skill | Zweck | Auto-Invoke |
+|-------|-------|-------------|
+| `app` | Backend + Frontend starten/stoppen/neustarten | Nein |
+| `release` | Version Bump, Changelog, Quality Gate, Build | Nein |
+| `quality-gate` | 6-Kategorien-Audit mit Ampel-Ergebnis | Ja |
+| `update-docs` | Anwenderdoku mit Code-Stand abgleichen | Nein |
+| `critical-code-audit` | 9-Bereiche Code-Audit | Ja |
+| `auth-audit` | Endpunkt-Auth-Matrix | Ja |
+| `design-audit` | Frontend Design-Violations | Ja |
+| `consistency-audit` | Duplikate, Pattern-Abweichungen | Ja |
+| `api-audit` | Frontend↔Backend API-Konsistenz | Ja |
+| `test-scaffold` | Test-Boilerplate generieren | Nein |
+| `test-coverage` | Testabdeckung analysieren + fixen | Nein |
+
+**Skill-Dateiformat** (`.claude/skills/<name>/SKILL.md`):
+```yaml
+---
+name: skill-name
+description: Kurzbeschreibung (Claude nutzt dies für Auto-Invoke)
+argument-hint: "[arg1|arg2]"          # Optional: Autocomplete-Hinweis
+disable-model-invocation: true        # Optional: Nur manuell aufrufbar
+---
+
+Prompt-Inhalt für den Skill...
+$ARGUMENTS wird durch übergebene Argumente ersetzt.
+```
 
 ### Hooks (`.claude/hooks/`)
 

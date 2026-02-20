@@ -1,3 +1,10 @@
+---
+name: update-docs
+description: Aktualisiere die Anwenderdokumentation basierend auf dem tatsächlichen Code-Stand.
+argument-hint: "[check|full|section:NAME]"
+disable-model-invocation: true
+---
+
 Aktualisiere die Anwenderdokumentation basierend auf dem tatsächlichen Code-Stand.
 
 Argument: `$ARGUMENTS` (default: `full`. Mögliche Werte: `check` — nur Analyse ohne Änderungen, `full` — Analyse + Update, `section:NAME` — nur eine bestimmte Sektion aktualisieren, z.B. `section:chat`)

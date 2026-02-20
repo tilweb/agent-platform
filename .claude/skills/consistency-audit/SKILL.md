@@ -1,3 +1,9 @@
+---
+name: consistency-audit
+description: Prüfe die gesamte Codebase auf Duplikate, Pattern-Abweichungen und Inkonsistenzen.
+argument-hint: "[icons|errors|styles|components|summary]"
+---
+
 # Consistency-Audit
 
 Prüfe die gesamte Codebase auf Duplikate, Pattern-Abweichungen und Inkonsistenzen.

@@ -1,3 +1,9 @@
+---
+name: critical-code-audit
+description: Führe ein kritisches Code-Audit der Codebase durch. Analysiere den Code systematisch in 9 Bereichen und liefere konkrete Findings.
+argument-hint: "[backend|frontend|routes]"
+---
+
 Führe ein kritisches Code-Audit der Codebase durch. Analysiere den Code systematisch in 9 Bereichen und liefere konkrete, umsetzbare Findings mit Dateinamen, Zeilennummern und Verbesserungsvorschlägen.
 
 Optionaler Scope: $ARGUMENTS (default: gesamte Codebase. Mögliche Werte: backend, frontend, routes)

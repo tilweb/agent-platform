@@ -1,3 +1,9 @@
+---
+name: design-audit
+description: Führe einen systematischen Design-Audit aller Frontend-Komponenten durch.
+argument-hint: "[pages|components|summary]"
+---
+
 # Design-Audit
 
 Führe einen systematischen Design-Audit aller Frontend-Komponenten durch.

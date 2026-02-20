@@ -1,3 +1,10 @@
+---
+name: release
+description: Erstelle ein Release mit Version Bump, Changelog, Quality Gate, Doku-Update und Build-Verifizierung.
+argument-hint: "[major|minor|patch|x.y.z]"
+disable-model-invocation: true
+---
+
 Erstelle ein Release mit Version Bump, Changelog, Quality Gate, Doku-Update und Build-Verifizierung.
 
 Argument: `$ARGUMENTS` (default: `patch`. Mögliche Werte: `major`, `minor`, `patch`, oder eine explizite Version wie `1.2.3`)
@@ -127,9 +134,9 @@ Leere Kategorien weglassen. Commit-Beschreibungen auf Deutsch formulieren (ggf. 
 
 ## Schritt 5: Dokumentation aktualisieren
 
-Führe die gleiche Logik wie der `/update-docs`-Command im Modus `full` aus:
+Führe die gleiche Logik wie der `/update-docs`-Skill im Modus `full` aus:
 
-1. Lies `.claude/commands/update-docs.md` für die vollständige Anleitung
+1. Lies `.claude/skills/update-docs/SKILL.md` für die vollständige Anleitung
 2. Führe die 5 Schritte aus (Feature-Inventar → Doku einlesen → Gap-Analyse → Aktualisieren → Konsistenzprüfung)
 3. Melde die Doku-Änderungen im Release-Report
 
@@ -139,7 +146,7 @@ Falls keine Doku-Änderungen nötig sind (alles aktuell): Melde das und fahre fo
 
 ## Schritt 6: Quality Gate (Hard Gate)
 
-Führe die vollständige Logik aus `.claude/commands/quality-gate.md` aus.
+Führe die vollständige Logik aus `.claude/skills/quality-gate/SKILL.md` aus.
 
 Prüfe alle 6 Kategorien:
 1. Design-Konsistenz
