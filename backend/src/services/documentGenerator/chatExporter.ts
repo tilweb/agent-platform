@@ -30,7 +30,7 @@ export function extractTablesFromMarkdown(content: string): TableContent[] {
   let currentTable: { headers: string[]; rows: string[][] } | null = null;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+    const line = (lines[i] ?? '').trim();
 
     // Check if line is a table row (starts and ends with |)
     if (line.startsWith('|') && line.endsWith('|')) {
@@ -93,14 +93,14 @@ export function extractListsFromMarkdown(content: string): string[] {
     // Unordered list: - item or * item
     const unorderedMatch = trimmed.match(/^[-*]\s+(.+)$/);
     if (unorderedMatch) {
-      items.push(unorderedMatch[1]);
+      items.push(unorderedMatch[1] ?? '');
       continue;
     }
 
     // Ordered list: 1. item
     const orderedMatch = trimmed.match(/^\d+\.\s+(.+)$/);
     if (orderedMatch) {
-      items.push(orderedMatch[1]);
+      items.push(orderedMatch[1] ?? '');
     }
   }
 
@@ -119,7 +119,7 @@ export function extractCodeBlocks(content: string): Array<{ language: string; co
   while ((match = regex.exec(content)) !== null) {
     blocks.push({
       language: match[1] || 'text',
-      code: match[2].trim(),
+      code: (match[2] ?? '').trim(),
     });
   }
 
@@ -218,7 +218,8 @@ export function mapChatToDocument(
     // Find the last assistant message and include it with the preceding user message
     const lastAssistantIndex = chat.messages.findLastIndex(m => m.role === 'assistant');
     if (lastAssistantIndex >= 0) {
-      const startIndex = lastAssistantIndex > 0 && chat.messages[lastAssistantIndex - 1].role === 'user'
+      const prevMsg = lastAssistantIndex > 0 ? chat.messages[lastAssistantIndex - 1] : undefined;
+      const startIndex = prevMsg?.role === 'user'
         ? lastAssistantIndex - 1
         : lastAssistantIndex;
       messagesToInclude = chat.messages.slice(startIndex, lastAssistantIndex + 1);
@@ -232,6 +233,7 @@ export function mapChatToDocument(
   if (messagesToInclude.length > 0) {
     for (let i = 0; i < messagesToInclude.length; i++) {
       const msg = messagesToInclude[i];
+      if (!msg) continue;
       const roleLabel = msg.role === 'user' ? 'Benutzer' : 'Assistent';
       const content = msg.content || '';
 

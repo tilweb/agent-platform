@@ -21,6 +21,18 @@ export const projektmanagementConfig: AppConfig = {
 
 export { projektmanagementRoutes } from './routes';
 export * from './service';
-export * from './storage';
 export * from './types';
 export * from './analysis';
+// Re-export storage items not already exported from service
+export {
+  getProjektauftrag,
+  getProjektauftraege,
+  deleteProjektauftrag,
+  saveProjektauftrag,
+  getVorlage,
+  getVorlagen,
+  saveVorlage,
+  deleteVorlage,
+  generateProjektauftragId,
+  initializeStorage,
+} from './storage';

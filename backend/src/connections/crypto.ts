@@ -145,9 +145,15 @@ function bufferToHex(buffer: Uint8Array): string {
  * Convert hex string to Uint8Array
  */
 function hexToBuffer(hex: string): Uint8Array {
+  if (hex.length % 2 !== 0) {
+    throw new Error('Hex string must have even length');
+  }
+  if (!/^[0-9a-f]*$/i.test(hex)) {
+    throw new Error('Invalid hex string');
+  }
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
   }
   return bytes;
 }
@@ -194,8 +200,12 @@ export async function encryptData<T>(data: T): Promise<EncryptedTokenSet> {
 
 /**
  * Decrypt data that was encrypted with encryptData().
+ * Optional validate callback verifies the parsed data at runtime.
  */
-export async function decryptData<T>(encrypted: EncryptedTokenSet): Promise<T> {
+export async function decryptData<T>(
+  encrypted: EncryptedTokenSet,
+  validate?: (parsed: unknown) => T
+): Promise<T> {
   if (encrypted.version !== ENCRYPTION_VERSION) {
     throw new Error(`Unsupported encryption version: ${encrypted.version}`);
   }
@@ -224,7 +234,17 @@ export async function decryptData<T>(encrypted: EncryptedTokenSet): Promise<T> {
     combined
   );
 
-  return JSON.parse(new TextDecoder().decode(plaintext)) as T;
+  const parsed = JSON.parse(new TextDecoder().decode(plaintext));
+
+  if (validate) {
+    return validate(parsed);
+  }
+
+  if (parsed === null || parsed === undefined) {
+    throw new Error('Decrypted data is null or undefined');
+  }
+
+  return parsed as T;
 }
 
 /**

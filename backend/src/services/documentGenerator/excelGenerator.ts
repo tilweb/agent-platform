@@ -166,6 +166,7 @@ function renderTable(sheet: ExcelJS.Worksheet, content: TableContent, startRow: 
   // Rows
   for (let i = 0; i < content.rows.length; i++) {
     const row = content.rows[i];
+    if (!row) continue;
     const isLastRow = i === content.rows.length - 1;
     const isTotal = row[0]?.toString().toLowerCase().includes('gesamt');
 

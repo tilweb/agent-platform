@@ -10,7 +10,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useSpace } from '../hooks/useSpaces';
 import { useAgentContext } from '../context/AgentContext';
-import { apiGet } from '../utils/apiFetch';
+import { apiFetch, apiGet } from '../utils/apiFetch';
 import { BriefcaseIcon, ArrowLeftIcon, SendIcon } from '../components/Icons';
 import ChatWindow from '../components/ChatWindow';
 
@@ -52,14 +52,12 @@ const styles = {
     alignItems: 'center',
     gap: theme.spacing.sm,
     padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-    backgroundColor: '#9333ea15',
     borderRadius: theme.borderRadius.md,
   },
   spaceIcon: {
     width: '24px',
     height: '24px',
     borderRadius: theme.borderRadius.sm,
-    backgroundColor: '#9333ea20',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -67,7 +65,6 @@ const styles = {
   spaceName: {
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
-    color: '#9333ea',
   },
   chatArea: {
     flex: 1,
@@ -128,7 +125,6 @@ const styles = {
     height: '50px',
     borderRadius: theme.borderRadius.lg,
     border: 'none',
-    backgroundColor: '#9333ea',
     color: 'white',
     cursor: 'pointer',
     transition: `all ${theme.transitions.fast}`,
@@ -138,10 +134,7 @@ const styles = {
     alignItems: 'center',
     gap: theme.spacing.md,
     padding: `${theme.spacing.sm} ${theme.spacing.xl}`,
-    backgroundColor: '#9333ea10',
-    borderBottom: `1px solid #9333ea30`,
     fontSize: theme.typography.sizes.sm,
-    color: '#9333ea',
   },
   loading: {
     display: 'flex',
@@ -156,14 +149,14 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     height: '100%',
-    color: '#ef4444',
+    color: theme.colors.error,
     gap: theme.spacing.lg,
   },
   errorButton: {
     padding: `${theme.spacing.md} ${theme.spacing.xl}`,
     backgroundColor: 'transparent',
-    color: '#ef4444',
-    border: `1px solid #ef444430`,
+    color: theme.colors.error,
+    border: `1px solid ${theme.colors.error}30`,
     borderRadius: theme.borderRadius.lg,
     cursor: 'pointer',
   },
@@ -225,10 +218,8 @@ export default function SpaceChatPage() {
     setMessages(prev => [...prev, { role: 'assistant', content: '', isStreaming: true }]);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/chat`, {
+      const response = await apiFetch('/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           message,
           sessionId: currentSessionId || undefined,
@@ -333,7 +324,7 @@ export default function SpaceChatPage() {
     );
   }
 
-  const color = space.color || '#9333ea';
+  const color = space.color || theme.colors.primary;
 
   return (
     <div style={styles.container}>
@@ -348,7 +339,7 @@ export default function SpaceChatPage() {
           >
             <ArrowLeftIcon size={20} />
           </button>
-          <div style={styles.spaceBadge}>
+          <div style={{ ...styles.spaceBadge, backgroundColor: `${color}15` }}>
             <div style={{ ...styles.spaceIcon, backgroundColor: `${color}20` }}>
               <BriefcaseIcon size={14} color={color} />
             </div>
@@ -358,7 +349,7 @@ export default function SpaceChatPage() {
       </div>
 
       {/* Context Banner */}
-      <div style={styles.contextBanner}>
+      <div style={{ ...styles.contextBanner, backgroundColor: `${color}10`, borderBottom: `1px solid ${color}30`, color }}>
         <BriefcaseIcon size={16} />
         Chat im Space-Kontext: Memory und Knowledge Base werden automatisch beruecksichtigt
       </div>
@@ -409,16 +400,17 @@ export default function SpaceChatPage() {
             <button
               style={{
                 ...styles.sendButton,
+                backgroundColor: color,
                 opacity: isStreaming || !inputValue.trim() ? 0.5 : 1,
               }}
               onClick={handleSend}
               disabled={isStreaming || !inputValue.trim()}
               onMouseOver={(e) => {
                 if (!isStreaming && inputValue.trim()) {
-                  e.currentTarget.style.backgroundColor = '#7c22ce';
+                  e.currentTarget.style.filter = 'brightness(0.85)';
                 }
               }}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#9333ea'}
+              onMouseOut={(e) => { e.currentTarget.style.filter = 'none'; }}
             >
               <SendIcon size={20} />
             </button>

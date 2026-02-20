@@ -14,7 +14,7 @@
  *         {sessionId}.yaml         - Space chats
  */
 
-import { readFile, writeFile, mkdir, readdir, unlink, rm } from 'fs/promises';
+import { mkdir, readdir, unlink, rm } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import * as yaml from 'yaml';
@@ -39,6 +39,42 @@ import type {
 import { createDefaultSettings, createDefaultMemory, createDefaultKBLinks } from './types';
 import { initializeResourceAccess, deleteResourceAccess } from '../rbac/storage';
 import { generateId } from '../utils/id';
+
+// =============================================================================
+// File-level mutexes to prevent race conditions
+// =============================================================================
+
+const spaceLocks = new Map<string, Promise<void>>();
+
+async function withSpaceLock<T>(spaceId: string, fn: () => Promise<T>): Promise<T> {
+  let release: () => void;
+  const prev = spaceLocks.get(spaceId) || Promise.resolve();
+  const myLock = new Promise<void>((resolve) => { release = resolve; });
+  spaceLocks.set(spaceId, myLock);
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release!();
+    if (spaceLocks.get(spaceId) === myLock) {
+      spaceLocks.delete(spaceId);
+    }
+  }
+}
+
+let spacesIndexLock: Promise<void> = Promise.resolve();
+
+async function withIndexLock<T>(fn: () => Promise<T>): Promise<T> {
+  let release: () => void;
+  const prev = spacesIndexLock;
+  spacesIndexLock = new Promise<void>((resolve) => { release = resolve; });
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release!();
+  }
+}
 
 // Base directory for spaces storage
 const SPACES_BASE_DIR = SPACES_DIR;
@@ -87,33 +123,40 @@ if (existsSync(LEGACY_PROJECTS_DIR) && !existsSync(SPACES_BASE_DIR)) {
           await rename(dirPath, newDirPath).catch(() => {});
 
           // Update ID inside space.yaml
+          const escapedName = entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const yamlPath = join(newDirPath, 'space.yaml');
           if (existsSync(yamlPath)) {
             try {
-              const content = await readFile(yamlPath, 'utf-8');
-              const updated = content.replace(new RegExp(entry.name, 'g'), newName);
-              await writeFile(yamlPath, updated, 'utf-8');
-            } catch {}
+              const content = await Bun.file(yamlPath).text();
+              const updated = content.replace(new RegExp(escapedName, 'g'), newName);
+              await Bun.write(yamlPath, updated);
+            } catch (err) {
+              console.error(`[Migration] Failed to update space.yaml for ${entry.name}:`, err);
+            }
           }
 
           // Update memory.yaml spaceId
           const memPath = join(newDirPath, 'memory.yaml');
           if (existsSync(memPath)) {
             try {
-              const content = await readFile(memPath, 'utf-8');
-              const updated = content.replace(new RegExp(entry.name, 'g'), newName);
-              await writeFile(memPath, updated, 'utf-8');
-            } catch {}
+              const content = await Bun.file(memPath).text();
+              const updated = content.replace(new RegExp(escapedName, 'g'), newName);
+              await Bun.write(memPath, updated);
+            } catch (err) {
+              console.error(`[Migration] Failed to update memory.yaml for ${entry.name}:`, err);
+            }
           }
 
           // Update kb-links.yaml spaceId
           const kbPath = join(newDirPath, 'kb-links.yaml');
           if (existsSync(kbPath)) {
             try {
-              const content = await readFile(kbPath, 'utf-8');
-              const updated = content.replace(new RegExp(entry.name, 'g'), newName);
-              await writeFile(kbPath, updated, 'utf-8');
-            } catch {}
+              const content = await Bun.file(kbPath).text();
+              const updated = content.replace(new RegExp(escapedName, 'g'), newName);
+              await Bun.write(kbPath, updated);
+            } catch (err) {
+              console.error(`[Migration] Failed to update kb-links.yaml for ${entry.name}:`, err);
+            }
           }
 
           console.log(`[Migration] Renamed space ${entry.name} → ${newName}`);
@@ -124,11 +167,13 @@ if (existsSync(LEGACY_PROJECTS_DIR) && !existsSync(SPACES_BASE_DIR)) {
       const indexPath = join(SPACES_BASE_DIR, 'spaces.yaml');
       if (existsSync(indexPath)) {
         try {
-          const content = await readFile(indexPath, 'utf-8');
+          const content = await Bun.file(indexPath).text();
           const updated = content.replace(/proj_/g, 'space_');
-          await writeFile(indexPath, updated, 'utf-8');
+          await Bun.write(indexPath, updated);
           console.log('[Migration] Updated IDs in spaces.yaml index');
-        } catch {}
+        } catch (err) {
+          console.error('[Migration] Failed to update spaces.yaml index:', err);
+        }
       }
 
       console.log('[Migration] Projects → Spaces migration complete');
@@ -187,7 +232,7 @@ async function loadSpacesIndex(): Promise<SpaceIndex> {
   }
 
   try {
-    const content = await readFile(indexPath, 'utf-8');
+    const content = await Bun.file(indexPath).text();
     return yaml.parse(content) as SpaceIndex;
   } catch (error) {
     console.error('Error loading spaces index:', error);
@@ -199,7 +244,7 @@ async function saveSpacesIndex(index: SpaceIndex): Promise<void> {
   await ensureBaseDir();
   index.updatedAt = new Date().toISOString();
   const indexPath = join(SPACES_BASE_DIR, 'spaces.yaml');
-  await writeFile(indexPath, toYaml(index), 'utf-8');
+  await Bun.write(indexPath, toYaml(index));
 }
 
 // =============================================================================
@@ -217,7 +262,7 @@ export async function loadSpace(spaceId: string): Promise<Space | null> {
   }
 
   try {
-    const content = await readFile(spacePath, 'utf-8');
+    const content = await Bun.file(spacePath).text();
     const space = yaml.parse(content) as Space;
 
     // Ensure required fields exist
@@ -243,7 +288,7 @@ export async function saveSpace(space: Space): Promise<void> {
 
   space.updatedAt = new Date().toISOString();
   const spacePath = join(spaceDir, 'space.yaml');
-  await writeFile(spacePath, toYaml(space), 'utf-8');
+  await Bun.write(spacePath, toYaml(space));
 }
 
 /**
@@ -321,30 +366,34 @@ export async function updateSpace(
   spaceId: string,
   updates: Partial<Pick<Space, 'name' | 'description' | 'icon' | 'color' | 'archived'>>
 ): Promise<Space | null> {
-  const space = await loadSpace(spaceId);
-  if (!space) return null;
+  return withSpaceLock(spaceId, async () => {
+    const space = await loadSpace(spaceId);
+    if (!space) return null;
 
-  // Apply updates
-  if (updates.name !== undefined) space.name = updates.name;
-  if (updates.description !== undefined) space.description = updates.description;
-  if (updates.icon !== undefined) space.icon = updates.icon;
-  if (updates.color !== undefined) space.color = updates.color;
-  if (updates.archived !== undefined) space.archived = updates.archived;
+    // Apply updates
+    if (updates.name !== undefined) space.name = updates.name;
+    if (updates.description !== undefined) space.description = updates.description;
+    if (updates.icon !== undefined) space.icon = updates.icon;
+    if (updates.color !== undefined) space.color = updates.color;
+    if (updates.archived !== undefined) space.archived = updates.archived;
 
-  await saveSpace(space);
+    await saveSpace(space);
 
-  // Update index if name or archived changed
-  if (updates.name !== undefined || updates.archived !== undefined) {
-    const index = await loadSpacesIndex();
-    const entry = index.spaces.find((p) => p.id === spaceId);
-    if (entry) {
-      if (updates.name !== undefined) entry.name = updates.name;
-      if (updates.archived !== undefined) entry.archived = updates.archived;
-      await saveSpacesIndex(index);
+    // Update index if name or archived changed
+    if (updates.name !== undefined || updates.archived !== undefined) {
+      await withIndexLock(async () => {
+        const index = await loadSpacesIndex();
+        const entry = index.spaces.find((p) => p.id === spaceId);
+        if (entry) {
+          if (updates.name !== undefined) entry.name = updates.name;
+          if (updates.archived !== undefined) entry.archived = updates.archived;
+          await saveSpacesIndex(index);
+        }
+      });
     }
-  }
 
-  return space;
+    return space;
+  });
 }
 
 /**
@@ -425,29 +474,31 @@ export async function addSpaceMember(
   role: SpaceMember['role'],
   addedBy: string
 ): Promise<SpaceMember | null> {
-  const space = await loadSpace(spaceId);
-  if (!space) return null;
+  return withSpaceLock(spaceId, async () => {
+    const space = await loadSpace(spaceId);
+    if (!space) return null;
 
-  // Check if user is already a member
-  const existing = space.members.find((m) => m.userId === userId);
-  if (existing) {
-    // Update role if already a member
-    existing.role = role;
+    // Check if user is already a member
+    const existing = space.members.find((m) => m.userId === userId);
+    if (existing) {
+      // Update role if already a member
+      existing.role = role;
+      await saveSpace(space);
+      return existing;
+    }
+
+    const member: SpaceMember = {
+      userId,
+      role,
+      addedAt: new Date().toISOString(),
+      addedBy,
+    };
+
+    space.members.push(member);
     await saveSpace(space);
-    return existing;
-  }
 
-  const member: SpaceMember = {
-    userId,
-    role,
-    addedAt: new Date().toISOString(),
-    addedBy,
-  };
-
-  space.members.push(member);
-  await saveSpace(space);
-
-  return member;
+    return member;
+  });
 }
 
 /**
@@ -458,34 +509,38 @@ export async function updateMemberRole(
   userId: string,
   newRole: SpaceMember['role']
 ): Promise<boolean> {
-  const space = await loadSpace(spaceId);
-  if (!space) return false;
+  return withSpaceLock(spaceId, async () => {
+    const space = await loadSpace(spaceId);
+    if (!space) return false;
 
-  const member = space.members.find((m) => m.userId === userId);
-  if (!member) return false;
+    const member = space.members.find((m) => m.userId === userId);
+    if (!member) return false;
 
-  member.role = newRole;
-  await saveSpace(space);
+    member.role = newRole;
+    await saveSpace(space);
 
-  return true;
+    return true;
+  });
 }
 
 /**
  * Remove a member from a space
  */
 export async function removeSpaceMember(spaceId: string, userId: string): Promise<boolean> {
-  const space = await loadSpace(spaceId);
-  if (!space) return false;
+  return withSpaceLock(spaceId, async () => {
+    const space = await loadSpace(spaceId);
+    if (!space) return false;
 
-  const initialLength = space.members.length;
-  space.members = space.members.filter((m) => m.userId !== userId);
+    const initialLength = space.members.length;
+    space.members = space.members.filter((m) => m.userId !== userId);
 
-  if (space.members.length === initialLength) {
-    return false; // Member not found
-  }
+    if (space.members.length === initialLength) {
+      return false; // Member not found
+    }
 
-  await saveSpace(space);
-  return true;
+    await saveSpace(space);
+    return true;
+  });
 }
 
 // =============================================================================
@@ -499,13 +554,15 @@ export async function updateSpaceSettings(
   spaceId: string,
   updates: Partial<SpaceSettings>
 ): Promise<SpaceSettings | null> {
-  const space = await loadSpace(spaceId);
-  if (!space) return null;
+  return withSpaceLock(spaceId, async () => {
+    const space = await loadSpace(spaceId);
+    if (!space) return null;
 
-  space.settings = { ...space.settings, ...updates };
-  await saveSpace(space);
+    space.settings = { ...space.settings, ...updates };
+    await saveSpace(space);
 
-  return space.settings;
+    return space.settings;
+  });
 }
 
 // =============================================================================
@@ -523,7 +580,7 @@ export async function loadSpaceMemory(spaceId: string): Promise<SpaceMemory> {
   }
 
   try {
-    const content = await readFile(memoryPath, 'utf-8');
+    const content = await Bun.file(memoryPath).text();
     const memory = yaml.parse(content) as SpaceMemory;
 
     // Ensure all sections exist
@@ -550,7 +607,7 @@ export async function saveSpaceMemory(memory: SpaceMemory): Promise<void> {
 
   memory.updatedAt = new Date().toISOString();
   const memoryPath = join(spaceDir, 'memory.yaml');
-  await writeFile(memoryPath, toYaml(memory), 'utf-8');
+  await Bun.write(memoryPath, toYaml(memory));
 }
 
 /**
@@ -775,7 +832,7 @@ export async function loadSpaceKBLinks(spaceId: string): Promise<SpaceKBLinks> {
   }
 
   try {
-    const content = await readFile(linksPath, 'utf-8');
+    const content = await Bun.file(linksPath).text();
     const links = yaml.parse(content) as SpaceKBLinks;
 
     if (!links.collections) links.collections = [];
@@ -799,7 +856,7 @@ export async function saveSpaceKBLinks(links: SpaceKBLinks): Promise<void> {
 
   links.updatedAt = new Date().toISOString();
   const linksPath = join(spaceDir, 'kb-links.yaml');
-  await writeFile(linksPath, toYaml(links), 'utf-8');
+  await Bun.write(linksPath, toYaml(links));
 }
 
 /**
@@ -892,7 +949,7 @@ export async function listSpaceChats(spaceId: string): Promise<Array<{
       if (!file.endsWith('.yaml')) continue;
 
       try {
-        const content = await readFile(join(chatsDir, file), 'utf-8');
+        const content = await Bun.file(join(chatsDir, file)).text();
         const chat = yaml.parse(content) as SpaceChat;
 
         summaries.push({
@@ -929,7 +986,7 @@ export async function loadSpaceChat(
   }
 
   try {
-    const content = await readFile(chatPath, 'utf-8');
+    const content = await Bun.file(chatPath).text();
     return yaml.parse(content) as SpaceChat;
   } catch (error) {
     console.error(`Error loading space chat ${chatId}:`, error);
@@ -949,7 +1006,7 @@ export async function saveSpaceChat(chat: SpaceChat): Promise<void> {
 
   chat.updatedAt = new Date().toISOString();
   const chatPath = join(chatsDir, `${chat.id}.yaml`);
-  await writeFile(chatPath, toYaml(chat), 'utf-8');
+  await Bun.write(chatPath, toYaml(chat));
 }
 
 /**

@@ -116,7 +116,7 @@ imageRoutes.get('/generated/:id', async (c) => {
 
   const mimeType = await getImageMimeType(id) || 'image/png';
 
-  return new Response(imageBuffer, {
+  return new Response(new Uint8Array(imageBuffer), {
     headers: {
       'Content-Type': mimeType,
       'Cache-Control': 'public, max-age=31536000', // Cache for 1 year

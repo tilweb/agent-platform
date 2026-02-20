@@ -79,6 +79,7 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
               description: 'Inhaltssektionen des Dokuments',
               items: {
                 type: 'object',
+                description: 'Eine Inhaltssektion des Dokuments',
                 properties: {
                   title: {
                     type: 'string',
@@ -90,6 +91,7 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
                     description: 'Art des Inhalts',
                   },
                   content: {
+                    type: 'string',
                     description: 'Inhalt der Sektion (abhaengig vom Typ)',
                   },
                 },
@@ -101,6 +103,7 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
               description: 'Optionale Metadaten (z.B. Autor, Datum) als Schluessel-Wert-Paare',
               additionalProperties: {
                 type: 'string',
+                description: 'Metadaten-Wert',
               },
             },
           },

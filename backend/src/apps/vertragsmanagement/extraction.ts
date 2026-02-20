@@ -220,7 +220,9 @@ export function computeDerivedFields(
   let annual_value = 0;
   const valueMapping = schema.mapping.value;
   if (valueMapping.includes('*')) {
-    const [path, multiplierStr] = valueMapping.split('*').map((s) => s.trim());
+    const parts = valueMapping.split('*').map((s) => s.trim());
+    const path = parts[0] || '';
+    const multiplierStr = parts[1] || '1';
     const baseValue = Number(getNestedValue(extracted, path)) || 0;
     const multiplier = Number(multiplierStr) || 1;
     annual_value = baseValue * multiplier;

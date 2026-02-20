@@ -1,7 +1,7 @@
 import { writeFile, readFile, mkdir, readdir, unlink } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import type { Message } from './llm';
+import type { Message, ContentPart } from './llm';
 import { llmService } from './llm';
 import { saveSpaceChat } from '../spaces/storage';
 import { DATA_DIR, CONVERSATIONS_DIR, CHATS_DIR, CHAT_FOLDERS_FILE } from '../utils/paths';
@@ -24,14 +24,15 @@ const chatLocks = new Map<string, Promise<void>>();
 async function withChatLock<T>(sessionId: string, fn: () => Promise<T>): Promise<T> {
   let release: () => void;
   const prev = chatLocks.get(sessionId) || Promise.resolve();
-  chatLocks.set(sessionId, new Promise<void>((resolve) => { release = resolve; }));
+  const myLock = new Promise<void>((resolve) => { release = resolve; });
+  chatLocks.set(sessionId, myLock);
   await prev;
   try {
     return await fn();
   } finally {
     release!();
     // Clean up lock entries for sessions no longer contended
-    if (chatLocks.get(sessionId) === undefined) {
+    if (chatLocks.get(sessionId) === myLock) {
       chatLocks.delete(sessionId);
     }
   }
@@ -136,6 +137,19 @@ export function getMessages(sessionId: string, userId?: string): Message[] {
   return session?.messages || [];
 }
 
+/**
+ * Convert MessageContent (string | ContentPart[] | null) to a plain string.
+ * For multimodal ContentPart arrays, extracts text parts only.
+ */
+function contentToString(content: string | ContentPart[] | null | undefined): string {
+  if (!content) return '';
+  if (typeof content === 'string') return content;
+  return content
+    .filter((part): part is ContentPart & { type: 'text' } => part.type === 'text')
+    .map((part) => (part as { type: 'text'; text: string }).text)
+    .join('');
+}
+
 function formatMessagesAsMarkdown(session: ConversationSession): string {
   const lines: string[] = [
     `# Conversation ${session.id}`,
@@ -153,12 +167,12 @@ function formatMessagesAsMarkdown(session: ConversationSession): string {
     if (msg.role === 'tool') {
       lines.push(`### Tool Result (${msg.name || 'unknown'})`);
       lines.push('```');
-      lines.push(msg.content || '');
+      lines.push(contentToString(msg.content));
       lines.push('```');
     } else if (msg.tool_calls && msg.tool_calls.length > 0) {
       lines.push(`### ${roleLabel}`);
       if (msg.content) {
-        lines.push(msg.content);
+        lines.push(contentToString(msg.content));
       }
       lines.push('');
       lines.push('**Tool Calls:**');
@@ -167,7 +181,7 @@ function formatMessagesAsMarkdown(session: ConversationSession): string {
       }
     } else {
       lines.push(`### ${roleLabel}`);
-      lines.push(msg.content || '');
+      lines.push(contentToString(msg.content));
     }
     lines.push('');
   }
@@ -873,7 +887,7 @@ export async function saveChatHistory(sessionId: string, userId?: string, spaceI
       if (!msg.content) continue;
       const chatMsg: ChatHistoryMessage = {
         role: msg.role,
-        content: msg.content,
+        content: contentToString(msg.content),
       };
       chatMessages.push(chatMsg);
       if (msg.role === 'user') {

@@ -13,6 +13,25 @@ import type { ConfigField, StoredPluginConfig, EncryptedConfigField } from './ty
 
 const MASK = '••••••••';
 
+// Per-plugin file locks to prevent concurrent read-modify-write races
+const configLocks = new Map<string, Promise<void>>();
+
+async function withConfigLock<T>(lockKey: string, fn: () => Promise<T>): Promise<T> {
+  let release: () => void;
+  const prev = configLocks.get(lockKey) || Promise.resolve();
+  const myLock = new Promise<void>((resolve) => { release = resolve; });
+  configLocks.set(lockKey, myLock);
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release!();
+    if (configLocks.get(lockKey) === myLock) {
+      configLocks.delete(lockKey);
+    }
+  }
+}
+
 function configPath(pluginId: string, userId?: string): string {
   if (userId) {
     return join(PLUGINS_CONFIGS_DIR, pluginId, `${userId}.yaml`);
@@ -30,48 +49,51 @@ export async function savePluginConfig(
   configuredBy?: string,
   userId?: string
 ): Promise<void> {
-  if (!isEncryptionConfigured()) {
-    throw new Error('Encryption not configured. Set CONNECTION_ENCRYPTION_KEY.');
-  }
-
-  const secretKeys = new Set(
-    configSchema.filter(f => f.secret).map(f => f.key)
-  );
-
-  // Build stored values — encrypt secrets individually
-  const storedValues: Record<string, any> = {};
-  for (const [key, value] of Object.entries(values)) {
-    if (value === undefined || value === null || value === '') continue;
-
-    // Skip masked values (means "keep existing")
-    if (secretKeys.has(key) && value === MASK) continue;
-
-    if (secretKeys.has(key)) {
-      storedValues[key] = await encryptData(value);
-    } else {
-      storedValues[key] = value;
+  const path = configPath(pluginId, userId);
+  return withConfigLock(path, async () => {
+    if (!isEncryptionConfigured()) {
+      throw new Error('Encryption not configured. Set CONNECTION_ENCRYPTION_KEY.');
     }
-  }
 
-  // Merge with existing config to preserve unchanged secret values
-  const existing = await loadRawConfig(pluginId, userId);
-  if (existing) {
-    for (const key of secretKeys) {
-      if (!(key in storedValues) && existing.values[key]) {
-        storedValues[key] = existing.values[key];
+    const secretKeys = new Set(
+      configSchema.filter(f => f.secret).map(f => f.key)
+    );
+
+    // Build stored values — encrypt secrets individually
+    const storedValues: Record<string, any> = {};
+    for (const [key, value] of Object.entries(values)) {
+      if (value === undefined || value === null || value === '') continue;
+
+      // Skip masked values (means "keep existing")
+      if (secretKeys.has(key) && value === MASK) continue;
+
+      if (secretKeys.has(key)) {
+        storedValues[key] = await encryptData(value);
+      } else {
+        storedValues[key] = value;
       }
     }
-  }
 
-  const config: StoredPluginConfig = {
-    pluginId,
-    values: storedValues,
-    configuredAt: new Date().toISOString(),
-    configuredBy,
-  };
+    // Merge with existing config to preserve unchanged secret values
+    const existing = await loadRawConfig(pluginId, userId);
+    if (existing) {
+      for (const key of secretKeys) {
+        if (!(key in storedValues) && existing.values[key]) {
+          storedValues[key] = existing.values[key];
+        }
+      }
+    }
 
-  await ensureDir(PLUGINS_CONFIGS_DIR);
-  await saveYaml(configPath(pluginId, userId), config);
+    const config: StoredPluginConfig = {
+      pluginId,
+      values: storedValues,
+      configuredAt: new Date().toISOString(),
+      configuredBy,
+    };
+
+    await ensureDir(PLUGINS_CONFIGS_DIR);
+    await saveYaml(path, config);
+  });
 }
 
 /**
@@ -93,7 +115,10 @@ export async function loadPluginConfig(
   for (const [key, value] of Object.entries(raw.values)) {
     if (secretKeys.has(key) && isEncryptedField(value)) {
       try {
-        result[key] = await decryptData<string>(value as EncryptedConfigField);
+        result[key] = await decryptData<string>(value as EncryptedConfigField, (parsed) => {
+          if (typeof parsed !== 'string') throw new Error(`Expected string, got ${typeof parsed}`);
+          return parsed;
+        });
       } catch {
         console.error(`Failed to decrypt config field "${key}" for plugin "${pluginId}"`);
       }

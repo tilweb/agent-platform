@@ -6,7 +6,7 @@ metadata:
     {{- include "agent-platform.labels" . | nindent 4 }}
 data:
   # Server
-  PORT: {{ .Values.backend.config.port | quote }}
+  BACKEND_PORT: {{ .Values.backend.config.port | quote }}
   NODE_ENV: {{ .Values.backend.config.nodeEnv | quote }}
   DATA_DIR: {{ .Values.backend.config.dataDir | quote }}
   TRUST_PROXY: {{ .Values.backend.config.trustProxy | quote }}

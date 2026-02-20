@@ -603,7 +603,7 @@ projektmanagement.get('/projektauftraege/:id/export/:format', async (c) => {
         const mimeType = getMimeType(format as DocumentFormat);
         const extension = getFileExtension(format as DocumentFormat);
 
-        return new Response(buffer, {
+        return new Response(new Uint8Array(buffer), {
           headers: {
             'Content-Type': mimeType,
             'Content-Disposition': `attachment; filename="${filename}.${extension}"`,

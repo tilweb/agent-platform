@@ -41,7 +41,6 @@ export async function createProjektauftrag(
   const now = new Date().toISOString();
   const projektauftrag: Projektauftrag = {
     // Defaults
-    id: generateProjektauftragId(),
     name: '',
     project_type: 'internal',
     start_date: '',
@@ -59,9 +58,6 @@ export async function createProjektauftrag(
     risks: [],
     organization: [],
     stakeholders: [],
-    created_at: now,
-    updated_at: now,
-    created_by: userId,
     status: 'draft',
     current_step: 1,
     // Apply provided data

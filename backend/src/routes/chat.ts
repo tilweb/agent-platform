@@ -764,7 +764,7 @@ chatHistoryRoutes.get('/:id/export/:format', authMiddleware, async (c) => {
     const filename = `${baseFilename}.${format}`;
 
     // Return file download
-    return new Response(buffer, {
+    return new Response(new Uint8Array(buffer), {
       headers: {
         'Content-Type': getMimeType(format),
         'Content-Disposition': `attachment; filename="${filename}"`,
@@ -1508,7 +1508,7 @@ toolRoutes.put('/:name/config', async (c) => {
     });
 
     // Also update the tool instance if it has updateConfig method
-    const configurable = tool as Record<string, unknown>;
+    const configurable = tool as unknown as Record<string, unknown>;
     if (typeof configurable.updateConfig === 'function') {
       (configurable.updateConfig as (config: Record<string, unknown>) => void)(body);
     }

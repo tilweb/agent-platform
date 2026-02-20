@@ -8,7 +8,7 @@
  * Called during backend initialization.
  */
 
-import { join } from 'path';
+import { join, normalize, resolve, sep } from 'path';
 import { PLUGINS_DIR, PLUGINS_INSTALLED_DIR, PLUGINS_CONFIGS_DIR } from '../utils/paths';
 import { loadYaml, ensureDir } from '../utils/yamlStorage';
 import { pluginRegistry } from './registry';
@@ -97,7 +97,28 @@ async function loadPluginsFromDir(dir: string, source: 'builtin' | 'installed'):
  * in the connection registry.
  */
 async function loadConnectorProvider(pluginDir: string, manifest: PluginManifest): Promise<void> {
-  const entryPoint = join(pluginDir, manifest.connector!.entryPoint!);
+  const entryPoint = resolve(pluginDir, manifest.connector!.entryPoint!);
+  const normalizedDir = resolve(pluginDir) + sep;
+
+  // Prevent path traversal — entryPoint must stay within pluginDir
+  if (!entryPoint.startsWith(normalizedDir)) {
+    console.error(`Blocked connector ${manifest.id}: entryPoint '${manifest.connector!.entryPoint}' resolves outside plugin directory`);
+    return;
+  }
+
+  // Resolve symlinks and verify the real path is still within pluginDir
+  try {
+    const { realpath } = await import('fs/promises');
+    const realEntryPoint = await realpath(entryPoint);
+    const realPluginDir = await realpath(pluginDir);
+    if (!realEntryPoint.startsWith(realPluginDir + sep)) {
+      console.error(`Blocked connector ${manifest.id}: entryPoint symlink resolves outside plugin directory`);
+      return;
+    }
+  } catch {
+    // realpath fails if file doesn't exist yet — let import() handle the error
+  }
+
   try {
     const module = await import(entryPoint);
     const provider = module.default;

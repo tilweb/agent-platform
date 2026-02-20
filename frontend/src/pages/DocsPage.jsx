@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -531,9 +531,10 @@ function CodeBlock({ language, children }) {
   const code = String(children).replace(/\n$/, '');
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
   };
 
   return (
@@ -576,7 +577,7 @@ const markdownComponents = {
   a: ({ href, children }) => {
     if (href && href.endsWith('.md') && !href.startsWith('http')) {
       const slug = href.replace(/\.md$/, '').replace(/^\.\//, '').replace(/^\.\.\//g, '');
-      return <a href={`/docs/${slug}`} style={styles.mdA}>{children}</a>;
+      return <Link to={`/docs/${slug}`} style={styles.mdA}>{children}</Link>;
     }
     return <a href={href} style={styles.mdA} target="_blank" rel="noopener noreferrer">{children}</a>;
   },

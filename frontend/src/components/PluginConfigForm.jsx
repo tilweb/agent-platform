@@ -1,6 +1,25 @@
 import { useState, useEffect } from 'react';
 import { theme } from '../config/theme';
 
+// Toggle icons (per design system pattern from frontend/CLAUDE.md)
+function ToggleOnIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={theme.colors.success} strokeWidth="2">
+      <rect x="1" y="5" width="22" height="14" rx="7" ry="7" />
+      <circle cx="16" cy="12" r="3" fill={theme.colors.success} />
+    </svg>
+  );
+}
+
+function ToggleOffIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="1" y="5" width="22" height="14" rx="7" ry="7" />
+      <circle cx="8" cy="12" r="3" />
+    </svg>
+  );
+}
+
 const styles = {
   form: {
     display: 'flex',
@@ -54,7 +73,15 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing.sm,
+  },
+  toggleButton: {
+    display: 'flex',
+    alignItems: 'center',
+    background: 'none',
+    border: 'none',
     cursor: 'pointer',
+    padding: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
   },
   actions: {
     display: 'flex',
@@ -99,6 +126,11 @@ const styles = {
     backgroundColor: `${theme.colors.error}10`,
     borderRadius: theme.borderRadius.md,
   },
+  validationError: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.error,
+    marginTop: theme.spacing.xs,
+  },
 };
 
 /**
@@ -129,8 +161,28 @@ export default function PluginConfigForm({
     setValues(prev => ({ ...prev, [key]: value }));
   };
 
+  const [validationErrors, setValidationErrors] = useState({});
+
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Validate required fields
+    const errors = {};
+    for (const field of configSchema) {
+      if (field.required) {
+        const val = values[field.key];
+        if (val === undefined || val === null || val === '') {
+          errors[field.key] = `${field.label} ist erforderlich`;
+        }
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
     onSave?.(values);
   };
 
@@ -140,16 +192,21 @@ export default function PluginConfigForm({
     switch (field.type) {
       case 'boolean':
         return (
-          <label style={styles.toggle}>
-            <input
-              type="checkbox"
-              checked={!!value}
-              onChange={(e) => handleChange(field.key, e.target.checked)}
-            />
+          <div style={styles.toggle}>
+            <button
+              type="button"
+              style={styles.toggleButton}
+              onClick={() => handleChange(field.key, !value)}
+              title={value ? 'Deaktivieren' : 'Aktivieren'}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+            >
+              {value ? <ToggleOnIcon /> : <ToggleOffIcon />}
+            </button>
             <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text }}>
               {field.label}
             </span>
-          </label>
+          </div>
         );
 
       case 'enum':
@@ -221,6 +278,11 @@ export default function PluginConfigForm({
             </label>
           )}
           {renderField(field)}
+          {validationErrors[field.key] && (
+            <div style={styles.validationError}>
+              {validationErrors[field.key]}
+            </div>
+          )}
           {field.description && (
             <div style={styles.description}>{field.description}</div>
           )}

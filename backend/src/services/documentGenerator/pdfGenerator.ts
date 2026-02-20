@@ -3,13 +3,13 @@
  * Generates PDF files using pdfmake with built-in fonts
  */
 
-import PdfMake from 'pdfmake/build/pdfmake';
+import * as PdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import type { TDocumentDefinitions, Content, TableCell, StyleDictionary } from 'pdfmake/interfaces';
 import type { DocumentData, DocumentSection, TableContent, KeyValueContent, ListContent } from './index';
 
 // Set up virtual file system for fonts
-PdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs || pdfFonts;
+PdfMake.addVirtualFileSystem(pdfFonts);
 
 // Colors
 const COLORS = {
@@ -136,17 +136,9 @@ export async function generatePdf(data: DocumentData): Promise<Buffer> {
   };
 
   // Create PDF using createPdf method
-  return new Promise((resolve, reject) => {
-    try {
-      const pdfDoc = PdfMake.createPdf(docDefinition);
-
-      pdfDoc.getBuffer((buffer: Buffer) => {
-        resolve(Buffer.from(buffer));
-      });
-    } catch (error) {
-      reject(error);
-    }
-  });
+  const pdfDoc = PdfMake.createPdf(docDefinition);
+  const buffer = await pdfDoc.getBuffer();
+  return Buffer.from(buffer);
 }
 
 function renderSection(section: DocumentSection): Content[] {

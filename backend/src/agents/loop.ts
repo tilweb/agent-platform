@@ -1663,7 +1663,7 @@ export async function* runAgentLoop(
                     // We have a complete tool call - extract it
                     const toolNameMatch = toolCallBuffer.match(/\[TOOL_CALLS\](\w+)/);
                     if (toolNameMatch) {
-                      const toolName = toolNameMatch[1];
+                      const toolName = toolNameMatch[1] || '';
                       try {
                         JSON.parse(jsonStr); // Validate JSON
                         toolCalls.push({
@@ -1793,7 +1793,7 @@ export async function* runAgentLoop(
           if (jsonStr) {
             const toolNameMatch = toolCallBuffer.match(/\[TOOL_CALLS\](\w+)/);
             if (toolNameMatch) {
-              const toolName = toolNameMatch[1];
+              const toolName = toolNameMatch[1] || '';
               try {
                 JSON.parse(jsonStr);
                 toolCalls.push({

@@ -26,6 +26,14 @@ export class RemoteMcpConnection implements IMcpConnection {
     this.config = config;
     this.runnerUrl = runnerUrl.replace(/\/$/, '');
     this.secret = secret;
+
+    // Warn if MCP Runner URL is not using HTTPS in production
+    if (process.env.NODE_ENV === 'production' && !this.runnerUrl.startsWith('https://')) {
+      const isLocalNetwork = /^https?:\/\/(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(this.runnerUrl);
+      if (!isLocalNetwork) {
+        console.warn(`[MCP Runner] WARNING: Non-HTTPS URL "${this.runnerUrl}" used in production. Env vars including secrets are sent over this connection.`);
+      }
+    }
   }
 
   get serverId(): string {
@@ -56,12 +64,29 @@ export class RemoteMcpConnection implements IMcpConnection {
     return h;
   }
 
+  /** Allowlist of env var prefixes safe to forward to MCP Runner */
+  private static readonly ENV_ALLOWLIST = [
+    'MCP_', 'OPENAI_', 'ANTHROPIC_', 'GOOGLE_', 'AZURE_', 'AWS_',
+    'GITHUB_TOKEN', 'GITLAB_TOKEN', 'SLACK_', 'JIRA_', 'CONFLUENCE_',
+    'NODE_ENV', 'HOME', 'PATH', 'LANG', 'TZ',
+  ];
+
   private resolveEnv(): Record<string, string> | undefined {
     if (!this.config.env) return undefined;
 
     const resolved: Record<string, string> = {};
     for (const [key, value] of Object.entries(this.config.env)) {
-      resolved[key] = value.replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] || '');
+      resolved[key] = value.replace(/\$\{(\w+)\}/g, (_, name) => {
+        // Only resolve env vars matching the allowlist
+        const allowed = RemoteMcpConnection.ENV_ALLOWLIST.some(
+          prefix => name === prefix || name.startsWith(prefix)
+        );
+        if (!allowed) {
+          console.warn(`[MCP Runner] Blocked env var resolution: \${${name}} — not in allowlist`);
+          return '';
+        }
+        return process.env[name] || '';
+      });
     }
     return resolved;
   }

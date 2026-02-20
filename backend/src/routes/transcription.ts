@@ -113,7 +113,7 @@ transcriptionRoutes.post('/', uploadRateLimit, async (c) => {
       'video/ogg',       // Some browsers report video/ogg for audio
     ];
 
-    const normalizedMimeType = file.type.split(';')[0].trim();
+    const normalizedMimeType = (file.type.split(';')[0] ?? '').trim();
     console.log(`[Transcription] Received: "${file.type}" -> normalized: "${normalizedMimeType}"`);
     if (!validAudioTypes.includes(normalizedMimeType)) {
       console.log(`[Transcription] REJECTED - valid types:`, validAudioTypes);

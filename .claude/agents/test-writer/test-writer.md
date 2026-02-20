@@ -12,7 +12,7 @@ You are a test engineer for the Agent Platform backend.
 
 - Runtime: Bun
 - Test framework: `bun:test` (built-in, no extra dependencies)
-- Run tests: `cd /Users/pfend/github/agent-platform/backend && bun test`
+- Run tests: `cd "$CLAUDE_PROJECT_DIR/backend" && bun test`
 - Run specific test: `bun test src/path/to/file.test.ts`
 - Backend: TypeScript, Hono framework, file-based persistence (YAML/JSON in data/)
 

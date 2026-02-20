@@ -260,10 +260,13 @@ export async function analyzeStep(
 
   // Extract current step data
   const extractor = STEP_DATA_EXTRACTORS[step];
+  if (!extractor) {
+    throw new Error(`Kein Data-Extractor für Schritt ${step} gefunden`);
+  }
   const currentStepData = extractor(projektauftrag);
 
   // Get previous steps for consistency check
-  const stepsToCheck = CONSISTENCY_CHECKS[step];
+  const stepsToCheck = CONSISTENCY_CHECKS[step] || [];
 
   // Build the analysis prompt
   const systemPrompt = buildSystemPrompt();
@@ -390,7 +393,7 @@ function buildUserPrompt(
  * Parse LLM response into StepAnalysisResult
  */
 function parseAnalysisResponse(content: string, step: number): StepAnalysisResult {
-  const stepName = STEP_NAMES[step];
+  const stepName = STEP_NAMES[step] || '';
 
   // Try to extract JSON from response
   const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -803,7 +806,7 @@ function parseGesamtResponse(
 
       stepScores.push({
         step,
-        stepName: STEP_NAMES[step],
+        stepName: STEP_NAMES[step] || '',
         score: analysis?.masterclassAnalysis.score ?? 50,
         kurzfazit,
       });

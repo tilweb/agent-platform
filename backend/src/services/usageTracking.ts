@@ -15,7 +15,7 @@ import { USAGE_DIR } from '../utils/paths';
 export interface UsageContext {
   userId?: string;              // Direct user (Chat, Agents)
   triggeringUserId?: string;    // User who triggered indirect call
-  source: 'chat' | 'delegation' | 'image_analysis' | 'indexer' | 'search' | 'contract';
+  source: 'chat' | 'delegation' | 'image_analysis' | 'indexer' | 'search' | 'contract' | 'projektmanagement';
   operation?: string;           // e.g. 'kb_index', 'smart_search'
   resourceId?: string;          // e.g. collectionId, contractId
 }

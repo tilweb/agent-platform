@@ -6,7 +6,7 @@
  */
 
 import { join } from 'path';
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { parse as parseYaml, stringify as stringifyYaml, type Scalar } from 'yaml';
 
 // ── Low-level helpers ────────────────────────────────────────────────
 
@@ -14,20 +14,24 @@ import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
  * Ensure a directory exists (recursive). Idempotent.
  */
 export async function ensureDir(dir: string): Promise<void> {
-  const { existsSync, mkdirSync } = await import('fs');
+  const { mkdir } = await import('fs/promises');
+  const { existsSync } = await import('fs');
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    await mkdir(dir, { recursive: true });
   }
 }
 
 /**
  * Load and parse a YAML file. Returns null if file does not exist.
  */
-export async function loadYaml<T>(filePath: string): Promise<T | null> {
+export async function loadYaml<T>(filePath: string, validate?: (data: unknown) => T): Promise<T | null> {
   const file = Bun.file(filePath);
   if (!(await file.exists())) return null;
   const text = await file.text();
-  return (parseYaml(text) as T) ?? null;
+  const parsed = parseYaml(text);
+  if (parsed === null || parsed === undefined) return null;
+  if (validate) return validate(parsed);
+  return parsed as T;
 }
 
 /**
@@ -36,7 +40,7 @@ export async function loadYaml<T>(filePath: string): Promise<T | null> {
 export async function saveYaml<T>(
   filePath: string,
   data: T,
-  options?: { indent?: number; lineWidth?: number; defaultStringType?: string; defaultKeyType?: string }
+  options?: { indent?: number; lineWidth?: number; defaultStringType?: Scalar.Type; defaultKeyType?: Scalar.Type }
 ): Promise<void> {
   const { dirname } = await import('path');
   await ensureDir(dirname(filePath));
@@ -75,8 +79,8 @@ export async function listYamlIds(dir: string, prefix?: string): Promise<string[
 export async function deleteYaml(filePath: string): Promise<boolean> {
   const file = Bun.file(filePath);
   if (!(await file.exists())) return false;
-  const { unlinkSync } = await import('fs');
-  unlinkSync(filePath);
+  const { unlink } = await import('fs/promises');
+  await unlink(filePath);
   return true;
 }
 
@@ -84,7 +88,7 @@ export async function deleteYaml(filePath: string): Promise<boolean> {
 
 export interface YamlStoreOptions {
   /** YAML stringify options */
-  yaml?: { indent?: number; lineWidth?: number; defaultStringType?: string; defaultKeyType?: string };
+  yaml?: { indent?: number; lineWidth?: number; defaultStringType?: Scalar.Type; defaultKeyType?: Scalar.Type };
   /** File name prefix filter for listing (e.g. 'task_') */
   prefix?: string;
   /** Custom file extension (default: '.yaml') */

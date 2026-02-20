@@ -32,7 +32,7 @@ WARNINGS=""
 # Check 1: Hardcoded Farben (Hex-Werte die nicht in theme.colors Kontext stehen)
 # Erlaubt: theme.colors.*, '#fff', '#ffffff', 'transparent', 'none', 'currentColor'
 # Erlaubt: Hex in Opacity-Suffixen wie ${theme.colors.error}30
-if echo "$NEW_CONTENT" | grep -qE "'#[0-9a-fA-F]{3,8}'|\"#[0-9a-fA-F]{3,8}\"" | grep -v "theme\.colors"; then
+if echo "$NEW_CONTENT" | grep -E "'#[0-9a-fA-F]{3,8}'|\"#[0-9a-fA-F]{3,8}\"" | grep -qv "theme\.colors"; then
   # Prüfe ob es echte hardcoded Farben sind (nicht #fff/#000/transparent in SVG-Kontexten)
   HARDCODED=$(echo "$NEW_CONTENT" | grep -oE "'#[0-9a-fA-F]{3,8}'|\"#[0-9a-fA-F]{3,8}\"" | grep -viE "'#fff'|'#ffffff'|'#000'|'#000000'|\"#fff\"|\"#ffffff\"|\"#000\"|\"#000000\"" | head -3)
   if [ -n "$HARDCODED" ]; then
@@ -41,13 +41,14 @@ if echo "$NEW_CONTENT" | grep -qE "'#[0-9a-fA-F]{3,8}'|\"#[0-9a-fA-F]{3,8}\"" | 
 fi
 
 # Check 2: CSS Toggle-Switch Patterns (position: relative + borderRadius: 50% Dot-Pattern)
-if echo "$NEW_CONTENT" | grep -qE "toggleDot|toggle.*Dot|\.toggle.*position.*relative" | grep -v "ToggleOnIcon\|ToggleOffIcon"; then
+if echo "$NEW_CONTENT" | grep -E "toggleDot|toggle.*Dot|\.toggle.*position.*relative" | grep -qv "ToggleOnIcon\|ToggleOffIcon"; then
   WARNINGS="${WARNINGS}DESIGN: CSS Toggle-Switch Pattern erkannt. Verwende ToggleOnIcon/ToggleOffIcon SVG-Icons (siehe frontend/CLAUDE.md). "
 fi
 
 # Check 3: Emojis in JSX (Unicode Emoji Ranges)
 # Erlaubt: Länder-Flags (U+1F1E6-1F1FF)
-if echo "$NEW_CONTENT" | grep -P '[\x{1F300}-\x{1F5FF}\x{1F600}-\x{1F64F}\x{1F680}-\x{1F6FF}\x{1F900}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]' 2>/dev/null; then
+# Uses perl instead of grep -P for macOS compatibility
+if echo "$NEW_CONTENT" | perl -C -ne 'print if /[\x{1F300}-\x{1F5FF}\x{1F600}-\x{1F64F}\x{1F680}-\x{1F6FF}\x{1F900}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]/' 2>/dev/null | grep -q .; then
   WARNINGS="${WARNINGS}DESIGN: Emojis in UI gefunden. Verwende SVG-Icons aus components/Icons.jsx. "
 fi
 

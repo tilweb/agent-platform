@@ -4,8 +4,8 @@
  */
 
 import { resolveActiveModel, resolveModel, getImageGenModels } from './providers';
-import { generateWithGoogle } from './imageGeneration/adapters/google';
-import { generateWithOpenAI } from './imageGeneration/adapters/openai';
+import { generateWithGoogle, type GoogleImageResult } from './imageGeneration/adapters/google';
+import { generateWithOpenAI, type OpenAIImageResult } from './imageGeneration/adapters/openai';
 import type { ResolvedModel, ProviderConfig, ModelConfig } from '../types/providers';
 import { generateId } from '../utils/id';
 
@@ -45,7 +45,7 @@ export interface ImageGenerationResult {
 function parseDimensions(size: string): { width: number; height: number } {
   const match = size.match(/(\d+)x(\d+)/);
   if (match) {
-    return { width: parseInt(match[1]), height: parseInt(match[2]) };
+    return { width: parseInt(match[1] ?? '1024', 10), height: parseInt(match[2] ?? '1024', 10) };
   }
   return { width: 1024, height: 1024 }; // Default
 }
@@ -151,7 +151,7 @@ export class ImageGenerationService {
       };
     }
 
-    let result;
+    let result: GoogleImageResult | OpenAIImageResult | undefined;
     const apiMode = resolvedModel.api_mode;
 
     try {
@@ -187,11 +187,11 @@ export class ImageGenerationService {
         };
       }
 
-      if (!result.success) {
+      if (!result || !result.success) {
         return {
           success: false,
           images: [],
-          error: result.error || 'Failed to generate image',
+          error: result?.error || 'Failed to generate image',
           provider: resolvedModel.provider.name,
           model: resolvedModel.model.name,
           durationMs: Date.now() - startTime,
@@ -205,13 +205,14 @@ export class ImageGenerationService {
           ? getSizeFromAspectRatio(request.aspectRatio)
           : { width: 1024, height: 1024 };
 
-      const images: GeneratedImage[] = result.images.map((img) => ({
+      const successResult = result;
+      const images: GeneratedImage[] = successResult.images.map((img) => ({
         id: generateImageId(),
         base64Data: img.base64Data,
         mimeType: img.mimeType,
         width: dimensions.width,
         height: dimensions.height,
-        revisedPrompt: result.revisedPrompt,
+        revisedPrompt: successResult.revisedPrompt,
       }));
 
       return {

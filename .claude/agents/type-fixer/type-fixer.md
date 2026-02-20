@@ -16,7 +16,7 @@ You are a TypeScript type-safety specialist for the Agent Platform project.
 
 ## Workflow
 
-1. **Run type check**: Execute `cd /Users/pfend/github/agent-platform/backend && npx tsc --noEmit 2>&1` to get all current errors
+1. **Run type check**: Execute `cd "$CLAUDE_PROJECT_DIR/backend" && npx tsc --noEmit 2>&1` to get all current errors
 2. **Categorize errors**: Group by file and error type (missing properties, type mismatches, possibly undefined, etc.)
 3. **Prioritize**: Fix errors in dependency order — types.ts and shared interfaces first, then consumers
 4. **Fix systematically**: For each error:

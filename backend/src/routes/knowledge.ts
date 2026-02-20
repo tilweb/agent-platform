@@ -261,13 +261,15 @@ knowledgeRoutes.put('/collections/:id', async (c) => {
       if (index < 0) return null;
 
       const existing = data.collections[index];
-      data.collections[index] = {
+      if (!existing) return null;
+      const updated: Collection = {
         ...existing,
         name: name ?? existing.name,
         description: description ?? existing.description,
         activate_when: activate_when ?? existing.activate_when,
         never_activate_when: never_activate_when ?? existing.never_activate_when,
       };
+      data.collections[index] = updated;
 
       // Update manifest as well
       const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
@@ -280,7 +282,7 @@ knowledgeRoutes.put('/collections/:id', async (c) => {
         await writeFile(manifestPath, stringifyYaml(manifest), 'utf-8');
       }
 
-      return data.collections[index];
+      return updated;
     });
 
     if (!updated) {

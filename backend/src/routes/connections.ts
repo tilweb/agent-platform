@@ -38,17 +38,26 @@ function validateRedirectUri(baseUrl: string): boolean {
   try {
     const url = new URL(baseUrl);
 
+    // Normalize hostname to lowercase for consistent comparison
+    const hostname = url.hostname.toLowerCase();
+
+    // Reject URLs with query parameters or hash fragments (prevents open redirect)
+    if (url.search || url.hash) {
+      console.warn('[OAuth] Redirect URI rejected (contains query/hash):', baseUrl);
+      return false;
+    }
+
     // Must be HTTPS in production (allow HTTP for localhost)
     if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
-      if (!['localhost', '127.0.0.1'].includes(url.hostname)) {
+      if (!['localhost', '127.0.0.1'].includes(hostname)) {
         console.warn('[OAuth] Non-HTTPS redirect URI rejected:', baseUrl);
         return false;
       }
     }
 
-    // Host must be in whitelist
-    if (!ALLOWED_REDIRECT_HOSTS.has(url.hostname)) {
-      console.warn('[OAuth] Redirect URI host not in whitelist:', url.hostname);
+    // Host must be in whitelist (case-insensitive)
+    if (!ALLOWED_REDIRECT_HOSTS.has(hostname)) {
+      console.warn('[OAuth] Redirect URI host not in whitelist:', hostname);
       return false;
     }
 
@@ -217,8 +226,22 @@ connectionRoutes.get('/:id/callback', async (c) => {
   const error = c.req.query('error');
   const errorDescription = c.req.query('error_description');
 
+  // Escape untrusted strings for safe HTML embedding
+  const escapeHtml = (str: string): string =>
+    str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+       .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+
+  // Escape untrusted strings for safe embedding in JavaScript string literals
+  const escapeJs = (str: string): string =>
+    str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"')
+       .replace(/</g, '\\x3c').replace(/>/g, '\\x3e').replace(/\n/g, '\\n');
+
   // Helper to send HTML response for popup
   const sendPopupResponse = (success: boolean, message?: string) => {
+    const safeMessage = message ? escapeHtml(message) : (success ? 'You can close this window.' : 'Please try again.');
+    const safeProviderId = escapeJs(providerId);
+    const jsMessage = message ? `message: '${escapeJs(message)}'` : '';
+
     const html = `
 <!DOCTYPE html>
 <html>
@@ -251,18 +274,18 @@ connectionRoutes.get('/:id/callback', async (c) => {
 </head>
 <body>
   <div class="container">
-    <div class="icon">${success ? '✓' : '✗'}</div>
+    <div class="icon">${success ? '&#x2713;' : '&#x2717;'}</div>
     <h1>${success ? 'Connected!' : 'Connection Failed'}</h1>
-    <p>${message || (success ? 'You can close this window.' : 'Please try again.')}</p>
+    <p>${safeMessage}</p>
   </div>
   <script>
     if (window.opener) {
       window.opener.postMessage({
         type: 'oauth_callback',
         success: ${success},
-        providerId: '${providerId}',
-        ${message ? `message: '${message.replace(/'/g, "\\'")}'` : ''}
-      }, '*');
+        providerId: '${safeProviderId}',
+        ${jsMessage}
+      }, window.location.origin);
       setTimeout(() => window.close(), 2000);
     }
   </script>

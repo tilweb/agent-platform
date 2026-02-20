@@ -21,7 +21,9 @@ import type {
   QueryOptions,
   ExportOptions,
   ImportOptions,
+  TableSettings,
 } from '../tables/types';
+import type { CreateViewParams } from '../tables/views';
 import { authMiddleware } from '../auth';
 import { internalError } from '../utils/errorHandler';
 
@@ -66,7 +68,13 @@ tablesRoutes.post('/', async (c) => {
       return c.json({ error: 'Ungültiger Request-Body' }, 400);
     }
 
-    const { id, name, description, icon, columns, settings, views: tableViews } = body;
+    const id = body.id as string | undefined;
+    const name = body.name as string | undefined;
+    const description = body.description as string | undefined;
+    const icon = body.icon as string | undefined;
+    const columns = body.columns as ColumnDefinition[] | undefined;
+    const settings = body.settings as TableSettings | undefined;
+    const tableViews = body.views as ViewDefinition[] | undefined;
 
     if (!id || !name) {
       return c.json({ error: 'id and name are required' }, 400);
@@ -155,10 +163,10 @@ tablesRoutes.put('/:id', async (c) => {
     }
 
     const updates: UpdateTableParams = {
-      name: body.name,
-      description: body.description,
-      icon: body.icon,
-      settings: body.settings,
+      name: body.name as string | undefined,
+      description: body.description as string | undefined,
+      icon: body.icon as string | undefined,
+      settings: body.settings as TableSettings | undefined,
     };
 
     const table = await tableService.updateTable(tableId, updates);
@@ -217,7 +225,7 @@ tablesRoutes.post('/:id/columns', async (c) => {
       return c.json({ error: 'id, name, and type are required' }, 400);
     }
 
-    const table = await tableService.addColumn(tableId, column);
+    const table = await tableService.addColumn(tableId, column as unknown as ColumnDefinition);
     if (!table) {
       return c.json({ error: 'Table not found' }, 404);
     }
@@ -482,7 +490,7 @@ tablesRoutes.post('/:id/views', async (c) => {
       return c.json({ error: 'id and name are required' }, 400);
     }
 
-    const view = await views.createView(tableId, params);
+    const view = await views.createView(tableId, params as unknown as CreateViewParams);
     return c.json(view, 201);
   } catch (error: any) {
     console.error('Error creating view:', error);
@@ -669,7 +677,11 @@ tablesRoutes.post('/:id/import', async (c) => {
       return c.json({ error: 'Ungültiger Request-Body' }, 400);
     }
 
-    const { content, format, column_mapping, update_existing, skip_invalid } = body;
+    const content = body.content as string | undefined;
+    const format = body.format as ImportOptions['format'] | undefined;
+    const column_mapping = body.column_mapping as Record<string, string> | undefined;
+    const update_existing = body.update_existing as boolean | undefined;
+    const skip_invalid = body.skip_invalid as boolean | undefined;
 
     if (!content || !format) {
       return c.json({ error: 'content and format are required' }, 400);
@@ -698,7 +710,9 @@ tablesRoutes.post('/:id/import/preview', async (c) => {
     if (!requireObject(body)) {
       return c.json({ error: 'Ungültiger Request-Body' }, 400);
     }
-    const { content, format, limit = 10 } = body;
+    const content = body.content as string | undefined;
+    const format = body.format as ExportOptions['format'] | undefined;
+    const limit = (body.limit as number | undefined) ?? 10;
 
     if (!content || !format) {
       return c.json({ error: 'content and format are required' }, 400);
@@ -737,7 +751,8 @@ tablesRoutes.post('/import/backup', async (c) => {
     if (!requireObject(body)) {
       return c.json({ error: 'Ungültiger Request-Body' }, 400);
     }
-    const { content, overwrite = false } = body;
+    const content = body.content as string | undefined;
+    const overwrite = (body.overwrite as boolean | undefined) ?? false;
 
     if (!content) {
       return c.json({ error: 'content is required' }, 400);

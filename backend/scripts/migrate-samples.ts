@@ -42,7 +42,9 @@ function parseDate(dateStr: string): string {
   const cleaned = dateStr.trim();
   const match = cleaned.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
   if (match) {
-    const [, day, month, year] = match;
+    const day = match[1] || '';
+    const month = match[2] || '';
+    const year = match[3] || '';
     const fullYear = year.length === 2 ? `20${year}` : year;
     return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
@@ -127,7 +129,7 @@ function parseGoals(goals: string): { goalsText: string; criteria: string[] } {
 
   // Find the quoted text containing goals
   const quotedMatch = goals.match(/"([^"]+)"/);
-  let goalsText = quotedMatch ? quotedMatch[1].trim() : '';
+  let goalsText = quotedMatch ? (quotedMatch[1] || '').trim() : '';
 
   if (!goalsText) {
     // Fallback: find long text
@@ -158,7 +160,7 @@ function parseGoals(goals: string): { goalsText: string; criteria: string[] } {
   // Extract the main goal text (before the numbered list)
   const mainGoalMatch = goalsText.match(/^([^0-9]+?)(?=\d+\.)/);
   if (mainGoalMatch) {
-    goalsText = mainGoalMatch[1].trim();
+    goalsText = (mainGoalMatch[1] || '').trim();
   }
 
   return { goalsText, criteria };

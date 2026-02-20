@@ -3035,7 +3035,7 @@ function ChatWindow({
   onRemoveTable,
   onTableSelected,    // Callback when table is selected via /table command
   fileProcessingState = {},  // Map of fileId -> 'processing' | 'ready'
-  project = null,     // Optional: Project context { id, name, color }
+  space = null,       // Optional: Space context { id, name, color }
   // Chat info props for header
   chatId = null,
   chatTitle = null,
@@ -3853,7 +3853,7 @@ function ChatWindow({
           onRemoveModel={onRemoveModel}
           selectedTable={selectedTable}
           onRemoveTable={onRemoveTable}
-          project={project}
+          project={space}
         />
 
         {/* Attachment Chips - show pending file uploads with processing state */}

@@ -171,6 +171,7 @@ export function csrfProtection(config: CSRFConfig = {}): MiddlewareHandler {
 
       // If neither Origin nor Referer, only allow application/json
       // (multipart/form-data and x-www-form-urlencoded can be sent cross-site by HTML forms)
+      // Note: Non-browser API clients (curl, Postman) must send an Origin header for non-JSON requests.
       if (!refererOrigin) {
         const contentType = (c.req.header('content-type') || '').toLowerCase();
         if (!contentType.includes('application/json')) {

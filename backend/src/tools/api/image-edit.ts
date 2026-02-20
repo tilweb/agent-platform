@@ -102,7 +102,8 @@ export class ImageEditTool extends ApiTool {
         },
       });
 
-      if (!result.success || result.images.length === 0) {
+      const image = result.images[0];
+      if (!result.success || !image) {
         return JSON.stringify({
           success: false,
           error: result.error || 'Failed to edit image',
@@ -110,7 +111,6 @@ export class ImageEditTool extends ApiTool {
       }
 
       // Save the edited image
-      const image = result.images[0];
       const saved = await saveGeneratedImage({
         id: image.id,
         base64Data: image.base64Data,

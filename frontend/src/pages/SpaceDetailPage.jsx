@@ -346,7 +346,7 @@ export default function SpaceDetailPage() {
             activeTasks={activeTasks}
             onTaskCompleted={onTaskCompleted}
             fileProcessingState={fileProcessingState}
-            project={spaceContext}
+            space={spaceContext}
           />
         </div>
 
