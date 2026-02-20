@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { theme } from '../config/theme';
 import { useProviders } from '../hooks/useProviders';
+import { useToast } from '../components/Toast';
+import Select from '../components/Select';
 
 const styles = {
   container: {
@@ -68,18 +70,6 @@ const styles = {
     color: theme.colors.textMuted,
     textTransform: 'uppercase',
     marginBottom: theme.spacing.sm,
-  },
-  select: {
-    width: '100%',
-    padding: theme.spacing.sm,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-    outline: 'none',
-    cursor: 'pointer',
-    marginBottom: theme.spacing.xs,
   },
   // Provider List
   section: {
@@ -262,7 +252,8 @@ const styles = {
     borderBottom: 'none',
   },
   modelInfo: {
-    flex: 1,
+    flex: '0 0 40%',
+    minWidth: 0,
   },
   modelName: {
     fontSize: theme.typography.sizes.sm,
@@ -413,21 +404,11 @@ const styles = {
     cursor: 'pointer',
     marginRight: 'auto',
   },
-  // Loading & Error
+  // Loading
   loading: {
     textAlign: 'center',
     padding: theme.spacing['3xl'],
     color: theme.colors.textMuted,
-  },
-  error: {
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.errorLight,
-    borderRadius: theme.borderRadius.lg,
-    color: theme.colors.error,
-    marginBottom: theme.spacing.lg,
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   testResult: {
     marginTop: theme.spacing.md,
@@ -547,6 +528,66 @@ const styles = {
     fontWeight: theme.typography.weights.medium,
     marginLeft: theme.spacing.sm,
   },
+  disabledBadge: {
+    fontSize: theme.typography.sizes.xs,
+    padding: `1px ${theme.spacing.sm}`,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.surfaceHover,
+    color: theme.colors.textMuted,
+    marginLeft: theme.spacing.sm,
+  },
+  listedOnlyBadge: {
+    fontSize: theme.typography.sizes.xs,
+    padding: `1px ${theme.spacing.sm}`,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.warningLight,
+    color: theme.colors.warning,
+    marginLeft: theme.spacing.sm,
+  },
+  syncButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    backgroundColor: 'transparent',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+  },
+  syncResult: {
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.sm,
+    backgroundColor: theme.colors.successLight,
+    color: theme.colors.success,
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    flexWrap: 'wrap',
+  },
+  syncStat: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    fontSize: theme.typography.sizes.xs,
+    fontFamily: theme.typography.fontMono,
+  },
+  featureBadges: {
+    display: 'inline-flex',
+    gap: theme.spacing.xs,
+    marginLeft: theme.spacing.sm,
+  },
+  featureBadge: {
+    fontSize: '10px',
+    padding: `1px ${theme.spacing.xs}`,
+    borderRadius: theme.borderRadius.sm,
+    fontWeight: theme.typography.weights.medium,
+  },
 };
 
 const typeColors = {
@@ -556,6 +597,71 @@ const typeColors = {
   stt: { bg: '#f59e0b20', color: '#f59e0b' },
   image_gen: { bg: '#ec489920', color: '#ec4899' },
 };
+
+// Feature-bit to badge mapping for Adacor featureSet
+const featureBits = [
+  { bit: 1,   label: 'Chat',       bg: '#3b82f620', color: '#3b82f6', suffixes: ['/v1/chat/completions', '/completions'] },
+  { bit: 2,   label: 'Vision',     bg: '#ec489920', color: '#ec4899', suffixes: [] },
+  { bit: 4,   label: 'Tools',      bg: '#6366f120', color: '#6366f1', suffixes: [] },
+  { bit: 32,  label: 'Embeddings', bg: '#8b5cf620', color: '#8b5cf6', suffixes: ['/v1/embeddings'] },
+  { bit: 64,  label: 'Audio',      bg: '#f59e0b20', color: '#f59e0b', suffixes: ['/v1/transcriptions', '/v1/translations'] },
+  { bit: 128, label: 'Tokenize',   bg: '#10b98120', color: '#10b981', suffixes: ['/tokenize', '/detokenize'] },
+];
+
+/**
+ * Strip the domain from a URL, returning only the path.
+ */
+function stripDomain(url) {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Extract the base domain from a model's base_url or feature_urls.
+ */
+function getModelBaseDomain(model) {
+  const url = model.base_url
+    || (model.feature_urls && Object.values(model.feature_urls)[0]);
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get feature endpoint paths for a model (without domain).
+ * Uses stored feature_urls if available, otherwise derives from base_url + feature_set.
+ */
+function getModelFeaturePaths(model) {
+  if (model.feature_urls && Object.keys(model.feature_urls).length > 0) {
+    const paths = {};
+    for (const [suffix, url] of Object.entries(model.feature_urls)) {
+      paths[suffix] = stripDomain(url);
+    }
+    return paths;
+  }
+  if (!model.base_url) return null;
+  const basePath = stripDomain(model.base_url);
+  // Fallback: derive from base_url + feature_set
+  if (model.feature_set != null) {
+    const paths = {};
+    for (const f of featureBits) {
+      if (!(model.feature_set & f.bit)) continue;
+      for (const suffix of f.suffixes) {
+        paths[suffix] = basePath + suffix;
+      }
+    }
+    if (Object.keys(paths).length > 0) return paths;
+  }
+  // No feature_set — show base_url path as single entry
+  return { '': basePath };
+}
 
 const providerIcons = {
   adacor: { icon: 'A', bg: '#3b82f620', color: '#3b82f6' },
@@ -776,6 +882,8 @@ function ProvidersPage({ embedded = false }) {
     providers,
     enabledProviders,
     activeSelection,
+    allowCustomProviders,
+    modelSyncConfigured,
     isLoading,
     error: hookError,
     refresh,
@@ -787,11 +895,12 @@ function ProvidersPage({ embedded = false }) {
     deleteModel,
     setActiveModel,
     testConnection,
+    syncModels,
     getModelsForPurpose,
   } = useProviders();
 
+  const toast = useToast();
   const [expandedProviders, setExpandedProviders] = useState({});
-  const [error, setError] = useState(null);
   const [showProviderModal, setShowProviderModal] = useState(false);
   const [showModelModal, setShowModelModal] = useState(false);
   const [editingProvider, setEditingProvider] = useState(null);
@@ -801,6 +910,8 @@ function ProvidersPage({ embedded = false }) {
   const [modelProviderId, setModelProviderId] = useState(null);
   const [testResult, setTestResult] = useState(null);
   const [isTesting, setIsTesting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
 
   const toggleProvider = (id) => {
     setExpandedProviders((prev) => ({
@@ -833,13 +944,14 @@ function ProvidersPage({ embedded = false }) {
     try {
       if (editingProvider) {
         await updateProvider(editingProvider.id, providerForm);
+        toast.success('Gespeichert', `Provider "${providerForm.name}" gespeichert`);
       } else {
         await createProvider(providerForm);
+        toast.success('Erstellt', `Provider "${providerForm.name}" erstellt`);
       }
       setShowProviderModal(false);
-      setError(null);
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -850,9 +962,9 @@ function ProvidersPage({ embedded = false }) {
     try {
       await deleteProvider(editingProvider.id);
       setShowProviderModal(false);
-      setError(null);
+      toast.success('Gelöscht', `Provider "${editingProvider.name}" gelöscht`);
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -860,7 +972,7 @@ function ProvidersPage({ embedded = false }) {
     try {
       await updateProvider(provider.id, { enabled: !provider.enabled });
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -875,6 +987,19 @@ function ProvidersPage({ embedded = false }) {
       setTestResult({ providerId, success: false, message: err.message });
     } finally {
       setIsTesting(false);
+    }
+  };
+
+  const handleSyncModels = async () => {
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await syncModels();
+      setSyncResult(result);
+    } catch (err) {
+      toast.error('Fehler', err.message);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -902,13 +1027,14 @@ function ProvidersPage({ embedded = false }) {
     try {
       if (editingModel) {
         await updateModel(modelProviderId, editingModel.id, modelForm);
+        toast.success('Gespeichert', `Modell "${modelForm.name}" gespeichert`);
       } else {
         await addModel(modelProviderId, modelForm);
+        toast.success('Erstellt', `Modell "${modelForm.name}" erstellt`);
       }
       setShowModelModal(false);
-      setError(null);
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -919,23 +1045,35 @@ function ProvidersPage({ embedded = false }) {
     try {
       await deleteModel(modelProviderId, editingModel.id);
       setShowModelModal(false);
-      setError(null);
+      toast.success('Gelöscht', `Modell "${editingModel.name}" gelöscht`);
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
   const handleActiveModelChange = async (purpose, value) => {
+    const purposeLabels = {
+      chat: 'Chat', vision: 'Vision', tts: 'TTS', stt: 'STT',
+      text_to_image: 'Text → Bild', image_to_image: 'Bild → Bild',
+    };
+    const label = purposeLabels[purpose] || purpose;
+
     if (!value) {
-      await setActiveModel(purpose, null, null);
+      try {
+        await setActiveModel(purpose, null, null);
+        toast.success('Gespeichert', `${label}-Standard zurückgesetzt`);
+      } catch (err) {
+        toast.error('Fehler', err.message);
+      }
       return;
     }
 
     const [providerId, modelId] = value.split('::');
     try {
       await setActiveModel(purpose, providerId, modelId);
+      toast.success('Gespeichert', `${label}-Modell gespeichert`);
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -948,11 +1086,18 @@ function ProvidersPage({ embedded = false }) {
     }
   };
 
+  // Show hookError as toast
+  const hookErrorRef = useRef(null);
+  useEffect(() => {
+    if (hookError && hookError !== hookErrorRef.current) {
+      toast.error('Fehler', hookError);
+    }
+    hookErrorRef.current = hookError;
+  }, [hookError, toast]);
+
   if (isLoading) {
     return <div style={styles.loading}>Lade Provider...</div>;
   }
-
-  const displayError = error || hookError;
 
   return (
     <div style={styles.container}>
@@ -964,15 +1109,17 @@ function ProvidersPage({ embedded = false }) {
               Verwalte Provider und Modelle für Chat, Vision, Text-to-Speech und Speech-to-Text.
             </p>
           </div>
-          <button
-            style={styles.addButton}
-            onClick={handleCreateProvider}
-            onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-          >
-            <PlusIcon />
-            Neuer Provider
-          </button>
+          {allowCustomProviders && (
+            <button
+              style={styles.addButton}
+              onClick={handleCreateProvider}
+              onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
+            >
+              <PlusIcon />
+              Neuer Provider
+            </button>
+          )}
         </div>
       )}
 
@@ -994,27 +1141,17 @@ function ProvidersPage({ embedded = false }) {
               Verwalte Provider und Modelle für Chat, Vision, TTS, STT und Bildgenerierung.
             </p>
           </div>
-          <button
-            style={styles.addButton}
-            onClick={handleCreateProvider}
-            onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-          >
-            <PlusIcon />
-            Neuer Provider
-          </button>
-        </div>
-      )}
-
-      {displayError && (
-        <div style={styles.error}>
-          {displayError}
-          <button
-            onClick={() => setError(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.error }}
-          >
-            ✕
-          </button>
+          {allowCustomProviders && (
+            <button
+              style={styles.addButton}
+              onClick={handleCreateProvider}
+              onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
+            >
+              <PlusIcon />
+              Neuer Provider
+            </button>
+          )}
         </div>
       )}
 
@@ -1046,8 +1183,7 @@ function ProvidersPage({ embedded = false }) {
                 <div style={styles.activeCardLabel}>
                   {purposeLabels[purpose] || purpose.toUpperCase()}
                 </div>
-                <select
-                  style={styles.select}
+                <Select
                   value={currentValue}
                   onChange={(e) => handleActiveModelChange(purpose, e.target.value)}
                 >
@@ -1057,7 +1193,7 @@ function ProvidersPage({ embedded = false }) {
                       {provider.name} - {model.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             );
           })}
@@ -1155,7 +1291,11 @@ function ProvidersPage({ embedded = false }) {
                     </span>
                   </div>
                   <div style={styles.providerMeta}>
-                    {provider.base_url || 'Keine URL'}
+                    {(() => {
+                      // Show base domain from models if available (for providers with per-model URLs)
+                      const modelDomain = provider.models?.length > 0 && getModelBaseDomain(provider.models[0]);
+                      return modelDomain || provider.base_url || 'Keine URL';
+                    })()}
                     {(provider.company_region || provider.datacenter_country) && (
                       <span style={styles.locationBadges}>
                         {provider.company_region && (
@@ -1173,6 +1313,21 @@ function ProvidersPage({ embedded = false }) {
                   </div>
                 </div>
                 <div style={styles.providerActions}>
+                  {provider.id === 'adacor' && modelSyncConfigured && (
+                    <button
+                      style={styles.syncButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSyncModels();
+                      }}
+                      disabled={isSyncing}
+                      onMouseOver={(e) => { e.currentTarget.style.borderColor = theme.colors.primary; e.currentTarget.style.color = theme.colors.primary; }}
+                      onMouseOut={(e) => { e.currentTarget.style.borderColor = theme.colors.border; e.currentTarget.style.color = theme.colors.text; }}
+                    >
+                      <RefreshIcon size={14} />
+                      {isSyncing ? 'Synchronisiere...' : 'Modelle synchronisieren'}
+                    </button>
+                  )}
                   <button
                     style={styles.testButton}
                     onClick={(e) => {
@@ -1221,10 +1376,12 @@ function ProvidersPage({ embedded = false }) {
                       <div style={styles.detailLabel}>API Modus</div>
                       <div style={styles.detailValue}>{provider.api_mode}</div>
                     </div>
+                    {allowCustomProviders && (
                     <div style={styles.detailItem}>
                       <div style={styles.detailLabel}>API Key Variable</div>
                       <div style={styles.detailValue}>{provider.api_key_env || '-'}</div>
                     </div>
+                    )}
                     <div style={styles.detailItem}>
                       <div style={styles.detailLabel}>Firmensitz</div>
                       <div style={styles.detailValue}>
@@ -1268,15 +1425,40 @@ function ProvidersPage({ embedded = false }) {
                     </div>
                   )}
 
+                  {provider.id === 'adacor' && syncResult && (
+                    <div style={styles.syncResult}>
+                      <span>Synchronisierung abgeschlossen:</span>
+                      {syncResult.added > 0 && (
+                        <span style={styles.syncStat}>+{syncResult.added} neu</span>
+                      )}
+                      {syncResult.reactivated > 0 && (
+                        <span style={styles.syncStat}>~{syncResult.reactivated} reaktiviert</span>
+                      )}
+                      {syncResult.deactivated > 0 && (
+                        <span style={{ ...styles.syncStat, color: theme.colors.warning }}>-{syncResult.deactivated} deaktiviert</span>
+                      )}
+                      {syncResult.unchanged > 0 && (
+                        <span style={styles.syncStat}>{syncResult.unchanged} unverändert</span>
+                      )}
+                    </div>
+                  )}
+
                   <div style={styles.modelsSection}>
                     <div style={styles.modelsSectionHeader}>
                       <div style={styles.modelsSectionTitle}>Modelle</div>
-                      <button
-                        style={styles.addModelButton}
-                        onClick={() => handleCreateModel(provider.id)}
-                      >
-                        <PlusIcon size={14} /> Modell
-                      </button>
+                      {provider.id !== 'adacor' && allowCustomProviders && (
+                        <button
+                          style={styles.addModelButton}
+                          onClick={() => handleCreateModel(provider.id)}
+                        >
+                          <PlusIcon size={14} /> Modell
+                        </button>
+                      )}
+                      {provider.id === 'adacor' && modelSyncConfigured && (
+                        <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                          Verwaltet via Synchronisierung
+                        </span>
+                      )}
                     </div>
 
                     {provider.models.length > 0 ? (
@@ -1284,6 +1466,8 @@ function ProvidersPage({ embedded = false }) {
                         {provider.models.map((model, index) => {
                           const typeColor = typeColors[model.type] || typeColors.llm;
                           const isLast = index === provider.models.length - 1;
+                          const isDisabled = model.enabled === false;
+                          const isListedOnly = model.workplace === false;
 
                           return (
                             <div
@@ -1291,6 +1475,7 @@ function ProvidersPage({ embedded = false }) {
                               style={{
                                 ...styles.modelItem,
                                 ...(isLast ? styles.modelItemLast : {}),
+                                ...((isDisabled || isListedOnly) ? { opacity: 0.5 } : {}),
                               }}
                             >
                               <div style={styles.modelInfo}>
@@ -1311,35 +1496,93 @@ function ProvidersPage({ embedded = false }) {
                                   {model.default && (
                                     <span style={styles.defaultBadge}>Standard</span>
                                   )}
+                                  {isDisabled && (
+                                    <span style={styles.disabledBadge}>Deaktiviert</span>
+                                  )}
+                                  {isListedOnly && !isDisabled && (
+                                    <span style={styles.listedOnlyBadge}>Nur gelistet</span>
+                                  )}
                                 </div>
                                 <div style={styles.modelId}>
                                   {model.id}
-                                  {model.capabilities?.map((cap) => {
-                                    const capLabels = {
-                                      chat: 'Chat',
-                                      function_calling: 'Functions',
-                                      vision: 'Vision',
-                                      speech: 'Speech',
-                                      transcription: 'STT',
-                                      text_to_image: 'Text→Image',
-                                      image_to_image: 'Image→Image',
-                                    };
-                                    return (
-                                      <span key={cap} style={styles.capabilityBadge}>
-                                        {capLabels[cap] || cap}
-                                      </span>
-                                    );
-                                  })}
+                                  {model.feature_set != null ? (
+                                    <span style={styles.featureBadges}>
+                                      {featureBits
+                                        .filter((f) => model.feature_set & f.bit)
+                                        .map((f) => (
+                                          <span
+                                            key={f.bit}
+                                            style={{
+                                              ...styles.featureBadge,
+                                              backgroundColor: f.bg,
+                                              color: f.color,
+                                            }}
+                                          >
+                                            {f.label}
+                                          </span>
+                                        ))}
+                                    </span>
+                                  ) : (
+                                    model.capabilities?.map((cap) => {
+                                      const capLabels = {
+                                        chat: 'Chat',
+                                        function_calling: 'Functions',
+                                        vision: 'Vision',
+                                        speech: 'Speech',
+                                        transcription: 'STT',
+                                        text_to_image: 'Text→Image',
+                                        image_to_image: 'Image→Image',
+                                        embeddings: 'Embeddings',
+                                      };
+                                      return (
+                                        <span key={cap} style={styles.capabilityBadge}>
+                                          {capLabels[cap] || cap}
+                                        </span>
+                                      );
+                                    })
+                                  )}
                                 </div>
                               </div>
-                              <button
-                                style={styles.actionButton}
-                                onClick={() => handleEditModel(provider.id, model)}
-                                onMouseOver={(e) => (e.currentTarget.style.color = theme.colors.primary)}
-                                onMouseOut={(e) => (e.currentTarget.style.color = theme.colors.textMuted)}
-                              >
-                                <EditIcon />
-                              </button>
+                              {(() => {
+                                const paths = getModelFeaturePaths(model);
+                                if (!paths) return null;
+                                return (
+                                  <div style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '1px',
+                                    minWidth: 0,
+                                  }}>
+                                    {Object.entries(paths).map(([suffix, path]) => (
+                                      <div
+                                        key={suffix}
+                                        style={{
+                                          fontSize: '10px',
+                                          fontFamily: theme.typography.fontMono,
+                                          color: theme.colors.textMuted,
+                                          lineHeight: '1.4',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                        }}
+                                      >
+                                        {path}
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                              {!isDisabled && (
+                                <button
+                                  style={styles.actionButton}
+                                  onClick={() => handleEditModel(provider.id, model)}
+                                  onMouseOver={(e) => (e.currentTarget.style.color = theme.colors.primary)}
+                                  onMouseOut={(e) => (e.currentTarget.style.color = theme.colors.textMuted)}
+                                >
+                                  <EditIcon />
+                                </button>
+                              )}
                             </div>
                           );
                         })}
@@ -1385,14 +1628,14 @@ function ProvidersPage({ embedded = false }) {
               <div style={styles.formRow}>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>API Modus</label>
-                  <select
-                    style={{ ...styles.input, cursor: 'pointer' }}
+                  <Select
                     value={providerForm.api_mode}
                     onChange={(e) => setProviderForm({ ...providerForm, api_mode: e.target.value })}
-                  >
-                    <option value="openai">OpenAI-kompatibel</option>
-                    <option value="ollama">Ollama</option>
-                  </select>
+                    options={[
+                      { value: 'openai', label: 'OpenAI-kompatibel' },
+                      { value: 'ollama', label: 'Ollama' },
+                    ]}
+                  />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>API Key Variable</label>
@@ -1422,8 +1665,7 @@ function ProvidersPage({ embedded = false }) {
               <div style={styles.formRow}>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Firmensitz</label>
-                  <select
-                    style={{ ...styles.input, cursor: 'pointer' }}
+                  <Select
                     value={providerForm.company_region}
                     onChange={(e) => setProviderForm({ ...providerForm, company_region: e.target.value })}
                   >
@@ -1433,13 +1675,12 @@ function ProvidersPage({ embedded = false }) {
                         {region.flag} {region.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <div style={styles.hint}>Wo hat die Firma ihren Hauptsitz?</div>
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Rechenzentrum-Land</label>
-                  <select
-                    style={{ ...styles.input, cursor: 'pointer' }}
+                  <Select
                     value={providerForm.datacenter_country}
                     onChange={(e) => setProviderForm({ ...providerForm, datacenter_country: e.target.value })}
                   >
@@ -1460,7 +1701,7 @@ function ProvidersPage({ embedded = false }) {
                           </option>
                         ))}
                     </optgroup>
-                  </select>
+                  </Select>
                   <div style={styles.hint}>In welchem Land stehen die Server?</div>
                 </div>
               </div>
@@ -1510,13 +1751,26 @@ function ProvidersPage({ embedded = false }) {
       )}
 
       {/* Model Modal */}
-      {showModelModal && (
+      {showModelModal && (() => {
+        const isSyncManaged = editingModel && modelProviderId === 'adacor' && modelSyncConfigured;
+        const isSynced = editingModel?.feature_set != null;
+        const isListedOnly = editingModel?.workplace === false;
+        return (
         <div style={styles.modalOverlay} onClick={() => setShowModelModal(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h2 style={styles.modalTitle}>
                 {editingModel ? 'Modell bearbeiten' : 'Neues Modell'}
               </h2>
+              {isSyncManaged && (
+                <div style={{
+                  fontSize: theme.typography.sizes.xs,
+                  color: theme.colors.textMuted,
+                  marginTop: theme.spacing.xs,
+                }}>
+                  Dieses Modell wird via Synchronisierung verwaltet und kann nicht manuell bearbeitet werden.
+                </div>
+              )}
             </div>
 
             <div style={styles.modalBody}>
@@ -1524,7 +1778,7 @@ function ProvidersPage({ embedded = false }) {
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Modell ID</label>
                   <input
-                    style={{ ...styles.input, ...styles.inputMono }}
+                    style={{ ...styles.input, ...styles.inputMono, ...(isSyncManaged ? { opacity: 0.6 } : {}) }}
                     value={modelForm.id}
                     onChange={(e) => setModelForm({ ...modelForm, id: e.target.value })}
                     placeholder="gpt-4o-mini"
@@ -1534,32 +1788,37 @@ function ProvidersPage({ embedded = false }) {
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Anzeigename</label>
                   <input
-                    style={styles.input}
+                    style={{ ...styles.input, ...(isSynced ? { opacity: 0.6 } : {}) }}
                     value={modelForm.name}
                     onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })}
                     placeholder="GPT-4o Mini"
+                    disabled={isSynced}
                   />
+                  {isSynced && (
+                    <div style={styles.hint}>Name wird durch Synchronisierung verwaltet</div>
+                  )}
                 </div>
               </div>
 
               <div style={styles.formGroup}>
                 <label style={styles.label}>Typ</label>
-                <select
-                  style={{ ...styles.input, cursor: 'pointer' }}
+                <Select
                   value={modelForm.type}
                   onChange={(e) => setModelForm({ ...modelForm, type: e.target.value })}
-                >
-                  <option value="llm">LLM (Text)</option>
-                  <option value="vllm">VLLM (Vision)</option>
-                  <option value="tts">TTS (Text-to-Speech)</option>
-                  <option value="stt">STT (Speech-to-Text)</option>
-                  <option value="image_gen">Image Gen (Bildgenerierung)</option>
-                </select>
+                  disabled={isSyncManaged}
+                  options={[
+                    { value: 'llm', label: 'LLM (Text)' },
+                    { value: 'vllm', label: 'VLLM (Vision)' },
+                    { value: 'tts', label: 'TTS (Text-to-Speech)' },
+                    { value: 'stt', label: 'STT (Speech-to-Text)' },
+                    { value: 'image_gen', label: 'Image Gen (Bildgenerierung)' },
+                  ]}
+                />
               </div>
 
               <div style={styles.formGroup}>
                 <label style={styles.label}>Fähigkeiten</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm, ...(isSyncManaged ? { opacity: 0.6 } : {}) }}>
                   {[
                     { id: 'chat', label: 'Chat' },
                     { id: 'function_calling', label: 'Function Calling' },
@@ -1575,6 +1834,7 @@ function ProvidersPage({ embedded = false }) {
                         style={styles.checkboxInput}
                         checked={modelForm.capabilities?.includes(cap.id)}
                         onChange={() => toggleCapability(cap.id)}
+                        disabled={isSyncManaged}
                       />
                       {cap.label}
                     </label>
@@ -1583,20 +1843,24 @@ function ProvidersPage({ embedded = false }) {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.checkbox}>
+                <label style={{ ...styles.checkbox, ...(isListedOnly ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }}>
                   <input
                     type="checkbox"
                     style={styles.checkboxInput}
                     checked={modelForm.default}
                     onChange={(e) => setModelForm({ ...modelForm, default: e.target.checked })}
+                    disabled={isListedOnly}
                   />
                   Standard-Modell für diesen Provider
                 </label>
+                {isListedOnly && (
+                  <div style={styles.hint}>Nur-gelistete Modelle können nicht als Standard gesetzt werden</div>
+                )}
               </div>
             </div>
 
             <div style={styles.modalFooter}>
-              {editingModel && !editingModel.protected && (
+              {editingModel && !editingModel.protected && !isSyncManaged && (
                 <button style={styles.deleteButton} onClick={handleDeleteModel}>
                   Löschen
                 </button>
@@ -1610,7 +1874,8 @@ function ProvidersPage({ embedded = false }) {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -1674,6 +1939,15 @@ function InfoIcon() {
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="16" x2="12" y2="12" />
       <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  );
+}
+
+function RefreshIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="23 4 23 10 17 10" />
+      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
     </svg>
   );
 }

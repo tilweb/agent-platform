@@ -45,6 +45,17 @@ import { getUserModelPreference, type ModelPurpose } from './userPreferences';
 
 const CONFIG_PATH = PROVIDERS_CONFIG;
 
+/**
+ * Check if custom (non-protected) providers are allowed.
+ * When false, only protected providers (Adacor) are visible and usable.
+ */
+export function isCustomProvidersAllowed(): boolean {
+  const value = process.env.ALLOW_CUSTOM_PROVIDERS;
+  // Default to true if not set
+  if (value === undefined || value === '') return true;
+  return value.toLowerCase() !== 'false';
+}
+
 // Default configuration if file doesn't exist
 const DEFAULT_CONFIG: ProvidersConfig = {
   providers: [
@@ -312,6 +323,21 @@ export async function updateModel(
       throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
     }
 
+    // Block manual re-enabling of sync-deactivated models
+    if (existingModel.enabled === false && updates.enabled === true) {
+      throw new Error('Deaktivierte Modelle können nur durch API-Synchronisierung reaktiviert werden');
+    }
+
+    // Block setting default on listed-only models (workplace: false)
+    if (updates.default === true && existingModel.workplace === false) {
+      throw new Error('Nur-gelistete Modelle (ohne Workplace-Freigabe) können nicht als Standard gesetzt werden');
+    }
+
+    // Block name changes on synced models (have feature_set from API)
+    if (updates.name && updates.name !== existingModel.name && existingModel.feature_set != null) {
+      throw new Error('Der Name synchronisierter Modelle kann nicht manuell geändert werden');
+    }
+
     const modelIndex = provider.models.indexOf(existingModel);
     const updatedModel: ModelConfig = {
       id: existingModel.id, // ID cannot be changed
@@ -323,6 +349,22 @@ export async function updateModel(
       context_length: updates.context_length ?? existingModel.context_length,
       max_tokens: updates.max_tokens ?? existingModel.max_tokens,
     };
+
+    // Preserve sync-managed fields
+    if (existingModel.enabled !== undefined) updatedModel.enabled = existingModel.enabled;
+    if (existingModel.workplace !== undefined) updatedModel.workplace = existingModel.workplace;
+    if (existingModel.protected) updatedModel.protected = existingModel.protected;
+    if (existingModel.feature_set !== undefined) updatedModel.feature_set = existingModel.feature_set;
+    if (existingModel.feature_urls) updatedModel.feature_urls = existingModel.feature_urls;
+
+    // If setting as default, clear default on all other models of this provider
+    if (updatedModel.default) {
+      for (const model of provider.models) {
+        if (model.id !== modelId) {
+          model.default = false;
+        }
+      }
+    }
 
     provider.models[modelIndex] = updatedModel;
     await saveProvidersConfig(config);
@@ -513,6 +555,26 @@ export async function resolveModel(
 }
 
 /**
+ * Check if a provider should be included in model listings
+ * Respects ALLOW_CUSTOM_PROVIDERS setting
+ */
+function isProviderAvailable(provider: ProviderConfig): boolean {
+  if (!provider.enabled) return false;
+  if (!isCustomProvidersAllowed() && !provider.protected) return false;
+  return true;
+}
+
+/**
+ * Check if a model is usable in the workplace.
+ * Excludes disabled models and models with workplace: false (listed-only).
+ */
+function isModelUsable(model: ModelConfig): boolean {
+  if (model.enabled === false) return false;
+  if (model.workplace === false) return false;
+  return true;
+}
+
+/**
  * Get all enabled providers with their models filtered by type
  */
 export async function getModelsForType(
@@ -522,9 +584,10 @@ export async function getModelsForType(
   const results: Array<{ provider: ProviderConfig; model: ModelConfig }> = [];
 
   for (const provider of config.providers) {
-    if (!provider.enabled) continue;
+    if (!isProviderAvailable(provider)) continue;
 
     for (const model of provider.models) {
+      if (!isModelUsable(model)) continue;
       if (model.type === type || (type === 'llm' && model.type === 'vllm')) {
         results.push({ provider, model });
       }
@@ -544,9 +607,10 @@ export async function getChatModels(): Promise<
   const results: Array<{ provider: ProviderConfig; model: ModelConfig }> = [];
 
   for (const provider of config.providers) {
-    if (!provider.enabled) continue;
+    if (!isProviderAvailable(provider)) continue;
 
     for (const model of provider.models) {
+      if (!isModelUsable(model)) continue;
       if (model.type === 'llm' || model.type === 'vllm') {
         if (model.capabilities.includes('chat')) {
           results.push({ provider, model });
@@ -568,9 +632,10 @@ export async function getVisionModels(): Promise<
   const results: Array<{ provider: ProviderConfig; model: ModelConfig }> = [];
 
   for (const provider of config.providers) {
-    if (!provider.enabled) continue;
+    if (!isProviderAvailable(provider)) continue;
 
     for (const model of provider.models) {
+      if (!isModelUsable(model)) continue;
       if (model.capabilities.includes('vision')) {
         results.push({ provider, model });
       }
@@ -590,9 +655,10 @@ export async function getImageGenModels(): Promise<
   const results: Array<{ provider: ProviderConfig; model: ModelConfig }> = [];
 
   for (const provider of config.providers) {
-    if (!provider.enabled) continue;
+    if (!isProviderAvailable(provider)) continue;
 
     for (const model of provider.models) {
+      if (!isModelUsable(model)) continue;
       if (model.type === 'image_gen') {
         results.push({ provider, model });
       }
@@ -607,6 +673,49 @@ export async function getImageGenModels(): Promise<
  */
 export function supportsImageToImage(model: ModelConfig): boolean {
   return model.capabilities.includes('image_to_image');
+}
+
+// ============== Feature URL Resolution ==============
+
+/**
+ * Resolve the full URL for a specific feature bit of an Adacor model.
+ * Uses ADACOR_AI_API_BASE + ADACOR_AI_FEATURE_PATHS to build the URL.
+ * ADACOR_AI_FEATURE_PATHS contains complete paths (including endpoint suffix).
+ *
+ * @param modelId - The model ID (e.g. "whisper-v3-large")
+ * @param featureSet - The model's featureSet bitcode
+ * @param featureBit - The specific feature bit to resolve (1, 32, 64, 128)
+ * @param suffix - Optional suffix filter: only return a path ending with this string
+ *                 (e.g. "/transcriptions" to find the transcription endpoint for bit 64)
+ * @returns Full URL or null if not configured or feature bit not set
+ */
+export function resolveFeatureUrl(modelId: string, featureSet: number, featureBit: number, suffix?: string): string | null {
+  if (!(featureSet & featureBit)) return null;
+
+  const apiBase = process.env.ADACOR_AI_API_BASE;
+  if (!apiBase) return null;
+
+  const raw = process.env.ADACOR_AI_FEATURE_PATHS;
+  if (!raw) return null;
+
+  const base = apiBase.replace(/\/+$/, '');
+
+  // Parse feature paths for the requested bit
+  for (const part of raw.split(';')) {
+    const colonIndex = part.indexOf(':');
+    if (colonIndex > 0) {
+      const bit = parseInt(part.slice(0, colonIndex).trim(), 10);
+      if (bit === featureBit) {
+        const pathTemplate = part.slice(colonIndex + 1).trim();
+        // If suffix filter given, only match paths ending with it
+        if (suffix && !pathTemplate.endsWith(suffix)) continue;
+        const resolvedPath = pathTemplate.replace('{model}', modelId);
+        return `${base}${resolvedPath}`;
+      }
+    }
+  }
+
+  return null;
 }
 
 // ============== Capability-based Model Filtering ==============
@@ -672,9 +781,10 @@ export async function filterModelsByRequirements(
   const results: Array<{ provider: ProviderConfig; model: ModelConfig }> = [];
 
   for (const provider of config.providers) {
-    if (!provider.enabled) continue;
+    if (!isProviderAvailable(provider)) continue;
 
     for (const model of provider.models) {
+      if (!isModelUsable(model)) continue;
       // Only include chat-capable models (llm/vllm)
       if (model.type !== 'llm' && model.type !== 'vllm') continue;
 
@@ -698,9 +808,10 @@ export async function getModelsWithCapability(
   const results: Array<{ provider: ProviderConfig; model: ModelConfig }> = [];
 
   for (const provider of config.providers) {
-    if (!provider.enabled) continue;
+    if (!isProviderAvailable(provider)) continue;
 
     for (const model of provider.models) {
+      if (!isModelUsable(model)) continue;
       // Only include chat-capable models (llm/vllm)
       if (model.type !== 'llm' && model.type !== 'vllm') continue;
 

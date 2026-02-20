@@ -4,7 +4,7 @@
 
 export type ApiMode = 'openai' | 'ollama' | 'google_gemini' | 'openai_images';
 export type ModelType = 'llm' | 'vllm' | 'tts' | 'stt' | 'image_gen';
-export type ModelCapability = 'chat' | 'function_calling' | 'vision' | 'speech' | 'transcription' | 'text_to_image' | 'image_to_image';
+export type ModelCapability = 'chat' | 'function_calling' | 'vision' | 'speech' | 'transcription' | 'text_to_image' | 'image_to_image' | 'embeddings';
 
 /**
  * Extended Model Capabilities for capability-based filtering
@@ -95,6 +95,10 @@ export interface ModelConfig {
   capabilities: ModelCapability[];
   default?: boolean;
   protected?: boolean;  // System models cannot be deleted
+  enabled?: boolean;    // false = deactivated by sync, only re-enabled by sync
+  workplace?: boolean;  // false = listed in provider management but not available for use in workplace (bit 256)
+  feature_set?: number; // Bitcode from Adacor API featureSet (1=Chat, 2=Vision, 4=Tools, 32=Embed, 64=Audio, 128=Tokenize, 256=Workplace)
+  feature_urls?: Record<string, string>; // Resolved endpoint URLs per adapter suffix (e.g. "/chat/completions" → full URL)
   base_url?: string;  // Override provider base_url
   context_length?: number;
   max_tokens?: number;
@@ -176,4 +180,13 @@ export interface ConnectionTestResult {
   message: string;
   latency_ms?: number;
   models_found?: number;
+}
+
+export interface ModelSyncResult {
+  added: number;
+  updated: number;
+  deactivated: number;
+  reactivated: number;
+  unchanged: number;
+  timestamp: string;
 }

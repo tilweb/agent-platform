@@ -11,18 +11,21 @@ export function useProviders() {
     text_to_image: { provider_id: null, model_id: null },
     image_to_image: { provider_id: null, model_id: null },
   });
+  const [allowCustomProviders, setAllowCustomProviders] = useState(true);
+  const [modelSyncConfigured, setModelSyncConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch providers and active selection
+  // Fetch providers, active selection, and config
   const fetchProviders = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const [providersRes, activeRes] = await Promise.all([
+      const [providersRes, activeRes, configRes] = await Promise.all([
         apiGet('/providers'),
         apiGet('/providers/active'),
+        apiGet('/providers/config'),
       ]);
 
       if (!providersRes.ok) {
@@ -42,6 +45,12 @@ export function useProviders() {
           text_to_image: { provider_id: null, model_id: null },
           image_to_image: { provider_id: null, model_id: null },
         });
+      }
+
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        setAllowCustomProviders(configData.allowCustomProviders !== false);
+        setModelSyncConfigured(configData.modelSyncConfigured === true);
       }
     } catch (err) {
       console.error('Error fetching providers:', err);
@@ -135,9 +144,12 @@ export function useProviders() {
         p.id === providerId
           ? {
               ...p,
-              models: p.models.map((m) =>
-                m.id === modelId ? data.model : m
-              ),
+              models: p.models.map((m) => {
+                if (m.id === modelId) return data.model;
+                // Clear default on other models when a new default is set
+                if (data.model.default && m.default) return { ...m, default: false };
+                return m;
+              }),
             }
           : p
       )
@@ -205,6 +217,21 @@ export function useProviders() {
     return data.models || [];
   }, []);
 
+  // Sync Adacor models from remote API
+  const syncModels = useCallback(async () => {
+    const response = await apiPost('/providers/adacor/sync', {});
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Synchronisierung fehlgeschlagen');
+    }
+
+    const data = await response.json();
+    // Refresh providers to get updated model list
+    await fetchProviders();
+    return data.result;
+  }, [fetchProviders]);
+
   // Helper: Get provider by ID
   const getProvider = useCallback(
     (id) => providers.find((p) => p.id === id) || null,
@@ -215,11 +242,13 @@ export function useProviders() {
   const enabledProviders = providers.filter((p) => p.enabled);
 
   // Helper: Get models for a purpose (chat, vision, tts, stt)
+  // Filters out disabled models (enabled === false)
   const getModelsForPurpose = useCallback(
     (purpose) => {
       const results = [];
       for (const provider of enabledProviders) {
         for (const model of provider.models) {
+          if (model.enabled === false) continue;
           let matches = false;
           const caps = Array.isArray(model.capabilities) ? model.capabilities : [];
           if (purpose === 'chat') {
@@ -332,6 +361,7 @@ export function useProviders() {
       // Filter enabled providers and their models
       for (const provider of enabledProviders) {
         for (const model of provider.models) {
+          if (model.enabled === false) continue;
           // Only include chat-capable models (llm/vllm)
           if (model.type !== 'llm' && model.type !== 'vllm') continue;
           const caps = Array.isArray(model.capabilities) ? model.capabilities : [];
@@ -355,6 +385,7 @@ export function useProviders() {
 
     for (const provider of enabledProviders) {
       for (const model of provider.models) {
+        if (model.enabled === false) continue;
         if (model.type !== 'llm' && model.type !== 'vllm') continue;
         const modelCaps = Array.isArray(model.capabilities) ? model.capabilities : [];
         if (!modelCaps.includes('chat')) continue;
@@ -375,6 +406,7 @@ export function useProviders() {
 
     for (const provider of enabledProviders) {
       for (const model of provider.models) {
+        if (model.enabled === false) continue;
         if (model.type !== 'llm' && model.type !== 'vllm') continue;
 
         const caps = getExtendedCapabilities(model);
@@ -391,6 +423,8 @@ export function useProviders() {
     providers,
     enabledProviders,
     activeSelection,
+    allowCustomProviders,
+    modelSyncConfigured,
     isLoading,
     error,
     // Actions
@@ -404,6 +438,7 @@ export function useProviders() {
     setActiveModel,
     testConnection,
     getAvailableModels,
+    syncModels,
     // Helpers
     getProvider,
     getModelsForPurpose,

@@ -19,7 +19,9 @@ import {
   getActiveSelection,
   setActiveModel,
   resolveModel,
+  isCustomProvidersAllowed,
 } from '../services/providers';
+import { isModelSyncConfigured, syncAdacorModels } from '../services/modelSync';
 import { llmService } from '../services/llm';
 import { OpenAIAdapter } from '../services/llm/adapters/openai';
 import { OllamaAdapter } from '../services/llm/adapters/ollama';
@@ -51,10 +53,16 @@ providers.use('*', authMiddleware);
 /**
  * GET /api/providers
  * List all providers
+ * When ALLOW_CUSTOM_PROVIDERS=false, only returns protected providers
  */
 providers.get('/', async (c) => {
   try {
-    const providerList = await getProviders();
+    let providerList = await getProviders();
+
+    if (!isCustomProvidersAllowed()) {
+      providerList = providerList.filter((p) => p.protected);
+    }
+
     return c.json({ providers: providerList });
   } catch (error) {
     console.error('Error listing providers:', error);
@@ -68,9 +76,17 @@ providers.get('/', async (c) => {
 /**
  * POST /api/providers
  * Create a new provider (admin only)
+ * Blocked when ALLOW_CUSTOM_PROVIDERS=false
  */
 providers.post('/', adminMiddleware, async (c) => {
   try {
+    if (!isCustomProvidersAllowed()) {
+      return c.json(
+        { error: 'Eigene Provider sind deaktiviert. Nur Adacor-Modelle sind verfügbar.' },
+        403
+      );
+    }
+
     const body = await c.req.json<CreateProviderRequest>();
 
     if (!body.name || !body.api_mode || !body.base_url) {
@@ -138,6 +154,41 @@ providers.put('/active/:purpose', adminMiddleware, async (c) => {
     return c.json(
       { error: 'Fehler beim Setzen des aktiven Modells' },
       400
+    );
+  }
+});
+
+/**
+ * GET /api/providers/config
+ * Get provider configuration flags for the frontend
+ */
+providers.get('/config', async (c) => {
+  return c.json({
+    allowCustomProviders: isCustomProvidersAllowed(),
+    modelSyncConfigured: isModelSyncConfigured(),
+  });
+});
+
+/**
+ * POST /api/providers/adacor/sync
+ * Trigger manual model sync from Adacor AI API (admin only)
+ */
+providers.post('/adacor/sync', adminMiddleware, async (c) => {
+  try {
+    if (!isModelSyncConfigured()) {
+      return c.json(
+        { error: 'Modell-Synchronisierung ist nicht konfiguriert (ADACOR_AI_API_BASE + ADACOR_AI_MODELS_PATH fehlt)' },
+        400
+      );
+    }
+
+    const result = await syncAdacorModels();
+    return c.json({ result });
+  } catch (error) {
+    console.error('Error syncing Adacor models:', error);
+    return c.json(
+      { error: 'Fehler bei der Modell-Synchronisierung' },
+      500
     );
   }
 });
@@ -216,10 +267,28 @@ providers.delete('/:id', adminMiddleware, async (c) => {
 /**
  * POST /api/providers/:id/models
  * Add a model to a provider (admin only)
+ * - Adacor: always blocked (sync-only)
+ * - Other providers: blocked when ALLOW_CUSTOM_PROVIDERS=false
  */
 providers.post('/:id/models', adminMiddleware, async (c) => {
   try {
     const providerId = c.req.param('id');
+
+    // Adacor models are managed exclusively via sync
+    if (providerId === 'adacor') {
+      return c.json(
+        { error: 'Adacor-Modelle werden ausschließlich über die Modell-Synchronisierung verwaltet' },
+        403
+      );
+    }
+
+    if (!isCustomProvidersAllowed()) {
+      return c.json(
+        { error: 'Eigene Provider sind deaktiviert. Nur Adacor-Modelle sind verfügbar.' },
+        403
+      );
+    }
+
     const body = await c.req.json<ModelConfig>();
 
     if (!body.id || !body.name || !body.type || !body.capabilities) {
@@ -243,6 +312,7 @@ providers.post('/:id/models', adminMiddleware, async (c) => {
 /**
  * PUT /api/providers/:id/models/:modelId
  * Update a model (admin only)
+ * Rejects manual re-enabling of sync-deactivated models
  */
 providers.put('/:id/models/:modelId', adminMiddleware, async (c) => {
   try {
@@ -250,12 +320,15 @@ providers.put('/:id/models/:modelId', adminMiddleware, async (c) => {
     const modelId = c.req.param('modelId');
     const body = await c.req.json<Partial<ModelConfig>>();
 
+    // Strip enabled from updates — controlled exclusively by sync
+    delete body.enabled;
+
     const model = await updateModel(providerId, modelId, body);
     return c.json({ model });
   } catch (error) {
     console.error('Error updating model:', error);
     return c.json(
-      { error: 'Fehler beim Aktualisieren des Modells' },
+      { error: error instanceof Error ? error.message : 'Fehler beim Aktualisieren des Modells' },
       400
     );
   }

@@ -144,12 +144,17 @@ export class LLMService {
 
     if (!this.resolvedModel) {
       // Fallback to environment variables for backwards compatibility
-      const apiUrl = process.env.ADACOR_AI_API_URL;
+      // Build URL: prefer ADACOR_AI_API_BASE + ADACOR_AI_API_PATH, fall back to legacy ADACOR_AI_API_URL
+      const apiBase = process.env.ADACOR_AI_API_BASE;
+      const apiPath = process.env.ADACOR_AI_API_PATH;
+      const apiUrl = (apiBase && apiPath)
+        ? `${apiBase.replace(/\/+$/, '')}${apiPath}`
+        : process.env.ADACOR_AI_API_URL;
       const apiKey = process.env.ADACOR_AI_API_KEY || '';
       const model = process.env.ADACOR_AI_MODEL;
 
       if (!apiUrl || !apiKey) {
-        console.warn('Warning: No active chat model configured and ADACOR_AI_API_URL/ADACOR_AI_API_KEY not set. Configure a provider in Settings or set env vars.');
+        console.warn('Warning: No active chat model configured and ADACOR_AI_API_BASE+ADACOR_AI_API_PATH (or ADACOR_AI_API_URL) / ADACOR_AI_API_KEY not set. Configure a provider in Settings or set env vars.');
         return;
       }
 
@@ -176,17 +181,21 @@ export class LLMService {
     if (!this.resolvedModel) return;
 
     const { base_url, api_key, api_mode, model } = this.resolvedModel;
+    // Strip /chat/completions suffix — the OpenAI adapter appends it
+    const effectiveBaseUrl = base_url.endsWith('/chat/completions')
+      ? base_url.slice(0, -'/chat/completions'.length)
+      : base_url;
 
     if (api_mode === 'openai') {
       this.openaiAdapter = new OpenAIAdapter({
-        baseUrl: base_url,
+        baseUrl: effectiveBaseUrl,
         apiKey: api_key,
         defaultModel: model.id,
       });
       this.ollamaAdapter = null;
     } else if (api_mode === 'ollama') {
       this.ollamaAdapter = new OllamaAdapter({
-        baseUrl: base_url,
+        baseUrl: effectiveBaseUrl,
         defaultModel: model.id,
       });
       this.openaiAdapter = null;
@@ -274,12 +283,16 @@ export class LLMService {
     ollamaAdapter: OllamaAdapter | null;
   } {
     const { base_url, api_key, api_mode, model } = resolved;
+    // Strip /chat/completions suffix — the OpenAI adapter appends it
+    const effectiveBaseUrl = base_url.endsWith('/chat/completions')
+      ? base_url.slice(0, -'/chat/completions'.length)
+      : base_url;
 
     if (api_mode === 'openai') {
       return {
         resolved,
         openaiAdapter: new OpenAIAdapter({
-          baseUrl: base_url,
+          baseUrl: effectiveBaseUrl,
           apiKey: api_key,
           defaultModel: model.id,
         }),
@@ -290,7 +303,7 @@ export class LLMService {
         resolved,
         openaiAdapter: null,
         ollamaAdapter: new OllamaAdapter({
-          baseUrl: base_url,
+          baseUrl: effectiveBaseUrl,
           defaultModel: model.id,
         }),
       };
