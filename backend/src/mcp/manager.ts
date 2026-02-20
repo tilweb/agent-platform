@@ -210,6 +210,9 @@ class McpManager {
       } catch (err: any) {
         console.error(`Failed to auto-connect to ${server.id}:`, err.message);
       }
+    } else {
+      // Not auto-connecting — warm the cache so connect is fast later
+      mcpClient.warmCache(server).catch(() => {});
     }
 
     return server;
@@ -236,6 +239,9 @@ class McpManager {
       } catch (err: any) {
         console.error(`Failed to reconnect to ${serverId}:`, err.message);
       }
+    } else {
+      // Config changed — warm the cache for the (potentially new) package
+      mcpClient.warmCache(updated).catch(() => {});
     }
 
     return updated;

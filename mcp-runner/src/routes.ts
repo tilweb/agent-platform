@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono';
 import { processManager } from './process-manager';
-import type { ConnectRequest, ToolCallRequest } from './types';
+import type { ConnectRequest, ToolCallRequest, WarmRequest } from './types';
 
 const api = new Hono();
 
@@ -85,6 +85,20 @@ api.post('/servers/:id/refresh', async (c) => {
   try {
     const tools = await processManager.refreshTools(id);
     return c.json(tools);
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// Pre-download npm package into cache
+api.post('/warm', async (c) => {
+  try {
+    const body = await c.req.json<WarmRequest>();
+    if (!body.command) {
+      return c.json({ error: 'command is required' }, 400);
+    }
+    const result = await processManager.warmCache(body.command, body.args);
+    return c.json(result);
   } catch (err: any) {
     return c.json({ error: err.message }, 500);
   }

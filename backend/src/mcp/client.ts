@@ -161,6 +161,35 @@ export class McpClient {
 
     return connection.refreshTools();
   }
+
+  /**
+   * Pre-download npm packages on the runner so connect is fast later.
+   * Fire-and-forget — errors are logged but not thrown.
+   * Only works when runner is active; no-op in local mode.
+   */
+  async warmCache(config: McpServerConfig): Promise<void> {
+    if (!this.useRunner) return;
+
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (this.runnerSecret) {
+        headers['Authorization'] = `Bearer ${this.runnerSecret}`;
+      }
+
+      const res = await fetch(`${this.runnerUrl}/api/warm`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ command: config.command, args: config.args }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        console.warn(`Cache warm failed for ${config.id}: ${err.error || res.status}`);
+      }
+    } catch (err: any) {
+      console.warn(`Cache warm request failed for ${config.id}:`, err.message);
+    }
+  }
 }
 
 // Singleton instance

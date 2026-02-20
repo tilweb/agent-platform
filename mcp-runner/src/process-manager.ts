@@ -4,6 +4,7 @@
  * Manages the lifecycle of all MCP server connections.
  */
 
+import { spawn } from 'child_process';
 import { McpConnection } from './connection';
 import type { ConnectRequest, ServerStatus, McpToolInfo, McpCallResult } from './types';
 
@@ -103,6 +104,49 @@ class ProcessManager {
       if (conn.status === 'connected') count++;
     }
     return count;
+  }
+
+  /**
+   * Pre-download npm packages into cache so connect is fast later.
+   * Only works for npx-based commands — others are silently skipped.
+   */
+  async warmCache(command: string, args?: string[]): Promise<{ cached: boolean; package?: string; error?: string }> {
+    if (command !== 'npx') {
+      return { cached: false };
+    }
+
+    // Extract package name from args: npx -y @scope/package → @scope/package
+    const pkgArg = (args || []).find(a => !a.startsWith('-'));
+    if (!pkgArg) {
+      return { cached: false };
+    }
+
+    console.log(`Warming cache for package: ${pkgArg}`);
+
+    return new Promise((resolve) => {
+      const proc = spawn('npm', ['cache', 'add', pkgArg], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: process.env as Record<string, string>,
+      });
+
+      let stderr = '';
+      proc.stderr?.on('data', (d) => { stderr += d.toString(); });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          console.log(`Cache warmed for: ${pkgArg}`);
+          resolve({ cached: true, package: pkgArg });
+        } else {
+          console.error(`Cache warm failed for ${pkgArg}: ${stderr}`);
+          resolve({ cached: false, package: pkgArg, error: stderr.trim() || `exit code ${code}` });
+        }
+      });
+
+      proc.on('error', (err) => {
+        console.error(`Cache warm error for ${pkgArg}:`, err);
+        resolve({ cached: false, package: pkgArg, error: err.message });
+      });
+    });
   }
 }
 

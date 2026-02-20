@@ -70,8 +70,12 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: npm-cache
+              mountPath: /home/app/.npm
       volumes:
         - name: tmp
+          emptyDir: {}
+        - name: npm-cache
           emptyDir: {}
       {{- with .Values.mcpRunner.nodeSelector }}
       nodeSelector:

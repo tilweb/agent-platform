@@ -32,6 +32,8 @@ services:
     environment:
       - MCP_RUNNER_SECRET=${MCP_RUNNER_SECRET:-default-dev-secret}
       - MCP_RUNNER_PORT=3002
+    volumes:
+      - mcp-npm-cache:/home/app/.npm   # npm cache survives restarts
     expose:
       - "3002"
     healthcheck:
@@ -57,3 +59,6 @@ services:
     depends_on:
       - frontend
       - backend
+
+volumes:
+  mcp-npm-cache:

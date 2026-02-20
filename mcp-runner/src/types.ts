@@ -42,3 +42,8 @@ export interface ServerStatus {
 export interface ToolCallRequest {
   arguments: Record<string, any>;
 }
+
+export interface WarmRequest {
+  command: string;
+  args?: string[];
+}
