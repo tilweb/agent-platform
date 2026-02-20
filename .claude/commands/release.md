@@ -1,4 +1,4 @@
-Erstelle ein Release mit Version Bump, Changelog, Doku-Update und Build-Verifizierung.
+Erstelle ein Release mit Version Bump, Changelog, Quality Gate, Doku-Update und Build-Verifizierung.
 
 Argument: `$ARGUMENTS` (default: `patch`. Mögliche Werte: `major`, `minor`, `patch`, oder eine explizite Version wie `1.2.3`)
 
@@ -6,7 +6,7 @@ Argument: `$ARGUMENTS` (default: `patch`. Mögliche Werte: `major`, `minor`, `pa
 
 ## Vorgehen
 
-Arbeite die folgenden 10 Schritte sequenziell ab. Bei einem Fehler in einem Hard-Gate-Schritt: STOPPE und berichte den Fehler.
+Arbeite die folgenden 11 Schritte sequenziell ab. Bei einem Fehler in einem Hard-Gate-Schritt: STOPPE und berichte den Fehler.
 
 ---
 
@@ -137,7 +137,26 @@ Falls keine Doku-Änderungen nötig sind (alles aktuell): Melde das und fahre fo
 
 ---
 
-## Schritt 6: Version in package.json setzen
+## Schritt 6: Quality Gate (Hard Gate)
+
+Führe die vollständige Logik aus `.claude/commands/quality-gate.md` aus.
+
+Prüfe alle 6 Kategorien:
+1. Design-Konsistenz
+2. Icon-Duplikate
+3. Error-Handling
+4. Auth-Abdeckung
+5. API-Konsistenz
+6. Code-Qualität
+
+**Bewertung des Ergebnisses:**
+- **Gesamtstatus PASS**: Weiter mit Schritt 7.
+- **Gesamtstatus WARN**: Zeige die Warnings dem Benutzer und frage ob trotzdem fortgefahren werden soll. Bei "Nein": **STOPPE**.
+- **Gesamtstatus FAIL**: **STOPPE** und zeige die FAILs mit konkreten Handlungsempfehlungen. Der Release kann erst erfolgen, wenn alle FAILs behoben sind.
+
+---
+
+## Schritt 7: Version in package.json setzen
 
 Aktualisiere das `version`-Feld in beiden Dateien:
 
@@ -148,7 +167,7 @@ Prüfe nach dem Schreiben, dass die JSON-Dateien valide sind.
 
 ---
 
-## Schritt 7: Build verifizieren
+## Schritt 8: Build verifizieren
 
 ### Frontend Build (Hard Gate)
 ```bash
@@ -173,7 +192,7 @@ Melde das Ergebnis jeder Prüfung.
 
 ---
 
-## Schritt 8: Release-Commit und Git-Tag erstellen
+## Schritt 9: Release-Commit und Git-Tag erstellen
 
 ### Alle Änderungen stagen
 
@@ -202,7 +221,7 @@ git tag -a vA.B.C -m "Release vA.B.C"
 
 ---
 
-## Schritt 9: Push zum Remote
+## Schritt 10: Push zum Remote
 
 **WICHTIG:** Frage den Benutzer VOR dem Push um Bestätigung.
 
@@ -220,7 +239,7 @@ Wenn der Benutzer ablehnt: Überspringe den Push und weise darauf hin, dass der 
 
 ---
 
-## Schritt 10: Abschluss-Report
+## Schritt 11: Abschluss-Report
 
 Erstelle eine vollständige Zusammenfassung:
 
@@ -247,6 +266,15 @@ Erstelle eine vollständige Zusammenfassung:
 - Aktualisierte Seiten: X
 - Neue Seiten: X
 - Konsistenzprüfung: bestanden / [Probleme]
+
+## Quality Gate
+- Design-Konsistenz: PASS / WARN / FAIL
+- Icon-Duplikate: PASS / WARN / FAIL
+- Error-Handling: PASS / WARN / FAIL
+- Auth-Abdeckung: PASS / WARN / FAIL
+- API-Konsistenz: PASS / WARN / FAIL
+- Code-Qualität: PASS / WARN / FAIL
+- **Gesamtstatus: PASS / WARN / FAIL**
 
 ## Build-Verifizierung
 - Frontend Build: bestanden / fehlgeschlagen
