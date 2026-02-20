@@ -91,6 +91,10 @@ Violations gesamt: X
 
 Prüfe speziell ob `ToggleOnIcon`/`ToggleOffIcon` in mehreren Dateien dupliziert sind und empfehle die Zentralisierung in `Icons.jsx`.
 
+## Subagent
+
+Nutze den `design-auditor` Subagent (via Task-Tool, subagent_type: `design-auditor`) für das systematische Scannen der Frontend-Dateien in Schritt 2. Der Subagent ist auf Design-Konsistenz spezialisiert und läuft als haiku. Verwende die Ergebnisse des Subagents für Schritt 3-5 (Matrix, Zusammenfassung, Zentralisierung).
+
 ## Wichtig
 
 - **Nur lesen, nicht ändern** — der Audit ist read-only

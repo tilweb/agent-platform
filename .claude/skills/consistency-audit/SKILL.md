@@ -120,6 +120,10 @@ Geprüfte Dateien: X
 3. ...
 ```
 
+## Subagent
+
+Nutze den `consistency-auditor` Subagent (via Task-Tool, subagent_type: `consistency-auditor`) für das systematische Scannen in Schritt 2-5. Der Subagent ist auf Duplikaterkennung und Pattern-Abweichungen spezialisiert und läuft als haiku. Verwende die Ergebnisse des Subagents für Schritt 6 (Zusammenfassung).
+
 ## Wichtig
 
 - **Nur lesen, nicht ändern** — der Audit ist read-only

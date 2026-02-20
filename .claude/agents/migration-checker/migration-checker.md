@@ -4,7 +4,7 @@ description: Cross-codebase rename and migration verification specialist. Use af
 tools: Read, Grep, Glob
 disallowedTools: Write, Edit, Bash
 model: haiku
-memory: local
+memory: project
 ---
 
 You are a migration completeness checker for the Agent Platform.

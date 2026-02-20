@@ -96,6 +96,10 @@ Für **verwaiste Frontend-Calls**:
 1. ...
 ```
 
+## Subagent
+
+Nutze den `api-contract-checker` Subagent (via Task-Tool, subagent_type: `api-contract-checker`) für die technische Detailarbeit in Schritt 1-3. Der Subagent ist auf API-Contract-Validierung spezialisiert und läuft als haiku — kostengünstiger und schneller für die Mustersuche. Verwende die Ergebnisse des Subagents für Schritt 4-5 (Analyse und Zusammenfassung).
+
 ## Wichtig
 
 - **Nur lesen, nicht ändern** — der Audit ist read-only

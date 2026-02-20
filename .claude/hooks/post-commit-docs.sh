@@ -2,7 +2,10 @@
 # Hook: Nach einem git commit an Doku-Update erinnern
 # Trigger: PostToolUse auf Bash-Aufrufe mit "git commit"
 
+# Schneller Bail-Out: Raw-Input auf "git commit" prüfen bevor jq gestartet wird
 INPUT=$(cat)
+echo "$INPUT" | grep -q "git commit" || exit 0
+
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
 # Nur auf git commit reagieren (nicht auf git commit --amend allein)

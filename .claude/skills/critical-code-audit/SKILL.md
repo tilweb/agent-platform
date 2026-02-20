@@ -261,6 +261,16 @@ Jedes Finding bekommt eine Severity:
 - MITTEL: Code-Qualität beeinträchtigt (kleinere Duplikate, `as any` an unkritischen Stellen, fehlende Rate-Limits auf nicht-sensiblen Endpunkten)
 - NIEDRIG: Kosmetisch / Aufräum-Kandidat (auskommentierter Code, veraltete TODOs, unused exports, fehlende Return-Types)
 
+## Subagenten
+
+Nutze spezialisierte Subagenten (via Task-Tool) für die folgenden Audit-Bereiche — sie laufen als haiku und sind kostengünstiger:
+
+- **Bereich 2 (Unauthentifizierte Endpunkte)**: `auth-auditor` Subagent (subagent_type: `auth-auditor`)
+- **Bereich 9 (Verwaister Code)**: `dead-code-finder` Subagent (subagent_type: `dead-code-finder`)
+- **Bereiche 2, 5, 8 (Security-relevante Checks)**: `security-scanner` Subagent (subagent_type: `security-scanner`)
+
+Starte die Subagenten parallel wo möglich und konsolidiere deren Ergebnisse im Gesamt-Report.
+
 ## Wichtige Regeln
 
 - **Sei spezifisch**: Nenne immer Dateiname, Zeilennummern und den betroffenen Code

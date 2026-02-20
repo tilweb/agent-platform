@@ -23,12 +23,12 @@ Start both servers in the background.
 
 **Backend:**
 ```bash
-cd /Users/pfend/github/agent-platform/backend && bun --env-file=../.env run --watch src/index.ts &
+cd "$CLAUDE_PROJECT_DIR/backend" && bun --env-file=../.env run --watch src/index.ts &
 ```
 
 **Frontend:**
 ```bash
-cd /Users/pfend/github/agent-platform/frontend && npm run dev &
+cd "$CLAUDE_PROJECT_DIR/frontend" && npm run dev &
 ```
 
 Wait 4 seconds, then verify via health endpoints:

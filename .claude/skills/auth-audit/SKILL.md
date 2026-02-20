@@ -82,6 +82,10 @@ Fuer jedes KRITISCH/Warnung-Finding:
 
 ---
 
+## Subagent
+
+Nutze den `auth-auditor` Subagent (via Task-Tool, subagent_type: `auth-auditor`) für das systematische Scannen aller Route-Dateien. Der Subagent ist auf Auth-Middleware-Analyse spezialisiert und läuft als haiku. Verwende die Ergebnisse des Subagents für die Endpunkt-Matrix und die Handlungsempfehlungen.
+
 ## Wichtige Regeln
 
 - **Vollstaendig sein**: JEDE Route-Datei pruefen, JEDEN Endpunkt listen

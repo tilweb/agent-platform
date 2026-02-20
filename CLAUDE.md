@@ -109,6 +109,9 @@ Spezialisierte Agenten, die mit `Task`-Tool oder direkt von Claude Code aufgeruf
 | `api-contract-checker` | Frontend↔Backend API-Contracts validieren | haiku | Ja |
 | `dead-code-finder` | Unused Exports, orphaned Files finden | haiku | Ja (+ Bash) |
 | `migration-checker` | Cross-Codebase Renames verifizieren | haiku | Ja |
+| `design-auditor` | Frontend Design-Konsistenz prüfen | haiku | Ja |
+| `consistency-auditor` | Duplikate und Pattern-Abweichungen finden | haiku | Ja |
+| `auth-auditor` | Auth-Middleware-Abdeckung aller Routes prüfen | haiku | Ja |
 
 **Subagent-Dateiformat** (`.claude/agents/<name>/<name>.md`):
 ```yaml
@@ -152,6 +155,7 @@ Benutzerdefinierte Skills, aufrufbar via `/skill-name`. Liegen als `SKILL.md` in
 | `api-audit` | Frontend↔Backend API-Konsistenz | Ja |
 | `test-scaffold` | Test-Boilerplate generieren | Nein |
 | `test-coverage` | Testabdeckung analysieren + fixen | Nein |
+| `dependency-audit` | Dependencies auf Sicherheit/Aktualität prüfen | Ja |
 
 **Skill-Dateiformat** (`.claude/skills/<name>/SKILL.md`):
 ```yaml
