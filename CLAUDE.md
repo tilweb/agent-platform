@@ -92,3 +92,58 @@ Configured in `data/config/providers.yaml`. Supports Adacor AI, OpenAI, Anthropi
 - Pages that can be embedded in Settings must support an `embedded` prop to hide their standalone header
 - See `frontend/CLAUDE.md` for detailed component patterns (tabs, buttons, cards, toggles, modals, forms, sidebar navigation, status badges, app detail headers)
 - **Design-Konsistenz**: Keine neuen UI-Patterns erfinden — immer die in `frontend/CLAUDE.md` dokumentierten Patterns verwenden. Bei Unsicherheit nachfragen statt eigene Lösungen bauen
+
+## Claude Code Tooling
+
+Dieses Projekt nutzt erweiterte Claude Code Features für automatisierte Qualitätssicherung.
+
+### Subagenten (`.claude/agents/`)
+
+Spezialisierte Agenten, die mit `Task`-Tool oder direkt von Claude Code aufgerufen werden. Jeder hat eigenes Model, Tools, und Memory.
+
+| Agent | Zweck | Model | Read-Only |
+|-------|-------|-------|-----------|
+| `type-fixer` | TypeScript-Fehler systematisch fixen | sonnet | Nein |
+| `test-writer` | bun:test Testdateien generieren | sonnet | Nein |
+| `security-scanner` | Sicherheitslücken finden | haiku | Ja (+ safe Bash) |
+| `api-contract-checker` | Frontend↔Backend API-Contracts validieren | haiku | Ja |
+| `dead-code-finder` | Unused Exports, orphaned Files finden | haiku | Ja (+ Bash) |
+| `migration-checker` | Cross-Codebase Renames verifizieren | haiku | Ja |
+
+**Subagent-Dateiformat** (`.claude/agents/<name>/<name>.md`):
+```yaml
+---
+name: agent-name
+description: Beschreibung (wird in Agent-Auswahl angezeigt)
+tools: Read, Grep, Glob       # Erlaubte Tools
+disallowedTools: Write, Edit   # Verbotene Tools (optional)
+model: haiku                   # haiku | sonnet | opus
+memory: project                # project (shared) | local (agent-only)
+hooks:                         # Optional: PreToolUse/PostToolUse Hooks
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "..."
+---
+Prompt-Inhalt für den Agenten...
+```
+
+**Memory-Typen**:
+- `project` — Shared mit dem Hauptagenten, persistiert in `.claude/memory/`
+- `local` — Nur für diesen Agenten sichtbar, eigener Speicher
+
+### Slash Commands (`.claude/commands/`)
+
+Benutzerdefinierte Befehle, aufrufbar via `/command-name`. Liegen als Markdown-Dateien in `.claude/commands/`. Aktuelle Commands: `quality-gate`, `app`, `auth-audit`, `design-audit`, `consistency-audit`, `api-audit`, `test-scaffold`, `test-coverage`, `critical-code-audit`, `update-docs`, `release`.
+
+### Hooks (`.claude/hooks/`)
+
+Event-basierte Shell-Befehle, die automatisch bei bestimmten Aktionen ausgeführt werden:
+- **PreToolUse** — Vor Tool-Ausführung (z.B. Bash-Befehle validieren)
+- **PostToolUse** — Nach Tool-Ausführung (z.B. Lint nach Edit)
+- **Notification** — Bei Benachrichtigungen
+
+### Settings (`.claude/settings.json`)
+
+Projekt-spezifische Claude Code Konfiguration: erlaubte/verbotene Tools, Modell-Defaults, Permissions. Wird per `settings.local.json` lokal überschrieben.
