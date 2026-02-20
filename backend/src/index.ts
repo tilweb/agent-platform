@@ -196,6 +196,8 @@ console.log(`🚀 Server starting on port ${port}`);
 
 export default {
   port,
-  fetch: app.fetch,
+  fetch(req: Request, server: any) {
+    return app.fetch(req, { ip: server.requestIP(req) });
+  },
   idleTimeout: 120, // 120 seconds — needed for long-running SSE streams during multi-agent delegation
 };

@@ -45,20 +45,12 @@ export function getClientIp(c: Context): string {
     }
   }
 
-  // Fallback: Try to get IP from connection info
-  // Note: This depends on the runtime (Bun, Node, etc.)
-  // In Bun with Hono, we can try to access the raw request
-  try {
-    // @ts-ignore - Bun-specific API
-    const connInfo = c.env?.connInfo || c.req.raw?.socket;
-    if (connInfo?.remoteAddress) {
-      return connInfo.remoteAddress;
-    }
-  } catch {
-    // Ignore errors accessing connection info
+  // Bun: IP is passed via env from server.requestIP() in index.ts
+  const socketAddr = c.env?.ip;
+  if (socketAddr?.address) {
+    return socketAddr.address;
   }
 
-  // Last resort: return unknown
   return 'unknown';
 }
 

@@ -174,9 +174,14 @@ authRoutes.post('/logout', async (c) => {
     const ipAddress = getClientIp(c);
 
     let userId: string | undefined;
+    let username: string | undefined;
     if (sessionId) {
       const session = await getSession(sessionId);
       userId = session?.userId;
+      if (userId) {
+        const user = await loadUser(userId);
+        username = user?.username;
+      }
       await deleteSession(sessionId);
     }
 
@@ -186,7 +191,7 @@ authRoutes.post('/logout', async (c) => {
 
     // Audit logout
     if (userId) {
-      await auditLogout(userId, undefined, ipAddress);
+      await auditLogout(userId, username, ipAddress);
     }
 
     return c.json({ success: true });
