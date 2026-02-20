@@ -7,6 +7,7 @@
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import { authMiddleware, getCurrentUser } from '../auth/middleware';
+import { listUsers } from '../auth';
 import { parseIntSafe } from '../utils/parseIntSafe';
 import { internalError } from '../utils/errorHandler';
 import {
@@ -232,6 +233,18 @@ adminRoutes.get('/audit-logs/categories', async (c) => {
 // =============================================================================
 
 /**
+ * Build userId → username lookup map
+ */
+async function buildUserNameMap(): Promise<Record<string, string>> {
+  const users = await listUsers();
+  const map: Record<string, string> = {};
+  for (const user of users) {
+    map[user.id] = user.username;
+  }
+  return map;
+}
+
+/**
  * GET /api/admin/usage - Get usage summary
  *
  * Query params:
@@ -243,8 +256,18 @@ adminRoutes.get('/usage', async (c) => {
     const startDate = c.req.query('startDate');
     const endDate = c.req.query('endDate');
 
-    const summary = await usageTrackingService.getUsageSummary(startDate, endDate);
-    return c.json(summary);
+    const [summary, userNameMap] = await Promise.all([
+      usageTrackingService.getUsageSummary(startDate, endDate),
+      buildUserNameMap(),
+    ]);
+
+    return c.json({
+      ...summary,
+      byUser: summary.byUser.map(u => ({
+        ...u,
+        username: userNameMap[u.userId] || u.userId,
+      })),
+    });
   } catch (error: any) {
     console.error('Error fetching usage summary:', error);
     return internalError(c, error);
@@ -263,8 +286,18 @@ adminRoutes.get('/usage/users', async (c) => {
     const startDate = c.req.query('startDate');
     const endDate = c.req.query('endDate');
 
-    const userTotals = await usageTrackingService.getUserTotals(startDate, endDate);
-    return c.json({ users: userTotals });
+    const [userTotals, userNameMap] = await Promise.all([
+      usageTrackingService.getUserTotals(startDate, endDate),
+      buildUserNameMap(),
+    ]);
+
+    // Enrich with usernames
+    const enriched: Record<string, any> = {};
+    for (const [id, totals] of Object.entries(userTotals)) {
+      enriched[id] = { ...totals, username: userNameMap[id] || id };
+    }
+
+    return c.json({ users: enriched });
   } catch (error: any) {
     console.error('Error fetching user usage:', error);
     return internalError(c, error);
@@ -324,9 +357,23 @@ adminRoutes.get('/usage/export', async (c) => {
     const startDate = c.req.query('startDate');
     const endDate = c.req.query('endDate');
 
-    const csv = await usageTrackingService.exportAsCsv(startDate, endDate);
+    const [csv, userNameMap] = await Promise.all([
+      usageTrackingService.exportAsCsv(startDate, endDate),
+      buildUserNameMap(),
+    ]);
 
-    return new Response(csv, {
+    // Replace user IDs with usernames in CSV
+    const lines = csv.split('\n');
+    const enrichedCsv = lines.map((line, i) => {
+      if (i === 0) return line; // header
+      const fields = line.split(';');
+      if (fields[1]) {
+        fields[1] = userNameMap[fields[1]] || fields[1];
+      }
+      return fields.join(';');
+    }).join('\n');
+
+    return new Response(enrichedCsv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="usage_export_${startDate || 'all'}_${endDate || 'all'}.csv"`,

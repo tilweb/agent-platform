@@ -1,21 +1,25 @@
 plugins:
+  new:
+    id: new
+    type: connector
+    source: builtin
+    enabled: true
+    configured: true
   confluence:
     id: confluence
     type: connector
     source: builtin
-    enabled: false
+    enabled: true
     configured: true
-    configuredAt: 2026-02-19T17:34:48.058Z
-    configuredBy: admin
   google-drive:
     id: google-drive
     type: connector
     source: builtin
-    enabled: false
+    enabled: true
     configured: false
   pipedrive:
     id: pipedrive
     type: connector
     source: builtin
-    enabled: false
+    enabled: true
     configured: false

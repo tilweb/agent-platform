@@ -233,7 +233,13 @@ async function loadSpacesIndex(): Promise<SpaceIndex> {
 
   try {
     const content = await Bun.file(indexPath).text();
-    return yaml.parse(content) as SpaceIndex;
+    const parsed = yaml.parse(content);
+    if (!parsed) return { spaces: [], updatedAt: '' };
+    // Support legacy key "projects" from before the rename migration
+    return {
+      spaces: parsed.spaces || parsed.projects || [],
+      updatedAt: parsed.updatedAt || '',
+    };
   } catch (error) {
     console.error('Error loading spaces index:', error);
     return { spaces: [], updatedAt: '' };

@@ -31,6 +31,7 @@ import { mcpManager } from './mcp';
 import { startExecutor } from './services/taskExecutor';
 import { recoverTasks } from './services/taskService';
 import { llmService } from './services/llm';
+import { isModelSyncConfigured, syncAdacorModels } from './services/modelSync';
 import { registerCommands } from './commands';
 import { loadAllPlugins } from './plugins';
 import { pluginRoutes } from './routes/plugins';
@@ -53,6 +54,19 @@ async function initialize() {
     await llmService.initialize();
   } catch (error) {
     console.error('LLM service initialization failed:', error);
+  }
+
+  // Non-blocking: sync Adacor AI models from API (fire-and-forget)
+  if (isModelSyncConfigured()) {
+    syncAdacorModels()
+      .then((result) => {
+        console.log(
+          `[ModelSync] Startup sync: +${result.added} ^${result.updated} -${result.deactivated} ~${result.reactivated} =${result.unchanged}`
+        );
+      })
+      .catch((error) => {
+        console.error('[ModelSync] Startup sync failed:', error);
+      });
   }
 
   // Initialize image generation service
@@ -196,6 +210,7 @@ console.log(`🚀 Server starting on port ${port}`);
 
 export default {
   port,
+  reusePort: true,
   fetch(req: Request, server: any) {
     return app.fetch(req, { ip: server.requestIP(req) });
   },

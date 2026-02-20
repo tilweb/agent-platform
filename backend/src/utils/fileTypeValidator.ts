@@ -48,11 +48,7 @@ const FILE_SIGNATURES: FileSignature[] = [
       { bytes: [0x47, 0x49, 0x46, 0x38, 0x39, 0x61] }, // GIF89a
     ],
   },
-  {
-    mimeType: 'image/webp',
-    extension: 'webp',
-    signatures: [{ bytes: [0x52, 0x49, 0x46, 0x46], offset: 0 }], // RIFF, need additional check for WEBP
-  },
+  // Note: WebP also uses RIFF magic bytes — disambiguation happens in detectFromMagicBytes via RIFF subtype check
   {
     mimeType: 'image/bmp',
     extension: 'bmp',
@@ -188,6 +184,14 @@ function detectFromMagicBytes(buffer: Buffer): { mimeType: string; extension: st
   for (const fileSig of FILE_SIGNATURES) {
     for (const signature of fileSig.signatures) {
       if (matchesSignature(buffer, signature)) {
+        // RIFF container: disambiguate WAV vs WEBP via subtype at bytes 8-11
+        if (fileSig.mimeType === 'audio/wav' && buffer.length >= 12) {
+          const riffType = buffer.toString('ascii', 8, 12);
+          if (riffType === 'WEBP') {
+            return { mimeType: 'image/webp', extension: 'webp' };
+          }
+        }
+
         return {
           mimeType: fileSig.mimeType,
           extension: fileSig.extension,
@@ -272,19 +276,7 @@ export function validateFileType(
       }
     }
 
-    // Handle RIFF (could be WAV or WebP)
-    if (detected.mimeType === 'audio/wav' && buffer.length >= 12) {
-      const riffType = buffer.toString('ascii', 8, 12);
-      if (riffType === 'WEBP') {
-        return {
-          isValid: true,
-          detectedMimeType: 'image/webp',
-          detectedExtension: 'webp',
-          claimedMimeType,
-          mismatch: claimedMimeType !== 'image/webp',
-        };
-      }
-    }
+    // RIFF disambiguation (WAV vs WEBP) is now handled in detectFromMagicBytes
 
     return {
       isValid: true,

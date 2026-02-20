@@ -27,3 +27,6 @@ apps:
         component: WizardPage
       - path: /apps/projektmanagement/:id
         component: WizardPage
+appOrder:
+  - projektmanagement
+  - vertragsmanagement

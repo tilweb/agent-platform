@@ -5,9 +5,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --env-file=../.env run --watch src/index.ts",
+    "dev": "bun --env-file=../.env run --watch src/dev.ts",
     "start": "bun --env-file=../.env run src/index.ts",
-    "mcp-server": "bun --env-file=../.env run src/mcp/server/index.ts"
+    "mcp-server": "bun --env-file=../.env run src/mcp/server/index.ts",
+    "test": "bun run test-runner.ts",
+    "test:file": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest",

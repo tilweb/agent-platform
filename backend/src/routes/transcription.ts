@@ -4,7 +4,7 @@
  */
 
 import { Hono } from 'hono';
-import { loadProvidersConfig, getProvider } from '../services/providers';
+import { loadProvidersConfig, getProvider, resolveFeatureUrl } from '../services/providers';
 import { uploadRateLimit } from '../middleware/rateLimit';
 import { internalError, validationError, serviceError, errorResponse, ErrorCode } from '../utils/errorHandler';
 import { authMiddleware } from '../auth';
@@ -145,13 +145,23 @@ transcriptionRoutes.post('/', uploadRateLimit, async (c) => {
       return errorResponse(c, { code: ErrorCode.SERVICE_UNAVAILABLE, message: 'Spracherkennung nicht konfiguriert' });
     }
 
-    // Determine base URL (model overrides provider)
-    const baseUrl = model.base_url || provider.base_url;
+    // Determine transcription URL
+    // If model has feature_set with bit 64 (Audio/Whisper), use feature-specific URL
+    let transcriptionUrl: string;
+    const featureUrl = model.feature_set != null
+      ? resolveFeatureUrl(model.id, model.feature_set, 64, '/transcriptions')
+      : null;
 
-    // Build URL - don't append /transcriptions if already in base_url
-    const transcriptionUrl = baseUrl.includes('/transcriptions')
-      ? baseUrl
-      : `${baseUrl}/transcriptions`;
+    if (featureUrl) {
+      // Feature URL is the full transcription endpoint path
+      transcriptionUrl = featureUrl;
+    } else {
+      // Fallback: model or provider base_url
+      const baseUrl = model.base_url || provider.base_url;
+      transcriptionUrl = baseUrl.includes('/transcriptions')
+        ? baseUrl
+        : `${baseUrl}/transcriptions`;
+    }
 
     // Get optional language parameter (default: German)
     const rawLang = formData.get('language');

@@ -7,7 +7,7 @@ import { commandRegistry } from './registry';
 import type { CommandOption, CommandResult } from './types';
 import { listAgents } from '../services/agents';
 import { loadSkills } from '../skills';
-import { getProviders, getActiveSelection, setActiveModel, getImageGenModels } from '../services/providers';
+import { getProviders, getChatModels, getActiveSelection, setActiveModel, getImageGenModels } from '../services/providers';
 import { llmService } from '../services/llm';
 import { listTablesWithStats, queryRows, addRow, getTable } from '../tables';
 import { imageGenerationService } from '../services/imageGeneration';
@@ -179,31 +179,27 @@ async function getAgentOptions(): Promise<CommandOption[]> {
 
 async function getModelOptions(): Promise<CommandOption[]> {
   try {
-    const providers = await getProviders();
+    const chatModels = await getChatModels();
     const active = await getActiveSelection();
     const options: CommandOption[] = [];
 
-    for (const provider of providers) {
-      if (!provider.enabled) continue;
+    for (const { provider, model } of chatModels) {
+      const isActive =
+        active.chat?.provider_id === provider.id &&
+        active.chat?.model_id === model.id;
 
-      for (const model of provider.models) {
-        const isActive =
-          active.chat?.provider_id === provider.id &&
-          active.chat?.model_id === model.id;
-
-        options.push({
-          id: `${provider.id}:${model.id}`,
-          name: model.name,
-          description: `${provider.name}`,
-          icon: getModelIcon(provider.api_mode),
-          isActive,
-          meta: {
-            providerId: provider.id,
-            modelId: model.id,
-            capabilities: model.capabilities,
-          },
-        });
-      }
+      options.push({
+        id: `${provider.id}:${model.id}`,
+        name: model.name,
+        description: `${provider.name}`,
+        icon: getModelIcon(provider.api_mode),
+        isActive,
+        meta: {
+          providerId: provider.id,
+          modelId: model.id,
+          capabilities: model.capabilities,
+        },
+      });
     }
 
     return options;
