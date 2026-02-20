@@ -9,6 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useTable, useTableViews } from '../hooks/useTables';
 import { ArrowLeftIcon, TableIcon } from '../components/Icons';
+import Select from '../components/Select';
 
 const styles = {
   container: {
@@ -94,14 +95,6 @@ const styles = {
     backgroundColor: theme.colors.surface,
     color: theme.colors.text,
     border: `1px solid ${theme.colors.border}`,
-  },
-  viewSelector: {
-    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-    borderRadius: theme.borderRadius.md,
-    border: `1px solid ${theme.colors.border}`,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
   },
   tableContainer: {
     flex: 1,
@@ -254,15 +247,6 @@ const styles = {
     color: theme.colors.text,
     minHeight: '80px',
     resize: 'vertical',
-  },
-  select: {
-    width: '100%',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    border: `1px solid ${theme.colors.border}`,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
   },
   modalButtons: {
     display: 'flex',
@@ -552,8 +536,8 @@ function TableDetailPage() {
         </form>
 
         {views.length > 0 && (
-          <select
-            style={styles.viewSelector}
+          <Select
+            style={{ width: 'auto' }}
             onChange={(e) => {
               if (e.target.value) {
                 const view = views.find(v => v.id === e.target.value);
@@ -568,7 +552,7 @@ function TableDetailPage() {
             {views.map(view => (
               <option key={view.id} value={view.id}>{view.name}</option>
             ))}
-          </select>
+          </Select>
         )}
 
         <div style={{ flex: 1 }} />
@@ -677,7 +661,7 @@ function TableDetailPage() {
                               autoFocus
                             />
                           ) : column.type === 'select' ? (
-                            <select
+                            <Select
                               style={styles.cellInput}
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
@@ -688,18 +672,19 @@ function TableDetailPage() {
                               {column.options?.map(opt => (
                                 <option key={opt} value={opt}>{opt}</option>
                               ))}
-                            </select>
+                            </Select>
                           ) : column.type === 'boolean' ? (
-                            <select
+                            <Select
                               style={styles.cellInput}
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value === 'true')}
                               onBlur={handleCellBlur}
                               autoFocus
-                            >
-                              <option value="false">Nein</option>
-                              <option value="true">Ja</option>
-                            </select>
+                              options={[
+                                { value: 'false', label: 'Nein' },
+                                { value: 'true', label: 'Ja' },
+                              ]}
+                            />
                           ) : (
                             <input
                               type={column.type === 'number' ? 'number' : column.type === 'date' ? 'date' : 'text'}
@@ -829,8 +814,7 @@ function AddRowModal({ table, onClose, onAdd }) {
                   required={column.required}
                 />
               ) : column.type === 'select' ? (
-                <select
-                  style={styles.select}
+                <Select
                   value={formData[column.id] || ''}
                   onChange={(e) => handleFieldChange(column.id, e.target.value)}
                   required={column.required}
@@ -839,17 +823,16 @@ function AddRowModal({ table, onClose, onAdd }) {
                   {column.options?.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
-                </select>
+                </Select>
               ) : column.type === 'boolean' ? (
-                <select
-                  style={styles.select}
+                <Select
                   value={formData[column.id] === true ? 'true' : formData[column.id] === false ? 'false' : ''}
                   onChange={(e) => handleFieldChange(column.id, e.target.value === 'true')}
                 >
                   <option value="">Bitte wahlen...</option>
                   <option value="true">Ja</option>
                   <option value="false">Nein</option>
-                </select>
+                </Select>
               ) : column.type === 'tags' ? (
                 <input
                   style={styles.input}

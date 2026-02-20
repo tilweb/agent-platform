@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { theme } from '../config/theme';
+import Select from './Select';
 
 // Toggle icons (per design system pattern from frontend/CLAUDE.md)
 function ToggleOnIcon() {
@@ -56,18 +57,6 @@ const styles = {
     outline: 'none',
     boxSizing: 'border-box',
     transition: `border-color ${theme.transitions.fast}`,
-  },
-  select: {
-    width: '100%',
-    padding: theme.spacing.md,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    outline: 'none',
-    cursor: 'pointer',
-    boxSizing: 'border-box',
   },
   toggle: {
     display: 'flex',
@@ -211,16 +200,12 @@ export default function PluginConfigForm({
 
       case 'enum':
         return (
-          <select
-            style={styles.select}
+          <Select
             value={value}
             onChange={(e) => handleChange(field.key, e.target.value)}
-          >
-            <option value="">Bitte wählen...</option>
-            {(field.options || []).map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+            placeholder="Bitte wählen..."
+            options={(field.options || []).map(opt => ({ value: opt, label: opt }))}
+          />
         );
 
       case 'url':

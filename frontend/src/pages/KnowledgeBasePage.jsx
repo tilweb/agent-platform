@@ -3,6 +3,7 @@ import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
 import AccessManager from '../components/AccessManager';
 import { formatDate } from '../utils/dateFormat';
+import Select from '../components/Select';
 
 // ==========================================
 // Helper Functions
@@ -463,15 +464,6 @@ const styles = {
     color: theme.colors.text,
   },
   input: {
-    padding: theme.spacing.md,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    outline: 'none',
-  },
-  select: {
     padding: theme.spacing.md,
     border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.borderRadius.md,
@@ -1535,16 +1527,16 @@ function KnowledgeBasePage() {
 
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Vertraulichkeit</label>
-                    <select
-                      style={styles.select}
+                    <Select
                       value={uploadConfidentiality}
                       onChange={(e) => setUploadConfidentiality(e.target.value)}
-                    >
-                      <option value="public">Public</option>
-                      <option value="internal">Internal</option>
-                      <option value="confidential">Confidential</option>
-                      <option value="secret">Secret</option>
-                    </select>
+                      options={[
+                        { value: 'public', label: 'Public' },
+                        { value: 'internal', label: 'Internal' },
+                        { value: 'confidential', label: 'Confidential' },
+                        { value: 'secret', label: 'Secret' },
+                      ]}
+                    />
                   </div>
 
                   <button

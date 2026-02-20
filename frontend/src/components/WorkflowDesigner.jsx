@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { theme } from '../config/theme';
+import Select from './Select';
 
 const styles = {
   container: {},
@@ -104,17 +105,6 @@ const styles = {
     backgroundColor: theme.colors.background,
     color: theme.colors.text,
     outline: 'none',
-  },
-  select: {
-    width: '100%',
-    padding: theme.spacing.sm,
-    fontSize: theme.typography.sizes.sm,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    outline: 'none',
-    cursor: 'pointer',
   },
   emptyState: {
     padding: theme.spacing['2xl'],
@@ -302,34 +292,28 @@ function WorkflowDesigner({ workflow, onChange, availableTools = [] }) {
                   <div style={styles.fieldRow}>
                     <div>
                       <label style={styles.label}>Aktion</label>
-                      <select
-                        style={styles.select}
+                      <Select
                         value={step.action}
                         onChange={(e) => handleUpdateStep(index, { action: e.target.value })}
-                      >
-                        {ACTIONS.map((action) => (
-                          <option key={action.id} value={action.id}>
-                            {action.label}
-                          </option>
-                        ))}
-                      </select>
+                        options={ACTIONS.map((action) => ({
+                          value: action.id,
+                          label: action.label,
+                        }))}
+                      />
                     </div>
 
                     {step.action === 'tool' && (
                       <div>
                         <label style={styles.label}>Tool</label>
-                        <select
-                          style={styles.select}
+                        <Select
                           value={step.tool || ''}
                           onChange={(e) => handleUpdateStep(index, { tool: e.target.value })}
-                        >
-                          <option value="">-- Tool wählen --</option>
-                          {availableTools.map((tool) => (
-                            <option key={tool} value={tool}>
-                              {tool}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="-- Tool wählen --"
+                          options={availableTools.map((tool) => ({
+                            value: tool,
+                            label: tool,
+                          }))}
+                        />
                       </div>
                     )}
                   </div>

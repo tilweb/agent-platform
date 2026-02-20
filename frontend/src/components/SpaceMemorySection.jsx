@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { theme } from '../config/theme';
 import { useSpaceMemory } from '../hooks/useSpaces';
 import { UserIcon, ClipboardIcon, TargetIcon } from './Icons';
+import Select from './Select';
 
 const styles = {
   container: {},
@@ -144,15 +145,6 @@ const styles = {
     color: theme.colors.text,
     fontSize: theme.typography.sizes.sm,
     outline: 'none',
-  },
-  select: {
-    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-    borderRadius: theme.borderRadius.md,
-    border: `1px solid ${theme.colors.border}`,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    fontSize: theme.typography.sizes.sm,
-    cursor: 'pointer',
   },
   addButton: {
     padding: `${theme.spacing.md} ${theme.spacing.xl}`,
@@ -372,14 +364,14 @@ export default function SpaceMemorySection({ spaceId }) {
               onChange={(e) => setNewInstruction(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddInstruction()}
             />
-            <select
-              style={styles.select}
+            <Select
               value={newInstructionPriority}
               onChange={(e) => setNewInstructionPriority(e.target.value)}
-            >
-              <option value="high">Wichtig</option>
-              <option value="normal">Normal</option>
-            </select>
+              options={[
+                { value: 'high', label: 'Wichtig' },
+                { value: 'normal', label: 'Normal' },
+              ]}
+            />
             <button
               style={styles.addButton}
               onClick={handleAddInstruction}

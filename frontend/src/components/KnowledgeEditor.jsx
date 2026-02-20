@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { theme } from '../config/theme';
 import { apiGet } from '../utils/apiFetch';
 import { BookIcon, DocumentIcon, TrashIcon } from './Icons';
+import Select from './Select';
 
 const styles = {
   container: {},
@@ -46,16 +47,6 @@ const styles = {
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text,
     marginBottom: theme.spacing.sm,
-  },
-  select: {
-    width: '100%',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    border: `1px solid ${theme.colors.border}`,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    fontSize: theme.typography.sizes.sm,
-    cursor: 'pointer',
   },
   addButton: {
     padding: `${theme.spacing.md} ${theme.spacing.xl}`,
@@ -259,12 +250,11 @@ function KnowledgeEditor({ knowledge, onChange }) {
         <div style={styles.addForm}>
           <div style={styles.formGroup}>
             <label style={styles.label}>Collection hinzufuegen</label>
-            <select
-              style={styles.select}
+            <Select
               value={selectedCollectionId}
               onChange={(e) => setSelectedCollectionId(e.target.value)}
+              placeholder="Collection waehlen..."
             >
-              <option value="">Collection waehlen...</option>
               {availableCollections.map((coll) => {
                 const count = getDocumentCount(coll);
                 return (
@@ -273,7 +263,7 @@ function KnowledgeEditor({ knowledge, onChange }) {
                   </option>
                 );
               })}
-            </select>
+            </Select>
           </div>
           <button
             style={{
@@ -341,39 +331,35 @@ function KnowledgeEditor({ knowledge, onChange }) {
         <div style={styles.addForm}>
           <div style={styles.formGroup}>
             <label style={styles.label}>Collection</label>
-            <select
-              style={styles.select}
+            <Select
               value={selectedFileCollectionId}
               onChange={(e) => {
                 setSelectedFileCollectionId(e.target.value);
                 setSelectedDocumentId('');
               }}
+              placeholder="Collection waehlen..."
             >
-              <option value="">Collection waehlen...</option>
               {collections.map((coll) => (
                 <option key={coll.id} value={coll.id}>
                   {coll.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div style={styles.formGroup}>
             <label style={styles.label}>Dokument</label>
-            <select
-              style={styles.select}
+            <Select
               value={selectedDocumentId}
               onChange={(e) => setSelectedDocumentId(e.target.value)}
               disabled={!selectedFileCollectionId}
+              placeholder={!selectedFileCollectionId ? 'Erst Collection waehlen...' : 'Dokument waehlen...'}
             >
-              <option value="">
-                {!selectedFileCollectionId ? 'Erst Collection waehlen...' : 'Dokument waehlen...'}
-              </option>
               {availableDocuments.map((doc) => (
                 <option key={doc.id} value={doc.id}>
                   {doc.title || doc.name || doc.id}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <button
             style={{

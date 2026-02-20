@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useContracts } from '../../hooks/useContracts';
 import { ArrowLeftIcon } from '../../components/Icons';
+import Select from '../../components/Select';
 
 const styles = {
   container: {
@@ -153,16 +154,6 @@ const styles = {
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
-  },
-  select: {
-    width: '100%',
-    padding: theme.spacing.md,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-    cursor: 'pointer',
   },
   hint: {
     fontSize: theme.typography.sizes.xs,
@@ -423,8 +414,7 @@ function UploadPage() {
           <h3 style={styles.sectionTitle}>Optionen</h3>
           <div style={styles.selectWrapper}>
             <label style={styles.label}>Vertragstyp (optional)</label>
-            <select
-              style={styles.select}
+            <Select
               value={contractType}
               onChange={(e) => setContractType(e.target.value)}
               disabled={isAnalyzing}
@@ -435,7 +425,7 @@ function UploadPage() {
                   {schema.name}
                 </option>
               ))}
-            </select>
+            </Select>
             <p style={styles.hint}>
               Lassen Sie das Feld leer für automatische Erkennung des Vertragstyps.
             </p>

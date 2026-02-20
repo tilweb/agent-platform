@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useContracts } from '../../hooks/useContracts';
 import { apiGet } from '../../utils/apiFetch';
+import Select from '../../components/Select';
 
 const styles = {
   container: {
@@ -92,15 +93,6 @@ const styles = {
     display: 'flex',
     gap: theme.spacing.md,
     marginBottom: theme.spacing.xl,
-  },
-  filterSelect: {
-    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.base,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-    cursor: 'pointer',
   },
   searchInput: {
     width: '100%',
@@ -513,10 +505,9 @@ function ContractsPage() {
               </div>
             )}
           </div>
-          <select
+          <Select
             value={filters.type}
             onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-            style={styles.filterSelect}
           >
             <option value="">Alle Typen</option>
             {schemas.map((schema) => (
@@ -524,17 +515,17 @@ function ContractsPage() {
                 {schema.name}
               </option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            style={styles.filterSelect}
-          >
-            <option value="">Alle Status</option>
-            <option value="active">Aktiv</option>
-            <option value="expiring">Läuft aus</option>
-            <option value="expired">Abgelaufen</option>
-          </select>
+            options={[
+              { value: '', label: 'Alle Status' },
+              { value: 'active', label: 'Aktiv' },
+              { value: 'expiring', label: 'Läuft aus' },
+              { value: 'expired', label: 'Abgelaufen' },
+            ]}
+          />
         </div>
 
         {/* Contract List */}

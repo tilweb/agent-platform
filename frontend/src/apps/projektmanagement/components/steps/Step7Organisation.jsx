@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { theme } from '../../../../config/theme';
+import Select from '../../../../components/Select';
 
 const styles = {
   container: {
@@ -100,15 +101,6 @@ const styles = {
     backgroundColor: theme.colors.background,
     color: theme.colors.text,
     outline: 'none',
-  },
-  select: {
-    padding: theme.spacing.md,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    cursor: 'pointer',
   },
   textarea: {
     padding: theme.spacing.md,
@@ -417,27 +409,27 @@ function Step7Organisation({ data, onChange }) {
                   </div>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Interesse</label>
-                    <select
+                    <Select
                       value={stakeholder.interest || 'medium'}
                       onChange={(e) => updateStakeholder(index, 'interest', e.target.value)}
-                      style={styles.select}
-                    >
-                      <option value="low">Niedrig</option>
-                      <option value="medium">Mittel</option>
-                      <option value="high">Hoch</option>
-                    </select>
+                      options={[
+                        { value: 'low', label: 'Niedrig' },
+                        { value: 'medium', label: 'Mittel' },
+                        { value: 'high', label: 'Hoch' },
+                      ]}
+                    />
                   </div>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Einfluss</label>
-                    <select
+                    <Select
                       value={stakeholder.influence || 'medium'}
                       onChange={(e) => updateStakeholder(index, 'influence', e.target.value)}
-                      style={styles.select}
-                    >
-                      <option value="low">Niedrig</option>
-                      <option value="medium">Mittel</option>
-                      <option value="high">Hoch</option>
-                    </select>
+                      options={[
+                        { value: 'low', label: 'Niedrig' },
+                        { value: 'medium', label: 'Mittel' },
+                        { value: 'high', label: 'Hoch' },
+                      ]}
+                    />
                   </div>
                 </div>
                 <div style={styles.formGroup}>

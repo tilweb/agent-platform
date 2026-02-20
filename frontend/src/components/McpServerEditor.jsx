@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { theme } from '../config/theme';
+import Select from './Select';
 
 const styles = {
   overlay: {
@@ -172,17 +173,6 @@ const styles = {
   presetSelect: {
     marginBottom: theme.spacing.lg,
   },
-  select: {
-    width: '100%',
-    padding: theme.spacing.md,
-    fontSize: theme.typography.sizes.sm,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-    outline: 'none',
-    cursor: 'pointer',
-  },
 };
 
 function McpServerEditor({ server, presets, onSave, onClose }) {
@@ -325,18 +315,17 @@ function McpServerEditor({ server, presets, onSave, onClose }) {
           {isNew && presets.length > 0 && (
             <div style={styles.presetSelect}>
               <label style={styles.label}>Preset wählen (optional)</label>
-              <select
-                style={styles.select}
+              <Select
                 onChange={(e) => handlePresetSelect(e.target.value)}
                 defaultValue=""
+                placeholder="-- Manuell konfigurieren --"
               >
-                <option value="">-- Manuell konfigurieren --</option>
                 {presets.map((preset) => (
                   <option key={preset.id} value={preset.id}>
                     {preset.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
 

@@ -10,6 +10,7 @@ import { useSpaceMembers } from '../hooks/useSpaces';
 import { useUsers } from '../hooks/useUsers';
 import { useAuth } from '../context/AuthContext';
 import { UserIcon, TrashIcon } from './Icons';
+import Select from './Select';
 
 const styles = {
   container: {},
@@ -40,16 +41,6 @@ const styles = {
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text,
     marginBottom: theme.spacing.sm,
-  },
-  select: {
-    width: '100%',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    border: `1px solid ${theme.colors.border}`,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    fontSize: theme.typography.sizes.sm,
-    cursor: 'pointer',
   },
   addButton: {
     padding: `${theme.spacing.md} ${theme.spacing.xl}`,
@@ -116,15 +107,6 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing.md,
-  },
-  roleSelect: {
-    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-    borderRadius: theme.borderRadius.md,
-    border: `1px solid ${theme.colors.border}`,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    fontSize: theme.typography.sizes.sm,
-    cursor: 'pointer',
   },
   roleBadge: {
     padding: `${theme.spacing.xs} ${theme.spacing.md}`,
@@ -280,30 +262,29 @@ export default function SpaceMembersList({ spaceId }) {
           <div style={styles.addForm}>
             <div style={styles.formGroup}>
               <label style={styles.label}>Benutzer</label>
-              <select
-                style={styles.select}
+              <Select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
+                placeholder="Benutzer waehlen..."
               >
-                <option value="">Benutzer waehlen...</option>
                 {availableUsers.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.displayName} ({user.email || user.username})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div style={{ ...styles.formGroup, flex: '0 0 150px' }}>
               <label style={styles.label}>Rolle</label>
-              <select
-                style={styles.select}
+              <Select
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
-              >
-                <option value="admin">Admin</option>
-                <option value="editor">Editor</option>
-                <option value="viewer">Viewer</option>
-              </select>
+                options={[
+                  { value: 'admin', label: 'Admin' },
+                  { value: 'editor', label: 'Editor' },
+                  { value: 'viewer', label: 'Viewer' },
+                ]}
+              />
             </div>
             <button
               style={styles.addButton}
@@ -350,15 +331,15 @@ export default function SpaceMembersList({ spaceId }) {
                   <div style={styles.memberActions}>
                     {canModify ? (
                       <>
-                        <select
-                          style={styles.roleSelect}
+                        <Select
                           value={member.role}
                           onChange={(e) => handleRoleChange(member.userId, e.target.value)}
-                        >
-                          <option value="admin">Admin</option>
-                          <option value="editor">Editor</option>
-                          <option value="viewer">Viewer</option>
-                        </select>
+                          options={[
+                            { value: 'admin', label: 'Admin' },
+                            { value: 'editor', label: 'Editor' },
+                            { value: 'viewer', label: 'Viewer' },
+                          ]}
+                        />
                         <button
                           style={styles.removeButton}
                           onClick={() => handleRemoveMember(member.userId)}

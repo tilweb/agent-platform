@@ -9,6 +9,7 @@ import { theme } from '../config/theme';
 import { useSpaceKBLinks } from '../hooks/useSpaces';
 import { apiGet } from '../utils/apiFetch';
 import { BookIcon, LinkIcon, TrashIcon } from './Icons';
+import Select from './Select';
 
 const styles = {
   container: {},
@@ -48,16 +49,6 @@ const styles = {
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text,
     marginBottom: theme.spacing.sm,
-  },
-  select: {
-    width: '100%',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    border: `1px solid ${theme.colors.border}`,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    fontSize: theme.typography.sizes.sm,
-    cursor: 'pointer',
   },
   addButton: {
     padding: `${theme.spacing.md} ${theme.spacing.xl}`,
@@ -235,18 +226,17 @@ export default function SpaceKBLinks({ spaceId }) {
         <div style={styles.addForm}>
           <div style={styles.formGroup}>
             <label style={styles.label}>Knowledge Base Collection</label>
-            <select
-              style={styles.select}
+            <Select
               value={selectedCollectionId}
               onChange={(e) => setSelectedCollectionId(e.target.value)}
+              placeholder="Collection waehlen..."
             >
-              <option value="">Collection waehlen...</option>
               {availableCollections.map((coll) => (
                 <option key={coll.id} value={coll.id}>
                   {coll.name} ({coll.documentCount || 0} Dokumente)
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <button
             style={styles.addButton}

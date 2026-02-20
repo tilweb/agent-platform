@@ -3,6 +3,7 @@ import { theme } from '../config/theme';
 import WorkflowDesigner from './WorkflowDesigner';
 import AllowedToolsSelector from './AllowedToolsSelector';
 import KnowledgeEditor from './KnowledgeEditor';
+import Select from './Select';
 
 const styles = {
   overlay: {
@@ -464,18 +465,18 @@ const SkillEditor = forwardRef(function SkillEditor({ skill, onSave, onClose, on
     <>
       <div style={styles.field}>
         <label style={styles.label}>Output Format</label>
-        <select
-          style={styles.input}
+        <Select
           value={formData.output?.format || 'markdown'}
           onChange={(e) => handleOutputChange({
             ...formData.output,
             format: e.target.value,
           })}
-        >
-          <option value="markdown">Markdown</option>
-          <option value="json">JSON</option>
-          <option value="text">Text</option>
-        </select>
+          options={[
+            { value: 'markdown', label: 'Markdown' },
+            { value: 'json', label: 'JSON' },
+            { value: 'text', label: 'Text' },
+          ]}
+        />
       </div>
 
       <div style={styles.field}>

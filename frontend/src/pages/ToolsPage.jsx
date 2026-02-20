@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { theme } from '../config/theme';
 import { PlugIcon } from '../components/Icons';
+import Select from '../components/Select';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -313,17 +314,6 @@ const styles = {
   },
   inputMono: {
     fontFamily: theme.typography.fontMono,
-  },
-  select: {
-    width: '100%',
-    padding: theme.spacing.md,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    outline: 'none',
-    cursor: 'pointer',
   },
   textarea: {
     width: '100%',
@@ -941,17 +931,17 @@ function ToolsPage() {
                   </div>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Methode</label>
-                    <select
-                      style={styles.select}
+                    <Select
                       value={formData.method}
                       onChange={(e) => setFormData({ ...formData, method: e.target.value })}
-                    >
-                      <option value="GET">GET</option>
-                      <option value="POST">POST</option>
-                      <option value="PUT">PUT</option>
-                      <option value="DELETE">DELETE</option>
-                      <option value="PATCH">PATCH</option>
-                    </select>
+                      options={[
+                        { value: 'GET', label: 'GET' },
+                        { value: 'POST', label: 'POST' },
+                        { value: 'PUT', label: 'PUT' },
+                        { value: 'DELETE', label: 'DELETE' },
+                        { value: 'PATCH', label: 'PATCH' },
+                      ]}
+                    />
                   </div>
                 </div>
               </div>
@@ -975,25 +965,25 @@ function ToolsPage() {
                         onChange={(e) => updateParameter(index, 'name', e.target.value)}
                         placeholder="param_name"
                       />
-                      <select
-                        style={styles.select}
+                      <Select
                         value={param.type}
                         onChange={(e) => updateParameter(index, 'type', e.target.value)}
-                      >
-                        <option value="string">String</option>
-                        <option value="number">Number</option>
-                        <option value="boolean">Boolean</option>
-                      </select>
-                      <select
-                        style={styles.select}
+                        options={[
+                          { value: 'string', label: 'String' },
+                          { value: 'number', label: 'Number' },
+                          { value: 'boolean', label: 'Boolean' },
+                        ]}
+                      />
+                      <Select
                         value={param.location}
                         onChange={(e) => updateParameter(index, 'location', e.target.value)}
-                      >
-                        <option value="query">Query</option>
-                        <option value="path">Path</option>
-                        <option value="header">Header</option>
-                        <option value="body">Body</option>
-                      </select>
+                        options={[
+                          { value: 'query', label: 'Query' },
+                          { value: 'path', label: 'Path' },
+                          { value: 'header', label: 'Header' },
+                          { value: 'body', label: 'Body' },
+                        ]}
+                      />
                       <input
                         type="checkbox"
                         checked={param.required}
@@ -1018,16 +1008,16 @@ function ToolsPage() {
                 <div style={styles.formRow}>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Typ</label>
-                    <select
-                      style={styles.select}
+                    <Select
                       value={formData.auth.type}
                       onChange={(e) => setFormData({ ...formData, auth: { ...formData.auth, type: e.target.value } })}
-                    >
-                      <option value="none">Keine</option>
-                      <option value="bearer">Bearer Token</option>
-                      <option value="api-key">API Key</option>
-                      <option value="basic">Basic Auth</option>
-                    </select>
+                      options={[
+                        { value: 'none', label: 'Keine' },
+                        { value: 'bearer', label: 'Bearer Token' },
+                        { value: 'api-key', label: 'API Key' },
+                        { value: 'basic', label: 'Basic Auth' },
+                      ]}
+                    />
                   </div>
                   {formData.auth.type !== 'none' && (
                     <div style={styles.formGroup}>
@@ -1054,14 +1044,14 @@ function ToolsPage() {
                     </div>
                     <div style={styles.formGroup}>
                       <label style={styles.label}>Position</label>
-                      <select
-                        style={styles.select}
+                      <Select
                         value={formData.auth.location || 'header'}
                         onChange={(e) => setFormData({ ...formData, auth: { ...formData.auth, location: e.target.value } })}
-                      >
-                        <option value="header">Header</option>
-                        <option value="query">Query Parameter</option>
-                      </select>
+                        options={[
+                          { value: 'header', label: 'Header' },
+                          { value: 'query', label: 'Query Parameter' },
+                        ]}
+                      />
                     </div>
                   </div>
                 )}

@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { theme } from '../../../../config/theme';
+import Select from '../../../../components/Select';
 
 const styles = {
   container: {
@@ -108,15 +109,6 @@ const styles = {
     minHeight: '60px',
     resize: 'vertical',
     fontFamily: theme.typography.fontFamily,
-  },
-  select: {
-    padding: theme.spacing.md,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    cursor: 'pointer',
   },
   removeButton: {
     padding: theme.spacing.sm,
@@ -343,18 +335,18 @@ function Step6BudgetRisiken({ data, onChange }) {
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Kategorie</label>
-                  <select
+                  <Select
                     value={item.category || ''}
                     onChange={(e) => updateBudgetItem(index, 'category', e.target.value)}
-                    style={styles.select}
-                  >
-                    <option value="">Auswählen...</option>
-                    <option value="personal">Personal</option>
-                    <option value="material">Material</option>
-                    <option value="external">Externe Leistungen</option>
-                    <option value="travel">Reisekosten</option>
-                    <option value="other">Sonstiges</option>
-                  </select>
+                    options={[
+                      { value: '', label: 'Auswählen...' },
+                      { value: 'personal', label: 'Personal' },
+                      { value: 'material', label: 'Material' },
+                      { value: 'external', label: 'Externe Leistungen' },
+                      { value: 'travel', label: 'Reisekosten' },
+                      { value: 'other', label: 'Sonstiges' },
+                    ]}
+                  />
                 </div>
               </div>
               <button
@@ -402,44 +394,44 @@ function Step6BudgetRisiken({ data, onChange }) {
               <div style={styles.itemGrid}>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Risikotyp</label>
-                  <select
+                  <Select
                     value={risk.type || ''}
                     onChange={(e) => updateRisk(index, 'type', e.target.value)}
-                    style={styles.select}
-                  >
-                    <option value="">Auswählen...</option>
-                    <option value="technical">Technisch</option>
-                    <option value="organizational">Organisatorisch</option>
-                    <option value="financial">Finanziell</option>
-                    <option value="schedule">Terminlich</option>
-                    <option value="resource">Ressourcen</option>
-                    <option value="external">Extern</option>
-                  </select>
+                    options={[
+                      { value: '', label: 'Auswählen...' },
+                      { value: 'technical', label: 'Technisch' },
+                      { value: 'organizational', label: 'Organisatorisch' },
+                      { value: 'financial', label: 'Finanziell' },
+                      { value: 'schedule', label: 'Terminlich' },
+                      { value: 'resource', label: 'Ressourcen' },
+                      { value: 'external', label: 'Extern' },
+                    ]}
+                  />
                 </div>
                 <div style={styles.riskMatrix}>
                   <div style={styles.riskLevel}>
                     <label style={styles.label}>Wahrscheinlichkeit</label>
-                    <select
+                    <Select
                       value={risk.probability || 'medium'}
                       onChange={(e) => updateRisk(index, 'probability', e.target.value)}
-                      style={styles.select}
-                    >
-                      <option value="low">Niedrig</option>
-                      <option value="medium">Mittel</option>
-                      <option value="high">Hoch</option>
-                    </select>
+                      options={[
+                        { value: 'low', label: 'Niedrig' },
+                        { value: 'medium', label: 'Mittel' },
+                        { value: 'high', label: 'Hoch' },
+                      ]}
+                    />
                   </div>
                   <div style={styles.riskLevel}>
                     <label style={styles.label}>Auswirkung</label>
-                    <select
+                    <Select
                       value={risk.impact || 'medium'}
                       onChange={(e) => updateRisk(index, 'impact', e.target.value)}
-                      style={styles.select}
-                    >
-                      <option value="low">Niedrig</option>
-                      <option value="medium">Mittel</option>
-                      <option value="high">Hoch</option>
-                    </select>
+                      options={[
+                        { value: 'low', label: 'Niedrig' },
+                        { value: 'medium', label: 'Mittel' },
+                        { value: 'high', label: 'Hoch' },
+                      ]}
+                    />
                   </div>
                 </div>
                 <div style={{ ...styles.formGroup, ...styles.itemGridFull }}>

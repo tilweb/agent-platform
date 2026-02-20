@@ -3,6 +3,7 @@
  */
 
 import { theme } from '../../../../config/theme';
+import Select from '../../../../components/Select';
 
 const styles = {
   container: {
@@ -64,15 +65,6 @@ const styles = {
     resize: 'vertical',
     fontFamily: theme.typography.fontFamily,
   },
-  select: {
-    padding: theme.spacing.md,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-    cursor: 'pointer',
-  },
   hint: {
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.textMuted,
@@ -118,29 +110,29 @@ function Step1Basis({ data, onChange }) {
       <div style={styles.formRow}>
         <div style={styles.formGroup}>
           <label style={styles.label}>Projekttyp</label>
-          <select
+          <Select
             value={data.project_type || 'internal'}
             onChange={(e) => handleChange('project_type', e.target.value)}
-            style={styles.select}
-          >
-            <option value="internal">Internes Projekt</option>
-            <option value="external">Externes Projekt</option>
-            <option value="research">Forschungsprojekt</option>
-            <option value="infrastructure">Infrastrukturprojekt</option>
-          </select>
+            options={[
+              { value: 'internal', label: 'Internes Projekt' },
+              { value: 'external', label: 'Externes Projekt' },
+              { value: 'research', label: 'Forschungsprojekt' },
+              { value: 'infrastructure', label: 'Infrastrukturprojekt' },
+            ]}
+          />
         </div>
         <div style={styles.formGroup}>
           <label style={styles.label}>Status</label>
-          <select
+          <Select
             value={data.status || 'draft'}
             onChange={(e) => handleChange('status', e.target.value)}
-            style={styles.select}
-          >
-            <option value="draft">Entwurf</option>
-            <option value="active">Aktiv</option>
-            <option value="completed">Abgeschlossen</option>
-            <option value="cancelled">Abgebrochen</option>
-          </select>
+            options={[
+              { value: 'draft', label: 'Entwurf' },
+              { value: 'active', label: 'Aktiv' },
+              { value: 'completed', label: 'Abgeschlossen' },
+              { value: 'cancelled', label: 'Abgebrochen' },
+            ]}
+          />
         </div>
       </div>
 

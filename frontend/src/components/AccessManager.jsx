@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { theme } from '../config/theme';
 import { UserIcon, TrashIcon, SparklesIcon } from './Icons';
+import Select from './Select';
 import {
   useResourceAccess,
   useAvailableUsers,
@@ -72,15 +73,6 @@ const styles = {
     backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
   },
-  select: {
-    flex: 1,
-    padding: theme.spacing.md,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-  },
   addButton: {
     padding: `${theme.spacing.md} ${theme.spacing.lg}`,
     backgroundColor: theme.colors.primary,
@@ -135,20 +127,6 @@ const styles = {
     color: theme.colors.textMuted,
     margin: 0,
     marginTop: 2,
-  },
-  roleSelect: {
-    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-    cursor: 'pointer',
-  },
-  roleSelectDisabled: {
-    backgroundColor: theme.colors.background,
-    cursor: 'not-allowed',
-    color: theme.colors.textMuted,
   },
   removeButton: {
     padding: theme.spacing.sm,
@@ -383,30 +361,26 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
           <>
             {canManage && availableUsers.length > 0 && (
               <div style={styles.addSection}>
-                <select
-                  style={styles.select}
+                <Select
                   value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
+                  placeholder="Benutzer auswählen..."
                 >
-                  <option value="">Benutzer auswählen...</option>
                   {availableUsers.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.displayName || user.username}
                       {user.email ? ` (${user.email})` : ''}
                     </option>
                   ))}
-                </select>
-                <select
-                  style={styles.select}
+                </Select>
+                <Select
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value)}
-                >
-                  {assignableRoles.map((role) => (
-                    <option key={role} value={role}>
-                      {ROLE_LABELS[role]}
-                    </option>
-                  ))}
-                </select>
+                  options={assignableRoles.map((role) => ({
+                    value: role,
+                    label: ROLE_LABELS[role],
+                  }))}
+                />
                 <button
                   style={{
                     ...styles.addButton,
@@ -444,17 +418,14 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
                         Eigentümer
                       </span>
                     ) : canManage ? (
-                      <select
-                        style={styles.roleSelect}
+                      <Select
                         value={user.role}
                         onChange={(e) => handleUpdateRole('user', user.principalId, e.target.value)}
-                      >
-                        {assignableRoles.map((role) => (
-                          <option key={role} value={role}>
-                            {ROLE_LABELS[role]}
-                          </option>
-                        ))}
-                      </select>
+                        options={assignableRoles.map((role) => ({
+                          value: role,
+                          label: ROLE_LABELS[role],
+                        }))}
+                      />
                     ) : (
                       <span style={styles.meta}>{ROLE_LABELS[user.role]}</span>
                     )}
@@ -484,29 +455,25 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
           <>
             {canManage && availableGroups.length > 0 && (
               <div style={styles.addSection}>
-                <select
-                  style={styles.select}
+                <Select
                   value={selectedGroup}
                   onChange={(e) => setSelectedGroup(e.target.value)}
+                  placeholder="Gruppe auswählen..."
                 >
-                  <option value="">Gruppe auswählen...</option>
                   {availableGroups.map((group) => (
                     <option key={group.id} value={group.id}>
                       {group.name} ({group.memberCount} Mitglieder)
                     </option>
                   ))}
-                </select>
-                <select
-                  style={styles.select}
+                </Select>
+                <Select
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value)}
-                >
-                  {assignableRoles.map((role) => (
-                    <option key={role} value={role}>
-                      {ROLE_LABELS[role]}
-                    </option>
-                  ))}
-                </select>
+                  options={assignableRoles.map((role) => ({
+                    value: role,
+                    label: ROLE_LABELS[role],
+                  }))}
+                />
                 <button
                   style={{
                     ...styles.addButton,
@@ -542,17 +509,14 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
                       <p style={styles.meta}>{group.memberCount || 0} Mitglieder</p>
                     </div>
                     {canManage ? (
-                      <select
-                        style={styles.roleSelect}
+                      <Select
                         value={group.role}
                         onChange={(e) => handleUpdateRole('group', group.principalId, e.target.value)}
-                      >
-                        {assignableRoles.map((role) => (
-                          <option key={role} value={role}>
-                            {ROLE_LABELS[role]}
-                          </option>
-                        ))}
-                      </select>
+                        options={assignableRoles.map((role) => ({
+                          value: role,
+                          label: ROLE_LABELS[role],
+                        }))}
+                      />
                     ) : (
                       <span style={styles.meta}>{ROLE_LABELS[group.role]}</span>
                     )}

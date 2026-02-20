@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useProjektmanagement } from '../../hooks/useProjektmanagement';
+import Select from '../../components/Select';
 import { LightningIcon, ClipboardIcon, BarChartIcon, CheckCircleIcon, AppsIcon } from '../../components/Icons';
 import ComingSoon from './components/ComingSoon';
 import { formatDate } from '../../utils/dateFormat';
@@ -136,15 +137,6 @@ const styles = {
     display: 'flex',
     gap: theme.spacing.md,
     marginBottom: theme.spacing.xl,
-  },
-  filterSelect: {
-    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.base,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-    cursor: 'pointer',
   },
   searchInput: {
     flex: 1,
@@ -509,28 +501,28 @@ function ProjektePage() {
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 style={styles.searchInput}
               />
-              <select
+              <Select
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                style={styles.filterSelect}
-              >
-                <option value="">Alle Status</option>
-                <option value="draft">Entwurf</option>
-                <option value="active">Aktiv</option>
-                <option value="completed">Abgeschlossen</option>
-                <option value="cancelled">Abgebrochen</option>
-              </select>
-              <select
+                options={[
+                  { value: '', label: 'Alle Status' },
+                  { value: 'draft', label: 'Entwurf' },
+                  { value: 'active', label: 'Aktiv' },
+                  { value: 'completed', label: 'Abgeschlossen' },
+                  { value: 'cancelled', label: 'Abgebrochen' },
+                ]}
+              />
+              <Select
                 value={filters.project_type}
                 onChange={(e) => setFilters({ ...filters, project_type: e.target.value })}
-                style={styles.filterSelect}
-              >
-                <option value="">Alle Typen</option>
-                <option value="internal">Intern</option>
-                <option value="external">Extern</option>
-                <option value="research">Forschung</option>
-                <option value="infrastructure">Infrastruktur</option>
-              </select>
+                options={[
+                  { value: '', label: 'Alle Typen' },
+                  { value: 'internal', label: 'Intern' },
+                  { value: 'external', label: 'Extern' },
+                  { value: 'research', label: 'Forschung' },
+                  { value: 'infrastructure', label: 'Infrastruktur' },
+                ]}
+              />
             </div>
 
             {/* Project List */}

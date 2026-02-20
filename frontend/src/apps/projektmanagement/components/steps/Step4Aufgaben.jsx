@@ -3,6 +3,7 @@
  */
 
 import { theme } from '../../../../config/theme';
+import Select from '../../../../components/Select';
 
 const styles = {
   container: {
@@ -82,15 +83,6 @@ const styles = {
     backgroundColor: theme.colors.background,
     color: theme.colors.text,
     outline: 'none',
-  },
-  select: {
-    padding: theme.spacing.md,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    cursor: 'pointer',
   },
   addButton: {
     padding: theme.spacing.lg,
@@ -222,15 +214,15 @@ function Step4Aufgaben({ data, onChange }) {
 
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Status</label>
-                  <select
+                  <Select
                     value={task.status || 'open'}
                     onChange={(e) => updateTask(index, 'status', e.target.value)}
-                    style={styles.select}
-                  >
-                    <option value="open">Offen</option>
-                    <option value="in_progress">In Bearbeitung</option>
-                    <option value="completed">Abgeschlossen</option>
-                  </select>
+                    options={[
+                      { value: 'open', label: 'Offen' },
+                      { value: 'in_progress', label: 'In Bearbeitung' },
+                      { value: 'completed', label: 'Abgeschlossen' },
+                    ]}
+                  />
                 </div>
 
                 <div style={styles.formGroup}>

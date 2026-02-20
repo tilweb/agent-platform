@@ -19,6 +19,8 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useProviders } from '../hooks/useProviders';
 import { formatDateTime } from '../utils/dateFormat';
+import { useToast } from '../components/Toast';
+import Select from '../components/Select';
 
 const styles = {
   container: {
@@ -370,7 +372,7 @@ function SettingsPage() {
   } = useUserPreferences();
 
   // Available models for selection
-  const { providers, enabledProviders, getModelsForPurpose } = useProviders();
+  const { providers, enabledProviders } = useProviders();
 
   // User management state
   const [users, setUsers] = useState([]);
@@ -388,6 +390,8 @@ function SettingsPage() {
   const [newGroup, setNewGroup] = useState({ name: '', description: '', color: '' });
   const [editingGroup, setEditingGroup] = useState(null); // Group being edited (for members)
   const [groupToDelete, setGroupToDelete] = useState(null);
+
+  const toast = useToast();
 
   // Load users when tab is active
   const loadUsers = useCallback(async () => {
@@ -466,12 +470,13 @@ function SettingsPage() {
         setShowAddUser(false);
         setNewUser({ username: '', email: '', displayName: '', role: 'user' });
         loadUsers();
+        toast.success('Erstellt', 'Benutzer erstellt');
       } else {
-        alert(data.error || 'Fehler beim Erstellen');
+        toast.error('Fehler', data.error || 'Fehler beim Erstellen');
       }
     } catch (err) {
       console.error('Error creating user:', err);
-      alert('Fehler beim Erstellen des Benutzers');
+      toast.error('Fehler', 'Fehler beim Erstellen des Benutzers');
     }
   };
 
@@ -481,8 +486,9 @@ function SettingsPage() {
       const data = await response.json();
       if (data.success) {
         loadUsers();
+        toast.success('Aktualisiert', 'Benutzer aktualisiert');
       } else {
-        alert(data.error || 'Fehler beim Aktualisieren');
+        toast.error('Fehler', data.error || 'Fehler beim Aktualisieren');
       }
     } catch (err) {
       console.error('Error updating user:', err);
@@ -495,8 +501,9 @@ function SettingsPage() {
       const data = await response.json();
       if (data.success) {
         loadUsers();
+        toast.success('Aktualisiert', 'Benutzer aktualisiert');
       } else {
-        alert(data.error || 'Fehler beim Aktualisieren');
+        toast.error('Fehler', data.error || 'Fehler beim Aktualisieren');
       }
     } catch (err) {
       console.error('Error updating user:', err);
@@ -510,8 +517,9 @@ function SettingsPage() {
       if (data.success) {
         const targetUser = users.find(u => u.id === userId);
         setResetPassword({ username: targetUser?.username, password: data.newPassword });
+        toast.success('Zurückgesetzt', 'Passwort zurückgesetzt');
       } else {
-        alert(data.error || 'Fehler beim Zurücksetzen');
+        toast.error('Fehler', data.error || 'Fehler beim Zurücksetzen');
       }
     } catch (err) {
       console.error('Error resetting password:', err);
@@ -525,8 +533,9 @@ function SettingsPage() {
       if (data.success) {
         setUserToDelete(null);
         loadUsers();
+        toast.success('Gelöscht', 'Benutzer gelöscht');
       } else {
-        alert(data.error || 'Fehler beim Löschen');
+        toast.error('Fehler', data.error || 'Fehler beim Löschen');
       }
     } catch (err) {
       console.error('Error deleting user:', err);
@@ -547,12 +556,13 @@ function SettingsPage() {
         setShowAddGroup(false);
         setNewGroup({ name: '', description: '', color: '' });
         loadGroups();
+        toast.success('Erstellt', 'Gruppe erstellt');
       } else {
-        alert(data.error || 'Fehler beim Erstellen');
+        toast.error('Fehler', data.error || 'Fehler beim Erstellen');
       }
     } catch (err) {
       console.error('Error creating group:', err);
-      alert('Fehler beim Erstellen der Gruppe');
+      toast.error('Fehler', 'Fehler beim Erstellen der Gruppe');
     }
   };
 
@@ -565,8 +575,9 @@ function SettingsPage() {
         if (editingGroup?.id === groupId) {
           setEditingGroup(data.group);
         }
+        toast.success('Aktualisiert', 'Gruppe aktualisiert');
       } else {
-        alert(data.error || 'Fehler beim Aktualisieren');
+        toast.error('Fehler', data.error || 'Fehler beim Aktualisieren');
       }
     } catch (err) {
       console.error('Error updating group members:', err);
@@ -580,8 +591,9 @@ function SettingsPage() {
       if (data.success) {
         setGroupToDelete(null);
         loadGroups();
+        toast.success('Gelöscht', 'Gruppe gelöscht');
       } else {
-        alert(data.error || 'Fehler beim Löschen');
+        toast.error('Fehler', data.error || 'Fehler beim Löschen');
       }
     } catch (err) {
       console.error('Error deleting group:', err);
@@ -661,11 +673,12 @@ function SettingsPage() {
     return { providerName: provider.name, modelName: model.name };
   };
 
-  // Helper: Get models suitable for a purpose
+  // Helper: Get models suitable for a purpose (filters disabled models)
   const getModelsForPurposeLocal = (purpose) => {
     const results = [];
     for (const provider of enabledProviders) {
       for (const model of provider.models) {
+        if (model.enabled === false) continue;
         let matches = false;
         if (purpose === 'chat') {
           matches = (model.type === 'llm' || model.type === 'vllm') && model.capabilities?.includes('chat');
@@ -800,17 +813,7 @@ function SettingsPage() {
                           <div style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text, marginBottom: theme.spacing.xs }}>
                             Eigene Auswahl
                           </div>
-                          <select
-                            style={{
-                              width: '100%',
-                              padding: theme.spacing.sm,
-                              border: `1px solid ${theme.colors.border}`,
-                              borderRadius: theme.borderRadius.md,
-                              backgroundColor: theme.colors.background,
-                              color: theme.colors.text,
-                              fontSize: theme.typography.sizes.sm,
-                              cursor: 'pointer',
-                            }}
+                          <Select
                             value={hasUserPref ? `${userPref.provider_id}::${userPref.model_id}` : ''}
                             onChange={(e) => handleModelPreferenceChange(key, e.target.value)}
                             disabled={!hasUserPref && availableModels.length === 0}
@@ -821,7 +824,7 @@ function SettingsPage() {
                                 {provider.name} - {model.name}
                               </option>
                             ))}
-                          </select>
+                          </Select>
                         </div>
                       </label>
                     </div>
@@ -907,23 +910,16 @@ function SettingsPage() {
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-                  <select
+                  <Select
                     value={u.role}
                     onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
                     disabled={u.id === user?.id}
-                    style={{
-                      padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-                      borderRadius: theme.borderRadius.md,
-                      border: `1px solid ${theme.colors.border}`,
-                      backgroundColor: theme.colors.background,
-                      color: theme.colors.text,
-                      fontSize: theme.typography.sizes.sm,
-                      cursor: u.id === user?.id ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                    style={{ width: 'auto' }}
+                    options={[
+                      { value: 'user', label: 'User' },
+                      { value: 'admin', label: 'Admin' },
+                    ]}
+                  />
                   <button
                     style={{
                       padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
@@ -1005,14 +1001,14 @@ function SettingsPage() {
                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                 style={styles.input}
               />
-              <select
+              <Select
                 value={newUser.role}
                 onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                style={styles.input}
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
+                options={[
+                  { value: 'user', label: 'User' },
+                  { value: 'admin', label: 'Admin' },
+                ]}
+              />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
               <button

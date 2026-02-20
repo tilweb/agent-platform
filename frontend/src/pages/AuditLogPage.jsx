@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { theme } from '../config/theme';
 import { apiGet } from '../utils/apiFetch';
+import Select from '../components/Select';
 
 const styles = {
   container: {
@@ -517,7 +518,7 @@ function AuditLogPage({ embedded = false }) {
           </div>
           <div style={styles.filterGroup}>
             <label style={styles.filterLabel}>Kategorie</label>
-            <select
+            <Select
               style={styles.filterInput}
               value={filters.category}
               onChange={(e) => handleFilterChange('category', e.target.value)}
@@ -526,11 +527,11 @@ function AuditLogPage({ embedded = false }) {
               {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>{label}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div style={styles.filterGroup}>
             <label style={styles.filterLabel}>Status</label>
-            <select
+            <Select
               style={styles.filterInput}
               value={filters.success}
               onChange={(e) => handleFilterChange('success', e.target.value)}
@@ -538,7 +539,7 @@ function AuditLogPage({ embedded = false }) {
               <option value="">Alle</option>
               <option value="true">Erfolgreich</option>
               <option value="false">Fehlgeschlagen</option>
-            </select>
+            </Select>
           </div>
           <button style={styles.filterButton} onClick={handleSearch}>
             Suchen

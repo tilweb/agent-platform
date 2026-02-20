@@ -8,6 +8,7 @@ import { AgentIcon } from './AgentPicker';
 import { CommandPalette } from './CommandPalette';
 import { useCommands } from '../hooks/useCommands';
 import { LinkIcon, FolderIcon, MicrophoneIcon, StopIcon, PaperclipIcon, BookIcon, DocumentIcon } from './Icons';
+import Select from './Select';
 import AddToCollectionModal from './AddToCollectionModal';
 import CreateCollectionModal from './CreateCollectionModal';
 import { AudioPlayer } from './AudioPlayer';
@@ -2774,28 +2775,26 @@ function AttachmentChips({ files, onRemove, fileProcessingState = {}, sttAvailab
             />
             {isAudio && sttAvailable && (
               <>
-                <select
+                <Select
                   value={transcriptionLanguage}
                   onChange={(e) => onLanguageChange?.(e.target.value)}
                   disabled={isTranscribing}
-                  style={{
-                    ...chatStyles.attachmentLanguageSelect,
-                    ...(isTranscribing ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
-                  }}
+                  style={chatStyles.attachmentLanguageSelect}
                   title="Sprache für Transkription (Änderung transkribiert erneut)"
-                >
-                  <option value="de">DE</option>
-                  <option value="en">EN</option>
-                  <option value="fr">FR</option>
-                  <option value="es">ES</option>
-                  <option value="it">IT</option>
-                  <option value="pt">PT</option>
-                  <option value="nl">NL</option>
-                  <option value="pl">PL</option>
-                  <option value="ru">RU</option>
-                  <option value="zh">ZH</option>
-                  <option value="ja">JA</option>
-                </select>
+                  options={[
+                    { value: 'de', label: 'DE' },
+                    { value: 'en', label: 'EN' },
+                    { value: 'fr', label: 'FR' },
+                    { value: 'es', label: 'ES' },
+                    { value: 'it', label: 'IT' },
+                    { value: 'pt', label: 'PT' },
+                    { value: 'nl', label: 'NL' },
+                    { value: 'pl', label: 'PL' },
+                    { value: 'ru', label: 'RU' },
+                    { value: 'zh', label: 'ZH' },
+                    { value: 'ja', label: 'JA' },
+                  ]}
+                />
                 {/* Transcription status indicator */}
                 <span
                   style={{

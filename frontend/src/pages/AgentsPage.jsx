@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { theme } from '../config/theme';
 import AccessManager from '../components/AccessManager';
+import Select from '../components/Select';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useProviders } from '../hooks/useProviders';
+import { useToast } from '../components/Toast';
 
 // ==========================================
 // Styles
@@ -522,16 +524,6 @@ const styles = {
     padding: theme.spacing['3xl'],
     color: theme.colors.textMuted,
   },
-  error: {
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.errorLight,
-    borderRadius: theme.borderRadius.lg,
-    color: theme.colors.error,
-    marginBottom: theme.spacing.lg,
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   systemHint: {
     padding: theme.spacing.md,
     backgroundColor: theme.colors.surfaceHover,
@@ -591,7 +583,7 @@ function ModelSelector({
     if (!found) {
       for (const provider of enabledProviders) {
         if (provider.id === formData.model.provider_id) {
-          const model = provider.models.find(m => m.id === formData.model.model_id);
+          const model = provider.models.find(m => m.id === formData.model.model_id && m.enabled !== false);
           if (model) {
             return { provider, model };
           }
@@ -674,8 +666,8 @@ function AgentsPage() {
   const [isLoadingTools, setIsLoadingTools] = useState(false);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
-  const [error, setError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const toast = useToast();
 
   // Navigation state
   const [selectedAgent, setSelectedAgent] = useState(null);
@@ -713,7 +705,7 @@ function AgentsPage() {
       const data = await response.json();
       setAgents(data.agents || []);
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setIsLoading(false);
     }
@@ -765,7 +757,6 @@ function AgentsPage() {
   const handleBackToOverview = () => {
     setSelectedAgent(null);
     setIsCreating(false);
-    setError(null);
     setActiveTab('tools');
   };
 
@@ -811,7 +802,7 @@ function AgentsPage() {
       });
       setActiveTab('tools');
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -821,7 +812,6 @@ function AgentsPage() {
 
   const handleSave = async () => {
     setIsSaving(true);
-    setError(null);
 
     try {
       const modelConfig = formData.model?.provider_id && formData.model?.model_id
@@ -853,7 +843,7 @@ function AgentsPage() {
       await fetchAgents();
       handleBackToOverview();
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setIsSaving(false);
     }
@@ -875,7 +865,7 @@ function AgentsPage() {
       await fetchAgents();
       handleBackToOverview();
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -1038,19 +1028,6 @@ function AgentsPage() {
             </div>
           )}
         </div>
-
-        {/* Error */}
-        {error && (
-          <div style={styles.error}>
-            {error}
-            <button
-              onClick={() => setError(null)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.error }}
-            >
-              ✕
-            </button>
-          </div>
-        )}
 
         {/* System Agent Hint */}
         {isSystemAgent && (
@@ -1509,18 +1486,6 @@ function AgentsPage() {
           Neuer Agent
         </button>
       </div>
-
-      {error && (
-        <div style={styles.error}>
-          {error}
-          <button
-            onClick={() => setError(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.error }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* User Agents Section */}
       <div style={styles.section}>
