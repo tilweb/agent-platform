@@ -9,31 +9,35 @@ Provider sind die Schnittstellen zu KI-Diensten, die dem Adacor Workplace seine 
 
 ## Was sind Provider?
 
-Ein Provider ist ein externer KI-Dienst (z.B. Adacor AI, OpenAI, Anthropic), der über eine API angebunden wird. Jeder Provider bietet verschiedene Modelle an, die für unterschiedliche Aufgaben optimiert sind. Der Adacor Workplace unterstützt die gleichzeitige Anbindung mehrerer Provider.
+Ein Provider ist ein externer KI-Dienst, der über eine API angebunden wird. Jeder Provider bietet verschiedene Modelle an, die für unterschiedliche Aufgaben optimiert sind. Der Adacor Workplace unterstützt die gleichzeitige Anbindung mehrerer Provider.
 
 ---
 
 ## Standard-Provider
 
-Die folgenden Provider sind vorkonfiguriert:
+Der folgende Provider ist vorkonfiguriert und als primärer Provider aktiv:
 
-### Aktivierte Provider
+### Adacor AI
 
-| Provider | Region | Standort | Modelle | Einsatzbereich |
-|----------|--------|----------|---------|----------------|
-| **Adacor AI** | Deutschland | DE | Mistral 3 24B (128K), Qwen 3 30B (256K), Qwen 3 Thinking 30B (256K) | Chat, Vision (primär) |
-| **Nebius Token Factory** | EU | FI | GPT-OSS 120B (131K) | Chat |
-| **Adacor AI Audio** | Deutschland | DE | Whisper V3 Large (30s) | Sprache-zu-Text |
-| **Google Gemini Imagen** | Welt | US | Gemini 2.5 Flash Image | Bildgenerierung (Text-zu-Bild, Bild-zu-Bild) |
-| **Nebius Flux.1** | EU | FI | Flux.1 Schnell | Bildgenerierung (Text-zu-Bild) |
+| Eigenschaft | Wert |
+|-------------|------|
+| **Region** | Deutschland |
+| **Rechenzentrum** | DE |
+| **API-Modus** | OpenAI-kompatibel |
+| **Geschützt** | Ja (kann nicht gelöscht werden) |
 
-### Deaktivierte Provider (verfügbar zur Aktivierung)
+### Verfügbare Modelle
 
-| Provider | Region | Standort | Modelle |
-|----------|--------|----------|---------|
-| **OpenAI** | Welt | US | GPT-4o, GPT-4o Mini, Whisper, TTS-1, TTS-1 HD |
-| **Anthropic** | Welt | US | Claude 3.5 Sonnet, Claude 3.5 Haiku |
-| **Ollama (Lokal)** | Lokal | DE | Llama 3.2, Llama 3.2 70B, LLaVA, Mistral, Code Llama |
+| Modell | Fähigkeiten | Kontextlänge |
+|--------|-------------|-------------|
+| **Qwen3 A3bthinking 30B (256K)** | Chat, Vision, Function Calling | 256.000 Token |
+| **Qwen3 A3b 30B (256K)** | Chat, Vision, Function Calling | 256.000 Token |
+| **Mistral 3 24B (128K)** | Chat, Vision, Function Calling | 128.000 Token |
+| **Gemma 3 27B (32K)** | Chat, Vision | 32.000 Token |
+| **Llama 3 8B (32K)** | Chat | 32.000 Token |
+| **Pixtral 12B (32K)** | Vision | 32.000 Token |
+| **Multilingual E5 Large** | Embeddings | — |
+| **Whisper V3 Large (30s)** | Transkription (Speech-to-Text) | — |
 
 > [!info] Adacor AI als primärer Provider
 > Adacor AI wird als primärer Provider empfohlen, da die Daten in Deutschland verarbeitet werden und die DSGVO-Konformität sichergestellt ist.
@@ -50,7 +54,7 @@ Jedes Modell deklariert bestimmte Fähigkeiten, die bestimmen, wofür es eingese
 | **vision** | Analyse und Verarbeitung von Bildern |
 | **function_calling** | Aufruf von Tools und externen Funktionen (Tool-Calling) |
 | **transcription** | Umwandlung von Sprache in Text (Speech-to-Text) |
-| **speech** | Umwandlung von Text in Sprache (Text-to-Speech) |
+| **embeddings** | Vektorisierung von Texten für semantische Suche (RAG) |
 | **text_to_image** | Generierung von Bildern aus Textbeschreibungen |
 | **image_to_image** | Bearbeitung bestehender Bilder anhand von Anweisungen |
 
@@ -60,13 +64,13 @@ Jedes Modell deklariert bestimmte Fähigkeiten, die bestimmen, wofür es eingese
 
 Für jeden Einsatzzweck wird genau ein Modell als aktiv konfiguriert. Die aktive Auswahl bestimmt, welches Modell systemweit standardmäßig verwendet wird:
 
-| Zweck | Beschreibung | Standard-Provider | Standard-Modell |
-|-------|-------------|-------------------|-----------------|
-| **Chat** | Standard-LLM für Konversationen | Adacor AI | Qwen 3 30B (256K) |
-| **Vision** | Bildanalyse und visuelle Aufgaben | Adacor AI | Mistral 3 24B (128K) |
-| **Speech-to-Text** | Spracherkennung und Transkription | Adacor AI Audio | Whisper V3 Large |
-| **Text-zu-Bild** | Bildgenerierung aus Text | Nebius Flux.1 | Flux.1 Schnell |
-| **Bild-zu-Bild** | Bildbearbeitung | Google Gemini Imagen | Gemini 2.5 Flash Image |
+| Zweck | Standard-Modell |
+|-------|-----------------|
+| **Chat** | Qwen3 A3bthinking 30B (256K) |
+| **Vision** | Qwen3 A3bthinking 30B (256K) |
+| **Speech-to-Text** | Whisper V3 Large (30s) |
+| **Text-zu-Bild** | *Nicht konfiguriert* |
+| **Bild-zu-Bild** | *Nicht konfiguriert* |
 
 > [!info] Benutzer-Präferenzen
 > Einzelne Benutzer können in ihrem Profil unter **Meine Modelle** eigene Modellpräferenzen festlegen, die die systemweiten Standards überschreiben.
@@ -74,6 +78,9 @@ Für jeden Einsatzzweck wird genau ein Modell als aktiv konfiguriert. Die aktive
 ---
 
 ## Provider verwalten
+
+> [!info] Custom Provider
+> Eigene Provider können nur hinzugefügt werden, wenn die Umgebungsvariable `ALLOW_CUSTOM_PROVIDERS=true` gesetzt ist.
 
 ### Neuen Provider hinzufügen
 

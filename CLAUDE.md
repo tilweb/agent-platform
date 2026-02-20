@@ -92,6 +92,7 @@ Configured in `data/config/providers.yaml`. Supports Adacor AI, OpenAI, Anthropi
 - Pages that can be embedded in Settings must support an `embedded` prop to hide their standalone header
 - See `frontend/CLAUDE.md` for detailed component patterns (tabs, buttons, cards, toggles, modals, forms, sidebar navigation, status badges, app detail headers)
 - **Design-Konsistenz**: Keine neuen UI-Patterns erfinden — immer die in `frontend/CLAUDE.md` dokumentierten Patterns verwenden. Bei Unsicherheit nachfragen statt eigene Lösungen bauen
+- **Design-Audit nach Frontend-Änderungen**: Nach Abschluss von Frontend-Änderungen (Edit/Write auf `frontend/src/**/*.jsx` oder `*.js`) **immer** den `design-auditor` Subagent ausführen (`Task`-Tool, `subagent_type: design-auditor`). Der Audit prüft die geänderten Dateien auf Design-Violations. Nicht nach jedem einzelnen Edit, sondern einmal nach Abschluss der aktuellen Aufgabe
 
 ## Claude Code Tooling
 

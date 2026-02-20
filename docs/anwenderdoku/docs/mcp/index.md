@@ -6,7 +6,7 @@ Das Model Context Protocol (MCP) ist ein offener Standard, mit dem KI-Modelle au
 
 ## Zugang
 
-Navigieren Sie über die Seitenleiste zu **Tools** und wechseln Sie in die Einstellungen unter **MCP Server**, oder öffnen Sie direkt **Einstellungen > MCP Server** (Admin-Bereich).
+Navigieren Sie zu **Einstellungen > MCP Server** (Admin-Bereich).
 
 ---
 

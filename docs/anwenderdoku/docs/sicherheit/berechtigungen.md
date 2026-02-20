@@ -52,7 +52,7 @@ Die folgenden Ressourcentypen unterstützen die feingranulare Zugriffssteuerung:
 
 | Ressource | Beschreibung |
 |-----------|-------------|
-| **Projekte** | Projekträume mit Aufgaben, Dokumenten und Teammitgliedern |
+| **Spaces** | Gemeinsame Arbeitsbereiche mit Chats, Speicher und Teammitgliedern |
 | **Sammlungen** | Knowledge-Base-Sammlungen mit Dokumenten und Wissenseinträgen |
 | **Verträge** | Vertragsdokumente und -daten im Vertragsmanagement |
 | **Skills** | Öffentlich geteilte Skills |

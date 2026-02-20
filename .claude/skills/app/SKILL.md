@@ -23,7 +23,7 @@ Start both servers in the background.
 
 **Backend:**
 ```bash
-cd "$CLAUDE_PROJECT_DIR/backend" && bun --env-file=../.env run --watch src/index.ts &
+cd "$CLAUDE_PROJECT_DIR/backend" && bun run dev &
 ```
 
 **Frontend:**
@@ -50,6 +50,18 @@ Verify both ports are free afterwards.
 
 ### restart
 Run `stop` first, wait 1 second, then run `start`.
+
+### restart-backend
+Restart **only** the backend (keep frontend running):
+
+```bash
+lsof -ti:3001 | xargs kill 2>/dev/null
+sleep 1
+cd "$CLAUDE_PROJECT_DIR/backend" && bun --env-file=../.env run --watch src/dev.ts &
+```
+
+Wait 4 seconds, verify backend is up via `curl -s http://localhost:3001/health`.
+If frontend is not running on :5173, start it too.
 
 ### status
 Check both ports:

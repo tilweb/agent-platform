@@ -31,8 +31,10 @@ You are a design consistency auditor for the Adacor Workplace frontend.
 ### 2. Pattern Violations (Severity: HIGH)
 - CSS toggle-switches (position + dot pattern) — standard is `ToggleOnIcon`/`ToggleOffIcon`
 - Native checkboxes as toggles — standard is toggle icon button
+- **Native `<select>` elements** — standard is `<Select>` component from `components/Select.jsx`. Search for `<select` (without `Select` import) to detect violations. All dropdowns must use the central `Select` component which provides custom chevron, consistent styling, and focus ring.
 - CSS file imports (`import './styles.css'`)
 - External icon libraries (Font-Awesome, Material Icons, react-icons)
+- Inline success/error boxes (`successMessage`/`showSuccess` state pattern, or `setError` + inline JSX) — standard is `useToast()` from `components/Toast.jsx`
 
 ### 3. Consistency Violations (Severity: MEDIUM)
 - Emojis in UI (except country flags)

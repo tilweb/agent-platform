@@ -6,7 +6,7 @@ Neben den vorinstallierten System-Agenten können Sie eigene Agenten erstellen, 
 
 ## Agent-Erstellungsformular
 
-Um einen neuen Agenten zu erstellen, navigieren Sie zu **Einstellungen** und wählen den Bereich **Agenten**. Dort finden Sie die Schaltfläche zum Erstellen eines neuen Agenten.
+Um einen neuen Agenten zu erstellen, navigieren Sie über die Seitenleiste zu **Agenten**. Dort finden Sie die Schaltfläche **Neuer Agent** zum Erstellen eines neuen Agenten.
 
 ### Name und Beschreibung
 

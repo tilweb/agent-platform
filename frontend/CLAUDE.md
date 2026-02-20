@@ -231,6 +231,50 @@ modalContent: {
 },
 ```
 
+### Feedback (Erfolg & Fehler) — Toast-Notifications
+
+Für **jede** Benutzeraktion die Daten speichert, löscht oder verändert, **muss** visuelles Feedback angezeigt werden. Keine stillen Operationen.
+
+**Standard: `useToast()` aus `components/Toast.jsx`**
+
+Toast-Notifications erscheinen oben rechts unterhalb des Headers und verschwinden automatisch (Success: 5s, Error: 8s). Sie verschieben den Seiteninhalt nicht.
+
+```javascript
+import { useToast } from '../components/Toast';
+
+function MyPage() {
+  const toast = useToast();
+
+  const handleSave = async () => {
+    try {
+      await apiPost('/endpoint', data);
+      toast.success('Gespeichert', 'Eintrag erfolgreich gespeichert');
+    } catch (err) {
+      toast.error('Fehler', err.message);
+    }
+  };
+}
+```
+
+**Verfügbare Methoden:**
+- `toast.success(title, message)` — Grüner Toast, auto-hide 5s
+- `toast.error(title, message)` — Roter Toast, auto-hide 8s
+- `toast.warning(title, message)` — Gelber Toast
+- `toast.info(title, message)` — Blauer Toast
+
+**Referenz-Implementation:** `TasksPage.jsx`, `ProvidersPage.jsx`, `SettingsPage.jsx`
+
+#### Verbotene Patterns
+
+| Verboten | Stattdessen |
+|----------|------------|
+| `alert()` / Browser-Dialoge | `toast.error(title, msg)` |
+| Stille Operationen (kein Feedback) | Immer `toast.success()` oder `toast.error()` |
+| Inline Success/Error-Boxen (`successMessage`/`showSuccess`) | `useToast()` |
+| `setError()` + inline Error-JSX | `toast.error()` |
+
+---
+
 ### Form Inputs
 
 ```javascript
@@ -245,6 +289,47 @@ input: {
   outline: 'none',
 },
 ```
+
+### Select / Dropdowns (zentrale Komponente)
+
+Für **alle** Dropdowns die zentrale `<Select>`-Komponente aus `components/Select.jsx` verwenden. **Keine nativen `<select>`-Elemente** direkt verwenden.
+
+Referenz-Implementation: `components/Select.jsx`
+
+```javascript
+import Select from '../components/Select';
+
+// Mit options-Prop (bevorzugt):
+<Select
+  value={value}
+  onChange={(e) => setValue(e.target.value)}
+  options={[
+    { value: 'a', label: 'Option A' },
+    { value: 'b', label: 'Option B' },
+  ]}
+/>
+
+// Mit children (für dynamische oder komplexe Options):
+<Select value={value} onChange={handler}>
+  <option value="a">Option A</option>
+  <option value="b">Option B</option>
+</Select>
+
+// Mit Placeholder:
+<Select
+  value={value}
+  onChange={handler}
+  placeholder="Bitte wählen..."
+  options={options}
+/>
+```
+
+**Features:**
+- Custom SVG Chevron (kein nativer Browser-Arrow)
+- Konsistentes Styling: `fontSize: base`, `padding: md lg`, `borderRadius: lg`
+- Focus-Ring mit `theme.colors.borderFocus`
+- `appearance: none` für einheitliches Cross-Browser-Design
+- Props: `value`, `onChange`, `options`, `placeholder`, `disabled`, `style`, `children`
 
 ### Search & Filter Inputs (prominent)
 
@@ -264,22 +349,9 @@ searchInput: {
   color: theme.colors.text,
   outline: 'none',
 },
-
-// Filter-Dropdown (prominent)
-filterSelect: {
-  padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-  fontSize: theme.typography.sizes.base,  // größer als sm
-  border: `1px solid ${theme.colors.border}`,
-  borderRadius: theme.borderRadius.lg,
-  backgroundColor: theme.colors.surface,
-  color: theme.colors.text,
-  cursor: 'pointer',
-},
 ```
 
-**Unterschied zu Standard Form Inputs:**
-- `padding`: `md lg` statt `md` (mehr horizontaler Abstand)
-- `fontSize`: `base` statt `sm` (bessere Lesbarkeit)
+**Hinweis:** Für Filter-Dropdowns neben Suchfeldern ebenfalls `<Select>` verwenden. Breite und Layout über die `style`-Prop anpassen.
 
 ---
 
@@ -842,6 +914,8 @@ statusError: {
 | Externe CSS-Dateien / Frameworks | Inline-Styles mit `const styles = {}` |
 | Eigene Font-Stacks | `theme.typography.fontFamily` |
 | Native Checkboxen für enable/disable | SVG Toggle-Icons (siehe Pattern oben) |
+| Native `<select>` Elemente | `<Select>` aus `components/Select.jsx` |
+| Eigene Select-Styles (`styles.select`) | `<Select>` Komponente (hat eigenes Styling) |
 | Neue Schatten-Werte | `theme.shadows.*` |
 
 ### Bei Unsicherheit

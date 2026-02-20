@@ -119,13 +119,22 @@ Nach Abschluss einer Aufgabe werden die Ergebnisse gespeichert und können jeder
 
 Ergebnisse werden als Markdown gespeichert und können formatierte Texte, Tabellen und Aufzählungen enthalten.
 
-## Fehlgeschlagene Aufgaben erneut starten
+## Aufgaben wiederholen
+
+### Fehlgeschlagene Aufgaben
 
 Wenn eine Aufgabe fehlschlägt, können Sie sie erneut starten:
 
 1. Öffnen Sie die fehlgeschlagene Aufgabe
-2. Klicken Sie auf **Erneut versuchen**
+2. Klicken Sie auf **Wiederholen**
 3. Die Aufgabe wird zurückgesetzt und erneut in die Warteschlange eingereiht
+
+### Abgeschlossene Aufgaben
+
+Auch erfolgreich abgeschlossene Aufgaben können erneut ausgeführt werden:
+
+1. Klicken Sie bei der abgeschlossenen Aufgabe auf **Wiederholen**
+2. Eine neue Aufgabe mit denselben Parametern wird erstellt und eingereiht
 
 > [!info] Automatische Wiederholung
 > Aufgaben können so konfiguriert werden, dass sie bei einem Fehler automatisch erneut gestartet werden. Die Wartezeit zwischen den Versuchen verdoppelt sich jeweils (30 Sekunden, 1 Minute, 2 Minuten, ...). Standardmäßig sind bis zu 3 Wiederholungsversuche möglich.

@@ -45,6 +45,10 @@ Die Verwaltung der Apps erfolgt in den Einstellungen:
 | **Aktivieren** | Die App wird in der Navigation angezeigt und ist für alle Benutzer zugänglich |
 | **Deaktivieren** | Die App wird aus der Navigation entfernt. Bestehende Daten bleiben erhalten |
 
+### Reihenfolge ändern
+
+Die Reihenfolge der Apps in der Navigation kann per **Drag-and-Drop** oder über die **Pfeil-Buttons** (nach oben/unten) angepasst werden. Die gewählte Reihenfolge wird gespeichert und gilt für alle Benutzer.
+
 > [!info] Datenerhaltung
 > Beim Deaktivieren einer App werden keine Daten gelöscht. Wenn Sie die App später wieder aktivieren, sind alle bisherigen Daten weiterhin verfügbar.
 

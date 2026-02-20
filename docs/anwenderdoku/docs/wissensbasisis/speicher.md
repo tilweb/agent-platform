@@ -118,11 +118,11 @@ Einträge im Speicher können aus zwei Quellen stammen:
 
 Agenten können während eines Gesprächs relevante Informationen erkennen und vorschlagen, diese in Ihrem Speicher abzulegen.
 
-## Projekt-Speicher
+## Space-Speicher
 
-Neben dem persönlichen Speicher gibt es auch einen **Projekt-Speicher** (siehe [Projekte](../projekte/index.md)). Dieser funktioniert identisch, ist aber an ein bestimmtes Projekt gebunden und wird nur in Chats innerhalb dieses Projekts verwendet.
+Neben dem persönlichen Speicher gibt es auch einen **Space-Speicher** (siehe [Spaces](../spaces/index.md)). Dieser funktioniert identisch, ist aber an einen bestimmten Space gebunden und wird nur in Chats innerhalb dieses Spaces verwendet.
 
-Der Projekt-Speicher ist vom persönlichen Speicher getrennt. In einem Projekt-Chat werden sowohl Ihr persönlicher Speicher als auch der Projekt-Speicher an den Agenten übergeben.
+Der Space-Speicher ist vom persönlichen Speicher getrennt. In einem Space-Chat werden sowohl Ihr persönlicher Speicher als auch der Space-Speicher an den Agenten übergeben.
 
 > [!tip] Best Practice
-> Nutzen Sie den persönlichen Speicher für allgemeine Informationen (Rolle, Präferenzen, Stil) und den Projekt-Speicher für projektspezifische Details (Architekturentscheidungen, Team-Konventionen, Projektziele).
+> Nutzen Sie den persönlichen Speicher für allgemeine Informationen (Rolle, Präferenzen, Stil) und den Space-Speicher für Space-spezifische Details (Architekturentscheidungen, Team-Konventionen, Ziele).

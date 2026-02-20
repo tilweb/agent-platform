@@ -34,7 +34,7 @@ Das Audit Log erfasst automatisch alle relevanten Ereignisse in den folgenden Be
 ### Datenänderungen
 
 - Erstellung und Löschung von Chats
-- Erstellung und Löschung von Projekten
+- Erstellung und Löschung von Spaces
 - Erstellung und Löschung von Tools
 
 ### Administratoraktionen

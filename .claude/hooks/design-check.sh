@@ -67,6 +67,11 @@ if echo "$NEW_CONTENT" | grep -qE "accentColor.*['\"]#[0-9a-fA-F]"; then
   WARNINGS="${WARNINGS}DESIGN: Hardcoded accentColor. Verwende theme.colors.* Werte. "
 fi
 
+# Check 7: Inline Success/Error-Box Pattern (deprecated, use useToast)
+if echo "$NEW_CONTENT" | grep -qE "showSuccess|successMessage.*useState|setSuccessMessage"; then
+  WARNINGS="${WARNINGS}DESIGN: Inline Success-Box Pattern erkannt (showSuccess/successMessage). Verwende useToast() aus components/Toast.jsx stattdessen. "
+fi
+
 if [ -n "$WARNINGS" ]; then
   echo "{\"systemMessage\": \"Design-Check: $WARNINGS Siehe frontend/CLAUDE.md fuer die vollstaendigen Design-Vorgaben.\"}"
 fi

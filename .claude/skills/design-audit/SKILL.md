@@ -38,8 +38,10 @@ Suche nach Patterns, die NICHT `theme.*` referenzieren:
 
 1. **CSS Toggle-Switches**: Eigene Toggle/Switch Implementierungen mit `position: relative/absolute` und beweglichem Dot — Standard ist `ToggleOnIcon`/`ToggleOffIcon`
 2. **Native Checkboxen als Toggles**: `<input type="checkbox">` für Enable/Disable — Standard ist Toggle-Icon-Button
-3. **CSS-Datei-Imports**: `import './styles.css'` oder ähnlich — Standard ist Inline-Styles
-4. **Externe Icon-Libraries**: Font-Awesome, Material Icons, react-icons — Standard ist `Icons.jsx`
+3. **Native `<select>` Elemente**: Direkte Nutzung von `<select>` statt der zentralen `<Select>`-Komponente aus `components/Select.jsx`. Suche nach `<select` ohne `import Select from` — Standard ist `<Select>` mit `options`-Prop oder `children`
+4. **CSS-Datei-Imports**: `import './styles.css'` oder ähnlich — Standard ist Inline-Styles
+5. **Externe Icon-Libraries**: Font-Awesome, Material Icons, react-icons — Standard ist `Icons.jsx`
+6. **Inline Success/Error-Boxen**: `successMessage`/`showSuccess` State-Pattern oder inline Error-Boxen (`setError` + JSX) statt `useToast()` — Standard ist `useToast()` aus `components/Toast.jsx`
 
 #### Kategorie C: Konsistenz-Violations (Severity: MITTEL)
 

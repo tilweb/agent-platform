@@ -96,6 +96,6 @@ Gruppen ermöglichen die Organisation von Benutzern für die Zugriffsverwaltung.
 
 ### Gruppen und Berechtigungen
 
-Gruppen werden im rollenbasierten Zugriffskontrollsystem (RBAC) verwendet. Wenn einer Gruppe eine Berechtigung auf eine Ressource (z.B. ein Projekt oder eine Sammlung) erteilt wird, erhalten alle Mitglieder dieser Gruppe automatisch die entsprechende Berechtigung.
+Gruppen werden im rollenbasierten Zugriffskontrollsystem (RBAC) verwendet. Wenn einer Gruppe eine Berechtigung auf eine Ressource (z.B. einen Space oder eine Sammlung) erteilt wird, erhalten alle Mitglieder dieser Gruppe automatisch die entsprechende Berechtigung.
 
 Weitere Informationen zur Nutzung von Gruppen in der Zugriffskontrolle finden Sie unter [Berechtigungen & RBAC](../sicherheit/berechtigungen.md).

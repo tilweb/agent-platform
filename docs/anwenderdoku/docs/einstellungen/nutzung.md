@@ -27,8 +27,10 @@ Am oberen Rand werden vier Kennzahlen angezeigt:
 
 Die Daten können nach Zeitraum gefiltert werden:
 
-- **Schnellauswahl** -- Heute, 7 Tage, 30 Tage
+- **Schnellauswahl** -- Heute, 7 Tage, 30 Tage, Aktueller Monat
 - **Benutzerdefinierter Zeitraum** -- Start- und Enddatum frei wählbar
+
+Standardmäßig ist **Aktueller Monat** (1. bis letzter Tag des laufenden Monats) vorausgewählt.
 
 ---
 

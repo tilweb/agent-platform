@@ -11,7 +11,7 @@ Der Adacor Workplace verbindet mehrere KI-Modelle verschiedener Anbieter mit ein
 - **Multi-Provider-Unterstützung** -- Arbeiten Sie mit Modellen von OpenAI, Anthropic, Google Gemini, Ollama und weiteren Anbietern
 - **Spezialisierte Agenten** -- Jeder Agent ist auf bestimmte Aufgaben optimiert und verfügt über eigene Werkzeuge und Anweisungen
 - **RAG-basierte Wissensbasis** -- Laden Sie Dokumente hoch und durchsuchen Sie diese mit semantischer Suche
-- **Mehrbenutzerbetrieb** -- Rollenbasierte Zugriffskontrolle, individuelle Einstellungen und gemeinsame Projekte
+- **Mehrbenutzerbetrieb** -- Rollenbasierte Zugriffskontrolle, individuelle Einstellungen und gemeinsame Spaces
 
 ---
 

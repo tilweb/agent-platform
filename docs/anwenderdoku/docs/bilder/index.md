@@ -57,14 +57,10 @@ Pro Generierungsanfrage können Sie **1 bis 4 Bilder** gleichzeitig erstellen la
 
 ## Verfügbare Anbieter
 
-Die Bildgenerierung unterstützt verschiedene KI-Modelle:
+Die Bildgenerierung unterstützt verschiedene KI-Modelle, die unter **Einstellungen > KI-Modelle** konfiguriert werden. Dort können separate Modelle für Text-zu-Bild und Bild-zu-Bild festgelegt werden.
 
-| Anbieter | Modell | Stärken |
-|---|---|---|
-| **Google Gemini** | Imagen | Fotorealistische Bilder, gutes Textverständnis, Bild-zu-Bild |
-| **Nebius** | Flux.1 | Schnelle Generierung, kreative Stile, gute Qualität |
-
-Welches Modell aktiv ist, wird unter **Einstellungen > KI-Modelle** konfiguriert. Dort können separate Modelle für Text-zu-Bild und Bild-zu-Bild festgelegt werden.
+> [!warning] Konfiguration erforderlich
+> Die Bildgenerierung ist nur verfügbar, wenn ein entsprechender Provider mit einem Bildgenerierungsmodell konfiguriert und aktiviert ist. Ohne aktiven Provider für Text-zu-Bild bzw. Bild-zu-Bild steht die Funktion nicht zur Verfügung.
 
 ## Tipps für gute Prompts
 

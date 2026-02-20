@@ -19,12 +19,12 @@ Im oberen Bereich der Seitenleiste finden Sie die wichtigsten Module der Plattfo
 | **Agenten** | Übersicht und Verwaltung aller verfügbaren KI-Agenten |
 | **Skills** | Erweiterbare Arbeitsabläufe und automatisierte Prozesse |
 | **Tools** | Verfügbare Werkzeuge, die den Agenten zur Verfügung stehen |
-| **MCP** | Model Context Protocol -- Konfiguration externer Tool-Server |
+| **Bilder** | KI-gestützte Bildgenerierung und -galerie |
 | **Wissensbasis** | Dokumentensammlungen mit semantischer Suche (RAG) |
-| **Benutzerspeicher** | Persönlicher Wissensspeicher für Notizen und Fakten |
+| **Memory** | Persönlicher Wissensspeicher für Notizen und Fakten |
 | **Aufgaben** | Hintergrund-Tasks und deren Ergebnisse |
 | **Tabellen** | Strukturierte Datenverwaltung in Tabellenform |
-| **Projekte** | Gemeinsame Arbeitsbereiche für Teams |
+| **Spaces** | Gemeinsame Arbeitsbereiche für Teams |
 | **Apps** | Zusätzliche Anwendungen und Erweiterungen |
 
 ### Unterer Bereich
@@ -33,9 +33,13 @@ Am unteren Rand der Seitenleiste befinden sich:
 
 | Menüpunkt | Beschreibung |
 |-----------|-------------|
+| **Dokumentation** | Link zur integrierten Anwenderdokumentation |
 | **Einstellungen** | Profil, KI-Modelle, Benutzerverwaltung, Verbindungen und weitere Konfiguration |
 | **Benutzerprofil** | Anzeigename, Rolle und Abmelde-Funktion |
-| **Benachrichtigungen** | Systemmeldungen und Hinweise, z. B. abgeschlossene Hintergrund-Tasks |
+
+### Benachrichtigungen
+
+Benachrichtigungen werden über das **Glocken-Symbol** in der oberen rechten Ecke der Anwendung angezeigt. Dort finden Sie Systemmeldungen und Hinweise, z.B. abgeschlossene Hintergrund-Tasks.
 
 > [!tip] Tipp
 > Die Benachrichtigungsanzeige zeigt Ihnen die Anzahl ungelesener Meldungen als Zahlenbadge an. Klicken Sie darauf, um die Details einzusehen.
