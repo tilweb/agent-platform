@@ -15,6 +15,7 @@ import {
   isEncryptionConfigured,
 } from '../connections';
 import type { OAuthState } from '../connections';
+import { pluginRegistry } from '../plugins';
 import { internalError } from '../utils/errorHandler';
 
 const connectionRoutes = new Hono();
@@ -77,8 +78,23 @@ connectionRoutes.get('/', authMiddleware, async (c) => {
     const userId = requireUserId(c);
     const providers = await connectionRegistry.getProviderInfos(userId);
 
+    // Enrich with plugin manifest data (single source of truth for UI metadata)
+    const enriched = providers.map(p => {
+      const manifest = pluginRegistry.getManifest(p.id);
+      return {
+        ...p,
+        name: manifest?.name || p.name,
+        description: manifest?.description || p.description,
+        configured: pluginRegistry.isConfigured(p.id),
+        enabled: pluginRegistry.isEnabled(p.id),
+        setupGuide: manifest?.setupGuide || p.setupGuide,
+        configSchema: manifest?.configSchema,
+        version: manifest?.version,
+      };
+    });
+
     return c.json({
-      providers,
+      providers: enriched,
       encryptionConfigured: isEncryptionConfigured(),
     });
   } catch (error: any) {
@@ -143,6 +159,16 @@ connectionRoutes.get('/:id/connect', authMiddleware, async (c) => {
       return c.json({ error: 'Provider does not use OAuth' }, 400);
     }
 
+    // Check if provider is enabled
+    if (!pluginRegistry.isEnabled(providerId)) {
+      return c.json({ error: 'Dieser Provider ist deaktiviert.' }, 400);
+    }
+
+    // Check if provider credentials are configured
+    if (!pluginRegistry.isConfigured(providerId)) {
+      return c.json({ error: 'Provider-Credentials nicht konfiguriert. Ein Admin muss den Provider zuerst einrichten.' }, 400);
+    }
+
     // Generate state and redirect URI
     const state = generateOAuthState();
     const baseUrl = process.env.API_BASE_URL;
@@ -172,7 +198,7 @@ connectionRoutes.get('/:id/connect', authMiddleware, async (c) => {
     await saveOAuthState(state, oauthState);
 
     // Get auth URL
-    const authUrl = provider.getAuthUrl(state, redirectUri);
+    const authUrl = await provider.getAuthUrl(state, redirectUri);
 
     return c.json({ authUrl, state });
   } catch (error: any) {

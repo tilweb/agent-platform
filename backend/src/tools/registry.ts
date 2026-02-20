@@ -3,10 +3,12 @@
  */
 
 import type { Tool, ToolDefinition, ToolCall, ToolContext, ToolType, ToolsConfig } from './types';
+import type { ConnectionTool } from '../connections/types';
 
 class ToolRegistry {
   private tools = new Map<string, Tool>();
   private config: ToolsConfig;
+  private disabledPlugins = new Set<string>();
 
   constructor(config?: Partial<ToolsConfig>) {
     this.config = {
@@ -81,12 +83,38 @@ class ToolRegistry {
   }
 
   /**
-   * Get enabled tools (respecting config)
+   * Mark a plugin's tools as disabled/enabled at runtime.
+   */
+  setPluginDisabled(pluginId: string, disabled: boolean): void {
+    if (disabled) {
+      this.disabledPlugins.add(pluginId);
+    } else {
+      this.disabledPlugins.delete(pluginId);
+    }
+  }
+
+  /**
+   * Check if a tool belongs to a disabled plugin.
+   */
+  private isToolDisabledByPlugin(tool: Tool): boolean {
+    if (tool.type === 'connection' && 'providerId' in tool) {
+      return this.disabledPlugins.has((tool as ConnectionTool).providerId);
+    }
+    return false;
+  }
+
+  /**
+   * Get enabled tools (respecting config and plugin status)
    */
   getEnabled(): Tool[] {
     const all = this.getAll();
 
     return all.filter(tool => {
+      // Check if tool's plugin is disabled
+      if (this.isToolDisabledByPlugin(tool)) {
+        return false;
+      }
+
       // Check if explicitly disabled
       if (this.config.disabled?.includes(tool.name)) {
         return false;
@@ -114,7 +142,14 @@ class ToolRegistry {
         }
         return tool;
       })
-      .filter((tool): tool is Tool => tool !== undefined);
+      .filter((tool): tool is Tool => {
+        if (!tool) return false;
+        if (this.isToolDisabledByPlugin(tool)) {
+          console.log(`[ToolRegistry.getForAgent] Tool DISABLED by plugin: ${tool.name}`);
+          return false;
+        }
+        return true;
+      });
     console.log(`[ToolRegistry.getForAgent] Found ${result.length}/${toolNames.length} tools`);
     return result;
   }
@@ -139,6 +174,11 @@ class ToolRegistry {
     const tool = this.tools.get(name);
     if (!tool) {
       return `Error: Unknown tool "${name}". Available tools: ${this.getNames().join(', ')}`;
+    }
+
+    // Check if tool's plugin is disabled
+    if (this.isToolDisabledByPlugin(tool)) {
+      return `Error: Tool "${name}" is currently disabled`;
     }
 
     // Check if tool is available

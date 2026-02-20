@@ -1,0 +1,58 @@
+id: google-drive
+type: connector
+name: Google Drive
+description: "Google Drive Dateien durchsuchen und lesen"
+version: "1.0.0"
+author: "Agent Platform"
+
+configSchema:
+  - key: clientId
+    label: "Client ID"
+    type: string
+    required: true
+    placeholder: "z.B. 123456789-abc.apps.googleusercontent.com"
+  - key: clientSecret
+    label: "Client Secret"
+    type: string
+    secret: true
+    required: true
+    placeholder: "z.B. GOCSPX-..."
+
+setupGuide: |
+  ## Google Drive einrichten
+
+  ### 1. Google Cloud Console
+  1. Gehe zu [Google Cloud Console](https://console.cloud.google.com/)
+  2. Erstelle ein neues Projekt oder wähle ein bestehendes
+
+  ### 2. Google Drive API aktivieren
+  1. Gehe zu "APIs & Services" → "Library"
+  2. Suche nach "Google Drive API"
+  3. Klicke auf "Enable"
+
+  ### 3. OAuth konfigurieren
+  1. Gehe zu "APIs & Services" → "OAuth consent screen"
+  2. App-Name und Support-Email eintragen
+  3. Bereiche hinzufügen: `drive.readonly`, `userinfo.email`, `userinfo.profile`
+
+  ### 4. OAuth Client erstellen
+  1. Gehe zu "Credentials" → "Create Credentials" → "OAuth Client ID"
+  2. Anwendungstyp: **Webanwendung**
+  3. Autorisierte Weiterleitungs-URI: `{API_BASE_URL}/api/connections/google-drive/callback`
+  4. Kopiere Client-ID und Clientschlüssel
+
+connector:
+  authType: oauth2
+  credentialMode: company
+  transport: inprocess
+  entryPoint: provider.ts
+  oauth:
+    authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth"
+    tokenUrl: "https://oauth2.googleapis.com/token"
+    scopes:
+      - "https://www.googleapis.com/auth/drive.readonly"
+      - "https://www.googleapis.com/auth/userinfo.email"
+      - "https://www.googleapis.com/auth/userinfo.profile"
+    additionalAuthParams:
+      access_type: "offline"
+      prompt: "consent"

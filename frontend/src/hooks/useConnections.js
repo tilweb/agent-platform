@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPost } from '../utils/apiFetch';
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 
 export function useConnections() {
   const [providers, setProviders] = useState([]);
@@ -54,10 +54,16 @@ export function useConnections() {
         `width=${width},height=${height},left=${left},top=${top}`
       );
 
+      // Browser blocked the popup
+      if (!popup) {
+        throw new Error('Popup wurde vom Browser blockiert. Bitte erlaube Popups für diese Seite.');
+      }
+
       // Wait for popup to complete
       return new Promise((resolve, reject) => {
         const handleMessage = (event) => {
           if (event.data?.type === 'oauth_callback') {
+            clearInterval(checkClosed);
             window.removeEventListener('message', handleMessage);
 
             if (event.data.success) {
@@ -73,7 +79,7 @@ export function useConnections() {
 
         // Check if popup was closed without completing
         const checkClosed = setInterval(() => {
-          if (popup.closed) {
+          if (!popup || popup.closed) {
             clearInterval(checkClosed);
             window.removeEventListener('message', handleMessage);
             // Don't reject - user may have cancelled intentionally
@@ -116,6 +122,61 @@ export function useConnections() {
     }
   }, []);
 
+  const loadConfig = useCallback(async (pluginId) => {
+    try {
+      const res = await apiGet(`/plugins/${pluginId}/config`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to load config');
+      }
+      return await res.json();
+    } catch (err) {
+      throw err;
+    }
+  }, []);
+
+  const saveConfig = useCallback(async (pluginId, values) => {
+    try {
+      const res = await apiPut(`/plugins/${pluginId}/config`, { values });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to save config');
+      }
+      await fetchProviders();
+      return await res.json();
+    } catch (err) {
+      throw err;
+    }
+  }, [fetchProviders]);
+
+  const deleteConfig = useCallback(async (pluginId) => {
+    try {
+      const res = await apiDelete(`/plugins/${pluginId}/config`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete config');
+      }
+      await fetchProviders();
+      return await res.json();
+    } catch (err) {
+      throw err;
+    }
+  }, [fetchProviders]);
+
+  const toggleEnabled = useCallback(async (pluginId, enabled) => {
+    try {
+      const endpoint = enabled ? 'enable' : 'disable';
+      const res = await apiPost(`/plugins/${pluginId}/${endpoint}`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to toggle plugin');
+      }
+      await fetchProviders();
+    } catch (err) {
+      throw err;
+    }
+  }, [fetchProviders]);
+
   return {
     providers,
     loading,
@@ -124,5 +185,9 @@ export function useConnections() {
     connect,
     disconnect,
     checkStatus,
+    loadConfig,
+    saveConfig,
+    deleteConfig,
+    toggleEnabled,
   };
 }

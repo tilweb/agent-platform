@@ -1,0 +1,60 @@
+id: pipedrive
+type: connector
+name: Pipedrive CRM
+description: "Pipedrive Deals, Kontakte und Aktivitäten durchsuchen"
+version: "1.0.0"
+author: "Agent Platform"
+
+configSchema:
+  - key: clientId
+    label: "Client ID"
+    type: string
+    required: true
+    placeholder: "z.B. abc123def456..."
+  - key: clientSecret
+    label: "Client Secret"
+    type: string
+    secret: true
+    required: true
+    placeholder: "z.B. xyz789..."
+
+setupGuide: |
+  ## Pipedrive einrichten
+
+  ### 1. Pipedrive Developer Hub
+  1. Gehe zu [developers.pipedrive.com](https://developers.pipedrive.com/)
+  2. Melde dich mit deinem Pipedrive-Konto an
+  3. Klicke "Create an app"
+
+  ### 2. App erstellen
+  1. Wähle "Create private app"
+  2. Name: z.B. "Agent Platform"
+  3. Callback URL: `{API_BASE_URL}/api/connections/pipedrive/callback`
+
+  ### 3. OAuth Scopes auswählen
+  - **Base** (Basisinformationen)
+  - **Deals: Read only**
+  - **Contacts: Read only**
+  - **Activities: Read only**
+  - **Organizations: Read only**
+
+  ### 4. Credentials kopieren
+  1. Gehe zu "OAuth & access scopes"
+  2. Kopiere "Client ID" und "Client Secret"
+
+connector:
+  authType: oauth2
+  credentialMode: company
+  transport: inprocess
+  entryPoint: provider.ts
+  oauth:
+    authorizationUrl: "https://oauth.pipedrive.com/oauth/authorize"
+    tokenUrl: "https://oauth.pipedrive.com/oauth/token"
+    scopes:
+      - "base"
+      - "deals:read"
+      - "contacts:read"
+      - "activities:read"
+      - "organizations:read"
+      - "products:read"
+      - "users:read"

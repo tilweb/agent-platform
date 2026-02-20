@@ -507,13 +507,51 @@ export function getContentTypeIcon(type, props = {}) {
   }
 }
 
+// Provider logos (for ConnectionsPage)
+function ConfluenceLogo({ size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 256 246" fill="none">
+      <path d="M9.26 187.36c-3.69 6.12-7.89 13.24-10.57 18.09a8.06 8.06 0 003.03 10.83l56.38 34.27a8.06 8.06 0 0011.08-2.47c2.26-3.78 5.37-9.09 8.88-15.07 24.8-42.3 49.7-37.09 96.47-14.97l55.27 25.93a8.06 8.06 0 0010.6-4.12l26.18-57.36a8.06 8.06 0 00-3.93-10.42c-13.13-6.28-39.3-18.66-55.88-26.44C129.8 112.53 50.15 119.1 9.26 187.36z" fill="#1868DB"/>
+      <path d="M246.74 58.64c3.69-6.12 7.89-13.24 10.57-18.09a8.06 8.06 0 00-3.03-10.83L198.9-4.55a8.06 8.06 0 00-11.08 2.47c-2.26 3.78-5.37 9.09-8.88 15.07-24.8 42.3-49.7 37.09-96.47 14.97L27.2 2.03a8.06 8.06 0 00-10.6 4.12L-9.58 63.51a8.06 8.06 0 003.93 10.42c13.13 6.28 39.3 18.66 55.88 26.44 76.88 33.18 156.53 26.6 196.51-41.73z" fill="#1868DB"/>
+    </svg>
+  );
+}
+
+function GoogleDriveLogo({ size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 87.3 78" fill="none">
+      <path d="M6.6 66.85L3.3 72.55 16.6 78l3.3-5.7z" fill="#0066DA"/>
+      <path d="M43.65 0L16.6 46.3l10.1 17.35L53.75 17.35z" fill="#00AC47"/>
+      <path d="M70.7 46.3H43.65l-10.1 17.35h27.05z" fill="#EA4335"/>
+      <path d="M43.65 0L26.7 63.65h17.35L70.7 46.3 53.75 17.35z" fill="#00832D"/>
+      <path d="M43.65 0l27.05 46.3 10.1-17.35L53.75 0z" fill="#2684FC"/>
+      <path d="M60.6 63.65h17.35L87.3 46.3h-27.05z" fill="#FFBA00"/>
+      <path d="M26.7 63.65L6.6 66.85 16.6 78l27.05-14.35z" fill="#0066DA"/>
+      <path d="M43.65 0L16.6 46.3h27.05z" fill="#00AC47"/>
+      <path d="M70.7 46.3H43.65l16.95 17.35H77.95z" fill="#EA4335"/>
+      <path d="M80.75 28.95L53.75 0H43.65l27.05 46.3z" fill="#2684FC"/>
+    </svg>
+  );
+}
+
+function PipedriveLogo({ size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <path d="M16.5 2C10.71 2 6 6.71 6 12.5c0 3.44 1.66 6.5 4.23 8.41V28a2 2 0 002 2h8.54a2 2 0 002-2v-7.09A10.47 10.47 0 0027 12.5C27 6.71 22.29 2 16.5 2zm0 15a4.5 4.5 0 110-9 4.5 4.5 0 010 9z" fill="#017737"/>
+    </svg>
+  );
+}
+
 // Provider icon helper (for ConnectionsPage)
 export function getProviderIcon(providerId, props = {}) {
+  const size = props.size || 24;
   switch (providerId) {
     case 'confluence':
-      return <DocumentIcon {...props} />;
+      return <ConfluenceLogo size={size} />;
     case 'google-drive':
-      return <FolderIcon {...props} />;
+      return <GoogleDriveLogo size={size} />;
+    case 'pipedrive':
+      return <PipedriveLogo size={size} />;
     case 'sharepoint':
       return <FolderOpenIcon {...props} />;
     case 'youtrack':

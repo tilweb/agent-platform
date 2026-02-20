@@ -1,0 +1,56 @@
+id: confluence
+type: connector
+name: Atlassian Confluence
+description: "Confluence-Seiten durchsuchen und lesen"
+version: "1.0.0"
+author: "Agent Platform"
+
+configSchema:
+  - key: clientId
+    label: "Client ID"
+    type: string
+    required: true
+    placeholder: "z.B. abc123def456..."
+  - key: clientSecret
+    label: "Client Secret"
+    type: string
+    secret: true
+    required: true
+    placeholder: "z.B. xyz789..."
+
+setupGuide: |
+  ## Atlassian Confluence einrichten
+
+  ### 1. Atlassian Developer Console
+  1. Gehe zu [developer.atlassian.com](https://developer.atlassian.com/console/myapps/)
+  2. Klicke "Create" → "OAuth 2.0 integration"
+
+  ### 2. App konfigurieren
+  1. Name: z.B. "Agent Platform"
+  2. Gehe zu "Permissions" und füge hinzu:
+     - Confluence API: `read:confluence-content.all`, `read:confluence-space.summary`, `search:confluence`
+  3. Gehe zu "Authorization" → "Add" → "OAuth 2.0 (3LO)"
+  4. Callback URL: `{API_BASE_URL}/api/connections/confluence/callback`
+
+  ### 3. Credentials kopieren
+  1. Gehe zu "Settings"
+  2. Kopiere "Client ID" und "Secret"
+
+connector:
+  authType: oauth2
+  credentialMode: company
+  transport: inprocess
+  entryPoint: provider.ts
+  oauth:
+    authorizationUrl: "https://auth.atlassian.com/authorize"
+    tokenUrl: "https://auth.atlassian.com/oauth/token"
+    scopes:
+      - "read:confluence-content.all"
+      - "read:confluence-content.summary"
+      - "read:confluence-space.summary"
+      - "read:confluence-user"
+      - "search:confluence"
+      - "offline_access"
+    additionalAuthParams:
+      audience: "api.atlassian.com"
+      prompt: "consent"

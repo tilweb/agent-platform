@@ -18,7 +18,7 @@ export type {
 } from './types';
 
 // Crypto utilities
-export { encryptTokens, decryptTokens, isEncryptionConfigured, generateEncryptionKey } from './crypto';
+export { encryptTokens, decryptTokens, encryptData, decryptData, isEncryptionConfigured, generateEncryptionKey } from './crypto';
 
 // Storage
 export {

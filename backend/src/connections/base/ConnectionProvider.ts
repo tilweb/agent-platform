@@ -24,7 +24,7 @@ export abstract class BaseConnectionProvider implements ConnectionProvider {
    * Get the OAuth authorization URL
    * Override in OAuth providers
    */
-  getAuthUrl(state: string, redirectUri: string): string {
+  async getAuthUrl(state: string, redirectUri: string): Promise<string> {
     throw new Error(`${this.id} does not support OAuth authentication`);
   }
 

@@ -14,6 +14,12 @@
     "verbatimModuleSyntax": true,
     "noEmit": true,
 
+    // Path aliases for plugin SDK
+    "baseUrl": ".",
+    "paths": {
+      "@platform/sdk": ["./src/plugins/sdk.ts"]
+    },
+
     // Best practices
     "strict": true,
     "skipLibCheck": true,

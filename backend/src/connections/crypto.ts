@@ -152,6 +152,81 @@ function hexToBuffer(hex: string): Uint8Array {
   return bytes;
 }
 
+// ── Generic encrypt/decrypt for arbitrary data ─────────────────────
+
+/**
+ * Encrypt arbitrary data using AES-256-GCM.
+ * Returns the same { encrypted, iv, tag, version } envelope.
+ */
+export async function encryptData<T>(data: T): Promise<EncryptedTokenSet> {
+  const key = getEncryptionKey();
+
+  const iv = new Uint8Array(12);
+  crypto.getRandomValues(iv);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key.buffer as ArrayBuffer,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt']
+  );
+
+  const plaintext = new TextEncoder().encode(JSON.stringify(data));
+
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, tagLength: 128 },
+    cryptoKey,
+    plaintext
+  );
+
+  const ctArray = new Uint8Array(ciphertext);
+  const encryptedData = ctArray.slice(0, -16);
+  const tag = ctArray.slice(-16);
+
+  return {
+    encrypted: bufferToHex(encryptedData),
+    iv: bufferToHex(iv),
+    tag: bufferToHex(tag),
+    version: ENCRYPTION_VERSION,
+  };
+}
+
+/**
+ * Decrypt data that was encrypted with encryptData().
+ */
+export async function decryptData<T>(encrypted: EncryptedTokenSet): Promise<T> {
+  if (encrypted.version !== ENCRYPTION_VERSION) {
+    throw new Error(`Unsupported encryption version: ${encrypted.version}`);
+  }
+
+  const key = getEncryptionKey();
+
+  const iv = hexToBuffer(encrypted.iv);
+  const ciphertext = hexToBuffer(encrypted.encrypted);
+  const tag = hexToBuffer(encrypted.tag);
+
+  const combined = new Uint8Array(ciphertext.length + tag.length);
+  combined.set(ciphertext);
+  combined.set(tag, ciphertext.length);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key.buffer as ArrayBuffer,
+    { name: 'AES-GCM' },
+    false,
+    ['decrypt']
+  );
+
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: iv.buffer as ArrayBuffer, tagLength: 128 },
+    cryptoKey,
+    combined
+  );
+
+  return JSON.parse(new TextDecoder().decode(plaintext)) as T;
+}
+
 /**
  * Check if encryption key is configured
  */

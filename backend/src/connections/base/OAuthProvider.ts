@@ -15,7 +15,7 @@ export abstract class OAuthProvider extends BaseConnectionProvider {
    * Get OAuth2 configuration
    * Must be implemented by subclasses
    */
-  protected abstract getOAuthConfig(): OAuth2Config;
+  protected abstract getOAuthConfig(): Promise<OAuth2Config>;
 
   /**
    * Process token response (for provider-specific handling)
@@ -38,8 +38,8 @@ export abstract class OAuthProvider extends BaseConnectionProvider {
   /**
    * Get the OAuth authorization URL
    */
-  override getAuthUrl(state: string, redirectUri: string): string {
-    const config = this.getOAuthConfig();
+  override async getAuthUrl(state: string, redirectUri: string): Promise<string> {
+    const config = await this.getOAuthConfig();
 
     const params = new URLSearchParams({
       client_id: config.clientId,
@@ -57,7 +57,7 @@ export abstract class OAuthProvider extends BaseConnectionProvider {
    * Exchange authorization code for tokens
    */
   override async exchangeCode(code: string, redirectUri: string): Promise<TokenSet> {
-    const config = this.getOAuthConfig();
+    const config = await this.getOAuthConfig();
 
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -90,7 +90,7 @@ export abstract class OAuthProvider extends BaseConnectionProvider {
    * Refresh an expired access token
    */
   override async refreshToken(refreshToken: string): Promise<TokenSet> {
-    const config = this.getOAuthConfig();
+    const config = await this.getOAuthConfig();
 
     const params = new URLSearchParams({
       grant_type: 'refresh_token',

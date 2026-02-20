@@ -5,6 +5,7 @@
 import type { ConnectionProvider, ProviderInfo, ConnectionStatus, TokenSet } from './types';
 import { loadConnection, listUserConnections, saveConnection, updateConnectionTokens } from './storage';
 import { toolRegistry } from '../tools/registry';
+import { pluginRegistry } from '../plugins/registry';
 
 class ConnectionRegistry {
   private providers = new Map<string, ConnectionProvider>();
@@ -104,11 +105,17 @@ class ConnectionRegistry {
   }
 
   /**
-   * Get tokens for a user's connection, refreshing if needed
+   * Get tokens for a user's connection, refreshing if needed.
+   * Returns null if the plugin is disabled.
    */
   async getTokens(userId: string, providerId: string): Promise<TokenSet | null> {
     const provider = this.providers.get(providerId);
     if (!provider) {
+      return null;
+    }
+
+    // Block token access for disabled plugins
+    if (!pluginRegistry.isEnabled(providerId)) {
       return null;
     }
 

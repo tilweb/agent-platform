@@ -113,7 +113,7 @@ export interface ConnectionProvider {
   // OAuth2 methods (required for oauth2 authType)
 
   /** Get the OAuth authorization URL */
-  getAuthUrl(state: string, redirectUri: string): string;
+  getAuthUrl(state: string, redirectUri: string): Promise<string>;
 
   /** Exchange authorization code for tokens */
   exchangeCode(code: string, redirectUri: string): Promise<TokenSet>;
