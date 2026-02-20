@@ -130,15 +130,24 @@ export async function generatePdf(data: DocumentData): Promise<Buffer> {
     }),
     info: {
       title: data.title,
-      author: 'Agent Platform',
-      creator: 'Agent Platform - Projektmanagement',
+      author: 'Adacor Workplace',
+      creator: 'Adacor Workplace - Projektmanagement',
     },
   };
 
   // Create PDF using createPdf method
+  // pdfmake's getBuffer is callback-based, wrap it in a Promise
   const pdfDoc = PdfMake.createPdf(docDefinition);
-  const buffer = await pdfDoc.getBuffer();
-  return Buffer.from(buffer);
+  const buffer = await new Promise<Buffer>((resolve, reject) => {
+    pdfDoc.getBuffer((buf: Buffer) => {
+      try {
+        resolve(Buffer.from(buf));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+  return buffer;
 }
 
 function renderSection(section: DocumentSection): Content[] {

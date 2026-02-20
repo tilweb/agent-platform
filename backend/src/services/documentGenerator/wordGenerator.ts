@@ -92,7 +92,7 @@ export async function generateWord(data: DocumentData): Promise<Buffer> {
   }
 
   const doc = new Document({
-    creator: 'Agent Platform',
+    creator: 'Adacor Workplace',
     title: data.title,
     description: 'Projektauftrag Export',
     sections: [
