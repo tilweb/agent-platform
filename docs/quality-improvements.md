@@ -2,7 +2,7 @@
 
 ## Ist-Zustand (Februar 2026)
 
-### Hooks (11 aktiv)
+### Hooks (12 aktiv)
 
 | Hook | Trigger | Typ | Prüft |
 |------|---------|-----|-------|
@@ -15,10 +15,11 @@
 | `docker-infra-check.sh` | PreToolUse Bash (git commit) | Hard | ENV-Sync, Port-Sync, Helm-Konsistenz |
 | `quality-check.sh` | PostToolUse Edit/Write | Soft | TypeScript-Kompilierung, ESLint |
 | `run-tests.sh` | PostToolUse Edit/Write (async) | Soft | bun test Ergebnisse |
+| `test-coverage-check.sh` | PostToolUse Edit/Write | Soft | Fehlende Tests, veraltete Test-Signaturen |
 | `post-commit-docs.sh` | PostToolUse Bash (git commit) | Soft | Doku-Update Erinnerung |
 | `security-stop-check.sh` | Stop | Soft | Kritische Datei-Änderungen |
 
-### Commands (10 aktiv)
+### Commands (11 aktiv)
 
 | Command | Zweck |
 |---------|-------|
@@ -29,6 +30,7 @@
 | `/consistency-audit` | Duplikate, Patterns, Error-Konsistenz |
 | `/api-audit` | Frontend↔Backend API-Verträge |
 | `/test-scaffold` | Test-Boilerplate generieren |
+| `/test-coverage` | Testabdeckung analysieren, Lücken finden, Tests erstellen/aktualisieren |
 | `/quality-gate` | Konsolidierter Audit (6 Kategorien, Ampel) — Pflichtschritt in /release |
 | `/release` | Version Bump + Quality Gate + Changelog + Build + Tag (11 Schritte) |
 | `/update-docs` | Doku-Sync mit Code-Stand |
@@ -45,7 +47,7 @@
 | API-Konsistenz | — | /api-audit, /quality-gate | Gut |
 | Error-Handling | error-consistency-check | /consistency-audit, /quality-gate | Gut |
 | i18n | i18n-check | /consistency-audit | Gut |
-| Testing | run-tests | /test-scaffold | Teilweise |
+| Testing | run-tests, test-coverage-check | /test-scaffold, /test-coverage | Gut |
 | **Performance** | — | — | **Offen** |
 
 ---

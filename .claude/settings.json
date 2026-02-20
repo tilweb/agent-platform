@@ -60,6 +60,11 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-tests.sh",
             "async": true,
             "timeout": 120
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/test-coverage-check.sh",
+            "timeout": 15
           }
         ]
       },
