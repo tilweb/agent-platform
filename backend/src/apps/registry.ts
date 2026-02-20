@@ -60,6 +60,7 @@ function getDefaultRegistry(): AppsRegistry {
         ],
       },
     },
+    appOrder: ['vertragsmanagement', 'projektmanagement'],
   };
 }
 
@@ -76,7 +77,14 @@ export async function loadRegistry(): Promise<AppsRegistry> {
   if (await file.exists()) {
     try {
       const content = await file.text();
-      registryCache = parse(content) as AppsRegistry;
+      const registry = parse(content) as AppsRegistry;
+
+      // Initialize appOrder from existing keys if missing
+      if (!registry.appOrder) {
+        registry.appOrder = Object.keys(registry.apps);
+      }
+
+      registryCache = registry;
       return registryCache;
     } catch (error) {
       console.error('Error loading apps registry:', error);
@@ -102,7 +110,18 @@ export async function saveRegistry(registry: AppsRegistry): Promise<void> {
  */
 export async function getApps(): Promise<AppInfo[]> {
   const registry = await loadRegistry();
-  return Object.values(registry.apps);
+  const apps = Object.values(registry.apps);
+
+  if (registry.appOrder) {
+    const orderMap = new Map(registry.appOrder.map((id, i) => [id, i]));
+    apps.sort((a, b) => {
+      const ia = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const ib = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      return ia - ib;
+    });
+  }
+
+  return apps;
 }
 
 /**
@@ -156,6 +175,39 @@ export async function disableApp(appId: string): Promise<AppConfig | null> {
 }
 
 /**
+ * Reorder apps (admin only)
+ */
+export async function reorderApps(appIds: string[]): Promise<AppInfo[]> {
+  return withRegistryLock(async () => {
+    const registry = await loadRegistry();
+    const existingIds = new Set(Object.keys(registry.apps));
+
+    // Build ordered list: provided IDs first, then any remaining
+    const ordered: string[] = [];
+    for (const id of appIds) {
+      if (existingIds.has(id)) {
+        ordered.push(id);
+        existingIds.delete(id);
+      }
+    }
+    for (const id of existingIds) {
+      ordered.push(id);
+    }
+
+    registry.appOrder = ordered;
+    await saveRegistry(registry);
+
+    // Return sorted apps
+    const orderMap = new Map(ordered.map((id, i) => [id, i]));
+    return Object.values(registry.apps).sort((a, b) => {
+      const ia = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const ib = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      return ia - ib;
+    });
+  });
+}
+
+/**
  * Register a new app
  */
 export async function registerApp(config: AppConfig): Promise<AppConfig> {
@@ -167,6 +219,11 @@ export async function registerApp(config: AppConfig): Promise<AppConfig> {
     }
 
     registry.apps[config.id] = config;
+    if (!registry.appOrder) {
+      registry.appOrder = Object.keys(registry.apps);
+    } else {
+      registry.appOrder.push(config.id);
+    }
     await saveRegistry(registry);
     return config;
   });
@@ -184,6 +241,9 @@ export async function unregisterApp(appId: string): Promise<boolean> {
     }
 
     delete registry.apps[appId];
+    if (registry.appOrder) {
+      registry.appOrder = registry.appOrder.filter(id => id !== appId);
+    }
     await saveRegistry(registry);
     return true;
   });

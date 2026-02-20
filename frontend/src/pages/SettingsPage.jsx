@@ -13,7 +13,7 @@ import McpServersPage from './McpServersPage';
 import ConnectionsPage from './ConnectionsPage';
 import AuditLogPage from './AuditLogPage';
 import UsagePage from './UsagePage';
-import { useApps } from '../hooks/useApps';
+import { useApps } from '../context/AppsContext';
 import SchemaEditor from '../apps/vertragsmanagement/SchemaEditor';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -271,11 +271,92 @@ const TABS = [
 
 function SettingsPage() {
   const { user } = useAuth();
-  const { apps, toggleApp } = useApps();
+  const { apps, toggleApp, reorderApps } = useApps();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'profile';
   const isAdmin = user?.role === 'admin';
   const [selectedAppConfig, setSelectedAppConfig] = useState(null);
+
+  // App reorder state
+  const [draggedAppId, setDraggedAppId] = useState(null);
+  // { id, half: 'top' | 'bottom' } — which row and which half the cursor is in
+  const [dropTarget, setDropTarget] = useState(null);
+
+  const handleAppDragStart = (e, appId) => {
+    e.dataTransfer.setData('text/plain', appId);
+    e.dataTransfer.effectAllowed = 'move';
+    requestAnimationFrame(() => setDraggedAppId(appId));
+  };
+
+  const handleAppDragOver = (e, appId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (appId === draggedAppId) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const half = e.clientY < rect.top + rect.height / 2 ? 'top' : 'bottom';
+    setDropTarget((prev) =>
+      prev?.id === appId && prev?.half === half ? prev : { id: appId, half }
+    );
+  };
+
+  const handleAppDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDropTarget(null);
+    }
+  };
+
+  const handleAppDrop = async (e) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData('text/plain');
+    const target = dropTarget;
+    setDropTarget(null);
+    setDraggedAppId(null);
+
+    if (!sourceId || !target || sourceId === target.id) return;
+
+    const currentOrder = apps.map((a) => a.id);
+    const fromIndex = currentOrder.indexOf(sourceId);
+    let toIndex = currentOrder.indexOf(target.id);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    // Remove source first
+    currentOrder.splice(fromIndex, 1);
+    // Recalculate target index after removal
+    toIndex = currentOrder.indexOf(target.id);
+    // Insert before or after depending on half
+    const insertAt = target.half === 'bottom' ? toIndex + 1 : toIndex;
+    currentOrder.splice(insertAt, 0, sourceId);
+
+    try {
+      await reorderApps(currentOrder);
+    } catch (err) {
+      console.error('Error reordering apps:', err);
+    }
+  };
+
+  const handleAppDragEnd = () => {
+    setDraggedAppId(null);
+    setDropTarget(null);
+  };
+
+  const handleMoveApp = async (appId, direction) => {
+    const currentOrder = apps.map((a) => a.id);
+    const index = currentOrder.indexOf(appId);
+    if (index === -1) return;
+
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= currentOrder.length) return;
+
+    currentOrder.splice(index, 1);
+    currentOrder.splice(newIndex, 0, appId);
+
+    try {
+      await reorderApps(currentOrder);
+    } catch (err) {
+      console.error('Error reordering apps:', err);
+    }
+  };
 
   // User model preferences
   const {
@@ -1318,22 +1399,102 @@ function SettingsPage() {
                 Keine Apps verfügbar.
               </p>
             ) : (
-              apps.map((app, index) => (
-                <div
-                  key={app.id}
-                  style={{
-                    ...styles.infoRow,
-                    ...(index === apps.length - 1 ? styles.infoRowLast : {}),
-                  }}
-                >
+              apps.map((app, index) => {
+                const isDropTop = dropTarget?.id === app.id && dropTarget?.half === 'top';
+                const isDropBottom = dropTarget?.id === app.id && dropTarget?.half === 'bottom';
+                return (
+                <div key={app.id} style={{ position: 'relative' }}>
+                  {/* Drop indicator line — top */}
+                  {isDropTop && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '2px',
+                      backgroundColor: theme.colors.primary,
+                      zIndex: 1,
+                    }} />
+                  )}
+                  <div
+                    draggable
+                    onDragStart={(e) => handleAppDragStart(e, app.id)}
+                    onDragOver={(e) => handleAppDragOver(e, app.id)}
+                    onDragLeave={handleAppDragLeave}
+                    onDrop={handleAppDrop}
+                    onDragEnd={handleAppDragEnd}
+                    style={{
+                      ...styles.infoRow,
+                      ...(index === apps.length - 1 ? styles.infoRowLast : {}),
+                      ...(draggedAppId === app.id ? { opacity: 0.4 } : {}),
+                      cursor: 'grab',
+                    }}
+                  >
+                  {/* Drag Handle */}
+                  <div style={{ display: 'flex', alignItems: 'center', marginRight: theme.spacing.md, color: theme.colors.textMuted }}>
+                    <DragHandleIcon />
+                  </div>
                   <div style={{ flex: 1 }}>
                     <span style={{ ...styles.infoValue, display: 'block', fontWeight: theme.typography.weights.semibold }}>{app.name}</span>
                     <span style={{ ...styles.infoLabel, fontSize: theme.typography.sizes.xs }}>
                       {app.description}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
+                  <div draggable={false} style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                    {/* Arrow Buttons */}
                     <button
+                      draggable={false}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'none',
+                        border: 'none',
+                        cursor: index === 0 ? 'default' : 'pointer',
+                        padding: theme.spacing.xs,
+                        borderRadius: theme.borderRadius.md,
+                        color: index === 0 ? theme.colors.borderLight : theme.colors.textMuted,
+                      }}
+                      onClick={() => handleMoveApp(app.id, -1)}
+                      disabled={index === 0}
+                      title="Nach oben"
+                      onMouseEnter={(e) => {
+                        if (index !== 0) e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <ChevronUpIcon />
+                    </button>
+                    <button
+                      draggable={false}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'none',
+                        border: 'none',
+                        cursor: index === apps.length - 1 ? 'default' : 'pointer',
+                        padding: theme.spacing.xs,
+                        borderRadius: theme.borderRadius.md,
+                        color: index === apps.length - 1 ? theme.colors.borderLight : theme.colors.textMuted,
+                      }}
+                      onClick={() => handleMoveApp(app.id, 1)}
+                      disabled={index === apps.length - 1}
+                      title="Nach unten"
+                      onMouseEnter={(e) => {
+                        if (index !== apps.length - 1) e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <ChevronDownIcon />
+                    </button>
+                    <div style={{ width: '1px', height: '20px', backgroundColor: theme.colors.borderLight, margin: `0 ${theme.spacing.xs}` }} />
+                    <button
+                      draggable={false}
                       style={{
                         padding: `${theme.spacing.xs} ${theme.spacing.md}`,
                         backgroundColor: 'transparent',
@@ -1355,6 +1516,7 @@ function SettingsPage() {
                       Konfigurieren
                     </button>
                     <button
+                      draggable={false}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1377,8 +1539,22 @@ function SettingsPage() {
                       {app.enabled ? <ToggleOnIcon /> : <ToggleOffIcon />}
                     </button>
                   </div>
+                  </div>
+                  {/* Drop indicator line — bottom */}
+                  {isDropBottom && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: '2px',
+                      backgroundColor: theme.colors.primary,
+                      zIndex: 1,
+                    }} />
+                  )}
                 </div>
-              ))
+              );
+              })
             )}
           </div>
         </div>
@@ -1644,6 +1820,35 @@ function ToggleOffIcon() {
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="1" y="5" width="22" height="14" rx="7" ry="7" />
       <circle cx="8" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function DragHandleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="9" cy="6" r="1.5" />
+      <circle cx="15" cy="6" r="1.5" />
+      <circle cx="9" cy="12" r="1.5" />
+      <circle cx="15" cy="12" r="1.5" />
+      <circle cx="9" cy="18" r="1.5" />
+      <circle cx="15" cy="18" r="1.5" />
+    </svg>
+  );
+}
+
+function ChevronUpIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="18 15 12 9 6 15" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="6 9 12 15 18 9" />
     </svg>
   );
 }

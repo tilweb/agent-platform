@@ -20,6 +20,7 @@ export interface AppConfig {
 
 export interface AppsRegistry {
   apps: Record<string, AppConfig>;
+  appOrder?: string[];
 }
 
 export interface AppInfo {

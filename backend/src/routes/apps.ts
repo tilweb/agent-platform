@@ -10,10 +10,11 @@ import {
   getApp,
   enableApp,
   disableApp,
+  reorderApps,
 } from '../apps/registry';
 import { contractRoutes } from '../apps/vertragsmanagement/routes';
 import { projektmanagementRoutes } from '../apps/projektmanagement/routes';
-import { authMiddleware } from '../auth';
+import { authMiddleware, getCurrentUser } from '../auth';
 import { internalError } from '../utils/errorHandler';
 
 const apps = new Hono();
@@ -48,6 +49,31 @@ apps.get('/enabled', async (c) => {
     return c.json({ apps: enabledApps });
   } catch (error) {
     console.error('Error listing enabled apps:', error);
+    return internalError(c, error);
+  }
+});
+
+/**
+ * PUT /api/apps/order
+ * Reorder apps (admin only)
+ */
+apps.put('/order', async (c) => {
+  try {
+    const user = getCurrentUser(c);
+    if (!user || user.role !== 'admin') {
+      return c.json({ error: 'Admin-Rechte erforderlich' }, 403);
+    }
+
+    const { appIds } = await c.req.json<{ appIds: string[] }>();
+
+    if (!Array.isArray(appIds)) {
+      return c.json({ error: 'appIds must be an array' }, 400);
+    }
+
+    const sortedApps = await reorderApps(appIds);
+    return c.json({ apps: sortedApps });
+  } catch (error) {
+    console.error('Error reordering apps:', error);
     return internalError(c, error);
   }
 });
