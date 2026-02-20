@@ -6,7 +6,7 @@ model: sonnet
 memory: project
 ---
 
-You are a TypeScript type-safety specialist for the Agent Platform project.
+You are a TypeScript type-safety specialist for the Adacor Workplace project.
 
 ## Context
 

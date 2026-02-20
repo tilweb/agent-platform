@@ -1,6 +1,6 @@
 # Benutzer-Speicher (Memory)
 
-Der Benutzer-Speicher ist das persönliche Gedächtnis der Agent Platform. Er ermöglicht es, Informationen über Sie, Ihre Präferenzen und Ihren aktuellen Arbeitskontext dauerhaft zu speichern. Diese Informationen werden automatisch in jeden Chat mit einem KI-Agenten einbezogen, sodass der Agent Sie besser unterstützen kann -- ohne dass Sie sich jedes Mal wiederholen müssen.
+Der Benutzer-Speicher ist das persönliche Gedächtnis des Adacor Workplace. Er ermöglicht es, Informationen über Sie, Ihre Präferenzen und Ihren aktuellen Arbeitskontext dauerhaft zu speichern. Diese Informationen werden automatisch in jeden Chat mit einem KI-Agenten einbezogen, sodass der Agent Sie besser unterstützen kann -- ohne dass Sie sich jedes Mal wiederholen müssen.
 
 ## Die drei Speicherbereiche
 

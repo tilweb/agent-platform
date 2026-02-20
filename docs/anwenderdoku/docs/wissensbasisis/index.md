@@ -1,6 +1,6 @@
 # Knowledge Base
 
-Die Knowledge Base ist das zentrale Wissensmanagement-System der Agent Platform. Sie ermöglicht es, Dokumente zu importieren, automatisch zu indexieren und den KI-Agenten als Wissensquelle bereitzustellen. Durch den RAG-Ansatz (Retrieval-Augmented Generation) können Agenten gezielt auf Ihre Unternehmensdokumente zugreifen und präzise, fundierte Antworten liefern.
+Die Knowledge Base ist das zentrale Wissensmanagement-System des Adacor Workplace. Sie ermöglicht es, Dokumente zu importieren, automatisch zu indexieren und den KI-Agenten als Wissensquelle bereitzustellen. Durch den RAG-Ansatz (Retrieval-Augmented Generation) können Agenten gezielt auf Ihre Unternehmensdokumente zugreifen und präzise, fundierte Antworten liefern.
 
 ## Was ist die Knowledge Base?
 

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: adacor-workplace
+description: Multi-user AI workplace with React frontend and Bun+Hono backend
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

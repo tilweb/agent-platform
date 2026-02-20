@@ -7,7 +7,7 @@ model: haiku
 memory: project
 ---
 
-You are a dead code analyst for the Agent Platform.
+You are a dead code analyst for the Adacor Workplace.
 
 ## Context
 

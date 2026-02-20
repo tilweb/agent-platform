@@ -1,6 +1,6 @@
 # System-Agenten
 
-Die Agent Platform wird mit einer Reihe vorkonfigurierter System-Agenten ausgeliefert. Diese decken die wichtigsten Anwendungsfälle ab und können nicht bearbeitet oder gelöscht werden. Jeder System-Agent ist auf einen bestimmten Aufgabenbereich spezialisiert.
+Der Adacor Workplace wird mit einer Reihe vorkonfigurierter System-Agenten ausgeliefert. Diese decken die wichtigsten Anwendungsfälle ab und können nicht bearbeitet oder gelöscht werden. Jeder System-Agent ist auf einen bestimmten Aufgabenbereich spezialisiert.
 
 ---
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
- * Agent Platform MCP Server
+ * Adacor Workplace MCP Server
  *
- * Exposes the Agent Platform's tools via the Model Context Protocol.
+ * Exposes the Adacor Workplace tools via the Model Context Protocol.
  * Can be used as an MCP server for Claude Desktop, Cursor, and other MCP clients.
  *
  * Usage:
@@ -11,7 +11,7 @@
  * In Claude Desktop config:
  *   {
  *     "mcpServers": {
- *       "agent-platform": {
+ *       "adacor-workplace": {
  *         "command": "bun",
  *         "args": ["run", "/path/to/backend/src/mcp/server/index.ts"]
  *       }
@@ -27,7 +27,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { toolRegistry, setupTools } from '../../tools';
 
-const SERVER_NAME = 'agent-platform';
+const SERVER_NAME = 'adacor-workplace';
 const SERVER_VERSION = '1.0.0';
 
 /**

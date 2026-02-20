@@ -1,6 +1,6 @@
 # Berechtigungen & RBAC
 
-Die Agent Platform verwendet ein rollenbasiertes Zugriffskontrollsystem (Role-Based Access Control, RBAC) auf zwei Ebenen: globale Rollen und ressourcenbasierte Rollen.
+Der Adacor Workplace verwendet ein rollenbasiertes Zugriffskontrollsystem (Role-Based Access Control, RBAC) auf zwei Ebenen: globale Rollen und ressourcenbasierte Rollen.
 
 ---
 

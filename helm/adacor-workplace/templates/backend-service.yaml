@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "adacor-workplace.backend.fullname" . }}
+  labels:
+    {{- include "adacor-workplace.backend.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3001
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "adacor-workplace.backend.selectorLabels" . | nindent 4 }}

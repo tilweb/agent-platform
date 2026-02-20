@@ -1,6 +1,6 @@
 # Chat exportieren
 
-Agent Platform ermöglicht es Ihnen, Konversationen in verschiedenen Dokumentformaten zu exportieren. So können Sie Chat-Ergebnisse archivieren, weiterverarbeiten oder mit Kollegen teilen.
+Der Adacor Workplace ermöglicht es Ihnen, Konversationen in verschiedenen Dokumentformaten zu exportieren. So können Sie Chat-Ergebnisse archivieren, weiterverarbeiten oder mit Kollegen teilen.
 
 ---
 

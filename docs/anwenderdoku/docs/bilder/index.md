@@ -1,6 +1,6 @@
 # Bildgenerierung
 
-Die Agent Platform verfügt über eine integrierte Bildgenerierung, mit der Sie KI-generierte Bilder direkt auf der Plattform erstellen können. Beschreiben Sie, was Sie sehen möchten, und die KI erzeugt passende Bilder für Sie.
+Der Adacor Workplace verfügt über eine integrierte Bildgenerierung, mit der Sie KI-generierte Bilder direkt auf der Plattform erstellen können. Beschreiben Sie, was Sie sehen möchten, und die KI erzeugt passende Bilder für Sie.
 
 ## Text-zu-Bild
 

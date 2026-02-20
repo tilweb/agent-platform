@@ -3,7 +3,7 @@
 > [!warning] Administratorbereich
 > Das Audit Log ist nur für Benutzer mit der Rolle **Admin** sichtbar und zugänglich.
 
-Das Audit Log protokolliert alle sicherheitsrelevanten Aktionen innerhalb der Agent Platform. Es dient der Nachvollziehbarkeit, Compliance und der Untersuchung von Sicherheitsvorfällen.
+Das Audit Log protokolliert alle sicherheitsrelevanten Aktionen innerhalb des Adacor Workplace. Es dient der Nachvollziehbarkeit, Compliance und der Untersuchung von Sicherheitsvorfällen.
 
 ---
 

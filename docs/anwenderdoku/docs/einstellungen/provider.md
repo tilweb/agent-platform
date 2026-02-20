@@ -3,13 +3,13 @@
 > [!warning] Administratorbereich
 > Die Provider-Verwaltung ist nur für Benutzer mit der Rolle **Admin** sichtbar und zugänglich.
 
-Provider sind die Schnittstellen zu KI-Diensten, die der Agent Platform ihre Intelligenz verleihen. Jeder Provider stellt ein oder mehrere Modelle mit unterschiedlichen Fähigkeiten bereit.
+Provider sind die Schnittstellen zu KI-Diensten, die dem Adacor Workplace seine Intelligenz verleihen. Jeder Provider stellt ein oder mehrere Modelle mit unterschiedlichen Fähigkeiten bereit.
 
 ---
 
 ## Was sind Provider?
 
-Ein Provider ist ein externer KI-Dienst (z.B. Adacor AI, OpenAI, Anthropic), der über eine API angebunden wird. Jeder Provider bietet verschiedene Modelle an, die für unterschiedliche Aufgaben optimiert sind. Die Agent Platform unterstützt die gleichzeitige Anbindung mehrerer Provider.
+Ein Provider ist ein externer KI-Dienst (z.B. Adacor AI, OpenAI, Anthropic), der über eine API angebunden wird. Jeder Provider bietet verschiedene Modelle an, die für unterschiedliche Aufgaben optimiert sind. Der Adacor Workplace unterstützt die gleichzeitige Anbindung mehrerer Provider.
 
 ---
 

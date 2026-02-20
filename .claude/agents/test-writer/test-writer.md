@@ -6,7 +6,7 @@ model: sonnet
 memory: project
 ---
 
-You are a test engineer for the Agent Platform backend.
+You are a test engineer for the Adacor Workplace backend.
 
 ## Context
 

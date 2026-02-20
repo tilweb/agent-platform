@@ -62,7 +62,7 @@
   ```
 
 ### C4. Helm ConfigMap: `PORT` statt `BACKEND_PORT`
-- **Datei:** `helm/agent-platform/templates/configmap.yaml:9`
+- **Datei:** `helm/adacor-workplace/templates/configmap.yaml:9`
 - **Status:** [x] Gefixt
 - **Issue:** Backend liest `process.env.BACKEND_PORT`, aber die ConfigMap setzt `PORT`. Port-Konfiguration wird in Kubernetes ignoriert, Backend faellt auf Default 3001 zurueck.
 - **Fix:** Key in ConfigMap von `PORT` zu `BACKEND_PORT` aendern.
@@ -120,13 +120,13 @@
 - **Fix:** `validationErrors` State + Pruefung aller required Fields vor `onSave()`, Fehlermeldung unter jedem Feld.
 
 ### H8. Helm: MCP Runner Secret `optional: true`
-- **Datei:** `helm/agent-platform/templates/mcp-runner-deployment.yaml:47`
+- **Datei:** `helm/adacor-workplace/templates/mcp-runner-deployment.yaml:47`
 - **Status:** [x] Gefixt
 - **Issue:** Ohne Secret startet der Runner unauthentifiziert. Jeder Pod im Cluster kann die Runner-API aufrufen.
 - **Fix:** `optional: false` gesetzt.
 
 ### H9. Helm: MCP Runner ohne `readOnlyRootFilesystem`
-- **Datei:** `helm/agent-platform/templates/mcp-runner-deployment.yaml:65-69`
+- **Datei:** `helm/adacor-workplace/templates/mcp-runner-deployment.yaml:65-69`
 - **Status:** [x] Gefixt
 - **Issue:** Backend und Frontend haben `readOnlyRootFilesystem: true`, der Runner (der Drittanbieter-Code ausfuehrt) nicht.
 - **Fix:** `readOnlyRootFilesystem: true` hinzugefuegt (emptyDir fuer /tmp und npm-cache bereits vorhanden).

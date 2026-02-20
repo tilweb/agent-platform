@@ -1,7 +1,7 @@
 /**
  * MCP Integration Module
  *
- * Provides MCP (Model Context Protocol) integration for the Agent Platform.
+ * Provides MCP (Model Context Protocol) integration for the Adacor Workplace.
  *
  * Two modes:
  *
@@ -13,7 +13,7 @@
  *    ```
  *
  * 2. MCP Server Mode:
- *    Expose Agent Platform tools to external MCP clients
+ *    Expose Adacor Workplace tools to external MCP clients
  *    ```bash
  *    bun run src/mcp/server/index.ts
  *    ```

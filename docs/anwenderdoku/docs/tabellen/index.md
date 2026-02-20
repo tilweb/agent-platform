@@ -1,10 +1,10 @@
 # Tabellen
 
-Die Tabellen-Funktion der Agent Platform ermöglicht es, strukturierte Daten zentral zu speichern, zu verwalten und für KI-Agenten zugänglich zu machen. Im Gegensatz zur Knowledge Base, die unstrukturierte Dokumente verwaltet, arbeiten Tabellen mit klar definierten Spalten, Datentypen und Beziehungen -- ähnlich einer Datenbank oder einem Spreadsheet.
+Die Tabellen-Funktion des Adacor Workplace ermöglicht es, strukturierte Daten zentral zu speichern, zu verwalten und für KI-Agenten zugänglich zu machen. Im Gegensatz zur Knowledge Base, die unstrukturierte Dokumente verwaltet, arbeiten Tabellen mit klar definierten Spalten, Datentypen und Beziehungen -- ähnlich einer Datenbank oder einem Spreadsheet.
 
 ## Was sind Tabellen?
 
-Tabellen in der Agent Platform sind strukturierte Datenspeicher, die:
+Tabellen im Adacor Workplace sind strukturierte Datenspeicher, die:
 
 - **Benutzerdefinierte Spalten** mit verschiedenen Datentypen unterstützen
 - **Von KI-Agenten gelesen und bearbeitet** werden können
@@ -28,7 +28,7 @@ Tabellen in der Agent Platform sind strukturierte Datenspeicher, die:
 6. Klicken Sie auf **Erstellen**
 
 > [!tip] Vorlagen verwenden
-> Die Agent Platform stellt vordefinierte Tabellenvorlagen bereit. Klicken Sie auf **Vorlage verwenden**, um eine passende Struktur als Ausgangspunkt zu wählen.
+> Der Adacor Workplace stellt vordefinierte Tabellenvorlagen bereit. Klicken Sie auf **Vorlage verwenden**, um eine passende Struktur als Ausgangspunkt zu wählen.
 
 ## Spaltentypen
 

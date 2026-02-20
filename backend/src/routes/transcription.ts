@@ -23,7 +23,7 @@ const MAX_AUDIO_SIZE = 25 * 1024 * 1024; // 25 MB
 const MAX_AUDIO_SIZE_MB = 25;
 
 // Temp directory for audio conversion
-const TEMP_DIR = '/tmp/agent-platform-audio';
+const TEMP_DIR = '/tmp/adacor-workplace-audio';
 
 // Formats that need conversion (not natively supported by all Whisper implementations)
 const FORMATS_NEEDING_CONVERSION = ['audio/webm', 'video/webm', 'audio/ogg', 'video/ogg', 'audio/mp4', 'audio/x-m4a', 'audio/m4a'];

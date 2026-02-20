@@ -3,7 +3,7 @@ type: connector
 name: Atlassian Confluence
 description: "Confluence-Seiten durchsuchen und lesen"
 version: "1.0.0"
-author: "Agent Platform"
+author: "Adacor Workplace"
 
 configSchema:
   - key: clientId
@@ -26,7 +26,7 @@ setupGuide: |
   2. Klicke "Create" → "OAuth 2.0 integration"
 
   ### 2. App konfigurieren
-  1. Name: z.B. "Agent Platform"
+  1. Name: z.B. "Adacor Workplace"
   2. Gehe zu "Permissions" und füge hinzu:
      - Confluence API: `read:confluence-content.all`, `read:confluence-space.summary`, `search:confluence`
   3. Gehe zu "Authorization" → "Add" → "OAuth 2.0 (3LO)"

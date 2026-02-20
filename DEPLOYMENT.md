@@ -1,6 +1,6 @@
-# Agent Platform - Deployment Guide
+# Adacor Workplace - Deployment Guide
 
-Dieses Dokument beschreibt die Installation und den Betrieb der Agent Platform in einer Produktionsumgebung.
+Dieses Dokument beschreibt die Installation und den Betrieb des Adacor Workplace in einer Produktionsumgebung.
 
 ## Inhaltsverzeichnis
 
@@ -209,19 +209,19 @@ bun run src/index.ts
 
 ### Systemd Service (Linux)
 
-Erstelle `/etc/systemd/system/agent-platform-backend.service`:
+Erstelle `/etc/systemd/system/adacor-workplace-backend.service`:
 
 ```ini
 [Unit]
-Description=Agent Platform Backend
+Description=Adacor Workplace Backend
 After=network.target
 
 [Service]
 Type=simple
-User=agent-platform
-WorkingDirectory=/opt/agent-platform/backend
-Environment=PATH=/home/agent-platform/.bun/bin:/usr/local/bin:/usr/bin
-ExecStart=/home/agent-platform/.bun/bin/bun run src/index.ts
+User=adacor-workplace
+WorkingDirectory=/opt/adacor-workplace/backend
+Environment=PATH=/home/adacor-workplace/.bun/bin:/usr/local/bin:/usr/bin
+ExecStart=/home/adacor-workplace/.bun/bin/bun run src/index.ts
 Restart=on-failure
 RestartSec=10
 
@@ -229,7 +229,7 @@ RestartSec=10
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/opt/agent-platform/data
+ReadWritePaths=/opt/adacor-workplace/data
 
 [Install]
 WantedBy=multi-user.target
@@ -238,8 +238,8 @@ WantedBy=multi-user.target
 ```bash
 # Service aktivieren
 sudo systemctl daemon-reload
-sudo systemctl enable agent-platform-backend
-sudo systemctl start agent-platform-backend
+sudo systemctl enable adacor-workplace-backend
+sudo systemctl start adacor-workplace-backend
 ```
 
 ---
@@ -268,7 +268,7 @@ Der Build wird in `frontend/dist/` erstellt.
 
 ```bash
 # Build-Dateien kopieren
-cp -r frontend/dist/* /var/www/agent-platform/
+cp -r frontend/dist/* /var/www/adacor-workplace/
 ```
 
 #### Option B: Docker / Kubernetes
@@ -360,16 +360,16 @@ Beispiel: `TRUST_PROXY=true` ist im Container immer nötig (nginx-Proxy davor).
 
 ```bash
 # Minimale Installation
-helm install agent-platform ./helm/agent-platform \
-  --namespace agent-platform --create-namespace \
+helm install adacor-workplace ./helm/adacor-workplace \
+  --namespace adacor-workplace --create-namespace \
   --set ingress.host=agent.example.com \
   --set backend.secret.data.ADACOR_AI_API_KEY=your-key \
   --set backend.secret.data.CONNECTION_ENCRYPTION_KEY=$(openssl rand -hex 32)
 
 # Oder mit eigener values-Datei
-helm install agent-platform ./helm/agent-platform \
+helm install adacor-workplace ./helm/adacor-workplace \
   -f my-values.yaml \
-  --namespace agent-platform --create-namespace
+  --namespace adacor-workplace --create-namespace
 ```
 
 ### Architektur
@@ -394,12 +394,12 @@ Die wichtigsten Werte:
 # Container-Registry
 backend:
   image:
-    repository: ghcr.io/OWNER/agent-platform-backend
+    repository: ghcr.io/OWNER/adacor-workplace-backend
     tag: "0.1.0"
 
 frontend:
   image:
-    repository: ghcr.io/OWNER/agent-platform-frontend
+    repository: ghcr.io/OWNER/adacor-workplace-frontend
     tag: "0.1.0"
 
 # Ingress
@@ -408,7 +408,7 @@ ingress:
   className: nginx
   host: agent.example.com
   tls:
-    - secretName: agent-platform-tls
+    - secretName: adacor-workplace-tls
       hosts:
         - agent.example.com
 
@@ -439,7 +439,7 @@ persistence:
 mcpRunner:
   enabled: false            # Aktivieren für isolierte MCP-Server
   image:
-    repository: ghcr.io/OWNER/agent-platform-mcp-runner
+    repository: ghcr.io/OWNER/adacor-workplace-mcp-runner
     tag: "0.1.0"
 ```
 
@@ -451,7 +451,7 @@ Für produktive Umgebungen empfohlen: Secrets nicht in `values.yaml`, sondern ü
 backend:
   secret:
     create: false
-    existingSecret: "agent-platform-external-secret"
+    existingSecret: "adacor-workplace-external-secret"
 ```
 
 ### Container-Sicherheit
@@ -586,10 +586,10 @@ Das Backend loggt nach stdout. Empfohlen: Weiterleitung an Log-Aggregator.
 
 ```bash
 # Systemd Journal
-journalctl -u agent-platform-backend -f
+journalctl -u adacor-workplace-backend -f
 
 # Oder: Logfile
-bun run src/index.ts 2>&1 | tee /var/log/agent-platform/backend.log
+bun run src/index.ts 2>&1 | tee /var/log/adacor-workplace/backend.log
 ```
 
 ---
@@ -607,7 +607,7 @@ bun run src/index.ts 2>&1 | tee /var/log/agent-platform/backend.log
 
 ```bash
 #!/bin/bash
-BACKUP_DIR=/backups/agent-platform
+BACKUP_DIR=/backups/adacor-workplace
 DATE=$(date +%Y%m%d_%H%M%S)
 
 # Daten-Backup
@@ -624,10 +624,10 @@ find $BACKUP_DIR -mtime +30 -delete
 
 ```bash
 # Daten wiederherstellen
-tar -xzf /backups/agent-platform/data_YYYYMMDD_HHMMSS.tar.gz
+tar -xzf /backups/adacor-workplace/data_YYYYMMDD_HHMMSS.tar.gz
 
 # Backend neu starten
-systemctl restart agent-platform-backend
+systemctl restart adacor-workplace-backend
 ```
 
 ---
@@ -640,7 +640,7 @@ systemctl restart agent-platform-backend
 
 ```bash
 # Logs prüfen
-journalctl -u agent-platform-backend -n 100
+journalctl -u adacor-workplace-backend -n 100
 
 # Typische Ursachen:
 # - Port bereits belegt: lsof -i :3001
@@ -677,7 +677,7 @@ curl https://api.example.com/api/providers
 rm -rf data/auth/sessions/*
 
 # Backend neu starten
-systemctl restart agent-platform-backend
+systemctl restart adacor-workplace-backend
 ```
 
 #### Tasks bleiben "stuck"
@@ -688,7 +688,7 @@ curl -X POST https://api.example.com/api/tasks/recover
 
 # Oder: Queue manuell zurücksetzen
 rm data/tasks/queue.yaml
-systemctl restart agent-platform-backend
+systemctl restart adacor-workplace-backend
 ```
 
 ### Debug-Modus
@@ -706,7 +706,7 @@ DEBUG=* bun run src/index.ts
 ### Beispiel-Konfiguration
 
 ```nginx
-# /etc/nginx/sites-available/agent-platform
+# /etc/nginx/sites-available/adacor-workplace
 
 # Backend API
 upstream backend {
@@ -757,7 +757,7 @@ server {
     ssl_certificate /etc/letsencrypt/live/app.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/app.example.com/privkey.pem;
 
-    root /var/www/agent-platform;
+    root /var/www/adacor-workplace;
     index index.html;
 
     # SPA: Alle Routes zu index.html

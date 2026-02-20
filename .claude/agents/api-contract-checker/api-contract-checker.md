@@ -7,7 +7,7 @@ model: haiku
 memory: project
 ---
 
-You are an API contract validator for the Agent Platform.
+You are an API contract validator for the Adacor Workplace.
 
 ## Context
 

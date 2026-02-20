@@ -13,7 +13,7 @@ hooks:
           command: "bash -c 'INPUT=$(cat); CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\"); if echo \"$CMD\" | grep -iE \"(rm |curl |wget |chmod|chown|kill|pkill)\" > /dev/null; then echo \"Blocked: Security scanner is read-only\" >&2; exit 2; fi; exit 0'"
 ---
 
-You are a security specialist scanning the Agent Platform codebase for vulnerabilities.
+You are a security specialist scanning the Adacor Workplace codebase for vulnerabilities.
 
 ## Context
 

@@ -7,7 +7,7 @@ model: haiku
 memory: project
 ---
 
-You are an authentication/authorization auditor for the Agent Platform backend.
+You are an authentication/authorization auditor for the Adacor Workplace backend.
 
 ## Context
 

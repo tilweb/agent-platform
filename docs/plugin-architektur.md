@@ -1,13 +1,13 @@
 # Plugin-Architektur
 
-> Technische Dokumentation des Plugin-Systems der Agent Platform.
+> Technische Dokumentation des Plugin-Systems des Adacor Workplace.
 > Stand: Februar 2026
 
 ---
 
 ## Überblick
 
-Das Plugin-System ermöglicht die modulare Erweiterung der Agent Platform um externe Dienste (Connectors), ohne den Plattform-Kern zu ändern. Plugins leben als eigenständige Pakete unter `data/plugins/` und werden beim Serverstart dynamisch geladen.
+Das Plugin-System ermöglicht die modulare Erweiterung des Adacor Workplace um externe Dienste (Connectors), ohne den Plattform-Kern zu ändern. Plugins leben als eigenständige Pakete unter `data/plugins/` und werden beim Serverstart dynamisch geladen.
 
 ### Design-Prinzipien
 
@@ -104,7 +104,7 @@ type: connector                         # Plugin-Typ: connector | agent | skill 
 name: Atlassian Confluence              # Anzeigename
 description: "Confluence-Seiten durchsuchen und lesen"
 version: "1.0.0"
-author: "Agent Platform"
+author: "Adacor Workplace"
 
 configSchema:                           # Felder für die Admin-UI
   - key: clientId

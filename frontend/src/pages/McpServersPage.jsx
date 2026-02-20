@@ -878,7 +878,7 @@ function AboutMcpDocs() {
           <div>
             <strong style={{ color: theme.colors.text }}>Verbinden klicken</strong>
             <p style={{ ...styles.docsParagraph, marginBottom: 0, marginTop: theme.spacing.xs }}>
-              Die Agent Platform führt den konfigurierten Befehl aus (z.B. <code>npx -y @modelcontextprotocol/server-github</code>)
+              Der Adacor Workplace führt den konfigurierten Befehl aus (z.B. <code>npx -y @modelcontextprotocol/server-github</code>)
             </p>
           </div>
 
@@ -916,7 +916,7 @@ function AboutMcpDocs() {
           <div>
             <strong style={{ color: theme.colors.text }}>Lokaler Prozess</strong>
             <p style={{ ...styles.docsParagraph, marginBottom: 0, marginTop: theme.spacing.xs }}>
-              Der MCP Server startet als Child-Prozess der Agent Platform auf deinem lokalen Rechner
+              Der MCP Server startet als Child-Prozess des Adacor Workplace auf deinem lokalen Rechner
             </p>
           </div>
 
@@ -935,7 +935,7 @@ function AboutMcpDocs() {
           <div>
             <strong style={{ color: theme.colors.text }}>Kommunikation via stdin/stdout</strong>
             <p style={{ ...styles.docsParagraph, marginBottom: 0, marginTop: theme.spacing.xs }}>
-              Agent Platform und MCP Server kommunizieren über JSON-RPC Nachrichten
+              Adacor Workplace und MCP Server kommunizieren über JSON-RPC Nachrichten
             </p>
           </div>
         </div>
@@ -1029,7 +1029,7 @@ function ClientModeDocs() {
           Externe MCP Server einbinden
         </h3>
         <p style={styles.docsParagraph}>
-          Die Agent Platform kann externe MCP Server als Tool-Quellen nutzen. Alle Tools
+          Der Adacor Workplace kann externe MCP Server als Tool-Quellen nutzen. Alle Tools
           eines verbundenen MCP Servers werden automatisch in der Tool Registry registriert
           und stehen den Agenten zur Verfügung.
         </p>
@@ -1072,7 +1072,7 @@ Umgebungsvariablen:
 
         <div style={styles.docsWarning}>
           <strong>Wichtig:</strong> Umgebungsvariablen wie <code>$&#123;GITHUB_TOKEN&#125;</code> werden
-          aus den System-Umgebungsvariablen ersetzt. Setze diese vor dem Start der Agent Platform:
+          aus den System-Umgebungsvariablen ersetzt. Setze diese vor dem Start des Adacor Workplace:
           <pre style={{ marginTop: theme.spacing.sm, fontFamily: theme.typography.fontMono, fontSize: theme.typography.sizes.xs }}>
             export GITHUB_TOKEN=ghp_xxxxxxxxxxxx
           </pre>
@@ -1099,11 +1099,11 @@ Umgebungsvariablen:
 function ServerModeDocs() {
   const claudeConfig = `{
   "mcpServers": {
-    "agent-platform": {
+    "adacor-workplace": {
       "command": "bun",
       "args": [
         "run",
-        "/pfad/zu/agent-platform/backend/src/mcp/server/index.ts"
+        "/pfad/zu/adacor-workplace/backend/src/mcp/server/index.ts"
       ]
     }
   }
@@ -1111,17 +1111,17 @@ function ServerModeDocs() {
 
   const cursorConfig = `{
   "mcpServers": {
-    "agent-platform": {
+    "adacor-workplace": {
       "command": "bun",
       "args": [
         "run",
-        "/pfad/zu/agent-platform/backend/src/mcp/server/index.ts"
+        "/pfad/zu/adacor-workplace/backend/src/mcp/server/index.ts"
       ]
     }
   }
 }`;
 
-  const npmStart = `cd /pfad/zu/agent-platform/backend
+  const npmStart = `cd /pfad/zu/adacor-workplace/backend
 npm run mcp-server`;
 
   return (
@@ -1129,10 +1129,10 @@ npm run mcp-server`;
       <div style={styles.docsBlock}>
         <h3 style={styles.docsBlockTitle}>
           <span style={styles.docsBlockNumber}>1</span>
-          Agent Platform als MCP Server
+          Der Adacor Workplace als MCP Server
         </h3>
         <p style={styles.docsParagraph}>
-          Die Agent Platform kann selbst als MCP Server fungieren und ihre Tools externen
+          Der Adacor Workplace kann selbst als MCP Server fungieren und seine Tools externen
           Anwendungen wie Claude Desktop, Cursor IDE oder anderen MCP-kompatiblen Clients
           zur Verfügung stellen.
         </p>
@@ -1169,7 +1169,7 @@ npm run mcp-server`;
         />
 
         <p style={styles.docsParagraph}>
-          Starte Claude Desktop neu, um die Änderungen zu übernehmen. Die Agent Platform Tools
+          Starte Claude Desktop neu, um die Änderungen zu übernehmen. Die Adacor Workplace-Tools
           erscheinen dann im Tool-Menü.
         </p>
       </div>
@@ -1224,7 +1224,7 @@ npm run mcp-server`;
         <div style={styles.docsWarning}>
           <strong>Beachte:</strong>
           <ul style={{ margin: `${theme.spacing.sm} 0 0 ${theme.spacing.lg}`, paddingLeft: 0 }}>
-            <li>Der MCP Server hat Zugriff auf das Data-Verzeichnis der Agent Platform</li>
+            <li>Der MCP Server hat Zugriff auf das Data-Verzeichnis des Adacor Workplace</li>
             <li>Das <code>delegate_to_agent</code> Tool kann Aufgaben an Agenten delegieren</li>
             <li>Stelle sicher, dass nur vertrauenswürdige Anwendungen den MCP Server nutzen</li>
             <li>Führe den Server nicht mit erhöhten Rechten aus</li>

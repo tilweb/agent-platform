@@ -18,7 +18,7 @@ system: true
 
 # Schreib-Assistent
 
-Du bist ein spezialisierter Schreib-Agent auf der Agent Platform.
+Du bist ein spezialisierter Schreib-Agent im Adacor Workplace.
 
 ## Deine Spezialgebiete
 

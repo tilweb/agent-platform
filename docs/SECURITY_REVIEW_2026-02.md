@@ -1,4 +1,4 @@
-# Security Review: Agent Platform
+# Security Review: Adacor Workplace
 **Datum:** Februar 2026
 **Status:** Analyse abgeschlossen, Umsetzung ausstehend
 

@@ -1,6 +1,6 @@
 # Suche
 
-Die Suchfunktion der Agent Platform bietet eine zentrale, quellenübergreifende Suche. Mit einer einzigen Anfrage durchsuchen Sie gleichzeitig Ihre Chats, die Knowledge Base und -- sofern verbunden -- auch externe Quellen wie Confluence und Google Drive.
+Die Suchfunktion des Adacor Workplace bietet eine zentrale, quellenübergreifende Suche. Mit einer einzigen Anfrage durchsuchen Sie gleichzeitig Ihre Chats, die Knowledge Base und -- sofern verbunden -- auch externe Quellen wie Confluence und Google Drive.
 
 ## So funktioniert die Suche
 
@@ -50,7 +50,7 @@ Ergebnisse, die durch die intelligente Suche (KI-gestütztes Ranking) gefunden w
 
 ## Intelligente Suche
 
-Neben der schnellen Stichwortsuche verfügt die Agent Platform über eine **intelligente Suche**. Diese nutzt ein KI-Modell, um:
+Neben der schnellen Stichwortsuche verfügt der Adacor Workplace über eine **intelligente Suche**. Diese nutzt ein KI-Modell, um:
 
 - **Synonyme** zu erkennen (z.B. "Urlaub" findet auch "Abwesenheit")
 - **Kontext** zu verstehen (z.B. "Wie beantrage ich frei?" findet Urlaubsrichtlinien)

@@ -1,6 +1,6 @@
 # Audio-Transkription
 
-Agent Platform kann Audiodateien in Text umwandeln (Speech-to-Text). Die Transkription wird über eine Whisper-API durchgeführt und steht im Chat als Funktion zur Verfügung.
+Der Adacor Workplace kann Audiodateien in Text umwandeln (Speech-to-Text). Die Transkription wird über eine Whisper-API durchgeführt und steht im Chat als Funktion zur Verfügung.
 
 ---
 

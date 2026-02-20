@@ -2,23 +2,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "agent-platform.mcpRunner.fullname" . }}
+  name: {{ include "adacor-workplace.mcpRunner.fullname" . }}
   labels:
-    {{- include "agent-platform.mcpRunner.labels" . | nindent 4 }}
+    {{- include "adacor-workplace.mcpRunner.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.mcpRunner.replicaCount }}
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "agent-platform.mcpRunner.selectorLabels" . | nindent 6 }}
+      {{- include "adacor-workplace.mcpRunner.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
       labels:
-        {{- include "agent-platform.mcpRunner.labels" . | nindent 8 }}
+        {{- include "adacor-workplace.mcpRunner.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -30,7 +30,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: mcp-runner
-          image: {{ include "agent-platform.mcpRunner.image" . }}
+          image: {{ include "adacor-workplace.mcpRunner.image" . }}
           imagePullPolicy: {{ .Values.mcpRunner.image.pullPolicy }}
           ports:
             - name: http
@@ -42,7 +42,7 @@ spec:
             - name: MCP_RUNNER_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "agent-platform.secretName" . }}
+                  name: {{ include "adacor-workplace.secretName" . }}
                   key: MCP_RUNNER_SECRET
                   optional: false
           livenessProbe:

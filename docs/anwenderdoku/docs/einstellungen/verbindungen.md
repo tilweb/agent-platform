@@ -27,7 +27,7 @@ Die Anbindung externer Dienste erfolgt über den standardisierten OAuth-2.0-Abla
 5. Der Verbindungsstatus aktualisiert sich in der Übersicht.
 
 > [!info] Popup-Blocker
-> Stellen Sie sicher, dass Ihr Browser Popups für die Agent Platform zulässt. Der OAuth-Ablauf öffnet ein separates Fenster für die Authentifizierung beim externen Dienst.
+> Stellen Sie sicher, dass Ihr Browser Popups für den Adacor Workplace zulässt. Der OAuth-Ablauf öffnet ein separates Fenster für die Authentifizierung beim externen Dienst.
 
 ---
 

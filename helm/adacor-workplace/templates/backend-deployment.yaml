@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "agent-platform.backend.fullname" . }}
+  name: {{ include "adacor-workplace.backend.fullname" . }}
   labels:
-    {{- include "agent-platform.backend.labels" . | nindent 4 }}
+    {{- include "adacor-workplace.backend.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.backend.replicaCount }}
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "agent-platform.backend.selectorLabels" . | nindent 6 }}
+      {{- include "adacor-workplace.backend.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
       labels:
-        {{- include "agent-platform.backend.labels" . | nindent 8 }}
+        {{- include "adacor-workplace.backend.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -29,7 +29,7 @@ spec:
         fsGroup: 1000
       initContainers:
         - name: init-data
-          image: {{ include "agent-platform.backend.image" . }}
+          image: {{ include "adacor-workplace.backend.image" . }}
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           command: ["sh", "-c"]
           args:
@@ -52,7 +52,7 @@ spec:
               drop: ["ALL"]
       containers:
         - name: backend
-          image: {{ include "agent-platform.backend.image" . }}
+          image: {{ include "adacor-workplace.backend.image" . }}
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           ports:
             - name: http
@@ -60,9 +60,9 @@ spec:
               protocol: TCP
           envFrom:
             - configMapRef:
-                name: {{ include "agent-platform.fullname" . }}
+                name: {{ include "adacor-workplace.fullname" . }}
             - secretRef:
-                name: {{ include "agent-platform.secretName" . }}
+                name: {{ include "adacor-workplace.secretName" . }}
           livenessProbe:
             httpGet:
               path: /health
@@ -95,7 +95,7 @@ spec:
         - name: data
           {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "agent-platform.fullname" . }}-data
+            claimName: {{ include "adacor-workplace.fullname" . }}-data
           {{- else }}
           emptyDir: {}
           {{- end }}

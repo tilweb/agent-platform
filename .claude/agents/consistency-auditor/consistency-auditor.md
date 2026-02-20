@@ -7,7 +7,7 @@ model: haiku
 memory: project
 ---
 
-You are a consistency auditor for the Agent Platform codebase.
+You are a consistency auditor for the Adacor Workplace codebase.
 
 ## Context
 

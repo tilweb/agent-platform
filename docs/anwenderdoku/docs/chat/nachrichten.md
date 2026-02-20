@@ -1,6 +1,6 @@
 # Nachrichten & Konversationen
 
-Der Chat ist der zentrale Arbeitsbereich in Agent Platform. Hier kommunizieren Sie mit KI-Agenten, stellen Fragen, lassen Texte erstellen und lösen komplexe Aufgaben.
+Der Chat ist der zentrale Arbeitsbereich im Adacor Workplace. Hier kommunizieren Sie mit KI-Agenten, stellen Fragen, lassen Texte erstellen und lösen komplexe Aufgaben.
 
 ---
 
@@ -60,7 +60,7 @@ Sie können:
 
 ## Streaming-Antworten
 
-Agent Platform zeigt die Antworten der KI in Echtzeit an (Streaming). Während der Agent arbeitet, sehen Sie verschiedene Status-Indikatoren:
+Der Adacor Workplace zeigt die Antworten der KI in Echtzeit an (Streaming). Während der Agent arbeitet, sehen Sie verschiedene Status-Indikatoren:
 
 | Status | Beschreibung |
 |--------|-------------|

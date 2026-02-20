@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "agent-platform.fullname" . }}
+  name: {{ include "adacor-workplace.fullname" . }}
   labels:
-    {{- include "agent-platform.labels" . | nindent 4 }}
+    {{- include "adacor-workplace.labels" . | nindent 4 }}
 data:
   # Server
   BACKEND_PORT: {{ .Values.backend.config.port | quote }}
@@ -42,5 +42,5 @@ data:
   SSRF_ALLOW_LOCALHOST: {{ .Values.backend.config.ssrfAllowLocalhost | quote }}
   # MCP Runner
   {{- if .Values.mcpRunner.enabled }}
-  MCP_RUNNER_URL: {{ printf "http://%s:3002" (include "agent-platform.mcpRunner.fullname" .) | quote }}
+  MCP_RUNNER_URL: {{ printf "http://%s:3002" (include "adacor-workplace.mcpRunner.fullname" .) | quote }}
   {{- end }}

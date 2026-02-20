@@ -1,6 +1,6 @@
 # Oberfläche im Überblick
 
-Die Agent Platform ist in drei Hauptbereiche unterteilt: die **Seitenleiste** (links), den **Hauptbereich** (Mitte) und das **Materialienpanel** (rechts, kontextabhängig).
+Der Adacor Workplace ist in drei Hauptbereiche unterteilt: die **Seitenleiste** (links), den **Hauptbereich** (Mitte) und das **Materialienpanel** (rechts, kontextabhängig).
 
 ---
 
@@ -83,7 +83,7 @@ In bestimmten Kontexten wird am rechten Bildschirmrand ein zusätzliches Panel a
 
 ## Design und Darstellung
 
-Agent Platform nutzt ein dunkles Farbschema mit den folgenden Merkmalen:
+Der Adacor Workplace nutzt ein dunkles Farbschema mit den folgenden Merkmalen:
 
 - **Dunkle Seitenleiste** mit heller Schrift für gute Lesbarkeit
 - **Heller Hauptbereich** (im Standard-Modus) für komfortables Arbeiten mit Texten

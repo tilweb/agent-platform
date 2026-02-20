@@ -1,6 +1,6 @@
 # Plugin SDK — Entwickler-Dokumentation
 
-> Anleitung zum Erstellen eigener Connector-Plugins für die Agent Platform.
+> Anleitung zum Erstellen eigener Connector-Plugins für den Adacor Workplace.
 > Stand: Februar 2026
 
 ---
@@ -603,7 +603,7 @@ type: connector
 name: "Atlassian Jira"
 description: "Jira Issues durchsuchen und lesen"
 version: "1.0.0"
-author: "Agent Platform"
+author: "Adacor Workplace"
 
 configSchema:
   - key: clientId

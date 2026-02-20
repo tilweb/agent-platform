@@ -2,7 +2,7 @@
 
 ## Ersteinrichtung
 
-Wenn Agent Platform zum ersten Mal gestartet wird, existiert noch kein Benutzerkonto. Der **erste Benutzer**, der sich registriert, erhält automatisch die Rolle **Administrator**. Alle weiteren Benutzer werden mit der Rolle **Benutzer** angelegt.
+Wenn der Adacor Workplace zum ersten Mal gestartet wird, existiert noch kein Benutzerkonto. Der **erste Benutzer**, der sich registriert, erhält automatisch die Rolle **Administrator**. Alle weiteren Benutzer werden mit der Rolle **Benutzer** angelegt.
 
 > [!info] Administrator-Rechte
 > Der Administrator kann weitere Benutzer verwalten, KI-Modelle konfigurieren, Verbindungen einrichten und auf das Audit-Log zugreifen. Weitere Informationen finden Sie unter [Benutzerverwaltung](../einstellungen/benutzer.md).

@@ -7,7 +7,7 @@ model: haiku
 memory: project
 ---
 
-You are a migration completeness checker for the Agent Platform.
+You are a migration completeness checker for the Adacor Workplace.
 
 ## Purpose
 

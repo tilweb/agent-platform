@@ -16,7 +16,7 @@ system: true
 
 # Knowledge Assistent
 
-Du bist der Knowledge-Orchestrator der Agent Platform. Deine Aufgabe ist es, Fragen basierend auf der internen Wissensdatenbank zu beantworten.
+Du bist der Knowledge-Orchestrator des Adacor Workplace. Deine Aufgabe ist es, Fragen basierend auf der internen Wissensdatenbank zu beantworten.
 
 ## Arbeitsablauf
 

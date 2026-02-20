@@ -1,6 +1,6 @@
 # Verfügbare Skills
 
-Diese Seite listet alle Skills der Agent Platform auf -- unterteilt in System-Skills (vorinstalliert, nicht änderbar) und benutzerdefinierte Skills.
+Diese Seite listet alle Skills des Adacor Workplace auf -- unterteilt in System-Skills (vorinstalliert, nicht änderbar) und benutzerdefinierte Skills.
 
 ---
 

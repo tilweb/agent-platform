@@ -1,4 +1,4 @@
-# Backend - Agent Platform
+# Backend - Adacor Workplace
 
 ## System-Anforderungen
 

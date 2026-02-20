@@ -3,7 +3,7 @@ type: connector
 name: Pipedrive CRM
 description: "Pipedrive Deals, Kontakte und Aktivitäten durchsuchen"
 version: "1.0.0"
-author: "Agent Platform"
+author: "Adacor Workplace"
 
 configSchema:
   - key: clientId
@@ -28,7 +28,7 @@ setupGuide: |
 
   ### 2. App erstellen
   1. Wähle "Create private app"
-  2. Name: z.B. "Agent Platform"
+  2. Name: z.B. "Adacor Workplace"
   3. Callback URL: `{API_BASE_URL}/api/connections/pipedrive/callback`
 
   ### 3. OAuth Scopes auswählen

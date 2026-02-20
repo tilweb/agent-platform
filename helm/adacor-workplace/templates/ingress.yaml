@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "agent-platform.fullname" . }}
+  name: {{ include "adacor-workplace.fullname" . }}
   labels:
-    {{- include "agent-platform.labels" . | nindent 4 }}
+    {{- include "adacor-workplace.labels" . | nindent 4 }}
   annotations:
     # SSE/Streaming support (critical for chat)
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
@@ -33,21 +33,21 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "agent-platform.backend.fullname" . }}
+                name: {{ include "adacor-workplace.backend.fullname" . }}
                 port:
                   number: 3001
           - path: /health
             pathType: Exact
             backend:
               service:
-                name: {{ include "agent-platform.backend.fullname" . }}
+                name: {{ include "adacor-workplace.backend.fullname" . }}
                 port:
                   number: 3001
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ include "agent-platform.frontend.fullname" . }}
+                name: {{ include "adacor-workplace.frontend.fullname" . }}
                 port:
                   number: 80
 {{- end }}

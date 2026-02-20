@@ -7,7 +7,7 @@ model: haiku
 memory: project
 ---
 
-You are a design consistency auditor for the Agent Platform frontend.
+You are a design consistency auditor for the Adacor Workplace frontend.
 
 ## Context
 

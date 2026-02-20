@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "agent-platform.name" -}}
+{{- define "adacor-workplace.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "agent-platform.fullname" -}}
+{{- define "adacor-workplace.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "agent-platform.chart" -}}
+{{- define "adacor-workplace.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "agent-platform.labels" -}}
-helm.sh/chart: {{ include "agent-platform.chart" . }}
-{{ include "agent-platform.selectorLabels" . }}
+{{- define "adacor-workplace.labels" -}}
+helm.sh/chart: {{ include "adacor-workplace.chart" . }}
+{{ include "adacor-workplace.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,87 +43,87 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "agent-platform.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "agent-platform.name" . }}
+{{- define "adacor-workplace.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "adacor-workplace.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/* ---- Backend ---- */}}
 
-{{- define "agent-platform.backend.fullname" -}}
-{{- printf "%s-backend" (include "agent-platform.fullname" .) }}
+{{- define "adacor-workplace.backend.fullname" -}}
+{{- printf "%s-backend" (include "adacor-workplace.fullname" .) }}
 {{- end }}
 
-{{- define "agent-platform.backend.labels" -}}
-{{ include "agent-platform.labels" . }}
+{{- define "adacor-workplace.backend.labels" -}}
+{{ include "adacor-workplace.labels" . }}
 app.kubernetes.io/component: backend
 {{- end }}
 
-{{- define "agent-platform.backend.selectorLabels" -}}
-{{ include "agent-platform.selectorLabels" . }}
+{{- define "adacor-workplace.backend.selectorLabels" -}}
+{{ include "adacor-workplace.selectorLabels" . }}
 app.kubernetes.io/component: backend
 {{- end }}
 
 {{/* ---- Frontend ---- */}}
 
-{{- define "agent-platform.frontend.fullname" -}}
-{{- printf "%s-frontend" (include "agent-platform.fullname" .) }}
+{{- define "adacor-workplace.frontend.fullname" -}}
+{{- printf "%s-frontend" (include "adacor-workplace.fullname" .) }}
 {{- end }}
 
-{{- define "agent-platform.frontend.labels" -}}
-{{ include "agent-platform.labels" . }}
+{{- define "adacor-workplace.frontend.labels" -}}
+{{ include "adacor-workplace.labels" . }}
 app.kubernetes.io/component: frontend
 {{- end }}
 
-{{- define "agent-platform.frontend.selectorLabels" -}}
-{{ include "agent-platform.selectorLabels" . }}
+{{- define "adacor-workplace.frontend.selectorLabels" -}}
+{{ include "adacor-workplace.selectorLabels" . }}
 app.kubernetes.io/component: frontend
 {{- end }}
 
 {{/*
 Backend image
 */}}
-{{- define "agent-platform.backend.image" -}}
+{{- define "adacor-workplace.backend.image" -}}
 {{- printf "%s:%s" .Values.backend.image.repository (default .Chart.AppVersion .Values.backend.image.tag) }}
 {{- end }}
 
 {{/*
 Frontend image
 */}}
-{{- define "agent-platform.frontend.image" -}}
+{{- define "adacor-workplace.frontend.image" -}}
 {{- printf "%s:%s" .Values.frontend.image.repository (default .Chart.AppVersion .Values.frontend.image.tag) }}
 {{- end }}
 
 {{/* ---- MCP Runner ---- */}}
 
-{{- define "agent-platform.mcpRunner.fullname" -}}
-{{- printf "%s-mcp-runner" (include "agent-platform.fullname" .) }}
+{{- define "adacor-workplace.mcpRunner.fullname" -}}
+{{- printf "%s-mcp-runner" (include "adacor-workplace.fullname" .) }}
 {{- end }}
 
-{{- define "agent-platform.mcpRunner.labels" -}}
-{{ include "agent-platform.labels" . }}
+{{- define "adacor-workplace.mcpRunner.labels" -}}
+{{ include "adacor-workplace.labels" . }}
 app.kubernetes.io/component: mcp-runner
 {{- end }}
 
-{{- define "agent-platform.mcpRunner.selectorLabels" -}}
-{{ include "agent-platform.selectorLabels" . }}
+{{- define "adacor-workplace.mcpRunner.selectorLabels" -}}
+{{ include "adacor-workplace.selectorLabels" . }}
 app.kubernetes.io/component: mcp-runner
 {{- end }}
 
 {{/*
 MCP Runner image
 */}}
-{{- define "agent-platform.mcpRunner.image" -}}
+{{- define "adacor-workplace.mcpRunner.image" -}}
 {{- printf "%s:%s" .Values.mcpRunner.image.repository (default .Chart.AppVersion .Values.mcpRunner.image.tag) }}
 {{- end }}
 
 {{/*
 Secret name (supports existingSecret)
 */}}
-{{- define "agent-platform.secretName" -}}
+{{- define "adacor-workplace.secretName" -}}
 {{- if .Values.backend.secret.existingSecret }}
 {{- .Values.backend.secret.existingSecret }}
 {{- else }}
-{{- include "agent-platform.fullname" . }}
+{{- include "adacor-workplace.fullname" . }}
 {{- end }}
 {{- end }}

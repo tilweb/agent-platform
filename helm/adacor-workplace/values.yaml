@@ -6,7 +6,7 @@ fullnameOverride: ""
 backend:
   replicaCount: 1
   image:
-    repository: ghcr.io/OWNER/agent-platform-backend
+    repository: ghcr.io/OWNER/adacor-workplace-backend
     # -- Defaults to Chart.appVersion
     tag: ""
     pullPolicy: IfNotPresent
@@ -95,7 +95,7 @@ backend:
 frontend:
   replicaCount: 1
   image:
-    repository: ghcr.io/OWNER/agent-platform-frontend
+    repository: ghcr.io/OWNER/adacor-workplace-frontend
     # -- Defaults to Chart.appVersion
     tag: ""
     pullPolicy: IfNotPresent
@@ -126,7 +126,7 @@ mcpRunner:
   enabled: false
   replicaCount: 1
   image:
-    repository: ghcr.io/OWNER/agent-platform-mcp-runner
+    repository: ghcr.io/OWNER/adacor-workplace-mcp-runner
     # -- Defaults to Chart.appVersion
     tag: ""
     pullPolicy: IfNotPresent
@@ -150,6 +150,6 @@ ingress:
   annotations: {}
   # -- TLS configuration
   tls: []
-  #  - secretName: agent-platform-tls
+  #  - secretName: adacor-workplace-tls
   #    hosts:
   #      - agent.example.com

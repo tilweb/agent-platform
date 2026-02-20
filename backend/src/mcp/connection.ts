@@ -98,7 +98,7 @@ export class McpConnection implements IMcpConnection {
 
       // Create client
       this.client = new Client({
-        name: 'agent-platform',
+        name: 'adacor-workplace',
         version: '1.0.0',
       }, {
         capabilities: {},

@@ -1,4 +1,4 @@
-Agent Platform has been deployed!
+Adacor Workplace has been deployed!
 
 {{- if .Values.ingress.enabled }}
 
@@ -10,7 +10,7 @@ The application is available at:
 
 To access the application, forward the frontend service port:
 
-  kubectl port-forward svc/{{ include "agent-platform.frontend.fullname" . }} 8080:80
+  kubectl port-forward svc/{{ include "adacor-workplace.frontend.fullname" . }} 8080:80
 
 Then open http://localhost:8080
 
@@ -18,13 +18,13 @@ Then open http://localhost:8080
 
 Health check:
 
-  kubectl exec deploy/{{ include "agent-platform.backend.fullname" . }} -- wget -qO- http://localhost:3001/health
+  kubectl exec deploy/{{ include "adacor-workplace.backend.fullname" . }} -- wget -qO- http://localhost:3001/health
 
 {{- if .Values.persistence.enabled }}
 
 Persistent storage:
 
-  PVC {{ include "agent-platform.fullname" . }}-data ({{ .Values.persistence.size }}, {{ .Values.persistence.accessMode }})
+  PVC {{ include "adacor-workplace.fullname" . }}-data ({{ .Values.persistence.size }}, {{ .Values.persistence.accessMode }})
 
 {{- end }}
 

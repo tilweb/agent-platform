@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "agent-platform.frontend.fullname" . }}
+  name: {{ include "adacor-workplace.frontend.fullname" . }}
   labels:
-    {{- include "agent-platform.frontend.labels" . | nindent 4 }}
+    {{- include "adacor-workplace.frontend.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
   strategy:
     type: RollingUpdate
   selector:
     matchLabels:
-      {{- include "agent-platform.frontend.selectorLabels" . | nindent 6 }}
+      {{- include "adacor-workplace.frontend.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "agent-platform.frontend.labels" . | nindent 8 }}
+        {{- include "adacor-workplace.frontend.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -26,7 +26,7 @@ spec:
         fsGroup: 101
       containers:
         - name: frontend
-          image: {{ include "agent-platform.frontend.image" . }}
+          image: {{ include "adacor-workplace.frontend.image" . }}
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
             - name: http

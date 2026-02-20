@@ -1,12 +1,12 @@
-# Willkommen bei Agent Platform
+# Willkommen beim Adacor Workplace
 
-Agent Platform ist eine KI-gestützte Multi-User-Plattform, die intelligente Agenten, eine leistungsstarke Wissensbasis und vielseitige Werkzeuge in einer einheitlichen Oberfläche vereint. Ob Recherche, Analyse, Bildgenerierung oder strukturierte Datenverarbeitung -- Agent Platform unterstützt Sie und Ihr Team bei komplexen Aufgaben mit modernster KI-Technologie.
+Adacor Workplace ist eine KI-gestützte Multi-User-Plattform, die intelligente Agenten, eine leistungsstarke Wissensbasis und vielseitige Werkzeuge in einer einheitlichen Oberfläche vereint. Ob Recherche, Analyse, Bildgenerierung oder strukturierte Datenverarbeitung -- der Adacor Workplace unterstützt Sie und Ihr Team bei komplexen Aufgaben mit modernster KI-Technologie.
 
 ---
 
-## Was ist Agent Platform?
+## Was ist der Adacor Workplace?
 
-Agent Platform verbindet mehrere KI-Modelle verschiedener Anbieter mit einem erweiterbaren Tool-Ökosystem. Die Plattform bietet:
+Der Adacor Workplace verbindet mehrere KI-Modelle verschiedener Anbieter mit einem erweiterbaren Tool-Ökosystem. Die Plattform bietet:
 
 - **Multi-Provider-Unterstützung** -- Arbeiten Sie mit Modellen von OpenAI, Anthropic, Google Gemini, Ollama und weiteren Anbietern
 - **Spezialisierte Agenten** -- Jeder Agent ist auf bestimmte Aufgaben optimiert und verfügt über eigene Werkzeuge und Anweisungen

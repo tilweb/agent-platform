@@ -1,6 +1,6 @@
 # Benachrichtigungen
 
-Agent Platform informiert Sie über abgeschlossene Hintergrund-Aufgaben und andere Systemereignisse über ein Benachrichtigungssystem.
+Der Adacor Workplace informiert Sie über abgeschlossene Hintergrund-Aufgaben und andere Systemereignisse über ein Benachrichtigungssystem.
 
 ---
 

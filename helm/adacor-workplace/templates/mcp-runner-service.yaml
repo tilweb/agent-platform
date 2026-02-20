@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "agent-platform.mcpRunner.fullname" . }}
+  name: {{ include "adacor-workplace.mcpRunner.fullname" . }}
   labels:
-    {{- include "agent-platform.mcpRunner.labels" . | nindent 4 }}
+    {{- include "adacor-workplace.mcpRunner.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "agent-platform.mcpRunner.selectorLabels" . | nindent 4 }}
+    {{- include "adacor-workplace.mcpRunner.selectorLabels" . | nindent 4 }}
 {{- end }}

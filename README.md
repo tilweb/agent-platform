@@ -1,6 +1,6 @@
-# Agent Platform
+# Adacor Workplace
 
-A minimal agent platform with React+Vite frontend and Bun+Hono backend.
+A minimal AI workplace platform with React+Vite frontend and Bun+Hono backend.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ A minimal agent platform with React+Vite frontend and Bun+Hono backend.
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd agent-platform
+cd adacor-workplace
 
 # Install backend dependencies
 cd backend
@@ -63,7 +63,7 @@ Frontend runs on http://localhost:5173
 ## Project Structure
 
 ```
-agent-platform/
+adacor-workplace/
 ├── backend/          # Bun + Hono API server
 │   └── src/
 │       ├── index.ts           # Entry point
@@ -97,9 +97,9 @@ docker compose up -d
 ### Kubernetes (Helm)
 
 ```bash
-helm install agent-platform ./helm/agent-platform \
+helm install adacor-workplace ./helm/adacor-workplace \
   -f my-values.yaml \
-  --namespace agent-platform --create-namespace
+  --namespace adacor-workplace --create-namespace
 ```
 
 Details: [DEPLOYMENT.md](DEPLOYMENT.md)

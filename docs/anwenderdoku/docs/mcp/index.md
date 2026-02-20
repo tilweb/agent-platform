@@ -1,6 +1,6 @@
 # MCP Server
 
-Das Model Context Protocol (MCP) ist ein offener Standard, mit dem KI-Modelle auf externe Tools und Datenquellen zugreifen können. Agent Platform unterstützt MCP sowohl als Client (externe MCP-Server einbinden) als auch als Server (Agent Platform selbst als MCP-Server bereitstellen).
+Das Model Context Protocol (MCP) ist ein offener Standard, mit dem KI-Modelle auf externe Tools und Datenquellen zugreifen können. Der Adacor Workplace unterstützt MCP sowohl als Client (externe MCP-Server einbinden) als auch als Server (den Adacor Workplace selbst als MCP-Server bereitstellen).
 
 ---
 
@@ -61,9 +61,9 @@ Klicken Sie auf **Server hinzufügen** und füllen Sie die Felder aus:
 
 ---
 
-## Agent Platform als MCP-Server
+## Adacor Workplace als MCP-Server
 
-Agent Platform kann selbst als MCP-Server betrieben werden, um seine Funktionen in anderen Tools (z. B. Claude Desktop, Cursor) bereitzustellen.
+Der Adacor Workplace kann selbst als MCP-Server betrieben werden, um seine Funktionen in anderen Tools (z. B. Claude Desktop, Cursor) bereitzustellen.
 
 ### Einrichtung
 
@@ -72,7 +72,7 @@ Fügen Sie die folgende Konfiguration in die MCP-Einstellungen Ihres Clients ein
 ```json
 {
   "mcpServers": {
-    "agent-platform": {
+    "adacor-workplace": {
       "command": "bun",
       "args": ["run", "src/mcp/server/index.ts"],
       "cwd": "<Pfad zum Backend>"

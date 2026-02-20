@@ -7,7 +7,7 @@ version: 1.0
 
 ## General
 
-- **Platform Name:** Agent Platform
+- **Platform Name:** Adacor Workplace
 - **Version:** 1.0.0
 - **Environment:** Development
 

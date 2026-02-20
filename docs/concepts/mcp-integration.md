@@ -2,9 +2,9 @@
 
 ## Übersicht
 
-Integration des Model Context Protocol (MCP) in die Agent Platform:
+Integration des Model Context Protocol (MCP) in den Adacor Workplace:
 - **Phase 1**: MCP Server als Tool-Quelle (externe MCP Server einbinden)
-- **Phase 2**: Agent Platform als MCP Server (Skills/Agents über MCP bereitstellen)
+- **Phase 2**: Adacor Workplace als MCP Server (Skills/Agents über MCP bereitstellen)
 
 ---
 
@@ -14,7 +14,7 @@ Integration des Model Context Protocol (MCP) in die Agent Platform:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Agent Platform                        │
+│                    Adacor Workplace                       │
 │  ┌─────────────────────────────────────────────────┐   │
 │  │                 Tool Registry                     │   │
 │  │  ┌─────────┐ ┌─────────┐ ┌─────────────────┐   │   │
@@ -55,7 +55,7 @@ MCP verwendet JSON-RPC 2.0 über stdio:
   "params": {
     "protocolVersion": "2024-11-05",
     "capabilities": { "tools": {} },
-    "clientInfo": { "name": "agent-platform", "version": "1.0" }
+    "clientInfo": { "name": "adacor-workplace", "version": "1.0" }
   }
 }
 
@@ -319,7 +319,7 @@ Vorkonfigurierte Presets für einfache Installation:
 
 ---
 
-## Phase 2: Agent Platform als MCP Server
+## Phase 2: Adacor Workplace als MCP Server
 
 ### Architektur
 
@@ -336,7 +336,7 @@ Vorkonfigurierte Presets für einfache Installation:
                       │ stdio (JSON-RPC 2.0)
                       ▼
 ┌─────────────────────────────────────────────────────────┐
-│                 Agent Platform MCP Server                │
+│                 Adacor Workplace MCP Server               │
 │  ┌─────────────────────────────────────────────────┐   │
 │  │              MCP Server Transport                 │   │
 │  │  - Stdin/Stdout JSON-RPC Handler                 │   │
@@ -358,7 +358,7 @@ Vorkonfigurierte Presets für einfache Installation:
 ```typescript
 // Server Info
 {
-  name: "agent-platform",
+  name: "adacor-workplace",
   version: "1.0.0",
   capabilities: {
     tools: {
@@ -386,7 +386,7 @@ Alle Tools aus der Tool Registry werden als MCP Tools bereitgestellt:
 
 ```typescript
 // Wird als standalone Prozess gestartet
-// npx agent-platform-mcp oder bun run src/mcp/server/index.ts
+// npx adacor-workplace-mcp oder bun run src/mcp/server/index.ts
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -394,7 +394,7 @@ import { toolRegistry } from '../../tools/registry';
 
 async function main() {
   const server = new Server(
-    { name: 'agent-platform', version: '1.0.0' },
+    { name: 'adacor-workplace', version: '1.0.0' },
     { capabilities: { tools: {} } }
   );
 
@@ -424,7 +424,7 @@ main().catch(console.error);
 // package.json "bin" entry
 {
   "bin": {
-    "agent-platform-mcp": "./dist/mcp/server/index.js"
+    "adacor-workplace-mcp": "./dist/mcp/server/index.js"
   }
 }
 ```
@@ -436,9 +436,9 @@ main().catch(console.error);
 ```json
 {
   "mcpServers": {
-    "agent-platform": {
+    "adacor-workplace": {
       "command": "bun",
-      "args": ["run", "/path/to/agent-platform/backend/src/mcp/server/index.ts"]
+      "args": ["run", "/path/to/adacor-workplace/backend/src/mcp/server/index.ts"]
     }
   }
 }
@@ -449,9 +449,9 @@ main().catch(console.error);
 ```json
 {
   "mcpServers": {
-    "agent-platform": {
+    "adacor-workplace": {
       "command": "npx",
-      "args": ["-y", "agent-platform-mcp"]
+      "args": ["-y", "adacor-workplace-mcp"]
     }
   }
 }

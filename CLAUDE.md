@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Agent Platform is a multi-user AI agent platform with a React+Vite frontend and Bun+Hono backend. It features multi-provider LLM orchestration, an extensible tool ecosystem, RAG-based knowledge base, OAuth integrations, task queues, and image generation.
+Adacor Workplace is a multi-user AI workplace with a React+Vite frontend and Bun+Hono backend. It features multi-provider LLM orchestration, an extensible tool ecosystem, RAG-based knowledge base, OAuth integrations, task queues, and image generation.
 
 ## Development Commands
 
@@ -63,7 +63,7 @@ Optional dedicated container for running MCP server processes in isolation. Back
 ### Deployment (`helm/`, `docker-compose.yml`)
 - **Local Dev**: `bun run dev` + `npm run dev`
 - **Docker Compose**: `docker-compose.yml` mit Frontend (nginx), Backend (Bun), MCP Runner, Proxy
-- **Kubernetes**: Helm Chart unter `helm/agent-platform/` mit Ingress, ConfigMap/Secret, PVC. MCP Runner optional via `mcpRunner.enabled`
+- **Kubernetes**: Helm Chart unter `helm/adacor-workplace/` mit Ingress, ConfigMap/Secret, PVC. MCP Runner optional via `mcpRunner.enabled`
 
 ### Multi-Provider LLM System
 Configured in `data/config/providers.yaml`. Supports Adacor AI, OpenAI, Anthropic, Ollama, Nebius, Google Gemini. Each model declares capabilities (chat, vision, function_calling). Provider adapters in `backend/src/services/llm.ts`.

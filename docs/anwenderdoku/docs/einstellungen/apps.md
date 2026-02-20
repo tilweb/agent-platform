@@ -1,12 +1,12 @@
 # Apps
 
-Apps sind erweiterbare Module, die zusätzliche Funktionen in die Agent Platform bringen. Jede App ist ein eigenständiges Feature-Paket mit eigener Benutzeroberfläche, das bei Bedarf aktiviert oder deaktiviert werden kann.
+Apps sind erweiterbare Module, die zusätzliche Funktionen in den Adacor Workplace bringen. Jede App ist ein eigenständiges Feature-Paket mit eigener Benutzeroberfläche, das bei Bedarf aktiviert oder deaktiviert werden kann.
 
 ---
 
 ## Was sind Apps?
 
-Apps erweitern die Grundfunktionalität der Agent Platform um spezialisierte Anwendungsbereiche. Anders als Skills oder Tools, die innerhalb von Chat-Konversationen arbeiten, bieten Apps eigenständige Seiten und Workflows für bestimmte Geschäftsprozesse.
+Apps erweitern die Grundfunktionalität des Adacor Workplace um spezialisierte Anwendungsbereiche. Anders als Skills oder Tools, die innerhalb von Chat-Konversationen arbeiten, bieten Apps eigenständige Seiten und Workflows für bestimmte Geschäftsprozesse.
 
 ---
 

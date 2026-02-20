@@ -1,6 +1,6 @@
 # Authentifizierung & Sicherheit
 
-Die Agent Platform setzt mehrere Sicherheitsmechanismen ein, um Benutzerkonten, Daten und die Kommunikation zwischen Client und Server zu schützen.
+Der Adacor Workplace setzt mehrere Sicherheitsmechanismen ein, um Benutzerkonten, Daten und die Kommunikation zwischen Client und Server zu schützen.
 
 ---
 
@@ -40,7 +40,7 @@ Alle Passwörter werden mit dem **Argon2id**-Algorithmus gehasht. Argon2id ist d
 
 ## CSRF-Schutz
 
-Die Agent Platform schützt sich gegen Cross-Site Request Forgery (CSRF) durch die Validierung von Origin- und Referer-Headern:
+Der Adacor Workplace schützt sich gegen Cross-Site Request Forgery (CSRF) durch die Validierung von Origin- und Referer-Headern:
 
 - Bei jeder zustandsändernden Anfrage (POST, PUT, DELETE, PATCH) wird der **Origin-Header** geprüft.
 - Falls kein Origin-Header vorhanden ist, wird der **Referer-Header** als Fallback verwendet.
