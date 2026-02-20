@@ -244,9 +244,18 @@ const TIME_RANGES = {
       endDate: formatDateForInput(end),
     };
   }},
-  month: { label: '30 Tage', getDates: () => {
+  thirtyDays: { label: '30 Tage', getDates: () => {
     const end = new Date();
     const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    return {
+      startDate: formatDateForInput(start),
+      endDate: formatDateForInput(end),
+    };
+  }},
+  month: { label: 'Aktueller Monat', getDates: () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     return {
       startDate: formatDateForInput(start),
       endDate: formatDateForInput(end),
@@ -266,7 +275,10 @@ const SOURCE_LABELS = {
 };
 
 function formatDateForInput(date) {
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function UsagePage({ embedded = false }) {
@@ -424,7 +436,7 @@ function UsagePage({ embedded = false }) {
                 {user.userId === 'system' ? (
                   <span style={{ color: theme.colors.textMuted, fontStyle: 'italic' }}>System</span>
                 ) : (
-                  user.userId
+                  user.username || user.userId
                 )}
               </div>
               <div style={styles.tableCellMuted}>-</div>

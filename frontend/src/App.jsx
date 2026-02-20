@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import { AgentProvider } from './context/AgentContext';
+import { AppsProvider } from './context/AppsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ToastProvider } from './components/Toast';
@@ -198,7 +199,9 @@ function App() {
           <AuthProvider>
             <NotificationProvider>
               <AgentProvider>
-                <AppRoutes />
+                <AppsProvider>
+                  <AppRoutes />
+                </AppsProvider>
               </AgentProvider>
             </NotificationProvider>
           </AuthProvider>

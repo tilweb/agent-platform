@@ -48,8 +48,8 @@ const NAV = [
   { section: 'Aufgaben', pages: [
     { slug: 'aufgaben/index', title: 'Hintergrund-Tasks' },
   ]},
-  { section: 'Projekte', pages: [
-    { slug: 'projekte/index', title: 'Spaces & Zusammenarbeit' },
+  { section: 'Spaces', pages: [
+    { slug: 'spaces/index', title: 'Spaces & Zusammenarbeit' },
   ]},
   { section: 'Tabellen', pages: [
     { slug: 'tabellen/index', title: 'Datenmanagement' },
@@ -88,7 +88,7 @@ const FEATURES = [
   { title: 'Wissensbasis', desc: 'RAG-basierte Dokumentensuche über Ihre eigenen Inhalte. Laden Sie PDFs, Word-Dokumente und andere Dateien hoch.', slug: 'wissensbasisis/index' },
   { title: 'Suche', desc: 'Übergreifende Suche über alle Quellen — Chats, Wissensbasis, Tabellen und verbundene Systeme.', slug: 'suche/index' },
   { title: 'Aufgaben', desc: 'Hintergrund-Tasks für komplexe Analysen und langwierige Verarbeitungen.', slug: 'aufgaben/index' },
-  { title: 'Projekte', desc: 'Teamarbeit in gemeinsamen Spaces. Teilen Sie Chats, Dokumente und Ergebnisse.', slug: 'projekte/index' },
+  { title: 'Spaces', desc: 'Teamarbeit in gemeinsamen Spaces. Teilen Sie Chats, Dokumente und Ergebnisse.', slug: 'spaces/index' },
   { title: 'Tabellen', desc: 'Strukturierte Datenverwaltung direkt in der Plattform. Erstellen, bearbeiten und durchsuchen Sie Tabellen.', slug: 'tabellen/index' },
   { title: 'Bilder', desc: 'KI-Bildgenerierung aus Textbeschreibungen mit verschiedenen Bildmodellen.', slug: 'bilder/index' },
   { title: 'Skills', desc: 'Erweiterbare Arbeitsabläufe, die komplexe Aufgaben automatisieren.', slug: 'skills/index' },

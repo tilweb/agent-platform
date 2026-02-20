@@ -6,8 +6,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { theme } from '../config/theme';
-import { useApps } from '../hooks/useApps';
+import { useApps } from '../context/AppsContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 
 const styles = {
   container: {
@@ -147,16 +148,19 @@ const styles = {
 function AppsPage() {
   const { apps, isLoading, toggleApp } = useApps();
   const { user } = useAuth();
+  const toast = useToast();
   const [toggling, setToggling] = useState(null);
 
   const isAdmin = user?.role === 'admin';
 
-  const handleToggle = async (appId) => {
-    setToggling(appId);
+  const handleToggle = async (app) => {
+    setToggling(app.id);
     try {
-      await toggleApp(appId);
-    } catch (error) {
-      console.error('Error toggling app:', error);
+      await toggleApp(app.id);
+      toast.success('Aktualisiert', `App "${app.name}" ${app.enabled ? 'deaktiviert' : 'aktiviert'}`);
+    } catch (err) {
+      console.error('Error toggling app:', err);
+      toast.error('Fehler', `Fehler beim ${app.enabled ? 'Deaktivieren' : 'Aktivieren'} von "${app.name}"`);
     } finally {
       setToggling(null);
     }
@@ -215,7 +219,7 @@ function AppsPage() {
                   <div style={{ display: 'flex', gap: theme.spacing.sm }}>
                     {isAdmin && (
                       <button
-                        onClick={() => handleToggle(app.id)}
+                        onClick={() => handleToggle(app)}
                         disabled={toggling === app.id}
                         style={styles.toggleButton}
                         onMouseEnter={(e) => {

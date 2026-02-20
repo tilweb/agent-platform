@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useAuth } from '../context/AuthContext';
-import { useApps } from '../hooks/useApps';
+import { useApps } from '../context/AppsContext';
 
 const sidebarStyles = {
   sidebar: {

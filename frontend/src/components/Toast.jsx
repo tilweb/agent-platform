@@ -10,7 +10,7 @@ import { theme } from '../config/theme';
 const styles = {
   container: {
     position: 'fixed',
-    top: theme.spacing.xl,
+    top: `calc(${theme.layout.headerHeight} + ${theme.spacing.md})`,
     right: theme.spacing.xl,
     zIndex: 9999,
     display: 'flex',
