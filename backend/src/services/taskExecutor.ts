@@ -158,7 +158,7 @@ async function executeTask(task: Task): Promise<void> {
     const taskPrompt = buildTaskPrompt(task);
 
     // Determine which agent to use
-    const agentId = task.assigned_agent || 'supervisor';
+    const agentId = task.assigned_agent || 'researcher';
 
     // Collect the full response
     let fullResponse = '';
@@ -187,6 +187,12 @@ async function executeTask(task: Task): Promise<void> {
           toolCalls.push({ name, args, result });
         },
       });
+    }
+
+    // Detect soft failures (agent completed normally but couldn't fulfill the task)
+    const softFailure = detectSoftFailure(toolCalls, fullResponse);
+    if (softFailure) {
+      throw new Error(softFailure);
     }
 
     // Task completed successfully
@@ -414,6 +420,46 @@ function generateSummary(response: string, toolCalls: Array<{ name: string }>): 
   }
 
   return summary;
+}
+
+/**
+ * Detect soft failures where the agent completed normally but couldn't fulfill the task.
+ * Returns an error message if a soft failure is detected, null otherwise.
+ */
+function detectSoftFailure(
+  toolCalls: Array<{ name: string; args: string; result: string }>,
+  fullResponse: string
+): string | null {
+  // 1. Tool-Calls that returned an error
+  const failedTools = toolCalls.filter(
+    (tc) => typeof tc.result === 'string' && tc.result.startsWith('Error: ')
+  );
+
+  // 2. Substantive successful tool calls (excluding meta-tools like create_task)
+  const metaTools = new Set(['create_task', 'delegate_to_agent']);
+  const substantiveSuccesses = toolCalls.filter(
+    (tc) => !metaTools.has(tc.name) && !(typeof tc.result === 'string' && tc.result.startsWith('Error: '))
+  );
+
+  // Case A: There were tool errors and no successful substantive work
+  if (failedTools.length > 0 && substantiveSuccesses.length === 0) {
+    const names = [...new Set(failedTools.map((tc) => tc.name))];
+    return `Benötigte Tools nicht verfügbar: ${names.join(', ')}`;
+  }
+
+  // Case B: No tool calls at all and short response with failure indicators
+  if (toolCalls.length === 0 && fullResponse.length < 1000) {
+    const failurePatterns = [
+      /(?:kann ich nicht|nicht verfügbar|nicht möglich|tools?\s+fehle?n?t?)/i,
+      /(?:unable to|cannot|don't have.*tools?|no tools? available)/i,
+      /(?:leider\s+(?:kann|konnte)|fehlercode|unauthorized|nicht\s+(?:abrufen|erreichbar|funktioniert))/i,
+    ];
+    if (failurePatterns.some((p) => p.test(fullResponse))) {
+      return 'Agent konnte die Aufgabe nicht ausführen (benötigte Funktionen nicht verfügbar)';
+    }
+  }
+
+  return null;
 }
 
 /**

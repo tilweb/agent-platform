@@ -37,14 +37,18 @@ export function useTasks(options = {}) {
   });
   const eventSourceRef = useRef(null);
   const callbacksRef = useRef({ onTaskCompleted, onTaskFailed, onTaskStarted });
-
-  // Update callbacks ref when they change
-  useEffect(() => {
-    callbacksRef.current = { onTaskCompleted, onTaskFailed, onTaskStarted };
-  }, [onTaskCompleted, onTaskFailed, onTaskStarted]);
+  const paginationRef = useRef(pagination);
 
   // Current filter state
   const [filter, setFilter] = useState('all');
+  const filterRef = useRef(filter);
+
+  // Update refs when they change
+  useEffect(() => {
+    callbacksRef.current = { onTaskCompleted, onTaskFailed, onTaskStarted };
+  }, [onTaskCompleted, onTaskFailed, onTaskStarted]);
+  useEffect(() => { paginationRef.current = pagination; }, [pagination]);
+  useEffect(() => { filterRef.current = filter; }, [filter]);
 
   // Load tasks with pagination and filter
   const loadTasks = useCallback(async (page = 1, statusFilter = filter) => {
@@ -139,6 +143,7 @@ export function useTasks(options = {}) {
       const { taskId, task } = JSON.parse(e.data);
       setTasks(prev => prev.map(t => t.id === taskId ? task : t));
       loadQueueStatus();
+      loadTasks(paginationRef.current.currentPage, filterRef.current);
       if (callbacksRef.current.onTaskStarted) {
         callbacksRef.current.onTaskStarted(task);
       }
@@ -153,6 +158,7 @@ export function useTasks(options = {}) {
       const { taskId, task } = JSON.parse(e.data);
       setTasks(prev => prev.map(t => t.id === taskId ? task : t));
       loadQueueStatus();
+      loadTasks(paginationRef.current.currentPage, filterRef.current);
       if (callbacksRef.current.onTaskCompleted) {
         callbacksRef.current.onTaskCompleted(task);
       }
@@ -162,6 +168,7 @@ export function useTasks(options = {}) {
       const { taskId, task } = JSON.parse(e.data);
       setTasks(prev => prev.map(t => t.id === taskId ? task : t));
       loadQueueStatus();
+      loadTasks(paginationRef.current.currentPage, filterRef.current);
       if (callbacksRef.current.onTaskFailed) {
         callbacksRef.current.onTaskFailed(task);
       }
@@ -171,6 +178,7 @@ export function useTasks(options = {}) {
       const { taskId, task } = JSON.parse(e.data);
       setTasks(prev => prev.map(t => t.id === taskId ? task : t));
       loadQueueStatus();
+      loadTasks(paginationRef.current.currentPage, filterRef.current);
     });
 
     eventSource.onerror = () => {
@@ -180,7 +188,7 @@ export function useTasks(options = {}) {
     };
 
     return eventSource;
-  }, [loadQueueStatus]);
+  }, [loadQueueStatus, loadTasks]);
 
   // Load on mount and connect stream
   useEffect(() => {
@@ -192,6 +200,17 @@ export function useTasks(options = {}) {
       if (es) es.close();
     };
   }, [loadTasks, loadQueueStatus, connectStream]);
+
+  // Polling fallback: refresh every 5s when there are active tasks
+  const hasActiveTasks = stats.pending > 0 || stats.running > 0;
+  useEffect(() => {
+    if (!hasActiveTasks) return;
+    const interval = setInterval(() => {
+      loadTasks(pagination.currentPage, filter);
+      loadQueueStatus();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [hasActiveTasks, loadTasks, loadQueueStatus, pagination.currentPage, filter]);
 
   // Create a new task
   const createTask = useCallback(async (taskData) => {
@@ -252,6 +271,18 @@ export function useTasks(options = {}) {
       throw err;
     }
   }, [loadQueueStatus]);
+
+  // Repeat a completed task (create new task with same data)
+  const repeatTask = useCallback(async (task) => {
+    return createTask({
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority || 'normal',
+      type: task.type || 'simple',
+      trigger: 'manual',
+      assigned_agent: task.assigned_agent || 'researcher',
+    });
+  }, [createTask]);
 
   // Delete a task
   const deleteTask = useCallback(async (taskId) => {
@@ -318,6 +349,7 @@ export function useTasks(options = {}) {
     createTask,
     cancelTask,
     retryTask,
+    repeatTask,
     deleteTask,
     pauseQueue,
     resumeQueue,

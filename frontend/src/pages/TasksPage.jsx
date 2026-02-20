@@ -11,6 +11,8 @@ import { theme } from '../config/theme';
 import { useTasks, useTaskStream } from '../hooks/useTasks';
 import { useToast } from '../components/Toast';
 import { requestNotificationPermission, showBrowserNotification } from '../components/Toast';
+import { apiGet } from '../utils/apiFetch';
+import Select from '../components/Select';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -114,6 +116,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing.sm,
+    whiteSpace: 'nowrap',
     transition: `all ${theme.transitions.fast}`,
   },
   primaryButton: {
@@ -204,32 +207,67 @@ const styles = {
     padding: theme.spacing['3xl'],
     color: theme.colors.textSecondary,
   },
-  modal: {
+  // Modal system
+  modalOverlay: {
     position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
   },
-  modalContent: {
-    backgroundColor: theme.colors.background,
+  modal: {
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing['2xl'],
-    maxWidth: '600px',
+    boxShadow: theme.shadows.xl,
     width: '90%',
-    maxHeight: '80vh',
-    overflow: 'auto',
+    maxHeight: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.xl,
+    borderBottom: `1px solid ${theme.colors.border}`,
+    flexShrink: 0,
   },
   modalTitle: {
     fontSize: theme.typography.sizes.xl,
     fontWeight: theme.typography.weights.bold,
-    marginBottom: theme.spacing.xl,
+    color: theme.colors.text,
   },
+  modalCloseButton: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: theme.colors.textMuted,
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBody: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: theme.spacing.xl,
+  },
+  modalFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.md,
+    padding: theme.spacing.xl,
+    borderTop: `1px solid ${theme.colors.border}`,
+    flexShrink: 0,
+  },
+  // Form fields
   formGroup: {
     marginBottom: theme.spacing.lg,
   },
@@ -243,82 +281,101 @@ const styles = {
   input: {
     width: '100%',
     padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: theme.borderRadius.lg,
     border: `1px solid ${theme.colors.border}`,
     fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.background,
     color: theme.colors.text,
+    outline: 'none',
   },
   textarea: {
     width: '100%',
     padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: theme.borderRadius.lg,
     border: `1px solid ${theme.colors.border}`,
     fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.background,
     color: theme.colors.text,
     minHeight: '100px',
     resize: 'vertical',
+    outline: 'none',
+    fontFamily: 'inherit',
   },
-  select: {
-    width: '100%',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    border: `1px solid ${theme.colors.border}`,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
+  hint: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
   },
-  modalButtons: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.xl,
-  },
+  // Detail modal sections
   detailSection: {
     marginBottom: theme.spacing.xl,
   },
   detailTitle: {
-    fontSize: theme.typography.sizes.sm,
+    fontSize: theme.typography.sizes.xs,
     fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.sm,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.md,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
+  detailGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: theme.spacing.md,
+  },
+  detailItem: {
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.sm,
+  },
+  detailLabel: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.xs,
+  },
+  detailValue: {
+    color: theme.colors.text,
+    fontWeight: theme.typography.weights.medium,
+  },
   streamContent: {
     padding: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.lg,
     fontFamily: 'monospace',
     fontSize: theme.typography.sizes.sm,
     whiteSpace: 'pre-wrap',
     maxHeight: '300px',
     overflow: 'auto',
+    border: `1px solid ${theme.colors.border}`,
   },
   markdownContent: {
     padding: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.lg,
     maxHeight: '400px',
     overflow: 'auto',
     lineHeight: '1.6',
+    border: `1px solid ${theme.colors.border}`,
   },
   eventsList: {
     maxHeight: '200px',
     overflow: 'auto',
+    borderRadius: theme.borderRadius.lg,
+    border: `1px solid ${theme.colors.border}`,
   },
   eventItem: {
-    padding: theme.spacing.sm,
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
     borderBottom: `1px solid ${theme.colors.border}`,
     fontSize: theme.typography.sizes.xs,
     display: 'flex',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
     alignItems: 'center',
   },
   eventTime: {
     color: theme.colors.textMuted,
     minWidth: '60px',
+    fontFamily: 'monospace',
   },
   eventType: {
     fontWeight: theme.typography.weights.medium,
@@ -425,6 +482,7 @@ function TasksPage() {
     createTask,
     cancelTask,
     retryTask,
+    repeatTask,
     deleteTask,
     pauseQueue,
     resumeQueue,
@@ -438,6 +496,15 @@ function TasksPage() {
     onTaskStarted: handleTaskStarted,
     pageSize: 10,
   });
+
+  const handleRepeatTask = async (task) => {
+    try {
+      await repeatTask(task);
+      toast.success('Task erstellt', `"${task.title}" wurde erneut eingereiht`);
+    } catch (err) {
+      toast.error('Fehler', err.message);
+    }
+  };
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -463,14 +530,6 @@ function TasksPage() {
     if (b.status === 'running' && a.status !== 'running') return 1;
     return new Date(b.created_at) - new Date(a.created_at);
   });
-
-  if (loading) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.emptyState}>Lade Tasks...</div>
-      </div>
-    );
-  }
 
   return (
     <div style={styles.container}>
@@ -516,16 +575,17 @@ function TasksPage() {
             + Neuer Task
           </button>
 
-          <select
-            style={styles.select}
+          <Select
             value={filter}
             onChange={(e) => changeFilter(e.target.value)}
-          >
-            <option value="all">Alle Tasks</option>
-            <option value="active">Aktive</option>
-            <option value="completed">Abgeschlossen</option>
-            <option value="failed">Fehlgeschlagen</option>
-          </select>
+            options={[
+              { value: 'all', label: 'Alle Tasks' },
+              { value: 'active', label: 'Aktive' },
+              { value: 'completed', label: 'Abgeschlossen' },
+              { value: 'failed', label: 'Fehlgeschlagen' },
+            ]}
+            style={{ width: 'auto' }}
+          />
         </div>
 
         <div style={styles.toolbarRight}>
@@ -544,9 +604,11 @@ function TasksPage() {
                   ? (queueStatus.paused ? 'Pausiert' : 'Aktiv')
                   : 'Gestoppt'}
               </span>
-              <span style={{ color: theme.colors.textMuted }}>
-                ({queueStatus.executing_count}/{queueStatus.max_concurrent})
-              </span>
+              {stats.running > 0 && (
+                <span style={{ color: theme.colors.textMuted }}>
+                  ({stats.running} laufend)
+                </span>
+              )}
             </div>
           )}
 
@@ -577,7 +639,9 @@ function TasksPage() {
 
       {/* Task List */}
       <div style={styles.taskList}>
-        {sortedTasks.length === 0 ? (
+        {loading && tasks.length === 0 ? (
+          <div style={styles.emptyState}>Lade Tasks...</div>
+        ) : sortedTasks.length === 0 ? (
           <div style={styles.emptyState}>
             <p>Keine Tasks vorhanden</p>
             <p style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizes.sm }}>
@@ -592,6 +656,7 @@ function TasksPage() {
               onClick={() => setSelectedTask(task)}
               onCancel={() => cancelTask(task.id)}
               onRetry={() => retryTask(task.id)}
+              onRepeat={() => handleRepeatTask(task)}
               onDelete={() => deleteTask(task.id)}
             />
           ))
@@ -733,11 +798,12 @@ function Pagination({ currentPage, totalPages, total, onPageChange, onNext, onPr
   );
 }
 
-function TaskCard({ task, onClick, onCancel, onRetry, onDelete }) {
+function TaskCard({ task, onClick, onCancel, onRetry, onRepeat, onDelete }) {
   const statusColor = statusColors[task.status] || statusColors.pending;
   const isRunning = task.status === 'running' || task.status === 'in_progress';
   const canCancel = ['pending', 'queued', 'running', 'in_progress'].includes(task.status);
   const canRetry = ['failed', 'cancelled'].includes(task.status);
+  const canRepeat = task.status === 'completed';
   const canDelete = ['completed', 'failed', 'cancelled'].includes(task.status);
 
   return (
@@ -781,12 +847,20 @@ function TaskCard({ task, onClick, onCancel, onRetry, onDelete }) {
               Wiederholen
             </button>
           )}
+          {canRepeat && (
+            <button
+              style={{ ...styles.button, ...styles.primaryButton, padding: theme.spacing.sm }}
+              onClick={(e) => { e.stopPropagation(); onRepeat(); }}
+            >
+              Wiederholen
+            </button>
+          )}
           {canDelete && (
             <button
               style={{ ...styles.button, ...styles.secondaryButton, padding: theme.spacing.sm }}
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
             >
-              Loschen
+              Löschen
             </button>
           )}
         </div>
@@ -794,6 +868,9 @@ function TaskCard({ task, onClick, onCancel, onRetry, onDelete }) {
 
       <div style={styles.taskMeta}>
         <span title={task.priority}>{priorityLabels[task.priority] || task.priority}</span>
+        {task.assigned_agent && (
+          <span title="Agent">{task.assigned_agent}</span>
+        )}
         <span title={new Date(task.created_at).toLocaleString('de-DE')}>
           {getRelativeTime(task.created_at)}
         </span>
@@ -823,6 +900,15 @@ function TaskCard({ task, onClick, onCancel, onRetry, onDelete }) {
   );
 }
 
+function CloseIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
 function CreateTaskModal({ onClose, onCreate }) {
   const [formData, setFormData] = useState({
     title: '',
@@ -830,8 +916,19 @@ function CreateTaskModal({ onClose, onCreate }) {
     priority: 'normal',
     type: 'simple',
     trigger: 'manual',
+    assigned_agent: 'researcher',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [agents, setAgents] = useState([]);
+
+  useEffect(() => {
+    apiGet('/agents').then(res => res.json()).then(data => {
+      const taskAgents = (data.agents || []).filter(a =>
+        a.delegatable !== false && a.id !== '_router'
+      );
+      setAgents(taskAgents);
+    }).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -847,60 +944,106 @@ function CreateTaskModal({ onClose, onCreate }) {
     }
   };
 
+  const isValid = formData.title.trim().length > 0;
+
   return (
-    <div style={styles.modal} onClick={onClose}>
-      <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <h2 style={styles.modalTitle}>Neuen Task erstellen</h2>
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={{ ...styles.modal, maxWidth: '560px' }} onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div style={styles.modalHeader}>
+          <h2 style={styles.modalTitle}>Neuen Task erstellen</h2>
+          <button style={styles.modalCloseButton} onClick={onClose}>
+            <CloseIcon />
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Titel *</label>
-            <input
-              style={styles.input}
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="z.B. Recherche zu AI Governance"
-              required
-            />
+        {/* Body */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+          <div style={styles.modalBody}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Titel *</label>
+              <input
+                style={styles.input}
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="z.B. Recherche zu AI Governance"
+                autoFocus
+                required
+              />
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Beschreibung</label>
+              <textarea
+                style={styles.textarea}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Detaillierte Beschreibung der Aufgabe..."
+              />
+              <div style={styles.hint}>Je genauer die Beschreibung, desto besser das Ergebnis</div>
+            </div>
+
+            <div style={{ display: 'flex', gap: theme.spacing.lg }}>
+              {agents.length > 0 && (
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label style={styles.label}>Agent</label>
+                  <Select
+                    value={formData.assigned_agent}
+                    onChange={(e) => setFormData({ ...formData, assigned_agent: e.target.value })}
+                    options={agents.map(agent => ({ value: agent.id, label: agent.name }))}
+                  />
+                </div>
+              )}
+
+              <div style={{ ...styles.formGroup, flex: 1 }}>
+                <label style={styles.label}>Priorität</label>
+                <Select
+                  value={formData.priority}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                  options={[
+                    { value: 'low', label: 'Niedrig' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'high', label: 'Hoch' },
+                    { value: 'urgent', label: 'Dringend' },
+                  ]}
+                />
+              </div>
+            </div>
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Beschreibung</label>
-            <textarea
-              style={styles.textarea}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Detaillierte Beschreibung der Aufgabe..."
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Prioritat</label>
-            <select
-              style={styles.select}
-              value={formData.priority}
-              onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-            >
-              <option value="low">Niedrig</option>
-              <option value="normal">Normal</option>
-              <option value="high">Hoch</option>
-              <option value="urgent">Dringend</option>
-            </select>
-          </div>
-
-          <div style={styles.modalButtons}>
+          {/* Footer */}
+          <div style={styles.modalFooter}>
             <button
               type="button"
-              style={{ ...styles.button, ...styles.secondaryButton }}
+              style={{
+                padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                backgroundColor: 'transparent',
+                color: theme.colors.text,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.lg,
+                fontSize: theme.typography.sizes.sm,
+                fontWeight: theme.typography.weights.medium,
+                cursor: 'pointer',
+              }}
               onClick={onClose}
             >
               Abbrechen
             </button>
             <button
               type="submit"
-              style={{ ...styles.button, ...styles.primaryButton }}
-              disabled={submitting || !formData.title.trim()}
+              style={{
+                padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                backgroundColor: theme.colors.primary,
+                color: 'white',
+                border: 'none',
+                borderRadius: theme.borderRadius.lg,
+                fontSize: theme.typography.sizes.sm,
+                fontWeight: theme.typography.weights.medium,
+                cursor: isValid && !submitting ? 'pointer' : 'not-allowed',
+                opacity: isValid && !submitting ? 1 : 0.5,
+              }}
+              disabled={submitting || !isValid}
             >
               {submitting ? 'Erstelle...' : 'Task erstellen'}
             </button>
@@ -910,6 +1053,17 @@ function CreateTaskModal({ onClose, onCreate }) {
     </div>
   );
 }
+
+const statusLabels = {
+  pending: 'Wartend',
+  queued: 'In Warteschlange',
+  running: 'Läuft',
+  in_progress: 'Läuft',
+  completed: 'Abgeschlossen',
+  failed: 'Fehlgeschlagen',
+  cancelled: 'Abgebrochen',
+  paused: 'Pausiert',
+};
 
 function TaskDetailModal({ task, onClose, onCancel }) {
   const { task: liveTask, streamingContent, events, isConnected } = useTaskStream(
@@ -938,143 +1092,214 @@ function TaskDetailModal({ task, onClose, onCancel }) {
     }
   };
 
-  // Determine content to display
   const resultContent = fullResult || streamingContent || displayTask.result_summary;
 
   return (
-    <div style={styles.modal} onClick={onClose}>
+    <div style={styles.modalOverlay} onClick={onClose}>
       <div
-        style={{ ...styles.modalContent, maxWidth: '800px' }}
+        style={{ ...styles.modal, maxWidth: '800px' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.xl }}>
-          <div>
-            <h2 style={styles.modalTitle}>{displayTask.title}</h2>
+        {/* Header */}
+        <div style={styles.modalHeader}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, flex: 1, minWidth: 0 }}>
+            <h2 style={{ ...styles.modalTitle, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {displayTask.title}
+            </h2>
             <span
               style={{
                 ...styles.statusBadge,
                 backgroundColor: statusColor.bg,
                 color: statusColor.text,
+                flexShrink: 0,
               }}
             >
-              {displayTask.status}
+              {statusLabels[displayTask.status] || displayTask.status}
             </span>
             {isConnected && (
-              <span style={{ marginLeft: theme.spacing.sm, color: theme.colors.success, fontSize: theme.typography.sizes.xs }}>
+              <span style={{
+                fontSize: theme.typography.sizes.xs,
+                color: theme.colors.success,
+                fontWeight: theme.typography.weights.medium,
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing.xs,
+                flexShrink: 0,
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: theme.colors.success, display: 'inline-block' }} />
                 Live
               </span>
             )}
           </div>
-          <button
-            style={{ ...styles.button, ...styles.secondaryButton }}
-            onClick={onClose}
-          >
-            Schliessen
+          <button style={styles.modalCloseButton} onClick={onClose}>
+            <CloseIcon />
           </button>
         </div>
 
-        {displayTask.description && (
-          <div style={styles.detailSection}>
-            <div style={styles.detailTitle}>Beschreibung</div>
-            <p style={{ color: theme.colors.textSecondary }}>{displayTask.description}</p>
-          </div>
-        )}
+        {/* Body */}
+        <div style={styles.modalBody}>
+          {/* Description */}
+          {displayTask.description && (
+            <div style={styles.detailSection}>
+              <div style={styles.detailTitle}>Beschreibung</div>
+              <p style={{ color: theme.colors.textSecondary, fontSize: theme.typography.sizes.sm, lineHeight: '1.6', margin: 0 }}>
+                {displayTask.description}
+              </p>
+            </div>
+          )}
 
-        <div style={styles.detailSection}>
-          <div style={styles.detailTitle}>Details</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md }}>
-            <div>
-              <span style={{ color: theme.colors.textMuted }}>ID:</span>{' '}
-              <code style={{ fontSize: theme.typography.sizes.xs }}>{displayTask.id}</code>
-            </div>
-            <div>
-              <span style={{ color: theme.colors.textMuted }}>Prioritat:</span>{' '}
-              {priorityLabels[displayTask.priority]}
-            </div>
-            <div>
-              <span style={{ color: theme.colors.textMuted }}>Erstellt:</span>{' '}
-              {new Date(displayTask.created_at).toLocaleString('de-DE')}
-            </div>
-            <div>
-              <span style={{ color: theme.colors.textMuted }}>Fortschritt:</span>{' '}
-              {displayTask.progress}%
-            </div>
-          </div>
-        </div>
-
-        {isRunning && (
+          {/* Details Grid */}
           <div style={styles.detailSection}>
-            <div style={styles.detailTitle}>Fortschritt</div>
-            <div style={{ ...styles.progressBar, height: '8px' }}>
-              <div
-                style={{
-                  ...styles.progressFill,
-                  width: `${displayTask.progress || 0}%`,
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {resultContent && (
-          <div style={styles.detailSection}>
-            <div style={styles.detailTitle}>
-              {isRunning ? 'Live Output' : 'Ergebnis'}
-            </div>
-            <div style={styles.markdownContent}>
-              <ReactMarkdown>
-                {resultContent}
-              </ReactMarkdown>
-            </div>
-            {displayTask.status === 'completed' && !fullResult && displayTask.result_file && (
-              <button
-                style={{ ...styles.button, ...styles.secondaryButton, marginTop: theme.spacing.md }}
-                onClick={loadFullResult}
-                disabled={loadingResult}
-              >
-                {loadingResult ? 'Laedt...' : 'Vollstaendiges Ergebnis laden'}
-              </button>
-            )}
-          </div>
-        )}
-
-        {events.length > 0 && (
-          <div style={styles.detailSection}>
-            <div style={styles.detailTitle}>Events ({events.length})</div>
-            <div style={styles.eventsList}>
-              {events.map((event, idx) => (
-                <div key={idx} style={styles.eventItem}>
-                  <span style={styles.eventTime}>
-                    {event.time.toLocaleTimeString('de-DE')}
-                  </span>
-                  <span style={styles.eventType}>{event.type}</span>
-                  {event.tool && <span>Tool: {event.tool}</span>}
-                  {event.agent && <span>Agent: {event.agent}</span>}
+            <div style={styles.detailTitle}>Details</div>
+            <div style={styles.detailGrid}>
+              <div style={{ ...styles.detailItem, gridColumn: '1 / -1' }}>
+                <div style={styles.detailLabel}>Task-ID</div>
+                <code style={{
+                  fontSize: theme.typography.sizes.xs,
+                  color: theme.colors.textMuted,
+                  fontFamily: 'monospace',
+                  backgroundColor: theme.colors.surface,
+                  padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.border}`,
+                  userSelect: 'all',
+                }}>
+                  {displayTask.id}
+                </code>
+              </div>
+              <div style={styles.detailItem}>
+                <div style={styles.detailLabel}>Agent</div>
+                <div style={styles.detailValue}>{displayTask.assigned_agent || 'researcher'}</div>
+              </div>
+              <div style={styles.detailItem}>
+                <div style={styles.detailLabel}>Priorität</div>
+                <div style={styles.detailValue}>{priorityLabels[displayTask.priority] || displayTask.priority}</div>
+              </div>
+              <div style={styles.detailItem}>
+                <div style={styles.detailLabel}>Erstellt</div>
+                <div style={styles.detailValue}>{new Date(displayTask.created_at).toLocaleString('de-DE')}</div>
+              </div>
+              <div style={styles.detailItem}>
+                <div style={styles.detailLabel}>Dauer</div>
+                <div style={styles.detailValue}>
+                  {displayTask.started_at
+                    ? getDuration(displayTask.started_at, displayTask.completed_at)
+                    : '—'}
                 </div>
-              ))}
+              </div>
             </div>
           </div>
-        )}
 
-        {displayTask.error_message && (
-          <div style={styles.detailSection}>
-            <div style={styles.detailTitle}>Fehler</div>
-            <div style={{ ...styles.streamContent, color: theme.colors.error }}>
-              {displayTask.error_message}
-            </div>
-          </div>
-        )}
-
-        <div style={styles.modalButtons}>
+          {/* Progress */}
           {isRunning && (
-            <button
-              style={{ ...styles.button, ...styles.dangerButton }}
-              onClick={onCancel}
-            >
-              Abbrechen
-            </button>
+            <div style={styles.detailSection}>
+              <div style={styles.detailTitle}>Fortschritt</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                <div style={{ ...styles.progressBar, height: '8px', flex: 1 }}>
+                  <div
+                    style={{
+                      ...styles.progressFill,
+                      width: `${displayTask.progress || 0}%`,
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, minWidth: '36px', textAlign: 'right' }}>
+                  {displayTask.progress || 0}%
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Result / Live Output */}
+          {resultContent && (
+            <div style={styles.detailSection}>
+              <div style={styles.detailTitle}>
+                {isRunning ? 'Live Output' : 'Ergebnis'}
+              </div>
+              <div style={styles.markdownContent}>
+                <ReactMarkdown>{resultContent}</ReactMarkdown>
+              </div>
+              {displayTask.status === 'completed' && !fullResult && displayTask.result_file && (
+                <button
+                  style={{
+                    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+                    backgroundColor: 'transparent',
+                    color: theme.colors.primary,
+                    border: `1px solid ${theme.colors.primary}30`,
+                    borderRadius: theme.borderRadius.lg,
+                    fontSize: theme.typography.sizes.sm,
+                    fontWeight: theme.typography.weights.medium,
+                    cursor: loadingResult ? 'not-allowed' : 'pointer',
+                    marginTop: theme.spacing.md,
+                  }}
+                  onClick={loadFullResult}
+                  disabled={loadingResult}
+                >
+                  {loadingResult ? 'Lädt...' : 'Vollständiges Ergebnis laden'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Events */}
+          {events.length > 0 && (
+            <div style={styles.detailSection}>
+              <div style={styles.detailTitle}>Events ({events.length})</div>
+              <div style={styles.eventsList}>
+                {events.map((event, idx) => (
+                  <div key={idx} style={styles.eventItem}>
+                    <span style={styles.eventTime}>
+                      {event.time.toLocaleTimeString('de-DE')}
+                    </span>
+                    <span style={styles.eventType}>{event.type}</span>
+                    {event.tool && <span style={{ color: theme.colors.textSecondary }}>Tool: {event.tool}</span>}
+                    {event.agent && <span style={{ color: theme.colors.textSecondary }}>Agent: {event.agent}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {displayTask.error_message && (
+            <div style={styles.detailSection}>
+              <div style={styles.detailTitle}>Fehler</div>
+              <div style={{
+                padding: theme.spacing.lg,
+                backgroundColor: `${theme.colors.error}08`,
+                borderRadius: theme.borderRadius.lg,
+                border: `1px solid ${theme.colors.error}20`,
+                color: theme.colors.error,
+                fontSize: theme.typography.sizes.sm,
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+              }}>
+                {displayTask.error_message}
+              </div>
+            </div>
           )}
         </div>
+
+        {/* Footer */}
+        {isRunning && (
+          <div style={styles.modalFooter}>
+            <button
+              style={{
+                padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                backgroundColor: 'transparent',
+                color: theme.colors.error,
+                border: `1px solid ${theme.colors.error}30`,
+                borderRadius: theme.borderRadius.lg,
+                fontSize: theme.typography.sizes.sm,
+                fontWeight: theme.typography.weights.medium,
+                cursor: 'pointer',
+              }}
+              onClick={onCancel}
+            >
+              Task abbrechen
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
