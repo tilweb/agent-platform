@@ -178,7 +178,10 @@ function AppRoutes() {
                   <Route path="/apps/projektmanagement" element={<ProjektePage />} />
                   <Route path="/apps/projektmanagement/neu" element={<WizardPage />} />
                   <Route path="/apps/projektmanagement/:id" element={<WizardPage />} />
-                  <Route path="/docs/*" element={<DocsPage />} />
+                  <Route path="/docs/anwenderdoku/*" element={<DocsPage category="anwenderdoku" />} />
+                  <Route path="/docs/entwickler/*" element={<DocsPage category="entwickler" />} />
+                  <Route path="/docs" element={<Navigate to="/docs/anwenderdoku" replace />} />
+                  <Route path="/docs/*" element={<Navigate to="/docs/anwenderdoku" replace />} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>

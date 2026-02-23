@@ -36,7 +36,7 @@ import {
   removeGroupMember,
 } from '../auth';
 import { randomBytes } from 'crypto';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, unauthorizedError, forbiddenError, notFoundError, conflictError } from '../utils/errorHandler';
 
 const authRoutes = new Hono();
 
@@ -50,28 +50,28 @@ authRoutes.post('/register', authRateLimit, async (c) => {
 
     // Validate username
     if (!username) {
-      return c.json({ error: 'Username is required' }, 400);
+      return validationError(c, 'Username is required');
     }
 
     const usernameValidation = validateUsername(username);
     if (!usernameValidation.valid) {
-      return c.json({ error: usernameValidation.errors.join(', ') }, 400);
+      return validationError(c, usernameValidation.errors.join(', '));
     }
 
     // Validate password
     if (!password) {
-      return c.json({ error: 'Password is required' }, 400);
+      return validationError(c, 'Password is required');
     }
 
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.valid) {
-      return c.json({ error: passwordValidation.errors.join(', ') }, 400);
+      return validationError(c, passwordValidation.errors.join(', '));
     }
 
     // Check if username is taken
     const existingUser = await findUserByUsername(username);
     if (existingUser) {
-      return c.json({ error: 'Username is already taken' }, 409);
+      return conflictError(c, 'Username is already taken');
     }
 
     // Create user
@@ -109,7 +109,7 @@ authRoutes.post('/login', authRateLimit, async (c) => {
     const { username, password } = body;
 
     if (!username || !password) {
-      return c.json({ error: 'Username and password are required' }, 400);
+      return validationError(c, 'Username and password are required');
     }
 
     const userAgent = c.req.header('User-Agent');
@@ -119,14 +119,14 @@ authRoutes.post('/login', authRateLimit, async (c) => {
     const user = await findUserByUsername(username);
     if (!user) {
       await auditLogin(false, username, ipAddress, userAgent, 'User not found');
-      return c.json({ error: 'Invalid username or password' }, 401);
+      return unauthorizedError(c);
     }
 
     // Verify password and check if rehash is needed
     const [validPassword, newHash] = await verifyAndRehash(password, user.passwordHash);
     if (!validPassword) {
       await auditLogin(false, username, ipAddress, userAgent, 'Invalid password');
-      return c.json({ error: 'Invalid username or password' }, 401);
+      return unauthorizedError(c);
     }
 
     // Update password hash if parameters have changed (transparent rehashing)
@@ -137,7 +137,7 @@ authRoutes.post('/login', authRateLimit, async (c) => {
     // Check if user is active
     if (!user.isActive) {
       await auditLogin(false, username, ipAddress, userAgent, 'Account deactivated');
-      return c.json({ error: 'Account is deactivated' }, 403);
+      return forbiddenError(c, 'Account is deactivated');
     }
 
     // Session fixation prevention: invalidate any existing session
@@ -261,7 +261,7 @@ import type { Context, Next, MiddlewareHandler } from 'hono';
 const adminMiddleware: MiddlewareHandler = async (c: Context, next: Next) => {
   const user = getCurrentUser(c);
   if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Admin access required' }, 403);
+    return forbiddenError(c, 'Admin access required');
   }
   await next();
 };
@@ -291,18 +291,18 @@ authRoutes.post('/users', authMiddleware, adminMiddleware, async (c) => {
 
     // Validate username
     if (!username) {
-      return c.json({ error: 'Username is required' }, 400);
+      return validationError(c, 'Username is required');
     }
 
     const usernameValidation = validateUsername(username);
     if (!usernameValidation.valid) {
-      return c.json({ error: usernameValidation.errors.join(', ') }, 400);
+      return validationError(c, usernameValidation.errors.join(', '));
     }
 
     // Check if username is taken
     const existingUser = await findUserByUsername(username);
     if (existingUser) {
-      return c.json({ error: 'Username is already taken' }, 409);
+      return conflictError(c, 'Username is already taken');
     }
 
     // Generate initial password
@@ -344,7 +344,7 @@ authRoutes.put('/users/:id', authMiddleware, adminMiddleware, async (c) => {
 
     const user = await loadUser(userId);
     if (!user) {
-      return c.json({ error: 'User not found' }, 404);
+      return notFoundError(c, 'User');
     }
 
     // Prevent demoting the last admin
@@ -352,7 +352,7 @@ authRoutes.put('/users/:id', authMiddleware, adminMiddleware, async (c) => {
       const users = await listUsers();
       const adminCount = users.filter(u => u.role === 'admin' && u.isActive).length;
       if (adminCount <= 1) {
-        return c.json({ error: 'Cannot demote the last admin' }, 400);
+        return validationError(c, 'Cannot demote the last admin');
       }
     }
 
@@ -383,7 +383,7 @@ authRoutes.post('/users/:id/reset-password', sensitiveRateLimit, authMiddleware,
 
     const user = await loadUser(userId);
     if (!user) {
-      return c.json({ error: 'User not found' }, 404);
+      return notFoundError(c, 'User');
     }
 
     // Generate new password
@@ -423,12 +423,12 @@ authRoutes.delete('/users/:id', authMiddleware, adminMiddleware, async (c) => {
 
     // Prevent self-deletion
     if (currentUser?.id === userId) {
-      return c.json({ error: 'Cannot delete your own account' }, 400);
+      return validationError(c, 'Cannot delete your own account');
     }
 
     const user = await loadUser(userId);
     if (!user) {
-      return c.json({ error: 'User not found' }, 404);
+      return notFoundError(c, 'User');
     }
 
     // Prevent deleting the last admin
@@ -436,7 +436,7 @@ authRoutes.delete('/users/:id', authMiddleware, adminMiddleware, async (c) => {
       const users = await listUsers();
       const adminCount = users.filter(u => u.role === 'admin' && u.isActive).length;
       if (adminCount <= 1) {
-        return c.json({ error: 'Cannot delete the last admin' }, 400);
+        return validationError(c, 'Cannot delete the last admin');
       }
     }
 
@@ -480,7 +480,7 @@ authRoutes.post('/groups', authMiddleware, adminMiddleware, async (c) => {
     const { name, description, color, memberIds } = body;
 
     if (!name?.trim()) {
-      return c.json({ error: 'Group name is required' }, 400);
+      return validationError(c, 'Group name is required');
     }
 
     const currentUser = getCurrentUser(c);
@@ -505,7 +505,7 @@ authRoutes.get('/groups/:id', authMiddleware, adminMiddleware, async (c) => {
     const group = await loadGroup(groupId);
 
     if (!group) {
-      return c.json({ error: 'Group not found' }, 404);
+      return notFoundError(c, 'Group');
     }
 
     return c.json({ group });
@@ -526,7 +526,7 @@ authRoutes.put('/groups/:id', authMiddleware, adminMiddleware, async (c) => {
 
     const group = await loadGroup(groupId);
     if (!group) {
-      return c.json({ error: 'Group not found' }, 404);
+      return notFoundError(c, 'Group');
     }
 
     const updates: any = {};
@@ -552,7 +552,7 @@ authRoutes.delete('/groups/:id', authMiddleware, adminMiddleware, async (c) => {
 
     const group = await loadGroup(groupId);
     if (!group) {
-      return c.json({ error: 'Group not found' }, 404);
+      return notFoundError(c, 'Group');
     }
 
     await deleteGroup(groupId);
@@ -573,12 +573,12 @@ authRoutes.post('/groups/:id/members', authMiddleware, adminMiddleware, async (c
     const { userId } = body;
 
     if (!userId) {
-      return c.json({ error: 'userId is required' }, 400);
+      return validationError(c, 'userId is required');
     }
 
     const group = await addGroupMember(groupId, userId);
     if (!group) {
-      return c.json({ error: 'Group not found' }, 404);
+      return notFoundError(c, 'Group');
     }
 
     return c.json({ success: true, group });
@@ -598,7 +598,7 @@ authRoutes.delete('/groups/:id/members/:userId', authMiddleware, adminMiddleware
 
     const group = await removeGroupMember(groupId, userId);
     if (!group) {
-      return c.json({ error: 'Group not found' }, 404);
+      return notFoundError(c, 'Group');
     }
 
     return c.json({ success: true, group });

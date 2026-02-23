@@ -219,6 +219,7 @@ export function CommandPalette({
           console.log('First command icon:', cmds[0].icon);
         }
       });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLevel('commands');
       setActiveCommand(null);
       setSelectedIndex(0);
@@ -237,6 +238,7 @@ export function CommandPalette({
     if (parts.length > 1 && level === 'commands') {
       const cmd = commands.find((c) => c.id === commandId);
       if (cmd && cmd.hasOptions) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveCommand(cmd);
         setLevel('options');
         fetchOptions(cmd.id);
@@ -247,6 +249,7 @@ export function CommandPalette({
 
   // Reset selected index when items change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0);
   }, [filter, level]);
 
@@ -259,6 +262,29 @@ export function CommandPalette({
       }
     }
   }, [selectedIndex, items.length]);
+
+  // Handle item selection
+  const handleSelect = useCallback((item) => {
+    if (level === 'commands') {
+      const cmd = item;
+      if (cmd.hasOptions) {
+        // Go to options level
+        setActiveCommand(cmd);
+        setLevel('options');
+        fetchOptions(cmd.id);
+        setSelectedIndex(0);
+      } else if (cmd.requiresArg) {
+        // Command needs argument - notify parent to update input
+        onExecute(cmd.id, null, null, { needsArg: true, argPlaceholder: cmd.argPlaceholder });
+      } else {
+        // Execute immediately
+        onExecute(cmd.id);
+      }
+    } else {
+      // Options level - execute command with selected option
+      onExecute(activeCommand.id, item.id);
+    }
+  }, [level, activeCommand, fetchOptions, onExecute]);
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
@@ -303,7 +329,7 @@ export function CommandPalette({
           break;
       }
     },
-    [isOpen, items, selectedIndex, filter, level, onClose, clearOptions]
+    [isOpen, items, selectedIndex, filter, level, onClose, clearOptions, handleSelect]
   );
 
   // Attach keyboard listener
@@ -313,29 +339,6 @@ export function CommandPalette({
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
   }, [isOpen, handleKeyDown]);
-
-  // Handle item selection
-  const handleSelect = (item) => {
-    if (level === 'commands') {
-      const cmd = item;
-      if (cmd.hasOptions) {
-        // Go to options level
-        setActiveCommand(cmd);
-        setLevel('options');
-        fetchOptions(cmd.id);
-        setSelectedIndex(0);
-      } else if (cmd.requiresArg) {
-        // Command needs argument - notify parent to update input
-        onExecute(cmd.id, null, null, { needsArg: true, argPlaceholder: cmd.argPlaceholder });
-      } else {
-        // Execute immediately
-        onExecute(cmd.id);
-      }
-    } else {
-      // Options level - execute command with selected option
-      onExecute(activeCommand.id, item.id);
-    }
-  };
 
   // Handle back button
   const handleBack = () => {

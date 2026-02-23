@@ -6,7 +6,7 @@
 
 import { Hono } from 'hono';
 import { authMiddleware, getCurrentUserId } from '../auth/middleware';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, unauthorizedError, forbiddenError, notFoundError } from '../utils/errorHandler';
 import {
   createSpace,
   getSpace,
@@ -50,14 +50,14 @@ spaceRoutes.use('*', authMiddleware);
 spaceRoutes.get('/', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const includeArchived = c.req.query('includeArchived') === 'true';
   const result = await listUserSpaces(userId, includeArchived);
 
   if (!result.success) {
-    return c.json({ error: result.error }, 500);
+    return internalError(c, new Error(result.error || 'Fehler beim Laden der Spaces'));
   }
 
   return c.json({ spaces: result.data });
@@ -69,7 +69,7 @@ spaceRoutes.get('/', async (c) => {
 spaceRoutes.post('/', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   try {
@@ -77,27 +77,27 @@ spaceRoutes.post('/', async (c) => {
     const { name, description, icon, color } = body;
 
     if (!name) {
-      return c.json({ error: 'Name ist erforderlich' }, 400);
+      return validationError(c, 'Name ist erforderlich');
     }
 
     // Input length validation
     if (name.length > 100) {
-      return c.json({ error: 'Name darf maximal 100 Zeichen lang sein' }, 400);
+      return validationError(c, 'Name darf maximal 100 Zeichen lang sein');
     }
     if (description && description.length > 1000) {
-      return c.json({ error: 'Beschreibung darf maximal 1000 Zeichen lang sein' }, 400);
+      return validationError(c, 'Beschreibung darf maximal 1000 Zeichen lang sein');
     }
 
     const result = await createSpace(userId, name, { description, icon, color });
 
     if (!result.success) {
-      return c.json({ error: result.error }, 400);
+      return validationError(c, result.error || 'Fehler beim Erstellen');
     }
 
     return c.json(result.data, 201);
   } catch (error: any) {
     console.error('Error creating space:', error);
-    return c.json({ error: 'Fehler beim Erstellen des Spaces' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -107,15 +107,16 @@ spaceRoutes.post('/', async (c) => {
 spaceRoutes.get('/:id', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
   const result = await getSpace(spaceId, userId);
 
   if (!result.success) {
-    const status = result.error?.includes('nicht gefunden') ? 404 : 403;
-    return c.json({ error: result.error }, status);
+    return result.error?.includes('nicht gefunden')
+      ? notFoundError(c, 'Space')
+      : forbiddenError(c, result.error);
   }
 
   return c.json(result.data);
@@ -127,7 +128,7 @@ spaceRoutes.get('/:id', async (c) => {
 spaceRoutes.put('/:id', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -138,23 +139,24 @@ spaceRoutes.put('/:id', async (c) => {
 
     // Input length validation
     if (name && name.length > 100) {
-      return c.json({ error: 'Name darf maximal 100 Zeichen lang sein' }, 400);
+      return validationError(c, 'Name darf maximal 100 Zeichen lang sein');
     }
     if (description && description.length > 1000) {
-      return c.json({ error: 'Beschreibung darf maximal 1000 Zeichen lang sein' }, 400);
+      return validationError(c, 'Beschreibung darf maximal 1000 Zeichen lang sein');
     }
 
     const result = await updateSpace(spaceId, userId, { name, description, icon, color });
 
     if (!result.success) {
-      const status = result.error?.includes('nicht gefunden') ? 404 : 403;
-      return c.json({ error: result.error }, status);
+      return result.error?.includes('nicht gefunden')
+        ? notFoundError(c, 'Space')
+        : forbiddenError(c, result.error);
     }
 
     return c.json(result.data);
   } catch (error: any) {
     console.error('Error updating space:', error);
-    return c.json({ error: 'Fehler beim Aktualisieren' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -164,15 +166,16 @@ spaceRoutes.put('/:id', async (c) => {
 spaceRoutes.delete('/:id', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
   const result = await deleteSpace(spaceId, userId);
 
   if (!result.success) {
-    const status = result.error?.includes('nicht gefunden') ? 404 : 403;
-    return c.json({ error: result.error }, status);
+    return result.error?.includes('nicht gefunden')
+      ? notFoundError(c, 'Space')
+      : forbiddenError(c, result.error);
   }
 
   return c.json({ success: true });
@@ -184,15 +187,16 @@ spaceRoutes.delete('/:id', async (c) => {
 spaceRoutes.post('/:id/archive', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
   const result = await archiveSpace(spaceId, userId, true);
 
   if (!result.success) {
-    const status = result.error?.includes('nicht gefunden') ? 404 : 403;
-    return c.json({ error: result.error }, status);
+    return result.error?.includes('nicht gefunden')
+      ? notFoundError(c, 'Space')
+      : forbiddenError(c, result.error);
   }
 
   return c.json(result.data);
@@ -204,15 +208,16 @@ spaceRoutes.post('/:id/archive', async (c) => {
 spaceRoutes.post('/:id/unarchive', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
   const result = await archiveSpace(spaceId, userId, false);
 
   if (!result.success) {
-    const status = result.error?.includes('nicht gefunden') ? 404 : 403;
-    return c.json({ error: result.error }, status);
+    return result.error?.includes('nicht gefunden')
+      ? notFoundError(c, 'Space')
+      : forbiddenError(c, result.error);
   }
 
   return c.json(result.data);
@@ -228,14 +233,14 @@ spaceRoutes.post('/:id/unarchive', async (c) => {
 spaceRoutes.get('/:id/members', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
   const result = await getMembers(spaceId, userId);
 
   if (!result.success) {
-    return c.json({ error: result.error }, 403);
+    return forbiddenError(c, result.error);
   }
 
   return c.json({ members: result.data });
@@ -247,7 +252,7 @@ spaceRoutes.get('/:id/members', async (c) => {
 spaceRoutes.post('/:id/members', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -257,24 +262,24 @@ spaceRoutes.post('/:id/members', async (c) => {
     const { userId: targetUserId, role } = body;
 
     if (!targetUserId || !role) {
-      return c.json({ error: 'userId und role sind erforderlich' }, 400);
+      return validationError(c, 'userId und role sind erforderlich');
     }
 
     const validRoles: SpaceRole[] = ['admin', 'editor', 'viewer'];
     if (!validRoles.includes(role)) {
-      return c.json({ error: 'Ungültige Rolle. Erlaubt: admin, editor, viewer' }, 400);
+      return validationError(c, 'Ungültige Rolle. Erlaubt: admin, editor, viewer');
     }
 
     const result = await addMember(spaceId, userId, targetUserId, role);
 
     if (!result.success) {
-      return c.json({ error: result.error }, 403);
+      return forbiddenError(c, result.error);
     }
 
     return c.json(result.data, 201);
   } catch (error: any) {
     console.error('Error adding member:', error);
-    return c.json({ error: 'Fehler beim Hinzufügen' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -284,7 +289,7 @@ spaceRoutes.post('/:id/members', async (c) => {
 spaceRoutes.put('/:id/members/:userId', async (c) => {
   const currentUserId = getCurrentUserId(c);
   if (!currentUserId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -295,24 +300,24 @@ spaceRoutes.put('/:id/members/:userId', async (c) => {
     const { role } = body;
 
     if (!role) {
-      return c.json({ error: 'role ist erforderlich' }, 400);
+      return validationError(c, 'role ist erforderlich');
     }
 
     const validRoles: SpaceRole[] = ['admin', 'editor', 'viewer'];
     if (!validRoles.includes(role)) {
-      return c.json({ error: 'Ungültige Rolle. Erlaubt: admin, editor, viewer' }, 400);
+      return validationError(c, 'Ungültige Rolle. Erlaubt: admin, editor, viewer');
     }
 
     const result = await updateMemberRole(spaceId, currentUserId, targetUserId, role);
 
     if (!result.success) {
-      return c.json({ error: result.error }, 403);
+      return forbiddenError(c, result.error);
     }
 
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error updating member role:', error);
-    return c.json({ error: 'Fehler beim Aktualisieren' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -322,7 +327,7 @@ spaceRoutes.put('/:id/members/:userId', async (c) => {
 spaceRoutes.delete('/:id/members/:userId', async (c) => {
   const currentUserId = getCurrentUserId(c);
   if (!currentUserId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -331,7 +336,7 @@ spaceRoutes.delete('/:id/members/:userId', async (c) => {
   const result = await removeMember(spaceId, currentUserId, targetUserId);
 
   if (!result.success) {
-    return c.json({ error: result.error }, 403);
+    return forbiddenError(c, result.error);
   }
 
   return c.json({ success: true });
@@ -347,7 +352,7 @@ spaceRoutes.delete('/:id/members/:userId', async (c) => {
 spaceRoutes.put('/:id/settings', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -357,13 +362,13 @@ spaceRoutes.put('/:id/settings', async (c) => {
     const result = await updateSettings(spaceId, userId, body);
 
     if (!result.success) {
-      return c.json({ error: result.error }, 403);
+      return forbiddenError(c, result.error);
     }
 
     return c.json(result.data);
   } catch (error: any) {
     console.error('Error updating settings:', error);
-    return c.json({ error: 'Fehler beim Aktualisieren' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -377,14 +382,14 @@ spaceRoutes.put('/:id/settings', async (c) => {
 spaceRoutes.get('/:id/memory', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
   const result = await getMemory(spaceId, userId);
 
   if (!result.success) {
-    return c.json({ error: result.error }, 403);
+    return forbiddenError(c, result.error);
   }
 
   return c.json(result.data);
@@ -396,7 +401,7 @@ spaceRoutes.get('/:id/memory', async (c) => {
 spaceRoutes.post('/:id/memory/about', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -406,13 +411,13 @@ spaceRoutes.post('/:id/memory/about', async (c) => {
     const { content, source = 'manual' } = body;
 
     if (!content) {
-      return c.json({ error: 'content ist erforderlich' }, 400);
+      return validationError(c, 'content ist erforderlich');
     }
 
     const result = await addAbout(spaceId, userId, content, source as MemorySource);
 
     if (!result.success) {
-      return c.json({ error: result.error }, 400);
+      return validationError(c, result.error || 'Fehler beim Hinzufügen');
     }
 
     return c.json(result.data, 201);
@@ -428,7 +433,7 @@ spaceRoutes.post('/:id/memory/about', async (c) => {
 spaceRoutes.post('/:id/memory/instructions', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -438,12 +443,12 @@ spaceRoutes.post('/:id/memory/instructions', async (c) => {
     const { content, priority = 'normal', source = 'manual' } = body;
 
     if (!content) {
-      return c.json({ error: 'content ist erforderlich' }, 400);
+      return validationError(c, 'content ist erforderlich');
     }
 
     const validPriorities: Priority[] = ['high', 'normal'];
     if (!validPriorities.includes(priority)) {
-      return c.json({ error: 'Ungültige Priorität. Erlaubt: high, normal' }, 400);
+      return validationError(c, 'Ungültige Priorität. Erlaubt: high, normal');
     }
 
     const result = await addInstruction(
@@ -455,7 +460,7 @@ spaceRoutes.post('/:id/memory/instructions', async (c) => {
     );
 
     if (!result.success) {
-      return c.json({ error: result.error }, 400);
+      return validationError(c, result.error || 'Fehler beim Hinzufügen');
     }
 
     return c.json(result.data, 201);
@@ -471,7 +476,7 @@ spaceRoutes.post('/:id/memory/instructions', async (c) => {
 spaceRoutes.post('/:id/memory/context', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -481,7 +486,7 @@ spaceRoutes.post('/:id/memory/context', async (c) => {
     const { name, description, active = true, source = 'manual' } = body;
 
     if (!name) {
-      return c.json({ error: 'name ist erforderlich' }, 400);
+      return validationError(c, 'name ist erforderlich');
     }
 
     const result = await addContext(
@@ -494,7 +499,7 @@ spaceRoutes.post('/:id/memory/context', async (c) => {
     );
 
     if (!result.success) {
-      return c.json({ error: result.error }, 400);
+      return validationError(c, result.error || 'Fehler beim Hinzufügen');
     }
 
     return c.json(result.data, 201);
@@ -510,7 +515,7 @@ spaceRoutes.post('/:id/memory/context', async (c) => {
 spaceRoutes.delete('/:id/memory/:section/:itemId', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -519,13 +524,13 @@ spaceRoutes.delete('/:id/memory/:section/:itemId', async (c) => {
 
   const validSections: MemorySection[] = ['about', 'instructions', 'context'];
   if (!validSections.includes(section as MemorySection)) {
-    return c.json({ error: 'Ungültige Section. Erlaubt: about, instructions, context' }, 400);
+    return validationError(c, 'Ungültige Section. Erlaubt: about, instructions, context');
   }
 
   const result = await deleteMemoryItem(spaceId, userId, section as MemorySection, itemId);
 
   if (!result.success) {
-    return c.json({ error: result.error }, 404);
+    return notFoundError(c, 'Memory-Eintrag');
   }
 
   return c.json({ success: true });
@@ -537,7 +542,7 @@ spaceRoutes.delete('/:id/memory/:section/:itemId', async (c) => {
 spaceRoutes.put('/:id/memory/context/:itemId/active', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -548,19 +553,19 @@ spaceRoutes.put('/:id/memory/context/:itemId/active', async (c) => {
     const { active } = body;
 
     if (typeof active !== 'boolean') {
-      return c.json({ error: 'active muss ein boolean sein' }, 400);
+      return validationError(c, 'active muss ein boolean sein');
     }
 
     const result = await setContextActive(spaceId, userId, itemId, active);
 
     if (!result.success) {
-      return c.json({ error: result.error }, 404);
+      return notFoundError(c, 'Context-Eintrag');
     }
 
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error updating context:', error);
-    return c.json({ error: 'Fehler beim Aktualisieren' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -574,14 +579,14 @@ spaceRoutes.put('/:id/memory/context/:itemId/active', async (c) => {
 spaceRoutes.get('/:id/collections', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
   const result = await getKBLinks(spaceId, userId);
 
   if (!result.success) {
-    return c.json({ error: result.error }, 403);
+    return forbiddenError(c, result.error);
   }
 
   return c.json(result.data);
@@ -593,7 +598,7 @@ spaceRoutes.get('/:id/collections', async (c) => {
 spaceRoutes.post('/:id/collections', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -603,19 +608,19 @@ spaceRoutes.post('/:id/collections', async (c) => {
     const { collectionId } = body;
 
     if (!collectionId) {
-      return c.json({ error: 'collectionId ist erforderlich' }, 400);
+      return validationError(c, 'collectionId ist erforderlich');
     }
 
     const result = await linkKBCollection(spaceId, userId, collectionId);
 
     if (!result.success) {
-      return c.json({ error: result.error }, 400);
+      return validationError(c, result.error || 'Fehler beim Verknüpfen');
     }
 
     return c.json(result.data, 201);
   } catch (error: any) {
     console.error('Error linking collection:', error);
-    return c.json({ error: 'Fehler beim Verknüpfen' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -625,7 +630,7 @@ spaceRoutes.post('/:id/collections', async (c) => {
 spaceRoutes.delete('/:id/collections/:collId', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -634,7 +639,7 @@ spaceRoutes.delete('/:id/collections/:collId', async (c) => {
   const result = await unlinkKBCollection(spaceId, userId, collectionId);
 
   if (!result.success) {
-    return c.json({ error: result.error }, 404);
+    return notFoundError(c, 'Collection-Verknüpfung');
   }
 
   return c.json({ success: true });
@@ -650,14 +655,14 @@ spaceRoutes.delete('/:id/collections/:collId', async (c) => {
 spaceRoutes.get('/:id/chats', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
   const result = await listChats(spaceId, userId);
 
   if (!result.success) {
-    return c.json({ error: result.error }, 403);
+    return forbiddenError(c, result.error);
   }
 
   return c.json({ chats: result.data });
@@ -669,7 +674,7 @@ spaceRoutes.get('/:id/chats', async (c) => {
 spaceRoutes.get('/:id/chats/:chatId', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -678,8 +683,9 @@ spaceRoutes.get('/:id/chats/:chatId', async (c) => {
   const result = await getChat(spaceId, userId, chatId);
 
   if (!result.success) {
-    const status = result.error?.includes('nicht gefunden') ? 404 : 403;
-    return c.json({ error: result.error }, status);
+    return result.error?.includes('nicht gefunden')
+      ? notFoundError(c, 'Chat')
+      : forbiddenError(c, result.error);
   }
 
   return c.json(result.data);
@@ -691,7 +697,7 @@ spaceRoutes.get('/:id/chats/:chatId', async (c) => {
 spaceRoutes.delete('/:id/chats/:chatId', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
@@ -700,8 +706,9 @@ spaceRoutes.delete('/:id/chats/:chatId', async (c) => {
   const result = await deleteChat(spaceId, userId, chatId);
 
   if (!result.success) {
-    const status = result.error?.includes('nicht gefunden') ? 404 : 403;
-    return c.json({ error: result.error }, status);
+    return result.error?.includes('nicht gefunden')
+      ? notFoundError(c, 'Chat')
+      : forbiddenError(c, result.error);
   }
 
   return c.json({ success: true });
@@ -717,14 +724,14 @@ spaceRoutes.delete('/:id/chats/:chatId', async (c) => {
 spaceRoutes.get('/:id/context', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const spaceId = c.req.param('id');
   const result = await getSpaceContext(spaceId, userId);
 
   if (!result.success) {
-    return c.json({ error: result.error }, 403);
+    return forbiddenError(c, result.error);
   }
 
   return c.json(result.data);

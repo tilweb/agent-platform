@@ -194,7 +194,6 @@ export default function SpaceDetailPage() {
     sendMessage,
     clearMessages,
     loadExistingChat,
-    sessionIdRef,
     activeTasks,
     onTaskCompleted,
     fileProcessingState,

@@ -360,7 +360,7 @@ function AnalysisResult({ analysis }) {
     return null;
   }
 
-  const { masterclassAnalysis, konsistenzAnalysis, stepName, timestamp } = analysis;
+  const { masterclassAnalysis, konsistenzAnalysis, timestamp } = analysis;
   const score = masterclassAnalysis?.score || 0;
 
   return (

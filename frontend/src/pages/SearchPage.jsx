@@ -464,7 +464,6 @@ function SearchPage() {
     isSelected,
     clearSelection,
     removeSelection,
-    getTotalCount,
   } = useSearch();
 
   const connectedSources = useMemo(
@@ -476,6 +475,7 @@ function SearchPage() {
   useEffect(() => {
     if (!activeTab && connectedSources.length > 0) {
       const tabWithResults = connectedSources.find(s => (results[s.id]?.length || 0) > 0);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabWithResults?.id || connectedSources[0].id);
     }
   }, [connectedSources, results, activeTab]);
@@ -485,6 +485,7 @@ function SearchPage() {
     if (connectedSources.length > 0 && Object.keys(listFilters).length === 0) {
       const initialFilters = {};
       connectedSources.forEach(s => { initialFilters[s.id] = true; });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setListFilters(initialFilters);
     }
   }, [connectedSources, listFilters]);
@@ -549,7 +550,6 @@ function SearchPage() {
     });
   }, [viewMode, connectedSources, listFilters, results]);
 
-  const totalResults = getTotalCount();
   const sourcePlaceholder = connectedSources.length > 0
     ? `Suche in ${connectedSources.map(s => s.name).join(', ')}...`
     : 'Suche...';

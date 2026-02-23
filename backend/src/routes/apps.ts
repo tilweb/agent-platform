@@ -15,7 +15,7 @@ import {
 import { contractRoutes } from '../apps/vertragsmanagement/routes';
 import { projektmanagementRoutes } from '../apps/projektmanagement/routes';
 import { authMiddleware, getCurrentUser } from '../auth';
-import { internalError } from '../utils/errorHandler';
+import { internalError, forbiddenError, validationError, notFoundError } from '../utils/errorHandler';
 
 const apps = new Hono();
 
@@ -61,13 +61,13 @@ apps.put('/order', async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user || user.role !== 'admin') {
-      return c.json({ error: 'Admin-Rechte erforderlich' }, 403);
+      return forbiddenError(c, 'Admin-Rechte erforderlich');
     }
 
     const { appIds } = await c.req.json<{ appIds: string[] }>();
 
     if (!Array.isArray(appIds)) {
-      return c.json({ error: 'appIds must be an array' }, 400);
+      return validationError(c, 'appIds must be an array');
     }
 
     const sortedApps = await reorderApps(appIds);
@@ -94,7 +94,7 @@ apps.get('/:appId', async (c) => {
     const app = await getApp(appId);
 
     if (!app) {
-      return c.json({ error: 'App not found' }, 404);
+      return notFoundError(c, 'App');
     }
 
     return c.json({ app });
@@ -114,7 +114,7 @@ apps.put('/:appId/enable', async (c) => {
     const app = await enableApp(appId);
 
     if (!app) {
-      return c.json({ error: 'App not found' }, 404);
+      return notFoundError(c, 'App');
     }
 
     return c.json({ app });
@@ -134,7 +134,7 @@ apps.put('/:appId/disable', async (c) => {
     const app = await disableApp(appId);
 
     if (!app) {
-      return c.json({ error: 'App not found' }, 404);
+      return notFoundError(c, 'App');
     }
 
     return c.json({ app });

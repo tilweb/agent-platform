@@ -114,15 +114,24 @@ Hinweis: Verwaiste Backend-Endpoints sind nur WARN (können intern genutzt werde
 
 ### Kategorie 7: Docs-Integrität
 
-Prüfe ob die NAV-Struktur in `DocsPage.jsx` mit dem Dateisystem unter `docs/anwenderdoku/docs/` übereinstimmt.
+Prüfe ob die NAV-Strukturen in `DocsPage.jsx` mit dem Dateisystem übereinstimmen. Es gibt zwei Doku-Bereiche:
 
-1. **Grep** nach `slug:` in `frontend/src/pages/DocsPage.jsx` — extrahiere alle NAV-Slugs (nur aus der `NAV`-Struktur, nicht aus `FEATURES`-Cards o.ä.)
+**Anwenderdoku (`ANWENDERDOKU_NAV` ↔ `docs/anwenderdoku/docs/`):**
+
+1. **Grep** nach `slug:` innerhalb von `ANWENDERDOKU_NAV` in `frontend/src/pages/DocsPage.jsx` — extrahiere alle NAV-Slugs (nicht aus `FEATURES`-Cards o.ä.)
 2. Für jeden NAV-Slug prüfen ob `docs/anwenderdoku/docs/{slug}.md` existiert
 3. Alle `.md`-Dateien unter `docs/anwenderdoku/docs/` auflisten (rekursiv, relativ zum docs-Root, ohne `.md`-Extension)
 4. Prüfen ob jede gefundene Datei als Slug in der NAV referenziert ist
 
+**Entwickler-Doku (`ENTWICKLER_NAV` ↔ `docs/entwickler/docs/`):**
+
+1. **Grep** nach `slug:` innerhalb von `ENTWICKLER_NAV` in `frontend/src/pages/DocsPage.jsx` — extrahiere alle Entwickler-NAV-Slugs
+2. Für jeden NAV-Slug prüfen ob `docs/entwickler/docs/{slug}.md` existiert
+3. Alle `.md`-Dateien unter `docs/entwickler/docs/` auflisten
+4. Prüfen ob jede gefundene Datei als Slug in der `ENTWICKLER_NAV` referenziert ist
+
 **Ampel:**
-- PASS: Alle NAV-Slugs haben eine Datei UND alle Dateien sind in der NAV referenziert
+- PASS: Alle NAV-Slugs (beide Bereiche) haben eine Datei UND alle Dateien sind in der NAV referenziert
 - WARN: Verwaiste Dateien vorhanden (Datei existiert, aber kein NAV-Eintrag) — kein kritisches Problem
 - FAIL: Fehlende Dateien (NAV-Slug vorhanden, aber keine `.md`-Datei) — Benutzer sieht "Seite nicht gefunden"
 

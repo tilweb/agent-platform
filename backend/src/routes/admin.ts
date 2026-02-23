@@ -9,7 +9,7 @@ import type { MiddlewareHandler } from 'hono';
 import { authMiddleware, getCurrentUser } from '../auth/middleware';
 import { listUsers } from '../auth';
 import { parseIntSafe } from '../utils/parseIntSafe';
-import { internalError } from '../utils/errorHandler';
+import { internalError, forbiddenError } from '../utils/errorHandler';
 import {
   getAuditLogs,
   searchAuditLogs,
@@ -30,7 +30,7 @@ adminRoutes.use('*', authMiddleware);
 const requireAdmin: MiddlewareHandler = async (c, next) => {
   const user = getCurrentUser(c);
   if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Admin-Rechte erforderlich' }, 403);
+    return forbiddenError(c, 'Admin-Rechte erforderlich');
   }
   await next();
 };

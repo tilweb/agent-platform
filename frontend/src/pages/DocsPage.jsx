@@ -16,7 +16,15 @@ for (const [path, loader] of Object.entries(docModules)) {
   if (m) docLoaders[m[1]] = loader;
 }
 
-const NAV = [
+// Entwickler-Docs glob
+const entwicklerModules = import.meta.glob('@entwickler-docs/**/*.md', { query: '?raw', import: 'default' });
+const entwicklerLoaders = {};
+for (const [path, loader] of Object.entries(entwicklerModules)) {
+  const m = path.match(/(?:@entwickler-docs|docs\/entwickler\/docs)\/(.+)\.md$/);
+  if (m) entwicklerLoaders[m[1]] = loader;
+}
+
+const ANWENDERDOKU_NAV = [
   { section: 'Start', pages: [
     { slug: 'index', title: 'Willkommen' },
   ]},
@@ -79,6 +87,36 @@ const NAV = [
   { section: 'Sicherheit', pages: [
     { slug: 'sicherheit/authentifizierung', title: 'Authentifizierung' },
     { slug: 'sicherheit/berechtigungen', title: 'Berechtigungen & RBAC' },
+  ]},
+];
+
+const ENTWICKLER_NAV = [
+  { section: 'Start', pages: [
+    { slug: 'index', title: 'Übersicht' },
+  ]},
+  { section: 'Architektur', pages: [
+    { slug: 'architektur/uebersicht', title: 'System-Architektur' },
+    { slug: 'architektur/verzeichnisstruktur', title: 'Verzeichnisstruktur' },
+  ]},
+  { section: 'Plugin-Entwicklung', pages: [
+    { slug: 'plugins/einstieg', title: 'Erste Schritte' },
+    { slug: 'plugins/oauth-provider', title: 'OAuthProvider' },
+    { slug: 'plugins/connection-provider', title: 'ConnectionProvider' },
+    { slug: 'plugins/tools', title: 'Tools' },
+    { slug: 'plugins/manifest', title: 'Plugin-Manifest' },
+  ]},
+  { section: 'Custom KI-Modelle', pages: [
+    { slug: 'modelle/uebersicht', title: 'Übersicht' },
+    { slug: 'modelle/provider-einrichten', title: 'Provider einrichten' },
+    { slug: 'modelle/api-referenz', title: 'API-Referenz' },
+  ]},
+  { section: 'Beispiele', pages: [
+    { slug: 'beispiele/oauth-plugin', title: 'OAuth-Plugin' },
+    { slug: 'beispiele/api-plugin', title: 'API-Key-Plugin' },
+  ]},
+  { section: 'API-Referenz', pages: [
+    { slug: 'api/registry', title: 'Plugin-Registry' },
+    { slug: 'api/konfiguration', title: 'Konfiguration' },
   ]},
 ];
 
@@ -471,7 +509,7 @@ function parseCallouts(md) {
   return segments;
 }
 
-function FeatureGrid({ navigate }) {
+function FeatureGrid({ navigate, category }) {
   return (
     <>
       <h2 style={styles.mdH2}>Funktionsübersicht</h2>
@@ -480,7 +518,7 @@ function FeatureGrid({ navigate }) {
           <div
             key={f.slug}
             style={styles.featureCard}
-            onClick={() => navigate(`/docs/${f.slug}`)}
+            onClick={() => navigate(`/docs/${category}/${f.slug}`)}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = theme.colors.primary;
               e.currentTarget.style.boxShadow = theme.shadows.md;
@@ -577,7 +615,7 @@ const markdownComponents = {
   a: ({ href, children }) => {
     if (href && href.endsWith('.md') && !href.startsWith('http')) {
       const slug = href.replace(/\.md$/, '').replace(/^\.\//, '').replace(/^\.\.\//g, '');
-      return <Link to={`/docs/${slug}`} style={styles.mdA}>{children}</Link>;
+      return <Link to={slug} relative="path" style={styles.mdA}>{children}</Link>;
     }
     return <a href={href} style={styles.mdA} target="_blank" rel="noopener noreferrer">{children}</a>;
   },
@@ -607,7 +645,6 @@ const markdownComponents = {
 };
 
 function DocsMarkdown({ content }) {
-  const navigate = useNavigate();
   const segments = useMemo(() => parseCallouts(content), [content]);
 
   return (
@@ -632,7 +669,7 @@ function DocsMarkdown({ content }) {
   );
 }
 
-export default function DocsPage({ embedded = false }) {
+export default function DocsPage({ embedded = false, category = 'anwenderdoku' }) {
   const params = useParams();
   const navigate = useNavigate();
   const [content, setContent] = useState('');
@@ -642,12 +679,16 @@ export default function DocsPage({ embedded = false }) {
 
   const slug = params['*'] || 'index';
 
+  const activeNav = category === 'anwenderdoku' ? ANWENDERDOKU_NAV : ENTWICKLER_NAV;
+  const activeLoaders = category === 'anwenderdoku' ? docLoaders : entwicklerLoaders;
+
   // Load page content via Vite glob loader
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
 
-    const loader = docLoaders[slug];
+    const loader = activeLoaders[slug];
     if (!loader) {
       setError('Seite nicht gefunden');
       setLoading(false);
@@ -663,7 +704,7 @@ export default function DocsPage({ embedded = false }) {
         setError('Seite konnte nicht geladen werden');
         setLoading(false);
       });
-  }, [slug]);
+  }, [slug, activeLoaders]);
 
   const toggleSection = (sectionName) => {
     setCollapsedSections(prev => ({
@@ -673,7 +714,7 @@ export default function DocsPage({ embedded = false }) {
   };
 
   const handleNavClick = (pageSlug) => {
-    navigate(`/docs/${pageSlug}`);
+    navigate(`/docs/${category}/${pageSlug}`);
   };
 
   return (
@@ -683,12 +724,14 @@ export default function DocsPage({ embedded = false }) {
         {!embedded && (
           <div style={styles.sidebarHeader}>
             <div style={styles.sidebarTitle}>Dokumentation</div>
-            <div style={styles.sidebarSubtitle}>Anwenderdokumentation</div>
+            <div style={styles.sidebarSubtitle}>
+              {category === 'anwenderdoku' ? 'Anwenderdokumentation' : 'Entwickler-Dokumentation'}
+            </div>
           </div>
         )}
 
         <div style={styles.navContainer}>
-          {NAV.map((section, idx) => {
+          {activeNav.map((section, idx) => {
             const isCollapsed = collapsedSections[section.section];
             return (
               <div key={section.section}>
@@ -748,7 +791,7 @@ export default function DocsPage({ embedded = false }) {
           {!loading && !error && (
             <>
               <DocsMarkdown content={content} />
-              {slug === 'index' && <FeatureGrid navigate={navigate} />}
+              {slug === 'index' && category === 'anwenderdoku' && <FeatureGrid navigate={navigate} category={category} />}
             </>
           )}
         </div>

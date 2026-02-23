@@ -7,7 +7,7 @@ import { sanitizeUrl, validateShareUrl } from '../utils/sanitize';
 import { AgentIcon } from './AgentPicker';
 import { CommandPalette } from './CommandPalette';
 import { useCommands } from '../hooks/useCommands';
-import { LinkIcon, FolderIcon, MicrophoneIcon, StopIcon, PaperclipIcon, BookIcon, DocumentIcon } from './Icons';
+import { LinkIcon, FolderIcon, MicrophoneIcon, StopIcon, PaperclipIcon, BookIcon, DocumentIcon, DownloadIcon } from './Icons';
 import Select from './Select';
 import AddToCollectionModal from './AddToCollectionModal';
 import CreateCollectionModal from './CreateCollectionModal';
@@ -26,8 +26,6 @@ import {
   TablePill,
   FilePill,
   ProjectPill,
-  pillIconColors,
-  spinnerKeyframes,
 } from './ContextPill';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -477,6 +475,7 @@ const CodeBlock = memo(function CodeBlock({ children, className, inline, ...prop
 
 // Markdown components for react-markdown
 const markdownComponents = {
+  // eslint-disable-next-line no-unused-vars
   code: ({ children, className, inline, node, ...props }) => {
     // Determine if this is inline code or a code block
     // Code blocks have className (language-xxx) OR contain newlines OR inline is explicitly false
@@ -1589,12 +1588,14 @@ function ThinkingBlock({ steps, isStreaming, reasoning }) {
   const hasReasoning = reasoning && reasoning.trim().length > 0;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isStreaming) setExpanded(true);
     else setExpanded(false);
   }, [isStreaming]);
 
   // Auto-expand reasoning while streaming
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isStreaming && hasReasoning) setReasoningExpanded(true);
   }, [isStreaming, hasReasoning]);
 
@@ -1854,7 +1855,7 @@ function ThinkingBlock({ steps, isStreaming, reasoning }) {
 function TaskStatusBlock({ taskId, taskTitle, onComplete }) {
   const [expanded, setExpanded] = useState(false);
   const [task, setTask] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [resultPosted, setResultPosted] = useState(false);
 
   // Poll for task status
@@ -1888,6 +1889,7 @@ function TaskStatusBlock({ taskId, taskTitle, onComplete }) {
   // When task completes, load full result and call onComplete
   useEffect(() => {
     if (task && task.status === 'completed' && !resultPosted && onComplete) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResultPosted(true);
 
       // Load full result and post as message
@@ -2396,7 +2398,7 @@ function extractGeneratedImage(content) {
   const markdownMatch = content.match(markdownImagePattern);
 
   if (markdownMatch) {
-    const [fullMatch, altText, url, imageId] = markdownMatch;
+    const [, altText, url, imageId] = markdownMatch;
 
     // Remove the markdown image from content
     let textContent = content.replace(markdownImagePattern, '');
@@ -2673,7 +2675,7 @@ function MessageAttachments({ attachments, onOpenLightbox }) {
   return (
     <div style={chatStyles.messageAttachments}>
       {attachments.map((attachment) => {
-        const { id, type, filename, mimeType, url, transcription, preview } = attachment;
+        const { id, type, filename, mimeType, url, transcription } = attachment;
         const absoluteUrl = getAbsoluteUrl(url);
 
         if (type === 'audio') {
@@ -3012,7 +3014,6 @@ function ChatWindow({
   messages,
   isStreaming,
   agentStatus,
-  activeAgentId,
   agents,
   selectedAgentId,
   onSelectAgent,
@@ -3046,7 +3047,6 @@ function ChatWindow({
   materials = [],
   onAddMaterial,
   onRemoveMaterial,
-  onUpdateMaterials,
 }) {
   const [input, setInput] = useState('');
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -3073,7 +3073,7 @@ function ChatWindow({
 
   // Audio recording and transcription hooks
   const { isRecording, formattedTime, error: recordingError, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
-  const { transcribe, isTranscribing, error: transcriptionError, isAvailable: sttAvailable } = useTranscription();
+  const { transcribe, error: transcriptionError, isAvailable: sttAvailable } = useTranscription();
 
   // Close folder dropdown on outside click
   useEffect(() => {
@@ -3446,7 +3446,7 @@ function ChatWindow({
           case 'chat_cleared':
             onClearChat?.();
             break;
-          case 'skill_started':
+          case 'skill_started': {
             // Generate readable message based on skill and attachments
             const { skillId, skillName } = result.action.payload;
             let skillMessage;
@@ -3475,6 +3475,7 @@ function ChatWindow({
               onSendMessage?.(`/${skillId}`, undefined, skillId);
             }
             break;
+          }
           case 'task_started':
             // Send task prompt as message
             onSendMessage?.(result.action.payload.prompt);
@@ -4144,16 +4145,6 @@ function SendIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M22 2L11 13" />
       <path d="M22 2l-7 20-4-9-9-4 20-7z" />
-    </svg>
-  );
-}
-
-function DownloadIcon({ size = 20 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
   );
 }

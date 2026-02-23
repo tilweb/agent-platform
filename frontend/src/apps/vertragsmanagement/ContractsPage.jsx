@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useContracts } from '../../hooks/useContracts';
 import { apiGet } from '../../utils/apiFetch';
@@ -258,8 +258,7 @@ const styles = {
 };
 
 function ContractsPage() {
-  const navigate = useNavigate();
-  const { contracts, stats, schemas, isLoading, refresh } = useContracts();
+  const { contracts, stats, schemas, isLoading } = useContracts();
   const [filters, setFilters] = useState({
     type: '',
     status: '',

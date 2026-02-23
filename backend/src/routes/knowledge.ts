@@ -4,7 +4,7 @@
  */
 
 import { Hono } from 'hono';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, forbiddenError, notFoundError, conflictError } from '../utils/errorHandler';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { readFile, writeFile, mkdir, readdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
@@ -133,19 +133,19 @@ knowledgeRoutes.get('/collections/:id', async (c) => {
     const collectionId = c.req.param('id');
 
     if (!isValidId(collectionId)) {
-      return c.json({ error: 'Ungültige Collection-ID' }, 400);
+      return validationError(c, 'Ungültige Collection-ID');
     }
 
     // Check access
     const accessResult = await canView(userId, 'collection', collectionId);
     if (!accessResult.allowed) {
-      return c.json({ error: 'Zugriff verweigert' }, 403);
+      return forbiddenError(c, 'Zugriff verweigert');
     }
 
     // Read manifest file which contains documents
     const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
     if (!existsSync(manifestPath)) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
+      return notFoundError(c, 'Collection');
     }
 
     const manifestContent = await readFile(manifestPath, 'utf-8');
@@ -173,12 +173,12 @@ knowledgeRoutes.post('/collections', async (c) => {
     const { id, name, description, activate_when, never_activate_when } = body;
 
     if (!id || !name) {
-      return c.json({ error: 'ID und Name sind erforderlich' }, 400);
+      return validationError(c, 'ID und Name sind erforderlich');
     }
 
     // Validate ID format
     if (!/^[a-z0-9_-]+$/.test(id)) {
-      return c.json({ error: 'ID darf nur Kleinbuchstaben, Zahlen, Bindestriche und Unterstriche enthalten' }, 400);
+      return validationError(c, 'ID darf nur Kleinbuchstaben, Zahlen, Bindestriche und Unterstriche enthalten');
     }
 
     // Lock collections for read-modify-write
@@ -227,7 +227,7 @@ knowledgeRoutes.post('/collections', async (c) => {
     });
   } catch (error: any) {
     if (error?.status === 409) {
-      return c.json({ error: error.message }, 409);
+      return conflictError(c, error.message);
     }
     console.error('Create collection error:', error);
     return internalError(c, error);
@@ -244,13 +244,13 @@ knowledgeRoutes.put('/collections/:id', async (c) => {
     const collectionId = c.req.param('id');
 
     if (!isValidId(collectionId)) {
-      return c.json({ error: 'Ungültige Collection-ID' }, 400);
+      return validationError(c, 'Ungültige Collection-ID');
     }
 
     // Check edit permission
     const accessResult = await canEdit(userId, 'collection', collectionId);
     if (!accessResult.allowed) {
-      return c.json({ error: 'Keine Berechtigung zum Bearbeiten' }, 403);
+      return forbiddenError(c, 'Keine Berechtigung zum Bearbeiten');
     }
 
     const body = await c.req.json();
@@ -286,7 +286,7 @@ knowledgeRoutes.put('/collections/:id', async (c) => {
     });
 
     if (!updated) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
+      return notFoundError(c, 'Collection');
     }
 
     return c.json({
@@ -309,13 +309,13 @@ knowledgeRoutes.delete('/collections/:id', async (c) => {
     const collectionId = c.req.param('id');
 
     if (!isValidId(collectionId)) {
-      return c.json({ error: 'Ungültige Collection-ID' }, 400);
+      return validationError(c, 'Ungültige Collection-ID');
     }
 
     // Check delete permission
     const accessResult = await canDelete(userId, 'collection', collectionId);
     if (!accessResult.allowed) {
-      return c.json({ error: 'Keine Berechtigung zum Löschen' }, 403);
+      return forbiddenError(c, 'Keine Berechtigung zum Löschen');
     }
 
     const found = await modifyCollections(async (data) => {
@@ -327,7 +327,7 @@ knowledgeRoutes.delete('/collections/:id', async (c) => {
     });
 
     if (!found) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
+      return notFoundError(c, 'Collection');
     }
 
     // Delete collection directory
@@ -356,19 +356,19 @@ knowledgeRoutes.get('/collections/:id/documents', async (c) => {
     const collectionId = c.req.param('id');
 
     if (!isValidId(collectionId)) {
-      return c.json({ error: 'Ungültige Collection-ID' }, 400);
+      return validationError(c, 'Ungültige Collection-ID');
     }
 
     // Check access
     const accessResult = await canView(userId, 'collection', collectionId);
     if (!accessResult.allowed) {
-      return c.json({ error: 'Zugriff verweigert' }, 403);
+      return forbiddenError(c, 'Zugriff verweigert');
     }
 
     // Read manifest
     const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
     if (!existsSync(manifestPath)) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
+      return notFoundError(c, 'Collection');
     }
 
     const manifestContent = await readFile(manifestPath, 'utf-8');
@@ -395,19 +395,19 @@ knowledgeRoutes.get('/collections/:id/documents/:docId', async (c) => {
     const docId = c.req.param('docId');
 
     if (!isValidId(collectionId) || !isValidId(docId)) {
-      return c.json({ error: 'Ungültige ID' }, 400);
+      return validationError(c, 'Ungültige ID');
     }
 
     // Check access
     const accessResult = await canView(userId, 'collection', collectionId);
     if (!accessResult.allowed) {
-      return c.json({ error: 'Zugriff verweigert' }, 403);
+      return forbiddenError(c, 'Zugriff verweigert');
     }
 
     // Find document path in manifest
     const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
     if (!existsSync(manifestPath)) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
+      return notFoundError(c, 'Collection');
     }
 
     const manifestContent = await readFile(manifestPath, 'utf-8');
@@ -415,7 +415,7 @@ knowledgeRoutes.get('/collections/:id/documents/:docId', async (c) => {
 
     const doc = manifest.documents?.find((d: any) => d.document_id === docId);
     if (!doc) {
-      return c.json({ error: 'Dokument nicht gefunden' }, 404);
+      return notFoundError(c, 'Dokument');
     }
 
     // Read document meta and content
@@ -456,19 +456,19 @@ knowledgeRoutes.delete('/collections/:id/documents/:docId', async (c) => {
     const docId = c.req.param('docId');
 
     if (!isValidId(collectionId) || !isValidId(docId)) {
-      return c.json({ error: 'Ungültige ID' }, 400);
+      return validationError(c, 'Ungültige ID');
     }
 
     // Check edit permission
     const accessResult = await canEdit(userId, 'collection', collectionId);
     if (!accessResult.allowed) {
-      return c.json({ error: 'Keine Berechtigung zum Bearbeiten' }, 403);
+      return forbiddenError(c, 'Keine Berechtigung zum Bearbeiten');
     }
 
     // Find document path in manifest
     const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
     if (!existsSync(manifestPath)) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
+      return notFoundError(c, 'Collection');
     }
 
     const manifestContent = await readFile(manifestPath, 'utf-8');
@@ -476,7 +476,7 @@ knowledgeRoutes.delete('/collections/:id/documents/:docId', async (c) => {
 
     const docIndex = manifest.documents?.findIndex((d: any) => d.document_id === docId);
     if (docIndex < 0) {
-      return c.json({ error: 'Dokument nicht gefunden' }, 404);
+      return notFoundError(c, 'Dokument');
     }
 
     const doc = manifest.documents[docIndex];

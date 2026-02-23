@@ -1,5 +1,3 @@
-import { theme } from '../config/theme';
-
 // Agent icon colors
 const agentColors = {
   general: '#14b8a6',

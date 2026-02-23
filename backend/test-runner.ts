@@ -51,9 +51,9 @@ for (const file of testFiles) {
   const failMatch = output.match(/(\d+) fail/);
   const totalMatch = output.match(/Ran (\d+) tests/);
 
-  const pass = passMatch ? parseInt(passMatch[1]) : 0;
-  const fail = failMatch ? parseInt(failMatch[1]) : 0;
-  const tests = totalMatch ? parseInt(totalMatch[1]) : 0;
+  const pass = passMatch ? parseInt(passMatch[1] ?? '0') : 0;
+  const fail = failMatch ? parseInt(failMatch[1] ?? '0') : 0;
+  const tests = totalMatch ? parseInt(totalMatch[1] ?? '0') : 0;
 
   totalPass += pass;
   totalFail += fail;

@@ -47,9 +47,15 @@ Erstelle eine Tabelle:
 
 Lies alle Dokumentationsdateien:
 
-1. **NAV-Struktur**: Lies `frontend/src/pages/DocsPage.jsx` — extrahiere die `NAV`-Konstante (Sektionen, Slugs, Titel) und die `FEATURES`-Konstante
+### Anwenderdoku
+1. **NAV-Struktur**: Lies `frontend/src/pages/DocsPage.jsx` — extrahiere die `ANWENDERDOKU_NAV`-Konstante (Sektionen, Slugs, Titel) und die `FEATURES`-Konstante
 2. **Markdown-Dateien**: Lies alle `.md`-Dateien unter `docs/anwenderdoku/docs/` rekursiv
 3. **Verzeichnisstruktur**: Prüfe welche Unterverzeichnisse existieren
+
+### Entwickler-Dokumentation
+1. **NAV-Struktur**: Extrahiere die `ENTWICKLER_NAV`-Konstante aus `DocsPage.jsx`
+2. **Markdown-Dateien**: Lies alle `.md`-Dateien unter `docs/entwickler/docs/` rekursiv
+3. **Trigger**: Entwickler-Doku aktualisieren bei Änderungen in `backend/src/plugins/`, `backend/src/connections/`, oder Plugin-Manifesten unter `data/plugins/builtin/`
 
 Erstelle eine Übersicht:
 
@@ -132,10 +138,11 @@ Für jeden Eintrag mit Status `veraltet` oder `fehlt`:
 
 Führe folgende Prüfungen durch:
 
-1. **NAV ↔ Dateien**: Jeder Slug in der `NAV`-Konstante hat eine zugehörige `.md`-Datei. Jede `.md`-Datei hat einen NAV-Eintrag.
-2. **FEATURES ↔ NAV**: Jeder Slug in `FEATURES` existiert auch in `NAV`
-3. **Interne Links**: Prüfe ob Markdown-Dateien auf andere Doku-Seiten verlinken und ob diese Links gültig sind (Ziel-Slugs existieren)
-4. **Verzeichnisstruktur**: Keine leeren Verzeichnisse unter `docs/anwenderdoku/docs/`
+1. **ANWENDERDOKU_NAV ↔ Dateien**: Jeder Slug in `ANWENDERDOKU_NAV` hat eine zugehörige `.md`-Datei unter `docs/anwenderdoku/docs/`. Jede `.md`-Datei hat einen NAV-Eintrag.
+2. **ENTWICKLER_NAV ↔ Dateien**: Jeder Slug in `ENTWICKLER_NAV` hat eine zugehörige `.md`-Datei unter `docs/entwickler/docs/`. Jede `.md`-Datei hat einen NAV-Eintrag.
+3. **FEATURES ↔ NAV**: Jeder Slug in `FEATURES` existiert auch in `ANWENDERDOKU_NAV`
+4. **Interne Links**: Prüfe ob Markdown-Dateien auf andere Doku-Seiten verlinken und ob diese Links gültig sind (Ziel-Slugs existieren)
+5. **Verzeichnisstruktur**: Keine leeren Verzeichnisse unter `docs/anwenderdoku/docs/` oder `docs/entwickler/docs/`
 
 ### Prüfungs-Report
 

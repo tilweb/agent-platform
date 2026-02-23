@@ -142,7 +142,7 @@ const styles = {
 };
 
 export default function SpaceKBLinks({ spaceId }) {
-  const { links, loading, error, linkCollection, unlinkCollection } = useSpaceKBLinks(spaceId);
+  const { links, loading, linkCollection, unlinkCollection } = useSpaceKBLinks(spaceId);
   const [collections, setCollections] = useState([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
   const [selectedCollectionId, setSelectedCollectionId] = useState('');

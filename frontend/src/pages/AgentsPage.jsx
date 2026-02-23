@@ -5,6 +5,7 @@ import Select from '../components/Select';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useProviders } from '../hooks/useProviders';
 import { useToast } from '../components/Toast';
+import { PlusIcon, ArrowLeftIcon } from '../components/Icons';
 
 // ==========================================
 // Styles
@@ -573,6 +574,7 @@ function ModelSelector({
     });
   }, [getModelsForAgent, formData.id, formData.tools, formData.capabilities]);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const selectedModel = useMemo(() => {
     if (!formData.model?.provider_id || !formData.model?.model_id) return null;
 
@@ -1655,24 +1657,6 @@ function AgentIcon({ agentId, color, size = 24 }) {
         </svg>
       );
   }
-}
-
-function PlusIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
-  );
-}
-
-function ArrowLeftIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  );
 }
 
 function LockIcon() {

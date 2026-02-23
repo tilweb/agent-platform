@@ -8,7 +8,7 @@
 
 import { Hono } from 'hono';
 import { authMiddleware, getCurrentUserId } from '../auth/middleware';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, unauthorizedError, notFoundError } from '../utils/errorHandler';
 import { listUsers } from '../auth/storage';
 import {
   getAllUserModelPreferences,
@@ -35,7 +35,7 @@ const VALID_PURPOSES: ModelPurpose[] = ['chat', 'vision', 'tts', 'stt', 'text_to
 usersRoutes.get('/', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   try {
@@ -54,7 +54,7 @@ usersRoutes.get('/', async (c) => {
     return c.json({ users });
   } catch (error: any) {
     console.error('Error listing users:', error);
-    return c.json({ error: 'Fehler beim Laden der Benutzer' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -64,7 +64,7 @@ usersRoutes.get('/', async (c) => {
 usersRoutes.get('/search', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const query = c.req.query('q')?.toLowerCase();
@@ -100,7 +100,7 @@ usersRoutes.get('/search', async (c) => {
     return c.json({ users });
   } catch (error: any) {
     console.error('Error searching users:', error);
-    return c.json({ error: 'Fehler bei der Suche' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -115,7 +115,7 @@ usersRoutes.get('/search', async (c) => {
 usersRoutes.get('/preferences/models', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   try {
@@ -131,7 +131,7 @@ usersRoutes.get('/preferences/models', async (c) => {
     });
   } catch (error: any) {
     console.error('Error getting user preferences:', error);
-    return c.json({ error: 'Fehler beim Laden der Einstellungen' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -144,40 +144,36 @@ usersRoutes.get('/preferences/models', async (c) => {
 usersRoutes.put('/preferences/models/:purpose', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const purpose = c.req.param('purpose') as ModelPurpose;
 
   // Validate purpose
   if (!VALID_PURPOSES.includes(purpose)) {
-    return c.json({
-      error: `Ungültiger Zweck. Erlaubt: ${VALID_PURPOSES.join(', ')}`,
-    }, 400);
+    return validationError(c, `Ungültiger Zweck. Erlaubt: ${VALID_PURPOSES.join(', ')}`);
   }
 
   try {
     const body = await c.req.json<{ provider_id: string; model_id: string }>();
 
     if (!body.provider_id || !body.model_id) {
-      return c.json({
-        error: 'provider_id und model_id sind erforderlich',
-      }, 400);
+      return validationError(c, 'provider_id und model_id sind erforderlich');
     }
 
     // Validate that the provider exists and is enabled
     const provider = await getProvider(body.provider_id);
     if (!provider) {
-      return c.json({ error: 'Provider nicht gefunden' }, 404);
+      return notFoundError(c, 'Provider');
     }
     if (!provider.enabled) {
-      return c.json({ error: 'Provider ist deaktiviert' }, 400);
+      return validationError(c, 'Provider ist deaktiviert');
     }
 
     // Validate that the model exists
     const model = provider.models.find(m => m.id === body.model_id);
     if (!model) {
-      return c.json({ error: 'Modell nicht gefunden' }, 404);
+      return notFoundError(c, 'Modell');
     }
 
     // Set the preference
@@ -205,16 +201,14 @@ usersRoutes.put('/preferences/models/:purpose', async (c) => {
 usersRoutes.delete('/preferences/models/:purpose', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const purpose = c.req.param('purpose') as ModelPurpose;
 
   // Validate purpose
   if (!VALID_PURPOSES.includes(purpose)) {
-    return c.json({
-      error: `Ungültiger Zweck. Erlaubt: ${VALID_PURPOSES.join(', ')}`,
-    }, 400);
+    return validationError(c, `Ungültiger Zweck. Erlaubt: ${VALID_PURPOSES.join(', ')}`);
   }
 
   try {

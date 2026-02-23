@@ -109,7 +109,7 @@ const styles = {
   },
 };
 
-function Step9Vergleich({ data }) {
+function Step9Vergleich() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>

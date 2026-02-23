@@ -26,7 +26,7 @@ import { llmService } from '../services/llm';
 import { OpenAIAdapter } from '../services/llm/adapters/openai';
 import { OllamaAdapter } from '../services/llm/adapters/ollama';
 import { authMiddleware } from '../auth';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, notFoundError, forbiddenError } from '../utils/errorHandler';
 import type {
   CreateProviderRequest,
   UpdateProviderRequest,
@@ -40,7 +40,7 @@ const providers = new Hono();
 const adminMiddleware: MiddlewareHandler = async (c, next) => {
   const user = c.get('user');
   if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Admin-Rechte erforderlich' }, 403);
+    return forbiddenError(c, 'Admin-Rechte erforderlich');
   }
   return next();
 };
@@ -66,10 +66,7 @@ providers.get('/', async (c) => {
     return c.json({ providers: providerList });
   } catch (error) {
     console.error('Error listing providers:', error);
-    return c.json(
-      { error: 'Failed to list providers' },
-      500
-    );
+    return internalError(c, error);
   }
 });
 
@@ -81,29 +78,20 @@ providers.get('/', async (c) => {
 providers.post('/', adminMiddleware, async (c) => {
   try {
     if (!isCustomProvidersAllowed()) {
-      return c.json(
-        { error: 'Eigene Provider sind deaktiviert. Nur Adacor-Modelle sind verfügbar.' },
-        403
-      );
+      return forbiddenError(c, 'Eigene Provider sind deaktiviert. Nur Adacor-Modelle sind verfügbar.');
     }
 
     const body = await c.req.json<CreateProviderRequest>();
 
     if (!body.name || !body.api_mode || !body.base_url) {
-      return c.json(
-        { error: 'Missing required fields: name, api_mode, base_url' },
-        400
-      );
+      return validationError(c, 'Missing required fields: name, api_mode, base_url');
     }
 
     const provider = await createProvider(body);
     return c.json({ provider }, 201);
   } catch (error) {
     console.error('Error creating provider:', error);
-    return c.json(
-      { error: 'Fehler beim Erstellen des Providers' },
-      400
-    );
+    return validationError(c, 'Fehler beim Erstellen des Providers');
   }
 });
 
@@ -117,10 +105,7 @@ providers.get('/active', async (c) => {
     return c.json({ active });
   } catch (error) {
     console.error('Error getting active selection:', error);
-    return c.json(
-      { error: 'Failed to get active selection' },
-      500
-    );
+    return internalError(c, error);
   }
 });
 
@@ -133,10 +118,7 @@ providers.put('/active/:purpose', adminMiddleware, async (c) => {
     const purpose = c.req.param('purpose') as 'chat' | 'vision' | 'tts' | 'stt' | 'text_to_image' | 'image_to_image';
 
     if (!['chat', 'vision', 'tts', 'stt', 'text_to_image', 'image_to_image'].includes(purpose)) {
-      return c.json(
-        { error: 'Invalid purpose. Must be one of: chat, vision, tts, stt, text_to_image, image_to_image' },
-        400
-      );
+      return validationError(c, 'Invalid purpose. Must be one of: chat, vision, tts, stt, text_to_image, image_to_image');
     }
 
     const body = await c.req.json<SetActiveModelRequest>();
@@ -151,10 +133,7 @@ providers.put('/active/:purpose', adminMiddleware, async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Error setting active model:', error);
-    return c.json(
-      { error: 'Fehler beim Setzen des aktiven Modells' },
-      400
-    );
+    return validationError(c, 'Fehler beim Setzen des aktiven Modells');
   }
 });
 
@@ -176,20 +155,14 @@ providers.get('/config', async (c) => {
 providers.post('/adacor/sync', adminMiddleware, async (c) => {
   try {
     if (!isModelSyncConfigured()) {
-      return c.json(
-        { error: 'Modell-Synchronisierung ist nicht konfiguriert (ADACOR_AI_API_BASE + ADACOR_AI_MODELS_PATH fehlt)' },
-        400
-      );
+      return validationError(c, 'Modell-Synchronisierung ist nicht konfiguriert (ADACOR_AI_API_BASE + ADACOR_AI_MODELS_PATH fehlt)');
     }
 
     const result = await syncAdacorModels();
     return c.json({ result });
   } catch (error) {
     console.error('Error syncing Adacor models:', error);
-    return c.json(
-      { error: 'Fehler bei der Modell-Synchronisierung' },
-      500
-    );
+    return internalError(c, error);
   }
 });
 
@@ -203,16 +176,13 @@ providers.get('/:id', async (c) => {
     const provider = await getProvider(id);
 
     if (!provider) {
-      return c.json({ error: 'Provider not found' }, 404);
+      return notFoundError(c, 'Provider');
     }
 
     return c.json({ provider });
   } catch (error) {
     console.error('Error getting provider:', error);
-    return c.json(
-      { error: 'Failed to get provider' },
-      500
-    );
+    return internalError(c, error);
   }
 });
 
@@ -233,10 +203,7 @@ providers.put('/:id', adminMiddleware, async (c) => {
     return c.json({ provider });
   } catch (error) {
     console.error('Error updating provider:', error);
-    return c.json(
-      { error: 'Fehler beim Aktualisieren des Providers' },
-      400
-    );
+    return validationError(c, 'Fehler beim Aktualisieren des Providers');
   }
 });
 
@@ -255,10 +222,7 @@ providers.delete('/:id', adminMiddleware, async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Error deleting provider:', error);
-    return c.json(
-      { error: 'Fehler beim Löschen des Providers' },
-      400
-    );
+    return validationError(c, 'Fehler beim Löschen des Providers');
   }
 });
 
@@ -276,36 +240,24 @@ providers.post('/:id/models', adminMiddleware, async (c) => {
 
     // Adacor models are managed exclusively via sync
     if (providerId === 'adacor') {
-      return c.json(
-        { error: 'Adacor-Modelle werden ausschließlich über die Modell-Synchronisierung verwaltet' },
-        403
-      );
+      return forbiddenError(c, 'Adacor-Modelle werden ausschließlich über die Modell-Synchronisierung verwaltet');
     }
 
     if (!isCustomProvidersAllowed()) {
-      return c.json(
-        { error: 'Eigene Provider sind deaktiviert. Nur Adacor-Modelle sind verfügbar.' },
-        403
-      );
+      return forbiddenError(c, 'Eigene Provider sind deaktiviert. Nur Adacor-Modelle sind verfügbar.');
     }
 
     const body = await c.req.json<ModelConfig>();
 
     if (!body.id || !body.name || !body.type || !body.capabilities) {
-      return c.json(
-        { error: 'Missing required fields: id, name, type, capabilities' },
-        400
-      );
+      return validationError(c, 'Missing required fields: id, name, type, capabilities');
     }
 
     const model = await addModel(providerId, body);
     return c.json({ model }, 201);
   } catch (error) {
     console.error('Error adding model:', error);
-    return c.json(
-      { error: 'Fehler beim Hinzufügen des Modells' },
-      400
-    );
+    return validationError(c, 'Fehler beim Hinzufügen des Modells');
   }
 });
 
@@ -327,10 +279,7 @@ providers.put('/:id/models/:modelId', adminMiddleware, async (c) => {
     return c.json({ model });
   } catch (error) {
     console.error('Error updating model:', error);
-    return c.json(
-      { error: error instanceof Error ? error.message : 'Fehler beim Aktualisieren des Modells' },
-      400
-    );
+    return validationError(c, error instanceof Error ? error.message : 'Fehler beim Aktualisieren des Modells');
   }
 });
 
@@ -351,10 +300,7 @@ providers.delete('/:id/models/:modelId', adminMiddleware, async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Error deleting model:', error);
-    return c.json(
-      { error: 'Fehler beim Löschen des Modells' },
-      400
-    );
+    return validationError(c, 'Fehler beim Löschen des Modells');
   }
 });
 
@@ -370,7 +316,7 @@ providers.post('/:id/test', async (c) => {
     const provider = await getProvider(id);
 
     if (!provider) {
-      return c.json({ error: 'Provider not found' }, 404);
+      return notFoundError(c, 'Provider');
     }
 
     // Get API key from environment
@@ -382,7 +328,7 @@ providers.post('/:id/test', async (c) => {
     // Get a default model for testing
     const defaultModel = provider.models.find((m) => m.default) || provider.models[0];
     if (!defaultModel) {
-      return c.json({ error: 'Provider hat keine Modelle konfiguriert' }, 400);
+      return validationError(c, 'Provider hat keine Modelle konfiguriert');
     }
     const modelId = defaultModel.id;
 
@@ -402,16 +348,13 @@ providers.post('/:id/test', async (c) => {
       });
       result = await adapter.testConnection();
     } else {
-      return c.json(
-        { error: `Unknown API mode: ${provider.api_mode}` },
-        400
-      );
+      return validationError(c, `Unknown API mode: ${provider.api_mode}`);
     }
 
     return c.json(result);
   } catch (error) {
     console.error('Error testing provider:', error);
-    return c.json({ error: 'Provider-Test fehlgeschlagen' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -425,7 +368,7 @@ providers.get('/:id/models/available', async (c) => {
     const provider = await getProvider(id);
 
     if (!provider) {
-      return c.json({ error: 'Provider not found' }, 404);
+      return notFoundError(c, 'Provider');
     }
 
     // Get API key from environment
@@ -452,10 +395,7 @@ providers.get('/:id/models/available', async (c) => {
     return c.json({ models });
   } catch (error) {
     console.error('Error listing available models:', error);
-    return c.json(
-      { error: 'Failed to list available models' },
-      500
-    );
+    return internalError(c, error);
   }
 });
 
@@ -469,10 +409,7 @@ providers.get('/current/info', async (c) => {
     return c.json({ current });
   } catch (error) {
     console.error('Error getting current model:', error);
-    return c.json(
-      { error: 'Failed to get current model info' },
-      500
-    );
+    return internalError(c, error);
   }
 });
 

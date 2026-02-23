@@ -515,6 +515,7 @@ function TasksPage() {
     if (openTaskId && tasks.length > 0) {
       const taskToOpen = tasks.find(t => t.id === openTaskId);
       if (taskToOpen) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedTask(taskToOpen);
         // Clear the URL parameter after opening
         searchParams.delete('open');

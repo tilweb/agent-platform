@@ -367,8 +367,6 @@ function SettingsPage() {
     isLoading: prefsLoading,
     setPreference: setModelPreference,
     clearPreference: clearModelPreference,
-    hasPreference,
-    refresh: refreshPreferences,
   } = useUserPreferences();
 
   // Available models for selection
@@ -739,11 +737,6 @@ function SettingsPage() {
                 const hasUserPref = !!(userPref?.provider_id && userPref?.model_id);
                 const availableModels = getModelsForPurposeLocal(key);
                 const systemDefaultInfo = getModelDisplayInfo(systemDefault?.provider_id, systemDefault?.model_id);
-
-                // Current value for select
-                const currentValue = hasUserPref
-                  ? `${userPref.provider_id}::${userPref.model_id}`
-                  : 'system';
 
                 return (
                   <div key={key} style={styles.card}>

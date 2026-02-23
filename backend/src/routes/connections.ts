@@ -16,7 +16,7 @@ import {
 } from '../connections';
 import type { OAuthState } from '../connections';
 import { pluginRegistry } from '../plugins';
-import { internalError } from '../utils/errorHandler';
+import { internalError, notFoundError, validationError } from '../utils/errorHandler';
 
 const connectionRoutes = new Hono();
 
@@ -122,7 +122,7 @@ connectionRoutes.get('/:id', authMiddleware, async (c) => {
 
     const provider = connectionRegistry.get(providerId);
     if (!provider) {
-      return c.json({ error: 'Provider not found' }, 404);
+      return notFoundError(c, 'Provider');
     }
 
     const connection = await loadConnection(userId, providerId);
@@ -154,28 +154,26 @@ connectionRoutes.get('/:id/connect', authMiddleware, async (c) => {
 
     // Check encryption is configured
     if (!isEncryptionConfigured()) {
-      return c.json({
-        error: 'Encryption not configured. Set CONNECTION_ENCRYPTION_KEY environment variable.',
-      }, 500);
+      return internalError(c, new Error('Encryption not configured. Set CONNECTION_ENCRYPTION_KEY environment variable.'));
     }
 
     const provider = connectionRegistry.get(providerId);
     if (!provider) {
-      return c.json({ error: 'Provider not found' }, 404);
+      return notFoundError(c, 'Provider');
     }
 
     if (provider.authType !== 'oauth2') {
-      return c.json({ error: 'Provider does not use OAuth' }, 400);
+      return validationError(c, 'Provider does not use OAuth');
     }
 
     // Check if provider is enabled
     if (!pluginRegistry.isEnabled(providerId)) {
-      return c.json({ error: 'Dieser Provider ist deaktiviert.' }, 400);
+      return validationError(c, 'Dieser Provider ist deaktiviert.');
     }
 
     // Check if provider credentials are configured
     if (!pluginRegistry.isConfigured(providerId)) {
-      return c.json({ error: 'Provider-Credentials nicht konfiguriert. Ein Admin muss den Provider zuerst einrichten.' }, 400);
+      return validationError(c, 'Provider-Credentials nicht konfiguriert. Ein Admin muss den Provider zuerst einrichten.');
     }
 
     // Generate state and redirect URI
@@ -183,13 +181,13 @@ connectionRoutes.get('/:id/connect', authMiddleware, async (c) => {
     const baseUrl = process.env.API_BASE_URL;
     if (!baseUrl) {
       console.error('[OAuth] API_BASE_URL environment variable is not set');
-      return c.json({ error: 'API_BASE_URL ist nicht konfiguriert. OAuth erfordert eine konfigurierte Base-URL.' }, 500);
+      return internalError(c, new Error('API_BASE_URL ist nicht konfiguriert. OAuth erfordert eine konfigurierte Base-URL.'));
     }
 
     // Validate redirect URI base URL
     if (!validateRedirectUri(baseUrl)) {
       console.error('[OAuth] Invalid API_BASE_URL configuration:', baseUrl);
-      return c.json({ error: 'OAuth configuration error' }, 500);
+      return internalError(c, new Error('OAuth configuration error'));
     }
 
     const redirectUri = `${baseUrl}/api/connections/${providerId}/callback`;
@@ -355,7 +353,7 @@ connectionRoutes.post('/:id/disconnect', authMiddleware, async (c) => {
     const deleted = await deleteConnection(userId, providerId);
 
     if (!deleted) {
-      return c.json({ error: 'Connection not found' }, 404);
+      return notFoundError(c, 'Connection');
     }
 
     return c.json({ success: true });

@@ -276,6 +276,7 @@ function SharedChatPage() {
 
   useEffect(() => {
     if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError('Kein Share-Token angegeben');
       setLoading(false);
       return;

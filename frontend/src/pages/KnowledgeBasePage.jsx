@@ -4,6 +4,7 @@ import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../uti
 import AccessManager from '../components/AccessManager';
 import { formatDate } from '../utils/dateFormat';
 import Select from '../components/Select';
+import { ArrowLeftIcon } from '../components/Icons';
 
 // ==========================================
 // Helper Functions
@@ -696,10 +697,6 @@ function KnowledgeBasePage() {
 
   const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    loadCollections();
-  }, []);
-
   // ==========================================
   // Data Loading
   // ==========================================
@@ -715,6 +712,11 @@ function KnowledgeBasePage() {
     }
     setLoading(false);
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadCollections();
+  }, []);
 
   async function loadCollectionDetail(collectionId) {
     try {
@@ -1937,15 +1939,6 @@ function UploadIcon({ color }) {
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="17 8 12 3 7 8" />
       <line x1="12" y1="3" x2="12" y2="15" />
-    </svg>
-  );
-}
-
-function ArrowLeftIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
     </svg>
   );
 }

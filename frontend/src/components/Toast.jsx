@@ -137,6 +137,10 @@ export function useToast() {
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
+  const removeToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   const addToast = useCallback((options) => {
     const id = Date.now() + Math.random();
     const toast = {
@@ -156,11 +160,7 @@ export function ToastProvider({ children }) {
     }
 
     return id;
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  }, [removeToast]);
 
   // Convenience methods
   const success = useCallback((title, message) => addToast({ type: 'success', title, message }), [addToast]);

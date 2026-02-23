@@ -200,11 +200,9 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
     error,
     canManage,
     isOwner,
-    refresh,
     addAccess,
     updateRole,
     removeAccess,
-    transferOwnership,
   } = useResourceAccess(resourceType, resourceId);
 
   const { users: availableUsers, refresh: refreshAvailableUsers } = useAvailableUsers(
@@ -219,10 +217,12 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
 
   // Clear selected values when available options change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedUser('');
   }, [availableUsers]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedGroup('');
   }, [availableGroups]);
 
@@ -272,18 +272,6 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
       } else {
         refreshAvailableGroups();
       }
-    } catch (err) {
-      setActionError(err.message);
-    }
-  };
-
-  const handleTransferOwnership = async (newOwnerId) => {
-    if (!confirm('Eigentum wirklich übertragen? Sie verlieren die Owner-Rechte.')) return;
-
-    try {
-      setActionError(null);
-      await transferOwnership(newOwnerId);
-      refreshAvailableUsers();
     } catch (err) {
       setActionError(err.message);
     }

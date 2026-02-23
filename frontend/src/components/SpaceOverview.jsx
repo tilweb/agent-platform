@@ -118,7 +118,7 @@ const styles = {
 
 // formatDate (formatDateLong) is imported from utils/dateFormat
 
-export default function SpaceOverview({ space, onUpdate, onRefresh }) {
+export default function SpaceOverview({ space, onUpdate }) {
   const [name, setName] = useState(space.name);
   const [description, setDescription] = useState(space.description || '');
   const [isSaving, setIsSaving] = useState(false);

@@ -5,7 +5,7 @@ import { chatRateLimit, uploadRateLimit } from '../middleware/rateLimit';
 import { generateSessionId, saveConversation, saveChatHistory, loadChatHistory, listChatHistories, searchChatHistories, deleteChatHistory, regenerateChatSummary, regenerateAllMissingSummaries, createShareLink, revokeShareLink, loadChatByShareToken, getShareInfo, loadChatFolders, createChatFolder, deleteChatFolder, updateChatFolders, getChatFolderIds, listChatsInFolder, getFolderChatCounts, addChatMaterial, removeChatMaterial, updateChatMaterials, type MessageAttachment, type ChatMaterial } from '../services/memory';
 import { listAgents, loadAgent, createAgent, updateAgent, deleteAgent } from '../services/agents';
 import { authMiddleware, optionalAuthMiddleware, getCurrentUserId } from '../auth';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, unauthorizedError, notFoundError } from '../utils/errorHandler';
 import { parseIntSafe } from '../utils/parseIntSafe';
 import {
   loadSkills,
@@ -138,7 +138,7 @@ chatRoutes.post('/', chatRateLimit, authMiddleware, async (c) => {
   }
 
   if (!message || typeof message !== 'string') {
-    return c.json({ error: 'Message is required' }, 400);
+    return validationError(c, 'Message is required');
   }
 
   const sessionId = existingSessionId || generateSessionId();
@@ -280,7 +280,7 @@ chatRoutes.post('/prepare-readers', authMiddleware, async (c) => {
   const { sessionId, readers } = body as { sessionId?: string; readers?: ReaderItem[] };
 
   if (!readers || readers.length === 0) {
-    return c.json({ error: 'readers array is required' }, 400);
+    return validationError(c, 'readers array is required');
   }
 
   // Generate session ID if not provided
@@ -331,7 +331,7 @@ chatRoutes.get('/:id/stream', authMiddleware, async (c) => {
   pendingMessages.delete(sessionId);
 
   if (!pending) {
-    return c.json({ error: 'No pending message for this session' }, 400);
+    return validationError(c, 'No pending message for this session');
   }
 
   const { message: userMessage, agentId, attachments, userId, readerContexts, spaceId, modelOverride } = pending;
@@ -522,7 +522,7 @@ chatHistoryRoutes.get('/', authMiddleware, async (c) => {
     return c.json(result);
   } catch (error: any) {
     console.error('Error listing chats:', error);
-    return c.json({ error: 'Failed to list chats' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -539,7 +539,7 @@ chatHistoryRoutes.get('/search', authMiddleware, async (c) => {
     return c.json({ results });
   } catch (error: any) {
     console.error('Error searching chats:', error);
-    return c.json({ error: 'Failed to search chats' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -562,7 +562,7 @@ chatHistoryRoutes.get('/folders', authMiddleware, async (c) => {
     return c.json({ folders: foldersWithCounts });
   } catch (error: any) {
     console.error('Error listing folders:', error);
-    return c.json({ error: 'Failed to list folders' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -575,7 +575,7 @@ chatHistoryRoutes.post('/folders', authMiddleware, async (c) => {
     console.log('[POST /folders] Received:', { name, color });
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return c.json({ error: 'Name is required' }, 400);
+      return validationError(c, 'Name is required');
     }
 
     const folder = await createChatFolder(name.trim(), userId, color);
@@ -583,7 +583,7 @@ chatHistoryRoutes.post('/folders', authMiddleware, async (c) => {
     return c.json(folder, 201);
   } catch (error: any) {
     console.error('Error creating folder:', error);
-    return c.json({ error: 'Failed to create folder' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -594,12 +594,12 @@ chatHistoryRoutes.delete('/folders/:id', authMiddleware, async (c) => {
   try {
     const deleted = await deleteChatFolder(folderId, userId);
     if (!deleted) {
-      return c.json({ error: 'Folder not found or access denied' }, 404);
+      return notFoundError(c, 'Folder');
     }
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting folder:', error);
-    return c.json({ error: 'Failed to delete folder' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -612,7 +612,7 @@ chatHistoryRoutes.get('/folders/:id/chats', authMiddleware, async (c) => {
     return c.json({ chats });
   } catch (error: any) {
     console.error('Error listing chats in folder:', error);
-    return c.json({ error: 'Failed to list chats' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -628,7 +628,7 @@ chatHistoryRoutes.post('/regenerate-all-summaries', authMiddleware, async (c) =>
     });
   } catch (error: any) {
     console.error('Error regenerating summaries:', error);
-    return c.json({ error: 'Failed to regenerate summaries' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -640,12 +640,12 @@ chatHistoryRoutes.get('/:id', authMiddleware, async (c) => {
   try {
     const chat = await loadChatHistory(chatId, userId);
     if (!chat) {
-      return c.json({ error: 'Chat not found' }, 404);
+      return notFoundError(c, 'Chat');
     }
     return c.json(chat);
   } catch (error: any) {
     console.error('Error loading chat:', error);
-    return c.json({ error: 'Failed to load chat' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -657,12 +657,12 @@ chatHistoryRoutes.delete('/:id', authMiddleware, async (c) => {
   try {
     const deleted = await deleteChatHistory(chatId, userId);
     if (!deleted) {
-      return c.json({ error: 'Chat not found' }, 404);
+      return notFoundError(c, 'Chat');
     }
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting chat:', error);
-    return c.json({ error: 'Failed to delete chat' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -674,7 +674,7 @@ chatHistoryRoutes.get('/:id/download', authMiddleware, async (c) => {
   try {
     const chat = await loadChatHistory(chatId, userId);
     if (!chat) {
-      return c.json({ error: 'Chat not found' }, 404);
+      return notFoundError(c, 'Chat');
     }
 
     // Format chat as markdown
@@ -715,7 +715,7 @@ chatHistoryRoutes.get('/:id/download', authMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('Error downloading chat:', error);
-    return c.json({ error: 'Failed to download chat' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -731,7 +731,7 @@ chatHistoryRoutes.get('/:id/export/:format', authMiddleware, async (c) => {
   // Validate format
   const validFormats: DocumentFormat[] = ['xlsx', 'pdf', 'docx'];
   if (!validFormats.includes(format)) {
-    return c.json({ error: `Invalid format. Supported: ${validFormats.join(', ')}` }, 400);
+    return validationError(c, `Invalid format. Supported: ${validFormats.join(', ')}`);
   }
 
   // Map scope param to ChatExportOptions scope
@@ -746,7 +746,7 @@ chatHistoryRoutes.get('/:id/export/:format', authMiddleware, async (c) => {
     // Load chat with access control
     const chat = await loadChatHistory(chatId, userId);
     if (!chat) {
-      return c.json({ error: 'Chat not found' }, 404);
+      return notFoundError(c, 'Chat');
     }
 
     // Convert chat to DocumentData
@@ -772,7 +772,7 @@ chatHistoryRoutes.get('/:id/export/:format', authMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('Error exporting chat:', error);
-    return c.json({ error: 'Failed to export chat' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -785,12 +785,12 @@ chatHistoryRoutes.post('/:id/regenerate-summary', authMiddleware, async (c) => {
     // First check if user has access
     const existingChat = await loadChatHistory(chatId, userId);
     if (!existingChat) {
-      return c.json({ error: 'Chat not found or access denied' }, 404);
+      return notFoundError(c, 'Chat');
     }
 
     const success = await regenerateChatSummary(chatId);
     if (!success) {
-      return c.json({ error: 'Could not generate summary' }, 500);
+      return internalError(c, new Error('Could not generate summary'));
     }
     const chat = await loadChatHistory(chatId, userId);
     return c.json({
@@ -801,7 +801,7 @@ chatHistoryRoutes.post('/:id/regenerate-summary', authMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('Error regenerating summary:', error);
-    return c.json({ error: 'Failed to regenerate summary' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -825,7 +825,7 @@ chatHistoryRoutes.get('/:id/share', authMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('Error getting share info:', error);
-    return c.json({ error: 'Failed to get share info' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -847,7 +847,7 @@ chatHistoryRoutes.post('/:id/share', authMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('Error creating share link:', error);
-    return c.json({ error: 'Failed to create share link' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -859,12 +859,12 @@ chatHistoryRoutes.delete('/:id/share', authMiddleware, async (c) => {
   try {
     const revoked = await revokeShareLink(chatId, userId);
     if (!revoked) {
-      return c.json({ error: 'Chat not found or access denied' }, 404);
+      return notFoundError(c, 'Chat');
     }
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error revoking share link:', error);
-    return c.json({ error: 'Failed to revoke share link' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -877,7 +877,7 @@ chatHistoryRoutes.get('/:id/folders', authMiddleware, async (c) => {
     return c.json({ folderIds });
   } catch (error: any) {
     console.error('Error getting chat folders:', error);
-    return c.json({ error: 'Failed to get chat folders' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -890,17 +890,17 @@ chatHistoryRoutes.put('/:id/folders', authMiddleware, async (c) => {
     const { folderIds } = body;
 
     if (!Array.isArray(folderIds)) {
-      return c.json({ error: 'folderIds must be an array' }, 400);
+      return validationError(c, 'folderIds must be an array');
     }
 
     const updated = await updateChatFolders(chatId, folderIds, userId);
     if (!updated) {
-      return c.json({ error: 'Chat not found or access denied' }, 404);
+      return notFoundError(c, 'Chat');
     }
     return c.json({ success: true, folderIds });
   } catch (error: any) {
     console.error('Error updating chat folders:', error);
-    return c.json({ error: 'Failed to update chat folders' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -911,7 +911,7 @@ chatHistoryRoutes.post('/:id/materials', authMiddleware, async (c) => {
   const chatId = c.req.param('id');
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   try {
@@ -929,12 +929,12 @@ chatHistoryRoutes.post('/:id/materials', authMiddleware, async (c) => {
 
     const success = await addChatMaterial(chatId, userId, material);
     if (!success) {
-      return c.json({ error: 'Chat not found or access denied' }, 404);
+      return notFoundError(c, 'Chat');
     }
     return c.json({ success: true, material });
   } catch (error: any) {
     console.error('Error adding material:', error);
-    return c.json({ error: 'Failed to add material' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -944,18 +944,18 @@ chatHistoryRoutes.delete('/:id/materials/:materialId', authMiddleware, async (c)
   const materialId = c.req.param('materialId');
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   try {
     const success = await removeChatMaterial(chatId, userId, materialId);
     if (!success) {
-      return c.json({ error: 'Chat not found or access denied' }, 404);
+      return notFoundError(c, 'Chat');
     }
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error removing material:', error);
-    return c.json({ error: 'Failed to remove material' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -964,7 +964,7 @@ chatHistoryRoutes.put('/:id/materials', authMiddleware, async (c) => {
   const chatId = c.req.param('id');
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   try {
@@ -972,17 +972,17 @@ chatHistoryRoutes.put('/:id/materials', authMiddleware, async (c) => {
     const { materials } = body;
 
     if (!Array.isArray(materials)) {
-      return c.json({ error: 'materials must be an array' }, 400);
+      return validationError(c, 'materials must be an array');
     }
 
     const success = await updateChatMaterials(chatId, userId, materials);
     if (!success) {
-      return c.json({ error: 'Chat not found or access denied' }, 404);
+      return notFoundError(c, 'Chat');
     }
     return c.json({ success: true, materials });
   } catch (error: any) {
     console.error('Error updating materials:', error);
-    return c.json({ error: 'Failed to update materials' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -997,12 +997,12 @@ sharedChatRoutes.get('/:token', async (c) => {
   try {
     const chat = await loadChatByShareToken(token);
     if (!chat) {
-      return c.json({ error: 'Shared chat not found or link expired' }, 404);
+      return notFoundError(c, 'Shared chat');
     }
     return c.json(chat);
   } catch (error: any) {
     console.error('Error loading shared chat:', error);
-    return c.json({ error: 'Failed to load shared chat' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1023,21 +1023,21 @@ exportRoutes.get('/download/:filename', authMiddleware, async (c) => {
 
   // Security: validate filename to prevent path traversal
   if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-    return c.json({ error: 'Invalid filename' }, 400);
+    return validationError(c, 'Invalid filename');
   }
 
   // Validate file extension
   const validExtensions = ['.xlsx', '.pdf', '.docx'];
   const ext = '.' + filename.split('.').pop();
   if (!validExtensions.includes(ext)) {
-    return c.json({ error: 'Invalid file type' }, 400);
+    return validationError(c, 'Invalid file type');
   }
 
   const filepath = join(EXPORTS_DIR, filename);
 
   // Check if file exists
   if (!existsSync(filepath)) {
-    return c.json({ error: 'File not found or expired' }, 404);
+    return notFoundError(c, 'File');
   }
 
   try {
@@ -1052,7 +1052,7 @@ exportRoutes.get('/download/:filename', authMiddleware, async (c) => {
     });
   } catch (error: any) {
     console.error('Error downloading export:', error);
-    return c.json({ error: 'Failed to download file' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1079,7 +1079,7 @@ _internalAgentRoutes.get('/', async (c) => {
     });
   } catch (error: any) {
     console.error('Error listing agents:', error);
-    return c.json({ error: 'Failed to list agents' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1090,7 +1090,7 @@ _internalAgentRoutes.get('/:id', async (c) => {
     const agent = await loadAgent(agentId);
 
     if (!agent) {
-      return c.json({ error: 'Agent not found' }, 404);
+      return notFoundError(c, 'Agent');
     }
 
     return c.json({
@@ -1102,7 +1102,7 @@ _internalAgentRoutes.get('/:id', async (c) => {
     });
   } catch (error: any) {
     console.error('Error loading agent:', error);
-    return c.json({ error: 'Failed to load agent' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1114,13 +1114,13 @@ _internalAgentRoutes.get('/:id/full', async (c) => {
     const agent = await loadAgent(agentId);
 
     if (!agent) {
-      return c.json({ error: 'Agent not found' }, 404);
+      return notFoundError(c, 'Agent');
     }
 
     return c.json(agent);
   } catch (error: any) {
     console.error('Error loading agent:', error);
-    return c.json({ error: 'Failed to load agent' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1131,7 +1131,7 @@ _internalAgentRoutes.post('/', async (c) => {
     const { id, name, description, capabilities, tools, delegatable, systemPrompt } = body;
 
     if (!id || !name) {
-      return c.json({ error: 'ID and name are required' }, 400);
+      return validationError(c, 'ID and name are required');
     }
 
     const agent = await createAgent({
@@ -1219,7 +1219,7 @@ skillRoutes.get('/', async (c) => {
     });
   } catch (error: any) {
     console.error('Error listing skills:', error);
-    return c.json({ error: 'Failed to list skills' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1231,7 +1231,7 @@ skillRoutes.get('/:id', async (c) => {
     const skill = await getSkillById(skillId);
 
     if (!skill) {
-      return c.json({ error: 'Skill not found' }, 404);
+      return notFoundError(c, 'Skill');
     }
 
     return c.json({
@@ -1262,7 +1262,7 @@ skillRoutes.get('/:id', async (c) => {
     });
   } catch (error: any) {
     console.error('Error loading skill:', error);
-    return c.json({ error: 'Failed to load skill' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1288,7 +1288,7 @@ skillRoutes.post('/', async (c) => {
 
     // Validate required fields
     if (!body.id || !body.name) {
-      return c.json({ error: 'ID and name are required' }, 400);
+      return validationError(c, 'ID and name are required');
     }
 
     // Prepare skill data
@@ -1430,7 +1430,7 @@ toolRoutes.get('/', async (c) => {
     });
   } catch (error: any) {
     console.error('Error listing tools:', error);
-    return c.json({ error: 'Failed to list tools' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1442,7 +1442,7 @@ toolRoutes.get('/:name', async (c) => {
     const tool = toolRegistry.get(toolName);
 
     if (!tool) {
-      return c.json({ error: 'Tool not found' }, 404);
+      return notFoundError(c, 'Tool');
     }
 
     const definition = tool.getDefinition();
@@ -1481,7 +1481,7 @@ toolRoutes.get('/:name', async (c) => {
     });
   } catch (error: any) {
     console.error('Error loading tool:', error);
-    return c.json({ error: 'Failed to load tool' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1494,11 +1494,11 @@ toolRoutes.put('/:name/config', async (c) => {
     const tool = toolRegistry.get(toolName);
 
     if (!tool) {
-      return c.json({ error: 'Tool not found' }, 404);
+      return notFoundError(c, 'Tool');
     }
 
     if (tool.type !== 'api') {
-      return c.json({ error: 'Only API tools can be configured' }, 400);
+      return validationError(c, 'Only API tools can be configured');
     }
 
     // Update config in registry
@@ -1550,7 +1550,7 @@ customToolRoutes.get('/', async (c) => {
     return c.json({ tools: toolList });
   } catch (error: any) {
     console.error('Error listing custom tools:', error);
-    return c.json({ error: 'Failed to list custom tools' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1562,7 +1562,7 @@ customToolRoutes.get('/:id', async (c) => {
     const tool = await getCustomTool(toolId);
 
     if (!tool) {
-      return c.json({ error: 'Custom tool not found' }, 404);
+      return notFoundError(c, 'Custom tool');
     }
 
     // Don't expose auth secrets
@@ -1577,7 +1577,7 @@ customToolRoutes.get('/:id', async (c) => {
     return c.json(safeConfig);
   } catch (error: any) {
     console.error('Error loading custom tool:', error);
-    return c.json({ error: 'Failed to load custom tool' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1588,7 +1588,7 @@ customToolRoutes.post('/', async (c) => {
 
     // Validate required fields
     if (!body.id || !body.name || !body.endpoint) {
-      return c.json({ error: 'ID, name, and endpoint are required' }, 400);
+      return validationError(c, 'ID, name, and endpoint are required');
     }
 
     // Set defaults
@@ -1680,7 +1680,7 @@ customToolRoutes.post('/:id/toggle', async (c) => {
   try {
     const tool = await getCustomTool(toolId);
     if (!tool) {
-      return c.json({ error: 'Tool not found' }, 404);
+      return notFoundError(c, 'Tool');
     }
 
     const updated = await updateCustomTool(toolId, { enabled: !tool.enabled });
@@ -1826,7 +1826,7 @@ knowledgeStreamRoutes.get('/collections', async (c) => {
     return c.json({ collections });
   } catch (error: any) {
     console.error('Error listing collections:', error);
-    return c.json({ error: 'Failed to list collections' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -1837,7 +1837,7 @@ knowledgeStreamRoutes.post('/collections', async (c) => {
     const { id, name, description, activate_when, never_activate_when } = body;
 
     if (!id || !name) {
-      return c.json({ error: 'ID and name are required' }, 400);
+      return validationError(c, 'ID and name are required');
     }
 
     const { KbManageTool } = await import('../tools/knowledge/KnowledgeTools');
@@ -1874,11 +1874,11 @@ knowledgeStreamRoutes.post('/collections/batch/stream', authMiddleware, async (c
     const { collection_id, name, description, items } = body;
 
     if (!collection_id || !name) {
-      return c.json({ error: 'collection_id and name are required' }, 400);
+      return validationError(c, 'collection_id and name are required');
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return c.json({ error: 'items array is required and must not be empty' }, 400);
+      return validationError(c, 'items array is required and must not be empty');
     }
 
     console.log('[batch/stream] Starting SSE stream');
@@ -2066,7 +2066,7 @@ knowledgeStreamRoutes.post('/collections/:id/add/stream', authMiddleware, async 
     const { items } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return c.json({ error: 'items array is required and must not be empty' }, 400);
+      return validationError(c, 'items array is required and must not be empty');
     }
 
     // Verify collection exists
@@ -2074,7 +2074,7 @@ knowledgeStreamRoutes.post('/collections/:id/add/stream', authMiddleware, async 
     const collectionDir = `${kbBase}/collections/${collectionId}`;
 
     if (!existsSync(collectionDir)) {
-      return c.json({ error: 'Collection not found' }, 404);
+      return notFoundError(c, 'Collection');
     }
 
     console.log('[add/stream] Starting SSE stream for', items.length, 'items');
@@ -2205,7 +2205,7 @@ knowledgeStreamRoutes.get('/collections/:id', async (c) => {
     return c.json(manifest);
   } catch (error: any) {
     console.error('Error loading collection:', error);
-    return c.json({ error: 'Collection not found' }, 404);
+    return notFoundError(c, 'Collection');
   }
 });
 
@@ -2220,7 +2220,7 @@ knowledgeStreamRoutes.delete('/collections/:id', async (c) => {
 
     // Check if collection exists
     if (!existsSync(collectionDir)) {
-      return c.json({ error: 'Collection not found' }, 404);
+      return notFoundError(c, 'Collection');
     }
 
     // Get document count before deleting
@@ -2299,12 +2299,12 @@ knowledgeStreamRoutes.get('/documents/:id', async (c) => {
 
     const docPath = await findDocumentPath(kbBase, docId, collectionId);
     if (!docPath) {
-      return c.json({ error: 'Document not found' }, 404);
+      return notFoundError(c, 'Document');
     }
 
     const metaPath = `${docPath}/DOCUMENT_META.md`;
     if (!existsSync(metaPath)) {
-      return c.json({ error: 'Document meta not found' }, 404);
+      return notFoundError(c, 'Document meta');
     }
 
     const meta = await readFile(metaPath, 'utf-8');
@@ -2314,7 +2314,7 @@ knowledgeStreamRoutes.get('/documents/:id', async (c) => {
     return c.json({ document_id: docId, meta, hasContent, hasIndex });
   } catch (error: any) {
     console.error('Error loading document:', error);
-    return c.json({ error: 'Failed to load document' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -2328,19 +2328,19 @@ knowledgeStreamRoutes.get('/documents/:id/content', async (c) => {
 
     const docPath = await findDocumentPath(kbBase, docId, collectionId);
     if (!docPath) {
-      return c.json({ error: 'Document not found' }, 404);
+      return notFoundError(c, 'Document');
     }
 
     const contentPath = `${docPath}/content.md`;
     if (!existsSync(contentPath)) {
-      return c.json({ error: 'Content not found' }, 404);
+      return notFoundError(c, 'Content');
     }
 
     const content = await readFile(contentPath, 'utf-8');
     return c.json({ document_id: docId, content });
   } catch (error: any) {
     console.error('Error loading document content:', error);
-    return c.json({ error: 'Failed to load document content' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -2354,19 +2354,19 @@ knowledgeStreamRoutes.get('/documents/:id/index', async (c) => {
 
     const docPath = await findDocumentPath(kbBase, docId, collectionId);
     if (!docPath) {
-      return c.json({ error: 'Document not found' }, 404);
+      return notFoundError(c, 'Document');
     }
 
     const indexPath = `${docPath}/INDEX.md`;
     if (!existsSync(indexPath)) {
-      return c.json({ error: 'Index not found' }, 404);
+      return notFoundError(c, 'Index');
     }
 
     const index = await readFile(indexPath, 'utf-8');
     return c.json({ document_id: docId, index });
   } catch (error: any) {
     console.error('Error loading document index:', error);
-    return c.json({ error: 'Failed to load document index' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -2376,7 +2376,7 @@ knowledgeStreamRoutes.delete('/documents/:id', async (c) => {
   const collectionId = c.req.query('collection_id');
 
   if (!collectionId) {
-    return c.json({ error: 'collection_id query parameter is required' }, 400);
+    return validationError(c, 'collection_id query parameter is required');
   }
 
   try {
@@ -2446,7 +2446,7 @@ knowledgeStreamRoutes.post('/index', async (c) => {
     const confidentiality = typeof rawConfidentiality === 'string' ? rawConfidentiality : null;
 
     if (!file || !collectionId) {
-      return c.json({ error: 'document file and collection_id are required' }, 400);
+      return validationError(c, 'document file and collection_id are required');
     }
 
     // Save uploaded file to incoming/
@@ -2488,7 +2488,7 @@ mcpRoutes.get('/servers', async (c) => {
     return c.json({ servers });
   } catch (error: any) {
     console.error('Error listing MCP servers:', error);
-    return c.json({ error: 'Failed to list MCP servers' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -2499,7 +2499,7 @@ mcpRoutes.get('/servers/presets', async (c) => {
     return c.json({ presets });
   } catch (error: any) {
     console.error('Error getting MCP presets:', error);
-    return c.json({ error: 'Failed to get presets' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -2509,7 +2509,7 @@ mcpRoutes.post('/servers', async (c) => {
     const body = await c.req.json() as McpServerConfig;
 
     if (!body.id || !body.name || !body.command) {
-      return c.json({ error: 'ID, name, and command are required' }, 400);
+      return validationError(c, 'ID, name, and command are required');
     }
 
     const server = await mcpManager.addServer(body);
@@ -2527,7 +2527,7 @@ mcpRoutes.get('/servers/:id', async (c) => {
   try {
     const server = await mcpManager.getServer(serverId);
     if (!server) {
-      return c.json({ error: 'MCP server not found' }, 404);
+      return notFoundError(c, 'MCP server');
     }
 
     // Include tools
@@ -2536,7 +2536,7 @@ mcpRoutes.get('/servers/:id', async (c) => {
     return c.json({ ...server, tools });
   } catch (error: any) {
     console.error('Error getting MCP server:', error);
-    return c.json({ error: 'Failed to get MCP server' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -2615,7 +2615,7 @@ mcpRoutes.get('/tools', async (c) => {
     return c.json({ tools, count: tools.length });
   } catch (error: any) {
     console.error('Error listing MCP tools:', error);
-    return c.json({ error: 'Failed to list MCP tools' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -2626,7 +2626,7 @@ mcpRoutes.post('/tools/test', async (c) => {
     const { serverId, toolName, args } = body;
 
     if (!serverId || !toolName) {
-      return c.json({ error: 'serverId and toolName are required' }, 400);
+      return validationError(c, 'serverId and toolName are required');
     }
 
     const result = await mcpManager.testTool(serverId, toolName, args || {});

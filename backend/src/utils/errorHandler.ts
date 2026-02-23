@@ -19,6 +19,7 @@ export enum ErrorCode {
   RATE_LIMITED = 'RATE_LIMITED',
   SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
   EXTERNAL_SERVICE_ERROR = 'EXTERNAL_SERVICE_ERROR',
+  CONFLICT = 'CONFLICT',
 }
 
 /**
@@ -33,6 +34,7 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
   [ErrorCode.RATE_LIMITED]: 'Zu viele Anfragen, bitte später erneut versuchen',
   [ErrorCode.SERVICE_UNAVAILABLE]: 'Service vorübergehend nicht verfügbar',
   [ErrorCode.EXTERNAL_SERVICE_ERROR]: 'Externer Service nicht erreichbar',
+  [ErrorCode.CONFLICT]: 'Ressource existiert bereits',
 };
 
 /**
@@ -47,6 +49,7 @@ const ERROR_STATUS: Record<ErrorCode, number> = {
   [ErrorCode.RATE_LIMITED]: 429,
   [ErrorCode.SERVICE_UNAVAILABLE]: 503,
   [ErrorCode.EXTERNAL_SERVICE_ERROR]: 502,
+  [ErrorCode.CONFLICT]: 409,
 };
 
 interface ErrorDetails {
@@ -141,7 +144,7 @@ export function errorResponse(c: Context, details: ErrorDetails) {
     };
   }
 
-  return c.json(response, status as 400 | 401 | 403 | 404 | 429 | 500 | 502 | 503);
+  return c.json(response, status as 400 | 401 | 403 | 404 | 409 | 429 | 500 | 502 | 503);
 }
 
 /**
@@ -179,6 +182,13 @@ export function unauthorizedError(c: Context) {
 export function forbiddenError(c: Context, message?: string) {
   return errorResponse(c, {
     code: ErrorCode.FORBIDDEN,
+    message,
+  });
+}
+
+export function conflictError(c: Context, message?: string) {
+  return errorResponse(c, {
+    code: ErrorCode.CONFLICT,
     message,
   });
 }

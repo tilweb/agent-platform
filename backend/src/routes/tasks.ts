@@ -8,7 +8,7 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { authMiddleware, requireUserId, getCurrentUser } from '../auth';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, forbiddenError, notFoundError } from '../utils/errorHandler';
 import { parseIntSafe } from '../utils/parseIntSafe';
 import {
   createTask,
@@ -81,11 +81,11 @@ tasksRoutes.post('/', async (c) => {
     } = body;
 
     if (!title) {
-      return c.json({ error: 'Title is required' }, 400);
+      return validationError(c, 'Title is required');
     }
 
     if (!trigger) {
-      return c.json({ error: 'Trigger is required' }, 400);
+      return validationError(c, 'Trigger is required');
     }
 
     const params: CreateTaskParams = {
@@ -160,7 +160,7 @@ tasksRoutes.get('/', async (c) => {
     return c.json(result);
   } catch (error: any) {
     console.error('Error listing tasks:', error);
-    return c.json({ error: 'Failed to list tasks' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -176,7 +176,7 @@ tasksRoutes.get('/queue', async (c) => {
     });
   } catch (error: any) {
     console.error('Error getting queue status:', error);
-    return c.json({ error: 'Failed to get queue status' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -198,7 +198,7 @@ async function requireTaskOwnership(taskId: string, userId: string) {
 function requireAdmin(c: any): Response | null {
   const user = getCurrentUser(c);
   if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Admin-Rechte erforderlich' }, 403);
+    return forbiddenError(c, 'Admin-Rechte erforderlich');
   }
   return null;
 }
@@ -364,7 +364,7 @@ tasksRoutes.get('/:id/result', async (c) => {
     const task = await requireTaskOwnership(taskId, userId);
 
     if (!task.result_file) {
-      return c.json({ error: 'No result available' }, 404);
+      return notFoundError(c, 'Task result');
     }
 
     try {
@@ -373,7 +373,7 @@ tasksRoutes.get('/:id/result', async (c) => {
       return c.json(result);
     } catch (err) {
       console.error('Error reading result file:', err);
-      return c.json({ error: 'Ergebnis konnte nicht gelesen werden' }, 500);
+      return internalError(c, err);
     }
   } catch (error: any) {
     if (error instanceof HTTPException) throw error;
@@ -394,7 +394,7 @@ tasksRoutes.put('/:id', async (c) => {
     const task = await updateTask(taskId, body);
 
     if (!task) {
-      return c.json({ error: 'Task not found' }, 404);
+      return notFoundError(c, 'Task');
     }
 
     return c.json(task);
@@ -415,7 +415,7 @@ tasksRoutes.delete('/:id', async (c) => {
     const deleted = await deleteTask(taskId);
 
     if (!deleted) {
-      return c.json({ error: 'Task not found' }, 404);
+      return notFoundError(c, 'Task');
     }
 
     return c.json({ success: true });
@@ -465,7 +465,7 @@ tasksRoutes.post('/:id/cancel', async (c) => {
     const task = await cancelTask(taskId);
 
     if (!task) {
-      return c.json({ error: 'Task not found' }, 404);
+      return notFoundError(c, 'Task');
     }
 
     emitTaskUpdate(taskId, 'cancelled', { task });
@@ -489,7 +489,7 @@ tasksRoutes.post('/:id/pause', async (c) => {
     const task = await pauseTask(taskId);
 
     if (!task) {
-      return c.json({ error: 'Task not found' }, 404);
+      return notFoundError(c, 'Task');
     }
 
     emitTaskUpdate(taskId, 'paused', { task });
@@ -513,7 +513,7 @@ tasksRoutes.post('/:id/resume', async (c) => {
     const task = await resumeTask(taskId);
 
     if (!task) {
-      return c.json({ error: 'Task not found' }, 404);
+      return notFoundError(c, 'Task');
     }
 
     emitTaskUpdate(taskId, 'resumed', { task });
@@ -537,7 +537,7 @@ tasksRoutes.post('/:id/retry', async (c) => {
     const task = await retryTask(taskId);
 
     if (!task) {
-      return c.json({ error: 'Task not found' }, 404);
+      return notFoundError(c, 'Task');
     }
 
     return c.json(task);

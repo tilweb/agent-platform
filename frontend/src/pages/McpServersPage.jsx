@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { theme } from '../config/theme';
 import McpServerEditor from '../components/McpServerEditor';
+import { PlusIcon } from '../components/Icons';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -742,15 +743,6 @@ function McpServersPage({ embedded = false }) {
   );
 }
 
-function PlusIcon({ size = 18 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-
 function ServerIcon({ size = 48 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
@@ -797,7 +789,7 @@ function CopyIcon({ size = 14 }) {
   );
 }
 
-function CodeBlock({ title, code, language }) {
+function CodeBlock({ title, code }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {

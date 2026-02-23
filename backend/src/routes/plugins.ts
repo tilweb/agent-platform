@@ -8,7 +8,7 @@
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import { authMiddleware, getCurrentUser, requireUserId } from '../auth';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, notFoundError, forbiddenError } from '../utils/errorHandler';
 import {
   pluginRegistry,
   savePluginConfig,
@@ -29,7 +29,7 @@ pluginRoutes.use('*', authMiddleware);
 const requireAdmin: MiddlewareHandler = async (c, next) => {
   const user = getCurrentUser(c);
   if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Admin-Rechte erforderlich' }, 403);
+    return forbiddenError(c, 'Admin-Rechte erforderlich');
   }
   await next();
 };
@@ -58,7 +58,7 @@ pluginRoutes.get('/:id', async (c) => {
     const pluginId = c.req.param('id');
     const info = pluginRegistry.getInfo(pluginId);
     if (!info) {
-      return c.json({ error: 'Plugin nicht gefunden' }, 404);
+      return notFoundError(c, 'Plugin');
     }
     return c.json(info);
   } catch (error: any) {
@@ -75,7 +75,7 @@ pluginRoutes.get('/:id/config', requireAdmin, async (c) => {
     const pluginId = c.req.param('id');
     const manifest = pluginRegistry.getManifest(pluginId);
     if (!manifest) {
-      return c.json({ error: 'Plugin nicht gefunden' }, 404);
+      return notFoundError(c, 'Plugin');
     }
 
     const config = await loadPluginConfigMasked(pluginId, manifest.configSchema || []);
@@ -100,20 +100,20 @@ pluginRoutes.put('/:id/config', requireAdmin, async (c) => {
     const pluginId = c.req.param('id');
     const manifest = pluginRegistry.getManifest(pluginId);
     if (!manifest) {
-      return c.json({ error: 'Plugin nicht gefunden' }, 404);
+      return notFoundError(c, 'Plugin');
     }
 
     const body = await c.req.json();
     const values = body.values;
     if (!values || typeof values !== 'object') {
-      return c.json({ error: 'Ungültige Konfiguration' }, 400);
+      return validationError(c, 'Ungültige Konfiguration');
     }
 
     // Validate required fields
     const schema = manifest.configSchema || [];
     for (const field of schema) {
       if (field.required && !values[field.key] && values[field.key] !== false) {
-        return c.json({ error: `Pflichtfeld "${field.label}" fehlt` }, 400);
+        return validationError(c, `Pflichtfeld "${field.label}" fehlt`);
       }
     }
 
@@ -139,7 +139,7 @@ pluginRoutes.delete('/:id/config', requireAdmin, async (c) => {
     const pluginId = c.req.param('id');
     const manifest = pluginRegistry.getManifest(pluginId);
     if (!manifest) {
-      return c.json({ error: 'Plugin nicht gefunden' }, 404);
+      return notFoundError(c, 'Plugin');
     }
 
     const deleted = await deletePluginConfig(pluginId);
@@ -160,7 +160,7 @@ pluginRoutes.post('/:id/enable', requireAdmin, async (c) => {
     const pluginId = c.req.param('id');
     const success = await pluginRegistry.setEnabled(pluginId, true);
     if (!success) {
-      return c.json({ error: 'Plugin nicht gefunden' }, 404);
+      return notFoundError(c, 'Plugin');
     }
     toolRegistry.setPluginDisabled(pluginId, false);
     console.log(`Plugin enabled: ${pluginId}`);
@@ -179,7 +179,7 @@ pluginRoutes.post('/:id/disable', requireAdmin, async (c) => {
     const pluginId = c.req.param('id');
     const success = await pluginRegistry.setEnabled(pluginId, false);
     if (!success) {
-      return c.json({ error: 'Plugin nicht gefunden' }, 404);
+      return notFoundError(c, 'Plugin');
     }
     toolRegistry.setPluginDisabled(pluginId, true);
     console.log(`Plugin disabled: ${pluginId}`);

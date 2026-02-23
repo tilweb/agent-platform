@@ -35,6 +35,7 @@ import { isModelSyncConfigured, syncAdacorModels } from './services/modelSync';
 import { registerCommands } from './commands';
 import { loadAllPlugins } from './plugins';
 import { pluginRoutes } from './routes/plugins';
+import { docsRoutes } from './routes/docs';
 
 const app = new Hono();
 
@@ -203,6 +204,7 @@ app.route('/api/resources', rbacRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/images', imageRoutes);
 app.route('/api/notifications', notificationRoutes);
+app.route('/api/docs', docsRoutes);
 
 const port = parseInt(process.env.BACKEND_PORT || '3001');
 

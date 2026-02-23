@@ -25,7 +25,7 @@ import type {
 } from '../tables/types';
 import type { CreateViewParams } from '../tables/views';
 import { authMiddleware } from '../auth';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, notFoundError, conflictError } from '../utils/errorHandler';
 
 export const tablesRoutes = new Hono();
 
@@ -65,7 +65,7 @@ tablesRoutes.post('/', async (c) => {
   try {
     const body = await c.req.json();
     if (!requireObject(body)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     const id = body.id as string | undefined;
@@ -77,11 +77,11 @@ tablesRoutes.post('/', async (c) => {
     const tableViews = body.views as ViewDefinition[] | undefined;
 
     if (!id || !name) {
-      return c.json({ error: 'id and name are required' }, 400);
+      return validationError(c, 'id and name are required');
     }
 
     if (!columns || !Array.isArray(columns) || columns.length === 0) {
-      return c.json({ error: 'At least one column is required' }, 400);
+      return validationError(c, 'At least one column is required');
     }
 
     const params: CreateTableParams = {
@@ -99,7 +99,7 @@ tablesRoutes.post('/', async (c) => {
   } catch (error: any) {
     console.error('Error creating table:', error);
     if (error instanceof Error && error.message.includes('already exists')) {
-      return c.json({ error: 'Eintrag existiert bereits' }, 409);
+      return conflictError(c, 'Eintrag existiert bereits');
     }
     return internalError(c, error);
   }
@@ -137,14 +137,14 @@ tablesRoutes.get('/:id', async (c) => {
     if (withData) {
       const table = await tableService.getTableWithData(tableId);
       if (!table) {
-        return c.json({ error: 'Table not found' }, 404);
+        return notFoundError(c, 'Table');
       }
       return c.json(table);
     }
 
     const table = await tableService.getTable(tableId);
     if (!table) {
-      return c.json({ error: 'Table not found' }, 404);
+      return notFoundError(c, 'Table');
     }
     return c.json(table);
   } catch (error: any) {
@@ -159,7 +159,7 @@ tablesRoutes.put('/:id', async (c) => {
     const tableId = c.req.param('id');
     const body = await c.req.json();
     if (!requireObject(body)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     const updates: UpdateTableParams = {
@@ -171,7 +171,7 @@ tablesRoutes.put('/:id', async (c) => {
 
     const table = await tableService.updateTable(tableId, updates);
     if (!table) {
-      return c.json({ error: 'Table not found' }, 404);
+      return notFoundError(c, 'Table');
     }
     return c.json(table);
   } catch (error: any) {
@@ -190,16 +190,13 @@ tablesRoutes.delete('/:id', async (c) => {
     if (hasRefs) {
       const force = c.req.query('force') === 'true';
       if (!force) {
-        return c.json({
-          error: 'Table has incoming references from other tables',
-          hint: 'Use ?force=true to delete anyway',
-        }, 409);
+        return conflictError(c, 'Table has incoming references from other tables. Use ?force=true to delete anyway');
       }
     }
 
     const deleted = await tableService.deleteTable(tableId);
     if (!deleted) {
-      return c.json({ error: 'Table not found' }, 404);
+      return notFoundError(c, 'Table');
     }
     return c.json({ success: true });
   } catch (error: any) {
@@ -218,22 +215,22 @@ tablesRoutes.post('/:id/columns', async (c) => {
     const tableId = c.req.param('id');
     const column = await c.req.json();
     if (!requireObject(column)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     if (!column.id || !column.name || !column.type) {
-      return c.json({ error: 'id, name, and type are required' }, 400);
+      return validationError(c, 'id, name, and type are required');
     }
 
     const table = await tableService.addColumn(tableId, column as unknown as ColumnDefinition);
     if (!table) {
-      return c.json({ error: 'Table not found' }, 404);
+      return notFoundError(c, 'Table');
     }
     return c.json(table);
   } catch (error: any) {
     console.error('Error adding column:', error);
     if (error instanceof Error && error.message.includes('already exists')) {
-      return c.json({ error: 'Eintrag existiert bereits' }, 409);
+      return conflictError(c, 'Eintrag existiert bereits');
     }
     return internalError(c, error);
   }
@@ -246,12 +243,12 @@ tablesRoutes.put('/:id/columns/:columnId', async (c) => {
     const columnId = c.req.param('columnId');
     const updates = await c.req.json();
     if (!requireObject(updates)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     const table = await tableService.updateColumn(tableId, columnId, updates);
     if (!table) {
-      return c.json({ error: 'Table not found' }, 404);
+      return notFoundError(c, 'Table');
     }
     return c.json(table);
   } catch (error: any) {
@@ -268,7 +265,7 @@ tablesRoutes.delete('/:id/columns/:columnId', async (c) => {
 
     const table = await tableService.deleteColumn(tableId, columnId);
     if (!table) {
-      return c.json({ error: 'Table not found' }, 404);
+      return notFoundError(c, 'Table');
     }
     return c.json(table);
   } catch (error: any) {
@@ -283,17 +280,17 @@ tablesRoutes.put('/:id/columns/order', async (c) => {
     const tableId = c.req.param('id');
     const body = await c.req.json();
     if (!requireObject(body)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
     const { columnIds } = body;
 
     if (!Array.isArray(columnIds)) {
-      return c.json({ error: 'columnIds array is required' }, 400);
+      return validationError(c, 'columnIds array is required');
     }
 
     const table = await tableService.reorderColumns(tableId, columnIds);
     if (!table) {
-      return c.json({ error: 'Table not found' }, 404);
+      return notFoundError(c, 'Table');
     }
     return c.json(table);
   } catch (error: any) {
@@ -325,7 +322,7 @@ tablesRoutes.get('/:id/rows', async (c) => {
   } catch (error: any) {
     console.error('Error querying rows:', error);
     if (error instanceof Error && error.message.includes('not found')) {
-      return c.json({ error: 'Nicht gefunden' }, 404);
+      return notFoundError(c);
     }
     return internalError(c, error);
   }
@@ -337,7 +334,7 @@ tablesRoutes.post('/:id/rows', async (c) => {
     const tableId = c.req.param('id');
     const data = await c.req.json();
     if (!requireObject(data)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     const row = await tableService.addRow(tableId, { data });
@@ -345,10 +342,10 @@ tablesRoutes.post('/:id/rows', async (c) => {
   } catch (error: any) {
     console.error('Error adding row:', error);
     if (error instanceof Error && error.message.includes('not found')) {
-      return c.json({ error: 'Nicht gefunden' }, 404);
+      return notFoundError(c);
     }
     if (error instanceof Error && error.message.includes('Validation failed')) {
-      return c.json({ error: 'Validierungsfehler' }, 400);
+      return validationError(c, 'Validierungsfehler');
     }
     return internalError(c, error);
   }
@@ -360,7 +357,7 @@ tablesRoutes.post('/:id/rows/query', async (c) => {
     const tableId = c.req.param('id');
     const options = await c.req.json();
     if (!requireObject(options)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     const result = await tableService.queryRows(tableId, options);
@@ -379,7 +376,7 @@ tablesRoutes.get('/:id/rows/:rowId', async (c) => {
 
     const row = await tableService.getRow(tableId, rowId);
     if (!row) {
-      return c.json({ error: 'Row not found' }, 404);
+      return notFoundError(c, 'Row');
     }
     return c.json(row);
   } catch (error: any) {
@@ -395,18 +392,18 @@ tablesRoutes.put('/:id/rows/:rowId', async (c) => {
     const rowId = c.req.param('rowId');
     const data = await c.req.json();
     if (!requireObject(data)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     const row = await tableService.updateRow(tableId, { row_id: rowId, data });
     if (!row) {
-      return c.json({ error: 'Row not found' }, 404);
+      return notFoundError(c, 'Row');
     }
     return c.json(row);
   } catch (error: any) {
     console.error('Error updating row:', error);
     if (error instanceof Error && error.message.includes('Validation failed')) {
-      return c.json({ error: 'Validierungsfehler' }, 400);
+      return validationError(c, 'Validierungsfehler');
     }
     return internalError(c, error);
   }
@@ -430,7 +427,7 @@ tablesRoutes.delete('/:id/rows/:rowId', async (c) => {
 
     const deleted = await tableService.deleteRow(tableId, rowId);
     if (!deleted) {
-      return c.json({ error: 'Row not found' }, 404);
+      return notFoundError(c, 'Row');
     }
     return c.json({ success: true });
   } catch (error: any) {
@@ -445,12 +442,12 @@ tablesRoutes.delete('/:id/rows', async (c) => {
     const tableId = c.req.param('id');
     const body = await c.req.json();
     if (!requireObject(body)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
     const { rowIds } = body;
 
     if (!Array.isArray(rowIds)) {
-      return c.json({ error: 'rowIds array is required' }, 400);
+      return validationError(c, 'rowIds array is required');
     }
 
     const count = await tableService.deleteRows(tableId, rowIds);
@@ -483,11 +480,11 @@ tablesRoutes.post('/:id/views', async (c) => {
     const tableId = c.req.param('id');
     const params = await c.req.json();
     if (!requireObject(params)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     if (!params.id || !params.name) {
-      return c.json({ error: 'id and name are required' }, 400);
+      return validationError(c, 'id and name are required');
     }
 
     const view = await views.createView(tableId, params as unknown as CreateViewParams);
@@ -495,7 +492,7 @@ tablesRoutes.post('/:id/views', async (c) => {
   } catch (error: any) {
     console.error('Error creating view:', error);
     if (error instanceof Error && error.message.includes('already exists')) {
-      return c.json({ error: 'Eintrag existiert bereits' }, 409);
+      return conflictError(c, 'Eintrag existiert bereits');
     }
     return internalError(c, error);
   }
@@ -509,7 +506,7 @@ tablesRoutes.get('/:id/views/:viewId', async (c) => {
 
     const view = await views.getView(tableId, viewId);
     if (!view) {
-      return c.json({ error: 'View not found' }, 404);
+      return notFoundError(c, 'View');
     }
     return c.json(view);
   } catch (error: any) {
@@ -525,7 +522,7 @@ tablesRoutes.put('/:id/views/:viewId', async (c) => {
     const viewId = c.req.param('viewId');
     const params = await c.req.json();
     if (!requireObject(params)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     const view = await views.updateView(tableId, viewId, params);
@@ -544,7 +541,7 @@ tablesRoutes.delete('/:id/views/:viewId', async (c) => {
 
     const deleted = await views.deleteView(tableId, viewId);
     if (!deleted) {
-      return c.json({ error: 'View not found' }, 404);
+      return notFoundError(c, 'View');
     }
     return c.json({ success: true });
   } catch (error: any) {
@@ -602,16 +599,16 @@ tablesRoutes.get('/:id/columns/:columnId/options', async (c) => {
     // Get the column definition
     const table = await tableService.getTable(tableId);
     if (!table) {
-      return c.json({ error: 'Table not found' }, 404);
+      return notFoundError(c, 'Table');
     }
 
     const column = table.columns.find(c => c.id === columnId);
     if (!column) {
-      return c.json({ error: 'Column not found' }, 404);
+      return notFoundError(c, 'Column');
     }
 
     if (column.type !== 'relation' || !column.relation_table) {
-      return c.json({ error: 'Column is not a relation' }, 400);
+      return validationError(c, 'Column is not a relation');
     }
 
     const options = await relations.getRelationOptions(
@@ -638,12 +635,12 @@ tablesRoutes.post('/:id/export', async (c) => {
     const tableId = c.req.param('id');
     const body = await c.req.json();
     if (!requireObject(body)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     const format = typeof body.format === 'string' ? body.format : '';
     if (!format || !['csv', 'json', 'yaml'].includes(format)) {
-      return c.json({ error: 'format is required (csv, json, yaml)' }, 400);
+      return validationError(c, 'format is required (csv, json, yaml)');
     }
     const options: ExportOptions = { format: format as ExportOptions['format'], ...body };
 
@@ -674,7 +671,7 @@ tablesRoutes.post('/:id/import', async (c) => {
     const tableId = c.req.param('id');
     const body = await c.req.json();
     if (!requireObject(body)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
 
     const content = body.content as string | undefined;
@@ -684,7 +681,7 @@ tablesRoutes.post('/:id/import', async (c) => {
     const skip_invalid = body.skip_invalid as boolean | undefined;
 
     if (!content || !format) {
-      return c.json({ error: 'content and format are required' }, 400);
+      return validationError(c, 'content and format are required');
     }
 
     const options: ImportOptions = {
@@ -708,14 +705,14 @@ tablesRoutes.post('/:id/import/preview', async (c) => {
     const tableId = c.req.param('id');
     const body = await c.req.json();
     if (!requireObject(body)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
     const content = body.content as string | undefined;
     const format = body.format as ExportOptions['format'] | undefined;
     const limit = (body.limit as number | undefined) ?? 10;
 
     if (!content || !format) {
-      return c.json({ error: 'content and format are required' }, 400);
+      return validationError(c, 'content and format are required');
     }
 
     const preview = await importExport.previewImport(tableId, content, format, limit);
@@ -749,13 +746,13 @@ tablesRoutes.post('/import/backup', async (c) => {
   try {
     const body = await c.req.json();
     if (!requireObject(body)) {
-      return c.json({ error: 'Ungültiger Request-Body' }, 400);
+      return validationError(c, 'Ungültiger Request-Body');
     }
     const content = body.content as string | undefined;
     const overwrite = (body.overwrite as boolean | undefined) ?? false;
 
     if (!content) {
-      return c.json({ error: 'content is required' }, 400);
+      return validationError(c, 'content is required');
     }
 
     const table = await importExport.importTableBackup(content, overwrite);
@@ -763,7 +760,7 @@ tablesRoutes.post('/import/backup', async (c) => {
   } catch (error: any) {
     console.error('Error importing backup:', error);
     if (error instanceof Error && error.message.includes('already exists')) {
-      return c.json({ error: 'Eintrag existiert bereits' }, 409);
+      return conflictError(c, 'Eintrag existiert bereits');
     }
     return internalError(c, error);
   }

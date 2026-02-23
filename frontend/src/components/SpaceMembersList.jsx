@@ -188,7 +188,7 @@ function getInitials(displayName) {
 
 export default function SpaceMembersList({ spaceId }) {
   const { user: currentUser } = useAuth();
-  const { members, loading, error, addMember, updateMemberRole, removeMember } = useSpaceMembers(spaceId);
+  const { members, loading, addMember, updateMemberRole, removeMember } = useSpaceMembers(spaceId);
   const { users, loading: usersLoading } = useUsers();
 
   const [selectedUserId, setSelectedUserId] = useState('');

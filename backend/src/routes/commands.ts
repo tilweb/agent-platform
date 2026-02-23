@@ -8,7 +8,7 @@ import { commandRegistry } from '../commands/registry';
 import type { ExecuteCommandRequest } from '../commands/types';
 import { authMiddleware } from '../auth';
 import { uploadRateLimit } from '../middleware/rateLimit';
-import { internalError } from '../utils/errorHandler';
+import { internalError, notFoundError, validationError } from '../utils/errorHandler';
 
 export const commandRoutes = new Hono();
 
@@ -39,7 +39,7 @@ commandRoutes.get('/:id', async (c) => {
     const command = commandRegistry.getCommand(commandId);
 
     if (!command) {
-      return c.json({ error: 'Command not found' }, 404);
+      return notFoundError(c, 'Command');
     }
 
     return c.json({ command });
@@ -58,7 +58,7 @@ commandRoutes.get('/:id/options', async (c) => {
     const commandId = c.req.param('id');
 
     if (!commandRegistry.has(commandId)) {
-      return c.json({ error: 'Command not found' }, 404);
+      return notFoundError(c, 'Command');
     }
 
     const options = await commandRegistry.getOptions(commandId);
@@ -79,7 +79,7 @@ commandRoutes.post('/execute', uploadRateLimit, async (c) => {
     const { command, optionId, args } = body;
 
     if (!command) {
-      return c.json({ error: 'Command is required' }, 400);
+      return validationError(c, 'Command is required');
     }
 
     const result = await commandRegistry.execute(command, optionId, args);

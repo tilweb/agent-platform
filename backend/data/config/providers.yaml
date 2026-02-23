@@ -134,6 +134,15 @@ providers:
         workplace: true
     company_region: germany
     datacenter_country: DE
+  - id: asdfgh
+    name: asDFGH
+    api_mode: openai
+    base_url: https://example.com
+    api_key_env: DGSDGF
+    enabled: true
+    company_region: world
+    datacenter_country: FI
+    models: []
 active:
   chat:
     provider_id: adacor

@@ -4,7 +4,7 @@
  */
 
 import { Hono } from 'hono';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, notFoundError } from '../utils/errorHandler';
 import { imageGenerationService } from '../services/imageGeneration';
 import { parseIntSafe } from '../utils/parseIntSafe';
 import {
@@ -39,7 +39,7 @@ imageRoutes.post('/generate', imageGenRateLimit, async (c) => {
     const { prompt, aspectRatio, size, numberOfImages, sessionId } = body;
 
     if (!prompt) {
-      return c.json({ error: 'Prompt is required' }, 400);
+      return validationError(c, 'Prompt is required');
     }
 
     // Limit number of images per request
@@ -57,7 +57,7 @@ imageRoutes.post('/generate', imageGenRateLimit, async (c) => {
     });
 
     if (!result.success || result.images.length === 0) {
-      return c.json({ error: result.error || 'Failed to generate image' }, 500);
+      return internalError(c, new Error(result.error || 'Failed to generate image'));
     }
 
     // Save all generated images
@@ -106,12 +106,12 @@ imageRoutes.get('/generated/:id', async (c) => {
   const id = c.req.param('id');
 
   if (!isValidImageId(id)) {
-    return c.json({ error: 'Invalid image ID' }, 400);
+    return validationError(c, 'Invalid image ID');
   }
 
   const imageBuffer = await getGeneratedImage(id);
   if (!imageBuffer) {
-    return c.json({ error: 'Image not found' }, 404);
+    return notFoundError(c, 'Image');
   }
 
   const mimeType = await getImageMimeType(id) || 'image/png';
@@ -132,12 +132,12 @@ imageRoutes.get('/generated/:id/metadata', async (c) => {
   const id = c.req.param('id');
 
   if (!isValidImageId(id)) {
-    return c.json({ error: 'Invalid image ID' }, 400);
+    return validationError(c, 'Invalid image ID');
   }
 
   const metadata = await getImageMetadata(id);
   if (!metadata) {
-    return c.json({ error: 'Image not found' }, 404);
+    return notFoundError(c, 'Image');
   }
 
   return c.json(metadata);
@@ -169,12 +169,12 @@ imageRoutes.delete('/generated/:id', async (c) => {
   const id = c.req.param('id');
 
   if (!isValidImageId(id)) {
-    return c.json({ error: 'Invalid image ID' }, 400);
+    return validationError(c, 'Invalid image ID');
   }
 
   const deleted = await deleteGeneratedImage(id);
   if (!deleted) {
-    return c.json({ error: 'Image not found' }, 404);
+    return notFoundError(c, 'Image');
   }
 
   return c.json({ success: true });

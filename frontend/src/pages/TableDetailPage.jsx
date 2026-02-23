@@ -446,11 +446,12 @@ function TableDetailPage() {
         }
         return value;
 
-      case 'relation':
+      case 'relation': {
         // Show display value if resolved
         const displayKey = `${column.id}_display`;
         const row = rows.find(r => r[column.id] === value);
         return row?.[displayKey] || value;
+      }
 
       default:
         return String(value);

@@ -4,11 +4,11 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useProjektmanagement } from '../../hooks/useProjektmanagement';
 import Select from '../../components/Select';
-import { LightningIcon, ClipboardIcon, BarChartIcon, CheckCircleIcon, AppsIcon } from '../../components/Icons';
+import { LightningIcon, ClipboardIcon, BarChartIcon, CheckCircleIcon, AppsIcon, PlusIcon } from '../../components/Icons';
 import ComingSoon from './components/ComingSoon';
 import { formatDate } from '../../utils/dateFormat';
 
@@ -295,10 +295,9 @@ const styles = {
 };
 
 function ProjektePage() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'auftraege';
-  const { projektauftraege, stats, isLoading, refresh } = useProjektmanagement();
+  const { projektauftraege, stats, isLoading } = useProjektmanagement();
   const [filters, setFilters] = useState({
     status: '',
     project_type: '',
@@ -336,6 +335,7 @@ function ProjektePage() {
       );
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilteredProjekte(result);
   }, [projektauftraege, filters]);
 
@@ -636,15 +636,6 @@ function ProjektePage() {
 }
 
 // Icons
-function PlusIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-
 function BriefcaseIcon({ size = 20, color = 'currentColor' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">

@@ -268,7 +268,7 @@ export default function SpaceChatPage() {
                 return updated;
               });
             }
-          } catch {}
+          } catch { /* ignore parse errors */ }
         }
       }
 

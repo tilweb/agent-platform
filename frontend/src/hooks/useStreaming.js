@@ -286,7 +286,7 @@ export function useStreaming() {
           args: data.args,
         });
         let parsedArgs = data.args;
-        try { parsedArgs = typeof data.args === 'string' ? JSON.parse(data.args) : data.args; } catch {}
+        try { parsedArgs = typeof data.args === 'string' ? JSON.parse(data.args) : data.args; } catch { /* ignore parse errors */ }
         addThinkingStep({ type: 'tool', message: data.tool, tool: data.tool, args: parsedArgs });
       });
 

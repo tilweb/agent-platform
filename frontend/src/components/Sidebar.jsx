@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useAuth } from '../context/AuthContext';
 import { useApps } from '../context/AppsContext';
+import { apiGet } from '../utils/apiFetch';
 
 const sidebarStyles = {
   sidebar: {
@@ -239,6 +240,7 @@ const navIconColors = {
   apps: '#7c3aed',
   contract: '#0891b2',
   docs: '#6366f1',
+  docsEntwickler: '#10b981',
 };
 
 function Sidebar() {
@@ -249,6 +251,12 @@ function Sidebar() {
   const { enabledApps } = useApps();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [entwicklerDocsEnabled, setEntwicklerDocsEnabled] = useState(false);
+
+  useEffect(() => {
+    apiGet('/docs/config').then(r => r.json())
+      .then(d => setEntwicklerDocsEnabled(d.entwicklerDocsEnabled)).catch(() => {});
+  }, []);
 
   const isActive = (path) => currentPath === path;
 
@@ -469,20 +477,37 @@ function Sidebar() {
           </div>
         )}
 
-        {/* Documentation link at bottom of scroll area */}
-        <div style={{ marginTop: 'auto', paddingTop: theme.spacing.md }}>
+        {/* Documentation */}
+        <div style={sidebarStyles.section}>
+          <div style={sidebarStyles.sectionTitle}>Dokumentation</div>
+
           <Link
-            to="/docs"
+            to="/docs/anwenderdoku"
             style={{
               ...sidebarStyles.navItem,
-              ...(currentPath.startsWith('/docs') ? sidebarStyles.navItemActive : {}),
+              ...(currentPath.startsWith('/docs/anwenderdoku') ? sidebarStyles.navItemActive : {}),
             }}
           >
             <div style={sidebarStyles.iconWrapper}>
               <DocsIcon color={navIconColors.docs} />
             </div>
-            <span>Dokumentation</span>
+            <span>Anwender</span>
           </Link>
+
+          {entwicklerDocsEnabled && (
+            <Link
+              to="/docs/entwickler"
+              style={{
+                ...sidebarStyles.navItem,
+                ...(currentPath.startsWith('/docs/entwickler') ? sidebarStyles.navItemActive : {}),
+              }}
+            >
+              <div style={sidebarStyles.iconWrapper}>
+                <CodeDocsIcon color={navIconColors.docsEntwickler} />
+              </div>
+              <span>Entwickler</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -783,6 +808,15 @@ function DocsIcon({ color }) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
       <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
       <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </svg>
+  );
+}
+
+function CodeDocsIcon({ color }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
     </svg>
   );
 }

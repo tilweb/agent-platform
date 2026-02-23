@@ -6,7 +6,7 @@
 
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { internalError } from '../utils/errorHandler';
+import { internalError, notFoundError } from '../utils/errorHandler';
 import { authMiddleware, requireUserId } from '../auth';
 import { parseIntSafe } from '../utils/parseIntSafe';
 import {
@@ -113,7 +113,7 @@ notificationRoutes.get('/:id', async (c) => {
     const notification = await notificationService.get(notificationId, userId);
 
     if (!notification) {
-      return c.json({ error: 'Notification not found' }, 404);
+      return notFoundError(c, 'Notification');
     }
 
     return c.json(notification);
@@ -131,7 +131,7 @@ notificationRoutes.post('/:id/read', async (c) => {
     const success = await notificationService.markAsRead(notificationId, userId);
 
     if (!success) {
-      return c.json({ error: 'Notification not found' }, 404);
+      return notFoundError(c, 'Notification');
     }
 
     return c.json({ success: true });
@@ -161,7 +161,7 @@ notificationRoutes.delete('/:id', async (c) => {
     const success = await notificationService.delete(notificationId, userId);
 
     if (!success) {
-      return c.json({ error: 'Notification not found' }, 404);
+      return notFoundError(c, 'Notification');
     }
 
     return c.json({ success: true });

@@ -4,7 +4,7 @@
  */
 
 import { Hono } from 'hono';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError } from '../utils/errorHandler';
 import { unifiedSearch, smartKnowledgeSearch, smartContractSearch } from '../services/searchService';
 import { searchChatHistoriesWithScoring } from '../services/memory';
 import { smartChatSearch } from '../services/smartChatSearch';
@@ -34,7 +34,7 @@ searchRoutes.get('/', async (c) => {
 
     // Validate query
     if (!query || query.length < 2) {
-      return c.json({ error: 'Query must be at least 2 characters' }, 400);
+      return validationError(c, 'Query must be at least 2 characters');
     }
 
     // Parse sources
@@ -46,7 +46,7 @@ searchRoutes.get('/', async (c) => {
       sources = requested.filter(s => validSources.includes(s));
 
       if (sources.length === 0) {
-        return c.json({ error: `Invalid sources. Valid options: ${validSources.join(', ')}` }, 400);
+        return validationError(c, `Invalid sources. Valid options: ${validSources.join(', ')}`);
       }
     }
 
@@ -156,7 +156,7 @@ searchRoutes.get('/smart', async (c) => {
 
     // Validate query
     if (!query || query.length < 2) {
-      return c.json({ error: 'Query must be at least 2 characters' }, 400);
+      return validationError(c, 'Query must be at least 2 characters');
     }
 
     // Perform smart search
@@ -183,7 +183,7 @@ searchRoutes.get('/contracts/smart', async (c) => {
 
     // Validate query
     if (!query || query.length < 2) {
-      return c.json({ error: 'Query must be at least 2 characters' }, 400);
+      return validationError(c, 'Query must be at least 2 characters');
     }
 
     // Perform smart contract search
@@ -211,7 +211,7 @@ searchRoutes.get('/chats/smart', async (c) => {
 
     // Validate query
     if (!query || query.length < 2) {
-      return c.json({ error: 'Query must be at least 2 characters' }, 400);
+      return validationError(c, 'Query must be at least 2 characters');
     }
 
     // Stage 1: Fast search with scoring

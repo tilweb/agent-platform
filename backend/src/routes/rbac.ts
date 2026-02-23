@@ -9,7 +9,7 @@
  */
 
 import { Hono } from 'hono';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, unauthorizedError, forbiddenError, notFoundError } from '../utils/errorHandler';
 import { authMiddleware, getCurrentUserId } from '../auth/middleware';
 import { loadUser } from '../auth/storage';
 import { loadGroup, listGroups } from '../auth/groups';
@@ -66,20 +66,20 @@ function isValidPrincipalType(type: string): type is PrincipalType {
 rbacRoutes.get('/:type/:id/access', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const resourceType = c.req.param('type');
   const resourceId = c.req.param('id');
 
   if (!isValidResourceType(resourceType)) {
-    return c.json({ error: 'Ungültiger Ressourcentyp' }, 400);
+    return validationError(c, 'Ungültiger Ressourcentyp');
   }
 
   // Check if user can view access (needs canManageAccess or at least canView)
   const viewCheck = await checkAccess(userId, resourceType, resourceId, 'canView');
   if (!viewCheck.allowed) {
-    return c.json({ error: 'Kein Zugriff auf diese Ressource' }, 403);
+    return forbiddenError(c, 'Kein Zugriff auf diese Ressource');
   }
 
   // Get access info
@@ -129,14 +129,14 @@ rbacRoutes.get('/:type/:id/access', async (c) => {
 rbacRoutes.get('/:type/:id/access/permissions', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const resourceType = c.req.param('type');
   const resourceId = c.req.param('id');
 
   if (!isValidResourceType(resourceType)) {
-    return c.json({ error: 'Ungültiger Ressourcentyp' }, 400);
+    return validationError(c, 'Ungültiger Ressourcentyp');
   }
 
   const userPermissions = await getUserResourcePermissions(userId, resourceType, resourceId);
@@ -154,20 +154,20 @@ rbacRoutes.get('/:type/:id/access/permissions', async (c) => {
 rbacRoutes.post('/:type/:id/access', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const resourceType = c.req.param('type');
   const resourceId = c.req.param('id');
 
   if (!isValidResourceType(resourceType)) {
-    return c.json({ error: 'Ungültiger Ressourcentyp' }, 400);
+    return validationError(c, 'Ungültiger Ressourcentyp');
   }
 
   // Check if user can manage access
   const accessCheck = await checkAccess(userId, resourceType, resourceId, 'canManageAccess');
   if (!accessCheck.allowed) {
-    return c.json({ error: 'Keine Berechtigung zur Zugriffsverwaltung' }, 403);
+    return forbiddenError(c, 'Keine Berechtigung zur Zugriffsverwaltung');
   }
 
   try {
@@ -175,39 +175,39 @@ rbacRoutes.post('/:type/:id/access', async (c) => {
     const { principalType, principalId, role } = body;
 
     if (!principalType || !principalId || !role) {
-      return c.json({ error: 'principalType, principalId und role sind erforderlich' }, 400);
+      return validationError(c, 'principalType, principalId und role sind erforderlich');
     }
 
     if (!isValidPrincipalType(principalType)) {
-      return c.json({ error: 'Ungültiger Principal-Typ. Erlaubt: user, group' }, 400);
+      return validationError(c, 'Ungültiger Principal-Typ. Erlaubt: user, group');
     }
 
     if (!isValidRole(role)) {
-      return c.json({ error: 'Ungültige Rolle. Erlaubt: admin, editor, viewer' }, 400);
+      return validationError(c, 'Ungültige Rolle. Erlaubt: admin, editor, viewer');
     }
 
     // Cannot assign owner role through this endpoint
     if (role === 'owner') {
-      return c.json({ error: 'Owner-Rolle kann nur durch Eigentümerübertragung vergeben werden' }, 400);
+      return validationError(c, 'Owner-Rolle kann nur durch Eigentümerübertragung vergeben werden');
     }
 
     // Check if principal exists
     if (principalType === 'user') {
       const targetUser = await loadUser(principalId);
       if (!targetUser) {
-        return c.json({ error: 'Benutzer nicht gefunden' }, 404);
+        return notFoundError(c, 'Benutzer');
       }
     } else if (principalType === 'group') {
       const targetGroup = await loadGroup(principalId);
       if (!targetGroup) {
-        return c.json({ error: 'Gruppe nicht gefunden' }, 404);
+        return notFoundError(c, 'Gruppe');
       }
     }
 
     // Check assignable roles based on current user's role
     const assignableRoles = getAssignableRoles(accessCheck.effectiveRole!);
     if (!assignableRoles.includes(role)) {
-      return c.json({ error: `Sie können die Rolle "${role}" nicht vergeben` }, 403);
+      return forbiddenError(c, `Sie können die Rolle "${role}" nicht vergeben`);
     }
 
     const access = await grantAccess(resourceType, resourceId, principalType, principalId, role, userId);
@@ -225,7 +225,7 @@ rbacRoutes.post('/:type/:id/access', async (c) => {
 rbacRoutes.put('/:type/:id/access/:principalType/:principalId', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const resourceType = c.req.param('type');
@@ -234,17 +234,17 @@ rbacRoutes.put('/:type/:id/access/:principalType/:principalId', async (c) => {
   const principalId = c.req.param('principalId');
 
   if (!isValidResourceType(resourceType)) {
-    return c.json({ error: 'Ungültiger Ressourcentyp' }, 400);
+    return validationError(c, 'Ungültiger Ressourcentyp');
   }
 
   if (!isValidPrincipalType(principalType)) {
-    return c.json({ error: 'Ungültiger Principal-Typ' }, 400);
+    return validationError(c, 'Ungültiger Principal-Typ');
   }
 
   // Check if user can manage access
   const accessCheck = await checkAccess(userId, resourceType, resourceId, 'canManageAccess');
   if (!accessCheck.allowed) {
-    return c.json({ error: 'Keine Berechtigung zur Zugriffsverwaltung' }, 403);
+    return forbiddenError(c, 'Keine Berechtigung zur Zugriffsverwaltung');
   }
 
   try {
@@ -252,33 +252,33 @@ rbacRoutes.put('/:type/:id/access/:principalType/:principalId', async (c) => {
     const { role } = body;
 
     if (!role) {
-      return c.json({ error: 'role ist erforderlich' }, 400);
+      return validationError(c, 'role ist erforderlich');
     }
 
     if (!isValidRole(role)) {
-      return c.json({ error: 'Ungültige Rolle. Erlaubt: admin, editor, viewer' }, 400);
+      return validationError(c, 'Ungültige Rolle. Erlaubt: admin, editor, viewer');
     }
 
     // Cannot change to/from owner role through this endpoint
     if (role === 'owner') {
-      return c.json({ error: 'Owner-Rolle kann nur durch Eigentümerübertragung vergeben werden' }, 400);
+      return validationError(c, 'Owner-Rolle kann nur durch Eigentümerübertragung vergeben werden');
     }
 
     // Check if trying to modify owner
     const owner = await getResourceOwner(resourceType, resourceId);
     if (owner && owner.principalType === principalType && owner.principalId === principalId) {
-      return c.json({ error: 'Die Rolle des Eigentümers kann nicht geändert werden' }, 400);
+      return validationError(c, 'Die Rolle des Eigentümers kann nicht geändert werden');
     }
 
     // Cannot modify own role
     if (principalType === 'user' && principalId === userId) {
-      return c.json({ error: 'Eigene Rolle kann nicht geändert werden' }, 400);
+      return validationError(c, 'Eigene Rolle kann nicht geändert werden');
     }
 
     const updated = await updateAccessRole(resourceType, resourceId, principalType, principalId, role, userId);
 
     if (!updated) {
-      return c.json({ error: 'Berechtigung nicht gefunden' }, 404);
+      return notFoundError(c, 'Berechtigung');
     }
 
     return c.json(updated);
@@ -294,7 +294,7 @@ rbacRoutes.put('/:type/:id/access/:principalType/:principalId', async (c) => {
 rbacRoutes.delete('/:type/:id/access/:principalType/:principalId', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const resourceType = c.req.param('type');
@@ -303,34 +303,34 @@ rbacRoutes.delete('/:type/:id/access/:principalType/:principalId', async (c) => 
   const principalId = c.req.param('principalId');
 
   if (!isValidResourceType(resourceType)) {
-    return c.json({ error: 'Ungültiger Ressourcentyp' }, 400);
+    return validationError(c, 'Ungültiger Ressourcentyp');
   }
 
   if (!isValidPrincipalType(principalType)) {
-    return c.json({ error: 'Ungültiger Principal-Typ' }, 400);
+    return validationError(c, 'Ungültiger Principal-Typ');
   }
 
   // Check if user can manage access
   const accessCheck = await checkAccess(userId, resourceType, resourceId, 'canManageAccess');
   if (!accessCheck.allowed) {
-    return c.json({ error: 'Keine Berechtigung zur Zugriffsverwaltung' }, 403);
+    return forbiddenError(c, 'Keine Berechtigung zur Zugriffsverwaltung');
   }
 
   // Cannot remove owner
   const owner = await getResourceOwner(resourceType, resourceId);
   if (owner && owner.principalType === principalType && owner.principalId === principalId) {
-    return c.json({ error: 'Der Eigentümer kann nicht entfernt werden' }, 400);
+    return validationError(c, 'Der Eigentümer kann nicht entfernt werden');
   }
 
   // Cannot remove self
   if (principalType === 'user' && principalId === userId) {
-    return c.json({ error: 'Eigene Berechtigung kann nicht entfernt werden' }, 400);
+    return validationError(c, 'Eigene Berechtigung kann nicht entfernt werden');
   }
 
   const removed = await revokeAccess(resourceType, resourceId, principalType, principalId);
 
   if (!removed) {
-    return c.json({ error: 'Berechtigung nicht gefunden' }, 404);
+    return notFoundError(c, 'Berechtigung');
   }
 
   return c.json({ success: true });
@@ -342,20 +342,20 @@ rbacRoutes.delete('/:type/:id/access/:principalType/:principalId', async (c) => 
 rbacRoutes.post('/:type/:id/access/transfer', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const resourceType = c.req.param('type');
   const resourceId = c.req.param('id');
 
   if (!isValidResourceType(resourceType)) {
-    return c.json({ error: 'Ungültiger Ressourcentyp' }, 400);
+    return validationError(c, 'Ungültiger Ressourcentyp');
   }
 
   // Check if user can transfer ownership (only owner can)
   const accessCheck = await checkAccess(userId, resourceType, resourceId, 'canTransferOwnership');
   if (!accessCheck.allowed) {
-    return c.json({ error: 'Nur der Eigentümer kann das Eigentum übertragen' }, 403);
+    return forbiddenError(c, 'Nur der Eigentümer kann das Eigentum übertragen');
   }
 
   try {
@@ -363,24 +363,24 @@ rbacRoutes.post('/:type/:id/access/transfer', async (c) => {
     const { newOwnerId } = body;
 
     if (!newOwnerId) {
-      return c.json({ error: 'newOwnerId ist erforderlich' }, 400);
+      return validationError(c, 'newOwnerId ist erforderlich');
     }
 
     // Check if new owner exists
     const newOwner = await loadUser(newOwnerId);
     if (!newOwner) {
-      return c.json({ error: 'Neuer Eigentümer nicht gefunden' }, 404);
+      return notFoundError(c, 'Neuer Eigentümer');
     }
 
     // Cannot transfer to self
     if (newOwnerId === userId) {
-      return c.json({ error: 'Sie sind bereits der Eigentümer' }, 400);
+      return validationError(c, 'Sie sind bereits der Eigentümer');
     }
 
     const transferred = await transferOwnership(resourceType, resourceId, newOwnerId, userId);
 
     if (!transferred) {
-      return c.json({ error: 'Eigentümerübertragung fehlgeschlagen' }, 500);
+      return internalError(c, new Error('Eigentümerübertragung fehlgeschlagen'));
     }
 
     return c.json({ success: true, newOwnerId });
@@ -396,20 +396,20 @@ rbacRoutes.post('/:type/:id/access/transfer', async (c) => {
 rbacRoutes.get('/:type/:id/access/available-users', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const resourceType = c.req.param('type');
   const resourceId = c.req.param('id');
 
   if (!isValidResourceType(resourceType)) {
-    return c.json({ error: 'Ungültiger Ressourcentyp' }, 400);
+    return validationError(c, 'Ungültiger Ressourcentyp');
   }
 
   // Check if user can manage access
   const accessCheck = await checkAccess(userId, resourceType, resourceId, 'canManageAccess');
   if (!accessCheck.allowed) {
-    return c.json({ error: 'Keine Berechtigung zur Zugriffsverwaltung' }, 403);
+    return forbiddenError(c, 'Keine Berechtigung zur Zugriffsverwaltung');
   }
 
   // Get current access entries
@@ -441,20 +441,20 @@ rbacRoutes.get('/:type/:id/access/available-users', async (c) => {
 rbacRoutes.get('/:type/:id/access/available-groups', async (c) => {
   const userId = getCurrentUserId(c);
   if (!userId) {
-    return c.json({ error: 'Authentication required' }, 401);
+    return unauthorizedError(c);
   }
 
   const resourceType = c.req.param('type');
   const resourceId = c.req.param('id');
 
   if (!isValidResourceType(resourceType)) {
-    return c.json({ error: 'Ungültiger Ressourcentyp' }, 400);
+    return validationError(c, 'Ungültiger Ressourcentyp');
   }
 
   // Check if user can manage access
   const accessCheck = await checkAccess(userId, resourceType, resourceId, 'canManageAccess');
   if (!accessCheck.allowed) {
-    return c.json({ error: 'Keine Berechtigung zur Zugriffsverwaltung' }, 403);
+    return forbiddenError(c, 'Keine Berechtigung zur Zugriffsverwaltung');
   }
 
   // Get current access entries

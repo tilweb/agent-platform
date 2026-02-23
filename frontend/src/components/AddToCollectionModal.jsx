@@ -5,7 +5,7 @@
  * Uses SSE for progress tracking during indexing.
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { theme } from '../config/theme';
 import { getContentTypeIcon } from './Icons';
 
@@ -401,7 +401,7 @@ function AddToCollectionModal({ isOpen, onClose, selectedItems, onSuccess }) {
           if (text && text.length < 200) {
             errorMessage = text;
           }
-        } catch { }
+        } catch { /* ignore */ }
         throw new Error(`${errorMessage} (Status: ${response.status})`);
       }
 

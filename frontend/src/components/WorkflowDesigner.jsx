@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { theme } from '../config/theme';
 import Select from './Select';
 

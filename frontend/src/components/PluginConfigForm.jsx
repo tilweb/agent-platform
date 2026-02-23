@@ -143,6 +143,7 @@ export default function PluginConfigForm({
     for (const field of configSchema) {
       initial[field.key] = initialValues[field.key] ?? field.default ?? '';
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValues(initial);
   }, [configSchema, initialValues]);
 

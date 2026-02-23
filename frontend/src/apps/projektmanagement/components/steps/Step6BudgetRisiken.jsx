@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { theme } from '../../../../config/theme';
 import Select from '../../../../components/Select';
+import { PlusIcon } from '../../../../components/Icons';
 
 const styles = {
   container: {
@@ -168,12 +169,12 @@ const styles = {
   },
 };
 
+const generateId = () => Math.random().toString(36).substring(2, 10);
+
 function Step6BudgetRisiken({ data, onChange }) {
   const [activeTab, setActiveTab] = useState('budget');
   const budget = data.budget || [];
   const risks = data.risks || [];
-
-  const generateId = () => Math.random().toString(36).substring(2, 10);
 
   // Budget functions
   const addBudgetItem = () => {
@@ -230,32 +231,6 @@ function Step6BudgetRisiken({ data, onChange }) {
       currency: 'EUR',
       minimumFractionDigits: 0,
     }).format(value);
-  };
-
-  const getRiskBadgeStyle = (level) => {
-    switch (level) {
-      case 'low':
-        return styles.riskLow;
-      case 'medium':
-        return styles.riskMedium;
-      case 'high':
-        return styles.riskHigh;
-      default:
-        return {};
-    }
-  };
-
-  const getRiskLabel = (level) => {
-    switch (level) {
-      case 'low':
-        return 'Niedrig';
-      case 'medium':
-        return 'Mittel';
-      case 'high':
-        return 'Hoch';
-      default:
-        return level;
-    }
   };
 
   return (
@@ -490,15 +465,6 @@ function Step6BudgetRisiken({ data, onChange }) {
 }
 
 // Icons
-function PlusIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-
 function TrashIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

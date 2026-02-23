@@ -67,7 +67,6 @@ function ChatPage() {
     loadChat,
     startNewChat,
     deleteChat,
-    refreshChats,
   } = useChatHistory();
 
   const {
@@ -238,8 +237,6 @@ function ChatPage() {
         // Mark as processed
         processedAttachmentIdsRef.current.add(attachment.id);
 
-        // Determine material type based on attachment type
-        let materialType = 'upload';
         if (attachment.type === 'audio' && attachment.transcription) {
           // For audio with transcription, create two materials: one for audio, one for transcript
           // First: the audio file itself

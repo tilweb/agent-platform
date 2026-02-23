@@ -9,7 +9,7 @@
 
 import { Hono } from 'hono';
 import { authMiddleware, requireUserId } from '../auth';
-import { internalError } from '../utils/errorHandler';
+import { internalError, validationError, notFoundError } from '../utils/errorHandler';
 import {
   loadUserMemory,
   addAboutItem,
@@ -37,7 +37,7 @@ memoryRoutes.get('/', async (c) => {
     return c.json(memory);
   } catch (error: any) {
     console.error('Error loading memory:', error);
-    return c.json({ error: 'Failed to load memory' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -57,7 +57,7 @@ memoryRoutes.put('/settings', async (c) => {
     return c.json(settings);
   } catch (error: any) {
     console.error('Error updating settings:', error);
-    return c.json({ error: 'Failed to update settings' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -66,9 +66,7 @@ memoryRoutes.get('/:section', async (c) => {
   const section = c.req.param('section');
 
   if (!isValidSection(section)) {
-    return c.json({
-      error: `Invalid section. Valid sections: ${getAllSections().join(', ')}`,
-    }, 400);
+    return validationError(c, `Invalid section. Valid sections: ${getAllSections().join(', ')}`);
   }
 
   try {
@@ -77,7 +75,7 @@ memoryRoutes.get('/:section', async (c) => {
     return c.json({ section, items: memory[section as MemorySection] });
   } catch (error: any) {
     console.error('Error loading section:', error);
-    return c.json({ error: 'Failed to load section' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -89,7 +87,7 @@ memoryRoutes.post('/about', async (c) => {
     const { content, source = 'manual' } = body;
 
     if (!content) {
-      return c.json({ error: 'Content is required' }, 400);
+      return validationError(c, 'Content is required');
     }
 
     const item = await addAboutItem(content, source, userId);
@@ -108,12 +106,12 @@ memoryRoutes.post('/instructions', async (c) => {
     const { content, priority = 'normal', source = 'manual' } = body;
 
     if (!content) {
-      return c.json({ error: 'Content is required' }, 400);
+      return validationError(c, 'Content is required');
     }
 
     const validPriorities: Priority[] = ['high', 'normal'];
     if (!validPriorities.includes(priority)) {
-      return c.json({ error: 'Invalid priority. Use "high" or "normal"' }, 400);
+      return validationError(c, 'Invalid priority. Use "high" or "normal"');
     }
 
     const item = await addInstruction(content, priority, source, userId);
@@ -132,7 +130,7 @@ memoryRoutes.post('/context', async (c) => {
     const { name, description, active = true, source = 'manual' } = body;
 
     if (!name) {
-      return c.json({ error: 'Name is required' }, 400);
+      return validationError(c, 'Name is required');
     }
 
     const item = await addContextItem(name, description, active, source, userId);
@@ -153,19 +151,19 @@ memoryRoutes.put('/context/:id/active', async (c) => {
     const { active } = body;
 
     if (typeof active !== 'boolean') {
-      return c.json({ error: 'active must be a boolean' }, 400);
+      return validationError(c, 'active must be a boolean');
     }
 
     const success = await setContextActive(itemId, active, userId);
 
     if (!success) {
-      return c.json({ error: 'Item not found' }, 404);
+      return notFoundError(c, 'Item');
     }
 
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error updating context:', error);
-    return c.json({ error: 'Failed to update context' }, 500);
+    return internalError(c, error);
   }
 });
 
@@ -176,21 +174,19 @@ memoryRoutes.delete('/:section/:id', async (c) => {
   const itemId = c.req.param('id');
 
   if (!isValidSection(section)) {
-    return c.json({
-      error: `Invalid section. Valid sections: ${getAllSections().join(', ')}`,
-    }, 400);
+    return validationError(c, `Invalid section. Valid sections: ${getAllSections().join(', ')}`);
   }
 
   try {
     const deleted = await deleteMemoryItem(section as MemorySection, itemId, userId);
 
     if (!deleted) {
-      return c.json({ error: 'Item not found' }, 404);
+      return notFoundError(c, 'Item');
     }
 
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting memory item:', error);
-    return c.json({ error: 'Failed to delete item' }, 500);
+    return internalError(c, error);
   }
 });

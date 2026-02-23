@@ -3,6 +3,7 @@
  */
 
 import { theme } from '../../../../config/theme';
+import { PlusIcon } from '../../../../components/Icons';
 
 const styles = {
   container: {
@@ -146,10 +147,10 @@ const styles = {
   },
 };
 
+const generateId = () => Math.random().toString(36).substring(2, 10);
+
 function Step5Meilensteine({ data, onChange }) {
   const milestones = data.milestones || [];
-
-  const generateId = () => Math.random().toString(36).substring(2, 10);
 
   const addMilestone = () => {
     const newMilestone = {
@@ -171,13 +172,6 @@ function Step5Meilensteine({ data, onChange }) {
     const newMilestones = milestones.filter((_, i) => i !== index);
     onChange({ milestones: newMilestones });
   };
-
-  // Sort milestones by date
-  const sortedMilestones = [...milestones].sort((a, b) => {
-    if (!a.date) return 1;
-    if (!b.date) return -1;
-    return new Date(a.date).getTime() - new Date(b.date).getTime();
-  });
 
   return (
     <div style={styles.container}>
@@ -306,15 +300,6 @@ function FlagIcon({ size = 20, color = 'currentColor' }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
       <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
       <line x1="4" y1="22" x2="4" y2="15" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   );
 }
