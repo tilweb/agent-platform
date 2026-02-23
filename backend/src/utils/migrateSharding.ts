@@ -14,8 +14,8 @@
 import { readdir, rename, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
 import { existsSync } from 'fs';
-import { dateBucketFromId, currentDateBucket } from './dateBucket';
-import { DATA_DIR, TASKS_DIR, TASK_RESULTS_DIR, CHATS_DIR, CONVERSATIONS_DIR } from './paths';
+import { dateBucketFromId, dateBucketFromFilename } from './dateBucket';
+import { DATA_DIR, TASKS_DIR, TASK_RESULTS_DIR, CHATS_DIR, CONVERSATIONS_DIR, GENERATED_IMAGES_DIR, EXPORTS_DIR } from './paths';
 import { loadYaml, saveYaml } from './yamlStorage';
 
 const MARKER_FILE = join(DATA_DIR, '.sharding-migrated');
@@ -32,13 +32,13 @@ const SKIP_FILES = new Set([
  *
  * @param dir - Directory containing flat files
  * @param pattern - File extension filter (e.g. '.yaml', '.json')
- * @param idExtractor - Extract entity ID from filename (return null to skip)
+ * @param bucketExtractor - Extract YYYY/MM bucket from filename (return null to skip)
  * @returns Number of files migrated
  */
 async function migrateToDateBuckets(
   dir: string,
   pattern: string,
-  idExtractor: (filename: string) => string | null,
+  bucketExtractor: (filename: string) => string | null,
 ): Promise<number> {
   if (!existsSync(dir)) return 0;
 
@@ -50,10 +50,7 @@ async function migrateToDateBuckets(
     if (!file.endsWith(pattern)) continue;
     if (SKIP_FILES.has(file)) continue;
 
-    const id = idExtractor(file);
-    if (!id) continue;
-
-    const bucket = dateBucketFromId(id);
+    const bucket = bucketExtractor(file);
     if (!bucket) continue;
 
     const srcPath = join(dir, file);
@@ -69,6 +66,13 @@ async function migrateToDateBuckets(
   }
 
   return migrated;
+}
+
+/** Helper: extract bucket from ID-based filename (strips extension, then parses ID) */
+function bucketFromIdFile(filename: string, prefix: string, ext: string): string | null {
+  const id = filename.replace(new RegExp(`\\${ext}$`), '');
+  if (!id.startsWith(prefix)) return null;
+  return dateBucketFromId(id);
 }
 
 /**
@@ -113,21 +117,32 @@ async function updateTaskResultPaths(tasksDir: string, resultsDir: string): Prom
 
 /**
  * Run the full sharding migration. Idempotent — skips if marker file exists.
+ *
+ * The marker file includes a version number. When new directories are added,
+ * bump MIGRATION_VERSION to re-run migration for the new entries.
  */
-export async function runShardingMigration(): Promise<void> {
-  if (existsSync(MARKER_FILE)) return;
+const MIGRATION_VERSION = 2; // v1: tasks/chats/conversations, v2: +images/exports
 
-  console.log('[Migration] Starting date-based sharding migration...');
+export async function runShardingMigration(): Promise<void> {
+  // Check marker version — re-run if version is outdated
+  if (existsSync(MARKER_FILE)) {
+    try {
+      const marker = await Bun.file(MARKER_FILE).text();
+      const markerVersion = parseInt(marker.split('\n')[1] || '0', 10);
+      if (markerVersion >= MIGRATION_VERSION) return;
+    } catch {
+      // Marker exists but unreadable — re-run to be safe
+    }
+  }
+
+  console.log('[Migration] Starting date-based sharding migration (v' + MIGRATION_VERSION + ')...');
   const start = Date.now();
 
   // 1. Migrate task YAML files
   const tasksMigrated = await migrateToDateBuckets(
     TASKS_DIR,
     '.yaml',
-    (f) => {
-      const id = f.replace(/\.yaml$/, '');
-      return id.startsWith('task_') ? id : null;
-    },
+    (f) => bucketFromIdFile(f, 'task_', '.yaml'),
   );
 
   // 2. Migrate task result JSON files
@@ -135,9 +150,8 @@ export async function runShardingMigration(): Promise<void> {
     TASK_RESULTS_DIR,
     '.json',
     (f) => {
-      // Filename: task_xxx-result.json → extract task_xxx
       const match = f.match(/^(task_[^-]+)-result\.json$/);
-      return match ? match[1]! : null;
+      return match ? dateBucketFromId(match[1]!) : null;
     },
   );
 
@@ -145,36 +159,58 @@ export async function runShardingMigration(): Promise<void> {
   const chatsMigrated = await migrateToDateBuckets(
     CHATS_DIR,
     '.yaml',
-    (f) => {
-      const id = f.replace(/\.yaml$/, '');
-      return id.startsWith('session_') ? id : null;
-    },
+    (f) => bucketFromIdFile(f, 'session_', '.yaml'),
   );
 
   // 4. Migrate conversation Markdown files
   const convMigrated = await migrateToDateBuckets(
     CONVERSATIONS_DIR,
     '.md',
-    (f) => {
-      const id = f.replace(/\.md$/, '');
-      return id.startsWith('session_') ? id : null;
-    },
+    (f) => bucketFromIdFile(f, 'session_', '.md'),
   );
 
-  // 5. Update result_file paths in task files
+  // 5. Migrate generated images (img_*.png/jpg/webp/json)
+  let imagesMigrated = 0;
+  for (const ext of ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.json']) {
+    imagesMigrated += await migrateToDateBuckets(
+      GENERATED_IMAGES_DIR,
+      ext,
+      (f) => bucketFromIdFile(f, 'img_', ext),
+    );
+  }
+
+  // 6. Migrate export files ({slug}_{timestamp}.{ext})
+  let exportsMigrated = 0;
+  for (const ext of ['.xlsx', '.pdf', '.docx']) {
+    exportsMigrated += await migrateToDateBuckets(
+      EXPORTS_DIR,
+      ext,
+      (f) => dateBucketFromFilename(f),
+    );
+  }
+
+  // 7. Update result_file paths in task files
   let pathsUpdated = 0;
   if (resultsMigrated > 0) {
     pathsUpdated = await updateTaskResultPaths(TASKS_DIR, TASK_RESULTS_DIR);
   }
 
   const elapsed = Date.now() - start;
+  const parts = [
+    tasksMigrated > 0 ? `${tasksMigrated} tasks` : '',
+    resultsMigrated > 0 ? `${resultsMigrated} results` : '',
+    chatsMigrated > 0 ? `${chatsMigrated} chats` : '',
+    convMigrated > 0 ? `${convMigrated} conversations` : '',
+    imagesMigrated > 0 ? `${imagesMigrated} images` : '',
+    exportsMigrated > 0 ? `${exportsMigrated} exports` : '',
+    pathsUpdated > 0 ? `${pathsUpdated} result paths updated` : '',
+  ].filter(Boolean);
+
   console.log(
-    `[Migration] Sharding complete in ${elapsed}ms: ` +
-    `${tasksMigrated} tasks, ${resultsMigrated} results, ` +
-    `${chatsMigrated} chats, ${convMigrated} conversations migrated` +
-    (pathsUpdated > 0 ? `, ${pathsUpdated} result paths updated` : ''),
+    `[Migration] Sharding v${MIGRATION_VERSION} complete in ${elapsed}ms` +
+    (parts.length > 0 ? `: ${parts.join(', ')}` : ' (nothing to migrate)'),
   );
 
-  // Write marker file
-  await Bun.write(MARKER_FILE, new Date().toISOString());
+  // Write marker file with version
+  await Bun.write(MARKER_FILE, `${new Date().toISOString()}\n${MIGRATION_VERSION}`);
 }

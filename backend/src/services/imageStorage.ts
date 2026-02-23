@@ -3,8 +3,10 @@
  * Handles storing and retrieving generated images
  */
 
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
+import { existsSync } from 'fs';
 import { GENERATED_IMAGES_DIR as IMAGES_DIR } from '../utils/paths';
+import { dateBucketFromId, currentDateBucket } from '../utils/dateBucket';
 
 export interface SavedImageMetadata {
   id: string;
@@ -20,17 +22,37 @@ export interface SavedImageMetadata {
 }
 
 /**
- * Ensure the images directory exists
+ * Ensure a directory exists (recursive).
  */
-async function ensureImagesDir(): Promise<void> {
-  const dir = Bun.file(IMAGES_DIR);
+async function ensureDirExists(dirPath: string): Promise<void> {
   try {
-    const dirPath = IMAGES_DIR;
     const fs = await import('fs/promises');
     await fs.mkdir(dirPath, { recursive: true });
-  } catch (error) {
+  } catch {
     // Directory might already exist
   }
+}
+
+/**
+ * Get bucketed path for an image ID: IMAGES_DIR/YYYY/MM/
+ */
+function getImageBucketDir(id: string): string {
+  const bucket = dateBucketFromId(id) || currentDateBucket();
+  return resolve(IMAGES_DIR, bucket);
+}
+
+/**
+ * Resolve an image file by trying bucketed path first, then flat (backward-compat).
+ * Returns the full path if found, null otherwise.
+ */
+async function resolveImageFile(id: string, ext: string): Promise<string | null> {
+  // Try bucketed path first
+  const bucketPath = resolve(getImageBucketDir(id), `${id}.${ext}`);
+  if (await Bun.file(bucketPath).exists()) return bucketPath;
+  // Fallback to flat path
+  const flatPath = resolve(IMAGES_DIR, `${id}.${ext}`);
+  if (await Bun.file(flatPath).exists()) return flatPath;
+  return null;
 }
 
 /**
@@ -62,14 +84,15 @@ export async function saveGeneratedImage(input: {
   sessionId?: string;
   revisedPrompt?: string;
 }): Promise<{ id: string; url: string; path: string }> {
-  await ensureImagesDir();
+  const bucketDir = getImageBucketDir(input.id);
+  await ensureDirExists(bucketDir);
 
   const extension = getExtension(input.mimeType);
   const filename = `${input.id}.${extension}`;
   const metaFilename = `${input.id}.json`;
 
-  const imagePath = resolve(IMAGES_DIR, filename);
-  const metaPath = resolve(IMAGES_DIR, metaFilename);
+  const imagePath = resolve(bucketDir, filename);
+  const metaPath = resolve(bucketDir, metaFilename);
 
   // Decode and save the image
   const imageBuffer = Buffer.from(input.base64Data, 'base64');
@@ -102,17 +125,13 @@ export async function saveGeneratedImage(input: {
  * Get a generated image by ID
  */
 export async function getGeneratedImage(id: string): Promise<Buffer | null> {
-  await ensureImagesDir();
-
-  // Try common extensions
+  // Try common extensions, checking bucketed then flat paths
   const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
 
   for (const ext of extensions) {
-    const path = resolve(IMAGES_DIR, `${id}.${ext}`);
-    const file = Bun.file(path);
-
-    if (await file.exists()) {
-      const arrayBuffer = await file.arrayBuffer();
+    const resolvedPath = await resolveImageFile(id, ext);
+    if (resolvedPath) {
+      const arrayBuffer = await Bun.file(resolvedPath).arrayBuffer();
       return Buffer.from(arrayBuffer);
     }
   }
@@ -124,13 +143,9 @@ export async function getGeneratedImage(id: string): Promise<Buffer | null> {
  * Get image metadata by ID
  */
 export async function getImageMetadata(id: string): Promise<SavedImageMetadata | null> {
-  await ensureImagesDir();
-
-  const metaPath = resolve(IMAGES_DIR, `${id}.json`);
-  const file = Bun.file(metaPath);
-
-  if (await file.exists()) {
-    const content = await file.text();
+  const resolvedPath = await resolveImageFile(id, 'json');
+  if (resolvedPath) {
+    const content = await Bun.file(resolvedPath).text();
     return JSON.parse(content) as SavedImageMetadata;
   }
 
@@ -153,31 +168,29 @@ export async function listGeneratedImages(options?: {
   limit?: number;
   offset?: number;
 }): Promise<{ images: SavedImageMetadata[]; total: number }> {
-  await ensureImagesDir();
-
-  const fs = await import('fs/promises');
-  const files = await fs.readdir(IMAGES_DIR);
-
-  // Filter to only metadata files
-  const metaFiles = files.filter((f) => f.endsWith('.json'));
-
   let images: SavedImageMetadata[] = [];
 
-  for (const metaFile of metaFiles) {
-    const metaPath = resolve(IMAGES_DIR, metaFile);
-    try {
-      const content = await Bun.file(metaPath).text();
-      const metadata = JSON.parse(content) as SavedImageMetadata;
+  // Scan recursively for bucketed + flat metadata files
+  const glob = new Bun.Glob('**/*.json');
+  try {
+    for await (const relPath of glob.scan(IMAGES_DIR)) {
+      const metaPath = resolve(IMAGES_DIR, relPath);
+      try {
+        const content = await Bun.file(metaPath).text();
+        const metadata = JSON.parse(content) as SavedImageMetadata;
 
-      // Filter by session if specified
-      if (options?.sessionId && metadata.sessionId !== options.sessionId) {
-        continue;
+        // Filter by session if specified
+        if (options?.sessionId && metadata.sessionId !== options.sessionId) {
+          continue;
+        }
+
+        images.push(metadata);
+      } catch {
+        // Skip invalid files
       }
-
-      images.push(metadata);
-    } catch {
-      // Skip invalid files
     }
+  } catch {
+    // Directory doesn't exist yet
   }
 
   // Sort by creation date (newest first)
@@ -202,24 +215,29 @@ export async function deleteGeneratedImage(id: string): Promise<boolean> {
   const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
   let deleted = false;
 
-  // Delete image file
+  // Delete image file (try bucketed then flat)
   for (const ext of extensions) {
-    const path = resolve(IMAGES_DIR, `${id}.${ext}`);
-    try {
-      await fs.unlink(path);
-      deleted = true;
-      break;
-    } catch {
-      // File doesn't exist with this extension
+    const resolvedPath = await resolveImageFile(id, ext);
+    if (resolvedPath) {
+      try {
+        await fs.unlink(resolvedPath);
+        deleted = true;
+        break;
+      } catch {
+        // Ignore
+      }
     }
   }
 
-  // Delete metadata file
-  try {
-    await fs.unlink(resolve(IMAGES_DIR, `${id}.json`));
-    deleted = true;
-  } catch {
-    // Metadata doesn't exist
+  // Delete metadata file (try bucketed then flat)
+  const metaPath = await resolveImageFile(id, 'json');
+  if (metaPath) {
+    try {
+      await fs.unlink(metaPath);
+      deleted = true;
+    } catch {
+      // Metadata doesn't exist
+    }
   }
 
   return deleted;

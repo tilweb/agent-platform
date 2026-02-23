@@ -7,7 +7,7 @@
 
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import type { Tool, ToolDefinition, ToolContext } from '../types';
 import {
   generateDocument,
@@ -16,6 +16,7 @@ import {
   type DocumentFormat,
 } from '../../services/documentGenerator';
 import { EXPORTS_DIR } from '../../utils/paths';
+import { currentDateBucket } from '../../utils/dateBucket';
 
 interface ExportDocumentArgs {
   title: string;
@@ -160,11 +161,6 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
     }
 
     try {
-      // Ensure exports directory exists
-      if (!existsSync(EXPORTS_DIR)) {
-        await mkdir(EXPORTS_DIR, { recursive: true });
-      }
-
       // Build document data
       const documentData: DocumentData = {
         title: title.trim(),
@@ -178,11 +174,13 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
       // Generate document
       const buffer = await generateDocument(documentData, format);
 
-      // Create filename with timestamp
+      // Create filename with timestamp in bucketed directory
       const timestamp = Date.now();
       const slug = slugify(title) || 'dokument';
       const filename = `${slug}_${timestamp}.${format}`;
-      const filepath = join(EXPORTS_DIR, filename);
+      const bucket = currentDateBucket();
+      const filepath = join(EXPORTS_DIR, bucket, filename);
+      await mkdir(dirname(filepath), { recursive: true });
 
       // Save to file
       await writeFile(filepath, buffer);

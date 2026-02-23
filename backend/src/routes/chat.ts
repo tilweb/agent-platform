@@ -1013,8 +1013,25 @@ import { readFile, writeFile, rm, readdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { EXPORTS_DIR, KB_BASE } from '../utils/paths';
+import { dateBucketFromFilename } from '../utils/dateBucket';
 
 export const exportRoutes = new Hono();
+
+/**
+ * Resolve an export file path, checking bucketed then flat location.
+ */
+function resolveExportFilePath(filename: string): string | null {
+  // Try bucketed path first
+  const bucket = dateBucketFromFilename(filename);
+  if (bucket) {
+    const bucketPath = join(EXPORTS_DIR, bucket, filename);
+    if (existsSync(bucketPath)) return bucketPath;
+  }
+  // Fallback to flat path
+  const flatPath = join(EXPORTS_DIR, filename);
+  if (existsSync(flatPath)) return flatPath;
+  return null;
+}
 
 // GET /api/exports/download/:filename - Download a generated document
 // Authentication required to prevent unauthorized access
@@ -1033,10 +1050,10 @@ exportRoutes.get('/download/:filename', authMiddleware, async (c) => {
     return validationError(c, 'Invalid file type');
   }
 
-  const filepath = join(EXPORTS_DIR, filename);
+  const filepath = resolveExportFilePath(filename);
 
   // Check if file exists
-  if (!existsSync(filepath)) {
+  if (!filepath) {
     return notFoundError(c, 'File');
   }
 

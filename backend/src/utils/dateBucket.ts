@@ -16,19 +16,48 @@
  */
 export function dateBucketFromId(id: string): string | null {
   const parts = id.split('_');
-  if (parts.length < 3) return null;
+  if (parts.length < 2) return null;
 
-  const prefix = parts[0];
-  const tsPart = parts[1]!;
+  // Determine the timestamp part:
+  // 3+ parts: {prefix}_{timestamp}_{random} → parts[1] is the timestamp
+  // 2 parts:  {prefix}_{timestamp+random} (legacy) → first 8 chars of parts[1]
+  const tsPart = parts.length >= 3 ? parts[1]! : parts[1]!.substring(0, 8);
   let ms: number;
 
-  if (prefix === 'session') {
-    // session IDs use decimal timestamps
-    ms = Number(tsPart);
+  // Try decimal first (session IDs, older img IDs with decimal timestamps)
+  const decimal = Number(tsPart);
+  if (Number.isFinite(decimal) && decimal >= 1_000_000_000_000 && decimal <= 9_999_999_999_999) {
+    ms = decimal;
   } else {
-    // Other IDs (task_, etc.) use base36 timestamps
+    // Try base36 (current generateId format)
     ms = parseInt(tsPart, 36);
   }
+
+  if (!Number.isFinite(ms) || ms < 1_000_000_000_000 || ms > 9_999_999_999_999) {
+    return null;
+  }
+
+  const date = new Date(ms);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+
+  return `${year}/${month}`;
+}
+
+/**
+ * Extract a YYYY/MM date bucket from an export filename.
+ *
+ * Format: `{slug}_{decimal_timestamp}.{ext}` (e.g. mein-dokument_1771202553489.docx)
+ * The timestamp is the last underscore-separated segment before the file extension.
+ */
+export function dateBucketFromFilename(filename: string): string | null {
+  // Strip extension first
+  const base = filename.replace(/\.[^.]+$/, '');
+  const lastUnderscore = base.lastIndexOf('_');
+  if (lastUnderscore === -1) return null;
+
+  const tsPart = base.substring(lastUnderscore + 1);
+  const ms = Number(tsPart);
 
   if (!Number.isFinite(ms) || ms < 1_000_000_000_000 || ms > 9_999_999_999_999) {
     return null;
