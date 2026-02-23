@@ -4,7 +4,7 @@
  */
 
 import { Hono } from 'hono';
-import { loadProvidersConfig, getProvider, resolveFeatureUrl } from '../services/providers';
+import { loadProvidersConfig, getProvider, resolveFeatureUrl, resolveApiKey } from '../services/providers';
 import { uploadRateLimit } from '../middleware/rateLimit';
 import { internalError, validationError, serviceError, errorResponse, ErrorCode } from '../utils/errorHandler';
 import { authMiddleware } from '../auth';
@@ -139,8 +139,8 @@ transcriptionRoutes.post('/', uploadRateLimit, async (c) => {
       return errorResponse(c, { code: ErrorCode.SERVICE_UNAVAILABLE, message: 'Sprachmodell nicht verfügbar' });
     }
 
-    // Get API key from environment
-    const apiKey = provider.api_key_env ? process.env[provider.api_key_env] : null;
+    // Resolve API key (encrypted or env var)
+    const apiKey = await resolveApiKey(provider);
     if (!apiKey) {
       return errorResponse(c, { code: ErrorCode.SERVICE_UNAVAILABLE, message: 'Spracherkennung nicht konfiguriert' });
     }
@@ -265,7 +265,7 @@ transcriptionRoutes.get('/status', async (c) => {
     }
 
     // Check if API key is configured
-    const apiKey = provider.api_key_env ? process.env[provider.api_key_env] : null;
+    const apiKey = await resolveApiKey(provider);
     if (!apiKey) {
       return c.json({
         available: false,

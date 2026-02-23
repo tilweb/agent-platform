@@ -3,7 +3,7 @@ import { theme } from '../config/theme';
 import { useProviders } from '../hooks/useProviders';
 import { useToast } from '../components/Toast';
 import Select from '../components/Select';
-import { PlusIcon, EditIcon } from '../components/Icons';
+import { PlusIcon, EditIcon, UploadIcon } from '../components/Icons';
 
 const styles = {
   container: {
@@ -104,6 +104,9 @@ const styles = {
     border: `1px solid ${theme.colors.border}`,
     marginBottom: theme.spacing.md,
     overflow: 'hidden',
+  },
+  providerCardDisabled: {
+    opacity: 0.55,
   },
   providerCardExpanded: {
     borderColor: theme.colors.primary,
@@ -589,6 +592,40 @@ const styles = {
     borderRadius: theme.borderRadius.sm,
     fontWeight: theme.typography.weights.medium,
   },
+  // Avatar Upload
+  avatarUpload: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  avatarPreview: {
+    width: '48px',
+    height: '48px',
+    borderRadius: theme.borderRadius.lg,
+    border: `2px dashed ${theme.colors.border}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    overflow: 'hidden',
+    backgroundColor: theme.colors.background,
+    transition: `all ${theme.transitions.fast}`,
+    flexShrink: 0,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+  },
+  secondaryButtonSm: {
+    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+    backgroundColor: 'transparent',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.text,
+    cursor: 'pointer',
+  },
 };
 
 const typeColors = {
@@ -864,10 +901,11 @@ const defaultProviderForm = {
   name: '',
   api_mode: 'openai',
   base_url: '',
-  api_key_env: '',
+  api_key: '',
   enabled: true,
   company_region: '',
   datacenter_country: '',
+  icon_url: '',
 };
 
 const defaultModelForm = {
@@ -899,6 +937,7 @@ function ProvidersPage({ embedded = false }) {
   } = useProviders();
 
   const toast = useToast();
+  const logoInputRef = useRef(null);
   const [expandedProviders, setExpandedProviders] = useState({});
   const [showProviderModal, setShowProviderModal] = useState(false);
   const [showModelModal, setShowModelModal] = useState(false);
@@ -931,21 +970,25 @@ function ProvidersPage({ embedded = false }) {
       name: provider.name,
       api_mode: provider.api_mode,
       base_url: provider.base_url,
-      api_key_env: provider.api_key_env || '',
+      api_key: '',  // Never pre-fill — user enters new key or leaves empty to keep existing
       enabled: provider.enabled,
       company_region: provider.company_region || '',
       datacenter_country: provider.datacenter_country || '',
+      icon_url: provider.icon_url || '',
     });
     setShowProviderModal(true);
   };
 
   const handleSaveProvider = async () => {
     try {
+      const data = { ...providerForm };
       if (editingProvider) {
-        await updateProvider(editingProvider.id, providerForm);
+        // Only send api_key when user entered a new one
+        if (!data.api_key) delete data.api_key;
+        await updateProvider(editingProvider.id, data);
         toast.success('Gespeichert', `Provider "${providerForm.name}" gespeichert`);
       } else {
-        await createProvider(providerForm);
+        await createProvider(data);
         toast.success('Erstellt', `Provider "${providerForm.name}" erstellt`);
       }
       setShowProviderModal(false);
@@ -999,6 +1042,15 @@ function ProvidersPage({ embedded = false }) {
       toast.error('Fehler', err.message);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleToggleModel = async (providerId, model) => {
+    try {
+      const newEnabled = model.enabled === false ? true : false;
+      await updateModel(providerId, model.id, { enabled: newEnabled });
+    } catch (err) {
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -1083,6 +1135,27 @@ function ProvidersPage({ embedded = false }) {
     } else {
       setModelForm({ ...modelForm, capabilities: [...caps, cap] });
     }
+  };
+
+  // Logo upload handler
+  const MAX_LOGO_SIZE = 100 * 1024; // 100 KB
+  const ALLOWED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
+
+  const handleLogoFile = (file) => {
+    if (!file) return;
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      toast.error('Ungültiger Dateityp', 'Erlaubt: SVG, PNG, JPEG, WebP');
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE) {
+      toast.error('Datei zu groß', `Maximum: 100 KB (aktuell: ${(file.size / 1024).toFixed(0)} KB)`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setProviderForm(prev => ({ ...prev, icon_url: e.target.result }));
+    };
+    reader.readAsDataURL(file);
   };
 
   // Show hookError as toast
@@ -1261,19 +1334,33 @@ function ProvidersPage({ embedded = false }) {
               key={provider.id}
               style={{
                 ...styles.providerCard,
+                ...(!provider.enabled ? styles.providerCardDisabled : {}),
                 ...(isExpanded ? styles.providerCardExpanded : {}),
               }}
             >
               <div style={styles.providerHeader} onClick={() => toggleProvider(provider.id)}>
-                <div
-                  style={{
-                    ...styles.providerIcon,
-                    backgroundColor: iconConfig.bg,
-                    color: iconConfig.color,
-                  }}
-                >
-                  {iconConfig.icon}
-                </div>
+                {provider.icon_url ? (
+                  <img
+                    src={provider.icon_url}
+                    alt={provider.name}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: theme.borderRadius.lg,
+                      objectFit: 'contain',
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      ...styles.providerIcon,
+                      backgroundColor: iconConfig.bg,
+                      color: iconConfig.color,
+                    }}
+                  >
+                    {iconConfig.icon}
+                  </div>
+                )}
                 <div style={styles.providerInfo}>
                   <div style={styles.providerName}>
                     {provider.name}
@@ -1337,6 +1424,7 @@ function ProvidersPage({ embedded = false }) {
                   >
                     {isTesting && testResult?.providerId === provider.id ? 'Teste...' : 'Testen'}
                   </button>
+                  {!provider.protected && (
                   <button
                     style={styles.actionButton}
                     onClick={(e) => {
@@ -1347,6 +1435,8 @@ function ProvidersPage({ embedded = false }) {
                   >
                     {provider.enabled ? <ToggleOnIcon /> : <ToggleOffIcon />}
                   </button>
+                  )}
+                  {!provider.protected && (
                   <button
                     style={styles.actionButton}
                     onClick={(e) => {
@@ -1359,6 +1449,7 @@ function ProvidersPage({ embedded = false }) {
                   >
                     <EditIcon />
                   </button>
+                  )}
                   <ChevronIcon
                     style={{
                       ...styles.chevron,
@@ -1377,8 +1468,12 @@ function ProvidersPage({ embedded = false }) {
                     </div>
                     {allowCustomProviders && (
                     <div style={styles.detailItem}>
-                      <div style={styles.detailLabel}>API Key Variable</div>
-                      <div style={styles.detailValue}>{provider.api_key_env || '-'}</div>
+                      <div style={styles.detailLabel}>API Key</div>
+                      <div style={styles.detailValue}>
+                        {provider.has_api_key
+                          ? 'Verschlüsselt gespeichert'
+                          : (provider.api_key_env || 'Nicht konfiguriert')}
+                      </div>
                     </div>
                     )}
                     <div style={styles.detailItem}>
@@ -1572,7 +1667,17 @@ function ProvidersPage({ embedded = false }) {
                                   </div>
                                 );
                               })()}
-                              {!isDisabled && (
+                              {/* Toggle — not for sync-disabled or listed-only models */}
+                              {!(model.feature_set != null && model.enabled === false) && model.workplace !== false && (
+                                <button
+                                  style={styles.actionButton}
+                                  onClick={() => handleToggleModel(provider.id, model)}
+                                  title={model.enabled === false ? 'Aktivieren' : 'Deaktivieren'}
+                                >
+                                  {model.enabled === false ? <ToggleOffIcon /> : <ToggleOnIcon />}
+                                </button>
+                              )}
+                              {!(model.feature_set != null && model.enabled === false) && (
                                 <button
                                   style={styles.actionButton}
                                   onClick={() => handleEditModel(provider.id, model)}
@@ -1637,15 +1742,19 @@ function ProvidersPage({ embedded = false }) {
                   />
                 </div>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>API Key Variable</label>
+                  <label style={styles.label}>API Key</label>
                   <input
+                    type="password"
                     style={{ ...styles.input, ...styles.inputMono }}
-                    value={providerForm.api_key_env}
-                    onChange={(e) => setProviderForm({ ...providerForm, api_key_env: e.target.value })}
-                    placeholder="z.B. OPENAI_API_KEY"
+                    value={providerForm.api_key}
+                    onChange={(e) => setProviderForm({ ...providerForm, api_key: e.target.value })}
+                    placeholder={editingProvider
+                      ? (editingProvider.has_api_key ? 'Gespeichert — leer lassen zum Beibehalten' : 'sk-...')
+                      : 'sk-...'}
+                    autoComplete="off"
                   />
                   <div style={styles.hint}>
-                    Name der Umgebungsvariable (nicht der Key selbst!)
+                    Wird AES-256-GCM verschlüsselt gespeichert
                   </div>
                 </div>
               </div>
@@ -1658,6 +1767,42 @@ function ProvidersPage({ embedded = false }) {
                   onChange={(e) => setProviderForm({ ...providerForm, base_url: e.target.value })}
                   placeholder="https://api.example.com/v1"
                 />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Logo</label>
+                <div style={styles.avatarUpload}>
+                  <div
+                    style={styles.avatarPreview}
+                    onClick={() => logoInputRef.current?.click()}
+                    onDrop={(e) => { e.preventDefault(); handleLogoFile(e.dataTransfer?.files?.[0]); }}
+                    onDragOver={(e) => e.preventDefault()}
+                    title="Klicken oder Bild hierher ziehen"
+                  >
+                    {providerForm.icon_url ? (
+                      <img src={providerForm.icon_url} alt="Logo" style={styles.avatarImage} />
+                    ) : (
+                      <UploadIcon size={20} color={theme.colors.textMuted} />
+                    )}
+                  </div>
+                  <div>
+                    <button type="button" style={styles.secondaryButtonSm}
+                      onClick={() => logoInputRef.current?.click()}>
+                      Hochladen
+                    </button>
+                    {providerForm.icon_url && (
+                      <button type="button" style={{ ...styles.secondaryButtonSm, marginLeft: theme.spacing.sm, color: theme.colors.textMuted }}
+                        onClick={() => setProviderForm(prev => ({...prev, icon_url: ''}))}>
+                        Entfernen
+                      </button>
+                    )}
+                    <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.xs }}>
+                      SVG, PNG, JPEG, WebP · max. 100 KB
+                    </div>
+                  </div>
+                </div>
+                <input ref={logoInputRef} type="file" accept=".svg,.png,.jpg,.jpeg,.webp"
+                  style={{ display: 'none' }} onChange={(e) => { handleLogoFile(e.target.files?.[0]); e.target.value = ''; }} />
               </div>
 
               {/* Company Region and Datacenter Country */}
@@ -1717,18 +1862,15 @@ function ProvidersPage({ embedded = false }) {
                 </label>
               </div>
 
-              {/* Info Box für API Key Setup */}
+              {/* Info Box für API Key Sicherheit */}
               <div style={styles.infoBox}>
                 <div style={styles.infoBoxTitle}>
-                  <InfoIcon /> So richtest du den API Key ein:
+                  <InfoIcon /> Sicherheitshinweis
                 </div>
-                <ol style={styles.infoBoxList}>
-                  <li>Trage oben den <strong>Namen</strong> der Variable ein (z.B. <code>NEBIUS_API_KEY</code>)</li>
-                  <li>Füge den echten API Key in die <code>.env</code> Datei im Backend ein:<br/>
-                    <code style={styles.codeBlock}>NEBIUS_API_KEY=dein-geheimer-api-key</code>
-                  </li>
-                  <li>Starte das Backend neu</li>
-                </ol>
+                <p style={{ ...styles.hint, margin: 0, fontSize: theme.typography.sizes.sm, color: theme.colors.text, lineHeight: theme.typography.lineHeight.relaxed }}>
+                  Der API Key wird mit <strong>AES-256-GCM</strong> verschlüsselt und in der Provider-Konfiguration gespeichert.
+                  Er wird niemals im Klartext persistiert und ist nur zur Laufzeit verfügbar.
+                </p>
               </div>
             </div>
 

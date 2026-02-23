@@ -88,6 +88,16 @@ export function calculateSecurityTier(
   return 4;
 }
 
+/**
+ * Encrypted API key storage format (same shape as EncryptedTokenSet)
+ */
+export interface EncryptedApiKey {
+  encrypted: string;
+  iv: string;
+  tag: string;
+  version: number;
+}
+
 export interface ModelConfig {
   id: string;
   name: string;
@@ -115,11 +125,13 @@ export interface ProviderConfig {
   name: string;
   api_mode: ApiMode;
   base_url: string;
-  api_key_env: string | null;
+  api_key_env: string | null;           // Env-var name (for protected providers + backward compat)
+  encrypted_api_key?: EncryptedApiKey;  // Encrypted API key (for custom providers)
   enabled: boolean;
   protected?: boolean;  // System providers cannot be deleted
   company_region?: CompanyRegion;  // Company headquarters region
   datacenter_country?: string;  // ISO country code of datacenter location
+  icon_url?: string;  // URL to provider logo (e.g. /logos/openai.svg)
   models: ModelConfig[];
 }
 
@@ -154,9 +166,11 @@ export interface CreateProviderRequest {
   api_mode: ApiMode;
   base_url: string;
   api_key_env?: string | null;
+  api_key?: string;  // Plaintext key from UI (never persisted, encrypted before storage)
   enabled?: boolean;
   company_region?: CompanyRegion;
   datacenter_country?: string;
+  icon_url?: string;
   models?: ModelConfig[];
 }
 
@@ -165,9 +179,11 @@ export interface UpdateProviderRequest {
   api_mode?: ApiMode;
   base_url?: string;
   api_key_env?: string | null;
+  api_key?: string | null;  // null=remove, string=update, undefined=no change
   enabled?: boolean;
   company_region?: CompanyRegion;
   datacenter_country?: string;
+  icon_url?: string;
 }
 
 export interface SetActiveModelRequest {

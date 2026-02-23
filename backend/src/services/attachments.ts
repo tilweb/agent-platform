@@ -248,7 +248,8 @@ class AttachmentsService {
       throw new Error('Sprachmodell nicht verfügbar');
     }
 
-    const apiKey = provider.api_key_env ? process.env[provider.api_key_env] : null;
+    const { resolveApiKey } = await import('./providers');
+    const apiKey = await resolveApiKey(provider);
     if (!apiKey) {
       throw new Error('API-Key für Spracherkennung nicht konfiguriert');
     }
