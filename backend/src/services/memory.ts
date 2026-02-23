@@ -1,10 +1,101 @@
 import { writeFile, readFile, mkdir, readdir, unlink } from 'fs/promises';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 import type { Message, ContentPart } from './llm';
 import { llmService } from './llm';
 import { saveSpaceChat } from '../spaces/storage';
 import { DATA_DIR, CONVERSATIONS_DIR, CHATS_DIR, CHAT_FOLDERS_FILE } from '../utils/paths';
+import { dateBucketFromId, currentDateBucket } from '../utils/dateBucket';
+import { ensureDir } from '../utils/yamlStorage';
+
+// ============================================
+// Date-bucketed file path helpers
+// ============================================
+
+/**
+ * Get the bucketed file path for a new chat (write path).
+ * Returns e.g. data/chats/2026/02/session_xxx.yaml
+ */
+function getChatFilePath(sessionId: string): string {
+  const bucket = dateBucketFromId(sessionId) || currentDateBucket();
+  return join(CHATS_DIR, bucket, `${sessionId}.yaml`);
+}
+
+/**
+ * Resolve the actual file path for an existing chat.
+ * Tries bucketed path first, falls back to flat path (backward-compat).
+ */
+function resolveChatFilePath(sessionId: string): string {
+  const bucketPath = getChatFilePath(sessionId);
+  if (existsSync(bucketPath)) return bucketPath;
+  // Fallback to flat path for pre-migration files
+  const flatPath = join(CHATS_DIR, `${sessionId}.yaml`);
+  if (existsSync(flatPath)) return flatPath;
+  // Neither exists — return bucket path (for error messages / future writes)
+  return bucketPath;
+}
+
+/**
+ * Check if a chat file exists in either bucketed or flat location.
+ */
+function chatFileExists(sessionId: string): boolean {
+  const bucketPath = getChatFilePath(sessionId);
+  if (existsSync(bucketPath)) return true;
+  return existsSync(join(CHATS_DIR, `${sessionId}.yaml`));
+}
+
+/**
+ * Get the bucketed conversation file path.
+ */
+function getConversationFilePath(sessionId: string): string {
+  const bucket = dateBucketFromId(sessionId) || currentDateBucket();
+  return join(CONVERSATIONS_DIR, bucket, `${sessionId}.md`);
+}
+
+/**
+ * Resolve existing conversation file path (bucketed → flat fallback).
+ */
+function resolveConversationFilePath(sessionId: string): string {
+  const bucketPath = getConversationFilePath(sessionId);
+  if (existsSync(bucketPath)) return bucketPath;
+  const flatPath = join(CONVERSATIONS_DIR, `${sessionId}.md`);
+  if (existsSync(flatPath)) return flatPath;
+  return bucketPath;
+}
+
+/**
+ * List all YAML files in a directory, scanning recursively into YYYY/MM buckets.
+ * Returns filenames (basename only, e.g. "session_xxx.yaml").
+ */
+async function listYamlFilesRecursive(dir: string): Promise<string[]> {
+  const files: string[] = [];
+  const glob = new Bun.Glob('**/*.yaml');
+  try {
+    for await (const path of glob.scan(dir)) {
+      const basename = path.split('/').pop()!;
+      files.push(basename);
+    }
+  } catch {
+    // Directory doesn't exist yet
+  }
+  return files;
+}
+
+/**
+ * Iterate over all chat YAML files with their full paths.
+ * Scans recursively for bucketed structure.
+ */
+async function* iterateChatFiles(dir: string): AsyncGenerator<{ path: string; name: string }> {
+  const glob = new Bun.Glob('**/*.yaml');
+  try {
+    for await (const relPath of glob.scan(dir)) {
+      const name = relPath.split('/').pop()!;
+      yield { path: join(dir, relPath), name };
+    }
+  } catch {
+    // Directory doesn't exist yet
+  }
+}
 
 // One-time migration: move chat-folders.yaml from data/ to data/chats/
 const legacyFoldersPath = join(DATA_DIR, 'chat-folders.yaml');
@@ -193,21 +284,16 @@ export async function saveConversation(sessionId: string, userId?: string): Prom
   const session = getSession(sessionId, userId);
   if (!session || session.messages.length === 0) return;
 
-  // Ensure directory exists
-  if (!existsSync(CONVERSATIONS_DIR)) {
-    await mkdir(CONVERSATIONS_DIR, { recursive: true });
-  }
-
   const markdown = formatMessagesAsMarkdown(session);
-  const fileName = `${sessionId}.md`;
-  const filePath = join(CONVERSATIONS_DIR, fileName);
+  const filePath = getConversationFilePath(sessionId);
 
+  await ensureDir(dirname(filePath));
   await writeFile(filePath, markdown, 'utf-8');
   console.log(`Saved conversation to ${filePath}`);
 }
 
 export async function loadConversation(sessionId: string): Promise<ConversationSession | null> {
-  const filePath = join(CONVERSATIONS_DIR, `${sessionId}.md`);
+  const filePath = resolveConversationFilePath(sessionId);
 
   if (!existsSync(filePath)) {
     return null;
@@ -904,11 +990,11 @@ export async function saveChatHistory(sessionId: string, userId?: string, spaceI
   }
 
   // Check if chat already exists to preserve createdAt and existing summary
-  const existingPath = join(CHATS_DIR, `${sessionId}.yaml`);
+  const existingPath = resolveChatFilePath(sessionId);
   let createdAt = session.createdAt;
   let existingChat: ChatHistory | null = null;
 
-  if (existsSync(existingPath)) {
+  if (chatFileExists(sessionId)) {
     try {
       existingChat = parseChatYaml(await readFile(existingPath, 'utf-8'));
       if (existingChat) createdAt = existingChat.createdAt;
@@ -1005,8 +1091,11 @@ export async function saveChatHistory(sessionId: string, userId?: string, spaceI
   };
 
   const yaml = formatChatAsYaml(chat);
-  await writeFile(existingPath, yaml, 'utf-8');
-  console.log(`Saved chat history to ${existingPath}`);
+  // Write to existing location (if already migrated), or bucketed path for new chats
+  const writePath = chatFileExists(sessionId) ? existingPath : getChatFilePath(sessionId);
+  await ensureDir(dirname(writePath));
+  await writeFile(writePath, yaml, 'utf-8');
+  console.log(`Saved chat history to ${writePath}`);
 
   // Also save to space directory if spaceId is present
   if (chatSpaceId) {
@@ -1044,8 +1133,8 @@ export async function saveChatHistory(sessionId: string, userId?: string, spaceI
  * - Anonymous users can only access anonymous chats
  */
 export async function loadChatHistory(sessionId: string, userId?: string): Promise<ChatHistory | null> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) return null;
+  if (!chatFileExists(sessionId)) return null;
+  const filePath = resolveChatFilePath(sessionId);
 
   try {
     const content = await readFile(filePath, 'utf-8');
@@ -1077,8 +1166,8 @@ export async function loadChatHistory(sessionId: string, userId?: string): Promi
  * @returns The userId or null if chat not found or has no owner
  */
 export async function getChatOwnerId(sessionId: string): Promise<string | null> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) return null;
+  if (!chatFileExists(sessionId)) return null;
+  const filePath = resolveChatFilePath(sessionId);
 
   try {
     const content = await readFile(filePath, 'utf-8');
@@ -1101,7 +1190,7 @@ export async function updateChatMaterials(sessionId: string, userId: string, mat
     const chat = await loadChatHistory(sessionId, userId);
     if (!chat) return false;
 
-    const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
+    const filePath = resolveChatFilePath(sessionId);
     try {
       chat.materials = materials;
       chat.updatedAt = new Date().toISOString();
@@ -1123,7 +1212,7 @@ export async function addChatMaterial(sessionId: string, userId: string, materia
     const chat = await loadChatHistory(sessionId, userId);
     if (!chat) return false;
 
-    const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
+    const filePath = resolveChatFilePath(sessionId);
     try {
       if (!chat.materials) chat.materials = [];
       // Avoid duplicates
@@ -1149,7 +1238,7 @@ export async function removeChatMaterial(sessionId: string, userId: string, mate
     const chat = await loadChatHistory(sessionId, userId);
     if (!chat) return false;
 
-    const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
+    const filePath = resolveChatFilePath(sessionId);
     try {
       if (chat.materials) {
         chat.materials = chat.materials.filter(m => m.id !== materialId);
@@ -1186,13 +1275,12 @@ export async function listChatHistories(limit?: number, offset: number = 0, user
   if (!existsSync(CHATS_DIR)) return { chats: [], total: 0, hasMore: false };
 
   try {
-    const files = await readdir(CHATS_DIR);
     const summaries: ChatHistorySummary[] = [];
 
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
+    for await (const { path: filePath, name: file } of iterateChatFiles(CHATS_DIR)) {
+      if (!file.endsWith('.yaml') || file === 'chat-folders.yaml') continue;
       try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
+        const content = await readFile(filePath, 'utf-8');
         const chat = parseChatYaml(content);
         if (!chat) continue;
 
@@ -1275,12 +1363,10 @@ export async function searchChatHistories(query: string): Promise<ChatSearchResu
   const results: ChatSearchResult[] = [];
 
   try {
-    const files = await readdir(CHATS_DIR);
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
+    for await (const { path: filePath, name: file } of iterateChatFiles(CHATS_DIR)) {
+      if (!file.endsWith('.yaml') || file === 'chat-folders.yaml') continue;
       try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
+        const content = await readFile(filePath, 'utf-8');
         const chat = parseChatYaml(content);
         if (!chat) continue;
 
@@ -1392,13 +1478,11 @@ export async function searchChatHistoriesWithScoring(
   const results: ChatSearchResultWithScore[] = [];
 
   try {
-    const files = await readdir(CHATS_DIR);
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
+    for await (const { path: filePath, name: file } of iterateChatFiles(CHATS_DIR)) {
+      if (!file.endsWith('.yaml') || file === 'chat-folders.yaml') continue;
 
       try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
+        const content = await readFile(filePath, 'utf-8');
         const chat = parseChatYaml(content);
         if (!chat) continue;
 
@@ -1515,8 +1599,8 @@ export async function searchChatHistoriesWithScoring(
  * - If chat has userId: only that user can delete
  */
 export async function deleteChatHistory(sessionId: string, userId?: string): Promise<boolean> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) return false;
+  if (!chatFileExists(sessionId)) return false;
+  const filePath = resolveChatFilePath(sessionId);
 
   try {
     // First, check ownership
@@ -1546,8 +1630,8 @@ export async function deleteChatHistory(sessionId: string, userId?: string): Pro
  * Useful for migrating old chats without summaries
  */
 export async function regenerateChatSummary(sessionId: string): Promise<boolean> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) return false;
+  if (!chatFileExists(sessionId)) return false;
+  const filePath = resolveChatFilePath(sessionId);
 
   try {
     const content = await readFile(filePath, 'utf-8');
@@ -1587,13 +1671,10 @@ export async function regenerateAllMissingSummaries(): Promise<{ updated: number
   let errors = 0;
 
   try {
-    const files = await readdir(CHATS_DIR);
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
+    for await (const { path: filePath, name: file } of iterateChatFiles(CHATS_DIR)) {
+      if (!file.endsWith('.yaml') || file === 'chat-folders.yaml') continue;
 
       try {
-        const filePath = join(CHATS_DIR, file);
         const content = await readFile(filePath, 'utf-8');
         const chat = parseChatYaml(content);
 
@@ -1663,11 +1744,11 @@ export interface ShareResult {
  */
 export async function createShareLink(sessionId: string, userId?: string): Promise<ShareResult> {
   return withChatLock(sessionId, async () => {
-    const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-    if (!existsSync(filePath)) {
+    if (!chatFileExists(sessionId)) {
       return { success: false, error: 'Chat not found' };
     }
 
+    const filePath = resolveChatFilePath(sessionId);
     try {
       const content = await readFile(filePath, 'utf-8');
       const chat = parseChatYaml(content);
@@ -1721,10 +1802,10 @@ export async function createShareLink(sessionId: string, userId?: string): Promi
  * Only the chat owner can revoke a share link.
  */
 export async function revokeShareLink(sessionId: string, userId?: string): Promise<boolean> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) {
+  if (!chatFileExists(sessionId)) {
     return false;
   }
+  const filePath = resolveChatFilePath(sessionId);
 
   try {
     const content = await readFile(filePath, 'utf-8');
@@ -1783,13 +1864,11 @@ export async function loadChatByShareToken(shareToken: string): Promise<SharedCh
   }
 
   try {
-    const files = await readdir(CHATS_DIR);
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
+    for await (const { path: filePath, name: file } of iterateChatFiles(CHATS_DIR)) {
+      if (!file.endsWith('.yaml') || file === 'chat-folders.yaml') continue;
 
       try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
+        const content = await readFile(filePath, 'utf-8');
         const chat = parseChatYaml(content);
 
         if (chat && chat.shareToken === shareToken) {
@@ -1823,10 +1902,10 @@ export async function loadChatByShareToken(shareToken: string): Promise<SharedCh
  * @returns Share info or null
  */
 export async function getShareInfo(sessionId: string, userId?: string): Promise<{ shareToken: string; sharedAt: string } | null> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) {
+  if (!chatFileExists(sessionId)) {
     return null;
   }
+  const filePath = resolveChatFilePath(sessionId);
 
   try {
     const content = await readFile(filePath, 'utf-8');
@@ -2028,10 +2107,10 @@ export async function deleteChatFolder(folderId: string, userId?: string): Promi
  * Update chat folder assignments
  */
 export async function updateChatFolders(sessionId: string, folderIds: string[], userId?: string): Promise<boolean> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) {
+  if (!chatFileExists(sessionId)) {
     return false;
   }
+  const filePath = resolveChatFilePath(sessionId);
 
   try {
     const content = await readFile(filePath, 'utf-8');
@@ -2077,13 +2156,12 @@ export async function listChatsInFolder(folderId: string, userId?: string): Prom
   if (!existsSync(CHATS_DIR)) return [];
 
   try {
-    const files = await readdir(CHATS_DIR);
     const summaries: ChatHistorySummary[] = [];
 
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
+    for await (const { path: filePath, name: file } of iterateChatFiles(CHATS_DIR)) {
+      if (!file.endsWith('.yaml') || file === 'chat-folders.yaml') continue;
       try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
+        const content = await readFile(filePath, 'utf-8');
         const chat = parseChatYaml(content);
         if (!chat) continue;
 
@@ -2122,12 +2200,10 @@ export async function getFolderChatCounts(userId?: string): Promise<Record<strin
   if (!existsSync(CHATS_DIR)) return counts;
 
   try {
-    const files = await readdir(CHATS_DIR);
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
+    for await (const { path: filePath, name: file } of iterateChatFiles(CHATS_DIR)) {
+      if (!file.endsWith('.yaml') || file === 'chat-folders.yaml') continue;
       try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
+        const content = await readFile(filePath, 'utf-8');
         const chat = parseChatYaml(content);
         if (!chat) continue;
 

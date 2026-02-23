@@ -214,6 +214,7 @@ function generateTaskId(): string {
 const taskStore = createYamlStore<Task>(TASKS_DIR, {
   yaml: { indent: 2, lineWidth: 0 },
   prefix: 'task_',
+  bucketed: true,
 });
 
 function getTaskFilePath(taskId: string): string {

@@ -24,9 +24,10 @@ import { runAgentLoop, type AgentEvent } from '../agents/loop';
 import { generateSessionId, addMessage, saveChatHistory, saveConversation, getChatOwnerId } from './memory';
 import { notificationService } from './notificationService';
 import { writeFile, mkdir } from 'fs/promises';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 import { existsSync } from 'fs';
 import { TASK_RESULTS_DIR as RESULTS_DIR } from '../utils/paths';
+import { dateBucketFromId, currentDateBucket } from '../utils/dateBucket';
 
 // Executor state
 let isRunning = false;
@@ -395,9 +396,11 @@ async function handleAgentEvent(
  * Save task result to file
  */
 async function saveTaskResult(taskId: string, result: any): Promise<string> {
+  const bucket = dateBucketFromId(taskId) || currentDateBucket();
   const filename = `${taskId}-result.json`;
-  const filepath = resolve(RESULTS_DIR, filename);
+  const filepath = resolve(RESULTS_DIR, bucket, filename);
 
+  await mkdir(dirname(filepath), { recursive: true });
   await writeFile(filepath, JSON.stringify(result, null, 2), 'utf-8');
 
   return filepath;

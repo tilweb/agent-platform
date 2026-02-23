@@ -30,6 +30,7 @@ import { setupTools } from './tools';
 import { mcpManager } from './mcp';
 import { startExecutor } from './services/taskExecutor';
 import { recoverTasks } from './services/taskService';
+import { runShardingMigration } from './utils/migrateSharding';
 import { llmService } from './services/llm';
 import { isModelSyncConfigured, syncAdacorModels } from './services/modelSync';
 import { registerCommands } from './commands';
@@ -49,6 +50,13 @@ app.onError((err, c) => {
 async function initialize() {
   // Register slash commands first (no dependencies)
   registerCommands();
+
+  // Run one-time data migrations
+  try {
+    await runShardingMigration();
+  } catch (error) {
+    console.error('Sharding migration failed:', error);
+  }
 
   // Initialize LLM service with configured providers
   try {

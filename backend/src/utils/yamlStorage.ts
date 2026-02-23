@@ -5,8 +5,9 @@
  * and a high-level factory (createYamlStore) for the common single-file-per-entity pattern.
  */
 
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { parse as parseYaml, stringify as stringifyYaml, type Scalar } from 'yaml';
+import { dateBucketFromId, currentDateBucket } from './dateBucket';
 
 // ── Low-level helpers ────────────────────────────────────────────────
 
@@ -93,6 +94,8 @@ export interface YamlStoreOptions {
   prefix?: string;
   /** Custom file extension (default: '.yaml') */
   ext?: string;
+  /** Enable date-based sharding (YYYY/MM subdirectories) */
+  bucketed?: boolean;
 }
 
 export interface YamlStore<T> {
@@ -125,23 +128,75 @@ export function createYamlStore<T>(baseDir: string, options?: YamlStoreOptions):
   const ext = options?.ext ?? '.yaml';
   const yamlOpts = options?.yaml;
   const prefix = options?.prefix;
+  const bucketed = options?.bucketed ?? false;
 
-  const getPath = (id: string) => join(baseDir, `${id}${ext}`);
+  /** Compute the bucketed path: baseDir/YYYY/MM/id.ext */
+  const getBucketPath = (id: string) => {
+    const bucket = dateBucketFromId(id) || currentDateBucket();
+    return join(baseDir, bucket, `${id}${ext}`);
+  };
+
+  /** Flat path (legacy): baseDir/id.ext */
+  const getFlatPath = (id: string) => join(baseDir, `${id}${ext}`);
+
+  /** Primary path for new writes */
+  const getPath = (id: string) => bucketed ? getBucketPath(id) : getFlatPath(id);
 
   return {
     ensureDir: () => ensureDir(baseDir),
 
     filePath: getPath,
 
-    load: (id: string) => loadYaml<T>(getPath(id)),
-
-    save: async (id: string, data: T) => {
-      await ensureDir(baseDir);
-      await saveYaml(getPath(id), data, yamlOpts);
+    load: async (id: string) => {
+      if (bucketed) {
+        // Try bucketed path first, fall back to flat (backward-compat)
+        const bucketPath = getBucketPath(id);
+        const bucketFile = Bun.file(bucketPath);
+        if (await bucketFile.exists()) {
+          return loadYaml<T>(bucketPath);
+        }
+        // Fallback to flat path
+        return loadYaml<T>(getFlatPath(id));
+      }
+      return loadYaml<T>(getPath(id));
     },
 
-    listIds: () => listYamlIds(baseDir, prefix),
+    save: async (id: string, data: T) => {
+      const path = getPath(id);
+      await ensureDir(dirname(path));
+      await saveYaml(path, data, yamlOpts);
+    },
 
-    delete: (id: string) => deleteYaml(getPath(id)),
+    listIds: async () => {
+      if (bucketed) {
+        // Scan all subdirectories recursively
+        const ids: string[] = [];
+        const glob = new Bun.Glob(`**/*${ext}`);
+        try {
+          for await (const name of glob.scan(baseDir)) {
+            if (name === '.gitkeep') continue;
+            // Extract basename without extension from nested paths like 2026/02/task_xxx.yaml
+            const basename = name.split('/').pop()!.replace(new RegExp(`\\${ext}$`), '');
+            if (prefix && !basename.startsWith(prefix)) continue;
+            ids.push(basename);
+          }
+        } catch {
+          // Directory doesn't exist yet → empty list
+        }
+        return ids;
+      }
+      return listYamlIds(baseDir, prefix);
+    },
+
+    delete: async (id: string) => {
+      if (bucketed) {
+        // Try bucketed path first, fall back to flat
+        const bucketPath = getBucketPath(id);
+        const deleted = await deleteYaml(bucketPath);
+        if (deleted) return true;
+        return deleteYaml(getFlatPath(id));
+      }
+      return deleteYaml(getPath(id));
+    },
   };
 }
