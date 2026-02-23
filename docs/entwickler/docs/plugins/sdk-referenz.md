@@ -1,4 +1,4 @@
-# Plugin-Registry API
+# SDK-Referenz
 
 Das Plugin-System stellt zwei Registries bereit: die `pluginRegistry` für Plugin-Manifeste und die `connectionRegistry` für Connection-Provider.
 

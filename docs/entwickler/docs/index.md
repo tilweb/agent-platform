@@ -1,49 +1,41 @@
 # Entwickler-Dokumentation
 
-Willkommen zur Entwickler-Dokumentation des Adacor Workplace. Hier finden Sie alle Informationen zum Erstellen eigener Connector-Plugins.
+Technische Dokumentation fuer Entwickler des Adacor Workplace.
 
-## Was sind Plugins?
+## Plattform
 
-Das Plugin-System ermöglicht die modulare Erweiterung des Adacor Workplace um externe Dienste (Connectors), ohne den Plattform-Kern zu ändern. Plugins leben als eigenständige Pakete unter `data/connections/connectors/` und werden beim Serverstart dynamisch geladen.
+Architektur, Systeme und Konzepte der Plattform.
 
-## Schnellstart
+| Dokument | Beschreibung |
+|----------|-------------|
+| [Architektur](plattform/architektur.md) | Stack, Startup, Request-Flow, Middleware, API-Routen |
+| [Verzeichnisstruktur](plattform/verzeichnisstruktur.md) | Vollstaendiger Projektbaum mit Erklaerungen |
+| [Provider-System](plattform/provider-system.md) | Multi-Provider LLM-Konfiguration und Einrichtung |
+| [Provider-API](plattform/provider-api.md) | REST API-Referenz fuer Provider und Modelle |
+| [Tool-System](plattform/tool-system.md) | Tool-Registry, Kategorien, Interface, Registrierung |
+| [Agent-System](plattform/agenten.md) | Agent-Konfiguration, Delegation, Modell-Resolution |
+| [Skill-System](plattform/skills.md) | Skills, Workflows, Knowledge-Referenzen |
+| [MCP-Integration](plattform/mcp.md) | MCP Client/Server, Runner, Konfiguration |
+| [Verbindungen](plattform/verbindungen.md) | OAuth-System, Token-Management, Security |
+| [App-Framework](plattform/apps.md) | Built-in Applications, Registry, API |
 
-Ein Connector-Plugin besteht aus:
+## Plugin-Entwicklung
 
-1. **`manifest.yaml`** — Metadaten, OAuth-Config, Konfigurationsschema
-2. **`provider.ts`** — OAuthProvider-Klasse mit Validierung und Tool-Registration
-3. **`config.ts`** — API-URL-Helpers (optional)
-4. **`tools/*.ts`** — Tool-Implementierungen für den LLM-Zugriff
+Anleitungen und Referenzen fuer die Entwicklung von Connector-Plugins.
 
-```
-data/connections/connectors/mein-connector/
-├── manifest.yaml
-├── provider.ts
-├── config.ts
-├── credentials.yaml
-└── tools/
-    ├── search.ts
-    └── read-item.ts
-```
+| Dokument | Beschreibung |
+|----------|-------------|
+| [Erste Schritte](plugins/einstieg.md) | Schritt-fuer-Schritt Anleitung zum Erstellen eines Plugins |
+| [Plugin-Manifest](plugins/manifest.md) | manifest.yaml Referenz (Felder, OAuth, Config-Schema) |
+| [Plugin-Tools](plugins/tools.md) | Connection-Tools entwickeln (Konventionen, Best Practices) |
+| [OAuthProvider](plugins/oauth-provider.md) | OAuthProvider-Klasse (Methoden, Helper) |
+| [BaseConnectionProvider](plugins/connection-provider.md) | Basisklasse fuer Provider |
+| [Konfiguration & Secrets](plugins/konfiguration.md) | Verschluesselte Credentials, resolveOAuthConfig |
+| [SDK-Referenz](plugins/sdk-referenz.md) | pluginRegistry, connectionRegistry, Admin-API |
 
-## Voraussetzungen
+## Beispiele
 
-- Bun Runtime (1.1+)
-- TypeScript
-- Alle Imports über `@platform/sdk` — keine relativen Imports in Plattform-Code
-
-## Inhaltsübersicht
-
-| Bereich | Beschreibung |
-|---------|-------------|
-| [System-Architektur](./architektur/uebersicht.md) | Design-Prinzipien und Komponentenübersicht |
-| [Verzeichnisstruktur](./architektur/verzeichnisstruktur.md) | Dateien und Verzeichnisse im Detail |
-| [Erste Schritte](./plugins/einstieg.md) | Schritt-für-Schritt zum ersten Plugin |
-| [OAuthProvider](./plugins/oauth-provider.md) | Die OAuthProvider-Basisklasse |
-| [ConnectionProvider](./plugins/connection-provider.md) | BaseConnectionProvider und Helper-Methoden |
-| [Tools](./plugins/tools.md) | Tool-Registrierung und -Implementierung |
-| [Plugin-Manifest](./plugins/manifest.md) | manifest.yaml Referenz |
-| [OAuth-Plugin Beispiel](./beispiele/oauth-plugin.md) | Vollständiges OAuth-Plugin (Confluence/Jira) |
-| [API-Key-Plugin Beispiel](./beispiele/api-plugin.md) | Plugin mit API-Key-Authentifizierung (Pipedrive) |
-| [Plugin-Registry API](./api/registry.md) | Plugin-Registry und Connection-Registry |
-| [Konfiguration](./api/konfiguration.md) | Plugin-Konfiguration und Secrets |
+| Dokument | Beschreibung |
+|----------|-------------|
+| [OAuth-Plugin](beispiele/oauth-plugin.md) | Vollstaendiges Beispiel eines OAuth-Connectors |
+| [API-Plugin](beispiele/api-plugin.md) | Beispiel eines API-Key-basierten Connectors |

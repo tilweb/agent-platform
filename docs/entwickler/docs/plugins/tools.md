@@ -1,6 +1,8 @@
-# Tool-Registrierung
+# Plugin-Tools
 
-Tools sind die Schnittstelle zwischen LLM und externem Dienst. Jedes Tool definiert einen Namen, eine Beschreibung für den LLM, ein Parameter-Schema und eine Execute-Funktion.
+Tools sind die Schnittstelle zwischen LLM und externem Dienst. Diese Seite beschreibt die Entwicklung von **Connection-Tools** fuer Connector-Plugins.
+
+> Fuer eine Uebersicht ueber das gesamte Tool-System (Registry, Kategorien, Startup) siehe [Tool-System](../plattform/tool-system.md).
 
 ## Import
 

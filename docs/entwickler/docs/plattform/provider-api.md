@@ -1,6 +1,6 @@
 # API-Referenz: Provider & Modelle
 
-Alle Provider-Endpoints erfordern Authentifizierung. Management-Endpoints (POST, PUT, DELETE) erfordern zusätzlich Admin-Rechte.
+Alle Provider-Endpoints erfordern Authentifizierung. Management-Endpoints (POST, PUT, DELETE) erfordern zusaetzlich Admin-Rechte.
 
 ## Provider-Endpoints
 
@@ -10,7 +10,7 @@ Alle Provider-Endpoints erfordern Authentifizierung. Management-Endpoints (POST,
 GET /api/providers
 ```
 
-Gibt alle konfigurierten Provider zurück. Bei `ALLOW_CUSTOM_PROVIDERS=false` werden nur geschützte (Adacor-)Provider angezeigt.
+Gibt alle konfigurierten Provider zurueck. Bei `ALLOW_CUSTOM_PROVIDERS=false` werden nur geschuetzte (Adacor-)Provider angezeigt.
 
 **Response:**
 
@@ -60,10 +60,10 @@ Erstellt einen neuen Provider. Blockiert wenn `ALLOW_CUSTOM_PROVIDERS=false`.
 | `name` | string | Ja | Anzeigename |
 | `api_mode` | string | Ja | `openai`, `ollama`, `google_gemini`, `openai_images` |
 | `base_url` | string | Ja | Basis-URL der API |
-| `api_key_env` | string | Nein | Name der Umgebungsvariable für den API-Key |
+| `api_key_env` | string | Nein | Name der Umgebungsvariable fuer den API-Key |
 | `enabled` | boolean | Nein | Provider aktiviert (Standard: `true`) |
 | `company_region` | string | Nein | `germany`, `eu`, `world` |
-| `datacenter_country` | string | Nein | ISO-Ländercode (z.B. `DE`, `US`) |
+| `datacenter_country` | string | Nein | ISO-Laendercode (z.B. `DE`, `US`) |
 
 ### Provider abrufen
 
@@ -77,30 +77,29 @@ GET /api/providers/:id
 PUT /api/providers/:id
 ```
 
-**Request Body:** Beliebige Felder aus `CreateProviderRequest` (alle optional).
+**Request Body:** Beliebige Felder aus der Provider-Erstellung (alle optional).
 
-### Provider löschen
+### Provider loeschen
 
 ```
 DELETE /api/providers/:id
 ```
 
-Löscht den Provider und alle zugehörigen Modelle. Der LLM-Service wird automatisch neu geladen.
+Loescht den Provider und alle zugehoerigen Modelle. Der LLM-Service wird automatisch neu geladen.
 
-> [!warning]
-> Geschützte Provider (`protected: true`) können nicht gelöscht werden.
+> Geschuetzte Provider (`protected: true`) koennen nicht geloescht werden.
 
 ---
 
 ## Modell-Endpoints
 
-### Modell hinzufügen
+### Modell hinzufuegen
 
 ```
 POST /api/providers/:id/models
 ```
 
-Fügt ein Modell zu einem Provider hinzu. Blockiert für Adacor-Provider (sync-only) und bei `ALLOW_CUSTOM_PROVIDERS=false`.
+Fuegt ein Modell zu einem Provider hinzu. Blockiert fuer Adacor-Provider (sync-only) und bei `ALLOW_CUSTOM_PROVIDERS=false`.
 
 **Request Body:**
 
@@ -134,22 +133,21 @@ Fügt ein Modell zu einem Provider hinzu. Blockiert für Adacor-Provider (sync-o
 PUT /api/providers/:id/models/:modelId
 ```
 
-> [!info]
-> Das `enabled`-Feld wird bei Updates ignoriert — es wird ausschließlich über die Modell-Synchronisierung gesteuert.
+> Das `enabled`-Feld wird bei Updates ignoriert — es wird ausschliesslich ueber die Modell-Synchronisierung gesteuert.
 
-### Modell löschen
+### Modell loeschen
 
 ```
 DELETE /api/providers/:id/models/:modelId
 ```
 
-### Verfügbare Modelle abfragen
+### Verfuegbare Modelle abfragen
 
 ```
 GET /api/providers/:id/models/available
 ```
 
-Listet alle vom Provider angebotenen Modell-IDs auf. Funktioniert für OpenAI- und Ollama-APIs.
+Listet alle vom Provider angebotenen Modell-IDs auf. Funktioniert fuer OpenAI- und Ollama-APIs.
 
 **Response:**
 
@@ -193,7 +191,7 @@ PUT /api/providers/active/:purpose
 | Purpose | Beschreibung |
 |---------|-------------|
 | `chat` | Standard-Chat-Modell |
-| `vision` | Bildverständnis |
+| `vision` | Bildverstaendnis |
 | `tts` | Text-to-Speech |
 | `stt` | Speech-to-Text |
 | `text_to_image` | Bildgenerierung |
@@ -241,7 +239,7 @@ Testet die Verbindung zum Provider mit dem Standard-Modell.
 GET /api/providers/config
 ```
 
-Gibt die Feature-Flags für die Frontend-Konfiguration zurück.
+Gibt die Feature-Flags fuer die Frontend-Konfiguration zurueck.
 
 **Response:**
 
@@ -258,7 +256,7 @@ Gibt die Feature-Flags für die Frontend-Konfiguration zurück.
 POST /api/providers/adacor/sync
 ```
 
-Löst eine manuelle Synchronisierung der Adacor-Modelle aus. Erfordert konfigurierte `ADACOR_AI_API_BASE` und `ADACOR_AI_MODELS_PATH`.
+Loest eine manuelle Synchronisierung der Adacor-Modelle aus. Erfordert konfigurierte `ADACOR_AI_API_BASE` und `ADACOR_AI_MODELS_PATH`.
 
 **Response:**
 
@@ -273,70 +271,4 @@ Löst eine manuelle Synchronisierung der Adacor-Modelle aus. Erfordert konfiguri
     "timestamp": "2026-02-23T10:30:00.000Z"
   }
 }
-```
-
----
-
-## providers.yaml Struktur
-
-Die Provider-Konfiguration wird in `data/config/providers.yaml` gespeichert:
-
-```yaml
-providers:
-  - id: adacor
-    name: Adacor AI
-    api_mode: openai
-    base_url: https://ai.adacor.com/v1
-    api_key_env: ADACOR_AI_API_KEY
-    enabled: true
-    protected: true
-    company_region: germany
-    datacenter_country: DE
-    models:
-      - id: gpt-4o
-        name: GPT-4o
-        type: vllm
-        capabilities:
-          - chat
-          - function_calling
-          - vision
-        default: true
-        enabled: true
-        context_length: 128000
-        max_tokens: 4096
-
-  - id: my-ollama
-    name: Lokales Ollama
-    api_mode: ollama
-    base_url: http://localhost:11434
-    api_key_env: null
-    enabled: true
-    models:
-      - id: llama3.1:8b
-        name: Llama 3.1 8B
-        type: llm
-        capabilities:
-          - chat
-          - function_calling
-        default: true
-
-active:
-  chat:
-    provider_id: adacor
-    model_id: gpt-4o
-  vision:
-    provider_id: adacor
-    model_id: gpt-4o
-  tts:
-    provider_id: null
-    model_id: null
-  stt:
-    provider_id: null
-    model_id: null
-  text_to_image:
-    provider_id: null
-    model_id: null
-  image_to_image:
-    provider_id: null
-    model_id: null
 ```

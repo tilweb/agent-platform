@@ -1,6 +1,11 @@
 # Erste Schritte
 
-Anleitung zum Erstellen eines eigenen Connector-Plugins für den Adacor Workplace.
+Anleitung zum Erstellen eines eigenen Connector-Plugins fuer den Adacor Workplace.
+
+> **Plattform-Kontext:** Diese Anleitung behandelt die Plugin-Entwicklung. Fuer ein Verstaendnis der zugrundeliegenden Systeme siehe:
+> - [Tool-System](../plattform/tool-system.md) — Wie Tools registriert und ausgefuehrt werden
+> - [Verbindungen](../plattform/verbindungen.md) — OAuth-Flow und Token-Management
+> - [Plattform-Architektur](../plattform/architektur.md) — Gesamtuebersicht
 
 ## Voraussetzungen
 
