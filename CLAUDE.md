@@ -55,7 +55,7 @@ cp .env.example .env    # Eine einzige .env im Root — alle Konfiguration hier
 - **`utils/apiFetch.js`** — API client with credentials handling
 
 ### Data Layer (`data/`)
-All persistence is file-based. Key directories: `providers/` (per-provider config + logo files), `config/` (settings), `chats/`, `agents/`, `skills/`, `tasks/`, `knowledge-base/`, `auth/`, `connections/` (encrypted OAuth tokens).
+All persistence is file-based. Key directories: `providers/` (per-provider LLM config + logo files), `config/` (settings), `chats/`, `agents/`, `skills/`, `tasks/`, `knowledge-base/`, `auth/`, `connections/` (connector plugins under `connectors/`, encrypted user tokens under `tokens/`, registry state).
 
 ### MCP Runner (`mcp-runner/`)
 Optional dedicated container for running MCP server processes in isolation. Backend communicates via HTTP instead of spawning child processes directly. Dual-mode: without `MCP_RUNNER_URL` everything runs locally as before.
