@@ -25,8 +25,7 @@ import { generateSessionId, addMessage, saveChatHistory, saveConversation, getCh
 import { notificationService } from './notificationService';
 import { writeFile, mkdir } from 'fs/promises';
 import { resolve, dirname } from 'path';
-import { existsSync } from 'fs';
-import { TASK_RESULTS_DIR as RESULTS_DIR } from '../utils/paths';
+import { TASKS_DIR } from '../utils/paths';
 import { dateBucketFromId, currentDateBucket } from '../utils/dateBucket';
 
 // Executor state
@@ -41,11 +40,6 @@ export async function startExecutor(): Promise<void> {
   if (isRunning) {
     console.log('Task executor already running');
     return;
-  }
-
-  // Ensure results directory exists
-  if (!existsSync(RESULTS_DIR)) {
-    await mkdir(RESULTS_DIR, { recursive: true });
   }
 
   isRunning = true;
@@ -398,7 +392,7 @@ async function handleAgentEvent(
 async function saveTaskResult(taskId: string, result: any): Promise<string> {
   const bucket = dateBucketFromId(taskId) || currentDateBucket();
   const filename = `${taskId}-result.json`;
-  const filepath = resolve(RESULTS_DIR, bucket, filename);
+  const filepath = resolve(TASKS_DIR, bucket, filename);
 
   await mkdir(dirname(filepath), { recursive: true });
   await writeFile(filepath, JSON.stringify(result, null, 2), 'utf-8');

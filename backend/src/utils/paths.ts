@@ -40,7 +40,6 @@ export const KB_INCOMING_DIR = join(KB_BASE, 'incoming');
 
 // Tasks
 export const TASKS_DIR = join(DATA_DIR, 'tasks');
-export const TASK_RESULTS_DIR = join(DATA_DIR, 'tasks', 'results');
 
 // Content
 export const GENERATED_IMAGES_DIR = join(DATA_DIR, 'generated-images');
