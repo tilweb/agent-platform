@@ -15,7 +15,7 @@ Ein Connector-Plugin besteht aus:
 4. **`tools/*.ts`** — Tool-Implementierungen für den LLM-Zugriff
 
 ```
-data/connections/providers/mein-connector/
+data/connections/connectors/mein-connector/
 ├── manifest.yaml
 ├── provider.ts
 ├── config.ts
@@ -37,7 +37,7 @@ data/connections/providers/mein-connector/
 
 ## Schritt 1: Manifest erstellen
 
-Erstelle `data/connections/providers/<plugin-id>/manifest.yaml`:
+Erstelle `data/connections/connectors/<plugin-id>/manifest.yaml`:
 
 ```yaml
 id: mein-connector
@@ -596,7 +596,7 @@ interface ToolContext {
 
 Ein komplettes Beispiel eines hypothetischen Jira-Connectors:
 
-### `data/connections/providers/jira/manifest.yaml`
+### `data/connections/connectors/jira/manifest.yaml`
 
 ```yaml
 id: jira
@@ -641,7 +641,7 @@ connector:
       prompt: "consent"
 ```
 
-### `data/connections/providers/jira/config.ts`
+### `data/connections/connectors/jira/config.ts`
 
 ```typescript
 const ATLASSIAN_API = 'https://api.atlassian.com';
@@ -655,7 +655,7 @@ export function getJiraApiUrl(cloudId: string): string {
 }
 ```
 
-### `data/connections/providers/jira/provider.ts`
+### `data/connections/connectors/jira/provider.ts`
 
 ```typescript
 import { OAuthProvider, resolveOAuthConfig } from '@platform/sdk';
@@ -725,7 +725,7 @@ export class JiraProvider extends OAuthProvider {
 export default new JiraProvider();
 ```
 
-### `data/connections/providers/jira/tools/search-issues.ts`
+### `data/connections/connectors/jira/tools/search-issues.ts`
 
 ```typescript
 import type { ToolDefinition, ToolContext, ConnectionTool } from '@platform/sdk';
@@ -828,7 +828,7 @@ export function createSearchIssuesTool(providerId: string): ConnectionTool {
 
 ## Checkliste: Neues Plugin erstellen
 
-- [ ] Verzeichnis unter `data/connections/providers/<id>/` angelegt
+- [ ] Verzeichnis unter `data/connections/connectors/<id>/` angelegt
 - [ ] `manifest.yaml` mit allen Pflichtfeldern
 - [ ] `connector.entryPoint` zeigt auf `provider.ts`
 - [ ] `connector.oauth` enthält korrekte URLs und Scopes

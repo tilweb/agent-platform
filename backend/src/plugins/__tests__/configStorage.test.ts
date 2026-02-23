@@ -33,7 +33,7 @@ function mockEncrypt(value: any) {
 // ---------------------------------------------------------------------------
 
 mock.module("../../utils/paths", () => ({
-  CONNECTIONS_PROVIDERS_DIR: "/tmp/mock-connection-providers",
+  CONNECTIONS_CONNECTORS_DIR: "/tmp/mock-connection-connectors",
 }));
 
 mock.module("../../utils/yamlStorage", () => ({
@@ -98,9 +98,9 @@ const testSchema = [
 /** Build the file path used by configStorage for a given pluginId / userId */
 function pluginPath(pluginId: string, userId?: string): string {
   if (userId) {
-    return `/tmp/mock-connection-providers/${pluginId}/${userId}.yaml`;
+    return `/tmp/mock-connection-connectors/${pluginId}/${userId}.yaml`;
   }
-  return `/tmp/mock-connection-providers/${pluginId}/credentials.yaml`;
+  return `/tmp/mock-connection-connectors/${pluginId}/credentials.yaml`;
 }
 
 // ---------------------------------------------------------------------------

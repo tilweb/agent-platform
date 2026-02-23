@@ -68,14 +68,14 @@ backend/
 |-------------|-----|-------------|
 | `backend/src/plugins/` | Plattform | Plugin-Infrastruktur (Loader, Registry, SDK) |
 | `backend/src/connections/` | Plattform | Connection-Basisklassen und Registry |
-| `data/connections/providers/` | Plugin | Connector-Plugins (Code + Credentials) |
+| `data/connections/connectors/` | Plugin | Connector-Plugins (Code + Credentials) |
 
 ## Plugin-Verzeichnis
 
 Jedes Plugin hat folgende Struktur:
 
 ```
-data/connections/providers/<plugin-id>/
+data/connections/connectors/<plugin-id>/
 ├── manifest.yaml        ← Pflicht: Metadaten und Konfiguration
 ├── provider.ts          ← Pflicht: OAuthProvider-Klasse
 ├── config.ts            ← Optional: URL-Helpers
@@ -105,6 +105,6 @@ Enthält die Tool-Implementierungen, die dem LLM als Funktionen zur Verfügung s
 
 Plugin-Credentials werden **im Plugin-Verzeichnis** gespeichert:
 
-- **Speicherort**: `data/connections/providers/{pluginId}/credentials.yaml`
+- **Speicherort**: `data/connections/connectors/{pluginId}/credentials.yaml`
 - **Verschlüsselung**: AES-256-GCM für Felder mit `secret: true` im Manifest
 - **Schlüssel**: `CONNECTION_ENCRYPTION_KEY` Umgebungsvariable

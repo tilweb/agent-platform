@@ -58,7 +58,7 @@ export const TABLES_DIR = join(DATA_DIR, 'tables');
 
 // Connections
 export const CONNECTIONS_DIR = join(DATA_DIR, 'connections');
-export const CONNECTIONS_PROVIDERS_DIR = join(CONNECTIONS_DIR, 'providers');
+export const CONNECTIONS_CONNECTORS_DIR = join(CONNECTIONS_DIR, 'connectors');
 export const CONNECTIONS_TOKENS_DIR = join(CONNECTIONS_DIR, 'tokens');
 export const CONNECTIONS_REGISTRY_FILE = join(CONNECTIONS_DIR, 'registry.yaml');
 

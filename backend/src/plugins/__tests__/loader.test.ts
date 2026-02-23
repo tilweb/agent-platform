@@ -45,7 +45,7 @@ const mockState = {
 
 mock.module("../../utils/paths", () => ({
   CONNECTIONS_DIR: "/tmp/test-loader-connections",
-  CONNECTIONS_PROVIDERS_DIR: "/tmp/test-loader-connections/providers",
+  CONNECTIONS_CONNECTORS_DIR: "/tmp/test-loader-connections/connectors",
   CONNECTIONS_TOKENS_DIR: "/tmp/test-loader-connections/tokens",
   CONNECTIONS_REGISTRY_FILE: "/tmp/test-loader-connections/registry.yaml",
 }));
@@ -147,7 +147,7 @@ describe("loadAllPlugins()", () => {
     test("sollte ensureDir für das Providers-Verzeichnis aufrufen", async () => {
       await loadAllPlugins();
 
-      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-connections/providers");
+      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-connections/connectors");
     });
 
     test("sollte ensureDir für das Legacy-Konfigurations-Verzeichnis aufrufen", async () => {
@@ -271,14 +271,14 @@ describe("loadAllPlugins()", () => {
     test("sollte ensureDir für das Providers-Verzeichnis aufrufen", async () => {
       await loadAllPlugins();
 
-      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-connections/providers");
+      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-connections/connectors");
     });
 
     test("sollte ensureDir genau einmal für das Providers-Verzeichnis aufrufen", async () => {
       await loadAllPlugins();
 
       const providerDirCalls = mockState.ensureDirCalls.filter(
-        (d) => d === "/tmp/test-loader-connections/providers"
+        (d) => d === "/tmp/test-loader-connections/connectors"
       );
       expect(providerDirCalls).toHaveLength(1);
     });
@@ -432,7 +432,7 @@ describe("loadAllPlugins()", () => {
       await loadAllPlugins();
 
       const expectedDirs = new Set([
-        "/tmp/test-loader-connections/providers",
+        "/tmp/test-loader-connections/connectors",
         "/tmp/config/plugins",
       ]);
 

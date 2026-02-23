@@ -4,7 +4,7 @@ Willkommen zur Entwickler-Dokumentation des Adacor Workplace. Hier finden Sie al
 
 ## Was sind Plugins?
 
-Das Plugin-System ermöglicht die modulare Erweiterung des Adacor Workplace um externe Dienste (Connectors), ohne den Plattform-Kern zu ändern. Plugins leben als eigenständige Pakete unter `data/connections/providers/` und werden beim Serverstart dynamisch geladen.
+Das Plugin-System ermöglicht die modulare Erweiterung des Adacor Workplace um externe Dienste (Connectors), ohne den Plattform-Kern zu ändern. Plugins leben als eigenständige Pakete unter `data/connections/connectors/` und werden beim Serverstart dynamisch geladen.
 
 ## Schnellstart
 
@@ -16,7 +16,7 @@ Ein Connector-Plugin besteht aus:
 4. **`tools/*.ts`** — Tool-Implementierungen für den LLM-Zugriff
 
 ```
-data/connections/providers/mein-connector/
+data/connections/connectors/mein-connector/
 ├── manifest.yaml
 ├── provider.ts
 ├── config.ts

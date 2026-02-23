@@ -46,7 +46,7 @@ mock.module("../utils/paths", () => ({
   MEMORY_USERS_DIR: "/tmp/spaces-test-data/memory/users",
   TABLES_DIR: "/tmp/spaces-test-data/tables",
   CONNECTIONS_DIR: "/tmp/spaces-test-data/connections",
-  CONNECTIONS_PROVIDERS_DIR: "/tmp/spaces-test-data/connections/providers",
+  CONNECTIONS_CONNECTORS_DIR: "/tmp/spaces-test-data/connections/connectors",
   CONNECTIONS_TOKENS_DIR: "/tmp/spaces-test-data/connections/tokens",
   CONNECTIONS_REGISTRY_FILE: "/tmp/spaces-test-data/connections/registry.yaml",
   SKILLS_DIR: "/tmp/spaces-test-data/skills",

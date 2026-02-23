@@ -166,7 +166,7 @@ secure: process.env.NODE_ENV === 'production'
 **Fix:** Validierung vor Upload
 
 ### 24. Fehlende TLS-Validierung bei externen APIs
-**Datei:** `backend/src/connections/providers/google-drive/tools/read-file.ts:59-70`
+**Datei:** `backend/src/connections/connectors/google-drive/tools/read-file.ts:59-70`
 **Problem:** Keine Certificate-Pinning
 **Fix:** HTTPS-only, Certificate-Pinning für kritische APIs
 

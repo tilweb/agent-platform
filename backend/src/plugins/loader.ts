@@ -1,14 +1,14 @@
 /**
  * Plugin Loader
  *
- * Scans and loads plugins from data/connections/providers/.
+ * Scans and loads plugins from data/connections/connectors/.
  * Connector plugins with transport=inprocess are dynamically imported
  * and registered in the connection registry.
  * Called during backend initialization.
  */
 
 import { join, normalize, resolve, sep, dirname } from 'path';
-import { CONNECTIONS_DIR, CONNECTIONS_PROVIDERS_DIR, CONNECTIONS_TOKENS_DIR, CONNECTIONS_REGISTRY_FILE } from '../utils/paths';
+import { CONNECTIONS_DIR, CONNECTIONS_CONNECTORS_DIR, CONNECTIONS_TOKENS_DIR, CONNECTIONS_REGISTRY_FILE } from '../utils/paths';
 import { loadYaml, ensureDir } from '../utils/yamlStorage';
 import { pluginRegistry } from './registry';
 import { connectionRegistry } from '../connections/registry';
@@ -36,8 +36,8 @@ export async function loadAllPlugins(): Promise<void> {
   await migrateRegistryFile();        // Legacy 3: data/plugins/registry.yaml → data/connections/registry.yaml
   await migrateTokensDir();           // Legacy 4: data/connections/{userId}/ → data/connections/tokens/{userId}/
 
-  // Load plugins from data/connections/providers/
-  await loadPluginsFromDir(CONNECTIONS_PROVIDERS_DIR, 'builtin');
+  // Load plugins from data/connections/connectors/
+  await loadPluginsFromDir(CONNECTIONS_CONNECTORS_DIR, 'builtin');
 
   // Run ENV credential migration (idempotent)
   await migrateEnvCredentials();
@@ -169,7 +169,7 @@ async function migrateConfigDir(): Promise<void> {
 }
 
 /**
- * Legacy migration 2: data/config/plugins/{id}.yaml → data/connections/providers/{id}/credentials.yaml
+ * Legacy migration 2: data/config/plugins/{id}.yaml → data/connections/connectors/{id}/credentials.yaml
  */
 async function migratePluginCredentials(): Promise<void> {
   try {
@@ -179,14 +179,14 @@ async function migratePluginCredentials(): Promise<void> {
     for await (const path of glob.scan(LEGACY_CONFIG_PLUGINS_DIR)) {
       const oldPath = join(LEGACY_CONFIG_PLUGINS_DIR, path);
       const pluginId = path.replace('.yaml', '');
-      const newPath = join(CONNECTIONS_PROVIDERS_DIR, pluginId, 'credentials.yaml');
+      const newPath = join(CONNECTIONS_CONNECTORS_DIR, pluginId, 'credentials.yaml');
 
       const newFile = Bun.file(newPath);
       if (await newFile.exists()) continue;
 
       const oldFile = Bun.file(oldPath);
       if (await oldFile.exists()) {
-        await ensureDir(join(CONNECTIONS_PROVIDERS_DIR, pluginId));
+        await ensureDir(join(CONNECTIONS_CONNECTORS_DIR, pluginId));
         const content = await oldFile.text();
         await Bun.write(newPath, content);
         migrated++;

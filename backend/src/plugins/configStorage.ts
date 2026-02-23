@@ -6,7 +6,7 @@
  */
 
 import { join, dirname } from 'path';
-import { CONNECTIONS_PROVIDERS_DIR } from '../utils/paths';
+import { CONNECTIONS_CONNECTORS_DIR } from '../utils/paths';
 import { encryptData, decryptData, isEncryptionConfigured } from '../connections/crypto';
 import { loadYaml, saveYaml, deleteYaml, ensureDir } from '../utils/yamlStorage';
 import type { ConfigField, StoredPluginConfig, EncryptedConfigField } from './types';
@@ -33,7 +33,7 @@ async function withConfigLock<T>(lockKey: string, fn: () => Promise<T>): Promise
 }
 
 function configPath(pluginId: string, userId?: string): string {
-  const baseDir = join(CONNECTIONS_PROVIDERS_DIR, pluginId);
+  const baseDir = join(CONNECTIONS_CONNECTORS_DIR, pluginId);
   if (userId) {
     return join(baseDir, `${userId}.yaml`);
   }

@@ -7,21 +7,21 @@
 
 ## Überblick
 
-Das Plugin-System ermöglicht die modulare Erweiterung des Adacor Workplace um externe Dienste (Connectors), ohne den Plattform-Kern zu ändern. Plugins leben als eigenständige Pakete unter `data/connections/providers/` und werden beim Serverstart dynamisch geladen.
+Das Plugin-System ermöglicht die modulare Erweiterung des Adacor Workplace um externe Dienste (Connectors), ohne den Plattform-Kern zu ändern. Plugins leben als eigenständige Pakete unter `data/connections/connectors/` und werden beim Serverstart dynamisch geladen.
 
 ### Design-Prinzipien
 
 - **Runtime-installierbar**: Plugins können zur Laufzeit hinzugefügt werden, ohne Backend-Code zu ändern
 - **Isoliert**: Jedes Plugin ist ein eigenständiges Verzeichnis mit Manifest, Provider-Code und Tools
 - **SDK-basiert**: Plugins greifen über `@platform/sdk` auf Plattform-APIs zu — keine relativen Imports in Plattform-Interna
-- **Credentials im Plugin-Verzeichnis**: Plugin-Code und verschlüsselte Credentials liegen gemeinsam unter `data/connections/providers/{id}/`
+- **Credentials im Plugin-Verzeichnis**: Plugin-Code und verschlüsselte Credentials liegen gemeinsam unter `data/connections/connectors/{id}/`
 
 ### Architektur-Entscheidungen
 
 | Entscheidung | Begründung |
 |---|---|
-| **Hybrid-Ansatz** | Nur Connectors/Marketplace-Packages in `data/connections/providers/`. Agents und Skills bleiben in `data/agents/` bzw. `data/skills/` |
-| **Credentials pro Plugin** | `data/connections/providers/{id}/credentials.yaml` — Credentials liegen im Plugin-Verzeichnis |
+| **Hybrid-Ansatz** | Nur Connectors/Marketplace-Packages in `data/connections/connectors/`. Agents und Skills bleiben in `data/agents/` bzw. `data/skills/` |
+| **Credentials pro Plugin** | `data/connections/connectors/{id}/credentials.yaml` — Credentials liegen im Plugin-Verzeichnis |
 | **tsconfig paths** | Bun unterstützt `paths` nativ — ein `@platform/sdk`-Alias macht Plugins ortsunabhängig |
 | **Default Export** | Jeder Connector exportiert seine Provider-Instanz als `export default` für den dynamischen Loader |
 
@@ -241,7 +241,7 @@ Die `ConnectionRegistry` verwaltet alle registrierten Provider:
 
 Verschlüsselte Speicherung der Plugin-Credentials:
 
-- **Speicherort**: `data/connections/providers/{pluginId}/credentials.yaml`
+- **Speicherort**: `data/connections/connectors/{pluginId}/credentials.yaml`
 - **Verschlüsselung**: AES-256-GCM für Felder mit `secret: true`
 - **Schlüssel**: `CONNECTION_ENCRYPTION_KEY` Umgebungsvariable
 - **Credential-Modi**:
@@ -342,15 +342,15 @@ LLM → Tool Call: confluence_search({query: "..."})
 
 | Vorher | Nachher |
 |--------|---------|
-| Provider-Code in `backend/src/connections/providers/` | Provider-Code in `data/connections/providers/` |
+| Provider-Code in `backend/src/connections/connectors/` | Provider-Code in `data/connections/connectors/` |
 | Relative Imports (`../../base/OAuthProvider`) | SDK-Import (`@platform/sdk`) |
 | Per-Provider OAuth-Config-Funktionen | Generischer `resolveOAuthConfig()` |
 | Statische `registerProviders()` in `index.ts` | Dynamischer Import durch `loadAllPlugins()` |
-| Credentials in `data/plugins/configs/` | Credentials in `data/connections/providers/{id}/credentials.yaml` |
+| Credentials in `data/plugins/configs/` | Credentials in `data/connections/connectors/{id}/credentials.yaml` |
 
 ### Config-Migration
 
-Der Loader migriert automatisch vorhandene Config-Dateien von den alten Pfaden (`data/plugins/configs/*.yaml` und `data/config/plugins/*.yaml`) zum neuen Pfad (`data/connections/providers/{id}/credentials.yaml`). Bestehende Dateien am neuen Ort werden nicht überschrieben.
+Der Loader migriert automatisch vorhandene Config-Dateien von den alten Pfaden (`data/plugins/configs/*.yaml` und `data/config/plugins/*.yaml`) zum neuen Pfad (`data/connections/connectors/{id}/credentials.yaml`). Bestehende Dateien am neuen Ort werden nicht überschrieben.
 
 ---
 

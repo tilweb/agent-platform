@@ -97,7 +97,7 @@ mock.module("../../utils/paths", () => ({
   SPACES_DIR: `${TEST_DATA_ROOT}/spaces`,
   TABLES_DIR: `${TEST_DATA_ROOT}/tables`,
   CONNECTIONS_DIR: `${TEST_DATA_ROOT}/connections`,
-  CONNECTIONS_PROVIDERS_DIR: `${TEST_DATA_ROOT}/connections/providers`,
+  CONNECTIONS_CONNECTORS_DIR: `${TEST_DATA_ROOT}/connections/connectors`,
   CONNECTIONS_TOKENS_DIR: `${TEST_DATA_ROOT}/connections/tokens`,
   CONNECTIONS_REGISTRY_FILE: `${TEST_DATA_ROOT}/connections/registry.yaml`,
   SKILLS_DIR: `${TEST_DATA_ROOT}/skills`,
