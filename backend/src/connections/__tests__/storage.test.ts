@@ -102,7 +102,7 @@ mock.module("../crypto", () => ({
 }));
 
 mock.module("../../utils/paths", () => ({
-  CONNECTIONS_DIR: MOCK_CONNECTIONS_DIR,
+  CONNECTIONS_TOKENS_DIR: MOCK_CONNECTIONS_DIR,
   OAUTH_STATES_DIR: MOCK_OAUTH_STATES_DIR,
 }));
 

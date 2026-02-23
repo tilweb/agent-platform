@@ -5,8 +5,8 @@
  * Secret fields are individually AES-256-GCM encrypted, non-secret fields stored as plain YAML.
  */
 
-import { join } from 'path';
-import { PLUGINS_CONFIGS_DIR } from '../utils/paths';
+import { join, dirname } from 'path';
+import { CONNECTIONS_PROVIDERS_DIR } from '../utils/paths';
 import { encryptData, decryptData, isEncryptionConfigured } from '../connections/crypto';
 import { loadYaml, saveYaml, deleteYaml, ensureDir } from '../utils/yamlStorage';
 import type { ConfigField, StoredPluginConfig, EncryptedConfigField } from './types';
@@ -33,10 +33,11 @@ async function withConfigLock<T>(lockKey: string, fn: () => Promise<T>): Promise
 }
 
 function configPath(pluginId: string, userId?: string): string {
+  const baseDir = join(CONNECTIONS_PROVIDERS_DIR, pluginId);
   if (userId) {
-    return join(PLUGINS_CONFIGS_DIR, pluginId, `${userId}.yaml`);
+    return join(baseDir, `${userId}.yaml`);
   }
-  return join(PLUGINS_CONFIGS_DIR, `${pluginId}.yaml`);
+  return join(baseDir, 'credentials.yaml');
 }
 
 /**
@@ -91,7 +92,7 @@ export async function savePluginConfig(
       configuredBy,
     };
 
-    await ensureDir(PLUGINS_CONFIGS_DIR);
+    await ensureDir(dirname(path));
     await saveYaml(path, config);
   });
 }

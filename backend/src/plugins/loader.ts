@@ -1,15 +1,14 @@
 /**
  * Plugin Loader
  *
- * Scans and loads plugins from data/plugins/ directories.
- * All plugins (builtin + installed) live under data/plugins/.
+ * Scans and loads plugins from data/connections/providers/.
  * Connector plugins with transport=inprocess are dynamically imported
  * and registered in the connection registry.
  * Called during backend initialization.
  */
 
-import { join, normalize, resolve, sep } from 'path';
-import { PLUGINS_DIR, PLUGINS_INSTALLED_DIR, PLUGINS_CONFIGS_DIR } from '../utils/paths';
+import { join, normalize, resolve, sep, dirname } from 'path';
+import { CONNECTIONS_DIR, CONNECTIONS_PROVIDERS_DIR, CONNECTIONS_TOKENS_DIR, CONNECTIONS_REGISTRY_FILE } from '../utils/paths';
 import { loadYaml, ensureDir } from '../utils/yamlStorage';
 import { pluginRegistry } from './registry';
 import { connectionRegistry } from '../connections/registry';
@@ -17,8 +16,11 @@ import { toolRegistry } from '../tools/registry';
 import { migrateEnvCredentials } from './migrateEnvCredentials';
 import type { PluginManifest } from './types';
 
-const PLUGINS_BUILTIN_DIR = join(PLUGINS_DIR, 'builtin');
-const OLD_PLUGINS_CONFIGS_DIR = join(PLUGINS_DIR, 'configs');
+// Legacy paths for migrations
+const LEGACY_PLUGINS_DIR = join(dirname(CONNECTIONS_DIR), 'plugins');
+const LEGACY_PLUGINS_CONFIGS_DIR = join(LEGACY_PLUGINS_DIR, 'configs');
+const LEGACY_CONFIG_PLUGINS_DIR = join(dirname(CONNECTIONS_DIR), 'config', 'plugins');
+const LEGACY_PLUGINS_REGISTRY_FILE = join(LEGACY_PLUGINS_DIR, 'registry.yaml');
 
 /**
  * Load all plugins (builtin + installed).
@@ -28,14 +30,14 @@ export async function loadAllPlugins(): Promise<void> {
   // Load persisted registry state first
   await pluginRegistry.load();
 
-  // Migrate config files from old location if needed
-  await migrateConfigDir();
+  // Run legacy migrations (all idempotent)
+  await migrateConfigDir();           // Legacy 1: data/plugins/configs/ → data/config/plugins/
+  await migratePluginCredentials();   // Legacy 2: data/config/plugins/ → credentials.yaml
+  await migrateRegistryFile();        // Legacy 3: data/plugins/registry.yaml → data/connections/registry.yaml
+  await migrateTokensDir();           // Legacy 4: data/connections/{userId}/ → data/connections/tokens/{userId}/
 
-  // Load builtin plugins from data/plugins/builtin/
-  await loadPluginsFromDir(PLUGINS_BUILTIN_DIR, 'builtin');
-
-  // Load installed plugins from data/plugins/installed/
-  await loadPluginsFromDir(PLUGINS_INSTALLED_DIR, 'installed');
+  // Load plugins from data/connections/providers/
+  await loadPluginsFromDir(CONNECTIONS_PROVIDERS_DIR, 'builtin');
 
   // Run ENV credential migration (idempotent)
   await migrateEnvCredentials();
@@ -134,23 +136,19 @@ async function loadConnectorProvider(pluginDir: string, manifest: PluginManifest
 }
 
 /**
- * Migrate config files from old location (data/plugins/configs/)
- * to new location (data/config/plugins/).
+ * Legacy migration 1: data/plugins/configs/ → data/config/plugins/
  */
 async function migrateConfigDir(): Promise<void> {
   try {
-    const oldDir = Bun.file(OLD_PLUGINS_CONFIGS_DIR);
-    // Check if old directory has files
     const glob = new Bun.Glob('*.yaml');
     let migrated = 0;
 
-    await ensureDir(PLUGINS_CONFIGS_DIR);
+    await ensureDir(LEGACY_CONFIG_PLUGINS_DIR);
 
-    for await (const path of glob.scan(OLD_PLUGINS_CONFIGS_DIR)) {
-      const oldPath = join(OLD_PLUGINS_CONFIGS_DIR, path);
-      const newPath = join(PLUGINS_CONFIGS_DIR, path);
+    for await (const path of glob.scan(LEGACY_PLUGINS_CONFIGS_DIR)) {
+      const oldPath = join(LEGACY_PLUGINS_CONFIGS_DIR, path);
+      const newPath = join(LEGACY_CONFIG_PLUGINS_DIR, path);
 
-      // Only migrate if target doesn't exist yet
       const newFile = Bun.file(newPath);
       if (await newFile.exists()) continue;
 
@@ -167,5 +165,117 @@ async function migrateConfigDir(): Promise<void> {
     }
   } catch {
     // Old directory doesn't exist or scan failed — nothing to migrate
+  }
+}
+
+/**
+ * Legacy migration 2: data/config/plugins/{id}.yaml → data/connections/providers/{id}/credentials.yaml
+ */
+async function migratePluginCredentials(): Promise<void> {
+  try {
+    const glob = new Bun.Glob('*.yaml');
+    let migrated = 0;
+
+    for await (const path of glob.scan(LEGACY_CONFIG_PLUGINS_DIR)) {
+      const oldPath = join(LEGACY_CONFIG_PLUGINS_DIR, path);
+      const pluginId = path.replace('.yaml', '');
+      const newPath = join(CONNECTIONS_PROVIDERS_DIR, pluginId, 'credentials.yaml');
+
+      const newFile = Bun.file(newPath);
+      if (await newFile.exists()) continue;
+
+      const oldFile = Bun.file(oldPath);
+      if (await oldFile.exists()) {
+        await ensureDir(join(CONNECTIONS_PROVIDERS_DIR, pluginId));
+        const content = await oldFile.text();
+        await Bun.write(newPath, content);
+        migrated++;
+      }
+    }
+
+    if (migrated > 0) {
+      console.log(`Migrated ${migrated} plugin credential(s) to per-plugin credentials.yaml`);
+    }
+  } catch {
+    // Old directory doesn't exist — nothing to migrate
+  }
+}
+
+/**
+ * Legacy migration 3: data/plugins/registry.yaml → data/connections/registry.yaml
+ */
+async function migrateRegistryFile(): Promise<void> {
+  try {
+    const newFile = Bun.file(CONNECTIONS_REGISTRY_FILE);
+    if (await newFile.exists()) return;
+
+    const oldFile = Bun.file(LEGACY_PLUGINS_REGISTRY_FILE);
+    if (await oldFile.exists()) {
+      const content = await oldFile.text();
+      await ensureDir(CONNECTIONS_DIR);
+      await Bun.write(CONNECTIONS_REGISTRY_FILE, content);
+      console.log('Migrated registry to data/connections/registry.yaml');
+    }
+  } catch {
+    // Nothing to migrate
+  }
+}
+
+/**
+ * Legacy migration 4: data/connections/{userId}/ → data/connections/tokens/{userId}/
+ * Only runs if tokens/ doesn't exist yet to avoid confusing user dirs with provider dirs.
+ */
+async function migrateTokensDir(): Promise<void> {
+  try {
+    const tokensDir = Bun.file(CONNECTIONS_TOKENS_DIR);
+    // If tokens/ already exists, migration was already done
+    const { existsSync } = await import('fs');
+    if (existsSync(CONNECTIONS_TOKENS_DIR)) return;
+
+    const { readdir, stat } = await import('fs/promises');
+    let entries: string[];
+    try {
+      entries = await readdir(CONNECTIONS_DIR);
+    } catch {
+      return; // connections dir doesn't exist yet
+    }
+
+    let migrated = 0;
+    await ensureDir(CONNECTIONS_TOKENS_DIR);
+
+    for (const entry of entries) {
+      // Skip known non-user dirs
+      if (entry === 'providers' || entry === 'tokens' || entry === 'registry.yaml') continue;
+
+      const entryPath = join(CONNECTIONS_DIR, entry);
+      const entryStat = await stat(entryPath);
+      if (!entryStat.isDirectory()) continue;
+
+      // This looks like a userId directory — move its contents
+      const glob = new Bun.Glob('*.yaml');
+      const newUserDir = join(CONNECTIONS_TOKENS_DIR, entry);
+      await ensureDir(newUserDir);
+
+      for await (const yamlFile of glob.scan(entryPath)) {
+        const oldPath = join(entryPath, yamlFile);
+        const newPath = join(newUserDir, yamlFile);
+
+        const newFile = Bun.file(newPath);
+        if (await newFile.exists()) continue;
+
+        const oldFile = Bun.file(oldPath);
+        if (await oldFile.exists()) {
+          const content = await oldFile.text();
+          await Bun.write(newPath, content);
+          migrated++;
+        }
+      }
+    }
+
+    if (migrated > 0) {
+      console.log(`Migrated ${migrated} connection(s) to data/connections/tokens/`);
+    }
+  } catch {
+    // Nothing to migrate
   }
 }

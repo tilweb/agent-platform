@@ -91,8 +91,13 @@ backend/data/memory/
 # Provider configs (contains encrypted API keys, created by migration)
 backend/data/providers/
 
-# Connection tokens (encrypted)
-backend/data/connections/
+# Connection provider credentials (verschlüsselte OAuth-Creds)
+backend/data/connections/providers/*/credentials.yaml
+# Connection registry (runtime state)
+backend/data/connections/registry.yaml
+
+# User connection tokens (verschlüsselt)
+backend/data/connections/tokens/
 
 # Usage tracking
 backend/data/usage/

@@ -58,15 +58,12 @@ export const TABLES_DIR = join(DATA_DIR, 'tables');
 
 // Connections
 export const CONNECTIONS_DIR = join(DATA_DIR, 'connections');
+export const CONNECTIONS_PROVIDERS_DIR = join(CONNECTIONS_DIR, 'providers');
+export const CONNECTIONS_TOKENS_DIR = join(CONNECTIONS_DIR, 'tokens');
+export const CONNECTIONS_REGISTRY_FILE = join(CONNECTIONS_DIR, 'registry.yaml');
 
 // Skills
 export const SKILLS_DIR = join(DATA_DIR, 'skills');
-
-// Plugins
-export const PLUGINS_DIR = join(DATA_DIR, 'plugins');
-export const PLUGINS_CONFIGS_DIR = join(CONFIG_DIR, 'plugins');
-export const PLUGINS_INSTALLED_DIR = join(PLUGINS_DIR, 'installed');
-export const PLUGINS_REGISTRY_FILE = join(PLUGINS_DIR, 'registry.yaml');
 
 // Tools
 export const CUSTOM_TOOLS_DIR = join(DATA_DIR, 'tools', 'custom');

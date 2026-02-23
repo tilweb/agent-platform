@@ -15,10 +15,11 @@ Ein Connector-Plugin besteht aus:
 4. **`tools/*.ts`** — Tool-Implementierungen für den LLM-Zugriff
 
 ```
-data/plugins/builtin/mein-connector/
+data/connections/providers/mein-connector/
 ├── manifest.yaml
 ├── provider.ts
 ├── config.ts
+├── credentials.yaml
 └── tools/
     ├── search.ts
     └── read-item.ts
@@ -36,7 +37,7 @@ data/plugins/builtin/mein-connector/
 
 ## Schritt 1: Manifest erstellen
 
-Erstelle `data/plugins/builtin/<plugin-id>/manifest.yaml`:
+Erstelle `data/connections/providers/<plugin-id>/manifest.yaml`:
 
 ```yaml
 id: mein-connector
@@ -595,7 +596,7 @@ interface ToolContext {
 
 Ein komplettes Beispiel eines hypothetischen Jira-Connectors:
 
-### `data/plugins/builtin/jira/manifest.yaml`
+### `data/connections/providers/jira/manifest.yaml`
 
 ```yaml
 id: jira
@@ -640,7 +641,7 @@ connector:
       prompt: "consent"
 ```
 
-### `data/plugins/builtin/jira/config.ts`
+### `data/connections/providers/jira/config.ts`
 
 ```typescript
 const ATLASSIAN_API = 'https://api.atlassian.com';
@@ -654,7 +655,7 @@ export function getJiraApiUrl(cloudId: string): string {
 }
 ```
 
-### `data/plugins/builtin/jira/provider.ts`
+### `data/connections/providers/jira/provider.ts`
 
 ```typescript
 import { OAuthProvider, resolveOAuthConfig } from '@platform/sdk';
@@ -724,7 +725,7 @@ export class JiraProvider extends OAuthProvider {
 export default new JiraProvider();
 ```
 
-### `data/plugins/builtin/jira/tools/search-issues.ts`
+### `data/connections/providers/jira/tools/search-issues.ts`
 
 ```typescript
 import type { ToolDefinition, ToolContext, ConnectionTool } from '@platform/sdk';
@@ -827,7 +828,7 @@ export function createSearchIssuesTool(providerId: string): ConnectionTool {
 
 ## Checkliste: Neues Plugin erstellen
 
-- [ ] Verzeichnis unter `data/plugins/builtin/<id>/` angelegt
+- [ ] Verzeichnis unter `data/connections/providers/<id>/` angelegt
 - [ ] `manifest.yaml` mit allen Pflichtfeldern
 - [ ] `connector.entryPoint` zeigt auf `provider.ts`
 - [ ] `connector.oauth` enthält korrekte URLs und Scopes

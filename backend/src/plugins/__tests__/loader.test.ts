@@ -44,9 +44,10 @@ const mockState = {
 // ---------------------------------------------------------------------------
 
 mock.module("../../utils/paths", () => ({
-  PLUGINS_DIR: "/tmp/test-loader-plugins",
-  PLUGINS_INSTALLED_DIR: "/tmp/test-loader-plugins/installed",
-  PLUGINS_CONFIGS_DIR: "/tmp/test-loader-config/plugins",
+  CONNECTIONS_DIR: "/tmp/test-loader-connections",
+  CONNECTIONS_PROVIDERS_DIR: "/tmp/test-loader-connections/providers",
+  CONNECTIONS_TOKENS_DIR: "/tmp/test-loader-connections/tokens",
+  CONNECTIONS_REGISTRY_FILE: "/tmp/test-loader-connections/registry.yaml",
 }));
 
 mock.module("../../utils/yamlStorage", () => ({
@@ -143,22 +144,17 @@ describe("loadAllPlugins()", () => {
       expect(mockState.envMigrated).toBe(true);
     });
 
-    test("sollte ensureDir für das Builtin-Verzeichnis aufrufen", async () => {
+    test("sollte ensureDir für das Providers-Verzeichnis aufrufen", async () => {
       await loadAllPlugins();
 
-      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-plugins/builtin");
+      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-connections/providers");
     });
 
-    test("sollte ensureDir für das Installed-Verzeichnis aufrufen", async () => {
+    test("sollte ensureDir für das Legacy-Konfigurations-Verzeichnis aufrufen", async () => {
       await loadAllPlugins();
 
-      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-plugins/installed");
-    });
-
-    test("sollte ensureDir für das Konfigurations-Verzeichnis aufrufen", async () => {
-      await loadAllPlugins();
-
-      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-config/plugins");
+      // migrateConfigDir calls ensureDir for the legacy config/plugins dir
+      expect(mockState.ensureDirCalls).toContain("/tmp/config/plugins");
     });
 
     test("sollte Promise<void> zurückgeben", async () => {
@@ -272,28 +268,19 @@ describe("loadAllPlugins()", () => {
   // -------------------------------------------------------------------------
 
   describe("loadPluginsFromDir (über loadAllPlugins)", () => {
-    test("sollte ensureDir für das Builtin-Plugin-Verzeichnis aufrufen", async () => {
+    test("sollte ensureDir für das Providers-Verzeichnis aufrufen", async () => {
       await loadAllPlugins();
 
-      const builtinDir = "/tmp/test-loader-plugins/builtin";
-      expect(mockState.ensureDirCalls).toContain(builtinDir);
+      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-connections/providers");
     });
 
-    test("sollte ensureDir für das Installed-Plugin-Verzeichnis aufrufen", async () => {
+    test("sollte ensureDir genau einmal für das Providers-Verzeichnis aufrufen", async () => {
       await loadAllPlugins();
 
-      const installedDir = "/tmp/test-loader-plugins/installed";
-      expect(mockState.ensureDirCalls).toContain(installedDir);
-    });
-
-    test("sollte ensureDir zweimal (je einmal pro Verzeichnis) aufrufen", async () => {
-      await loadAllPlugins();
-
-      // ensureDir wird für builtin, installed und den migrateConfigDir-Aufruf (PLUGINS_CONFIGS_DIR) aufgerufen
-      const pluginDirCalls = mockState.ensureDirCalls.filter(
-        (d) => d === "/tmp/test-loader-plugins/builtin" || d === "/tmp/test-loader-plugins/installed"
+      const providerDirCalls = mockState.ensureDirCalls.filter(
+        (d) => d === "/tmp/test-loader-connections/providers"
       );
-      expect(pluginDirCalls).toHaveLength(2);
+      expect(providerDirCalls).toHaveLength(1);
     });
 
     test("sollte keine registrierten Plugins melden wenn Verzeichnisse leer sind", async () => {
@@ -312,10 +299,10 @@ describe("loadAllPlugins()", () => {
   // -------------------------------------------------------------------------
 
   describe("migrateConfigDir (über loadAllPlugins)", () => {
-    test("sollte ensureDir für das neue Konfigurations-Verzeichnis aufrufen", async () => {
+    test("sollte ensureDir für das Legacy-Konfigurations-Verzeichnis aufrufen", async () => {
       await loadAllPlugins();
 
-      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-config/plugins");
+      expect(mockState.ensureDirCalls).toContain("/tmp/config/plugins");
     });
 
     test("sollte keinen Fehler werfen wenn das alte Konfigurationsverzeichnis nicht existiert", async () => {
@@ -371,11 +358,11 @@ describe("loadAllPlugins()", () => {
       expect(ids).toContain("inactive-b");
     });
 
-    test("sollte ensureDir mindestens dreimal aufrufen (builtin, installed, configDir)", async () => {
+    test("sollte ensureDir mindestens zweimal aufrufen (providers, configDir)", async () => {
       await loadAllPlugins();
 
-      // builtin + installed + PLUGINS_CONFIGS_DIR
-      expect(mockState.ensureDirCalls.length).toBeGreaterThanOrEqual(3);
+      // providers + legacy config dir
+      expect(mockState.ensureDirCalls.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -435,19 +422,18 @@ describe("loadAllPlugins()", () => {
   // -------------------------------------------------------------------------
 
   describe("Reihenfolge der ensureDir-Aufrufe", () => {
-    test("sollte ensureDir für den Konfig-Ordner aufrufen (migrateConfigDir ist Teil des Ablaufs)", async () => {
+    test("sollte ensureDir für den Legacy-Konfig-Ordner aufrufen (migrateConfigDir ist Teil des Ablaufs)", async () => {
       await loadAllPlugins();
 
-      expect(mockState.ensureDirCalls).toContain("/tmp/test-loader-config/plugins");
+      expect(mockState.ensureDirCalls).toContain("/tmp/config/plugins");
     });
 
     test("sollte keine unerwarteten ensureDir-Pfade aufrufen", async () => {
       await loadAllPlugins();
 
       const expectedDirs = new Set([
-        "/tmp/test-loader-plugins/builtin",
-        "/tmp/test-loader-plugins/installed",
-        "/tmp/test-loader-config/plugins",
+        "/tmp/test-loader-connections/providers",
+        "/tmp/config/plugins",
       ]);
 
       for (const dir of mockState.ensureDirCalls) {

@@ -29,40 +29,37 @@ backend/
 │       └── types.ts                    ← ToolDefinition, ToolContext, etc.
 │
 ├── data/
-│   ├── plugins/
-│   │   ├── registry.yaml               ← Persistierter Plugin-Status
-│   │   ├── builtin/                     ← Mitgelieferte Plugins
-│   │   │   ├── confluence/
-│   │   │   │   ├── manifest.yaml
-│   │   │   │   ├── provider.ts
-│   │   │   │   ├── config.ts
-│   │   │   │   └── tools/
-│   │   │   │       ├── search.ts
-│   │   │   │       ├── read-page.ts
-│   │   │   │       └── list-spaces.ts
-│   │   │   ├── google-drive/
-│   │   │   │   ├── manifest.yaml
-│   │   │   │   ├── provider.ts
-│   │   │   │   ├── config.ts
-│   │   │   │   └── tools/
-│   │   │   │       ├── list-files.ts
-│   │   │   │       ├── read-file.ts
-│   │   │   │       └── search-files.ts
-│   │   │   └── pipedrive/
-│   │   │       ├── manifest.yaml
-│   │   │       ├── provider.ts
-│   │   │       ├── config.ts
-│   │   │       └── tools/
-│   │   │           ├── search-deals.ts
-│   │   │           ├── search-contacts.ts
-│   │   │           ├── search-activities.ts
-│   │   │           └── get-deal.ts
-│   │   └── installed/                   ← Nachinstallierte Plugins
-│   └── config/
-│       └── plugins/                     ← Verschlüsselte Credentials
-│           ├── confluence.yaml
-│           ├── google-drive.yaml
-│           └── pipedrive.yaml
+│   └── connections/
+│       ├── registry.yaml                ← Persistierter Plugin-Status
+│       └── providers/                   ← Connector-Plugins (Code + Credentials)
+│           ├── confluence/
+│           │   ├── manifest.yaml
+│           │   ├── provider.ts
+│           │   ├── config.ts
+│           │   ├── credentials.yaml     ← Verschlüsselte Credentials
+│           │   └── tools/
+│           │       ├── search.ts
+│           │       ├── read-page.ts
+│           │       └── list-spaces.ts
+│           ├── google-drive/
+│           │   ├── manifest.yaml
+│           │   ├── provider.ts
+│           │   ├── config.ts
+│           │   ├── credentials.yaml
+│           │   └── tools/
+│           │       ├── list-files.ts
+│           │       ├── read-file.ts
+│           │       └── search-files.ts
+│           └── pipedrive/
+│               ├── manifest.yaml
+│               ├── provider.ts
+│               ├── config.ts
+│               ├── credentials.yaml
+│               └── tools/
+│                   ├── search-deals.ts
+│                   ├── search-contacts.ts
+│                   ├── search-activities.ts
+│                   └── get-deal.ts
 ```
 
 ## Plattform-Code vs. Plugin-Code
@@ -71,19 +68,18 @@ backend/
 |-------------|-----|-------------|
 | `backend/src/plugins/` | Plattform | Plugin-Infrastruktur (Loader, Registry, SDK) |
 | `backend/src/connections/` | Plattform | Connection-Basisklassen und Registry |
-| `data/plugins/builtin/` | Plugin | Mitgelieferte Connector-Plugins |
-| `data/plugins/installed/` | Plugin | Nachinstallierte Plugins |
-| `data/config/plugins/` | Config | Verschlüsselte Credentials (getrennt von Code) |
+| `data/connections/providers/` | Plugin | Connector-Plugins (Code + Credentials) |
 
 ## Plugin-Verzeichnis
 
 Jedes Plugin hat folgende Struktur:
 
 ```
-data/plugins/builtin/<plugin-id>/
+data/connections/providers/<plugin-id>/
 ├── manifest.yaml        ← Pflicht: Metadaten und Konfiguration
 ├── provider.ts          ← Pflicht: OAuthProvider-Klasse
 ├── config.ts            ← Optional: URL-Helpers
+├── credentials.yaml     ← Verschlüsselte Credentials (automatisch erstellt)
 └── tools/               ← Pflicht: Mindestens ein Tool
     ├── search.ts
     └── read-item.ts
@@ -107,8 +103,8 @@ Enthält die Tool-Implementierungen, die dem LLM als Funktionen zur Verfügung s
 
 ## Credentials-Speicherung
 
-Plugin-Credentials werden **getrennt vom Plugin-Code** gespeichert:
+Plugin-Credentials werden **im Plugin-Verzeichnis** gespeichert:
 
-- **Speicherort**: `data/config/plugins/{pluginId}.yaml`
+- **Speicherort**: `data/connections/providers/{pluginId}/credentials.yaml`
 - **Verschlüsselung**: AES-256-GCM für Felder mit `secret: true` im Manifest
 - **Schlüssel**: `CONNECTION_ENCRYPTION_KEY` Umgebungsvariable

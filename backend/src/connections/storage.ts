@@ -5,7 +5,7 @@
 import type { StoredConnection, TokenSet, ConnectionStatus, OAuthState } from './types';
 import { encryptTokens, decryptTokens } from './crypto';
 import { join } from 'path';
-import { CONNECTIONS_DIR, OAUTH_STATES_DIR } from '../utils/paths';
+import { CONNECTIONS_TOKENS_DIR, OAUTH_STATES_DIR } from '../utils/paths';
 import { createYamlStore, ensureDir, loadYaml, saveYaml, deleteYaml, listYamlIds } from '../utils/yamlStorage';
 
 const oauthStore = createYamlStore<OAuthState>(OAUTH_STATES_DIR);
@@ -30,7 +30,7 @@ async function withConnectionLock<T>(userId: string, providerId: string, fn: () 
  * Get the file path for a connection
  */
 function getConnectionFilePath(userId: string, providerId: string): string {
-  return join(CONNECTIONS_DIR, userId, `${providerId}.yaml`);
+  return join(CONNECTIONS_TOKENS_DIR, userId, `${providerId}.yaml`);
 }
 
 /**
@@ -42,7 +42,7 @@ export async function saveConnection(
   tokens: TokenSet,
   status: ConnectionStatus
 ): Promise<StoredConnection> {
-  const userDir = join(CONNECTIONS_DIR, userId);
+  const userDir = join(CONNECTIONS_TOKENS_DIR, userId);
   await ensureDir(userDir);
 
   const encryptedTokens = await encryptTokens(tokens);
@@ -133,7 +133,7 @@ export async function deleteConnection(userId: string, providerId: string): Prom
  * List all connections for a user
  */
 export async function listUserConnections(userId: string): Promise<StoredConnection[]> {
-  const userDir = join(CONNECTIONS_DIR, userId);
+  const userDir = join(CONNECTIONS_TOKENS_DIR, userId);
   const ids = await listYamlIds(userDir);
   const connections: StoredConnection[] = [];
 

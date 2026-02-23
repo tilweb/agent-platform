@@ -6,7 +6,7 @@ Plugins benötigen Konfigurationswerte (z.B. OAuth Client ID/Secret), die von Ad
 
 ```
 Admin-UI → PUT /api/plugins/:id/config → configStorage.save()
-  → data/config/plugins/{id}.yaml (verschlüsselt)
+  → data/connections/providers/{id}/credentials.yaml (verschlüsselt)
 
 Plugin-Code → resolveOAuthConfig(id) → configStorage.load()
   → Credentials entschlüsselt zurückgeben
@@ -132,15 +132,20 @@ Bei `both` wird zuerst nach User-spezifischen Credentials gesucht. Existieren ke
 
 ## Speicherort
 
+Credentials werden pro Plugin in dessen Verzeichnis gespeichert:
+
 ```
-data/config/plugins/
-├── confluence.yaml      ← Credentials für Confluence
-├── google-drive.yaml    ← Credentials für Google Drive
-└── pipedrive.yaml       ← Credentials für Pipedrive
+data/connections/providers/
+├── confluence/
+│   └── credentials.yaml      ← Credentials für Confluence
+├── google-drive/
+│   └── credentials.yaml      ← Credentials für Google Drive
+└── pipedrive/
+    └── credentials.yaml       ← Credentials für Pipedrive
 ```
 
 > [!warning] Backup
-> Die Dateien unter `data/config/plugins/` enthalten verschlüsselte Secrets. Ohne den `CONNECTION_ENCRYPTION_KEY` sind sie nicht entschlüsselbar. Beides zusammen sichern.
+> Die `credentials.yaml`-Dateien unter `data/connections/providers/` enthalten verschlüsselte Secrets. Ohne den `CONNECTION_ENCRYPTION_KEY` sind sie nicht entschlüsselbar. Beides zusammen sichern.
 
 ## Migration
 
@@ -150,7 +155,7 @@ Bestehende OAuth-Credentials aus Umgebungsvariablen (z.B. `CONFLUENCE_CLIENT_ID`
 
 ### Alter Pfad → Neuer Pfad
 
-Config-Dateien unter dem alten Pfad (`data/plugins/configs/`) werden automatisch nach `data/config/plugins/` migriert. Bestehende Dateien am neuen Ort werden nicht überschrieben.
+Config-Dateien unter den alten Pfaden (`data/plugins/configs/` und `data/config/plugins/`) werden automatisch nach `data/connections/providers/{id}/credentials.yaml` migriert. Bestehende Dateien am neuen Ort werden nicht überschrieben.
 
 ## Fehlerbehebung
 
@@ -158,5 +163,5 @@ Config-Dateien unter dem alten Pfad (`data/plugins/configs/`) werden automatisch
 |---------|---------|--------|
 | "OAuth credentials not configured" | Admin hat Credentials nicht eingetragen | Admin-UI → Verbindungen → Konfigurieren |
 | "Encryption not configured" | `CONNECTION_ENCRYPTION_KEY` fehlt | In `.env` setzen: `openssl rand -hex 32` |
-| Credentials nach Neustart weg | `data/config/plugins/` nicht persistent | Docker: Volume mounten |
+| Credentials nach Neustart weg | `data/connections/providers/` nicht persistent | Docker: Volume mounten |
 | "Cannot decrypt" | Anderer Encryption Key | Key muss identisch mit dem bei der Speicherung sein |

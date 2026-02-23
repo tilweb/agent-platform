@@ -2,10 +2,10 @@
  * Plugin Registry
  *
  * In-memory registry of all plugins (builtin + installed).
- * Persists enabled/configured status to data/plugins/registry.yaml.
+ * Persists enabled/configured status to data/connections/registry.yaml.
  */
 
-import { PLUGINS_REGISTRY_FILE } from '../utils/paths';
+import { CONNECTIONS_REGISTRY_FILE } from '../utils/paths';
 import { loadYaml, saveYaml } from '../utils/yamlStorage';
 import { isPluginConfigured } from './configStorage';
 import type { PluginManifest, PluginRegistryEntry, PluginSource, PluginType, PluginInfo } from './types';
@@ -23,7 +23,7 @@ class PluginRegistry {
    * Load persisted state from disk.
    */
   async load(): Promise<void> {
-    const data = await loadYaml<PersistedRegistry>(PLUGINS_REGISTRY_FILE);
+    const data = await loadYaml<PersistedRegistry>(CONNECTIONS_REGISTRY_FILE);
     if (data?.plugins) {
       for (const [id, entry] of Object.entries(data.plugins)) {
         this.entries.set(id, entry);
@@ -40,7 +40,7 @@ class PluginRegistry {
     for (const [id, entry] of this.entries) {
       plugins[id] = entry;
     }
-    await saveYaml(PLUGINS_REGISTRY_FILE, { plugins });
+    await saveYaml(CONNECTIONS_REGISTRY_FILE, { plugins });
   }
 
   /**

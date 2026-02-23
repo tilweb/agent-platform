@@ -5,10 +5,11 @@ Ein vollständiges Beispiel eines OAuth2-basierten Connector-Plugins am Beispiel
 ## Verzeichnisstruktur
 
 ```
-data/plugins/builtin/jira/
+data/connections/providers/jira/
 ├── manifest.yaml
 ├── provider.ts
 ├── config.ts
+├── credentials.yaml
 └── tools/
     └── search-issues.ts
 ```

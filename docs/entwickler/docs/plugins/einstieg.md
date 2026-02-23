@@ -6,16 +6,16 @@ Anleitung zum Erstellen eines eigenen Connector-Plugins für den Adacor Workplac
 
 - Bun Runtime (1.1+)
 - TypeScript
-- Zugang zum `data/plugins/builtin/` Verzeichnis
+- Zugang zum `data/connections/providers/` Verzeichnis
 
 ## Schritt-für-Schritt
 
 ### 1. Plugin-Verzeichnis anlegen
 
-Erstelle ein neues Verzeichnis unter `data/plugins/builtin/`:
+Erstelle ein neues Verzeichnis unter `data/connections/providers/`:
 
 ```bash
-mkdir -p data/plugins/builtin/mein-connector/tools
+mkdir -p data/connections/providers/mein-connector/tools
 ```
 
 ### 2. Manifest erstellen
@@ -201,7 +201,7 @@ Siehe [Tools](./tools.md) für Konventionen und erweiterte Patterns.
 
 ## Checkliste
 
-- [ ] Verzeichnis unter `data/plugins/builtin/<id>/` angelegt
+- [ ] Verzeichnis unter `data/connections/providers/<id>/` angelegt
 - [ ] `manifest.yaml` mit allen Pflichtfeldern
 - [ ] `provider.ts` mit `export default new MeinProvider()`
 - [ ] Mindestens ein Tool unter `tools/`

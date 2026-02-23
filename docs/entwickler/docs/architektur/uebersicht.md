@@ -7,14 +7,14 @@ Das Plugin-System ermöglicht die modulare Erweiterung des Adacor Workplace um e
 - **Runtime-installierbar**: Plugins können zur Laufzeit hinzugefügt werden, ohne Backend-Code zu ändern
 - **Isoliert**: Jedes Plugin ist ein eigenständiges Verzeichnis mit Manifest, Provider-Code und Tools
 - **SDK-basiert**: Plugins greifen über `@platform/sdk` auf Plattform-APIs zu — keine relativen Imports in Plattform-Interna
-- **Credentials getrennt von Code**: Plugin-Code liegt unter `data/plugins/`, verschlüsselte Credentials unter `data/config/plugins/`
+- **Credentials im Plugin-Verzeichnis**: Plugin-Code und verschlüsselte Credentials liegen gemeinsam unter `data/connections/providers/{id}/`
 
 ## Architektur-Entscheidungen
 
 | Entscheidung | Begründung |
 |---|---|
-| **Hybrid-Ansatz** | Nur Connectors/Marketplace-Packages in `data/plugins/`. Agents und Skills bleiben in `data/agents/` bzw. `data/skills/` |
-| **Credentials getrennt** | `data/config/plugins/` statt `data/plugins/configs/` — Deployment-Config ist kein Plugin-Code |
+| **Hybrid-Ansatz** | Nur Connectors/Marketplace-Packages in `data/connections/providers/`. Agents und Skills bleiben in `data/agents/` bzw. `data/skills/` |
+| **Credentials pro Plugin** | `data/connections/providers/{id}/credentials.yaml` — Credentials liegen im Plugin-Verzeichnis |
 | **tsconfig paths** | Bun unterstützt `paths` nativ — ein `@platform/sdk`-Alias macht Plugins ortsunabhängig |
 | **Default Export** | Jeder Connector exportiert seine Provider-Instanz als `export default` für den dynamischen Loader |
 

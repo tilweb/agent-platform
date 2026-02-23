@@ -24,7 +24,7 @@ const mockState = {
 // ---------------------------------------------------------------------------
 
 mock.module("../../utils/paths", () => ({
-  PLUGINS_REGISTRY_FILE: "/tmp/test-plugins-registry.yaml",
+  CONNECTIONS_REGISTRY_FILE: "/tmp/test-plugins-registry.yaml",
 }));
 
 mock.module("../../utils/yamlStorage", () => ({
