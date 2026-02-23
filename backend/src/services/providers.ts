@@ -2,14 +2,22 @@
  * Provider Service
  * Manages AI provider configuration, model selection, and resolution
  *
+ * Storage: Per-provider directories under data/providers/
+ *   providers/<id>/provider.yaml — Provider config (without Base64 logo)
+ *   providers/<id>/logo.{png,svg,...} — Logo as real file
+ *   providers/active.yaml — Active model selection
+ *
  * Model resolution priority:
  * 1. Chat Session override (modelId passed directly)
  * 2. User Preference (from user's YAML file)
- * 3. System Default (from providers.yaml)
+ * 3. System Default (from active.yaml)
  */
 
 import { parse, stringify } from 'yaml';
-import { PROVIDERS_CONFIG } from '../utils/paths';
+import { join, extname } from 'path';
+import { readdir, rm } from 'fs/promises';
+import { PROVIDERS_DIR, ACTIVE_SELECTION_FILE, LEGACY_PROVIDERS_CONFIG } from '../utils/paths';
+import { encryptData, decryptData, isEncryptionConfigured } from '../connections/crypto';
 
 // Mutex for provider config read-modify-write operations
 let providerLock: Promise<void> = Promise.resolve();
@@ -43,7 +51,78 @@ import type {
 } from '../types/providers';
 import { getUserModelPreference, type ModelPurpose } from './userPreferences';
 
-const CONFIG_PATH = PROVIDERS_CONFIG;
+// ============== Path Helpers ==============
+
+function providerDir(id: string): string {
+  return join(PROVIDERS_DIR, id);
+}
+
+function providerConfigPath(id: string): string {
+  return join(PROVIDERS_DIR, id, 'provider.yaml');
+}
+
+/** MIME type → file extension mapping for logos */
+const MIME_TO_EXT: Record<string, string> = {
+  'image/png': '.png',
+  'image/svg+xml': '.svg',
+  'image/jpeg': '.jpg',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+};
+
+/** Fallback SVGs for providers that used static path references (e.g. /logos/...) */
+const FALLBACK_LOGOS: Record<string, string> = {
+  'google-gemini-imagen': '<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Google Gemini</title><path d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81" fill="currentColor"/></svg>',
+};
+
+/**
+ * Extract a Base64 data URI and save it as a file in the provider directory.
+ * Returns the filename (e.g. "logo.png").
+ */
+async function saveLogoFromDataUri(providerId: string, dataUri: string): Promise<string> {
+  const match = dataUri.match(/^data:(image\/[^;]+);base64,(.+)$/);
+  if (!match) throw new Error('Invalid data URI format');
+
+  const mimeType = match[1]!;
+  const base64Data = match[2]!;
+  const ext = MIME_TO_EXT[mimeType] || '.png';
+  const filename = `logo${ext}`;
+
+  const dir = providerDir(providerId);
+  await Bun.write(join(dir, filename), Buffer.from(base64Data, 'base64'));
+  return filename;
+}
+
+/**
+ * Delete all logo files in a provider directory.
+ */
+async function deleteLogoFile(providerId: string): Promise<void> {
+  const dir = providerDir(providerId);
+  try {
+    const entries = await readdir(dir);
+    for (const entry of entries) {
+      if (entry.startsWith('logo.')) {
+        await rm(join(dir, entry), { force: true });
+      }
+    }
+  } catch {
+    // Directory may not exist
+  }
+}
+
+/**
+ * Find the logo file in a provider directory.
+ * Returns the filename or null.
+ */
+export async function findLogoFile(providerId: string): Promise<string | null> {
+  const dir = providerDir(providerId);
+  try {
+    const entries = await readdir(dir);
+    return entries.find(e => e.startsWith('logo.')) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Check if custom (non-protected) providers are allowed.
@@ -105,7 +184,8 @@ function generateProviderId(name: string): string {
 }
 
 /**
- * Load providers configuration from YAML file
+ * Load providers configuration from per-provider directories.
+ * Falls back to legacy single-file format with automatic migration.
  */
 export async function loadProvidersConfig(): Promise<ProvidersConfig> {
   if (configCache) {
@@ -113,32 +193,68 @@ export async function loadProvidersConfig(): Promise<ProvidersConfig> {
   }
 
   try {
-    const file = Bun.file(CONFIG_PATH);
-    if (await file.exists()) {
-      const content = await file.text();
-      configCache = parse(content) as ProvidersConfig;
+    // New format: per-provider directories
+    const activeFile = Bun.file(ACTIVE_SELECTION_FILE);
+    if (await activeFile.exists()) {
+      const providers: ProviderConfig[] = [];
+      const entries = await readdir(PROVIDERS_DIR, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const configFile = Bun.file(join(PROVIDERS_DIR, entry.name, 'provider.yaml'));
+        if (await configFile.exists()) {
+          const content = await configFile.text();
+          const provider = parse(content) as ProviderConfig;
+          providers.push(provider);
+        }
+      }
+
+      const activeContent = await activeFile.text();
+      const active = parse(activeContent) as ProvidersConfig['active'];
+
+      configCache = { providers, active };
+      return configCache;
+    }
+
+    // Legacy format: single providers.yaml
+    const legacyFile = Bun.file(LEGACY_PROVIDERS_CONFIG);
+    if (await legacyFile.exists()) {
+      console.log('[Provider] Legacy providers.yaml found, migrating to per-provider directories...');
+      const content = await legacyFile.text();
+      const legacyConfig = parse(content) as ProvidersConfig;
+      await migrateFromLegacy(legacyConfig);
+      configCache = legacyConfig;
       return configCache;
     }
   } catch (error) {
     console.error('Error loading providers config:', error);
   }
 
-  // Return default config if file doesn't exist or has errors
+  // Return default config if nothing exists
   configCache = DEFAULT_CONFIG;
   await saveProvidersConfig(configCache);
   return configCache;
 }
 
 /**
- * Save providers configuration to YAML file
+ * Save providers configuration to per-provider directories.
  */
 export async function saveProvidersConfig(config: ProvidersConfig): Promise<void> {
   try {
-    const yamlContent = stringify(config, {
-      indent: 2,
-      lineWidth: 120,
-    });
-    await Bun.write(CONFIG_PATH, yamlContent);
+    // Ensure base directory exists
+    await Bun.write(join(PROVIDERS_DIR, '.keep'), '');
+
+    // Write each provider to its own directory
+    for (const provider of config.providers) {
+      const dir = providerDir(provider.id);
+      const providerYaml = stringify(provider, { indent: 2, lineWidth: 120 });
+      await Bun.write(join(dir, 'provider.yaml'), providerYaml);
+    }
+
+    // Write active selection
+    const activeYaml = stringify(config.active, { indent: 2, lineWidth: 120 });
+    await Bun.write(ACTIVE_SELECTION_FILE, activeYaml);
+
     configCache = config;
   } catch (error) {
     console.error('Error saving providers config:', error);
@@ -147,10 +263,137 @@ export async function saveProvidersConfig(config: ProvidersConfig): Promise<void
 }
 
 /**
+ * Save a single provider's config to its directory.
+ */
+async function saveProvider(provider: ProviderConfig): Promise<void> {
+  const providerYaml = stringify(provider, { indent: 2, lineWidth: 120 });
+  await Bun.write(providerConfigPath(provider.id), providerYaml);
+}
+
+/**
+ * Save the active selection separately.
+ */
+async function saveActiveSelection(active: ProvidersConfig['active']): Promise<void> {
+  const activeYaml = stringify(active, { indent: 2, lineWidth: 120 });
+  await Bun.write(ACTIVE_SELECTION_FILE, activeYaml);
+}
+
+/**
+ * Migrate from legacy single-file format to per-provider directories.
+ * Extracts Base64 logos into real files and replaces the Adacor logo with the new one.
+ */
+async function migrateFromLegacy(config: ProvidersConfig): Promise<void> {
+  // Ensure base directory exists
+  await Bun.write(join(PROVIDERS_DIR, '.keep'), '');
+
+  for (const provider of config.providers) {
+    const dir = providerDir(provider.id);
+
+    // Extract Base64 logo to file
+    if (provider.icon_url?.startsWith('data:')) {
+      try {
+        const filename = await saveLogoFromDataUri(provider.id, provider.icon_url);
+        provider.icon_url = filename;
+      } catch (err) {
+        console.error(`[Provider] Failed to extract logo for ${provider.id}:`, err);
+      }
+    } else if (provider.icon_url && !provider.icon_url.startsWith('http')) {
+      // Non-data-URI, non-HTTP path (e.g. "/logos/google-gemini.svg") — resolve to embedded SVG
+      const fallbackSvg = FALLBACK_LOGOS[provider.id];
+      if (fallbackSvg) {
+        await Bun.write(join(dir, 'logo.svg'), fallbackSvg);
+        provider.icon_url = 'logo.svg';
+      } else {
+        // Unknown static path — clear it
+        console.warn(`[Provider] Unknown icon_url path for ${provider.id}: ${provider.icon_url}, clearing`);
+        provider.icon_url = undefined;
+      }
+    }
+
+    // Write provider config
+    const providerYaml = stringify(provider, { indent: 2, lineWidth: 120 });
+    await Bun.write(join(dir, 'provider.yaml'), providerYaml);
+  }
+
+  // Replace Adacor logo with new logo file
+  try {
+    const newLogoPath = '/Users/pfend/ADACOR/Logos/global.logo.png';
+    const newLogoFile = Bun.file(newLogoPath);
+    if (await newLogoFile.exists()) {
+      const adacorDir = providerDir('adacor');
+      await deleteLogoFile('adacor');
+      const logoData = await newLogoFile.arrayBuffer();
+      await Bun.write(join(adacorDir, 'logo.png'), logoData);
+      // Update the provider config to reference the file
+      const adacorProvider = config.providers.find(p => p.id === 'adacor');
+      if (adacorProvider) {
+        adacorProvider.icon_url = 'logo.png';
+        await saveProvider(adacorProvider);
+      }
+      console.log('[Provider] Adacor logo replaced with new logo');
+    }
+  } catch (err) {
+    console.error('[Provider] Failed to replace Adacor logo:', err);
+  }
+
+  // Write active selection
+  const activeYaml = stringify(config.active, { indent: 2, lineWidth: 120 });
+  await Bun.write(ACTIVE_SELECTION_FILE, activeYaml);
+
+  // Delete legacy file
+  try {
+    await rm(LEGACY_PROVIDERS_CONFIG, { force: true });
+    console.log('[Provider] Legacy providers.yaml deleted');
+  } catch {
+    // May not exist
+  }
+
+  console.log('[Provider] Migration complete');
+}
+
+/**
  * Clear the configuration cache (useful for testing or reloading)
  */
 export function clearConfigCache(): void {
   configCache = null;
+}
+
+// ============== API Key Resolution ==============
+
+/**
+ * Resolve the API key for a provider.
+ * Priority: 1) encrypted_api_key (custom providers), 2) api_key_env (env var fallback + protected)
+ */
+export async function resolveApiKey(provider: ProviderConfig): Promise<string | null> {
+  // Priority 1: Encrypted key (only for non-protected providers)
+  if (!provider.protected && provider.encrypted_api_key && isEncryptionConfigured()) {
+    try {
+      return await decryptData<string>(provider.encrypted_api_key);
+    } catch (err) {
+      console.error(`[Provider] Decrypt failed for ${provider.id}:`, err);
+    }
+  }
+  // Priority 2: Environment variable (fallback + protected providers)
+  if (provider.api_key_env) {
+    return process.env[provider.api_key_env] || null;
+  }
+  return null;
+}
+
+/**
+ * Sanitize a provider for API responses (strip encrypted_api_key, add has_api_key flag,
+ * transform logo filename to API URL)
+ */
+export function sanitizeProvider(provider: ProviderConfig) {
+  const { encrypted_api_key, ...rest } = provider;
+  let icon_url = rest.icon_url;
+
+  // Transform local filename (e.g. "logo.png") to API URL
+  if (icon_url && !icon_url.startsWith('data:') && !icon_url.startsWith('http') && !icon_url.startsWith('/')) {
+    icon_url = `/api/providers/${provider.id}/logo`;
+  }
+
+  return { ...rest, icon_url, has_api_key: !!encrypted_api_key };
 }
 
 // ============== Provider CRUD ==============
@@ -187,6 +430,8 @@ export async function createProvider(
       throw new Error(`Provider with ID '${id}' already exists`);
     }
 
+    let iconUrl = request.icon_url;
+
     const newProvider: ProviderConfig = {
       id,
       name: request.name,
@@ -196,8 +441,27 @@ export async function createProvider(
       enabled: request.enabled ?? false,
       company_region: request.company_region,
       datacenter_country: request.datacenter_country,
+      icon_url: iconUrl,
       models: request.models ?? [],
     };
+
+    // Encrypt API key if provided
+    if (request.api_key && isEncryptionConfigured()) {
+      newProvider.encrypted_api_key = await encryptData(request.api_key);
+      newProvider.api_key_env = null;
+    }
+
+    // Extract logo from data URI to file
+    if (iconUrl?.startsWith('data:')) {
+      try {
+        // Ensure provider directory exists by writing a placeholder first
+        await Bun.write(providerConfigPath(id), '');
+        const filename = await saveLogoFromDataUri(id, iconUrl);
+        newProvider.icon_url = filename;
+      } catch (err) {
+        console.error(`[Provider] Failed to save logo for ${id}:`, err);
+      }
+    }
 
     config.providers.push(newProvider);
     await saveProvidersConfig(config);
@@ -222,6 +486,35 @@ export async function updateProvider(
     }
 
     const index = config.providers.indexOf(provider);
+
+    // Handle icon_url updates
+    let resolvedIconUrl: string | undefined;
+    if (updates.icon_url !== undefined) {
+      if (!updates.icon_url) {
+        // Empty string or null → remove logo
+        await deleteLogoFile(id);
+        resolvedIconUrl = undefined;
+      } else if (updates.icon_url.startsWith('data:')) {
+        // New data URI → save as file, delete old
+        await deleteLogoFile(id);
+        try {
+          const filename = await saveLogoFromDataUri(id, updates.icon_url);
+          resolvedIconUrl = filename;
+        } catch (err) {
+          console.error(`[Provider] Failed to save logo for ${id}:`, err);
+          resolvedIconUrl = provider.icon_url;
+        }
+      } else if (updates.icon_url.startsWith('/api/providers/')) {
+        // Frontend sent back the API URL → keep existing file reference
+        resolvedIconUrl = provider.icon_url;
+      } else {
+        // External URL or other value → pass through
+        resolvedIconUrl = updates.icon_url;
+      }
+    } else {
+      resolvedIconUrl = provider.icon_url;
+    }
+
     const updatedProvider: ProviderConfig = {
       id: provider.id, // ID cannot be changed
       name: updates.name ?? provider.name,
@@ -231,8 +524,24 @@ export async function updateProvider(
       enabled: updates.enabled ?? provider.enabled,
       company_region: updates.company_region !== undefined ? updates.company_region : provider.company_region,
       datacenter_country: updates.datacenter_country !== undefined ? updates.datacenter_country : provider.datacenter_country,
+      icon_url: resolvedIconUrl,
       models: provider.models, // Models are managed separately
     };
+
+    // Carry over existing encrypted key
+    if (provider.encrypted_api_key) {
+      updatedProvider.encrypted_api_key = provider.encrypted_api_key;
+    }
+
+    // Encrypt new key or remove existing
+    if (updates.api_key !== undefined) {
+      if (!updates.api_key) {
+        delete updatedProvider.encrypted_api_key;
+      } else if (isEncryptionConfigured()) {
+        updatedProvider.encrypted_api_key = await encryptData(updates.api_key);
+        updatedProvider.api_key_env = null;
+      }
+    }
 
     config.providers[index] = updatedProvider;
     await saveProvidersConfig(config);
@@ -270,6 +579,13 @@ export async function deleteProvider(id: string): Promise<void> {
 
     config.providers.splice(index, 1);
     await saveProvidersConfig(config);
+
+    // Remove the provider directory
+    try {
+      await rm(providerDir(id), { recursive: true, force: true });
+    } catch {
+      // Directory may not exist
+    }
   });
 }
 
@@ -323,9 +639,9 @@ export async function updateModel(
       throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
     }
 
-    // Block manual re-enabling of sync-deactivated models
-    if (existingModel.enabled === false && updates.enabled === true) {
-      throw new Error('Deaktivierte Modelle können nur durch API-Synchronisierung reaktiviert werden');
+    // Block manual re-enabling of sync-deactivated models (only those with feature_set)
+    if (existingModel.enabled === false && updates.enabled === true && existingModel.feature_set != null) {
+      throw new Error('Sync-deaktivierte Modelle können nur durch API-Synchronisierung reaktiviert werden');
     }
 
     // Block setting default on listed-only models (workplace: false)
@@ -350,8 +666,9 @@ export async function updateModel(
       max_tokens: updates.max_tokens ?? existingModel.max_tokens,
     };
 
-    // Preserve sync-managed fields
-    if (existingModel.enabled !== undefined) updatedModel.enabled = existingModel.enabled;
+    // Preserve sync-managed fields — enabled can be overridden via updates
+    if (updates.enabled !== undefined) updatedModel.enabled = updates.enabled;
+    else if (existingModel.enabled !== undefined) updatedModel.enabled = existingModel.enabled;
     if (existingModel.workplace !== undefined) updatedModel.workplace = existingModel.workplace;
     if (existingModel.protected) updatedModel.protected = existingModel.protected;
     if (existingModel.feature_set !== undefined) updatedModel.feature_set = existingModel.feature_set;
@@ -536,11 +853,8 @@ export async function resolveModel(
     return null;
   }
 
-  // Get API key from environment
-  let apiKey: string | null = null;
-  if (provider.api_key_env) {
-    apiKey = process.env[provider.api_key_env] || null;
-  }
+  // Resolve API key (encrypted or env var)
+  const apiKey = await resolveApiKey(provider);
 
   // Determine effective base URL (model can override provider)
   const baseUrl = model.base_url || provider.base_url;

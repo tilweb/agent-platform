@@ -24,7 +24,9 @@ export const CHAT_FOLDERS_FILE = join(CHATS_DIR, 'chat-folders.yaml');
 
 // Config
 export const CONFIG_DIR = join(DATA_DIR, 'config');
-export const PROVIDERS_CONFIG = join(CONFIG_DIR, 'providers.yaml');
+export const PROVIDERS_DIR = join(DATA_DIR, 'providers');
+export const ACTIVE_SELECTION_FILE = join(DATA_DIR, 'providers', 'active.yaml');
+export const LEGACY_PROVIDERS_CONFIG = join(CONFIG_DIR, 'providers.yaml');
 export const AGENTS_CONFIG = join(CONFIG_DIR, 'agents.md');
 export const MCP_SERVERS_CONFIG = join(CONFIG_DIR, 'mcp-servers.yaml');
 

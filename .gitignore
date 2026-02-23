@@ -88,6 +88,9 @@ backend/data/tables/
 # User memory
 backend/data/memory/
 
+# Provider configs (contains encrypted API keys, created by migration)
+backend/data/providers/
+
 # Connection tokens (encrypted)
 backend/data/connections/
 

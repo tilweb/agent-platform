@@ -2,9 +2,9 @@
  * Tests for the Provider Service (backend/src/services/providers.ts)
  *
  * Bun.file / Bun.write cannot be overridden on the Bun global, so we use a
- * real temporary directory for file I/O.  The PROVIDERS_CONFIG path is
- * redirected to /tmp/test-providers-<pid>.yaml via the paths mock, and
- * userPreferences is mocked to return controllable values.
+ * real temporary directory for file I/O.  The provider paths are redirected
+ * to /tmp/test-providers-<pid>/ via the paths mock, and userPreferences is
+ * mocked to return controllable values.
  *
  * All mocks MUST be declared BEFORE the module under test is imported.
  */
@@ -12,12 +12,15 @@
 import { test, expect, describe, mock, beforeEach } from "bun:test";
 import { parse, stringify } from "yaml";
 import { join } from "path";
+import { rm, mkdir } from "fs/promises";
 
 // ---------------------------------------------------------------------------
 // Shared mutable state
 // ---------------------------------------------------------------------------
 
-const TEST_CONFIG_PATH = `/tmp/test-providers-${process.pid}.yaml`;
+const TEST_PROVIDERS_DIR = `/tmp/test-providers-${process.pid}`;
+const TEST_ACTIVE_FILE = `${TEST_PROVIDERS_DIR}/active.yaml`;
+const TEST_LEGACY_CONFIG = `/tmp/test-providers-legacy-${process.pid}.yaml`;
 
 const mockState = {
   // Simulated user model preferences keyed as "userId/purpose"
@@ -32,7 +35,9 @@ const mockState = {
 // ---------------------------------------------------------------------------
 
 mock.module("../../utils/paths", () => ({
-  PROVIDERS_CONFIG: TEST_CONFIG_PATH,
+  PROVIDERS_DIR: TEST_PROVIDERS_DIR,
+  ACTIVE_SELECTION_FILE: TEST_ACTIVE_FILE,
+  LEGACY_PROVIDERS_CONFIG: TEST_LEGACY_CONFIG,
 }));
 
 mock.module("../userPreferences", () => ({
@@ -83,19 +88,30 @@ const {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Write a config object as YAML to the test file and clear the cache. */
+/** Write a config as per-provider directory structure and clear the cache. */
 async function seedConfig(config: Record<string, unknown>): Promise<void> {
-  await Bun.write(TEST_CONFIG_PATH, stringify(config, { indent: 2 }));
+  // Clean up and recreate directory
+  await rm(TEST_PROVIDERS_DIR, { recursive: true, force: true });
+  await mkdir(TEST_PROVIDERS_DIR, { recursive: true });
+
+  const providers = (config.providers ?? []) as any[];
+  for (const provider of providers) {
+    const dir = join(TEST_PROVIDERS_DIR, provider.id);
+    await mkdir(dir, { recursive: true });
+    await Bun.write(join(dir, "provider.yaml"), stringify(provider, { indent: 2 }));
+  }
+
+  await Bun.write(TEST_ACTIVE_FILE, stringify(config.active ?? {}, { indent: 2 }));
   clearConfigCache();
 }
 
-/** Delete the test config file so the service falls back to DEFAULT_CONFIG. */
+/** Remove the test directory so the service falls back to DEFAULT_CONFIG. */
 async function removeConfigFile(): Promise<void> {
+  await rm(TEST_PROVIDERS_DIR, { recursive: true, force: true });
   try {
-    const { unlink } = await import("fs/promises");
-    await unlink(TEST_CONFIG_PATH);
+    await rm(TEST_LEGACY_CONFIG, { force: true });
   } catch {
-    // File may not exist — that is fine
+    // May not exist
   }
   clearConfigCache();
 }
@@ -205,13 +221,13 @@ describe("loadProvidersConfig()", () => {
     expect(config.providers[0]!.id).toBe("test-provider");
   });
 
-  test("should return DEFAULT_CONFIG and save it when the file does not exist", async () => {
-    // File does not exist — default config expected
+  test("should return DEFAULT_CONFIG and save it when the directory does not exist", async () => {
+    // Directory does not exist — default config expected
     const config = await loadProvidersConfig();
     expect(config.providers).toHaveLength(1);
     expect(config.providers[0]!.id).toBe("adacor");
-    // Should have persisted the default
-    const written = await Bun.file(TEST_CONFIG_PATH).text();
+    // Should have persisted the default — active.yaml should exist
+    const written = await Bun.file(TEST_ACTIVE_FILE).text();
     expect(written).toContain("adacor");
   });
 
@@ -219,10 +235,7 @@ describe("loadProvidersConfig()", () => {
     await seedConfig(makeConfig());
     const first = await loadProvidersConfig();
     // Overwrite disk with different content — cache should mask this
-    await Bun.write(
-      TEST_CONFIG_PATH,
-      stringify(makeConfig({ providers: [] }), { indent: 2 })
-    );
+    await Bun.write(TEST_ACTIVE_FILE, stringify({}, { indent: 2 }));
     const second = await loadProvidersConfig();
     expect(second.providers).toHaveLength(first.providers.length);
   });
@@ -237,17 +250,17 @@ describe("saveProvidersConfig()", () => {
     await removeConfigFile();
   });
 
-  test("should write YAML content to the config path", async () => {
+  test("should write YAML content to per-provider directories", async () => {
     await saveProvidersConfig(makeConfig() as any);
-    const written = await Bun.file(TEST_CONFIG_PATH).text();
+    const written = await Bun.file(join(TEST_PROVIDERS_DIR, "test-provider", "provider.yaml")).text();
     const parsed = parse(written);
-    expect(parsed.providers[0].id).toBe("test-provider");
+    expect(parsed.id).toBe("test-provider");
   });
 
   test("should update the in-memory cache after saving", async () => {
     await saveProvidersConfig(makeConfig() as any);
-    // Cache is now primed — corrupt the file; load should still work from cache
-    await Bun.write(TEST_CONFIG_PATH, "bad: yaml: [[[");
+    // Cache is now primed — corrupt the active file; load should still work from cache
+    await Bun.write(TEST_ACTIVE_FILE, "bad: yaml: [[[");
     const config = await loadProvidersConfig();
     expect(config.providers[0]!.id).toBe("test-provider");
   });
@@ -262,21 +275,23 @@ describe("clearConfigCache()", () => {
     await seedConfig(makeConfig());
     await loadProvidersConfig(); // Populate cache
 
-    // Swap disk content
-    const newConfig = makeConfig({
-      providers: [
-        {
-          id: "new-provider",
-          name: "New Provider",
-          api_mode: "openai",
-          base_url: "https://new.example.com",
-          api_key_env: null,
-          enabled: true,
-          models: [],
-        },
-      ],
-    });
-    await Bun.write(TEST_CONFIG_PATH, stringify(newConfig, { indent: 2 }));
+    // Swap disk content with a different provider
+    const newProvider = {
+      id: "new-provider",
+      name: "New Provider",
+      api_mode: "openai",
+      base_url: "https://new.example.com",
+      api_key_env: null,
+      enabled: true,
+      models: [],
+    };
+    // Remove old and add new
+    await rm(join(TEST_PROVIDERS_DIR, "test-provider"), { recursive: true, force: true });
+    await mkdir(join(TEST_PROVIDERS_DIR, "new-provider"), { recursive: true });
+    await Bun.write(
+      join(TEST_PROVIDERS_DIR, "new-provider", "provider.yaml"),
+      stringify(newProvider, { indent: 2 })
+    );
 
     clearConfigCache();
     const config = await loadProvidersConfig();
@@ -1803,24 +1818,20 @@ describe("withProviderLock()", () => {
     await loadProvidersConfig();
 
     // Replace disk content before withProviderLock runs
+    const freshProvider = {
+      id: "fresh-provider",
+      name: "Fresh Provider",
+      api_mode: "openai",
+      base_url: "https://fresh.com/v1",
+      api_key_env: null,
+      enabled: true,
+      models: [],
+    };
+    await rm(join(TEST_PROVIDERS_DIR, "test-provider"), { recursive: true, force: true });
+    await mkdir(join(TEST_PROVIDERS_DIR, "fresh-provider"), { recursive: true });
     await Bun.write(
-      TEST_CONFIG_PATH,
-      stringify(
-        makeConfig({
-          providers: [
-            {
-              id: "fresh-provider",
-              name: "Fresh Provider",
-              api_mode: "openai",
-              base_url: "https://fresh.com/v1",
-              api_key_env: null,
-              enabled: true,
-              models: [],
-            },
-          ],
-        }),
-        { indent: 2 }
-      )
+      join(TEST_PROVIDERS_DIR, "fresh-provider", "provider.yaml"),
+      stringify(freshProvider, { indent: 2 })
     );
 
     // withProviderLock clears the cache before calling fn()

@@ -20,6 +20,9 @@ import {
   setActiveModel,
   resolveModel,
   isCustomProvidersAllowed,
+  resolveApiKey,
+  sanitizeProvider,
+  findLogoFile,
 } from '../services/providers';
 import { isModelSyncConfigured, syncAdacorModels } from '../services/modelSync';
 import { llmService } from '../services/llm';
@@ -27,6 +30,8 @@ import { OpenAIAdapter } from '../services/llm/adapters/openai';
 import { OllamaAdapter } from '../services/llm/adapters/ollama';
 import { authMiddleware } from '../auth';
 import { internalError, validationError, notFoundError, forbiddenError } from '../utils/errorHandler';
+import { PROVIDERS_DIR } from '../utils/paths';
+import { join } from 'path';
 import type {
   CreateProviderRequest,
   UpdateProviderRequest,
@@ -45,7 +50,52 @@ const adminMiddleware: MiddlewareHandler = async (c, next) => {
   return next();
 };
 
-// All provider routes require authentication
+// ============== Logo Endpoint (before auth — <img> tags don't send cookies) ==============
+
+const EXT_TO_CONTENT_TYPE: Record<string, string> = {
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+};
+
+/**
+ * GET /api/providers/:id/logo
+ * Serve the provider logo file. No auth required (used by <img> tags).
+ */
+providers.get('/:id/logo', async (c) => {
+  const id = c.req.param('id');
+
+  // Validate ID: only allow safe characters (prevent path traversal)
+  if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) {
+    return c.text('Invalid provider ID', 400);
+  }
+
+  const logoFilename = await findLogoFile(id);
+  if (!logoFilename) {
+    return c.text('Logo not found', 404);
+  }
+
+  const logoPath = join(PROVIDERS_DIR, id, logoFilename);
+  const file = Bun.file(logoPath);
+  if (!(await file.exists())) {
+    return c.text('Logo not found', 404);
+  }
+
+  const ext = logoFilename.substring(logoFilename.lastIndexOf('.'));
+  const contentType = EXT_TO_CONTENT_TYPE[ext] || 'application/octet-stream';
+
+  return new Response(file, {
+    headers: {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=86400',
+    },
+  });
+});
+
+// All remaining provider routes require authentication
 providers.use('*', authMiddleware);
 
 // ============== Provider Endpoints ==============
@@ -63,7 +113,7 @@ providers.get('/', async (c) => {
       providerList = providerList.filter((p) => p.protected);
     }
 
-    return c.json({ providers: providerList });
+    return c.json({ providers: providerList.map(sanitizeProvider) });
   } catch (error) {
     console.error('Error listing providers:', error);
     return internalError(c, error);
@@ -87,8 +137,12 @@ providers.post('/', adminMiddleware, async (c) => {
       return validationError(c, 'Missing required fields: name, api_mode, base_url');
     }
 
+    if (body.icon_url && body.icon_url.length > 200_000) {
+      return validationError(c, 'Logo ist zu groß (max. 200 KB als Data-URI)');
+    }
+
     const provider = await createProvider(body);
-    return c.json({ provider }, 201);
+    return c.json({ provider: sanitizeProvider(provider) }, 201);
   } catch (error) {
     console.error('Error creating provider:', error);
     return validationError(c, 'Fehler beim Erstellen des Providers');
@@ -179,7 +233,7 @@ providers.get('/:id', async (c) => {
       return notFoundError(c, 'Provider');
     }
 
-    return c.json({ provider });
+    return c.json({ provider: sanitizeProvider(provider) });
   } catch (error) {
     console.error('Error getting provider:', error);
     return internalError(c, error);
@@ -195,12 +249,16 @@ providers.put('/:id', adminMiddleware, async (c) => {
     const id = c.req.param('id');
     const body = await c.req.json<UpdateProviderRequest>();
 
+    if (body.icon_url && body.icon_url.length > 200_000) {
+      return validationError(c, 'Logo ist zu groß (max. 200 KB als Data-URI)');
+    }
+
     const provider = await updateProvider(id, body);
 
     // Reload LLM service to pick up changes
     await llmService.reload();
 
-    return c.json({ provider });
+    return c.json({ provider: sanitizeProvider(provider) });
   } catch (error) {
     console.error('Error updating provider:', error);
     return validationError(c, 'Fehler beim Aktualisieren des Providers');
@@ -272,9 +330,7 @@ providers.put('/:id/models/:modelId', adminMiddleware, async (c) => {
     const modelId = c.req.param('modelId');
     const body = await c.req.json<Partial<ModelConfig>>();
 
-    // Strip enabled from updates — controlled exclusively by sync
-    delete body.enabled;
-
+    // enabled is validated in the service layer (sync-protection for feature_set models)
     const model = await updateModel(providerId, modelId, body);
     return c.json({ model });
   } catch (error) {
@@ -319,11 +375,8 @@ providers.post('/:id/test', async (c) => {
       return notFoundError(c, 'Provider');
     }
 
-    // Get API key from environment
-    let apiKey: string | null = null;
-    if (provider.api_key_env) {
-      apiKey = process.env[provider.api_key_env] || null;
-    }
+    // Resolve API key (encrypted or env var)
+    const apiKey = await resolveApiKey(provider);
 
     // Get a default model for testing
     const defaultModel = provider.models.find((m) => m.default) || provider.models[0];
@@ -371,11 +424,8 @@ providers.get('/:id/models/available', async (c) => {
       return notFoundError(c, 'Provider');
     }
 
-    // Get API key from environment
-    let apiKey: string | null = null;
-    if (provider.api_key_env) {
-      apiKey = process.env[provider.api_key_env] || null;
-    }
+    // Resolve API key (encrypted or env var)
+    const apiKey = await resolveApiKey(provider);
 
     let models: string[] = [];
 
