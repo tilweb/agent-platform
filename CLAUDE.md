@@ -55,7 +55,7 @@ cp .env.example .env    # Eine einzige .env im Root — alle Konfiguration hier
 - **`utils/apiFetch.js`** — API client with credentials handling
 
 ### Data Layer (`data/`)
-All persistence is file-based. Key directories: `config/` (providers.yaml, settings), `chats/`, `agents/`, `skills/`, `tasks/`, `knowledge-base/`, `auth/`, `connections/` (encrypted OAuth tokens).
+All persistence is file-based. Key directories: `providers/` (per-provider config + logo files), `config/` (settings), `chats/`, `agents/`, `skills/`, `tasks/`, `knowledge-base/`, `auth/`, `connections/` (encrypted OAuth tokens).
 
 ### MCP Runner (`mcp-runner/`)
 Optional dedicated container for running MCP server processes in isolation. Backend communicates via HTTP instead of spawning child processes directly. Dual-mode: without `MCP_RUNNER_URL` everything runs locally as before.
@@ -66,7 +66,7 @@ Optional dedicated container for running MCP server processes in isolation. Back
 - **Kubernetes**: Helm Chart unter `helm/adacor-workplace/` mit Ingress, ConfigMap/Secret, PVC. MCP Runner optional via `mcpRunner.enabled`
 
 ### Multi-Provider LLM System
-Configured in `data/config/providers.yaml`. Supports Adacor AI, OpenAI, Anthropic, Ollama, Nebius, Google Gemini. Each model declares capabilities (chat, vision, function_calling). Provider adapters in `backend/src/services/llm.ts`.
+Configured in `data/providers/` (per-provider directories with `provider.yaml` + logo file, plus `active.yaml` for model selection). Supports Adacor AI, OpenAI, Anthropic, Ollama, Nebius, Google Gemini. Each model declares capabilities (chat, vision, function_calling). Provider adapters in `backend/src/services/llm.ts`. Legacy `data/config/providers.yaml` is auto-migrated on first load.
 
 ## Git & Attribution
 
