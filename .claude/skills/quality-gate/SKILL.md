@@ -14,7 +14,7 @@ Standard: vollständiger Gate-Check. Optionen: `quick` (nur kritische Checks), `
 
 ## Vorgehen
 
-Arbeite die 6 Audit-Kategorien sequenziell ab. Jede Kategorie liefert ein Ampel-Ergebnis.
+Arbeite die 7 Audit-Kategorien sequenziell ab. Jede Kategorie liefert ein Ampel-Ergebnis.
 
 **Ampel-Logik:**
 - **PASS** — Keine Findings
@@ -112,6 +112,22 @@ Hinweis: Verwaiste Backend-Endpoints sind nur WARN (können intern genutzt werde
 
 ---
 
+### Kategorie 7: Docs-Integrität
+
+Prüfe ob die NAV-Struktur in `DocsPage.jsx` mit dem Dateisystem unter `docs/anwenderdoku/docs/` übereinstimmt.
+
+1. **Grep** nach `slug:` in `frontend/src/pages/DocsPage.jsx` — extrahiere alle NAV-Slugs (nur aus der `NAV`-Struktur, nicht aus `FEATURES`-Cards o.ä.)
+2. Für jeden NAV-Slug prüfen ob `docs/anwenderdoku/docs/{slug}.md` existiert
+3. Alle `.md`-Dateien unter `docs/anwenderdoku/docs/` auflisten (rekursiv, relativ zum docs-Root, ohne `.md`-Extension)
+4. Prüfen ob jede gefundene Datei als Slug in der NAV referenziert ist
+
+**Ampel:**
+- PASS: Alle NAV-Slugs haben eine Datei UND alle Dateien sind in der NAV referenziert
+- WARN: Verwaiste Dateien vorhanden (Datei existiert, aber kein NAV-Eintrag) — kein kritisches Problem
+- FAIL: Fehlende Dateien (NAV-Slug vorhanden, aber keine `.md`-Datei) — Benutzer sieht "Seite nicht gefunden"
+
+---
+
 ## Ergebnis-Report
 
 Erstelle den konsolidierten Report:
@@ -127,6 +143,7 @@ Erstelle den konsolidierten Report:
 | 4 | Auth-Abdeckung | PASS/WARN/FAIL | Details |
 | 5 | API-Konsistenz | PASS/WARN/FAIL | Details |
 | 6 | Code-Qualität | PASS/WARN/FAIL | Details |
+| 7 | Docs-Integrität | PASS/WARN/FAIL | Details |
 
 ### Gesamtstatus: PASS / WARN / FAIL
 
