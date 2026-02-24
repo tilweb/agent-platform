@@ -11,8 +11,9 @@ docsRoutes.use('*', optionalAuthMiddleware);
  * Returns docs configuration (feature flags).
  */
 docsRoutes.get('/config', (c) => {
-  const entwicklerDocsEnabled = process.env.DOCS_ENTWICKLER_ENABLED !== 'false';
-  return c.json({ entwicklerDocsEnabled });
+  const entwicklerDocsEnabled = process.env.DOCS_DEVELOPER_ENABLED !== 'false';
+  const partnerDocsEnabled = process.env.DOCS_PARTNER_ENABLED === 'true';
+  return c.json({ entwicklerDocsEnabled, partnerDocsEnabled });
 });
 
 export { docsRoutes };

@@ -241,6 +241,9 @@ const navIconColors = {
   contract: '#0891b2',
   docs: '#6366f1',
   docsEntwickler: '#10b981',
+  docsAppDev: '#f59e0b',
+  docsConnectionDev: '#8b5cf6',
+  docsPartner: '#f97316',
 };
 
 function Sidebar() {
@@ -252,10 +255,14 @@ function Sidebar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [entwicklerDocsEnabled, setEntwicklerDocsEnabled] = useState(false);
+  const [partnerDocsEnabled, setPartnerDocsEnabled] = useState(false);
 
   useEffect(() => {
     apiGet('/docs/config').then(r => r.json())
-      .then(d => setEntwicklerDocsEnabled(d.entwicklerDocsEnabled)).catch(() => {});
+      .then(d => {
+        setEntwicklerDocsEnabled(d.entwicklerDocsEnabled);
+        setPartnerDocsEnabled(d.partnerDocsEnabled);
+      }).catch(() => {});
   }, []);
 
   const isActive = (path) => currentPath === path;
@@ -508,7 +515,41 @@ function Sidebar() {
               <span>Entwickler</span>
             </Link>
           )}
+
         </div>
+
+        {/* Partner Documentation */}
+        {partnerDocsEnabled && (
+          <div style={sidebarStyles.section}>
+            <div style={sidebarStyles.sectionTitle}>Partner</div>
+
+            <Link
+              to="/docs/app-entwicklung"
+              style={{
+                ...sidebarStyles.navItem,
+                ...(currentPath.startsWith('/docs/app-entwicklung') ? sidebarStyles.navItemActive : {}),
+              }}
+            >
+              <div style={sidebarStyles.iconWrapper}>
+                <AppDevDocsIcon color={navIconColors.docsAppDev} />
+              </div>
+              <span>App-Entwicklung</span>
+            </Link>
+
+            <Link
+              to="/docs/connection-entwicklung"
+              style={{
+                ...sidebarStyles.navItem,
+                ...(currentPath.startsWith('/docs/connection-entwicklung') ? sidebarStyles.navItemActive : {}),
+              }}
+            >
+              <div style={sidebarStyles.iconWrapper}>
+                <ConnectionDevDocsIcon color={navIconColors.docsConnectionDev} />
+              </div>
+              <span>Connections</span>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* User Section */}
@@ -817,6 +858,25 @@ function CodeDocsIcon({ color }) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
       <polyline points="16 18 22 12 16 6" />
       <polyline points="8 6 2 12 8 18" />
+    </svg>
+  );
+}
+
+function AppDevDocsIcon({ color }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4H9A3 3 0 0 1 15 4H20V9A3 3 0 0 1 20 15V20H15A3 3 0 0 0 9 20H4V15A3 3 0 0 0 4 9Z" />
+    </svg>
+  );
+}
+
+function ConnectionDevDocsIcon({ color }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2v6.5" />
+      <path d="M18.5 8.5h-13" />
+      <path d="M7 8.5V12a5 5 0 0 0 10 0V8.5" />
+      <path d="M12 17v5" />
     </svg>
   );
 }

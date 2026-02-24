@@ -37,6 +37,8 @@ export default defineConfig({
     alias: {
       '@docs': resolve(__dirname, '../docs/anwenderdoku/docs'),
       '@entwickler-docs': resolve(__dirname, '../docs/entwickler/docs'),
+      '@app-dev-docs': resolve(__dirname, '../docs/app-entwicklung/docs'),
+      '@connection-dev-docs': resolve(__dirname, '../docs/connection-entwicklung/docs'),
     },
   },
   server: {

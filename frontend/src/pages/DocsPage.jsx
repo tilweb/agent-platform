@@ -24,6 +24,22 @@ for (const [path, loader] of Object.entries(entwicklerModules)) {
   if (m) entwicklerLoaders[m[1]] = loader;
 }
 
+// App-Entwicklung-Docs glob
+const appDevModules = import.meta.glob('@app-dev-docs/**/*.md', { query: '?raw', import: 'default' });
+const appDevLoaders = {};
+for (const [path, loader] of Object.entries(appDevModules)) {
+  const m = path.match(/(?:@app-dev-docs|docs\/app-entwicklung\/docs)\/(.+)\.md$/);
+  if (m) appDevLoaders[m[1]] = loader;
+}
+
+// Connection-Entwicklung-Docs glob
+const connectionDevModules = import.meta.glob('@connection-dev-docs/**/*.md', { query: '?raw', import: 'default' });
+const connectionDevLoaders = {};
+for (const [path, loader] of Object.entries(connectionDevModules)) {
+  const m = path.match(/(?:@connection-dev-docs|docs\/connection-entwicklung\/docs)\/(.+)\.md$/);
+  if (m) connectionDevLoaders[m[1]] = loader;
+}
+
 const ANWENDERDOKU_NAV = [
   { section: 'Start', pages: [
     { slug: 'index', title: 'Willkommen' },
@@ -120,6 +136,56 @@ const ENTWICKLER_NAV = [
   { section: 'Beispiele', pages: [
     { slug: 'beispiele/oauth-plugin', title: 'OAuth-Plugin' },
     { slug: 'beispiele/api-plugin', title: 'API-Key-Plugin' },
+  ]},
+];
+
+const APP_ENTWICKLUNG_NAV = [
+  { section: 'Start', pages: [
+    { slug: 'index', title: 'Übersicht' },
+  ]},
+  { section: 'Schnellstart', pages: [
+    { slug: 'schnellstart/neue-app', title: 'Neue App erstellen' },
+  ]},
+  { section: 'Frontend', pages: [
+    { slug: 'frontend/seitenstruktur', title: 'Seitenstruktur' },
+    { slug: 'frontend/design-system', title: 'Design-System' },
+    { slug: 'frontend/komponenten', title: 'Komponenten' },
+    { slug: 'frontend/hooks', title: 'Hooks' },
+    { slug: 'frontend/api-aufrufe', title: 'API-Aufrufe' },
+  ]},
+  { section: 'Backend', pages: [
+    { slug: 'backend/routen', title: 'Routen' },
+    { slug: 'backend/services', title: 'Services' },
+    { slug: 'backend/persistenz', title: 'Persistenz' },
+  ]},
+  { section: 'Integration', pages: [
+    { slug: 'integration/registrierung', title: 'Registrierung' },
+  ]},
+  { section: 'Referenz', pages: [
+    { slug: 'referenz/theme', title: 'Theme-Referenz' },
+  ]},
+];
+
+const CONNECTION_ENTWICKLUNG_NAV = [
+  { section: 'Start', pages: [
+    { slug: 'index', title: 'Übersicht' },
+  ]},
+  { section: 'Schnellstart', pages: [
+    { slug: 'schnellstart/neue-connection', title: 'Neue Connection erstellen' },
+  ]},
+  { section: 'Manifest', pages: [
+    { slug: 'manifest/format', title: 'manifest.yaml Referenz' },
+  ]},
+  { section: 'Provider', pages: [
+    { slug: 'provider/oauth-provider', title: 'OAuthProvider' },
+    { slug: 'provider/tools', title: 'Tools definieren' },
+  ]},
+  { section: 'Konfiguration', pages: [
+    { slug: 'konfiguration/credentials', title: 'Credentials & Secrets' },
+  ]},
+  { section: 'Referenz', pages: [
+    { slug: 'referenz/types', title: 'Typen-Referenz' },
+    { slug: 'referenz/sdk', title: 'SDK-Referenz' },
   ]},
 ];
 
@@ -682,8 +748,8 @@ export default function DocsPage({ embedded = false, category = 'anwenderdoku' }
 
   const slug = params['*'] || 'index';
 
-  const activeNav = category === 'anwenderdoku' ? ANWENDERDOKU_NAV : ENTWICKLER_NAV;
-  const activeLoaders = category === 'anwenderdoku' ? docLoaders : entwicklerLoaders;
+  const activeNav = category === 'connection-entwicklung' ? CONNECTION_ENTWICKLUNG_NAV : category === 'app-entwicklung' ? APP_ENTWICKLUNG_NAV : category === 'anwenderdoku' ? ANWENDERDOKU_NAV : ENTWICKLER_NAV;
+  const activeLoaders = category === 'connection-entwicklung' ? connectionDevLoaders : category === 'app-entwicklung' ? appDevLoaders : category === 'anwenderdoku' ? docLoaders : entwicklerLoaders;
 
   // Load page content via Vite glob loader
   useEffect(() => {
@@ -728,7 +794,7 @@ export default function DocsPage({ embedded = false, category = 'anwenderdoku' }
           <div style={styles.sidebarHeader}>
             <div style={styles.sidebarTitle}>Dokumentation</div>
             <div style={styles.sidebarSubtitle}>
-              {category === 'anwenderdoku' ? 'Anwenderdokumentation' : 'Entwickler-Dokumentation'}
+              {category === 'anwenderdoku' ? 'Anwenderdokumentation' : category === 'connection-entwicklung' ? 'Connection-Entwicklung' : category === 'app-entwicklung' ? 'App-Entwicklung' : 'Entwickler-Dokumentation'}
             </div>
           </div>
         )}
