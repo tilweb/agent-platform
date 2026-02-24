@@ -1,22 +1,22 @@
 # Provider-System
 
-Adacor Workplace unterstuetzt die Integration mehrerer KI-Provider und Modelle. Diese Dokumentation beschreibt das Multi-Provider-System, Modell-Konfiguration und die Einrichtung eigener Provider.
+Adacor Workplace unterstützt die Integration mehrerer KI-Provider und Modelle. Diese Dokumentation beschreibt das Multi-Provider-System, Modell-Konfiguration und die Einrichtung eigener Provider.
 
-## Ueberblick
+## Überblick
 
-Das Provider-System verwaltet LLM-Konfigurationen in `data/providers/` (pro Provider ein Verzeichnis mit `provider.yaml` + Logo-Datei, plus `active.yaml` fuer die Modell-Auswahl).
+Das Provider-System verwaltet LLM-Konfigurationen in `data/providers/` (pro Provider ein Verzeichnis mit `provider.yaml` + Logo-Datei, plus `active.yaml` für die Modell-Auswahl).
 
-Unterstuetzte Provider: Adacor AI, OpenAI, Anthropic, Ollama, Nebius, Google Gemini und beliebige OpenAI-kompatible APIs.
+Unterstützte Provider: Adacor AI, OpenAI, Anthropic, Ollama, Nebius, Google Gemini und beliebige OpenAI-kompatible APIs.
 
 ## Voraussetzungen
 
-Eigene Provider und Modelle sind nur verfuegbar, wenn das Feature-Flag `ALLOW_CUSTOM_PROVIDERS=true` in der `.env`-Datei gesetzt ist. Ohne dieses Flag werden ausschliesslich die geschuetzten Adacor-Modelle angezeigt.
+Eigene Provider und Modelle sind nur verfügbar, wenn das Feature-Flag `ALLOW_CUSTOM_PROVIDERS=true` in der `.env`-Datei gesetzt ist. Ohne dieses Flag werden ausschließlich die geschützten Adacor-Modelle angezeigt.
 
-> Adacor-Modelle werden automatisch ueber die Modell-Synchronisierung verwaltet und koennen nicht manuell bearbeitet oder geloescht werden.
+> Adacor-Modelle werden automatisch über die Modell-Synchronisierung verwaltet und können nicht manuell bearbeitet oder gelöscht werden.
 
 ## API-Modi
 
-Jeder Provider wird mit einem `api_mode` konfiguriert, der bestimmt, welches API-Protokoll fuer die Kommunikation verwendet wird:
+Jeder Provider wird mit einem `api_mode` konfiguriert, der bestimmt, welches API-Protokoll für die Kommunikation verwendet wird:
 
 | API-Modus | Beschreibung | Beispiel-Provider |
 |-----------|-------------|-------------------|
@@ -37,13 +37,13 @@ Jeder Provider wird mit einem `api_mode` konfiguriert, der bestimmt, welches API
 
 ## Capabilities
 
-Jedes Modell deklariert seine Faehigkeiten ueber ein Array von Capabilities:
+Jedes Modell deklariert seine Fähigkeiten über ein Array von Capabilities:
 
 | Capability | Beschreibung |
 |-----------|-------------|
 | `chat` | Standard-Chat-Konversation |
-| `function_calling` | Tool-/Funktionsaufrufe (erforderlich fuer Agenten mit Tools) |
-| `vision` | Bildverstaendnis und -analyse |
+| `function_calling` | Tool-/Funktionsaufrufe (erforderlich für Agenten mit Tools) |
+| `vision` | Bildverständnis und -analyse |
 | `speech` | Sprachausgabe (TTS) |
 | `transcription` | Spracherkennung (STT) |
 | `text_to_image` | Bildgenerierung aus Text |
@@ -52,15 +52,15 @@ Jedes Modell deklariert seine Faehigkeiten ueber ein Array von Capabilities:
 
 ### Erweiterte Capabilities
 
-Zusaetzlich koennen Modelle erweiterte Capabilities definieren, die fuer das Agent-Modell-Matching verwendet werden:
+Zusätzlich können Modelle erweiterte Capabilities definieren, die für das Agent-Modell-Matching verwendet werden:
 
 ```yaml
 extended_capabilities:
-  tool_use: true          # Unterstuetzt Tool-/Funktionsaufrufe
-  vision: true            # Unterstuetzt Bildverstaendnis
+  tool_use: true          # Unterstützt Tool-/Funktionsaufrufe
+  vision: true            # Unterstützt Bildverständnis
   context_window: 128000  # Kontextfenster in Tokens
-  streaming: true         # Unterstuetzt Streaming-Responses
-  json_mode: true         # Unterstuetzt JSON-Modus
+  streaming: true         # Unterstützt Streaming-Responses
+  json_mode: true         # Unterstützt JSON-Modus
   max_output_tokens: 4096 # Maximale Ausgabe-Tokens
 ```
 
@@ -75,22 +75,22 @@ Das System berechnet automatisch einen Datensicherheits-Tier basierend auf dem F
 | **Tier 3** | Globales Unternehmen + EU-Rechenzentrum | OpenAI (EU-Region) |
 | **Tier 4** | Globales Unternehmen + Nicht-EU-RZ | OpenAI (US) |
 
-Die Tier-Berechnung basiert auf den Provider-Feldern `company_region` (`germany` | `eu` | `world`) und `datacenter_country` (ISO-Laendercode).
+Die Tier-Berechnung basiert auf den Provider-Feldern `company_region` (`germany` | `eu` | `world`) und `datacenter_country` (ISO-Ländercode).
 
 ## Aktive Modelle
 
-Fuer jeden Verwendungszweck kann genau ein aktives Modell gesetzt werden:
+Für jeden Verwendungszweck kann genau ein aktives Modell gesetzt werden:
 
 | Zweck | Beschreibung |
 |-------|-------------|
 | `chat` | Standard-Chat-Modell |
-| `vision` | Modell fuer Bildverstaendnis |
+| `vision` | Modell für Bildverständnis |
 | `tts` | Text-to-Speech-Modell |
 | `stt` | Speech-to-Text-Modell |
-| `text_to_image` | Modell fuer Bildgenerierung |
-| `image_to_image` | Modell fuer Bildbearbeitung |
+| `text_to_image` | Modell für Bildgenerierung |
+| `image_to_image` | Modell für Bildbearbeitung |
 
-Die aktiven Modelle werden in `data/providers/active.yaml` gespeichert und koennen ueber die UI oder API geaendert werden.
+Die aktiven Modelle werden in `data/providers/active.yaml` gespeichert und können über die UI oder API geändert werden.
 
 ## Datenmodell
 
@@ -159,33 +159,33 @@ image_to_image:
 
 ### Schritt 1: Provider anlegen
 
-Navigiere zu **Einstellungen** > **KI-Modelle** und klicke auf **Provider hinzufuegen**.
+Navigiere zu **Einstellungen** > **KI-Modelle** und klicke auf **Provider hinzufügen**.
 
 | Feld | Beschreibung | Beispiel |
 |------|-------------|---------|
 | **Name** | Anzeigename des Providers | `Mein Ollama Server` |
 | **API-Modus** | Kommunikationsprotokoll | `ollama` |
 | **Base URL** | Basis-URL der API | `http://localhost:11434` |
-| **API-Key Variable** | Umgebungsvariable fuer den API-Key | `MY_PROVIDER_API_KEY` |
+| **API-Key Variable** | Umgebungsvariable für den API-Key | `MY_PROVIDER_API_KEY` |
 
-> Der API-Key wird **nicht** direkt in der Konfiguration gespeichert, sondern als Referenz auf eine Umgebungsvariable. Setze den tatsaechlichen Key in deiner `.env`-Datei.
+> Der API-Key wird **nicht** direkt in der Konfiguration gespeichert, sondern als Referenz auf eine Umgebungsvariable. Setze den tatsächlichen Key in deiner `.env`-Datei.
 
-#### API-Modus waehlen
+#### API-Modus wählen
 
-- **OpenAI**: Fuer alle OpenAI-kompatiblen APIs (OpenAI, vLLM, LiteLLM, Azure OpenAI, etc.)
-- **Ollama**: Fuer lokale Ollama-Instanzen
-- **Google Gemini**: Fuer Google Generative AI
+- **OpenAI**: Für alle OpenAI-kompatiblen APIs (OpenAI, vLLM, LiteLLM, Azure OpenAI, etc.)
+- **Ollama**: Für lokale Ollama-Instanzen
+- **Google Gemini**: Für Google Generative AI
 
 #### Optionale Felder
 
 | Feld | Beschreibung |
 |------|-------------|
 | **Firmensitz** | Region des Anbieters (`germany`, `eu`, `world`) — bestimmt den Security Tier |
-| **Rechenzentrum** | ISO-Laendercode des RZ-Standorts (z.B. `DE`, `US`) |
+| **Rechenzentrum** | ISO-Ländercode des RZ-Standorts (z.B. `DE`, `US`) |
 
 ### Schritt 2: Modelle hinzufuegen
 
-Nach dem Erstellen des Providers koennen Modelle hinzugefuegt werden.
+Nach dem Erstellen des Providers können Modelle hinzugefügt werden.
 
 #### Pflichtfelder
 
@@ -194,18 +194,18 @@ Nach dem Erstellen des Providers koennen Modelle hinzugefuegt werden.
 | **ID** | Technische Modell-ID | `llama3.1:70b` |
 | **Name** | Anzeigename | `Llama 3.1 70B` |
 | **Typ** | Modell-Typ | `llm` |
-| **Capabilities** | Faehigkeiten | `["chat", "function_calling"]` |
+| **Capabilities** | Fähigkeiten | `["chat", "function_calling"]` |
 
 #### Optionale Felder
 
 | Feld | Beschreibung |
 |------|-------------|
-| **Kontextlaenge** | Maximale Kontextlaenge in Tokens |
+| **Kontextlänge** | Maximale Kontextlänge in Tokens |
 | **Max Tokens** | Maximale Ausgabe-Tokens |
 | **Default** | Als Standard-Modell des Providers markieren |
-| **Base URL** | Provider-Base-URL fuer dieses Modell ueberschreiben |
+| **Base URL** | Provider-Base-URL für dieses Modell überschreiben |
 
-Alternativ kann ueber **Verfuegbare Modelle laden** die vom Provider angebotenen Modelle aufgelistet und ausgewaehlt werden (funktioniert fuer OpenAI- und Ollama-APIs).
+Alternativ kann über **Verfügbare Modelle laden** die vom Provider angebotenen Modelle aufgelistet und ausgewählt werden (funktioniert für OpenAI- und Ollama-APIs).
 
 ### Schritt 3: Capabilities konfigurieren
 
@@ -226,7 +226,7 @@ Bild-Modell (z.B. DALL-E, Flux):
   text_to_image, image_to_image (optional)
 ```
 
-> **Wichtig:** `function_calling` nur setzen, wenn das Modell dies tatsaechlich unterstuetzt. Agenten mit Tools benoetigen diese Capability und koennen mit Modellen ohne Tool-Unterstuetzung nicht korrekt arbeiten.
+> **Wichtig:** `function_calling` nur setzen, wenn das Modell dies tatsächlich unterstützt. Agenten mit Tools benötigen diese Capability und können mit Modellen ohne Tool-Unterstützung nicht korrekt arbeiten.
 
 ### Schritt 4: Aktives Modell setzen
 
@@ -239,11 +239,11 @@ Bild-Modell (z.B. DALL-E, Flux):
 
 ### Schritt 5: Verbindung testen
 
-Der **Verbindung testen**-Button prueft:
+Der **Verbindung testen**-Button prüft:
 
 - Erreichbarkeit der API
-- Gueltigkeit des API-Keys
-- Verfuegbarkeit des Standard-Modells
+- Gültigkeit des API-Keys
+- Verfügbarkeit des Standard-Modells
 - Antwortzeit (Latenz)
 
 ## Beispiel: Ollama lokal

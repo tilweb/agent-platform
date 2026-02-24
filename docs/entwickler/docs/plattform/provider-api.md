@@ -1,6 +1,6 @@
 # API-Referenz: Provider & Modelle
 
-Alle Provider-Endpoints erfordern Authentifizierung. Management-Endpoints (POST, PUT, DELETE) erfordern zusaetzlich Admin-Rechte.
+Alle Provider-Endpoints erfordern Authentifizierung. Management-Endpoints (POST, PUT, DELETE) erfordern zusätzlich Admin-Rechte.
 
 ## Provider-Endpoints
 
@@ -10,7 +10,7 @@ Alle Provider-Endpoints erfordern Authentifizierung. Management-Endpoints (POST,
 GET /api/providers
 ```
 
-Gibt alle konfigurierten Provider zurueck. Bei `ALLOW_CUSTOM_PROVIDERS=false` werden nur geschuetzte (Adacor-)Provider angezeigt.
+Gibt alle konfigurierten Provider zurück. Bei `ALLOW_CUSTOM_PROVIDERS=false` werden nur geschützte (Adacor-)Provider angezeigt.
 
 **Response:**
 
@@ -60,10 +60,10 @@ Erstellt einen neuen Provider. Blockiert wenn `ALLOW_CUSTOM_PROVIDERS=false`.
 | `name` | string | Ja | Anzeigename |
 | `api_mode` | string | Ja | `openai`, `ollama`, `google_gemini`, `openai_images` |
 | `base_url` | string | Ja | Basis-URL der API |
-| `api_key_env` | string | Nein | Name der Umgebungsvariable fuer den API-Key |
+| `api_key_env` | string | Nein | Name der Umgebungsvariable für den API-Key |
 | `enabled` | boolean | Nein | Provider aktiviert (Standard: `true`) |
 | `company_region` | string | Nein | `germany`, `eu`, `world` |
-| `datacenter_country` | string | Nein | ISO-Laendercode (z.B. `DE`, `US`) |
+| `datacenter_country` | string | Nein | ISO-Ländercode (z.B. `DE`, `US`) |
 
 ### Provider abrufen
 
@@ -79,27 +79,27 @@ PUT /api/providers/:id
 
 **Request Body:** Beliebige Felder aus der Provider-Erstellung (alle optional).
 
-### Provider loeschen
+### Provider löschen
 
 ```
 DELETE /api/providers/:id
 ```
 
-Loescht den Provider und alle zugehoerigen Modelle. Der LLM-Service wird automatisch neu geladen.
+Löscht den Provider und alle zugehörigen Modelle. Der LLM-Service wird automatisch neu geladen.
 
-> Geschuetzte Provider (`protected: true`) koennen nicht geloescht werden.
+> Geschützte Provider (`protected: true`) können nicht gelöscht werden.
 
 ---
 
 ## Modell-Endpoints
 
-### Modell hinzufuegen
+### Modell hinzufügen
 
 ```
 POST /api/providers/:id/models
 ```
 
-Fuegt ein Modell zu einem Provider hinzu. Blockiert fuer Adacor-Provider (sync-only) und bei `ALLOW_CUSTOM_PROVIDERS=false`.
+Fügt ein Modell zu einem Provider hinzu. Blockiert für Adacor-Provider (sync-only) und bei `ALLOW_CUSTOM_PROVIDERS=false`.
 
 **Request Body:**
 
@@ -133,21 +133,21 @@ Fuegt ein Modell zu einem Provider hinzu. Blockiert fuer Adacor-Provider (sync-o
 PUT /api/providers/:id/models/:modelId
 ```
 
-> Das `enabled`-Feld wird bei Updates ignoriert — es wird ausschliesslich ueber die Modell-Synchronisierung gesteuert.
+> Das `enabled`-Feld wird bei Updates ignoriert — es wird ausschließlich über die Modell-Synchronisierung gesteuert.
 
-### Modell loeschen
+### Modell löschen
 
 ```
 DELETE /api/providers/:id/models/:modelId
 ```
 
-### Verfuegbare Modelle abfragen
+### Verfügbare Modelle abfragen
 
 ```
 GET /api/providers/:id/models/available
 ```
 
-Listet alle vom Provider angebotenen Modell-IDs auf. Funktioniert fuer OpenAI- und Ollama-APIs.
+Listet alle vom Provider angebotenen Modell-IDs auf. Funktioniert für OpenAI- und Ollama-APIs.
 
 **Response:**
 
@@ -191,7 +191,7 @@ PUT /api/providers/active/:purpose
 | Purpose | Beschreibung |
 |---------|-------------|
 | `chat` | Standard-Chat-Modell |
-| `vision` | Bildverstaendnis |
+| `vision` | Bildverständnis |
 | `tts` | Text-to-Speech |
 | `stt` | Speech-to-Text |
 | `text_to_image` | Bildgenerierung |
@@ -239,7 +239,7 @@ Testet die Verbindung zum Provider mit dem Standard-Modell.
 GET /api/providers/config
 ```
 
-Gibt die Feature-Flags fuer die Frontend-Konfiguration zurueck.
+Gibt die Feature-Flags für die Frontend-Konfiguration zurück.
 
 **Response:**
 
@@ -256,7 +256,7 @@ Gibt die Feature-Flags fuer die Frontend-Konfiguration zurueck.
 POST /api/providers/adacor/sync
 ```
 
-Loest eine manuelle Synchronisierung der Adacor-Modelle aus. Erfordert konfigurierte `ADACOR_AI_API_BASE` und `ADACOR_AI_MODELS_PATH`.
+Löst eine manuelle Synchronisierung der Adacor-Modelle aus. Erfordert konfigurierte `ADACOR_AI_API_BASE` und `ADACOR_AI_MODELS_PATH`.
 
 **Response:**
 

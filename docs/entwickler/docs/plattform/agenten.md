@@ -1,6 +1,6 @@
 # Agent-System
 
-Agenten sind konfigurierbare KI-Persoenlichkeiten mit eigenen Tools, Faehigkeiten und System-Prompts. Der Supervisor-Agent orchestriert Aufgaben und delegiert an spezialisierte Agenten.
+Agenten sind konfigurierbare KI-Persönlichkeiten mit eigenen Tools, Fähigkeiten und System-Prompts. Der Supervisor-Agent orchestriert Aufgaben und delegiert an spezialisierte Agenten.
 
 ## Konzept
 
@@ -36,7 +36,7 @@ skillMode: all
 ---
 
 Du bist ein spezialisierter Research Agent.
-Deine Aufgabe ist es, gruendlich zu recherchieren und Quellen zu analysieren.
+Deine Aufgabe ist es, gründlich zu recherchieren und Quellen zu analysieren.
 
 ## Verhaltensregeln
 1. Immer Quellen angeben
@@ -51,7 +51,7 @@ interface AgentConfig {
   id: string;                    // Eindeutiger Bezeichner (a-z, 0-9, -, _)
   name: string;                  // Anzeigename
   description: string;           // Kurzbeschreibung
-  capabilities: string[];        // Faehigkeiten (Freitext)
+  capabilities: string[];        // Fähigkeiten (Freitext)
   tools: string[];               // Tool-Namen aus der Registry
   delegatable: boolean;          // Kann von anderen Agenten aufgerufen werden
   internal: boolean;             // Nicht in der UI sichtbar
@@ -72,10 +72,10 @@ Die Modell-Auswahl folgt einer Hierarchie:
    -> Agent-eigenes Modell verwenden
 
 2. System-Agent (supervisor, vision, code, research)
-   -> ENV-Konfiguration pruefen (z.B. VISION_AGENT_MODEL)
+   -> ENV-Konfiguration prüfen (z.B. VISION_AGENT_MODEL)
 
 3. agent.model.inherit = true oder kein Modell konfiguriert
-   -> Session-Override -> User-Praeferenz -> System-Default
+   -> Session-Override -> User-Präferenz -> System-Default
 
 4. User-erstellte Agenten
    -> Immer locked: true (vom System erzwungen)
@@ -87,8 +87,8 @@ Die Modell-Auswahl folgt einer Hierarchie:
 interface AgentModelConfig {
   provider_id?: string;    // Provider-ID
   model_id?: string;       // Modell-ID
-  locked?: boolean;        // Kann nicht ueberschrieben werden
-  inherit?: boolean;       // Erbt von User-Praeferenz/System-Default
+  locked?: boolean;        // Kann nicht überschrieben werden
+  inherit?: boolean;       // Erbt von User-Präferenz/System-Default
 }
 ```
 
@@ -96,7 +96,7 @@ interface AgentModelConfig {
 
 ### System-Agenten
 
-Vorinstalliert, nicht editierbar. Immer fuer alle User sichtbar.
+Vorinstalliert, nicht editierbar. Immer für alle User sichtbar.
 
 | Agent | Zweck |
 |-------|-------|
@@ -127,18 +127,18 @@ Supervisor
      - Eigenes Modell (laut Model-Resolution)
      - Eigene Tools (laut Agent-Config)
      - Max 5 Iterationen
-  -> Ergebnis zurueck an Supervisor
+  -> Ergebnis zurück an Supervisor
 ```
 
-- **MAX_DELEGATION_DEPTH = 2** — Agenten koennen sub-delegieren, aber max. 2 Ebenen tief
-- **MAX_ITERATIONS = 5** — Normale Agenten (15 fuer Supervisor)
+- **MAX_DELEGATION_DEPTH = 2** — Agenten können sub-delegieren, aber max. 2 Ebenen tief
+- **MAX_ITERATIONS = 5** — Normale Agenten (15 für Supervisor)
 - Delegierte Agenten erben **nicht** das Modell des Eltern-Agenten
 
 ## RBAC
 
 ### System-Agenten
-- Immer sichtbar fuer alle User
-- Koennen nicht bearbeitet oder geloescht werden
+- Immer sichtbar für alle User
+- Können nicht bearbeitet oder gelöscht werden
 
 ### User-Agenten
 - Creator wird automatisch Owner
@@ -147,11 +147,11 @@ Supervisor
 
 ## Skill-Zugriff
 
-Agenten koennen Skills ueber `load_skill` laden. Der Zugriff wird ueber `skillMode` gesteuert:
+Agenten können Skills über `load_skill` laden. Der Zugriff wird über `skillMode` gesteuert:
 
 | skillMode | Verhalten |
 |-----------|----------|
-| `all` (Default) | Agent kann alle verfuegbaren Skills laden |
+| `all` (Default) | Agent kann alle verfügbaren Skills laden |
 | `allow` | Agent kann nur Skills aus der `skills`-Liste laden |
 
 ## REST API
@@ -163,4 +163,4 @@ Agenten koennen Skills ueber `load_skill` laden. Der Zugriff wird ueber `skillMo
 | `/api/agents/:id/full` | GET | User | Agent inkl. System-Prompt |
 | `/api/agents` | POST | User | Agent erstellen |
 | `/api/agents/:id` | PUT | Editor | Agent aktualisieren |
-| `/api/agents/:id` | DELETE | Owner | Agent loeschen |
+| `/api/agents/:id` | DELETE | Owner | Agent löschen |

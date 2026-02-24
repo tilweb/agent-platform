@@ -1,6 +1,6 @@
 # Verzeichnisstruktur
 
-Vollstaendige Uebersicht ueber die Projektstruktur des Adacor Workplace.
+Vollständige Übersicht über die Projektstruktur des Adacor Workplace.
 
 ## Projektroot
 
@@ -14,7 +14,7 @@ adacor-workplace/
 ├── docs/                   Externe Dokumentation
 │   ├── anwenderdoku/       Anwender-Handbuch
 │   └── entwickler/         Entwickler-Dokumentation
-├── .docs/                  Interne Dokumente (Audits, Konzepte, Plaene)
+├── .docs/                  Interne Dokumente (Audits, Konzepte, Pläne)
 ├── .env.example            Umgebungsvariablen-Vorlage
 ├── docker-compose.yml      Docker-Deployment
 └── CLAUDE.md               Projekt-Instruktionen
@@ -29,7 +29,7 @@ backend/src/
 ├── routes/                     HTTP-Endpunkte
 │   ├── chat.ts                 Chat-Streaming + Tool/Skill/MCP-Endpoints
 │   ├── agents.ts               Agent-CRUD mit RBAC
-│   ├── knowledge.ts            Wissensbasisis-Verwaltung
+│   ├── knowledge.ts            Wissensbasis-Verwaltung
 │   ├── providers.ts            LLM-Provider + Modelle
 │   ├── connections.ts          OAuth-Verbindungen + Token-Management
 │   ├── plugins.ts              Plugin-Verwaltung
@@ -56,10 +56,10 @@ backend/src/
 │   ├── memory.ts               Chat-Speicher (Session-basiert)
 │   ├── userMemory.ts           Persistenter User-Speicher
 │   ├── taskService.ts          Task-Erstellung und -Verwaltung
-│   ├── taskExecutor.ts         Task-Ausfuehrung (Queue-Worker)
+│   ├── taskExecutor.ts         Task-Ausführung (Queue-Worker)
 │   ├── search.ts               Such-Service (Indizierung + Abfrage)
 │   ├── imageGeneration.ts      Bildgenerierungs-Service
-│   ├── documentFetcher.ts      Dokument-Import fuer Chat-Kontext
+│   ├── documentFetcher.ts      Dokument-Import für Chat-Kontext
 │   ├── usageTracking.ts        Nutzungs-Tracking
 │   ├── providers.ts            Provider-Resolution + Model-Matching
 │   ├── modelSync.ts            Adacor-Modell-Synchronisierung
@@ -76,10 +76,10 @@ backend/src/
 │   ├── config.ts               Tool-Konfiguration (API-Keys, etc.)
 │   ├── local/                  Lokale Tools (file_read, file_write, file_list)
 │   ├── api/                    API-Tools (web_search, generate_image, edit_image)
-│   ├── knowledge/              Wissensbasisis-Tools (kb_search, kb_index, kb_manage)
+│   ├── knowledge/              Wissensbasis-Tools (kb_search, kb_index, kb_manage)
 │   ├── tables/                 Tabellen-Tools (table_list, table_query, ...)
 │   ├── special/                Spezial-Tools (delegate_to_agent, load_skill, ...)
-│   └── custom/                 Custom-API-Tools (SSRF-geschuetzt)
+│   └── custom/                 Custom-API-Tools (SSRF-geschützt)
 │
 ├── skills/                     Skill-System
 │   ├── types.ts                EnhancedSkill Interface + Typen
@@ -100,7 +100,7 @@ backend/src/
 │   ├── sdk.ts                  @platform/sdk Barrel-Export
 │   ├── loader.ts               Plugin-Loader (Manifest + Provider)
 │   ├── registry.ts             Plugin-Registry (Aktivierung/Deaktivierung)
-│   ├── configStorage.ts        Verschluesselte Credential-Speicherung
+│   ├── configStorage.ts        Verschlüsselte Credential-Speicherung
 │   ├── resolveOAuthConfig.ts   OAuth-Config-Resolution
 │   ├── migrateEnvCredentials.ts ENV->Config Migration
 │   └── types.ts                Plugin-Typen
@@ -111,7 +111,7 @@ backend/src/
 │   │   └── OAuthProvider.ts       OAuthProvider (extends Base)
 │   ├── types.ts                TokenSet, OAuth2Config, ConnectionTool
 │   ├── registry.ts             ConnectionRegistry (Provider + Token-Verwaltung)
-│   ├── crypto.ts               AES-256-GCM Verschluesselung
+│   ├── crypto.ts               AES-256-GCM Verschlüsselung
 │   └── storage.ts              Token-Persistenz
 │
 ├── apps/                       Built-in Applications
@@ -133,7 +133,7 @@ backend/src/
 │   ├── rateLimit.ts            API-Rate-Limiting
 │   ├── csrf.ts                 CSRF-Schutz
 │   ├── securityHeaders.ts      CSP, HSTS, X-Frame-Options
-│   └── ssrf.ts                 SSRF-Schutz fuer Custom Tools
+│   └── ssrf.ts                 SSRF-Schutz für Custom Tools
 │
 ├── config/                     Plattform-Konfiguration
 │   └── platformModels.ts       System-Agent-Modell-Zuordnung
@@ -143,9 +143,10 @@ backend/src/
 │
 └── utils/                      Hilfsfunktionen
     ├── paths.ts                Pfad-Konstanten (AGENTS_DIR, SKILLS_DIR, etc.)
-    ├── yamlStorage.ts          YAML-Lese/Schreib-Utilities
-    ├── errorHandler.ts         Einheitliche Fehler-Responses
-    └── dateBucket.ts           Datum-basiertes Sharding
+    ├── yamlStorage.ts          YAML-Lese/Schreib-Utilities (unterstützt bucketed-Modus)
+    ├── dateBucket.ts           YYYY/MM-Bucket-Berechnung aus ID-Timestamps
+    ├── migrateSharding.ts      Einmalige Migration: flache Dateien → YYYY/MM-Buckets
+    └── errorHandler.ts         Einheitliche Fehler-Responses
 ```
 
 ## Frontend (`frontend/src/`)
@@ -191,6 +192,8 @@ frontend/src/
 
 ## Datenverzeichnis (`data/`)
 
+High-Volume-Verzeichnisse verwenden **datums-basiertes Sharding** (`YYYY/MM`-Unterverzeichnisse), um Performance-Degradierung bei großen Dateimengen zu vermeiden. Task-Ergebnisse (JSON) werden neben den Task-YAMLs im selben Bucket gespeichert. Beim Lesen wird zunächst der Bucket-Pfad versucht, dann ein Fallback auf den flachen Pfad (Rückwärtskompatibilität). Eine einmalige Migration (`migrateSharding.ts`) läuft beim Backend-Start.
+
 ```
 data/
 ├── providers/                  LLM-Provider-Konfiguration
@@ -204,10 +207,14 @@ data/
 │   ├── mcp-servers.yaml        MCP-Server-Konfiguration
 │   └── custom-tools.yaml       Custom-API-Tools
 │
-├── chats/                      Chat-Verlaeufe
-│   └── <user-id>/
-│       └── <datum>/            Sharding nach Datum
-│           └── <chat-id>.yaml
+├── chats/                      Chat-Verläufe (YYYY/MM-Sharding)
+│   ├── chat-folders.yaml       Ordner-Struktur (flach, nicht geshardet)
+│   └── YYYY/MM/
+│       └── session_*.yaml      Chat-Sessions nach Monat
+│
+├── conversations/              Konversations-Markdown (YYYY/MM-Sharding)
+│   └── YYYY/MM/
+│       └── session_*.md        Exportierte Konversationen
 │
 ├── agents/                     Agent-Konfigurationen
 │   └── <agent-id>/
@@ -218,12 +225,22 @@ data/
 │       ├── SKILL.md            Skill-Definition (YAML Frontmatter + Instruktionen)
 │       └── *.md                Optionale Knowledge-Dateien
 │
-├── tasks/                      Task-Queue
-│   ├── pending/
-│   ├── completed/
-│   └── failed/
+├── tasks/                      Tasks + Ergebnisse (YYYY/MM-Sharding)
+│   ├── queue.yaml              Task-Queue (flach, nicht geshardet)
+│   └── YYYY/MM/
+│       ├── task_*.yaml         Task-Definitionen
+│       └── task_*-result.json  Task-Ergebnisse (neben zugehöriger Task)
 │
-├── knowledge-base/             Wissensbasisis
+├── generated-images/           Generierte Bilder (YYYY/MM-Sharding)
+│   └── YYYY/MM/
+│       ├── img_*.png/jpg/webp  Bilddateien
+│       └── img_*.json          Bild-Metadaten
+│
+├── exports/                    Dokument-Exporte (YYYY/MM-Sharding)
+│   └── YYYY/MM/
+│       └── *_<timestamp>.*     Exportierte Dokumente (xlsx, pdf, docx)
+│
+├── knowledge-base/             Wissensbasis
 │   └── <collection-id>/       Je eine Sammlung
 │
 ├── connections/                Connector-Plugins + Tokens
@@ -231,9 +248,9 @@ data/
 │   │   └── <connector-id>/
 │   │       ├── manifest.yaml   Plugin-Manifest
 │   │       ├── provider.ts     Provider-Code
-│   │       ├── credentials.yaml Verschluesselte Credentials
+│   │       ├── credentials.yaml Verschlüsselte Credentials
 │   │       └── tools/          Tool-Implementierungen
-│   ├── tokens/                 Verschluesselte User-Tokens
+│   ├── tokens/                 Verschlüsselte User-Tokens
 │   └── registry.yaml           Plugin-Status
 │
 ├── auth/                       Authentifizierung
@@ -245,14 +262,14 @@ data/
 
 ## MCP Runner (`mcp-runner/`)
 
-Optionaler Container fuer isolierte MCP-Server-Ausfuehrung:
+Optionaler Container für isolierte MCP-Server-Ausführung:
 
 ```
 mcp-runner/
 ├── Dockerfile
 ├── package.json
 └── src/
-    └── index.ts        HTTP-API fuer MCP-Server-Management
+    └── index.ts        HTTP-API für MCP-Server-Management
 ```
 
 ## Plugin-Verzeichnis
@@ -264,10 +281,10 @@ data/connections/connectors/<plugin-id>/
 ├── manifest.yaml        Pflicht: Metadaten, OAuth-Config, Config-Schema
 ├── provider.ts          Pflicht: OAuthProvider-Klasse (export default)
 ├── config.ts            Optional: URL-Helpers
-├── credentials.yaml     Automatisch: Verschluesselte Credentials
+├── credentials.yaml     Automatisch: Verschlüsselte Credentials
 └── tools/               Pflicht: Mindestens ein Tool
     ├── search.ts
     └── read-item.ts
 ```
 
-Siehe [Plugin-Manifest](../plugins/manifest.md) fuer die vollstaendige Manifest-Referenz.
+Siehe [Plugin-Manifest](../plugins/manifest.md) für die vollständige Manifest-Referenz.

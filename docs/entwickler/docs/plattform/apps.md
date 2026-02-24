@@ -1,10 +1,10 @@
 # App-Framework
 
-Das App-Framework ermoeglicht die Integration von spezialisierten Anwendungen in den Adacor Workplace. Apps sind in sich geschlossene Module mit eigenen Routes, UI-Seiten und Business-Logik.
+Das App-Framework ermöglicht die Integration von spezialisierten Anwendungen in den Adacor Workplace. Apps sind in sich geschlossene Module mit eigenen Routes, UI-Seiten und Business-Logik.
 
-## Ueberblick
+## Überblick
 
-Apps werden ueber eine zentrale Registry verwaltet und koennen von Admins aktiviert/deaktiviert und sortiert werden. Aktivierte Apps erscheinen in der Sidebar.
+Apps werden über eine zentrale Registry verwaltet und können von Admins aktiviert/deaktiviert und sortiert werden. Aktivierte Apps erscheinen in der Sidebar.
 
 ## Built-in Apps
 
@@ -23,7 +23,7 @@ getEnabledApps()          // Nur aktivierte Apps
 getApp(appId)             // App-Details
 enableApp(appId)          // App aktivieren
 disableApp(appId)         // App deaktivieren
-reorderApps(appIds)       // Reihenfolge aendern
+reorderApps(appIds)       // Reihenfolge ändern
 ```
 
 ## REST API
@@ -31,7 +31,7 @@ reorderApps(appIds)       // Reihenfolge aendern
 | Endpoint | Methode | Auth | Beschreibung |
 |----------|---------|------|-------------|
 | `/api/apps` | GET | User | Alle Apps auflisten |
-| `/api/apps/enabled` | GET | User | Nur aktivierte Apps (fuer Sidebar) |
+| `/api/apps/enabled` | GET | User | Nur aktivierte Apps (für Sidebar) |
 | `/api/apps/:appId` | GET | User | App-Details |
 | `/api/apps/:appId/enable` | PUT | Admin | App aktivieren |
 | `/api/apps/:appId/disable` | PUT | Admin | App deaktivieren |
@@ -61,4 +61,4 @@ backend/src/apps/
     └── types.ts
 ```
 
-Im Frontend werden App-Seiten unter `frontend/src/pages/apps/` implementiert und ueber die Settings-Page eingebettet.
+Im Frontend werden App-Seiten unter `frontend/src/pages/apps/` implementiert und über die Settings-Page eingebettet.

@@ -85,7 +85,7 @@ In einem Space-Chat erhält der Agent automatisch:
 
 ### Speicher
 
-Der Space-Speicher funktioniert identisch zum [persönlichen Speicher](../wissensbasisis/speicher.md), ist jedoch Space-bezogen. Er hat die gleichen drei Bereiche:
+Der Space-Speicher funktioniert identisch zum [persönlichen Speicher](../wissensbasis/speicher.md), ist jedoch Space-bezogen. Er hat die gleichen drei Bereiche:
 
 - **Über den Space (About)** -- Fakten, Hintergrund und Ziele
 - **Anweisungen (Instructions)** -- Space-spezifische Regeln und Richtlinien

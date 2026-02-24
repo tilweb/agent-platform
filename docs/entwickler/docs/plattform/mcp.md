@@ -1,19 +1,19 @@
 # MCP-Integration
 
-Das Model Context Protocol (MCP) ermoeglicht die Anbindung externer Tool-Server. Adacor Workplace unterstuetzt MCP sowohl als Client (externe MCP-Server nutzen) als auch als Server (eigene Tools exponieren).
+Das Model Context Protocol (MCP) ermöglicht die Anbindung externer Tool-Server. Adacor Workplace unterstützt MCP sowohl als Client (externe MCP-Server nutzen) als auch als Server (eigene Tools exponieren).
 
 ## Dual-Modus
 
 | Modus | Beschreibung |
 |-------|-------------|
 | **Client** | Verbindet sich mit externen MCP-Servern und registriert deren Tools |
-| **Server** | Exponiert eigene Tools als MCP-Server fuer andere Clients |
+| **Server** | Exponiert eigene Tools als MCP-Server für andere Clients |
 
 ## MCP Client
 
 ### McpManager
 
-Der `McpManager` (`backend/src/mcp/manager.ts`) ist das zentrale Interface fuer MCP-Server-Verwaltung:
+Der `McpManager` (`backend/src/mcp/manager.ts`) ist das zentrale Interface für MCP-Server-Verwaltung:
 
 ```typescript
 class McpManager {
@@ -26,9 +26,9 @@ class McpManager {
 
   getServers()                    // Alle Server mit Status
   getServer(serverId)             // Einzelner Server
-  addServer(config)               // Server hinzufuegen
+  addServer(config)               // Server hinzufügen
   updateServer(serverId, updates) // Server aktualisieren
-  deleteServer(serverId)          // Server loeschen
+  deleteServer(serverId)          // Server löschen
   toggleServer(serverId, enabled) // Aktivieren/Deaktivieren
 
   getAllTools()                    // Alle MCP-Tools
@@ -87,7 +87,7 @@ interface McpServerConfig {
 
 ### Server-Presets
 
-Haeufig verwendete MCP-Server:
+Häufig verwendete MCP-Server:
 
 | Preset | Paket | Beschreibung |
 |--------|-------|-------------|
@@ -102,7 +102,7 @@ Haeufig verwendete MCP-Server:
 
 ### Lokal (stdio)
 
-Standard-Modus: MCP-Server werden als Child-Prozesse gestartet und kommunizieren ueber stdin/stdout.
+Standard-Modus: MCP-Server werden als Child-Prozesse gestartet und kommunizieren über stdin/stdout.
 
 ```
 Backend -> spawn(command, args) -> MCP-Server (stdio)
@@ -122,7 +122,7 @@ Aktivierung durch `MCP_RUNNER_URL` Umgebungsvariable:
 MCP_RUNNER_URL=http://mcp-runner:3002
 ```
 
-Ohne `MCP_RUNNER_URL` laeuft alles lokal wie bisher.
+Ohne `MCP_RUNNER_URL` läuft alles lokal wie bisher.
 
 ## Tool-Wrapping
 
@@ -135,7 +135,7 @@ McpManager.registerToolsFromServer(serverId)
   -> toolRegistry.register(wrapper) // In globale Registry eintragen
 ```
 
-Der `McpToolWrapper` uebersetzt zwischen dem MCP-Protokoll und dem internen Tool-Interface:
+Der `McpToolWrapper` übersetzt zwischen dem MCP-Protokoll und dem internen Tool-Interface:
 
 ```typescript
 // MCP-Tool wird zu:
@@ -149,10 +149,10 @@ Der `McpToolWrapper` uebersetzt zwischen dem MCP-Protokoll und dem internen Tool
 
 ## MCP Runner
 
-Der MCP Runner (`mcp-runner/`) ist ein optionaler Container fuer isolierte Ausfuehrung von MCP-Servern:
+Der MCP Runner (`mcp-runner/`) ist ein optionaler Container für isolierte Ausführung von MCP-Servern:
 
 - **Isolation**: MCP-Server laufen nicht im Backend-Prozess
-- **Sicherheit**: Eigener Container mit eingeschraenkten Rechten
+- **Sicherheit**: Eigener Container mit eingeschränkten Rechten
 - **Skalierung**: Kann unabhaengig vom Backend skaliert werden
 
 ### Architektur
@@ -192,10 +192,10 @@ mcpRunner:
 | Endpoint | Methode | Auth | Beschreibung |
 |----------|---------|------|-------------|
 | `/api/mcp/servers` | GET | User | Alle Server mit Status |
-| `/api/mcp/servers` | POST | Admin | Server hinzufuegen |
+| `/api/mcp/servers` | POST | Admin | Server hinzufügen |
 | `/api/mcp/servers/:id` | GET | User | Server-Details |
 | `/api/mcp/servers/:id` | PUT | Admin | Server aktualisieren |
-| `/api/mcp/servers/:id` | DELETE | Admin | Server loeschen |
+| `/api/mcp/servers/:id` | DELETE | Admin | Server löschen |
 | `/api/mcp/servers/:id/connect` | POST | Admin | Server verbinden |
 | `/api/mcp/servers/:id/disconnect` | POST | Admin | Server trennen |
 | `/api/mcp/servers/:id/tools` | GET | User | Tools eines Servers |

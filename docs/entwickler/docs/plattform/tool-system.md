@@ -1,6 +1,6 @@
 # Tool-System
 
-Das Tool-System verbindet LLMs mit externen Funktionen. Jedes Tool hat einen eindeutigen Namen, eine JSON-Schema-Beschreibung fuer den LLM, und eine `execute`-Funktion.
+Das Tool-System verbindet LLMs mit externen Funktionen. Jedes Tool hat einen eindeutigen Namen, eine JSON-Schema-Beschreibung für den LLM, und eine `execute`-Funktion.
 
 ## Tool-Registry
 
@@ -12,10 +12,10 @@ import { toolRegistry } from './tools/registry';
 // Tool registrieren
 toolRegistry.register(myTool);
 
-// Tool-Definitionen fuer LLM abrufen
+// Tool-Definitionen für LLM abrufen
 const definitions = toolRegistry.getDefinitions();
 
-// Tool ausfuehren
+// Tool ausführen
 const result = await toolRegistry.execute(toolCall, context);
 ```
 
@@ -31,9 +31,9 @@ const result = await toolRegistry.execute(toolCall, context);
 | `getAll()` | Alle registrierten Tools |
 | `getByType(type)` | Tools nach Typ filtern |
 | `getEnabled()` | Nur aktivierte Tools (respektiert Config + Plugin-Status) |
-| `getForAgent(toolNames)` | Tools fuer einen bestimmten Agenten |
+| `getForAgent(toolNames)` | Tools für einen bestimmten Agenten |
 | `getDefinitions(toolNames?)` | Tool-Definitionen im OpenAI-Format |
-| `execute(call, context)` | Tool-Call ausfuehren |
+| `execute(call, context)` | Tool-Call ausführen |
 | `getStats()` | Statistik (Anzahl nach Typ) |
 
 ## Tool-Interface
@@ -43,9 +43,9 @@ interface Tool {
   readonly name: string;        // Eindeutiger Name
   readonly type: ToolType;      // Kategorie
 
-  getDefinition(): ToolDefinition;                                    // JSON Schema fuer LLM
-  execute(args: Record<string, any>, context?: ToolContext): Promise<string>;  // Ausfuehrung
-  isAvailable?(): Promise<boolean>;                                   // Verfuegbarkeits-Check
+  getDefinition(): ToolDefinition;                                    // JSON Schema für LLM
+  execute(args: Record<string, any>, context?: ToolContext): Promise<string>;  // Ausführung
+  isAvailable?(): Promise<boolean>;                                   // Verfügbarkeits-Check
 }
 ```
 
@@ -74,15 +74,15 @@ interface ToolDefinition {
 
 ### ToolContext
 
-Wird bei der Ausfuehrung uebergeben und enthaelt Session- und User-Informationen:
+Wird bei der Ausführung übergeben und enthält Session- und User-Informationen:
 
 ```typescript
 interface ToolContext {
   sessionId?: string;         // Chat-Session
   agentId?: string;           // Aktiver Agent
   delegationDepth?: number;   // Delegations-Tiefe
-  userId?: string;            // User-ID (fuer Connection-Tools)
-  parentSessionId?: string;   // Eltern-Session (fuer Attachment-Zugriff)
+  userId?: string;            // User-ID (für Connection-Tools)
+  parentSessionId?: string;   // Eltern-Session (für Attachment-Zugriff)
 }
 ```
 
@@ -110,7 +110,7 @@ Externe API-Integrationen:
 
 ### Knowledge Tools
 
-Wissensbasisis-Operationen:
+Wissensbasis-Operationen:
 
 | Tool | Beschreibung |
 |------|-------------|
@@ -126,9 +126,9 @@ Strukturierte Daten:
 |------|-------------|
 | `table_list` | Tabellen auflisten |
 | `table_query` | Tabelle abfragen |
-| `table_add` | Zeilen hinzufuegen |
+| `table_add` | Zeilen hinzufügen |
 | `table_update` | Zeilen aktualisieren |
-| `table_delete` | Zeilen loeschen |
+| `table_delete` | Zeilen löschen |
 
 ### Special Tools
 
@@ -214,7 +214,7 @@ tools:
 
 ## Custom Tools
 
-Benutzerdefinierte API-Tools mit automatischem SSRF-Schutz. Koennen ueber die UI oder API verwaltet werden.
+Benutzerdefinierte API-Tools mit automatischem SSRF-Schutz. Können über die UI oder API verwaltet werden.
 
 ```yaml
 # data/config/custom-tools.yaml
@@ -231,4 +231,4 @@ Benutzerdefinierte API-Tools mit automatischem SSRF-Schutz. Koennen ueber die UI
       required: true
 ```
 
-Custom-Tool-URLs werden gegen eine SSRF-Blacklist geprueft (keine lokalen Adressen, keine internen Netzwerke).
+Custom-Tool-URLs werden gegen eine SSRF-Blacklist geprüft (keine lokalen Adressen, keine internen Netzwerke).

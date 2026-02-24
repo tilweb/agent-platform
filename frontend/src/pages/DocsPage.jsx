@@ -47,8 +47,8 @@ const ANWENDERDOKU_NAV = [
     { slug: 'skills/verfuegbare-skills', title: 'Verfügbare Skills' },
   ]},
   { section: 'Wissensbasis', pages: [
-    { slug: 'wissensbasisis/index', title: 'Knowledge Base' },
-    { slug: 'wissensbasisis/speicher', title: 'Benutzer-Speicher' },
+    { slug: 'wissensbasis/index', title: 'Knowledge Base' },
+    { slug: 'wissensbasis/speicher', title: 'Benutzer-Speicher' },
   ]},
   { section: 'Suche', pages: [
     { slug: 'suche/index', title: 'Übergreifende Suche' },
@@ -95,35 +95,38 @@ const ENTWICKLER_NAV = [
     { slug: 'index', title: 'Übersicht' },
   ]},
   { section: 'Architektur', pages: [
-    { slug: 'architektur/uebersicht', title: 'System-Architektur' },
-    { slug: 'architektur/verzeichnisstruktur', title: 'Verzeichnisstruktur' },
+    { slug: 'plattform/architektur', title: 'System-Architektur' },
+    { slug: 'plattform/verzeichnisstruktur', title: 'Verzeichnisstruktur' },
+    { slug: 'plattform/tool-system', title: 'Tool-System' },
+    { slug: 'plattform/agenten', title: 'Agenten' },
+    { slug: 'plattform/skills', title: 'Skills' },
+    { slug: 'plattform/mcp', title: 'MCP' },
+    { slug: 'plattform/verbindungen', title: 'Verbindungen' },
+    { slug: 'plattform/apps', title: 'Apps' },
+  ]},
+  { section: 'KI-Modelle & Provider', pages: [
+    { slug: 'plattform/provider-system', title: 'Provider-System' },
+    { slug: 'plattform/provider-api', title: 'Provider API-Referenz' },
   ]},
   { section: 'Plugin-Entwicklung', pages: [
     { slug: 'plugins/einstieg', title: 'Erste Schritte' },
+    { slug: 'plugins/manifest', title: 'Plugin-Manifest' },
     { slug: 'plugins/oauth-provider', title: 'OAuthProvider' },
     { slug: 'plugins/connection-provider', title: 'ConnectionProvider' },
     { slug: 'plugins/tools', title: 'Tools' },
-    { slug: 'plugins/manifest', title: 'Plugin-Manifest' },
-  ]},
-  { section: 'Custom KI-Modelle', pages: [
-    { slug: 'modelle/uebersicht', title: 'Übersicht' },
-    { slug: 'modelle/provider-einrichten', title: 'Provider einrichten' },
-    { slug: 'modelle/api-referenz', title: 'API-Referenz' },
+    { slug: 'plugins/konfiguration', title: 'Konfiguration & Secrets' },
+    { slug: 'plugins/sdk-referenz', title: 'SDK-Referenz' },
   ]},
   { section: 'Beispiele', pages: [
     { slug: 'beispiele/oauth-plugin', title: 'OAuth-Plugin' },
     { slug: 'beispiele/api-plugin', title: 'API-Key-Plugin' },
-  ]},
-  { section: 'API-Referenz', pages: [
-    { slug: 'api/registry', title: 'Plugin-Registry' },
-    { slug: 'api/konfiguration', title: 'Konfiguration' },
   ]},
 ];
 
 const FEATURES = [
   { title: 'Chat', desc: 'KI-gestützter Chat mit mehreren Agenten. Stellen Sie Fragen, lassen Sie Texte verfassen oder Analysen durchführen.', slug: 'chat/nachrichten' },
   { title: 'Agenten', desc: 'Spezialisierte KI-Assistenten für verschiedene Aufgabenbereiche. Vom Recherche-Agenten bis zum Code-Experten.', slug: 'agenten/index' },
-  { title: 'Wissensbasis', desc: 'RAG-basierte Dokumentensuche über Ihre eigenen Inhalte. Laden Sie PDFs, Word-Dokumente und andere Dateien hoch.', slug: 'wissensbasisis/index' },
+  { title: 'Wissensbasis', desc: 'RAG-basierte Dokumentensuche über Ihre eigenen Inhalte. Laden Sie PDFs, Word-Dokumente und andere Dateien hoch.', slug: 'wissensbasis/index' },
   { title: 'Suche', desc: 'Übergreifende Suche über alle Quellen — Chats, Wissensbasis, Tabellen und verbundene Systeme.', slug: 'suche/index' },
   { title: 'Aufgaben', desc: 'Hintergrund-Tasks für komplexe Analysen und langwierige Verarbeitungen.', slug: 'aufgaben/index' },
   { title: 'Spaces', desc: 'Teamarbeit in gemeinsamen Spaces. Teilen Sie Chats, Dokumente und Ergebnisse.', slug: 'spaces/index' },

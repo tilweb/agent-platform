@@ -1,6 +1,6 @@
 # Skill-System
 
-Skills sind Wissensressourcen, die Agenten bei Bedarf laden koennen. Sie definieren Arbeitsmethoden, Workflows und stellen optional zusaetzliche Tools bereit.
+Skills sind Wissensressourcen, die Agenten bei Bedarf laden können. Sie definieren Arbeitsmethoden, Workflows und stellen optional zusätzliche Tools bereit.
 
 **Agent = WAS** (Tools, Capabilities, Modell)
 **Skill = WIE** (Arbeitsanweisungen, Methodik, Workflow)
@@ -39,7 +39,7 @@ parameters:
   - name: tiefe
     type: enum
     description: "Recherchetiefe"
-    options: ["schnell", "standard", "ausfuehrlich"]
+    options: ["schnell", "standard", "ausführlich"]
     default: "standard"
 
 workflow:
@@ -47,7 +47,7 @@ workflow:
     - id: research
       action: tool
       tool: web_search
-      description: "Initiale Recherche durchfuehren"
+      description: "Initiale Recherche durchführen"
     - id: analyze
       action: think
       description: "Ergebnisse analysieren und bewerten"
@@ -63,7 +63,7 @@ output:
 
 ## Arbeitsanweisung
 
-Du fuehrst eine systematische Recherche durch.
+Du führst eine systematische Recherche durch.
 
 ### Vorgehen
 1. Thema eingrenzen und Suchbegriffe definieren
@@ -71,10 +71,10 @@ Du fuehrst eine systematische Recherche durch.
 3. Informationen abgleichen und verifizieren
 4. Strukturierte Zusammenfassung erstellen
 
-### Qualitaetskriterien
-- Mindestens 3 unabhaengige Quellen
+### Qualitätskriterien
+- Mindestens 3 unabhängige Quellen
 - Quellenangaben bei jeder Aussage
-- Widersprueche explizit benennen
+- Widersprüche explizit benennen
 ```
 
 ## EnhancedSkill Interface
@@ -86,8 +86,8 @@ interface EnhancedSkill {
   version: string;                 // Version
   description: string;             // Beschreibung
 
-  metadata?: SkillMetadata;        // Entscheidungshilfe fuer Agenten
-  allowed_tools?: string[];        // Tools die der Skill hinzufuegt
+  metadata?: SkillMetadata;        // Entscheidungshilfe für Agenten
+  allowed_tools?: string[];        // Tools die der Skill hinzufügt
   knowledge?: SkillKnowledge;      // Wissensreferenzen
   triggers: SkillTriggers;         // Trigger (DEPRECATED)
   tools: SkillTools;               // Tool-Requirements (DEPRECATED)
@@ -95,7 +95,7 @@ interface EnhancedSkill {
   workflow?: SkillWorkflow;        // Workflow-Definition
   output?: SkillOutput;            // Ausgabe-Konfiguration
   parameters?: SkillParameter[];   // User-Parameter
-  constraints?: SkillConstraints;  // Einschraenkungen
+  constraints?: SkillConstraints;  // Einschränkungen
   enabled?: boolean;               // Aktiviert?
   system?: boolean;                // System-Skill (nicht editierbar)
 }
@@ -103,7 +103,7 @@ interface EnhancedSkill {
 
 ## Skill-Metadaten
 
-Die `metadata` wird Agenten im System-Prompt angezeigt, damit sie entscheiden koennen, wann ein Skill geladen werden soll:
+Die `metadata` wird Agenten im System-Prompt angezeigt, damit sie entscheiden können, wann ein Skill geladen werden soll:
 
 ```typescript
 interface SkillMetadata {
@@ -115,7 +115,7 @@ interface SkillMetadata {
 
 ## Knowledge-Referenzen
 
-Skills koennen auf externe Wissensquellen verweisen:
+Skills können auf externe Wissensquellen verweisen:
 
 ```typescript
 interface SkillKnowledge {
@@ -126,7 +126,7 @@ interface SkillKnowledge {
 ```
 
 - **files**: Werden deterministisch geladen wenn der Skill aktiviert wird
-- **collections**: Agent nutzt `kb_search` fuer semantische Suche in diesen Sammlungen
+- **collections**: Agent nutzt `kb_search` für semantische Suche in diesen Sammlungen
 
 ## Workflow-System
 
@@ -142,9 +142,9 @@ interface WorkflowStep {
   action: 'tool' | 'think' | 'respond' | 'delegate';  // Aktionstyp
   tool?: string;                       // Tool-Name (bei action: 'tool')
   description: string;                 // Was dieser Schritt tut
-  condition?: string;                  // Bedingung (natuerliche Sprache)
+  condition?: string;                  // Bedingung (natürliche Sprache)
   repeat?: string;                     // Wiederholungsmuster (z.B. "2-3")
-  queryTemplate?: string;              // Query-Template fuer Such-Tools
+  queryTemplate?: string;              // Query-Template für Such-Tools
 }
 ```
 
@@ -152,14 +152,14 @@ interface WorkflowStep {
 
 | Aktion | Beschreibung |
 |--------|-------------|
-| `tool` | Ein bestimmtes Tool ausfuehren |
+| `tool` | Ein bestimmtes Tool ausführen |
 | `think` | Analysieren/Nachdenken (kein Tool-Call) |
 | `respond` | Antwort an den User generieren |
 | `delegate` | An einen anderen Agenten delegieren |
 
 ### Workflow-Fortschritt
 
-Der Workflow-State wird waehrend der Agent-Loop-Ausfuehrung verfolgt:
+Der Workflow-State wird während der Agent-Loop-Ausführung verfolgt:
 
 ```typescript
 interface WorkflowState {
@@ -170,30 +170,30 @@ interface WorkflowState {
 }
 ```
 
-Workflow-Schritte werden automatisch vorgerueckt, wenn ein Tool-Call dem aktuellen Schritt entspricht.
+Workflow-Schritte werden automatisch vorgerückt, wenn ein Tool-Call dem aktuellen Schritt entspricht.
 
 ## Skill-Loading
 
 ### Agent-gesteuertes Laden (Empfohlen)
 
-Agenten sehen verfuegbare Skills in ihrem System-Prompt und entscheiden selbst, wann sie einen Skill laden:
+Agenten sehen verfügbare Skills in ihrem System-Prompt und entscheiden selbst, wann sie einen Skill laden:
 
 ```
 System-Prompt:
-  "Verfuegbare Skills:
+  "Verfügbare Skills:
    - research-skill (Systematische Recherche): ...
    - analysis-skill (Datenanalyse): ...
    Nutze load_skill um einen Skill zu aktivieren."
 
 Agent -> load_skill(skill_id: "research-skill")
   -> Skill-Instruktionen in Context laden
-  -> allowed_tools temporaer hinzufuegen
+  -> allowed_tools temporär hinzufügen
   -> Knowledge-Dateien laden
 ```
 
 ### Automatisches Matching
 
-Skills koennen auch automatisch basierend auf der User-Nachricht gematcht werden (ueber Keywords, Patterns oder Intent).
+Skills können auch automatisch basierend auf der User-Nachricht gematcht werden (über Keywords, Patterns oder Intent).
 
 ### Explizite Aktivierung
 
@@ -204,7 +204,7 @@ Per `/skill-id`-Befehl in der Chat-Eingabe.
 Wenn ein Skill geladen wird:
 
 1. **Instruktionen** werden in den System-Prompt injiziert
-2. **allowed_tools** werden temporaer zur Agent-Tool-Liste hinzugefuegt
+2. **allowed_tools** werden temporär zur Agent-Tool-Liste hinzugefügt
 3. **Knowledge files** werden geladen und in den Kontext eingefuegt
 4. **Workflow** wird initialisiert (falls vorhanden)
 
@@ -213,7 +213,7 @@ interface SkillLoadResult {
   success: boolean;
   skill?: { id: string; name: string };
   instructions?: string;           // Formatierte Anweisungen
-  addedTools?: string[];           // Temporaer hinzugefuegte Tools
+  addedTools?: string[];           // Temporär hinzugefügte Tools
   loadedFiles?: string[];          // Geladene Knowledge-Dateien
   error?: string;
 }
@@ -226,13 +226,13 @@ interface SkillOutput {
   format: 'markdown' | 'json' | 'text';
   template?: string;              // Mustache-Template
   markAsMaterial?: boolean;       // Als Material in der Chat-Sidebar
-  materialTitle?: string;         // Titel fuer das Material
+  materialTitle?: string;         // Titel für das Material
 }
 ```
 
 ## Parameter
 
-Skills koennen benutzerdefinierte Parameter definieren:
+Skills können benutzerdefinierte Parameter definieren:
 
 ```typescript
 interface SkillParameter {
@@ -240,18 +240,18 @@ interface SkillParameter {
   type: 'string' | 'number' | 'boolean' | 'enum';
   description?: string;
   default?: string | number | boolean;
-  options?: string[];     // Fuer enum-Typ
+  options?: string[];     // Für enum-Typ
   required?: boolean;
 }
 ```
 
 ## Agent-Skill-Zugriff
 
-Der Zugriff wird ueber die Agent-Konfiguration gesteuert:
+Der Zugriff wird über die Agent-Konfiguration gesteuert:
 
 | `skillMode` | Verhalten |
 |-------------|----------|
-| `all` (Default) | Agent kann alle verfuegbaren Skills laden |
+| `all` (Default) | Agent kann alle verfügbaren Skills laden |
 | `allow` | Agent kann nur Skills aus `skills`-Liste laden |
 
 ```yaml
