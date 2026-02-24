@@ -1,6 +1,6 @@
 # Oberfläche im Überblick
 
-Der Adacor Workplace ist in drei Hauptbereiche unterteilt: die **Seitenleiste** (links), den **Hauptbereich** (Mitte) und das **Materialienpanel** (rechts, kontextabhängig).
+Der KI-Workplace ist in drei Hauptbereiche unterteilt: die **Seitenleiste** (links), den **Hauptbereich** (Mitte) und das **Materialienpanel** (rechts, kontextabhängig).
 
 ---
 
@@ -12,30 +12,30 @@ Die Seitenleiste befindet sich am linken Bildschirmrand und dient als zentrale N
 
 Im oberen Bereich der Seitenleiste finden Sie die wichtigsten Module der Plattform:
 
-| Menüpunkt | Beschreibung |
-|-----------|-------------|
-| **Chat** | KI-Chat mit Agenten -- Ihr Hauptarbeitsbereich für Fragen, Analysen und Textarbeit |
-| **Suche** | Übergreifende Suche über Chats, Wissensbasis, Tabellen und verbundene Quellen |
-| **Agenten** | Übersicht und Verwaltung aller verfügbaren KI-Agenten |
-| **Skills** | Erweiterbare Arbeitsabläufe und automatisierte Prozesse |
-| **Tools** | Verfügbare Werkzeuge, die den Agenten zur Verfügung stehen |
-| **Bilder** | KI-gestützte Bildgenerierung und -galerie |
-| **Wissensbasis** | Dokumentensammlungen mit semantischer Suche (RAG) |
-| **Memory** | Persönlicher Wissensspeicher für Notizen und Fakten |
-| **Aufgaben** | Hintergrund-Tasks und deren Ergebnisse |
-| **Tabellen** | Strukturierte Datenverwaltung in Tabellenform |
-| **Spaces** | Gemeinsame Arbeitsbereiche für Teams |
-| **Apps** | Zusätzliche Anwendungen und Erweiterungen |
+| Menüpunkt        | Beschreibung                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| **Chat**         | KI-Chat mit Agenten -- Ihr Hauptarbeitsbereich für Fragen, Analysen und Textarbeit |
+| **Suche**        | Übergreifende Suche über Chats, Wissensbasis, Tabellen und verbundene Quellen      |
+| **Agenten**      | Übersicht und Verwaltung aller verfügbaren KI-Agenten                              |
+| **Skills**       | Erweiterbare Arbeitsabläufe und automatisierte Prozesse                            |
+| **Tools**        | Verfügbare Werkzeuge, die den Agenten zur Verfügung stehen                         |
+| **Bilder**       | KI-gestützte Bildgenerierung und -galerie                                          |
+| **Wissensbasis** | Dokumentensammlungen mit semantischer Suche (RAG)                                  |
+| **Memory**       | Persönlicher Wissensspeicher für Notizen und Fakten                                |
+| **Aufgaben**     | Hintergrund-Tasks und deren Ergebnisse                                             |
+| **Tabellen**     | Strukturierte Datenverwaltung in Tabellenform                                      |
+| **Spaces**       | Gemeinsame Arbeitsbereiche für Teams                                               |
+| **Apps**         | Zusätzliche Anwendungen und Erweiterungen                                          |
 
 ### Unterer Bereich
 
 Am unteren Rand der Seitenleiste befinden sich:
 
-| Menüpunkt | Beschreibung |
-|-----------|-------------|
-| **Dokumentation** | Link zur integrierten Anwenderdokumentation |
-| **Einstellungen** | Profil, KI-Modelle, Benutzerverwaltung, Verbindungen und weitere Konfiguration |
-| **Benutzerprofil** | Anzeigename, Rolle und Abmelde-Funktion |
+| Menüpunkt          | Beschreibung                                                                   |
+| ------------------ | ------------------------------------------------------------------------------ |
+| **Dokumentation**  | Link zur integrierten Anwenderdokumentation                                    |
+| **Einstellungen**  | Profil, KI-Modelle, Benutzerverwaltung, Verbindungen und weitere Konfiguration |
+| **Benutzerprofil** | Anzeigename, Rolle und Abmelde-Funktion                                        |
 
 ### Benachrichtigungen
 
@@ -87,7 +87,7 @@ In bestimmten Kontexten wird am rechten Bildschirmrand ein zusätzliches Panel a
 
 ## Design und Darstellung
 
-Der Adacor Workplace nutzt ein dunkles Farbschema mit den folgenden Merkmalen:
+Der KI-Workplace nutzt ein dunkles Farbschema mit den folgenden Merkmalen:
 
 - **Dunkle Seitenleiste** mit heller Schrift für gute Lesbarkeit
 - **Heller Hauptbereich** (im Standard-Modus) für komfortables Arbeiten mit Texten

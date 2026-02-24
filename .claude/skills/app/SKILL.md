@@ -1,10 +1,10 @@
 ---
 name: app
-description: Manage the Adacor Workplace (Backend + Frontend). Start, stop, restart, or check status of dev servers.
+description: Manage the KI-Workplace (Backend + Frontend). Start, stop, restart, or check status of dev servers.
 argument-hint: "[start|stop|restart|status]"
 ---
 
-Manage the Adacor Workplace (Backend + Frontend).
+Manage the KI-Workplace (Backend + Frontend).
 
 ## Usage
 
@@ -18,26 +18,30 @@ Argument: `$ARGUMENTS` (one of: `start`, `stop`, `restart`, `status`)
 ## Actions
 
 ### start
+
 Start both servers in the background.
 
 **Backend:**
+
 ```bash
 cd "$CLAUDE_PROJECT_DIR/backend" && bun run dev &
 ```
 
 **Frontend:**
+
 ```bash
 cd "$CLAUDE_PROJECT_DIR/frontend" && npm run dev &
 ```
 
 Wait 4 seconds, then verify via health endpoints:
+
 - Backend: `curl -s http://localhost:3001/health`
 - Frontend: `curl -s http://localhost:5173/health`
 
 Both should return `{"status":"ok","service":"..."}`.
 
-
 ### stop
+
 Kill all processes on both ports:
 
 ```bash
@@ -48,9 +52,11 @@ lsof -ti:5173 | xargs kill -9 2>/dev/null
 Verify both ports are free afterwards.
 
 ### restart
+
 Run `stop` first, wait 1 second, then run `start`.
 
 ### restart-backend
+
 Restart **only** the backend (keep frontend running):
 
 ```bash
@@ -63,6 +69,7 @@ Wait 4 seconds, verify backend is up via `curl -s http://localhost:3001/health`.
 If frontend is not running on :5173, start it too.
 
 ### status
+
 Check both ports:
 
 ```bash
@@ -73,6 +80,7 @@ lsof -i:5173
 Report which services are running and which are stopped.
 
 ## Notes
+
 - The backend CWD must be `backend/` for paths to resolve correctly
 - Bun lädt `.env` aus dem Root via `--env-file=../.env`
 - After start, briefly check the output for errors (look for "error:" or stack traces)

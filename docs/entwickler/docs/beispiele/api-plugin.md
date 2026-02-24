@@ -18,7 +18,7 @@ type: connector
 name: "Pipedrive"
 description: "Pipedrive CRM — Deals, Kontakte und Aktivitäten"
 version: "1.0.0"
-author: "Adacor Workplace"
+author: "KI-Workplace"
 
 configSchema:
   - key: clientId
@@ -55,14 +55,19 @@ connector:
 ## provider.ts — mit überschriebenem Token Exchange
 
 ```typescript
-import { OAuthProvider, resolveOAuthConfig } from '@platform/sdk';
-import type { TokenSet, ConnectionStatus, ConnectionTool, OAuth2Config } from '@platform/sdk';
+import { OAuthProvider, resolveOAuthConfig } from "@platform/sdk";
+import type {
+  TokenSet,
+  ConnectionStatus,
+  ConnectionTool,
+  OAuth2Config,
+} from "@platform/sdk";
 
 export class PipedriveProvider extends OAuthProvider {
-  readonly id = 'pipedrive';
-  readonly name = 'Pipedrive';
-  readonly description = 'Pipedrive CRM — Deals, Kontakte und Aktivitäten';
-  readonly icon = '💼';
+  readonly id = "pipedrive";
+  readonly name = "Pipedrive";
+  readonly description = "Pipedrive CRM — Deals, Kontakte und Aktivitäten";
+  readonly icon = "💼";
 
   private tools: ConnectionTool[] | null = null;
 
@@ -71,25 +76,28 @@ export class PipedriveProvider extends OAuthProvider {
   }
 
   // ─── Sonderfall: Basic Auth für Token Exchange ──────────
-  override async exchangeCode(code: string, redirectUri: string): Promise<TokenSet> {
+  override async exchangeCode(
+    code: string,
+    redirectUri: string,
+  ): Promise<TokenSet> {
     const config = await this.getOAuthConfig();
 
     const basicAuth = Buffer.from(
-      `${config.clientId}:${config.clientSecret}`
-    ).toString('base64');
+      `${config.clientId}:${config.clientSecret}`,
+    ).toString("base64");
 
     const params = new URLSearchParams({
-      grant_type: 'authorization_code',
+      grant_type: "authorization_code",
       code,
       redirect_uri: redirectUri,
     });
 
     const response = await fetch(config.tokenUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "Content-Type": "application/x-www-form-urlencoded",
         Authorization: `Basic ${basicAuth}`,
-        Accept: 'application/json',
+        Accept: "application/json",
       },
       body: params.toString(),
     });
@@ -114,19 +122,21 @@ export class PipedriveProvider extends OAuthProvider {
     return tokens;
   }
 
-  override async validateConnection(tokens: TokenSet): Promise<ConnectionStatus> {
+  override async validateConnection(
+    tokens: TokenSet,
+  ): Promise<ConnectionStatus> {
     try {
-      const apiDomain = (tokens as any).apiDomain || 'api.pipedrive.com';
+      const apiDomain = (tokens as any).apiDomain || "api.pipedrive.com";
       const response = await this.authenticatedFetch(
         `https://${apiDomain}/v1/users/me`,
-        tokens
+        tokens,
       );
 
       if (!response.ok) {
         throw new Error(`${response.status}`);
       }
 
-      const data = await response.json() as any;
+      const data = (await response.json()) as any;
       const user = data.data;
 
       return this.createConnectedStatus({
@@ -135,7 +145,7 @@ export class PipedriveProvider extends OAuthProvider {
         email: user.email,
       });
     } catch (error: any) {
-      if (error.message?.includes('401') || error.message?.includes('403')) {
+      if (error.message?.includes("401") || error.message?.includes("403")) {
         return this.createExpiredStatus();
       }
       return this.createErrorStatus(error.message);
@@ -159,21 +169,21 @@ export default new PipedriveProvider();
 
 ## Wann muss ich exchangeCode überschreiben?
 
-| Dienst | Standard-Flow? | Grund für Override |
-|--------|---------------|-------------------|
-| Confluence | Ja | — |
-| Google Drive | Ja | — |
-| Pipedrive | Nein | Basic Auth Header statt Body |
-| Slack | Nein | Anderes Token-Format |
+| Dienst       | Standard-Flow? | Grund für Override           |
+| ------------ | -------------- | ---------------------------- |
+| Confluence   | Ja             | —                            |
+| Google Drive | Ja             | —                            |
+| Pipedrive    | Nein           | Basic Auth Header statt Body |
+| Slack        | Nein           | Anderes Token-Format         |
 
 > [!warning] Token Refresh
 > Wenn `exchangeCode()` überschrieben wird, muss in der Regel auch `refreshToken()` analog überschrieben werden, da derselbe Auth-Mechanismus verwendet wird.
 
 ## Fehlerbehebung
 
-| Symptom | Ursache | Lösung |
-|---------|---------|--------|
-| "Token exchange failed: 401" | Basic Auth erwartet aber Body-Params gesendet | `exchangeCode()` überschreiben |
-| "Token exchange failed: 400" | Falsches `grant_type` | Parameter prüfen |
-| `apiDomain` ist undefined | `processTokenResponse()` fehlt | Override hinzufügen |
-| Token-Refresh schlägt fehl | `refreshToken()` nicht überschrieben | Analog zu `exchangeCode()` implementieren |
+| Symptom                      | Ursache                                       | Lösung                                    |
+| ---------------------------- | --------------------------------------------- | ----------------------------------------- |
+| "Token exchange failed: 401" | Basic Auth erwartet aber Body-Params gesendet | `exchangeCode()` überschreiben            |
+| "Token exchange failed: 400" | Falsches `grant_type`                         | Parameter prüfen                          |
+| `apiDomain` ist undefined    | `processTokenResponse()` fehlt                | Override hinzufügen                       |
+| Token-Refresh schlägt fehl   | `refreshToken()` nicht überschrieben          | Analog zu `exchangeCode()` implementieren |

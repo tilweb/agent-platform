@@ -1,6 +1,6 @@
 # Suche
 
-Die Suchfunktion des Adacor Workplace bietet eine zentrale, quellenübergreifende Suche. Mit einer einzigen Anfrage durchsuchen Sie gleichzeitig Ihre Chats, die Knowledge Base und -- sofern verbunden -- auch externe Quellen wie Confluence und Google Drive.
+Die Suchfunktion des KI-Workplace bietet eine zentrale, quellenübergreifende Suche. Mit einer einzigen Anfrage durchsuchen Sie gleichzeitig Ihre Chats, die Knowledge Base und -- sofern verbunden -- auch externe Quellen wie Confluence und Google Drive.
 
 ## So funktioniert die Suche
 
@@ -16,12 +16,12 @@ Die Suchfunktion des Adacor Workplace bietet eine zentrale, quellenübergreifend
 
 Die Suche durchsucht bis zu fünf verschiedene Quellen. Welche Quellen verfügbar sind, hängt von Ihren Verbindungen und Konfigurationen ab.
 
-| Quelle | Immer verfügbar | Beschreibung |
-|---|:---:|---|
-| **Chats** | Ja | Durchsucht Ihren gesamten Chat-Verlauf nach Nachrichten und Themen |
-| **Knowledge Base** | Ja | Durchsucht alle indexierten Dokumente in Ihren Collections |
-| **Confluence** | Nein | Durchsucht Confluence-Seiten (erfordert aktive Confluence-Verbindung) |
-| **Google Drive** | Nein | Durchsucht Google Drive-Dateien (erfordert aktive Google Drive-Verbindung) |
+| Quelle             | Immer verfügbar | Beschreibung                                                               |
+| ------------------ | :-------------: | -------------------------------------------------------------------------- |
+| **Chats**          |       Ja        | Durchsucht Ihren gesamten Chat-Verlauf nach Nachrichten und Themen         |
+| **Knowledge Base** |       Ja        | Durchsucht alle indexierten Dokumente in Ihren Collections                 |
+| **Confluence**     |      Nein       | Durchsucht Confluence-Seiten (erfordert aktive Confluence-Verbindung)      |
+| **Google Drive**   |      Nein       | Durchsucht Google Drive-Dateien (erfordert aktive Google Drive-Verbindung) |
 
 > [!tip] Externe Quellen verbinden
 > Confluence und Google Drive können unter **Einstellungen > Verbindungen** eingerichtet werden. Nach erfolgreicher Verbindung stehen diese Quellen automatisch in der Suche zur Verfügung.
@@ -50,7 +50,7 @@ Ergebnisse, die durch die intelligente Suche (KI-gestütztes Ranking) gefunden w
 
 ## Intelligente Suche
 
-Neben der schnellen Stichwortsuche verfügt der Adacor Workplace über eine **intelligente Suche**. Diese nutzt ein KI-Modell, um:
+Neben der schnellen Stichwortsuche verfügt der KI-Workplace über eine **intelligente Suche**. Diese nutzt ein KI-Modell, um:
 
 - **Synonyme** zu erkennen (z.B. "Urlaub" findet auch "Abwesenheit")
 - **Kontext** zu verstehen (z.B. "Wie beantrage ich frei?" findet Urlaubsrichtlinien)
@@ -84,6 +84,7 @@ Neben dem Chat-Start können Sie ausgewählte Ergebnisse auch:
 ## Tipps für effektive Suche
 
 > [!tip] Suchtipps
+>
 > - **Spezifisch suchen**: Je genauer Ihr Suchbegriff, desto relevanter die Ergebnisse
 > - **Verschiedene Begriffe ausprobieren**: Nutzen Sie Synonyme oder verwandte Begriffe
 > - **Intelligente Suche nutzen**: Für komplexere Anfragen ist die KI-gestützte Suche besonders hilfreich

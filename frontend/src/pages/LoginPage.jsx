@@ -190,7 +190,7 @@ export default function LoginPage() {
           <div style={styles.logoIcon}>
             <LogoIcon />
           </div>
-          <span style={styles.logoText}>Adacor Workplace</span>
+          <span style={styles.logoText}>KI-Workplace</span>
         </div>
 
         {initialized === false && (

@@ -9,10 +9,10 @@ Verbindungen ermöglichen die Anbindung externer Dienste über OAuth-Integration
 
 ## Verfügbare Integrationen
 
-| Dienst | Beschreibung |
-|--------|-------------|
-| **Confluence** | Zugriff auf Confluence-Seiten und -Räume für die Wissenssuche |
-| **Google Drive** | Zugriff auf Dokumente und Dateien in Google Drive |
+| Dienst           | Beschreibung                                                  |
+| ---------------- | ------------------------------------------------------------- |
+| **Confluence**   | Zugriff auf Confluence-Seiten und -Räume für die Wissenssuche |
+| **Google Drive** | Zugriff auf Dokumente und Dateien in Google Drive             |
 
 ---
 
@@ -27,7 +27,7 @@ Die Anbindung externer Dienste erfolgt über den standardisierten OAuth-2.0-Abla
 5. Der Verbindungsstatus aktualisiert sich in der Übersicht.
 
 > [!info] Popup-Blocker
-> Stellen Sie sicher, dass Ihr Browser Popups für den Adacor Workplace zulässt. Der OAuth-Ablauf öffnet ein separates Fenster für die Authentifizierung beim externen Dienst.
+> Stellen Sie sicher, dass Ihr Browser Popups für den KI-Workplace zulässt. Der OAuth-Ablauf öffnet ein separates Fenster für die Authentifizierung beim externen Dienst.
 
 ---
 
@@ -35,11 +35,11 @@ Die Anbindung externer Dienste erfolgt über den standardisierten OAuth-2.0-Abla
 
 Der Status jeder Verbindung wird in der Übersicht angezeigt:
 
-| Status | Bedeutung |
-|--------|-----------|
-| **Verbunden** | Die Verbindung ist aktiv und funktionsfähig |
-| **Nicht verbunden** | Noch keine Verbindung hergestellt |
-| **Fehler** | Die Verbindung besteht, aber es gibt ein Problem (z.B. abgelaufene Tokens) |
+| Status              | Bedeutung                                                                  |
+| ------------------- | -------------------------------------------------------------------------- |
+| **Verbunden**       | Die Verbindung ist aktiv und funktionsfähig                                |
+| **Nicht verbunden** | Noch keine Verbindung hergestellt                                          |
+| **Fehler**          | Die Verbindung besteht, aber es gibt ein Problem (z.B. abgelaufene Tokens) |
 
 ---
 

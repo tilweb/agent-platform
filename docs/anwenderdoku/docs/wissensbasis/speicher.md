@@ -1,6 +1,6 @@
 # Benutzer-Speicher (Memory)
 
-Der Benutzer-Speicher ist das persönliche Gedächtnis des Adacor Workplace. Er ermöglicht es, Informationen über Sie, Ihre Präferenzen und Ihren aktuellen Arbeitskontext dauerhaft zu speichern. Diese Informationen werden automatisch in jeden Chat mit einem KI-Agenten einbezogen, sodass der Agent Sie besser unterstützen kann -- ohne dass Sie sich jedes Mal wiederholen müssen.
+Der Benutzer-Speicher ist das persönliche Gedächtnis des KI-Workplace. Er ermöglicht es, Informationen über Sie, Ihre Präferenzen und Ihren aktuellen Arbeitskontext dauerhaft zu speichern. Diese Informationen werden automatisch in jeden Chat mit einem KI-Agenten einbezogen, sodass der Agent Sie besser unterstützen kann -- ohne dass Sie sich jedes Mal wiederholen müssen.
 
 ## Die drei Speicherbereiche
 
@@ -19,6 +19,7 @@ In diesem Bereich speichern Sie persönliche Informationen, Ihren Hintergrund un
 - Bevorzugte Sprache
 
 > [!example] Beispiele
+>
 > - "Ich bin Projektleiter in der IT-Abteilung"
 > - "Mein Fachgebiet ist Cloud-Infrastruktur und DevOps"
 > - "Ich arbeite seit 5 Jahren im Unternehmen"
@@ -30,10 +31,10 @@ Hier hinterlegen Sie Regeln, Präferenzen und Richtlinien, an die sich der Agent
 
 **Prioritätsstufen:**
 
-| Priorität | Bedeutung | Kennzeichnung im Prompt |
-|---|---|---|
-| **Hoch (HIGH)** | Kritische Regel, die immer eingehalten werden muss | `[WICHTIG]` |
-| **Normal** | Standardmäßige Präferenz | Ohne besondere Kennzeichnung |
+| Priorität       | Bedeutung                                          | Kennzeichnung im Prompt      |
+| --------------- | -------------------------------------------------- | ---------------------------- |
+| **Hoch (HIGH)** | Kritische Regel, die immer eingehalten werden muss | `[WICHTIG]`                  |
+| **Normal**      | Standardmäßige Präferenz                           | Ohne besondere Kennzeichnung |
 
 **Typische Einträge:**
 
@@ -43,6 +44,7 @@ Hier hinterlegen Sie Regeln, Präferenzen und Richtlinien, an die sich der Agent
 - Einschränkungen (z.B. "Generiere keine Code-Beispiele in Python, nur TypeScript")
 
 > [!example] Beispiele
+>
 > - **[HOCH]** "Antworte immer auf Deutsch, auch wenn die Frage auf Englisch gestellt wird"
 > - **[NORMAL]** "Bevorzuge kurze, prägnante Antworten"
 > - **[HOCH]** "Verwende bei technischen Erklärungen immer Beispiele"
@@ -68,6 +70,7 @@ Jeder Kontexteintrag hat:
 - Relevante technische Rahmenbedingungen
 
 > [!example] Beispiele
+>
 > - **[Aktiv]** "Projekt: Cloud-Migration -- Wir migrieren die On-Premise-Infrastruktur zu AWS. Aktueller Fokus: Datenbankschicht"
 > - **[Inaktiv]** "Projekt: Website-Relaunch -- Neugestaltung der Unternehmenswebsite mit React. Abgeschlossen."
 > - **[Aktiv]** "Sprint 23 -- Fokus auf Performance-Optimierung der API-Endpunkte"
@@ -111,10 +114,10 @@ Nutzen Sie den Schalter neben einem Kontexteintrag, um ihn zu aktivieren oder zu
 
 Einträge im Speicher können aus zwei Quellen stammen:
 
-| Quelle | Beschreibung |
-|---|---|
-| **Manuell** | Vom Benutzer selbst über die Oberfläche erstellt |
-| **Agent** | Vom KI-Agenten während eines Chats automatisch hinzugefügt |
+| Quelle      | Beschreibung                                               |
+| ----------- | ---------------------------------------------------------- |
+| **Manuell** | Vom Benutzer selbst über die Oberfläche erstellt           |
+| **Agent**   | Vom KI-Agenten während eines Chats automatisch hinzugefügt |
 
 Agenten können während eines Gesprächs relevante Informationen erkennen und vorschlagen, diese in Ihrem Speicher abzulegen.
 

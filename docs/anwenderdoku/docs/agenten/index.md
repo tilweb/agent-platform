@@ -2,7 +2,7 @@
 
 ## Was sind Agenten?
 
-Agenten sind spezialisierte KI-Assistenten innerhalb des Adacor Workplace. Jeder Agent verfügt über eine eigene Identität, die durch drei Kernelemente definiert wird:
+Agenten sind spezialisierte KI-Assistenten innerhalb des KI-Workplace. Jeder Agent verfügt über eine eigene Identität, die durch drei Kernelemente definiert wird:
 
 - **System-Prompt** -- die Persönlichkeit und Arbeitsanweisungen des Agenten
 - **Tools** -- die Werkzeuge, auf die der Agent zugreifen darf (z.B. Websuche, Dateizugriff, Bildgenerierung)
@@ -14,17 +14,17 @@ Ein Agent ist also ein konfigurierter Spezialist, der für bestimmte Aufgabentyp
 
 Die Abgrenzung zwischen Agenten und Skills lässt sich mit einer einfachen Formel zusammenfassen:
 
-| Konzept | Bedeutung | Beschreibung |
-|---------|-----------|--------------|
-| **Agent** | **WER** -- Identität & Werkzeuge | Der Spezialist, der die Aufgabe ausführt. Hat eigene Persönlichkeit, Fähigkeiten und Zugriff auf bestimmte Tools. |
-| **Skill** | **WIE** -- Methodik & Arbeitsablauf | Die Vorgehensweise, die ein Agent anwendet. Definiert Schritte, Trigger-Wörter und Ausgabeformate. |
+| Konzept   | Bedeutung                           | Beschreibung                                                                                                      |
+| --------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Agent** | **WER** -- Identität & Werkzeuge    | Der Spezialist, der die Aufgabe ausführt. Hat eigene Persönlichkeit, Fähigkeiten und Zugriff auf bestimmte Tools. |
+| **Skill** | **WIE** -- Methodik & Arbeitsablauf | Die Vorgehensweise, die ein Agent anwendet. Definiert Schritte, Trigger-Wörter und Ausgabeformate.                |
 
 > [!example] Beispiel
 > Der **Researcher-Agent** (WER) kann den **Deep-Research-Skill** (WIE) anwenden. Der Agent bringt die Fähigkeit zur Websuche mit, der Skill definiert den strukturierten Ablauf einer Tiefenrecherche mit Planung, Recherche, Synthese und Dokumentation.
 
 ## System-Agenten vs. eigene Agenten
 
-Der Adacor Workplace unterscheidet zwischen zwei Arten von Agenten:
+Der KI-Workplace unterscheidet zwischen zwei Arten von Agenten:
 
 ### System-Agenten
 
@@ -40,7 +40,7 @@ Mehr dazu unter [Eigene Agenten erstellen](eigene-agenten.md).
 
 ## Agent-Delegation
 
-Ein zentrales Konzept des Adacor Workplace ist die **Delegation zwischen Agenten**. Ein Agent kann Teilaufgaben an andere Agenten übergeben, wenn diese besser dafür geeignet sind. So entsteht eine Zusammenarbeit zwischen Spezialisten:
+Ein zentrales Konzept des KI-Workplace ist die **Delegation zwischen Agenten**. Ein Agent kann Teilaufgaben an andere Agenten übergeben, wenn diese besser dafür geeignet sind. So entsteht eine Zusammenarbeit zwischen Spezialisten:
 
 ```
 Benutzer: "Recherchiere zum EU AI Act und schreibe eine Zusammenfassung als E-Mail."

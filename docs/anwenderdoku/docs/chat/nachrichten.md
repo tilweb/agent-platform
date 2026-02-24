@@ -1,6 +1,6 @@
 # Nachrichten & Konversationen
 
-Der Chat ist der zentrale Arbeitsbereich im Adacor Workplace. Hier kommunizieren Sie mit KI-Agenten, stellen Fragen, lassen Texte erstellen und lösen komplexe Aufgaben.
+Der Chat ist der zentrale Arbeitsbereich im KI-Workplace. Hier kommunizieren Sie mit KI-Agenten, stellen Fragen, lassen Texte erstellen und lösen komplexe Aufgaben.
 
 ---
 
@@ -60,13 +60,13 @@ Sie können:
 
 ## Streaming-Antworten
 
-Der Adacor Workplace zeigt die Antworten der KI in Echtzeit an (Streaming). Während der Agent arbeitet, sehen Sie verschiedene Status-Indikatoren:
+Der KI-Workplace zeigt die Antworten der KI in Echtzeit an (Streaming). Während der Agent arbeitet, sehen Sie verschiedene Status-Indikatoren:
 
-| Status | Beschreibung |
-|--------|-------------|
-| **Denkt...** | Der Agent verarbeitet Ihre Anfrage und formuliert eine Antwort |
+| Status           | Beschreibung                                                                                                         |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Denkt...**     | Der Agent verarbeitet Ihre Anfrage und formuliert eine Antwort                                                       |
 | **Tool-Nutzung** | Der Agent verwendet ein Werkzeug (z. B. Websuche, Dateianalyse, Wissensabfrage) -- der Name des Tools wird angezeigt |
-| **Delegation** | Der Agent leitet die Aufgabe an einen spezialisierten Agenten weiter |
+| **Delegation**   | Der Agent leitet die Aufgabe an einen spezialisierten Agenten weiter                                                 |
 
 > [!info] Abbrechen
 > Sie können eine laufende Antwort jederzeit abbrechen, indem Sie auf den **Stopp-Button** klicken, der während des Streamings angezeigt wird.
@@ -114,17 +114,17 @@ Sie können eine Konversation über einen öffentlichen Link teilen:
 
 Tippen Sie `/` in das Eingabefeld, um eine Liste aller verfügbaren Befehle zu öffnen. Die wichtigsten Commands sind:
 
-| Command | Beschreibung |
-|---------|-------------|
-| `/agent` | Agent wechseln -- wählen Sie aus der Liste oder aktivieren Sie Auto-Routing |
-| `/skill` | Skill starten -- wählen Sie einen Skill und geben Sie die nötigen Eingaben an |
-| `/model` | KI-Modell für diesen Chat wechseln |
-| `/task` | Hintergrund-Task starten -- beschreiben Sie die Aufgabe, die im Hintergrund ausgeführt werden soll |
-| `/table` | Tabellen anzeigen oder durchsuchen |
-| `/image` | Bild generieren -- geben Sie eine Beschreibung ein |
-| `/new` | Neue Konversation starten |
-| `/clear` | Aktuellen Chat leeren |
-| `/help` | Hilfe anzeigen |
+| Command  | Beschreibung                                                                                       |
+| -------- | -------------------------------------------------------------------------------------------------- |
+| `/agent` | Agent wechseln -- wählen Sie aus der Liste oder aktivieren Sie Auto-Routing                        |
+| `/skill` | Skill starten -- wählen Sie einen Skill und geben Sie die nötigen Eingaben an                      |
+| `/model` | KI-Modell für diesen Chat wechseln                                                                 |
+| `/task`  | Hintergrund-Task starten -- beschreiben Sie die Aufgabe, die im Hintergrund ausgeführt werden soll |
+| `/table` | Tabellen anzeigen oder durchsuchen                                                                 |
+| `/image` | Bild generieren -- geben Sie eine Beschreibung ein                                                 |
+| `/new`   | Neue Konversation starten                                                                          |
+| `/clear` | Aktuellen Chat leeren                                                                              |
+| `/help`  | Hilfe anzeigen                                                                                     |
 
 > [!tip] Tipp: Schnellauswahl
 > Nach Eingabe eines Commands (z. B. `/agent`) wird eine Auswahlliste angezeigt. Sie können die Liste mit den Pfeiltasten durchnavigieren und mit `Enter` bestätigen.

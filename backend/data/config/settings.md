@@ -7,7 +7,7 @@ version: 1.0
 
 ## General
 
-- **Platform Name:** Adacor Workplace
+- **Platform Name:** KI-Workplace
 - **Version:** 1.0.0
 - **Environment:** Development
 

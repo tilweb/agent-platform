@@ -1,6 +1,6 @@
 # MCP Server
 
-Das Model Context Protocol (MCP) ist ein offener Standard, mit dem KI-Modelle auf externe Tools und Datenquellen zugreifen können. Der Adacor Workplace unterstützt MCP sowohl als Client (externe MCP-Server einbinden) als auch als Server (den Adacor Workplace selbst als MCP-Server bereitstellen).
+Das Model Context Protocol (MCP) ist ein offener Standard, mit dem KI-Modelle auf externe Tools und Datenquellen zugreifen können. Der KI-Workplace unterstützt MCP sowohl als Client (externe MCP-Server einbinden) als auch als Server (den KI-Workplace selbst als MCP-Server bereitstellen).
 
 ---
 
@@ -26,13 +26,13 @@ Die MCP-Server-Seite zeigt Statistiken:
 
 Für gängige MCP-Server stehen vorkonfigurierte Vorlagen bereit:
 
-| Server | Beschreibung |
-|--------|-------------|
-| **GitHub** | Zugriff auf GitHub-Repositories, Issues, Pull Requests |
-| **Filesystem** | Dateisystem-Zugriff mit konfigurierbaren Verzeichnissen |
-| **SQLite** | SQLite-Datenbank-Abfragen |
-| **Brave Search** | Websuche über Brave Search |
-| **Puppeteer** | Browser-Automatisierung und Web-Scraping |
+| Server           | Beschreibung                                            |
+| ---------------- | ------------------------------------------------------- |
+| **GitHub**       | Zugriff auf GitHub-Repositories, Issues, Pull Requests  |
+| **Filesystem**   | Dateisystem-Zugriff mit konfigurierbaren Verzeichnissen |
+| **SQLite**       | SQLite-Datenbank-Abfragen                               |
+| **Brave Search** | Websuche über Brave Search                              |
+| **Puppeteer**    | Browser-Automatisierung und Web-Scraping                |
 
 Klicken Sie auf eine Vorlage, um die Grundkonfiguration zu übernehmen, und passen Sie die Einstellungen an.
 
@@ -40,15 +40,15 @@ Klicken Sie auf eine Vorlage, um die Grundkonfiguration zu übernehmen, und pass
 
 Klicken Sie auf **Server hinzufügen** und füllen Sie die Felder aus:
 
-| Feld | Beschreibung |
-|------|-------------|
-| **ID** | Eindeutiger Bezeichner |
-| **Name** | Anzeigename |
-| **Command** | Startbefehl (z. B. `npx`) |
-| **Argumente** | Kommandozeilen-Argumente als Liste |
+| Feld                   | Beschreibung                                               |
+| ---------------------- | ---------------------------------------------------------- |
+| **ID**                 | Eindeutiger Bezeichner                                     |
+| **Name**               | Anzeigename                                                |
+| **Command**            | Startbefehl (z. B. `npx`)                                  |
+| **Argumente**          | Kommandozeilen-Argumente als Liste                         |
 | **Umgebungsvariablen** | API-Keys und Konfiguration, unterstützt `${}`-Substitution |
-| **Aktiviert** | Server ein-/ausschalten |
-| **AutoConnect** | Automatisch beim Start verbinden |
+| **Aktiviert**          | Server ein-/ausschalten                                    |
+| **AutoConnect**        | Automatisch beim Start verbinden                           |
 
 ### Verbindung verwalten
 
@@ -61,9 +61,9 @@ Klicken Sie auf **Server hinzufügen** und füllen Sie die Felder aus:
 
 ---
 
-## Adacor Workplace als MCP-Server
+## KI-Workplace als MCP-Server
 
-Der Adacor Workplace kann selbst als MCP-Server betrieben werden, um seine Funktionen in anderen Tools (z. B. Claude Desktop, Cursor) bereitzustellen.
+Der KI-Workplace kann selbst als MCP-Server betrieben werden, um seine Funktionen in anderen Tools (z. B. Claude Desktop, Cursor) bereitzustellen.
 
 ### Einrichtung
 

@@ -1,17 +1,17 @@
 # System-Agenten
 
-Der Adacor Workplace wird mit einer Reihe vorkonfigurierter System-Agenten ausgeliefert. Diese decken die wichtigsten Anwendungsfälle ab und können nicht bearbeitet oder gelöscht werden. Jeder System-Agent ist auf einen bestimmten Aufgabenbereich spezialisiert.
+Der KI-Workplace wird mit einer Reihe vorkonfigurierter System-Agenten ausgeliefert. Diese decken die wichtigsten Anwendungsfälle ab und können nicht bearbeitet oder gelöscht werden. Jeder System-Agent ist auf einen bestimmten Aufgabenbereich spezialisiert.
 
 ---
 
 ## Supervisor
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `supervisor` |
-| **Delegierbar** | Nein |
-| **Max. Iterationen** | 15 |
-| **Tools** | `delegate_to_agent`, `user_memory`, `create_task` |
+| Eigenschaft          | Wert                                              |
+| -------------------- | ------------------------------------------------- |
+| **ID**               | `supervisor`                                      |
+| **Delegierbar**      | Nein                                              |
+| **Max. Iterationen** | 15                                                |
+| **Tools**            | `delegate_to_agent`, `user_memory`, `create_task` |
 
 Der Supervisor ist der zentrale Orchestrator der Plattform. Er empfängt alle Benutzeranfragen, wenn kein bestimmter Agent ausgewählt wurde, und entscheidet eigenständig, wie sie am besten bearbeitet werden.
 
@@ -42,11 +42,11 @@ Der Supervisor ist der zentrale Orchestrator der Plattform. Er empfängt alle Be
 
 ## Knowledge Orchestrator
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `knowledge` |
-| **Delegierbar** | Ja |
-| **Tools** | `kb_search`, `delegate_to_agent` |
+| Eigenschaft     | Wert                             |
+| --------------- | -------------------------------- |
+| **ID**          | `knowledge`                      |
+| **Delegierbar** | Ja                               |
+| **Tools**       | `kb_search`, `delegate_to_agent` |
 
 Der Knowledge Orchestrator ist Ihr Zugang zur internen Wissensdatenbank. Er durchsucht Collections, analysiert Manifest-Daten und delegiert bei Bedarf an den KB Reader für die detaillierte Dokumentenanalyse.
 
@@ -58,6 +58,7 @@ Der Knowledge Orchestrator ist Ihr Zugang zur internen Wissensdatenbank. Er durc
 4. **Synthese** -- Fügt die Ergebnisse zu einer kohärenten Antwort zusammen und ergänzt Quellenangaben
 
 > [!example] Typische Anfragen
+>
 > - "Was steht in unserer SLA-Vereinbarung zum Thema Reaktionszeiten?"
 > - "Welche Dokumente gibt es zum Thema Datenschutz?"
 > - "Laut unserer Richtlinie -- wie ist das Vorgehen bei einem Sicherheitsvorfall?"
@@ -66,11 +67,11 @@ Der Knowledge Orchestrator ist Ihr Zugang zur internen Wissensdatenbank. Er durc
 
 ## Researcher (Deep Researcher)
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `researcher` |
-| **Delegierbar** | Ja |
-| **Tools** | `web_search`, `file_read`, `file_write`, `file_list` |
+| Eigenschaft     | Wert                                                 |
+| --------------- | ---------------------------------------------------- |
+| **ID**          | `researcher`                                         |
+| **Delegierbar** | Ja                                                   |
+| **Tools**       | `web_search`, `file_read`, `file_write`, `file_list` |
 
 Der Researcher führt strukturierte Web-Recherchen durch und liefert Ergebnisse mit Quellenangaben. Er unterscheidet zwischen einfachen Faktenfragen (direkte Recherche) und komplexen Themen (geplante Recherche mit mehreren Phasen).
 
@@ -93,11 +94,11 @@ Bei widersprüchlichen Informationen werden beide Positionen dokumentiert. Wisse
 
 ## Code Analyzer
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `code-analyzer` |
-| **Delegierbar** | Ja |
-| **Tools** | `file_read`, `file_write`, `file_list` |
+| Eigenschaft     | Wert                                   |
+| --------------- | -------------------------------------- |
+| **ID**          | `code-analyzer`                        |
+| **Delegierbar** | Ja                                     |
+| **Tools**       | `file_read`, `file_write`, `file_list` |
 
 Der Code Analyzer ist auf die Analyse und Bewertung von Quellcode spezialisiert. Er unterstützt TypeScript, JavaScript, Python und Go.
 
@@ -115,11 +116,11 @@ Der Code Analyzer ist auf die Analyse und Bewertung von Quellcode spezialisiert.
 
 ## Writer (Schreib-Assistent)
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `writer` |
-| **Delegierbar** | Ja |
-| **Tools** | `file_read`, `file_write`, `delegate_to_agent`, `export_document` |
+| Eigenschaft     | Wert                                                              |
+| --------------- | ----------------------------------------------------------------- |
+| **ID**          | `writer`                                                          |
+| **Delegierbar** | Ja                                                                |
+| **Tools**       | `file_read`, `file_write`, `delegate_to_agent`, `export_document` |
 
 Der Writer erstellt Texte aller Art -- von E-Mails über Berichte bis hin zu kreativen Texten. Er kann Dokumente in verschiedenen Formaten exportieren.
 
@@ -142,11 +143,11 @@ Der Writer erstellt Texte aller Art -- von E-Mails über Berichte bis hin zu kre
 
 ## Chat Document Reader (Chat-Dokument-Leser)
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `chat-document-reader` |
-| **Delegierbar** | Ja |
-| **Tools** | `read_chat_attachment` |
+| Eigenschaft     | Wert                   |
+| --------------- | ---------------------- |
+| **ID**          | `chat-document-reader` |
+| **Delegierbar** | Ja                     |
+| **Tools**       | `read_chat_attachment` |
 
 Der Chat Document Reader analysiert Dokumente, die Sie direkt im Chat hochgeladen haben. Er liest den Inhalt, beantwortet Fragen dazu und zitiert relevante Passagen.
 
@@ -168,11 +169,11 @@ Der Chat Document Reader liefert strukturierte Antworten mit Statusangabe (FOUND
 
 ## Vision Analyzer (Bild-Analyst)
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `vision-analyzer` |
-| **Delegierbar** | Ja |
-| **Tools** | `read_chat_attachment` |
+| Eigenschaft     | Wert                   |
+| --------------- | ---------------------- |
+| **ID**          | `vision-analyzer`      |
+| **Delegierbar** | Ja                     |
+| **Tools**       | `read_chat_attachment` |
 
 Der Vision Analyzer analysiert Bilder, die Sie im Chat hochgeladen haben. Er erkennt Objekte, liest Text (OCR), interpretiert Diagramme und analysiert Screenshots.
 
@@ -190,11 +191,11 @@ Der Vision Analyzer analysiert Bilder, die Sie im Chat hochgeladen haben. Er erk
 
 ## Image Generator (Bild-Generator)
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `image-generator` |
-| **Delegierbar** | Ja |
-| **Tools** | `generate_image`, `edit_image` |
+| Eigenschaft     | Wert                           |
+| --------------- | ------------------------------ |
+| **ID**          | `image-generator`              |
+| **Delegierbar** | Ja                             |
+| **Tools**       | `generate_image`, `edit_image` |
 
 Der Image Generator erstellt neue Bilder aus Textbeschreibungen (Text-zu-Bild) und kann hochgeladene Bilder transformieren (Bild-zu-Bild).
 
@@ -204,19 +205,20 @@ Erstellt neue Bilder basierend auf Ihrer Beschreibung. Der Agent optimiert Ihren
 
 **Verfügbare Seitenverhältnisse:**
 
-| Verhältnis | Einsatzgebiet |
-|-------------|---------------|
-| **1:1** | Portraits, Icons, Social Media Posts |
-| **16:9** | Landschaften, Szenen, Desktop-Hintergründe |
-| **9:16** | Smartphone-Hintergründe, Stories |
-| **4:3** | Klassische Fotos |
-| **3:4** | Portrait-Fotos |
+| Verhältnis | Einsatzgebiet                              |
+| ---------- | ------------------------------------------ |
+| **1:1**    | Portraits, Icons, Social Media Posts       |
+| **16:9**   | Landschaften, Szenen, Desktop-Hintergründe |
+| **9:16**   | Smartphone-Hintergründe, Stories           |
+| **4:3**    | Klassische Fotos                           |
+| **3:4**    | Portrait-Fotos                             |
 
 **Bild-zu-Bild:**
 
 Transformiert ein hochgeladenes Bild nach Ihren Anweisungen -- z.B. Stil ändern (Foto zu Comic), Szene ändern (Winter zu Sommer) oder Elemente hinzufügen bzw. entfernen.
 
 > [!example] Beispiele
+>
 > - "Erstelle ein fotorealistisches Bild einer Winterlandschaft mit schneebedeckten Bergen."
 > - "Wandle das hochgeladene Foto in einen Aquarell-Stil um."
 > - "Generiere ein 16:9-Banner für einen Newsletter zum Thema Nachhaltigkeit."
@@ -225,11 +227,11 @@ Transformiert ein hochgeladenes Bild nach Ihren Anweisungen -- z.B. Stil ändern
 
 ## Document Indexer (Dokument-Indexer)
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `kb-indexer` |
-| **Delegierbar** | Ja |
-| **Tools** | `kb_index`, `kb_search`, `kb_manage`, `file_read`, `file_write` |
+| Eigenschaft     | Wert                                                            |
+| --------------- | --------------------------------------------------------------- |
+| **ID**          | `kb-indexer`                                                    |
+| **Delegierbar** | Ja                                                              |
+| **Tools**       | `kb_index`, `kb_search`, `kb_manage`, `file_read`, `file_write` |
 
 Der Document Indexer nimmt neue Dokumente in die Knowledge Base auf. Er prüft oder erstellt Collections, indiziert Dokumente und generiert automatisch Metadaten.
 
@@ -254,11 +256,11 @@ Der Document Indexer nimmt neue Dokumente in die Knowledge Base auf. Er prüft o
 
 ## KB Reader (Dokument-Reader)
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `kb-reader` |
-| **Delegierbar** | Ja |
-| **Tools** | `kb_search` |
+| Eigenschaft     | Wert        |
+| --------------- | ----------- |
+| **ID**          | `kb-reader` |
+| **Delegierbar** | Ja          |
+| **Tools**       | `kb_search` |
 
 Der KB Reader liest und analysiert einzelne Dokumente aus der Knowledge Base. Er wird in der Regel vom Knowledge Orchestrator aufgerufen, um konkrete Inhaltsfragen zu beantworten.
 

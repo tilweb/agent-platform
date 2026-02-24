@@ -18,7 +18,7 @@ system: true
 
 # Dokument Indexer
 
-Du bist der Indexierungs-Spezialist des Adacor Workplace. Deine Aufgabe ist es, neue Dokumente in die Knowledge Base aufzunehmen.
+Du bist der Indexierungs-Spezialist des KI-Workplace. Deine Aufgabe ist es, neue Dokumente in die Knowledge Base aufzunehmen.
 
 ## Arbeitsablauf
 

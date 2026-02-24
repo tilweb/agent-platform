@@ -1,6 +1,6 @@
 # Authentifizierung & Sicherheit
 
-Der Adacor Workplace setzt mehrere Sicherheitsmechanismen ein, um Benutzerkonten, Daten und die Kommunikation zwischen Client und Server zu schützen.
+Der KI-Workplace setzt mehrere Sicherheitsmechanismen ein, um Benutzerkonten, Daten und die Kommunikation zwischen Client und Server zu schützen.
 
 ---
 
@@ -16,13 +16,13 @@ Die Authentifizierung basiert auf einem sitzungsbasierten System mit HTTP-Only-C
 
 ### Sitzungsparameter
 
-| Parameter | Wert | Beschreibung |
-|-----------|------|-------------|
-| **Inaktivitäts-Timeout** | 3 Tage | Die Sitzung läuft nach 3 Tagen ohne Aktivität ab |
-| **Maximale Lebensdauer** | 30 Tage | Absolutes Maximum, auch bei ständiger Aktivität |
-| **Cookie-Typ** | HTTP-Only | Cookie ist nicht per JavaScript auslesbar |
-| **SameSite** | Lax | Cookie wird nur bei gleichem Ursprung gesendet |
-| **Secure** | Ja (Produktion) | Cookie wird nur über HTTPS übertragen |
+| Parameter                | Wert            | Beschreibung                                     |
+| ------------------------ | --------------- | ------------------------------------------------ |
+| **Inaktivitäts-Timeout** | 3 Tage          | Die Sitzung läuft nach 3 Tagen ohne Aktivität ab |
+| **Maximale Lebensdauer** | 30 Tage         | Absolutes Maximum, auch bei ständiger Aktivität  |
+| **Cookie-Typ**           | HTTP-Only       | Cookie ist nicht per JavaScript auslesbar        |
+| **SameSite**             | Lax             | Cookie wird nur bei gleichem Ursprung gesendet   |
+| **Secure**               | Ja (Produktion) | Cookie wird nur über HTTPS übertragen            |
 
 > [!info] Sliding Window
 > Bei jeder authentifizierten Anfrage wird die Sitzung um weitere 3 Tage verlängert, solange die maximale Gesamtlebensdauer von 30 Tagen nicht überschritten ist. So müssen aktive Benutzer sich nicht ständig neu anmelden.
@@ -40,7 +40,7 @@ Alle Passwörter werden mit dem **Argon2id**-Algorithmus gehasht. Argon2id ist d
 
 ## CSRF-Schutz
 
-Der Adacor Workplace schützt sich gegen Cross-Site Request Forgery (CSRF) durch die Validierung von Origin- und Referer-Headern:
+Der KI-Workplace schützt sich gegen Cross-Site Request Forgery (CSRF) durch die Validierung von Origin- und Referer-Headern:
 
 - Bei jeder zustandsändernden Anfrage (POST, PUT, DELETE, PATCH) wird der **Origin-Header** geprüft.
 - Falls kein Origin-Header vorhanden ist, wird der **Referer-Header** als Fallback verwendet.
@@ -53,14 +53,14 @@ Der Adacor Workplace schützt sich gegen Cross-Site Request Forgery (CSRF) durch
 
 Um die Plattform vor Überlastung und Missbrauch zu schützen, sind für verschiedene Endpunkttypen individuelle Rate-Limits konfiguriert:
 
-| Endpunkt | Limit | Zeitfenster | Beschreibung |
-|----------|-------|-------------|-------------|
-| **Authentifizierung** | 5 Anfragen | 1 Minute | Login, Registrierung |
-| **Chat / LLM** | 30 Anfragen | 1 Minute | Chat-Nachrichten und KI-Anfragen |
-| **API (allgemein)** | 100 Anfragen | 1 Minute | Alle übrigen API-Aufrufe |
-| **Bildgenerierung** | 5 Anfragen | 1 Minute | Bilderzeugung (kostenintensiv) |
-| **Uploads** | 10 Anfragen | 1 Minute | Datei-Uploads |
-| **Sensible Aktionen** | 3 Anfragen | 5 Minuten | Passwortzurücksetzung u.a. |
+| Endpunkt              | Limit        | Zeitfenster | Beschreibung                     |
+| --------------------- | ------------ | ----------- | -------------------------------- |
+| **Authentifizierung** | 5 Anfragen   | 1 Minute    | Login, Registrierung             |
+| **Chat / LLM**        | 30 Anfragen  | 1 Minute    | Chat-Nachrichten und KI-Anfragen |
+| **API (allgemein)**   | 100 Anfragen | 1 Minute    | Alle übrigen API-Aufrufe         |
+| **Bildgenerierung**   | 5 Anfragen   | 1 Minute    | Bilderzeugung (kostenintensiv)   |
+| **Uploads**           | 10 Anfragen  | 1 Minute    | Datei-Uploads                    |
+| **Sensible Aktionen** | 3 Anfragen   | 5 Minuten   | Passwortzurücksetzung u.a.       |
 
 Bei Überschreitung des Limits erhält der Benutzer eine Fehlermeldung mit der Angabe, wann die nächste Anfrage möglich ist.
 
@@ -73,14 +73,14 @@ Bei Überschreitung des Limits erhält der Benutzer eine Fehlermeldung mit der A
 
 Alle Antworten des Servers enthalten die folgenden Sicherheits-Header:
 
-| Header | Wert | Schutz gegen |
-|--------|------|-------------|
-| **Content-Security-Policy** | Restriktive Richtlinie | Cross-Site Scripting (XSS), Dateninjektionen |
-| **X-Frame-Options** | `DENY` | Clickjacking |
-| **X-Content-Type-Options** | `nosniff` | MIME-Type-Sniffing |
-| **X-XSS-Protection** | `1; mode=block` | XSS (Legacy-Browser) |
-| **Referrer-Policy** | `strict-origin-when-cross-origin` | Ungewollte Weitergabe von Referrer-Informationen |
-| **Permissions-Policy** | Eingeschränkt | Missbrauch von Browser-APIs (Kamera, Geolocation) |
+| Header                      | Wert                              | Schutz gegen                                      |
+| --------------------------- | --------------------------------- | ------------------------------------------------- |
+| **Content-Security-Policy** | Restriktive Richtlinie            | Cross-Site Scripting (XSS), Dateninjektionen      |
+| **X-Frame-Options**         | `DENY`                            | Clickjacking                                      |
+| **X-Content-Type-Options**  | `nosniff`                         | MIME-Type-Sniffing                                |
+| **X-XSS-Protection**        | `1; mode=block`                   | XSS (Legacy-Browser)                              |
+| **Referrer-Policy**         | `strict-origin-when-cross-origin` | Ungewollte Weitergabe von Referrer-Informationen  |
+| **Permissions-Policy**      | Eingeschränkt                     | Missbrauch von Browser-APIs (Kamera, Geolocation) |
 
 Zusätzlich werden API-Antworten mit `Cache-Control: no-store` versehen, um das Caching sensibler Daten zu verhindern.
 

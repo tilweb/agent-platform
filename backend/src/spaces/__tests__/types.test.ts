@@ -39,7 +39,6 @@ mock.module("../utils/paths", () => ({
   KB_COLLECTIONS_FILE: "/tmp/spaces-test-data/knowledge-base/collections.yaml",
   KB_INCOMING_DIR: "/tmp/spaces-test-data/knowledge-base/incoming",
   TASKS_DIR: "/tmp/spaces-test-data/tasks",
-  TASK_RESULTS_DIR: "/tmp/spaces-test-data/tasks/results",
   GENERATED_IMAGES_DIR: "/tmp/spaces-test-data/generated-images",
   EXPORTS_DIR: "/tmp/spaces-test-data/exports",
   MEMORY_SESSIONS_DIR: "/tmp/spaces-test-data/memory/sessions",

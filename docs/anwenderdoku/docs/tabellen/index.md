@@ -1,10 +1,10 @@
 # Tabellen
 
-Die Tabellen-Funktion des Adacor Workplace ermöglicht es, strukturierte Daten zentral zu speichern, zu verwalten und für KI-Agenten zugänglich zu machen. Im Gegensatz zur Knowledge Base, die unstrukturierte Dokumente verwaltet, arbeiten Tabellen mit klar definierten Spalten, Datentypen und Beziehungen -- ähnlich einer Datenbank oder einem Spreadsheet.
+Die Tabellen-Funktion des KI-Workplace ermöglicht es, strukturierte Daten zentral zu speichern, zu verwalten und für KI-Agenten zugänglich zu machen. Im Gegensatz zur Knowledge Base, die unstrukturierte Dokumente verwaltet, arbeiten Tabellen mit klar definierten Spalten, Datentypen und Beziehungen -- ähnlich einer Datenbank oder einem Spreadsheet.
 
 ## Was sind Tabellen?
 
-Tabellen im Adacor Workplace sind strukturierte Datenspeicher, die:
+Tabellen im KI-Workplace sind strukturierte Datenspeicher, die:
 
 - **Benutzerdefinierte Spalten** mit verschiedenen Datentypen unterstützen
 - **Von KI-Agenten gelesen und bearbeitet** werden können
@@ -13,6 +13,7 @@ Tabellen im Adacor Workplace sind strukturierte Datenspeicher, die:
 - **Beziehungen** zwischen verschiedenen Tabellen herstellen können
 
 > [!example] Anwendungsbeispiele
+>
 > - **Kundenliste** -- Name, E-Mail, Unternehmen, Status
 > - **Projektaufgaben** -- Titel, Beschreibung, Priorität, Fälligkeitsdatum, Zuständiger
 > - **Inventar** -- Artikelname, Menge, Standort, Letzte Prüfung
@@ -28,25 +29,25 @@ Tabellen im Adacor Workplace sind strukturierte Datenspeicher, die:
 6. Klicken Sie auf **Erstellen**
 
 > [!tip] Vorlagen verwenden
-> Der Adacor Workplace stellt vordefinierte Tabellenvorlagen bereit. Klicken Sie auf **Vorlage verwenden**, um eine passende Struktur als Ausgangspunkt zu wählen.
+> Der KI-Workplace stellt vordefinierte Tabellenvorlagen bereit. Klicken Sie auf **Vorlage verwenden**, um eine passende Struktur als Ausgangspunkt zu wählen.
 
 ## Spaltentypen
 
 Beim Erstellen einer Tabelle definieren Sie für jede Spalte einen Datentyp. Folgende Typen stehen zur Verfügung:
 
-| Spaltentyp | Beschreibung | Beispiel |
-|---|---|---|
-| **Text** | Einzeiliger Kurztext | Name, Titel |
-| **Text (lang)** | Mehrzeiliger Langtext | Beschreibung, Notizen |
-| **Zahl (number)** | Ganzzahl oder Dezimalzahl | Menge, Preis, Bewertung |
-| **Datum (date)** | Nur Datum | Geburtstag, Fälligkeitsdatum |
-| **Datum & Uhrzeit (datetime)** | Datum mit Uhrzeit | Termin, Deadline |
-| **Ja/Nein (boolean)** | Wahrheitswert | Aktiv, Abgeschlossen |
-| **E-Mail** | Validierte E-Mail-Adresse | Kontakt-E-Mail |
-| **URL** | Validierter Link | Website, Dokumentenlink |
-| **Tags** | Mehrere Schlagwörter | Kategorien, Labels |
-| **Auswahl (select)** | Einzelauswahl aus vordefinierten Optionen | Status, Priorität, Abteilung |
-| **Beziehung (relation)** | Verweis auf Zeile in einer anderen Tabelle | Zuständiger Mitarbeiter, Zugehöriges Projekt |
+| Spaltentyp                     | Beschreibung                               | Beispiel                                     |
+| ------------------------------ | ------------------------------------------ | -------------------------------------------- |
+| **Text**                       | Einzeiliger Kurztext                       | Name, Titel                                  |
+| **Text (lang)**                | Mehrzeiliger Langtext                      | Beschreibung, Notizen                        |
+| **Zahl (number)**              | Ganzzahl oder Dezimalzahl                  | Menge, Preis, Bewertung                      |
+| **Datum (date)**               | Nur Datum                                  | Geburtstag, Fälligkeitsdatum                 |
+| **Datum & Uhrzeit (datetime)** | Datum mit Uhrzeit                          | Termin, Deadline                             |
+| **Ja/Nein (boolean)**          | Wahrheitswert                              | Aktiv, Abgeschlossen                         |
+| **E-Mail**                     | Validierte E-Mail-Adresse                  | Kontakt-E-Mail                               |
+| **URL**                        | Validierter Link                           | Website, Dokumentenlink                      |
+| **Tags**                       | Mehrere Schlagwörter                       | Kategorien, Labels                           |
+| **Auswahl (select)**           | Einzelauswahl aus vordefinierten Optionen  | Status, Priorität, Abteilung                 |
+| **Beziehung (relation)**       | Verweis auf Zeile in einer anderen Tabelle | Zuständiger Mitarbeiter, Zugehöriges Projekt |
 
 ### Spalten-Eigenschaften
 
@@ -71,6 +72,7 @@ Ansichten ermöglichen es, die Daten einer Tabelle auf unterschiedliche Weise da
 6. Speichern Sie die Ansicht
 
 > [!example] Ansichten-Beispiele
+>
 > - **"Offene Aufgaben"** -- Filter: Status != Abgeschlossen, Sortierung: Priorität absteigend
 > - **"Meine Kontakte"** -- Filter: Zuständiger = Aktueller Benutzer
 > - **"Fällig diese Woche"** -- Filter: Fälligkeitsdatum zwischen Heute und +7 Tage
@@ -105,8 +107,8 @@ Wählen Sie eine oder mehrere Zeilen aus und klicken Sie auf **Löschen**. Bei T
 1. Öffnen Sie die Tabelle
 2. Klicken Sie auf **Exportieren**
 3. Wählen Sie das Format:
-    - **CSV** -- Kommagetrennte Werte, kompatibel mit Excel
-    - **JSON** -- Strukturiertes Datenformat
+   - **CSV** -- Kommagetrennte Werte, kompatibel mit Excel
+   - **JSON** -- Strukturiertes Datenformat
 
 Der Export wird als Datei heruntergeladen.
 
@@ -121,6 +123,7 @@ Der Export wird als Datei heruntergeladen.
 7. Starten Sie den Import
 
 > [!tip] Import-Optionen
+>
 > - **Bestehende aktualisieren** -- Wenn ein Eintrag mit gleicher ID bereits existiert, wird er überschrieben
 > - **Ungültige überspringen** -- Zeilen, die nicht validiert werden können, werden übersprungen statt den Import abzubrechen
 
@@ -139,7 +142,7 @@ KI-Agenten können über spezielle Werkzeuge (Tools) auf Tabellen zugreifen. Das
 > [!example] Beispiel-Interaktion
 > **Sie:** "Wie viele offene Aufgaben gibt es im Projekt Alpha?"
 >
-> **Agent:** *Fragt die Aufgaben-Tabelle ab, filtert nach Projekt = Alpha und Status != Abgeschlossen*
+> **Agent:** _Fragt die Aufgaben-Tabelle ab, filtert nach Projekt = Alpha und Status != Abgeschlossen_
 >
 > "Im Projekt Alpha gibt es aktuell 12 offene Aufgaben: 3 mit hoher Priorität, 7 mit normaler Priorität und 2 mit niedriger Priorität."
 

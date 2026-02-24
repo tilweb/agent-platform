@@ -14,6 +14,7 @@ import { useSearch } from '../hooks/useSearch';
 import CreateCollectionModal from '../components/CreateCollectionModal';
 import AddToCollectionModal from '../components/AddToCollectionModal';
 import { getContentTypeIcon } from '../components/Icons';
+import ItemThumbnail from '../components/ItemThumbnail';
 
 const styles = {
   container: {
@@ -652,6 +653,7 @@ function SearchPage() {
                 const sourceColor = sources?.find(s => s.id === item.type)?.color || '#666';
                 return (
                   <div key={`${item.type}-${item.id}`} style={styles.selectedItem}>
+                    <ItemThumbnail item={item} size={32} />
                     <div style={styles.selectedItemInfo}>
                       <div style={styles.selectedItemTitle}>{item.title}</div>
                       <div style={styles.selectedItemType}>

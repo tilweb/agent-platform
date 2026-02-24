@@ -1,18 +1,18 @@
 # Audio-Transkription
 
-Der Adacor Workplace kann Audiodateien in Text umwandeln (Speech-to-Text). Die Transkription wird über eine Whisper-API durchgeführt und steht im Chat als Funktion zur Verfügung.
+Der KI-Workplace kann Audiodateien in Text umwandeln (Speech-to-Text). Die Transkription wird über eine Whisper-API durchgeführt und steht im Chat als Funktion zur Verfügung.
 
 ---
 
 ## Unterstützte Formate
 
-| Format | MIME-Typ | Hinweis |
-|--------|----------|---------|
-| **MP3** | audio/mpeg | Nativ unterstützt |
-| **WAV** | audio/wav | Nativ unterstützt |
-| **FLAC** | audio/flac | Nativ unterstützt |
-| **WebM** | audio/webm | Wird automatisch konvertiert |
-| **OGG** | audio/ogg | Wird automatisch konvertiert |
+| Format      | MIME-Typ             | Hinweis                      |
+| ----------- | -------------------- | ---------------------------- |
+| **MP3**     | audio/mpeg           | Nativ unterstützt            |
+| **WAV**     | audio/wav            | Nativ unterstützt            |
+| **FLAC**    | audio/flac           | Nativ unterstützt            |
+| **WebM**    | audio/webm           | Wird automatisch konvertiert |
+| **OGG**     | audio/ogg            | Wird automatisch konvertiert |
 | **M4A/MP4** | audio/mp4, audio/m4a | Wird automatisch konvertiert |
 
 > [!info] Automatische Konvertierung

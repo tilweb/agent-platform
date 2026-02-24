@@ -1,15 +1,17 @@
 /**
  * AddToCollectionModal
  *
- * Modal for adding selected search items to an existing KB collection.
- * Uses SSE for progress tracking during indexing.
+ * Modal for adding selected search items to an existing or new KB collection.
+ * Documents are enqueued for async background indexing — the modal closes immediately.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { theme } from '../config/theme';
+import { apiGet, apiPost, API_URL } from '../utils/apiFetch';
 import { getContentTypeIcon } from './Icons';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import ItemThumbnail from './ItemThumbnail';
+import DocumentThumbnail from './DocumentThumbnail';
+import { useToast } from './Toast';
 
 const styles = {
   overlay: {
@@ -117,17 +119,48 @@ const styles = {
     padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
     borderRadius: theme.borderRadius.full,
   },
-  emptyCollections: {
-    padding: theme.spacing.xl,
-    textAlign: 'center',
-    color: theme.colors.textMuted,
-    fontSize: theme.typography.sizes.sm,
-  },
   loadingCollections: {
     padding: theme.spacing.xl,
     textAlign: 'center',
     color: theme.colors.textMuted,
     fontSize: theme.typography.sizes.sm,
+  },
+  createNewForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.md,
+    padding: `${theme.spacing.md} 0 0 ${theme.spacing.xl}`,
+  },
+  formGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.xs,
+  },
+  formLabel: {
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.textMuted,
+  },
+  formInput: {
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    fontSize: theme.typography.sizes.sm,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.background,
+    color: theme.colors.text,
+    outline: 'none',
+  },
+  formTextarea: {
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    fontSize: theme.typography.sizes.sm,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.background,
+    color: theme.colors.text,
+    outline: 'none',
+    resize: 'vertical',
+    minHeight: '60px',
+    fontFamily: 'inherit',
   },
   itemsSection: {
     marginTop: theme.spacing.lg,
@@ -150,11 +183,17 @@ const styles = {
     gap: theme.spacing.xs,
   },
   item: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.md,
     padding: theme.spacing.sm,
     backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.md,
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.text,
+  },
+  itemTitle: {
+    flex: 1,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -186,123 +225,12 @@ const styles = {
     fontWeight: theme.typography.weights.medium,
     cursor: 'pointer',
   },
-  // Progress styles
-  progressContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing.lg,
-    padding: theme.spacing.lg,
-  },
-  progressHeader: {
-    textAlign: 'center',
-  },
-  progressTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-  },
-  progressSubtitle: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textMuted,
-  },
-  progressBar: {
-    height: '8px',
-    backgroundColor: theme.colors.border,
-    borderRadius: '4px',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: theme.colors.primary,
-    transition: 'width 0.3s ease',
-  },
-  progressItems: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing.sm,
-    maxHeight: '300px',
-    overflowY: 'auto',
-  },
-  progressItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-  },
-  progressItemIcon: {
-    width: '20px',
-    height: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  progressItemSpinner: {
-    width: '16px',
-    height: '16px',
-    border: '2px solid transparent',
-    borderTopColor: theme.colors.primary,
-    borderRightColor: theme.colors.primary,
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-  },
-  progressItemTitle: {
-    flex: 1,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  progressItemStatus: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.textMuted,
-  },
-  // Complete view
-  completeContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: theme.spacing.lg,
-    padding: theme.spacing.xl,
-    textAlign: 'center',
-  },
-  completeIcon: {
-    width: '64px',
-    height: '64px',
-    backgroundColor: '#dcfce7',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  completeTitle: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text,
-  },
-  completeStats: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textMuted,
-  },
-  viewButton: {
-    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
-    backgroundColor: theme.colors.primary,
-    color: 'white',
-    border: 'none',
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    cursor: 'pointer',
-  },
   errorMessage: {
     padding: theme.spacing.md,
-    backgroundColor: '#fef2f2',
-    border: `1px solid #fecaca`,
+    backgroundColor: theme.colors.errorLight,
+    border: `1px solid ${theme.colors.error}30`,
     borderRadius: theme.borderRadius.md,
-    color: '#dc2626',
+    color: theme.colors.error,
     fontSize: theme.typography.sizes.sm,
     marginBottom: theme.spacing.lg,
   },
@@ -317,23 +245,25 @@ const sourceLabels = {
   contract: 'Vertragsmanagement',
 };
 
-// sourceIcons now uses getContentTypeIcon from Icons.jsx
+function generateCollectionId(str) {
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9äöüß]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 30);
+}
 
 function AddToCollectionModal({ isOpen, onClose, selectedItems, onSuccess }) {
   const [collections, setCollections] = useState([]);
   const [loadingCollections, setLoadingCollections] = useState(true);
   const [selectedCollection, setSelectedCollection] = useState(null);
-  const [isAdding, setIsAdding] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  const [createNew, setCreateNew] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [progress, setProgress] = useState({
-    current: 0,
-    total: 0,
-    items: {},
-  });
-  const [result, setResult] = useState(null);
+  const toast = useToast();
 
-  // Load collections on mount
   useEffect(() => {
     if (isOpen) {
       loadCollections();
@@ -343,9 +273,7 @@ function AddToCollectionModal({ isOpen, onClose, selectedItems, onSuccess }) {
   const loadCollections = async () => {
     setLoadingCollections(true);
     try {
-      const response = await fetch(`${API_URL}/knowledge/collections`, {
-        credentials: 'include',
-      });
+      const response = await apiGet('/knowledge/collections');
       if (!response.ok) {
         throw new Error('Fehler beim Laden der Collections');
       }
@@ -358,7 +286,20 @@ function AddToCollectionModal({ isOpen, onClose, selectedItems, onSuccess }) {
     }
   };
 
-  // Group items by type
+  const handleNewNameChange = useCallback((value) => {
+    setNewName(value);
+  }, []);
+
+  const selectCreateNew = useCallback(() => {
+    setCreateNew(true);
+    setSelectedCollection(null);
+  }, []);
+
+  const selectExisting = useCallback((collection) => {
+    setCreateNew(false);
+    setSelectedCollection(collection);
+  }, []);
+
   const groupedItems = useMemo(() => {
     return (selectedItems || []).reduce((acc, item) => {
       const type = item.type || 'other';
@@ -370,109 +311,74 @@ function AddToCollectionModal({ isOpen, onClose, selectedItems, onSuccess }) {
     }, {});
   }, [selectedItems]);
 
+  const canSubmit = createNew ? newName.trim().length > 0 : selectedCollection !== null;
+
   const handleAdd = async () => {
-    if (!selectedCollection) {
-      setError('Bitte wähle eine Collection aus');
+    if (!canSubmit) {
+      setError(createNew ? 'Bitte gib einen Namen ein' : 'Bitte wähle eine Collection aus');
       return;
     }
 
-    setIsAdding(true);
+    setIsSubmitting(true);
     setError(null);
-    setProgress({
-      current: 0,
-      total: selectedItems.length,
-      items: {},
-    });
 
     try {
-      const response = await fetch(`${API_URL}/knowledge/collections/${selectedCollection.id}/add/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
+      let collectionId;
+      let collectionName;
+
+      if (createNew) {
+        collectionId = generateCollectionId(newName);
+        collectionName = newName.trim();
+
+        const response = await apiPost('/knowledge/collections/batch/stream', {
+          collection_id: collectionId,
+          name: collectionName,
+          description: newDescription.trim(),
           items: selectedItems,
-        }),
-      });
+        });
 
-      if (!response.ok) {
-        let errorMessage = 'Fehler beim Hinzufügen der Dokumente';
-        try {
-          const text = await response.text();
-          if (text && text.length < 200) {
-            errorMessage = text;
-          }
-        } catch { /* ignore */ }
-        throw new Error(`${errorMessage} (Status: ${response.status})`);
-      }
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `Fehler (Status: ${response.status})`);
+        }
+      } else {
+        collectionId = selectedCollection.id;
+        collectionName = selectedCollection.name;
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+        const response = await apiPost(`/knowledge/collections/${collectionId}/add/stream`, {
+          items: selectedItems,
+        });
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              handleProgressEvent(data);
-            } catch (e) {
-              console.warn('Failed to parse SSE data:', e);
-            }
-          }
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `Fehler (Status: ${response.status})`);
         }
       }
+
+      // Success — show toast and close modal
+      const count = selectedItems.length;
+      toast.success(
+        'Dokumente werden indiziert',
+        `${count} ${count === 1 ? 'Dokument wird' : 'Dokumente werden'} im Hintergrund zu "${collectionName}" hinzugefügt.`,
+      );
+
+      onSuccess?.(collectionId);
+      handleClose();
     } catch (err) {
       setError(err.message);
-      setIsAdding(false);
+      toast.error('Fehler', err.message);
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-
-  const handleProgressEvent = (data) => {
-    if (data.step === 'index') {
-      setProgress((prev) => ({
-        ...prev,
-        current: data.current || prev.current,
-        items: {
-          ...prev.items,
-          [data.itemId]: {
-            status: data.status,
-            title: data.title,
-            error: data.error,
-            documentId: data.documentId,
-          },
-        },
-      }));
-    } else if (data.collectionId) {
-      // Done event
-      setResult(data);
-      setIsComplete(true);
-      setIsAdding(false);
-    } else if (data.error) {
-      setError(data.error);
-      setIsAdding(false);
-    }
-  };
-
-  const handleViewCollection = () => {
-    onSuccess?.(result?.collectionId || selectedCollection?.id);
-    handleClose();
   };
 
   const handleClose = () => {
-    // Reset state
     setSelectedCollection(null);
-    setIsAdding(false);
-    setIsComplete(false);
+    setCreateNew(false);
+    setNewName('');
+    setNewDescription('');
+    setIsSubmitting(false);
     setError(null);
-    setProgress({ current: 0, total: 0, items: {} });
-    setResult(null);
     onClose();
   };
 
@@ -481,191 +387,168 @@ function AddToCollectionModal({ isOpen, onClose, selectedItems, onSuccess }) {
   return (
     <div style={styles.overlay} onClick={handleClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <style>{`
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-
         <div style={styles.header}>
-          <h2 style={styles.title}>
-            {isComplete ? 'Dokumente hinzugefügt' : isAdding ? 'Dokumente werden hinzugefügt...' : 'Zu Collection hinzufügen'}
-          </h2>
-          {!isAdding && (
-            <button onClick={handleClose} style={styles.closeButton}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          )}
+          <h2 style={styles.title}>Zu Collection hinzufügen</h2>
+          <button onClick={handleClose} style={styles.closeButton}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
 
         <div style={styles.content}>
-          {isComplete ? (
-            <div style={styles.completeContainer}>
-              <div style={styles.completeIcon}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-              </div>
-              <div style={styles.completeTitle}>
-                Dokumente zu "{selectedCollection?.name}" hinzugefügt!
-              </div>
-              <div style={styles.completeStats}>
-                {result?.successCount || 0} von {result?.totalItems || selectedItems.length} Dokumenten hinzugefügt
-                {result?.errorCount > 0 && (
-                  <span style={{ color: '#dc2626' }}> ({result.errorCount} Fehler)</span>
-                )}
-              </div>
-              <button onClick={handleViewCollection} style={styles.viewButton}>
-                Collection öffnen
-              </button>
-            </div>
-          ) : isAdding ? (
-            <div style={styles.progressContainer}>
-              <div style={styles.progressHeader}>
-                <div style={styles.progressTitle}>
-                  Dokumente werden hinzugefügt ({progress.current}/{selectedItems.length})
-                </div>
-                <div style={styles.progressSubtitle}>
-                  Bitte warte, bis alle Dokumente verarbeitet wurden.
-                </div>
-              </div>
+          {error && <div style={styles.errorMessage}>{error}</div>}
 
-              <div style={styles.progressBar}>
+          <div style={styles.section}>
+            <div style={styles.sectionTitle}>Collection auswählen</div>
+
+            {loadingCollections ? (
+              <div style={styles.loadingCollections}>Lade Collections...</div>
+            ) : (
+              <div style={styles.collectionsGrid}>
+                {/* Create new collection option */}
                 <div
                   style={{
-                    ...styles.progressFill,
-                    width: `${(progress.current / progress.total) * 100}%`,
+                    ...styles.collectionItem,
+                    ...(createNew ? styles.collectionItemSelected : {}),
                   }}
-                />
-              </div>
-
-              <div style={styles.progressItems}>
-                {selectedItems.map((item) => {
-                  const itemProgress = progress.items[item.id];
-                  return (
-                    <div key={`${item.type}-${item.id}`} style={styles.progressItem}>
-                      <div style={styles.progressItemIcon}>
-                        {itemProgress?.status === 'in_progress' ? (
-                          <div style={styles.progressItemSpinner} />
-                        ) : itemProgress?.status === 'complete' ? (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                            <polyline points="22 4 12 14.01 9 11.01" />
-                          </svg>
-                        ) : itemProgress?.status === 'error' ? (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="15" y1="9" x2="9" y2="15" />
-                            <line x1="9" y1="9" x2="15" y2="15" />
-                          </svg>
-                        ) : (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" />
-                          </svg>
-                        )}
-                      </div>
-                      <span style={styles.progressItemTitle}>{item.title}</span>
-                      <span style={styles.progressItemStatus}>
-                        {sourceLabels[item.type] || item.type}
-                      </span>
+                  onClick={selectCreateNew}
+                >
+                  <input
+                    type="radio"
+                    name="collection"
+                    checked={createNew}
+                    onChange={selectCreateNew}
+                    style={styles.collectionRadio}
+                  />
+                  <div style={styles.collectionInfo}>
+                    <div style={styles.collectionName}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: '-2px', marginRight: '4px' }}>
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Neue Collection erstellen
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <>
-              {error && <div style={styles.errorMessage}>{error}</div>}
-
-              <div style={styles.section}>
-                <div style={styles.sectionTitle}>Collection auswählen</div>
-
-                {loadingCollections ? (
-                  <div style={styles.loadingCollections}>Lade Collections...</div>
-                ) : collections.length === 0 ? (
-                  <div style={styles.emptyCollections}>
-                    Keine Collections vorhanden. Erstelle zuerst eine Collection.
                   </div>
-                ) : (
-                  <div style={styles.collectionsGrid}>
-                    {collections.map((collection) => (
-                      <div
-                        key={collection.id}
-                        style={{
-                          ...styles.collectionItem,
-                          ...(selectedCollection?.id === collection.id ? styles.collectionItemSelected : {}),
-                        }}
-                        onClick={() => setSelectedCollection(collection)}
-                      >
-                        <input
-                          type="radio"
-                          name="collection"
-                          checked={selectedCollection?.id === collection.id}
-                          onChange={() => setSelectedCollection(collection)}
-                          style={styles.collectionRadio}
-                        />
-                        <div style={styles.collectionInfo}>
-                          <div style={styles.collectionName}>{collection.name}</div>
-                          {collection.description && (
-                            <div style={styles.collectionDescription}>{collection.description}</div>
-                          )}
-                        </div>
-                        <span style={styles.collectionCount}>
-                          {collection.document_count || 0} Dok.
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div style={styles.itemsSection}>
-                <div style={styles.sectionTitle}>
-                  Hinzuzufügende Dokumente ({selectedItems.length})
                 </div>
 
-                {Object.entries(groupedItems).map(([type, items]) => (
-                  <div key={type} style={styles.itemsGroup}>
-                    <div style={styles.itemsGroupTitle}>
-                      {getContentTypeIcon(type, { size: 16 })}
-                      <span>{sourceLabels[type] || type} ({items.length})</span>
+                {/* Inline form when creating new */}
+                {createNew && (
+                  <div style={styles.createNewForm}>
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>Name *</label>
+                      <input
+                        type="text"
+                        value={newName}
+                        onChange={(e) => handleNewNameChange(e.target.value)}
+                        placeholder="z.B. Projektwissen, IT-Dokumentation"
+                        style={styles.formInput}
+                        autoFocus
+                      />
                     </div>
-                    <div style={styles.itemsList}>
-                      {items.map((item) => (
-                        <div key={item.id} style={styles.item}>
-                          {item.title}
-                        </div>
-                      ))}
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>Beschreibung</label>
+                      <textarea
+                        value={newDescription}
+                        onChange={(e) => setNewDescription(e.target.value)}
+                        placeholder="Wofür ist diese Collection gedacht?"
+                        style={styles.formTextarea}
+                      />
                     </div>
+                  </div>
+                )}
+
+                {/* Existing collections */}
+                {collections.map((collection) => (
+                  <div
+                    key={collection.id}
+                    style={{
+                      ...styles.collectionItem,
+                      ...(!createNew && selectedCollection?.id === collection.id ? styles.collectionItemSelected : {}),
+                    }}
+                    onClick={() => selectExisting(collection)}
+                  >
+                    <input
+                      type="radio"
+                      name="collection"
+                      checked={!createNew && selectedCollection?.id === collection.id}
+                      onChange={() => selectExisting(collection)}
+                      style={styles.collectionRadio}
+                    />
+                    <div style={styles.collectionInfo}>
+                      <div style={styles.collectionName}>{collection.name}</div>
+                      {collection.description && (
+                        <div style={styles.collectionDescription}>{collection.description}</div>
+                      )}
+                    </div>
+                    <span style={styles.collectionCount}>
+                      {collection.document_count || 0} Dok.
+                    </span>
                   </div>
                 ))}
               </div>
-            </>
-          )}
+            )}
+          </div>
+
+          <div style={styles.itemsSection}>
+            <div style={styles.sectionTitle}>
+              Hinzuzufügende Dokumente ({selectedItems.length})
+            </div>
+
+            <div style={styles.itemsList}>
+              {selectedItems.map((item) => {
+                const hasAttachment = item.metadata?.attachmentId && item.metadata?.chatId;
+                const attachmentUrl = hasAttachment
+                  ? `${API_URL}/chats/${item.metadata.chatId}/attachments/${item.metadata.attachmentId}`
+                  : undefined;
+                const imageUrl = attachmentUrl || item.metadata?.thumbnailLink || item.metadata?.url;
+                const isImage = item.metadata?.mimeType?.startsWith('image/') ||
+                  item.metadata?.materialType === 'generated_image';
+
+                return (
+                  <div key={item.id} style={styles.item}>
+                    {imageUrl && isImage ? (
+                      <DocumentThumbnail
+                        size={32}
+                        filename={item.metadata?.source_file || item.metadata?.filename || item.title}
+                        mimeType={item.metadata?.mimeType}
+                        url={imageUrl}
+                      />
+                    ) : attachmentUrl ? (
+                      <DocumentThumbnail
+                        size={32}
+                        filename={item.metadata?.source_file || item.metadata?.filename || item.title}
+                        mimeType={item.metadata?.mimeType}
+                        url={attachmentUrl}
+                      />
+                    ) : (
+                      <ItemThumbnail item={item} size={32} />
+                    )}
+                    <span style={styles.itemTitle}>{item.title}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        {!isAdding && !isComplete && (
-          <div style={styles.footer}>
-            <button onClick={handleClose} style={styles.cancelButton}>
-              Abbrechen
-            </button>
-            <button
-              onClick={handleAdd}
-              style={{
-                ...styles.addButton,
-                opacity: !selectedCollection ? 0.5 : 1,
-                cursor: !selectedCollection ? 'not-allowed' : 'pointer',
-              }}
-              disabled={!selectedCollection}
-            >
-              Hinzufügen
-            </button>
-          </div>
-        )}
+        <div style={styles.footer}>
+          <button onClick={handleClose} style={styles.cancelButton}>
+            Abbrechen
+          </button>
+          <button
+            onClick={handleAdd}
+            style={{
+              ...styles.addButton,
+              opacity: !canSubmit || isSubmitting ? 0.5 : 1,
+              cursor: !canSubmit || isSubmitting ? 'not-allowed' : 'pointer',
+            }}
+            disabled={!canSubmit || isSubmitting}
+          >
+            {isSubmitting ? 'Wird hinzugefügt...' : createNew ? 'Erstellen & hinzufügen' : 'Hinzufügen'}
+          </button>
+        </div>
       </div>
     </div>
   );

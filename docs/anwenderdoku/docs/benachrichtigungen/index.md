@@ -1,6 +1,6 @@
 # Benachrichtigungen
 
-Der Adacor Workplace informiert Sie über abgeschlossene Hintergrund-Aufgaben und andere Systemereignisse über ein Benachrichtigungssystem.
+Der KI-Workplace informiert Sie über abgeschlossene Hintergrund-Aufgaben und andere Systemereignisse über ein Benachrichtigungssystem.
 
 ---
 
@@ -12,11 +12,11 @@ Die Benachrichtigungen erreichen Sie über das **Glocken-Symbol** in der oberen 
 
 ## Benachrichtigungstypen
 
-| Typ | Symbol | Beschreibung |
-|-----|--------|-------------|
-| **Task abgeschlossen** | Grüner Haken | Ein Hintergrund-Task wurde erfolgreich beendet |
-| **Task fehlgeschlagen** | Rotes Warnsymbol | Ein Hintergrund-Task ist mit einem Fehler abgebrochen |
-| **System** | Blaues Info-Symbol | Allgemeine Systemmeldungen |
+| Typ                     | Symbol             | Beschreibung                                          |
+| ----------------------- | ------------------ | ----------------------------------------------------- |
+| **Task abgeschlossen**  | Grüner Haken       | Ein Hintergrund-Task wurde erfolgreich beendet        |
+| **Task fehlgeschlagen** | Rotes Warnsymbol   | Ein Hintergrund-Task ist mit einem Fehler abgebrochen |
+| **System**              | Blaues Info-Symbol | Allgemeine Systemmeldungen                            |
 
 ---
 

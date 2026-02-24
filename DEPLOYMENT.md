@@ -1,6 +1,6 @@
-# Adacor Workplace - Deployment Guide
+# KI-Workplace - Deployment Guide
 
-Dieses Dokument beschreibt die Installation und den Betrieb des Adacor Workplace in einer Produktionsumgebung.
+Dieses Dokument beschreibt die Installation und den Betrieb des KI-Workplace in einer Produktionsumgebung.
 
 ## Inhaltsverzeichnis
 
@@ -23,20 +23,20 @@ Dieses Dokument beschreibt die Installation und den Betrieb des Adacor Workplace
 
 ### Mindestanforderungen
 
-| Komponente | Anforderung |
-|------------|-------------|
-| Bun Runtime | >= 1.0 |
-| Node.js | >= 20 (nur für Frontend-Build) |
-| RAM | 2 GB (empfohlen: 4 GB) |
-| Speicher | 10 GB (abhängig von Datenvolumen) |
-| OS | Linux, macOS |
+| Komponente  | Anforderung                       |
+| ----------- | --------------------------------- |
+| Bun Runtime | >= 1.0                            |
+| Node.js     | >= 20 (nur für Frontend-Build)    |
+| RAM         | 2 GB (empfohlen: 4 GB)            |
+| Speicher    | 10 GB (abhängig von Datenvolumen) |
+| OS          | Linux, macOS                      |
 
 ### Optionale Dependencies
 
-| Komponente | Verwendung |
-|------------|------------|
-| ffmpeg | Audio-Transkription (WebM/M4A zu MP3) |
-| nginx | Reverse Proxy |
+| Komponente | Verwendung                            |
+| ---------- | ------------------------------------- |
+| ffmpeg     | Audio-Transkription (WebM/M4A zu MP3) |
+| nginx      | Reverse Proxy                         |
 
 ### Installation Bun
 
@@ -122,7 +122,7 @@ Vollständige Referenz aller Variablen: siehe `.env.example`
 ### Wichtige Hinweise
 
 - **CONNECTION_ENCRYPTION_KEY**: Wird zur Verschlüsselung von OAuth-Tokens verwendet. Bei Änderung werden alle gespeicherten Connections ungültig!
-- **TRUST_PROXY**: Nur aktivieren, wenn ein vertrauenswürdiger Reverse Proxy (nginx, Cloudflare) X-Forwarded-* Header setzt
+- **TRUST_PROXY**: Nur aktivieren, wenn ein vertrauenswürdiger Reverse Proxy (nginx, Cloudflare) X-Forwarded-\* Header setzt
 
 ---
 
@@ -164,12 +164,12 @@ data/
 
 ### Wichtige Dateien
 
-| Datei | Beschreibung |
-|-------|--------------|
-| `config/providers.yaml` | LLM-Provider Konfiguration |
-| `tasks/queue.yaml` | Task-Queue Status |
-| `auth/sessions/` | Aktive User-Sessions |
-| `connections/` | Verschlüsselte OAuth-Tokens |
+| Datei                   | Beschreibung                |
+| ----------------------- | --------------------------- |
+| `config/providers.yaml` | LLM-Provider Konfiguration  |
+| `tasks/queue.yaml`      | Task-Queue Status           |
+| `auth/sessions/`        | Aktive User-Sessions        |
+| `connections/`          | Verschlüsselte OAuth-Tokens |
 
 ### Berechtigungen
 
@@ -213,7 +213,7 @@ Erstelle `/etc/systemd/system/adacor-workplace-backend.service`:
 
 ```ini
 [Unit]
-Description=Adacor Workplace Backend
+Description=KI-Workplace Backend
 After=network.target
 
 [Service]
@@ -307,12 +307,12 @@ Die Anwendung ist unter `http://localhost:8080` erreichbar.
 
 ### Container-Details
 
-| Container | Image-Basis | Port | User | Beschreibung |
-|-----------|-------------|------|------|--------------|
-| backend | `oven/bun:alpine` | 3001 | UID 1000 (non-root) | API + Business Logic |
+| Container  | Image-Basis                 | Port | User                | Beschreibung                  |
+| ---------- | --------------------------- | ---- | ------------------- | ----------------------------- |
+| backend    | `oven/bun:alpine`           | 3001 | UID 1000 (non-root) | API + Business Logic          |
 | mcp-runner | `oven/bun:alpine` + Node.js | 3002 | UID 1000 (non-root) | MCP Server Prozess-Management |
-| frontend | `nginx:alpine` | 80 | UID 101 (nginx) | React SPA |
-| proxy | `nginx:alpine` | 8080 | - | Reverse Proxy |
+| frontend   | `nginx:alpine`              | 80   | UID 101 (nginx)     | React SPA                     |
+| proxy      | `nginx:alpine`              | 8080 | -                   | Reverse Proxy                 |
 
 ### MCP Runner
 
@@ -333,7 +333,7 @@ Das Backend-Datenverzeichnis wird als Bind-Mount eingebunden:
 
 ```yaml
 volumes:
-  - ./data:/app/data          # Persistente Daten
+  - ./data:/app/data # Persistente Daten
 ```
 
 ### Docker-spezifische Overrides
@@ -526,7 +526,7 @@ Das Backend konfiguriert CORS basierend auf `FRONTEND_URL`:
 cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,
-})
+});
 ```
 
 ### Session-Sicherheit
@@ -538,6 +538,7 @@ cors({
 ### Multi-User Isolation
 
 Nach dem Update v2.x:
+
 - Alle Task- und Memory-Routes erfordern Authentifizierung
 - Jeder User sieht nur seine eigenen Daten
 - In-Memory Caches sind user-isoliert
@@ -574,11 +575,11 @@ curl http://localhost:3002/health
 
 ### Wichtige Metriken
 
-| Metrik | Beschreibung |
-|--------|--------------|
-| `/health` | Backend-Verfügbarkeit |
+| Metrik            | Beschreibung                   |
+| ----------------- | ------------------------------ |
+| `/health`         | Backend-Verfügbarkeit          |
 | Task Queue Status | Anzahl aktiver/wartender Tasks |
-| Session Count | Aktive User-Sessions |
+| Session Count     | Aktive User-Sessions           |
 
 ### Logging
 
@@ -598,10 +599,10 @@ bun run src/index.ts 2>&1 | tee /var/log/adacor-workplace/backend.log
 
 ### Wichtige Backup-Ziele
 
-| Pfad | Priorität | Beschreibung |
-|------|-----------|--------------|
-| `data/` | KRITISCH | Alle Benutzerdaten |
-| `.env` | KRITISCH | Konfiguration & Secrets |
+| Pfad    | Priorität | Beschreibung            |
+| ------- | --------- | ----------------------- |
+| `data/` | KRITISCH  | Alle Benutzerdaten      |
+| `.env`  | KRITISCH  | Konfiguration & Secrets |
 
 ### Backup-Script Beispiel
 

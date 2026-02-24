@@ -8,6 +8,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { theme } from '../config/theme';
 import { getContentTypeIcon } from './Icons';
+import ItemThumbnail from './ItemThumbnail';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -132,12 +133,14 @@ const styles = {
     gap: theme.spacing.xs,
   },
   item: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.md,
     padding: theme.spacing.sm,
     backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.md,
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.text,
-    overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
@@ -653,7 +656,8 @@ function CreateCollectionModal({ isOpen, onClose, selectedItems, onSuccess }) {
                     <div style={styles.itemsList}>
                       {items.map((item) => (
                         <div key={item.id} style={styles.item}>
-                          {item.title}
+                          <ItemThumbnail item={item} size={32} />
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</span>
                         </div>
                       ))}
                     </div>

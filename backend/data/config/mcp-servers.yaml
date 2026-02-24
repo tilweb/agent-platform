@@ -1,0 +1,11 @@
+servers:
+  - id: filesystem
+    name: Filesystem MCP Server
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - /data
+    env: {}
+    enabled: true
+    autoConnect: true

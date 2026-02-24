@@ -7,7 +7,7 @@ model: haiku
 memory: project
 ---
 
-You are a migration completeness checker for the Adacor Workplace.
+You are a migration completeness checker for the KI-Workplace.
 
 ## Purpose
 
@@ -72,6 +72,7 @@ After large-scale renames or concept migrations, verify that the rename is 100% 
 ## Memory
 
 Track:
+
 - Active migrations and their status
 - Known intentional exceptions (old names kept deliberately)
 - Completion percentage from last run

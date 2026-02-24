@@ -22,7 +22,7 @@ type: connector
 name: "Atlassian Jira"
 description: "Jira Issues durchsuchen und lesen"
 version: "1.0.0"
-author: "Adacor Workplace"
+author: "KI-Workplace"
 
 configSchema:
   - key: clientId
@@ -64,7 +64,7 @@ connector:
 URL-Helpers für die Atlassian API:
 
 ```typescript
-const ATLASSIAN_API = 'https://api.atlassian.com';
+const ATLASSIAN_API = "https://api.atlassian.com";
 
 export function getAccessibleResourcesUrl(): string {
   return `${ATLASSIAN_API}/oauth/token/accessible-resources`;
@@ -78,16 +78,21 @@ export function getJiraApiUrl(cloudId: string): string {
 ## provider.ts
 
 ```typescript
-import { OAuthProvider, resolveOAuthConfig } from '@platform/sdk';
-import type { TokenSet, ConnectionStatus, ConnectionTool, OAuth2Config } from '@platform/sdk';
-import { getAccessibleResourcesUrl, getJiraApiUrl } from './config';
-import { createSearchIssuesTool } from './tools/search-issues';
+import { OAuthProvider, resolveOAuthConfig } from "@platform/sdk";
+import type {
+  TokenSet,
+  ConnectionStatus,
+  ConnectionTool,
+  OAuth2Config,
+} from "@platform/sdk";
+import { getAccessibleResourcesUrl, getJiraApiUrl } from "./config";
+import { createSearchIssuesTool } from "./tools/search-issues";
 
 export class JiraProvider extends OAuthProvider {
-  readonly id = 'jira';
-  readonly name = 'Atlassian Jira';
-  readonly description = 'Jira Issues durchsuchen und lesen';
-  readonly icon = '🐛';
+  readonly id = "jira";
+  readonly name = "Atlassian Jira";
+  readonly description = "Jira Issues durchsuchen und lesen";
+  readonly icon = "🐛";
 
   private tools: ConnectionTool[] | null = null;
 
@@ -95,37 +100,41 @@ export class JiraProvider extends OAuthProvider {
     return resolveOAuthConfig(this.id);
   }
 
-  override async validateConnection(tokens: TokenSet): Promise<ConnectionStatus> {
+  override async validateConnection(
+    tokens: TokenSet,
+  ): Promise<ConnectionStatus> {
     try {
       // 1. Cloud-ID ermitteln
       const resourcesResponse = await this.authenticatedFetch(
-        getAccessibleResourcesUrl(), tokens
+        getAccessibleResourcesUrl(),
+        tokens,
       );
-      const resources = await resourcesResponse.json() as any[];
+      const resources = (await resourcesResponse.json()) as any[];
       const jiraInstance = resources.find((r: any) =>
-        r.scopes.some((s: string) => s.includes('jira'))
+        r.scopes.some((s: string) => s.includes("jira")),
       );
 
       if (!jiraInstance) {
-        return this.createErrorStatus('Kein Jira-Zugang gefunden.');
+        return this.createErrorStatus("Kein Jira-Zugang gefunden.");
       }
 
       tokens.cloudId = jiraInstance.id;
 
       // 2. User-Info abrufen
       const userResponse = await this.authenticatedFetch(
-        `${getJiraApiUrl(jiraInstance.id)}/myself`, tokens
+        `${getJiraApiUrl(jiraInstance.id)}/myself`,
+        tokens,
       );
-      const user = await userResponse.json() as any;
+      const user = (await userResponse.json()) as any;
 
       return this.createConnectedStatus({
         id: user.accountId,
         name: user.displayName,
         email: user.emailAddress,
-        avatarUrl: user.avatarUrls?.['48x48'],
+        avatarUrl: user.avatarUrls?.["48x48"],
       });
     } catch (error: any) {
-      if (error.message?.includes('401') || error.message?.includes('403')) {
+      if (error.message?.includes("401") || error.message?.includes("403")) {
         return this.createExpiredStatus();
       }
       return this.createErrorStatus(error.message);
@@ -134,9 +143,7 @@ export class JiraProvider extends OAuthProvider {
 
   override getTools(): ConnectionTool[] {
     if (!this.tools) {
-      this.tools = [
-        createSearchIssuesTool(this.id),
-      ];
+      this.tools = [createSearchIssuesTool(this.id)];
     }
     return this.tools;
   }
@@ -151,74 +158,89 @@ export default new JiraProvider();
 ## tools/search-issues.ts
 
 ```typescript
-import type { ToolDefinition, ToolContext, ConnectionTool } from '@platform/sdk';
-import { connectionRegistry } from '@platform/sdk';
-import { getJiraApiUrl } from '../config';
+import type {
+  ToolDefinition,
+  ToolContext,
+  ConnectionTool,
+} from "@platform/sdk";
+import { connectionRegistry } from "@platform/sdk";
+import { getJiraApiUrl } from "../config";
 
 export function createSearchIssuesTool(providerId: string): ConnectionTool {
   return {
-    name: 'jira_search',
-    type: 'connection',
+    name: "jira_search",
+    type: "connection",
     providerId,
 
     getDefinition(): ToolDefinition {
       return {
-        type: 'function',
+        type: "function",
         function: {
-          name: 'jira_search',
-          description: 'Suche nach Jira Issues mit JQL (Jira Query Language).',
+          name: "jira_search",
+          description: "Suche nach Jira Issues mit JQL (Jira Query Language).",
           parameters: {
-            type: 'object',
+            type: "object",
             properties: {
               jql: {
-                type: 'string',
-                description: 'JQL-Query, z.B. "project = PROJ AND status = Open"',
+                type: "string",
+                description:
+                  'JQL-Query, z.B. "project = PROJ AND status = Open"',
               },
               limit: {
-                type: 'number',
-                description: 'Maximale Ergebnisse (Standard: 10)',
+                type: "number",
+                description: "Maximale Ergebnisse (Standard: 10)",
               },
             },
-            required: ['jql'],
+            required: ["jql"],
           },
         },
       };
     },
 
-    async execute(args: Record<string, any>, context?: ToolContext): Promise<string> {
+    async execute(
+      args: Record<string, any>,
+      context?: ToolContext,
+    ): Promise<string> {
       const { jql, limit = 10 } = args;
 
-      if (!jql) return 'Error: JQL-Query erforderlich';
-      if (!context?.userId) return 'Error: Anmeldung erforderlich';
+      if (!jql) return "Error: JQL-Query erforderlich";
+      if (!context?.userId) return "Error: Anmeldung erforderlich";
 
-      const tokens = await connectionRegistry.getTokens(context.userId, providerId);
-      if (!tokens) return 'Error: Nicht mit Jira verbunden.';
-      if (!tokens.cloudId) return 'Error: Jira Cloud-ID fehlt. Bitte neu verbinden.';
+      const tokens = await connectionRegistry.getTokens(
+        context.userId,
+        providerId,
+      );
+      if (!tokens) return "Error: Nicht mit Jira verbunden.";
+      if (!tokens.cloudId)
+        return "Error: Jira Cloud-ID fehlt. Bitte neu verbinden.";
 
       try {
         const apiUrl = getJiraApiUrl(tokens.cloudId);
         const params = new URLSearchParams({
           jql,
           maxResults: String(Math.min(limit, 50)),
-          fields: 'summary,status,assignee,priority,created,updated',
+          fields: "summary,status,assignee,priority,created,updated",
         });
 
         const response = await fetch(`${apiUrl}/search?${params}`, {
           headers: {
             Authorization: `Bearer ${tokens.accessToken}`,
-            Accept: 'application/json',
+            Accept: "application/json",
           },
         });
 
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
-            return 'Error: Jira-Zugriff verweigert. Bitte neu verbinden.';
+            return "Error: Jira-Zugriff verweigert. Bitte neu verbinden.";
           }
           const text = await response.text();
           return `Error: Jira API: ${response.status} - ${text}`;
         }
 
-        const data = await response.json() as { issues: any[]; total: number };
+        const data = (await response.json()) as {
+          issues: any[];
+          total: number;
+        };
 
         if (!data.issues?.length) {
           return `Keine Issues gefunden für: ${jql}`;
@@ -230,12 +252,12 @@ export function createSearchIssuesTool(providerId: string): ConnectionTool {
           output += `### ${issue.key}: ${f.summary}\n`;
           output += `- **Status**: ${f.status?.name}\n`;
           output += `- **Priorität**: ${f.priority?.name}\n`;
-          output += `- **Zugewiesen**: ${f.assignee?.displayName || 'Nicht zugewiesen'}\n`;
+          output += `- **Zugewiesen**: ${f.assignee?.displayName || "Nicht zugewiesen"}\n`;
           output += `- **Aktualisiert**: ${new Date(f.updated).toLocaleDateString()}\n\n`;
         }
         return output;
       } catch (error: any) {
-        console.error('Jira search error:', error);
+        console.error("Jira search error:", error);
         return `Error: ${error.message}`;
       }
     },

@@ -3,7 +3,7 @@ type: connector
 name: Google Drive
 description: "Google Drive Dateien durchsuchen und lesen"
 version: "1.0.0"
-author: "Adacor Workplace"
+author: "KI-Workplace"
 
 configSchema:
   - key: clientId

@@ -5,9 +5,9 @@
  * into the knowledge base for indexing into collections.
  */
 
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, copyFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { join, basename, extname } from 'path';
 import { loadChatHistory, type ChatHistory } from './memory';
 import { indexerService } from './indexer';
 import { KB_BASE, KB_INCOMING_DIR as INCOMING_DIR, APPS_DIR } from '../utils/paths';
@@ -197,13 +197,19 @@ async function copyDocumentToCollection(
   return newDocId;
 }
 
+export interface IndexingOptions {
+  preAllocatedDocumentId?: string;
+  skipManifestEntry?: boolean;
+}
+
 /**
  * Import and index a single document
  */
 export async function importAndIndex(
   item: ImportItem,
   collectionId: string,
-  userId?: string
+  userId?: string,
+  indexingOptions?: IndexingOptions,
 ): Promise<ImportResult> {
   console.log('[documentImporter] Processing item:', {
     id: item.id,
@@ -212,6 +218,16 @@ export async function importAndIndex(
     metadata: item.metadata,
     userId,
   });
+
+  // Resolve user display name for owner field
+  let ownerName: string | undefined;
+  if (userId) {
+    try {
+      const { loadUser } = await import('../auth/storage');
+      const user = await loadUser(userId);
+      ownerName = user?.displayName || user?.username;
+    } catch { /* ignore lookup errors */ }
+  }
 
   const baseResult: ImportResult = {
     itemId: item.id,
@@ -265,7 +281,8 @@ export async function importAndIndex(
         const result = await indexerService.indexDocument(filename, collectionId, {
           title: `Chat: ${item.title}`,
           confidentiality: 'internal',
-        });
+          owner: ownerName,
+        }, userId, indexingOptions);
 
         return {
           ...baseResult,
@@ -302,7 +319,7 @@ export async function importAndIndex(
           const result = await indexerService.indexDocument(filename, collectionId, {
             title: item.title,
             confidentiality: 'internal',
-          });
+          }, userId, indexingOptions);
 
           return {
             ...baseResult,
@@ -383,7 +400,7 @@ export async function importAndIndex(
             const result = await indexerService.indexDocument(filename, collectionId, {
               title: item.title,
               confidentiality: 'internal',
-            });
+            }, userId, indexingOptions);
 
             return {
               ...baseResult,
@@ -429,7 +446,7 @@ export async function importAndIndex(
           const result = await indexerService.indexDocument(filename, collectionId, {
             title: item.title,
             confidentiality: 'internal',
-          });
+          }, userId, indexingOptions);
 
           return {
             ...baseResult,
@@ -490,7 +507,8 @@ export async function importAndIndex(
         const result = await indexerService.indexDocument(filename, collectionId, {
           title: item.title,
           confidentiality: 'internal',
-        });
+          owner: ownerName,
+        }, userId, indexingOptions);
 
         return {
           ...baseResult,
@@ -503,13 +521,25 @@ export async function importAndIndex(
         // Direct content from chat materials (transcripts, marked responses, etc.)
         console.log('[documentImporter] Processing material:', item.id, 'title:', item.title);
 
+        // Special handling for uploaded files (PDF, images, etc.): use the actual file
+        if (item.metadata?.materialType === 'upload' && item.metadata?.attachmentId) {
+          const uploadResult = await importUploadedMaterial(item, collectionId, userId, indexingOptions, ownerName);
+          return { ...baseResult, ...uploadResult };
+        }
+
+        // Special handling for generated images: include the actual image file
+        if (item.metadata?.materialType === 'generated_image' && item.metadata?.imageId) {
+          const imageResult = await importGeneratedImageMaterial(item, collectionId, userId, indexingOptions, ownerName);
+          return { ...baseResult, ...imageResult };
+        }
+
         if (!item.content) {
           return { ...baseResult, error: 'Material hat keinen Inhalt' };
         }
 
-        // Format as markdown document
+        // Format as markdown document (text-only materials)
         const materialMd = formatMaterialAsDocument(item);
-        const safeTitle = item.title
+        const safeTitle = (item.title || 'material')
           .replace(/[^a-zA-Z0-9äöüÄÖÜß\s-]/g, '')
           .replace(/\s+/g, '-')
           .slice(0, 50);
@@ -517,9 +547,10 @@ export async function importAndIndex(
         await saveToIncoming(materialMd, filename);
 
         const result = await indexerService.indexDocument(filename, collectionId, {
-          title: item.title,
+          title: item.title || 'Material',
           confidentiality: 'internal',
-        });
+          owner: ownerName,
+        }, userId, indexingOptions);
 
         return {
           ...baseResult,
@@ -536,6 +567,212 @@ export async function importAndIndex(
     console.error('[documentImporter] Error:', error);
     return { ...baseResult, error: error.message };
   }
+}
+
+/** MIME types that are images and should NOT be sent to Markitdown */
+const IMAGE_MIME_TYPES = new Set([
+  'image/png', 'image/jpeg', 'image/jpg', 'image/gif',
+  'image/webp', 'image/svg+xml', 'image/bmp', 'image/tiff',
+]);
+
+/** File extensions that are images */
+const IMAGE_EXTENSIONS = new Set([
+  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.tiff', '.tif',
+]);
+
+function isImageFile(mimeType?: string, filename?: string): boolean {
+  if (mimeType && IMAGE_MIME_TYPES.has(mimeType.toLowerCase())) return true;
+  if (filename) {
+    const ext = extname(filename).toLowerCase();
+    if (IMAGE_EXTENSIONS.has(ext)) return true;
+  }
+  return false;
+}
+
+/**
+ * Import an uploaded file material (PDF, image, etc.): copies the actual
+ * attachment file from chat-uploads into the incoming directory and indexes it.
+ * Images are handled specially (stored as-is with markdown wrapper) since
+ * Markitdown cannot process image files.
+ */
+async function importUploadedMaterial(
+  item: ImportItem,
+  collectionId: string,
+  userId?: string,
+  indexingOptions?: IndexingOptions,
+  ownerName?: string,
+): Promise<{ success: boolean; documentId?: string; error?: string }> {
+  const attachmentId = item.metadata?.attachmentId;
+  const chatId = item.metadata?.chatId;
+
+  if (!attachmentId || !chatId) {
+    return { success: false, error: 'Keine Attachment-ID oder Chat-ID vorhanden' };
+  }
+
+  const { attachmentsService } = await import('./attachments');
+
+  // Get the actual file path from attachment storage
+  const fileInfo = await attachmentsService.getAttachmentFilePath(attachmentId, chatId);
+  if (!fileInfo) {
+    return { success: false, error: 'Originaldatei nicht gefunden' };
+  }
+
+  // All file types (images, PDFs, Word, etc.) go through the indexer.
+  // The indexer routes images to Vision LLM and documents to Markitdown API.
+  const ext = extname(fileInfo.filename);
+  const base = basename(fileInfo.filename, ext);
+  const uniqueFilename = `${base}-${Date.now()}${ext}`;
+
+  if (!existsSync(INCOMING_DIR)) {
+    await mkdir(INCOMING_DIR, { recursive: true });
+  }
+  await copyFile(fileInfo.path, join(INCOMING_DIR, uniqueFilename));
+  console.log(`[documentImporter] Copied attachment ${attachmentId} to incoming/${uniqueFilename}`);
+
+  const result = await indexerService.indexDocument(uniqueFilename, collectionId, {
+    title: item.title || fileInfo.filename,
+    confidentiality: 'internal',
+    owner: ownerName,
+  }, userId, indexingOptions);
+
+  return { success: true, documentId: result.document_id };
+}
+
+
+/**
+ * Import a generated image material: copies the actual image file into the
+ * KB document directory and creates a markdown document with both the image
+ * and its description/prompt.
+ */
+/**
+ * Fast-path import for generated images. All metadata (prompt, model, provider)
+ * is already known — no LLM calls needed. Just store content.md, DOCUMENT_META.md,
+ * and the image file, then update the manifest.
+ */
+async function importGeneratedImageMaterial(
+  item: ImportItem,
+  collectionId: string,
+  _userId?: string,
+  indexingOptions?: IndexingOptions,
+  ownerName?: string,
+): Promise<{ success: boolean; documentId?: string; error?: string }> {
+  const imageId = item.metadata?.imageId;
+  if (!imageId) {
+    return { success: false, error: 'Keine Bild-ID vorhanden' };
+  }
+
+  const { getGeneratedImage, getImageMimeType } = await import('./imageStorage');
+
+  const imageBuffer = await getGeneratedImage(imageId);
+  if (!imageBuffer) {
+    return { success: false, error: 'Bild nicht gefunden' };
+  }
+
+  const mimeType = await getImageMimeType(imageId);
+  const ext = mimeType?.includes('png') ? 'png'
+    : mimeType?.includes('jpeg') || mimeType?.includes('jpg') ? 'jpg'
+    : mimeType?.includes('webp') ? 'webp'
+    : 'png';
+
+  const prompt = item.metadata?.prompt || item.title || '';
+  const model = item.metadata?.model || item.metadata?.provider || 'unbekannt';
+  const today = new Date().toISOString().split('T')[0] ?? '';
+  const imageFilename = `image.${ext}`;
+
+  // Truncate long titles (generated image prompts can be very long)
+  const displayTitle = item.title.length > 80
+    ? item.title.slice(0, 77) + '...'
+    : item.title;
+
+  // Generate document ID
+  const timestamp = Date.now();
+  const documentId = indexingOptions?.preAllocatedDocumentId || (() => {
+    const base = item.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40);
+    return `doc-${base}-${timestamp}`;
+  })();
+
+  // Create document directory
+  const docDir = join(KB_BASE, 'collections', collectionId, 'documents', documentId);
+  await mkdir(docDir, { recursive: true });
+
+  // content.md — the searchable document
+  const contentMd = [
+    `# ${item.title}`,
+    '',
+    `> Generiertes Bild vom ${new Date().toLocaleDateString('de-DE')}`,
+    '',
+    `**Modell:** ${model}`,
+    '',
+    '---',
+    '',
+    '## Bild',
+    '',
+    `![${prompt}](${imageFilename})`,
+    '',
+    '## Prompt',
+    '',
+    prompt,
+    '',
+  ].join('\n');
+
+  // DOCUMENT_META.md — pre-built, no LLM needed
+  const metaMd = [
+    '# DOCUMENT_META',
+    '',
+    '## Basisdaten',
+    `- **Titel:** ${displayTitle}`,
+    `- **Dokument-ID:** ${documentId}`,
+    '- **Typ:** generiertes-bild',
+    `- **Erstellt:** ${today}`,
+    `- **Indiziert:** ${today}`,
+    `- **Quelle:** Bildgenerierung (${model})`,
+    '- **Seitenanzahl:** 1',
+    '- **Sprache:** de',
+    '',
+    '## Klassifizierung',
+    `- **Collection:** ${collectionId}`,
+    '- **Vertraulichkeit:** internal',
+    `- **Owner:** ${ownerName || 'unbekannt'}`,
+    '',
+    '## Inhaltsbeschreibung',
+    `Generiertes Bild mit dem Prompt: "${prompt}"`,
+    '',
+    '## Keywords',
+    `generiertes bild, ${model}, ${prompt.toLowerCase().split(/\s+/).slice(0, 8).join(', ')}`,
+    '',
+    '## Beantwortet Fragen zu',
+    `- Was zeigt das generierte Bild "${item.title}"?`,
+    `- Welcher Prompt wurde für "${item.title}" verwendet?`,
+    '',
+  ].join('\n');
+
+  // Write all files
+  await Promise.all([
+    writeFile(join(docDir, 'content.md'), contentMd, 'utf-8'),
+    writeFile(join(docDir, 'DOCUMENT_META.md'), metaMd, 'utf-8'),
+    writeFile(join(docDir, imageFilename), imageBuffer),
+  ]);
+
+  // Update manifest (skip if placeholder already exists from queue)
+  if (!indexingOptions?.skipManifestEntry) {
+    await indexerService.updateManifestPublic(collectionId, {
+      document_id: documentId,
+      title: displayTitle,
+      path: documentId,
+      source_file: imageFilename,
+      indexed_date: today,
+    });
+    await indexerService.updateCollectionCountPublic(collectionId);
+  } else {
+    await indexerService.updateManifestSourceFilePublic(collectionId, documentId, imageFilename);
+  }
+
+  console.log(`[documentImporter] Generated image fast-indexed: ${item.title} → ${collectionId}/${documentId}`);
+  return { success: true, documentId };
 }
 
 /**

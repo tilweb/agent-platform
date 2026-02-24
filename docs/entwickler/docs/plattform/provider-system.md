@@ -1,6 +1,6 @@
 # Provider-System
 
-Adacor Workplace unterstützt die Integration mehrerer KI-Provider und Modelle. Diese Dokumentation beschreibt das Multi-Provider-System, Modell-Konfiguration und die Einrichtung eigener Provider.
+KI-Workplace unterstützt die Integration mehrerer KI-Provider und Modelle. Diese Dokumentation beschreibt das Multi-Provider-System, Modell-Konfiguration und die Einrichtung eigener Provider.
 
 ## Überblick
 
@@ -18,37 +18,37 @@ Eigene Provider und Modelle sind nur verfügbar, wenn das Feature-Flag `ALLOW_CU
 
 Jeder Provider wird mit einem `api_mode` konfiguriert, der bestimmt, welches API-Protokoll für die Kommunikation verwendet wird:
 
-| API-Modus | Beschreibung | Beispiel-Provider |
-|-----------|-------------|-------------------|
-| `openai` | OpenAI-kompatible Chat Completions API | OpenAI, Adacor AI, Nebius, vLLM |
-| `ollama` | Ollama-native API | Lokale Ollama-Instanzen |
-| `google_gemini` | Google Generative AI API | Google Gemini |
-| `openai_images` | OpenAI Images API (DALL-E) | OpenAI Images |
+| API-Modus       | Beschreibung                           | Beispiel-Provider               |
+| --------------- | -------------------------------------- | ------------------------------- |
+| `openai`        | OpenAI-kompatible Chat Completions API | OpenAI, Adacor AI, Nebius, vLLM |
+| `ollama`        | Ollama-native API                      | Lokale Ollama-Instanzen         |
+| `google_gemini` | Google Generative AI API               | Google Gemini                   |
+| `openai_images` | OpenAI Images API (DALL-E)             | OpenAI Images                   |
 
 ## Modell-Typen
 
-| Typ | Beschreibung | Verwendung |
-|-----|-------------|------------|
-| `llm` | Standard-Sprachmodell | Chat, Textgenerierung |
-| `vllm` | Vision-faehiges Sprachmodell | Chat mit Bildverstaendnis |
-| `tts` | Text-to-Speech | Sprachausgabe |
-| `stt` | Speech-to-Text | Transkription |
-| `image_gen` | Bildgenerierung | Text-zu-Bild, Bild-zu-Bild |
+| Typ         | Beschreibung                 | Verwendung                 |
+| ----------- | ---------------------------- | -------------------------- |
+| `llm`       | Standard-Sprachmodell        | Chat, Textgenerierung      |
+| `vllm`      | Vision-faehiges Sprachmodell | Chat mit Bildverstaendnis  |
+| `tts`       | Text-to-Speech               | Sprachausgabe              |
+| `stt`       | Speech-to-Text               | Transkription              |
+| `image_gen` | Bildgenerierung              | Text-zu-Bild, Bild-zu-Bild |
 
 ## Capabilities
 
 Jedes Modell deklariert seine Fähigkeiten über ein Array von Capabilities:
 
-| Capability | Beschreibung |
-|-----------|-------------|
-| `chat` | Standard-Chat-Konversation |
+| Capability         | Beschreibung                                                |
+| ------------------ | ----------------------------------------------------------- |
+| `chat`             | Standard-Chat-Konversation                                  |
 | `function_calling` | Tool-/Funktionsaufrufe (erforderlich für Agenten mit Tools) |
-| `vision` | Bildverständnis und -analyse |
-| `speech` | Sprachausgabe (TTS) |
-| `transcription` | Spracherkennung (STT) |
-| `text_to_image` | Bildgenerierung aus Text |
-| `image_to_image` | Bildbearbeitung/-variation |
-| `embeddings` | Vektoreinbettungen |
+| `vision`           | Bildverständnis und -analyse                                |
+| `speech`           | Sprachausgabe (TTS)                                         |
+| `transcription`    | Spracherkennung (STT)                                       |
+| `text_to_image`    | Bildgenerierung aus Text                                    |
+| `image_to_image`   | Bildbearbeitung/-variation                                  |
+| `embeddings`       | Vektoreinbettungen                                          |
 
 ### Erweiterte Capabilities
 
@@ -56,11 +56,11 @@ Zusätzlich können Modelle erweiterte Capabilities definieren, die für das Age
 
 ```yaml
 extended_capabilities:
-  tool_use: true          # Unterstützt Tool-/Funktionsaufrufe
-  vision: true            # Unterstützt Bildverständnis
-  context_window: 128000  # Kontextfenster in Tokens
-  streaming: true         # Unterstützt Streaming-Responses
-  json_mode: true         # Unterstützt JSON-Modus
+  tool_use: true # Unterstützt Tool-/Funktionsaufrufe
+  vision: true # Unterstützt Bildverständnis
+  context_window: 128000 # Kontextfenster in Tokens
+  streaming: true # Unterstützt Streaming-Responses
+  json_mode: true # Unterstützt JSON-Modus
   max_output_tokens: 4096 # Maximale Ausgabe-Tokens
 ```
 
@@ -68,12 +68,12 @@ extended_capabilities:
 
 Das System berechnet automatisch einen Datensicherheits-Tier basierend auf dem Firmensitz und Standort des Rechenzentrums:
 
-| Tier | Kriterien | Beispiel |
-|------|----------|---------|
-| **Tier 1** | Deutsches Unternehmen + Deutsches RZ | Adacor AI (Frankfurt) |
-| **Tier 2** | EU-Unternehmen + EU-Rechenzentrum | EU-Cloud-Provider |
-| **Tier 3** | Globales Unternehmen + EU-Rechenzentrum | OpenAI (EU-Region) |
-| **Tier 4** | Globales Unternehmen + Nicht-EU-RZ | OpenAI (US) |
+| Tier       | Kriterien                               | Beispiel              |
+| ---------- | --------------------------------------- | --------------------- |
+| **Tier 1** | Deutsches Unternehmen + Deutsches RZ    | Adacor AI (Frankfurt) |
+| **Tier 2** | EU-Unternehmen + EU-Rechenzentrum       | EU-Cloud-Provider     |
+| **Tier 3** | Globales Unternehmen + EU-Rechenzentrum | OpenAI (EU-Region)    |
+| **Tier 4** | Globales Unternehmen + Nicht-EU-RZ      | OpenAI (US)           |
 
 Die Tier-Berechnung basiert auf den Provider-Feldern `company_region` (`germany` | `eu` | `world`) und `datacenter_country` (ISO-Ländercode).
 
@@ -81,13 +81,13 @@ Die Tier-Berechnung basiert auf den Provider-Feldern `company_region` (`germany`
 
 Für jeden Verwendungszweck kann genau ein aktives Modell gesetzt werden:
 
-| Zweck | Beschreibung |
-|-------|-------------|
-| `chat` | Standard-Chat-Modell |
-| `vision` | Modell für Bildverständnis |
-| `tts` | Text-to-Speech-Modell |
-| `stt` | Speech-to-Text-Modell |
-| `text_to_image` | Modell für Bildgenerierung |
+| Zweck            | Beschreibung               |
+| ---------------- | -------------------------- |
+| `chat`           | Standard-Chat-Modell       |
+| `vision`         | Modell für Bildverständnis |
+| `tts`            | Text-to-Speech-Modell      |
+| `stt`            | Speech-to-Text-Modell      |
+| `text_to_image`  | Modell für Bildgenerierung |
 | `image_to_image` | Modell für Bildbearbeitung |
 
 Die aktiven Modelle werden in `data/providers/active.yaml` gespeichert und können über die UI oder API geändert werden.
@@ -161,12 +161,12 @@ image_to_image:
 
 Navigiere zu **Einstellungen** > **KI-Modelle** und klicke auf **Provider hinzufügen**.
 
-| Feld | Beschreibung | Beispiel |
-|------|-------------|---------|
-| **Name** | Anzeigename des Providers | `Mein Ollama Server` |
-| **API-Modus** | Kommunikationsprotokoll | `ollama` |
-| **Base URL** | Basis-URL der API | `http://localhost:11434` |
-| **API-Key Variable** | Umgebungsvariable für den API-Key | `MY_PROVIDER_API_KEY` |
+| Feld                 | Beschreibung                      | Beispiel                 |
+| -------------------- | --------------------------------- | ------------------------ |
+| **Name**             | Anzeigename des Providers         | `Mein Ollama Server`     |
+| **API-Modus**        | Kommunikationsprotokoll           | `ollama`                 |
+| **Base URL**         | Basis-URL der API                 | `http://localhost:11434` |
+| **API-Key Variable** | Umgebungsvariable für den API-Key | `MY_PROVIDER_API_KEY`    |
 
 > Der API-Key wird **nicht** direkt in der Konfiguration gespeichert, sondern als Referenz auf eine Umgebungsvariable. Setze den tatsächlichen Key in deiner `.env`-Datei.
 
@@ -178,10 +178,10 @@ Navigiere zu **Einstellungen** > **KI-Modelle** und klicke auf **Provider hinzuf
 
 #### Optionale Felder
 
-| Feld | Beschreibung |
-|------|-------------|
-| **Firmensitz** | Region des Anbieters (`germany`, `eu`, `world`) — bestimmt den Security Tier |
-| **Rechenzentrum** | ISO-Ländercode des RZ-Standorts (z.B. `DE`, `US`) |
+| Feld              | Beschreibung                                                                 |
+| ----------------- | ---------------------------------------------------------------------------- |
+| **Firmensitz**    | Region des Anbieters (`germany`, `eu`, `world`) — bestimmt den Security Tier |
+| **Rechenzentrum** | ISO-Ländercode des RZ-Standorts (z.B. `DE`, `US`)                            |
 
 ### Schritt 2: Modelle hinzufuegen
 
@@ -189,21 +189,21 @@ Nach dem Erstellen des Providers können Modelle hinzugefügt werden.
 
 #### Pflichtfelder
 
-| Feld | Beschreibung | Beispiel |
-|------|-------------|---------|
-| **ID** | Technische Modell-ID | `llama3.1:70b` |
-| **Name** | Anzeigename | `Llama 3.1 70B` |
-| **Typ** | Modell-Typ | `llm` |
-| **Capabilities** | Fähigkeiten | `["chat", "function_calling"]` |
+| Feld             | Beschreibung         | Beispiel                       |
+| ---------------- | -------------------- | ------------------------------ |
+| **ID**           | Technische Modell-ID | `llama3.1:70b`                 |
+| **Name**         | Anzeigename          | `Llama 3.1 70B`                |
+| **Typ**          | Modell-Typ           | `llm`                          |
+| **Capabilities** | Fähigkeiten          | `["chat", "function_calling"]` |
 
 #### Optionale Felder
 
-| Feld | Beschreibung |
-|------|-------------|
-| **Kontextlänge** | Maximale Kontextlänge in Tokens |
-| **Max Tokens** | Maximale Ausgabe-Tokens |
-| **Default** | Als Standard-Modell des Providers markieren |
-| **Base URL** | Provider-Base-URL für dieses Modell überschreiben |
+| Feld             | Beschreibung                                      |
+| ---------------- | ------------------------------------------------- |
+| **Kontextlänge** | Maximale Kontextlänge in Tokens                   |
+| **Max Tokens**   | Maximale Ausgabe-Tokens                           |
+| **Default**      | Als Standard-Modell des Providers markieren       |
+| **Base URL**     | Provider-Base-URL für dieses Modell überschreiben |
 
 Alternativ kann über **Verfügbare Modelle laden** die vom Provider angebotenen Modelle aufgelistet und ausgewählt werden (funktioniert für OpenAI- und Ollama-APIs).
 

@@ -45,6 +45,10 @@ spec:
                   name: {{ include "adacor-workplace.secretName" . }}
                   key: MCP_RUNNER_SECRET
                   optional: false
+            {{- if .Values.mcpRunner.debug }}
+            - name: DEBUG
+              value: "true"
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /health
@@ -72,12 +76,17 @@ spec:
             - name: tmp
               mountPath: /tmp
             - name: npm-cache
-              mountPath: /home/app/.npm
+              mountPath: /home/bun/.npm
+            - name: package-store
+              mountPath: /mcp-packages
       volumes:
         - name: tmp
           emptyDir: {}
         - name: npm-cache
           emptyDir: {}
+        - name: package-store
+          persistentVolumeClaim:
+            claimName: {{ include "adacor-workplace.mcpRunner.fullname" . }}-npm-cache
       {{- with .Values.mcpRunner.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

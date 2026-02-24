@@ -2,7 +2,7 @@
 
 ## Ersteinrichtung
 
-Wenn der Adacor Workplace zum ersten Mal gestartet wird, existiert noch kein Benutzerkonto. Der **erste Benutzer**, der sich registriert, erhält automatisch die Rolle **Administrator**. Alle weiteren Benutzer werden mit der Rolle **Benutzer** angelegt.
+Wenn der KI-Workplace zum ersten Mal gestartet wird, existiert noch kein Benutzerkonto. Der **erste Benutzer**, der sich registriert, erhält automatisch die Rolle **Administrator**. Alle weiteren Benutzer werden mit der Rolle **Benutzer** angelegt.
 
 > [!info] Administrator-Rechte
 > Der Administrator kann weitere Benutzer verwalten, KI-Modelle konfigurieren, Verbindungen einrichten und auf das Audit-Log zugreifen. Weitere Informationen finden Sie unter [Benutzerverwaltung](../einstellungen/benutzer.md).
@@ -17,10 +17,10 @@ Wenn der Adacor Workplace zum ersten Mal gestartet wird, existiert noch kein Ben
 
 Der Benutzername muss folgende Regeln erfüllen:
 
-| Regel | Beschreibung |
-|-------|-------------|
-| Mindestlänge | 3 Zeichen |
-| Maximallänge | 32 Zeichen |
+| Regel            | Beschreibung                                                                    |
+| ---------------- | ------------------------------------------------------------------------------- |
+| Mindestlänge     | 3 Zeichen                                                                       |
+| Maximallänge     | 32 Zeichen                                                                      |
 | Erlaubte Zeichen | Buchstaben (a-z, A-Z), Ziffern (0-9), Unterstriche (`_`) und Bindestriche (`-`) |
 
 > [!warning] Hinweis
@@ -68,9 +68,9 @@ Nach dem Login wird eine Sitzung (Session) angelegt, die Sie über einen länger
 
 ### Sitzungsdauer
 
-| Einstellung | Wert |
-|-------------|------|
-| Inaktivitäts-Timeout | **3 Tage** |
+| Einstellung            | Wert        |
+| ---------------------- | ----------- |
+| Inaktivitäts-Timeout   | **3 Tage**  |
 | Maximale Sitzungsdauer | **30 Tage** |
 
 Die Sitzung arbeitet mit einem **Sliding-Window-Verfahren**: Bei jeder Aktion in der Plattform wird das Inaktivitäts-Timeout von 3 Tagen zurückgesetzt. Selbst bei regelmäßiger Nutzung müssen Sie sich spätestens nach 30 Tagen neu anmelden.

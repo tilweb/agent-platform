@@ -89,7 +89,6 @@ mock.module("../../utils/paths", () => ({
   KB_COLLECTIONS_FILE: `${TEST_DATA_ROOT}/knowledge-base/collections.yaml`,
   KB_INCOMING_DIR: `${TEST_DATA_ROOT}/knowledge-base/incoming`,
   TASKS_DIR: `${TEST_DATA_ROOT}/tasks`,
-  TASK_RESULTS_DIR: `${TEST_DATA_ROOT}/tasks/results`,
   GENERATED_IMAGES_DIR: `${TEST_DATA_ROOT}/generated-images`,
   EXPORTS_DIR: `${TEST_DATA_ROOT}/exports`,
   MEMORY_SESSIONS_DIR: `${TEST_DATA_ROOT}/memory/sessions`,

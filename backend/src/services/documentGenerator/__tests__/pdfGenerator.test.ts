@@ -72,11 +72,11 @@ describe("generatePdf", () => {
   });
 
   describe("document metadata", () => {
-    test("should set author to 'Adacor Workplace' in PDF info dictionary", async () => {
+    test("should set author to 'KI-Workplace' in PDF info dictionary", async () => {
       const result = await generatePdf(minimalDoc);
       // The author string is embedded as plain text in the PDF content stream
       const content = result.toString("latin1");
-      expect(content).toContain("Adacor Workplace");
+      expect(content).toContain("KI-Workplace");
     });
   });
 

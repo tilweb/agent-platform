@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
- * Adacor Workplace MCP Server
+ * KI-Workplace MCP Server
  *
- * Exposes the Adacor Workplace tools via the Model Context Protocol.
+ * Exposes the KI-Workplace tools via the Model Context Protocol.
  * Can be used as an MCP server for Claude Desktop, Cursor, and other MCP clients.
  *
  * Usage:

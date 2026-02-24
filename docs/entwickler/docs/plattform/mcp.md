@@ -1,13 +1,13 @@
 # MCP-Integration
 
-Das Model Context Protocol (MCP) ermöglicht die Anbindung externer Tool-Server. Adacor Workplace unterstützt MCP sowohl als Client (externe MCP-Server nutzen) als auch als Server (eigene Tools exponieren).
+Das Model Context Protocol (MCP) ermöglicht die Anbindung externer Tool-Server. KI-Workplace unterstützt MCP sowohl als Client (externe MCP-Server nutzen) als auch als Server (eigene Tools exponieren).
 
 ## Dual-Modus
 
-| Modus | Beschreibung |
-|-------|-------------|
+| Modus      | Beschreibung                                                        |
+| ---------- | ------------------------------------------------------------------- |
 | **Client** | Verbindet sich mit externen MCP-Servern und registriert deren Tools |
-| **Server** | Exponiert eigene Tools als MCP-Server für andere Clients |
+| **Server** | Exponiert eigene Tools als MCP-Server für andere Clients            |
 
 ## MCP Client
 
@@ -17,25 +17,25 @@ Der `McpManager` (`backend/src/mcp/manager.ts`) ist das zentrale Interface für 
 
 ```typescript
 class McpManager {
-  initialize()                    // Alle konfigurierten Server verbinden
-  shutdown()                      // Alle Verbindungen trennen
+  initialize(); // Alle konfigurierten Server verbinden
+  shutdown(); // Alle Verbindungen trennen
 
-  connectServer(serverId)         // Einzelnen Server verbinden
-  disconnectServer(serverId)      // Server trennen
-  reconnectServer(serverId)       // Neu verbinden
+  connectServer(serverId); // Einzelnen Server verbinden
+  disconnectServer(serverId); // Server trennen
+  reconnectServer(serverId); // Neu verbinden
 
-  getServers()                    // Alle Server mit Status
-  getServer(serverId)             // Einzelner Server
-  addServer(config)               // Server hinzufügen
-  updateServer(serverId, updates) // Server aktualisieren
-  deleteServer(serverId)          // Server löschen
-  toggleServer(serverId, enabled) // Aktivieren/Deaktivieren
+  getServers(); // Alle Server mit Status
+  getServer(serverId); // Einzelner Server
+  addServer(config); // Server hinzufügen
+  updateServer(serverId, updates); // Server aktualisieren
+  deleteServer(serverId); // Server löschen
+  toggleServer(serverId, enabled); // Aktivieren/Deaktivieren
 
-  getAllTools()                    // Alle MCP-Tools
-  getServerTools(serverId)        // Tools eines Servers
-  refreshServerTools(serverId)    // Tool-Liste aktualisieren
-  testTool(serverId, name, args)  // Tool testen
-  callTool(serverId, name, args)  // Tool aufrufen
+  getAllTools(); // Alle MCP-Tools
+  getServerTools(serverId); // Tools eines Servers
+  refreshServerTools(serverId); // Tool-Liste aktualisieren
+  testTool(serverId, name, args); // Tool testen
+  callTool(serverId, name, args); // Tool aufrufen
 }
 ```
 
@@ -74,14 +74,14 @@ servers:
 
 ```typescript
 interface McpServerConfig {
-  id: string;                    // Eindeutige Server-ID
-  name: string;                  // Anzeigename
-  command: string;               // Startbefehl (z.B. "npx", "node")
-  args?: string[];               // Befehlsargumente
-  env?: Record<string, string>;  // Umgebungsvariablen
-  enabled?: boolean;             // Aktiviert (Standard: true)
-  autoConnect?: boolean;         // Beim Start verbinden (Standard: true)
-  timeout?: number;              // Timeout in ms
+  id: string; // Eindeutige Server-ID
+  name: string; // Anzeigename
+  command: string; // Startbefehl (z.B. "npx", "node")
+  args?: string[]; // Befehlsargumente
+  env?: Record<string, string>; // Umgebungsvariablen
+  enabled?: boolean; // Aktiviert (Standard: true)
+  autoConnect?: boolean; // Beim Start verbinden (Standard: true)
+  timeout?: number; // Timeout in ms
 }
 ```
 
@@ -89,14 +89,14 @@ interface McpServerConfig {
 
 Häufig verwendete MCP-Server:
 
-| Preset | Paket | Beschreibung |
-|--------|-------|-------------|
-| GitHub | `@modelcontextprotocol/server-github` | GitHub-Operationen |
-| Filesystem | `@modelcontextprotocol/server-filesystem` | Dateisystem-Zugriff |
-| SQLite | `@modelcontextprotocol/server-sqlite` | SQLite-Datenbanken |
-| Brave Search | `@modelcontextprotocol/server-brave-search` | Web-Suche |
-| Puppeteer | `@modelcontextprotocol/server-puppeteer` | Browser-Automatisierung |
-| Memory | `@modelcontextprotocol/server-memory` | Knowledge-Graph |
+| Preset       | Paket                                       | Beschreibung            |
+| ------------ | ------------------------------------------- | ----------------------- |
+| GitHub       | `@modelcontextprotocol/server-github`       | GitHub-Operationen      |
+| Filesystem   | `@modelcontextprotocol/server-filesystem`   | Dateisystem-Zugriff     |
+| SQLite       | `@modelcontextprotocol/server-sqlite`       | SQLite-Datenbanken      |
+| Brave Search | `@modelcontextprotocol/server-brave-search` | Web-Suche               |
+| Puppeteer    | `@modelcontextprotocol/server-puppeteer`    | Browser-Automatisierung |
+| Memory       | `@modelcontextprotocol/server-memory`       | Knowledge-Graph         |
 
 ## Verbindungstypen
 
@@ -189,15 +189,15 @@ mcpRunner:
 
 ## REST API
 
-| Endpoint | Methode | Auth | Beschreibung |
-|----------|---------|------|-------------|
-| `/api/mcp/servers` | GET | User | Alle Server mit Status |
-| `/api/mcp/servers` | POST | Admin | Server hinzufügen |
-| `/api/mcp/servers/:id` | GET | User | Server-Details |
-| `/api/mcp/servers/:id` | PUT | Admin | Server aktualisieren |
-| `/api/mcp/servers/:id` | DELETE | Admin | Server löschen |
-| `/api/mcp/servers/:id/connect` | POST | Admin | Server verbinden |
-| `/api/mcp/servers/:id/disconnect` | POST | Admin | Server trennen |
-| `/api/mcp/servers/:id/tools` | GET | User | Tools eines Servers |
-| `/api/mcp/servers/:id/tools/:name/test` | POST | Admin | Tool testen |
-| `/api/mcp/tools` | GET | User | Alle MCP-Tools |
+| Endpoint                                | Methode | Auth  | Beschreibung           |
+| --------------------------------------- | ------- | ----- | ---------------------- |
+| `/api/mcp/servers`                      | GET     | User  | Alle Server mit Status |
+| `/api/mcp/servers`                      | POST    | Admin | Server hinzufügen      |
+| `/api/mcp/servers/:id`                  | GET     | User  | Server-Details         |
+| `/api/mcp/servers/:id`                  | PUT     | Admin | Server aktualisieren   |
+| `/api/mcp/servers/:id`                  | DELETE  | Admin | Server löschen         |
+| `/api/mcp/servers/:id/connect`          | POST    | Admin | Server verbinden       |
+| `/api/mcp/servers/:id/disconnect`       | POST    | Admin | Server trennen         |
+| `/api/mcp/servers/:id/tools`            | GET     | User  | Tools eines Servers    |
+| `/api/mcp/servers/:id/tools/:name/test` | POST    | Admin | Tool testen            |
+| `/api/mcp/tools`                        | GET     | User  | Alle MCP-Tools         |

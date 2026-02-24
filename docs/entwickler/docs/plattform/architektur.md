@@ -1,17 +1,17 @@
 # Plattform-Architektur
 
-Adacor Workplace ist eine Multi-User AI-Plattform mit React+Vite Frontend und Bun+Hono Backend. Alle Daten werden dateibasiert gespeichert (kein Datenbank-Server erforderlich).
+KI-Workplace ist eine Multi-User AI-Plattform mit React+Vite Frontend und Bun+Hono Backend. Alle Daten werden dateibasiert gespeichert (kein Datenbank-Server erforderlich).
 
 ## Stack
 
-| Schicht | Technologie |
-|---------|------------|
-| **Runtime** | Bun (TypeScript) |
-| **Backend-Framework** | Hono |
-| **Frontend** | React 19 + Vite |
-| **Persistenz** | YAML, Markdown, JSON in `data/` |
-| **Auth** | JWT-basiert (Cookie + Bearer) |
-| **Deployment** | Docker Compose / Kubernetes (Helm) |
+| Schicht               | Technologie                        |
+| --------------------- | ---------------------------------- |
+| **Runtime**           | Bun (TypeScript)                   |
+| **Backend-Framework** | Hono                               |
+| **Frontend**          | React 19 + Vite                    |
+| **Persistenz**        | YAML, Markdown, JSON in `data/`    |
+| **Auth**              | JWT-basiert (Cookie + Bearer)      |
+| **Deployment**        | Docker Compose / Kubernetes (Helm) |
 
 ## Backend-Komponenten
 
@@ -129,43 +129,43 @@ Supervisor-Agent
 
 ## Middleware-Pipeline
 
-| Middleware | Zweck |
-|-----------|-------|
-| `logger` | Request-Logging |
-| `cors` | Cross-Origin (nur wenn `FRONTEND_URL` gesetzt) |
-| `securityHeaders` | CSP, X-Frame-Options, HSTS |
-| `apiRateLimit` | 100 req/min pro IP (konfigurierbar) |
-| `csrfProtection` | Double-Submit-Cookie für state-changing Requests |
-| `bodyLimit` | Max Body-Size (Standard: 10 MB) |
-| `authMiddleware` | JWT-Validierung (pro Route aktiviert) |
+| Middleware        | Zweck                                            |
+| ----------------- | ------------------------------------------------ |
+| `logger`          | Request-Logging                                  |
+| `cors`            | Cross-Origin (nur wenn `FRONTEND_URL` gesetzt)   |
+| `securityHeaders` | CSP, X-Frame-Options, HSTS                       |
+| `apiRateLimit`    | 100 req/min pro IP (konfigurierbar)              |
+| `csrfProtection`  | Double-Submit-Cookie für state-changing Requests |
+| `bodyLimit`       | Max Body-Size (Standard: 10 MB)                  |
+| `authMiddleware`  | JWT-Validierung (pro Route aktiviert)            |
 
 ## API-Routen-Übersicht
 
-| Pfad | Modul | Beschreibung |
-|------|-------|-------------|
-| `/api/auth` | auth | Registrierung, Login, Session |
-| `/api/chat` | chat | Chat-Streaming, Tool/Skill/MCP-Endpoints |
-| `/api/chats` | chat | Chat-Verlauf, Attachments |
-| `/api/agents` | agents | Agent-CRUD + RBAC |
-| `/api/skills` | skills | Skill-Verwaltung |
-| `/api/tools` | tools | Tool-Listing |
-| `/api/custom-tools` | tools | Custom-API-Tools CRUD |
-| `/api/mcp` | mcp | MCP-Server-Verwaltung |
-| `/api/providers` | providers | LLM-Provider + Modelle |
-| `/api/connections` | connections | OAuth-Verbindungen |
-| `/api/plugins` | plugins | Plugin-Verwaltung |
-| `/api/knowledge` | knowledge | Wissensbasis |
-| `/api/memory` | memory | User-Memory |
-| `/api/tasks` | tasks | Task-Queue |
-| `/api/tables` | tables | Strukturierte Daten |
-| `/api/search` | search | Volltextsuche |
-| `/api/spaces` | spaces | Arbeitsbereiche |
-| `/api/apps` | apps | App-Framework |
-| `/api/images` | images | Bildgenerierung |
-| `/api/users` | users | Benutzerverwaltung |
-| `/api/resources` | rbac | Ressourcen-Zugriffskontrolle |
-| `/api/docs` | docs | Dokumentation |
-| `/health` | - | Health-Check (ohne Auth) |
+| Pfad                | Modul       | Beschreibung                             |
+| ------------------- | ----------- | ---------------------------------------- |
+| `/api/auth`         | auth        | Registrierung, Login, Session            |
+| `/api/chat`         | chat        | Chat-Streaming, Tool/Skill/MCP-Endpoints |
+| `/api/chats`        | chat        | Chat-Verlauf, Attachments                |
+| `/api/agents`       | agents      | Agent-CRUD + RBAC                        |
+| `/api/skills`       | skills      | Skill-Verwaltung                         |
+| `/api/tools`        | tools       | Tool-Listing                             |
+| `/api/custom-tools` | tools       | Custom-API-Tools CRUD                    |
+| `/api/mcp`          | mcp         | MCP-Server-Verwaltung                    |
+| `/api/providers`    | providers   | LLM-Provider + Modelle                   |
+| `/api/connections`  | connections | OAuth-Verbindungen                       |
+| `/api/plugins`      | plugins     | Plugin-Verwaltung                        |
+| `/api/knowledge`    | knowledge   | Wissensbasis                             |
+| `/api/memory`       | memory      | User-Memory                              |
+| `/api/tasks`        | tasks       | Task-Queue                               |
+| `/api/tables`       | tables      | Strukturierte Daten                      |
+| `/api/search`       | search      | Volltextsuche                            |
+| `/api/spaces`       | spaces      | Arbeitsbereiche                          |
+| `/api/apps`         | apps        | App-Framework                            |
+| `/api/images`       | images      | Bildgenerierung                          |
+| `/api/users`        | users       | Benutzerverwaltung                       |
+| `/api/resources`    | rbac        | Ressourcen-Zugriffskontrolle             |
+| `/api/docs`         | docs        | Dokumentation                            |
+| `/health`           | -           | Health-Check (ohne Auth)                 |
 
 ## Deployment
 

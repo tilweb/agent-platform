@@ -81,6 +81,11 @@ export const NOTIFICATIONS_DIR = join(DATA_DIR, 'notifications');
 // Temp
 export const TEMP_DIR = join(DATA_DIR, 'temp');
 
-// External API URLs (require explicit configuration, no hardcoded fallbacks)
-export const MARKITDOWN_API_URL = process.env.MARKITDOWN_API_URL || '';
+// External API URLs
+// Prefer ADACOR_AI_API_BASE + MARKITDOWN_API_PATH, fall back to legacy MARKITDOWN_API_URL
+const _markitdownBase = process.env.ADACOR_AI_API_BASE?.replace(/\/+$/, '') || '';
+const _markitdownPath = process.env.MARKITDOWN_API_PATH || '';
+export const MARKITDOWN_API_URL = _markitdownBase && _markitdownPath
+  ? `${_markitdownBase}${_markitdownPath.startsWith('/') ? '' : '/'}${_markitdownPath}`
+  : (process.env.MARKITDOWN_API_URL || '');
 export const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';

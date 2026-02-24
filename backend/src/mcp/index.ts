@@ -1,7 +1,7 @@
 /**
  * MCP Integration Module
  *
- * Provides MCP (Model Context Protocol) integration for the Adacor Workplace.
+ * Provides MCP (Model Context Protocol) integration for the KI-Workplace.
  *
  * Two modes:
  *
@@ -13,7 +13,7 @@
  *    ```
  *
  * 2. MCP Server Mode:
- *    Expose Adacor Workplace tools to external MCP clients
+ *    Expose KI-Workplace tools to external MCP clients
  *    ```bash
  *    bun run src/mcp/server/index.ts
  *    ```

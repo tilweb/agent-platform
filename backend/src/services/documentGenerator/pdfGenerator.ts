@@ -130,8 +130,8 @@ export async function generatePdf(data: DocumentData): Promise<Buffer> {
     }),
     info: {
       title: data.title,
-      author: 'Adacor Workplace',
-      creator: 'Adacor Workplace - Projektmanagement',
+      author: 'KI-Workplace',
+      creator: 'KI-Workplace - Projektmanagement',
     },
   };
 

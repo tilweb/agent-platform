@@ -1,6 +1,6 @@
 # Verfügbare Skills
 
-Diese Seite listet alle Skills des Adacor Workplace auf -- unterteilt in System-Skills (vorinstalliert, nicht änderbar) und benutzerdefinierte Skills.
+Diese Seite listet alle Skills des KI-Workplace auf -- unterteilt in System-Skills (vorinstalliert, nicht änderbar) und benutzerdefinierte Skills.
 
 ---
 
@@ -12,13 +12,13 @@ System-Skills werden mit der Plattform ausgeliefert und können nicht bearbeitet
 
 ### Web Recherche
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `web-research` |
-| **Slash-Command** | `/web-research` |
-| **Geschätzte Dauer** | 2 -- 5 Minuten |
-| **Ausgabe** | Recherche-Zusammenfassung mit Quellen |
-| **Status** | Aktiv |
+| Eigenschaft          | Wert                                  |
+| -------------------- | ------------------------------------- |
+| **ID**               | `web-research`                        |
+| **Slash-Command**    | `/web-research`                       |
+| **Geschätzte Dauer** | 2 -- 5 Minuten                        |
+| **Ausgabe**          | Recherche-Zusammenfassung mit Quellen |
+| **Status**           | Aktiv                                 |
 
 Führt gezielte Web-Recherchen durch und fasst die Ergebnisse strukturiert zusammen. Der Skill optimiert die Suchstrategie automatisch, indem er verschiedene Suchbegriffe in Deutsch und Englisch verwendet.
 
@@ -42,22 +42,24 @@ Führt gezielte Web-Recherchen durch und fasst die Ergebnisse strukturiert zusam
 - Angabe des Datums der Quellen
 
 > [!example] Beispielaufruf
+>
 > ```
 > /web-research Welche neuen Regelungen bringt der EU AI Act für KMU?
 > ```
-> oder einfach: *"Recherchiere, welche neuen Regelungen der EU AI Act für KMU bringt."*
+>
+> oder einfach: _"Recherchiere, welche neuen Regelungen der EU AI Act für KMU bringt."_
 
 ---
 
 ### Deep Research
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `deep-research` |
-| **Slash-Command** | `/deep-research` |
-| **Geschätzte Dauer** | 5 -- 15 Minuten |
-| **Ausgabe** | Strukturierter Research-Report |
-| **Status** | Aktiv |
+| Eigenschaft          | Wert                           |
+| -------------------- | ------------------------------ |
+| **ID**               | `deep-research`                |
+| **Slash-Command**    | `/deep-research`               |
+| **Geschätzte Dauer** | 5 -- 15 Minuten                |
+| **Ausgabe**          | Strukturierter Research-Report |
+| **Status**           | Aktiv                          |
 
 Startet eine umfassende, mehrstufige Recherche für komplexe Themen. Im Gegensatz zur einfachen Web-Recherche durchläuft die Deep Research einen vollständigen Planungs-, Recherche- und Synthesezyklus und speichert die Ergebnisse als Report-Datei.
 
@@ -86,13 +88,13 @@ Startet eine umfassende, mehrstufige Recherche für komplexe Themen. Im Gegensat
 
 ### Knowledge Query (Wissenssuche)
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `knowledge-query` |
-| **Slash-Command** | `/knowledge-query` |
-| **Geschätzte Dauer** | 1 -- 3 Minuten |
-| **Ausgabe** | Antwort mit Dokumenten-Referenzen |
-| **Status** | Aktiv |
+| Eigenschaft          | Wert                              |
+| -------------------- | --------------------------------- |
+| **ID**               | `knowledge-query`                 |
+| **Slash-Command**    | `/knowledge-query`                |
+| **Geschätzte Dauer** | 1 -- 3 Minuten                    |
+| **Ausgabe**          | Antwort mit Dokumenten-Referenzen |
+| **Status**           | Aktiv                             |
 
 Durchsucht die interne Wissensdatenbank (Knowledge Base) nach Antworten auf Ihre Fragen. Der Skill arbeitet mit dem Knowledge Orchestrator zusammen, der die relevanten Collections und Dokumente identifiziert.
 
@@ -109,19 +111,19 @@ Durchsucht die interne Wissensdatenbank (Knowledge Base) nach Antworten auf Ihre
 4. Synthetisiere die Ergebnisse zu einer kohärenten Antwort
 
 > [!tip] Tipp
-> Formulieren Sie Ihre Fragen möglichst konkret. Statt *"Was wisst ihr über Datenschutz?"* liefert *"Welche Aufbewahrungsfristen gelten laut unserer Datenschutzrichtlinie für Kundendaten?"* deutlich präzisere Ergebnisse.
+> Formulieren Sie Ihre Fragen möglichst konkret. Statt _"Was wisst ihr über Datenschutz?"_ liefert _"Welche Aufbewahrungsfristen gelten laut unserer Datenschutzrichtlinie für Kundendaten?"_ deutlich präzisere Ergebnisse.
 
 ---
 
 ### Bildgenerierung
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `image-generation` |
-| **Slash-Command** | `/image-generation` |
-| **Geschätzte Dauer** | 1 -- 2 Minuten |
-| **Ausgabe** | Generiertes Bild |
-| **Status** | Aktiv |
+| Eigenschaft          | Wert                |
+| -------------------- | ------------------- |
+| **ID**               | `image-generation`  |
+| **Slash-Command**    | `/image-generation` |
+| **Geschätzte Dauer** | 1 -- 2 Minuten      |
+| **Ausgabe**          | Generiertes Bild    |
+| **Status**           | Aktiv               |
 
 Erstellt Bilder aus Textbeschreibungen. Der Skill optimiert Ihre Beschreibung automatisch zu einem detaillierten Prompt und wählt ein passendes Seitenverhältnis.
 
@@ -141,6 +143,7 @@ Der Skill erweitert kurze Beschreibungen automatisch um hilfreiche Details:
 **Seitenverhältnisse:** 1:1, 16:9, 9:16, 4:3, 3:4
 
 > [!example] Beispielaufruf
+>
 > ```
 > /image-generation Ein minimalistisches Logo für ein Technologie-Startup, blau und weiß, flaches Design
 > ```
@@ -149,13 +152,13 @@ Der Skill erweitert kurze Beschreibungen automatisch um hilfreiche Details:
 
 ### Bildbearbeitung
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `image-edit` |
-| **Slash-Command** | `/image-edit` |
-| **Geschätzte Dauer** | 1 -- 3 Minuten |
-| **Ausgabe** | Bearbeitetes Bild |
-| **Status** | Derzeit deaktiviert |
+| Eigenschaft          | Wert                |
+| -------------------- | ------------------- |
+| **ID**               | `image-edit`        |
+| **Slash-Command**    | `/image-edit`       |
+| **Geschätzte Dauer** | 1 -- 3 Minuten      |
+| **Ausgabe**          | Bearbeitetes Bild   |
+| **Status**           | Derzeit deaktiviert |
 
 Bearbeitet hochgeladene Bilder basierend auf Ihren Anweisungen. Unterstützt Stiländerungen, Farbanpassungen, Objektänderungen und Hintergrundänderungen.
 
@@ -179,12 +182,12 @@ Bearbeitet hochgeladene Bilder basierend auf Ihren Anweisungen. Unterstützt Sti
 
 ### Chat Export
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `chat-export` |
-| **Slash-Command** | `/export` |
-| **Ausgabe** | Dokument-Download (PDF, Word, Excel) |
-| **Status** | Aktiv |
+| Eigenschaft       | Wert                                 |
+| ----------------- | ------------------------------------ |
+| **ID**            | `chat-export`                        |
+| **Slash-Command** | `/export`                            |
+| **Ausgabe**       | Dokument-Download (PDF, Word, Excel) |
+| **Status**        | Aktiv                                |
 
 Exportiert Chat-Inhalte und Konversationsergebnisse in verschiedene Dokumentformate. Dieser Skill wird **ausschließlich über den Slash-Command** `/export` aktiviert.
 
@@ -193,11 +196,11 @@ Exportiert Chat-Inhalte und Konversationsergebnisse in verschiedene Dokumentform
 
 **Verfügbare Formate:**
 
-| Format | Dateiendung | Einsatzgebiet |
-|--------|-------------|---------------|
-| **PDF** | .pdf | Berichte, Dokumentation, Archivierung |
-| **Word** | .docx | Bearbeitung und Weitergabe |
-| **Excel** | .xlsx | Tabellarische Daten und Analysen |
+| Format    | Dateiendung | Einsatzgebiet                         |
+| --------- | ----------- | ------------------------------------- |
+| **PDF**   | .pdf        | Berichte, Dokumentation, Archivierung |
+| **Word**  | .docx       | Bearbeitung und Weitergabe            |
+| **Excel** | .xlsx       | Tabellarische Daten und Analysen      |
 
 **Inhaltsstruktur:**
 
@@ -218,13 +221,13 @@ Neben den System-Skills können eigene Skills erstellt werden, die spezifische A
 
 ### Code Review
 
-| Eigenschaft | Wert |
-|-------------|------|
-| **ID** | `code-review` |
-| **Slash-Command** | `/code-review` |
-| **Geschätzte Dauer** | 2 -- 5 Minuten |
-| **Ausgabe** | Strukturiertes Code-Review Feedback |
-| **Status** | Aktiv |
+| Eigenschaft          | Wert                                |
+| -------------------- | ----------------------------------- |
+| **ID**               | `code-review`                       |
+| **Slash-Command**    | `/code-review`                      |
+| **Geschätzte Dauer** | 2 -- 5 Minuten                      |
+| **Ausgabe**          | Strukturiertes Code-Review Feedback |
+| **Status**           | Aktiv                               |
 
 Führt professionelle Code Reviews durch mit Fokus auf Qualität, Sicherheit und Best Practices. Der Skill liest die zu prüfende Datei, analysiert sie systematisch nach definierten Kriterien und liefert strukturiertes Feedback.
 
@@ -235,13 +238,13 @@ Führt professionelle Code Reviews durch mit Fokus auf Qualität, Sicherheit und
 
 **Prüfkriterien:**
 
-| Kriterium | Prüfinhalt |
-|-----------|-------------|
-| **Korrektheit** | Funktioniert der Code wie beabsichtigt? Logische Fehler? Edge Cases? |
-| **Lesbarkeit** | Aussagekräftige Namen? Gute Struktur? Hilfreiche Kommentare? |
+| Kriterium       | Prüfinhalt                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
+| **Korrektheit** | Funktioniert der Code wie beabsichtigt? Logische Fehler? Edge Cases?          |
+| **Lesbarkeit**  | Aussagekräftige Namen? Gute Struktur? Hilfreiche Kommentare?                  |
 | **Wartbarkeit** | DRY-Prinzip? Angemessene Größe von Funktionen/Klassen? Sinnvolle Architektur? |
-| **Sicherheit** | Input-Validierung? Schutz sensibler Daten? SQL Injection, XSS? |
-| **Performance** | Offensichtliche Performance-Probleme? Unnötige Berechnungen oder Schleifen? |
+| **Sicherheit**  | Input-Validierung? Schutz sensibler Daten? SQL Injection, XSS?                |
+| **Performance** | Offensichtliche Performance-Probleme? Unnötige Berechnungen oder Schleifen?   |
 
 **Arbeitsablauf:**
 
@@ -261,7 +264,9 @@ Das Feedback umfasst:
 - **Empfehlungen** -- Übergreifende Hinweise für die Weiterentwicklung
 
 > [!example] Beispielaufruf
+>
 > ```
 > /code-review backend/src/auth/types.ts
 > ```
-> oder: *"Prüfe den Code in der Datei auth/types.ts auf Sicherheit und Best Practices."*
+>
+> oder: _"Prüfe den Code in der Datei auth/types.ts auf Sicherheit und Best Practices."_

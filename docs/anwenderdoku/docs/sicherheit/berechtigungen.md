@@ -1,6 +1,6 @@
 # Berechtigungen & RBAC
 
-Der Adacor Workplace verwendet ein rollenbasiertes Zugriffskontrollsystem (Role-Based Access Control, RBAC) auf zwei Ebenen: globale Rollen und ressourcenbasierte Rollen.
+Der KI-Workplace verwendet ein rollenbasiertes Zugriffskontrollsystem (Role-Based Access Control, RBAC) auf zwei Ebenen: globale Rollen und ressourcenbasierte Rollen.
 
 ---
 
@@ -8,10 +8,10 @@ Der Adacor Workplace verwendet ein rollenbasiertes Zugriffskontrollsystem (Role-
 
 Jeder Benutzer hat genau eine globale Rolle, die seine grundlegenden Berechtigungen im System bestimmt:
 
-| Rolle | Beschreibung |
-|-------|-------------|
-| **Admin** | Vollzugriff auf alle Funktionen und Verwaltungsbereiche |
-| **User** | Standard-Benutzer mit Zugriff auf Chat, Agenten, Skills und weitere Grundfunktionen |
+| Rolle     | Beschreibung                                                                        |
+| --------- | ----------------------------------------------------------------------------------- |
+| **Admin** | Vollzugriff auf alle Funktionen und Verwaltungsbereiche                             |
+| **User**  | Standard-Benutzer mit Zugriff auf Chat, Agenten, Skills und weitere Grundfunktionen |
 
 ### Admin-Berechtigungen
 
@@ -50,13 +50,13 @@ Für bestimmte Ressourcentypen können individuelle Zugriffsrechte vergeben werd
 
 Die folgenden Ressourcentypen unterstützen die feingranulare Zugriffssteuerung:
 
-| Ressource | Beschreibung |
-|-----------|-------------|
-| **Spaces** | Gemeinsame Arbeitsbereiche mit Chats, Speicher und Teammitgliedern |
-| **Sammlungen** | Knowledge-Base-Sammlungen mit Dokumenten und Wissenseinträgen |
-| **Verträge** | Vertragsdokumente und -daten im Vertragsmanagement |
-| **Skills** | Öffentlich geteilte Skills |
-| **Agenten** | KI-Agenten mit eigener Konfiguration |
+| Ressource      | Beschreibung                                                       |
+| -------------- | ------------------------------------------------------------------ |
+| **Spaces**     | Gemeinsame Arbeitsbereiche mit Chats, Speicher und Teammitgliedern |
+| **Sammlungen** | Knowledge-Base-Sammlungen mit Dokumenten und Wissenseinträgen      |
+| **Verträge**   | Vertragsdokumente und -daten im Vertragsmanagement                 |
+| **Skills**     | Öffentlich geteilte Skills                                         |
+| **Agenten**    | KI-Agenten mit eigener Konfiguration                               |
 
 ### Rollenhierarchie
 
@@ -66,13 +66,13 @@ Die vier verfügbaren Rollen bilden eine aufsteigende Hierarchie. Jede höhere R
 Viewer < Editor < Admin < Owner
 ```
 
-| Berechtigung | Viewer | Editor | Admin | Owner |
-|-------------|--------|--------|-------|-------|
-| **Ansehen** | Ja | Ja | Ja | Ja |
-| **Bearbeiten** | Nein | Ja | Ja | Ja |
-| **Löschen** | Nein | Nein | Nein | Ja |
-| **Zugriff verwalten** | Nein | Nein | Ja | Ja |
-| **Eigentum übertragen** | Nein | Nein | Nein | Ja |
+| Berechtigung            | Viewer | Editor | Admin | Owner |
+| ----------------------- | ------ | ------ | ----- | ----- |
+| **Ansehen**             | Ja     | Ja     | Ja    | Ja    |
+| **Bearbeiten**          | Nein   | Ja     | Ja    | Ja    |
+| **Löschen**             | Nein   | Nein   | Nein  | Ja    |
+| **Zugriff verwalten**   | Nein   | Nein   | Ja    | Ja    |
+| **Eigentum übertragen** | Nein   | Nein   | Nein  | Ja    |
 
 ### Rollenbeschreibungen
 

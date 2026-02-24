@@ -112,11 +112,11 @@ describe("generateWord", () => {
   });
 
   describe("document metadata", () => {
-    test("should set creator to 'Adacor Workplace' in docProps/core.xml", async () => {
+    test("should set creator to 'KI-Workplace' in docProps/core.xml", async () => {
       const result = await generateWord(minimalDoc);
       const coreXml = extractZipEntry(result, "docProps/core.xml");
       expect(coreXml).not.toBeNull();
-      expect(coreXml).toContain("<dc:creator>Adacor Workplace</dc:creator>");
+      expect(coreXml).toContain("<dc:creator>KI-Workplace</dc:creator>");
     });
 
     test("should embed the document title in docProps/core.xml", async () => {

@@ -31,7 +31,7 @@ services:
       - MCP_RUNNER_SECRET=${MCP_RUNNER_SECRET:?Set MCP_RUNNER_SECRET in .env}
       - MCP_RUNNER_PORT=3002
     volumes:
-      - mcp-npm-cache:/home/app/.npm   # npm cache survives restarts
+      - ./mcp-runner/data/npm-cache:/mcp-packages      # Persistent package store shared across restarts
     expose:
       - "3002"
     healthcheck:
@@ -59,6 +59,3 @@ services:
     depends_on:
       - frontend
       - backend
-
-volumes:
-  mcp-npm-cache:

@@ -6,7 +6,7 @@ model: sonnet
 memory: project
 ---
 
-You are a test engineer for the Adacor Workplace backend.
+You are a test engineer for the KI-Workplace backend.
 
 ## Context
 
@@ -86,6 +86,7 @@ test("GET /api/endpoint returns data", async () => {
 ## Memory
 
 Track:
+
 - Test patterns that work well in this codebase
 - Modules that already have tests (avoid duplicates)
 - Common mocking patterns for this project's dependencies

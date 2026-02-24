@@ -3,7 +3,7 @@
 > [!warning] Administratorbereich
 > Das Audit Log ist nur für Benutzer mit der Rolle **Admin** sichtbar und zugänglich.
 
-Das Audit Log protokolliert alle sicherheitsrelevanten Aktionen innerhalb des Adacor Workplace. Es dient der Nachvollziehbarkeit, Compliance und der Untersuchung von Sicherheitsvorfällen.
+Das Audit Log protokolliert alle sicherheitsrelevanten Aktionen innerhalb des KI-Workplace. Es dient der Nachvollziehbarkeit, Compliance und der Untersuchung von Sicherheitsvorfällen.
 
 ---
 
@@ -66,15 +66,15 @@ Wählen Sie einen Zeitraum (Von-/Bis-Datum), um die angezeigten Einträge einzus
 
 Filtern Sie nach der Art des Ereignisses:
 
-| Kategorie | Schlüssel | Beschreibung |
-|-----------|-----------|-------------|
-| **Authentifizierung** | `auth` | Login, Logout, Sitzungsereignisse |
-| **Benutzerverwaltung** | `user_management` | Benutzer erstellen, ändern, löschen |
-| **Datenzugriff** | `data_access` | Lesende Zugriffe auf Ressourcen |
-| **Datenänderung** | `data_modification` | Erstellung, Änderung und Löschung von Daten |
-| **Admin-Aktionen** | `admin_action` | Systemkonfiguration und Verwaltung |
-| **Sicherheit** | `security` | Sicherheitsrelevante Ereignisse und Blockierungen |
-| **System** | `system` | Systemstart, -stopp und Fehler |
+| Kategorie              | Schlüssel           | Beschreibung                                      |
+| ---------------------- | ------------------- | ------------------------------------------------- |
+| **Authentifizierung**  | `auth`              | Login, Logout, Sitzungsereignisse                 |
+| **Benutzerverwaltung** | `user_management`   | Benutzer erstellen, ändern, löschen               |
+| **Datenzugriff**       | `data_access`       | Lesende Zugriffe auf Ressourcen                   |
+| **Datenänderung**      | `data_modification` | Erstellung, Änderung und Löschung von Daten       |
+| **Admin-Aktionen**     | `admin_action`      | Systemkonfiguration und Verwaltung                |
+| **Sicherheit**         | `security`          | Sicherheitsrelevante Ereignisse und Blockierungen |
+| **System**             | `system`            | Systemstart, -stopp und Fehler                    |
 
 ### Aktion
 
@@ -94,16 +94,16 @@ Filtern Sie nach erfolgreich oder fehlgeschlagenen Aktionen, um beispielsweise g
 
 Jeder Audit-Eintrag enthält folgende Informationen:
 
-| Feld | Beschreibung |
-|------|-------------|
-| **Zeitstempel** | Genauer Zeitpunkt des Ereignisses (ISO 8601) |
-| **Kategorie** | Einordnung des Ereignistyps |
-| **Aktion** | Spezifische Aktion (z.B. `login_success`, `user_deleted`) |
-| **Benutzer** | Benutzer, der die Aktion ausgelöst hat |
-| **IP-Adresse** | IP-Adresse der Anfrage |
-| **Ressource** | Betroffene Ressource (Typ und ID) |
-| **Erfolg** | Ob die Aktion erfolgreich war |
-| **Details** | Zusätzliche Informationen je nach Ereignistyp |
+| Feld            | Beschreibung                                              |
+| --------------- | --------------------------------------------------------- |
+| **Zeitstempel** | Genauer Zeitpunkt des Ereignisses (ISO 8601)              |
+| **Kategorie**   | Einordnung des Ereignistyps                               |
+| **Aktion**      | Spezifische Aktion (z.B. `login_success`, `user_deleted`) |
+| **Benutzer**    | Benutzer, der die Aktion ausgelöst hat                    |
+| **IP-Adresse**  | IP-Adresse der Anfrage                                    |
+| **Ressource**   | Betroffene Ressource (Typ und ID)                         |
+| **Erfolg**      | Ob die Aktion erfolgreich war                             |
+| **Details**     | Zusätzliche Informationen je nach Ereignistyp             |
 
 ---
 

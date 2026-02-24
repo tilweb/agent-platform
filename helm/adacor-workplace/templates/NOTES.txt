@@ -1,4 +1,4 @@
-Adacor Workplace has been deployed!
+KI-Workplace has been deployed!
 
 {{- if .Values.ingress.enabled }}
 

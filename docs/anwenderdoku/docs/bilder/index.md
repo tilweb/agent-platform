@@ -1,6 +1,6 @@
 # Bildgenerierung
 
-Der Adacor Workplace verfügt über eine integrierte Bildgenerierung, mit der Sie KI-generierte Bilder direkt auf der Plattform erstellen können. Beschreiben Sie, was Sie sehen möchten, und die KI erzeugt passende Bilder für Sie.
+Der KI-Workplace verfügt über eine integrierte Bildgenerierung, mit der Sie KI-generierte Bilder direkt auf der Plattform erstellen können. Beschreiben Sie, was Sie sehen möchten, und die KI erzeugt passende Bilder für Sie.
 
 ## Text-zu-Bild
 
@@ -17,6 +17,7 @@ Beim Text-zu-Bild-Modus beschreiben Sie das gewünschte Bild in einem Textprompt
 Die Generierung dauert in der Regel wenige Sekunden. Sobald die Bilder fertig sind, werden sie in der Galerie angezeigt.
 
 > [!example] Beispiel-Prompts
+>
 > - "Ein modernes Bürogebäude bei Sonnenuntergang, fotorealistisch"
 > - "Abstrakte Darstellung von Datenströmen in blau und türkis, minimalistisch"
 > - "Illustration einer Teamarbeit am Whiteboard, flacher Illustrationsstil"
@@ -32,6 +33,7 @@ Im Bild-zu-Bild-Modus laden Sie ein bestehendes Bild hoch und beschreiben, wie e
 3. Klicken Sie auf **Generieren**
 
 > [!example] Beispiel-Transformationen
+>
 > - Originalfoto + "Wandle in eine Bleistiftzeichnung um"
 > - Produktfoto + "Platziere das Produkt in einer modernen Küche"
 > - Logo + "Erstelle eine Winterversion mit Schnee und Eiskristallen"
@@ -43,13 +45,13 @@ Im Bild-zu-Bild-Modus laden Sie ein bestehendes Bild hoch und beschreiben, wie e
 
 Sie können aus fünf vordefinierten Seitenverhältnissen wählen:
 
-| Seitenverhältnis | Format | Typische Verwendung |
-|---|---|---|
-| **1:1** | Quadratisch (1024 x 1024) | Profilbilder, Social-Media-Posts, Icons |
-| **16:9** | Querformat (1792 x 1024) | Präsentationen, Header-Bilder, Hintergründe |
-| **9:16** | Hochformat (1024 x 1792) | Smartphone-Hintergründe, Stories, Poster |
-| **4:3** | Leichtes Querformat (1366 x 1024) | Blog-Bilder, Dokumentationen |
-| **3:4** | Leichtes Hochformat (1024 x 1366) | Buchcover, Porträts |
+| Seitenverhältnis | Format                            | Typische Verwendung                         |
+| ---------------- | --------------------------------- | ------------------------------------------- |
+| **1:1**          | Quadratisch (1024 x 1024)         | Profilbilder, Social-Media-Posts, Icons     |
+| **16:9**         | Querformat (1792 x 1024)          | Präsentationen, Header-Bilder, Hintergründe |
+| **9:16**         | Hochformat (1024 x 1792)          | Smartphone-Hintergründe, Stories, Poster    |
+| **4:3**          | Leichtes Querformat (1366 x 1024) | Blog-Bilder, Dokumentationen                |
+| **3:4**          | Leichtes Hochformat (1024 x 1366) | Buchcover, Porträts                         |
 
 ## Mehrere Bilder pro Anfrage
 
@@ -79,11 +81,11 @@ Die Qualität der generierten Bilder hängt maßgeblich von der Qualität Ihres 
 
 ### Beispiele für effektive Prompts
 
-| Weniger effektiv | Effektiver |
-|---|---|
-| "Ein Berg" | "Ein schneebedeckter Berggipfel bei Sonnenaufgang, dramatisches orangefarbenes Licht, Panorama-Weitwinkel, fotorealistisch" |
-| "Eine Stadt" | "Eine futuristische Stadt bei Nacht mit Neonlichtern und fliegenden Autos, Cyberpunk-Stil, Regen auf den Straßen" |
-| "Ein Logo" | "Minimalistisches Logo für ein Technologie-Unternehmen, geometrische Formen in Blau und Weiß, flaches Design, weißer Hintergrund" |
+| Weniger effektiv | Effektiver                                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| "Ein Berg"       | "Ein schneebedeckter Berggipfel bei Sonnenaufgang, dramatisches orangefarbenes Licht, Panorama-Weitwinkel, fotorealistisch"       |
+| "Eine Stadt"     | "Eine futuristische Stadt bei Nacht mit Neonlichtern und fliegenden Autos, Cyberpunk-Stil, Regen auf den Straßen"                 |
+| "Ein Logo"       | "Minimalistisches Logo für ein Technologie-Unternehmen, geometrische Formen in Blau und Weiß, flaches Design, weißer Hintergrund" |
 
 ## Bildgalerie
 

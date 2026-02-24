@@ -1,6 +1,6 @@
 # Knowledge Base
 
-Die Knowledge Base ist das zentrale Wissensmanagement-System des Adacor Workplace. Sie ermöglicht es, Dokumente zu importieren, automatisch zu indexieren und den KI-Agenten als Wissensquelle bereitzustellen. Durch den RAG-Ansatz (Retrieval-Augmented Generation) können Agenten gezielt auf Ihre Unternehmensdokumente zugreifen und präzise, fundierte Antworten liefern.
+Die Knowledge Base ist das zentrale Wissensmanagement-System des KI-Workplace. Sie ermöglicht es, Dokumente zu importieren, automatisch zu indexieren und den KI-Agenten als Wissensquelle bereitzustellen. Durch den RAG-Ansatz (Retrieval-Augmented Generation) können Agenten gezielt auf Ihre Unternehmensdokumente zugreifen und präzise, fundierte Antworten liefern.
 
 ## Was ist die Knowledge Base?
 
@@ -22,28 +22,28 @@ Beispiele für Collections:
 
 Jede Collection hat folgende Eigenschaften:
 
-| Eigenschaft | Beschreibung |
-|---|---|
-| **ID** | Eindeutiger Bezeichner (Kleinbuchstaben, Zahlen, Bindestriche) |
-| **Name** | Anzeigename der Collection |
-| **Beschreibung** | Kurze Beschreibung des Inhalts |
-| **Dokumentenanzahl** | Anzahl der enthaltenen Dokumente |
+| Eigenschaft            | Beschreibung                                                      |
+| ---------------------- | ----------------------------------------------------------------- |
+| **ID**                 | Eindeutiger Bezeichner (Kleinbuchstaben, Zahlen, Bindestriche)    |
+| **Name**               | Anzeigename der Collection                                        |
+| **Beschreibung**       | Kurze Beschreibung des Inhalts                                    |
+| **Dokumentenanzahl**   | Anzahl der enthaltenen Dokumente                                  |
 | **Aktivierungsregeln** | Stichwörter, bei denen die Collection automatisch einbezogen wird |
 
 ## Unterstützte Formate
 
 Die Knowledge Base unterstützt eine Vielzahl von Dokumentformaten. Beim Import werden alle Formate automatisch in Markdown konvertiert, sodass der KI-Agent den Inhalt optimal verarbeiten kann.
 
-| Format | Beschreibung |
-|---|---|
-| **PDF** | Adobe PDF-Dokumente |
+| Format   | Beschreibung                            |
+| -------- | --------------------------------------- |
+| **PDF**  | Adobe PDF-Dokumente                     |
 | **DOCX** | Microsoft Word-Dokumente (ab Word 2007) |
-| **DOC** | Ältere Microsoft Word-Dokumente |
-| **XLSX** | Microsoft Excel-Tabellen |
-| **PPTX** | Microsoft PowerPoint-Präsentationen |
-| **TXT** | Einfache Textdateien |
-| **MD** | Markdown-Dateien |
-| **HTML** | Webseiten und HTML-Dokumente |
+| **DOC**  | Ältere Microsoft Word-Dokumente         |
+| **XLSX** | Microsoft Excel-Tabellen                |
+| **PPTX** | Microsoft PowerPoint-Präsentationen     |
+| **TXT**  | Einfache Textdateien                    |
+| **MD**   | Markdown-Dateien                        |
+| **HTML** | Webseiten und HTML-Dokumente            |
 
 > [!tip] Optimale Ergebnisse
 > Für die beste Indexierungsqualität empfehlen wir gut strukturierte Dokumente mit klaren Überschriften, Absätzen und Aufzählungen. PDF-Dokumente sollten idealerweise Text-basiert sein (nicht gescannt).
@@ -54,12 +54,12 @@ Beim Import eines Dokuments durchläuft es einen mehrstufigen Indexierungsprozes
 
 1. **Konvertierung** -- Das Dokument wird über die Markitdown-API in Markdown-Format konvertiert
 2. **Metadaten-Generierung** -- Ein KI-Modell analysiert den Inhalt und erzeugt automatisch Metadaten:
-    - Titel des Dokuments
-    - Dokumenttyp
-    - Sprache
-    - Schlagwörter (Keywords)
-    - Inhaltsbeschreibung
-    - Mögliche Fragen, die das Dokument beantworten kann
+   - Titel des Dokuments
+   - Dokumenttyp
+   - Sprache
+   - Schlagwörter (Keywords)
+   - Inhaltsbeschreibung
+   - Mögliche Fragen, die das Dokument beantworten kann
 3. **Speicherung** -- Das konvertierte Dokument und die Metadaten werden in der Collection gespeichert
 
 Jedes indexierte Dokument besteht aus zwei Teilen:
@@ -128,10 +128,10 @@ Jede Collection verfügt über ein **Manifest** -- eine strukturierte Übersicht
 - **Beschreibung** -- Zweck und Inhalt der Collection
 - **Letztes Update** -- Zeitstempel der letzten Änderung
 - **Dokumentenliste** -- Alle Dokumente mit ihren Metadaten:
-    - Dokument-ID
-    - Titel
-    - Dateipfad
-    - Importdatum
+  - Dokument-ID
+  - Titel
+  - Dateipfad
+  - Importdatum
 
 Die Metadaten der einzelnen Dokumente (`DOCUMENT_META.md`) enthalten KI-generierte Informationen wie Titel, Typ, Sprache, Schlagwörter und eine Inhaltsbeschreibung. Diese Metadaten verbessern die Suchqualität und helfen dem Agenten, schnell die relevantesten Dokumente zu identifizieren.
 
@@ -139,8 +139,8 @@ Die Metadaten der einzelnen Dokumente (`DOCUMENT_META.md`) enthalten KI-generier
 
 Collections unterliegen der rollenbasierten Zugriffssteuerung (RBAC). Der Ersteller einer Collection wird automatisch zum **Owner**. Weitere Benutzer können mit unterschiedlichen Rollen hinzugefügt werden:
 
-| Rolle | Lesen | Bearbeiten | Löschen | Zugriff verwalten |
-|---|:---:|:---:|:---:|:---:|
-| **Owner** | Ja | Ja | Ja | Ja |
-| **Editor** | Ja | Ja | Nein | Nein |
-| **Viewer** | Ja | Nein | Nein | Nein |
+| Rolle      | Lesen | Bearbeiten | Löschen | Zugriff verwalten |
+| ---------- | :---: | :--------: | :-----: | :---------------: |
+| **Owner**  |  Ja   |     Ja     |   Ja    |        Ja         |
+| **Editor** |  Ja   |     Ja     |  Nein   |       Nein        |
+| **Viewer** |  Ja   |    Nein    |  Nein   |       Nein        |

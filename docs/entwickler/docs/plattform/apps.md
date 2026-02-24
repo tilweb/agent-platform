@@ -1,6 +1,6 @@
 # App-Framework
 
-Das App-Framework ermöglicht die Integration von spezialisierten Anwendungen in den Adacor Workplace. Apps sind in sich geschlossene Module mit eigenen Routes, UI-Seiten und Business-Logik.
+Das App-Framework ermöglicht die Integration von spezialisierten Anwendungen in den KI-Workplace. Apps sind in sich geschlossene Module mit eigenen Routes, UI-Seiten und Business-Logik.
 
 ## Überblick
 
@@ -8,34 +8,34 @@ Apps werden über eine zentrale Registry verwaltet und können von Admins aktivi
 
 ## Built-in Apps
 
-| App | ID | Beschreibung |
-|-----|-----|-------------|
+| App                | ID                   | Beschreibung                    |
+| ------------------ | -------------------- | ------------------------------- |
 | Vertragsmanagement | `vertragsmanagement` | Vertragsverwaltung und -analyse |
-| Projektmanagement | `projektmanagement` | Projektplanung und -tracking |
+| Projektmanagement  | `projektmanagement`  | Projektplanung und -tracking    |
 
 ## App-Registry
 
 Die App-Registry (`backend/src/apps/registry.ts`) verwaltet den Status aller Apps:
 
 ```typescript
-getApps()                 // Alle Apps auflisten
-getEnabledApps()          // Nur aktivierte Apps
-getApp(appId)             // App-Details
-enableApp(appId)          // App aktivieren
-disableApp(appId)         // App deaktivieren
-reorderApps(appIds)       // Reihenfolge ändern
+getApps(); // Alle Apps auflisten
+getEnabledApps(); // Nur aktivierte Apps
+getApp(appId); // App-Details
+enableApp(appId); // App aktivieren
+disableApp(appId); // App deaktivieren
+reorderApps(appIds); // Reihenfolge ändern
 ```
 
 ## REST API
 
-| Endpoint | Methode | Auth | Beschreibung |
-|----------|---------|------|-------------|
-| `/api/apps` | GET | User | Alle Apps auflisten |
-| `/api/apps/enabled` | GET | User | Nur aktivierte Apps (für Sidebar) |
-| `/api/apps/:appId` | GET | User | App-Details |
-| `/api/apps/:appId/enable` | PUT | Admin | App aktivieren |
-| `/api/apps/:appId/disable` | PUT | Admin | App deaktivieren |
-| `/api/apps/order` | PUT | Admin | Apps sortieren |
+| Endpoint                   | Methode | Auth  | Beschreibung                      |
+| -------------------------- | ------- | ----- | --------------------------------- |
+| `/api/apps`                | GET     | User  | Alle Apps auflisten               |
+| `/api/apps/enabled`        | GET     | User  | Nur aktivierte Apps (für Sidebar) |
+| `/api/apps/:appId`         | GET     | User  | App-Details                       |
+| `/api/apps/:appId/enable`  | PUT     | Admin | App aktivieren                    |
+| `/api/apps/:appId/disable` | PUT     | Admin | App deaktivieren                  |
+| `/api/apps/order`          | PUT     | Admin | Apps sortieren                    |
 
 ### App-spezifische Routes
 

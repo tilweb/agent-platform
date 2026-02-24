@@ -137,6 +137,13 @@ mcpRunner:
     limits:
       cpu: "1"
       memory: 1Gi
+  # -- Enable debug request logging
+  debug: false
+  # -- Persistent npm cache so MCP server packages survive restarts
+  persistence:
+    size: 2Gi
+    # -- Storage class name (leave empty for cluster default)
+    # storageClassName: ""
   nodeSelector: {}
   tolerations: []
 

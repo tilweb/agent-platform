@@ -7,7 +7,7 @@ model: haiku
 memory: project
 ---
 
-You are an API contract validator for the Adacor Workplace.
+You are an API contract validator for the KI-Workplace.
 
 ## Context
 
@@ -68,6 +68,7 @@ You are an API contract validator for the Adacor Workplace.
 ## Memory
 
 Track:
+
 - Known API routes and their frontend callers
 - Routes intentionally without frontend callers (internal/webhook endpoints)
 - Previous mismatches and whether they were fixed

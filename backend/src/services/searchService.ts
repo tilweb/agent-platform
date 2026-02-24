@@ -161,15 +161,16 @@ async function searchKnowledgeBase(query: string): Promise<SearchResult[]> {
       try {
         const manifestContent = await readFile(manifestPath, 'utf-8');
 
-        // Parse documents from manifest (simpler regex that matches actual format)
+        // Parse documents from manifest (captures optional source_file between title and path)
         const docMatches = manifestContent.matchAll(
-          /- document_id: "([^"]+)"\s+title: "([^"]+)"\s+path: "([^"]+)"/g
+          /- document_id: "([^"]+)"\s+title: "([^"]+)"(?:\s+source_file: "([^"]*)")?\s+path: "([^"]+)"/g
         );
 
         for (const match of docMatches) {
           const docId = match[1];
           const title = match[2];
-          const docPath = match[3];
+          const sourceFile = match[3] || undefined;
+          const docPath = match[4];
 
           if (!docId || !title || !docPath) continue;
 
@@ -207,6 +208,7 @@ async function searchKnowledgeBase(query: string): Promise<SearchResult[]> {
                   collectionId: collection.id,
                   collectionName: collection.name,
                   path: docPath,
+                  source_file: sourceFile,
                   keywords: keywordList,
                   matchedIn: titleMatch
                     ? 'title'

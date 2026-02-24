@@ -1,17 +1,17 @@
 # Chat exportieren
 
-Der Adacor Workplace ermöglicht es Ihnen, Konversationen in verschiedenen Dokumentformaten zu exportieren. So können Sie Chat-Ergebnisse archivieren, weiterverarbeiten oder mit Kollegen teilen.
+Der KI-Workplace ermöglicht es Ihnen, Konversationen in verschiedenen Dokumentformaten zu exportieren. So können Sie Chat-Ergebnisse archivieren, weiterverarbeiten oder mit Kollegen teilen.
 
 ---
 
 ## Verfügbare Exportformate
 
-| Format | Dateiendung | Beschreibung |
-|--------|-------------|-------------|
-| **PDF** | `.pdf` | Formatiertes Dokument, ideal zum Archivieren und Drucken |
-| **Word** | `.docx` | Microsoft Word-Dokument, bearbeitbar für die Weiterverarbeitung |
-| **Excel** | `.xlsx` | Tabellenformat -- besonders nützlich, wenn die Antwort Tabellendaten enthält |
-| **Markdown** | `.md` | Einfaches Textformat mit Formatierung, ideal für technische Dokumentation |
+| Format       | Dateiendung | Beschreibung                                                                 |
+| ------------ | ----------- | ---------------------------------------------------------------------------- |
+| **PDF**      | `.pdf`      | Formatiertes Dokument, ideal zum Archivieren und Drucken                     |
+| **Word**     | `.docx`     | Microsoft Word-Dokument, bearbeitbar für die Weiterverarbeitung              |
+| **Excel**    | `.xlsx`     | Tabellenformat -- besonders nützlich, wenn die Antwort Tabellendaten enthält |
+| **Markdown** | `.md`       | Einfaches Textformat mit Formatierung, ideal für technische Dokumentation    |
 
 ---
 
@@ -21,11 +21,11 @@ Der Adacor Workplace ermöglicht es Ihnen, Konversationen in verschiedenen Dokum
 
 Der einfachste Weg, einen Chat zu exportieren, ist die Nutzung eines Agents mit Export-Fähigkeit. Bitten Sie den Agenten direkt im Chat:
 
-> *"Exportiere diese Konversation als PDF."*
+> _"Exportiere diese Konversation als PDF."_
 
-> *"Erstelle ein Word-Dokument aus der letzten Antwort."*
+> _"Erstelle ein Word-Dokument aus der letzten Antwort."_
 
-> *"Fasse die Ergebnisse in einer Excel-Tabelle zusammen."*
+> _"Fasse die Ergebnisse in einer Excel-Tabelle zusammen."_
 
 Der Agent nutzt das integrierte Export-Werkzeug und stellt Ihnen einen Download-Link bereit.
 
@@ -43,11 +43,11 @@ Sie können den Export auch über Slash-Commands initiieren:
 
 Beim Export können Sie festlegen, welcher Teil der Konversation exportiert werden soll:
 
-| Umfang | Beschreibung |
-|--------|-------------|
-| **Vollständiger Chat** | Alle Nachrichten der gesamten Konversation |
-| **Letzte Antwort** | Nur die zuletzt generierte Antwort des Agenten |
-| **Nur Materialien** | Nur die angehängten Dateien und deren Inhalte |
+| Umfang                 | Beschreibung                                   |
+| ---------------------- | ---------------------------------------------- |
+| **Vollständiger Chat** | Alle Nachrichten der gesamten Konversation     |
+| **Letzte Antwort**     | Nur die zuletzt generierte Antwort des Agenten |
+| **Nur Materialien**    | Nur die angehängten Dateien und deren Inhalte  |
 
 ---
 
@@ -58,7 +58,7 @@ Der Export bewahrt die Formatierung der Chat-Inhalte so gut wie möglich:
 ### Textformatierung
 
 - **Überschriften** und Absätze werden übernommen
-- **Fettdruck**, *Kursivschrift* und andere Hervorhebungen bleiben erhalten
+- **Fettdruck**, _Kursivschrift_ und andere Hervorhebungen bleiben erhalten
 - Aufzählungen und nummerierte Listen werden korrekt dargestellt
 
 ### Code-Blöcke

@@ -1,8 +1,9 @@
 # Erste Schritte
 
-Anleitung zum Erstellen eines eigenen Connector-Plugins für den Adacor Workplace.
+Anleitung zum Erstellen eines eigenen Connector-Plugins für den KI-Workplace.
 
 > **Plattform-Kontext:** Diese Anleitung behandelt die Plugin-Entwicklung. Für ein Verständnis der zugrundeliegenden Systeme siehe:
+>
 > - [Tool-System](../plattform/tool-system.md) — Wie Tools registriert und ausgeführt werden
 > - [Verbindungen](../plattform/verbindungen.md) — OAuth-Flow und Token-Management
 > - [Plattform-Architektur](../plattform/architektur.md) — Gesamtübersicht
@@ -66,15 +67,20 @@ Siehe [Plugin-Manifest](./manifest.md) für alle verfügbaren Felder.
 Erstelle `provider.ts`:
 
 ```typescript
-import { OAuthProvider, resolveOAuthConfig } from '@platform/sdk';
-import type { TokenSet, ConnectionStatus, ConnectionTool, OAuth2Config } from '@platform/sdk';
-import { createSearchTool } from './tools/search';
+import { OAuthProvider, resolveOAuthConfig } from "@platform/sdk";
+import type {
+  TokenSet,
+  ConnectionStatus,
+  ConnectionTool,
+  OAuth2Config,
+} from "@platform/sdk";
+import { createSearchTool } from "./tools/search";
 
 export class MeinDienstProvider extends OAuthProvider {
-  readonly id = 'mein-connector';
-  readonly name = 'Mein Dienst';
-  readonly description = 'Verbindung zu Mein Dienst';
-  readonly icon = '🔗';
+  readonly id = "mein-connector";
+  readonly name = "Mein Dienst";
+  readonly description = "Verbindung zu Mein Dienst";
+  readonly icon = "🔗";
 
   private tools: ConnectionTool[] | null = null;
 
@@ -82,11 +88,13 @@ export class MeinDienstProvider extends OAuthProvider {
     return resolveOAuthConfig(this.id);
   }
 
-  override async validateConnection(tokens: TokenSet): Promise<ConnectionStatus> {
+  override async validateConnection(
+    tokens: TokenSet,
+  ): Promise<ConnectionStatus> {
     try {
       const response = await this.authenticatedFetch(
-        'https://api.mein-dienst.com/me',
-        tokens
+        "https://api.mein-dienst.com/me",
+        tokens,
       );
 
       if (!response.ok) {
@@ -101,7 +109,7 @@ export class MeinDienstProvider extends OAuthProvider {
         email: user.email,
       });
     } catch (error: any) {
-      if (error.message?.includes('401') || error.message?.includes('403')) {
+      if (error.message?.includes("401") || error.message?.includes("403")) {
         return this.createExpiredStatus();
       }
       return this.createErrorStatus(error.message);
@@ -126,42 +134,52 @@ Siehe [OAuthProvider](./oauth-provider.md) für alle überschreibbaren Methoden.
 Erstelle `tools/search.ts`:
 
 ```typescript
-import type { ToolDefinition, ToolContext, ConnectionTool } from '@platform/sdk';
-import { connectionRegistry } from '@platform/sdk';
+import type {
+  ToolDefinition,
+  ToolContext,
+  ConnectionTool,
+} from "@platform/sdk";
+import { connectionRegistry } from "@platform/sdk";
 
 export function createSearchTool(providerId: string): ConnectionTool {
   return {
-    name: 'meindienst_search',
-    type: 'connection',
+    name: "meindienst_search",
+    type: "connection",
     providerId,
 
     getDefinition(): ToolDefinition {
       return {
-        type: 'function',
+        type: "function",
         function: {
-          name: 'meindienst_search',
-          description: 'Durchsuche Mein Dienst nach Einträgen.',
+          name: "meindienst_search",
+          description: "Durchsuche Mein Dienst nach Einträgen.",
           parameters: {
-            type: 'object',
+            type: "object",
             properties: {
               query: {
-                type: 'string',
-                description: 'Der Suchbegriff',
+                type: "string",
+                description: "Der Suchbegriff",
               },
             },
-            required: ['query'],
+            required: ["query"],
           },
         },
       };
     },
 
-    async execute(args: Record<string, any>, context?: ToolContext): Promise<string> {
+    async execute(
+      args: Record<string, any>,
+      context?: ToolContext,
+    ): Promise<string> {
       const { query } = args;
-      if (!query) return 'Error: Suchbegriff ist erforderlich';
-      if (!context?.userId) return 'Error: Anmeldung erforderlich';
+      if (!query) return "Error: Suchbegriff ist erforderlich";
+      if (!context?.userId) return "Error: Anmeldung erforderlich";
 
-      const tokens = await connectionRegistry.getTokens(context.userId, providerId);
-      if (!tokens) return 'Error: Nicht mit Mein Dienst verbunden.';
+      const tokens = await connectionRegistry.getTokens(
+        context.userId,
+        providerId,
+      );
+      if (!tokens) return "Error: Nicht mit Mein Dienst verbunden.";
 
       try {
         const response = await fetch(
@@ -169,14 +187,14 @@ export function createSearchTool(providerId: string): ConnectionTool {
           {
             headers: {
               Authorization: `Bearer ${tokens.accessToken}`,
-              Accept: 'application/json',
+              Accept: "application/json",
             },
-          }
+          },
         );
 
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
-            return 'Error: Zugriff verweigert. Bitte neu verbinden.';
+            return "Error: Zugriff verweigert. Bitte neu verbinden.";
           }
           return `Error: API-Fehler: ${response.status}`;
         }

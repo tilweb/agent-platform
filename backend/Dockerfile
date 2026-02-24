@@ -1,6 +1,8 @@
 FROM oven/bun:alpine AS base
 WORKDIR /app
 
+RUN apk add --no-cache ffmpeg
+
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 

@@ -2,9 +2,10 @@
 
 ## Übersicht
 
-Integration des Model Context Protocol (MCP) in den Adacor Workplace:
+Integration des Model Context Protocol (MCP) in den KI-Workplace:
+
 - **Phase 1**: MCP Server als Tool-Quelle (externe MCP Server einbinden)
-- **Phase 2**: Adacor Workplace als MCP Server (Skills/Agents über MCP bereitstellen)
+- **Phase 2**: KI-Workplace als MCP Server (Skills/Agents über MCP bereitstellen)
 
 ---
 
@@ -14,7 +15,7 @@ Integration des Model Context Protocol (MCP) in den Adacor Workplace:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Adacor Workplace                       │
+│                    KI-Workplace                       │
 │  ┌─────────────────────────────────────────────────┐   │
 │  │                 Tool Registry                     │   │
 │  │  ┌─────────┐ ┌─────────┐ ┌─────────────────┐   │   │
@@ -142,7 +143,7 @@ class McpConnection {
   async callTool(name: string, args: Record<string, any>): Promise<any>;
   async close(): Promise<void>;
 
-  getStatus(): 'connected' | 'disconnected' | 'error';
+  getStatus(): "connected" | "disconnected" | "error";
   getTools(): Tool[];
 }
 ```
@@ -152,7 +153,7 @@ class McpConnection {
 ```typescript
 class McpToolWrapper implements Tool {
   readonly name: string;
-  readonly type = 'mcp' as const;
+  readonly type = "mcp" as const;
 
   private connection: McpConnection;
   private mcpToolName: string;
@@ -184,7 +185,10 @@ class McpManager {
   // Server management
   async addServer(config: McpServerConfig): Promise<void>;
   async removeServer(serverId: string): Promise<void>;
-  async updateServer(serverId: string, updates: Partial<McpServerConfig>): Promise<void>;
+  async updateServer(
+    serverId: string,
+    updates: Partial<McpServerConfig>,
+  ): Promise<void>;
   async toggleServer(serverId: string, enabled: boolean): Promise<void>;
 
   // Tool registration
@@ -272,38 +276,43 @@ POST /api/mcp/tools/:name/test  - Tool testen
 
 Vorkonfigurierte Presets für einfache Installation:
 
-| Server | Package | Beschreibung |
-|--------|---------|--------------|
-| GitHub | @modelcontextprotocol/server-github | Repository-Suche, Issues, PRs |
-| Filesystem | @modelcontextprotocol/server-filesystem | Dateisystem-Zugriff |
-| SQLite | @modelcontextprotocol/server-sqlite | Datenbank-Abfragen |
-| Brave Search | @modelcontextprotocol/server-brave-search | Web-Suche |
-| Puppeteer | @modelcontextprotocol/server-puppeteer | Browser-Automatisierung |
-| Slack | @modelcontextprotocol/server-slack | Slack-Integration |
+| Server       | Package                                   | Beschreibung                  |
+| ------------ | ----------------------------------------- | ----------------------------- |
+| GitHub       | @modelcontextprotocol/server-github       | Repository-Suche, Issues, PRs |
+| Filesystem   | @modelcontextprotocol/server-filesystem   | Dateisystem-Zugriff           |
+| SQLite       | @modelcontextprotocol/server-sqlite       | Datenbank-Abfragen            |
+| Brave Search | @modelcontextprotocol/server-brave-search | Web-Suche                     |
+| Puppeteer    | @modelcontextprotocol/server-puppeteer    | Browser-Automatisierung       |
+| Slack        | @modelcontextprotocol/server-slack        | Slack-Integration             |
 
 ---
 
 ## Implementierungsplan
 
 ### Schritt 1: MCP SDK integrieren
+
 - Package installieren: `@modelcontextprotocol/sdk`
 - Basis-Client implementieren mit JSON-RPC über stdio
 
 ### Schritt 2: Server-Verwaltung
+
 - Konfigurations-Datei (YAML)
 - CRUD-Operationen für Server
 - Lifecycle-Management (connect/disconnect)
 
 ### Schritt 3: Tool-Integration
+
 - McpToolWrapper für Tool Registry
 - Dynamische Registrierung bei Verbindung
 - Prefix-Namensschema: `mcp_{server}_{tool}`
 
 ### Schritt 4: API Routes
+
 - Server-Management Endpoints
 - Tool-Listing und -Test Endpoints
 
 ### Schritt 5: Frontend
+
 - McpServersPage mit Server-Liste
 - Server-Editor Modal
 - Status-Anzeige und Verbindungs-Management
@@ -319,7 +328,7 @@ Vorkonfigurierte Presets für einfache Installation:
 
 ---
 
-## Phase 2: Adacor Workplace als MCP Server
+## Phase 2: KI-Workplace als MCP Server
 
 ### Architektur
 
@@ -336,7 +345,7 @@ Vorkonfigurierte Presets für einfache Installation:
                       │ stdio (JSON-RPC 2.0)
                       ▼
 ┌─────────────────────────────────────────────────────────┐
-│                 Adacor Workplace MCP Server               │
+│                 KI-Workplace MCP Server               │
 │  ┌─────────────────────────────────────────────────┐   │
 │  │              MCP Server Transport                 │   │
 │  │  - Stdin/Stdout JSON-RPC Handler                 │   │
@@ -372,12 +381,12 @@ Vorkonfigurierte Presets für einfache Installation:
 
 Alle Tools aus der Tool Registry werden als MCP Tools bereitgestellt:
 
-| Tool Name | Description |
-|-----------|-------------|
-| file_read | Datei lesen |
-| file_write | Datei schreiben |
-| file_list | Verzeichnis auflisten |
-| web_search | Web-Suche durchführen |
+| Tool Name         | Description           |
+| ----------------- | --------------------- |
+| file_read         | Datei lesen           |
+| file_write        | Datei schreiben       |
+| file_list         | Verzeichnis auflisten |
+| web_search        | Web-Suche durchführen |
 | delegate_to_agent | An Agenten delegieren |
 
 ### Implementierung
@@ -388,26 +397,26 @@ Alle Tools aus der Tool Registry werden als MCP Tools bereitgestellt:
 // Wird als standalone Prozess gestartet
 // npx adacor-workplace-mcp oder bun run src/mcp/server/index.ts
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { toolRegistry } from '../../tools/registry';
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { toolRegistry } from "../../tools/registry";
 
 async function main() {
   const server = new Server(
-    { name: 'adacor-workplace', version: '1.0.0' },
-    { capabilities: { tools: {} } }
+    { name: "adacor-workplace", version: "1.0.0" },
+    { capabilities: { tools: {} } },
   );
 
   // Register handlers
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: toolRegistry.getAllTools().map(t => t.getDefinition().function)
+    tools: toolRegistry.getAllTools().map((t) => t.getDefinition().function),
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     const tool = toolRegistry.getTool(name);
     const result = await tool.execute(args);
-    return { content: [{ type: 'text', text: result }] };
+    return { content: [{ type: "text", text: result }] };
   });
 
   // Connect via stdio
@@ -438,7 +447,10 @@ main().catch(console.error);
   "mcpServers": {
     "adacor-workplace": {
       "command": "bun",
-      "args": ["run", "/path/to/adacor-workplace/backend/src/mcp/server/index.ts"]
+      "args": [
+        "run",
+        "/path/to/adacor-workplace/backend/src/mcp/server/index.ts"
+      ]
     }
   }
 }

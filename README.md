@@ -1,4 +1,4 @@
-# Adacor Workplace
+# KI-Workplace
 
 A minimal AI workplace platform with React+Vite frontend and Bun+Hono backend.
 
@@ -139,25 +139,28 @@ NEBIUS_API_KEY=...             # Für Nebius Flux.1
 
 ### Unterstützte Provider
 
-| Provider | API Mode | Capabilities | Konfiguriert in |
-|----------|----------|--------------|-----------------|
+| Provider             | API Mode        | Capabilities                  | Konfiguriert in              |
+| -------------------- | --------------- | ----------------------------- | ---------------------------- |
 | Google Gemini Imagen | `google_gemini` | text_to_image, image_to_image | `data/config/providers.yaml` |
-| Nebius Flux.1 | `openai_images` | text_to_image | `data/config/providers.yaml` |
+| Nebius Flux.1        | `openai_images` | text_to_image                 | `data/config/providers.yaml` |
 
 ### Verwendung
 
 **Per Command:**
+
 ```
 /image Ein Sonnenuntergang über dem Meer
 ```
 
 **Per Chat (Auto-Erkennung):**
+
 ```
 Generiere mir ein Bild von einer Katze
 Zeichne einen Roboter im Comic-Stil
 ```
 
 **Bildbearbeitung (nur mit Google Gemini):**
+
 1. Bild hochladen
 2. "Verändere das Bild in einen Aquarell-Stil"
 
@@ -194,7 +197,12 @@ Neue Provider mit **anderem API-Format** (z.B. Stability AI, Midjourney) benöti
 1. **Neuen Adapter** erstellen: `backend/src/services/imageGeneration/adapters/stability.ts`
 2. **ApiMode erweitern** in `backend/src/types/providers.ts`:
    ```typescript
-   export type ApiMode = 'openai' | 'ollama' | 'google_gemini' | 'openai_images' | 'stability_ai';
+   export type ApiMode =
+     | "openai"
+     | "ollama"
+     | "google_gemini"
+     | "openai_images"
+     | "stability_ai";
    ```
 3. **Switch-Case erweitern** in `backend/src/services/imageGeneration.ts`:
    ```typescript
@@ -211,18 +219,18 @@ Neue Provider mit **anderem API-Format** (z.B. Stability AI, Midjourney) benöti
 
 ### Dateien
 
-| Datei | Beschreibung |
-|-------|--------------|
-| `backend/src/types/providers.ts` | Type-Definitionen (ApiMode, ModelType, etc.) |
-| `backend/src/services/imageGeneration.ts` | Haupt-Service |
-| `backend/src/services/imageStorage.ts` | Speicherung generierter Bilder |
-| `backend/src/tools/api/image-generation.ts` | `generate_image` Tool |
-| `backend/src/tools/api/image-edit.ts` | `edit_image` Tool |
-| `backend/src/routes/images.ts` | REST API Endpoints |
-| `backend/src/commands/handlers.ts` | `/image` Command |
-| `data/skills/public/image-generation/` | Auto-Erkennungs-Skill |
-| `data/skills/public/image-edit/` | Bildbearbeitungs-Skill |
-| `data/config/providers.yaml` | Provider-Konfiguration |
-| `data/generated-images/` | Gespeicherte Bilder |
-| `frontend/src/components/GeneratedImage.jsx` | Bild-Anzeige im Chat |
-| `frontend/src/components/ImageLightbox.jsx` | Vollbild-Ansicht |
+| Datei                                        | Beschreibung                                 |
+| -------------------------------------------- | -------------------------------------------- |
+| `backend/src/types/providers.ts`             | Type-Definitionen (ApiMode, ModelType, etc.) |
+| `backend/src/services/imageGeneration.ts`    | Haupt-Service                                |
+| `backend/src/services/imageStorage.ts`       | Speicherung generierter Bilder               |
+| `backend/src/tools/api/image-generation.ts`  | `generate_image` Tool                        |
+| `backend/src/tools/api/image-edit.ts`        | `edit_image` Tool                            |
+| `backend/src/routes/images.ts`               | REST API Endpoints                           |
+| `backend/src/commands/handlers.ts`           | `/image` Command                             |
+| `data/skills/public/image-generation/`       | Auto-Erkennungs-Skill                        |
+| `data/skills/public/image-edit/`             | Bildbearbeitungs-Skill                       |
+| `data/config/providers.yaml`                 | Provider-Konfiguration                       |
+| `data/generated-images/`                     | Gespeicherte Bilder                          |
+| `frontend/src/components/GeneratedImage.jsx` | Bild-Anzeige im Chat                         |
+| `frontend/src/components/ImageLightbox.jsx`  | Vollbild-Ansicht                             |

@@ -102,6 +102,17 @@ async function initialize() {
   } catch (error) {
     console.error('Failed to start task executor:', error);
   }
+
+  // Recover interrupted indexing jobs
+  try {
+    const { indexingQueue } = await import('./services/indexingQueue');
+    const recoveredIndexing = await indexingQueue.recoverInterruptedJobs();
+    if (recoveredIndexing > 0) {
+      console.log(`[IndexingQueue] Recovered ${recoveredIndexing} interrupted indexing jobs`);
+    }
+  } catch (error) {
+    console.error('Failed to recover indexing jobs:', error);
+  }
 }
 initialize().catch(console.error);
 

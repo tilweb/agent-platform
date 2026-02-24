@@ -1,0 +1,17 @@
+{{- if .Values.mcpRunner.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "adacor-workplace.mcpRunner.fullname" . }}-npm-cache
+  labels:
+    {{- include "adacor-workplace.mcpRunner.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.mcpRunner.persistence.size }}
+  {{- with .Values.mcpRunner.persistence.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}

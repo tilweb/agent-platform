@@ -1,6 +1,6 @@
 # Verzeichnisstruktur
 
-Vollständige Übersicht über die Projektstruktur des Adacor Workplace.
+Vollständige Übersicht über die Projektstruktur des KI-Workplace.
 
 ## Projektroot
 

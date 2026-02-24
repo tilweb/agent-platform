@@ -24,7 +24,7 @@ const COLORS = {
  */
 export async function generateExcel(data: DocumentData): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Adacor Workplace';
+  workbook.creator = 'KI-Workplace';
   workbook.created = new Date();
 
   // Main sheet with all content

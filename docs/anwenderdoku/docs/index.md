@@ -1,12 +1,12 @@
-# Willkommen beim Adacor Workplace
+# Willkommen beim KI-Workplace
 
-Adacor Workplace ist eine KI-gestützte Multi-User-Plattform, die intelligente Agenten, eine leistungsstarke Wissensbasis und vielseitige Werkzeuge in einer einheitlichen Oberfläche vereint. Ob Recherche, Analyse, Bildgenerierung oder strukturierte Datenverarbeitung -- der Adacor Workplace unterstützt Sie und Ihr Team bei komplexen Aufgaben mit modernster KI-Technologie.
+KI-Workplace ist eine KI-gestützte Multi-User-Plattform, die intelligente Agenten, eine leistungsstarke Wissensbasis und vielseitige Werkzeuge in einer einheitlichen Oberfläche vereint. Ob Recherche, Analyse, Bildgenerierung oder strukturierte Datenverarbeitung -- der KI-Workplace unterstützt Sie und Ihr Team bei komplexen Aufgaben mit modernster KI-Technologie.
 
 ---
 
-## Was ist der Adacor Workplace?
+## Was ist der KI-Workplace?
 
-Der Adacor Workplace verbindet mehrere KI-Modelle verschiedener Anbieter mit einem erweiterbaren Tool-Ökosystem. Die Plattform bietet:
+Der KI-Workplace verbindet mehrere KI-Modelle verschiedener Anbieter mit einem erweiterbaren Tool-Ökosystem. Die Plattform bietet:
 
 - **Multi-Provider-Unterstützung** -- Arbeiten Sie mit Modellen von OpenAI, Anthropic, Google Gemini, Ollama und weiteren Anbietern
 - **Spezialisierte Agenten** -- Jeder Agent ist auf bestimmte Aufgaben optimiert und verfügt über eigene Werkzeuge und Anweisungen
