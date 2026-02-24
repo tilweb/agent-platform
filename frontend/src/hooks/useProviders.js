@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
+import { apiGet, apiPost, apiPut, apiDelete, API_URL } from '../utils/apiFetch';
 
 export function useProviders() {
   const [providers, setProviders] = useState([]);
@@ -17,9 +17,10 @@ export function useProviders() {
   const [error, setError] = useState(null);
 
   // Fetch providers, active selection, and config
-  const fetchProviders = useCallback(async () => {
+  // silent=true skips the loading state to avoid scroll jumps on background refreshes
+  const fetchProviders = useCallback(async ({ silent = false } = {}) => {
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       setError(null);
 
       const [providersRes, activeRes, configRes] = await Promise.all([
@@ -129,7 +130,7 @@ export function useProviders() {
   // Update a model
   const updateModel = useCallback(async (providerId, modelId, updates) => {
     const response = await apiPut(
-      `/providers/${providerId}/models/${modelId}`,
+      `/providers/${providerId}/models/${encodeURIComponent(modelId)}`,
       updates
     );
 
@@ -160,7 +161,7 @@ export function useProviders() {
   // Delete a model
   const deleteModel = useCallback(async (providerId, modelId) => {
     const response = await apiDelete(
-      `/providers/${providerId}/models/${modelId}`
+      `/providers/${providerId}/models/${encodeURIComponent(modelId)}`
     );
 
     if (!response.ok) {
@@ -217,19 +218,75 @@ export function useProviders() {
     return data.models || [];
   }, []);
 
-  // Sync Adacor models from remote API
-  const syncModels = useCallback(async () => {
-    const response = await apiPost('/providers/adacor/sync', {});
+  // Bulk-update enabled state for models of a provider (optionally filtered by modelIds)
+  const bulkUpdateModels = useCallback(async (providerId, { enabled, modelIds }) => {
+    const body = { enabled };
+    if (modelIds) body.modelIds = modelIds;
+    const response = await apiPut(`/providers/${providerId}/models/bulk`, body);
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Bulk-Update fehlgeschlagen');
+    }
+
+    const data = await response.json();
+    // Silent refresh to avoid scroll jump
+    await fetchProviders({ silent: true });
+    return data.result;
+  }, [fetchProviders]);
+
+  // Sync models from provider API (SSE streaming with step callbacks)
+  const syncModels = useCallback(async (providerId, { onStep } = {}) => {
+    const url = `${API_URL}/providers/${providerId}/sync`;
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
 
     if (!response.ok) {
       const data = await response.json();
       throw new Error(data.error || 'Synchronisierung fehlgeschlagen');
     }
 
-    const data = await response.json();
-    // Refresh providers to get updated model list
-    await fetchProviders();
-    return data.result;
+    // Parse SSE stream from POST response
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          var currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ') && currentEvent) {
+          const dataStr = line.slice(6);
+          if (!dataStr || currentEvent === 'heartbeat') { currentEvent = null; continue; }
+          let parsed;
+          try { parsed = JSON.parse(dataStr); } catch { currentEvent = null; continue; }
+          if (currentEvent === 'step' && onStep) {
+            onStep(parsed);
+          } else if (currentEvent === 'result') {
+            result = parsed;
+          } else if (currentEvent === 'error') {
+            throw new Error(parsed.message || 'Synchronisierung fehlgeschlagen');
+          }
+          currentEvent = null;
+        }
+      }
+    }
+
+    // Silent refresh to avoid scroll jump
+    await fetchProviders({ silent: true });
+    return result;
   }, [fetchProviders]);
 
   // Helper: Get provider by ID
@@ -439,6 +496,7 @@ export function useProviders() {
     testConnection,
     getAvailableModels,
     syncModels,
+    bulkUpdateModels,
     // Helpers
     getProvider,
     getModelsForPurpose,

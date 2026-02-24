@@ -42,6 +42,7 @@ import type {
   ProvidersConfig,
   ProviderConfig,
   ModelConfig,
+  ModelCapability,
   ResolvedModel,
   ActiveSelection,
   CreateProviderRequest,
@@ -732,6 +733,51 @@ export async function deleteModel(providerId: string, modelId: string): Promise<
   });
 }
 
+/**
+ * Bulk-update enabled state for all toggleable models of a provider.
+ * Skips: workplace===false, sync-deactivated (feature_set + enabled===false) when enabling,
+ * and models already in the target state.
+ */
+export async function bulkUpdateModels(
+  providerId: string,
+  updates: { enabled: boolean; modelIds?: string[] }
+): Promise<{ updated: number; skipped: number }> {
+  return withProviderLock(async () => {
+    const config = await loadProvidersConfig();
+    const provider = config.providers.find((p) => p.id === providerId);
+    if (!provider) {
+      throw new Error(`Provider '${providerId}' not found`);
+    }
+
+    const filterSet = updates.modelIds ? new Set(updates.modelIds) : null;
+
+    let updated = 0;
+    let skipped = 0;
+
+    for (const model of provider.models) {
+      // When modelIds filter is set, skip models not in the list
+      if (filterSet && !filterSet.has(model.id)) { continue; }
+      // Skip listed-only models
+      if (model.workplace === false) { skipped++; continue; }
+      // Skip sync-deactivated models when enabling
+      if (updates.enabled && model.feature_set != null && model.enabled === false) { skipped++; continue; }
+      // Skip models already in the target state
+      if (model.enabled === updates.enabled) { skipped++; continue; }
+      // Default-enabled models (enabled===undefined) count as enabled
+      if (updates.enabled && model.enabled === undefined) { skipped++; continue; }
+
+      model.enabled = updates.enabled;
+      updated++;
+    }
+
+    if (updated > 0) {
+      await saveProvidersConfig(config);
+    }
+
+    return { updated, skipped };
+  });
+}
+
 // ============== Active Selection ==============
 
 /**
@@ -1042,11 +1088,11 @@ export function computeStandardFeatureUrls(
 /**
  * Derive default capabilities for a model ID based on the provider's api_mode.
  */
-export function deriveCapabilitiesForApiMode(apiMode: string, modelId: string): string[] {
+export function deriveCapabilitiesForApiMode(apiMode: string, modelId: string): ModelCapability[] {
   const id = modelId.toLowerCase();
 
   if (apiMode === 'openai') {
-    const caps: string[] = ['chat', 'function_calling'];
+    const caps: ModelCapability[] = ['chat', 'function_calling'];
     // Vision models
     if (/vision|gpt-4o|gpt-4-turbo/.test(id)) caps.push('vision');
     // TTS models
@@ -1061,13 +1107,13 @@ export function deriveCapabilitiesForApiMode(apiMode: string, modelId: string): 
   }
 
   if (apiMode === 'ollama') {
-    const caps: string[] = ['chat'];
+    const caps: ModelCapability[] = ['chat'];
     if (/llava|vision|llama3\.2-vision|moondream|bakllava/.test(id)) caps.push('vision');
     return caps;
   }
 
   if (apiMode === 'google_gemini') {
-    const caps: string[] = ['chat', 'vision', 'function_calling'];
+    const caps: ModelCapability[] = ['chat', 'vision', 'function_calling'];
     if (/embed/.test(id)) return ['embeddings'];
     return caps;
   }
