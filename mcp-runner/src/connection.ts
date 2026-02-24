@@ -8,6 +8,15 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import type { ConnectRequest, McpToolInfo, McpCallResult } from './types';
 
+/** Env vars safe to inherit from the runner process into MCP child processes */
+const SAFE_ENV_KEYS = ['HOME', 'PATH', 'LANG', 'TZ', 'NODE_ENV', 'TERM'];
+
+/** Username of the sandboxed user created in the Dockerfile (UID 1001) */
+const MCP_USER = 'mcp';
+
+/** Restricted PATH for MCP child processes — no access to npm/npx/bun */
+const MCP_PATH = '/mcp-packages/node_modules/.bin:/usr/local/bin:/usr/bin:/bin';
+
 export class McpConnection {
   private config: ConnectRequest;
   private transport: StdioClientTransport | null = null;
@@ -55,16 +64,27 @@ export class McpConnection {
     this._error = null;
 
     try {
-      // Env is already resolved by the backend — use as-is plus inherit process.env
-      const env: Record<string, string> = { ...process.env as Record<string, string> };
+      // Sanitize env: only pass safe vars + backend-provided env (no MCP_RUNNER_SECRET etc.)
+      const env: Record<string, string> = {};
+      for (const key of SAFE_ENV_KEYS) {
+        if (process.env[key]) env[key] = process.env[key]!;
+      }
+      env['PATH'] = MCP_PATH;
       if (this.config.env) {
         Object.assign(env, this.config.env);
       }
 
+      // Wrap command with su-exec to run as sandboxed mcp user (UID 1001)
+      // su-exec is Alpine's lightweight SUID helper — execs directly (no extra process)
+      const originalCommand = this.config.command;
+      const originalArgs = this.config.args || [];
+      const sandboxCommand = '/sbin/su-exec';
+      const sandboxArgs = [MCP_USER, originalCommand, ...originalArgs];
+
       // Create transport (StdioClientTransport spawns the process internally)
       this.transport = new StdioClientTransport({
-        command: this.config.command,
-        args: this.config.args || [],
+        command: sandboxCommand,
+        args: sandboxArgs,
         env,
       });
 
