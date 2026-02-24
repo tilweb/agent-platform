@@ -1875,19 +1875,14 @@ knowledgeStreamRoutes.post('/collections', async (c) => {
   }
 });
 
-// POST /api/knowledge/collections/batch/stream - Create collection and index documents with SSE progress
+// POST /api/knowledge/collections/batch/stream - Create collection and enqueue async indexing
 // IMPORTANT: This route MUST be defined before /collections/:id to avoid route conflicts
 knowledgeStreamRoutes.post('/collections/batch/stream', authMiddleware, async (c) => {
   const userId = getCurrentUserId(c);
-  console.log('[batch/stream] Request received, userId:', userId);
+  console.log('[batch] Request received, userId:', userId);
 
   try {
     const body = await c.req.json();
-    console.log('[batch/stream] Request body parsed:', {
-      collection_id: body.collection_id,
-      name: body.name,
-      itemCount: body.items?.length,
-    });
     const { collection_id, name, description, items } = body;
 
     if (!collection_id || !name) {
@@ -1898,185 +1893,40 @@ knowledgeStreamRoutes.post('/collections/batch/stream', authMiddleware, async (c
       return validationError(c, 'items array is required and must not be empty');
     }
 
-    console.log('[batch/stream] Starting SSE stream');
-    return streamSSE(c, async (stream) => {
-      console.log('[batch/stream] SSE stream started');
-      try {
-        // Step 1: Create collection
-        await stream.writeSSE({
-          event: 'progress',
-          data: JSON.stringify({
-            step: 'create_collection',
-            status: 'in_progress',
-            collectionId: collection_id,
-            collectionName: name,
-          }),
-        });
-
-        try {
-          await createCollection(collection_id, name, description || '');
-
-          await stream.writeSSE({
-            event: 'progress',
-            data: JSON.stringify({
-              step: 'create_collection',
-              status: 'complete',
-              collectionId: collection_id,
-            }),
-          });
-        } catch (error: any) {
-          // Collection might already exist - check if error indicates that
-          if (error.message?.includes('existiert bereits')) {
-            await stream.writeSSE({
-              event: 'progress',
-              data: JSON.stringify({
-                step: 'create_collection',
-                status: 'complete',
-                collectionId: collection_id,
-                message: 'Collection existiert bereits, verwende bestehende',
-              }),
-            });
-          } else {
-            await stream.writeSSE({
-              event: 'progress',
-              data: JSON.stringify({
-                step: 'create_collection',
-                status: 'error',
-                error: 'Verarbeitung fehlgeschlagen',
-              }),
-            });
-            await stream.writeSSE({
-              event: 'error',
-              data: JSON.stringify({ error: 'Ein Fehler ist aufgetreten' }),
-            });
-            return;
-          }
-        }
-
-        // Step 2: Index documents
-        let successCount = 0;
-        let errorCount = 0;
-        const results: Array<{ itemId: string; success: boolean; documentId?: string; error?: string }> = [];
-
-        for (let i = 0; i < items.length; i++) {
-          const item = items[i] as ImportItem;
-
-          await stream.writeSSE({
-            event: 'progress',
-            data: JSON.stringify({
-              step: 'index',
-              itemId: item.id,
-              title: item.title,
-              type: item.type,
-              status: 'in_progress',
-              current: i + 1,
-              total: items.length,
-            }),
-          });
-
-          try {
-            const result = await importAndIndex(item, collection_id, userId);
-
-            if (result.success) {
-              successCount++;
-              results.push({
-                itemId: item.id,
-                success: true,
-                documentId: result.documentId,
-              });
-
-              await stream.writeSSE({
-                event: 'progress',
-                data: JSON.stringify({
-                  step: 'index',
-                  itemId: item.id,
-                  title: item.title,
-                  status: 'complete',
-                  documentId: result.documentId,
-                  current: i + 1,
-                  total: items.length,
-                }),
-              });
-            } else {
-              errorCount++;
-              results.push({
-                itemId: item.id,
-                success: false,
-                error: result.error,
-              });
-
-              await stream.writeSSE({
-                event: 'progress',
-                data: JSON.stringify({
-                  step: 'index',
-                  itemId: item.id,
-                  title: item.title,
-                  status: 'error',
-                  error: result.error,
-                  current: i + 1,
-                  total: items.length,
-                }),
-              });
-            }
-          } catch (error: any) {
-            errorCount++;
-            results.push({
-              itemId: item.id,
-              success: false,
-              error: 'Verarbeitung fehlgeschlagen',
-            });
-
-            await stream.writeSSE({
-              event: 'progress',
-              data: JSON.stringify({
-                step: 'index',
-                itemId: item.id,
-                title: item.title,
-                status: 'error',
-                error: 'Verarbeitung fehlgeschlagen',
-                current: i + 1,
-                total: items.length,
-              }),
-            });
-          }
-
-          // Small delay between items
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-
-        // Step 3: Done
-        await stream.writeSSE({
-          event: 'done',
-          data: JSON.stringify({
-            collectionId: collection_id,
-            collectionName: name,
-            totalItems: items.length,
-            successCount,
-            errorCount,
-            results,
-          }),
-        });
-      } catch (error: any) {
-        console.error('Batch collection error:', error);
-        await stream.writeSSE({
-          event: 'error',
-          data: JSON.stringify({ error: 'Ein Fehler ist aufgetreten' }),
-        });
+    // Step 1: Create collection (synchronous, fast)
+    try {
+      await createCollection(collection_id, name, description || '');
+    } catch (error: any) {
+      if (!error.message?.includes('existiert bereits')) {
+        return internalError(c, error);
       }
+      // Collection already exists — continue
+    }
+
+    // Step 2: Enqueue items for async background indexing
+    const { indexingQueue } = await import('../services/indexingQueue');
+    const result = await indexingQueue.enqueueBatch(collection_id, items as ImportItem[], userId);
+
+    console.log(`[batch] Enqueued ${items.length} items for collection ${collection_id}`);
+
+    return c.json({
+      collectionId: collection_id,
+      collectionName: name,
+      documentCount: items.length,
+      jobs: result.jobs,
     });
   } catch (error: any) {
-    console.error('[batch/stream] Error parsing request:', error);
-    console.error('[batch/stream] Error stack:', error.stack);
+    console.error('[batch] Error:', error);
     return internalError(c, error);
   }
 });
 
-// POST /api/knowledge/collections/:id/add/stream - Add documents to existing collection with SSE progress
+// POST /api/knowledge/collections/:id/add/stream - Add documents to existing collection (async)
 // IMPORTANT: This route uses specific path to avoid conflicts
 knowledgeStreamRoutes.post('/collections/:id/add/stream', authMiddleware, async (c) => {
   const userId = getCurrentUserId(c);
   const collectionId = c.req.param('id');
-  console.log('[add/stream] Request received for collection:', collectionId, 'userId:', userId);
+  console.log('[add] Request received for collection:', collectionId, 'userId:', userId);
 
   try {
     const body = await c.req.json();
@@ -2094,121 +1944,142 @@ knowledgeStreamRoutes.post('/collections/:id/add/stream', authMiddleware, async 
       return notFoundError(c, 'Collection');
     }
 
-    console.log('[add/stream] Starting SSE stream for', items.length, 'items');
-    return streamSSE(c, async (stream) => {
-      try {
-        let successCount = 0;
-        let errorCount = 0;
-        const results: Array<{ itemId: string; success: boolean; documentId?: string; error?: string }> = [];
+    // Enqueue items for async background indexing
+    const { indexingQueue } = await import('../services/indexingQueue');
+    const result = await indexingQueue.enqueueBatch(collectionId, items as ImportItem[], userId);
 
-        for (let i = 0; i < items.length; i++) {
-          const item = items[i] as ImportItem;
+    console.log(`[add] Enqueued ${items.length} items for collection ${collectionId}`);
 
-          await stream.writeSSE({
-            event: 'progress',
-            data: JSON.stringify({
-              step: 'index',
-              itemId: item.id,
-              title: item.title,
-              type: item.type,
-              status: 'in_progress',
-              current: i + 1,
-              total: items.length,
-            }),
-          });
-
-          try {
-            const result = await importAndIndex(item, collectionId, userId);
-
-            if (result.success) {
-              successCount++;
-              results.push({
-                itemId: item.id,
-                success: true,
-                documentId: result.documentId,
-              });
-
-              await stream.writeSSE({
-                event: 'progress',
-                data: JSON.stringify({
-                  step: 'index',
-                  itemId: item.id,
-                  title: item.title,
-                  status: 'complete',
-                  documentId: result.documentId,
-                  current: i + 1,
-                  total: items.length,
-                }),
-              });
-            } else {
-              errorCount++;
-              results.push({
-                itemId: item.id,
-                success: false,
-                error: result.error,
-              });
-
-              await stream.writeSSE({
-                event: 'progress',
-                data: JSON.stringify({
-                  step: 'index',
-                  itemId: item.id,
-                  title: item.title,
-                  status: 'error',
-                  error: result.error,
-                  current: i + 1,
-                  total: items.length,
-                }),
-              });
-            }
-          } catch (error: any) {
-            errorCount++;
-            results.push({
-              itemId: item.id,
-              success: false,
-              error: 'Verarbeitung fehlgeschlagen',
-            });
-
-            await stream.writeSSE({
-              event: 'progress',
-              data: JSON.stringify({
-                step: 'index',
-                itemId: item.id,
-                title: item.title,
-                status: 'error',
-                error: 'Verarbeitung fehlgeschlagen',
-                current: i + 1,
-                total: items.length,
-              }),
-            });
-          }
-        }
-
-        // Send completion event
-        await stream.writeSSE({
-          event: 'done',
-          data: JSON.stringify({
-            collectionId,
-            totalItems: items.length,
-            successCount,
-            errorCount,
-            results,
-          }),
-        });
-
-        console.log(`[add/stream] Completed: ${successCount} success, ${errorCount} errors`);
-      } catch (error: any) {
-        console.error('[add/stream] SSE error:', error);
-        await stream.writeSSE({
-          event: 'error',
-          data: JSON.stringify({ error: 'Ein Fehler ist aufgetreten' }),
-        });
-      }
+    return c.json({
+      collectionId,
+      documentCount: items.length,
+      jobs: result.jobs,
     });
   } catch (error: any) {
-    console.error('[add/stream] Error parsing request:', error);
+    console.error('[add] Error:', error);
     return internalError(c, error);
   }
+});
+
+// GET /api/knowledge/collections/:id/indexing/stream - SSE endpoint for live indexing updates
+knowledgeStreamRoutes.get('/collections/:id/indexing/stream', authMiddleware, async (c) => {
+  const collectionId = c.req.param('id');
+
+  return streamSSE(c, async (stream) => {
+    const { indexingQueue } = await import('../services/indexingQueue');
+
+    // Send init event with current status of active jobs
+    const activeJobs = indexingQueue.getActiveJobs(collectionId);
+
+    // Also check manifest for non-ready documents not in queue
+    let manifestDocs: Array<{ documentId: string; title: string; status: string; error?: string }> = [];
+    try {
+      const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
+      if (existsSync(manifestPath)) {
+        const manifest = await Bun.file(manifestPath).text();
+        const statusRegex = /document_id: "([^"]+)"[\s\S]*?title: "([^"]+)"[\s\S]*?status: "(pending|indexing|error)"(?:[\s\S]*?error: "([^"]*)")?/g;
+        let match;
+        while ((match = statusRegex.exec(manifest)) !== null) {
+          manifestDocs.push({
+            documentId: match[1]!,
+            title: match[2]!,
+            status: match[3]!,
+            error: match[4] || undefined,
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // Merge: prefer queue data over manifest data
+    const queueDocIds = new Set(activeJobs.map(j => j.documentId));
+    const allDocs = [
+      ...activeJobs,
+      ...manifestDocs.filter(d => !queueDocIds.has(d.documentId)),
+    ];
+
+    await stream.writeSSE({
+      event: 'init',
+      data: JSON.stringify({ documents: allDocs }),
+    });
+
+    // If no pending/indexing docs, close immediately
+    if (allDocs.length === 0 || allDocs.every(d => d.status === 'error')) {
+      return;
+    }
+
+    // Register listener for updates
+    let closed = false;
+    const listener = async (event: any) => {
+      if (closed) return;
+      try {
+        await stream.writeSSE({
+          event: event.type,
+          data: JSON.stringify({
+            documentId: event.documentId,
+            title: event.title,
+            error: event.error,
+          }),
+        });
+      } catch {
+        closed = true;
+      }
+    };
+
+    indexingQueue.addListener(collectionId, listener);
+
+    // Heartbeat
+    const heartbeat = setInterval(async () => {
+      if (closed) {
+        clearInterval(heartbeat);
+        return;
+      }
+      try {
+        await stream.writeSSE({
+          event: 'heartbeat',
+          data: JSON.stringify({}),
+        });
+      } catch {
+        closed = true;
+        clearInterval(heartbeat);
+      }
+    }, 15_000);
+
+    // Keep stream alive until client disconnects or all done
+    // Poll every 2s to check if we should close
+    while (!closed) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Check if there are still active jobs for this collection
+      const remaining = indexingQueue.getActiveJobs(collectionId)
+        .filter(j => j.status === 'pending' || j.status === 'indexing');
+
+      if (remaining.length === 0) {
+        // Wait a bit for any final events to be sent
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        break;
+      }
+    }
+
+    clearInterval(heartbeat);
+    indexingQueue.removeListener(collectionId, listener);
+  });
+});
+
+// POST /api/knowledge/collections/:id/documents/:docId/retry - Retry a failed document
+knowledgeStreamRoutes.post('/collections/:id/documents/:docId/retry', authMiddleware, async (c) => {
+  const collectionId = c.req.param('id');
+  const docId = c.req.param('docId');
+
+  const { indexingQueue } = await import('../services/indexingQueue');
+  const success = await indexingQueue.retryJob(collectionId, docId);
+
+  if (!success) {
+    return c.json({ error: 'Job konnte nicht wiederholt werden' }, 400);
+  }
+
+  return c.json({ success: true, documentId: docId });
 });
 
 // GET /api/knowledge/collections/:id - Collection details + manifest (parsed JSON)
@@ -2324,7 +2195,17 @@ knowledgeStreamRoutes.get('/documents/:id', async (c) => {
       return notFoundError(c, 'Document meta');
     }
 
-    const meta = await readFile(metaPath, 'utf-8');
+    let meta = await readFile(metaPath, 'utf-8');
+
+    // Backfill audio duration for documents indexed before this feature
+    if (meta && !meta.includes('**Dauer:**')) {
+      const sourceMatch = meta.match(/\*\*(?:Quelle|Quelldatei|Source):\*\*\s*(.+)/i);
+      if (sourceMatch?.[1]) {
+        const { indexerService } = await import('../services/indexer');
+        meta = await indexerService.backfillAudioDuration(meta, sourceMatch[1].trim(), docPath);
+      }
+    }
+
     const hasContent = existsSync(`${docPath}/content.md`);
     const hasIndex = existsSync(`${docPath}/INDEX.md`);
 
@@ -2383,6 +2264,108 @@ knowledgeStreamRoutes.get('/documents/:id/index', async (c) => {
     return c.json({ document_id: docId, index });
   } catch (error: any) {
     console.error('Error loading document index:', error);
+    return internalError(c, error);
+  }
+});
+
+// GET /api/knowledge/documents/:id/file/:filename - Serve original file from document directory
+knowledgeStreamRoutes.get('/documents/:id/file/:filename', async (c) => {
+  const docId = c.req.param('id');
+  const filename = c.req.param('filename');
+  const collectionId = c.req.query('collection_id');
+
+  try {
+    const docPath = await findDocumentPath(KB_BASE, docId, collectionId);
+    if (!docPath) {
+      return notFoundError(c, 'Document');
+    }
+
+    let filePath = join(docPath, filename);
+
+    // Fallback: if file not in document dir, try incoming directory
+    if (!existsSync(filePath)) {
+      const incomingPath = join(KB_BASE, 'incoming', filename);
+      if (existsSync(incomingPath)) {
+        filePath = incomingPath;
+        // Lazily copy to document dir for future requests
+        try {
+          const { copyFile } = await import('fs/promises');
+          await copyFile(incomingPath, join(docPath, filename));
+        } catch { /* ignore copy errors */ }
+      } else {
+        return notFoundError(c, 'File');
+      }
+    }
+
+    const file = Bun.file(filePath);
+    return new Response(file, {
+      headers: {
+        'Content-Type': file.type || 'application/octet-stream',
+        'Cache-Control': 'private, max-age=3600',
+      },
+    });
+  } catch (error: any) {
+    console.error('Error serving document file:', error);
+    return internalError(c, error);
+  }
+});
+
+// PUT /api/knowledge/documents/:id/meta - Update document metadata
+knowledgeStreamRoutes.put('/documents/:id/meta', async (c) => {
+  const docId = c.req.param('id');
+
+  try {
+    const body = await c.req.json();
+    const { title, owner, confidentiality, collection_id } = body;
+
+    if (!collection_id) {
+      return validationError(c, 'collection_id is required');
+    }
+
+    const kbBase = KB_BASE;
+    const docPath = await findDocumentPath(kbBase, docId, collection_id);
+    if (!docPath) {
+      return notFoundError(c, 'Document');
+    }
+
+    const metaPath = `${docPath}/DOCUMENT_META.md`;
+    if (!existsSync(metaPath)) {
+      return notFoundError(c, 'Document meta');
+    }
+
+    // Update DOCUMENT_META.md fields via regex
+    let meta = await readFile(metaPath, 'utf-8');
+
+    if (title !== undefined) {
+      meta = meta.replace(/(- \*\*Titel:\*\*\s*).+/, `$1${title}`);
+    }
+    if (owner !== undefined) {
+      meta = meta.replace(/(- \*\*Owner:\*\*\s*).+/, `$1${owner}`);
+    }
+    if (confidentiality !== undefined) {
+      meta = meta.replace(/(- \*\*Vertraulichkeit:\*\*\s*).+/, `$1${confidentiality}`);
+    }
+
+    await writeFile(metaPath, meta, 'utf-8');
+
+    // If title changed, also update manifest.yaml
+    if (title !== undefined) {
+      const manifestPath = `${kbBase}/collections/${collection_id}/manifest.yaml`;
+      if (existsSync(manifestPath)) {
+        let manifest = await readFile(manifestPath, 'utf-8');
+        // Match the document block and replace its title
+        const escapedId = docId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const titleRegex = new RegExp(
+          `(- document_id:\\s*"?${escapedId}"?[\\s\\S]*?title:\\s*")([^"]*)(")`,
+        );
+        manifest = manifest.replace(titleRegex, `$1${title}$3`);
+        await writeFile(manifestPath, manifest, 'utf-8');
+      }
+    }
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error('Error updating document meta:', error);
     return internalError(c, error);
   }
 });
@@ -2466,6 +2449,17 @@ knowledgeStreamRoutes.post('/index', async (c) => {
       return validationError(c, 'document file and collection_id are required');
     }
 
+    // Resolve owner: use provided value, fall back to current user's display name
+    let resolvedOwner = owner;
+    if (!resolvedOwner) {
+      const userId = getCurrentUserId(c);
+      if (userId) {
+        const { loadUser } = await import('../auth/storage');
+        const user = await loadUser(userId);
+        resolvedOwner = user?.displayName || user?.username || null;
+      }
+    }
+
     // Save uploaded file to incoming/
     const kbBase = KB_BASE;
     const incomingPath = `${kbBase}/incoming/${file.name}`;
@@ -2476,7 +2470,7 @@ knowledgeStreamRoutes.post('/index', async (c) => {
     const { indexerService } = await import('../services/indexer');
     const result = await indexerService.indexDocument(file.name, collectionId, {
       title: title || undefined,
-      owner: owner || undefined,
+      owner: resolvedOwner || undefined,
       confidentiality: confidentiality || 'internal',
     });
 

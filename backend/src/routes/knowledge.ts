@@ -8,11 +8,13 @@ import { internalError, validationError, forbiddenError, notFoundError, conflict
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { readFile, writeFile, mkdir, readdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { join, extname } from 'path';
 import { authMiddleware, requireUserId } from '../auth';
 import { canView, canEdit, canDelete, canManageAccess, listAccessibleResources } from '../rbac/accessControl';
 import { initializeResourceAccess, deleteResourceAccess, hasAccessEntries } from '../rbac/storage';
 import { KB_BASE, KB_COLLECTIONS_FILE } from '../utils/paths';
+import { indexerService } from '../services/indexer';
+import archiver from 'archiver';
 
 const knowledgeRoutes = new Hono();
 
@@ -427,6 +429,11 @@ knowledgeRoutes.get('/collections/:id/documents/:docId', async (c) => {
     const metaPath = join(docDir, 'DOCUMENT_META.md');
     if (existsSync(metaPath)) {
       meta = await readFile(metaPath, 'utf-8');
+
+      // Backfill audio duration for existing documents that were indexed before this feature
+      if (doc.source_file && meta && !meta.includes('**Dauer:**')) {
+        meta = await indexerService.backfillAudioDuration(meta, doc.source_file, docDir);
+      }
     }
 
     const contentPath = join(docDir, 'content.md');
@@ -506,6 +513,227 @@ knowledgeRoutes.delete('/collections/:id/documents/:docId', async (c) => {
     return internalError(c, error);
   }
 });
+
+// ==========================================
+// Download Helpers & Endpoints
+// ==========================================
+
+const MIME_TYPES: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.doc': 'application/msword',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.txt': 'text/plain',
+  '.md': 'text/markdown',
+  '.html': 'text/html',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.webm': 'audio/webm',
+  '.flac': 'audio/flac',
+  '.aac': 'audio/aac',
+};
+
+/**
+ * Find the original uploaded file in a document directory.
+ * Filters out content.md, DOCUMENT_META.md, INDEX.md and returns the first remaining file.
+ * Falls back to content.md if no original file is found.
+ */
+async function findOriginalFile(docDir: string): Promise<{ filename: string; filepath: string } | null> {
+  if (!existsSync(docDir)) return null;
+
+  const entries = await readdir(docDir);
+  const skipFiles = new Set(['content.md', 'document_meta.md', 'index.md']);
+  const original = entries.find(f => !skipFiles.has(f.toLowerCase()));
+
+  if (original) {
+    return { filename: original, filepath: join(docDir, original) };
+  }
+
+  // Fallback to content.md
+  const contentPath = join(docDir, 'content.md');
+  if (existsSync(contentPath)) {
+    return { filename: 'content.md', filepath: contentPath };
+  }
+
+  return null;
+}
+
+/**
+ * GET /api/knowledge/collections/:id/documents/:docId/download
+ * Download a single document's original file
+ */
+knowledgeRoutes.get('/collections/:id/documents/:docId/download', async (c) => {
+  try {
+    const userId = requireUserId(c);
+    const collectionId = c.req.param('id');
+    const docId = c.req.param('docId');
+
+    if (!isValidId(collectionId) || !isValidId(docId)) {
+      return validationError(c, 'Ungültige ID');
+    }
+
+    const accessResult = await canView(userId, 'collection', collectionId);
+    if (!accessResult.allowed) {
+      return forbiddenError(c, 'Zugriff verweigert');
+    }
+
+    // Find document in manifest
+    const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
+    if (!existsSync(manifestPath)) {
+      return notFoundError(c, 'Collection');
+    }
+
+    const manifest = parseYaml(await readFile(manifestPath, 'utf-8'));
+    const doc = manifest.documents?.find((d: any) => d.document_id === docId);
+    if (!doc) {
+      return notFoundError(c, 'Dokument');
+    }
+
+    const docDir = join(KB_BASE, 'collections', collectionId, 'documents', doc.path);
+    const original = await findOriginalFile(docDir);
+    if (!original) {
+      return notFoundError(c, 'Originaldatei');
+    }
+
+    const file = Bun.file(original.filepath);
+    const ext = extname(original.filename).toLowerCase();
+    const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
+
+    c.header('Content-Type', mimeType);
+    c.header('Content-Disposition', `attachment; filename="${encodeURIComponent(original.filename)}"`);
+    return c.body(await file.arrayBuffer());
+  } catch (error: any) {
+    console.error('Download document error:', error);
+    return internalError(c, error);
+  }
+});
+
+/**
+ * GET /api/knowledge/collections/:id/download
+ * Download entire collection as ZIP
+ */
+knowledgeRoutes.get('/collections/:id/download', async (c) => {
+  try {
+    const userId = requireUserId(c);
+    const collectionId = c.req.param('id');
+
+    if (!isValidId(collectionId)) {
+      return validationError(c, 'Ungültige Collection-ID');
+    }
+
+    const accessResult = await canView(userId, 'collection', collectionId);
+    if (!accessResult.allowed) {
+      return forbiddenError(c, 'Zugriff verweigert');
+    }
+
+    const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
+    if (!existsSync(manifestPath)) {
+      return notFoundError(c, 'Collection');
+    }
+
+    const manifest = parseYaml(await readFile(manifestPath, 'utf-8'));
+    const documents = manifest.documents || [];
+    const collectionName = manifest.collection_name || collectionId;
+
+    return streamZipResponse(c, collectionId, documents, collectionName);
+  } catch (error: any) {
+    console.error('Download collection ZIP error:', error);
+    return internalError(c, error);
+  }
+});
+
+/**
+ * POST /api/knowledge/collections/:id/download
+ * Download selected documents as ZIP
+ */
+knowledgeRoutes.post('/collections/:id/download', async (c) => {
+  try {
+    const userId = requireUserId(c);
+    const collectionId = c.req.param('id');
+
+    if (!isValidId(collectionId)) {
+      return validationError(c, 'Ungültige Collection-ID');
+    }
+
+    const accessResult = await canView(userId, 'collection', collectionId);
+    if (!accessResult.allowed) {
+      return forbiddenError(c, 'Zugriff verweigert');
+    }
+
+    const body = await c.req.json();
+    const { documentIds } = body;
+
+    if (!Array.isArray(documentIds) || documentIds.length === 0) {
+      return validationError(c, 'documentIds Array erforderlich');
+    }
+
+    const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
+    if (!existsSync(manifestPath)) {
+      return notFoundError(c, 'Collection');
+    }
+
+    const manifest = parseYaml(await readFile(manifestPath, 'utf-8'));
+    const idSet = new Set(documentIds);
+    const documents = (manifest.documents || []).filter((d: any) => idSet.has(d.document_id));
+    const collectionName = manifest.collection_name || collectionId;
+
+    return streamZipResponse(c, collectionId, documents, collectionName);
+  } catch (error: any) {
+    console.error('Download selected documents ZIP error:', error);
+    return internalError(c, error);
+  }
+});
+
+/**
+ * Helper: Stream a ZIP response containing the given documents
+ */
+async function streamZipResponse(c: any, collectionId: string, documents: any[], collectionName: string) {
+  const archive = archiver('zip', { zlib: { level: 5 } });
+  const usedNames = new Map<string, number>();
+
+  for (const doc of documents) {
+    const docDir = join(KB_BASE, 'collections', collectionId, 'documents', doc.path);
+    const original = await findOriginalFile(docDir);
+    if (!original) continue;
+
+    // Deduplicate filenames in ZIP
+    let zipName = original.filename;
+    const count = usedNames.get(zipName.toLowerCase()) || 0;
+    if (count > 0) {
+      const ext = extname(zipName);
+      const base = zipName.slice(0, -ext.length || undefined);
+      zipName = `${base} (${count})${ext}`;
+    }
+    usedNames.set(original.filename.toLowerCase(), count + 1);
+
+    archive.file(original.filepath, { name: zipName });
+  }
+
+  // Collect ZIP into buffer (archiver uses Node streams, not Web streams)
+  const chunks: Buffer[] = [];
+  archive.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+  const done = new Promise<Buffer>((resolve, reject) => {
+    archive.on('end', () => resolve(Buffer.concat(chunks)));
+    archive.on('error', reject);
+  });
+
+  archive.finalize();
+  const zipBuffer = await done;
+
+  c.header('Content-Type', 'application/zip');
+  c.header('Content-Disposition', `attachment; filename="${encodeURIComponent(collectionName)}.zip"`);
+  return c.body(zipBuffer);
+}
 
 /**
  * Migration: Initialize RBAC for existing collections

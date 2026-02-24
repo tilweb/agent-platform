@@ -4,7 +4,11 @@ import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../uti
 import AccessManager from '../components/AccessManager';
 import { formatDate } from '../utils/dateFormat';
 import Select from '../components/Select';
-import { ArrowLeftIcon } from '../components/Icons';
+import { ArrowLeftIcon, RefreshIcon, TrashIcon, PenIcon, DownloadIcon } from '../components/Icons';
+import { useToast } from '../components/Toast';
+import { getFileType, getFileTypeColor } from '../utils/fileTypeUtils';
+import { useCollectionIndexing } from '../hooks/useCollectionIndexing';
+import DocumentThumbnail from '../components/DocumentThumbnail';
 
 // ==========================================
 // Helper Functions
@@ -15,7 +19,7 @@ function parseDocumentMeta(rawMarkdown) {
   const result = {
     title: '', type: '', source: '', pages: '', language: '',
     owner: '', keywords: [], description: '', questions: [],
-    confidentiality: '', indexed_date: '', created: '',
+    confidentiality: '', indexed_date: '', created: '', duration: '',
   };
   const lines = rawMarkdown.split('\n');
   let inQuestions = false;
@@ -65,6 +69,7 @@ function parseDocumentMeta(rawMarkdown) {
       else if (key === 'sprache' || key === 'language') result.language = val;
       else if (key === 'owner' || key === 'besitzer') result.owner = val;
       else if (key === 'erstellt' || key === 'created') result.created = val;
+      else if (key === 'dauer' || key === 'duration' || key === 'tracklänge') result.duration = val;
       else if (key === 'keywords' || key === 'schlagworte' || key === 'schlüsselwörter') {
         result.keywords = val.split(',').map(k => k.trim()).filter(Boolean);
       }
@@ -74,34 +79,6 @@ function parseDocumentMeta(rawMarkdown) {
     }
   }
   return result;
-}
-
-function getFileType(source) {
-  if (!source) return '?';
-  const ext = source.split('.').pop()?.toLowerCase();
-  const map = {
-    pdf: 'PDF', docx: 'DOCX', doc: 'DOC', xlsx: 'XLSX', xls: 'XLS',
-    pptx: 'PPTX', ppt: 'PPT', txt: 'TXT', md: 'MD', html: 'HTML',
-    htm: 'HTML', csv: 'CSV', json: 'JSON',
-  };
-  return map[ext] || ext?.toUpperCase() || '?';
-}
-
-function getFileTypeColor(type) {
-  const colors = {
-    PDF: { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
-    DOCX: { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
-    DOC: { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
-    XLSX: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
-    XLS: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
-    PPTX: { bg: '#fff7ed', color: '#ea580c', border: '#fed7aa' },
-    PPT: { bg: '#fff7ed', color: '#ea580c', border: '#fed7aa' },
-    TXT: { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' },
-    MD: { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' },
-    HTML: { bg: '#fdf4ff', color: '#a855f7', border: '#e9d5ff' },
-    CSV: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
-  };
-  return colors[type] || { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' };
 }
 
 // formatDate is imported from utils/dateFormat
@@ -166,12 +143,8 @@ const styles = {
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.xl,
     cursor: 'pointer',
-    transition: `all ${theme.transitions.fast}`,
+    transition: `border-color ${theme.transitions.fast}, box-shadow ${theme.transitions.fast}`,
     outline: 'none',
-  },
-  cardHover: {
-    borderColor: theme.colors.primary,
-    boxShadow: theme.shadows.md,
   },
   cardStatic: {
     backgroundColor: theme.colors.surface,
@@ -268,7 +241,7 @@ const styles = {
   },
   tableHeader: {
     display: 'grid',
-    gridTemplateColumns: '60px 1fr 120px 60px 60px 80px',
+    gridTemplateColumns: '32px 48px 1fr 100px 100px 100px 80px',
     gap: theme.spacing.sm,
     padding: `${theme.spacing.sm} ${theme.spacing.md}`,
     borderBottom: `2px solid ${theme.colors.border}`,
@@ -289,13 +262,31 @@ const styles = {
   },
   tableRow: {
     display: 'grid',
-    gridTemplateColumns: '60px 1fr 120px 60px 60px 80px',
+    gridTemplateColumns: '32px 48px 1fr 100px 100px 100px 80px',
     gap: theme.spacing.sm,
     padding: `${theme.spacing.md}`,
     borderBottom: `1px solid ${theme.colors.border}`,
     cursor: 'pointer',
     transition: `background ${theme.transitions.fast}`,
     alignItems: 'center',
+  },
+  checkbox: {
+    width: '16px',
+    height: '16px',
+    cursor: 'pointer',
+    accentColor: theme.colors.primary,
+  },
+  bulkToolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    marginBottom: theme.spacing.sm,
+    backgroundColor: `${theme.colors.primary}08`,
+    border: `1px solid ${theme.colors.primary}20`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text,
   },
   tableRowHover: {
     backgroundColor: theme.colors.background,
@@ -343,13 +334,14 @@ const styles = {
     cursor: 'pointer',
     border: 'none',
     background: 'none',
-    borderBottom: '2px solid transparent',
+    borderBottomWidth: '2px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: 'transparent',
     transition: `all ${theme.transitions.fast}`,
   },
   debugTabActive: {
     color: theme.colors.primary,
     borderBottomColor: theme.colors.primary,
-    backgroundColor: theme.colors.surface,
   },
   debugContent: {
     padding: theme.spacing.lg,
@@ -568,19 +560,41 @@ const styles = {
   emptyText: {
     fontSize: theme.typography.sizes.sm,
   },
-  deleteButton: {
-    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+  iconButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '28px',
+    height: '28px',
     backgroundColor: 'transparent',
-    color: theme.colors.textMuted,
     border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.xs,
     cursor: 'pointer',
+    color: theme.colors.textMuted,
     transition: `all ${theme.transitions.fast}`,
   },
-  deleteButtonHover: {
-    borderColor: '#ef4444',
-    color: '#ef4444',
+  // Confidentiality status badges
+  confidentialityBadge: {
+    fontSize: theme.typography.sizes.xs,
+    padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+    borderRadius: theme.borderRadius.full,
+    fontWeight: theme.typography.weights.medium,
+  },
+  confidentialityPublic: {
+    backgroundColor: theme.colors.successLight,
+    color: theme.colors.success,
+  },
+  confidentialityInternal: {
+    backgroundColor: theme.colors.primaryLight,
+    color: theme.colors.primary,
+  },
+  confidentialityConfidential: {
+    backgroundColor: theme.colors.warningLight,
+    color: theme.colors.warning,
+  },
+  confidentialitySecret: {
+    backgroundColor: theme.colors.errorLight,
+    color: theme.colors.error,
   },
 };
 
@@ -676,10 +690,17 @@ function KnowledgeBasePage() {
   const [docIndex, setDocIndex] = useState(null);
   const [expandedDocRawMeta, setExpandedDocRawMeta] = useState(null);
 
+  // Metadata inline edit
+  const [editingMeta, setEditingMeta] = useState(null);
+  const [savingMeta, setSavingMeta] = useState(false);
+  const toast = useToast();
+
   // Hover states
-  const [hoveredCard, setHoveredCard] = useState(null);
   const [hoveredDoc, setHoveredDoc] = useState(null);
   const [hoveredDelete, setHoveredDelete] = useState(null);
+
+  // Document selection for bulk download
+  const [selectedDocIds, setSelectedDocIds] = useState(new Set());
 
   // Delete collection modal
   const [showDeleteCollectionModal, setShowDeleteCollectionModal] = useState(false);
@@ -696,6 +717,12 @@ function KnowledgeBasePage() {
   const [savingDetails, setSavingDetails] = useState(false);
 
   const fileInputRef = useRef(null);
+
+  // Live indexing status tracking
+  const { documents: liveDocuments, isIndexing, retryDocument } = useCollectionIndexing(
+    selectedCollection,
+    collectionDetail?.documents,
+  );
 
   // ==========================================
   // Data Loading
@@ -805,6 +832,7 @@ function KnowledgeBasePage() {
       setDocContent(null);
       setDocIndex(null);
       setExpandedDocRawMeta(null);
+      setEditingMeta(null);
       return;
     }
 
@@ -812,6 +840,7 @@ function KnowledgeBasePage() {
     setActiveDebugTab('meta');
     setDocContent(null);
     setDocIndex(null);
+    setEditingMeta(null);
 
     const cached = await loadDocumentMeta(docId);
     if (cached) {
@@ -842,8 +871,8 @@ function KnowledgeBasePage() {
   }
 
   function getSortedDocuments() {
-    if (!collectionDetail?.documents) return [];
-    let docs = [...collectionDetail.documents];
+    if (!liveDocuments || liveDocuments.length === 0) return [];
+    let docs = [...liveDocuments];
 
     // Filter
     if (searchFilter) {
@@ -871,17 +900,17 @@ function KnowledgeBasePage() {
           valA = (a.source_file || cacheA?.source || cacheA?.title || a.title || a.document_id).toLowerCase();
           valB = (b.source_file || cacheB?.source || cacheB?.title || b.title || b.document_id).toLowerCase();
           break;
+        case 'owner':
+          valA = (cacheA?.owner || '').toLowerCase();
+          valB = (cacheB?.owner || '').toLowerCase();
+          break;
+        case 'confidentiality':
+          valA = cacheA?.confidentiality || '';
+          valB = cacheB?.confidentiality || '';
+          break;
         case 'date':
           valA = a.indexed_date || '';
           valB = b.indexed_date || '';
-          break;
-        case 'pages':
-          valA = parseInt(cacheA?.pages) || 0;
-          valB = parseInt(cacheB?.pages) || 0;
-          break;
-        case 'language':
-          valA = cacheA?.language || '';
-          valB = cacheB?.language || '';
           break;
         default:
           valA = '';
@@ -1013,7 +1042,7 @@ function KnowledgeBasePage() {
   }
 
   async function handleDeleteDocument(docId) {
-    if (!confirm(`Dokument "${docId}" wirklich loeschen?`)) return;
+    if (!confirm(`Dokument "${docId}" wirklich löschen?`)) return;
 
     try {
       const res = await apiDelete(
@@ -1021,7 +1050,7 @@ function KnowledgeBasePage() {
       );
 
       if (res.ok) {
-        setStatusMessage({ type: 'success', text: `Dokument "${docId}" geloescht` });
+        setStatusMessage({ type: 'success', text: `Dokument "${docId}" gelöscht` });
         if (expandedDocId === docId) {
           setExpandedDocId(null);
           setDocContent(null);
@@ -1036,7 +1065,7 @@ function KnowledgeBasePage() {
         loadCollectionDetail(selectedCollection);
       } else {
         const err = await res.json();
-        setStatusMessage({ type: 'error', text: err.error || 'Fehler beim Loeschen' });
+        setStatusMessage({ type: 'error', text: err.error || 'Fehler beim Löschen' });
       }
     } catch (err) {
       setStatusMessage({ type: 'error', text: err.message });
@@ -1054,19 +1083,153 @@ function KnowledgeBasePage() {
         const deletedCount = result.documents_deleted?.length || 0;
         setStatusMessage({
           type: 'success',
-          text: `Collection "${collectionDetail?.collection_name}" geloescht${deletedCount > 0 ? ` (${deletedCount} Dokumente entfernt)` : ''}`,
+          text: `Collection "${collectionDetail?.collection_name}" gelöscht${deletedCount > 0 ? ` (${deletedCount} Dokumente entfernt)` : ''}`,
         });
         setShowDeleteCollectionModal(false);
         handleBackToOverview();
         loadCollections();
       } else {
         const err = await res.json();
-        setStatusMessage({ type: 'error', text: err.error || 'Fehler beim Loeschen' });
+        setStatusMessage({ type: 'error', text: err.error || 'Fehler beim Löschen' });
       }
     } catch (err) {
       setStatusMessage({ type: 'error', text: err.message });
     }
     setDeletingCollection(false);
+  }
+
+  async function handleSaveMeta(docId) {
+    if (!editingMeta) return;
+    setSavingMeta(true);
+    try {
+      const res = await apiPut(`/knowledge/documents/${docId}/meta`, {
+        title: editingMeta.title,
+        owner: editingMeta.owner,
+        confidentiality: editingMeta.confidentiality,
+        collection_id: selectedCollection,
+      });
+      if (res.ok) {
+        // Update local cache
+        setDocumentMetaCache(prev => {
+          const existing = prev[docId];
+          if (!existing) return prev;
+          const updatedParsed = {
+            ...existing.parsed,
+            title: editingMeta.title,
+            owner: editingMeta.owner,
+            confidentiality: editingMeta.confidentiality,
+          };
+          // Update raw markdown too
+          let updatedRaw = existing.raw;
+          if (updatedRaw) {
+            updatedRaw = updatedRaw.replace(/(- \*\*Titel:\*\*\s*).+/, `$1${editingMeta.title}`);
+            updatedRaw = updatedRaw.replace(/(- \*\*Owner:\*\*\s*).+/, `$1${editingMeta.owner}`);
+            updatedRaw = updatedRaw.replace(/(- \*\*Vertraulichkeit:\*\*\s*).+/, `$1${editingMeta.confidentiality}`);
+          }
+          return { ...prev, [docId]: { ...existing, parsed: updatedParsed, raw: updatedRaw } };
+        });
+        setExpandedDocRawMeta(prev => {
+          if (!prev) return prev;
+          let updated = prev;
+          updated = updated.replace(/(- \*\*Titel:\*\*\s*).+/, `$1${editingMeta.title}`);
+          updated = updated.replace(/(- \*\*Owner:\*\*\s*).+/, `$1${editingMeta.owner}`);
+          updated = updated.replace(/(- \*\*Vertraulichkeit:\*\*\s*).+/, `$1${editingMeta.confidentiality}`);
+          return updated;
+        });
+        setEditingMeta(null);
+        toast.success('Gespeichert', 'Metadaten erfolgreich aktualisiert');
+      } else {
+        const err = await res.json();
+        toast.error('Fehler', err.error || 'Metadaten konnten nicht gespeichert werden');
+      }
+    } catch (err) {
+      toast.error('Fehler', err.message);
+    }
+    setSavingMeta(false);
+  }
+
+  // ==========================================
+  // Download Functions
+  // ==========================================
+
+  async function downloadFromResponse(response, fallbackFilename) {
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition');
+    const match = disposition?.match(/filename="?(.+?)"?$/);
+    const filename = match ? decodeURIComponent(match[1]) : fallbackFilename;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  async function handleDownloadDocument(docId) {
+    try {
+      const res = await apiGet(`/knowledge/collections/${selectedCollection}/documents/${docId}/download`);
+      if (res.ok) {
+        await downloadFromResponse(res, `${docId}.bin`);
+      } else {
+        toast.error('Fehler', 'Download fehlgeschlagen');
+      }
+    } catch (err) {
+      toast.error('Fehler', err.message);
+    }
+  }
+
+  async function handleDownloadCollection() {
+    try {
+      const res = await apiGet(`/knowledge/collections/${selectedCollection}/download`);
+      if (res.ok) {
+        const name = collectionDetail?.collection_name || selectedCollection;
+        await downloadFromResponse(res, `${name}.zip`);
+      } else {
+        toast.error('Fehler', 'Download fehlgeschlagen');
+      }
+    } catch (err) {
+      toast.error('Fehler', err.message);
+    }
+  }
+
+  async function handleDownloadSelected() {
+    if (selectedDocIds.size === 0) return;
+    try {
+      const res = await apiPost(`/knowledge/collections/${selectedCollection}/download`, {
+        documentIds: [...selectedDocIds],
+      });
+      if (res.ok) {
+        const name = collectionDetail?.collection_name || selectedCollection;
+        await downloadFromResponse(res, `${name}.zip`);
+      } else {
+        toast.error('Fehler', 'Download fehlgeschlagen');
+      }
+    } catch (err) {
+      toast.error('Fehler', err.message);
+    }
+  }
+
+  function toggleDocSelection(docId) {
+    setSelectedDocIds(prev => {
+      const next = new Set(prev);
+      if (next.has(docId)) {
+        next.delete(docId);
+      } else {
+        next.add(docId);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    const readyDocs = (liveDocuments || []).filter(d => {
+      const s = d.status || 'ready';
+      return s !== 'pending' && s !== 'indexing' && s !== 'error';
+    });
+    if (selectedDocIds.size === readyDocs.length && readyDocs.length > 0) {
+      setSelectedDocIds(new Set());
+    } else {
+      setSelectedDocIds(new Set(readyDocs.map(d => d.document_id)));
+    }
   }
 
   function handleDrop(e) {
@@ -1094,9 +1257,9 @@ function KnowledgeBasePage() {
     setDocIndex(null);
     setExpandedDocRawMeta(null);
     setStatusMessage(null);
-    setHoveredCard(null);
     setSearchFilter('');
     setDocumentMetaCache({});
+    setSelectedDocIds(new Set());
   }
 
   // ==========================================
@@ -1138,42 +1301,117 @@ function KnowledgeBasePage() {
         <div style={styles.debugContent}>
           {activeDebugTab === 'meta' && parsed && (
             <div>
-              <div style={styles.metaGrid}>
-                {parsed.title && (<><div style={styles.metaLabel}>Titel</div><div style={styles.metaValue}>{parsed.title}</div></>)}
-                {parsed.type && (<><div style={styles.metaLabel}>Typ</div><div style={styles.metaValue}>{parsed.type}</div></>)}
-                {parsed.source && (<><div style={styles.metaLabel}>Quelle</div><div style={styles.metaValue}>{parsed.source}</div></>)}
-                {parsed.pages && (<><div style={styles.metaLabel}>Seiten</div><div style={styles.metaValue}>{parsed.pages}</div></>)}
-                {parsed.language && (<><div style={styles.metaLabel}>Sprache</div><div style={styles.metaValue}>{parsed.language}</div></>)}
-                {parsed.owner && (<><div style={styles.metaLabel}>Owner</div><div style={styles.metaValue}>{parsed.owner}</div></>)}
-                {parsed.created && (<><div style={styles.metaLabel}>Erstellt</div><div style={styles.metaValue}>{parsed.created}</div></>)}
-                {parsed.confidentiality && (<><div style={styles.metaLabel}>Vertraulichkeit</div><div style={styles.metaValue}>{parsed.confidentiality}</div></>)}
-                {parsed.description && (<><div style={styles.metaLabel}>Beschreibung</div><div style={styles.metaValue}>{parsed.description}</div></>)}
-              </div>
+              {/* Edit button */}
+              {!editingMeta && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: theme.spacing.sm }}>
+                  <button
+                    style={styles.iconButton}
+                    title="Metadaten bearbeiten"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingMeta({
+                        title: parsed.title || '',
+                        owner: parsed.owner || '',
+                        confidentiality: parsed.confidentiality || 'internal',
+                      });
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                  >
+                    <PenIcon size={14} color={theme.colors.primary} />
+                  </button>
+                </div>
+              )}
 
-              {parsed.keywords.length > 0 && (
-                <div style={{ marginTop: theme.spacing.lg }}>
-                  <div style={{ ...styles.metaLabel, marginBottom: theme.spacing.sm }}>Keywords</div>
-                  <div>
-                    {parsed.keywords.map((kw, i) => (
-                      <span key={i} style={styles.keywordBadge}>{kw}</span>
-                    ))}
+              {editingMeta ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Titel</label>
+                    <input
+                      style={styles.input}
+                      value={editingMeta.title}
+                      onChange={(e) => setEditingMeta(prev => ({ ...prev, title: e.target.value }))}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Owner</label>
+                    <input
+                      style={styles.input}
+                      value={editingMeta.owner}
+                      onChange={(e) => setEditingMeta(prev => ({ ...prev, owner: e.target.value }))}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Vertraulichkeit</label>
+                    <Select
+                      value={editingMeta.confidentiality}
+                      onChange={(e) => setEditingMeta(prev => ({ ...prev, confidentiality: e.target.value }))}
+                      options={[
+                        { value: 'public', label: 'Public' },
+                        { value: 'internal', label: 'Internal' },
+                        { value: 'confidential', label: 'Confidential' },
+                        { value: 'secret', label: 'Secret' },
+                      ]}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: theme.spacing.md, justifyContent: 'flex-end' }}>
+                    <button
+                      style={styles.buttonSecondary}
+                      onClick={(e) => { e.stopPropagation(); setEditingMeta(null); }}
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      style={{ ...styles.button, opacity: savingMeta ? 0.6 : 1 }}
+                      disabled={savingMeta}
+                      onClick={(e) => { e.stopPropagation(); handleSaveMeta(docId); }}
+                    >
+                      {savingMeta ? 'Speichere...' : 'Speichern'}
+                    </button>
                   </div>
                 </div>
-              )}
+              ) : (
+                <>
+                  <div style={styles.metaGrid}>
+                    {parsed.title && (<><div style={styles.metaLabel}>Titel</div><div style={styles.metaValue}>{parsed.title}</div></>)}
+                    {parsed.type && (<><div style={styles.metaLabel}>Typ</div><div style={styles.metaValue}>{parsed.type}</div></>)}
+                    {parsed.source && (<><div style={styles.metaLabel}>Quelle</div><div style={styles.metaValue}>{parsed.source}</div></>)}
+                    {parsed.pages && (<><div style={styles.metaLabel}>Seiten</div><div style={styles.metaValue}>{parsed.pages}</div></>)}
+                    {parsed.language && (<><div style={styles.metaLabel}>Sprache</div><div style={styles.metaValue}>{parsed.language}</div></>)}
+                    {parsed.owner && (<><div style={styles.metaLabel}>Owner</div><div style={styles.metaValue}>{parsed.owner}</div></>)}
+                    {parsed.created && (<><div style={styles.metaLabel}>Erstellt</div><div style={styles.metaValue}>{parsed.created}</div></>)}
+                    {parsed.confidentiality && (<><div style={styles.metaLabel}>Vertraulichkeit</div><div style={styles.metaValue}>{parsed.confidentiality}</div></>)}
+                    {parsed.description && (<><div style={styles.metaLabel}>Beschreibung</div><div style={styles.metaValue}>{parsed.description}</div></>)}
+                  </div>
 
-              {parsed.questions.length > 0 && (
-                <div style={{ marginTop: theme.spacing.lg }}>
-                  <div style={{ ...styles.metaLabel, marginBottom: theme.spacing.sm }}>Fragen</div>
-                  {parsed.questions.map((q, i) => (
-                    <div key={i} style={styles.questionItem}>{q}</div>
-                  ))}
-                </div>
-              )}
+                  {parsed.keywords.length > 0 && (
+                    <div style={{ marginTop: theme.spacing.lg }}>
+                      <div style={{ ...styles.metaLabel, marginBottom: theme.spacing.sm }}>Keywords</div>
+                      <div>
+                        {parsed.keywords.map((kw, i) => (
+                          <span key={i} style={styles.keywordBadge}>{kw}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {!parsed.title && !parsed.type && (
-                <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
-                  Keine strukturierten Metadaten gefunden.
-                </div>
+                  {parsed.questions.length > 0 && (
+                    <div style={{ marginTop: theme.spacing.lg }}>
+                      <div style={{ ...styles.metaLabel, marginBottom: theme.spacing.sm }}>Fragen</div>
+                      {parsed.questions.map((q, i) => (
+                        <div key={i} style={styles.questionItem}>{q}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!parsed.title && !parsed.type && (
+                    <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+                      Keine strukturierten Metadaten gefunden.
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -1209,9 +1447,20 @@ function KnowledgeBasePage() {
   // ==========================================
   // RENDER: Collection Detail View
   // ==========================================
+  // Auto-reload collection when indexing completes
+  const prevIsIndexing = useRef(isIndexing);
+  useEffect(() => {
+    if (prevIsIndexing.current && !isIndexing && selectedCollection) {
+      // Indexing just completed — reload to get fresh metadata
+      loadCollectionDetail(selectedCollection);
+      loadCollections();
+    }
+    prevIsIndexing.current = isIndexing;
+  }, [isIndexing, selectedCollection]);
+
   if (selectedCollection && collectionDetail) {
     const sortedDocs = getSortedDocuments();
-    const totalDocs = collectionDetail.documents?.length || 0;
+    const totalDocs = liveDocuments?.length || 0;
     const metasLoaded = Object.keys(documentMetaCache).length;
 
     const sortIndicator = (field) => {
@@ -1221,6 +1470,12 @@ function KnowledgeBasePage() {
 
     return (
       <div style={styles.container}>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+
         {/* Back Link */}
         <button style={styles.backLink} onClick={handleBackToOverview}>
           <ArrowLeftIcon /> Knowledge Base
@@ -1236,6 +1491,26 @@ function KnowledgeBasePage() {
             <span style={styles.badge}>
               {totalDocs} {totalDocs === 1 ? 'Dokument' : 'Dokumente'}
             </span>
+            {totalDocs > 0 && (
+              <button
+                style={styles.iconButton}
+                title="Collection als ZIP herunterladen"
+                onClick={handleDownloadCollection}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+              >
+                <DownloadIcon size={15} color={theme.colors.primary} />
+              </button>
+            )}
+            {isIndexing && (
+              <span style={{
+                ...styles.badge,
+                backgroundColor: `${theme.colors.warning}15`,
+                color: theme.colors.warning,
+              }}>
+                Indizierung läuft...
+              </span>
+            )}
             {collectionDetail.last_updated && (
               <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
                 Aktualisiert: {formatDate(collectionDetail.last_updated)}
@@ -1294,22 +1569,65 @@ function KnowledgeBasePage() {
                 </div>
               ) : (
                 <div style={styles.tableContainer}>
+                  {/* Bulk Download Toolbar */}
+                  {selectedDocIds.size > 0 && (
+                    <div style={styles.bulkToolbar}>
+                      <span style={{ fontWeight: theme.typography.weights.medium }}>
+                        {selectedDocIds.size} {selectedDocIds.size === 1 ? 'Dokument' : 'Dokumente'} ausgewählt
+                      </span>
+                      <button
+                        style={{
+                          ...styles.buttonSmall,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: theme.spacing.xs,
+                          color: theme.colors.primary,
+                          borderColor: `${theme.colors.primary}30`,
+                        }}
+                        onClick={handleDownloadSelected}
+                      >
+                        <DownloadIcon size={13} color={theme.colors.primary} />
+                        Auswahl herunterladen
+                      </button>
+                      <button
+                        style={styles.buttonSmall}
+                        onClick={() => setSelectedDocIds(new Set())}
+                      >
+                        Auswahl aufheben
+                      </button>
+                    </div>
+                  )}
+
                   {/* Table Header */}
                   <div style={styles.tableHeader}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <input
+                        type="checkbox"
+                        style={styles.checkbox}
+                        checked={(() => {
+                          const readyDocs = (liveDocuments || []).filter(d => {
+                            const s = d.status || 'ready';
+                            return s !== 'pending' && s !== 'indexing' && s !== 'error';
+                          });
+                          return readyDocs.length > 0 && selectedDocIds.size === readyDocs.length;
+                        })()}
+                        onChange={toggleSelectAll}
+                      />
+                    </div>
                     <div style={styles.tableHeaderCell} onClick={() => handleSort('type')}>
                       Typ{sortIndicator('type')}
                     </div>
                     <div style={styles.tableHeaderCell} onClick={() => handleSort('title')}>
                       Dokument{sortIndicator('title')}
                     </div>
+                    <div style={styles.tableHeaderCell} onClick={() => handleSort('owner')}>
+                      Owner{sortIndicator('owner')}
+                    </div>
+                    <div style={styles.tableHeaderCell} onClick={() => handleSort('confidentiality')}>
+                      Vertraulichk.{sortIndicator('confidentiality')}
+                    </div>
                     <div style={styles.tableHeaderCell} onClick={() => handleSort('date')}>
                       Indiziert{sortIndicator('date')}
-                    </div>
-                    <div style={styles.tableHeaderCell} onClick={() => handleSort('pages')}>
-                      Seiten{sortIndicator('pages')}
-                    </div>
-                    <div style={styles.tableHeaderCell} onClick={() => handleSort('language')}>
-                      Spr.{sortIndicator('language')}
                     </div>
                     <div style={{ ...styles.tableHeaderCell, cursor: 'default' }}>
                     </div>
@@ -1317,13 +1635,30 @@ function KnowledgeBasePage() {
 
                   {/* Table Rows */}
                   {sortedDocs.map((doc) => {
+                    const docStatus = doc.status || 'ready';
+                    const isDocPending = docStatus === 'pending' || docStatus === 'indexing';
+                    const isDocError = docStatus === 'error';
                     const cached = documentMetaCache[doc.document_id]?.parsed;
                     const sourceFile = doc.source_file || cached?.source;
-                    const fileType = sourceFile ? getFileType(sourceFile) : null;
-                    const typeColor = fileType ? getFileTypeColor(fileType) : null;
                     const isExpanded = expandedDocId === doc.document_id;
-                    const displayName = doc.source_file || cached?.source || cached?.title || doc.title || doc.document_id;
-                    const subtitle = cached?.title && cached.title !== displayName ? cached.title : null;
+
+                    // Show original title, not the .md wrapper filename
+                    const displayName = cached?.title || doc.title || sourceFile || doc.document_id;
+                    const subtitleParts = [];
+                    if (!isDocPending && !isDocError && cached?.duration) subtitleParts.push(cached.duration);
+                    if (!isDocPending && !isDocError && sourceFile && sourceFile !== displayName) subtitleParts.push(sourceFile);
+                    const subtitle = isDocPending
+                      ? (docStatus === 'indexing' ? 'Wird indiziert...' : 'Wartend...')
+                      : isDocError
+                        ? (doc.error || 'Indizierung fehlgeschlagen')
+                        : (subtitleParts.length > 0 ? subtitleParts.join(' · ') : null);
+
+                    // Build URL for thumbnail preview (original file in document directory)
+                    // Skip .md wrapper files — they have no visual preview
+                    const thumbFile = sourceFile && !sourceFile.endsWith('.md') ? sourceFile : null;
+                    const fileUrl = thumbFile && !isDocPending && !isDocError
+                      ? `${API_URL}/knowledge/documents/${doc.document_id}/file/${encodeURIComponent(thumbFile)}?collection_id=${selectedCollection}`
+                      : null;
 
                     return (
                       <div key={doc.document_id}>
@@ -1332,75 +1667,147 @@ function KnowledgeBasePage() {
                             ...styles.tableRow,
                             ...(hoveredDoc === doc.document_id && !isExpanded ? styles.tableRowHover : {}),
                             ...(isExpanded ? styles.tableRowExpanded : {}),
+                            ...(isDocPending ? { opacity: 0.6 } : {}),
+                            ...(isDocError ? { borderLeft: `3px solid ${theme.colors.error}` } : {}),
                           }}
                           onMouseEnter={() => setHoveredDoc(doc.document_id)}
                           onMouseLeave={() => setHoveredDoc(null)}
-                          onClick={() => handleExpandDoc(doc.document_id)}
+                          onClick={() => !isDocPending && handleExpandDoc(doc.document_id)}
                         >
-                          {/* Type Badge */}
+                          {/* Checkbox */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {!isDocPending && !isDocError ? (
+                              <input
+                                type="checkbox"
+                                style={styles.checkbox}
+                                checked={selectedDocIds.has(doc.document_id)}
+                                onChange={(e) => { e.stopPropagation(); toggleDocSelection(doc.document_id); }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            ) : <span />}
+                          </div>
+
+                          {/* Thumbnail */}
                           <div>
-                            {fileType ? (
-                              <span
-                                style={{
-                                  ...styles.typeBadge,
-                                  backgroundColor: typeColor.bg,
-                                  color: typeColor.color,
-                                  border: `1px solid ${typeColor.border}`,
-                                }}
-                              >
-                                {fileType}
-                              </span>
+                            {isDocPending ? (
+                              <div style={{
+                                width: '16px',
+                                height: '16px',
+                                border: '2px solid transparent',
+                                borderTopColor: theme.colors.primary,
+                                borderRightColor: theme.colors.primary,
+                                borderRadius: '50%',
+                                animation: 'spin 1s linear infinite',
+                                margin: '0 auto',
+                              }} />
+                            ) : isDocError ? (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.error} strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="15" y1="9" x2="9" y2="15" />
+                                <line x1="9" y1="9" x2="15" y2="15" />
+                              </svg>
                             ) : (
-                              <span style={{ ...styles.tableCellMuted, fontSize: theme.typography.sizes.xs }}>-</span>
+                              <DocumentThumbnail
+                                url={fileUrl}
+                                filename={thumbFile}
+                                size={40}
+                              />
                             )}
                           </div>
 
                           {/* Document name */}
                           <div style={{ ...styles.tableCell, whiteSpace: 'normal' }}>
-                            <div>{displayName}</div>
+                            <div style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}>{displayName}</div>
                             {subtitle && (
-                              <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: '1px' }}>
+                              <div style={{
+                                fontSize: theme.typography.sizes.xs,
+                                color: isDocError ? theme.colors.error : theme.colors.textMuted,
+                                marginTop: '1px',
+                              }}>
                                 {subtitle}
                               </div>
                             )}
                           </div>
 
+                          {/* Owner */}
+                          <div style={styles.tableCellMuted}>
+                            {isDocPending ? '-' : (cached?.owner || '-')}
+                          </div>
+
+                          {/* Vertraulichkeit */}
+                          <div>
+                            {isDocPending ? <span style={styles.tableCellMuted}>-</span> : (() => {
+                              const conf = cached?.confidentiality;
+                              if (!conf) return <span style={styles.tableCellMuted}>-</span>;
+                              const variantKey = `confidentiality${conf.charAt(0).toUpperCase() + conf.slice(1)}`;
+                              const variantStyle = styles[variantKey] || { backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted };
+                              return (
+                                <span style={{ ...styles.confidentialityBadge, ...variantStyle }}>
+                                  {conf}
+                                </span>
+                              );
+                            })()}
+                          </div>
+
                           {/* Indexed Date */}
                           <div style={styles.tableCellMuted}>
-                            {formatDate(doc.indexed_date)}
-                          </div>
-
-                          {/* Pages */}
-                          <div style={styles.tableCellMuted}>
-                            {cached?.pages || '-'}
-                          </div>
-
-                          {/* Language */}
-                          <div style={styles.tableCellMuted}>
-                            {cached?.language || '-'}
+                            {isDocPending ? '-' : formatDate(doc.indexed_date)}
                           </div>
 
                           {/* Actions */}
-                          <div>
-                            <button
-                              style={{
-                                ...styles.deleteButton,
-                                ...(hoveredDelete === doc.document_id ? styles.deleteButtonHover : {}),
-                              }}
-                              onMouseEnter={() => setHoveredDelete(doc.document_id)}
-                              onMouseLeave={() => setHoveredDelete(null)}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteDocument(doc.document_id);
-                              }}
-                            >
-                              Loeschen
-                            </button>
+                          <div style={{ display: 'flex', gap: theme.spacing.xs, justifyContent: 'flex-end' }}>
+                            {isDocError && (
+                              <button
+                                style={styles.iconButton}
+                                title="Erneut indizieren"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  retryDocument(doc.document_id);
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <RefreshIcon size={15} color={theme.colors.primary} />
+                              </button>
+                            )}
+                            {!isDocPending && !isDocError && (
+                              <button
+                                style={styles.iconButton}
+                                title="Herunterladen"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownloadDocument(doc.document_id);
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <DownloadIcon size={15} color={theme.colors.primary} />
+                              </button>
+                            )}
+                            {!isDocPending && (
+                              <button
+                                style={styles.iconButton}
+                                title="Dokument löschen"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDocument(doc.document_id);
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; e.currentTarget.style.color = theme.colors.error; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = theme.colors.textMuted; }}
+                              >
+                                <TrashIcon size={15} color={theme.colors.error} />
+                              </button>
+                            )}
                           </div>
                         </div>
 
                         {/* Debug Panel */}
-                        {isExpanded && renderDebugPanel(doc.document_id)}
+                        {isExpanded && !isDocPending && renderDebugPanel(doc.document_id)}
                       </div>
                     );
                   })}
@@ -1491,7 +1898,7 @@ function KnowledgeBasePage() {
                       Datei hierher ziehen oder klicken
                     </div>
                     <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.xs }}>
-                      PDF, Word, Excel, PowerPoint, Text, Markdown (max. 50 MB)
+                      PDF, Word, Excel, PowerPoint, Bilder, Audio, Text (max. 50 MB)
                     </div>
                     {uploadFile && (
                       <div style={styles.uploadFileName}>{uploadFile.name}</div>
@@ -1500,7 +1907,7 @@ function KnowledgeBasePage() {
                       ref={fileInputRef}
                       type="file"
                       style={{ display: 'none' }}
-                      accept=".pdf,.docx,.doc,.xlsx,.pptx,.txt,.md,.html"
+                      accept=".pdf,.docx,.doc,.xlsx,.pptx,.txt,.md,.html,.png,.jpg,.jpeg,.gif,.webp,.svg,.bmp,.tiff,.mp3,.wav,.ogg,.m4a,.webm,.flac,.aac"
                       onChange={(e) => {
                         if (e.target.files[0]) setUploadFile(e.target.files[0]);
                       }}
@@ -1640,7 +2047,7 @@ function KnowledgeBasePage() {
                       }}
                       onClick={() => setShowDeleteCollectionModal(true)}
                     >
-                      Collection loeschen
+                      Collection löschen
                     </button>
                   </div>
                 </div>
@@ -1686,7 +2093,7 @@ function KnowledgeBasePage() {
                 color: theme.colors.text,
                 marginBottom: theme.spacing.md,
               }}>
-                Collection loeschen?
+                Collection löschen?
               </h3>
 
               <p style={{
@@ -1695,9 +2102,9 @@ function KnowledgeBasePage() {
                 marginBottom: theme.spacing.lg,
                 lineHeight: theme.typography.lineHeight.relaxed,
               }}>
-                Die Collection <strong>"{collectionDetail?.collection_name}"</strong> wird unwiderruflich geloescht.
+                Die Collection <strong>"{collectionDetail?.collection_name}"</strong> wird unwiderruflich gelöscht.
                 {collectionDetail?.documents?.length > 0 && (
-                  <> Dokumente, die nur in dieser Collection sind, werden ebenfalls geloescht. Dokumente, die auch in anderen Collections verwendet werden, bleiben erhalten.</>
+                  <> Dokumente, die nur in dieser Collection sind, werden ebenfalls gelöscht. Dokumente, die auch in anderen Collections verwendet werden, bleiben erhalten.</>
                 )}
               </p>
 
@@ -1718,7 +2125,7 @@ function KnowledgeBasePage() {
                   onClick={handleDeleteCollection}
                   disabled={deletingCollection}
                 >
-                  {deletingCollection ? 'Loesche...' : 'Loeschen'}
+                  {deletingCollection ? 'Lösche...' : 'Löschen'}
                 </button>
               </div>
             </div>
@@ -1873,16 +2280,18 @@ function KnowledgeBasePage() {
         </div>
       ) : (
         <div style={styles.cardGrid}>
+          <style>{`
+            .kb-card:hover {
+              border-color: ${theme.colors.primary} !important;
+              box-shadow: ${theme.shadows.md};
+            }
+          `}</style>
           {collections.map((col) => (
             <div
               key={col.id}
-              style={{
-                ...styles.card,
-                ...(hoveredCard === col.id ? styles.cardHover : {}),
-              }}
-              onMouseEnter={() => setHoveredCard(col.id)}
-              onMouseLeave={() => setHoveredCard(prev => prev === col.id ? null : prev)}
-              onClick={() => { setHoveredCard(null); loadCollectionDetail(col.id); }}
+              className="kb-card"
+              style={styles.card}
+              onClick={() => loadCollectionDetail(col.id)}
             >
               <div style={{ marginBottom: theme.spacing.sm }}>
                 <h3 style={{ ...styles.cardTitle, marginBottom: theme.spacing.xs }}>{col.name}</h3>
