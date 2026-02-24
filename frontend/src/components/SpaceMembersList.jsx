@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { theme } from '../config/theme';
+import { useToast } from '../components/Toast';
 import { useSpaceMembers } from '../hooks/useSpaces';
 import { useUsers } from '../hooks/useUsers';
 import { useAuth } from '../context/AuthContext';
@@ -187,6 +188,7 @@ function getInitials(displayName) {
 }
 
 export default function SpaceMembersList({ spaceId }) {
+  const toast = useToast();
   const { user: currentUser } = useAuth();
   const { members, loading, addMember, updateMemberRole, removeMember } = useSpaceMembers(spaceId);
   const { users, loading: usersLoading } = useUsers();
@@ -194,7 +196,6 @@ export default function SpaceMembersList({ spaceId }) {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState('editor');
   const [isAdding, setIsAdding] = useState(false);
-  const [actionError, setActionError] = useState(null);
 
   // Get current user's role in space
   const currentUserMember = members.find(m => m.userId === currentUser?.id);
@@ -208,35 +209,32 @@ export default function SpaceMembersList({ spaceId }) {
     if (!selectedUserId) return;
 
     setIsAdding(true);
-    setActionError(null);
     try {
       await addMember(selectedUserId, selectedRole);
       setSelectedUserId('');
       setSelectedRole('editor');
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setIsAdding(false);
     }
   };
 
   const handleRoleChange = async (userId, newRole) => {
-    setActionError(null);
     try {
       await updateMemberRole(userId, newRole);
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
   const handleRemoveMember = async (userId) => {
     if (!confirm('Mitglied wirklich entfernen?')) return;
 
-    setActionError(null);
     try {
       await removeMember(userId);
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -251,10 +249,6 @@ export default function SpaceMembersList({ spaceId }) {
 
   return (
     <div style={styles.container}>
-      {actionError && (
-        <div style={styles.error}>{actionError}</div>
-      )}
-
       {/* Add Member Section */}
       {canManageMembers && (
         <div style={styles.addSection}>

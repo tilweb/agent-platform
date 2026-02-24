@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { theme } from '../config/theme';
+import { useToast } from '../components/Toast';
 import { useSpaceKBLinks } from '../hooks/useSpaces';
 import { apiGet } from '../utils/apiFetch';
 import { BookIcon, LinkIcon, TrashIcon } from './Icons';
@@ -142,12 +143,12 @@ const styles = {
 };
 
 export default function SpaceKBLinks({ spaceId }) {
+  const toast = useToast();
   const { links, loading, linkCollection, unlinkCollection } = useSpaceKBLinks(spaceId);
   const [collections, setCollections] = useState([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
   const [selectedCollectionId, setSelectedCollectionId] = useState('');
   const [isLinking, setIsLinking] = useState(false);
-  const [actionError, setActionError] = useState(null);
 
   // Load available KB collections
   const loadCollections = useCallback(async () => {
@@ -177,12 +178,11 @@ export default function SpaceKBLinks({ spaceId }) {
     if (!selectedCollectionId) return;
 
     setIsLinking(true);
-    setActionError(null);
     try {
       await linkCollection(selectedCollectionId);
       setSelectedCollectionId('');
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setIsLinking(false);
     }
@@ -191,11 +191,10 @@ export default function SpaceKBLinks({ spaceId }) {
   const handleUnlinkCollection = async (collectionId) => {
     if (!confirm('Verkuepfung wirklich aufheben?')) return;
 
-    setActionError(null);
     try {
       await unlinkCollection(collectionId);
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -215,10 +214,6 @@ export default function SpaceKBLinks({ spaceId }) {
         Verknuepfte Collections werden automatisch bei RAG-Suchen im Space-Chat priorisiert.
         Der Assistent kann auf diese Wissensbasis zugreifen.
       </div>
-
-      {actionError && (
-        <div style={styles.error}>{actionError}</div>
-      )}
 
       {/* Add Collection Section */}
       <div style={styles.addSection}>

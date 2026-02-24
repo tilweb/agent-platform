@@ -5,6 +5,7 @@ import { theme } from '../config/theme';
 import ReactMarkdown from 'react-markdown';
 import PluginConfigForm from '../components/PluginConfigForm';
 import { getProviderIcon } from '../components/Icons';
+import { useToast } from '../components/Toast';
 
 const styles = {
   container: {
@@ -182,14 +183,6 @@ const styles = {
     textAlign: 'center',
     padding: theme.spacing['2xl'],
     color: theme.colors.textMuted,
-  },
-  error: {
-    backgroundColor: `${theme.colors.error}15`,
-    border: `1px solid ${theme.colors.error}30`,
-    color: theme.colors.error,
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.xl,
   },
   emptyState: {
     textAlign: 'center',
@@ -394,7 +387,7 @@ function ConnectionCard({ provider, isAdmin, onConnect, onDisconnect, onConfigur
   );
 }
 
-function ConfigureModal({ provider, onClose, onSave, onDelete, saving, error }) {
+function ConfigureModal({ provider, onClose, onSave, onDelete, saving }) {
   const [showGuide, setShowGuide] = useState(false);
 
   if (!provider) return null;
@@ -436,7 +429,6 @@ function ConfigureModal({ provider, onClose, onSave, onDelete, saving, error }) 
           onCancel={onClose}
           onDelete={provider.hasExistingConfig ? onDelete : null}
           saving={saving}
-          error={error}
           hasExistingConfig={provider.hasExistingConfig}
         />
       </div>
@@ -524,23 +516,21 @@ function ToggleOffIcon() {
 
 export default function ConnectionsPage({ embedded = false }) {
   const { user } = useAuth();
-  const { providers, loading, error, connect, disconnect, loadConfig, saveConfig, deleteConfig, toggleEnabled } = useConnections();
+  const toast = useToast();
+  const { providers, loading, connect, disconnect, loadConfig, saveConfig, deleteConfig, toggleEnabled } = useConnections();
   const [actionLoading, setActionLoading] = useState(null);
-  const [actionError, setActionError] = useState(null);
   const [configProvider, setConfigProvider] = useState(null);
   const [configSaving, setConfigSaving] = useState(false);
-  const [configError, setConfigError] = useState(null);
 
   const isAdmin = user?.role === 'admin';
 
   const handleConnect = async (providerId) => {
     setActionLoading(providerId);
-    setActionError(null);
 
     try {
       await connect(providerId);
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setActionLoading(null);
     }
@@ -548,19 +538,17 @@ export default function ConnectionsPage({ embedded = false }) {
 
   const handleDisconnect = async (providerId) => {
     setActionLoading(providerId);
-    setActionError(null);
 
     try {
       await disconnect(providerId);
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleOpenConfigure = async (provider) => {
-    setConfigError(null);
     try {
       const configData = await loadConfig(provider.id);
       setConfigProvider({
@@ -583,13 +571,12 @@ export default function ConnectionsPage({ embedded = false }) {
   const handleSaveConfig = async (values) => {
     if (!configProvider) return;
     setConfigSaving(true);
-    setConfigError(null);
 
     try {
       await saveConfig(configProvider.id, values);
       setConfigProvider(null);
     } catch (err) {
-      setConfigError(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setConfigSaving(false);
     }
@@ -597,12 +584,11 @@ export default function ConnectionsPage({ embedded = false }) {
 
   const handleToggleEnabled = async (pluginId, enabled) => {
     setActionLoading(pluginId);
-    setActionError(null);
 
     try {
       await toggleEnabled(pluginId, enabled);
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setActionLoading(null);
     }
@@ -611,13 +597,12 @@ export default function ConnectionsPage({ embedded = false }) {
   const handleDeleteConfig = async () => {
     if (!configProvider) return;
     setConfigSaving(true);
-    setConfigError(null);
 
     try {
       await deleteConfig(configProvider.id);
       setConfigProvider(null);
     } catch (err) {
-      setConfigError(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setConfigSaving(false);
     }
@@ -657,12 +642,6 @@ export default function ConnectionsPage({ embedded = false }) {
         </div>
       )}
 
-      {(error || actionError) && (
-        <div style={styles.error}>
-          {error || actionError}
-        </div>
-      )}
-
       {providers.length === 0 ? (
         <div style={styles.emptyState}>
           <p>Keine Verbindungs-Provider verfügbar.</p>
@@ -691,7 +670,6 @@ export default function ConnectionsPage({ embedded = false }) {
           onSave={handleSaveConfig}
           onDelete={handleDeleteConfig}
           saving={configSaving}
-          error={configError}
         />
       )}
     </div>

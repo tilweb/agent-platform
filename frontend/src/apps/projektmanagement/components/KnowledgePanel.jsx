@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { theme } from '../../../config/theme';
 import { apiGet, apiPost } from '../../../utils/apiFetch';
 import AnalysisResult from './AnalysisResult';
+import { useToast } from '../../../components/Toast';
 
 const styles = {
   container: {
@@ -291,6 +292,7 @@ const ACCORDION_SECTIONS = [
 ];
 
 function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysisComplete }) {
+  const toast = useToast();
   const [knowledge, setKnowledge] = useState(null);
   const [activeTab, setActiveTab] = useState('wissen');
   const [isLoading, setIsLoading] = useState(false);
@@ -300,7 +302,6 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
 
   // Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisError, setAnalysisError] = useState(null);
 
   const knowledgeStep = KNOWLEDGE_STEP_MAP[currentStep];
   const canAnalyze = currentStep >= 2 && currentStep <= 7;
@@ -314,8 +315,6 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
     } else {
       setKnowledge(null);
     }
-    // Reset error when step changes
-    setAnalysisError(null);
   }, [knowledgeStep]);
 
   // Switch tab when step changes based on whether analysis exists
@@ -339,7 +338,6 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
 
     try {
       setIsAnalyzing(true);
-      setAnalysisError(null);
 
       const response = await apiPost(
         `/apps/projektmanagement/analyse/step/${currentStep}`,
@@ -359,7 +357,7 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
       setActiveTab('analyse');
     } catch (error) {
       console.error('Error analyzing step:', error);
-      setAnalysisError(error.message);
+      toast.error('Fehler', error.message);
     } finally {
       setIsAnalyzing(false);
     }
@@ -749,11 +747,6 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
               </>
             )}
           </button>
-          {analysisError && (
-            <div style={styles.analysisError}>
-              {analysisError}
-            </div>
-          )}
         </div>
       )}
 

@@ -8,6 +8,7 @@ import { theme } from '../../config/theme';
 import { useContracts } from '../../hooks/useContracts';
 import { TrashIcon, PenIcon, SparklesIcon, BrainIcon } from '../../components/Icons';
 import { apiPost } from '../../utils/apiFetch';
+import { useToast } from '../../components/Toast';
 
 const styles = {
   container: {
@@ -304,6 +305,7 @@ function countFields(schema) {
 }
 
 export default function SchemaEditor() {
+  const toast = useToast();
   const { schemas, createSchema, updateSchema, deleteSchema, refreshSchemas } = useContracts();
   const [showModal, setShowModal] = useState(false);
   const [editingSchema, setEditingSchema] = useState(null);
@@ -363,7 +365,7 @@ export default function SchemaEditor() {
     try {
       await deleteSchema(schema.id);
     } catch (err) {
-      alert(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 

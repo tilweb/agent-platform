@@ -526,22 +526,6 @@ const styles = {
     fontWeight: theme.typography.weights.medium,
     marginTop: theme.spacing.sm,
   },
-  statusMessage: {
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-    marginBottom: theme.spacing.lg,
-  },
-  statusSuccess: {
-    backgroundColor: '#10b98115',
-    color: '#10b981',
-    border: '1px solid #10b98130',
-  },
-  statusError: {
-    backgroundColor: '#ef444415',
-    color: '#ef4444',
-    border: '1px solid #ef444430',
-  },
   emptyState: {
     textAlign: 'center',
     padding: theme.spacing['3xl'],
@@ -656,7 +640,6 @@ function UploadStepper({ currentStep }) {
 function KnowledgeBasePage() {
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState(null);
 
   // Navigation
   const [selectedCollection, setSelectedCollection] = useState(null);
@@ -955,16 +938,16 @@ function KnowledgeBasePage() {
       });
 
       if (res.ok) {
-        setStatusMessage({ type: 'success', text: `Collection "${newCollection.name}" erstellt` });
+        toast.success('Erstellt', `Collection "${newCollection.name}" erstellt`);
         setNewCollection({ id: '', name: '', description: '', activate_when: '', never_activate_when: '' });
         setShowCreateForm(false);
         loadCollections();
       } else {
         const err = await res.json();
-        setStatusMessage({ type: 'error', text: err.error || 'Fehler beim Erstellen' });
+        toast.error('Fehler', err.error || 'Fehler beim Erstellen');
       }
     } catch (err) {
-      setStatusMessage({ type: 'error', text: err.message });
+      toast.error('Fehler', err.message);
     }
   }
 
@@ -985,15 +968,15 @@ function KnowledgeBasePage() {
       });
 
       if (res.ok) {
-        setStatusMessage({ type: 'success', text: 'Collection aktualisiert' });
+        toast.success('Gespeichert', 'Collection aktualisiert');
         loadCollections();
         loadCollectionDetail(selectedCollection);
       } else {
         const err = await res.json();
-        setStatusMessage({ type: 'error', text: err.error || 'Fehler beim Speichern' });
+        toast.error('Fehler', err.error || 'Fehler beim Speichern');
       }
     } catch (err) {
-      setStatusMessage({ type: 'error', text: err.message });
+      toast.error('Fehler', err.message);
     }
     setSavingDetails(false);
   }
@@ -1003,7 +986,6 @@ function KnowledgeBasePage() {
     if (!uploadFile || !selectedCollection) return;
 
     setUploading(true);
-    setStatusMessage(null);
     setUploadProgress('upload');
 
     // Simulate progress steps while backend processes
@@ -1029,10 +1011,7 @@ function KnowledgeBasePage() {
 
       if (res.ok && result.success) {
         setUploadProgress(null);
-        setStatusMessage({
-          type: 'success',
-          text: `"${result.title}" erfolgreich indiziert (${result.document_id})`,
-        });
+        toast.success('Indiziert', `"${result.title}" erfolgreich indiziert (${result.document_id})`);
         setUploadFile(null);
         setUploadTitle('');
         setUploadOwner('');
@@ -1040,12 +1019,12 @@ function KnowledgeBasePage() {
         loadCollectionDetail(selectedCollection);
       } else {
         setUploadProgress(null);
-        setStatusMessage({ type: 'error', text: result.error || 'Fehler beim Indizieren' });
+        toast.error('Fehler', result.error || 'Fehler beim Indizieren');
       }
     } catch (err) {
       stepTimers.forEach(clearTimeout);
       setUploadProgress(null);
-      setStatusMessage({ type: 'error', text: err.message });
+      toast.error('Fehler', err.message);
     }
 
     setUploading(false);
@@ -1060,7 +1039,7 @@ function KnowledgeBasePage() {
       );
 
       if (res.ok) {
-        setStatusMessage({ type: 'success', text: `Dokument "${docId}" gelöscht` });
+        toast.success('Gelöscht', `Dokument "${docId}" gelöscht`);
         if (expandedDocId === docId) {
           setExpandedDocId(null);
           setDocContent(null);
@@ -1075,10 +1054,10 @@ function KnowledgeBasePage() {
         loadCollectionDetail(selectedCollection);
       } else {
         const err = await res.json();
-        setStatusMessage({ type: 'error', text: err.error || 'Fehler beim Löschen' });
+        toast.error('Fehler', err.error || 'Fehler beim Löschen');
       }
     } catch (err) {
-      setStatusMessage({ type: 'error', text: err.message });
+      toast.error('Fehler', err.message);
     }
   }
 
@@ -1091,19 +1070,16 @@ function KnowledgeBasePage() {
       if (res.ok) {
         const result = await res.json();
         const deletedCount = result.documents_deleted?.length || 0;
-        setStatusMessage({
-          type: 'success',
-          text: `Collection "${collectionDetail?.collection_name}" gelöscht${deletedCount > 0 ? ` (${deletedCount} Dokumente entfernt)` : ''}`,
-        });
+        toast.success('Gelöscht', `Collection "${collectionDetail?.collection_name}" gelöscht${deletedCount > 0 ? ` (${deletedCount} Dokumente entfernt)` : ''}`);
         setShowDeleteCollectionModal(false);
         handleBackToOverview();
         loadCollections();
       } else {
         const err = await res.json();
-        setStatusMessage({ type: 'error', text: err.error || 'Fehler beim Löschen' });
+        toast.error('Fehler', err.error || 'Fehler beim Löschen');
       }
     } catch (err) {
-      setStatusMessage({ type: 'error', text: err.message });
+      toast.error('Fehler', err.message);
     }
     setDeletingCollection(false);
   }
@@ -1266,7 +1242,6 @@ function KnowledgeBasePage() {
     setDocContent(null);
     setDocIndex(null);
     setExpandedDocRawMeta(null);
-    setStatusMessage(null);
     setSearchFilter('');
     setDocumentMetaCache({});
     setSelectedDocIds(new Set());
@@ -1528,18 +1503,6 @@ function KnowledgeBasePage() {
             )}
           </div>
         </div>
-
-        {/* Status Message */}
-        {statusMessage && (
-          <div
-            style={{
-              ...styles.statusMessage,
-              ...(statusMessage.type === 'success' ? styles.statusSuccess : styles.statusError),
-            }}
-          >
-            {statusMessage.text}
-          </div>
-        )}
 
         {/* Two-Column Layout: 2/3 Document List, 1/3 Details Panel with Tabs */}
         <div style={{ display: 'flex', gap: theme.spacing.xl, alignItems: 'flex-start' }}>
@@ -2179,18 +2142,6 @@ function KnowledgeBasePage() {
             <span style={styles.statValue}>{totalDocuments}</span>
             <span>{totalDocuments === 1 ? 'Dokument' : 'Dokumente'}</span>
           </div>
-        </div>
-      )}
-
-      {/* Status Message */}
-      {statusMessage && (
-        <div
-          style={{
-            ...styles.statusMessage,
-            ...(statusMessage.type === 'success' ? styles.statusSuccess : styles.statusError),
-          }}
-        >
-          {statusMessage.text}
         </div>
       )}
 

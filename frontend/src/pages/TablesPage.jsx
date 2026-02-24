@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useTables } from '../hooks/useTables';
+import { useToast } from '../components/Toast';
 import { TableIcon, ListIcon } from '../components/Icons';
 
 const styles = {
@@ -229,6 +230,7 @@ const styles = {
 };
 
 function TablesPage() {
+  const toast = useToast();
   const navigate = useNavigate();
   const {
     tables,
@@ -260,7 +262,7 @@ function TablesPage() {
       try {
         await deleteTable(tableId);
       } catch (err) {
-        alert(err.message);
+        toast.error('Fehler', err.message);
       }
     }
   };
@@ -375,6 +377,7 @@ function TablesPage() {
       {/* Create Modal */}
       {showCreateModal && (
         <CreateTableModal
+          toast={toast}
           onClose={() => setShowCreateModal(false)}
           onCreate={async (data) => {
             await createTable(data);
@@ -386,6 +389,7 @@ function TablesPage() {
       {/* Template Modal */}
       {showTemplateModal && (
         <TemplateModal
+          toast={toast}
           templates={templates}
           onClose={() => setShowTemplateModal(false)}
           onApply={async (templateId) => {
@@ -398,7 +402,7 @@ function TablesPage() {
   );
 }
 
-function CreateTableModal({ onClose, onCreate }) {
+function CreateTableModal({ onClose, onCreate, toast }) {
   const [formData, setFormData] = useState({
     id: '',
     name: '',
@@ -426,7 +430,7 @@ function CreateTableModal({ onClose, onCreate }) {
       await onCreate({ ...formData, id });
     } catch (err) {
       console.error('Error creating table:', err);
-      alert(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setSubmitting(false);
     }
@@ -493,7 +497,7 @@ function CreateTableModal({ onClose, onCreate }) {
   );
 }
 
-function TemplateModal({ templates, onClose, onApply }) {
+function TemplateModal({ templates, onClose, onApply, toast }) {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [applying, setApplying] = useState(false);
 
@@ -505,7 +509,7 @@ function TemplateModal({ templates, onClose, onApply }) {
       await onApply(selectedTemplate);
     } catch (err) {
       console.error('Error applying template:', err);
-      alert(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setApplying(false);
     }

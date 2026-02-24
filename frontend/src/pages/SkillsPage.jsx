@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { theme } from '../config/theme';
 import SkillEditor from '../components/SkillEditor';
 import { PlusIcon, EditIcon, ArrowLeftIcon } from '../components/Icons';
+import { useToast } from '../components/Toast';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -533,10 +534,9 @@ function SkillCard({ skill, onView, onEdit }) {
 }
 
 function SkillsPage() {
+  const toast = useToast();
   const [skills, setSkills] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [detailSkill, setDetailSkill] = useState(null);
   const [editorSkill, setEditorSkill] = useState(null);
@@ -551,7 +551,7 @@ function SkillsPage() {
       const data = await response.json();
       setSkills(data.skills || []);
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setIsLoading(false);
     }
@@ -575,7 +575,6 @@ function SkillsPage() {
 
   const handleBackToOverview = () => {
     setDetailSkill(null);
-    setError(null);
   };
 
   const reloadSkills = async () => {
@@ -585,7 +584,7 @@ function SkillsPage() {
       if (!response.ok) throw new Error('Failed to reload skills');
       await fetchSkills();
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
       setIsLoading(false);
     }
   };
@@ -601,7 +600,7 @@ function SkillsPage() {
         setEditorSkill(data);
       }
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -665,14 +664,11 @@ function SkillsPage() {
   const handleSaveFromHeader = async () => {
     if (editorRef.current) {
       setIsSaving(true);
-      setError(null);
-      setSuccessMessage(null);
       try {
         await editorRef.current.save();
-        setSuccessMessage('Skill erfolgreich gespeichert');
-        setTimeout(() => setSuccessMessage(null), 3000);
+        toast.success('Gespeichert', 'Skill erfolgreich gespeichert');
       } catch (err) {
-        setError(err.message);
+        toast.error('Fehler', err.message);
       } finally {
         setIsSaving(false);
       }
@@ -686,7 +682,7 @@ function SkillsPage() {
       await handleDeleteSkill(detailSkill.id);
       handleBackToOverview();
     } catch (err) {
-      setError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -766,30 +762,6 @@ function SkillsPage() {
             </div>
           )}
         </div>
-
-        {error && (
-          <div style={styles.error}>
-            {error}
-            <button
-              onClick={() => setError(null)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.error }}
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {successMessage && (
-          <div style={styles.success}>
-            {successMessage}
-            <button
-              onClick={() => setSuccessMessage(null)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.textMuted }}
-            >
-              ✕
-            </button>
-          </div>
-        )}
 
         {/* Custom Skills: Inline Editor */}
         {isCustomSkill && editorSkill && (
@@ -1031,18 +1003,6 @@ function SkillsPage() {
           </button>
         </div>
       </div>
-
-      {error && (
-        <div style={styles.error}>
-          {error}
-          <button
-            onClick={() => setError(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.error }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       <div style={styles.searchContainer}>
         <input

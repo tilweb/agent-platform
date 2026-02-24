@@ -3162,7 +3162,6 @@ function ChatWindow({
   const navigate = useNavigate();
   const [input, setInput] = useState('');
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [commandMessage, setCommandMessage] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [dragActive, setDragActive] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -3245,18 +3244,9 @@ function ChatWindow({
     }
   }, [input]);
 
-  // Show command message briefly
-  useEffect(() => {
-    if (commandMessage) {
-      const timer = setTimeout(() => setCommandMessage(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [commandMessage]);
-
   // Clear UI state when starting a new chat (messages become empty)
   useEffect(() => {
     if (messages.length === 0) {
-      setCommandMessage(null);
       setAttachedFiles([]);
       setFileTranscriptions({});
       setSelectedMaterialIds(new Set());
@@ -3305,7 +3295,7 @@ function ChatWindow({
     };
 
     onAddMaterial(material);
-    setCommandMessage('Als Material gespeichert');
+    toast.success('Gespeichert', 'Als Material gespeichert');
   }, [onAddMaterial]);
 
   // Open command palette when "/" is typed at start
@@ -3362,7 +3352,7 @@ function ChatWindow({
                 ...p,
                 [fileKey]: { status: 'error', error: err.message, language: transcriptionLanguage }
               }));
-              setCommandMessage(err.message || 'Transkription fehlgeschlagen');
+              toast.error('Transkription', err.message || 'Transkription fehlgeschlagen');
             });
 
           return {
@@ -3419,7 +3409,7 @@ function ChatWindow({
       const fileList = rejectedFiles.length <= 3
         ? rejectedFiles.join(', ')
         : `${rejectedFiles.slice(0, 3).join(', ')} (+${rejectedFiles.length - 3} weitere)`;
-      setCommandMessage(`Nicht unterstützt: ${fileList}. Erlaubt: ${SUPPORTED_FORMATS_TEXT}`);
+      toast.warning('Dateiformat', `Nicht unterstützt: ${fileList}. Erlaubt: ${SUPPORTED_FORMATS_TEXT}`);
     }
   }, []);
 
@@ -3476,19 +3466,19 @@ function ChatWindow({
     }
   }, [isRecording, startRecording, stopRecording]);
 
-  // Show recording error as command message
+  // Show recording error as toast
   useEffect(() => {
     if (recordingError) {
-      setCommandMessage(recordingError);
+      toast.error('Aufnahme', recordingError);
     }
-  }, [recordingError]);
+  }, [recordingError, toast]);
 
-  // Show transcription error as command message
+  // Show transcription error as toast
   useEffect(() => {
     if (transcriptionError) {
-      setCommandMessage(transcriptionError);
+      toast.error('Transkription', transcriptionError);
     }
-  }, [transcriptionError]);
+  }, [transcriptionError, toast]);
 
   const handleSubmit = (e) => {
     e?.preventDefault();
@@ -3541,7 +3531,7 @@ function ChatWindow({
 
     if (result.success) {
       // Show confirmation message
-      setCommandMessage(result.message);
+      toast.info('Befehl', result.message);
 
       // Handle action
       if (result.action) {
@@ -3615,9 +3605,9 @@ function ChatWindow({
         }
       }
     } else {
-      setCommandMessage(result.message);
+      toast.error('Befehl', result.message);
     }
-  }, [executeCommand, onSelectAgent, onSelectAuto, onNewChat, onClearChat, onSendMessage, attachedFiles, onModelChanged, onTableSelected]);
+  }, [executeCommand, onSelectAgent, onSelectAuto, onNewChat, onClearChat, onSendMessage, attachedFiles, onModelChanged, onTableSelected, toast]);
 
   const handleCloseCommandPalette = useCallback(() => {
     setShowCommandPalette(false);
@@ -4023,30 +4013,6 @@ function ChatWindow({
             inputValue={input}
             selectedAgentId={selectedAgentId}
           />
-
-          {/* Command Feedback Message */}
-          {commandMessage && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '100%',
-                left: 0,
-                right: 0,
-                marginBottom: theme.spacing.sm,
-                padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-                backgroundColor: theme.colors.primaryLight,
-                color: theme.colors.primary,
-                borderRadius: theme.borderRadius.lg,
-                fontSize: theme.typography.sizes.sm,
-                fontWeight: theme.typography.weights.medium,
-                textAlign: 'center',
-                boxShadow: theme.shadows.md,
-                zIndex: 999,
-              }}
-            >
-              {commandMessage}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} style={chatStyles.inputWrapper}>
             {/* Recording UI - shown above input when recording */}

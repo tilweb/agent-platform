@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useSpaces } from '../hooks/useSpaces';
+import { useToast } from '../components/Toast';
 import { TrashIcon, ArchiveIcon } from './Icons';
 
 const styles = {
@@ -117,6 +118,7 @@ const styles = {
 };
 
 export default function SpaceSettings({ space, onUpdateSettings, onRefresh }) {
+  const toast = useToast();
   const navigate = useNavigate();
   const { deleteSpace, archiveSpace, unarchiveSpace } = useSpaces();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -165,7 +167,7 @@ export default function SpaceSettings({ space, onUpdateSettings, onRefresh }) {
       navigate('/spaces');
     } catch (err) {
       console.error('Failed to delete:', err);
-      alert('Fehler beim Loeschen: ' + err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setIsDeleting(false);
     }

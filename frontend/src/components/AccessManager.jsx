@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useToast } from '../components/Toast';
 import { theme } from '../config/theme';
 import { UserIcon, TrashIcon, SparklesIcon } from './Icons';
 import Select from './Select';
@@ -186,11 +187,11 @@ const styles = {
  * @param {string} resourceName - Display name of the resource (optional)
  */
 export default function AccessManager({ resourceType, resourceId, resourceName }) {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('users');
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
   const [selectedRole, setSelectedRole] = useState('viewer');
-  const [actionError, setActionError] = useState(null);
 
   const {
     users,
@@ -230,12 +231,11 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
     if (!selectedUser || !selectedRole) return;
 
     try {
-      setActionError(null);
       await addAccess('user', selectedUser, selectedRole);
       setSelectedUser('');
       refreshAvailableUsers();
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -243,21 +243,19 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
     if (!selectedGroup || !selectedRole) return;
 
     try {
-      setActionError(null);
       await addAccess('group', selectedGroup, selectedRole);
       setSelectedGroup('');
       refreshAvailableGroups();
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
   const handleUpdateRole = async (principalType, principalId, newRole) => {
     try {
-      setActionError(null);
       await updateRole(principalType, principalId, newRole);
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -265,7 +263,6 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
     if (!confirm('Berechtigung wirklich entfernen?')) return;
 
     try {
-      setActionError(null);
       await removeAccess(principalType, principalId);
       if (principalType === 'user') {
         refreshAvailableUsers();
@@ -273,7 +270,7 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
         refreshAvailableGroups();
       }
     } catch (err) {
-      setActionError(err.message);
+      toast.error('Fehler', err.message);
     }
   };
 
@@ -341,10 +338,6 @@ export default function AccessManager({ resourceType, resourceId, resourceName }
       </div>
 
       <div style={styles.content}>
-        {actionError && (
-          <div style={styles.error}>{actionError}</div>
-        )}
-
         {activeTab === 'users' && (
           <>
             {canManage && availableUsers.length > 0 && (

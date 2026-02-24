@@ -9,6 +9,7 @@ import { theme } from '../../config/theme';
 import { useProjektmanagement } from '../../hooks/useProjektmanagement';
 import { API_URL } from '../../utils/apiFetch';
 import { ArrowLeftIcon } from '../../components/Icons';
+import { useToast } from '../../components/Toast';
 
 // Step components
 import Step1Basis from './components/steps/Step1Basis';
@@ -298,6 +299,7 @@ const emptyProjektauftrag = {
 };
 
 function WizardPage() {
+  const toast = useToast();
   const { id } = useParams();
   const navigate = useNavigate();
   const {
@@ -436,7 +438,7 @@ function WizardPage() {
   // Export project
   const handleExport = async (format) => {
     if (!projektauftrag.id) {
-      alert('Bitte speichern Sie den Projektauftrag zuerst.');
+      toast.warning('Export', 'Bitte speichern Sie den Projektauftrag zuerst.');
       return;
     }
 
@@ -475,7 +477,7 @@ function WizardPage() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export error:', error);
-      alert('Export fehlgeschlagen. Bitte versuchen Sie es erneut.');
+      toast.error('Export', 'Export fehlgeschlagen. Bitte versuchen Sie es erneut.');
     } finally {
       setIsExporting(false);
       setExportingFormat(null);

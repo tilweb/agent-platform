@@ -8,6 +8,7 @@ import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useTable, useTableViews } from '../hooks/useTables';
+import { useToast } from '../components/Toast';
 import { ArrowLeftIcon, TableIcon } from '../components/Icons';
 import Select from '../components/Select';
 
@@ -280,6 +281,7 @@ const COLUMN_TYPE_LABELS = {
 };
 
 function TableDetailPage() {
+  const toast = useToast();
   const { tableId } = useParams();
   const navigate = useNavigate();
   const {
@@ -337,7 +339,7 @@ function TableDetailPage() {
       try {
         await updateRow(rowId, { [columnId]: editValue });
       } catch (err) {
-        alert(err.message);
+        toast.error('Fehler', err.message);
       }
     }
 
@@ -382,7 +384,7 @@ function TableDetailPage() {
         await deleteRows(Array.from(selectedRows));
         setSelectedRows(new Set());
       } catch (err) {
-        alert(err.message);
+        toast.error('Fehler', err.message);
       }
     }
   };
@@ -392,7 +394,7 @@ function TableDetailPage() {
       try {
         await deleteRow(rowId);
       } catch (err) {
-        alert(err.message);
+        toast.error('Fehler', err.message);
       }
     }
   };
@@ -752,6 +754,7 @@ function TableDetailPage() {
       {/* Add Row Modal */}
       {showAddModal && (
         <AddRowModal
+          toast={toast}
           table={table}
           onClose={() => setShowAddModal(false)}
           onAdd={async (data) => {
@@ -772,7 +775,7 @@ function TableDetailPage() {
   );
 }
 
-function AddRowModal({ table, onClose, onAdd }) {
+function AddRowModal({ table, onClose, onAdd, toast }) {
   const [formData, setFormData] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -784,7 +787,7 @@ function AddRowModal({ table, onClose, onAdd }) {
       await onAdd(formData);
     } catch (err) {
       console.error('Error adding row:', err);
-      alert(err.message);
+      toast.error('Fehler', err.message);
     } finally {
       setSubmitting(false);
     }
