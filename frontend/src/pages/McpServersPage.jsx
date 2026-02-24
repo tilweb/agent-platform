@@ -132,7 +132,32 @@ const styles = {
     gap: theme.spacing.xs,
   },
   cardTools: {
-    color: '#3b82f6',
+    color: theme.colors.primary,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    userSelect: 'none',
+  },
+  toolsList: {
+    marginTop: theme.spacing.md,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+  },
+  toolItem: {
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    borderBottom: `1px solid ${theme.colors.border}`,
+    fontSize: theme.typography.sizes.xs,
+  },
+  toolName: {
+    fontFamily: theme.typography.fontMono,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text,
+  },
+  toolDescription: {
+    color: theme.colors.textMuted,
+    marginTop: '2px',
   },
   cardActions: {
     display: 'flex',
@@ -389,6 +414,29 @@ function McpServersPage({ embedded = false }) {
   const [editingServer, setEditingServer] = useState(null);
   const [showDocs, setShowDocs] = useState(false);
   const [docsTab, setDocsTab] = useState('client');
+  const [expandedTools, setExpandedTools] = useState(null); // server ID or null
+  const [toolsCache, setToolsCache] = useState({}); // { serverId: McpToolInfo[] }
+
+  const fetchServerTools = async (serverId) => {
+    if (toolsCache[serverId]) return;
+    try {
+      const response = await fetch(`${API_URL}/mcp/servers/${serverId}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      setToolsCache(prev => ({ ...prev, [serverId]: data.tools || [] }));
+    } catch (err) {
+      console.error('Failed to fetch server tools:', err);
+    }
+  };
+
+  const toggleTools = (serverId) => {
+    if (expandedTools === serverId) {
+      setExpandedTools(null);
+    } else {
+      setExpandedTools(serverId);
+      fetchServerTools(serverId);
+    }
+  };
 
   const fetchServers = async () => {
     try {
@@ -422,6 +470,7 @@ function McpServersPage({ embedded = false }) {
   const handleConnect = async (serverId) => {
     try {
       await fetch(`${API_URL}/mcp/servers/${serverId}/connect`, { method: 'POST' });
+      setToolsCache(prev => { const next = { ...prev }; delete next[serverId]; return next; });
       await fetchServers();
     } catch (err) {
       setError(err.message);
@@ -431,6 +480,8 @@ function McpServersPage({ embedded = false }) {
   const handleDisconnect = async (serverId) => {
     try {
       await fetch(`${API_URL}/mcp/servers/${serverId}/disconnect`, { method: 'POST' });
+      setToolsCache(prev => { const next = { ...prev }; delete next[serverId]; return next; });
+      setExpandedTools(prev => prev === serverId ? null : prev);
       await fetchServers();
     } catch (err) {
       setError(err.message);
@@ -637,11 +688,48 @@ function McpServersPage({ embedded = false }) {
                   Status: {server.status}
                 </span>
                 {server.toolCount > 0 && (
-                  <span style={styles.cardTools}>
+                  <span
+                    style={styles.cardTools}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleTools(server.id);
+                    }}
+                  >
                     {server.toolCount} Tools
+                    <ChevronIcon direction={expandedTools === server.id ? 'up' : 'down'} size={14} />
                   </span>
                 )}
               </div>
+
+              {/* Expandable Tools List */}
+              {expandedTools === server.id && (
+                <div style={styles.toolsList}>
+                  {!toolsCache[server.id] ? (
+                    <div style={{ ...styles.toolItem, color: theme.colors.textMuted, borderBottom: 'none' }}>
+                      Lade Tools...
+                    </div>
+                  ) : toolsCache[server.id].length === 0 ? (
+                    <div style={{ ...styles.toolItem, color: theme.colors.textMuted, borderBottom: 'none' }}>
+                      Keine Tools gefunden
+                    </div>
+                  ) : (
+                    toolsCache[server.id].map((tool, i) => (
+                      <div
+                        key={tool.name}
+                        style={{
+                          ...styles.toolItem,
+                          ...(i === toolsCache[server.id].length - 1 ? { borderBottom: 'none' } : {}),
+                        }}
+                      >
+                        <div style={styles.toolName}>{tool.name}</div>
+                        {tool.description && (
+                          <div style={styles.toolDescription}>{tool.description}</div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
 
               {server.error && (
                 <div style={styles.cardError}>
@@ -870,7 +958,7 @@ function AboutMcpDocs() {
           <div>
             <strong style={{ color: theme.colors.text }}>Verbinden klicken</strong>
             <p style={{ ...styles.docsParagraph, marginBottom: 0, marginTop: theme.spacing.xs }}>
-              Der Adacor Workplace führt den konfigurierten Befehl aus (z.B. <code>npx -y @modelcontextprotocol/server-github</code>)
+              Der KI-Workplace führt den konfigurierten Befehl aus (z.B. <code>npx -y @modelcontextprotocol/server-github</code>)
             </p>
           </div>
 
@@ -908,7 +996,7 @@ function AboutMcpDocs() {
           <div>
             <strong style={{ color: theme.colors.text }}>Lokaler Prozess</strong>
             <p style={{ ...styles.docsParagraph, marginBottom: 0, marginTop: theme.spacing.xs }}>
-              Der MCP Server startet als Child-Prozess des Adacor Workplace auf deinem lokalen Rechner
+              Der MCP Server startet als Child-Prozess des KI-Workplace auf deinem lokalen Rechner
             </p>
           </div>
 
@@ -927,7 +1015,7 @@ function AboutMcpDocs() {
           <div>
             <strong style={{ color: theme.colors.text }}>Kommunikation via stdin/stdout</strong>
             <p style={{ ...styles.docsParagraph, marginBottom: 0, marginTop: theme.spacing.xs }}>
-              Adacor Workplace und MCP Server kommunizieren über JSON-RPC Nachrichten
+              KI-Workplace und MCP Server kommunizieren über JSON-RPC Nachrichten
             </p>
           </div>
         </div>
@@ -1021,7 +1109,7 @@ function ClientModeDocs() {
           Externe MCP Server einbinden
         </h3>
         <p style={styles.docsParagraph}>
-          Der Adacor Workplace kann externe MCP Server als Tool-Quellen nutzen. Alle Tools
+          Der KI-Workplace kann externe MCP Server als Tool-Quellen nutzen. Alle Tools
           eines verbundenen MCP Servers werden automatisch in der Tool Registry registriert
           und stehen den Agenten zur Verfügung.
         </p>
@@ -1064,7 +1152,7 @@ Umgebungsvariablen:
 
         <div style={styles.docsWarning}>
           <strong>Wichtig:</strong> Umgebungsvariablen wie <code>$&#123;GITHUB_TOKEN&#125;</code> werden
-          aus den System-Umgebungsvariablen ersetzt. Setze diese vor dem Start des Adacor Workplace:
+          aus den System-Umgebungsvariablen ersetzt. Setze diese vor dem Start des KI-Workplace:
           <pre style={{ marginTop: theme.spacing.sm, fontFamily: theme.typography.fontMono, fontSize: theme.typography.sizes.xs }}>
             export GITHUB_TOKEN=ghp_xxxxxxxxxxxx
           </pre>
@@ -1121,10 +1209,10 @@ npm run mcp-server`;
       <div style={styles.docsBlock}>
         <h3 style={styles.docsBlockTitle}>
           <span style={styles.docsBlockNumber}>1</span>
-          Der Adacor Workplace als MCP Server
+          Der KI-Workplace als MCP Server
         </h3>
         <p style={styles.docsParagraph}>
-          Der Adacor Workplace kann selbst als MCP Server fungieren und seine Tools externen
+          Der KI-Workplace kann selbst als MCP Server fungieren und seine Tools externen
           Anwendungen wie Claude Desktop, Cursor IDE oder anderen MCP-kompatiblen Clients
           zur Verfügung stellen.
         </p>
@@ -1161,7 +1249,7 @@ npm run mcp-server`;
         />
 
         <p style={styles.docsParagraph}>
-          Starte Claude Desktop neu, um die Änderungen zu übernehmen. Die Adacor Workplace-Tools
+          Starte Claude Desktop neu, um die Änderungen zu übernehmen. Die KI-Workplace-Tools
           erscheinen dann im Tool-Menü.
         </p>
       </div>
@@ -1216,7 +1304,7 @@ npm run mcp-server`;
         <div style={styles.docsWarning}>
           <strong>Beachte:</strong>
           <ul style={{ margin: `${theme.spacing.sm} 0 0 ${theme.spacing.lg}`, paddingLeft: 0 }}>
-            <li>Der MCP Server hat Zugriff auf das Data-Verzeichnis des Adacor Workplace</li>
+            <li>Der MCP Server hat Zugriff auf das Data-Verzeichnis des KI-Workplace</li>
             <li>Das <code>delegate_to_agent</code> Tool kann Aufgaben an Agenten delegieren</li>
             <li>Stelle sicher, dass nur vertrauenswürdige Anwendungen den MCP Server nutzen</li>
             <li>Führe den Server nicht mit erhöhten Rechten aus</li>
