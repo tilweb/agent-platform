@@ -135,8 +135,11 @@ export function securityHeaders(config: SecurityHeadersConfig = {}): MiddlewareH
     // Disable potentially dangerous browser features
     c.header('Permissions-Policy', 'geolocation=(), microphone=(self), camera=()');
 
-    // Prevent caching of sensitive responses (except static assets like provider logos)
-    if (c.req.path.startsWith('/api/') && !c.req.path.endsWith('/logo')) {
+    // Prevent caching of sensitive responses (except static assets like provider logos and generated images)
+    const isCacheableAsset =
+      c.req.path.endsWith('/logo') ||
+      c.req.path.startsWith('/api/images/generated/');
+    if (c.req.path.startsWith('/api/') && !isCacheableAsset) {
       c.header('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       c.header('Pragma', 'no-cache');
       c.header('Expires', '0');

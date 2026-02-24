@@ -6,14 +6,14 @@
 import { ApiTool } from '../base/ApiTool';
 import type { ToolContext } from '../types';
 import { imageGenerationService } from '../../services/imageGeneration';
-import { saveGeneratedImage } from '../../services/imageStorage';
+import { saveGeneratedImage, getGeneratedImage, getImageMetadata } from '../../services/imageStorage';
 import { attachmentsService } from '../../services/attachments';
 
 export class ImageEditTool extends ApiTool {
   constructor() {
     super({
       name: 'edit_image',
-      description: 'Edit or transform an uploaded image based on text instructions. Use this when the user wants to modify, change, or transform an existing image they have uploaded.',
+      description: 'Edit or transform an image based on text instructions. Use this when the user wants to modify, change, or transform an existing image — either an uploaded attachment or a previously generated image.',
       parameters: {
         type: 'object',
         properties: {
@@ -21,27 +21,38 @@ export class ImageEditTool extends ApiTool {
             type: 'string',
             description: 'The ID of the uploaded image attachment to edit. This should be from a previously uploaded image in the conversation.',
           },
+          image_id: {
+            type: 'string',
+            description: 'The ID of a previously generated image to edit (e.g. img_xxx). Use this when modifying an image that was generated earlier in the conversation.',
+          },
           prompt: {
             type: 'string',
             description: 'Instructions describing how to modify the image. Be specific about what changes to make.',
           },
         },
-        required: ['attachment_id', 'prompt'],
+        required: ['prompt'],
       },
       category: 'image',
     });
   }
 
   async execute(
-    args: { attachment_id: string; prompt: string },
+    args: { attachment_id?: string; image_id?: string; prompt: string },
     context?: ToolContext
   ): Promise<string> {
-    const { attachment_id, prompt } = args;
+    const { attachment_id, image_id, prompt } = args;
 
-    if (!attachment_id || !prompt) {
+    if (!prompt) {
       return JSON.stringify({
         success: false,
-        error: 'Both attachment_id and prompt are required',
+        error: 'prompt is required',
+      });
+    }
+
+    if (!attachment_id && !image_id) {
+      return JSON.stringify({
+        success: false,
+        error: 'Either attachment_id or image_id must be provided',
       });
     }
 
@@ -56,49 +67,69 @@ export class ImageEditTool extends ApiTool {
       });
     }
 
-    // Get the attachment
-    const sessionId = context?.parentSessionId || context?.sessionId;
-    if (!sessionId) {
-      return JSON.stringify({
-        success: false,
-        error: 'No session context available to retrieve attachment',
-      });
-    }
-
-    const attachment = await attachmentsService.getAttachment(attachment_id, sessionId);
-    if (!attachment) {
-      return JSON.stringify({
-        success: false,
-        error: `Attachment with ID "${attachment_id}" not found in the current session`,
-      });
-    }
-
-    // Verify it's an image
-    if (!attachment.mimeType.startsWith('image/')) {
-      return JSON.stringify({
-        success: false,
-        error: `Attachment "${attachment_id}" is not an image (type: ${attachment.mimeType})`,
-      });
-    }
-
     try {
-      // Read the image file
-      const filePath = attachment.metadata.originalPath;
-      if (!filePath) {
-        return JSON.stringify({
-          success: false,
-          error: 'Attachment file path not found',
-        });
-      }
+      let base64Data: string;
+      let mimeType: string;
+      let sourceName: string;
 
-      const imageBuffer = await Bun.file(filePath).arrayBuffer();
-      const base64Data = Buffer.from(imageBuffer).toString('base64');
+      if (image_id) {
+        // Load a previously generated image
+        const imageBuffer = await getGeneratedImage(image_id);
+        if (!imageBuffer) {
+          return JSON.stringify({
+            success: false,
+            error: `Generated image "${image_id}" not found`,
+          });
+        }
+
+        const metadata = await getImageMetadata(image_id);
+        mimeType = metadata?.mimeType || 'image/png';
+        base64Data = imageBuffer.toString('base64');
+        sourceName = image_id;
+      } else {
+        // Load an uploaded attachment
+        const sessionId = context?.parentSessionId || context?.sessionId;
+        if (!sessionId) {
+          return JSON.stringify({
+            success: false,
+            error: 'No session context available to retrieve attachment',
+          });
+        }
+
+        const attachment = await attachmentsService.getAttachment(attachment_id!, sessionId);
+        if (!attachment) {
+          return JSON.stringify({
+            success: false,
+            error: `Attachment with ID "${attachment_id}" not found in the current session`,
+          });
+        }
+
+        if (!attachment.mimeType.startsWith('image/')) {
+          return JSON.stringify({
+            success: false,
+            error: `Attachment "${attachment_id}" is not an image (type: ${attachment.mimeType})`,
+          });
+        }
+
+        const filePath = attachment.metadata.originalPath;
+        if (!filePath) {
+          return JSON.stringify({
+            success: false,
+            error: 'Attachment file path not found',
+          });
+        }
+
+        const fileBuffer = await Bun.file(filePath).arrayBuffer();
+        base64Data = Buffer.from(fileBuffer).toString('base64');
+        mimeType = attachment.mimeType;
+        sourceName = attachment.filename;
+      }
 
       const result = await imageGenerationService.generate({
         prompt,
         sourceImage: {
           base64: base64Data,
-          mimeType: attachment.mimeType,
+          mimeType,
         },
       });
 
@@ -117,7 +148,7 @@ export class ImageEditTool extends ApiTool {
         mimeType: image.mimeType,
         width: image.width,
         height: image.height,
-        prompt: `Edit: ${prompt} (from: ${attachment.filename})`,
+        prompt: `Edit: ${prompt} (from: ${sourceName})`,
         provider: result.provider,
         model: result.model,
         sessionId: context?.sessionId,
@@ -130,7 +161,7 @@ export class ImageEditTool extends ApiTool {
         imageId: saved.id,
         url: saved.url,
         prompt: prompt,
-        sourceImage: attachment.filename,
+        sourceImage: sourceName,
         provider: result.provider,
         model: result.model,
         durationMs: result.durationMs,

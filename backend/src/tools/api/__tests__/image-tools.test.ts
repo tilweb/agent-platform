@@ -56,6 +56,10 @@ const mockState = {
   /** Wenn true, wirft generate() eine Exception statt ein Ergebnis zu liefern */
   generateShouldThrow: false,
   generateThrowMessage: "Generierungsfehler",
+  /** Buffer fuer getGeneratedImage-Mock (null = nicht gefunden) */
+  generatedImageBuffer: null as Buffer | null,
+  /** Metadata fuer getImageMetadata-Mock (null = nicht gefunden) */
+  generatedImageMetadata: null as any,
 };
 
 // ---------------------------------------------------------------------------
@@ -83,6 +87,14 @@ mock.module("../../../services/imageStorage", () => ({
   saveGeneratedImage: async (args: any) => {
     mockState.saveArgs = args;
     return mockState.savedImage;
+  },
+  getGeneratedImage: async (id: string) => {
+    if (mockState.generatedImageBuffer) return mockState.generatedImageBuffer;
+    return null;
+  },
+  getImageMetadata: async (id: string) => {
+    if (mockState.generatedImageMetadata) return mockState.generatedImageMetadata;
+    return null;
   },
 }));
 
@@ -140,6 +152,8 @@ beforeEach(() => {
   mockState.saveArgs = null;
   mockState.generateShouldThrow = false;
   mockState.generateThrowMessage = "Generierungsfehler";
+  mockState.generatedImageBuffer = null;
+  mockState.generatedImageMetadata = null;
 
   // Bun.file sichern und durch Mock ersetzen
   originalBunFile = Bun.file;
@@ -620,26 +634,18 @@ describe("ImageEditTool", () => {
       expect(tool.getDefinition().function.name).toBe("edit_image");
     });
 
-    test("listet 'attachment_id' als Pflichtparameter", () => {
+    test("listet 'prompt' als einzigen Pflichtparameter", () => {
       const tool = new ImageEditTool();
-      expect(tool.getDefinition().function.parameters.required).toContain("attachment_id");
+      expect(tool.getDefinition().function.parameters.required).toEqual(["prompt"]);
     });
 
-    test("listet 'prompt' als Pflichtparameter", () => {
-      const tool = new ImageEditTool();
-      expect(tool.getDefinition().function.parameters.required).toContain("prompt");
-    });
-
-    test("listet genau zwei Parameter-Properties", () => {
+    test("listet drei Parameter-Properties (attachment_id, image_id, prompt)", () => {
       const tool = new ImageEditTool();
       const params = tool.getDefinition().function.parameters;
-      expect(Object.keys(params.properties)).toHaveLength(2);
-    });
-
-    test("beide Parameter sind required", () => {
-      const tool = new ImageEditTool();
-      const params = tool.getDefinition().function.parameters;
-      expect(params.required).toHaveLength(2);
+      expect(Object.keys(params.properties)).toHaveLength(3);
+      expect(params.properties).toHaveProperty("attachment_id");
+      expect(params.properties).toHaveProperty("image_id");
+      expect(params.properties).toHaveProperty("prompt");
     });
 
     test("enthalt eine sinnvolle Beschreibung", () => {
