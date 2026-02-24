@@ -145,11 +145,15 @@ function parseFeaturePaths(): Map<number, string[]> {
 
 /**
  * Derive ModelType from featureSet bitcode
+ *
+ * Bit 1 = Chat, Bit 2 = Vision, Bit 64 = Audio/Whisper
+ * vllm only if both Chat (1) AND Vision (2) are set.
  */
 function deriveTypeFromFeatureSet(featureSet: number): ModelType {
-  if (featureSet & 1) return 'vllm';       // Chat → vllm
-  if (featureSet & 64) return 'stt';        // Audio only → stt
-  return 'vllm';                            // Embeddings or Tokenize only → vllm
+  if (featureSet & 64) return 'stt';        // Audio/Whisper → stt
+  if ((featureSet & 1) && (featureSet & 2)) return 'vllm'; // Chat + Vision → vllm
+  if (featureSet & 1) return 'llm';         // Chat only → llm
+  return 'llm';                             // Embeddings or Tokenize only → llm
 }
 
 /**

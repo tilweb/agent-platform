@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { theme } from '../config/theme';
 import { useProviders } from '../hooks/useProviders';
 import { useToast } from '../components/Toast';
 import Select from '../components/Select';
-import { PlusIcon, EditIcon, UploadIcon } from '../components/Icons';
+import { PlusIcon, EditIcon, UploadIcon, TrashIcon } from '../components/Icons';
 
 const styles = {
   container: {
@@ -253,6 +253,22 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing.xs,
+  },
+  bulkToggleButton: {
+    padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+    backgroundColor: 'transparent',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textMuted,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  modelsHeaderActions: {
+    display: 'flex',
+    gap: theme.spacing.sm,
+    alignItems: 'center',
   },
   modelsList: {
     border: `1px solid ${theme.colors.border}`,
@@ -586,24 +602,23 @@ const styles = {
     cursor: 'pointer',
     transition: `all ${theme.transitions.fast}`,
   },
-  syncResult: {
-    marginTop: theme.spacing.md,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.successLight,
-    color: theme.colors.success,
+  syncProgress: {
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing.md,
-    flexWrap: 'wrap',
-  },
-  syncStat: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
     fontSize: theme.typography.sizes.xs,
-    fontFamily: theme.typography.fontMono,
+    color: theme.colors.textMuted,
+    fontWeight: theme.typography.weights.medium,
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+  },
+  syncSpinner: {
+    width: 14,
+    height: 14,
+    border: `2px solid ${theme.colors.border}`,
+    borderTopColor: theme.colors.primary,
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+    flexShrink: 0,
   },
   featureBadges: {
     display: 'inline-flex',
@@ -649,6 +664,36 @@ const styles = {
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.text,
     cursor: 'pointer',
+  },
+  modelCheckbox: {
+    accentColor: theme.colors.primary,
+    width: '16px',
+    height: '16px',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  selectionInfo: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.primary,
+    fontWeight: theme.typography.weights.medium,
+  },
+  bulkDeleteButton: {
+    padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+    backgroundColor: 'transparent',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textMuted,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  headerCheckbox: {
+    accentColor: theme.colors.primary,
+    width: '16px',
+    height: '16px',
+    cursor: 'pointer',
+    flexShrink: 0,
   },
 };
 
@@ -697,10 +742,65 @@ function getModelBaseDomain(model) {
 }
 
 /**
- * Get feature endpoint paths for a model (without domain).
- * Uses stored feature_urls if available, otherwise derives from base_url + feature_set.
+ * Standard endpoint templates per api_mode, used for deriving display paths from capabilities.
  */
-function getModelFeaturePaths(model) {
+const STANDARD_ENDPOINT_TEMPLATES = {
+  openai: [
+    { label: '/v1/chat/completions', path: '/v1/chat/completions', capability: 'chat' },
+    { label: '/v1/embeddings', path: '/v1/embeddings', capability: 'embeddings' },
+    { label: '/v1/audio/transcriptions', path: '/v1/audio/transcriptions', capability: 'transcription' },
+    { label: '/v1/audio/speech', path: '/v1/audio/speech', capability: 'speech' },
+    { label: '/v1/images/generations', path: '/v1/images/generations', capability: 'text_to_image' },
+  ],
+  ollama: [
+    { label: '/api/chat', path: '/api/chat', capability: 'chat' },
+    { label: '/api/embeddings', path: '/api/embeddings', capability: 'embeddings' },
+  ],
+  google_gemini: [
+    { label: ':generateContent', path: ':generateContent', capability: 'chat' },
+    { label: ':embedContent', path: ':embedContent', capability: 'embeddings' },
+  ],
+};
+
+/** API modes that support model sync */
+const SYNCABLE_API_MODES = ['openai', 'ollama', 'google_gemini'];
+
+/**
+ * Check if a provider supports model synchronization.
+ * Adacor requires modelSyncConfigured; others need syncable api_mode + base_url + api_key.
+ */
+function canSyncProvider(provider, modelSyncConfigured) {
+  if (provider.id === 'adacor') return modelSyncConfigured;
+  if (!SYNCABLE_API_MODES.includes(provider.api_mode)) return false;
+  if (!provider.base_url) return false;
+  // Ollama doesn't need an API key
+  if (provider.api_mode === 'ollama') return true;
+  return !!(provider.has_api_key || provider.api_key_env);
+}
+
+/**
+ * Derive endpoint paths from model capabilities and provider api_mode.
+ */
+function deriveEndpointsFromCapabilities(capabilities, provider) {
+  const templates = STANDARD_ENDPOINT_TEMPLATES[provider.api_mode];
+  if (!templates) return null;
+
+  const paths = {};
+  for (const t of templates) {
+    if (capabilities.includes(t.capability)) {
+      paths[t.label] = t.path;
+    }
+  }
+  return Object.keys(paths).length > 0 ? paths : null;
+}
+
+/**
+ * Get feature endpoint paths for a model (without domain).
+ * Uses stored feature_urls if available, otherwise derives from base_url + feature_set,
+ * then falls back to deriving from capabilities + api_mode.
+ */
+function getModelFeaturePaths(model, provider) {
+  // 1. Stored feature_urls (synced models)
   if (model.feature_urls && Object.keys(model.feature_urls).length > 0) {
     const paths = {};
     for (const [suffix, url] of Object.entries(model.feature_urls)) {
@@ -708,10 +808,9 @@ function getModelFeaturePaths(model) {
     }
     return paths;
   }
-  if (!model.base_url) return null;
-  const basePath = stripDomain(model.base_url);
-  // Fallback: derive from base_url + feature_set
-  if (model.feature_set != null) {
+  // 2. feature_set bitcode fallback (Adacor legacy)
+  if (model.feature_set != null && model.base_url) {
+    const basePath = stripDomain(model.base_url);
     const paths = {};
     for (const f of featureBits) {
       if (!(model.feature_set & f.bit)) continue;
@@ -721,8 +820,15 @@ function getModelFeaturePaths(model) {
     }
     if (Object.keys(paths).length > 0) return paths;
   }
-  // No feature_set — show base_url path as single entry
-  return { '': basePath };
+  // 3. Derive from capabilities + api_mode
+  if (model.capabilities?.length > 0 && provider) {
+    const derived = deriveEndpointsFromCapabilities(model.capabilities, provider);
+    if (derived) return derived;
+  }
+  // 4. base_url only
+  const baseUrl = model.base_url || provider?.base_url;
+  if (baseUrl) return { '': stripDomain(baseUrl) };
+  return null;
 }
 
 const providerIcons = {
@@ -964,6 +1070,7 @@ function ProvidersPage({ embedded = false }) {
     setActiveModel,
     testConnection,
     syncModels,
+    bulkUpdateModels,
     getModelsForPurpose,
   } = useProviders();
 
@@ -978,8 +1085,43 @@ function ProvidersPage({ embedded = false }) {
   const [modelForm, setModelForm] = useState(defaultModelForm);
   const [modelProviderId, setModelProviderId] = useState(null);
   const [isTesting, setIsTesting] = useState(false);
-  const [syncingProviders, setSyncingProviders] = useState({});
-  const [syncResults, setSyncResults] = useState({});
+  const [syncingProviders, setSyncingProviders] = useState({}); // { [id]: { syncing: boolean, step?: string, message?: string } }
+  // Multi-select: Map<providerId, Set<modelId>>
+  const [selectedModels, setSelectedModels] = useState({});
+
+  // Selection helpers
+  const getSelection = (providerId) => selectedModels[providerId] || new Set();
+  const getSelectableModels = (provider) =>
+    provider.models.filter(m => m.workplace !== false && !m.protected && !(m.feature_set != null && m.enabled === false));
+
+  const toggleModelSelection = (providerId, modelId) => {
+    setSelectedModels(prev => {
+      const current = new Set(prev[providerId] || []);
+      if (current.has(modelId)) {
+        current.delete(modelId);
+      } else {
+        current.add(modelId);
+      }
+      return { ...prev, [providerId]: current };
+    });
+  };
+
+  const toggleAllModels = (providerId, provider) => {
+    setSelectedModels(prev => {
+      const selectable = getSelectableModels(provider);
+      const current = prev[providerId] || new Set();
+      const allSelected = selectable.length > 0 && selectable.every(m => current.has(m.id));
+      if (allSelected) {
+        return { ...prev, [providerId]: new Set() };
+      } else {
+        return { ...prev, [providerId]: new Set(selectable.map(m => m.id)) };
+      }
+    });
+  };
+
+  const clearSelection = (providerId) => {
+    setSelectedModels(prev => ({ ...prev, [providerId]: new Set() }));
+  };
 
   const toggleProvider = (id) => {
     setExpandedProviders((prev) => ({
@@ -1103,15 +1245,25 @@ function ProvidersPage({ embedded = false }) {
   };
 
   const handleSyncModels = async (providerId) => {
-    setSyncingProviders(prev => ({ ...prev, [providerId]: true }));
-    setSyncResults(prev => ({ ...prev, [providerId]: null }));
+    setSyncingProviders(prev => ({ ...prev, [providerId]: { syncing: true, step: 'fetch', message: 'Starte Synchronisierung...' } }));
     try {
-      const result = await syncModels(providerId);
-      setSyncResults(prev => ({ ...prev, [providerId]: result }));
+      const result = await syncModels(providerId, {
+        onStep: ({ step, message }) => {
+          setSyncingProviders(prev => ({ ...prev, [providerId]: { syncing: true, step, message } }));
+        },
+      });
+      setSyncingProviders(prev => ({ ...prev, [providerId]: null }));
+      if (result) {
+        const parts = [];
+        if (result.added > 0) parts.push(`+${result.added} neu`);
+        if (result.updated > 0) parts.push(`${result.updated} aktualisiert`);
+        if (result.deactivated > 0) parts.push(`-${result.deactivated} deaktiviert`);
+        if (result.unchanged > 0) parts.push(`${result.unchanged} unverändert`);
+        toast.success('Synchronisierung abgeschlossen', parts.join(', ') || 'Keine Änderungen');
+      }
     } catch (err) {
-      toast.error('Fehler', err.message);
-    } finally {
-      setSyncingProviders(prev => ({ ...prev, [providerId]: false }));
+      setSyncingProviders(prev => ({ ...prev, [providerId]: null }));
+      toast.error('Synchronisierung fehlgeschlagen', err.message);
     }
   };
 
@@ -1120,6 +1272,40 @@ function ProvidersPage({ embedded = false }) {
       const newEnabled = model.enabled === false ? true : false;
       await updateModel(providerId, model.id, { enabled: newEnabled });
     } catch (err) {
+      toast.error('Fehler', err.message);
+    }
+  };
+
+  const handleBulkToggleSelected = async (providerId, enabled) => {
+    const selection = getSelection(providerId);
+    if (selection.size === 0) return;
+    try {
+      const result = await bulkUpdateModels(providerId, { enabled, modelIds: [...selection] });
+      clearSelection(providerId);
+      if (result.updated > 0) {
+        toast.success('Aktualisiert', `${result.updated} Modell${result.updated !== 1 ? 'e' : ''} ${enabled ? 'aktiviert' : 'deaktiviert'}`);
+      } else {
+        toast.info('Keine Änderung', 'Alle ausgewählten Modelle sind bereits im gewünschten Zustand');
+      }
+    } catch (err) {
+      toast.error('Fehler', err.message);
+    }
+  };
+
+  const handleBulkDeleteSelected = async (providerId) => {
+    const selection = getSelection(providerId);
+    if (selection.size === 0) return;
+    if (!confirm(`${selection.size} Modell${selection.size !== 1 ? 'e' : ''} wirklich löschen?`)) return;
+    try {
+      let deleted = 0;
+      for (const modelId of selection) {
+        await deleteModel(providerId, modelId);
+        deleted++;
+      }
+      clearSelection(providerId);
+      toast.success('Gelöscht', `${deleted} Modell${deleted !== 1 ? 'e' : ''} gelöscht`);
+    } catch (err) {
+      clearSelection(providerId);
       toast.error('Fehler', err.message);
     }
   };
@@ -1243,6 +1429,7 @@ function ProvidersPage({ embedded = false }) {
 
   return (
     <div style={styles.container}>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {!embedded && (
         <div style={styles.header}>
           <div style={styles.headerContent}>
@@ -1507,21 +1694,29 @@ function ProvidersPage({ embedded = false }) {
                   </div>
                 </div>
                 <div style={styles.providerActions}>
-                  {canSyncProvider(provider) && (
-                    <button
-                      style={styles.syncButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSyncModels(provider.id);
-                      }}
-                      disabled={!!syncingProviders[provider.id]}
-                      onMouseOver={(e) => { e.currentTarget.style.borderColor = theme.colors.primary; e.currentTarget.style.color = theme.colors.primary; }}
-                      onMouseOut={(e) => { e.currentTarget.style.borderColor = theme.colors.border; e.currentTarget.style.color = theme.colors.text; }}
-                    >
-                      <RefreshIcon size={14} />
-                      {syncingProviders[provider.id] ? 'Synchronisiere...' : 'Modelle synchronisieren'}
-                    </button>
-                  )}
+                  {canSyncProvider(provider, modelSyncConfigured) && (() => {
+                    const syncState = syncingProviders[provider.id];
+                    const isSyncing = syncState?.syncing;
+                    return isSyncing ? (
+                      <span style={styles.syncProgress}>
+                        <span style={styles.syncSpinner} />
+                        {syncState.message || 'Synchronisiere...'}
+                      </span>
+                    ) : (
+                      <button
+                        style={styles.syncButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSyncModels(provider.id);
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.borderColor = theme.colors.primary; e.currentTarget.style.color = theme.colors.primary; }}
+                        onMouseOut={(e) => { e.currentTarget.style.borderColor = theme.colors.border; e.currentTarget.style.color = theme.colors.text; }}
+                      >
+                        <RefreshIcon size={14} />
+                        Modelle synchronisieren
+                      </button>
+                    );
+                  })()}
                   <button
                     style={styles.testButton}
                     onClick={(e) => {
@@ -1612,41 +1807,81 @@ function ProvidersPage({ embedded = false }) {
                     </div>
                   </div>
 
-                  {syncResults[provider.id] && (
-                    <div style={styles.syncResult}>
-                      <span>Synchronisierung abgeschlossen:</span>
-                      {syncResults[provider.id].added > 0 && (
-                        <span style={styles.syncStat}>+{syncResults[provider.id].added} neu</span>
-                      )}
-                      {syncResults[provider.id].reactivated > 0 && (
-                        <span style={styles.syncStat}>~{syncResults[provider.id].reactivated} reaktiviert</span>
-                      )}
-                      {syncResults[provider.id].deactivated > 0 && (
-                        <span style={{ ...styles.syncStat, color: theme.colors.warning }}>-{syncResults[provider.id].deactivated} deaktiviert</span>
-                      )}
-                      {syncResults[provider.id].unchanged > 0 && (
-                        <span style={styles.syncStat}>{syncResults[provider.id].unchanged} unverändert</span>
-                      )}
-                    </div>
-                  )}
 
                   <div style={styles.modelsSection}>
+                    {(() => {
+                      const selection = getSelection(provider.id);
+                      const selectable = getSelectableModels(provider);
+                      const hasSelection = selection.size > 0;
+                      const allSelected = selectable.length > 0 && selectable.every(m => selection.has(m.id));
+                      const someSelected = selectable.some(m => selection.has(m.id));
+                      return (
                     <div style={styles.modelsSectionHeader}>
-                      <div style={styles.modelsSectionTitle}>Modelle</div>
-                      {!canSyncProvider(provider) && allowCustomProviders && (
-                        <button
-                          style={styles.addModelButton}
-                          onClick={() => handleCreateModel(provider.id)}
-                        >
-                          <PlusIcon size={14} /> Modell
-                        </button>
-                      )}
-                      {canSyncProvider(provider) && (
-                        <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-                          Verwaltet via Synchronisierung
-                        </span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                        {selectable.length > 0 && (
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                            onChange={() => toggleAllModels(provider.id, provider)}
+                            style={styles.headerCheckbox}
+                            title={allSelected ? 'Alle abwählen' : 'Alle auswählen'}
+                          />
+                        )}
+                        <div style={styles.modelsSectionTitle}>
+                          {hasSelection ? (
+                            <span style={styles.selectionInfo}>{selection.size} ausgewählt</span>
+                          ) : (
+                            'Modelle'
+                          )}
+                        </div>
+                      </div>
+                      <div style={styles.modelsHeaderActions}>
+                        {hasSelection && (
+                          <>
+                            <button
+                              style={styles.bulkToggleButton}
+                              onClick={() => handleBulkToggleSelected(provider.id, true)}
+                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = theme.colors.success; e.currentTarget.style.color = theme.colors.success; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = theme.colors.border; e.currentTarget.style.color = theme.colors.textMuted; }}
+                            >
+                              Aktivieren
+                            </button>
+                            <button
+                              style={styles.bulkToggleButton}
+                              onClick={() => handleBulkToggleSelected(provider.id, false)}
+                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = theme.colors.warning; e.currentTarget.style.color = theme.colors.warning; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = theme.colors.border; e.currentTarget.style.color = theme.colors.textMuted; }}
+                            >
+                              Deaktivieren
+                            </button>
+                            <button
+                              style={styles.bulkDeleteButton}
+                              onClick={() => handleBulkDeleteSelected(provider.id)}
+                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = theme.colors.error; e.currentTarget.style.color = theme.colors.error; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = theme.colors.border; e.currentTarget.style.color = theme.colors.textMuted; }}
+                            >
+                              Löschen
+                            </button>
+                          </>
+                        )}
+                        {!canSyncProvider(provider, modelSyncConfigured) && allowCustomProviders && (
+                          <button
+                            style={styles.addModelButton}
+                            onClick={() => handleCreateModel(provider.id)}
+                          >
+                            <PlusIcon size={14} /> Modell
+                          </button>
+                        )}
+                        {canSyncProvider(provider, modelSyncConfigured) && (
+                          <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                            Verwaltet via Synchronisierung
+                          </span>
+                        )}
+                      </div>
                     </div>
+                      );
+                    })()}
 
                     {provider.models.length > 0 ? (
                       <div style={styles.modelsList}>
@@ -1655,6 +1890,8 @@ function ProvidersPage({ embedded = false }) {
                           const isLast = index === provider.models.length - 1;
                           const isDisabled = model.enabled === false;
                           const isListedOnly = model.workplace === false;
+                          const isSelectable = model.workplace !== false && !model.protected && !(model.feature_set != null && model.enabled === false);
+                          const isSelected = getSelection(provider.id).has(model.id);
 
                           return (
                             <div
@@ -1665,6 +1902,16 @@ function ProvidersPage({ embedded = false }) {
                                 ...((isDisabled || isListedOnly) ? { opacity: 0.5 } : {}),
                               }}
                             >
+                              {isSelectable ? (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleModelSelection(provider.id, model.id)}
+                                  style={styles.modelCheckbox}
+                                />
+                              ) : (
+                                <div style={{ width: '16px', flexShrink: 0 }} />
+                              )}
                               <div style={styles.modelInfo}>
                                 <div style={styles.modelName}>
                                   {model.name}
@@ -1699,11 +1946,7 @@ function ProvidersPage({ embedded = false }) {
                                         .map((f) => (
                                           <span
                                             key={f.bit}
-                                            style={{
-                                              ...styles.featureBadge,
-                                              backgroundColor: f.bg,
-                                              color: f.color,
-                                            }}
+                                            style={styles.capabilityBadge}
                                           >
                                             {f.label}
                                           </span>
@@ -1731,7 +1974,7 @@ function ProvidersPage({ embedded = false }) {
                                 </div>
                               </div>
                               {(() => {
-                                const paths = getModelFeaturePaths(model);
+                                const paths = getModelFeaturePaths(model, provider);
                                 if (!paths) return null;
                                 return (
                                   <div style={{
@@ -1778,6 +2021,25 @@ function ProvidersPage({ embedded = false }) {
                                   onMouseOut={(e) => (e.currentTarget.style.color = theme.colors.textMuted)}
                                 >
                                   <EditIcon />
+                                </button>
+                              )}
+                              {!model.protected && (
+                                <button
+                                  style={styles.actionButton}
+                                  onClick={async () => {
+                                    if (!confirm(`Modell "${model.name}" wirklich löschen?`)) return;
+                                    try {
+                                      await deleteModel(provider.id, model.id);
+                                      toast.success('Gelöscht', `Modell "${model.name}" gelöscht`);
+                                    } catch (err) {
+                                      toast.error('Fehler', err.message);
+                                    }
+                                  }}
+                                  title="Löschen"
+                                  onMouseOver={(e) => (e.currentTarget.style.color = theme.colors.error)}
+                                  onMouseOut={(e) => (e.currentTarget.style.color = theme.colors.textMuted)}
+                                >
+                                  <TrashIcon size={16} />
                                 </button>
                               )}
                             </div>
@@ -2081,7 +2343,8 @@ function ProvidersPage({ embedded = false }) {
 
       {/* Model Modal */}
       {showModelModal && (() => {
-        const isSyncManaged = editingModel && modelProviderId === 'adacor' && modelSyncConfigured;
+        const modelProvider = providers.find(p => p.id === modelProviderId);
+        const isSyncManaged = editingModel && modelProvider && canSyncProvider(modelProvider, modelSyncConfigured);
         const isSynced = editingModel?.feature_set != null;
         const isListedOnly = editingModel?.workplace === false;
         return (

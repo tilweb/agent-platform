@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
 import type { MiddlewareHandler } from 'hono';
 import {
   getProviders,
@@ -16,6 +17,7 @@ import {
   addModel,
   updateModel,
   deleteModel,
+  bulkUpdateModels,
   getActiveSelection,
   setActiveModel,
   resolveModel,
@@ -30,6 +32,7 @@ import {
   deriveCapabilitiesForApiMode,
 } from '../services/providers';
 import { isModelSyncConfigured, syncAdacorModels } from '../services/modelSync';
+import { resolveModelCapabilities, type ResolvedCapability } from '../services/modelCapabilityResolver';
 import { llmService } from '../services/llm';
 import { OpenAIAdapter } from '../services/llm/adapters/openai';
 import { OllamaAdapter } from '../services/llm/adapters/ollama';
@@ -243,40 +246,46 @@ providers.post('/adacor/sync', adminMiddleware, async (c) => {
  * Adacor uses the dedicated sync mechanism; others use generic adapter-based sync.
  */
 providers.post('/:id/sync', adminMiddleware, async (c) => {
-  try {
-    const id = c.req.param('id');
+  const id = c.req.param('id');
 
-    // Adacor: delegate to existing specialized sync
-    if (id === 'adacor') {
-      if (!isModelSyncConfigured()) {
-        return validationError(c, 'Modell-Synchronisierung ist nicht konfiguriert (ADACOR_AI_API_BASE + ADACOR_AI_MODELS_PATH fehlt)');
-      }
-      const result = await syncAdacorModels();
-      return c.json({ result });
+  // Adacor: delegate to existing specialized sync (non-streaming)
+  if (id === 'adacor') {
+    if (!isModelSyncConfigured()) {
+      return validationError(c, 'Modell-Synchronisierung ist nicht konfiguriert (ADACOR_AI_API_BASE + ADACOR_AI_MODELS_PATH fehlt)');
     }
+    const result = await syncAdacorModels();
+    return c.json({ result });
+  }
 
-    const provider = await getProvider(id);
-    if (!provider) {
-      return notFoundError(c, 'Provider');
-    }
+  const provider = await getProvider(id);
+  if (!provider) {
+    return notFoundError(c, 'Provider');
+  }
 
-    const supportedModes = ['openai', 'ollama', 'google_gemini'];
-    if (!supportedModes.includes(provider.api_mode)) {
-      return validationError(c, `Synchronisierung wird für API-Modus "${provider.api_mode}" nicht unterstützt`);
-    }
+  const supportedModes = ['openai', 'ollama', 'google_gemini'];
+  if (!supportedModes.includes(provider.api_mode)) {
+    return validationError(c, `Synchronisierung wird für API-Modus "${provider.api_mode}" nicht unterstützt`);
+  }
 
-    // Fetch remote model list
-    const apiKey = await resolveApiKey(provider);
-    let remoteModelIds: string[] = [];
+  return streamSSE(c, async (stream) => {
+    const heartbeat = setInterval(async () => {
+      try { await stream.writeSSE({ event: 'heartbeat', data: '' }); } catch { clearInterval(heartbeat); }
+    }, 5000);
 
-    if (provider.api_mode === 'openai') {
-      const adapter = new OpenAIAdapter({ baseUrl: provider.base_url, apiKey: apiKey ?? undefined });
-      remoteModelIds = await adapter.listModels();
-    } else if (provider.api_mode === 'ollama') {
-      const adapter = new OllamaAdapter({ baseUrl: provider.base_url });
-      remoteModelIds = await adapter.listModels();
-    } else if (provider.api_mode === 'google_gemini') {
-      try {
+    try {
+      // Step 1: Fetch remote model list
+      await stream.writeSSE({ event: 'step', data: JSON.stringify({ step: 'fetch', message: 'Hole Modelliste...' }) });
+
+      const apiKey = await resolveApiKey(provider);
+      let remoteModelIds: string[] = [];
+
+      if (provider.api_mode === 'openai') {
+        const adapter = new OpenAIAdapter({ baseUrl: provider.base_url, apiKey });
+        remoteModelIds = await adapter.listModels();
+      } else if (provider.api_mode === 'ollama') {
+        const adapter = new OllamaAdapter({ baseUrl: provider.base_url });
+        remoteModelIds = await adapter.listModels();
+      } else if (provider.api_mode === 'google_gemini') {
         const response = await fetch(`${provider.base_url}/models`, {
           headers: { 'x-goog-api-key': apiKey || '' },
         });
@@ -286,103 +295,118 @@ providers.post('/:id/sync', adminMiddleware, async (c) => {
             .map(m => m.name?.replace('models/', '') || '')
             .filter(Boolean);
         }
-      } catch {
-        // Return error
-        return internalError(c, new Error('Modelle konnten nicht vom Provider abgerufen werden'));
       }
-    }
 
-    if (remoteModelIds.length === 0) {
-      return validationError(c, 'Keine Modelle vom Provider empfangen. Prüfen Sie API-Key und URL.');
-    }
+      if (remoteModelIds.length === 0) {
+        await stream.writeSSE({ event: 'error', data: JSON.stringify({ message: 'Keine Modelle vom Provider empfangen. Prüfen Sie API-Key und URL.' }) });
+        return;
+      }
 
-    // Compare remote vs. local models and update
-    const result = await withProviderLock(async () => {
-      // Re-fetch provider inside lock for fresh data
-      const freshProvider = await getProvider(id);
-      if (!freshProvider) throw new Error('Provider not found');
+      // Step 2: Resolve capabilities
+      await stream.writeSSE({ event: 'step', data: JSON.stringify({ step: 'capabilities', message: `Analysiere Capabilities (${remoteModelIds.length} Modelle)...` }) });
 
-      const localModels = freshProvider.models;
-      const localById = new Map(localModels.map(m => [m.id, m]));
-      const remoteSet = new Set(remoteModelIds);
+      let llmCapabilities: Map<string, ResolvedCapability> | null = null;
+      llmCapabilities = await resolveModelCapabilities(remoteModelIds, provider.api_mode);
+      if (llmCapabilities) {
+        console.log(`[Sync] LLM resolved capabilities for ${llmCapabilities.size}/${remoteModelIds.length} models`);
+      }
 
-      let added = 0;
-      let reactivated = 0;
-      let deactivated = 0;
-      let unchanged = 0;
+      // Step 3: Update configuration
+      await stream.writeSSE({ event: 'step', data: JSON.stringify({ step: 'update', message: 'Aktualisiere Konfiguration...' }) });
 
-      // Add new or reactivate existing models
-      for (const modelId of remoteModelIds) {
-        const existing = localById.get(modelId);
-        if (existing) {
-          if (existing.enabled === false) {
-            existing.enabled = true;
-            reactivated++;
+      const result = await withProviderLock(async () => {
+        const freshProvider = await getProvider(id);
+        if (!freshProvider) throw new Error('Provider not found');
+
+        const localModels = freshProvider.models;
+        const localById = new Map(localModels.map(m => [m.id, m]));
+        const remoteSet = new Set(remoteModelIds);
+
+        let added = 0;
+        let updated = 0;
+        let deactivated = 0;
+        let unchanged = 0;
+        let enriched = 0;
+
+        for (const modelId of remoteModelIds) {
+          const existing = localById.get(modelId);
+          if (existing) {
+            const resolved = llmCapabilities?.get(modelId);
+            if (resolved) {
+              existing.capabilities = resolved.capabilities;
+              existing.type = resolved.type;
+              const featureUrls = computeStandardFeatureUrls(freshProvider, existing);
+              existing.feature_urls = featureUrls || existing.feature_urls;
+              enriched++;
+              updated++;
+            } else {
+              unchanged++;
+            }
           } else {
-            unchanged++;
-          }
-        } else {
-          // Derive capabilities and create new model
-          const capabilities = deriveCapabilitiesForApiMode(freshProvider.api_mode, modelId);
-          const type = capabilities.includes('text_to_image') ? 'image_gen' as const
-            : capabilities.includes('speech') ? 'tts' as const
-            : capabilities.includes('transcription') ? 'stt' as const
-            : capabilities.includes('embeddings') ? 'llm' as const
-            : 'llm' as const;
+            const resolved = llmCapabilities?.get(modelId);
+            const capabilities = resolved?.capabilities
+              ?? deriveCapabilitiesForApiMode(freshProvider.api_mode, modelId);
+            const type = resolved?.type
+              ?? (capabilities.includes('text_to_image') ? 'image_gen' as const
+              : capabilities.includes('speech') ? 'tts' as const
+              : capabilities.includes('transcription') ? 'stt' as const
+              : capabilities.includes('embeddings') ? 'llm' as const
+              : 'llm' as const);
+            if (resolved) enriched++;
 
-          const newModel: import('../types/providers').ModelConfig = {
-            id: modelId,
-            name: deriveModelName(modelId),
-            type,
-            capabilities,
-            enabled: true,
-          };
+            const newModel: import('../types/providers').ModelConfig = {
+              id: modelId,
+              name: deriveModelName(modelId),
+              type,
+              capabilities,
+              enabled: false,
+            };
 
-          // Compute feature_urls
-          const featureUrls = computeStandardFeatureUrls(freshProvider, newModel);
-          if (featureUrls) {
-            newModel.feature_urls = featureUrls;
-          }
+            const featureUrls = computeStandardFeatureUrls(freshProvider, newModel);
+            if (featureUrls) {
+              newModel.feature_urls = featureUrls;
+            }
 
-          freshProvider.models.push(newModel);
-          added++;
-        }
-      }
-
-      // Deactivate models no longer in remote (skip protected)
-      for (const model of localModels) {
-        if (!remoteSet.has(model.id) && !model.protected && model.enabled !== false) {
-          model.enabled = false;
-          deactivated++;
-        }
-      }
-
-      // Update feature_urls for existing models that don't have them
-      for (const model of freshProvider.models) {
-        if (!model.feature_urls && model.capabilities) {
-          const featureUrls = computeStandardFeatureUrls(freshProvider, model);
-          if (featureUrls) {
-            model.feature_urls = featureUrls;
+            freshProvider.models.push(newModel);
+            added++;
           }
         }
-      }
 
-      // Save to disk
-      const config = await loadProvidersConfig();
-      const providerIndex = config.providers.findIndex(p => p.id === id);
-      if (providerIndex >= 0) {
-        config.providers[providerIndex] = freshProvider;
-        await saveProvidersConfig(config);
-      }
+        for (const model of localModels) {
+          if (!remoteSet.has(model.id) && !model.protected && model.enabled !== false) {
+            model.enabled = false;
+            deactivated++;
+          }
+        }
 
-      return { added, reactivated, deactivated, unchanged };
-    });
+        for (const model of freshProvider.models) {
+          if (!model.feature_urls && model.capabilities) {
+            const featureUrls = computeStandardFeatureUrls(freshProvider, model);
+            if (featureUrls) {
+              model.feature_urls = featureUrls;
+            }
+          }
+        }
 
-    return c.json({ result });
-  } catch (error) {
-    console.error('Error syncing provider models:', error);
-    return internalError(c, error);
-  }
+        const config = await loadProvidersConfig();
+        const providerIndex = config.providers.findIndex(p => p.id === id);
+        if (providerIndex >= 0) {
+          config.providers[providerIndex] = freshProvider;
+          await saveProvidersConfig(config);
+        }
+
+        return { added, updated, deactivated, unchanged, enriched };
+      });
+
+      // Final result
+      await stream.writeSSE({ event: 'result', data: JSON.stringify(result) });
+    } catch (error) {
+      console.error('Error syncing provider models:', error);
+      await stream.writeSSE({ event: 'error', data: JSON.stringify({ message: error instanceof Error ? error.message : 'Unbekannter Fehler' }) });
+    } finally {
+      clearInterval(heartbeat);
+    }
+  });
 });
 
 /**
@@ -481,6 +505,38 @@ providers.post('/:id/models', adminMiddleware, async (c) => {
   } catch (error) {
     console.error('Error adding model:', error);
     return validationError(c, 'Fehler beim Hinzufügen des Modells');
+  }
+});
+
+/**
+ * PUT /api/providers/:id/models/bulk
+ * Bulk-update enabled state for all models of a provider (admin only)
+ * Must be registered before /:id/models/:modelId to avoid "bulk" matching as modelId.
+ */
+providers.put('/:id/models/bulk', adminMiddleware, async (c) => {
+  try {
+    const providerId = c.req.param('id');
+    const body = await c.req.json<{ enabled: boolean; modelIds?: string[] }>();
+
+    if (typeof body.enabled !== 'boolean') {
+      return validationError(c, 'Feld "enabled" (boolean) ist erforderlich');
+    }
+
+    if (body.modelIds !== undefined && (!Array.isArray(body.modelIds) || body.modelIds.some(id => typeof id !== 'string'))) {
+      return validationError(c, 'Feld "modelIds" muss ein String-Array sein');
+    }
+
+    const result = await bulkUpdateModels(providerId, { enabled: body.enabled, modelIds: body.modelIds });
+
+    // Reload LLM service if models were toggled
+    if (result.updated > 0) {
+      await llmService.reload();
+    }
+
+    return c.json({ result });
+  } catch (error) {
+    console.error('Error bulk-updating models:', error);
+    return internalError(c, error);
   }
 });
 
