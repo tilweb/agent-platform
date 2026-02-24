@@ -72,6 +72,20 @@ const styles = {
     textTransform: 'uppercase',
     marginBottom: theme.spacing.sm,
   },
+  activeCardTier: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  activeCardShields: {
+    display: 'flex',
+    gap: '1px',
+  },
+  activeCardTierLabel: {
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.medium,
+  },
   // Provider List
   section: {
     marginBottom: theme.spacing.xl,
@@ -414,20 +428,6 @@ const styles = {
     padding: theme.spacing['3xl'],
     color: theme.colors.textMuted,
   },
-  testResult: {
-    marginTop: theme.spacing.md,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-  },
-  testSuccess: {
-    backgroundColor: theme.colors.successLight,
-    color: theme.colors.success,
-  },
-  testError: {
-    backgroundColor: theme.colors.errorLight,
-    color: theme.colors.error,
-  },
   checkbox: {
     display: 'flex',
     alignItems: 'center',
@@ -438,6 +438,30 @@ const styles = {
     width: '18px',
     height: '18px',
     cursor: 'pointer',
+  },
+  // Test Config (collapsible)
+  testConfigToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+  },
+  testConfigChevron: {
+    width: 16,
+    height: 16,
+    transition: `transform ${theme.transitions.fast}`,
+  },
+  testConfigPanel: {
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.lg,
+    border: `1px solid ${theme.colors.border}`,
   },
   // Info Box
   infoBox: {
@@ -906,6 +930,13 @@ const defaultProviderForm = {
   company_region: '',
   datacenter_country: '',
   icon_url: '',
+  test_enabled: false,
+  test_method: 'GET',
+  test_path: '/models',
+  test_auth_header: 'Authorization',
+  test_auth_prefix: 'Bearer ',
+  test_headers: '',
+  test_body: '',
 };
 
 const defaultModelForm = {
@@ -946,10 +977,9 @@ function ProvidersPage({ embedded = false }) {
   const [providerForm, setProviderForm] = useState(defaultProviderForm);
   const [modelForm, setModelForm] = useState(defaultModelForm);
   const [modelProviderId, setModelProviderId] = useState(null);
-  const [testResult, setTestResult] = useState(null);
   const [isTesting, setIsTesting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState(null);
+  const [syncingProviders, setSyncingProviders] = useState({});
+  const [syncResults, setSyncResults] = useState({});
 
   const toggleProvider = (id) => {
     setExpandedProviders((prev) => ({
@@ -966,6 +996,7 @@ function ProvidersPage({ embedded = false }) {
 
   const handleEditProvider = (provider) => {
     setEditingProvider(provider);
+    const test = provider.test;
     setProviderForm({
       name: provider.name,
       api_mode: provider.api_mode,
@@ -975,16 +1006,47 @@ function ProvidersPage({ embedded = false }) {
       company_region: provider.company_region || '',
       datacenter_country: provider.datacenter_country || '',
       icon_url: provider.icon_url || '',
+      test_enabled: !!test,
+      test_method: test?.method || 'GET',
+      test_path: test?.path || '/models',
+      test_auth_header: test?.auth_header || 'Authorization',
+      test_auth_prefix: test?.auth_prefix ?? 'Bearer ',
+      test_headers: test?.headers ? JSON.stringify(test.headers, null, 2) : '',
+      test_body: test?.body ? JSON.stringify(test.body, null, 2) : '',
     });
     setShowProviderModal(true);
   };
 
   const handleSaveProvider = async () => {
     try {
-      const data = { ...providerForm };
+      const { test_enabled, test_method, test_path, test_auth_header, test_auth_prefix, test_headers, test_body, ...rest } = providerForm;
+
+      const data = { ...rest };
       if (editingProvider) {
         // Only send api_key when user entered a new one
         if (!data.api_key) delete data.api_key;
+      }
+
+      // Build test config
+      if (test_enabled) {
+        const testConfig = {};
+        if (test_method && test_method !== 'GET') testConfig.method = test_method;
+        if (test_path && test_path !== '/models') testConfig.path = test_path;
+        if (test_auth_header && test_auth_header !== 'Authorization') testConfig.auth_header = test_auth_header;
+        if (test_auth_prefix !== 'Bearer ') testConfig.auth_prefix = test_auth_prefix;
+        if (test_headers) {
+          try { testConfig.headers = JSON.parse(test_headers); } catch { /* ignore invalid JSON */ }
+        }
+        if (test_body) {
+          try { testConfig.body = JSON.parse(test_body); } catch { /* ignore invalid JSON */ }
+        }
+        data.test = testConfig;
+      } else if (editingProvider?.test) {
+        // Explicitly remove test config
+        data.test = null;
+      }
+
+      if (editingProvider) {
         await updateProvider(editingProvider.id, data);
         toast.success('Gespeichert', `Provider "${providerForm.name}" gespeichert`);
       } else {
@@ -1020,28 +1082,36 @@ function ProvidersPage({ embedded = false }) {
 
   const handleTestConnection = async (providerId) => {
     setIsTesting(true);
-    setTestResult(null);
 
     try {
       const result = await testConnection(providerId);
-      setTestResult({ providerId, ...result });
+      const provider = providers.find(p => p.id === providerId);
+      const name = provider?.name || providerId;
+      if (result.success) {
+        const details = [result.message];
+        if (result.latency_ms) details.push(`${result.latency_ms}ms`);
+        if (result.models_found !== undefined) details.push(`${result.models_found} Modelle`);
+        toast.success(name, details.join(' · '));
+      } else {
+        toast.error(name, result.message);
+      }
     } catch (err) {
-      setTestResult({ providerId, success: false, message: err.message });
+      toast.error('Verbindungstest', err.message);
     } finally {
       setIsTesting(false);
     }
   };
 
-  const handleSyncModels = async () => {
-    setIsSyncing(true);
-    setSyncResult(null);
+  const handleSyncModels = async (providerId) => {
+    setSyncingProviders(prev => ({ ...prev, [providerId]: true }));
+    setSyncResults(prev => ({ ...prev, [providerId]: null }));
     try {
-      const result = await syncModels();
-      setSyncResult(result);
+      const result = await syncModels(providerId);
+      setSyncResults(prev => ({ ...prev, [providerId]: result }));
     } catch (err) {
       toast.error('Fehler', err.message);
     } finally {
-      setIsSyncing(false);
+      setSyncingProviders(prev => ({ ...prev, [providerId]: false }));
     }
   };
 
@@ -1250,6 +1320,15 @@ function ProvidersPage({ embedded = false }) {
               image_to_image: 'Bild → Bild',
             };
 
+            // Determine security tier for selected provider
+            const selectedProvider = active?.provider_id
+              ? providers.find(p => p.id === active.provider_id)
+              : null;
+            const tier = selectedProvider
+              ? calculateSecurityTier(selectedProvider.company_region, selectedProvider.datacenter_country)
+              : null;
+            const tierConfig = tier ? securityTiers[tier] : null;
+
             return (
               <div key={purpose} style={styles.activeCard}>
                 <div style={styles.activeCardLabel}>
@@ -1260,12 +1339,43 @@ function ProvidersPage({ embedded = false }) {
                   onChange={(e) => handleActiveModelChange(purpose, e.target.value)}
                 >
                   <option value="">Nicht konfiguriert</option>
-                  {models.map(({ provider, model }) => (
-                    <option key={`${provider.id}::${model.id}`} value={`${provider.id}::${model.id}`}>
-                      {provider.name} - {model.name}
-                    </option>
-                  ))}
+                  {(() => {
+                    // Group models by security tier
+                    const tierGroups = {};
+                    for (const { provider, model } of models) {
+                      const t = calculateSecurityTier(provider.company_region, provider.datacenter_country);
+                      if (!tierGroups[t]) tierGroups[t] = [];
+                      tierGroups[t].push({ provider, model });
+                    }
+                    const shieldChar = '\u25A0'; // ■
+                    const emptyChar = '\u25A1';  // □
+                    return [1, 2, 3, 4].filter(t => tierGroups[t]).map(t => {
+                      const tc = securityTiers[t];
+                      const shields = shieldChar.repeat(tc.shieldCount) + emptyChar.repeat(4 - tc.shieldCount);
+                      return (
+                        <optgroup key={t} label={`${shields} ${tc.label}`}>
+                          {tierGroups[t].map(({ provider, model }) => (
+                            <option key={`${provider.id}::${model.id}`} value={`${provider.id}::${model.id}`}>
+                              {provider.name} - {model.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      );
+                    });
+                  })()}
                 </Select>
+                {tierConfig && (
+                  <div style={styles.activeCardTier}>
+                    <div style={styles.activeCardShields}>
+                      {[...Array(4)].map((_, i) => (
+                        <ShieldIcon key={i} size={12} filled={i < tierConfig.shieldCount} color={tierConfig.color} />
+                      ))}
+                    </div>
+                    <span style={{ ...styles.activeCardTierLabel, color: tierConfig.color }}>
+                      {tierConfig.label}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1327,8 +1437,6 @@ function ProvidersPage({ embedded = false }) {
                 {tierProviders.map((provider) => {
           const isExpanded = expandedProviders[provider.id];
           const iconConfig = providerIcons[provider.id] || providerIcons.custom;
-          const providerTestResult = testResult?.providerId === provider.id ? testResult : null;
-
           return (
             <div
               key={provider.id}
@@ -1399,19 +1507,19 @@ function ProvidersPage({ embedded = false }) {
                   </div>
                 </div>
                 <div style={styles.providerActions}>
-                  {provider.id === 'adacor' && modelSyncConfigured && (
+                  {canSyncProvider(provider) && (
                     <button
                       style={styles.syncButton}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleSyncModels();
+                        handleSyncModels(provider.id);
                       }}
-                      disabled={isSyncing}
+                      disabled={!!syncingProviders[provider.id]}
                       onMouseOver={(e) => { e.currentTarget.style.borderColor = theme.colors.primary; e.currentTarget.style.color = theme.colors.primary; }}
                       onMouseOut={(e) => { e.currentTarget.style.borderColor = theme.colors.border; e.currentTarget.style.color = theme.colors.text; }}
                     >
                       <RefreshIcon size={14} />
-                      {isSyncing ? 'Synchronisiere...' : 'Modelle synchronisieren'}
+                      {syncingProviders[provider.id] ? 'Synchronisiere...' : 'Modelle synchronisieren'}
                     </button>
                   )}
                   <button
@@ -1422,7 +1530,7 @@ function ProvidersPage({ embedded = false }) {
                     }}
                     disabled={isTesting}
                   >
-                    {isTesting && testResult?.providerId === provider.id ? 'Teste...' : 'Testen'}
+                    {isTesting ? 'Teste...' : 'Testen'}
                   </button>
                   {!provider.protected && (
                   <button
@@ -1504,35 +1612,20 @@ function ProvidersPage({ embedded = false }) {
                     </div>
                   </div>
 
-                  {providerTestResult && (
-                    <div
-                      style={{
-                        ...styles.testResult,
-                        ...(providerTestResult.success ? styles.testSuccess : styles.testError),
-                      }}
-                    >
-                      {providerTestResult.success ? '✓ ' : '✕ '}
-                      {providerTestResult.message}
-                      {providerTestResult.latency_ms && ` (${providerTestResult.latency_ms}ms)`}
-                      {providerTestResult.models_found !== undefined &&
-                        ` - ${providerTestResult.models_found} Modelle gefunden`}
-                    </div>
-                  )}
-
-                  {provider.id === 'adacor' && syncResult && (
+                  {syncResults[provider.id] && (
                     <div style={styles.syncResult}>
                       <span>Synchronisierung abgeschlossen:</span>
-                      {syncResult.added > 0 && (
-                        <span style={styles.syncStat}>+{syncResult.added} neu</span>
+                      {syncResults[provider.id].added > 0 && (
+                        <span style={styles.syncStat}>+{syncResults[provider.id].added} neu</span>
                       )}
-                      {syncResult.reactivated > 0 && (
-                        <span style={styles.syncStat}>~{syncResult.reactivated} reaktiviert</span>
+                      {syncResults[provider.id].reactivated > 0 && (
+                        <span style={styles.syncStat}>~{syncResults[provider.id].reactivated} reaktiviert</span>
                       )}
-                      {syncResult.deactivated > 0 && (
-                        <span style={{ ...styles.syncStat, color: theme.colors.warning }}>-{syncResult.deactivated} deaktiviert</span>
+                      {syncResults[provider.id].deactivated > 0 && (
+                        <span style={{ ...styles.syncStat, color: theme.colors.warning }}>-{syncResults[provider.id].deactivated} deaktiviert</span>
                       )}
-                      {syncResult.unchanged > 0 && (
-                        <span style={styles.syncStat}>{syncResult.unchanged} unverändert</span>
+                      {syncResults[provider.id].unchanged > 0 && (
+                        <span style={styles.syncStat}>{syncResults[provider.id].unchanged} unverändert</span>
                       )}
                     </div>
                   )}
@@ -1540,7 +1633,7 @@ function ProvidersPage({ embedded = false }) {
                   <div style={styles.modelsSection}>
                     <div style={styles.modelsSectionHeader}>
                       <div style={styles.modelsSectionTitle}>Modelle</div>
-                      {provider.id !== 'adacor' && allowCustomProviders && (
+                      {!canSyncProvider(provider) && allowCustomProviders && (
                         <button
                           style={styles.addModelButton}
                           onClick={() => handleCreateModel(provider.id)}
@@ -1548,7 +1641,7 @@ function ProvidersPage({ embedded = false }) {
                           <PlusIcon size={14} /> Modell
                         </button>
                       )}
-                      {provider.id === 'adacor' && modelSyncConfigured && (
+                      {canSyncProvider(provider) && (
                         <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
                           Verwaltet via Synchronisierung
                         </span>
@@ -1860,6 +1953,101 @@ function ProvidersPage({ embedded = false }) {
                   />
                   Provider aktiviert
                 </label>
+              </div>
+
+              {/* Verbindungstest-Konfiguration (collapsible) */}
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.testConfigToggle,
+                    color: providerForm.test_enabled ? theme.colors.primary : theme.colors.textMuted,
+                  }}
+                  onClick={() => setProviderForm({ ...providerForm, test_enabled: !providerForm.test_enabled })}
+                >
+                  <ChevronIcon style={{
+                    ...styles.testConfigChevron,
+                    transform: providerForm.test_enabled ? 'rotate(0deg)' : 'rotate(-90deg)',
+                  }} />
+                  Eigene Verbindungstest-Konfiguration
+                </button>
+
+                {providerForm.test_enabled && (
+                  <div style={styles.testConfigPanel}>
+                    <div style={styles.hint}>
+                      Überschreibt den Standard-Test für diesen API-Modus. Nutze <code>{'{{model}}'}</code> als Platzhalter für die Modell-ID im Body.
+                    </div>
+
+                    <div style={{ ...styles.formRow, marginTop: theme.spacing.md }}>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>HTTP-Methode</label>
+                        <Select
+                          value={providerForm.test_method}
+                          onChange={(e) => setProviderForm({ ...providerForm, test_method: e.target.value })}
+                          options={[
+                            { value: 'GET', label: 'GET' },
+                            { value: 'POST', label: 'POST' },
+                          ]}
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>Pfad</label>
+                        <input
+                          style={{ ...styles.input, ...styles.inputMono }}
+                          value={providerForm.test_path}
+                          onChange={(e) => setProviderForm({ ...providerForm, test_path: e.target.value })}
+                          placeholder="/models"
+                        />
+                        <div style={styles.hint}>Wird an die Base URL angehängt</div>
+                      </div>
+                    </div>
+
+                    <div style={{ ...styles.formRow }}>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>Auth-Header</label>
+                        <input
+                          style={{ ...styles.input, ...styles.inputMono }}
+                          value={providerForm.test_auth_header}
+                          onChange={(e) => setProviderForm({ ...providerForm, test_auth_header: e.target.value })}
+                          placeholder="Authorization"
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>Auth-Prefix</label>
+                        <input
+                          style={{ ...styles.input, ...styles.inputMono }}
+                          value={providerForm.test_auth_prefix}
+                          onChange={(e) => setProviderForm({ ...providerForm, test_auth_prefix: e.target.value })}
+                          placeholder="Bearer "
+                        />
+                        <div style={styles.hint}>Leer lassen für Raw-Key ohne Prefix</div>
+                      </div>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Zusätzliche Header (JSON)</label>
+                      <textarea
+                        style={{ ...styles.input, ...styles.inputMono, minHeight: '60px', resize: 'vertical' }}
+                        value={providerForm.test_headers}
+                        onChange={(e) => setProviderForm({ ...providerForm, test_headers: e.target.value })}
+                        placeholder={'{\n  "anthropic-version": "2023-06-01"\n}'}
+                      />
+                    </div>
+
+                    {providerForm.test_method === 'POST' && (
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>Request Body (JSON)</label>
+                        <textarea
+                          style={{ ...styles.input, ...styles.inputMono, minHeight: '80px', resize: 'vertical' }}
+                          value={providerForm.test_body}
+                          onChange={(e) => setProviderForm({ ...providerForm, test_body: e.target.value })}
+                          placeholder={'{\n  "model": "{{model}}",\n  "max_tokens": 1,\n  "messages": [{"role": "user", "content": "Hi"}]\n}'}
+                        />
+                        <div style={styles.hint}>{'{{model}}'} wird durch die Standard-Modell-ID ersetzt</div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Info Box für API Key Sicherheit */}

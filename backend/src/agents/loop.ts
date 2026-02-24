@@ -40,7 +40,7 @@ import {
   type SkillSummary,
   type SkillLoadResult,
 } from '../skills';
-import { addMessage, getMessages, generateSessionId } from '../services/memory';
+import { addMessage, getMessages, generateSessionId, restoreSessionIfEmpty } from '../services/memory';
 import { loadAgent, listAgents, type AgentConfig, type AgentModelConfig } from '../services/agents';
 import { loadUserMemory, formatMemoryForPrompt } from '../services/userMemory';
 import { getSpaceContext } from '../spaces/service';
@@ -1258,6 +1258,9 @@ export async function* runAgentLoop(
     };
   }
 
+  // Restore session from saved chat history if backend was restarted (must happen BEFORE addMessage)
+  await restoreSessionIfEmpty(sessionId, userId);
+
   // Add user message to memory
   addMessage(sessionId, { role: 'user', content: userMessage });
 
@@ -1468,6 +1471,25 @@ export async function* runAgentLoop(
       const skillInstructions = `\n\n[SKILL-ANWEISUNGEN: ${activeSkillContext.skill.name}]\n${activeSkillContext.skill.instructions}\n[/SKILL-ANWEISUNGEN]`;
       enhancedContext = enhancedContext + skillInstructions;
       console.log(`Passing skill instructions to delegated agent: ${activeSkillContext.skill.name}`);
+    }
+
+    // Auto-inject recent generated image IDs when delegating to image-generator
+    // This ensures the sub-agent can edit previously generated images even if the
+    // supervisor model didn't explicitly extract and pass the imageId
+    if (targetAgentId === 'image-generator' && !enhancedContext.includes('image_id:')) {
+      const history = getMessages(sessionId, userId);
+      // Search backwards for the most recent generated_image in assistant messages or tool results
+      for (let i = history.length - 1; i >= 0; i--) {
+        const msg = history[i];
+        if (!msg) continue;
+        const content = typeof msg.content === 'string' ? msg.content : '';
+        const imageMatch = content.match(/"imageId"\s*:\s*"(img_[^"]+)"/);
+        if (imageMatch && imageMatch[1]) {
+          enhancedContext = `image_id: ${imageMatch[1]}\n${enhancedContext}`;
+          console.log(`[Delegation] Auto-injected image_id ${imageMatch[1]} for image-generator`);
+          break;
+        }
+      }
     }
 
     return await runDelegatedAgent(

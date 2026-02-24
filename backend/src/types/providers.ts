@@ -120,6 +120,25 @@ export interface ModelConfig {
   extended_capabilities?: ExtendedModelCapabilities;
 }
 
+/**
+ * Custom connection test configuration for providers with non-standard APIs.
+ * If omitted, the test uses the default adapter for the provider's api_mode.
+ */
+export interface ProviderTestConfig {
+  /** HTTP method (default: GET) */
+  method?: 'GET' | 'POST';
+  /** Path appended to base_url (default: /models) */
+  path?: string;
+  /** Auth header name (default: Authorization) */
+  auth_header?: string;
+  /** Auth value prefix (default: "Bearer "). Set to empty string for raw key. */
+  auth_prefix?: string;
+  /** Extra headers to send (e.g. { "anthropic-version": "2023-06-01" }) */
+  headers?: Record<string, string>;
+  /** JSON body for POST requests. Supports {{model}} placeholder for default model ID. */
+  body?: Record<string, unknown>;
+}
+
 export interface ProviderConfig {
   id: string;
   name: string;
@@ -133,6 +152,7 @@ export interface ProviderConfig {
   datacenter_country?: string;  // ISO country code of datacenter location
   icon_url?: string;  // URL to provider logo (e.g. /logos/openai.svg)
   models: ModelConfig[];
+  test?: ProviderTestConfig;  // Custom connection test config
 }
 
 export interface ActiveSelection {
@@ -172,6 +192,7 @@ export interface CreateProviderRequest {
   datacenter_country?: string;
   icon_url?: string;
   models?: ModelConfig[];
+  test?: ProviderTestConfig;
 }
 
 export interface UpdateProviderRequest {
@@ -184,6 +205,7 @@ export interface UpdateProviderRequest {
   company_region?: CompanyRegion;
   datacenter_country?: string;
   icon_url?: string;
+  test?: ProviderTestConfig | null;  // null=remove, object=set, undefined=no change
 }
 
 export interface SetActiveModelRequest {

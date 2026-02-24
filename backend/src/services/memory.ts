@@ -218,6 +218,37 @@ export function getOrCreateSession(sessionId: string, userId?: string): Conversa
   return session;
 }
 
+/**
+ * Restore a session from saved chat history (YAML) if it has no in-memory messages.
+ * This handles the case where the backend restarts and loses the in-memory session
+ * while the user continues chatting in an existing conversation.
+ * Returns true if messages were restored.
+ */
+export async function restoreSessionIfEmpty(sessionId: string, userId?: string): Promise<boolean> {
+  const session = getSession(sessionId, userId);
+  if (session && session.messages.length > 0) {
+    return false; // Session already has messages, nothing to restore
+  }
+
+  // Try to load from saved chat history
+  const chat = await loadChatHistory(sessionId, userId);
+  if (!chat || chat.messages.length === 0) {
+    return false;
+  }
+
+  // Restore messages into the in-memory session
+  const target = getOrCreateSession(sessionId, userId);
+  for (const msg of chat.messages) {
+    target.messages.push({
+      role: msg.role,
+      content: msg.content,
+    });
+  }
+  target.userId = userId;
+  console.log(`[Memory] Restored ${chat.messages.length} messages from chat history for session ${sessionId}`);
+  return true;
+}
+
 export function addMessage(sessionId: string, message: Message, userId?: string): void {
   const session = getOrCreateSession(sessionId, userId);
   session.messages.push(message);

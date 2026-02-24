@@ -23,6 +23,11 @@ import {
   resolveApiKey,
   sanitizeProvider,
   findLogoFile,
+  withProviderLock,
+  loadProvidersConfig,
+  saveProvidersConfig,
+  computeStandardFeatureUrls,
+  deriveCapabilitiesForApiMode,
 } from '../services/providers';
 import { isModelSyncConfigured, syncAdacorModels } from '../services/modelSync';
 import { llmService } from '../services/llm';
@@ -38,6 +43,18 @@ import type {
   ModelConfig,
   SetActiveModelRequest,
 } from '../types/providers';
+
+/**
+ * Convert a model ID to a human-readable display name.
+ * E.g. "gpt-4o-mini" → "GPT 4o Mini", "llama3.2-vision" → "Llama3.2 Vision"
+ */
+function deriveModelName(modelId: string): string {
+  return modelId
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\.\s/g, '.')  // Preserve dots in version numbers
+    .trim();
+}
 
 const providers = new Hono();
 
@@ -221,6 +238,154 @@ providers.post('/adacor/sync', adminMiddleware, async (c) => {
 });
 
 /**
+ * POST /api/providers/:id/sync
+ * Trigger model sync for any provider with listModels() support (admin only).
+ * Adacor uses the dedicated sync mechanism; others use generic adapter-based sync.
+ */
+providers.post('/:id/sync', adminMiddleware, async (c) => {
+  try {
+    const id = c.req.param('id');
+
+    // Adacor: delegate to existing specialized sync
+    if (id === 'adacor') {
+      if (!isModelSyncConfigured()) {
+        return validationError(c, 'Modell-Synchronisierung ist nicht konfiguriert (ADACOR_AI_API_BASE + ADACOR_AI_MODELS_PATH fehlt)');
+      }
+      const result = await syncAdacorModels();
+      return c.json({ result });
+    }
+
+    const provider = await getProvider(id);
+    if (!provider) {
+      return notFoundError(c, 'Provider');
+    }
+
+    const supportedModes = ['openai', 'ollama', 'google_gemini'];
+    if (!supportedModes.includes(provider.api_mode)) {
+      return validationError(c, `Synchronisierung wird für API-Modus "${provider.api_mode}" nicht unterstützt`);
+    }
+
+    // Fetch remote model list
+    const apiKey = await resolveApiKey(provider);
+    let remoteModelIds: string[] = [];
+
+    if (provider.api_mode === 'openai') {
+      const adapter = new OpenAIAdapter({ baseUrl: provider.base_url, apiKey: apiKey ?? undefined });
+      remoteModelIds = await adapter.listModels();
+    } else if (provider.api_mode === 'ollama') {
+      const adapter = new OllamaAdapter({ baseUrl: provider.base_url });
+      remoteModelIds = await adapter.listModels();
+    } else if (provider.api_mode === 'google_gemini') {
+      try {
+        const response = await fetch(`${provider.base_url}/models`, {
+          headers: { 'x-goog-api-key': apiKey || '' },
+        });
+        if (response.ok) {
+          const json = await response.json() as { models?: Array<{ name?: string }> };
+          remoteModelIds = (json.models || [])
+            .map(m => m.name?.replace('models/', '') || '')
+            .filter(Boolean);
+        }
+      } catch {
+        // Return error
+        return internalError(c, new Error('Modelle konnten nicht vom Provider abgerufen werden'));
+      }
+    }
+
+    if (remoteModelIds.length === 0) {
+      return validationError(c, 'Keine Modelle vom Provider empfangen. Prüfen Sie API-Key und URL.');
+    }
+
+    // Compare remote vs. local models and update
+    const result = await withProviderLock(async () => {
+      // Re-fetch provider inside lock for fresh data
+      const freshProvider = await getProvider(id);
+      if (!freshProvider) throw new Error('Provider not found');
+
+      const localModels = freshProvider.models;
+      const localById = new Map(localModels.map(m => [m.id, m]));
+      const remoteSet = new Set(remoteModelIds);
+
+      let added = 0;
+      let reactivated = 0;
+      let deactivated = 0;
+      let unchanged = 0;
+
+      // Add new or reactivate existing models
+      for (const modelId of remoteModelIds) {
+        const existing = localById.get(modelId);
+        if (existing) {
+          if (existing.enabled === false) {
+            existing.enabled = true;
+            reactivated++;
+          } else {
+            unchanged++;
+          }
+        } else {
+          // Derive capabilities and create new model
+          const capabilities = deriveCapabilitiesForApiMode(freshProvider.api_mode, modelId);
+          const type = capabilities.includes('text_to_image') ? 'image_gen' as const
+            : capabilities.includes('speech') ? 'tts' as const
+            : capabilities.includes('transcription') ? 'stt' as const
+            : capabilities.includes('embeddings') ? 'llm' as const
+            : 'llm' as const;
+
+          const newModel: import('../types/providers').ModelConfig = {
+            id: modelId,
+            name: deriveModelName(modelId),
+            type,
+            capabilities,
+            enabled: true,
+          };
+
+          // Compute feature_urls
+          const featureUrls = computeStandardFeatureUrls(freshProvider, newModel);
+          if (featureUrls) {
+            newModel.feature_urls = featureUrls;
+          }
+
+          freshProvider.models.push(newModel);
+          added++;
+        }
+      }
+
+      // Deactivate models no longer in remote (skip protected)
+      for (const model of localModels) {
+        if (!remoteSet.has(model.id) && !model.protected && model.enabled !== false) {
+          model.enabled = false;
+          deactivated++;
+        }
+      }
+
+      // Update feature_urls for existing models that don't have them
+      for (const model of freshProvider.models) {
+        if (!model.feature_urls && model.capabilities) {
+          const featureUrls = computeStandardFeatureUrls(freshProvider, model);
+          if (featureUrls) {
+            model.feature_urls = featureUrls;
+          }
+        }
+      }
+
+      // Save to disk
+      const config = await loadProvidersConfig();
+      const providerIndex = config.providers.findIndex(p => p.id === id);
+      if (providerIndex >= 0) {
+        config.providers[providerIndex] = freshProvider;
+        await saveProvidersConfig(config);
+      }
+
+      return { added, reactivated, deactivated, unchanged };
+    });
+
+    return c.json({ result });
+  } catch (error) {
+    console.error('Error syncing provider models:', error);
+    return internalError(c, error);
+  }
+});
+
+/**
  * GET /api/providers/:id
  * Get a specific provider
  */
@@ -387,7 +552,50 @@ providers.post('/:id/test', async (c) => {
 
     let result;
 
-    if (provider.api_mode === 'openai') {
+    // If provider has a custom test config, use the generic test approach
+    if (provider.test) {
+      const testConfig = provider.test;
+      const startTime = Date.now();
+      try {
+        const method = testConfig.method || 'GET';
+        const path = testConfig.path || '/models';
+        const authHeader = testConfig.auth_header || 'Authorization';
+        const authPrefix = testConfig.auth_prefix ?? 'Bearer ';
+
+        const headers: Record<string, string> = {
+          ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+          [authHeader]: `${authPrefix}${apiKey}`,
+          ...testConfig.headers,
+        };
+
+        // Replace {{model}} placeholder in body
+        let body: string | undefined;
+        if (testConfig.body) {
+          body = JSON.stringify(testConfig.body).replace(/\{\{model\}\}/g, modelId);
+        }
+
+        const response = await fetch(`${provider.base_url}${path}`, {
+          method,
+          headers,
+          ...(body ? { body } : {}),
+        });
+        const latency = Date.now() - startTime;
+
+        if (response.ok) {
+          result = { success: true, message: 'Verbindung erfolgreich', latency_ms: latency };
+        } else {
+          const errorText = await response.text();
+          let errorMsg = `${response.status} ${response.statusText}`;
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMsg = errorData?.error?.message || errorMsg;
+          } catch { /* use default */ }
+          result = { success: false, message: `API-Fehler: ${errorMsg}`, latency_ms: latency };
+        }
+      } catch (error) {
+        result = { success: false, message: `Verbindung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`, latency_ms: Date.now() - startTime };
+      }
+    } else if (provider.api_mode === 'openai' || provider.api_mode === 'openai_images') {
       const adapter = new OpenAIAdapter({
         baseUrl: provider.base_url,
         apiKey,
@@ -400,8 +608,24 @@ providers.post('/:id/test', async (c) => {
         defaultModel: modelId,
       });
       result = await adapter.testConnection();
+    } else if (provider.api_mode === 'google_gemini') {
+      const startTime = Date.now();
+      try {
+        const response = await fetch(`${provider.base_url}/models`, {
+          headers: { 'x-goog-api-key': apiKey },
+        });
+        const latency = Date.now() - startTime;
+        if (response.ok) {
+          const json = await response.json() as { models?: unknown[] };
+          result = { success: true, message: 'Verbindung erfolgreich', latency_ms: latency, models_found: json.models?.length || 0 };
+        } else {
+          result = { success: false, message: `API-Fehler: ${response.status} ${response.statusText}`, latency_ms: latency };
+        }
+      } catch (error) {
+        result = { success: false, message: `Verbindung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}` };
+      }
     } else {
-      return validationError(c, `Unknown API mode: ${provider.api_mode}`);
+      return validationError(c, `Unbekannter API-Modus: ${provider.api_mode}`);
     }
 
     return c.json(result);
@@ -429,7 +653,7 @@ providers.get('/:id/models/available', async (c) => {
 
     let models: string[] = [];
 
-    if (provider.api_mode === 'openai') {
+    if (provider.api_mode === 'openai' || provider.api_mode === 'openai_images') {
       const adapter = new OpenAIAdapter({
         baseUrl: provider.base_url,
         apiKey,
@@ -440,6 +664,21 @@ providers.get('/:id/models/available', async (c) => {
         baseUrl: provider.base_url,
       });
       models = await adapter.listModels();
+    } else if (provider.api_mode === 'google_gemini') {
+      // Fetch models from Google Gemini API
+      try {
+        const response = await fetch(`${provider.base_url}/models`, {
+          headers: { 'x-goog-api-key': apiKey },
+        });
+        if (response.ok) {
+          const json = await response.json() as { models?: Array<{ name?: string }> };
+          models = (json.models || [])
+            .map(m => m.name?.replace('models/', '') || '')
+            .filter(Boolean);
+        }
+      } catch {
+        // Return empty list on error
+      }
     }
 
     return c.json({ models });

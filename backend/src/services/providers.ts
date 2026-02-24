@@ -443,6 +443,7 @@ export async function createProvider(
       datacenter_country: request.datacenter_country,
       icon_url: iconUrl,
       models: request.models ?? [],
+      test: request.test,
     };
 
     // Encrypt API key if provided
@@ -526,6 +527,7 @@ export async function updateProvider(
       datacenter_country: updates.datacenter_country !== undefined ? updates.datacenter_country : provider.datacenter_country,
       icon_url: resolvedIconUrl,
       models: provider.models, // Models are managed separately
+      test: updates.test !== undefined ? (updates.test || undefined) : provider.test,
     };
 
     // Carry over existing encrypted key
@@ -987,6 +989,90 @@ export async function getImageGenModels(): Promise<
  */
 export function supportsImageToImage(model: ModelConfig): boolean {
   return model.capabilities.includes('image_to_image');
+}
+
+// ============== Standard Endpoint Templates ==============
+
+/**
+ * Standard API endpoints per api_mode, mapped by capability.
+ * Used to compute feature_urls for non-Adacor providers during sync.
+ */
+const STANDARD_ENDPOINTS: Record<string, Array<{ label: string; path: string; capability: string }>> = {
+  openai: [
+    { label: '/v1/chat/completions', path: '/v1/chat/completions', capability: 'chat' },
+    { label: '/v1/embeddings', path: '/v1/embeddings', capability: 'embeddings' },
+    { label: '/v1/audio/transcriptions', path: '/v1/audio/transcriptions', capability: 'transcription' },
+    { label: '/v1/audio/speech', path: '/v1/audio/speech', capability: 'speech' },
+    { label: '/v1/images/generations', path: '/v1/images/generations', capability: 'text_to_image' },
+  ],
+  ollama: [
+    { label: '/api/chat', path: '/api/chat', capability: 'chat' },
+    { label: '/api/embeddings', path: '/api/embeddings', capability: 'embeddings' },
+  ],
+  google_gemini: [
+    { label: ':generateContent', path: '/models/{model}:generateContent', capability: 'chat' },
+    { label: ':embedContent', path: '/models/{model}:embedContent', capability: 'embeddings' },
+  ],
+};
+
+/**
+ * Compute feature_urls for a model based on the provider's api_mode and the model's capabilities.
+ * Returns a map of label → full URL, or undefined if no endpoints match.
+ */
+export function computeStandardFeatureUrls(
+  provider: ProviderConfig,
+  model: { id: string; capabilities: string[] }
+): Record<string, string> | undefined {
+  const templates = STANDARD_ENDPOINTS[provider.api_mode];
+  if (!templates || !provider.base_url) return undefined;
+
+  const baseUrl = provider.base_url.replace(/\/+$/, '');
+  const urls: Record<string, string> = {};
+
+  for (const t of templates) {
+    if (model.capabilities.includes(t.capability)) {
+      const resolvedPath = t.path.replace('{model}', model.id);
+      urls[t.label] = `${baseUrl}${resolvedPath}`;
+    }
+  }
+
+  return Object.keys(urls).length > 0 ? urls : undefined;
+}
+
+/**
+ * Derive default capabilities for a model ID based on the provider's api_mode.
+ */
+export function deriveCapabilitiesForApiMode(apiMode: string, modelId: string): string[] {
+  const id = modelId.toLowerCase();
+
+  if (apiMode === 'openai') {
+    const caps: string[] = ['chat', 'function_calling'];
+    // Vision models
+    if (/vision|gpt-4o|gpt-4-turbo/.test(id)) caps.push('vision');
+    // TTS models
+    if (/tts/.test(id)) return ['speech'];
+    // Whisper models
+    if (/whisper/.test(id)) return ['transcription'];
+    // Embedding models
+    if (/embed/.test(id)) return ['embeddings'];
+    // DALL-E models
+    if (/dall-?e/.test(id)) return ['text_to_image'];
+    return caps;
+  }
+
+  if (apiMode === 'ollama') {
+    const caps: string[] = ['chat'];
+    if (/llava|vision|llama3\.2-vision|moondream|bakllava/.test(id)) caps.push('vision');
+    return caps;
+  }
+
+  if (apiMode === 'google_gemini') {
+    const caps: string[] = ['chat', 'vision', 'function_calling'];
+    if (/embed/.test(id)) return ['embeddings'];
+    return caps;
+  }
+
+  return ['chat'];
 }
 
 // ============== Feature URL Resolution ==============

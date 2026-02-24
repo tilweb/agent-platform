@@ -411,10 +411,12 @@ export function useStreaming() {
       });
 
       eventSource.onerror = () => {
-        if (eventSource.readyState === EventSource.CLOSED) {
-          setIsStreaming(false);
-          setAgentStatus(null);
-        }
+        // Always close and clean up — don't let EventSource silently auto-reconnect
+        // during an active stream, which leaves the UI stuck in "streaming" state
+        eventSource.close();
+        eventSourceRef.current = null;
+        setIsStreaming(false);
+        setAgentStatus(null);
       };
 
     } catch (err) {
