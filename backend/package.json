@@ -12,6 +12,7 @@
     "test:file": "bun test"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/bun": "latest",
     "@types/pdfmake": "^0.3.1"
   },
@@ -21,6 +22,7 @@
   "dependencies": {
     "@hono/node-server": "^1.19.9",
     "@modelcontextprotocol/sdk": "^1.25.3",
+    "archiver": "^7.0.1",
     "docx": "^9.4.1",
     "exceljs": "^4.4.0",
     "hono": "^4.11.7",
