@@ -113,6 +113,7 @@ Spezialisierte Agenten, die mit `Task`-Tool oder direkt von Claude Code aufgeruf
 | `design-auditor` | Frontend Design-Konsistenz prüfen | haiku | Ja |
 | `consistency-auditor` | Duplikate und Pattern-Abweichungen finden | haiku | Ja |
 | `auth-auditor` | Auth-Middleware-Abdeckung aller Routes prüfen | haiku | Ja |
+| `docs-manager` | Anwender-/Entwickler-Doku pflegen | sonnet | Nein |
 
 **Subagent-Dateiformat** (`.claude/agents/<name>/<name>.md`):
 ```yaml
