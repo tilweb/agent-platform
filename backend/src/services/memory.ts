@@ -7,6 +7,7 @@ import { saveSpaceChat } from '../spaces/storage';
 import { DATA_DIR, CONVERSATIONS_DIR, CHATS_DIR, CHAT_FOLDERS_FILE } from '../utils/paths';
 import { dateBucketFromId, currentDateBucket } from '../utils/dateBucket';
 import { ensureDir } from '../utils/yamlStorage';
+import { attachmentsService } from './attachments';
 
 // ============================================
 // Date-bucketed file path helpers
@@ -1618,6 +1619,14 @@ export async function deleteChatHistory(sessionId: string, userId?: string): Pro
 
     await unlink(filePath);
     console.log(`Deleted chat history: ${filePath}`);
+
+    // Fire-and-forget: clean up associated chat uploads
+    try {
+      await attachmentsService.cleanupSessionAttachments(sessionId);
+    } catch (err) {
+      console.error(`[deleteChatHistory] Failed to clean up attachments for ${sessionId}:`, err);
+    }
+
     return true;
   } catch (err) {
     console.error(`Error deleting chat history ${sessionId}:`, err);

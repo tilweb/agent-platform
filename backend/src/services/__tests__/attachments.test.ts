@@ -20,6 +20,7 @@ import { test, expect, describe, mock, beforeEach } from "bun:test";
 // ---------------------------------------------------------------------------
 
 const UPLOADS_BASE = "/tmp/test-uploads";
+const MOCK_BUCKET = "2026/02"; // Must match the dateBucket mock
 
 const mockState = {
   // Virtual file system: path -> Buffer | string
@@ -135,6 +136,15 @@ const pathsMock = () => ({
 mock.module("../utils/paths", pathsMock);
 mock.module("../../utils/paths", pathsMock);
 
+// Mock dateBucket module — deterministic bucket for all test IDs.
+const dateBucketMock = () => ({
+  dateBucketFromId: (_id: string) => null, // test IDs don't have valid timestamps
+  currentDateBucket: () => MOCK_BUCKET,
+  dateBucketFromFilename: (_f: string) => null,
+});
+mock.module("../utils/dateBucket", dateBucketMock);
+mock.module("../../utils/dateBucket", dateBucketMock);
+
 // Mock the file type validator — uses mockState for per-test control.
 // Register both specifiers for the same reason as paths above.
 const fileTypeValidatorMock = () => ({
@@ -154,6 +164,7 @@ mock.module("../../utils/fileTypeValidator", fileTypeValidatorMock);
 const providersMock = () => ({
   loadProvidersConfig: async () => mockState.providersConfig,
   getProvider: async (_id: string) => mockState.provider,
+  resolveApiKey: async (_provider: any) => process.env["OPENAI_API_KEY"] || null,
 });
 mock.module("./providers", providersMock);
 mock.module("../providers", providersMock);
@@ -176,6 +187,27 @@ if ((globalThis as any).Bun) {
     const content = mockState.files[path];
     const data = content instanceof Buffer ? content : Buffer.from(content ?? "");
     return new Blob([data], { type: "application/octet-stream" });
+  };
+}
+
+// Mock Bun.Glob — async generator that scans mockState.files
+if ((globalThis as any).Bun) {
+  (globalThis as any).Bun.Glob = class MockGlob {
+    private pattern: string;
+    constructor(pattern: string) {
+      this.pattern = pattern;
+    }
+    async *scan(dir: string) {
+      const prefix = dir.endsWith("/") ? dir : dir + "/";
+      for (const fullPath of Object.keys(mockState.files)) {
+        if (!fullPath.startsWith(prefix)) continue;
+        const relPath = fullPath.slice(prefix.length);
+        // Match **/metadata.json pattern (only pattern used in the service)
+        if (this.pattern === "**/metadata.json" && relPath.endsWith("metadata.json")) {
+          yield relPath;
+        }
+      }
+    }
   };
 }
 
@@ -1051,11 +1083,28 @@ describe("AttachmentsService", () => {
       expect(mockState.rmCalls).toHaveLength(0);
     });
 
-    test("should call rm on the session directory when it exists", async () => {
+    test("should call rm on the flat session directory when it exists", async () => {
       const sessionDir = `${UPLOADS_BASE}/session-to-clean`;
       mockState.dirs.add(sessionDir);
       await attachmentsService.cleanupSessionAttachments("session-to-clean");
       expect(mockState.rmCalls).toContain(sessionDir);
+    });
+
+    test("should call rm on the bucketed session directory when it exists", async () => {
+      const bucketDir = `${UPLOADS_BASE}/${MOCK_BUCKET}/session-to-clean`;
+      mockState.dirs.add(bucketDir);
+      await attachmentsService.cleanupSessionAttachments("session-to-clean");
+      expect(mockState.rmCalls).toContain(bucketDir);
+    });
+
+    test("should clean up both bucketed and flat paths when both exist", async () => {
+      const bucketDir = `${UPLOADS_BASE}/${MOCK_BUCKET}/session-both`;
+      const flatDir = `${UPLOADS_BASE}/session-both`;
+      mockState.dirs.add(bucketDir);
+      mockState.dirs.add(flatDir);
+      await attachmentsService.cleanupSessionAttachments("session-both");
+      expect(mockState.rmCalls).toContain(bucketDir);
+      expect(mockState.rmCalls).toContain(flatDir);
     });
   });
 
@@ -1071,10 +1120,28 @@ describe("AttachmentsService", () => {
       expect(result).toBeNull();
     });
 
-    test("should return null when originalPath does not exist on disk", async () => {
-      mockState.files[`${UPLOADS_BASE}/session-1/att-123/metadata.json`] = makeMetadataJson({
+    test("should fall back to searching for original.* when stored originalPath is stale", async () => {
+      // Metadata has a stale originalPath that doesn't exist, but original.pdf exists in resolved dir
+      const attDir = `${UPLOADS_BASE}/session-1/att-123`;
+      mockState.files[`${attDir}/metadata.json`] = makeMetadataJson({
+        sessionId: "session-1",
         metadata: { size: 1024, originalPath: "/nonexistent/path/original.pdf" },
       });
+      mockState.files[`${attDir}/original.pdf`] = pdfBuffer();
+      mockState.attachmentDirs = ["original.pdf", "metadata.json"]; // readdir returns these
+
+      const result = await attachmentsService.getAttachmentFilePath("att-123", "session-1");
+      expect(result).not.toBeNull();
+      expect(result!.path).toBe(`${attDir}/original.pdf`);
+      expect(result!.mimeType).toBe("application/pdf");
+    });
+
+    test("should return null when originalPath and fallback both fail", async () => {
+      mockState.files[`${UPLOADS_BASE}/session-1/att-123/metadata.json`] = makeMetadataJson({
+        sessionId: "session-1",
+        metadata: { size: 1024, originalPath: "/nonexistent/path/original.pdf" },
+      });
+      mockState.attachmentDirs = ["metadata.json"]; // no original.* file
       const result = await attachmentsService.getAttachmentFilePath("att-123", "session-1");
       expect(result).toBeNull();
     });
@@ -1203,6 +1270,95 @@ describe("AttachmentsService", () => {
 
       const count = await attachmentsService.cleanupOldAttachments(1);
       expect(count).toBe(1);
+    });
+
+    test("should find and clean up attachments in bucketed YYYY/MM paths", async () => {
+      const bucketDir = `${UPLOADS_BASE}/${MOCK_BUCKET}/session-bucketed`;
+      mockState.dirs.add(bucketDir);
+
+      const oldDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      mockState.files[`${bucketDir}/att-old/metadata.json`] = JSON.stringify({
+        metadata: { convertedAt: oldDate },
+      });
+
+      const count = await attachmentsService.cleanupOldAttachments(24);
+      expect(count).toBe(1);
+      expect(mockState.rmCalls.some((p) => p.includes("att-old"))).toBe(true);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Date-bucketed sharding (integration)
+  // -------------------------------------------------------------------------
+
+  describe("date-bucketed sharding", () => {
+    beforeEach(resetMockState);
+
+    test("processUpload should write to YYYY/MM bucketed path", async () => {
+      mock.module("../../utils/fileTypeValidator", () => ({
+        validateUpload: (_buf: Buffer, claimedMimeType: string) => ({
+          isValid: true,
+          detectedMimeType: claimedMimeType.split(";")[0]!.trim(),
+          mismatch: false,
+        }),
+      }));
+      const { attachmentsService: svc } = await import("../attachments");
+      (svc as any).convertToMp3 = (attachmentsService as any).convertToMp3;
+
+      const result = await svc.processUpload(
+        "session-1",
+        makeFile("doc.txt", "text/plain", Buffer.from("hello"))
+      );
+
+      // The storage path should contain the YYYY/MM bucket
+      expect(result.storagePath).toContain(MOCK_BUCKET);
+      expect(result.storagePath).toContain("session-1");
+    });
+
+    test("getAttachment should resolve from flat path via fallback", async () => {
+      // Flat path (pre-migration)
+      mockState.files[`${UPLOADS_BASE}/session-flat/att-flat/metadata.json`] = makeMetadataJson({
+        id: "att-flat",
+        sessionId: "session-flat",
+      });
+
+      const result = await attachmentsService.getAttachment("att-flat", "session-flat");
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe("att-flat");
+    });
+
+    test("getAttachment should prefer bucketed path over flat", async () => {
+      const bucketDir = `${UPLOADS_BASE}/${MOCK_BUCKET}/session-both`;
+      const flatDir = `${UPLOADS_BASE}/session-both`;
+
+      // Both paths have metadata — bucketed should win
+      mockState.files[`${bucketDir}/att-both/metadata.json`] = makeMetadataJson({
+        id: "att-both",
+        sessionId: "session-both",
+        filename: "bucketed.pdf",
+      });
+      mockState.files[`${flatDir}/att-both/metadata.json`] = makeMetadataJson({
+        id: "att-both",
+        sessionId: "session-both",
+        filename: "flat.pdf",
+      });
+
+      const result = await attachmentsService.getAttachment("att-both", "session-both");
+      expect(result).not.toBeNull();
+      expect(result!.filename).toBe("bucketed.pdf");
+    });
+
+    test("getSessionAttachments should resolve from flat path via fallback", async () => {
+      mockState.dirs.add(`${UPLOADS_BASE}/session-flat`);
+      mockState.attachmentDirs = ["att-1"];
+      mockState.files[`${UPLOADS_BASE}/session-flat/att-1/metadata.json`] = makeMetadataJson({
+        id: "att-1",
+        sessionId: "session-flat",
+      });
+
+      const result = await attachmentsService.getSessionAttachments("session-flat");
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe("att-1");
     });
   });
 });

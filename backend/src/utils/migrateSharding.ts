@@ -13,11 +13,11 @@
  * Skips: queue.yaml, chat-folders.yaml
  */
 
-import { readdir, rename, mkdir, rm } from 'fs/promises';
+import { readdir, rename, mkdir, rm, stat } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { dateBucketFromId, dateBucketFromFilename } from './dateBucket';
-import { DATA_DIR, TASKS_DIR, CHATS_DIR, CONVERSATIONS_DIR, GENERATED_IMAGES_DIR, EXPORTS_DIR } from './paths';
+import { DATA_DIR, TASKS_DIR, CHATS_DIR, CONVERSATIONS_DIR, GENERATED_IMAGES_DIR, EXPORTS_DIR, CHAT_UPLOADS_DIR } from './paths';
 import { loadYaml, saveYaml } from './yamlStorage';
 
 const MARKER_FILE = join(DATA_DIR, '.sharding-migrated');
@@ -175,12 +175,61 @@ async function removeLegacyResultsDir(): Promise<boolean> {
 }
 
 /**
+ * Generic migration: move matching flat **directories** into YYYY/MM buckets.
+ * Used for chat-uploads where each session is a directory (not a file).
+ *
+ * @param dir - Source directory containing flat session dirs
+ * @param prefix - Directory name prefix filter (e.g. 'session_')
+ * @param bucketExtractor - Extract YYYY/MM bucket from dir name (return null to skip)
+ * @returns Number of directories migrated
+ */
+async function migrateDirsToDateBuckets(
+  dir: string,
+  prefix: string,
+  bucketExtractor: (dirname: string) => string | null,
+): Promise<number> {
+  if (!existsSync(dir)) return 0;
+
+  let migrated = 0;
+  const entries = await readdir(dir);
+
+  for (const entry of entries) {
+    if (!entry.startsWith(prefix)) continue;
+
+    const srcPath = join(dir, entry);
+
+    // Only migrate directories, skip files
+    try {
+      const s = await stat(srcPath);
+      if (!s.isDirectory()) continue;
+    } catch {
+      continue;
+    }
+
+    const bucket = bucketExtractor(entry);
+    if (!bucket) continue;
+
+    const destBucketDir = join(dir, bucket);
+    const destPath = join(destBucketDir, entry);
+
+    // Skip if destination already exists
+    if (existsSync(destPath)) continue;
+
+    await mkdir(destBucketDir, { recursive: true });
+    await rename(srcPath, destPath);
+    migrated++;
+  }
+
+  return migrated;
+}
+
+/**
  * Run the full sharding migration. Idempotent — skips if marker file exists.
  *
  * The marker file includes a version number. When new directories are added,
  * bump MIGRATION_VERSION to re-run migration for the new entries.
  */
-const MIGRATION_VERSION = 3; // v1: tasks/chats/conversations, v2: +images/exports, v3: consolidate results
+const MIGRATION_VERSION = 4; // v1: tasks/chats/conversations, v2: +images/exports, v3: consolidate results, v4: chat-uploads
 
 export async function runShardingMigration(): Promise<void> {
   // Check marker version — re-run if version is outdated
@@ -262,6 +311,13 @@ export async function runShardingMigration(): Promise<void> {
   // 9. Clean up empty legacy results directory
   const resultsRemoved = await removeLegacyResultsDir();
 
+  // 10. Migrate chat-uploads session directories (session_* → YYYY/MM/session_*)
+  const uploadsMigrated = await migrateDirsToDateBuckets(
+    CHAT_UPLOADS_DIR,
+    'session_',
+    (dirname) => dateBucketFromId(dirname),
+  );
+
   const elapsed = Date.now() - start;
   const parts = [
     tasksMigrated > 0 ? `${tasksMigrated} tasks` : '',
@@ -272,6 +328,7 @@ export async function runShardingMigration(): Promise<void> {
     exportsMigrated > 0 ? `${exportsMigrated} exports` : '',
     pathsUpdated > 0 ? `${pathsUpdated} result paths updated` : '',
     resultsRemoved ? 'tasks/results/ removed' : '',
+    uploadsMigrated > 0 ? `${uploadsMigrated} chat-uploads` : '',
   ].filter(Boolean);
 
   console.log(

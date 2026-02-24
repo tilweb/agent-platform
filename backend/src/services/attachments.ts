@@ -12,6 +12,7 @@ import { validateUpload } from '../utils/fileTypeValidator';
 import { $ } from 'bun';
 import { randomUUID } from 'crypto';
 import { CHAT_UPLOADS_DIR as UPLOADS_BASE, MARKITDOWN_API_URL, MARKITDOWN_API_KEY } from '../utils/paths';
+import { dateBucketFromId, currentDateBucket } from '../utils/dateBucket';
 
 // File size limits (in bytes) — configurable via MAX_UPLOAD_SIZE_MB env
 const MAX_FILE_SIZE_MB = parseInt(process.env.MAX_UPLOAD_SIZE_MB || '50', 10);
@@ -147,6 +148,37 @@ class AttachmentsService {
     return `att-${timestamp}-${random}`;
   }
 
+  // ---- Date-bucketed path helpers (same pattern as memory.ts) ----
+
+  /**
+   * Get the bucketed session directory for writes.
+   * Returns e.g. chat-uploads/2026/02/session_xxx
+   */
+  private getSessionDir(sessionId: string): string {
+    const bucket = dateBucketFromId(sessionId) || currentDateBucket();
+    return join(UPLOADS_BASE, bucket, sessionId);
+  }
+
+  /**
+   * Resolve the actual session directory for reads.
+   * Tries bucketed path first, falls back to flat path (backward-compat).
+   */
+  private resolveSessionDir(sessionId: string): string | null {
+    const bucketPath = this.getSessionDir(sessionId);
+    if (existsSync(bucketPath)) return bucketPath;
+    const flatPath = join(UPLOADS_BASE, sessionId);
+    if (existsSync(flatPath)) return flatPath;
+    return null;
+  }
+
+  /**
+   * Check if a session directory exists in either bucketed or flat location.
+   */
+  private sessionDirExists(sessionId: string): boolean {
+    return existsSync(this.getSessionDir(sessionId)) ||
+      existsSync(join(UPLOADS_BASE, sessionId));
+  }
+
   /**
    * Determine file type from MIME type
    */
@@ -206,7 +238,7 @@ class AttachmentsService {
    */
   private async convertToMp3(inputPath: string, mimeType: string): Promise<string> {
     const fileId = randomUUID();
-    const outputPath = join(UPLOADS_BASE, `temp-${fileId}.mp3`);
+    const outputPath = join(process.env.TMPDIR || '/tmp', `temp-${fileId}.mp3`);
 
     try {
       console.log(`[Attachments] Converting ${mimeType} to MP3...`);
@@ -367,8 +399,8 @@ class AttachmentsService {
       throw new Error('Ungültige Session-ID');
     }
 
-    // Create storage directory
-    const sessionDir = join(UPLOADS_BASE, sessionId);
+    // Create storage directory (date-bucketed)
+    const sessionDir = this.getSessionDir(sessionId);
     const attachmentDir = join(sessionDir, attachmentId);
     await mkdir(attachmentDir, { recursive: true });
 
@@ -457,19 +489,31 @@ class AttachmentsService {
     if (!sessionId) {
       if (!existsSync(UPLOADS_BASE)) return null;
 
-      const sessions = await readdir(UPLOADS_BASE);
-      for (const session of sessions) {
-        const attachmentDir = join(UPLOADS_BASE, session, attachmentId);
-        if (existsSync(attachmentDir)) {
-          sessionId = session;
-          break;
+      // Search recursively using glob to find metadata.json in bucketed or flat paths
+      const glob = new Bun.Glob('**/metadata.json');
+      try {
+        for await (const relPath of glob.scan(UPLOADS_BASE)) {
+          // relPath e.g. "2026/02/session_xxx/att-123/metadata.json" or "session_xxx/att-123/metadata.json"
+          const parts = relPath.split('/');
+          const attDir = parts[parts.length - 2]; // attachment dir name
+          if (attDir === attachmentId) {
+            // Extract sessionId: the part before the attachment dir
+            sessionId = parts[parts.length - 3];
+            break;
+          }
         }
+      } catch {
+        // Directory doesn't exist or scan error
       }
 
       if (!sessionId) return null;
     }
 
-    const attachmentDir = join(UPLOADS_BASE, sessionId, attachmentId);
+    // Resolve session directory (bucketed or flat)
+    const resolvedDir = this.resolveSessionDir(sessionId);
+    if (!resolvedDir) return null;
+
+    const attachmentDir = join(resolvedDir, attachmentId);
     const metadataPath = join(attachmentDir, 'metadata.json');
 
     if (!existsSync(metadataPath)) return null;
@@ -505,9 +549,9 @@ class AttachmentsService {
    * Get all attachments for a session
    */
   async getSessionAttachments(sessionId: string): Promise<ChatAttachment[]> {
-    const sessionDir = join(UPLOADS_BASE, sessionId);
+    const sessionDir = this.resolveSessionDir(sessionId);
 
-    if (!existsSync(sessionDir)) return [];
+    if (!sessionDir) return [];
 
     const attachmentIds = await readdir(sessionDir);
     const attachments: ChatAttachment[] = [];
@@ -555,34 +599,64 @@ class AttachmentsService {
   }
 
   /**
-   * Clean up all attachments for a session
+   * Clean up all attachments for a session (checks both bucketed and flat paths)
    */
   async cleanupSessionAttachments(sessionId: string): Promise<void> {
-    const sessionDir = join(UPLOADS_BASE, sessionId);
+    // Clean bucketed path
+    const bucketDir = this.getSessionDir(sessionId);
+    if (existsSync(bucketDir)) {
+      await rm(bucketDir, { recursive: true, force: true });
+      console.log(`[Attachments] Cleaned up session (bucketed): ${sessionId}`);
+    }
 
-    if (existsSync(sessionDir)) {
-      await rm(sessionDir, { recursive: true, force: true });
-      console.log(`[Attachments] Cleaned up session: ${sessionId}`);
+    // Clean flat path (backward-compat)
+    const flatDir = join(UPLOADS_BASE, sessionId);
+    if (existsSync(flatDir)) {
+      await rm(flatDir, { recursive: true, force: true });
+      console.log(`[Attachments] Cleaned up session (flat): ${sessionId}`);
     }
   }
 
   /**
    * Get the original file path for an attachment (for streaming/download)
+   * Falls back to searching for original.* in the resolved attachment dir
+   * when the stored originalPath no longer exists (e.g. after sharding migration).
    */
   async getAttachmentFilePath(attachmentId: string, sessionId?: string): Promise<{ path: string; mimeType: string; filename: string } | null> {
     const attachment = await this.getAttachment(attachmentId, sessionId);
     if (!attachment) return null;
 
     const originalPath = attachment.metadata.originalPath;
-    if (!originalPath || !existsSync(originalPath)) {
-      return null;
+    if (originalPath && existsSync(originalPath)) {
+      return {
+        path: originalPath,
+        mimeType: attachment.mimeType,
+        filename: attachment.filename,
+      };
     }
 
-    return {
-      path: originalPath,
-      mimeType: attachment.mimeType,
-      filename: attachment.filename,
-    };
+    // Fallback: search for original.* in the resolved attachment dir
+    if (attachment.sessionId) {
+      const resolvedDir = this.resolveSessionDir(attachment.sessionId);
+      if (resolvedDir) {
+        const attDir = join(resolvedDir, attachmentId);
+        if (existsSync(attDir)) {
+          try {
+            const files = await readdir(attDir);
+            const originalFile = files.find(f => f.startsWith('original.'));
+            if (originalFile) {
+              return {
+                path: join(attDir, originalFile),
+                mimeType: attachment.mimeType,
+                filename: attachment.filename,
+              };
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -594,7 +668,8 @@ class AttachmentsService {
   }
 
   /**
-   * Clean up old attachments (older than maxAge hours)
+   * Clean up old attachments (older than maxAge hours).
+   * Scans both YYYY/MM bucketed and flat session directories.
    */
   async cleanupOldAttachments(maxAgeHours: number = 24): Promise<number> {
     if (!existsSync(UPLOADS_BASE)) return 0;
@@ -603,37 +678,49 @@ class AttachmentsService {
     const now = Date.now();
     let cleanedCount = 0;
 
-    const sessions = await readdir(UPLOADS_BASE);
-    for (const sessionId of sessions) {
-      const sessionDir = join(UPLOADS_BASE, sessionId);
-      const attachmentIds = await readdir(sessionDir);
+    // Use glob to find all metadata.json files in both bucketed and flat structures
+    const glob = new Bun.Glob('**/metadata.json');
+    const sessionDirsToCheck = new Set<string>();
 
-      for (const attachmentId of attachmentIds) {
-        const metadataPath = join(sessionDir, attachmentId, 'metadata.json');
+    try {
+      for await (const relPath of glob.scan(UPLOADS_BASE)) {
+        const metadataPath = join(UPLOADS_BASE, relPath);
+        // Session dir is two levels up from metadata.json (sessionDir/attId/metadata.json)
+        const parts = relPath.split('/');
+        const sessionDir = join(UPLOADS_BASE, ...parts.slice(0, -2));
+        const attachmentDir = join(UPLOADS_BASE, ...parts.slice(0, -1));
 
-        if (existsSync(metadataPath)) {
-          try {
-            const metadataRaw = await readFile(metadataPath, 'utf-8');
-            const metadata = JSON.parse(metadataRaw);
-            const convertedAt = new Date(metadata.metadata?.convertedAt || 0).getTime();
+        sessionDirsToCheck.add(sessionDir);
 
-            if (now - convertedAt > maxAgeMs) {
-              await rm(join(sessionDir, attachmentId), { recursive: true, force: true });
-              cleanedCount++;
-            }
-          } catch {
-            // If metadata is corrupted, clean it up
-            await rm(join(sessionDir, attachmentId), { recursive: true, force: true });
+        try {
+          const metadataRaw = await readFile(metadataPath, 'utf-8');
+          const metadata = JSON.parse(metadataRaw);
+          const convertedAt = new Date(metadata.metadata?.convertedAt || 0).getTime();
+
+          if (now - convertedAt > maxAgeMs) {
+            await rm(attachmentDir, { recursive: true, force: true });
             cleanedCount++;
           }
+        } catch {
+          // If metadata is corrupted, clean it up
+          await rm(attachmentDir, { recursive: true, force: true });
+          cleanedCount++;
         }
       }
+    } catch {
+      // scan error
+    }
 
-      // Remove empty session directories
-      const remaining = await readdir(sessionDir);
-      if (remaining.length === 0) {
-        await rm(sessionDir, { recursive: true, force: true });
-      }
+    // Remove empty session directories
+    for (const sessionDir of sessionDirsToCheck) {
+      try {
+        if (existsSync(sessionDir)) {
+          const remaining = await readdir(sessionDir);
+          if (remaining.length === 0) {
+            await rm(sessionDir, { recursive: true, force: true });
+          }
+        }
+      } catch { /* ignore */ }
     }
 
     if (cleanedCount > 0) {
