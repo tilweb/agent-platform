@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -8,8 +9,11 @@ import { AgentIcon } from './AgentPicker';
 import { CommandPalette } from './CommandPalette';
 import { useCommands } from '../hooks/useCommands';
 import { LinkIcon, FolderIcon, MicrophoneIcon, StopIcon, PaperclipIcon, BookIcon, DocumentIcon, DownloadIcon } from './Icons';
+import { useToast } from './Toast';
 import Select from './Select';
 import AddToCollectionModal from './AddToCollectionModal';
+import ItemThumbnail from './ItemThumbnail';
+import DocumentThumbnail from './DocumentThumbnail';
 import CreateCollectionModal from './CreateCollectionModal';
 import { AudioPlayer } from './AudioPlayer';
 import { TranscriptBlock } from './TranscriptBlock';
@@ -2000,6 +2004,7 @@ function MaterialsSidebar({
   onClose,
   chatId,
 }) {
+  const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [hoveredItemId, setHoveredItemId] = useState(null);
@@ -2008,28 +2013,40 @@ function MaterialsSidebar({
   const hasSelection = selectedCount > 0;
 
   // Convert materials to collection item format
-  const materialToCollectionItem = (material) => ({
-    id: material.id,
-    type: 'material',
-    title: material.title,
-    content: material.content || '',  // Full content for indexing
-    snippet: material.content?.slice(0, 200) || '',
-    source: 'chat',
-    metadata: {
-      fromChat: true,
-      chatId: chatId,
-      materialType: material.type,
-      ...material.metadata,
-    },
-  });
+  const materialToCollectionItem = (material) => {
+    const isGenImage = material.type === 'generated_image';
+    return {
+      id: material.id,
+      type: 'material',
+      title: material.title,
+      content: material.content || '',  // Full content for indexing
+      snippet: material.content?.slice(0, 200) || '',
+      source: 'chat',
+      metadata: {
+        fromChat: true,
+        chatId: chatId,
+        materialType: material.type,
+        mimeType: isGenImage ? 'image/png' : material.mimeType,
+        source_file: isGenImage
+          ? `${material.metadata?.imageId || 'image'}.png`
+          : (material.metadata?.filename || material.title),
+        ...material.metadata,
+        // For generated images, provide thumbnail URL for preview
+        ...(isGenImage && material.metadata?.url ? { thumbnailLink: material.metadata.url } : {}),
+      },
+    };
+  };
 
   const selectedItems = materials
     .filter((m) => selectedMaterialIds.has(m.id))
     .map(materialToCollectionItem);
 
-  const getTypeLabel = (type) => {
+  const isImageMimeType = (mimeType) => mimeType && mimeType.startsWith('image/');
+
+  const getTypeLabel = (type, mimeType) => {
     switch (type) {
-      case 'upload': return 'Dokument';
+      case 'upload': return isImageMimeType(mimeType) ? 'Bild' : 'Dokument';
+      case 'generated_image': return 'Generiertes Bild';
       case 'transcript': return 'Transkript';
       case 'skill_result': return 'Skill-Ergebnis';
       case 'user_marked': return 'Markiert';
@@ -2037,13 +2054,41 @@ function MaterialsSidebar({
     }
   };
 
-  const getTypeIcon = (type) => {
+  const getMaterialPreview = (material) => {
+    if (material.type === 'upload') {
+      return `Datei: ${material.metadata?.filename || material.title}`;
+    }
+    if (material.type === 'generated_image') {
+      return material.metadata?.prompt || material.title;
+    }
+    if (!material.content) return null;
+    return material.content.slice(0, 100) + (material.content.length > 100 ? '...' : '');
+  };
+
+  const getTypeIcon = (type, mimeType) => {
     switch (type) {
       case 'upload':
+        if (isImageMimeType(mimeType)) {
+          return (
+            <svg style={materialsSidebarStyles.materialTypeIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+          );
+        }
         return (
           <svg style={materialsSidebarStyles.materialTypeIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <polyline points="14 2 14 8 20 8" />
+          </svg>
+        );
+      case 'generated_image':
+        return (
+          <svg style={materialsSidebarStyles.materialTypeIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
           </svg>
         );
       case 'transcript':
@@ -2100,6 +2145,50 @@ function MaterialsSidebar({
         </button>
       </div>
 
+      {/* Select all / deselect all */}
+      {materials.length > 1 && (
+        <div style={{
+          padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+          borderBottom: `1px solid ${theme.colors.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+        }}>
+          <input
+            type="checkbox"
+            checked={materials.length > 0 && selectedMaterialIds.size === materials.length}
+            ref={(el) => {
+              if (el) el.indeterminate = selectedMaterialIds.size > 0 && selectedMaterialIds.size < materials.length;
+            }}
+            onChange={() => {
+              if (selectedMaterialIds.size === materials.length) {
+                // Deselect all
+                materials.forEach((m) => {
+                  if (selectedMaterialIds.has(m.id)) onToggleSelection(m.id);
+                });
+              } else {
+                // Select all
+                materials.forEach((m) => {
+                  if (!selectedMaterialIds.has(m.id)) onToggleSelection(m.id);
+                });
+              }
+            }}
+            style={{ accentColor: theme.colors.primary, width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, cursor: 'pointer' }}
+            onClick={() => {
+              if (selectedMaterialIds.size === materials.length) {
+                materials.forEach((m) => { if (selectedMaterialIds.has(m.id)) onToggleSelection(m.id); });
+              } else {
+                materials.forEach((m) => { if (!selectedMaterialIds.has(m.id)) onToggleSelection(m.id); });
+              }
+            }}
+          >
+            {selectedMaterialIds.size === materials.length ? 'Alle abwählen' : 'Alle auswählen'}
+          </span>
+        </div>
+      )}
+
       {/* Content */}
       <div style={materialsSidebarStyles.content}>
         {materials.length === 0 ? (
@@ -2135,19 +2224,38 @@ function MaterialsSidebar({
                   style={materialsSidebarStyles.materialCheckbox}
                   onClick={(e) => e.stopPropagation()}
                 />
+                <DocumentThumbnail
+                  size={64}
+                  filename={
+                    material.type === 'generated_image'
+                      ? `${material.metadata?.imageId || 'image'}.png`
+                      : (material.metadata?.filename || material.title)
+                  }
+                  mimeType={material.type === 'generated_image' ? 'image/png' : material.mimeType}
+                  url={
+                    material.type === 'upload' && chatId && material.metadata?.attachmentId
+                      ? `${API_URL}/chats/${chatId}/attachments/${material.metadata.attachmentId}`
+                      : material.type === 'generated_image' && material.metadata?.url
+                        ? material.metadata.url
+                        : undefined
+                  }
+                />
                 <div style={materialsSidebarStyles.materialInfo}>
                   <div style={materialsSidebarStyles.materialTitle} title={material.title}>
                     {material.title}
                   </div>
                   <div style={materialsSidebarStyles.materialType}>
-                    {getTypeIcon(material.type)}
-                    <span>{getTypeLabel(material.type)}</span>
+                    {getTypeIcon(material.type, material.mimeType)}
+                    <span>{getTypeLabel(material.type, material.mimeType)}</span>
                   </div>
-                  {material.content && (
-                    <div style={materialsSidebarStyles.materialPreview}>
-                      {material.content.slice(0, 100)}...
-                    </div>
-                  )}
+                  {(() => {
+                    const preview = getMaterialPreview(material);
+                    return preview ? (
+                      <div style={materialsSidebarStyles.materialPreview}>
+                        {preview}
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
                 <button
                   style={{
@@ -2230,9 +2338,11 @@ function MaterialsSidebar({
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
           selectedItems={selectedItems}
-          onSuccess={() => {
+          onSuccess={(collectionId) => {
             setShowAddModal(false);
-            // Optionally clear selection
+            if (collectionId) {
+              navigate(`/knowledge?collection=${collectionId}`);
+            }
           }}
         />
       )}
@@ -2669,7 +2779,7 @@ function getAbsoluteUrl(relativeUrl) {
 }
 
 // Message Attachments - Renders attachments in chat history
-function MessageAttachments({ attachments, onOpenLightbox }) {
+function MessageAttachments({ attachments, onOpenLightbox, onAddAudioMaterial, materials = [] }) {
   if (!attachments || attachments.length === 0) return null;
 
   return (
@@ -2685,6 +2795,7 @@ function MessageAttachments({ attachments, onOpenLightbox }) {
                 url={absoluteUrl}
                 filename={filename}
                 mimeType={mimeType}
+                onAddToCollection={onAddAudioMaterial && !materials.some(m => m.id === `material_${id}_audio`) ? () => onAddAudioMaterial(attachment) : undefined}
               />
               {transcription && (
                 <TranscriptBlock text={transcription} />
@@ -3048,6 +3159,7 @@ function ChatWindow({
   onAddMaterial,
   onRemoveMaterial,
 }) {
+  const navigate = useNavigate();
   const [input, setInput] = useState('');
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [commandMessage, setCommandMessage] = useState(null);
@@ -3070,6 +3182,7 @@ function ChatWindow({
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const { executeCommand } = useCommands();
+  const toast = useToast();
 
   // Audio recording and transcription hooks
   const { isRecording, formattedTime, error: recordingError, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
@@ -3779,9 +3892,12 @@ function ChatWindow({
                     isMarkedAsMaterial={materials.some(m => m.sourceMessageIndex === index)}
                     onAddImageMaterial={onAddMaterial ? (imageData) => {
                       onAddMaterial({
+                        id: `material_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
                         type: 'generated_image',
+                        title: imageData.prompt || 'Generiertes Bild',
                         content: `![${imageData.prompt}](${imageData.url})`,
                         sourceMessageIndex: index,
+                        createdAt: Date.now(),
                         metadata: {
                           imageId: imageData.imageId,
                           url: imageData.url,
@@ -3800,6 +3916,23 @@ function ChatWindow({
                       <MessageAttachments
                         attachments={msg.attachments}
                         onOpenLightbox={(data) => setLightboxData(data)}
+                        materials={materials}
+                        onAddAudioMaterial={onAddMaterial ? (attachment) => {
+                          onAddMaterial({
+                            id: `material_${attachment.id}_audio`,
+                            type: 'upload',
+                            title: attachment.filename || 'Audio-Datei',
+                            content: `Audio-Datei: ${attachment.filename}`,
+                            mimeType: attachment.mimeType,
+                            sourceMessageIndex: index,
+                            createdAt: Date.now(),
+                            metadata: {
+                              filename: attachment.filename,
+                              attachmentId: attachment.id,
+                            },
+                          });
+                          toast.success('Material hinzugefügt', attachment.filename || 'Audio-Datei wurde zu Materialien hinzugefügt');
+                        } : undefined}
                       />
                     )}
                     {/* User message text */}

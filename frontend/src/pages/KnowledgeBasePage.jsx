@@ -724,6 +724,16 @@ function KnowledgeBasePage() {
     collectionDetail?.documents,
   );
 
+  // Reload metadata for documents that just finished indexing
+  useEffect(() => {
+    if (!liveDocuments?.length || !selectedCollection) return;
+    for (const doc of liveDocuments) {
+      if (doc.status === 'ready' && !documentMetaCache[doc.document_id]) {
+        loadDocumentMetaForCache(doc.document_id, selectedCollection);
+      }
+    }
+  }, [liveDocuments, selectedCollection]);
+
   // ==========================================
   // Data Loading
   // ==========================================

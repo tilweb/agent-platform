@@ -1783,6 +1783,8 @@ function parseManifestYaml(yaml: string): {
     document_type?: string;
     summary?: string;
     keywords?: string[];
+    status?: string;
+    source_file?: string;
   }>;
 } {
   const collectionId = yaml.match(/collection_id:\s*"?([^"\n]+)"?/)?.[1]?.trim() || '';
@@ -1798,6 +1800,8 @@ function parseManifestYaml(yaml: string): {
     document_type?: string;
     summary?: string;
     keywords?: string[];
+    status?: string;
+    source_file?: string;
   }> = [];
 
   // Split by "- document_id:"
@@ -1809,6 +1813,8 @@ function parseManifestYaml(yaml: string): {
     const path = block.match(/path:\s*"?([^"\n]+)"?/)?.[1]?.trim() || '';
     const indexedDate = block.match(/indexed_date:\s*"?([^"\n]+)"?/)?.[1]?.trim() || '';
     const docType = block.match(/document_type:\s*"?([^"\n]+)"?/)?.[1]?.trim();
+    const status = block.match(/status:\s*"?([^"\n]+)"?/)?.[1]?.trim();
+    const sourceFile = block.match(/source_file:\s*"?([^"\n]+)"?/)?.[1]?.trim();
     const summary = block.match(/summary:\s*"?([^"\n]+)"?/)?.[1]?.trim();
 
     const keywords: string[] = [];
@@ -1825,6 +1831,8 @@ function parseManifestYaml(yaml: string): {
         path,
         indexed_date: indexedDate,
         ...(docType ? { document_type: docType } : {}),
+        ...(status ? { status } : {}),
+        ...(sourceFile ? { source_file: sourceFile } : {}),
         ...(summary ? { summary } : {}),
         ...(keywords.length ? { keywords } : {}),
       });

@@ -5,6 +5,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { theme } from '../config/theme';
+import { DownloadIcon } from './Icons';
 
 const styles = {
   container: {
@@ -74,6 +75,20 @@ const styles = {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.error,
   },
+  actionButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: 'transparent',
+    color: theme.colors.textMuted,
+    border: 'none',
+    cursor: 'pointer',
+    flexShrink: 0,
+    transition: `all ${theme.transitions.fast}`,
+  },
 };
 
 function formatTime(seconds) {
@@ -83,7 +98,7 @@ function formatTime(seconds) {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function AudioPlayer({ url, filename }) {
+export function AudioPlayer({ url, filename, onAddToCollection }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -161,6 +176,23 @@ export function AudioPlayer({ url, filename }) {
     setCurrentTime(newTime);
   }, [duration]);
 
+  const handleDownload = useCallback(async () => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename || 'audio.m4a';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error('Download failed:', err);
+    }
+  }, [url, filename]);
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -223,6 +255,30 @@ export function AudioPlayer({ url, filename }) {
       <span style={styles.time}>
         {formatTime(currentTime)} / {formatTime(duration)}
       </span>
+
+      {onAddToCollection && (
+        <button
+          style={styles.actionButton}
+          onClick={onAddToCollection}
+          title="Zu Materialien hinzufügen"
+          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+        >
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+      )}
+
+      <button
+        style={styles.actionButton}
+        onClick={handleDownload}
+        title="Herunterladen"
+        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+      >
+        <DownloadIcon size={16} />
+      </button>
 
       <style>{`
         @keyframes spin {

@@ -398,9 +398,10 @@ function ChatPage() {
   // Handle adding a material
   const handleAddMaterial = useCallback(async (material) => {
     if (!activeChatId) {
-      // If no active chat yet, just add to local state
-      // It will be persisted when the chat is saved
-      setMaterials(prev => [...prev, material]);
+      setMaterials(prev => {
+        if (prev.some(m => m.id === material.id)) return prev;
+        return [...prev, material];
+      });
       return;
     }
 
@@ -408,7 +409,10 @@ function ChatPage() {
     try {
       const res = await apiPost(`/chats/${activeChatId}/materials`, material);
       if (res.ok) {
-        setMaterials(prev => [...prev, material]);
+        setMaterials(prev => {
+          if (prev.some(m => m.id === material.id)) return prev;
+          return [...prev, material];
+        });
       } else {
         console.error('Failed to add material');
       }
