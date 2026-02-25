@@ -107,8 +107,10 @@ backend/data/connections/connectors/*/credentials.yaml
 # Connection registry (runtime state)
 backend/data/connections/registry.yaml
 
-# User connection tokens (verschlüsselt)
-backend/data/connections/tokens/
+# User connection tokens (verschlüsselt, inkl. Legacy user_*-Dirs)
+backend/data/connections/tokens/*
+!backend/data/connections/tokens/.gitkeep
+backend/data/connections/user_*/
 
 # Usage tracking
 backend/data/usage/*

@@ -62,7 +62,7 @@ models:
       - embeddings
     default: false
     base_url: https://api.betacor.ai/embeddings/privateai/multilingual-e5-large/v1/embeddings
-    enabled: false
+    enabled: true
     workplace: true
     feature_set: 416
     feature_urls:
@@ -77,7 +77,7 @@ models:
       - vision
     default: false
     base_url: https://api.betacor.ai/chat/privateai/gemma-3-27b-32k/v1/chat/completions
-    enabled: false
+    enabled: true
     workplace: true
     feature_set: 387
     feature_urls:

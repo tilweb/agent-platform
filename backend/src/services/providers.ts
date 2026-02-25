@@ -642,11 +642,6 @@ export async function updateModel(
       throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
     }
 
-    // Block manual re-enabling of sync-deactivated models (only those with feature_set)
-    if (existingModel.enabled === false && updates.enabled === true && existingModel.feature_set != null) {
-      throw new Error('Sync-deaktivierte Modelle können nur durch API-Synchronisierung reaktiviert werden');
-    }
-
     // Block setting default on listed-only models (workplace: false)
     if (updates.default === true && existingModel.workplace === false) {
       throw new Error('Nur-gelistete Modelle (ohne Workplace-Freigabe) können nicht als Standard gesetzt werden');

@@ -1092,7 +1092,7 @@ function ProvidersPage({ embedded = false }) {
   // Selection helpers
   const getSelection = (providerId) => selectedModels[providerId] || new Set();
   const getSelectableModels = (provider) =>
-    provider.models.filter(m => m.workplace !== false && !m.protected && !(m.feature_set != null && m.enabled === false));
+    provider.models.filter(m => m.workplace !== false && !m.protected);
 
   const toggleModelSelection = (providerId, modelId) => {
     setSelectedModels(prev => {
@@ -1890,7 +1890,7 @@ function ProvidersPage({ embedded = false }) {
                           const isLast = index === provider.models.length - 1;
                           const isDisabled = model.enabled === false;
                           const isListedOnly = model.workplace === false;
-                          const isSelectable = model.workplace !== false && !model.protected && !(model.feature_set != null && model.enabled === false);
+                          const isSelectable = model.workplace !== false && !model.protected;
                           const isSelected = getSelection(provider.id).has(model.id);
 
                           return (
@@ -2003,8 +2003,8 @@ function ProvidersPage({ embedded = false }) {
                                   </div>
                                 );
                               })()}
-                              {/* Toggle — not for sync-disabled or listed-only models */}
-                              {!(model.feature_set != null && model.enabled === false) && model.workplace !== false && (
+                              {/* Toggle — not for listed-only models */}
+                              {model.workplace !== false && (
                                 <button
                                   style={styles.actionButton}
                                   onClick={() => handleToggleModel(provider.id, model)}
@@ -2013,7 +2013,7 @@ function ProvidersPage({ embedded = false }) {
                                   {model.enabled === false ? <ToggleOffIcon /> : <ToggleOnIcon />}
                                 </button>
                               )}
-                              {!(model.feature_set != null && model.enabled === false) && (
+                              {model.workplace !== false && (
                                 <button
                                   style={styles.actionButton}
                                   onClick={() => handleEditModel(provider.id, model)}
