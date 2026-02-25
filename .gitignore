@@ -61,32 +61,41 @@ backend/data/auth/oauth-states/*
 !backend/data/auth/oauth-states/.gitkeep
 
 # Chat data
-backend/data/chats/
-backend/data/chat-uploads/
+backend/data/chats/*
+!backend/data/chats/.gitkeep
+backend/data/chat-uploads/*
+!backend/data/chat-uploads/.gitkeep
 backend/data/chat-folders.yaml
-backend/data/chats/chat-folders.yaml
-backend/data/conversations/
+backend/data/conversations/*
+!backend/data/conversations/.gitkeep
 
 # Knowledge base (user documents)
-backend/data/knowledge-base/
+backend/data/knowledge-base/*
+!backend/data/knowledge-base/.gitkeep
 
 # Generated content
-backend/data/generated-images/
-backend/data/exports/
+backend/data/generated-images/*
+!backend/data/generated-images/.gitkeep
+backend/data/exports/*
+!backend/data/exports/.gitkeep
 
 # Task queue & results
-backend/data/tasks/
+backend/data/tasks/*
+!backend/data/tasks/.gitkeep
 backend/data/results/
 backend/data/plans/
 
 # Space runtime data
-backend/data/spaces/
+backend/data/spaces/*
+!backend/data/spaces/.gitkeep
 
 # Table data
-backend/data/tables/
+backend/data/tables/*
+!backend/data/tables/.gitkeep
 
 # User memory
-backend/data/memory/
+backend/data/memory/*
+!backend/data/memory/.gitkeep
 
 # Provider configs (may contain encrypted API keys)
 # Ignore everything inside providers/ except the adacor default provider
@@ -102,10 +111,12 @@ backend/data/connections/registry.yaml
 backend/data/connections/tokens/
 
 # Usage tracking
-backend/data/usage/
+backend/data/usage/*
+!backend/data/usage/.gitkeep
 
 # Audit logs
-backend/data/audit/
+backend/data/audit/*
+!backend/data/audit/.gitkeep
 
 # Apps (user-created and runtime data)
 backend/data/apps/
