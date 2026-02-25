@@ -88,8 +88,10 @@ backend/data/tables/
 # User memory
 backend/data/memory/
 
-# Provider configs (contains encrypted API keys, created by migration)
-backend/data/providers/
+# Provider configs (may contain encrypted API keys)
+# Ignore everything inside providers/ except the adacor default provider
+backend/data/providers/*
+!backend/data/providers/adacor/
 
 # Connection connector credentials (verschlüsselte OAuth-Creds)
 backend/data/connections/connectors/*/credentials.yaml
