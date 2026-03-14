@@ -51,7 +51,7 @@ function buildCSP(config: SecurityHeadersConfig): string {
   directives.push(`script-src ${scriptSources.join(' ')}`);
 
   // Styles - many React apps need unsafe-inline for styled-components, emotion, etc.
-  const styleSources = ["'self'"];
+  const styleSources = ["'self'", 'https://fonts.googleapis.com'];
   if (config.allowInlineStyles !== false) {
     styleSources.push("'unsafe-inline'");
   }
@@ -67,8 +67,8 @@ function buildCSP(config: SecurityHeadersConfig): string {
   }
   directives.push(`img-src ${imgSources.join(' ')}`);
 
-  // Fonts
-  directives.push("font-src 'self' data:");
+  // Fonts - allow Google Fonts
+  directives.push("font-src 'self' data: https://fonts.gstatic.com");
 
   // Connect (API calls, WebSocket)
   const connectSources = ["'self'"];

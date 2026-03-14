@@ -22,6 +22,8 @@ interface CSRFConfig {
 
 /**
  * Get allowed origins from environment
+ * Re-reads env vars on each call to support Railway-style deployments
+ * where env vars are set after the module is first imported.
  */
 function getDefaultAllowedOrigins(): string[] {
   const origins: string[] = [];
@@ -29,13 +31,13 @@ function getDefaultAllowedOrigins(): string[] {
   // Frontend URL from environment
   const frontendUrl = process.env.FRONTEND_URL;
   if (frontendUrl) {
-    origins.push(frontendUrl);
+    origins.push(frontendUrl.replace(/\/$/, '')); // strip trailing slash
   }
 
   // Backend URL (for same-origin requests)
   const apiBaseUrl = process.env.API_BASE_URL;
   if (apiBaseUrl) {
-    origins.push(apiBaseUrl);
+    origins.push(apiBaseUrl.replace(/\/$/, '')); // strip trailing slash
   }
 
   // Development: allow localhost variants
@@ -121,7 +123,6 @@ function hasValidContentType(c: Context): boolean {
  */
 export function csrfProtection(config: CSRFConfig = {}): MiddlewareHandler {
   const {
-    allowedOrigins = getDefaultAllowedOrigins(),
     skipPaths = [],
     skip,
   } = config;
@@ -144,6 +145,9 @@ export function csrfProtection(config: CSRFConfig = {}): MiddlewareHandler {
     if (skipPaths.some(p => path.startsWith(p))) {
       return next();
     }
+
+    // Resolve allowed origins on each request (env vars may be set after module load)
+    const allowedOrigins = config.allowedOrigins ?? getDefaultAllowedOrigins();
 
     // Get Origin header
     const origin = c.req.header('origin');
