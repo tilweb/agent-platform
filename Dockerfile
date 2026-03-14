@@ -33,22 +33,21 @@ ENV PORT=3001
 
 EXPOSE 3001
 
-# Initialize volumes if empty, run seed script, start server
+# Single volume at /app/data holds everything.
+# backend/data/ is a symlink into the volume.
 CMD sh -c '\
-  echo "=== Initializing data volumes ===" && \
+  echo "=== Initializing data volume ===" && \
   if [ -z "$(ls -A /app/data 2>/dev/null)" ]; then \
     echo "Volume /app/data is empty, copying seed data..." && \
-    cp -r /app/backend/data-seed/* /app/data/; \
+    cp -r /app/backend/data-seed/* /app/data/ && \
+    mkdir -p /app/data/backend-data && \
+    cp -r /app/backend/backend-data-seed/* /app/data/backend-data/; \
   else \
     echo "Volume /app/data already initialized."; \
   fi && \
-  if [ -z "$(ls -A /app/backend/data 2>/dev/null)" ]; then \
-    echo "Volume /app/backend/data is empty, copying seed data..." && \
-    mkdir -p /app/backend/data && \
-    cp -r /app/backend/backend-data-seed/* /app/backend/data/; \
-  else \
-    echo "Volume /app/backend/data already initialized."; \
-  fi && \
+  echo "=== Linking backend/data ===" && \
+  rm -rf /app/backend/data && \
+  ln -s /app/data/backend-data /app/backend/data && \
   echo "=== Running seed script ===" && \
   bun run /app/backend/scripts/seed-demo-users.ts && \
   echo "=== Starting server ===" && \
