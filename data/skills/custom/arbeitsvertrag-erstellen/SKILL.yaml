@@ -1,0 +1,123 @@
+id: arbeitsvertrag-erstellen
+name: Arbeitsvertrag erstellen
+version: "1.0"
+description: Erstellt auf Basis eines Templates und spezifische Angaben einen Arbeitsvertrag als Word Dokument
+metadata:
+  use_when: ""
+  output_type: ""
+allowed_tools:
+  - export_document
+knowledge:
+  files:
+    - template-unbefristet-vollzeit
+    - template-minijob
+  collections: []
+triggers:
+  keywords: []
+tools:
+  required: []
+  optional: []
+instructions: |-
+  Erstellt einen rechtssicheren deutschen Arbeitsvertrag als Word-Dokument. Auslöser sind alle Anfragen, bei denen ein neuer Mitarbeitender eingestellt wird, ein Vertrag erstellt, geändert oder erneuert werden soll – auch bei Formulierungen wie "neue Stelle besetzen", "jemanden einstellen", "Vertragsunterlagen vorbereiten" oder "Vertrag für [Name]". Unterstützt zwei Vertragsarten: unbefristet Vollzeit, Minijob. Immer diesen Skill verwenden, wenn ein Arbeitsvertrag erzeugt werden soll.
+
+  # Skill: Arbeitsvertrag erstellen
+
+  ## Überblick
+  Dieser Skill führt den Agenten Schritt für Schritt durch die Erstellung eines vollständigen
+  Arbeitsvertrags. Am Ende wird das fertige Dokument über export_document als Word-Datei ausgegeben.
+
+  ## Schritt 1 – Pflichtdaten erfassen
+  Bevor das Template befüllt wird, müssen folgende Angaben vollständig vorliegen.
+  Fehlende Felder kompakt (max. eine Nachfrage) beim Nutzer erfragen.
+
+  ### Personaldaten
+
+  {{VORNAME}} Vorname der/des Mitarbeitenden
+
+  {{NACHNAME}} Nachname
+
+  {{GEBURTSDATUM}} TT.MM.JJJJ
+
+  {{ADRESSE}}Straße, PLZ, Ort
+
+  ### Stellendaten
+
+  {{STELLENBEZEICHNUNG}} Offizielle Jobbezeichnung
+
+  {{ABTEILUNG}} Abteilung / Team✅
+
+  {{VORGESETZTE_R}} Name der direkten Führungskraft✅
+
+  {{EINTRITTSDATUM}} TT.MM.JJJJ✅
+
+  {{ARBEITSORT}} Primärer Arbeitsort / Remote-Regelung✅
+
+  ### Vergütung & Zeit
+
+  {{BRUTTOGEHALT}} Monatsbrutto in EUR
+
+  {{WOCHENSTUNDEN}} Vertragliche Wochenstunden
+
+  {{URLAUBSTAGE}} Kalendertage p.a. (min. 20 bei 5-Tage-Woche)
+
+  {{PROBEZEIT_MONATE}}0–6 Monate (0 = keine Probezeit)
+
+
+  ## Schritt 2 – Vertragsart bestimmen
+  Leite die Vertragsart aus den erfassten Daten ab:
+  BRUTTOGEHALT <= 556 EUR/Monat   → minijob
+  sonst                           → unbefristet_vollzeit
+  Falls die Angaben widersprüchlich sind (z. B. hohe Stundenzahl + niedriges Gehalt), Rückfrage stellen.
+  Lade dann das passende Template aus den hinterlegten Dateien.
+  Vollzeit: template_unbefristet_vollzeit.md
+  Minijob: template_minijob.md
+
+  Hinweis: Beide Templates nutzen identische {{VARIABLE}}-Syntax.
+  Vertragsartspezifische Klauseln (z. B. SV-Hinweise beim Minijob) sind bereits im jeweiligen Template enthalten.
+
+
+  ## Schritt 3 – Template befüllen
+  Ersetze systematisch alle {{VARIABLE}}-Platzhalter im geladenen Template.
+  Prüfe nach dem Befüllen, ob noch offene {{ im Text vorhanden sind – falls ja, Fehler melden.
+  Abgeleitete Felder (automatisch berechnen, nicht erfragen)
+
+  {{KUENDIGUNGSFRIST_PROBEZEIT}} → immer „2 Wochen" (§ 622 Abs. 3 BGB)
+  {{KUENDIGUNGSFRIST_NACH_PROBEZEIT}} → „4 Wochen zum 15. oder Monatsende" (§ 622 Abs. 1 BGB)
+  {{DATUM_HEUTE}} → aktuelles Datum TT.MM.JJJJ
+  {{JAHRESGEHALT}} → BRUTTOGEHALT * 12 (formatiert als „XX.XXX,00 EUR")
+  {{URLAUBSANSPRUCH_ANTEILIG}} → Nur bei unterjährigem Eintritt: Tage anteilig berechnen
+
+
+  ## Schritt 4 – Dokument exportieren
+  Rufe das Tool export_document mit folgenden Parametern auf:
+
+  Dateinamenskonvention: Arbeitsvertrag_[Nachname]_[Vorname]_[Eintrittsdatum im Format JJJJ-MM-TT].docx
+  Beispiel: Arbeitsvertrag_Mueller_Anna_2025-05-01.docx
+
+  ## Schritt 5 – Ausgabe & Freigabehinweis
+
+  Nach erfolgreichem Export:
+
+  Bestätige dem Nutzer: Dateiname, Vertragsart, Eintrittsdatum
+  Gib folgende Pflichthinweise aus:
+
+  ⚠️ Freigabe erforderlich: Dieser Vertrag muss vor Übergabe an die/den Mitarbeitenden
+  von HR-Leitung und (bei Abweichungen vom Standardmuster) der Rechtsabteilung geprüft
+  und freigegeben werden.
+
+  📋 Nächste Schritte: Nach Freigabe → Vertrag in zweifacher Ausfertigung ausdrucken →
+  beide Parteien unterschreiben → je eine Ausfertigung aushändigen → Scan in Personalakte.
+
+  Fehlerbehandlung
+  SituationVerhaltenPflichtfeld fehltEinmalig alle fehlenden Felder gemeinsam abfragenVertragsart unklarRückfrage: „Unbefristet Vollzeit oder Minijob?"export_document schlägt fehlFehlermeldung ausgeben + befüllten Markdown-Text als Fallback direkt ausgebenMinijob-Gehalt > 556 EURWarnung: „Grenze für Minijob überschritten – bitte Vertragsart prüfen"Probezeit > 6 Monate angegebenWarnung: „Probezeit darf 6 Monate nicht überschreiten (§ 622 BGB)"Minijob + weitere MinijobsHinweis: „Bitte prüfen ob Zusammenrechnung mit anderen geringfügigen Beschäftigungen relevant ist (§ 8 Abs. 2 SGB IV)"
+
+  Wichtige Rechtshinweise (im Gedächtnis behalten)
+
+  NachwG: Alle wesentlichen Vertragsbedingungen müssen schriftlich dokumentiert sein.
+  MiLoG: Stundenentgelt nie unter gesetzlichem Mindestlohn (aktuell prüfen).
+  SGB IV § 8: Minijob-Grenze liegt bei 556 EUR/Monat (dynamisch, an Mindestlohn gekoppelt).
+  AGG: Keine diskriminierenden Formulierungen im Vertrag.
+  Der Agent gibt keine arbeitsrechtliche Beratung – er befüllt Vorlagen
+workflow: null
+output: null
+enabled: true

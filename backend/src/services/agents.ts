@@ -47,6 +47,8 @@ export interface AgentConfig {
   internal: boolean;
   system: boolean;  // true = vorinstalliert, nicht editierbar
   systemPrompt: string;
+  /** Whether the agent is active (default: true). Inactive agents are hidden from chat and delegation. */
+  active?: boolean;
   /** Model configuration for this agent */
   model?: AgentModelConfig;
   /** List of skill IDs this agent can use (when skillMode is 'allow') */
@@ -55,8 +57,11 @@ export interface AgentConfig {
    * Skill access mode:
    * - 'all' (default): Agent can use ALL available skills
    * - 'allow': Agent can ONLY use skills listed in `skills` array
+   * - 'none': Agent cannot use any skills
    */
-  skillMode?: 'all' | 'allow';
+  skillMode?: 'all' | 'allow' | 'none';
+  /** Maximum iterations for this agent (overrides default in delegation loop) */
+  maxIterations?: number;
 }
 
 interface AgentFrontmatter {
@@ -66,6 +71,7 @@ interface AgentFrontmatter {
   capabilities?: string[];
   tools?: string[];
   delegatable?: boolean;
+  active?: boolean;
   internal?: boolean;
   system?: boolean;
   /** Model configuration */
@@ -77,8 +83,10 @@ interface AgentFrontmatter {
   };
   /** Skill IDs this agent can use */
   skills?: string[];
-  /** Skill access mode: 'all' (default) or 'allow' */
-  skillMode?: 'all' | 'allow';
+  /** Skill access mode: 'all' (default), 'allow', or 'none' */
+  skillMode?: 'all' | 'allow' | 'none';
+  /** Maximum iterations for this agent */
+  maxIterations?: number;
 }
 
 /**
@@ -177,6 +185,12 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, any>; 
         currentArray = null;
         currentObject = null;
         inNestedObject = false;
+      } else if (/^\d+$/.test(value)) {
+        frontmatter[key] = parseInt(value, 10);
+        currentKey = null;
+        currentArray = null;
+        currentObject = null;
+        inNestedObject = false;
       } else {
         frontmatter[key] = value;
         currentKey = null;
@@ -230,12 +244,14 @@ export async function loadAgent(agentId: string): Promise<AgentConfig | null> {
     capabilities: fm.capabilities || [],
     tools: fm.tools || ['file_read', 'file_list'],
     delegatable: fm.delegatable !== false,
+    active: fm.active !== false,  // Default: true
     internal: fm.internal === true,
     system: fm.system === true,
     systemPrompt: body,
     model: fm.model,
     skills: fm.skills,
     skillMode: fm.skillMode,
+    maxIterations: typeof fm.maxIterations === 'number' ? fm.maxIterations : undefined,
   };
 }
 
@@ -402,12 +418,14 @@ export async function loadAllAgents(): Promise<Map<string, AgentConfig>> {
         capabilities: fm.capabilities || [],
         tools: fm.tools || ['file_read', 'file_list'],
         delegatable: fm.delegatable !== false,
+        active: fm.active !== false,  // Default: true
         internal: fm.internal === true,
         system: fm.system === true,
         systemPrompt: body,
         model: fm.model,
         skills: fm.skills,
         skillMode: fm.skillMode,
+        maxIterations: typeof fm.maxIterations === 'number' ? fm.maxIterations : undefined,
       };
 
       agents.set(agent.id, agent);
@@ -431,19 +449,27 @@ export async function loadAllAgents(): Promise<Map<string, AgentConfig>> {
 }
 
 /**
- * List all non-internal agents (for UI)
+ * List all non-internal, active agents (for UI chat selection, supervisor prompt)
  */
 export async function listAgents(): Promise<AgentConfig[]> {
   const agents = await loadAllAgents();
-  return Array.from(agents.values()).filter(a => !a.internal);
+  return Array.from(agents.values()).filter(a => !a.internal && a.active !== false);
 }
 
 /**
- * List all delegatable agents (for delegation tool)
+ * List all delegatable, active agents (for delegation tool)
  */
 export async function listDelegatableAgents(): Promise<AgentConfig[]> {
   const agents = await loadAllAgents();
-  return Array.from(agents.values()).filter(a => a.delegatable);
+  return Array.from(agents.values()).filter(a => a.delegatable && a.active !== false);
+}
+
+/**
+ * List all non-internal agents including inactive (for admin UI)
+ */
+export async function listAllAgentsIncludingInactive(): Promise<AgentConfig[]> {
+  const agents = await loadAllAgents();
+  return Array.from(agents.values()).filter(a => !a.internal);
 }
 
 /**
@@ -500,12 +526,20 @@ function generateAgentMarkdown(agent: Omit<AgentConfig, 'systemPrompt'> & { syst
 
   lines.push(`delegatable: ${agent.delegatable}`);
 
+  if (agent.active === false) {
+    lines.push('active: false');
+  }
+
   if (agent.internal) {
     lines.push(`internal: true`);
   }
 
   if (agent.system) {
     lines.push(`system: true`);
+  }
+
+  if (agent.maxIterations) {
+    lines.push(`maxIterations: ${agent.maxIterations}`);
   }
 
   // Model configuration
@@ -564,9 +598,10 @@ export async function createAgent(agentData: {
   tools: string[];
   delegatable: boolean;
   systemPrompt: string;
+  active?: boolean;
   model?: AgentModelConfig;
   skills?: string[];
-  skillMode?: 'all' | 'allow';
+  skillMode?: 'all' | 'allow' | 'none';
 }): Promise<AgentConfig> {
   // Validate ID format
   if (!/^[a-z0-9_-]+$/.test(agentData.id)) {
@@ -601,6 +636,7 @@ export async function createAgent(agentData: {
 
   const content = generateAgentMarkdown({
     ...agentData,
+    active: agentData.active !== false,  // Default: true
     internal: false,
     system: false,  // User-created agents are never system agents
     model: modelConfig,
@@ -627,10 +663,11 @@ export async function updateAgent(agentId: string, agentData: {
   capabilities?: string[];
   tools?: string[];
   delegatable?: boolean;
+  active?: boolean;
   systemPrompt?: string;
   model?: AgentModelConfig;
   skills?: string[];
-  skillMode?: 'all' | 'allow';
+  skillMode?: 'all' | 'allow' | 'none';
 }): Promise<AgentConfig> {
   // Prevent editing connection agents
   if (await isConnectionAgent(agentId)) {
@@ -667,6 +704,7 @@ export async function updateAgent(agentId: string, agentData: {
     capabilities: agentData.capabilities ?? existing.capabilities,
     tools: agentData.tools ?? existing.tools,
     delegatable: agentData.delegatable ?? existing.delegatable,
+    active: agentData.active ?? existing.active,
     systemPrompt: agentData.systemPrompt ?? existing.systemPrompt,
     model: modelConfig,
     skills: agentData.skills ?? existing.skills,

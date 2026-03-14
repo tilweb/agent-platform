@@ -28,11 +28,14 @@ const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const ProjectChatPage = lazy(() => import('./pages/ProjectChatPage'));
 const SharedChatPage = lazy(() => import('./pages/SharedChatPage'));
 const AppsPage = lazy(() => import('./pages/AppsPage'));
+const ExtractionProjectsPage = lazy(() => import('./pages/ExtractionProjectsPage'));
 const ContractsPage = lazy(() => import('./apps/vertragsmanagement/ContractsPage'));
 const ContractUploadPage = lazy(() => import('./apps/vertragsmanagement/UploadPage'));
 const ContractDetailPage = lazy(() => import('./apps/vertragsmanagement/ContractDetail'));
 const ProjektePage = lazy(() => import('./apps/projektmanagement/ProjektePage'));
 const WizardPage = lazy(() => import('./apps/projektmanagement/WizardPage'));
+const LieferantenPage = lazy(() => import('./apps/lieferantenmanagement/LieferantenPage'));
+const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/SupplierDetailPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -169,6 +172,7 @@ function AppRoutes() {
                   <Route path="/projects" element={<ProjectsPage />} />
                   <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
                   <Route path="/projects/:projectId/chat" element={<ProjectChatPage />} />
+                  <Route path="/extraction" element={<ExtractionProjectsPage />} />
                   <Route path="/apps" element={<AppsPage />} />
                   <Route path="/apps/vertragsmanagement" element={<ContractsPage />} />
                   <Route path="/apps/vertragsmanagement/upload" element={<ContractUploadPage />} />
@@ -176,6 +180,8 @@ function AppRoutes() {
                   <Route path="/apps/projektmanagement" element={<ProjektePage />} />
                   <Route path="/apps/projektmanagement/neu" element={<WizardPage />} />
                   <Route path="/apps/projektmanagement/:id" element={<WizardPage />} />
+                  <Route path="/apps/lieferantenmanagement" element={<LieferantenPage />} />
+                  <Route path="/apps/lieferantenmanagement/:id" element={<SupplierDetailPage />} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>

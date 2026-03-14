@@ -1,0 +1,16 @@
+{
+  "id": "audit-mmnbb0l4-x4yg",
+  "supplier_id": "lief-mmnb75hw-85vv21",
+  "leistung_id": "leist-mmnb7i07-km8l",
+  "typ": "dokumentenpruefung",
+  "status": "abgeschlossen",
+  "geplant_fuer": "2025-06-15",
+  "durchgefuehrt_am": "2025-06-20",
+  "pruefer": "user_1770561498880_39ohgu5",
+  "ergebnis": null,
+  "bewertung": "bestanden",
+  "massnahmen": [],
+  "notizen": "Alle Dokumente vollstaendig und aktuell. ISO-Zertifikat geprueft.",
+  "created_at": "2026-03-12T10:15:33.304Z",
+  "updated_at": "2026-03-12T10:15:33.304Z"
+}

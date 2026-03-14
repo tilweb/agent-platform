@@ -1,0 +1,170 @@
+id: rechnung
+name: Rechnung
+description: Ein Rechnungsdokument mit Lieferanten- und Empfängerdaten,
+  Positionen und Gesamtbetrag.
+version: "1.0"
+detection:
+  keywords:
+    - Rechnung
+    - Rechnungsnummer
+    - Fällig am
+    - Gesamtbetrag
+    - Summe
+    - Fälliger Betrag
+  description: Dokument enthält typische Rechnungselemente wie Rechnungsnummer,
+    Ausstellungsdatum, Lieferant, Empfänger und einen Gesamtbetrag.
+fields:
+  kopfdaten:
+    rechnungsnummer:
+      type: text
+      required: true
+      label: Rechnungsnummer
+      hint: Die Rechnungsnummer ist in der ersten Zeile der Tabelle unter
+        'Rechnungsnummer' zu finden.
+    ausstellungsdatum:
+      type: date
+      required: true
+      label: Ausstellungsdatum
+      hint: "Das Ausstellungsdatum steht in der ersten Zeile der Tabelle unter
+        'Ausstellungsdatum'. Format: Tag Monat Jahr."
+    faelligAm:
+      type: date
+      required: true
+      label: Fällig am
+      hint: "Das Fälligkeitsdatum steht in der ersten Zeile der Tabelle unter 'Fällig
+        am'. Format: Tag Monat Jahr."
+  lieferant:
+    name:
+      type: text
+      required: true
+      label: Lieferant
+      hint: Der Lieferant ist in der ersten Zeile der Empfänger-Tabelle unter
+        'Rechnungsempfänger' zu finden.
+    strasse:
+      type: text
+      required: true
+      label: Lieferant - Straße
+      hint: Die Straße des Lieferanten steht in der zweiten Zeile der
+        Empfänger-Tabelle.
+    plz:
+      type: text
+      required: true
+      label: Lieferant - PLZ
+      hint: Die Postleitzahl des Lieferanten steht in der dritten Zeile der
+        Empfänger-Tabelle.
+    ort:
+      type: text
+      required: true
+      label: Lieferant - Ort
+      hint: Der Ort des Lieferanten steht in der vierten Zeile der Empfänger-Tabelle.
+    land:
+      type: text
+      required: true
+      label: Lieferant - Land
+      hint: Das Land des Lieferanten steht in der fünften Zeile der Empfänger-Tabelle.
+    email:
+      type: text
+      required: true
+      label: Lieferant - E-Mail
+      hint: Die E-Mail-Adresse des Lieferanten steht in der sechsten Zeile der
+        Empfänger-Tabelle.
+    vatId:
+      type: text
+      required: true
+      label: Lieferant - VAT-ID
+      hint: Die VAT-ID des Lieferanten steht in der siebten Zeile der
+        Empfänger-Tabelle.
+  empfaenger:
+    name:
+      type: text
+      required: true
+      label: Empfänger
+      hint: Der Empfänger ist in der ersten Zeile der Empfänger-Tabelle unter
+        'Rechnungsempfänger' zu finden.
+    strasse:
+      type: text
+      required: true
+      label: Empfänger - Straße
+      hint: Die Straße des Empfängers steht in der zweiten Zeile der
+        Empfänger-Tabelle.
+    plz:
+      type: text
+      required: true
+      label: Empfänger - PLZ
+      hint: Die Postleitzahl des Empfängers steht in der dritten Zeile der
+        Empfänger-Tabelle.
+    ort:
+      type: text
+      required: true
+      label: Empfänger - Ort
+      hint: Der Ort des Empfängers steht in der vierten Zeile der Empfänger-Tabelle.
+    land:
+      type: text
+      required: true
+      label: Empfänger - Land
+      hint: Das Land des Empfängers steht in der fünften Zeile der Empfänger-Tabelle.
+    email:
+      type: text
+      required: true
+      label: Empfänger - E-Mail
+      hint: Die E-Mail-Adresse des Empfängers steht in der sechsten Zeile der
+        Empfänger-Tabelle.
+    vatId:
+      type: text
+      required: true
+      label: Empfänger - VAT-ID
+      hint: Die VAT-ID des Empfängers steht in der siebten Zeile der
+        Empfänger-Tabelle.
+  positionen:
+    _array: true
+    _item_fields:
+      beschreibung:
+        type: text
+        required: true
+        label: Beschreibung
+        hint: Die Beschreibung der Position steht in der ersten Spalte der
+          Positionstabelle.
+      menge:
+        type: number
+        required: true
+        label: Menge
+        hint: Die Menge steht in der vierten Spalte der Positionstabelle.
+      preisProEinheit:
+        type: number
+        required: true
+        label: Preis pro Einheit
+        hint: Der Preis pro Einheit steht in der fünften Spalte der Positionstabelle.
+      betrag:
+        type: number
+        required: true
+        label: Betrag
+        hint: Der Betrag steht in der letzten Spalte der Positionstabelle.
+  finanzen:
+    gesamtbetrag:
+      type: number
+      required: true
+      label: Gesamtbetrag
+      hint: Der Gesamtbetrag ist in der letzten Zeile der Tabelle unter 'Fälliger
+        Betrag' zu finden.
+guidelines: >-
+  1. Extrahiere die Rechnungsnummer aus der ersten Zeile der Tabelle.
+
+  2. Extrahiere das Ausstellungsdatum und das Fälligkeitsdatum aus der ersten
+  Zeile der Tabelle.
+
+  3. Extrahiere die Lieferanten- und Empfängerdaten aus der zweiten Tabelle.
+
+  4. Extrahiere die Positionen aus der Positionstabelle, wobei die Spalten
+  'Beschreibung', 'Menge', 'Preis pro Einheit' und 'Betrag' verwendet werden.
+
+  5. Extrahiere den Gesamtbetrag aus der letzten Zeile der Tabelle unter
+  'Fälliger Betrag'.
+
+  6. Normalisiere die Werte: Entferne Leerzeichen, Sonderzeichen und führende
+  Nullen.
+
+  7. Konvertiere die Währung in Dollar (USD) und entferne das Währungssymbol
+  '$'.
+
+  8. Stelle sicher, dass alle erforderlichen Felder vorhanden sind, sonst setze
+  den Wert auf null oder leer.

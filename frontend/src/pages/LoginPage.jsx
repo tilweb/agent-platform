@@ -141,7 +141,7 @@ function LogoIcon() {
 }
 
 export default function LoginPage() {
-  const { login, register, initialized, loading: authLoading } = useAuth();
+  const { login, register, initialized, registrationEnabled, loading: authLoading } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -275,7 +275,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {initialized !== false && (
+        {initialized !== false && registrationEnabled && (
           <div style={styles.toggle}>
             {showRegister ? (
               <>

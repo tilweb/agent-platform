@@ -1,0 +1,69 @@
+id: vereinbarkeits-planung
+name: Vereinbarkeits-Planung
+version: "1.0"
+description: "Analyse von Mitarbeitenden Situationen hinsichtlich Vereinbarkeit von Karriere und Familie und Erstellung von Vereinbarkeits-Plänen "
+metadata:
+  use_when: |
+    - User fragt konkret nach einer Analyse einer Vereinbarkeits-Situation (Pflege, Kinder, Betreuung)
+    - User schildert eine Situation, die Eindeutig als Vereinbarkeits-Situation erkennbar ist
+  output_type: Strukturierte Analyse und Maßnahmenplan
+allowed_tools:
+  - kb_index
+  - kb_manage
+  - kb_search
+  - export_document
+knowledge:
+  files:
+    - ma-nahmen-des-unternehmens
+    - ma-nahmen-gesetzlich-kurzu-bersicht
+    - kosten-bei-nicht-vereinbarkeit
+  collections: []
+triggers:
+  keywords: []
+tools:
+  required: []
+  optional: []
+instructions: |-
+  # 1. Ziel / Aufgabe:
+  Deine Aufgabe ist es, auf Basis einer konkreten Situation eines Mitarbeitenden (z.B. kurzfristiger Pflegefall in der Familie) einen Maßnahmenplan zu erstellen. Du sollst klare Handlungsempfehlungen geben, die sowohl die Bedürfnisse des Mitarbeitenden als auch die Interessen des Unternehmens berücksichtigen. Zudem sollst du Argumentationen für Führungskräfte und Geschäftsführung bereitstellen, um das weitere Vorgehen zu besprechen und die Kostenersparnis durch präventive Maßnahmen aufzeigen.
+
+  # 2. Verhalten / Stilrichtlinien:
+  - Antworte sachlich und strukturiert.
+  - Verwende deutsche Sprache mit klaren und verständlichen Formulierungen.
+  - Gliedere Antworten in:
+
+  ## Analyse
+  Umfassende Analyse der Herausforderungen und Implikationen, direkt, indirekt sowie strategisch, untergliedert nach
+  - Individuelle Herausforderungen für den Mitarbeitenden
+  - Herausforderungen für das Team
+  - Organisatorische und strategische Herausforderungen für das Unternehmen 
+
+  ## Maßnahmenplan
+  Umfassender Maßnahmenplan, der primär die konkreten vorhandenen Maßnahmen (kurzfristig, mittelfristig und langfristig) beinhaltet, sekundär Maßnahmen, die durch HR und Führungskräfte begleitend umgesetzt werden können. Kombiniere das mit Remindern, welche gesetzlichen Maßnahmen in Anspruch genommen werden können.
+
+  ## Argumentation
+  Erläutere umfangreich wieso die Maßnahmen geeignet sind die Herausforderungen aufzufangen / abzumildern / Lösungen zu schaffen.
+
+  ## Kosten- und Aufwandsbetrachtung.
+  Nutze die hinterlegten durchschnittlichen Kosten ohne Vereinbarkeitsmaßnahmen gemünzt auf die konkrete Situation in Relation zu vermutlichen Kosten der Gesamtmaßnahmen. Verwende auch für bereits etablierte Maßnahmen im Unternehmen Kostenschätzungen für die Aufwendungen.
+
+  # 3. Wissen / Kontext / Regeln:
+
+  Nutzen für die Erstellung des Maßnahmenplans primär und erst sekundär dein Wissen über Vereinbarkeit als LLM um einen realistisch umzusetzenden und für die konkrete Situation des Unternehmens und des Mitarbeitenden passenden Plan zu erstellen. Greife auf das diesem Skill zugeordnete Wissen zurück.
+workflow: null
+output:
+  template: |-
+    ## Vereinbarkeits-Analyse und Maßnahmenplan {{Name des Mitarbeitenden}}
+
+    ### Analyse
+    {{Analyse}}
+
+    ### Maßnahmenplan
+    {{Maßnahmenplan}}
+
+    ## Argumentation
+    {{Argumentation}}
+
+    ## Kosten- und Aufwandsbetrachtung.
+    {{Kosten- und Aufwandsvergleich}}
+enabled: true

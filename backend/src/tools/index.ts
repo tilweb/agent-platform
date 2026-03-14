@@ -33,8 +33,8 @@ export { LocalTool, ApiTool, McpTool, mcpClient } from './base';
 
 // Export tools
 export { localTools, fileReadTool, fileWriteTool, fileListTool } from './local';
-export { WebSearchTool, createWebSearchTool, ImageGenerationTool, createImageGenerationTool, ImageEditTool, createImageEditTool } from './api';
-export { DelegateToAgentTool, type DelegationHandler, UserMemoryTool, CreateTaskTool, ReadChatAttachmentTool, ExportDocumentTool, LoadSkillTool, type LoadSkillHandler, type SkillToolsCallback } from './special';
+export { WebSearchTool, createWebSearchTool, WebFetchTool, createWebFetchTool, ImageGenerationTool, createImageGenerationTool, ImageEditTool, createImageEditTool } from './api';
+export { DelegateToAgentTool, type DelegationHandler, UserMemoryTool, CreateTaskTool, ReadChatAttachmentTool, ExportDocumentTool, LoadSkillTool, type LoadSkillHandler, type SkillToolsCallback, ExtractDocumentTool } from './special';
 
 // Export knowledge tools
 export { KbSearchTool, KbIndexTool, KbManageTool, knowledgeTools } from './knowledge';
@@ -66,8 +66,8 @@ export { toolsConfig, isToolConfigured, getConfiguredApiTools } from './config';
 import { toolRegistry } from './registry';
 import { toolsConfig } from './config';
 import { localTools } from './local';
-import { WebSearchTool, ImageGenerationTool, ImageEditTool } from './api';
-import { DelegateToAgentTool, UserMemoryTool, CreateTaskTool, ReadChatAttachmentTool, ExportDocumentTool, LoadSkillTool } from './special';
+import { WebSearchTool, WebFetchTool, ImageGenerationTool, ImageEditTool } from './api';
+import { DelegateToAgentTool, UserMemoryTool, CreateTaskTool, ReadChatAttachmentTool, ExportDocumentTool, LoadSkillTool, ExtractDocumentTool } from './special';
 import { registerCustomTools } from './custom';
 import { knowledgeTools } from './knowledge';
 import { tableTools } from './tables';
@@ -101,6 +101,10 @@ export async function setupTools(): Promise<void> {
     provider: (webSearchConfig as any)?.provider || 'tavily',
   });
   toolRegistry.register(webSearchTool);
+
+  // Register web fetch tool
+  const webFetchTool = new WebFetchTool();
+  toolRegistry.register(webFetchTool);
 
   // Register delegation tool
   delegationTool = new DelegateToAgentTool(async () => {
@@ -145,6 +149,10 @@ export async function setupTools(): Promise<void> {
   // Register load_skill tool
   loadSkillTool = new LoadSkillTool();
   toolRegistry.register(loadSkillTool);
+
+  // Register extract_document tool
+  const extractDocumentTool = new ExtractDocumentTool();
+  toolRegistry.register(extractDocumentTool);
 
   // Register custom API tools
   await registerCustomTools();

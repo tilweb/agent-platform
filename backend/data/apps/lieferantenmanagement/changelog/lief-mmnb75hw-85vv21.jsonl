@@ -1,0 +1,14 @@
+{"timestamp":"2026-03-12T10:12:33.045Z","user":"user_1770561498880_39ohgu5","aktion":"erstellt","bereich":"stammdaten","details":{"firmenname":"CloudSecure GmbH"}}
+{"timestamp":"2026-03-12T10:12:49.224Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"ansprechpartner","neuer_wert":"Dr. Thomas Weber","details":{"aktion":"hinzugefuegt","id":"ap-mmnb7hzb-h5nc"}}
+{"timestamp":"2026-03-12T10:12:49.232Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"ansprechpartner","neuer_wert":"Lisa Hartmann","details":{"aktion":"hinzugefuegt","id":"ap-mmnb7hzk-smqn"}}
+{"timestamp":"2026-03-12T10:12:49.241Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"zertifizierungen","neuer_wert":"ISO27001","details":{"aktion":"hinzugefuegt","id":"zert-mmnb7hzs-qt91"}}
+{"timestamp":"2026-03-12T10:12:49.248Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"zertifizierungen","neuer_wert":"TISAX","details":{"aktion":"hinzugefuegt","id":"zert-mmnb7i00-pm41"}}
+{"timestamp":"2026-03-12T10:12:49.255Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","neuer_wert":"Managed SIEM","details":{"aktion":"hinzugefuegt","id":"leist-mmnb7i07-km8l"}}
+{"timestamp":"2026-03-12T10:13:04.017Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","feld":"bia","neuer_wert":"very_high","details":{"leistung_id":"leist-mmnb7i07-km8l"}}
+{"timestamp":"2026-03-12T10:13:04.026Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"regulatorik","details":{"leistung_id":"leist-mmnb7i07-km8l"}}
+{"timestamp":"2026-03-12T10:13:04.034Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","details":{"id":"leist-mmnb7i07-km8l"}}
+{"timestamp":"2026-03-12T10:13:04.042Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","neuer_wert":"Penetration Testing","details":{"aktion":"hinzugefuegt","id":"leist-mmnb7tex-zs98"}}
+{"timestamp":"2026-03-12T10:13:15.315Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","feld":"bia","neuer_wert":"high","details":{"leistung_id":"leist-mmnb7tex-zs98"}}
+{"timestamp":"2026-03-12T10:13:15.324Z","user":"user_1770561498880_39ohgu5","aktion":"phase_gewechselt","bereich":"lifecycle","alter_wert":"vorbereitung","neuer_wert":"risikoanalyse"}
+{"timestamp":"2026-03-12T10:13:15.332Z","user":"user_1770561498880_39ohgu5","aktion":"phase_gewechselt","bereich":"lifecycle","alter_wert":"risikoanalyse","neuer_wert":"vertragspruefung"}
+{"timestamp":"2026-03-12T10:13:15.339Z","user":"user_1770561498880_39ohgu5","aktion":"phase_gewechselt","bereich":"lifecycle","alter_wert":"vertragspruefung","neuer_wert":"betrieb"}

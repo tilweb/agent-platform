@@ -1,0 +1,182 @@
+{
+  "id": "lief-mmnb75hw-85vv21",
+  "firmenname": "CloudSecure GmbH",
+  "status": "active",
+  "created_at": "2026-03-12T10:12:33.044Z",
+  "updated_at": "2026-03-12T10:13:15.339Z",
+  "created_by": "user_1770561498880_39ohgu5",
+  "stammdaten": {
+    "kundennummer": "LF-2024-001",
+    "vertragsnummern": [
+      "RV-2024-0815",
+      "SLA-2024-0816"
+    ],
+    "auftragsnummern": [
+      "AB-2024-1001"
+    ],
+    "adresse": {
+      "strasse": "Technopark-Allee 12",
+      "plz": "64295",
+      "ort": "Darmstadt",
+      "land": "Deutschland"
+    },
+    "url": "https://cloudsecure.example.de"
+  },
+  "ansprechpartner": [
+    {
+      "id": "ap-mmnb7hzb-h5nc",
+      "name": "Dr. Thomas Weber",
+      "rolle": "Account Manager",
+      "telefon": "+49 6151 9988-100",
+      "email": "t.weber@cloudsecure.example.de",
+      "ist_hauptansprechpartner": true
+    },
+    {
+      "id": "ap-mmnb7hzk-smqn",
+      "name": "Lisa Hartmann",
+      "rolle": "Technical Lead",
+      "telefon": "+49 6151 9988-201",
+      "email": "l.hartmann@cloudsecure.example.de",
+      "ist_hauptansprechpartner": false
+    }
+  ],
+  "zertifizierungen": [
+    {
+      "id": "zert-mmnb7hzs-qt91",
+      "typ": "ISO27001",
+      "gueltig_bis": "2027-03-15",
+      "ausgestellt_am": "2024-03-15",
+      "zertifizierer": "TÜV Rheinland",
+      "nachweis_vorhanden": true
+    },
+    {
+      "id": "zert-mmnb7i00-pm41",
+      "typ": "TISAX",
+      "gueltig_bis": "2026-09-30",
+      "ausgestellt_am": "2023-09-30",
+      "zertifizierer": "ENX Association",
+      "nachweis_vorhanden": true
+    }
+  ],
+  "leistungen": [
+    {
+      "id": "leist-mmnb7i07-km8l",
+      "bezeichnung": "Managed SIEM",
+      "abteilung": "IT",
+      "status": "active",
+      "beschreibung": "24/7 Security Information & Event Management inkl. SOC-Anbindung und Incident Response",
+      "risikobewertung": {
+        "bonitaet": "gut",
+        "bonitaet_datum": "2025-11-01",
+        "bonitaet_quelle": "Creditreform",
+        "dora_relevant": true,
+        "naechste_pruefung": "2026-11-10",
+        "bia": {
+          "sla_relevanz": "sla_kritisch",
+          "datenschutz_niveau": "gelegentlich_hoch",
+          "vertraulichkeit": "dauerhaft_hoch",
+          "kundenbezug": "indirekt",
+          "ausschreibungsvolumen": "120k_250k",
+          "ergebnis": "very_high",
+          "berechnet_am": "2025-11-10T00:00:00.000Z"
+        }
+      },
+      "regulatorik": {
+        "personenbezogene_daten": true,
+        "avv": {
+          "vorhanden": true,
+          "abgeschlossen_am": "2024-01-15",
+          "gueltig_bis": "2027-01-15"
+        },
+        "nda": {
+          "vorhanden": true,
+          "abgeschlossen_am": "2023-06-01",
+          "gueltig_bis": "2026-06-01"
+        },
+        "rahmenvertrag": {
+          "vorhanden": true,
+          "abgeschlossen_am": "2024-01-15",
+          "gueltig_bis": "2027-01-15",
+          "dora_konform": true
+        }
+      }
+    },
+    {
+      "id": "leist-mmnb7tex-zs98",
+      "bezeichnung": "Penetration Testing",
+      "abteilung": "IT",
+      "status": "active",
+      "beschreibung": "Jaehrliche externe Penetrationstests inkl. Bericht und Massnahmenplan",
+      "risikobewertung": {
+        "bonitaet": "unbekannt",
+        "bonitaet_datum": "",
+        "bonitaet_quelle": "",
+        "bia": {
+          "sla_relevanz": "sla_relevant",
+          "datenschutz_niveau": "gelegentlich_hoch",
+          "vertraulichkeit": "gelegentlich_hoch",
+          "kundenbezug": "indirekt",
+          "ausschreibungsvolumen": "10k_120k",
+          "ergebnis": "high",
+          "berechnet_am": "2023-02-15T00:00:00.000Z"
+        },
+        "dora_relevant": false,
+        "naechste_pruefung": "2026-02-15"
+      },
+      "regulatorik": {
+        "personenbezogene_daten": false,
+        "avv": {
+          "vorhanden": false,
+          "abgeschlossen_am": "",
+          "gueltig_bis": ""
+        },
+        "nda": {
+          "vorhanden": false,
+          "abgeschlossen_am": "",
+          "gueltig_bis": ""
+        },
+        "rahmenvertrag": {
+          "vorhanden": false,
+          "abgeschlossen_am": "",
+          "gueltig_bis": "",
+          "dora_konform": false
+        }
+      }
+    }
+  ],
+  "lifecycle": {
+    "phase": "betrieb",
+    "phasen_historie": [
+      {
+        "phase": "vorbereitung",
+        "eingetreten_am": "2026-03-12T10:12:33.044Z",
+        "abgeschlossen_am": "2026-03-12T10:13:15.324Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "risikoanalyse",
+        "eingetreten_am": "2026-03-12T10:13:15.324Z",
+        "abgeschlossen_am": "2026-03-12T10:13:15.332Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "vertragspruefung",
+        "eingetreten_am": "2026-03-12T10:13:15.332Z",
+        "abgeschlossen_am": "2026-03-12T10:13:15.339Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "betrieb",
+        "eingetreten_am": "2026-03-12T10:13:15.339Z",
+        "abgeschlossen_am": null,
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      }
+    ]
+  },
+  "verantwortlichkeiten": {
+    "fachverantwortlicher": "user_1770561498880_39ohgu5",
+    "ism_verantwortlicher": ""
+  },
+  "gesamtrisiko": "very_high",
+  "notizen": "Strategischer IT-Security-Partner seit 2022. Jaehrliche Vertragsverlaengerung im Q4."
+}

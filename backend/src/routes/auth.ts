@@ -43,6 +43,11 @@ const authRoutes = new Hono();
  * POST /api/auth/register - Register new user
  */
 authRoutes.post('/register', authRateLimit, async (c) => {
+  // Block self-registration when disabled via ENV
+  if (process.env.REGISTRATION_DISABLED === 'true') {
+    return c.json({ error: 'Registration is disabled' }, 403);
+  }
+
   try {
     const body = await c.req.json();
     const { username, password, email, displayName } = body;
@@ -238,6 +243,7 @@ authRoutes.get('/status', async (c) => {
     return c.json({
       initialized: usersExist,
       requiresSetup: !usersExist,
+      registrationEnabled: process.env.REGISTRATION_DISABLED !== 'true',
     });
   } catch (error: any) {
     console.error('Auth status error:', error);

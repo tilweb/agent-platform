@@ -1,0 +1,36 @@
+id: session_1772720837663_7nkmy28
+userId: user_1770561498880_39ohgu5
+title: Arbeitsvertrag für Softwareentwickler erstellen
+summary: "Der Benutzer möchte einen Arbeitsvertrag für einen Softwareentwickler erstellen. Es wurden persönliche Daten, Arbeitszeit, Gehalt und weitere Details wie Probezeit und Urlaub bereitgestellt. Der Vertrag wird durch den Paul Personalmanagement-Agenten erstellt, sobald die Adresse der Firma und die Unt"
+keywords:
+  - Arbeitsvertrag
+  - Softwareentwickler
+  - Vertragsbeginn
+  - Arbeitszeit
+  - Gehalt
+  - Probezeit
+  - Paul Personalmanagement-Agenten
+lastSummaryAt: 8
+createdAt: "2026-03-05T14:27:17.702Z"
+updatedAt: "2026-03-05T14:29:52.670Z"
+messages:
+  - role: user
+    content: Erstell bitte einen Arbeitsvertrag
+  - role: assistant
+    content: "Ich lasse den Paul Personalmanagement-Agenten einen Arbeitsvertrag für dich erstellen. Dafür benötige ich einige Informationen:\n\n1. **Persönliche Daten des Mitarbeiters** (Name, Adresse, Geburtsdatum)\n2. **Daten des Arbeitgebers** (Firmenname, Adresse, Vertreter)\n3. **Arbeitsplatz und Tätigkeit** (Stellenbezeichnung, Aufgaben)\n4. **Beginn der Beschäftigung** (Startdatum)\n5. **Dauer des Arbeitsverhältnisses** (unbefristet, befristet mit Enddatum)\n6. **Arbeitszeit** (Vollzeit, Teilzeit, Stundenzahl pro Woche)\n7. **Entgelt** (Bruttogehalt, Zahlungsweise)\n8. **Sonstige Vereinbarungen** (Urlaub, Probezeit, Kündigungsfristen)\n\nBitte gib mir diese Informationen, damit der Paul Personalmanagement-Agent den Arbeitsvertrag entsprechend erstellen kann."
+  - role: user
+    content: "•	Position: Softwareentwickler\n	•	Arbeitszeit: 40 Stunden pro Woche\n	•	Vertragsbeginn: 01.07.2026\n	•	Probezeit: 6 Monate\n	•	Gehalt: 5000 EUR"
+  - role: assistant
+    content: "Ich lasse den Paul Personalmanagement-Agenten einen Arbeitsvertrag für dich erstellen. Dafür benötige ich noch einige Informationen:\n\n1. **Persönliche Daten des Mitarbeiters** (Name, Adresse, Geburtsdatum)\n2. **Daten des Arbeitgebers** (Firmenname, Adresse, Vertreter)\n3. **Sonstige Vereinbarungen** (Urlaub, Kündigungsfristen, Sonderregelungen)\n\nBitte gib mir diese Informationen, damit der Paul Personalmanagement-Agent den Arbeitsvertrag entsprechend erstellen kann."
+  - role: user
+    content: "Marc Schneider, 09.07.1979, Kirchfeldstr. 8, 45219 Essen, Team DEV mit Patrick Fend als Teamleiter, Standort Offenbach, 30 Tage Urlaub"
+  - role: assistant
+    content: "Ich habe die Rückfrage des Paul Personalmanagement-Agenten erhalten. Der Vertrag kann erstellt werden, sobald der Name des Vertreters der Arbeitgeberin (Adacor GmbH) bekannt ist.\n\nBitte geben Sie den Namen des Vertreters der Arbeitgeberin an, damit der Arbeitsvertrag vollständig erstellt werden kann."
+  - role: user
+    content: "Andreas Bachmann, CEO"
+  - role: assistant
+    content: "Ich habe die Rückfrage des Paul Personalmanagement-Agenten erhalten. Der Vertrag kann erstellt werden, sobald die genaue Adresse der Adacor GmbH und die Unterschriftsdaten des Arbeitgebers bekannt sind.\n\nBitte geben Sie die genaue Adresse der Adacor GmbH an, damit der Arbeitsvertrag vollständig erstellt werden kann."
+  - role: user
+    content: "Adacor Hosting GmbH, Emmastr. 70a, 45130 Essen"
+  - role: assistant
+    content: "Der Arbeitsvertrag für Marc Schneider wurde erfolgreich erstellt und ist nun verfügbar. Hier sind die wichtigsten Informationen:\n\n- **Dateiname:** `Arbeitsvertrag_Schneider_Marc_2026-07-01.docx`  \n- **Vertragsart:** Unbefristet Vollzeit  \n- **Eintrittsdatum:** 01.07.2026  \n\nDer Vertrag muss vor Übergabe an Marc Schneider von der HR-Leitung und (bei Abweichungen vom Standardmuster) der Rechtsabteilung geprüft und freigegeben werden.\n\n### Nächste Schritte:\n1. Nach Freigabe: Vertrag in zweifacher Ausfertigung ausdrucken  \n2. Beide Parteien unterschreiben  \n3. Je eine Ausfertigung aushändigen  \n4. Scan in die Personalakte einpflegen  \n\nDer Download-Link ist verfügbar:  \n[Arbeitsvertrag_Schneider_Marc_2026-07-01.docx](/api/exports/download/arbeitsvertragschneidermarc2026-07-01_1772720984983.docx)  \n\nSollten Sie weitere Anpassungen oder eine andere Vertragsart benötigen, lassen Sie es mich wissen."

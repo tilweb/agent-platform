@@ -1,0 +1,18 @@
+{
+  "id": "audit-mmnbb0lr-ukvh",
+  "supplier_id": "lief-mmnb9p56-yjn01o",
+  "leistung_id": "leist-mmnb9p6g-8ozk",
+  "typ": "vor_ort_pruefung",
+  "status": "abgeschlossen",
+  "geplant_fuer": "2026-03-10",
+  "durchgefuehrt_am": "2026-03-10",
+  "pruefer": "user_1770561498880_39ohgu5",
+  "ergebnis": null,
+  "bewertung": "bestanden",
+  "massnahmen": [],
+  "notizen": "Rechenzentrum Hamburg, Zutrittskontrolle und physische Sicherheit",
+  "created_at": "2026-03-12T10:15:33.327Z",
+  "updated_at": "2026-03-12T12:47:55.116Z",
+  "scope": "compliance_pruefung",
+  "team_id": "team-ism"
+}

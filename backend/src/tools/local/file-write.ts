@@ -26,6 +26,10 @@ export class FileWriteTool extends LocalTool {
             type: 'string',
             description: 'Content to write to the file',
           },
+          append: {
+            type: 'boolean',
+            description: 'If true, append content to the end of the file instead of overwriting. Default: false',
+          },
         },
         required: ['path', 'content'],
       },
@@ -34,8 +38,8 @@ export class FileWriteTool extends LocalTool {
     });
   }
 
-  async execute(args: { path: string; content: string }, context?: ToolContext): Promise<string> {
-    const { path, content } = args;
+  async execute(args: { path: string; content: string; append?: boolean }, context?: ToolContext): Promise<string> {
+    const { path, content, append } = args;
 
     // userId is required for file operations
     if (!context?.userId) {
@@ -57,6 +61,13 @@ export class FileWriteTool extends LocalTool {
       // Create directory if it doesn't exist
       if (!existsSync(dir)) {
         await mkdir(dir, { recursive: true });
+      }
+
+      if (append && existsSync(fullPath)) {
+        const { readFile } = await import('fs/promises');
+        const existing = await readFile(fullPath, 'utf-8');
+        await writeFile(fullPath, existing + '\n' + content, 'utf-8');
+        return `Datei ergänzt: ${path}`;
       }
 
       await writeFile(fullPath, content, 'utf-8');

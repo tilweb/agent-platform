@@ -1,0 +1,14 @@
+{"timestamp":"2026-03-12T10:15:06.624Z","user":"user_1770561498880_39ohgu5","aktion":"erstellt","bereich":"stammdaten","details":{"firmenname":"InfraHost Europe B.V."}}
+{"timestamp":"2026-03-12T10:15:06.644Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"ansprechpartner","neuer_wert":"Jan van der Berg","details":{"aktion":"hinzugefuegt","id":"ap-mmnbag0k-6f80"}}
+{"timestamp":"2026-03-12T10:15:06.651Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"ansprechpartner","neuer_wert":"Anna Schneider","details":{"aktion":"hinzugefuegt","id":"ap-mmnbag0q-710a"}}
+{"timestamp":"2026-03-12T10:15:06.657Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"zertifizierungen","neuer_wert":"ISO27001","details":{"aktion":"hinzugefuegt","id":"zert-mmnbag0x-yo57"}}
+{"timestamp":"2026-03-12T10:15:06.663Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"zertifizierungen","neuer_wert":"PCI_DSS","details":{"aktion":"hinzugefuegt","id":"zert-mmnbag13-t05o"}}
+{"timestamp":"2026-03-12T10:15:06.670Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","neuer_wert":"IaaS Cloud Hosting","details":{"aktion":"hinzugefuegt","id":"leist-mmnbag19-bt4p"}}
+{"timestamp":"2026-03-12T10:15:06.687Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","feld":"bia","neuer_wert":"very_high","details":{"leistung_id":"leist-mmnbag19-bt4p"}}
+{"timestamp":"2026-03-12T10:15:06.694Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"regulatorik","details":{"leistung_id":"leist-mmnbag19-bt4p"}}
+{"timestamp":"2026-03-12T10:15:06.701Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","details":{"id":"leist-mmnbag19-bt4p"}}
+{"timestamp":"2026-03-12T10:15:06.707Z","user":"user_1770561498880_39ohgu5","aktion":"phase_gewechselt","bereich":"lifecycle","alter_wert":"vorbereitung","neuer_wert":"risikoanalyse"}
+{"timestamp":"2026-03-12T10:15:06.713Z","user":"user_1770561498880_39ohgu5","aktion":"phase_gewechselt","bereich":"lifecycle","alter_wert":"risikoanalyse","neuer_wert":"vertragspruefung"}
+{"timestamp":"2026-03-12T10:15:06.721Z","user":"user_1770561498880_39ohgu5","aktion":"phase_gewechselt","bereich":"lifecycle","alter_wert":"vertragspruefung","neuer_wert":"betrieb"}
+{"timestamp":"2026-03-12T10:15:59.222Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","feld":"bia","neuer_wert":"very_high","details":{"leistung_id":"leist-mmnbag19-bt4p"}}
+{"timestamp":"2026-03-12T13:27:31.453Z","user":"system","aktion":"geaendert","bereich":"regulatorik","details":{"leistung_id":"leist-mmnbag19-bt4p"}}

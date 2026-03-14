@@ -535,9 +535,47 @@ function generateUseWhenFromTriggers(skill: EnhancedSkill): string | undefined {
   return hints.length > 0 ? hints.join('\n') : undefined;
 }
 
+const KB_COLLECTIONS_DIR = resolve(process.cwd(), '../data/knowledge-base/collections');
+
 /**
- * Load skill knowledge files from the skill folder
- * Returns the content of files specified in skill.knowledge.files
+ * Resolve a knowledge file slug to a KB document content.md path.
+ * KB document directories follow the pattern: doc-<slug>-<timestamp>
+ */
+async function resolveKbDocumentFile(slug: string): Promise<string | null> {
+  if (!existsSync(KB_COLLECTIONS_DIR)) return null;
+
+  try {
+    const collections = await readdir(KB_COLLECTIONS_DIR, { withFileTypes: true });
+    for (const collection of collections) {
+      if (!collection.isDirectory()) continue;
+
+      const docsDir = join(KB_COLLECTIONS_DIR, collection.name, 'documents');
+      if (!existsSync(docsDir)) continue;
+
+      const docs = await readdir(docsDir, { withFileTypes: true });
+      for (const doc of docs) {
+        if (!doc.isDirectory()) continue;
+        // Match doc-<slug>-<timestamp> pattern
+        if (doc.name.startsWith(`doc-${slug}-`)) {
+          const contentPath = join(docsDir, doc.name, 'content.md');
+          if (existsSync(contentPath)) {
+            return contentPath;
+          }
+        }
+      }
+    }
+  } catch (error: any) {
+    console.warn(`[resolveKbDocumentFile] Error searching KB for "${slug}":`, error.message);
+  }
+
+  return null;
+}
+
+/**
+ * Load skill knowledge files from the skill folder or knowledge base.
+ * Resolution order:
+ * 1. Look for the file directly in the skill directory
+ * 2. Fall back to searching KB collections for a matching document slug
  */
 export async function loadSkillKnowledgeFiles(skill: EnhancedSkill): Promise<{
   files: { path: string; content: string }[];
@@ -553,19 +591,35 @@ export async function loadSkillKnowledgeFiles(skill: EnhancedSkill): Promise<{
   const skillDir = skill.path.replace(/\/SKILL\.(yaml|yml|md)$/, '');
 
   for (const filePath of skill.knowledge.files) {
-    const fullPath = join(skillDir, filePath);
+    // 1. Try skill directory first
+    const localPath = join(skillDir, filePath);
 
-    if (!existsSync(fullPath)) {
-      errors.push(`Knowledge file not found: ${filePath}`);
-      continue;
+    if (existsSync(localPath)) {
+      try {
+        const content = await readFile(localPath, 'utf-8');
+        files.push({ path: filePath, content });
+        continue;
+      } catch (error: any) {
+        errors.push(`Error loading ${filePath}: ${error.message}`);
+        continue;
+      }
     }
 
-    try {
-      const content = await readFile(fullPath, 'utf-8');
-      files.push({ path: filePath, content });
-    } catch (error: any) {
-      errors.push(`Error loading ${filePath}: ${error.message}`);
+    // 2. Fall back to KB document search by slug
+    const kbPath = await resolveKbDocumentFile(filePath);
+    if (kbPath) {
+      try {
+        const content = await readFile(kbPath, 'utf-8');
+        files.push({ path: filePath, content });
+        console.log(`[loadSkillKnowledgeFiles] Resolved "${filePath}" from KB: ${kbPath}`);
+        continue;
+      } catch (error: any) {
+        errors.push(`Error loading KB document ${filePath}: ${error.message}`);
+        continue;
+      }
     }
+
+    errors.push(`Knowledge file not found: ${filePath} (checked skill dir and KB collections)`);
   }
 
   return { files, errors };

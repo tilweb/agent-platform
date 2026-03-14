@@ -1,0 +1,142 @@
+{
+  "id": "lief-mmnbag00-7vxxo9",
+  "firmenname": "InfraHost Europe B.V.",
+  "status": "active",
+  "created_at": "2026-03-12T10:15:06.624Z",
+  "updated_at": "2026-03-12T13:27:31.450Z",
+  "created_by": "user_1770561498880_39ohgu5",
+  "stammdaten": {
+    "kundennummer": "LF-2023-008",
+    "vertragsnummern": [
+      "RV-2023-0200",
+      "SLA-2023-0201"
+    ],
+    "auftragsnummern": [
+      "AB-2023-5001",
+      "AB-2024-5002"
+    ],
+    "adresse": {
+      "strasse": "Keizersgracht 520",
+      "plz": "1017 EJ",
+      "ort": "Amsterdam",
+      "land": "Niederlande"
+    },
+    "url": "https://infrahost.example.eu"
+  },
+  "ansprechpartner": [
+    {
+      "id": "ap-mmnbag0k-6f80",
+      "name": "Jan van der Berg",
+      "rolle": "Enterprise Sales",
+      "telefon": "+31 20 555-8800",
+      "email": "j.vanderberg@infrahost.example.eu",
+      "ist_hauptansprechpartner": true
+    },
+    {
+      "id": "ap-mmnbag0q-710a",
+      "name": "Anna Schneider",
+      "rolle": "Technical Account Manager",
+      "telefon": "+49 69 888-7700",
+      "email": "a.schneider@infrahost.example.eu",
+      "ist_hauptansprechpartner": false
+    }
+  ],
+  "zertifizierungen": [
+    {
+      "id": "zert-mmnbag0x-yo57",
+      "typ": "ISO27001",
+      "gueltig_bis": "2027-02-28",
+      "ausgestellt_am": "2024-02-28",
+      "zertifizierer": "Lloyd Register",
+      "nachweis_vorhanden": true
+    },
+    {
+      "id": "zert-mmnbag13-t05o",
+      "typ": "PCI_DSS",
+      "gueltig_bis": "2026-05-31",
+      "ausgestellt_am": "2025-05-31",
+      "zertifizierer": "QSA International",
+      "nachweis_vorhanden": true
+    }
+  ],
+  "leistungen": [
+    {
+      "id": "leist-mmnbag19-bt4p",
+      "bezeichnung": "IaaS Cloud Hosting",
+      "abteilung": "IT",
+      "status": "active",
+      "beschreibung": "Dedizierte und virtuelle Server, Object Storage, Managed Kubernetes in EU-Rechenzentren",
+      "risikobewertung": {
+        "bonitaet": "gut",
+        "bonitaet_datum": "2025-12-01",
+        "bonitaet_quelle": "Dun & Bradstreet",
+        "dora_relevant": true,
+        "naechste_pruefung": "2026-12-01",
+        "bia": {
+          "sla_relevanz": "sla_kritisch",
+          "datenschutz_niveau": "gelegentlich_hoch",
+          "vertraulichkeit": "dauerhaft_hoch",
+          "kundenbezug": "direkt",
+          "ausschreibungsvolumen": "ueber_250k",
+          "ergebnis": "very_high",
+          "berechnet_am": "2026-03-12T10:15:59.221Z"
+        }
+      },
+      "regulatorik": {
+        "personenbezogene_daten": true,
+        "avv": {
+          "vorhanden": true,
+          "abgeschlossen_am": "2023-03-01",
+          "gueltig_bis": "2026-03-01"
+        },
+        "nda": {
+          "vorhanden": true,
+          "abgeschlossen_am": "2023-03-01",
+          "gueltig_bis": "2026-04-15"
+        },
+        "rahmenvertrag": {
+          "vorhanden": true,
+          "abgeschlossen_am": "2023-03-01",
+          "gueltig_bis": "2027-03-01",
+          "dora_konform": "ja"
+        },
+        "datenschutz_rolle": "verantwortlicher"
+      }
+    }
+  ],
+  "lifecycle": {
+    "phase": "betrieb",
+    "phasen_historie": [
+      {
+        "phase": "vorbereitung",
+        "eingetreten_am": "2026-03-12T10:15:06.624Z",
+        "abgeschlossen_am": "2026-03-12T10:15:06.707Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "risikoanalyse",
+        "eingetreten_am": "2026-03-12T10:15:06.707Z",
+        "abgeschlossen_am": "2026-03-12T10:15:06.713Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "vertragspruefung",
+        "eingetreten_am": "2026-03-12T10:15:06.713Z",
+        "abgeschlossen_am": "2026-03-12T10:15:06.721Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "betrieb",
+        "eingetreten_am": "2026-03-12T10:15:06.721Z",
+        "abgeschlossen_am": null,
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      }
+    ]
+  },
+  "verantwortlichkeiten": {
+    "fachverantwortlicher": "user_1770561498880_39ohgu5",
+    "ism_verantwortlicher": ""
+  },
+  "gesamtrisiko": "very_high",
+  "notizen": "IaaS Provider fuer Produktiv- und Staging-Umgebungen. Migration auf neues Rechenzentrum geplant Q2/2026."
+}

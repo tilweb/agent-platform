@@ -14,6 +14,7 @@ import {
   executeToolCall,
   setDelegationHandler,
   setLoadSkillHandler,
+  getLoadSkillTool,
   type ToolDefinition,
   type ToolContext,
   type LoadSkillHandler,
@@ -56,8 +57,10 @@ import {
 } from '../services/providers';
 import { getSystemAgentModel, type SystemAgentPurpose } from '../config/platformModels';
 import type { ResolvedModel, ModelRequirements } from '../types/providers';
+import { writeAgentLog } from '../services/agentLog';
 
 const MAX_ITERATIONS = 5;
+const MAX_DELEGATED_ITERATIONS = 10;
 const MAX_SUPERVISOR_ITERATIONS = 15;
 const MAX_DELEGATION_DEPTH = 2;
 
@@ -212,7 +215,7 @@ async function validateModelForAgent(
 }
 
 export interface AgentEvent {
-  type: 'thinking' | 'response_chunk' | 'reasoning_chunk' | 'tool_start' | 'tool_end' | 'done' | 'error' | 'delegation_start' | 'delegation_end' | 'agent_selected' | 'skill_activated' | 'workflow_step' | 'sub_agent_step' | 'model_info' | 'task_created';
+  type: 'thinking' | 'response_chunk' | 'reasoning_chunk' | 'tool_start' | 'tool_end' | 'done' | 'error' | 'delegation_start' | 'delegation_end' | 'agent_selected' | 'skill_activated' | 'workflow_step' | 'sub_agent_step' | 'model_info' | 'task_created' | 'system_prompt' | 'context_loaded' | 'iteration_start';
   content?: string;
   toolName?: string;
   toolArgs?: string;
@@ -240,6 +243,13 @@ export interface AgentEvent {
   // Task created data
   taskId?: string;
   taskTitle?: string;
+  // Iteration data
+  iteration?: number;
+  maxIterations?: number;
+  messagesCount?: number;
+  toolsCount?: number;
+  // Timing
+  durationMs?: number;
 }
 
 // Attachment metadata type (from attachments service)
@@ -592,6 +602,29 @@ function extractJsonToolCalls(content: string): ToolCall[] {
           },
         });
         console.log(`[extractJsonToolCalls] Extracted direct delegate_to_agent call to: ${agentId}`);
+      }
+    }
+  }
+
+  // Pattern 4: Direct create_task arguments (when model outputs just the args)
+  // {"title": "...", "description": "...", "assigned_agent": "...", "priority": "..."}
+  if (toolCalls.length === 0) {
+    const createTaskPattern = /\{\s*"title"\s*:\s*"([^"]+)"\s*,\s*"description"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"assigned_agent"\s*:\s*"([^"]*)")?\s*(?:,\s*"priority"\s*:\s*"([^"]*)")?\s*\}/g;
+    while ((match = createTaskPattern.exec(content)) !== null) {
+      const [, title, description, assignedAgent, priority] = match;
+      if (title && description) {
+        const args: Record<string, string> = { title, description };
+        if (assignedAgent) args.assigned_agent = assignedAgent;
+        if (priority) args.priority = priority;
+        toolCalls.push({
+          id: `extracted_${Date.now()}_${toolCalls.length}`,
+          type: 'function',
+          function: {
+            name: 'create_task',
+            arguments: JSON.stringify(args),
+          },
+        });
+        console.log(`[extractJsonToolCalls] Extracted direct create_task: ${title}`);
       }
     }
   }
@@ -1000,8 +1033,7 @@ async function runDelegatedAgent(
   const currentTime = now.toLocaleTimeString('de-DE', timeOptions);
   const contextInfo = `[AKTUELLES DATUM UND UHRZEIT: ${currentDate}, ${currentTime}]\n\n`;
 
-  const systemPrompt = languageInstruction + contextInfo + agent.systemPrompt + skillInstructions;
-  const tools = getToolsForAgent(agent, depth);
+  const baseSystemPrompt = languageInstruction + contextInfo + agent.systemPrompt + skillInstructions;
 
   // Create tool context - pass parentSessionId for attachment access, userId for connections
   const toolContext: ToolContext = {
@@ -1023,22 +1055,81 @@ async function runDelegatedAgent(
     }
   };
 
+  // Set up skill loading support (same mechanism as main agent loop)
+  const loopState: LoopState = {
+    temporaryTools: [],
+    loadedSkills: [],
+    loadedSkillInstructions: [],
+  };
+
+  // Save previous handler and set up new one for this delegated agent
+  const previousHandler = getLoadSkillTool()?.getHandler() || null;
+  const loadSkillHandler: LoadSkillHandler = {
+    addTemporaryTools: (tools: string[]) => {
+      for (const tool of tools) {
+        if (!loopState.temporaryTools.includes(tool)) {
+          loopState.temporaryTools.push(tool);
+          console.log(`[DelegatedAgent] Added temporary tool from skill: ${tool}`);
+        }
+      }
+    },
+    getLoadedSkills: () => loopState.loadedSkills,
+    isSkillAllowed: (skillId: string) => {
+      if (agent.skillMode === 'none') return false;
+      if (agent.skillMode === 'allow') {
+        const allowedSkills = agent.skills || [];
+        return allowedSkills.includes(skillId);
+      }
+      return true;
+    },
+  };
+  setLoadSkillHandler(loadSkillHandler);
+
+  const maxIterations = agent.maxIterations || MAX_DELEGATED_ITERATIONS;
+
   let iteration = 0;
   let finalResult = '';
 
   // Track important tool results (images, documents) that should be in the final response
   let importantToolResults: string[] = [];
 
-  while (iteration < MAX_ITERATIONS) {
+  while (iteration < maxIterations) {
     iteration++;
-    console.log(`Delegated agent ${agentId} iteration ${iteration} (depth: ${depth})`);
+    console.log(`Delegated agent ${agentId} iteration ${iteration}/${maxIterations} (depth: ${depth})`);
 
     emit('thinking', 'Denkt nach...');
 
+    // Build system prompt with skill instructions (updated each iteration)
+    let currentSystemPrompt = baseSystemPrompt;
+    if (loopState.loadedSkillInstructions.length > 0) {
+      currentSystemPrompt += '\n\n' + loopState.loadedSkillInstructions.join('\n\n');
+    }
+
+    // Get tools including temporary tools from loaded skills
+    const tools = getToolsForAgent(agent, depth, loopState.temporaryTools);
+
     const history = getMessages(delegationSessionId);
+
+    // Context window management: truncate old tool results to prevent body explosion
+    // Keep recent messages intact, compress older tool results
+    const MAX_TOOL_RESULT_LENGTH = 2000;
+    const RECENT_MESSAGES_KEEP = 6; // Keep last N messages untruncated
+    const compressedHistory = history.map((msg, idx) => {
+      // Keep recent messages intact
+      if (idx >= history.length - RECENT_MESSAGES_KEEP) return msg;
+      // Only truncate tool results
+      if (msg.role === 'tool' && typeof msg.content === 'string' && msg.content.length > MAX_TOOL_RESULT_LENGTH) {
+        return {
+          ...msg,
+          content: msg.content.substring(0, MAX_TOOL_RESULT_LENGTH) + '\n\n[... truncated, see scratchpad for details]',
+        };
+      }
+      return msg;
+    });
+
     const messages: Message[] = [
-      { role: 'system', content: systemPrompt },
-      ...history,
+      { role: 'system', content: currentSystemPrompt },
+      ...compressedHistory,
     ];
 
     // Create usage context for delegation
@@ -1059,6 +1150,10 @@ async function runDelegatedAgent(
     let toolCalls: ToolCall[] = [];
     let finishReason: string | null = null;
 
+    // Track <think> blocks (Qwen3 etc.) - strip from content to keep messages lean
+    let insideThinkBlock = false;
+    let thinkBuffer = '';
+
     try {
       for await (const chunk of llmService.streamChat(messages, tools, delegationUsageContext, chatOptions)) {
         // Guard against malformed chunks
@@ -1072,8 +1167,48 @@ async function runDelegatedAgent(
         const delta = choice.delta;
         if (!delta) continue;
 
+        // Skip reasoning_content (Qwen-thinking, DeepSeek-R1) - not needed in delegation results
+        // delta.reasoning_content is intentionally ignored
+
         if (delta.content) {
-          accumulatedContent += delta.content;
+          let contentToProcess = delta.content;
+
+          // Handle <think> tags - strip thinking from delegated agent output
+          if (contentToProcess.includes('<think>') || insideThinkBlock) {
+            thinkBuffer += contentToProcess;
+
+            while (true) {
+              if (!insideThinkBlock && thinkBuffer.includes('<think>')) {
+                const startIdx = thinkBuffer.indexOf('<think>');
+                const beforeThink = thinkBuffer.slice(0, startIdx);
+                if (beforeThink) {
+                  accumulatedContent += beforeThink;
+                }
+                thinkBuffer = thinkBuffer.slice(startIdx + 7);
+                insideThinkBlock = true;
+              } else if (insideThinkBlock && thinkBuffer.includes('</think>')) {
+                const endIdx = thinkBuffer.indexOf('</think>');
+                // Discard think content
+                thinkBuffer = thinkBuffer.slice(endIdx + 8);
+                insideThinkBlock = false;
+              } else {
+                break;
+              }
+            }
+
+            // If inside think block, keep buffering (discard later)
+            if (insideThinkBlock && thinkBuffer.length > 200) {
+              thinkBuffer = thinkBuffer.slice(-20); // Keep tail for tag detection
+            }
+
+            // Emit remaining buffer as content if not in think block
+            if (!insideThinkBlock && thinkBuffer && !thinkBuffer.includes('<think>')) {
+              accumulatedContent += thinkBuffer;
+              thinkBuffer = '';
+            }
+          } else {
+            accumulatedContent += contentToProcess;
+          }
         }
 
         if (delta.tool_calls) {
@@ -1121,8 +1256,20 @@ async function runDelegatedAgent(
       addMessage(delegationSessionId, assistantMessage);
     }
 
-    // Check if done
-    if (toolCalls.length === 0 || finishReason === 'stop') {
+    // Check if done (only when no tool calls — don't exit early if tools were extracted from text)
+    if (toolCalls.length === 0) {
+      // For agents with high iteration budgets (e.g. researcher with 30):
+      // Don't exit on iteration 1 if the agent hasn't done any real work yet.
+      // The LLM might output a plan as text without tool calls — force it to continue.
+      if (iteration === 1 && maxIterations > MAX_DELEGATED_ITERATIONS) {
+        console.log(`[AgentLoop] Delegated agent ${agentId}: No tool calls in iteration 1, but agent has budget ${maxIterations}. Forcing continuation.`);
+        // Add the text as assistant message and prompt the agent to use tools
+        addMessage(delegationSessionId, {
+          role: 'user',
+          content: 'Du hast bisher keine Tools aufgerufen. Beginne JETZT mit der Recherche: Rufe `file_write` auf um den Plan ins Scratchpad zu schreiben, dann `web_search` für die erste Kernfrage.'
+        });
+        continue;
+      }
       finalResult = accumulatedContent;
       break;
     }
@@ -1151,7 +1298,36 @@ async function runDelegatedAgent(
         emit('tool', `${toolName}${argsPreview}`);
       }
 
-      const result = await executeToolCall(toolCall, toolContext);
+      let result = await executeToolCall(toolCall, toolContext);
+
+      // Handle load_skill tool result - inject skill instructions into loop state
+      if (toolName === 'load_skill') {
+        try {
+          const skillResult: SkillLoadResult = JSON.parse(result);
+          if (skillResult.success && skillResult.skill && skillResult.instructions) {
+            if (!loopState.loadedSkills.includes(skillResult.skill.id)) {
+              loopState.loadedSkills.push(skillResult.skill.id);
+            }
+            loopState.loadedSkillInstructions.push(skillResult.instructions);
+            console.log(`[DelegatedAgent] Skill loaded: ${skillResult.skill.name}, ` +
+              `added ${skillResult.addedTools?.length || 0} tools, ` +
+              `loaded ${skillResult.loadedFiles?.length || 0} knowledge files`);
+
+            // Replace result with shortened version — full instructions are already
+            // injected into the system prompt via loopState, no need to duplicate them
+            // in the tool result message (saves ~10-15KB per skill)
+            result = JSON.stringify({
+              success: true,
+              skill: skillResult.skill,
+              instructions: `[Skill "${skillResult.skill.name}" geladen – Anweisungen im System-Prompt aktiv]`,
+              addedTools: skillResult.addedTools,
+              loadedFiles: skillResult.loadedFiles,
+            });
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
 
       // Track important tool results (images, documents) for injection if LLM doesn't include them
       if (toolName === 'generate_image' || toolName === 'export_document') {
@@ -1174,6 +1350,53 @@ async function runDelegatedAgent(
       });
     }
   }
+
+  // If loop exhausted iterations without a final response, do one synthesis call (no tools)
+  if (!finalResult) {
+    console.log(`[AgentLoop] Delegated agent ${agentId}: no final result after ${iteration} iterations, forcing synthesis`);
+    emit('thinking', 'Fasst Ergebnisse zusammen...');
+
+    let currentSystemPrompt = baseSystemPrompt;
+    if (loopState.loadedSkillInstructions.length > 0) {
+      currentSystemPrompt += '\n\n' + loopState.loadedSkillInstructions.join('\n\n');
+    }
+
+    const history = getMessages(delegationSessionId);
+    // Aggressively truncate for synthesis — only need key findings, not raw web content
+    const synthHistory = history.map((msg, idx) => {
+      if (msg.role === 'tool' && typeof msg.content === 'string' && msg.content.length > 1000) {
+        return { ...msg, content: msg.content.substring(0, 1000) + '\n\n[... truncated]' };
+      }
+      return msg;
+    });
+    const synthMessages: Message[] = [
+      { role: 'system', content: currentSystemPrompt },
+      ...synthHistory,
+      { role: 'user', content: 'Fasse jetzt alle gesammelten Informationen in einer vollständigen, strukturierten Antwort zusammen. Antworte direkt mit dem Ergebnis.' },
+    ];
+
+    const synthUsageContext: UsageContext = { userId, source: 'delegation', operation: agentId };
+    const synthChatOptions: ChatOptions = { userId, modelOverride: delegatedModelOverride };
+
+    try {
+      let synthContent = '';
+      for await (const chunk of llmService.streamChat(synthMessages, [], synthUsageContext, synthChatOptions)) {
+        if (!chunk?.choices?.[0]?.delta?.content) continue;
+        synthContent += chunk.choices[0].delta.content;
+      }
+      // Strip think tags from synthesis
+      synthContent = synthContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+      if (synthContent) {
+        finalResult = synthContent;
+        console.log(`[AgentLoop] Delegated agent ${agentId}: synthesis produced ${synthContent.length} chars`);
+      }
+    } catch (error: any) {
+      console.error(`[AgentLoop] Delegated agent ${agentId}: synthesis failed:`, error.message);
+    }
+  }
+
+  // Restore previous load_skill handler
+  setLoadSkillHandler(previousHandler);
 
   // Inject important tool results (images, documents) if LLM didn't include them
   for (const importantResult of importantToolResults) {
@@ -1208,6 +1431,11 @@ export async function* runAgentLoop(
   options: AgentLoopOptions = {}
 ): AsyncGenerator<AgentEvent> {
   const { agentId, delegationDepth = 0, attachments, skillId, userId, readerContexts, projectId } = options;
+
+  // Agent log helper — writes to JSONL file, fire-and-forget
+  const log = (eventType: string, message: string, data?: Record<string, any>, durationMs?: number) => {
+    writeAgentLog(sessionId, { eventType, agentId: agentId || undefined, message, data, durationMs });
+  };
 
   // Load agent configuration
   let agent: AgentConfig | null = null;
@@ -1251,6 +1479,7 @@ export async function* runAgentLoop(
       providerName: modelInfo.provider,
       modelName: modelInfo.model,
     };
+    log('model_info', `${modelInfo.provider} / ${modelInfo.model}`, { providerName: modelInfo.provider, modelName: modelInfo.model });
   }
 
   // Add user message to memory
@@ -1266,9 +1495,9 @@ export async function* runAgentLoop(
     skillMode: agent?.skillMode,
   };
 
-  // Check if agent can use skills (skillMode: 'all' uses all, skillMode: 'allow' with empty skills means no skills)
+  // Check if agent can use skills (skillMode: 'none' disables all, 'allow' with empty skills means no skills)
   const agentSkills = Array.isArray(agent?.skills) ? agent.skills : [];
-  const canUseSkills = agent?.skillMode !== 'allow' || agentSkills.length > 0;
+  const canUseSkills = agent?.skillMode !== 'none' && (agent?.skillMode !== 'allow' || agentSkills.length > 0);
 
   if (canUseSkills) {
     if (skillId) {
@@ -1328,6 +1557,14 @@ export async function* runAgentLoop(
   if (readerContexts && readerContexts.length > 0) {
     readerContextSection = buildReaderContextSection(readerContexts);
     console.log(`[AgentLoop] Injecting ${readerContexts.length} reader document(s) into context`);
+    for (const doc of readerContexts) {
+      log('context_loaded', `Dokument: ${doc.title || doc.source}`, {
+        contextType: 'reader',
+        name: doc.title || doc.source,
+        length: doc.content?.length || 0,
+        preview: (doc.content || '').slice(0, 200),
+      });
+    }
   }
 
   // Build project context section if projectId is provided
@@ -1340,6 +1577,12 @@ export async function* runAgentLoop(
         if (formattedMemory) {
           projectContextSection = `\n\n${formattedMemory}\n\n---\n`;
           console.log(`[AgentLoop] Injecting project context for: ${projectName}`);
+          log('context_loaded', `Projekt: ${projectName}`, {
+            contextType: 'project',
+            name: projectName,
+            length: formattedMemory.length,
+            preview: formattedMemory.slice(0, 200),
+          });
         }
       }
     } catch (error) {
@@ -1356,6 +1599,12 @@ export async function* runAgentLoop(
       if (analysisText) {
         imageAnalysisSection = analysisText;
         console.log(`[AgentLoop] Auto-analyzed ${analyzedImages.length} image(s): ${analyzedImages.join(', ')}`);
+        log('context_loaded', `Bildanalyse: ${analyzedImages.length} Bild(er)`, {
+          contextType: 'image_analysis',
+          name: analyzedImages.join(', '),
+          length: analysisText.length,
+          preview: analysisText.slice(0, 200),
+        });
       }
     } catch (error: any) {
       console.error('[AgentLoop] Image analysis failed:', error.message);
@@ -1366,12 +1615,36 @@ export async function* runAgentLoop(
   let skillMetadataSection = '';
   try {
     skillMetadataSection = await buildSkillMetadataSection(agent);
+    if (skillMetadataSection) {
+      log('context_loaded', 'Skill-Katalog', {
+        contextType: 'skill_metadata',
+        length: skillMetadataSection.length,
+        preview: skillMetadataSection.slice(0, 200),
+      });
+    }
   } catch (error) {
     console.warn('[AgentLoop] Failed to build skill metadata section:', error);
   }
 
   let fullSystemPrompt = languageInstruction + contextInfo + projectContextSection + imageAnalysisSection + systemPrompt + skillMetadataSection + readerContextSection;
   let agentToolNames = agent?.tools || ['file_read', 'file_write', 'file_list'];
+
+  // Log the assembled system prompt with section breakdown
+  {
+    const sections: Array<{ name: string; charLength: number }> = [];
+    if (languageInstruction) sections.push({ name: 'Sprach-Anweisung', charLength: languageInstruction.length });
+    if (contextInfo) sections.push({ name: 'Datum/Uhrzeit', charLength: contextInfo.length });
+    if (projectContextSection) sections.push({ name: 'Projekt-Kontext', charLength: projectContextSection.length });
+    if (imageAnalysisSection) sections.push({ name: 'Bildanalyse', charLength: imageAnalysisSection.length });
+    if (systemPrompt) sections.push({ name: 'Agent Prompt', charLength: systemPrompt.length });
+    if (skillMetadataSection) sections.push({ name: 'Skill-Katalog', charLength: skillMetadataSection.length });
+    if (readerContextSection) sections.push({ name: 'Reader-Dokumente', charLength: readerContextSection.length });
+    log('system_prompt', `System Prompt (${Math.round(fullSystemPrompt.length / 1024)}k)`, {
+      content: fullSystemPrompt,
+      sections,
+      totalChars: fullSystemPrompt.length,
+    });
+  }
 
   // Initialize loop state for tracking loaded skills and temporary tools
   const loopState: LoopState = {
@@ -1401,6 +1674,12 @@ export async function* runAgentLoop(
       skillError: activeSkillContext.error,
       totalSteps: activeSkillContext.skill.workflow?.steps?.length || 0,
     };
+    log('skill_activated', `Skill: ${activeSkillContext.skill.name}`, {
+      skillId: activeSkillContext.skill.id,
+      skillName: activeSkillContext.skill.name,
+      tools: activeSkillContext.availableTools,
+      instructions: activeSkillContext.skill.instructions?.slice(0, 500),
+    });
 
     if (activeSkillContext.canExecute) {
       // Build enhanced system prompt with skill
@@ -1442,6 +1721,7 @@ export async function* runAgentLoop(
     getLoadedSkills: () => loopState.loadedSkills,
     isSkillAllowed: (skillId: string) => {
       // Check agent skill access configuration
+      if (agent?.skillMode === 'none') return false;
       if (agent?.skillMode === 'allow') {
         const allowedSkills = agent.skills || [];
         return allowedSkills.includes(skillId);
@@ -1456,6 +1736,39 @@ export async function* runAgentLoop(
   // Set up delegation handler for this context
   const delegationCallback = async (targetAgentId: string, task: string, context?: string): Promise<string> => {
     console.log(`Delegating to ${targetAgentId}: ${task}`);
+
+    // Check if the target agent has a high iteration budget → run as background task
+    const targetAgent = await loadAgent(targetAgentId);
+    if (targetAgent?.maxIterations && targetAgent.maxIterations > MAX_DELEGATED_ITERATIONS) {
+      console.log(`[AgentLoop] Agent ${targetAgentId} has maxIterations=${targetAgent.maxIterations} — creating background task instead of synchronous delegation`);
+      try {
+        const { createTask, enqueueTask } = await import('../services/taskService');
+        const bgTask = await createTask({
+          title: `Recherche: ${task.substring(0, 80)}`,
+          description: task + (context ? `\n\nKontext: ${context}` : ''),
+          type: 'deep-research',
+          priority: 'normal',
+          trigger: 'delegation',
+          assigned_agent: targetAgentId,
+          created_by: 'supervisor',
+          source_session_id: sessionId,
+          userId,
+          config: { context },
+        });
+        await enqueueTask(bgTask.id, 'normal');
+        // Emit task_created SSE event so frontend shows TaskStatusBlock
+        subAgentEventQueue.push({
+          type: 'task_created',
+          taskId: bgTask.id,
+          taskTitle: bgTask.title,
+        });
+        console.log(`[AgentLoop] Background task created: ${bgTask.id}`);
+        return `Recherche-Task "${bgTask.title}" wurde erstellt und läuft im Hintergrund (Task-ID: ${bgTask.id}). Der Fortschritt kann auf der Tasks-Seite verfolgt werden.`;
+      } catch (error: any) {
+        console.error('[AgentLoop] Failed to create background task, falling back to sync delegation:', error);
+        // Fall through to synchronous delegation
+      }
+    }
 
     // If a skill is active, include skill instructions in the delegation context
     let enhancedContext = context || '';
@@ -1480,7 +1793,9 @@ export async function* runAgentLoop(
   setDelegationHandler(delegationCallback);
 
   let iteration = 0;
-  const maxIterations = agentId === 'supervisor' ? MAX_SUPERVISOR_ITERATIONS : MAX_ITERATIONS;
+  const maxIterations = agentId === 'supervisor'
+    ? MAX_SUPERVISOR_ITERATIONS
+    : (agent?.maxIterations || MAX_ITERATIONS);
 
   // Track important tool results (images, documents) that should be in the final response
   let importantToolResults: string[] = [];
@@ -1512,12 +1827,39 @@ export async function* runAgentLoop(
     // Get tools for this agent (including temporary tools from loaded skills)
     const tools = getToolsForAgent(agent, delegationDepth, loopState.temporaryTools);
 
-    // Build messages array
-    // Note: Images are pre-analyzed and their descriptions are in the system prompt,
-    // so we don't need to inject images here anymore
+    // Emit iteration_start (SSE + log)
+    yield {
+      type: 'iteration_start',
+      iteration,
+      maxIterations,
+      messagesCount: history.length,
+      toolsCount: tools?.length || 0,
+    };
+    log('iteration_start', `Iteration ${iteration}/${maxIterations}`, {
+      iteration,
+      maxIterations,
+      messagesCount: history.length,
+      toolsCount: tools?.length || 0,
+    });
+
+    // Build messages array with context window management
+    // Truncate old tool results to prevent body size explosion (especially for high-iteration agents)
+    const MSG_TRUNCATE_LIMIT = 2000;
+    const MSG_RECENT_KEEP = 6;
+    const compressedHistory = history.map((msg, idx) => {
+      if (idx >= history.length - MSG_RECENT_KEEP) return msg;
+      if (msg.role === 'tool' && typeof msg.content === 'string' && msg.content.length > MSG_TRUNCATE_LIMIT) {
+        return {
+          ...msg,
+          content: msg.content.substring(0, MSG_TRUNCATE_LIMIT) + '\n\n[... truncated, see scratchpad for details]',
+        };
+      }
+      return msg;
+    });
+
     const messages: Message[] = [
       { role: 'system', content: currentSystemPrompt },
-      ...history,
+      ...compressedHistory,
     ];
 
     // Stream LLM response
@@ -1870,6 +2212,7 @@ export async function* runAgentLoop(
       }
     } catch (error: any) {
       console.error('[AgentLoop] LLM streaming error:', error);
+      log('error', `LLM Error: ${error.message}`, { error: error.message });
       yield { type: 'error', content: `LLM Error: ${error.message}` };
       return;
     }
@@ -1938,6 +2281,7 @@ export async function* runAgentLoop(
       setDelegationHandler(null);
       setLoadSkillHandler(null);
 
+      log('done', 'Fertig', {});
       yield { type: 'done' };
       return;
     }
@@ -1968,11 +2312,14 @@ export async function* runAgentLoop(
           agentId: args.agent_id,
           task: args.task,
         };
+        log('delegation_start', `Delegiert an: ${args.agent_id}`, { agentId: args.agent_id, task: args.task });
 
         // Clear event queue before delegation
         subAgentEventQueue.length = 0;
 
+        const delegationStartTime = Date.now();
         const result = await executeToolCall(toolCall, toolContext);
+        const delegationDurationMs = Date.now() - delegationStartTime;
 
         // Yield all sub-agent events collected during delegation
         for (const subEvent of subAgentEventQueue) {
@@ -1984,7 +2331,9 @@ export async function* runAgentLoop(
           type: 'delegation_end',
           agentId: args.agent_id,
           toolResult: result,
+          durationMs: delegationDurationMs,
         };
+        log('delegation_end', `Delegation fertig (${delegationDurationMs}ms)`, { agentId: args.agent_id, result: result.slice(0, 500), durationMs: delegationDurationMs }, delegationDurationMs);
 
         // Track important results from delegation (images, documents)
         // Extract JSON objects with type: "generated_image" or "exported_document"
@@ -2039,14 +2388,19 @@ export async function* runAgentLoop(
           toolName,
           toolArgs,
         };
+        log('tool_start', toolName, { tool: toolName, args: toolArgs });
 
-        const result = await executeToolCall(toolCall, toolContext);
+        const toolStartTime = Date.now();
+        let result = await executeToolCall(toolCall, toolContext);
+        const toolDurationMs = Date.now() - toolStartTime;
 
         yield {
           type: 'tool_end',
           toolName,
           toolResult: result,
+          durationMs: toolDurationMs,
         };
+        log('tool_end', `${toolName} (${toolDurationMs}ms)`, { tool: toolName, result: result.slice(0, 500), durationMs: toolDurationMs }, toolDurationMs);
 
         // Track important tool results (images, documents) for injection if LLM doesn't include them
         if (toolName === 'generate_image' || toolName === 'export_document') {
@@ -2070,6 +2424,7 @@ export async function* runAgentLoop(
                 taskId: taskResult.task.id,
                 taskTitle: taskResult.task.title,
               };
+              log('task_created', `Task: ${taskResult.task.title}`, { taskId: taskResult.task.id, taskTitle: taskResult.task.title });
             }
           } catch {
             // Ignore parse errors
@@ -2100,6 +2455,23 @@ export async function* runAgentLoop(
                 skillName: skillResult.skill.name,
                 skillTools: skillResult.addedTools,
               };
+              log('skill_activated', `Skill geladen: ${skillResult.skill.name}`, {
+                skillId: skillResult.skill.id,
+                skillName: skillResult.skill.name,
+                tools: skillResult.addedTools,
+                instructions: skillResult.instructions?.slice(0, 500),
+              });
+
+              // Replace result with shortened version — full instructions are already
+              // injected into the system prompt via loopState, no need to duplicate them
+              // in the tool result message (saves ~10-15KB per skill)
+              result = JSON.stringify({
+                success: true,
+                skill: skillResult.skill,
+                instructions: `[Skill "${skillResult.skill.name}" geladen – Anweisungen im System-Prompt aktiv]`,
+                addedTools: skillResult.addedTools,
+                loadedFiles: skillResult.loadedFiles,
+              });
             }
           } catch {
             // Ignore parse errors
@@ -2146,5 +2518,6 @@ export async function* runAgentLoop(
   setLoadSkillHandler(null);
 
   // Max iterations reached
+  log('error', 'Maximum iterations reached', { error: 'Maximum iterations reached' });
   yield { type: 'error', content: 'Maximum iterations reached' };
 }

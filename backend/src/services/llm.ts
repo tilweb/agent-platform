@@ -17,6 +17,8 @@ export interface ChatOptions {
   modelOverride?: { providerId: string; modelId: string };
   /** User ID for resolving user-specific model preferences */
   userId?: string;
+  /** Override tool_choice (default: 'auto'). Use object for forced function calling. */
+  toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
 }
 
 // Content part types for multimodal messages (text + images)
@@ -430,7 +432,7 @@ export class LLMService {
 
     if (requestOpenai) {
       const modelId = requestResolved?.model.id;
-      const result = await requestOpenai.chat(messages, modelId, tools);
+      const result = await requestOpenai.chat(messages, modelId, tools, options?.toolChoice);
       await trackUsage();
       return {
         content: result.content,

@@ -1,0 +1,20 @@
+id: offboarding-ma
+name: Mitarbeitende Offboarding
+version: "1.0"
+description: Startet den Prozess Offboarding mit Infos, E-Mails und Tickets
+metadata:
+  use_when: ""
+  output_type: ""
+allowed_tools: []
+knowledge:
+  files: []
+  collections: []
+triggers:
+  keywords: []
+tools:
+  required: []
+  optional: []
+instructions: ""
+workflow: null
+output: null
+enabled: true

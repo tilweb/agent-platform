@@ -1,0 +1,18 @@
+{
+  "id": "audit-mmngp5op-7jxx",
+  "supplier_id": "lief-mmnb9p56-yjn01o",
+  "leistung_id": "leist-mmnb9p6g-8ozk",
+  "typ": "fachpruefung",
+  "scope": "fachpruefung",
+  "status": "abgeschlossen",
+  "geplant_fuer": "2026-03-11",
+  "durchgefuehrt_am": "2026-03-11",
+  "pruefer": "system",
+  "team_id": "team-einkauf",
+  "ergebnis": null,
+  "bewertung": "bestanden",
+  "massnahmen": [],
+  "notizen": "",
+  "created_at": "2026-03-12T12:46:31.177Z",
+  "updated_at": "2026-03-12T12:46:31.177Z"
+}

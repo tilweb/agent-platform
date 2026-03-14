@@ -11,6 +11,46 @@ export interface OpenAIAdapterOptions {
   defaultModel?: string;
 }
 
+/**
+ * Sanitize a string for safe JSON transmission to LLM APIs.
+ * Removes control characters and lone surrogates that can break server-side JSON parsers.
+ */
+function sanitizeForJson(str: string): string {
+  // Remove control characters except \t \n \r
+  let clean = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  // Remove lone surrogates
+  clean = clean.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '');
+  clean = clean.replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
+  return clean;
+}
+
+/**
+ * Deep-sanitize all string content in messages before sending to the API.
+ */
+function sanitizeMessages(messages: Message[]): Message[] {
+  return messages.map(msg => {
+    const sanitized = { ...msg };
+
+    // Sanitize content
+    if (typeof sanitized.content === 'string') {
+      sanitized.content = sanitizeForJson(sanitized.content);
+    }
+
+    // Sanitize tool_calls arguments
+    if (sanitized.tool_calls) {
+      sanitized.tool_calls = sanitized.tool_calls.map(tc => ({
+        ...tc,
+        function: {
+          ...tc.function,
+          arguments: sanitizeForJson(tc.function.arguments),
+        },
+      }));
+    }
+
+    return sanitized;
+  });
+}
+
 export class OpenAIAdapter {
   private baseUrl: string;
   private apiKey: string | null;
@@ -32,7 +72,7 @@ export class OpenAIAdapter {
   ): AsyncGenerator<StreamChunk> {
     const body: Record<string, unknown> = {
       model: model || this.defaultModel,
-      messages,
+      messages: sanitizeMessages(messages),
       stream: true,
     };
 
@@ -54,14 +94,25 @@ export class OpenAIAdapter {
       console.log(`[OpenAI Adapter] Streaming request with ${tools.length} tools to ${this.baseUrl}`);
     }
 
+    const bodyJson = JSON.stringify(body);
+
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body),
+      body: bodyJson,
     });
 
     if (!response.ok) {
       const error = await response.text();
+      // Log debug info for parser/bad-request errors
+      if (response.status === 400) {
+        console.error(`[OpenAI Adapter] 400 error - body size: ${bodyJson.length} chars, messages: ${messages.length}, model: ${model || this.defaultModel}`);
+        for (let i = 0; i < messages.length; i++) {
+          const msg = messages[i];
+          const contentLen = typeof msg.content === 'string' ? msg.content.length : JSON.stringify(msg.content)?.length || 0;
+          console.error(`  msg[${i}] role=${msg.role} content=${contentLen} chars${msg.tool_calls ? ` tool_calls=${msg.tool_calls.length}` : ''}${msg.name ? ` name=${msg.name}` : ''}`);
+        }
+      }
       throw new Error(`OpenAI API error: ${response.status} - ${error}`);
     }
 
@@ -135,7 +186,8 @@ export class OpenAIAdapter {
   async chat(
     messages: Message[],
     model?: string,
-    tools?: ToolDefinition[]
+    tools?: ToolDefinition[],
+    toolChoice?: unknown
   ): Promise<{
     content: string | null;
     tool_calls?: Array<{
@@ -153,7 +205,7 @@ export class OpenAIAdapter {
 
     if (tools && tools.length > 0) {
       body.tools = tools;
-      body.tool_choice = 'auto';
+      body.tool_choice = toolChoice || 'auto';
     }
 
     const headers: Record<string, string> = {

@@ -1,0 +1,20 @@
+id: session_1772747798528_03884ht
+userId: user_1770561498880_39ohgu5
+title: Featureanalyse von vanta.com
+summary: "Der Nutzer hat eine Featureanalyse von vanta.com angefordert. Ein Researcher-Agent wurde aktiviert, um die Analyse durchzuführen. Der Fortschritt ist über die Tasks-Seite verfolgbar."
+keywords:
+  - vanta.com
+  - Featureanalyse
+  - Researcher-Agent
+  - Analyse
+  - vanta
+  - Task-Verfolgung
+  - AI-Research
+lastSummaryAt: 2
+createdAt: "2026-03-05T21:56:38.573Z"
+updatedAt: "2026-03-05T21:56:40.015Z"
+messages:
+  - role: user
+    content: Mach bitte eine Featureanalyse von vanta.com
+  - role: assistant
+    content: Ich habe einen Recherche-Task erstellt. Der Researcher-Agent führt eine ausführliche Analyse von vanta.com durch — du kannst den Fortschritt auf der Tasks-Seite verfolgen.

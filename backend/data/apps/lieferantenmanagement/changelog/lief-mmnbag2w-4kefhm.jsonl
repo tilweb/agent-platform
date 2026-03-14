@@ -1,0 +1,4 @@
+{"timestamp":"2026-03-12T10:15:06.728Z","user":"user_1770561498880_39ohgu5","aktion":"erstellt","bereich":"stammdaten","details":{"firmenname":"LegalDocs Pro GmbH"}}
+{"timestamp":"2026-03-12T10:15:06.745Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"ansprechpartner","neuer_wert":"Julia Weiss","details":{"aktion":"hinzugefuegt","id":"ap-mmnbag3d-6idq"}}
+{"timestamp":"2026-03-12T10:15:06.752Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","neuer_wert":"Vertragsautomatisierung SaaS","details":{"aktion":"hinzugefuegt","id":"leist-mmnbag3k-9w3b"}}
+{"timestamp":"2026-03-12T10:15:06.768Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","feld":"bia","neuer_wert":"very_high","details":{"leistung_id":"leist-mmnbag3k-9w3b"}}

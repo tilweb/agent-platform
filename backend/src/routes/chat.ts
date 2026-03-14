@@ -32,6 +32,7 @@ import {
 export const chatRoutes = new Hono();
 
 import { attachmentsService } from '../services/attachments';
+import { readAgentLog, deleteAgentLog } from '../services/agentLog';
 
 import {
   fetchAllDocuments,
@@ -423,6 +424,7 @@ function formatEventData(event: AgentEvent): Record<string, any> {
       return {
         tool: event.toolName,
         result: event.toolResult,
+        durationMs: event.durationMs,
       };
     case 'delegation_start':
       return {
@@ -433,6 +435,7 @@ function formatEventData(event: AgentEvent): Record<string, any> {
       return {
         agentId: event.agentId,
         result: event.toolResult,
+        durationMs: event.durationMs,
       };
     case 'agent_selected':
       return {
@@ -477,6 +480,13 @@ function formatEventData(event: AgentEvent): Record<string, any> {
         filename: (event as any).filename,
         status: (event as any).status,
       };
+    case 'iteration_start':
+      return {
+        iteration: event.iteration,
+        maxIterations: event.maxIterations,
+        messagesCount: event.messagesCount,
+        toolsCount: event.toolsCount,
+      };
     case 'done':
       return { status: 'complete' };
     case 'error':
@@ -485,6 +495,13 @@ function formatEventData(event: AgentEvent): Record<string, any> {
       return {};
   }
 }
+
+// GET /api/chat/:id/agent-log - Get agent log entries for a session
+chatRoutes.get('/:id/agent-log', async (c) => {
+  const sessionId = c.req.param('id');
+  const entries = await readAgentLog(sessionId);
+  return c.json({ entries });
+});
 
 // GET /api/chat/:id - Get session info (optional endpoint)
 chatRoutes.get('/:id', async (c) => {
@@ -652,6 +669,8 @@ chatHistoryRoutes.delete('/:id', authMiddleware, async (c) => {
     if (!deleted) {
       return c.json({ error: 'Chat not found' }, 404);
     }
+    // Clean up agent log file
+    await deleteAgentLog(chatId);
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting chat:', error);

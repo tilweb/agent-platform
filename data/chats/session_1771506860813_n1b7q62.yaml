@@ -1,0 +1,34 @@
+id: session_1771506860813_n1b7q62
+userId: user_1770561498880_39ohgu5
+title: Übersicht über vorhandene Knowledge Collections
+summary: "Der Nutzer fragte nach den verfügbaren Knowledge Collections. Es wurden vier Sammlungen genannt: Compliance, C5 Workshops, Zukunftstag 2026 und IKS."
+keywords:
+  - Knowledge Collections
+  - Compliance
+  - C5 Workshops
+  - Zukunftstag 2026
+  - IKS
+  - Dokumentation
+  - Informationssammlung
+lastSummaryAt: 2
+createdAt: "2026-02-19T13:14:20.847Z"
+updatedAt: "2026-02-25T09:37:28.231Z"
+messages:
+  - role: user
+    content: "Was wurde gesagt?"
+    attachments:
+      - id: att-1771938422283-7i4pv1
+        type: audio
+        filename: recording-1771938410389.m4a
+        mimeType: audio/mp4
+        url: /api/chats/session_1771506860813_n1b7q62/attachments/att-1771938422283-7i4pv1/stream
+        transcription: " Was ist denn hier jetzt los?"
+  - role: assistant
+    content: "Ich habe den Inhalt der hochgeladenen Audio-Datei \"recording-1771938410389.m4a\" analysiert. Der einzige Satz, der darin enthalten ist, lautet:\n\n**\"Was ist denn hier jetzt los?\"**\n\nDies ist eine Frage, die auf eine unklare oder verwirrende Situation hindeutet. Da keine weiteren Informationen oder Kontext in der Datei vorhanden sind, kann ich nur auf diesen Satz reagieren.\n\nMöchtest du, dass ich versuche, den Kontext dieser Frage zu ermitteln oder eine Antwort darauf formuliere?"
+materials:
+  - id: material_1772012248222_tintxyu
+    type: user_marked
+    title: Ich habe den Inhalt der hochgeladenen Audio-Dat...
+    content: "Ich habe den Inhalt der hochgeladenen Audio-Datei \"recording-1771938410389.m4a\" analysiert. Der einzige Satz, der darin enthalten ist, lautet:\n\n**\"Was ist denn hier jetzt los?\"**\n\nDies ist eine Frage, die auf eine unklare oder verwirrende Situation hindeutet. Da keine weiteren Informationen oder Kontext in der Datei vorhanden sind, kann ich nur auf diesen Satz reagieren.\n\nMöchtest du, dass ich versuche, den Kontext dieser Frage zu ermitteln oder eine Antwort darauf formuliere?"
+    createdAt: 1772012248222
+    sourceMessageIndex: 1

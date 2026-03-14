@@ -11,12 +11,16 @@ export function useStreaming() {
   const [error, setError] = useState(null);
   const [activeTasks, setActiveTasks] = useState([]);  // Tasks created in this session
   const [fileProcessingState, setFileProcessingState] = useState({});  // fileId -> 'processing' | 'ready'
+  const [agentLog, setAgentLog] = useState([]);
 
   const eventSourceRef = useRef(null);
   const sessionIdRef = useRef(null);
   const accumulatedContentRef = useRef('');
   const accumulatedReasoningRef = useRef('');
   const onDoneRef = useRef(null);
+  const logIdRef = useRef(0);
+  const currentLogAgentRef = useRef(null);
+  const responseStartedRef = useRef(false);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -69,6 +73,18 @@ export function useStreaming() {
       }
       return updated;
     });
+  }, []);
+
+  const addLogEntry = useCallback((eventType, message, data = {}, agentId = null) => {
+    const id = ++logIdRef.current;
+    setAgentLog(prev => [...prev, {
+      id,
+      timestamp: Date.now(),
+      eventType,
+      agentId: agentId || currentLogAgentRef.current,
+      message,
+      data,
+    }]);
   }, []);
 
   const sendMessage = useCallback(async (userMessage, options = {}) => {
@@ -217,12 +233,15 @@ export function useStreaming() {
           providerName: data.providerName,
           modelName: data.modelName,
         });
+        addLogEntry('model_info', `${data.providerName} / ${data.modelName}`, data);
       });
 
       eventSource.addEventListener('agent_selected', (e) => {
         const data = JSON.parse(e.data);
         setActiveAgentId(data.agentId);
         addThinkingStep({ type: 'agent_selected', message: `Agent ausgewählt: ${data.agentId}`, agentId: data.agentId });
+        currentLogAgentRef.current = data.agentId;
+        addLogEntry('agent_selected', `Agent: ${data.agentId}`, data, data.agentId);
       });
 
       eventSource.addEventListener('skill_activated', (e) => {
@@ -237,6 +256,7 @@ export function useStreaming() {
           totalSteps: data.totalSteps,
         });
         addThinkingStep({ type: 'skill', message: `Skill: ${data.skillName}`, skillName: data.skillName });
+        addLogEntry('skill_activated', `Skill: ${data.skillName}`, data);
         // Update message with skill info
         setMessages(prev => {
           const updated = [...prev];
@@ -270,11 +290,18 @@ export function useStreaming() {
           stepIndex: data.stepIndex,
           totalSteps: data.totalSteps,
         });
+        addLogEntry('workflow_step', `Schritt ${data.stepIndex + 1}: ${data.stepDescription || data.stepAction}`, data);
       });
 
       eventSource.addEventListener('thinking', () => {
         setAgentStatus({ type: 'thinking', message: 'Thinking...' });
         addThinkingStep({ type: 'thinking', message: 'Denkt nach...' });
+        addLogEntry('thinking', 'Denkt nach...', {});
+      });
+
+      eventSource.addEventListener('iteration_start', (e) => {
+        const data = JSON.parse(e.data);
+        addLogEntry('iteration_start', `Iteration ${data.iteration}/${data.maxIterations}`, data);
       });
 
       eventSource.addEventListener('tool_start', (e) => {
@@ -288,6 +315,7 @@ export function useStreaming() {
         let parsedArgs = data.args;
         try { parsedArgs = typeof data.args === 'string' ? JSON.parse(data.args) : data.args; } catch {}
         addThinkingStep({ type: 'tool', message: data.tool, tool: data.tool, args: parsedArgs });
+        addLogEntry('tool_start', data.tool, { tool: data.tool, args: parsedArgs });
       });
 
       eventSource.addEventListener('tool_end', (e) => {
@@ -299,6 +327,8 @@ export function useStreaming() {
           result: data.result,
         });
         addThinkingStep({ type: 'tool_complete', message: data.tool, tool: data.tool, result: data.result });
+        const durationStr = data.durationMs ? ` (${data.durationMs}ms)` : '';
+        addLogEntry('tool_end', `${data.tool} \u2713${durationStr}`, { tool: data.tool, result: data.result, durationMs: data.durationMs });
       });
 
       eventSource.addEventListener('delegation_start', (e) => {
@@ -310,6 +340,8 @@ export function useStreaming() {
           task: data.task,
         });
         addThinkingStep({ type: 'delegation', message: `Delegiert an: ${data.agentId}`, detail: data.task, agentId: data.agentId, task: data.task });
+        currentLogAgentRef.current = data.agentId;
+        addLogEntry('delegation_start', `Delegiert an: ${data.agentId}`, data);
       });
 
       eventSource.addEventListener('delegation_end', (e) => {
@@ -321,6 +353,9 @@ export function useStreaming() {
           result: data.result,
         });
         addThinkingStep({ type: 'delegation_complete', message: `Delegation an ${data.agentId} abgeschlossen`, detail: data.result, agentId: data.agentId, result: data.result });
+        const delDurationStr = data.durationMs ? ` (${data.durationMs}ms)` : '';
+        addLogEntry('delegation_end', `Delegation abgeschlossen${delDurationStr}`, data);
+        currentLogAgentRef.current = null;
         // Clear delegation status after a brief moment
         setTimeout(() => setAgentStatus(null), 500);
       });
@@ -339,6 +374,7 @@ export function useStreaming() {
           agentId: data.agentId,
           stepType: data.stepType,
         });
+        addLogEntry('sub_agent_step', data.message, data, data.agentId);
       });
 
       eventSource.addEventListener('task_created', (e) => {
@@ -349,6 +385,7 @@ export function useStreaming() {
           taskId: data.taskId,
           taskTitle: data.taskTitle,
         });
+        addLogEntry('task_created', `Task: ${data.taskTitle}`, data);
         // Add to active tasks for TaskStatusBlock
         setActiveTasks(prev => [...prev, { taskId: data.taskId, taskTitle: data.taskTitle }]);
       });
@@ -375,6 +412,10 @@ export function useStreaming() {
           accumulatedContentRef.current += data.content;
           updateLastMessage(accumulatedContentRef.current);
         }
+        if (!responseStartedRef.current) {
+          responseStartedRef.current = true;
+          addLogEntry('response_start', 'Antwort...');
+        }
         // Clear agent status when streaming content
         setAgentStatus(null);
       });
@@ -394,15 +435,21 @@ export function useStreaming() {
         setAgentStatus(null);
         eventSource.close();
         eventSourceRef.current = null;
+        addLogEntry('done', 'Fertig', {});
+        responseStartedRef.current = false;
         if (onDoneRef.current) onDoneRef.current();
       });
 
       eventSource.addEventListener('error', (e) => {
+        let errorMsg = 'Connection error';
         try {
           const data = JSON.parse(e.data);
-          setError(data.error || 'Stream error');
+          errorMsg = data.error || 'Stream error';
+          setError(errorMsg);
+          addLogEntry('error', errorMsg, data);
         } catch {
-          setError('Connection error');
+          setError(errorMsg);
+          addLogEntry('error', errorMsg, {});
         }
         setIsStreaming(false);
         setAgentStatus(null);
@@ -424,7 +471,7 @@ export function useStreaming() {
       // Remove the empty assistant message
       setMessages(prev => prev.slice(0, -1));
     }
-  }, [isStreaming, addMessage, updateLastMessage, updateLastMessageReasoning, addThinkingStep]);
+  }, [isStreaming, addMessage, updateLastMessage, updateLastMessageReasoning, addThinkingStep, addLogEntry]);
 
   const loadExistingChat = useCallback((chatMessages, sessionId) => {
     // Load messages from a saved chat (without thinkingSteps)
@@ -442,6 +489,7 @@ export function useStreaming() {
     setActiveAgentId(null);
     setError(null);
     setActiveTasks([]);
+    setAgentLog([]);
   }, []);
 
   const clearMessages = useCallback(() => {
@@ -450,6 +498,9 @@ export function useStreaming() {
     setActiveAgentId(null);
     setActiveTasks([]);
     setFileProcessingState({});  // Reset file processing state
+    setAgentLog([]);
+    logIdRef.current = 0;
+    currentLogAgentRef.current = null;
   }, []);
 
   // Callback when a task completes - adds result as new message and removes from active tasks
@@ -477,5 +528,6 @@ export function useStreaming() {
     activeTasks,
     onTaskCompleted,
     fileProcessingState,  // Map of fileId/filename -> 'processing' | 'ready'
+    agentLog,
   };
 }

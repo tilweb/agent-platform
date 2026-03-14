@@ -1,0 +1,57 @@
+id: lieferschein
+name: Lieferschein
+description: Extraktion von Lieferscheindaten aus Lieferscheinen und Versandpapieren
+version: "1.0"
+
+detection:
+  keywords:
+    - Lieferschein
+    - Lieferung
+    - Versand
+    - Menge
+    - Artikelnummer
+  description: Lieferscheine mit Kopfdaten und Positionslisten
+
+fields:
+  kopfdaten:
+    lieferscheinnummer:
+      type: text
+      required: true
+      label: Lieferscheinnummer
+      hint: Eindeutige Nummer, meist prominent im Dokumentkopf
+    lieferdatum:
+      type: date
+      required: true
+      label: Lieferdatum
+      hint: Datum der tatsaechlichen Lieferung, nicht Druckdatum
+    absender:
+      type: text
+      required: true
+      label: Absender / Lieferant
+    empfaenger:
+      type: text
+      label: Empfaenger
+  positionen:
+    _array: true
+    _item_fields:
+      artikelnummer:
+        type: text
+        label: Artikelnummer
+      bezeichnung:
+        type: text
+        required: true
+        label: Artikelbezeichnung
+      menge:
+        type: number
+        required: true
+        label: Gelieferte Menge
+      einheit:
+        type: text
+        label: "Mengeneinheit (Stueck, kg, Liter, ...)"
+
+guidelines: |
+  - Die Lieferscheinnummer ist IMMER vorhanden, suche im Dokumentkopf
+  - Positionen koennen als Tabelle oder nummerierte Liste formatiert sein
+  - Bei mehreren Datumsangaben: Das Lieferdatum ist das der tatsaechlichen Lieferung
+  - Mengeneinheiten normalisieren: "Stk" → "Stueck", "kg" bleibt "kg"
+  - Wenn Artikelnummer fehlt, null setzen (nicht erfinden)

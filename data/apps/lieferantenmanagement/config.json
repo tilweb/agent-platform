@@ -1,0 +1,52 @@
+{
+  "zertifizierungstypen": [
+    { "id": "ISO27001", "label": "ISO 27001" },
+    { "id": "TISAX", "label": "TISAX" },
+    { "id": "PCI_DSS", "label": "PCI DSS" },
+    { "id": "ISO23001", "label": "ISO 23001" },
+    { "id": "ISO22301", "label": "ISO 22301" }
+  ],
+  "abteilungen": [
+    "IT", "HR", "Finanzen", "Vertrieb", "Marketing", "Recht", "Einkauf",
+    "Produktion", "Logistik", "Forschung & Entwicklung", "Geschaeftsfuehrung"
+  ],
+  "bia_stufen": [
+    { "id": "sla_kritisch", "label": "SLA-kritisch", "wert": 4 },
+    { "id": "sla_relevant", "label": "SLA-relevant", "wert": 3 },
+    { "id": "sla_gering", "label": "SLA-gering", "wert": 2 },
+    { "id": "sla_keine", "label": "Keine SLA-Relevanz", "wert": 1 }
+  ],
+  "lifecycle_phasen": [
+    { "id": "vorbereitung", "label": "Vorbereitung", "reihenfolge": 1 },
+    { "id": "risikoanalyse", "label": "Risikoanalyse", "reihenfolge": 2 },
+    { "id": "vertragspruefung", "label": "Vertragspruefung", "reihenfolge": 3 },
+    { "id": "betrieb", "label": "Betrieb", "reihenfolge": 4 },
+    { "id": "beendigung", "label": "Beendigung", "reihenfolge": 5 }
+  ],
+  "review_zyklen": {
+    "very_high": { "monate": 12, "label": "Jaehrlich" },
+    "high": { "monate": 36, "label": "Alle 3 Jahre" },
+    "medium": { "monate": null, "label": "Bei Bedarf" },
+    "low": { "monate": null, "label": "Bei Bedarf" }
+  },
+  "audit_typen": [
+    { "id": "vertragspruefung", "label": "Vertragspruefung" },
+    { "id": "soc_bericht", "label": "SOC-Bericht" },
+    { "id": "bonitaetspruefung", "label": "Bonitaetspruefung" },
+    { "id": "interview", "label": "Interview" },
+    { "id": "vor_ort_pruefung", "label": "Vor-Ort-Pruefung" },
+    { "id": "dokumentenpruefung", "label": "Dokumentenpruefung" }
+  ],
+  "bonitaet_stufen": [
+    { "id": "gut", "label": "Gut" },
+    { "id": "ausreichend", "label": "Ausreichend" },
+    { "id": "mangelhaft", "label": "Mangelhaft" },
+    { "id": "unbekannt", "label": "Unbekannt" }
+  ],
+  "risiko_labels": {
+    "very_high": "Sehr hoch",
+    "high": "Hoch",
+    "medium": "Mittel",
+    "low": "Niedrig"
+  }
+}

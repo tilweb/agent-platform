@@ -1,0 +1,29 @@
+id: task_mmejkzntzku4jo
+title: "Recherche: Führe eine detaillierte Featureanalyse von vanta.com durch. Untersuche die Haupt"
+description: Führe eine detaillierte Featureanalyse von vanta.com durch. Untersuche die Hauptfunktionen, Sicherheitsfeatures, Compliance-Unterstützung, Integrationsmöglichkeiten und Preisstrukturen. Fasse die wichtigsten Erkenntnisse in einer strukturierten Zusammenfassung zusammen.
+type: deep-research
+priority: normal
+userId: user_1770561498880_39ohgu5
+created_by: supervisor
+source_session_id: session_1772780237625_83diq8p
+trigger: delegation
+created_at: 2026-03-06T06:57:20.008Z
+updated_at: 2026-03-06T06:58:41.920Z
+status: completed
+progress: 100
+current_step: 0
+total_steps: 0
+assigned_agent: researcher
+steps: []
+config:
+  max_iterations: 50
+  timeout_minutes: 30
+  notify_on_complete: true
+  auto_retry_on_failure: false
+started_at: 2026-03-06T06:57:20.764Z
+result_file: /Users/andreasbachmann/Documents/Development/AgentWork/agent-platform/data/tasks/results/task_mmejkzntzku4jo-result.json
+result_summary: |-
+  Phase 1 abgeschlossen. Plan erstellt mit 5 Kernfragen. Starte Recherche...
+
+  Ich beginne mit der Erstellung eines Rechercheplans für die detaillierte Featureanalyse von vanta.com. Die Analyse wird sich... (Tools: file_write, web_search, web_fetch)
+completed_at: 2026-03-06T06:58:41.920Z

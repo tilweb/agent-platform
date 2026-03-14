@@ -1,0 +1,17 @@
+id: proj_mmp165gi4crjo
+name: Arbeitsverträge
+icon: briefcase
+color: "#9333ea"
+createdAt: 2026-03-13T15:07:22.530Z
+updatedAt: 2026-03-13T15:07:22.532Z
+createdBy: user_1770561498880_39ohgu5
+members:
+  - userId: user_1770561498880_39ohgu5
+    role: owner
+    addedAt: 2026-03-13T15:07:22.530Z
+    addedBy: user_1770561498880_39ohgu5
+settings:
+  include_memory_in_prompt: true
+  include_kb_in_prompt: true
+  default_chat_visibility: project
+archived: false

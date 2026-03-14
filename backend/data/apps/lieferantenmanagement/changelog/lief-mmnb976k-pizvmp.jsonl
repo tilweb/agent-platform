@@ -1,0 +1,14 @@
+{"timestamp":"2026-03-12T10:14:08.541Z","user":"user_1770561498880_39ohgu5","aktion":"erstellt","bereich":"stammdaten","details":{"firmenname":"DataFlow Analytics AG"}}
+{"timestamp":"2026-03-12T10:14:08.565Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"ansprechpartner","neuer_wert":"Prof. Dr. Elena Richter","details":{"aktion":"hinzugefuegt","id":"ap-mmnb9779-1v1t"}}
+{"timestamp":"2026-03-12T10:14:08.572Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"ansprechpartner","neuer_wert":"Markus Bauer","details":{"aktion":"hinzugefuegt","id":"ap-mmnb977g-ri18"}}
+{"timestamp":"2026-03-12T10:14:08.579Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"zertifizierungen","neuer_wert":"ISO27001","details":{"aktion":"hinzugefuegt","id":"zert-mmnb977n-d2lz"}}
+{"timestamp":"2026-03-12T10:14:08.586Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","neuer_wert":"HR-Analytics Plattform","details":{"aktion":"hinzugefuegt","id":"leist-mmnb977u-27fl"}}
+{"timestamp":"2026-03-12T10:14:08.602Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","feld":"bia","neuer_wert":"very_high","details":{"leistung_id":"leist-mmnb977u-27fl"}}
+{"timestamp":"2026-03-12T10:14:08.609Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"regulatorik","details":{"leistung_id":"leist-mmnb977u-27fl"}}
+{"timestamp":"2026-03-12T10:14:08.616Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","neuer_wert":"Finance Reporting Suite","details":{"aktion":"hinzugefuegt","id":"leist-mmnb978o-tu8n"}}
+{"timestamp":"2026-03-12T10:14:08.633Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","feld":"bia","neuer_wert":"high","details":{"leistung_id":"leist-mmnb978o-tu8n"}}
+{"timestamp":"2026-03-12T10:14:08.639Z","user":"user_1770561498880_39ohgu5","aktion":"phase_gewechselt","bereich":"lifecycle","alter_wert":"vorbereitung","neuer_wert":"risikoanalyse"}
+{"timestamp":"2026-03-12T10:14:08.645Z","user":"user_1770561498880_39ohgu5","aktion":"phase_gewechselt","bereich":"lifecycle","alter_wert":"risikoanalyse","neuer_wert":"vertragspruefung"}
+{"timestamp":"2026-03-12T10:14:08.651Z","user":"user_1770561498880_39ohgu5","aktion":"phase_gewechselt","bereich":"lifecycle","alter_wert":"vertragspruefung","neuer_wert":"betrieb"}
+{"timestamp":"2026-03-12T10:16:12.622Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","feld":"bia","neuer_wert":"high","details":{"leistung_id":"leist-mmnb977u-27fl"}}
+{"timestamp":"2026-03-12T10:16:12.630Z","user":"user_1770561498880_39ohgu5","aktion":"geaendert","bereich":"leistungen","feld":"bia","neuer_wert":"medium","details":{"leistung_id":"leist-mmnb978o-tu8n"}}

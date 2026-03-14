@@ -123,6 +123,10 @@ const styles = {
     backgroundColor: theme.colors.primaryLight,
     color: theme.colors.primary,
   },
+  badgeMuted: {
+    backgroundColor: theme.colors.surfaceHover,
+    color: theme.colors.textMuted,
+  },
   // Section
   section: {
     marginBottom: theme.spacing['2xl'],
@@ -781,6 +785,7 @@ function AgentsPage() {
       skills: [],
       skillMode: 'all',
       delegatable: true,
+      active: true,
       systemPrompt: '',
       model: { provider_id: '', model_id: '' },
     });
@@ -804,6 +809,7 @@ function AgentsPage() {
         skills: Array.isArray(fullAgent.skills) ? fullAgent.skills : [],
         skillMode: fullAgent.skillMode || 'all',
         delegatable: fullAgent.delegatable ?? true,
+        active: fullAgent.active !== false,
         systemPrompt: typeof fullAgent.systemPrompt === 'string' ? fullAgent.systemPrompt : '',
         model: (fullAgent.model && fullAgent.model.provider_id && fullAgent.model.model_id)
           ? fullAgent.model
@@ -837,6 +843,7 @@ function AgentsPage() {
         skills: formData.skillMode === 'allow' ? formData.skills : undefined,
         skillMode: formData.skillMode,
         delegatable: formData.delegatable,
+        active: formData.active,
         systemPrompt: formData.systemPrompt,
         model: modelConfig,
       };
@@ -1001,6 +1008,11 @@ function AgentsPage() {
                         System-Agent
                       </span>
                     )}
+                    {selectedAgent.active === false && (
+                      <span style={{ ...styles.badge, ...styles.badgeMuted }}>
+                        Inaktiv
+                      </span>
+                    )}
                     {selectedAgent.delegatable && (
                       <span style={{ ...styles.badge, ...styles.badgeDelegatable }}>
                         Delegierbar
@@ -1135,17 +1147,51 @@ function AgentsPage() {
               </div>
             </div>
 
-            {/* Delegation Toggle */}
+            {/* Verfügbarkeit */}
             <div style={styles.formCard}>
               <h3 style={styles.formCardTitle}>Verfügbarkeit</h3>
-              <div style={styles.toggleRow}>
+
+              {/* Active Toggle */}
+              <div style={{ ...styles.toggleRow, marginBottom: theme.spacing.lg }}>
                 <button
                   style={{
                     ...styles.toggleButton,
                     ...(isViewOnly ? { cursor: 'not-allowed', opacity: 0.5 } : {}),
                   }}
-                  onClick={() => !isViewOnly && setFormData({ ...formData, delegatable: !formData.delegatable })}
+                  onClick={() => !isViewOnly && setFormData({ ...formData, active: !formData.active })}
                   disabled={isViewOnly}
+                  type="button"
+                >
+                  {formData.active ? <ToggleOnIcon /> : <ToggleOffIcon />}
+                </button>
+                <div style={styles.toggleContent}>
+                  <div style={styles.toggleTitle}>
+                    {formData.active ? 'Aktiv' : 'Inaktiv'}
+                  </div>
+                  <div style={styles.toggleDescription}>
+                    {formData.active ? (
+                      <>
+                        Der Agent ist aktiv und kann im Chat ausgewählt sowie per Delegation angesprochen werden.
+                      </>
+                    ) : (
+                      <>
+                        Der Agent ist deaktiviert und weder im Chat noch per Delegation verfügbar.
+                        Er bleibt in der Admin-Ansicht sichtbar und kann jederzeit wieder aktiviert werden.
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Delegation Toggle */}
+              <div style={styles.toggleRow}>
+                <button
+                  style={{
+                    ...styles.toggleButton,
+                    ...(isViewOnly || !formData.active ? { cursor: 'not-allowed', opacity: 0.5 } : {}),
+                  }}
+                  onClick={() => !isViewOnly && formData.active && setFormData({ ...formData, delegatable: !formData.delegatable })}
+                  disabled={isViewOnly || !formData.active}
                   type="button"
                 >
                   {formData.delegatable ? <ToggleOnIcon /> : <ToggleOffIcon />}
@@ -1333,10 +1379,13 @@ function AgentsPage() {
                     >
                       <option value="all">Alle Skills verfügbar</option>
                       <option value="allow">Nur ausgewählte Skills</option>
+                      <option value="none">Keine Skills</option>
                     </select>
                     <div style={styles.hint}>
                       {formData.skillMode === 'all'
                         ? 'Der Agent kann alle aktivierten Skills nutzen.'
+                        : formData.skillMode === 'none'
+                        ? 'Der Agent kann keine Skills nutzen.'
                         : 'Der Agent kann nur die unten ausgewählten Skills nutzen.'}
                     </div>
                   </div>
@@ -1435,6 +1484,21 @@ function AgentsPage() {
                           Verfügbar: {availableSkills.map(s => s.name).join(', ')}
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {formData.skillMode === 'none' && (
+                    <div style={{
+                      padding: theme.spacing.lg,
+                      backgroundColor: theme.colors.surfaceHover,
+                      borderRadius: theme.borderRadius.lg,
+                      fontSize: theme.typography.sizes.sm,
+                      color: theme.colors.textMuted,
+                    }}>
+                      <div style={{ fontWeight: theme.typography.weights.medium, marginBottom: theme.spacing.sm, color: theme.colors.text }}>
+                        Skills deaktiviert
+                      </div>
+                      Dieser Agent kann keine Skills nutzen. Weder automatisches Skill-Matching noch manuelles Laden von Skills ist möglich.
                     </div>
                   )}
                 </div>
@@ -1588,12 +1652,14 @@ function AgentsPage() {
 
 function AgentCard({ agent, onClick, isHovered, onMouseEnter, onMouseLeave }) {
   const colors = agentColors[agent.id] || agentColors.default;
+  const isInactive = agent.active === false;
 
   return (
     <div
       style={{
         ...styles.card,
         ...(isHovered ? styles.cardHover : {}),
+        ...(isInactive ? { opacity: 0.6 } : {}),
       }}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
@@ -1629,7 +1695,12 @@ function AgentCard({ agent, onClick, isHovered, onMouseEnter, onMouseLeave }) {
 
       <div style={styles.cardFooter}>
         <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-          {agent.delegatable && (
+          {isInactive && (
+            <span style={{ ...styles.badge, ...styles.badgeMuted }}>
+              Inaktiv
+            </span>
+          )}
+          {agent.delegatable && !isInactive && (
             <span style={{ ...styles.badge, ...styles.badgeDelegatable }}>
               Delegierbar
             </span>

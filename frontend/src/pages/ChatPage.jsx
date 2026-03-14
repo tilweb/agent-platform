@@ -54,6 +54,7 @@ function ChatPage() {
     activeTasks,
     onTaskCompleted,
     fileProcessingState,
+    agentLog,
   } = useStreaming();
 
   const {
@@ -512,6 +513,8 @@ function ChatPage() {
           materials={materials}
           onAddMaterial={handleAddMaterial}
           onRemoveMaterial={handleRemoveMaterial}
+          agentLog={agentLog}
+          getSessionId={() => sessionIdRef.current}
         />
       </div>
     </div>

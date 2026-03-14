@@ -1,0 +1,71 @@
+{
+  "jahr": 2025,
+  "eintraege": [
+    {
+      "supplier_id": "lief-mmnb9p56-yjn01o",
+      "leistung_id": "leist-mmnb9p6g-8ozk",
+      "bia_level": "very_high",
+      "erforderliche_scopes": [
+        "fachpruefung",
+        "compliance_pruefung"
+      ],
+      "geplante_audits": [],
+      "status": "offen"
+    },
+    {
+      "supplier_id": "lief-mmnb976k-pizvmp",
+      "leistung_id": "leist-mmnb977u-27fl",
+      "bia_level": "high",
+      "erforderliche_scopes": [
+        "fachpruefung",
+        "compliance_pruefung"
+      ],
+      "geplante_audits": [],
+      "status": "offen"
+    },
+    {
+      "supplier_id": "lief-mmnbag00-7vxxo9",
+      "leistung_id": "leist-mmnbag19-bt4p",
+      "bia_level": "very_high",
+      "erforderliche_scopes": [
+        "fachpruefung",
+        "compliance_pruefung"
+      ],
+      "geplante_audits": [],
+      "status": "offen"
+    },
+    {
+      "supplier_id": "lief-mmnbag2w-4kefhm",
+      "leistung_id": "leist-mmnbag3k-9w3b",
+      "bia_level": "very_high",
+      "erforderliche_scopes": [
+        "fachpruefung",
+        "compliance_pruefung"
+      ],
+      "geplante_audits": [],
+      "status": "offen"
+    },
+    {
+      "supplier_id": "lief-mmnb75hw-85vv21",
+      "leistung_id": "leist-mmnb7i07-km8l",
+      "bia_level": "very_high",
+      "erforderliche_scopes": [
+        "fachpruefung",
+        "compliance_pruefung"
+      ],
+      "geplante_audits": [],
+      "status": "offen"
+    },
+    {
+      "supplier_id": "lief-mmnb75hw-85vv21",
+      "leistung_id": "leist-mmnb7tex-zs98",
+      "bia_level": "high",
+      "erforderliche_scopes": [
+        "fachpruefung",
+        "compliance_pruefung"
+      ],
+      "geplante_audits": [],
+      "status": "offen"
+    }
+  ]
+}

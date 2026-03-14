@@ -1,0 +1,112 @@
+{
+  "id": "lief-mmnbafxy-2nwzwe",
+  "firmenname": "PrintOffice24 GmbH",
+  "status": "active",
+  "created_at": "2026-03-12T10:15:06.550Z",
+  "updated_at": "2026-03-12T10:15:06.617Z",
+  "created_by": "user_1770561498880_39ohgu5",
+  "stammdaten": {
+    "kundennummer": "LF-2025-042",
+    "vertragsnummern": [
+      "RV-2025-0300"
+    ],
+    "auftragsnummern": [],
+    "adresse": {
+      "strasse": "Industriestr. 5",
+      "plz": "73728",
+      "ort": "Esslingen",
+      "land": "Deutschland"
+    },
+    "url": "https://printoffice24.example.de"
+  },
+  "ansprechpartner": [
+    {
+      "id": "ap-mmnbafym-acel",
+      "name": "Sandra Mueller",
+      "rolle": "Vertrieb",
+      "telefon": "+49 711 44556-0",
+      "email": "s.mueller@printoffice24.example.de",
+      "ist_hauptansprechpartner": true
+    }
+  ],
+  "zertifizierungen": [],
+  "leistungen": [
+    {
+      "id": "leist-mmnbafyu-q74q",
+      "bezeichnung": "Buero- und Druckerbedarf",
+      "abteilung": "Einkauf",
+      "status": "active",
+      "beschreibung": "Lieferung von Buromaterial, Toner und Druckerpapier",
+      "risikobewertung": {
+        "bonitaet": "unbekannt",
+        "bonitaet_datum": "",
+        "bonitaet_quelle": "",
+        "bia": {
+          "sla_relevanz": "sla_keine",
+          "datenschutz_niveau": "keine",
+          "vertraulichkeit": "keine",
+          "kundenbezug": "kein",
+          "ausschreibungsvolumen": "unter_10k",
+          "ergebnis": "low",
+          "berechnet_am": "2026-03-12T10:15:06.599Z"
+        },
+        "dora_relevant": false,
+        "naechste_pruefung": ""
+      },
+      "regulatorik": {
+        "personenbezogene_daten": false,
+        "avv": {
+          "vorhanden": false,
+          "abgeschlossen_am": "",
+          "gueltig_bis": ""
+        },
+        "nda": {
+          "vorhanden": false,
+          "abgeschlossen_am": "",
+          "gueltig_bis": ""
+        },
+        "rahmenvertrag": {
+          "vorhanden": false,
+          "abgeschlossen_am": "",
+          "gueltig_bis": "",
+          "dora_konform": false
+        }
+      }
+    }
+  ],
+  "lifecycle": {
+    "phase": "betrieb",
+    "phasen_historie": [
+      {
+        "phase": "vorbereitung",
+        "eingetreten_am": "2026-03-12T10:15:06.550Z",
+        "abgeschlossen_am": "2026-03-12T10:15:06.605Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "risikoanalyse",
+        "eingetreten_am": "2026-03-12T10:15:06.605Z",
+        "abgeschlossen_am": "2026-03-12T10:15:06.611Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "vertragspruefung",
+        "eingetreten_am": "2026-03-12T10:15:06.611Z",
+        "abgeschlossen_am": "2026-03-12T10:15:06.617Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "betrieb",
+        "eingetreten_am": "2026-03-12T10:15:06.617Z",
+        "abgeschlossen_am": null,
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      }
+    ]
+  },
+  "verantwortlichkeiten": {
+    "fachverantwortlicher": "user_1770561498880_39ohgu5",
+    "ism_verantwortlicher": ""
+  },
+  "gesamtrisiko": "low",
+  "notizen": "Buero- und Druckerbedarf. Rahmenvertrag mit Jahreskonditionen."
+}

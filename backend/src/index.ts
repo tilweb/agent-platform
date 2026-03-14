@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { serveStatic } from 'hono/bun';
+import { join } from 'path';
 import { apiRateLimit } from './middleware/rateLimit';
 import { csrfProtection } from './middleware/csrf';
 import { securityHeaders } from './middleware/securityHeaders';
@@ -24,6 +26,7 @@ import { rbacRoutes } from './routes/rbac';
 import { adminRoutes } from './routes/admin';
 import { imageRoutes } from './routes/images';
 import { notificationRoutes } from './routes/notifications';
+import { extractionProjectRoutes } from './routes/extraction-projects';
 import { imageGenerationService } from './services/imageGeneration';
 import { setupTools } from './tools';
 import { mcpManager } from './mcp';
@@ -156,6 +159,19 @@ app.route('/api/resources', rbacRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/images', imageRoutes);
 app.route('/api/notifications', notificationRoutes);
+app.route('/api/extraction', extractionProjectRoutes);
+
+// Production: serve built frontend (same-origin, no CORS needed)
+if (process.env.NODE_ENV === 'production') {
+  const frontendDir = join(import.meta.dir, '../../frontend/dist');
+
+  // Serve static assets (JS, CSS, images, etc.)
+  app.use('/assets/*', serveStatic({ root: frontendDir }));
+
+  // SPA fallback: try file first, then index.html for client-side routing
+  app.get('*', serveStatic({ root: frontendDir }));
+  app.get('*', serveStatic({ root: frontendDir, path: 'index.html' }));
+}
 
 const port = parseInt(process.env.PORT || '3001');
 

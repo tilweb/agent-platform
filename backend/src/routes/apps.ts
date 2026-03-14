@@ -13,6 +13,7 @@ import {
 } from '../apps/registry';
 import { contractRoutes } from '../apps/vertragsmanagement/routes';
 import { projektmanagementRoutes } from '../apps/projektmanagement/routes';
+import { lieferantenmanagementRoutes } from '../apps/lieferantenmanagement/routes';
 
 const apps = new Hono();
 
@@ -56,7 +57,7 @@ apps.get('/:appId', async (c) => {
     const appId = c.req.param('appId');
 
     // Skip if it's a sub-route
-    if (appId === 'enabled' || appId === 'vertragsmanagement') {
+    if (appId === 'enabled' || appId === 'vertragsmanagement' || appId === 'lieferantenmanagement') {
       return c.notFound();
     }
 
@@ -120,5 +121,8 @@ apps.route('/vertragsmanagement', contractRoutes);
 
 // Mount Projektmanagement routes
 apps.route('/projektmanagement', projektmanagementRoutes);
+
+// Mount Lieferantenmanagement routes
+apps.route('/lieferantenmanagement', lieferantenmanagementRoutes);
 
 export { apps as appsRoutes };

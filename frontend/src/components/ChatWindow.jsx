@@ -7,7 +7,8 @@ import { sanitizeUrl, validateShareUrl } from '../utils/sanitize';
 import { AgentIcon } from './AgentPicker';
 import { CommandPalette } from './CommandPalette';
 import { useCommands } from '../hooks/useCommands';
-import { LinkIcon, FolderIcon, MicrophoneIcon, StopIcon, PaperclipIcon, BookIcon, DocumentIcon } from './Icons';
+import { LinkIcon, FolderIcon, MicrophoneIcon, StopIcon, PaperclipIcon, BookIcon, DocumentIcon, TimelineIcon } from './Icons';
+import AgentLogPanel from './AgentLogPanel';
 import AddToCollectionModal from './AddToCollectionModal';
 import CreateCollectionModal from './CreateCollectionModal';
 import { AudioPlayer } from './AudioPlayer';
@@ -3048,6 +3049,8 @@ function ChatWindow({
   onAddMaterial,
   onRemoveMaterial,
   onUpdateMaterials,
+  agentLog = [],
+  getSessionId,
 }) {
   const [input, setInput] = useState('');
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -3061,6 +3064,8 @@ function ChatWindow({
   const [fileTranscriptions, setFileTranscriptions] = useState({});
   // Materials sidebar state
   const [showMaterialsSidebar, setShowMaterialsSidebar] = useState(false);
+  // Agent log panel state
+  const [showAgentLog, setShowAgentLog] = useState(false);
   const [selectedMaterialIds, setSelectedMaterialIds] = useState(new Set());
   // Image lightbox state
   const [lightboxData, setLightboxData] = useState(null);
@@ -3675,6 +3680,40 @@ function ChatWindow({
               loadingFormat={exportingFormat}
               disabled={!chatId}
             />
+            {/* Agent Log toggle button */}
+            <button
+              style={{
+                ...chatStyles.headerActionButton,
+                ...(showAgentLog ? { color: theme.colors.primary, backgroundColor: theme.colors.primaryLight } : {}),
+              }}
+              onClick={() => setShowAgentLog(!showAgentLog)}
+              onMouseEnter={(e) => {
+                if (!showAgentLog) {
+                  e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                  e.currentTarget.style.color = theme.colors.primary;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!showAgentLog) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = theme.colors.textMuted;
+                }
+              }}
+              title="Agent Log"
+            >
+              <TimelineIcon size={16} />
+              {agentLog.length > 0 && !showAgentLog && (
+                <span style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: theme.colors.primary,
+                  borderRadius: '50%',
+                }} />
+              )}
+            </button>
             {/* Materials toggle button - only show when sidebar is closed and materials exist or onAddMaterial is provided */}
             {onAddMaterial && !showMaterialsSidebar && (
               <MaterialsToggleButton
@@ -4086,6 +4125,16 @@ function ChatWindow({
         </div>
       </div>
       </div>
+
+      {/* Agent Log Panel */}
+      {showAgentLog && (
+        <AgentLogPanel
+          agentLog={agentLog}
+          isStreaming={isStreaming}
+          onClose={() => setShowAgentLog(false)}
+          getSessionId={getSessionId}
+        />
+      )}
 
       {/* Materials Sidebar */}
       {showMaterialsSidebar && onAddMaterial && (

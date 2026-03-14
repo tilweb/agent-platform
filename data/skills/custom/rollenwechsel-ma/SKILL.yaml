@@ -1,0 +1,20 @@
+id: rollenwechsel-ma
+name: Mitarbeitende Rollenwechsel
+version: "1.0"
+description: Startet den Prozess Rollenwechsel mit allen notwendigen Tickets und Sub-Workflows.
+metadata:
+  use_when: ""
+  output_type: ""
+allowed_tools: []
+knowledge:
+  files: []
+  collections: []
+triggers:
+  keywords: []
+tools:
+  required: []
+  optional: []
+instructions: ""
+workflow: null
+output: null
+enabled: true

@@ -427,6 +427,20 @@ export function BellIcon({ size = 20, color = 'currentColor', style = {} }) {
   );
 }
 
+export function TimelineIcon({ size = 20, color = 'currentColor', style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" style={style}>
+      <line x1="4" y1="6" x2="4" y2="18" />
+      <line x1="8" y1="6" x2="20" y2="6" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+      <line x1="8" y1="18" x2="18" y2="18" />
+      <circle cx="4" cy="6" r="1.5" fill={color} />
+      <circle cx="4" cy="12" r="1.5" fill={color} />
+      <circle cx="4" cy="18" r="1.5" fill={color} />
+    </svg>
+  );
+}
+
 export function XIcon({ size = 20, color = 'currentColor', style = {} }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" style={style}>
@@ -469,6 +483,7 @@ const ICON_MAP = {
   'clock': ClockIcon,
   'image': ImageIcon,
   'bell': BellIcon,
+  'timeline': TimelineIcon,
 };
 
 export function getCommandIcon(iconId, props = {}) {

@@ -122,8 +122,9 @@ export interface SkillFilterOptions {
    * Skill access mode:
    * - 'all' (default): Agent can use ALL available skills
    * - 'allow': Agent can ONLY use skills listed in agentSkills
+   * - 'none': Agent cannot use any skills
    */
-  skillMode?: 'all' | 'allow';
+  skillMode?: 'all' | 'allow' | 'none';
 }
 
 /**
@@ -140,6 +141,9 @@ export async function matchSkills(
   let skills = await getEnabledSkills();
 
   // Filter skills based on agent configuration
+  if (filterOptions?.skillMode === 'none') {
+    return []; // No skills allowed
+  }
   if (filterOptions?.skillMode === 'allow') {
     const allowedSkills = filterOptions.agentSkills || [];
     skills = skills.filter(s => allowedSkills.includes(s.id));

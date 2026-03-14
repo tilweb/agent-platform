@@ -27,3 +27,15 @@ apps:
         component: WizardPage
       - path: /apps/projektmanagement/:id
         component: WizardPage
+  lieferantenmanagement:
+    id: lieferantenmanagement
+    name: Lieferantenmanagement
+    description: Lieferanten bewerten, Risiken steuern und Compliance sicherstellen
+    icon: supplier
+    version: 1.0.0
+    enabled: true
+    routes:
+      - path: /apps/lieferantenmanagement
+        component: LieferantenPage
+      - path: /apps/lieferantenmanagement/:id
+        component: SupplierDetailPage

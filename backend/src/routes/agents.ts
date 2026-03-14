@@ -9,6 +9,7 @@ import { canView, canEdit, canDelete, canManageAccess, listAccessibleResources }
 import { initializeResourceAccess, deleteResourceAccess, hasAccessEntries } from '../rbac/storage';
 import {
   listAgents,
+  listAllAgentsIncludingInactive,
   loadAgent,
   createAgent as createAgentService,
   updateAgent as updateAgentService,
@@ -30,7 +31,7 @@ agentRoutes.use('/*', authMiddleware);
 agentRoutes.get('/', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
-    const allAgents = await listAgents();
+    const allAgents = await listAllAgentsIncludingInactive();
 
     // Separate system agents (always visible) from user agents
     const systemAgents: AgentConfig[] = [];
@@ -158,7 +159,7 @@ agentRoutes.post('/', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
     const body = await c.req.json();
-    const { id, name, description, capabilities, tools, delegatable, systemPrompt, model } = body;
+    const { id, name, description, capabilities, tools, delegatable, active, systemPrompt, model, skillMode, skills } = body;
 
     if (!id || !name) {
       return c.json({ error: 'ID und Name sind erforderlich' }, 400);
@@ -176,8 +177,11 @@ agentRoutes.post('/', async (c) => {
       capabilities: capabilities || [],
       tools: tools || ['file_read', 'file_list'],
       delegatable: delegatable !== false,
+      active,
       systemPrompt,
       model,
+      skillMode,
+      skills,
     });
 
     // Initialize RBAC - creator becomes owner
@@ -219,7 +223,7 @@ agentRoutes.put('/:id', async (c) => {
     }
 
     const body = await c.req.json();
-    const { name, description, capabilities, tools, delegatable, systemPrompt, model } = body;
+    const { name, description, capabilities, tools, delegatable, active, systemPrompt, model, skillMode, skills } = body;
 
     const updatedAgent = await updateAgentService(agentId, {
       name,
@@ -227,8 +231,11 @@ agentRoutes.put('/:id', async (c) => {
       capabilities,
       tools,
       delegatable,
+      active,
       systemPrompt,
       model,
+      skillMode,
+      skills,
     });
 
     return c.json({

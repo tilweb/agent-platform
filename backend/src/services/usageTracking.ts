@@ -13,7 +13,7 @@ import { resolve, join } from 'path';
 export interface UsageContext {
   userId?: string;              // Direct user (Chat, Agents)
   triggeringUserId?: string;    // User who triggered indirect call
-  source: 'chat' | 'delegation' | 'image_analysis' | 'indexer' | 'search' | 'contract';
+  source: 'chat' | 'delegation' | 'image_analysis' | 'indexer' | 'search' | 'contract' | 'extraction';
   operation?: string;           // e.g. 'kb_index', 'smart_search'
   resourceId?: string;          // e.g. collectionId, contractId
 }

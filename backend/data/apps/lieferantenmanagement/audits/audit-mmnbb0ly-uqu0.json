@@ -1,0 +1,27 @@
+{
+  "id": "audit-mmnbb0ly-uqu0",
+  "supplier_id": "lief-mmnbag00-7vxxo9",
+  "leistung_id": "",
+  "typ": "vertragspruefung",
+  "status": "abgeschlossen",
+  "geplant_fuer": "2025-09-01",
+  "durchgefuehrt_am": "2025-09-12",
+  "pruefer": "user_1770561498880_39ohgu5",
+  "ergebnis": null,
+  "bewertung": "bestanden_mit_auflagen",
+  "massnahmen": [
+    {
+      "beschreibung": "DORA-Klauseln in Rahmenvertrag nachverhandeln",
+      "faellig_bis": "2026-06-30",
+      "status": "offen"
+    },
+    {
+      "beschreibung": "Exit-Strategie dokumentieren",
+      "faellig_bis": "2026-04-30",
+      "status": "offen"
+    }
+  ],
+  "notizen": "Vertragsbedingungen grundsaetzlich ok, aber DORA-Anforderungen an Ausstiegsklauseln nicht vollstaendig erfuellt.",
+  "created_at": "2026-03-12T10:15:33.334Z",
+  "updated_at": "2026-03-12T10:15:33.334Z"
+}

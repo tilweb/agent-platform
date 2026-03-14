@@ -1,0 +1,174 @@
+{
+  "id": "lief-mmnb976k-pizvmp",
+  "firmenname": "DataFlow Analytics AG",
+  "status": "active",
+  "created_at": "2026-03-12T10:14:08.540Z",
+  "updated_at": "2026-03-12T10:16:12.630Z",
+  "created_by": "user_1770561498880_39ohgu5",
+  "stammdaten": {
+    "kundennummer": "LF-2024-002",
+    "vertragsnummern": [
+      "RV-2024-1200"
+    ],
+    "auftragsnummern": [
+      "AB-2024-2001",
+      "AB-2024-2002"
+    ],
+    "adresse": {
+      "strasse": "Friedrichstr. 88",
+      "plz": "10117",
+      "ort": "Berlin",
+      "land": "Deutschland"
+    },
+    "url": "https://dataflow-analytics.example.de"
+  },
+  "ansprechpartner": [
+    {
+      "id": "ap-mmnb9779-1v1t",
+      "name": "Prof. Dr. Elena Richter",
+      "rolle": "CEO",
+      "telefon": "+49 30 55667-100",
+      "email": "e.richter@dataflow.example.de",
+      "ist_hauptansprechpartner": true
+    },
+    {
+      "id": "ap-mmnb977g-ri18",
+      "name": "Markus Bauer",
+      "rolle": "Datenschutzbeauftragter",
+      "telefon": "+49 30 55667-300",
+      "email": "m.bauer@dataflow.example.de",
+      "ist_hauptansprechpartner": false
+    }
+  ],
+  "zertifizierungen": [
+    {
+      "id": "zert-mmnb977n-d2lz",
+      "typ": "ISO27001",
+      "gueltig_bis": "2027-06-30",
+      "ausgestellt_am": "2024-06-30",
+      "zertifizierer": "BSI",
+      "nachweis_vorhanden": true
+    }
+  ],
+  "leistungen": [
+    {
+      "id": "leist-mmnb977u-27fl",
+      "bezeichnung": "HR-Analytics Plattform",
+      "abteilung": "HR",
+      "status": "active",
+      "beschreibung": "Cloud-basierte Analyseplattform fuer Personalcontrolling, Fluktuation und Mitarbeiterzufriedenheit",
+      "risikobewertung": {
+        "bonitaet": "unbekannt",
+        "bonitaet_datum": "",
+        "bonitaet_quelle": "",
+        "bia": {
+          "sla_relevanz": "sla_relevant",
+          "datenschutz_niveau": "gelegentlich_hoch",
+          "vertraulichkeit": "gelegentlich_hoch",
+          "kundenbezug": "indirekt",
+          "ausschreibungsvolumen": "120k_250k",
+          "ergebnis": "high",
+          "berechnet_am": "2026-03-12T10:16:12.622Z"
+        },
+        "dora_relevant": false,
+        "naechste_pruefung": "2026-04-01"
+      },
+      "regulatorik": {
+        "personenbezogene_daten": true,
+        "avv": {
+          "vorhanden": true,
+          "abgeschlossen_am": "2024-07-01",
+          "gueltig_bis": "2027-07-01"
+        },
+        "nda": {
+          "vorhanden": true,
+          "abgeschlossen_am": "2024-07-01",
+          "gueltig_bis": "2027-07-01"
+        },
+        "rahmenvertrag": {
+          "vorhanden": true,
+          "abgeschlossen_am": "2024-07-01",
+          "gueltig_bis": "2027-07-01",
+          "dora_konform": false
+        }
+      }
+    },
+    {
+      "id": "leist-mmnb978o-tu8n",
+      "bezeichnung": "Finance Reporting Suite",
+      "abteilung": "Finanzen",
+      "status": "active",
+      "beschreibung": "Automatisierte Finanzberichte und KPI-Dashboards",
+      "risikobewertung": {
+        "bonitaet": "unbekannt",
+        "bonitaet_datum": "",
+        "bonitaet_quelle": "",
+        "bia": {
+          "sla_relevanz": "sla_gering",
+          "datenschutz_niveau": "nicht_sensibel",
+          "vertraulichkeit": "nicht_sensibel",
+          "kundenbezug": "kein",
+          "ausschreibungsvolumen": "10k_120k",
+          "ergebnis": "medium",
+          "berechnet_am": "2026-03-12T10:16:12.630Z"
+        },
+        "dora_relevant": false,
+        "naechste_pruefung": ""
+      },
+      "regulatorik": {
+        "personenbezogene_daten": false,
+        "avv": {
+          "vorhanden": false,
+          "abgeschlossen_am": "",
+          "gueltig_bis": ""
+        },
+        "nda": {
+          "vorhanden": false,
+          "abgeschlossen_am": "",
+          "gueltig_bis": ""
+        },
+        "rahmenvertrag": {
+          "vorhanden": false,
+          "abgeschlossen_am": "",
+          "gueltig_bis": "",
+          "dora_konform": false
+        }
+      }
+    }
+  ],
+  "lifecycle": {
+    "phase": "betrieb",
+    "phasen_historie": [
+      {
+        "phase": "vorbereitung",
+        "eingetreten_am": "2026-03-12T10:14:08.540Z",
+        "abgeschlossen_am": "2026-03-12T10:14:08.639Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "risikoanalyse",
+        "eingetreten_am": "2026-03-12T10:14:08.639Z",
+        "abgeschlossen_am": "2026-03-12T10:14:08.645Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "vertragspruefung",
+        "eingetreten_am": "2026-03-12T10:14:08.645Z",
+        "abgeschlossen_am": "2026-03-12T10:14:08.651Z",
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      },
+      {
+        "phase": "betrieb",
+        "eingetreten_am": "2026-03-12T10:14:08.651Z",
+        "abgeschlossen_am": null,
+        "bearbeiter": "user_1770561498880_39ohgu5"
+      }
+    ]
+  },
+  "verantwortlichkeiten": {
+    "fachverantwortlicher": "user_1770561498880_39ohgu5",
+    "ism_verantwortlicher": ""
+  },
+  "gesamtrisiko": "high",
+  "notizen": "Datenanalyse-Plattform fuer HR und Finance. Quartalsweise Reporting-Calls."
+}
