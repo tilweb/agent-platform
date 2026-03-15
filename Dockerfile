@@ -48,6 +48,9 @@ CMD sh -c '\
   cp -r /app/backend/backend-data-seed/* /app/data/backend-data/ && \
   rm -rf /app/backend/data && \
   ln -s /app/data/backend-data /app/backend/data && \
+  echo "=== Verifying providers.yaml ===" && \
+  wc -l /app/data/config/providers.yaml && \
+  grep "^  - id:" /app/data/config/providers.yaml && \
   echo "=== Running seed script ===" && \
   bun run /app/backend/scripts/seed-demo-users.ts && \
   echo "=== Starting server ===" && \
