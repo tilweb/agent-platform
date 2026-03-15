@@ -45,7 +45,11 @@ CMD sh -c '\
   else \
     echo "Volume /app/data already initialized."; \
   fi && \
-  echo "=== Linking backend/data ===" && \
+  echo "=== Ensuring backend-data exists ===" && \
+  if [ ! -d /app/data/backend-data ]; then \
+    mkdir -p /app/data/backend-data && \
+    cp -r /app/backend/backend-data-seed/* /app/data/backend-data/; \
+  fi && \
   rm -rf /app/backend/data && \
   ln -s /app/data/backend-data /app/backend/data && \
   echo "=== Running seed script ===" && \
