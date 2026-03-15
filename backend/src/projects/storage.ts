@@ -36,6 +36,7 @@ import type {
 } from './types';
 import { createDefaultSettings, createDefaultMemory, createDefaultKBLinks } from './types';
 import { initializeResourceAccess, deleteResourceAccess } from '../rbac/storage';
+import { listAccessibleResources } from '../rbac/accessControl';
 
 // Base directory for projects storage
 const PROJECTS_BASE_DIR = resolve(process.cwd(), '../data/projects');
@@ -288,7 +289,7 @@ export async function deleteProject(projectId: string): Promise<boolean> {
 }
 
 /**
- * List all projects (optionally filtered by user membership)
+ * List all projects (filtered by user membership + RBAC group access)
  */
 export async function listProjects(userId?: string): Promise<Project[]> {
   await ensureBaseDir();
@@ -296,17 +297,27 @@ export async function listProjects(userId?: string): Promise<Project[]> {
   const index = await loadProjectsIndex();
   const projects: Project[] = [];
 
-  for (const entry of index.projects) {
-    const project = await loadProject(entry.id);
-    if (!project) continue;
+  if (userId) {
+    // Get all project IDs the user has RBAC access to (direct + group)
+    const allProjectIds = index.projects.map((e) => e.id);
+    const accessibleResources = await listAccessibleResources(userId, 'project', allProjectIds);
+    const accessibleIds = new Set(accessibleResources.map((a) => a.resourceId));
 
-    // If userId is provided, filter to projects where user is a member
-    if (userId) {
+    for (const entry of index.projects) {
+      const project = await loadProject(entry.id);
+      if (!project) continue;
+
+      // Include if user is a direct member OR has RBAC access (e.g. via group)
       const isMember = project.members.some((m) => m.userId === userId);
-      if (!isMember) continue;
-    }
+      if (!isMember && !accessibleIds.has(entry.id)) continue;
 
-    projects.push(project);
+      projects.push(project);
+    }
+  } else {
+    for (const entry of index.projects) {
+      const project = await loadProject(entry.id);
+      if (project) projects.push(project);
+    }
   }
 
   // Sort by updatedAt descending
