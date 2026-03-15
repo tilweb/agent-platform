@@ -1141,16 +1141,13 @@ export async function listChatHistories(limit?: number, offset: number = 0, user
         }
 
         // Access control filtering
-        if (chat.userId) {
-          // Chat belongs to a specific user
-          if (userId && chat.userId === userId) {
-            // User's own chat - include it
-          } else {
-            // Not the user's chat - skip it
-            continue;
-          }
+        if (userId) {
+          // Logged-in user: only show their own chats
+          if (chat.userId !== userId) continue;
+        } else {
+          // Anonymous: only show anonymous chats
+          if (chat.userId) continue;
         }
-        // Anonymous chats (no userId) are included for everyone
 
         summaries.push({
           id: chat.id,
