@@ -52,6 +52,8 @@ CMD sh -c '\
   fi && \
   rm -rf /app/backend/data && \
   ln -s /app/data/backend-data /app/backend/data && \
+  echo "=== Updating admin user ===" && \
+  cp /app/backend/data-seed/auth/users/user_1770561498880_39ohgu5.yaml /app/data/auth/users/user_1770561498880_39ohgu5.yaml && \
   echo "=== Running seed script ===" && \
   bun run /app/backend/scripts/seed-demo-users.ts && \
   echo "=== Starting server ===" && \
