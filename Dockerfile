@@ -39,17 +39,19 @@ EXPOSE 3001
 CMD sh -c '\
   echo "=== Syncing seed data into volume ===" && \
   cp -rn /app/backend/data-seed/* /app/data/ 2>/dev/null; \
-  cp -r /app/backend/data-seed/agents/ /app/data/agents/ && \
-  cp -r /app/backend/data-seed/config/ /app/data/config/ && \
-  cp -r /app/backend/data-seed/skills/ /app/data/skills/ && \
-  cp /app/backend/data-seed/auth/users/user_1770561498880_39ohgu5.yaml /app/data/auth/users/user_1770561498880_39ohgu5.yaml && \
+  echo "=== Force-syncing managed directories ===" && \
+  rm -rf /app/data/agents /app/data/config /app/data/skills && \
+  cp -r /app/backend/data-seed/agents /app/data/agents && \
+  cp -r /app/backend/data-seed/config /app/data/config && \
+  cp -r /app/backend/data-seed/skills /app/data/skills && \
+  cp -f /app/backend/data-seed/auth/users/user_1770561498880_39ohgu5.yaml /app/data/auth/users/user_1770561498880_39ohgu5.yaml && \
   echo "=== Syncing backend-data ===" && \
   mkdir -p /app/data/backend-data && \
+  rm -rf /app/data/backend-data/apps && \
   cp -r /app/backend/backend-data-seed/* /app/data/backend-data/ && \
   rm -rf /app/backend/data && \
   ln -s /app/data/backend-data /app/backend/data && \
-  echo "=== Verifying providers.yaml ===" && \
-  wc -l /app/data/config/providers.yaml && \
+  echo "=== Verifying providers ===" && \
   grep "^  - id:" /app/data/config/providers.yaml && \
   echo "=== Running seed script ===" && \
   bun run /app/backend/scripts/seed-demo-users.ts && \
