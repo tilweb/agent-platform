@@ -35,25 +35,19 @@ EXPOSE 3001
 
 # Single volume at /app/data holds everything.
 # backend/data/ is a symlink into the volume.
+# Seed data is synced on every start (merge, don't overwrite user data).
 CMD sh -c '\
-  echo "=== Initializing data volume ===" && \
-  if [ -z "$(ls -A /app/data 2>/dev/null)" ]; then \
-    echo "Volume /app/data is empty, copying seed data..." && \
-    cp -r /app/backend/data-seed/* /app/data/ && \
-    mkdir -p /app/data/backend-data && \
-    cp -r /app/backend/backend-data-seed/* /app/data/backend-data/; \
-  else \
-    echo "Volume /app/data already initialized."; \
-  fi && \
-  echo "=== Ensuring backend-data exists ===" && \
-  if [ ! -d /app/data/backend-data ]; then \
-    mkdir -p /app/data/backend-data && \
-    cp -r /app/backend/backend-data-seed/* /app/data/backend-data/; \
-  fi && \
+  echo "=== Syncing seed data into volume ===" && \
+  cp -rn /app/backend/data-seed/* /app/data/ 2>/dev/null; \
+  cp -r /app/backend/data-seed/agents/ /app/data/agents/ && \
+  cp -r /app/backend/data-seed/config/ /app/data/config/ && \
+  cp -r /app/backend/data-seed/skills/ /app/data/skills/ && \
+  cp /app/backend/data-seed/auth/users/user_1770561498880_39ohgu5.yaml /app/data/auth/users/user_1770561498880_39ohgu5.yaml && \
+  echo "=== Syncing backend-data ===" && \
+  mkdir -p /app/data/backend-data && \
+  cp -r /app/backend/backend-data-seed/* /app/data/backend-data/ && \
   rm -rf /app/backend/data && \
   ln -s /app/data/backend-data /app/backend/data && \
-  echo "=== Updating admin user ===" && \
-  cp /app/backend/data-seed/auth/users/user_1770561498880_39ohgu5.yaml /app/data/auth/users/user_1770561498880_39ohgu5.yaml && \
   echo "=== Running seed script ===" && \
   bun run /app/backend/scripts/seed-demo-users.ts && \
   echo "=== Starting server ===" && \
