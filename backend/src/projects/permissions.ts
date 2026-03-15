@@ -7,6 +7,7 @@
 import type { Project, ProjectMember, ProjectRole } from './types';
 import { ROLE_PERMISSIONS } from './types';
 import { loadProject } from './storage';
+import { canView } from '../rbac/accessControl';
 
 export interface PermissionCheck {
   allowed: boolean;
@@ -15,11 +16,36 @@ export interface PermissionCheck {
 }
 
 /**
- * Get a user's role in a project
+ * Get a user's role in a project (direct membership only)
  */
 export function getUserRole(project: Project, userId: string): ProjectRole | null {
   const member = project.members.find((m) => m.userId === userId);
   return member?.role || null;
+}
+
+/**
+ * Get a user's effective role including RBAC group access
+ * Falls back to RBAC if user is not a direct member
+ */
+async function getEffectiveRole(project: Project, projectId: string, userId: string): Promise<ProjectRole | null> {
+  // Direct membership first
+  const directRole = getUserRole(project, userId);
+  if (directRole) return directRole;
+
+  // Fallback: RBAC (group access, admin)
+  const rbacResult = await canView(userId, 'project', projectId);
+  if (rbacResult.allowed) {
+    // Map RBAC role to project role (viewer as safe default for group access)
+    const roleMap: Record<string, ProjectRole> = {
+      owner: 'owner',
+      admin: 'admin',
+      editor: 'editor',
+      viewer: 'viewer',
+    };
+    return roleMap[rbacResult.role || 'viewer'] || 'viewer';
+  }
+
+  return null;
 }
 
 /**
@@ -39,12 +65,12 @@ export async function canViewProject(
   const project = await loadProject(projectId);
 
   if (!project) {
-    return { allowed: false, reason: 'Projekt nicht gefunden' };
+    return { allowed: false, reason: 'Space nicht gefunden' };
   }
 
-  const role = getUserRole(project, userId);
+  const role = await getEffectiveRole(project, projectId, userId);
   if (!role) {
-    return { allowed: false, reason: 'Kein Zugriff auf dieses Projekt' };
+    return { allowed: false, reason: 'Kein Zugriff auf diesen Space' };
   }
 
   return { allowed: true, role };
@@ -60,12 +86,12 @@ export async function canEditProject(
   const project = await loadProject(projectId);
 
   if (!project) {
-    return { allowed: false, reason: 'Projekt nicht gefunden' };
+    return { allowed: false, reason: 'Space nicht gefunden' };
   }
 
-  const role = getUserRole(project, userId);
+  const role = await getEffectiveRole(project, projectId, userId);
   if (!role) {
-    return { allowed: false, reason: 'Kein Zugriff auf dieses Projekt' };
+    return { allowed: false, reason: 'Kein Zugriff auf diesen Space' };
   }
 
   const permissions = ROLE_PERMISSIONS[role];
@@ -86,12 +112,12 @@ export async function canEditSettings(
   const project = await loadProject(projectId);
 
   if (!project) {
-    return { allowed: false, reason: 'Projekt nicht gefunden' };
+    return { allowed: false, reason: 'Space nicht gefunden' };
   }
 
-  const role = getUserRole(project, userId);
+  const role = await getEffectiveRole(project, projectId, userId);
   if (!role) {
-    return { allowed: false, reason: 'Kein Zugriff auf dieses Projekt' };
+    return { allowed: false, reason: 'Kein Zugriff auf diesen Space' };
   }
 
   const permissions = ROLE_PERMISSIONS[role];
@@ -112,12 +138,12 @@ export async function canWriteMemory(
   const project = await loadProject(projectId);
 
   if (!project) {
-    return { allowed: false, reason: 'Projekt nicht gefunden' };
+    return { allowed: false, reason: 'Space nicht gefunden' };
   }
 
-  const role = getUserRole(project, userId);
+  const role = await getEffectiveRole(project, projectId, userId);
   if (!role) {
-    return { allowed: false, reason: 'Kein Zugriff auf dieses Projekt' };
+    return { allowed: false, reason: 'Kein Zugriff auf diesen Space' };
   }
 
   const permissions = ROLE_PERMISSIONS[role];
@@ -138,12 +164,12 @@ export async function canViewChats(
   const project = await loadProject(projectId);
 
   if (!project) {
-    return { allowed: false, reason: 'Projekt nicht gefunden' };
+    return { allowed: false, reason: 'Space nicht gefunden' };
   }
 
-  const role = getUserRole(project, userId);
+  const role = await getEffectiveRole(project, projectId, userId);
   if (!role) {
-    return { allowed: false, reason: 'Kein Zugriff auf dieses Projekt' };
+    return { allowed: false, reason: 'Kein Zugriff auf diesen Space' };
   }
 
   const permissions = ROLE_PERMISSIONS[role];
@@ -164,12 +190,12 @@ export async function canManageMembers(
   const project = await loadProject(projectId);
 
   if (!project) {
-    return { allowed: false, reason: 'Projekt nicht gefunden' };
+    return { allowed: false, reason: 'Space nicht gefunden' };
   }
 
-  const role = getUserRole(project, userId);
+  const role = await getEffectiveRole(project, projectId, userId);
   if (!role) {
-    return { allowed: false, reason: 'Kein Zugriff auf dieses Projekt' };
+    return { allowed: false, reason: 'Kein Zugriff auf diesen Space' };
   }
 
   const permissions = ROLE_PERMISSIONS[role];
@@ -192,12 +218,12 @@ export async function canModifyMember(
   const project = await loadProject(projectId);
 
   if (!project) {
-    return { allowed: false, reason: 'Projekt nicht gefunden' };
+    return { allowed: false, reason: 'Space nicht gefunden' };
   }
 
-  const userRole = getUserRole(project, userId);
+  const userRole = await getEffectiveRole(project, projectId, userId);
   if (!userRole) {
-    return { allowed: false, reason: 'Kein Zugriff auf dieses Projekt' };
+    return { allowed: false, reason: 'Kein Zugriff auf diesen Space' };
   }
 
   const permissions = ROLE_PERMISSIONS[userRole];
@@ -235,12 +261,12 @@ export async function canDeleteProject(
   const project = await loadProject(projectId);
 
   if (!project) {
-    return { allowed: false, reason: 'Projekt nicht gefunden' };
+    return { allowed: false, reason: 'Space nicht gefunden' };
   }
 
-  const role = getUserRole(project, userId);
+  const role = await getEffectiveRole(project, projectId, userId);
   if (!role) {
-    return { allowed: false, reason: 'Kein Zugriff auf dieses Projekt' };
+    return { allowed: false, reason: 'Kein Zugriff auf diesen Space' };
   }
 
   const permissions = ROLE_PERMISSIONS[role];
@@ -278,7 +304,7 @@ export async function getUserPermissions(
     return { role: null, permissions: null };
   }
 
-  const role = getUserRole(project, userId);
+  const role = await getEffectiveRole(project, projectId, userId);
   if (!role) {
     return { role: null, permissions: null };
   }

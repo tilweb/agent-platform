@@ -6,9 +6,11 @@
 - Nach Hinzufuegen einer Gruppe wurde "Unbekannte Gruppe" angezeigt, weil die API-Response kein `name`/`memberCount` enthielt
 - Fix: Nach addAccess() wird die komplette Berechtigungsliste neu geladen statt das unvollstaendige Objekt direkt in den State zu haengen
 
-### Bugfix: Spaces bei Gruppen-Berechtigung nicht sichtbar
+### Bugfix: Spaces bei Gruppen-Berechtigung nicht sichtbar und nicht zugreifbar
 - Projects/Spaces wurden nur ueber direkte Mitgliedschaft gefiltert, nicht ueber RBAC-Gruppen
-- Fix: listProjects nutzt jetzt listAccessibleResources (wie Agents und Collections)
+- Fix: listProjects und alle Permission-Checks nutzen jetzt RBAC (wie Agents und Collections)
+- Fehlermeldungen von "Projekt" auf "Space" umgestellt
+- Space-Cards zeigen jetzt auch die Anzahl berechtigter Gruppen an
 
 ### Refactoring: document_count aus collections.yaml entfernt
 - Dokumenten-Anzahl wird jetzt dynamisch vom Dateisystem gezaehlt statt statisch in collections.yaml gepflegt

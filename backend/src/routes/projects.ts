@@ -33,6 +33,7 @@ import {
   getProjectContext,
 } from '../projects';
 import type { ProjectRole, MemorySection, Priority, MemorySource } from '../projects';
+import { loadResourceAccess } from '../rbac/storage';
 
 export const projectRoutes = new Hono();
 
@@ -59,7 +60,16 @@ projectRoutes.get('/', async (c) => {
     return c.json({ error: result.error }, 500);
   }
 
-  return c.json({ projects: result.data });
+  // Enrich with group counts from RBAC
+  const enriched = await Promise.all(
+    (result.data || []).map(async (project) => {
+      const accessEntries = await loadResourceAccess('project', project.id);
+      const groupCount = accessEntries.filter((e) => e.principalType === 'group').length;
+      return { ...project, groupCount };
+    })
+  );
+
+  return c.json({ projects: enriched });
 });
 
 /**

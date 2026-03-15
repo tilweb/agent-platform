@@ -111,6 +111,7 @@ function formatDate(dateString) {
 export default function ProjectCard({ project, onClick }) {
   const color = getProjectColor(project);
   const memberCount = project.members?.length || 1;
+  const groupCount = project.groupCount || 0;
 
   return (
     <div
@@ -146,6 +147,9 @@ export default function ProjectCard({ project, onClick }) {
         <div style={styles.memberCount}>
           <UserIcon size={14} style={styles.memberIcon} />
           <span>{memberCount} {memberCount === 1 ? 'Mitglied' : 'Mitglieder'}</span>
+          {groupCount > 0 && (
+            <span style={{ marginLeft: theme.spacing.sm }}>· {groupCount} {groupCount === 1 ? 'Gruppe' : 'Gruppen'}</span>
+          )}
         </div>
 
         {project.archived ? (
