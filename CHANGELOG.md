@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-03-15
+
+### Bugfix: "Unbekannte Gruppe" bei Agent-Berechtigung
+- Nach Hinzufuegen einer Gruppe wurde "Unbekannte Gruppe" angezeigt, weil die API-Response kein `name`/`memberCount` enthielt
+- Fix: Nach addAccess() wird die komplette Berechtigungsliste neu geladen statt das unvollstaendige Objekt direkt in den State zu haengen
+
 ## 2026-03-14
 
 ### Feature: Railway Demo Deployment (Messe-Pilot)

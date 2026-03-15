@@ -105,19 +105,15 @@ export function useResourceAccess(resourceType, resourceId) {
 
       const newAccess = await response.json();
 
-      // Update local state
-      if (principalType === 'user') {
-        setUsers(prev => [...prev, newAccess]);
-      } else {
-        setGroups(prev => [...prev, newAccess]);
-      }
+      // Reload full list to get complete data (name, memberCount, etc.)
+      await loadAccess();
 
       return newAccess;
     } catch (err) {
       console.error('Error adding access:', err);
       throw err;
     }
-  }, [resourceType, resourceId]);
+  }, [resourceType, resourceId, loadAccess]);
 
   /**
    * Update role for existing access
