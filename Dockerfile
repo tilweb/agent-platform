@@ -11,6 +11,9 @@ RUN npm run build
 FROM oven/bun:1-alpine
 WORKDIR /app/backend
 
+# Install system dependencies
+RUN apk add --no-cache ffmpeg
+
 # Install backend dependencies
 COPY backend/package.json backend/bun.lock ./
 RUN bun install --frozen-lockfile --production
