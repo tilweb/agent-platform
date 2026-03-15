@@ -182,20 +182,6 @@ async function copyDocumentToCollection(
 
   await writeFileAsync(manifestPath, manifest, 'utf-8');
 
-  // Update document count in collections.yaml
-  const collectionsPath = join(KB_BASE, 'collections.yaml');
-  let collectionsContent = await readFileAsync(collectionsPath, 'utf-8');
-
-  const regex = new RegExp(
-    `(- id: "${targetCollectionId}"[\\s\\S]*?document_count: )(\\d+)`
-  );
-  const match = collectionsContent.match(regex);
-  if (match) {
-    const currentCount = parseInt(match[2] ?? '0', 10);
-    collectionsContent = collectionsContent.replace(regex, `$1${currentCount + 1}`);
-    await writeFileAsync(collectionsPath, collectionsContent, 'utf-8');
-  }
-
   return newDocId;
 }
 

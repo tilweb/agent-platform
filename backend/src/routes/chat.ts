@@ -1715,7 +1715,6 @@ function parseCollectionsYaml(yaml: string): Array<{
   id: string;
   name: string;
   description: string;
-  document_count: number;
   activate_when: string[];
   never_activate_when: string[];
 }> {
@@ -1723,7 +1722,6 @@ function parseCollectionsYaml(yaml: string): Array<{
     id: string;
     name: string;
     description: string;
-    document_count: number;
     activate_when: string[];
     never_activate_when: string[];
   }> = [];
@@ -1735,8 +1733,6 @@ function parseCollectionsYaml(yaml: string): Array<{
     const id = block.match(/- id:\s*"?([^"\n]+)"?/)?.[1]?.trim() || '';
     const name = block.match(/name:\s*"?([^"\n]+)"?/)?.[1]?.trim() || '';
     const description = block.match(/description:\s*"?([^"\n]+)"?/)?.[1]?.trim() || '';
-    const docCount = parseInt(block.match(/document_count:\s*(\d+)/)?.[1] || '0', 10);
-
     const activateWhen: string[] = [];
     const activateMatch = block.match(/activate_when:\s*\n((?:\s+- [^\n]+\n?)*)/);
     if (activateMatch && activateMatch[1]) {
@@ -1752,7 +1748,7 @@ function parseCollectionsYaml(yaml: string): Array<{
     }
 
     if (id) {
-      collections.push({ id, name, description, document_count: docCount, activate_when: activateWhen, never_activate_when: neverActivateWhen });
+      collections.push({ id, name, description, activate_when: activateWhen, never_activate_when: neverActivateWhen });
     }
   }
   return collections;
@@ -2432,23 +2428,6 @@ knowledgeStreamRoutes.delete('/documents/:id', async (c) => {
         `last_updated: "${new Date().toISOString()}"`,
       );
       await writeFile(manifestPath, manifestContent, 'utf-8');
-    }
-
-    // 3. Decrement document_count in collections.yaml
-    const collectionsPath = `${kbBase}/collections.yaml`;
-    if (existsSync(collectionsPath)) {
-      let collectionsContent = await readFile(collectionsPath, 'utf-8');
-      // Find the collection block and decrement document_count
-      const collectionBlockRegex = new RegExp(
-        `(- id:\\s*"?${collectionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"?[\\s\\S]*?document_count:\\s*)(\\d+)`,
-      );
-      const match = collectionsContent.match(collectionBlockRegex);
-      if (match) {
-        const currentCount = parseInt(match[2] || '0', 10);
-        const newCount = Math.max(0, currentCount - 1);
-        collectionsContent = collectionsContent.replace(collectionBlockRegex, `$1${newCount}`);
-        await writeFile(collectionsPath, collectionsContent, 'utf-8');
-      }
     }
 
     return c.json({ success: true, document_id: docId, collection_id: collectionId });

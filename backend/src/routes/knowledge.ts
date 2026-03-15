@@ -27,7 +27,6 @@ interface Collection {
   id: string;
   name: string;
   description: string;
-  document_count: number;
   activate_when: string[];
   never_activate_when: string[];
 }
@@ -71,16 +70,29 @@ knowledgeRoutes.get('/collections', async (c) => {
     const accessibleCollections = await listAccessibleResources(userId, 'collection', collectionIds);
     const accessibleIds = new Set(accessibleCollections.map((a) => a.resourceId));
 
-    // Return only accessible collections with role info
-    const collections = data.collections
-      .filter((col) => accessibleIds.has(col.id))
-      .map((col) => {
-        const access = accessibleCollections.find((a) => a.resourceId === col.id);
-        return {
-          ...col,
-          role: access?.role || 'viewer',
-        };
-      });
+    // Return only accessible collections with role info and live document count
+    const collections = await Promise.all(
+      data.collections
+        .filter((col) => accessibleIds.has(col.id))
+        .map(async (col) => {
+          const access = accessibleCollections.find((a) => a.resourceId === col.id);
+          // Count actual documents on disk
+          let documentCount = 0;
+          const docsDir = join(KB_BASE, 'collections', col.id, 'documents');
+          try {
+            const entries = await readdir(docsDir);
+            documentCount = entries.filter((e) => e.startsWith('doc-')).length;
+          } catch {
+            // Directory doesn't exist — 0 documents
+            documentCount = 0;
+          }
+          return {
+            ...col,
+            document_count: documentCount,
+            role: access?.role || 'viewer',
+          };
+        })
+    );
 
     return c.json({ collections });
   } catch (error: any) {
@@ -172,7 +184,6 @@ knowledgeRoutes.post('/collections', async (c) => {
       id,
       name,
       description: description || '',
-      document_count: 0,
       activate_when: activate_when || [],
       never_activate_when: never_activate_when || [],
     };
@@ -427,14 +438,6 @@ knowledgeRoutes.delete('/collections/:id/documents/:docId', async (c) => {
     manifest.documents.splice(docIndex, 1);
     manifest.last_updated = new Date().toISOString();
     await writeFile(manifestPath, stringifyYaml(manifest), 'utf-8');
-
-    // Update document count in collections.yaml
-    const data = await loadCollections();
-    const collection = data.collections.find((col) => col.id === collectionId);
-    if (collection) {
-      collection.document_count = manifest.documents.length;
-      await saveCollections(data);
-    }
 
     return c.json({ success: true });
   } catch (error: any) {

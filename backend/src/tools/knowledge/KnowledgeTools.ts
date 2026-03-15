@@ -292,7 +292,6 @@ export class KbManageTool extends LocalTool {
       `  - id: "${collection_id}"`,
       `    name: "${name}"`,
       `    description: "${description || ''}"`,
-      `    document_count: 0`,
       `    activate_when:`,
       ...activateList.map((a) => `      - "${a}"`),
       ...(neverActivateList.length > 0

@@ -265,9 +265,6 @@ Format:
       indexed_date: new Date().toISOString().split('T')[0] ?? '',
     });
 
-    // Step 6: Update collections.yaml document count
-    await this.updateCollectionCount(collectionId);
-
     const title = metadata.title || baseName;
     console.log(`[Indexer] Successfully indexed: ${title} → ${collectionId}/${documentId}`);
 
@@ -318,21 +315,6 @@ Format:
     await writeFile(manifestPath, manifest, 'utf-8');
   }
 
-  private async updateCollectionCount(collectionId: string): Promise<void> {
-    const collectionsPath = join(KB_BASE, 'collections.yaml');
-    let content = await readFile(collectionsPath, 'utf-8');
-
-    // Simple regex approach to increment document_count for the collection
-    const regex = new RegExp(
-      `(- id: "${collectionId}"[\\s\\S]*?document_count: )(\\d+)`,
-    );
-    const match = content.match(regex);
-    if (match) {
-      const currentCount = parseInt(match[2] ?? '0', 10);
-      content = content.replace(regex, `$1${currentCount + 1}`);
-      await writeFile(collectionsPath, content, 'utf-8');
-    }
-  }
 }
 
 export const indexerService = new IndexerService();

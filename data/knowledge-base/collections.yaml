@@ -2,7 +2,6 @@ collections:
   - id: compliance
     name: Compliance und Richtlinien
     description: Richtlinien, Vorgaben und Compliance Konzepte
-    document_count: 8
     activate_when:
       - Compliance-Fragen
       - Richtlinien-Fragen
@@ -12,7 +11,6 @@ collections:
   - id: c5_workshops
     name: C5 Workshops
     description: Protokolle und Ergebnisse der C5 Workshops
-    document_count: 3
     activate_when:
       - C5-Workshop
       - C5
@@ -22,7 +20,6 @@ collections:
     name: Zukunftstag 2026
     description: "Alle Materialien und Planungen für unseren Messestand und
       Masterclass zu unserem Produkt KI-Workplace beim BVMW "
-    document_count: 0
     activate_when:
       - Messe
       - Messe-Planung
@@ -32,7 +29,6 @@ collections:
     name: IKS (internes dienstleistungsbezogenes Kontrollsystem)
     description: Beschreibung und Dokumentation des IKS - dienstleistungsbezogenen
       Kontrollsystems der Adacor
-    document_count: 1
     activate_when:
       - Kontrollsystem
       - IKS
@@ -51,7 +47,6 @@ collections:
     name: HR Vereinbarkeit
     description: Maßnahmen zu Vereinbarkeit von Beruf / Karriere und Familie
       (Pflege, Krankheit, Kinder, Betreuung)
-    document_count: 0
     activate_when:
       - Vereinbarkeit
       - Pflege
@@ -62,7 +57,6 @@ collections:
   - id: hr-vorlagen
     name: HR-Vorlagen
     description: HR-Vorlagen
-    document_count: 0
     activate_when:
       - Arbeitsvertrag
       - Rollenwechsel
