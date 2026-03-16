@@ -1,7 +1,7 @@
 /**
  * Seed Demo Users
  *
- * Creates demo1-demo4 user accounts for trade fair demos.
+ * Creates demo1-demo4 and marketing1-marketing3 user accounts.
  * Idempotent: skips users that already exist.
  *
  * In Docker: runs from /app/backend/scripts/, data at /app/data/
@@ -12,11 +12,15 @@ import { readdir } from 'node:fs/promises';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'Demo2026!';
+const MARKETING_PASSWORD = process.env.MARKETING_PASSWORD || 'Marketing2026!';
 const DEMO_USERS = [
-  { username: 'demo1', displayName: 'Demo User 1' },
-  { username: 'demo2', displayName: 'Demo User 2' },
-  { username: 'demo3', displayName: 'Demo User 3' },
-  { username: 'demo4', displayName: 'Demo User 4' },
+  { username: 'demo1', displayName: 'Demo User 1', password: DEMO_PASSWORD },
+  { username: 'demo2', displayName: 'Demo User 2', password: DEMO_PASSWORD },
+  { username: 'demo3', displayName: 'Demo User 3', password: DEMO_PASSWORD },
+  { username: 'demo4', displayName: 'Demo User 4', password: DEMO_PASSWORD },
+  { username: 'marketing1', displayName: 'Marketing User 1', password: MARKETING_PASSWORD },
+  { username: 'marketing2', displayName: 'Marketing User 2', password: MARKETING_PASSWORD },
+  { username: 'marketing3', displayName: 'Marketing User 3', password: MARKETING_PASSWORD },
 ];
 
 function generateUserId(): string {
@@ -71,7 +75,7 @@ async function main() {
 
     const userId = generateUserId();
     const now = new Date().toISOString();
-    const passwordHash = await Bun.password.hash(DEMO_PASSWORD, {
+    const passwordHash = await Bun.password.hash(demoUser.password, {
       algorithm: 'argon2id',
       memoryCost: 65536,
       timeCost: 3,
