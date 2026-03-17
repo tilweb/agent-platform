@@ -43,7 +43,7 @@ export interface UnifiedSearchResponse {
  */
 export async function unifiedSearch(
   query: string,
-  userId: string,
+  userId?: string,
   sources: string[] = ['chats', 'knowledge', 'confluence', 'gdrive', 'contracts']
 ): Promise<UnifiedSearchResponse> {
   const results: UnifiedSearchResponse = {
@@ -54,10 +54,10 @@ export async function unifiedSearch(
 
   // Run searches in parallel with Promise.allSettled
   const searches = await Promise.allSettled([
-    sources.includes('chats') ? searchChats(query) : Promise.resolve([]),
+    sources.includes('chats') ? searchChats(query, userId) : Promise.resolve([]),
     sources.includes('knowledge') ? searchKnowledgeBase(query) : Promise.resolve([]),
-    sources.includes('confluence') ? searchConfluence(query, userId) : Promise.resolve([]),
-    sources.includes('gdrive') ? searchGDrive(query, userId) : Promise.resolve([]),
+    sources.includes('confluence') && userId ? searchConfluence(query, userId) : Promise.resolve([]),
+    sources.includes('gdrive') && userId ? searchGDrive(query, userId) : Promise.resolve([]),
     sources.includes('contracts') ? searchContracts(query) : Promise.resolve([]),
   ]);
 
@@ -100,9 +100,9 @@ export async function unifiedSearch(
 /**
  * Search chat histories
  */
-async function searchChats(query: string): Promise<SearchResult[]> {
+async function searchChats(query: string, userId?: string): Promise<SearchResult[]> {
   try {
-    const chatResults = await searchChatHistories(query);
+    const chatResults = await searchChatHistories(query, userId);
     return chatResults.map((r: ChatSearchResult) => ({
       id: r.id,
       type: 'chat' as const,

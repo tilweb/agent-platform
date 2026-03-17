@@ -1197,9 +1197,10 @@ export interface ChatSearchOptions {
   query: string;
   limit?: number;
   includeMessages?: boolean;
+  userId?: string;
 }
 
-export async function searchChatHistories(query: string): Promise<ChatSearchResult[]> {
+export async function searchChatHistories(query: string, userId?: string): Promise<ChatSearchResult[]> {
   if (!query || query.length < 2) return [];
   if (!existsSync(CHATS_DIR)) return [];
 
@@ -1215,6 +1216,15 @@ export async function searchChatHistories(query: string): Promise<ChatSearchResu
         const content = await readFile(join(CHATS_DIR, file), 'utf-8');
         const chat = parseChatYaml(content);
         if (!chat) continue;
+
+        // Access control filtering
+        if (userId) {
+          // Logged-in user: only search own chats
+          if (chat.userId !== userId) continue;
+        } else {
+          // Anonymous: only search anonymous chats
+          if (chat.userId) continue;
+        }
 
         // Check title first
         if (chat.title.toLowerCase().includes(queryLower)) {
@@ -1314,7 +1324,7 @@ function extractSnippet(content: string, query: string): string {
 export async function searchChatHistoriesWithScoring(
   options: ChatSearchOptions
 ): Promise<ChatSearchResultWithScore[]> {
-  const { query, limit = 50, includeMessages = false } = options;
+  const { query, limit = 50, includeMessages = false, userId } = options;
 
   if (!query || query.length < 2) return [];
   if (!existsSync(CHATS_DIR)) return [];
@@ -1333,6 +1343,15 @@ export async function searchChatHistoriesWithScoring(
         const content = await readFile(join(CHATS_DIR, file), 'utf-8');
         const chat = parseChatYaml(content);
         if (!chat) continue;
+
+        // Access control filtering
+        if (userId) {
+          // Logged-in user: only search own chats
+          if (chat.userId !== userId) continue;
+        } else {
+          // Anonymous: only search anonymous chats
+          if (chat.userId) continue;
+        }
 
         let matchScore = 0;
         let matchedIn: 'title' | 'summary' | 'keywords' | 'content' | null = null;

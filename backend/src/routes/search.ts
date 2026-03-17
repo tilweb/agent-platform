@@ -29,7 +29,7 @@ searchRoutes.get('/', async (c) => {
     const sourcesParam = c.req.query('sources');
 
     // Get userId from auth middleware
-    const userId = c.get('userId') || 'default';
+    const userId = c.get('userId') as string | undefined;
 
     // Validate query
     if (!query || query.length < 2) {
@@ -207,6 +207,7 @@ searchRoutes.get('/contracts/smart', async (c) => {
 searchRoutes.get('/chats/smart', async (c) => {
   try {
     const query = c.req.query('q');
+    const userId = c.get('userId') as string | undefined;
 
     // Validate query
     if (!query || query.length < 2) {
@@ -218,6 +219,7 @@ searchRoutes.get('/chats/smart', async (c) => {
       query,
       limit: 50,
       includeMessages: true,
+      userId,
     });
 
     // Add type to all results
@@ -225,7 +227,7 @@ searchRoutes.get('/chats/smart', async (c) => {
 
     // Stage 2: Smart re-ranking (only if we have enough results)
     if (fastResults.length >= 3) {
-      const smartResponse = await smartChatSearch(query, fastResults);
+      const smartResponse = await smartChatSearch(query, fastResults, userId);
       // Add type to smart results too
       return c.json({
         ...smartResponse,

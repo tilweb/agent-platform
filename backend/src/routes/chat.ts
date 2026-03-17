@@ -537,15 +537,16 @@ chatHistoryRoutes.get('/', authMiddleware, async (c) => {
 });
 
 // GET /api/chats/search?q=query - Search chat histories
-chatHistoryRoutes.get('/search', async (c) => {
+chatHistoryRoutes.get('/search', authMiddleware, async (c) => {
   const query = c.req.query('q') || '';
+  const userId = getCurrentUserId(c);
 
   if (query.length < 2) {
     return c.json({ results: [], message: 'Query must be at least 2 characters' });
   }
 
   try {
-    const results = await searchChatHistories(query);
+    const results = await searchChatHistories(query, userId);
     return c.json({ results });
   } catch (error: any) {
     console.error('Error searching chats:', error);

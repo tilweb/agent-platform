@@ -408,7 +408,9 @@ function ChatSidebar({
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const response = await fetch(`${API_URL}/chats/search?q=${encodeURIComponent(searchQuery)}`);
+        const response = await fetch(`${API_URL}/chats/search?q=${encodeURIComponent(searchQuery)}`, {
+          credentials: 'include',
+        });
         if (response.ok) {
           const data = await response.json();
           setSearchResults(data.results);
