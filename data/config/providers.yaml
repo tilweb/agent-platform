@@ -201,6 +201,25 @@ providers:
           - 512x512
         max_images_per_request: 1
         default: true
+  - id: nebius-flux-dev
+    name: Nebius Flux Dev
+    api_mode: openai_images
+    base_url: https://api.tokenfactory.nebius.com/v1
+    api_key_env: NEBIUS_API_KEY
+    enabled: true
+    company_region: eu
+    datacenter_country: FI
+    models:
+      - id: black-forest-labs/flux-dev
+        name: Flux.1 Dev
+        type: image_gen
+        capabilities:
+          - text_to_image
+        supported_sizes:
+          - 1024x1024
+          - 512x512
+        max_images_per_request: 1
+        default: true
 active:
   chat:
     provider_id: adacor
@@ -215,8 +234,8 @@ active:
     provider_id: adacor-ai-audio
     model_id: whisper-v3-large-30s
   text_to_image:
-    provider_id: nebius-flux
-    model_id: black-forest-labs/flux-schnell
+    provider_id: nebius-flux-dev
+    model_id: black-forest-labs/flux-dev
   image_to_image:
     provider_id: google-gemini-imagen
     model_id: gemini-2.5-flash-image

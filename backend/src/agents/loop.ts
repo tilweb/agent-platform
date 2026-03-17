@@ -485,6 +485,9 @@ function mergeToolCalls(existingCalls: ToolCall[], delta: StreamChunk['choices']
 function extractJsonToolCalls(content: string): ToolCall[] {
   if (!content) return [];
 
+  // Strip <tool_call> XML wrapper tags (Qwen3 format)
+  content = content.replace(/<\/?tool_call>/g, '').trim();
+
   const toolCalls: ToolCall[] = [];
   let match;
 
@@ -553,29 +556,34 @@ function extractJsonToolCalls(content: string): ToolCall[] {
     }
   }
 
-  // Pattern 2: Tool call with nested arguments object
+  // Pattern 2: Tool call with nested arguments object using balanced brace extraction
   // {"name": "delegate_to_agent", "arguments": {"agent_id": "...", "task": "..."}}
   if (toolCalls.length === 0) {
-    const nestedPattern = /\{\s*"name"\s*:\s*"([^"]+)"\s*,\s*"arguments"\s*:\s*(\{[\s\S]*?\})\s*\}/g;
-    while ((match = nestedPattern.exec(content)) !== null) {
-      const [fullMatch, name, argsStr] = match;
-      try {
-        // Try to parse the full match to validate it's complete JSON
-        const parsed = JSON.parse(fullMatch);
-        if (parsed.name && parsed.arguments) {
-          toolCalls.push({
-            id: `extracted_${Date.now()}_${toolCalls.length}`,
-            type: 'function',
-            function: {
-              name: parsed.name,
-              arguments: typeof parsed.arguments === 'string'
-                ? parsed.arguments
-                : JSON.stringify(parsed.arguments),
-            },
-          });
+    const nameMarkerPattern = /\{\s*"name"\s*:\s*"([^"]+)"\s*,\s*"arguments"\s*:\s*/g;
+    while ((match = nameMarkerPattern.exec(content)) !== null) {
+      const [prefix, name] = match;
+      if (!name) continue;
+      // Find the opening brace of the outer object
+      const outerBracePos = match.index;
+      const fullJson = extractBalancedJson(content, outerBracePos);
+      if (fullJson) {
+        try {
+          const parsed = JSON.parse(fullJson);
+          if (parsed.name && parsed.arguments) {
+            toolCalls.push({
+              id: `extracted_${Date.now()}_${toolCalls.length}`,
+              type: 'function',
+              function: {
+                name: parsed.name,
+                arguments: typeof parsed.arguments === 'string'
+                  ? parsed.arguments
+                  : JSON.stringify(parsed.arguments),
+              },
+            });
+          }
+        } catch {
+          // Invalid JSON, skip
         }
-      } catch {
-        // Invalid JSON, skip
       }
     }
   }
@@ -716,8 +724,20 @@ function removeMistralToolCalls(content: string): string {
     // Don't advance searchStart since we removed content
   }
 
-  // Remove Qwen {"name": ..., "arguments": ...} format
-  result = result.replace(/\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[\s\S]*?\}\s*\}/g, '');
+  // Remove <tool_call> XML wrapper tags
+  result = result.replace(/<\/?tool_call>/g, '');
+
+  // Remove Qwen {"name": ..., "arguments": ...} format using balanced brace extraction
+  const namePattern = /\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:/;
+  let nameMatch;
+  while ((nameMatch = namePattern.exec(result)) !== null) {
+    const fullJson = extractBalancedJson(result, nameMatch.index);
+    if (fullJson) {
+      result = result.substring(0, nameMatch.index) + result.substring(nameMatch.index + fullJson.length);
+    } else {
+      break; // Avoid infinite loop if extraction fails
+    }
+  }
 
   // Remove direct delegate_to_agent arguments (with optional markdown code block)
   // Pattern: ```json\n{"agent_id": ...}\n``` or just {"agent_id": ...}
@@ -1237,13 +1257,22 @@ async function runDelegatedAgent(
         if (extractedCalls.length > 0) {
           toolCalls = extractedCalls;
           // Remove the tool call text from content to avoid showing it to the user
+          // Strip <tool_call> XML wrapper tags first
+          accumulatedContent = accumulatedContent.replace(/<\/?tool_call>/g, '');
           // Use robust removal function for Mistral format with nested JSON
           accumulatedContent = removeMistralToolCalls(accumulatedContent);
-          // Also remove Qwen/generic format: {"name": "tool_name", ...}
+          // Also remove Qwen/generic format using balanced brace extraction
           for (const call of extractedCalls) {
-            const qwenPattern = new RegExp(`\\{[^{}]*"name"\\s*:\\s*"${call.function.name}"[^{}]*\\}`, 'g');
-            accumulatedContent = accumulatedContent.replace(qwenPattern, '').trim();
+            const namePattern = new RegExp(`\\{\\s*"name"\\s*:\\s*"${call.function.name}"`);
+            const nameMatch = namePattern.exec(accumulatedContent);
+            if (nameMatch) {
+              const fullJson = extractBalancedJson(accumulatedContent, nameMatch.index);
+              if (fullJson) {
+                accumulatedContent = accumulatedContent.replace(fullJson, '');
+              }
+            }
           }
+          accumulatedContent = accumulatedContent.trim();
           assistantMessage.content = accumulatedContent || null;
           console.log(`[AgentLoop] Delegated agent: Extracted ${extractedCalls.length} tool call(s) from text`);
         }
@@ -2027,11 +2056,11 @@ export async function* runAgentLoop(
               // Check for potential JSON tool call start (Qwen format)
               // Look for patterns like {"agent_id" or {"name" which indicate tool calls
               // Also match with optional whitespace after opening brace
-              // Also detect markdown code blocks that might contain tool calls
+              // Also detect markdown code blocks or <tool_call> XML tags
               const jsonToolCallStart = /\{\s*"(?:agent_id|name)"\s*:/;
               const codeBlockStart = /```(?:json)?\s*\n?\s*\{/;
 
-              if (potentialJsonToolCall || jsonToolCallStart.test(contentToProcess) || codeBlockStart.test(contentToProcess) || contentToProcess.includes('```json')) {
+              if (potentialJsonToolCall || jsonToolCallStart.test(contentToProcess) || codeBlockStart.test(contentToProcess) || contentToProcess.includes('```json') || contentToProcess.includes('<tool_call>')) {
                 jsonToolCallBuffer += contentToProcess;
                 potentialJsonToolCall = true;
 
@@ -2159,6 +2188,8 @@ export async function* runAgentLoop(
 
       // Handle any remaining JSON tool call buffer at end of stream
       if (jsonToolCallBuffer) {
+        // Strip <tool_call> XML wrapper tags before extraction
+        jsonToolCallBuffer = jsonToolCallBuffer.replace(/<\/?tool_call>/g, '');
         const braceStart = jsonToolCallBuffer.indexOf('{');
         if (braceStart !== -1) {
           const jsonStr = extractBalancedJson(jsonToolCallBuffer, braceStart);
@@ -2223,13 +2254,23 @@ export async function* runAgentLoop(
       if (extractedCalls.length > 0) {
         toolCalls = extractedCalls;
         // Remove the tool call text from content to avoid showing it to the user
+        // Strip <tool_call> XML wrapper tags first
+        accumulatedContent = accumulatedContent.replace(/<\/?tool_call>/g, '');
         // Use robust removal function for Mistral format with nested JSON
         accumulatedContent = removeMistralToolCalls(accumulatedContent);
-        // Also remove Qwen/generic format: {"name": "tool_name", ...}
+        // Also remove Qwen/generic format using balanced brace extraction
         for (const call of extractedCalls) {
-          const qwenPattern = new RegExp(`\\{[^{}]*"name"\\s*:\\s*"${call.function.name}"[^{}]*\\}`, 'g');
-          accumulatedContent = accumulatedContent.replace(qwenPattern, '').trim();
+          // Find and remove the complete tool call JSON including nested braces
+          const namePattern = new RegExp(`\\{\\s*"name"\\s*:\\s*"${call.function.name}"`);
+          const nameMatch = namePattern.exec(accumulatedContent);
+          if (nameMatch) {
+            const fullJson = extractBalancedJson(accumulatedContent, nameMatch.index);
+            if (fullJson) {
+              accumulatedContent = accumulatedContent.replace(fullJson, '');
+            }
+          }
         }
+        accumulatedContent = accumulatedContent.trim();
         console.log(`[AgentLoop] Extracted ${extractedCalls.length} tool call(s) from text content`);
       }
     }
@@ -2249,7 +2290,9 @@ export async function* runAgentLoop(
     }
 
     // Check if we should execute tools
-    if (toolCalls.length === 0 || finishReason === 'stop') {
+    // Note: Don't check finishReason === 'stop' here — text-extracted tool calls
+    // (from <tool_call> tags, [TOOL_CALLS], or JSON in content) always have finishReason 'stop'
+    if (toolCalls.length === 0) {
       // Inject important tool results (images, documents) if LLM didn't include them
       for (const importantResult of importantToolResults) {
         // Check if this result is already in the accumulated content
