@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-17
+
+### Bugfix: PDF-Upload mit Grossbuchstaben-Extension (.PDF) scheitert
+- Bun.file() erkennt Dateien mit Extension in Grossbuchstaben nicht korrekt (liefert application/octet-stream statt application/pdf)
+- Fix: MIME-Type wird jetzt explizit anhand der Extension bestimmt (case-insensitive) in indexer.ts und attachments.ts
+- Betrifft auch .DOCX, .XLSX und andere Office-Formate mit Grossbuchstaben-Extension
+
 ## 2026-03-15
 
 ### Bugfix: "Unbekannte Gruppe" bei Agent-Berechtigung

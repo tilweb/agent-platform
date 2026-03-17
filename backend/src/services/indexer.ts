@@ -57,10 +57,27 @@ class IndexerService {
       return content;
     }
 
-    // Call Markitdown API for conversion - use Bun.file() for correct multipart handling
-    const file = Bun.file(fullPath);
+    // Call Markitdown API for conversion
+    // Bun.file() doesn't recognize uppercase extensions (.PDF → application/octet-stream),
+    // so we read the file as a Blob with explicit MIME type based on extension.
+    const mimeTypes: Record<string, string> = {
+      '.pdf': 'application/pdf',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.doc': 'application/msword',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.xls': 'application/vnd.ms-excel',
+      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      '.ppt': 'application/vnd.ms-powerpoint',
+      '.html': 'text/html',
+      '.htm': 'text/html',
+      '.csv': 'text/csv',
+      '.rtf': 'application/rtf',
+    };
+    const mimeType = mimeTypes[ext] || 'application/octet-stream';
+    const fileData = await readFile(fullPath);
+    const blob = new Blob([fileData], { type: mimeType });
     const formData = new FormData();
-    formData.append('document', file, fileName);
+    formData.append('document', blob, fileName);
 
     const response = await fetch(this.markitdownUrl, {
       method: 'PUT',
