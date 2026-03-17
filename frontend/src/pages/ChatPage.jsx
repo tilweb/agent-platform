@@ -4,6 +4,7 @@ import { useStreaming } from '../hooks/useStreaming';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useChatFolders } from '../hooks/useChatFolders';
 import { useAgentContext } from '../context/AgentContext';
+import { useProviders } from '../hooks/useProviders';
 import ChatWindow from '../components/ChatWindow';
 import ChatSidebar from '../components/ChatSidebar';
 import { theme } from '../config/theme';
@@ -87,6 +88,9 @@ function ChatPage() {
     getChatFolderIds,
     updateChatFolders,
   } = useChatFolders();
+
+  const { getActiveModelInfo } = useProviders();
+  const activeChatModel = getActiveModelInfo('chat');
 
   const [activeFolder, setActiveFolder] = useState(null);
   const [folderChats, setFolderChats] = useState([]);
@@ -496,6 +500,7 @@ function ChatPage() {
           // Model selection props
           selectedModelId={selectedModel?.modelId}
           selectedModelName={selectedModel?.modelName}
+          activeModelName={activeChatModel ? `${activeChatModel.provider.name} / ${activeChatModel.model.name}` : null}
           onModelChanged={handleModelChanged}
           onRemoveModel={handleRemoveModel}
           // Table selection props

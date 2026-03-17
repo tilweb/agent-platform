@@ -187,6 +187,9 @@ async function getModelOptions(): Promise<CommandOption[]> {
       if (!provider.enabled) continue;
 
       for (const model of provider.models) {
+        // Only show chat-capable models (exclude STT, TTS, image_gen)
+        if (!model.capabilities?.includes('chat')) continue;
+
         const isActive =
           active.chat?.provider_id === provider.id &&
           active.chat?.model_id === model.id;

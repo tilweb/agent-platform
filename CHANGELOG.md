@@ -2,6 +2,25 @@
 
 ## 2026-03-17
 
+### Bugfix: /model zeigt nur noch Chat-faehige Modelle
+- Model-Switch-Command zeigte alle Modelle inkl. Whisper (STT), TTS und Bildgenerierung
+- Fix: `getModelOptions()` filtert jetzt nach `chat`-Capability
+
+### Bugfix: Chat-Suche zeigt Chats anderer User
+- Alle Such-Endpoints (Chat-Search, Unified Search, Smart Chat Search) hatten keine userId-Filterung
+- Fix: userId wird durchgereicht, eingeloggte User sehen nur eigene Chats
+- ChatSidebar sendet jetzt `credentials: include` fuer Auth-Cookie
+
+### Bugfix: Text-basierte Tool-Calls (Qwen3) werden nicht ausgefuehrt
+- Root Cause 1: Exit-Condition in der Hauptloop prueft `finishReason === 'stop'`, was text-extrahierte Tool-Calls blockiert
+- Root Cause 2: Qwen3 `<tool_call>...</tool_call>` XML-Tags wurden nicht erkannt
+- Fix: Exit-Condition korrigiert, `<tool_call>` Tags werden in allen Pfaden gestripped
+- Bonus: JSON-Extraktion fuer verschachtelte Arguments nutzt jetzt `extractBalancedJson` statt fragile Regex
+
+### Feature: Nebius Flux Dev Bildgenerierungs-Modell
+- Neuer Provider `nebius-flux-dev` mit Flux.1 Dev Modell (1024x1024, 512x512)
+- Nutzt Nebius Token Factory API (EU/Finnland)
+
 ### Bugfix: Suche findet keine Knowledge-Base-Dokumente
 - searchService.ts nutzte Regex zum Parsen der collections.yaml, der Anfuehrungszeichen um Werte erwartete
 - collections.yaml hat aber keine Anfuehrungszeichen — Regex matchte nichts

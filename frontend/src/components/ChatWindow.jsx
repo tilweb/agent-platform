@@ -3032,6 +3032,7 @@ function ChatWindow({
   selectedModelName,
   onRemoveModel,
   onModelChanged,     // Callback when model is changed via /model command
+  activeModelName,    // Default active model name (from providers config)
   selectedTable,
   onRemoveTable,
   onTableSelected,    // Callback when table is selected via /table command
@@ -3572,7 +3573,10 @@ function ChatWindow({
           <div style={chatStyles.headerTitle}>
             {chatTitle || 'KI-Assistent'}
           </div>
-          <div style={chatStyles.headerSubtitle}>{getSelectedAgentName()}</div>
+          <div style={chatStyles.headerSubtitle}>
+            {getSelectedAgentName()}
+            {(selectedModelName || activeModelName) && ` · ${selectedModelName || activeModelName}`}
+          </div>
         </div>
         {chatId && (
           <div style={chatStyles.headerActions}>
