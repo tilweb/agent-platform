@@ -2,6 +2,11 @@
 
 ## 2026-03-17
 
+### Bugfix: Suche findet keine Knowledge-Base-Dokumente
+- searchService.ts nutzte Regex zum Parsen der collections.yaml, der Anfuehrungszeichen um Werte erwartete
+- collections.yaml hat aber keine Anfuehrungszeichen — Regex matchte nichts
+- Fix: YAML-Parser statt Regex fuer collections.yaml und manifest.yaml (beide Suchfunktionen)
+
 ### Bugfix: PDF-Upload mit Grossbuchstaben-Extension (.PDF) scheitert
 - Bun.file() erkennt Dateien mit Extension in Grossbuchstaben nicht korrekt (liefert application/octet-stream statt application/pdf)
 - Fix: MIME-Type wird jetzt explizit anhand der Extension bestimmt (case-insensitive) in indexer.ts und attachments.ts

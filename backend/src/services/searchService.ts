@@ -13,6 +13,7 @@ import { searchChatHistories, type ChatSearchResult } from './memory';
 import { readFile, readdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { resolve, join } from 'path';
+import { parse as parseYaml } from 'yaml';
 import type { UsageContext } from './usageTracking';
 
 const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
@@ -139,20 +140,13 @@ async function searchKnowledgeBase(query: string): Promise<SearchResult[]> {
     }
 
     const collectionsContent = await readFile(collectionsPath, 'utf-8');
-
-    // Parse collections (simple YAML parsing)
-    const collectionMatches = collectionsContent.matchAll(/- id: "([^"]+)"\s+name: "([^"]+)"\s+description: "([^"]*)"/g);
-    const collections: { id: string; name: string; description: string }[] = [];
-
-    for (const match of collectionMatches) {
-      if (match[1] && match[2]) {
-        collections.push({
-          id: match[1],
-          name: match[2],
-          description: match[3] || '',
-        });
-      }
-    }
+    const collectionsData = parseYaml(collectionsContent);
+    const collections: { id: string; name: string; description: string }[] =
+      (collectionsData?.collections || []).map((c: any) => ({
+        id: c.id || '',
+        name: c.name || '',
+        description: c.description || '',
+      })).filter((c: any) => c.id);
 
     // Search through each collection's manifest
     for (const collection of collections) {
@@ -161,16 +155,13 @@ async function searchKnowledgeBase(query: string): Promise<SearchResult[]> {
 
       try {
         const manifestContent = await readFile(manifestPath, 'utf-8');
+        const manifest = parseYaml(manifestContent);
+        const documents: { document_id: string; title: string; path: string }[] = manifest?.documents || [];
 
-        // Parse documents from manifest (simpler regex that matches actual format)
-        const docMatches = manifestContent.matchAll(
-          /- document_id: "([^"]+)"\s+title: "([^"]+)"\s+path: "([^"]+)"/g
-        );
-
-        for (const match of docMatches) {
-          const docId = match[1];
-          const title = match[2];
-          const docPath = match[3];
+        for (const doc of documents) {
+          const docId = doc.document_id;
+          const title = doc.title;
+          const docPath = doc.path;
 
           if (!docId || !title || !docPath) continue;
 
@@ -797,16 +788,11 @@ async function loadKnowledgeBaseIndex(): Promise<KBIndex> {
     }
 
     const collectionsContent = await readFile(collectionsPath, 'utf-8');
-
-    // Parse collections
-    const collectionMatches = collectionsContent.matchAll(/- id: "([^"]+)"\s+name: "([^"]+)"/g);
-    const collections: { id: string; name: string }[] = [];
-
-    for (const match of collectionMatches) {
-      if (match[1] && match[2]) {
-        collections.push({ id: match[1], name: match[2] });
-      }
-    }
+    const collectionsData = parseYaml(collectionsContent);
+    const collections: { id: string; name: string }[] =
+      (collectionsData?.collections || [])
+        .filter((c: any) => c.id)
+        .map((c: any) => ({ id: c.id, name: c.name || '' }));
 
     // Load documents from each collection
     for (const collection of collections) {
@@ -815,16 +801,13 @@ async function loadKnowledgeBaseIndex(): Promise<KBIndex> {
 
       try {
         const manifestContent = await readFile(manifestPath, 'utf-8');
+        const manifest = parseYaml(manifestContent);
+        const docs: { document_id: string; title: string; path: string }[] = manifest?.documents || [];
 
-        // Parse documents from manifest
-        const docMatches = manifestContent.matchAll(
-          /- document_id: "([^"]+)"\s+title: "([^"]+)"\s+path: "([^"]+)"/g
-        );
-
-        for (const match of docMatches) {
-          const docId = match[1];
-          const title = match[2];
-          const docPath = match[3];
+        for (const doc of docs) {
+          const docId = doc.document_id;
+          const title = doc.title;
+          const docPath = doc.path;
 
           if (!docId || !title || !docPath) continue;
 
