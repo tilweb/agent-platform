@@ -243,7 +243,7 @@ export default function ProjectKBLinks({ projectId }) {
               <option value="">Collection waehlen...</option>
               {availableCollections.map((coll) => (
                 <option key={coll.id} value={coll.id}>
-                  {coll.name} ({coll.documentCount || 0} Dokumente)
+                  {coll.name} ({coll.document_count || 0} Dokumente)
                 </option>
               ))}
             </select>
@@ -280,7 +280,7 @@ export default function ProjectKBLinks({ projectId }) {
                     <div>
                       <div style={styles.linkName}>{collInfo.name}</div>
                       <div style={styles.linkMeta}>
-                        {collInfo.documentCount !== undefined && `${collInfo.documentCount} Dokumente`}
+                        {collInfo.document_count !== undefined && `${collInfo.document_count} Dokumente`}
                         {link.linkedAt && ` • Verknuepft am ${new Date(link.linkedAt).toLocaleDateString('de-DE')}`}
                       </div>
                     </div>

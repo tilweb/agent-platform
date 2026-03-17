@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { theme } from '../config/theme';
 import { UserIcon, ChatIcon, BookIcon, ClipboardIcon } from './Icons';
+import { useProjectChats, useProjectKBLinks, useProjectMemory } from '../hooks/useProjects';
 
 const styles = {
   container: {},
@@ -150,6 +151,13 @@ export default function ProjectOverview({ project, onUpdate, onRefresh }) {
   };
 
   const memberCount = project.members?.length || 1;
+  const { chats } = useProjectChats(project.id);
+  const { links } = useProjectKBLinks(project.id);
+  const { stats: memoryStats } = useProjectMemory(project.id);
+
+  const chatCount = chats.length;
+  const collectionCount = links.collections?.length || 0;
+  const memoryItemCount = memoryStats ? (memoryStats.about + memoryStats.instructions + memoryStats.context) : 0;
 
   return (
     <div style={styles.container}>
@@ -170,8 +178,8 @@ export default function ProjectOverview({ project, onUpdate, onRefresh }) {
             <ChatIcon size={20} color="#14b8a6" />
           </div>
           <div style={styles.statContent}>
-            <div style={styles.statValue}>-</div>
-            <div style={styles.statLabel}>Chats</div>
+            <div style={styles.statValue}>{chatCount}</div>
+            <div style={styles.statLabel}>{chatCount === 1 ? 'Chat' : 'Chats'}</div>
           </div>
         </div>
 
@@ -180,8 +188,8 @@ export default function ProjectOverview({ project, onUpdate, onRefresh }) {
             <BookIcon size={20} color="#f97316" />
           </div>
           <div style={styles.statContent}>
-            <div style={styles.statValue}>-</div>
-            <div style={styles.statLabel}>KB Collections</div>
+            <div style={styles.statValue}>{collectionCount}</div>
+            <div style={styles.statLabel}>{collectionCount === 1 ? 'KB Collection' : 'KB Collections'}</div>
           </div>
         </div>
 
@@ -190,8 +198,8 @@ export default function ProjectOverview({ project, onUpdate, onRefresh }) {
             <ClipboardIcon size={20} color="#ec4899" />
           </div>
           <div style={styles.statContent}>
-            <div style={styles.statValue}>-</div>
-            <div style={styles.statLabel}>Memory Items</div>
+            <div style={styles.statValue}>{memoryItemCount}</div>
+            <div style={styles.statLabel}>{memoryItemCount === 1 ? 'Memory Item' : 'Memory Items'}</div>
           </div>
         </div>
       </div>
