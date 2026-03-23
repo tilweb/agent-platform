@@ -6,6 +6,13 @@
 - Wenn der User im Chat das Modell aendert, gilt das jetzt auch fuer delegierte Agenten (sofern diese kein eigenes locked Model haben)
 - Vorher hatte die Modellauswahl kaum Effekt, weil der Supervisor nur routet und die Agenten ihr eigenes Default-Modell nutzten
 
+### Fix: Deployment ueberschreibt keine User-Daten mehr
+- Dockerfile hat bei jedem Start agents/, skills/, config/ und backend/data/apps/ komplett geloescht und durch Seed-Daten ersetzt
+- User-erstellte Agenten, Custom Skills und App-Daten (Vertraege, Lieferanten, Projektauftraege, VSM) gingen bei jedem Deployment verloren
+- Jetzt: System-Agents werden einzeln aktualisiert, User-erstellte Agenten bleiben erhalten
+- Skills: Nur skills/system/ wird ersetzt, skills/custom/ bleibt unberuehrt
+- Apps: Nur registry.yaml, config.json, schemas und vorlagen werden aktualisiert — User-Daten (contracts, suppliers, projekte) bleiben erhalten
+
 ### Fix: PDF-Upload — Supervisor delegiert nicht mehr unnoetig an chat-document-reader
 - Supervisor hat Dokumentinhalt bereits direkt im Prompt, delegierte aber trotzdem — Agent halluzinierte dann attachment_id
 - Attachment-IDs werden jetzt auch bei Dokumenten im Supervisor-Prompt angezeigt (vorher nur bei Bildern)
