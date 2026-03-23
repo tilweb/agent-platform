@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-03-23
+
+### Fix: Chat-Modellauswahl wird an delegierte Agenten weitergereicht
+- Wenn der User im Chat das Modell aendert, gilt das jetzt auch fuer delegierte Agenten (sofern diese kein eigenes locked Model haben)
+- Vorher hatte die Modellauswahl kaum Effekt, weil der Supervisor nur routet und die Agenten ihr eigenes Default-Modell nutzten
+
+### Fix: PDF-Upload — Supervisor delegiert nicht mehr unnoetig an chat-document-reader
+- Supervisor hat Dokumentinhalt bereits direkt im Prompt, delegierte aber trotzdem — Agent halluzinierte dann attachment_id
+- Attachment-IDs werden jetzt auch bei Dokumenten im Supervisor-Prompt angezeigt (vorher nur bei Bildern)
+- Priorisierungsregeln verschaerft: Supervisor soll bei hochgeladenen Dokumenten direkt antworten statt zu delegieren
+
+## 2026-03-22
+
+### Feature: KI Workplace CLI (basierend auf Mistral Vibe)
+- Mistral Vibe (Apache 2.0) geklont und als eigenes CLI Tool adaptiert
+- Adacor AI (Qwen3 30B) als Default-Provider konfiguriert
+- Branding: "KI Workplace CLI" statt "Mistral Vibe" (Banner, System-Prompt, Commit-Signatur, Help-Texte)
+- Neuer CLI-Befehl `workplace` (zusaetzlich zu `vibe`)
+- Config-Home: `~/.workplace-cli/` (statt `~/.vibe/`)
+- Projekt-Config: `.workplace/` (statt `.vibe/`)
+- Env-Prefix: `WORKPLACE_*` (statt `VIBE_*`)
+- Fix: tool_choice wird nur mit tools gesendet (Adacor API Kompatibilitaet)
+- Installation: `uv tool install -e tools/workplace-cli`
+
+## 2026-03-18
+
+### Feature: Value Stream Mapping App
+- Neue App "Value Stream Mapping" im Workplace-Framework
+- Uebersichtsseite mit Projekt-Cards, Stats, Filter und Suche
+- Detailansicht mit drei Tabs: Eingabe, Visualisierung, Analyse
+- Eingabe: 7 Datenbereiche (Meta-Daten, Kunde, Produkt, Lieferanten, Prozessschritte, Informationsfluss, Personal) - basierend auf dem Python-Piloten
+- Visualisierung: SVG-basierte Wertstrom-Darstellung mit Materialfluss, Timeline, KPI-Dashboard, Engpass-Markierung und Informationsfluss
+- Analyse: KI-gestuetzte Auswertung mit umfassendem Lean-Manufacturing-Report (Engpass-Analyse, 8 Verschwendungsarten, Massnahmenempfehlungen mit ROI, IST/SOLL-Prognose, Roadmap)
+- Backend: Hono Routes, File-based Storage, LLM-Integration fuer Analyse
+- Frontend: Lazy-loaded Pages, useVsm Hook, Sidebar-Icon
+
 ## 2026-03-17
 
 ### Bugfix: /model zeigt nur noch Chat-faehige Modelle

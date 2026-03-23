@@ -788,6 +788,7 @@ async function buildSupervisorPrompt(agent: AgentConfig, attachments?: Attachmen
 
         return `
 ### ${i + 1}. ${att.filename} (Dokument)
+- **attachment_id:** \`${att.id}\`
 
 ${truncatedContent}
 `;
@@ -830,12 +831,13 @@ ${attachmentSections.join('\n')}
 
 ---
 
-### PRIORISIERUNG FÜR FRAGEN:
+### PRIORISIERUNG FÜR FRAGEN ZU HOCHGELADENEN DATEIEN:
 
-1. **ZUERST** die oben hochgeladenen Dokumente durchsuchen
-2. Wenn die Antwort in den Dokumenten gefunden wird: **DIREKT antworten**
+1. **NICHT an chat-document-reader delegieren** — du hast den Dokumentinhalt bereits oben vorliegen
+2. **DIREKT antworten** basierend auf dem oben eingebetteten Inhalt
 3. Zitiere relevante Passagen aus den Dokumenten
 4. **NUR** wenn die Information definitiv NICHT in den Dokumenten ist, sage das klar
+5. Falls du doch delegieren musst, gib die **attachment_id** im context-Parameter mit
 
 `;
   }
@@ -993,13 +995,13 @@ async function runDelegatedAgent(
   }
 
   // Resolve the model for this delegated agent
-  // Delegated agents use their own model config, not the parent's override
+  // Pass parent's modelOverride so non-locked agents inherit the chat model selection
   const delegatedAgentOptions: AgentLoopOptions = {
     agentId,
     delegationDepth: depth,
     parentSessionId,
     userId,
-    // Don't pass parent modelOverride - each agent uses its own model config
+    modelOverride: parentModelOverride,
   };
   const delegatedModelOverride = await resolveAgentModel(agent, delegatedAgentOptions);
 
