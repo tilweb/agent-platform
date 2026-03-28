@@ -39,3 +39,15 @@ apps:
         component: LieferantenPage
       - path: /apps/lieferantenmanagement/:id
         component: SupplierDetailPage
+  vsm:
+    id: vsm
+    name: Value Stream Mapping
+    description: Wertströme erfassen, visualisieren und KI-gestützt analysieren
+    icon: vsm
+    version: 1.0.0
+    enabled: true
+    routes:
+      - path: /apps/vsm
+        component: VsmPage
+      - path: /apps/vsm/:id
+        component: VsmDetailPage

@@ -1,5 +1,5 @@
 /**
- * Step1Basis - Basisdaten des Projektauftrags
+ * Basis - Basisdaten des Projektauftrags
  */
 
 import { theme } from '../../../../config/theme';
@@ -21,7 +21,7 @@ const styles = {
   },
   subtitle: {
     fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textMuted,
+    color: theme.colors.textSecondary,
   },
   formGroup: {
     display: 'flex',
@@ -80,10 +80,12 @@ const styles = {
   },
 };
 
-function Step1Basis({ data, onChange }) {
+function Basis({ data, onChange, config }) {
   const handleChange = (field, value) => {
     onChange({ [field]: value });
   };
+
+  const opts = (key) => config?.[key] || [];
 
   return (
     <div style={styles.container}>
@@ -94,52 +96,130 @@ function Step1Basis({ data, onChange }) {
         </p>
       </div>
 
-      {/* Projektname */}
-      <div style={styles.formGroup}>
-        <label style={styles.label}>
-          Projektname<span style={styles.required}>*</span>
-        </label>
-        <input
-          type="text"
-          value={data.name || ''}
-          onChange={(e) => handleChange('name', e.target.value)}
-          placeholder="z.B. Einführung neues CRM-System"
-          style={styles.input}
-          onFocus={(e) => {
-            e.target.style.borderColor = theme.colors.primary;
-          }}
-          onBlur={(e) => {
-            e.target.style.borderColor = theme.colors.border;
-          }}
-        />
+      {/* Projekt ID und Projektname */}
+      <div style={styles.formRow}>
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Projekt ID</label>
+          <input
+            type="text"
+            value={data.project_id || ''}
+            onChange={(e) => handleChange('project_id', e.target.value)}
+            placeholder="z.B. PRJ-2026-001"
+            style={styles.input}
+            onFocus={(e) => {
+              e.target.style.borderColor = theme.colors.primary;
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = theme.colors.border;
+            }}
+          />
+        </div>
+        <div style={styles.formGroup}>
+          <label style={styles.label}>
+            Projektname<span style={styles.required}>*</span>
+          </label>
+          <input
+            type="text"
+            value={data.name || ''}
+            onChange={(e) => handleChange('name', e.target.value)}
+            placeholder="z.B. Einführung neues CRM-System"
+            style={styles.input}
+            onFocus={(e) => {
+              e.target.style.borderColor = theme.colors.primary;
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = theme.colors.border;
+            }}
+          />
+        </div>
       </div>
 
-      {/* Projekttyp und Beschreibung */}
+      {/* Projekttyp und Auftragsstatus */}
       <div style={styles.formRow}>
         <div style={styles.formGroup}>
           <label style={styles.label}>Projekttyp</label>
           <select
-            value={data.project_type || 'internal'}
+            value={data.project_type || ''}
             onChange={(e) => handleChange('project_type', e.target.value)}
             style={styles.select}
           >
-            <option value="internal">Internes Projekt</option>
-            <option value="external">Externes Projekt</option>
-            <option value="research">Forschungsprojekt</option>
-            <option value="infrastructure">Infrastrukturprojekt</option>
+            <option value="">— Bitte auswählen —</option>
+            {opts('project_type').map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
           </select>
         </div>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Status</label>
+          <label style={styles.label}>Projektauftragsstatus</label>
           <select
-            value={data.status || 'draft'}
+            value={data.status || ''}
             onChange={(e) => handleChange('status', e.target.value)}
             style={styles.select}
           >
-            <option value="draft">Entwurf</option>
-            <option value="active">Aktiv</option>
-            <option value="completed">Abgeschlossen</option>
-            <option value="cancelled">Abgebrochen</option>
+            <option value="">— Bitte auswählen —</option>
+            {opts('order_status').map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Projektstatus und Projekttreiber */}
+      <div style={styles.formRow}>
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Projektstatus</label>
+          <select
+            value={data.project_status || ''}
+            onChange={(e) => handleChange('project_status', e.target.value)}
+            style={styles.select}
+          >
+            <option value="">— Bitte auswählen —</option>
+            {opts('project_status').map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Projekttreiber</label>
+          <select
+            value={data.project_driver || ''}
+            onChange={(e) => handleChange('project_driver', e.target.value)}
+            style={styles.select}
+          >
+            <option value="">— Bitte auswählen —</option>
+            {opts('project_driver').map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Projektgröße und Priorität */}
+      <div style={styles.formRow}>
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Projektgröße</label>
+          <select
+            value={data.project_size || ''}
+            onChange={(e) => handleChange('project_size', e.target.value)}
+            style={styles.select}
+          >
+            <option value="">— Bitte auswählen —</option>
+            {opts('project_size').map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Priorität</label>
+          <select
+            value={data.priority || ''}
+            onChange={(e) => handleChange('priority', e.target.value)}
+            style={styles.select}
+          >
+            <option value="">— Bitte auswählen —</option>
+            {opts('priority').map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -229,4 +309,4 @@ function Step1Basis({ data, onChange }) {
   );
 }
 
-export default Step1Basis;
+export default Basis;

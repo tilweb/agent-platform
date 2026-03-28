@@ -1,5 +1,5 @@
 /**
- * Step8Uebersicht - Projektübersicht & Zusammenfassung
+ * Uebersicht - Projektübersicht & Zusammenfassung
  * Includes KI-Gesamtbewertung for the complete Projektauftrag
  */
 
@@ -281,18 +281,6 @@ const styles = {
     color: theme.colors.textSecondary,
     lineHeight: 1.5,
   },
-  projektreifebereit: {
-    backgroundColor: theme.colors.successLight,
-    color: theme.colors.success,
-  },
-  projektreifebedingt_bereit: {
-    backgroundColor: theme.colors.warningLight,
-    color: theme.colors.warning,
-  },
-  projektreifeStatusnicht_bereit: {
-    backgroundColor: theme.colors.errorLight,
-    color: theme.colors.error,
-  },
   stepScoresGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
@@ -459,7 +447,10 @@ const styles = {
   },
 };
 
-function Step8Uebersicht({ data, stepAnalyses = null, gesamtbewertung = null, onGesamtbewertungComplete }) {
+// UI-Step → Backend-Step mapping for analysis transformation
+const UI_TO_BACKEND = { 2: [7], 3: [2], 4: [3], 5: [4, 5], 6: [6], 7: [6] };
+
+function Uebersicht({ data, stepAnalyses = null, gesamtbewertung = null, onGesamtbewertungComplete }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
 
@@ -477,9 +468,23 @@ function Step8Uebersicht({ data, stepAnalyses = null, gesamtbewertung = null, on
       setIsAnalyzing(true);
       setError(null);
 
+      // Transform UI-Step-Keys → Backend-Step-Keys for the API
+      let backendAnalyses = null;
+      if (stepAnalyses && Object.keys(stepAnalyses).length > 0) {
+        backendAnalyses = {};
+        for (const [uiStep, analysis] of Object.entries(stepAnalyses)) {
+          const backendSteps = UI_TO_BACKEND[uiStep];
+          if (backendSteps) {
+            for (const bs of backendSteps) {
+              if (!backendAnalyses[bs]) backendAnalyses[bs] = analysis;
+            }
+          }
+        }
+      }
+
       const response = await apiPost('/apps/projektmanagement/analyse/gesamt', {
         projektauftrag: data,
-        stepAnalyses,
+        stepAnalyses: backendAnalyses || stepAnalyses,
       });
 
       if (!response.ok) {
@@ -633,7 +638,7 @@ function Step8Uebersicht({ data, stepAnalyses = null, gesamtbewertung = null, on
             <div style={styles.statsGrid}>
               <div style={styles.statCard}>
                 <div style={styles.statValue}>{(data.tasks || []).length}</div>
-                <div style={styles.statLabel}>Aufgaben</div>
+                <div style={styles.statLabel}>Hauptaufgaben</div>
               </div>
               <div style={styles.statCard}>
                 <div style={styles.statValue}>{(data.milestones || []).length}</div>
@@ -1037,15 +1042,6 @@ function UsersIcon() {
   );
 }
 
-function CheckBoxIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <polyline points="9 11 12 14 22 4" />
-      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-    </svg>
-  );
-}
-
 function CheckCircleIcon({ color = 'currentColor' }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
@@ -1196,4 +1192,4 @@ function CircleProgress({ score }) {
   );
 }
 
-export default Step8Uebersicht;
+export default Uebersicht;

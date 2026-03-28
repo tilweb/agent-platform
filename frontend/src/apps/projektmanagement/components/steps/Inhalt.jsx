@@ -1,5 +1,5 @@
 /**
- * Step3Umfang - Projektumfang (In-Scope / Out-of-Scope)
+ * Inhalt - Projektumfang (In-Scope / Out-of-Scope)
  */
 
 import { theme } from '../../../../config/theme';
@@ -21,7 +21,7 @@ const styles = {
   },
   subtitle: {
     fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textMuted,
+    color: theme.colors.textSecondary,
   },
   formGroup: {
     display: 'flex',
@@ -143,7 +143,7 @@ const styles = {
   },
 };
 
-function Step3Umfang({ data, onChange }) {
+function Inhalt({ data, onChange }) {
   const handleScopeChange = (value) => {
     onChange({ scope: value });
   };
@@ -181,7 +181,7 @@ function Step3Umfang({ data, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>3. Umfang</h2>
+        <h2 style={styles.title}>4. Inhalt</h2>
         <p style={styles.subtitle}>
           Definieren Sie klar, was zum Projektumfang gehört und was nicht.
         </p>
@@ -360,4 +360,4 @@ function PlusIcon() {
   );
 }
 
-export default Step3Umfang;
+export default Inhalt;

@@ -22,13 +22,25 @@ import {
 import {
   getAllKnowledge,
   getStepKnowledge,
+  getRawStepKnowledge,
+  saveStepKnowledge,
+  saveStepKnowledgeJson,
   generateAnalysisPrompt,
   getPruefkriterien,
   getTypischeFehler,
   getVerbesserungsvorschlaege,
 } from './knowledge';
 import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis } from './analysis';
+import { getConfig, saveConfig } from './storage';
 import type { ProjektauftragFilters } from './types';
+import {
+  createStatusbericht as createSB,
+  listStatusberichte,
+  getStatusberichtDetails,
+  updateStatusbericht as updateSB,
+  removeStatusbericht,
+  getDashboard,
+} from './statusbericht-service';
 import {
   generateDocument,
   mapProjektauftragToDocument,
@@ -38,6 +50,37 @@ import {
 } from '../../services/documentGenerator';
 
 const projektmanagement = new Hono();
+
+// ============== Config Endpoints ==============
+
+/**
+ * GET /api/apps/projektmanagement/config
+ * Get app configuration (select options etc.)
+ */
+projektmanagement.get('/config', async (c) => {
+  try {
+    const config = await getConfig();
+    return c.json(config);
+  } catch (error) {
+    console.error('Error getting config:', error);
+    return c.json({ error: 'Failed to get config' }, 500);
+  }
+});
+
+/**
+ * PUT /api/apps/projektmanagement/config
+ * Update app configuration
+ */
+projektmanagement.put('/config', async (c) => {
+  try {
+    const body = await c.req.json();
+    await saveConfig(body);
+    return c.json(body);
+  } catch (error) {
+    console.error('Error saving config:', error);
+    return c.json({ error: 'Failed to save config' }, 500);
+  }
+});
 
 // ============== Projektauftrag Endpoints ==============
 
@@ -558,6 +601,61 @@ projektmanagement.get('/knowledge/:step/prompt', async (c) => {
   }
 });
 
+/**
+ * GET /api/apps/projektmanagement/knowledge/:step/raw
+ * Get raw YAML content for editing
+ */
+projektmanagement.get('/knowledge/:step/raw', async (c) => {
+  try {
+    const step = parseInt(c.req.param('step'), 10);
+
+    if (isNaN(step) || step < 1 || step > 7) {
+      return c.json({ error: 'Invalid step number (1-7)' }, 400);
+    }
+
+    const yaml = await getRawStepKnowledge(step);
+
+    if (!yaml) {
+      return c.json({ error: 'Knowledge not found for step' }, 404);
+    }
+
+    return c.json({ step, yaml });
+  } catch (error) {
+    console.error('Error getting raw knowledge:', error);
+    return c.json({ error: 'Failed to get raw knowledge' }, 500);
+  }
+});
+
+/**
+ * PUT /api/apps/projektmanagement/knowledge/:step
+ * Update knowledge for a step (accepts JSON object, serializes to YAML)
+ */
+projektmanagement.put('/knowledge/:step', async (c) => {
+  try {
+    const step = parseInt(c.req.param('step'), 10);
+
+    if (isNaN(step) || step < 1 || step > 7) {
+      return c.json({ error: 'Invalid step number (1-7)' }, 400);
+    }
+
+    const body = await c.req.json();
+    const { knowledge: knowledgeData } = body;
+
+    if (!knowledgeData || typeof knowledgeData !== 'object') {
+      return c.json({ error: 'Missing or invalid knowledge field' }, 400);
+    }
+
+    await saveStepKnowledgeJson(step, knowledgeData);
+
+    // Return the saved knowledge to confirm
+    const knowledge = await getStepKnowledge(step);
+    return c.json({ knowledge });
+  } catch (error: any) {
+    console.error('Error saving knowledge:', error);
+    return c.json({ error: 'Failed to save knowledge' }, 500);
+  }
+});
+
 // ============== Export Endpoints ==============
 
 /**
@@ -618,6 +716,117 @@ projektmanagement.get('/projektauftraege/:id/export/:format', async (c) => {
   } catch (error) {
     console.error('Error exporting:', error);
     return c.json({ error: 'Failed to export' }, 500);
+  }
+});
+
+// ============== Statusbericht Endpoints ==============
+
+/**
+ * GET /api/apps/projektmanagement/statusberichte/dashboard
+ * Dashboard: All active projects with their latest Ampel
+ */
+projektmanagement.get('/statusberichte/dashboard', async (c) => {
+  try {
+    const entries = await getDashboard();
+    return c.json({ dashboard: entries });
+  } catch (error) {
+    console.error('Error getting dashboard:', error);
+    return c.json({ error: 'Failed to get dashboard' }, 500);
+  }
+});
+
+/**
+ * POST /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte
+ * Create a new Statusbericht
+ */
+projektmanagement.post('/projektauftraege/:projektId/statusberichte', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const userId = 'user_default';
+    const sb = await createSB(projektId, userId);
+    return c.json({ statusbericht: sb }, 201);
+  } catch (error) {
+    console.error('Error creating Statusbericht:', error);
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Failed to create Statusbericht' },
+      500
+    );
+  }
+});
+
+/**
+ * GET /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte
+ * List all Statusberichte for a Projekt
+ */
+projektmanagement.get('/projektauftraege/:projektId/statusberichte', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const berichte = await listStatusberichte(projektId);
+    return c.json({ statusberichte: berichte });
+  } catch (error) {
+    console.error('Error listing Statusberichte:', error);
+    return c.json({ error: 'Failed to list Statusberichte' }, 500);
+  }
+});
+
+/**
+ * GET /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte/:sbId
+ * Get single Statusbericht
+ */
+projektmanagement.get('/projektauftraege/:projektId/statusberichte/:sbId', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const sbId = c.req.param('sbId');
+    const sb = await getStatusberichtDetails(projektId, sbId);
+    if (!sb) {
+      return c.json({ error: 'Statusbericht not found' }, 404);
+    }
+    return c.json({ statusbericht: sb });
+  } catch (error) {
+    console.error('Error getting Statusbericht:', error);
+    return c.json({ error: 'Failed to get Statusbericht' }, 500);
+  }
+});
+
+/**
+ * PUT /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte/:sbId
+ * Update Statusbericht
+ */
+projektmanagement.put('/projektauftraege/:projektId/statusberichte/:sbId', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const sbId = c.req.param('sbId');
+    const updates = await c.req.json();
+    const sb = await updateSB(projektId, sbId, updates);
+    if (!sb) {
+      return c.json({ error: 'Statusbericht not found' }, 404);
+    }
+    return c.json({ statusbericht: sb });
+  } catch (error) {
+    console.error('Error updating Statusbericht:', error);
+    return c.json({ error: 'Failed to update Statusbericht' }, 500);
+  }
+});
+
+/**
+ * DELETE /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte/:sbId
+ * Delete Statusbericht (only draft)
+ */
+projektmanagement.delete('/projektauftraege/:projektId/statusberichte/:sbId', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const sbId = c.req.param('sbId');
+    const deleted = await removeStatusbericht(projektId, sbId);
+    if (!deleted) {
+      return c.json({ error: 'Statusbericht not found' }, 404);
+    }
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting Statusbericht:', error);
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Failed to delete Statusbericht' },
+      500
+    );
   }
 });
 

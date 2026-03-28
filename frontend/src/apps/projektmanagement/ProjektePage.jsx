@@ -9,6 +9,8 @@ import { theme } from '../../config/theme';
 import { useProjektmanagement } from '../../hooks/useProjektmanagement';
 import { LightningIcon, ClipboardIcon, BarChartIcon, CheckCircleIcon, AppsIcon } from '../../components/Icons';
 import ComingSoon from './components/ComingSoon';
+import Einstellungen from './components/Einstellungen';
+import StatusberichteDashboard from './components/StatusberichteDashboard';
 
 // Tab configuration
 const TABS = [
@@ -30,9 +32,7 @@ const TABS = [
     id: 'statusberichte',
     label: 'Statusberichte',
     icon: BarChartIcon,
-    comingSoon: true,
-    title: 'Statusberichte',
-    description: 'Erstelle regelmäßige Statusberichte für laufende Projekte. Verfolge Fortschritt, Risiken und Meilensteine.',
+    comingSoon: false,
   },
   {
     id: 'abschluss',
@@ -49,6 +49,12 @@ const TABS = [
     comingSoon: true,
     title: 'Portfoliomanagement',
     description: 'Überblick über alle Projekte im Unternehmen. Ressourcenplanung, Priorisierung und strategische Ausrichtung.',
+  },
+  {
+    id: 'einstellungen',
+    label: 'Einstellungen',
+    icon: SettingsIcon,
+    comingSoon: false,
   },
 ];
 
@@ -474,7 +480,11 @@ function ProjektePage() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'auftraege' ? (
+        {activeTab === 'einstellungen' ? (
+          <Einstellungen />
+        ) : activeTab === 'statusberichte' ? (
+          <StatusberichteDashboard />
+        ) : activeTab === 'auftraege' ? (
           <>
             {/* Stats Cards */}
             {stats && (
@@ -651,6 +661,15 @@ function PlusIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function SettingsIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   );
 }

@@ -10,28 +10,35 @@ import { useProjektmanagement } from '../../hooks/useProjektmanagement';
 import { API_URL } from '../../utils/apiFetch';
 
 // Step components
-import Step1Basis from './components/steps/Step1Basis';
-import Step2Ziele from './components/steps/Step2Ziele';
-import Step3Umfang from './components/steps/Step3Umfang';
-import Step4Aufgaben from './components/steps/Step4Aufgaben';
-import Step5Meilensteine from './components/steps/Step5Meilensteine';
-import Step6BudgetRisiken from './components/steps/Step6BudgetRisiken';
-import Step7Organisation from './components/steps/Step7Organisation';
-import Step8Uebersicht from './components/steps/Step8Uebersicht';
-import Step9Vergleich from './components/steps/Step9Vergleich';
+import Basis from './components/steps/Basis';
+import Personen from './components/steps/Personen';
+import Ziele from './components/steps/Ziele';
+import Inhalt from './components/steps/Inhalt';
+import Roadmap from './components/steps/Roadmap';
+import Budget from './components/steps/Budget';
+import Risiken from './components/steps/Risiken';
+import Uebersicht from './components/steps/Uebersicht';
+import Vergleich from './components/steps/Vergleich';
 import KnowledgePanel from './components/KnowledgePanel';
 import ExportDropdown from '../../components/ExportDropdown';
+// Statusbericht components
+import StatusberichtBlade from './components/StatusberichtBlade';
+import StatusberichtBasis from './components/statusbericht/StatusberichtBasis';
+import StatusberichtZiele from './components/statusbericht/StatusberichtZiele';
+import StatusberichtRoadmap from './components/statusbericht/StatusberichtRoadmap';
+import StatusberichtKosten from './components/statusbericht/StatusberichtKosten';
+import StatusberichtRisiken from './components/statusbericht/StatusberichtRisiken';
 
 const STEPS = [
-  { number: 1, title: 'Basis', component: Step1Basis },
-  { number: 2, title: 'Ziele', component: Step2Ziele },
-  { number: 3, title: 'Umfang', component: Step3Umfang },
-  { number: 4, title: 'Aufgaben', component: Step4Aufgaben },
-  { number: 5, title: 'Meilensteine', component: Step5Meilensteine },
-  { number: 6, title: 'Budget & Risiken', component: Step6BudgetRisiken },
-  { number: 7, title: 'Organisation', component: Step7Organisation },
-  { number: 8, title: 'Übersicht', component: Step8Uebersicht },
-  { number: 9, title: 'Vergleich', component: Step9Vergleich },
+  { number: 1, title: 'Basis', component: Basis },
+  { number: 2, title: 'Personen', component: Personen },
+  { number: 3, title: 'Ziele', component: Ziele },
+  { number: 4, title: 'Inhalt', component: Inhalt },
+  { number: 5, title: 'Roadmap', component: Roadmap },
+  { number: 6, title: 'Kosten', component: Budget },
+  { number: 7, title: 'Risiken', component: Risiken },
+  { number: 8, title: 'Übersicht', component: Uebersicht },
+  { number: 9, title: 'Vergleich', component: Vergleich },
 ];
 
 const styles = {
@@ -250,6 +257,52 @@ const styles = {
     height: '100%',
     color: theme.colors.textMuted,
   },
+  // Mode Toggle (Segmented Control)
+  modeToggle: {
+    display: 'flex',
+    backgroundColor: theme.colors.surfaceHover,
+    borderRadius: theme.borderRadius.lg,
+    padding: '2px',
+  },
+  modeButton: {
+    padding: `${theme.spacing.xs} ${theme.spacing.lg}`,
+    borderRadius: theme.borderRadius.md,
+    border: 'none',
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+    backgroundColor: 'transparent',
+    color: theme.colors.textMuted,
+  },
+  modeButtonActive: {
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
+    boxShadow: theme.shadows.sm,
+  },
+  // Statusbericht tabs
+  sbTabs: {
+    display: 'flex',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+    backgroundColor: 'transparent',
+    flexShrink: 0,
+  },
+  sbTab: {
+    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.textMuted,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+  },
+  sbTabActive: {
+    backgroundColor: theme.colors.primaryLight,
+    color: theme.colors.primary,
+  },
   completionInfo: {
     display: 'flex',
     alignItems: 'center',
@@ -304,9 +357,15 @@ function WizardPage() {
     getProjektauftrag,
     updateStep,
     deleteProjektauftrag,
+    getConfig,
+    getStatusberichte,
+    createStatusbericht,
+    updateStatusbericht: updateSbApi,
+    deleteStatusbericht: deleteSbApi,
   } = useProjektmanagement();
 
   const [projektauftrag, setProjektauftrag] = useState(emptyProjektauftrag);
+  const [appConfig, setAppConfig] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(!!id);
   const [isSaving, setIsSaving] = useState(false);
@@ -314,10 +373,25 @@ function WizardPage() {
   const [exportingFormat, setExportingFormat] = useState(null);
   const [completeness, setCompleteness] = useState(0);
   const [isNewProject, setIsNewProject] = useState(!id);
+  const [isDirty, setIsDirty] = useState(false);
   // Step analyses state (shared between KnowledgePanel and Step8)
   const [stepAnalyses, setStepAnalyses] = useState({});
   // Gesamtbewertung state (for Step8)
   const [gesamtbewertung, setGesamtbewertung] = useState(null);
+  // Statusbericht state
+  const [mode, setMode] = useState('auftrag'); // 'auftrag' | 'statusbericht'
+  const [statusberichte, setStatusberichte] = useState([]);
+  const [selectedSbId, setSelectedSbId] = useState(null);
+  const [currentSb, setCurrentSb] = useState(null);
+  const [sbTab, setSbTab] = useState('basis');
+  const [isSbDirty, setIsSbDirty] = useState(false);
+  const [isSbCreating, setIsSbCreating] = useState(false);
+  const [isSbSaving, setIsSbSaving] = useState(false);
+
+  // Load config
+  useEffect(() => {
+    getConfig().then(setAppConfig).catch(console.error);
+  }, [getConfig]);
 
   // Load existing Projektauftrag
   useEffect(() => {
@@ -350,6 +424,102 @@ function WizardPage() {
     }
   };
 
+  // ============== Statusbericht Functions ==============
+
+  // Load statusberichte when project is loaded and has an id
+  useEffect(() => {
+    if (projektauftrag.id) {
+      loadStatusberichte(projektauftrag.id);
+    }
+  }, [projektauftrag.id]);
+
+  const loadStatusberichte = async (projektId) => {
+    try {
+      const berichte = await getStatusberichte(projektId);
+      setStatusberichte(berichte);
+    } catch (err) {
+      console.error('Error loading Statusberichte:', err);
+    }
+  };
+
+  // Select a statusbericht
+  useEffect(() => {
+    if (selectedSbId && projektauftrag.id) {
+      const found = statusberichte.find((sb) => sb.id === selectedSbId);
+      if (found) {
+        setCurrentSb({ ...found });
+      }
+    } else {
+      setCurrentSb(null);
+    }
+  }, [selectedSbId, statusberichte]);
+
+  const handleCreateSb = async () => {
+    if (!projektauftrag.id) return;
+    try {
+      setIsSbCreating(true);
+      const sb = await createStatusbericht(projektauftrag.id);
+      await loadStatusberichte(projektauftrag.id);
+      setSelectedSbId(sb.id);
+      setSbTab('basis');
+    } catch (err) {
+      console.error('Error creating Statusbericht:', err);
+    } finally {
+      setIsSbCreating(false);
+    }
+  };
+
+  const handleSbChange = (updates) => {
+    setCurrentSb((prev) => ({ ...prev, ...updates }));
+    setIsSbDirty(true);
+  };
+
+  const handleSaveSb = async () => {
+    if (!currentSb || !projektauftrag.id) return;
+    try {
+      setIsSbSaving(true);
+      await updateSbApi(projektauftrag.id, currentSb.id, currentSb);
+      await loadStatusberichte(projektauftrag.id);
+      setIsSbDirty(false);
+    } catch (err) {
+      console.error('Error saving Statusbericht:', err);
+    } finally {
+      setIsSbSaving(false);
+    }
+  };
+
+  const handleDeleteSb = async () => {
+    if (!currentSb || !projektauftrag.id) return;
+    if (!window.confirm('Möchten Sie diesen Statusbericht wirklich löschen?')) return;
+    try {
+      await deleteSbApi(projektauftrag.id, currentSb.id);
+      setSelectedSbId(null);
+      setCurrentSb(null);
+      await loadStatusberichte(projektauftrag.id);
+    } catch (err) {
+      console.error('Error deleting Statusbericht:', err);
+      alert(err.message);
+    }
+  };
+
+  const handleDeleteSbById = async (sbId) => {
+    if (!projektauftrag.id) return;
+    try {
+      await deleteSbApi(projektauftrag.id, sbId);
+      if (selectedSbId === sbId) {
+        setSelectedSbId(null);
+        setCurrentSb(null);
+      }
+      await loadStatusberichte(projektauftrag.id);
+    } catch (err) {
+      console.error('Error deleting Statusbericht:', err);
+      alert(err.message);
+    }
+  };
+
+  // Show mode toggle if project is active or has statusberichte
+  const showModeToggle = projektauftrag.id && (projektauftrag.status === 'active' || statusberichte.length > 0);
+
   // Calculate completeness locally
   const calculateCompleteness = useCallback((data) => {
     const checks = [
@@ -377,6 +547,7 @@ function WizardPage() {
       setCompleteness(calculateCompleteness(updated));
       return updated;
     });
+    setIsDirty(true);
   }, [calculateCompleteness]);
 
   // Save current step
@@ -405,6 +576,7 @@ function WizardPage() {
         setProjektauftrag(result.projektauftrag);
         setCompleteness(result.completeness || 0);
       }
+      setIsDirty(false);
     } catch (error) {
       console.error('Error saving:', error);
     } finally {
@@ -515,6 +687,7 @@ function WizardPage() {
         data={projektauftrag}
         onChange={updateLocalState}
         onSave={saveStep}
+        config={appConfig}
         {...extraProps}
       />
     );
@@ -532,17 +705,17 @@ function WizardPage() {
       case 1:
         return !!projektauftrag.name && !!projektauftrag.projektleiter;
       case 2:
-        return !!projektauftrag.goals && projektauftrag.criteria?.length > 0;
-      case 3:
-        return !!projektauftrag.scope;
-      case 4:
-        return projektauftrag.tasks?.length > 0;
-      case 5:
-        return projektauftrag.milestones?.length > 0;
-      case 6:
-        return projektauftrag.budget?.length > 0 || projektauftrag.risks?.length > 0;
-      case 7:
         return projektauftrag.organization?.length > 0;
+      case 3:
+        return !!projektauftrag.goals && projektauftrag.criteria?.length > 0;
+      case 4:
+        return !!projektauftrag.scope;
+      case 5:
+        return projektauftrag.milestones?.length > 0 || projektauftrag.tasks?.length > 0;
+      case 6:
+        return projektauftrag.budget?.length > 0;
+      case 7:
+        return projektauftrag.risks?.length > 0;
       default:
         return false;
     }
@@ -622,7 +795,29 @@ function WizardPage() {
           </div>
 
           <div style={styles.headerActions}>
-            {projektauftrag.id && (
+            {showModeToggle && (
+              <div style={styles.modeToggle}>
+                <button
+                  style={{
+                    ...styles.modeButton,
+                    ...(mode === 'auftrag' ? styles.modeButtonActive : {}),
+                  }}
+                  onClick={() => setMode('auftrag')}
+                >
+                  Projektauftrag
+                </button>
+                <button
+                  style={{
+                    ...styles.modeButton,
+                    ...(mode === 'statusbericht' ? styles.modeButtonActive : {}),
+                  }}
+                  onClick={() => setMode('statusbericht')}
+                >
+                  Statusberichte
+                </button>
+              </div>
+            )}
+            {mode === 'auftrag' && projektauftrag.id && (
               <ExportDropdown
                 onExport={handleExport}
                 formats={['xlsx', 'pdf', 'docx']}
@@ -631,7 +826,7 @@ function WizardPage() {
                 disabled={!projektauftrag.id}
               />
             )}
-            {projektauftrag.id && (
+            {mode === 'auftrag' && projektauftrag.id && (
               <button
                 style={{ ...styles.actionButton, ...styles.deleteButton }}
                 onClick={handleDelete}
@@ -646,16 +841,177 @@ function WizardPage() {
                 Löschen
               </button>
             )}
+            {mode === 'statusbericht' && currentSb && currentSb.status === 'draft' && (
+              <button
+                style={{ ...styles.actionButton, ...styles.deleteButton }}
+                onClick={handleDeleteSb}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.errorLight;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <TrashIcon />
+                Löschen
+              </button>
+            )}
+            {mode === 'auftrag' ? (
+              <button
+                style={{
+                  ...styles.actionButton,
+                  ...styles.primaryButton,
+                  opacity: isSaving ? 0.7 : 1,
+                  ...(isDirty && !isSaving ? {
+                    boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
+                  } : {}),
+                }}
+                onClick={saveStep}
+                disabled={isSaving}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.primary;
+                }}
+              >
+                <SaveIcon />
+                {isSaving ? 'Speichern...' : isDirty ? 'Speichern *' : 'Speichern'}
+              </button>
+            ) : currentSb && (
+              <button
+                style={{
+                  ...styles.actionButton,
+                  ...styles.primaryButton,
+                  opacity: isSbSaving ? 0.7 : 1,
+                  ...(isSbDirty && !isSbSaving ? {
+                    boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
+                  } : {}),
+                }}
+                onClick={handleSaveSb}
+                disabled={isSbSaving}
+                onMouseEnter={(e) => {
+                  if (!isSbSaving) {
+                    e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.primary;
+                }}
+              >
+                <SaveIcon />
+                {isSbSaving ? 'Speichern...' : isSbDirty ? 'Speichern *' : 'Speichern'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {mode === 'auftrag' ? (
+        <>
+          {/* Step Tabs (Horizontal Pill-Style) */}
+          <div style={styles.stepTabs}>
+            {STEPS.map((step) => {
+              const status = getStepStatus(step.number);
+              const isActive = status === 'active';
+              const isCompleted = status === 'completed';
+              return (
+                <button
+                  key={step.number}
+                  type="button"
+                  style={{
+                    ...styles.stepTab,
+                    ...(isActive ? styles.stepTabActive : {}),
+                    ...(!isActive && isCompleted ? styles.stepTabCompleted : {}),
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    goToStep(step.number);
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  <div
+                    style={{
+                      ...styles.stepTabNumber,
+                      ...(isActive ? styles.stepTabNumberActive : {}),
+                      ...(!isActive && isCompleted ? styles.stepTabNumberCompleted : {}),
+                      ...(!isActive && !isCompleted ? styles.stepTabNumberDefault : {}),
+                    }}
+                  >
+                    {step.number}
+                  </div>
+                  {step.title}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Main content */}
+          <div style={styles.main}>
+            <div style={styles.content}>
+              <div style={currentStep === 8 ? {} : styles.stepContent}>{renderStepContent()}</div>
+            </div>
+            {currentStep <= 7 && (
+              <div style={styles.rightSidebar}>
+                <KnowledgePanel
+                  currentStep={currentStep}
+                  projektauftrag={projektauftrag}
+                  analyses={stepAnalyses}
+                  onAnalysisComplete={(step, analysis) => {
+                    setStepAnalyses(prev => ({ ...prev, [step]: analysis }));
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <div style={styles.navigation}>
             <button
               style={{
-                ...styles.actionButton,
-                ...styles.primaryButton,
-                opacity: isSaving ? 0.7 : 1,
+                ...styles.navButton,
+                ...styles.navButtonPrev,
+                ...(currentStep === 1 ? styles.navButtonDisabled : {}),
               }}
-              onClick={saveStep}
-              disabled={isSaving}
+              onClick={goPrev}
+              disabled={currentStep === 1}
+            >
+              <ArrowLeftIcon />
+              Zurück
+            </button>
+            <div style={styles.navInfo}>
+              <span style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+                Schritt {currentStep} von 9
+              </span>
+              <div style={styles.completionInfo}>
+                <span>{completeness}%</span>
+                <div style={styles.completionBar}>
+                  <div style={{ ...styles.completionFill, width: `${completeness}%` }} />
+                </div>
+              </div>
+            </div>
+            <button
+              style={{
+                ...styles.navButton,
+                ...styles.navButtonNext,
+                ...(currentStep === 9 ? styles.navButtonDisabled : {}),
+              }}
+              onClick={goNext}
+              disabled={currentStep === 9}
               onMouseEnter={(e) => {
-                if (!isSaving) {
+                if (currentStep < 9) {
                   e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
                 }
               }}
@@ -663,135 +1019,122 @@ function WizardPage() {
                 e.currentTarget.style.backgroundColor = theme.colors.primary;
               }}
             >
-              <SaveIcon />
-              {isSaving ? 'Speichern...' : 'Speichern'}
+              {currentStep === 9 ? 'Fertig' : 'Weiter'}
+              {currentStep < 9 && <ArrowRightIcon />}
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Step Tabs (Horizontal Pill-Style) */}
-      <div style={styles.stepTabs}>
-        {STEPS.map((step) => {
-          const status = getStepStatus(step.number);
-          const isActive = status === 'active';
-          const isCompleted = status === 'completed';
-          return (
-            <button
-              key={step.number}
-              type="button"
-              style={{
-                ...styles.stepTab,
-                ...(isActive ? styles.stepTabActive : {}),
-                ...(!isActive && isCompleted ? styles.stepTabCompleted : {}),
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                goToStep(step.number);
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              <div
-                style={{
-                  ...styles.stepTabNumber,
-                  ...(isActive ? styles.stepTabNumberActive : {}),
-                  ...(!isActive && isCompleted ? styles.stepTabNumberCompleted : {}),
-                  ...(!isActive && !isCompleted ? styles.stepTabNumberDefault : {}),
-                }}
-              >
-                {!isActive && isCompleted ? <CheckIcon /> : step.number}
-              </div>
-              {step.title}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Main content */}
-      <div style={styles.main}>
-        {/* Step content */}
-        <div style={styles.content}>
-          <div style={currentStep === 8 ? {} : styles.stepContent}>{renderStepContent()}</div>
-        </div>
-
-        {/* Right sidebar - Knowledge Panel (only for steps 1-7) */}
-        {currentStep <= 7 && (
-          <div style={styles.rightSidebar}>
-            <KnowledgePanel
-              currentStep={currentStep}
-              projektauftrag={projektauftrag}
-              analyses={stepAnalyses}
-              onAnalysisComplete={(step, analysis) => {
-                setStepAnalyses(prev => ({ ...prev, [step]: analysis }));
-              }}
+        </>
+      ) : (
+        <>
+          {/* Statusbericht Main */}
+          <div style={styles.main}>
+            <StatusberichtBlade
+              berichte={statusberichte}
+              selectedId={selectedSbId}
+              onSelect={setSelectedSbId}
+              onCreate={handleCreateSb}
+              isCreating={isSbCreating}
+              onDelete={handleDeleteSbById}
             />
-          </div>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <div style={styles.navigation}>
-        <button
-          style={{
-            ...styles.navButton,
-            ...styles.navButtonPrev,
-            ...(currentStep === 1 ? styles.navButtonDisabled : {}),
-          }}
-          onClick={goPrev}
-          disabled={currentStep === 1}
-        >
-          <ArrowLeftIcon />
-          Zurück
-        </button>
-
-        <div style={styles.navInfo}>
-          <span style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
-            Schritt {currentStep} von 9
-          </span>
-          <div style={styles.completionInfo}>
-            <span>{completeness}%</span>
-            <div style={styles.completionBar}>
-              <div
-                style={{
-                  ...styles.completionFill,
-                  width: `${completeness}%`,
-                }}
-              />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Tabs — nur wenn ein Bericht ausgewählt */}
+              {currentSb && (
+                <div style={styles.sbTabs}>
+                  <span style={{
+                    fontSize: theme.typography.sizes.sm,
+                    fontWeight: theme.typography.weights.bold,
+                    color: theme.colors.text,
+                    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                    marginRight: theme.spacing.sm,
+                  }}>
+                    SB #{currentSb.nummer}
+                  </span>
+                  {[
+                    { id: 'basis', label: 'Basis' },
+                    { id: 'ziele', label: 'Ziele' },
+                    { id: 'roadmap', label: 'Roadmap' },
+                    { id: 'kosten', label: 'Kosten' },
+                    { id: 'risiken', label: 'Risiken' },
+                  ].map((tab) => {
+                    const isActive = sbTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        style={{
+                          ...styles.sbTab,
+                          ...(isActive ? styles.sbTabActive : {}),
+                        }}
+                        onClick={() => setSbTab(tab.id)}
+                        onMouseEnter={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }
+                        }}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {/* Content */}
+              <div style={styles.content}>
+                {currentSb ? (
+                  <div style={styles.stepContent}>
+                    {sbTab === 'basis' ? (
+                      <StatusberichtBasis data={currentSb} onChange={handleSbChange} />
+                    ) : sbTab === 'ziele' ? (
+                      <StatusberichtZiele
+                        data={currentSb}
+                        onChange={handleSbChange}
+                        projektauftrag={projektauftrag}
+                      />
+                    ) : sbTab === 'roadmap' ? (
+                      <StatusberichtRoadmap
+                        data={currentSb}
+                        onChange={handleSbChange}
+                        projektauftrag={projektauftrag}
+                        config={appConfig}
+                      />
+                    ) : sbTab === 'kosten' ? (
+                      <StatusberichtKosten
+                        data={currentSb}
+                        onChange={handleSbChange}
+                        projektauftrag={projektauftrag}
+                      />
+                    ) : (
+                      <StatusberichtRisiken
+                        data={currentSb}
+                        onChange={handleSbChange}
+                        projektauftrag={projektauftrag}
+                        config={appConfig}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    color: theme.colors.textMuted,
+                    fontSize: theme.typography.sizes.sm,
+                  }}>
+                    {statusberichte.length === 0
+                      ? 'Erstellen Sie den ersten Statusbericht.'
+                      : 'Wählen Sie einen Statusbericht aus der Liste.'}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-
-        <button
-          style={{
-            ...styles.navButton,
-            ...styles.navButtonNext,
-            ...(currentStep === 9 ? styles.navButtonDisabled : {}),
-          }}
-          onClick={goNext}
-          disabled={currentStep === 9}
-          onMouseEnter={(e) => {
-            if (currentStep < 9) {
-              e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = theme.colors.primary;
-          }}
-        >
-          {currentStep === 9 ? 'Fertig' : 'Weiter'}
-          {currentStep < 9 && <ArrowRightIcon />}
-        </button>
-      </div>
+        </>
+      )}
     </div>
   );
 }

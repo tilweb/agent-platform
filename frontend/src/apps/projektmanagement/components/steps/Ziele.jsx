@@ -1,5 +1,5 @@
 /**
- * Step2Ziele - Projektziele und Erfolgskriterien
+ * Ziele - Projektziele und Erfolgskriterien
  */
 
 import { useState } from 'react';
@@ -22,7 +22,7 @@ const styles = {
   },
   subtitle: {
     fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textMuted,
+    color: theme.colors.textSecondary,
   },
   formGroup: {
     display: 'flex',
@@ -120,7 +120,7 @@ const styles = {
   },
 };
 
-function Step2Ziele({ data, onChange }) {
+function Ziele({ data, onChange }) {
   const handleGoalsChange = (value) => {
     onChange({ goals: value });
   };
@@ -143,7 +143,7 @@ function Step2Ziele({ data, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>2. Ziele</h2>
+        <h2 style={styles.title}>3. Ziele</h2>
         <p style={styles.subtitle}>
           Definieren Sie die Projektziele und messbaren Erfolgskriterien.
         </p>
@@ -267,4 +267,4 @@ function TrashIcon() {
   );
 }
 
-export default Step2Ziele;
+export default Ziele;

@@ -3,3 +3,8 @@
   role: owner
   grantedAt: 2026-03-05T13:06:01.245Z
   grantedBy: user_1770561498880_39ohgu5
+- principalType: group
+  principalId: group_1773580971417_qhretgf
+  role: admin
+  grantedAt: 2026-03-15T13:29:24.304Z
+  grantedBy: user_1770561498880_39ohgu5

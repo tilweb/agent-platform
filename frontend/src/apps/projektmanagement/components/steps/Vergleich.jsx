@@ -1,5 +1,5 @@
 /**
- * Step9Vergleich - Historischer Vergleich (Placeholder für KI-Integration)
+ * Vergleich - Historischer Vergleich (Placeholder für KI-Integration)
  */
 
 import { theme } from '../../../../config/theme';
@@ -21,7 +21,7 @@ const styles = {
   },
   subtitle: {
     fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textMuted,
+    color: theme.colors.textSecondary,
   },
   placeholder: {
     backgroundColor: theme.colors.surface,
@@ -109,7 +109,7 @@ const styles = {
   },
 };
 
-function Step9Vergleich({ data }) {
+function Vergleich({ data }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -248,4 +248,4 @@ function InfoIcon() {
   );
 }
 
-export default Step9Vergleich;
+export default Vergleich;

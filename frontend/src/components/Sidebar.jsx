@@ -239,6 +239,7 @@ const navIconColors = {
   apps: '#7c3aed',
   contract: '#0891b2',
   supplier: '#d97706',
+  vsm: '#0369a1',
   extraction: '#0d9488',
 };
 
@@ -766,12 +767,22 @@ function LoginIcon() {
   );
 }
 
+function VsmNavIcon({ color }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <path d="M3 12h4l3-9 4 18 3-9h4" />
+    </svg>
+  );
+}
+
 function AppNavIcon({ iconId }) {
   switch (iconId) {
     case 'contract':
       return <ContractNavIcon color={navIconColors.contract} />;
     case 'supplier':
       return <SupplierNavIcon color={navIconColors.supplier} />;
+    case 'vsm':
+      return <VsmNavIcon color={navIconColors.vsm} />;
     default:
       return <AppsNavIcon color={navIconColors.apps} />;
   }

@@ -1,9 +1,10 @@
 /**
- * Step7Organisation - Projektorganisation (Team & Stakeholder)
+ * Personen - Projektorganisation (Team & Stakeholder)
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { theme } from '../../../../config/theme';
+import StakeholderMatrix from './StakeholderMatrix';
 
 const styles = {
   container: {
@@ -22,7 +23,7 @@ const styles = {
   },
   subtitle: {
     fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textMuted,
+    color: theme.colors.textSecondary,
   },
   tabs: {
     display: 'flex',
@@ -82,6 +83,11 @@ const styles = {
     gridTemplateColumns: '1fr 1fr',
     gap: theme.spacing.md,
   },
+  itemGrid3: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr 1fr',
+    gap: theme.spacing.md,
+  },
   formGroup: {
     display: 'flex',
     flexDirection: 'column',
@@ -90,7 +96,7 @@ const styles = {
   label: {
     fontSize: theme.typography.sizes.xs,
     fontWeight: theme.typography.weights.medium,
-    color: theme.colors.textMuted,
+    color: theme.colors.textSecondary,
   },
   input: {
     padding: theme.spacing.md,
@@ -148,30 +154,14 @@ const styles = {
     gap: theme.spacing.sm,
     transition: `all ${theme.transitions.fast}`,
   },
-  levelBadge: {
-    fontSize: theme.typography.sizes.xs,
-    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-    borderRadius: theme.borderRadius.full,
-    fontWeight: theme.typography.weights.medium,
-  },
-  levelLow: {
-    backgroundColor: theme.colors.surfaceHover,
-    color: theme.colors.textMuted,
-  },
-  levelMedium: {
-    backgroundColor: theme.colors.warningLight,
-    color: theme.colors.warning,
-  },
-  levelHigh: {
-    backgroundColor: theme.colors.errorLight,
-    color: theme.colors.error,
-  },
 };
 
-function Step7Organisation({ data, onChange }) {
+function Personen({ data, onChange, config }) {
   const [activeTab, setActiveTab] = useState('team');
   const organization = data.organization || [];
   const stakeholders = data.stakeholders || [];
+
+  const opts = (key) => config?.[key] || [];
 
   const generateId = () => Math.random().toString(36).substring(2, 10);
 
@@ -185,14 +175,22 @@ function Step7Organisation({ data, onChange }) {
       .substring(0, 2);
   };
 
+  // All people combined for matrix view
+  const allPeople = useMemo(() => [
+    ...organization.filter((m) => m.name && m.interest && m.influence).map((m) => ({ ...m, _type: 'team' })),
+    ...stakeholders.filter((s) => s.name && s.interest && s.influence).map((s) => ({ ...s, _type: 'stakeholder' })),
+  ], [organization, stakeholders]);
+
   // Team functions
   const addTeamMember = () => {
     const newMember = {
       id: generateId(),
       name: '',
       role: '',
-      email: '',
-      availability: 100,
+      company: '',
+      status: '',
+      interest: '',
+      influence: '',
     };
     onChange({ organization: [...organization, newMember] });
   };
@@ -214,8 +212,9 @@ function Step7Organisation({ data, onChange }) {
       id: generateId(),
       name: '',
       role: '',
-      interest: 'medium',
-      influence: 'medium',
+      status: '',
+      interest: '',
+      influence: '',
       expectations: '',
     };
     onChange({ stakeholders: [...stakeholders, newStakeholder] });
@@ -235,7 +234,7 @@ function Step7Organisation({ data, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>7. Organisation</h2>
+        <h2 style={styles.title}>2. Personen</h2>
         <p style={styles.subtitle}>
           Definieren Sie das Projektteam und die wichtigsten Stakeholder.
         </p>
@@ -262,6 +261,16 @@ function Step7Organisation({ data, onChange }) {
           onClick={() => setActiveTab('stakeholders')}
         >
           Stakeholder ({stakeholders.length})
+        </button>
+        <button
+          type="button"
+          style={{
+            ...styles.tab,
+            ...(activeTab === 'matrix' ? styles.tabActive : {}),
+          }}
+          onClick={() => setActiveTab('matrix')}
+        >
+          Klassifizierung
         </button>
       </div>
 
@@ -292,11 +301,24 @@ function Step7Organisation({ data, onChange }) {
                   </div>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Rolle</label>
-                    <input
-                      type="text"
+                    <select
                       value={member.role || ''}
                       onChange={(e) => updateTeamMember(index, 'role', e.target.value)}
-                      placeholder="z.B. Entwickler, Designer, Analyst"
+                      style={styles.select}
+                    >
+                      <option value="">— Bitte wählen —</option>
+                      {opts('role').map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Unternehmen</label>
+                    <input
+                      type="text"
+                      value={member.company || ''}
+                      onChange={(e) => updateTeamMember(index, 'company', e.target.value)}
+                      placeholder="z.B. Firmenname, Dienstleister"
                       style={styles.input}
                       onFocus={(e) => {
                         e.target.style.borderColor = theme.colors.primary;
@@ -307,34 +329,45 @@ function Step7Organisation({ data, onChange }) {
                     />
                   </div>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>E-Mail (optional)</label>
-                    <input
-                      type="email"
-                      value={member.email || ''}
-                      onChange={(e) => updateTeamMember(index, 'email', e.target.value)}
-                      placeholder="max@example.com"
-                      style={styles.input}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = theme.colors.primary;
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = theme.colors.border;
-                      }}
-                    />
+                    <label style={styles.label}>Status</label>
+                    <select
+                      value={member.status || ''}
+                      onChange={(e) => updateTeamMember(index, 'status', e.target.value)}
+                      style={styles.select}
+                    >
+                      <option value="">— Bitte auswählen —</option>
+                      {opts('member_status').map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div style={styles.itemGrid3}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Interesse</label>
+                    <select
+                      value={member.interest || ''}
+                      onChange={(e) => updateTeamMember(index, 'interest', e.target.value)}
+                      style={styles.select}
+                    >
+                      <option value="">— Bitte auswählen —</option>
+                      {opts('interest').map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
                   </div>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>Verfügbarkeit (%)</label>
-                    <input
-                      type="number"
-                      value={member.availability || ''}
-                      onChange={(e) =>
-                        updateTeamMember(index, 'availability', parseInt(e.target.value) || 0)
-                      }
-                      placeholder="100"
-                      min="0"
-                      max="100"
-                      style={styles.input}
-                    />
+                    <label style={styles.label}>Einfluss</label>
+                    <select
+                      value={member.influence || ''}
+                      onChange={(e) => updateTeamMember(index, 'influence', e.target.value)}
+                      style={styles.select}
+                    >
+                      <option value="">— Bitte auswählen —</option>
+                      {opts('influence').map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -401,42 +434,56 @@ function Step7Organisation({ data, onChange }) {
                   </div>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Rolle / Position</label>
-                    <input
-                      type="text"
+                    <select
                       value={stakeholder.role || ''}
                       onChange={(e) => updateStakeholder(index, 'role', e.target.value)}
-                      placeholder="z.B. Geschäftsführer, Abteilungsleiter"
-                      style={styles.input}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = theme.colors.primary;
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = theme.colors.border;
-                      }}
-                    />
+                      style={styles.select}
+                    >
+                      <option value="">— Bitte wählen —</option>
+                      {opts('role').map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div style={styles.itemGrid3}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Status</label>
+                    <select
+                      value={stakeholder.status || ''}
+                      onChange={(e) => updateStakeholder(index, 'status', e.target.value)}
+                      style={styles.select}
+                    >
+                      <option value="">— Bitte auswählen —</option>
+                      {opts('member_status').map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
                   </div>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Interesse</label>
                     <select
-                      value={stakeholder.interest || 'medium'}
+                      value={stakeholder.interest || ''}
                       onChange={(e) => updateStakeholder(index, 'interest', e.target.value)}
                       style={styles.select}
                     >
-                      <option value="low">Niedrig</option>
-                      <option value="medium">Mittel</option>
-                      <option value="high">Hoch</option>
+                      <option value="">— Bitte auswählen —</option>
+                      {opts('interest').map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
                     </select>
                   </div>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Einfluss</label>
                     <select
-                      value={stakeholder.influence || 'medium'}
+                      value={stakeholder.influence || ''}
                       onChange={(e) => updateStakeholder(index, 'influence', e.target.value)}
                       style={styles.select}
                     >
-                      <option value="low">Niedrig</option>
-                      <option value="medium">Mittel</option>
-                      <option value="high">Hoch</option>
+                      <option value="">— Bitte auswählen —</option>
+                      {opts('influence').map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -491,6 +538,54 @@ function Step7Organisation({ data, onChange }) {
           </button>
         </div>
       )}
+
+      {/* Matrix Section */}
+      {activeTab === 'matrix' && (
+        <div style={{ position: 'relative' }}>
+          <p style={{
+            fontSize: theme.typography.sizes.sm,
+            color: theme.colors.textSecondary,
+            marginBottom: theme.spacing.lg,
+          }}>
+            Alle Personen aus Projektteam und Stakeholdern nach Interesse und Einfluss klassifiziert.
+          </p>
+          <StakeholderMatrix
+            people={allPeople}
+            interestOptions={opts('interest')}
+            influenceOptions={opts('influence')}
+            roleOptions={opts('role')}
+          />
+          {/* Legend */}
+          <div style={{
+            display: 'flex',
+            gap: theme.spacing.xl,
+            marginTop: theme.spacing.lg,
+            fontSize: theme.typography.sizes.xs,
+            color: theme.colors.textSecondary,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+              <div style={{
+                width: 12,
+                height: 12,
+                borderRadius: theme.borderRadius.full,
+                backgroundColor: theme.colors.primaryLight,
+                border: `2px solid ${theme.colors.primary}`,
+              }} />
+              Projektteam ({organization.length})
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+              <div style={{
+                width: 12,
+                height: 12,
+                borderRadius: theme.borderRadius.full,
+                backgroundColor: theme.colors.primaryLight,
+                border: `2px solid ${theme.colors.primary}`,
+              }} />
+              Stakeholder ({stakeholders.length})
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -514,4 +609,4 @@ function TrashIcon() {
   );
 }
 
-export default Step7Organisation;
+export default Personen;

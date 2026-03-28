@@ -194,6 +194,120 @@ export interface HistoricalComparison {
   compared_at: string;
 }
 
+// ============== Statusberichte ==============
+
+export type AmpelStatus = 'gruen' | 'gelb' | 'rot';
+
+export interface CriterionTracking {
+  fortschritt: number;      // 0-100
+  ampel: AmpelStatus;
+  bemerkung: string;
+}
+
+export interface RoadmapItemTracking {
+  fortschritt: number;      // 0-100
+  ampel: AmpelStatus;
+  bemerkung: string;
+  status: string;           // Konfigurierbarer Status-Wert
+  ist_datum: string;        // Ist-Datum (vs Soll)
+}
+
+export interface MilestoneSnapshot {
+  id: string;
+  name: string;
+  date: string;
+  description: string;
+}
+
+export interface TaskSnapshot {
+  id: string;
+  name: string;
+  responsible: string;
+  start_date: string;
+  end_date: string;
+  effort: number;
+}
+
+export interface QualityGateSnapshot {
+  id: string;
+  name: string;
+  date: string;
+}
+
+export interface RiskTrackingItem {
+  id: string;
+  auftrag_risk_id?: string;   // Link zum Original-Risiko im Projektauftrag
+  type: 'bedrohung' | 'chance';
+  strategie: string;          // Konfigurierbar (B-vermeiden, C-nutzen, etc.)
+  status: string;             // Konfigurierbar (identifiziert, bewertet, aktiv, etc.)
+  verantwortlich: string;
+  erkannt: string;            // Datum
+  aktualisiert: string;       // System-Datum (auto-update)
+  erwartet_bis: string;       // Datum
+  ampel: AmpelStatus;
+  beschreibung: string;
+  auswirkung: string;         // Freitext-Beschreibung der Auswirkung
+  massnahmen: string;
+  wahrscheinlichkeit: string; // Neubewertung (Config-Option wie im Auftrag)
+  auswirkung_bewertung: string; // Neubewertung (Config-Option wie im Auftrag)
+}
+
+export interface CostMonthData {
+  month: string;          // "2024-08" Format
+  plan: number;
+  ist: number;
+  forecast: number;
+}
+
+export interface Statusbericht {
+  id: string;                       // "sb-{base36timestamp}-{random6}"
+  projekt_id: string;               // Referenz auf Projektauftrag
+  nummer: number;                   // Laufende Nummer pro Projekt (1, 2, 3, ...)
+
+  // Tab: Basis
+  ampel: AmpelStatus;              // Gesamt-Ampel
+  datum: string;                    // ISO-Datum des Berichts
+  management_summary: string;       // Freitext
+
+  // Tab: Ziele
+  goals_snapshot: string;           // Kopie der Auftrag-Ziele bei Erstellung
+  goals_tracking: CriterionTracking;      // Tracking fuer Gesamtziele
+  criteria_snapshot: string[];      // Kopie der Auftrag-Kriterien bei Erstellung
+  criteria_tracking: CriterionTracking[];  // 1:1 zu criteria_snapshot
+
+  // Tab: Roadmap
+  milestones_snapshot: MilestoneSnapshot[];
+  milestones_tracking: RoadmapItemTracking[];
+  tasks_snapshot: TaskSnapshot[];
+  tasks_tracking: RoadmapItemTracking[];
+  quality_gates_snapshot: QualityGateSnapshot[];
+  quality_gates_tracking: RoadmapItemTracking[];
+
+  // Tab: Kosten (Earned Value Management)
+  cost_budget: number;              // Gesamtbudget
+  cost_months: CostMonthData[];     // Monatliche Kostendaten
+
+  // Tab: Risiken
+  risk_tracking: RiskTrackingItem[];
+
+  // Metadata
+  status: 'draft' | 'final';
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
+export interface StatusberichtDashboardEntry {
+  projekt_id: string;
+  projekt_name: string;
+  projektleiter: string;
+  project_type: string;
+  latest_ampel: AmpelStatus;
+  latest_datum: string;
+  latest_nummer: number;
+  bericht_count: number;
+}
+
 // ============== Filters & Stats ==============
 
 export interface ProjektauftragFilters {

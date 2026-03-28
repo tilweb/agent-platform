@@ -130,6 +130,10 @@ onMouseLeave={(e) => {
 }
 ```
 
+### Farbige Akzent-Rahmen: VERBOTEN
+
+**NIEMALS** farbige `borderTop`, `borderLeft` oder sonstige farbige Akzent-Rahmen an Cards, Panels oder Containern verwenden. Kein `borderTop: 2px solid ${color}`, kein `borderLeft: 3px solid ${color}` als visueller Akzent. Borders sind ausschliesslich `1px solid ${theme.colors.border}` — neutral, einheitlich, ohne Farb-Akzente.
+
 ### Status Badges
 
 ```javascript

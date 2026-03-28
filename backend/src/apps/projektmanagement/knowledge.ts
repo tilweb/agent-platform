@@ -3,7 +3,7 @@
  * Loads and provides PM Masterclass knowledge for each wizard step
  */
 
-import { parse } from 'yaml';
+import { parse, stringify } from 'yaml';
 
 const KNOWLEDGE_PATH = './data/apps/projektmanagement/knowledge';
 
@@ -19,6 +19,17 @@ export interface StepKnowledge {
   verbesserungsvorschlaege: Record<string, any>;
 }
 
+// Step file mapping
+const STEP_FILES = [
+  { step: 1, file: 'step_01_basis_informationen.yaml' },
+  { step: 2, file: 'step_02_ziele_erfolgskriterien.yaml' },
+  { step: 3, file: 'step_03_inhalt_umfang.yaml' },
+  { step: 4, file: 'step_04_hauptaufgaben.yaml' },
+  { step: 5, file: 'step_05_meilensteine.yaml' },
+  { step: 6, file: 'step_06_budget_risiken.yaml' },
+  { step: 7, file: 'step_07_organisation_stakeholder.yaml' },
+];
+
 // Cache for loaded knowledge
 let knowledgeCache: Map<number, StepKnowledge> | null = null;
 
@@ -32,17 +43,7 @@ export async function loadAllKnowledge(): Promise<Map<number, StepKnowledge>> {
 
   knowledgeCache = new Map();
 
-  const stepFiles = [
-    { step: 1, file: 'step_01_basis_informationen.yaml' },
-    { step: 2, file: 'step_02_ziele_erfolgskriterien.yaml' },
-    { step: 3, file: 'step_03_inhalt_umfang.yaml' },
-    { step: 4, file: 'step_04_hauptaufgaben.yaml' },
-    { step: 5, file: 'step_05_meilensteine.yaml' },
-    { step: 6, file: 'step_06_budget_risiken.yaml' },
-    { step: 7, file: 'step_07_organisation_stakeholder.yaml' },
-  ];
-
-  for (const { step, file } of stepFiles) {
+  for (const { step, file } of STEP_FILES) {
     try {
       const filePath = `${KNOWLEDGE_PATH}/${file}`;
       const bunFile = Bun.file(filePath);
@@ -101,6 +102,45 @@ export async function getVerbesserungsvorschlaege(step: number): Promise<Record<
 }
 
 /**
+ * Get raw YAML content for a step
+ */
+export async function getRawStepKnowledge(step: number): Promise<string | null> {
+  const entry = STEP_FILES.find((s) => s.step === step);
+  if (!entry) return null;
+
+  const filePath = `${KNOWLEDGE_PATH}/${entry.file}`;
+  const bunFile = Bun.file(filePath);
+
+  if (!(await bunFile.exists())) return null;
+  return bunFile.text();
+}
+
+/**
+ * Save knowledge YAML for a step
+ */
+export async function saveStepKnowledge(step: number, yamlContent: string): Promise<void> {
+  const entry = STEP_FILES.find((s) => s.step === step);
+  if (!entry) throw new Error(`Invalid step: ${step}`);
+
+  // Validate that the YAML is parseable
+  parse(yamlContent);
+
+  const filePath = `${KNOWLEDGE_PATH}/${entry.file}`;
+  await Bun.write(filePath, yamlContent);
+
+  // Invalidate cache so next read picks up changes
+  knowledgeCache = null;
+}
+
+/**
+ * Save knowledge from a JSON object (serializes to YAML)
+ */
+export async function saveStepKnowledgeJson(step: number, data: Record<string, any>): Promise<void> {
+  const yamlContent = stringify(data);
+  await saveStepKnowledge(step, yamlContent);
+}
+
+/**
  * Clear knowledge cache (for reloading)
  */
 export function clearKnowledgeCache(): void {
@@ -154,6 +194,15 @@ export async function generateAnalysisPrompt(step: number): Promise<string | nul
         }
       }
     }
+  }
+
+  // Custom/additional sections (any top-level key not in the known set)
+  const knownKeys = new Set(['meta', 'kernkonzepte', 'pruefkriterien', 'typische_fehler', 'verbesserungsvorschlaege']);
+  for (const [key, value] of Object.entries(knowledge as Record<string, any>)) {
+    if (knownKeys.has(key)) continue;
+    const title = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    sections.push(`\n## ${title}`);
+    sections.push(formatKernkonzepte(typeof value === 'object' && !Array.isArray(value) ? value : { inhalt: value }));
   }
 
   return sections.join('\n');

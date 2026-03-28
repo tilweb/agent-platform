@@ -14,6 +14,7 @@ import {
 import { contractRoutes } from '../apps/vertragsmanagement/routes';
 import { projektmanagementRoutes } from '../apps/projektmanagement/routes';
 import { lieferantenmanagementRoutes } from '../apps/lieferantenmanagement/routes';
+import { vsmRoutes } from '../apps/vsm/routes';
 
 const apps = new Hono();
 
@@ -57,7 +58,7 @@ apps.get('/:appId', async (c) => {
     const appId = c.req.param('appId');
 
     // Skip if it's a sub-route
-    if (appId === 'enabled' || appId === 'vertragsmanagement' || appId === 'lieferantenmanagement') {
+    if (appId === 'enabled' || appId === 'vertragsmanagement' || appId === 'lieferantenmanagement' || appId === 'vsm') {
       return c.notFound();
     }
 
@@ -124,5 +125,8 @@ apps.route('/projektmanagement', projektmanagementRoutes);
 
 // Mount Lieferantenmanagement routes
 apps.route('/lieferantenmanagement', lieferantenmanagementRoutes);
+
+// Mount VSM routes
+apps.route('/vsm', vsmRoutes);
 
 export { apps as appsRoutes };

@@ -4,7 +4,7 @@
  */
 
 import { parse, stringify } from 'yaml';
-import type { Projektauftrag, Vorlage } from './types';
+import type { Projektauftrag, Vorlage, Statusbericht } from './types';
 
 const BASE_PATH = './data/apps/projektmanagement';
 const PROJEKTAUFTRAEGE_PATH = `${BASE_PATH}/projektauftraege`;
@@ -125,6 +125,75 @@ export async function deleteProjektauftrag(projektId: string): Promise<boolean> 
   return true;
 }
 
+// ============== Statusbericht Storage ==============
+
+/**
+ * Generate a unique Statusbericht ID
+ */
+export function generateStatusberichtId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  return `sb-${timestamp}-${random}`;
+}
+
+/**
+ * Get all Statusberichte for a Projekt, sorted by nummer
+ */
+export async function getStatusberichte(projektId: string): Promise<Statusbericht[]> {
+  const dir = `${PROJEKTAUFTRAEGE_PATH}/${projektId}/statusberichte`;
+  const berichte: Statusbericht[] = [];
+
+  try {
+    const glob = new Bun.Glob('*.yaml');
+    for await (const path of glob.scan(dir)) {
+      const file = Bun.file(`${dir}/${path}`);
+      if (await file.exists()) {
+        const content = await file.text();
+        const bericht = parse(content) as Statusbericht;
+        berichte.push(bericht);
+      }
+    }
+  } catch {
+    // No statusberichte directory yet
+  }
+
+  berichte.sort((a, b) => a.nummer - b.nummer);
+  return berichte;
+}
+
+/**
+ * Get a single Statusbericht
+ */
+export async function getStatusbericht(projektId: string, sbId: string): Promise<Statusbericht | null> {
+  const file = Bun.file(`${PROJEKTAUFTRAEGE_PATH}/${projektId}/statusberichte/${sbId}.yaml`);
+  if (!(await file.exists())) {
+    return null;
+  }
+  const content = await file.text();
+  return parse(content) as Statusbericht;
+}
+
+/**
+ * Save a Statusbericht (create or update)
+ */
+export async function saveStatusbericht(projektId: string, sb: Statusbericht): Promise<void> {
+  const dir = `${PROJEKTAUFTRAEGE_PATH}/${projektId}/statusberichte`;
+  await Bun.$`mkdir -p ${dir}`;
+  await Bun.write(`${dir}/${sb.id}.yaml`, stringify(sb));
+}
+
+/**
+ * Delete a Statusbericht
+ */
+export async function deleteStatusbericht(projektId: string, sbId: string): Promise<boolean> {
+  const file = Bun.file(`${PROJEKTAUFTRAEGE_PATH}/${projektId}/statusberichte/${sbId}.yaml`);
+  if (!(await file.exists())) {
+    return false;
+  }
+  await Bun.$`rm -f ${PROJEKTAUFTRAEGE_PATH}/${projektId}/statusberichte/${sbId}.yaml`;
+  return true;
+}
+
 // ============== Vorlagen Storage ==============
 
 /**
@@ -185,6 +254,128 @@ export async function deleteVorlage(vorlageId: string): Promise<boolean> {
 
   await Bun.$`rm -f ${VORLAGEN_PATH}/${vorlageId}.yaml`;
   return true;
+}
+
+// ============== Config Storage ==============
+
+const CONFIG_PATH = `${BASE_PATH}/config.json`;
+
+const DEFAULT_CONFIG = {
+  project_type: [
+    { value: 'internal', label: 'Internes Projekt' },
+    { value: 'external', label: 'Externes Projekt' },
+    { value: 'research', label: 'Forschungsprojekt' },
+    { value: 'infrastructure', label: 'Infrastrukturprojekt' },
+  ],
+  project_size: [
+    { value: 'small', label: 'Klein' },
+    { value: 'medium', label: 'Mittel' },
+    { value: 'large', label: 'Groß' },
+  ],
+  priority: [
+    { value: 'low', label: 'Niedrig' },
+    { value: 'medium', label: 'Mittel' },
+    { value: 'high', label: 'Hoch' },
+    { value: 'critical', label: 'Kritisch' },
+  ],
+  project_driver: [
+    { value: 'strategic', label: 'Strategisch' },
+    { value: 'legal', label: 'Gesetzlich' },
+    { value: 'operational', label: 'Operativ' },
+  ],
+  project_status: [
+    { value: 'initiation', label: 'Initiierung' },
+    { value: 'planning', label: 'Planung' },
+    { value: 'execution', label: 'Umsetzung' },
+    { value: 'closing', label: 'Abschluss' },
+    { value: 'stopped', label: 'Gestoppt' },
+  ],
+  order_status: [
+    { value: 'draft', label: 'Entwurf' },
+    { value: 'active', label: 'Aktiv' },
+    { value: 'completed', label: 'Abgeschlossen' },
+    { value: 'cancelled', label: 'Abgebrochen' },
+  ],
+  role: [
+    { value: 'projektleiter', label: 'Projektleiter' },
+    { value: 'teilprojektleiter', label: 'Teilprojektleiter' },
+    { value: 'entwickler', label: 'Entwickler' },
+    { value: 'analyst', label: 'Analyst' },
+    { value: 'designer', label: 'Designer' },
+    { value: 'tester', label: 'Tester' },
+    { value: 'berater', label: 'Berater' },
+  ],
+  member_status: [
+    { value: 'intern', label: 'Intern' },
+    { value: 'extern', label: 'Extern' },
+  ],
+  interest: [
+    { value: 'low', label: 'Niedrig' },
+    { value: 'medium', label: 'Mittel' },
+    { value: 'high', label: 'Hoch' },
+  ],
+  influence: [
+    { value: 'low', label: 'Niedrig' },
+    { value: 'medium', label: 'Mittel' },
+    { value: 'high', label: 'Hoch' },
+  ],
+  probability: [
+    { value: 'low', label: 'Niedrig' },
+    { value: 'medium', label: 'Mittel' },
+    { value: 'high', label: 'Hoch' },
+  ],
+  impact: [
+    { value: 'low', label: 'Niedrig' },
+    { value: 'medium', label: 'Mittel' },
+    { value: 'high', label: 'Hoch' },
+  ],
+  roadmap_status: [
+    { value: 'planned', label: 'Geplant' },
+    { value: 'in_progress', label: 'In Bearbeitung' },
+    { value: 'completed', label: 'Abgeschlossen' },
+    { value: 'delayed', label: 'Verzögert' },
+    { value: 'blocked', label: 'Blockiert' },
+    { value: 'cancelled', label: 'Abgesagt' },
+  ],
+  risk_strategie: [
+    { value: 'B-vermeiden', label: 'B-vermeiden' },
+    { value: 'B-uebertragen', label: 'B-übertragen' },
+    { value: 'B-mindern', label: 'B-mindern' },
+    { value: 'B-akzeptieren', label: 'B-akzeptieren' },
+    { value: 'C-nutzen', label: 'C-nutzen' },
+    { value: 'C-teilen', label: 'C-teilen' },
+    { value: 'C-verbessern', label: 'C-verbessern' },
+    { value: 'C-akzeptieren', label: 'C-akzeptieren' },
+  ],
+  risk_status: [
+    { value: 'vorbesetzt', label: 'Vorbesetzt' },
+    { value: 'identifiziert', label: 'Identifiziert' },
+    { value: 'bewertet', label: 'Bewertet' },
+    { value: 'aktiv', label: 'Aktiv' },
+    { value: 'vermieden', label: 'Vermieden' },
+    { value: 'eingetreten', label: 'Eingetreten' },
+  ],
+};
+
+/**
+ * Get config, merging defaults with saved overrides
+ */
+export async function getConfig(): Promise<Record<string, any>> {
+  const file = Bun.file(CONFIG_PATH);
+  if (!(await file.exists())) {
+    return { ...DEFAULT_CONFIG };
+  }
+  const content = await file.text();
+  const saved = JSON.parse(content);
+  return { ...DEFAULT_CONFIG, ...saved };
+}
+
+/**
+ * Save config
+ */
+export async function saveConfig(config: Record<string, any>): Promise<void> {
+  await ensureDirectories();
+  await Bun.write(CONFIG_PATH, JSON.stringify(config, null, 2));
 }
 
 // ============== Initialization ==============

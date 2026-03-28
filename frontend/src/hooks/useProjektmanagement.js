@@ -297,6 +297,103 @@ export function useProjektmanagement() {
     return data.gesamtbewertung;
   }, []);
 
+  // Save knowledge for a step (sends JSON object, backend serializes to YAML)
+  const saveKnowledge = useCallback(async (step, knowledge) => {
+    const response = await apiPut(`/apps/projektmanagement/knowledge/${step}`, { knowledge });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to save knowledge');
+    }
+    return await response.json();
+  }, []);
+
+  // Get app config (select options)
+  const getConfig = useCallback(async () => {
+    const response = await apiGet('/apps/projektmanagement/config');
+    if (!response.ok) {
+      throw new Error('Failed to load config');
+    }
+    return await response.json();
+  }, []);
+
+  // Update app config
+  const updateConfig = useCallback(async (config) => {
+    const response = await apiPut('/apps/projektmanagement/config', config);
+    if (!response.ok) {
+      throw new Error('Failed to save config');
+    }
+    return await response.json();
+  }, []);
+
+  // ============== Statusberichte ==============
+
+  // Get all Statusberichte for a Projekt
+  const getStatusberichte = useCallback(async (projektId) => {
+    const response = await apiGet(
+      `/apps/projektmanagement/projektauftraege/${projektId}/statusberichte`
+    );
+    if (!response.ok) throw new Error('Failed to load Statusberichte');
+    const data = await response.json();
+    return data.statusberichte || [];
+  }, []);
+
+  // Get single Statusbericht
+  const getStatusbericht = useCallback(async (projektId, sbId) => {
+    const response = await apiGet(
+      `/apps/projektmanagement/projektauftraege/${projektId}/statusberichte/${sbId}`
+    );
+    if (!response.ok) throw new Error('Statusbericht not found');
+    const data = await response.json();
+    return data.statusbericht;
+  }, []);
+
+  // Create new Statusbericht
+  const createStatusbericht = useCallback(async (projektId) => {
+    const response = await apiPost(
+      `/apps/projektmanagement/projektauftraege/${projektId}/statusberichte`,
+      {}
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to create Statusbericht');
+    }
+    const data = await response.json();
+    return data.statusbericht;
+  }, []);
+
+  // Update Statusbericht
+  const updateStatusbericht = useCallback(async (projektId, sbId, updates) => {
+    const response = await apiPut(
+      `/apps/projektmanagement/projektauftraege/${projektId}/statusberichte/${sbId}`,
+      updates
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to update Statusbericht');
+    }
+    const data = await response.json();
+    return data.statusbericht;
+  }, []);
+
+  // Delete Statusbericht (only draft)
+  const deleteStatusbericht = useCallback(async (projektId, sbId) => {
+    const response = await apiDelete(
+      `/apps/projektmanagement/projektauftraege/${projektId}/statusberichte/${sbId}`
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to delete Statusbericht');
+    }
+  }, []);
+
+  // Get Statusberichte Dashboard
+  const getStatusberichteDashboard = useCallback(async () => {
+    const response = await apiGet('/apps/projektmanagement/statusberichte/dashboard');
+    if (!response.ok) throw new Error('Failed to load dashboard');
+    const data = await response.json();
+    return data.dashboard || [];
+  }, []);
+
   return {
     projektauftraege,
     stats,
@@ -319,9 +416,20 @@ export function useProjektmanagement() {
     // Knowledge
     getKnowledgeSummary,
     getStepKnowledge,
+    saveKnowledge,
     getAnalysisPrompt,
     // KI-Analyse
     analyzeStep,
     analyzeGesamt,
+    // Config
+    getConfig,
+    updateConfig,
+    // Statusberichte
+    getStatusberichte,
+    getStatusbericht,
+    createStatusbericht,
+    updateStatusbericht,
+    deleteStatusbericht,
+    getStatusberichteDashboard,
   };
 }

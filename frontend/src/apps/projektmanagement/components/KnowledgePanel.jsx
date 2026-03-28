@@ -271,15 +271,16 @@ const styles = {
   },
 };
 
-// Map step numbers to knowledge step numbers (steps 8-9 don't have knowledge)
-const KNOWLEDGE_STEP_MAP = {
-  1: 1,
-  2: 2,
-  3: 3,
-  4: 4,
-  5: 5,
-  6: 6,
-  7: 7,
+// Map UI step numbers to backend step numbers (steps 8-9 don't have knowledge)
+// UI order: 1=Basis, 2=Personen, 3=Ziele, 4=Inhalt, 5=Roadmap, 6=Budget, 7=Risiken
+const BACKEND_STEP_MAP = {
+  1: [1],      // Basis
+  2: [7],      // Personen
+  3: [2],      // Ziele
+  4: [3],      // Inhalt
+  5: [5, 4],   // Roadmap: Meilensteine (primary), Hauptaufgaben
+  6: [6],      // Budget
+  7: [6],      // Risiken (same backend step as Budget)
 };
 
 // Akkordeon-Sektionen Konfiguration
@@ -302,21 +303,22 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState(null);
 
-  const knowledgeStep = KNOWLEDGE_STEP_MAP[currentStep];
+  const backendSteps = BACKEND_STEP_MAP[currentStep];
+  const backendStep = backendSteps ? backendSteps[0] : undefined;
   const canAnalyze = currentStep >= 2 && currentStep <= 7;
 
   // Aktuelle Analyse für diesen Step (aus Props)
   const analysis = analyses[currentStep] || null;
 
   useEffect(() => {
-    if (knowledgeStep) {
+    if (backendStep) {
       loadKnowledge();
     } else {
       setKnowledge(null);
     }
     // Reset error when step changes
     setAnalysisError(null);
-  }, [knowledgeStep]);
+  }, [backendStep]);
 
   // Switch tab when step changes based on whether analysis exists
   useEffect(() => {
@@ -335,27 +337,75 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
 
   // Handle KI analysis
   const handleAnalyze = async () => {
-    if (!projektauftrag || isAnalyzing) return;
+    if (!projektauftrag || isAnalyzing || !backendSteps) return;
 
     try {
       setIsAnalyzing(true);
       setAnalysisError(null);
 
-      const response = await apiPost(
-        `/apps/projektmanagement/analyse/step/${currentStep}`,
-        { projektauftrag }
-      );
+      if (backendSteps.length === 1) {
+        // Single backend step (most cases)
+        const response = await apiPost(
+          `/apps/projektmanagement/analyse/step/${backendSteps[0]}`,
+          { projektauftrag }
+        );
 
-      if (!response.ok) {
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Analyse fehlgeschlagen');
+        }
+
         const data = await response.json();
-        throw new Error(data.error || 'Analyse fehlgeschlagen');
+        if (onAnalysisComplete) {
+          onAnalysisComplete(currentStep, data.analysis);
+          // Budget (6) and Risiken (7) share backend step 6 — store under both
+          if (currentStep === 6) onAnalysisComplete(7, data.analysis);
+          if (currentStep === 7) onAnalysisComplete(6, data.analysis);
+        }
+      } else {
+        // Multiple backend steps (Roadmap: steps 5+4)
+        const results = [];
+        for (const bs of backendSteps) {
+          const response = await apiPost(
+            `/apps/projektmanagement/analyse/step/${bs}`,
+            { projektauftrag }
+          );
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Analyse fehlgeschlagen');
+          }
+          const data = await response.json();
+          results.push(data.analysis);
+        }
+
+        // Merge results from multiple backend steps
+        const prefixes = ['Meilensteine', 'Hauptaufgaben'];
+        const merged = {
+          score: Math.round(results.reduce((sum, r) => sum + (r.score || 0), 0) / results.length),
+          staerken: results.flatMap((r, i) =>
+            (r.staerken || []).map(s => `${prefixes[i]}: ${s}`)
+          ),
+          schwaechen: results.flatMap((r, i) =>
+            (r.schwaechen || []).map(s => `${prefixes[i]}: ${s}`)
+          ),
+          hinweise: results.flatMap((r, i) =>
+            (r.hinweise || []).map(h => `${prefixes[i]}: ${h}`)
+          ),
+          konsistenz: {
+            status: results.some(r => r.konsistenz?.status === 'kritisch') ? 'kritisch'
+              : results.some(r => r.konsistenz?.status === 'warnung') ? 'warnung'
+              : 'ok',
+            findings: results.flatMap((r, i) =>
+              (r.konsistenz?.findings || []).map(f => `${prefixes[i]}: ${f}`)
+            ),
+          },
+        };
+
+        if (onAnalysisComplete) {
+          onAnalysisComplete(currentStep, merged);
+        }
       }
 
-      const data = await response.json();
-      // Notify parent about the new analysis
-      if (onAnalysisComplete) {
-        onAnalysisComplete(currentStep, data.analysis);
-      }
       setActiveTab('analyse');
     } catch (error) {
       console.error('Error analyzing step:', error);
@@ -368,7 +418,7 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
   const loadKnowledge = async () => {
     try {
       setIsLoading(true);
-      const response = await apiGet(`/apps/projektmanagement/knowledge/${knowledgeStep}`);
+      const response = await apiGet(`/apps/projektmanagement/knowledge/${backendStep}`);
       if (response.ok) {
         const data = await response.json();
         setKnowledge(data.knowledge);
@@ -385,7 +435,7 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
   };
 
   // No knowledge for steps 8-9
-  if (!knowledgeStep) {
+  if (!backendStep) {
     return (
       <div style={styles.container}>
         <div style={styles.empty}>
@@ -403,12 +453,14 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
 
     return (
       <div>
-        {Object.entries(knowledge.pruefkriterien).map(([category, criteria]) => (
+        {Object.entries(knowledge.pruefkriterien)
+          .filter(([, criteria]) => Array.isArray(criteria) ? criteria.filter(c => c).length > 0 : !!criteria)
+          .map(([category, criteria]) => (
           <div key={category} style={styles.category}>
             <div style={styles.categoryTitle}>{formatCategoryName(category)}</div>
             {Array.isArray(criteria) ? (
               <ul style={styles.list}>
-                {criteria.map((criterion, idx) => (
+                {criteria.filter(c => c).map((criterion, idx) => (
                   <li key={idx} style={styles.listItem}>{criterion}</li>
                 ))}
               </ul>
@@ -425,9 +477,11 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
     if (!knowledge?.typische_fehler) return <p style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>Keine typischen Fehler dokumentiert.</p>;
 
     if (Array.isArray(knowledge.typische_fehler)) {
+      const filtered = knowledge.typische_fehler.filter(f => f);
+      if (filtered.length === 0) return <p style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>Keine typischen Fehler dokumentiert.</p>;
       return (
         <div>
-          {knowledge.typische_fehler.map((fehler, idx) => (
+          {filtered.map((fehler, idx) => (
             <div key={idx} style={styles.error}>
               {fehler}
             </div>
@@ -438,10 +492,12 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
 
     return (
       <div>
-        {Object.entries(knowledge.typische_fehler).map(([category, fehler]) => (
+        {Object.entries(knowledge.typische_fehler)
+          .filter(([, fehler]) => Array.isArray(fehler) ? fehler.filter(f => f).length > 0 : !!fehler)
+          .map(([category, fehler]) => (
           <div key={category} style={styles.category}>
             <div style={styles.categoryTitle}>{formatCategoryName(category)}</div>
-            {Array.isArray(fehler) && fehler.map((f, idx) => (
+            {Array.isArray(fehler) && fehler.filter(f => f).map((f, idx) => (
               <div key={idx} style={styles.error}>{f}</div>
             ))}
           </div>
@@ -669,8 +725,31 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
       .join(' ');
   };
 
+  // Generischer Renderer für unbekannte Sektionen
+  const renderGenericSection = (data) => {
+    if (!data) return null;
+    return <div>{renderKernkonzepteRecursive(typeof data === 'object' && !Array.isArray(data) ? data : { inhalt: data })}</div>;
+  };
+
+  // Dynamische Sektionen: bekannte + unbekannte Top-Level-Keys
+  const KNOWN_KEYS = ['meta', 'kernkonzepte', 'pruefkriterien', 'typische_fehler', 'verbesserungsvorschlaege'];
+
+  const dynamicSections = knowledge
+    ? Object.keys(knowledge)
+        .filter((key) => !KNOWN_KEYS.includes(key))
+        .map((key) => ({
+          id: `custom_${key}`,
+          label: formatCategoryName(key),
+          icon: BookIcon,
+          color: theme.colors.info,
+          dataKey: key,
+        }))
+    : [];
+
+  const allSections = [...ACCORDION_SECTIONS, ...dynamicSections];
+
   // Render-Funktionen für Akkordeon
-  const renderSectionContent = (sectionId) => {
+  const renderSectionContent = (sectionId, dataKey) => {
     switch (sectionId) {
       case 'pruefkriterien':
         return renderPruefkriterien();
@@ -681,6 +760,10 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
       case 'konzepte':
         return renderKernkonzepte();
       default:
+        // Custom/dynamic section
+        if (dataKey && knowledge?.[dataKey]) {
+          return renderGenericSection(knowledge[dataKey]);
+        }
         return null;
     }
   };
@@ -812,7 +895,7 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
         {/* Wissen Tab - Akkordeon */}
         {activeTab === 'wissen' && (
           <div>
-            {ACCORDION_SECTIONS.map((section) => {
+            {allSections.map((section) => {
               const isOpen = openSections.includes(section.id);
               const IconComponent = section.icon;
               return (
@@ -849,7 +932,7 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
                   </button>
                   {isOpen && (
                     <div style={styles.accordionContent}>
-                      {renderSectionContent(section.id)}
+                      {renderSectionContent(section.id, section.dataKey)}
                     </div>
                   )}
                 </div>

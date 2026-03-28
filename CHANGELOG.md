@@ -1,6 +1,117 @@
 # Changelog
 
+## 2026-03-28
+
+### Feature: Risiko-Neubewertung + Bewegungsmatrix in Statusberichten
+- Risiken im Statusbericht erhalten Wahrscheinlichkeit/Auswirkung-Dropdowns zur Neubewertung
+- Neue Risikobewegungsmatrix: zeigt Original-Position (Projektauftrag, gestrichelte Kreise) neben aktueller Bewertung (solide Kreise mit Ampelfarbe)
+- Pfeile visualisieren Bewegungsrichtung jedes Risikos in der Matrix
+- Delta-Zusammenfassung: "X verbessert, Y verschlechtert, Z unveraendert"
+- Separate Matrizen fuer Bedrohungen und Chancen
+- Pre-Fill: Wahrscheinlichkeit/Auswirkung werden vom Projektauftrag uebernommen
+- Bugfix: Risiko-Typ (Bedrohung/Chance) wird jetzt korrekt vom Auftrag uebernommen
+
+### Feature: Soll/Ist Timeline in Statusbericht-Roadmap
+- Horizontale SVG-Timeline mit zwei Reihen: Soll-Termine (oben) und Ist-Termine (unten, gestrichelt)
+- Ampelfarben aus dem Tracking fuer Meilensteine und Quality Gates
+- Verbindungslinien zwischen Soll und Ist zeigen Verzoegerungen oder fruehe Fertigstellung
+- Heute-Marker, Tooltips mit Details, Legende, responsive Breite
+
+## 2026-03-27
+
+### Feature: Statusberichte fuer Projektmanagement
+- Statusberichte als neues Modul: Projektfortschritt mit Ampel-System (Gruen/Gelb/Rot) dokumentieren
+- Fünf Tabs: Basis (Ampel, Datum, Management Summary), Ziele (Projektziele + Erfolgskriterien-Tracking), Roadmap (Meilensteine, Hauptaufgaben, Quality Gates), Kosten (Earned Value Management mit CPI/SPI, Prognosewerten und S-Kurven-Chart), Risiken (Bedrohungen + Chancen mit Strategie, Status, Verantwortlich, Datumsfelder, Ampel, Beschreibung, Auswirkung, Massnahmen)
+- Modus-Umschaltung im Wizard: Segmented Control wechselt zwischen Projektauftrag und Statusberichte
+- Blade-Navigation: Linke Sidebar zeigt chronologische Liste der Berichte mit Ampel-Punkt
+- Criteria-Snapshot: Erfolgskriterien werden bei Erstellung kopiert, Drift-Erkennung bei Aenderungen
+- Pre-Fill-Logik: Folgeberichte uebernehmen Tracking-Daten vom letzten Bericht
+- Dashboard in ProjektePage: Statusberichte-Tab zeigt aktive Projekte mit letzter Ampel
+- Backend: 6 neue REST-Endpoints (CRUD + Dashboard), eigener Service + Storage
+- Statusberichte leben als YAML-Dateien unter {projektId}/statusberichte/
+
+## 2026-03-25
+
+### Feature: Einstellungen — Subtabs + Masterclass-Editor
+- Einstellungen-Tab aufgeteilt in Subtabs: "Auswahloptionen" (bestehend) und "Masterclass" (neu)
+- Strukturierter Formular-Editor fuer PM-Masterclass-Wissen pro Wizard-Schritt (7 Steps)
+- Farblich gestaltete Sektionskarten: Meta, Pruefkriterien, Typische Fehler, Tipps, Kernkonzepte
+- Rekursiver Tree-Editor fuer verschachtelte Wissensstrukturen (Text/Liste/Abschnitt)
+- YAML-Serialisierung komplett im Backend — kein YAML-Bruchrisiko im Frontend
+- Backend: PUT /knowledge/:step akzeptiert JSON-Objekte, serialisiert zu YAML
+- Cache-Invalidierung bei Aenderungen
+- Dynamische Sektionen: unbekannte YAML-Keys werden automatisch in KnowledgePanel + Editor angezeigt
+
+### Feature: Risikomatrix-Visualisierung
+- Neuer Subreiter "Risikomatrix" im Risiken-Tab neben "Eingabe"
+- Zwei klassische Risikomatrizen: Bedrohungen und Chancen (getrennt dargestellt)
+- Ampelfarben-System (rot/gelb/gruen) fuer Zellenfarben basierend auf normalisiertem Risikoscore
+- Kreisgroesse variiert nach Auswirkung (MIN_R=12 bis MAX_R=24)
+- Dynamische Achsen aus konfigurierbaren Einstellungen (beliebige Labels/Skalen)
+- Kollisionsbehandlung bei mehreren Risiken in derselben Zelle
+- Hover-Tooltip mit Beschreibung und Gegenmassnahme
+- Neues Feld "Art" (Bedrohung/Chance) bei der Risiko-Eingabe
+
+### Feature: Konfigurierbare Risiko-Selects
+- Wahrscheinlichkeit und Auswirkung jetzt ueber Einstellungen-Tab pflegbar
+- Backend: probability und impact in DEFAULT_CONFIG ergaenzt
+- Risiken.jsx nutzt Config-Werte statt hardcoded Optionen
+
+### Feature: Kosten-Tab (ehem. Budget)
+- "Budget" in "Kosten" umbenannt (Tab-Titel, Ueberschriften, Buttons)
+- Neues Feld "Aktivierbarkeit" (Ja/Nein) pro Kostenposition
+
+### Feature: Quality Gates im Roadmap-Tab
+- Neue "Quality Gates" Section mit Bezeichnung und Datum
+- Rautenfoermiges Icon (Diamond) zur Unterscheidung von Meilensteinen
+- Integration in Meilenstein-Timeline mit eigenem Nummernkreis
+- Quality Gates immer in Warnfarbe dargestellt (nicht gruen wenn vergangen)
+
+### Feature: Stakeholder-Klassifizierungsmatrix
+- Neuer Subreiter "Klassifizierung" im Personen-Tab
+- Custom SVG-Matrix mit Interesse (X-Achse) und Einfluss (Y-Achse)
+- Zeigt alle Personen (Team + Stakeholder) als Avatar-Kreise mit Initialen
+- Dynamische Achsen: passt sich an beliebige Config-Werte an (Text-Labels, Zahlenskalen, etc.)
+- Kollisionsbehandlung bei mehreren Personen in derselben Zelle
+- Quadranten-Labels (Beobachten, Informieren, Zufriedenstellen, Eng einbinden)
+- Hover-Tooltip mit Name, Rolle und Typ
+
+### Feature: Projekt ID Feld
+- Neues Textfeld "Projekt ID" im Basisdaten-Tab neben Projektname
+
 ## 2026-03-23
+
+### Feature: Einstellungen-Tab — Konfigurierbare Select-Optionen
+- Neuer "Einstellungen"-Tab in der Projektmanagement-App (nach Portfolio)
+- 10 konfigurierbare Felder: Projekttyp, Projektgroesse, Prioritaet, Projekttreiber, Projektstatus, Projektauftragsstatus, Rolle, Status, Interesse, Einfluss
+- Backend: GET/PUT /api/apps/projektmanagement/config mit JSON-Persistenz + Defaults
+- Basis.jsx und Personen.jsx befuellen alle Selectboxen dynamisch aus der Config
+- Rolle-Feld in Personen von Freitext zu Select umgestellt
+
+### Feature: Basisdaten erweitert — Projektklassifizierung
+- "Status" umbenannt in "Projektauftragsstatus"
+- Neue Felder: Projektstatus (Initiierung bis Gestoppt), Projekttreiber (Strategisch/Gesetzlich/Operativ), Projektgroesse (Klein/Mittel/Gross), Prioritaet (Niedrig bis Kritisch)
+
+### Refactor: Personen-Tab — Projektteam & Stakeholder vereinheitlicht
+- Projektteam: E-Mail und Verfuegbarkeit entfernt, Interesse + Einfluss + Status (intern/extern) + Unternehmen ergaenzt
+- Stakeholder: Status-Feld (intern/extern) ergaenzt
+- Beide Gruppen haben jetzt einheitliche Felder fuer Interesse, Einfluss und Status
+
+### Feature: Meilenstein-Timeline im Roadmap-Tab
+- Horizontale SVG-Timeline zeigt Meilensteine proportional auf einer Zeitachse
+- Vergangene Meilensteine gruen, zukuenftige teal, "Heute"-Marker als gestrichelte Linie
+- Tooltip bei Hover zeigt Meilenstein-Beschreibung
+- Responsive via ResizeObserver, nur sichtbar bei >= 2 Meilensteinen mit Datum
+- Keine neue Dependency (reines Custom SVG)
+
+### Refactor: Wizard-Tabs Restrukturierung — Roadmap, Budget/Risiken-Split, File-Rename
+- Aufgaben + Meilensteine zu "Roadmap"-Tab zusammengefuehrt (Meilensteine oben, Hauptaufgaben unten)
+- Budget & Risiken in separate Tabs "Budget" und "Risiken" aufgeteilt
+- StepX-Prefix aus allen Dateinamen entfernt (Step1Basis.jsx → Basis.jsx etc.)
+- Wording "Aufgaben" → "Hauptaufgaben" durchgaengig angepasst
+- KnowledgePanel: BACKEND_STEP_MAP auf Arrays umgestellt, Multi-Step-Analyse fuer Roadmap, shared Analyse fuer Budget/Risiken
+- Uebersicht: UI-to-Backend stepAnalyses Key-Transformation hinzugefuegt
+- Neue Tab-Reihenfolge: Basis, Personen, Ziele, Inhalt, Roadmap, Budget, Risiken, Uebersicht, Vergleich
 
 ### Fix: Chat-Modellauswahl wird an delegierte Agenten weitergereicht
 - Wenn der User im Chat das Modell aendert, gilt das jetzt auch fuer delegierte Agenten (sofern diese kein eigenes locked Model haben)

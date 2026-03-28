@@ -36,6 +36,8 @@ const ProjektePage = lazy(() => import('./apps/projektmanagement/ProjektePage'))
 const WizardPage = lazy(() => import('./apps/projektmanagement/WizardPage'));
 const LieferantenPage = lazy(() => import('./apps/lieferantenmanagement/LieferantenPage'));
 const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/SupplierDetailPage'));
+const VsmPage = lazy(() => import('./apps/vsm/VsmPage'));
+const VsmDetailPage = lazy(() => import('./apps/vsm/VsmDetailPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -182,6 +184,8 @@ function AppRoutes() {
                   <Route path="/apps/projektmanagement/:id" element={<WizardPage />} />
                   <Route path="/apps/lieferantenmanagement" element={<LieferantenPage />} />
                   <Route path="/apps/lieferantenmanagement/:id" element={<SupplierDetailPage />} />
+                  <Route path="/apps/vsm" element={<VsmPage />} />
+                  <Route path="/apps/vsm/:id" element={<VsmDetailPage />} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
