@@ -19,7 +19,7 @@ interface GoogleUserInfo {
 export class GoogleDriveProvider extends OAuthProvider {
   readonly id = 'google-drive';
   readonly name = 'Google Drive';
-  readonly description = 'Connect to Google Drive for file access and search';
+  readonly description = 'Zugriff auf Google Drive — Dateien suchen, auflisten und lesen';
   readonly icon = '📁';
   readonly setupGuide = `## Google Drive Setup
 

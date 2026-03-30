@@ -23,7 +23,7 @@ interface PipedriveUser {
 export class PipedriveProvider extends OAuthProvider {
   readonly id = 'pipedrive';
   readonly name = 'Pipedrive CRM';
-  readonly description = 'Connect to Pipedrive for CRM data access (Deals, Contacts, Activities)';
+  readonly description = 'Zugriff auf Pipedrive CRM — Deals, Kontakte und Aktivitaeten verwalten';
   readonly icon = '🔧';
   readonly setupGuide = `## Pipedrive Setup
 

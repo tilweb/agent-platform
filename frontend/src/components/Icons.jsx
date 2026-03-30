@@ -78,6 +78,15 @@ export function TicketIcon({ size = 20, color = 'currentColor', style = {} }) {
   );
 }
 
+export function MailIcon({ size = 20, color = 'currentColor', style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" style={style}>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+  );
+}
+
 // Section/UI Icons
 export function UserIcon({ size = 20, color = 'currentColor', style = {} }) {
   return (
@@ -511,6 +520,9 @@ export function getContentTypeIcon(type, props = {}) {
     case 'gdrive':
     case 'google-drive':
       return <FolderIcon {...props} />;
+    case 'gmail':
+    case 'google-mail':
+      return <MailIcon {...props} />;
     case 'sharepoint':
       return <FolderOpenIcon {...props} />;
     case 'youtrack':
@@ -529,6 +541,14 @@ export function getProviderIcon(providerId, props = {}) {
       return <DocumentIcon {...props} />;
     case 'google-drive':
       return <FolderIcon {...props} />;
+    case 'google-mail':
+      return <MailIcon {...props} />;
+    case 'jira':
+      return <TicketIcon {...props} />;
+    case 'docuware':
+      return <ArchiveIcon {...props} />;
+    case 'pipedrive':
+      return <BriefcaseIcon {...props} />;
     case 'sharepoint':
       return <FolderOpenIcon {...props} />;
     case 'youtrack':

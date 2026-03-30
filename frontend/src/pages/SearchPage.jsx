@@ -440,6 +440,7 @@ const sourceLabels = {
   knowledge: 'Knowledge Base',
   confluence: 'Confluence',
   gdrive: 'Google Drive',
+  gmail: 'Google Mail',
   contracts: 'Verträge',
 };
 
@@ -1024,6 +1025,10 @@ function getItemLink(item, sourceId) {
       return item.metadata?.url || null;
     case 'gdrive':
       return item.metadata?.link || null;
+    case 'gmail':
+      return item.metadata?.threadId
+        ? `https://mail.google.com/mail/u/0/#all/${item.metadata.threadId}`
+        : null;
     case 'contracts':
       return `/apps/vertragsmanagement/${item.id}`;
     default:

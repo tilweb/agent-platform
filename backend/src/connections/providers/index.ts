@@ -7,7 +7,10 @@ import { connectionRegistry } from '../registry';
 // Import all providers
 import { confluenceProvider } from './confluence';
 import { googleDriveProvider } from './google-drive';
+import { googleMailProvider } from './google-mail';
+import { jiraProvider } from './jira';
 import { pipedriveProvider } from './pipedrive';
+import { docuwareProvider } from './docuware';
 
 /**
  * Register all available connection providers
@@ -36,10 +39,30 @@ export function registerProviders(): void {
     console.warn('Failed to register Pipedrive provider:', error.message);
   }
 
+  // Register Google Mail
+  try {
+    connectionRegistry.register(googleMailProvider);
+  } catch (error: any) {
+    console.warn('Failed to register Google Mail provider:', error.message);
+  }
+
+  // Register Jira
+  try {
+    connectionRegistry.register(jiraProvider);
+  } catch (error: any) {
+    console.warn('Failed to register Jira provider:', error.message);
+  }
+
+  // Register Docuware
+  try {
+    connectionRegistry.register(docuwareProvider);
+  } catch (error: any) {
+    console.warn('Failed to register Docuware provider:', error.message);
+  }
+
   // Future providers can be added here:
   // - SharePoint
   // - YouTrack
-  // - Jira
   // - etc.
 
   const stats = connectionRegistry.getStats();
@@ -56,4 +79,7 @@ export function getProviderIds(): string[] {
 // Export providers for direct access
 export { confluenceProvider } from './confluence';
 export { googleDriveProvider } from './google-drive';
+export { googleMailProvider } from './google-mail';
+export { jiraProvider } from './jira';
 export { pipedriveProvider } from './pipedrive';
+export { docuwareProvider } from './docuware';

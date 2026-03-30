@@ -20,7 +20,7 @@ const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
 
 export interface SearchResult {
   id: string;
-  type: 'chat' | 'knowledge' | 'confluence' | 'gdrive' | 'contract';
+  type: 'chat' | 'knowledge' | 'confluence' | 'gdrive' | 'gmail' | 'contract';
   title: string;
   snippet?: string;
   metadata: Record<string, any>;
@@ -33,6 +33,7 @@ export interface UnifiedSearchResponse {
     knowledge: SearchResult[];
     confluence: SearchResult[];
     gdrive: SearchResult[];
+    gmail: SearchResult[];
     contracts: SearchResult[];
   };
   errors?: { source: string; message: string }[];
@@ -44,11 +45,11 @@ export interface UnifiedSearchResponse {
 export async function unifiedSearch(
   query: string,
   userId?: string,
-  sources: string[] = ['chats', 'knowledge', 'confluence', 'gdrive', 'contracts']
+  sources: string[] = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'contracts']
 ): Promise<UnifiedSearchResponse> {
   const results: UnifiedSearchResponse = {
     query,
-    results: { chats: [], knowledge: [], confluence: [], gdrive: [], contracts: [] },
+    results: { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], contracts: [] },
     errors: [],
   };
 
@@ -58,11 +59,12 @@ export async function unifiedSearch(
     sources.includes('knowledge') ? searchKnowledgeBase(query) : Promise.resolve([]),
     sources.includes('confluence') && userId ? searchConfluence(query, userId) : Promise.resolve([]),
     sources.includes('gdrive') && userId ? searchGDrive(query, userId) : Promise.resolve([]),
+    sources.includes('gmail') && userId ? searchGmail(query, userId) : Promise.resolve([]),
     sources.includes('contracts') ? searchContracts(query) : Promise.resolve([]),
   ]);
 
   // Process results
-  const [chatsResult, knowledgeResult, confluenceResult, gdriveResult, contractsResult] = searches;
+  const [chatsResult, knowledgeResult, confluenceResult, gdriveResult, gmailResult, contractsResult] = searches;
 
   if (chatsResult.status === 'fulfilled') {
     results.results.chats = chatsResult.value;
@@ -86,6 +88,12 @@ export async function unifiedSearch(
     results.results.gdrive = gdriveResult.value;
   } else {
     results.errors?.push({ source: 'gdrive', message: gdriveResult.reason?.message || 'Search failed' });
+  }
+
+  if (gmailResult.status === 'fulfilled') {
+    results.results.gmail = gmailResult.value;
+  } else {
+    results.errors?.push({ source: 'gmail', message: gmailResult.reason?.message || 'Search failed' });
   }
 
   if (contractsResult.status === 'fulfilled') {
@@ -338,6 +346,51 @@ async function searchGDrive(query: string, userId: string): Promise<SearchResult
     }
   } catch (error) {
     console.error('Error searching Google Drive:', error);
+    return [];
+  }
+}
+
+/**
+ * Search Gmail via connection tool
+ */
+async function searchGmail(query: string, userId: string): Promise<SearchResult[]> {
+  try {
+    const tool = toolRegistry.get('gmail_search_emails');
+    if (!tool) {
+      return [];
+    }
+
+    const resultStr = await tool.execute(
+      { query, max_results: 10 },
+      { userId }
+    );
+
+    // Parse JSON result
+    try {
+      const data = JSON.parse(resultStr);
+
+      if (data.error) {
+        return [];
+      }
+
+      return (data.emails || []).map((email: any) => ({
+        id: email.id,
+        type: 'gmail' as const,
+        title: email.subject || '(Kein Betreff)',
+        snippet: email.snippet || undefined,
+        metadata: {
+          from: email.from,
+          to: email.to,
+          date: email.date,
+          threadId: email.threadId,
+          labelIds: email.labelIds,
+        },
+      }));
+    } catch {
+      return [];
+    }
+  } catch (error) {
+    console.error('Error searching Gmail:', error);
     return [];
   }
 }

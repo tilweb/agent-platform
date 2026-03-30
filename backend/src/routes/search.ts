@@ -37,7 +37,7 @@ searchRoutes.get('/', async (c) => {
     }
 
     // Parse sources
-    const validSources = ['chats', 'knowledge', 'confluence', 'gdrive', 'contracts'];
+    const validSources = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'contracts'];
     let sources = validSources;
 
     if (sourcesParam) {
@@ -72,6 +72,7 @@ searchRoutes.get('/sources', async (c) => {
     // Check connection status for external sources
     let confluenceConnected = false;
     let gdriveConnected = false;
+    let gmailConnected = false;
 
     if (userId) {
       // Check Confluence connection
@@ -81,6 +82,10 @@ searchRoutes.get('/sources', async (c) => {
       // Check Google Drive connection
       const gdriveTokens = await connectionRegistry.getTokens(userId, 'google-drive');
       gdriveConnected = !!gdriveTokens;
+
+      // Check Google Mail connection
+      const gmailTokens = await connectionRegistry.getTokens(userId, 'google-mail');
+      gmailConnected = !!gmailTokens;
     }
 
     // Check if Vertragsmanagement app is enabled
@@ -122,6 +127,15 @@ searchRoutes.get('/sources', async (c) => {
         connected: gdriveConnected,
         requiresConnection: true,
         color: '#4285F4',
+      },
+      {
+        id: 'gmail',
+        name: 'Google Mail',
+        description: 'Gmail-E-Mails durchsuchen',
+        available: toolRegistry.has('gmail_search_emails'),
+        connected: gmailConnected,
+        requiresConnection: true,
+        color: '#EA4335',
       },
       {
         id: 'contracts',

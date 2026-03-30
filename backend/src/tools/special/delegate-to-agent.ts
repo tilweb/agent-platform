@@ -29,21 +29,21 @@ export class DelegateToAgentTool implements Tool {
       type: 'function',
       function: {
         name: this.name,
-        description: 'Delegate a subtask to a specialized agent. Use this when another agent can handle a specific part of the task better.',
+        description: 'Delegiere eine Aufgabe an einen spezialisierten Agenten. Nutze dies wenn ein anderer Agent die Aufgabe besser bearbeiten kann. Verfuegbare Agenten sind z.B. knowledge, writer, researcher, general, google-drive, google-mail, confluence, jira, pipedrive, docuware.',
         parameters: {
           type: 'object',
           properties: {
             agent_id: {
               type: 'string',
-              description: 'ID of the target agent (e.g., "researcher", "writer")',
+              description: 'ID des Ziel-Agenten (z.B. "knowledge", "writer", "researcher", "google-drive", "google-mail", "confluence")',
             },
             task: {
               type: 'string',
-              description: 'Clear description of the task to delegate',
+              description: 'Klare Beschreibung der zu delegierenden Aufgabe',
             },
             context: {
               type: 'string',
-              description: 'Optional additional context or relevant information for the task',
+              description: 'Optionaler zusaetzlicher Kontext oder relevante Informationen fuer die Aufgabe',
             },
           },
           required: ['agent_id', 'task'],

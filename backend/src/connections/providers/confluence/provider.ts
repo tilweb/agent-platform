@@ -31,7 +31,7 @@ interface AtlassianUser {
 export class ConfluenceProvider extends OAuthProvider {
   readonly id = 'confluence';
   readonly name = 'Atlassian Confluence';
-  readonly description = 'Connect to Confluence for document search and access';
+  readonly description = 'Zugriff auf Confluence — Seiten suchen, lesen und Spaces auflisten';
   readonly icon = '📄';
   readonly setupGuide = `## Atlassian Confluence Setup
 

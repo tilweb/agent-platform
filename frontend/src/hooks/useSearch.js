@@ -52,7 +52,7 @@ export function useSearch() {
   // Execute fast search
   const search = useCallback(async (searchQuery, connectedSourceIds) => {
     if (!searchQuery || searchQuery.length < 2) {
-      setResults({ chats: [], knowledge: [], confluence: [], gdrive: [], contracts: [] });
+      setResults({ chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], contracts: [] });
       return;
     }
 
@@ -76,7 +76,7 @@ export function useSearch() {
       }
 
       const data = await response.json();
-      setResults(data.results || { chats: [], knowledge: [], confluence: [], gdrive: [], contracts: [] });
+      setResults(data.results || { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], contracts: [] });
 
       if (data.errors && data.errors.length > 0) {
         console.warn('Some search sources had errors:', data.errors);
@@ -231,7 +231,7 @@ export function useSearch() {
     }
 
     if (!value || value.length < 2) {
-      setResults({ chats: [], knowledge: [], confluence: [], gdrive: [], contracts: [] });
+      setResults({ chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], contracts: [] });
       setSmartLoading(false);
       setSmartReasoning(null);
       return;

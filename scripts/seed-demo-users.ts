@@ -21,6 +21,7 @@ const DEMO_USERS = [
   { username: 'marketing1', displayName: 'Marketing User 1', password: MARKETING_PASSWORD },
   { username: 'marketing2', displayName: 'Marketing User 2', password: MARKETING_PASSWORD },
   { username: 'marketing3', displayName: 'Marketing User 3', password: MARKETING_PASSWORD },
+  { username: 'ruhrpm', displayName: 'RuhrPM User', password: 'MesseEWorld2026=Demo!' },
 ];
 
 function generateUserId(): string {

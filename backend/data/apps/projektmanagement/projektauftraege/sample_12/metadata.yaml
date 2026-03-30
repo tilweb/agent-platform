@@ -190,11 +190,12 @@ budget:
     amount: 800
 risks:
   - id: R-01
-    type: threat
+    type: technical
     description: Fehlende Verantwortlichkeiten für Geräte
-    probability: medium
-    impact: medium
+    probability: high
+    impact: high
     mitigation: ""
+    nature: threat
   - id: R-02
     type: threat
     description: Neuvergabe von IP-Adressen für neue Geräte
@@ -202,11 +203,12 @@ risks:
     impact: medium
     mitigation: ""
   - id: R-03
-    type: threat
+    type: technical
     description: Alte / nicht unterstützte Switches
-    probability: medium
-    impact: medium
+    probability: low
+    impact: low
     mitigation: ""
+    nature: threat
   - id: R-04
     type: threat
     description: Budgetprobleme (Hardware / Firewall)
@@ -226,11 +228,12 @@ risks:
     impact: medium
     mitigation: ""
   - id: C-02
-    type: opportunity
+    type: technical
     description: Standardisierte VLAN- und IP-Zuordnung
-    probability: medium
-    impact: medium
+    probability: low
+    impact: low
     mitigation: ""
+    nature: chance
   - id: C-03
     type: opportunity
     description: Stabilerer Betrieb kritischer Infrastruktur
@@ -242,18 +245,26 @@ organization:
     name: Ingo Auftrag
     role: Auftraggeber - Leiter
     email: ""
+    interest: high
+    influence: high
   - id: LK1
     name: Monika Lenk
-    role: Lenkungskreis - Leiter
+    role: projektleiter
     email: ""
+    interest: high
+    influence: high
   - id: LK2
     name: Willi Wutan
-    role: Lenkungskreis - Mitarbeiter
+    role: teilprojektleiter
     email: ""
+    interest: medium
+    influence: medium
   - id: PL
     name: Harald Weber
-    role: Projektleitung - Leiter
+    role: entwickler
     email: ""
+    interest: medium
+    influence: low
   - id: PO
     name: Tom Müller
     role: Projektleitung - Mitarbeiter
@@ -310,7 +321,7 @@ stakeholders:
     influence: medium
     expectations: ""
 created_at: 2026-02-15T21:31:22.753Z
-updated_at: 2026-02-15T21:31:22.753Z
+updated_at: 2026-03-27T16:26:09.638Z
 created_by: migration
 status: completed
 current_step: 9
@@ -431,3 +442,7 @@ _summary: >
   Integration:Die Zusammenführung der Ergebnisse aus Netzwerk, Security und
   Betrieb funktionierte gut. Projektfortschritt und Abhängigkeiten waren
   nachvollziehbar und transparent dargestellt.
+quality_gates:
+  - id: j27z5bpm
+    name: Code Review
+    date: 2024-12-10

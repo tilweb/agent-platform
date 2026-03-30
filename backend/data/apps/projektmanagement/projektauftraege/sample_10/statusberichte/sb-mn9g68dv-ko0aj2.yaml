@@ -1,0 +1,324 @@
+id: sb-mn9g68dv-ko0aj2
+projekt_id: sample_10
+nummer: 4
+ampel: gruen
+datum: 2026-03-27
+management_summary: ""
+goals_snapshot: >-
+  WHY – Warum?
+
+  Die Stadtwerke Zehdenick benötigen Transparenz und Struktur im
+  Projektmanagement, da aktuell Übersicht, Standards, klare Aufgabenverteilung
+  und Dokumentation fehlen.
+
+
+  HOW – Wie?
+
+  Durch die gemeinsame Entwicklung eines digitalen Prototyps auf Basis von MS
+  Teams und Excel Pivot zur Standardisierung von Prozessen und Berichten.
+
+
+  WHAT – Was?
+
+  Ein funktionsfähiger Prototyp für das Projektportfoliomanagement inklusive
+  Vorlagen, Ablagestrukturen, Reporting und Schulung der Mitarbeitenden.
+goals_tracking:
+  fortschritt: 20
+  ampel: gruen
+  bemerkung: Zielemebermung
+criteria_snapshot:
+  - Erfolgskriterium 1
+criteria_tracking:
+  - fortschritt: 10
+    ampel: gelb
+    bemerkung: Testbemerkung
+milestones_snapshot:
+  - id: MS-1
+    name: Projektinitialisierung
+    date: 2025-05-27
+    description: ""
+  - id: MS-2
+    name: Projektstart
+    date: 2025-05-27
+    description: ""
+  - id: MS-3
+    name: Genehmigung Projektauftrag
+    date: 2025-06-17
+    description: ""
+  - id: MS-4
+    name: Erstellung von Statusberichten
+    date: 2025-07-01
+    description: ""
+  - id: MS-5
+    name: Abbildung PPM in MS Teams
+    date: 2025-08-04
+    description: ""
+  - id: MS-6
+    name: Dokumentenablage Standards
+    date: 2025-08-15
+    description: ""
+  - id: MS-7
+    name: Aufbereitung des Berichtswesens
+    date: 2025-08-22
+    description: ""
+  - id: MS-8
+    name: Projektabschluss
+    date: 2025-12-19
+    description: ""
+milestones_tracking:
+  - fortschritt: 100
+    ampel: gruen
+    bemerkung: Erfolgreich
+    status: completed
+    ist_datum: 2026-03-11
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+tasks_snapshot:
+  - id: HA-02
+    name: Projektauftrag erstellen
+    responsible: Franziska Schacht
+    start_date: ""
+    end_date: ""
+    effort: 7
+  - id: HA-03
+    name: Bestandsaufnahme laufende Projekte, Überarbeitung PA
+    responsible: Franziska Schacht
+    start_date: ""
+    end_date: ""
+    effort: 8
+  - id: HA-04
+    name: Erstellung von Statusberichten, Abbildung PPM in MS Teams
+    responsible: Franziska Schacht
+    start_date: ""
+    end_date: ""
+    effort: 16
+  - id: HA-05
+    name: Dokumentenablage Standards
+    responsible: Robin van den Berg
+    start_date: ""
+    end_date: ""
+    effort: 8
+  - id: HA-06
+    name: Aufbereitung des Berichtswesens
+    responsible: Robin van den Berg
+    start_date: ""
+    end_date: ""
+    effort: 8
+  - id: HA-07
+    name: Einführende Begleitung in PPM
+    responsible: Franziska Schacht
+    start_date: ""
+    end_date: ""
+    effort: 8
+  - id: HA-08
+    name: Projektabschluss
+    responsible: Franziska Schacht
+    start_date: ""
+    end_date: ""
+    effort: 8
+tasks_tracking:
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+  - fortschritt: 0
+    ampel: gruen
+    bemerkung: ""
+    status: planned
+    ist_datum: ""
+quality_gates_snapshot: []
+quality_gates_tracking: []
+cost_budget: 6000
+cost_months:
+  - month: 2025-05
+    plan: 0
+    ist: 0
+    forecast: 0
+  - month: 2025-06
+    plan: 0
+    ist: 0
+    forecast: 0
+  - month: 2025-07
+    plan: 0
+    ist: 0
+    forecast: 0
+  - month: 2025-08
+    plan: 0
+    ist: 0
+    forecast: 0
+  - month: 2025-09
+    plan: 0
+    ist: 0
+    forecast: 0
+  - month: 2025-10
+    plan: 0
+    ist: 0
+    forecast: 0
+  - month: 2025-11
+    plan: 0
+    ist: 0
+    forecast: 0
+  - month: 2025-12
+    plan: 0
+    ist: 0
+    forecast: 0
+risk_tracking:
+  - id: rt-0-zjpf
+    type: bedrohung
+    strategie: ""
+    status: identifiziert
+    verantwortlich: ""
+    erkannt: 2026-03-27
+    aktualisiert: 2026-03-27
+    erwartet_bis: ""
+    ampel: gruen
+    beschreibung: Keyressource fällt aus
+    auswirkung: ""
+    massnahmen: ""
+  - id: rt-1-zzu7
+    type: bedrohung
+    strategie: ""
+    status: identifiziert
+    verantwortlich: ""
+    erkannt: 2026-03-27
+    aktualisiert: 2026-03-27
+    erwartet_bis: ""
+    ampel: gelb
+    beschreibung: Unklare Rollen und Verantwortlichkeiten
+    auswirkung: ""
+    massnahmen: ""
+  - id: rt-2-cps1
+    type: bedrohung
+    strategie: ""
+    status: identifiziert
+    verantwortlich: ""
+    erkannt: 2026-03-27
+    aktualisiert: 2026-03-27
+    erwartet_bis: ""
+    ampel: gruen
+    beschreibung: Widerstand der Mitarbeitenden
+    auswirkung: ""
+    massnahmen: ""
+  - id: rt-3-khgb
+    type: bedrohung
+    strategie: ""
+    status: identifiziert
+    verantwortlich: ""
+    erkannt: 2026-03-27
+    aktualisiert: 2026-03-27
+    erwartet_bis: ""
+    ampel: gelb
+    beschreibung: Technische Inkompatibilitäten (z. B. mit MS Teams)
+    auswirkung: ""
+    massnahmen: ""
+  - id: rt-4-laew
+    type: bedrohung
+    strategie: ""
+    status: identifiziert
+    verantwortlich: ""
+    erkannt: 2026-03-27
+    aktualisiert: 2026-03-27
+    erwartet_bis: ""
+    ampel: gruen
+    beschreibung: Zu hohe parallele Belastung des Projektteams
+    auswirkung: ""
+    massnahmen: ""
+  - id: rt-5-82wg
+    type: bedrohung
+    strategie: ""
+    status: identifiziert
+    verantwortlich: ""
+    erkannt: 2026-03-27
+    aktualisiert: 2026-03-27
+    erwartet_bis: ""
+    ampel: gruen
+    beschreibung: Hohe Beteiligung der Fachbereiche
+    auswirkung: ""
+    massnahmen: ""
+  - id: rt-6-xktc
+    type: bedrohung
+    strategie: ""
+    status: identifiziert
+    verantwortlich: ""
+    erkannt: 2026-03-27
+    aktualisiert: 2026-03-27
+    erwartet_bis: ""
+    ampel: gruen
+    beschreibung: Schnell verfügbare interne Ressourcen
+    auswirkung: ""
+    massnahmen: ""
+  - id: rt-7-8pg4
+    type: bedrohung
+    strategie: ""
+    status: identifiziert
+    verantwortlich: ""
+    erkannt: 2026-03-27
+    aktualisiert: 2026-03-27
+    erwartet_bis: ""
+    ampel: gruen
+    beschreibung: Frühe Quick Wins
+    auswirkung: ""
+    massnahmen: ""
+status: draft
+created_at: 2026-03-27T22:02:44.083Z
+updated_at: 2026-03-27T22:02:44.083Z
+created_by: user_default
