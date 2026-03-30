@@ -415,11 +415,11 @@ async function searchPipedrive(query: string, userId: string): Promise<SearchRes
       return [];
     }
 
-    const apiDomain = tokens.apiDomain.startsWith('https://') ? tokens.apiDomain : `https://${tokens.apiDomain}`;
-    const apiUrl = `${apiDomain}/api/v1`;
+    // Pipedrive OAuth requires api.pipedrive.com, not the company subdomain
+    const apiUrl = 'https://api.pipedrive.com/v1';
     const headers = { Authorization: `Bearer ${tokens.accessToken}`, Accept: 'application/json' };
 
-    console.log('[Pipedrive Search] Querying:', query, 'apiDomain:', apiDomain);
+    console.log('[Pipedrive Search] Querying:', query, 'storedDomain:', tokens.apiDomain, 'usingUrl:', apiUrl);
 
     const [dealsRes, contactsRes] = await Promise.allSettled([
       fetch(`${apiUrl}/itemSearch?${new URLSearchParams({ term: query, item_types: 'deal', limit: '10' })}`, { headers }),
