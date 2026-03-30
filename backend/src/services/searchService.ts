@@ -412,14 +412,20 @@ async function searchPipedrive(query: string, userId: string): Promise<SearchRes
     const contactsTool = toolRegistry.get('pipedrive_search_contacts');
 
     if (!dealsTool && !contactsTool) {
+      console.log('[searchPipedrive] No tools found');
       return [];
     }
+
+    console.log('[searchPipedrive] Searching for:', query, 'userId:', userId);
 
     // Search deals and contacts in parallel
     const [dealsStr, contactsStr] = await Promise.all([
       dealsTool ? dealsTool.execute({ term: query, limit: 10 }, { userId }) : '',
       contactsTool ? contactsTool.execute({ term: query, limit: 10 }, { userId }) : '',
     ]);
+
+    console.log('[searchPipedrive] Deals response:', dealsStr?.substring(0, 300));
+    console.log('[searchPipedrive] Contacts response:', contactsStr?.substring(0, 300));
 
     const results: SearchResult[] = [];
 
