@@ -1,8 +1,0 @@
-updated_at: 2026-03-14T13:54:17.908Z
-active: []
-pending: []
-settings:
-  max_concurrent_tasks: 2
-  default_priority: normal
-  default_timeout_minutes: 30
-  paused: false

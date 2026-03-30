@@ -38,3 +38,25 @@ coverage/
 # Temporary files
 tmp/
 temp/
+Scratchpad.md
+
+# Runtime data (user-generated, sessions, logs)
+data/agent-logs/
+data/auth/sessions/
+data/auth/oauth-states/
+data/auth/users/
+data/auth/groups/
+data/chats/
+data/conversations/
+data/connections/
+data/chat-uploads/
+data/generated-images/
+data/notifications/
+data/projects/
+data/tasks/
+data/usage/
+data/knowledge-base/collections/
+data/knowledge-base/incoming/
+
+# Backend runtime data
+backend/data/audit/

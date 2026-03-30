@@ -61,3 +61,8 @@ collections:
       - Arbeitsvertrag
       - Rollenwechsel
     never_activate_when: []
+  - id: testcollection
+    name: Testcollection
+    description: Tests
+    activate_when: []
+    never_activate_when: []

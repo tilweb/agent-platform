@@ -1,9 +1,0 @@
-id: user_1770561498880_39ohgu5
-username: andreas_bachmann
-email: andreas.bachmann@adacor.com
-displayName: Andreas Bachmann
-passwordHash: $argon2id$v=19$m=65536,t=3,p=1$S80Rkj1NmI2J3Mbzlwac6awuj+UCxAnL35cMzN3a1Ls$Ka08XRVoLM93OoUEFetNtvhR/+PFNO94Phn/LUK1YKA
-createdAt: 2026-02-08T14:38:18.776Z
-updatedAt: 2026-02-24T12:00:00.000Z
-isActive: true
-role: admin
