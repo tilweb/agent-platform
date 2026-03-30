@@ -404,67 +404,64 @@ async function searchGmail(query: string, userId: string): Promise<SearchResult[
 }
 
 /**
- * Search Pipedrive CRM via connection tools (deals + contacts)
+ * Search Pipedrive CRM directly via API (deals + contacts)
  */
 async function searchPipedrive(query: string, userId: string): Promise<SearchResult[]> {
   try {
-    const dealsTool = toolRegistry.get('pipedrive_search_deals');
-    const contactsTool = toolRegistry.get('pipedrive_search_contacts');
+    const { connectionRegistry: registry } = await import('../connections/registry');
+    const tokens = await registry.getTokens(userId, 'pipedrive');
+    if (!tokens?.accessToken || !tokens?.apiDomain) return [];
 
-    if (!dealsTool && !contactsTool) {
-      console.log('[searchPipedrive] No tools found');
-      return [];
-    }
+    const apiDomain = tokens.apiDomain.startsWith('https://') ? tokens.apiDomain : `https://${tokens.apiDomain}`;
+    const apiUrl = `${apiDomain}/api/v1`;
+    const headers = { Authorization: `Bearer ${tokens.accessToken}`, Accept: 'application/json' };
 
-    console.log('[searchPipedrive] Searching for:', query, 'userId:', userId);
-
-    // Search deals and contacts in parallel
-    const [dealsStr, contactsStr] = await Promise.all([
-      dealsTool ? dealsTool.execute({ term: query, limit: 10 }, { userId }) : '',
-      contactsTool ? contactsTool.execute({ term: query, limit: 10 }, { userId }) : '',
+    const [dealsRes, contactsRes] = await Promise.allSettled([
+      fetch(`${apiUrl}/itemSearch?${new URLSearchParams({ term: query, item_types: 'deal', limit: '10' })}`, { headers }),
+      fetch(`${apiUrl}/itemSearch?${new URLSearchParams({ term: query, item_types: 'person', limit: '10' })}`, { headers }),
     ]);
-
-    console.log('[searchPipedrive] Deals response:', dealsStr?.substring(0, 300));
-    console.log('[searchPipedrive] Contacts response:', contactsStr?.substring(0, 300));
 
     const results: SearchResult[] = [];
 
-    // Parse deals from markdown output
-    if (dealsStr && !dealsStr.startsWith('Error:') && !dealsStr.includes('No deals found')) {
-      const dealMatches = dealsStr.matchAll(/### (.+)\n- \*\*ID\*\*: (\d+)\n- \*\*Value\*\*: (.+)\n- \*\*Status\*\*: (.+)\n(?:- \*\*Contact\*\*: (.+)\n)?(?:- \*\*Organization\*\*: (.+)\n)?/g);
-      for (const match of dealMatches) {
+    if (dealsRes.status === 'fulfilled' && dealsRes.value.ok) {
+      const data = await dealsRes.value.json() as any;
+      for (const item of data?.data?.items || []) {
+        const deal = item.item;
+        if (!deal) continue;
         results.push({
-          id: `deal-${match[2]}`,
+          id: `deal-${deal.id}`,
           type: 'pipedrive' as const,
-          title: match[1],
-          snippet: `${match[3]?.trim()} · ${match[4]?.trim()}`,
+          title: deal.title || 'Unbenannter Deal',
+          snippet: [deal.value ? `${deal.value} ${deal.currency || ''}`.trim() : null, deal.status, deal.organization?.name].filter(Boolean).join(' · ') || undefined,
           metadata: {
             itemType: 'deal',
-            dealId: match[2],
-            value: match[3]?.trim(),
-            status: match[4]?.trim(),
-            contact: match[5]?.trim(),
-            organization: match[6]?.trim(),
+            dealId: String(deal.id),
+            value: deal.value ? `${deal.value} ${deal.currency || ''}`.trim() : undefined,
+            status: deal.status,
+            contact: deal.person?.name,
+            organization: deal.organization?.name,
           },
         });
       }
     }
 
-    // Parse contacts from markdown output
-    if (contactsStr && !contactsStr.startsWith('Error:') && !contactsStr.includes('No contacts found')) {
-      const contactMatches = contactsStr.matchAll(/### (.+)\n- \*\*ID\*\*: (\d+)\n(?:- \*\*Email\*\*: (.+)\n)?(?:- \*\*Phone\*\*: (.+)\n)?(?:- \*\*Organization\*\*: (.+)\n)?/g);
-      for (const match of contactMatches) {
+    if (contactsRes.status === 'fulfilled' && contactsRes.value.ok) {
+      const data = await contactsRes.value.json() as any;
+      for (const item of data?.data?.items || []) {
+        const person = item.item;
+        if (!person) continue;
+        const email = Array.isArray(person.emails) ? person.emails[0] : person.primary_email;
         results.push({
-          id: `contact-${match[2]}`,
+          id: `contact-${person.id}`,
           type: 'pipedrive' as const,
-          title: match[1],
-          snippet: [match[3], match[5]].filter(Boolean).join(' · ') || undefined,
+          title: person.name || 'Unbenannter Kontakt',
+          snippet: [email, person.organization?.name].filter(Boolean).join(' · ') || undefined,
           metadata: {
             itemType: 'contact',
-            contactId: match[2],
-            email: match[3]?.trim(),
-            phone: match[4]?.trim(),
-            organization: match[5]?.trim(),
+            contactId: String(person.id),
+            email,
+            phone: person.phones?.[0] || undefined,
+            organization: person.organization?.name,
           },
         });
       }
