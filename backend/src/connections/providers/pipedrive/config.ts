@@ -24,6 +24,7 @@ export function getPipedriveConfig(): OAuth2Config {
     clientSecret,
     scopes: [
       'base',
+      'search:read',
       'deals:read',
       'contacts:read',
       'activities:read',
