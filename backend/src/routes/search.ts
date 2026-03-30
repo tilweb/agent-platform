@@ -37,7 +37,7 @@ searchRoutes.get('/', async (c) => {
     }
 
     // Parse sources
-    const validSources = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'contracts'];
+    const validSources = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'contracts'];
     let sources = validSources;
 
     if (sourcesParam) {
@@ -73,6 +73,7 @@ searchRoutes.get('/sources', async (c) => {
     let confluenceConnected = false;
     let gdriveConnected = false;
     let gmailConnected = false;
+    let pipedriveConnected = false;
 
     if (userId) {
       // Check Confluence connection
@@ -86,6 +87,10 @@ searchRoutes.get('/sources', async (c) => {
       // Check Google Mail connection
       const gmailTokens = await connectionRegistry.getTokens(userId, 'google-mail');
       gmailConnected = !!gmailTokens;
+
+      // Check Pipedrive connection
+      const pipedriveTokens = await connectionRegistry.getTokens(userId, 'pipedrive');
+      pipedriveConnected = !!pipedriveTokens;
     }
 
     // Check if Vertragsmanagement app is enabled
@@ -136,6 +141,15 @@ searchRoutes.get('/sources', async (c) => {
         connected: gmailConnected,
         requiresConnection: true,
         color: '#EA4335',
+      },
+      {
+        id: 'pipedrive',
+        name: 'Pipedrive',
+        description: 'Pipedrive CRM durchsuchen (Deals & Kontakte)',
+        available: toolRegistry.has('pipedrive_search_deals'),
+        connected: pipedriveConnected,
+        requiresConnection: true,
+        color: '#017737',
       },
       {
         id: 'contracts',

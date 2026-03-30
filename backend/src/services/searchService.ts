@@ -20,7 +20,7 @@ const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
 
 export interface SearchResult {
   id: string;
-  type: 'chat' | 'knowledge' | 'confluence' | 'gdrive' | 'gmail' | 'contract';
+  type: 'chat' | 'knowledge' | 'confluence' | 'gdrive' | 'gmail' | 'pipedrive' | 'contract';
   title: string;
   snippet?: string;
   metadata: Record<string, any>;
@@ -34,6 +34,7 @@ export interface UnifiedSearchResponse {
     confluence: SearchResult[];
     gdrive: SearchResult[];
     gmail: SearchResult[];
+    pipedrive: SearchResult[];
     contracts: SearchResult[];
   };
   errors?: { source: string; message: string }[];
@@ -45,11 +46,11 @@ export interface UnifiedSearchResponse {
 export async function unifiedSearch(
   query: string,
   userId?: string,
-  sources: string[] = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'contracts']
+  sources: string[] = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'contracts']
 ): Promise<UnifiedSearchResponse> {
   const results: UnifiedSearchResponse = {
     query,
-    results: { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], contracts: [] },
+    results: { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], contracts: [] },
     errors: [],
   };
 
@@ -60,11 +61,12 @@ export async function unifiedSearch(
     sources.includes('confluence') && userId ? searchConfluence(query, userId) : Promise.resolve([]),
     sources.includes('gdrive') && userId ? searchGDrive(query, userId) : Promise.resolve([]),
     sources.includes('gmail') && userId ? searchGmail(query, userId) : Promise.resolve([]),
+    sources.includes('pipedrive') && userId ? searchPipedrive(query, userId) : Promise.resolve([]),
     sources.includes('contracts') ? searchContracts(query) : Promise.resolve([]),
   ]);
 
   // Process results
-  const [chatsResult, knowledgeResult, confluenceResult, gdriveResult, gmailResult, contractsResult] = searches;
+  const [chatsResult, knowledgeResult, confluenceResult, gdriveResult, gmailResult, pipedriveResult, contractsResult] = searches;
 
   if (chatsResult.status === 'fulfilled') {
     results.results.chats = chatsResult.value;
@@ -94,6 +96,12 @@ export async function unifiedSearch(
     results.results.gmail = gmailResult.value;
   } else {
     results.errors?.push({ source: 'gmail', message: gmailResult.reason?.message || 'Search failed' });
+  }
+
+  if (pipedriveResult.status === 'fulfilled') {
+    results.results.pipedrive = pipedriveResult.value;
+  } else {
+    results.errors?.push({ source: 'pipedrive', message: pipedriveResult.reason?.message || 'Search failed' });
   }
 
   if (contractsResult.status === 'fulfilled') {
@@ -391,6 +399,74 @@ async function searchGmail(query: string, userId: string): Promise<SearchResult[
     }
   } catch (error) {
     console.error('Error searching Gmail:', error);
+    return [];
+  }
+}
+
+/**
+ * Search Pipedrive CRM via connection tools (deals + contacts)
+ */
+async function searchPipedrive(query: string, userId: string): Promise<SearchResult[]> {
+  try {
+    const dealsTool = toolRegistry.get('pipedrive_search_deals');
+    const contactsTool = toolRegistry.get('pipedrive_search_contacts');
+
+    if (!dealsTool && !contactsTool) {
+      return [];
+    }
+
+    // Search deals and contacts in parallel
+    const [dealsStr, contactsStr] = await Promise.all([
+      dealsTool ? dealsTool.execute({ term: query, limit: 10 }, { userId }) : '',
+      contactsTool ? contactsTool.execute({ term: query, limit: 10 }, { userId }) : '',
+    ]);
+
+    const results: SearchResult[] = [];
+
+    // Parse deals from markdown output
+    if (dealsStr && !dealsStr.startsWith('Error:') && !dealsStr.includes('No deals found')) {
+      const dealMatches = dealsStr.matchAll(/### (.+)\n- \*\*ID\*\*: (\d+)\n- \*\*Value\*\*: (.+)\n- \*\*Status\*\*: (.+)\n(?:- \*\*Contact\*\*: (.+)\n)?(?:- \*\*Organization\*\*: (.+)\n)?/g);
+      for (const match of dealMatches) {
+        results.push({
+          id: `deal-${match[2]}`,
+          type: 'pipedrive' as const,
+          title: match[1],
+          snippet: `${match[3]?.trim()} · ${match[4]?.trim()}`,
+          metadata: {
+            itemType: 'deal',
+            dealId: match[2],
+            value: match[3]?.trim(),
+            status: match[4]?.trim(),
+            contact: match[5]?.trim(),
+            organization: match[6]?.trim(),
+          },
+        });
+      }
+    }
+
+    // Parse contacts from markdown output
+    if (contactsStr && !contactsStr.startsWith('Error:') && !contactsStr.includes('No contacts found')) {
+      const contactMatches = contactsStr.matchAll(/### (.+)\n- \*\*ID\*\*: (\d+)\n(?:- \*\*Email\*\*: (.+)\n)?(?:- \*\*Phone\*\*: (.+)\n)?(?:- \*\*Organization\*\*: (.+)\n)?/g);
+      for (const match of contactMatches) {
+        results.push({
+          id: `contact-${match[2]}`,
+          type: 'pipedrive' as const,
+          title: match[1],
+          snippet: [match[3], match[5]].filter(Boolean).join(' · ') || undefined,
+          metadata: {
+            itemType: 'contact',
+            contactId: match[2],
+            email: match[3]?.trim(),
+            phone: match[4]?.trim(),
+            organization: match[5]?.trim(),
+          },
+        });
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error searching Pipedrive:', error);
     return [];
   }
 }

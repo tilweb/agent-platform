@@ -441,6 +441,7 @@ const sourceLabels = {
   confluence: 'Confluence',
   gdrive: 'Google Drive',
   gmail: 'Google Mail',
+  pipedrive: 'Pipedrive',
   contracts: 'Verträge',
 };
 
@@ -1029,6 +1030,12 @@ function getItemLink(item, sourceId) {
       return item.metadata?.threadId
         ? `https://mail.google.com/mail/u/0/#all/${item.metadata.threadId}`
         : null;
+    case 'pipedrive':
+      return item.metadata?.dealId
+        ? `https://app.pipedrive.com/deal/${item.metadata.dealId}`
+        : item.metadata?.contactId
+          ? `https://app.pipedrive.com/person/${item.metadata.contactId}`
+          : null;
     case 'contracts':
       return `/apps/vertragsmanagement/${item.id}`;
     default:
