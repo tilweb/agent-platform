@@ -410,11 +410,16 @@ async function searchPipedrive(query: string, userId: string): Promise<SearchRes
   try {
     const { connectionRegistry: registry } = await import('../connections/registry');
     const tokens = await registry.getTokens(userId, 'pipedrive');
-    if (!tokens?.accessToken || !tokens?.apiDomain) return [];
+    if (!tokens?.accessToken || !tokens?.apiDomain) {
+      console.log('[Pipedrive Search] No tokens/apiDomain for user:', userId);
+      return [];
+    }
 
     const apiDomain = tokens.apiDomain.startsWith('https://') ? tokens.apiDomain : `https://${tokens.apiDomain}`;
     const apiUrl = `${apiDomain}/api/v1`;
     const headers = { Authorization: `Bearer ${tokens.accessToken}`, Accept: 'application/json' };
+
+    console.log('[Pipedrive Search] Querying:', query, 'apiDomain:', apiDomain);
 
     const [dealsRes, contactsRes] = await Promise.allSettled([
       fetch(`${apiUrl}/itemSearch?${new URLSearchParams({ term: query, item_types: 'deal', limit: '10' })}`, { headers }),
@@ -425,6 +430,7 @@ async function searchPipedrive(query: string, userId: string): Promise<SearchRes
 
     if (dealsRes.status === 'fulfilled' && dealsRes.value.ok) {
       const data = await dealsRes.value.json() as any;
+      console.log('[Pipedrive Search] Deals:', data?.data?.items?.length ?? 0);
       for (const item of data?.data?.items || []) {
         const deal = item.item;
         if (!deal) continue;
@@ -445,8 +451,16 @@ async function searchPipedrive(query: string, userId: string): Promise<SearchRes
       }
     }
 
+    if (dealsRes.status === 'fulfilled' && !dealsRes.value.ok) {
+      console.log('[Pipedrive Search] Deals API error:', dealsRes.value.status, await dealsRes.value.text().catch(() => ''));
+    }
+    if (dealsRes.status === 'rejected') {
+      console.log('[Pipedrive Search] Deals fetch rejected:', dealsRes.reason);
+    }
+
     if (contactsRes.status === 'fulfilled' && contactsRes.value.ok) {
       const data = await contactsRes.value.json() as any;
+      console.log('[Pipedrive Search] Contacts:', data?.data?.items?.length ?? 0);
       for (const item of data?.data?.items || []) {
         const person = item.item;
         if (!person) continue;
@@ -467,9 +481,17 @@ async function searchPipedrive(query: string, userId: string): Promise<SearchRes
       }
     }
 
+    if (contactsRes.status === 'fulfilled' && !contactsRes.value.ok) {
+      console.log('[Pipedrive Search] Contacts API error:', contactsRes.value.status, await contactsRes.value.text().catch(() => ''));
+    }
+    if (contactsRes.status === 'rejected') {
+      console.log('[Pipedrive Search] Contacts fetch rejected:', contactsRes.reason);
+    }
+
+    console.log('[Pipedrive Search] Total results:', results.length);
     return results;
   } catch (error) {
-    console.error('Error searching Pipedrive:', error);
+    console.error('[Pipedrive Search] Error:', error);
     return [];
   }
 }
