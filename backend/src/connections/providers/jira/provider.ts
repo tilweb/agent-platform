@@ -41,6 +41,7 @@ export class JiraProvider extends OAuthProvider {
 ### 2. App konfigurieren
 1. Name: z.B. "Agent Platform - Jira"
 2. Gehe zu "Permissions" und füge hinzu:
+   - User Identity API: \`read:me\`
    - Jira API: \`read:jira-work\`, \`read:jira-user\`
 3. Gehe zu "Authorization" → "Add" → "OAuth 2.0 (3LO)"
 4. Callback URL: \`http://localhost:3001/api/connections/jira/callback\`

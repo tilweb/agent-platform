@@ -23,6 +23,7 @@ export function getJiraConfig(): OAuth2Config {
     clientId,
     clientSecret,
     scopes: [
+      'read:me',
       'read:jira-work',
       'read:jira-user',
       'offline_access',

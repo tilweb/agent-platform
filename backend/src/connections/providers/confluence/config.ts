@@ -23,6 +23,7 @@ export function getConfluenceConfig(): OAuth2Config {
     clientId,
     clientSecret,
     scopes: [
+      'read:me',
       'read:confluence-content.all',
       'read:confluence-content.summary',
       'read:confluence-space.summary',
