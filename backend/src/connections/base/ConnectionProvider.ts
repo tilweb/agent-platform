@@ -24,7 +24,7 @@ export abstract class BaseConnectionProvider implements ConnectionProvider {
    * Get the OAuth authorization URL
    * Override in OAuth providers
    */
-  getAuthUrl(state: string, redirectUri: string): string {
+  getAuthUrl(state: string, redirectUri: string): string | { url: string; codeVerifier: string } {
     throw new Error(`${this.id} does not support OAuth authentication`);
   }
 
@@ -32,7 +32,7 @@ export abstract class BaseConnectionProvider implements ConnectionProvider {
    * Exchange authorization code for tokens
    * Override in OAuth providers
    */
-  async exchangeCode(code: string, redirectUri: string): Promise<TokenSet> {
+  async exchangeCode(code: string, redirectUri: string, codeVerifier?: string): Promise<TokenSet> {
     throw new Error(`${this.id} does not support OAuth authentication`);
   }
 

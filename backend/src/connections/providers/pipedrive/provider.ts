@@ -83,7 +83,7 @@ Nach dem Setzen der Umgebungsvariablen das Backend neu starten.`;
   /**
    * Override token exchange to use Basic Auth header (Pipedrive requirement)
    */
-  override async exchangeCode(code: string, redirectUri: string): Promise<TokenSet> {
+  override async exchangeCode(code: string, redirectUri: string, _codeVerifier?: string): Promise<TokenSet> {
     const config = this.getOAuthConfig();
 
     // Pipedrive requires Basic Auth header with base64(client_id:client_secret)

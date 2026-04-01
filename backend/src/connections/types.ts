@@ -76,6 +76,8 @@ export interface OAuth2Config {
   // Optional: for providers that need additional params
   additionalAuthParams?: Record<string, string>;
   additionalTokenParams?: Record<string, string>;
+  // Enable PKCE (Proof Key for Code Exchange) - required by some providers (e.g. YouTrack Hub)
+  usePkce?: boolean;
 }
 
 /**
@@ -112,11 +114,11 @@ export interface ConnectionProvider {
 
   // OAuth2 methods (required for oauth2 authType)
 
-  /** Get the OAuth authorization URL */
-  getAuthUrl(state: string, redirectUri: string): string;
+  /** Get the OAuth authorization URL (returns URL string or object with PKCE verifier) */
+  getAuthUrl(state: string, redirectUri: string): string | { url: string; codeVerifier: string };
 
   /** Exchange authorization code for tokens */
-  exchangeCode(code: string, redirectUri: string): Promise<TokenSet>;
+  exchangeCode(code: string, redirectUri: string, codeVerifier?: string): Promise<TokenSet>;
 
   /** Refresh an expired access token */
   refreshToken(refreshToken: string): Promise<TokenSet>;
@@ -154,4 +156,6 @@ export interface OAuthState {
   redirectUri: string;
   createdAt: string;
   expiresAt: string;
+  // PKCE code verifier (stored when provider requires PKCE)
+  codeVerifier?: string;
 }

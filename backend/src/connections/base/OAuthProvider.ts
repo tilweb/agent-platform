@@ -2,8 +2,25 @@
  * Abstract Base Class for OAuth2 Connection Providers
  */
 
+import { randomBytes, createHash } from 'node:crypto';
 import type { TokenSet, OAuth2Config, ConnectionStatus, ConnectionTool } from '../types';
 import { BaseConnectionProvider } from './ConnectionProvider';
+
+/**
+ * Generate PKCE code verifier and challenge (RFC 7636)
+ */
+function generatePkce(): { codeVerifier: string; codeChallenge: string } {
+  // Generate 32 random bytes → 43-char base64url string
+  const codeVerifier = randomBytes(32)
+    .toString('base64url');
+
+  // SHA-256 hash of verifier, base64url-encoded
+  const codeChallenge = createHash('sha256')
+    .update(codeVerifier)
+    .digest('base64url');
+
+  return { codeVerifier, codeChallenge };
+}
 
 /**
  * Base class for OAuth2-based connection providers
@@ -37,8 +54,9 @@ export abstract class OAuthProvider extends BaseConnectionProvider {
 
   /**
    * Get the OAuth authorization URL
+   * Returns a string for standard OAuth, or { url, codeVerifier } when PKCE is enabled
    */
-  override getAuthUrl(state: string, redirectUri: string): string {
+  override getAuthUrl(state: string, redirectUri: string): string | { url: string; codeVerifier: string } {
     const config = this.getOAuthConfig();
 
     const params = new URLSearchParams({
@@ -50,13 +68,25 @@ export abstract class OAuthProvider extends BaseConnectionProvider {
       ...config.additionalAuthParams,
     });
 
+    // Add PKCE parameters if required
+    if (config.usePkce) {
+      const { codeVerifier, codeChallenge } = generatePkce();
+      params.set('code_challenge', codeChallenge);
+      params.set('code_challenge_method', 'S256');
+
+      return {
+        url: `${config.authorizationUrl}?${params.toString()}`,
+        codeVerifier,
+      };
+    }
+
     return `${config.authorizationUrl}?${params.toString()}`;
   }
 
   /**
    * Exchange authorization code for tokens
    */
-  override async exchangeCode(code: string, redirectUri: string): Promise<TokenSet> {
+  override async exchangeCode(code: string, redirectUri: string, codeVerifier?: string): Promise<TokenSet> {
     const config = this.getOAuthConfig();
 
     const params = new URLSearchParams({
@@ -67,6 +97,11 @@ export abstract class OAuthProvider extends BaseConnectionProvider {
       redirect_uri: redirectUri,
       ...config.additionalTokenParams,
     });
+
+    // Include PKCE code verifier if present
+    if (codeVerifier) {
+      params.set('code_verifier', codeVerifier);
+    }
 
     const response = await fetch(config.tokenUrl, {
       method: 'POST',

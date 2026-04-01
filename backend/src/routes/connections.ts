@@ -154,7 +154,12 @@ connectionRoutes.get('/:id/connect', authMiddleware, async (c) => {
 
     const redirectUri = `${baseUrl}/api/connections/${providerId}/callback`;
 
-    // Save state for validation
+    // Get auth URL (may include PKCE verifier)
+    const authResult = provider.getAuthUrl(state, redirectUri);
+    const authUrl = typeof authResult === 'string' ? authResult : authResult.url;
+    const codeVerifier = typeof authResult === 'string' ? undefined : authResult.codeVerifier;
+
+    // Save state for validation (including PKCE verifier if present)
     const now = new Date();
     const oauthState: OAuthState = {
       providerId,
@@ -162,12 +167,10 @@ connectionRoutes.get('/:id/connect', authMiddleware, async (c) => {
       redirectUri,
       createdAt: now.toISOString(),
       expiresAt: new Date(now.getTime() + OAUTH_STATE_EXPIRY_MS).toISOString(),
+      ...(codeVerifier ? { codeVerifier } : {}),
     };
 
     await saveOAuthState(state, oauthState);
-
-    // Get auth URL
-    const authUrl = provider.getAuthUrl(state, redirectUri);
 
     return c.json({ authUrl, state });
   } catch (error: any) {
@@ -273,8 +276,8 @@ connectionRoutes.get('/:id/callback', async (c) => {
       return sendPopupResponse(false, 'Provider not found');
     }
 
-    // Exchange code for tokens
-    const tokens = await provider.exchangeCode(code, oauthState.redirectUri);
+    // Exchange code for tokens (with PKCE verifier if present)
+    const tokens = await provider.exchangeCode(code, oauthState.redirectUri, oauthState.codeVerifier);
 
     // Validate connection to get user info
     const status = await provider.validateConnection(tokens);
