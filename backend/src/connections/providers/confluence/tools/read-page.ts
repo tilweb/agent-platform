@@ -10,7 +10,6 @@ import { getConfluenceApiUrl, getConfluenceRestApiUrl } from '../config';
 interface PageContent {
   id: string;
   title: string;
-  spaceId: string;
   status: string;
   body: {
     storage?: {
@@ -119,7 +118,7 @@ export function createReadPageTool(providerId: string): ConnectionTool {
           resolvedPageId = searchData.results[0]?.content.id;
         }
 
-        // Fetch the page content
+        // Fetch the page content via V2 API
         const apiUrl = getConfluenceApiUrl(tokens.cloudId);
         const response = await fetch(`${apiUrl}/pages/${resolvedPageId}?body-format=storage`, {
           headers: {

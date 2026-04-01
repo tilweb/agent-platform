@@ -24,11 +24,15 @@ export function getConfluenceConfig(): OAuth2Config {
     clientSecret,
     scopes: [
       'read:me',
+      // Granular scopes for V2 API
+      'read:page:confluence',
+      'read:space:confluence',
+      'search:confluence',
+      // Classic scopes as fallback
       'read:confluence-content.all',
       'read:confluence-content.summary',
       'read:confluence-space.summary',
       'read:confluence-user',
-      'search:confluence',
       'offline_access', // For refresh tokens
     ],
     additionalAuthParams: {
