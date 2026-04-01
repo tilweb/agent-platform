@@ -26,6 +26,7 @@ export function getJiraConfig(): OAuth2Config {
       'read:me',
       'read:jira-work',
       'read:jira-user',
+      'write:jira-work',
       'offline_access',
     ],
     additionalAuthParams: {

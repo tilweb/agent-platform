@@ -11,6 +11,7 @@ import {
 import { createSearchIssuesTool } from './tools/search-issues';
 import { createGetIssueTool } from './tools/get-issue';
 import { createListProjectsTool } from './tools/list-projects';
+import { createCreateIssueTool } from './tools/create-issue';
 
 interface AtlassianResource {
   id: string;
@@ -30,7 +31,7 @@ interface AtlassianUser {
 export class JiraProvider extends OAuthProvider {
   readonly id = 'jira';
   readonly name = 'Atlassian Jira';
-  readonly description = 'Zugriff auf Jira — Issues suchen, lesen und Projekte auflisten';
+  readonly description = 'Zugriff auf Jira — Issues suchen, lesen, erstellen und Projekte auflisten';
   readonly icon = '🎫';
   readonly setupGuide = `## Atlassian Jira Setup
 
@@ -42,7 +43,7 @@ export class JiraProvider extends OAuthProvider {
 1. Name: z.B. "Agent Platform - Jira"
 2. Gehe zu "Permissions" und füge hinzu:
    - User Identity API: \`read:me\`
-   - Jira API: \`read:jira-work\`, \`read:jira-user\`
+   - Jira API: \`read:jira-work\`, \`read:jira-user\`, \`write:jira-work\`
 3. Gehe zu "Authorization" → "Add" → "OAuth 2.0 (3LO)"
 4. Callback URL: \`http://localhost:3001/api/connections/jira/callback\`
 
@@ -154,6 +155,7 @@ Jira verwendet separate Credentials von Confluence (auch wenn beides Atlassian i
         createSearchIssuesTool(this.id),
         createGetIssueTool(this.id),
         createListProjectsTool(this.id),
+        createCreateIssueTool(this.id),
       ];
     }
     return this.tools;
