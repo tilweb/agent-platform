@@ -61,18 +61,17 @@ export function createSearchIssuesTool(providerId: string): ConnectionTool {
         const maxResults = Math.min(max_results, 50);
         const apiUrl = getJiraApiUrl(tokens.cloudId);
 
-        const response = await fetch(`${apiUrl}/search`, {
-          method: 'POST',
+        const params = new URLSearchParams({
+          jql,
+          maxResults: String(maxResults),
+          fields: 'summary,status,assignee,priority,issuetype,created,updated',
+        });
+
+        const response = await fetch(`${apiUrl}/search/jql?${params}`, {
           headers: {
             Authorization: `Bearer ${tokens.accessToken}`,
             Accept: 'application/json',
-            'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            jql,
-            maxResults,
-            fields: ['summary', 'status', 'assignee', 'priority', 'issuetype', 'created', 'updated'],
-          }),
         });
 
         if (!response.ok) {
