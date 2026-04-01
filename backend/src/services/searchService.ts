@@ -20,7 +20,7 @@ const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
 
 export interface SearchResult {
   id: string;
-  type: 'chat' | 'knowledge' | 'confluence' | 'gdrive' | 'gmail' | 'pipedrive' | 'contract';
+  type: 'chat' | 'knowledge' | 'confluence' | 'gdrive' | 'gmail' | 'pipedrive' | 'jira' | 'contract';
   title: string;
   snippet?: string;
   metadata: Record<string, any>;
@@ -35,6 +35,7 @@ export interface UnifiedSearchResponse {
     gdrive: SearchResult[];
     gmail: SearchResult[];
     pipedrive: SearchResult[];
+    jira: SearchResult[];
     contracts: SearchResult[];
   };
   errors?: { source: string; message: string }[];
@@ -50,7 +51,7 @@ export async function unifiedSearch(
 ): Promise<UnifiedSearchResponse> {
   const results: UnifiedSearchResponse = {
     query,
-    results: { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], contracts: [] },
+    results: { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], contracts: [] },
     errors: [],
   };
 
@@ -62,11 +63,12 @@ export async function unifiedSearch(
     sources.includes('gdrive') && userId ? searchGDrive(query, userId) : Promise.resolve([]),
     sources.includes('gmail') && userId ? searchGmail(query, userId) : Promise.resolve([]),
     sources.includes('pipedrive') && userId ? searchPipedrive(query, userId) : Promise.resolve([]),
+    sources.includes('jira') && userId ? searchJira(query, userId) : Promise.resolve([]),
     sources.includes('contracts') ? searchContracts(query) : Promise.resolve([]),
   ]);
 
   // Process results
-  const [chatsResult, knowledgeResult, confluenceResult, gdriveResult, gmailResult, pipedriveResult, contractsResult] = searches;
+  const [chatsResult, knowledgeResult, confluenceResult, gdriveResult, gmailResult, pipedriveResult, jiraResult, contractsResult] = searches;
 
   if (chatsResult.status === 'fulfilled') {
     results.results.chats = chatsResult.value;
@@ -102,6 +104,12 @@ export async function unifiedSearch(
     results.results.pipedrive = pipedriveResult.value;
   } else {
     results.errors?.push({ source: 'pipedrive', message: pipedriveResult.reason?.message || 'Search failed' });
+  }
+
+  if (jiraResult.status === 'fulfilled') {
+    results.results.jira = jiraResult.value;
+  } else {
+    results.errors?.push({ source: 'jira', message: jiraResult.reason?.message || 'Search failed' });
   }
 
   if (contractsResult.status === 'fulfilled') {
@@ -278,35 +286,57 @@ async function searchConfluence(query: string, userId: string): Promise<SearchRe
       { userId }
     );
 
+    console.log('[Confluence Search] Tool response (length):', resultStr.length, 'first line:', resultStr.split('\n')[0]);
+
     // Check for errors
-    if (resultStr.startsWith('Error:') || resultStr.includes('Not connected')) {
+    if (resultStr.startsWith('Error:') || resultStr.includes('Not connected') || resultStr.startsWith('No results')) {
       return [];
     }
 
-    // Parse the markdown output
+    // Parse the markdown output - split by ### headers
     const results: SearchResult[] = [];
-    const pageMatches = resultStr.matchAll(/### (.+)\n- \*\*Type\*\*: (.+)\n- \*\*Space\*\*: (.+) \((.+)\)\n- \*\*ID\*\*: (.+)\n(?:- \*\*Last Modified\*\*: (.+)\n)?(?:- \*\*Excerpt\*\*: (.+)\n)?- \*\*URL\*\*: (.+)/g);
+    const sections = resultStr.split(/^### /m).slice(1); // skip first part (header line)
 
-    for (const match of pageMatches) {
-      const id = match[5];
-      const title = match[1];
-      if (!id || !title) continue;
+    for (const section of sections) {
+      const lines = section.split('\n');
+      const title = lines[0]?.trim();
+      if (!title) continue;
+
+      let pageType = '', spaceName = '', spaceKey = '', id = '', lastModified = '', excerpt = '', url = '';
+
+      for (const line of lines) {
+        const typeMatch = line.match(/^\- \*\*Type\*\*: (.+)/);
+        if (typeMatch) pageType = typeMatch[1].trim();
+        const spaceMatch = line.match(/^\- \*\*Space\*\*: (.+) \((.+)\)/);
+        if (spaceMatch) { spaceName = spaceMatch[1].trim(); spaceKey = spaceMatch[2].trim(); }
+        const idMatch = line.match(/^\- \*\*ID\*\*: (.+)/);
+        if (idMatch) id = idMatch[1].trim();
+        const modMatch = line.match(/^\- \*\*Last Modified\*\*: (.+)/);
+        if (modMatch) lastModified = modMatch[1].trim();
+        const exMatch = line.match(/^\- \*\*Excerpt\*\*: (.+)/);
+        if (exMatch) excerpt = exMatch[1].replace(/\.\.\.$/, '').trim();
+        const urlMatch = line.match(/^\- \*\*URL\*\*: (.+)/);
+        if (urlMatch) url = urlMatch[1].trim();
+      }
+
+      if (!id) continue;
 
       results.push({
         id,
         type: 'confluence',
         title,
-        snippet: match[7]?.replace(/\.\.\.$/, '') || undefined,
+        snippet: excerpt || undefined,
         metadata: {
-          pageType: match[2] || '',
-          spaceName: match[3] || '',
-          spaceKey: match[4] || '',
-          lastModified: match[6] || undefined,
-          url: match[8] || '',
+          pageType,
+          spaceName,
+          spaceKey,
+          lastModified: lastModified || undefined,
+          url,
         },
       });
     }
 
+    console.log('[Confluence Search] Parsed results:', results.length);
     return results;
   } catch (error) {
     console.error('Error searching Confluence:', error);
@@ -492,6 +522,85 @@ async function searchPipedrive(query: string, userId: string): Promise<SearchRes
     return results;
   } catch (error) {
     console.error('[Pipedrive Search] Error:', error);
+    return [];
+  }
+}
+
+/**
+ * Search Jira issues via connection tool
+ */
+async function searchJira(query: string, userId: string): Promise<SearchResult[]> {
+  try {
+    const tool = toolRegistry.get('jira_search_issues');
+    if (!tool) {
+      return [];
+    }
+
+    // Use text search JQL
+    const jql = `text ~ "${query.replace(/"/g, '\\"')}" ORDER BY updated DESC`;
+    const resultStr = await tool.execute(
+      { jql, max_results: 10 },
+      { userId }
+    );
+
+    // Check for errors
+    if (resultStr.startsWith('Error:') || resultStr.startsWith('No issues')) {
+      return [];
+    }
+
+    // Parse the markdown output - split by ### headers
+    const results: SearchResult[] = [];
+    const sections = resultStr.split(/^### /m).slice(1);
+
+    for (const section of sections) {
+      const lines = section.split('\n');
+      const titleLine = lines[0]?.trim();
+      if (!titleLine) continue;
+
+      // Title format: "KEY-123: Summary text"
+      const keyMatch = titleLine.match(/^(\S+-\d+):\s*(.*)/);
+      const issueKey = keyMatch?.[1] || '';
+      const summary = keyMatch?.[2] || titleLine;
+
+      let issueType = '', status = '', priority = '', assignee = '', created = '', updated = '';
+
+      for (const line of lines) {
+        const typeMatch = line.match(/^\- \*\*Type\*\*: (.+)/);
+        if (typeMatch) issueType = typeMatch[1].trim();
+        const statusMatch = line.match(/^\- \*\*Status\*\*: (.+)/);
+        if (statusMatch) status = statusMatch[1].trim();
+        const prioMatch = line.match(/^\- \*\*Priority\*\*: (.+)/);
+        if (prioMatch) priority = prioMatch[1].trim();
+        const assigneeMatch = line.match(/^\- \*\*Assignee\*\*: (.+)/);
+        if (assigneeMatch) assignee = assigneeMatch[1].trim();
+        const createdMatch = line.match(/^\- \*\*Created\*\*: (.+)/);
+        if (createdMatch) created = createdMatch[1].trim();
+        const updatedMatch = line.match(/^\- \*\*Updated\*\*: (.+)/);
+        if (updatedMatch) updated = updatedMatch[1].trim();
+      }
+
+      if (!issueKey) continue;
+
+      results.push({
+        id: issueKey,
+        type: 'jira',
+        title: `${issueKey}: ${summary}`,
+        snippet: [issueType, status, assignee !== 'Unassigned' ? assignee : null].filter(Boolean).join(' · ') || undefined,
+        metadata: {
+          issueKey,
+          issueType,
+          status,
+          priority,
+          assignee,
+          created,
+          updated,
+        },
+      });
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error searching Jira:', error);
     return [];
   }
 }

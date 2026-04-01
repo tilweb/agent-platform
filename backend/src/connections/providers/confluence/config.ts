@@ -24,15 +24,15 @@ export function getConfluenceConfig(): OAuth2Config {
     clientSecret,
     scopes: [
       'read:me',
-      // Granular scopes for V2 API
+      // Classic scopes (needed for V1 CQL search)
+      'read:confluence-content.all',
+      'read:confluence-space.summary',
+      // Granular scopes for V2 API (pages, spaces)
       'read:page:confluence',
       'read:space:confluence',
+      'read:content:confluence',
+      'read:content.metadata:confluence',
       'search:confluence',
-      // Classic scopes as fallback
-      'read:confluence-content.all',
-      'read:confluence-content.summary',
-      'read:confluence-space.summary',
-      'read:confluence-user',
       'offline_access', // For refresh tokens
     ],
     additionalAuthParams: {

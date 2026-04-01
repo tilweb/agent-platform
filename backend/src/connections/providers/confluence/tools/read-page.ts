@@ -91,13 +91,13 @@ export function createReadPageTool(providerId: string): ConnectionTool {
 
         // If using title, first search for the page
         if (!resolvedPageId && title && spaceKey) {
-          const restApiUrl = getConfluenceRestApiUrl(tokens.cloudId);
+          const v1Url = getConfluenceRestApiUrl(tokens.cloudId);
           const searchParams = new URLSearchParams({
             cql: `title = "${title.replace(/"/g, '\\"')}" AND space.key = "${spaceKey}"`,
             limit: '1',
           });
 
-          const searchResponse = await fetch(`${restApiUrl}/search?${searchParams}`, {
+          const searchResponse = await fetch(`${v1Url}/search?${searchParams}`, {
             headers: {
               Authorization: `Bearer ${tokens.accessToken}`,
               Accept: 'application/json',
@@ -109,13 +109,13 @@ export function createReadPageTool(providerId: string): ConnectionTool {
             return `Error searching for page: ${searchResponse.status} - ${text}`;
           }
 
-          const searchData = await searchResponse.json() as { results?: Array<{ content: { id: string } }> };
+          const searchData = await searchResponse.json() as { results?: Array<{ content?: { id: string }, id?: string }> };
 
           if (!searchData.results || searchData.results.length === 0) {
             return `Page "${title}" not found in space ${spaceKey}`;
           }
 
-          resolvedPageId = searchData.results[0]?.content.id;
+          resolvedPageId = searchData.results[0]?.content?.id || searchData.results[0]?.id;
         }
 
         // Fetch the page content via V2 API

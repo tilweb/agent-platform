@@ -442,6 +442,7 @@ const sourceLabels = {
   gdrive: 'Google Drive',
   gmail: 'Google Mail',
   pipedrive: 'Pipedrive',
+  jira: 'Jira',
   contracts: 'Verträge',
 };
 
@@ -994,6 +995,9 @@ function ResultItem({ item, sourceId, selected, onToggle, color, showSourceBadge
             {sourceId === 'gdrive' && item.metadata?.mimeType && (
               formatMimeType(item.metadata.mimeType)
             )}
+            {sourceId === 'jira' && item.metadata?.status && (
+              `${item.metadata.issueType || ''} | ${item.metadata.status}${item.metadata.assignee && item.metadata.assignee !== 'Unassigned' ? ` | ${item.metadata.assignee}` : ''}`
+            )}
             {sourceId === 'contracts' && item.metadata?.contract_type && (
               `${item.metadata.contract_type} | ${formatContractStatus(item.metadata.status)}`
             )}
@@ -1036,6 +1040,8 @@ function getItemLink(item, sourceId) {
         : item.metadata?.contactId
           ? `https://app.pipedrive.com/person/${item.metadata.contactId}`
           : null;
+    case 'jira':
+      return item.metadata?.issueKey || null;
     case 'contracts':
       return `/apps/vertragsmanagement/${item.id}`;
     default:

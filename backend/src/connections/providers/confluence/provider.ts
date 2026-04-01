@@ -43,7 +43,7 @@ export class ConfluenceProvider extends OAuthProvider {
 1. Name: z.B. "Agent Platform"
 2. Gehe zu "Permissions" und füge hinzu:
    - User Identity API: \`read:me\`
-   - Confluence API (granular): \`read:page:confluence\`, \`read:space:confluence\`, \`search:confluence\`
+   - Confluence API (granular): \`read:page:confluence\`, \`read:space:confluence\`, \`read:content:confluence\`, \`search:confluence\`
 3. Gehe zu "Authorization" → "Add" → "OAuth 2.0 (3LO)"
 4. Callback URL: \`http://localhost:3001/api/connections/confluence/callback\`
 

@@ -525,6 +525,8 @@ export function getContentTypeIcon(type, props = {}) {
       return <MailIcon {...props} />;
     case 'sharepoint':
       return <FolderOpenIcon {...props} />;
+    case 'jira':
+      return <TicketIcon {...props} />;
     case 'youtrack':
       return <TicketIcon {...props} />;
     case 'contract':

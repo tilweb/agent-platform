@@ -102,19 +102,20 @@ export function createSearchTool(providerId: string): ConnectionTool {
       }
 
       try {
-        // Build CQL query
-        let cql = `text ~ "${query.replace(/"/g, '\\"')}"`;
+        const maxLimit = Math.min(parseInt(limit, 10) || 10, 50);
+        const apiUrl = getConfluenceRestApiUrl(tokens.cloudId);
+
+        // CQL search via V1 REST API (V2 has no CQL search endpoint)
+        // Search both title and body text for better results
+        const escaped = query.replace(/"/g, '\\"');
+        let cql = `type in (page, blogpost) AND (title ~ "${escaped}" OR text ~ "${escaped}")`;
         if (spaceKey) {
           cql += ` AND space.key = "${spaceKey}"`;
         }
 
-        const maxLimit = Math.min(parseInt(limit, 10) || 10, 50);
-        const apiUrl = getConfluenceRestApiUrl(tokens.cloudId);
-
         const params = new URLSearchParams({
           cql,
           limit: maxLimit.toString(),
-          expand: 'content.space,content.history.lastUpdated',
         });
 
         const response = await fetch(`${apiUrl}/search?${params}`, {
@@ -126,30 +127,31 @@ export function createSearchTool(providerId: string): ConnectionTool {
 
         if (!response.ok) {
           const text = await response.text();
+          console.log('[Confluence search] Error:', response.status, text.substring(0, 300));
           if (response.status === 401 || response.status === 403) {
             return 'Error: Confluence access denied. Your token may have expired. Please reconnect.';
           }
           return `Error: Confluence API request failed: ${response.status} - ${text}`;
         }
 
-        const data = await response.json() as CQLSearchResponse;
+        const data = await response.json() as any;
 
         if (!data.results || data.results.length === 0) {
           return `No results found for "${query}"${spaceKey ? ` in space ${spaceKey}` : ''}.`;
         }
 
-        // Format results
-        const results: SearchResult[] = data.results.map(r => ({
-          id: r.content.id,
-          title: r.content.title,
-          type: r.content.type,
+        // Format results from V2 search response
+        const results: SearchResult[] = data.results.map((r: any) => ({
+          id: r.content?.id || r.id || '',
+          title: r.content?.title || r.title || 'Untitled',
+          type: r.content?.type || r.type || 'page',
           space: {
-            key: r.content.space?.key || 'Unknown',
-            name: r.content.space?.name || 'Unknown Space',
+            key: r.content?.space?.key || r.space?.key || 'Unknown',
+            name: r.content?.space?.name || r.space?.name || 'Unknown Space',
           },
-          excerpt: r.excerpt?.replace(/<[^>]*>/g, '').slice(0, 200),
-          url: `${data._links.base}${r.content._links.webui}`,
-          lastModified: r.content.history?.lastUpdated?.when,
+          excerpt: (r.excerpt || '').replace(/<[^>]*>/g, '').slice(0, 200),
+          url: r.url || r.content?._links?.webui || '',
+          lastModified: r.lastModified || r.content?.history?.lastUpdated?.when,
         }));
 
         // Format output

@@ -37,7 +37,7 @@ searchRoutes.get('/', async (c) => {
     }
 
     // Parse sources
-    const validSources = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'contracts'];
+    const validSources = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'jira', 'contracts'];
     let sources = validSources;
 
     if (sourcesParam) {
@@ -74,6 +74,7 @@ searchRoutes.get('/sources', async (c) => {
     let gdriveConnected = false;
     let gmailConnected = false;
     let pipedriveConnected = false;
+    let jiraConnected = false;
 
     if (userId) {
       // Check Confluence connection
@@ -91,6 +92,10 @@ searchRoutes.get('/sources', async (c) => {
       // Check Pipedrive connection
       const pipedriveTokens = await connectionRegistry.getTokens(userId, 'pipedrive');
       pipedriveConnected = !!pipedriveTokens;
+
+      // Check Jira connection
+      const jiraTokens = await connectionRegistry.getTokens(userId, 'jira');
+      jiraConnected = !!jiraTokens;
     }
 
     // Check if Vertragsmanagement app is enabled
@@ -150,6 +155,15 @@ searchRoutes.get('/sources', async (c) => {
         connected: pipedriveConnected,
         requiresConnection: true,
         color: '#017737',
+      },
+      {
+        id: 'jira',
+        name: 'Jira',
+        description: 'Jira-Issues durchsuchen',
+        available: toolRegistry.has('jira_search_issues'),
+        connected: jiraConnected,
+        requiresConnection: true,
+        color: '#0052CC',
       },
       {
         id: 'contracts',
