@@ -144,6 +144,7 @@ Der verbundene Benutzer muss Zugriff auf mindestens eine Confluence-Instanz habe
         avatarUrl: user.picture,
       });
     } catch (error: any) {
+      console.error('[Confluence] validateConnection error:', error.message);
       if (error.message?.includes('401') || error.message?.includes('403')) {
         return this.createExpiredStatus();
       }

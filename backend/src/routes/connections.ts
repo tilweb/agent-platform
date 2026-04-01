@@ -278,6 +278,7 @@ connectionRoutes.get('/:id/callback', async (c) => {
 
     // Validate connection to get user info
     const status = await provider.validateConnection(tokens);
+    console.log(`[OAuth callback] ${providerId} validation result:`, status.status, status.error || '');
 
     // Save connection
     await saveConnection(oauthState.userId, providerId, tokens, status);
