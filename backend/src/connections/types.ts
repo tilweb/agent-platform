@@ -78,6 +78,8 @@ export interface OAuth2Config {
   additionalTokenParams?: Record<string, string>;
   // Enable PKCE (Proof Key for Code Exchange) - required by some providers (e.g. YouTrack Hub)
   usePkce?: boolean;
+  // Grant type: 'authorization_code' (default) or 'implicit' (token returned in URL fragment)
+  grantType?: 'authorization_code' | 'implicit';
 }
 
 /**

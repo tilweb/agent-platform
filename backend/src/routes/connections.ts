@@ -14,7 +14,7 @@ import {
   deleteOAuthState,
   isEncryptionConfigured,
 } from '../connections';
-import type { OAuthState } from '../connections';
+import type { OAuthState, TokenSet } from '../connections';
 
 const connectionRoutes = new Hono();
 
@@ -251,7 +251,91 @@ connectionRoutes.get('/:id/callback', async (c) => {
     return sendPopupResponse(false, 'Autorisierung fehlgeschlagen. Bitte erneut versuchen.');
   }
 
-  // Validate required params
+  // Implicit flow: token is in URL fragment (not visible to server)
+  // Serve a JS page that extracts the token and posts it back
+  if (!code && !state && !error) {
+    const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><title>OAuth</title>
+<style>
+  body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
+  .container { text-align: center; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+  .icon { font-size: 3rem; margin-bottom: 1rem; }
+  h1 { margin: 0 0 0.5rem; }
+  p { color: #666; margin: 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="icon" id="icon">⏳</div>
+  <h1 id="title">Verbinde...</h1>
+  <p id="msg">Bitte warten</p>
+</div>
+<script>
+(async function() {
+  const fullUrl = window.location.href;
+  const hash = window.location.hash.substring(1);
+  document.getElementById('msg').textContent = 'URL: ' + fullUrl.substring(0, 150);
+  if (!hash) {
+    document.getElementById('icon').textContent = '✗';
+    document.getElementById('title').style.color = '#ef4444';
+    document.getElementById('title').textContent = 'Fehler';
+    document.getElementById('msg').textContent = 'Kein Fragment in URL: ' + fullUrl.substring(0, 200);
+    return;
+  }
+  const params = new URLSearchParams(hash);
+  const accessToken = params.get('access_token');
+  const tokenType = params.get('token_type') || 'Bearer';
+  const expiresIn = params.get('expires_in');
+  const state = params.get('state');
+
+  if (!accessToken || !state) {
+    document.getElementById('icon').textContent = '✗';
+    document.getElementById('title').style.color = '#ef4444';
+    document.getElementById('title').textContent = 'Fehler';
+    document.getElementById('msg').textContent = 'Token oder State fehlt.';
+    return;
+  }
+
+  try {
+    const res = await fetch('${baseUrl}/api/connections/${providerId}/implicit-callback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ accessToken, tokenType, expiresIn: expiresIn ? parseInt(expiresIn) : null, state })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('icon').textContent = '✓';
+      document.getElementById('title').style.color = '#10b981';
+      document.getElementById('title').textContent = 'Connected!';
+      document.getElementById('msg').textContent = 'Fenster schliesst automatisch.';
+      if (window.opener) {
+        window.opener.postMessage({ type: 'oauth_callback', success: true, providerId: '${providerId}' }, '*');
+        setTimeout(() => window.close(), 2000);
+      }
+    } else {
+      throw new Error(data.error || 'Verbindung fehlgeschlagen');
+    }
+  } catch (e) {
+    document.getElementById('icon').textContent = '✗';
+    document.getElementById('title').style.color = '#ef4444';
+    document.getElementById('title').textContent = 'Fehler';
+    document.getElementById('msg').textContent = e.message;
+    if (window.opener) {
+      window.opener.postMessage({ type: 'oauth_callback', success: false, providerId: '${providerId}', message: e.message }, '*');
+    }
+  }
+})();
+</script>
+</body>
+</html>`;
+    return c.html(html);
+  }
+
+  // Authorization Code flow: validate required params
   if (!code || !state) {
     return sendPopupResponse(false, 'Missing code or state parameter');
   }
@@ -291,6 +375,66 @@ connectionRoutes.get('/:id/callback', async (c) => {
     // Log detailed error server-side, show generic message to client
     console.error('OAuth callback error:', err);
     return sendPopupResponse(false, 'Verbindung fehlgeschlagen. Bitte erneut versuchen.');
+  }
+});
+
+/**
+ * POST /api/connections/:id/implicit-callback - Receive token from implicit OAuth flow
+ * The token is extracted from the URL fragment by client-side JavaScript
+ */
+connectionRoutes.post('/:id/implicit-callback', async (c) => {
+  const providerId = c.req.param('id');
+
+  try {
+    const body = await c.req.json() as {
+      accessToken: string;
+      tokenType: string;
+      expiresIn: number | null;
+      state: string;
+    };
+
+    if (!body.accessToken || !body.state) {
+      return c.json({ error: 'Missing token or state' }, 400);
+    }
+
+    // Validate state
+    const oauthState = await loadOAuthState(body.state);
+    if (!oauthState) {
+      return c.json({ error: 'Invalid or expired state' }, 400);
+    }
+
+    if (oauthState.providerId !== providerId) {
+      return c.json({ error: 'Provider mismatch' }, 400);
+    }
+
+    // Delete state (one-time use)
+    await deleteOAuthState(body.state);
+
+    // Build token set
+    const tokens: TokenSet = {
+      accessToken: body.accessToken,
+      tokenType: body.tokenType || 'Bearer',
+      expiresAt: body.expiresIn
+        ? new Date(Date.now() + body.expiresIn * 1000).toISOString()
+        : undefined,
+    };
+
+    // Get provider and validate
+    const provider = connectionRegistry.get(providerId);
+    if (!provider) {
+      return c.json({ error: 'Provider not found' }, 404);
+    }
+
+    const status = await provider.validateConnection(tokens);
+    console.log(`[Implicit callback] ${providerId} validation:`, status.status, status.error || '');
+
+    // Save connection
+    await saveConnection(oauthState.userId, providerId, tokens, status);
+
+    return c.json({ success: status.status === 'connected' });
+  } catch (err: any) {
+    console.error('Implicit callback error:', err);
+    return c.json({ error: 'Token processing failed' }, 500);
   }
 });
 

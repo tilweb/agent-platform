@@ -1,8 +1,11 @@
 /**
  * YouTrack OAuth Configuration
  *
- * YouTrack Cloud uses Hub for OAuth2 authentication.
- * OAuth endpoints are instance-specific (require YOUTRACK_URL).
+ * YouTrack Cloud uses built-in Hub which only supports the Implicit OAuth2 flow.
+ * The client_id is the YouTrack service ID from Hub (not a separate service).
+ * No client_secret is needed for the implicit flow.
+ *
+ * See: https://www.jetbrains.com/help/youtrack/devportal/OAuth-authorization-in-youtrack.html
  */
 
 import type { OAuth2Config } from '../../types';
@@ -11,26 +14,23 @@ import type { OAuth2Config } from '../../types';
  * Get YouTrack OAuth configuration from environment
  */
 export function getYouTrackConfig(): OAuth2Config {
-  const clientId = process.env.YOUTRACK_CLIENT_ID;
-  const clientSecret = process.env.YOUTRACK_CLIENT_SECRET;
   const baseUrl = getYouTrackBaseUrl();
 
-  if (!clientId || !clientSecret) {
+  // For implicit flow, client_id is the YouTrack service ID in Hub
+  const clientId = process.env.YOUTRACK_CLIENT_ID;
+  if (!clientId) {
     throw new Error(
-      'YouTrack OAuth credentials not configured. Set YOUTRACK_CLIENT_ID, YOUTRACK_CLIENT_SECRET, and YOUTRACK_URL environment variables.'
+      'YOUTRACK_CLIENT_ID not configured. Set it to the YouTrack service ID from Hub (Services → YouTrack → Client-ID).'
     );
   }
 
   return {
     authorizationUrl: `${baseUrl}/hub/api/rest/oauth2/auth`,
-    tokenUrl: `${baseUrl}/hub/api/rest/oauth2/token`,
+    tokenUrl: '', // Not used in implicit flow
     clientId,
-    clientSecret,
-    scopes: process.env.YOUTRACK_SCOPE ? [process.env.YOUTRACK_SCOPE] : [],
-    usePkce: true, // Hub requires PKCE for OAuth2 authorization code flow
-    additionalAuthParams: {
-      request_credentials: 'default', // Prevents Hub CSRF token issues in popup flows
-    },
+    clientSecret: '', // Not used in implicit flow
+    scopes: ['YouTrack'], // Symbolic name per docs
+    grantType: 'implicit',
   };
 }
 

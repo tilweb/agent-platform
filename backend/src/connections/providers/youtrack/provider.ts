@@ -1,7 +1,8 @@
 /**
  * YouTrack Connection Provider
  *
- * Uses Hub OAuth2 for authentication (instance-specific endpoints).
+ * Uses Hub's Implicit OAuth2 flow (the only flow supported by YouTrack Cloud's built-in Hub).
+ * The token is returned directly in the URL fragment, no code exchange needed.
  */
 
 import { OAuthProvider } from '../../base/OAuthProvider';
@@ -25,42 +26,49 @@ export class YouTrackProvider extends OAuthProvider {
   readonly name = 'JetBrains YouTrack';
   readonly description = 'Zugriff auf YouTrack — Issues suchen, lesen, erstellen und Projekte auflisten';
   readonly icon = '🎯';
-  readonly setupGuide = `## JetBrains YouTrack Setup
+  readonly setupGuide = `## JetBrains YouTrack Cloud Setup
 
-### 1. Hub-Service oeffnen
-1. Gehe zu deiner YouTrack-Instanz (z.B. \`https://firma.youtrack.cloud\`)
-2. Oeffne Hub: Klicke oben rechts auf dein Profil → "Hub" oder gehe zu \`/hub\`
-
-### 2. OAuth2-App registrieren
-1. Gehe zu "Services" → dein YouTrack-Service → "Auth Modules" → "New Module" → "OAuth2"
-   - **Oder**: "Resources" → "Auth Modules" → "New Module" → "OAuth2"
-2. Name: z.B. "Agent Platform"
-3. Redirect URI: \`http://localhost:3001/api/connections/youtrack/callback\`
-4. Kopiere "Client ID" und "Client Secret"
-
-### 3. Berechtigungen
-Die App erhaelt automatisch Zugriff auf die Services, fuer die sie registriert ist.
-Stelle sicher, dass YouTrack als Service zugewiesen ist.
-
-### 4. Umgebungsvariablen
+### 1. Umgebungsvariablen
 Fuege in \`.env\` hinzu:
 \`\`\`
 YOUTRACK_URL=https://firma.youtrack.cloud
-YOUTRACK_CLIENT_ID=deine-client-id
-YOUTRACK_CLIENT_SECRET=dein-client-secret
-YOUTRACK_SCOPE=optional-service-id
+YOUTRACK_CLIENT_ID=<YouTrack Service-ID aus Hub>
 \`\`\`
 
-### 5. Backend neu starten
-Nach dem Setzen der Umgebungsvariablen das Backend neu starten.
+Die Service-ID findest du unter: Hub → Services → YouTrack → Client-ID
+
+### 2. Redirect-URI registrieren
+1. Gehe zu \`https://firma.youtrack.cloud/hub/services\`
+2. Oeffne den **YouTrack**-Service
+3. Fuege bei **Umleitungs-URIs** hinzu:
+   \`http://localhost:3001/api/connections/youtrack/callback\`
+
+### 3. Backend neu starten
 
 ### Hinweis
-Die YOUTRACK_URL muss die vollstaendige URL eurer YouTrack-Cloud-Instanz sein. YOUTRACK_SCOPE ist optional — wenn leer, werden die Hub-App-Berechtigungen verwendet.`;
+YouTrack Cloud nutzt den Implicit OAuth2 Flow. Kein Client-Secret noetig.`;
 
   private tools: ConnectionTool[] | null = null;
 
   protected getOAuthConfig(): OAuth2Config {
     return getYouTrackConfig();
+  }
+
+  /**
+   * Override getAuthUrl for implicit flow: response_type=token instead of code
+   */
+  override getAuthUrl(state: string, redirectUri: string): string {
+    const config = this.getOAuthConfig();
+
+    const params = new URLSearchParams({
+      response_type: 'token',
+      client_id: config.clientId,
+      redirect_uri: redirectUri,
+      scope: config.scopes.join(' '),
+      state,
+    });
+
+    return `${config.authorizationUrl}?${params.toString()}`;
   }
 
   /**
@@ -94,7 +102,8 @@ Die YOUTRACK_URL muss die vollstaendige URL eurer YouTrack-Cloud-Instanz sein. Y
 
     const response = await this.authenticatedFetch(
       `${apiUrl}/users/me?fields=${encodeURIComponent(fields)}`,
-      tokens
+      tokens,
+      { headers: { 'Accept': 'application/json' } }
     );
 
     if (!response.ok) {

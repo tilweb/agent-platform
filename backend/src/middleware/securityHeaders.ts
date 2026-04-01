@@ -112,13 +112,16 @@ function buildCSP(config: SecurityHeadersConfig): string {
  */
 export function securityHeaders(config: SecurityHeadersConfig = {}): MiddlewareHandler {
   const csp = buildCSP(config);
+  // OAuth callback pages serve inline HTML+JS for implicit flow token extraction
+  const cspWithInlineScripts = buildCSP({ ...config, allowInlineScripts: true });
   const cspHeader = config.reportOnly ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy';
 
   return async (c, next) => {
     await next();
 
-    // Content-Security-Policy
-    c.header(cspHeader, csp);
+    // OAuth callback pages need inline scripts for token extraction from URL fragment
+    const isOAuthCallback = /\/api\/connections\/[^/]+\/callback$/.test(c.req.path);
+    c.header(cspHeader, isOAuthCallback ? cspWithInlineScripts : csp);
 
     // Prevent clickjacking
     c.header('X-Frame-Options', 'DENY');
