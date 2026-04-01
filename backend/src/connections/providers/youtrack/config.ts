@@ -28,6 +28,9 @@ export function getYouTrackConfig(): OAuth2Config {
     clientSecret,
     scopes: process.env.YOUTRACK_SCOPE ? [process.env.YOUTRACK_SCOPE] : [],
     usePkce: true, // Hub requires PKCE for OAuth2 authorization code flow
+    additionalAuthParams: {
+      request_credentials: 'default', // Prevents Hub CSRF token issues in popup flows
+    },
   };
 }
 
