@@ -11,6 +11,7 @@ import { googleMailProvider } from './google-mail';
 import { jiraProvider } from './jira';
 import { pipedriveProvider } from './pipedrive';
 import { docuwareProvider } from './docuware';
+import { youtrackProvider } from './youtrack';
 
 /**
  * Register all available connection providers
@@ -60,9 +61,15 @@ export function registerProviders(): void {
     console.warn('Failed to register Docuware provider:', error.message);
   }
 
+  // Register YouTrack
+  try {
+    connectionRegistry.register(youtrackProvider);
+  } catch (error: any) {
+    console.warn('Failed to register YouTrack provider:', error.message);
+  }
+
   // Future providers can be added here:
   // - SharePoint
-  // - YouTrack
   // - etc.
 
   const stats = connectionRegistry.getStats();
@@ -83,3 +90,4 @@ export { googleMailProvider } from './google-mail';
 export { jiraProvider } from './jira';
 export { pipedriveProvider } from './pipedrive';
 export { docuwareProvider } from './docuware';
+export { youtrackProvider } from './youtrack';

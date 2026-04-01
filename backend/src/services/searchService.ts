@@ -20,7 +20,7 @@ const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
 
 export interface SearchResult {
   id: string;
-  type: 'chat' | 'knowledge' | 'confluence' | 'gdrive' | 'gmail' | 'pipedrive' | 'jira' | 'contract';
+  type: 'chat' | 'knowledge' | 'confluence' | 'gdrive' | 'gmail' | 'pipedrive' | 'jira' | 'youtrack' | 'contract';
   title: string;
   snippet?: string;
   metadata: Record<string, any>;
@@ -36,6 +36,7 @@ export interface UnifiedSearchResponse {
     gmail: SearchResult[];
     pipedrive: SearchResult[];
     jira: SearchResult[];
+    youtrack: SearchResult[];
     contracts: SearchResult[];
   };
   errors?: { source: string; message: string }[];
@@ -47,11 +48,11 @@ export interface UnifiedSearchResponse {
 export async function unifiedSearch(
   query: string,
   userId?: string,
-  sources: string[] = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'contracts']
+  sources: string[] = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'jira', 'youtrack', 'contracts']
 ): Promise<UnifiedSearchResponse> {
   const results: UnifiedSearchResponse = {
     query,
-    results: { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], contracts: [] },
+    results: { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], youtrack: [], contracts: [] },
     errors: [],
   };
 
@@ -64,11 +65,12 @@ export async function unifiedSearch(
     sources.includes('gmail') && userId ? searchGmail(query, userId) : Promise.resolve([]),
     sources.includes('pipedrive') && userId ? searchPipedrive(query, userId) : Promise.resolve([]),
     sources.includes('jira') && userId ? searchJira(query, userId) : Promise.resolve([]),
+    sources.includes('youtrack') && userId ? searchYouTrack(query, userId) : Promise.resolve([]),
     sources.includes('contracts') ? searchContracts(query) : Promise.resolve([]),
   ]);
 
   // Process results
-  const [chatsResult, knowledgeResult, confluenceResult, gdriveResult, gmailResult, pipedriveResult, jiraResult, contractsResult] = searches;
+  const [chatsResult, knowledgeResult, confluenceResult, gdriveResult, gmailResult, pipedriveResult, jiraResult, youtrackResult, contractsResult] = searches;
 
   if (chatsResult.status === 'fulfilled') {
     results.results.chats = chatsResult.value;
@@ -110,6 +112,12 @@ export async function unifiedSearch(
     results.results.jira = jiraResult.value;
   } else {
     results.errors?.push({ source: 'jira', message: jiraResult.reason?.message || 'Search failed' });
+  }
+
+  if (youtrackResult.status === 'fulfilled') {
+    results.results.youtrack = youtrackResult.value;
+  } else {
+    results.errors?.push({ source: 'youtrack', message: youtrackResult.reason?.message || 'Search failed' });
   }
 
   if (contractsResult.status === 'fulfilled') {
@@ -601,6 +609,78 @@ async function searchJira(query: string, userId: string): Promise<SearchResult[]
     return results;
   } catch (error) {
     console.error('Error searching Jira:', error);
+    return [];
+  }
+}
+
+/**
+ * Search YouTrack issues via connection tool
+ */
+async function searchYouTrack(query: string, userId: string): Promise<SearchResult[]> {
+  try {
+    const tool = toolRegistry.get('youtrack_search_issues');
+    if (!tool) {
+      return [];
+    }
+
+    const resultStr = await tool.execute(
+      { query, max_results: 10 },
+      { userId }
+    );
+
+    if (resultStr.startsWith('Error:') || resultStr.startsWith('No issues')) {
+      return [];
+    }
+
+    // Parse the markdown output - split by ### headers
+    const results: SearchResult[] = [];
+    const sections = resultStr.split(/^### /m).slice(1);
+
+    for (const section of sections) {
+      const lines = section.split('\n');
+      const titleLine = lines[0]?.trim();
+      if (!titleLine) continue;
+
+      const keyMatch = titleLine.match(/^(\S+-\d+):\s*(.*)/);
+      const issueId = keyMatch?.[1] || '';
+      const summary = keyMatch?.[2] || titleLine;
+
+      let issueType = '', state = '', priority = '', assignee = '', project = '';
+
+      for (const line of lines) {
+        const typeMatch = line.match(/^\- \*\*Type\*\*: (.+)/);
+        if (typeMatch) issueType = typeMatch[1].trim();
+        const stateMatch = line.match(/^\- \*\*State\*\*: (.+)/);
+        if (stateMatch) state = stateMatch[1].trim();
+        const prioMatch = line.match(/^\- \*\*Priority\*\*: (.+)/);
+        if (prioMatch) priority = prioMatch[1].trim();
+        const assigneeMatch = line.match(/^\- \*\*Assignee\*\*: (.+)/);
+        if (assigneeMatch) assignee = assigneeMatch[1].trim();
+        const projMatch = line.match(/^\- \*\*Project\*\*: (.+)/);
+        if (projMatch) project = projMatch[1].trim();
+      }
+
+      if (!issueId) continue;
+
+      results.push({
+        id: issueId,
+        type: 'youtrack',
+        title: `${issueId}: ${summary}`,
+        snippet: [issueType, state, assignee].filter(Boolean).join(' · ') || undefined,
+        metadata: {
+          issueId,
+          issueType,
+          state,
+          priority,
+          assignee,
+          project,
+        },
+      });
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error searching YouTrack:', error);
     return [];
   }
 }

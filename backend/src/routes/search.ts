@@ -37,7 +37,7 @@ searchRoutes.get('/', async (c) => {
     }
 
     // Parse sources
-    const validSources = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'jira', 'contracts'];
+    const validSources = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'jira', 'youtrack', 'contracts'];
     let sources = validSources;
 
     if (sourcesParam) {
@@ -75,6 +75,7 @@ searchRoutes.get('/sources', async (c) => {
     let gmailConnected = false;
     let pipedriveConnected = false;
     let jiraConnected = false;
+    let youtrackConnected = false;
 
     if (userId) {
       // Check Confluence connection
@@ -96,6 +97,10 @@ searchRoutes.get('/sources', async (c) => {
       // Check Jira connection
       const jiraTokens = await connectionRegistry.getTokens(userId, 'jira');
       jiraConnected = !!jiraTokens;
+
+      // Check YouTrack connection
+      const youtrackTokens = await connectionRegistry.getTokens(userId, 'youtrack');
+      youtrackConnected = !!youtrackTokens;
     }
 
     // Check if Vertragsmanagement app is enabled
@@ -164,6 +169,15 @@ searchRoutes.get('/sources', async (c) => {
         connected: jiraConnected,
         requiresConnection: true,
         color: '#0052CC',
+      },
+      {
+        id: 'youtrack',
+        name: 'YouTrack',
+        description: 'YouTrack-Issues durchsuchen',
+        available: toolRegistry.has('youtrack_search_issues'),
+        connected: youtrackConnected,
+        requiresConnection: true,
+        color: '#7B68EE',
       },
       {
         id: 'contracts',

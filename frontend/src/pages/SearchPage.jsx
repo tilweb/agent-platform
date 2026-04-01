@@ -443,6 +443,7 @@ const sourceLabels = {
   gmail: 'Google Mail',
   pipedrive: 'Pipedrive',
   jira: 'Jira',
+  youtrack: 'YouTrack',
   contracts: 'Verträge',
 };
 
@@ -998,6 +999,9 @@ function ResultItem({ item, sourceId, selected, onToggle, color, showSourceBadge
             {sourceId === 'jira' && item.metadata?.status && (
               `${item.metadata.issueType || ''} | ${item.metadata.status}${item.metadata.assignee && item.metadata.assignee !== 'Unassigned' ? ` | ${item.metadata.assignee}` : ''}`
             )}
+            {sourceId === 'youtrack' && item.metadata?.state && (
+              `${item.metadata.issueType || ''} | ${item.metadata.state}${item.metadata.assignee ? ` | ${item.metadata.assignee}` : ''}`
+            )}
             {sourceId === 'contracts' && item.metadata?.contract_type && (
               `${item.metadata.contract_type} | ${formatContractStatus(item.metadata.status)}`
             )}
@@ -1042,6 +1046,8 @@ function getItemLink(item, sourceId) {
           : null;
     case 'jira':
       return item.metadata?.issueKey || null;
+    case 'youtrack':
+      return item.metadata?.issueId || null;
     case 'contracts':
       return `/apps/vertragsmanagement/${item.id}`;
     default:
