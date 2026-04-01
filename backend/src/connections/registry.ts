@@ -127,8 +127,12 @@ class ConnectionRegistry {
       }
 
       try {
-        // Refresh the tokens
+        // Refresh the tokens, preserving provider-specific fields (cloudId, apiDomain)
+        const oldCloudId = tokens.cloudId;
+        const oldApiDomain = tokens.apiDomain;
         tokens = await provider.refreshToken(tokens.refreshToken);
+        if (oldCloudId && !tokens.cloudId) tokens.cloudId = oldCloudId;
+        if (oldApiDomain && !tokens.apiDomain) tokens.apiDomain = oldApiDomain;
 
         // Save the new tokens
         await updateConnectionTokens(userId, providerId, tokens);
