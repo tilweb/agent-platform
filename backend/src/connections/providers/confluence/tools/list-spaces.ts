@@ -71,10 +71,12 @@ export function createListSpacesTool(providerId: string): ConnectionTool {
 
       const tokens = await connectionRegistry.getTokens(context.userId, providerId);
       if (!tokens) {
+        console.log('[Confluence list-spaces] No tokens for user:', context.userId);
         return 'Error: Not connected to Confluence. Please connect first in the Connections page.';
       }
 
       if (!tokens.cloudId) {
+        console.log('[Confluence list-spaces] No cloudId. Token keys:', Object.keys(tokens));
         return 'Error: Confluence cloud ID not available. Please reconnect.';
       }
 
@@ -92,6 +94,8 @@ export function createListSpacesTool(providerId: string): ConnectionTool {
           params.set('type', 'personal');
         }
 
+        console.log('[Confluence list-spaces] Fetching:', `${apiUrl}/spaces?${params}`);
+
         const response = await fetch(`${apiUrl}/spaces?${params}`, {
           headers: {
             Authorization: `Bearer ${tokens.accessToken}`,
@@ -101,6 +105,7 @@ export function createListSpacesTool(providerId: string): ConnectionTool {
 
         if (!response.ok) {
           const text = await response.text();
+          console.log('[Confluence list-spaces] Error:', response.status, text.substring(0, 300));
           if (response.status === 401 || response.status === 403) {
             return 'Error: Confluence access denied. Your token may have expired. Please reconnect.';
           }
