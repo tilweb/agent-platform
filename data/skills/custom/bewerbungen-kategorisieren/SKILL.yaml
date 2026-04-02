@@ -57,10 +57,24 @@ instructions: |
   Lies den vollstaendigen Inhalt mit `gmail_read_email`.
 
   **3b) Kategorie bestimmen (aus Mail-Body)**
-  Analysiere den E-Mail-Text:
-  - Ist es eine Bewerbung auf eine **konkrete Stelle**? → Bewerbung/[Stellenname]
-  - Ist es eine **Initiativbewerbung** ohne Stellenbezug? → Bewerbung/Initiativ
-  - Ist es **keine Bewerbung**? (Newsletter, Anfrage, Werbung) → Bewerbung/Sonstige Mails
+  Die Unterscheidung erfordert sorgfaeltige Analyse. Pruefe:
+
+  **Echte Bewerbung** (→ Bewerbung/[Stelle] oder Bewerbung/Initiativ):
+  - Person bewirbt sich SELBST (ICH-Form, eigene Motivation, eigener CV)
+  - Betreff: "Bewerbung als...", "Application for...", "Stelle als..."
+  - Individuelles Anschreiben + CV im Anhang
+
+  **Sonstige Mails** (→ Bewerbung/Sonstige Mails):
+  - **Personalvermittler/Headhunter**: Stellen Kandidaten vor (WIR-Form, "unser Kandidat", Firmen-Signatur einer Personalberatung, Vermittlungskonditionen)
+  - **Jobportal-Benachrichtigungen**: Automatische Mails von StepStone, Indeed, LinkedIn, XING
+  - **Newsletter, Werbung**: HR-Trends, Recruiting-Software, Messe-Einladungen
+  - **Interne Mails**: Weiterleitungen, Rueckfragen, Team-Kommunikation
+  - **Reine Anfragen**: "Haben Sie offene Stellen?" ohne Bewerbungscharakter
+
+  **Entscheidungshilfe bei Grenzfaellen:**
+  - ICH-Form + eigener CV = Bewerbung
+  - WIR-Form + "Kandidatenprofil" = Personalvermittler = Sonstige
+  - Im Zweifel den Anhang lesen: persoenliches Anschreiben vs. Kandidatenprofil einer Agentur
 
   **3c) CV analysieren (nur bei echten Bewerbungen)**
   Wenn die E-Mail einen Anhang hat (PDF, DOCX):
