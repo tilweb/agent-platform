@@ -51,6 +51,11 @@ function sanitizeMessages(messages: Message[]): Message[] {
   });
 }
 
+// Transient errors that should be retried (e.g. vLLM "Already borrowed")
+const RETRYABLE_PATTERNS = ['Already borrowed', 'overloaded', 'temporarily unavailable'];
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 500;
+
 export class OpenAIAdapter {
   private baseUrl: string;
   private apiKey: string | null;
@@ -60,6 +65,17 @@ export class OpenAIAdapter {
     this.baseUrl = options.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.apiKey = options.apiKey;
     this.defaultModel = options.defaultModel || 'gpt-4o-mini';
+  }
+
+  /**
+   * Check if an error response is retryable
+   */
+  private isRetryable(status: number, body: string): boolean {
+    if (status === 429 || status === 503) return true;
+    if (status === 400) {
+      return RETRYABLE_PATTERNS.some(p => body.includes(p));
+    }
+    return false;
   }
 
   /**
@@ -96,15 +112,27 @@ export class OpenAIAdapter {
 
     const bodyJson = JSON.stringify(body);
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers,
-      body: bodyJson,
-    });
+    // Retry loop for transient errors
+    let response: Response | null = null;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers,
+        body: bodyJson,
+      });
 
-    if (!response.ok) {
+      if (response.ok) break;
+
       const error = await response.text();
-      // Log debug info for parser/bad-request errors
+
+      if (attempt < MAX_RETRIES && this.isRetryable(response.status, error)) {
+        const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
+        console.warn(`[OpenAI Adapter] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES}): ${error.substring(0, 100)} — retrying in ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+
+      // Non-retryable or max retries exceeded
       if (response.status === 400) {
         console.error(`[OpenAI Adapter] 400 error - body size: ${bodyJson.length} chars, messages: ${messages.length}, model: ${model || this.defaultModel}`);
         for (let i = 0; i < messages.length; i++) {
@@ -216,14 +244,28 @@ export class OpenAIAdapter {
       headers['Authorization'] = `Bearer ${this.apiKey}`;
     }
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+    const bodyJson = JSON.stringify(body);
 
-    if (!response.ok) {
+    // Retry loop for transient errors
+    let response: Response | null = null;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers,
+        body: bodyJson,
+      });
+
+      if (response.ok) break;
+
       const error = await response.text();
+
+      if (attempt < MAX_RETRIES && this.isRetryable(response.status, error)) {
+        const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
+        console.warn(`[OpenAI Adapter] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES}): ${error.substring(0, 100)} — retrying in ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+
       throw new Error(`OpenAI API error: ${response.status} - ${error}`);
     }
 
