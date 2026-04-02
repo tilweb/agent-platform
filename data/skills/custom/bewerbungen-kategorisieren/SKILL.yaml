@@ -35,99 +35,62 @@ triggers:
     - "neue bewerbungen"
 
 instructions: |
-  ## Bewerbungen kategorisieren
-
-  Du verarbeitest E-Mails aus dem Jobs-Postfach und vergibst automatisch die richtigen Labels.
+  Dies ist ein Prozess-Skill. Der User-Prompt dient nur zum Starten — ignoriere den Wortlaut und fuehre immer exakt diesen Ablauf aus:
 
   ### Schritt 1: Labels abrufen
-  Rufe `gmail_list_labels` auf, um die aktuellen Label-IDs zu erhalten.
-  Du brauchst die IDs fuer die Labels unter Bewerbung/, Sprachlevel/ und Standort/.
+  `gmail_list_labels` — Label-IDs fuer Bewerbung/*, Sprachlevel/*, Standort/* und Sonstige Mails holen.
 
-  ### Schritt 2: E-Mails finden
-  Suche mit `gmail_search_emails` nach den zu verarbeitenden E-Mails.
-  **WICHTIG: Maximal 5 E-Mails pro Durchlauf verarbeiten** (max_results: 5).
-  Typische Suchen:
-  - `is:unread` — Ungelesene Mails
-  - `newer_than:7d` — Mails der letzten 7 Tage
-  - `label:inbox -label:Bewerbung -label:Sonstige Mails` — Mails ohne Kategorisierung
-  Passe die Suche an die Anweisung des Users an. Wenn der User keine spezifische Suche angibt, verwende `label:inbox -label:Bewerbung -label:Sonstige Mails` um nur noch nicht kategorisierte Mails zu finden.
+  ### Schritt 2: Unkategorisierte Mails finden
+  `gmail_search_emails` mit query: `in:inbox has:nouserlabels` und max_results: 5.
+  IMMER genau diese Query. NIEMALS den User-Prompt als Suchbegriff verwenden.
 
-  ### Schritt 3: Fuer jede E-Mail
+  ### Schritt 3: Pro E-Mail verarbeiten
+  Fuer jede gefundene E-Mail:
+  1. `gmail_read_email` — Inhalt lesen
+  2. Entscheidungsbaum durchgehen (siehe Agent-Config) → Kategorie bestimmen
+  3. Nur bei echten Bewerbungen: `gmail_get_attachment` → CV analysieren → Sprachlevel + Standort
+  4. `gmail_set_labels` — Labels setzen (ein Bewerbung/*-Label ODER "Sonstige Mails", plus ggf. Sprachlevel + Standort)
 
-  **3a) E-Mail lesen**
-  Lies den vollstaendigen Inhalt mit `gmail_read_email`.
-
-  **Entscheidungsbaum fuer jede E-Mail:**
+  ### Schritt 4: Bericht im festen Format
   ```
-  1. Ist der originale Absender ein Personalvermittler?
-     JA → Sonstige Mails (FERTIG)
-     NEIN → weiter zu 2.
-  2. Enthaelt die Mail eine echte Eigenbewerbung?
-     (ICH-Form, eigener CV, oder Portal-Eingang von jobs.adacor.com)
-     JA → weiter zu 3.
-     NEIN → Sonstige Mails (FERTIG)
-  3. Welche Stelle? Cloud Developer/Cloud Engineer → passende Stelle. Andere → Initiativ.
+  **[Anzahl] E-Mails verarbeitet:**
+
+  1. **[Betreff]** → [Label] | [Sprachlevel] | [Standort]
+     [Einzeiler Begruendung]
+
+  2. **[Betreff]** → Sonstige Mails
+     [Einzeiler Begruendung]
   ```
-
-  **Hinweise**: Mails sind oft weitergeleitet ("WG:") — das ist normal, bewerte den ORIGINALEN Absender/Inhalt im Body. Auch fachfremde Bewerbungen (z.B. Bauingenieur) sind ECHTE Bewerbungen → Initiativ. Portal-Eingaenge (Adacor Karriere, wordpress@jobs.adacor.com) sind ECHTE Bewerbungen.
-
-  **3b) Vermittler-Check**
-  Pruefe auf Personalvermittler: Domain mit personal/hiring/recruiting, WIR-Form, dritte Person, Vermittler-Sprache (Bewerberpool, Personalie, wechselwillig).
-  Wenn Vermittler → Sofort "Sonstige Mails", KEIN CV lesen.
-
-  **3c) Kategorie bestimmen**
-  Echte Bewerbung: ICH-Form, eigene Motivation/CV, oder Portal-Eingang.
-  Sonstige: Newsletter, Spam, Cold Sales, externe Jobportal-Mails, leere Test-Mails.
-
-  **3d) CV analysieren (nur bei echten Bewerbungen aus 3c)**
-  Wenn die E-Mail einen Anhang hat (PDF, DOCX):
-  1. Lies den Anhang mit `gmail_get_attachment`
-  2. Bestimme das **Deutsch-Sprachlevel**:
-     - A = Grundkenntnisse (A1/A2)
-     - B = Gute Kenntnisse (B1/B2)
-     - C = Sehr gut bis Muttersprache (C1/C2, "verhandlungssicher", "fliessend", "Muttersprache")
-     - WICHTIG: Explizite Angabe im CV hat IMMER Vorrang (z.B. "Deutsch B2" → B). Nur ohne Angabe aus Kontext ableiten.
-  3. Bestimme den **Standort** (NUR aktuelle Adresse, NICHT Geburtsort/Nationalitaet):
-     - DE = Aktuelle Adresse in Deutschland
-     - EU = Aktuelle Adresse in EU-Land (nicht Deutschland)
-     - World = Aktuelle Adresse ausserhalb der EU
-
-  **3e) Labels setzen**
-  Setze mit `gmail_set_labels` alle ermittelten Labels auf einmal:
-  - Immer: ein Bewerbung/*-Label
-  - Bei Bewerbungen mit CV: zusaetzlich Sprachlevel/* und Standort/*
-
-  ### Schritt 4: Zusammenfassung
-  Erstelle einen Bericht:
-  - Welche E-Mails wurden verarbeitet
-  - Welche Labels wurden jeweils gesetzt
-  - Bei Bewerbungen: Kurzinfo zu Stelle, Sprachlevel, Standort mit Begruendung
+  Bei Sonstigen entfallen Sprachlevel/Standort. Keine Einleitung, nur die Liste.
 
 workflow:
   steps:
     - id: labels
       action: tool
       tool: gmail_list_labels
-      description: "Verfuegbare Labels und deren IDs abrufen"
+      description: "Label-IDs abrufen"
     - id: search
       action: tool
       tool: gmail_search_emails
-      description: "Zu verarbeitende E-Mails suchen"
+      params:
+        query: "in:inbox has:nouserlabels"
+        max_results: 5
+      description: "Naechste 5 unkategorisierte E-Mails finden"
     - id: process
       action: tool
       tool: gmail_read_email
-      description: "Jede E-Mail lesen und kategorisieren"
+      description: "E-Mail lesen und kategorisieren"
     - id: cv
       action: tool
       tool: gmail_get_attachment
-      description: "Bei Bewerbungen: CV-Anhang lesen und analysieren"
+      description: "CV-Anhang analysieren (nur bei Bewerbungen)"
     - id: label
       action: tool
       tool: gmail_set_labels
-      description: "Ermittelte Labels auf die E-Mail setzen"
+      description: "Labels setzen"
     - id: report
       action: respond
-      description: "Zusammenfassung der Kategorisierung"
+      description: "Bericht im festen Format ausgeben"
 
 output:
   format: markdown
