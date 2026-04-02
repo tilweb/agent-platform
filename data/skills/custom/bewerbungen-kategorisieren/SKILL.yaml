@@ -56,27 +56,37 @@ instructions: |
   **3a) E-Mail lesen**
   Lies den vollstaendigen Inhalt mit `gmail_read_email`.
 
-  **3b) Kategorie bestimmen (aus Mail-Body)**
-  Die Unterscheidung erfordert sorgfaeltige Analyse. Pruefe:
+  **3b) ZUERST: Vermittler-Check**
+  ACHTUNG: Der Betreff ist KEIN zuverlaessiger Indikator! Vermittler schreiben oft "Bewerbung als X" in den Betreff. Pruefe IMMER zuerst den Body und die Absender-Domain.
+
+  Pruefe auf Personalvermittler/Headhunter:
+  - **Domain-Check**: Enthaelt die Absender-Domain Woerter wie personal, hiring, recruiting, headhunt, staffing, talent, hr-consult, manpower, hays, randstad?
+  - **WIR-Form**: "wir moechten vorstellen", "konnten wir aufnehmen", "unser Kandidat"
+  - **Dritte Person**: "er/sie sucht", "der Kandidat verfuegt ueber"
+  - **Vermittler-Sprache**: "Bewerberpool", "Personalie", "Profil", "wechselwillig"
+
+  Wenn Vermittler erkannt → Sofort "Bewerbung/Sonstige Mails", KEIN CV lesen, weiter zur naechsten Mail.
+
+  **3c) Kategorie bestimmen (nur wenn kein Vermittler)**
 
   **Echte Bewerbung** (→ Bewerbung/[Stelle] oder Bewerbung/Initiativ):
   - Person bewirbt sich SELBST (ICH-Form, eigene Motivation, eigener CV)
-  - Betreff: "Bewerbung als...", "Application for...", "Stelle als..."
-  - Individuelles Anschreiben + CV im Anhang
+  - ICH-Form: "ich bewerbe mich", "ich moechte mich vorstellen"
+  - Individuelles Anschreiben + eigener CV im Anhang
 
   **Sonstige Mails** (→ Bewerbung/Sonstige Mails):
-  - **Personalvermittler/Headhunter**: Stellen Kandidaten vor (WIR-Form, "unser Kandidat", Firmen-Signatur einer Personalberatung, Vermittlungskonditionen)
   - **Jobportal-Benachrichtigungen**: Automatische Mails von StepStone, Indeed, LinkedIn, XING
   - **Newsletter, Werbung**: HR-Trends, Recruiting-Software, Messe-Einladungen
   - **Interne Mails**: Weiterleitungen, Rueckfragen, Team-Kommunikation
   - **Reine Anfragen**: "Haben Sie offene Stellen?" ohne Bewerbungscharakter
 
   **Entscheidungshilfe bei Grenzfaellen:**
+  - Absender-Domain einer Personalberatung? → Sofort Sonstige
   - ICH-Form + eigener CV = Bewerbung
   - WIR-Form + "Kandidatenprofil" = Personalvermittler = Sonstige
   - Im Zweifel den Anhang lesen: persoenliches Anschreiben vs. Kandidatenprofil einer Agentur
 
-  **3c) CV analysieren (nur bei echten Bewerbungen)**
+  **3d) CV analysieren (nur bei echten Bewerbungen aus 3c)**
   Wenn die E-Mail einen Anhang hat (PDF, DOCX):
   1. Lies den Anhang mit `gmail_get_attachment`
   2. Bestimme das **Deutsch-Sprachlevel**:
@@ -89,7 +99,7 @@ instructions: |
      - EU = Adresse in EU-Land (nicht Deutschland)
      - World = Adresse ausserhalb der EU
 
-  **3d) Labels setzen**
+  **3e) Labels setzen**
   Setze mit `gmail_set_labels` alle ermittelten Labels auf einmal:
   - Immer: ein Bewerbung/*-Label
   - Bei Bewerbungen mit CV: zusaetzlich Sprachlevel/* und Standort/*

@@ -15,6 +15,7 @@ tools:
   - gmail_get_attachment
 delegatable: true
 active: true
+maxIterations: 30
 skillMode: allow
 skills:
   - bewerbungen-kategorisieren
@@ -52,18 +53,37 @@ Die Labels sind hierarchisch organisiert:
 
 ## Kategorisierung: Bewerbung vs. Sonstiges
 
-Die Unterscheidung ist oft nicht trivial. Pruefe anhand dieser Kriterien:
+ACHTUNG: Der Betreff einer E-Mail ist KEIN zuverlaessiger Indikator! Personalvermittler schreiben oft "Bewerbung als Cloud Engineer" in den Betreff, obwohl es KEINE echte Bewerbung ist. Du MUSST immer den Body lesen und die folgende Pruefkette einhalten.
 
-### Echte Bewerbung (→ Bewerbung/[Stelle] oder Bewerbung/Initiativ)
-Eine E-Mail ist eine echte Bewerbung, wenn **die Person sich SELBST bewirbt**:
-- Betreff enthaelt "Bewerbung", "Application", "Stelle als...", "Position als..."
-- Der Absender stellt sich vor und bezieht sich auf eine Stelle oder das Unternehmen
-- Ein CV/Lebenslauf ist als Anhang beigefuegt
-- Die Person beschreibt ihre Motivation, Erfahrung oder Qualifikation
+### SCHRITT 1: Vermittler-Check (IMMER ZUERST!)
 
-### Sonstige Mails (→ Bewerbung/Sonstige Mails)
-Alles was KEINE direkte Eigenbewerbung ist:
-- **Personalvermittler/Headhunter**: Stellen Kandidaten vor, bieten "Profile" an, sprechen von "unserem Kandidaten/unserer Kandidatin". Erkennbar an: Firmen-Signatur einer Personalberatung, Formulierungen wie "wir moechten Ihnen einen Kandidaten vorstellen", "im Auftrag unseres Kandidaten", Vermittlungsgebuehr/Honorar-Hinweise
+Pruefe ZUERST ob die Mail von einem Personalvermittler/Headhunter stammt. Wenn ja → sofort "Bewerbung/Sonstige Mails", KEINE weiteren Labels, KEIN CV lesen.
+
+**Erkennungsmerkmale Personalvermittler:**
+- Absender-Domain enthaelt: personal, hiring, recruiting, headhunt, staffing, talent, hr-consult, manpower, hays, randstad, robert-half, adecco, kienbaum, michael-page
+- WIR-Form: "wir moechten vorstellen", "konnten wir aufnehmen", "unser Kandidat/unsere Kandidatin"
+- Dritte Person: "er/sie sucht", "der Kandidat verfuegt ueber"
+- Vermittler-Sprache: "Bewerberpool", "Personalie", "Profil", "wechselwilliger Kandidat", "Vermittlung", "Honorar"
+- Firmen-Signatur einer Personalberatung, Geschaeftsbedingungen, AGB
+
+**Beispiel Vermittler-Mail (→ Sonstige Mails):**
+> Betreff: Bewerbung fuer Cloud Engineer (m/w/d)
+> "Vor kurzem konnten wir einen wechselwilligen Kandidaten in unseren Bewerberpool aufnehmen. Er sucht eine neue Herausforderung..."
+> Absender: steffanie@mission-personal-hiring.com
+
+→ WIR-Form, dritte Person, Domain "personal-hiring" → SONSTIGE MAILS
+
+### SCHRITT 2: Echte Bewerbung erkennen (nur wenn Schritt 1 negativ)
+
+Eine E-Mail ist eine echte Bewerbung NUR wenn **die Person sich SELBST bewirbt**:
+- ICH-Form: "ich bewerbe mich", "ich moechte mich vorstellen", "mein Interesse an"
+- Der Absender stellt SICH SELBST vor und bezieht sich auf eine Stelle
+- Eigener CV/Lebenslauf als Anhang (nicht ein "Kandidatenprofil")
+- Eigene Motivation, Erfahrung, Qualifikation in der ersten Person
+
+### SCHRITT 3: Alles andere → Sonstige Mails
+
+Falls weder Vermittler noch echte Bewerbung:
 - **Jobportal-Benachrichtigungen**: Automatische Mails von StepStone, Indeed, LinkedIn, XING etc.
 - **Newsletter**: Recruiting-Newsletter, HR-Trends, Messe-Einladungen
 - **Werbung**: Stellenanzeigen-Platzierung, Recruiting-Software-Angebote
@@ -72,26 +92,26 @@ Alles was KEINE direkte Eigenbewerbung ist:
 - **Reine Anfragen**: "Haben Sie offene Stellen?" ohne konkreten Bewerbungscharakter
 
 ### Entscheidungshilfe bei Grenzfaellen
-1. Spricht die Person in der ICH-Form ueber ihre eigene Bewerbung? → Bewerbung
-2. Spricht jemand in der WIR-Form und stellt eine dritte Person vor? → Sonstige (Vermittler)
-3. Ist ein individueller CV/Anschreiben angehaengt? → Starkes Signal fuer Bewerbung
-4. Enthaelt die Mail Geschaeftsbedingungen, AGB oder Vermittlungs-Konditionen? → Sonstige
-5. Im Zweifel: Lies den Anhang — ein persoenliches Anschreiben vs. ein "Kandidatenprofil" macht den Unterschied
+1. Pruefe die Absender-Domain — Personalberatung? → Sofort Sonstige
+2. Spricht die Person in der ICH-Form ueber IHRE EIGENE Bewerbung? → Bewerbung
+3. Spricht jemand in der WIR-Form und stellt eine dritte Person vor? → Sonstige (Vermittler)
+4. Im Zweifel: Lies den Anhang — persoenliches Anschreiben vs. "Kandidatenprofil" einer Agentur
 
 ## Vorgehen
 
 1. **Labels abrufen**: Zuerst immer `gmail_list_labels` aufrufen, um die aktuellen Label-IDs zu kennen
 2. **E-Mails suchen**: Mit `gmail_search_emails` die zu verarbeitenden E-Mails finden
 3. **E-Mail lesen**: Mit `gmail_read_email` den Inhalt jeder E-Mail lesen
-4. **Kategorisierung (Mail-Body)**: Anhand der obigen Kriterien entscheiden:
-   - Echte Bewerbung auf konkrete Stelle? → Bewerbung/[Stellenname]
-   - Echte Bewerbung ohne Stellenbezug? → Bewerbung/Initiativ
+4. **Vermittler-Check (ZUERST!)**: Pruefe Absender-Domain und Body auf Vermittler-Signale (WIR-Form, dritte Person, Personalberatungs-Domain). Wenn Vermittler → Sofort "Bewerbung/Sonstige Mails" setzen, KEIN CV lesen, weiter zur naechsten Mail.
+5. **Kategorie bestimmen** (nur wenn kein Vermittler):
+   - ICH-Form + Eigenbewerbung auf konkrete Stelle? → Bewerbung/[Stellenname]
+   - ICH-Form + Eigenbewerbung ohne Stellenbezug? → Bewerbung/Initiativ
    - Alles andere? → Bewerbung/Sonstige Mails
-5. **CV analysieren** (nur bei echten Bewerbungen):
+6. **CV analysieren** (nur bei echten Bewerbungen aus Schritt 5):
    - Mit `gmail_get_attachment` den CV/Lebenslauf lesen
    - Deutsch-Sprachlevel bestimmen (A/B/C)
    - Standort/Region bestimmen (DE/EU/World)
-6. **Labels setzen**: Mit `gmail_set_labels` die passenden Labels zuweisen
+7. **Labels setzen**: Mit `gmail_set_labels` die passenden Labels zuweisen
 
 ## Wichtige Regeln
 
