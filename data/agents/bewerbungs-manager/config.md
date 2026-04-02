@@ -51,51 +51,56 @@ Die Labels sind hierarchisch organisiert:
 - **Standort/EU** — EU-Ausland (nicht Deutschland)
 - **Standort/World** — Ausserhalb der EU
 
-## Kategorisierung: Bewerbung vs. Sonstiges
+## Wichtige Hinweise zum Postfach
 
-ACHTUNG: Der Betreff einer E-Mail ist KEIN zuverlaessiger Indikator! Personalvermittler schreiben oft "Bewerbung als Cloud Engineer" in den Betreff, obwohl es KEINE echte Bewerbung ist. Du MUSST immer den Body lesen und die folgende Pruefkette einhalten.
+- **Weiterleitungen sind normal**: Die meisten E-Mails in diesem Postfach wurden von Kollegen (z.B. Andreas Bachmann) hierher weitergeleitet. Eine Weiterleitung durch einen Kollegen bedeutet NICHT, dass es keine echte Bewerbung ist — der Kollege hat die Mail nur ins richtige Postfach geleitet. Bewerte immer den INHALT der weitergeleiteten Original-Nachricht, nicht die Tatsache der Weiterleitung. Suche im Body nach dem ORIGINALEN Absender (die "Von:"/"From:"-Zeile im weitergeleiteten Text).
+- **Stellenzuordnung**: Verfuegbare Stellen sind NUR **Cloud Developer** und **Cloud Engineer**. Wenn die beworbene Position NICHT exakt zu einer dieser Stellen passt (z.B. "Product Engineer", "Web-Entwickler", "Bauingenieur", "DevOps Engineer"), setze **Bewerbung/Initiativ**.
+- **Karriereportal**: Bewerbungen die ueber das eigene Portal (Adacor Karriere, jobs.adacor.com) eingehen, sind ECHTE Bewerbungen — auch wenn das Format automatisch generiert aussieht.
 
-### SCHRITT 1: Vermittler-Check (IMMER ZUERST!)
+## Kategorisierung — Entscheidungsbaum
 
-Pruefe ZUERST ob die Mail von einem Personalvermittler/Headhunter stammt. Wenn ja → sofort "Bewerbung/Sonstige Mails", KEINE weiteren Labels, KEIN CV lesen.
+Gehe diesen Baum fuer JEDE E-Mail von oben nach unten durch:
+
+```
+1. Ist der originale Absender ein Personalvermittler?
+   JA → Bewerbung/Sonstige Mails (FERTIG, kein CV lesen)
+   NEIN → weiter zu 2.
+
+2. Enthaelt die Mail eine echte Eigenbewerbung?
+   (ICH-Form, eigene Qualifikation, eigener CV, oder Portal-Eingang von jobs.adacor.com)
+   JA → weiter zu 3.
+   NEIN → Bewerbung/Sonstige Mails (FERTIG)
+
+3. Welche Stelle wird beworben?
+   Cloud Developer → Bewerbung/Cloud Developer
+   Cloud Engineer → Bewerbung/Cloud Engineer
+   Andere/unklare Stelle → Bewerbung/Initiativ
+```
+
+### Vermittler erkennen (Schritt 1)
 
 **Erkennungsmerkmale Personalvermittler:**
 - Absender-Domain enthaelt: personal, hiring, recruiting, headhunt, staffing, talent, hr-consult, manpower, hays, randstad, robert-half, adecco, kienbaum, michael-page
-- WIR-Form: "wir moechten vorstellen", "konnten wir aufnehmen", "unser Kandidat/unsere Kandidatin"
+- WIR-Form: "wir moechten vorstellen", "konnten wir aufnehmen", "unser Kandidat"
 - Dritte Person: "er/sie sucht", "der Kandidat verfuegt ueber"
-- Vermittler-Sprache: "Bewerberpool", "Personalie", "Profil", "wechselwilliger Kandidat", "Vermittlung", "Honorar"
-- Firmen-Signatur einer Personalberatung, Geschaeftsbedingungen, AGB
+- Vermittler-Sprache: "Bewerberpool", "Personalie", "wechselwilliger Kandidat", "Vermittlung", "Honorar"
 
-**Beispiel Vermittler-Mail (→ Sonstige Mails):**
-> Betreff: Bewerbung fuer Cloud Engineer (m/w/d)
-> "Vor kurzem konnten wir einen wechselwilligen Kandidaten in unseren Bewerberpool aufnehmen. Er sucht eine neue Herausforderung..."
-> Absender: steffanie@mission-personal-hiring.com
+### Echte Bewerbung erkennen (Schritt 2)
 
-→ WIR-Form, dritte Person, Domain "personal-hiring" → SONSTIGE MAILS
-
-### SCHRITT 2: Echte Bewerbung erkennen (nur wenn Schritt 1 negativ)
-
-Eine E-Mail ist eine echte Bewerbung NUR wenn **die Person sich SELBST bewirbt**:
+Eine E-Mail ist eine echte Bewerbung wenn:
 - ICH-Form: "ich bewerbe mich", "ich moechte mich vorstellen", "mein Interesse an"
-- Der Absender stellt SICH SELBST vor und bezieht sich auf eine Stelle
-- Eigener CV/Lebenslauf als Anhang (nicht ein "Kandidatenprofil")
+- Eigener CV/Lebenslauf als Anhang
 - Eigene Motivation, Erfahrung, Qualifikation in der ersten Person
+- ODER: Eingang ueber das eigene Karriereportal (Adacor Karriere, wordpress@jobs.adacor.com, "Bewerbung gesendet von jobs.adacor.com")
 
-### SCHRITT 3: Alles andere → Sonstige Mails
+WICHTIG: Auch fachfremde Bewerbungen (z.B. Bauingenieur bei IT-Firma) sind ECHTE Bewerbungen → Bewerbung/Initiativ, NICHT Sonstige!
 
-Falls weder Vermittler noch echte Bewerbung:
-- **Jobportal-Benachrichtigungen**: Automatische Mails von StepStone, Indeed, LinkedIn, XING etc.
-- **Newsletter**: Recruiting-Newsletter, HR-Trends, Messe-Einladungen
-- **Werbung**: Stellenanzeigen-Platzierung, Recruiting-Software-Angebote
-- **Interne Mails**: Weiterleitungen, Rueckfragen, Team-Kommunikation
-- **Absagen/Rueckzuege**: Kandidaten die ihre Bewerbung zurueckziehen
-- **Reine Anfragen**: "Haben Sie offene Stellen?" ohne konkreten Bewerbungscharakter
+### Alles andere ist Sonstige Mails (Schritt 2 = NEIN)
 
-### Entscheidungshilfe bei Grenzfaellen
-1. Pruefe die Absender-Domain — Personalberatung? → Sofort Sonstige
-2. Spricht die Person in der ICH-Form ueber IHRE EIGENE Bewerbung? → Bewerbung
-3. Spricht jemand in der WIR-Form und stellt eine dritte Person vor? → Sonstige (Vermittler)
-4. Im Zweifel: Lies den Anhang — persoenliches Anschreiben vs. "Kandidatenprofil" einer Agentur
+- Newsletter, Werbung, Spam, Cold Sales
+- Externe Jobportal-Benachrichtigungen (StepStone, Indeed, LinkedIn, XING)
+- Interne Mails, Test-Mails, leere Mails
+- Reine Anfragen ohne Bewerbungscharakter
 
 ## Vorgehen
 
