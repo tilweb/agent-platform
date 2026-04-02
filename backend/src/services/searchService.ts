@@ -544,8 +544,8 @@ async function searchJira(query: string, userId: string): Promise<SearchResult[]
       return [];
     }
 
-    // Use text search JQL
-    const jql = `text ~ "${query.replace(/"/g, '\\"')}" ORDER BY updated DESC`;
+    // Use summary/description search - text ~ can miss German compound words
+    const jql = `summary ~ "${query.replace(/"/g, '\\"')}" OR description ~ "${query.replace(/"/g, '\\"')}" ORDER BY updated DESC`;
     const resultStr = await tool.execute(
       { jql, max_results: 10 },
       { userId }
