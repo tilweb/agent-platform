@@ -8,6 +8,7 @@ import { getGoogleMailConfig, GOOGLE_USERINFO_URL } from './config';
 import { createSearchEmailsTool } from './tools/search-emails';
 import { createReadEmailTool } from './tools/read-email';
 import { createListLabelsTool } from './tools/list-labels';
+import { createSetLabelsTool } from './tools/set-labels';
 
 interface GoogleUserInfo {
   id: string;
@@ -35,7 +36,7 @@ export class GoogleMailProvider extends OAuthProvider {
 ### 3. OAuth Scopes erweitern
 Falls du bereits einen OAuth-Client für Google Drive hast:
 1. Gehe zu "APIs & Services" → "Google Auth Platform" → "Datenzugriff"
-2. Füge den Scope \`.../auth/gmail.readonly\` hinzu
+2. Füge den Scope \`.../auth/gmail.modify\` hinzu
 
 ### 4. OAuth Client
 Du kannst dieselbe Client-ID und dasselbe Client-Secret wie für Google Drive verwenden.
@@ -112,6 +113,7 @@ Google Mail nutzt dieselben Credentials wie Google Drive. Du musst lediglich die
         createSearchEmailsTool(this.id),
         createReadEmailTool(this.id),
         createListLabelsTool(this.id),
+        createSetLabelsTool(this.id),
       ];
     }
     return this.tools;
