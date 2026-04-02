@@ -45,11 +45,12 @@ instructions: |
 
   ### Schritt 2: E-Mails finden
   Suche mit `gmail_search_emails` nach den zu verarbeitenden E-Mails.
+  **WICHTIG: Maximal 5 E-Mails pro Durchlauf verarbeiten** (max_results: 5).
   Typische Suchen:
   - `is:unread` — Ungelesene Mails
   - `newer_than:7d` — Mails der letzten 7 Tage
-  - `label:inbox -label:Bewerbung` — Mails ohne Bewerbungs-Label
-  Passe die Suche an die Anweisung des Users an.
+  - `label:inbox -label:Bewerbung -label:Sonstige Mails` — Mails ohne Kategorisierung
+  Passe die Suche an die Anweisung des Users an. Wenn der User keine spezifische Suche angibt, verwende `label:inbox -label:Bewerbung -label:Sonstige Mails` um nur noch nicht kategorisierte Mails zu finden.
 
   ### Schritt 3: Fuer jede E-Mail
 

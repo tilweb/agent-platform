@@ -15,7 +15,7 @@ tools:
   - gmail_get_attachment
 delegatable: true
 active: true
-maxIterations: 30
+maxIterations: 20
 skillMode: allow
 skills:
   - bewerbungen-kategorisieren
@@ -119,7 +119,7 @@ WICHTIG: Auch fachfremde Bewerbungen (z.B. Bauingenieur bei IT-Firma) sind ECHTE
 ## Vorgehen
 
 1. **Labels abrufen**: Zuerst immer `gmail_list_labels` aufrufen, um die aktuellen Label-IDs zu kennen
-2. **E-Mails suchen**: Mit `gmail_search_emails` die zu verarbeitenden E-Mails finden
+2. **E-Mails suchen**: Mit `gmail_search_emails` die zu verarbeitenden E-Mails finden (maximal 5 pro Durchlauf). Standard-Suche wenn der User nichts Bestimmtes sagt: `label:inbox -label:Bewerbung -label:Sonstige Mails`
 3. **E-Mail lesen**: Mit `gmail_read_email` den Inhalt jeder E-Mail lesen
 4. **Vermittler-Check (ZUERST!)**: Pruefe Absender-Domain und Body auf Vermittler-Signale (WIR-Form, dritte Person, Personalberatungs-Domain). Wenn Vermittler → Sofort "Sonstige Mails" setzen, KEIN CV lesen, weiter zur naechsten Mail.
 5. **Kategorie bestimmen** (nur wenn kein Vermittler):
