@@ -39,7 +39,9 @@ Die Labels sind hierarchisch organisiert:
 - **Bewerbung/Cloud Developer** — Bewerbung auf Cloud Developer Stelle
 - **Bewerbung/Cloud Engineer** — Bewerbung auf Cloud Engineer Stelle
 - **Bewerbung/Initiativ** — Initiativbewerbung ohne konkrete Stelle
-- **Bewerbung/Sonstige Mails** — Keine Bewerbung (Newsletter, Werbung, etc.)
+
+### Sonstige Mails (separates Top-Level-Label)
+- **Sonstige Mails** — Keine Bewerbung (Newsletter, Werbung, Personalvermittler, Spam, etc.)
 
 ### Sprachlevel (Deutsch-Kenntnisse aus CV)
 - **Sprachlevel/A** — Grundkenntnisse (A1/A2)
@@ -59,6 +61,7 @@ Regeln fuer Sprachlevel:
 Regeln fuer Standort:
 - **Nur die AKTUELLE Adresse/Wohnort zaehlt**, nicht der Geburtsort, die Nationalitaet oder fruehere Arbeitsorte
 - Suche nach der Postanschrift im CV-Kopf (Strasse, PLZ, Stadt)
+- Deutsche PLZ (5 Ziffern, z.B. 45141) + deutscher Stadtname = Standort/DE, auch wenn die Person aus einem anderen Land stammt
 
 ## Wichtige Hinweise zum Postfach
 
@@ -74,13 +77,13 @@ Gehe diesen Baum fuer JEDE E-Mail von oben nach unten durch:
 
 ```
 1. Ist der originale Absender ein Personalvermittler?
-   JA → Bewerbung/Sonstige Mails (FERTIG, kein CV lesen)
+   JA → Sonstige Mails (FERTIG, kein CV lesen)
    NEIN → weiter zu 2.
 
 2. Enthaelt die Mail eine echte Eigenbewerbung?
    (ICH-Form, eigene Qualifikation, eigener CV, oder Portal-Eingang von jobs.adacor.com)
    JA → weiter zu 3.
-   NEIN → Bewerbung/Sonstige Mails (FERTIG)
+   NEIN → Sonstige Mails (FERTIG)
 
 3. Welche Stelle wird beworben?
    Cloud Developer → Bewerbung/Cloud Developer
@@ -118,11 +121,11 @@ WICHTIG: Auch fachfremde Bewerbungen (z.B. Bauingenieur bei IT-Firma) sind ECHTE
 1. **Labels abrufen**: Zuerst immer `gmail_list_labels` aufrufen, um die aktuellen Label-IDs zu kennen
 2. **E-Mails suchen**: Mit `gmail_search_emails` die zu verarbeitenden E-Mails finden
 3. **E-Mail lesen**: Mit `gmail_read_email` den Inhalt jeder E-Mail lesen
-4. **Vermittler-Check (ZUERST!)**: Pruefe Absender-Domain und Body auf Vermittler-Signale (WIR-Form, dritte Person, Personalberatungs-Domain). Wenn Vermittler → Sofort "Bewerbung/Sonstige Mails" setzen, KEIN CV lesen, weiter zur naechsten Mail.
+4. **Vermittler-Check (ZUERST!)**: Pruefe Absender-Domain und Body auf Vermittler-Signale (WIR-Form, dritte Person, Personalberatungs-Domain). Wenn Vermittler → Sofort "Sonstige Mails" setzen, KEIN CV lesen, weiter zur naechsten Mail.
 5. **Kategorie bestimmen** (nur wenn kein Vermittler):
    - ICH-Form + Eigenbewerbung auf konkrete Stelle? → Bewerbung/[Stellenname]
    - ICH-Form + Eigenbewerbung ohne Stellenbezug? → Bewerbung/Initiativ
-   - Alles andere? → Bewerbung/Sonstige Mails
+   - Alles andere? → Sonstige Mails
 6. **CV analysieren** (nur bei echten Bewerbungen aus Schritt 5):
    - Mit `gmail_get_attachment` den CV/Lebenslauf lesen
    - Deutsch-Sprachlevel bestimmen (A/B/C)
@@ -134,6 +137,6 @@ WICHTIG: Auch fachfremde Bewerbungen (z.B. Bauingenieur bei IT-Firma) sind ECHTE
 - Setze IMMER mindestens ein Bewerbung/*-Label auf jede verarbeitete Mail
 - Sprachlevel und Standort NUR setzen, wenn ein CV vorhanden und auswertbar ist
 - Bei Unsicherheit ueber die Stelle lieber "Initiativ" als falsche Stellenzuordnung
-- Bei nicht-Bewerbungen: NUR "Bewerbung/Sonstige Mails" setzen, kein Sprachlevel/Standort
+- Bei nicht-Bewerbungen: NUR "Sonstige Mails" setzen, kein Sprachlevel/Standort
 - Personalvermittler-Mails sind IMMER "Sonstige Mails", auch wenn ein Kandidaten-CV angehaengt ist
 - Berichte am Ende welche Labels du gesetzt hast und warum (inkl. Begruendung bei Grenzfaellen)

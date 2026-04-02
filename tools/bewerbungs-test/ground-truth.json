@@ -1,0 +1,149 @@
+{
+  "description": "Ground truth categorizations for Bewerbungs-Manager testing",
+  "labels": {
+    "bewerbung": ["Bewerbung/Cloud Developer", "Bewerbung/Cloud Engineer", "Bewerbung/Initiativ", "Sonstige Mails"],
+    "sprachlevel": ["Sprachlevel/A", "Sprachlevel/B", "Sprachlevel/C"],
+    "standort": ["Standort/DE", "Standort/EU", "Standort/World"]
+  },
+  "emails": [
+    {
+      "id": "19d4f55cf140d58a",
+      "subject": "WG: Adacor Karriere: Eingehende Bewerbung auf Product Engineer - Media & Publishing Domain",
+      "originalSender": "Faheem ur-Rahman <faheem383@outlook.com>",
+      "bewerbung": "Bewerbung/Initiativ",
+      "sprachlevel": "Sprachlevel/B",
+      "sprachlevelAlsoAccept": ["Sprachlevel/C"],
+      "standort": "Standort/DE",
+      "reasoning": "Echte Bewerbung via Portal. CV: Kein explizites Sprachlevel angegeben, aber deutscher CV und 8+ Jahre Berufserfahrung in DE. Adresse: Hanu, Deutschland."
+    },
+    {
+      "id": "19d4f55080a3b6a9",
+      "subject": "WG: [Extern] Fwd: Web-Entwickler - Muaz Alhamdan",
+      "originalSender": "Muaz Alhamdan <muazalhamdan@controllerunplugged.com>",
+      "bewerbung": "Bewerbung/Initiativ",
+      "sprachlevel": "Sprachlevel/B",
+      "sprachlevelAlsoAccept": ["Sprachlevel/C"],
+      "standort": "Standort/DE",
+      "reasoning": "CV: Grafische Tabelle zeigt B, aber C1-Kurse besucht. PDF-Konvertierung verliert Tabellenlayout — LLM sieht nur 'Sprachkurse bis C1'. Beide akzeptabel."
+    },
+    {
+      "id": "19d4f54879e9b33b",
+      "subject": "WG: Initiativbewerbung als DevOps Engineer (Site Reliability Engineer, Cloud Engineer)",
+      "originalSender": "Seyma Oezer <oezer.s@firemail.de>",
+      "bewerbung": "Bewerbung/Cloud Engineer",
+      "bewerbungAlsoAccept": ["Bewerbung/Initiativ"],
+      "sprachlevel": "Sprachlevel/C",
+      "standort": "Standort/DE",
+      "reasoning": "CV: Explizit 'Deutsch C1/C2 (advanced level)', deutsche Staatsangehoerigkkeit. Adresse: Wolfsberger Str. 33a, 59348 Luedinghausen."
+    },
+    {
+      "id": "19d4f53823534593",
+      "subject": "WG: Embedded System Engineer-IoT Engineer - Feras Alkhatib",
+      "originalSender": "Feras Alkhatib <ferasalkhatib@webshop-hoster.de>",
+      "bewerbung": "Bewerbung/Initiativ",
+      "sprachlevel": "Sprachlevel/C",
+      "standort": "Standort/DE",
+      "reasoning": "CV: Explizit 'Deutsch (C1 Niveau)'. Adresse: Bahnstrasse 80, 42327 Wuppertal."
+    },
+    {
+      "id": "19d4f52231282e3e",
+      "subject": "WG: [Extern] Fwd: Bauingenieur - Mohammed Shaheen",
+      "originalSender": "Mohammed Shaheen <mohammedshaheen@teamshall.com>",
+      "bewerbung": "Bewerbung/Initiativ",
+      "sprachlevel": "Sprachlevel/B",
+      "standort": "Standort/DE",
+      "reasoning": "CV: Explizit 'Deutsch B2'. Adresse: Auf der Union 24, 45141 Essen Deutschland."
+    },
+    {
+      "id": "19d4f51a37d3e6dd",
+      "subject": "WG: [Extern] Bewerbung um ein Pflichtpraktikum als Fachinformatiker fuer Anwendungsentwicklung",
+      "originalSender": "Onur Aydogmus <a.onur1@proton.me>",
+      "bewerbung": "Bewerbung/Initiativ",
+      "sprachlevel": "Sprachlevel/B",
+      "sprachlevelAlsoAccept": ["Sprachlevel/C"],
+      "standort": "Standort/DE",
+      "reasoning": "CV: Kein explizites Sprachlevel. Deutsches Abitur, jahrelange Arbeit in DE. B konservativ, C moeglich."
+    },
+    {
+      "id": "19d4f51322bb4d3c",
+      "subject": "WG: [Extern] Bewerbung fuer Cloud Engineer (m/w/d)",
+      "originalSender": "Steffanie Anthony <steffanie@mission-personal-hiring.com>",
+      "bewerbung": "Sonstige Mails",
+      "sprachlevel": null,
+      "standort": null,
+      "reasoning": "PERSONALVERMITTLER. Kein CV lesen, keine Sprachlevel/Standort Labels."
+    },
+    {
+      "id": "19d4f4cb4c1729ba",
+      "subject": "WG: [Extern] Andreas, kurze Frage",
+      "originalSender": "Marcus Weyh <marcus.weyh@effizienzmaster.net>",
+      "bewerbung": "Sonstige Mails",
+      "sprachlevel": null,
+      "standort": null,
+      "reasoning": "Cold Sales. Keine Bewerbung."
+    },
+    {
+      "id": "19d4f4bdd9bdc220",
+      "subject": "WG: [Extern] HR Festival 2026",
+      "originalSender": "Dennis Utter <dennis.utter@leadingemployer2026.de>",
+      "bewerbung": "Sonstige Mails",
+      "sprachlevel": null,
+      "standort": null,
+      "reasoning": "HR-Event-Marketing."
+    },
+    {
+      "id": "19d4f4b64b9515b1",
+      "subject": "WG: [Extern] Unsere Tipps fuer April – Ihre kununu Terminuebersicht",
+      "originalSender": "Medina von kununu <masterclass@info.kununu.com>",
+      "bewerbung": "Sonstige Mails",
+      "sprachlevel": null,
+      "standort": null,
+      "reasoning": "Newsletter."
+    },
+    {
+      "id": "19d4f4ab7544f77d",
+      "subject": "WG: Send your message to IT decision makers instantly",
+      "originalSender": "Sandra Harding <sandrahading@gmail.com>",
+      "bewerbung": "Sonstige Mails",
+      "sprachlevel": null,
+      "standort": null,
+      "reasoning": "Spam."
+    },
+    {
+      "id": "19d4ed9c5efaff06",
+      "subject": "WG: [Extern] Frohe Ostern mit News aus der CIC-Welt",
+      "originalSender": "Emma von CIC Consulting <info@cic-consulting.de>",
+      "bewerbung": "Sonstige Mails",
+      "sprachlevel": null,
+      "standort": null,
+      "reasoning": "Newsletter."
+    },
+    {
+      "id": "19d4ed446c940176",
+      "subject": "Bewerbung 3",
+      "originalSender": "Andreas Bachmann (intern)",
+      "bewerbung": "Sonstige Mails",
+      "sprachlevel": null,
+      "standort": null,
+      "reasoning": "Leere Test-Mail."
+    },
+    {
+      "id": "19d4ed36cc963de0",
+      "subject": "Bewerbung 2",
+      "originalSender": "Andreas Bachmann (intern)",
+      "bewerbung": "Sonstige Mails",
+      "sprachlevel": null,
+      "standort": null,
+      "reasoning": "Leere Test-Mail."
+    },
+    {
+      "id": "19d4ec39abd3a747",
+      "subject": "Test",
+      "originalSender": "Andreas Bachmann (intern)",
+      "bewerbung": "Sonstige Mails",
+      "sprachlevel": null,
+      "standort": null,
+      "reasoning": "Leere Test-Mail."
+    }
+  ]
+}

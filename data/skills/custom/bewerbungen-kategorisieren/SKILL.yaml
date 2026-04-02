@@ -59,12 +59,12 @@ instructions: |
   **Entscheidungsbaum fuer jede E-Mail:**
   ```
   1. Ist der originale Absender ein Personalvermittler?
-     JA → Bewerbung/Sonstige Mails (FERTIG)
+     JA → Sonstige Mails (FERTIG)
      NEIN → weiter zu 2.
   2. Enthaelt die Mail eine echte Eigenbewerbung?
      (ICH-Form, eigener CV, oder Portal-Eingang von jobs.adacor.com)
      JA → weiter zu 3.
-     NEIN → Bewerbung/Sonstige Mails (FERTIG)
+     NEIN → Sonstige Mails (FERTIG)
   3. Welche Stelle? Cloud Developer/Cloud Engineer → passende Stelle. Andere → Initiativ.
   ```
 
@@ -72,7 +72,7 @@ instructions: |
 
   **3b) Vermittler-Check**
   Pruefe auf Personalvermittler: Domain mit personal/hiring/recruiting, WIR-Form, dritte Person, Vermittler-Sprache (Bewerberpool, Personalie, wechselwillig).
-  Wenn Vermittler → Sofort "Bewerbung/Sonstige Mails", KEIN CV lesen.
+  Wenn Vermittler → Sofort "Sonstige Mails", KEIN CV lesen.
 
   **3c) Kategorie bestimmen**
   Echte Bewerbung: ICH-Form, eigene Motivation/CV, oder Portal-Eingang.
