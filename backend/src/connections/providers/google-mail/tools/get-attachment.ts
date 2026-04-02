@@ -223,6 +223,12 @@ async function convertViaMarkitdown(
     throw new Error(`Markitdown conversion failed: ${response.status} - ${error}`);
   }
 
-  const result = await response.json() as { markdown?: string; text?: string; content?: string };
-  return result.markdown || result.text || result.content || '';
+  // Markitdown API may return JSON or plain text depending on version
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const result = await response.json() as { markdown?: string; text?: string; content?: string };
+    return result.markdown || result.text || result.content || '';
+  }
+  // Plain text response
+  return await response.text();
 }

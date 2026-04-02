@@ -46,14 +46,25 @@ Die Labels sind hierarchisch organisiert:
 - **Sprachlevel/B** — Gute Kenntnisse (B1/B2)
 - **Sprachlevel/C** — Sehr gute bis muttersprachliche Kenntnisse (C1/C2/Muttersprache)
 
-### Standort (Wohnort/Region aus CV)
-- **Standort/DE** — Deutschland
-- **Standort/EU** — EU-Ausland (nicht Deutschland)
-- **Standort/World** — Ausserhalb der EU
+Regeln fuer Sprachlevel:
+- **Explizite Angabe im CV hat IMMER Vorrang** (z.B. "Deutsch B2" → Sprachlevel/B, auch wenn der CV auf Deutsch ist)
+- Nur wenn KEIN Level angegeben ist: deutsche Staatsangehoerigkeit oder deutscher Name → C wahrscheinlich
+- C1-Kurse besucht aber Selbsteinschaetzung niedriger → die Selbsteinschaetzung zaehlt
+
+### Standort (AKTUELLER Wohnort aus CV)
+- **Standort/DE** — Aktuelle Adresse in Deutschland
+- **Standort/EU** — Aktuelle Adresse in EU-Land (nicht Deutschland)
+- **Standort/World** — Aktuelle Adresse ausserhalb der EU
+
+Regeln fuer Standort:
+- **Nur die AKTUELLE Adresse/Wohnort zaehlt**, nicht der Geburtsort, die Nationalitaet oder fruehere Arbeitsorte
+- Suche nach der Postanschrift im CV-Kopf (Strasse, PLZ, Stadt)
 
 ## Wichtige Hinweise zum Postfach
 
-- **Weiterleitungen sind normal**: Die meisten E-Mails in diesem Postfach wurden von Kollegen (z.B. Andreas Bachmann) hierher weitergeleitet. Eine Weiterleitung durch einen Kollegen bedeutet NICHT, dass es keine echte Bewerbung ist — der Kollege hat die Mail nur ins richtige Postfach geleitet. Bewerte immer den INHALT der weitergeleiteten Original-Nachricht, nicht die Tatsache der Weiterleitung. Suche im Body nach dem ORIGINALEN Absender (die "Von:"/"From:"-Zeile im weitergeleiteten Text).
+- **ALLE E-Mails sind weitergeleitet**: In diesem Postfach kommen fast alle E-Mails als Weiterleitung von Kollegen an (z.B. Andreas Bachmann @adacor.com). Das "Von"-Feld in den E-Mail-Headern zeigt daher den WEITERLEITENDEN Kollegen, NICHT den eigentlichen Absender. Das ist voellig normal und bedeutet NICHT, dass es keine Bewerbung ist.
+- **Du MUSST im Body nach dem ORIGINALEN Absender suchen**: Schaue nach Zeilen wie "Von:", "From:", "Gesendet:", "Absender:" im weitergeleiteten Text. Der dort genannte Absender und dessen Nachricht sind das, was du kategorisieren sollst.
+- **Niemals eine Mail als "Sonstige" einstufen nur weil sie von @adacor.com weitergeleitet wurde!**
 - **Stellenzuordnung**: Verfuegbare Stellen sind NUR **Cloud Developer** und **Cloud Engineer**. Wenn die beworbene Position NICHT exakt zu einer dieser Stellen passt (z.B. "Product Engineer", "Web-Entwickler", "Bauingenieur", "DevOps Engineer"), setze **Bewerbung/Initiativ**.
 - **Karriereportal**: Bewerbungen die ueber das eigene Portal (Adacor Karriere, jobs.adacor.com) eingehen, sind ECHTE Bewerbungen — auch wenn das Format automatisch generiert aussieht.
 

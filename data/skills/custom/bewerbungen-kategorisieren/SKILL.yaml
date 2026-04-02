@@ -82,14 +82,14 @@ instructions: |
   Wenn die E-Mail einen Anhang hat (PDF, DOCX):
   1. Lies den Anhang mit `gmail_get_attachment`
   2. Bestimme das **Deutsch-Sprachlevel**:
-     - A = Grundkenntnisse (A1/A2, "Grundkenntnisse", "basic")
-     - B = Gute Kenntnisse (B1/B2, "gute Kenntnisse", "intermediate", "gut")
-     - C = Sehr gut bis Muttersprache (C1/C2, "verhandlungssicher", "fliessend", "Muttersprache", "native")
-     - Hinweis: Ist der CV auf Deutsch verfasst und die Person hat einen deutschen Namen, ist C wahrscheinlich
-  3. Bestimme den **Standort**:
-     - DE = Adresse/Wohnort in Deutschland
-     - EU = Adresse in EU-Land (nicht Deutschland)
-     - World = Adresse ausserhalb der EU
+     - A = Grundkenntnisse (A1/A2)
+     - B = Gute Kenntnisse (B1/B2)
+     - C = Sehr gut bis Muttersprache (C1/C2, "verhandlungssicher", "fliessend", "Muttersprache")
+     - WICHTIG: Explizite Angabe im CV hat IMMER Vorrang (z.B. "Deutsch B2" → B). Nur ohne Angabe aus Kontext ableiten.
+  3. Bestimme den **Standort** (NUR aktuelle Adresse, NICHT Geburtsort/Nationalitaet):
+     - DE = Aktuelle Adresse in Deutschland
+     - EU = Aktuelle Adresse in EU-Land (nicht Deutschland)
+     - World = Aktuelle Adresse ausserhalb der EU
 
   **3e) Labels setzen**
   Setze mit `gmail_set_labels` alle ermittelten Labels auf einmal:
