@@ -9,6 +9,7 @@ import { createSearchEmailsTool } from './tools/search-emails';
 import { createReadEmailTool } from './tools/read-email';
 import { createListLabelsTool } from './tools/list-labels';
 import { createSetLabelsTool } from './tools/set-labels';
+import { createGetAttachmentTool } from './tools/get-attachment';
 
 interface GoogleUserInfo {
   id: string;
@@ -114,6 +115,7 @@ Google Mail nutzt dieselben Credentials wie Google Drive. Du musst lediglich die
         createReadEmailTool(this.id),
         createListLabelsTool(this.id),
         createSetLabelsTool(this.id),
+        createGetAttachmentTool(this.id),
       ];
     }
     return this.tools;
