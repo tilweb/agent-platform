@@ -250,9 +250,25 @@ function Sidebar() {
   const { user, isAuthenticated, logout } = useAuth();
   const { enabledApps } = useApps();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [verwaltungOpen, setVerwaltungOpen] = useState(() => {
+    try { return localStorage.getItem('sidebar-verwaltung-open') !== 'false'; } catch { return true; }
+  });
   const dropdownRef = useRef(null);
 
   const isActive = (path) => currentPath === path;
+
+  // Persist verwaltung collapse state
+  useEffect(() => {
+    try { localStorage.setItem('sidebar-verwaltung-open', String(verwaltungOpen)); } catch {}
+  }, [verwaltungOpen]);
+
+  // Auto-open if a verwaltung item is active
+  const verwaltungPaths = ['/agents', '/skills', '/tools', '/memory', '/tasks', '/tables', '/extraction'];
+  useEffect(() => {
+    if (verwaltungPaths.some(p => currentPath === p || currentPath.startsWith(p + '/'))) {
+      setVerwaltungOpen(true);
+    }
+  }, [currentPath]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -349,12 +365,34 @@ function Sidebar() {
             </div>
             <span>Spaces</span>
           </Link>
+
+          <Link
+            to="/knowledge"
+            style={{
+              ...sidebarStyles.navItem,
+              ...(isActive('/knowledge') ? sidebarStyles.navItemActive : {}),
+            }}
+          >
+            <div style={sidebarStyles.iconWrapper}>
+              <KnowledgeIcon color={navIconColors.knowledge} />
+            </div>
+            <span>Knowledge Base</span>
+          </Link>
         </div>
 
-        {/* Management */}
+        {/* Management - collapsible */}
         <div style={sidebarStyles.section}>
-          <div style={sidebarStyles.sectionTitle}>Verwaltung</div>
+          <div
+            style={{ ...sidebarStyles.sectionTitle, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none' }}
+            onClick={() => setVerwaltungOpen(prev => !prev)}
+          >
+            <span>Verwaltung</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `transform ${theme.transitions.fast}`, transform: verwaltungOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
 
+          {verwaltungOpen && <>
           <Link
             to="/agents"
             style={{
@@ -392,19 +430,6 @@ function Sidebar() {
               <ToolsIcon color={navIconColors.tools} />
             </div>
             <span>Tools</span>
-          </Link>
-
-          <Link
-            to="/knowledge"
-            style={{
-              ...sidebarStyles.navItem,
-              ...(isActive('/knowledge') ? sidebarStyles.navItemActive : {}),
-            }}
-          >
-            <div style={sidebarStyles.iconWrapper}>
-              <KnowledgeIcon color={navIconColors.knowledge} />
-            </div>
-            <span>Knowledge Base</span>
           </Link>
 
           <Link
@@ -458,6 +483,7 @@ function Sidebar() {
             </div>
             <span>Extraktion</span>
           </Link>
+          </>}
         </div>
 
         {/* Apps Section - only show if enabled apps exist */}
