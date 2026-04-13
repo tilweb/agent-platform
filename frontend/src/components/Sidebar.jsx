@@ -253,20 +253,29 @@ function Sidebar() {
   const [verwaltungOpen, setVerwaltungOpen] = useState(() => {
     try { return localStorage.getItem('sidebar-verwaltung-open') !== 'false'; } catch { return true; }
   });
+  const [appsOpen, setAppsOpen] = useState(() => {
+    try { return localStorage.getItem('sidebar-apps-open') !== 'false'; } catch { return true; }
+  });
   const dropdownRef = useRef(null);
 
   const isActive = (path) => currentPath === path;
 
-  // Persist verwaltung collapse state
+  // Persist collapse states
   useEffect(() => {
     try { localStorage.setItem('sidebar-verwaltung-open', String(verwaltungOpen)); } catch {}
   }, [verwaltungOpen]);
+  useEffect(() => {
+    try { localStorage.setItem('sidebar-apps-open', String(appsOpen)); } catch {}
+  }, [appsOpen]);
 
-  // Auto-open if a verwaltung item is active
+  // Auto-open sections if an item inside is active
   const verwaltungPaths = ['/agents', '/skills', '/tools', '/memory', '/tasks', '/tables', '/extraction'];
   useEffect(() => {
     if (verwaltungPaths.some(p => currentPath === p || currentPath.startsWith(p + '/'))) {
       setVerwaltungOpen(true);
+    }
+    if (currentPath.startsWith('/apps/')) {
+      setAppsOpen(true);
     }
   }, [currentPath]);
 
@@ -380,6 +389,39 @@ function Sidebar() {
           </Link>
         </div>
 
+        {/* Apps Section - collapsible, above Verwaltung */}
+        {enabledApps.length > 0 && (
+          <div style={sidebarStyles.section}>
+            <div
+              style={{ ...sidebarStyles.sectionTitle, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none' }}
+              onClick={() => setAppsOpen(prev => !prev)}
+            >
+              <span>Apps</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `transform ${theme.transitions.fast}`, transform: appsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+
+            {appsOpen && <>
+            {enabledApps.map((app) => (
+              <Link
+                key={app.id}
+                to={`/apps/${app.id}`}
+                style={{
+                  ...sidebarStyles.navItem,
+                  ...(currentPath.startsWith(`/apps/${app.id}`) ? sidebarStyles.navItemActive : {}),
+                }}
+              >
+                <div style={sidebarStyles.iconWrapper}>
+                  <AppNavIcon iconId={app.icon} />
+                </div>
+                <span>{app.name}</span>
+              </Link>
+            ))}
+            </>}
+          </div>
+        )}
+
         {/* Management - collapsible */}
         <div style={sidebarStyles.section}>
           <div
@@ -486,28 +528,6 @@ function Sidebar() {
           </>}
         </div>
 
-        {/* Apps Section - only show if enabled apps exist */}
-        {enabledApps.length > 0 && (
-          <div style={sidebarStyles.section}>
-            <div style={sidebarStyles.sectionTitle}>Apps</div>
-
-            {enabledApps.map((app) => (
-              <Link
-                key={app.id}
-                to={`/apps/${app.id}`}
-                style={{
-                  ...sidebarStyles.navItem,
-                  ...(currentPath.startsWith(`/apps/${app.id}`) ? sidebarStyles.navItemActive : {}),
-                }}
-              >
-                <div style={sidebarStyles.iconWrapper}>
-                  <AppNavIcon iconId={app.icon} />
-                </div>
-                <span>{app.name}</span>
-              </Link>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* User Section */}
