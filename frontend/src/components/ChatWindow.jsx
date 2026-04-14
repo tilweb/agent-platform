@@ -2373,6 +2373,8 @@ function extractGeneratedImage(content) {
             parsed.url = `/api/images/generated/${parsed.imageId}`;
           }
           let textContent = content.substring(0, startIdx) + content.substring(endIdx);
+          // Remove empty code blocks left behind when JSON was inside ```json ... ```
+          textContent = textContent.replace(/```(?:json)?\s*\n?\s*```/g, '');
           textContent = textContent.replace(/!\[[^\]]*\]\([^)]*generated[^)]*\)/g, '');
           textContent = textContent.replace(/!\[[^\]]*\]\(\)/g, '');
           // Remove hallucinated external image URLs (imgur, unsplash, etc.)
@@ -2541,8 +2543,12 @@ function AssistantMessage({ content, isStreaming: isCurrentlyStreaming, onMarkAs
     // Pattern: ```json\n{"agent_id": ...}\n``` or ```\n{"agent_id": ...}\n```
     textContent = textContent.replace(/```(?:json)?\s*\n?\s*\{\s*"agent_id"\s*:[^`]*```/gs, '');
     textContent = textContent.replace(/```(?:json)?\s*\n?\s*\{\s*"name"\s*:\s*"[^"]*"\s*,\s*"arguments"\s*:[^`]*```/gs, '');
+    // Remove generated_image/exported_document JSON code blocks (LLM may echo tool results)
+    textContent = textContent.replace(/```(?:json)?\s*\n?\s*\{\s*"type"\s*:\s*"(?:generated_image|exported_document)"[^`]*```/gs, '');
     // Remove inline tool call JSON (without code blocks)
     textContent = textContent.replace(/\{\s*"agent_id"\s*:\s*"[^"]+"\s*,\s*"task"\s*:\s*"[^"]*"[^}]*\}/gs, '');
+    // Remove empty code blocks (leftover from JSON extraction)
+    textContent = textContent.replace(/```(?:json)?\s*\n?\s*```/g, '');
     textContent = textContent.replace(/\n{3,}/g, '\n\n').trim();
   }
 

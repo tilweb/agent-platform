@@ -125,6 +125,7 @@ export class ImageEditTool extends ApiTool {
       });
 
       // Return structured JSON that the frontend can parse
+      // Note: revisedPrompt is excluded to avoid bloating LLM context (saved in metadata)
       return JSON.stringify({
         type: 'generated_image',
         imageId: saved.id,
@@ -134,7 +135,6 @@ export class ImageEditTool extends ApiTool {
         provider: result.provider,
         model: result.model,
         durationMs: result.durationMs,
-        revisedPrompt: image.revisedPrompt,
       });
     } catch (error: any) {
       return JSON.stringify({

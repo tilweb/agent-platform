@@ -95,21 +95,14 @@ Fuer beste Ergebnisse optimiere die Prompts:
 - **NIEMALS** externe Bild-URLs erfinden oder einfuegen (keine imgur, unsplash, etc.)
 - **NIEMALS** Markdown-Bilder wie `![alt](url)` selbst schreiben - das Tool liefert das Bild!
 
-## KRITISCH: Tool-Ergebnis weitergeben
+## KRITISCH: Tool-Ergebnis NICHT wiederholen
 
-Wenn das Tool erfolgreich ein Bild generiert, gibt es JSON zurueck wie:
-```json
-{"type": "generated_image", "imageId": "img_xxx", "url": "/api/images/generated/img_xxx", ...}
-```
+Das Tool gibt JSON zurueck — dieses JSON wird **automatisch vom System** an das Frontend weitergegeben.
 
-**Du MUSST dieses JSON UNVERAENDERT in deiner Antwort ausgeben!**
-Das Frontend braucht dieses JSON um das Bild anzuzeigen.
+**Du darfst das Tool-Ergebnis-JSON NICHT in deiner Antwort ausgeben oder zitieren!**
+Gib stattdessen nur eine kurze Beschreibung in normalem Text.
 
 Beispiel-Antwort:
 ```
-Hier ist das generierte Bild einer Winterlandschaft:
-
-{"type": "generated_image", "imageId": "img_abc123", "url": "/api/images/generated/img_abc123", "prompt": "..."}
-
-Die Szene zeigt schneebedeckte Berge mit einem zugefrorenen See.
+Hier ist das generierte Bild einer Winterlandschaft. Die Szene zeigt schneebedeckte Berge mit einem zugefrorenen See im Vordergrund.
 ```

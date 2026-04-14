@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-14
+
+### Fix: Image-to-Image ging an falschen fal.ai Endpoint (generierte statt editierte)
+- fal.ai hat separate Endpoints: `/model-id` (text-to-image) vs `/model-id/edit` (image-to-image)
+- Adapter sendet jetzt bei sourceImage automatisch an `/edit` Sub-Endpoint
+- aspect_ratio wird bei img2img auf 'auto' gesetzt (erhält Seitenverhältnis des Quellbildes)
+
+### Fix: "JSON undefined" Artefakt bei Bildgenerierung + edit_image Bild nicht angezeigt
+- Frontend: Leere Code-Bloecke (```json ... ```) nach JSON-Extraktion werden entfernt
+- Frontend: LLM-Echo von generated_image/exported_document JSON wird aus dem Text entfernt
+- Backend: revisedPrompt aus Tool-Ergebnis-JSON entfernt (blaeht LLM-Kontext auf, wird in Metadaten gespeichert)
+- Backend: edit_image Tool-Ergebnis wird jetzt in importantToolResults getrackt (fehlte, daher wurde Bild-JSON nie injiziert)
+- Agent-Config: Bild-Generator soll Tool-Ergebnis-JSON nicht mehr in Antwort wiederholen (System injiziert automatisch)
+
 ## 2026-03-28
 
 ### Feature: Drei neue Connection-Provider (Google Mail, Jira, Docuware)

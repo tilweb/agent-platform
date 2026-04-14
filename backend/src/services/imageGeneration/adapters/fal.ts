@@ -47,7 +47,7 @@ export async function generateWithFal(
     const requestBody: Record<string, any> = {
       prompt,
       num_images: numberOfImages,
-      aspect_ratio: aspectRatio,
+      aspect_ratio: sourceImage ? 'auto' : aspectRatio, // 'auto' preserves source image proportions
       output_format: 'png',
       sync_mode: true,
     };
@@ -59,7 +59,11 @@ export async function generateWithFal(
     }
 
     // Build endpoint: base_url contains https://fal.run, model.id contains the path
-    const endpoint = `${resolvedModel.base_url}/${resolvedModel.model.id}`;
+    // For image-to-image, fal.ai uses a separate /edit sub-endpoint
+    const modelPath = sourceImage
+      ? `${resolvedModel.model.id}/edit`
+      : resolvedModel.model.id;
+    const endpoint = `${resolvedModel.base_url}/${modelPath}`;
     console.log('[FalImageAdapter] Calling endpoint:', endpoint);
     console.log('[FalImageAdapter] Is image-to-image:', !!sourceImage);
 
