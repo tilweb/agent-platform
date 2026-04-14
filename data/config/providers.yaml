@@ -196,8 +196,8 @@ active:
     provider_id: adacor-ai-audio
     model_id: whisper-v3-large-30s
   text_to_image:
-    provider_id: null
-    model_id: null
+    provider_id: google-gemini-imagen
+    model_id: gemini-2.5-flash-image
   image_to_image:
     provider_id: google-gemini-imagen
     model_id: gemini-2.5-flash-image

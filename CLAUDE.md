@@ -84,5 +84,5 @@ Bun ist nicht im PATH. Verwende den vollstaendigen Pfad:
 - Chat: Adacor AI - Qwen3 30B (api_mode: openai)
 - Vision: Adacor AI - Mistral 3 24B
 - STT: Adacor AI Audio - Whisper V3
-- Text-to-Image: (kein aktiver Provider — Nebius Flux deprecated)
+- Text-to-Image: Google Gemini 2.5 Flash Image
 - Image-to-Image: Google Gemini 2.5 Flash
