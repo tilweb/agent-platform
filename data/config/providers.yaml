@@ -182,6 +182,32 @@ providers:
           - 3:4
         max_images_per_request: 4
         default: true
+  - id: fal-ai
+    name: fal.ai
+    api_mode: fal_ai
+    base_url: https://fal.run
+    api_key_env: FAL_AI_API_KEY
+    enabled: true
+    company_region: world
+    datacenter_country: US
+    models:
+      - id: fal-ai/nano-banana-pro
+        name: Nano Banana Pro (Gemini 3 Pro Image)
+        type: image_gen
+        capabilities:
+          - text_to_image
+          - image_to_image
+        supported_aspects:
+          - 1:1
+          - 16:9
+          - 9:16
+          - 4:3
+          - 3:4
+          - 21:9
+          - 3:2
+          - 2:3
+        max_images_per_request: 4
+        default: true
 active:
   chat:
     provider_id: adacor
@@ -196,8 +222,8 @@ active:
     provider_id: adacor-ai-audio
     model_id: whisper-v3-large-30s
   text_to_image:
-    provider_id: google-gemini-imagen
-    model_id: gemini-2.5-flash-image
+    provider_id: fal-ai
+    model_id: fal-ai/nano-banana-pro
   image_to_image:
     provider_id: google-gemini-imagen
     model_id: gemini-2.5-flash-image

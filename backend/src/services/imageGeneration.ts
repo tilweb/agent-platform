@@ -6,6 +6,7 @@
 import { resolveActiveModel, resolveModel, getImageGenModels } from './providers';
 import { generateWithGoogle } from './imageGeneration/adapters/google';
 import { generateWithOpenAI } from './imageGeneration/adapters/openai';
+import { generateWithFal } from './imageGeneration/adapters/fal';
 import type { ResolvedModel, ProviderConfig, ModelConfig } from '../types/providers';
 
 export interface ImageGenerationRequest {
@@ -158,6 +159,13 @@ export class ImageGenerationService {
     try {
       if (apiMode === 'google_gemini') {
         result = await generateWithGoogle({
+          prompt: request.prompt,
+          sourceImage: request.sourceImage,
+          aspectRatio: request.aspectRatio,
+          numberOfImages: request.numberOfImages,
+        }, resolvedModel);
+      } else if (apiMode === 'fal_ai') {
+        result = await generateWithFal({
           prompt: request.prompt,
           sourceImage: request.sourceImage,
           aspectRatio: request.aspectRatio,

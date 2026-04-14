@@ -2,7 +2,7 @@
  * Multi-Provider LLM System Types
  */
 
-export type ApiMode = 'openai' | 'ollama' | 'google_gemini' | 'openai_images';
+export type ApiMode = 'openai' | 'ollama' | 'google_gemini' | 'openai_images' | 'fal_ai';
 export type ModelType = 'llm' | 'vllm' | 'tts' | 'stt' | 'image_gen';
 export type ModelCapability = 'chat' | 'function_calling' | 'vision' | 'speech' | 'transcription' | 'text_to_image' | 'image_to_image';
 
