@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-04-16
+
+### Fix: Projektauftrag-Export fehlte Felder und KI-Analyse war komplett defekt
+- Projektbeschreibung (description) wird jetzt exportiert
+- Aufgaben-Tabelle enthält jetzt Start-/Enddatum
+- Budget-Tabelle enthält jetzt Kategorie
+- Organisation enthält jetzt E-Mail und Verfügbarkeit
+- Stakeholder enthält jetzt Erwartungen
+- Metadata nutzt echtes Erstelldatum + Änderungsdatum statt aktuellem Datum
+- Gesamtbewertung: Feldnamen korrigiert (hauptstaerken statt strengths, hauptrisiken statt weaknesses, handlungsempfehlungen statt recommendations)
+- Gesamtbewertung: Score, Projektreife, Risikolevel, StepScores, Risikofaktoren werden jetzt exportiert
+- Schritt-Analysen (stepAnalyses) werden als Übersichtstabelle exportiert
+- Wahrscheinlichkeit/Auswirkung/Interesse/Einfluss werden als deutsche Labels exportiert
+- Task-Status 'open' wird jetzt korrekt als 'Offen' gemappt
+
+### Redesign: PDF- und Word-Export modernisiert
+- Neue Farbpalette: Warm-Slate + Teal-Akzent statt schweres Dunkelblau
+- Section-Titel: Teal-Akzentbalken links statt Unterstrich
+- Tabellen: Heller Header, nur horizontale Linien, kein dunkler Navy-Hintergrund
+- Key-Value: Feine gestrichelte Trennlinien
+- Listen: Teal-farbene Bullets
+- Footer mit Dokumenttitel + Seitenzahl
+- Calibri-Font für Word, bessere Typografie-Hierarchie
+
+### Feat: Statusbericht-Export als PDF, Word und Excel
+- Neuer Endpoint: GET /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte/:sbId/export/:format
+- Mapping-Funktion mapStatusberichtToDocument() mit allen Sektionen:
+  Berichts-Info, Management Summary, Ziele + Kriterien-Tracking, Meilensteine (Soll/Ist),
+  Aufgaben, Quality Gates, Kosten-Übersicht + Monatstabelle, Risiken
+- ExportDropdown in Statusbericht-Tab-Leiste integriert
+- Gleiches modernes Design wie Projektauftrag-Export
+
+### Feat: Earned Value Management + Risikobewegung im Statusbericht-Export
+- EVM-Kennzahlen: CPI, SPI, Earned Value als Key-Value-Section mit farbigen Ampel-Dots
+- Kumulierte Kostenentwicklung: Monats-Tabelle mit Plan, Ist, EV, CPI, SPI
+- Terminprognose: Soll-Ende vs. EAC-Termin (berechnet via SPI), Abweichung in Tagen
+- Budgetprognose: Budget vs. EAC (Budget/CPI), Abweichung in EUR
+- Risikobewegung (Soll → Ist): Vergleich Projektauftrag-Risiken mit Statusbericht-Tracking
+  (Wahrscheinlichkeit/Auswirkung), Trend-Berechnung (verbessert/verschlechtert/unverändert)
+- Zusammenfassung der Risikobewegung mit Anzahl pro Trend-Kategorie
+
 ## 2026-04-14
 
 ### Fix: Image-to-Image ging an falschen fal.ai Endpoint (generierte statt editierte)

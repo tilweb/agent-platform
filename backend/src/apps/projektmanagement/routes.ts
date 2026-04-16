@@ -44,6 +44,7 @@ import {
 import {
   generateDocument,
   mapProjektauftragToDocument,
+  mapStatusberichtToDocument,
   getMimeType,
   getFileExtension,
   type DocumentFormat,
@@ -827,6 +828,60 @@ projektmanagement.delete('/projektauftraege/:projektId/statusberichte/:sbId', as
       { error: error instanceof Error ? error.message : 'Failed to delete Statusbericht' },
       500
     );
+  }
+});
+
+/**
+ * GET /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte/:sbId/export/:format
+ * Export Statusbericht in specified format
+ * Supported formats: json, xlsx, pdf, docx
+ */
+projektmanagement.get('/projektauftraege/:projektId/statusberichte/:sbId/export/:format', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const sbId = c.req.param('sbId');
+    const format = c.req.param('format');
+
+    const sb = await getStatusberichtDetails(projektId, sbId);
+    if (!sb) {
+      return c.json({ error: 'Statusbericht not found' }, 404);
+    }
+
+    // Get full Projektauftrag for EVM + Risk Movement calculations
+    const projekt = await getProjektauftragDetails(projektId);
+    const projektName = projekt?.name || 'Unbekannt';
+
+    const filename = sanitizeFilename(`Statusbericht_${sb.nummer}_${projektName}`);
+
+    switch (format) {
+      case 'json':
+        return c.json(sb, 200, {
+          'Content-Disposition': `attachment; filename="${filename}.json"`,
+        });
+
+      case 'xlsx':
+      case 'pdf':
+      case 'docx': {
+        const documentData = mapStatusberichtToDocument(sb, projekt);
+        const buffer = await generateDocument(documentData, format as DocumentFormat);
+        const mimeType = getMimeType(format as DocumentFormat);
+        const extension = getFileExtension(format as DocumentFormat);
+
+        return new Response(buffer, {
+          headers: {
+            'Content-Type': mimeType,
+            'Content-Disposition': `attachment; filename="${filename}.${extension}"`,
+            'Content-Length': buffer.length.toString(),
+          },
+        });
+      }
+
+      default:
+        return c.json({ error: 'Unsupported format. Use json, xlsx, pdf, or docx.' }, 400);
+    }
+  } catch (error) {
+    console.error('Error exporting Statusbericht:', error);
+    return c.json({ error: 'Failed to export Statusbericht' }, 500);
   }
 });
 

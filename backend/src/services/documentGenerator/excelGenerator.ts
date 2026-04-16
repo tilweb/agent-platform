@@ -4,20 +4,41 @@
  */
 
 import ExcelJS from 'exceljs';
-import type { DocumentData, DocumentSection, TableContent, KeyValueContent, ListContent } from './index';
+import type { DocumentData, DocumentSection, TableContent, KeyValueContent, ListContent, CellValue, RichCell } from './types';
 
-// Style constants
+// Style constants — aligned with the modern slate+teal palette
 const COLORS = {
-  primary: '2563EB',
-  primaryLight: 'DBEAFE',
-  header: '1E3A8A',
-  headerText: 'FFFFFF',
-  border: 'E5E7EB',
-  text: '1F2937',
-  textMuted: '6B7280',
-  success: '059669',
-  successLight: 'D1FAE5',
+  accent: '0F766E',
+  accentLight: 'F0FDFA',
+  text: '1E293B',
+  textMuted: '64748B',
+  bg: 'F8FAFC',
+  bgAlt: 'F1F5F9',
+  border: 'E2E8F0',
+  white: 'FFFFFF',
+  totalBg: 'ECFDF5',
 };
+
+// ── Rich Cell Helper ─────────────────────────────────────
+
+function isRichCell(val: any): val is RichCell {
+  return val && typeof val === 'object' && 'text' in val;
+}
+
+function cellToText(cell: CellValue): string {
+  if (isRichCell(cell)) return cell.text;
+  return cell?.toString() || '-';
+}
+
+function cellToDisplayText(cell: CellValue): string {
+  if (isRichCell(cell) && cell.dot) return `● ${cell.text}`;
+  return cellToText(cell);
+}
+
+function getCellDotColor(cell: CellValue): string | null {
+  if (isRichCell(cell) && cell.dot) return cell.dot.replace('#', '');
+  return null;
+}
 
 /**
  * Generate an Excel document from DocumentData
@@ -27,8 +48,7 @@ export async function generateExcel(data: DocumentData): Promise<Buffer> {
   workbook.creator = 'Agent Platform';
   workbook.created = new Date();
 
-  // Main sheet with all content
-  const sheet = workbook.addWorksheet('Projektauftrag', {
+  const sheet = workbook.addWorksheet('Daten', {
     pageSetup: {
       paperSize: 9, // A4
       orientation: 'portrait',
@@ -51,7 +71,7 @@ export async function generateExcel(data: DocumentData): Promise<Buffer> {
   // Title
   const titleCell = sheet.getCell(`A${currentRow}`);
   titleCell.value = data.title;
-  titleCell.font = { size: 18, bold: true, color: { argb: COLORS.header } };
+  titleCell.font = { size: 16, bold: true, color: { argb: COLORS.text } };
   sheet.mergeCells(`A${currentRow}:E${currentRow}`);
   currentRow += 2;
 
@@ -59,7 +79,7 @@ export async function generateExcel(data: DocumentData): Promise<Buffer> {
   for (const [key, value] of Object.entries(data.metadata)) {
     const keyCell = sheet.getCell(`A${currentRow}`);
     keyCell.value = key;
-    keyCell.font = { bold: true, color: { argb: COLORS.textMuted } };
+    keyCell.font = { color: { argb: COLORS.textMuted } };
 
     const valueCell = sheet.getCell(`B${currentRow}`);
     valueCell.value = value;
@@ -76,7 +96,6 @@ export async function generateExcel(data: DocumentData): Promise<Buffer> {
     currentRow += 2;
   }
 
-  // Generate buffer
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
 }
@@ -91,15 +110,15 @@ function renderSection(
   // Section title
   const titleCell = sheet.getCell(`A${currentRow}`);
   titleCell.value = section.title;
-  titleCell.font = { size: 14, bold: true, color: { argb: COLORS.primary } };
+  titleCell.font = { size: 12, bold: true, color: { argb: COLORS.accent } };
   sheet.mergeCells(`A${currentRow}:E${currentRow}`);
 
-  // Underline
+  // Accent underline
   currentRow++;
   for (let col = 1; col <= 5; col++) {
     const cell = sheet.getCell(currentRow, col);
     cell.border = {
-      top: { style: 'thin', color: { argb: COLORS.primary } },
+      top: { style: 'thin', color: { argb: COLORS.accent } },
     };
   }
   currentRow++;
@@ -143,21 +162,19 @@ function renderText(sheet: ExcelJS.Worksheet, content: string, startRow: number)
 function renderTable(sheet: ExcelJS.Worksheet, content: TableContent, startRow: number): number {
   let currentRow = startRow;
 
-  // Headers
+  // Headers — light background, muted text (modern style)
   content.headers.forEach((header, index) => {
     const cell = sheet.getCell(currentRow, index + 1);
     cell.value = header;
-    cell.font = { bold: true, color: { argb: COLORS.headerText } };
+    cell.font = { bold: true, size: 9, color: { argb: COLORS.textMuted } };
     cell.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: COLORS.header },
+      fgColor: { argb: COLORS.bgAlt },
     };
     cell.border = {
       top: { style: 'thin', color: { argb: COLORS.border } },
-      bottom: { style: 'thin', color: { argb: COLORS.border } },
-      left: { style: 'thin', color: { argb: COLORS.border } },
-      right: { style: 'thin', color: { argb: COLORS.border } },
+      bottom: { style: 'medium', color: { argb: COLORS.accent } },
     };
     cell.alignment = { horizontal: 'left', vertical: 'middle' };
   });
@@ -166,24 +183,32 @@ function renderTable(sheet: ExcelJS.Worksheet, content: TableContent, startRow: 
   // Rows
   for (let i = 0; i < content.rows.length; i++) {
     const row = content.rows[i];
-    const isLastRow = i === content.rows.length - 1;
-    const isTotal = row[0]?.toString().toLowerCase().includes('gesamt');
+    const firstText = cellToText(row[0]);
+    const isTotal = firstText.toLowerCase().includes('gesamt');
+    const isLast = i === content.rows.length - 1;
 
-    row.forEach((value, colIndex) => {
+    row.forEach((cellValue, colIndex) => {
       const cell = sheet.getCell(currentRow, colIndex + 1);
-      cell.value = value;
-      cell.font = {
-        bold: isTotal,
-        color: { argb: COLORS.text },
-      };
+      const dotColor = getCellDotColor(cellValue);
+
+      if (dotColor) {
+        // Rich text with colored dot
+        cell.value = {
+          richText: [
+            { text: '● ', font: { color: { argb: dotColor }, size: 10 } },
+            { text: cellToText(cellValue), font: { color: { argb: COLORS.text }, bold: isTotal } },
+          ],
+        };
+      } else {
+        cell.value = cellToText(cellValue);
+        cell.font = { bold: isTotal, color: { argb: COLORS.text } };
+      }
+
       cell.fill = isTotal
-        ? { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.primaryLight } }
-        : { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? 'FFFFFF' : 'F9FAFB' } };
+        ? { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.totalBg } }
+        : { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? COLORS.white : COLORS.bg } };
       cell.border = {
-        top: { style: 'thin', color: { argb: COLORS.border } },
-        bottom: { style: 'thin', color: { argb: COLORS.border } },
-        left: { style: 'thin', color: { argb: COLORS.border } },
-        right: { style: 'thin', color: { argb: COLORS.border } },
+        bottom: { style: 'thin', color: { argb: isLast ? COLORS.border : COLORS.border } },
       };
       cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
     });
@@ -197,10 +222,14 @@ function renderList(sheet: ExcelJS.Worksheet, content: ListContent, startRow: nu
   let currentRow = startRow;
 
   for (const item of content.items) {
-    const bulletCell = sheet.getCell(`A${currentRow}`);
-    bulletCell.value = `\u2022 ${item}`;
-    bulletCell.font = { color: { argb: COLORS.text } };
-    bulletCell.alignment = { wrapText: true };
+    const cell = sheet.getCell(`A${currentRow}`);
+    cell.value = {
+      richText: [
+        { text: '● ', font: { color: { argb: COLORS.accent } } },
+        { text: item, font: { color: { argb: COLORS.text } } },
+      ],
+    };
+    cell.alignment = { wrapText: true };
     sheet.mergeCells(`A${currentRow}:E${currentRow}`);
     currentRow++;
   }
@@ -214,13 +243,24 @@ function renderKeyValue(sheet: ExcelJS.Worksheet, content: KeyValueContent, star
   for (const item of content.items) {
     const keyCell = sheet.getCell(`A${currentRow}`);
     keyCell.value = item.key;
-    keyCell.font = { bold: true, color: { argb: COLORS.textMuted } };
+    keyCell.font = { color: { argb: COLORS.textMuted } };
 
     const valueCell = sheet.getCell(`B${currentRow}`);
-    valueCell.value = item.value;
-    valueCell.font = { color: { argb: COLORS.text } };
-    sheet.mergeCells(`B${currentRow}:E${currentRow}`);
+    const dotColor = getCellDotColor(item.value);
 
+    if (dotColor) {
+      valueCell.value = {
+        richText: [
+          { text: '● ', font: { color: { argb: dotColor }, size: 11 } },
+          { text: cellToText(item.value), font: { color: { argb: COLORS.text } } },
+        ],
+      };
+    } else {
+      valueCell.value = cellToText(item.value);
+      valueCell.font = { color: { argb: COLORS.text } };
+    }
+
+    sheet.mergeCells(`B${currentRow}:E${currentRow}`);
     currentRow++;
   }
 

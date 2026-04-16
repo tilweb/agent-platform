@@ -283,6 +283,7 @@ const styles = {
   // Statusbericht tabs
   sbTabs: {
     display: 'flex',
+    alignItems: 'center',
     gap: theme.spacing.sm,
     padding: `${theme.spacing.md} ${theme.spacing.xl}`,
     backgroundColor: 'transparent',
@@ -387,6 +388,8 @@ function WizardPage() {
   const [isSbDirty, setIsSbDirty] = useState(false);
   const [isSbCreating, setIsSbCreating] = useState(false);
   const [isSbSaving, setIsSbSaving] = useState(false);
+  const [isSbExporting, setIsSbExporting] = useState(false);
+  const [sbExportingFormat, setSbExportingFormat] = useState(null);
 
   // Load config
   useEffect(() => {
@@ -514,6 +517,48 @@ function WizardPage() {
     } catch (err) {
       console.error('Error deleting Statusbericht:', err);
       alert(err.message);
+    }
+  };
+
+  // Export Statusbericht
+  const handleSbExport = async (format) => {
+    if (!projektauftrag.id || !currentSb?.id) return;
+
+    try {
+      setIsSbExporting(true);
+      setSbExportingFormat(format);
+
+      const response = await fetch(
+        `${API_URL}/apps/projektmanagement/projektauftraege/${projektauftrag.id}/statusberichte/${currentSb.id}/export/${format}`,
+        { credentials: 'include' }
+      );
+
+      if (!response.ok) {
+        throw new Error('Export fehlgeschlagen');
+      }
+
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `Statusbericht_${currentSb.nummer}.${format}`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match) filename = match[1];
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('SB Export error:', error);
+      alert('Export fehlgeschlagen. Bitte versuchen Sie es erneut.');
+    } finally {
+      setIsSbExporting(false);
+      setSbExportingFormat(null);
     }
   };
 
@@ -1080,6 +1125,14 @@ function WizardPage() {
                       </button>
                     );
                   })}
+                  <div style={{ marginLeft: 'auto' }}>
+                    <ExportDropdown
+                      onExport={handleSbExport}
+                      formats={['xlsx', 'pdf', 'docx']}
+                      isLoading={isSbExporting}
+                      loadingFormat={sbExportingFormat}
+                    />
+                  </div>
                 </div>
               )}
               {/* Content */}

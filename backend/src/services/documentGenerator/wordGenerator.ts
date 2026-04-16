@@ -1,6 +1,6 @@
 /**
  * Word Document Generator
- * Generates DOCX files using the docx library
+ * Modern, clean design with refined typography and subtle accents
  */
 
 import {
@@ -13,25 +13,38 @@ import {
   WidthType,
   AlignmentType,
   BorderStyle,
-  HeadingLevel,
   Packer,
   ShadingType,
   convertInchesToTwip,
   PageOrientation,
+  Tab,
+  TabStopPosition,
+  TabStopType,
+  Header,
+  Footer,
+  PageNumber,
 } from 'docx';
-import type { DocumentData, DocumentSection, TableContent, KeyValueContent, ListContent } from './index';
+import type { DocumentData, DocumentSection, TableContent, KeyValueContent, ListContent, CellValue, RichCell } from './types';
 
-// Colors (hex without #)
-const COLORS = {
-  primary: '2563EB',
-  primaryLight: 'DBEAFE',
-  header: '1E3A8A',
-  border: 'E5E7EB',
-  text: '1F2937',
-  textMuted: '6B7280',
+// Modern color palette — warm slate + teal accent (hex without #)
+const C = {
+  accent: '0F766E',       // teal-700
+  accentLight: 'F0FDFA',  // teal-50
+  accentMid: 'CCFBF1',    // teal-100
+  text: '1E293B',         // slate-800
+  textMuted: '64748B',    // slate-500
+  textLight: '94A3B8',    // slate-400
+  bg: 'F8FAFC',           // slate-50
+  bgAlt: 'F1F5F9',        // slate-100
+  border: 'E2E8F0',       // slate-200
   white: 'FFFFFF',
-  altRow: 'F9FAFB',
+  totalBg: 'ECFDF5',      // emerald-50
+  none: '000000',
 };
+
+const noBorder = { style: BorderStyle.NONE, size: 0, color: C.none };
+const thinBorder = { style: BorderStyle.SINGLE, size: 4, color: C.border };
+const accentBorder = { style: BorderStyle.SINGLE, size: 6, color: C.accent };
 
 /**
  * Generate a Word document from DocumentData
@@ -39,76 +52,144 @@ const COLORS = {
 export async function generateWord(data: DocumentData): Promise<Buffer> {
   const children: (Paragraph | Table)[] = [];
 
-  // Title
+  // ── Title ──────────────────────────────────────────
   children.push(
     new Paragraph({
       children: [
         new TextRun({
           text: data.title,
           bold: true,
-          size: 36,
-          color: COLORS.header,
+          size: 40,  // 20pt
+          color: C.text,
+          font: 'Calibri',
         }),
       ],
-      spacing: { after: 400 },
+      spacing: { after: 80 },
     })
   );
 
-  // Metadata
-  const metadataText = Object.entries(data.metadata)
-    .map(([key, value]) => `${key}: ${value}`)
-    .join('  |  ');
+  // Accent line (short teal bar via table)
   children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: metadataText,
-          size: 18,
-          color: COLORS.textMuted,
+    new Table({
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [] })],
+              width: { size: 800, type: WidthType.DXA },
+              shading: { type: ShadingType.SOLID, color: C.accent, fill: C.accent },
+              borders: {
+                top: noBorder, bottom: noBorder, left: noBorder, right: noBorder,
+              },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [] })],
+              width: { size: 8200, type: WidthType.DXA },
+              borders: {
+                top: noBorder, bottom: noBorder, left: noBorder, right: noBorder,
+              },
+            }),
+          ],
+          height: { value: 60, rule: 'exact' as any },
         }),
       ],
-      spacing: { after: 400 },
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: noBorder, bottom: noBorder, left: noBorder, right: noBorder,
+        insideHorizontal: noBorder, insideVertical: noBorder,
+      },
     })
   );
 
-  // Horizontal line (using border)
+  // Spacer
+  children.push(new Paragraph({ children: [], spacing: { after: 120 } }));
+
+  // ── Metadata row ───────────────────────────────────
+  const metaEntries = Object.entries(data.metadata);
+  if (metaEntries.length > 0) {
+    const metaRuns: TextRun[] = [];
+    metaEntries.forEach(([key, value], i) => {
+      metaRuns.push(
+        new TextRun({ text: `${key} `, size: 16, color: C.textLight, font: 'Calibri' }),
+        new TextRun({ text: value, size: 17, color: C.text, font: 'Calibri' }),
+      );
+      if (i < metaEntries.length - 1) {
+        metaRuns.push(
+          new TextRun({ text: '    \u2022    ', size: 16, color: C.border, font: 'Calibri' }),
+        );
+      }
+    });
+
+    children.push(
+      new Paragraph({
+        children: metaRuns,
+        spacing: { after: 240 },
+      })
+    );
+  }
+
+  // Thin separator
   children.push(
     new Paragraph({
       border: {
-        bottom: {
-          style: BorderStyle.SINGLE,
-          size: 6,
-          color: COLORS.border,
-        },
+        bottom: { style: BorderStyle.SINGLE, size: 2, color: C.border },
       },
-      spacing: { after: 400 },
+      spacing: { after: 160 },
     })
   );
 
-  // Sections
+  // ── Sections ───────────────────────────────────────
   for (const section of data.sections) {
-    const sectionContent = renderSection(section);
-    children.push(...sectionContent);
+    children.push(...renderSection(section));
   }
 
   const doc = new Document({
     creator: 'Agent Platform',
     title: data.title,
     description: 'Projektauftrag Export',
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: 'Calibri',
+            size: 20,
+            color: C.text,
+          },
+        },
+      },
+    },
     sections: [
       {
         properties: {
           page: {
-            size: {
-              orientation: PageOrientation.PORTRAIT,
-            },
+            size: { orientation: PageOrientation.PORTRAIT },
             margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
-              left: convertInchesToTwip(1),
+              top: convertInchesToTwip(0.9),
+              right: convertInchesToTwip(0.9),
+              bottom: convertInchesToTwip(0.9),
+              left: convertInchesToTwip(0.9),
             },
           },
+        },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({ text: data.title, size: 14, color: C.textLight, font: 'Calibri' }),
+                  new TextRun({ text: '\t', size: 14 }),
+                  new TextRun({ children: [PageNumber.CURRENT], size: 14, color: C.textLight, font: 'Calibri' }),
+                  new TextRun({ text: ' / ', size: 14, color: C.textLight, font: 'Calibri' }),
+                  new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 14, color: C.textLight, font: 'Calibri' }),
+                ],
+                tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+                border: {
+                  top: { style: BorderStyle.SINGLE, size: 2, color: C.border },
+                },
+                spacing: { before: 100 },
+              }),
+            ],
+          }),
         },
         children,
       },
@@ -119,28 +200,37 @@ export async function generateWord(data: DocumentData): Promise<Buffer> {
   return Buffer.from(buffer);
 }
 
+// ── Section renderer ─────────────────────────────────────
+
 function renderSection(section: DocumentSection): (Paragraph | Table)[] {
   const content: (Paragraph | Table)[] = [];
 
-  // Section title
+  // Spacer before section (no border, just whitespace)
+  content.push(
+    new Paragraph({
+      children: [],
+      spacing: { before: 280 },
+    })
+  );
+
+  // Section title with left accent border (no spacing.before so bar starts at text)
   content.push(
     new Paragraph({
       children: [
         new TextRun({
-          text: section.title,
+          text: section.title.toUpperCase(),
           bold: true,
-          size: 26,
-          color: COLORS.primary,
+          size: 22,  // 11pt
+          color: C.text,
+          font: 'Calibri',
+          characterSpacing: 40,
         }),
       ],
-      spacing: { before: 300, after: 100 },
       border: {
-        bottom: {
-          style: BorderStyle.SINGLE,
-          size: 12,
-          color: COLORS.primary,
-        },
+        left: { style: BorderStyle.SINGLE, size: 18, color: C.accent, space: 8 },
       },
+      spacing: { after: 160 },
+      indent: { left: 80 },
     })
   );
 
@@ -159,16 +249,10 @@ function renderSection(section: DocumentSection): (Paragraph | Table)[] {
       break;
   }
 
-  // Add spacing after section
-  content.push(
-    new Paragraph({
-      children: [],
-      spacing: { after: 200 },
-    })
-  );
-
   return content;
 }
+
+// ── Text ─────────────────────────────────────────────────
 
 function renderText(text: string): Paragraph[] {
   if (!text) return [];
@@ -180,21 +264,62 @@ function renderText(text: string): Paragraph[] {
         children: [
           new TextRun({
             text: line,
-            size: 20,
-            color: COLORS.text,
+            size: 19,
+            color: C.text,
+            font: 'Calibri',
           }),
         ],
-        spacing: { after: 120 },
+        spacing: { after: 100, line: 300 },
       })
   );
 }
 
+// ── Rich Cell Helper ─────────────────────────────────────
+
+function isRichCell(val: any): val is RichCell {
+  return val && typeof val === 'object' && 'text' in val;
+}
+
+function cellToText(cell: CellValue): string {
+  if (isRichCell(cell)) return cell.text;
+  return cell?.toString() || '-';
+}
+
+function cellToTextRuns(cell: CellValue, opts: { size: number; color: string; bold?: boolean }): TextRun[] {
+  if (isRichCell(cell) && cell.dot) {
+    return [
+      new TextRun({
+        text: '\u25CF ',
+        size: opts.size,
+        color: cell.dot.replace('#', ''),
+        font: 'Calibri',
+      }),
+      new TextRun({
+        text: cell.text,
+        size: opts.size,
+        color: opts.color,
+        bold: opts.bold,
+        font: 'Calibri',
+      }),
+    ];
+  }
+  return [
+    new TextRun({
+      text: cellToText(cell),
+      size: opts.size,
+      color: opts.color,
+      bold: opts.bold,
+      font: 'Calibri',
+    }),
+  ];
+}
+
+// ── Table ────────────────────────────────────────────────
+
 function renderTable(content: TableContent): Table[] {
   if (!content.headers || !content.rows) return [];
 
-  const numCols = content.headers.length;
-
-  // Header row
+  // Header row — light background, no heavy fill
   const headerRow = new TableRow({
     children: content.headers.map(
       (header) =>
@@ -203,24 +328,23 @@ function renderTable(content: TableContent): Table[] {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: header,
+                  text: header.toUpperCase(),
                   bold: true,
-                  size: 20,
-                  color: COLORS.white,
+                  size: 16,
+                  color: C.textMuted,
+                  font: 'Calibri',
+                  characterSpacing: 20,
                 }),
               ],
             }),
           ],
-          shading: {
-            type: ShadingType.SOLID,
-            color: COLORS.header,
-            fill: COLORS.header,
-          },
-          margins: {
-            top: 100,
-            bottom: 100,
-            left: 100,
-            right: 100,
+          shading: { type: ShadingType.SOLID, color: C.bgAlt, fill: C.bgAlt },
+          margins: { top: 80, bottom: 80, left: 100, right: 100 },
+          borders: {
+            top: thinBorder,
+            bottom: accentBorder,
+            left: noBorder,
+            right: noBorder,
           },
         })
     ),
@@ -229,8 +353,10 @@ function renderTable(content: TableContent): Table[] {
 
   // Data rows
   const dataRows = content.rows.map((row, rowIndex) => {
-    const isTotal = row[0]?.toString().toLowerCase().includes('gesamt');
-    const bgColor = isTotal ? COLORS.primaryLight : rowIndex % 2 === 0 ? COLORS.white : COLORS.altRow;
+    const firstCell = cellToText(row[0]);
+    const isTotal = firstCell.toLowerCase().includes('gesamt');
+    const bgColor = isTotal ? C.totalBg : rowIndex % 2 === 1 ? C.bg : C.white;
+    const isLast = rowIndex === content.rows.length - 1;
 
     return new TableRow({
       children: row.map(
@@ -238,26 +364,16 @@ function renderTable(content: TableContent): Table[] {
           new TableCell({
             children: [
               new Paragraph({
-                children: [
-                  new TextRun({
-                    text: cell?.toString() || '-',
-                    size: 18,
-                    color: COLORS.text,
-                    bold: isTotal,
-                  }),
-                ],
+                children: cellToTextRuns(cell, { size: 18, color: C.text, bold: isTotal }),
               }),
             ],
-            shading: {
-              type: ShadingType.SOLID,
-              color: bgColor,
-              fill: bgColor,
-            },
-            margins: {
-              top: 80,
-              bottom: 80,
-              left: 100,
-              right: 100,
+            shading: { type: ShadingType.SOLID, color: bgColor, fill: bgColor },
+            margins: { top: 60, bottom: 60, left: 100, right: 100 },
+            borders: {
+              top: noBorder,
+              bottom: isLast ? thinBorder : { style: BorderStyle.SINGLE, size: 2, color: C.border },
+              left: noBorder,
+              right: noBorder,
             },
           })
       ),
@@ -267,21 +383,20 @@ function renderTable(content: TableContent): Table[] {
   return [
     new Table({
       rows: [headerRow, ...dataRows],
-      width: {
-        size: 100,
-        type: WidthType.PERCENTAGE,
-      },
+      width: { size: 100, type: WidthType.PERCENTAGE },
       borders: {
-        top: { style: BorderStyle.SINGLE, size: 4, color: COLORS.border },
-        bottom: { style: BorderStyle.SINGLE, size: 4, color: COLORS.border },
-        left: { style: BorderStyle.SINGLE, size: 4, color: COLORS.border },
-        right: { style: BorderStyle.SINGLE, size: 4, color: COLORS.border },
-        insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: COLORS.border },
-        insideVertical: { style: BorderStyle.SINGLE, size: 4, color: COLORS.border },
+        top: noBorder,
+        bottom: noBorder,
+        left: noBorder,
+        right: noBorder,
+        insideHorizontal: noBorder,
+        insideVertical: noBorder,
       },
     }),
   ];
 }
+
+// ── List ─────────────────────────────────────────────────
 
 function renderList(content: ListContent): Paragraph[] {
   if (!content.items || content.items.length === 0) return [];
@@ -291,23 +406,34 @@ function renderList(content: ListContent): Paragraph[] {
       new Paragraph({
         children: [
           new TextRun({
-            text: `\u2022  ${item}`,
+            text: '\u2022  ',
             size: 20,
-            color: COLORS.text,
+            color: C.accent,
+            font: 'Calibri',
+          }),
+          new TextRun({
+            text: item,
+            size: 19,
+            color: C.text,
+            font: 'Calibri',
           }),
         ],
-        spacing: { after: 80 },
-        indent: { left: 200 },
+        spacing: { after: 60, line: 280 },
+        indent: { left: 180 },
       })
   );
 }
+
+// ── Key-Value ────────────────────────────────────────────
 
 function renderKeyValue(content: KeyValueContent): Table[] {
   if (!content.items || content.items.length === 0) return [];
 
   const rows = content.items.map(
-    (item) =>
-      new TableRow({
+    (item, i) => {
+      const isLast = i === content.items.length - 1;
+
+      return new TableRow({
         children: [
           new TableCell({
             children: [
@@ -315,62 +441,53 @@ function renderKeyValue(content: KeyValueContent): Table[] {
                 children: [
                   new TextRun({
                     text: item.key,
-                    bold: true,
-                    size: 20,
-                    color: COLORS.textMuted,
+                    size: 18,
+                    color: C.textMuted,
+                    font: 'Calibri',
                   }),
                 ],
               }),
             ],
-            width: {
-              size: 25,
-              type: WidthType.PERCENTAGE,
-            },
-            margins: {
-              top: 60,
-              bottom: 60,
-              right: 100,
+            width: { size: 28, type: WidthType.PERCENTAGE },
+            margins: { top: 50, bottom: 50, right: 100 },
+            borders: {
+              top: noBorder,
+              bottom: isLast ? noBorder : { style: BorderStyle.SINGLE, size: 2, color: C.border },
+              left: noBorder,
+              right: noBorder,
             },
           }),
           new TableCell({
             children: [
               new Paragraph({
-                children: [
-                  new TextRun({
-                    text: item.value,
-                    size: 20,
-                    color: COLORS.text,
-                  }),
-                ],
+                children: cellToTextRuns(item.value, { size: 19, color: C.text }),
               }),
             ],
-            width: {
-              size: 75,
-              type: WidthType.PERCENTAGE,
-            },
-            margins: {
-              top: 60,
-              bottom: 60,
+            width: { size: 72, type: WidthType.PERCENTAGE },
+            margins: { top: 50, bottom: 50 },
+            borders: {
+              top: noBorder,
+              bottom: isLast ? noBorder : { style: BorderStyle.SINGLE, size: 2, color: C.border },
+              left: noBorder,
+              right: noBorder,
             },
           }),
         ],
-      })
+      });
+    }
   );
 
   return [
     new Table({
       rows,
-      width: {
-        size: 100,
-        type: WidthType.PERCENTAGE,
-      },
+      width: { size: 100, type: WidthType.PERCENTAGE },
       borders: {
-        top: { style: BorderStyle.NONE },
-        bottom: { style: BorderStyle.NONE },
-        left: { style: BorderStyle.NONE },
-        right: { style: BorderStyle.NONE },
-        insideHorizontal: { style: BorderStyle.NONE },
-        insideVertical: { style: BorderStyle.NONE },
+        top: noBorder,
+        bottom: noBorder,
+        left: noBorder,
+        right: noBorder,
+        insideHorizontal: noBorder,
+        insideVertical: noBorder,
       },
     }),
   ];
