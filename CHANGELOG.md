@@ -2,6 +2,15 @@
 
 ## 2026-04-16
 
+### Feature: Projektauftrag Import aus Dokumenten
+- Multi-Dokument-Upload (bis zu 10 Dateien): PDF, Word, Excel, PowerPoint, Bilder, Text
+- Automatische Textextraktion via Markitdown API (Dokumente) und Vision-LLM (Bilder)
+- LLM-basierte Extraktion aller Projektauftrag-Felder per Forced Function Calling
+- Automatisches Mapping auf die 7-Schritte-Wizard-Struktur inkl. IDs und Enum-Normalisierung
+- Neue Import-Seite mit Drag & Drop, Dateiliste, Fortschrittsanzeige
+- Import-Button auf der Projektmanagement-Übersichtsseite
+- Neuer Backend-Endpoint: POST /api/apps/projektmanagement/projektauftraege/import
+
 ### Fix: Projektauftrag-Export fehlte Felder und KI-Analyse war komplett defekt
 - Projektbeschreibung (description) wird jetzt exportiert
 - Aufgaben-Tabelle enthält jetzt Start-/Enddatum

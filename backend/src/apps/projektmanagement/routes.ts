@@ -33,6 +33,7 @@ import {
 import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis } from './analysis';
 import { getConfig, saveConfig } from './storage';
 import type { ProjektauftragFilters } from './types';
+import { importProjektauftrag } from './import-service';
 import {
   createStatusbericht as createSB,
   listStatusberichte,
@@ -80,6 +81,79 @@ projektmanagement.put('/config', async (c) => {
   } catch (error) {
     console.error('Error saving config:', error);
     return c.json({ error: 'Failed to save config' }, 500);
+  }
+});
+
+// ============== Import Endpoint ==============
+
+/**
+ * POST /api/apps/projektmanagement/projektauftraege/import
+ * Import Projektauftrag from multiple documents
+ * Must be registered BEFORE /:id route
+ */
+projektmanagement.post('/projektauftraege/import', async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const userId = 'user_default';
+
+    // Extract files from FormData
+    const files: { buffer: Buffer; filename: string; mimeType: string }[] = [];
+    const allowedMimeTypes = new Set([
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/png', 'image/jpeg', 'image/webp', 'image/gif',
+      'text/plain', 'text/markdown',
+    ]);
+
+    for (const [key, value] of formData.entries()) {
+      if (key === 'files' && value instanceof File) {
+        // Validate file count
+        if (files.length >= 10) {
+          return c.json({ error: 'Maximal 10 Dateien erlaubt' }, 400);
+        }
+
+        // Validate file size (50MB)
+        if (value.size > 50 * 1024 * 1024) {
+          return c.json({ error: `Datei "${value.name}" ist zu groß (max. 50 MB)` }, 400);
+        }
+
+        // Validate MIME type
+        if (!allowedMimeTypes.has(value.type)) {
+          return c.json({ error: `Dateityp "${value.type}" nicht unterstützt für "${value.name}"` }, 400);
+        }
+
+        const arrayBuffer = await value.arrayBuffer();
+        files.push({
+          buffer: Buffer.from(arrayBuffer),
+          filename: value.name,
+          mimeType: value.type,
+        });
+      }
+    }
+
+    if (files.length === 0) {
+      return c.json({ error: 'Keine Dateien hochgeladen' }, 400);
+    }
+
+    console.log(`[PM-Import] Received ${files.length} files for import`);
+
+    const result = await importProjektauftrag(files, userId);
+
+    return c.json({
+      projektauftrag: result.projektauftrag,
+      report: result.report,
+    }, 201);
+  } catch (error) {
+    console.error('Error importing Projektauftrag:', error);
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Import fehlgeschlagen' },
+      500
+    );
   }
 });
 

@@ -33,6 +33,7 @@ const ContractsPage = lazy(() => import('./apps/vertragsmanagement/ContractsPage
 const ContractUploadPage = lazy(() => import('./apps/vertragsmanagement/UploadPage'));
 const ContractDetailPage = lazy(() => import('./apps/vertragsmanagement/ContractDetail'));
 const ProjektePage = lazy(() => import('./apps/projektmanagement/ProjektePage'));
+const ImportPage = lazy(() => import('./apps/projektmanagement/ImportPage'));
 const WizardPage = lazy(() => import('./apps/projektmanagement/WizardPage'));
 const LieferantenPage = lazy(() => import('./apps/lieferantenmanagement/LieferantenPage'));
 const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/SupplierDetailPage'));
@@ -180,6 +181,7 @@ function AppRoutes() {
                   <Route path="/apps/vertragsmanagement/upload" element={<ContractUploadPage />} />
                   <Route path="/apps/vertragsmanagement/:id" element={<ContractDetailPage />} />
                   <Route path="/apps/projektmanagement" element={<ProjektePage />} />
+                  <Route path="/apps/projektmanagement/import" element={<ImportPage />} />
                   <Route path="/apps/projektmanagement/neu" element={<WizardPage />} />
                   <Route path="/apps/projektmanagement/:id" element={<WizardPage />} />
                   <Route path="/apps/lieferantenmanagement" element={<LieferantenPage />} />
