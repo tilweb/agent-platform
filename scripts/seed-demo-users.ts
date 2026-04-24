@@ -59,9 +59,14 @@ async function findUserByUsername(usersDir: string, username: string): Promise<b
 
 async function resolveDataDir(): Promise<string> {
   if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  // IMPORTANT: '../../data' muss zuerst versucht werden.
+  // In Docker ist /app/backend/data ein Symlink auf /app/data/backend-data/ —
+  // `../data` waere also ein Treffer, wuerde aber User ins falsche Volume-Subdir
+  // schreiben (das der Backend-Auth-Service nicht liest). Backend liest
+  // auth/users aus /app/data/auth/users/ = '../../data' + /auth/users.
   const candidates = [
-    join(import.meta.dir, '../data'),       // local: agent-platform/scripts/ → agent-platform/data/
     join(import.meta.dir, '../../data'),    // docker: /app/backend/scripts/ → /app/data/
+    join(import.meta.dir, '../data'),       // local:  agent-platform/scripts/ → agent-platform/data/
   ];
   for (const candidate of candidates) {
     try {
@@ -69,7 +74,7 @@ async function resolveDataDir(): Promise<string> {
       if (s.isDirectory()) return candidate;
     } catch { /* not found, try next */ }
   }
-  return candidates[0]!;
+  return candidates[candidates.length - 1]!;
 }
 
 async function main() {
