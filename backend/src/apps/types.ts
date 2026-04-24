@@ -16,6 +16,20 @@ export interface AppConfig {
   version: string;
   enabled: boolean;
   routes: AppRoute[];
+  /**
+   * Optional list of functions this app exposes as Public-API endpoints
+   * (see backend/src/public-api/). Structural typing avoids a circular
+   * import — the router narrows via the PublicFunction contract.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  publicFunctions?: Array<{
+    id: string;
+    description: string;
+    input: unknown;
+    output?: unknown;
+    defaultRateLimit?: { requests: number; windowSec: number };
+    handler: (input: any, ctx: any) => Promise<any>;
+  }>;
 }
 
 export interface AppsRegistry {

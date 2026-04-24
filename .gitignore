@@ -46,6 +46,8 @@ data/auth/sessions/
 data/auth/oauth-states/
 data/auth/users/
 data/auth/groups/
+data/auth/api-keys/
+data/audit/api-public/
 data/chats/
 data/conversations/
 data/connections/

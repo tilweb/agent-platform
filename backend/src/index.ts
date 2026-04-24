@@ -36,6 +36,7 @@ import { llmService } from './services/llm';
 import { registerCommands } from './commands';
 import { registerProviders } from './connections/providers';
 import { syncBuiltInApps } from './apps/registry';
+import { publicApiRouter } from './public-api/router';
 
 const app = new Hono();
 
@@ -130,12 +131,16 @@ app.use('/api/*', apiRateLimit);
 // CSRF protection for state-changing requests
 app.use('/api/*', csrfProtection({
   skipPaths: [
-    '/api/shared/',  // Public shared chat access
+    '/api/shared/',     // Public shared chat access
+    '/api/public/',     // Public API: Bearer-token auth (API-key), CSRF not applicable
   ],
 }));
 
 // Health check (no rate limit, no CSRF)
 app.get('/health', (c) => c.json({ status: 'ok' }));
+
+// Public API (API-key-authenticated, versioned) — own rate-limit layer per key
+app.route('/api/public/v1', publicApiRouter);
 
 // API routes
 app.route('/api/auth', authRoutes);

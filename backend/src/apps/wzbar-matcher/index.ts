@@ -3,6 +3,7 @@
  */
 
 import type { AppConfig } from '../types';
+import { classifyPublicFunction } from './public-functions';
 
 export const wzbarMatcherConfig: AppConfig = {
   id: 'wzbar-matcher',
@@ -14,6 +15,7 @@ export const wzbarMatcherConfig: AppConfig = {
   routes: [
     { path: '/apps/wzbar-matcher', component: 'MatcherPage' },
   ],
+  publicFunctions: [classifyPublicFunction],
 };
 
 export { wzbarMatcherRoutes } from './routes';
