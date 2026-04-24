@@ -159,6 +159,21 @@ providers:
         capabilities:
           - transcription
         default: true
+  - id: adacor-embeddings
+    name: Adacor AI Embeddings
+    api_mode: openai
+    base_url: https://api.adacor.ai/embeddings/privateai/v1
+    api_key_env: ADACOR_AI_API_KEY
+    enabled: true
+    company_region: germany
+    datacenter_country: DE
+    models:
+      - id: multilingual-e5-large
+        name: Multilingual E5 Large
+        type: embedding
+        capabilities:
+          - embedding
+        default: true
   - id: google-gemini-imagen
     name: Google Gemini Imagen
     api_mode: google_gemini
@@ -225,5 +240,5 @@ active:
     provider_id: fal-ai
     model_id: fal-ai/nano-banana-pro
   image_to_image:
-    provider_id: google-gemini-imagen
-    model_id: gemini-2.5-flash-image
+    provider_id: fal-ai
+    model_id: fal-ai/nano-banana-pro

@@ -297,6 +297,50 @@ export class OpenAIAdapter {
   }
 
   /**
+   * Generate an embedding vector for a single text via OpenAI-compatible /embeddings endpoint.
+   */
+  async embed(text: string, model?: string): Promise<number[]> {
+    const body = JSON.stringify({
+      model: model || this.defaultModel,
+      input: text,
+    });
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (this.apiKey) headers['Authorization'] = `Bearer ${this.apiKey}`;
+
+    let response: Response | null = null;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      response = await fetch(`${this.baseUrl}/embeddings`, {
+        method: 'POST',
+        headers,
+        body,
+      });
+      if (response.ok) break;
+      const error = await response.text();
+      if (attempt < MAX_RETRIES && this.isRetryable(response.status, error)) {
+        const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
+        console.warn(`[OpenAI Adapter] Embed retryable error (attempt ${attempt + 1}/${MAX_RETRIES}): ${error.substring(0, 100)} — retrying in ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      throw new Error(`OpenAI Embeddings error: ${response.status} - ${error}`);
+    }
+
+    interface EmbedResponse {
+      data: Array<{ embedding: number[] }>;
+      model?: string;
+    }
+    const json = await response!.json() as EmbedResponse;
+    const vec = json.data?.[0]?.embedding;
+    if (!Array.isArray(vec)) {
+      throw new Error('Embeddings response enthält keinen Vektor');
+    }
+    return vec;
+  }
+
+  /**
    * Test connection to the API
    */
   async testConnection(): Promise<{

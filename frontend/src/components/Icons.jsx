@@ -459,6 +459,26 @@ export function XIcon({ size = 20, color = 'currentColor', style = {} }) {
   );
 }
 
+export function ClassifierIcon({ size = 20, color = 'currentColor', style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+      <path d="m11 11 4 4" />
+      <path d="m15 11-4 4" />
+    </svg>
+  );
+}
+
+export function CopyIcon({ size = 20, color = 'currentColor', style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
 // Command icon mapping helper
 const ICON_MAP = {
   'robot': RobotIcon,
@@ -493,6 +513,8 @@ const ICON_MAP = {
   'image': ImageIcon,
   'bell': BellIcon,
   'timeline': TimelineIcon,
+  'classifier': ClassifierIcon,
+  'copy': CopyIcon,
 };
 
 export function getCommandIcon(iconId, props = {}) {

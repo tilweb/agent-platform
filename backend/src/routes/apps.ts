@@ -15,6 +15,7 @@ import { contractRoutes } from '../apps/vertragsmanagement/routes';
 import { projektmanagementRoutes } from '../apps/projektmanagement/routes';
 import { lieferantenmanagementRoutes } from '../apps/lieferantenmanagement/routes';
 import { vsmRoutes } from '../apps/vsm/routes';
+import { wzbarMatcherRoutes } from '../apps/wzbar-matcher/routes';
 
 const apps = new Hono();
 
@@ -58,7 +59,7 @@ apps.get('/:appId', async (c) => {
     const appId = c.req.param('appId');
 
     // Skip if it's a sub-route
-    if (appId === 'enabled' || appId === 'vertragsmanagement' || appId === 'lieferantenmanagement' || appId === 'vsm') {
+    if (appId === 'enabled' || appId === 'vertragsmanagement' || appId === 'lieferantenmanagement' || appId === 'vsm' || appId === 'wzbar-matcher') {
       return c.notFound();
     }
 
@@ -128,5 +129,8 @@ apps.route('/lieferantenmanagement', lieferantenmanagementRoutes);
 
 // Mount VSM routes
 apps.route('/vsm', vsmRoutes);
+
+// Mount WZ-Branchen-Matcher routes
+apps.route('/wzbar-matcher', wzbarMatcherRoutes);
 
 export { apps as appsRoutes };

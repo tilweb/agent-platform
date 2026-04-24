@@ -1,0 +1,4636 @@
+[
+  {
+    "code": "1011",
+    "kurztext": "Schlachten, ohne Schlachten von Geflügel",
+    "langtext": "Schlachten, ohne Schlachten von Geflügel",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1012",
+    "kurztext": "Schlachten von Geflügel",
+    "langtext": "Schlachten von Geflügel",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1013",
+    "kurztext": "Fleischverarbeitung",
+    "langtext": "Fleischverarbeitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1020",
+    "kurztext": "Fischverarbeitung",
+    "langtext": "Fischverarbeitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1031",
+    "kurztext": "Kartoffelverarbeitung",
+    "langtext": "Kartoffelverarbeitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1032",
+    "kurztext": "Herstellung von Frucht- und Gemüsesäften",
+    "langtext": "Herstellung von Frucht- und Gemüsesäften",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1039",
+    "kurztext": "Sonstige Verarbeitung von Obst und Gemüse",
+    "langtext": "Sonstige Verarbeitung von Obst und Gemüse",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1041",
+    "kurztext": "Herstellung von Ölen und Fetten, ohne Margarine u. ä. Nahrungsfette",
+    "langtext": "Herstellung von Ölen und Fetten, ohne Margarine u. ä. Nahrungsfette",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1042",
+    "kurztext": "Herstellung von Margarine u. ä. Nahrungsfetten",
+    "langtext": "Herstellung von Margarine u. ä. Nahrungsfetten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1051",
+    "kurztext": "Herstellung von Milcherzeugnissen",
+    "langtext": "Herstellung von Milcherzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1052",
+    "kurztext": "Herstellung von Speiseeis",
+    "langtext": "Herstellung von Speiseeis",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1061",
+    "kurztext": "Mahl- und Schälmühlen",
+    "langtext": "Mahl- und Schälmühlen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1062",
+    "kurztext": "Herstellung von Stärke und Stärkeerzeugnissen",
+    "langtext": "Herstellung von Stärke und Stärkeerzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1071",
+    "kurztext": "Herstellung von Backwaren, ohne Dauerbackwaren",
+    "langtext": "Herstellung von Backwaren, ohne Dauerbackwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1072",
+    "kurztext": "Herstellung von Dauerbackwaren",
+    "langtext": "Herstellung von Dauerbackwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1073",
+    "kurztext": "Herstellung von Teigwaren",
+    "langtext": "Herstellung von Teigwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1081",
+    "kurztext": "Herstellung von Zucker",
+    "langtext": "Herstellung von Zucker",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1082",
+    "kurztext": "Herstellung von Süßwaren, ohne Dauerbackwaren",
+    "langtext": "Herstellung von Süßwaren, ohne Dauerbackwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1083",
+    "kurztext": "Verarbeitung von Kaffee und Tee, Herstellung von Kaffee-Ersatz",
+    "langtext": "Verarbeitung von Kaffee und Tee, Herstellung von Kaffee-Ersatz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1084",
+    "kurztext": "Herstellung von Würzmitteln und Soßen",
+    "langtext": "Herstellung von Würzmitteln und Soßen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1085",
+    "kurztext": "Herstellung von Fertiggerichten",
+    "langtext": "Herstellung von Fertiggerichten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1086",
+    "kurztext": "Herstellung von homogenisierten und diätetischen Nahrungsmitteln",
+    "langtext": "Herstellung von homogenisierten und diätetischen Nahrungsmitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1089",
+    "kurztext": "Herstellung von sonstigen Nahrungsmitteln a. n. g.",
+    "langtext": "Herstellung von sonstigen Nahrungsmitteln a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1091",
+    "kurztext": "Herstellung von Futtermitteln für Nutztiere",
+    "langtext": "Herstellung von Futtermitteln für Nutztiere",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1092",
+    "kurztext": "Herstellung von Futtermitteln für sonstige Tiere",
+    "langtext": "Herstellung von Futtermitteln für sonstige Tiere",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1101",
+    "kurztext": "Herstellung von Spirituosen",
+    "langtext": "Herstellung von Spirituosen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1102",
+    "kurztext": "Herstellung von Traubenwein",
+    "langtext": "Herstellung von Traubenwein",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1103",
+    "kurztext": "Herstellung von Apfelwein und sonstigen gegorenen Getränken aus Obst",
+    "langtext": "Herstellung von Apfelwein und sonstigen gegorenen Getränken aus Obst",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1104",
+    "kurztext": "Herstellung von Wermutwein und sonstigen aromatisierten Weinen",
+    "langtext": "Herstellung von Wermutwein und sonstigen aromatisierten Weinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1105",
+    "kurztext": "Herstellung von Bier",
+    "langtext": "Herstellung von Bier",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1106",
+    "kurztext": "Herstellung von Malz",
+    "langtext": "Herstellung von Malz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1107",
+    "kurztext": "Herstellung von Erfrischungsgetränken und Mineralwässern",
+    "langtext": "Herstellung von Erfrischungsgetränken und Mineralwässern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1110",
+    "kurztext": "Anbau von anderem Getreide als Reis sowie von Hülsenfrüchten und Ölsaaten",
+    "langtext": "Anbau von anderem Getreide als Reis sowie von Hülsenfrüchten und Ölsaaten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1120",
+    "kurztext": "Anbau von Reis",
+    "langtext": "Anbau von Reis",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1131",
+    "kurztext": "Anbau von Gemüse und Melonen",
+    "langtext": "Anbau von Gemüse und Melonen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1132",
+    "kurztext": "Anbau von Kartoffeln sowie sonstigen Wurzeln und Knollen",
+    "langtext": "Anbau von Kartoffeln sowie sonstigen Wurzeln und Knollen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1140",
+    "kurztext": "Anbau von Zuckerrohr",
+    "langtext": "Anbau von Zuckerrohr",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1150",
+    "kurztext": "Anbau von Tabak",
+    "langtext": "Anbau von Tabak",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1160",
+    "kurztext": "Anbau von Faserpflanzen",
+    "langtext": "Anbau von Faserpflanzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1191",
+    "kurztext": "Anbau von Zierpflanzen zum Schnitt",
+    "langtext": "Anbau von Zierpflanzen zum Schnitt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1192",
+    "kurztext": "Erzeugung von Blumensamen",
+    "langtext": "Erzeugung von Blumensamen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1199",
+    "kurztext": "Anbau von sonstigen ein- und zweijährigen Pflanzen a. n. g.",
+    "langtext": "Anbau von sonstigen ein- und zweijährigen Pflanzen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1200",
+    "kurztext": "Tabakverarbeitung",
+    "langtext": "Tabakverarbeitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1210",
+    "kurztext": "Anbau von Wein- und Tafeltrauben",
+    "langtext": "Anbau von Wein- und Tafeltrauben",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1220",
+    "kurztext": "Anbau von tropischen und subtropischen Früchten",
+    "langtext": "Anbau von tropischen und subtropischen Früchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1230",
+    "kurztext": "Anbau von Zitrusfrüchten",
+    "langtext": "Anbau von Zitrusfrüchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1240",
+    "kurztext": "Anbau von Kern- und Steinobst",
+    "langtext": "Anbau von Kern- und Steinobst",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1251",
+    "kurztext": "Anbau von Erdbeeren",
+    "langtext": "Anbau von Erdbeeren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1259",
+    "kurztext": "Anbau von sonstigem Obst und Nüssen a. n. g.",
+    "langtext": "Anbau von sonstigem Obst und Nüssen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1260",
+    "kurztext": "Anbau von ölhaltigen Früchten",
+    "langtext": "Anbau von ölhaltigen Früchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1270",
+    "kurztext": "Anbau von Pflanzen zur Herstellung von Getränken",
+    "langtext": "Anbau von Pflanzen zur Herstellung von Getränken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1280",
+    "kurztext": "Anbau von Gewürzpflanzen, Pflanzen für aromatische, narkotische und pharmazeutische Zwecke",
+    "langtext": "Anbau von Gewürzpflanzen, Pflanzen für aromatische, narkotische und pharmazeutische Zwecke",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1290",
+    "kurztext": "Anbau sonstiger mehrjähriger Pflanzen",
+    "langtext": "Anbau sonstiger mehrjähriger Pflanzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1301",
+    "kurztext": "Anbau von Zimmerpflanzen, Beet- und Balkonpflanzen",
+    "langtext": "Anbau von Zimmerpflanzen, Beet- und Balkonpflanzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1302",
+    "kurztext": "Betrieb von Baumschulen",
+    "langtext": "Betrieb von Baumschulen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1310",
+    "kurztext": "Spinnstoffaufbereitung und Spinnerei",
+    "langtext": "Spinnstoffaufbereitung und Spinnerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1320",
+    "kurztext": "Weberei",
+    "langtext": "Weberei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1330",
+    "kurztext": "Veredlung von Textilien und Bekleidung",
+    "langtext": "Veredlung von Textilien und Bekleidung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1391",
+    "kurztext": "Herstellung von gewirktem und gestricktem Stoff",
+    "langtext": "Herstellung von gewirktem und gestricktem Stoff",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1392",
+    "kurztext": "Herstellung von Heimtextilien und konfektionierten Textilwaren für die Innenausstattung",
+    "langtext": "Herstellung von Heimtextilien und konfektionierten Textilwaren für die Innenausstattung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1393",
+    "kurztext": "Herstellung von Teppichen",
+    "langtext": "Herstellung von Teppichen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1394",
+    "kurztext": "Herstellung von Seilerwaren",
+    "langtext": "Herstellung von Seilerwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1395",
+    "kurztext": "Herstellung von Vliesstoff und nicht-konfektionierten Erzeugnissen daraus",
+    "langtext": "Herstellung von Vliesstoff und nicht-konfektionierten Erzeugnissen daraus",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1396",
+    "kurztext": "Herstellung von technischen Textilien",
+    "langtext": "Herstellung von technischen Textilien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1399",
+    "kurztext": "Herstellung von sonstigen Textilwaren a. n. g.",
+    "langtext": "Herstellung von sonstigen Textilwaren a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1410",
+    "kurztext": "Haltung von Milchkühen",
+    "langtext": "Haltung von Milchkühen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1410",
+    "kurztext": "Herstellung von Bekleidung aus gewirktem und gestricktem Stoff",
+    "langtext": "Herstellung von Bekleidung aus gewirktem und gestricktem Stoff",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1420",
+    "kurztext": "Haltung von sonstigen Rindern",
+    "langtext": "Haltung von sonstigen Rindern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1421",
+    "kurztext": "Herstellung von Oberbekleidung",
+    "langtext": "Herstellung von Oberbekleidung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1422",
+    "kurztext": "Herstellung von Wäsche",
+    "langtext": "Herstellung von Wäsche",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1423",
+    "kurztext": "Herstellung von Arbeits- und Berufsbekleidung",
+    "langtext": "Herstellung von Arbeits- und Berufsbekleidung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1424",
+    "kurztext": "Herstellung von Lederbekleidung und Pelzwaren",
+    "langtext": "Herstellung von Lederbekleidung und Pelzwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1429",
+    "kurztext": "Herstellung von sonstiger Bekleidung und Bekleidungszubehör a. n. g.",
+    "langtext": "Herstellung von sonstiger Bekleidung und Bekleidungszubehör a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1430",
+    "kurztext": "Haltung von Pferden und Eseln",
+    "langtext": "Haltung von Pferden und Eseln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1440",
+    "kurztext": "Haltung von Kamelen",
+    "langtext": "Haltung von Kamelen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1450",
+    "kurztext": "Haltung von Schafen und Ziegen",
+    "langtext": "Haltung von Schafen und Ziegen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1460",
+    "kurztext": "Haltung von Schweinen",
+    "langtext": "Haltung von Schweinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1471",
+    "kurztext": "Haltung von Legehennen zur Konsumeiererzeugung",
+    "langtext": "Haltung von Legehennen zur Konsumeiererzeugung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1472",
+    "kurztext": "Betrieb von Brütereien",
+    "langtext": "Betrieb von Brütereien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1479",
+    "kurztext": "Haltung von Geflügel a. n. g.",
+    "langtext": "Haltung von Geflügel a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1481",
+    "kurztext": "Haltung von Insekten",
+    "langtext": "Haltung von Insekten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1489",
+    "kurztext": "Sonstige Tierhaltung a. n. g.",
+    "langtext": "Sonstige Tierhaltung a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1500",
+    "kurztext": "Gemischte Landwirtschaft",
+    "langtext": "Gemischte Landwirtschaft",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1511",
+    "kurztext": "Gerben, Färben, Zurichten von Leder und Fellen",
+    "langtext": "Gerben, Färben, Zurichten von Leder und Fellen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1512",
+    "kurztext": "Herstellung von Reisegepäck, Handtaschen, Sattlerwaren und Geschirren aus Stoffen aller Art",
+    "langtext": "Herstellung von Reisegepäck, Handtaschen, Sattlerwaren und Geschirren aus Stoffen aller Art",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1520",
+    "kurztext": "Herstellung von Schuhen",
+    "langtext": "Herstellung von Schuhen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1610",
+    "kurztext": "Erbringung von landwirtschaftlichen Dienstleistungen für den Pflanzenbau",
+    "langtext": "Erbringung von landwirtschaftlichen Dienstleistungen für den Pflanzenbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1611",
+    "kurztext": "Säge- und Hobelwerke",
+    "langtext": "Säge- und Hobelwerke",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1612",
+    "kurztext": "Bearbeitung und Veredlung von Holz",
+    "langtext": "Bearbeitung und Veredlung von Holz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1620",
+    "kurztext": "Erbringung von landwirtschaftlichen Dienstleistungen für die Tierhaltung",
+    "langtext": "Erbringung von landwirtschaftlichen Dienstleistungen für die Tierhaltung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1621",
+    "kurztext": "Herstellung von Furnier-, Sperrholz-, Holzfaser- und Holzspanplatten",
+    "langtext": "Herstellung von Furnier-, Sperrholz-, Holzfaser- und Holzspanplatten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1622",
+    "kurztext": "Herstellung von Parketttafeln",
+    "langtext": "Herstellung von Parketttafeln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1623",
+    "kurztext": "Herstellung von sonstigen Konstruktionsteilen, Fertigbauteilen aus Holz",
+    "langtext": "Herstellung von sonstigen Konstruktionsteilen, Fertigbauteilen, Ausbauelementen und Fertigteilbauten aus Holz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1624",
+    "kurztext": "Herstellung von Verpackungsmitteln, Lagerbehältern und Ladungsträgern aus Holz",
+    "langtext": "Herstellung von Verpackungsmitteln, Lagerbehältern und Ladungsträgern aus Holz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1625",
+    "kurztext": "Herstellung von Türen und Fenstern aus Holz",
+    "langtext": "Herstellung von Türen und Fenstern aus Holz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1626",
+    "kurztext": "Herstellung von festen Brennstoffen aus pflanzlicher Biomasse",
+    "langtext": "Herstellung von festen Brennstoffen aus pflanzlicher Biomasse",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1627",
+    "kurztext": "Veredlung von Holzwaren",
+    "langtext": "Veredlung von Holzwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1628",
+    "kurztext": "Herstellung von sonstigen Holzwaren sowie Kork-, Flecht- und Korbwaren",
+    "langtext": "Herstellung von sonstigen Holzwaren sowie Kork-, Flecht- und Korbwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1631",
+    "kurztext": "Nach der Ernte anfallende Tätigkeiten in der pflanzlichen Erzeugung",
+    "langtext": "Nach der Ernte anfallende Tätigkeiten in der pflanzlichen Erzeugung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1632",
+    "kurztext": "Saatgutaufbereitung",
+    "langtext": "Saatgutaufbereitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1700",
+    "kurztext": "Jagd, Fallenstellerei und damit verbundene Tätigkeiten",
+    "langtext": "Jagd, Fallenstellerei und damit verbundene Tätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1711",
+    "kurztext": "Herstellung von Holz- und Zellstoff",
+    "langtext": "Herstellung von Holz- und Zellstoff",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1712",
+    "kurztext": "Herstellung von Papier, Karton und Pappe",
+    "langtext": "Herstellung von Papier, Karton und Pappe",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1721",
+    "kurztext": "Herstellung von Wellpapier und -pappe sowie von Verpackungsmitteln aus Papier, Karton und Pappe",
+    "langtext": "Herstellung von Wellpapier und -pappe sowie von Verpackungsmitteln aus Papier, Karton und Pappe",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1722",
+    "kurztext": "Herstellung von Haushalts-, Hygiene- und Toilettenartikeln aus Zellstoff, Papier und Pappe",
+    "langtext": "Herstellung von Haushalts-, Hygiene- und Toilettenartikeln aus Zellstoff, Papier und Pappe",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1723",
+    "kurztext": "Herstellung von Schreibwaren und Bürobedarf aus Papier, Karton und Pappe",
+    "langtext": "Herstellung von Schreibwaren und Bürobedarf aus Papier, Karton und Pappe",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1724",
+    "kurztext": "Herstellung von Tapeten",
+    "langtext": "Herstellung von Tapeten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1725",
+    "kurztext": "Herstellung von sonstigen Waren aus Papier, Karton und Pappe",
+    "langtext": "Herstellung von sonstigen Waren aus Papier, Karton und Pappe",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1811",
+    "kurztext": "Drucken von Zeitungen",
+    "langtext": "Drucken von Zeitungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1812",
+    "kurztext": "Sonstiges Drucken",
+    "langtext": "Sonstiges Drucken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1813",
+    "kurztext": "Druck- und Medienvorstufe",
+    "langtext": "Druck- und Medienvorstufe",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1814",
+    "kurztext": "Binden von Druckerzeugnissen und damit verbundene Dienstleistungen",
+    "langtext": "Binden von Druckerzeugnissen und damit verbundene Dienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1820",
+    "kurztext": "Vervielfältigung von bespielten Ton-, Bild- und Datenträgern",
+    "langtext": "Vervielfältigung von bespielten Ton-, Bild- und Datenträgern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1910",
+    "kurztext": "Kokerei",
+    "langtext": "Kokerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "1920",
+    "kurztext": "Herstellung von Mineralölerzeugnissen und von fossilen Brennstoffen",
+    "langtext": "Herstellung von Mineralölerzeugnissen und von fossilen Brennstoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2011",
+    "kurztext": "Herstellung von Industriegasen",
+    "langtext": "Herstellung von Industriegasen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2012",
+    "kurztext": "Herstellung von Farbstoffen und Pigmenten",
+    "langtext": "Herstellung von Farbstoffen und Pigmenten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2013",
+    "kurztext": "Herstellung von sonstigen anorganischen Grundstoffen und Chemikalien",
+    "langtext": "Herstellung von sonstigen anorganischen Grundstoffen und Chemikalien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2014",
+    "kurztext": "Herstellung von sonstigen organischen Grundstoffen und Chemikalien",
+    "langtext": "Herstellung von sonstigen organischen Grundstoffen und Chemikalien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2015",
+    "kurztext": "Herstellung von Düngemitteln und Stickstoffverbindungen",
+    "langtext": "Herstellung von Düngemitteln und Stickstoffverbindungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2016",
+    "kurztext": "Herstellung von Kunststoffen in Primärformen",
+    "langtext": "Herstellung von Kunststoffen in Primärformen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2017",
+    "kurztext": "Herstellung von synthetischem Kautschuk in Primärformen",
+    "langtext": "Herstellung von synthetischem Kautschuk in Primärformen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2020",
+    "kurztext": "Herstellung von Schädlingsbekämpfungs-, Pflanzenschutz- und Desinfektionsmitteln",
+    "langtext": "Herstellung von Schädlingsbekämpfungs-, Pflanzenschutz- und Desinfektionsmitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2030",
+    "kurztext": "Herstellung von Anstrichmitteln, Druckfarben und Kitten",
+    "langtext": "Herstellung von Anstrichmitteln, Druckfarben und Kitten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2041",
+    "kurztext": "Herstellung von Seifen, Wasch-, Reinigungs- und Poliermitteln",
+    "langtext": "Herstellung von Seifen, Wasch-, Reinigungs- und Poliermitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2042",
+    "kurztext": "Herstellung von Körperpflegemitteln und Duftstoffen",
+    "langtext": "Herstellung von Körperpflegemitteln und Duftstoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2051",
+    "kurztext": "Herstellung von flüssigen Biokraftstoffen",
+    "langtext": "Herstellung von flüssigen Biokraftstoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2059",
+    "kurztext": "Herstellung von sonstigen chemischen Erzeugnissen a. n. g.",
+    "langtext": "Herstellung von sonstigen chemischen Erzeugnissen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2060",
+    "kurztext": "Herstellung von Chemiefasern",
+    "langtext": "Herstellung von Chemiefasern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2100",
+    "kurztext": "Forstwirtschaft",
+    "langtext": "Forstwirtschaft",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2110",
+    "kurztext": "Herstellung von pharmazeutischen Grundstoffen",
+    "langtext": "Herstellung von pharmazeutischen Grundstoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2120",
+    "kurztext": "Herstellung von pharmazeutischen Spezialitäten und sonstigen pharmazeutischen Erzeugnissen",
+    "langtext": "Herstellung von pharmazeutischen Spezialitäten und sonstigen pharmazeutischen Erzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2200",
+    "kurztext": "Holzeinschlag",
+    "langtext": "Holzeinschlag",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2211",
+    "kurztext": "Herstellung und Runderneuerung von Bereifungen",
+    "langtext": "Herstellung und Runderneuerung von Bereifungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2212",
+    "kurztext": "Herstellung von sonstigen Gummiwaren",
+    "langtext": "Herstellung von sonstigen Gummiwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2221",
+    "kurztext": "Herstellung von Platten, Folien, Schläuchen und Profilen aus Kunststoffen",
+    "langtext": "Herstellung von Platten, Folien, Schläuchen und Profilen aus Kunststoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2222",
+    "kurztext": "Herstellung von Verpackungsmitteln aus Kunststoffen",
+    "langtext": "Herstellung von Verpackungsmitteln aus Kunststoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2223",
+    "kurztext": "Herstellung von Türen und Fenstern aus Kunststoffen",
+    "langtext": "Herstellung von Türen und Fenstern aus Kunststoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2224",
+    "kurztext": "Herstellung von Baubedarfsartikeln aus Kunststoffen",
+    "langtext": "Herstellung von Baubedarfsartikeln aus Kunststoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2225",
+    "kurztext": "Bearbeitung und Veredlung von Kunststoffwaren",
+    "langtext": "Bearbeitung und Veredlung von Kunststoffwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2226",
+    "kurztext": "Herstellung von sonstigen Kunststoffwaren",
+    "langtext": "Herstellung von sonstigen Kunststoffwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2300",
+    "kurztext": "Sammeln von wildwachsenden Produkten, ohne Holz",
+    "langtext": "Sammeln von wildwachsenden Produkten, ohne Holz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2311",
+    "kurztext": "Herstellung von Flachglas",
+    "langtext": "Herstellung von Flachglas",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2312",
+    "kurztext": "Veredlung und Bearbeitung von Flachglas",
+    "langtext": "Veredlung und Bearbeitung von Flachglas",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2313",
+    "kurztext": "Herstellung von Hohlglas",
+    "langtext": "Herstellung von Hohlglas",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2314",
+    "kurztext": "Herstellung von Glasfasern und Waren daraus",
+    "langtext": "Herstellung von Glasfasern und Waren daraus",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2315",
+    "kurztext": "Herstellung, Veredlung und Bearbeitung von sonstigem Glas einschließlich technischen Glaswaren",
+    "langtext": "Herstellung, Veredlung und Bearbeitung von sonstigem Glas einschließlich technischen Glaswaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2320",
+    "kurztext": "Herstellung von feuerfesten keramischen Werkstoffen und Waren",
+    "langtext": "Herstellung von feuerfesten keramischen Werkstoffen und Waren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2331",
+    "kurztext": "Herstellung von keramischen Wand- und Bodenfliesen und -platten",
+    "langtext": "Herstellung von keramischen Wand- und Bodenfliesen und -platten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2332",
+    "kurztext": "Herstellung von Ziegeln und sonstiger Baukeramik",
+    "langtext": "Herstellung von Ziegeln und sonstiger Baukeramik",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2341",
+    "kurztext": "Herstellung von keramischen Haushaltswaren und Ziergegenständen",
+    "langtext": "Herstellung von keramischen Haushaltswaren und Ziergegenständen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2342",
+    "kurztext": "Herstellung von Sanitärkeramik",
+    "langtext": "Herstellung von Sanitärkeramik",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2343",
+    "kurztext": "Herstellung von Isolatoren und Isolierteilen aus Keramik",
+    "langtext": "Herstellung von Isolatoren und Isolierteilen aus Keramik",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2344",
+    "kurztext": "Herstellung von keramischen Erzeugnissen für sonstige technische Zwecke",
+    "langtext": "Herstellung von keramischen Erzeugnissen für sonstige technische Zwecke",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2345",
+    "kurztext": "Herstellung von sonstigen keramischen Erzeugnissen",
+    "langtext": "Herstellung von sonstigen keramischen Erzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2351",
+    "kurztext": "Herstellung von Zement",
+    "langtext": "Herstellung von Zement",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2352",
+    "kurztext": "Herstellung von Kalk und gebranntem Gips",
+    "langtext": "Herstellung von Kalk und gebranntem Gips",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2361",
+    "kurztext": "Herstellung von Erzeugnissen aus Beton, Zement und Kalksandstein für den Bau",
+    "langtext": "Herstellung von Erzeugnissen aus Beton, Zement und Kalksandstein für den Bau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2362",
+    "kurztext": "Herstellung von Gipserzeugnissen für den Bau",
+    "langtext": "Herstellung von Gipserzeugnissen für den Bau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2363",
+    "kurztext": "Herstellung von Frischbeton, Transportbeton",
+    "langtext": "Herstellung von Frischbeton, Transportbeton",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2364",
+    "kurztext": "Herstellung von Mörtel und sonstigem Beton, ohne Frischbeton",
+    "langtext": "Herstellung von Mörtel und sonstigem Beton, ohne Frischbeton",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2365",
+    "kurztext": "Herstellung von Faserzementwaren",
+    "langtext": "Herstellung von Faserzementwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2366",
+    "kurztext": "Herstellung von sonstigen Erzeugnissen aus Beton, Zement und Gips",
+    "langtext": "Herstellung von sonstigen Erzeugnissen aus Beton, Zement und Gips",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2370",
+    "kurztext": "Be- und Verarbeitung von Naturwerksteinen und Natursteinen",
+    "langtext": "Be- und Verarbeitung von Naturwerksteinen und Natursteinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2391",
+    "kurztext": "Herstellung von Schleifkörpern und Schleifmitteln auf Unterlage",
+    "langtext": "Herstellung von Schleifkörpern und Schleifmitteln auf Unterlage",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2399",
+    "kurztext": "Herstellung von sonstigen Erzeugnissen aus nichtmetallischen Mineralien a. n. g.",
+    "langtext": "Herstellung von sonstigen Erzeugnissen aus nichtmetallischen Mineralien a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2400",
+    "kurztext": "Erbringung von Dienstleistungen für Forstwirtschaft und Holzeinschlag",
+    "langtext": "Erbringung von Dienstleistungen für Forstwirtschaft und Holzeinschlag",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2410",
+    "kurztext": "Erzeugung von Roheisen, Stahl und Ferrolegierungen",
+    "langtext": "Erzeugung von Roheisen, Stahl und Ferrolegierungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2420",
+    "kurztext": "Herstellung von Stahlrohren, Rohrform-, Rohrverschluss- und Rohrverbindungsstücken aus Stahl",
+    "langtext": "Herstellung von Stahlrohren, Rohrform-, Rohrverschluss- und Rohrverbindungsstücken aus Stahl",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2431",
+    "kurztext": "Herstellung von Blankstahl",
+    "langtext": "Herstellung von Blankstahl",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2432",
+    "kurztext": "Herstellung von Kaltband mit einer Breite von weniger als 600 mm",
+    "langtext": "Herstellung von Kaltband mit einer Breite von weniger als 600 mm",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2433",
+    "kurztext": "Herstellung von Kaltprofilen",
+    "langtext": "Herstellung von Kaltprofilen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2434",
+    "kurztext": "Herstellung von kaltgezogenem Draht",
+    "langtext": "Herstellung von kaltgezogenem Draht",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2441",
+    "kurztext": "Erzeugung und erste Bearbeitung von Edelmetallen",
+    "langtext": "Erzeugung und erste Bearbeitung von Edelmetallen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2442",
+    "kurztext": "Erzeugung und erste Bearbeitung von Aluminium",
+    "langtext": "Erzeugung und erste Bearbeitung von Aluminium",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2443",
+    "kurztext": "Erzeugung und erste Bearbeitung von Blei, Zink und Zinn",
+    "langtext": "Erzeugung und erste Bearbeitung von Blei, Zink und Zinn",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2444",
+    "kurztext": "Erzeugung und erste Bearbeitung von Kupfer",
+    "langtext": "Erzeugung und erste Bearbeitung von Kupfer",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2445",
+    "kurztext": "Erzeugung und erste Bearbeitung von sonstigen NE-Metallen",
+    "langtext": "Erzeugung und erste Bearbeitung von sonstigen NE-Metallen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2446",
+    "kurztext": "Aufbereitung von Kernbrennstoffen",
+    "langtext": "Aufbereitung von Kernbrennstoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2451",
+    "kurztext": "Eisengießereien",
+    "langtext": "Eisengießereien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2452",
+    "kurztext": "Stahlgießereien",
+    "langtext": "Stahlgießereien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2453",
+    "kurztext": "Leichtmetallgießereien",
+    "langtext": "Leichtmetallgießereien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2454",
+    "kurztext": "Buntmetallgießereien",
+    "langtext": "Buntmetallgießereien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2511",
+    "kurztext": "Herstellung von Metallkonstruktionen",
+    "langtext": "Herstellung von Metallkonstruktionen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2512",
+    "kurztext": "Herstellung von Ausbauelementen aus Metall",
+    "langtext": "Herstellung von Ausbauelementen aus Metall",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2521",
+    "kurztext": "Herstellung von Heizkörpern, Dampfkesseln und Kesseln zum Erzeugen von überhitztem Wasser",
+    "langtext": "Herstellung von Heizkörpern, Dampfkesseln und Kesseln zum Erzeugen von überhitztem Wasser",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2522",
+    "kurztext": "Herstellung von Sammelbehältern, Tanks u. ä. Behältern aus Metall",
+    "langtext": "Herstellung von Sammelbehältern, Tanks u. ä. Behältern aus Metall",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2530",
+    "kurztext": "Herstellung von Waffen und Munition",
+    "langtext": "Herstellung von Waffen und Munition",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2540",
+    "kurztext": "Herstellung von Schmiede-, Press-, Zieh- und Stanzteilen und pulvermetallurgischen Erzeugnissen",
+    "langtext": "Herstellung von Schmiede-, Press-, Zieh- und Stanzteilen und pulvermetallurgischen Erzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2551",
+    "kurztext": "Beschichten von Metallen",
+    "langtext": "Beschichten von Metallen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2552",
+    "kurztext": "Wärmebehandlung von Metallen",
+    "langtext": "Wärmebehandlung von Metallen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2553",
+    "kurztext": "Metallbearbeitung a. n. g.",
+    "langtext": "Metallbearbeitung a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2561",
+    "kurztext": "Herstellung von Schneidwaren und Bestecken aus unedlen Metallen",
+    "langtext": "Herstellung von Schneidwaren und Bestecken aus unedlen Metallen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2562",
+    "kurztext": "Herstellung von Schlössern und Beschlägen aus unedlen Metallen",
+    "langtext": "Herstellung von Schlössern und Beschlägen aus unedlen Metallen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2563",
+    "kurztext": "Herstellung von Werkzeugen",
+    "langtext": "Herstellung von Werkzeugen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2591",
+    "kurztext": "Herstellung von Fässern, Trommeln, Dosen, Eimern u. ä. Behältern aus Metall",
+    "langtext": "Herstellung von Fässern, Trommeln, Dosen, Eimern u. ä. Behältern aus Metall",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2592",
+    "kurztext": "Herstellung von Verpackungen und Verschlüssen aus Eisen, Stahl und NE-Metall",
+    "langtext": "Herstellung von Verpackungen und Verschlüssen aus Eisen, Stahl und NE-Metall",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2593",
+    "kurztext": "Herstellung von Drahtwaren, Ketten und Federn",
+    "langtext": "Herstellung von Drahtwaren, Ketten und Federn",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2594",
+    "kurztext": "Herstellung von Schrauben und Nieten",
+    "langtext": "Herstellung von Schrauben und Nieten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2599",
+    "kurztext": "Herstellung von sonstigen Metallwaren a. n. g.",
+    "langtext": "Herstellung von sonstigen Metallwaren a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2611",
+    "kurztext": "Herstellung von elektronischen Bauelementen",
+    "langtext": "Herstellung von elektronischen Bauelementen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2612",
+    "kurztext": "Herstellung von bestückten Leiterplatten",
+    "langtext": "Herstellung von bestückten Leiterplatten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2620",
+    "kurztext": "Herstellung von Datenverarbeitungsgeräten und peripheren Geräten",
+    "langtext": "Herstellung von Datenverarbeitungsgeräten und peripheren Geräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2630",
+    "kurztext": "Herstellung von Geräten und Einrichtungen der Telekommunikationstechnik",
+    "langtext": "Herstellung von Geräten und Einrichtungen der Telekommunikationstechnik",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2640",
+    "kurztext": "Herstellung von Geräten der Unterhaltungselektronik",
+    "langtext": "Herstellung von Geräten der Unterhaltungselektronik",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2651",
+    "kurztext": "Herstellung von Mess-, Kontroll-, Navigations- u. ä. Instrumenten und Vorrichtungen",
+    "langtext": "Herstellung von Mess-, Kontroll-, Navigations- u. ä. Instrumenten und Vorrichtungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2652",
+    "kurztext": "Herstellung von Uhren",
+    "langtext": "Herstellung von Uhren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2660",
+    "kurztext": "Herstellung von Bestrahlungs- und Elektrotherapiegeräten und elektromedizinischen Geräten",
+    "langtext": "Herstellung von Bestrahlungs- und Elektrotherapiegeräten und elektromedizinischen Geräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2670",
+    "kurztext": "Herstellung von optischen, fotografischen Geräten sowie von magnetischen, optischen Datenträgern",
+    "langtext": "Herstellung von optischen und fotografischen Instrumenten und Geräten sowie von magnetischen und optischen Datenträgern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2711",
+    "kurztext": "Herstellung von Elektromotoren, Generatoren und Transformatoren",
+    "langtext": "Herstellung von Elektromotoren, Generatoren und Transformatoren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2712",
+    "kurztext": "Herstellung von Elektrizitätsverteilungs- und -schalteinrichtungen",
+    "langtext": "Herstellung von Elektrizitätsverteilungs- und -schalteinrichtungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2720",
+    "kurztext": "Herstellung von Batterien und Akkumulatoren",
+    "langtext": "Herstellung von Batterien und Akkumulatoren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2731",
+    "kurztext": "Herstellung von Glasfaserkabeln",
+    "langtext": "Herstellung von Glasfaserkabeln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2732",
+    "kurztext": "Herstellung von sonstigen elektronischen und elektrischen Drähten und Kabeln",
+    "langtext": "Herstellung von sonstigen elektronischen und elektrischen Drähten und Kabeln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2733",
+    "kurztext": "Herstellung von elektrischem Installationsmaterial",
+    "langtext": "Herstellung von elektrischem Installationsmaterial",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2740",
+    "kurztext": "Herstellung von Lampen und Leuchten",
+    "langtext": "Herstellung von Lampen und Leuchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2751",
+    "kurztext": "Herstellung von elektrischen Haushaltsgeräten",
+    "langtext": "Herstellung von elektrischen Haushaltsgeräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2752",
+    "kurztext": "Herstellung von nichtelektrischen Haushaltsgeräten",
+    "langtext": "Herstellung von nichtelektrischen Haushaltsgeräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2790",
+    "kurztext": "Herstellung von sonstigen elektrischen Ausrüstungen und Geräten",
+    "langtext": "Herstellung von sonstigen elektrischen Ausrüstungen und Geräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2811",
+    "kurztext": "Herstellung von Verbrennungsmotoren und Turbinen, ohne Motoren für Luft- und Straßenfahrzeuge",
+    "langtext": "Herstellung von Verbrennungsmotoren und Turbinen, ohne Motoren für Luft- und Straßenfahrzeuge",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2812",
+    "kurztext": "Herstellung von hydraulischen und pneumatischen Komponenten und Systemen",
+    "langtext": "Herstellung von hydraulischen und pneumatischen Komponenten und Systemen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2813",
+    "kurztext": "Herstellung von sonstigen Pumpen und Kompressoren",
+    "langtext": "Herstellung von sonstigen Pumpen und Kompressoren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2814",
+    "kurztext": "Herstellung von sonstigen Armaturen",
+    "langtext": "Herstellung von sonstigen Armaturen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2815",
+    "kurztext": "Herstellung von Lagern, Getrieben, Zahnrädern und Antriebselementen",
+    "langtext": "Herstellung von Lagern, Getrieben, Zahnrädern und Antriebselementen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2821",
+    "kurztext": "Herstellung von Öfen, Brennern und ortsfesten Heizgeräten für den Haushalt",
+    "langtext": "Herstellung von Öfen, Brennern und ortsfesten Heizgeräten für den Haushalt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2822",
+    "kurztext": "Herstellung von Hebezeugen und Fördermitteln",
+    "langtext": "Herstellung von Hebezeugen und Fördermitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2823",
+    "kurztext": "Herstellung von Büromaschinen, ohne Datenverarbeitungsgeräte und periphere Geräte",
+    "langtext": "Herstellung von Büromaschinen, ohne Datenverarbeitungsgeräte und periphere Geräte",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2824",
+    "kurztext": "Herstellung von handgeführten Werkzeugen mit Motorantrieb",
+    "langtext": "Herstellung von handgeführten Werkzeugen mit Motorantrieb",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2825",
+    "kurztext": "Herstellung von kälte- und lufttechnischen Erzeugnissen, nicht für den Haushalt",
+    "langtext": "Herstellung von kälte- und lufttechnischen Erzeugnissen, nicht für den Haushalt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2829",
+    "kurztext": "Herstellung von sonstigen nicht wirtschaftszweigspezifischen Maschinen a. n. g.",
+    "langtext": "Herstellung von sonstigen nicht wirtschaftszweigspezifischen Maschinen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2830",
+    "kurztext": "Herstellung von land- und forstwirtschaftlichen Maschinen",
+    "langtext": "Herstellung von land- und forstwirtschaftlichen Maschinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2841",
+    "kurztext": "Herstellung von Werkzeugmaschinen für die Metallbearbeitung",
+    "langtext": "Herstellung von Werkzeugmaschinen für die Metallbearbeitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2842",
+    "kurztext": "Herstellung von sonstigen Werkzeugmaschinen",
+    "langtext": "Herstellung von sonstigen Werkzeugmaschinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2891",
+    "kurztext": "Herstellung von Maschinen für die Metallerzeugung, von Walzwerkseinrichtungen und Gießmaschinen",
+    "langtext": "Herstellung von Maschinen für die Metallerzeugung, von Walzwerkseinrichtungen und Gießmaschinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2892",
+    "kurztext": "Herstellung von Bergwerks-, Bau- und Baustoffmaschinen",
+    "langtext": "Herstellung von Bergwerks-, Bau- und Baustoffmaschinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2893",
+    "kurztext": "Herstellung von Maschinen für die Nahrungs- und Genussmittelerzeugung und die Tabakverarbeitung",
+    "langtext": "Herstellung von Maschinen für die Nahrungs- und Genussmittelerzeugung und die Tabakverarbeitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2894",
+    "kurztext": "Herstellung von Maschinen für die Textil- und Bekleidungsherstellung und die Lederverarbeitung",
+    "langtext": "Herstellung von Maschinen für die Textil- und Bekleidungsherstellung und die Lederverarbeitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2895",
+    "kurztext": "Herstellung von Maschinen für die Papiererzeugung und -verarbeitung",
+    "langtext": "Herstellung von Maschinen für die Papiererzeugung und -verarbeitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2896",
+    "kurztext": "Herstellung von Maschinen für die Verarbeitung von Kunststoffen und Kautschuk",
+    "langtext": "Herstellung von Maschinen für die Verarbeitung von Kunststoffen und Kautschuk",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2897",
+    "kurztext": "Herstellung von Maschinen für die additive Fertigung",
+    "langtext": "Herstellung von Maschinen für die additive Fertigung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2899",
+    "kurztext": "Herstellung von Maschinen für sonstige bestimmte Wirtschaftszweige a. n. g.",
+    "langtext": "Herstellung von Maschinen für sonstige bestimmte Wirtschaftszweige a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2910",
+    "kurztext": "Herstellung von Kraftwagen und Kraftwagenmotoren",
+    "langtext": "Herstellung von Kraftwagen und Kraftwagenmotoren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2920",
+    "kurztext": "Herstellung von Karosserien, Aufbauten und Anhängern",
+    "langtext": "Herstellung von Karosserien, Aufbauten und Anhängern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2931",
+    "kurztext": "Herstellung elektrischer und elektronischer Ausrüstungsgegenstände für Kraftwagen",
+    "langtext": "Herstellung elektrischer und elektronischer Ausrüstungsgegenstände für Kraftwagen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "2932",
+    "kurztext": "Herstellung von sonstigen Teilen und sonstigem Zubehör für Kraftwagen",
+    "langtext": "Herstellung von sonstigen Teilen und sonstigem Zubehör für Kraftwagen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3011",
+    "kurztext": "Bau von Schiffen und schwimmenden Vorrichtungen für zivile Zwecke, ohne Boots- und Yachtbau",
+    "langtext": "Bau von Schiffen und schwimmenden Vorrichtungen für zivile Zwecke, ohne Boots- und Yachtbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3012",
+    "kurztext": "Boots- und Yachtbau",
+    "langtext": "Boots- und Yachtbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3013",
+    "kurztext": "Bau von Kriegsschiffen",
+    "langtext": "Bau von Kriegsschiffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3020",
+    "kurztext": "Schienenfahrzeugbau",
+    "langtext": "Schienenfahrzeugbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3031",
+    "kurztext": "Luft- und Raumfahrzeugbau für zivile Zwecke",
+    "langtext": "Luft- und Raumfahrzeugbau für zivile Zwecke",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3032",
+    "kurztext": "Luft- und Raumfahrzeugbau für militärische Zwecke",
+    "langtext": "Luft- und Raumfahrzeugbau für militärische Zwecke",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3040",
+    "kurztext": "Herstellung von militärischen Kampffahrzeugen",
+    "langtext": "Herstellung von militärischen Kampffahrzeugen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3091",
+    "kurztext": "Herstellung von Krafträdern",
+    "langtext": "Herstellung von Krafträdern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3092",
+    "kurztext": "Herstellung von Fahrrädern sowie von Behindertenfahrzeugen",
+    "langtext": "Herstellung von Fahrrädern sowie von Behindertenfahrzeugen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3099",
+    "kurztext": "Herstellung von sonstigen Beförderungsmitteln a. n. g.",
+    "langtext": "Herstellung von sonstigen Beförderungsmitteln a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3100",
+    "kurztext": "Herstellung von Möbeln",
+    "langtext": "Herstellung von Möbeln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3110",
+    "kurztext": "Meeresfischerei",
+    "langtext": "Meeresfischerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3120",
+    "kurztext": "Süßwasserfischerei",
+    "langtext": "Süßwasserfischerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3210",
+    "kurztext": "Meeresaquakultur",
+    "langtext": "Meeresaquakultur",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3211",
+    "kurztext": "Herstellung von Münzen",
+    "langtext": "Herstellung von Münzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3212",
+    "kurztext": "Herstellung von Schmuck, Gold- und Silberschmiedewaren, ohne Fantasieschmuck",
+    "langtext": "Herstellung von Schmuck, Gold- und Silberschmiedewaren, ohne Fantasieschmuck",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3213",
+    "kurztext": "Herstellung von Fantasieschmuck",
+    "langtext": "Herstellung von Fantasieschmuck",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3220",
+    "kurztext": "Süßwasseraquakultur",
+    "langtext": "Süßwasseraquakultur",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3220",
+    "kurztext": "Herstellung von Musikinstrumenten",
+    "langtext": "Herstellung von Musikinstrumenten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3230",
+    "kurztext": "Herstellung von Sportgeräten",
+    "langtext": "Herstellung von Sportgeräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3240",
+    "kurztext": "Herstellung von Spielwaren",
+    "langtext": "Herstellung von Spielwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3250",
+    "kurztext": "Herstellung von medizinischen und zahnmedizinischen Apparaten und Materialien",
+    "langtext": "Herstellung von medizinischen und zahnmedizinischen Apparaten und Materialien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3291",
+    "kurztext": "Herstellung von Besen und Bürsten",
+    "langtext": "Herstellung von Besen und Bürsten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3299",
+    "kurztext": "Herstellung von sonstigen Erzeugnissen a. n. g.",
+    "langtext": "Herstellung von sonstigen Erzeugnissen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3300",
+    "kurztext": "Erbringung von Dienstleistungen für Fischerei und Aquakultur",
+    "langtext": "Erbringung von Dienstleistungen für Fischerei und Aquakultur",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3311",
+    "kurztext": "Reparatur und Instandhaltung von Metallerzeugnissen",
+    "langtext": "Reparatur und Instandhaltung von Metallerzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3312",
+    "kurztext": "Reparatur und Instandhaltung von Maschinen",
+    "langtext": "Reparatur und Instandhaltung von Maschinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3313",
+    "kurztext": "Reparatur und Instandhaltung von elektronischen und optischen Geräten",
+    "langtext": "Reparatur und Instandhaltung von elektronischen und optischen Geräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3314",
+    "kurztext": "Reparatur und Instandhaltung von elektrischen Ausrüstungen",
+    "langtext": "Reparatur und Instandhaltung von elektrischen Ausrüstungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3315",
+    "kurztext": "Reparatur und Instandhaltung von zivilen Schiffen, Booten und Yachten",
+    "langtext": "Reparatur und Instandhaltung von zivilen Schiffen, Booten und Yachten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3316",
+    "kurztext": "Reparatur und Instandhaltung von zivilen Luft- und Raumfahrzeugen",
+    "langtext": "Reparatur und Instandhaltung von zivilen Luft- und Raumfahrzeugen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3317",
+    "kurztext": "Reparatur und Instandhaltung von sonstigen zivilen Beförderungsmitteln",
+    "langtext": "Reparatur und Instandhaltung von sonstigen zivilen Beförderungsmitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3318",
+    "kurztext": "Reparatur, Instandhaltung militärischer Kampffahrzeugen, Luft- und Raumfahrzeugen, Kriegsschiffen",
+    "langtext": "Reparatur und Instandhaltung von militärischen Kampffahrzeugen, Luft- und Raumfahrzeugen sowie Kriegsschiffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3319",
+    "kurztext": "Reparatur und Instandhaltung von sonstigen Ausrüstungen",
+    "langtext": "Reparatur und Instandhaltung von sonstigen Ausrüstungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3320",
+    "kurztext": "Installation von Industriemaschinen und -ausrüstungen",
+    "langtext": "Installation von Industriemaschinen und -ausrüstungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3511",
+    "kurztext": "Elektrizitätserzeugung aus nicht erneuerbaren Energieträgern",
+    "langtext": "Elektrizitätserzeugung aus nicht erneuerbaren Energieträgern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3512",
+    "kurztext": "Elektrizitätserzeugung aus erneuerbaren Energieträgern",
+    "langtext": "Elektrizitätserzeugung aus erneuerbaren Energieträgern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3513",
+    "kurztext": "Elektrizitätsübertragung",
+    "langtext": "Elektrizitätsübertragung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3514",
+    "kurztext": "Elektrizitätsverteilung",
+    "langtext": "Elektrizitätsverteilung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3515",
+    "kurztext": "Elektrizitätshandel",
+    "langtext": "Elektrizitätshandel",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3516",
+    "kurztext": "Speichern von elektrischer Energie",
+    "langtext": "Speichern von elektrischer Energie",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3521",
+    "kurztext": "Gaserzeugung",
+    "langtext": "Gaserzeugung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3522",
+    "kurztext": "Gasverteilung durch Rohrleitungen",
+    "langtext": "Gasverteilung durch Rohrleitungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3523",
+    "kurztext": "Gashandel durch Rohrleitungen",
+    "langtext": "Gashandel durch Rohrleitungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3524",
+    "kurztext": "Speichern von Gas zu Versorgungszwecken",
+    "langtext": "Speichern von Gas zu Versorgungszwecken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3530",
+    "kurztext": "Wärme- und Kälteversorgung",
+    "langtext": "Wärme- und Kälteversorgung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3540",
+    "kurztext": "Tätigkeiten von Strom- und Erdgasmaklerinnen und -maklern",
+    "langtext": "Tätigkeiten von Strom- und Erdgasmaklerinnen und -maklern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3600",
+    "kurztext": "Wasserversorgung",
+    "langtext": "Wasserversorgung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3700",
+    "kurztext": "Abwasserentsorgung",
+    "langtext": "Abwasserentsorgung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3811",
+    "kurztext": "Sammlung nicht gefährlicher Abfälle",
+    "langtext": "Sammlung nicht gefährlicher Abfälle",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3812",
+    "kurztext": "Sammlung gefährlicher Abfälle",
+    "langtext": "Sammlung gefährlicher Abfälle",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3821",
+    "kurztext": "Verwertung von Werkstoffen",
+    "langtext": "Verwertung von Werkstoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3822",
+    "kurztext": "Energetische Verwertung von Abfällen",
+    "langtext": "Energetische Verwertung von Abfällen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3823",
+    "kurztext": "Sonstige Verwertung von Abfällen",
+    "langtext": "Sonstige Verwertung von Abfällen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3831",
+    "kurztext": "Verbrennung von Abfällen ohne energetische Verwertung",
+    "langtext": "Verbrennung von Abfällen ohne energetische Verwertung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3832",
+    "kurztext": "Deponierung oder Dauerlagerung von Abfällen",
+    "langtext": "Deponierung oder Dauerlagerung von Abfällen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3833",
+    "kurztext": "Sonstige Beseitigung von Abfällen",
+    "langtext": "Sonstige Beseitigung von Abfällen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3900",
+    "kurztext": "Beseitigung von Umweltverschmutzungen und sonstige Tätigkeiten in der Abfallbewirtschaftung",
+    "langtext": "Beseitigung von Umweltverschmutzungen und sonstige Tätigkeiten in der Abfallbewirtschaftung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4100",
+    "kurztext": "Hochbau",
+    "langtext": "Hochbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4211",
+    "kurztext": "Bau von Straßen",
+    "langtext": "Bau von Straßen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4212",
+    "kurztext": "Bau von Bahnverkehrsstrecken",
+    "langtext": "Bau von Bahnverkehrsstrecken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4213",
+    "kurztext": "Brücken- und Tunnelbau",
+    "langtext": "Brücken- und Tunnelbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4221",
+    "kurztext": "Rohrleitungstiefbau, Brunnenbau und Kläranlagenbau",
+    "langtext": "Rohrleitungstiefbau, Brunnenbau und Kläranlagenbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4222",
+    "kurztext": "Bau von Versorgungseinrichtungen für Elektrizität und Telekommunikation",
+    "langtext": "Bau von Versorgungseinrichtungen für Elektrizität und Telekommunikation",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4291",
+    "kurztext": "Wasserbau",
+    "langtext": "Wasserbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4299",
+    "kurztext": "Sonstiger Tiefbau a. n. g.",
+    "langtext": "Sonstiger Tiefbau a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4311",
+    "kurztext": "Abbrucharbeiten",
+    "langtext": "Abbrucharbeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4312",
+    "kurztext": "Vorbereitende Baustellenarbeiten",
+    "langtext": "Vorbereitende Baustellenarbeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4313",
+    "kurztext": "Test- und Suchbohrung",
+    "langtext": "Test- und Suchbohrung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4321",
+    "kurztext": "Elektroinstallation",
+    "langtext": "Elektroinstallation",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4322",
+    "kurztext": "Gas-, Wasser-, Heizungs- sowie Lüftungs- und Klimainstallation",
+    "langtext": "Gas-, Wasser-, Heizungs- sowie Lüftungs- und Klimainstallation",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4323",
+    "kurztext": "Einbau von Isolierungen",
+    "langtext": "Einbau von Isolierungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4324",
+    "kurztext": "Sonstige Bauinstallation",
+    "langtext": "Sonstige Bauinstallation",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4331",
+    "kurztext": "Anbringen von Stuckaturen, Gipserei und Verputzerei",
+    "langtext": "Anbringen von Stuckaturen, Gipserei und Verputzerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4332",
+    "kurztext": "Bautischlerei und -schlosserei",
+    "langtext": "Bautischlerei und -schlosserei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4333",
+    "kurztext": "Raumausstattung",
+    "langtext": "Fußboden-, Fliesen- und Plattenlegerei, Tapeziererei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4334",
+    "kurztext": "Malerei und Glaserei",
+    "langtext": "Malerei und Glaserei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4335",
+    "kurztext": "Sonstiger Ausbau",
+    "langtext": "Sonstiger Ausbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4341",
+    "kurztext": "Dachdeckerei und Zimmerei",
+    "langtext": "Dachdeckerei und Zimmerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4342",
+    "kurztext": "Sonstige spezialisierte Bautätigkeiten im Hochbau",
+    "langtext": "Sonstige spezialisierte Bautätigkeiten im Hochbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4350",
+    "kurztext": "Spezialisierte Bautätigkeiten im Tiefbau",
+    "langtext": "Spezialisierte Bautätigkeiten im Tiefbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4360",
+    "kurztext": "Vermittlungstätigkeiten für spezialisierte Bautätigkeiten",
+    "langtext": "Vermittlungstätigkeiten für spezialisierte Bautätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4391",
+    "kurztext": "Maurerarbeiten",
+    "langtext": "Maurerarbeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4399",
+    "kurztext": "Sonstige spezialisierte Bautätigkeiten a. n. g.",
+    "langtext": "Sonstige spezialisierte Bautätigkeiten a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4611",
+    "kurztext": "Tätigkeiten der Großhandelsvermittlung von landwirtschaftlichen Rohstoffen, lebenden Tieren",
+    "langtext": "Tätigkeiten der Großhandelsvermittlung von landwirtschaftlichen Grundstoffen, lebenden Tieren, textilen Rohstoffen und Halbwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4612",
+    "kurztext": "Tätigkeiten der Großhandelsvermittlung von Brennstoffen, Erzen, Metallen und technischen Chemikalien",
+    "langtext": "Tätigkeiten der Großhandelsvermittlung von Brennstoffen, Erzen, Metallen und technischen Chemikalien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4613",
+    "kurztext": "Tätigkeiten der Großhandelsvermittlung von Holz, Baustoffen und Anstrichmitteln",
+    "langtext": "Tätigkeiten der Großhandelsvermittlung von Holz, Baustoffen und Anstrichmitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4614",
+    "kurztext": "Tätigkeiten der Großhandelsvermittlung von Maschinen, technischem Bedarf, Wasser- und Luftfahrzeugen",
+    "langtext": "Tätigkeiten der Großhandelsvermittlung von Maschinen, technischem Bedarf, Wasser- und Luftfahrzeugen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4615",
+    "kurztext": "Tätigkeiten der Großhandelsvermittlung von Einrichtungs- und Haushaltsgegenständen, Metallwaren",
+    "langtext": "Tätigkeiten der Großhandelsvermittlung von Möbeln, Einrichtungs- und Haushaltsgegenständen, Eisen- und Metallwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4616",
+    "kurztext": "Tätigkeiten der Großhandelsvermittlung von Textilien, Bekleidung, Schuhen und Lederwaren",
+    "langtext": "Tätigkeiten der Großhandelsvermittlung von Textilien, Bekleidung, Schuhen und Lederwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4617",
+    "kurztext": "Tätigkeiten der Großhandelsvermittlung von Nahrungsmitteln, Getränken und Tabakwaren",
+    "langtext": "Tätigkeiten der Großhandelsvermittlung von Nahrungsmitteln, Getränken und Tabakwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4618",
+    "kurztext": "Tätigkeiten der Großhandelsvermittlung von sonstigen Waren",
+    "langtext": "Tätigkeiten der Großhandelsvermittlung von sonstigen Waren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4619",
+    "kurztext": "Tätigkeiten der Großhandelsvermittlung von Waren ohne ausgeprägten Schwerpunkt",
+    "langtext": "Tätigkeiten der Großhandelsvermittlung von Waren ohne ausgeprägten Schwerpunkt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4621",
+    "kurztext": "Großhandel mit Getreide, Rohtabak, Saatgut und Futtermitteln",
+    "langtext": "Großhandel mit Getreide, Rohtabak, Saatgut und Futtermitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4622",
+    "kurztext": "Großhandel mit Blumen und Pflanzen",
+    "langtext": "Großhandel mit Blumen und Pflanzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4623",
+    "kurztext": "Großhandel mit lebenden Tieren",
+    "langtext": "Großhandel mit lebenden Tieren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4624",
+    "kurztext": "Großhandel mit Häuten, Fellen und Leder",
+    "langtext": "Großhandel mit Häuten, Fellen und Leder",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4631",
+    "kurztext": "Großhandel mit Obst, Gemüse und Kartoffeln",
+    "langtext": "Großhandel mit Obst, Gemüse und Kartoffeln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4632",
+    "kurztext": "Großhandel mit Fleisch, Fleischwaren, Fisch und Fischerzeugnissen",
+    "langtext": "Großhandel mit Fleisch, Fleischwaren, Fisch und Fischerzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4633",
+    "kurztext": "Großhandel mit Milch, Milcherzeugnissen, Eiern, Speiseölen und Nahrungsfetten",
+    "langtext": "Großhandel mit Milch, Milcherzeugnissen, Eiern, Speiseölen und Nahrungsfetten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4634",
+    "kurztext": "Großhandel mit Getränken",
+    "langtext": "Großhandel mit Getränken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4635",
+    "kurztext": "Großhandel mit Tabakwaren",
+    "langtext": "Großhandel mit Tabakwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4636",
+    "kurztext": "Großhandel mit Zucker, Süßwaren und Backwaren",
+    "langtext": "Großhandel mit Zucker, Süßwaren und Backwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4637",
+    "kurztext": "Großhandel mit Kaffee, Tee, Kakao und Gewürzen",
+    "langtext": "Großhandel mit Kaffee, Tee, Kakao und Gewürzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4638",
+    "kurztext": "Großhandel mit sonstigen Nahrungs- und Genussmitteln",
+    "langtext": "Großhandel mit sonstigen Nahrungs- und Genussmitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4639",
+    "kurztext": "Großhandel mit Nahrungs- und Genussmitteln, Getränken und Tabakwaren, ohne ausgeprägten Schwerpunkt",
+    "langtext": "Großhandel mit Nahrungs- und Genussmitteln, Getränken und Tabakwaren, ohne ausgeprägten Schwerpunkt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4641",
+    "kurztext": "Großhandel mit Textilien",
+    "langtext": "Großhandel mit Textilien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4642",
+    "kurztext": "Großhandel mit Bekleidung und Schuhen",
+    "langtext": "Großhandel mit Bekleidung und Schuhen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4643",
+    "kurztext": "Großhandel mit Foto-und optischen Erzeugnissen,elektrischen Haushaltsgeräten,Unterhaltungselektronik",
+    "langtext": "Großhandel mit Foto- und optischen Erzeugnissen, elektrischen Haushaltsgeräten und Geräten der Unterhaltungselektronik",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4644",
+    "kurztext": "Großhandel mit keramischen Erzeugnissen, Glaswaren und Reinigungsmitteln",
+    "langtext": "Großhandel mit keramischen Erzeugnissen, Glaswaren und Reinigungsmitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4645",
+    "kurztext": "Großhandel mit kosmetischen Erzeugnissen und Körperpflegemitteln",
+    "langtext": "Großhandel mit kosmetischen Erzeugnissen und Körperpflegemitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4646",
+    "kurztext": "Großhandel mit pharmazeutischen Erzeugnissen und medizinischen Hilfsmitteln",
+    "langtext": "Großhandel mit pharmazeutischen Erzeugnissen und medizinischen Hilfsmitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4647",
+    "kurztext": "Großhandel mit Möbeln, Teppichen, Lampen und Leuchten",
+    "langtext": "Großhandel mit Möbeln, Teppichen, Lampen und Leuchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4648",
+    "kurztext": "Großhandel mit Uhren und Schmuck",
+    "langtext": "Großhandel mit Uhren und Schmuck",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4649",
+    "kurztext": "Großhandel mit sonstigen Gebrauchs- und Verbrauchsgütern",
+    "langtext": "Großhandel mit sonstigen Gebrauchs- und Verbrauchsgütern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4650",
+    "kurztext": "Großhandel mit Geräten der Informations- und Kommunikationstechnik",
+    "langtext": "Großhandel mit Geräten der Informations- und Kommunikationstechnik",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4661",
+    "kurztext": "Großhandel mit landwirtschaftlichen Maschinen und Geräten",
+    "langtext": "Großhandel mit landwirtschaftlichen Maschinen und Geräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4662",
+    "kurztext": "Großhandel mit Werkzeugmaschinen",
+    "langtext": "Großhandel mit Werkzeugmaschinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4663",
+    "kurztext": "Großhandel mit Bergwerks-, Bau- und Baustoffmaschinen",
+    "langtext": "Großhandel mit Bergwerks-, Bau- und Baustoffmaschinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4664",
+    "kurztext": "Großhandel mit sonstigen Maschinen und Ausrüstungen",
+    "langtext": "Großhandel mit sonstigen Maschinen und Ausrüstungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4671",
+    "kurztext": "Großhandel mit Kraftwagen",
+    "langtext": "Großhandel mit Kraftwagen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4672",
+    "kurztext": "Großhandel mit Kraftwagenteilen und -zubehör",
+    "langtext": "Großhandel mit Kraftwagenteilen und -zubehör",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4673",
+    "kurztext": "Großhandel mit Krafträdern, Kraftradteilen und -zubehör",
+    "langtext": "Großhandel mit Krafträdern, Kraftradteilen und -zubehör",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4681",
+    "kurztext": "Großhandel mit Brennstoffen und Mineralölerzeugnissen",
+    "langtext": "Großhandel mit Brennstoffen und Mineralölerzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4682",
+    "kurztext": "Großhandel mit Erzen, Metallen und Metallhalbzeug",
+    "langtext": "Großhandel mit Erzen, Metallen und Metallhalbzeug",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4683",
+    "kurztext": "Großhandel mit Holz, Baustoffen, Anstrichmitteln und Sanitärausstattung",
+    "langtext": "Großhandel mit Holz, Baustoffen, Anstrichmitteln und Sanitärausstattung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4684",
+    "kurztext": "Großhandel mit Metall- und Kunststoffwaren für Bauzwecke,Installationsbedarf für Gas,Wasser,Heizung",
+    "langtext": "Großhandel mit Metall- und Kunststoffwaren für Bauzwecke sowie Installationsbedarf für Gas, Wasser und Heizung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4685",
+    "kurztext": "Großhandel mit chemischen Erzeugnissen",
+    "langtext": "Großhandel mit chemischen Erzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4686",
+    "kurztext": "Großhandel mit sonstigen Halbwaren",
+    "langtext": "Großhandel mit sonstigen Halbwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4687",
+    "kurztext": "Großhandel mit Altmaterialien und Reststoffen",
+    "langtext": "Großhandel mit Altmaterialien und Reststoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4689",
+    "kurztext": "Sonstiger Großhandel a. n. g.",
+    "langtext": "Sonstiger Großhandel a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4690",
+    "kurztext": "Großhandel ohne ausgeprägten Schwerpunkt",
+    "langtext": "Großhandel ohne ausgeprägten Schwerpunkt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4711",
+    "kurztext": "Einzelhandel mit Waren verschiedener Art, Hauptrichtung Nahrungs- und Genussmittel",
+    "langtext": "Einzelhandel mit Waren verschiedener Art, Hauptrichtung Nahrungs- und Genussmittel",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4712",
+    "kurztext": "Sonstiger Einzelhandel mit Waren verschiedener Art",
+    "langtext": "Sonstiger Einzelhandel mit Waren verschiedener Art",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4721",
+    "kurztext": "Einzelhandel mit Obst, Gemüse und Kartoffeln",
+    "langtext": "Einzelhandel mit Obst, Gemüse und Kartoffeln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4722",
+    "kurztext": "Einzelhandel mit Fleisch und Fleischwaren",
+    "langtext": "Einzelhandel mit Fleisch und Fleischwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4723",
+    "kurztext": "Einzelhandel mit Fisch, Meeresfrüchten und Fischerzeugnissen",
+    "langtext": "Einzelhandel mit Fisch, Meeresfrüchten und Fischerzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4724",
+    "kurztext": "Einzelhandel mit Back- und Süßwaren",
+    "langtext": "Einzelhandel mit Back- und Süßwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4725",
+    "kurztext": "Einzelhandel mit Getränken",
+    "langtext": "Einzelhandel mit Getränken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4726",
+    "kurztext": "Einzelhandel mit Tabakwaren",
+    "langtext": "Einzelhandel mit Tabakwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4727",
+    "kurztext": "Einzelhandel mit sonstigen Nahrungs- und Genussmitteln",
+    "langtext": "Einzelhandel mit sonstigen Nahrungs- und Genussmitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4730",
+    "kurztext": "Einzelhandel mit Motorenkraftstoffen",
+    "langtext": "Einzelhandel mit Motorenkraftstoffen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4740",
+    "kurztext": "Einzelhandel mit Geräten der Informations- und Kommunikationstechnik",
+    "langtext": "Einzelhandel mit Geräten der Informations- und Kommunikationstechnik",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4751",
+    "kurztext": "Einzelhandel mit Textilien",
+    "langtext": "Einzelhandel mit Textilien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752",
+    "kurztext": "Einzelhandel mit Metallwaren, Anstrichmitteln, Bau- und Heimwerkerbedarf",
+    "langtext": "Einzelhandel mit Metallwaren, Anstrichmitteln, Bau- und Heimwerkerbedarf",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4753",
+    "kurztext": "Einzelhandel mit Vorhängen, Teppichen, Fußbodenbelägen und Tapeten",
+    "langtext": "Einzelhandel mit Vorhängen, Teppichen, Fußbodenbelägen und Tapeten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4754",
+    "kurztext": "Einzelhandel mit elektrischen Haushaltsgeräten",
+    "langtext": "Einzelhandel mit elektrischen Haushaltsgeräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4755",
+    "kurztext": "Einzelhandel mit Möbeln, Einrichtungsgegenständen und sonstigem Hausrat",
+    "langtext": "Einzelhandel mit Möbeln, Einrichtungsgegenständen und sonstigem Hausrat",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4761",
+    "kurztext": "Einzelhandel mit Büchern",
+    "langtext": "Einzelhandel mit Büchern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4762",
+    "kurztext": "Einzelhandel mit Zeitschriften, Zeitungen, Schreibwaren und Bürobedarf",
+    "langtext": "Einzelhandel mit Zeitschriften, Zeitungen, Schreibwaren und Bürobedarf",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4763",
+    "kurztext": "Einzelhandel mit Fahrrädern, Sport- und Campingartikeln",
+    "langtext": "Einzelhandel mit Fahrrädern, Sport- und Campingartikeln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4764",
+    "kurztext": "Einzelhandel mit Spielwaren",
+    "langtext": "Einzelhandel mit Spielwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4769",
+    "kurztext": "Einzelhandel mit Kunst- und Kulturerzeugnissen a. n. g.",
+    "langtext": "Einzelhandel mit Kunst- und Kulturerzeugnissen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4771",
+    "kurztext": "Einzelhandel mit Bekleidung",
+    "langtext": "Einzelhandel mit Bekleidung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4772",
+    "kurztext": "Einzelhandel mit Schuhen und Lederwaren",
+    "langtext": "Einzelhandel mit Schuhen und Lederwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4773",
+    "kurztext": "Einzelhandel mit pharmazeutischen Erzeugnissen",
+    "langtext": "Einzelhandel mit pharmazeutischen Erzeugnissen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4774",
+    "kurztext": "Einzelhandel mit medizinischen und orthopädischen Artikeln",
+    "langtext": "Einzelhandel mit medizinischen und orthopädischen Artikeln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4775",
+    "kurztext": "Einzelhandel mit kosmetischen Erzeugnissen und Körperpflegemitteln",
+    "langtext": "Einzelhandel mit kosmetischen Erzeugnissen und Körperpflegemitteln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4776",
+    "kurztext": "Einzelhandel mit Blumen, Pflanzen, Düngemitteln, Tierfutter und Haustieren",
+    "langtext": "Einzelhandel mit Blumen, Pflanzen, Düngemitteln, Tierfutter und Haustieren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4777",
+    "kurztext": "Einzelhandel mit Uhren und Schmuck",
+    "langtext": "Einzelhandel mit Uhren und Schmuck",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4778",
+    "kurztext": "Einzelhandel mit sonstigen Neuwaren",
+    "langtext": "Einzelhandel mit sonstigen Neuwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4779",
+    "kurztext": "Einzelhandel mit Antiquitäten und Gebrauchtwaren",
+    "langtext": "Einzelhandel mit Antiquitäten und Gebrauchtwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4781",
+    "kurztext": "Einzelhandel mit Kraftwagen",
+    "langtext": "Einzelhandel mit Kraftwagen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4782",
+    "kurztext": "Einzelhandel mit Kraftwagenteilen und -zubehör",
+    "langtext": "Einzelhandel mit Kraftwagenteilen und -zubehör",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4783",
+    "kurztext": "Einzelhandel mit Krafträdern, Kraftradteilen und -zubehör",
+    "langtext": "Einzelhandel mit Krafträdern, Kraftradteilen und -zubehör",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4791",
+    "kurztext": "Vermittlungstätigkeiten für den Einzelhandel ohne ausgeprägten Schwerpunkt",
+    "langtext": "Vermittlungstätigkeiten für den Einzelhandel ohne ausgeprägten Schwerpunkt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4792",
+    "kurztext": "Vermittlungstätigkeiten für den Einzelhandel mit ausgeprägtem Schwerpunkt",
+    "langtext": "Vermittlungstätigkeiten für den Einzelhandel mit ausgeprägtem Schwerpunkt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4911",
+    "kurztext": "Personenbeförderung im Eisenbahnverkehr",
+    "langtext": "Personenbeförderung im Eisenbahnverkehr",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4912",
+    "kurztext": "Sonstige Personenbeförderung im Schienenverkehr",
+    "langtext": "Sonstige Personenbeförderung im Schienenverkehr",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4920",
+    "kurztext": "Güterbeförderung im Schienenverkehr",
+    "langtext": "Güterbeförderung im Schienenverkehr",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4931",
+    "kurztext": "Personenbeförderung im Linienverkehr auf der Straße",
+    "langtext": "Personenbeförderung im Linienverkehr auf der Straße",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4932",
+    "kurztext": "Personenbeförderung im Gelegenheitsverkehr auf der Straße",
+    "langtext": "Personenbeförderung im Gelegenheitsverkehr auf der Straße",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4933",
+    "kurztext": "Personenbeförderung mit Fahrzeug mit Fahrer auf Abruf",
+    "langtext": "Personenbeförderung mit Fahrzeug mit Fahrer auf Abruf",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4934",
+    "kurztext": "Personenbeförderung mit Seilbahnen und Skiliften",
+    "langtext": "Personenbeförderung mit Seilbahnen und Skiliften",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4939",
+    "kurztext": "Sonstige Personenbeförderung im Landverkehr a. n. g.",
+    "langtext": "Sonstige Personenbeförderung im Landverkehr a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4941",
+    "kurztext": "Güterbeförderung im Straßenverkehr",
+    "langtext": "Güterbeförderung im Straßenverkehr",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4942",
+    "kurztext": "Umzugstransporte",
+    "langtext": "Umzugstransporte",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4950",
+    "kurztext": "Transport in Rohrfernleitungen",
+    "langtext": "Transport in Rohrfernleitungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5010",
+    "kurztext": "Personenbeförderung in der Hochsee- und Küstenschifffahrt",
+    "langtext": "Personenbeförderung in der Hochsee- und Küstenschifffahrt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5020",
+    "kurztext": "Güterbeförderung in der Hochsee- und Küstenschifffahrt",
+    "langtext": "Güterbeförderung in der Hochsee- und Küstenschifffahrt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5030",
+    "kurztext": "Personenbeförderung in der Binnenschifffahrt",
+    "langtext": "Personenbeförderung in der Binnenschifffahrt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5040",
+    "kurztext": "Güterbeförderung in der Binnenschifffahrt",
+    "langtext": "Güterbeförderung in der Binnenschifffahrt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5100",
+    "kurztext": "Steinkohlenbergbau",
+    "langtext": "Steinkohlenbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5110",
+    "kurztext": "Personenbeförderung in der Luftfahrt",
+    "langtext": "Personenbeförderung in der Luftfahrt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5121",
+    "kurztext": "Güterbeförderung in der Luftfahrt",
+    "langtext": "Güterbeförderung in der Luftfahrt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5122",
+    "kurztext": "Raumtransport",
+    "langtext": "Raumtransport",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5200",
+    "kurztext": "Braunkohlenbergbau",
+    "langtext": "Braunkohlenbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5210",
+    "kurztext": "Lagerei",
+    "langtext": "Lagerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5221",
+    "kurztext": "Erbringung von sonstigen Dienstleistungen für den Landverkehr",
+    "langtext": "Erbringung von sonstigen Dienstleistungen für den Landverkehr",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5222",
+    "kurztext": "Erbringung von sonstigen Dienstleistungen für die Schifffahrt",
+    "langtext": "Erbringung von sonstigen Dienstleistungen für die Schifffahrt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5223",
+    "kurztext": "Erbringung von sonstigen Dienstleistungen für die Luftfahrt",
+    "langtext": "Erbringung von sonstigen Dienstleistungen für die Luftfahrt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5224",
+    "kurztext": "Frachtumschlag",
+    "langtext": "Frachtumschlag",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5225",
+    "kurztext": "Erbringung von Logistikdienstleistungen",
+    "langtext": "Erbringung von Logistikdienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5226",
+    "kurztext": "Erbringung von sonstigen Dienstleistungen für den Verkehr",
+    "langtext": "Erbringung von sonstigen Dienstleistungen für den Verkehr",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5231",
+    "kurztext": "Vermittlungstätigkeiten für die Güterbeförderung",
+    "langtext": "Vermittlungstätigkeiten für die Güterbeförderung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5232",
+    "kurztext": "Vermittlungstätigkeiten für die Personenbeförderung",
+    "langtext": "Vermittlungstätigkeiten für die Personenbeförderung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5310",
+    "kurztext": "Postdienste von Universaldienstleistungsanbietern",
+    "langtext": "Postdienste von Universaldienstleistungsanbietern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5320",
+    "kurztext": "Sonstige Post-, Kurier- und Expressdienste",
+    "langtext": "Sonstige Post-, Kurier- und Expressdienste",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5330",
+    "kurztext": "Vermittlungstätigkeiten für Post-, Kurier- und Expressdienstleistungen",
+    "langtext": "Vermittlungstätigkeiten für Post-, Kurier- und Expressdienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5510",
+    "kurztext": "Hotels, Gasthöfe und Pensionen",
+    "langtext": "Hotels, Gasthöfe und Pensionen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5520",
+    "kurztext": "Ferienunterkünfte und ähnliche Beherbergungsstätten",
+    "langtext": "Ferienunterkünfte und ähnliche Beherbergungsstätten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5530",
+    "kurztext": "Campingplätze",
+    "langtext": "Campingplätze",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5540",
+    "kurztext": "Vermittlungstätigkeiten für Beherbergungsdienstleistungen",
+    "langtext": "Vermittlungstätigkeiten für Beherbergungsdienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5590",
+    "kurztext": "Sonstige Beherbergungsstätten",
+    "langtext": "Sonstige Beherbergungsstätten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5611",
+    "kurztext": "Restaurants, Gaststätten, Imbissstuben, Cafés, Eissalons u. Ä.",
+    "langtext": "Restaurants, Gaststätten, Imbissstuben, Cafés, Eissalons u. Ä.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5612",
+    "kurztext": "Mobile Gastronomie",
+    "langtext": "Mobile Gastronomie",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5621",
+    "kurztext": "Event-Caterer",
+    "langtext": "Event-Caterer",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5622",
+    "kurztext": "Sonstige Caterer und Erbringung sonstiger Verpflegungsdienstleistungen",
+    "langtext": "Sonstige Caterer und Erbringung sonstiger Verpflegungsdienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5630",
+    "kurztext": "Ausschank von Getränken",
+    "langtext": "Ausschank von Getränken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5640",
+    "kurztext": "Vermittlungstätigkeiten für gastronomische Dienstleistungen",
+    "langtext": "Vermittlungstätigkeiten für gastronomische Dienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5811",
+    "kurztext": "Verlegen von Büchern",
+    "langtext": "Verlegen von Büchern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5812",
+    "kurztext": "Verlegen von Zeitungen",
+    "langtext": "Verlegen von Zeitungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5813",
+    "kurztext": "Verlegen von Zeitschriften",
+    "langtext": "Verlegen von Zeitschriften",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5819",
+    "kurztext": "Sonstiges Verlagswesen, ohne Software",
+    "langtext": "Sonstiges Verlagswesen, ohne Software",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5821",
+    "kurztext": "Verlegen von Computerspielen",
+    "langtext": "Verlegen von Computerspielen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5829",
+    "kurztext": "Verlegen von sonstiger Software",
+    "langtext": "Verlegen von sonstiger Software",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5911",
+    "kurztext": "Herstellung von Filmen, Videofilmen und Fernsehprogrammen",
+    "langtext": "Herstellung von Filmen, Videofilmen und Fernsehprogrammen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5912",
+    "kurztext": "Nachbearbeitung und sonstige Filmtechnik",
+    "langtext": "Nachbearbeitung und sonstige Filmtechnik",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5913",
+    "kurztext": "Filmverleih und -vertrieb, nicht an private Haushalte",
+    "langtext": "Filmverleih und -vertrieb, nicht an private Haushalte",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5914",
+    "kurztext": "Kinos",
+    "langtext": "Kinos",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "5920",
+    "kurztext": "Tonstudios, Herstellung von Hörfunkbeiträgen, Verlegen von bespielten Tonträgern und Musikalien",
+    "langtext": "Tonstudios, Herstellung von Hörfunkbeiträgen, Verlegen von bespielten Tonträgern und Musikalien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6010",
+    "kurztext": "Hörfunkveranstalter und Verbreitung von Audioinhalten",
+    "langtext": "Hörfunkveranstalter und Verbreitung von Audioinhalten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6020",
+    "kurztext": "Fernsehveranstalter und Verbreitung von Videoinhalten",
+    "langtext": "Fernsehveranstalter und Verbreitung von Videoinhalten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6031",
+    "kurztext": "Nachrichtenagenturen",
+    "langtext": "Nachrichtenagenturen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6039",
+    "kurztext": "Sonstige Verbreitung von Medieninhalten",
+    "langtext": "Sonstige Verbreitung von Medieninhalten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6100",
+    "kurztext": "Gewinnung von Erdöl",
+    "langtext": "Gewinnung von Erdöl",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6110",
+    "kurztext": "Leitungsgebundene, drahtlose und satellitengestützte Telekommunikation",
+    "langtext": "Leitungsgebundene, drahtlose und satellitengestützte Telekommunikation",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6120",
+    "kurztext": "Wiederverkaufs- und Vermittlungstätigkeiten für die Telekommunikation",
+    "langtext": "Wiederverkaufs- und Vermittlungstätigkeiten für die Telekommunikation",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6190",
+    "kurztext": "Sonstige Telekommunikation",
+    "langtext": "Sonstige Telekommunikation",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6200",
+    "kurztext": "Gewinnung von Erdgas",
+    "langtext": "Gewinnung von Erdgas",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6210",
+    "kurztext": "Programmierungstätigkeiten",
+    "langtext": "Programmierungstätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6220",
+    "kurztext": "Erbringung von Dienstleistungen der IT-Beratung, Betrieb von Datenverarbeitungseinrichtungen",
+    "langtext": "Erbringung von Dienstleistungen der IT-Beratung sowie des Betriebs von Datenverarbeitungseinrichtungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6290",
+    "kurztext": "Erbringung von sonstigen Dienstleistungen der Informationstechnologie",
+    "langtext": "Erbringung von sonstigen Dienstleistungen der Informationstechnologie",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6310",
+    "kurztext": "Datenverarbeitung, Hosting und damit verbundene Tätigkeiten",
+    "langtext": "Datenverarbeitung, Hosting und damit verbundene Tätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6391",
+    "kurztext": "Web-Suchportale",
+    "langtext": "Web-Suchportale",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6392",
+    "kurztext": "Erbringung von sonstigen Informationsdienstleistungen",
+    "langtext": "Erbringung von sonstigen Informationsdienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6411",
+    "kurztext": "Zentralbanken",
+    "langtext": "Zentralbanken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6419",
+    "kurztext": "Kreditinstitute, ohne Spezialkreditinstitute",
+    "langtext": "Kreditinstitute, ohne Spezialkreditinstitute",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6421",
+    "kurztext": "Beteiligungsgesellschaften",
+    "langtext": "Beteiligungsgesellschaften",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6422",
+    "kurztext": "Finanzierungs-Conduits",
+    "langtext": "Finanzierungs-Conduits",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6431",
+    "kurztext": "Investmentfonds",
+    "langtext": "Investmentfonds",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6432",
+    "kurztext": "Treuhandfonds, Nachlass- und Treuhandkonten",
+    "langtext": "Treuhandfonds, Nachlass- und Treuhandkonten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6491",
+    "kurztext": "Institutionen für Finanzierungsleasing",
+    "langtext": "Institutionen für Finanzierungsleasing",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6492",
+    "kurztext": "Spezialkreditinstitute",
+    "langtext": "Spezialkreditinstitute",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6499",
+    "kurztext": "Sonstige Finanzdienstleistungen a. n. g.",
+    "langtext": "Sonstige Finanzdienstleistungen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6511",
+    "kurztext": "Lebensversicherung",
+    "langtext": "Lebensversicherung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6512",
+    "kurztext": "Nichtlebensversicherungen",
+    "langtext": "Nichtlebensversicherungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6520",
+    "kurztext": "Rückversicherungen",
+    "langtext": "Rückversicherungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6530",
+    "kurztext": "Pensionskassen und Pensionsfonds",
+    "langtext": "Pensionskassen und Pensionsfonds",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6611",
+    "kurztext": "Effekten- und Warenbörsen",
+    "langtext": "Effekten- und Warenbörsen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6612",
+    "kurztext": "Effekten- und Warenterminhandel",
+    "langtext": "Effekten- und Warenterminhandel",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6619",
+    "kurztext": "Sonstige mit Finanzdienstleistungen verbundene Tätigkeiten",
+    "langtext": "Sonstige mit Finanzdienstleistungen verbundene Tätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6621",
+    "kurztext": "Risiko- und Schadensbewertung",
+    "langtext": "Risiko- und Schadensbewertung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6622",
+    "kurztext": "Tätigkeiten der Versicherungsvermittlung",
+    "langtext": "Tätigkeiten der Versicherungsvermittlung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6629",
+    "kurztext": "Mit Versicherungsdienstleistungen und Pensionskassen verbundene Tätigkeiten a. n. g.",
+    "langtext": "Mit Versicherungsdienstleistungen und Pensionskassen verbundene Tätigkeiten a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6630",
+    "kurztext": "Fondsmanagement",
+    "langtext": "Fondsmanagement",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6811",
+    "kurztext": "Kauf und Verkauf von eigenen Grundstücken, Gebäuden und Wohnungen",
+    "langtext": "Kauf und Verkauf von eigenen Grundstücken, Gebäuden und Wohnungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6812",
+    "kurztext": "Erschließung von Grundstücken, Bauträger",
+    "langtext": "Erschließung von Grundstücken, Bauträger",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6820",
+    "kurztext": "Vermietung, Verpachtung von eigenen oder geleasten Grundstücken, Gebäuden und Wohnungen",
+    "langtext": "Vermietung, Verpachtung von eigenen oder geleasten Grundstücken, Gebäuden und Wohnungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6831",
+    "kurztext": "Vermittlung von Grundstücken, Gebäuden und Wohnungen für Dritte",
+    "langtext": "Vermittlung von Grundstücken, Gebäuden und Wohnungen für Dritte",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6832",
+    "kurztext": "Verwaltung von Grundstücken, Gebäuden und Wohnungen für Dritte",
+    "langtext": "Verwaltung von Grundstücken, Gebäuden und Wohnungen für Dritte",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6910",
+    "kurztext": "Rechtsberatung",
+    "langtext": "Rechtsberatung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "6920",
+    "kurztext": "Wirtschaftsprüfung und Steuerberatung, Buchführung",
+    "langtext": "Wirtschaftsprüfung und Steuerberatung, Buchführung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7010",
+    "kurztext": "Verwaltung und Führung von Unternehmen und Betrieben",
+    "langtext": "Verwaltung und Führung von Unternehmen und Betrieben",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7020",
+    "kurztext": "Unternehmensberatung",
+    "langtext": "Unternehmensberatung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7100",
+    "kurztext": "Eisenerzbergbau",
+    "langtext": "Eisenerzbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7111",
+    "kurztext": "Tätigkeiten von Architekturbüros",
+    "langtext": "Tätigkeiten von Architekturbüros",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7112",
+    "kurztext": "Tätigkeiten von Ingenieurbüros",
+    "langtext": "Tätigkeiten von Ingenieurbüros",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7120",
+    "kurztext": "Technische, physikalische und chemische Untersuchung",
+    "langtext": "Technische, physikalische und chemische Untersuchung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7210",
+    "kurztext": "Bergbau auf Uran- und Thoriumerze",
+    "langtext": "Bergbau auf Uran- und Thoriumerze",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7210",
+    "kurztext": "Forschung und Entwicklung im Bereich Natur-, Ingenieur-, Agrarwissenschaften und Medizin",
+    "langtext": "Forschung und Entwicklung im Bereich Natur-, Ingenieur-, Agrarwissenschaften und Medizin",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7220",
+    "kurztext": "Forschung, Entwicklung in Rechts-, Wirtschafts-, Sozial-, Sprach-, Kultur-, Kunstwissenschaft",
+    "langtext": "Forschung und Entwicklung im Bereich Rechts-, Wirtschafts- und Sozialwissenschaften sowie im Bereich Sprach-, Kultur- und Kunstwissenschaften",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7290",
+    "kurztext": "Sonstiger NE-Metallerzbergbau",
+    "langtext": "Sonstiger NE-Metallerzbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7311",
+    "kurztext": "Tätigkeiten von Werbeagenturen",
+    "langtext": "Tätigkeiten von Werbeagenturen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7312",
+    "kurztext": "Vermarktung und Vermittlung von Werbezeiten und Werbeflächen",
+    "langtext": "Vermarktung und Vermittlung von Werbezeiten und Werbeflächen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7320",
+    "kurztext": "Markt- und Meinungsforschung",
+    "langtext": "Markt- und Meinungsforschung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7330",
+    "kurztext": "Public-Relations-Beratung",
+    "langtext": "Public-Relations-Beratung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7411",
+    "kurztext": "Industrie-, Produkt- und Modedesign",
+    "langtext": "Industrie-, Produkt- und Modedesign",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7412",
+    "kurztext": "Grafik- und Kommunikationsdesign",
+    "langtext": "Grafik- und Kommunikationsdesign",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7413",
+    "kurztext": "Innenraumdesign und Raumgestaltung",
+    "langtext": "Innenraumdesign und Raumgestaltung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7414",
+    "kurztext": "Sonstige spezialisierte Designtätigkeiten",
+    "langtext": "Sonstige spezialisierte Designtätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7420",
+    "kurztext": "Fotografie und Fotolabors",
+    "langtext": "Fotografie und Fotolabors",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7430",
+    "kurztext": "Übersetzen und Dolmetschen",
+    "langtext": "Übersetzen und Dolmetschen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7491",
+    "kurztext": "Erbringung von Vermittlungs- und Vermarktungsdienstleistungen für Patente",
+    "langtext": "Erbringung von Vermittlungs- und Vermarktungsdienstleistungen für Patente",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7499",
+    "kurztext": "Alle anderen wissenschaftlichen und technischen Tätigkeiten a. n. g.",
+    "langtext": "Alle anderen wissenschaftlichen und technischen Tätigkeiten a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7500",
+    "kurztext": "Veterinärwesen",
+    "langtext": "Veterinärwesen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7711",
+    "kurztext": "Vermietung von Kraftwagen mit einem Gesamtgewicht von 3,5 t oder weniger",
+    "langtext": "Vermietung von Kraftwagen mit einem Gesamtgewicht von 3,5 t oder weniger",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7712",
+    "kurztext": "Vermietung von Kraftwagen mit einem Gesamtgewicht von mehr als 3,5 t",
+    "langtext": "Vermietung von Kraftwagen mit einem Gesamtgewicht von mehr als 3,5 t",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7721",
+    "kurztext": "Vermietung von Sport- und Freizeitgeräten",
+    "langtext": "Vermietung von Sport- und Freizeitgeräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7722",
+    "kurztext": "Vermietung von sonstigen Gebrauchsgütern",
+    "langtext": "Vermietung von sonstigen Gebrauchsgütern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7731",
+    "kurztext": "Vermietung von landwirtschaftlichen Maschinen und Geräten",
+    "langtext": "Vermietung von landwirtschaftlichen Maschinen und Geräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7732",
+    "kurztext": "Vermietung von Baumaschinen und -geräten",
+    "langtext": "Vermietung von Baumaschinen und -geräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7733",
+    "kurztext": "Vermietung von Büromaschinen, Datenverarbeitungsgeräten und -einrichtungen",
+    "langtext": "Vermietung von Büromaschinen, Datenverarbeitungsgeräten und -einrichtungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7734",
+    "kurztext": "Vermietung von Wasserfahrzeugen",
+    "langtext": "Vermietung von Wasserfahrzeugen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7735",
+    "kurztext": "Vermietung von Luftfahrzeugen",
+    "langtext": "Vermietung von Luftfahrzeugen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7739",
+    "kurztext": "Vermietung von sonstigen Maschinen, Geräten und beweglichen Sachen a. n. g.",
+    "langtext": "Vermietung von sonstigen Maschinen, Geräten und beweglichen Sachen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7740",
+    "kurztext": "Leasing von nichtfinanziellen immateriellen Vermögensgütern, ohne Copyrights",
+    "langtext": "Leasing von nichtfinanziellen immateriellen Vermögensgütern, ohne Copyrights",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7751",
+    "kurztext": "Vermittlungstätigkeiten für die Vermietung und das Leasing von Autos, Wohnmobilen und Anhängern",
+    "langtext": "Vermittlungstätigkeiten für die Vermietung und das Leasing von Autos, Wohnmobilen und Anhängern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7752",
+    "kurztext": "Vermittlungstätigkeiten für Vermietung, Leasing v. beweglichen Sachen, immateriellen Vermögensgütern",
+    "langtext": "Vermittlungstätigkeiten für die Vermietung und das Leasing von sonstigen beweglichen Sachen und nichtfinanziellen immateriellen Vermögensgütern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7810",
+    "kurztext": "Vermittlung von Arbeitskräften",
+    "langtext": "Vermittlung von Arbeitskräften",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7820",
+    "kurztext": "Überlassung von Arbeitskräften und sonstige Personaldienstleistungen",
+    "langtext": "Überlassung von Arbeitskräften und sonstige Personaldienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7911",
+    "kurztext": "Reisebüros",
+    "langtext": "Reisebüros",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7912",
+    "kurztext": "Reiseveranstalter",
+    "langtext": "Reiseveranstalter",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7990",
+    "kurztext": "Erbringung sonstiger Reservierungsdienstleistungen",
+    "langtext": "Erbringung sonstiger Reservierungsdienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8001",
+    "kurztext": "Private Wach- und Sicherheitsdienste sowie Detekteien",
+    "langtext": "Private Wach- und Sicherheitsdienste sowie Detekteien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8009",
+    "kurztext": "Sicherheitsdienste a. n. g.",
+    "langtext": "Sicherheitsdienste a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8110",
+    "kurztext": "Gewinnung von Naturwerksteinen, Kalk- und Gipsstein, Schiefer und sonstigem Gestein",
+    "langtext": "Gewinnung von Naturwerksteinen, Kalk- und Gipsstein, Schiefer und sonstigem Gestein",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8110",
+    "kurztext": "Hausmeisterdienste",
+    "langtext": "Hausmeisterdienste",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8121",
+    "kurztext": "Gewinnung von Quarzsanden und kieselsauren Sanden",
+    "langtext": "Gewinnung von Quarzsanden und kieselsauren Sanden",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8121",
+    "kurztext": "Allgemeine Gebäudereinigung",
+    "langtext": "Allgemeine Gebäudereinigung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8122",
+    "kurztext": "Gewinnung von anderen Natursanden und Kies",
+    "langtext": "Gewinnung von anderen Natursanden und Kies",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8122",
+    "kurztext": "Spezielle Reinigung von Gebäuden und Reinigung von Maschinen",
+    "langtext": "Spezielle Reinigung von Gebäuden und Reinigung von Maschinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8123",
+    "kurztext": "Gewinnung von Kaolin und anderem kaolinhaltigen Ton und Lehm",
+    "langtext": "Gewinnung von Kaolin und anderem kaolinhaltigen Ton und Lehm",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8123",
+    "kurztext": "Sonstige Reinigung",
+    "langtext": "Sonstige Reinigung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8130",
+    "kurztext": "Garten- und Landschaftsbau sowie Erbringung von sonstigen gärtnerischen Dienstleistungen",
+    "langtext": "Garten- und Landschaftsbau sowie Erbringung von sonstigen gärtnerischen Dienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8210",
+    "kurztext": "Sekretariats- und Schreibdienste, Copy-Shops",
+    "langtext": "Sekretariats- und Schreibdienste, Copy-Shops",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8220",
+    "kurztext": "Call Centers",
+    "langtext": "Call Centers",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8230",
+    "kurztext": "Messe-, Kongress- und Business-Event-Veranstalter",
+    "langtext": "Messe-, Kongress- und Business-Event-Veranstalter",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8240",
+    "kurztext": "Vermittlungstätigkeiten für die Erbringung von wirtschaftlichen Dienstleistungen a. n. g.",
+    "langtext": "Vermittlungstätigkeiten für die Erbringung von wirtschaftlichen Dienstleistungen für Unternehmen und Privatpersonen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8291",
+    "kurztext": "Inkassobüros und Auskunfteien",
+    "langtext": "Inkassobüros und Auskunfteien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8292",
+    "kurztext": "Abfüllen und Verpacken",
+    "langtext": "Abfüllen und Verpacken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8299",
+    "kurztext": "Erbringung sonstiger wirtschaftlicher Dienstleistungen für Unternehmen und Privatpersonen a. n. g.",
+    "langtext": "Erbringung sonstiger wirtschaftlicher Dienstleistungen für Unternehmen und Privatpersonen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8411",
+    "kurztext": "Allgemeine öffentliche Verwaltung",
+    "langtext": "Allgemeine öffentliche Verwaltung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8412",
+    "kurztext": "Öffentliche Verwaltung auf den Gebieten Gesundheitswesen, Bildung, Kultur und Sozialwesen",
+    "langtext": "Öffentliche Verwaltung auf den Gebieten Gesundheitswesen, Bildung, Kultur und Sozialwesen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8413",
+    "kurztext": "Wirtschaftsförderung, -ordnung und -aufsicht",
+    "langtext": "Wirtschaftsförderung, -ordnung und -aufsicht",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8421",
+    "kurztext": "Auswärtige Angelegenheiten",
+    "langtext": "Auswärtige Angelegenheiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8422",
+    "kurztext": "Verteidigung",
+    "langtext": "Verteidigung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8423",
+    "kurztext": "Rechtspflege",
+    "langtext": "Rechtspflege",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8424",
+    "kurztext": "Öffentliche Sicherheit und Ordnung",
+    "langtext": "Öffentliche Sicherheit und Ordnung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8425",
+    "kurztext": "Feuerwehren",
+    "langtext": "Feuerwehren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8430",
+    "kurztext": "Sozialversicherung",
+    "langtext": "Sozialversicherung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8510",
+    "kurztext": "Kindergärten und Vorschulen",
+    "langtext": "Kindergärten und Vorschulen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8520",
+    "kurztext": "Grundschulen",
+    "langtext": "Grundschulen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8531",
+    "kurztext": "Allgemeinbildende weiterführende Schulen",
+    "langtext": "Allgemeinbildende weiterführende Schulen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8532",
+    "kurztext": "Berufsbildende weiterführende Schulen",
+    "langtext": "Berufsbildende weiterführende Schulen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8533",
+    "kurztext": "Postsekundärer, nicht tertiärer Unterricht",
+    "langtext": "Postsekundärer, nicht tertiärer Unterricht",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8540",
+    "kurztext": "Tertiärer Unterricht",
+    "langtext": "Tertiärer Unterricht",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8551",
+    "kurztext": "Sport- und Freizeitunterricht",
+    "langtext": "Sport- und Freizeitunterricht",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8552",
+    "kurztext": "Kulturunterricht",
+    "langtext": "Kulturunterricht",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8553",
+    "kurztext": "Fahr- und Flugschulen",
+    "langtext": "Fahr- und Flugschulen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8559",
+    "kurztext": "Sonstiger Unterricht a. n. g.",
+    "langtext": "Sonstiger Unterricht a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8561",
+    "kurztext": "Vermittlungstätigkeiten für Erziehung und Unterricht",
+    "langtext": "Vermittlungstätigkeiten für Erziehung und Unterricht",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8569",
+    "kurztext": "Erbringung von Dienstleistungen für Erziehung und Unterricht a. n. g.",
+    "langtext": "Erbringung von Dienstleistungen für Erziehung und Unterricht a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8610",
+    "kurztext": "Krankenhäuser",
+    "langtext": "Krankenhäuser",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8621",
+    "kurztext": "Arztpraxen für Allgemeinmedizin",
+    "langtext": "Arztpraxen für Allgemeinmedizin",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8622",
+    "kurztext": "Facharztpraxen",
+    "langtext": "Facharztpraxen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8623",
+    "kurztext": "Zahnarztpraxen",
+    "langtext": "Zahnarztpraxen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8691",
+    "kurztext": "Erbringung von Dienstleistungen der diagnostischen Bildgebung sowie von medizinischen Laboratorien",
+    "langtext": "Erbringung von Dienstleistungen der diagnostischen Bildgebung sowie von medizinischen Laboratorien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8692",
+    "kurztext": "Rettungs- und Krankentransportdienste",
+    "langtext": "Rettungs- und Krankentransportdienste",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8693",
+    "kurztext": "Erbringung von Dienstleistungen von Psychotherapeuten/innen, Gesundheitspsychologen/innen",
+    "langtext": "Erbringung von Dienstleistungen von Psychotherapeutinnen und -therapeuten, klinischen und Gesundheitspsychologinnen und -psychologen, ohne ärztliche Therapien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8694",
+    "kurztext": "Krankenpflege, Geburtshilfe und Hebammen",
+    "langtext": "Krankenpflege, Geburtshilfe und Hebammen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8695",
+    "kurztext": "Erbringung von physiotherapeutischen Dienstleistungen",
+    "langtext": "Erbringung von physiotherapeutischen Dienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8696",
+    "kurztext": "Traditionelle, komplementäre und alternative medizinische Tätigkeiten",
+    "langtext": "Traditionelle, komplementäre und alternative medizinische Tätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8697",
+    "kurztext": "Vermittlungstätigkeiten für medizinische, zahnärztliche und andere Gesundheitstätigkeiten",
+    "langtext": "Vermittlungstätigkeiten für medizinische, zahnärztliche und andere Gesundheitstätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8699",
+    "kurztext": "Sonstiges Gesundheitswesen a. n. g.",
+    "langtext": "Sonstiges Gesundheitswesen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8710",
+    "kurztext": "Pflegeheime",
+    "langtext": "Pflegeheime",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8720",
+    "kurztext": "Stationäre Einrichtungen zur psychosozialen Betreuung, Suchtbekämpfung",
+    "langtext": "Stationäre Einrichtungen zur psychosozialen Betreuung, Suchtbekämpfung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8730",
+    "kurztext": "Seniorenwohnheime und Wohnheime für Menschen mit Behinderung",
+    "langtext": "Seniorenwohnheime und Wohnheime für Menschen mit Behinderung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8791",
+    "kurztext": "Vermittlungstätigkeiten für Heime und stationäre Betreuung",
+    "langtext": "Vermittlungstätigkeiten für Heime und stationäre Betreuung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8799",
+    "kurztext": "Sonstige Heime, ohne Erholungs- und Ferienheime, a. n. g.",
+    "langtext": "Sonstige Heime, ohne Erholungs- und Ferienheime, a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8810",
+    "kurztext": "Soziale Betreuung von älteren Menschen und von Menschen mit Behinderung",
+    "langtext": "Soziale Betreuung von älteren Menschen und von Menschen mit Behinderung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8891",
+    "kurztext": "Tagesbetreuung von Kindern",
+    "langtext": "Tagesbetreuung von Kindern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8899",
+    "kurztext": "Sonstiges Sozialwesen a. n. g.",
+    "langtext": "Sonstiges Sozialwesen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8910",
+    "kurztext": "Bergbau auf chemische und Düngemittelminerale",
+    "langtext": "Bergbau auf chemische und Düngemittelminerale",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8920",
+    "kurztext": "Torfgewinnung",
+    "langtext": "Torfgewinnung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8930",
+    "kurztext": "Gewinnung von Salz",
+    "langtext": "Gewinnung von Salz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "8990",
+    "kurztext": "Gewinnung von Steinen und Erden a. n. g.",
+    "langtext": "Gewinnung von Steinen und Erden a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9011",
+    "kurztext": "Literarisches Schaffen und Musikkomposition",
+    "langtext": "Literarisches Schaffen und Musikkomposition",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9012",
+    "kurztext": "Bildende Kunst",
+    "langtext": "Bildende Kunst",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9013",
+    "kurztext": "Sonstige kunstschaffende Tätigkeiten",
+    "langtext": "Sonstige kunstschaffende Tätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9020",
+    "kurztext": "Darstellende Kunst",
+    "langtext": "Darstellende Kunst",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9031",
+    "kurztext": "Betrieb von Einrichtungen für kunstschaffende Tätigkeiten und darstellende Künste",
+    "langtext": "Betrieb von Einrichtungen für kunstschaffende Tätigkeiten und darstellende Künste",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9039",
+    "kurztext": "Erbringung von sonstigen Dienstleistungen für kunstschaffende Tätigkeiten und darstellende Künste",
+    "langtext": "Erbringung von sonstigen Dienstleistungen für kunstschaffende Tätigkeiten und darstellende Künste",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9100",
+    "kurztext": "Erbringung von Dienstleistungen für die Gewinnung von Erdöl und Erdgas",
+    "langtext": "Erbringung von Dienstleistungen für die Gewinnung von Erdöl und Erdgas",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9111",
+    "kurztext": "Bibliotheken",
+    "langtext": "Bibliotheken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9112",
+    "kurztext": "Archive",
+    "langtext": "Archive",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9121",
+    "kurztext": "Museen und Sammlungen",
+    "langtext": "Museen und Sammlungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9122",
+    "kurztext": "Historische Stätten und Denkmäler",
+    "langtext": "Historische Stätten und Denkmäler",
+    "validFrom": "2025-06-10",
+    "validTo": null
+  },
+  {
+    "code": "9130",
+    "kurztext": "Konservierung, Restaurierung und sonstige unterstützende Tätigkeiten für das kulturelle Erbe",
+    "langtext": "Konservierung, Restaurierung und sonstige unterstützende Tätigkeiten für das kulturelle Erbe",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9141",
+    "kurztext": "Botanische und zoologische Gärten",
+    "langtext": "Botanische und zoologische Gärten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9142",
+    "kurztext": "Naturparks",
+    "langtext": "Naturparks",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9200",
+    "kurztext": "Spiel-, Wett- und Lotteriewesen",
+    "langtext": "Spiel-, Wett- und Lotteriewesen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9311",
+    "kurztext": "Betrieb von Sportanlagen",
+    "langtext": "Betrieb von Sportanlagen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9312",
+    "kurztext": "Sportvereine",
+    "langtext": "Sportvereine",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9313",
+    "kurztext": "Fitnesszentren",
+    "langtext": "Fitnesszentren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9319",
+    "kurztext": "Erbringung von Dienstleistungen des Sports a. n. g.",
+    "langtext": "Erbringung von Dienstleistungen des Sports a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9321",
+    "kurztext": "Vergnügungs- und Themenparks",
+    "langtext": "Vergnügungs- und Themenparks",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9329",
+    "kurztext": "Erbringung von sonstigen Dienstleistungen der Unterhaltung und der Erholung a. n. g.",
+    "langtext": "Erbringung von sonstigen Dienstleistungen der Unterhaltung und der Erholung a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9411",
+    "kurztext": "Wirtschafts- und Arbeitgeberverbände",
+    "langtext": "Wirtschafts- und Arbeitgeberverbände",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9412",
+    "kurztext": "Berufsorganisationen",
+    "langtext": "Berufsorganisationen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9420",
+    "kurztext": "Arbeitnehmervereinigungen",
+    "langtext": "Arbeitnehmervereinigungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9491",
+    "kurztext": "Kirchliche und sonstige religiöse Vereinigungen",
+    "langtext": "Kirchliche und sonstige religiöse Vereinigungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9492",
+    "kurztext": "Politische Parteien und Vereinigungen",
+    "langtext": "Politische Parteien und Vereinigungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9499",
+    "kurztext": "Sonstige Interessenvertretungen und Vereinigungen a. n. g.",
+    "langtext": "Sonstige Interessenvertretungen und Vereinigungen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9510",
+    "kurztext": "Reparatur und Instandhaltung von Datenverarbeitungs- und Telekommunikationsgeräten",
+    "langtext": "Reparatur und Instandhaltung von Datenverarbeitungs- und Telekommunikationsgeräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9521",
+    "kurztext": "Reparatur und Instandhaltung von Geräten der Unterhaltungselektronik",
+    "langtext": "Reparatur und Instandhaltung von Geräten der Unterhaltungselektronik",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9522",
+    "kurztext": "Reparatur und Instandhaltung von elektrischen Haushaltsgeräten und Gartengeräten",
+    "langtext": "Reparatur und Instandhaltung von elektrischen Haushaltsgeräten und Gartengeräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9523",
+    "kurztext": "Reparatur und Instandhaltung von Schuhen und Lederwaren",
+    "langtext": "Reparatur und Instandhaltung von Schuhen und Lederwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9524",
+    "kurztext": "Reparatur und Instandhaltung von Möbeln und Einrichtungsgegenständen",
+    "langtext": "Reparatur und Instandhaltung von Möbeln und Einrichtungsgegenständen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9525",
+    "kurztext": "Reparatur und Instandhaltung von Uhren und Schmuck",
+    "langtext": "Reparatur und Instandhaltung von Uhren und Schmuck",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9529",
+    "kurztext": "Reparatur und Instandhaltung von Gebrauchsgütern a. n. g.",
+    "langtext": "Reparatur und Instandhaltung von Gebrauchsgütern a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9531",
+    "kurztext": "Reparatur und Instandhaltung von Kraftwagen",
+    "langtext": "Reparatur und Instandhaltung von Kraftwagen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9532",
+    "kurztext": "Reparatur und Instandhaltung von Krafträdern",
+    "langtext": "Reparatur und Instandhaltung von Krafträdern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9540",
+    "kurztext": "Vermittlungstätigkeiten f. Reparatur v. Datenverarbeitungsgeräten, Gebrauchsgütern, Kraftwagen",
+    "langtext": "Vermittlungstätigkeiten für die Reparatur und Instandhaltung von Datenverarbeitungsgeräten und Gebrauchsgütern sowie von Kraftwagen und Krafträdern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9610",
+    "kurztext": "Wäscherei und chemische Reinigung",
+    "langtext": "Wäscherei und chemische Reinigung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9621",
+    "kurztext": "Frisör- und Barbiersalons",
+    "langtext": "Frisör- und Barbiersalons",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9622",
+    "kurztext": "Kosmetiksalons und ähnliche Schönheitsbehandlungen",
+    "langtext": "Kosmetiksalons und ähnliche Schönheitsbehandlungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9623",
+    "kurztext": "Day Spas, Saunas, Dampfbäder",
+    "langtext": "Day Spas, Saunas, Dampfbäder",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9630",
+    "kurztext": "Bestattungswesen",
+    "langtext": "Bestattungswesen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9640",
+    "kurztext": "Vermittlungstätigkeiten für überwiegend persönliche Dienstleistungen",
+    "langtext": "Vermittlungstätigkeiten für überwiegend persönliche Dienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9691",
+    "kurztext": "Erbringung von haushaltsbezogenen Dienstleistungen",
+    "langtext": "Erbringung von haushaltsbezogenen Dienstleistungen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9699",
+    "kurztext": "Erbringung von sonstigen überwiegend persönlichen Dienstleistungen a. n. g.",
+    "langtext": "Erbringung von sonstigen überwiegend persönlichen Dienstleistungen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9700",
+    "kurztext": "Private Haushalte mit Hauspersonal",
+    "langtext": "Private Haushalte mit Hauspersonal",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9810",
+    "kurztext": "Herstellung von Waren durch private Haushalte für den Eigenbedarf ohne ausgeprägten Schwerpunkt",
+    "langtext": "Herstellung von Waren durch private Haushalte für den Eigenbedarf ohne ausgeprägten Schwerpunkt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9820",
+    "kurztext": "Erbringungen von Dienstleistungen durch private Haushalte für den Eigenbedarf ohne Schwerpunkt",
+    "langtext": "Erbringungen von Dienstleistungen durch private Haushalte für den Eigenbedarf ohne ausgeprägten Schwerpunkt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9900",
+    "kurztext": "Erbringung von Dienstleistungen für den sonstigen Bergbau und die Gewinnung von Steinen und Erden",
+    "langtext": "Erbringung von Dienstleistungen für den sonstigen Bergbau und die Gewinnung von Steinen und Erden",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "9900",
+    "kurztext": "Exterritoriale Organisationen und Körperschaften",
+    "langtext": "Exterritoriale Organisationen und Körperschaften",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  }
+]

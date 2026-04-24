@@ -57,6 +57,7 @@ data/tasks/
 data/usage/
 data/knowledge-base/collections/
 data/knowledge-base/incoming/
+backend/data/apps/wzbar-matcher/matches/
 
 # Backend runtime data
 backend/data/audit/

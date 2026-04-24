@@ -4,11 +4,15 @@
  * Creates demo1-demo4 and marketing1-marketing3 user accounts.
  * Idempotent: skips users that already exist.
  *
- * In Docker: runs from /app/backend/scripts/, data at /app/data/
+ * Path resolution:
+ * - Docker: script runs from /app/backend/scripts/, data at /app/data/ → ../../data
+ * - Local:  script runs from agent-platform/scripts/, data at agent-platform/data/ → ../data
+ *
+ * Resolves to whichever of the two parent-data locations actually exists.
  */
 
 import { join } from 'path';
-import { readdir } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'Demo2026!';
@@ -23,6 +27,7 @@ const DEMO_USERS = [
   { username: 'marketing3', displayName: 'Marketing User 3', password: MARKETING_PASSWORD },
   { username: 'ruhrpm', displayName: 'RuhrPM User', password: 'MesseEWorld2026=Demo!' },
   { username: 'people1', displayName: 'People 1', password: 'BDP29mK<' },
+  { username: 'yneo-ai', displayName: 'Yneo AI', password: 'Yneo.ai-2026!' },
 ];
 
 function generateUserId(): string {
@@ -52,10 +57,23 @@ async function findUserByUsername(usersDir: string, username: string): Promise<b
   return false;
 }
 
+async function resolveDataDir(): Promise<string> {
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  const candidates = [
+    join(import.meta.dir, '../data'),       // local: agent-platform/scripts/ → agent-platform/data/
+    join(import.meta.dir, '../../data'),    // docker: /app/backend/scripts/ → /app/data/
+  ];
+  for (const candidate of candidates) {
+    try {
+      const s = await stat(candidate);
+      if (s.isDirectory()) return candidate;
+    } catch { /* not found, try next */ }
+  }
+  return candidates[0]!;
+}
+
 async function main() {
-  // In Docker: import.meta.dir = /app/backend/scripts
-  // Data volume at /app/data
-  const dataDir = join(import.meta.dir, '../../data');
+  const dataDir = await resolveDataDir();
   const usersDir = join(dataDir, 'auth/users');
 
   // Ensure directory exists

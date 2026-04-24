@@ -8,6 +8,7 @@ import type { ResolvedModel } from '../types/providers';
 import { OpenAIAdapter } from './llm/adapters/openai';
 import { OllamaAdapter } from './llm/adapters/ollama';
 import { usageTrackingService, type UsageContext } from './usageTracking';
+import { getPlatformModel } from '../config/platformModels';
 
 /**
  * Options for per-request model override
@@ -133,6 +134,10 @@ export class LLMService {
   private resolvedModel: ResolvedModel | null = null;
   private openaiAdapter: OpenAIAdapter | null = null;
   private ollamaAdapter: OllamaAdapter | null = null;
+  private embedAdapterCache:
+    | { providerId: string; kind: 'openai'; openai?: OpenAIAdapter; ollama?: OllamaAdapter }
+    | { providerId: string; kind: 'ollama'; openai?: OpenAIAdapter; ollama?: OllamaAdapter }
+    | null = null;
 
   constructor() {
     // Initialization is deferred to first use
@@ -480,6 +485,47 @@ export class LLMService {
       success: false,
       message: 'No LLM adapter available',
     };
+  }
+
+  /**
+   * Generate an embedding vector for a single text.
+   * Uses the platform-configured embeddings model (PLATFORM_EMBEDDINGS_*).
+   * Caches the resolved adapter per-model for reuse across calls.
+   */
+  async embed(text: string): Promise<number[]> {
+    const resolved = await getPlatformModel('embeddings');
+    if (!resolved) {
+      throw new Error('Kein Embedding-Modell konfiguriert (PLATFORM_EMBEDDINGS_PROVIDER_ID / _MODEL_ID).');
+    }
+
+    const providerId = resolved.provider.id;
+    const modelId = resolved.model.id;
+
+    if (this.embedAdapterCache?.providerId !== providerId) {
+      const apiKey = resolved.provider.api_key_env ? process.env[resolved.provider.api_key_env] || null : null;
+      if (resolved.provider.api_mode === 'openai') {
+        const adapter = new OpenAIAdapter({
+          baseUrl: resolved.provider.base_url,
+          apiKey,
+          defaultModel: modelId,
+        });
+        this.embedAdapterCache = { providerId, kind: 'openai', openai: adapter };
+      } else if (resolved.provider.api_mode === 'ollama') {
+        const adapter = new OllamaAdapter({
+          baseUrl: resolved.provider.base_url,
+          defaultModel: modelId,
+        });
+        this.embedAdapterCache = { providerId, kind: 'ollama', ollama: adapter };
+      } else {
+        throw new Error(`Provider api_mode '${resolved.provider.api_mode}' unterstützt keine Embeddings.`);
+      }
+    }
+
+    const cache = this.embedAdapterCache!;
+    if (cache.kind === 'openai') {
+      return cache.openai!.embed(text, modelId);
+    }
+    return cache.ollama!.embed(text, modelId);
   }
 }
 

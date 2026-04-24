@@ -39,6 +39,7 @@ const LieferantenPage = lazy(() => import('./apps/lieferantenmanagement/Lieferan
 const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/SupplierDetailPage'));
 const VsmPage = lazy(() => import('./apps/vsm/VsmPage'));
 const VsmDetailPage = lazy(() => import('./apps/vsm/VsmDetailPage'));
+const WzbarMatcherPage = lazy(() => import('./apps/wzbar-matcher/MatcherPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -188,6 +189,7 @@ function AppRoutes() {
                   <Route path="/apps/lieferantenmanagement/:id" element={<SupplierDetailPage />} />
                   <Route path="/apps/vsm" element={<VsmPage />} />
                   <Route path="/apps/vsm/:id" element={<VsmDetailPage />} />
+                  <Route path="/apps/wzbar-matcher" element={<WzbarMatcherPage />} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>

@@ -241,6 +241,7 @@ const navIconColors = {
   supplier: '#d97706',
   vsm: '#0369a1',
   extraction: '#0d9488',
+  classifier: '#14b8a6',
 };
 
 function Sidebar() {
@@ -829,6 +830,8 @@ function AppNavIcon({ iconId }) {
       return <SupplierNavIcon color={navIconColors.supplier} />;
     case 'vsm':
       return <VsmNavIcon color={navIconColors.vsm} />;
+    case 'classifier':
+      return <ClassifierNavIcon color={navIconColors.classifier} />;
     default:
       return <AppsNavIcon color={navIconColors.apps} />;
   }
@@ -864,6 +867,17 @@ function AppsNavIcon({ color }) {
       <rect x="14" y="3" width="7" height="7" rx="1" />
       <rect x="3" y="14" width="7" height="7" rx="1" />
       <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+function ClassifierNavIcon({ color }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+      <path d="m11 11 4 4" />
+      <path d="m15 11-4 4" />
     </svg>
   );
 }
