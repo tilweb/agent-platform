@@ -15,10 +15,22 @@ import type { PublicFunction, PublicFunctionContext, ApiKey } from './types';
 import { scopeMatches, validate } from './validator';
 import { apiKeyAuth, apiKeyRateLimit } from './middleware';
 import { writeAudit } from './audit';
+import { buildOpenApiSpec } from './openapi';
 
 const router = new Hono();
 
 router.get('/health', (c) => c.json({ status: 'ok', version: 'v1' }));
+
+/**
+ * Unauthenticated OpenAPI spec — lets integrators generate clients without
+ * needing a key. Nothing sensitive is disclosed; all paths require Bearer auth.
+ */
+router.get('/openapi.json', async (c) => {
+  const host = c.req.header('host');
+  const proto = c.req.header('x-forwarded-proto') ?? 'https';
+  const base = host ? `${proto}://${host}/api/public/v1` : undefined;
+  return c.json(await buildOpenApiSpec(base));
+});
 
 /**
  * Discovery — returns apps + functions that the authenticated key may call.

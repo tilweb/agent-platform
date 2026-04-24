@@ -2,6 +2,18 @@
 
 ## 2026-04-24
 
+### Feature: Agent-Tool-Bridge fuer Public-Functions (Etappe 2b)
+- Jede `publicFunction` eines Apps wird beim Server-Start automatisch als Tool im ToolRegistry registriert (Name: `<appId>__<functionId>`, z.B. `wzbar-matcher__classify`).
+- Agents koennen die Funktion direkt aufrufen — ohne HTTP-Round-Trip, ohne API-Key. Die PublicFunctionContext wird aus dem ToolContext synthetisiert (userId aus der Session).
+- Input-Schema der publicFunction ist zugleich das Parameters-Schema fuer das LLM-Function-Calling. Kein Duplizieren von Schemas.
+- Handler-Fehler werden als lesbare Strings an den Agent zurueckgegeben; der Agent-Loop fasst sie ueber die ueblichen Tool-Error-Pfade ab.
+
+### Feature: OpenAPI-Export fuer Public-API (Etappe 2c)
+- `GET /api/public/v1/openapi.json` liefert eine OpenAPI-3.1-Spec aller publicFunctions aller enabled Apps (unauth'd — ermoeglicht Code-Gen vor Key-Erhalt).
+- Enthaelt Bearer-Auth-Security-Scheme, alle Endpoints mit Request-/Response-Schemas, fehlerhafte Status-Codes (400/401/403/429/500) und Tags pro App.
+- Nutzt die bestehenden JsonSchemas direkt — keine Schema-Konvertierung noetig.
+- Integratoren koennen mit Tools wie openapi-generator direkt Client-Libraries fuer Java/TypeScript/Python/etc. bauen.
+
 ### Feature: API-Keys-Verwaltung in Einstellungen (Etappe 2a)
 - Neuer Admin-Tab "API-Keys" unter Einstellungen → System.
 - Liste aller Keys mit Label, Scope, Permissions, Rate-Limit, letzter Nutzung und Status.

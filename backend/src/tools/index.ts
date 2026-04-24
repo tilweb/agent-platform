@@ -72,6 +72,9 @@ import { registerCustomTools } from './custom';
 import { knowledgeTools } from './knowledge';
 import { tableTools } from './tables';
 import { listDelegatableAgents } from '../services/agents';
+import { AppFunctionTool } from './public-functions/AppFunctionTool';
+import { getApps } from '../apps/registry';
+import type { PublicFunction } from '../public-api/types';
 
 // Store delegation tool reference for handler management
 let delegationTool: DelegateToAgentTool | null = null;
@@ -157,6 +160,9 @@ export async function setupTools(): Promise<void> {
   // Register custom API tools
   await registerCustomTools();
 
+  // Register Public-Functions from apps as agent tools
+  await registerAppPublicFunctions();
+
   // Log stats
   const stats = toolRegistry.getStats();
   console.log(`Tools initialized: ${stats.total} total`);
@@ -164,6 +170,29 @@ export async function setupTools(): Promise<void> {
   console.log(`  - API: ${stats.byType.api || 0}`);
   console.log(`  - MCP: ${stats.byType.mcp || 0}`);
   console.log(`  - Delegation: ${stats.byType.delegation || 0}`);
+}
+
+/**
+ * Register each publicFunction of every enabled app as an agent tool.
+ * Idempotent: re-registering overwrites previous handler instance.
+ */
+async function registerAppPublicFunctions(): Promise<void> {
+  try {
+    const apps = await getApps();
+    let count = 0;
+    for (const app of apps) {
+      if (!app.enabled || !Array.isArray(app.publicFunctions)) continue;
+      for (const fn of app.publicFunctions as PublicFunction[]) {
+        toolRegistry.register(new AppFunctionTool(app.id, fn));
+        count++;
+      }
+    }
+    if (count > 0) {
+      console.log(`Registered ${count} app public function(s) as agent tools`);
+    }
+  } catch (err) {
+    console.error('Failed to register app public functions as tools:', err);
+  }
 }
 
 /**
