@@ -35,6 +35,7 @@ import { recoverTasks } from './services/taskService';
 import { llmService } from './services/llm';
 import { registerCommands } from './commands';
 import { registerProviders } from './connections/providers';
+import { syncBuiltInApps } from './apps/registry';
 
 const app = new Hono();
 
@@ -42,6 +43,13 @@ const app = new Hono();
 async function initialize() {
   // Register slash commands first (no dependencies)
   registerCommands();
+
+  // Sync built-in apps into the registry (idempotent, preserves admin enable state)
+  try {
+    await syncBuiltInApps();
+  } catch (error) {
+    console.error('Built-in apps sync failed:', error);
+  }
 
   // Initialize LLM service with configured providers
   try {
