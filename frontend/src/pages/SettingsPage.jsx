@@ -13,6 +13,8 @@ import McpServersPage from './McpServersPage';
 import ConnectionsPage from './ConnectionsPage';
 import AuditLogPage from './AuditLogPage';
 import UsagePage from './UsagePage';
+import ApiKeysPage from './ApiKeysPage';
+import { KeyIcon } from '../components/Icons';
 import { useApps } from '../hooks/useApps';
 import SchemaEditor from '../apps/vertragsmanagement/SchemaEditor';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
@@ -262,6 +264,7 @@ const TABS = [
   { id: 'mcp', label: 'MCP Server', icon: McpIcon, adminOnly: true },
   { id: 'connections', label: 'Connections', icon: ConnectionsIcon, adminOnly: true },
   { id: 'apps', label: 'Apps', icon: AppsIcon, adminOnly: true },
+  { id: 'api-keys', label: 'API-Keys', icon: KeyIcon, adminOnly: true },
   // Admin section - Monitoring
   { id: 'divider-monitoring', type: 'divider', label: 'Monitoring', adminOnly: true },
   { id: 'usage', label: 'Nutzung', icon: UsageIcon, adminOnly: true },
@@ -560,6 +563,12 @@ function SettingsPage() {
         );
       case 'apps':
         return renderAppsContent();
+      case 'api-keys':
+        return (
+          <div style={styles.embeddedPage}>
+            <ApiKeysPage embedded />
+          </div>
+        );
       case 'usage':
         return (
           <div style={styles.embeddedPage}>

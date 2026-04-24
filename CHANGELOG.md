@@ -2,6 +2,14 @@
 
 ## 2026-04-24
 
+### Feature: API-Keys-Verwaltung in Einstellungen (Etappe 2a)
+- Neuer Admin-Tab "API-Keys" unter Einstellungen → System.
+- Liste aller Keys mit Label, Scope, Permissions, Rate-Limit, letzter Nutzung und Status.
+- "Neuer Key"-Modal: Label, Scope-Typ (Service/Org/User), Permissions-Checklist aus allen verfuegbaren Public-Functions, Rate-Limit, optional Ablaufdatum.
+- Raw-Key-Anzeige nach Erstellung mit Warnung "nur einmal sichtbar" und Copy-to-Clipboard.
+- Widerrufen mit Bestaetigungsdialog.
+- Backend-Routes `GET/POST/DELETE /api/admin/api-keys`, `GET /api/admin/api-keys/permissions` (admin-only, Session-Auth). Reuse der bestehenden service.ts aus dem Public-API-Framework.
+
 ### Feature: Public-API-Framework fuer Apps (Etappe 1)
 - Neues Framework, das jeder App ermoeglicht, einzelne Funktionen als authentifizierte HTTP-API freizugeben — ohne pro App neu auth/rate-limit/validation zu bauen.
 - Endpoints unter versioniertem Namespace `/api/public/v1/*`:

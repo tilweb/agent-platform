@@ -14,6 +14,7 @@ import {
   type AuditEntry,
 } from '../services/auditLog';
 import { usageTrackingService } from '../services/usageTracking';
+import { adminApiKeysRoutes } from './admin-api-keys';
 
 export const adminRoutes = new Hono();
 
@@ -334,3 +335,6 @@ adminRoutes.get('/usage/export', async (c) => {
     return c.json({ error: 'Fehler beim Exportieren der Nutzung' }, 500);
   }
 });
+
+// Mount API-Keys management routes (inherits auth + requireAdmin from parent)
+adminRoutes.route('/api-keys', adminApiKeysRoutes);
