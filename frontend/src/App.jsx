@@ -5,6 +5,7 @@ import { AgentProvider } from './context/AgentContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ToastProvider } from './components/Toast';
+import { BrandingProvider } from './hooks/useBranding';
 import { theme } from './config/theme';
 
 // Lazy-loaded pages for code splitting
@@ -206,15 +207,17 @@ function App() {
     <>
       <style>{globalStyles}</style>
       <BrowserRouter>
-        <ToastProvider>
-          <AuthProvider>
-            <NotificationProvider>
-              <AgentProvider>
-                <AppRoutes />
-              </AgentProvider>
-            </NotificationProvider>
-          </AuthProvider>
-        </ToastProvider>
+        <BrandingProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <NotificationProvider>
+                <AgentProvider>
+                  <AppRoutes />
+                </AgentProvider>
+              </NotificationProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </BrandingProvider>
       </BrowserRouter>
     </>
   );

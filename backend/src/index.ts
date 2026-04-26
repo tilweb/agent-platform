@@ -37,6 +37,7 @@ import { registerCommands } from './commands';
 import { registerProviders } from './connections/providers';
 import { syncBuiltInApps } from './apps/registry';
 import { publicApiRouter } from './public-api/router';
+import { brandingRoutes } from './routes/branding';
 
 const app = new Hono();
 
@@ -121,8 +122,20 @@ app.use('*', cors({
 }));
 
 // Security headers (CSP, X-Frame-Options, etc.)
+// Wenn PLATFORM_LOGO_URL eine externe HTTPS-URL ist, deren Origin der CSP
+// img-src whitelist hinzufuegen, damit der Browser das Logo laden darf.
+const extraImgSrc: string[] = [];
+try {
+  if (process.env.PLATFORM_LOGO_URL && process.env.PLATFORM_LOGO_URL.startsWith('http')) {
+    const origin = new URL(process.env.PLATFORM_LOGO_URL).origin;
+    extraImgSrc.push(origin);
+  }
+} catch {
+  /* invalid URL — fail open, browser will block if necessary */
+}
 app.use('*', securityHeaders({
   connectSrc: ['https://api.adacor.ai'],
+  imgSrc: extraImgSrc.length > 0 ? extraImgSrc : undefined,
 }));
 
 // Global rate limiting for API routes (100 req/min fallback)
@@ -141,6 +154,9 @@ app.get('/health', (c) => c.json({ status: 'ok' }));
 
 // Public API (API-key-authenticated, versioned) — own rate-limit layer per key
 app.route('/api/public/v1', publicApiRouter);
+
+// Branding (public, unauth'd) — Title/Logo per Customer-Environment via ENV
+app.route('/api/branding', brandingRoutes);
 
 // API routes
 app.route('/api/auth', authRoutes);

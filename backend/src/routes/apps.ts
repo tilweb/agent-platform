@@ -10,6 +10,7 @@ import {
   getApp,
   enableApp,
   disableApp,
+  isAppEnvAllowed,
 } from '../apps/registry';
 import { contractRoutes } from '../apps/vertragsmanagement/routes';
 import { projektmanagementRoutes } from '../apps/projektmanagement/routes';
@@ -29,7 +30,10 @@ apps.get('/', async (c) => {
   try {
     // For now, return all apps - could filter by user role later
     const allApps = await getApps();
-    return c.json({ apps: allApps });
+    // Augment with envBlocked flag so the admin UI can render the
+    // "via ENV deaktiviert" hint and disable the toggle.
+    const augmented = allApps.map(app => ({ ...app, envBlocked: !isAppEnvAllowed(app.id) }));
+    return c.json({ apps: augmented });
   } catch (error) {
     console.error('Error listing apps:', error);
     return c.json({ error: 'Failed to list apps' }, 500);
@@ -85,6 +89,12 @@ apps.put('/:appId/enable', async (c) => {
     const appId = c.req.param('appId');
     const app = await enableApp(appId);
 
+    if (app === 'env-blocked') {
+      return c.json(
+        { error: 'App ist via ENABLED_APPS ENV-Variable gesperrt und kann nicht aktiviert werden.', code: 'env_blocked' },
+        403,
+      );
+    }
     if (!app) {
       return c.json({ error: 'App not found' }, 404);
     }

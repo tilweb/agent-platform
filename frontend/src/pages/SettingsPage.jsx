@@ -1344,7 +1344,22 @@ function SettingsPage() {
                   }}
                 >
                   <div style={{ flex: 1 }}>
-                    <span style={{ ...styles.infoValue, display: 'block', fontWeight: theme.typography.weights.semibold }}>{app.name}</span>
+                    <span style={{ ...styles.infoValue, display: 'block', fontWeight: theme.typography.weights.semibold }}>
+                      {app.name}
+                      {app.envBlocked && (
+                        <span style={{
+                          marginLeft: theme.spacing.sm,
+                          fontSize: theme.typography.sizes.xs,
+                          fontWeight: theme.typography.weights.medium,
+                          padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                          backgroundColor: theme.colors.surfaceHover,
+                          color: theme.colors.textMuted,
+                          borderRadius: theme.borderRadius.full,
+                        }}>
+                          via ENV deaktiviert
+                        </span>
+                      )}
+                    </span>
                     <span style={{ ...styles.infoLabel, fontSize: theme.typography.sizes.xs }}>
                       {app.description}
                     </span>
@@ -1378,14 +1393,20 @@ function SettingsPage() {
                         gap: theme.spacing.sm,
                         background: 'none',
                         border: 'none',
-                        cursor: 'pointer',
+                        cursor: app.envBlocked ? 'not-allowed' : 'pointer',
+                        opacity: app.envBlocked ? 0.4 : 1,
                         padding: theme.spacing.xs,
                         borderRadius: theme.borderRadius.md,
                       }}
-                      onClick={() => toggleApp(app.id)}
-                      title={app.enabled ? 'Deaktivieren' : 'Aktivieren'}
+                      onClick={() => { if (!app.envBlocked) toggleApp(app.id); }}
+                      disabled={app.envBlocked}
+                      title={
+                        app.envBlocked
+                          ? 'Diese App ist via ENABLED_APPS ENV-Variable gesperrt.'
+                          : (app.enabled ? 'Deaktivieren' : 'Aktivieren')
+                      }
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                        if (!app.envBlocked) e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'transparent';

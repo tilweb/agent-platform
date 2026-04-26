@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useAuth } from '../context/AuthContext';
 import { useApps } from '../hooks/useApps';
+import { useBranding } from '../hooks/useBranding';
 
 const sidebarStyles = {
   sidebar: {
@@ -249,6 +250,7 @@ function Sidebar() {
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const { user, isAuthenticated, logout } = useAuth();
+  const branding = useBranding();
   const { enabledApps } = useApps();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [verwaltungOpen, setVerwaltungOpen] = useState(() => {
@@ -322,14 +324,22 @@ function Sidebar() {
     <aside style={sidebarStyles.sidebar}>
       {/* Scrollable Navigation Area */}
       <div style={sidebarStyles.scrollableContent}>
-        {/* Logo */}
+        {/* Logo — branding-aware: PLATFORM_LOGO_URL und PLATFORM_TITLE per ENV */}
         <div style={sidebarStyles.logo}>
           <div style={sidebarStyles.logoIcon}>
-            <LogoIcon />
+            {branding.logoUrl ? (
+              <img
+                src={branding.logoUrl}
+                alt={branding.title}
+                style={{ width: 28, height: 28, objectFit: 'contain', display: 'block' }}
+              />
+            ) : (
+              <LogoIcon />
+            )}
           </div>
           <div style={sidebarStyles.logoText}>
             <span style={sidebarStyles.logoSubtitle}>Adacor</span>
-            <span style={sidebarStyles.logoTitle}>Workplace</span>
+            <span style={sidebarStyles.logoTitle}>{branding.title}</span>
           </div>
         </div>
 

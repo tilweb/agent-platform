@@ -99,15 +99,25 @@ export async function saveRegistry(registry: AppsRegistry): Promise<void> {
 }
 
 /**
- * Get all registered apps
+ * Apply runtime ENV-Whitelist filter — clamps `enabled` to false for apps
+ * not in ENABLED_APPS (without persisting that into the registry file).
+ * Admin-intent (the persisted enabled flag) bleibt erhalten.
  */
-export async function getApps(): Promise<AppInfo[]> {
-  const registry = await loadRegistry();
-  return Object.values(registry.apps);
+function applyEnvFilter<T extends AppInfo>(app: T): T {
+  if (isAppEnvAllowed(app.id)) return app;
+  return { ...app, enabled: false };
 }
 
 /**
- * Get enabled apps only
+ * Get all registered apps (runtime ENV-Filter angewendet).
+ */
+export async function getApps(): Promise<AppInfo[]> {
+  const registry = await loadRegistry();
+  return Object.values(registry.apps).map(applyEnvFilter);
+}
+
+/**
+ * Get enabled apps only — bereits ENV-gefiltert.
  */
 export async function getEnabledApps(): Promise<AppInfo[]> {
   const apps = await getApps();
@@ -115,17 +125,32 @@ export async function getEnabledApps(): Promise<AppInfo[]> {
 }
 
 /**
- * Get a specific app by ID
+ * Get a specific app by ID — runtime ENV-Filter angewendet.
  */
 export async function getApp(appId: string): Promise<AppInfo | null> {
   const registry = await loadRegistry();
-  return registry.apps[appId] || null;
+  const app = registry.apps[appId];
+  return app ? applyEnvFilter(app) : null;
 }
 
 /**
- * Enable an app (admin only)
+ * Returns true if the app is allowed by the current ENABLED_APPS ENV-Whitelist
+ * (or if no whitelist is set). Useful for UI-Hints und Permission-Checks.
  */
-export async function enableApp(appId: string): Promise<AppConfig | null> {
+export function isAppEnvAllowed(appId: string): boolean {
+  const whitelist = parseEnabledApps(process.env.ENABLED_APPS);
+  return whitelist === null || whitelist.has(appId);
+}
+
+/**
+ * Enable an app (admin only). Refuses if blocked by ENABLED_APPS ENV-Whitelist.
+ * Returns the app on success, null when not found, or `'env-blocked'` when
+ * the ENV does not permit enabling this app.
+ */
+export async function enableApp(appId: string): Promise<AppConfig | null | 'env-blocked'> {
+  if (!isAppEnvAllowed(appId)) {
+    return 'env-blocked';
+  }
   const registry = await loadRegistry();
 
   if (!registry.apps[appId]) {
@@ -190,27 +215,55 @@ export function clearCache(): void {
 }
 
 /**
+ * Parse the ENABLED_APPS ENV-Variable.
+ * Returns a Set of app-ids when the variable is set (comma-separated list),
+ * or null when not set. `null` means "no whitelist active — defer to per-app
+ * `enabled` flag" (legacy behavior). Empty string is treated as "nothing
+ * allowed" — all apps are forced disabled.
+ */
+function parseEnabledApps(raw: string | undefined): Set<string> | null {
+  if (raw === undefined) return null;
+  const ids = raw.split(',').map(s => s.trim()).filter(Boolean);
+  return new Set(ids);
+}
+
+/**
+ * Returns the set of app-ids allowed by the current ENABLED_APPS ENV (or null
+ * for "no filter"). Exposed so other modules (UI, Public-API) can show a
+ * "via ENV deaktiviert" hint or short-circuit checks.
+ */
+export function getEnvEnabledAppIds(): Set<string> | null {
+  return parseEnabledApps(process.env.ENABLED_APPS);
+}
+
+/**
  * Ensure every built-in app is present in the registry. Idempotent.
- * New built-in apps get added (with their default `enabled` state).
- * Existing entries keep their current `enabled` flag (admin choice).
- * Static fields (name, description, icon, routes, version) get refreshed
- * from code, so rename/icon changes in the codebase roll out automatically.
  *
- * This decouples app availability from Docker volume-sync quirks.
+ * Behavior:
+ * - Persisted `enabled`-Flag = Admin-Intent — wird NICHT vom ENV-Filter
+ *   beeinflusst. Damit bleibt der Admin-Wunsch zwischen Deploys stabil.
+ * - ENV-Whitelist (`ENABLED_APPS=app1,app2`) wirkt nur zur Laufzeit
+ *   (siehe `applyEnvFilter` / `isAppEnvAllowed`) — clamped enabled auf
+ *   false fuer nicht-whitelisted Apps, ohne die persistierte Konfiguration
+ *   zu veraendern.
+ * - Statische Felder (name, description, icon, routes, version) werden
+ *   aus dem Code refreshed.
  */
 export async function syncBuiltInApps(): Promise<{ added: string[]; updated: string[] }> {
   const registry = await loadRegistry();
+  const envWhitelist = parseEnabledApps(process.env.ENABLED_APPS);
   const added: string[] = [];
   const updated: string[] = [];
 
   for (const config of BUILT_IN_APPS) {
     const existing = registry.apps[config.id];
+
     if (!existing) {
       registry.apps[config.id] = { ...config };
       added.push(config.id);
       continue;
     }
-    // Refresh static fields but preserve the admin-controlled `enabled` flag.
+    // Refresh static fields, preserve admin-controlled `enabled` flag.
     const merged: AppConfig = {
       ...config,
       enabled: existing.enabled,
@@ -224,7 +277,15 @@ export async function syncBuiltInApps(): Promise<{ added: string[]; updated: str
 
   if (added.length > 0 || updated.length > 0) {
     await saveRegistry(registry);
-    console.log(`[apps] Built-in sync — added: [${added.join(', ')}], updated: [${updated.join(', ')}]`);
+  }
+
+  const filter = envWhitelist === null
+    ? '(no ENV filter)'
+    : `(ENV filter: ${[...envWhitelist].join(', ') || 'NONE'})`;
+  if (added.length > 0 || updated.length > 0) {
+    console.log(`[apps] Built-in sync ${filter} — added: [${added.join(', ')}], updated: [${updated.join(', ')}]`);
+  } else if (envWhitelist !== null) {
+    console.log(`[apps] Built-in sync ${filter} — no persisted changes`);
   }
 
   return { added, updated };

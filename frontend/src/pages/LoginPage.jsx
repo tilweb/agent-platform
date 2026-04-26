@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useBranding } from '../hooks/useBranding';
 import { theme } from '../config/theme';
 
 const styles = {
@@ -142,6 +143,7 @@ function LogoIcon() {
 
 export default function LoginPage() {
   const { login, register, initialized, registrationEnabled, loading: authLoading } = useAuth();
+  const branding = useBranding();
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -188,10 +190,29 @@ export default function LoginPage() {
       <div style={styles.card}>
         <div style={styles.logo}>
           <div style={styles.logoIcon}>
-            <LogoIcon />
+            {branding.logoUrl ? (
+              <img
+                src={branding.logoUrl}
+                alt={branding.title}
+                style={{ width: 48, height: 48, objectFit: 'contain', display: 'block' }}
+              />
+            ) : (
+              <LogoIcon />
+            )}
           </div>
-          <span style={styles.logoText}>Agent Platform</span>
+          <span style={styles.logoText}>{branding.title}</span>
         </div>
+        {branding.loginSubtitle && (
+          <p style={{
+            textAlign: 'center',
+            color: theme.colors.textMuted,
+            fontSize: theme.typography.sizes.sm,
+            marginTop: theme.spacing.xs,
+            marginBottom: theme.spacing.lg,
+          }}>
+            {branding.loginSubtitle}
+          </p>
+        )}
 
         {initialized === false && (
           <div style={styles.setupBanner}>
