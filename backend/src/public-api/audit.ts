@@ -1,35 +1,32 @@
 /**
- * Public-API audit log — append-only JSONL, one file per month.
- * Stored under data/audit/api-public/<YYYY-MM>.jsonl (gitignored).
+ * Public-API Audit-Log — Postgres-backed (append-only).
  *
- * Does not log request/response bodies — only metadata for accountability.
+ * Frueher JSONL-Files pro Monat unter data/audit/api-public/. Jetzt
+ * direkter Insert in `audit.public_api`. Schreibfehler werden geloggt
+ * aber nicht weitergeworfen — Request-Pfad bleibt robust.
  */
 
-import { join } from 'path';
-import { appendFile, mkdir } from 'node:fs/promises';
+import { getDb } from '../db';
+import { auditPublicApi } from '../db/schema/audit';
 import type { AuditEntry } from './types';
-
-const DATA_DIR = join(import.meta.dir, '../../../data');
-const AUDIT_DIR = join(DATA_DIR, 'audit/api-public');
-
-let dirReady = false;
-
-async function ensureDir(): Promise<void> {
-  if (dirReady) return;
-  await mkdir(AUDIT_DIR, { recursive: true });
-  dirReady = true;
-}
-
-function monthFile(date = new Date()): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-  return join(AUDIT_DIR, `${y}-${m}.jsonl`);
-}
 
 export async function writeAudit(entry: AuditEntry): Promise<void> {
   try {
-    await ensureDir();
-    await appendFile(monthFile(), JSON.stringify(entry) + '\n', 'utf-8');
+    const db = getDb();
+    await db.insert(auditPublicApi).values({
+      id: entry.requestId,
+      timestamp: entry.timestamp,
+      apiKeyId: entry.apiKeyId,
+      scopeType: entry.scopeType,
+      scopeId: entry.scopeId,
+      method: entry.method,
+      path: entry.path,
+      appId: entry.appId,
+      functionId: entry.functionId,
+      status: entry.status,
+      errorCode: entry.errorCode ?? null,
+      durationMs: entry.durationMs,
+    });
   } catch (err) {
     console.error('[public-api/audit] write failed:', err);
   }

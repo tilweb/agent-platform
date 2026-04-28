@@ -1,264 +1,221 @@
 /**
- * Projektmanagement Storage Service
- * File-based storage for Projektauftraege
+ * Projektmanagement Storage — Postgres-backed (Drizzle).
+ *
+ * Komplette Projektauftrag-Daten als jsonb in `projektmgmt.projektauftraege.data`.
+ * Statusberichte und Vorlagen analog. Config bleibt vorerst in-memory (DEFAULT_CONFIG).
  */
 
-import { parse, stringify } from 'yaml';
+import { eq, desc, and } from 'drizzle-orm';
+import { getDb } from '../../db';
+import {
+  paProjektauftraege,
+  paStatusberichte,
+  paVorlagen,
+} from '../../db/schema/projektmgmt';
 import type { Projektauftrag, Vorlage, Statusbericht } from './types';
 
-const BASE_PATH = './data/apps/projektmanagement';
-const PROJEKTAUFTRAEGE_PATH = `${BASE_PATH}/projektauftraege`;
-const VORLAGEN_PATH = `${BASE_PATH}/vorlagen`;
-
-// ============== Projektauftrag Storage ==============
-
-/**
- * Generate a unique Projektauftrag ID
- */
 export function generateProjektauftragId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 8);
   return `projekt-${timestamp}-${random}`;
 }
 
-/**
- * Ensure directories exist
- */
-async function ensureDirectories(): Promise<void> {
-  await Bun.$`mkdir -p ${PROJEKTAUFTRAEGE_PATH}`;
-  await Bun.$`mkdir -p ${VORLAGEN_PATH}`;
+// ============== Projektauftrag ==============
+
+function rowToProjektauftrag(row: typeof paProjektauftraege.$inferSelect): Projektauftrag {
+  const data = (row.data ?? {}) as Partial<Projektauftrag>;
+  return {
+    ...data,
+    id: row.id,
+    name: row.name,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+  } as Projektauftrag;
 }
 
-/**
- * Get all Projektauftraege
- */
 export async function getProjektauftraege(): Promise<Projektauftrag[]> {
-  const projektauftraege: Projektauftrag[] = [];
-
-  try {
-    const glob = new Bun.Glob('*/metadata.yaml');
-
-    for await (const path of glob.scan(PROJEKTAUFTRAEGE_PATH)) {
-      const file = Bun.file(`${PROJEKTAUFTRAEGE_PATH}/${path}`);
-      if (await file.exists()) {
-        const content = await file.text();
-        const projektauftrag = parse(content) as Projektauftrag;
-        projektauftraege.push(projektauftrag);
-      }
-    }
-  } catch (error) {
-    console.log('No Projektauftraege found, returning empty list');
-  }
-
-  // Sort by updated_at, newest first
-  projektauftraege.sort((a, b) =>
-    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
-
-  return projektauftraege;
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(paProjektauftraege)
+    .orderBy(desc(paProjektauftraege.updatedAt));
+  return rows.map(rowToProjektauftrag);
 }
 
-/**
- * Get a specific Projektauftrag by ID
- */
 export async function getProjektauftrag(projektId: string): Promise<Projektauftrag | null> {
-  const file = Bun.file(`${PROJEKTAUFTRAEGE_PATH}/${projektId}/metadata.yaml`);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  return parse(content) as Projektauftrag;
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(paProjektauftraege)
+    .where(eq(paProjektauftraege.id, projektId))
+    .limit(1);
+  return rows[0] ? rowToProjektauftrag(rows[0]) : null;
 }
 
-/**
- * Save a Projektauftrag
- */
-export async function saveProjektauftrag(projektauftrag: Projektauftrag): Promise<void> {
-  const dir = `${PROJEKTAUFTRAEGE_PATH}/${projektauftrag.id}`;
-
-  // Ensure directory exists
-  await Bun.$`mkdir -p ${dir}`;
-
-  // Save metadata
-  await Bun.write(`${dir}/metadata.yaml`, stringify(projektauftrag));
+export async function saveProjektauftrag(p: Projektauftrag): Promise<void> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.insert(paProjektauftraege).values({
+    id: p.id,
+    ownerId: (p as { ownerId?: string }).ownerId ?? null,
+    name: p.name,
+    status: (p as { status?: string }).status ?? 'draft',
+    data: p as never,
+    createdAt: p.created_at ?? now,
+    updatedAt: p.updated_at ?? now,
+  }).onConflictDoUpdate({
+    target: paProjektauftraege.id,
+    set: {
+      name: p.name,
+      status: (p as { status?: string }).status ?? 'draft',
+      data: p as never,
+      updatedAt: p.updated_at ?? now,
+    },
+  });
 }
 
-/**
- * Update a Projektauftrag
- */
 export async function updateProjektauftrag(
   projektId: string,
-  updates: Partial<Projektauftrag>
+  updates: Partial<Projektauftrag>,
 ): Promise<Projektauftrag | null> {
   const existing = await getProjektauftrag(projektId);
-
-  if (!existing) {
-    return null;
-  }
-
-  const updated: Projektauftrag = {
+  if (!existing) return null;
+  const merged: Projektauftrag = {
     ...existing,
     ...updates,
-    id: projektId, // Ensure ID is not changed
+    id: projektId,
     updated_at: new Date().toISOString(),
-  };
-
-  await saveProjektauftrag(updated);
-  return updated;
+  } as Projektauftrag;
+  await saveProjektauftrag(merged);
+  return merged;
 }
 
-/**
- * Delete a Projektauftrag
- */
 export async function deleteProjektauftrag(projektId: string): Promise<boolean> {
-  const dir = `${PROJEKTAUFTRAEGE_PATH}/${projektId}`;
-  const metadataFile = Bun.file(`${dir}/metadata.yaml`);
-
-  if (!(await metadataFile.exists())) {
-    return false;
-  }
-
-  // Remove entire directory
-  await Bun.$`rm -rf ${dir}`;
-  return true;
+  const db = getDb();
+  const res = await db
+    .delete(paProjektauftraege)
+    .where(eq(paProjektauftraege.id, projektId))
+    .returning({ id: paProjektauftraege.id });
+  return res.length > 0;
 }
 
-// ============== Statusbericht Storage ==============
+// ============== Statusbericht ==============
 
-/**
- * Generate a unique Statusbericht ID
- */
 export function generateStatusberichtId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 8);
   return `sb-${timestamp}-${random}`;
 }
 
-/**
- * Get all Statusberichte for a Projekt, sorted by nummer
- */
+function rowToStatusbericht(row: typeof paStatusberichte.$inferSelect): Statusbericht {
+  const data = (row.data ?? {}) as Partial<Statusbericht>;
+  return { ...data, id: row.id } as Statusbericht;
+}
+
 export async function getStatusberichte(projektId: string): Promise<Statusbericht[]> {
-  const dir = `${PROJEKTAUFTRAEGE_PATH}/${projektId}/statusberichte`;
-  const berichte: Statusbericht[] = [];
-
-  try {
-    const glob = new Bun.Glob('*.yaml');
-    for await (const path of glob.scan(dir)) {
-      const file = Bun.file(`${dir}/${path}`);
-      if (await file.exists()) {
-        const content = await file.text();
-        const bericht = parse(content) as Statusbericht;
-        berichte.push(bericht);
-      }
-    }
-  } catch {
-    // No statusberichte directory yet
-  }
-
-  berichte.sort((a, b) => a.nummer - b.nummer);
-  return berichte;
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(paStatusberichte)
+    .where(eq(paStatusberichte.paId, projektId));
+  const reports = rows.map(rowToStatusbericht);
+  reports.sort((a, b) => a.nummer - b.nummer);
+  return reports;
 }
 
-/**
- * Get a single Statusbericht
- */
-export async function getStatusbericht(projektId: string, sbId: string): Promise<Statusbericht | null> {
-  const file = Bun.file(`${PROJEKTAUFTRAEGE_PATH}/${projektId}/statusberichte/${sbId}.yaml`);
-  if (!(await file.exists())) {
-    return null;
-  }
-  const content = await file.text();
-  return parse(content) as Statusbericht;
+export async function getStatusbericht(
+  projektId: string,
+  sbId: string,
+): Promise<Statusbericht | null> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(paStatusberichte)
+    .where(and(eq(paStatusberichte.paId, projektId), eq(paStatusberichte.id, sbId)))
+    .limit(1);
+  return rows[0] ? rowToStatusbericht(rows[0]) : null;
 }
 
-/**
- * Save a Statusbericht (create or update)
- */
 export async function saveStatusbericht(projektId: string, sb: Statusbericht): Promise<void> {
-  const dir = `${PROJEKTAUFTRAEGE_PATH}/${projektId}/statusberichte`;
-  await Bun.$`mkdir -p ${dir}`;
-  await Bun.write(`${dir}/${sb.id}.yaml`, stringify(sb));
+  const db = getDb();
+  const now = new Date().toISOString();
+  const reportDate = (sb as { datum?: string }).datum ?? now;
+  await db.insert(paStatusberichte).values({
+    id: sb.id,
+    paId: projektId,
+    reportDate,
+    data: sb as never,
+    createdBy: (sb as { createdBy?: string }).createdBy ?? null,
+    createdAt: now,
+  }).onConflictDoUpdate({
+    target: paStatusberichte.id,
+    set: {
+      paId: projektId,
+      reportDate,
+      data: sb as never,
+    },
+  });
 }
 
-/**
- * Delete a Statusbericht
- */
 export async function deleteStatusbericht(projektId: string, sbId: string): Promise<boolean> {
-  const file = Bun.file(`${PROJEKTAUFTRAEGE_PATH}/${projektId}/statusberichte/${sbId}.yaml`);
-  if (!(await file.exists())) {
-    return false;
-  }
-  await Bun.$`rm -f ${PROJEKTAUFTRAEGE_PATH}/${projektId}/statusberichte/${sbId}.yaml`;
-  return true;
+  const db = getDb();
+  const res = await db
+    .delete(paStatusberichte)
+    .where(and(eq(paStatusberichte.paId, projektId), eq(paStatusberichte.id, sbId)))
+    .returning({ id: paStatusberichte.id });
+  return res.length > 0;
 }
 
-// ============== Vorlagen Storage ==============
+// ============== Vorlagen ==============
 
-/**
- * Get all Vorlagen (templates)
- */
+function rowToVorlage(row: typeof paVorlagen.$inferSelect): Vorlage {
+  const data = (row.data ?? {}) as Partial<Vorlage>;
+  return { ...data, id: row.id, name: row.name } as Vorlage;
+}
+
 export async function getVorlagen(): Promise<Vorlage[]> {
-  const vorlagen: Vorlage[] = [];
-
-  try {
-    const glob = new Bun.Glob('*.yaml');
-
-    for await (const path of glob.scan(VORLAGEN_PATH)) {
-      const file = Bun.file(`${VORLAGEN_PATH}/${path}`);
-      if (await file.exists()) {
-        const content = await file.text();
-        const vorlage = parse(content) as Vorlage;
-        vorlagen.push(vorlage);
-      }
-    }
-  } catch (error) {
-    console.log('No Vorlagen found, returning empty list');
-  }
-
-  return vorlagen;
+  const db = getDb();
+  const rows = await db.select().from(paVorlagen);
+  return rows.map(rowToVorlage);
 }
 
-/**
- * Get a specific Vorlage by ID
- */
 export async function getVorlage(vorlageId: string): Promise<Vorlage | null> {
-  const file = Bun.file(`${VORLAGEN_PATH}/${vorlageId}.yaml`);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  return parse(content) as Vorlage;
+  const db = getDb();
+  const rows = await db.select().from(paVorlagen).where(eq(paVorlagen.id, vorlageId)).limit(1);
+  return rows[0] ? rowToVorlage(rows[0]) : null;
 }
 
-/**
- * Save a Vorlage
- */
-export async function saveVorlage(vorlage: Vorlage): Promise<void> {
-  await ensureDirectories();
-  await Bun.write(`${VORLAGEN_PATH}/${vorlage.id}.yaml`, stringify(vorlage));
+export async function saveVorlage(v: Vorlage): Promise<void> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.insert(paVorlagen).values({
+    id: v.id,
+    name: v.name,
+    description: (v as { description?: string }).description ?? null,
+    data: v as never,
+    createdAt: now,
+    updatedAt: now,
+  }).onConflictDoUpdate({
+    target: paVorlagen.id,
+    set: {
+      name: v.name,
+      description: (v as { description?: string }).description ?? null,
+      data: v as never,
+      updatedAt: now,
+    },
+  });
 }
 
-/**
- * Delete a Vorlage
- */
 export async function deleteVorlage(vorlageId: string): Promise<boolean> {
-  const file = Bun.file(`${VORLAGEN_PATH}/${vorlageId}.yaml`);
-
-  if (!(await file.exists())) {
-    return false;
-  }
-
-  await Bun.$`rm -f ${VORLAGEN_PATH}/${vorlageId}.yaml`;
-  return true;
+  const db = getDb();
+  const res = await db
+    .delete(paVorlagen)
+    .where(eq(paVorlagen.id, vorlageId))
+    .returning({ id: paVorlagen.id });
+  return res.length > 0;
 }
 
-// ============== Config Storage ==============
-
-const CONFIG_PATH = `${BASE_PATH}/config.json`;
+// ============== Config (in-memory defaults) ==============
 
 const DEFAULT_CONFIG = {
   project_type: [
@@ -358,31 +315,18 @@ const DEFAULT_CONFIG = {
 };
 
 /**
- * Get config, merging defaults with saved overrides
+ * Aktuell statisch — Override gibt's noch nicht in der DB. In einer
+ * Folgemigration koennen wir einen `apps_registry.metadata`-Eintrag
+ * fuer Customer-spezifische Overrides nutzen.
  */
 export async function getConfig(): Promise<Record<string, any>> {
-  const file = Bun.file(CONFIG_PATH);
-  if (!(await file.exists())) {
-    return { ...DEFAULT_CONFIG };
-  }
-  const content = await file.text();
-  const saved = JSON.parse(content);
-  return { ...DEFAULT_CONFIG, ...saved };
+  return { ...DEFAULT_CONFIG };
 }
 
-/**
- * Save config
- */
-export async function saveConfig(config: Record<string, any>): Promise<void> {
-  await ensureDirectories();
-  await Bun.write(CONFIG_PATH, JSON.stringify(config, null, 2));
+export async function saveConfig(_config: Record<string, any>): Promise<void> {
+  /* no-op fuer den Moment — siehe getConfig */
 }
 
-// ============== Initialization ==============
-
-/**
- * Initialize storage directories
- */
 export async function initializeStorage(): Promise<void> {
-  await ensureDirectories();
+  /* no-op — Schema kommt ueber die Migration */
 }

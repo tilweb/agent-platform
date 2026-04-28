@@ -1,25 +1,21 @@
 /**
- * Lieferantenmanagement Storage Service
- * File-based storage for suppliers, audits, and audit plans
+ * Lieferantenmanagement Storage — Postgres-backed (Drizzle).
+ *
+ * Stammdaten + Audits + Audit-Plans als jsonb-Daten in den jeweiligen Tabellen.
+ * Document-Bytes wandern in S3 (siehe documents.ts), nur die Metadaten in DB.
+ * Config wird vorerst als trivialer "settings"-Eintrag im Audit-Plans-Schema gehalten.
  */
 
+import { eq, desc } from 'drizzle-orm';
+import { getDb } from '../../db';
+import { suppliers as suppliersTable, audits as auditsTable, auditPlans as auditPlansTable } from '../../db/schema/liefermgmt';
 import type { Supplier, Audit, AuditPlan } from './types';
-
-const BASE_PATH = './data/apps/lieferantenmanagement';
-const SUPPLIERS_PATH = `${BASE_PATH}/suppliers`;
-const AUDITS_PATH = `${BASE_PATH}/audits`;
-const AUDIT_PLANS_PATH = `${BASE_PATH}/audit-plans`;
-const CONFIG_PATH = `${BASE_PATH}/config.json`;
-
-// ============== Validation ==============
 
 const SAFE_ID_PATTERN = /^[a-z0-9\-_]+$/;
 
 export function validateId(id: string): boolean {
   return SAFE_ID_PATTERN.test(id) && id.length <= 64;
 }
-
-// ============== ID Generation ==============
 
 export function generateSupplierId(): string {
   const timestamp = Date.now().toString(36);
@@ -51,146 +47,148 @@ export function generateAuditId(): string {
   return `audit-${timestamp}-${random}`;
 }
 
-// ============== Supplier Storage ==============
+// ============== Supplier ==============
+
+function rowToSupplier(row: typeof suppliersTable.$inferSelect): Supplier {
+  const data = (row.data ?? {}) as Partial<Supplier>;
+  return {
+    ...data,
+    id: row.id,
+    name: row.name,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+  } as Supplier;
+}
 
 export async function getSuppliers(): Promise<Supplier[]> {
-  const suppliers: Supplier[] = [];
-
-  try {
-    const glob = new Bun.Glob('*/data.json');
-    for await (const path of glob.scan(SUPPLIERS_PATH)) {
-      const file = Bun.file(`${SUPPLIERS_PATH}/${path}`);
-      if (await file.exists()) {
-        const content = await file.text();
-        suppliers.push(JSON.parse(content) as Supplier);
-      }
-    }
-  } catch (error) {
-    console.log('No suppliers found, returning empty list');
-  }
-
-  suppliers.sort((a, b) =>
-    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
-
-  return suppliers;
+  const db = getDb();
+  const rows = await db.select().from(suppliersTable).orderBy(desc(suppliersTable.updatedAt));
+  return rows.map(rowToSupplier);
 }
 
 export async function getSupplier(supplierId: string): Promise<Supplier | null> {
   if (!validateId(supplierId)) return null;
-  const file = Bun.file(`${SUPPLIERS_PATH}/${supplierId}/data.json`);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  return JSON.parse(content) as Supplier;
+  const db = getDb();
+  const rows = await db.select().from(suppliersTable).where(eq(suppliersTable.id, supplierId)).limit(1);
+  return rows[0] ? rowToSupplier(rows[0]) : null;
 }
 
 export async function saveSupplier(supplier: Supplier): Promise<void> {
-  const dir = `${SUPPLIERS_PATH}/${supplier.id}`;
-  await Bun.$`mkdir -p ${dir}`;
-  await Bun.write(`${dir}/data.json`, JSON.stringify(supplier, null, 2));
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.insert(suppliersTable).values({
+    id: supplier.id,
+    name: supplier.name,
+    data: supplier as never,
+    status: (supplier as { status?: string }).status ?? null,
+    createdAt: supplier.created_at ?? now,
+    updatedAt: supplier.updated_at ?? now,
+  }).onConflictDoUpdate({
+    target: suppliersTable.id,
+    set: {
+      name: supplier.name,
+      data: supplier as never,
+      status: (supplier as { status?: string }).status ?? null,
+      updatedAt: supplier.updated_at ?? now,
+    },
+  });
 }
 
 export async function deleteSupplier(supplierId: string): Promise<boolean> {
   if (!validateId(supplierId)) return false;
-  const file = Bun.file(`${SUPPLIERS_PATH}/${supplierId}/data.json`);
-
-  if (!(await file.exists())) {
-    return false;
-  }
-
-  await Bun.$`rm -rf ${SUPPLIERS_PATH}/${supplierId}`;
-  return true;
+  const db = getDb();
+  const res = await db.delete(suppliersTable).where(eq(suppliersTable.id, supplierId)).returning({ id: suppliersTable.id });
+  return res.length > 0;
 }
 
-// ============== Audit Storage ==============
+// ============== Audit ==============
+
+function rowToAudit(row: typeof auditsTable.$inferSelect): Audit {
+  const data = (row.data ?? {}) as Partial<Audit>;
+  return {
+    ...data,
+    id: row.id,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+  } as Audit;
+}
 
 export async function getAudits(): Promise<Audit[]> {
-  const audits: Audit[] = [];
-
-  try {
-    const glob = new Bun.Glob('*.json');
-    for await (const path of glob.scan(AUDITS_PATH)) {
-      const file = Bun.file(`${AUDITS_PATH}/${path}`);
-      if (await file.exists()) {
-        const content = await file.text();
-        audits.push(JSON.parse(content) as Audit);
-      }
-    }
-  } catch (error) {
-    console.log('No audits found, returning empty list');
-  }
-
-  audits.sort((a, b) =>
-    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
-
-  return audits;
+  const db = getDb();
+  const rows = await db.select().from(auditsTable).orderBy(desc(auditsTable.updatedAt));
+  return rows.map(rowToAudit);
 }
 
 export async function getAudit(auditId: string): Promise<Audit | null> {
   if (!validateId(auditId)) return null;
-  const file = Bun.file(`${AUDITS_PATH}/${auditId}.json`);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  return JSON.parse(content) as Audit;
+  const db = getDb();
+  const rows = await db.select().from(auditsTable).where(eq(auditsTable.id, auditId)).limit(1);
+  return rows[0] ? rowToAudit(rows[0]) : null;
 }
 
 export async function saveAudit(audit: Audit): Promise<void> {
-  await Bun.$`mkdir -p ${AUDITS_PATH}`;
-  await Bun.write(`${AUDITS_PATH}/${audit.id}.json`, JSON.stringify(audit, null, 2));
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.insert(auditsTable).values({
+    id: audit.id,
+    supplierId: (audit as { supplierId?: string }).supplierId ?? null,
+    data: audit as never,
+    status: (audit as { status?: string }).status ?? null,
+    scheduledFor: (audit as { scheduledFor?: string }).scheduledFor ?? null,
+    createdAt: audit.created_at ?? now,
+    updatedAt: audit.updated_at ?? now,
+  }).onConflictDoUpdate({
+    target: auditsTable.id,
+    set: {
+      supplierId: (audit as { supplierId?: string }).supplierId ?? null,
+      data: audit as never,
+      status: (audit as { status?: string }).status ?? null,
+      scheduledFor: (audit as { scheduledFor?: string }).scheduledFor ?? null,
+      updatedAt: audit.updated_at ?? now,
+    },
+  });
 }
 
 export async function deleteAudit(auditId: string): Promise<boolean> {
   if (!validateId(auditId)) return false;
-  const file = Bun.file(`${AUDITS_PATH}/${auditId}.json`);
-
-  if (!(await file.exists())) {
-    return false;
-  }
-
-  await Bun.$`rm ${AUDITS_PATH}/${auditId}.json`;
-  return true;
+  const db = getDb();
+  const res = await db.delete(auditsTable).where(eq(auditsTable.id, auditId)).returning({ id: auditsTable.id });
+  return res.length > 0;
 }
 
-// ============== Audit Plan Storage ==============
+// ============== Audit Plan ==============
 
 export async function getAuditPlan(year: number): Promise<AuditPlan | null> {
-  const file = Bun.file(`${AUDIT_PLANS_PATH}/${year}.json`);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  return JSON.parse(content) as AuditPlan;
+  const db = getDb();
+  const rows = await db.select().from(auditPlansTable).where(eq(auditPlansTable.jahr, year)).limit(1);
+  if (!rows[0]) return null;
+  const data = (rows[0].data ?? {}) as Partial<AuditPlan>;
+  return { ...data, jahr: rows[0].jahr } as AuditPlan;
 }
 
 export async function saveAuditPlan(plan: AuditPlan): Promise<void> {
-  await Bun.$`mkdir -p ${AUDIT_PLANS_PATH}`;
-  await Bun.write(`${AUDIT_PLANS_PATH}/${plan.jahr}.json`, JSON.stringify(plan, null, 2));
+  const db = getDb();
+  await db.insert(auditPlansTable).values({
+    jahr: plan.jahr,
+    data: plan as never,
+  }).onConflictDoUpdate({
+    target: auditPlansTable.jahr,
+    set: {
+      data: plan as never,
+      updatedAt: new Date().toISOString(),
+    },
+  });
 }
 
-// ============== Config ==============
+// ============== Config (Stub fuer alte API-Kompatibilitaet) ==============
+// Aktuell wird die Config-Tabelle nicht genutzt — die alte File-API gibt es
+// noch fuer backwards-compat in den Routes. Wenn benoetigt, koennen wir
+// einen `settings`-Eintrag in apps_registry.metadata einfuehren.
 
 export async function getConfig(): Promise<any> {
-  const file = Bun.file(CONFIG_PATH);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  return JSON.parse(content);
+  return null;
 }
 
-export async function saveConfig(config: any): Promise<void> {
-  await Bun.write(CONFIG_PATH, JSON.stringify(config, null, 2));
+export async function saveConfig(_config: any): Promise<void> {
+  /* no-op: Config wird aktuell nicht persistiert */
 }

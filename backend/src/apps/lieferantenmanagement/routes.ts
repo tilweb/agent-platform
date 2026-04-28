@@ -484,16 +484,13 @@ lieferanten.get('/suppliers/:id/documents/:docId/download', async (c) => {
     const doc = await documents.getDokument(supplierId, docId);
     if (!doc) return c.json({ error: 'Document not found' }, 404);
 
-    const filePath = documents.getDokumentFilePath(supplierId, docId, doc.dateiname);
-    const file = Bun.file(filePath);
-    if (!(await file.exists())) {
-      return c.json({ error: 'File not found on disk' }, 404);
-    }
+    const bytes = await documents.getDokumentBytes(supplierId, docId);
+    if (!bytes) return c.json({ error: 'File not found in storage' }, 404);
 
     c.header('Content-Type', doc.dateityp || 'application/octet-stream');
     c.header('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.dateiname)}"`);
     c.header('Content-Length', String(doc.dateigroesse));
-    return c.body(await file.arrayBuffer());
+    return c.body(bytes);
   } catch (error) {
     console.error('Error downloading document:', error);
     return c.json({ error: 'Failed to download document' }, 500);

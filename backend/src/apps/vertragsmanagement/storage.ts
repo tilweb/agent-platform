@@ -1,235 +1,227 @@
 /**
- * Vertragsmanagement Storage Service
- * File-based storage for contracts and schemas
+ * Vertragsmanagement Storage — Postgres (Metadata) + S3 (document.md & Originals).
+ *
+ * `vertragsmgmt.contracts`: metadaten + s3-keys
+ * S3-Bucket: apps/vertragsmanagement/<contractId>/document.md
+ *           apps/vertragsmanagement/<contractId>/original.<ext>
  */
 
-import { parse, stringify } from 'yaml';
+import { eq, desc } from 'drizzle-orm';
+import { getDb } from '../../db';
+import { contracts as contractsTable, contractSchemas as schemasTable } from '../../db/schema/vertragsmgmt';
+import { putObject, getObject, deleteObject } from '../../storage/s3';
+import { s3Paths } from '../../storage/paths';
 import type { ContractMetadata, ContractSchema } from '../types';
 
-const BASE_PATH = './data/apps/vertragsmanagement';
-const CONTRACTS_PATH = `${BASE_PATH}/contracts`;
-const SCHEMAS_PATH = `${BASE_PATH}/schemas`;
+// ============== Schema Storage (DB) ==============
 
-// ============== Schema Storage ==============
+function rowToSchema(row: typeof schemasTable.$inferSelect): ContractSchema {
+  return {
+    id: row.id,
+    name: row.name,
+    icon: row.icon ?? '',
+    fields: row.fields as ContractSchema['fields'],
+    mapping: row.mapping as ContractSchema['mapping'],
+  };
+}
 
-/**
- * Get all contract schemas
- */
 export async function getSchemas(): Promise<ContractSchema[]> {
-  const schemas: ContractSchema[] = [];
-  const glob = new Bun.Glob('*.yaml');
-
-  try {
-    for await (const path of glob.scan(SCHEMAS_PATH)) {
-      const file = Bun.file(`${SCHEMAS_PATH}/${path}`);
-      if (await file.exists()) {
-        const content = await file.text();
-        const schema = parse(content) as ContractSchema;
-        schemas.push(schema);
-      }
-    }
-  } catch (error) {
-    // Directory might not exist yet
-    console.log('No schemas found, returning empty list');
-  }
-
-  return schemas;
+  const db = getDb();
+  const rows = await db.select().from(schemasTable);
+  return rows.map(rowToSchema);
 }
 
-/**
- * Get a specific schema by type ID
- */
 export async function getSchema(typeId: string): Promise<ContractSchema | null> {
-  const file = Bun.file(`${SCHEMAS_PATH}/${typeId}.yaml`);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  return parse(content) as ContractSchema;
+  const db = getDb();
+  const rows = await db.select().from(schemasTable).where(eq(schemasTable.id, typeId)).limit(1);
+  return rows[0] ? rowToSchema(rows[0]) : null;
 }
 
-/**
- * Save a schema
- */
 export async function saveSchema(schema: ContractSchema): Promise<void> {
-  await Bun.write(`${SCHEMAS_PATH}/${schema.id}.yaml`, stringify(schema));
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.insert(schemasTable).values({
+    id: schema.id,
+    name: schema.name,
+    icon: schema.icon ?? null,
+    fields: schema.fields as never,
+    mapping: schema.mapping as never,
+    createdAt: now,
+    updatedAt: now,
+  }).onConflictDoUpdate({
+    target: schemasTable.id,
+    set: {
+      name: schema.name,
+      icon: schema.icon ?? null,
+      fields: schema.fields as never,
+      mapping: schema.mapping as never,
+      updatedAt: now,
+    },
+  });
 }
 
-// ============== Contract Storage ==============
+// ============== Contract Storage (DB + S3) ==============
 
-/**
- * Generate a unique contract ID
- */
 export function generateContractId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 8);
   return `contract-${timestamp}-${random}`;
 }
 
-/**
- * Get all contracts
- */
+function rowToContract(row: typeof contractsTable.$inferSelect): ContractMetadata {
+  return {
+    id: row.id,
+    contract_type: row.contractType ?? '',
+    upload_filename: row.uploadFilename,
+    uploaded_at: row.uploadedAt,
+    uploaded_by: row.uploadedBy,
+    extracted: (row.extracted ?? {}) as ContractMetadata['extracted'],
+    computed: (row.computed ?? {}) as ContractMetadata['computed'],
+    obligations: (row.obligations ?? []) as ContractMetadata['obligations'],
+  };
+}
+
 export async function getContracts(): Promise<ContractMetadata[]> {
-  const contracts: ContractMetadata[] = [];
-
-  try {
-    // Read all contract directories
-    const glob = new Bun.Glob('*/metadata.yaml');
-
-    for await (const path of glob.scan(CONTRACTS_PATH)) {
-      const file = Bun.file(`${CONTRACTS_PATH}/${path}`);
-      if (await file.exists()) {
-        const content = await file.text();
-        const metadata = parse(content) as ContractMetadata;
-        contracts.push(metadata);
-      }
-    }
-  } catch (error) {
-    // Directory might not exist yet
-    console.log('No contracts found, returning empty list');
-  }
-
-  // Sort by upload date, newest first
-  contracts.sort((a, b) =>
-    new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()
-  );
-
-  return contracts;
+  const db = getDb();
+  const rows = await db.select().from(contractsTable).orderBy(desc(contractsTable.uploadedAt));
+  return rows.map(rowToContract);
 }
 
-/**
- * Get a specific contract by ID
- */
 export async function getContract(contractId: string): Promise<ContractMetadata | null> {
-  const file = Bun.file(`${CONTRACTS_PATH}/${contractId}/metadata.yaml`);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  return parse(content) as ContractMetadata;
+  const db = getDb();
+  const rows = await db.select().from(contractsTable).where(eq(contractsTable.id, contractId)).limit(1);
+  return rows[0] ? rowToContract(rows[0]) : null;
 }
 
-/**
- * Get contract document (markdown)
- */
 export async function getContractDocument(contractId: string): Promise<string | null> {
-  const file = Bun.file(`${CONTRACTS_PATH}/${contractId}/document.md`);
-
-  if (!(await file.exists())) {
-    return null;
+  try {
+    const buf = await getObject(s3Paths.contractDocument(contractId));
+    return buf.toString('utf-8');
+  } catch (err: any) {
+    if (err?.name === 'NoSuchKey' || err?.$metadata?.httpStatusCode === 404) return null;
+    throw err;
   }
-
-  return file.text();
 }
 
-/**
- * Save contract metadata
- */
 export async function saveContract(metadata: ContractMetadata): Promise<void> {
-  const dir = `${CONTRACTS_PATH}/${metadata.id}`;
-
-  // Ensure directory exists
-  await Bun.$`mkdir -p ${dir}`;
-
-  // Save metadata
-  await Bun.write(`${dir}/metadata.yaml`, stringify(metadata));
+  const db = getDb();
+  await db.insert(contractsTable).values({
+    id: metadata.id,
+    contractType: metadata.contract_type ?? null,
+    uploadFilename: metadata.upload_filename,
+    uploadedAt: metadata.uploaded_at,
+    uploadedBy: metadata.uploaded_by,
+    extracted: metadata.extracted as never,
+    computed: metadata.computed as never,
+    obligations: metadata.obligations as never,
+    createdAt: metadata.uploaded_at,
+    updatedAt: metadata.uploaded_at,
+  }).onConflictDoUpdate({
+    target: contractsTable.id,
+    set: {
+      contractType: metadata.contract_type ?? null,
+      uploadFilename: metadata.upload_filename,
+      extracted: metadata.extracted as never,
+      computed: metadata.computed as never,
+      obligations: metadata.obligations as never,
+      updatedAt: new Date().toISOString(),
+    },
+  });
 }
 
-/**
- * Save contract document (markdown)
- */
-export async function saveContractDocument(
-  contractId: string,
-  document: string
-): Promise<void> {
-  const dir = `${CONTRACTS_PATH}/${contractId}`;
-
-  // Ensure directory exists
-  await Bun.$`mkdir -p ${dir}`;
-
-  await Bun.write(`${dir}/document.md`, document);
+export async function saveContractDocument(contractId: string, document: string): Promise<void> {
+  await putObject(s3Paths.contractDocument(contractId), document, 'text/markdown');
 }
 
-/**
- * Save original file (PDF, DOCX, TXT, MD)
- */
 export async function saveContractOriginal(
   contractId: string,
   fileBuffer: Buffer,
-  filename: string
+  filename: string,
 ): Promise<void> {
-  const dir = `${CONTRACTS_PATH}/${contractId}`;
+  // Original-Filename behalten — Extension entscheidet ueber den S3-Key.
+  const ext = (filename.split('.').pop() || 'bin').toLowerCase();
+  const key = s3Paths.contractOriginal(contractId, ext);
+  const contentTypeMap: Record<string, string> = {
+    pdf: 'application/pdf',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    doc: 'application/msword',
+    txt: 'text/plain',
+    md: 'text/markdown',
+  };
+  await putObject(key, fileBuffer, contentTypeMap[ext] || 'application/octet-stream');
 
-  // Ensure directory exists
-  await Bun.$`mkdir -p ${dir}`;
-
-  await Bun.write(`${dir}/${filename}`, fileBuffer);
+  // Original-Filename in der DB persistieren, damit der Download den korrekten
+  // Dateinamen ausliefern kann.
+  const db = getDb();
+  await db.update(contractsTable)
+    .set({ updatedAt: new Date().toISOString() })
+    .where(eq(contractsTable.id, contractId));
 }
 
 /**
- * Get original file path
+ * Liest die Bytes des Original-Files aus S3. Probiert die ueblichen
+ * Extensions durch, weil wir die Endung nur indirekt kennen (uploadFilename).
+ * Returns {buffer, contentType, filename} oder null.
  */
-export async function getContractOriginalPath(contractId: string): Promise<string | null> {
-  const dir = `${CONTRACTS_PATH}/${contractId}`;
-
+export async function getContractOriginal(
+  contractId: string,
+): Promise<{ buffer: Buffer; contentType: string; filename: string } | null> {
+  const meta = await getContract(contractId);
+  if (!meta) return null;
+  const filename = meta.upload_filename;
+  const ext = (filename.split('.').pop() || 'bin').toLowerCase();
+  const key = s3Paths.contractOriginal(contractId, ext);
+  const contentTypeMap: Record<string, string> = {
+    pdf: 'application/pdf',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    doc: 'application/msword',
+    txt: 'text/plain',
+    md: 'text/markdown',
+  };
   try {
-    // Look for common document extensions
-    const extensions = ['*.pdf', '*.docx', '*.doc', '*.txt', '*.md'];
-    for (const ext of extensions) {
-      const glob = new Bun.Glob(ext);
-      for await (const path of glob.scan(dir)) {
-        // Exclude document.md (the converted markdown)
-        if (path !== 'document.md') {
-          return `${dir}/${path}`;
-        }
-      }
-    }
-  } catch {
-    // Directory doesn't exist
+    const buffer = await getObject(key);
+    return { buffer, contentType: contentTypeMap[ext] || 'application/octet-stream', filename };
+  } catch (err: any) {
+    if (err?.name === 'NoSuchKey' || err?.$metadata?.httpStatusCode === 404) return null;
+    throw err;
   }
-
-  return null;
 }
 
 /**
- * Delete a contract
+ * @deprecated File-Path-API entfaellt mit S3 — Routes nutzen jetzt
+ * `getContractOriginal()` und schreiben das Buffer-Body direkt.
  */
+export async function getContractOriginalPath(_contractId: string): Promise<string | null> {
+  throw new Error(
+    'getContractOriginalPath is no longer supported — Originals live in S3. Use getContractOriginal() instead.',
+  );
+}
+
 export async function deleteContract(contractId: string): Promise<boolean> {
-  const dir = `${CONTRACTS_PATH}/${contractId}`;
-  const metadataFile = Bun.file(`${dir}/metadata.yaml`);
+  const meta = await getContract(contractId);
+  if (!meta) return false;
 
-  if (!(await metadataFile.exists())) {
-    return false;
-  }
+  // S3-Cleanup (best-effort)
+  try {
+    await deleteObject(s3Paths.contractDocument(contractId));
+  } catch { /* ignore */ }
+  const ext = (meta.upload_filename.split('.').pop() || 'bin').toLowerCase();
+  try {
+    await deleteObject(s3Paths.contractOriginal(contractId, ext));
+  } catch { /* ignore */ }
 
-  // Remove entire contract directory
-  await Bun.$`rm -rf ${dir}`;
+  const db = getDb();
+  await db.delete(contractsTable).where(eq(contractsTable.id, contractId));
   return true;
 }
 
-/**
- * Update contract metadata
- */
 export async function updateContract(
   contractId: string,
-  updates: Partial<ContractMetadata>
+  updates: Partial<ContractMetadata>,
 ): Promise<ContractMetadata | null> {
   const existing = await getContract(contractId);
-
-  if (!existing) {
-    return null;
-  }
-
-  const updated: ContractMetadata = {
-    ...existing,
-    ...updates,
-    id: contractId, // Ensure ID is not changed
-  };
-
-  await saveContract(updated);
-  return updated;
+  if (!existing) return null;
+  const merged: ContractMetadata = { ...existing, ...updates, id: contractId };
+  await saveContract(merged);
+  return merged;
 }

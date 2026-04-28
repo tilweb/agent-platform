@@ -2,6 +2,20 @@
 
 ## 2026-04-29
 
+### Feature: Phase 2-Apps + Audit + Usage — alle Apps auf Postgres + S3 umgestellt
+- **Audit-Log Public-API** (`backend/src/public-api/audit.ts`): JSONL-Append → INSERT in `audit.public_api`. Reads + Filter laufen in Folgemigrationen ueber SQL.
+- **Usage-Tracking** (`backend/src/services/usageTracking.ts`): JSONL-Files in `data/usage/` ersetzt durch `audit.usage_log`. Alle Summary/Group-By-Operationen lesen aus DB.
+- **Apps-Registry** (`backend/src/apps/registry.ts`): registry.yaml ersetzt durch `apps.registry`-Tabelle. 30s-In-Memory-Cache, syncBuiltInApps idempotent gegen die DB.
+- **wzbar-matcher**: matches → `wzbar.matches`-Tabelle. catalog.json + embeddings.json bleiben Build-Time-Assets im Image.
+- **VSM**: projekte → `vsm.projekte` (komplette Diagramm-Daten als jsonb).
+- **Lieferantenmanagement**: suppliers, audits, audit_plans → DB; Document-Bytes → S3 (`apps/lieferantenmanagement/<id>/<docId>/<file>`), Metadata in `liefermgmt.documents`. Download-Route streamt jetzt aus S3.
+- **Vertragsmanagement**: contracts + schemas → DB; document.md (konvertiert) und Original-PDF/DOCX → S3 (`apps/vertragsmanagement/<id>/document.md` und `original.<ext>`). Download-Route streamt aus S3.
+- **Projektmanagement**: projektauftraege, statusberichte, vorlagen → DB. Config bleibt als statische Defaults im Code (Override-Migration in Folge).
+- Verifiziert lokal mit Homebrew-Postgres + Flow.swiss S3:
+  - Backend-Boot: alle 5 Apps via DB-Registry geladen, syncBuiltInApps idempotent.
+  - Public-API-Call → Match-Record landet in `wzbar.matches` (direkter SELECT verifiziert: `IT-Beratung und Softwareentwicklung` → 6220).
+  - Audit + Usage schreiben sauber in DB.
+
 ### Feature: Phase 2-Auth — Auth-Module komplett auf Postgres umgestellt
 - `backend/src/auth/storage.ts` (Users), `session.ts` (Sessions), `groups.ts` (Gruppen + Membership) und `backend/src/public-api/keys/storage.ts` (API-Keys) lesen/schreiben jetzt ueber Drizzle gegen die Postgres-DB. Die public APIs aller Funktionen (saveUser, loadUser, findUserByUsername, createSession, getSession, etc.) bleiben stabil — Routes und Middleware merken den Wechsel nicht.
 - In-memory Session-Cache bleibt erhalten (Hot-Path-Optimierung); ueberall ein Cache-Sync bei Writes.

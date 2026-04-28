@@ -1,17 +1,18 @@
 /**
- * WZ-Branchen-Matcher Storage
+ * WZ-Branchen-Matcher Storage — Postgres-backed (matches) + Image-Asset (catalog/embeddings).
+ *
+ * Catalog + Embeddings bleiben Build-Time-Assets im Image (`backend/src/apps/
+ * wzbar-matcher/assets/`). Nur das Audit-Log der Matches wandert in die DB.
  */
 
-import { parse, stringify } from 'yaml';
+import { eq, desc } from 'drizzle-orm';
+import { getDb } from '../../db';
+import { wzbarMatches } from '../../db/schema/wzbar';
 import type { CatalogEntry, EmbeddingsIndex, MatchRecord } from './types';
 
-// System-Assets (catalog + embeddings) werden mit dem Container-Image ausgeliefert
-// und NICHT im Daten-Volume gespeichert. Nur matches/ liegt im Volume (Audit-Trail).
 const ASSETS_PATH = './src/apps/wzbar-matcher/assets';
-const DATA_PATH = './data/apps/wzbar-matcher';
 const CATALOG_PATH = `${ASSETS_PATH}/catalog.json`;
 const EMBEDDINGS_PATH = `${ASSETS_PATH}/embeddings.json`;
-const MATCHES_PATH = `${DATA_PATH}/matches`;
 
 let catalogCache: CatalogEntry[] | null = null;
 let embeddingsCache: EmbeddingsIndex | null = null;
@@ -50,36 +51,49 @@ export function generateMatchId(): string {
   return `match-${ts}-${rnd}`;
 }
 
+function rowToRecord(row: typeof wzbarMatches.$inferSelect): MatchRecord {
+  return {
+    id: row.id,
+    createdAt: row.createdAt,
+    userId: row.userId ?? 'user_default',
+    inputText: row.inputText,
+    result: row.result as MatchRecord['result'],
+    retrievalTopK: (row.retrievalTopK ?? []) as MatchRecord['retrievalTopK'],
+    llmModel: row.llmModel ?? '',
+    embeddingModel: row.embeddingModel ?? '',
+    durationMs: row.durationMs ?? 0,
+  };
+}
+
 export async function saveMatch(record: MatchRecord): Promise<void> {
-  await Bun.write(`${MATCHES_PATH}/${record.id}.yaml`, stringify(record));
+  const db = getDb();
+  await db.insert(wzbarMatches).values({
+    id: record.id,
+    userId: record.userId,
+    inputText: record.inputText,
+    result: record.result as never,
+    retrievalTopK: record.retrievalTopK as never,
+    llmModel: record.llmModel,
+    embeddingModel: record.embeddingModel,
+    durationMs: record.durationMs,
+    createdAt: record.createdAt,
+  });
 }
 
 export async function getMatch(id: string): Promise<MatchRecord | null> {
-  const file = Bun.file(`${MATCHES_PATH}/${id}.yaml`);
-  if (!(await file.exists())) return null;
-  const content = await file.text();
-  return parse(content) as MatchRecord;
+  const db = getDb();
+  const rows = await db.select().from(wzbarMatches).where(eq(wzbarMatches.id, id)).limit(1);
+  return rows[0] ? rowToRecord(rows[0]) : null;
 }
 
 export async function listMatches(limit = 50): Promise<MatchRecord[]> {
-  const records: MatchRecord[] = [];
-  const glob = new Bun.Glob('*.yaml');
-  try {
-    const files: Array<{ path: string; mtime: number }> = [];
-    for await (const name of glob.scan(MATCHES_PATH)) {
-      const path = `${MATCHES_PATH}/${name}`;
-      const file = Bun.file(path);
-      files.push({ path, mtime: file.lastModified });
-    }
-    files.sort((a, b) => b.mtime - a.mtime);
-    for (const { path } of files.slice(0, limit)) {
-      const content = await Bun.file(path).text();
-      records.push(parse(content) as MatchRecord);
-    }
-  } catch {
-    // no matches yet
-  }
-  return records;
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(wzbarMatches)
+    .orderBy(desc(wzbarMatches.createdAt))
+    .limit(limit);
+  return rows.map(rowToRecord);
 }
 
 export function invalidateCaches(): void {

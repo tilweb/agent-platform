@@ -1,17 +1,22 @@
 /**
  * Apps Registry Service
- * Manages app registration and activation
+ * Manages app registration and activation — Postgres-backed (Drizzle).
+ *
+ * Built-in App-Configs (vertragsmanagement, ..., wzbar-matcher) sind im Code
+ * definiert und werden via syncBuiltInApps() idempotent in `apps.registry`
+ * eingespielt. Die admin-kontrollierte enabled-Flag wird in der DB persistiert.
+ * Die ENABLED_APPS-ENV-Whitelist wirkt zusaetzlich zur Laufzeit (clamp on read).
  */
 
-import { parse, stringify } from 'yaml';
+import { eq } from 'drizzle-orm';
+import { getDb } from '../db';
+import { appsRegistry } from '../db/schema/apps';
 import type { AppsRegistry, AppConfig, AppInfo } from './types';
 import { vertragsmanagementConfig } from './vertragsmanagement';
 import { projektmanagementConfig } from './projektmanagement';
 import { lieferantenmanagementConfig } from './lieferantenmanagement';
 import { vsmConfig } from './vsm';
 import { wzbarMatcherConfig } from './wzbar-matcher';
-
-const REGISTRY_PATH = './data/apps/registry.yaml';
 
 /**
  * All built-in apps bundled with the backend. On server startup,
@@ -27,75 +32,79 @@ const BUILT_IN_APPS: AppConfig[] = [
 ];
 
 let registryCache: AppsRegistry | null = null;
+const CACHE_TTL_MS = 30_000;
+let cacheLoadedAt = 0;
 
-/**
- * Get default registry with built-in apps
- */
-function getDefaultRegistry(): AppsRegistry {
+function rowToConfig(row: typeof appsRegistry.$inferSelect): AppConfig {
+  // Built-in configs werden ueber BUILT_IN_APPS angereichert (publicFunctions
+  // sind funktion-handler-Referenzen und kommen NICHT aus der DB). Die DB
+  // liefert nur den admin-state (enabled) und Stammdaten.
+  const builtin = BUILT_IN_APPS.find(a => a.id === row.id);
   return {
-    apps: {
-      vertragsmanagement: {
-        id: 'vertragsmanagement',
-        name: 'Vertragsmanagement',
-        description: 'Verträge hochladen, analysieren und verwalten',
-        icon: 'contract',
-        version: '1.0.0',
-        enabled: true,
-        routes: [
-          { path: '/apps/vertragsmanagement', component: 'ContractsPage' },
-          { path: '/apps/vertragsmanagement/upload', component: 'UploadPage' },
-          { path: '/apps/vertragsmanagement/:id', component: 'ContractDetail' },
-        ],
-      },
-      projektmanagement: {
-        id: 'projektmanagement',
-        name: 'Projektmanagement',
-        description: 'Projektaufträge erstellen, analysieren und verwalten',
-        icon: 'briefcase',
-        version: '1.0.0',
-        enabled: true,
-        routes: [
-          { path: '/apps/projektmanagement', component: 'ProjektePage' },
-          { path: '/apps/projektmanagement/neu', component: 'WizardPage' },
-          { path: '/apps/projektmanagement/:id', component: 'WizardPage' },
-        ],
-      },
-    },
+    id: row.id,
+    name: row.name,
+    description: row.description ?? '',
+    icon: row.icon ?? '',
+    version: row.version ?? '1.0.0',
+    enabled: row.enabled,
+    routes: (row.routes ?? []) as AppConfig['routes'],
+    publicFunctions: builtin?.publicFunctions,
   };
 }
 
 /**
- * Load apps registry from file
+ * Load registry from DB. Cached fuer CACHE_TTL_MS — Reads sind Hot-Path
+ * (Sidebar, Apps-Launcher), DB-Roundtrip auf jedem Request waere overkill.
  */
 export async function loadRegistry(): Promise<AppsRegistry> {
-  if (registryCache) {
+  if (registryCache && Date.now() - cacheLoadedAt < CACHE_TTL_MS) {
     return registryCache;
   }
-
-  const file = Bun.file(REGISTRY_PATH);
-
-  if (await file.exists()) {
-    try {
-      const content = await file.text();
-      registryCache = parse(content) as AppsRegistry;
-      return registryCache;
-    } catch (error) {
-      console.error('Error loading apps registry:', error);
-    }
-  }
-
-  // Create default registry
-  registryCache = getDefaultRegistry();
-  await saveRegistry(registryCache);
+  const db = getDb();
+  const rows = await db.select().from(appsRegistry);
+  const apps: Record<string, AppConfig> = {};
+  for (const row of rows) apps[row.id] = rowToConfig(row);
+  registryCache = { apps };
+  cacheLoadedAt = Date.now();
   return registryCache;
 }
 
 /**
- * Save apps registry to file
+ * Save full registry (rare path — admin-edit). Idempotent.
  */
 export async function saveRegistry(registry: AppsRegistry): Promise<void> {
+  const db = getDb();
+  for (const cfg of Object.values(registry.apps)) {
+    const now = new Date().toISOString();
+    await db.insert(appsRegistry).values({
+      id: cfg.id,
+      name: cfg.name,
+      description: cfg.description ?? null,
+      icon: cfg.icon ?? null,
+      version: cfg.version ?? null,
+      enabled: cfg.enabled,
+      routes: cfg.routes as never,
+      createdAt: now,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: appsRegistry.id,
+      set: {
+        name: cfg.name,
+        description: cfg.description ?? null,
+        icon: cfg.icon ?? null,
+        version: cfg.version ?? null,
+        enabled: cfg.enabled,
+        routes: cfg.routes as never,
+        updatedAt: now,
+      },
+    });
+  }
   registryCache = registry;
-  await Bun.write(REGISTRY_PATH, stringify(registry));
+  cacheLoadedAt = Date.now();
+}
+
+function invalidateCache(): void {
+  cacheLoadedAt = 0;
 }
 
 /**
@@ -196,15 +205,10 @@ export async function registerApp(config: AppConfig): Promise<AppConfig> {
  * Unregister an app
  */
 export async function unregisterApp(appId: string): Promise<boolean> {
-  const registry = await loadRegistry();
-
-  if (!registry.apps[appId]) {
-    return false;
-  }
-
-  delete registry.apps[appId];
-  await saveRegistry(registry);
-  return true;
+  const db = getDb();
+  const res = await db.delete(appsRegistry).where(eq(appsRegistry.id, appId)).returning({ id: appsRegistry.id });
+  invalidateCache();
+  return res.length > 0;
 }
 
 /**
@@ -212,6 +216,7 @@ export async function unregisterApp(appId: string): Promise<boolean> {
  */
 export function clearCache(): void {
   registryCache = null;
+  cacheLoadedAt = 0;
 }
 
 /**

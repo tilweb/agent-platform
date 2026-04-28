@@ -1,47 +1,43 @@
 /**
- * Lieferantenmanagement Document Storage
- * File-based storage for supplier documents (certificates, AVVs, audit reports, etc.)
+ * Lieferantenmanagement Document Storage — S3 (Bytes) + DB (Metadata).
+ *
+ * Frueher Files unter data/apps/lieferantenmanagement/suppliers/<id>/documents/.
+ * Jetzt: Bytes in S3 (`apps/lieferantenmanagement/<supplierId>/<docId>/<filename>`),
+ * Metadaten in `liefermgmt.documents`.
  */
 
+import { eq, desc, and } from 'drizzle-orm';
+import { getDb } from '../../db';
+import { supplierDocuments } from '../../db/schema/liefermgmt';
+import { putObject, getObject, deleteObject } from '../../storage/s3';
+import { s3Paths } from '../../storage/paths';
 import type { DokumentMeta, DokumentTyp } from './types';
 import { validateId } from './storage';
 
-const BASE_PATH = './data/apps/lieferantenmanagement/suppliers';
-
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
-
-/**
- * Sanitize filename: remove path traversal, null bytes, keep only basename
- */
-function sanitizeFilename(name: string): string {
-  // Remove path separators and null bytes
-  let safe = name.replace(/[\\/\0]/g, '_');
-  // Extract basename (in case of remaining path components)
-  const parts = safe.split('/');
-  safe = parts[parts.length - 1] || 'unnamed';
-  // Remove leading dots (hidden files / traversal)
-  safe = safe.replace(/^\.+/, '');
-  return safe || 'unnamed';
-}
 
 const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
-  'application/msword', // doc
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'image/png',
   'image/jpeg',
 ]);
 
-// ============== ID Generation ==============
+function sanitizeFilename(name: string): string {
+  let safe = name.replace(/[\\/\0]/g, '_');
+  const parts = safe.split('/');
+  safe = parts[parts.length - 1] || 'unnamed';
+  safe = safe.replace(/^\.+/, '');
+  return safe || 'unnamed';
+}
 
 export function generateDokumentId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 6);
   return `doc-${timestamp}-${random}`;
 }
-
-// ============== Validation ==============
 
 export function validateFile(file: File): { ok: boolean; error?: string } {
   if (file.size > MAX_FILE_SIZE) {
@@ -53,33 +49,30 @@ export function validateFile(file: File): { ok: boolean; error?: string } {
   return { ok: true };
 }
 
-// ============== Storage ==============
-
-function getDocumentsPath(supplierId: string): string {
-  return `${BASE_PATH}/${supplierId}/documents`;
+function rowToMeta(row: typeof supplierDocuments.$inferSelect): DokumentMeta {
+  const m = (row.metadata ?? {}) as Partial<DokumentMeta>;
+  return {
+    ...m,
+    id: row.id,
+    dateiname: row.filename,
+    dateityp: row.contentType ?? '',
+    dateigroesse: row.sizeBytes ?? 0,
+    hochgeladen_am: row.createdAt,
+  } as DokumentMeta;
 }
 
-function getDocumentDir(supplierId: string, docId: string): string {
-  return `${getDocumentsPath(supplierId)}/${docId}`;
-}
-
-/**
- * Save a document (file + metadata)
- */
 export async function saveDokument(
   supplierId: string,
   file: File,
-  meta: Omit<DokumentMeta, 'dateiname' | 'dateityp' | 'dateigroesse' | 'hochgeladen_am'>
+  meta: Omit<DokumentMeta, 'dateiname' | 'dateityp' | 'dateigroesse' | 'hochgeladen_am'>,
 ): Promise<DokumentMeta> {
-  const dir = getDocumentDir(supplierId, meta.id);
-  await Bun.$`mkdir -p ${dir}`;
-
-  // Save the file with sanitized filename
   const safeName = sanitizeFilename(file.name);
-  const fileBuffer = await file.arrayBuffer();
-  await Bun.write(`${dir}/${safeName}`, fileBuffer);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const s3Key = s3Paths.supplierDoc(supplierId, meta.id, safeName);
 
-  // Build full meta
+  await putObject(s3Key, buffer, file.type);
+
+  const db = getDb();
   const fullMeta: DokumentMeta = {
     ...meta,
     dateiname: safeName,
@@ -88,89 +81,93 @@ export async function saveDokument(
     hochgeladen_am: new Date().toISOString(),
   };
 
-  // Save meta.json
-  await Bun.write(`${dir}/meta.json`, JSON.stringify(fullMeta, null, 2));
+  await db.insert(supplierDocuments).values({
+    id: meta.id,
+    supplierId,
+    filename: safeName,
+    contentType: file.type,
+    sizeBytes: file.size,
+    s3Key,
+    metadata: fullMeta as never,
+    createdAt: fullMeta.hochgeladen_am,
+  });
 
   return fullMeta;
 }
 
-/**
- * Get all documents for a supplier
- */
 export async function getDokumente(
   supplierId: string,
-  filter?: { typ?: DokumentTyp }
+  filter?: { typ?: DokumentTyp },
 ): Promise<DokumentMeta[]> {
-  const docs: DokumentMeta[] = [];
-  const docsPath = getDocumentsPath(supplierId);
-
-  try {
-    const glob = new Bun.Glob('*/meta.json');
-    for await (const path of glob.scan(docsPath)) {
-      const file = Bun.file(`${docsPath}/${path}`);
-      if (await file.exists()) {
-        const content = await file.text();
-        const meta = JSON.parse(content) as DokumentMeta;
-        if (filter?.typ && meta.typ !== filter.typ) continue;
-        docs.push(meta);
-      }
-    }
-  } catch {
-    // No documents directory yet
-  }
-
-  // Newest first
-  docs.sort((a, b) =>
-    new Date(b.hochgeladen_am).getTime() - new Date(a.hochgeladen_am).getTime()
-  );
-
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(supplierDocuments)
+    .where(eq(supplierDocuments.supplierId, supplierId))
+    .orderBy(desc(supplierDocuments.createdAt));
+  let docs = rows.map(rowToMeta);
+  if (filter?.typ) docs = docs.filter(d => d.typ === filter.typ);
   return docs;
 }
 
-/**
- * Get a single document's metadata
- */
 export async function getDokument(
   supplierId: string,
-  docId: string
+  docId: string,
 ): Promise<DokumentMeta | null> {
   if (!validateId(supplierId) || !validateId(docId)) return null;
-  const metaFile = Bun.file(`${getDocumentDir(supplierId, docId)}/meta.json`);
-
-  if (!(await metaFile.exists())) {
-    return null;
-  }
-
-  const content = await metaFile.text();
-  return JSON.parse(content) as DokumentMeta;
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(supplierDocuments)
+    .where(and(eq(supplierDocuments.supplierId, supplierId), eq(supplierDocuments.id, docId)))
+    .limit(1);
+  return rows[0] ? rowToMeta(rows[0]) : null;
 }
 
 /**
- * Get the file path for download
+ * Liest die Bytes aus S3. Frueher: `getDokumentFilePath()` lieferte einen
+ * lokalen Pfad — jetzt geben wir die Bytes direkt zurueck. Routes muessen
+ * leicht angepasst werden (Body statt File-Stream).
  */
-export function getDokumentFilePath(
+export async function getDokumentBytes(
   supplierId: string,
   docId: string,
-  dateiname: string
-): string {
-  return `${getDocumentDir(supplierId, docId)}/${dateiname}`;
+): Promise<Buffer | null> {
+  const db = getDb();
+  const rows = await db
+    .select({ s3Key: supplierDocuments.s3Key })
+    .from(supplierDocuments)
+    .where(and(eq(supplierDocuments.supplierId, supplierId), eq(supplierDocuments.id, docId)))
+    .limit(1);
+  if (!rows[0]) return null;
+  return getObject(rows[0].s3Key);
 }
 
 /**
- * Delete a document (file + metadata)
+ * Backwards-compatible Stub — fruehere File-Path-API; Routes nutzen jetzt
+ * besser `getDokumentBytes()`. Wenn aufgerufen, throwt der Stub mit einem
+ * klaren Hinweis.
  */
-export async function deleteDokument(
-  supplierId: string,
-  docId: string
-): Promise<boolean> {
+export function getDokumentFilePath(_supplierId: string, _docId: string, _dateiname: string): string {
+  throw new Error(
+    'getDokumentFilePath is no longer supported — Documents live in S3. Use getDokumentBytes() and stream the buffer to the response.',
+  );
+}
+
+export async function deleteDokument(supplierId: string, docId: string): Promise<boolean> {
   if (!validateId(supplierId) || !validateId(docId)) return false;
-  const dir = getDocumentDir(supplierId, docId);
-  const metaFile = Bun.file(`${dir}/meta.json`);
-
-  if (!(await metaFile.exists())) {
-    return false;
+  const db = getDb();
+  const rows = await db
+    .select({ id: supplierDocuments.id, s3Key: supplierDocuments.s3Key })
+    .from(supplierDocuments)
+    .where(and(eq(supplierDocuments.supplierId, supplierId), eq(supplierDocuments.id, docId)))
+    .limit(1);
+  if (!rows[0]) return false;
+  try {
+    await deleteObject(rows[0].s3Key);
+  } catch (err) {
+    console.warn('[liefermgmt] S3 delete failed:', err);
   }
-
-  await Bun.$`rm -rf ${dir}`;
+  await db.delete(supplierDocuments).where(eq(supplierDocuments.id, docId));
   return true;
 }

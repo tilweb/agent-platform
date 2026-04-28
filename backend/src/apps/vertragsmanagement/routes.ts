@@ -17,7 +17,7 @@ import {
   getContractSchemas,
   getContractSchema,
 } from './service';
-import { getContractOriginalPath } from './storage';
+import { getContractOriginal } from './storage';
 import type { ContractFilters } from '../types';
 
 const contracts = new Hono();
@@ -198,36 +198,21 @@ contracts.get('/contracts/:id/document', async (c) => {
 contracts.get('/contracts/:id/original', async (c) => {
   try {
     const contractId = c.req.param('id');
-    const originalPath = await getContractOriginalPath(contractId);
+    const original = await getContractOriginal(contractId);
 
-    if (!originalPath) {
+    if (!original) {
       return c.json({ error: 'Original file not found' }, 404);
     }
 
-    const file = Bun.file(originalPath);
-    const content = await file.arrayBuffer();
-    const filename = originalPath.split('/').pop() || 'contract';
-
-    // Determine content type based on extension
-    const ext = filename.split('.').pop()?.toLowerCase();
-    const contentTypes: Record<string, string> = {
-      pdf: 'application/pdf',
-      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      doc: 'application/msword',
-      txt: 'text/plain',
-      md: 'text/markdown',
-    };
-    const contentType = contentTypes[ext || ''] || 'application/octet-stream';
-
-    return new Response(content, {
+    return new Response(original.buffer, {
       headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Type': original.contentType,
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(original.filename)}"`,
       },
     });
   } catch (error) {
     console.error('Error downloading original:', error);
-    return c.json({ error: 'Failed to download original file' }, 500);
+    return c.json({ error: 'Failed to download original' }, 500);
   }
 });
 
