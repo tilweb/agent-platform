@@ -38,6 +38,8 @@ import { registerProviders } from './connections/providers';
 import { syncBuiltInApps } from './apps/registry';
 import { publicApiRouter } from './public-api/router';
 import { brandingRoutes } from './routes/branding';
+import { runMigrations } from './db/migrate';
+import { ensureBucket } from './storage/s3';
 
 const app = new Hono();
 
@@ -45,6 +47,20 @@ const app = new Hono();
 async function initialize() {
   // Register slash commands first (no dependencies)
   registerCommands();
+
+  // Run pending DB migrations (idempotent, no-op without SCALINGO_POSTGRES)
+  try {
+    await runMigrations();
+  } catch (error) {
+    console.error('DB migrations failed:', error);
+  }
+
+  // Ensure S3 bucket exists (idempotent, no-op without FLOW_S3_*)
+  try {
+    await ensureBucket();
+  } catch (error) {
+    console.error('S3 bucket init failed:', error);
+  }
 
   // Sync built-in apps into the registry (idempotent, preserves admin enable state)
   try {
