@@ -1,131 +1,101 @@
 /**
- * User Storage - YAML-based user persistence
+ * User Storage — Postgres-backed (Drizzle).
+ *
+ * Phase 2: ersetzt das frühere YAML-File-basierte Storage 1:1.
+ * Schnittstelle bleibt stabil, damit Routes/Middleware nichts merken.
  */
 
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import type { User, CreateUserInput } from './types';
+import { eq, sql as rawSql } from 'drizzle-orm';
+import { getDb } from '../db';
+import { users as usersTable } from '../db/schema/auth';
 import { hashPassword } from './password';
-import { join } from 'path';
-
-const DATA_DIR = join(import.meta.dir, '../../../data');
-const USERS_DIR = join(DATA_DIR, 'auth/users');
+import type { User, CreateUserInput } from './types';
 
 /**
- * Ensure the users directory exists
- */
-async function ensureUsersDir(): Promise<void> {
-  const dir = Bun.file(USERS_DIR);
-  try {
-    await Bun.write(join(USERS_DIR, '.gitkeep'), '');
-  } catch {
-    // Directory might already exist
-  }
-}
-
-/**
- * Generate a unique user ID
+ * Generate a unique user ID — gleiches Format wie bisher (`user_<ts>_<rand>`),
+ * damit alte Referenzen / Pfade weiterhin gültig sind.
  */
 function generateUserId(): string {
   return `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
-/**
- * Get the file path for a user
- */
-function getUserFilePath(userId: string): string {
-  return join(USERS_DIR, `${userId}.yaml`);
+function rowToUser(row: typeof usersTable.$inferSelect): User {
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email ?? undefined,
+    displayName: row.displayName ?? undefined,
+    passwordHash: row.passwordHash,
+    role: (row.role as User['role']) ?? 'user',
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    isActive: row.isActive,
+    preferences: (row.preferences ?? undefined) as User['preferences'],
+  };
 }
 
-/**
- * Save a user to storage
- */
 export async function saveUser(user: User): Promise<void> {
-  await ensureUsersDir();
-  const filePath = getUserFilePath(user.id);
-  const yaml = stringifyYaml(user);
-  await Bun.write(filePath, yaml);
+  const db = getDb();
+  const row = {
+    id: user.id,
+    username: user.username,
+    email: user.email ?? null,
+    displayName: user.displayName ?? null,
+    passwordHash: user.passwordHash,
+    role: user.role ?? 'user',
+    isActive: user.isActive,
+    preferences: (user.preferences ?? null) as never,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+  await db.insert(usersTable).values(row).onConflictDoUpdate({
+    target: usersTable.id,
+    set: {
+      username: row.username,
+      email: row.email,
+      displayName: row.displayName,
+      passwordHash: row.passwordHash,
+      role: row.role,
+      isActive: row.isActive,
+      preferences: row.preferences,
+      updatedAt: row.updatedAt,
+    },
+  });
 }
 
-/**
- * Load a user by ID
- */
 export async function loadUser(userId: string): Promise<User | null> {
-  const filePath = getUserFilePath(userId);
-  const file = Bun.file(filePath);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  const user = parseYaml(content) as User;
-
-  // Default role for existing users without role
-  if (!user.role) {
-    user.role = 'user';
-  }
-
-  return user;
+  const db = getDb();
+  const rows = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  return rows[0] ? rowToUser(rows[0]) : null;
 }
 
-/**
- * Find a user by username
- */
 export async function findUserByUsername(username: string): Promise<User | null> {
-  await ensureUsersDir();
-
-  const glob = new Bun.Glob('*.yaml');
-  for await (const file of glob.scan(USERS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(USERS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const user = parseYaml(content) as User;
-
-    // Default role for existing users without role
-    if (!user.role) {
-      user.role = 'user';
-    }
-
-    if (user.username.toLowerCase() === username.toLowerCase()) {
-      return user;
-    }
-  }
-
-  return null;
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(usersTable)
+    .where(rawSql`lower(${usersTable.username}) = ${username.toLowerCase()}`)
+    .limit(1);
+  return rows[0] ? rowToUser(rows[0]) : null;
 }
 
-/**
- * Find a user by email
- */
 export async function findUserByEmail(email: string): Promise<User | null> {
-  await ensureUsersDir();
-
-  const glob = new Bun.Glob('*.yaml');
-  for await (const file of glob.scan(USERS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(USERS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const user = parseYaml(content) as User;
-
-    if (user.email?.toLowerCase() === email.toLowerCase()) {
-      return user;
-    }
-  }
-
-  return null;
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(usersTable)
+    .where(rawSql`lower(${usersTable.email}) = ${email.toLowerCase()}`)
+    .limit(1);
+  return rows[0] ? rowToUser(rows[0]) : null;
 }
 
-/**
- * Create a new user
- * First user automatically becomes admin
- */
-export async function createUser(input: CreateUserInput & { role?: 'admin' | 'user' }): Promise<User> {
+export async function createUser(
+  input: CreateUserInput & { role?: 'admin' | 'user' },
+): Promise<User> {
   const now = new Date().toISOString();
   const passwordHash = await hashPassword(input.password);
 
-  // First user becomes admin
+  // First user becomes admin (genau wie im YAML-Pfad).
   const isFirstUser = !(await hasUsers());
   const role = input.role || (isFirstUser ? 'admin' : 'user');
 
@@ -145,80 +115,35 @@ export async function createUser(input: CreateUserInput & { role?: 'admin' | 'us
   return user;
 }
 
-/**
- * Update a user
- */
-export async function updateUser(userId: string, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | null> {
-  const user = await loadUser(userId);
-  if (!user) {
-    return null;
-  }
-
-  const updatedUser: User = {
-    ...user,
+export async function updateUser(
+  userId: string,
+  updates: Partial<Omit<User, 'id' | 'createdAt'>>,
+): Promise<User | null> {
+  const existing = await loadUser(userId);
+  if (!existing) return null;
+  const merged: User = {
+    ...existing,
     ...updates,
     updatedAt: new Date().toISOString(),
   };
-
-  await saveUser(updatedUser);
-  return updatedUser;
+  await saveUser(merged);
+  return merged;
 }
 
-/**
- * Delete a user
- */
 export async function deleteUser(userId: string): Promise<boolean> {
-  const filePath = getUserFilePath(userId);
-  const file = Bun.file(filePath);
-
-  if (!(await file.exists())) {
-    return false;
-  }
-
-  const { unlinkSync } = await import('fs');
-  unlinkSync(filePath);
-  return true;
+  const db = getDb();
+  const res = await db.delete(usersTable).where(eq(usersTable.id, userId)).returning({ id: usersTable.id });
+  return res.length > 0;
 }
 
-/**
- * List all users
- */
 export async function listUsers(): Promise<User[]> {
-  await ensureUsersDir();
-
-  const users: User[] = [];
-  const glob = new Bun.Glob('*.yaml');
-
-  for await (const file of glob.scan(USERS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(USERS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const user = parseYaml(content) as User;
-
-    // Default role for existing users without role
-    if (!user.role) {
-      user.role = 'user';
-    }
-
-    users.push(user);
-  }
-
-  return users;
+  const db = getDb();
+  const rows = await db.select().from(usersTable);
+  return rows.map(rowToUser);
 }
 
-/**
- * Check if any users exist
- */
 export async function hasUsers(): Promise<boolean> {
-  await ensureUsersDir();
-
-  const glob = new Bun.Glob('*.yaml');
-  for await (const file of glob.scan(USERS_DIR)) {
-    if (file !== '.gitkeep') {
-      return true;
-    }
-  }
-
-  return false;
+  const db = getDb();
+  const rows = await db.select({ id: usersTable.id }).from(usersTable).limit(1);
+  return rows.length > 0;
 }

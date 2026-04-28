@@ -9,6 +9,25 @@
  *   bun run scripts/api-keys.ts revoke <id>
  */
 
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+// Load backend/.env first so DB-storage clients can connect when the script
+// is invoked from the project root.
+function loadEnvFile(path: string): void {
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, 'utf-8').split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const eq = t.indexOf('=');
+    if (eq < 1) continue;
+    const k = t.slice(0, eq).trim();
+    const v = t.slice(eq + 1).trim().replace(/^["'](.*)["']$/, '$1');
+    if (!process.env[k]) process.env[k] = v;
+  }
+}
+loadEnvFile(join(import.meta.dir, '../backend/.env'));
+
 import { createKey, revokeKey, listKeys } from '../backend/src/public-api/keys/service';
 import { loadKeyById } from '../backend/src/public-api/keys/storage';
 import type { ApiKeyScope, ScopeType } from '../backend/src/public-api/types';

@@ -2,6 +2,16 @@
 
 ## 2026-04-29
 
+### Feature: Phase 2-Auth — Auth-Module komplett auf Postgres umgestellt
+- `backend/src/auth/storage.ts` (Users), `session.ts` (Sessions), `groups.ts` (Gruppen + Membership) und `backend/src/public-api/keys/storage.ts` (API-Keys) lesen/schreiben jetzt ueber Drizzle gegen die Postgres-DB. Die public APIs aller Funktionen (saveUser, loadUser, findUserByUsername, createSession, getSession, etc.) bleiben stabil — Routes und Middleware merken den Wechsel nicht.
+- In-memory Session-Cache bleibt erhalten (Hot-Path-Optimierung); ueberall ein Cache-Sync bei Writes.
+- API-Key-Prefix-Lookup nutzt jetzt den Postgres-Index `api_keys_prefix_idx` statt dem File-System-Index — der mtime-basierte In-Memory-Cache faellt weg, der DB-Index ist immer aktuell.
+- `scripts/seed-demo-users.ts` schreibt jetzt direkt in die DB (Drizzle ueber `auth/storage.ts`); idempotent gegen vorhandene Usernames.
+- Auto-Seed beim Server-Start: wenn `SCALINGO_POSTGRES` gesetzt, laeuft `seedDemoUsers()` direkt nach `runMigrations()` — Frischdeploy → Demo-User sind sofort einlogbar.
+- `scripts/api-keys.ts` und `scripts/seed-demo-users.ts` laden `backend/.env` selbst, damit die CLI vom Repo-Root aus laeuft ohne Bun-`--env-file`-Flag.
+- Lokale Dev-Postgres via Homebrew (`postgresql@16`) eingerichtet; Migration appliziert (45 Tabellen ueber 19 Schemas); SSL adaptiv per `sslmode=disable` im Connection-String (lokal aus, Scalingo-Prod auf `require`).
+- Verifiziert lokal: Login `demo1`/`Demo2026!` ueber DB → Session-Cookie → `/api/auth/me` returnt User; neuer API-Key in DB angelegt → `POST /api/public/v1/wzbar-matcher/classify` returnt 200 mit korrektem Match.
+
 ### Feature: Storage-Foundation auf Scalingo Postgres + Flow.swiss S3 (Phase 1)
 - Drizzle ORM (`drizzle-orm` + `postgres-js`) eingefuehrt; Connection lazy-initialisiert ueber `SCALINGO_POSTGRES`.
 - 20 Schema-Files mit ~40 Tabellen ueber 18 dedizierte Postgres-Schemas (auth, chat, apps, kb, vertragsmgmt, projektmgmt, liefermgmt, vsm, wzbar, ...) — Mapping orientiert sich an den bestehenden YAML-Strukturen, IDs bleiben kompatibel.

@@ -21,9 +21,12 @@ export function getSql(): Sql {
         'Set the connection string in backend/.env or in your hosting environment.',
     );
   }
+  // SSL: per default 'require' für Production (Scalingo erzwingt SSL),
+  // aber wenn der URL `sslmode=disable` enthaelt, lokal ohne SSL.
+  const ssl = /sslmode=disable/i.test(connStr) ? false : 'require';
   _sql = postgres(connStr, {
     max: 10,
-    ssl: 'require',
+    ssl,
     prepare: false,
   });
   return _sql;

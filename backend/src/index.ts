@@ -40,6 +40,7 @@ import { publicApiRouter } from './public-api/router';
 import { brandingRoutes } from './routes/branding';
 import { runMigrations } from './db/migrate';
 import { ensureBucket } from './storage/s3';
+import { seedDemoUsers } from '../../scripts/seed-demo-users';
 
 const app = new Hono();
 
@@ -53,6 +54,19 @@ async function initialize() {
     await runMigrations();
   } catch (error) {
     console.error('DB migrations failed:', error);
+  }
+
+  // Seed demo users idempotent — nur wenn DB erreichbar (Migration durch).
+  // Wirft nicht weiter, wenn DB nicht da ist (z.B. lokal ohne SCALINGO_POSTGRES).
+  if (process.env.SCALINGO_POSTGRES) {
+    try {
+      const result = await seedDemoUsers();
+      if (result.created.length > 0) {
+        console.log(`[seed] Demo users created: ${result.created.length}`);
+      }
+    } catch (error) {
+      console.warn('[seed] Demo user seed skipped:', error instanceof Error ? error.message : error);
+    }
   }
 
   // Ensure S3 bucket exists (idempotent, no-op without FLOW_S3_*)

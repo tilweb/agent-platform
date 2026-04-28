@@ -1,24 +1,40 @@
 /**
- * Seed Demo Users
+ * Seed Demo Users — Postgres-backed (Drizzle).
  *
- * Creates demo1-demo4 and marketing1-marketing3 user accounts.
- * Idempotent: skips users that already exist.
+ * Idempotent: skips users that already exist. Wird im Docker-Container beim
+ * Start aufgerufen (siehe Dockerfile + initialize() in src/index.ts) und
+ * kann auch lokal manuell laufen via:
  *
- * Path resolution:
- * - Docker: script runs from /app/backend/scripts/, data at /app/data/ → ../../data
- * - Local:  script runs from agent-platform/scripts/, data at agent-platform/data/ → ../data
+ *   /Users/andreasbachmann/.bun/bin/bun run scripts/seed-demo-users.ts
  *
- * Resolves to whichever of the two parent-data locations actually exists.
+ * Voraussetzung: SCALINGO_POSTGRES gesetzt + Drizzle-Migration appliziert.
  */
 
-import { join } from 'path';
-import { readdir, stat } from 'node:fs/promises';
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+// Wenn als Script aufgerufen: backend/.env mitladen, damit DB-Connection geht.
+function loadEnvFile(path: string): void {
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, 'utf-8').split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const eq = t.indexOf('=');
+    if (eq < 1) continue;
+    const k = t.slice(0, eq).trim();
+    const v = t.slice(eq + 1).trim().replace(/^["'](.*)["']$/, '$1');
+    if (!process.env[k]) process.env[k] = v;
+  }
+}
+loadEnvFile(join(import.meta.dir, '../backend/.env'));
+
+import { findUserByUsername, createUser } from '../backend/src/auth/storage';
 
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'Demo2026!';
 const MARKETING_PASSWORD = process.env.MARKETING_PASSWORD || 'Marketing2026!';
-const DEMO_USERS = [
-  { username: 'demo1', displayName: 'Demo User 1', password: DEMO_PASSWORD },
+
+const DEMO_USERS: Array<{ username: string; displayName: string; password: string; role?: 'admin' | 'user' }> = [
+  { username: 'demo1', displayName: 'Demo User 1', password: DEMO_PASSWORD, role: 'admin' },
   { username: 'demo2', displayName: 'Demo User 2', password: DEMO_PASSWORD },
   { username: 'demo3', displayName: 'Demo User 3', password: DEMO_PASSWORD },
   { username: 'demo4', displayName: 'Demo User 4', password: DEMO_PASSWORD },
@@ -30,105 +46,49 @@ const DEMO_USERS = [
   { username: 'yneo-ai', displayName: 'Yneo AI', password: 'Yneo.ai-2026!' },
 ];
 
-function generateUserId(): string {
-  return `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+export interface SeedResult {
+  created: string[];
+  skipped: string[];
 }
 
-async function findUserByUsername(usersDir: string, username: string): Promise<boolean> {
-  let files: string[];
-  try {
-    files = await readdir(usersDir);
-  } catch {
-    return false;
-  }
+/**
+ * Idempotently create the demo users. Safe to call repeatedly — existing
+ * users (gleicher username) bleiben unangetastet, ihre Passwoerter werden
+ * NICHT ueberschrieben.
+ */
+export async function seedDemoUsers(): Promise<SeedResult> {
+  const created: string[] = [];
+  const skipped: string[] = [];
 
-  for (const file of files) {
-    if (!file.endsWith('.yaml')) continue;
-    try {
-      const content = await Bun.file(join(usersDir, file)).text();
-      const user = parseYaml(content);
-      if (user?.username === username) {
-        return true;
-      }
-    } catch {
-      // Skip invalid files
-    }
-  }
-  return false;
-}
-
-async function resolveDataDir(): Promise<string> {
-  if (process.env.DATA_DIR) return process.env.DATA_DIR;
-  // IMPORTANT: '../../data' muss zuerst versucht werden.
-  // In Docker ist /app/backend/data ein Symlink auf /app/data/backend-data/ —
-  // `../data` waere also ein Treffer, wuerde aber User ins falsche Volume-Subdir
-  // schreiben (das der Backend-Auth-Service nicht liest). Backend liest
-  // auth/users aus /app/data/auth/users/ = '../../data' + /auth/users.
-  const candidates = [
-    join(import.meta.dir, '../../data'),    // docker: /app/backend/scripts/ → /app/data/
-    join(import.meta.dir, '../data'),       // local:  agent-platform/scripts/ → agent-platform/data/
-  ];
-  for (const candidate of candidates) {
-    try {
-      const s = await stat(candidate);
-      if (s.isDirectory()) return candidate;
-    } catch { /* not found, try next */ }
-  }
-  return candidates[candidates.length - 1]!;
-}
-
-async function main() {
-  const dataDir = await resolveDataDir();
-  const usersDir = join(dataDir, 'auth/users');
-
-  // Ensure directory exists
-  await Bun.write(join(usersDir, '.gitkeep'), '');
-
-  console.log(`[seed] Checking demo users in ${usersDir}`);
-
-  let created = 0;
-  let skipped = 0;
-
-  for (const demoUser of DEMO_USERS) {
-    const exists = await findUserByUsername(usersDir, demoUser.username);
-
-    if (exists) {
-      console.log(`[seed] User "${demoUser.username}" already exists, skipping.`);
-      skipped++;
+  for (const demo of DEMO_USERS) {
+    const existing = await findUserByUsername(demo.username);
+    if (existing) {
+      skipped.push(demo.username);
       continue;
     }
-
-    const userId = generateUserId();
-    const now = new Date().toISOString();
-    const passwordHash = await Bun.password.hash(demoUser.password, {
-      algorithm: 'argon2id',
-      memoryCost: 65536,
-      timeCost: 3,
+    const user = await createUser({
+      username: demo.username,
+      password: demo.password,
+      displayName: demo.displayName,
+      role: demo.role,
     });
-
-    const user = {
-      id: userId,
-      username: demoUser.username,
-      displayName: demoUser.displayName,
-      email: '',
-      role: 'user',
-      isActive: true,
-      passwordHash,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const filePath = join(usersDir, `${userId}.yaml`);
-    await Bun.write(filePath, stringifyYaml(user));
-
-    console.log(`[seed] Created user "${demoUser.username}" (${userId})`);
-    created++;
+    created.push(`${demo.username} (${user.id})`);
   }
 
-  console.log(`[seed] Done. Created: ${created}, Skipped: ${skipped}`);
+  return { created, skipped };
 }
 
-main().catch((err) => {
-  console.error('[seed] Error:', err);
-  process.exit(1);
-});
+// Wenn als Skript direkt aufgerufen: ausführen + loggen.
+if (import.meta.main) {
+  (async () => {
+    try {
+      const { created, skipped } = await seedDemoUsers();
+      console.log(`[seed] Demo users — created: ${created.length}, skipped: ${skipped.length}`);
+      for (const c of created) console.log(`  + ${c}`);
+      for (const s of skipped) console.log(`  - ${s} (skipped)`);
+    } catch (err) {
+      console.error('[seed] Error:', err);
+      process.exit(1);
+    }
+  })();
+}

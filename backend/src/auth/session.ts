@@ -1,32 +1,19 @@
 /**
- * Session Management - YAML-based session persistence
+ * Session Management — Postgres-backed (Drizzle).
+ *
+ * In-memory cache (`sessionCache`) bleibt erhalten — beschleunigt Reads
+ * deutlich (Login-Lookup hot path) und reduziert DB-Roundtrips. Cache wird
+ * bei jedem Write-Path mitaktualisiert.
  */
 
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { eq, lt } from 'drizzle-orm';
+import { getDb } from '../db';
+import { sessions as sessionsTable } from '../db/schema/auth';
 import type { Session, User } from './types';
 import { SESSION_CONFIG } from './types';
-import { join } from 'path';
 
-const DATA_DIR = join(import.meta.dir, '../../../data');
-const SESSIONS_DIR = join(DATA_DIR, 'auth/sessions');
-
-// In-memory session cache for performance
 const sessionCache = new Map<string, Session>();
 
-/**
- * Ensure the sessions directory exists
- */
-async function ensureSessionsDir(): Promise<void> {
-  try {
-    await Bun.write(join(SESSIONS_DIR, '.gitkeep'), '');
-  } catch {
-    // Directory might already exist
-  }
-}
-
-/**
- * Generate a secure session ID
- */
 function generateSessionId(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
@@ -35,19 +22,22 @@ function generateSessionId(): string {
     .join('');
 }
 
-/**
- * Get the file path for a session
- */
-function getSessionFilePath(sessionId: string): string {
-  return join(SESSIONS_DIR, `${sessionId}.yaml`);
+function rowToSession(row: typeof sessionsTable.$inferSelect): Session {
+  return {
+    id: row.id,
+    userId: row.userId,
+    createdAt: row.createdAt,
+    expiresAt: row.expiresAt,
+    userAgent: row.userAgent ?? undefined,
+    ipAddress: row.ipAddress ?? undefined,
+  };
 }
 
-/**
- * Create a new session for a user
- */
-export async function createSession(user: User, userAgent?: string, ipAddress?: string): Promise<Session> {
-  await ensureSessionsDir();
-
+export async function createSession(
+  user: User,
+  userAgent?: string,
+  ipAddress?: string,
+): Promise<Session> {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_CONFIG.expiresInMs);
 
@@ -60,194 +50,98 @@ export async function createSession(user: User, userAgent?: string, ipAddress?: 
     ipAddress,
   };
 
-  // Save to file
-  const yaml = stringifyYaml(session);
-  await Bun.write(getSessionFilePath(session.id), yaml);
+  const db = getDb();
+  await db.insert(sessionsTable).values({
+    id: session.id,
+    userId: session.userId,
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    userAgent: session.userAgent ?? null,
+    ipAddress: session.ipAddress ?? null,
+  });
 
-  // Cache it
   sessionCache.set(session.id, session);
-
   return session;
 }
 
-/**
- * Get a session by ID
- */
 export async function getSession(sessionId: string): Promise<Session | null> {
-  // Check cache first
-  if (sessionCache.has(sessionId)) {
-    const cached = sessionCache.get(sessionId)!;
-
-    // Check if expired
+  const cached = sessionCache.get(sessionId);
+  if (cached) {
     if (new Date(cached.expiresAt) < new Date()) {
       await deleteSession(sessionId);
       return null;
     }
-
     return cached;
   }
 
-  // Load from file
-  const filePath = getSessionFilePath(sessionId);
-  const file = Bun.file(filePath);
+  const db = getDb();
+  const rows = await db.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
 
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  const session = parseYaml(content) as Session;
-
-  // Check if expired
+  const session = rowToSession(row);
   if (new Date(session.expiresAt) < new Date()) {
     await deleteSession(sessionId);
     return null;
   }
 
-  // Cache it
-  sessionCache.set(sessionId, session);
-
+  sessionCache.set(session.id, session);
   return session;
 }
 
-/**
- * Validate a session and return associated user ID
- */
 export async function validateSession(sessionId: string): Promise<string | null> {
   const session = await getSession(sessionId);
   return session?.userId || null;
 }
 
-/**
- * Delete a session
- */
 export async function deleteSession(sessionId: string): Promise<boolean> {
-  // Remove from cache
   sessionCache.delete(sessionId);
-
-  // Delete file
-  const filePath = getSessionFilePath(sessionId);
-  const file = Bun.file(filePath);
-
-  if (!(await file.exists())) {
-    return false;
-  }
-
-  const { unlinkSync } = await import('fs');
-  try {
-    unlinkSync(filePath);
-    return true;
-  } catch {
-    return false;
-  }
+  const db = getDb();
+  const res = await db
+    .delete(sessionsTable)
+    .where(eq(sessionsTable.id, sessionId))
+    .returning({ id: sessionsTable.id });
+  return res.length > 0;
 }
 
-/**
- * Delete all sessions for a user
- */
 export async function deleteUserSessions(userId: string): Promise<number> {
-  await ensureSessionsDir();
-
-  let deleted = 0;
-  const glob = new Bun.Glob('*.yaml');
-
-  for await (const file of glob.scan(SESSIONS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(SESSIONS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const session = parseYaml(content) as Session;
-
-    if (session.userId === userId) {
-      sessionCache.delete(session.id);
-      const { unlinkSync } = await import('fs');
-      try {
-        unlinkSync(filePath);
-        deleted++;
-      } catch {
-        // Ignore errors
-      }
-    }
-  }
-
-  return deleted;
+  const db = getDb();
+  const res = await db
+    .delete(sessionsTable)
+    .where(eq(sessionsTable.userId, userId))
+    .returning({ id: sessionsTable.id });
+  for (const row of res) sessionCache.delete(row.id);
+  return res.length;
 }
 
-/**
- * Extend a session's expiration
- */
 export async function extendSession(sessionId: string): Promise<Session | null> {
   const session = await getSession(sessionId);
-  if (!session) {
-    return null;
-  }
+  if (!session) return null;
 
-  const now = new Date();
-  session.expiresAt = new Date(now.getTime() + SESSION_CONFIG.expiresInMs).toISOString();
+  const expiresAt = new Date(Date.now() + SESSION_CONFIG.expiresInMs).toISOString();
+  session.expiresAt = expiresAt;
 
-  // Update file
-  const yaml = stringifyYaml(session);
-  await Bun.write(getSessionFilePath(session.id), yaml);
+  const db = getDb();
+  await db.update(sessionsTable).set({ expiresAt }).where(eq(sessionsTable.id, sessionId));
 
-  // Update cache
   sessionCache.set(session.id, session);
-
   return session;
 }
 
-/**
- * Clean up expired sessions
- */
 export async function cleanupExpiredSessions(): Promise<number> {
-  await ensureSessionsDir();
-
-  let cleaned = 0;
-  const now = new Date();
-  const glob = new Bun.Glob('*.yaml');
-
-  for await (const file of glob.scan(SESSIONS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(SESSIONS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const session = parseYaml(content) as Session;
-
-    if (new Date(session.expiresAt) < now) {
-      sessionCache.delete(session.id);
-      const { unlinkSync } = await import('fs');
-      try {
-        unlinkSync(filePath);
-        cleaned++;
-      } catch {
-        // Ignore errors
-      }
-    }
-  }
-
-  return cleaned;
+  const db = getDb();
+  const nowIso = new Date().toISOString();
+  const res = await db
+    .delete(sessionsTable)
+    .where(lt(sessionsTable.expiresAt, nowIso))
+    .returning({ id: sessionsTable.id });
+  for (const row of res) sessionCache.delete(row.id);
+  return res.length;
 }
 
-/**
- * Get all active sessions for a user
- */
 export async function getUserSessions(userId: string): Promise<Session[]> {
-  await ensureSessionsDir();
-
-  const sessions: Session[] = [];
-  const now = new Date();
-  const glob = new Bun.Glob('*.yaml');
-
-  for await (const file of glob.scan(SESSIONS_DIR)) {
-    if (file === '.gitkeep') continue;
-
-    const filePath = join(SESSIONS_DIR, file);
-    const content = await Bun.file(filePath).text();
-    const session = parseYaml(content) as Session;
-
-    if (session.userId === userId && new Date(session.expiresAt) > now) {
-      sessions.push(session);
-    }
-  }
-
-  return sessions;
+  const db = getDb();
+  const nowIso = new Date().toISOString();
+  const rows = await db.select().from(sessionsTable).where(eq(sessionsTable.userId, userId));
+  return rows.filter(r => r.expiresAt > nowIso).map(rowToSession);
 }
