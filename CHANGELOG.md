@@ -2,6 +2,13 @@
 
 ## 2026-04-24
 
+### Feature: Phase 2-Skills — Custom-Skills auf Postgres (refactor/postgres-migration)
+- **Skills-Loader** (`backend/src/skills/loader.ts`): hybrider Loader — System-Skills bleiben Code-Asset (`data/skills/system/<id>/SKILL.{yaml,yml,md}`), Custom-Skills wandern in `custom_skills.skills`-Tabelle. Cache vereint beide Quellen.
+- **Skills-Storage** (`backend/src/skills/storage.ts`): Drizzle-CRUD fuer Custom-Skills. `config`-jsonb haelt die volle Skill-Definition (metadata, allowed_tools, knowledge, triggers, tools, workflow, output, parameters, constraints), `body`-text optional fuer separaten Markdown-Body.
+- **createSkill / updateSkill / deleteSkill**: schreiben jetzt in DB statt YAML auf Disk. System-Skills weiterhin read-only (Error bei Modifikations-Versuch).
+- **Auto-Seed beim Boot** (`seedCustomSkillsFromDisk`): bestehende Custom-Skill-YAMLs unter `data/skills/custom/` werden einmalig in die DB ingestiert. Idempotent — bestehende DB-Eintraege bleiben unangetastet (kein Overwrite).
+- Verifiziert lokal: 9 Custom-Skills (write, code-review, onboarding-ma, etc.) sauber in DB ingestiert; Loader liefert 15 Skills (9 custom + 6 system); `code-review` per `getSkillById()` aus DB mit `system=false`.
+
 ### Feature: Phase 2-Klein — restliche kleine Module auf Postgres + S3 (refactor/postgres-migration)
 - **userMemory + notificationService** (`backend/src/services/`): Memory in `memory.user` (key `memory` als jsonb-Blob), Notifications in `notifications.notifications` mit Hot-Path-Spalten + payload-jsonb.
 - **TaskService** (`backend/src/services/taskService.ts`): DB-derived Queue aus `tasks.tasks.status`, In-Memory-Settings, Recovery via Status-Update.

@@ -1,8 +1,9 @@
 /**
- * Enhanced Skills - Loader
+ * Enhanced Skills — Loader (Hybrid: System=Code-Asset, Custom=Postgres).
  *
- * Loads skills from YAML files and legacy Markdown files.
- * Supports both formats for backward compatibility.
+ * System-Skills (`data/skills/system/`) bleiben Code-Assets im Image und werden
+ * read-only von der Disk geladen. Custom-Skills leben in `custom_skills.skills`
+ * (siehe storage.ts). Cache vereint beide.
  */
 
 import { readFile, readdir } from 'fs/promises';
@@ -10,6 +11,7 @@ import { join, resolve } from 'path';
 import { existsSync } from 'fs';
 import { parse as parseYaml } from 'yaml';
 import type { EnhancedSkill, LegacySkill, SkillTriggers, SkillTools, SkillMetadata, SkillKnowledge, SkillSummary } from './types';
+import { listCustomSkills, getCustomSkill, upsertCustomSkill, deleteCustomSkill } from './storage';
 
 const SKILLS_DIR = resolve(process.cwd(), '../data/skills');
 
@@ -236,9 +238,9 @@ function normalizeKnowledge(knowledge: any): SkillKnowledge | undefined {
 }
 
 /**
- * Load all skills from a visibility directory (custom, system)
+ * Load all skills from a visibility directory (system only — custom leben in DB).
  */
-async function loadSkillsFromDir(visibility: 'custom' | 'system'): Promise<EnhancedSkill[]> {
+async function loadSkillsFromDir(visibility: 'system'): Promise<EnhancedSkill[]> {
   const skills: EnhancedSkill[] = [];
   const fullDir = join(SKILLS_DIR, visibility);
   const isSystem = visibility === 'system';
@@ -280,20 +282,64 @@ async function loadSkillsFromDir(visibility: 'custom' | 'system'): Promise<Enhan
   return skills;
 }
 
+/**
+ * Seed-Helper: bestehende Custom-Skill-YAMLs unter `data/skills/custom/` in
+ * die DB ingestieren. Idempotent — bestehende DB-Eintraege werden NICHT
+ * ueberschrieben (falls jemand am Skill in der DB editiert hat).
+ *
+ * Wird von `initialize()` einmalig beim Server-Start aufgerufen.
+ */
+export async function seedCustomSkillsFromDisk(): Promise<{ ingested: string[]; skipped: string[] }> {
+  const ingested: string[] = [];
+  const skipped: string[] = [];
+  const dir = join(SKILLS_DIR, 'custom');
+  if (!existsSync(dir)) return { ingested, skipped };
+
+  // Ad-hoc: gleiche Logik wie loadSkillsFromDir, ohne `system`-Flag.
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const skillId = entry.name;
+    const skillDir = join(dir, skillId);
+    let parsed: EnhancedSkill | null = null;
+    if (existsSync(join(skillDir, 'SKILL.yaml'))) {
+      parsed = await loadYamlSkill(join(skillDir, 'SKILL.yaml'));
+    } else if (existsSync(join(skillDir, 'SKILL.yml'))) {
+      parsed = await loadYamlSkill(join(skillDir, 'SKILL.yml'));
+    } else if (existsSync(join(skillDir, 'SKILL.md'))) {
+      parsed = await loadMarkdownSkill(join(skillDir, 'SKILL.md'), skillId);
+    }
+    if (!parsed) continue;
+    const existing = await getCustomSkill(parsed.id);
+    if (existing) {
+      skipped.push(parsed.id);
+      continue;
+    }
+    await upsertCustomSkill({ ...parsed, system: false });
+    ingested.push(parsed.id);
+  }
+  if (ingested.length > 0) console.log(`[skills] Seeded ${ingested.length} custom skills from disk: ${ingested.join(', ')}`);
+  return { ingested, skipped };
+}
+
 // Skill cache
 let cachedSkills: EnhancedSkill[] | null = null;
 
 /**
- * Load all skills
+ * Load all skills — System aus Disk, Custom aus DB.
  */
 export async function loadSkills(): Promise<EnhancedSkill[]> {
   if (cachedSkills) return cachedSkills;
 
-  const customSkills = await loadSkillsFromDir('custom');
   const systemSkills = await loadSkillsFromDir('system');
+  let customSkills: EnhancedSkill[] = [];
+  try {
+    customSkills = await listCustomSkills();
+  } catch (err) {
+    console.warn('[skills] Failed to load custom skills from DB:', err instanceof Error ? err.message : err);
+  }
 
   cachedSkills = [...customSkills, ...systemSkills];
-
   console.log(`Loaded ${cachedSkills.length} enhanced skills (${customSkills.length} custom, ${systemSkills.length} system)`);
   return cachedSkills;
 }
@@ -330,159 +376,57 @@ export async function reloadSkills(): Promise<EnhancedSkill[]> {
 }
 
 /**
- * Create a new skill (only custom skills can be created)
+ * Create a new custom skill (System-Skills sind read-only Code-Assets).
  */
 export async function createSkill(skill: EnhancedSkill): Promise<EnhancedSkill> {
-  const { writeFile, mkdir } = await import('fs/promises');
-  const { stringify: toYaml } = await import('yaml');
-
-  // Validate required fields
   if (!skill.id || !skill.name) {
     throw new Error('Skill ID and name are required');
   }
-
-  // Check if skill already exists
+  // Konflikt-Pruefung gegen alle Skills (auch System) — IDs muessen global eindeutig sein.
   const existing = await getSkillById(skill.id);
   if (existing) {
     throw new Error(`Skill with ID "${skill.id}" already exists`);
   }
-
-  // Create skill directory (always in custom/)
-  const skillDir = join(SKILLS_DIR, 'custom', skill.id);
-  if (!existsSync(skillDir)) {
-    await mkdir(skillDir, { recursive: true });
-  }
-
-  // Prepare YAML content (without path field)
-  const skillData = {
-    id: skill.id,
-    name: skill.name,
+  const saved = await upsertCustomSkill({
+    ...skill,
     version: skill.version || '1.0',
     description: skill.description || '',
-    // NEW: metadata for agent decision-making
-    metadata: skill.metadata,
-    // NEW: tools that this skill ADDS to agent capabilities
-    allowed_tools: skill.allowed_tools,
-    // NEW: knowledge references
-    knowledge: skill.knowledge,
-    // LEGACY: triggers (kept for backward compatibility)
-    triggers: skill.triggers,
-    // LEGACY: tools (kept for backward compatibility)
-    tools: skill.tools,
     instructions: skill.instructions || '',
-    workflow: skill.workflow,
-    output: skill.output,
-    parameters: skill.parameters,
-    constraints: skill.constraints,
     enabled: skill.enabled !== false,
-  };
-
-  // Remove undefined values
-  const cleanData = JSON.parse(JSON.stringify(skillData));
-
-  // Write YAML file
-  const yamlPath = join(skillDir, 'SKILL.yaml');
-  const yamlContent = toYaml(cleanData, { lineWidth: 0 });
-  await writeFile(yamlPath, yamlContent, 'utf-8');
-
-  // Clear cache and reload
+    triggers: skill.triggers ?? { keywords: [] },
+    tools: skill.tools ?? { required: [], optional: [] },
+  });
   clearSkillsCache();
-
-  // Return the created skill with path
-  return {
-    ...skillData,
-    path: yamlPath,
-  };
+  return saved;
 }
 
 /**
- * Update an existing skill (only custom skills can be updated)
+ * Update an existing custom skill.
  */
 export async function updateSkill(skillId: string, updates: Partial<EnhancedSkill>): Promise<EnhancedSkill> {
-  const { writeFile } = await import('fs/promises');
-  const { stringify: toYaml } = await import('yaml');
-
-  // Get existing skill
   const existing = await getSkillById(skillId);
-  if (!existing) {
-    throw new Error(`Skill "${skillId}" not found`);
-  }
+  if (!existing) throw new Error(`Skill "${skillId}" not found`);
+  if (existing.system) throw new Error('System skills cannot be modified');
 
-  // Prevent updating system skills
-  if (existing.system) {
-    throw new Error('System skills cannot be modified');
-  }
-
-  // Merge updates
-  const updated: EnhancedSkill = {
+  const merged: EnhancedSkill = {
     ...existing,
     ...updates,
-    id: skillId, // ID cannot be changed
-    path: existing.path,
+    id: skillId,
+    enabled: updates.enabled !== undefined ? updates.enabled !== false : existing.enabled !== false,
   };
-
-  // Prepare YAML content
-  const skillData = {
-    id: updated.id,
-    name: updated.name,
-    version: updated.version,
-    description: updated.description,
-    // NEW: metadata for agent decision-making
-    metadata: updated.metadata,
-    // NEW: tools that this skill ADDS to agent capabilities
-    allowed_tools: updated.allowed_tools,
-    // NEW: knowledge references
-    knowledge: updated.knowledge,
-    // LEGACY: triggers (kept for backward compatibility)
-    triggers: updated.triggers,
-    // LEGACY: tools (kept for backward compatibility)
-    tools: updated.tools,
-    instructions: updated.instructions,
-    workflow: updated.workflow,
-    output: updated.output,
-    parameters: updated.parameters,
-    constraints: updated.constraints,
-    enabled: updated.enabled !== false,
-  };
-
-  // Remove undefined values
-  const cleanData = JSON.parse(JSON.stringify(skillData));
-
-  // Write YAML file
-  const yamlPath = existing.path || join(SKILLS_DIR, 'custom', skillId, 'SKILL.yaml');
-  const yamlContent = toYaml(cleanData, { lineWidth: 0 });
-  await writeFile(yamlPath, yamlContent, 'utf-8');
-
-  // Clear cache
+  const saved = await upsertCustomSkill(merged);
   clearSkillsCache();
-
-  return updated;
+  return saved;
 }
 
 /**
- * Delete a skill (only custom skills can be deleted)
+ * Delete a custom skill.
  */
 export async function deleteSkill(skillId: string): Promise<void> {
-  const { rm } = await import('fs/promises');
-
-  // Get existing skill
   const existing = await getSkillById(skillId);
-  if (!existing) {
-    throw new Error(`Skill "${skillId}" not found`);
-  }
-
-  // Prevent deletion of system skills
-  if (existing.system) {
-    throw new Error('System skills cannot be deleted');
-  }
-
-  // Delete skill directory
-  const skillDir = join(SKILLS_DIR, 'custom', skillId);
-  if (existsSync(skillDir)) {
-    await rm(skillDir, { recursive: true });
-  }
-
-  // Clear cache
+  if (!existing) throw new Error(`Skill "${skillId}" not found`);
+  if (existing.system) throw new Error('System skills cannot be deleted');
+  await deleteCustomSkill(skillId);
   clearSkillsCache();
 }
 

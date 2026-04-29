@@ -41,6 +41,7 @@ import { brandingRoutes } from './routes/branding';
 import { runMigrations } from './db/migrate';
 import { ensureBucket } from './storage/s3';
 import { seedDemoUsers } from '../../scripts/seed-demo-users';
+import { seedCustomSkillsFromDisk } from './skills';
 
 const app = new Hono();
 
@@ -66,6 +67,14 @@ async function initialize() {
       }
     } catch (error) {
       console.warn('[seed] Demo user seed skipped:', error instanceof Error ? error.message : error);
+    }
+
+    // Custom Skills aus data/skills/custom/ einmalig in die DB ingestieren.
+    // Idempotent — bestehende DB-Eintraege werden NICHT ueberschrieben.
+    try {
+      await seedCustomSkillsFromDisk();
+    } catch (error) {
+      console.warn('[seed] Custom-skills seed skipped:', error instanceof Error ? error.message : error);
     }
   }
 

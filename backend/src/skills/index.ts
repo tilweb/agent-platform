@@ -23,6 +23,7 @@ export {
   deleteSkill,
   getSkillSummaries,
   loadSkillKnowledgeFiles,
+  seedCustomSkillsFromDisk,
 } from './loader';
 
 // Export matcher functions
