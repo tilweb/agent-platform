@@ -1,99 +1,42 @@
 /**
- * Knowledge Base Routes
- * REST API endpoints for collections management with RBAC
+ * Knowledge Base Routes — REST API mit RBAC.
+ * Persistenz wandert ueber `services/kbStorage.ts` in Postgres + S3.
  */
 
 import { Hono } from 'hono';
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import { readFile, writeFile, mkdir, readdir, rm } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, resolve } from 'path';
 import { authMiddleware, getCurrentUserId } from '../auth';
-import { canView, canEdit, canDelete, canManageAccess, listAccessibleResources } from '../rbac/accessControl';
+import { canView, canEdit, canDelete, listAccessibleResources } from '../rbac/accessControl';
 import { initializeResourceAccess, deleteResourceAccess, hasAccessEntries } from '../rbac/storage';
+import * as kb from '../services/kbStorage';
 
 const knowledgeRoutes = new Hono();
 
-const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
-const COLLECTIONS_FILE = join(KB_BASE, 'collections.yaml');
-
-// Ensure auth on all routes
 knowledgeRoutes.use('/*', authMiddleware);
 
 /**
- * Collection structure in YAML
- */
-interface Collection {
-  id: string;
-  name: string;
-  description: string;
-  activate_when: string[];
-  never_activate_when: string[];
-}
-
-interface CollectionsFile {
-  collections: Collection[];
-}
-
-/**
- * Load collections.yaml
- */
-async function loadCollections(): Promise<CollectionsFile> {
-  if (!existsSync(COLLECTIONS_FILE)) {
-    return { collections: [] };
-  }
-  const content = await readFile(COLLECTIONS_FILE, 'utf-8');
-  return parseYaml(content) || { collections: [] };
-}
-
-/**
- * Save collections.yaml
- */
-async function saveCollections(data: CollectionsFile): Promise<void> {
-  const yaml = stringifyYaml(data);
-  await writeFile(COLLECTIONS_FILE, yaml, 'utf-8');
-}
-
-/**
  * GET /api/knowledge/collections
- * List all collections the user has access to
  */
 knowledgeRoutes.get('/collections', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
-    const data = await loadCollections();
-
-    // Get all collection IDs
-    const collectionIds = data.collections.map((col) => col.id);
-
-    // Filter by RBAC access
+    const all = await kb.listCollections();
+    const collectionIds = all.map(col => col.id);
     const accessibleCollections = await listAccessibleResources(userId, 'collection', collectionIds);
-    const accessibleIds = new Set(accessibleCollections.map((a) => a.resourceId));
+    const accessibleIds = new Set(accessibleCollections.map(a => a.resourceId));
 
-    // Return only accessible collections with role info and live document count
     const collections = await Promise.all(
-      data.collections
-        .filter((col) => accessibleIds.has(col.id))
-        .map(async (col) => {
-          const access = accessibleCollections.find((a) => a.resourceId === col.id);
-          // Count actual documents on disk
-          let documentCount = 0;
-          const docsDir = join(KB_BASE, 'collections', col.id, 'documents');
-          try {
-            const entries = await readdir(docsDir);
-            documentCount = entries.filter((e) => e.startsWith('doc-')).length;
-          } catch {
-            // Directory doesn't exist — 0 documents
-            documentCount = 0;
-          }
-          return {
-            ...col,
-            document_count: documentCount,
-            role: access?.role || 'viewer',
-          };
-        })
+      all.filter(col => accessibleIds.has(col.id)).map(async col => {
+        const access = accessibleCollections.find(a => a.resourceId === col.id);
+        const docs = await kb.listDocuments(col.id);
+        return {
+          ...col,
+          activate_when: col.activate_when ?? [],
+          never_activate_when: col.never_activate_when ?? [],
+          document_count: docs.length,
+          role: access?.role || 'viewer',
+        };
+      }),
     );
-
     return c.json({ collections });
   } catch (error: any) {
     console.error('List collections error:', error);
@@ -103,31 +46,30 @@ knowledgeRoutes.get('/collections', async (c) => {
 
 /**
  * GET /api/knowledge/collections/:id
- * Get a single collection with manifest (documents)
  */
 knowledgeRoutes.get('/collections/:id', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
     const collectionId = c.req.param('id');
-
-    // Check access
     const accessResult = await canView(userId, 'collection', collectionId);
-    if (!accessResult.allowed) {
-      return c.json({ error: 'Zugriff verweigert' }, 403);
-    }
+    if (!accessResult.allowed) return c.json({ error: 'Zugriff verweigert' }, 403);
 
-    // Read manifest file which contains documents
-    const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
-    if (!existsSync(manifestPath)) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
-    }
+    const collection = await kb.getCollection(collectionId);
+    if (!collection) return c.json({ error: 'Collection nicht gefunden' }, 404);
+    const docs = await kb.listDocuments(collectionId);
 
-    const manifestContent = await readFile(manifestPath, 'utf-8');
-    const manifest = parseYaml(manifestContent);
-
-    // Return manifest data (includes collection_id, collection_name, description, documents)
     return c.json({
-      ...manifest,
+      collection_id: collection.id,
+      collection_name: collection.name,
+      description: collection.description ?? '',
+      last_updated: collection.updated_at,
+      documents: docs.map(d => ({
+        document_id: d.id,
+        title: d.title ?? d.filename,
+        source_file: d.filename,
+        path: d.id,
+        indexed_date: (d.createdAt ?? '').split('T')[0],
+      })),
       role: accessResult.effectiveRole,
     });
   } catch (error: any) {
@@ -138,7 +80,6 @@ knowledgeRoutes.get('/collections/:id', async (c) => {
 
 /**
  * POST /api/knowledge/collections
- * Create a new collection (creator becomes owner)
  */
 knowledgeRoutes.post('/collections', async (c) => {
   try {
@@ -146,57 +87,23 @@ knowledgeRoutes.post('/collections', async (c) => {
     const body = await c.req.json();
     const { id, name, description, activate_when, never_activate_when } = body;
 
-    if (!id || !name) {
-      return c.json({ error: 'ID und Name sind erforderlich' }, 400);
-    }
-
-    // Validate ID format
+    if (!id || !name) return c.json({ error: 'ID und Name sind erforderlich' }, 400);
     if (!/^[a-z0-9_-]+$/.test(id)) {
       return c.json({ error: 'ID darf nur Kleinbuchstaben, Zahlen, Bindestriche und Unterstriche enthalten' }, 400);
     }
-
-    // Check if collection already exists
-    const data = await loadCollections();
-    if (data.collections.find((col) => col.id === id)) {
+    if (await kb.getCollection(id)) {
       return c.json({ error: 'Collection mit dieser ID existiert bereits' }, 409);
     }
 
-    // Create collection directory
-    const collectionDir = join(KB_BASE, 'collections', id);
-    if (!existsSync(collectionDir)) {
-      await mkdir(collectionDir, { recursive: true });
-    }
-
-    // Create manifest
-    const manifest = [
-      `# Manifest für Collection: ${name}`,
-      `collection_id: "${id}"`,
-      `collection_name: "${name}"`,
-      `description: "${description || ''}"`,
-      `last_updated: "${new Date().toISOString()}"`,
-      '',
-      'documents: []',
-    ].join('\n');
-    await writeFile(join(collectionDir, 'manifest.yaml'), manifest, 'utf-8');
-
-    // Add to collections.yaml
-    const newCollection: Collection = {
+    const created = await kb.createCollection({
       id,
       name,
-      description: description || '',
-      activate_when: activate_when || [],
-      never_activate_when: never_activate_when || [],
-    };
-    data.collections.push(newCollection);
-    await saveCollections(data);
-
-    // Initialize RBAC - creator becomes owner
-    await initializeResourceAccess('collection', id, userId);
-
-    return c.json({
-      success: true,
-      collection: newCollection,
+      description,
+      activate_when: activate_when ?? [],
+      never_activate_when: never_activate_when ?? [],
     });
+    await initializeResourceAccess('collection', id, userId);
+    return c.json({ success: true, collection: created });
   } catch (error: any) {
     console.error('Create collection error:', error);
     return c.json({ error: 'Fehler beim Erstellen der Collection' }, 500);
@@ -205,58 +112,26 @@ knowledgeRoutes.post('/collections', async (c) => {
 
 /**
  * PUT /api/knowledge/collections/:id
- * Update a collection
  */
 knowledgeRoutes.put('/collections/:id', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
     const collectionId = c.req.param('id');
-
-    // Check edit permission
     const accessResult = await canEdit(userId, 'collection', collectionId);
-    if (!accessResult.allowed) {
-      return c.json({ error: 'Keine Berechtigung zum Bearbeiten' }, 403);
-    }
+    if (!accessResult.allowed) return c.json({ error: 'Keine Berechtigung zum Bearbeiten' }, 403);
 
     const body = await c.req.json();
-    const { name, description, activate_when, never_activate_when } = body;
+    const existing = await kb.getCollection(collectionId);
+    if (!existing) return c.json({ error: 'Collection nicht gefunden' }, 404);
 
-    const data = await loadCollections();
-    const index = data.collections.findIndex((col) => col.id === collectionId);
-
-    if (index < 0) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
-    }
-
-    // Update collection
-    const existing = data.collections[index];
-    if (existing) {
-      data.collections[index] = {
-        ...existing,
-        name: name ?? existing.name,
-        description: description ?? existing.description,
-        activate_when: activate_when ?? existing.activate_when,
-        never_activate_when: never_activate_when ?? existing.never_activate_when,
-      };
-    }
-
-    await saveCollections(data);
-
-    // Update manifest as well
-    const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
-    if (existsSync(manifestPath)) {
-      const manifestContent = await readFile(manifestPath, 'utf-8');
-      const manifest = parseYaml(manifestContent) || {};
-      manifest.collection_name = name ?? manifest.collection_name;
-      manifest.description = description ?? manifest.description;
-      manifest.last_updated = new Date().toISOString();
-      await writeFile(manifestPath, stringifyYaml(manifest), 'utf-8');
-    }
-
-    return c.json({
-      success: true,
-      collection: data.collections[index],
+    const merged = await kb.createCollection({
+      id: collectionId,
+      name: body.name ?? existing.name,
+      description: body.description ?? existing.description,
+      activate_when: body.activate_when ?? existing.activate_when ?? [],
+      never_activate_when: body.never_activate_when ?? existing.never_activate_when ?? [],
     });
+    return c.json({ success: true, collection: merged });
   } catch (error: any) {
     console.error('Update collection error:', error);
     return c.json({ error: 'Fehler beim Aktualisieren der Collection' }, 500);
@@ -265,39 +140,17 @@ knowledgeRoutes.put('/collections/:id', async (c) => {
 
 /**
  * DELETE /api/knowledge/collections/:id
- * Delete a collection
  */
 knowledgeRoutes.delete('/collections/:id', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
     const collectionId = c.req.param('id');
-
-    // Check delete permission
     const accessResult = await canDelete(userId, 'collection', collectionId);
-    if (!accessResult.allowed) {
-      return c.json({ error: 'Keine Berechtigung zum Löschen' }, 403);
-    }
+    if (!accessResult.allowed) return c.json({ error: 'Keine Berechtigung zum Löschen' }, 403);
 
-    const data = await loadCollections();
-    const index = data.collections.findIndex((col) => col.id === collectionId);
-
-    if (index < 0) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
-    }
-
-    // Remove from collections.yaml
-    data.collections.splice(index, 1);
-    await saveCollections(data);
-
-    // Delete collection directory
-    const collectionDir = join(KB_BASE, 'collections', collectionId);
-    if (existsSync(collectionDir)) {
-      await rm(collectionDir, { recursive: true });
-    }
-
-    // Delete RBAC entries
+    const ok = await kb.deleteCollection(collectionId);
+    if (!ok) return c.json({ error: 'Collection nicht gefunden' }, 404);
     await deleteResourceAccess('collection', collectionId);
-
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Delete collection error:', error);
@@ -307,31 +160,26 @@ knowledgeRoutes.delete('/collections/:id', async (c) => {
 
 /**
  * GET /api/knowledge/collections/:id/documents
- * List documents in a collection
  */
 knowledgeRoutes.get('/collections/:id/documents', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
     const collectionId = c.req.param('id');
-
-    // Check access
     const accessResult = await canView(userId, 'collection', collectionId);
-    if (!accessResult.allowed) {
-      return c.json({ error: 'Zugriff verweigert' }, 403);
-    }
+    if (!accessResult.allowed) return c.json({ error: 'Zugriff verweigert' }, 403);
 
-    // Read manifest
-    const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
-    if (!existsSync(manifestPath)) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
-    }
-
-    const manifestContent = await readFile(manifestPath, 'utf-8');
-    const manifest = parseYaml(manifestContent);
-
+    const collection = await kb.getCollection(collectionId);
+    if (!collection) return c.json({ error: 'Collection nicht gefunden' }, 404);
+    const docs = await kb.listDocuments(collectionId);
     return c.json({
       collection_id: collectionId,
-      documents: manifest.documents || [],
+      documents: docs.map(d => ({
+        document_id: d.id,
+        title: d.title ?? d.filename,
+        source_file: d.filename,
+        path: d.id,
+        indexed_date: (d.createdAt ?? '').split('T')[0],
+      })),
     });
   } catch (error: any) {
     console.error('List documents error:', error);
@@ -341,53 +189,27 @@ knowledgeRoutes.get('/collections/:id/documents', async (c) => {
 
 /**
  * GET /api/knowledge/collections/:id/documents/:docId
- * Get a specific document's metadata and content
  */
 knowledgeRoutes.get('/collections/:id/documents/:docId', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
     const collectionId = c.req.param('id');
     const docId = c.req.param('docId');
-
-    // Check access
     const accessResult = await canView(userId, 'collection', collectionId);
-    if (!accessResult.allowed) {
-      return c.json({ error: 'Zugriff verweigert' }, 403);
-    }
+    if (!accessResult.allowed) return c.json({ error: 'Zugriff verweigert' }, 403);
 
-    // Find document path in manifest
-    const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
-    if (!existsSync(manifestPath)) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
-    }
-
-    const manifestContent = await readFile(manifestPath, 'utf-8');
-    const manifest = parseYaml(manifestContent);
-
-    const doc = manifest.documents?.find((d: any) => d.document_id === docId);
-    if (!doc) {
-      return c.json({ error: 'Dokument nicht gefunden' }, 404);
-    }
-
-    // Read document meta and content
-    const docDir = join(KB_BASE, 'collections', collectionId, 'documents', doc.path);
-
-    let meta = null;
-    let content = null;
-
-    const metaPath = join(docDir, 'DOCUMENT_META.md');
-    if (existsSync(metaPath)) {
-      meta = await readFile(metaPath, 'utf-8');
-    }
-
-    const contentPath = join(docDir, 'content.md');
-    if (existsSync(contentPath)) {
-      content = await readFile(contentPath, 'utf-8');
-    }
-
+    const doc = await kb.getDocument(collectionId, docId);
+    if (!doc) return c.json({ error: 'Dokument nicht gefunden' }, 404);
+    const content = await kb.getDocumentContent(collectionId, docId);
     return c.json({
-      document: doc,
-      meta,
+      document: {
+        document_id: doc.id,
+        title: doc.title ?? doc.filename,
+        source_file: doc.filename,
+        path: doc.id,
+        indexed_date: (doc.createdAt ?? '').split('T')[0],
+      },
+      meta: doc.metaMd,
       content,
     });
   } catch (error: any) {
@@ -398,47 +220,17 @@ knowledgeRoutes.get('/collections/:id/documents/:docId', async (c) => {
 
 /**
  * DELETE /api/knowledge/collections/:id/documents/:docId
- * Delete a document from a collection
  */
 knowledgeRoutes.delete('/collections/:id/documents/:docId', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
     const collectionId = c.req.param('id');
     const docId = c.req.param('docId');
-
-    // Check edit permission
     const accessResult = await canEdit(userId, 'collection', collectionId);
-    if (!accessResult.allowed) {
-      return c.json({ error: 'Keine Berechtigung zum Bearbeiten' }, 403);
-    }
+    if (!accessResult.allowed) return c.json({ error: 'Keine Berechtigung zum Bearbeiten' }, 403);
 
-    // Find document path in manifest
-    const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
-    if (!existsSync(manifestPath)) {
-      return c.json({ error: 'Collection nicht gefunden' }, 404);
-    }
-
-    const manifestContent = await readFile(manifestPath, 'utf-8');
-    const manifest = parseYaml(manifestContent);
-
-    const docIndex = manifest.documents?.findIndex((d: any) => d.document_id === docId);
-    if (docIndex < 0) {
-      return c.json({ error: 'Dokument nicht gefunden' }, 404);
-    }
-
-    const doc = manifest.documents[docIndex];
-
-    // Delete document directory
-    const docDir = join(KB_BASE, 'collections', collectionId, 'documents', doc.path);
-    if (existsSync(docDir)) {
-      await rm(docDir, { recursive: true });
-    }
-
-    // Update manifest
-    manifest.documents.splice(docIndex, 1);
-    manifest.last_updated = new Date().toISOString();
-    await writeFile(manifestPath, stringifyYaml(manifest), 'utf-8');
-
+    const ok = await kb.deleteDocument(collectionId, docId);
+    if (!ok) return c.json({ error: 'Dokument nicht gefunden' }, 404);
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Delete document error:', error);
@@ -447,23 +239,20 @@ knowledgeRoutes.delete('/collections/:id/documents/:docId', async (c) => {
 });
 
 /**
- * Migration: Initialize RBAC for existing collections
- * Checks each collection and creates owner access for collections without any access entries
+ * RBAC-Migration fuer bestehende Collections — falls noch keine Access-Eintraege
+ * existieren, wird der defaultOwnerId zum Owner.
  */
 export async function migrateExistingCollections(defaultOwnerId: string): Promise<{ migrated: number; skipped: number }> {
   let migrated = 0;
   let skipped = 0;
-
   try {
-    const data = await loadCollections();
-
-    for (const collection of data.collections) {
-      const hasAccess = await hasAccessEntries('collection', collection.id);
-
+    const collections = await kb.listCollections();
+    for (const col of collections) {
+      const hasAccess = await hasAccessEntries('collection', col.id);
       if (!hasAccess) {
-        await initializeResourceAccess('collection', collection.id, defaultOwnerId);
+        await initializeResourceAccess('collection', col.id, defaultOwnerId);
         migrated++;
-        console.log(`[RBAC Migration] Collection "${collection.id}" - Owner zugewiesen`);
+        console.log(`[RBAC Migration] Collection "${col.id}" - Owner zugewiesen`);
       } else {
         skipped++;
       }
@@ -471,7 +260,6 @@ export async function migrateExistingCollections(defaultOwnerId: string): Promis
   } catch (error) {
     console.error('Error migrating collections:', error);
   }
-
   return { migrated, skipped };
 }
 

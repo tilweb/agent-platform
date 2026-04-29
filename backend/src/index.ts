@@ -44,6 +44,7 @@ import { seedDemoUsers } from '../../scripts/seed-demo-users';
 import { seedCustomSkillsFromDisk } from './skills';
 import { seedProjectsFromDisk } from './projects';
 import { seedChatsFromDisk } from './services/chatStorage';
+import { seedKbFromDisk } from './services/kbStorage';
 
 const app = new Hono();
 
@@ -91,6 +92,13 @@ async function initialize() {
       await seedChatsFromDisk();
     } catch (error) {
       console.warn('[seed] Chats seed skipped:', error instanceof Error ? error.message : error);
+    }
+
+    // Knowledge-Base aus data/knowledge-base/ in DB+S3 ingestieren.
+    try {
+      await seedKbFromDisk();
+    } catch (error) {
+      console.warn('[seed] KB seed skipped:', error instanceof Error ? error.message : error);
     }
   }
 

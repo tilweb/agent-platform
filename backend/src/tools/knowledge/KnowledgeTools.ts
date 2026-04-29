@@ -7,29 +7,9 @@
  * - kb_manage: Manage collections and documents
  */
 
-import { readFile, readdir, stat, mkdir, writeFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, resolve, normalize } from 'path';
 import { LocalTool } from '../base/LocalTool';
 import type { ToolContext } from '../types';
-
-const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
-
-function validateKbPath(requestedPath: string): string {
-  const normalized = normalize(join(KB_BASE, requestedPath));
-  if (!normalized.startsWith(KB_BASE)) {
-    throw new Error('Path traversal not allowed');
-  }
-  return normalized;
-}
-
-async function readKbFile(relativePath: string): Promise<string> {
-  const fullPath = validateKbPath(relativePath);
-  if (!existsSync(fullPath)) {
-    throw new Error(`File not found: ${relativePath}`);
-  }
-  return readFile(fullPath, 'utf-8');
-}
+import * as kb from '../../services/kbStorage';
 
 // ============================================
 // Tool 1: kb_search
@@ -63,37 +43,38 @@ export class KbSearchTool extends LocalTool {
     });
   }
 
-  async execute(args: { level: string; collection_id?: string; document_path?: string }, context?: ToolContext): Promise<string> {
+  async execute(args: { level: string; collection_id?: string; document_path?: string }, _context?: ToolContext): Promise<string> {
     const { level, collection_id, document_path } = args;
 
     try {
       switch (level) {
         case 'collections':
-          return await readKbFile('collections.yaml');
+          return await kb.collectionsAsYaml();
 
         case 'manifest':
-          if (!collection_id) {
-            return 'Error: collection_id ist erforderlich für level=manifest';
-          }
-          return await readKbFile(`collections/${collection_id}/manifest.yaml`);
+          if (!collection_id) return 'Error: collection_id ist erforderlich für level=manifest';
+          return await kb.manifestAsYaml(collection_id);
 
-        case 'meta':
-          if (!document_path || !collection_id) {
-            return 'Error: document_path und collection_id sind erforderlich für level=meta';
-          }
-          return await readKbFile(`collections/${collection_id}/documents/${document_path}/DOCUMENT_META.md`);
+        case 'meta': {
+          if (!document_path || !collection_id) return 'Error: document_path und collection_id sind erforderlich für level=meta';
+          const doc = await kb.getDocument(collection_id, document_path);
+          if (!doc) return `Error: Dokument "${collection_id}/${document_path}" nicht gefunden`;
+          return doc.metaMd ?? `# DOCUMENT_META\n(Keine Metadaten verfügbar)\n`;
+        }
 
-        case 'content':
-          if (!document_path || !collection_id) {
-            return 'Error: document_path und collection_id sind erforderlich für level=content';
-          }
-          return await readKbFile(`collections/${collection_id}/documents/${document_path}/content.md`);
+        case 'content': {
+          if (!document_path || !collection_id) return 'Error: document_path und collection_id sind erforderlich für level=content';
+          const content = await kb.getDocumentContent(collection_id, document_path);
+          if (content === null) return `Error: Content für "${collection_id}/${document_path}" nicht gefunden`;
+          return content;
+        }
 
-        case 'index':
-          if (!document_path || !collection_id) {
-            return 'Error: document_path und collection_id sind erforderlich für level=index';
-          }
-          return await readKbFile(`collections/${collection_id}/documents/${document_path}/INDEX.md`);
+        case 'index': {
+          if (!document_path || !collection_id) return 'Error: document_path und collection_id sind erforderlich für level=index';
+          const idx = await kb.getDocumentIndex(collection_id, document_path);
+          if (idx === null) return `Error: Kein Index für "${collection_id}/${document_path}" verfügbar`;
+          return idx;
+        }
 
         default:
           return `Error: Unbekanntes Level "${level}". Erlaubt: collections, manifest, meta, content, index`;
@@ -253,65 +234,18 @@ export class KbManageTool extends LocalTool {
     never_activate_when?: string;
   }): Promise<string> {
     const { collection_id, name, description, activate_when, never_activate_when } = args;
-
-    if (!collection_id || !name) {
-      return 'Error: collection_id und name sind erforderlich';
-    }
-
-    const collectionDir = validateKbPath(`collections/${collection_id}`);
-    if (existsSync(collectionDir)) {
-      return `Error: Collection "${collection_id}" existiert bereits`;
-    }
-
-    await mkdir(collectionDir, { recursive: true });
-
-    const activateList = activate_when
-      ? activate_when.split(',').map((s) => s.trim())
-      : [];
-    const neverActivateList = never_activate_when
-      ? never_activate_when.split(',').map((s) => s.trim())
-      : [];
-
-    const manifest = [
-      `# Manifest für Collection: ${name}`,
-      `collection_id: "${collection_id}"`,
-      `collection_name: "${name}"`,
-      `description: "${description || ''}"`,
-      `last_updated: "${new Date().toISOString()}"`,
-      '',
-      'documents: []',
-    ].join('\n');
-
-    await writeFile(join(collectionDir, 'manifest.yaml'), manifest, 'utf-8');
-
-    // Update collections.yaml
-    const collectionsPath = validateKbPath('collections.yaml');
-    const collectionsContent = await readFile(collectionsPath, 'utf-8');
-
-    const newEntry = [
-      `  - id: "${collection_id}"`,
-      `    name: "${name}"`,
-      `    description: "${description || ''}"`,
-      `    activate_when:`,
-      ...activateList.map((a) => `      - "${a}"`),
-      ...(neverActivateList.length > 0
-        ? [`    never_activate_when:`, ...neverActivateList.map((a) => `      - "${a}"`)]
-        : [`    never_activate_when: []`]),
-    ].join('\n');
-
-    // Replace empty collections array or append
-    let updatedCollections: string;
-    if (collectionsContent.includes('collections: []')) {
-      updatedCollections = collectionsContent.replace(
-        'collections: []',
-        `collections:\n${newEntry}`,
-      );
-    } else {
-      updatedCollections = collectionsContent.trimEnd() + '\n' + newEntry + '\n';
-    }
-
-    await writeFile(collectionsPath, updatedCollections, 'utf-8');
-
+    if (!collection_id || !name) return 'Error: collection_id und name sind erforderlich';
+    const existing = await kb.getCollection(collection_id);
+    if (existing) return `Error: Collection "${collection_id}" existiert bereits`;
+    const activateList = activate_when ? activate_when.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const neverActivateList = never_activate_when ? never_activate_when.split(',').map(s => s.trim()).filter(Boolean) : [];
+    await kb.createCollection({
+      id: collection_id,
+      name,
+      description,
+      activate_when: activateList,
+      never_activate_when: neverActivateList,
+    });
     return JSON.stringify({
       success: true,
       message: `Collection "${name}" (${collection_id}) wurde erstellt`,
@@ -320,42 +254,25 @@ export class KbManageTool extends LocalTool {
   }
 
   private async listCollections(): Promise<string> {
-    const content = await readKbFile('collections.yaml');
-    return content;
+    return kb.collectionsAsYaml();
   }
 
   private async collectionStats(collectionId?: string): Promise<string> {
-    if (!collectionId) {
-      return 'Error: collection_id ist erforderlich';
-    }
-
-    try {
-      const manifest = await readKbFile(`collections/${collectionId}/manifest.yaml`);
-
-      // Count documents by parsing manifest
-      const docMatches = manifest.match(/document_id:/g);
-      const docCount = docMatches ? docMatches.length : 0;
-
-      return JSON.stringify({
-        collection_id: collectionId,
-        document_count: docCount,
-        manifest_preview: manifest.substring(0, 500),
-      });
-    } catch {
-      return `Error: Collection "${collectionId}" nicht gefunden`;
-    }
+    if (!collectionId) return 'Error: collection_id ist erforderlich';
+    const collection = await kb.getCollection(collectionId);
+    if (!collection) return `Error: Collection "${collectionId}" nicht gefunden`;
+    const docs = await kb.listDocuments(collectionId);
+    return JSON.stringify({
+      collection_id: collectionId,
+      document_count: docs.length,
+      manifest_preview: (await kb.manifestAsYaml(collectionId)).substring(0, 500),
+    });
   }
 
   private async listDocuments(collectionId?: string): Promise<string> {
-    if (!collectionId) {
-      return 'Error: collection_id ist erforderlich';
-    }
-
-    try {
-      const manifest = await readKbFile(`collections/${collectionId}/manifest.yaml`);
-      return manifest;
-    } catch {
-      return `Error: Collection "${collectionId}" nicht gefunden`;
-    }
+    if (!collectionId) return 'Error: collection_id ist erforderlich';
+    const collection = await kb.getCollection(collectionId);
+    if (!collection) return `Error: Collection "${collectionId}" nicht gefunden`;
+    return kb.manifestAsYaml(collectionId);
   }
 }

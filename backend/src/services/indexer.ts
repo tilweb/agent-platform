@@ -5,11 +5,12 @@
  * metadata generation (via LLM), and knowledge base indexing.
  */
 
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join, resolve, basename, extname } from 'path';
 import { llmService, type Message } from './llm';
 import type { UsageContext } from './usageTracking';
+import * as kb from './kbStorage';
 
 const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
 const INCOMING_DIR = join(KB_BASE, 'incoming');
@@ -226,7 +227,7 @@ Format:
   }
 
   /**
-   * Main indexing orchestration
+   * Main indexing orchestration — Postgres + S3 (statt Disk).
    */
   async indexDocument(
     filePath: string,
@@ -234,52 +235,44 @@ Format:
     metadata: IndexMetadata,
     triggeringUserId?: string,
   ): Promise<IndexResult> {
-    // Validate collection exists
-    const collectionDir = join(KB_BASE, 'collections', collectionId);
-    if (!existsSync(collectionDir)) {
+    const collection = await kb.getCollection(collectionId);
+    if (!collection) {
       throw new Error(`Collection "${collectionId}" existiert nicht. Erstelle sie zuerst mit kb_manage.`);
     }
 
-    // Generate document ID
     const timestamp = Date.now();
     const baseName = basename(filePath, extname(filePath))
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
     const documentId = `doc-${baseName}-${timestamp}`;
-    const documentPath = documentId;
 
-    // Create document directory inside collection
-    const docDir = join(KB_BASE, 'collections', collectionId, 'documents', documentPath);
-    await mkdir(docDir, { recursive: true });
-
-    // Step 1: Convert document to markdown
     console.log(`[Indexer] Converting document: ${filePath}`);
     const content = await this.convertDocument(filePath);
 
-    // Step 2: Save content.md
-    await writeFile(join(docDir, 'content.md'), content, 'utf-8');
-
-    // Step 3: Generate and save DOCUMENT_META.md
     console.log(`[Indexer] Generating metadata for: ${filePath}`);
     const meta = await this.generateMeta(content, metadata, filePath, documentId, collectionId, triggeringUserId);
-    await writeFile(join(docDir, 'DOCUMENT_META.md'), meta, 'utf-8');
 
-    // Step 4: Generate INDEX.md for large documents
-    const index = await this.generateIndex(content, triggeringUserId, collectionId);
-    if (index) {
+    const indexMd = await this.generateIndex(content, triggeringUserId, collectionId);
+    if (indexMd) {
       console.log(`[Indexer] Generated index for large document: ${filePath}`);
-      await writeFile(join(docDir, 'INDEX.md'), index, 'utf-8');
     }
 
-    // Step 5: Update collection manifest
-    await this.updateManifest(collectionId, {
-      document_id: documentId,
+    await kb.saveDocument({
+      id: documentId,
+      collectionId,
+      filename: basename(filePath),
       title: metadata.title || baseName,
-      path: documentPath,
-      source_file: basename(filePath),
-      summary: meta.substring(0, 200),
-      indexed_date: new Date().toISOString().split('T')[0] ?? '',
+      contentType: 'text/markdown',
+      content,
+      metaMd: meta,
+      indexMd,
+      metadata: {
+        owner: metadata.owner,
+        confidentiality: metadata.confidentiality ?? 'internal',
+        indexed_date: new Date().toISOString().split('T')[0],
+        summary: meta.substring(0, 200),
+      },
     });
 
     const title = metadata.title || baseName;
@@ -288,48 +281,11 @@ Format:
     return {
       success: true,
       document_id: documentId,
-      document_path: documentPath,
+      document_path: documentId,
       collection_id: collectionId,
       title,
       message: `Dokument "${title}" erfolgreich indiziert in Collection "${collectionId}"`,
     };
-  }
-
-  private async updateManifest(
-    collectionId: string,
-    doc: {
-      document_id: string;
-      title: string;
-      path: string;
-      source_file: string;
-      summary: string;
-      indexed_date: string;
-    },
-  ): Promise<void> {
-    const manifestPath = join(KB_BASE, 'collections', collectionId, 'manifest.yaml');
-    let manifest = await readFile(manifestPath, 'utf-8');
-
-    const newEntry = [
-      `  - document_id: "${doc.document_id}"`,
-      `    title: "${doc.title}"`,
-      `    source_file: "${doc.source_file}"`,
-      `    path: "${doc.path}"`,
-      `    indexed_date: "${doc.indexed_date}"`,
-    ].join('\n');
-
-    if (manifest.includes('documents: []')) {
-      manifest = manifest.replace('documents: []', `documents:\n${newEntry}`);
-    } else {
-      manifest = manifest.trimEnd() + '\n' + newEntry + '\n';
-    }
-
-    // Update last_updated
-    manifest = manifest.replace(
-      /last_updated: ".*"/,
-      `last_updated: "${new Date().toISOString()}"`,
-    );
-
-    await writeFile(manifestPath, manifest, 'utf-8');
   }
 
 }
