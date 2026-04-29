@@ -40,6 +40,7 @@ export {
   listProjectChats,
   loadProjectChat,
   saveProjectChat,
+  seedProjectsFromDisk,
 } from './storage';
 
 // Permissions

@@ -6,6 +6,7 @@ export const chatFolders = chatSchema.table('folders', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   name: text('name').notNull(),
+  color: text('color'),
   parentId: text('parent_id'),
   position: integer('position').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
@@ -18,15 +19,33 @@ export const chats = chatSchema.table('chats', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   title: text('title'),
+  summary: text('summary'),
+  keywords: jsonb('keywords'),                      // string[]
   agentId: text('agent_id'),
-  folderId: text('folder_id'),
-  metadata: jsonb('metadata'),                      // model, provider, settings, ...
+  projectId: text('project_id'),                    // optional: Chat ist projekt-gescoped
+  shareToken: text('share_token'),                  // null = nicht geteilt
+  sharedAt: timestamp('shared_at', { withTimezone: true, mode: 'string' }),
+  metadata: jsonb('metadata'),                      // model, provider, materials, lastError, ...
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({
   userIdx: index('chats_user_idx').on(t.userId),
-  folderIdx: index('chats_folder_idx').on(t.folderId),
+  projectIdx: index('chats_project_idx').on(t.projectId),
+  shareIdx: index('chats_share_idx').on(t.shareToken),
   updatedIdx: index('chats_updated_idx').on(t.updatedAt),
+}));
+
+/**
+ * Chat-Folder-Memberships (n:m). Eine Chat-Session kann in mehreren Foldern
+ * sein (UI erlaubt Multi-Tagging).
+ */
+export const chatFolderMembers = chatSchema.table('folder_members', {
+  chatId: text('chat_id').notNull().references(() => chats.id, { onDelete: 'cascade' }),
+  folderId: text('folder_id').notNull().references(() => chatFolders.id, { onDelete: 'cascade' }),
+  addedAt: timestamp('added_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  chatIdx: index('chat_folder_members_chat_idx').on(t.chatId),
+  folderIdx: index('chat_folder_members_folder_idx').on(t.folderId),
 }));
 
 export const messages = chatSchema.table('messages', {

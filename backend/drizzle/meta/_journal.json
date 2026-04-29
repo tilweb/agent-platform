@@ -15,6 +15,20 @@
       "when": 1777443703017,
       "tag": "0001_phase2_additions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777502400000,
+      "tag": "0002_phase2_projects",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777506000000,
+      "tag": "0003_phase2_chat",
+      "breakpoints": true
     }
   ]
 }

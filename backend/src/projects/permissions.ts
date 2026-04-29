@@ -42,7 +42,7 @@ async function getEffectiveRole(project: Project, projectId: string, userId: str
       editor: 'editor',
       viewer: 'viewer',
     };
-    return roleMap[rbacResult.role || 'viewer'] || 'viewer';
+    return roleMap[rbacResult.effectiveRole || 'viewer'] || 'viewer';
   }
 
   return null;

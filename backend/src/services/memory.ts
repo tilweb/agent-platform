@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import type { Message } from './llm';
 import { llmService } from './llm';
 import { saveProjectChat } from '../projects/storage';
+import * as chatStorage from './chatStorage';
 
 const CONVERSATIONS_DIR = resolve(process.cwd(), '../data/conversations');
 const SESSIONS_DIR = resolve(process.cwd(), '../data/memory/sessions');
@@ -107,15 +108,16 @@ function formatMessagesAsMarkdown(session: ConversationSession): string {
   for (const msg of session.messages) {
     const roleLabel = msg.role.charAt(0).toUpperCase() + msg.role.slice(1);
 
+    const contentText = typeof msg.content === 'string' ? msg.content : (Array.isArray(msg.content) ? msg.content.map(p => p.type === 'text' ? p.text : '').join('') : '');
     if (msg.role === 'tool') {
       lines.push(`### Tool Result (${msg.name || 'unknown'})`);
       lines.push('```');
-      lines.push(msg.content || '');
+      lines.push(contentText);
       lines.push('```');
     } else if (msg.tool_calls && msg.tool_calls.length > 0) {
       lines.push(`### ${roleLabel}`);
-      if (msg.content) {
-        lines.push(msg.content);
+      if (contentText) {
+        lines.push(contentText);
       }
       lines.push('');
       lines.push('**Tool Calls:**');
@@ -124,7 +126,7 @@ function formatMessagesAsMarkdown(session: ConversationSession): string {
       }
     } else {
       lines.push(`### ${roleLabel}`);
-      lines.push(msg.content || '');
+      lines.push(contentText);
     }
     lines.push('');
   }
@@ -373,7 +375,7 @@ function formatChatAsYaml(chat: ChatHistory): string {
   return lines.join('\n') + '\n';
 }
 
-function parseChatYaml(content: string): ChatHistory | null {
+export function parseChatYaml(content: string): ChatHistory | null {
   try {
     const lines = content.split('\n');
     const chat: ChatHistory = { id: '', title: '', createdAt: '', updatedAt: '', messages: [] };
@@ -815,10 +817,6 @@ export async function saveChatHistory(sessionId: string, userId?: string, projec
   const session = getSession(sessionId);
   if (!session || session.messages.length === 0) return;
 
-  if (!existsSync(CHATS_DIR)) {
-    await mkdir(CHATS_DIR, { recursive: true });
-  }
-
   // Filter to only user and assistant messages (no tool, no tool_calls)
   const chatMessages: ChatHistoryMessage[] = [];
   let lastUserMessageIndex = -1;
@@ -827,9 +825,13 @@ export async function saveChatHistory(sessionId: string, userId?: string, projec
     if (msg.role === 'user' || msg.role === 'assistant') {
       if (msg.tool_calls && msg.tool_calls.length > 0) continue;
       if (!msg.content) continue;
+      // ContentPart[] (multi-modal) gibt's vor allem bei User-Messages mit Bildern.
+      // Fuer ChatHistory speichern wir nur Text — Vision-Inputs sind ueber die
+      // Attachments-Liste persistiert.
+      const content = typeof msg.content === 'string' ? msg.content : msg.content.map(p => p.type === 'text' ? p.text : '').join('');
       const chatMsg: ChatHistoryMessage = {
         role: msg.role,
-        content: msg.content,
+        content,
       };
       chatMessages.push(chatMsg);
       if (msg.role === 'user') {
@@ -845,29 +847,22 @@ export async function saveChatHistory(sessionId: string, userId?: string, projec
     chatMessages[lastUserMessageIndex]!.attachments = attachments;
   }
 
-  // Check if chat already exists to preserve createdAt and existing summary
-  const existingPath = join(CHATS_DIR, `${sessionId}.yaml`);
+  // Load existing chat from DB to preserve createdAt + summary + attachments etc.
   let createdAt = session.createdAt;
-  let existingChat: ChatHistory | null = null;
-
-  if (existsSync(existingPath)) {
-    try {
-      existingChat = parseChatYaml(await readFile(existingPath, 'utf-8'));
-      if (existingChat) createdAt = existingChat.createdAt;
-
-      // Preserve existing attachments from prior messages
-      if (existingChat?.messages) {
-        for (let i = 0; i < Math.min(existingChat.messages.length, chatMessages.length); i++) {
-          const existingMsg = existingChat.messages[i];
-          if (existingMsg?.attachments && existingMsg.attachments.length > 0) {
-            // Don't overwrite if we already have attachments for this message
-            if (!chatMessages[i]!.attachments) {
-              chatMessages[i]!.attachments = existingMsg.attachments;
-            }
+  const existingChat = await chatStorage.loadChat(sessionId);
+  if (existingChat) {
+    createdAt = existingChat.createdAt;
+    // Preserve existing attachments from prior messages
+    if (existingChat.messages) {
+      for (let i = 0; i < Math.min(existingChat.messages.length, chatMessages.length); i++) {
+        const existingMsg = existingChat.messages[i];
+        if (existingMsg?.attachments && existingMsg.attachments.length > 0) {
+          if (!chatMessages[i]!.attachments) {
+            chatMessages[i]!.attachments = existingMsg.attachments;
           }
         }
       }
-    } catch {}
+    }
   }
 
   // Determine if we need to generate a new summary
@@ -936,19 +931,22 @@ export async function saveChatHistory(sessionId: string, userId?: string, projec
     id: sessionId,
     userId: chatUserId,
     projectId: chatProjectId,
+    folderIds: existingChat?.folderIds,
     title,
     summary,
     keywords,
     lastSummaryAt: newLastSummaryAt,
+    shareToken: existingChat?.shareToken,
+    sharedAt: existingChat?.sharedAt,
+    sharedBy: existingChat?.sharedBy,
     createdAt,
     updatedAt: session.updatedAt,
     messages: chatMessages,
     materials: chatMaterials,
   };
 
-  const yaml = formatChatAsYaml(chat);
-  await writeFile(existingPath, yaml, 'utf-8');
-  console.log(`Saved chat history to ${existingPath}`);
+  await chatStorage.saveChat(chat);
+  console.log(`Saved chat ${sessionId} to DB (${chatMessages.length} messages)`);
 
   // Also save to project directory if projectId is present
   if (chatProjectId) {
@@ -985,25 +983,13 @@ export async function saveChatHistory(sessionId: string, userId?: string, projec
  * - Anonymous users can only access anonymous chats
  */
 export async function loadChatHistory(sessionId: string, userId?: string): Promise<ChatHistory | null> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) return null;
-
   try {
-    const content = await readFile(filePath, 'utf-8');
-    const chat = parseChatYaml(content);
-
+    const chat = await chatStorage.loadChat(sessionId);
     if (!chat) return null;
-
-    // Access control: check if user has access to this chat
-    if (chat.userId) {
-      // Chat belongs to a specific user - only that user can access
-      if (chat.userId !== userId) {
-        console.log(`[loadChatHistory] Access denied: chat ${sessionId} belongs to ${chat.userId}, requested by ${userId || 'anonymous'}`);
-        return null;
-      }
+    if (chat.userId && chat.userId !== userId) {
+      console.log(`[loadChatHistory] Access denied: chat ${sessionId} belongs to ${chat.userId}, requested by ${userId || 'anonymous'}`);
+      return null;
     }
-    // Anonymous chats (no userId) are accessible by everyone
-
     return chat;
   } catch (err) {
     console.error(`Error loading chat history ${sessionId}:`, err);
@@ -1018,64 +1004,24 @@ export async function loadChatHistory(sessionId: string, userId?: string): Promi
  * @returns The userId or null if chat not found or has no owner
  */
 export async function getChatOwnerId(sessionId: string): Promise<string | null> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) return null;
-
-  try {
-    const content = await readFile(filePath, 'utf-8');
-    const chat = parseChatYaml(content);
-    return chat?.userId || null;
-  } catch (err) {
-    console.error(`Error getting chat owner ${sessionId}:`, err);
-    return null;
-  }
+  return chatStorage.getChatOwnerId(sessionId);
 }
 
 /**
  * Update materials for a chat
- * @param sessionId - The chat session ID
- * @param userId - The requesting user's ID
- * @param materials - The updated materials array
  */
 export async function updateChatMaterials(sessionId: string, userId: string, materials: ChatMaterial[]): Promise<boolean> {
   const chat = await loadChatHistory(sessionId, userId);
   if (!chat) return false;
-
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  try {
-    chat.materials = materials;
-    chat.updatedAt = new Date().toISOString();
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-    return true;
-  } catch (err) {
-    console.error(`Error updating chat materials ${sessionId}:`, err);
-    return false;
-  }
+  return chatStorage.setMaterials(sessionId, materials);
 }
 
-/**
- * Add a single material to a chat
- */
 export async function addChatMaterial(sessionId: string, userId: string, material: ChatMaterial): Promise<boolean> {
   const chat = await loadChatHistory(sessionId, userId);
   if (!chat) return false;
-
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  try {
-    if (!chat.materials) chat.materials = [];
-    // Avoid duplicates
-    if (!chat.materials.some(m => m.id === material.id)) {
-      chat.materials.push(material);
-    }
-    chat.updatedAt = new Date().toISOString();
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-    return true;
-  } catch (err) {
-    console.error(`Error adding chat material ${sessionId}:`, err);
-    return false;
-  }
+  const materials = chat.materials ?? [];
+  if (!materials.some(m => m.id === material.id)) materials.push(material);
+  return chatStorage.setMaterials(sessionId, materials);
 }
 
 /**
@@ -1084,20 +1030,8 @@ export async function addChatMaterial(sessionId: string, userId: string, materia
 export async function removeChatMaterial(sessionId: string, userId: string, materialId: string): Promise<boolean> {
   const chat = await loadChatHistory(sessionId, userId);
   if (!chat) return false;
-
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  try {
-    if (chat.materials) {
-      chat.materials = chat.materials.filter(m => m.id !== materialId);
-    }
-    chat.updatedAt = new Date().toISOString();
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-    return true;
-  } catch (err) {
-    console.error(`Error removing chat material ${sessionId}:`, err);
-    return false;
-  }
+  const materials = (chat.materials ?? []).filter(m => m.id !== materialId);
+  return chatStorage.setMaterials(sessionId, materials);
 }
 
 export interface ChatListResult {
@@ -1118,62 +1052,8 @@ export interface ChatListResult {
  * - If userId is undefined (anonymous): show only anonymous chats
  */
 export async function listChatHistories(limit?: number, offset: number = 0, userId?: string, projectId?: string): Promise<ChatListResult> {
-  if (!existsSync(CHATS_DIR)) return { chats: [], total: 0, hasMore: false };
-
   try {
-    const files = await readdir(CHATS_DIR);
-    const summaries: ChatHistorySummary[] = [];
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
-      try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
-        const chat = parseChatYaml(content);
-        if (!chat) continue;
-
-        // Filter by projectId if provided
-        if (projectId) {
-          // Only include chats that belong to this project
-          if (chat.projectId !== projectId) continue;
-        } else {
-          // When not filtering by project, exclude project chats
-          if (chat.projectId) continue;
-        }
-
-        // Access control filtering
-        if (userId) {
-          // Logged-in user: only show their own chats
-          if (chat.userId !== userId) continue;
-        } else {
-          // Anonymous: only show anonymous chats
-          if (chat.userId) continue;
-        }
-
-        summaries.push({
-          id: chat.id,
-          title: chat.title,
-          summary: chat.summary,
-          updatedAt: chat.updatedAt,
-        });
-      } catch {}
-    }
-
-    // Sort by updatedAt descending
-    summaries.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-
-    const total = summaries.length;
-
-    // Apply pagination if limit is specified
-    if (limit !== undefined) {
-      const paginated = summaries.slice(offset, offset + limit);
-      return {
-        chats: paginated,
-        total,
-        hasMore: offset + limit < total,
-      };
-    }
-
-    return { chats: summaries, total, hasMore: false };
+    return await chatStorage.listChats({ userId, projectId, limit, offset });
   } catch (err) {
     console.error('Error listing chat histories:', err);
     return { chats: [], total: 0, hasMore: false };
@@ -1202,68 +1082,8 @@ export interface ChatSearchOptions {
 
 export async function searchChatHistories(query: string, userId?: string): Promise<ChatSearchResult[]> {
   if (!query || query.length < 2) return [];
-  if (!existsSync(CHATS_DIR)) return [];
-
-  const queryLower = query.toLowerCase();
-  const results: ChatSearchResult[] = [];
-
   try {
-    const files = await readdir(CHATS_DIR);
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
-      try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
-        const chat = parseChatYaml(content);
-        if (!chat) continue;
-
-        // Access control filtering
-        if (userId) {
-          // Logged-in user: only search own chats
-          if (chat.userId !== userId) continue;
-        } else {
-          // Anonymous: only search anonymous chats
-          if (chat.userId) continue;
-        }
-
-        // Check title first
-        if (chat.title.toLowerCase().includes(queryLower)) {
-          results.push({
-            id: chat.id,
-            title: chat.title,
-            updatedAt: chat.updatedAt,
-            matchedIn: 'title',
-          });
-          continue;
-        }
-
-        // Check message contents
-        for (const msg of chat.messages) {
-          if (msg.content.toLowerCase().includes(queryLower)) {
-            // Extract snippet around the match
-            const idx = msg.content.toLowerCase().indexOf(queryLower);
-            const start = Math.max(0, idx - 30);
-            const end = Math.min(msg.content.length, idx + query.length + 30);
-            let snippet = msg.content.substring(start, end);
-            if (start > 0) snippet = '...' + snippet;
-            if (end < msg.content.length) snippet = snippet + '...';
-
-            results.push({
-              id: chat.id,
-              title: chat.title,
-              updatedAt: chat.updatedAt,
-              matchedIn: 'content',
-              snippet,
-            });
-            break; // One match per chat is enough
-          }
-        }
-      } catch {}
-    }
-
-    // Sort by updatedAt descending
-    results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    return results;
+    return await chatStorage.searchChats(query, userId);
   } catch (err) {
     console.error('Error searching chat histories:', err);
     return [];
@@ -1327,127 +1147,99 @@ export async function searchChatHistoriesWithScoring(
   const { query, limit = 50, includeMessages = false, userId } = options;
 
   if (!query || query.length < 2) return [];
-  if (!existsSync(CHATS_DIR)) return [];
 
   const queryLower = query.toLowerCase();
   const queryTokens = tokenize(query);
   const results: ChatSearchResultWithScore[] = [];
 
   try {
-    const files = await readdir(CHATS_DIR);
+    // Load all candidate chats from DB (anonymous or owned by user) — same as before, but DB-driven.
+    const list = await chatStorage.listChats({ userId });
+    for (const summary of list.chats) {
+      const chat = await chatStorage.loadChat(summary.id);
+      if (!chat) continue;
 
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
+      let matchScore = 0;
+      let matchedIn: 'title' | 'summary' | 'keywords' | 'content' | null = null;
+      let snippet = '';
 
-      try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
-        const chat = parseChatYaml(content);
-        if (!chat) continue;
-
-        // Access control filtering
-        if (userId) {
-          // Logged-in user: only search own chats
-          if (chat.userId !== userId) continue;
-        } else {
-          // Anonymous: only search anonymous chats
-          if (chat.userId) continue;
-        }
-
-        let matchScore = 0;
-        let matchedIn: 'title' | 'summary' | 'keywords' | 'content' | null = null;
-        let snippet = '';
-
-        // 1. Title matching (highest weight: 10 points exact, 3 per token)
-        const titleLower = chat.title.toLowerCase();
-        if (titleLower.includes(queryLower)) {
-          matchScore += 10;
+      const titleLower = chat.title.toLowerCase();
+      if (titleLower.includes(queryLower)) {
+        matchScore += 10;
+        matchedIn = 'title';
+      } else {
+        const titleTokens = tokenize(chat.title);
+        const tokenOverlap = queryTokens.filter(t => titleTokens.includes(t)).length;
+        if (tokenOverlap > 0) {
+          matchScore += tokenOverlap * 3;
           matchedIn = 'title';
-        } else {
-          const titleTokens = tokenize(chat.title);
-          const tokenOverlap = queryTokens.filter((t) => titleTokens.includes(t)).length;
-          if (tokenOverlap > 0) {
-            matchScore += tokenOverlap * 3;
-            matchedIn = 'title';
-          }
         }
+      }
 
-        // 2. Keyword matching (8 points per keyword match)
-        if (chat.keywords && chat.keywords.length > 0) {
-          for (const keyword of chat.keywords) {
-            const keywordLower = keyword.toLowerCase();
-            if (keywordLower.includes(queryLower) || queryLower.includes(keywordLower)) {
-              matchScore += 8;
-              if (!matchedIn) matchedIn = 'keywords';
-            } else {
-              // Token-based keyword matching
-              const keywordTokens = tokenize(keyword);
-              const tokenOverlap = queryTokens.filter((t) => keywordTokens.includes(t)).length;
-              if (tokenOverlap > 0) {
-                matchScore += tokenOverlap * 4;
-                if (!matchedIn) matchedIn = 'keywords';
-              }
-            }
-          }
-        }
-
-        // 3. Summary matching (6 points)
-        if (chat.summary) {
-          const summaryLower = chat.summary.toLowerCase();
-          if (summaryLower.includes(queryLower)) {
-            matchScore += 6;
-            snippet = extractSnippet(chat.summary, query);
-            if (!matchedIn) matchedIn = 'summary';
+      if (chat.keywords && chat.keywords.length > 0) {
+        for (const keyword of chat.keywords) {
+          const keywordLower = keyword.toLowerCase();
+          if (keywordLower.includes(queryLower) || queryLower.includes(keywordLower)) {
+            matchScore += 8;
+            if (!matchedIn) matchedIn = 'keywords';
           } else {
-            const summaryTokens = tokenize(chat.summary);
-            const tokenOverlap = queryTokens.filter((t) => summaryTokens.includes(t)).length;
+            const keywordTokens = tokenize(keyword);
+            const tokenOverlap = queryTokens.filter(t => keywordTokens.includes(t)).length;
             if (tokenOverlap > 0) {
-              matchScore += tokenOverlap * 2;
-              if (!matchedIn) matchedIn = 'summary';
+              matchScore += tokenOverlap * 4;
+              if (!matchedIn) matchedIn = 'keywords';
             }
           }
         }
+      }
 
-        // 4. Message content matching (5 points for assistant, 3 for user)
-        for (const msg of chat.messages) {
-          const msgContent = msg.content || '';
-          const msgLower = msgContent.toLowerCase();
-
-          if (msgLower.includes(queryLower)) {
-            // Assistant messages are weighted higher (contain the actual answers)
-            matchScore += msg.role === 'assistant' ? 5 : 3;
-            if (!snippet) {
-              snippet = extractSnippet(msgContent, query);
-            }
-            if (!matchedIn) matchedIn = 'content';
-            break; // One match per chat is enough for messages
+      if (chat.summary) {
+        const summaryLower = chat.summary.toLowerCase();
+        if (summaryLower.includes(queryLower)) {
+          matchScore += 6;
+          snippet = extractSnippet(chat.summary, query);
+          if (!matchedIn) matchedIn = 'summary';
+        } else {
+          const summaryTokens = tokenize(chat.summary);
+          const tokenOverlap = queryTokens.filter(t => summaryTokens.includes(t)).length;
+          if (tokenOverlap > 0) {
+            matchScore += tokenOverlap * 2;
+            if (!matchedIn) matchedIn = 'summary';
           }
         }
+      }
 
-        if (matchScore > 0 && matchedIn) {
-          results.push({
-            id: chat.id,
-            title: chat.title,
-            updatedAt: chat.updatedAt,
-            matchedIn: matchedIn === 'keywords' || matchedIn === 'summary' ? 'content' : matchedIn,
-            snippet: snippet || chat.summary || undefined,
-            matchScore,
-            firstMessage: includeMessages ? getFirstUserMessage(chat) : undefined,
-            messageCount: chat.messages.length,
-            summary: chat.summary,
-            keywords: chat.keywords,
-          });
+      for (const msg of chat.messages) {
+        const msgContent = msg.content || '';
+        const msgLower = msgContent.toLowerCase();
+        if (msgLower.includes(queryLower)) {
+          matchScore += msg.role === 'assistant' ? 5 : 3;
+          if (!snippet) snippet = extractSnippet(msgContent, query);
+          if (!matchedIn) matchedIn = 'content';
+          break;
         }
-      } catch {
-        // Skip invalid chat files
+      }
+
+      if (matchScore > 0 && matchedIn) {
+        results.push({
+          id: chat.id,
+          title: chat.title,
+          updatedAt: chat.updatedAt,
+          matchedIn: matchedIn === 'keywords' || matchedIn === 'summary' ? 'content' : matchedIn,
+          snippet: snippet || chat.summary || undefined,
+          matchScore,
+          firstMessage: includeMessages ? getFirstUserMessage(chat) : undefined,
+          messageCount: chat.messages.length,
+          summary: chat.summary,
+          keywords: chat.keywords,
+        });
       }
     }
 
-    // Sort by score descending, then by date descending
     results.sort((a, b) => {
       if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
-
     return results.slice(0, limit);
   } catch (err) {
     console.error('Error searching chat histories with scoring:', err);
@@ -1466,26 +1258,14 @@ export async function searchChatHistoriesWithScoring(
  * - If chat has userId: only that user can delete
  */
 export async function deleteChatHistory(sessionId: string, userId?: string): Promise<boolean> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) return false;
-
   try {
-    // First, check ownership
-    const content = await readFile(filePath, 'utf-8');
-    const chat = parseChatYaml(content);
-
-    if (chat && chat.userId) {
-      // Chat belongs to a specific user - only that user can delete
-      if (chat.userId !== userId) {
-        console.log(`[deleteChatHistory] Access denied: chat ${sessionId} belongs to ${chat.userId}, delete requested by ${userId || 'anonymous'}`);
-        return false;
-      }
+    const chat = await chatStorage.loadChat(sessionId);
+    if (!chat) return false;
+    if (chat.userId && chat.userId !== userId) {
+      console.log(`[deleteChatHistory] Access denied: chat ${sessionId} belongs to ${chat.userId}, delete requested by ${userId || 'anonymous'}`);
+      return false;
     }
-    // Anonymous chats can be deleted by anyone
-
-    await unlink(filePath);
-    console.log(`Deleted chat history: ${filePath}`);
-    return true;
+    return await chatStorage.deleteChat(sessionId);
   } catch (err) {
     console.error(`Error deleting chat history ${sessionId}:`, err);
     return false;
@@ -1494,31 +1274,18 @@ export async function deleteChatHistory(sessionId: string, userId?: string): Pro
 
 /**
  * Regenerate summary for an existing chat
- * Useful for migrating old chats without summaries
  */
 export async function regenerateChatSummary(sessionId: string): Promise<boolean> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) return false;
-
   try {
-    const content = await readFile(filePath, 'utf-8');
-    const chat = parseChatYaml(content);
+    const chat = await chatStorage.loadChat(sessionId);
     if (!chat || chat.messages.length < 2) return false;
-
-    // Generate new summary
     const summaryResult = await generateChatSummary(chat.messages);
     if (!summaryResult) return false;
-
-    // Update chat with new summary
     chat.title = summaryResult.title;
     chat.summary = summaryResult.summary;
     chat.keywords = summaryResult.keywords;
-    chat.lastSummaryAt = chat.messages.length; // Track when we generated this summary
-
-    // Save updated chat
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-
+    chat.lastSummaryAt = chat.messages.length;
+    await chatStorage.saveChat(chat);
     console.log(`Regenerated summary for chat ${sessionId}: "${chat.title}"`);
     return true;
   } catch (err) {
@@ -1532,53 +1299,30 @@ export async function regenerateChatSummary(sessionId: string): Promise<boolean>
  * Returns count of chats updated
  */
 export async function regenerateAllMissingSummaries(): Promise<{ updated: number; errors: number }> {
-  if (!existsSync(CHATS_DIR)) return { updated: 0, errors: 0 };
-
   let updated = 0;
   let errors = 0;
-
   try {
-    const files = await readdir(CHATS_DIR);
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
-
+    const list = await chatStorage.listChats({});
+    for (const summary of list.chats) {
+      if (summary.summary) continue;
       try {
-        const filePath = join(CHATS_DIR, file);
-        const content = await readFile(filePath, 'utf-8');
-        const chat = parseChatYaml(content);
-
-        // Skip if already has summary or too few messages
-        if (!chat || chat.summary || chat.messages.length < 2) continue;
-
-        // Generate summary
+        const chat = await chatStorage.loadChat(summary.id);
+        if (!chat || chat.messages.length < 2) continue;
         const summaryResult = await generateChatSummary(chat.messages);
-        if (!summaryResult) {
-          errors++;
-          continue;
-        }
-
-        // Update chat
+        if (!summaryResult) { errors++; continue; }
         chat.title = summaryResult.title;
         chat.summary = summaryResult.summary;
         chat.keywords = summaryResult.keywords;
         chat.lastSummaryAt = chat.messages.length;
-
-        // Save
-        const yaml = formatChatAsYaml(chat);
-        await writeFile(filePath, yaml, 'utf-8');
-
+        await chatStorage.saveChat(chat);
         console.log(`Updated chat ${chat.id}: "${chat.title}"`);
         updated++;
-
-        // Small delay to avoid rate limiting
         await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (err) {
-        console.error(`Error processing ${file}:`, err);
+        console.error(`Error processing ${summary.id}:`, err);
         errors++;
       }
     }
-
     return { updated, errors };
   } catch (err) {
     console.error('Error regenerating summaries:', err);
@@ -1613,101 +1357,31 @@ export interface ShareResult {
  * Only the chat owner can create a share link.
  */
 export async function createShareLink(sessionId: string, userId?: string): Promise<ShareResult> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) {
-    return { success: false, error: 'Chat not found' };
-  }
-
   try {
-    const content = await readFile(filePath, 'utf-8');
-    const chat = parseChatYaml(content);
-
-    if (!chat) {
-      return { success: false, error: 'Could not parse chat' };
-    }
-
-    // Only the owner can create a share link
+    const chat = await chatStorage.loadChat(sessionId);
+    if (!chat) return { success: false, error: 'Chat not found' };
     if (chat.userId && chat.userId !== userId) {
-      console.log(`[createShareLink] Access denied: chat ${sessionId} belongs to ${chat.userId}, requested by ${userId || 'anonymous'}`);
       return { success: false, error: 'Access denied' };
     }
-
-    // If already shared, return existing token
     if (chat.shareToken) {
-      return {
-        success: true,
-        shareToken: chat.shareToken,
-        shareUrl: `/shared/${chat.shareToken}`,
-      };
+      return { success: true, shareToken: chat.shareToken, shareUrl: `/shared/${chat.shareToken}` };
     }
-
-    // Generate new share token
     const shareToken = generateShareToken();
-    chat.shareToken = shareToken;
-    chat.sharedAt = new Date().toISOString();
-    chat.sharedBy = userId;
-
-    // Save updated chat
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-
-    console.log(`[createShareLink] Created share link for chat ${sessionId}: ${shareToken}`);
-
-    return {
-      success: true,
-      shareToken,
-      shareUrl: `/shared/${shareToken}`,
-    };
+    await chatStorage.setShareToken(sessionId, shareToken, userId ?? null);
+    return { success: true, shareToken, shareUrl: `/shared/${shareToken}` };
   } catch (err) {
     console.error(`Error creating share link for ${sessionId}:`, err);
     return { success: false, error: 'Failed to create share link' };
   }
 }
 
-/**
- * Revoke a share link for a chat
- * @param sessionId - The chat session ID
- * @param userId - The requesting user's ID
- * @returns true if revoked, false otherwise
- *
- * Only the chat owner can revoke a share link.
- */
 export async function revokeShareLink(sessionId: string, userId?: string): Promise<boolean> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) {
-    return false;
-  }
-
   try {
-    const content = await readFile(filePath, 'utf-8');
-    const chat = parseChatYaml(content);
-
-    if (!chat) {
-      return false;
-    }
-
-    // Only the owner can revoke a share link
-    if (chat.userId && chat.userId !== userId) {
-      console.log(`[revokeShareLink] Access denied: chat ${sessionId} belongs to ${chat.userId}, requested by ${userId || 'anonymous'}`);
-      return false;
-    }
-
-    // If not shared, nothing to revoke
-    if (!chat.shareToken) {
-      return true;
-    }
-
-    // Remove share fields
-    delete chat.shareToken;
-    delete chat.sharedAt;
-    delete chat.sharedBy;
-
-    // Save updated chat
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-
-    console.log(`[revokeShareLink] Revoked share link for chat ${sessionId}`);
-    return true;
+    const chat = await chatStorage.loadChat(sessionId);
+    if (!chat) return false;
+    if (chat.userId && chat.userId !== userId) return false;
+    if (!chat.shareToken) return true;
+    return await chatStorage.setShareToken(sessionId, null, null);
   } catch (err) {
     console.error(`Error revoking share link for ${sessionId}:`, err);
     return false;
@@ -1730,38 +1404,19 @@ export interface SharedChatResult {
  * @returns The chat (without sensitive fields) or null if not found
  */
 export async function loadChatByShareToken(shareToken: string): Promise<SharedChatResult | null> {
-  if (!shareToken || !existsSync(CHATS_DIR)) {
-    return null;
-  }
-
+  if (!shareToken) return null;
   try {
-    const files = await readdir(CHATS_DIR);
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
-
-      try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
-        const chat = parseChatYaml(content);
-
-        if (chat && chat.shareToken === shareToken) {
-          // Return chat without sensitive fields (userId, projectId)
-          return {
-            id: chat.id,
-            title: chat.title,
-            summary: chat.summary,
-            sharedAt: chat.sharedAt,
-            sharedBy: chat.sharedBy,
-            createdAt: chat.createdAt,
-            messages: chat.messages,
-          };
-        }
-      } catch {
-        // Skip invalid files
-      }
-    }
-
-    return null;
+    const chat = await chatStorage.loadChatByShareToken(shareToken);
+    if (!chat) return null;
+    return {
+      id: chat.id,
+      title: chat.title,
+      summary: chat.summary,
+      sharedAt: chat.sharedAt,
+      sharedBy: chat.sharedBy,
+      createdAt: chat.createdAt,
+      messages: chat.messages,
+    };
   } catch (err) {
     console.error('Error loading chat by share token:', err);
     return null;
@@ -1775,31 +1430,11 @@ export async function loadChatByShareToken(shareToken: string): Promise<SharedCh
  * @returns Share info or null
  */
 export async function getShareInfo(sessionId: string, userId?: string): Promise<{ shareToken: string; sharedAt: string } | null> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) {
-    return null;
-  }
-
   try {
-    const content = await readFile(filePath, 'utf-8');
-    const chat = parseChatYaml(content);
-
-    if (!chat) {
-      return null;
-    }
-
-    // Only the owner can see share info
-    if (chat.userId && chat.userId !== userId) {
-      return null;
-    }
-
-    if (chat.shareToken && chat.sharedAt) {
-      return {
-        shareToken: chat.shareToken,
-        sharedAt: chat.sharedAt,
-      };
-    }
-
+    const chat = await chatStorage.loadChat(sessionId);
+    if (!chat) return null;
+    if (chat.userId && chat.userId !== userId) return null;
+    if (chat.shareToken && chat.sharedAt) return { shareToken: chat.shareToken, sharedAt: chat.sharedAt };
     return null;
   } catch (err) {
     console.error(`Error getting share info for ${sessionId}:`, err);
@@ -1807,9 +1442,7 @@ export async function getShareInfo(sessionId: string, userId?: string): Promise<
   }
 }
 
-// ---- Chat Folders Functions ----
-
-const FOLDERS_FILE = resolve(process.cwd(), '../data/chat-folders.yaml');
+// ---- Chat Folders Functions (DB-backed via chatStorage) ----
 
 export interface ChatFolder {
   id: string;
@@ -1819,286 +1452,37 @@ export interface ChatFolder {
   createdAt: string;
 }
 
-/**
- * Load all chat folders (internal - no filtering)
- */
-async function loadAllChatFolders(): Promise<ChatFolder[]> {
-  if (!existsSync(FOLDERS_FILE)) {
-    return [];
-  }
-
-  try {
-    const content = await readFile(FOLDERS_FILE, 'utf-8');
-    const folders: ChatFolder[] = [];
-
-    // Parse YAML - look for folder blocks starting with "- id:"
-    const lines = content.split('\n');
-    let currentFolder: Partial<ChatFolder> | null = null;
-
-    for (const line of lines) {
-      // Skip empty lines and the "folders:" header
-      if (!line.trim() || line.trim() === 'folders:') continue;
-
-      // New folder starts with "- id:"
-      const idMatch = line.match(/^- id:\s*"?([^"\n]+)"?/);
-      if (idMatch) {
-        // Save previous folder if valid
-        if (currentFolder && currentFolder.id && currentFolder.name) {
-          folders.push(currentFolder as ChatFolder);
-        }
-        currentFolder = { id: idMatch[1]?.trim() };
-        continue;
-      }
-
-      // Parse folder properties
-      if (currentFolder) {
-        const nameMatch = line.match(/^\s+name:\s*"?([^"\n]+)"?/);
-        if (nameMatch) {
-          let val = nameMatch[1]?.trim() || '';
-          if (val.startsWith('"') && val.endsWith('"')) {
-            val = val.slice(1, -1);
-          }
-          currentFolder.name = val;
-          continue;
-        }
-
-        const colorMatch = line.match(/^\s+color:\s*"?([^"\n]+)"?/);
-        if (colorMatch) {
-          currentFolder.color = colorMatch[1]?.trim();
-          continue;
-        }
-
-        const userIdMatch = line.match(/^\s+userId:\s*"?([^"\n]+)"?/);
-        if (userIdMatch) {
-          currentFolder.userId = userIdMatch[1]?.trim();
-          continue;
-        }
-
-        const createdAtMatch = line.match(/^\s+createdAt:\s*"?([^"\n]+)"?/);
-        if (createdAtMatch) {
-          currentFolder.createdAt = createdAtMatch[1]?.trim();
-          continue;
-        }
-      }
-    }
-
-    // Don't forget the last folder
-    if (currentFolder && currentFolder.id && currentFolder.name) {
-      folders.push(currentFolder as ChatFolder);
-    }
-
-    return folders;
-  } catch (err) {
-    console.error('Error loading chat folders:', err);
-    return [];
-  }
-}
-
-/**
- * Load chat folders for a user (filtered by ownership)
- */
 export async function loadChatFolders(userId?: string): Promise<ChatFolder[]> {
-  const allFolders = await loadAllChatFolders();
-  // Filter by userId: show user's own folders + folders without userId (shared)
-  return allFolders.filter(folder => !folder.userId || folder.userId === userId);
+  return chatStorage.listFolders(userId);
 }
 
-/**
- * Save all chat folders
- */
-async function saveChatFolders(folders: ChatFolder[]): Promise<void> {
-  const lines: string[] = ['folders:'];
-
-  for (const folder of folders) {
-    lines.push(`- id: ${escapeYamlString(folder.id)}`);
-    lines.push(`  name: ${escapeYamlString(folder.name)}`);
-    if (folder.color) {
-      lines.push(`  color: ${escapeYamlString(folder.color)}`);
-    }
-    if (folder.userId) {
-      lines.push(`  userId: ${escapeYamlString(folder.userId)}`);
-    }
-    lines.push(`  createdAt: "${folder.createdAt}"`);
-  }
-
-  await writeFile(FOLDERS_FILE, lines.join('\n') + '\n', 'utf-8');
-}
-
-/**
- * Create a new chat folder
- */
 export async function createChatFolder(name: string, userId?: string, color?: string): Promise<ChatFolder> {
-  const folders = await loadAllChatFolders();
-
-  // Generate ID from name
-  const id = name.toLowerCase()
-    .replace(/[äöü]/g, c => ({ 'ä': 'ae', 'ö': 'oe', 'ü': 'ue' }[c] || c))
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '') + '_' + Date.now().toString(36);
-
-  const folder: ChatFolder = {
-    id,
-    name,
-    color,
-    userId,
-    createdAt: new Date().toISOString(),
-  };
-
-  folders.push(folder);
-  await saveChatFolders(folders);
-
-  console.log(`[createChatFolder] Created folder: ${id} (${name})`);
+  const folder = await chatStorage.createFolder(name, userId, color);
+  console.log(`[createChatFolder] Created folder: ${folder.id} (${folder.name})`);
   return folder;
 }
 
-/**
- * Delete a chat folder
- */
 export async function deleteChatFolder(folderId: string, userId?: string): Promise<boolean> {
-  const allFolders = await loadAllChatFolders();
-  const folder = allFolders.find(f => f.id === folderId);
+  return chatStorage.deleteFolder(folderId, userId);
+}
 
-  if (!folder) {
-    return false;
-  }
-
-  // Check ownership
-  if (folder.userId && folder.userId !== userId) {
-    console.log(`[deleteChatFolder] Access denied: folder ${folderId} belongs to ${folder.userId}, requested by ${userId || 'anonymous'}`);
-    return false;
-  }
-
-  const remaining = allFolders.filter(f => f.id !== folderId);
-  await saveChatFolders(remaining);
-
-  console.log(`[deleteChatFolder] Deleted folder: ${folderId}`);
+export async function updateChatFolders(sessionId: string, folderIds: string[], userId?: string): Promise<boolean> {
+  const chat = await loadChatHistory(sessionId, userId);
+  if (!chat) return false;
+  await chatStorage.setChatFolders(sessionId, folderIds);
   return true;
 }
 
-/**
- * Update chat folder assignments
- */
-export async function updateChatFolders(sessionId: string, folderIds: string[], userId?: string): Promise<boolean> {
-  const filePath = join(CHATS_DIR, `${sessionId}.yaml`);
-  if (!existsSync(filePath)) {
-    return false;
-  }
-
-  try {
-    const content = await readFile(filePath, 'utf-8');
-    const chat = parseChatYaml(content);
-
-    if (!chat) {
-      return false;
-    }
-
-    // Check ownership
-    if (chat.userId && chat.userId !== userId) {
-      console.log(`[updateChatFolders] Access denied: chat ${sessionId} belongs to ${chat.userId}, requested by ${userId || 'anonymous'}`);
-      return false;
-    }
-
-    // Update folder IDs
-    chat.folderIds = folderIds.length > 0 ? folderIds : undefined;
-
-    // Save updated chat
-    const yaml = formatChatAsYaml(chat);
-    await writeFile(filePath, yaml, 'utf-8');
-
-    console.log(`[updateChatFolders] Updated folders for chat ${sessionId}: ${folderIds.join(', ') || '(none)'}`);
-    return true;
-  } catch (err) {
-    console.error(`Error updating chat folders for ${sessionId}:`, err);
-    return false;
-  }
-}
-
-/**
- * Get folder IDs for a chat
- */
 export async function getChatFolderIds(sessionId: string, userId?: string): Promise<string[]> {
   const chat = await loadChatHistory(sessionId, userId);
-  return chat?.folderIds || [];
+  if (!chat) return [];
+  return chatStorage.getChatFolderIds(sessionId);
 }
 
-/**
- * List chats in a specific folder
- */
 export async function listChatsInFolder(folderId: string, userId?: string): Promise<ChatHistorySummary[]> {
-  if (!existsSync(CHATS_DIR)) return [];
-
-  try {
-    const files = await readdir(CHATS_DIR);
-    const summaries: ChatHistorySummary[] = [];
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
-      try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
-        const chat = parseChatYaml(content);
-        if (!chat) continue;
-
-        // Access control
-        if (chat.userId && chat.userId !== userId) {
-          continue;
-        }
-
-        // Check if chat is in this folder
-        if (chat.folderIds && chat.folderIds.includes(folderId)) {
-          summaries.push({
-            id: chat.id,
-            title: chat.title,
-            summary: chat.summary,
-            updatedAt: chat.updatedAt,
-          });
-        }
-      } catch {}
-    }
-
-    // Sort by updatedAt descending
-    summaries.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    return summaries;
-  } catch (err) {
-    console.error('Error listing chats in folder:', err);
-    return [];
-  }
+  return chatStorage.listChatsInFolder(folderId, userId);
 }
 
-/**
- * Get chat counts for all folders
- */
 export async function getFolderChatCounts(userId?: string): Promise<Record<string, number>> {
-  const counts: Record<string, number> = {};
-
-  if (!existsSync(CHATS_DIR)) return counts;
-
-  try {
-    const files = await readdir(CHATS_DIR);
-
-    for (const file of files) {
-      if (!file.endsWith('.yaml')) continue;
-      try {
-        const content = await readFile(join(CHATS_DIR, file), 'utf-8');
-        const chat = parseChatYaml(content);
-        if (!chat) continue;
-
-        // Access control
-        if (chat.userId && chat.userId !== userId) {
-          continue;
-        }
-
-        // Count for each folder this chat belongs to
-        if (chat.folderIds) {
-          for (const folderId of chat.folderIds) {
-            counts[folderId] = (counts[folderId] || 0) + 1;
-          }
-        }
-      } catch {}
-    }
-
-    return counts;
-  } catch (err) {
-    console.error('Error getting folder chat counts:', err);
-    return counts;
-  }
+  return chatStorage.getFolderChatCounts(userId);
 }

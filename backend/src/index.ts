@@ -42,6 +42,8 @@ import { runMigrations } from './db/migrate';
 import { ensureBucket } from './storage/s3';
 import { seedDemoUsers } from '../../scripts/seed-demo-users';
 import { seedCustomSkillsFromDisk } from './skills';
+import { seedProjectsFromDisk } from './projects';
+import { seedChatsFromDisk } from './services/chatStorage';
 
 const app = new Hono();
 
@@ -75,6 +77,20 @@ async function initialize() {
       await seedCustomSkillsFromDisk();
     } catch (error) {
       console.warn('[seed] Custom-skills seed skipped:', error instanceof Error ? error.message : error);
+    }
+
+    // Projects aus data/projects/<id>/ einmalig in die DB ingestieren.
+    try {
+      await seedProjectsFromDisk();
+    } catch (error) {
+      console.warn('[seed] Projects seed skipped:', error instanceof Error ? error.message : error);
+    }
+
+    // Chats + Folders aus data/chats/ einmalig in die DB ingestieren.
+    try {
+      await seedChatsFromDisk();
+    } catch (error) {
+      console.warn('[seed] Chats seed skipped:', error instanceof Error ? error.message : error);
     }
   }
 
