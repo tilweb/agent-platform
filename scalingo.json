@@ -1,0 +1,94 @@
+{
+  "name": "Workplace (Scalingo)",
+  "description": "Agent-Plattform mit Postgres + Flow.swiss S3-Persistenz",
+  "repository": "https://github.com/tilweb/agent-platform",
+  "env": {
+    "NODE_ENV": {
+      "value": "production",
+      "description": "Server-Mode"
+    },
+    "PORT": {
+      "value": "3001",
+      "description": "Listen-Port (Scalingo routet 80/443 hier rein)"
+    },
+    "FRONTEND_URL": {
+      "description": "Public URL des Servers (Scalingo-Domain). Wird fuer CORS-Whitelist verwendet."
+    },
+    "API_BASE_URL": {
+      "description": "Public API-URL (gleich wie FRONTEND_URL bei Same-Origin-Setup)"
+    },
+    "FLOW_S3_ENDPOINT": {
+      "description": "Flow.swiss S3-Endpoint, z.B. https://os.alp1.flow.swiss",
+      "required": true
+    },
+    "FLOW_S3_MASTER": {
+      "description": "Flow.swiss S3 Access-Key",
+      "required": true,
+      "generator": "secret"
+    },
+    "FLOW_S3_SECRET": {
+      "description": "Flow.swiss S3 Secret-Key",
+      "required": true,
+      "generator": "secret"
+    },
+    "FLOW_S3_BUCKET": {
+      "value": "workplace-prod",
+      "description": "Bucket-Name (wird beim Boot angelegt wenn nicht vorhanden)"
+    },
+    "ADACOR_AI_API_KEY": {
+      "description": "Adacor AI API Key (LLM, Vision, STT, Embeddings)",
+      "required": true,
+      "generator": "secret"
+    },
+    "FAL_API_KEY": {
+      "description": "fal.ai API Key (Text-to-Image, Image-to-Image)",
+      "required": false
+    },
+    "MARKITDOWN_API_URL": {
+      "value": "https://api.adacor.ai/v1/documentMarkdown/",
+      "description": "Adacor Markitdown-API fuer Doc-Konvertierung"
+    },
+    "CONNECTION_ENCRYPTION_KEY": {
+      "description": "AES-256 Hex-Key (64 Zeichen) fuer OAuth-Token-Verschluesselung. Erzeugen mit: openssl rand -hex 32",
+      "required": true,
+      "generator": "secret"
+    },
+    "SESSION_SECRET": {
+      "description": "Cookie-Session-Secret (>=32 Zeichen). Erzeugen mit: openssl rand -hex 32",
+      "required": true,
+      "generator": "secret"
+    },
+    "DEMO_PASSWORD": {
+      "description": "Passwort fuer Demo-User demo1..demo4 (idempotent geseedet)",
+      "value": "Demo2026!"
+    },
+    "MARKETING_PASSWORD": {
+      "description": "Passwort fuer Marketing-User marketing1..3",
+      "value": "Marketing2026!"
+    },
+    "PLATFORM_TITLE": {
+      "description": "Anzeigename fuer Customer-PoC (Browser-Title, Header)",
+      "value": "Workplace"
+    },
+    "PLATFORM_LOGO_URL": {
+      "description": "Optional: HTTPS-URL eines Customer-Logos"
+    },
+    "ENABLED_APPS": {
+      "description": "Komma-getrennte Whitelist (vertragsmanagement,projektmanagement,lieferantenmanagement,vsm,wzbar-matcher). Leer = alle"
+    }
+  },
+  "addons": [
+    {
+      "plan": "postgresql:postgresql-sandbox"
+    }
+  ],
+  "formation": {
+    "web": {
+      "amount": 1,
+      "size": "S"
+    }
+  },
+  "scripts": {
+    "postdeploy": "echo 'Migrations und Seeds laufen automatisch beim Server-Start (initialize() in src/index.ts).'"
+  }
+}
