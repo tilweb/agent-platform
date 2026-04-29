@@ -2,6 +2,14 @@
 
 ## 2026-04-29
 
+### Fix: Projektauftrag-Import — Bilder, xlsx-Toolbox-Reorder, Null-Validation
+1. **Bilder**: `import-service.ts` griff auf `visionModel.provider.api_url`/`api_key` zu — diese Felder existieren nicht auf `ResolvedModel`. Korrekt sind `base_url`/`api_key` direkt. Fix laesst Image-Imports wieder funktionieren.
+2. **xlsx-Reorder**: Excel-Toolboxen mit `Glossar`-Sheet (PMBOK-Definitionen) verdraengten die echten Projektdaten beim 30K-Char-Truncate. Neuer `reorderXlsxSheets()` sortiert Sheets nach Relevanz (P-Auftrag → Inhalt → Aufwand → Risk → Status → Glossar/Listen ans Ende).
+3. **xlsx-Char-Budget**: eigener `MAX_COMBINED_CHARS_XLSX = 20000` (statt 30K) verhindert LLM-Timeouts bei dichten Tabellendaten.
+4. **Null-String-Normalisierung im Validator**: LLMs liefern teils `"null"`/`"n/a"`/`"-"` als String — werden jetzt zu echtem `null` normalisiert.
+
+Test-Tooling: `tools/pm-import-test/run-test.ts` + `analyze.ts`. End-to-end-Test mit 33 Beispiel-Files: vorher 0 Bilder + xlsx-Avg 66, jetzt 30/30 erfolgreich, Avg-Score 93.6.
+
 ### Feature: Storage-Foundation auf Scalingo Postgres + Flow.swiss S3 (Phase 1)
 - Drizzle ORM (`drizzle-orm` + `postgres-js`) eingefuehrt; Connection lazy-initialisiert ueber `SCALINGO_POSTGRES`.
 - 20 Schema-Files mit ~40 Tabellen ueber 18 dedizierte Postgres-Schemas (auth, chat, apps, kb, vertragsmgmt, projektmgmt, liefermgmt, vsm, wzbar, ...) — Mapping orientiert sich an den bestehenden YAML-Strukturen, IDs bleiben kompatibel.
