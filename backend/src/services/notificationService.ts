@@ -1,19 +1,17 @@
 /**
- * Notification Service
+ * Notification Service — Postgres-backed.
  *
- * Manages user notifications with JSONL storage per user.
- * Supports real-time updates via SSE.
+ * Frueher JSONL pro User, jetzt einzelne Rows in `notifications.notifications`.
+ * Die hot-path-Felder (userId, kind, title, body, isRead, createdAt) sind
+ * eigene Spalten — alles andere (icon, resourceType, resourceId, actionUrl,
+ * readAt, metadata) lebt in der jsonb-`payload`-Spalte. Damit kann die
+ * externe API stabil bleiben, ohne neue DB-Spalten zu brauchen.
  */
 
-import { readFile, writeFile, appendFile, mkdir } from 'fs/promises';
-import { existsSync, createReadStream } from 'fs';
-import { resolve } from 'path';
-import * as readline from 'readline';
+import { and, eq, desc, count, lt } from 'drizzle-orm';
+import { getDb } from '../db';
+import { notifications as notifTable } from '../db/schema/notifications';
 import type { Task } from './taskService';
-
-// ============================================
-// Types
-// ============================================
 
 export type NotificationType = 'task_completed' | 'task_failed' | 'system';
 
@@ -21,23 +19,15 @@ export interface Notification {
   id: string;
   userId: string;
   type: NotificationType;
-
-  // Content
   title: string;
   message: string;
   icon?: string;
-
-  // Linking
   resourceType?: string;
   resourceId?: string;
   actionUrl?: string;
-
-  // Status
   read: boolean;
   readAt?: string;
   createdAt: string;
-
-  // Additional data
   metadata?: Record<string, unknown>;
 }
 
@@ -67,15 +57,14 @@ export interface ListNotificationsResult {
 
 export type NotificationListener = (notification: Notification) => void;
 
-// ============================================
-// Constants
-// ============================================
-
-const NOTIFICATIONS_DIR = resolve(process.cwd(), '../data/notifications');
-
-// ============================================
-// Helper Functions
-// ============================================
+interface NotificationPayload {
+  icon?: string;
+  resourceType?: string;
+  resourceId?: string;
+  actionUrl?: string;
+  readAt?: string;
+  metadata?: Record<string, unknown>;
+}
 
 function generateNotificationId(): string {
   const timestamp = Date.now().toString(36);
@@ -83,92 +72,53 @@ function generateNotificationId(): string {
   return `notif_${timestamp}_${random}`;
 }
 
-function getUserFilePath(userId: string): string {
-  // Sanitize userId to prevent path traversal
-  const safeUserId = userId.replace(/[^a-zA-Z0-9_-]/g, '_');
-  return resolve(NOTIFICATIONS_DIR, `${safeUserId}.jsonl`);
+function rowToNotification(row: typeof notifTable.$inferSelect): Notification {
+  const payload = (row.payload ?? {}) as NotificationPayload;
+  return {
+    id: row.id,
+    userId: row.userId,
+    type: row.kind as NotificationType,
+    title: row.title,
+    message: row.body ?? '',
+    icon: payload.icon,
+    resourceType: payload.resourceType,
+    resourceId: payload.resourceId,
+    actionUrl: payload.actionUrl,
+    read: row.isRead,
+    readAt: payload.readAt,
+    createdAt: row.createdAt,
+    metadata: payload.metadata,
+  };
 }
-
-async function ensureNotificationsDir(): Promise<void> {
-  if (!existsSync(NOTIFICATIONS_DIR)) {
-    await mkdir(NOTIFICATIONS_DIR, { recursive: true });
-  }
-}
-
-/**
- * Read all notifications from a user's JSONL file
- */
-async function readUserNotifications(userId: string): Promise<Notification[]> {
-  const filePath = getUserFilePath(userId);
-
-  if (!existsSync(filePath)) {
-    return [];
-  }
-
-  const notifications: Notification[] = [];
-
-  return new Promise((resolve, reject) => {
-    const rl = readline.createInterface({
-      input: createReadStream(filePath),
-      crlfDelay: Infinity,
-    });
-
-    rl.on('line', (line) => {
-      if (line.trim()) {
-        try {
-          notifications.push(JSON.parse(line));
-        } catch (e) {
-          console.warn('Failed to parse notification line:', e);
-        }
-      }
-    });
-
-    rl.on('close', () => {
-      resolve(notifications);
-    });
-
-    rl.on('error', (err) => {
-      reject(err);
-    });
-  });
-}
-
-/**
- * Write all notifications back to the file (used for updates)
- */
-async function writeUserNotifications(userId: string, notifications: Notification[]): Promise<void> {
-  await ensureNotificationsDir();
-  const filePath = getUserFilePath(userId);
-  const content = notifications.map((n) => JSON.stringify(n)).join('\n') + (notifications.length > 0 ? '\n' : '');
-  await writeFile(filePath, content, 'utf-8');
-}
-
-/**
- * Append a single notification to the file
- */
-async function appendNotification(userId: string, notification: Notification): Promise<void> {
-  await ensureNotificationsDir();
-  const filePath = getUserFilePath(userId);
-  await appendFile(filePath, JSON.stringify(notification) + '\n', 'utf-8');
-}
-
-// ============================================
-// Notification Service Class
-// ============================================
 
 class NotificationService {
   private listeners: Map<string, Set<NotificationListener>> = new Map();
 
-  // ----------------------------------------
-  // CRUD Operations
-  // ----------------------------------------
-
-  /**
-   * Create a new notification
-   */
   async create(params: CreateNotificationParams): Promise<Notification> {
+    const id = generateNotificationId();
+    const createdAt = new Date().toISOString();
+    const payload: NotificationPayload = {
+      icon: params.icon,
+      resourceType: params.resourceType,
+      resourceId: params.resourceId,
+      actionUrl: params.actionUrl,
+      metadata: params.metadata,
+    };
+
+    const db = getDb();
+    await db.insert(notifTable).values({
+      id,
+      userId: params.userId,
+      kind: params.type,
+      title: params.title,
+      body: params.message,
+      payload: payload as never,
+      isRead: false,
+      createdAt,
+    });
+
     const notification: Notification = {
-      id: generateNotificationId(),
+      id,
       userId: params.userId,
       type: params.type,
       title: params.title,
@@ -178,131 +128,113 @@ class NotificationService {
       resourceId: params.resourceId,
       actionUrl: params.actionUrl,
       read: false,
-      createdAt: new Date().toISOString(),
+      createdAt,
       metadata: params.metadata,
     };
-
-    await appendNotification(params.userId, notification);
-
-    // Broadcast to listeners
     this.broadcast(params.userId, notification);
-
     return notification;
   }
 
-  /**
-   * Get a single notification by ID
-   */
   async get(notificationId: string, userId: string): Promise<Notification | null> {
-    const notifications = await readUserNotifications(userId);
-    return notifications.find((n) => n.id === notificationId) || null;
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(notifTable)
+      .where(and(eq(notifTable.id, notificationId), eq(notifTable.userId, userId)))
+      .limit(1);
+    return rows[0] ? rowToNotification(rows[0]) : null;
   }
 
-  /**
-   * List notifications for a user
-   */
   async list(userId: string, options: ListNotificationsOptions = {}): Promise<ListNotificationsResult> {
     const { limit = 50, offset = 0, unreadOnly = false } = options;
+    const db = getDb();
 
-    let notifications = await readUserNotifications(userId);
+    const totalRow = await db
+      .select({ n: count() })
+      .from(notifTable)
+      .where(eq(notifTable.userId, userId));
+    const unreadRow = await db
+      .select({ n: count() })
+      .from(notifTable)
+      .where(and(eq(notifTable.userId, userId), eq(notifTable.isRead, false)));
 
-    // Sort by createdAt descending (newest first)
-    notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const baseWhere = unreadOnly
+      ? and(eq(notifTable.userId, userId), eq(notifTable.isRead, false))
+      : eq(notifTable.userId, userId);
 
-    const total = notifications.length;
-    const unread = notifications.filter((n) => !n.read).length;
-
-    // Filter unread only if requested
-    if (unreadOnly) {
-      notifications = notifications.filter((n) => !n.read);
-    }
-
-    // Apply pagination
-    const paginated = notifications.slice(offset, offset + limit);
+    const rows = await db
+      .select()
+      .from(notifTable)
+      .where(baseWhere)
+      .orderBy(desc(notifTable.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     return {
-      notifications: paginated,
-      total,
-      unread,
+      notifications: rows.map(rowToNotification),
+      total: totalRow[0]?.n ?? 0,
+      unread: unreadRow[0]?.n ?? 0,
     };
   }
 
-  /**
-   * Mark a notification as read
-   */
   async markAsRead(notificationId: string, userId: string): Promise<boolean> {
-    const notifications = await readUserNotifications(userId);
-    const notification = notifications.find((n) => n.id === notificationId);
+    const db = getDb();
+    const existing = await db
+      .select()
+      .from(notifTable)
+      .where(and(eq(notifTable.id, notificationId), eq(notifTable.userId, userId)))
+      .limit(1);
+    if (!existing[0]) return false;
+    if (existing[0].isRead) return true;
 
-    if (!notification) {
-      return false;
-    }
+    const payload = (existing[0].payload ?? {}) as NotificationPayload;
+    payload.readAt = new Date().toISOString();
 
-    if (notification.read) {
-      return true; // Already read
-    }
-
-    notification.read = true;
-    notification.readAt = new Date().toISOString();
-
-    await writeUserNotifications(userId, notifications);
+    await db
+      .update(notifTable)
+      .set({ isRead: true, payload: payload as never })
+      .where(and(eq(notifTable.id, notificationId), eq(notifTable.userId, userId)));
     return true;
   }
 
-  /**
-   * Mark all notifications as read for a user
-   */
   async markAllAsRead(userId: string): Promise<number> {
-    const notifications = await readUserNotifications(userId);
-    let count = 0;
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(notifTable)
+      .where(and(eq(notifTable.userId, userId), eq(notifTable.isRead, false)));
     const now = new Date().toISOString();
-
-    for (const notification of notifications) {
-      if (!notification.read) {
-        notification.read = true;
-        notification.readAt = now;
-        count++;
-      }
+    let updated = 0;
+    for (const row of rows) {
+      const payload = (row.payload ?? {}) as NotificationPayload;
+      payload.readAt = now;
+      await db
+        .update(notifTable)
+        .set({ isRead: true, payload: payload as never })
+        .where(eq(notifTable.id, row.id));
+      updated++;
     }
-
-    if (count > 0) {
-      await writeUserNotifications(userId, notifications);
-    }
-
-    return count;
+    return updated;
   }
 
-  /**
-   * Delete a notification
-   */
   async delete(notificationId: string, userId: string): Promise<boolean> {
-    const notifications = await readUserNotifications(userId);
-    const index = notifications.findIndex((n) => n.id === notificationId);
-
-    if (index === -1) {
-      return false;
-    }
-
-    notifications.splice(index, 1);
-    await writeUserNotifications(userId, notifications);
-    return true;
+    const db = getDb();
+    const res = await db
+      .delete(notifTable)
+      .where(and(eq(notifTable.id, notificationId), eq(notifTable.userId, userId)))
+      .returning({ id: notifTable.id });
+    return res.length > 0;
   }
 
-  /**
-   * Get unread count for a user
-   */
   async getUnreadCount(userId: string): Promise<number> {
-    const notifications = await readUserNotifications(userId);
-    return notifications.filter((n) => !n.read).length;
+    const db = getDb();
+    const rows = await db
+      .select({ n: count() })
+      .from(notifTable)
+      .where(and(eq(notifTable.userId, userId), eq(notifTable.isRead, false)));
+    return rows[0]?.n ?? 0;
   }
 
-  // ----------------------------------------
-  // Task Integration
-  // ----------------------------------------
-
-  /**
-   * Create notification for completed task
-   */
   async notifyTaskCompleted(userId: string, task: Task): Promise<Notification> {
     return this.create({
       userId,
@@ -321,9 +253,6 @@ class NotificationService {
     });
   }
 
-  /**
-   * Create notification for failed task
-   */
   async notifyTaskFailed(userId: string, task: Task, error: string): Promise<Notification> {
     return this.create({
       userId,
@@ -342,36 +271,19 @@ class NotificationService {
     });
   }
 
-  // ----------------------------------------
-  // Real-time (SSE)
-  // ----------------------------------------
-
-  /**
-   * Add a listener for notifications
-   */
   addListener(userId: string, listener: NotificationListener): void {
-    if (!this.listeners.has(userId)) {
-      this.listeners.set(userId, new Set());
-    }
+    if (!this.listeners.has(userId)) this.listeners.set(userId, new Set());
     this.listeners.get(userId)!.add(listener);
   }
 
-  /**
-   * Remove a listener
-   */
   removeListener(userId: string, listener: NotificationListener): void {
     const userListeners = this.listeners.get(userId);
     if (userListeners) {
       userListeners.delete(listener);
-      if (userListeners.size === 0) {
-        this.listeners.delete(userId);
-      }
+      if (userListeners.size === 0) this.listeners.delete(userId);
     }
   }
 
-  /**
-   * Broadcast notification to all listeners for a user
-   */
   broadcast(userId: string, notification: Notification): void {
     const userListeners = this.listeners.get(userId);
     if (userListeners) {
@@ -386,28 +298,17 @@ class NotificationService {
     }
   }
 
-  // ----------------------------------------
-  // Cleanup
-  // ----------------------------------------
-
-  /**
-   * Delete old notifications (older than specified days)
-   */
-  async cleanupOldNotifications(userId: string, olderThanDays: number = 30): Promise<number> {
-    const notifications = await readUserNotifications(userId);
+  async cleanupOldNotifications(userId: string, olderThanDays = 30): Promise<number> {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - olderThanDays);
-
-    const filtered = notifications.filter((n) => new Date(n.createdAt) >= cutoff);
-    const deleted = notifications.length - filtered.length;
-
-    if (deleted > 0) {
-      await writeUserNotifications(userId, filtered);
-    }
-
-    return deleted;
+    const cutoffIso = cutoff.toISOString();
+    const db = getDb();
+    const res = await db
+      .delete(notifTable)
+      .where(and(eq(notifTable.userId, userId), lt(notifTable.createdAt, cutoffIso)))
+      .returning({ id: notifTable.id });
+    return res.length;
   }
 }
 
-// Export singleton instance
 export const notificationService = new NotificationService();
