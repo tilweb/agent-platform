@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-04-24
+
+### Feature: Phase 2-Klein — restliche kleine Module auf Postgres + S3 (refactor/postgres-migration)
+- **userMemory + notificationService** (`backend/src/services/`): Memory in `memory.user` (key `memory` als jsonb-Blob), Notifications in `notifications.notifications` mit Hot-Path-Spalten + payload-jsonb.
+- **TaskService** (`backend/src/services/taskService.ts`): DB-derived Queue aus `tasks.tasks.status`, In-Memory-Settings, Recovery via Status-Update.
+- **CustomTools** (`backend/src/tools/custom/storage.ts`): JSON-Files → `custom_tools.tools`-Tabelle.
+- **Connections** (`backend/src/connections/storage.ts`): YAML-Files → `connections.user_connections` (encrypted_payload als JSON-Ciphertext-String). OAuth-States → `auth.oauth_states` mit neuem `code_verifier`-Feld fuer PKCE-Provider (z.B. YouTrack).
+- **Tables** (`backend/src/tables/storage.ts`): User-erstellte Tabellen + Rows in `tables.tables` / `tables.rows`. Templates bleiben Code-Asset im Image.
+- **Extraction Profiles** (`backend/src/extraction/profiles.ts`): YAML-Cache → `extraction.profiles` mit 5min In-Memory-TTL.
+- **Extraction Learning** (`backend/src/extraction/learning/`): YAML-Files unter `data/extraction-projects/<id>/` → `extraction.projects` + `extraction.examples` (Few-Shot-Trainings-Examples). Selection-Logik (corrections-first, recency, Token-Budget) bleibt in der App.
+- **RBAC** (`backend/src/rbac/storage.ts`): `access.yaml`-Files pro Resource → eine generische `auth.resource_access`-Tabelle mit Composite-Key (resourceType, resourceId, principalType, principalId).
+- **Generated Images** (`backend/src/services/imageStorage.ts`): Datei + JSON-Sidecar → S3-Binary (`generated-images/<id>.<ext>`) + Postgres-Metadata (`generated.images`).
+- **Export Document Tool** (`backend/src/tools/special/export-document.ts`): xlsx/pdf/docx-Buffer → S3 (`exports/<id>.<ext>`) + `generated.exports`-Row mit 7-Tage-TTL. Download-Route in `routes/chat.ts` streamt aus S3, prueft expires_at.
+- **File Tools** (`backend/src/tools/local/{file-read,file-write,file-list}.ts`): User-Dateisystem → S3 unter `users/<userId>/<path>`. Pfad-Sanitizing (`tools/local/sandbox.ts`) verhindert Path-Traversal. List leitet "Verzeichnisse" aus S3-Praefixen ab.
+- **S3-Helper erweitert** (`backend/src/storage/s3.ts`): `objectExists`, `listObjectsByPrefix` (mit automatischer Pagination).
+- **Migration 0001 additiv** (`backend/drizzle/0001_phase2_additions.sql`): `auth.oauth_states.code_verifier`, `auth.resource_access`, Umbau `extraction.projects` (alte Doc-Extraction-Spalten weg, Learning-Spalten rein), `extraction.examples`. IF-NOT-EXISTS-Idempotency fuer dev/local Re-Runs.
+- Boot lokal verifiziert (`bun run src/index.ts`): Migrations applied in 26ms, S3-Bucket erreichbar, alle Tools registriert, Task-Executor laeuft. resource_access + extraction.examples per direktem SELECT verifiziert.
+
 ## 2026-04-29
 
 ### Feature: Phase 2-Apps + Audit + Usage — alle Apps auf Postgres + S3 umgestellt

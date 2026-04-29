@@ -1,63 +1,43 @@
 /**
- * Training Examples - CRUD + Selection
+ * Training Examples — Postgres-backed (Drizzle).
  *
- * Manages training examples stored in data/extraction-projects/{id}/examples/{ex-id}.yaml
+ * Frueher `data/extraction-projects/<id>/examples/<ex-id>.yaml`, jetzt in
+ * `extraction.examples`. Few-Shot-Selection bleibt in der App (kein DB-Sort
+ * nach Score, weil corrections-first + recency unkompliziert in JS sind).
  */
 
-import { readFile, writeFile, readdir, unlink, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, resolve } from 'path';
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { eq, and, desc } from 'drizzle-orm';
+import { getDb } from '../../db';
+import { extractionExamples } from '../../db/schema/extraction';
 import type { TrainingExample } from './types';
 
-const PROJECTS_DIR = resolve(process.cwd(), '../data/extraction-projects');
-
-function examplesDir(projectId: string): string {
-  return join(PROJECTS_DIR, projectId, 'examples');
-}
-
-function exampleFile(projectId: string, exampleId: string): string {
-  return join(examplesDir(projectId), `${exampleId}.yaml`);
-}
-
-/**
- * Generate a unique example ID
- */
 function generateId(): string {
   const ts = Date.now().toString(36);
   const rand = Math.random().toString(36).substring(2, 7);
   return `ex_${ts}_${rand}`;
 }
 
-/**
- * Get all examples for a project
- */
-export async function getExamples(projectId: string): Promise<TrainingExample[]> {
-  const dir = examplesDir(projectId);
-  if (!existsSync(dir)) return [];
-
-  const files = await readdir(dir);
-  const yamlFiles = files.filter(f => f.endsWith('.yaml'));
-  const examples: TrainingExample[] = [];
-
-  for (const file of yamlFiles) {
-    try {
-      const content = await readFile(join(dir, file), 'utf-8');
-      const example = parseYaml(content) as TrainingExample;
-      if (example?.id) {
-        examples.push(example);
-      }
-    } catch (error) {
-      console.error(`[Extraction] Failed to load example ${file}:`, error);
-    }
-  }
-
-  return examples.sort((a, b) => b.created.localeCompare(a.created));
+function rowToExample(row: typeof extractionExamples.$inferSelect): TrainingExample {
+  return {
+    id: row.id,
+    created: row.createdAt,
+    source_filename: row.sourceFilename,
+    document_text: row.documentText,
+    initial_extraction: row.initialExtraction as Record<string, unknown>,
+    corrected_extraction: row.correctedExtraction as Record<string, unknown>,
+    corrections: row.corrections as TrainingExample['corrections'],
+    confirmed_correct: row.confirmedCorrect === 'true',
+  };
 }
 
-/**
- * Save a new training example
- */
+export async function getExamples(projectId: string): Promise<TrainingExample[]> {
+  const db = getDb();
+  const rows = await db.select().from(extractionExamples)
+    .where(eq(extractionExamples.projectId, projectId))
+    .orderBy(desc(extractionExamples.createdAt));
+  return rows.map(rowToExample);
+}
+
 export async function saveExample(
   projectId: string,
   data: {
@@ -65,33 +45,23 @@ export async function saveExample(
     document_text: string;
     initial_extraction: Record<string, unknown>;
     corrected_extraction: Record<string, unknown>;
-  }
+  },
 ): Promise<TrainingExample> {
-  const dir = examplesDir(projectId);
-  if (!existsSync(dir)) {
-    await mkdir(dir, { recursive: true });
-  }
-
-  // Compute corrections
   const corrections: TrainingExample['corrections'] = [];
   let confirmedCorrect = true;
-
   for (const [field, correctedValue] of Object.entries(data.corrected_extraction)) {
     const initialValue = data.initial_extraction[field];
     if (JSON.stringify(initialValue) !== JSON.stringify(correctedValue)) {
-      corrections.push({
-        field,
-        was: initialValue,
-        corrected_to: correctedValue,
-      });
+      corrections.push({ field, was: initialValue, corrected_to: correctedValue });
       confirmedCorrect = false;
     }
   }
 
   const id = generateId();
+  const now = new Date().toISOString();
   const example: TrainingExample = {
     id,
-    created: new Date().toISOString(),
+    created: now,
     source_filename: data.source_filename,
     document_text: data.document_text,
     initial_extraction: data.initial_extraction,
@@ -100,63 +70,56 @@ export async function saveExample(
     confirmed_correct: confirmedCorrect,
   };
 
-  await writeFile(exampleFile(projectId, id), stringifyYaml(example), 'utf-8');
+  const db = getDb();
+  await db.insert(extractionExamples).values({
+    id,
+    projectId,
+    sourceFilename: example.source_filename,
+    documentText: example.document_text,
+    initialExtraction: example.initial_extraction as never,
+    correctedExtraction: example.corrected_extraction as never,
+    corrections: example.corrections as never,
+    confirmedCorrect: confirmedCorrect ? 'true' : 'false',
+    createdAt: now,
+  });
   return example;
 }
 
-/**
- * Delete a training example
- */
 export async function deleteExample(projectId: string, exampleId: string): Promise<boolean> {
-  const file = exampleFile(projectId, exampleId);
-  if (!existsSync(file)) return false;
-
-  await unlink(file);
-  return true;
+  const db = getDb();
+  const res = await db.delete(extractionExamples)
+    .where(and(eq(extractionExamples.projectId, projectId), eq(extractionExamples.id, exampleId)))
+    .returning({ id: extractionExamples.id });
+  return res.length > 0;
 }
 
 /**
- * Select best examples for few-shot prompting
- *
- * Strategy:
- * - Prioritize corrections (more informative than confirmed-correct)
- * - Prefer newer examples
- * - Max 5 examples, max ~4000 token budget
- * - Truncate document_text to first 500 chars for few-shot
+ * Few-Shot-Selection — corrections-first, dann recency, max 5 / 4000 tokens.
  */
 export async function selectFewShotExamples(
   projectId: string,
   maxExamples: number = 5,
-  maxTokenBudget: number = 4000
+  maxTokenBudget: number = 4000,
 ): Promise<TrainingExample[]> {
   const all = await getExamples(projectId);
   if (all.length === 0) return [];
 
-  // Sort: corrections first, then by date (newest first)
   const sorted = [...all].sort((a, b) => {
-    // Corrections first
     if (a.corrections.length > 0 && b.corrections.length === 0) return -1;
     if (a.corrections.length === 0 && b.corrections.length > 0) return 1;
-    // Then by date (newest first)
     return b.created.localeCompare(a.created);
   });
 
   const selected: TrainingExample[] = [];
   let estimatedTokens = 0;
-
   for (const example of sorted) {
     if (selected.length >= maxExamples) break;
-
-    // Rough token estimate: ~4 chars per token
     const docSnippet = example.document_text.substring(0, 500);
     const correctedJson = JSON.stringify(example.corrected_extraction);
     const tokenEstimate = Math.ceil((docSnippet.length + correctedJson.length) / 4);
-
     if (estimatedTokens + tokenEstimate > maxTokenBudget) break;
-
     selected.push(example);
     estimatedTokens += tokenEstimate;
   }
-
   return selected;
 }

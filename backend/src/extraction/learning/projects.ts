@@ -1,91 +1,51 @@
 /**
- * Extraction Projects - YAML-based project management
+ * Extraction Projects — Postgres-backed (Drizzle).
  *
- * CRUD for extraction projects stored in data/extraction-projects/{id}/project.yaml
+ * Frueher YAML-Files unter `data/extraction-projects/<id>/project.yaml`,
+ * jetzt in `extraction.projects`. Das `learning`-Feld + Few-Shot-Examples
+ * leben mit in der DB (Examples in `extraction.examples`).
  */
 
-import { readFile, writeFile, readdir, rm, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, resolve } from 'path';
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { eq, desc } from 'drizzle-orm';
+import { getDb } from '../../db';
+import { extractionProjects } from '../../db/schema/extraction';
 import type { ExtractionProject } from './types';
 
-const PROJECTS_DIR = resolve(process.cwd(), '../data/extraction-projects');
-
-async function ensureDir(dir: string): Promise<void> {
-  if (!existsSync(dir)) {
-    await mkdir(dir, { recursive: true });
-  }
+function rowToProject(row: typeof extractionProjects.$inferSelect): ExtractionProject {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    created: row.createdAt,
+    updated: row.updatedAt,
+    fields: row.fields as ExtractionProject['fields'],
+    guidelines: row.guidelines,
+    learning: row.learning as ExtractionProject['learning'],
+  };
 }
 
-function projectDir(id: string): string {
-  return join(PROJECTS_DIR, id);
-}
-
-function projectFile(id: string): string {
-  return join(projectDir(id), 'project.yaml');
-}
-
-/**
- * Load all projects from disk
- */
 export async function getAllProjects(): Promise<ExtractionProject[]> {
-  await ensureDir(PROJECTS_DIR);
-  const entries = await readdir(PROJECTS_DIR, { withFileTypes: true });
-  const projects: ExtractionProject[] = [];
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const file = projectFile(entry.name);
-    if (!existsSync(file)) continue;
-
-    try {
-      const content = await readFile(file, 'utf-8');
-      const project = parseYaml(content) as ExtractionProject;
-      if (project?.id) {
-        projects.push(project);
-      }
-    } catch (error) {
-      console.error(`[Extraction] Failed to load project ${entry.name}:`, error);
-    }
-  }
-
-  return projects.sort((a, b) => b.updated.localeCompare(a.updated));
+  const db = getDb();
+  const rows = await db.select().from(extractionProjects).orderBy(desc(extractionProjects.updatedAt));
+  return rows.map(rowToProject);
 }
 
-/**
- * Get a single project by ID
- */
 export async function getProject(id: string): Promise<ExtractionProject | null> {
-  const file = projectFile(id);
-  if (!existsSync(file)) return null;
-
-  try {
-    const content = await readFile(file, 'utf-8');
-    return parseYaml(content) as ExtractionProject;
-  } catch {
-    return null;
-  }
+  const db = getDb();
+  const rows = await db.select().from(extractionProjects).where(eq(extractionProjects.id, id)).limit(1);
+  return rows[0] ? rowToProject(rows[0]) : null;
 }
 
-/**
- * Create a new project
- */
 export async function createProject(data: {
   name: string;
   description?: string;
   fields: ExtractionProject['fields'];
 }): Promise<ExtractionProject> {
-  // Generate ID from name
   const id = data.name
     .toLowerCase()
     .replace(/[äÄ]/g, 'ae').replace(/[öÖ]/g, 'oe').replace(/[üÜ]/g, 'ue').replace(/ß/g, 'ss')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-
-  const dir = projectDir(id);
-  await ensureDir(dir);
-  await ensureDir(join(dir, 'examples'));
 
   const now = new Date().toISOString();
   const project: ExtractionProject = {
@@ -103,40 +63,50 @@ export async function createProject(data: {
     },
   };
 
-  await writeFile(projectFile(id), stringifyYaml(project), 'utf-8');
+  const db = getDb();
+  await db.insert(extractionProjects).values({
+    id,
+    name: project.name,
+    description: project.description,
+    fields: project.fields as never,
+    guidelines: project.guidelines,
+    learning: project.learning as never,
+    createdAt: now,
+    updatedAt: now,
+  });
   console.log(`[Extraction] Created project: ${id}`);
   return project;
 }
 
-/**
- * Update an existing project
- */
 export async function updateProject(
   id: string,
-  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'guidelines' | 'learning'>>
+  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'guidelines' | 'learning'>>,
 ): Promise<ExtractionProject | null> {
-  const project = await getProject(id);
-  if (!project) return null;
-
-  const updated: ExtractionProject = {
-    ...project,
+  const existing = await getProject(id);
+  if (!existing) return null;
+  const merged: ExtractionProject = {
+    ...existing,
     ...updates,
-    id, // prevent ID change
+    id,
     updated: new Date().toISOString(),
   };
-
-  await writeFile(projectFile(id), stringifyYaml(updated), 'utf-8');
-  return updated;
+  const db = getDb();
+  await db.update(extractionProjects)
+    .set({
+      name: merged.name,
+      description: merged.description,
+      fields: merged.fields as never,
+      guidelines: merged.guidelines,
+      learning: merged.learning as never,
+      updatedAt: merged.updated,
+    })
+    .where(eq(extractionProjects.id, id));
+  return merged;
 }
 
-/**
- * Delete a project and all its examples
- */
 export async function deleteProject(id: string): Promise<boolean> {
-  const dir = projectDir(id);
-  if (!existsSync(dir)) return false;
-
-  await rm(dir, { recursive: true, force: true });
-  console.log(`[Extraction] Deleted project: ${id}`);
-  return true;
+  const db = getDb();
+  const res = await db.delete(extractionProjects).where(eq(extractionProjects.id, id)).returning({ id: extractionProjects.id });
+  if (res.length > 0) console.log(`[Extraction] Deleted project: ${id}`);
+  return res.length > 0;
 }

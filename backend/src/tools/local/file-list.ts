@@ -1,17 +1,18 @@
 /**
- * File List Tool - List files in the user's data directory
+ * File List Tool — S3-backed (Flow.swiss).
  *
- * Security: Files are sandboxed to /data/users/{userId}/
+ * Listet S3-Keys unter `users/<userId>/<path>/`. S3 hat kein Konzept von
+ * "Ordnern", deshalb leiten wir Verzeichnisse aus den Praefixen ab.
  */
 
-import { readdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
 import { LocalTool } from '../base/LocalTool';
 import type { ToolContext } from '../types';
+import { listObjectsByPrefix } from '../../storage/s3';
+import { s3Paths } from '../../storage/paths';
+import { sanitizeRelPath } from './sandbox';
 
 export class FileListTool extends LocalTool {
-  constructor(dataDir?: string) {
+  constructor() {
     super({
       name: 'file_list',
       description: 'List files in your personal data directory',
@@ -26,37 +27,39 @@ export class FileListTool extends LocalTool {
         required: [],
       },
       category: 'filesystem',
-      dataDir: dataDir || resolve(process.cwd(), '../data'),
     });
   }
 
   async execute(args: { path?: string }, context?: ToolContext): Promise<string> {
-    const { path = '.' } = args;
-
-    // userId is required for file operations
-    if (!context?.userId) {
-      return 'Fehler: Keine Benutzer-ID verfügbar';
-    }
-
+    if (!context?.userId) return 'Fehler: Keine Benutzer-ID verfügbar';
     try {
-      const fullPath = this.validateUserPath(path, context.userId);
+      const rawPath = args.path ?? '.';
+      const rel = rawPath === '.' || rawPath === '' ? '' : sanitizeRelPath(rawPath);
+      // Trailing-Slash erzwingen, sonst matcht das Prefix auch Geschwister.
+      const prefixRel = rel ? (rel.endsWith('/') ? rel : rel + '/') : '';
+      const prefix = s3Paths.userFile(context.userId, prefixRel);
+      const objects = await listObjectsByPrefix(prefix);
 
-      if (!existsSync(fullPath)) {
-        return `Fehler: Verzeichnis nicht gefunden: ${path}`;
+      // Direct-Children ableiten: alles, was nach `prefix` kommt, bis zum naechsten `/`.
+      const files = new Set<string>();
+      const dirs = new Set<string>();
+      for (const obj of objects) {
+        const tail = obj.key.slice(prefix.length);
+        const slash = tail.indexOf('/');
+        if (slash === -1) {
+          if (tail) files.add(tail);
+        } else {
+          dirs.add(tail.slice(0, slash));
+        }
       }
-
-      const entries = await readdir(fullPath, { withFileTypes: true });
-      const result = entries.map(e => {
-        const type = e.isDirectory() ? '[DIR]' : '[FILE]';
-        return `${type} ${e.name}`;
-      });
-
-      return result.length > 0 ? result.join('\n') : 'Verzeichnis ist leer';
+      const out: string[] = [];
+      for (const d of [...dirs].sort()) out.push(`[DIR] ${d}`);
+      for (const f of [...files].sort()) out.push(`[FILE] ${f}`);
+      return out.length > 0 ? out.join('\n') : 'Verzeichnis ist leer';
     } catch (error: any) {
       return `Fehler beim Auflisten des Verzeichnisses: ${error.message}`;
     }
   }
 }
 
-// Export singleton instance
 export const fileListTool = new FileListTool();

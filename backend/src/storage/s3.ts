@@ -15,6 +15,8 @@ import {
   DeleteObjectCommand,
   HeadBucketCommand,
   CreateBucketCommand,
+  ListObjectsV2Command,
+  HeadObjectCommand,
   type PutObjectCommandInput,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -84,6 +86,45 @@ export async function deleteObject(key: string): Promise<void> {
 export async function objectSignedUrl(key: string, ttlSec = 300): Promise<string> {
   const client = getS3();
   return getSignedUrl(client, new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn: ttlSec });
+}
+
+export async function objectExists(key: string): Promise<boolean> {
+  const client = getS3();
+  try {
+    await client.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
+    return true;
+  } catch (err: any) {
+    const status = err?.$metadata?.httpStatusCode ?? 0;
+    if (status === 404 || err?.name === 'NotFound' || err?.name === 'NoSuchKey') return false;
+    throw err;
+  }
+}
+
+/**
+ * List S3-Keys mit Prefix. Gibt {key, size, lastModified} zurueck.
+ * Pagination wird automatisch abgewickelt.
+ */
+export async function listObjectsByPrefix(prefix: string): Promise<Array<{ key: string; size: number; lastModified?: string }>> {
+  const client = getS3();
+  const out: Array<{ key: string; size: number; lastModified?: string }> = [];
+  let continuationToken: string | undefined;
+  do {
+    const res: any = await client.send(new ListObjectsV2Command({
+      Bucket: BUCKET,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    }));
+    for (const obj of res.Contents ?? []) {
+      if (!obj.Key) continue;
+      out.push({
+        key: obj.Key,
+        size: obj.Size ?? 0,
+        lastModified: obj.LastModified ? new Date(obj.LastModified).toISOString() : undefined,
+      });
+    }
+    continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return out;
 }
 
 /**

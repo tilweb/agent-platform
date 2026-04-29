@@ -1,14 +1,16 @@
 /**
- * Task Service
+ * Task Service — Postgres-backed (Drizzle).
  *
- * Manages background tasks including CRUD operations and queue management.
- * Tasks are persisted as YAML files in data/tasks/
+ * Frueher: YAML-Files unter data/tasks/ + queue.yaml mit aktiver/pending-Liste.
+ * Jetzt: Eine Row pro Task in `tasks.tasks`. Die Queue ist abgeleitet aus
+ * dem Status: pending/queued = pending-Queue, running/in_progress = active.
+ * Queue-Settings sind In-Memory mit konstanten Defaults — Override via
+ * App-Registry-Metadata nachruestbar.
  */
 
-import { readFile, writeFile, readdir, unlink, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
-import * as yaml from 'yaml';
+import { and, eq, desc, inArray, gte, lte, count, lt } from 'drizzle-orm';
+import { getDb } from '../db';
+import { tasks as tasksTable, taskResults as taskResultsTable } from '../db/schema/tasks';
 
 // ============================================
 // Types
@@ -41,8 +43,8 @@ export interface TaskConfig {
 
 export interface TaskSchedule {
   enabled: boolean;
-  cron?: string;  // Cron expression
-  run_at?: string;  // ISO date for one-time scheduled tasks
+  cron?: string;
+  run_at?: string;
   last_run?: string;
   next_run?: string;
 }
@@ -53,44 +55,26 @@ export interface Task {
   description: string;
   type: TaskType;
   priority: TaskPriority;
-
-  // Owner
-  userId?: string;  // User who owns this task
-
-  // Origin
+  userId?: string;
   created_by: 'user' | 'agent' | 'scheduled' | 'supervisor';
   source_session_id?: string;
   trigger: string;
-
-  // Timestamps
   created_at: string;
   updated_at: string;
   started_at?: string;
   completed_at?: string;
-
-  // Status
   status: TaskStatus;
   progress: number;
   current_step: number;
   total_steps: number;
   error?: string;
   retry_count?: number;
-
-  // Execution
   assigned_agent?: string;
   plan_file?: string;
-
-  // Steps
   steps: TaskStep[];
-
-  // Result
   result_file?: string;
   result_summary?: string;
-
-  // Config
   config: TaskConfig;
-
-  // Scheduling
   schedule?: TaskSchedule;
 }
 
@@ -121,7 +105,7 @@ export interface CreateTaskParams {
   type: TaskType;
   priority?: TaskPriority;
   trigger: string;
-  userId?: string;  // Owner of the task
+  userId?: string;
   created_by?: 'user' | 'agent' | 'scheduled' | 'supervisor';
   source_session_id?: string;
   assigned_agent?: string;
@@ -134,7 +118,7 @@ export interface TaskFilter {
   status?: TaskStatus | TaskStatus[];
   type?: TaskType;
   priority?: TaskPriority;
-  userId?: string;  // Filter by owner
+  userId?: string;
   created_after?: string;
   created_before?: string;
   limit?: number;
@@ -184,9 +168,6 @@ export interface QueueStatus {
 // Constants
 // ============================================
 
-const TASKS_DIR = resolve(process.cwd(), '../data/tasks');
-const QUEUE_FILE = resolve(TASKS_DIR, 'queue.yaml');
-
 const DEFAULT_CONFIG: TaskConfig = {
   max_iterations: 50,
   timeout_minutes: 30,
@@ -201,8 +182,18 @@ const PRIORITY_ORDER: Record<TaskPriority, number> = {
   low: 3,
 };
 
+const ACTIVE_STATUSES: TaskStatus[] = ['running', 'in_progress'];
+const PENDING_STATUSES: TaskStatus[] = ['pending', 'queued'];
+
+const queueSettings: QueueSettings = {
+  max_concurrent_tasks: 2,
+  default_priority: 'normal',
+  default_timeout_minutes: 30,
+  paused: false,
+};
+
 // ============================================
-// Helper Functions
+// Helpers
 // ============================================
 
 function generateTaskId(): string {
@@ -211,65 +202,138 @@ function generateTaskId(): string {
   return `task_${timestamp}${random}`;
 }
 
-function getTaskFilePath(taskId: string): string {
-  return resolve(TASKS_DIR, `${taskId}.yaml`);
+interface TaskPayload {
+  title: string;
+  description: string;
+  type: TaskType;
+  priority: TaskPriority;
+  created_by: 'user' | 'agent' | 'scheduled' | 'supervisor';
+  source_session_id?: string;
+  trigger: string;
+  progress: number;
+  current_step: number;
+  total_steps: number;
+  error?: string;
+  assigned_agent?: string;
+  plan_file?: string;
+  steps: TaskStep[];
+  result_file?: string;
+  result_summary?: string;
+  config: TaskConfig;
+  schedule?: TaskSchedule;
 }
 
-async function ensureTasksDir(): Promise<void> {
-  if (!existsSync(TASKS_DIR)) {
-    await mkdir(TASKS_DIR, { recursive: true });
-  }
+function rowToTask(row: typeof tasksTable.$inferSelect): Task {
+  const payload = (row.payload ?? {}) as Partial<TaskPayload>;
+  return {
+    id: row.id,
+    title: payload.title ?? '',
+    description: payload.description ?? '',
+    type: payload.type ?? 'simple',
+    priority: payload.priority ?? 'normal',
+    userId: row.userId ?? undefined,
+    created_by: payload.created_by ?? 'user',
+    source_session_id: payload.source_session_id,
+    trigger: payload.trigger ?? '',
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+    started_at: row.startedAt ?? undefined,
+    completed_at: row.finishedAt ?? undefined,
+    status: row.status as TaskStatus,
+    progress: payload.progress ?? 0,
+    current_step: payload.current_step ?? 0,
+    total_steps: payload.total_steps ?? 0,
+    error: payload.error,
+    retry_count: row.attempts ?? undefined,
+    assigned_agent: payload.assigned_agent,
+    plan_file: payload.plan_file,
+    steps: payload.steps ?? [],
+    result_file: payload.result_file,
+    result_summary: payload.result_summary,
+    config: payload.config ?? DEFAULT_CONFIG,
+    schedule: payload.schedule,
+  };
+}
+
+function taskToRow(task: Task) {
+  const payload: TaskPayload = {
+    title: task.title,
+    description: task.description,
+    type: task.type,
+    priority: task.priority,
+    created_by: task.created_by,
+    source_session_id: task.source_session_id,
+    trigger: task.trigger,
+    progress: task.progress,
+    current_step: task.current_step,
+    total_steps: task.total_steps,
+    error: task.error,
+    assigned_agent: task.assigned_agent,
+    plan_file: task.plan_file,
+    steps: task.steps,
+    result_file: task.result_file,
+    result_summary: task.result_summary,
+    config: task.config,
+    schedule: task.schedule,
+  };
+  return {
+    id: task.id,
+    userId: task.userId ?? null,
+    status: task.status,
+    kind: task.type,
+    payload: payload as never,
+    attempts: task.retry_count ?? 0,
+    maxAttempts: task.config.max_retries ?? 3,
+    scheduledAt: task.schedule?.run_at ?? null,
+    startedAt: task.started_at ?? null,
+    finishedAt: task.completed_at ?? null,
+    createdAt: task.created_at,
+    updatedAt: task.updated_at,
+  };
 }
 
 // ============================================
-// Queue Management
+// Queue Management (in-memory settings, DB-derived state)
 // ============================================
 
 export async function loadQueue(): Promise<TaskQueue> {
-  await ensureTasksDir();
+  const db = getDb();
+  const activeRows = await db.select().from(tasksTable).where(inArray(tasksTable.status, ACTIVE_STATUSES));
+  const pendingRows = await db.select().from(tasksTable).where(inArray(tasksTable.status, PENDING_STATUSES));
 
-  if (!existsSync(QUEUE_FILE)) {
-    const defaultQueue: TaskQueue = {
-      updated_at: '',
-      active: [],
-      pending: [],
-      settings: {
-        max_concurrent_tasks: 2,
-        default_priority: 'normal',
-        default_timeout_minutes: 30,
-        paused: false,
-      },
-    };
-    await saveQueue(defaultQueue);
-    return defaultQueue;
-  }
+  const active: QueueEntry[] = activeRows.map(row => ({
+    task_id: row.id,
+    priority: ((row.payload ?? {}) as Partial<TaskPayload>).priority ?? 'normal',
+    started_at: row.startedAt ?? undefined,
+  }));
 
-  const content = await readFile(QUEUE_FILE, 'utf-8');
-  return yaml.parse(content) as TaskQueue;
+  const pending: QueueEntry[] = pendingRows
+    .map(row => ({
+      task_id: row.id,
+      priority: ((row.payload ?? {}) as Partial<TaskPayload>).priority ?? 'normal',
+      queued_at: row.updatedAt,
+    }))
+    .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
+
+  return {
+    updated_at: new Date().toISOString(),
+    active,
+    pending,
+    settings: { ...queueSettings },
+  };
 }
 
-export async function saveQueue(queue: TaskQueue): Promise<void> {
-  await ensureTasksDir();
-  queue.updated_at = new Date().toISOString();
-
-  const yamlContent = yaml.stringify(queue, {
-    indent: 2,
-    lineWidth: 0,
-  });
-
-  await writeFile(QUEUE_FILE, yamlContent, 'utf-8');
+export async function saveQueue(_queue: TaskQueue): Promise<void> {
+  /* Queue ist DB-derived — kein separates Persistieren mehr. */
 }
 
 export async function getQueueSettings(): Promise<QueueSettings> {
-  const queue = await loadQueue();
-  return queue.settings;
+  return { ...queueSettings };
 }
 
 export async function updateQueueSettings(updates: Partial<QueueSettings>): Promise<QueueSettings> {
-  const queue = await loadQueue();
-  queue.settings = { ...queue.settings, ...updates };
-  await saveQueue(queue);
-  return queue.settings;
+  Object.assign(queueSettings, updates);
+  return { ...queueSettings };
 }
 
 // ============================================
@@ -277,18 +341,14 @@ export async function updateQueueSettings(updates: Partial<QueueSettings>): Prom
 // ============================================
 
 export async function createTask(params: CreateTaskParams): Promise<Task> {
-  await ensureTasksDir();
-
   const now = new Date().toISOString();
-  const queue = await loadQueue();
-
   const task: Task = {
     id: generateTaskId(),
     title: params.title,
     description: params.description || '',
     type: params.type,
-    priority: params.priority || queue.settings.default_priority,
-    userId: params.userId,  // Store owner
+    priority: params.priority || queueSettings.default_priority,
+    userId: params.userId,
     created_by: params.created_by || 'user',
     source_session_id: params.source_session_id,
     trigger: params.trigger,
@@ -306,113 +366,91 @@ export async function createTask(params: CreateTaskParams): Promise<Task> {
     })) || [],
     config: {
       ...DEFAULT_CONFIG,
-      timeout_minutes: queue.settings.default_timeout_minutes,
+      timeout_minutes: queueSettings.default_timeout_minutes,
       ...params.config,
     },
     schedule: params.schedule,
   };
-
   await saveTask(task);
   return task;
 }
 
 export async function saveTask(task: Task): Promise<void> {
-  await ensureTasksDir();
   task.updated_at = new Date().toISOString();
-
-  const yamlContent = yaml.stringify(task, {
-    indent: 2,
-    lineWidth: 0,
+  const db = getDb();
+  const row = taskToRow(task);
+  await db.insert(tasksTable).values(row).onConflictDoUpdate({
+    target: tasksTable.id,
+    set: {
+      userId: row.userId,
+      status: row.status,
+      kind: row.kind,
+      payload: row.payload,
+      attempts: row.attempts,
+      maxAttempts: row.maxAttempts,
+      scheduledAt: row.scheduledAt,
+      startedAt: row.startedAt,
+      finishedAt: row.finishedAt,
+      updatedAt: row.updatedAt,
+    },
   });
-
-  await writeFile(getTaskFilePath(task.id), yamlContent, 'utf-8');
 }
 
 export async function getTask(taskId: string): Promise<Task | null> {
-  const filePath = getTaskFilePath(taskId);
-
-  if (!existsSync(filePath)) {
-    return null;
-  }
-
-  const content = await readFile(filePath, 'utf-8');
-  return yaml.parse(content) as Task;
+  const db = getDb();
+  const rows = await db.select().from(tasksTable).where(eq(tasksTable.id, taskId)).limit(1);
+  return rows[0] ? rowToTask(rows[0]) : null;
 }
 
 export async function listTasks(filter?: TaskFilter): Promise<TaskListResult> {
-  await ensureTasksDir();
-
-  const files = await readdir(TASKS_DIR);
-  const taskFiles = files.filter(f => f.startsWith('task_') && f.endsWith('.yaml'));
-
-  const tasks: Task[] = [];
-
-  for (const file of taskFiles) {
-    const content = await readFile(resolve(TASKS_DIR, file), 'utf-8');
-    const task = yaml.parse(content) as Task;
-    tasks.push(task);
-  }
-
-  // Filter by userId first for stats calculation (user should only see their own stats)
-  const userTasks = filter?.userId ? tasks.filter(t => t.userId === filter.userId) : tasks;
-
-  // Calculate stats for user's tasks
-  const stats: TaskStats = {
-    total: userTasks.length,
-    pending: userTasks.filter(t => t.status === 'pending' || t.status === 'queued').length,
-    running: userTasks.filter(t => t.status === 'running' || t.status === 'in_progress').length,
-    completed: userTasks.filter(t => t.status === 'completed').length,
-    failed: userTasks.filter(t => t.status === 'failed').length,
-    cancelled: userTasks.filter(t => t.status === 'cancelled').length,
-  };
-
-  // Apply filters
-  let filtered = tasks;
-
-  // Filter by userId first (most important for multi-user isolation)
-  if (filter?.userId) {
-    filtered = filtered.filter(t => t.userId === filter.userId);
-  }
-
+  const db = getDb();
+  const conditions = [];
+  if (filter?.userId) conditions.push(eq(tasksTable.userId, filter.userId));
   if (filter?.status) {
     const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
-    filtered = filtered.filter(t => statuses.includes(t.status));
+    conditions.push(inArray(tasksTable.status, statuses));
   }
+  if (filter?.type) conditions.push(eq(tasksTable.kind, filter.type));
+  if (filter?.created_after) conditions.push(gte(tasksTable.createdAt, filter.created_after));
+  if (filter?.created_before) conditions.push(lte(tasksTable.createdAt, filter.created_before));
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  if (filter?.type) {
-    filtered = filtered.filter(t => t.type === filter.type);
-  }
-
-  if (filter?.priority) {
-    filtered = filtered.filter(t => t.priority === filter.priority);
-  }
-
-  if (filter?.created_after) {
-    const after = new Date(filter.created_after).getTime();
-    filtered = filtered.filter(t => new Date(t.created_at).getTime() >= after);
-  }
-
-  if (filter?.created_before) {
-    const before = new Date(filter.created_before).getTime();
-    filtered = filtered.filter(t => new Date(t.created_at).getTime() <= before);
-  }
-
-  // Sort by created_at descending (newest first)
-  filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-  const total = filtered.length;
   const offset = filter?.offset || 0;
   const limit = filter?.limit || 20;
 
-  // Apply pagination
-  const paginated = filtered.slice(offset, offset + limit);
+  const rows = await db.select().from(tasksTable).where(whereClause).orderBy(desc(tasksTable.createdAt)).limit(limit).offset(offset);
+  const tasks = rows.map(rowToTask);
+  const filtered = filter?.priority ? tasks.filter(t => t.priority === filter.priority) : tasks;
+
+  const statsConditions = filter?.userId ? [eq(tasksTable.userId, filter.userId)] : [];
+  const totalRow = await db.select({ n: count() }).from(tasksTable).where(statsConditions.length ? and(...statsConditions) : undefined);
+
+  const statsByStatus: Record<string, number> = {};
+  const statsRows = await db
+    .select({ status: tasksTable.status, n: count() })
+    .from(tasksTable)
+    .where(statsConditions.length ? and(...statsConditions) : undefined)
+    .groupBy(tasksTable.status);
+  for (const r of statsRows) statsByStatus[r.status] = r.n;
+
+  const stats: TaskStats = {
+    total: totalRow[0]?.n ?? 0,
+    pending: (statsByStatus.pending || 0) + (statsByStatus.queued || 0),
+    running: (statsByStatus.running || 0) + (statsByStatus.in_progress || 0),
+    completed: statsByStatus.completed || 0,
+    failed: statsByStatus.failed || 0,
+    cancelled: statsByStatus.cancelled || 0,
+  };
+
+  const totalFilteredRow = await db.select({ n: count() }).from(tasksTable).where(whereClause);
+  const totalFiltered = totalFilteredRow[0]?.n ?? 0;
 
   return {
-    tasks: paginated,
-    total,
+    tasks: filtered,
+    total: totalFiltered,
     limit,
     offset,
-    hasMore: offset + limit < total,
+    hasMore: offset + limit < totalFiltered,
     stats,
   };
 }
@@ -420,54 +458,30 @@ export async function listTasks(filter?: TaskFilter): Promise<TaskListResult> {
 export async function updateTask(taskId: string, updates: Partial<Task>): Promise<Task | null> {
   const task = await getTask(taskId);
   if (!task) return null;
-
-  const updated = { ...task, ...updates, id: task.id }; // Preserve ID
+  const updated = { ...task, ...updates, id: task.id };
   await saveTask(updated);
   return updated;
 }
 
 export async function deleteTask(taskId: string): Promise<boolean> {
-  const filePath = getTaskFilePath(taskId);
-
-  if (!existsSync(filePath)) {
-    return false;
-  }
-
-  // Remove from queue if present
-  const queue = await loadQueue();
-  queue.active = queue.active.filter(e => e.task_id !== taskId);
-  queue.pending = queue.pending.filter(e => e.task_id !== taskId);
-  await saveQueue(queue);
-
-  // Delete task file
-  await unlink(filePath);
-  return true;
+  const db = getDb();
+  const res = await db.delete(tasksTable).where(eq(tasksTable.id, taskId)).returning({ id: tasksTable.id });
+  return res.length > 0;
 }
 
 // ============================================
-// Task Status Updates
+// Status Updates
 // ============================================
 
 export async function updateTaskStatus(taskId: string, status: TaskStatus, error?: string): Promise<Task | null> {
   const task = await getTask(taskId);
   if (!task) return null;
-
   task.status = status;
   task.error = error;
-
-  if (status === 'in_progress' && !task.started_at) {
-    task.started_at = new Date().toISOString();
-  }
-
+  if (status === 'in_progress' && !task.started_at) task.started_at = new Date().toISOString();
   if (status === 'completed' || status === 'failed' || status === 'cancelled') {
     task.completed_at = new Date().toISOString();
-
-    // Remove from queue
-    const queue = await loadQueue();
-    queue.active = queue.active.filter(e => e.task_id !== taskId);
-    await saveQueue(queue);
   }
-
   await saveTask(task);
   return task;
 }
@@ -475,36 +489,20 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus, error
 export async function updateTaskProgress(taskId: string, progress: TaskProgress): Promise<Task | null> {
   const task = await getTask(taskId);
   if (!task) return null;
-
   task.progress = progress.progress;
-
-  if (progress.current_step !== undefined) {
-    task.current_step = progress.current_step;
-  }
-
+  if (progress.current_step !== undefined) task.current_step = progress.current_step;
   if (progress.step_status) {
     const step = task.steps.find(s => s.id === progress.step_status!.step_id);
     if (step) {
       step.status = progress.step_status.status;
-
-      if (progress.step_status.status === 'in_progress') {
-        step.started_at = new Date().toISOString();
-      }
-
+      if (progress.step_status.status === 'in_progress') step.started_at = new Date().toISOString();
       if (progress.step_status.status === 'completed' || progress.step_status.status === 'failed') {
         step.completed_at = new Date().toISOString();
       }
-
-      if (progress.step_status.output) {
-        step.output = progress.step_status.output;
-      }
-
-      if (progress.step_status.error) {
-        step.error = progress.step_status.error;
-      }
+      if (progress.step_status.output) step.output = progress.step_status.output;
+      if (progress.step_status.error) step.error = progress.step_status.error;
     }
   }
-
   await saveTask(task);
   return task;
 }
@@ -512,10 +510,8 @@ export async function updateTaskProgress(taskId: string, progress: TaskProgress)
 export async function setTaskResult(taskId: string, resultFile: string, summary?: string): Promise<Task | null> {
   const task = await getTask(taskId);
   if (!task) return null;
-
   task.result_file = resultFile;
   task.result_summary = summary;
-
   await saveTask(task);
   return task;
 }
@@ -526,125 +522,51 @@ export async function setTaskResult(taskId: string, resultFile: string, summary?
 
 export async function enqueueTask(taskId: string, priority?: TaskPriority): Promise<void> {
   const task = await getTask(taskId);
-  if (!task) {
-    throw new Error(`Task ${taskId} not found`);
-  }
-
-  const queue = await loadQueue();
-  const taskPriority = priority || task.priority;
-
-  // Check if already in queue
-  const inActive = queue.active.some(e => e.task_id === taskId);
-  const inPending = queue.pending.some(e => e.task_id === taskId);
-
-  if (inActive || inPending) {
-    return; // Already queued
-  }
-
-  // Add to pending queue
-  const entry: QueueEntry = {
-    task_id: taskId,
-    priority: taskPriority,
-    queued_at: new Date().toISOString(),
-  };
-
-  queue.pending.push(entry);
-
-  // Sort pending by priority
-  queue.pending.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
-
-  // Update task status
+  if (!task) throw new Error(`Task ${taskId} not found`);
+  if (task.status === 'queued' || task.status === 'in_progress' || task.status === 'running') return;
+  if (priority) task.priority = priority;
   task.status = 'queued';
   await saveTask(task);
-
-  await saveQueue(queue);
 }
 
 export async function dequeueNextTask(): Promise<Task | null> {
-  const queue = await loadQueue();
+  if (queueSettings.paused) return null;
+  const db = getDb();
+  const activeRow = await db.select({ n: count() }).from(tasksTable).where(inArray(tasksTable.status, ACTIVE_STATUSES));
+  if ((activeRow[0]?.n ?? 0) >= queueSettings.max_concurrent_tasks) return null;
 
-  // Check if we can run more tasks
-  if (queue.settings.paused) {
-    return null;
-  }
+  const pendingRows = await db.select().from(tasksTable).where(inArray(tasksTable.status, PENDING_STATUSES));
+  if (pendingRows.length === 0) return null;
+  const sorted = pendingRows.map(rowToTask).sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
+  const next = sorted[0]!;
 
-  if (queue.active.length >= queue.settings.max_concurrent_tasks) {
-    return null;
-  }
-
-  if (queue.pending.length === 0) {
-    return null;
-  }
-
-  // Get next task (already sorted by priority)
-  const entry = queue.pending.shift()!;
-  const task = await getTask(entry.task_id);
-
-  if (!task) {
-    // Task was deleted, try next
-    await saveQueue(queue);
-    return dequeueNextTask();
-  }
-
-  // Move to active
-  queue.active.push({
-    task_id: entry.task_id,
-    priority: entry.priority,
-    started_at: new Date().toISOString(),
-  });
-
-  await saveQueue(queue);
-
-  // Update task status
-  task.status = 'in_progress';
-  task.started_at = new Date().toISOString();
-  await saveTask(task);
-
-  return task;
+  next.status = 'in_progress';
+  next.started_at = new Date().toISOString();
+  await saveTask(next);
+  return next;
 }
 
 export async function removeFromQueue(taskId: string): Promise<void> {
-  const queue = await loadQueue();
-
-  queue.active = queue.active.filter(e => e.task_id !== taskId);
-  queue.pending = queue.pending.filter(e => e.task_id !== taskId);
-
-  await saveQueue(queue);
+  void taskId; /* Queue ist DB-derived; Caller setzt status um */
 }
 
 export async function getQueueStatus(): Promise<QueueStatus> {
   const queue = await loadQueue();
-
   const activeTasks: QueueStatus['active_tasks'] = [];
   const pendingTasks: QueueStatus['pending_tasks'] = [];
-
   for (const entry of queue.active) {
     const task = await getTask(entry.task_id);
-    if (task) {
-      activeTasks.push({
-        id: task.id,
-        title: task.title,
-        progress: task.progress,
-      });
-    }
+    if (task) activeTasks.push({ id: task.id, title: task.title, progress: task.progress });
   }
-
   for (const entry of queue.pending) {
     const task = await getTask(entry.task_id);
-    if (task) {
-      pendingTasks.push({
-        id: task.id,
-        title: task.title,
-        priority: entry.priority,
-      });
-    }
+    if (task) pendingTasks.push({ id: task.id, title: task.title, priority: entry.priority });
   }
-
   return {
     active_count: queue.active.length,
     pending_count: queue.pending.length,
-    max_concurrent: queue.settings.max_concurrent_tasks,
-    paused: queue.settings.paused,
+    max_concurrent: queueSettings.max_concurrent_tasks,
+    paused: queueSettings.paused,
     active_tasks: activeTasks,
     pending_tasks: pendingTasks,
   };
@@ -657,70 +579,41 @@ export async function getQueueStatus(): Promise<QueueStatus> {
 export async function cancelTask(taskId: string): Promise<Task | null> {
   const task = await getTask(taskId);
   if (!task) return null;
-
-  // Only cancel if not already completed
-  if (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') {
-    return task;
-  }
-
-  await removeFromQueue(taskId);
-
+  if (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') return task;
   task.status = 'cancelled';
   task.completed_at = new Date().toISOString();
   await saveTask(task);
-
   return task;
 }
 
 export async function pauseTask(taskId: string): Promise<Task | null> {
   const task = await getTask(taskId);
   if (!task) return null;
-
-  if (task.status !== 'in_progress') {
-    return task;
-  }
-
+  if (task.status !== 'in_progress') return task;
   task.status = 'paused';
   await saveTask(task);
-
-  // Keep in active queue but mark as paused
   return task;
 }
 
 export async function resumeTask(taskId: string): Promise<Task | null> {
   const task = await getTask(taskId);
   if (!task) return null;
-
-  if (task.status !== 'paused') {
-    return task;
-  }
-
+  if (task.status !== 'paused') return task;
   task.status = 'in_progress';
   await saveTask(task);
-
   return task;
 }
 
 export async function retryTask(taskId: string): Promise<Task | null> {
   const task = await getTask(taskId);
   if (!task) return null;
-
-  // Only retry failed or cancelled tasks
-  if (!['failed', 'cancelled'].includes(task.status)) {
-    return task;
-  }
-
-  // Check max retries
+  if (!['failed', 'cancelled'].includes(task.status)) return task;
   const maxRetries = task.config.max_retries ?? 3;
   if ((task.retry_count || 0) >= maxRetries) {
     console.warn(`Task ${taskId} has exceeded max retries (${maxRetries})`);
     return task;
   }
-
-  // Increment retry count
   task.retry_count = (task.retry_count || 0) + 1;
-
-  // Reset task state
   task.status = 'pending';
   task.progress = 0;
   task.current_step = 0;
@@ -729,8 +622,6 @@ export async function retryTask(taskId: string): Promise<Task | null> {
   task.completed_at = undefined;
   task.result_file = undefined;
   task.result_summary = undefined;
-
-  // Reset step states
   task.steps = task.steps.map(step => ({
     ...step,
     status: 'pending' as const,
@@ -739,51 +630,28 @@ export async function retryTask(taskId: string): Promise<Task | null> {
     error: undefined,
     output: undefined,
   }));
-
   await saveTask(task);
-
-  // Re-enqueue
   await enqueueTask(taskId, task.priority);
-
   return task;
 }
 
-/**
- * Schedule automatic retry with exponential backoff
- */
 export async function scheduleRetry(taskId: string, error: string): Promise<boolean> {
   const task = await getTask(taskId);
   if (!task) return false;
-
-  // Check if auto-retry is enabled
-  if (!task.config.auto_retry_on_failure) {
-    return false;
-  }
-
-  // Check max retries
+  if (!task.config.auto_retry_on_failure) return false;
   const maxRetries = task.config.max_retries ?? 3;
   const currentRetries = task.retry_count || 0;
-
   if (currentRetries >= maxRetries) {
     console.log(`Task ${taskId} exceeded max retries, not scheduling retry`);
     return false;
   }
-
-  // Calculate delay with exponential backoff (30s, 1m, 2m, 4m, ...)
-  const baseDelay = 30000; // 30 seconds
+  void error;
+  const baseDelay = 30000;
   const delay = baseDelay * Math.pow(2, currentRetries);
-
   console.log(`Scheduling retry for task ${taskId} in ${delay / 1000}s (attempt ${currentRetries + 1}/${maxRetries})`);
-
-  // Schedule retry
   setTimeout(async () => {
-    try {
-      await retryTask(taskId);
-    } catch (err) {
-      console.error(`Failed to retry task ${taskId}:`, err);
-    }
+    try { await retryTask(taskId); } catch (err) { console.error(`Failed to retry task ${taskId}:`, err); }
   }, delay);
-
   return true;
 }
 
@@ -800,22 +668,13 @@ export async function checkScheduledTasks(): Promise<Task[]> {
   const scheduledTasks = await getScheduledTasks();
   const now = new Date();
   const tasksToRun: Task[] = [];
-
   for (const task of scheduledTasks) {
     if (!task.schedule) continue;
-
-    // One-time scheduled task
     if (task.schedule.run_at) {
       const runAt = new Date(task.schedule.run_at);
-      if (runAt <= now && task.status === 'pending') {
-        tasksToRun.push(task);
-      }
+      if (runAt <= now && task.status === 'pending') tasksToRun.push(task);
     }
-
-    // Cron-based scheduling would need a cron parser library
-    // For now, we'll skip cron support and add it later if needed
   }
-
   return tasksToRun;
 }
 
@@ -823,66 +682,38 @@ export async function checkScheduledTasks(): Promise<Task[]> {
 // Cleanup
 // ============================================
 
-export async function cleanupOldTasks(olderThanDays: number = 30): Promise<number> {
-  const result = await listTasks();
+export async function cleanupOldTasks(olderThanDays = 30): Promise<number> {
+  const db = getDb();
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - olderThanDays);
-
-  let deleted = 0;
-
-  for (const task of result.tasks) {
-    if (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') {
-      const completedAt = task.completed_at ? new Date(task.completed_at) : new Date(task.created_at);
-      if (completedAt < cutoff) {
-        await deleteTask(task.id);
-        deleted++;
-      }
-    }
-  }
-
-  return deleted;
+  const cutoffIso = cutoff.toISOString();
+  const res = await db
+    .delete(tasksTable)
+    .where(and(
+      inArray(tasksTable.status, ['completed', 'failed', 'cancelled']),
+      lt(tasksTable.createdAt, cutoffIso),
+    ))
+    .returning({ id: tasksTable.id });
+  return res.length;
 }
 
 // ============================================
-// Recovery (for server restart)
+// Recovery (server restart)
 // ============================================
 
 export async function recoverTasks(): Promise<{ recovered: number; failed: number }> {
-  const queue = await loadQueue();
+  const db = getDb();
+  const orphans = await db.select().from(tasksTable).where(inArray(tasksTable.status, ACTIVE_STATUSES));
   let recovered = 0;
-  let failed = 0;
-
-  // Check active tasks - they were interrupted
-  for (const entry of queue.active) {
-    const task = await getTask(entry.task_id);
-    if (!task) {
-      failed++;
-      continue;
-    }
-
-    // Re-queue the task to resume
-    task.status = 'queued';
-    await saveTask(task);
-
-    // Move back to pending queue
-    queue.pending.unshift({
-      task_id: entry.task_id,
-      priority: entry.priority,
-      queued_at: new Date().toISOString(),
-    });
-
+  for (const row of orphans) {
+    await db
+      .update(tasksTable)
+      .set({ status: 'queued', updatedAt: new Date().toISOString() })
+      .where(eq(tasksTable.id, row.id));
     recovered++;
   }
-
-  // Clear active queue
-  queue.active = [];
-
-  // Sort pending by priority
-  queue.pending.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
-
-  await saveQueue(queue);
-
-  console.log(`Task recovery: ${recovered} tasks re-queued, ${failed} tasks not found`);
-
-  return { recovered, failed };
+  console.log(`Task recovery: ${recovered} tasks re-queued, 0 tasks not found`);
+  return { recovered, failed: 0 };
 }
+
+export { taskResultsTable };

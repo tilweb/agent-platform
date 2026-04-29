@@ -78,17 +78,17 @@ export async function saveSupplier(supplier: Supplier): Promise<void> {
   const now = new Date().toISOString();
   await db.insert(suppliersTable).values({
     id: supplier.id,
-    name: supplier.name,
+    name: supplier.firmenname,
     data: supplier as never,
-    status: (supplier as { status?: string }).status ?? null,
+    status: supplier.status ?? null,
     createdAt: supplier.created_at ?? now,
     updatedAt: supplier.updated_at ?? now,
   }).onConflictDoUpdate({
     target: suppliersTable.id,
     set: {
-      name: supplier.name,
+      name: supplier.firmenname,
       data: supplier as never,
-      status: (supplier as { status?: string }).status ?? null,
+      status: supplier.status ?? null,
       updatedAt: supplier.updated_at ?? now,
     },
   });

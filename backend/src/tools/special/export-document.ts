@@ -5,9 +5,6 @@
  * Documents are saved to a temporary location and a download URL is returned.
  */
 
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, resolve } from 'path';
 import type { Tool, ToolDefinition, ToolContext } from '../types';
 import {
   generateDocument,
@@ -15,15 +12,25 @@ import {
   type DocumentSection,
   type DocumentFormat,
 } from '../../services/documentGenerator';
-
-// Directory for temporary exports
-const EXPORTS_DIR = resolve(process.cwd(), '../data/exports');
+import { putObject } from '../../storage/s3';
+import { s3Paths } from '../../storage/paths';
+import { getDb } from '../../db';
+import { exports as exportsTable } from '../../db/schema/generated';
 
 interface ExportDocumentArgs {
   title: string;
   format: DocumentFormat;
   sections: DocumentSection[];
   metadata?: Record<string, string>;
+}
+
+function mimeForFormat(format: DocumentFormat): string {
+  switch (format) {
+    case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'pdf':  return 'application/pdf';
+    default:     return 'application/octet-stream';
+  }
 }
 
 /**
@@ -159,12 +166,6 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
     }
 
     try {
-      // Ensure exports directory exists
-      if (!existsSync(EXPORTS_DIR)) {
-        await mkdir(EXPORTS_DIR, { recursive: true });
-      }
-
-      // Build document data
       const documentData: DocumentData = {
         title: title.trim(),
         metadata: {
@@ -174,21 +175,32 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
         sections: sections as DocumentSection[],
       };
 
-      // Generate document
       const buffer = await generateDocument(documentData, format);
 
-      // Create filename with timestamp
       const timestamp = Date.now();
       const slug = slugify(title) || 'dokument';
       const filename = `${slug}_${timestamp}.${format}`;
-      const filepath = join(EXPORTS_DIR, filename);
+      const exportId = filename;
+      const s3Key = s3Paths.exportFile(`${slug}_${timestamp}`, format);
 
-      // Save to file
-      await writeFile(filepath, buffer);
+      await putObject(s3Key, buffer, mimeForFormat(format));
 
-      // Build download URL
+      const userId = (context as { userId?: string } | undefined)?.userId ?? null;
+      // 7-Tage-TTL — passt zum bisherigen "temp"-Charakter der Exports.
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const db = getDb();
+      await db.insert(exportsTable).values({
+        id: exportId,
+        userId,
+        kind: format,
+        filename,
+        s3Key,
+        expiresAt,
+        metadata: { title: title.trim() } as never,
+      });
+
       const downloadUrl = `/api/exports/download/${filename}`;
-
       return JSON.stringify({
         type: 'exported_document',
         success: true,

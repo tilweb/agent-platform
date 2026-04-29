@@ -490,7 +490,7 @@ lieferanten.get('/suppliers/:id/documents/:docId/download', async (c) => {
     c.header('Content-Type', doc.dateityp || 'application/octet-stream');
     c.header('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.dateiname)}"`);
     c.header('Content-Length', String(doc.dateigroesse));
-    return c.body(bytes);
+    return c.body(new Uint8Array(bytes));
   } catch (error) {
     console.error('Error downloading document:', error);
     return c.json({ error: 'Failed to download document' }, 500);

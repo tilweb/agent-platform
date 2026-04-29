@@ -1,126 +1,111 @@
 /**
- * Extraction Profiles - YAML-based profile management
+ * Extraction Profiles — Postgres-backed (Drizzle).
  *
- * Loads, caches, and provides CRUD for extraction profiles
- * stored in data/extraction-profiles/*.yaml
+ * Frueher YAML-Files unter data/extraction-profiles/, jetzt
+ * `extraction.profiles`. In-Memory-Cache (5 min TTL) fuer hot-path
+ * (auto-detect bei jedem Upload).
  */
 
-import { readFile, writeFile, readdir, unlink, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, resolve } from 'path';
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { eq } from 'drizzle-orm';
+import { getDb } from '../db';
+import { extractionProfiles } from '../db/schema/extraction';
 import type { ExtractionProfile } from './types';
 
-const PROFILES_DIR = resolve(process.cwd(), '../data/extraction-profiles');
-
-// In-memory cache
 let profileCache: Map<string, ExtractionProfile> = new Map();
-let cacheLoaded = false;
+let cacheLoadedAt = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
-/**
- * Ensure profiles directory exists
- */
-async function ensureDir(): Promise<void> {
-  if (!existsSync(PROFILES_DIR)) {
-    await mkdir(PROFILES_DIR, { recursive: true });
-  }
+function rowToProfile(row: typeof extractionProfiles.$inferSelect): ExtractionProfile {
+  // Profile-Stammdaten in Spalten + jsonb-Felder. fields/guidelines sind eigene
+  // Spalten; alles andere (detection, version, etc.) in metadata-jsonb.
+  const meta = (row.metadata ?? {}) as Partial<ExtractionProfile>;
+  return {
+    ...meta,
+    id: row.id,
+    name: row.name,
+    fields: row.fields as ExtractionProfile['fields'],
+    guidelines: row.guidelines ?? undefined,
+  } as ExtractionProfile;
 }
 
-/**
- * Load all profiles from disk into cache
- */
 export async function loadProfiles(): Promise<void> {
-  await ensureDir();
+  const db = getDb();
+  const rows = await db.select().from(extractionProfiles);
   profileCache.clear();
-
-  const files = await readdir(PROFILES_DIR);
-  const yamlFiles = files.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-
-  for (const file of yamlFiles) {
-    try {
-      const content = await readFile(join(PROFILES_DIR, file), 'utf-8');
-      const profile = parseYaml(content) as ExtractionProfile;
-      if (profile?.id) {
-        profileCache.set(profile.id, profile);
-      }
-    } catch (error) {
-      console.error(`[Extraction] Failed to load profile ${file}:`, error);
-    }
+  for (const row of rows) {
+    const profile = rowToProfile(row);
+    profileCache.set(profile.id, profile);
   }
-
-  cacheLoaded = true;
+  cacheLoadedAt = Date.now();
   console.log(`[Extraction] Loaded ${profileCache.size} extraction profiles`);
 }
 
-/**
- * Get all profiles
- */
+async function ensureCache(): Promise<void> {
+  if (Date.now() - cacheLoadedAt > CACHE_TTL_MS) {
+    await loadProfiles();
+  }
+}
+
 export async function getAllProfiles(): Promise<ExtractionProfile[]> {
-  if (!cacheLoaded) await loadProfiles();
+  await ensureCache();
   return Array.from(profileCache.values());
 }
 
-/**
- * Get a single profile by ID
- */
 export async function getProfile(id: string): Promise<ExtractionProfile | null> {
-  if (!cacheLoaded) await loadProfiles();
+  await ensureCache();
   return profileCache.get(id) || null;
 }
 
-/**
- * Save a profile (create or update)
- */
 export async function saveProfile(profile: ExtractionProfile): Promise<void> {
-  await ensureDir();
-  const filePath = join(PROFILES_DIR, `${profile.id}.yaml`);
-  const content = stringifyYaml(profile);
-  await writeFile(filePath, content, 'utf-8');
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.insert(extractionProfiles).values({
+    id: profile.id,
+    ownerId: (profile as { ownerId?: string }).ownerId ?? null,
+    name: profile.name,
+    fields: profile.fields as never,
+    guidelines: profile.guidelines ?? null,
+    metadata: profile as never,
+    createdAt: now,
+    updatedAt: now,
+  } as typeof extractionProfiles.$inferInsert).onConflictDoUpdate({
+    target: extractionProfiles.id,
+    set: {
+      name: profile.name,
+      fields: profile.fields as never,
+      guidelines: profile.guidelines ?? null,
+      metadata: profile as never,
+      updatedAt: now,
+    },
+  });
   profileCache.set(profile.id, profile);
 }
 
-/**
- * Delete a profile
- */
 export async function deleteProfile(id: string): Promise<boolean> {
-  const filePath = join(PROFILES_DIR, `${id}.yaml`);
-  if (!existsSync(filePath)) return false;
-
-  await unlink(filePath);
+  const db = getDb();
+  const res = await db.delete(extractionProfiles).where(eq(extractionProfiles.id, id)).returning({ id: extractionProfiles.id });
+  if (res.length === 0) return false;
   profileCache.delete(id);
   return true;
 }
 
-/**
- * Auto-detect profile from document text using keyword matching
- * Returns the best-matching profile ID or null
- */
 export async function detectProfile(text: string): Promise<ExtractionProfile | null> {
-  if (!cacheLoaded) await loadProfiles();
-
+  await ensureCache();
   const sample = text.substring(0, 3000).toLowerCase();
   let bestMatch: ExtractionProfile | null = null;
   let bestScore = 0;
-
   for (const profile of profileCache.values()) {
     const keywords = profile.detection?.keywords || [];
     if (keywords.length === 0) continue;
-
     let score = 0;
     for (const keyword of keywords) {
-      if (sample.includes(keyword.toLowerCase())) {
-        score++;
-      }
+      if (sample.includes(keyword.toLowerCase())) score++;
     }
-
-    // Normalize by keyword count to avoid bias toward profiles with more keywords
     const normalizedScore = score / keywords.length;
-
     if (normalizedScore > bestScore && score >= 2) {
       bestScore = normalizedScore;
       bestMatch = profile;
     }
   }
-
   return bestMatch;
 }

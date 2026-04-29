@@ -1,17 +1,18 @@
 /**
- * File Write Tool - Write files to the user's data directory
+ * File Write Tool — S3-backed (Flow.swiss).
  *
- * Security: Files are sandboxed to /data/users/{userId}/
+ * Files leben unter `users/<userId>/<path>` im Bucket. Append liest die
+ * existierende Datei aus S3, ergaenzt um den neuen Inhalt und schreibt zurueck.
  */
 
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { resolve, dirname } from 'path';
 import { LocalTool } from '../base/LocalTool';
 import type { ToolContext } from '../types';
+import { getObject, putObject, objectExists } from '../../storage/s3';
+import { s3Paths } from '../../storage/paths';
+import { sanitizeRelPath } from './sandbox';
 
 export class FileWriteTool extends LocalTool {
-  constructor(dataDir?: string) {
+  constructor() {
     super({
       name: 'file_write',
       description: 'Write content to a file in your personal data directory',
@@ -34,49 +35,27 @@ export class FileWriteTool extends LocalTool {
         required: ['path', 'content'],
       },
       category: 'filesystem',
-      dataDir: dataDir || resolve(process.cwd(), '../data'),
     });
   }
 
   async execute(args: { path: string; content: string; append?: boolean }, context?: ToolContext): Promise<string> {
-    const { path, content, append } = args;
-
-    // userId is required for file operations
-    if (!context?.userId) {
-      return 'Fehler: Keine Benutzer-ID verfügbar';
-    }
-
-    if (!path) {
-      return 'Fehler: Pfad ist erforderlich';
-    }
-
-    if (content === undefined || content === null) {
-      return 'Fehler: Inhalt ist erforderlich';
-    }
-
+    if (!context?.userId) return 'Fehler: Keine Benutzer-ID verfügbar';
+    if (!args.path) return 'Fehler: Pfad ist erforderlich';
+    if (args.content === undefined || args.content === null) return 'Fehler: Inhalt ist erforderlich';
     try {
-      const fullPath = this.validateUserPath(path, context.userId);
-      const dir = dirname(fullPath);
-
-      // Create directory if it doesn't exist
-      if (!existsSync(dir)) {
-        await mkdir(dir, { recursive: true });
+      const rel = sanitizeRelPath(args.path);
+      const key = s3Paths.userFile(context.userId, rel);
+      let body = args.content;
+      if (args.append && (await objectExists(key))) {
+        const existing = (await getObject(key)).toString('utf-8');
+        body = existing + '\n' + args.content;
       }
-
-      if (append && existsSync(fullPath)) {
-        const { readFile } = await import('fs/promises');
-        const existing = await readFile(fullPath, 'utf-8');
-        await writeFile(fullPath, existing + '\n' + content, 'utf-8');
-        return `Datei ergänzt: ${path}`;
-      }
-
-      await writeFile(fullPath, content, 'utf-8');
-      return `Datei gespeichert: ${path}`;
+      await putObject(key, body, 'text/plain; charset=utf-8');
+      return args.append ? `Datei ergänzt: ${args.path}` : `Datei gespeichert: ${args.path}`;
     } catch (error: any) {
       return `Fehler beim Schreiben der Datei: ${error.message}`;
     }
   }
 }
 
-// Export singleton instance
 export const fileWriteTool = new FileWriteTool();

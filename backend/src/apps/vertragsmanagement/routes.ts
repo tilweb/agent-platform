@@ -204,7 +204,7 @@ contracts.get('/contracts/:id/original', async (c) => {
       return c.json({ error: 'Original file not found' }, 404);
     }
 
-    return new Response(original.buffer, {
+    return new Response(new Uint8Array(original.buffer), {
       headers: {
         'Content-Type': original.contentType,
         'Content-Disposition': `attachment; filename="${encodeURIComponent(original.filename)}"`,

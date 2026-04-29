@@ -1,17 +1,18 @@
 /**
- * File Read Tool - Read files from the user's data directory
+ * File Read Tool — S3-backed (Flow.swiss).
  *
- * Security: Files are sandboxed to /data/users/{userId}/
+ * Files leben unter `users/<userId>/<path>` im Bucket. Sandbox-Check stellt
+ * sicher, dass der relative Pfad keinen `../`-Traversal-Versuch enthaelt.
  */
 
-import { readFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
 import { LocalTool } from '../base/LocalTool';
 import type { ToolContext } from '../types';
+import { getObject, objectExists } from '../../storage/s3';
+import { s3Paths } from '../../storage/paths';
+import { sanitizeRelPath } from './sandbox';
 
 export class FileReadTool extends LocalTool {
-  constructor(dataDir?: string) {
+  constructor() {
     super({
       name: 'file_read',
       description: 'Read the contents of a file from your personal data directory',
@@ -26,36 +27,22 @@ export class FileReadTool extends LocalTool {
         required: ['path'],
       },
       category: 'filesystem',
-      dataDir: dataDir || resolve(process.cwd(), '../data'),
     });
   }
 
   async execute(args: { path: string }, context?: ToolContext): Promise<string> {
-    const { path } = args;
-
-    // userId is required for file operations
-    if (!context?.userId) {
-      return 'Fehler: Keine Benutzer-ID verfügbar';
-    }
-
-    if (!path) {
-      return 'Fehler: Pfad ist erforderlich';
-    }
-
+    if (!context?.userId) return 'Fehler: Keine Benutzer-ID verfügbar';
+    if (!args.path) return 'Fehler: Pfad ist erforderlich';
     try {
-      const fullPath = this.validateUserPath(path, context.userId);
-
-      if (!existsSync(fullPath)) {
-        return `Fehler: Datei nicht gefunden: ${path}`;
-      }
-
-      const content = await readFile(fullPath, 'utf-8');
-      return content;
+      const rel = sanitizeRelPath(args.path);
+      const key = s3Paths.userFile(context.userId, rel);
+      if (!(await objectExists(key))) return `Fehler: Datei nicht gefunden: ${args.path}`;
+      const buf = await getObject(key);
+      return buf.toString('utf-8');
     } catch (error: any) {
       return `Fehler beim Lesen der Datei: ${error.message}`;
     }
   }
 }
 
-// Export singleton instance
 export const fileReadTool = new FileReadTool();

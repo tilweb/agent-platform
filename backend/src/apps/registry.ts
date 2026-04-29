@@ -119,8 +119,10 @@ function applyEnvFilter<T extends AppInfo>(app: T): T {
 
 /**
  * Get all registered apps (runtime ENV-Filter angewendet).
+ * Returntype `AppConfig` (incl. publicFunctions) — der Caller soll publicFunctions
+ * fuer das Public-API-Permission-Catalog erreichen koennen.
  */
-export async function getApps(): Promise<AppInfo[]> {
+export async function getApps(): Promise<AppConfig[]> {
   const registry = await loadRegistry();
   return Object.values(registry.apps).map(applyEnvFilter);
 }
@@ -128,7 +130,7 @@ export async function getApps(): Promise<AppInfo[]> {
 /**
  * Get enabled apps only — bereits ENV-gefiltert.
  */
-export async function getEnabledApps(): Promise<AppInfo[]> {
+export async function getEnabledApps(): Promise<AppConfig[]> {
   const apps = await getApps();
   return apps.filter(app => app.enabled);
 }
@@ -136,7 +138,7 @@ export async function getEnabledApps(): Promise<AppInfo[]> {
 /**
  * Get a specific app by ID — runtime ENV-Filter angewendet.
  */
-export async function getApp(appId: string): Promise<AppInfo | null> {
+export async function getApp(appId: string): Promise<AppConfig | null> {
   const registry = await loadRegistry();
   const app = registry.apps[appId];
   return app ? applyEnvFilter(app) : null;

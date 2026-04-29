@@ -35,6 +35,7 @@ export const oauthStates = authSchema.table('oauth_states', {
   provider: text('provider').notNull(),
   state: text('state').notNull(),
   redirectUri: text('redirect_uri'),
+  codeVerifier: text('code_verifier'),
   expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({
@@ -57,6 +58,25 @@ export const groupMembers = authSchema.table('group_members', {
 }, (t) => ({
   pk: index('group_members_pk_idx').on(t.groupId, t.userId),
   userIdx: index('group_members_user_idx').on(t.userId),
+}));
+
+/**
+ * RBAC: Resource-Access pro (resourceType, resourceId, principalType, principalId).
+ * Ersetzt die `access.yaml`-Files unter `data/projects/<id>/`,
+ * `data/knowledge-base/collections/<id>/`, etc.
+ */
+export const resourceAccess = authSchema.table('resource_access', {
+  resourceType: text('resource_type').notNull(),     // project | collection | contract | skill | agent
+  resourceId: text('resource_id').notNull(),
+  principalType: text('principal_type').notNull(),   // user | group
+  principalId: text('principal_id').notNull(),
+  role: text('role').notNull(),                      // owner | admin | editor | viewer
+  grantedAt: timestamp('granted_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  grantedBy: text('granted_by').notNull(),
+}, (t) => ({
+  resourceIdx: index('resource_access_resource_idx').on(t.resourceType, t.resourceId),
+  principalIdx: index('resource_access_principal_idx').on(t.principalType, t.principalId),
+  pkIdx: index('resource_access_pk_idx').on(t.resourceType, t.resourceId, t.principalType, t.principalId),
 }));
 
 export const apiKeys = authSchema.table('api_keys', {

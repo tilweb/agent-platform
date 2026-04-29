@@ -1,345 +1,197 @@
 /**
- * RBAC Storage - YAML-based access persistence
+ * RBAC Storage — Postgres-backed (Drizzle).
  *
- * Stores access entries per resource in access.yaml files:
- * - data/projects/{id}/access.yaml
- * - data/knowledge-base/collections/{id}/access.yaml
- * - data/skills/public/{id}/access.yaml
- * - data/agents/{id}/access.yaml
- * - etc.
+ * Frueher YAML-Files (`data/projects/<id>/access.yaml` etc.), jetzt eine
+ * generische `auth.resource_access`-Tabelle. Composite-Key auf
+ * (resourceType, resourceId, principalType, principalId).
  */
 
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import { join, resolve } from 'path';
-import { existsSync } from 'fs';
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { eq, and } from 'drizzle-orm';
+import { getDb } from '../db';
+import { resourceAccess } from '../db/schema/auth';
 import type { ResourceType, ResourceAccess, PrincipalType, ResourceRole } from './types';
-import { RESOURCE_DATA_DIRS } from './types';
 
-// Use same path resolution as projects/storage.ts
-const DATA_DIR = resolve(process.cwd(), '../data');
-
-/**
- * Get the directory path for a resource
- */
-function getResourceDir(resourceType: ResourceType, resourceId: string): string {
-  const baseDir = RESOURCE_DATA_DIRS[resourceType];
-  return join(DATA_DIR, baseDir, resourceId);
+function rowToAccess(row: typeof resourceAccess.$inferSelect): ResourceAccess {
+  return {
+    principalType: row.principalType as PrincipalType,
+    principalId: row.principalId,
+    role: row.role as ResourceRole,
+    grantedAt: row.grantedAt,
+    grantedBy: row.grantedBy,
+  };
 }
 
-/**
- * Get the access file path for a resource
- */
-function getAccessFilePath(resourceType: ResourceType, resourceId: string): string {
-  return join(getResourceDir(resourceType, resourceId), 'access.yaml');
-}
-
-/**
- * Ensure the resource directory exists
- */
-async function ensureResourceDir(resourceType: ResourceType, resourceId: string): Promise<void> {
-  const dir = getResourceDir(resourceType, resourceId);
-  if (!existsSync(dir)) {
-    await mkdir(dir, { recursive: true });
-  }
-}
-
-/**
- * Load all access entries for a resource
- */
 export async function loadResourceAccess(
   resourceType: ResourceType,
-  resourceId: string
+  resourceId: string,
 ): Promise<ResourceAccess[]> {
-  const filePath = getAccessFilePath(resourceType, resourceId);
-
-  if (!existsSync(filePath)) {
-    return [];
-  }
-
-  try {
-    const content = await readFile(filePath, 'utf-8');
-    const data = parseYaml(content);
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error(`Error loading access for ${resourceType}/${resourceId}:`, error);
-    return [];
-  }
+  const db = getDb();
+  const rows = await db.select().from(resourceAccess)
+    .where(and(eq(resourceAccess.resourceType, resourceType), eq(resourceAccess.resourceId, resourceId)));
+  return rows.map(rowToAccess);
 }
 
-/**
- * Save all access entries for a resource
- */
 export async function saveResourceAccess(
   resourceType: ResourceType,
   resourceId: string,
-  accessList: ResourceAccess[]
+  accessList: ResourceAccess[],
 ): Promise<void> {
-  await ensureResourceDir(resourceType, resourceId);
-  const filePath = getAccessFilePath(resourceType, resourceId);
-  const yaml = stringifyYaml(accessList);
-  await writeFile(filePath, yaml, 'utf-8');
+  const db = getDb();
+  // Replace-all-Semantik: alte Eintraege loeschen, neue rein.
+  await db.delete(resourceAccess)
+    .where(and(eq(resourceAccess.resourceType, resourceType), eq(resourceAccess.resourceId, resourceId)));
+  if (accessList.length === 0) return;
+  await db.insert(resourceAccess).values(accessList.map(a => ({
+    resourceType,
+    resourceId,
+    principalType: a.principalType,
+    principalId: a.principalId,
+    role: a.role,
+    grantedAt: a.grantedAt,
+    grantedBy: a.grantedBy,
+  })));
 }
 
-/**
- * Get a specific access entry for a principal
- */
 export async function getResourceAccessEntry(
   resourceType: ResourceType,
   resourceId: string,
   principalType: PrincipalType,
-  principalId: string
+  principalId: string,
 ): Promise<ResourceAccess | null> {
-  const accessList = await loadResourceAccess(resourceType, resourceId);
-  return accessList.find(
-    (a) => a.principalType === principalType && a.principalId === principalId
-  ) || null;
+  const db = getDb();
+  const rows = await db.select().from(resourceAccess).where(and(
+    eq(resourceAccess.resourceType, resourceType),
+    eq(resourceAccess.resourceId, resourceId),
+    eq(resourceAccess.principalType, principalType),
+    eq(resourceAccess.principalId, principalId),
+  )).limit(1);
+  return rows[0] ? rowToAccess(rows[0]) : null;
 }
 
-/**
- * Grant access to a resource
- */
 export async function grantAccess(
   resourceType: ResourceType,
   resourceId: string,
   principalType: PrincipalType,
   principalId: string,
   role: ResourceRole,
-  grantedBy: string
+  grantedBy: string,
 ): Promise<ResourceAccess> {
-  const accessList = await loadResourceAccess(resourceType, resourceId);
-
-  // Check if entry already exists
-  const existingIndex = accessList.findIndex(
-    (a) => a.principalType === principalType && a.principalId === principalId
-  );
-
+  const db = getDb();
   const now = new Date().toISOString();
-  const newEntry: ResourceAccess = {
+  // Upsert: gleicher Composite-Key -> update.
+  await db.delete(resourceAccess).where(and(
+    eq(resourceAccess.resourceType, resourceType),
+    eq(resourceAccess.resourceId, resourceId),
+    eq(resourceAccess.principalType, principalType),
+    eq(resourceAccess.principalId, principalId),
+  ));
+  await db.insert(resourceAccess).values({
+    resourceType,
+    resourceId,
     principalType,
     principalId,
     role,
     grantedAt: now,
     grantedBy,
-  };
-
-  if (existingIndex >= 0) {
-    // Update existing entry
-    accessList[existingIndex] = newEntry;
-  } else {
-    // Add new entry
-    accessList.push(newEntry);
-  }
-
-  await saveResourceAccess(resourceType, resourceId, accessList);
-  return newEntry;
+  });
+  return { principalType, principalId, role, grantedAt: now, grantedBy };
 }
 
-/**
- * Update role for an existing access entry
- */
 export async function updateAccessRole(
   resourceType: ResourceType,
   resourceId: string,
   principalType: PrincipalType,
   principalId: string,
   newRole: ResourceRole,
-  updatedBy: string
+  updatedBy: string,
 ): Promise<ResourceAccess | null> {
-  const accessList = await loadResourceAccess(resourceType, resourceId);
-
-  const index = accessList.findIndex(
-    (a) => a.principalType === principalType && a.principalId === principalId
-  );
-
-  if (index < 0) {
-    return null;
-  }
-
-  // Update role while preserving original grantedAt
-  const existingEntry = accessList[index];
-  if (!existingEntry) {
-    return null;
-  }
-
-  const updatedEntry: ResourceAccess = {
-    principalType: existingEntry.principalType,
-    principalId: existingEntry.principalId,
-    role: newRole,
-    grantedBy: updatedBy,
-    grantedAt: new Date().toISOString(),
-  };
-  accessList[index] = updatedEntry;
-
-  await saveResourceAccess(resourceType, resourceId, accessList);
-  return updatedEntry;
+  const existing = await getResourceAccessEntry(resourceType, resourceId, principalType, principalId);
+  if (!existing) return null;
+  return grantAccess(resourceType, resourceId, principalType, principalId, newRole, updatedBy);
 }
 
-/**
- * Revoke access from a resource
- */
 export async function revokeAccess(
   resourceType: ResourceType,
   resourceId: string,
   principalType: PrincipalType,
-  principalId: string
+  principalId: string,
 ): Promise<boolean> {
-  const accessList = await loadResourceAccess(resourceType, resourceId);
-
-  const index = accessList.findIndex(
-    (a) => a.principalType === principalType && a.principalId === principalId
-  );
-
-  if (index < 0) {
-    return false;
-  }
-
-  accessList.splice(index, 1);
-  await saveResourceAccess(resourceType, resourceId, accessList);
-  return true;
+  const db = getDb();
+  const res = await db.delete(resourceAccess).where(and(
+    eq(resourceAccess.resourceType, resourceType),
+    eq(resourceAccess.resourceId, resourceId),
+    eq(resourceAccess.principalType, principalType),
+    eq(resourceAccess.principalId, principalId),
+  )).returning({ resourceId: resourceAccess.resourceId });
+  return res.length > 0;
 }
 
-/**
- * Get all users with access to a resource
- */
 export async function getUsersWithAccess(
   resourceType: ResourceType,
-  resourceId: string
+  resourceId: string,
 ): Promise<ResourceAccess[]> {
-  const accessList = await loadResourceAccess(resourceType, resourceId);
-  return accessList.filter((a) => a.principalType === 'user');
+  const list = await loadResourceAccess(resourceType, resourceId);
+  return list.filter(a => a.principalType === 'user');
 }
 
-/**
- * Get all groups with access to a resource
- */
 export async function getGroupsWithAccess(
   resourceType: ResourceType,
-  resourceId: string
+  resourceId: string,
 ): Promise<ResourceAccess[]> {
-  const accessList = await loadResourceAccess(resourceType, resourceId);
-  return accessList.filter((a) => a.principalType === 'group');
+  const list = await loadResourceAccess(resourceType, resourceId);
+  return list.filter(a => a.principalType === 'group');
 }
 
-/**
- * Get the owner of a resource (there should be exactly one)
- */
 export async function getResourceOwner(
   resourceType: ResourceType,
-  resourceId: string
+  resourceId: string,
 ): Promise<ResourceAccess | null> {
-  const accessList = await loadResourceAccess(resourceType, resourceId);
-  return accessList.find((a) => a.role === 'owner') || null;
+  const list = await loadResourceAccess(resourceType, resourceId);
+  return list.find(a => a.role === 'owner') ?? null;
 }
 
-/**
- * Transfer ownership to a new user
- */
 export async function transferOwnership(
   resourceType: ResourceType,
   resourceId: string,
   newOwnerId: string,
-  transferredBy: string
+  transferredBy: string,
 ): Promise<boolean> {
-  const accessList = await loadResourceAccess(resourceType, resourceId);
-
-  // Find current owner
-  const ownerIndex = accessList.findIndex((a) => a.role === 'owner');
-  if (ownerIndex < 0) {
-    return false;
-  }
-
-  const oldOwner = accessList[ownerIndex];
-  if (!oldOwner) {
-    return false;
-  }
-
-  // Demote old owner to admin
-  accessList[ownerIndex] = {
-    principalType: oldOwner.principalType,
-    principalId: oldOwner.principalId,
-    role: 'admin',
-    grantedAt: new Date().toISOString(),
-    grantedBy: transferredBy,
-  };
-
-  // Check if new owner already has access
-  const newOwnerIndex = accessList.findIndex(
-    (a) => a.principalType === 'user' && a.principalId === newOwnerId
-  );
-
-  const now = new Date().toISOString();
-  if (newOwnerIndex >= 0) {
-    // Promote existing entry to owner
-    const existingNewOwner = accessList[newOwnerIndex];
-    if (existingNewOwner) {
-      accessList[newOwnerIndex] = {
-        principalType: existingNewOwner.principalType,
-        principalId: existingNewOwner.principalId,
-        role: 'owner',
-        grantedAt: now,
-        grantedBy: transferredBy,
-      };
-    }
-  } else {
-    // Add new owner entry
-    accessList.push({
-      principalType: 'user',
-      principalId: newOwnerId,
-      role: 'owner',
-      grantedAt: now,
-      grantedBy: transferredBy,
-    });
-  }
-
-  await saveResourceAccess(resourceType, resourceId, accessList);
+  const list = await loadResourceAccess(resourceType, resourceId);
+  const owner = list.find(a => a.role === 'owner');
+  if (!owner) return false;
+  // Demote alter Owner -> admin, neuer User -> owner (oder neu anlegen).
+  await grantAccess(resourceType, resourceId, owner.principalType, owner.principalId, 'admin', transferredBy);
+  await grantAccess(resourceType, resourceId, 'user', newOwnerId, 'owner', transferredBy);
   return true;
 }
 
-/**
- * Initialize access for a new resource (sets creator as owner)
- */
 export async function initializeResourceAccess(
   resourceType: ResourceType,
   resourceId: string,
-  creatorId: string
+  creatorId: string,
 ): Promise<ResourceAccess> {
-  const now = new Date().toISOString();
-  const ownerEntry: ResourceAccess = {
-    principalType: 'user',
-    principalId: creatorId,
-    role: 'owner',
-    grantedAt: now,
-    grantedBy: creatorId,
-  };
-
-  await saveResourceAccess(resourceType, resourceId, [ownerEntry]);
-  return ownerEntry;
+  return grantAccess(resourceType, resourceId, 'user', creatorId, 'owner', creatorId);
 }
 
-/**
- * Delete all access entries for a resource
- * Called when resource is deleted
- */
 export async function deleteResourceAccess(
   resourceType: ResourceType,
-  resourceId: string
+  resourceId: string,
 ): Promise<void> {
-  const filePath = getAccessFilePath(resourceType, resourceId);
-
-  if (existsSync(filePath)) {
-    const { unlink } = await import('fs/promises');
-    await unlink(filePath);
-  }
+  const db = getDb();
+  await db.delete(resourceAccess).where(and(
+    eq(resourceAccess.resourceType, resourceType),
+    eq(resourceAccess.resourceId, resourceId),
+  ));
 }
 
-/**
- * Check if a resource has any access entries
- */
 export async function hasAccessEntries(
   resourceType: ResourceType,
-  resourceId: string
+  resourceId: string,
 ): Promise<boolean> {
-  const accessList = await loadResourceAccess(resourceType, resourceId);
-  return accessList.length > 0;
+  const db = getDb();
+  const rows = await db.select({ rid: resourceAccess.resourceId }).from(resourceAccess).where(and(
+    eq(resourceAccess.resourceType, resourceType),
+    eq(resourceAccess.resourceId, resourceId),
+  )).limit(1);
+  return rows.length > 0;
 }
