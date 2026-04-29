@@ -97,26 +97,17 @@ async function fetchDocumentContent(
       }
 
       case 'knowledge': {
-        // Read KB document content.md (documents now inside collections)
         const docPath = item.metadata?.path || item.id;
         const collectionId = item.metadata?.collection_id || item.metadata?.collectionId;
-
         if (!collectionId) {
           return { ...baseResult, error: 'Collection-ID fehlt', source: 'Knowledge Base' };
         }
-
-        const contentPath = join(KB_BASE, 'collections', collectionId, 'documents', docPath, 'content.md');
-
-        if (!existsSync(contentPath)) {
+        const kb = await import('./kbStorage');
+        const content = await kb.getDocumentContent(collectionId, docPath);
+        if (content === null) {
           return { ...baseResult, error: 'Dokument nicht gefunden', source: 'Knowledge Base' };
         }
-
-        const content = await readFile(contentPath, 'utf-8');
-        return {
-          ...baseResult,
-          content,
-          source: 'Knowledge Base',
-        };
+        return { ...baseResult, content, source: 'Knowledge Base' };
       }
 
       case 'confluence': {

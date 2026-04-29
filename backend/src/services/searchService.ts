@@ -158,101 +158,41 @@ async function searchChats(query: string, userId?: string): Promise<SearchResult
 async function searchKnowledgeBase(query: string): Promise<SearchResult[]> {
   const results: SearchResult[] = [];
   const queryLower = query.toLowerCase();
-
   try {
-    // Check if KB exists
-    if (!existsSync(KB_BASE)) {
-      return [];
-    }
-
-    // Read collections.yaml
-    const collectionsPath = join(KB_BASE, 'collections.yaml');
-    if (!existsSync(collectionsPath)) {
-      return [];
-    }
-
-    const collectionsContent = await readFile(collectionsPath, 'utf-8');
-    const collectionsData = parseYaml(collectionsContent);
-    const collections: { id: string; name: string; description: string }[] =
-      (collectionsData?.collections || []).map((c: any) => ({
-        id: c.id || '',
-        name: c.name || '',
-        description: c.description || '',
-      })).filter((c: any) => c.id);
-
-    // Search through each collection's manifest
+    const kb = await import('./kbStorage');
+    const collections = await kb.listCollections();
     for (const collection of collections) {
-      const manifestPath = join(KB_BASE, 'collections', collection.id, 'manifest.yaml');
-      if (!existsSync(manifestPath)) continue;
+      const docs = await kb.listDocuments(collection.id);
+      for (const doc of docs) {
+        const title = doc.title ?? doc.filename;
+        const metaContent = doc.metaMd ?? '';
+        const description = extractSection(metaContent, '## Inhaltsbeschreibung');
+        const keywords = extractSection(metaContent, '## Keywords');
+        const questions = extractSection(metaContent, '## Beantwortet Fragen zu');
 
-      try {
-        const manifestContent = await readFile(manifestPath, 'utf-8');
-        const manifest = parseYaml(manifestContent);
-        const documents: { document_id: string; title: string; path: string }[] = manifest?.documents || [];
+        const titleMatch = title.toLowerCase().includes(queryLower);
+        const descMatch = description.toLowerCase().includes(queryLower);
+        const keywordsMatch = keywords.toLowerCase().includes(queryLower);
+        const questionsMatch = questions.toLowerCase().includes(queryLower);
 
-        for (const doc of documents) {
-          const docId = doc.document_id;
-          const title = doc.title;
-          const docPath = doc.path;
-
-          if (!docId || !title || !docPath) continue;
-
-          // Read DOCUMENT_META.md for searchable content (documents now inside collection)
-          const metaPath = join(KB_BASE, 'collections', collection.id, 'documents', docPath, 'DOCUMENT_META.md');
-          if (!existsSync(metaPath)) continue;
-
-          try {
-            const metaContent = await readFile(metaPath, 'utf-8');
-
-            // Extract searchable sections from Markdown
-            const description = extractSection(metaContent, '## Inhaltsbeschreibung');
-            const keywords = extractSection(metaContent, '## Keywords');
-            const questions = extractSection(metaContent, '## Beantwortet Fragen zu');
-
-            // Search in all fields
-            const titleMatch = title.toLowerCase().includes(queryLower);
-            const descMatch = description.toLowerCase().includes(queryLower);
-            const keywordsMatch = keywords.toLowerCase().includes(queryLower);
-            const questionsMatch = questions.toLowerCase().includes(queryLower);
-
-            if (titleMatch || descMatch || keywordsMatch || questionsMatch) {
-              // Parse keywords into array
-              const keywordList = keywords
-                .split(',')
-                .map(k => k.trim())
-                .filter(k => k.length > 0);
-
-              results.push({
-                id: docId,
-                type: 'knowledge',
-                title: title,
-                snippet: description.slice(0, 200) || undefined,
-                metadata: {
-                  collectionId: collection.id,
-                  collectionName: collection.name,
-                  path: docPath,
-                  keywords: keywordList,
-                  matchedIn: titleMatch
-                    ? 'title'
-                    : descMatch
-                      ? 'description'
-                      : keywordsMatch
-                        ? 'keywords'
-                        : 'questions',
-                },
-              });
-            }
-          } catch {
-            // Skip documents without valid DOCUMENT_META.md
-            continue;
-          }
+        if (titleMatch || descMatch || keywordsMatch || questionsMatch) {
+          const keywordList = keywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
+          results.push({
+            id: doc.id,
+            type: 'knowledge',
+            title,
+            snippet: description.slice(0, 200) || undefined,
+            metadata: {
+              collectionId: collection.id,
+              collectionName: collection.name,
+              path: doc.id,
+              keywords: keywordList,
+              matchedIn: titleMatch ? 'title' : descMatch ? 'description' : keywordsMatch ? 'keywords' : 'questions',
+            },
+          });
         }
-      } catch (err) {
-        // Skip invalid manifest
-        continue;
       }
     }
-
     return results;
   } catch (error) {
     console.error('Error searching knowledge base:', error);
@@ -796,11 +736,6 @@ export async function smartKnowledgeSearch(query: string, triggeringUserId?: str
   const { llmService } = await import('./llm');
 
   try {
-    // Check if KB exists
-    if (!existsSync(KB_BASE)) {
-      return { query, results: [], reasoning: 'Knowledge Base nicht gefunden' };
-    }
-
     // Step 1: Load all collections and their manifests
     const kbData = await loadKnowledgeBaseIndex();
     if (kbData.documents.length === 0) {
@@ -1122,73 +1057,29 @@ interface KBIndex {
  */
 async function loadKnowledgeBaseIndex(): Promise<KBIndex> {
   const documents: KBDocument[] = [];
-
   try {
-    // Read collections.yaml
-    const collectionsPath = join(KB_BASE, 'collections.yaml');
-    if (!existsSync(collectionsPath)) {
-      return { documents };
-    }
-
-    const collectionsContent = await readFile(collectionsPath, 'utf-8');
-    const collectionsData = parseYaml(collectionsContent);
-    const collections: { id: string; name: string }[] =
-      (collectionsData?.collections || [])
-        .filter((c: any) => c.id)
-        .map((c: any) => ({ id: c.id, name: c.name || '' }));
-
-    // Load documents from each collection
+    const kb = await import('./kbStorage');
+    const collections = await kb.listCollections();
     for (const collection of collections) {
-      const manifestPath = join(KB_BASE, 'collections', collection.id, 'manifest.yaml');
-      if (!existsSync(manifestPath)) continue;
-
-      try {
-        const manifestContent = await readFile(manifestPath, 'utf-8');
-        const manifest = parseYaml(manifestContent);
-        const docs: { document_id: string; title: string; path: string }[] = manifest?.documents || [];
-
-        for (const doc of docs) {
-          const docId = doc.document_id;
-          const title = doc.title;
-          const docPath = doc.path;
-
-          if (!docId || !title || !docPath) continue;
-
-          // Read DOCUMENT_META.md (documents now inside collection)
-          const metaPath = join(KB_BASE, 'collections', collection.id, 'documents', docPath, 'DOCUMENT_META.md');
-          if (!existsSync(metaPath)) continue;
-
-          try {
-            const metaContent = await readFile(metaPath, 'utf-8');
-
-            const description = extractSection(metaContent, '## Inhaltsbeschreibung');
-            const keywordsStr = extractSection(metaContent, '## Keywords');
-            const questions = extractSection(metaContent, '## Beantwortet Fragen zu');
-
-            const keywords = keywordsStr
-              .split(',')
-              .map(k => k.trim())
-              .filter(k => k.length > 0);
-
-            documents.push({
-              id: docId,
-              title,
-              path: docPath,
-              collectionId: collection.id,
-              collectionName: collection.name,
-              description: description.slice(0, 500), // Limit for token efficiency
-              keywords,
-              questions: questions.slice(0, 300),
-            });
-          } catch {
-            continue;
-          }
-        }
-      } catch {
-        continue;
+      const docs = await kb.listDocuments(collection.id);
+      for (const doc of docs) {
+        const metaContent = doc.metaMd ?? '';
+        const description = extractSection(metaContent, '## Inhaltsbeschreibung');
+        const keywordsStr = extractSection(metaContent, '## Keywords');
+        const questions = extractSection(metaContent, '## Beantwortet Fragen zu');
+        const keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k.length > 0);
+        documents.push({
+          id: doc.id,
+          title: doc.title ?? doc.filename,
+          path: doc.id,
+          collectionId: collection.id,
+          collectionName: collection.name,
+          description: description.slice(0, 500),
+          keywords,
+          questions: questions.slice(0, 300),
+        });
       }
     }
-
     return { documents };
   } catch (error) {
     console.error('Error loading KB index:', error);
