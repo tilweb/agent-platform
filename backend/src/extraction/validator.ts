@@ -79,6 +79,15 @@ function validateField(
 ): void {
   const path = parentPath ? `${parentPath}.${fieldName}` : fieldName;
 
+  // LLMs liefern manchmal den String "null" / "n/a" / "-" statt echtem null. Normalisieren.
+  if (typeof value === 'string') {
+    const stripped = value.trim().toLowerCase();
+    if (stripped === 'null' || stripped === 'n/a' || stripped === 'none' || stripped === '-' || stripped === '') {
+      data[fieldName] = null;
+      value = null;
+    }
+  }
+
   // Required check
   if (definition.required && (value === null || value === undefined || value === '')) {
     errors.push({ field: path, message: 'Pflichtfeld fehlt', value });

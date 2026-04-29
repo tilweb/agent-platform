@@ -23,6 +23,10 @@ const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
 
 // Limits
 const MAX_COMBINED_CHARS = 30000;
+// xlsx-Sheets sind sehr dicht (Tabellen) — bei 30K dauert die LLM-Extraktion teils >3min
+// und timeoutet. Niedrigerer Budget produziert immer noch volle Extraktion (P-Auftrag-Sheet
+// kommt mit Reorder zuerst), Tasks/Risken bleiben erhalten.
+const MAX_COMBINED_CHARS_XLSX = 20000;
 const MAX_IMAGE_DESC_CHARS = 3000;
 
 // ============== Import Report ==============
@@ -226,10 +230,67 @@ async function processFile(
       throw new Error(`Markitdown-Konvertierung fehlgeschlagen für ${filename}: ${response.status} - ${errorText}`);
     }
 
-    return await response.text();
+    const text = await response.text();
+    // xlsx (Excel-Toolbox) schreiben Sheets als ## Sheet-Header mit Pipe-Tabellen.
+    // Glossar/Listen-Sheets dominieren oft die ersten 30K chars und verdraengen
+    // die echten Projektdaten. Re-ordern hilft enorm.
+    if (ext === '.xlsx' || ext === '.xls') {
+      return reorderXlsxSheets(text);
+    }
+    return text;
   }
 
   throw new Error(`Dateityp nicht unterstützt: ${ext} (${filename})`);
+}
+
+/**
+ * Sortiert die Markitdown-Sheets nach Relevanz: Projektdaten zuerst,
+ * Boilerplate-Sheets (Glossar, Listen, etc.) ans Ende.
+ */
+function reorderXlsxSheets(markdown: string): string {
+  // Sheets sind durch `## `-Header getrennt. Erste Zeile bleibt der "Document ..."-Prefix.
+  const headerMatch = markdown.match(/^Document [^"]*"""/);
+  const prefix = headerMatch ? headerMatch[0] : '';
+  const body = prefix ? markdown.slice(prefix.length) : markdown;
+
+  // Split anhand von Zeilen, die mit `##` (mit oder ohne Space) starten.
+  const sheets: { name: string; content: string; priority: number }[] = [];
+  const sections = body.split(/\n(?=##\s?\S)/);
+  for (const section of sections) {
+    const nameMatch = section.match(/^##\s?([^|]+?)(?:\||$)/m);
+    if (!nameMatch) {
+      // Vor dem ersten Sheet (Pre-Content) — als Priority 0 behalten.
+      if (section.trim()) sheets.push({ name: '_intro', content: section, priority: 0 });
+      continue;
+    }
+    const name = nameMatch[1]!.trim();
+    sheets.push({ name, content: section, priority: sheetPriority(name) });
+  }
+
+  sheets.sort((a, b) => a.priority - b.priority);
+  return prefix + sheets.map(s => s.content).join('\n');
+}
+
+/**
+ * Niedrigere Zahl = wichtiger (kommt zuerst).
+ *  0  = intro/Pre-Content
+ *  1  = P-Auftrag (Stammdaten)
+ *  2  = Aufgaben/Inhalt/Story (Scope)
+ *  3  = Aufwand/Beschaffung/Budget
+ *  4  = Risk/SH/ORG/Stakeholder
+ *  5  = Status PL/AG/MSP (Reports)
+ *  9  = Glossar/Listen/Bild/EVM-Templates (Boilerplate)
+ */
+function sheetPriority(sheetName: string): number {
+  const lower = sheetName.toLowerCase();
+  if (lower === '_intro') return 0;
+  if (/p-auftrag|projektauftrag|projektsteckbrief/.test(lower)) return 1;
+  if (/inhalt|story|scope|aufgaben|tasks/.test(lower)) return 2;
+  if (/aufwand|beschaffung|budget|kosten/.test(lower)) return 3;
+  if (/risk|sh\b|org\b|stakeholder/.test(lower)) return 4;
+  if (/status|msp|meilenstein|review/.test(lower)) return 5;
+  if (/glossar|listen|bild|evm|plan-ist|template|legende/.test(lower)) return 9;
+  return 6;  // unbekannt — neutral
 }
 
 /**
@@ -246,8 +307,8 @@ async function prepareVision(
   }
 
   const visionAdapter = new OpenAIAdapter({
-    baseUrl: visionModel.provider.api_url,
-    apiKey: visionModel.provider.api_key || null,
+    baseUrl: visionModel.base_url,
+    apiKey: visionModel.api_key,
     defaultModel: visionModel.model.id,
   });
 
@@ -288,12 +349,16 @@ function combineTexts(files: ProcessedFile[]): string {
     return 0;
   });
 
+  // Wenn nur xlsx-Files dabei sind, niedrigeren Budget verwenden um LLM-Timeouts zu vermeiden.
+  const allXlsx = sorted.length > 0 && sorted.every(f => /\.xlsx?$/i.test(f.filename));
+  const budget = allXlsx ? MAX_COMBINED_CHARS_XLSX : MAX_COMBINED_CHARS;
+
   const parts: string[] = [];
   let totalChars = 0;
 
   for (const file of sorted) {
     const header = `\n=== Datei: ${file.filename} ===\n`;
-    const available = MAX_COMBINED_CHARS - totalChars - header.length;
+    const available = budget - totalChars - header.length;
 
     if (available <= 100) {
       break; // No more space
