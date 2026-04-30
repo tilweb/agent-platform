@@ -275,10 +275,13 @@ export async function syncBuiltInApps(): Promise<{ added: string[]; updated: str
       added.push(config.id);
       continue;
     }
-    // Refresh static fields, preserve admin-controlled `enabled` flag.
+    // Refresh static fields, preserve admin-controlled `enabled` flag und
+    // gepflegte `permissions` (sonst wuerden alle Gruppen-Berechtigungen
+    // bei jedem Server-Start zurueckgesetzt).
     const merged: AppConfig = {
       ...config,
       enabled: existing.enabled,
+      permissions: existing.permissions ?? config.permissions,
     };
     const changed = JSON.stringify(merged) !== JSON.stringify(existing);
     if (changed) {
