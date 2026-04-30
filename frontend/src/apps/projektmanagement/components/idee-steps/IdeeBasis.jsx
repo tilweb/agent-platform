@@ -1,38 +1,69 @@
 /**
  * IdeeBasis — Tab 1 des Projektidee-Wizards.
- * Felder: Projekt-ID, Projektname, Projekttyp, Projektidee Status, Projektstatus,
- * Projekttreiber, Projektgröße, Priorität, Kurzbeschreibung, Start/End-Datum,
- * Projektleiter, Auftraggeber.
+ * Visuelles Pattern 1:1 wie components/steps/Basis.jsx.
  */
 
 import { theme } from '../../../../config/theme';
 
 const styles = {
-  container: { display: 'flex', flexDirection: 'column', gap: theme.spacing.xl },
-  header: { marginBottom: theme.spacing.lg },
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.xl,
+  },
+  header: {
+    marginBottom: theme.spacing.lg,
+  },
   title: {
     fontSize: theme.typography.sizes.xl,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text,
     marginBottom: theme.spacing.sm,
   },
-  subtitle: { fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary },
-  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg },
-  formGroup: { display: 'flex', flexDirection: 'column', gap: theme.spacing.sm },
+  subtitle: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
+  },
+  formGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.sm,
+  },
+  formRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: theme.spacing.lg,
+  },
   label: {
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text,
   },
-  required: { color: theme.colors.error, marginLeft: '2px' },
+  required: {
+    color: theme.colors.error,
+    marginLeft: '2px',
+  },
   input: {
     padding: theme.spacing.md,
     border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.borderRadius.lg,
     fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
     color: theme.colors.text,
     outline: 'none',
+    transition: `border-color ${theme.transitions.fast}`,
+  },
+  textarea: {
+    padding: theme.spacing.md,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.sm,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
+    outline: 'none',
+    minHeight: '100px',
+    resize: 'vertical',
+    fontFamily: theme.typography.fontFamily,
   },
   select: {
     padding: theme.spacing.md,
@@ -42,21 +73,12 @@ const styles = {
     backgroundColor: theme.colors.surface,
     color: theme.colors.text,
     cursor: 'pointer',
-    outline: 'none',
   },
-  textarea: {
-    padding: theme.spacing.md,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text,
-    outline: 'none',
-    minHeight: '100px',
-    resize: 'vertical',
-    fontFamily: 'inherit',
+  hint: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
   },
-  hint: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted },
 };
 
 const STATUS_OPTIONS = [
@@ -98,18 +120,23 @@ export default function IdeeBasis({ projektidee, onChange }) {
     <div style={styles.container}>
       <div style={styles.header}>
         <h2 style={styles.title}>1. Basisdaten</h2>
-        <p style={styles.subtitle}>Erfassen Sie die grundlegenden Informationen zur Projektidee.</p>
+        <p style={styles.subtitle}>
+          Erfassen Sie die grundlegenden Informationen zur Projektidee.
+        </p>
       </div>
 
-      <div style={styles.grid}>
+      {/* Projekt-ID und Projektname */}
+      <div style={styles.formRow}>
         <div style={styles.formGroup}>
           <label style={styles.label}>Projekt-ID</label>
           <input
             type="text"
-            style={styles.input}
-            placeholder="z.B. PRJ-2026-001"
             value={projektidee.projekt_id || ''}
             onChange={(e) => update('projekt_id', e.target.value)}
+            placeholder="z.B. PRJ-2026-001"
+            style={styles.input}
+            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
           />
         </div>
         <div style={styles.formGroup}>
@@ -118,20 +145,24 @@ export default function IdeeBasis({ projektidee, onChange }) {
           </label>
           <input
             type="text"
-            style={styles.input}
-            placeholder="z.B. Einführung neues CRM-System"
             value={projektidee.name || ''}
             onChange={(e) => update('name', e.target.value)}
-            required
+            placeholder="z.B. KI-gestuetzte Bewerbungs-Triage"
+            style={styles.input}
+            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
           />
         </div>
+      </div>
 
+      {/* Projekttyp und Projektidee-Status */}
+      <div style={styles.formRow}>
         <div style={styles.formGroup}>
           <label style={styles.label}>Projekttyp</label>
           <select
-            style={styles.select}
             value={projektidee.project_type || ''}
             onChange={(e) => update('project_type', e.target.value)}
+            style={styles.select}
           >
             {PROJECT_TYPE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -139,45 +170,55 @@ export default function IdeeBasis({ projektidee, onChange }) {
           </select>
         </div>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Projektidee Status</label>
+          <label style={styles.label}>Projektidee-Status</label>
           <select
-            style={styles.select}
             value={projektidee.status || 'draft'}
             onChange={(e) => update('status', e.target.value)}
+            style={styles.select}
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
         </div>
+      </div>
 
+      {/* Projektstatus und Projekttreiber */}
+      <div style={styles.formRow}>
         <div style={styles.formGroup}>
           <label style={styles.label}>Projektstatus</label>
           <input
             type="text"
-            style={styles.input}
-            placeholder="z.B. Konzeption, Pruefung, Skizze..."
             value={projektidee.project_status || ''}
             onChange={(e) => update('project_status', e.target.value)}
+            placeholder="z.B. Konzept, Pre-Approval"
+            style={styles.input}
+            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
           />
         </div>
         <div style={styles.formGroup}>
           <label style={styles.label}>Projekttreiber</label>
           <input
             type="text"
-            style={styles.input}
-            placeholder="Wer/was treibt die Idee?"
             value={projektidee.projekttreiber || ''}
             onChange={(e) => update('projekttreiber', e.target.value)}
+            placeholder="z.B. Marketing, IT-Strategie"
+            style={styles.input}
+            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
           />
         </div>
+      </div>
 
+      {/* Projektgröße und Priorität */}
+      <div style={styles.formRow}>
         <div style={styles.formGroup}>
           <label style={styles.label}>Projektgröße</label>
           <select
-            style={styles.select}
             value={projektidee.projektgroesse || ''}
             onChange={(e) => update('projektgroesse', e.target.value)}
+            style={styles.select}
           >
             {PROJEKTGROESSE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -187,9 +228,9 @@ export default function IdeeBasis({ projektidee, onChange }) {
         <div style={styles.formGroup}>
           <label style={styles.label}>Priorität</label>
           <select
-            style={styles.select}
             value={projektidee.prioritaet || ''}
             onChange={(e) => update('prioritaet', e.target.value)}
+            style={styles.select}
           >
             {PRIORITAET_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -198,55 +239,66 @@ export default function IdeeBasis({ projektidee, onChange }) {
         </div>
       </div>
 
+      {/* Kurzbeschreibung */}
       <div style={styles.formGroup}>
         <label style={styles.label}>Kurzbeschreibung</label>
         <textarea
-          style={styles.textarea}
-          placeholder="Beschreiben Sie die Idee in wenigen Sätzen..."
           value={projektidee.description || ''}
           onChange={(e) => update('description', e.target.value)}
+          placeholder="Beschreiben Sie die Projektidee in wenigen Sätzen..."
+          style={styles.textarea}
+          onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+          onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
         />
       </div>
 
-      <div style={styles.grid}>
+      {/* Zeitraum */}
+      <div style={styles.formRow}>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Startdatum</label>
+          <label style={styles.label}>Startdatum (geplant)</label>
           <input
             type="date"
-            style={styles.input}
             value={projektidee.start_date || ''}
             onChange={(e) => update('start_date', e.target.value)}
+            style={styles.input}
           />
         </div>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Enddatum</label>
+          <label style={styles.label}>Enddatum (geplant)</label>
           <input
             type="date"
-            style={styles.input}
             value={projektidee.end_date || ''}
             onChange={(e) => update('end_date', e.target.value)}
+            style={styles.input}
           />
-          <span style={styles.hint}>Optional bei unbefristeten Ideen</span>
+          <p style={styles.hint}>Optional in der Ideen-Phase.</p>
         </div>
+      </div>
 
+      {/* Verantwortliche */}
+      <div style={styles.formRow}>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Projektleiter</label>
+          <label style={styles.label}>Projektleiter (vorgesehen)</label>
           <input
             type="text"
-            style={styles.input}
-            placeholder="Name des Projektleiters"
             value={projektidee.projektleiter || ''}
             onChange={(e) => update('projektleiter', e.target.value)}
+            placeholder="Name"
+            style={styles.input}
+            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
           />
         </div>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Auftraggeber</label>
+          <label style={styles.label}>Auftraggeber (vorgesehen)</label>
           <input
             type="text"
-            style={styles.input}
-            placeholder="Name des Auftraggebers"
             value={projektidee.auftraggeber || ''}
             onChange={(e) => update('auftraggeber', e.target.value)}
+            placeholder="Name oder Bereich"
+            style={styles.input}
+            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
           />
         </div>
       </div>

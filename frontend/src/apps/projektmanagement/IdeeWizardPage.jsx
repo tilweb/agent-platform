@@ -1,6 +1,6 @@
 /**
  * IdeeWizardPage
- * 6-Schritt-Wizard fuer Projektideen. Schlanker als der Auftrag-Wizard.
+ * 6-Schritt-Wizard fuer Projektideen — visuelles Layout 1:1 wie WizardPage (Auftrag).
  * Schritte: Basis | Ziele | Projektkontext | Business Case | Unternehmensrisiken | Übersicht.
  */
 
@@ -28,7 +28,13 @@ const STEPS = [
 ];
 
 const styles = {
-  container: { height: '100%', display: 'flex', flexDirection: 'column' },
+  container: {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: theme.colors.background,
+  },
+  // App Detail Header (Standard-Pattern)
   header: {
     padding: `${theme.spacing.xl} ${theme.spacing['2xl']}`,
     borderBottom: `1px solid ${theme.colors.border}`,
@@ -52,19 +58,30 @@ const styles = {
     alignItems: 'flex-start',
   },
   headerLeft: { flex: 1 },
-  title: {
+  headerTitle: {
     fontSize: theme.typography.sizes['2xl'],
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.text,
     marginBottom: theme.spacing.sm,
   },
-  subtitle: {
+  headerSubtitle: {
     fontSize: theme.typography.sizes.base,
     color: theme.colors.textSecondary,
     display: 'flex',
-    gap: theme.spacing.md,
     alignItems: 'center',
+    gap: theme.spacing.md,
   },
+  statusBadge: {
+    fontSize: theme.typography.sizes.xs,
+    padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+    borderRadius: theme.borderRadius.full,
+    fontWeight: theme.typography.weights.medium,
+  },
+  statusDraft: { backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted },
+  statusReview: { backgroundColor: theme.colors.warningLight, color: theme.colors.warning },
+  statusApproved: { backgroundColor: theme.colors.successLight, color: theme.colors.success },
+  statusRejected: { backgroundColor: theme.colors.errorLight, color: theme.colors.error },
+  statusArchived: { backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted },
   headerActions: { display: 'flex', gap: theme.spacing.md },
   actionButton: {
     padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
@@ -76,6 +93,9 @@ const styles = {
     fontWeight: theme.typography.weights.medium,
     cursor: 'pointer',
     transition: `all ${theme.transitions.fast}`,
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   primaryButton: {
     backgroundColor: theme.colors.primary,
@@ -86,78 +106,123 @@ const styles = {
     color: theme.colors.error,
     borderColor: `${theme.colors.error}30`,
   },
-  body: { flex: 1, display: 'flex', overflow: 'hidden' },
-  sidebar: {
-    width: '240px',
-    minWidth: '240px',
-    paddingTop: theme.spacing.xl,
-    paddingLeft: theme.spacing.lg,
+  // Horizontal Step Tabs (Pill-Style) — identisch zu WizardPage
+  stepTabs: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing.xs,
-    borderRight: `1px solid ${theme.colors.border}`,
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.md} ${theme.spacing['2xl']}`,
+    backgroundColor: 'transparent',
+    overflowX: 'auto',
+    flexWrap: 'nowrap',
   },
-  stepButton: {
+  stepTab: {
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing.md,
-    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.textMuted,
+    gap: theme.spacing.xs,
+    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
     backgroundColor: 'transparent',
     border: 'none',
     borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.textMuted,
     cursor: 'pointer',
-    textAlign: 'left',
-    width: '100%',
+    transition: `all ${theme.transitions.fast}`,
+    whiteSpace: 'nowrap',
   },
-  stepButtonActive: {
+  stepTabActive: {
     backgroundColor: theme.colors.primaryLight,
     color: theme.colors.primary,
   },
-  stepBubble: {
-    width: '24px',
-    height: '24px',
-    borderRadius: '50%',
-    fontSize: theme.typography.sizes.xs,
-    fontWeight: theme.typography.weights.semibold,
-    display: 'inline-flex',
+  stepTabCompleted: {
+    color: theme.colors.success,
+  },
+  stepTabNumber: {
+    width: '20px',
+    height: '20px',
+    borderRadius: theme.borderRadius.full,
+    display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
-    backgroundColor: theme.colors.surfaceHover,
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.medium,
+  },
+  stepTabNumberDefault: {
+    backgroundColor: theme.colors.border,
     color: theme.colors.textMuted,
   },
-  stepBubbleActive: {
+  stepTabNumberActive: {
     backgroundColor: theme.colors.primary,
     color: '#fff',
   },
-  content: { flex: 1, padding: theme.spacing['2xl'], overflow: 'auto' },
-  contentInner: { maxWidth: '900px', margin: '0 auto' },
-  navBar: {
+  stepTabNumberCompleted: {
+    backgroundColor: theme.colors.success,
+    color: '#fff',
+  },
+  // Main content area
+  main: {
+    flex: 1,
+    display: 'flex',
+    overflow: 'hidden',
+  },
+  content: {
+    flex: 1,
+    overflow: 'auto',
+    padding: theme.spacing.xl,
+  },
+  stepContent: {
+    maxWidth: '720px',
+  },
+  // Navigation (Rounded Box)
+  navigation: {
+    margin: `${theme.spacing.lg} ${theme.spacing['2xl']}`,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    border: `1px solid ${theme.colors.border}`,
     display: 'flex',
     justifyContent: 'space-between',
-    padding: theme.spacing.xl,
-    borderTop: `1px solid ${theme.colors.border}`,
+    alignItems: 'center',
+  },
+  navInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.lg,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textMuted,
   },
   navButton: {
     padding: `${theme.spacing.md} ${theme.spacing.xl}`,
-    backgroundColor: 'transparent',
-    border: `1px solid ${theme.colors.border}`,
-    color: theme.colors.text,
     borderRadius: theme.borderRadius.lg,
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
     cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
-  navButtonDisabled: { opacity: 0.5, cursor: 'not-allowed' },
-  navButtonPrimary: {
+  navButtonPrev: {
+    backgroundColor: 'transparent',
+    color: theme.colors.textSecondary,
+    border: `1px solid ${theme.colors.border}`,
+  },
+  navButtonNext: {
     backgroundColor: theme.colors.primary,
     color: '#fff',
     border: 'none',
   },
-  loading: { padding: theme.spacing['2xl'], textAlign: 'center', color: theme.colors.textMuted },
+  navButtonDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+  },
+  loading: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    color: theme.colors.textMuted,
+  },
   errorBanner: {
     padding: theme.spacing.lg,
     backgroundColor: theme.colors.errorLight,
@@ -166,6 +231,14 @@ const styles = {
     margin: `${theme.spacing.lg} ${theme.spacing['2xl']}`,
     fontSize: theme.typography.sizes.sm,
   },
+};
+
+const STATUS_BADGE_STYLES = {
+  draft: 'statusDraft',
+  review: 'statusReview',
+  approved: 'statusApproved',
+  rejected: 'statusRejected',
+  archived: 'statusArchived',
 };
 
 const STATUS_LABELS = {
@@ -195,6 +268,7 @@ export default function IdeeWizardPage() {
 
   const [idee, setIdee] = useState(emptyIdee());
   const [currentStep, setCurrentStep] = useState(1);
+  const [maxVisitedStep, setMaxVisitedStep] = useState(1);
   const [isLoading, setIsLoading] = useState(!!id);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -210,7 +284,9 @@ export default function IdeeWizardPage() {
       getIdee(id)
         .then((data) => {
           setIdee(data);
-          setCurrentStep(data.current_step || 1);
+          const step = data.current_step || 1;
+          setCurrentStep(step);
+          setMaxVisitedStep(Math.max(step, 1));
         })
         .catch((err) => {
           console.error(err);
@@ -258,13 +334,20 @@ export default function IdeeWizardPage() {
       if (result === null && error) return;
     }
     setCurrentStep(step);
+    setMaxVisitedStep((prev) => Math.max(prev, step));
   };
 
-  const next = () => {
+  const goNext = () => {
     if (currentStep < STEPS.length) goToStep(currentStep + 1);
   };
-  const prev = () => {
+  const goPrev = () => {
     if (currentStep > 1) goToStep(currentStep - 1);
+  };
+
+  const getStepStatus = (stepNumber) => {
+    if (stepNumber === currentStep) return 'active';
+    if (stepNumber < maxVisitedStep) return 'completed';
+    return 'default';
   };
 
   const handleDelete = async () => {
@@ -272,7 +355,7 @@ export default function IdeeWizardPage() {
     if (!confirm('Diese Projektidee wirklich loeschen? Die abgeleiteten Projektauftraege bleiben bestehen.')) return;
     try {
       await deleteIdee(idee.id);
-      navigate('/apps/projektmanagement/ideen');
+      navigate('/apps/projektmanagement?tab=ideen');
     } catch (err) {
       setError(err.message);
     }
@@ -342,20 +425,24 @@ export default function IdeeWizardPage() {
   }
 
   const StepComponent = STEPS[currentStep - 1].component;
+  const badgeStyle = styles[STATUS_BADGE_STYLES[idee.status] ?? 'statusDraft'];
 
   return (
     <div style={styles.container}>
+      {/* Header */}
       <div style={styles.header}>
-        <button style={styles.backLink} onClick={() => navigate('/apps/projektmanagement/ideen')}>
+        <button style={styles.backLink} onClick={() => navigate('/apps/projektmanagement?tab=ideen')}>
           <ArrowLeftIcon /> Projektideen
         </button>
         <div style={styles.headerContent}>
           <div style={styles.headerLeft}>
-            <h1 style={styles.title}>{idee.name || 'Neue Projektidee'}</h1>
-            <div style={styles.subtitle}>
-              <span>{idee.id ? 'Idee' : 'Neue Idee'}</span>
+            <h1 style={styles.headerTitle}>{idee.name || 'Neue Projektidee'}</h1>
+            <div style={styles.headerSubtitle}>
+              <span>Projektidee</span>
               <span>|</span>
-              <span>{STATUS_LABELS[idee.status] ?? idee.status}</span>
+              <span style={{ ...styles.statusBadge, ...badgeStyle }}>
+                {STATUS_LABELS[idee.status] ?? idee.status}
+              </span>
               {idee.abgeleitete_auftraege && idee.abgeleitete_auftraege.length > 0 && (
                 <>
                   <span>|</span>
@@ -369,6 +456,12 @@ export default function IdeeWizardPage() {
               style={styles.actionButton}
               onClick={save}
               disabled={isSaving || !isDirty}
+              onMouseEnter={(e) => {
+                if (!isSaving && isDirty) e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
             >
               {isSaving ? 'Speichert…' : isDirty ? 'Speichern' : 'Gespeichert ✓'}
             </button>
@@ -403,27 +496,57 @@ export default function IdeeWizardPage() {
 
       {error && <div style={styles.errorBanner}>{error}</div>}
 
-      <div style={styles.body}>
-        <div style={styles.sidebar}>
-          {STEPS.map((s) => {
-            const isActive = s.number === currentStep;
-            return (
-              <button
-                key={s.number}
-                style={{ ...styles.stepButton, ...(isActive ? styles.stepButtonActive : {}) }}
-                onClick={() => goToStep(s.number)}
+      {/* Step Tabs (Horizontal Pill-Style) */}
+      <div style={styles.stepTabs}>
+        {STEPS.map((step) => {
+          const status = getStepStatus(step.number);
+          const isActive = status === 'active';
+          const isCompleted = status === 'completed';
+          return (
+            <button
+              key={step.number}
+              type="button"
+              style={{
+                ...styles.stepTab,
+                ...(isActive ? styles.stepTabActive : {}),
+                ...(!isActive && isCompleted ? styles.stepTabCompleted : {}),
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                goToStep(step.number);
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              <div
+                style={{
+                  ...styles.stepTabNumber,
+                  ...(isActive ? styles.stepTabNumberActive : {}),
+                  ...(!isActive && isCompleted ? styles.stepTabNumberCompleted : {}),
+                  ...(!isActive && !isCompleted ? styles.stepTabNumberDefault : {}),
+                }}
               >
-                <span style={{ ...styles.stepBubble, ...(isActive ? styles.stepBubbleActive : {}) }}>
-                  {s.number}
-                </span>
-                <span>{s.title}</span>
-              </button>
-            );
-          })}
-        </div>
+                {step.number}
+              </div>
+              {step.title}
+            </button>
+          );
+        })}
+      </div>
 
+      {/* Main content */}
+      <div style={styles.main}>
         <div style={styles.content}>
-          <div style={styles.contentInner}>
+          <div style={styles.stepContent}>
             <StepComponent
               projektidee={idee}
               onChange={handleChange}
@@ -433,20 +556,32 @@ export default function IdeeWizardPage() {
         </div>
       </div>
 
-      <div style={styles.navBar}>
+      {/* Navigation */}
+      <div style={styles.navigation}>
         <button
-          style={{ ...styles.navButton, ...(currentStep === 1 ? styles.navButtonDisabled : {}) }}
-          onClick={prev}
+          style={{
+            ...styles.navButton,
+            ...styles.navButtonPrev,
+            ...(currentStep === 1 ? styles.navButtonDisabled : {}),
+          }}
+          onClick={goPrev}
           disabled={currentStep === 1}
         >
           ← Zurück
         </button>
+        <div style={styles.navInfo}>
+          Schritt {currentStep} von {STEPS.length}
+        </div>
         <button
-          style={{ ...styles.navButton, ...styles.navButtonPrimary, ...(currentStep === STEPS.length ? styles.navButtonDisabled : {}) }}
-          onClick={next}
+          style={{
+            ...styles.navButton,
+            ...styles.navButtonNext,
+            ...(currentStep === STEPS.length ? styles.navButtonDisabled : {}),
+          }}
+          onClick={goNext}
           disabled={currentStep === STEPS.length}
         >
-          Weiter →
+          {currentStep === STEPS.length ? 'Fertig' : 'Weiter →'}
         </button>
       </div>
     </div>

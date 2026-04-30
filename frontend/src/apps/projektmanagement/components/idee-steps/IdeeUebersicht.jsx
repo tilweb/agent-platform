@@ -21,9 +21,11 @@ const styles = {
     padding: theme.spacing.xl,
   },
   cardTitle: {
-    fontSize: theme.typography.sizes.base,
+    fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text,
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
     marginBottom: theme.spacing.lg,
   },
   fieldGrid: {

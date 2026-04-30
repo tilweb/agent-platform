@@ -54,6 +54,7 @@ const styles = {
     backgroundColor: theme.colors.background,
     color: theme.colors.text,
     outline: 'none',
+    transition: `border-color ${theme.transitions.fast}`,
   },
   numericInput: { textAlign: 'right', fontVariantNumeric: 'tabular-nums' },
   removeButton: {
