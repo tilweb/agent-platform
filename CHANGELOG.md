@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-04-30
+
+### Feature: Projektauftrag-Import — Granulare Fortschrittsanzeige via SSE
+Vorher zeigte das Frontend einen Fake-Progress (hardcoded 10/25/40/80/100% mit kuenstlichen Setimeouts) ohne Bezug zum Backend-Status. Bei 30+ Sekunden Vision-LLM-Call (Whiteboard-Bilder) oder dichten xlsx-Toolboxen sah es aus als ob die App haengen wuerde.
+
+- **Backend** (`import-service.ts` + `routes.ts`): `importProjektauftrag()` erhaelt einen optionalen `onEvent`-Callback und emittiert `started`/`file_*`/`extracting_*`/`combining`/`validating`/`creating`/`done`/`error`. File-Loop ist jetzt sequenziell statt parallel. `withHeartbeat`-Wrapper emittiert alle 3s einen `*_progress`-Event waehrend Vision/Markitdown/LLM-Calls. Route nutzt `streamSSE` aus `hono/streaming`.
+- **Frontend** (`ImportPage.jsx`): konsumiert SSE-Stream via `fetch()` + `response.body.getReader()`. Per-File-Liste mit Status-Icons, Live-Sekunden-Counter pro aktiver Datei, Phasen-Hinweis-Box mit erwarteter Dauer.
+- **Test-Runner** (`tools/pm-import-test/run-test.ts`): liest jetzt SSE-Stream statt JSON-Response.
+
 ## 2026-04-29
 
 ### Fix: Projektauftrag-Import — Bilder, xlsx-Toolbox-Reorder, Null-Validation
