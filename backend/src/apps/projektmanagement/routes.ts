@@ -44,9 +44,19 @@ import {
   getDashboard,
 } from './statusbericht-service';
 import {
+  listIdeen,
+  getIdeeDetails,
+  createIdee,
+  updateIdee,
+  updateIdeeStep,
+  removeIdee,
+  createAuftragFromIdee,
+} from './idee-service';
+import {
   generateDocument,
   mapProjektauftragToDocument,
   mapStatusberichtToDocument,
+  mapProjektideeToDocument,
   getMimeType,
   getFileExtension,
   type DocumentFormat,
@@ -1030,5 +1040,144 @@ function generateCSV(projektauftrag: any): string {
 
   return lines.join('\n');
 }
+
+// ============== Projektidee Endpoints ==============
+//
+// Eigene Entitaet (siehe idee-service.ts). Alle Routes leben unter
+// /api/apps/projektmanagement/projektideen. Auftrag-aus-Idee-Generierung via
+// POST /:id/erstelle-auftrag.
+
+projektmanagement.get('/projektideen', async (c) => {
+  try {
+    const ideen = await listIdeen();
+    return c.json({ projektideen: ideen });
+  } catch (error) {
+    console.error('Error listing Projektideen:', error);
+    return c.json({ error: 'Failed to list Projektideen' }, 500);
+  }
+});
+
+projektmanagement.post('/projektideen', async (c) => {
+  try {
+    const body = await c.req.json();
+    const userId = 'user_default';
+    const idee = await createIdee(body, userId);
+    return c.json({ projektidee: idee }, 201);
+  } catch (error) {
+    console.error('Error creating Projektidee:', error);
+    return c.json({ error: 'Failed to create Projektidee' }, 500);
+  }
+});
+
+projektmanagement.get('/projektideen/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const idee = await getIdeeDetails(id);
+    if (!idee) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
+    return c.json({ projektidee: idee });
+  } catch (error) {
+    console.error('Error getting Projektidee:', error);
+    return c.json({ error: 'Failed to get Projektidee' }, 500);
+  }
+});
+
+projektmanagement.put('/projektideen/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const idee = await updateIdee(id, body);
+    if (!idee) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
+    return c.json({ projektidee: idee });
+  } catch (error) {
+    console.error('Error updating Projektidee:', error);
+    return c.json({ error: 'Failed to update Projektidee' }, 500);
+  }
+});
+
+projektmanagement.put('/projektideen/:id/step/:step', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const step = parseInt(c.req.param('step'), 10);
+    const body = await c.req.json();
+    const idee = await updateIdeeStep(id, step, body);
+    if (!idee) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
+    return c.json({ projektidee: idee });
+  } catch (error) {
+    console.error('Error updating Projektidee step:', error);
+    return c.json({ error: 'Failed to update Projektidee step' }, 500);
+  }
+});
+
+projektmanagement.delete('/projektideen/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const ok = await removeIdee(id);
+    if (!ok) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting Projektidee:', error);
+    return c.json({ error: 'Failed to delete Projektidee' }, 500);
+  }
+});
+
+/**
+ * POST /projektideen/:id/erstelle-auftrag
+ * Erzeugt einen Projektauftrag aus der Idee mit Vor-Mapping. Idee bleibt erhalten,
+ * Auftrag traegt einen Verweis auf die Idee (idee_id).
+ */
+projektmanagement.post('/projektideen/:id/erstelle-auftrag', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = 'user_default';
+    const auftrag = await createAuftragFromIdee(id, userId);
+    if (!auftrag) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
+    return c.json({ projektauftrag: auftrag }, 201);
+  } catch (error) {
+    console.error('Error creating Auftrag from Idee:', error);
+    return c.json({ error: 'Failed to create Auftrag from Idee' }, 500);
+  }
+});
+
+/**
+ * GET /projektideen/:id/export/:format
+ * Export einer Projektidee in den Formaten md / pdf / docx / json.
+ */
+projektmanagement.get('/projektideen/:id/export/:format', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const format = c.req.param('format');
+
+    const idee = await getIdeeDetails(id);
+    if (!idee) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
+
+    const filename = sanitizeFilename(`Projektidee_${idee.name || 'unbenannt'}`);
+
+    if (format === 'json') {
+      return c.json(idee, 200, {
+        'Content-Disposition': `attachment; filename="${filename}.json"`,
+      });
+    }
+
+    if (!['md', 'pdf', 'docx'].includes(format)) {
+      return c.json({ error: 'Unsupported format. Use md, pdf, docx, or json.' }, 400);
+    }
+
+    const documentData = mapProjektideeToDocument(idee);
+    const buffer = await generateDocument(documentData, format as DocumentFormat);
+    const mimeType = getMimeType(format as DocumentFormat);
+    const extension = getFileExtension(format as DocumentFormat);
+
+    return new Response(buffer, {
+      headers: {
+        'Content-Type': mimeType,
+        'Content-Disposition': `attachment; filename="${filename}.${extension}"`,
+        'Content-Length': buffer.length.toString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error exporting Projektidee:', error);
+    return c.json({ error: 'Failed to export Projektidee' }, 500);
+  }
+});
 
 export { projektmanagement as projektmanagementRoutes };

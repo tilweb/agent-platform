@@ -36,6 +36,8 @@ const ContractDetailPage = lazy(() => import('./apps/vertragsmanagement/Contract
 const ProjektePage = lazy(() => import('./apps/projektmanagement/ProjektePage'));
 const ImportPage = lazy(() => import('./apps/projektmanagement/ImportPage'));
 const WizardPage = lazy(() => import('./apps/projektmanagement/WizardPage'));
+const IdeeWizardPage = lazy(() => import('./apps/projektmanagement/IdeeWizardPage'));
+const IdeenPage = lazy(() => import('./apps/projektmanagement/IdeenPage'));
 const LieferantenPage = lazy(() => import('./apps/lieferantenmanagement/LieferantenPage'));
 const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/SupplierDetailPage'));
 const VsmPage = lazy(() => import('./apps/vsm/VsmPage'));
@@ -185,6 +187,9 @@ function AppRoutes() {
                   <Route path="/apps/projektmanagement" element={<ProjektePage />} />
                   <Route path="/apps/projektmanagement/import" element={<ImportPage />} />
                   <Route path="/apps/projektmanagement/neu" element={<WizardPage />} />
+                  <Route path="/apps/projektmanagement/ideen" element={<IdeenPage />} />
+                  <Route path="/apps/projektmanagement/ideen/neu" element={<IdeeWizardPage />} />
+                  <Route path="/apps/projektmanagement/ideen/:id" element={<IdeeWizardPage />} />
                   <Route path="/apps/projektmanagement/:id" element={<WizardPage />} />
                   <Route path="/apps/lieferantenmanagement" element={<LieferantenPage />} />
                   <Route path="/apps/lieferantenmanagement/:id" element={<SupplierDetailPage />} />
