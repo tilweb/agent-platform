@@ -34,7 +34,7 @@ import {
 import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis } from './analysis';
 import { getConfig, saveConfig } from './storage';
 import type { ProjektauftragFilters } from './types';
-import { importProjektauftrag } from './import-service';
+import { importProjektauftrag, importProjektidee } from './import-service';
 import {
   createStatusbericht as createSB,
   listStatusberichte,
@@ -1125,6 +1125,80 @@ projektmanagement.delete('/projektideen/:id', async (c) => {
  * Erzeugt einen Projektauftrag aus der Idee mit Vor-Mapping. Idee bleibt erhalten,
  * Auftrag traegt einen Verweis auf die Idee (idee_id).
  */
+/**
+ * POST /api/apps/projektmanagement/projektideen/import
+ * Multi-File-Import fuer Projektideen — gleiche Pipeline wie /projektauftraege/import,
+ * aber mit Idee-Profil + idee-spezifischer Persistence.
+ */
+projektmanagement.post('/projektideen/import', async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const userId = 'user_default';
+
+    const files: { buffer: Buffer; filename: string; mimeType: string }[] = [];
+    const allowedMimeTypes = new Set([
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/png', 'image/jpeg', 'image/webp', 'image/gif',
+      'text/plain', 'text/markdown',
+    ]);
+
+    for (const [key, value] of formData.entries()) {
+      if (key === 'files' && value instanceof File) {
+        if (files.length >= 10) {
+          return c.json({ error: 'Maximal 10 Dateien erlaubt' }, 400);
+        }
+        if (value.size > 50 * 1024 * 1024) {
+          return c.json({ error: `Datei "${value.name}" ist zu gross (max. 50 MB)` }, 400);
+        }
+        if (!allowedMimeTypes.has(value.type)) {
+          return c.json({ error: `Dateityp "${value.type}" nicht unterstuetzt fuer "${value.name}"` }, 400);
+        }
+        const arrayBuffer = await value.arrayBuffer();
+        files.push({
+          buffer: Buffer.from(arrayBuffer),
+          filename: value.name,
+          mimeType: value.type,
+        });
+      }
+    }
+
+    if (files.length === 0) {
+      return c.json({ error: 'Keine Dateien hochgeladen' }, 400);
+    }
+
+    console.log(`[PM-Idee-Import] Received ${files.length} files for import`);
+
+    return streamSSE(c, async (stream) => {
+      try {
+        await importProjektidee(files, userId, async (event) => {
+          await stream.writeSSE({
+            event: event.type,
+            data: JSON.stringify(event.data),
+          });
+        });
+      } catch (error) {
+        console.error('Error importing Projektidee:', error);
+        await stream.writeSSE({
+          event: 'error',
+          data: JSON.stringify({ message: error instanceof Error ? error.message : 'Import fehlgeschlagen' }),
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error importing Projektidee:', error);
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Import fehlgeschlagen' },
+      500
+    );
+  }
+});
+
 projektmanagement.post('/projektideen/:id/erstelle-auftrag', async (c) => {
   try {
     const id = c.req.param('id');

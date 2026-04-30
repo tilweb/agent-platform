@@ -14,8 +14,9 @@ import { OpenAIAdapter } from '../../services/llm/adapters/openai';
 import { buildFunctionSchema, buildToolChoice } from '../../extraction/schema-builder';
 import { validateExtraction } from '../../extraction/validator';
 import type { ExtractionProfile } from '../../extraction/types';
-import type { Projektauftrag } from './types';
+import type { Projektauftrag, Projektidee, BusinessCaseItem, Risk } from './types';
 import { createProjektauftrag, generateSubEntityId } from './service';
+import { createIdee } from './idee-service';
 
 // Markitdown API for document conversion (same as extraction service)
 const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
@@ -59,6 +60,7 @@ export type ImportEvent =
   | { type: 'validating';          data: { warningCount: number } }
   | { type: 'creating';            data: Record<string, never> }
   | { type: 'done';                data: { projektauftrag: Projektauftrag; report: ImportReport } }
+  | { type: 'idee_done';           data: { projektidee: Projektidee; report: ImportReport } }
   | { type: 'error';               data: { message: string } };
 
 export type ImportEventCallback = (event: ImportEvent) => void | Promise<void>;
@@ -682,32 +684,24 @@ function countExtractedFields(data: Partial<Projektauftrag>): number {
   return count;
 }
 
-// ============== Main Import Function ==============
+// ============== Shared File-Processing Helper ==============
 
-export async function importProjektauftrag(
+/**
+ * Phasen 1+2 der Import-Pipeline (mode-unabhaengig):
+ *   - File-Loop mit per-File-Events + Heartbeats waehrend Vision/Markitdown
+ *   - combineTexts() mit xlsx-Char-Budget-Reduktion
+ *
+ * Wird sowohl von importProjektauftrag als auch von importProjektidee genutzt.
+ * Mode-spezifisch ist nur was DANACH passiert (LLM-Prompt, Mapping, Persistence).
+ */
+async function processFilesToText(
   files: { buffer: Buffer; filename: string; mimeType: string }[],
   userId: string,
-  onEvent?: ImportEventCallback,
-): Promise<{ projektauftrag: Projektauftrag; report: ImportReport }> {
-  const report: ImportReport = {
-    filesProcessed: 0,
-    filesFailed: 0,
-    fieldsExtracted: 0,
-    errors: [],
-    warnings: [],
-  };
-
-  // Wenn kein Callback gesetzt: ein No-Op verwenden, damit die Phase-Pings keinen
-  // Wrapper-Overhead haben.
-  const emit = onEvent ?? (async () => { /* noop */ });
-
-  console.log(`[PM-Import] Starting import with ${files.length} files`);
-  await emit({ type: 'started', data: { fileCount: files.length, filenames: files.map(f => f.filename) } });
-
-  // 1. Process files SEQUENTIELL (vorher parallel) — sonst kollidieren Heartbeat-Events
-  // mehrerer paralleler Vision-Calls und die UI-Anzeige wird verwirrend.
-  // Performance-Verlust ist gering: typisch 2-5 Files, Vision-Calls limitieren ohnehin
-  // die LLM-Quota.
+  emit: ImportEventCallback,
+  report: ImportReport,
+): Promise<{ processedFiles: ProcessedFile[]; combinedText: string }> {
+  // 1. Process files SEQUENTIELL — sonst kollidieren Heartbeat-Events mehrerer
+  // paralleler Vision-Calls. Performance-Verlust ist gering bei typisch 2-5 Files.
   const processedFiles: ProcessedFile[] = [];
   for (let i = 0; i < files.length; i++) {
     const f = files[i]!;
@@ -716,7 +710,6 @@ export async function importProjektauftrag(
 
     const fileStart = Date.now();
     try {
-      // Heartbeat nur fuer Vision/Markitdown — Text geht <100ms.
       const text = kind === 'text'
         ? await processFile(f.buffer, f.filename, f.mimeType, userId)
         : await withHeartbeat(
@@ -771,6 +764,33 @@ export async function importProjektauftrag(
   console.log(`[PM-Import] Combined text: ${combinedText.length} chars`);
   await emit({ type: 'combining', data: { processedCount: processedFiles.length, totalChars: combinedText.length } });
 
+  return { processedFiles, combinedText };
+}
+
+// ============== Main Import Function ==============
+
+export async function importProjektauftrag(
+  files: { buffer: Buffer; filename: string; mimeType: string }[],
+  userId: string,
+  onEvent?: ImportEventCallback,
+): Promise<{ projektauftrag: Projektauftrag; report: ImportReport }> {
+  const report: ImportReport = {
+    filesProcessed: 0,
+    filesFailed: 0,
+    fieldsExtracted: 0,
+    errors: [],
+    warnings: [],
+  };
+
+  // Wenn kein Callback gesetzt: ein No-Op verwenden, damit die Phase-Pings keinen
+  // Wrapper-Overhead haben.
+  const emit = onEvent ?? (async () => { /* noop */ });
+
+  console.log(`[PM-Import] Starting import with ${files.length} files`);
+  await emit({ type: 'started', data: { fileCount: files.length, filenames: files.map(f => f.filename) } });
+
+  const { combinedText } = await processFilesToText(files, userId, emit, report);
+
   // 3. LLM extraction
   console.log('[PM-Import] Starting LLM extraction...');
   await emit({ type: 'extracting_started', data: { textChars: combinedText.length } });
@@ -813,4 +833,356 @@ export async function importProjektauftrag(
   await emit({ type: 'done', data: { projektauftrag, report } });
 
   return { projektauftrag, report };
+}
+
+// ============================================================================
+// Projektidee-Import — gleiche Pipeline (Phase 1+2) wie Projektauftrag, aber
+// schlankeres LLM-Profile, andere Extraction-Guidelines, anderer Mapper +
+// andere Persistence (createIdee statt createProjektauftrag).
+// ============================================================================
+
+const PROJEKTIDEE_PROFILE: ExtractionProfile = {
+  id: 'projektidee-import',
+  name: 'Projektidee Import',
+  description: 'Projektidee aus Brainstorm-Artefakten (Whiteboards, Workshops, Konzept-PDFs) extrahieren',
+  version: '1.0',
+  detection: {
+    keywords: ['Projektidee', 'Vision', 'Konzept', 'Treiber', 'Business Case'],
+  },
+  fields: {
+    basis: {
+      name: { type: 'text', required: true, label: 'Projektname', hint: 'Name oder Titel der Projektidee' },
+      projekt_id: { type: 'text', label: 'Projekt-ID', hint: 'Optional: Kennummer (z.B. PRJ-2026-001)' },
+      project_type: { type: 'text', label: 'Projekttyp', hint: 'Einer von: internal, external, research, infrastructure' },
+      project_status: { type: 'text', label: 'Projektstatus', hint: 'Freitext, z.B. Konzept, Pre-Approval' },
+      projekttreiber: { type: 'text', label: 'Projekttreiber', hint: 'Wer treibt diese Idee? z.B. HR, IT-Strategie, Marketing' },
+      projektgroesse: { type: 'text', label: 'Projektgroesse', hint: 'Einer von: klein, mittel, gross, sehr_gross' },
+      prioritaet: { type: 'text', label: 'Prioritaet', hint: 'Einer von: low, medium, high, critical' },
+      description: { type: 'text', label: 'Kurzbeschreibung', hint: 'Idee in wenigen Saetzen' },
+      start_date: { type: 'date', label: 'Geplantes Startdatum' },
+      end_date: { type: 'date', label: 'Geplantes Enddatum' },
+      projektleiter: { type: 'text', label: 'Vorgesehener Projektleiter' },
+      auftraggeber: { type: 'text', label: 'Vorgesehener Auftraggeber' },
+    },
+    ziele: {
+      goals: { type: 'text', label: 'Projektziele', hint: 'Vision / Outcome — Tasks/Milestones gehoeren NICHT hierher' },
+    },
+    kontext: {
+      ausgangslage: { type: 'text', label: 'Ausgangslage', hint: 'Warum und in welchem Rahmen ist die Idee entstanden?' },
+      rahmenbedingungen: { type: 'text', label: 'Rahmenbedingungen', hint: 'Constraints, Abhaengigkeiten, regulatorische Vorgaben' },
+    },
+    investitionen: {
+      _array: true,
+      _item_fields: {
+        beschreibung: { type: 'text', required: true, label: 'Investitions-Position' },
+        betrag: { type: 'number', label: 'Betrag in EUR (immer positiv)' },
+        anbieter: { type: 'text', label: 'Anbieter / Lieferant' },
+        hinweis: { type: 'text', label: 'Hinweis' },
+      },
+    },
+    nutzen: {
+      _array: true,
+      _item_fields: {
+        beschreibung: { type: 'text', required: true, label: 'Nutzen-Position' },
+        betrag: { type: 'number', label: 'Erwarteter Ertrag in EUR (immer positiv)' },
+        anbieter: { type: 'text', label: 'Quelle / Bereich' },
+        hinweis: { type: 'text', label: 'Hinweis' },
+      },
+    },
+    unternehmensrisiken: {
+      _array: true,
+      _item_fields: {
+        type: { type: 'text', label: 'Risikotyp', hint: 'z.B. strategisch, operativ, finanziell, rechtlich, technisch, markt, chance' },
+        description: { type: 'text', required: true, label: 'Risikobeschreibung' },
+        probability: { type: 'text', label: 'Eintrittswahrscheinlichkeit', hint: 'Einer von: low, medium, high' },
+        impact: { type: 'text', label: 'Auswirkung', hint: 'Einer von: low, medium, high' },
+        mitigation: { type: 'text', label: 'Gegenmassnahme / Nutzungsplan' },
+      },
+    },
+  },
+  guidelines: `Du extrahierst eine PROJEKTIDEE — also eine fruehe Konzept-Skizze, KEINEN detaillierten Auftrag.
+
+WICHTIG: Tasks, Meilensteine, Stakeholder, Team-Mitglieder gehoeren NICHT in eine Idee. Diese Felder kommen erst spaeter im Projektauftrag. Wenn das Quell-Dokument solche Listen enthaelt, IGNORIERE sie.
+
+Konzentriere dich auf:
+- Vision / Outcome / Was soll erreicht werden?
+- Treiber / Motivation / Welche strategische Frage?
+- Ausgangslage / Status Quo / Welches Problem?
+- Business Case-Skizze: Investitionen vs. Nutzen (alle Betraege POSITIV erfassen — Vorzeichen wird in der ROI-Rechnung interpretiert)
+- Strategische Risiken & Chancen auf Unternehmensebene
+
+Whiteboard-Fotos / Skizzen / Mind-Maps:
+- Interpretiere Pfeile, Cluster, Hierarchien
+- Investitionen sind oft links/unten, Nutzen rechts/oben (oder umgekehrt) visuell getrennt
+- Ueberschriften haben groessere Schrift / sind eingerahmt
+- Stichworte ohne Kontext darfst du in plausible Felder einsortieren (z.B. "DSGVO" → unternehmensrisiken)
+
+Allgemeine Regeln:
+- Extrahiere NUR Informationen, die explizit im Quell-Material stehen oder klar daraus interpretierbar sind. ERFINDE NICHTS.
+- Setze fehlende Werte auf null.
+- Datumsangaben im Format YYYY-MM-DD.
+- Zahlen als numerische Werte (nicht als String).
+
+Gueltige Enum-Werte:
+- project_type: "internal", "external", "research", "infrastructure"
+- projektgroesse: "klein", "mittel", "gross", "sehr_gross"
+- prioritaet: "low", "medium", "high", "critical"
+- probability/impact: "low", "medium", "high"
+
+Deutsche Werte uebersetzen:
+- "Hoch"/"Mittel"/"Niedrig" → "high"/"medium"/"low"
+- "Gross"/"Klein" → "gross"/"klein"
+- "Intern"/"Extern" → "internal"/"external"
+- "Kritisch" → "critical"`,
+};
+
+async function extractIdeeWithLLM(
+  combinedText: string,
+  userId?: string
+): Promise<Record<string, unknown>> {
+  const functionSchema = buildFunctionSchema(PROJEKTIDEE_PROFILE);
+  const toolChoice = buildToolChoice(PROJEKTIDEE_PROFILE);
+
+  const systemPrompt = `Du bist ein erfahrener Innovationsmanager und Konzept-Spezialist.
+Deine Aufgabe: Aus den gegebenen Brainstorm-Artefakten (Whiteboard-Fotos, Workshop-Notizen, Konzept-Dokumenten)
+eine strukturierte Projektidee extrahieren.
+
+${PROJEKTIDEE_PROFILE.guidelines}`;
+
+  const messages: Message[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: `Extrahiere die Projektidee aus folgenden Materialien:\n\n${combinedText}` },
+  ];
+
+  const usageContext: UsageContext = {
+    userId,
+    source: 'extraction',
+    operation: 'import_extract_idee',
+  };
+
+  const options: ChatOptions = {
+    userId,
+    toolChoice: toolChoice as ChatOptions['toolChoice'],
+  };
+
+  const response = await llmService.chat(messages, [functionSchema], usageContext, options);
+
+  // Primary: tool_calls
+  if (response.tool_calls && response.tool_calls.length > 0) {
+    const args = response.tool_calls[0]!.function.arguments;
+    try {
+      return JSON.parse(args);
+    } catch {
+      throw new Error(`Ungueltiges JSON in Function-Call-Antwort: ${args.substring(0, 200)}`);
+    }
+  }
+
+  // Fallback: JSON aus content
+  if (response.content) {
+    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch {
+        // Fall through
+      }
+    }
+  }
+
+  throw new Error('LLM hat keine strukturierten Daten zurueckgegeben');
+}
+
+function normalizeIdeeProjektgroesse(value: unknown): Projektidee['projektgroesse'] | undefined {
+  if (typeof value !== 'string') return undefined;
+  const map: Record<string, NonNullable<Projektidee['projektgroesse']>> = {
+    klein: 'klein', small: 'klein',
+    mittel: 'mittel', medium: 'mittel', mid: 'mittel',
+    gross: 'gross', 'gross': 'gross', large: 'gross', big: 'gross', groß: 'gross',
+    sehr_gross: 'sehr_gross', 'sehr gross': 'sehr_gross', 'sehr_groß': 'sehr_gross', 'sehr groß': 'sehr_gross', xlarge: 'sehr_gross',
+  };
+  return map[value.toLowerCase().trim()];
+}
+
+function normalizeIdeePrioritaet(value: unknown): Projektidee['prioritaet'] | undefined {
+  if (typeof value !== 'string') return undefined;
+  const map: Record<string, NonNullable<Projektidee['prioritaet']>> = {
+    low: 'low', niedrig: 'low', gering: 'low',
+    medium: 'medium', mittel: 'medium',
+    high: 'high', hoch: 'high',
+    critical: 'critical', kritisch: 'critical',
+  };
+  return map[value.toLowerCase()];
+}
+
+/**
+ * Map flat extraction result auf Projektidee-Struktur.
+ */
+function mapToProjektidee(data: Record<string, unknown>): Partial<Projektidee> {
+  const basis = (data.basis || {}) as Record<string, unknown>;
+  const ziele = (data.ziele || {}) as Record<string, unknown>;
+  const kontext = (data.kontext || {}) as Record<string, unknown>;
+  const investitionen = (data.investitionen || []) as Array<Record<string, unknown>>;
+  const nutzen = (data.nutzen || []) as Array<Record<string, unknown>>;
+  const risiken = (data.unternehmensrisiken || []) as Array<Record<string, unknown>>;
+
+  const result: Partial<Projektidee> = {};
+
+  // Basis
+  if (basis.name) result.name = String(basis.name);
+  if (basis.projekt_id) result.projekt_id = String(basis.projekt_id);
+  if (basis.project_type) {
+    const t = normalizeProjectType(basis.project_type);
+    // normalizeProjectType faellt auf 'internal' zurueck — wir akzeptieren das,
+    // weil das LLM project_type meist explizit setzt oder gar nicht. Fuer Idee
+    // ist 'internal' ein sinnvoller Default.
+    result.project_type = t;
+  }
+  if (basis.project_status) result.project_status = String(basis.project_status);
+  if (basis.projekttreiber) result.projekttreiber = String(basis.projekttreiber);
+  const groesse = normalizeIdeeProjektgroesse(basis.projektgroesse);
+  if (groesse) result.projektgroesse = groesse;
+  const prio = normalizeIdeePrioritaet(basis.prioritaet);
+  if (prio) result.prioritaet = prio;
+  if (basis.description) result.description = String(basis.description);
+  if (basis.start_date) result.start_date = String(basis.start_date);
+  if (basis.end_date) result.end_date = String(basis.end_date);
+  if (basis.projektleiter) result.projektleiter = String(basis.projektleiter);
+  if (basis.auftraggeber) result.auftraggeber = String(basis.auftraggeber);
+
+  // Ziele
+  if (ziele.goals) result.goals = String(ziele.goals);
+
+  // Kontext
+  result.context = {
+    ausgangslage: kontext.ausgangslage ? String(kontext.ausgangslage) : '',
+    rahmenbedingungen: kontext.rahmenbedingungen ? String(kontext.rahmenbedingungen) : '',
+  };
+
+  // Business Case
+  const mapBcItem = (it: Record<string, unknown>): BusinessCaseItem => ({
+    id: generateSubEntityId(),
+    beschreibung: String(it.beschreibung || ''),
+    betrag: Math.abs(Number(it.betrag) || 0),
+    ...(it.anbieter ? { anbieter: String(it.anbieter) } : {}),
+    ...(it.hinweis ? { hinweis: String(it.hinweis) } : {}),
+  });
+
+  result.business_case = {
+    investitionen: Array.isArray(investitionen)
+      ? investitionen.filter((i) => i.beschreibung).map(mapBcItem)
+      : [],
+    nutzen: Array.isArray(nutzen)
+      ? nutzen.filter((n) => n.beschreibung).map(mapBcItem)
+      : [],
+  };
+
+  // Unternehmensrisiken
+  if (Array.isArray(risiken) && risiken.length > 0) {
+    result.unternehmensrisiken = risiken
+      .filter((r) => r.description)
+      .map((r): Risk => ({
+        id: generateSubEntityId(),
+        type: String(r.type || ''),
+        description: String(r.description || ''),
+        probability: normalizeLowMediumHigh(r.probability),
+        impact: normalizeLowMediumHigh(r.impact),
+        mitigation: String(r.mitigation || ''),
+      }));
+  } else {
+    result.unternehmensrisiken = [];
+  }
+
+  return result;
+}
+
+function countExtractedIdeeFields(data: Partial<Projektidee>): number {
+  let count = 0;
+  if (data.name) count++;
+  if (data.projekt_id) count++;
+  if (data.project_type) count++;
+  if (data.project_status) count++;
+  if (data.projekttreiber) count++;
+  if (data.projektgroesse) count++;
+  if (data.prioritaet) count++;
+  if (data.description) count++;
+  if (data.start_date) count++;
+  if (data.end_date) count++;
+  if (data.projektleiter) count++;
+  if (data.auftraggeber) count++;
+  if (data.goals) count++;
+  if (data.context?.ausgangslage) count++;
+  if (data.context?.rahmenbedingungen) count++;
+  if (data.business_case?.investitionen?.length) count += data.business_case.investitionen.length;
+  if (data.business_case?.nutzen?.length) count += data.business_case.nutzen.length;
+  if (data.unternehmensrisiken?.length) count += data.unternehmensrisiken.length;
+  return count;
+}
+
+export async function importProjektidee(
+  files: { buffer: Buffer; filename: string; mimeType: string }[],
+  userId: string,
+  onEvent?: ImportEventCallback,
+): Promise<{ projektidee: Projektidee; report: ImportReport }> {
+  const report: ImportReport = {
+    filesProcessed: 0,
+    filesFailed: 0,
+    fieldsExtracted: 0,
+    errors: [],
+    warnings: [],
+  };
+
+  const emit = onEvent ?? (async () => { /* noop */ });
+
+  console.log(`[PM-Idee-Import] Starting import with ${files.length} files`);
+  await emit({ type: 'started', data: { fileCount: files.length, filenames: files.map(f => f.filename) } });
+
+  const { combinedText } = await processFilesToText(files, userId, emit, report);
+
+  // 3. LLM extraction (Idee-spezifisch)
+  console.log('[PM-Idee-Import] Starting LLM extraction...');
+  await emit({ type: 'extracting_started', data: { textChars: combinedText.length } });
+  const extractStart = Date.now();
+  const extractedData = await withHeartbeat(
+    extractIdeeWithLLM(combinedText, userId),
+    HEARTBEAT_MS,
+    async (elapsedMs) => {
+      await emit({ type: 'extracting_progress', data: { elapsedMs } });
+    },
+  );
+
+  // 4. Validate
+  const validation = validateExtraction(extractedData, PROJEKTIDEE_PROFILE);
+  if (validation.errors.length > 0) {
+    for (const err of validation.errors) {
+      report.warnings.push(`Validierung: ${err.field} - ${err.message}`);
+    }
+  }
+  if (validation.corrected.length > 0) {
+    console.log(`[PM-Idee-Import] Auto-corrected fields: ${validation.corrected.join(', ')}`);
+  }
+  await emit({ type: 'validating', data: { warningCount: validation.errors.length } });
+
+  // 5. Map auf Projektidee-Struktur
+  const mappedData = mapToProjektidee(extractedData);
+  report.fieldsExtracted = countExtractedIdeeFields(mappedData);
+
+  console.log(`[PM-Idee-Import] Extracted ${report.fieldsExtracted} fields`);
+  await emit({
+    type: 'extracting_done',
+    data: { fieldsExtracted: report.fieldsExtracted, durationMs: Date.now() - extractStart },
+  });
+
+  // 6. Persist
+  await emit({ type: 'creating', data: {} });
+  if (!mappedData.name) {
+    // createIdee verlangt einen Namen — Fallback aus Datei-Liste falls LLM keinen liefert.
+    mappedData.name = `Idee-Import (${new Date().toLocaleDateString('de-DE')})`;
+    report.warnings.push('Kein Projektname extrahiert — Fallback gesetzt');
+  }
+  const projektidee = await createIdee(mappedData, userId);
+
+  console.log(`[PM-Idee-Import] Created Projektidee: ${projektidee.id}`);
+  await emit({ type: 'idee_done', data: { projektidee, report } });
+
+  return { projektidee, report };
 }
