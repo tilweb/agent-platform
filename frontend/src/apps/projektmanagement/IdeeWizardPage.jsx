@@ -453,17 +453,27 @@ export default function IdeeWizardPage() {
           </div>
           <div style={styles.headerActions}>
             <button
-              style={styles.actionButton}
+              style={{
+                ...styles.actionButton,
+                ...styles.primaryButton,
+                opacity: isSaving ? 0.7 : 1,
+                ...(isDirty && !isSaving ? {
+                  boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
+                } : {}),
+              }}
               onClick={save}
-              disabled={isSaving || !isDirty}
+              disabled={isSaving}
               onMouseEnter={(e) => {
-                if (!isSaving && isDirty) e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                if (!isSaving) {
+                  e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.backgroundColor = theme.colors.primary;
               }}
             >
-              {isSaving ? 'Speichert…' : isDirty ? 'Speichern' : 'Gespeichert ✓'}
+              <SaveIcon />
+              {isSaving ? 'Speichern...' : isDirty ? 'Speichern *' : 'Speichern'}
             </button>
             {idee.id && (
               <ExportDropdown
@@ -585,5 +595,15 @@ export default function IdeeWizardPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+function SaveIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+      <polyline points="17 21 17 13 7 13 7 21" />
+      <polyline points="7 3 7 8 15 8" />
+    </svg>
   );
 }
