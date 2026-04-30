@@ -6,6 +6,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 
+export class VersionConflictError extends Error {
+  constructor(currentServerData) {
+    super('version_conflict');
+    this.name = 'VersionConflictError';
+    this.current = currentServerData;
+  }
+}
+
 export function useProjektmanagement() {
   const [projektauftraege, setProjektauftraege] = useState([]);
   const [stats, setStats] = useState(null);
@@ -130,9 +138,16 @@ export function useProjektmanagement() {
   }, []);
 
   // Update Projektauftrag
-  const updateProjektauftrag = useCallback(async (projektId, updates) => {
-    const response = await apiPut(`/apps/projektmanagement/projektauftraege/${projektId}`, updates);
+  const updateProjektauftrag = useCallback(async (projektId, updates, { expectedVersion, force = false } = {}) => {
+    const body = { ...updates };
+    if (expectedVersion !== undefined) body.expected_version = expectedVersion;
+    if (force) body.force = true;
+    const response = await apiPut(`/apps/projektmanagement/projektauftraege/${projektId}`, body);
 
+    if (response.status === 409) {
+      const data = await response.json();
+      throw new VersionConflictError(data.current);
+    }
     if (!response.ok) {
       const data = await response.json();
       throw new Error(data.error || 'Failed to update Projektauftrag');
@@ -150,12 +165,19 @@ export function useProjektmanagement() {
   }, [fetchStats]);
 
   // Update specific step
-  const updateStep = useCallback(async (projektId, step, data) => {
+  const updateStep = useCallback(async (projektId, step, data, { expectedVersion, force = false } = {}) => {
+    const body = { ...data };
+    if (expectedVersion !== undefined) body.expected_version = expectedVersion;
+    if (force) body.force = true;
     const response = await apiPut(
       `/apps/projektmanagement/projektauftraege/${projektId}/step/${step}`,
-      data
+      body
     );
 
+    if (response.status === 409) {
+      const conflictData = await response.json();
+      throw new VersionConflictError(conflictData.current);
+    }
     if (!response.ok) {
       const result = await response.json();
       throw new Error(result.error || 'Failed to update step');
@@ -362,11 +384,18 @@ export function useProjektmanagement() {
   }, []);
 
   // Update Statusbericht
-  const updateStatusbericht = useCallback(async (projektId, sbId, updates) => {
+  const updateStatusbericht = useCallback(async (projektId, sbId, updates, { expectedVersion, force = false } = {}) => {
+    const body = { ...updates };
+    if (expectedVersion !== undefined) body.expected_version = expectedVersion;
+    if (force) body.force = true;
     const response = await apiPut(
       `/apps/projektmanagement/projektauftraege/${projektId}/statusberichte/${sbId}`,
-      updates
+      body
     );
+    if (response.status === 409) {
+      const conflictData = await response.json();
+      throw new VersionConflictError(conflictData.current);
+    }
     if (!response.ok) {
       const data = await response.json();
       throw new Error(data.error || 'Failed to update Statusbericht');

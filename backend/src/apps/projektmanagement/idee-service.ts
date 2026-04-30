@@ -66,8 +66,9 @@ export async function createIdee(
 export async function updateIdee(
   id: string,
   updates: Partial<Projektidee>,
+  options: { expectedVersion?: number; force?: boolean } = {},
 ): Promise<Projektidee | null> {
-  return storageUpdate(id, updates);
+  return storageUpdate(id, updates, options);
 }
 
 /**
@@ -78,8 +79,9 @@ export async function updateIdeeStep(
   id: string,
   step: number,
   partial: Partial<Projektidee>,
+  options: { expectedVersion?: number; force?: boolean } = {},
 ): Promise<Projektidee | null> {
-  return storageUpdate(id, { ...partial, current_step: step });
+  return storageUpdate(id, { ...partial, current_step: step }, options);
 }
 
 export async function removeIdee(id: string): Promise<boolean> {

@@ -1,4 +1,4 @@
-import { pgSchema, text, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
+import { pgSchema, text, timestamp, jsonb, index, integer } from 'drizzle-orm/pg-core';
 
 export const projektmgmtSchema = pgSchema('projektmgmt');
 
@@ -15,6 +15,7 @@ export const paProjektideen = projektmgmtSchema.table('projektideen', {
   status: text('status').notNull().default('draft'),  // draft | review | approved | rejected | archived
   data: jsonb('data').notNull(),                    // komplette Projektidee-Struktur
   metadata: jsonb('metadata'),
+  version: integer('version').notNull().default(1),  // Optimistic-Concurrency-Counter
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({
@@ -30,6 +31,7 @@ export const paProjektauftraege = projektmgmtSchema.table('projektauftraege', {
   ideeId: text('idee_id'),                          // FK auf projektideen.id (nullable — Auftrag muss nicht aus Idee kommen)
   data: jsonb('data').notNull(),                    // komplette Projektauftrag-Struktur
   metadata: jsonb('metadata'),                      // erstellt/geaendert datums, version, ...
+  version: integer('version').notNull().default(1),  // Optimistic-Concurrency-Counter
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({
@@ -43,6 +45,7 @@ export const paStatusberichte = projektmgmtSchema.table('statusberichte', {
   paId: text('pa_id').notNull().references(() => paProjektauftraege.id, { onDelete: 'cascade' }),
   reportDate: timestamp('report_date', { withTimezone: true, mode: 'string' }).notNull(),
   data: jsonb('data').notNull(),
+  version: integer('version').notNull().default(1),  // Optimistic-Concurrency-Counter
   createdBy: text('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({

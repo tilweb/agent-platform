@@ -36,6 +36,13 @@
       "when": 1777592400000,
       "tag": "0004_projektideen",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777679400000,
+      "tag": "0005_concurrency_versions",
+      "breakpoints": true
     }
   ]
 }

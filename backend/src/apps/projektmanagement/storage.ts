@@ -14,6 +14,7 @@ import {
   paVorlagen,
 } from '../../db/schema/projektmgmt';
 import type { Projektauftrag, Vorlage, Statusbericht } from './types';
+import { VersionConflictError, checkVersion } from './concurrency';
 
 export function generateProjektauftragId(): string {
   const timestamp = Date.now().toString(36);
@@ -29,6 +30,7 @@ function rowToProjektauftrag(row: typeof paProjektauftraege.$inferSelect): Proje
     ...data,
     id: row.id,
     name: row.name,
+    version: row.version,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   } as Projektauftrag;
@@ -79,12 +81,15 @@ export async function saveProjektauftrag(p: Projektauftrag): Promise<void> {
   const now = new Date().toISOString();
   // `idee` wird beim Read via JOIN angereichert — nicht in `data` persistieren.
   const { idee: _ignore, ...dataToStore } = p;
+  void _ignore;
+  const version = p.version ?? 1;
   await db.insert(paProjektauftraege).values({
     id: p.id,
     ownerId: (p as { ownerId?: string }).ownerId ?? null,
     name: p.name,
     status: (p as { status?: string }).status ?? 'draft',
     data: dataToStore as never,
+    version,
     createdAt: p.created_at ?? now,
     updatedAt: p.updated_at ?? now,
   }).onConflictDoUpdate({
@@ -93,25 +98,68 @@ export async function saveProjektauftrag(p: Projektauftrag): Promise<void> {
       name: p.name,
       status: (p as { status?: string }).status ?? 'draft',
       data: dataToStore as never,
+      version,
       updatedAt: p.updated_at ?? now,
     },
   });
 }
 
+/**
+ * Update a Projektauftrag — atomic compare-and-swap auf version-Spalte.
+ * Wirft VersionConflictError wenn expectedVersion gesetzt ist und 0 Rows
+ * vom UPDATE betroffen sind (jemand anderes hat zwischenzeitlich geschrieben).
+ */
 export async function updateProjektauftrag(
   projektId: string,
   updates: Partial<Projektauftrag>,
+  options: { expectedVersion?: number; force?: boolean } = {},
 ): Promise<Projektauftrag | null> {
+  const db = getDb();
   const existing = await getProjektauftrag(projektId);
   if (!existing) return null;
+  const currentVersion = existing.version ?? 1;
+
+  // Bei force=true oder fehlendem expectedVersion: kein CAS, normales Update.
+  if (options.force || options.expectedVersion === undefined) {
+    const merged: Projektauftrag = {
+      ...existing,
+      ...updates,
+      id: projektId,
+      updated_at: new Date().toISOString(),
+      version: currentVersion + 1,
+    } as Projektauftrag;
+    await saveProjektauftrag(merged);
+    return merged;
+  }
+
+  checkVersion(existing, options.expectedVersion, false);
   const merged: Projektauftrag = {
     ...existing,
     ...updates,
     id: projektId,
     updated_at: new Date().toISOString(),
+    version: currentVersion + 1,
   } as Projektauftrag;
-  await saveProjektauftrag(merged);
-  return merged;
+  const { idee: _ignore, ...dataToStore } = merged;
+  void _ignore;
+
+  const result = await db
+    .update(paProjektauftraege)
+    .set({
+      name: merged.name,
+      status: (merged as { status?: string }).status ?? 'draft',
+      data: dataToStore as never,
+      version: merged.version,
+      updatedAt: merged.updated_at,
+    })
+    .where(and(eq(paProjektauftraege.id, projektId), eq(paProjektauftraege.version, options.expectedVersion)))
+    .returning({ id: paProjektauftraege.id });
+
+  if (result.length === 0) {
+    const fresh = await getProjektauftrag(projektId);
+    throw new VersionConflictError(fresh);
+  }
+  return getProjektauftrag(projektId);
 }
 
 export async function deleteProjektauftrag(projektId: string): Promise<boolean> {
@@ -133,7 +181,7 @@ export function generateStatusberichtId(): string {
 
 function rowToStatusbericht(row: typeof paStatusberichte.$inferSelect): Statusbericht {
   const data = (row.data ?? {}) as Partial<Statusbericht>;
-  return { ...data, id: row.id } as Statusbericht;
+  return { ...data, id: row.id, version: row.version } as Statusbericht;
 }
 
 export async function getStatusberichte(projektId: string): Promise<Statusbericht[]> {
@@ -164,11 +212,13 @@ export async function saveStatusbericht(projektId: string, sb: Statusbericht): P
   const db = getDb();
   const now = new Date().toISOString();
   const reportDate = (sb as { datum?: string }).datum ?? now;
+  const version = sb.version ?? 1;
   await db.insert(paStatusberichte).values({
     id: sb.id,
     paId: projektId,
     reportDate,
     data: sb as never,
+    version,
     createdBy: (sb as { createdBy?: string }).createdBy ?? null,
     createdAt: now,
   }).onConflictDoUpdate({
@@ -177,6 +227,7 @@ export async function saveStatusbericht(projektId: string, sb: Statusbericht): P
       paId: projektId,
       reportDate,
       data: sb as never,
+      version,
     },
   });
 }

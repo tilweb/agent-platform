@@ -8,7 +8,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { ArrowLeftIcon } from '../../components/Icons';
-import { useProjektideen } from '../../hooks/useProjektideen';
+import { useProjektideen, VersionConflictError } from '../../hooks/useProjektideen';
+import ConflictResolutionModal from './components/ConflictResolutionModal';
 import { API_URL } from '../../utils/apiFetch';
 import ExportDropdown from '../../components/ExportDropdown';
 import IdeeBasis from './components/idee-steps/IdeeBasis';
@@ -278,6 +279,12 @@ export default function IdeeWizardPage() {
   const [isCreatingAuftrag, setIsCreatingAuftrag] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportingFormat, setExportingFormat] = useState(null);
+  // Server-Version fuer Optimistic-Concurrency. Null heisst: Idee noch nicht
+  // gespeichert oder Version unbekannt → kein Check beim ersten Save.
+  const [serverVersion, setServerVersion] = useState(null);
+  // Konflikt-State: { current, retry } — current ist die Server-Version,
+  // retry ist die Closure die der "Force"-Button aufruft.
+  const [conflict, setConflict] = useState(null);
 
   // Initial load
   useEffect(() => {
@@ -286,6 +293,7 @@ export default function IdeeWizardPage() {
       getIdee(id)
         .then((data) => {
           setIdee(data);
+          setServerVersion(data.version ?? 1);
           const step = data.current_step || 1;
           setCurrentStep(step);
           setMaxVisitedStep(Math.max(step, 1));
@@ -303,13 +311,17 @@ export default function IdeeWizardPage() {
     setIsDirty(true);
   };
 
-  const save = async () => {
+  const save = async ({ force = false } = {}) => {
     setIsSaving(true);
     setError(null);
     try {
       if (idee.id) {
-        const updated = await updateIdee(idee.id, idee);
+        const updated = await updateIdee(idee.id, idee, {
+          expectedVersion: serverVersion ?? undefined,
+          force,
+        });
         setIdee(updated);
+        setServerVersion(updated.version ?? null);
       } else {
         if (!idee.name?.trim()) {
           setError('Bitte zuerst einen Projektnamen eintragen.');
@@ -318,16 +330,39 @@ export default function IdeeWizardPage() {
         }
         const created = await createIdee(idee);
         setIdee(created);
+        setServerVersion(created.version ?? null);
         navigate(`/apps/projektmanagement/ideen/${created.id}`, { replace: true });
         return created;
       }
       setIsDirty(false);
     } catch (err) {
+      if (err instanceof VersionConflictError) {
+        setConflict({ current: err.current });
+        setIsSaving(false);
+        return null;
+      }
       setError(err.message);
     } finally {
       setIsSaving(false);
     }
     return null;
+  };
+
+  // Konflikt-Handler: User waehlt zwischen Reload (Server-Version uebernehmen)
+  // und Force-Overwrite (eigene Aenderungen mit force speichern).
+  const handleConflictReload = () => {
+    if (!conflict) return;
+    setIdee(conflict.current);
+    setServerVersion(conflict.current.version ?? null);
+    setIsDirty(false);
+    setConflict(null);
+  };
+  const handleConflictForce = async () => {
+    setConflict(null);
+    await save({ force: true });
+  };
+  const handleConflictCancel = () => {
+    setConflict(null);
   };
 
   const goToStep = async (step) => {
@@ -596,6 +631,16 @@ export default function IdeeWizardPage() {
           {currentStep === STEPS.length ? 'Fertig' : 'Weiter →'}
         </button>
       </div>
+
+      {conflict && (
+        <ConflictResolutionModal
+          entityLabel="Projektidee"
+          serverData={conflict.current}
+          onReload={handleConflictReload}
+          onForce={handleConflictForce}
+          onCancel={handleConflictCancel}
+        />
+      )}
     </div>
   );
 }

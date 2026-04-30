@@ -6,7 +6,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
-import { useProjektmanagement } from '../../hooks/useProjektmanagement';
+import { useProjektmanagement, VersionConflictError } from '../../hooks/useProjektmanagement';
+import ConflictResolutionModal from './components/ConflictResolutionModal';
 import { API_URL } from '../../utils/apiFetch';
 
 // Step components
@@ -375,6 +376,9 @@ function WizardPage() {
   const [completeness, setCompleteness] = useState(0);
   const [isNewProject, setIsNewProject] = useState(!id);
   const [isDirty, setIsDirty] = useState(false);
+  // Optimistic-Concurrency state.
+  const [serverVersion, setServerVersion] = useState(null);
+  const [conflict, setConflict] = useState(null);
   // Step analyses state (shared between KnowledgePanel and Step8)
   const [stepAnalyses, setStepAnalyses] = useState({});
   // Gesamtbewertung state (for Step8)
@@ -408,6 +412,7 @@ function WizardPage() {
       setIsLoading(true);
       const data = await getProjektauftrag(id);
       setProjektauftrag(data.projektauftrag);
+      setServerVersion(data.projektauftrag.version ?? 1);
       setCurrentStep(data.projektauftrag.current_step || 1);
       setCompleteness(data.completeness || 0);
       setIsNewProject(false);
@@ -477,14 +482,23 @@ function WizardPage() {
     setIsSbDirty(true);
   };
 
-  const handleSaveSb = async () => {
+  const handleSaveSb = async ({ force = false } = {}) => {
     if (!currentSb || !projektauftrag.id) return;
     try {
       setIsSbSaving(true);
-      await updateSbApi(projektauftrag.id, currentSb.id, currentSb);
+      const updated = await updateSbApi(projektauftrag.id, currentSb.id, currentSb, {
+        expectedVersion: currentSb.version,
+        force,
+      });
+      // updated kann null sein bei 404 — sonst neue Version uebernehmen.
+      if (updated) setCurrentSb(updated);
       await loadStatusberichte(projektauftrag.id);
       setIsSbDirty(false);
     } catch (err) {
+      if (err instanceof VersionConflictError) {
+        setConflict({ current: err.current, kind: 'sb' });
+        return;
+      }
       console.error('Error saving Statusbericht:', err);
     } finally {
       setIsSbSaving(false);
@@ -596,7 +610,7 @@ function WizardPage() {
   }, [calculateCompleteness]);
 
   // Save current step
-  const saveStep = async () => {
+  const saveStep = async ({ force = false } = {}) => {
     try {
       setIsSaving(true);
 
@@ -612,21 +626,55 @@ function WizardPage() {
         // Create new Projektauftrag
         const created = await createProjektauftrag(dataToSave);
         setProjektauftrag(created);
+        setServerVersion(created.version ?? null);
         setIsNewProject(false);
         // Update URL without reload
         window.history.replaceState(null, '', `/apps/projektmanagement/${created.id}`);
       } else {
         // Update existing
-        const result = await updateStep(projektauftrag.id, currentStep, dataToSave);
+        const result = await updateStep(projektauftrag.id, currentStep, dataToSave, {
+          expectedVersion: serverVersion ?? undefined,
+          force,
+        });
         setProjektauftrag(result.projektauftrag);
+        setServerVersion(result.projektauftrag.version ?? null);
         setCompleteness(result.completeness || 0);
       }
       setIsDirty(false);
     } catch (error) {
+      if (error instanceof VersionConflictError) {
+        setConflict({ current: error.current });
+        return;
+      }
       console.error('Error saving:', error);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleConflictReload = () => {
+    if (!conflict) return;
+    if (conflict.kind === 'sb') {
+      setCurrentSb(conflict.current);
+      setIsSbDirty(false);
+    } else {
+      setProjektauftrag(conflict.current);
+      setServerVersion(conflict.current.version ?? null);
+      setIsDirty(false);
+    }
+    setConflict(null);
+  };
+  const handleConflictForce = async () => {
+    const kind = conflict?.kind;
+    setConflict(null);
+    if (kind === 'sb') {
+      await handleSaveSb({ force: true });
+    } else {
+      await saveStep({ force: true });
+    }
+  };
+  const handleConflictCancel = () => {
+    setConflict(null);
   };
 
   // Navigation
@@ -1201,6 +1249,16 @@ function WizardPage() {
             </div>
           </div>
         </>
+      )}
+
+      {conflict && (
+        <ConflictResolutionModal
+          entityLabel={mode === 'auftrag' ? 'Projektauftrag' : 'Statusbericht'}
+          serverData={conflict.current}
+          onReload={handleConflictReload}
+          onForce={handleConflictForce}
+          onCancel={handleConflictCancel}
+        />
       )}
     </div>
   );
