@@ -41,13 +41,13 @@ const styles = {
   },
   itemRow: {
     display: 'grid',
-    gridTemplateColumns: '2fr 1.5fr 1fr 32px',
+    gridTemplateColumns: '3fr 1fr 32px',
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
     alignItems: 'center',
   },
   input: {
-    padding: theme.spacing.sm,
+    padding: theme.spacing.md,
     border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.borderRadius.md,
     fontSize: theme.typography.sizes.sm,
@@ -120,7 +120,7 @@ const styles = {
   },
   colHeader: {
     display: 'grid',
-    gridTemplateColumns: '2fr 1.5fr 1fr 32px',
+    gridTemplateColumns: '3fr 1fr 32px',
     gap: theme.spacing.sm,
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.textMuted,
@@ -166,7 +166,6 @@ function CategoryBlock({ title, items, onChange, prefix }) {
       {items.length > 0 && (
         <div style={styles.colHeader}>
           <div>Beschreibung</div>
-          <div>Anbieter / Hinweis</div>
           <div style={{ textAlign: 'right' }}>Betrag (€)</div>
           <div></div>
         </div>
@@ -177,16 +176,11 @@ function CategoryBlock({ title, items, onChange, prefix }) {
           <input
             type="text"
             style={styles.input}
-            placeholder="z.B. Lizenzkosten"
+            placeholder="z.B. Lizenzkosten Jahr 1"
             value={item.beschreibung || ''}
             onChange={(e) => update(item.id, 'beschreibung', e.target.value)}
-          />
-          <input
-            type="text"
-            style={styles.input}
-            placeholder="z.B. Software AG"
-            value={item.anbieter || ''}
-            onChange={(e) => update(item.id, 'anbieter', e.target.value)}
+            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
           />
           <input
             type="number"
@@ -196,6 +190,8 @@ function CategoryBlock({ title, items, onChange, prefix }) {
             placeholder="0"
             value={item.betrag ?? 0}
             onChange={(e) => update(item.id, 'betrag', Number(e.target.value) || 0)}
+            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
           />
           <button
             style={styles.removeButton}
@@ -248,7 +244,7 @@ export default function BusinessCase({ projektidee, onChange }) {
       <div style={styles.header}>
         <h2 style={styles.title}>4. Business Case</h2>
         <p style={styles.hint}>
-          Erfassen Sie alle Betraege positiv. Das Vorzeichen wird in der ROI-Berechnung
+          Erfassen Sie alle Beträge positiv. Das Vorzeichen wird in der ROI-Berechnung
           automatisch interpretiert (Investitionen negativ, Nutzen positiv).
         </p>
       </div>

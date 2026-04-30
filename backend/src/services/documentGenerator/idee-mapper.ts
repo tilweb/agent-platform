@@ -158,11 +158,9 @@ export function mapProjektideeToDocument(idee: Projektidee): DocumentData {
       title: 'Business Case — Investitionen',
       type: 'table',
       content: {
-        headers: ['Beschreibung', 'Anbieter', 'Hinweis', 'Betrag'],
+        headers: ['Beschreibung', 'Betrag'],
         rows: bc.investitionen.map((it) => [
           it.beschreibung || '-',
-          it.anbieter || '-',
-          it.hinweis || '-',
           formatCurrency(it.betrag),
         ]),
       },
@@ -174,11 +172,9 @@ export function mapProjektideeToDocument(idee: Projektidee): DocumentData {
       title: 'Business Case — Nutzen',
       type: 'table',
       content: {
-        headers: ['Beschreibung', 'Anbieter', 'Hinweis', 'Betrag'],
+        headers: ['Beschreibung', 'Betrag'],
         rows: bc.nutzen.map((it) => [
           it.beschreibung || '-',
-          it.anbieter || '-',
-          it.hinweis || '-',
           formatCurrency(it.betrag),
         ]),
       },

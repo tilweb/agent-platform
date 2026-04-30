@@ -886,19 +886,15 @@ const PROJEKTIDEE_PROFILE: ExtractionProfile = {
     investitionen: {
       _array: true,
       _item_fields: {
-        beschreibung: { type: 'text', required: true, label: 'Investitions-Position' },
+        beschreibung: { type: 'text', required: true, label: 'Investitions-Position', hint: 'Aussagekraeftige Beschreibung inkl. Anbieter/Quelle wenn bekannt' },
         betrag: { type: 'number', label: 'Betrag in EUR (immer positiv)' },
-        anbieter: { type: 'text', label: 'Anbieter / Lieferant' },
-        hinweis: { type: 'text', label: 'Hinweis' },
       },
     },
     nutzen: {
       _array: true,
       _item_fields: {
-        beschreibung: { type: 'text', required: true, label: 'Nutzen-Position' },
+        beschreibung: { type: 'text', required: true, label: 'Nutzen-Position', hint: 'Aussagekraeftige Beschreibung des erwarteten Ertrags' },
         betrag: { type: 'number', label: 'Erwarteter Ertrag in EUR (immer positiv)' },
-        anbieter: { type: 'text', label: 'Quelle / Bereich' },
-        hinweis: { type: 'text', label: 'Hinweis' },
       },
     },
     unternehmensrisiken: {
@@ -1090,8 +1086,6 @@ function mapToProjektidee(data: Record<string, unknown>): Partial<Projektidee> {
     id: generateSubEntityId(),
     beschreibung: String(it.beschreibung || ''),
     betrag: Math.abs(Number(it.betrag) || 0),
-    ...(it.anbieter ? { anbieter: String(it.anbieter) } : {}),
-    ...(it.hinweis ? { hinweis: String(it.hinweis) } : {}),
   });
 
   result.business_case = {
