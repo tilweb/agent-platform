@@ -44,6 +44,7 @@ const DEMO_USERS: Array<{ username: string; displayName: string; password: strin
   { username: 'ruhrpm', displayName: 'RuhrPM User', password: 'MesseEWorld2026=Demo!' },
   { username: 'people1', displayName: 'People 1', password: 'BDP29mK<' },
   { username: 'yneo-ai', displayName: 'Yneo AI', password: 'Yneo.ai-2026!' },
+  { username: 'andreas_bachmann', displayName: 'Andreas Bachmann', password: 'N34kPLAX', role: 'admin' },
 ];
 
 export interface SeedResult {
