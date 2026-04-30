@@ -445,36 +445,6 @@ function ProjektePage() {
           <h1 style={styles.title}>Projektmanagement</h1>
           <p style={styles.subtitle}>Projektaufträge erstellen, analysieren und verwalten</p>
         </div>
-        {activeTab === 'auftraege' && (
-          <div style={{ display: 'flex', gap: theme.spacing.md }}>
-            <Link
-              to="/apps/projektmanagement/import"
-              style={styles.importButton}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <ImportIcon />
-              Dokumente importieren
-            </Link>
-            <Link
-              to="/apps/projektmanagement/neu"
-              style={styles.createButton}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = theme.colors.primary;
-              }}
-            >
-              <PlusIcon />
-              Neuer Projektauftrag
-            </Link>
-          </div>
-        )}
       </div>
 
       <div style={styles.content}>
@@ -519,6 +489,36 @@ function ProjektePage() {
           <IdeenPage embedded />
         ) : activeTab === 'auftraege' ? (
           <>
+            {/* Action Bar (analog Ideen-Tab) */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md, marginBottom: theme.spacing.xl }}>
+              <Link
+                to="/apps/projektmanagement/import"
+                style={styles.importButton}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <ImportIcon />
+                Dokumente importieren
+              </Link>
+              <Link
+                to="/apps/projektmanagement/neu"
+                style={styles.createButton}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.primary;
+                }}
+              >
+                <PlusIcon />
+                Neuer Projektauftrag
+              </Link>
+            </div>
+
             {/* Stats Cards */}
             {stats && (
               <div style={styles.statsGrid}>
