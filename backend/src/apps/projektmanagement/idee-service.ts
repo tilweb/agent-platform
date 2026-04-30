@@ -28,6 +28,8 @@ function emptyIdee(): Omit<Projektidee, 'id' | 'created_at' | 'updated_at' | 'cr
     status: 'draft',
     goals: '',
     context: { ausgangslage: '', rahmenbedingungen: '' },
+    in_scope: [],
+    out_scope: [],
     business_case: { investitionen: [], nutzen: [] },
     unternehmensrisiken: [],
     current_step: 1,
@@ -99,8 +101,9 @@ export async function removeIdee(id: string): Promise<boolean> {
  *   Betrag (sind Ertraege; im Auftrag-Budget bedeuten negative Werte
  *   einnahmenseite). Der ROI bleibt damit nachrechenbar.
  * - Unternehmensrisiken werden zu Projektrisiken (gleiche Struktur).
- * - Tasks/Meilensteine/Stakeholder/Organisation/criteria/in_scope/out_scope
- *   bleiben leer — diese werden im Auftrag-Wizard ausgearbeitet.
+ * - in_scope/out_scope werden 1:1 uebernommen (gleiche Struktur in beiden Modellen).
+ * - Tasks/Meilensteine/Stakeholder/Organisation/criteria bleiben leer — diese
+ *   werden im Auftrag-Wizard ausgearbeitet.
  *
  * Der Auftrag bekommt `ideeId = idee.id` damit die Verknuepfung sichtbar bleibt.
  */
@@ -131,8 +134,8 @@ export async function createAuftragFromIdee(
     goals: idee.goals,
     criteria: [],
     scope: '',
-    in_scope: [],
-    out_scope: [],
+    in_scope: idee.in_scope ?? [],
+    out_scope: idee.out_scope ?? [],
     tasks: [],
     milestones: [],
     budget,

@@ -200,6 +200,34 @@ export default function IdeeUebersicht({ projektidee, onCreateAuftrag }) {
           <FieldRow label="Ausgangslage" value={fmt(idee.context?.ausgangslage)} />
           <FieldRow label="Rahmenbedingungen" value={fmt(idee.context?.rahmenbedingungen)} />
         </div>
+        {((idee.in_scope?.length ?? 0) > 0 || (idee.out_scope?.length ?? 0) > 0) && (
+          <div style={{ marginTop: theme.spacing.lg, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
+            <div>
+              <div style={{ ...styles.fieldLabel, marginBottom: theme.spacing.sm, color: theme.colors.success, fontWeight: theme.typography.weights.semibold }}>
+                Im Projektumfang (In-Scope)
+              </div>
+              {(idee.in_scope?.length ?? 0) === 0 ? (
+                <div style={styles.noContent}>—</div>
+              ) : (
+                <ul style={styles.bulletList}>
+                  {idee.in_scope.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              )}
+            </div>
+            <div>
+              <div style={{ ...styles.fieldLabel, marginBottom: theme.spacing.sm, color: theme.colors.error, fontWeight: theme.typography.weights.semibold }}>
+                Außerhalb des Projekts (Out-of-Scope)
+              </div>
+              {(idee.out_scope?.length ?? 0) === 0 ? (
+                <div style={styles.noContent}>—</div>
+              ) : (
+                <ul style={styles.bulletList}>
+                  {idee.out_scope.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={styles.card}>
