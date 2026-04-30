@@ -78,7 +78,12 @@ const PROJEKTAUFTRAG_PROFILE: ExtractionProfile = {
   fields: {
     basis: {
       name: { type: 'text', required: true, label: 'Projektname', hint: 'Name oder Titel des Projekts' },
+      project_id: { type: 'text', label: 'Projekt-ID', hint: 'Optional: Kennummer (z.B. PRJ-2026-001)' },
       project_type: { type: 'text', label: 'Projekttyp', hint: 'Einer von: internal, external, research, infrastructure. Deutsch: Intern, Extern, Forschung, Infrastruktur' },
+      project_status: { type: 'text', label: 'Projektstatus', hint: 'Einer von: initiation, planning, execution, closing, stopped. Deutsch: Initiierung, Planung, Umsetzung, Abschluss, Gestoppt' },
+      project_driver: { type: 'text', label: 'Projekttreiber', hint: 'Einer von: strategic, legal, operational. Deutsch: Strategisch, Gesetzlich, Operativ' },
+      project_size: { type: 'text', label: 'Projektgroesse', hint: 'Einer von: small, medium, large. Deutsch: Klein, Mittel, Gross' },
+      priority: { type: 'text', label: 'Prioritaet', hint: 'Einer von: low, medium, high, critical. Deutsch: Niedrig, Mittel, Hoch, Kritisch' },
       start_date: { type: 'date', label: 'Startdatum' },
       end_date: { type: 'date', label: 'Enddatum' },
       projektleiter: { type: 'text', label: 'Projektleiter', hint: 'Name des Projektleiters / Project Managers' },
@@ -174,6 +179,10 @@ Regeln:
 
 Gültige Enum-Werte:
 - project_type: "internal", "external", "research", "infrastructure"
+- project_status: "initiation", "planning", "execution", "closing", "stopped"
+- project_driver: "strategic", "legal", "operational"
+- project_size: "small", "medium", "large"
+- priority: "low", "medium", "high", "critical"
 - probability: "low", "medium", "high"
 - impact: "low", "medium", "high"
 - interest: "low", "medium", "high"
@@ -181,6 +190,10 @@ Gültige Enum-Werte:
 
 Wenn ein Wert wie "Hoch", "Mittel", "Niedrig" vorkommt, übersetze ihn in den englischen Enum-Wert.
 Wenn ein Projekttyp wie "Intern", "Extern" vorkommt, übersetze ihn in den englischen Enum-Wert.
+Bei Projektstatus: "Initiierung"→"initiation", "Planung"→"planning", "Umsetzung"/"Durchführung"→"execution", "Abschluss"→"closing", "Gestoppt"/"Pausiert"→"stopped".
+Bei Projekttreiber: "Strategisch"→"strategic", "Gesetzlich"/"Compliance"→"legal", "Operativ"→"operational".
+Bei Projektgröße: "Klein"→"small", "Mittel"→"medium", "Groß"→"large".
+Bei Priorität: "Kritisch"/"Critical"→"critical".
 
 Die Dokumente können verschiedene Formate und Quellen haben (Screenshots, Tabellen, Texte). Kombiniere die Informationen aus allen Quellen zu einem konsistenten Ergebnis.`,
 };
@@ -522,6 +535,49 @@ function normalizeLowMediumHigh(value: unknown): 'low' | 'medium' | 'high' {
   return map[value.toLowerCase()] || 'medium';
 }
 
+function normalizeAuftragPriority(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const map: Record<string, string> = {
+    low: 'low', niedrig: 'low', gering: 'low',
+    medium: 'medium', mittel: 'medium',
+    high: 'high', hoch: 'high',
+    critical: 'critical', kritisch: 'critical',
+  };
+  return map[value.toLowerCase()];
+}
+
+function normalizeAuftragSize(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const map: Record<string, string> = {
+    small: 'small', klein: 'small',
+    medium: 'medium', mittel: 'medium',
+    large: 'large', gross: 'large', 'groß': 'large', big: 'large',
+  };
+  return map[value.toLowerCase().trim()];
+}
+
+function normalizeAuftragDriver(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const map: Record<string, string> = {
+    strategic: 'strategic', strategisch: 'strategic',
+    legal: 'legal', gesetzlich: 'legal', compliance: 'legal',
+    operational: 'operational', operativ: 'operational',
+  };
+  return map[value.toLowerCase()];
+}
+
+function normalizeAuftragProjectStatus(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const map: Record<string, string> = {
+    initiation: 'initiation', initiierung: 'initiation', initialisierung: 'initiation',
+    planning: 'planning', planung: 'planning',
+    execution: 'execution', umsetzung: 'execution', durchfuehrung: 'execution', 'durchführung': 'execution',
+    closing: 'closing', abschluss: 'closing',
+    stopped: 'stopped', gestoppt: 'stopped', pausiert: 'stopped',
+  };
+  return map[value.toLowerCase()];
+}
+
 /**
  * Map flat extraction result to nested Projektauftrag structure
  */
@@ -542,7 +598,16 @@ function mapToProjektauftrag(data: Record<string, unknown>): Partial<Projektauft
 
   // Basis
   if (basis.name) result.name = String(basis.name);
+  if (basis.project_id) (result as { project_id?: string }).project_id = String(basis.project_id);
   if (basis.project_type) result.project_type = normalizeProjectType(basis.project_type);
+  const projectStatus = normalizeAuftragProjectStatus(basis.project_status);
+  if (projectStatus) (result as { project_status?: string }).project_status = projectStatus;
+  const projectDriver = normalizeAuftragDriver(basis.project_driver);
+  if (projectDriver) (result as { project_driver?: string }).project_driver = projectDriver;
+  const projectSize = normalizeAuftragSize(basis.project_size);
+  if (projectSize) (result as { project_size?: string }).project_size = projectSize;
+  const priority = normalizeAuftragPriority(basis.priority);
+  if (priority) (result as { priority?: string }).priority = priority;
   if (basis.start_date) result.start_date = String(basis.start_date);
   if (basis.end_date) result.end_date = String(basis.end_date);
   if (basis.projektleiter) result.projektleiter = String(basis.projektleiter);
@@ -661,9 +726,15 @@ function mapToProjektauftrag(data: Record<string, unknown>): Partial<Projektauft
  */
 function countExtractedFields(data: Partial<Projektauftrag>): number {
   let count = 0;
+  const ext = data as Record<string, unknown>;
   // Scalar fields
   if (data.name) count++;
+  if (ext.project_id) count++;
   if (data.project_type) count++;
+  if (ext.project_status) count++;
+  if (ext.project_driver) count++;
+  if (ext.project_size) count++;
+  if (ext.priority) count++;
   if (data.start_date) count++;
   if (data.end_date) count++;
   if (data.projektleiter) count++;

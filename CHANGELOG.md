@@ -2,6 +2,15 @@
 
 ## 2026-04-30
 
+### Fix: Projektauftrag-Import — fehlende 5 Basis-Felder ergaenzt
+Der Auftrag-Wizard editierte 13 Basis-Felder, der Import extrahierte aber nur 7. Lange bestehende Lücke aus der Zeit, als der Wizard erweitert wurde, ohne den Import-Profile mitzuziehen — fiel beim Schema-Audit nach den heutigen Idee-Arbeiten auf.
+
+Ergaenzt im `PROJEKTAUFTRAG_PROFILE.basis`: `project_id`, `project_status`, `project_driver`, `project_size`, `priority`. Mit Normalizer-Funktionen (`normalizeAuftragPriority`, `normalizeAuftragSize`, `normalizeAuftragDriver`, `normalizeAuftragProjectStatus`) für die Deutsch→English-Mapping-Schicht (Hoch→high, Klein→small, Strategisch→strategic, Initiierung→initiation, etc.). LLM-Guidelines explizit um die neuen Enum-Werte ergaenzt.
+
+`mapToProjektauftrag` setzt die Felder via `as Record<string, unknown>`-Cast, weil sie im Projektauftrag-Type bisher nur als runtime-Properties existieren (vom Wizard direkt geschrieben). `countExtractedFields` zählt sie mit.
+
+Damit ist der Auftrag-Import jetzt schema-koherent zum Wizard.
+
 ### Feature: Projektauftrag zeigt Quell-Idee-Referenz
 Wenn ein Projektauftrag via "Auftrag aus Idee erstellen" entstanden ist, wird die Quell-Idee jetzt im Wizard-Header sichtbar — als verlinkter Eintrag in der Subtitle-Zeile (`Aus Idee: <Name>`). Klick fuehrt zur Idee-Detailansicht. Bei manuell angelegten Auftraegen ist der Block einfach unsichtbar.
 
