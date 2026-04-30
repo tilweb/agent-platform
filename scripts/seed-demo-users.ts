@@ -17,7 +17,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'Demo2026!';
 const MARKETING_PASSWORD = process.env.MARKETING_PASSWORD || 'Marketing2026!';
-const DEMO_USERS = [
+const DEMO_USERS: Array<{ username: string; displayName: string; password: string; role?: 'admin' | 'user' }> = [
   { username: 'demo1', displayName: 'Demo User 1', password: DEMO_PASSWORD },
   { username: 'demo2', displayName: 'Demo User 2', password: DEMO_PASSWORD },
   { username: 'demo3', displayName: 'Demo User 3', password: DEMO_PASSWORD },
@@ -28,6 +28,7 @@ const DEMO_USERS = [
   { username: 'ruhrpm', displayName: 'RuhrPM User', password: 'MesseEWorld2026=Demo!' },
   { username: 'people1', displayName: 'People 1', password: 'BDP29mK<' },
   { username: 'yneo-ai', displayName: 'Yneo AI', password: 'Yneo.ai-2026!' },
+  { username: 'andreas_bachmann', displayName: 'Andreas Bachmann', password: 'N34kPLAX', role: 'admin' },
 ];
 
 function generateUserId(): string {
@@ -111,7 +112,7 @@ async function main() {
       username: demoUser.username,
       displayName: demoUser.displayName,
       email: '',
-      role: 'user',
+      role: demoUser.role ?? 'user',
       isActive: true,
       passwordHash,
       createdAt: now,
