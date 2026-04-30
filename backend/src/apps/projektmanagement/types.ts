@@ -357,3 +357,72 @@ export interface AnalysisResponse {
 export interface ComparisonResponse {
   comparison: HistoricalComparison;
 }
+
+
+// ============== Projektidee ==============
+
+/**
+ * Business-Case-Position fuer eine Projektidee.
+ * "kategorie" trennt Investitionen (Kosten) von Nutzen (Ertrag) — beide werden
+ * vom User mit positiven Betraegen erfasst, das Vorzeichen wird erst in der
+ * ROI-Berechnung interpretiert.
+ */
+export interface BusinessCaseItem {
+  id: string;
+  beschreibung: string;
+  betrag: number;                // immer positiv erfasst
+  anbieter?: string;
+  hinweis?: string;              // optional, freier Text
+}
+
+export type ProjektideeStatus = 'draft' | 'review' | 'approved' | 'rejected' | 'archived';
+
+export interface Projektidee {
+  id: string;
+
+  // Tab 1: Basis (alle Felder aus PDF)
+  projekt_id?: string;           // optional Kennummer (z.B. PRJ-2026-001)
+  name: string;
+  project_type?: 'internal' | 'external' | 'research' | 'infrastructure';
+  status: ProjektideeStatus;     // "Projektidee Status" aus PDF
+  project_status?: string;       // freier Status, "Projektstatus" aus PDF
+  projekttreiber?: string;
+  projektgroesse?: 'klein' | 'mittel' | 'gross' | 'sehr_gross';
+  prioritaet?: 'low' | 'medium' | 'high' | 'critical';
+  description?: string;          // Kurzbeschreibung
+  start_date?: string;
+  end_date?: string;
+  projektleiter?: string;
+  auftraggeber?: string;
+
+  // Tab 2: Ziele
+  goals: string;
+
+  // Tab 3: Projektkontext
+  context: {
+    ausgangslage: string;        // "Warum und in welchem Rahmen ist die Projektidee entstanden?"
+    rahmenbedingungen: string;   // "Von welchen Faktoren ist die Projektidee abhaengig?"
+  };
+
+  // Tab 4: Business Case
+  business_case: {
+    investitionen: BusinessCaseItem[];   // Kosten
+    nutzen: BusinessCaseItem[];          // Ertrag
+  };
+
+  // Tab 5: Unternehmensrisiken (gleiche Struktur wie Projektrisiken im Auftrag)
+  unternehmensrisiken: Risk[];
+
+  // Tab 6: Uebersicht — read-only-zusammenfassung, kein eigener State
+
+  // Metadata
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  current_step: number;
+
+  // Verknuepfung zu daraus erzeugten Auftraegen (umgekehrte Richtung: Auftrag.idee_id ist die Quelle of truth)
+  // Wird via JOIN bei der Abfrage gefuellt.
+  abgeleitete_auftraege?: { id: string; name: string; status: string; created_at: string }[];
+}
+

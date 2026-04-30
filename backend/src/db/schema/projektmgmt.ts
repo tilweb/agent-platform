@@ -2,11 +2,32 @@ import { pgSchema, text, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
 
 export const projektmgmtSchema = pgSchema('projektmgmt');
 
+/**
+ * Projektideen: leichtgewichtige Vorstufe zum Projektauftrag.
+ * Eine Idee kann 0..n Projektauftraege auslösen (verlinkt via paProjektauftraege.ideeId).
+ * Die Idee bleibt persistent — selbst wenn alle daraus abgeleiteten Auftraege entfernt
+ * werden, bleibt sie als historische Vision-Spur erhalten.
+ */
+export const paProjektideen = projektmgmtSchema.table('projektideen', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id'),
+  name: text('name').notNull(),
+  status: text('status').notNull().default('draft'),  // draft | review | approved | rejected | archived
+  data: jsonb('data').notNull(),                    // komplette Projektidee-Struktur
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  ownerIdx: index('idee_owner_idx').on(t.ownerId),
+  statusIdx: index('idee_status_idx').on(t.status),
+}));
+
 export const paProjektauftraege = projektmgmtSchema.table('projektauftraege', {
   id: text('id').primaryKey(),
   ownerId: text('owner_id'),
   name: text('name').notNull(),
   status: text('status').notNull().default('draft'),
+  ideeId: text('idee_id'),                          // FK auf projektideen.id (nullable — Auftrag muss nicht aus Idee kommen)
   data: jsonb('data').notNull(),                    // komplette Projektauftrag-Struktur
   metadata: jsonb('metadata'),                      // erstellt/geaendert datums, version, ...
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
@@ -14,6 +35,7 @@ export const paProjektauftraege = projektmgmtSchema.table('projektauftraege', {
 }, (t) => ({
   ownerIdx: index('pa_owner_idx').on(t.ownerId),
   statusIdx: index('pa_status_idx').on(t.status),
+  ideeIdx: index('pa_idee_idx').on(t.ideeId),
 }));
 
 export const paStatusberichte = projektmgmtSchema.table('statusberichte', {

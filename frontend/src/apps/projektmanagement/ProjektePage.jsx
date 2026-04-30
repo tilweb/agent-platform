@@ -11,6 +11,7 @@ import { LightningIcon, ClipboardIcon, BarChartIcon, CheckCircleIcon, AppsIcon }
 import ComingSoon from './components/ComingSoon';
 import Einstellungen from './components/Einstellungen';
 import StatusberichteDashboard from './components/StatusberichteDashboard';
+import IdeenPage from './IdeenPage';
 
 // Tab configuration
 const TABS = [
@@ -18,9 +19,7 @@ const TABS = [
     id: 'ideen',
     label: 'Projektideen',
     icon: LightningIcon,
-    comingSoon: true,
-    title: 'Projektideen',
-    description: 'Sammle und bewerte Projektideen bevor sie zu formellen Projektaufträgen werden. Priorisiere nach strategischem Nutzen und Machbarkeit.',
+    comingSoon: false,
   },
   {
     id: 'auftraege',
@@ -446,34 +445,36 @@ function ProjektePage() {
           <h1 style={styles.title}>Projektmanagement</h1>
           <p style={styles.subtitle}>Projektaufträge erstellen, analysieren und verwalten</p>
         </div>
-        <div style={{ display: 'flex', gap: theme.spacing.md }}>
-          <Link
-            to="/apps/projektmanagement/import"
-            style={styles.importButton}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            <ImportIcon />
-            Dokumente importieren
-          </Link>
-          <Link
-            to="/apps/projektmanagement/neu"
-            style={styles.createButton}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = theme.colors.primary;
-            }}
-          >
-            <PlusIcon />
-            Neuer Projektauftrag
-          </Link>
-        </div>
+        {activeTab === 'auftraege' && (
+          <div style={{ display: 'flex', gap: theme.spacing.md }}>
+            <Link
+              to="/apps/projektmanagement/import"
+              style={styles.importButton}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <ImportIcon />
+              Dokumente importieren
+            </Link>
+            <Link
+              to="/apps/projektmanagement/neu"
+              style={styles.createButton}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = theme.colors.primary;
+              }}
+            >
+              <PlusIcon />
+              Neuer Projektauftrag
+            </Link>
+          </div>
+        )}
       </div>
 
       <div style={styles.content}>
@@ -514,6 +515,8 @@ function ProjektePage() {
           <Einstellungen />
         ) : activeTab === 'statusberichte' ? (
           <StatusberichteDashboard />
+        ) : activeTab === 'ideen' ? (
+          <IdeenPage embedded />
         ) : activeTab === 'auftraege' ? (
           <>
             {/* Stats Cards */}

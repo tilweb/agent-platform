@@ -6,6 +6,9 @@
 import { generateExcel } from './excelGenerator';
 import { generatePdf } from './pdfGenerator';
 import { generateWord } from './wordGenerator';
+import { generateMarkdown } from './markdownGenerator';
+
+export { mapProjektideeToDocument } from './idee-mapper';
 
 // Re-export types
 export type {
@@ -1100,6 +1103,8 @@ export async function generateDocument(
       return generatePdf(data);
     case 'docx':
       return generateWord(data);
+    case 'md':
+      return generateMarkdown(data);
     default:
       throw new Error(`Unsupported format: ${format}`);
   }
@@ -1116,6 +1121,8 @@ export function getMimeType(format: DocumentFormat): string {
       return 'application/pdf';
     case 'docx':
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'md':
+      return 'text/markdown; charset=utf-8';
     default:
       return 'application/octet-stream';
   }

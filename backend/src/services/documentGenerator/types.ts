@@ -40,4 +40,4 @@ export interface ListContent {
   items: string[];
 }
 
-export type DocumentFormat = 'xlsx' | 'pdf' | 'docx';
+export type DocumentFormat = 'xlsx' | 'pdf' | 'docx' | 'md';
