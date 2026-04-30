@@ -255,6 +255,8 @@ function emptyIdee() {
     status: 'draft',
     goals: '',
     context: { ausgangslage: '', rahmenbedingungen: '' },
+    in_scope: [],
+    out_scope: [],
     business_case: { investitionen: [], nutzen: [] },
     unternehmensrisiken: [],
     current_step: 1,

@@ -403,6 +403,8 @@ export interface Projektidee {
     ausgangslage: string;        // "Warum und in welchem Rahmen ist die Projektidee entstanden?"
     rahmenbedingungen: string;   // "Von welchen Faktoren ist die Projektidee abhaengig?"
   };
+  in_scope?: string[];           // Im Projektumfang (analog Auftrag)
+  out_scope?: string[];          // Ausserhalb des Projekts (analog Auftrag)
 
   // Tab 4: Business Case
   business_case: {

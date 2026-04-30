@@ -132,6 +132,21 @@ export function mapProjektideeToDocument(idee: Projektidee): DocumentData {
     });
   }
 
+  if (idee.in_scope && idee.in_scope.length > 0) {
+    sections.push({
+      title: 'Im Projektumfang (In-Scope)',
+      type: 'list',
+      content: { items: idee.in_scope },
+    });
+  }
+  if (idee.out_scope && idee.out_scope.length > 0) {
+    sections.push({
+      title: 'Ausserhalb des Projekts (Out-of-Scope)',
+      type: 'list',
+      content: { items: idee.out_scope },
+    });
+  }
+
   // ============== Tab 4: Business Case ==============
   const bc = idee.business_case ?? { investitionen: [], nutzen: [] };
   const sumInvest = bc.investitionen.reduce((a, i) => a + (Number(i.betrag) || 0), 0);

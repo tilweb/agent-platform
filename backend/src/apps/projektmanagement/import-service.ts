@@ -871,6 +871,18 @@ const PROJEKTIDEE_PROFILE: ExtractionProfile = {
       ausgangslage: { type: 'text', label: 'Ausgangslage', hint: 'Warum und in welchem Rahmen ist die Idee entstanden?' },
       rahmenbedingungen: { type: 'text', label: 'Rahmenbedingungen', hint: 'Constraints, Abhaengigkeiten, regulatorische Vorgaben' },
     },
+    in_scope: {
+      _array: true,
+      _item_fields: {
+        text: { type: 'text', required: true, label: 'Was gehoert in den Projektumfang?' },
+      },
+    },
+    out_scope: {
+      _array: true,
+      _item_fields: {
+        text: { type: 'text', required: true, label: 'Was gehoert NICHT in den Projektumfang?' },
+      },
+    },
     investitionen: {
       _array: true,
       _item_fields: {
@@ -908,6 +920,7 @@ Konzentriere dich auf:
 - Vision / Outcome / Was soll erreicht werden?
 - Treiber / Motivation / Welche strategische Frage?
 - Ausgangslage / Status Quo / Welches Problem?
+- Scope-Abgrenzung: Was gehoert in den Projektumfang (in_scope) und was AUSDRUECKLICH NICHT (out_scope)? Auf Whiteboards oft als zwei Spalten "drin"/"draussen" oder mit Ja/Nein-Symbolen markiert.
 - Business Case-Skizze: Investitionen vs. Nutzen (alle Betraege POSITIV erfassen — Vorzeichen wird in der ROI-Rechnung interpretiert)
 - Strategische Risiken & Chancen auf Unternehmensebene
 
@@ -1021,6 +1034,8 @@ function mapToProjektidee(data: Record<string, unknown>): Partial<Projektidee> {
   const basis = (data.basis || {}) as Record<string, unknown>;
   const ziele = (data.ziele || {}) as Record<string, unknown>;
   const kontext = (data.kontext || {}) as Record<string, unknown>;
+  const inScope = (data.in_scope || []) as Array<Record<string, unknown>>;
+  const outScope = (data.out_scope || []) as Array<Record<string, unknown>>;
   const investitionen = (data.investitionen || []) as Array<Record<string, unknown>>;
   const nutzen = (data.nutzen || []) as Array<Record<string, unknown>>;
   const risiken = (data.unternehmensrisiken || []) as Array<Record<string, unknown>>;
@@ -1057,6 +1072,18 @@ function mapToProjektidee(data: Record<string, unknown>): Partial<Projektidee> {
     ausgangslage: kontext.ausgangslage ? String(kontext.ausgangslage) : '',
     rahmenbedingungen: kontext.rahmenbedingungen ? String(kontext.rahmenbedingungen) : '',
   };
+
+  // In/Out Scope
+  if (Array.isArray(inScope) && inScope.length > 0) {
+    result.in_scope = inScope.filter((s) => s.text).map((s) => String(s.text));
+  } else {
+    result.in_scope = [];
+  }
+  if (Array.isArray(outScope) && outScope.length > 0) {
+    result.out_scope = outScope.filter((s) => s.text).map((s) => String(s.text));
+  } else {
+    result.out_scope = [];
+  }
 
   // Business Case
   const mapBcItem = (it: Record<string, unknown>): BusinessCaseItem => ({
@@ -1112,6 +1139,8 @@ function countExtractedIdeeFields(data: Partial<Projektidee>): number {
   if (data.goals) count++;
   if (data.context?.ausgangslage) count++;
   if (data.context?.rahmenbedingungen) count++;
+  if (data.in_scope?.length) count += data.in_scope.length;
+  if (data.out_scope?.length) count += data.out_scope.length;
   if (data.business_case?.investitionen?.length) count += data.business_case.investitionen.length;
   if (data.business_case?.nutzen?.length) count += data.business_case.nutzen.length;
   if (data.unternehmensrisiken?.length) count += data.unternehmensrisiken.length;
