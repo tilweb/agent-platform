@@ -15,8 +15,12 @@ import {
 } from './service';
 import { analyzeVsm } from './analysis';
 import type { VsmProjektFilters } from './types';
+import { requireAppAccess } from '../permissions-middleware';
 
 const vsm = new Hono();
+
+// Berechtigungs-Pruefung
+vsm.use('*', requireAppAccess('vsm'));
 
 // ============== Stats ==============
 

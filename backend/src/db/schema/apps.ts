@@ -15,6 +15,10 @@ export const appsRegistry = appsSchema.table('registry', {
   version: text('version'),
   enabled: boolean('enabled').notNull().default(true),
   routes: jsonb('routes').notNull(),                // [{path, component}]
+  // Gruppen-basierte Berechtigungen: { groups: [{ groupId, role }] }.
+  // Leer = "noch nicht konfiguriert" — User die nicht admin sind sehen
+  // beim Aufruf "Wartet auf Konfiguration".
+  permissions: jsonb('permissions'),
   metadata: jsonb('metadata'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),

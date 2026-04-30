@@ -40,6 +40,7 @@ function rowToConfig(row: typeof appsRegistry.$inferSelect): AppConfig {
   // sind funktion-handler-Referenzen und kommen NICHT aus der DB). Die DB
   // liefert nur den admin-state (enabled) und Stammdaten.
   const builtin = BUILT_IN_APPS.find(a => a.id === row.id);
+  const persistedPerms = (row.permissions ?? null) as AppConfig['permissions'] | null;
   return {
     id: row.id,
     name: row.name,
@@ -48,6 +49,7 @@ function rowToConfig(row: typeof appsRegistry.$inferSelect): AppConfig {
     version: row.version ?? '1.0.0',
     enabled: row.enabled,
     routes: (row.routes ?? []) as AppConfig['routes'],
+    permissions: persistedPerms ?? { groups: [] },
     publicFunctions: builtin?.publicFunctions,
   };
 }
@@ -71,6 +73,10 @@ export async function loadRegistry(): Promise<AppsRegistry> {
 
 /**
  * Save full registry (rare path — admin-edit). Idempotent.
+ *
+ * `publicFunctions` (Handler-Funktionen aus den Code-Modulen) werden NICHT
+ * persistiert — sie liegen ausserhalb des DB-Schemas und werden nach jedem
+ * Read ueber syncBuiltInApps neu injiziert.
  */
 export async function saveRegistry(registry: AppsRegistry): Promise<void> {
   const db = getDb();
@@ -84,6 +90,7 @@ export async function saveRegistry(registry: AppsRegistry): Promise<void> {
       version: cfg.version ?? null,
       enabled: cfg.enabled,
       routes: cfg.routes as never,
+      permissions: (cfg.permissions ?? null) as never,
       createdAt: now,
       updatedAt: now,
     }).onConflictDoUpdate({
@@ -95,6 +102,7 @@ export async function saveRegistry(registry: AppsRegistry): Promise<void> {
         version: cfg.version ?? null,
         enabled: cfg.enabled,
         routes: cfg.routes as never,
+        permissions: (cfg.permissions ?? null) as never,
         updatedAt: now,
       },
     });
@@ -270,10 +278,13 @@ export async function syncBuiltInApps(): Promise<{ added: string[]; updated: str
       added.push(config.id);
       continue;
     }
-    // Refresh static fields, preserve admin-controlled `enabled` flag.
+    // Refresh static fields, preserve admin-controlled `enabled` flag und
+    // gepflegte `permissions` (sonst wuerden alle Gruppen-Berechtigungen
+    // bei jedem Server-Start zurueckgesetzt).
     const merged: AppConfig = {
       ...config,
       enabled: existing.enabled,
+      permissions: existing.permissions ?? config.permissions,
     };
     const changed = JSON.stringify(merged) !== JSON.stringify(existing);
     if (changed) {

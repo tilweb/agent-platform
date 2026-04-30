@@ -5,8 +5,12 @@
 import { Hono } from 'hono';
 import { match, history, detail } from './service';
 import { isIndexReady, loadEmbeddings, loadCatalog } from './storage';
+import { requireAppAccess } from '../permissions-middleware';
 
 const wzbar = new Hono();
+
+// Berechtigungs-Pruefung
+wzbar.use('*', requireAppAccess('wzbar-matcher'));
 
 /**
  * POST /api/apps/wzbar-matcher/match

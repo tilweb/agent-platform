@@ -53,6 +53,7 @@ import {
   createAuftragFromIdee,
 } from './idee-service';
 import { VersionConflictError } from './concurrency';
+import { requireAppAccess } from '../permissions-middleware';
 import {
   generateDocument,
   mapProjektauftragToDocument,
@@ -64,6 +65,10 @@ import {
 } from '../../services/documentGenerator';
 
 const projektmanagement = new Hono();
+
+// Berechtigungs-Pruefung: jeder Endpunkt unter /apps/projektmanagement
+// braucht eine User-Rolle (owner/editor/viewer) auf dieser App. Ohne wird 403.
+projektmanagement.use('*', requireAppAccess('projektmanagement'));
 
 // ============== Config Endpoints ==============
 

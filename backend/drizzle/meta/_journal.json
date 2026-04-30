@@ -43,6 +43,13 @@
       "when": 1777679400000,
       "tag": "0005_concurrency_versions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777682400000,
+      "tag": "0006_app_permissions",
+      "breakpoints": true
     }
   ]
 }

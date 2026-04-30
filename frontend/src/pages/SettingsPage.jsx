@@ -17,6 +17,7 @@ import ApiKeysPage from './ApiKeysPage';
 import { KeyIcon } from '../components/Icons';
 import { useApps } from '../hooks/useApps';
 import SchemaEditor from '../apps/vertragsmanagement/SchemaEditor';
+import AppPermissionsBox from '../components/AppPermissionsBox';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useProviders } from '../hooks/useProviders';
@@ -1274,15 +1275,18 @@ function SettingsPage() {
   );
 
   const renderAppConfig = (appId) => {
+    // Berechtigungs-Box ist vor allen anderen App-spezifischen Konfigurationen.
+    const permissionsBox = <AppPermissionsBox appId={appId} />;
     switch (appId) {
       case 'vertragsmanagement':
-        return <SchemaEditor />;
-      default:
         return (
-          <p style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
-            Keine Konfiguration für diese App verfügbar.
-          </p>
+          <>
+            {permissionsBox}
+            <SchemaEditor />
+          </>
         );
+      default:
+        return permissionsBox;
     }
   };
 

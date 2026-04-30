@@ -12,6 +12,13 @@ import {
   disableApp,
   isAppEnvAllowed,
 } from '../apps/registry';
+import {
+  getUserAppPermission,
+  listAppPermissions,
+  replaceAppPermissions,
+} from '../apps/permissions';
+import { getCurrentUserId } from '../auth/middleware';
+import { authMiddleware } from '../auth/middleware';
 import { contractRoutes } from '../apps/vertragsmanagement/routes';
 import { projektmanagementRoutes } from '../apps/projektmanagement/routes';
 import { lieferantenmanagementRoutes } from '../apps/lieferantenmanagement/routes';
@@ -19,6 +26,11 @@ import { vsmRoutes } from '../apps/vsm/routes';
 import { wzbarMatcherRoutes } from '../apps/wzbar-matcher/routes';
 
 const apps = new Hono();
+
+// Alle /api/apps/*-Endpunkte erfordern eine eingeloggte Session.
+// Per-App-Berechtigungen pruefen die requireAppAccess-Middleware in den
+// jeweiligen Sub-Routern (siehe z.B. projektmanagement/routes.ts).
+apps.use('*', authMiddleware);
 
 // ============== App Registry Endpoints ==============
 
@@ -123,6 +135,78 @@ apps.put('/:appId/disable', async (c) => {
   } catch (error) {
     console.error('Error disabling app:', error);
     return c.json({ error: 'Failed to disable app' }, 500);
+  }
+});
+
+// ============== App-Permissions Endpunkte ==============
+
+/**
+ * GET /api/apps/:appId/permissions
+ * Liste aller Gruppen-Permissions auf einer App. Admin-Endpunkt fuer Settings.
+ */
+apps.get('/:appId/permissions', async (c) => {
+  try {
+    const appId = c.req.param('appId');
+    const app = await getApp(appId);
+    if (!app) {
+      return c.json({ error: 'App not found' }, 404);
+    }
+    const permissions = await listAppPermissions(appId);
+    return c.json({ permissions });
+  } catch (error) {
+    console.error('Error listing app permissions:', error);
+    return c.json({ error: 'Failed to list permissions' }, 500);
+  }
+});
+
+/**
+ * PUT /api/apps/:appId/permissions
+ * Voller Overwrite — Body: { permissions: [{ groupId, role }] }. Admin-only.
+ */
+apps.put('/:appId/permissions', async (c) => {
+  try {
+    const appId = c.req.param('appId');
+    const app = await getApp(appId);
+    if (!app) {
+      return c.json({ error: 'App not found' }, 404);
+    }
+    const body = await c.req.json();
+    const incoming = Array.isArray(body?.permissions) ? body.permissions : [];
+    const saved = await replaceAppPermissions(appId, incoming);
+    return c.json({ permissions: saved });
+  } catch (error) {
+    console.error('Error updating app permissions:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to update permissions' }, 500);
+  }
+});
+
+/**
+ * GET /api/apps/:appId/my-permission
+ * Liefert die effektive Rolle des eingeloggten Users auf einer App, oder null.
+ * Frontend-RequireAppPermission ruft das beim Mount.
+ */
+apps.get('/:appId/my-permission', async (c) => {
+  try {
+    const appId = c.req.param('appId');
+    const userId = getCurrentUserId(c);
+    if (!userId) {
+      return c.json({ role: null }, 401);
+    }
+    const app = await getApp(appId);
+    if (!app) {
+      return c.json({ error: 'App not found' }, 404);
+    }
+    const role = await getUserAppPermission(userId, appId);
+    const groupPermissionsCount = (app.permissions?.groups ?? []).length;
+    return c.json({
+      role,
+      // Damit das Frontend zwischen "konfiguriert aber kein Zugriff" und
+      // "noch nicht konfiguriert" unterscheiden kann.
+      configured: groupPermissionsCount > 0,
+    });
+  } catch (error) {
+    console.error('Error getting my-permission:', error);
+    return c.json({ error: 'Failed to get permission' }, 500);
   }
 });
 
