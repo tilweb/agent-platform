@@ -2,6 +2,15 @@
 
 ## 2026-04-30
 
+### Feature: Projektauftrag zeigt Quell-Idee-Referenz
+Wenn ein Projektauftrag via "Auftrag aus Idee erstellen" entstanden ist, wird die Quell-Idee jetzt im Wizard-Header sichtbar — als verlinkter Eintrag in der Subtitle-Zeile (`Aus Idee: <Name>`). Klick fuehrt zur Idee-Detailansicht. Bei manuell angelegten Auftraegen ist der Block einfach unsichtbar.
+
+- **`types.ts`**: `Projektauftrag.idee?: { id: string; name: string }` — read-only via JOIN, nicht in `data` persistiert (idee_id liegt als FK-Spalte).
+- **`storage.ts`**: `loadIdeeReference()` Helper analog `loadAbgeleiteteAuftraege` (umgekehrte Richtung). `getProjektauftrag` (Detail) macht JOIN auf `paProjektideen` ueber `idee_id`. List-Endpoint (`getProjektauftraege`) bleibt unveraendert — nur Detail-Read braucht den Lookup. `saveProjektauftrag` strippt `idee` vor dem jsonb-Write.
+- **Frontend** (`WizardPage.jsx`): Header-Subtitle zeigt `Aus Idee: <verlinkter Name>` zwischen Datum und Mode-Toggle, sofern `projektauftrag.idee` gesetzt ist.
+
+Smoke verifiziert: Idee anlegen → "Auftrag aus Idee" → Auftrag-Detail-API liefert `idee: {id, name}`.
+
 ### Feature: Projektidee — In-Scope / Out-of-Scope (analog Auftrag)
 Im Tab "Projektkontext" der Projektidee gibt es jetzt zwei Listen "Im Projektumfang (In-Scope)" und "Außerhalb des Projekts (Out-of-Scope)" — visuell und funktional 1:1 wie im Auftrag-Wizard (`Inhalt.jsx`). Die Felder werden durch alle Layer durchgereicht: Type, Storage-Default, LLM-Profile fuer Import, LLM-Mapper, Auftrag-aus-Idee-Mapping, Markdown/PDF/DOCX-Export und die Read-only-Übersicht.
 

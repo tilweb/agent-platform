@@ -8,6 +8,7 @@
 import { eq, desc, and } from 'drizzle-orm';
 import { getDb } from '../../db';
 import {
+  paProjektideen,
   paProjektauftraege,
   paStatusberichte,
   paVorlagen,
@@ -33,6 +34,22 @@ function rowToProjektauftrag(row: typeof paProjektauftraege.$inferSelect): Proje
   } as Projektauftrag;
 }
 
+/**
+ * Laedt die Quell-Idee-Referenz (id + name) fuer einen Auftrag, sofern dieser
+ * via "Auftrag aus Idee erstellen" entstanden ist. JOIN ueber projektauftraege.idee_id.
+ * Returnt undefined wenn kein Link existiert oder die Idee zwischenzeitlich geloescht wurde.
+ */
+async function loadIdeeReference(ideeId: string): Promise<Projektauftrag['idee']> {
+  if (!ideeId) return undefined;
+  const db = getDb();
+  const rows = await db
+    .select({ id: paProjektideen.id, name: paProjektideen.name })
+    .from(paProjektideen)
+    .where(eq(paProjektideen.id, ideeId))
+    .limit(1);
+  return rows[0] ? { id: rows[0].id, name: rows[0].name } : undefined;
+}
+
 export async function getProjektauftraege(): Promise<Projektauftrag[]> {
   const db = getDb();
   const rows = await db
@@ -49,18 +66,25 @@ export async function getProjektauftrag(projektId: string): Promise<Projektauftr
     .from(paProjektauftraege)
     .where(eq(paProjektauftraege.id, projektId))
     .limit(1);
-  return rows[0] ? rowToProjektauftrag(rows[0]) : null;
+  if (!rows[0]) return null;
+  const auftrag = rowToProjektauftrag(rows[0]);
+  if (rows[0].ideeId) {
+    auftrag.idee = await loadIdeeReference(rows[0].ideeId);
+  }
+  return auftrag;
 }
 
 export async function saveProjektauftrag(p: Projektauftrag): Promise<void> {
   const db = getDb();
   const now = new Date().toISOString();
+  // `idee` wird beim Read via JOIN angereichert — nicht in `data` persistieren.
+  const { idee: _ignore, ...dataToStore } = p;
   await db.insert(paProjektauftraege).values({
     id: p.id,
     ownerId: (p as { ownerId?: string }).ownerId ?? null,
     name: p.name,
     status: (p as { status?: string }).status ?? 'draft',
-    data: p as never,
+    data: dataToStore as never,
     createdAt: p.created_at ?? now,
     updatedAt: p.updated_at ?? now,
   }).onConflictDoUpdate({
@@ -68,7 +92,7 @@ export async function saveProjektauftrag(p: Projektauftrag): Promise<void> {
     set: {
       name: p.name,
       status: (p as { status?: string }).status ?? 'draft',
-      data: p as never,
+      data: dataToStore as never,
       updatedAt: p.updated_at ?? now,
     },
   });

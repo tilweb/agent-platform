@@ -104,6 +104,11 @@ export interface Projektauftrag {
   stepAnalyses?: StoredStepAnalyses;
   gesamtbewertung?: StoredGesamtbewertung;
 
+  // Verknuepfung zur Quell-Idee (sofern aus einer Idee generiert).
+  // Wird via JOIN beim Detail-Read gefuellt; nicht im jsonb-data gespeichert
+  // (idee_id liegt als separate FK-Spalte in projektauftraege.idee_id).
+  idee?: { id: string; name: string };
+
   // Legacy - kept for compatibility
   analysis?: ProjektAnalysis;
 }
