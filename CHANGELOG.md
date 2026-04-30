@@ -20,10 +20,6 @@ Ergaenzt im `PROJEKTAUFTRAG_PROFILE.basis`: `project_id`, `project_status`, `pro
 
 Damit ist der Auftrag-Import jetzt schema-koherent zum Wizard.
 
-### Feature: Projektauftrag zeigt Quell-Idee-Referenz
-Wenn ein Projektauftrag via "Auftrag aus Idee erstellen" entstanden ist, wird die Quell-Idee jetzt im Wizard-Header sichtbar — als verlinkter Eintrag in der Subtitle-Zeile (`Aus Idee: <Name>`). Klick fuehrt zur Idee-Detailansicht. Bei manuell angelegten Auftraegen ist der Block einfach unsichtbar.
->>>>>>> 01422f1 (fix: Auftrag-Import — fehlende 5 Basis-Felder ergaenzt)
-
 Dieser Commit portiert `idee-storage.ts` komplett auf das gleiche YAML-Pattern wie die Auftrag-Storage — pro Idee ein Verzeichnis unter `data/apps/projektmanagement/projektideen/<id>/metadata.yaml`. `loadAbgeleiteteAuftraege` globt jetzt alle Auftrag-YAMLs und filtert nach `idee_id`. `setAuftragIdeeId` schreibt `idee_id` als Feld direkt in die Auftrag-YAML.
 
 - **`idee-storage.ts`**: komplette Neuimplementierung gegen Bun-File/Glob, gleiches Pattern wie `storage.ts` (Auftrag).
