@@ -39,6 +39,30 @@ export interface ImportReport {
   warnings: string[];
 }
 
+// ============== Progress-Events ==============
+
+/**
+ * Events die der Import-Service waehrend der Pipeline emittiert.
+ * Die Route streamt diese als SSE ans Frontend, damit User auch waehrend
+ * langer Vision/LLM-Phasen sieht dass etwas passiert.
+ */
+export type ImportEvent =
+  | { type: 'started';             data: { fileCount: number; filenames: string[] } }
+  | { type: 'file_started';        data: { filename: string; index: number; total: number; kind: 'image' | 'document' | 'text' } }
+  | { type: 'file_progress';       data: { filename: string; elapsedMs: number; phase: 'vision' | 'markitdown' } }
+  | { type: 'file_done';           data: { filename: string; index: number; total: number; chars: number; durationMs: number } }
+  | { type: 'file_failed';         data: { filename: string; index: number; total: number; error: string } }
+  | { type: 'combining';           data: { processedCount: number; totalChars: number } }
+  | { type: 'extracting_started'; data: { textChars: number } }
+  | { type: 'extracting_progress'; data: { elapsedMs: number } }
+  | { type: 'extracting_done';     data: { fieldsExtracted: number; durationMs: number } }
+  | { type: 'validating';          data: { warningCount: number } }
+  | { type: 'creating';            data: Record<string, never> }
+  | { type: 'done';                data: { projektauftrag: Projektauftrag; report: ImportReport } }
+  | { type: 'error';               data: { message: string } };
+
+export type ImportEventCallback = (event: ImportEvent) => void | Promise<void>;
+
 // ============== Extraction Profile ==============
 
 const PROJEKTAUFTRAG_PROFILE: ExtractionProfile = {
@@ -184,6 +208,33 @@ function getMimeTypeForImage(ext: string): string {
     default: return 'image/jpeg';
   }
 }
+
+function getFileKind(filename: string): 'image' | 'document' | 'text' {
+  const ext = getExtension(filename);
+  if (IMAGE_EXTENSIONS.includes(ext)) return 'image';
+  if (TEXT_EXTENSIONS.includes(ext)) return 'text';
+  return 'document';
+}
+
+/**
+ * Wrappt ein Promise und ruft `emit(elapsedMs)` alle `intervalMs` waehrend es laeuft.
+ * Resolve/Reject werden unveraendert durchgereicht. Kein Heartbeat-Event nach Resolve.
+ */
+async function withHeartbeat<T>(
+  promise: Promise<T>,
+  intervalMs: number,
+  emit: (elapsedMs: number) => void | Promise<void>,
+): Promise<T> {
+  const start = Date.now();
+  const timer = setInterval(() => { void emit(Date.now() - start); }, intervalMs);
+  try {
+    return await promise;
+  } finally {
+    clearInterval(timer);
+  }
+}
+
+const HEARTBEAT_MS = 3000;
 
 /**
  * Process a single file into text
@@ -635,7 +686,8 @@ function countExtractedFields(data: Partial<Projektauftrag>): number {
 
 export async function importProjektauftrag(
   files: { buffer: Buffer; filename: string; mimeType: string }[],
-  userId: string
+  userId: string,
+  onEvent?: ImportEventCallback,
 ): Promise<{ projektauftrag: Projektauftrag; report: ImportReport }> {
   const report: ImportReport = {
     filesProcessed: 0,
@@ -645,34 +697,66 @@ export async function importProjektauftrag(
     warnings: [],
   };
 
+  // Wenn kein Callback gesetzt: ein No-Op verwenden, damit die Phase-Pings keinen
+  // Wrapper-Overhead haben.
+  const emit = onEvent ?? (async () => { /* noop */ });
+
   console.log(`[PM-Import] Starting import with ${files.length} files`);
+  await emit({ type: 'started', data: { fileCount: files.length, filenames: files.map(f => f.filename) } });
 
-  // 1. Process files in parallel
-  const results = await Promise.allSettled(
-    files.map(async (f) => {
-      const text = await processFile(f.buffer, f.filename, f.mimeType, userId);
-      const ext = getExtension(f.filename);
-      return {
-        filename: f.filename,
-        text,
-        isImage: IMAGE_EXTENSIONS.includes(ext),
-      } as ProcessedFile;
-    })
-  );
-
+  // 1. Process files SEQUENTIELL (vorher parallel) — sonst kollidieren Heartbeat-Events
+  // mehrerer paralleler Vision-Calls und die UI-Anzeige wird verwirrend.
+  // Performance-Verlust ist gering: typisch 2-5 Files, Vision-Calls limitieren ohnehin
+  // die LLM-Quota.
   const processedFiles: ProcessedFile[] = [];
-  for (const result of results) {
-    if (result.status === 'fulfilled') {
-      if (result.value.text.trim()) {
-        processedFiles.push(result.value);
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i]!;
+    const kind = getFileKind(f.filename);
+    await emit({ type: 'file_started', data: { filename: f.filename, index: i + 1, total: files.length, kind } });
+
+    const fileStart = Date.now();
+    try {
+      // Heartbeat nur fuer Vision/Markitdown — Text geht <100ms.
+      const text = kind === 'text'
+        ? await processFile(f.buffer, f.filename, f.mimeType, userId)
+        : await withHeartbeat(
+            processFile(f.buffer, f.filename, f.mimeType, userId),
+            HEARTBEAT_MS,
+            async (elapsedMs) => {
+              await emit({
+                type: 'file_progress',
+                data: {
+                  filename: f.filename,
+                  elapsedMs,
+                  phase: kind === 'image' ? 'vision' : 'markitdown',
+                },
+              });
+            },
+          );
+
+      if (text.trim()) {
+        processedFiles.push({ filename: f.filename, text, isImage: kind === 'image' });
         report.filesProcessed++;
+        await emit({
+          type: 'file_done',
+          data: { filename: f.filename, index: i + 1, total: files.length, chars: text.length, durationMs: Date.now() - fileStart },
+        });
       } else {
-        report.warnings.push(`${result.value.filename}: Kein Text extrahiert (leeres Dokument?)`);
+        report.warnings.push(`${f.filename}: Kein Text extrahiert (leeres Dokument?)`);
         report.filesFailed++;
+        await emit({
+          type: 'file_failed',
+          data: { filename: f.filename, index: i + 1, total: files.length, error: 'Kein Text extrahiert' },
+        });
       }
-    } else {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unbekannter Fehler bei Dateiverarbeitung';
       report.filesFailed++;
-      report.errors.push(result.reason?.message || 'Unbekannter Fehler bei Dateiverarbeitung');
+      report.errors.push(msg);
+      await emit({
+        type: 'file_failed',
+        data: { filename: f.filename, index: i + 1, total: files.length, error: msg },
+      });
     }
   }
 
@@ -685,10 +769,19 @@ export async function importProjektauftrag(
   // 2. Combine texts
   const combinedText = combineTexts(processedFiles);
   console.log(`[PM-Import] Combined text: ${combinedText.length} chars`);
+  await emit({ type: 'combining', data: { processedCount: processedFiles.length, totalChars: combinedText.length } });
 
   // 3. LLM extraction
   console.log('[PM-Import] Starting LLM extraction...');
-  const extractedData = await extractWithLLM(combinedText, userId);
+  await emit({ type: 'extracting_started', data: { textChars: combinedText.length } });
+  const extractStart = Date.now();
+  const extractedData = await withHeartbeat(
+    extractWithLLM(combinedText, userId),
+    HEARTBEAT_MS,
+    async (elapsedMs) => {
+      await emit({ type: 'extracting_progress', data: { elapsedMs } });
+    },
+  );
 
   // 4. Validate + auto-correct
   const validation = validateExtraction(extractedData, PROJEKTAUFTRAG_PROFILE);
@@ -700,17 +793,24 @@ export async function importProjektauftrag(
   if (validation.corrected.length > 0) {
     console.log(`[PM-Import] Auto-corrected fields: ${validation.corrected.join(', ')}`);
   }
+  await emit({ type: 'validating', data: { warningCount: validation.errors.length } });
 
   // 5. Map to Projektauftrag structure
   const mappedData = mapToProjektauftrag(extractedData);
   report.fieldsExtracted = countExtractedFields(mappedData);
 
   console.log(`[PM-Import] Extracted ${report.fieldsExtracted} fields`);
+  await emit({
+    type: 'extracting_done',
+    data: { fieldsExtracted: report.fieldsExtracted, durationMs: Date.now() - extractStart },
+  });
 
   // 6. Create Projektauftrag
+  await emit({ type: 'creating', data: {} });
   const projektauftrag = await createProjektauftrag(mappedData, userId);
 
   console.log(`[PM-Import] Created Projektauftrag: ${projektauftrag.id}`);
+  await emit({ type: 'done', data: { projektauftrag, report } });
 
   return { projektauftrag, report };
 }

@@ -227,25 +227,85 @@ async function runImport(testCase: TestCase): Promise<TestResult> {
       body: formData,
       signal: AbortSignal.timeout(180_000),  // 3 min Hard-Timeout
     });
-    result.durationMs = Date.now() - start;
     result.httpStatus = res.status;
 
-    if (!res.ok) {
+    if (!res.ok || !res.body) {
       const body = await res.text();
+      result.durationMs = Date.now() - start;
       result.error = `HTTP ${res.status}: ${body.substring(0, 500)}`;
       return result;
     }
 
-    const data = await res.json() as { projektauftrag: any; report: TestResult['report'] };
+    // SSE-Stream lesen — Endpoint streamt Phasen-Events, finales `done`-Event traegt das Result.
+    const eventCounts: Record<string, number> = {};
+    let projektauftrag: any = null;
+    let report: any = null;
+    let importError: string | null = null;
+
+    for await (const event of readSSE(res)) {
+      eventCounts[event.type] = (eventCounts[event.type] ?? 0) + 1;
+      if (event.type === 'done') {
+        projektauftrag = event.data?.projektauftrag;
+        report = event.data?.report;
+      } else if (event.type === 'error') {
+        importError = event.data?.message ?? 'Unbekannter Importfehler';
+      }
+    }
+
+    result.durationMs = Date.now() - start;
+
+    if (importError) {
+      result.error = importError;
+      return result;
+    }
+    if (!projektauftrag || !report) {
+      result.error = `Kein 'done'-Event erhalten. Events: ${JSON.stringify(eventCounts)}`;
+      return result;
+    }
+
     result.ok = true;
-    result.projektauftrag = data.projektauftrag;
-    result.report = data.report;
-    result.quality = scoreQuality(data.projektauftrag);
+    result.projektauftrag = projektauftrag;
+    result.report = report;
+    result.quality = scoreQuality(projektauftrag);
+    (result as any).eventCounts = eventCounts;
     return result;
   } catch (err) {
     result.durationMs = Date.now() - start;
     result.error = err instanceof Error ? err.message : String(err);
     return result;
+  }
+}
+
+/**
+ * Liest SSE-Events aus einer fetch-Response. Yieldet { type, data } pro
+ * `event:`/`data:`-Block (durch `\n\n` getrennt).
+ */
+async function* readSSE(response: Response): AsyncGenerator<{ type: string; data: any }> {
+  if (!response.body) return;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split('\n\n');
+    buffer = blocks.pop() ?? '';
+    for (const block of blocks) {
+      if (!block.trim()) continue;
+      let evType = 'message';
+      let evData = '';
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event:')) evType = line.slice(6).trim();
+        else if (line.startsWith('data:')) evData += line.slice(5).trim();
+      }
+      if (!evData) continue;
+      try {
+        yield { type: evType, data: JSON.parse(evData) };
+      } catch {
+        // skip malformed
+      }
+    }
   }
 }
 

@@ -3,11 +3,58 @@
  * Multi-file document import for Projektauftrag creation
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
-import { apiPostForm } from '../../utils/apiFetch';
+import { API_URL } from '../../utils/apiFetch';
 import { ArrowLeftIcon } from '../../components/Icons';
+
+/**
+ * Liest einen SSE-Stream aus einer fetch-Response.
+ * Yieldet { type, data } pro `event: ...\ndata: ...\n\n`-Block.
+ */
+async function* sseReader(response) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split('\n\n');
+    buffer = blocks.pop() ?? '';
+    for (const block of blocks) {
+      if (!block.trim()) continue;
+      const ev = { event: 'message', data: '' };
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event:')) ev.event = line.slice(6).trim();
+        else if (line.startsWith('data:')) ev.data += line.slice(5).trim();
+      }
+      if (ev.data) {
+        try {
+          yield { type: ev.event, data: JSON.parse(ev.data) };
+        } catch {
+          // ignore malformed event
+        }
+      }
+    }
+  }
+}
+
+const PHASE_HINTS = {
+  vision: 'KI analysiert Bild. Bei aufwändigen Whiteboard-Fotos oft 20–30 Sekunden.',
+  markitdown: 'Dokument wird in Markdown konvertiert.',
+  extracting: 'Strukturierte Daten werden extrahiert. Bei dichten xlsx-Toolboxen 30+ Sekunden.',
+};
+
+const STAGE_LABELS = {
+  started: 'Vorbereitung…',
+  combining: 'Texte werden zusammengeführt',
+  extracting: 'Daten werden extrahiert',
+  extracting_done: 'Validierung läuft',
+  validating: 'Validierung läuft',
+  creating: 'Projektauftrag wird gespeichert',
+};
 
 const ACCEPTED_EXTENSIONS = [
   '.pdf', '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
@@ -213,6 +260,83 @@ const styles = {
     color: theme.colors.textMuted,
     textAlign: 'center',
   },
+  // Granularer Progress
+  progressContainer: {
+    backgroundColor: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    marginBottom: theme.spacing.xl,
+  },
+  progressHeading: {
+    fontSize: theme.typography.sizes.base,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
+  },
+  fileList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.lg,
+  },
+  fileRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+    fontSize: theme.typography.sizes.sm,
+  },
+  fileRowActive: {
+    backgroundColor: theme.colors.primaryLight,
+    borderRadius: theme.borderRadius.md,
+  },
+  fileStatusIcon: {
+    fontSize: theme.typography.sizes.base,
+    width: '20px',
+    textAlign: 'center',
+    flexShrink: 0,
+  },
+  fileName: {
+    color: theme.colors.text,
+    flex: 1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  fileNameMuted: {
+    color: theme.colors.textMuted,
+  },
+  fileTime: {
+    color: theme.colors.primary,
+    fontVariantNumeric: 'tabular-nums',
+    fontWeight: theme.typography.weights.medium,
+    flexShrink: 0,
+    fontSize: theme.typography.sizes.sm,
+  },
+  phaseHint: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textMuted,
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.lg,
+    lineHeight: '1.4',
+  },
+  stageLine: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text,
+    fontWeight: theme.typography.weights.medium,
+    marginBottom: theme.spacing.md,
+  },
+  progressMeta: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.sm,
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textMuted,
+    fontVariantNumeric: 'tabular-nums',
+  },
   // Error
   error: {
     padding: theme.spacing.lg,
@@ -245,9 +369,31 @@ function ImportPage() {
   const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [progressText, setProgressText] = useState('');
   const [error, setError] = useState(null);
+
+  // Granularer Progress-State (statt fake-Progress).
+  // stage = aktuelle Top-Level-Phase, perFileStatus = Map filename → 'pending'|'running'|'done'|'failed'
+  // activePhase = 'vision'|'markitdown'|'extracting'|null, activeElapsedMs = Millisekunden seit Phase-Start
+  const [stage, setStage] = useState(null);
+  const [perFileStatus, setPerFileStatus] = useState({});
+  const [activeFile, setActiveFile] = useState(null);
+  const [activePhase, setActivePhase] = useState(null);
+  const [activeElapsedMs, setActiveElapsedMs] = useState(0);
+  const [filesProcessed, setFilesProcessed] = useState(0);
+  const [filesTotal, setFilesTotal] = useState(0);
+
+  // Frontend-internal Heartbeat (alle 200ms): laesst den Sekunden-Counter
+  // smooth weiterlaufen zwischen den Backend-Heartbeats (alle 3s). Bei jedem
+  // Backend-Event wird activeElapsedMs hart gesetzt, der Timer fuehrt von dort weiter.
+  useEffect(() => {
+    if (!activePhase) return;
+    const startedAt = Date.now() - activeElapsedMs;
+    const id = setInterval(() => {
+      setActiveElapsedMs(Date.now() - startedAt);
+    }, 200);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePhase, activeFile]);
 
   const isValidFileType = (file) => {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
@@ -319,8 +465,13 @@ function ImportPage() {
     if (files.length === 0) return;
 
     setIsImporting(true);
-    setProgress(10);
-    setProgressText('Dateien werden hochgeladen...');
+    setStage('started');
+    setPerFileStatus(Object.fromEntries(files.map((f) => [f.name, 'pending'])));
+    setFilesTotal(files.length);
+    setFilesProcessed(0);
+    setActiveFile(null);
+    setActivePhase(null);
+    setActiveElapsedMs(0);
     setError(null);
 
     try {
@@ -329,39 +480,119 @@ function ImportPage() {
         formData.append('files', file);
       }
 
-      setProgress(25);
-      setProgressText('Dokumente werden verarbeitet...');
+      const response = await fetch(`${API_URL}/apps/projektmanagement/projektauftraege/import`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
 
-      // Small delay so user sees the status
-      await new Promise((r) => setTimeout(r, 300));
-      setProgress(40);
-      setProgressText('Daten werden extrahiert...');
-
-      const response = await apiPostForm('/apps/projektmanagement/projektauftraege/import', formData);
-
-      setProgress(80);
-      setProgressText('Projektauftrag wird erstellt...');
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Import fehlgeschlagen');
+      if (!response.ok || !response.body) {
+        // Fallback: kein Stream verfuegbar — versuche JSON-Error zu lesen.
+        let errMsg = 'Import fehlgeschlagen';
+        try {
+          const data = await response.json();
+          errMsg = data.error || errMsg;
+        } catch { /* ignore */ }
+        throw new Error(errMsg);
       }
 
-      const data = await response.json();
+      let projektauftragId = null;
+      let importErrorMessage = null;
 
-      setProgress(100);
-      setProgressText('Fertig!');
+      for await (const ev of sseReader(response)) {
+        switch (ev.type) {
+          case 'started':
+            setStage('started');
+            break;
+          case 'file_started':
+            setPerFileStatus((p) => ({ ...p, [ev.data.filename]: 'running' }));
+            setActiveFile(ev.data.filename);
+            setActivePhase(ev.data.kind === 'image' ? 'vision' : ev.data.kind === 'document' ? 'markitdown' : null);
+            setActiveElapsedMs(0);
+            setStage(null);
+            break;
+          case 'file_progress':
+            setActiveElapsedMs(ev.data.elapsedMs);
+            break;
+          case 'file_done':
+            setPerFileStatus((p) => ({ ...p, [ev.data.filename]: 'done' }));
+            setFilesProcessed(ev.data.index);
+            setActivePhase(null);
+            setActiveFile(null);
+            break;
+          case 'file_failed':
+            setPerFileStatus((p) => ({ ...p, [ev.data.filename]: 'failed' }));
+            setFilesProcessed(ev.data.index);
+            setActivePhase(null);
+            setActiveFile(null);
+            break;
+          case 'combining':
+            setStage('combining');
+            setActivePhase(null);
+            break;
+          case 'extracting_started':
+            setStage('extracting');
+            setActivePhase('extracting');
+            setActiveElapsedMs(0);
+            break;
+          case 'extracting_progress':
+            setActiveElapsedMs(ev.data.elapsedMs);
+            break;
+          case 'extracting_done':
+            setStage('extracting_done');
+            setActivePhase(null);
+            break;
+          case 'validating':
+            setStage('validating');
+            break;
+          case 'creating':
+            setStage('creating');
+            break;
+          case 'done':
+            projektauftragId = ev.data.projektauftrag?.id ?? null;
+            break;
+          case 'error':
+            importErrorMessage = ev.data.message ?? 'Import fehlgeschlagen';
+            break;
+          default:
+            break;
+        }
+      }
 
-      // Brief pause to show completion, then navigate
-      await new Promise((r) => setTimeout(r, 500));
-      navigate(`/apps/projektmanagement/${data.projektauftrag.id}`);
+      if (importErrorMessage) {
+        throw new Error(importErrorMessage);
+      }
+
+      if (projektauftragId) {
+        navigate(`/apps/projektmanagement/${projektauftragId}`);
+      } else {
+        throw new Error('Import unvollständig — kein Projektauftrag erstellt');
+      }
     } catch (err) {
       console.error('Import failed:', err);
       setError(err.message || 'Fehler beim Import');
       setIsImporting(false);
-      setProgress(0);
-      setProgressText('');
+      setStage(null);
+      setActivePhase(null);
     }
+  };
+
+  const computedProgress = (() => {
+    if (!isImporting) return 0;
+    const fileShare = filesTotal > 0 ? (filesProcessed / filesTotal) * 40 : 0;
+    if (stage === 'combining') return 50;
+    if (stage === 'extracting') return 65;
+    if (stage === 'extracting_done' || stage === 'validating') return 90;
+    if (stage === 'creating') return 95;
+    if (stage === 'done') return 100;
+    // Wenn aktive File-Phase laeuft: Basis 5% + bisheriger File-Anteil.
+    return Math.min(45, 5 + fileShare);
+  })();
+
+  const formatSeconds = (ms) => {
+    if (!ms) return '';
+    const s = Math.floor(ms / 1000);
+    return `${s}s`;
   };
 
   return (
@@ -487,11 +718,66 @@ function ImportPage() {
 
         {/* Progress */}
         {isImporting && (
-          <div style={styles.progress}>
-            <div style={styles.progressBar}>
-              <div style={{ ...styles.progressFill, width: `${progress}%` }} />
+          <div style={styles.progressContainer}>
+            <div style={styles.progressHeading}>Projektauftrag wird importiert</div>
+
+            {/* Per-File-Liste mit Status-Icons */}
+            <div style={styles.fileList}>
+              {files.map((f) => {
+                const status = perFileStatus[f.name] ?? 'pending';
+                const isActive = activeFile === f.name;
+                let icon = '◌';
+                if (status === 'running') icon = '⟳';
+                else if (status === 'done') icon = '✓';
+                else if (status === 'failed') icon = '✗';
+                const iconColor = status === 'done' ? theme.colors.success
+                  : status === 'failed' ? theme.colors.error
+                  : status === 'running' ? theme.colors.primary
+                  : theme.colors.textMuted;
+                return (
+                  <div
+                    key={f.name}
+                    style={{ ...styles.fileRow, ...(isActive ? styles.fileRowActive : {}) }}
+                  >
+                    <span style={{ ...styles.fileStatusIcon, color: iconColor }}>{icon}</span>
+                    <span style={status === 'pending' ? { ...styles.fileName, ...styles.fileNameMuted } : styles.fileName}>
+                      {f.name}
+                    </span>
+                    {isActive && activeElapsedMs > 0 && (
+                      <span style={styles.fileTime}>{formatSeconds(activeElapsedMs)}</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <p style={styles.progressText}>{progressText}</p>
+
+            {/* Aktiver Phase-Hinweis */}
+            {(activePhase || stage) && (
+              <div style={styles.stageLine}>
+                {activePhase === 'vision' && `Bildanalyse${activeElapsedMs > 0 ? ` (${formatSeconds(activeElapsedMs)})` : ''}`}
+                {activePhase === 'markitdown' && `Dokument-Konvertierung${activeElapsedMs > 0 ? ` (${formatSeconds(activeElapsedMs)})` : ''}`}
+                {activePhase === 'extracting' && `Daten-Extraktion${activeElapsedMs > 0 ? ` (${formatSeconds(activeElapsedMs)})` : ''}`}
+                {!activePhase && stage && (STAGE_LABELS[stage] ?? stage)}
+              </div>
+            )}
+
+            {/* Phase-Hinweis-Box (was passiert + erwartete Dauer) */}
+            {activePhase && PHASE_HINTS[activePhase] && (
+              <div style={styles.phaseHint}>
+                {PHASE_HINTS[activePhase]}
+              </div>
+            )}
+
+            {/* Progressbar — basiert auf realen Stages, nicht hardcoded */}
+            <div style={styles.progressBar}>
+              <div style={{ ...styles.progressFill, width: `${computedProgress}%` }} />
+            </div>
+            <div style={styles.progressMeta}>
+              <span>{Math.round(computedProgress)}%</span>
+              {filesTotal > 0 && (
+                <span>{filesProcessed} von {filesTotal} Datei{filesTotal === 1 ? '' : 'en'}</span>
+              )}
+            </div>
           </div>
         )}
 

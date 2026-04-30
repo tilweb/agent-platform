@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
 import {
   createProjektauftrag,
   createFromVorlage,
@@ -142,12 +143,24 @@ projektmanagement.post('/projektauftraege/import', async (c) => {
 
     console.log(`[PM-Import] Received ${files.length} files for import`);
 
-    const result = await importProjektauftrag(files, userId);
-
-    return c.json({
-      projektauftrag: result.projektauftrag,
-      report: result.report,
-    }, 201);
+    // SSE-Stream: Phasen-Events landen direkt beim Client. Heartbeats waehrend
+    // langer Vision/LLM-Calls verhindern dass UI als "haengt" wahrgenommen wird.
+    return streamSSE(c, async (stream) => {
+      try {
+        await importProjektauftrag(files, userId, async (event) => {
+          await stream.writeSSE({
+            event: event.type,
+            data: JSON.stringify(event.data),
+          });
+        });
+      } catch (error) {
+        console.error('Error importing Projektauftrag:', error);
+        await stream.writeSSE({
+          event: 'error',
+          data: JSON.stringify({ message: error instanceof Error ? error.message : 'Import fehlgeschlagen' }),
+        });
+      }
+    });
   } catch (error) {
     console.error('Error importing Projektauftrag:', error);
     return c.json(
