@@ -2,8 +2,27 @@
 
 ## 2026-04-30
 
+### Fix: Projektauftrag-Import — fehlende 5 Basis-Felder ergaenzt
+Der Auftrag-Wizard editierte 13 Basis-Felder, der Import extrahierte aber nur 7. Lange bestehende Lücke aus der Zeit, als der Wizard erweitert wurde, ohne den Import-Profile mitzuziehen — fiel beim Schema-Audit nach den heutigen Idee-Arbeiten auf.
+
+Ergaenzt im `PROJEKTAUFTRAG_PROFILE.basis`: `project_id`, `project_status`, `project_driver`, `project_size`, `priority`. Mit Normalizer-Funktionen (`normalizeAuftragPriority`, `normalizeAuftragSize`, `normalizeAuftragDriver`, `normalizeAuftragProjectStatus`) für die Deutsch→English-Mapping-Schicht (Hoch→high, Klein→small, Strategisch→strategic, Initiierung→initiation, etc.). LLM-Guidelines explizit um die neuen Enum-Werte ergaenzt.
+
+`mapToProjektauftrag` setzt die Felder via `as Record<string, unknown>`-Cast, weil sie im Projektauftrag-Type bisher nur als runtime-Properties existieren (vom Wizard direkt geschrieben). `countExtractedFields` zählt sie mit.
+
+Damit ist der Auftrag-Import jetzt schema-koherent zum Wizard.
+
 ### Fix: Projektidee-Storage von Drizzle/Postgres auf YAML portiert (demo/messe-only)
 Frueher heutiger Cherry-Pick aus main hatte versehentlich Drizzle-basierten Storage-Code auf demo/messe gebracht — auf einer Branch, die strukturell komplett YAML-Files nutzt. Folge: Idee-CRUD lief teilweise ueber leere Postgres-Tabellen, `createAuftragFromIdee` hat ein `UPDATE WHERE id=...` gegen 0 Rows gefeuert (silent no-op), `abgeleitete_auftraege` blieb immer leer.
+
+Ergaenzt im `PROJEKTAUFTRAG_PROFILE.basis`: `project_id`, `project_status`, `project_driver`, `project_size`, `priority`. Mit Normalizer-Funktionen (`normalizeAuftragPriority`, `normalizeAuftragSize`, `normalizeAuftragDriver`, `normalizeAuftragProjectStatus`) für die Deutsch→English-Mapping-Schicht (Hoch→high, Klein→small, Strategisch→strategic, Initiierung→initiation, etc.). LLM-Guidelines explizit um die neuen Enum-Werte ergaenzt.
+
+`mapToProjektauftrag` setzt die Felder via `as Record<string, unknown>`-Cast, weil sie im Projektauftrag-Type bisher nur als runtime-Properties existieren (vom Wizard direkt geschrieben). `countExtractedFields` zählt sie mit.
+
+Damit ist der Auftrag-Import jetzt schema-koherent zum Wizard.
+
+### Feature: Projektauftrag zeigt Quell-Idee-Referenz
+Wenn ein Projektauftrag via "Auftrag aus Idee erstellen" entstanden ist, wird die Quell-Idee jetzt im Wizard-Header sichtbar — als verlinkter Eintrag in der Subtitle-Zeile (`Aus Idee: <Name>`). Klick fuehrt zur Idee-Detailansicht. Bei manuell angelegten Auftraegen ist der Block einfach unsichtbar.
+>>>>>>> 01422f1 (fix: Auftrag-Import — fehlende 5 Basis-Felder ergaenzt)
 
 Dieser Commit portiert `idee-storage.ts` komplett auf das gleiche YAML-Pattern wie die Auftrag-Storage — pro Idee ein Verzeichnis unter `data/apps/projektmanagement/projektideen/<id>/metadata.yaml`. `loadAbgeleiteteAuftraege` globt jetzt alle Auftrag-YAMLs und filtert nach `idee_id`. `setAuftragIdeeId` schreibt `idee_id` als Feld direkt in die Auftrag-YAML.
 
