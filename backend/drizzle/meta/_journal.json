@@ -8,13 +8,6 @@
       "when": 1777415491822,
       "tag": "0000_little_junta",
       "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1777592400000,
-      "tag": "0004_projektideen",
-      "breakpoints": true
     }
   ]
 }

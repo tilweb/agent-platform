@@ -104,6 +104,12 @@ export interface Projektauftrag {
   stepAnalyses?: StoredStepAnalyses;
   gesamtbewertung?: StoredGesamtbewertung;
 
+  // Verknuepfung zur Quell-Idee (sofern aus einer Idee generiert).
+  // idee_id wird in der Auftrag-YAML persistiert; idee?: {...} wird beim Read
+  // angereichert (File-Lookup auf die Idee-YAML).
+  idee_id?: string;
+  idee?: { id: string; name: string };
+
   // Legacy - kept for compatibility
   analysis?: ProjektAnalysis;
 }

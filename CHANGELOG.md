@@ -2,6 +2,21 @@
 
 ## 2026-04-30
 
+### Fix: Projektidee-Storage von Drizzle/Postgres auf YAML portiert (demo/messe-only)
+Frueher heutiger Cherry-Pick aus main hatte versehentlich Drizzle-basierten Storage-Code auf demo/messe gebracht — auf einer Branch, die strukturell komplett YAML-Files nutzt. Folge: Idee-CRUD lief teilweise ueber leere Postgres-Tabellen, `createAuftragFromIdee` hat ein `UPDATE WHERE id=...` gegen 0 Rows gefeuert (silent no-op), `abgeleitete_auftraege` blieb immer leer.
+
+Dieser Commit portiert `idee-storage.ts` komplett auf das gleiche YAML-Pattern wie die Auftrag-Storage — pro Idee ein Verzeichnis unter `data/apps/projektmanagement/projektideen/<id>/metadata.yaml`. `loadAbgeleiteteAuftraege` globt jetzt alle Auftrag-YAMLs und filtert nach `idee_id`. `setAuftragIdeeId` schreibt `idee_id` als Feld direkt in die Auftrag-YAML.
+
+- **`idee-storage.ts`**: komplette Neuimplementierung gegen Bun-File/Glob, gleiches Pattern wie `storage.ts` (Auftrag).
+- **`idee-service.ts`**: nutzt jetzt den exportierten `setAuftragIdeeId` aus idee-storage statt einer inline-Drizzle-Funktion.
+- **`types.ts`**: `Projektauftrag.idee_id?: string` (in YAML persistiert) + `idee?: { id; name }` (beim Read angereichert).
+- **`storage.ts/getProjektauftrag`**: liest `idee_id` aus der Auftrag-YAML und macht ein File-Lookup auf die Idee-YAML, um `auftrag.idee = {id, name}` zu setzen — Pendant zum Drizzle-JOIN auf main.
+- **`storage.ts/saveProjektauftrag`**: strippt `idee` vor dem YAML-Schreiben (analog `abgeleitete_auftraege` in idee-storage).
+- **`WizardPage.jsx`**: Subtitle-Eintrag `Aus Idee: <verlinkter Name>` (Frontend-Port von main `7a4a32f`).
+- **Drizzle-Migration `0004_projektideen.sql` entfernt** + Journal-Eintrag entfernt — die Tabelle wird auf demo/messe nicht gebraucht.
+
+Smoke verifiziert: Idee anlegen → Auftrag aus Idee → Auftrag-YAML enthaelt `idee_id`, API liefert `idee: {id, name}`, Idee-Detail liefert `abgeleitete_auftraege`. Idee-Loeschung entfernt `idee_id` aus dem Auftrag-YAML, der Auftrag selbst bleibt bestehen.
+
 ### Feature: Projektidee — In-Scope / Out-of-Scope (analog Auftrag)
 Im Tab "Projektkontext" der Projektidee gibt es jetzt zwei Listen "Im Projektumfang (In-Scope)" und "Außerhalb des Projekts (Out-of-Scope)" — visuell und funktional 1:1 wie im Auftrag-Wizard (`Inhalt.jsx`). Die Felder werden durch alle Layer durchgereicht: Type, Storage-Default, LLM-Profile fuer Import, LLM-Mapper, Auftrag-aus-Idee-Mapping, Markdown/PDF/DOCX-Export und die Read-only-Übersicht.
 

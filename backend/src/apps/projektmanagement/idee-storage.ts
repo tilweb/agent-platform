@@ -1,15 +1,20 @@
 /**
- * Projektidee Storage — Postgres-backed (Drizzle).
+ * Projektidee Storage — File-based (YAML).
  *
- * Komplette Idee-Daten als jsonb in `projektmgmt.projektideen.data`.
- * Auftrag-Verknuepfung ueber `paProjektauftraege.ideeId` (FK) — die
- * `abgeleitete_auftraege`-Liste wird beim Lesen via JOIN angereichert.
+ * Spiegelt das Pattern von storage.ts (Auftrag): pro Idee ein Verzeichnis
+ * unter data/apps/projektmanagement/projektideen/<id>/metadata.yaml.
+ *
+ * Auftrag-Verknuepfung ueber das Feld `idee_id` direkt in der Auftrag-YAML
+ * (kein FK, keine DB) — `loadAbgeleiteteAuftraege` globt alle Auftraege und
+ * filtert.
  */
 
-import { eq, desc } from 'drizzle-orm';
-import { getDb } from '../../db';
-import { paProjektideen, paProjektauftraege } from '../../db/schema/projektmgmt';
-import type { Projektidee } from './types';
+import { parse, stringify } from 'yaml';
+import type { Projektidee, Projektauftrag } from './types';
+
+const BASE_PATH = './data/apps/projektmanagement';
+const PROJEKTIDEEN_PATH = `${BASE_PATH}/projektideen`;
+const PROJEKTAUFTRAEGE_PATH = `${BASE_PATH}/projektauftraege`;
 
 export function generateProjektideeId(): string {
   const timestamp = Date.now().toString(36);
@@ -17,80 +22,71 @@ export function generateProjektideeId(): string {
   return `idee-${timestamp}-${random}`;
 }
 
-function rowToIdee(row: typeof paProjektideen.$inferSelect): Projektidee {
-  const data = (row.data ?? {}) as Partial<Projektidee>;
-  return {
-    ...data,
-    id: row.id,
-    name: row.name,
-    status: (row.status as Projektidee['status']) ?? 'draft',
-    created_at: row.createdAt,
-    updated_at: row.updatedAt,
-  } as Projektidee;
+async function ensureDirectories(): Promise<void> {
+  await Bun.$`mkdir -p ${PROJEKTIDEEN_PATH}`;
 }
 
+/**
+ * Liest aus allen Auftrag-YAMLs die abgeleiteten Auftraege fuer eine Idee.
+ * Pendant zur Drizzle-JOIN-Variante auf main.
+ */
 async function loadAbgeleiteteAuftraege(ideeId: string): Promise<Projektidee['abgeleitete_auftraege']> {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: paProjektauftraege.id,
-      name: paProjektauftraege.name,
-      status: paProjektauftraege.status,
-      createdAt: paProjektauftraege.createdAt,
-    })
-    .from(paProjektauftraege)
-    .where(eq(paProjektauftraege.ideeId, ideeId))
-    .orderBy(desc(paProjektauftraege.createdAt));
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    status: r.status,
-    created_at: r.createdAt,
-  }));
+  const result: NonNullable<Projektidee['abgeleitete_auftraege']> = [];
+  try {
+    const glob = new Bun.Glob('*/metadata.yaml');
+    for await (const path of glob.scan(PROJEKTAUFTRAEGE_PATH)) {
+      const file = Bun.file(`${PROJEKTAUFTRAEGE_PATH}/${path}`);
+      if (!(await file.exists())) continue;
+      const auftrag = parse(await file.text()) as Projektauftrag & { idee_id?: string };
+      if (auftrag.idee_id === ideeId) {
+        result.push({
+          id: auftrag.id,
+          name: auftrag.name,
+          status: auftrag.status,
+          created_at: auftrag.created_at,
+        });
+      }
+    }
+  } catch {
+    // Keine Auftraege -> leeres Array.
+  }
+  result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return result;
 }
 
 export async function getProjektideen(): Promise<Projektidee[]> {
-  const db = getDb();
-  const rows = await db
-    .select()
-    .from(paProjektideen)
-    .orderBy(desc(paProjektideen.updatedAt));
-  return rows.map(rowToIdee);
+  await ensureDirectories();
+  const ideen: Projektidee[] = [];
+  try {
+    const glob = new Bun.Glob('*/metadata.yaml');
+    for await (const path of glob.scan(PROJEKTIDEEN_PATH)) {
+      const file = Bun.file(`${PROJEKTIDEEN_PATH}/${path}`);
+      if (!(await file.exists())) continue;
+      const idee = parse(await file.text()) as Projektidee;
+      ideen.push(idee);
+    }
+  } catch {
+    return [];
+  }
+  ideen.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  return ideen;
 }
 
 export async function getProjektidee(id: string): Promise<Projektidee | null> {
-  const db = getDb();
-  const rows = await db.select().from(paProjektideen).where(eq(paProjektideen.id, id)).limit(1);
-  if (!rows[0]) return null;
-  const idee = rowToIdee(rows[0]);
+  const file = Bun.file(`${PROJEKTIDEEN_PATH}/${id}/metadata.yaml`);
+  if (!(await file.exists())) return null;
+  const idee = parse(await file.text()) as Projektidee;
   idee.abgeleitete_auftraege = await loadAbgeleiteteAuftraege(id);
   return idee;
 }
 
 export async function saveProjektidee(idee: Projektidee): Promise<void> {
-  const db = getDb();
-  const now = new Date().toISOString();
-  // abgeleitete_auftraege werden nicht in `data` gespeichert — das ist nur eine
-  // Lese-Anreicherung. Strippe es vor dem Schreiben.
+  const dir = `${PROJEKTIDEEN_PATH}/${idee.id}`;
+  await Bun.$`mkdir -p ${dir}`;
+  // abgeleitete_auftraege werden beim Lesen angereichert — nicht persistieren.
   const { abgeleitete_auftraege: _ignore, ...dataToStore } = idee;
   void _ignore;
-  await db.insert(paProjektideen).values({
-    id: idee.id,
-    ownerId: (idee as { ownerId?: string }).ownerId ?? null,
-    name: idee.name,
-    status: idee.status ?? 'draft',
-    data: dataToStore as never,
-    createdAt: idee.created_at ?? now,
-    updatedAt: idee.updated_at ?? now,
-  }).onConflictDoUpdate({
-    target: paProjektideen.id,
-    set: {
-      name: idee.name,
-      status: idee.status ?? 'draft',
-      data: dataToStore as never,
-      updatedAt: idee.updated_at ?? now,
-    },
-  });
+  await Bun.write(`${dir}/metadata.yaml`, stringify(dataToStore));
 }
 
 export async function updateProjektidee(
@@ -110,15 +106,40 @@ export async function updateProjektidee(
 }
 
 export async function deleteProjektidee(id: string): Promise<boolean> {
-  const db = getDb();
-  // Auftraege bleiben bestehen, ihre idee_id wird auf NULL gesetzt damit kein
-  // Dangling-FK entsteht. Idee-Loeschung verwirft die Hypothese, der daraus
-  // entstandene Auftrag verliert nur seinen Ursprungs-Verweis.
-  await db.update(paProjektauftraege)
-    .set({ ideeId: null })
-    .where(eq(paProjektauftraege.ideeId, id));
-  const res = await db.delete(paProjektideen)
-    .where(eq(paProjektideen.id, id))
-    .returning({ id: paProjektideen.id });
-  return res.length > 0;
+  const dir = `${PROJEKTIDEEN_PATH}/${id}`;
+  const metadataFile = Bun.file(`${dir}/metadata.yaml`);
+  if (!(await metadataFile.exists())) return false;
+
+  // Abgeleitete Auftraege bleiben bestehen, ihr idee_id-Feld wird geleert
+  // damit kein Dangling-Verweis entsteht.
+  try {
+    const glob = new Bun.Glob('*/metadata.yaml');
+    for await (const path of glob.scan(PROJEKTAUFTRAEGE_PATH)) {
+      const file = Bun.file(`${PROJEKTAUFTRAEGE_PATH}/${path}`);
+      if (!(await file.exists())) continue;
+      const auftrag = parse(await file.text()) as Projektauftrag & { idee_id?: string };
+      if (auftrag.idee_id === id) {
+        delete (auftrag as { idee_id?: string }).idee_id;
+        await Bun.write(`${PROJEKTAUFTRAEGE_PATH}/${path}`, stringify(auftrag));
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  await Bun.$`rm -rf ${dir}`;
+  return true;
+}
+
+/**
+ * Setzt das idee_id-Feld in einer Auftrag-YAML — Pendant zur DB-Spalten-Update
+ * auf main. Wird von createAuftragFromIdee aufgerufen, damit die Verknuepfung
+ * persistiert ist und loadAbgeleiteteAuftraege sie findet.
+ */
+export async function setAuftragIdeeId(auftragId: string, ideeId: string): Promise<void> {
+  const file = Bun.file(`${PROJEKTAUFTRAEGE_PATH}/${auftragId}/metadata.yaml`);
+  if (!(await file.exists())) return;
+  const auftrag = parse(await file.text()) as Projektauftrag & { idee_id?: string };
+  auftrag.idee_id = ideeId;
+  await Bun.write(`${PROJEKTAUFTRAEGE_PATH}/${auftragId}/metadata.yaml`, stringify(auftrag));
 }

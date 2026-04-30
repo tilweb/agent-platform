@@ -12,6 +12,7 @@ import {
   saveProjektidee,
   updateProjektidee as storageUpdate,
   deleteProjektidee,
+  setAuftragIdeeId,
 } from './idee-storage';
 import { generateProjektauftragId, saveProjektauftrag, getProjektauftrag } from './storage';
 import type { Projektidee, BusinessCaseItem, Projektauftrag, Risk } from './types';
@@ -149,8 +150,8 @@ export async function createAuftragFromIdee(
     current_step: 1,
   };
 
-  // saveProjektauftrag uebernimmt das jsonb-Schreiben — die ideeId-Spalte muss
-  // separat gesetzt werden, da sie ausserhalb des `data`-Blobs liegt.
+  // saveProjektauftrag schreibt die Auftrag-YAML; setAuftragIdeeId ergaenzt
+  // dann das idee_id-Feld in der Datei (Pendant zum Drizzle-Spalten-Update auf main).
   await saveProjektauftrag(auftrag);
   await setAuftragIdeeId(auftragId, ideeId);
 
@@ -169,11 +170,4 @@ function mapToBudgetItem(
     amount,
     category,
   };
-}
-
-async function setAuftragIdeeId(auftragId: string, ideeId: string): Promise<void> {
-  const { eq } = await import('drizzle-orm');
-  const { paProjektauftraege } = await import('../../db/schema/projektmgmt');
-  const { getDb } = await import('../../db');
-  await getDb().update(paProjektauftraege).set({ ideeId }).where(eq(paProjektauftraege.id, auftragId));
 }

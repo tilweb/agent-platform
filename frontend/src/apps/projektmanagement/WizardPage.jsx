@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useProjektmanagement } from '../../hooks/useProjektmanagement';
 import { API_URL } from '../../utils/apiFetch';
@@ -834,6 +834,20 @@ function WizardPage() {
                 <>
                   <span>|</span>
                   <span>{projektauftrag.start_date} - {projektauftrag.end_date}</span>
+                </>
+              )}
+              {projektauftrag.idee && (
+                <>
+                  <span>|</span>
+                  <span>
+                    Aus Idee:{' '}
+                    <Link
+                      to={`/apps/projektmanagement/ideen/${projektauftrag.idee.id}`}
+                      style={{ color: theme.colors.primary, fontWeight: theme.typography.weights.medium }}
+                    >
+                      {projektauftrag.idee.name}
+                    </Link>
+                  </span>
                 </>
               )}
             </div>

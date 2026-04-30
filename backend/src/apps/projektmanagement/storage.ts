@@ -69,7 +69,19 @@ export async function getProjektauftrag(projektId: string): Promise<Projektauftr
   }
 
   const content = await file.text();
-  return parse(content) as Projektauftrag;
+  const auftrag = parse(content) as Projektauftrag;
+
+  // Idee-Referenz anreichern (Pendant zum Drizzle-JOIN auf main):
+  // idee_id steht in der Auftrag-YAML, idee.name lesen wir aus der Idee-YAML.
+  if (auftrag.idee_id) {
+    const ideeFile = Bun.file(`${BASE_PATH}/projektideen/${auftrag.idee_id}/metadata.yaml`);
+    if (await ideeFile.exists()) {
+      const idee = parse(await ideeFile.text()) as { id: string; name: string };
+      auftrag.idee = { id: idee.id, name: idee.name };
+    }
+  }
+
+  return auftrag;
 }
 
 /**
@@ -81,8 +93,10 @@ export async function saveProjektauftrag(projektauftrag: Projektauftrag): Promis
   // Ensure directory exists
   await Bun.$`mkdir -p ${dir}`;
 
-  // Save metadata
-  await Bun.write(`${dir}/metadata.yaml`, stringify(projektauftrag));
+  // `idee` wird beim Read angereichert — nicht persistieren.
+  const { idee: _ignore, ...dataToStore } = projektauftrag;
+  void _ignore;
+  await Bun.write(`${dir}/metadata.yaml`, stringify(dataToStore));
 }
 
 /**
