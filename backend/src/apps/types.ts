@@ -8,6 +8,22 @@ export interface AppRoute {
   component: string;
 }
 
+/**
+ * App-Berechtigung pro Gruppe.
+ *
+ * - owner   = fachlicher Eigentuemer (in Phase 2 von der App selbst interpretiert,
+ *             z.B. "Ersteller einer Idee"). KEIN App-Settings-Recht — das bleibt
+ *             globaler Admin-Rolle vorbehalten.
+ * - editor  = darf inhaltlich aendern, anlegen, evtl. loeschen
+ * - viewer  = read-only
+ */
+export type AppRole = 'owner' | 'editor' | 'viewer';
+
+export interface AppGroupPermission {
+  groupId: string;
+  role: AppRole;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
@@ -16,6 +32,14 @@ export interface AppConfig {
   version: string;
   enabled: boolean;
   routes: AppRoute[];
+  /**
+   * Gruppen-basierte Berechtigungen (Phase 1: Sichtbarkeit-Filter beim Aufruf).
+   * Leer = "noch nicht konfiguriert" — Admin sieht im Aufruf einen
+   * "Wartet auf Konfiguration"-Hinweis, andere User die "Keine Berechtigung"-Page.
+   */
+  permissions?: {
+    groups: AppGroupPermission[];
+  };
   /**
    * Optional list of functions this app exposes as Public-API endpoints
    * (see backend/src/public-api/). Structural typing avoids a circular
@@ -44,6 +68,9 @@ export interface AppInfo {
   version: string;
   enabled: boolean;
   routes: AppRoute[];
+  permissions?: {
+    groups: AppGroupPermission[];
+  };
 }
 
 // Contract Management specific types

@@ -19,8 +19,12 @@ import {
 } from './service';
 import { getContractOriginalPath } from './storage';
 import type { ContractFilters } from '../types';
+import { requireAppAccess } from '../permissions-middleware';
 
 const contracts = new Hono();
+
+// Berechtigungs-Pruefung
+contracts.use('*', requireAppAccess('vertragsmanagement'));
 
 // ============== Contract Endpoints ==============
 

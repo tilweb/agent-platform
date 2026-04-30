@@ -91,11 +91,23 @@ export async function loadRegistry(): Promise<AppsRegistry> {
 }
 
 /**
- * Save apps registry to file
+ * Save apps registry to file. publicFunctions enthalten Handler-Funktionen
+ * (kommen aus den Code-Modulen, nicht aus YAML) — die koennen nicht
+ * serialisiert werden. Wir strippen sie vor dem Schreiben; beim Naechsten
+ * Read ueber syncBuiltInApps werden sie wieder injiziert.
  */
 export async function saveRegistry(registry: AppsRegistry): Promise<void> {
   registryCache = registry;
-  await Bun.write(REGISTRY_PATH, stringify(registry));
+  const serializable: AppsRegistry = {
+    apps: Object.fromEntries(
+      Object.entries(registry.apps).map(([id, app]) => {
+        const { publicFunctions: _ignore, ...rest } = app;
+        void _ignore;
+        return [id, rest as AppConfig];
+      })
+    ),
+  };
+  await Bun.write(REGISTRY_PATH, stringify(serializable));
 }
 
 /**

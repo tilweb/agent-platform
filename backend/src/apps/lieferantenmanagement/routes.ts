@@ -14,8 +14,12 @@ import {
   validateZertifizierung, validateLeistung, validateBia, validateRegulatorik,
   validateLifecycleTransition, validateCreateAudit, validateUpdateAudit,
 } from './validation';
+import { requireAppAccess } from '../permissions-middleware';
 
 const lieferanten = new Hono();
+
+// Berechtigungs-Pruefung
+lieferanten.use('*', requireAppAccess('lieferantenmanagement'));
 
 // ============== Config ==============
 

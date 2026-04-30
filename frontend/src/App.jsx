@@ -43,6 +43,7 @@ const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/Suppl
 const VsmPage = lazy(() => import('./apps/vsm/VsmPage'));
 const VsmDetailPage = lazy(() => import('./apps/vsm/VsmDetailPage'));
 const WzbarMatcherPage = lazy(() => import('./apps/wzbar-matcher/MatcherPage'));
+import RequireAppPermission from './components/RequireAppPermission';
 
 // Loading fallback component
 const PageLoader = () => (
@@ -181,22 +182,22 @@ function AppRoutes() {
                   <Route path="/projects/:projectId/chat" element={<ProjectChatPage />} />
                   <Route path="/extraction" element={<ExtractionProjectsPage />} />
                   <Route path="/apps" element={<AppsPage />} />
-                  <Route path="/apps/vertragsmanagement" element={<ContractsPage />} />
-                  <Route path="/apps/vertragsmanagement/upload" element={<ContractUploadPage />} />
-                  <Route path="/apps/vertragsmanagement/:id" element={<ContractDetailPage />} />
-                  <Route path="/apps/projektmanagement" element={<ProjektePage />} />
-                  <Route path="/apps/projektmanagement/import" element={<ImportPage />} />
-                  <Route path="/apps/projektmanagement/neu" element={<WizardPage />} />
-                  <Route path="/apps/projektmanagement/ideen" element={<IdeenPage />} />
-                  <Route path="/apps/projektmanagement/ideen/import" element={<ImportPage mode="idee" />} />
-                  <Route path="/apps/projektmanagement/ideen/neu" element={<IdeeWizardPage />} />
-                  <Route path="/apps/projektmanagement/ideen/:id" element={<IdeeWizardPage />} />
-                  <Route path="/apps/projektmanagement/:id" element={<WizardPage />} />
-                  <Route path="/apps/lieferantenmanagement" element={<LieferantenPage />} />
-                  <Route path="/apps/lieferantenmanagement/:id" element={<SupplierDetailPage />} />
-                  <Route path="/apps/vsm" element={<VsmPage />} />
-                  <Route path="/apps/vsm/:id" element={<VsmDetailPage />} />
-                  <Route path="/apps/wzbar-matcher" element={<WzbarMatcherPage />} />
+                  <Route path="/apps/vertragsmanagement" element={<RequireAppPermission appId="vertragsmanagement"><ContractsPage /></RequireAppPermission>} />
+                  <Route path="/apps/vertragsmanagement/upload" element={<RequireAppPermission appId="vertragsmanagement"><ContractUploadPage /></RequireAppPermission>} />
+                  <Route path="/apps/vertragsmanagement/:id" element={<RequireAppPermission appId="vertragsmanagement"><ContractDetailPage /></RequireAppPermission>} />
+                  <Route path="/apps/projektmanagement" element={<RequireAppPermission appId="projektmanagement"><ProjektePage /></RequireAppPermission>} />
+                  <Route path="/apps/projektmanagement/import" element={<RequireAppPermission appId="projektmanagement"><ImportPage /></RequireAppPermission>} />
+                  <Route path="/apps/projektmanagement/neu" element={<RequireAppPermission appId="projektmanagement"><WizardPage /></RequireAppPermission>} />
+                  <Route path="/apps/projektmanagement/ideen" element={<RequireAppPermission appId="projektmanagement"><IdeenPage /></RequireAppPermission>} />
+                  <Route path="/apps/projektmanagement/ideen/import" element={<RequireAppPermission appId="projektmanagement"><ImportPage mode="idee" /></RequireAppPermission>} />
+                  <Route path="/apps/projektmanagement/ideen/neu" element={<RequireAppPermission appId="projektmanagement"><IdeeWizardPage /></RequireAppPermission>} />
+                  <Route path="/apps/projektmanagement/ideen/:id" element={<RequireAppPermission appId="projektmanagement"><IdeeWizardPage /></RequireAppPermission>} />
+                  <Route path="/apps/projektmanagement/:id" element={<RequireAppPermission appId="projektmanagement"><WizardPage /></RequireAppPermission>} />
+                  <Route path="/apps/lieferantenmanagement" element={<RequireAppPermission appId="lieferantenmanagement"><LieferantenPage /></RequireAppPermission>} />
+                  <Route path="/apps/lieferantenmanagement/:id" element={<RequireAppPermission appId="lieferantenmanagement"><SupplierDetailPage /></RequireAppPermission>} />
+                  <Route path="/apps/vsm" element={<RequireAppPermission appId="vsm"><VsmPage /></RequireAppPermission>} />
+                  <Route path="/apps/vsm/:id" element={<RequireAppPermission appId="vsm"><VsmDetailPage /></RequireAppPermission>} />
+                  <Route path="/apps/wzbar-matcher" element={<RequireAppPermission appId="wzbar-matcher"><WzbarMatcherPage /></RequireAppPermission>} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
