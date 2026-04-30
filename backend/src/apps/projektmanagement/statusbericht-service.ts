@@ -14,6 +14,7 @@ import type {
   CostMonthData,
   RiskTrackingItem,
 } from './types';
+import { withLock, checkVersion } from './concurrency';
 import {
   getProjektauftrag,
   getProjektauftraege,
@@ -223,28 +224,35 @@ export async function getStatusberichtDetails(projektId: string, sbId: string): 
 }
 
 /**
- * Update a Statusbericht (partial update)
+ * Update a Statusbericht (partial update mit Optimistic-Concurrency).
+ * Wirft VersionConflictError wenn expectedVersion gesetzt + nicht passend.
  */
 export async function updateStatusbericht(
   projektId: string,
   sbId: string,
-  updates: Partial<Statusbericht>
+  updates: Partial<Statusbericht>,
+  options: { expectedVersion?: number; force?: boolean } = {},
 ): Promise<Statusbericht | null> {
-  const existing = await getStatusbericht(projektId, sbId);
-  if (!existing) {
-    return null;
-  }
+  return withLock(`sb:${projektId}:${sbId}`, async () => {
+    const existing = await getStatusbericht(projektId, sbId);
+    if (!existing) {
+      return null;
+    }
+    if (existing.version === undefined) existing.version = 1;
+    checkVersion(existing, options.expectedVersion, options.force ?? false);
 
-  const updated: Statusbericht = {
-    ...existing,
-    ...updates,
-    id: sbId,
-    projekt_id: projektId,
-    updated_at: new Date().toISOString(),
-  };
+    const updated: Statusbericht = {
+      ...existing,
+      ...updates,
+      id: sbId,
+      projekt_id: projektId,
+      updated_at: new Date().toISOString(),
+      version: (existing.version ?? 1) + 1,
+    };
 
-  await saveStatusbericht(projektId, updated);
-  return updated;
+    await saveStatusbericht(projektId, updated);
+    return updated;
+  });
 }
 
 /**

@@ -1,10 +1,22 @@
 /**
  * useProjektideen Hook
  * CRUD und Auftrag-aus-Idee-Generierung.
+ *
+ * updateIdee/updateIdeeStep akzeptieren `expectedVersion` und `force`.
+ * Bei 409 wird ein VersionConflictError geworfen — die Wizard-Page
+ * zeigt das Konflikt-Modal.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
+
+export class VersionConflictError extends Error {
+  constructor(currentServerData) {
+    super('version_conflict');
+    this.name = 'VersionConflictError';
+    this.current = currentServerData;
+  }
+}
 
 export function useProjektideen({ autoLoad = true } = {}) {
   const [projektideen, setProjektideen] = useState([]);
@@ -42,16 +54,30 @@ export function useProjektideen({ autoLoad = true } = {}) {
     return data.projektidee;
   }, []);
 
-  const updateIdee = useCallback(async (id, payload) => {
-    const res = await apiPut(`/apps/projektmanagement/projektideen/${id}`, payload);
+  const updateIdee = useCallback(async (id, payload, { expectedVersion, force = false } = {}) => {
+    const body = { ...payload };
+    if (expectedVersion !== undefined) body.expected_version = expectedVersion;
+    if (force) body.force = true;
+    const res = await apiPut(`/apps/projektmanagement/projektideen/${id}`, body);
+    if (res.status === 409) {
+      const data = await res.json();
+      throw new VersionConflictError(data.current);
+    }
     if (!res.ok) throw new Error('Failed to update Projektidee');
     const data = await res.json();
     setProjektideen((prev) => prev.map((p) => (p.id === id ? data.projektidee : p)));
     return data.projektidee;
   }, []);
 
-  const updateIdeeStep = useCallback(async (id, step, payload) => {
-    const res = await apiPut(`/apps/projektmanagement/projektideen/${id}/step/${step}`, payload);
+  const updateIdeeStep = useCallback(async (id, step, payload, { expectedVersion, force = false } = {}) => {
+    const body = { ...payload };
+    if (expectedVersion !== undefined) body.expected_version = expectedVersion;
+    if (force) body.force = true;
+    const res = await apiPut(`/apps/projektmanagement/projektideen/${id}/step/${step}`, body);
+    if (res.status === 409) {
+      const data = await res.json();
+      throw new VersionConflictError(data.current);
+    }
     if (!res.ok) throw new Error('Failed to update Projektidee step');
     const data = await res.json();
     return data.projektidee;

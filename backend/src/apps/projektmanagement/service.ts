@@ -161,9 +161,10 @@ export async function getProjektauftragDetails(
  */
 export async function updateProjektauftrag(
   projektId: string,
-  updates: Partial<Projektauftrag>
+  updates: Partial<Projektauftrag>,
+  options: { expectedVersion?: number; force?: boolean } = {},
 ): Promise<Projektauftrag | null> {
-  return updateProjektauftragStorage(projektId, updates);
+  return updateProjektauftragStorage(projektId, updates, options);
 }
 
 /**
@@ -172,7 +173,8 @@ export async function updateProjektauftrag(
 export async function updateProjektauftragStep(
   projektId: string,
   step: number,
-  data: Partial<Projektauftrag>
+  data: Partial<Projektauftrag>,
+  options: { expectedVersion?: number; force?: boolean } = {},
 ): Promise<Projektauftrag | null> {
   const existing = await getProjektauftrag(projektId);
   if (!existing) {
@@ -185,7 +187,7 @@ export async function updateProjektauftragStep(
   return updateProjektauftragStorage(projektId, {
     ...data,
     current_step,
-  });
+  }, options);
 }
 
 /**

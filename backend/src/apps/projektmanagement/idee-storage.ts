@@ -11,6 +11,7 @@
 
 import { parse, stringify } from 'yaml';
 import type { Projektidee, Projektauftrag } from './types';
+import { withLock, checkVersion } from './concurrency';
 
 const BASE_PATH = './data/apps/projektmanagement';
 const PROJEKTIDEEN_PATH = `${BASE_PATH}/projektideen`;
@@ -76,6 +77,8 @@ export async function getProjektidee(id: string): Promise<Projektidee | null> {
   const file = Bun.file(`${PROJEKTIDEEN_PATH}/${id}/metadata.yaml`);
   if (!(await file.exists())) return null;
   const idee = parse(await file.text()) as Projektidee;
+  // Backward-Compat: aelteren Datensaetzen ohne version eine 1 verpassen.
+  if (idee.version === undefined) idee.version = 1;
   idee.abgeleitete_auftraege = await loadAbgeleiteteAuftraege(id);
   return idee;
 }
@@ -86,23 +89,30 @@ export async function saveProjektidee(idee: Projektidee): Promise<void> {
   // abgeleitete_auftraege werden beim Lesen angereichert — nicht persistieren.
   const { abgeleitete_auftraege: _ignore, ...dataToStore } = idee;
   void _ignore;
+  // version sicherstellen (Initial-Save: 1).
+  if (dataToStore.version === undefined) dataToStore.version = 1;
   await Bun.write(`${dir}/metadata.yaml`, stringify(dataToStore));
 }
 
 export async function updateProjektidee(
   id: string,
   updates: Partial<Projektidee>,
+  options: { expectedVersion?: number; force?: boolean } = {},
 ): Promise<Projektidee | null> {
-  const existing = await getProjektidee(id);
-  if (!existing) return null;
-  const merged: Projektidee = {
-    ...existing,
-    ...updates,
-    id,
-    updated_at: new Date().toISOString(),
-  } as Projektidee;
-  await saveProjektidee(merged);
-  return getProjektidee(id);
+  return withLock(`idee:${id}`, async () => {
+    const existing = await getProjektidee(id);
+    if (!existing) return null;
+    checkVersion(existing, options.expectedVersion, options.force ?? false);
+    const merged: Projektidee = {
+      ...existing,
+      ...updates,
+      id,
+      updated_at: new Date().toISOString(),
+      version: (existing.version ?? 1) + 1,
+    } as Projektidee;
+    await saveProjektidee(merged);
+    return getProjektidee(id);
+  });
 }
 
 export async function deleteProjektidee(id: string): Promise<boolean> {

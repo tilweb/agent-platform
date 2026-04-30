@@ -52,6 +52,7 @@ import {
   removeIdee,
   createAuftragFromIdee,
 } from './idee-service';
+import { VersionConflictError } from './concurrency';
 import {
   generateDocument,
   mapProjektauftragToDocument,
@@ -307,9 +308,13 @@ projektmanagement.get('/projektauftraege/:id', async (c) => {
 projektmanagement.put('/projektauftraege/:id', async (c) => {
   try {
     const projektId = c.req.param('id');
-    const updates = await c.req.json();
+    const body = await c.req.json();
+    const { expected_version, force, ...updates } = body ?? {};
 
-    const projektauftrag = await updateProjektauftrag(projektId, updates);
+    const projektauftrag = await updateProjektauftrag(projektId, updates, {
+      expectedVersion: expected_version,
+      force: !!force,
+    });
 
     if (!projektauftrag) {
       return c.json({ error: 'Projektauftrag not found' }, 404);
@@ -317,6 +322,9 @@ projektmanagement.put('/projektauftraege/:id', async (c) => {
 
     return c.json({ projektauftrag });
   } catch (error) {
+    if (error instanceof VersionConflictError) {
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
+    }
     console.error('Error updating Projektauftrag:', error);
     return c.json({ error: 'Failed to update Projektauftrag' }, 500);
   }
@@ -330,13 +338,17 @@ projektmanagement.put('/projektauftraege/:id/step/:step', async (c) => {
   try {
     const projektId = c.req.param('id');
     const step = parseInt(c.req.param('step'), 10);
-    const data = await c.req.json();
+    const body = await c.req.json();
+    const { expected_version, force, ...data } = body ?? {};
 
     if (isNaN(step) || step < 1 || step > 9) {
       return c.json({ error: 'Invalid step number' }, 400);
     }
 
-    const projektauftrag = await updateProjektauftragStep(projektId, step, data);
+    const projektauftrag = await updateProjektauftragStep(projektId, step, data, {
+      expectedVersion: expected_version,
+      force: !!force,
+    });
 
     if (!projektauftrag) {
       return c.json({ error: 'Projektauftrag not found' }, 404);
@@ -348,6 +360,9 @@ projektmanagement.put('/projektauftraege/:id/step/:step', async (c) => {
 
     return c.json({ projektauftrag, validation, completeness });
   } catch (error) {
+    if (error instanceof VersionConflictError) {
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
+    }
     console.error('Error updating step:', error);
     return c.json({ error: 'Failed to update step' }, 500);
   }
@@ -894,13 +909,20 @@ projektmanagement.put('/projektauftraege/:projektId/statusberichte/:sbId', async
   try {
     const projektId = c.req.param('projektId');
     const sbId = c.req.param('sbId');
-    const updates = await c.req.json();
-    const sb = await updateSB(projektId, sbId, updates);
+    const body = await c.req.json();
+    const { expected_version, force, ...updates } = body ?? {};
+    const sb = await updateSB(projektId, sbId, updates, {
+      expectedVersion: expected_version,
+      force: !!force,
+    });
     if (!sb) {
       return c.json({ error: 'Statusbericht not found' }, 404);
     }
     return c.json({ statusbericht: sb });
   } catch (error) {
+    if (error instanceof VersionConflictError) {
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
+    }
     console.error('Error updating Statusbericht:', error);
     return c.json({ error: 'Failed to update Statusbericht' }, 500);
   }
@@ -1085,10 +1107,14 @@ projektmanagement.put('/projektideen/:id', async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
-    const idee = await updateIdee(id, body);
+    const { expected_version, force, ...updates } = body ?? {};
+    const idee = await updateIdee(id, updates, { expectedVersion: expected_version, force: !!force });
     if (!idee) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
     return c.json({ projektidee: idee });
   } catch (error) {
+    if (error instanceof VersionConflictError) {
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
+    }
     console.error('Error updating Projektidee:', error);
     return c.json({ error: 'Failed to update Projektidee' }, 500);
   }
@@ -1099,10 +1125,14 @@ projektmanagement.put('/projektideen/:id/step/:step', async (c) => {
     const id = c.req.param('id');
     const step = parseInt(c.req.param('step'), 10);
     const body = await c.req.json();
-    const idee = await updateIdeeStep(id, step, body);
+    const { expected_version, force, ...partial } = body ?? {};
+    const idee = await updateIdeeStep(id, step, partial, { expectedVersion: expected_version, force: !!force });
     if (!idee) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
     return c.json({ projektidee: idee });
   } catch (error) {
+    if (error instanceof VersionConflictError) {
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
+    }
     console.error('Error updating Projektidee step:', error);
     return c.json({ error: 'Failed to update Projektidee step' }, 500);
   }

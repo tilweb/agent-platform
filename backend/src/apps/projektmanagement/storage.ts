@@ -5,6 +5,7 @@
 
 import { parse, stringify } from 'yaml';
 import type { Projektauftrag, Vorlage, Statusbericht } from './types';
+import { withLock, checkVersion } from './concurrency';
 
 const BASE_PATH = './data/apps/projektmanagement';
 const PROJEKTAUFTRAEGE_PATH = `${BASE_PATH}/projektauftraege`;
@@ -70,6 +71,8 @@ export async function getProjektauftrag(projektId: string): Promise<Projektauftr
 
   const content = await file.text();
   const auftrag = parse(content) as Projektauftrag;
+  // Backward-Compat: ältere Datensätze ohne version bekommen 1.
+  if (auftrag.version === undefined) auftrag.version = 1;
 
   // Idee-Referenz anreichern (Pendant zum Drizzle-JOIN auf main):
   // idee_id steht in der Auftrag-YAML, idee.name lesen wir aus der Idee-YAML.
@@ -96,31 +99,34 @@ export async function saveProjektauftrag(projektauftrag: Projektauftrag): Promis
   // `idee` wird beim Read angereichert — nicht persistieren.
   const { idee: _ignore, ...dataToStore } = projektauftrag;
   void _ignore;
+  // version sicherstellen (Initial-Save: 1).
+  if (dataToStore.version === undefined) dataToStore.version = 1;
   await Bun.write(`${dir}/metadata.yaml`, stringify(dataToStore));
 }
 
 /**
- * Update a Projektauftrag
+ * Update a Projektauftrag — mit optionalem Optimistic-Concurrency-Check.
+ * Wirft VersionConflictError wenn expectedVersion gesetzt ist und nicht passt.
  */
 export async function updateProjektauftrag(
   projektId: string,
-  updates: Partial<Projektauftrag>
+  updates: Partial<Projektauftrag>,
+  options: { expectedVersion?: number; force?: boolean } = {},
 ): Promise<Projektauftrag | null> {
-  const existing = await getProjektauftrag(projektId);
-
-  if (!existing) {
-    return null;
-  }
-
-  const updated: Projektauftrag = {
-    ...existing,
-    ...updates,
-    id: projektId, // Ensure ID is not changed
-    updated_at: new Date().toISOString(),
-  };
-
-  await saveProjektauftrag(updated);
-  return updated;
+  return withLock(`auftrag:${projektId}`, async () => {
+    const existing = await getProjektauftrag(projektId);
+    if (!existing) return null;
+    checkVersion(existing, options.expectedVersion, options.force ?? false);
+    const updated: Projektauftrag = {
+      ...existing,
+      ...updates,
+      id: projektId,
+      updated_at: new Date().toISOString(),
+      version: (existing.version ?? 1) + 1,
+    };
+    await saveProjektauftrag(updated);
+    return updated;
+  });
 }
 
 /**

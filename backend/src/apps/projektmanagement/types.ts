@@ -104,6 +104,9 @@ export interface Projektauftrag {
   stepAnalyses?: StoredStepAnalyses;
   gesamtbewertung?: StoredGesamtbewertung;
 
+  // Optimistic-Concurrency-Counter — bei jedem Save ++; siehe concurrency.ts.
+  version?: number;
+
   // Verknuepfung zur Quell-Idee (sofern aus einer Idee generiert).
   // idee_id wird in der Auftrag-YAML persistiert; idee?: {...} wird beim Read
   // angereichert (File-Lookup auf die Idee-YAML).
@@ -301,6 +304,8 @@ export interface Statusbericht {
   created_at: string;
   updated_at: string;
   created_by: string;
+  // Optimistic-Concurrency-Counter — bei jedem Save ++; siehe concurrency.ts.
+  version?: number;
 }
 
 export interface StatusberichtDashboardEntry {
@@ -428,6 +433,9 @@ export interface Projektidee {
   updated_at: string;
   created_by: string;
   current_step: number;
+  // Optimistic-Concurrency-Counter — bei jedem Save ++; Frontend sendet
+  // `expected_version` mit, Backend lehnt mit 409 ab wenn != current.
+  version?: number;
 
   // Verknuepfung zu daraus erzeugten Auftraegen (umgekehrte Richtung: Auftrag.idee_id ist die Quelle of truth)
   // Wird via JOIN bei der Abfrage gefuellt.
