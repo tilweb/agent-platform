@@ -188,6 +188,7 @@ function AppRoutes() {
                   <Route path="/apps/projektmanagement/import" element={<ImportPage />} />
                   <Route path="/apps/projektmanagement/neu" element={<WizardPage />} />
                   <Route path="/apps/projektmanagement/ideen" element={<IdeenPage />} />
+                  <Route path="/apps/projektmanagement/ideen/import" element={<ImportPage mode="idee" />} />
                   <Route path="/apps/projektmanagement/ideen/neu" element={<IdeeWizardPage />} />
                   <Route path="/apps/projektmanagement/ideen/:id" element={<IdeeWizardPage />} />
                   <Route path="/apps/projektmanagement/:id" element={<WizardPage />} />

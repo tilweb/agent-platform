@@ -1,6 +1,9 @@
 /**
  * ImportPage
- * Multi-file document import for Projektauftrag creation
+ * Multi-file document import — wahlweise fuer Projektauftrag (mode='auftrag', Default)
+ * oder Projektidee (mode='idee'). Pipeline-UI ist mode-unabhaengig: Per-File-Liste,
+ * SSE-Stream-Reader, Phasen-Hinweise, Progress-Bar; nur Endpoint, Done-Field,
+ * Redirect-Pfad und Texte unterscheiden sich.
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -47,13 +50,48 @@ const PHASE_HINTS = {
   extracting: 'Strukturierte Daten werden extrahiert. Bei dichten xlsx-Toolboxen 30+ Sekunden.',
 };
 
-const STAGE_LABELS = {
+const STAGE_LABELS_AUFTRAG = {
   started: 'Vorbereitung…',
   combining: 'Texte werden zusammengeführt',
   extracting: 'Daten werden extrahiert',
   extracting_done: 'Validierung läuft',
   validating: 'Validierung läuft',
   creating: 'Projektauftrag wird gespeichert',
+};
+
+const STAGE_LABELS_IDEE = {
+  ...STAGE_LABELS_AUFTRAG,
+  creating: 'Projektidee wird gespeichert',
+};
+
+// Mode-spezifische Pfade + Texte
+const MODE_CONFIG = {
+  auftrag: {
+    endpoint: '/apps/projektmanagement/projektauftraege/import',
+    backLink: '/apps/projektmanagement',
+    backLabel: 'Projektmanagement',
+    title: 'Projektauftrag importieren',
+    subtitle: 'Laden Sie Projektdokumente hoch und erstellen Sie automatisch einen vorausgefüllten Projektauftrag',
+    uploadHintExtra: null,
+    doneEvent: 'done',
+    doneField: 'projektauftrag',
+    redirectPath: (id) => `/apps/projektmanagement/${id}`,
+    incompleteError: 'Import unvollständig — kein Projektauftrag erstellt',
+    stageLabels: STAGE_LABELS_AUFTRAG,
+  },
+  idee: {
+    endpoint: '/apps/projektmanagement/projektideen/import',
+    backLink: '/apps/projektmanagement?tab=ideen',
+    backLabel: 'Projektideen',
+    title: 'Projektidee importieren',
+    subtitle: 'Laden Sie Brainstorm-Material, Whiteboard-Fotos oder Konzept-PDFs hoch — die KI extrahiert eine vorausgefüllte Projektidee',
+    uploadHintExtra: 'Auch handgezeichnete Skizzen, Mind-Maps und Workshop-Mitschriebe werden interpretiert.',
+    doneEvent: 'idee_done',
+    doneField: 'projektidee',
+    redirectPath: (id) => `/apps/projektmanagement/ideen/${id}`,
+    incompleteError: 'Import unvollständig — keine Projektidee erstellt',
+    stageLabels: STAGE_LABELS_IDEE,
+  },
 };
 
 const ACCEPTED_EXTENSIONS = [
@@ -362,7 +400,8 @@ const styles = {
   },
 };
 
-function ImportPage() {
+function ImportPage({ mode = 'auftrag' }) {
+  const cfg = MODE_CONFIG[mode] ?? MODE_CONFIG.auftrag;
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -480,7 +519,7 @@ function ImportPage() {
         formData.append('files', file);
       }
 
-      const response = await fetch(`${API_URL}/apps/projektmanagement/projektauftraege/import`, {
+      const response = await fetch(`${API_URL}${cfg.endpoint}`, {
         method: 'POST',
         credentials: 'include',
         body: formData,
@@ -496,7 +535,7 @@ function ImportPage() {
         throw new Error(errMsg);
       }
 
-      let projektauftragId = null;
+      let resultId = null;
       let importErrorMessage = null;
 
       for await (const ev of sseReader(response)) {
@@ -549,7 +588,10 @@ function ImportPage() {
             setStage('creating');
             break;
           case 'done':
-            projektauftragId = ev.data.projektauftrag?.id ?? null;
+          case 'idee_done':
+            if (ev.type === cfg.doneEvent) {
+              resultId = ev.data[cfg.doneField]?.id ?? null;
+            }
             break;
           case 'error':
             importErrorMessage = ev.data.message ?? 'Import fehlgeschlagen';
@@ -563,10 +605,10 @@ function ImportPage() {
         throw new Error(importErrorMessage);
       }
 
-      if (projektauftragId) {
-        navigate(`/apps/projektmanagement/${projektauftragId}`);
+      if (resultId) {
+        navigate(cfg.redirectPath(resultId));
       } else {
-        throw new Error('Import unvollständig — kein Projektauftrag erstellt');
+        throw new Error(cfg.incompleteError);
       }
     } catch (err) {
       console.error('Import failed:', err);
@@ -600,14 +642,12 @@ function ImportPage() {
       <div style={styles.header}>
         <button
           style={styles.backLink}
-          onClick={() => navigate('/apps/projektmanagement')}
+          onClick={() => navigate(cfg.backLink)}
         >
-          <ArrowLeftIcon size={16} /> Projektmanagement
+          <ArrowLeftIcon size={16} /> {cfg.backLabel}
         </button>
-        <h1 style={styles.title}>Projektauftrag importieren</h1>
-        <p style={styles.subtitle}>
-          Laden Sie Projektdokumente hoch und erstellen Sie automatisch einen vorausgefüllten Projektauftrag
-        </p>
+        <h1 style={styles.title}>{cfg.title}</h1>
+        <p style={styles.subtitle}>{cfg.subtitle}</p>
       </div>
 
       <div style={styles.content}>
@@ -633,6 +673,12 @@ function ImportPage() {
             <div style={styles.uploadTitle}>Projektdokumente hier ablegen</div>
             <p style={styles.uploadText}>
               PDF, Word, Excel, PowerPoint, Bilder oder Textdateien (max. {MAX_FILES} Dateien)
+              {cfg.uploadHintExtra && (
+                <>
+                  <br />
+                  {cfg.uploadHintExtra}
+                </>
+              )}
             </p>
             <button
               style={styles.uploadButton}
@@ -757,7 +803,7 @@ function ImportPage() {
                 {activePhase === 'vision' && `Bildanalyse${activeElapsedMs > 0 ? ` (${formatSeconds(activeElapsedMs)})` : ''}`}
                 {activePhase === 'markitdown' && `Dokument-Konvertierung${activeElapsedMs > 0 ? ` (${formatSeconds(activeElapsedMs)})` : ''}`}
                 {activePhase === 'extracting' && `Daten-Extraktion${activeElapsedMs > 0 ? ` (${formatSeconds(activeElapsedMs)})` : ''}`}
-                {!activePhase && stage && (STAGE_LABELS[stage] ?? stage)}
+                {!activePhase && stage && (cfg.stageLabels[stage] ?? stage)}
               </div>
             )}
 
@@ -786,7 +832,7 @@ function ImportPage() {
           <div style={styles.actions}>
             <button
               style={styles.cancelButton}
-              onClick={() => navigate('/apps/projektmanagement')}
+              onClick={() => navigate(cfg.backLink)}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
               }}

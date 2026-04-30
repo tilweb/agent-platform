@@ -18,7 +18,23 @@ const styles = {
   embeddedActions: {
     display: 'flex',
     justifyContent: 'flex-end',
+    gap: theme.spacing.md,
     marginBottom: theme.spacing.xl,
+  },
+  importButton: {
+    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+    backgroundColor: 'transparent',
+    color: theme.colors.text,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+    textDecoration: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    transition: `all ${theme.transitions.fast}`,
   },
   backLink: {
     display: 'inline-flex',
@@ -175,6 +191,10 @@ export default function IdeenPage({ embedded = false }) {
       <div style={embedded ? styles.contentEmbedded : styles.content}>
         {embedded && (
           <div style={styles.embeddedActions}>
+            <Link to="/apps/projektmanagement/ideen/import" style={styles.importButton}>
+              <ImportIcon />
+              Dokumente importieren
+            </Link>
             <Link to="/apps/projektmanagement/ideen/neu" style={styles.newButton}>
               + Neue Projektidee
             </Link>
@@ -222,5 +242,15 @@ export default function IdeenPage({ embedded = false }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function ImportIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
   );
 }
