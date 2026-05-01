@@ -5,9 +5,10 @@
  * - Permissions liegen pro App in `registry.yaml.apps[id].permissions.groups[]`.
  * - Aufloesung: User → Gruppen-Mitgliedschaften → Schnittmenge mit App-Permissions
  *   → hoechste Rolle gewinnt.
- * - Globale Admin-Rolle (`user.role === 'admin'`) bekommt automatisch `owner`
- *   auf allen Apps — damit der Admin konfigurieren kann ohne sich in jede
- *   Gruppe zu stecken.
+ * - Globale Admins (`user.role === 'admin'`) haben KEINEN automatischen Zugriff
+ *   auf Apps — sie managen die Plattform (Apps an/aus, Gruppen-Permissions
+ *   zuweisen via Settings) und sehen Daten nur, wenn sie explizit in einer
+ *   berechtigten Gruppe stehen. Plattform-Admin ≠ Daten-Auditor.
  *
  * Phase 1 (jetzt): nur "Zugriff ja/nein" — die Rolle wird trotzdem zurueckgegeben
  * damit Phase 2 (rollen-spezifische In-App-Logik) ohne weiteren Refactor moeglich ist.
@@ -15,7 +16,6 @@
 
 import { loadRegistry, saveRegistry } from './registry';
 import { getUserGroups } from '../auth/groups';
-import { loadUser } from '../auth/storage';
 import type { AppRole, AppGroupPermission } from './types';
 
 const ROLE_RANK: Record<AppRole, number> = {
@@ -37,12 +37,6 @@ export async function getUserAppPermission(
   userId: string,
   appId: string,
 ): Promise<AppRole | null> {
-  // Globale Admins haben automatisch Owner-Rechte.
-  const user = await loadUser(userId);
-  if (user && user.role === 'admin') {
-    return 'owner';
-  }
-
   const registry = await loadRegistry();
   const app = registry.apps[appId];
   if (!app) return null;

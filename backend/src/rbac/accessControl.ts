@@ -4,7 +4,12 @@
  * Core permission checking logic with support for:
  * - Direct user access
  * - Group-based access (highest role wins)
- * - Global admin override
+ *
+ * Globale Admins haben KEINEN automatischen Resource-Zugriff. Admin-Rolle
+ * regelt Plattform-Settings (Users, Groups, App-Aktivierung), nicht den
+ * Zugriff auf konkrete Collections, Spaces, Agents oder App-Daten. Will der
+ * Admin reinschauen, muss der Owner ihn (oder eine Admin-Gruppe) explizit
+ * berechtigen.
  */
 
 import { getUserGroups } from '../auth/groups';
@@ -41,7 +46,9 @@ export interface AccessCheckResult {
  * Permission check order:
  * 1. Direct user access
  * 2. Group-based access (highest role from all groups)
- * 3. Global admin override
+ *
+ * KEIN Admin-Bypass — Plattform-Admins muessen explizit (direkt oder via
+ * Gruppe) berechtigt sein, um eine konkrete Resource zu sehen.
  */
 export async function checkAccess(
   userId: string,
@@ -75,16 +82,6 @@ export async function checkAccess(
       allowed: true,
       effectiveRole: highestGroupRole,
       source: 'group',
-    };
-  }
-
-  // 3. Global admin override
-  const user = await loadUser(userId);
-  if (user?.role === 'admin') {
-    return {
-      allowed: true,
-      effectiveRole: 'admin',
-      source: 'admin',
     };
   }
 
@@ -203,19 +200,12 @@ export async function getUserResourcePermissions(
     };
   }
 
-  // Global admin has all permissions even without explicit role
-  if (isGlobalAdmin) {
-    return {
-      role: null,
-      permissions: RESOURCE_PERMISSIONS['admin'],
-      isGlobalAdmin: true,
-    };
-  }
-
+  // Plattform-Admin ohne explizite Rolle hat KEINEN Resource-Zugriff —
+  // Admin managed Settings, nicht Daten. Owner muss Admin explizit berechtigen.
   return {
     role: null,
     permissions: null,
-    isGlobalAdmin: false,
+    isGlobalAdmin,
   };
 }
 
@@ -242,10 +232,6 @@ export async function listAccessibleResources(
 ): Promise<Array<{ resourceId: string; role: ResourceRole }>> {
   const accessible: Array<{ resourceId: string; role: ResourceRole }> = [];
 
-  // Check global admin first
-  const user = await loadUser(userId);
-  const isGlobalAdmin = user?.role === 'admin';
-
   // Get user's groups once
   const userGroups = await getUserGroups(userId);
   const userGroupIds = userGroups.map((g) => g.id);
@@ -269,13 +255,8 @@ export async function listAccessibleResources(
 
     if (highestGroupRole) {
       accessible.push({ resourceId, role: highestGroupRole });
-      continue;
     }
-
-    // Global admin can access all
-    if (isGlobalAdmin) {
-      accessible.push({ resourceId, role: 'admin' });
-    }
+    // Kein Admin-Fallback — Plattform-Admin sieht nur, was explizit berechtigt ist.
   }
 
   return accessible;
