@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
 import AccessManager from '../components/AccessManager';
+import RoleBadge from '../components/RoleBadge';
+import ReadOnlyBanner from '../components/ReadOnlyBanner';
 
 // ==========================================
 // Helper Functions
@@ -1250,7 +1252,10 @@ function KnowledgeBasePage() {
         {/* Detail Header */}
         <div style={styles.detailHeader}>
           <div>
-            <h1 style={styles.detailTitle}>{collectionDetail.collection_name}</h1>
+            <h1 style={{ ...styles.detailTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+              <span>{collectionDetail.collection_name}</span>
+              {collectionDetail.role && <RoleBadge role={collectionDetail.role} size="sm" />}
+            </h1>
             <p style={styles.detailDescription}>{collectionDetail.description}</p>
           </div>
           <div style={styles.detailMeta}>
@@ -1275,6 +1280,10 @@ function KnowledgeBasePage() {
           >
             {statusMessage.text}
           </div>
+        )}
+
+        {collectionDetail.role === 'viewer' && (
+          <ReadOnlyBanner message="Sie haben Lesezugriff auf diese Collection. Anfrage fuer Bearbeitungsrechte an einen Owner." />
         )}
 
         {/* Two-Column Layout: 2/3 Document List, 1/3 Details Panel with Tabs */}
@@ -1927,7 +1936,10 @@ function KnowledgeBasePage() {
                   </div>
                 )}
                 <div style={{ marginBottom: theme.spacing.sm }}>
-                  <h3 style={{ ...styles.cardTitle, marginBottom: theme.spacing.xs }}>{col.name}</h3>
+                  <h3 style={{ ...styles.cardTitle, marginBottom: theme.spacing.xs, display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+                    <span>{col.name}</span>
+                    {!locked && col.role && <RoleBadge role={col.role} size="sm" />}
+                  </h3>
                   {locked ? (
                     <span style={{
                       ...styles.badge,

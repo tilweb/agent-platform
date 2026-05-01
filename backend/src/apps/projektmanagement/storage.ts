@@ -26,10 +26,13 @@ export function generateProjektauftragId(): string {
 
 function rowToProjektauftrag(row: typeof paProjektauftraege.$inferSelect): Projektauftrag {
   const data = (row.data ?? {}) as Partial<Projektauftrag>;
+  // permissions kommt aus der separaten Spalte (nicht aus data) — Phase-2.
+  const permissions = ((row as { permissions?: unknown }).permissions ?? null) as Projektauftrag['permissions'];
   return {
     ...data,
     id: row.id,
     name: row.name,
+    permissions,
     version: row.version,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
@@ -79,8 +82,8 @@ export async function getProjektauftrag(projektId: string): Promise<Projektauftr
 export async function saveProjektauftrag(p: Projektauftrag): Promise<void> {
   const db = getDb();
   const now = new Date().toISOString();
-  // `idee` wird beim Read via JOIN angereichert — nicht in `data` persistieren.
-  const { idee: _ignore, ...dataToStore } = p;
+  // `idee` (JOIN-Anreicherung) und `permissions` (eigene Spalte) NICHT in `data`.
+  const { idee: _ignore, permissions, ...dataToStore } = p;
   void _ignore;
   const version = p.version ?? 1;
   await db.insert(paProjektauftraege).values({
@@ -89,6 +92,7 @@ export async function saveProjektauftrag(p: Projektauftrag): Promise<void> {
     name: p.name,
     status: (p as { status?: string }).status ?? 'draft',
     data: dataToStore as never,
+    permissions: (permissions ?? null) as never,
     version,
     createdAt: p.created_at ?? now,
     updatedAt: p.updated_at ?? now,
@@ -98,6 +102,7 @@ export async function saveProjektauftrag(p: Projektauftrag): Promise<void> {
       name: p.name,
       status: (p as { status?: string }).status ?? 'draft',
       data: dataToStore as never,
+      permissions: (permissions ?? null) as never,
       version,
       updatedAt: p.updated_at ?? now,
     },
@@ -140,7 +145,7 @@ export async function updateProjektauftrag(
     updated_at: new Date().toISOString(),
     version: currentVersion + 1,
   } as Projektauftrag;
-  const { idee: _ignore, ...dataToStore } = merged;
+  const { idee: _ignore, permissions, ...dataToStore } = merged;
   void _ignore;
 
   const result = await db
@@ -149,6 +154,7 @@ export async function updateProjektauftrag(
       name: merged.name,
       status: (merged as { status?: string }).status ?? 'draft',
       data: dataToStore as never,
+      permissions: (permissions ?? null) as never,
       version: merged.version,
       updatedAt: merged.updated_at,
     })

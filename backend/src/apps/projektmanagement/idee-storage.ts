@@ -24,11 +24,14 @@ export function generateProjektideeId(): string {
 
 function rowToIdee(row: typeof paProjektideen.$inferSelect): Projektidee {
   const data = (row.data ?? {}) as Partial<Projektidee>;
+  // permissions kommt aus der separaten Spalte (nicht aus data) — Phase-2.
+  const permissions = ((row as { permissions?: unknown }).permissions ?? null) as Projektidee['permissions'];
   return {
     ...data,
     id: row.id,
     name: row.name,
     status: (row.status as Projektidee['status']) ?? 'draft',
+    permissions,
     version: row.version,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
@@ -76,9 +79,9 @@ export async function getProjektidee(id: string): Promise<Projektidee | null> {
 export async function saveProjektidee(idee: Projektidee): Promise<void> {
   const db = getDb();
   const now = new Date().toISOString();
-  // abgeleitete_auftraege werden nicht in `data` gespeichert — das ist nur eine
-  // Lese-Anreicherung. Strippe es vor dem Schreiben.
-  const { abgeleitete_auftraege: _ignore, ...dataToStore } = idee;
+  // abgeleitete_auftraege (Read-Only-JOIN) und permissions (eigene Spalte) werden
+  // NICHT in `data` gespeichert. Strippen vor dem Serialisieren.
+  const { abgeleitete_auftraege: _ignore, permissions, ...dataToStore } = idee;
   void _ignore;
   const version = idee.version ?? 1;
   await db.insert(paProjektideen).values({
@@ -87,6 +90,7 @@ export async function saveProjektidee(idee: Projektidee): Promise<void> {
     name: idee.name,
     status: idee.status ?? 'draft',
     data: dataToStore as never,
+    permissions: (permissions ?? null) as never,
     version,
     createdAt: idee.created_at ?? now,
     updatedAt: idee.updated_at ?? now,
@@ -96,6 +100,7 @@ export async function saveProjektidee(idee: Projektidee): Promise<void> {
       name: idee.name,
       status: idee.status ?? 'draft',
       data: dataToStore as never,
+      permissions: (permissions ?? null) as never,
       version,
       updatedAt: idee.updated_at ?? now,
     },
@@ -141,7 +146,7 @@ export async function updateProjektidee(
     updated_at: new Date().toISOString(),
     version: currentVersion + 1,
   } as Projektidee;
-  const { abgeleitete_auftraege: _ignore, ...dataToStore } = merged;
+  const { abgeleitete_auftraege: _ignore, permissions, ...dataToStore } = merged;
   void _ignore;
 
   const result = await db
@@ -150,6 +155,7 @@ export async function updateProjektidee(
       name: merged.name,
       status: merged.status ?? 'draft',
       data: dataToStore as never,
+      permissions: (permissions ?? null) as never,
       version: merged.version,
       updatedAt: merged.updated_at,
     })

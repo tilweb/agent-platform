@@ -4,6 +4,8 @@ import AccessManager from '../components/AccessManager';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useProviders } from '../hooks/useProviders';
 import { LockIcon } from '../components/Icons';
+import RoleBadge from '../components/RoleBadge';
+import ReadOnlyBanner from '../components/ReadOnlyBanner';
 
 // ==========================================
 // Styles
@@ -917,7 +919,9 @@ function AgentsPage() {
   // ==========================================
 
   const isSystemAgent = selectedAgent?.system;
-  const isViewOnly = isSystemAgent;
+  // Phase-2: Auch nicht-Editor-Rollen (z.B. viewer) → read-only.
+  const isAgentViewerRole = !isSystemAgent && selectedAgent?.role && selectedAgent.role !== 'owner' && selectedAgent.role !== 'admin' && selectedAgent.role !== 'editor';
+  const isViewOnly = isSystemAgent || isAgentViewerRole;
 
   const getToolsByCategory = () => {
     const grouped = {};
@@ -1000,7 +1004,10 @@ function AgentsPage() {
               </div>
             )}
             <div>
-              <h1 style={styles.detailTitle}>{pageTitle}</h1>
+              <h1 style={{ ...styles.detailTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+                <span>{pageTitle}</span>
+                {!isCreating && !isSystemAgent && selectedAgent?.role && <RoleBadge role={selectedAgent.role} size="sm" />}
+              </h1>
               <div style={styles.detailSubtitle}>
                 {!isCreating && (
                   <>
@@ -1063,6 +1070,11 @@ function AgentsPage() {
               ✕
             </button>
           </div>
+        )}
+
+        {/* Read-Only Banner fuer Agents wo der User nur Viewer ist */}
+        {isAgentViewerRole && (
+          <ReadOnlyBanner message="Sie haben Lesezugriff auf diesen Agent. Anfrage fuer Bearbeitungsrechte an einen Owner." />
         )}
 
         {/* System Agent Hint */}
@@ -1687,8 +1699,9 @@ function AgentCard({ agent, onClick, isHovered, onMouseEnter, onMouseLeave }) {
           <AgentIcon agentId={agent.id} color={locked ? theme.colors.textMuted : colors.color} />
         </div>
         <div>
-          <div style={styles.cardTitleRow}>
+          <div style={{ ...styles.cardTitleRow, display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
             <span style={styles.cardTitle}>{agent.name}</span>
+            {!locked && !agent.system && agent.role && <RoleBadge role={agent.role} size="sm" />}
           </div>
         </div>
       </div>

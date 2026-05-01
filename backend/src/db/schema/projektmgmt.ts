@@ -15,6 +15,7 @@ export const paProjektideen = projektmgmtSchema.table('projektideen', {
   status: text('status').notNull().default('draft'),  // draft | review | approved | rejected | archived
   data: jsonb('data').notNull(),                    // komplette Projektidee-Struktur
   metadata: jsonb('metadata'),
+  permissions: jsonb('permissions'),                // { users: [{userId, role}], groups: [{groupId, role}] } — null = nur Ersteller (ownerId)
   version: integer('version').notNull().default(1),  // Optimistic-Concurrency-Counter
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
@@ -31,6 +32,7 @@ export const paProjektauftraege = projektmgmtSchema.table('projektauftraege', {
   ideeId: text('idee_id'),                          // FK auf projektideen.id (nullable — Auftrag muss nicht aus Idee kommen)
   data: jsonb('data').notNull(),                    // komplette Projektauftrag-Struktur
   metadata: jsonb('metadata'),                      // erstellt/geaendert datums, version, ...
+  permissions: jsonb('permissions'),                // { users: [{userId, role}], groups: [{groupId, role}] } — null = nur Ersteller (ownerId)
   version: integer('version').notNull().default(1),  // Optimistic-Concurrency-Counter
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),

@@ -6,6 +6,7 @@
 
 import { theme } from '../config/theme';
 import { BriefcaseIcon, UserIcon, ArchiveIcon, LockIcon } from './Icons';
+import RoleBadge from './RoleBadge';
 
 const styles = {
   card: {
@@ -154,7 +155,10 @@ export default function ProjectCard({ project, onClick }) {
           <BriefcaseIcon size={22} color={locked ? theme.colors.textMuted : color} />
         </div>
         <div style={styles.content}>
-          <div style={styles.name}>{project.name}</div>
+          <div style={{ ...styles.name, display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+            <span>{project.name}</span>
+            {!locked && project.role && <RoleBadge role={project.role} size="sm" />}
+          </div>
           {project.description && !locked && (
             <div style={styles.description}>{project.description}</div>
           )}

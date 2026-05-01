@@ -9,7 +9,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { ArrowLeftIcon } from '../../components/Icons';
 import { useProjektideen, VersionConflictError } from '../../hooks/useProjektideen';
+import { usePmResourcePermission, hasMinRole } from '../../hooks/usePmResourcePermission';
+import { useAppPermission } from '../../components/RequireAppPermission';
+import RoleBadge from '../../components/RoleBadge';
+import ReadOnlyBanner from '../../components/ReadOnlyBanner';
 import ConflictResolutionModal from './components/ConflictResolutionModal';
+import OwnerActionsMenu from './components/OwnerActionsMenu';
+import PermissionsModal from './components/PermissionsModal';
 import { API_URL } from '../../utils/apiFetch';
 import ExportDropdown from '../../components/ExportDropdown';
 import IdeeBasis from './components/idee-steps/IdeeBasis';
@@ -269,6 +275,14 @@ export default function IdeeWizardPage() {
   const { id } = useParams();
   const { getIdee, createIdee, updateIdee, deleteIdee, erstelleAuftragAusIdee } = useProjektideen({ autoLoad: false });
 
+  // Phase-2: Effektive Idee-Rolle. Bei "neu" (ohne id) wird die App-Editor-Rolle
+  // gecheckt — der Backend-POST prueft das nochmal hart.
+  const { role: ideeRole } = usePmResourcePermission('idee', id);
+  const { role: appRole } = useAppPermission();
+  const canEdit = id ? hasMinRole(ideeRole, 'editor') : (appRole === 'owner' || appRole === 'editor');
+  const canDelete = id && ideeRole === 'owner';
+  const canManagePermissions = canDelete; // Same: nur Owner
+
   const [idee, setIdee] = useState(emptyIdee());
   const [currentStep, setCurrentStep] = useState(1);
   const [maxVisitedStep, setMaxVisitedStep] = useState(1);
@@ -279,6 +293,8 @@ export default function IdeeWizardPage() {
   const [isCreatingAuftrag, setIsCreatingAuftrag] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportingFormat, setExportingFormat] = useState(null);
+  // Phase-2: Permissions-Modal-State
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   // Server-Version fuer Optimistic-Concurrency. Null heisst: Idee noch nicht
   // gespeichert oder Version unbekannt → kein Check beim ersten Save.
   const [serverVersion, setServerVersion] = useState(null);
@@ -473,7 +489,10 @@ export default function IdeeWizardPage() {
         </button>
         <div style={styles.headerContent}>
           <div style={styles.headerLeft}>
-            <h1 style={styles.headerTitle}>{idee.name || 'Neue Projektidee'}</h1>
+            <h1 style={{ ...styles.headerTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+              <span>{idee.name || 'Neue Projektidee'}</span>
+              {ideeRole && <RoleBadge role={ideeRole} size="sm" />}
+            </h1>
             <div style={styles.headerSubtitle}>
               <span>Projektidee</span>
               <span>|</span>
@@ -489,29 +508,31 @@ export default function IdeeWizardPage() {
             </div>
           </div>
           <div style={styles.headerActions}>
-            <button
-              style={{
-                ...styles.actionButton,
-                ...styles.primaryButton,
-                opacity: isSaving ? 0.7 : 1,
-                ...(isDirty && !isSaving ? {
-                  boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
-                } : {}),
-              }}
-              onClick={save}
-              disabled={isSaving}
-              onMouseEnter={(e) => {
-                if (!isSaving) {
-                  e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = theme.colors.primary;
-              }}
-            >
-              <SaveIcon />
-              {isSaving ? 'Speichern...' : isDirty ? 'Speichern *' : 'Speichern'}
-            </button>
+            {canEdit && (
+              <button
+                style={{
+                  ...styles.actionButton,
+                  ...styles.primaryButton,
+                  opacity: isSaving ? 0.7 : 1,
+                  ...(isDirty && !isSaving ? {
+                    boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
+                  } : {}),
+                }}
+                onClick={save}
+                disabled={isSaving}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.primary;
+                }}
+              >
+                <SaveIcon />
+                {isSaving ? 'Speichern...' : isDirty ? 'Speichern *' : 'Speichern'}
+              </button>
+            )}
             {idee.id && (
               <ExportDropdown
                 onExport={handleExport}
@@ -520,7 +541,7 @@ export default function IdeeWizardPage() {
                 loadingFormat={exportingFormat}
               />
             )}
-            {idee.id && (
+            {idee.id && (appRole === 'owner' || appRole === 'editor') && (
               <button
                 style={{ ...styles.actionButton, ...styles.primaryButton }}
                 onClick={handleCreateAuftrag}
@@ -529,19 +550,23 @@ export default function IdeeWizardPage() {
                 {isCreatingAuftrag ? 'Erzeuge…' : 'Auftrag aus Idee erstellen'}
               </button>
             )}
-            {idee.id && (
-              <button
-                style={{ ...styles.actionButton, ...styles.deleteButton }}
-                onClick={handleDelete}
-              >
-                Löschen
-              </button>
+            {idee.id && canDelete && (
+              <OwnerActionsMenu
+                onManagePermissions={() => setShowPermissionsModal(true)}
+                onDelete={handleDelete}
+              />
             )}
           </div>
         </div>
       </div>
 
       {error && <div style={styles.errorBanner}>{error}</div>}
+
+      {!canEdit && id && (
+        <div style={{ padding: `0 ${theme.spacing['2xl']}`, marginTop: theme.spacing.md }}>
+          <ReadOnlyBanner ownerName={idee.created_by} />
+        </div>
+      )}
 
       {/* Step Tabs (Horizontal Pill-Style) */}
       <div style={styles.stepTabs}>
@@ -593,13 +618,21 @@ export default function IdeeWizardPage() {
       {/* Main content */}
       <div style={styles.main}>
         <div style={styles.content}>
-          <div style={styles.stepContent}>
-            <StepComponent
-              projektidee={idee}
-              onChange={handleChange}
-              onCreateAuftrag={currentStep === 6 ? handleCreateAuftrag : undefined}
-            />
-          </div>
+          {/* Read-only Mode bei !canEdit: fieldset disabled macht alle Inputs
+              non-interactive (Browser-native). Stelle sicher dass Lesen weiter
+              moeglich ist und der Wizard scrollbar bleibt. */}
+          <fieldset
+            disabled={!canEdit}
+            style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}
+          >
+            <div style={styles.stepContent}>
+              <StepComponent
+                projektidee={idee}
+                onChange={handleChange}
+                onCreateAuftrag={currentStep === 6 ? handleCreateAuftrag : undefined}
+              />
+            </div>
+          </fieldset>
         </div>
       </div>
 
@@ -639,6 +672,15 @@ export default function IdeeWizardPage() {
           onReload={handleConflictReload}
           onForce={handleConflictForce}
           onCancel={handleConflictCancel}
+        />
+      )}
+
+      {showPermissionsModal && idee.id && (
+        <PermissionsModal
+          type="idee"
+          id={idee.id}
+          ownerName={idee.created_by}
+          onClose={() => setShowPermissionsModal(false)}
         />
       )}
     </div>

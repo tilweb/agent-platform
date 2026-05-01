@@ -8,6 +8,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useProjektmanagement } from '../../hooks/useProjektmanagement';
 import { LightningIcon, ClipboardIcon, BarChartIcon, CheckCircleIcon, AppsIcon } from '../../components/Icons';
+import { useAppPermission } from '../../components/RequireAppPermission';
+import RoleBadge from '../../components/RoleBadge';
 import ComingSoon from './components/ComingSoon';
 import Einstellungen from './components/Einstellungen';
 import StatusberichteDashboard from './components/StatusberichteDashboard';
@@ -326,6 +328,11 @@ function ProjektePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'auftraege';
   const { projektauftraege, stats, isLoading, refresh } = useProjektmanagement();
+  const { role: appRole } = useAppPermission();
+  const canCreate = appRole === 'owner' || appRole === 'editor';
+  const canSeeSettings = appRole === 'owner';
+  // Tabs gefiltert: Einstellungen nur fuer App-Owner.
+  const visibleTabs = TABS.filter((t) => t.id !== 'einstellungen' || canSeeSettings);
   const [filters, setFilters] = useState({
     status: '',
     project_type: '',
@@ -450,7 +457,7 @@ function ProjektePage() {
       <div style={styles.content}>
         {/* Tabs */}
         <div style={styles.tabs}>
-          {TABS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const TabIcon = tab.icon;
             return (
@@ -489,35 +496,37 @@ function ProjektePage() {
           <IdeenPage embedded />
         ) : activeTab === 'auftraege' ? (
           <>
-            {/* Action Bar (analog Ideen-Tab) */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md, marginBottom: theme.spacing.xl }}>
-              <Link
-                to="/apps/projektmanagement/import"
-                style={styles.importButton}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <ImportIcon />
-                Dokumente importieren
-              </Link>
-              <Link
-                to="/apps/projektmanagement/neu"
-                style={styles.createButton}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.primary;
-                }}
-              >
-                <PlusIcon />
-                Neuer Projektauftrag
-              </Link>
-            </div>
+            {/* Action Bar (analog Ideen-Tab) — nur fuer App-Editor/Owner */}
+            {canCreate && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md, marginBottom: theme.spacing.xl }}>
+                <Link
+                  to="/apps/projektmanagement/import"
+                  style={styles.importButton}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <ImportIcon />
+                  Dokumente importieren
+                </Link>
+                <Link
+                  to="/apps/projektmanagement/neu"
+                  style={styles.createButton}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.primary;
+                  }}
+                >
+                  <PlusIcon />
+                  Neuer Projektauftrag
+                </Link>
+              </div>
+            )}
 
             {/* Stats Cards */}
             {stats && (
@@ -594,7 +603,7 @@ function ProjektePage() {
                     ? 'Erstellen Sie Ihren ersten Projektauftrag, um zu beginnen.'
                     : 'Versuchen Sie, Ihre Filter anzupassen.'}
                 </p>
-                {projektauftraege.length === 0 && (
+                {projektauftraege.length === 0 && canCreate && (
                   <Link
                     to="/apps/projektmanagement/neu"
                     style={styles.createButton}
@@ -630,8 +639,9 @@ function ProjektePage() {
                       }}
                     >
                       <div style={styles.projectInfo}>
-                        <div style={styles.projectTitle}>
-                          {projekt.name || 'Unbenanntes Projekt'}
+                        <div style={{ ...styles.projectTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+                          <span>{projekt.name || 'Unbenanntes Projekt'}</span>
+                          {projekt.role && <RoleBadge role={projekt.role} size="sm" />}
                         </div>
                         <div style={styles.projectMeta}>
                           <span>{getProjectTypeName(projekt.project_type)}</span>
