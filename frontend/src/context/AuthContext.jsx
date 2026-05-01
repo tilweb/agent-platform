@@ -8,7 +8,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(null);
-  const [registrationEnabled, setRegistrationEnabled] = useState(true);
 
   // Check authentication status on mount
   useEffect(() => {
@@ -23,7 +22,6 @@ export function AuthProvider({ children }) {
       });
       const statusData = await statusRes.json();
       setInitialized(statusData.initialized);
-      setRegistrationEnabled(statusData.registrationEnabled !== false);
 
       // Check current user
       const meRes = await fetch(`${API_BASE}/auth/me`, {
@@ -98,7 +96,6 @@ export function AuthProvider({ children }) {
     user,
     loading,
     initialized,
-    registrationEnabled,
     isAuthenticated: !!user,
     login,
     register,

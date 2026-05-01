@@ -40,12 +40,17 @@ import { randomBytes } from 'crypto';
 const authRoutes = new Hono();
 
 /**
- * POST /api/auth/register - Register new user
+ * POST /api/auth/register - Bootstrap-Endpoint fuer den Erst-Admin.
+ *
+ * Self-Registration ist generell aus. Der Endpoint erlaubt nur die Anlage
+ * des allerersten Users (= der Bootstrap-Admin auf einer leeren Instanz).
+ * Sobald ein User existiert, antwortet der Endpoint 403 — weitere User legt
+ * der Admin in den Settings an. Bei verwaister Instanz (alle Admins
+ * deaktiviert/geloescht) gibt es das Recovery-Script `scripts/create-admin.ts`.
  */
 authRoutes.post('/register', authRateLimit, async (c) => {
-  // Block self-registration when disabled via ENV
-  if (process.env.REGISTRATION_DISABLED === 'true') {
-    return c.json({ error: 'Registration is disabled' }, 403);
+  if (await hasUsers()) {
+    return c.json({ error: 'Self-registration is disabled. Ask an admin to create an account.' }, 403);
   }
 
   try {
@@ -243,7 +248,6 @@ authRoutes.get('/status', async (c) => {
     return c.json({
       initialized: usersExist,
       requiresSetup: !usersExist,
-      registrationEnabled: process.env.REGISTRATION_DISABLED !== 'true',
     });
   } catch (error: any) {
     console.error('Auth status error:', error);
