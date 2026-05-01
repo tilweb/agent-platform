@@ -113,8 +113,38 @@ export interface Projektauftrag {
   idee_id?: string;
   idee?: { id: string; name: string };
 
+  // Phase-2 Auftrags-Level Permissions. NULL/missing = nur created_by ist Owner.
+  permissions?: ResourcePermissions | null;
+
   // Legacy - kept for compatibility
   analysis?: ProjektAnalysis;
+}
+
+/**
+ * Phase-2: Rollen auf Auftrags-/Idee-Ebene. Owner kann loeschen + Permissions
+ * setzen, Editor kann bearbeiten + Statusberichte verwalten, Viewer nur lesen.
+ * Statusberichte erben vom Auftrag — keine eigenen Permissions.
+ */
+export type AuftragsRole = 'owner' | 'editor' | 'viewer';
+
+export interface UserPermission {
+  userId: string;
+  role: AuftragsRole;
+}
+
+export interface GroupPermission {
+  groupId: string;
+  role: AuftragsRole;
+}
+
+/**
+ * Permissions-Block einer Idee oder eines Auftrags. Wird inline als jsonb-
+ * Spalte (Drizzle/Postgres) bzw. inline in metadata.yaml (demo/messe) abgelegt.
+ * `null` / fehlend = "noch nicht konfiguriert" — fallback ist `created_by`/`ownerId`.
+ */
+export interface ResourcePermissions {
+  users: UserPermission[];
+  groups: GroupPermission[];
 }
 
 // ============== Stored KI-Analysen ==============
@@ -440,5 +470,8 @@ export interface Projektidee {
   // Verknuepfung zu daraus erzeugten Auftraegen (umgekehrte Richtung: Auftrag.idee_id ist die Quelle of truth)
   // Wird via JOIN bei der Abfrage gefuellt.
   abgeleitete_auftraege?: { id: string; name: string; status: string; created_at: string }[];
+
+  // Phase-2 Idee-Level Permissions. NULL/missing = nur created_by ist Owner.
+  permissions?: ResourcePermissions | null;
 }
 

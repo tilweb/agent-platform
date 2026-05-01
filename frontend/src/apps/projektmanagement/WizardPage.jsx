@@ -7,7 +7,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useProjektmanagement, VersionConflictError } from '../../hooks/useProjektmanagement';
+import { usePmResourcePermission, hasMinRole } from '../../hooks/usePmResourcePermission';
+import { useAppPermission } from '../../components/RequireAppPermission';
+import RoleBadge from '../../components/RoleBadge';
+import ReadOnlyBanner from '../../components/ReadOnlyBanner';
 import ConflictResolutionModal from './components/ConflictResolutionModal';
+import OwnerActionsMenu from './components/OwnerActionsMenu';
+import PermissionsModal from './components/PermissionsModal';
 import { API_URL } from '../../utils/apiFetch';
 
 // Step components
@@ -366,6 +372,15 @@ function WizardPage() {
     deleteStatusbericht: deleteSbApi,
   } = useProjektmanagement();
 
+  // Phase-2: Effektive Auftrags-Rolle des aktuellen Users. Bei "neu" (ohne id)
+  // wird der Wizard immer voll editierbar gerendert — der Backend-POST prueft
+  // die App-Editor+ Berechtigung. Bei "bearbeiten" gilt die Auftrags-Rolle.
+  const { role: auftragRole } = usePmResourcePermission('auftrag', id);
+  const { role: appRole } = useAppPermission();
+  const canEdit = id ? hasMinRole(auftragRole, 'editor') : (appRole === 'owner' || appRole === 'editor');
+  const canDelete = id && auftragRole === 'owner';
+  const canManagePermissions = canDelete; // Same: nur Owner
+
   const [projektauftrag, setProjektauftrag] = useState(emptyProjektauftrag);
   const [appConfig, setAppConfig] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
@@ -376,6 +391,8 @@ function WizardPage() {
   const [completeness, setCompleteness] = useState(0);
   const [isNewProject, setIsNewProject] = useState(!id);
   const [isDirty, setIsDirty] = useState(false);
+  // Phase-2: Permissions-Modal-State
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   // Optimistic-Concurrency state.
   const [serverVersion, setServerVersion] = useState(null);
   const [conflict, setConflict] = useState(null);
@@ -863,8 +880,9 @@ function WizardPage() {
 
         <div style={styles.headerContent}>
           <div style={styles.headerLeft}>
-            <h1 style={styles.headerTitle}>
-              {projektauftrag.name || 'Neuer Projektauftrag'}
+            <h1 style={{ ...styles.headerTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+              <span>{projektauftrag.name || 'Neuer Projektauftrag'}</span>
+              {auftragRole && <RoleBadge role={auftragRole} size="sm" />}
             </h1>
             <div style={styles.headerSubtitle}>
               {projektauftrag.projektleiter && (
@@ -933,22 +951,13 @@ function WizardPage() {
                 disabled={!projektauftrag.id}
               />
             )}
-            {mode === 'auftrag' && projektauftrag.id && (
-              <button
-                style={{ ...styles.actionButton, ...styles.deleteButton }}
-                onClick={handleDelete}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.errorLight;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <TrashIcon />
-                Löschen
-              </button>
+            {mode === 'auftrag' && projektauftrag.id && canDelete && (
+              <OwnerActionsMenu
+                onManagePermissions={() => setShowPermissionsModal(true)}
+                onDelete={handleDelete}
+              />
             )}
-            {mode === 'statusbericht' && currentSb && currentSb.status === 'draft' && (
+            {mode === 'statusbericht' && currentSb && currentSb.status === 'draft' && canEdit && (
               <button
                 style={{ ...styles.actionButton, ...styles.deleteButton }}
                 onClick={handleDeleteSb}
@@ -964,30 +973,32 @@ function WizardPage() {
               </button>
             )}
             {mode === 'auftrag' ? (
-              <button
-                style={{
-                  ...styles.actionButton,
-                  ...styles.primaryButton,
-                  opacity: isSaving ? 0.7 : 1,
-                  ...(isDirty && !isSaving ? {
-                    boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
-                  } : {}),
-                }}
-                onClick={saveStep}
-                disabled={isSaving}
-                onMouseEnter={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.primary;
-                }}
-              >
-                <SaveIcon />
-                {isSaving ? 'Speichern...' : isDirty ? 'Speichern *' : 'Speichern'}
-              </button>
-            ) : currentSb && (
+              canEdit && (
+                <button
+                  style={{
+                    ...styles.actionButton,
+                    ...styles.primaryButton,
+                    opacity: isSaving ? 0.7 : 1,
+                    ...(isDirty && !isSaving ? {
+                      boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
+                    } : {}),
+                  }}
+                  onClick={saveStep}
+                  disabled={isSaving}
+                  onMouseEnter={(e) => {
+                    if (!isSaving) {
+                      e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.primary;
+                  }}
+                >
+                  <SaveIcon />
+                  {isSaving ? 'Speichern...' : isDirty ? 'Speichern *' : 'Speichern'}
+                </button>
+              )
+            ) : currentSb && canEdit && (
               <button
                 style={{
                   ...styles.actionButton,
@@ -1015,6 +1026,12 @@ function WizardPage() {
           </div>
         </div>
       </div>
+
+      {!canEdit && id && (
+        <div style={{ padding: `0 ${theme.spacing['2xl']}`, marginTop: theme.spacing.md }}>
+          <ReadOnlyBanner ownerName={projektauftrag.created_by} />
+        </div>
+      )}
 
       {mode === 'auftrag' ? (
         <>
@@ -1068,7 +1085,14 @@ function WizardPage() {
           {/* Main content */}
           <div style={styles.main}>
             <div style={styles.content}>
-              <div style={currentStep === 8 ? {} : styles.stepContent}>{renderStepContent()}</div>
+              {/* Read-only Mode: fieldset disabled macht alle Inputs/Selects/Textareas
+                  non-interactive — Browser-native. Step-Content bleibt scrollbar/lesbar. */}
+              <fieldset
+                disabled={!canEdit}
+                style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}
+              >
+                <div style={currentStep === 8 ? {} : styles.stepContent}>{renderStepContent()}</div>
+              </fieldset>
             </div>
             {currentStep <= 7 && (
               <div style={styles.rightSidebar}>
@@ -1200,7 +1224,11 @@ function WizardPage() {
               {/* Content */}
               <div style={styles.content}>
                 {currentSb ? (
-                  <div style={styles.stepContent}>
+                  <fieldset
+                    disabled={!canEdit}
+                    style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}
+                  >
+                    <div style={styles.stepContent}>
                     {sbTab === 'basis' ? (
                       <StatusberichtBasis data={currentSb} onChange={handleSbChange} />
                     ) : sbTab === 'ziele' ? (
@@ -1230,7 +1258,8 @@ function WizardPage() {
                         config={appConfig}
                       />
                     )}
-                  </div>
+                    </div>
+                  </fieldset>
                 ) : (
                   <div style={{
                     display: 'flex',
@@ -1258,6 +1287,15 @@ function WizardPage() {
           onReload={handleConflictReload}
           onForce={handleConflictForce}
           onCancel={handleConflictCancel}
+        />
+      )}
+
+      {showPermissionsModal && projektauftrag.id && (
+        <PermissionsModal
+          type="auftrag"
+          id={projektauftrag.id}
+          ownerName={projektauftrag.created_by}
+          onClose={() => setShowPermissionsModal(false)}
         />
       )}
     </div>

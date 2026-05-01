@@ -7,6 +7,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { ArrowLeftIcon } from '../../components/Icons';
 import { useProjektideen } from '../../hooks/useProjektideen';
+import { useAppPermission } from '../../components/RequireAppPermission';
+import RoleBadge from '../../components/RoleBadge';
 
 const styles = {
   container: { height: '100%', display: 'flex', flexDirection: 'column' },
@@ -166,6 +168,8 @@ const STATUS_BADGE_STYLE = {
 export default function IdeenPage({ embedded = false }) {
   const navigate = useNavigate();
   const { projektideen, isLoading, error } = useProjektideen();
+  const { role: appRole } = useAppPermission();
+  const canCreate = appRole === 'owner' || appRole === 'editor';
 
   return (
     <div style={embedded ? styles.containerEmbedded : styles.container}>
@@ -181,15 +185,17 @@ export default function IdeenPage({ embedded = false }) {
                 Erfassen Sie neue Ideen und entwickeln Sie sie ueber Zeit zu konkreten Projektauftraegen weiter.
               </p>
             </div>
-            <Link to="/apps/projektmanagement/ideen/neu" style={styles.newButton}>
-              + Neue Projektidee
-            </Link>
+            {canCreate && (
+              <Link to="/apps/projektmanagement/ideen/neu" style={styles.newButton}>
+                + Neue Projektidee
+              </Link>
+            )}
           </div>
         </div>
       )}
 
       <div style={embedded ? styles.contentEmbedded : styles.content}>
-        {embedded && (
+        {embedded && canCreate && (
           <div style={styles.embeddedActions}>
             <Link to="/apps/projektmanagement/ideen/import" style={styles.importButton}>
               <ImportIcon />
@@ -223,7 +229,10 @@ export default function IdeenPage({ embedded = false }) {
                   e.currentTarget.style.backgroundColor = theme.colors.surface;
                 }}
               >
-                <div style={styles.cardName}>{idee.name || 'Unbenannte Idee'}</div>
+                <div style={{ ...styles.cardName, display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+                  <span>{idee.name || 'Unbenannte Idee'}</span>
+                  {idee.role && <RoleBadge role={idee.role} size="sm" />}
+                </div>
                 <div style={styles.cardMeta}>
                   <span style={{ ...styles.badge, ...badgeStyle }}>
                     {STATUS_LABELS[idee.status] ?? idee.status}

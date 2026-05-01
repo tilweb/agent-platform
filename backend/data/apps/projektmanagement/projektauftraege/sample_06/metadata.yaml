@@ -211,7 +211,7 @@ stakeholders:
     influence: medium
     expectations: ""
 created_at: 2026-02-15T21:31:22.746Z
-updated_at: 2026-02-15T21:31:22.746Z
+updated_at: 2026-05-01T13:27:57.048Z
 created_by: migration
 status: completed
 current_step: 9
@@ -324,3 +324,11 @@ _summary: "Projekt- und Projektmanagementergebnisse: Das Vorgehensmodell wurde
   zugewiesen.\vIntegration: Inhaltliche und technische Anforderungen werden über
   die Strukturierung der Arbeitspakete zusammengeführt; die Integration ist
   vorgesehen, aber noch nicht umgesetzt."
+version: 2
+permissions:
+  users:
+    - userId: user_1777562439331_w5wo3r3
+      role: owner
+    - userId: user_1777493329823_70q7s5y
+      role: owner
+  groups: []

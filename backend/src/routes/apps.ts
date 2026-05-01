@@ -19,6 +19,8 @@ import {
 } from '../apps/permissions';
 import { getCurrentUserId } from '../auth/middleware';
 import { authMiddleware } from '../auth/middleware';
+import { listGroups } from '../auth/groups';
+import { loadUser } from '../auth/storage';
 import { contractRoutes } from '../apps/vertragsmanagement/routes';
 import { projektmanagementRoutes } from '../apps/projektmanagement/routes';
 import { lieferantenmanagementRoutes } from '../apps/lieferantenmanagement/routes';
@@ -177,6 +179,62 @@ apps.put('/:appId/permissions', async (c) => {
   } catch (error) {
     console.error('Error updating app permissions:', error);
     return c.json({ error: error instanceof Error ? error.message : 'Failed to update permissions' }, 500);
+  }
+});
+
+/**
+ * GET /api/apps/:appId/eligible-principals
+ *
+ * Listet User+Gruppen die ueberhaupt Zugriff auf die App haben — Schnittmenge
+ * aus `apps.registry.permissions.groups` (App-Level-Berechtigungen aus Phase 1)
+ * und Gruppen-Mitgliedschaft. Der Frontend-PermissionsModal (Auftrags-/Ideen-
+ * Permissions Phase 2) filtert seinen User-Picker und Group-Picker auf diese
+ * Liste, damit Auftrags-Member auch tatsaechlich auf die App kommen.
+ *
+ * Response: `{ groups: [{id, name}], users: [{id, username, displayName}] }`.
+ */
+apps.get('/:appId/eligible-principals', async (c) => {
+  try {
+    const appId = c.req.param('appId');
+    const app = await getApp(appId);
+    if (!app) {
+      return c.json({ error: 'App not found' }, 404);
+    }
+    const groupPermissions = app.permissions?.groups ?? [];
+    if (groupPermissions.length === 0) {
+      return c.json({ groups: [], users: [] });
+    }
+
+    const eligibleGroupIds = new Set(groupPermissions.map((p) => p.groupId));
+    const allGroups = await listGroups();
+    const eligibleGroups = allGroups.filter((g) => eligibleGroupIds.has(g.id));
+
+    const eligibleUserIds = new Set<string>();
+    for (const g of eligibleGroups) {
+      for (const userId of g.memberIds ?? []) {
+        eligibleUserIds.add(userId);
+      }
+    }
+
+    const users = await Promise.all(
+      Array.from(eligibleUserIds).map(async (uid) => {
+        const user = await loadUser(uid);
+        if (!user) return null;
+        return {
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName ?? user.username,
+        };
+      })
+    );
+
+    return c.json({
+      groups: eligibleGroups.map((g) => ({ id: g.id, name: g.name })),
+      users: users.filter((u): u is NonNullable<typeof u> => u !== null),
+    });
+  } catch (error) {
+    console.error('Error listing eligible principals:', error);
+    return c.json({ error: 'Failed to list eligible principals' }, 500);
   }
 });
 

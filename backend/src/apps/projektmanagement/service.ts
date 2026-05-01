@@ -200,10 +200,11 @@ export async function removeProjektauftrag(projektId: string): Promise<boolean> 
 // ============== Statistics ==============
 
 /**
- * Get Projektauftrag statistics
+ * Get Projektauftrag statistics. Optional ein vorgefiltertes Set (z.B. nur
+ * berechtigte Auftraege fuer den eingeloggten User).
  */
-export async function getProjektauftragStats(): Promise<ProjektauftragStats> {
-  const projektauftraege = await getProjektauftraege();
+export async function getProjektauftragStats(scope?: Projektauftrag[]): Promise<ProjektauftragStats> {
+  const projektauftraege = scope ?? await getProjektauftraege();
 
   const stats: ProjektauftragStats = {
     total: projektauftraege.length,

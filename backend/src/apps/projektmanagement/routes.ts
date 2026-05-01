@@ -55,6 +55,16 @@ import {
 import { VersionConflictError } from './concurrency';
 import { requireAppAccess } from '../permissions-middleware';
 import {
+  getEffectiveIdeeRole,
+  getEffectiveAuftragRole,
+  listAccessibleIdeeIds,
+  listAccessibleAuftragIds,
+  replaceIdeePermissions,
+  replaceAuftragPermissions,
+} from './permissions';
+import type { AuftragsRole } from './types';
+import { getCurrentUserId } from '../../auth/middleware';
+import {
   generateDocument,
   mapProjektauftragToDocument,
   mapStatusberichtToDocument,
@@ -63,12 +73,76 @@ import {
   getFileExtension,
   type DocumentFormat,
 } from '../../services/documentGenerator';
+import type { Context } from 'hono';
 
 const projektmanagement = new Hono();
 
 // Berechtigungs-Pruefung: jeder Endpunkt unter /apps/projektmanagement
 // braucht eine User-Rolle (owner/editor/viewer) auf dieser App. Ohne wird 403.
 projektmanagement.use('*', requireAppAccess('projektmanagement'));
+
+// ============== Phase-2 Permission Guards ==============
+
+const ROLE_RANK: Record<AuftragsRole, number> = { viewer: 0, editor: 1, owner: 2 };
+
+/**
+ * App-Level Editor- oder Owner-Rolle erforderlich (z.B. fuer "Neu anlegen").
+ * `requireAppAccess` hat appRole bereits in den Context gesetzt.
+ */
+function denyIfNotAppEditor(c: Context): { error: string } | null {
+  const appRole = c.get('appRole') as AuftragsRole | undefined;
+  if (appRole !== 'owner' && appRole !== 'editor') {
+    return { error: 'App-Editor- oder -Owner-Rolle erforderlich.' };
+  }
+  return null;
+}
+
+/**
+ * App-Level Owner-Rolle erforderlich (z.B. fuer App-Settings).
+ */
+function denyIfNotAppOwner(c: Context): { error: string } | null {
+  const appRole = c.get('appRole') as AuftragsRole | undefined;
+  if (appRole !== 'owner') {
+    return { error: 'App-Owner-Rolle erforderlich.' };
+  }
+  return null;
+}
+
+/**
+ * Auftrags-/Idee-Level: User muss mindestens `required` auf der konkreten
+ * Resource haben. Liefert `null` bei OK, sonst ein Error-Payload (403).
+ */
+async function denyIfBelowIdeeRole(
+  userId: string,
+  ideeId: string,
+  required: AuftragsRole,
+): Promise<{ error: string; status: 403 | 404 } | null> {
+  const role = await getEffectiveIdeeRole(userId, ideeId);
+  if (!role) {
+    // Keine Rolle = entweder Idee existiert nicht oder kein Zugriff. Wir
+    // returnen 403 generisch — kein Probing welche Ideen es gibt.
+    return { error: 'Keine Berechtigung fuer diese Idee.', status: 403 };
+  }
+  if (ROLE_RANK[role] < ROLE_RANK[required]) {
+    return { error: `Berechtigung unzureichend: ${role} (mind. ${required} noetig).`, status: 403 };
+  }
+  return null;
+}
+
+async function denyIfBelowAuftragRole(
+  userId: string,
+  auftragId: string,
+  required: AuftragsRole,
+): Promise<{ error: string; status: 403 | 404 } | null> {
+  const role = await getEffectiveAuftragRole(userId, auftragId);
+  if (!role) {
+    return { error: 'Keine Berechtigung fuer diesen Auftrag.', status: 403 };
+  }
+  if (ROLE_RANK[role] < ROLE_RANK[required]) {
+    return { error: `Berechtigung unzureichend: ${role} (mind. ${required} noetig).`, status: 403 };
+  }
+  return null;
+}
 
 // ============== Config Endpoints ==============
 
@@ -88,10 +162,12 @@ projektmanagement.get('/config', async (c) => {
 
 /**
  * PUT /api/apps/projektmanagement/config
- * Update app configuration
+ * Update app configuration — App-Owner-only.
  */
 projektmanagement.put('/config', async (c) => {
   try {
+    const denied = denyIfNotAppOwner(c);
+    if (denied) return c.json(denied, 403);
     const body = await c.req.json();
     await saveConfig(body);
     return c.json(body);
@@ -110,8 +186,11 @@ projektmanagement.put('/config', async (c) => {
  */
 projektmanagement.post('/projektauftraege/import', async (c) => {
   try {
+    const denied = denyIfNotAppEditor(c);
+    if (denied) return c.json(denied, 403);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
     const formData = await c.req.formData();
-    const userId = 'user_default';
 
     // Extract files from FormData
     const files: { buffer: Buffer; filename: string; mimeType: string }[] = [];
@@ -190,13 +269,18 @@ projektmanagement.post('/projektauftraege/import', async (c) => {
 
 /**
  * POST /api/apps/projektmanagement/projektauftraege
- * Create a new Projektauftrag
+ * Create a new Projektauftrag — App-Editor- oder -Owner-Rolle erforderlich.
+ * Der erstellende User wird Auftrags-Owner ueber `created_by` (Default-Owner-
+ * Fallback im Permission-Resolver).
  */
 projektmanagement.post('/projektauftraege', async (c) => {
   try {
-    const body = await c.req.json();
-    const userId = 'user_default'; // In real app would come from auth
+    const denied = denyIfNotAppEditor(c);
+    if (denied) return c.json(denied, 403);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
 
+    const body = await c.req.json();
     const projektauftrag = await createProjektauftrag(body, userId);
     return c.json({ projektauftrag }, 201);
   } catch (error) {
@@ -210,13 +294,16 @@ projektmanagement.post('/projektauftraege', async (c) => {
 
 /**
  * POST /api/apps/projektmanagement/projektauftraege/from-vorlage
- * Create a new Projektauftrag from a Vorlage
+ * Create a new Projektauftrag from a Vorlage — App-Editor+ erforderlich.
  */
 projektmanagement.post('/projektauftraege/from-vorlage', async (c) => {
   try {
-    const { vorlageId } = await c.req.json<{ vorlageId: string }>();
-    const userId = 'user_default';
+    const denied = denyIfNotAppEditor(c);
+    if (denied) return c.json(denied, 403);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
 
+    const { vorlageId } = await c.req.json<{ vorlageId: string }>();
     if (!vorlageId) {
       return c.json({ error: 'vorlageId is required' }, 400);
     }
@@ -239,10 +326,15 @@ projektmanagement.post('/projektauftraege/from-vorlage', async (c) => {
 
 /**
  * GET /api/apps/projektmanagement/projektauftraege
- * List all Projektauftraege with optional filters
+ * Listet nur Auftraege auf die der eingeloggte User mind. viewer-Rolle hat.
+ * App-Editor/Owner sieht nicht automatisch alles — nur wo er Auftrags-Mitglied
+ * ist (oder Ersteller ist via ownerId).
  */
 projektmanagement.get('/projektauftraege', async (c) => {
   try {
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+
     const status = c.req.query('status') as ProjektauftragFilters['status'];
     const project_type = c.req.query('project_type');
     const projektleiter = c.req.query('projektleiter');
@@ -258,9 +350,13 @@ projektmanagement.get('/projektauftraege', async (c) => {
     if (from_date) filters.from_date = from_date;
     if (to_date) filters.to_date = to_date;
 
-    const projektauftraege = await listProjektauftraege(
+    const all = await listProjektauftraege(
       Object.keys(filters).length > 0 ? filters : undefined
     );
+    const accessible = await listAccessibleAuftragIds(userId, all);
+    const projektauftraege = all
+      .filter((a) => accessible.has(a.id))
+      .map((a) => ({ ...a, role: accessible.get(a.id) }));
 
     return c.json({ projektauftraege });
   } catch (error) {
@@ -271,11 +367,17 @@ projektmanagement.get('/projektauftraege', async (c) => {
 
 /**
  * GET /api/apps/projektmanagement/projektauftraege/stats
- * Get Projektauftrag statistics
+ * Stats nur ueber Auftraege auf die der User Zugriff hat.
  */
 projektmanagement.get('/projektauftraege/stats', async (c) => {
   try {
-    const stats = await getProjektauftragStats();
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const all = await listProjektauftraege();
+    const accessible = await listAccessibleAuftragIds(userId, all);
+    const visibleIds = new Set(accessible.keys());
+    const visible = all.filter((a) => visibleIds.has(a.id));
+    const stats = await getProjektauftragStats(visible);
     return c.json({ stats });
   } catch (error) {
     console.error('Error getting stats:', error);
@@ -285,20 +387,21 @@ projektmanagement.get('/projektauftraege/stats', async (c) => {
 
 /**
  * GET /api/apps/projektmanagement/projektauftraege/:id
- * Get Projektauftrag details
+ * Get Projektauftrag details — Auftrags-Viewer+ erforderlich.
  */
 projektmanagement.get('/projektauftraege/:id', async (c) => {
   try {
     const projektId = c.req.param('id');
-    const projektauftrag = await getProjektauftragDetails(projektId);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
 
+    const projektauftrag = await getProjektauftragDetails(projektId);
     if (!projektauftrag) {
       return c.json({ error: 'Projektauftrag not found' }, 404);
     }
-
-    // Add completeness info
     const completeness = calculateCompleteness(projektauftrag);
-
     return c.json({ projektauftrag, completeness });
   } catch (error) {
     console.error('Error getting Projektauftrag:', error);
@@ -308,13 +411,22 @@ projektmanagement.get('/projektauftraege/:id', async (c) => {
 
 /**
  * PUT /api/apps/projektmanagement/projektauftraege/:id
- * Update Projektauftrag
+ * Update Projektauftrag — Auftrags-Editor+ erforderlich.
  */
 projektmanagement.put('/projektauftraege/:id', async (c) => {
   try {
     const projektId = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
     const body = await c.req.json();
     const { expected_version, force, ...updates } = body ?? {};
+    // permissions duerfen NIE ueber den normalen Update-Pfad gesetzt werden —
+    // dafuer ist /permissions (owner-only). Sonst koennten Editoren ihre
+    // eigenen Rechte hochstufen.
+    delete (updates as Record<string, unknown>).permissions;
 
     const projektauftrag = await updateProjektauftrag(projektId, updates, {
       expectedVersion: expected_version,
@@ -337,12 +449,17 @@ projektmanagement.put('/projektauftraege/:id', async (c) => {
 
 /**
  * PUT /api/apps/projektmanagement/projektauftraege/:id/step/:step
- * Update specific step of Projektauftrag
+ * Update specific step of Projektauftrag — Auftrags-Editor+ erforderlich.
  */
 projektmanagement.put('/projektauftraege/:id/step/:step', async (c) => {
   try {
     const projektId = c.req.param('id');
     const step = parseInt(c.req.param('step'), 10);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
     const body = await c.req.json();
     const { expected_version, force, ...data } = body ?? {};
 
@@ -375,13 +492,17 @@ projektmanagement.put('/projektauftraege/:id/step/:step', async (c) => {
 
 /**
  * DELETE /api/apps/projektmanagement/projektauftraege/:id
- * Delete a Projektauftrag
+ * Delete a Projektauftrag — Auftrags-Owner-only.
  */
 projektmanagement.delete('/projektauftraege/:id', async (c) => {
   try {
     const projektId = c.req.param('id');
-    const deleted = await removeProjektauftrag(projektId);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'owner');
+    if (denied) return c.json({ error: denied.error }, denied.status);
 
+    const deleted = await removeProjektauftrag(projektId);
     if (!deleted) {
       return c.json({ error: 'Projektauftrag not found' }, 404);
     }
@@ -395,15 +516,18 @@ projektmanagement.delete('/projektauftraege/:id', async (c) => {
 
 /**
  * POST /api/apps/projektmanagement/projektauftraege/:id/validate/:step
- * Validate a specific step
+ * Validate a specific step — Viewer+ (nur lesend, keine Mutation).
  */
 projektmanagement.post('/projektauftraege/:id/validate/:step', async (c) => {
   try {
     const projektId = c.req.param('id');
     const step = parseInt(c.req.param('step'), 10);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
 
     const projektauftrag = await getProjektauftragDetails(projektId);
-
     if (!projektauftrag) {
       return c.json({ error: 'Projektauftrag not found' }, 404);
     }
@@ -420,18 +544,20 @@ projektmanagement.post('/projektauftraege/:id/validate/:step', async (c) => {
 
 /**
  * GET /api/apps/projektmanagement/search
- * Search Projektauftraege
+ * Such-Endpoint — gefiltert auf berechtigte Auftraege.
  */
 projektmanagement.get('/search', async (c) => {
   try {
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
     const query = c.req.query('q');
-
     if (!query) {
       return c.json({ error: 'Missing search query' }, 400);
     }
-
     const results = await searchProjektauftraege(query);
-    return c.json({ projektauftraege: results });
+    const accessible = await listAccessibleAuftragIds(userId, results);
+    const filtered = results.filter((r) => accessible.has(r.id));
+    return c.json({ projektauftraege: filtered });
   } catch (error) {
     console.error('Error searching:', error);
     return c.json({ error: 'Failed to search' }, 500);
@@ -483,6 +609,8 @@ projektmanagement.get('/vorlagen/:id', async (c) => {
 projektmanagement.post('/analyse/step/:stepNumber', async (c) => {
   try {
     const stepNumber = parseInt(c.req.param('stepNumber'), 10);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
 
     // Validate step number
     if (isNaN(stepNumber) || stepNumber < 2 || stepNumber > 7) {
@@ -501,7 +629,12 @@ projektmanagement.post('/analyse/step/:stepNumber', async (c) => {
       );
     }
 
-    // Check if there's enough data to analyze
+    // Auftrags-Editor+ erforderlich (Analyse persistiert ggf. step-analyses).
+    if (projektauftrag.id) {
+      const denied = await denyIfBelowAuftragRole(userId, projektauftrag.id, 'editor');
+      if (denied) return c.json({ error: denied.error }, denied.status);
+    }
+
     if (!hasEnoughDataForAnalysis(stepNumber, projektauftrag)) {
       return c.json(
         { error: 'Nicht genügend Daten für Analyse vorhanden. Bitte füllen Sie zuerst die Felder aus.' },
@@ -509,10 +642,6 @@ projektmanagement.post('/analyse/step/:stepNumber', async (c) => {
       );
     }
 
-    // Get userId from auth context (or default)
-    const userId = 'user_default'; // In real app would come from auth
-
-    // Perform analysis
     const analysis = await analyzeStep(stepNumber, projektauftrag, userId);
 
     return c.json({ analysis });
@@ -531,6 +660,8 @@ projektmanagement.post('/analyse/step/:stepNumber', async (c) => {
  */
 projektmanagement.post('/analyse/gesamt', async (c) => {
   try {
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
     const { projektauftrag, stepAnalyses } = await c.req.json();
 
     if (!projektauftrag) {
@@ -540,7 +671,11 @@ projektmanagement.post('/analyse/gesamt', async (c) => {
       );
     }
 
-    // Check if project has minimum data for overall assessment
+    if (projektauftrag.id) {
+      const denied = await denyIfBelowAuftragRole(userId, projektauftrag.id, 'editor');
+      if (denied) return c.json({ error: denied.error }, denied.status);
+    }
+
     const hasMinimumData = projektauftrag.name &&
       (projektauftrag.goals || projektauftrag.scope || (projektauftrag.tasks && projektauftrag.tasks.length > 0));
 
@@ -551,10 +686,6 @@ projektmanagement.post('/analyse/gesamt', async (c) => {
       );
     }
 
-    // Get userId from auth context (or default)
-    const userId = 'user_default'; // In real app would come from auth
-
-    // Perform overall assessment
     const gesamtbewertung = await analyzeGesamt(projektauftrag, stepAnalyses, userId);
 
     return c.json({ gesamtbewertung });
@@ -750,6 +881,8 @@ projektmanagement.get('/knowledge/:step/raw', async (c) => {
  */
 projektmanagement.put('/knowledge/:step', async (c) => {
   try {
+    const denied = denyIfNotAppOwner(c);
+    if (denied) return c.json(denied, 403);
     const step = parseInt(c.req.param('step'), 10);
 
     if (isNaN(step) || step < 1 || step > 7) {
@@ -785,6 +918,10 @@ projektmanagement.get('/projektauftraege/:id/export/:format', async (c) => {
   try {
     const projektId = c.req.param('id');
     const format = c.req.param('format');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
 
     const projektauftrag = await getProjektauftragDetails(projektId);
 
@@ -841,11 +978,16 @@ projektmanagement.get('/projektauftraege/:id/export/:format', async (c) => {
 
 /**
  * GET /api/apps/projektmanagement/statusberichte/dashboard
- * Dashboard: All active projects with their latest Ampel
+ * Dashboard: gefiltert auf Auftraege mit min. viewer-Rolle.
  */
 projektmanagement.get('/statusberichte/dashboard', async (c) => {
   try {
-    const entries = await getDashboard();
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const allEntries = await getDashboard();
+    const allAuftraege = await listProjektauftraege();
+    const accessible = await listAccessibleAuftragIds(userId, allAuftraege);
+    const entries = allEntries.filter((e) => accessible.has(e.projekt_id));
     return c.json({ dashboard: entries });
   } catch (error) {
     console.error('Error getting dashboard:', error);
@@ -855,12 +997,17 @@ projektmanagement.get('/statusberichte/dashboard', async (c) => {
 
 /**
  * POST /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte
- * Create a new Statusbericht
+ * Create a new Statusbericht — Auftrags-Editor+ erforderlich (Statusberichte
+ * erben vom Auftrag).
  */
 projektmanagement.post('/projektauftraege/:projektId/statusberichte', async (c) => {
   try {
     const projektId = c.req.param('projektId');
-    const userId = 'user_default';
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
     const sb = await createSB(projektId, userId);
     return c.json({ statusbericht: sb }, 201);
   } catch (error) {
@@ -874,11 +1021,16 @@ projektmanagement.post('/projektauftraege/:projektId/statusberichte', async (c) 
 
 /**
  * GET /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte
- * List all Statusberichte for a Projekt
+ * List all Statusberichte for a Projekt — Auftrags-Viewer+ erforderlich.
  */
 projektmanagement.get('/projektauftraege/:projektId/statusberichte', async (c) => {
   try {
     const projektId = c.req.param('projektId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
     const berichte = await listStatusberichte(projektId);
     return c.json({ statusberichte: berichte });
   } catch (error) {
@@ -895,6 +1047,11 @@ projektmanagement.get('/projektauftraege/:projektId/statusberichte/:sbId', async
   try {
     const projektId = c.req.param('projektId');
     const sbId = c.req.param('sbId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
     const sb = await getStatusberichtDetails(projektId, sbId);
     if (!sb) {
       return c.json({ error: 'Statusbericht not found' }, 404);
@@ -908,12 +1065,17 @@ projektmanagement.get('/projektauftraege/:projektId/statusberichte/:sbId', async
 
 /**
  * PUT /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte/:sbId
- * Update Statusbericht
+ * Update Statusbericht — Auftrags-Editor+ erforderlich (vererbt vom Auftrag).
  */
 projektmanagement.put('/projektauftraege/:projektId/statusberichte/:sbId', async (c) => {
   try {
     const projektId = c.req.param('projektId');
     const sbId = c.req.param('sbId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
     const body = await c.req.json();
     const { expected_version, force, ...updates } = body ?? {};
     const sb = await updateSB(projektId, sbId, updates, {
@@ -935,12 +1097,18 @@ projektmanagement.put('/projektauftraege/:projektId/statusberichte/:sbId', async
 
 /**
  * DELETE /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte/:sbId
- * Delete Statusbericht (only draft)
+ * Delete Statusbericht — Auftrags-Editor+ erforderlich (Bearbeiter darf SB
+ * loeschen, nicht erst Owner).
  */
 projektmanagement.delete('/projektauftraege/:projektId/statusberichte/:sbId', async (c) => {
   try {
     const projektId = c.req.param('projektId');
     const sbId = c.req.param('sbId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
     const deleted = await removeStatusbericht(projektId, sbId);
     if (!deleted) {
       return c.json({ error: 'Statusbericht not found' }, 404);
@@ -957,14 +1125,17 @@ projektmanagement.delete('/projektauftraege/:projektId/statusberichte/:sbId', as
 
 /**
  * GET /api/apps/projektmanagement/projektauftraege/:projektId/statusberichte/:sbId/export/:format
- * Export Statusbericht in specified format
- * Supported formats: json, xlsx, pdf, docx
+ * Export Statusbericht — Auftrags-Viewer+ erforderlich.
  */
 projektmanagement.get('/projektauftraege/:projektId/statusberichte/:sbId/export/:format', async (c) => {
   try {
     const projektId = c.req.param('projektId');
     const sbId = c.req.param('sbId');
     const format = c.req.param('format');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
 
     const sb = await getStatusberichtDetails(projektId, sbId);
     if (!sb) {
@@ -1076,8 +1247,14 @@ function generateCSV(projektauftrag: any): string {
 
 projektmanagement.get('/projektideen', async (c) => {
   try {
-    const ideen = await listIdeen();
-    return c.json({ projektideen: ideen });
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const all = await listIdeen();
+    const accessible = await listAccessibleIdeeIds(userId, all);
+    const projektideen = all
+      .filter((i) => accessible.has(i.id))
+      .map((i) => ({ ...i, role: accessible.get(i.id) }));
+    return c.json({ projektideen });
   } catch (error) {
     console.error('Error listing Projektideen:', error);
     return c.json({ error: 'Failed to list Projektideen' }, 500);
@@ -1086,8 +1263,11 @@ projektmanagement.get('/projektideen', async (c) => {
 
 projektmanagement.post('/projektideen', async (c) => {
   try {
+    const denied = denyIfNotAppEditor(c);
+    if (denied) return c.json(denied, 403);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
     const body = await c.req.json();
-    const userId = 'user_default';
     const idee = await createIdee(body, userId);
     return c.json({ projektidee: idee }, 201);
   } catch (error) {
@@ -1099,6 +1279,10 @@ projektmanagement.post('/projektideen', async (c) => {
 projektmanagement.get('/projektideen/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowIdeeRole(userId, id, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
     const idee = await getIdeeDetails(id);
     if (!idee) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
     return c.json({ projektidee: idee });
@@ -1111,8 +1295,16 @@ projektmanagement.get('/projektideen/:id', async (c) => {
 projektmanagement.put('/projektideen/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowIdeeRole(userId, id, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
     const body = await c.req.json();
     const { expected_version, force, ...updates } = body ?? {};
+    // permissions duerfen NIE ueber den normalen Update-Pfad gesetzt werden.
+    delete (updates as Record<string, unknown>).permissions;
+
     const idee = await updateIdee(id, updates, { expectedVersion: expected_version, force: !!force });
     if (!idee) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
     return c.json({ projektidee: idee });
@@ -1129,6 +1321,11 @@ projektmanagement.put('/projektideen/:id/step/:step', async (c) => {
   try {
     const id = c.req.param('id');
     const step = parseInt(c.req.param('step'), 10);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowIdeeRole(userId, id, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
     const body = await c.req.json();
     const { expected_version, force, ...partial } = body ?? {};
     const idee = await updateIdeeStep(id, step, partial, { expectedVersion: expected_version, force: !!force });
@@ -1146,6 +1343,10 @@ projektmanagement.put('/projektideen/:id/step/:step', async (c) => {
 projektmanagement.delete('/projektideen/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowIdeeRole(userId, id, 'owner');
+    if (denied) return c.json({ error: denied.error }, denied.status);
     const ok = await removeIdee(id);
     if (!ok) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
     return c.json({ success: true });
@@ -1167,8 +1368,11 @@ projektmanagement.delete('/projektideen/:id', async (c) => {
  */
 projektmanagement.post('/projektideen/import', async (c) => {
   try {
+    const denied = denyIfNotAppEditor(c);
+    if (denied) return c.json(denied, 403);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
     const formData = await c.req.formData();
-    const userId = 'user_default';
 
     const files: { buffer: Buffer; filename: string; mimeType: string }[] = [];
     const allowedMimeTypes = new Set([
@@ -1237,7 +1441,16 @@ projektmanagement.post('/projektideen/import', async (c) => {
 projektmanagement.post('/projektideen/:id/erstelle-auftrag', async (c) => {
   try {
     const id = c.req.param('id');
-    const userId = 'user_default';
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    // Konvertieren erfordert Lesezugriff auf die Idee + Erstell-Recht in der App.
+    const ideeDenied = await denyIfBelowIdeeRole(userId, id, 'viewer');
+    if (ideeDenied) return c.json({ error: ideeDenied.error }, ideeDenied.status);
+    const appDenied = denyIfNotAppEditor(c);
+    if (appDenied) return c.json(appDenied, 403);
+    // createAuftragFromIdee setzt `created_by = userId` — der Konvertierende
+    // wird automatisch Auftrags-Owner via Default-Owner-Fallback. Permissions
+    // bleiben null (= nur Konvertierer berechtigt).
     const auftrag = await createAuftragFromIdee(id, userId);
     if (!auftrag) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
     return c.json({ projektauftrag: auftrag }, 201);
@@ -1255,6 +1468,10 @@ projektmanagement.get('/projektideen/:id/export/:format', async (c) => {
   try {
     const id = c.req.param('id');
     const format = c.req.param('format');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowIdeeRole(userId, id, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
 
     const idee = await getIdeeDetails(id);
     if (!idee) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
@@ -1286,6 +1503,137 @@ projektmanagement.get('/projektideen/:id/export/:format', async (c) => {
   } catch (error) {
     console.error('Error exporting Projektidee:', error);
     return c.json({ error: 'Failed to export Projektidee' }, 500);
+  }
+});
+
+// ============== Permissions Endpoints (Phase 2) ==============
+
+/**
+ * GET /projektideen/:id/permissions
+ * Liefert die aktuellen Permissions einer Idee. Auftrags-Viewer+.
+ */
+projektmanagement.get('/projektideen/:id/permissions', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowIdeeRole(userId, id, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+    const idee = await getIdeeDetails(id);
+    if (!idee) return c.json({ error: 'Projektidee nicht gefunden' }, 404);
+    return c.json({
+      permissions: idee.permissions ?? { users: [], groups: [] },
+      ownerId: idee.created_by ?? null,
+    });
+  } catch (error) {
+    console.error('Error getting idee permissions:', error);
+    return c.json({ error: 'Failed to get permissions' }, 500);
+  }
+});
+
+/**
+ * PUT /projektideen/:id/permissions
+ * Voller Overwrite — Body: { permissions: { users: [...], groups: [...] } }.
+ * Auftrags-Owner-only.
+ */
+projektmanagement.put('/projektideen/:id/permissions', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const body = await c.req.json();
+    const incoming = body?.permissions ?? body;
+    const saved = await replaceIdeePermissions(id, incoming, userId);
+    return c.json({ permissions: saved });
+  } catch (error) {
+    if ((error as { code?: string })?.code === 'forbidden') {
+      return c.json({ error: (error as Error).message }, 403);
+    }
+    if (error instanceof Error && /Nur Owner/i.test(error.message)) {
+      return c.json({ error: error.message }, 403);
+    }
+    console.error('Error updating idee permissions:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to update permissions' }, 500);
+  }
+});
+
+/**
+ * GET /projektauftraege/:id/permissions
+ * Liefert die aktuellen Permissions eines Auftrags. Auftrags-Viewer+.
+ */
+projektmanagement.get('/projektauftraege/:id/permissions', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, id, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+    const auftrag = await getProjektauftragDetails(id);
+    if (!auftrag) return c.json({ error: 'Projektauftrag nicht gefunden' }, 404);
+    return c.json({
+      permissions: auftrag.permissions ?? { users: [], groups: [] },
+      ownerId: auftrag.created_by ?? null,
+    });
+  } catch (error) {
+    console.error('Error getting auftrag permissions:', error);
+    return c.json({ error: 'Failed to get permissions' }, 500);
+  }
+});
+
+/**
+ * PUT /projektauftraege/:id/permissions
+ * Voller Overwrite. Auftrags-Owner-only.
+ */
+projektmanagement.put('/projektauftraege/:id/permissions', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const body = await c.req.json();
+    const incoming = body?.permissions ?? body;
+    const saved = await replaceAuftragPermissions(id, incoming, userId);
+    return c.json({ permissions: saved });
+  } catch (error) {
+    if ((error as { code?: string })?.code === 'forbidden') {
+      return c.json({ error: (error as Error).message }, 403);
+    }
+    if (error instanceof Error && /Nur Owner/i.test(error.message)) {
+      return c.json({ error: error.message }, 403);
+    }
+    console.error('Error updating auftrag permissions:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to update permissions' }, 500);
+  }
+});
+
+/**
+ * GET /my-permission/idee/:id und /my-permission/auftrag/:id
+ * Liefert die effektive Rolle des eingeloggten Users — Frontend-UI nutzt das,
+ * um Save/Delete/Permissions-Buttons zu gaten. Liefert immer 200, role kann
+ * null sein (= kein Zugriff). Kein 403 hier, das Routing entscheidet die UI.
+ */
+projektmanagement.get('/my-permission/idee/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ role: null }, 401);
+    const role = await getEffectiveIdeeRole(userId, id);
+    return c.json({ role });
+  } catch (error) {
+    console.error('Error getting my idee role:', error);
+    return c.json({ error: 'Failed' }, 500);
+  }
+});
+
+projektmanagement.get('/my-permission/auftrag/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ role: null }, 401);
+    const role = await getEffectiveAuftragRole(userId, id);
+    return c.json({ role });
+  } catch (error) {
+    console.error('Error getting my auftrag role:', error);
+    return c.json({ error: 'Failed' }, 500);
   }
 });
 

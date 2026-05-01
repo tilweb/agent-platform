@@ -321,7 +321,7 @@ stakeholders:
     influence: medium
     expectations: ""
 created_at: 2026-02-15T21:31:22.753Z
-updated_at: 2026-03-27T16:26:09.638Z
+updated_at: 2026-05-01T13:27:57.038Z
 created_by: migration
 status: completed
 current_step: 9
@@ -446,3 +446,11 @@ quality_gates:
   - id: j27z5bpm
     name: Code Review
     date: 2024-12-10
+version: 2
+permissions:
+  users:
+    - userId: user_1777562439331_w5wo3r3
+      role: owner
+    - userId: user_1777493329823_70q7s5y
+      role: owner
+  groups: []

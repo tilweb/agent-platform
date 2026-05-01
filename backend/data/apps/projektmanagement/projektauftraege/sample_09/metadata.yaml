@@ -229,7 +229,7 @@ stakeholders:
     influence: medium
     expectations: ""
 created_at: 2026-02-15T21:31:22.749Z
-updated_at: 2026-02-15T21:31:22.749Z
+updated_at: 2026-05-01T13:27:57.044Z
 created_by: migration
 status: completed
 current_step: 9
@@ -351,3 +351,11 @@ _summary: >+
   sehr gut funktioniert. Der Projektfortschritt und die Prognose waren
   transparent und nachvollziehbar.
 
+version: 2
+permissions:
+  users:
+    - userId: user_1777562439331_w5wo3r3
+      role: owner
+    - userId: user_1777493329823_70q7s5y
+      role: owner
+  groups: []
