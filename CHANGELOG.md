@@ -2,6 +2,17 @@
 
 ## 2026-05-01
 
+### Aenderung: Self-Registration deaktiviert, Bootstrap-Admin via Setup-Mode + Recovery-Script
+Login-Maske hat keine "Registrieren"-Toggle-Option mehr. Das Register-Formular erscheint **nur automatisch** wenn die Instanz noch keinen User hat (Bootstrap-Admin). Sobald ein User existiert, ist nur noch der Login-Pfad sichtbar — neue User legt der Admin in Settings → Benutzer an.
+
+- **Backend `routes/auth.ts/POST /register`**: Erlaubt nur wenn `!hasUsers()`. Sonst 403 mit Hinweis "Self-registration is disabled. Ask an admin to create an account.". ENV `REGISTRATION_DISABLED` ist obsolet — die Regel ist hartkodiert.
+- **`/auth/status`**: `registrationEnabled`-Feld entfernt. `initialized`/`requiresSetup` reicht.
+- **Frontend `LoginPage.jsx`**: Toggle "Create Account ↔ Sign In" weg. `showRegister = (initialized === false)`.
+- **`AuthContext.jsx`**: `registrationEnabled`-State raus.
+
+### Feature: Recovery-Script fuer verwaiste Instanz (`scripts/create-admin.ts`)
+Wenn alle Admins deaktiviert/geloescht sind und niemand mehr in die Plattform reinkommt: `bun run scripts/create-admin.ts` (interaktiv) oder mit `RECOVERY_USERNAME=… RECOVERY_PASSWORD=…` (non-interactive). Existierender User wird auf admin promoted + reaktiviert + optional Passwort-Reset; neuer User wird angelegt.
+
 ### Feature: Phase-2 Auftrags-/Ideen-Berechtigungen fuer Projektmanagement
 Aufbauend auf Phase 1 (App-Level-Permissions): jede Idee und jeder Auftrag hat jetzt eigene Permissions auf User- und Group-Ebene mit den Rollen owner / editor / viewer. Statusberichte erben vom Auftrag (kein eigenes Permission-Feld). Default ohne explizite Permissions: nur der Ersteller (`created_by`/`ownerId`) ist Owner.
 

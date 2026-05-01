@@ -142,9 +142,8 @@ function LogoIcon() {
 }
 
 export default function LoginPage() {
-  const { login, register, initialized, registrationEnabled, loading: authLoading } = useAuth();
+  const { login, register, initialized, loading: authLoading } = useAuth();
   const branding = useBranding();
-  const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
@@ -152,8 +151,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Show registration form if no users exist
-  const showRegister = isRegister || initialized === false;
+  // Self-Registration ist generell aus. Die Register-Form erscheint nur
+  // automatisch wenn die Instanz noch keinen User hat (Bootstrap-Admin).
+  const showRegister = initialized === false;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -295,32 +295,6 @@ export default function LoginPage() {
             {loading ? 'Please wait...' : showRegister ? 'Create Account' : 'Sign In'}
           </button>
         </form>
-
-        {initialized !== false && registrationEnabled && (
-          <div style={styles.toggle}>
-            {showRegister ? (
-              <>
-                Already have an account?{' '}
-                <span
-                  style={styles.toggleLink}
-                  onClick={() => setIsRegister(false)}
-                >
-                  Sign In
-                </span>
-              </>
-            ) : (
-              <>
-                Need an account?{' '}
-                <span
-                  style={styles.toggleLink}
-                  onClick={() => setIsRegister(true)}
-                >
-                  Register
-                </span>
-              </>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
