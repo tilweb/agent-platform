@@ -3,6 +3,7 @@ import { theme } from '../config/theme';
 import AccessManager from '../components/AccessManager';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useProviders } from '../hooks/useProviders';
+import { LockIcon } from '../components/Icons';
 
 // ==========================================
 // Styles
@@ -1653,21 +1654,37 @@ function AgentsPage() {
 function AgentCard({ agent, onClick, isHovered, onMouseEnter, onMouseLeave }) {
   const colors = agentColors[agent.id] || agentColors.default;
   const isInactive = agent.active === false;
+  const locked = agent.accessible === false;
+  const ownerLabel = agent.owner
+    ? (agent.owner.principalType === 'group' ? `Gruppe ${agent.owner.name}` : agent.owner.name)
+    : 'Admin';
 
   return (
     <div
       style={{
         ...styles.card,
-        ...(isHovered ? styles.cardHover : {}),
+        ...(isHovered && !locked ? styles.cardHover : {}),
         ...(isInactive ? { opacity: 0.6 } : {}),
+        ...(locked ? {
+          opacity: 0.65,
+          cursor: 'default',
+          backgroundColor: theme.colors.background,
+        } : {}),
+        position: 'relative',
       }}
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+      onClick={locked ? undefined : onClick}
+      onMouseEnter={locked ? undefined : onMouseEnter}
+      onMouseLeave={locked ? undefined : onMouseLeave}
+      title={locked ? `Kein Zugriff — anfragen bei ${ownerLabel}` : undefined}
     >
+      {locked && (
+        <div style={{ position: 'absolute', top: theme.spacing.md, right: theme.spacing.md, color: theme.colors.textMuted }}>
+          <LockIcon size={16} />
+        </div>
+      )}
       <div style={styles.cardHeader}>
-        <div style={{ ...styles.cardIcon, backgroundColor: colors.bg }}>
-          <AgentIcon agentId={agent.id} color={colors.color} />
+        <div style={{ ...styles.cardIcon, backgroundColor: locked ? theme.colors.surfaceHover : colors.bg }}>
+          <AgentIcon agentId={agent.id} color={locked ? theme.colors.textMuted : colors.color} />
         </div>
         <div>
           <div style={styles.cardTitleRow}>
@@ -1676,11 +1693,13 @@ function AgentCard({ agent, onClick, isHovered, onMouseEnter, onMouseLeave }) {
         </div>
       </div>
 
-      <p style={styles.cardDescription}>
-        {typeof agent.description === 'string' ? agent.description : ''}
-      </p>
+      {!locked && (
+        <p style={styles.cardDescription}>
+          {typeof agent.description === 'string' ? agent.description : ''}
+        </p>
+      )}
 
-      {agent.capabilities && Array.isArray(agent.capabilities) && agent.capabilities.length > 0 && (
+      {!locked && agent.capabilities && Array.isArray(agent.capabilities) && agent.capabilities.length > 0 && (
         <>
           <div style={styles.capabilitiesTitle}>Fähigkeiten</div>
           <div style={styles.capabilities}>
@@ -1694,23 +1713,33 @@ function AgentCard({ agent, onClick, isHovered, onMouseEnter, onMouseLeave }) {
       )}
 
       <div style={styles.cardFooter}>
-        <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-          {isInactive && (
-            <span style={{ ...styles.badge, ...styles.badgeMuted }}>
-              Inaktiv
-            </span>
-          )}
-          {agent.delegatable && !isInactive && (
-            <span style={{ ...styles.badge, ...styles.badgeDelegatable }}>
-              Delegierbar
-            </span>
-          )}
-          {agent.system && (
-            <span style={{ ...styles.badge, ...styles.badgeSystem }}>
-              System
-            </span>
-          )}
-        </div>
+        {locked ? (
+          <span style={{
+            fontStyle: 'italic',
+            color: theme.colors.textMuted,
+            fontSize: theme.typography.sizes.sm,
+          }}>
+            Zugriff anfragen bei {ownerLabel}
+          </span>
+        ) : (
+          <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+            {isInactive && (
+              <span style={{ ...styles.badge, ...styles.badgeMuted }}>
+                Inaktiv
+              </span>
+            )}
+            {agent.delegatable && !isInactive && (
+              <span style={{ ...styles.badge, ...styles.badgeDelegatable }}>
+                Delegierbar
+              </span>
+            )}
+            {agent.system && (
+              <span style={{ ...styles.badge, ...styles.badgeSystem }}>
+                System
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1777,15 +1806,6 @@ function ArrowLeftIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <line x1="19" y1="12" x2="5" y2="12" />
       <polyline points="12 19 5 12 12 5" />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
   );
 }

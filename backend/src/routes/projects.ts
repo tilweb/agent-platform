@@ -32,8 +32,10 @@ import {
   deleteChat,
   getProjectContext,
 } from '../projects';
+import { listProjects as storageListProjects } from '../projects/storage';
 import type { ProjectRole, MemorySection, Priority, MemorySource } from '../projects';
 import { loadResourceAccess } from '../rbac/storage';
+import { listAccessibleResources, getResourceOwnerInfo } from '../rbac/accessControl';
 
 export const projectRoutes = new Hono();
 
@@ -45,7 +47,13 @@ projectRoutes.use('*', authMiddleware);
 // =============================================================================
 
 /**
- * GET /api/projects - List projects for current user
+ * GET /api/projects - List ALL projects with accessibility info
+ *
+ * Gibt jetzt alle Projekte zurueck (auch nicht-berechtigte) mit
+ * `accessible`, `role` und `owner` Annotation. Frontend rendert
+ * nicht-berechtigte ausgegraut mit Owner-Hinweis "Zugriff anfragen bei …".
+ * Member-Eintrag im Project und RBAC-Berechtigung werden als zugaenglich
+ * gewertet (UND-frei).
  */
 projectRoutes.get('/', async (c) => {
   const userId = getCurrentUserId(c);
@@ -54,22 +62,37 @@ projectRoutes.get('/', async (c) => {
   }
 
   const includeArchived = c.req.query('includeArchived') === 'true';
-  const result = await listUserProjects(userId, includeArchived);
 
-  if (!result.success) {
-    return c.json({ error: result.error }, 500);
+  try {
+    const allProjects = await storageListProjects(); // ohne userId-Filter — alle
+    const filtered = includeArchived ? allProjects : allProjects.filter((p) => !p.archived);
+    const projectIds = filtered.map((p) => p.id);
+    const accessibleResources = await listAccessibleResources(userId, 'project', projectIds);
+    const accessibleMap = new Map(accessibleResources.map((a) => [a.resourceId, a.role]));
+
+    const enriched = await Promise.all(
+      filtered.map(async (project) => {
+        const isMember = project.members.some((m) => m.userId === userId);
+        const rbacRole = accessibleMap.get(project.id) ?? null;
+        const accessible = isMember || rbacRole !== null;
+        const accessEntries = await loadResourceAccess('project', project.id);
+        const groupCount = accessEntries.filter((e) => e.principalType === 'group').length;
+        const owner = accessible ? null : await getResourceOwnerInfo('project', project.id);
+        return {
+          ...project,
+          groupCount,
+          accessible,
+          role: rbacRole,
+          owner,
+        };
+      })
+    );
+
+    return c.json({ projects: enriched });
+  } catch (error: any) {
+    console.error('Error listing projects:', error);
+    return c.json({ error: 'Fehler beim Laden der Projekte' }, 500);
   }
-
-  // Enrich with group counts from RBAC
-  const enriched = await Promise.all(
-    (result.data || []).map(async (project) => {
-      const accessEntries = await loadResourceAccess('project', project.id);
-      const groupCount = accessEntries.filter((e) => e.principalType === 'group').length;
-      return { ...project, groupCount };
-    })
-  );
-
-  return c.json({ projects: enriched });
 });
 
 /**
