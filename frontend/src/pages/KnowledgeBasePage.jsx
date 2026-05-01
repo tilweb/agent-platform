@@ -734,6 +734,14 @@ function KnowledgeBasePage() {
   async function loadCollectionDetail(collectionId) {
     try {
       const res = await apiGet(`/knowledge/collections/${collectionId}`);
+      if (res.status === 403) {
+        const colInfo = collections.find(c => c.id === collectionId);
+        const ownerLabel = colInfo?.owner
+          ? (colInfo.owner.principalType === 'group' ? `Gruppe ${colInfo.owner.name}` : colInfo.owner.name)
+          : 'Admin';
+        setStatusMessage({ type: 'error', text: `Keine Berechtigung. Zugriff anfragen bei ${ownerLabel}.` });
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setCollectionDetail(data);
@@ -1745,6 +1753,7 @@ function KnowledgeBasePage() {
   // RENDER: Collections Overview (Default)
   // ==========================================
   const totalCollections = collections.length;
+  const accessibleCount = collections.filter((c) => c.accessible !== false).length;
   const totalDocuments = collections.reduce((sum, c) => sum + (c.document_count || 0), 0);
 
   return (
@@ -1768,8 +1777,11 @@ function KnowledgeBasePage() {
       {!loading && collections.length > 0 && (
         <div style={styles.statsBar}>
           <div style={styles.statItem}>
-            <span style={styles.statValue}>{totalCollections}</span>
-            <span>{totalCollections === 1 ? 'Collection' : 'Collections'}</span>
+            <span style={styles.statValue}>{accessibleCount}</span>
+            <span>
+              {accessibleCount === 1 ? 'Collection' : 'Collections'}
+              {accessibleCount < totalCollections && ` (von ${totalCollections})`}
+            </span>
           </div>
           <div style={styles.statItem}>
             <span style={styles.statValue}>{totalDocuments}</span>
@@ -1886,45 +1898,86 @@ function KnowledgeBasePage() {
         </div>
       ) : (
         <div style={styles.cardGrid}>
-          {collections.map((col) => (
-            <div
-              key={col.id}
-              style={{
-                ...styles.card,
-                ...(hoveredCard === col.id ? styles.cardHover : {}),
-              }}
-              onMouseEnter={() => setHoveredCard(col.id)}
-              onMouseLeave={() => setHoveredCard(prev => prev === col.id ? null : prev)}
-              onClick={() => { setHoveredCard(null); loadCollectionDetail(col.id); }}
-            >
-              <div style={{ marginBottom: theme.spacing.sm }}>
-                <h3 style={{ ...styles.cardTitle, marginBottom: theme.spacing.xs }}>{col.name}</h3>
-                <span style={styles.badge}>
-                  {col.document_count} {col.document_count === 1 ? 'Dokument' : 'Dokumente'}
-                </span>
+          {collections.map((col) => {
+            const locked = col.accessible === false;
+            const ownerLabel = col.owner
+              ? (col.owner.principalType === 'group' ? `Gruppe ${col.owner.name}` : col.owner.name)
+              : 'Admin';
+            return (
+              <div
+                key={col.id}
+                style={{
+                  ...styles.card,
+                  ...(hoveredCard === col.id && !locked ? styles.cardHover : {}),
+                  ...(locked ? {
+                    opacity: 0.65,
+                    cursor: 'default',
+                    backgroundColor: theme.colors.background,
+                  } : {}),
+                  position: 'relative',
+                }}
+                onMouseEnter={() => { if (!locked) setHoveredCard(col.id); }}
+                onMouseLeave={() => setHoveredCard(prev => prev === col.id ? null : prev)}
+                onClick={locked ? undefined : () => { setHoveredCard(null); loadCollectionDetail(col.id); }}
+                title={locked ? `Kein Zugriff — anfragen bei ${ownerLabel}` : undefined}
+              >
+                {locked && (
+                  <div style={{ position: 'absolute', top: theme.spacing.md, right: theme.spacing.md, color: theme.colors.textMuted }}>
+                    <LockIcon size={16} />
+                  </div>
+                )}
+                <div style={{ marginBottom: theme.spacing.sm }}>
+                  <h3 style={{ ...styles.cardTitle, marginBottom: theme.spacing.xs }}>{col.name}</h3>
+                  {locked ? (
+                    <span style={{
+                      ...styles.badge,
+                      backgroundColor: theme.colors.surfaceHover,
+                      color: theme.colors.textMuted,
+                      borderColor: theme.colors.border,
+                    }}>
+                      Kein Zugriff
+                    </span>
+                  ) : (
+                    <span style={styles.badge}>
+                      {col.document_count} {col.document_count === 1 ? 'Dokument' : 'Dokumente'}
+                    </span>
+                  )}
+                </div>
+                <p style={styles.cardDescription}>{col.description}</p>
+                {locked ? (
+                  <div style={{
+                    ...styles.cardMeta,
+                    fontStyle: 'italic',
+                    color: theme.colors.textMuted,
+                  }}>
+                    Zugriff anfragen bei {ownerLabel}
+                  </div>
+                ) : (
+                  <>
+                    {col.last_updated && (
+                      <div style={styles.cardMeta}>
+                        Aktualisiert: {formatDate(col.last_updated)}
+                      </div>
+                    )}
+                    {col.activate_when && col.activate_when.length > 0 && (
+                      <div style={styles.tagContainer}>
+                        {col.activate_when.map((tag, i) => (
+                          <span key={i} style={{ ...styles.tag, backgroundColor: `${theme.colors.primary}10`, color: theme.colors.primary, borderColor: `${theme.colors.primary}30` }}>{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                    {col.never_activate_when && col.never_activate_when.length > 0 && (
+                      <div style={{ ...styles.tagContainer, marginTop: theme.spacing.xs }}>
+                        {col.never_activate_when.map((tag, i) => (
+                          <span key={i} style={{ ...styles.tag, backgroundColor: '#ef444410', color: '#ef4444', borderColor: '#ef444430' }}>{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-              <p style={styles.cardDescription}>{col.description}</p>
-              {col.last_updated && (
-                <div style={styles.cardMeta}>
-                  Aktualisiert: {formatDate(col.last_updated)}
-                </div>
-              )}
-              {col.activate_when && col.activate_when.length > 0 && (
-                <div style={styles.tagContainer}>
-                  {col.activate_when.map((tag, i) => (
-                    <span key={i} style={{ ...styles.tag, backgroundColor: `${theme.colors.primary}10`, color: theme.colors.primary, borderColor: `${theme.colors.primary}30` }}>{tag}</span>
-                  ))}
-                </div>
-              )}
-              {col.never_activate_when && col.never_activate_when.length > 0 && (
-                <div style={{ ...styles.tagContainer, marginTop: theme.spacing.xs }}>
-                  {col.never_activate_when.map((tag, i) => (
-                    <span key={i} style={{ ...styles.tag, backgroundColor: '#ef444410', color: '#ef4444', borderColor: '#ef444430' }}>{tag}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -1961,6 +2014,15 @@ function ArrowLeftIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <line x1="19" y1="12" x2="5" y2="12" />
       <polyline points="12 19 5 12 12 5" />
+    </svg>
+  );
+}
+
+function LockIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
   );
 }

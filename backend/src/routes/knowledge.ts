@@ -5,7 +5,7 @@
 
 import { Hono } from 'hono';
 import { authMiddleware, getCurrentUserId } from '../auth';
-import { canView, canEdit, canDelete, listAccessibleResources } from '../rbac/accessControl';
+import { canView, canEdit, canDelete, listAccessibleResources, getResourceOwnerInfo } from '../rbac/accessControl';
 import { initializeResourceAccess, deleteResourceAccess, hasAccessEntries } from '../rbac/storage';
 import * as kb from '../services/kbStorage';
 
@@ -22,18 +22,26 @@ knowledgeRoutes.get('/collections', async (c) => {
     const all = await kb.listCollections();
     const collectionIds = all.map(col => col.id);
     const accessibleCollections = await listAccessibleResources(userId, 'collection', collectionIds);
-    const accessibleIds = new Set(accessibleCollections.map(a => a.resourceId));
+    const accessibleMap = new Map(accessibleCollections.map(a => [a.resourceId, a.role]));
 
+    // ALLE Collections werden zurueckgegeben — auch nicht-berechtigte. Frontend
+    // rendert sie ausgegraut mit Owner-Hinweis "Zugriff anfragen bei …", damit
+    // User wissen was es gibt. Doc-Count + Inhalts-Felder bleiben fuer
+    // nicht-berechtigte leer (kein Information-Leak).
     const collections = await Promise.all(
-      all.filter(col => accessibleIds.has(col.id)).map(async col => {
-        const access = accessibleCollections.find(a => a.resourceId === col.id);
-        const docs = await kb.listDocuments(col.id);
+      all.map(async col => {
+        const role = accessibleMap.get(col.id) ?? null;
+        const accessible = role !== null;
+        const owner = accessible ? null : await getResourceOwnerInfo('collection', col.id);
+        const document_count = accessible ? (await kb.listDocuments(col.id)).length : 0;
         return {
           ...col,
           activate_when: col.activate_when ?? [],
           never_activate_when: col.never_activate_when ?? [],
-          document_count: docs.length,
-          role: access?.role || 'viewer',
+          document_count,
+          role,
+          accessible,
+          owner,
         };
       }),
     );
