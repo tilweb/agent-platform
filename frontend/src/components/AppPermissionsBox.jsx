@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { apiGet, apiPut } from '../utils/apiFetch';
 
@@ -282,7 +283,25 @@ export default function AppPermissionsBox({ appId }) {
         </div>
       )}
 
-      {availableGroups.length > 0 && (
+      {groups.length === 0 ? (
+        <div style={{
+          padding: theme.spacing.lg,
+          backgroundColor: theme.colors.background,
+          borderRadius: theme.borderRadius.lg,
+          textAlign: 'center',
+          fontSize: theme.typography.sizes.sm,
+          color: theme.colors.textSecondary,
+        }}>
+          Sie haben noch keine Benutzergruppen angelegt.
+          {' '}
+          <Link
+            to="/settings?tab=groups"
+            style={{ color: theme.colors.primary, fontWeight: theme.typography.weights.medium }}
+          >
+            Jetzt Gruppen verwalten →
+          </Link>
+        </div>
+      ) : availableGroups.length > 0 ? (
         <button
           style={styles.addButton}
           onClick={() => setShowAddModal(true)}
@@ -291,6 +310,15 @@ export default function AppPermissionsBox({ appId }) {
         >
           + Gruppe hinzufuegen
         </button>
+      ) : (
+        <div style={{
+          fontSize: theme.typography.sizes.xs,
+          color: theme.colors.textMuted,
+          fontStyle: 'italic',
+          marginTop: theme.spacing.sm,
+        }}>
+          Alle vorhandenen Gruppen sind bereits berechtigt.
+        </div>
       )}
 
       {showAddModal && (
