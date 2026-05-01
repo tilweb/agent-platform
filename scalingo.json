@@ -73,8 +73,15 @@
     "PLATFORM_LOGO_URL": {
       "description": "Optional: HTTPS-URL eines Customer-Logos"
     },
+    "PLATFORM_LOGIN_SUBTITLE": {
+      "description": "Optional: Subtitle unter dem Logo auf der Login-Seite (z.B. 'powered by Adacor' oder Customer-Tagline)"
+    },
     "ENABLED_APPS": {
       "description": "Komma-getrennte Whitelist (vertragsmanagement,projektmanagement,lieferantenmanagement,vsm,wzbar-matcher). Leer = alle"
+    },
+    "SEED_DEMO_DATA": {
+      "description": "Wenn 'true': Demo-User (demo1..4, marketing, ruhrpm, andreas_bachmann) und Demo-Inhalte (Projekte, Chats, KB-Collections) werden beim Boot idempotent geseedet. Customer-Instanzen lassen das aus — Admin legt sich selbst beim ersten Login an.",
+      "value": "false"
     }
   },
   "addons": [

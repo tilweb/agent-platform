@@ -2,6 +2,14 @@
 
 ## 2026-05-01
 
+### Aenderung: Demo-Daten-Seed gegated, Login-Subtitle dokumentiert (Customer-Multi-Tenancy)
+Eine Codebase, viele Customer-Instanzen auf Scalingo: bisher liefen alle Seeds bei jedem Boot (demo1..4 user, Demo-Projekte, Demo-Chats, Demo-KB) — sobald die DB erreichbar war. Das ist fuer eine echte Customer-Instanz unerwuenscht. Neuer ENV-Flag `SEED_DEMO_DATA=true` aktiviert die Demo-Seeds explizit; Default ist `false` (Customer-Mode). Die Demo-Instanz bekommt das Flag in den ENVs, alle Customer-Instanzen lassen es aus und der Admin legt sich beim ersten Login via Bootstrap-Form an.
+
+- **`backend/src/index.ts/initialize()`**: 4 Demo-Seeds (`seedDemoUsers`, `seedProjectsFromDisk`, `seedChatsFromDisk`, `seedKbFromDisk`) hinter `SEED_DEMO_DATA === 'true'`-Gate. `seedCustomSkillsFromDisk` bleibt als Plattform-Skill-Seed unconditional. Boot-Log zeigt `[seed] SEED_DEMO_DATA=true` oder `[seed] ... skipping demo seeds (Customer-Mode)`.
+- **`scalingo.json`**: ENV `SEED_DEMO_DATA` (Default `'false'`) und `PLATFORM_LOGIN_SUBTITLE` als Manifest-Eintraege.
+- **`docs/scalingo-deploy.md`**: "Branding pro Customer-PoC"-Sektion auf zwei Profile aufgeteilt — Customer-Instanz vs. Demo-Instanz — plus Recovery-Beispiel via `scalingo run`.
+- `PLATFORM_LOGIN_SUBTITLE` wird vom Backend (`/api/branding`) bereits ausgelesen — nur die Doku fehlte.
+
 ### Aenderung: Self-Registration deaktiviert, Bootstrap-Admin via Setup-Mode + Recovery-Script
 Login-Maske hat keine "Registrieren"-Toggle-Option mehr. Das Register-Formular erscheint **nur automatisch** wenn die Instanz noch keinen User hat (Bootstrap-Admin). Sobald ein User existiert, ist nur noch der Login-Pfad sichtbar — neue User legt der Admin in Settings → Benutzer an.
 

@@ -60,9 +60,23 @@ async function initialize() {
     console.error('DB migrations failed:', error);
   }
 
-  // Seed demo users idempotent — nur wenn DB erreichbar (Migration durch).
-  // Wirft nicht weiter, wenn DB nicht da ist (z.B. lokal ohne SCALINGO_POSTGRES).
-  if (process.env.SCALINGO_POSTGRES) {
+  // Demo-Seed-Block — laeuft NUR wenn die Instanz ausdruecklich als Demo-
+  // Instanz gekennzeichnet ist (`SEED_DEMO_DATA=true`) UND die DB erreichbar
+  // ist. Fuer echte Customer-Instanzen bleibt das aus, der Bootstrap-Admin
+  // legt sich beim ersten Login selbst an.
+  //
+  // Was hier reinfaellt:
+  // - Demo-User (demo1..4, marketing1..3, ruhrpm, andreas_bachmann, …)
+  // - Bundled Projekte/Chats aus data/projects/ + data/chats/
+  // - Bundled KB-Collections + Dokumente aus data/knowledge-base/
+  //
+  // Was IMMER laeuft (s.u., ausserhalb dieses Blocks):
+  // - DB-Migrationen
+  // - Custom-Skills (Plattform-Skills, kein Demo-Inhalt)
+  // - Apps-Registry-Sync, Tools, Provider — Plattform-Grundgeruest
+  const seedDemoData = process.env.SEED_DEMO_DATA === 'true';
+  if (seedDemoData && process.env.SCALINGO_POSTGRES) {
+    console.log('[seed] SEED_DEMO_DATA=true — running demo data seeds');
     try {
       const result = await seedDemoUsers();
       if (result.created.length > 0) {
@@ -72,33 +86,34 @@ async function initialize() {
       console.warn('[seed] Demo user seed skipped:', error instanceof Error ? error.message : error);
     }
 
-    // Custom Skills aus data/skills/custom/ einmalig in die DB ingestieren.
-    // Idempotent — bestehende DB-Eintraege werden NICHT ueberschrieben.
-    try {
-      await seedCustomSkillsFromDisk();
-    } catch (error) {
-      console.warn('[seed] Custom-skills seed skipped:', error instanceof Error ? error.message : error);
-    }
-
-    // Projects aus data/projects/<id>/ einmalig in die DB ingestieren.
     try {
       await seedProjectsFromDisk();
     } catch (error) {
       console.warn('[seed] Projects seed skipped:', error instanceof Error ? error.message : error);
     }
 
-    // Chats + Folders aus data/chats/ einmalig in die DB ingestieren.
     try {
       await seedChatsFromDisk();
     } catch (error) {
       console.warn('[seed] Chats seed skipped:', error instanceof Error ? error.message : error);
     }
 
-    // Knowledge-Base aus data/knowledge-base/ in DB+S3 ingestieren.
     try {
       await seedKbFromDisk();
     } catch (error) {
       console.warn('[seed] KB seed skipped:', error instanceof Error ? error.message : error);
+    }
+  } else if (process.env.SCALINGO_POSTGRES) {
+    console.log('[seed] SEED_DEMO_DATA != "true" — skipping demo seeds (Customer-Mode)');
+  }
+
+  // Custom Skills aus data/skills/custom/ — sind Plattform-Skills (keine
+  // Demo-Daten) und werden auch fuer echte Customer geseedet. Idempotent.
+  if (process.env.SCALINGO_POSTGRES) {
+    try {
+      await seedCustomSkillsFromDisk();
+    } catch (error) {
+      console.warn('[seed] Custom-skills seed skipped:', error instanceof Error ? error.message : error);
     }
   }
 

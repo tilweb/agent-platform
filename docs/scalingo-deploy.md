@@ -162,16 +162,49 @@ S3-Backups: Flow.swiss bietet Bucket-Versioning — in Flow-Console aktivieren f
 
 ## Branding pro Customer-PoC
 
-Pro Kundenumgebung eine eigene Scalingo-App:
+Pro Kundenumgebung eine eigene Scalingo-App. Code aus `main` → alle Kunden bekommen denselben Stand. Pro App eigene Postgres + S3-Bucket + eigene ENV-Vars.
+
+### Customer-Instanz (kein Demo-Inhalt)
+
 ```sh
 scalingo create workplace-customer-x
-# Eigene Postgres + S3-Bucket, eigene ENV-Vars
 scalingo --app workplace-customer-x env-set \
   PLATFORM_TITLE='Workplace fuer Customer X' \
   PLATFORM_LOGO_URL='https://customer-x.de/logo.png' \
+  PLATFORM_LOGIN_SUBTITLE='Wissensplattform Customer X' \
   FLOW_S3_BUCKET='workplace-customer-x' \
   ENABLED_APPS='wzbar-matcher,projektmanagement'
+# SEED_DEMO_DATA bleibt 'false' (Default) → keine demo1..4, keine Demo-Projekte.
+# Admin legt sich beim ersten Login selbst via Bootstrap-Form an.
 ```
+
+### Demo-Instanz (mit allen Beispiel-Daten)
+
+```sh
+scalingo create workplace-demo
+scalingo --app workplace-demo env-set \
+  PLATFORM_TITLE='Workplace Demo' \
+  PLATFORM_LOGIN_SUBTITLE='Demo-Plattform Adacor' \
+  FLOW_S3_BUCKET='workplace-demo' \
+  SEED_DEMO_DATA='true' \
+  DEMO_PASSWORD='Demo2026!' \
+  MARKETING_PASSWORD='Marketing2026!'
+# Beim Boot werden idempotent Demo-User + Beispiel-Projekte/Chats/KB
+# in DB+S3 ingestiert. Reset durch DB-Drop + neu deployen.
+```
+
+### Recovery: verwaiste Instanz
+
+Wenn alle Admins inaktiv/geloescht sind und niemand mehr reinkommt:
+
+```sh
+scalingo --app workplace-customer-x run \
+  RECOVERY_USERNAME=neuer-admin \
+  RECOVERY_PASSWORD='neues-pw-min-12-zeichen' \
+  bun run scripts/create-admin.ts
+```
+
+Existierender User wird auf admin promoted + reaktiviert + optional Passwort-Reset; neuer User wird angelegt.
 
 ## Troubleshooting
 
