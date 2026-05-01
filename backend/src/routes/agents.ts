@@ -5,7 +5,7 @@
 
 import { Hono } from 'hono';
 import { authMiddleware, getCurrentUserId } from '../auth';
-import { canView, canEdit, canDelete, canManageAccess, listAccessibleResources } from '../rbac/accessControl';
+import { canView, canEdit, canDelete, canManageAccess, listAccessibleResources, getResourceOwnerInfo } from '../rbac/accessControl';
 import { initializeResourceAccess, deleteResourceAccess, hasAccessEntries } from '../rbac/storage';
 import {
   listAgents,
@@ -26,50 +26,53 @@ agentRoutes.use('/*', authMiddleware);
 
 /**
  * GET /api/agents
- * List all agents the user has access to
+ *
+ * Listet alle Agents — System-Agents sind fuer alle sichtbar/zugaenglich,
+ * User-Agents werden mit `accessible`/`role`/`owner` annotiert. Nicht-berechtigte
+ * User-Agents bleiben in der Liste, aber das Frontend rendert sie ausgegraut
+ * mit Owner-Hinweis "Zugriff anfragen bei …".
  */
 agentRoutes.get('/', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
     const allAgents = await listAllAgentsIncludingInactive();
 
-    // Separate system agents (always visible) from user agents
     const systemAgents: AgentConfig[] = [];
     const userAgents: AgentConfig[] = [];
-
     for (const agent of allAgents) {
-      if (agent.system) {
-        // System agents are always visible
-        systemAgents.push(agent);
-      } else {
-        userAgents.push(agent);
-      }
+      if (agent.system) systemAgents.push(agent);
+      else userAgents.push(agent);
     }
 
-    // Filter user agents by RBAC
     const userAgentIds = userAgents.map((a) => a.id);
     const accessibleAgents = await listAccessibleResources(userId, 'agent', userAgentIds);
-    const accessibleIds = new Set(accessibleAgents.map((a) => a.resourceId));
+    const accessibleMap = new Map(accessibleAgents.map((a) => [a.resourceId, a.role]));
 
-    // Build result with role info
+    const annotatedUserAgents = await Promise.all(
+      userAgents.map(async (a) => {
+        const role = accessibleMap.get(a.id) ?? null;
+        const accessible = role !== null;
+        const owner = accessible ? null : await getResourceOwnerInfo('agent', a.id);
+        return {
+          ...a,
+          role,
+          accessible,
+          owner,
+          isSystemAgent: false,
+        };
+      })
+    );
+
     const agents = [
-      // System agents with special marker
+      // System-Agents: fuer alle zugaenglich, kein Owner-Konzept
       ...systemAgents.map((a) => ({
         ...a,
-        role: null as string | null, // System agents have no owner role
+        role: null as string | null,
+        accessible: true,
+        owner: null,
         isSystemAgent: true,
       })),
-      // User agents with RBAC
-      ...userAgents
-        .filter((a) => accessibleIds.has(a.id))
-        .map((a) => {
-          const access = accessibleAgents.find((acc) => acc.resourceId === a.id);
-          return {
-            ...a,
-            role: access?.role || 'viewer',
-            isSystemAgent: false,
-          };
-        }),
+      ...annotatedUserAgents,
     ];
 
     return c.json({ agents });

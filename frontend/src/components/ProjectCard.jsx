@@ -5,7 +5,7 @@
  */
 
 import { theme } from '../config/theme';
-import { BriefcaseIcon, UserIcon, ArchiveIcon } from './Icons';
+import { BriefcaseIcon, UserIcon, ArchiveIcon, LockIcon } from './Icons';
 
 const styles = {
   card: {
@@ -109,23 +109,41 @@ function formatDate(dateString) {
 }
 
 export default function ProjectCard({ project, onClick }) {
+  const locked = project.accessible === false;
   const color = getProjectColor(project);
   const memberCount = project.members?.length || 1;
   const groupCount = project.groupCount || 0;
+  const ownerLabel = project.owner
+    ? (project.owner.principalType === 'group' ? `Gruppe ${project.owner.name}` : project.owner.name)
+    : 'Admin';
 
   return (
     <div
-      style={styles.card}
-      onClick={onClick}
-      onMouseOver={(e) => {
+      style={{
+        ...styles.card,
+        ...(locked ? {
+          opacity: 0.65,
+          cursor: 'default',
+          backgroundColor: theme.colors.background,
+        } : {}),
+        position: 'relative',
+      }}
+      onClick={locked ? undefined : onClick}
+      onMouseOver={locked ? undefined : (e) => {
         e.currentTarget.style.borderColor = `${color}40`;
         e.currentTarget.style.boxShadow = `0 4px 12px ${color}15`;
       }}
-      onMouseOut={(e) => {
+      onMouseOut={locked ? undefined : (e) => {
         e.currentTarget.style.borderColor = theme.colors.border;
         e.currentTarget.style.boxShadow = 'none';
       }}
+      title={locked ? `Kein Zugriff — anfragen bei ${ownerLabel}` : undefined}
     >
+      {locked && (
+        <div style={{ position: 'absolute', top: theme.spacing.md, right: theme.spacing.md, color: theme.colors.textMuted }}>
+          <LockIcon size={16} />
+        </div>
+      )}
       <div style={styles.header}>
         <div
           style={{
@@ -133,34 +151,46 @@ export default function ProjectCard({ project, onClick }) {
             backgroundColor: `${color}15`,
           }}
         >
-          <BriefcaseIcon size={22} color={color} />
+          <BriefcaseIcon size={22} color={locked ? theme.colors.textMuted : color} />
         </div>
         <div style={styles.content}>
           <div style={styles.name}>{project.name}</div>
-          {project.description && (
+          {project.description && !locked && (
             <div style={styles.description}>{project.description}</div>
           )}
         </div>
       </div>
 
       <div style={styles.footer}>
-        <div style={styles.memberCount}>
-          <UserIcon size={14} style={styles.memberIcon} />
-          <span>{memberCount} {memberCount === 1 ? 'Mitglied' : 'Mitglieder'}</span>
-          {groupCount > 0 && (
-            <span style={{ marginLeft: theme.spacing.sm }}>· {groupCount} {groupCount === 1 ? 'Gruppe' : 'Gruppen'}</span>
-          )}
-        </div>
-
-        {project.archived ? (
-          <span style={styles.archivedBadge}>
-            <ArchiveIcon size={12} />
-            Archiviert
+        {locked ? (
+          <span style={{
+            fontStyle: 'italic',
+            color: theme.colors.textMuted,
+            fontSize: theme.typography.sizes.sm,
+          }}>
+            Zugriff anfragen bei {ownerLabel}
           </span>
         ) : (
-          <span style={styles.updatedAt}>
-            {formatDate(project.updatedAt)}
-          </span>
+          <>
+            <div style={styles.memberCount}>
+              <UserIcon size={14} style={styles.memberIcon} />
+              <span>{memberCount} {memberCount === 1 ? 'Mitglied' : 'Mitglieder'}</span>
+              {groupCount > 0 && (
+                <span style={{ marginLeft: theme.spacing.sm }}>· {groupCount} {groupCount === 1 ? 'Gruppe' : 'Gruppen'}</span>
+              )}
+            </div>
+
+            {project.archived ? (
+              <span style={styles.archivedBadge}>
+                <ArchiveIcon size={12} />
+                Archiviert
+              </span>
+            ) : (
+              <span style={styles.updatedAt}>
+                {formatDate(project.updatedAt)}
+              </span>
+            )}
+          </>
         )}
       </div>
     </div>
