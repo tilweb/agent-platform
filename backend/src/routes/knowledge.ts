@@ -9,7 +9,7 @@ import { readFile, writeFile, mkdir, readdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { authMiddleware, getCurrentUserId } from '../auth';
-import { canView, canEdit, canDelete, canManageAccess, listAccessibleResources } from '../rbac/accessControl';
+import { canView, canEdit, canDelete, canManageAccess, listAccessibleResources, getResourceOwnerInfo } from '../rbac/accessControl';
 import { initializeResourceAccess, deleteResourceAccess, hasAccessEntries } from '../rbac/storage';
 
 const knowledgeRoutes = new Hono();
@@ -63,35 +63,37 @@ knowledgeRoutes.get('/collections', async (c) => {
     const userId = getCurrentUserId(c)!;
     const data = await loadCollections();
 
-    // Get all collection IDs
     const collectionIds = data.collections.map((col) => col.id);
-
-    // Filter by RBAC access
     const accessibleCollections = await listAccessibleResources(userId, 'collection', collectionIds);
-    const accessibleIds = new Set(accessibleCollections.map((a) => a.resourceId));
+    const accessibleMap = new Map(accessibleCollections.map((a) => [a.resourceId, a.role]));
 
-    // Return only accessible collections with role info and live document count
+    // ALLE Collections werden zurueckgegeben — auch nicht-berechtigte. Frontend
+    // rendert sie ausgegraut mit Owner-Hinweis "Zugriff anfragen bei …", damit
+    // User wissen was es gibt. Doc-Count + Inhalts-Felder bleiben fuer
+    // nicht-berechtigte leer (kein Information-Leak).
     const collections = await Promise.all(
-      data.collections
-        .filter((col) => accessibleIds.has(col.id))
-        .map(async (col) => {
-          const access = accessibleCollections.find((a) => a.resourceId === col.id);
-          // Count actual documents on disk
-          let documentCount = 0;
+      data.collections.map(async (col) => {
+        const role = accessibleMap.get(col.id) ?? null;
+        const accessible = role !== null;
+        const owner = accessible ? null : await getResourceOwnerInfo('collection', col.id);
+        let documentCount = 0;
+        if (accessible) {
           const docsDir = join(KB_BASE, 'collections', col.id, 'documents');
           try {
             const entries = await readdir(docsDir);
             documentCount = entries.filter((e) => e.startsWith('doc-')).length;
           } catch {
-            // Directory doesn't exist — 0 documents
             documentCount = 0;
           }
-          return {
-            ...col,
-            document_count: documentCount,
-            role: access?.role || 'viewer',
-          };
-        })
+        }
+        return {
+          ...col,
+          document_count: documentCount,
+          role,
+          accessible,
+          owner,
+        };
+      })
     );
 
     return c.json({ collections });

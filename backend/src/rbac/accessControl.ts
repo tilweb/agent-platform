@@ -12,7 +12,7 @@
  * berechtigen.
  */
 
-import { getUserGroups } from '../auth/groups';
+import { getUserGroups, loadGroup } from '../auth/groups';
 import { loadUser } from '../auth/storage';
 import {
   loadResourceAccess,
@@ -22,6 +22,7 @@ import type {
   ResourceType,
   ResourceRole,
   PermissionName,
+  PrincipalType,
   ResourceAccess,
 } from './types';
 import {
@@ -282,4 +283,49 @@ export async function getResourceAccessInfo(
       .filter((a) => a.principalType === 'group')
       .map((a) => ({ ...a, type: 'group' as const })),
   };
+}
+
+/**
+ * Owner-Info fuer eine Resource — wer kann Zugriff freigeben?
+ *
+ * Wird in Listen-Endpoints (Collections, Spaces, Agents) verwendet, damit
+ * der UI-Layer den Hinweis "Zugriff anfragen bei <Name>" anzeigen kann.
+ * Ein User-Owner wird einer Group bevorzugt (eindeutigere Anlaufstelle).
+ *
+ * @returns `{ principalType, principalId, name }` des ersten gefundenen
+ *          Owner-Eintrags, oder `null` wenn die Resource keinen Owner hat.
+ */
+export async function getResourceOwnerInfo(
+  resourceType: ResourceType,
+  resourceId: string,
+): Promise<{ principalType: PrincipalType; principalId: string; name: string } | null> {
+  const accessList = await loadResourceAccess(resourceType, resourceId);
+
+  // User-Owner bevorzugt
+  const userOwner = accessList.find((a) => a.principalType === 'user' && a.role === 'owner');
+  if (userOwner) {
+    const user = await loadUser(userOwner.principalId);
+    if (user) {
+      return {
+        principalType: 'user',
+        principalId: userOwner.principalId,
+        name: user.displayName || user.username,
+      };
+    }
+  }
+
+  // Group-Owner als Fallback
+  const groupOwner = accessList.find((a) => a.principalType === 'group' && a.role === 'owner');
+  if (groupOwner) {
+    const group = await loadGroup(groupOwner.principalId);
+    if (group) {
+      return {
+        principalType: 'group',
+        principalId: groupOwner.principalId,
+        name: group.name,
+      };
+    }
+  }
+
+  return null;
 }
