@@ -32,6 +32,7 @@ const AppsPage = lazy(() => import('./pages/AppsPage'));
 const ExtractionProjectsPage = lazy(() => import('./pages/ExtractionProjectsPage'));
 const ContractsPage = lazy(() => import('./apps/vertragsmanagement/ContractsPage'));
 const ContractUploadPage = lazy(() => import('./apps/vertragsmanagement/UploadPage'));
+const ContractImportPage = lazy(() => import('./apps/vertragsmanagement/ImportPage'));
 const ContractDetailPage = lazy(() => import('./apps/vertragsmanagement/ContractDetail'));
 const ProjektePage = lazy(() => import('./apps/projektmanagement/ProjektePage'));
 const ImportPage = lazy(() => import('./apps/projektmanagement/ImportPage'));
@@ -184,6 +185,7 @@ function AppRoutes() {
                   <Route path="/apps" element={<AppsPage />} />
                   <Route path="/apps/vertragsmanagement" element={<RequireAppPermission appId="vertragsmanagement"><ContractsPage /></RequireAppPermission>} />
                   <Route path="/apps/vertragsmanagement/upload" element={<RequireAppPermission appId="vertragsmanagement"><ContractUploadPage /></RequireAppPermission>} />
+                  <Route path="/apps/vertragsmanagement/import" element={<RequireAppPermission appId="vertragsmanagement"><ContractImportPage /></RequireAppPermission>} />
                   <Route path="/apps/vertragsmanagement/:id" element={<RequireAppPermission appId="vertragsmanagement"><ContractDetailPage /></RequireAppPermission>} />
                   <Route path="/apps/projektmanagement" element={<RequireAppPermission appId="projektmanagement"><ProjektePage /></RequireAppPermission>} />
                   <Route path="/apps/projektmanagement/import" element={<RequireAppPermission appId="projektmanagement"><ImportPage /></RequireAppPermission>} />
