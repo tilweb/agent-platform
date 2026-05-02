@@ -123,6 +123,49 @@ export interface ContractMetadata {
     days_to_expiry: number | null;
   };
   obligations: ContractObligation[];
+
+  // Phase-2 Multi-File / Auto-Detection / Provenance — optional, da nur fuer
+  // Vertraege die ueber den neuen Import-Wizard angelegt wurden.
+  attachments?: ContractAttachment[];
+  primary_attachment_id?: string | null;
+  type_detection?: ContractTypeDetection | null;
+  provenance?: Record<string, string[]> | null;     // fieldKey → [attachmentId, ...]
+  extracted_history?: ContractExtractionSnapshot[]; // bei Re-Extraktion archiviert
+}
+
+/** 'hauptvertrag' | 'anhang' | 'toolbox' | 'korrespondenz' | 'sonstiges'. */
+export type ContractDocumentRole =
+  | 'hauptvertrag'
+  | 'anhang'
+  | 'toolbox'
+  | 'korrespondenz'
+  | 'sonstiges';
+
+export interface ContractAttachment {
+  id: string;
+  contract_id: string;
+  filename: string;
+  content_type?: string;
+  s3_key_original: string;
+  s3_key_markdown?: string | null;
+  size_bytes?: number;
+  document_role: ContractDocumentRole;
+  uploaded_at: string;
+}
+
+export interface ContractTypeDetection {
+  detected: string;                                 // contractType-id (z.B. 'mietvertrag')
+  confidence: number;                               // 0..1
+  alternatives: { type: string; confidence: number }[];
+  user_corrected: boolean;
+  corrected_at?: string | null;
+}
+
+/** Bei Re-Extraktion mit anderem Vertragstyp wird der alte Stand archiviert. */
+export interface ContractExtractionSnapshot {
+  contract_type: string;
+  extracted: Record<string, any>;
+  archived_at: string;
 }
 
 export interface ContractFilters {

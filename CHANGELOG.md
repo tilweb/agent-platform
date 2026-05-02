@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-05-02
+
+### Feature: Vertragsmanagement Multi-File-Import mit Auto-Detection
+Vertragsimport ueberarbeitet auf das gleiche Pipeline-Konzept wie der Projektmanagement-Import: Multi-File (Hauptvertrag + Anlagen + Toolbox-xlsx in einem Vorgang), automatische Vertragstyp-Erkennung mit User-Bestaetigung, Function-Calling-Extraktion mit dynamischem Schema, Provenance-Tracking, Re-Extraktion bei Korrektur des Vertragstyps.
+
+- **`services/multiFileImporter.ts` (neu)**: Phasen 1+2 (Vision-LLM, Markitdown, xlsx-Reorder, Heartbeats, SSE-Events) extrahiert aus PM in einen shared Service. PM nutzt das jetzt; VM (und spaeter Lieferantenmanagement / VSM / wzbar-matcher) koennen es ebenfalls einbinden.
+- **`apps/vertragsmanagement/import-service.ts` (neu)**: Pipeline mit eigener Phase 2.5 (LLM-Klassifikator → detected/confidence/alternatives/fileRoles), Phase 3 (Function-Schema dynamisch aus dem ContractSchema gebaut), Phasen 4+5 (Validation, Multi-Attachment-Persistierung). Plus `reextractContract()` fuer User-Korrektur des Vertragstyps ohne Phase 1+2 zu wiederholen — alter Stand wird in `extracted_history[]` archiviert.
+- **Klassifikator-Prompt**: explizite Confidence-Regeln (0.90+ wenn Typ explizit genannt, < 0.50 wenn kein Typ wirklich passt — "lieber niedrige Confidence als falsche Sicherheit"). Verhindert dass z.B. eine AVV mit 92% als NDA klassifiziert wird.
+- **Datenmodell** (Migration `0008_vm_multifile.sql`): neue Spalten `primary_attachment_id`, `type_detection`, `provenance`, `extracted_history` auf `vertragsmgmt.contracts` plus neue Tabelle `vertragsmgmt.contract_attachments` (Cascade-Delete). Bestehende Single-File-Spalten (uploadFilename/s3KeyOriginal) bleiben fuer Backwards-Compat.
+- **`apps/vertragsmanagement/storage.ts`**: `saveAttachmentWithBytes(att, bytes, markdown)` als gekapselter Helper — Implementation auf main S3-basiert (Drizzle), auf demo/messe Filesystem-basiert (YAML). Storage-Detail bleibt vor dem Import-Service verborgen.
+- **Routes**: `POST /contracts/import` (SSE-Stream), `POST /contracts/:id/reextract` (SSE), `GET /contracts/:id/attachments/:aid` (Download), `PUT /contracts/:id/attachments/:aid/role` (Document-Role korrigieren), `PUT /contracts/:id/primary-attachment`.
+- **Frontend `ImportPage.jsx` (neu, VM-spezifisch)**: kopiert vom PM-Wizard mit zusaetzlichem Confirmation-Step nach dem Import. UI zeigt erkannten Vertragstyp + Confidence-Badge (rot bei < 70%), Alternativen-Liste, Override-Dropdown. Buttons "Diesen Typ bestaetigen" oder "Mit gewaehltem Typ neu extrahieren" (triggert /reextract). User-Korrektur passiert beim Import — nicht erst nachgelagert im Detail-View.
+- **`ContractDetail.jsx`**: neuer Tab "Dokumente" mit allen Anhaengen (Filename + Document-Role-Dropdown + Hauptvertrag-Marker + Download). "auto-erkannt 85%"-Badge im Header oeffnet das gleiche Re-Extraktion-Modal — sekundaerer Korrekturpfad, falls man nach dem Import doch noch mal ran muss.
+- **PM-Import** unveraendert verhalten — nutzt jetzt den shared `multiFileImporter`. Kein Refactor sichtbar fuer User.
+
 ## 2026-05-01
 
 ### Aenderung: Demo-Daten-Seed gegated, Login-Subtitle dokumentiert (Customer-Multi-Tenancy)

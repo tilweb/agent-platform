@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
 import {
   uploadContract,
   listContracts,
@@ -17,14 +18,197 @@ import {
   getContractSchemas,
   getContractSchema,
 } from './service';
-import { getContractOriginal } from './storage';
-import type { ContractFilters } from '../types';
+import {
+  getContractOriginal,
+  getAttachmentBytes,
+  updateAttachmentRole,
+  saveContract,
+  getContract,
+} from './storage';
+import { importContract, reextractContract } from './import-service';
+import { getCurrentUserId } from '../../auth/middleware';
+import type {
+  ContractFilters,
+  ContractDocumentRole,
+} from '../types';
 import { requireAppAccess } from '../permissions-middleware';
 
 const contracts = new Hono();
 
 // Berechtigungs-Pruefung
 contracts.use('*', requireAppAccess('vertragsmanagement'));
+
+// ============== Phase-2 Multi-File Import Endpoints ==============
+
+const ALLOWED_IMPORT_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'image/png', 'image/jpeg', 'image/webp', 'image/gif',
+  'text/plain', 'text/markdown',
+]);
+const VALID_DOCUMENT_ROLES: ContractDocumentRole[] = ['hauptvertrag', 'anhang', 'toolbox', 'korrespondenz', 'sonstiges'];
+
+/**
+ * POST /api/apps/vertragsmanagement/contracts/import
+ * Multi-File-Import via SSE-Stream — Phasen siehe import-service.ts.
+ */
+contracts.post('/contracts/import', async (c) => {
+  try {
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const formData = await c.req.formData();
+
+    const files: { buffer: Buffer; filename: string; mimeType: string }[] = [];
+    for (const [key, value] of formData.entries()) {
+      if (key === 'files' && value instanceof File) {
+        if (files.length >= 10) {
+          return c.json({ error: 'Maximal 10 Dateien erlaubt' }, 400);
+        }
+        if (value.size > 50 * 1024 * 1024) {
+          return c.json({ error: `Datei "${value.name}" ist zu gross (max. 50 MB)` }, 400);
+        }
+        if (!ALLOWED_IMPORT_MIME_TYPES.has(value.type)) {
+          return c.json({ error: `Dateityp "${value.type}" nicht unterstuetzt fuer "${value.name}"` }, 400);
+        }
+        const arrayBuffer = await value.arrayBuffer();
+        files.push({
+          buffer: Buffer.from(arrayBuffer),
+          filename: value.name,
+          mimeType: value.type,
+        });
+      }
+    }
+
+    if (files.length === 0) {
+      return c.json({ error: 'Keine Dateien hochgeladen' }, 400);
+    }
+
+    console.log(`[VM-Import] Received ${files.length} files for import`);
+
+    return streamSSE(c, async (stream) => {
+      try {
+        await importContract(files, userId, async (event) => {
+          await stream.writeSSE({
+            event: event.type,
+            data: JSON.stringify(event.data),
+          });
+        });
+      } catch (error) {
+        console.error('Error importing contract:', error);
+        await stream.writeSSE({
+          event: 'error',
+          data: JSON.stringify({ message: error instanceof Error ? error.message : 'Import fehlgeschlagen' }),
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error importing contract:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Import fehlgeschlagen' }, 500);
+  }
+});
+
+/**
+ * POST /api/apps/vertragsmanagement/contracts/:id/reextract
+ * Re-Extraktion mit anderem Vertragstyp (User-Korrektur). Body: { contractType }.
+ * Markdown ist gecached → keine Wiederholung von Phase 1+2. Alter Stand wird
+ * in `extracted_history[]` archiviert.
+ */
+contracts.post('/contracts/:id/reextract', async (c) => {
+  try {
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const contractId = c.req.param('id');
+    const body = await c.req.json<{ contractType?: string }>();
+    if (!body.contractType) {
+      return c.json({ error: 'contractType is required' }, 400);
+    }
+
+    return streamSSE(c, async (stream) => {
+      try {
+        await reextractContract(contractId, body.contractType!, userId, async (event) => {
+          await stream.writeSSE({ event: event.type, data: JSON.stringify(event.data) });
+        });
+      } catch (error) {
+        await stream.writeSSE({
+          event: 'error',
+          data: JSON.stringify({ message: error instanceof Error ? error.message : 'Re-Extraktion fehlgeschlagen' }),
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error reextracting contract:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Re-Extraktion fehlgeschlagen' }, 500);
+  }
+});
+
+/**
+ * GET /api/apps/vertragsmanagement/contracts/:id/attachments/:attachmentId
+ * Download eines Attachment-Originals. Streamt Buffer mit korrektem
+ * Content-Disposition.
+ */
+contracts.get('/contracts/:id/attachments/:attachmentId', async (c) => {
+  try {
+    const contractId = c.req.param('id');
+    const attachmentId = c.req.param('attachmentId');
+    const result = await getAttachmentBytes(contractId, attachmentId);
+    if (!result) return c.json({ error: 'Attachment nicht gefunden' }, 404);
+    return new Response(result.buffer as unknown as BodyInit, {
+      headers: {
+        'Content-Type': result.contentType,
+        'Content-Disposition': `inline; filename="${encodeURIComponent(result.filename)}"`,
+        'Content-Length': result.buffer.length.toString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching attachment:', error);
+    return c.json({ error: 'Failed to fetch attachment' }, 500);
+  }
+});
+
+/**
+ * PUT /api/apps/vertragsmanagement/contracts/:id/attachments/:attachmentId/role
+ * Aenderung der Document-Role (User-Korrektur). Body: { role }.
+ */
+contracts.put('/contracts/:id/attachments/:attachmentId/role', async (c) => {
+  try {
+    const contractId = c.req.param('id');
+    const attachmentId = c.req.param('attachmentId');
+    const body = await c.req.json<{ role?: ContractDocumentRole }>();
+    if (!body.role || !VALID_DOCUMENT_ROLES.includes(body.role)) {
+      return c.json({ error: `role muss eines von ${VALID_DOCUMENT_ROLES.join(', ')} sein` }, 400);
+    }
+    await updateAttachmentRole(contractId, attachmentId, body.role);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error updating attachment role:', error);
+    return c.json({ error: 'Failed to update role' }, 500);
+  }
+});
+
+/**
+ * PUT /api/apps/vertragsmanagement/contracts/:id/primary-attachment
+ * Aenderung welcher Anhang der Hauptvertrag ist. Body: { attachmentId }.
+ */
+contracts.put('/contracts/:id/primary-attachment', async (c) => {
+  try {
+    const contractId = c.req.param('id');
+    const body = await c.req.json<{ attachmentId?: string }>();
+    if (!body.attachmentId) return c.json({ error: 'attachmentId is required' }, 400);
+    const contract = await getContract(contractId);
+    if (!contract) return c.json({ error: 'Vertrag nicht gefunden' }, 404);
+    contract.primary_attachment_id = body.attachmentId;
+    await saveContract(contract);
+    return c.json({ success: true, contract });
+  } catch (error) {
+    console.error('Error setting primary attachment:', error);
+    return c.json({ error: 'Failed to update primary attachment' }, 500);
+  }
+});
 
 // ============== Contract Endpoints ==============
 

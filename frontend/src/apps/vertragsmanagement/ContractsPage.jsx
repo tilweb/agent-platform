@@ -437,7 +437,7 @@ function ContractsPage() {
           <p style={styles.subtitle}>Verträge hochladen, analysieren und verwalten</p>
         </div>
         <Link
-          to="/apps/vertragsmanagement/upload"
+          to="/apps/vertragsmanagement/import"
           style={styles.uploadButton}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
@@ -447,7 +447,7 @@ function ContractsPage() {
           }}
         >
           <UploadIcon />
-          Vertrag hochladen
+          Vertrag importieren
         </Link>
       </div>
 
@@ -555,7 +555,7 @@ function ContractsPage() {
             </p>
             {contracts.length === 0 && (
               <Link
-                to="/apps/vertragsmanagement/upload"
+                to="/apps/vertragsmanagement/import"
                 style={styles.uploadButton}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
@@ -565,7 +565,7 @@ function ContractsPage() {
                 }}
               >
                 <UploadIcon />
-                Vertrag hochladen
+                Vertrag importieren
               </Link>
             )}
           </div>

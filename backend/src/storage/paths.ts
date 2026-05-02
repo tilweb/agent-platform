@@ -15,6 +15,11 @@ export const s3Paths = {
   contractDocument: (contractId: string) => `apps/vertragsmanagement/${contractId}/document.md`,
   contractOriginal: (contractId: string, ext: string) =>
     `apps/vertragsmanagement/${contractId}/original.${ext}`,
+  // Multi-File-Attachments (Phase 2): Original + ggf. Markitdown-Output pro Anhang.
+  contractAttachmentOriginal: (contractId: string, attachmentId: string, ext: string) =>
+    `apps/vertragsmanagement/${contractId}/attachments/${attachmentId}/original.${ext}`,
+  contractAttachmentMarkdown: (contractId: string, attachmentId: string) =>
+    `apps/vertragsmanagement/${contractId}/attachments/${attachmentId}/document.md`,
   paAttachment: (paId: string, file: string) =>
     `apps/projektmanagement/${paId}/anhaenge/${file}`,
   supplierDoc: (supplierId: string, docId: string, file: string) =>

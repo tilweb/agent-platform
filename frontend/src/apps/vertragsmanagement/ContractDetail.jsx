@@ -299,6 +299,10 @@ function ContractDetail() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
+  // Phase-2: Vertragstyp-Aenderung mit Re-Extraktion
+  const [showTypeChangeModal, setShowTypeChangeModal] = useState(false);
+  const [reextractTargetType, setReextractTargetType] = useState('');
+  const [isReextracting, setIsReextracting] = useState(false);
 
   useEffect(() => {
     loadContract();
@@ -319,6 +323,44 @@ function ContractDetail() {
       setError(err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleReextract = async () => {
+    if (!reextractTargetType || reextractTargetType === contract.contract_type) {
+      setShowTypeChangeModal(false);
+      return;
+    }
+    setIsReextracting(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/apps/vertragsmanagement/contracts/${id}/reextract`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ contractType: reextractTargetType }),
+      });
+      if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(`Re-Extraktion fehlgeschlagen (${response.status}): ${txt.substring(0, 200)}`);
+      }
+      // SSE-Stream konsumieren (nur bis 'done' / 'error') — Result wird per
+      // loadContract() refreshed, kein State-Update aus den Events.
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        // wir parsen nicht — Stream-Ende reicht uns.
+      }
+      await loadContract();
+      setShowTypeChangeModal(false);
+    } catch (err) {
+      console.error('Re-Extraktion fehlgeschlagen:', err);
+      setError(err.message || 'Re-Extraktion fehlgeschlagen');
+    } finally {
+      setIsReextracting(false);
     }
   };
 
@@ -454,6 +496,29 @@ function ContractDetail() {
             </h1>
             <div style={styles.subtitle}>
               <span>{getSchemaName(contract.contract_type)}</span>
+              {contract.type_detection && (
+                <>
+                  <span>|</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowTypeChangeModal(true)}
+                    title="Vertragstyp aendern"
+                    style={{
+                      fontSize: theme.typography.sizes.xs,
+                      padding: `2px ${theme.spacing.sm}`,
+                      borderRadius: theme.borderRadius.full,
+                      backgroundColor: theme.colors.surfaceHover,
+                      color: theme.colors.textMuted,
+                      border: `1px solid ${theme.colors.border}`,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {contract.type_detection.user_corrected
+                      ? 'Typ manuell gesetzt'
+                      : `auto-erkannt ${Math.round((contract.type_detection.confidence ?? 0) * 100)}%`}
+                  </button>
+                </>
+              )}
               <span>|</span>
               <span style={{ ...styles.statusBadge, ...statusBadge.style }}>
                 {statusBadge.label}
@@ -560,6 +625,17 @@ function ContractDetail() {
           >
             Dokument
           </button>
+          {(contract.attachments?.length ?? 0) > 0 && (
+            <button
+              style={{
+                ...styles.tab,
+                ...(activeTab === 'attachments' ? styles.tabActive : {}),
+              }}
+              onClick={() => setActiveTab('attachments')}
+            >
+              Dokumente ({contract.attachments?.length ?? 0})
+            </button>
+          )}
         </div>
 
         {/* Overview Tab */}
@@ -752,6 +828,135 @@ function ContractDetail() {
             </div>
           </div>
         )}
+
+        {/* Phase-2: Dokumente-Tab — alle Anhaenge mit Rolle und Download */}
+        {activeTab === 'attachments' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+            {(contract.attachments ?? []).map((att) => {
+              const isPrimary = att.id === contract.primary_attachment_id;
+              const downloadUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/apps/vertragsmanagement/contracts/${contract.id}/attachments/${att.id}`;
+              const sizeKb = att.size_bytes ? Math.round(att.size_bytes / 1024) : null;
+              return (
+                <div
+                  key={att.id}
+                  style={{
+                    backgroundColor: theme.colors.surface,
+                    border: `1px solid ${isPrimary ? theme.colors.primary : theme.colors.border}`,
+                    borderRadius: theme.borderRadius.lg,
+                    padding: theme.spacing.lg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.lg,
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: theme.spacing.sm,
+                      marginBottom: theme.spacing.xs,
+                    }}>
+                      <a
+                        href={downloadUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          fontSize: theme.typography.sizes.sm,
+                          fontWeight: theme.typography.weights.medium,
+                          color: theme.colors.primary,
+                          textDecoration: 'none',
+                        }}
+                      >
+                        {att.filename}
+                      </a>
+                      {isPrimary && (
+                        <span style={{
+                          fontSize: theme.typography.sizes.xs,
+                          padding: `2px ${theme.spacing.sm}`,
+                          backgroundColor: theme.colors.primaryLight,
+                          color: theme.colors.primary,
+                          borderRadius: theme.borderRadius.full,
+                        }}>
+                          Hauptvertrag
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                      {att.content_type ?? 'unbekannter Typ'}{sizeKb !== null && ` · ${sizeKb} KB`}
+                    </div>
+                  </div>
+                  <select
+                    value={att.document_role}
+                    onChange={async (e) => {
+                      const role = e.target.value;
+                      try {
+                        await fetch(
+                          `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/apps/vertragsmanagement/contracts/${contract.id}/attachments/${att.id}/role`,
+                          {
+                            method: 'PUT',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ role }),
+                          },
+                        );
+                        await loadContract();
+                      } catch (err) {
+                        console.error('Role-Update fehlgeschlagen', err);
+                      }
+                    }}
+                    style={{
+                      padding: theme.spacing.sm,
+                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: theme.borderRadius.md,
+                      fontSize: theme.typography.sizes.sm,
+                      backgroundColor: theme.colors.background,
+                      color: theme.colors.text,
+                      minWidth: '160px',
+                    }}
+                  >
+                    <option value="hauptvertrag">Hauptvertrag</option>
+                    <option value="anhang">Anhang</option>
+                    <option value="toolbox">Toolbox</option>
+                    <option value="korrespondenz">Korrespondenz</option>
+                    <option value="sonstiges">Sonstiges</option>
+                  </select>
+                  {!isPrimary && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await fetch(
+                            `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/apps/vertragsmanagement/contracts/${contract.id}/primary-attachment`,
+                            {
+                              method: 'PUT',
+                              credentials: 'include',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ attachmentId: att.id }),
+                            },
+                          );
+                          await loadContract();
+                        } catch (err) {
+                          console.error('Primary-Update fehlgeschlagen', err);
+                        }
+                      }}
+                      style={{
+                        padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                        backgroundColor: 'transparent',
+                        color: theme.colors.primary,
+                        border: `1px solid ${theme.colors.primary}30`,
+                        borderRadius: theme.borderRadius.md,
+                        fontSize: theme.typography.sizes.xs,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      als Hauptvertrag setzen
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Delete Modal */}
@@ -798,6 +1003,67 @@ function ContractDetail() {
         }] : []}
         onSuccess={handleCollectionSuccess}
       />
+
+      {/* Phase-2: Vertragstyp aendern + Re-Extraktion */}
+      {showTypeChangeModal && (
+        <div style={styles.modalOverlay} onClick={() => !isReextracting && setShowTypeChangeModal(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Vertragstyp aendern</h3>
+            <p style={styles.modalText}>
+              Aktueller Typ: <strong>{getSchemaName(contract.contract_type)}</strong>.
+              {' '}Bei Aenderung wird der Vertrag mit dem neuen Schema re-extrahiert.
+              Der bisherige Stand wird im Verlauf archiviert.
+            </p>
+            <div style={{ marginBottom: theme.spacing.lg }}>
+              <label style={{
+                display: 'block',
+                fontSize: theme.typography.sizes.sm,
+                color: theme.colors.textMuted,
+                marginBottom: theme.spacing.sm,
+              }}>Neuer Vertragstyp</label>
+              <select
+                value={reextractTargetType || contract.contract_type}
+                onChange={(e) => setReextractTargetType(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: theme.spacing.md,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.lg,
+                  fontSize: theme.typography.sizes.sm,
+                  backgroundColor: theme.colors.background,
+                  color: theme.colors.text,
+                }}
+                disabled={isReextracting}
+              >
+                {schemas.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div style={styles.modalActions}>
+              <button
+                style={styles.modalCancelButton}
+                onClick={() => setShowTypeChangeModal(false)}
+                disabled={isReextracting}
+              >
+                Abbrechen
+              </button>
+              <button
+                style={{
+                  ...styles.modalCancelButton,
+                  backgroundColor: theme.colors.primary,
+                  color: '#fff',
+                  borderColor: theme.colors.primary,
+                }}
+                onClick={handleReextract}
+                disabled={isReextracting || !reextractTargetType || reextractTargetType === contract.contract_type}
+              >
+                {isReextracting ? 'Re-Extraktion läuft…' : 'Re-Extrahieren'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,59 +1,47 @@
 /**
  * Projektauftrag Import Service
  *
- * Multi-document import pipeline for Projektauftrag creation.
- * Processes multiple uploaded files (PDFs, images, Word, Excel, etc.),
- * extracts text, combines them, and uses LLM forced function calling
- * to extract structured Projektauftrag data.
+ * Multi-document import pipeline for Projektauftrag/Projektidee creation.
+ * Phasen 1+2 (File-zu-Text, Heartbeats, xlsx-Reorder) liegen im shared
+ * `services/multiFileImporter.ts`. Hier nur PM-spezifisch:
+ *   3) LLM-Extraktion mit forced function calling (PM-Schema)
+ *   4) Validation + Auto-Correction
+ *   5) Mapping zu Projektauftrag-/Projektidee-Struktur + Persistierung
  */
 
-import { llmService, type Message, type ChatOptions, createImageContent, type ContentPart } from '../../services/llm';
+import { llmService, type Message, type ChatOptions } from '../../services/llm';
 import type { UsageContext } from '../../services/usageTracking';
-import { resolveActiveModel } from '../../services/providers';
-import { OpenAIAdapter } from '../../services/llm/adapters/openai';
 import { buildFunctionSchema, buildToolChoice } from '../../extraction/schema-builder';
 import { validateExtraction } from '../../extraction/validator';
 import type { ExtractionProfile } from '../../extraction/types';
 import type { Projektauftrag, Projektidee, BusinessCaseItem, Risk } from './types';
 import { createProjektauftrag, generateSubEntityId } from './service';
 import { createIdee } from './idee-service';
-
-// Markitdown API for document conversion (same as extraction service)
-const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
-
-// Limits
-const MAX_COMBINED_CHARS = 30000;
-// xlsx-Sheets sind sehr dicht (Tabellen) — bei 30K dauert die LLM-Extraktion teils >3min
-// und timeoutet. Niedrigerer Budget produziert immer noch volle Extraktion (P-Auftrag-Sheet
-// kommt mit Reorder zuerst), Tasks/Risken bleiben erhalten.
-const MAX_COMBINED_CHARS_XLSX = 20000;
-const MAX_IMAGE_DESC_CHARS = 3000;
+import {
+  processFilesToText,
+  withHeartbeat,
+  HEARTBEAT_MS,
+  type FileImportEvent,
+  type FileImportEventCallback,
+  type FileImportReport,
+  type ProcessedFile,
+} from '../../services/multiFileImporter';
 
 // ============== Import Report ==============
 
-export interface ImportReport {
-  filesProcessed: number;
-  filesFailed: number;
+export interface ImportReport extends FileImportReport {
   fieldsExtracted: number;
-  errors: string[];
-  warnings: string[];
 }
 
 // ============== Progress-Events ==============
 
 /**
  * Events die der Import-Service waehrend der Pipeline emittiert.
- * Die Route streamt diese als SSE ans Frontend, damit User auch waehrend
- * langer Vision/LLM-Phasen sieht dass etwas passiert.
+ * Phasen-1+2-Events kommen aus dem shared FileImportEvent; PM-spezifisch
+ * sind extracting_*, validating, creating, done, idee_done, error.
  */
 export type ImportEvent =
-  | { type: 'started';             data: { fileCount: number; filenames: string[] } }
-  | { type: 'file_started';        data: { filename: string; index: number; total: number; kind: 'image' | 'document' | 'text' } }
-  | { type: 'file_progress';       data: { filename: string; elapsedMs: number; phase: 'vision' | 'markitdown' } }
-  | { type: 'file_done';           data: { filename: string; index: number; total: number; chars: number; durationMs: number } }
-  | { type: 'file_failed';         data: { filename: string; index: number; total: number; error: string } }
-  | { type: 'combining';           data: { processedCount: number; totalChars: number } }
+  | FileImportEvent
   | { type: 'extracting_started'; data: { textChars: number } }
   | { type: 'extracting_progress'; data: { elapsedMs: number } }
   | { type: 'extracting_done';     data: { fieldsExtracted: number; durationMs: number } }
@@ -197,250 +185,6 @@ Bei Priorität: "Kritisch"/"Critical"→"critical".
 
 Die Dokumente können verschiedene Formate und Quellen haben (Screenshots, Tabellen, Texte). Kombiniere die Informationen aus allen Quellen zu einem konsistenten Ergebnis.`,
 };
-
-// ============== File Processing ==============
-
-interface ProcessedFile {
-  filename: string;
-  text: string;
-  isImage: boolean;
-}
-
-const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
-const TEXT_EXTENSIONS = ['.txt', '.md'];
-const DOCUMENT_EXTENSIONS = ['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt'];
-
-function getExtension(filename: string): string {
-  const lastDot = filename.lastIndexOf('.');
-  return lastDot >= 0 ? filename.substring(lastDot).toLowerCase() : '';
-}
-
-function getMimeTypeForImage(ext: string): string {
-  switch (ext) {
-    case '.png': return 'image/png';
-    case '.webp': return 'image/webp';
-    case '.gif': return 'image/gif';
-    default: return 'image/jpeg';
-  }
-}
-
-function getFileKind(filename: string): 'image' | 'document' | 'text' {
-  const ext = getExtension(filename);
-  if (IMAGE_EXTENSIONS.includes(ext)) return 'image';
-  if (TEXT_EXTENSIONS.includes(ext)) return 'text';
-  return 'document';
-}
-
-/**
- * Wrappt ein Promise und ruft `emit(elapsedMs)` alle `intervalMs` waehrend es laeuft.
- * Resolve/Reject werden unveraendert durchgereicht. Kein Heartbeat-Event nach Resolve.
- */
-async function withHeartbeat<T>(
-  promise: Promise<T>,
-  intervalMs: number,
-  emit: (elapsedMs: number) => void | Promise<void>,
-): Promise<T> {
-  const start = Date.now();
-  const timer = setInterval(() => { void emit(Date.now() - start); }, intervalMs);
-  try {
-    return await promise;
-  } finally {
-    clearInterval(timer);
-  }
-}
-
-const HEARTBEAT_MS = 3000;
-
-/**
- * Process a single file into text
- */
-async function processFile(
-  buffer: Buffer,
-  filename: string,
-  mimeType: string,
-  userId?: string
-): Promise<string> {
-  const ext = getExtension(filename);
-
-  // Images: Vision LLM
-  if (IMAGE_EXTENSIONS.includes(ext)) {
-    console.log(`[PM-Import] Processing image: ${filename}`);
-    const base64 = buffer.toString('base64');
-    const imageMime = getMimeTypeForImage(ext);
-    const text = await prepareVision(base64, imageMime, userId);
-    // Truncate image descriptions
-    return text.length > MAX_IMAGE_DESC_CHARS ? text.substring(0, MAX_IMAGE_DESC_CHARS) + '\n[... gekürzt]' : text;
-  }
-
-  // Text/Markdown: direct
-  if (TEXT_EXTENSIONS.includes(ext)) {
-    console.log(`[PM-Import] Processing text: ${filename}`);
-    return buffer.toString('utf-8');
-  }
-
-  // Documents: Markitdown API
-  if (DOCUMENT_EXTENSIONS.includes(ext)) {
-    console.log(`[PM-Import] Processing document via Markitdown: ${filename}`);
-    const blob = new Blob([buffer], { type: mimeType });
-    const formData = new FormData();
-    formData.append('document', blob, filename);
-
-    const response = await fetch(MARKITDOWN_URL, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${MARKITDOWN_API_KEY}` },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Markitdown-Konvertierung fehlgeschlagen für ${filename}: ${response.status} - ${errorText}`);
-    }
-
-    const text = await response.text();
-    // xlsx (Excel-Toolbox) schreiben Sheets als ## Sheet-Header mit Pipe-Tabellen.
-    // Glossar/Listen-Sheets dominieren oft die ersten 30K chars und verdraengen
-    // die echten Projektdaten. Re-ordern hilft enorm.
-    if (ext === '.xlsx' || ext === '.xls') {
-      return reorderXlsxSheets(text);
-    }
-    return text;
-  }
-
-  throw new Error(`Dateityp nicht unterstützt: ${ext} (${filename})`);
-}
-
-/**
- * Sortiert die Markitdown-Sheets nach Relevanz: Projektdaten zuerst,
- * Boilerplate-Sheets (Glossar, Listen, etc.) ans Ende.
- */
-function reorderXlsxSheets(markdown: string): string {
-  // Sheets sind durch `## `-Header getrennt. Erste Zeile bleibt der "Document ..."-Prefix.
-  const headerMatch = markdown.match(/^Document [^"]*"""/);
-  const prefix = headerMatch ? headerMatch[0] : '';
-  const body = prefix ? markdown.slice(prefix.length) : markdown;
-
-  // Split anhand von Zeilen, die mit `##` (mit oder ohne Space) starten.
-  const sheets: { name: string; content: string; priority: number }[] = [];
-  const sections = body.split(/\n(?=##\s?\S)/);
-  for (const section of sections) {
-    const nameMatch = section.match(/^##\s?([^|]+?)(?:\||$)/m);
-    if (!nameMatch) {
-      // Vor dem ersten Sheet (Pre-Content) — als Priority 0 behalten.
-      if (section.trim()) sheets.push({ name: '_intro', content: section, priority: 0 });
-      continue;
-    }
-    const name = nameMatch[1]!.trim();
-    sheets.push({ name, content: section, priority: sheetPriority(name) });
-  }
-
-  sheets.sort((a, b) => a.priority - b.priority);
-  return prefix + sheets.map(s => s.content).join('\n');
-}
-
-/**
- * Niedrigere Zahl = wichtiger (kommt zuerst).
- *  0  = intro/Pre-Content
- *  1  = P-Auftrag (Stammdaten)
- *  2  = Aufgaben/Inhalt/Story (Scope)
- *  3  = Aufwand/Beschaffung/Budget
- *  4  = Risk/SH/ORG/Stakeholder
- *  5  = Status PL/AG/MSP (Reports)
- *  9  = Glossar/Listen/Bild/EVM-Templates (Boilerplate)
- */
-function sheetPriority(sheetName: string): number {
-  const lower = sheetName.toLowerCase();
-  if (lower === '_intro') return 0;
-  if (/p-auftrag|projektauftrag|projektsteckbrief/.test(lower)) return 1;
-  if (/inhalt|story|scope|aufgaben|tasks/.test(lower)) return 2;
-  if (/aufwand|beschaffung|budget|kosten/.test(lower)) return 3;
-  if (/risk|sh\b|org\b|stakeholder/.test(lower)) return 4;
-  if (/status|msp|meilenstein|review/.test(lower)) return 5;
-  if (/glossar|listen|bild|evm|plan-ist|template|legende/.test(lower)) return 9;
-  return 6;  // unbekannt — neutral
-}
-
-/**
- * Vision LLM for image description (re-implemented from extraction service)
- */
-async function prepareVision(
-  imageBase64: string,
-  imageMimeType: string,
-  userId?: string
-): Promise<string> {
-  const visionModel = await resolveActiveModel('vision', userId);
-  if (!visionModel) {
-    throw new Error('Kein Vision-Modell konfiguriert');
-  }
-
-  const visionAdapter = new OpenAIAdapter({
-    baseUrl: visionModel.base_url,
-    apiKey: visionModel.api_key,
-    defaultModel: visionModel.model.id,
-  });
-
-  const contentParts: ContentPart[] = [
-    {
-      type: 'text',
-      text: `Beschreibe dieses Dokument detailliert. Extrahiere ALLEN sichtbaren Text vollständig und wörtlich.
-Behalte die Struktur bei (Tabellen, Listen, Kopfdaten).
-Gib den Text in der Originalsprache wieder.
-Antworte NUR mit dem extrahierten Inhalt, keine eigenen Kommentare.`,
-    },
-    createImageContent(imageBase64, imageMimeType),
-  ];
-
-  const messages: Message[] = [
-    { role: 'user', content: contentParts },
-  ];
-
-  const result = await visionAdapter.chat(messages, visionModel.model.id);
-
-  if (!result.content) {
-    throw new Error('Vision-LLM hat keinen Text zurückgegeben');
-  }
-
-  return result.content;
-}
-
-// ============== Text Combination ==============
-
-/**
- * Combine texts from multiple files with headers
- */
-function combineTexts(files: ProcessedFile[]): string {
-  // Sort: structured documents first, images last
-  const sorted = [...files].sort((a, b) => {
-    if (a.isImage && !b.isImage) return 1;
-    if (!a.isImage && b.isImage) return -1;
-    return 0;
-  });
-
-  // Wenn nur xlsx-Files dabei sind, niedrigeren Budget verwenden um LLM-Timeouts zu vermeiden.
-  const allXlsx = sorted.length > 0 && sorted.every(f => /\.xlsx?$/i.test(f.filename));
-  const budget = allXlsx ? MAX_COMBINED_CHARS_XLSX : MAX_COMBINED_CHARS;
-
-  const parts: string[] = [];
-  let totalChars = 0;
-
-  for (const file of sorted) {
-    const header = `\n=== Datei: ${file.filename} ===\n`;
-    const available = budget - totalChars - header.length;
-
-    if (available <= 100) {
-      break; // No more space
-    }
-
-    let text = file.text;
-    if (text.length > available) {
-      text = text.substring(0, available) + '\n[... gekürzt]';
-    }
-
-    parts.push(header + text);
-    totalChars += header.length + text.length;
-  }
-
-  return parts.join('\n');
-}
 
 // ============== LLM Extraction ==============
 
@@ -758,84 +502,16 @@ function countExtractedFields(data: Partial<Projektauftrag>): number {
 // ============== Shared File-Processing Helper ==============
 
 /**
- * Phasen 1+2 der Import-Pipeline (mode-unabhaengig):
- *   - File-Loop mit per-File-Events + Heartbeats waehrend Vision/Markitdown
- *   - combineTexts() mit xlsx-Char-Budget-Reduktion
- *
- * Wird sowohl von importProjektauftrag als auch von importProjektidee genutzt.
- * Mode-spezifisch ist nur was DANACH passiert (LLM-Prompt, Mapping, Persistence).
+/**
+ * Mergt das (sub-)Report von der shared file-pipeline in das PM-eigene
+ * Report-Objekt — `fieldsExtracted` bleibt unbeeinflusst, der Rest wird
+ * uebernommen.
  */
-async function processFilesToText(
-  files: { buffer: Buffer; filename: string; mimeType: string }[],
-  userId: string,
-  emit: ImportEventCallback,
-  report: ImportReport,
-): Promise<{ processedFiles: ProcessedFile[]; combinedText: string }> {
-  // 1. Process files SEQUENTIELL — sonst kollidieren Heartbeat-Events mehrerer
-  // paralleler Vision-Calls. Performance-Verlust ist gering bei typisch 2-5 Files.
-  const processedFiles: ProcessedFile[] = [];
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i]!;
-    const kind = getFileKind(f.filename);
-    await emit({ type: 'file_started', data: { filename: f.filename, index: i + 1, total: files.length, kind } });
-
-    const fileStart = Date.now();
-    try {
-      const text = kind === 'text'
-        ? await processFile(f.buffer, f.filename, f.mimeType, userId)
-        : await withHeartbeat(
-            processFile(f.buffer, f.filename, f.mimeType, userId),
-            HEARTBEAT_MS,
-            async (elapsedMs) => {
-              await emit({
-                type: 'file_progress',
-                data: {
-                  filename: f.filename,
-                  elapsedMs,
-                  phase: kind === 'image' ? 'vision' : 'markitdown',
-                },
-              });
-            },
-          );
-
-      if (text.trim()) {
-        processedFiles.push({ filename: f.filename, text, isImage: kind === 'image' });
-        report.filesProcessed++;
-        await emit({
-          type: 'file_done',
-          data: { filename: f.filename, index: i + 1, total: files.length, chars: text.length, durationMs: Date.now() - fileStart },
-        });
-      } else {
-        report.warnings.push(`${f.filename}: Kein Text extrahiert (leeres Dokument?)`);
-        report.filesFailed++;
-        await emit({
-          type: 'file_failed',
-          data: { filename: f.filename, index: i + 1, total: files.length, error: 'Kein Text extrahiert' },
-        });
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unbekannter Fehler bei Dateiverarbeitung';
-      report.filesFailed++;
-      report.errors.push(msg);
-      await emit({
-        type: 'file_failed',
-        data: { filename: f.filename, index: i + 1, total: files.length, error: msg },
-      });
-    }
-  }
-
-  if (processedFiles.length === 0) {
-    throw new Error('Keine Dateien konnten verarbeitet werden');
-  }
-
-  console.log(`[PM-Import] ${processedFiles.length}/${files.length} files processed`);
-
-  // 2. Combine texts
-  const combinedText = combineTexts(processedFiles);
-  console.log(`[PM-Import] Combined text: ${combinedText.length} chars`);
-  await emit({ type: 'combining', data: { processedCount: processedFiles.length, totalChars: combinedText.length } });
-
-  return { processedFiles, combinedText };
+function mergeReport(report: ImportReport, sub: FileImportReport): void {
+  report.filesProcessed = sub.filesProcessed;
+  report.filesFailed = sub.filesFailed;
+  report.errors.push(...sub.errors);
+  report.warnings.push(...sub.warnings);
 }
 
 // ============== Main Import Function ==============
@@ -853,14 +529,16 @@ export async function importProjektauftrag(
     warnings: [],
   };
 
-  // Wenn kein Callback gesetzt: ein No-Op verwenden, damit die Phase-Pings keinen
-  // Wrapper-Overhead haben.
   const emit = onEvent ?? (async () => { /* noop */ });
 
   console.log(`[PM-Import] Starting import with ${files.length} files`);
-  await emit({ type: 'started', data: { fileCount: files.length, filenames: files.map(f => f.filename) } });
 
-  const { combinedText } = await processFilesToText(files, userId, emit, report);
+  const { combinedText, report: subReport } = await processFilesToText(files, {
+    userId,
+    emit,
+    logPrefix: 'PM-Import',
+  });
+  mergeReport(report, subReport);
 
   // 3. LLM extraction
   console.log('[PM-Import] Starting LLM extraction...');
@@ -1228,9 +906,13 @@ export async function importProjektidee(
   const emit = onEvent ?? (async () => { /* noop */ });
 
   console.log(`[PM-Idee-Import] Starting import with ${files.length} files`);
-  await emit({ type: 'started', data: { fileCount: files.length, filenames: files.map(f => f.filename) } });
 
-  const { combinedText } = await processFilesToText(files, userId, emit, report);
+  const { combinedText, report: subReport } = await processFilesToText(files, {
+    userId,
+    emit,
+    logPrefix: 'PM-Idee-Import',
+  });
+  mergeReport(report, subReport);
 
   // 3. LLM extraction (Idee-spezifisch)
   console.log('[PM-Idee-Import] Starting LLM extraction...');

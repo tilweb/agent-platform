@@ -6,12 +6,23 @@
  *           apps/vertragsmanagement/<contractId>/original.<ext>
  */
 
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, asc } from 'drizzle-orm';
 import { getDb } from '../../db';
-import { contracts as contractsTable, contractSchemas as schemasTable } from '../../db/schema/vertragsmgmt';
+import {
+  contracts as contractsTable,
+  contractSchemas as schemasTable,
+  contractAttachments as attachmentsTable,
+} from '../../db/schema/vertragsmgmt';
 import { putObject, getObject, deleteObject } from '../../storage/s3';
 import { s3Paths } from '../../storage/paths';
-import type { ContractMetadata, ContractSchema } from '../types';
+import type {
+  ContractMetadata,
+  ContractSchema,
+  ContractAttachment,
+  ContractDocumentRole,
+  ContractTypeDetection,
+  ContractExtractionSnapshot,
+} from '../types';
 
 // ============== Schema Storage (DB) ==============
 
@@ -69,6 +80,14 @@ export function generateContractId(): string {
 }
 
 function rowToContract(row: typeof contractsTable.$inferSelect): ContractMetadata {
+  // Type-Cast auf row mit Phase-2-Felder — die Drizzle-Spalten sind hinzugefuegt,
+  // aber Migration kann auf alten Instanzen noch nicht gelaufen sein → defensives default.
+  const r = row as typeof contractsTable.$inferSelect & {
+    primaryAttachmentId?: string | null;
+    typeDetection?: unknown;
+    provenance?: unknown;
+    extractedHistory?: unknown;
+  };
   return {
     id: row.id,
     contract_type: row.contractType ?? '',
@@ -78,6 +97,24 @@ function rowToContract(row: typeof contractsTable.$inferSelect): ContractMetadat
     extracted: (row.extracted ?? {}) as ContractMetadata['extracted'],
     computed: (row.computed ?? {}) as ContractMetadata['computed'],
     obligations: (row.obligations ?? []) as ContractMetadata['obligations'],
+    primary_attachment_id: r.primaryAttachmentId ?? null,
+    type_detection: (r.typeDetection ?? null) as ContractTypeDetection | null,
+    provenance: (r.provenance ?? null) as Record<string, string[]> | null,
+    extracted_history: (r.extractedHistory ?? []) as ContractExtractionSnapshot[],
+  };
+}
+
+function rowToAttachment(row: typeof attachmentsTable.$inferSelect): ContractAttachment {
+  return {
+    id: row.id,
+    contract_id: row.contractId,
+    filename: row.filename,
+    content_type: row.contentType ?? undefined,
+    s3_key_original: row.s3KeyOriginal,
+    s3_key_markdown: row.s3KeyMarkdown ?? null,
+    size_bytes: row.sizeBytes ?? undefined,
+    document_role: (row.documentRole as ContractDocumentRole) ?? 'sonstiges',
+    uploaded_at: row.uploadedAt,
   };
 }
 
@@ -90,7 +127,126 @@ export async function getContracts(): Promise<ContractMetadata[]> {
 export async function getContract(contractId: string): Promise<ContractMetadata | null> {
   const db = getDb();
   const rows = await db.select().from(contractsTable).where(eq(contractsTable.id, contractId)).limit(1);
-  return rows[0] ? rowToContract(rows[0]) : null;
+  if (!rows[0]) return null;
+  const contract = rowToContract(rows[0]);
+  // Multi-File: Attachments dazu laden — kein eigenes API noetig, kommt direkt
+  // mit dem Contract.
+  contract.attachments = await listAttachments(contractId);
+  return contract;
+}
+
+// ============== Attachments ==============
+
+export function generateAttachmentId(): string {
+  const random = Math.random().toString(36).substring(2, 10);
+  return `att-${Date.now().toString(36)}-${random}`;
+}
+
+export async function listAttachments(contractId: string): Promise<ContractAttachment[]> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(attachmentsTable)
+    .where(eq(attachmentsTable.contractId, contractId))
+    .orderBy(asc(attachmentsTable.uploadedAt));
+  return rows.map(rowToAttachment);
+}
+
+export async function getAttachment(attachmentId: string): Promise<ContractAttachment | null> {
+  const db = getDb();
+  const rows = await db.select().from(attachmentsTable).where(eq(attachmentsTable.id, attachmentId)).limit(1);
+  return rows[0] ? rowToAttachment(rows[0]) : null;
+}
+
+/**
+ * Persistiert ein Attachment KOMPLETT — Bytes nach S3 + Metadata in DB.
+ * Wird vom Import-Service genutzt um Storage-Details (S3 vs YAML) zu kapseln,
+ * damit der Import-Service auf beiden Worktrees identisch ist.
+ *
+ * `bytes` und `markdown` sind die Original-Datei + die Markitdown-Konversion;
+ * letzteres optional (Bilder/text haben keinen markdown-cache).
+ */
+export async function saveAttachmentWithBytes(
+  att: Omit<ContractAttachment, 's3_key_original' | 's3_key_markdown'>,
+  bytes: Buffer,
+  markdown: string | null,
+): Promise<ContractAttachment> {
+  const ext = (att.filename.split('.').pop() || 'bin').toLowerCase();
+  const s3KeyOriginal = s3Paths.contractAttachmentOriginal(att.contract_id, att.id, ext);
+  const contentType = att.content_type ?? 'application/octet-stream';
+  await putObject(s3KeyOriginal, bytes, contentType);
+
+  let s3KeyMarkdown: string | null = null;
+  if (markdown) {
+    s3KeyMarkdown = s3Paths.contractAttachmentMarkdown(att.contract_id, att.id);
+    await putObject(s3KeyMarkdown, markdown, 'text/markdown');
+  }
+
+  const enriched: ContractAttachment = {
+    ...att,
+    s3_key_original: s3KeyOriginal,
+    s3_key_markdown: s3KeyMarkdown,
+  };
+
+  const db = getDb();
+  await db.insert(attachmentsTable).values({
+    id: enriched.id,
+    contractId: enriched.contract_id,
+    filename: enriched.filename,
+    contentType: enriched.content_type ?? null,
+    s3KeyOriginal: enriched.s3_key_original,
+    s3KeyMarkdown: enriched.s3_key_markdown ?? null,
+    sizeBytes: enriched.size_bytes ?? null,
+    documentRole: enriched.document_role,
+    uploadedAt: enriched.uploaded_at,
+  }).onConflictDoUpdate({
+    target: attachmentsTable.id,
+    set: {
+      documentRole: enriched.document_role,
+      s3KeyMarkdown: enriched.s3_key_markdown ?? null,
+    },
+  });
+
+  return enriched;
+}
+
+export async function updateAttachmentRole(
+  _contractId: string,
+  attachmentId: string,
+  role: ContractDocumentRole,
+): Promise<void> {
+  const db = getDb();
+  await db.update(attachmentsTable)
+    .set({ documentRole: role })
+    .where(eq(attachmentsTable.id, attachmentId));
+}
+
+export async function deleteAttachment(attachmentId: string): Promise<boolean> {
+  const att = await getAttachment(attachmentId);
+  if (!att) return false;
+  // S3-Cleanup (best-effort)
+  try { await deleteObject(att.s3_key_original); } catch { /* ignore */ }
+  if (att.s3_key_markdown) {
+    try { await deleteObject(att.s3_key_markdown); } catch { /* ignore */ }
+  }
+  const db = getDb();
+  await db.delete(attachmentsTable).where(eq(attachmentsTable.id, attachmentId));
+  return true;
+}
+
+export async function getAttachmentBytes(
+  _contractId: string,
+  attachmentId: string,
+): Promise<{ buffer: Buffer; contentType: string; filename: string } | null> {
+  const att = await getAttachment(attachmentId);
+  if (!att) return null;
+  try {
+    const buffer = await getObject(att.s3_key_original);
+    return { buffer, contentType: att.content_type ?? 'application/octet-stream', filename: att.filename };
+  } catch (err: any) {
+    if (err?.name === 'NoSuchKey' || err?.$metadata?.httpStatusCode === 404) return null;
+    throw err;
+  }
 }
 
 export async function getContractDocument(contractId: string): Promise<string | null> {
@@ -114,6 +270,10 @@ export async function saveContract(metadata: ContractMetadata): Promise<void> {
     extracted: metadata.extracted as never,
     computed: metadata.computed as never,
     obligations: metadata.obligations as never,
+    primaryAttachmentId: metadata.primary_attachment_id ?? null,
+    typeDetection: (metadata.type_detection ?? null) as never,
+    provenance: (metadata.provenance ?? null) as never,
+    extractedHistory: (metadata.extracted_history ?? null) as never,
     createdAt: metadata.uploaded_at,
     updatedAt: metadata.uploaded_at,
   }).onConflictDoUpdate({
@@ -124,6 +284,10 @@ export async function saveContract(metadata: ContractMetadata): Promise<void> {
       extracted: metadata.extracted as never,
       computed: metadata.computed as never,
       obligations: metadata.obligations as never,
+      primaryAttachmentId: metadata.primary_attachment_id ?? null,
+      typeDetection: (metadata.type_detection ?? null) as never,
+      provenance: (metadata.provenance ?? null) as never,
+      extractedHistory: (metadata.extracted_history ?? null) as never,
       updatedAt: new Date().toISOString(),
     },
   });
