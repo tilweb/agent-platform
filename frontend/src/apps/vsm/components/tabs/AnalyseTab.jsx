@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { theme } from '../../../../config/theme';
 
 const styles = {
@@ -131,138 +133,116 @@ const styles = {
   },
 };
 
-// Simple markdown renderer for the analysis report
+// Markdown-Renderer: react-markdown mit Theme-konsistentem Components-Mapping.
+// Vorher hatte AnalyseTab einen 130-Zeilen-Custom-Renderer mit dangerouslySetInnerHTML
+// auf LLM-Output (Stored-XSS-Risiko via Prompt-Injection). Siehe security-review C5.
+const markdownComponents = {
+  h1: ({ children }) => (
+    <h1 style={{
+      fontSize: theme.typography.sizes['2xl'],
+      fontWeight: theme.typography.weights.bold,
+      marginTop: '24px', marginBottom: '12px',
+      color: theme.colors.text,
+    }}>{children}</h1>
+  ),
+  h2: ({ children }) => (
+    <h2 style={{
+      fontSize: theme.typography.sizes.xl,
+      fontWeight: theme.typography.weights.bold,
+      marginTop: '20px', marginBottom: '10px',
+      color: theme.colors.text,
+      borderBottom: `1px solid ${theme.colors.border}`,
+      paddingBottom: '8px',
+    }}>{children}</h2>
+  ),
+  h3: ({ children }) => (
+    <h3 style={{
+      fontSize: theme.typography.sizes.lg,
+      fontWeight: theme.typography.weights.semibold,
+      marginTop: '16px', marginBottom: '8px',
+      color: theme.colors.text,
+    }}>{children}</h3>
+  ),
+  h4: ({ children }) => (
+    <h4 style={{
+      fontSize: theme.typography.sizes.base,
+      fontWeight: theme.typography.weights.semibold,
+      marginTop: '12px', marginBottom: '6px',
+      color: theme.colors.text,
+    }}>{children}</h4>
+  ),
+  p: ({ children }) => (
+    <p style={{ marginBottom: '8px', lineHeight: '1.6' }}>{children}</p>
+  ),
+  ul: ({ children }) => (
+    <ul style={{ paddingLeft: '20px', marginBottom: '12px' }}>{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol style={{ paddingLeft: '20px', marginBottom: '12px' }}>{children}</ol>
+  ),
+  li: ({ children }) => (
+    <li style={{ marginBottom: '4px' }}>{children}</li>
+  ),
+  hr: () => (
+    <hr style={{
+      border: 'none',
+      borderTop: `1px solid ${theme.colors.border}`,
+      margin: '16px 0',
+    }} />
+  ),
+  code: ({ inline, children }) => inline ? (
+    <code style={{
+      background: theme.colors.surfaceHover,
+      padding: '1px 4px',
+      borderRadius: '3px',
+      fontSize: '12px',
+    }}>{children}</code>
+  ) : (
+    <pre style={{
+      background: theme.colors.surfaceHover,
+      padding: theme.spacing.md,
+      borderRadius: theme.borderRadius.md,
+      overflowX: 'auto',
+      fontSize: '12px',
+    }}><code>{children}</code></pre>
+  ),
+  table: ({ children }) => (
+    <div style={{ overflowX: 'auto', marginBottom: '16px' }}>
+      <table style={{
+        width: '100%',
+        borderCollapse: 'collapse',
+        fontSize: theme.typography.sizes.xs,
+      }}>{children}</table>
+    </div>
+  ),
+  th: ({ children }) => (
+    <th style={{
+      padding: '8px 12px',
+      borderBottom: `2px solid ${theme.colors.border}`,
+      textAlign: 'left',
+      fontWeight: theme.typography.weights.semibold,
+      color: theme.colors.text,
+      whiteSpace: 'nowrap',
+    }}>{children}</th>
+  ),
+  td: ({ children }) => (
+    <td style={{
+      padding: '6px 12px',
+      borderBottom: `1px solid ${theme.colors.border}`,
+      color: theme.colors.text,
+    }}>{children}</td>
+  ),
+};
+
 function MarkdownRenderer({ content }) {
   if (!content) return null;
-
-  const lines = content.split('\n');
-  const elements = [];
-  let inTable = false;
-  let tableRows = [];
-  let inList = false;
-  let listItems = [];
-
-  const flushList = () => {
-    if (listItems.length > 0) {
-      elements.push(
-        <ul key={`list-${elements.length}`} style={{ paddingLeft: '20px', marginBottom: '12px' }}>
-          {listItems.map((item, i) => (
-            <li key={i} style={{ marginBottom: '4px' }} dangerouslySetInnerHTML={{ __html: formatInline(item) }} />
-          ))}
-        </ul>
-      );
-      listItems = [];
-    }
-    inList = false;
-  };
-
-  const flushTable = () => {
-    if (tableRows.length > 0) {
-      const headerRow = tableRows[0];
-      const bodyRows = tableRows.slice(2); // skip separator
-      elements.push(
-        <div key={`table-${elements.length}`} style={{ overflowX: 'auto', marginBottom: '16px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: theme.typography.sizes.xs }}>
-            <thead>
-              <tr>
-                {headerRow.map((cell, i) => (
-                  <th key={i} style={{
-                    padding: '8px 12px',
-                    borderBottom: `2px solid ${theme.colors.border}`,
-                    textAlign: 'left',
-                    fontWeight: theme.typography.weights.semibold,
-                    color: theme.colors.text,
-                    whiteSpace: 'nowrap',
-                  }}>{cell.trim()}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {bodyRows.map((row, ri) => (
-                <tr key={ri}>
-                  {row.map((cell, ci) => (
-                    <td key={ci} style={{
-                      padding: '6px 12px',
-                      borderBottom: `1px solid ${theme.colors.border}`,
-                      color: theme.colors.text,
-                    }} dangerouslySetInnerHTML={{ __html: formatInline(cell.trim()) }} />
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-      tableRows = [];
-    }
-    inTable = false;
-  };
-
-  const formatInline = (text) => {
-    return text
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`(.+?)`/g, `<code style="background:${theme.colors.surfaceHover};padding:1px 4px;border-radius:3px;font-size:12px">$1</code>`);
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    // Table detection
-    if (line.includes('|') && line.trim().startsWith('|')) {
-      if (!inTable) {
-        flushList();
-        inTable = true;
-      }
-      const cells = line.split('|').filter(c => c.trim() !== '');
-      if (!line.match(/^\|[\s-|]+\|$/)) { // skip separator rows
-        tableRows.push(cells);
-      } else {
-        tableRows.push(cells); // keep separator for index tracking
-      }
-      continue;
-    } else if (inTable) {
-      flushTable();
-    }
-
-    // List items
-    if (line.match(/^\s*[-*]\s/)) {
-      if (!inList) inList = true;
-      listItems.push(line.replace(/^\s*[-*]\s/, ''));
-      continue;
-    } else if (line.match(/^\s*\d+\.\s/)) {
-      if (!inList) inList = true;
-      listItems.push(line.replace(/^\s*\d+\.\s/, ''));
-      continue;
-    } else if (inList) {
-      flushList();
-    }
-
-    // Headers
-    if (line.startsWith('# ')) {
-      elements.push(<h1 key={i} style={{ fontSize: theme.typography.sizes['2xl'], fontWeight: theme.typography.weights.bold, marginTop: '24px', marginBottom: '12px', color: theme.colors.text }}>{line.substring(2)}</h1>);
-    } else if (line.startsWith('## ')) {
-      elements.push(<h2 key={i} style={{ fontSize: theme.typography.sizes.xl, fontWeight: theme.typography.weights.bold, marginTop: '20px', marginBottom: '10px', color: theme.colors.text, borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: '8px' }}>{line.substring(3)}</h2>);
-    } else if (line.startsWith('### ')) {
-      elements.push(<h3 key={i} style={{ fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold, marginTop: '16px', marginBottom: '8px', color: theme.colors.text }}>{line.substring(4)}</h3>);
-    } else if (line.startsWith('#### ')) {
-      elements.push(<h4 key={i} style={{ fontSize: theme.typography.sizes.base, fontWeight: theme.typography.weights.semibold, marginTop: '12px', marginBottom: '6px', color: theme.colors.text }}>{line.substring(5)}</h4>);
-    } else if (line.startsWith('---')) {
-      elements.push(<hr key={i} style={{ border: 'none', borderTop: `1px solid ${theme.colors.border}`, margin: '16px 0' }} />);
-    } else if (line.trim() === '') {
-      // Skip empty lines
-    } else {
-      elements.push(
-        <p key={i} style={{ marginBottom: '8px', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: formatInline(line) }} />
-      );
-    }
-  }
-
-  // Flush remaining
-  flushList();
-  flushTable();
-
-  return <div style={styles.markdown}>{elements}</div>;
+  return (
+    <div style={styles.markdown}>
+      <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 export default function AnalyseTab({ projekt, onRunAnalyse }) {
