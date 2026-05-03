@@ -91,35 +91,102 @@ function isIPv4Blocked(ip: string): boolean {
 }
 
 /**
- * Check if an IPv6 address is blocked (loopback, link-local, private)
+ * Expandiert einen IPv6-Adressstring zu einer 8-Group-Hex-Form ohne `::`.
+ * Liefert null bei ungueltigen Eingaben. Strippt Zone-ID (%eth0) und
+ * eckige Klammern. Siehe security-review L6.
+ */
+function expandIPv6(input: string): string | null {
+  // Zone-ID abschneiden (RFC 6874): fe80::1%eth0 → fe80::1
+  let s = input.split('%')[0]!;
+  // Eckige Klammern entfernen (URL-Form [::1])
+  s = s.replace(/^\[|\]$/g, '');
+  s = s.toLowerCase();
+
+  // IPv4-mapped: letzte Gruppe ist Dotted-Quad — wandeln in zwei Hex-Gruppen
+  const dottedMatch = s.match(/^(.*:)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+  if (dottedMatch) {
+    const prefix = dottedMatch[1]!;
+    const ipv4 = dottedMatch[2]!;
+    if (!isIPv4(ipv4)) return null;
+    const parts = ipv4.split('.').map((n) => parseInt(n, 10));
+    if (parts.some((n) => isNaN(n) || n < 0 || n > 255)) return null;
+    const hi = ((parts[0]! << 8) | parts[1]!).toString(16);
+    const lo = ((parts[2]! << 8) | parts[3]!).toString(16);
+    s = `${prefix}${hi}:${lo}`;
+  }
+
+  // `::` darf maximal einmal vorkommen
+  const dcCount = (s.match(/::/g) ?? []).length;
+  if (dcCount > 1) return null;
+
+  let groups: string[];
+  if (dcCount === 1) {
+    const [head, tail] = s.split('::');
+    const headParts = head ? head.split(':').filter(Boolean) : [];
+    const tailParts = tail ? tail.split(':').filter(Boolean) : [];
+    const fillCount = 8 - headParts.length - tailParts.length;
+    if (fillCount < 0) return null;
+    groups = [...headParts, ...new Array(fillCount).fill('0'), ...tailParts];
+  } else {
+    groups = s.split(':');
+  }
+  if (groups.length !== 8) return null;
+  // Jede Gruppe 0-4 hex chars
+  for (const g of groups) {
+    if (!/^[0-9a-f]{1,4}$/.test(g)) return null;
+  }
+  // Auf 4-Zeichen padden
+  return groups.map((g) => g.padStart(4, '0')).join(':');
+}
+
+/**
+ * Check if an IPv6 address is blocked (loopback, link-local, site-local, ULA, ...)
  */
 function isIPv6Blocked(ip: string): boolean {
-  const normalized = ip.toLowerCase();
-
-  // Loopback
-  if (normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') {
+  const expanded = expandIPv6(ip);
+  if (!expanded) {
+    // Ungueltiges IPv6 — sicherheitshalber blockieren statt durchwinken
     return true;
   }
 
-  // Link-local (fe80::/10)
-  if (normalized.startsWith('fe8') || normalized.startsWith('fe9') ||
-      normalized.startsWith('fea') || normalized.startsWith('feb')) {
-    return true;
+  const firstGroup = parseInt(expanded.slice(0, 4), 16);
+  const secondGroup = parseInt(expanded.slice(5, 9), 16);
+
+  // Loopback ::1
+  if (expanded === '0000:0000:0000:0000:0000:0000:0000:0001') return true;
+  // Unspecified ::
+  if (expanded === '0000:0000:0000:0000:0000:0000:0000:0000') return true;
+
+  // IPv4-mapped IPv6 (::ffff:0:0/96) — IPv4 dahinter pruefen
+  if (expanded.startsWith('0000:0000:0000:0000:0000:ffff:')) {
+    const last4 = expanded.slice(30); // "xxxx:xxxx"
+    const [hiHex, loHex] = last4.split(':');
+    const hi = parseInt(hiHex!, 16);
+    const lo = parseInt(loHex!, 16);
+    const ipv4 = `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+    return isIPv4Blocked(ipv4);
   }
 
-  // Unique local addresses (fc00::/7)
-  if (normalized.startsWith('fc') || normalized.startsWith('fd')) {
-    return true;
+  // Link-local fe80::/10 (erste 10 Bits = 1111 1110 10) — also fe80 - febf
+  if (firstGroup >= 0xfe80 && firstGroup <= 0xfebf) return true;
+  // Site-local fec0::/10 (deprecated, RFC 3879 — aber noch in alten Setups)
+  if (firstGroup >= 0xfec0 && firstGroup <= 0xfeff) return true;
+  // Unique-Local fc00::/7 (fc00 - fdff)
+  if (firstGroup >= 0xfc00 && firstGroup <= 0xfdff) return true;
+  // Discard-only 100::/64
+  if (firstGroup === 0x0100 && expanded.startsWith('0100:0000:0000:0000:')) return true;
+  // 6to4 Relay 2002:: (oft missbraucht fuer SSRF zu RFC1918-Adressen ueber 2002:cb00:71xx)
+  if (firstGroup === 0x2002) {
+    // Nicht generell blockieren — aber Mapped-IPv4-Anteil pruefen
+    const hi = parseInt(expanded.slice(5, 9), 16);
+    const lo = parseInt(expanded.slice(10, 14), 16);
+    const ipv4 = `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+    if (isIPv4Blocked(ipv4)) return true;
   }
+  // Multicast ff00::/8 — kein Unicast-Ziel, fuer SSRF ungeeignet
+  if ((firstGroup & 0xff00) === 0xff00) return true;
 
-  // IPv4-mapped IPv6 addresses (::ffff:x.x.x.x)
-  if (normalized.startsWith('::ffff:')) {
-    const ipv4Part = normalized.slice(7);
-    if (isIPv4(ipv4Part)) {
-      return isIPv4Blocked(ipv4Part);
-    }
-  }
-
+  // Stored-Block-List
   return BLOCKED_IPS.includes(ip);
 }
 

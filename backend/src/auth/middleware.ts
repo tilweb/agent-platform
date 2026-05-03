@@ -45,12 +45,16 @@ export async function authMiddleware(c: Context, next: Next): Promise<Response |
     return c.json({ error: 'User not found or inactive' }, 401);
   }
 
-  // Sliding session: extend expiration on each request
-  // Only extend if session is older than 1 hour to avoid excessive writes
-  const timeSinceLastExtend = new Date(session.expiresAt).getTime() - SESSION_CONFIG.expiresInMs - Date.now();
-  if (Math.abs(timeSinceLastExtend) > 60 * 60 * 1000) {
+  // Sliding session: nur erweitern wenn die letzte Erweiterung > 1h her ist —
+  // verhindert dass jeder Request einen DB-Write triggert. Da extendSession()
+  // session.expiresAt auf (now + TTL) setzt, koennen wir den Zeitpunkt der
+  // letzten Erweiterung aus expiresAt - TTL rekonstruieren.
+  const ONE_HOUR_MS = 60 * 60 * 1000;
+  const expiresAtMs = new Date(session.expiresAt).getTime();
+  const lastExtendedAtMs = expiresAtMs - SESSION_CONFIG.expiresInMs;
+  const sinceLastExtendMs = Date.now() - lastExtendedAtMs;
+  if (sinceLastExtendMs > ONE_HOUR_MS) {
     await extendSession(sessionId);
-    // Update cookie maxAge
     setCookie(c, SESSION_CONFIG.cookieName, sessionId, SESSION_CONFIG.cookieOptions);
   }
 
