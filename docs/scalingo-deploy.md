@@ -6,7 +6,7 @@
 - **Hosting:** Scalingo (Region Paris-DC, ISO 27001 + HDS).
 - **DB:** Scalingo Postgres-Addon (autom. `SCALINGO_POSTGRES`-ENV).
 - **Object-Storage:** Flow.swiss S3-kompatibel (`os.alp1.flow.swiss`, GDPR/Schweiz).
-- **Build:** Dockerfile.scalingo via Scalingo Docker-Deploy.
+- **Build:** `Dockerfile` (im Root) via Scalingo Docker-Auto-Detect.
 - **Persistenz:** vollstaendig in DB+S3 — kein Volume-Mount, kein Disk-State zwischen Deploys.
 
 ## Erst-Deploy Schritt-fuer-Schritt
@@ -66,17 +66,7 @@ scalingo --app $APP env-set \
 # scalingo --app $APP env-set ENABLED_APPS='wzbar-matcher,vertragsmanagement'
 ```
 
-### 3. Dockerfile-Mode aktivieren
-
-Scalingo erkennt das Repo automatisch als Docker-Build wenn `Dockerfile` im Root liegt. Da wir aber `Dockerfile.scalingo` haben, muessen wir den Pfad explizit setzen:
-
-```sh
-scalingo --app $APP env-set CONTAINER_FILE='Dockerfile.scalingo'
-```
-
-(Ohne diese Variable nimmt Scalingo den Standard-`Dockerfile` der Railway-Variante mit Volume-Sync — das funktioniert auf Scalingo nicht.)
-
-### 4. GitHub-Integration einrichten
+### 3. GitHub-Integration einrichten
 
 In der Scalingo-Web-Console:
 
@@ -88,7 +78,7 @@ In der Scalingo-Web-Console:
    scalingo --app $APP deployments-list
    ```
 
-### 5. Erst-Boot beobachten
+### 4. Erst-Boot beobachten
 
 ```sh
 scalingo --app $APP logs --lines 200
@@ -108,7 +98,7 @@ Tools initialized: 23 total
 🚀 Server starting on port 3001
 ```
 
-### 6. Funktionstest
+### 5. Funktionstest
 
 ```sh
 URL=https://workplace-prod.osc-fr1.scalingo.io
@@ -136,7 +126,7 @@ curl -s -b /tmp/sc-cookies.txt ${URL}/api/knowledge/collections
 
 Browser: `${URL}` — Workplace-UI sollte erscheinen, Login mit `demo1` / `Demo2026!`, alle 5 Apps + KB-Collections + Chat-History sichtbar.
 
-### 7. Audit-Logging (Compliance)
+### 6. Audit-Logging (Compliance)
 
 Audit-Eintraege werden in zwei Kanaele geschrieben:
 

@@ -1,3 +1,11 @@
+# Scalingo-Deploy Dockerfile.
+#
+# Persistenz lebt in Scalingo Postgres + Flow.swiss S3 — kein Volume-Mount,
+# kein Disk-State zwischen Deploys. Das Image enthaelt nur das ausgepackte
+# data/-Verzeichnis als One-Shot-Seed-Quelle. Beim ersten Boot laufen die
+# seedXxxFromDisk()-Funktionen idempotent und uebertragen Custom-Skills,
+# Projekte, Chats, KB-Collections+Documents in DB+S3.
+
 # Stage 1: Build Frontend
 FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
@@ -11,73 +19,40 @@ RUN npm run build
 FROM oven/bun:1-alpine
 WORKDIR /app/backend
 
-# Install system dependencies
-RUN apk add --no-cache ffmpeg
+# ffmpeg fuer Audio-Transcription, ca-certificates fuer outbound HTTPS.
+RUN apk add --no-cache ffmpeg ca-certificates
 
-# Install backend dependencies
+# Backend-Dependencies
 COPY backend/package.json backend/bun.lock ./
 RUN bun install --frozen-lockfile --production
 
-# Copy backend source
+# Backend-Source (inkl. Drizzle-Migrations unter drizzle/).
+# drizzle.config.ts ist nur fuer das Dev-Tool db:generate noetig — runMigrations()
+# nutzt zur Laufzeit den drizzle-orm Migrator, der die SQL-Files direkt liest.
 COPY backend/src/ ./src/
+COPY backend/drizzle/ ./drizzle/
 
-# Copy seed data (used to initialize volumes on first start)
-COPY backend/data/ ./backend-data-seed/
-COPY data/ ./data-seed/
+# Seed-Daten direkt unter ../data/ (kein Volume-Sync)
+COPY data/ /app/data/
+COPY backend/data/ /app/backend-data-bundled/
 
-# Copy built frontend
-COPY --from=frontend-build /app/frontend/dist/ ../frontend/dist/
+# Built Frontend
+COPY --from=frontend-build /app/frontend/dist/ /app/frontend/dist/
 
-# Copy seed script
-COPY scripts/seed-demo-users.ts ./scripts/seed-demo-users.ts
+# Helper-Scripts
+COPY scripts/ /app/scripts/
 
 ENV NODE_ENV=production
 ENV PORT=3001
 
 EXPOSE 3001
 
-# Single volume at /app/data holds everything.
-# backend/data/ is a symlink into the volume.
-# Seed data is synced on every start (merge, don't overwrite user data).
-CMD sh -c '\
-  echo "=== Syncing seed data into volume ===" && \
-  cp -rn /app/backend/data-seed/* /app/data/ 2>/dev/null; \
-  echo "=== Syncing system agents (preserving user-created) ===" && \
-  mkdir -p /app/data/agents && \
-  for agent_dir in /app/backend/data-seed/agents/*/; do \
-    agent_name=$(basename "$agent_dir"); \
-    rm -rf "/app/data/agents/$agent_name"; \
-    cp -r "$agent_dir" "/app/data/agents/$agent_name"; \
-  done && \
-  echo "=== Syncing system skills (preserving custom) ===" && \
-  rm -rf /app/data/skills/system && \
-  mkdir -p /app/data/skills/system /app/data/skills/custom && \
-  cp -r /app/backend/data-seed/skills/system/* /app/data/skills/system/ && \
-  echo "=== Syncing config ===" && \
-  rm -rf /app/data/config && \
-  cp -r /app/backend/data-seed/config /app/data/config && \
-  cp -f /app/backend/data-seed/auth/users/user_1770561498880_39ohgu5.yaml /app/data/auth/users/user_1770561498880_39ohgu5.yaml && \
-  echo "=== Syncing backend-data (config + schemas only, preserving user data) ===" && \
-  mkdir -p /app/data/backend-data/apps && \
-  cp -f /app/backend/backend-data-seed/apps/registry.yaml /app/data/backend-data/apps/registry.yaml && \
-  for app_dir in /app/backend/backend-data-seed/apps/*/; do \
-    app_name=$(basename "$app_dir"); \
-    mkdir -p "/app/data/backend-data/apps/$app_name"; \
-    for sub in schemas vorlagen knowledge; do \
-      if [ -d "$app_dir/$sub" ]; then \
-        rm -rf "/app/data/backend-data/apps/$app_name/$sub"; \
-        cp -r "$app_dir/$sub" "/app/data/backend-data/apps/$app_name/$sub"; \
-      fi; \
-    done; \
-    [ -f "$app_dir/config.json" ] && cp -f "$app_dir/config.json" "/app/data/backend-data/apps/$app_name/config.json"; \
-    cp -rn "$app_dir"* "/app/data/backend-data/apps/$app_name/" 2>/dev/null; \
-  done && \
-  cp -rn /app/backend/backend-data-seed/* /app/data/backend-data/ 2>/dev/null; \
-  rm -rf /app/backend/data && \
-  ln -s /app/data/backend-data /app/backend/data && \
-  echo "=== Verifying providers ===" && \
-  grep "^  - id:" /app/data/config/providers.yaml && \
-  echo "=== Running seed script ===" && \
-  bun run /app/backend/scripts/seed-demo-users.ts && \
-  echo "=== Starting server ===" && \
-  bun run /app/backend/src/index.ts'
+# Direkt-Start: bun src/index.ts. initialize() macht alles:
+#   1. runMigrations()   — applies drizzle/000X_*.sql idempotent
+#   2. seedDemoUsers()   — wenn SCALINGO_POSTGRES gesetzt + SEED_DEMO_DATA=true
+#      (+ ALLOW_DEMO_SEED_IN_PRODUCTION=true in production)
+#   3. seedCustomSkillsFromDisk() / seedProjectsFromDisk() / seedChatsFromDisk() /
+#      seedKbFromDisk() — idempotent gegen DB-Existenz
+#   4. ensureBucket()    — Flow.swiss S3
+#   5. setupTools(), llmService.init(), MCP, taskExecutor
+CMD ["bun", "run", "src/index.ts"]
