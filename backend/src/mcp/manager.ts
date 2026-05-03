@@ -16,6 +16,7 @@ import {
 } from './config';
 import { McpToolWrapper, createMcpToolWrappers, getMcpToolName } from './tool';
 import { toolRegistry } from '../tools/registry';
+import { safeLog } from '../utils/safeLogger';
 import type { McpServerConfig, McpServerStatus, McpToolInfo } from './types';
 
 class McpManager {
@@ -29,7 +30,7 @@ class McpManager {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    console.log('Initializing MCP Manager...');
+    safeLog.info('Initializing MCP Manager...');
 
     const servers = await getEnabledMcpServers();
 
@@ -38,20 +39,20 @@ class McpManager {
         try {
           await this.connectServer(server.id);
         } catch (err: any) {
-          console.error(`Failed to connect to MCP server ${server.id}:`, err.message);
+          safeLog.error(`Failed to connect to MCP server`, { serverId: server.id, error: err.message });
         }
       }
     }
 
     this.initialized = true;
-    console.log(`MCP Manager initialized (${servers.length} servers configured)`);
+    safeLog.info(`MCP Manager initialized`, { servers: servers.length });
   }
 
   /**
    * Shutdown the MCP manager
    */
   async shutdown(): Promise<void> {
-    console.log('Shutting down MCP Manager...');
+    safeLog.info('Shutting down MCP Manager...');
 
     // Unregister all MCP tools
     for (const [serverId] of this.registeredTools) {
@@ -62,7 +63,7 @@ class McpManager {
     await mcpClient.disconnectAll();
 
     this.initialized = false;
-    console.log('MCP Manager shut down');
+    safeLog.info('MCP Manager shut down');
   }
 
   /**
@@ -121,7 +122,7 @@ class McpManager {
     }
 
     this.registeredTools.set(serverId, toolNames);
-    console.log(`Registered ${wrappers.length} tools from MCP server ${serverId}`);
+    safeLog.info(`Registered tools from MCP server`, { count: wrappers.length, serverId });
   }
 
   /**
@@ -136,7 +137,7 @@ class McpManager {
     }
 
     this.registeredTools.delete(serverId);
-    console.log(`Unregistered tools from MCP server ${serverId}`);
+    safeLog.info(`Unregistered tools from MCP server`, { serverId });
   }
 
   /**
@@ -208,7 +209,7 @@ class McpManager {
       try {
         await this.connectServer(server.id);
       } catch (err: any) {
-        console.error(`Failed to auto-connect to ${server.id}:`, err.message);
+        safeLog.error(`Failed to auto-connect MCP server`, { serverId: server.id, error: err.message });
       }
     }
 
@@ -234,7 +235,7 @@ class McpManager {
       try {
         await this.connectServer(serverId);
       } catch (err: any) {
-        console.error(`Failed to reconnect to ${serverId}:`, err.message);
+        safeLog.error(`Failed to reconnect MCP server`, { serverId, error: err.message });
       }
     }
 

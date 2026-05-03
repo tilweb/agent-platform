@@ -9,6 +9,7 @@ import { OpenAIAdapter } from './llm/adapters/openai';
 import { OllamaAdapter } from './llm/adapters/ollama';
 import { usageTrackingService, type UsageContext } from './usageTracking';
 import { getPlatformModel } from '../config/platformModels';
+import { safeLog } from '../utils/safeLogger';
 
 /**
  * Options for per-request model override
@@ -164,7 +165,7 @@ export class LLMService {
       const model = process.env.ADACOR_AI_MODEL || 'gpt-4o-mini';
 
       if (!apiKey) {
-        console.warn('Warning: No active chat model configured and ADACOR_AI_API_KEY not set');
+        safeLog.warn('No active chat model configured and ADACOR_AI_API_KEY not set');
       }
 
       this.openaiAdapter = new OpenAIAdapter({
@@ -173,14 +174,15 @@ export class LLMService {
         defaultModel: model,
       });
 
-      console.log(`LLM Service initialized with fallback: ${apiUrl} (${model})`);
+      safeLog.info('LLM Service initialized (fallback)', { apiUrl, model });
       return;
     }
 
     this.createAdapter();
-    console.log(
-      `LLM Service initialized: ${this.resolvedModel.provider.name} - ${this.resolvedModel.model.name}`
-    );
+    safeLog.info('LLM Service initialized', {
+      provider: this.resolvedModel.provider.name,
+      model: this.resolvedModel.model.name,
+    });
   }
 
   /**
@@ -255,10 +257,13 @@ export class LLMService {
         options.modelOverride.modelId
       );
       if (overrideResolved && overrideResolved.provider.enabled) {
-        console.log(`[LLM] Using model override: ${overrideResolved.provider.name}/${overrideResolved.model.name}`);
+        safeLog.info('[LLM] Using model override', {
+          provider: overrideResolved.provider.name,
+          model: overrideResolved.model.name,
+        });
         return this.createAdapterForModel(overrideResolved);
       }
-      console.log(`[LLM] Model override invalid, falling back`);
+      safeLog.info('[LLM] Model override invalid, falling back');
     }
 
     // Priority 2/3: User preference or system default (handled in resolveActiveModel)
@@ -363,7 +368,7 @@ export class LLMService {
     // Use OpenAI adapter (default or explicit)
     if (requestOpenai) {
       const modelId = requestResolved?.model.id;
-      console.log(`[LLM Service] Calling OpenAI adapter with ${tools?.length || 0} tools, model: ${modelId}`);
+      safeLog.info(`[LLM Service] Calling OpenAI adapter`, { tools: tools?.length || 0, model: modelId });
       for await (const chunk of requestOpenai.streamChat(messages, modelId, tools)) {
         // Track on first chunk with content
         if (!hasTracked && chunk?.choices?.[0]?.delta?.content) {

@@ -4,6 +4,7 @@
  */
 
 import type { Message, ToolDefinition, StreamChunk } from '../../llm';
+import { safeLog } from '../../../utils/safeLogger';
 
 export interface OpenAIAdapterOptions {
   baseUrl: string;
@@ -107,7 +108,7 @@ export class OpenAIAdapter {
 
     // Debug logging for tool calling
     if (tools && tools.length > 0) {
-      console.log(`[OpenAI Adapter] Streaming request with ${tools.length} tools to ${this.baseUrl}`);
+      safeLog.info(`[OpenAI Adapter] Streaming request with ${tools.length} tools`, { baseUrl: this.baseUrl });
     }
 
     const bodyJson = JSON.stringify(body);
@@ -127,18 +128,30 @@ export class OpenAIAdapter {
 
       if (attempt < MAX_RETRIES && this.isRetryable(response.status, error)) {
         const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
-        console.warn(`[OpenAI Adapter] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES}): ${error.substring(0, 100)} — retrying in ${delay}ms`);
+        safeLog.warn(`[OpenAI Adapter] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES})`, {
+          errorPreview: error.substring(0, 100),
+          delayMs: delay,
+        });
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
 
       // Non-retryable or max retries exceeded
       if (response.status === 400) {
-        console.error(`[OpenAI Adapter] 400 error - body size: ${bodyJson.length} chars, messages: ${messages.length}, model: ${model || this.defaultModel}`);
+        safeLog.error(`[OpenAI Adapter] 400 error`, {
+          bodySize: bodyJson.length,
+          messageCount: messages.length,
+          model: model || this.defaultModel,
+        });
         for (let i = 0; i < messages.length; i++) {
           const msg = messages[i];
           const contentLen = typeof msg.content === 'string' ? msg.content.length : JSON.stringify(msg.content)?.length || 0;
-          console.error(`  msg[${i}] role=${msg.role} content=${contentLen} chars${msg.tool_calls ? ` tool_calls=${msg.tool_calls.length}` : ''}${msg.name ? ` name=${msg.name}` : ''}`);
+          safeLog.error(`  msg[${i}]`, {
+            role: msg.role,
+            contentChars: contentLen,
+            toolCalls: msg.tool_calls?.length,
+            name: msg.name,
+          });
         }
       }
       throw new Error(`OpenAI API error: ${response.status} - ${error}`);
@@ -172,14 +185,18 @@ export class OpenAIAdapter {
           const json = JSON.parse(trimmed.slice(6));
           // Debug: Log first chunk with native tool_calls
           if (!loggedToolCall && json.choices?.[0]?.delta?.tool_calls) {
-            console.log(`[OpenAI Adapter] ✅ Received native tool_calls:`, JSON.stringify(json.choices[0].delta.tool_calls).slice(0, 300));
+            safeLog.info(`[OpenAI Adapter] Received native tool_calls`, {
+              preview: JSON.stringify(json.choices[0].delta.tool_calls).slice(0, 300),
+            });
             loggedToolCall = true;
           }
           // Debug: Log first content chunk that might contain text-based tool calls
           if (!loggedContent && json.choices?.[0]?.delta?.content) {
             const content = json.choices[0].delta.content;
             if (content.includes('[TOOL_CALLS]') || content.includes('"name"') || content.includes('"agent_id"')) {
-              console.log(`[OpenAI Adapter] ⚠️ Text-based tool call detected in content:`, content.slice(0, 200));
+              safeLog.warn(`[OpenAI Adapter] Text-based tool call detected in content`, {
+                preview: content.slice(0, 200),
+              });
               loggedContent = true;
             }
           }
@@ -261,7 +278,10 @@ export class OpenAIAdapter {
 
       if (attempt < MAX_RETRIES && this.isRetryable(response.status, error)) {
         const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
-        console.warn(`[OpenAI Adapter] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES}): ${error.substring(0, 100)} — retrying in ${delay}ms`);
+        safeLog.warn(`[OpenAI Adapter] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES})`, {
+          errorPreview: error.substring(0, 100),
+          delayMs: delay,
+        });
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
@@ -321,7 +341,10 @@ export class OpenAIAdapter {
       const error = await response.text();
       if (attempt < MAX_RETRIES && this.isRetryable(response.status, error)) {
         const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
-        console.warn(`[OpenAI Adapter] Embed retryable error (attempt ${attempt + 1}/${MAX_RETRIES}): ${error.substring(0, 100)} — retrying in ${delay}ms`);
+        safeLog.warn(`[OpenAI Adapter] Embed retryable error (attempt ${attempt + 1}/${MAX_RETRIES})`, {
+          errorPreview: error.substring(0, 100),
+          delayMs: delay,
+        });
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
