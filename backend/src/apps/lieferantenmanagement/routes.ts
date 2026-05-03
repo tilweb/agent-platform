@@ -15,6 +15,7 @@ import {
   validateLifecycleTransition, validateCreateAudit, validateUpdateAudit,
 } from './validation';
 import { requireAppAccess } from '../permissions-middleware';
+import { getCurrentUserId } from '../../auth/middleware';
 
 const lieferanten = new Hono();
 
@@ -150,7 +151,7 @@ lieferanten.post('/suppliers', async (c) => {
     const body = await c.req.json();
     const v = validateCreateSupplier(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.createSupplier(body, userId);
     return c.json({ supplier }, 201);
   } catch (error) {
@@ -175,7 +176,7 @@ lieferanten.put('/suppliers/:id', async (c) => {
     const body = await c.req.json();
     const v = validateUpdateSupplier(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.updateSupplier(c.req.param('id'), body, userId);
     if (!supplier) return c.json({ error: 'Supplier not found' }, 404);
     return c.json({ supplier });
@@ -188,7 +189,7 @@ lieferanten.put('/suppliers/:id', async (c) => {
 lieferanten.delete('/suppliers/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const success = await storage.deleteSupplier(id);
     if (!success) return c.json({ error: 'Supplier not found' }, 404);
     await deleteChangelog(id);
@@ -206,7 +207,7 @@ lieferanten.post('/suppliers/:id/ansprechpartner', async (c) => {
     const body = await c.req.json();
     const v = validateAnsprechpartner(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.addAnsprechpartner(c.req.param('id'), body, userId);
     if (!supplier) return c.json({ error: 'Supplier not found' }, 404);
     return c.json({ supplier });
@@ -221,7 +222,7 @@ lieferanten.put('/suppliers/:id/ansprechpartner/:apId', async (c) => {
     const body = await c.req.json();
     const v = validateAnsprechpartner(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.updateAnsprechpartner(c.req.param('id'), c.req.param('apId'), body, userId);
     if (!supplier) return c.json({ error: 'Not found' }, 404);
     return c.json({ supplier });
@@ -233,7 +234,7 @@ lieferanten.put('/suppliers/:id/ansprechpartner/:apId', async (c) => {
 
 lieferanten.delete('/suppliers/:id/ansprechpartner/:apId', async (c) => {
   try {
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.deleteAnsprechpartner(c.req.param('id'), c.req.param('apId'), userId);
     if (!supplier) return c.json({ error: 'Not found' }, 404);
     return c.json({ supplier });
@@ -250,7 +251,7 @@ lieferanten.post('/suppliers/:id/zertifizierungen', async (c) => {
     const body = await c.req.json();
     const v = validateZertifizierung(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.addZertifizierung(c.req.param('id'), body, userId);
     if (!supplier) return c.json({ error: 'Supplier not found' }, 404);
     return c.json({ supplier });
@@ -265,7 +266,7 @@ lieferanten.put('/suppliers/:id/zertifizierungen/:zertId', async (c) => {
     const body = await c.req.json();
     const v = validateZertifizierung(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.updateZertifizierung(c.req.param('id'), c.req.param('zertId'), body, userId);
     if (!supplier) return c.json({ error: 'Not found' }, 404);
     return c.json({ supplier });
@@ -277,7 +278,7 @@ lieferanten.put('/suppliers/:id/zertifizierungen/:zertId', async (c) => {
 
 lieferanten.delete('/suppliers/:id/zertifizierungen/:zertId', async (c) => {
   try {
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.deleteZertifizierung(c.req.param('id'), c.req.param('zertId'), userId);
     if (!supplier) return c.json({ error: 'Not found' }, 404);
     return c.json({ supplier });
@@ -294,7 +295,7 @@ lieferanten.post('/suppliers/:id/leistungen', async (c) => {
     const body = await c.req.json();
     const v = validateLeistung(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.addLeistung(c.req.param('id'), body, userId);
     if (!supplier) return c.json({ error: 'Supplier not found' }, 404);
     return c.json({ supplier });
@@ -307,7 +308,7 @@ lieferanten.post('/suppliers/:id/leistungen', async (c) => {
 lieferanten.put('/suppliers/:id/leistungen/:leistId', async (c) => {
   try {
     const body = await c.req.json();
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.updateLeistung(c.req.param('id'), c.req.param('leistId'), body, userId);
     if (!supplier) return c.json({ error: 'Not found' }, 404);
     return c.json({ supplier });
@@ -319,7 +320,7 @@ lieferanten.put('/suppliers/:id/leistungen/:leistId', async (c) => {
 
 lieferanten.delete('/suppliers/:id/leistungen/:leistId', async (c) => {
   try {
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.deleteLeistung(c.req.param('id'), c.req.param('leistId'), userId);
     if (!supplier) return c.json({ error: 'Not found' }, 404);
     return c.json({ supplier });
@@ -336,7 +337,7 @@ lieferanten.put('/suppliers/:id/leistungen/:leistId/bia', async (c) => {
     const body = await c.req.json();
     const v = validateBia(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.updateBia(c.req.param('id'), c.req.param('leistId'), body, userId);
     if (!supplier) return c.json({ error: 'Not found' }, 404);
     return c.json({ supplier });
@@ -353,7 +354,7 @@ lieferanten.put('/suppliers/:id/leistungen/:leistId/regulatorik', async (c) => {
     const body = await c.req.json();
     const v = validateRegulatorik(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.updateRegulatorik(c.req.param('id'), c.req.param('leistId'), body, userId);
     if (!supplier) return c.json({ error: 'Not found' }, 404);
     return c.json({ supplier });
@@ -370,7 +371,7 @@ lieferanten.put('/suppliers/:id/lifecycle/transition', async (c) => {
     const body = await c.req.json();
     const v = validateLifecycleTransition(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const supplier = await service.transitionLifecycle(c.req.param('id'), body.phase, userId);
     if (!supplier) return c.json({ error: 'Invalid transition' }, 400);
     return c.json({ supplier });
@@ -430,7 +431,7 @@ lieferanten.post('/suppliers/:id/documents', async (c) => {
       return c.json({ error: 'Ungueltiger Dokumenttyp' }, 400);
     }
 
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const docId = documents.generateDokumentId();
 
     const meta = await documents.saveDokument(supplierId, file, {
@@ -511,7 +512,7 @@ lieferanten.delete('/suppliers/:id/documents/:docId', async (c) => {
     const success = await documents.deleteDokument(supplierId, docId);
     if (!success) return c.json({ error: 'Document not found' }, 404);
 
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     await appendChangelog(supplierId, {
       user: userId,
       aktion: 'geaendert',
@@ -548,7 +549,7 @@ lieferanten.post('/audits', async (c) => {
     const body = await c.req.json();
     const v = validateCreateAudit(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const audit = await service.createAudit(body, userId);
     return c.json({ audit }, 201);
   } catch (error) {
@@ -573,7 +574,7 @@ lieferanten.put('/audits/:auditId', async (c) => {
     const body = await c.req.json();
     const v = validateUpdateAudit(body);
     if (!v.ok) return c.json({ error: v.error }, 400);
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const audit = await service.updateAudit(c.req.param('auditId'), body, userId);
     if (!audit) return c.json({ error: 'Audit not found' }, 404);
     return c.json({ audit });

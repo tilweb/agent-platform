@@ -68,8 +68,40 @@ export interface ProcessFilesOptions {
 
 // ============== Constants ==============
 
-const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
+const MARKITDOWN_URL = validateMarkitdownUrl(
+  process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/',
+);
 const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
+
+/**
+ * Verhindert dass eine fehlkonfigurierte MARKITDOWN_API_URL den Server zur
+ * SSRF-Quelle macht. Whitelist auf adacor.ai-Hosts (plus localhost fuer
+ * lokales Development). Siehe security-review M13.
+ */
+function validateMarkitdownUrl(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`MARKITDOWN_API_URL is not a valid URL: ${url}`);
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error(`MARKITDOWN_API_URL must use http(s): ${url}`);
+  }
+  const host = parsed.hostname.toLowerCase();
+  const allowed =
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host.endsWith('.adacor.ai') ||
+    host === 'adacor.ai';
+  if (!allowed) {
+    throw new Error(
+      `MARKITDOWN_API_URL host "${host}" is not on the allowlist. ` +
+      'Permitted: *.adacor.ai or localhost.',
+    );
+  }
+  return url;
+}
 
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
 const TEXT_EXTENSIONS = ['.txt', '.md'];

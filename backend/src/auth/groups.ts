@@ -8,7 +8,7 @@
 
 import { eq, inArray } from 'drizzle-orm';
 import { getDb } from '../db';
-import { groups as groupsTable, groupMembers as membersTable } from '../db/schema/auth';
+import { groups as groupsTable, groupMembers as membersTable, users as usersTable } from '../db/schema/auth';
 
 export interface UserGroup {
   id: string;
@@ -105,17 +105,37 @@ export async function loadGroup(groupId: string): Promise<UserGroup | null> {
   return rowToGroup(rows[0], memberIds);
 }
 
+/**
+ * Pruefe dass alle uebergebenen User-IDs existieren — verhindert
+ * Phantom-Members in groups.memberIds. Siehe security-review M10.
+ */
+async function assertUsersExist(memberIds: string[]): Promise<void> {
+  if (memberIds.length === 0) return;
+  const db = getDb();
+  const found = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(inArray(usersTable.id, memberIds));
+  const foundIds = new Set(found.map((r) => r.id));
+  const missing = memberIds.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    throw new Error(`Unknown user IDs: ${missing.join(', ')}`);
+  }
+}
+
 export async function createGroup(
   input: CreateGroupInput,
   createdBy?: string,
 ): Promise<UserGroup> {
+  const memberIds = input.memberIds || [];
+  await assertUsersExist(memberIds);
   const now = new Date().toISOString();
   const group: UserGroup = {
     id: generateGroupId(),
     name: input.name,
     description: input.description,
     color: input.color,
-    memberIds: input.memberIds || [],
+    memberIds,
     createdAt: now,
     updatedAt: now,
     createdBy,
@@ -130,6 +150,9 @@ export async function updateGroup(
 ): Promise<UserGroup | null> {
   const group = await loadGroup(groupId);
   if (!group) return null;
+  if (updates.memberIds) {
+    await assertUsersExist(updates.memberIds);
+  }
   const merged: UserGroup = {
     ...group,
     ...updates,

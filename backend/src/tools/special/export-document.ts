@@ -88,6 +88,7 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
               description: 'Inhaltssektionen des Dokuments',
               items: {
                 type: 'object',
+                description: 'Eine Sektion des Dokuments',
                 properties: {
                   title: {
                     type: 'string',
@@ -99,7 +100,8 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
                     description: 'Art des Inhalts',
                   },
                   content: {
-                    description: 'Inhalt der Sektion (abhaengig vom Typ)',
+                    type: 'string',
+                    description: 'Inhalt der Sektion (abhaengig vom Typ — string fuer text, JSON-string fuer table/list/keyvalue)',
                   },
                 },
                 required: ['title', 'type', 'content'],

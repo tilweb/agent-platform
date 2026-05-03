@@ -28,7 +28,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
  * Check if a password hash needs to be rehashed
  * (e.g., if algorithm parameters have changed or using older algorithm)
  *
- * Current target: argon2id with m=65536, t=3
+ * Current target: argon2id with m=65536, t=3, p=1
  */
 export function needsRehash(hash: string): boolean {
   // Check if using argon2id
@@ -38,21 +38,23 @@ export function needsRehash(hash: string): boolean {
 
   // Parse argon2 parameters: $argon2id$v=19$m=65536,t=3,p=1$...
   const match = hash.match(/\$m=(\d+),t=(\d+),p=(\d+)\$/);
-  if (!match || !match[1] || !match[2]) {
+  if (!match || !match[1] || !match[2] || !match[3]) {
     return true;
   }
 
   const memoryCost = parseInt(match[1], 10);
   const timeCost = parseInt(match[2], 10);
+  const parallelism = parseInt(match[3], 10);
 
   // Check if parameters match current settings
-  // Allow minor variations (e.g., memoryCost within 10%)
+  // Allow minor variations on memory (within 10%) but exact match on others
   const targetMemoryCost = 65536;
   const targetTimeCost = 3;
+  const targetParallelism = 1;
 
-  if (memoryCost < targetMemoryCost * 0.9 || timeCost < targetTimeCost) {
-    return true;
-  }
+  if (memoryCost < targetMemoryCost * 0.9) return true;
+  if (timeCost < targetTimeCost) return true;
+  if (parallelism !== targetParallelism) return true;
 
   return false;
 }

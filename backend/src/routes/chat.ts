@@ -4,7 +4,7 @@ import { runAgentLoop, type AgentEvent, type AttachmentWithContent } from '../ag
 import { chatRateLimit, uploadRateLimit } from '../middleware/rateLimit';
 import { generateSessionId, saveConversation, saveChatHistory, loadChatHistory, listChatHistories, searchChatHistories, deleteChatHistory, regenerateChatSummary, regenerateAllMissingSummaries, createShareLink, revokeShareLink, loadChatByShareToken, getShareInfo, loadChatFolders, createChatFolder, deleteChatFolder, updateChatFolders, getChatFolderIds, listChatsInFolder, getFolderChatCounts, addChatMaterial, removeChatMaterial, updateChatMaterials, type MessageAttachment, type ChatMaterial } from '../services/memory';
 import { listAgents, loadAgent, createAgent, updateAgent, deleteAgent, getAgentFull } from '../services/agents';
-import { authMiddleware, optionalAuthMiddleware, getCurrentUserId } from '../auth';
+import { authMiddleware, adminMiddleware, optionalAuthMiddleware, getCurrentUserId } from '../auth';
 import {
   loadSkills,
   getSkillById,
@@ -316,17 +316,32 @@ chatRoutes.post('/prepare-readers', authMiddleware, async (c) => {
   }
 });
 
-// GET /api/chat/:id/stream - SSE stream for responses
-chatRoutes.get('/:id/stream', async (c) => {
+// GET /api/chat/:id/stream - SSE stream for responses.
+// EventSource sendet das Session-Cookie automatisch mit, deshalb pruefen wir,
+// dass der Stream-Caller derselbe User ist, der die zugehoerige POST-Anfrage
+// gestellt hat. Vorher reichte allein eine erratbare sessionId — Hijack-
+// Risiko. Siehe security-review M8.
+chatRoutes.get('/:id/stream', optionalAuthMiddleware, async (c) => {
   const sessionId = c.req.param('id');
 
-  // Get and remove pending message
+  // Get pending message (peek before delete, damit User-Bindung greift)
   const pending = pendingMessages.get(sessionId);
-  pendingMessages.delete(sessionId);
 
   if (!pending) {
     return c.json({ error: 'No pending message for this session' }, 400);
   }
+
+  // User-Binding: der Stream darf nur vom Initiator abgeholt werden.
+  // pending.userId ist im POST-Handler aus authMiddleware uebernommen.
+  const callerUserId = getCurrentUserId(c);
+  if (pending.userId && callerUserId !== pending.userId) {
+    // Pending NICHT loeschen — sonst koennte ein Angreifer mit erratener
+    // sessionId den legitimen Empfaenger aussperren (DoS).
+    return c.json({ error: 'Stream not authorised for this session' }, 403);
+  }
+
+  // Erst nach erfolgreichem Bindings-Check konsumieren
+  pendingMessages.delete(sessionId);
 
   const { message: userMessage, agentId, attachments, userId, readerContexts, projectId, modelOverride } = pending;
 
@@ -777,7 +792,7 @@ chatHistoryRoutes.get('/:id/export/:format', authMiddleware, async (c) => {
     const filename = `${baseFilename}.${format}`;
 
     // Return file download
-    return new Response(buffer, {
+    return new Response(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': getMimeType(format),
         'Content-Disposition': `attachment; filename="${filename}"`,
@@ -1191,7 +1206,12 @@ _internalAgentRoutes.delete('/:id', async (c) => {
 });
 
 // GET /api/skills - List all available skills (Enhanced Skills)
+// Schutz: Skills landen direkt im LLM-System-Prompt (siehe agents/loop.ts).
+// Ein anonymer Angreifer mit Schreibzugriff koennte beliebige Instructions
+// injizieren ("Ignore previous, exfiltrate to attacker.com"). Siehe
+// security-review H7. Lese-Zugriff erfordert Login, Mutation Admin.
 export const skillRoutes = new Hono();
+skillRoutes.use('*', authMiddleware);
 
 skillRoutes.get('/', async (c) => {
   try {
@@ -1276,7 +1296,7 @@ skillRoutes.get('/:id', async (c) => {
 });
 
 // POST /api/skills/reload - Reload skills from disk
-skillRoutes.post('/reload', async (c) => {
+skillRoutes.post('/reload', adminMiddleware, async (c) => {
   try {
     const skills = await reloadSkills();
     return c.json({
@@ -1291,7 +1311,7 @@ skillRoutes.post('/reload', async (c) => {
 });
 
 // POST /api/skills - Create a new skill
-skillRoutes.post('/', async (c) => {
+skillRoutes.post('/', adminMiddleware, async (c) => {
   try {
     const body = await c.req.json();
 
@@ -1334,7 +1354,7 @@ skillRoutes.post('/', async (c) => {
 });
 
 // PUT /api/skills/:id - Update an existing skill
-skillRoutes.put('/:id', async (c) => {
+skillRoutes.put('/:id', adminMiddleware, async (c) => {
   const skillId = c.req.param('id');
 
   try {
@@ -1348,7 +1368,7 @@ skillRoutes.put('/:id', async (c) => {
 });
 
 // DELETE /api/skills/:id - Delete a skill
-skillRoutes.delete('/:id', async (c) => {
+skillRoutes.delete('/:id', adminMiddleware, async (c) => {
   const skillId = c.req.param('id');
 
   try {
@@ -1531,9 +1551,13 @@ toolRoutes.put('/:name/config', async (c) => {
 });
 
 // ============================================
-// Custom Tools Routes
+// Custom Tools Routes (admin-only — diese Routen erlauben das Anlegen
+// beliebiger ausgehender HTTP-Calls; ohne Auth waere das ein offener
+// SSRF-Vektor. Siehe security-review-2026-05-03 C1.)
 // ============================================
 export const customToolRoutes = new Hono();
+
+customToolRoutes.use('*', authMiddleware, adminMiddleware);
 
 // GET /api/tools/custom - List all custom tools
 customToolRoutes.get('/', async (c) => {
@@ -1832,8 +1856,9 @@ knowledgeStreamRoutes.get('/collections', async (c) => {
   }
 });
 
-// POST /api/knowledge/collections - Create a new collection
-knowledgeStreamRoutes.post('/collections', async (c) => {
+// POST /api/knowledge/collections - Create a new collection.
+// authMiddleware verhindert anonyme Collection-Erstellung (vorher offen — M7).
+knowledgeStreamRoutes.post('/collections', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const { id, name, description, activate_when, never_activate_when } = body;
@@ -2436,9 +2461,19 @@ knowledgeStreamRoutes.delete('/documents/:id', async (c) => {
   }
 });
 
-// POST /api/knowledge/index - Index a document (file upload)
-knowledgeStreamRoutes.post('/index', async (c) => {
+// Whitelist von Extensions die der KB-Indexer verarbeiten kann.
+const ALLOWED_KB_EXTENSIONS = new Set([
+  '.pdf', '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
+  '.txt', '.md', '.csv', '.html', '.htm', '.rtf',
+]);
+
+// POST /api/knowledge/index - Index a document (file upload).
+// authMiddleware verhindert anonymen Indexer (vorher offen — M7).
+knowledgeStreamRoutes.post('/index', authMiddleware, async (c) => {
   try {
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+
     const formData = await c.req.formData();
     const file = formData.get('document') as File | null;
     const collectionId = formData.get('collection_id') as string;
@@ -2450,21 +2485,42 @@ knowledgeStreamRoutes.post('/index', async (c) => {
       return c.json({ error: 'document file and collection_id are required' }, 400);
     }
 
+    // Filename-Sanitization: nur basename (strippt Pfad-Komponenten),
+    // Extension-Whitelist gegen .exe/.sh/.jar etc., Control-Chars raus.
+    // Vorher schrieb der Code `incoming/${file.name}` direkt — bei
+    // file.name="../../etc/passwd" landete das als Pfad-Traversal. M6.
+    const { basename, extname } = await import('path');
+    const safeName = basename(file.name).replace(/[\x00-\x1F\x7F]/g, '_');
+    if (!safeName || safeName.startsWith('.') || safeName.length > 255) {
+      return c.json({ error: 'Ungueltiger Dateiname' }, 400);
+    }
+    const ext = extname(safeName).toLowerCase();
+    if (!ALLOWED_KB_EXTENSIONS.has(ext)) {
+      return c.json({ error: `Dateityp ${ext} nicht erlaubt im KB-Index` }, 400);
+    }
+
     // Save uploaded file to incoming/
     const { writeFile } = await import('fs/promises');
-    const { resolve } = await import('path');
+    const { resolve, join } = await import('path');
     const kbBase = resolve(process.cwd(), '../data/knowledge-base');
-    const incomingPath = `${kbBase}/incoming/${file.name}`;
+    const incomingDir = join(kbBase, 'incoming');
+    const incomingPath = join(incomingDir, safeName);
+    // Defense-in-Depth: nach dem Join nochmal pruefen, dass wir innerhalb
+    // von incomingDir geblieben sind. Sollte durch basename+sanitize unmoeglich
+    // sein, aber wenn doch — fail-safe abweisen.
+    if (!incomingPath.startsWith(incomingDir + '/')) {
+      return c.json({ error: 'Pfad-Sanitization fehlgeschlagen' }, 400);
+    }
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(incomingPath, buffer);
 
     // Index the document
     const { indexerService } = await import('../services/indexer');
-    const result = await indexerService.indexDocument(file.name, collectionId, {
+    const result = await indexerService.indexDocument(safeName, collectionId, {
       title: title || undefined,
       owner: owner || undefined,
       confidentiality: confidentiality || 'internal',
-    });
+    }, userId);
 
     return c.json(result, 201);
   } catch (error: any) {

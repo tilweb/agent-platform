@@ -5,6 +5,7 @@
 import type { Tool, ToolDefinition, ToolContext, ToolParameters } from '../types';
 import type { CustomToolConfig, CustomToolParameter } from './types';
 import { validateUrl, type SSRFProtectionOptions } from '../../utils/ssrfProtection';
+import { safeLog } from '../../utils/safeLogger';
 
 export class CustomApiTool implements Tool {
   readonly name: string;
@@ -18,10 +19,11 @@ export class CustomApiTool implements Tool {
 
     // Security warning for deprecated query parameter auth
     if (config.auth.type === 'api-key' && config.auth.location === 'query') {
-      console.warn(
-        `[SECURITY WARNING] Custom tool "${config.id}" uses API key in query parameters. ` +
+      safeLog.warn(
+        `[SECURITY WARNING] Custom tool uses API key in query parameters. ` +
         `This exposes the key in server logs, proxy logs, and browser history. ` +
-        `Consider migrating to header-based authentication (location: 'header').`
+        `Consider migrating to header-based authentication (location: 'header').`,
+        { toolId: config.id },
       );
     }
   }
@@ -71,7 +73,7 @@ export class CustomApiTool implements Tool {
 
       const validation = await validateUrl(url, ssrfOptions);
       if (!validation.allowed) {
-        console.warn(`SSRF Protection: Blocked request to ${url} - ${validation.reason}`);
+        safeLog.warn(`SSRF Protection: Blocked custom-tool request`, { url, reason: validation.reason });
         return `Error: Request blocked for security reasons. ${validation.reason}`;
       }
 
@@ -80,7 +82,7 @@ export class CustomApiTool implements Tool {
       const response = await this.executeRequest(url, options);
       const duration = Date.now() - startTime;
 
-      console.log(`Custom tool "${this.name}" executed in ${duration}ms`);
+      safeLog.info(`Custom tool executed`, { tool: this.name, durationMs: duration });
 
       // Process the response
       return this.processResponse(response, args);
@@ -110,7 +112,7 @@ export class CustomApiTool implements Tool {
         allowLocalhost: process.env.NODE_ENV === 'development',
       });
       if (!validation.allowed) {
-        console.warn(`Custom tool "${this.name}" has blocked endpoint: ${validation.reason}`);
+        safeLog.warn(`Custom tool has blocked endpoint`, { tool: this.name, reason: validation.reason });
         return false;
       }
     }

@@ -123,6 +123,17 @@ export function securityHeaders(config: SecurityHeadersConfig = {}): MiddlewareH
     const isOAuthCallback = /\/api\/connections\/[^/]+\/callback$/.test(c.req.path);
     c.header(cspHeader, isOAuthCallback ? cspWithInlineScripts : csp);
 
+    // HTTP Strict Transport Security (HSTS): erzwingt HTTPS fuer 1 Jahr.
+    // Verhindert MITM-First-Visit-Vektor (offenes WLAN, kompromittierter
+    // Router) bevor der Server zu HTTPS redirecten kann.
+    // Nur in Production — sonst wuerde localhost zu HTTPS upgegraded.
+    // 'preload' bewusst NICHT — ist eine Einbahnstrasse (Chrome HSTS
+    // Preload List), erst nach Monaten stabilen HTTPS-Betriebs einbauen.
+    // Siehe security-review M9.
+    if (process.env.NODE_ENV === 'production') {
+      c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+
     // Prevent clickjacking
     c.header('X-Frame-Options', 'DENY');
 

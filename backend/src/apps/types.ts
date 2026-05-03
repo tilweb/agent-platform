@@ -17,7 +17,12 @@ export interface AppRoute {
  * - editor  = darf inhaltlich aendern, anlegen, evtl. loeschen
  * - viewer  = read-only
  */
-export type AppRole = 'owner' | 'editor' | 'viewer';
+export const APP_ROLES = ['owner', 'editor', 'viewer'] as const;
+export type AppRole = typeof APP_ROLES[number];
+
+export function isAppRole(value: unknown): value is AppRole {
+  return typeof value === 'string' && (APP_ROLES as readonly string[]).includes(value);
+}
 
 export interface AppGroupPermission {
   groupId: string;

@@ -10,6 +10,7 @@ import { attachmentsService } from '../services/attachments';
 import { loadChatHistory } from '../services/memory';
 import { validationError, notFoundError, internalError } from '../utils/errorHandler';
 import { authMiddleware, getCurrentUserId } from '../auth';
+import { contentDispositionHeader } from '../utils/contentDisposition';
 
 const attachmentRoutes = new Hono();
 
@@ -42,7 +43,7 @@ attachmentRoutes.get('/:chatId/attachments/:attachmentId', async (c) => {
     const fileBuffer = await readFile(fileInfo.path);
 
     c.header('Content-Type', fileInfo.mimeType);
-    c.header('Content-Disposition', `inline; filename="${encodeURIComponent(fileInfo.filename)}"`);
+    c.header('Content-Disposition', contentDispositionHeader(fileInfo.filename, fileInfo.mimeType));
     c.header('Cache-Control', 'private, max-age=3600'); // Cache for 1 hour
 
     return c.body(fileBuffer);

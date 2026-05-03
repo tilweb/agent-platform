@@ -24,6 +24,7 @@ import {
   updateUser,
   deleteUser,
   authMiddleware,
+  adminMiddleware,
   getCurrentUser,
   hashPassword,
   // Groups
@@ -38,6 +39,24 @@ import {
 import { randomBytes } from 'crypto';
 
 const authRoutes = new Hono();
+
+/**
+ * Dummy-Hash fuer Timing-Attack-Mitigation auf dem Login-Endpoint.
+ * Wird beim ersten Login lazy berechnet (mit gleichen Argon2id-Parametern
+ * wie echte User-Hashes), danach gecached. Wenn ein nicht-existierender
+ * Username eintrifft, wird das Passwort gegen diesen Hash verifiziert —
+ * die Antwortzeit ist damit nicht von "User existiert/existiert nicht"
+ * abhaengig. Siehe security-review M5.
+ */
+let dummyPasswordHashPromise: Promise<string> | null = null;
+async function getDummyPasswordHash(): Promise<string> {
+  if (!dummyPasswordHashPromise) {
+    dummyPasswordHashPromise = hashPassword(
+      'timing-attack-mitigation-not-a-real-password-' + randomBytes(16).toString('hex'),
+    );
+  }
+  return dummyPasswordHashPromise;
+}
 
 /**
  * POST /api/auth/register - Bootstrap-Endpoint fuer den Erst-Admin.
@@ -127,6 +146,11 @@ authRoutes.post('/login', authRateLimit, async (c) => {
     // Find user
     const user = await findUserByUsername(username);
     if (!user) {
+      // Timing-Attack-Mitigation: Argon2-Verify gegen einen Dummy-Hash
+      // ausfuehren, damit die Antwortzeit nicht verraet ob der Username
+      // existiert. Ergebnis wird verworfen. Siehe security-review M5.
+      const dummyHash = await getDummyPasswordHash();
+      await verifyAndRehash(password, dummyHash).catch(() => undefined);
       await auditLogin(false, username, ipAddress, userAgent, 'User not found');
       return c.json({ error: 'Invalid username or password' }, 401);
     }
@@ -189,9 +213,9 @@ authRoutes.post('/logout', async (c) => {
       await deleteSession(sessionId);
     }
 
-    deleteCookie(c, SESSION_CONFIG.cookieName, {
-      path: '/',
-    });
+    // Identische Cookie-Optionen wie beim setCookie — sonst loescht der
+    // Browser nicht zuverlaessig (Path/Domain/SameSite muessen matchen).
+    deleteCookie(c, SESSION_CONFIG.cookieName, SESSION_CONFIG.cookieOptions);
 
     // Audit logout
     if (userId) {
@@ -257,19 +281,6 @@ authRoutes.get('/status', async (c) => {
 
 // ============ Admin Routes ============
 
-import type { Context, Next, MiddlewareHandler } from 'hono';
-
-/**
- * Middleware to check if user is admin
- */
-const adminMiddleware: MiddlewareHandler = async (c: Context, next: Next) => {
-  const user = getCurrentUser(c);
-  if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Admin access required' }, 403);
-  }
-  await next();
-};
-
 /**
  * GET /api/auth/users - List all users (admin only)
  */
@@ -288,7 +299,7 @@ authRoutes.get('/users', authMiddleware, adminMiddleware, async (c) => {
 /**
  * POST /api/auth/users - Create a new user (admin only)
  */
-authRoutes.post('/users', authMiddleware, adminMiddleware, async (c) => {
+authRoutes.post('/users', sensitiveRateLimit, authMiddleware, adminMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const { username, email, displayName, role } = body;
@@ -420,7 +431,7 @@ authRoutes.post('/users/:id/reset-password', sensitiveRateLimit, authMiddleware,
 /**
  * DELETE /api/auth/users/:id - Delete a user (admin only)
  */
-authRoutes.delete('/users/:id', authMiddleware, adminMiddleware, async (c) => {
+authRoutes.delete('/users/:id', sensitiveRateLimit, authMiddleware, adminMiddleware, async (c) => {
   try {
     const userId = c.req.param('id');
     const currentUser = getCurrentUser(c);
@@ -453,11 +464,13 @@ authRoutes.delete('/users/:id', authMiddleware, adminMiddleware, async (c) => {
 });
 
 /**
- * Generate a random initial password
+ * Generate a random initial password (~22 Zeichen base64url, 128 Bit Entropie).
+ * Wird vom Admin beim Anlegen eines Users erzeugt; der User soll es nach dem
+ * ersten Login wechseln. 16 Bytes statt 9 — Defense-in-Depth gegen Szenarien
+ * in denen das Initial-PW versehentlich laenger genutzt wird.
  */
 function generateInitialPassword(): string {
-  // Generate 12 random characters (URL-safe)
-  return randomBytes(9).toString('base64url');
+  return randomBytes(16).toString('base64url');
 }
 
 // ============ Group Routes ============

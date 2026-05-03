@@ -15,6 +15,7 @@ import {
 } from '../../db/schema/vertragsmgmt';
 import { putObject, getObject, deleteObject } from '../../storage/s3';
 import { s3Paths } from '../../storage/paths';
+import { randomUUID } from 'crypto';
 import type {
   ContractMetadata,
   ContractSchema,
@@ -138,8 +139,7 @@ export async function getContract(contractId: string): Promise<ContractMetadata 
 // ============== Attachments ==============
 
 export function generateAttachmentId(): string {
-  const random = Math.random().toString(36).substring(2, 10);
-  return `att-${Date.now().toString(36)}-${random}`;
+  return `att-${randomUUID()}`;
 }
 
 export async function listAttachments(contractId: string): Promise<ContractAttachment[]> {

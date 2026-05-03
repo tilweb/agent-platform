@@ -451,6 +451,18 @@ function ContractsPage() {
         </Link>
       </div>
 
+      <div style={{
+        margin: `0 ${theme.spacing['2xl']} ${theme.spacing.lg}`,
+        padding: theme.spacing.md,
+        backgroundColor: theme.colors.warningLight,
+        color: theme.colors.warning,
+        borderRadius: theme.borderRadius.lg,
+        fontSize: theme.typography.sizes.sm,
+        lineHeight: theme.typography.lineHeight.relaxed,
+      }}>
+        <strong>Beta:</strong> Aktuell sehen alle App-Berechtigten alle Verträge. Pro-Vertrag-Berechtigungen folgen in einer nächsten Iteration.
+      </div>
+
       <div style={styles.content}>
         {/* Stats Cards */}
         {stats && (

@@ -1,0 +1,59 @@
+name: Security Audit
+
+# Findings:
+# - Backend: bun audit gegen die Dep-Tree
+# - Frontend: npm audit gegen die Dep-Tree (Vite/React)
+# Job ist non-blocking by default — Audit-Findings sollen sichtbar sein,
+# aber nicht jeden PR blocken (false-positive-Rate ist hoch). Wenn ihr
+# blocking wollt: continue-on-error: false setzen.
+#
+# Siehe security-review I5.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Wöchentlich Montag 06:00 UTC — fängt frisch publizierte Vulns auch
+    # ohne PR-Aktivität.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-backend:
+    name: Backend (Bun)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install backend deps
+        working-directory: backend
+        run: bun install --frozen-lockfile
+      - name: bun audit
+        working-directory: backend
+        run: bun audit
+
+  audit-frontend:
+    name: Frontend (npm)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: npm audit (production)
+        working-directory: frontend
+        run: npm audit --production --audit-level=moderate

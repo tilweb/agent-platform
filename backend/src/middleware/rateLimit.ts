@@ -7,6 +7,13 @@
 
 import type { Context, Next, MiddlewareHandler } from 'hono';
 import { getClientIp } from '../utils/clientIp';
+import { getCurrentUserId } from '../auth/middleware';
+
+/** Liefert User-ID falls Auth bereits aktiv ist, sonst Client-IP. */
+function userOrIpKey(c: Context, prefix: string): string {
+  const userId = getCurrentUserId(c);
+  return userId ? `${prefix}:user:${userId}` : `${prefix}:ip:${getClientIp(c)}`;
+}
 
 interface RateLimitEntry {
   count: number;
@@ -155,12 +162,25 @@ export const sensitiveRateLimit = rateLimit({
 
 /**
  * Chat/LLM rate limit
- * 30 requests per minute (to prevent API token abuse)
+ * 30 requests per minute (to prevent API token abuse).
+ * User-basiert wenn Auth-Cookie vorliegt, sonst IP-basiert (fuer Login-Pfad
+ * und Public-Endpoints). Verhindert dass Botnets mit verschiedenen IPs das
+ * Limit umgehen — bei eingeloggten Usern zaehlt der User selbst.
  */
 export const chatRateLimit = rateLimit({
   limit: 30,
   windowMs: 60 * 1000,
-  keyGenerator: (c) => `chat:${getClientIp(c)}`,
+  keyGenerator: (c) => userOrIpKey(c, 'chat'),
+});
+
+/**
+ * Import rate limit fuer Document-Upload-Endpoints (PM, VM).
+ * 20 Imports pro 10 Minuten — verhindert Markitdown-/LLM-Quota-Drain.
+ */
+export const importRateLimit = rateLimit({
+  limit: 20,
+  windowMs: 10 * 60 * 1000,
+  keyGenerator: (c) => userOrIpKey(c, 'import'),
 });
 
 /**

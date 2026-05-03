@@ -37,6 +37,7 @@ export {
 // Middleware
 export {
   authMiddleware,
+  adminMiddleware,
   optionalAuthMiddleware,
   isAuthenticated,
   getCurrentUser,

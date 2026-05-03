@@ -117,8 +117,8 @@ async function prepareVision(
   }
 
   const visionAdapter = new OpenAIAdapter({
-    baseUrl: visionModel.provider.api_url,
-    apiKey: visionModel.provider.api_key || null,
+    baseUrl: visionModel.base_url,
+    apiKey: visionModel.api_key || null,
     defaultModel: visionModel.model.id,
   });
 

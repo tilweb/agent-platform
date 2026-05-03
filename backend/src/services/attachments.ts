@@ -97,10 +97,23 @@ class AttachmentsService {
   private apiKey: string;
 
   constructor() {
-    this.markitdownUrl = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
+    // Whitelist-Pruefung: MARKITDOWN_API_URL muss adacor.ai oder localhost
+    // sein, sonst koennte ein Operator-Fehler den Server in SSRF kippen.
+    // Siehe security-review M13.
+    const rawUrl = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.toLowerCase();
+    const allowed =
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.endsWith('.adacor.ai') ||
+      host === 'adacor.ai';
+    if (!allowed) {
+      throw new Error(`MARKITDOWN_API_URL host "${host}" is not on the allowlist (adacor.ai or localhost).`);
+    }
+    this.markitdownUrl = rawUrl;
     this.apiKey = process.env.ADACOR_AI_API_KEY || '';
 
-    // Warn if using default URL (should be configured in production)
     if (!process.env.MARKITDOWN_API_URL) {
       console.warn('[Attachments] MARKITDOWN_API_URL not set, using default. Configure in .env for production.');
     }
@@ -146,12 +159,13 @@ class AttachmentsService {
   }
 
   /**
-   * Generate a unique attachment ID
+   * Generate a unique attachment ID. CSPRNG-Entropie (~122 Bit) statt
+   * timestamp+6char-random — verhindert Enumeration und Guessing.
+   * Existierende Attachment-IDs aus dem alten Format bleiben gueltig
+   * (Storage liest sie als Opaque-Strings).
    */
   private generateAttachmentId(): string {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8);
-    return `att-${timestamp}-${random}`;
+    return `att-${randomUUID()}`;
   }
 
   /**

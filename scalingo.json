@@ -40,8 +40,8 @@
       "required": true,
       "generator": "secret"
     },
-    "FAL_API_KEY": {
-      "description": "fal.ai API Key (Text-to-Image, Image-to-Image)",
+    "FAL_AI_API_KEY": {
+      "description": "fal.ai API Key (Text-to-Image, Image-to-Image). ENV-Name muss FAL_AI_API_KEY sein — nicht FAL_API_KEY (alter Typo).",
       "required": false
     },
     "MARKITDOWN_API_URL": {
@@ -81,6 +81,18 @@
     },
     "SEED_DEMO_DATA": {
       "description": "Wenn 'true': Demo-User (demo1..4, marketing, ruhrpm, andreas_bachmann) und Demo-Inhalte (Projekte, Chats, KB-Collections) werden beim Boot idempotent geseedet. Customer-Instanzen lassen das aus — Admin legt sich selbst beim ersten Login an.",
+      "value": "false"
+    },
+    "ALLOW_DEMO_SEED_IN_PRODUCTION": {
+      "description": "Demo-Instanzen (NODE_ENV=production + SEED_DEMO_DATA=true) brauchen diesen expliziten Opt-In. Schutz gegen versehentliches Seeden bekannter Demo-Passwoerter in echten Customer-Deployments. Customer-Instanzen lassen das ungesetzt — der Default-Guard kickt dann.",
+      "value": "false"
+    },
+    "AUDIT_RETENTION_DAYS": {
+      "description": "Anzahl Tage, fuer die Audit-Log-Dateien (data/audit/audit_*.jsonl) lokal aufgehoben werden. Default 90. Achtung: bei Scalingo-Container-Restart wird der Disk-Anteil verworfen — die echten Audit-Logs kommen ueber stdout (Marker [AUDIT]) im Scalingo-Log-Aggregator an. AUDIT_RETENTION_DAYS=0 deaktiviert das Disk-Cleanup.",
+      "value": "90"
+    },
+    "ALLOW_RECOVERY_SCRIPT": {
+      "description": "Erlaubt scripts/create-admin.ts in NODE_ENV=production ohne TTY (CI/Scheduler-Aufruf). Default ist Pflicht: Recovery muss interaktiv ueber 'scalingo run' gestartet werden, damit ein menschlicher Admin den Vorgang verantwortet. Setze ALLOW_RECOVERY_SCRIPT=true nur wenn ihr das Script bewusst von einem Scheduler triggern wollt.",
       "value": "false"
     }
   },

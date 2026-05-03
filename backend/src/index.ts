@@ -75,7 +75,27 @@ async function initialize() {
   // - Custom-Skills (Plattform-Skills, kein Demo-Inhalt)
   // - Apps-Registry-Sync, Tools, Provider — Plattform-Grundgeruest
   const seedDemoData = process.env.SEED_DEMO_DATA === 'true';
+  const allowDemoSeedInProd = process.env.ALLOW_DEMO_SEED_IN_PRODUCTION === 'true';
+  if (seedDemoData && process.env.NODE_ENV === 'production' && !allowDemoSeedInProd) {
+    console.error(
+      '\n========================================================\n' +
+      '[FATAL] SEED_DEMO_DATA=true is forbidden when NODE_ENV=production.\n' +
+      'Demo users have well-known passwords (demo1, demo2, ...) and must NEVER\n' +
+      'run in a real Customer-deployment. Aborting startup.\n' +
+      '\n' +
+      'Wenn dies eine Demo-Instanz ist (Scalingo "workplace-demo" o.ae.):\n' +
+      '  set ALLOW_DEMO_SEED_IN_PRODUCTION=true zusaetzlich.\n' +
+      'Wenn nicht: set SEED_DEMO_DATA=false.\n' +
+      '========================================================\n'
+    );
+    process.exit(1);
+  }
   if (seedDemoData && process.env.SCALINGO_POSTGRES) {
+    if (allowDemoSeedInProd) {
+      console.warn('[seed] DEMO INSTANCE — ALLOW_DEMO_SEED_IN_PRODUCTION=true bestaetigt; seeding mit bekannten Passwoertern.');
+    } else {
+      console.warn('[seed] DEMO MODE ACTIVE — seeding demo users with well-known passwords');
+    }
     console.log('[seed] SEED_DEMO_DATA=true — running demo data seeds');
     try {
       const result = await seedDemoUsers();

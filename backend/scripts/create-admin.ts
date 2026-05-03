@@ -34,6 +34,24 @@ function prompt(question: string): Promise<string> {
 }
 
 async function main() {
+  // Production-Guard: Recovery-Script darf nicht versehentlich ueber eine
+  // CI-Pipeline laufen — das waere eine persistente Admin-Backdoor.
+  // Erzwinge entweder TTY (interactive shell) oder explizites Opt-In via
+  // ALLOW_RECOVERY_SCRIPT=true. Siehe security-review M1.
+  if (process.env.NODE_ENV === 'production') {
+    const isTty = process.stdin.isTTY === true;
+    const explicitOptIn = process.env.ALLOW_RECOVERY_SCRIPT === 'true';
+    if (!isTty && !explicitOptIn) {
+      console.error(
+        '[create-admin] BLOCKED in NODE_ENV=production without TTY.\n' +
+        'This script can mint admin accounts and must not run from CI.\n' +
+        'If you really mean to run it: set ALLOW_RECOVERY_SCRIPT=true and re-run.\n'
+      );
+      process.exit(1);
+    }
+    console.warn('[create-admin] WARNING: running in production. Logging this invocation.');
+  }
+
   let username = process.env.RECOVERY_USERNAME ?? '';
   let password = process.env.RECOVERY_PASSWORD ?? '';
 

@@ -10,7 +10,8 @@
     "db:generate": "cd .. && drizzle-kit generate",
     "db:migrate": "cd .. && drizzle-kit migrate",
     "db:push": "cd .. && drizzle-kit push",
-    "db:studio": "cd .. && drizzle-kit studio"
+    "db:studio": "cd .. && drizzle-kit studio",
+    "audit": "bun audit"
   },
   "devDependencies": {
     "@types/bun": "latest",
