@@ -253,8 +253,15 @@ export async function audit(
     errorMessage: options.errorMessage,
   };
 
-  // Log to console in development
-  if (process.env.NODE_ENV === 'development') {
+  // Stdout-Mirror: in Production wird die Audit-Log-Datei beim
+  // Container-Restart verworfen (Scalingo hat keinen persistenten Disk).
+  // Stdout dagegen geht in den Scalingo-Log-Aggregator. Mit dem Marker
+  // [AUDIT] kann man Logs aus dem Stream filtern oder an einen externen
+  // Logger (Datadog/Logtail) routen.
+  // In development reicht ein lesbarer One-Liner.
+  if (process.env.NODE_ENV === 'production') {
+    process.stdout.write('[AUDIT] ' + JSON.stringify(entry) + '\n');
+  } else if (process.env.NODE_ENV === 'development') {
     console.log('[AuditLog]', entry.action, entry.username || entry.userId || 'system', entry.resourceId || '');
   }
 

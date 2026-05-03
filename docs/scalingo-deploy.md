@@ -119,6 +119,10 @@ curl -s ${URL}/health
 # Branding (no-auth)
 curl -s ${URL}/api/branding
 
+# Security-Header-Check: HSTS muss in production gesetzt sein
+curl -sI ${URL}/health | grep -i "strict-transport-security"
+# Erwartet: Strict-Transport-Security: max-age=31536000; includeSubDomains
+
 # Login
 curl -s -X POST ${URL}/api/auth/login \
   -H "Content-Type: application/json" \
@@ -131,6 +135,29 @@ curl -s -b /tmp/sc-cookies.txt ${URL}/api/knowledge/collections
 ```
 
 Browser: `${URL}` — Workplace-UI sollte erscheinen, Login mit `demo1` / `Demo2026!`, alle 5 Apps + KB-Collections + Chat-History sichtbar.
+
+### 7. Audit-Logging (Compliance)
+
+Audit-Eintraege werden in zwei Kanaele geschrieben:
+
+1. **Disk** (`data/audit/audit_YYYY-MM-DD.jsonl`) — fuer schnelles lokales Querying via `getAuditLogs()`. **Wichtig:** dieser Pfad wird beim Container-Restart auf Scalingo verworfen.
+2. **stdout** mit Marker `[AUDIT]` — wird vom Scalingo-Log-Aggregator persistiert. Das ist die *zuverlaessige* Quelle.
+
+Stdout-Filterung lokal:
+```sh
+scalingo --app $APP logs --lines 1000 | grep '\[AUDIT\]'
+```
+
+Fuer Compliance-Long-Term-Archive die Logs an einen externen Aggregator
+(Datadog, Logtail, Sentry) routen. Scalingo unterstuetzt das ueber
+`Log-Drains`:
+```sh
+scalingo --app $APP log-drains-add --url 'syslog+tcp://logs.example.com:514'
+```
+
+Disk-Retention: `AUDIT_RETENTION_DAYS=90` (Default). Cleanup laeuft beim
+Boot + alle 24h. `AUDIT_RETENTION_DAYS=0` deaktiviert die Disk-Logs ganz —
+sinnvoll auf Customer-Instanzen die ohnehin Log-Drains nutzen.
 
 ## Update-Deploys
 
@@ -187,10 +214,16 @@ scalingo --app workplace-demo env-set \
   PLATFORM_LOGIN_SUBTITLE='Demo-Plattform Adacor' \
   FLOW_S3_BUCKET='workplace-demo' \
   SEED_DEMO_DATA='true' \
+  ALLOW_DEMO_SEED_IN_PRODUCTION='true' \
   DEMO_PASSWORD='Demo2026!' \
   MARKETING_PASSWORD='Marketing2026!'
 # Beim Boot werden idempotent Demo-User + Beispiel-Projekte/Chats/KB
 # in DB+S3 ingestiert. Reset durch DB-Drop + neu deployen.
+#
+# WICHTIG: ALLOW_DEMO_SEED_IN_PRODUCTION='true' ist Pflicht. Ohne diesen
+# Opt-In bricht der Boot mit FATAL ab — Schutz gegen versehentliches Seeden
+# bekannter Demo-Passwoerter in echten Customer-Deployments. Beide Flags
+# muessen explizit gesetzt sein, damit der Demo-Modus laeuft.
 ```
 
 ### Recovery: verwaiste Instanz
