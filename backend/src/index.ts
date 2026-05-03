@@ -75,7 +75,19 @@ async function initialize() {
   // - Custom-Skills (Plattform-Skills, kein Demo-Inhalt)
   // - Apps-Registry-Sync, Tools, Provider — Plattform-Grundgeruest
   const seedDemoData = process.env.SEED_DEMO_DATA === 'true';
+  if (seedDemoData && process.env.NODE_ENV === 'production') {
+    console.error(
+      '\n========================================================\n' +
+      '[FATAL] SEED_DEMO_DATA=true is forbidden when NODE_ENV=production.\n' +
+      'Demo users have well-known passwords (demo1, demo2, ...) and must NEVER\n' +
+      'run in a production deployment. Aborting startup.\n' +
+      'Fix: set SEED_DEMO_DATA=false or remove NODE_ENV=production.\n' +
+      '========================================================\n'
+    );
+    process.exit(1);
+  }
   if (seedDemoData && process.env.SCALINGO_POSTGRES) {
+    console.warn('[seed] DEMO MODE ACTIVE — seeding demo users with well-known passwords');
     console.log('[seed] SEED_DEMO_DATA=true — running demo data seeds');
     try {
       const result = await seedDemoUsers();

@@ -16,6 +16,19 @@ export function getMcpToolName(serverId: string, toolName: string): string {
 }
 
 /**
+ * Sanitize MCP-Server-supplied descriptions before they land im LLM-Prompt.
+ * Entfernt Control-Chars und kappt auf 1024 Zeichen.
+ */
+function sanitizeMcpDescription(input: string | undefined): string {
+  if (!input) return '';
+  return input
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '')
+    .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '')
+    .slice(0, 1024);
+}
+
+/**
  * Parses an MCP tool name to extract server ID and original tool name
  */
 export function parseMcpToolName(name: string): { serverId: string; toolName: string } | null {
@@ -73,11 +86,17 @@ export class McpToolWrapper implements Tool {
   }
 
   getDefinition(): ToolDefinition {
+    // MCP-Server-Descriptions kommen aus untrusted Quellen (lokaler/remote
+    // MCP-Server kann boese Anweisungen einschmuggeln). Strip Control-Chars,
+    // kappen auf 1024 Zeichen, plus Server-Name als sichtbarer Quellen-Tag.
+    // Siehe security-review H1.
+    const safeDesc = sanitizeMcpDescription(this.toolInfo.description);
+    const safeServer = sanitizeMcpDescription(this.toolInfo.serverName).slice(0, 64);
     return {
       type: 'function',
       function: {
         name: this.name,
-        description: `[MCP: ${this.toolInfo.serverName}] ${this.toolInfo.description}`,
+        description: `[MCP: ${safeServer}] ${safeDesc}`,
         parameters: this.parameters,
       },
     };

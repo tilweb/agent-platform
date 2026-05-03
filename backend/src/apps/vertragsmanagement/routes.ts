@@ -33,6 +33,7 @@ import type {
 } from '../types';
 import { requireAppAccess } from '../permissions-middleware';
 import { contentDispositionHeader } from '../../utils/contentDisposition';
+import { importRateLimit } from '../../middleware/rateLimit';
 
 const contracts = new Hono();
 
@@ -58,13 +59,15 @@ const VALID_DOCUMENT_ROLES: ContractDocumentRole[] = ['hauptvertrag', 'anhang', 
  * POST /api/apps/vertragsmanagement/contracts/import
  * Multi-File-Import via SSE-Stream — Phasen siehe import-service.ts.
  */
-contracts.post('/contracts/import', async (c) => {
+contracts.post('/contracts/import', importRateLimit, async (c) => {
   try {
     const userId = getCurrentUserId(c);
     if (!userId) return c.json({ error: 'Authentication required' }, 401);
     const formData = await c.req.formData();
 
     const files: { buffer: Buffer; filename: string; mimeType: string }[] = [];
+    let totalBytes = 0;
+    const MAX_TOTAL_BYTES = 200 * 1024 * 1024; // 200 MB
     for (const [key, value] of formData.entries()) {
       if (key === 'files' && value instanceof File) {
         if (files.length >= 10) {
@@ -72,6 +75,10 @@ contracts.post('/contracts/import', async (c) => {
         }
         if (value.size > 50 * 1024 * 1024) {
           return c.json({ error: `Datei "${value.name}" ist zu gross (max. 50 MB)` }, 400);
+        }
+        totalBytes += value.size;
+        if (totalBytes > MAX_TOTAL_BYTES) {
+          return c.json({ error: 'Gesamtgroesse aller Dateien ueberschreitet 200 MB' }, 400);
         }
         if (!ALLOWED_IMPORT_MIME_TYPES.has(value.type)) {
           return c.json({ error: `Dateityp "${value.type}" nicht unterstuetzt fuer "${value.name}"` }, 400);
@@ -119,7 +126,7 @@ contracts.post('/contracts/import', async (c) => {
  * Markdown ist gecached → keine Wiederholung von Phase 1+2. Alter Stand wird
  * in `extracted_history[]` archiviert.
  */
-contracts.post('/contracts/:id/reextract', async (c) => {
+contracts.post('/contracts/:id/reextract', importRateLimit, async (c) => {
   try {
     const userId = getCurrentUserId(c);
     if (!userId) return c.json({ error: 'Authentication required' }, 401);

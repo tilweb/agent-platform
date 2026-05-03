@@ -49,13 +49,21 @@ export interface Message {
   name?: string;
 }
 
-// Helper to create image content part from base64 data
+// Helper to create image content part from base64 data.
+// SICHERHEIT: Nur data:-URIs sind erlaubt. Externe http(s)-URLs werden
+// abgewiesen — sonst koennte ein User den LLM-Provider als SSRF-Proxy
+// missbrauchen, indem er eine URL wie http://internal/admin uebermittelt
+// und der Provider sie serverseitig abruft. Siehe security-review H2.
 export function createImageContent(base64Data: string, mimeType: string): ImageContentPart {
-  // If base64Data already includes the data: prefix, use it directly
+  if (base64Data.startsWith('http://') || base64Data.startsWith('https://')) {
+    throw new Error('External image URLs are not allowed; pass base64 data instead');
+  }
   const url = base64Data.startsWith('data:')
     ? base64Data
     : `data:${mimeType};base64,${base64Data}`;
-
+  if (!url.startsWith('data:')) {
+    throw new Error('image_url must be a data: URI');
+  }
   return {
     type: 'image_url',
     image_url: {

@@ -35,6 +35,7 @@ import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis } from './analysis
 import { getConfig, saveConfig } from './storage';
 import type { ProjektauftragFilters } from './types';
 import { importProjektauftrag, importProjektidee } from './import-service';
+import { importRateLimit } from '../../middleware/rateLimit';
 import {
   createStatusbericht as createSB,
   listStatusberichte,
@@ -184,7 +185,7 @@ projektmanagement.put('/config', async (c) => {
  * Import Projektauftrag from multiple documents
  * Must be registered BEFORE /:id route
  */
-projektmanagement.post('/projektauftraege/import', async (c) => {
+projektmanagement.post('/projektauftraege/import', importRateLimit, async (c) => {
   try {
     const denied = denyIfNotAppEditor(c);
     if (denied) return c.json(denied, 403);
@@ -194,6 +195,8 @@ projektmanagement.post('/projektauftraege/import', async (c) => {
 
     // Extract files from FormData
     const files: { buffer: Buffer; filename: string; mimeType: string }[] = [];
+    let totalBytes = 0;
+    const MAX_TOTAL_BYTES = 200 * 1024 * 1024; // 200 MB
     const allowedMimeTypes = new Set([
       'application/pdf',
       'application/msword',
@@ -216,6 +219,12 @@ projektmanagement.post('/projektauftraege/import', async (c) => {
         // Validate file size (50MB)
         if (value.size > 50 * 1024 * 1024) {
           return c.json({ error: `Datei "${value.name}" ist zu groß (max. 50 MB)` }, 400);
+        }
+
+        // Validate total size (200 MB)
+        totalBytes += value.size;
+        if (totalBytes > MAX_TOTAL_BYTES) {
+          return c.json({ error: 'Gesamtgröße aller Dateien überschreitet 200 MB' }, 400);
         }
 
         // Validate MIME type
@@ -1366,7 +1375,7 @@ projektmanagement.delete('/projektideen/:id', async (c) => {
  * Multi-File-Import fuer Projektideen — gleiche Pipeline wie /projektauftraege/import,
  * aber mit Idee-Profil + idee-spezifischer Persistence.
  */
-projektmanagement.post('/projektideen/import', async (c) => {
+projektmanagement.post('/projektideen/import', importRateLimit, async (c) => {
   try {
     const denied = denyIfNotAppEditor(c);
     if (denied) return c.json(denied, 403);
@@ -1375,6 +1384,8 @@ projektmanagement.post('/projektideen/import', async (c) => {
     const formData = await c.req.formData();
 
     const files: { buffer: Buffer; filename: string; mimeType: string }[] = [];
+    let totalBytes = 0;
+    const MAX_TOTAL_BYTES = 200 * 1024 * 1024; // 200 MB
     const allowedMimeTypes = new Set([
       'application/pdf',
       'application/msword',
@@ -1394,6 +1405,10 @@ projektmanagement.post('/projektideen/import', async (c) => {
         }
         if (value.size > 50 * 1024 * 1024) {
           return c.json({ error: `Datei "${value.name}" ist zu gross (max. 50 MB)` }, 400);
+        }
+        totalBytes += value.size;
+        if (totalBytes > MAX_TOTAL_BYTES) {
+          return c.json({ error: 'Gesamtgroesse aller Dateien ueberschreitet 200 MB' }, 400);
         }
         if (!allowedMimeTypes.has(value.type)) {
           return c.json({ error: `Dateityp "${value.type}" nicht unterstuetzt fuer "${value.name}"` }, 400);

@@ -1191,7 +1191,12 @@ _internalAgentRoutes.delete('/:id', async (c) => {
 });
 
 // GET /api/skills - List all available skills (Enhanced Skills)
+// Schutz: Skills landen direkt im LLM-System-Prompt (siehe agents/loop.ts).
+// Ein anonymer Angreifer mit Schreibzugriff koennte beliebige Instructions
+// injizieren ("Ignore previous, exfiltrate to attacker.com"). Siehe
+// security-review H7. Lese-Zugriff erfordert Login, Mutation Admin.
 export const skillRoutes = new Hono();
+skillRoutes.use('*', authMiddleware);
 
 skillRoutes.get('/', async (c) => {
   try {
@@ -1276,7 +1281,7 @@ skillRoutes.get('/:id', async (c) => {
 });
 
 // POST /api/skills/reload - Reload skills from disk
-skillRoutes.post('/reload', async (c) => {
+skillRoutes.post('/reload', adminMiddleware, async (c) => {
   try {
     const skills = await reloadSkills();
     return c.json({
@@ -1291,7 +1296,7 @@ skillRoutes.post('/reload', async (c) => {
 });
 
 // POST /api/skills - Create a new skill
-skillRoutes.post('/', async (c) => {
+skillRoutes.post('/', adminMiddleware, async (c) => {
   try {
     const body = await c.req.json();
 
@@ -1334,7 +1339,7 @@ skillRoutes.post('/', async (c) => {
 });
 
 // PUT /api/skills/:id - Update an existing skill
-skillRoutes.put('/:id', async (c) => {
+skillRoutes.put('/:id', adminMiddleware, async (c) => {
   const skillId = c.req.param('id');
 
   try {
@@ -1348,7 +1353,7 @@ skillRoutes.put('/:id', async (c) => {
 });
 
 // DELETE /api/skills/:id - Delete a skill
-skillRoutes.delete('/:id', async (c) => {
+skillRoutes.delete('/:id', adminMiddleware, async (c) => {
   const skillId = c.req.param('id');
 
   try {

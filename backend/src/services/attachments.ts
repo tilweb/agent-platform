@@ -146,12 +146,13 @@ class AttachmentsService {
   }
 
   /**
-   * Generate a unique attachment ID
+   * Generate a unique attachment ID. CSPRNG-Entropie (~122 Bit) statt
+   * timestamp+6char-random — verhindert Enumeration und Guessing.
+   * Existierende Attachment-IDs aus dem alten Format bleiben gueltig
+   * (Storage liest sie als Opaque-Strings).
    */
   private generateAttachmentId(): string {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8);
-    return `att-${timestamp}-${random}`;
+    return `att-${randomUUID()}`;
   }
 
   /**
