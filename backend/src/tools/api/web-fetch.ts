@@ -217,6 +217,13 @@ export class WebFetchTool extends ApiTool {
       if (error.name === 'AbortError') {
         return `Error: Request timed out after ${FETCH_TIMEOUT / 1000}s`;
       }
+      // In Production keine internen Hostnames/IPs in der Fehlermeldung
+      // an den Caller (LLM → User) leaken. Im Dev hilft der volle Text
+      // beim Debugging. Siehe security-review L5.
+      console.error('[web_fetch] Error:', error);
+      if (process.env.NODE_ENV === 'production') {
+        return 'Error: Failed to fetch URL';
+      }
       return `Error fetching URL: ${error.message}`;
     }
   }

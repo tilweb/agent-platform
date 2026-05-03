@@ -316,17 +316,32 @@ chatRoutes.post('/prepare-readers', authMiddleware, async (c) => {
   }
 });
 
-// GET /api/chat/:id/stream - SSE stream for responses
-chatRoutes.get('/:id/stream', async (c) => {
+// GET /api/chat/:id/stream - SSE stream for responses.
+// EventSource sendet das Session-Cookie automatisch mit, deshalb pruefen wir,
+// dass der Stream-Caller derselbe User ist, der die zugehoerige POST-Anfrage
+// gestellt hat. Vorher reichte allein eine erratbare sessionId — Hijack-
+// Risiko. Siehe security-review M8.
+chatRoutes.get('/:id/stream', optionalAuthMiddleware, async (c) => {
   const sessionId = c.req.param('id');
 
-  // Get and remove pending message
+  // Get pending message (peek before delete, damit User-Bindung greift)
   const pending = pendingMessages.get(sessionId);
-  pendingMessages.delete(sessionId);
 
   if (!pending) {
     return c.json({ error: 'No pending message for this session' }, 400);
   }
+
+  // User-Binding: der Stream darf nur vom Initiator abgeholt werden.
+  // pending.userId ist im POST-Handler aus authMiddleware uebernommen.
+  const callerUserId = getCurrentUserId(c);
+  if (pending.userId && callerUserId !== pending.userId) {
+    // Pending NICHT loeschen — sonst koennte ein Angreifer mit erratener
+    // sessionId den legitimen Empfaenger aussperren (DoS).
+    return c.json({ error: 'Stream not authorised for this session' }, 403);
+  }
+
+  // Erst nach erfolgreichem Bindings-Check konsumieren
+  pendingMessages.delete(sessionId);
 
   const { message: userMessage, agentId, attachments, userId, readerContexts, projectId, modelOverride } = pending;
 

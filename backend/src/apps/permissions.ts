@@ -16,6 +16,7 @@
 
 import { loadRegistry, saveRegistry } from './registry';
 import { getUserGroups } from '../auth/groups';
+import { isAppRole } from './types';
 import type { AppRole, AppGroupPermission } from './types';
 
 const ROLE_RANK: Record<AppRole, number> = {
@@ -85,7 +86,7 @@ export async function replaceAppPermissions(
   const dedup = new Map<string, AppGroupPermission>();
   for (const p of permissions) {
     if (!p.groupId || !p.role) continue;
-    if (!['owner', 'editor', 'viewer'].includes(p.role)) {
+    if (!isAppRole(p.role)) {
       throw new Error(`Invalid role: ${p.role}`);
     }
     dedup.set(p.groupId, { groupId: p.groupId, role: p.role });

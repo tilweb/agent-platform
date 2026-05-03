@@ -124,7 +124,12 @@ export interface Projektauftrag {
  * setzen, Editor kann bearbeiten + Statusberichte verwalten, Viewer nur lesen.
  * Statusberichte erben vom Auftrag — keine eigenen Permissions.
  */
-export type AuftragsRole = 'owner' | 'editor' | 'viewer';
+export const AUFTRAGS_ROLES = ['owner', 'editor', 'viewer'] as const;
+export type AuftragsRole = typeof AUFTRAGS_ROLES[number];
+
+export function isAuftragsRole(value: unknown): value is AuftragsRole {
+  return typeof value === 'string' && (AUFTRAGS_ROLES as readonly string[]).includes(value);
+}
 
 export interface UserPermission {
   userId: string;

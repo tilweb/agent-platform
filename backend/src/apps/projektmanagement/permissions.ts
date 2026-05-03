@@ -21,6 +21,7 @@
 import { getProjektidee, updateProjektidee } from './idee-storage';
 import { getProjektauftrag, updateProjektauftrag } from './storage';
 import { getUserGroups } from '../../auth/groups';
+import { isAuftragsRole } from './types';
 import type {
   AuftragsRole,
   ResourcePermissions,
@@ -128,19 +129,18 @@ function validatePermissions(input: unknown): ResourcePermissions {
   const obj = input as { users?: unknown; groups?: unknown };
   const users = Array.isArray(obj.users) ? obj.users : [];
   const groups = Array.isArray(obj.groups) ? obj.groups : [];
-  const validRoles: AuftragsRole[] = ['owner', 'editor', 'viewer'];
 
   // Dedup auf userId/groupId — bei Duplikaten gewinnt der spaeterere Eintrag.
   const userMap = new Map<string, AuftragsRole>();
   for (const u of users) {
     const e = u as { userId?: string; role?: AuftragsRole };
-    if (!e.userId || !e.role || !validRoles.includes(e.role)) continue;
+    if (!e.userId || !isAuftragsRole(e.role)) continue;
     userMap.set(e.userId, e.role);
   }
   const groupMap = new Map<string, AuftragsRole>();
   for (const g of groups) {
     const e = g as { groupId?: string; role?: AuftragsRole };
-    if (!e.groupId || !e.role || !validRoles.includes(e.role)) continue;
+    if (!e.groupId || !isAuftragsRole(e.role)) continue;
     groupMap.set(e.groupId, e.role);
   }
 
