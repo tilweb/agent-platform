@@ -40,8 +40,8 @@
       "required": true,
       "generator": "secret"
     },
-    "FAL_API_KEY": {
-      "description": "fal.ai API Key (Text-to-Image, Image-to-Image)",
+    "FAL_AI_API_KEY": {
+      "description": "fal.ai API Key (Text-to-Image, Image-to-Image). ENV-Name muss FAL_AI_API_KEY sein — nicht FAL_API_KEY (alter Typo).",
       "required": false
     },
     "MARKITDOWN_API_URL": {
