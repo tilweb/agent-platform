@@ -30,6 +30,7 @@ COPY --from=frontend-build /app/frontend/dist/ ../frontend/dist/
 
 # Copy seed script
 COPY scripts/seed-demo-users.ts ./scripts/seed-demo-users.ts
+COPY backend/scripts/seed-demo-pm-owners.ts ./scripts/seed-demo-pm-owners.ts
 
 ENV NODE_ENV=production
 ENV PORT=3001
@@ -79,5 +80,7 @@ CMD sh -c '\
   grep "^  - id:" /app/data/config/providers.yaml && \
   echo "=== Running seed script ===" && \
   bun run /app/backend/scripts/seed-demo-users.ts && \
+  echo "=== Running projectmanagement demo owner seed ===" && \
+  SEED_DEMO_OWNERS=true bun run /app/backend/scripts/seed-demo-pm-owners.ts && \
   echo "=== Starting server ===" && \
   bun run /app/backend/src/index.ts'
