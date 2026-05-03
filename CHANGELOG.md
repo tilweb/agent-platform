@@ -2,6 +2,15 @@
 
 ## 2026-05-03
 
+### Security-Fixes Cleanup-Sprint — Branch `feature/security-fixes-2026-05-03`
+Letzte Lows + Info-Findings — viele kosmetisch, einer mit echtem Sicherheitswert (L6).
+
+- **L3** `auth/middleware.ts` Session-Extension umformuliert: `lastExtendedAtMs` + `sinceLastExtendMs` statt `Math.abs(...)`-Konstrukt. Verhalten unveraendert, Lesbarkeit verbessert.
+- **L6** IPv6-SSRF-Check substanziell gehaertet: neue `expandIPv6()`-Funktion strippt Zone-IDs/Klammern, expandiert `::` zu 8 Hex-Gruppen, behandelt IPv4-mapped Form. Block-Set erweitert um site-local (fec0::/10), discard-only (100::/64), multicast (ff00::/8) und 6to4-zu-RFC1918 (2002::-Praefix mit privatem IPv4-Anteil). Standalone-Tests: 18/18 Cases pass.
+- **L7** `BRAVE_API_KEY` in `.env.example` dokumentiert (Custom-Tool-Referenz war ohne Template-Eintrag).
+- **I1** Verifikation: Tool-Outputs sind bereits korrekt mit `role: 'tool'` markiert (3 Sites in `agents/loop.ts`). Review-Agent hatte das falsch klassifiziert — kein Code-Change.
+- **I5** `.github/workflows/security-audit.yml` mit `bun audit` (backend) + `npm audit --production` (frontend) auf PR/push/main + woechentlicher Schedule. `continue-on-error: true` — sichtbar, nicht blockend. `audit`-Scripts in beiden `package.json`. Erstlauf zeigt 27 Backend-Vulns (10 high, 16 moderate; davon zwei Hono-Cookie-Issues real relevant) und 1 Frontend-Vuln (yaml stack overflow) — Behebung als separater Dep-Update-Track.
+
 ### Security-Fixes Compliance-Bundle M11 + I4 — Branch `feature/security-fixes-2026-05-03`
 Audit-Log auf Compliance-Niveau gebracht.
 
