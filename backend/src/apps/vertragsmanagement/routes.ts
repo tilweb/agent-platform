@@ -32,6 +32,7 @@ import type {
   ContractDocumentRole,
 } from '../types';
 import { requireAppAccess } from '../permissions-middleware';
+import { contentDispositionHeader } from '../../utils/contentDisposition';
 
 const contracts = new Hono();
 
@@ -160,7 +161,7 @@ contracts.get('/contracts/:id/attachments/:attachmentId', async (c) => {
     return new Response(result.buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': result.contentType,
-        'Content-Disposition': `inline; filename="${encodeURIComponent(result.filename)}"`,
+        'Content-Disposition': contentDispositionHeader(result.filename, result.contentType),
         'Content-Length': result.buffer.length.toString(),
       },
     });
@@ -395,7 +396,7 @@ contracts.get('/contracts/:id/original', async (c) => {
     return new Response(new Uint8Array(original.buffer), {
       headers: {
         'Content-Type': original.contentType,
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(original.filename)}"`,
+        'Content-Disposition': contentDispositionHeader(original.filename, original.contentType),
       },
     });
   } catch (error) {
