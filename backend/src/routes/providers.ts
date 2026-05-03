@@ -22,7 +22,7 @@ import {
 import { llmService } from '../services/llm';
 import { OpenAIAdapter } from '../services/llm/adapters/openai';
 import { OllamaAdapter } from '../services/llm/adapters/ollama';
-import { authMiddleware } from '../auth';
+import { authMiddleware, adminMiddleware } from '../auth';
 import type {
   CreateProviderRequest,
   UpdateProviderRequest,
@@ -31,15 +31,6 @@ import type {
 } from '../types/providers';
 
 const providers = new Hono();
-
-// Admin middleware - requires admin role
-const adminMiddleware = async (c: any, next: any) => {
-  const user = c.get('user');
-  if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Admin access required' }, 403);
-  }
-  return next();
-};
 
 // All provider routes require authentication
 providers.use('*', authMiddleware);

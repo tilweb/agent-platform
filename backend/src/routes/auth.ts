@@ -24,6 +24,7 @@ import {
   updateUser,
   deleteUser,
   authMiddleware,
+  adminMiddleware,
   getCurrentUser,
   hashPassword,
   // Groups
@@ -256,19 +257,6 @@ authRoutes.get('/status', async (c) => {
 });
 
 // ============ Admin Routes ============
-
-import type { Context, Next, MiddlewareHandler } from 'hono';
-
-/**
- * Middleware to check if user is admin
- */
-const adminMiddleware: MiddlewareHandler = async (c: Context, next: Next) => {
-  const user = getCurrentUser(c);
-  if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Admin access required' }, 403);
-  }
-  await next();
-};
 
 /**
  * GET /api/auth/users - List all users (admin only)

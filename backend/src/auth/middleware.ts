@@ -2,7 +2,7 @@
  * Authentication Middleware for Hono
  */
 
-import type { Context, Next } from 'hono';
+import type { Context, Next, MiddlewareHandler } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { getSession, extendSession, deleteSession } from './session';
 import { loadUser } from './storage';
@@ -109,3 +109,15 @@ export function getCurrentUser(c: Context): UserWithoutPassword | undefined {
 export function getCurrentUserId(c: Context): string | undefined {
   return c.get('userId');
 }
+
+/**
+ * Admin-Only Middleware. MUSS nach `authMiddleware` gehaengt werden
+ * (z.B. `route.use('*', authMiddleware, adminMiddleware)`).
+ */
+export const adminMiddleware: MiddlewareHandler = async (c, next) => {
+  const user = c.get('user');
+  if (!user || user.role !== 'admin') {
+    return c.json({ error: 'Admin access required' }, 403);
+  }
+  await next();
+};

@@ -4,7 +4,7 @@ import { runAgentLoop, type AgentEvent, type AttachmentWithContent } from '../ag
 import { chatRateLimit, uploadRateLimit } from '../middleware/rateLimit';
 import { generateSessionId, saveConversation, saveChatHistory, loadChatHistory, listChatHistories, searchChatHistories, deleteChatHistory, regenerateChatSummary, regenerateAllMissingSummaries, createShareLink, revokeShareLink, loadChatByShareToken, getShareInfo, loadChatFolders, createChatFolder, deleteChatFolder, updateChatFolders, getChatFolderIds, listChatsInFolder, getFolderChatCounts, addChatMaterial, removeChatMaterial, updateChatMaterials, type MessageAttachment, type ChatMaterial } from '../services/memory';
 import { listAgents, loadAgent, createAgent, updateAgent, deleteAgent, getAgentFull } from '../services/agents';
-import { authMiddleware, optionalAuthMiddleware, getCurrentUserId } from '../auth';
+import { authMiddleware, adminMiddleware, optionalAuthMiddleware, getCurrentUserId } from '../auth';
 import {
   loadSkills,
   getSkillById,
@@ -1531,9 +1531,13 @@ toolRoutes.put('/:name/config', async (c) => {
 });
 
 // ============================================
-// Custom Tools Routes
+// Custom Tools Routes (admin-only — diese Routen erlauben das Anlegen
+// beliebiger ausgehender HTTP-Calls; ohne Auth waere das ein offener
+// SSRF-Vektor. Siehe security-review-2026-05-03 C1.)
 // ============================================
 export const customToolRoutes = new Hono();
+
+customToolRoutes.use('*', authMiddleware, adminMiddleware);
 
 // GET /api/tools/custom - List all custom tools
 customToolRoutes.get('/', async (c) => {
