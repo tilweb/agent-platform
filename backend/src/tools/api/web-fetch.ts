@@ -13,6 +13,7 @@ import { validateUrl } from '../../utils/ssrfProtection';
 const DEFAULT_MAX_LENGTH = 15000;
 const ABSOLUTE_MAX_LENGTH = 30000;
 const FETCH_TIMEOUT = 15000;
+const MAX_REDIRECTS = 3;
 
 /**
  * Decode common HTML entities
@@ -125,28 +126,58 @@ export class WebFetchTool extends ApiTool {
       return 'Error: url is required';
     }
 
-    // SSRF protection
-    const validation = await validateUrl(url);
-    if (!validation.allowed) {
-      return `Error: URL blocked - ${validation.reason}`;
-    }
-
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+      // Manual redirect handling: jeder Hop wird neu SSRF-validiert. Sonst
+      // koennte ein Drittanbieter-Server per 302 auf 169.254.169.254 oder
+      // andere interne Ziele umleiten und so unseren initialen Check umgehen.
+      let currentUrl = url;
+      let response: Response | null = null;
+      const visited = new Set<string>();
 
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; AgentPlatform/1.0; +https://github.com)',
-          'Accept': 'text/html,application/xhtml+xml,text/plain,application/json',
-          'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
-        },
-        redirect: 'follow',
-        signal: controller.signal,
-      });
+      for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+        if (visited.has(currentUrl)) {
+          return `Error: Redirect loop detected at ${currentUrl}`;
+        }
+        visited.add(currentUrl);
 
-      clearTimeout(timeoutId);
+        const validation = await validateUrl(currentUrl);
+        if (!validation.allowed) {
+          return `Error: URL blocked - ${validation.reason}`;
+        }
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+        response = await fetch(currentUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; AgentPlatform/1.0; +https://github.com)',
+            'Accept': 'text/html,application/xhtml+xml,text/plain,application/json',
+            'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+          },
+          redirect: 'manual',
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        // Folge Redirects manuell mit Re-Validation
+        if (response.status >= 300 && response.status < 400) {
+          const location = response.headers.get('location');
+          if (!location) {
+            return `Error: Redirect (${response.status}) without Location header`;
+          }
+          // Resolve relative redirects against current URL
+          currentUrl = new URL(location, currentUrl).toString();
+          continue;
+        }
+        break;
+      }
+
+      if (!response) {
+        return 'Error: No response received';
+      }
+      if (response.status >= 300 && response.status < 400) {
+        return `Error: Too many redirects (>${MAX_REDIRECTS})`;
+      }
       if (!response.ok) {
         return `Error: HTTP ${response.status} ${response.statusText}`;
       }
