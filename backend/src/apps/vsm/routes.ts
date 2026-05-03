@@ -16,6 +16,7 @@ import {
 import { analyzeVsm } from './analysis';
 import type { VsmProjektFilters } from './types';
 import { requireAppAccess } from '../permissions-middleware';
+import { getCurrentUserId } from '../../auth/middleware';
 
 const vsm = new Hono();
 
@@ -59,7 +60,7 @@ vsm.get('/projekte', async (c) => {
 vsm.post('/projekte', async (c) => {
   try {
     const body = await c.req.json();
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const projekt = await createProjekt(body, userId);
     return c.json({ projekt }, 201);
   } catch (error) {
@@ -92,7 +93,7 @@ vsm.put('/projekte/:id', async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
     const projekt = await updateProjekt(id, body, userId);
     if (!projekt) {
       return c.json({ error: 'Project not found' }, 404);
@@ -132,7 +133,7 @@ vsm.put('/projekte/:id/data/:section', async (c) => {
     const id = c.req.param('id');
     const section = c.req.param('section');
     const body = await c.req.json();
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
 
     const projekt = await updateVsmData(id, section, body.data, userId);
     if (!projekt) {
@@ -155,7 +156,7 @@ vsm.put('/projekte/:id/data/:section', async (c) => {
 vsm.post('/projekte/:id/analyse', async (c) => {
   try {
     const id = c.req.param('id');
-    const userId = c.req.header('x-user-id') || 'system';
+    const userId = getCurrentUserId(c) ?? 'system';
 
     const projekt = await getProjektDetails(id);
     if (!projekt) {
