@@ -1856,8 +1856,9 @@ knowledgeStreamRoutes.get('/collections', async (c) => {
   }
 });
 
-// POST /api/knowledge/collections - Create a new collection
-knowledgeStreamRoutes.post('/collections', async (c) => {
+// POST /api/knowledge/collections - Create a new collection.
+// authMiddleware verhindert anonyme Collection-Erstellung (vorher offen — M7).
+knowledgeStreamRoutes.post('/collections', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const { id, name, description, activate_when, never_activate_when } = body;
@@ -2460,9 +2461,19 @@ knowledgeStreamRoutes.delete('/documents/:id', async (c) => {
   }
 });
 
-// POST /api/knowledge/index - Index a document (file upload)
-knowledgeStreamRoutes.post('/index', async (c) => {
+// Whitelist von Extensions die der KB-Indexer verarbeiten kann.
+const ALLOWED_KB_EXTENSIONS = new Set([
+  '.pdf', '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
+  '.txt', '.md', '.csv', '.html', '.htm', '.rtf',
+]);
+
+// POST /api/knowledge/index - Index a document (file upload).
+// authMiddleware verhindert anonymen Indexer (vorher offen — M7).
+knowledgeStreamRoutes.post('/index', authMiddleware, async (c) => {
   try {
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+
     const formData = await c.req.formData();
     const file = formData.get('document') as File | null;
     const collectionId = formData.get('collection_id') as string;
@@ -2474,21 +2485,42 @@ knowledgeStreamRoutes.post('/index', async (c) => {
       return c.json({ error: 'document file and collection_id are required' }, 400);
     }
 
+    // Filename-Sanitization: nur basename (strippt Pfad-Komponenten),
+    // Extension-Whitelist gegen .exe/.sh/.jar etc., Control-Chars raus.
+    // Vorher schrieb der Code `incoming/${file.name}` direkt — bei
+    // file.name="../../etc/passwd" landete das als Pfad-Traversal. M6.
+    const { basename, extname } = await import('path');
+    const safeName = basename(file.name).replace(/[\x00-\x1F\x7F]/g, '_');
+    if (!safeName || safeName.startsWith('.') || safeName.length > 255) {
+      return c.json({ error: 'Ungueltiger Dateiname' }, 400);
+    }
+    const ext = extname(safeName).toLowerCase();
+    if (!ALLOWED_KB_EXTENSIONS.has(ext)) {
+      return c.json({ error: `Dateityp ${ext} nicht erlaubt im KB-Index` }, 400);
+    }
+
     // Save uploaded file to incoming/
     const { writeFile } = await import('fs/promises');
-    const { resolve } = await import('path');
+    const { resolve, join } = await import('path');
     const kbBase = resolve(process.cwd(), '../data/knowledge-base');
-    const incomingPath = `${kbBase}/incoming/${file.name}`;
+    const incomingDir = join(kbBase, 'incoming');
+    const incomingPath = join(incomingDir, safeName);
+    // Defense-in-Depth: nach dem Join nochmal pruefen, dass wir innerhalb
+    // von incomingDir geblieben sind. Sollte durch basename+sanitize unmoeglich
+    // sein, aber wenn doch — fail-safe abweisen.
+    if (!incomingPath.startsWith(incomingDir + '/')) {
+      return c.json({ error: 'Pfad-Sanitization fehlgeschlagen' }, 400);
+    }
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(incomingPath, buffer);
 
     // Index the document
     const { indexerService } = await import('../services/indexer');
-    const result = await indexerService.indexDocument(file.name, collectionId, {
+    const result = await indexerService.indexDocument(safeName, collectionId, {
       title: title || undefined,
       owner: owner || undefined,
       confidentiality: confidentiality || 'internal',
-    });
+    }, userId);
 
     return c.json(result, 201);
   } catch (error: any) {

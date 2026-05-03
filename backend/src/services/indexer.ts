@@ -40,16 +40,30 @@ class IndexerService {
   }
 
   /**
-   * Convert a document to Markdown via Adacor Markitdown API
+   * Convert a document to Markdown via Adacor Markitdown API.
+   *
+   * Defense-in-Depth: filePath wird als basename() interpretiert — auch wenn
+   * der Caller Pfad-Komponenten reinreicht, lesen wir nur direkt aus
+   * INCOMING_DIR. Verhindert Path-Traversal ueber prepared Filenames. M6.
    */
   async convertDocument(filePath: string): Promise<string> {
-    const fullPath = join(INCOMING_DIR, filePath);
+    const fileName = basename(filePath);
+    if (!fileName || fileName.startsWith('.') || fileName !== filePath) {
+      // filePath != basename heisst: enthielt Pfad-Komponenten — abweisen
+      // statt stillschweigend basename zu nehmen, damit Bugs sichtbar werden.
+      throw new Error(`Ungueltiger Datei-Pfad: ${filePath}`);
+    }
+    const fullPath = join(INCOMING_DIR, fileName);
 
-    if (!existsSync(fullPath)) {
-      throw new Error(`Datei nicht gefunden: ${filePath}`);
+    // Defense-in-Depth: nach dem Join nochmal pruefen dass wir innerhalb
+    // INCOMING_DIR geblieben sind.
+    if (!fullPath.startsWith(INCOMING_DIR + '/') && fullPath !== INCOMING_DIR) {
+      throw new Error('Pfad ausserhalb INCOMING_DIR');
     }
 
-    const fileName = basename(filePath);
+    if (!existsSync(fullPath)) {
+      throw new Error(`Datei nicht gefunden: ${fileName}`);
+    }
 
     // Check if it's already markdown/text
     const ext = extname(filePath).toLowerCase();
