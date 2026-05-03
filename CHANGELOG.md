@@ -2,6 +2,12 @@
 
 ## 2026-05-03
 
+### Security-Fixes Compliance-Bundle M11 + I4 — Branch `feature/security-fixes-2026-05-03`
+Audit-Log auf Compliance-Niveau gebracht.
+
+- **M11** `writeAuditEntry` nutzt jetzt `fs.appendFile` (POSIX-O_APPEND-atomar) statt read-modify-write. Vorher gingen unter Concurrent-Login Audit-Eintraege verloren — Smoke mit 5 parallelen failed-logins bestaetigt: alle Eintraege landen jetzt in der Datei. Plus `cleanupOldAuditLogs()` mit `AUDIT_RETENTION_DAYS` (default 90, 0 = aus), beim Boot + alle 24h. Hash-Chain-Tamper-Detection ausgelassen — Append-Only-Storage (S3 Object-Lock) waere die richtige Hardening-Stufe darueber, gehoert in einen Infra-Plan.
+- **I4** `auditLogin(success=false, username, ...)` pseudonymisiert den Username via sha256-Praefix (`usr_<16-hex>`). Der bei Failed-Login eingegebene String gehoert oft keinem echten Account (Tippfehler, Bot-Scan) und waere damit Eingabe-PII ohne legitime Grundlage. Korrelation fuer Brute-Force-Erkennung bleibt (gleicher Input → gleicher Hash). Successful-Login behaelt Klartext (eigene User-Aktion, DSGVO-zulaessige Grundlage).
+
 ### Security-Fixes M6 + M7 + M9 — Branch `feature/security-fixes-2026-05-03`
 Drei Phase-3-Findings geschlossen, plus ein realer Pfad-Traversal-Bug aufgeraeumt.
 
