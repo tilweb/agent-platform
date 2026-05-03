@@ -1,5 +1,11 @@
 # Projekt-spezifische Hinweise
 
+## Runtime: Bun lokal + Production
+
+- **Lokal**: Bun (`/Users/andreasbachmann/.bun/bin/bun`) — wie schon immer.
+- **Production (Scalingo, main-Branch)**: ebenfalls Bun, installiert vom Custom-Buildpack `tilweb/scalingo-agent-platform-buildpack`. Kein Bun→Node-Refactor.
+- **Production (Railway, demo/messe-Branch)**: Bun via `Dockerfile` (Multi-Stage), separater Worktree `/agent-platform-railway`.
+
 ## Bun Pfad
 
 Bun ist nicht im PATH. Verwende den vollständigen Pfad:

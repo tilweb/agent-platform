@@ -2,6 +2,18 @@
 
 ## 2026-05-03
 
+### Scalingo-Deployment via Custom-Buildpack
+Setup fuer Scalingo-Deployment auf `main`. Scalingo unterstuetzt nur Buildpacks (kein Dockerfile-Build). Bun ist offiziell nicht supported, also bauen wir ein eigenes Custom-Buildpack statt Bun→Node-Refactor.
+
+- **Neues Buildpack-Repo** `tilweb/scalingo-agent-platform-buildpack` (separates GitHub-Repo): `bin/detect`, `bin/compile`, `bin/release`. Installiert Node 20 LTS + Bun 1.3.7 (gepinnt im Cache), baut Frontend (npm ci + npm run build), installiert Backend-Deps (bun install --frozen-lockfile --production), kopiert Bun-Binary nach `/app/.bun/bin/`, raeumt `frontend/node_modules` (~200 MB) auf.
+- **Postgres-ENV-Aliasing** im Custom-Buildpack `.profile.d/agent-platform.sh`: Scalingo-Postgres-Addon setzt `SCALINGO_POSTGRESQL_URL`, unser Code liest `SCALINGO_POSTGRES`, Drizzle-Tools wollen `DATABASE_URL`. Aliasing in alle drei Richtungen — ohne den Fix waere Boot mit "SCALINGO_POSTGRES not set" gescheitert.
+- **App-Repo neue Files**: `.buildpacks` (Multi-Buildpack-Reihenfolge: apt + custom), `Aptfile` (ffmpeg, ca-certificates), `Procfile` (`web: cd backend && bun run src/index.ts`).
+- **Doku**: `docs/scalingo-deploy.md` auf Buildpack-Flow umgeschrieben, `CONNECTION_ENCRYPTION_KEY`-Hinweis (muss exakt 64 Hex-Zeichen sein) ergaenzt, `FAL_API_KEY`→`FAL_AI_API_KEY` in CLI-Beispielen korrigiert.
+- **`backend/CLAUDE.md`**: Note zu Lokal-Bun + Production-Bun (kein Refactor).
+- **`Dockerfile` (Root)**: bleibt zunaechst — wird erst nach erstem erfolgreichen Scalingo-Deploy entfernt.
+
+`demo/messe`-Worktree (Railway, Bun + Dockerfile) bleibt vollstaendig unangetastet.
+
 ### Security-Fixes Cleanup-Sprint — Branch `feature/security-fixes-2026-05-03`
 Letzte Lows + Info-Findings — viele kosmetisch, einer mit echtem Sicherheitswert (L6).
 

@@ -2,11 +2,11 @@
 
 ## Architektur-Annahmen
 
-- **Code:** GitHub-Branch `main` (entspricht `refactor/postgres-migration` nach Fast-Forward).
+- **Code:** GitHub-Branch `main`.
 - **Hosting:** Scalingo (Region Paris-DC, ISO 27001 + HDS).
-- **DB:** Scalingo Postgres-Addon (autom. `SCALINGO_POSTGRES`-ENV).
+- **DB:** Scalingo Postgres-Addon. Setzt `SCALINGO_POSTGRESQL_URL` automatisch — unser Code liest `SCALINGO_POSTGRES`, Aliasing erfolgt im Custom-Buildpack via `.profile.d/`-Script (siehe Section 6).
 - **Object-Storage:** Flow.swiss S3-kompatibel (`os.alp1.flow.swiss`, GDPR/Schweiz).
-- **Build:** `Dockerfile` (im Root) via Scalingo Docker-Auto-Detect.
+- **Build:** Multi-Buildpack ueber `.buildpacks`-File. Erstes Buildpack `Scalingo/apt-buildpack` installiert ffmpeg + ca-certificates (siehe `Aptfile`). Zweites Buildpack ist unser Custom-Buildpack `tilweb/scalingo-agent-platform-buildpack` — installiert Node 20 LTS + Bun (gepinnt), baut Frontend (Vite), installiert Backend-Deps (Bun). Scalingo unterstuetzt KEIN Dockerfile-Build; das `Dockerfile` im Repo wird nur fuer Railway/lokale Container-Builds genutzt.
 - **Persistenz:** vollstaendig in DB+S3 — kein Volume-Mount, kein Disk-State zwischen Deploys.
 
 ## Erst-Deploy Schritt-fuer-Schritt
@@ -44,9 +44,12 @@ scalingo --app $APP env-set \
   MARKITDOWN_API_URL=https://api.adacor.ai/v1/documentMarkdown/
 
 # fal.ai (optional, fuer Bildgenerierung)
-scalingo --app $APP env-set FAL_API_KEY='<fal-key>'
+scalingo --app $APP env-set FAL_AI_API_KEY='<fal-key>'
 
 # Encryption-Schluessel (KRITISCH — bei Verlust sind OAuth-Tokens nicht mehr lesbar)
+# WICHTIG: CONNECTION_ENCRYPTION_KEY muss exakt 64 Hex-Zeichen sein (32 Bytes).
+# scalingo.json hat `generator: secret` als Default — Format ist nicht garantiert,
+# deshalb explizit per CLI mit openssl setzen.
 scalingo --app $APP env-set \
   CONNECTION_ENCRYPTION_KEY="$(openssl rand -hex 32)" \
   SESSION_SECRET="$(openssl rand -hex 32)"
@@ -66,7 +69,24 @@ scalingo --app $APP env-set \
 # scalingo --app $APP env-set ENABLED_APPS='wzbar-matcher,vertragsmanagement'
 ```
 
-### 3. GitHub-Integration einrichten
+### 3. Buildpack-Setup verifizieren
+
+Scalingo deployed ueber **Multi-Buildpack** — wir kombinieren Scalingo's offiziellen `apt-buildpack` (fuer ffmpeg) mit unserem Custom-Buildpack (Node + Bun + App-Build).
+
+Das `agent-platform`-Repo hat bereits am Root:
+- `.buildpacks` — listet die Buildpack-URLs (apt + custom-bun)
+- `Aptfile` — System-Pakete fuer apt-buildpack (ffmpeg, ca-certificates)
+- `Procfile` — Start-Command (`web: cd backend && bun run src/index.ts`)
+
+Falls auf der Scalingo-App vorher `CONTAINER_FILE` oder `BUILDPACK_URL` gesetzt war (z.B. von einem alten Deploy-Versuch), unbedingt entfernen — sonst kollidiert das mit dem `.buildpacks`-File:
+
+```sh
+scalingo --app $APP env-unset CONTAINER_FILE BUILDPACK_URL || true
+```
+
+Das Custom-Buildpack-Repo (`tilweb/scalingo-agent-platform-buildpack`) muss **public auf GitHub** liegen — die `.buildpacks`-Zeile referenziert es per `https://`-URL. Falls private: SSH-Private-Key-Buildpack als ersten Eintrag in `.buildpacks` ergaenzen, dann `git@github.com:...`-URLs verwenden.
+
+### 4. GitHub-Integration einrichten
 
 In der Scalingo-Web-Console:
 
@@ -78,7 +98,7 @@ In der Scalingo-Web-Console:
    scalingo --app $APP deployments-list
    ```
 
-### 4. Erst-Boot beobachten
+### 5. Erst-Boot beobachten
 
 ```sh
 scalingo --app $APP logs --lines 200
@@ -98,7 +118,7 @@ Tools initialized: 23 total
 🚀 Server starting on port 3001
 ```
 
-### 5. Funktionstest
+### 6. Funktionstest
 
 ```sh
 URL=https://workplace-prod.osc-fr1.scalingo.io
@@ -126,7 +146,7 @@ curl -s -b /tmp/sc-cookies.txt ${URL}/api/knowledge/collections
 
 Browser: `${URL}` — Workplace-UI sollte erscheinen, Login mit `demo1` / `Demo2026!`, alle 5 Apps + KB-Collections + Chat-History sichtbar.
 
-### 6. Audit-Logging (Compliance)
+### 7. Audit-Logging (Compliance)
 
 Audit-Eintraege werden in zwei Kanaele geschrieben:
 
