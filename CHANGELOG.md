@@ -2,15 +2,19 @@
 
 ## 2026-05-03
 
-### Scalingo-Deployment via Custom-Buildpack
-Setup fuer Scalingo-Deployment auf `main`. Scalingo unterstuetzt nur Buildpacks (kein Dockerfile-Build). Bun ist offiziell nicht supported, also bauen wir ein eigenes Custom-Buildpack statt Bun→Node-Refactor.
+### Scalingo-Deployment via Custom-Buildpack — v0.1.0 production-verified
+Setup fuer Scalingo-Deployment auf `main`. Scalingo unterstuetzt nur Buildpacks (kein Dockerfile-Build). Bun ist offiziell nicht supported, also bauen wir ein eigenes Custom-Buildpack statt Bun→Node-Refactor. Ende-zu-Ende auf `workplace-demo.osc-fr1.scalingo.io` verifiziert (Login + HSTS + ffmpeg).
 
-- **Neues Buildpack-Repo** `tilweb/scalingo-agent-platform-buildpack` (separates GitHub-Repo): `bin/detect`, `bin/compile`, `bin/release`. Installiert Node 20 LTS + Bun 1.3.7 (gepinnt im Cache), baut Frontend (npm ci + npm run build), installiert Backend-Deps (bun install --frozen-lockfile --production), kopiert Bun-Binary nach `/app/.bun/bin/`, raeumt `frontend/node_modules` (~200 MB) auf.
+- **Neues Buildpack-Repo** `tilweb/scalingo-agent-platform-buildpack` (separates GitHub-Repo, Tag `v0.1.0`): `bin/detect`, `bin/compile`, `bin/release`. Installiert Node 22.13.0 LTS + Bun 1.3.7 + ffmpeg 7.0.2 static (alle gepinnt im Cache), baut Frontend (`NPM_CONFIG_PRODUCTION=false npm ci` + `npm run build`), installiert Backend-Deps (`bun install --frozen-lockfile --production`), kopiert Bun + ffmpeg-Binaries in den Slug nach `/app/.bun/bin/` und `/app/.ffmpeg/bin/`, raeumt `frontend/node_modules` (~200 MB) auf — Slug schrumpft von ~801 MiB auf ~414 MiB.
+- **ffmpeg statisch** statt apt: apt-Paket auf Ubuntu 22.04 hat Soft-Dep auf libpulsecommon-16.x die nicht im Stack ist, Crash-Loading mit `libpulsecommon-16.1.so: cannot open shared object`. Statisches Binary von johnvansickle.com hat keine System-Lib-Abhaengigkeiten.
+- **Node 22 LTS** statt Node 20: Vite 7 verlangt Engine `^20.19.0 || >=22.12.0` — Node 20.18.0 zu alt.
+- **`NPM_CONFIG_PRODUCTION=false`** beim Frontend-Install: App-ENV setzt `NODE_ENV=production`, sonst skipt `npm ci` die devDependencies (Vite + @vitejs/plugin-react sind dort) und Build bricht mit `vite: not found`. Vite-Build-Output bleibt produktion-optimiert (Vite handhabt das selbst).
 - **Postgres-ENV-Aliasing** im Custom-Buildpack `.profile.d/agent-platform.sh`: Scalingo-Postgres-Addon setzt `SCALINGO_POSTGRESQL_URL`, unser Code liest `SCALINGO_POSTGRES`, Drizzle-Tools wollen `DATABASE_URL`. Aliasing in alle drei Richtungen — ohne den Fix waere Boot mit "SCALINGO_POSTGRES not set" gescheitert.
-- **App-Repo neue Files**: `.buildpacks` (Multi-Buildpack-Reihenfolge: apt + custom), `Aptfile` (ffmpeg, ca-certificates), `Procfile` (`web: cd backend && bun run src/index.ts`).
+- **App-Repo neue Files**: `.buildpacks` (Multi-Buildpack-Reihenfolge: apt + custom@v0.1.0), `Aptfile` (`ca-certificates` only — ffmpeg via Custom-Buildpack), `Procfile` (`web: cd backend && bun run src/index.ts`).
+- **`Dockerfile` (Root) entfernt** nach erfolgreichem Deploy — Scalingo nutzt nur die Buildpack-Pipeline.
 - **Doku**: `docs/scalingo-deploy.md` auf Buildpack-Flow umgeschrieben, `CONNECTION_ENCRYPTION_KEY`-Hinweis (muss exakt 64 Hex-Zeichen sein) ergaenzt, `FAL_API_KEY`→`FAL_AI_API_KEY` in CLI-Beispielen korrigiert.
 - **`backend/CLAUDE.md`**: Note zu Lokal-Bun + Production-Bun (kein Refactor).
-- **`Dockerfile` (Root)**: bleibt zunaechst — wird erst nach erstem erfolgreichen Scalingo-Deploy entfernt.
+- **NODE_ENV**: muss als App-ENV explizit gesetzt werden (`scalingo --app workplace-demo env-set NODE_ENV=production`); `scalingo.json`-Defaults greifen nur beim "Deploy on Scalingo"-Button-Flow, nicht bei manuell angelegten Apps. Ohne diese Var serviert Hono kein Frontend (`/` → 404).
 
 `demo/messe`-Worktree (Railway, Bun + Dockerfile) bleibt vollstaendig unangetastet.
 
