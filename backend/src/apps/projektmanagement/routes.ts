@@ -956,7 +956,7 @@ projektmanagement.get('/projektauftraege/:id/export/:format', async (c) => {
         const mimeType = getMimeType(format as DocumentFormat);
         const extension = getFileExtension(format as DocumentFormat);
 
-        return new Response(buffer, {
+        return new Response(buffer as unknown as BodyInit, {
           headers: {
             'Content-Type': mimeType,
             'Content-Disposition': `attachment; filename="${filename}.${extension}"`,
@@ -1162,7 +1162,7 @@ projektmanagement.get('/projektauftraege/:projektId/statusberichte/:sbId/export/
         const mimeType = getMimeType(format as DocumentFormat);
         const extension = getFileExtension(format as DocumentFormat);
 
-        return new Response(buffer, {
+        return new Response(buffer as unknown as BodyInit, {
           headers: {
             'Content-Type': mimeType,
             'Content-Disposition': `attachment; filename="${filename}.${extension}"`,
@@ -1493,7 +1493,7 @@ projektmanagement.get('/projektideen/:id/export/:format', async (c) => {
     const mimeType = getMimeType(format as DocumentFormat);
     const extension = getFileExtension(format as DocumentFormat);
 
-    return new Response(buffer, {
+    return new Response(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': mimeType,
         'Content-Disposition': `attachment; filename="${filename}.${extension}"`,

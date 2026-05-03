@@ -777,7 +777,7 @@ chatHistoryRoutes.get('/:id/export/:format', authMiddleware, async (c) => {
     const filename = `${baseFilename}.${format}`;
 
     // Return file download
-    return new Response(buffer, {
+    return new Response(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': getMimeType(format),
         'Content-Disposition': `attachment; filename="${filename}"`,

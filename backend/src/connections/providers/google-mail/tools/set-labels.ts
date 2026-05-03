@@ -31,12 +31,12 @@ export function createSetLabelsTool(providerId: string): ConnectionTool {
               },
               add_labels: {
                 type: 'array',
-                items: { type: 'string' },
+                items: { type: 'string', description: 'Label-ID' },
                 description: 'Label IDs to add to the message (e.g., ["STARRED", "IMPORTANT", "Label_123"])',
               },
               remove_labels: {
                 type: 'array',
-                items: { type: 'string' },
+                items: { type: 'string', description: 'Label-ID' },
                 description: 'Label IDs to remove from the message (e.g., ["UNREAD", "INBOX"])',
               },
             },
