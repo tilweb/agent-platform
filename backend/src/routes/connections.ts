@@ -108,6 +108,9 @@ connectionRoutes.get('/:id', authMiddleware, async (c) => {
         description: provider.description,
         icon: provider.icon,
         authType: provider.authType,
+        ...(provider.authType === 'client-credentials' && typeof provider.getCredentialFields === 'function'
+          ? { credentialFields: provider.getCredentialFields() }
+          : {}),
       },
       connected: !!connection,
       status: connection?.connection.status || null,
@@ -435,6 +438,66 @@ connectionRoutes.post('/:id/implicit-callback', async (c) => {
   } catch (err: any) {
     console.error('Implicit callback error:', err);
     return c.json({ error: 'Token processing failed' }, 500);
+  }
+});
+
+/**
+ * POST /api/connections/:id/credentials - Connect via Client-Credentials / API-Key
+ *
+ * Wird fuer Provider mit authType='client-credentials' verwendet (z.B. Personio).
+ * Body: vom Provider-getCredentialFields() definierte Felder (key/value).
+ * Backend ruft provider.connect() auf, validiert, speichert.
+ */
+connectionRoutes.post('/:id/credentials', authMiddleware, async (c) => {
+  const providerId = c.req.param('id');
+  const userId = getCurrentUserId(c)!;
+
+  try {
+    if (!isEncryptionConfigured()) {
+      return c.json({
+        error: 'Encryption not configured. Set CONNECTION_ENCRYPTION_KEY environment variable.',
+      }, 500);
+    }
+
+    const provider = connectionRegistry.get(providerId);
+    if (!provider) {
+      return c.json({ error: 'Provider not found' }, 404);
+    }
+    if (provider.authType !== 'client-credentials') {
+      return c.json({ error: 'Provider does not support credentials-based connect' }, 400);
+    }
+    if (typeof provider.connect !== 'function') {
+      return c.json({ error: 'Provider has no connect() implementation' }, 500);
+    }
+
+    const body = (await c.req.json().catch(() => ({}))) as Record<string, any>;
+    // Nur Strings akzeptieren — wir wollen keine geschachtelten Strukturen.
+    const input: Record<string, string> = {};
+    for (const [key, val] of Object.entries(body)) {
+      if (typeof val === 'string') input[key] = val;
+    }
+
+    let tokens: TokenSet;
+    try {
+      tokens = await provider.connect(input);
+    } catch (err: any) {
+      console.warn(`[Credentials] ${providerId} connect failed:`, err.message);
+      return c.json({ error: err.message || 'Connect failed' }, 400);
+    }
+
+    const status = await provider.validateConnection(tokens);
+    console.log(`[Credentials] ${providerId} validation:`, status.status, status.error || '');
+
+    if (status.status !== 'connected') {
+      return c.json({ error: status.error || 'Connection validation failed' }, 400);
+    }
+
+    await saveConnection(userId, providerId, tokens, status);
+
+    return c.json({ success: true, status });
+  } catch (err: any) {
+    console.error('Credentials connect error:', err);
+    return c.json({ error: 'Failed to establish connection' }, 500);
   }
 });
 

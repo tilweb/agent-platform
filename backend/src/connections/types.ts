@@ -7,7 +7,7 @@ import type { Tool } from '../tools/types';
 /**
  * Authentication type for a provider
  */
-export type AuthType = 'oauth2' | 'api-key';
+export type AuthType = 'oauth2' | 'api-key' | 'client-credentials';
 
 /**
  * OAuth2 Token Set
@@ -31,6 +31,17 @@ export interface TokenSet {
   // OIDC issuer aus dem id_token. Wird gebraucht um den userinfo-Endpoint
   // abzuleiten wenn der Provider Profile-Claims nicht im id_token mitschickt.
   oidcIssuer?: string;
+  // Client-Credentials-Provider: gespeicherte Client-Credentials, um neue
+  // Access-Tokens beim Ablauf zu holen. Liegt verschluesselt im Storage.
+  clientId?: string;
+  clientSecret?: string;
+  // Personio (und ggf. andere Recruiting-APIs): zweiter, langlebiger
+  // Bearer-Token fuer eine andere API-Version. Personio v1 (POST applications)
+  // braucht einen separaten Recruiting-Access-Token aus den Personio-Settings.
+  secondaryAccessToken?: string;
+  // Personio (und ggf. andere): Company-ID die als Header bei API-Calls
+  // mitgeschickt werden muss (z.B. X-Company-ID).
+  companyId?: string;
 }
 
 /**
@@ -102,6 +113,25 @@ export interface ConnectionTool extends Tool {
 }
 
 /**
+ * Specification fuer ein Setup-Feld bei Non-OAuth-Providern. Frontend
+ * rendert die Felder im Connection-Setup-Modal anhand dieser Liste.
+ */
+export interface CredentialFieldSpec {
+  /** Eindeutiger Schluessel — wird als Key beim connect()-Aufruf benutzt. */
+  key: string;
+  /** UI-Label (z.B. "Client ID"). */
+  label: string;
+  /** Hilfetext unterhalb des Feldes (Markdown nicht unterstuetzt — plain text). */
+  helperText?: string;
+  /** input type. `password` maskiert die Eingabe. */
+  type: 'text' | 'password';
+  /** Optional, ob das Feld im UI als optional markiert wird. */
+  required?: boolean;
+  /** Placeholder-Text. */
+  placeholder?: string;
+}
+
+/**
  * Connection Provider Interface
  */
 export interface ConnectionProvider {
@@ -134,6 +164,20 @@ export interface ConnectionProvider {
   /** Refresh an expired access token */
   refreshToken(refreshToken: string): Promise<TokenSet>;
 
+  // Client-Credentials methods (required for client-credentials authType)
+
+  /**
+   * Beschreibung der Felder die der User im Setup-Modal ausfuellt
+   * (Frontend rendert das dynamisch). Reihenfolge im Array = Reihenfolge im UI.
+   */
+  getCredentialFields?(): CredentialFieldSpec[];
+
+  /**
+   * Anhand der vom User eingegebenen Felder die Connection herstellen
+   * (Token holen, validieren, TokenSet zum Speichern zurueckgeben).
+   */
+  connect?(input: Record<string, string>): Promise<TokenSet>;
+
   // Connection validation
 
   /** Validate that the connection is still working */
@@ -156,6 +200,8 @@ export interface ProviderInfo {
   authType: AuthType;
   status?: ConnectionStatus;
   setupGuide?: string;
+  /** Nur bei client-credentials-Providern: Felder fuer den Setup-Wizard. */
+  credentialFields?: CredentialFieldSpec[];
 }
 
 /**

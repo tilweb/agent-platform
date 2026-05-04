@@ -12,6 +12,7 @@ import { jiraProvider } from './jira';
 import { pipedriveProvider } from './pipedrive';
 import { docuwareProvider } from './docuware';
 import { youtrackProvider } from './youtrack';
+import { personioProvider } from './personio';
 
 /**
  * Register all available connection providers
@@ -68,6 +69,13 @@ export function registerProviders(): void {
     console.warn('Failed to register YouTrack provider:', error.message);
   }
 
+  // Register Personio
+  try {
+    connectionRegistry.register(personioProvider);
+  } catch (error: any) {
+    console.warn('Failed to register Personio provider:', error.message);
+  }
+
   // Future providers can be added here:
   // - SharePoint
   // - etc.
@@ -91,3 +99,4 @@ export { jiraProvider } from './jira';
 export { pipedriveProvider } from './pipedrive';
 export { docuwareProvider } from './docuware';
 export { youtrackProvider } from './youtrack';
+export { personioProvider } from './personio';

@@ -91,6 +91,25 @@ export function useConnections() {
     }
   }, [fetchProviders]);
 
+  // Connect via Client-Credentials / API-Key (kein OAuth-Popup, sondern
+  // ein Modal mit Eingabefeldern). `input` ist ein {key: value}-Objekt
+  // gemaess provider.credentialFields.
+  const connectWithCredentials = useCallback(async (providerId, input) => {
+    const res = await fetch(`${API_BASE}/connections/${providerId}/credentials`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input || {}),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || 'Connection failed');
+    }
+    await fetchProviders();
+    return data;
+  }, [fetchProviders]);
+
   const disconnect = useCallback(async (providerId) => {
     try {
       const res = await fetch(`${API_BASE}/connections/${providerId}/disconnect`, {
@@ -132,6 +151,7 @@ export function useConnections() {
     error,
     refresh: fetchProviders,
     connect,
+    connectWithCredentials,
     disconnect,
     checkStatus,
   };
