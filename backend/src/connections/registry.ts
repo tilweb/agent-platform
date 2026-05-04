@@ -89,6 +89,11 @@ class ConnectionRegistry {
         setupGuide: provider.setupGuide,
       };
 
+      // Setup-Felder bei Non-OAuth-Providern (z.B. Personio Client-Credentials)
+      if (provider.authType === 'client-credentials' && typeof provider.getCredentialFields === 'function') {
+        info.credentialFields = provider.getCredentialFields();
+      }
+
       // Add connection status if userId is provided
       if (userId) {
         const connection = await loadConnection(userId, provider.id);

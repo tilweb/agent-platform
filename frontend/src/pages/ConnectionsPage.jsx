@@ -368,13 +368,135 @@ function SetupGuideModal({ provider, onClose }) {
   );
 }
 
+function CredentialsModal({ provider, onClose, onSubmit, submitting }) {
+  const fields = provider.credentialFields || [];
+  const [values, setValues] = useState(() =>
+    fields.reduce((acc, f) => ({ ...acc, [f.key]: '' }), {})
+  );
+  const [localError, setLocalError] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLocalError(null);
+    // Required-Check Frontend-seitig
+    for (const f of fields) {
+      if (f.required && !values[f.key]?.trim()) {
+        setLocalError(`Pflichtfeld fehlt: ${f.label}`);
+        return;
+      }
+    }
+    try {
+      await onSubmit(values);
+    } catch (err) {
+      setLocalError(err.message);
+    }
+  };
+
+  return (
+    <div style={styles.modal} onClick={onClose}>
+      <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHeader}>
+          <h2 style={{ ...styles.modalTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            {getProviderIcon(provider.id, { size: 24 })} {provider.name} verbinden
+          </h2>
+          <button style={styles.modalCloseButton} onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ padding: theme.spacing.xl, display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+          {fields.map((f) => (
+            <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
+              <label style={{ fontSize: theme.typography.sizes.sm, fontWeight: 600, color: theme.colors.text }}>
+                {f.label}{f.required ? '' : ' (optional)'}
+              </label>
+              <input
+                type={f.type === 'password' ? 'password' : 'text'}
+                value={values[f.key] || ''}
+                onChange={(e) => setValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                placeholder={f.placeholder || ''}
+                autoComplete="off"
+                style={{
+                  padding: theme.spacing.sm + ' ' + theme.spacing.md,
+                  fontSize: theme.typography.sizes.base,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.md,
+                  backgroundColor: theme.colors.surface,
+                  color: theme.colors.text,
+                  fontFamily: f.type === 'password' ? theme.typography.fontMono : 'inherit',
+                }}
+              />
+              {f.helperText && (
+                <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                  {f.helperText}
+                </span>
+              )}
+            </div>
+          ))}
+
+          {localError && (
+            <div style={{
+              padding: theme.spacing.md,
+              backgroundColor: theme.colors.errorBg || '#fee',
+              border: `1px solid ${theme.colors.error || '#f55'}`,
+              borderRadius: theme.borderRadius.md,
+              color: theme.colors.error || '#c33',
+              fontSize: theme.typography.sizes.sm,
+            }}>
+              {localError}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: theme.spacing.md, justifyContent: 'flex-end', marginTop: theme.spacing.md }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                ...styles.button,
+                ...styles.disconnectButton,
+                flex: '0 0 auto',
+                paddingLeft: theme.spacing.xl,
+                paddingRight: theme.spacing.xl,
+              }}
+              disabled={submitting}
+            >
+              Abbrechen
+            </button>
+            <button
+              type="submit"
+              style={{
+                ...styles.button,
+                ...styles.connectButton,
+                ...(submitting ? styles.buttonDisabled : {}),
+                flex: '0 0 auto',
+                paddingLeft: theme.spacing.xl,
+                paddingRight: theme.spacing.xl,
+              }}
+              disabled={submitting}
+            >
+              {submitting ? 'Verbinde...' : 'Verbinden'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function ConnectionsPage({ embedded = false }) {
-  const { providers, loading, error, connect, disconnect, refresh } = useConnections();
+  const { providers, loading, error, connect, connectWithCredentials, disconnect, refresh } = useConnections();
   const [actionLoading, setActionLoading] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [setupProvider, setSetupProvider] = useState(null);
+  const [credentialsProvider, setCredentialsProvider] = useState(null);
 
   const handleConnect = async (providerId) => {
+    const provider = providers.find((p) => p.id === providerId);
+    if (provider?.authType === 'client-credentials') {
+      // Kein OAuth-Popup — Modal mit Eingabefeldern oeffnen.
+      setCredentialsProvider(provider);
+      return;
+    }
+
     setActionLoading(providerId);
     setActionError(null);
 
@@ -382,6 +504,21 @@ export default function ConnectionsPage({ embedded = false }) {
       await connect(providerId);
     } catch (err) {
       setActionError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCredentialsSubmit = async (input) => {
+    if (!credentialsProvider) return;
+    setActionLoading(credentialsProvider.id);
+    setActionError(null);
+    try {
+      await connectWithCredentials(credentialsProvider.id, input);
+      setCredentialsProvider(null);
+    } catch (err) {
+      setActionError(err.message);
+      throw err;
     } finally {
       setActionLoading(null);
     }
@@ -463,6 +600,15 @@ export default function ConnectionsPage({ embedded = false }) {
         <SetupGuideModal
           provider={setupProvider}
           onClose={() => setSetupProvider(null)}
+        />
+      )}
+
+      {credentialsProvider && (
+        <CredentialsModal
+          provider={credentialsProvider}
+          onClose={() => setCredentialsProvider(null)}
+          onSubmit={handleCredentialsSubmit}
+          submitting={actionLoading === credentialsProvider.id}
         />
       )}
     </div>
