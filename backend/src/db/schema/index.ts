@@ -25,3 +25,4 @@ export * from './liefermgmt';
 export * from './vsm';
 export * from './wzbar';
 export * from './generated';
+export * from './agents';

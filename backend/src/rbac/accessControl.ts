@@ -4,12 +4,19 @@
  * Core permission checking logic with support for:
  * - Direct user access
  * - Group-based access (highest role wins)
+ * - Plattform-Admin-Bypass (Owner-aequivalente Rechte)
  *
- * Globale Admins haben KEINEN automatischen Resource-Zugriff. Admin-Rolle
- * regelt Plattform-Settings (Users, Groups, App-Aktivierung), nicht den
- * Zugriff auf konkrete Collections, Spaces, Agents oder App-Daten. Will der
- * Admin reinschauen, muss der Owner ihn (oder eine Admin-Gruppe) explizit
- * berechtigen.
+ * Plattform-Admin-Bypass: Globale Admins (User-Rolle 'admin') haben auf
+ * alle Resources Owner-Rechte. Begruendung: Demo-/Multi-Instanz-Deployments
+ * fuehren regelmaessig zu Orphan-Resources (z.B. seed-importierte Agenten
+ * mit access.yaml-Eintraegen die User-IDs aus einer anderen Instanz
+ * referenzieren — keiner der lokalen User ist Owner, keiner kann mehr ran).
+ * Ohne Bypass war die einzige Recovery DB-Manipulation. Mit Bypass kann
+ * der Admin direkt in der UI aufraeumen.
+ *
+ * Privacy-Konsequenz: Admins sehen/managen alles im RBAC-Scope (Agents,
+ * Knowledge-Bases, Spaces, App-Daten). Chats laufen ueber das separate
+ * Memory-Subsystem und sind davon NICHT betroffen.
  */
 
 import { getUserGroups, loadGroup } from '../auth/groups';
@@ -47,9 +54,7 @@ export interface AccessCheckResult {
  * Permission check order:
  * 1. Direct user access
  * 2. Group-based access (highest role from all groups)
- *
- * KEIN Admin-Bypass — Plattform-Admins muessen explizit (direkt oder via
- * Gruppe) berechtigt sein, um eine konkrete Resource zu sehen.
+ * 3. Plattform-Admin-Bypass (Owner-aequivalent)
  */
 export async function checkAccess(
   userId: string,
@@ -83,6 +88,16 @@ export async function checkAccess(
       allowed: true,
       effectiveRole: highestGroupRole,
       source: 'group',
+    };
+  }
+
+  // 3. Plattform-Admin-Bypass: globale Admins bekommen Owner-aequivalente Rechte.
+  const user = await loadUser(userId);
+  if (user?.role === 'admin') {
+    return {
+      allowed: true,
+      effectiveRole: 'owner',
+      source: 'admin',
     };
   }
 
@@ -174,6 +189,13 @@ export async function getEffectiveRole(
     }
   }
 
+  // 3. Plattform-Admin-Bypass: ohne explizite Rolle bekommt der globale
+  // Admin Owner-aequivalente Rechte (Recovery-Pfad fuer Orphan-Resources).
+  if (!effectiveRole) {
+    const user = await loadUser(userId);
+    if (user?.role === 'admin') return 'owner';
+  }
+
   return effectiveRole;
 }
 
@@ -201,8 +223,17 @@ export async function getUserResourcePermissions(
     };
   }
 
-  // Plattform-Admin ohne explizite Rolle hat KEINEN Resource-Zugriff —
-  // Admin managed Settings, nicht Daten. Owner muss Admin explizit berechtigen.
+  // Plattform-Admin ohne explizite Rolle bekommt Owner-aequivalente Rechte
+  // (siehe Modul-Header). getEffectiveRole hat oben null geliefert —
+  // wir werten den Admin-Status hier aus und mappen auf 'owner'.
+  if (isGlobalAdmin) {
+    return {
+      role: 'owner',
+      permissions: RESOURCE_PERMISSIONS.owner,
+      isGlobalAdmin,
+    };
+  }
+
   return {
     role: null,
     permissions: null,
@@ -233,6 +264,10 @@ export async function listAccessibleResources(
 ): Promise<Array<{ resourceId: string; role: ResourceRole }>> {
   const accessible: Array<{ resourceId: string; role: ResourceRole }> = [];
 
+  // Plattform-Admin sieht alles als Owner (Recovery-Pfad fuer Orphan-Resources).
+  const user = await loadUser(userId);
+  const isGlobalAdmin = user?.role === 'admin';
+
   // Get user's groups once
   const userGroups = await getUserGroups(userId);
   const userGroupIds = userGroups.map((g) => g.id);
@@ -256,8 +291,13 @@ export async function listAccessibleResources(
 
     if (highestGroupRole) {
       accessible.push({ resourceId, role: highestGroupRole });
+      continue;
     }
-    // Kein Admin-Fallback — Plattform-Admin sieht nur, was explizit berechtigt ist.
+
+    // Admin-Bypass — Owner-aequivalent fuer Resources ohne explizite Rolle.
+    if (isGlobalAdmin) {
+      accessible.push({ resourceId, role: 'owner' });
+    }
   }
 
   return accessible;

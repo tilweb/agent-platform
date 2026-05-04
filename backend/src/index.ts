@@ -151,6 +151,17 @@ async function initialize() {
     console.error('Built-in apps sync failed:', error);
   }
 
+  // Migrate file-based custom agents to DB (idempotent, no-op once done)
+  try {
+    const { migrateFileAgentsToDb } = await import('./services/agents');
+    const result = await migrateFileAgentsToDb();
+    if (result.migrated.length > 0) {
+      console.log(`[agents] migrated to DB: ${result.migrated.join(', ')}`);
+    }
+  } catch (error) {
+    console.error('Custom-agents migration failed:', error);
+  }
+
   // Initialize LLM service with configured providers
   try {
     await llmService.initialize();

@@ -1,6 +1,12 @@
-import { readdir, readFile, writeFile, mkdir, rm } from 'fs/promises';
+import { readdir, readFile } from 'fs/promises';
 import { join, resolve } from 'path';
 import { existsSync } from 'fs';
+import {
+  getCustomAgentRecord,
+  listCustomAgentRecords,
+  saveCustomAgentRecord,
+  deleteCustomAgentRecord,
+} from './agentDbStorage';
 
 // Lazy import to avoid circular dependencies
 let _connectionRegistry: typeof import('../connections/registry').connectionRegistry | null = null;
@@ -14,6 +20,31 @@ async function getConnectionRegistry() {
 }
 
 const AGENTS_DIR = resolve(process.cwd(), '../data/agents');
+
+/**
+ * System-Agent-IDs: bleiben File-basiert unter data/agents/<id>/, weil
+ * code-versioniert und in jedem Build identisch. Alles andere geht in
+ * die DB (siehe agentDbStorage.ts).
+ *
+ * Wenn neue System-Agenten ins Code-Seed kommen, hier ergaenzen.
+ */
+const SYSTEM_AGENT_IDS = new Set([
+  '_router',
+  'supervisor',
+  'general',
+  'chat-document-reader',
+  'kb-indexer',
+  'kb-reader',
+  'knowledge',
+  'image-generator',
+  'vision-analyzer',
+  'researcher',
+  'writer',
+]);
+
+export function isSystemAgentId(id: string): boolean {
+  return SYSTEM_AGENT_IDS.has(id);
+}
 
 /**
  * Agent Model Configuration
@@ -215,28 +246,11 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, any>; 
 }
 
 /**
- * Load a single agent configuration from disk
+ * Helper: Markdown-String → AgentConfig
  */
-export async function loadAgent(agentId: string): Promise<AgentConfig | null> {
-  // First check if it's a connection-based agent
-  const connectionAgent = await getConnectionAgent(agentId);
-  if (connectionAgent) {
-    return connectionAgent;
-  }
-
-  const agentDir = join(AGENTS_DIR, agentId);
-  const configPath = join(agentDir, 'config.md');
-
-  if (!existsSync(configPath)) {
-    console.warn(`Agent config not found: ${configPath}`);
-    return null;
-  }
-
-  const content = await readFile(configPath, 'utf-8');
+function parseAgentMarkdown(agentId: string, content: string): AgentConfig {
   const { frontmatter, body } = parseFrontmatter(content);
-
   const fm = frontmatter as AgentFrontmatter;
-
   return {
     id: fm.id || agentId,
     name: fm.name || agentId,
@@ -244,7 +258,7 @@ export async function loadAgent(agentId: string): Promise<AgentConfig | null> {
     capabilities: fm.capabilities || [],
     tools: fm.tools || ['file_read', 'file_list'],
     delegatable: fm.delegatable !== false,
-    active: fm.active !== false,  // Default: true
+    active: fm.active !== false,
     internal: fm.internal === true,
     system: fm.system === true,
     systemPrompt: body,
@@ -253,6 +267,46 @@ export async function loadAgent(agentId: string): Promise<AgentConfig | null> {
     skillMode: fm.skillMode,
     maxIterations: typeof fm.maxIterations === 'number' ? fm.maxIterations : undefined,
   };
+}
+
+/**
+ * Load a single agent. Reihenfolge:
+ *   1. Connection-Agent (auto-generiert aus Provider)
+ *   2. Custom-Agent aus DB (instanz-spezifisch)
+ *   3. System-Agent aus File (code-versioniert)
+ */
+export async function loadAgent(agentId: string): Promise<AgentConfig | null> {
+  // 1. Connection-Agent
+  const connectionAgent = await getConnectionAgent(agentId);
+  if (connectionAgent) {
+    return connectionAgent;
+  }
+
+  // 2. Custom-Agent aus DB
+  if (!SYSTEM_AGENT_IDS.has(agentId)) {
+    try {
+      const dbRecord = await getCustomAgentRecord(agentId);
+      if (dbRecord) {
+        const agent = parseAgentMarkdown(dbRecord.id, dbRecord.configMd);
+        // DB-Agents sind immer non-system, auch wenn das Frontmatter es behauptet.
+        agent.system = false;
+        return agent;
+      }
+    } catch (err) {
+      console.warn(`[agents] DB lookup failed for "${agentId}", falling back to file:`, (err as Error).message);
+    }
+  }
+
+  // 3. System-Agent aus File (oder Custom-Agent der noch nicht migriert ist)
+  const configPath = join(AGENTS_DIR, agentId, 'config.md');
+  if (!existsSync(configPath)) {
+    return null;
+  }
+  const content = await readFile(configPath, 'utf-8');
+  const agent = parseAgentMarkdown(agentId, content);
+  // System-Flag explizit aus Whitelist setzen — Frontmatter ist nicht ueberall korrekt gepflegt.
+  agent.system = SYSTEM_AGENT_IDS.has(agentId);
+  return agent;
 }
 
 /**
@@ -394,55 +448,43 @@ ${toolDocs}
 export async function loadAllAgents(): Promise<Map<string, AgentConfig>> {
   const agents = new Map<string, AgentConfig>();
 
-  // First, load file-based agents
+  // 1. File-basierte System-Agenten
   if (existsSync(AGENTS_DIR)) {
     const entries = await readdir(AGENTS_DIR, { withFileTypes: true });
-
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-
       const agentId = entry.name;
-      const agentDir = join(AGENTS_DIR, agentId);
-      const configPath = join(agentDir, 'config.md');
-
+      const configPath = join(AGENTS_DIR, agentId, 'config.md');
       if (!existsSync(configPath)) continue;
-
       const content = await readFile(configPath, 'utf-8');
-      const { frontmatter, body } = parseFrontmatter(content);
-      const fm = frontmatter as AgentFrontmatter;
-
-      const agent: AgentConfig = {
-        id: fm.id || agentId,
-        name: fm.name || agentId,
-        description: fm.description || '',
-        capabilities: fm.capabilities || [],
-        tools: fm.tools || ['file_read', 'file_list'],
-        delegatable: fm.delegatable !== false,
-        active: fm.active !== false,  // Default: true
-        internal: fm.internal === true,
-        system: fm.system === true,
-        systemPrompt: body,
-        model: fm.model,
-        skills: fm.skills,
-        skillMode: fm.skillMode,
-        maxIterations: typeof fm.maxIterations === 'number' ? fm.maxIterations : undefined,
-      };
-
+      const agent = parseAgentMarkdown(agentId, content);
+      agent.system = SYSTEM_AGENT_IDS.has(agentId);
       agents.set(agent.id, agent);
     }
   }
 
-  // Then, add connection-based agents (they override file-based if same ID)
+  // 2. Custom-Agenten aus DB — ueberschreiben File-Variante bei ID-Konflikt
+  //    (so kann ein Admin auch System-Agenten pro Instanz uebersteuern, falls noetig)
+  try {
+    const dbAgents = await listCustomAgentRecords();
+    for (const record of dbAgents) {
+      const agent = parseAgentMarkdown(record.id, record.configMd);
+      agent.system = false;
+      agents.set(agent.id, agent);
+    }
+  } catch (error) {
+    console.error('Failed to load custom agents from DB:', error);
+    // Continue without DB agents — Boot soll nicht scheitern
+  }
+
+  // 3. Connection-Agenten (auto-generiert) — gewinnen ueber alle anderen bei ID-Konflikt
   try {
     const connectionAgents = await getConnectionAgents();
-    console.log(`Loading ${connectionAgents.length} connection agents`);
     for (const agent of connectionAgents) {
-      console.log(`  - Adding connection agent: ${agent.id}`);
       agents.set(agent.id, agent);
     }
   } catch (error) {
     console.error('Failed to load connection agents:', error);
-    // Continue without connection agents
   }
 
   return agents;
@@ -613,44 +655,47 @@ export async function createAgent(agentData: {
     throw new Error(`Agent ID "${agentData.id}" is reserved for a connection provider`);
   }
 
+  // System-IDs sind reserviert — die kommen aus dem File-Seed.
+  if (SYSTEM_AGENT_IDS.has(agentData.id)) {
+    throw new Error(`Agent ID "${agentData.id}" ist fuer einen System-Agenten reserviert`);
+  }
+
   // Check if agent already exists
   const existing = await loadAgent(agentData.id);
   if (existing) {
     throw new Error(`Agent with ID "${agentData.id}" already exists`);
   }
 
-  // Create agent directory
-  const agentDir = join(AGENTS_DIR, agentData.id);
-  if (!existsSync(agentDir)) {
-    await mkdir(agentDir, { recursive: true });
-  }
-
-  // Create config file
-  const configPath = join(agentDir, 'config.md');
-
   // User-created agents always have model.locked = true if model is specified
   const modelConfig = agentData.model ? {
     ...agentData.model,
-    locked: true,  // User-created agents have fixed model
+    locked: true,
   } : undefined;
 
-  const content = generateAgentMarkdown({
+  const merged = {
     ...agentData,
-    active: agentData.active !== false,  // Default: true
+    active: agentData.active !== false,
     internal: false,
-    system: false,  // User-created agents are never system agents
+    system: false,
     model: modelConfig,
     skills: agentData.skills,
     skillMode: agentData.skillMode,
-  });
+  };
+  const content = generateAgentMarkdown(merged);
+  const { frontmatter } = parseFrontmatter(content);
 
-  await writeFile(configPath, content, 'utf-8');
+  await saveCustomAgentRecord({
+    id: agentData.id,
+    name: agentData.name,
+    description: agentData.description,
+    configMd: content,
+    frontmatter: frontmatter as Record<string, any>,
+  });
 
   const agent = await loadAgent(agentData.id);
   if (!agent) {
     throw new Error('Failed to create agent');
   }
-
   return agent;
 }
 
@@ -685,16 +730,15 @@ export async function updateAgent(agentId: string, agentData: {
     throw new Error('Cannot edit internal agents');
   }
 
-  // Prevent editing system agents
-  if (existing.system) {
+  // Prevent editing system agents (Whitelist + Frontmatter-Flag)
+  if (SYSTEM_AGENT_IDS.has(agentId) || existing.system) {
     throw new Error('System-Agenten können nicht bearbeitet werden');
   }
 
-  // Merge data
   // User-created agents always have model.locked = true if model is specified
   const modelConfig = agentData.model ? {
     ...agentData.model,
-    locked: true,  // User-created agents have fixed model
+    locked: true,
   } : existing.model;
 
   const updated: AgentConfig = {
@@ -711,10 +755,16 @@ export async function updateAgent(agentId: string, agentData: {
     skillMode: agentData.skillMode ?? existing.skillMode,
   };
 
-  // Write updated config
-  const configPath = join(AGENTS_DIR, agentId, 'config.md');
   const content = generateAgentMarkdown(updated);
-  await writeFile(configPath, content, 'utf-8');
+  const { frontmatter } = parseFrontmatter(content);
+
+  await saveCustomAgentRecord({
+    id: agentId,
+    name: updated.name,
+    description: updated.description,
+    configMd: content,
+    frontmatter: frontmatter as Record<string, any>,
+  });
 
   return updated;
 }
@@ -739,14 +789,37 @@ export async function deleteAgent(agentId: string): Promise<void> {
     throw new Error('Cannot delete internal agents');
   }
 
-  // Prevent deleting system agents
-  if (existing.system) {
+  // Prevent deleting system agents (Whitelist + Frontmatter-Flag)
+  if (SYSTEM_AGENT_IDS.has(agentId) || existing.system) {
     throw new Error('System-Agenten können nicht gelöscht werden');
   }
 
-  // Delete agent directory
-  const agentDir = join(AGENTS_DIR, agentId);
-  await rm(agentDir, { recursive: true });
+  // DB first — alle Custom-Agenten leben dort.
+  const deletedFromDb = await deleteCustomAgentRecord(agentId);
+  if (deletedFromDb) return;
+
+  // Fallback: alter File-basierter Custom-Agent (vor Migration).
+  // Wir setzen nur ein Soft-Delete-Marker (eine leere DB-Row mit
+  // active=false), damit der File-Seed beim Re-Deploy nicht
+  // automatisch zurueckkommt. Pragmatisch: wir uebernehmen den File
+  // einmal in die DB und markieren ihn dann als inaktiv.
+  const configPath = join(AGENTS_DIR, agentId, 'config.md');
+  if (existsSync(configPath)) {
+    const fileContent = await readFile(configPath, 'utf-8');
+    const { frontmatter } = parseFrontmatter(fileContent);
+    const fm = frontmatter as Record<string, any>;
+    fm.active = false;
+    // Wir koennten auch eine eigene "tombstone"-Tabelle machen, aber
+    // ein inaktiver DB-Eintrag mit gleicher ID erfuellt den Zweck:
+    // loadAllAgents zeigt ihn nicht (active === false → gefiltert).
+    await saveCustomAgentRecord({
+      id: agentId,
+      name: existing.name,
+      description: existing.description,
+      configMd: generateAgentMarkdown({ ...existing, active: false }),
+      frontmatter: fm,
+    });
+  }
 }
 
 /**
@@ -754,4 +827,61 @@ export async function deleteAgent(agentId: string): Promise<void> {
  */
 export async function getAgentFull(agentId: string): Promise<AgentConfig | null> {
   return loadAgent(agentId);
+}
+
+/**
+ * Idempotente Migration: liest alle Files unter data/agents/<id>/config.md
+ * deren ID NICHT in SYSTEM_AGENT_IDS ist und legt sie in der DB als
+ * Custom-Agent an — sofern dort noch kein Eintrag mit gleicher ID existiert.
+ *
+ * Wird beim Boot einmalig aufgerufen, no-op wenn alle bereits migriert sind.
+ * Files bleiben liegen damit ein Roll-back moeglich ist; in einem zweiten
+ * Cleanup-Schritt (nach Verifikation) koennen sie aus dem Repo geloescht
+ * werden.
+ */
+export async function migrateFileAgentsToDb(): Promise<{
+  migrated: string[];
+  skipped: string[];
+}> {
+  const migrated: string[] = [];
+  const skipped: string[] = [];
+
+  if (!existsSync(AGENTS_DIR)) return { migrated, skipped };
+  const entries = await readdir(AGENTS_DIR, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const agentId = entry.name;
+    if (SYSTEM_AGENT_IDS.has(agentId)) {
+      skipped.push(`${agentId} (system)`);
+      continue;
+    }
+
+    const configPath = join(AGENTS_DIR, agentId, 'config.md');
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const dbExisting = await getCustomAgentRecord(agentId);
+      if (dbExisting) {
+        skipped.push(`${agentId} (already in DB)`);
+        continue;
+      }
+
+      const content = await readFile(configPath, 'utf-8');
+      const { frontmatter } = parseFrontmatter(content);
+      const fm = frontmatter as AgentFrontmatter;
+
+      await saveCustomAgentRecord({
+        id: agentId,
+        name: fm.name || agentId,
+        description: fm.description || null,
+        configMd: content,
+        frontmatter: frontmatter as Record<string, any>,
+      });
+      migrated.push(agentId);
+    } catch (err) {
+      console.warn(`[migrateFileAgentsToDb] failed for ${agentId}:`, (err as Error).message);
+    }
+  }
+
+  return { migrated, skipped };
 }
