@@ -19,7 +19,13 @@ export function useSearch() {
     knowledge: [],
     confluence: [],
     gdrive: [],
+    gmail: [],
+    pipedrive: [],
+    jira: [],
+    youtrack: [],
     contracts: [],
+    docuware: [],
+    personio: [],
   });
   const [loading, setLoading] = useState(false);
   const [smartLoading, setSmartLoading] = useState(false);
@@ -52,7 +58,7 @@ export function useSearch() {
   // Execute fast search
   const search = useCallback(async (searchQuery, connectedSourceIds) => {
     if (!searchQuery || searchQuery.length < 2) {
-      setResults({ chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], youtrack: [], contracts: [] });
+      setResults({ chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], youtrack: [], contracts: [], docuware: [], personio: [] });
       return;
     }
 
@@ -76,7 +82,7 @@ export function useSearch() {
       }
 
       const data = await response.json();
-      setResults(data.results || { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], youtrack: [], contracts: [] });
+      setResults(data.results || { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], youtrack: [], contracts: [], docuware: [], personio: [] });
 
       if (data.errors && data.errors.length > 0) {
         console.warn('Some search sources had errors:', data.errors);
@@ -231,7 +237,7 @@ export function useSearch() {
     }
 
     if (!value || value.length < 2) {
-      setResults({ chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], youtrack: [], contracts: [] });
+      setResults({ chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], youtrack: [], contracts: [], docuware: [], personio: [] });
       setSmartLoading(false);
       setSmartReasoning(null);
       return;

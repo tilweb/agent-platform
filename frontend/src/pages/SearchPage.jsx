@@ -7,7 +7,7 @@
  * - List View: All results in a single filtered list
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useSearch } from '../hooks/useSearch';
@@ -445,6 +445,8 @@ const sourceLabels = {
   jira: 'Jira',
   youtrack: 'YouTrack',
   contracts: 'Verträge',
+  docuware: 'Docuware',
+  personio: 'Personio',
 };
 
 function SearchPage() {
@@ -767,9 +769,147 @@ function SearchPage() {
 }
 
 // Tab navigation component
+/**
+ * Horizontaler Scroll-Container fuer Tab-Leisten / Filter-Chips, wenn die
+ * Quellen-Liste laenger wird als der verfuegbare Platz.
+ *
+ * - Standard-Verhalten: overflow-x: auto.
+ * - Edge-Fades links/rechts werden eingeblendet wenn man in die jeweilige
+ *   Richtung weiter scrollen koennte (visueller Hinweis "es kommt noch mehr").
+ * - Scroll-Buttons (◀ / ▶) erscheinen daneben — klickbar um in 80%-Schritten
+ *   weiterzuscrollen. Bei zu schmalen Containern (Mobile) bleiben sie weg.
+ */
+function HorizontalScroller({ children, ariaLabel }) {
+  const scrollRef = useRef(null);
+  const [scrollState, setScrollState] = useState({ left: false, right: false });
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const canLeft = el.scrollLeft > 1;
+    const canRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setScrollState((prev) =>
+      prev.left === canLeft && prev.right === canRight ? prev : { left: canLeft, right: canRight }
+    );
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    const ro = new ResizeObserver(updateScrollState);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+      ro.disconnect();
+    };
+  }, [updateScrollState, children]);
+
+  const scrollBy = (dir) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.round(el.clientWidth * 0.8), behavior: 'smooth' });
+  };
+
+  const wrapperStyle = {
+    position: 'relative',
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    alignItems: 'center',
+  };
+  const scrollerStyle = {
+    overflowX: 'auto',
+    flex: 1,
+    minWidth: 0,
+    scrollbarWidth: 'none',
+    msOverflowStyle: 'none',
+  };
+  const innerStyle = {
+    display: 'flex',
+    gap: theme.spacing.xs,
+    paddingLeft: scrollState.left ? theme.spacing.lg : 0,
+    paddingRight: scrollState.right ? theme.spacing.lg : 0,
+    transition: `padding ${theme.transitions.fast}`,
+  };
+  const fadeBase = {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: '32px',
+    pointerEvents: 'none',
+    transition: `opacity ${theme.transitions.fast}`,
+  };
+  const buttonStyle = (visible) => ({
+    flexShrink: 0,
+    width: '28px',
+    height: '28px',
+    border: `1px solid ${theme.colors.border}`,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.textMuted,
+    borderRadius: theme.borderRadius.full,
+    cursor: visible ? 'pointer' : 'default',
+    opacity: visible ? 1 : 0,
+    pointerEvents: visible ? 'auto' : 'none',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '14px',
+    transition: `opacity ${theme.transitions.fast}`,
+    marginRight: '4px',
+    marginLeft: '4px',
+  });
+
+  return (
+    <div style={wrapperStyle} role="tablist" aria-label={ariaLabel}>
+      <button
+        type="button"
+        aria-label="Nach links scrollen"
+        style={buttonStyle(scrollState.left)}
+        onClick={() => scrollBy(-1)}
+        tabIndex={scrollState.left ? 0 : -1}
+      >
+        ‹
+      </button>
+      <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+        <div ref={scrollRef} style={scrollerStyle}>
+          <div style={innerStyle}>{children}</div>
+        </div>
+        <div
+          style={{
+            ...fadeBase,
+            left: 0,
+            background: `linear-gradient(to right, ${theme.colors.background}, transparent)`,
+            opacity: scrollState.left ? 1 : 0,
+          }}
+        />
+        <div
+          style={{
+            ...fadeBase,
+            right: 0,
+            background: `linear-gradient(to left, ${theme.colors.background}, transparent)`,
+            opacity: scrollState.right ? 1 : 0,
+          }}
+        />
+      </div>
+      <button
+        type="button"
+        aria-label="Nach rechts scrollen"
+        style={buttonStyle(scrollState.right)}
+        onClick={() => scrollBy(1)}
+        tabIndex={scrollState.right ? 0 : -1}
+      >
+        ›
+      </button>
+    </div>
+  );
+}
+
 function SourceTabs({ sources, activeTab, onTabChange, results }) {
   return (
-    <div style={styles.tabsContainer}>
+    <HorizontalScroller ariaLabel="Datenquellen">
       {sources.map(source => {
         const isActive = activeTab === source.id;
         const count = results[source.id]?.length || 0;
@@ -811,38 +951,40 @@ function SourceTabs({ sources, activeTab, onTabChange, results }) {
           </button>
         );
       })}
-    </div>
+    </HorizontalScroller>
   );
 }
 
 // Filter chips component for list view
 function SourceFilters({ sources, filters, onFilterChange, results }) {
   return (
-    <div style={styles.filtersContainer}>
-      <span style={styles.filterLabel}>Filter:</span>
-      {sources.map(source => {
-        const isActive = filters[source.id];
-        const count = results[source.id]?.length || 0;
+    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs, flex: 1, minWidth: 0 }}>
+      <span style={{ ...styles.filterLabel, flexShrink: 0 }}>Filter:</span>
+      <HorizontalScroller ariaLabel="Filter-Quellen">
+        {sources.map(source => {
+          const isActive = filters[source.id];
+          const count = results[source.id]?.length || 0;
 
-        return (
-          <button
-            key={source.id}
-            style={{
-              ...styles.filterChip,
-              ...(isActive ? {
-                ...styles.filterChipActive,
-                backgroundColor: `${source.color}15`,
-                borderColor: source.color,
-                color: source.color,
-              } : {}),
-            }}
-            onClick={() => onFilterChange(source.id)}
-          >
-            {source.name}
-            <span>({count})</span>
-          </button>
-        );
-      })}
+          return (
+            <button
+              key={source.id}
+              style={{
+                ...styles.filterChip,
+                ...(isActive ? {
+                  ...styles.filterChipActive,
+                  backgroundColor: `${source.color}15`,
+                  borderColor: source.color,
+                  color: source.color,
+                } : {}),
+              }}
+              onClick={() => onFilterChange(source.id)}
+            >
+              {source.name}
+              <span>({count})</span>
+            </button>
+          );
+        })}
+      </HorizontalScroller>
     </div>
   );
 }

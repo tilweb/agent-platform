@@ -37,7 +37,7 @@ searchRoutes.get('/', async (c) => {
     }
 
     // Parse sources
-    const validSources = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'jira', 'youtrack', 'contracts'];
+    const validSources = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'jira', 'youtrack', 'contracts', 'docuware', 'personio'];
     let sources = validSources;
 
     if (sourcesParam) {
@@ -76,6 +76,8 @@ searchRoutes.get('/sources', async (c) => {
     let pipedriveConnected = false;
     let jiraConnected = false;
     let youtrackConnected = false;
+    let docuwareConnected = false;
+    let personioConnected = false;
 
     if (userId) {
       // Check Confluence connection
@@ -101,6 +103,14 @@ searchRoutes.get('/sources', async (c) => {
       // Check YouTrack connection
       const youtrackTokens = await connectionRegistry.getTokens(userId, 'youtrack');
       youtrackConnected = !!youtrackTokens;
+
+      // Check Docuware connection
+      const docuwareTokens = await connectionRegistry.getTokens(userId, 'docuware');
+      docuwareConnected = !!docuwareTokens;
+
+      // Check Personio connection
+      const personioTokens = await connectionRegistry.getTokens(userId, 'personio');
+      personioConnected = !!personioTokens;
     }
 
     // Check if Vertragsmanagement app is enabled
@@ -187,6 +197,24 @@ searchRoutes.get('/sources', async (c) => {
         connected: contractsEnabled, // Available when app is enabled
         requiresApp: 'vertragsmanagement',
         color: '#8b5cf6',
+      },
+      {
+        id: 'docuware',
+        name: 'Docuware',
+        description: 'Docuware-Dokumente durchsuchen',
+        available: toolRegistry.has('docuware_search_documents'),
+        connected: docuwareConnected,
+        requiresConnection: true,
+        color: '#1B68B3',
+      },
+      {
+        id: 'personio',
+        name: 'Personio',
+        description: 'Personio Bewerbungen durchsuchen',
+        available: toolRegistry.has('personio_list_applications'),
+        connected: personioConnected,
+        requiresConnection: true,
+        color: '#1B96D9',
       },
     ];
 

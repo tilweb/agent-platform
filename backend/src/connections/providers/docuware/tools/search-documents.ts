@@ -86,19 +86,76 @@ export function createSearchDocumentsTool(providerId: string): ConnectionTool {
 
         let output = `Found ${items.length} document(s) for "${query}":\n\n`;
 
+        // Felder die wir im Title bevorzugen (in dieser Reihenfolge).
+        const TITLE_FIELDS = ['DOCUMENT_TITLE', 'TITLE', 'TITEL', 'BETREFF', 'SUBJECT', 'NAME'];
+        // Technische Docuware-System-Felder die wir nicht als User-Metadata zeigen.
+        const HIDE_FIELDS = new Set([
+          'DWDOCID', 'DWFCID', 'DWSYSCREATOR', 'DWSYSEDITOR', 'DWPATH', 'DWBARCODES',
+          'DWEXTENSION', 'DWWASTEBASKET', 'DWCONTENTHASH', 'DWREVISION',
+          'DWVERSION', 'DWVERSIONSEQUENCEID', 'DWWORKFLOWORIGNAME',
+        ]);
+
         for (const doc of items) {
           const fields = doc.Fields || doc.fields || [];
-          const getField = (name: string) => {
-            const field = fields.find((f: any) => f.FieldName === name || f.fieldName === name);
-            return field?.Item || field?.item || '';
-          };
+          const fieldMap = new Map<string, any>();
+          for (const f of fields) {
+            const name = f.FieldName || f.fieldName;
+            const val = f.Item ?? f.item;
+            if (name && val !== undefined && val !== null && val !== '') fieldMap.set(name, val);
+          }
+          const getField = (name: string) => fieldMap.get(name) || '';
 
-          output += `### ${getField('DWDOCID') || doc.Id || 'Unknown'}\n`;
-          output += `- **Title**: ${getField('Title') || getField('DOCUMENT_TITLE') || getField('DWDOCID') || 'Untitled'}\n`;
+          // Title: erst die typischen Title-Felder, dann erstes User-Index-Feld
+          // mit String-Wert, dann Filename, dann Fallback DocId.
+          let title = '';
+          for (const key of TITLE_FIELDS) {
+            if (fieldMap.has(key) && typeof fieldMap.get(key) === 'string') {
+              title = String(fieldMap.get(key));
+              break;
+            }
+          }
+          if (!title) {
+            for (const [name, val] of fieldMap.entries()) {
+              if (HIDE_FIELDS.has(name) || name.startsWith('DW')) continue;
+              if (typeof val !== 'string' || !val.trim()) continue;
+              title = val;
+              break;
+            }
+          }
+          if (!title) title = String(doc.Title || doc.FileName || `Document ${doc.Id}`);
+
+          // User-Index-Felder (alle nicht-DW-Felder) als kompakte Key:Value-Liste.
+          const indexFields: string[] = [];
+          for (const [name, val] of fieldMap.entries()) {
+            if (HIDE_FIELDS.has(name) || name.startsWith('DW')) continue;
+            if (TITLE_FIELDS.includes(name) && val === title) continue; // schon im Title
+            const valStr = typeof val === 'string' ? val : JSON.stringify(val);
+            if (!valStr || valStr === 'null') continue;
+            indexFields.push(`${name}: ${valStr}`);
+          }
+
+          // /Date(ms)/ → ISO falls vorhanden.
+          const rawCreated = getField('DWSTOREDATETIME') || getField('DWSTOREDATE') || '';
+          let created = '';
+          if (typeof rawCreated === 'string') {
+            const ms = rawCreated.match(/\/Date\((\d+)\)\//);
+            if (ms) {
+              const d = new Date(parseInt(ms[1]!, 10));
+              if (!isNaN(d.getTime())) created = d.toISOString().slice(0, 10);
+            } else {
+              created = rawCreated;
+            }
+          }
+
+          output += `### ${title}\n`;
           output += `- **Document ID**: ${doc.Id || getField('DWDOCID')}\n`;
-          output += `- **Created**: ${getField('DWSTOREDATETIME') || getField('DWSTOREDATE') || 'Unknown'}\n`;
+          if (created) output += `- **Created**: ${created}\n`;
           output += `- **File Size**: ${doc.FileSize || doc.ContentSize || 'Unknown'}\n`;
-          output += `- **Cabinet**: ${cabinet_id}\n\n`;
+          output += `- **Cabinet**: ${cabinet_id}\n`;
+          if (indexFields.length > 0) {
+            output += `- **Fields**: ${indexFields.join(' | ')}\n`;
+          }
+          output += `\n`;
         }
 
         return output;
