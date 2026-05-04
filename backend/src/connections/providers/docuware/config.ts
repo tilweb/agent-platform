@@ -24,17 +24,36 @@ export function getDocuwareConfig(): OAuth2Config {
     );
   }
 
+  // DocuWare hat OAuth seit ~2024 auf zentrale IdP-Endpoints unter
+  // login-emea.docuware.cloud/<tenant-id>/... migriert. Der alte Org-Pfad
+  // /DocuWare/Platform/Account/Authorize wird teils von der WAF mit
+  // "Request blocked by DocuWare firewall" abgewiesen. URLs werden in der
+  // App-Registrierung in DocuWare angezeigt — bitte exakt uebernehmen.
+  const authorizationUrl =
+    process.env.DOCUWARE_AUTHORIZATION_URL ||
+    `${orgUrl}/DocuWare/Platform/Account/Authorize`;
+  const tokenUrl =
+    process.env.DOCUWARE_TOKEN_URL ||
+    `${orgUrl}/DocuWare/Platform/Account/Token`;
+
   return {
-    authorizationUrl: `${orgUrl}/DocuWare/Platform/Account/Authorize`,
-    tokenUrl: `${orgUrl}/DocuWare/Platform/Account/Token`,
+    authorizationUrl,
+    tokenUrl,
     clientId,
     clientSecret,
+    // openid + dwprofile fuer User-Info, offline_access fuer Refresh-Token.
+    // Refresh-Token ist Voraussetzung fuer die langlebige Connection — ohne
+    // offline_access laeuft der Access-Token nach 60 Min ab und der User
+    // muss neu einloggen.
     scopes: [
       'docuware.platform',
+      'openid',
+      'dwprofile',
+      'offline_access',
     ],
-    additionalAuthParams: {
-      prompt: 'consent',
-    },
+    // Kein prompt=consent — der neue DocuWare-IdP redirectet danach auf
+    // /<tenant-id>/consent, das aber 404t. Ohne den Param geht der Flow
+    // direkt vom Login zum Callback.
   };
 }
 

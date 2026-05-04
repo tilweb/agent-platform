@@ -9,6 +9,23 @@ import { createSearchDocumentsTool } from './tools/search-documents';
 import { createGetDocumentTool } from './tools/get-document';
 import { createListCabinetsTool } from './tools/list-cabinets';
 
+/**
+ * Decode JWT payload (middle segment) without signature verification.
+ * Safe weil id_token direkt vom Token-Endpoint via TLS kommt — wir nutzen
+ * den Inhalt nur fuer UI-Anzeige, nicht fuer Authorization-Entscheidungen.
+ */
+function decodeJwtPayload(idToken: string): Record<string, any> | null {
+  try {
+    const parts = idToken.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload + '='.repeat((4 - (payload.length % 4)) % 4);
+    return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
 interface DocuwareUser {
   Id?: string;
   Name?: string;
@@ -36,19 +53,30 @@ export class DocuwareProvider extends OAuthProvider {
 ### 3. Credentials kopieren
 1. Kopiere "Client ID" und "Client Secret"
 
-### 4. Umgebungsvariablen
+### 4. OAuth-Endpoints kopieren
+In der App-Registrierung zeigt DocuWare zwei Endpoints unter den Redirect-URIs an:
+- \`Authorization Endpoint\` (z.B. \`https://login-emea.docuware.cloud/<tenant-id>/oauth2/authorize\`)
+- \`Token Endpoint\` (z.B. \`https://login-emea.docuware.cloud/<tenant-id>/oauth2/token\`)
+
+Beide vollstaendig kopieren — sind tenant-spezifisch und nicht aus der Org-URL ableitbar.
+
+### 5. Umgebungsvariablen
 Füge in \`.env\` hinzu:
 \`\`\`
 DOCUWARE_CLIENT_ID=deine-client-id
 DOCUWARE_CLIENT_SECRET=dein-client-secret
 DOCUWARE_ORG_URL=https://deine-org.docuware.cloud
+DOCUWARE_AUTHORIZATION_URL=https://login-emea.docuware.cloud/<tenant-id>/oauth2/authorize
+DOCUWARE_TOKEN_URL=https://login-emea.docuware.cloud/<tenant-id>/oauth2/token
 \`\`\`
 
-### 5. Backend neu starten
+### 6. Backend neu starten
 Nach dem Setzen der Umgebungsvariablen das Backend neu starten.
 
-### Hinweis
-Die DOCUWARE_ORG_URL muss die vollständige URL deiner Docuware-Organisation sein (z.B. \`https://meinefirma.docuware.cloud\`). Die OAuth-Endpoints sind organisationsspezifisch.`;
+### Hinweise
+- \`DOCUWARE_ORG_URL\` ist die vollstaendige URL deiner Docuware-Organisation (z.B. \`https://meinefirma.docuware.cloud\`) und wird fuer Platform-API-Calls nach erfolgreichem Login verwendet.
+- \`DOCUWARE_AUTHORIZATION_URL\` und \`DOCUWARE_TOKEN_URL\` sind die tenant-spezifischen OAuth-Endpoints, die DocuWare in der App-Registrierung anzeigt. Wenn diese ENVs nicht gesetzt sind, fallen wir auf den alten Org-Pfad zurueck — der wird seit der OAuth-Migration teils von der DocuWare-WAF blockiert ("Request blocked by DocuWare firewall").
+- Allowed Redirect-URIs in der App-Registrierung muessen die vollen Callback-URLs aller Umgebungen enthalten (Local + Production), exakt wie das Backend sie schickt.`;
 
   private tools: ConnectionTool[] | null = null;
 
@@ -57,13 +85,35 @@ Die DOCUWARE_ORG_URL muss die vollständige URL deiner Docuware-Organisation sei
   }
 
   /**
-   * Override to store apiDomain from org URL
+   * Override to store apiDomain from org URL and extract user info from id_token
    */
   protected override processTokenResponse(data: any): TokenSet {
     const tokens = super.processTokenResponse(data);
 
     // Store the org URL as apiDomain for API calls
     tokens.apiDomain = getDocuwareOrgUrl();
+
+    // OIDC: id_token kommt mit dem `openid`-Scope. Daraus User-Info extrahieren
+    // — kein extra API-Call noetig, und es zeigt den eingeloggten User statt
+    // nur den Org-Namen.
+    if (typeof data.id_token === 'string') {
+      const claims = decodeJwtPayload(data.id_token);
+      if (claims) {
+        tokens.userId = claims.sub || claims.name_id || undefined;
+        tokens.userName =
+          claims.name ||
+          claims.preferred_username ||
+          claims.given_name ||
+          undefined;
+        tokens.userEmail = claims.email || undefined;
+        // iss merken — daraus leiten wir den userinfo-Endpoint in
+        // validateConnection ab, falls Profile-Claims im id_token fehlen
+        // (DocuWare schickt nur `sub`, Profile kommt ueber userinfo).
+        if (typeof claims.iss === 'string') {
+          tokens.oidcIssuer = claims.iss;
+        }
+      }
+    }
 
     return tokens;
   }
@@ -75,17 +125,77 @@ Die DOCUWARE_ORG_URL muss die vollständige URL deiner Docuware-Organisation sei
     try {
       const apiUrl = getDocuwareApiUrl(tokens.apiDomain);
 
-      // Try to get organization info or current user
+      // DocuWare Platform-API liefert ohne Accept-Header XML/SOAP — fuer JSON
+      // muss der Header explizit gesetzt werden.
+      const jsonHeaders = { Accept: 'application/json' };
+
+      // Wenn id_token User-Info geliefert hat, validieren wir ueber FileCabinets
+      // (cheap call) und zeigen den User aus dem Token statt der Org. Macht die
+      // Card-Anzeige "Connected as: <Username>" konsistent mit anderen Providern.
+      if (tokens.userId || tokens.userName) {
+        const probe = await this.authenticatedFetch(
+          `${apiUrl}/FileCabinets`,
+          tokens,
+          { headers: jsonHeaders },
+        );
+        if (probe.status === 401 || probe.status === 403) {
+          return this.createExpiredStatus();
+        }
+        if (!probe.ok) {
+          const text = await probe.text();
+          throw new Error(`Validation failed: ${probe.status} - ${text}`);
+        }
+
+        // Profile-Claims fehlen oft im id_token — userinfo-Endpoint nachladen.
+        // IdentityServer-Standardpfad ist <issuer>/connect/userinfo.
+        let displayName = tokens.userName;
+        let displayEmail = tokens.userEmail;
+        if (!displayName && tokens.oidcIssuer) {
+          const userinfoUrl =
+            process.env.DOCUWARE_USERINFO_URL ||
+            `${tokens.oidcIssuer.replace(/\/+$/, '')}/connect/userinfo`;
+          try {
+            const uiRes = await fetch(userinfoUrl, {
+              headers: {
+                Authorization: `${tokens.tokenType} ${tokens.accessToken}`,
+                Accept: 'application/json',
+              },
+            });
+            if (uiRes.ok) {
+              const info = (await uiRes.json()) as Record<string, any>;
+              displayName =
+                info.name ||
+                info.preferred_username ||
+                info.given_name ||
+                info.email ||
+                displayName;
+              displayEmail = info.email || displayEmail;
+            }
+          } catch {
+            // best-effort — ohne userinfo nehmen wir den Default
+          }
+        }
+
+        return this.createConnectedStatus({
+          id: tokens.userId || 'docuware-user',
+          name: displayName || 'Docuware User',
+          email: displayEmail || '',
+        });
+      }
+
+      // Fallback (kein OIDC id_token): klassisch /Organization holen.
       const response = await this.authenticatedFetch(
         `${apiUrl}/Organization`,
-        tokens
+        tokens,
+        { headers: jsonHeaders },
       );
 
       if (!response.ok) {
         // Fallback: try FileCabinets endpoint as validation
         const fallbackResponse = await this.authenticatedFetch(
           `${apiUrl}/FileCabinets`,
-          tokens
+          tokens,
+          { headers: jsonHeaders },
         );
 
         if (!fallbackResponse.ok) {

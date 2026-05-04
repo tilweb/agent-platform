@@ -22,6 +22,15 @@ export interface TokenSet {
   cloudId?: string;
   // Pipedrive-specific (user's company API domain)
   apiDomain?: string;
+  // OIDC ID-Token-Claims (sub/name/email) — bei Providern mit openid-Scope
+  // direkt aus dem id_token extrahiert, damit validateConnection ohne extra
+  // API-Call den User anzeigen kann.
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  // OIDC issuer aus dem id_token. Wird gebraucht um den userinfo-Endpoint
+  // abzuleiten wenn der Provider Profile-Claims nicht im id_token mitschickt.
+  oidcIssuer?: string;
 }
 
 /**
