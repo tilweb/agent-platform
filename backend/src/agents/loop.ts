@@ -790,7 +790,7 @@ function removeMistralToolCalls(content: string): string {
 /**
  * Build the supervisor prompt by injecting the dynamic agent list, user memory, and attachments
  */
-async function buildSupervisorPrompt(agent: AgentConfig, attachments?: AttachmentWithContent[]): Promise<string> {
+async function buildSupervisorPrompt(agent: AgentConfig, attachments?: AttachmentWithContent[], userId?: string): Promise<string> {
   const agents = await listAgents(); // non-internal agents only
 
   const agentListLines = agents.map(a => {
@@ -802,16 +802,21 @@ async function buildSupervisorPrompt(agent: AgentConfig, attachments?: Attachmen
     ? agentListLines.join('\n')
     : '(Keine Agenten verfuegbar)';
 
-  // Load and format user memory
+  // Load and format user memory — userId muss durchgereicht werden, sonst
+  // landen alle User auf demselben `default`-Row und sehen die Erinnerungen
+  // gegenseitig. Ohne userId (z.B. wenn die Agent-Loop ohne Login laeuft)
+  // wird gar kein Memory injiziert.
   let userMemoryStr = '';
-  try {
-    const memory = await loadUserMemory();
-    if (memory.settings.include_in_prompt) {
-      userMemoryStr = formatMemoryForPrompt(memory);
+  if (userId) {
+    try {
+      const memory = await loadUserMemory(userId);
+      if (memory.settings.include_in_prompt) {
+        userMemoryStr = formatMemoryForPrompt(memory);
+      }
+    } catch (error) {
+      console.warn('Failed to load user memory:', error);
+      userMemoryStr = '';
     }
-  } catch (error) {
-    console.warn('Failed to load user memory:', error);
-    userMemoryStr = '';
   }
 
   // Build attachments section if present - inject document content directly for reliable access
@@ -1513,7 +1518,7 @@ export async function* runAgentLoop(
     if (agent) {
       // For the supervisor agent, inject the dynamic agent list and attachments
       if (agent.id === 'supervisor') {
-        systemPrompt = await buildSupervisorPrompt(agent, attachments);
+        systemPrompt = await buildSupervisorPrompt(agent, attachments, userId);
       } else {
         systemPrompt = agent.systemPrompt;
       }
