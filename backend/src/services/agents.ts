@@ -93,9 +93,17 @@ export interface AgentConfig {
   skillMode?: 'all' | 'allow' | 'none';
   /** Maximum iterations for this agent (overrides default in delegation loop) */
   maxIterations?: number;
+  /**
+   * Tombstone-Marker: gesetzt wenn ein File-basierter Agent geloescht wurde.
+   * Ueberstimmt das File-Seed im DB-Override-Mechanismus und wird in beiden
+   * List-Funktionen gefiltert (listAgents UND listAllAgentsIncludingInactive).
+   * Unterscheidet sich von `active=false` (= deaktiviert, sichtbar in Admin).
+   */
+  tombstone?: boolean;
 }
 
 interface AgentFrontmatter {
+  tombstone?: boolean;
   id: string;
   name: string;
   description?: string;
@@ -266,6 +274,7 @@ function parseAgentMarkdown(agentId: string, content: string): AgentConfig {
     skills: fm.skills,
     skillMode: fm.skillMode,
     maxIterations: typeof fm.maxIterations === 'number' ? fm.maxIterations : undefined,
+    tombstone: fm.tombstone === true,
   };
 }
 
@@ -495,7 +504,7 @@ export async function loadAllAgents(): Promise<Map<string, AgentConfig>> {
  */
 export async function listAgents(): Promise<AgentConfig[]> {
   const agents = await loadAllAgents();
-  return Array.from(agents.values()).filter(a => !a.internal && a.active !== false);
+  return Array.from(agents.values()).filter(a => !a.internal && !a.tombstone && a.active !== false);
 }
 
 /**
@@ -503,7 +512,7 @@ export async function listAgents(): Promise<AgentConfig[]> {
  */
 export async function listDelegatableAgents(): Promise<AgentConfig[]> {
   const agents = await loadAllAgents();
-  return Array.from(agents.values()).filter(a => a.delegatable && a.active !== false);
+  return Array.from(agents.values()).filter(a => a.delegatable && !a.tombstone && a.active !== false);
 }
 
 /**
@@ -511,7 +520,7 @@ export async function listDelegatableAgents(): Promise<AgentConfig[]> {
  */
 export async function listAllAgentsIncludingInactive(): Promise<AgentConfig[]> {
   const agents = await loadAllAgents();
-  return Array.from(agents.values()).filter(a => !a.internal);
+  return Array.from(agents.values()).filter(a => !a.internal && !a.tombstone);
 }
 
 /**
@@ -570,6 +579,10 @@ function generateAgentMarkdown(agent: Omit<AgentConfig, 'systemPrompt'> & { syst
 
   if (agent.active === false) {
     lines.push('active: false');
+  }
+
+  if ((agent as any).tombstone === true) {
+    lines.push('tombstone: true');
   }
 
   if (agent.internal) {
@@ -794,31 +807,32 @@ export async function deleteAgent(agentId: string): Promise<void> {
     throw new Error('System-Agenten können nicht gelöscht werden');
   }
 
-  // DB first — alle Custom-Agenten leben dort.
-  const deletedFromDb = await deleteCustomAgentRecord(agentId);
-  if (deletedFromDb) return;
-
-  // Fallback: alter File-basierter Custom-Agent (vor Migration).
-  // Wir setzen nur ein Soft-Delete-Marker (eine leere DB-Row mit
-  // active=false), damit der File-Seed beim Re-Deploy nicht
-  // automatisch zurueckkommt. Pragmatisch: wir uebernehmen den File
-  // einmal in die DB und markieren ihn dann als inaktiv.
+  // Wenn ein File-Seed unter data/agents/<id>/ liegt, wuerde es nach
+  // einem reinen DB-Delete beim naechsten loadAllAgents() wieder geladen.
+  // Loesung: statt zu loeschen, einen Tombstone (active=false in DB) anlegen
+  // — der ueberstimmt das File-Seed (DB wins) und wird in listAgents
+  // gefiltert. Wenn jemand den gleichen Agent-ID neu anlegen will, muss
+  // er den Tombstone separat per UI ueberstimmen oder direkt updaten.
   const configPath = join(AGENTS_DIR, agentId, 'config.md');
-  if (existsSync(configPath)) {
+  const hasFileSeed = existsSync(configPath);
+
+  if (hasFileSeed) {
+    // File-Seed da → Tombstone setzen (upsert). DB-Eintrag mit
+    // tombstone=true ueberstimmt das File-Seed im DB-Override-Mechanismus
+    // und wird in beiden List-Funktionen ausgefiltert.
     const fileContent = await readFile(configPath, 'utf-8');
     const { frontmatter } = parseFrontmatter(fileContent);
-    const fm = frontmatter as Record<string, any>;
-    fm.active = false;
-    // Wir koennten auch eine eigene "tombstone"-Tabelle machen, aber
-    // ein inaktiver DB-Eintrag mit gleicher ID erfuellt den Zweck:
-    // loadAllAgents zeigt ihn nicht (active === false → gefiltert).
+    const fm = { ...(frontmatter as Record<string, any>), active: false, tombstone: true };
     await saveCustomAgentRecord({
       id: agentId,
       name: existing.name,
       description: existing.description,
-      configMd: generateAgentMarkdown({ ...existing, active: false }),
+      configMd: generateAgentMarkdown({ ...existing, active: false, tombstone: true } as any),
       frontmatter: fm,
     });
+  } else {
+    // Kein File-Seed → einfach hart aus DB loeschen.
+    await deleteCustomAgentRecord(agentId);
   }
 }
 

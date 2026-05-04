@@ -6,6 +6,7 @@ import { useProviders } from '../hooks/useProviders';
 import { LockIcon } from '../components/Icons';
 import RoleBadge from '../components/RoleBadge';
 import ReadOnlyBanner from '../components/ReadOnlyBanner';
+import ConfirmModal from '../components/ConfirmModal';
 
 // ==========================================
 // Styles
@@ -688,6 +689,12 @@ function AgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
 
+  // Confirm-Modal state — `agent` haelt eine Kopie des Agents zum Zeitpunkt
+  // des Klicks fest, damit der Modal-Inhalt (Name) auch dann stabil bleibt
+  // wenn `selectedAgent` zwischenzeitlich neu geladen wird.
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Form data
   const [formData, setFormData] = useState({
     id: '',
@@ -869,24 +876,42 @@ function AgentsPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Möchten Sie den Agenten "${selectedAgent.name}" wirklich löschen?`)) {
+  // Step 1: Klick auf "Löschen" oeffnet das Confirm-Modal. Die zu loeschende
+  // Agent-Referenz wird in `deleteCandidate` festgehalten, damit der Modal-
+  // Inhalt unabhaengig von State-Reloads stabil bleibt.
+  const requestDelete = () => {
+    if (!selectedAgent?.id) {
+      setError('Kein Agent ausgewählt');
       return;
     }
+    setDeleteCandidate(selectedAgent);
+  };
 
+  // Step 2: Bestaetigung im Modal triggert den eigentlichen DELETE-Call.
+  const confirmDelete = async () => {
+    if (!deleteCandidate?.id) return;
+    setIsDeleting(true);
+    setError(null);
     try {
-      const response = await apiDelete(`/agents/${selectedAgent.id}`);
-
+      const response = await apiDelete(`/agents/${deleteCandidate.id}`);
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete agent');
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `Löschen fehlgeschlagen (${response.status})`);
       }
-
+      setDeleteCandidate(null);
       await fetchAgents();
       handleBackToOverview();
     } catch (err) {
+      // Modal offen lassen, damit der User den Fehler sieht und nochmal probieren kann.
       setError(err.message);
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const cancelDelete = () => {
+    if (isDeleting) return;
+    setDeleteCandidate(null);
   };
 
   const handleToolToggle = (toolName) => {
@@ -1041,7 +1066,7 @@ function AgentsPage() {
           {!isViewOnly && (
             <div style={styles.detailActions}>
               {!isCreating && (
-                <button style={styles.buttonDanger} onClick={handleDelete}>
+                <button type="button" style={styles.buttonDanger} onClick={requestDelete}>
                   Löschen
                 </button>
               )}
@@ -1561,6 +1586,26 @@ function AgentsPage() {
             </div>
           </div>
         </div>
+
+        <ConfirmModal
+          open={!!deleteCandidate}
+          title="Agent löschen"
+          message={
+            deleteCandidate ? (
+              <>
+                Möchten Sie den Agenten <strong>{deleteCandidate.name}</strong> wirklich löschen?
+                <br />
+                Diese Aktion kann nicht rückgängig gemacht werden.
+              </>
+            ) : null
+          }
+          confirmLabel="Löschen"
+          cancelLabel="Abbrechen"
+          destructive
+          busy={isDeleting}
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+        />
       </div>
     );
   }
