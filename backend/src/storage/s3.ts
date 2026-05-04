@@ -128,8 +128,19 @@ export async function listObjectsByPrefix(prefix: string): Promise<Array<{ key: 
 }
 
 /**
- * Idempotent: HeadBucket — bei 404/NoSuchBucket erst CreateBucket.
- * Wird beim Server-Start einmalig aufgerufen.
+ * Beim Server-Start einmalig: prueft ob der Bucket existiert, legt ihn
+ * andernfalls an. Bricht **nicht** den Boot ab wenn die Credentials
+ * keine Rechte fuer Head/Create haben — Storage-Sub-Accounts haben oft
+ * nur Object-Operations am vorab angelegten Bucket, kein Bucket-Mgmt.
+ *
+ * Verhalten:
+ * - HeadBucket 200 → Bucket da, fertig.
+ * - HeadBucket 404 → CreateBucket-Versuch.
+ * - HeadBucket AccessDenied/403 → Warning, kein Boot-Block. Spaeter beim
+ *   ersten Object-Call sehen wir ob's wirklich nicht geht.
+ * - CreateBucket AccessDenied/403 → Warning mit klarem Hinweis "Bucket
+ *   manuell anlegen". Boot laeuft weiter, Object-Calls scheitern dann
+ *   spaeter mit aussagekraeftigem Fehler.
  */
 export async function ensureBucket(): Promise<void> {
   if (!isS3Configured()) {
@@ -137,6 +148,8 @@ export async function ensureBucket(): Promise<void> {
     return;
   }
   const client = getS3();
+
+  // Schritt 1: HeadBucket
   try {
     await client.send(new HeadBucketCommand({ Bucket: BUCKET }));
     console.log(`[s3] bucket "${BUCKET}" exists.`);
@@ -144,20 +157,51 @@ export async function ensureBucket(): Promise<void> {
   } catch (err: any) {
     const status = err?.$metadata?.httpStatusCode ?? 0;
     const code = err?.name ?? '';
-    if (status !== 404 && code !== 'NotFound' && code !== 'NoSuchBucket') {
-      console.error('[s3] HeadBucket unexpected error:', code, status, err?.message);
-      throw err;
+    const isNotFound = status === 404 || code === 'NotFound' || code === 'NoSuchBucket';
+    const isForbidden = status === 403 || code === 'AccessDenied' || code === 'Forbidden';
+
+    if (isForbidden) {
+      console.warn(
+        `[s3] HeadBucket "${BUCKET}" returned 403/AccessDenied — wahrscheinlich Storage-Sub-Account ohne Bucket-Mgmt-Rechte. ` +
+          `Boot laeuft weiter, ich nehme an der Bucket existiert. Wenn nicht, vorher in Flow.swiss-UI anlegen.`,
+      );
+      return;
     }
+    if (!isNotFound) {
+      // Unbekannter Fehler — auch hier nicht den Boot blocken, aber laut
+      // loggen damit Operator den Hintergrund sieht.
+      console.warn(
+        `[s3] HeadBucket "${BUCKET}" unerwarteter Fehler (status=${status}, code=${code}): ${err?.message}. ` +
+          `Boot laeuft weiter, Object-Calls werden spaeter zeigen ob's funktioniert.`,
+      );
+      return;
+    }
+    // 404 fall-through → Schritt 2 versucht CreateBucket
   }
+
+  // Schritt 2: CreateBucket (nur wenn HeadBucket 404 sagt)
   try {
     await client.send(new CreateBucketCommand({ Bucket: BUCKET }));
     console.log(`[s3] bucket "${BUCKET}" created.`);
   } catch (err: any) {
-    if (err?.name === 'BucketAlreadyOwnedByYou' || err?.name === 'BucketAlreadyExists') {
+    const status = err?.$metadata?.httpStatusCode ?? 0;
+    const code = err?.name ?? '';
+    if (code === 'BucketAlreadyOwnedByYou' || code === 'BucketAlreadyExists') {
       console.log(`[s3] bucket "${BUCKET}" race — already exists.`);
       return;
     }
-    console.error('[s3] CreateBucket failed:', err);
-    throw err;
+    if (status === 403 || code === 'AccessDenied' || code === 'Forbidden') {
+      console.warn(
+        `[s3] CreateBucket "${BUCKET}" 403/AccessDenied — diese Credentials duerfen keine Buckets anlegen. ` +
+          `Bitte den Bucket manuell in der Flow.swiss-UI anlegen und den Storage-Account darauf berechtigen. ` +
+          `Boot laeuft weiter, Object-Calls werden spaeter mit klarem Fehler scheitern bis der Bucket existiert.`,
+      );
+      return;
+    }
+    // Sonstige Fehler: warnen und Boot trotzdem fortsetzen.
+    console.warn(
+      `[s3] CreateBucket "${BUCKET}" fehlgeschlagen (status=${status}, code=${code}): ${err?.message}. ` +
+        `Boot laeuft weiter — Object-Calls koennen scheitern.`,
+    );
   }
 }
