@@ -20,7 +20,7 @@ const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
 
 export interface SearchResult {
   id: string;
-  type: 'chat' | 'knowledge' | 'confluence' | 'gdrive' | 'gmail' | 'pipedrive' | 'jira' | 'youtrack' | 'contract';
+  type: 'chat' | 'knowledge' | 'confluence' | 'gdrive' | 'gmail' | 'pipedrive' | 'jira' | 'youtrack' | 'contract' | 'docuware' | 'personio';
   title: string;
   snippet?: string;
   metadata: Record<string, any>;
@@ -38,6 +38,8 @@ export interface UnifiedSearchResponse {
     jira: SearchResult[];
     youtrack: SearchResult[];
     contracts: SearchResult[];
+    docuware: SearchResult[];
+    personio: SearchResult[];
   };
   errors?: { source: string; message: string }[];
 }
@@ -48,11 +50,11 @@ export interface UnifiedSearchResponse {
 export async function unifiedSearch(
   query: string,
   userId?: string,
-  sources: string[] = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'jira', 'youtrack', 'contracts']
+  sources: string[] = ['chats', 'knowledge', 'confluence', 'gdrive', 'gmail', 'pipedrive', 'jira', 'youtrack', 'contracts', 'docuware', 'personio']
 ): Promise<UnifiedSearchResponse> {
   const results: UnifiedSearchResponse = {
     query,
-    results: { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], youtrack: [], contracts: [] },
+    results: { chats: [], knowledge: [], confluence: [], gdrive: [], gmail: [], pipedrive: [], jira: [], youtrack: [], contracts: [], docuware: [], personio: [] },
     errors: [],
   };
 
@@ -67,10 +69,12 @@ export async function unifiedSearch(
     sources.includes('jira') && userId ? searchJira(query, userId) : Promise.resolve([]),
     sources.includes('youtrack') && userId ? searchYouTrack(query, userId) : Promise.resolve([]),
     sources.includes('contracts') ? searchContracts(query) : Promise.resolve([]),
+    sources.includes('docuware') && userId ? searchDocuware(query, userId) : Promise.resolve([]),
+    sources.includes('personio') && userId ? searchPersonio(query, userId) : Promise.resolve([]),
   ]);
 
   // Process results
-  const [chatsResult, knowledgeResult, confluenceResult, gdriveResult, gmailResult, pipedriveResult, jiraResult, youtrackResult, contractsResult] = searches;
+  const [chatsResult, knowledgeResult, confluenceResult, gdriveResult, gmailResult, pipedriveResult, jiraResult, youtrackResult, contractsResult, docuwareResult, personioResult] = searches;
 
   if (chatsResult.status === 'fulfilled') {
     results.results.chats = chatsResult.value;
@@ -124,6 +128,18 @@ export async function unifiedSearch(
     results.results.contracts = contractsResult.value;
   } else {
     results.errors?.push({ source: 'contracts', message: contractsResult.reason?.message || 'Search failed' });
+  }
+
+  if (docuwareResult.status === 'fulfilled') {
+    results.results.docuware = docuwareResult.value;
+  } else {
+    results.errors?.push({ source: 'docuware', message: docuwareResult.reason?.message || 'Search failed' });
+  }
+
+  if (personioResult.status === 'fulfilled') {
+    results.results.personio = personioResult.value;
+  } else {
+    results.errors?.push({ source: 'personio', message: personioResult.reason?.message || 'Search failed' });
   }
 
   return results;
@@ -1193,5 +1209,177 @@ async function loadKnowledgeBaseIndex(): Promise<KBIndex> {
   } catch (error) {
     console.error('Error loading KB index:', error);
     return { documents };
+  }
+}
+
+/**
+ * Search Docuware via connection tools.
+ *
+ * Docuware-Search braucht eine cabinet_id — fuer die Unified-Search rufen
+ * wir erst list_cabinets, dann pro Cabinet (max. 3 zur Aufwand-Begrenzung)
+ * search_documents mit der Query auf.
+ */
+async function searchDocuware(query: string, userId: string): Promise<SearchResult[]> {
+  try {
+    const listTool = toolRegistry.get('docuware_list_cabinets');
+    const searchTool = toolRegistry.get('docuware_search_documents');
+    if (!listTool || !searchTool) return [];
+
+    const cabinetsStr = await listTool.execute({}, { userId });
+    if (cabinetsStr.startsWith('Error:') || cabinetsStr.startsWith('No file cabinets')) {
+      return [];
+    }
+
+    // Cabinet-Name pro ID aufloesen — Cabinets sind Markdown-Sektionen mit
+    // Header "### <name>" gefolgt von "- **ID**: <uuid>".
+    const cabinetNameById = new Map<string, string>();
+    const cabinetSections = cabinetsStr.split(/^### /m).slice(1);
+    for (const section of cabinetSections) {
+      const lines = section.split('\n');
+      const name = lines[0]?.trim();
+      const idLine = lines.find((l) => /^\-\s+\*\*ID\*\*:/.test(l));
+      const idMatch = idLine?.match(/^\-\s+\*\*ID\*\*:\s*(\S+)/);
+      if (name && idMatch) cabinetNameById.set(idMatch[1]!, name);
+    }
+    const cabinetIds = Array.from(cabinetNameById.keys()).slice(0, 3); // Limit
+    if (cabinetIds.length === 0) return [];
+
+    const perCabinetSearches = await Promise.allSettled(
+      cabinetIds.map((cabinetId) =>
+        searchTool.execute({ cabinet_id: cabinetId, query, max_results: 5 }, { userId }),
+      ),
+    );
+
+    const results: SearchResult[] = [];
+    for (const r of perCabinetSearches) {
+      if (r.status !== 'fulfilled') continue;
+      const str = r.value;
+      if (!str || str.startsWith('Error:') || str.startsWith('No documents')) continue;
+
+      const sections = str.split(/^### /m).slice(1);
+      for (const section of sections) {
+        const lines = section.split('\n');
+        const headerTitle = lines[0]?.trim() || '';
+        let docId = '';
+        let cabinet = '';
+        let created = '';
+        let fields = '';
+        for (const line of lines) {
+          const m = line.match(/^\-\s+\*\*([^*]+)\*\*:\s*(.+)/);
+          if (!m) continue;
+          const key = m[1]!.trim();
+          const val = m[2]!.trim();
+          if (key === 'Document ID' || key === 'ID') docId = val;
+          else if (key === 'Cabinet') cabinet = val;
+          else if (key === 'Created') created = val;
+          else if (key === 'Fields') fields = val;
+        }
+        if (!docId) continue;
+
+        const cabinetName = cabinetNameById.get(cabinet) || '';
+
+        // Snippet: erst die Index-Fields (das Aussagekraefigste), gekuerzt;
+        // wenn keine vorhanden, fallback auf Created + Cabinet-Name.
+        let snippet = '';
+        if (fields) {
+          snippet = fields.length > 160 ? fields.slice(0, 157) + '...' : fields;
+        } else {
+          snippet = [cabinetName, created].filter(Boolean).join(' · ');
+        }
+
+        results.push({
+          id: docId,
+          type: 'docuware',
+          title: headerTitle || `Document ${docId}`,
+          snippet: snippet || undefined,
+          metadata: {
+            docId,
+            cabinetId: cabinet,
+            cabinetName,
+            created,
+            fields,
+          },
+        });
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error searching Docuware:', error);
+    return [];
+  }
+}
+
+/**
+ * Search Personio applications.
+ *
+ * Personio v2 hat keinen Volltextsuche-Endpoint — wir holen die letzten
+ * 100 Bewerbungen und matchen client-side gegen Vorname/Nachname/Email/
+ * Position. Wenn die Query wie eine Email aussieht, schicken wir sie
+ * als candidate.email-Filter direkt mit (deutlich schneller).
+ */
+async function searchPersonio(query: string, userId: string): Promise<SearchResult[]> {
+  try {
+    const tool = toolRegistry.get('personio_list_applications');
+    if (!tool) return [];
+
+    const isEmailLike = /@/.test(query);
+    const args: Record<string, any> = { limit: isEmailLike ? 50 : 100 };
+    if (isEmailLike) args.candidate_email = query;
+
+    const resultStr = await tool.execute(args, { userId });
+    if (resultStr.startsWith('Error:') || resultStr.startsWith('No applications')) {
+      return [];
+    }
+
+    const queryLower = query.toLowerCase();
+    const results: SearchResult[] = [];
+    const sections = resultStr.split(/^### /m).slice(1);
+
+    for (const section of sections) {
+      const lines = section.split('\n');
+      const fullName = lines[0]?.trim() || '(anonym)';
+      let appId = '';
+      let candidateId = '';
+      let email = '';
+      let position = '';
+      let stage = '';
+      let bewerbungsdatum = '';
+
+      for (const line of lines) {
+        const m1 = line.match(/^\-\s+\*\*Application-ID\*\*:\s*(.+)/);
+        if (m1) appId = m1[1]!.trim();
+        const m2 = line.match(/^\-\s+\*\*Candidate-ID\*\*:\s*(.+)/);
+        if (m2) candidateId = m2[1]!.trim();
+        const m3 = line.match(/^\-\s+\*\*Email\*\*:\s*(.+)/);
+        if (m3) email = m3[1]!.trim();
+        const m4 = line.match(/^\-\s+\*\*Position\*\*:\s*(.+)/);
+        if (m4) position = m4[1]!.trim();
+        const m5 = line.match(/^\-\s+\*\*Stage\*\*:\s*(.+)/);
+        if (m5) stage = m5[1]!.trim();
+        const m6 = line.match(/^\-\s+\*\*Bewerbungsdatum\*\*:\s*(.+)/);
+        if (m6) bewerbungsdatum = m6[1]!.trim();
+      }
+      if (!appId) continue;
+
+      // Client-side Match wenn nicht email-Filter. Sonst ist die Liste schon vorgefiltert.
+      if (!isEmailLike) {
+        const haystack = [fullName, email, position, stage].join(' ').toLowerCase();
+        if (!haystack.includes(queryLower)) continue;
+      }
+
+      results.push({
+        id: appId,
+        type: 'personio',
+        title: fullName,
+        snippet: [position, stage, bewerbungsdatum, email].filter(Boolean).join(' · ') || undefined,
+        metadata: { applicationId: appId, candidateId, email, position, stage, bewerbungsdatum },
+      });
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error searching Personio:', error);
+    return [];
   }
 }
