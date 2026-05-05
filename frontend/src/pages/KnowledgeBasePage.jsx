@@ -4,6 +4,7 @@ import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../uti
 import AccessManager from '../components/AccessManager';
 import RoleBadge from '../components/RoleBadge';
 import ReadOnlyBanner from '../components/ReadOnlyBanner';
+import ConfirmModal from '../components/ConfirmModal';
 
 // ==========================================
 // Helper Functions
@@ -701,6 +702,10 @@ function KnowledgeBasePage() {
   const [showDeleteCollectionModal, setShowDeleteCollectionModal] = useState(false);
   const [deletingCollection, setDeletingCollection] = useState(false);
 
+  // Delete document modal — analog zu AgentsPage
+  const [deleteDocCandidate, setDeleteDocCandidate] = useState(null);
+  const [deletingDoc, setDeletingDoc] = useState(false);
+
   // Right panel tabs (collection detail view)
   const [activeDetailTab, setActiveDetailTab] = useState('upload');
 
@@ -1035,34 +1040,42 @@ function KnowledgeBasePage() {
     setUploading(false);
   }
 
-  async function handleDeleteDocument(docId) {
-    if (!confirm(`Dokument "${docId}" wirklich loeschen?`)) return;
+  function requestDeleteDocument(doc) {
+    setDeleteDocCandidate(doc);
+  }
 
+  async function confirmDeleteDocument() {
+    const doc = deleteDocCandidate;
+    if (!doc?.document_id) return;
+    setDeletingDoc(true);
     try {
       const res = await apiDelete(
-        `/knowledge/documents/${docId}?collection_id=${selectedCollection}`
+        `/knowledge/collections/${selectedCollection}/documents/${doc.document_id}`
       );
 
       if (res.ok) {
-        setStatusMessage({ type: 'success', text: `Dokument "${docId}" geloescht` });
-        if (expandedDocId === docId) {
+        setStatusMessage({ type: 'success', text: `Dokument "${doc.document_id}" geloescht` });
+        if (expandedDocId === doc.document_id) {
           setExpandedDocId(null);
           setDocContent(null);
           setDocIndex(null);
         }
         setDocumentMetaCache(prev => {
           const next = { ...prev };
-          delete next[docId];
+          delete next[doc.document_id];
           return next;
         });
+        setDeleteDocCandidate(null);
         loadCollections();
         loadCollectionDetail(selectedCollection);
       } else {
-        const err = await res.json();
-        setStatusMessage({ type: 'error', text: err.error || 'Fehler beim Loeschen' });
+        const err = await res.json().catch(() => ({}));
+        setStatusMessage({ type: 'error', text: err.error || `Fehler beim Loeschen (${res.status})` });
       }
     } catch (err) {
       setStatusMessage({ type: 'error', text: err.message });
+    } finally {
+      setDeletingDoc(false);
     }
   }
 
@@ -1421,7 +1434,7 @@ function KnowledgeBasePage() {
                               onMouseLeave={() => setHoveredDelete(null)}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteDocument(doc.document_id);
+                                requestDeleteDocument(doc);
                               }}
                             >
                               Loeschen
@@ -1687,6 +1700,27 @@ function KnowledgeBasePage() {
             </div>
           </div>
         </div>
+
+        {/* Delete Document Modal */}
+        <ConfirmModal
+          open={!!deleteDocCandidate}
+          title="Dokument löschen"
+          message={
+            deleteDocCandidate ? (
+              <>
+                Soll das Dokument <strong>{deleteDocCandidate.title || deleteDocCandidate.document_id}</strong> aus dieser Collection wirklich gelöscht werden?
+                <br />
+                Diese Aktion kann nicht rückgängig gemacht werden.
+              </>
+            ) : null
+          }
+          confirmLabel="Löschen"
+          cancelLabel="Abbrechen"
+          destructive
+          busy={deletingDoc}
+          onConfirm={confirmDeleteDocument}
+          onCancel={() => !deletingDoc && setDeleteDocCandidate(null)}
+        />
 
         {/* Delete Collection Modal */}
         {showDeleteCollectionModal && (

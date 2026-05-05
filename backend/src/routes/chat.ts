@@ -2226,14 +2226,24 @@ knowledgeStreamRoutes.post('/collections/:id/add/stream', authMiddleware, async 
 // GET /api/knowledge/collections/:id - Collection details + manifest (parsed JSON)
 knowledgeStreamRoutes.get('/collections/:id', async (c) => {
   const collectionId = c.req.param('id');
-
   try {
-    const { readFile } = await import('fs/promises');
-    const { resolve } = await import('path');
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
-    const manifestYaml = await readFile(`${kbBase}/collections/${collectionId}/manifest.yaml`, 'utf-8');
-    const manifest = parseManifestYaml(manifestYaml);
-    return c.json(manifest);
+    const kb = await import('../services/kbStorage');
+    const col = await kb.getCollection(collectionId);
+    if (!col) return c.json({ error: 'Collection not found' }, 404);
+    const docs = await kb.listDocuments(collectionId);
+    return c.json({
+      collection_id: col.id,
+      collection_name: col.name,
+      description: col.description ?? '',
+      last_updated: col.updatedAt ?? '',
+      documents: docs.map((d) => ({
+        document_id: d.id,
+        title: d.title ?? d.filename,
+        path: d.id,
+        indexed_date: (d.createdAt ?? '').split('T')[0],
+        ...(d.metadata ? { ...(d.metadata as Record<string, any>) } : {}),
+      })),
+    });
   } catch (error: any) {
     console.error('Error loading collection:', error);
     return c.json({ error: 'Collection not found' }, 404);
@@ -2243,58 +2253,17 @@ knowledgeStreamRoutes.get('/collections/:id', async (c) => {
 // DELETE /api/knowledge/collections/:id - Delete a collection and all its documents
 knowledgeStreamRoutes.delete('/collections/:id', async (c) => {
   const collectionId = c.req.param('id');
-
   try {
-    const { readFile, writeFile, rm } = await import('fs/promises');
-    const { resolve } = await import('path');
-    const { existsSync } = await import('fs');
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
-
-    const collectionDir = `${kbBase}/collections/${collectionId}`;
-
-    // Check if collection exists
-    if (!existsSync(collectionDir)) {
-      return c.json({ error: 'Collection not found' }, 404);
-    }
-
-    // Get document count before deleting
-    const manifestPath = `${collectionDir}/manifest.yaml`;
-    let documentCount = 0;
-    if (existsSync(manifestPath)) {
-      const manifestYaml = await readFile(manifestPath, 'utf-8');
-      const manifest = parseManifestYaml(manifestYaml);
-      documentCount = manifest.documents.length;
-    }
-
-    // Delete entire collection directory (includes all documents)
-    await rm(collectionDir, { recursive: true, force: true });
-    console.log(`[delete-collection] Deleted collection: ${collectionId} (${documentCount} documents)`);
-
-    // Remove collection from collections.yaml
-    const collectionsPath = `${kbBase}/collections.yaml`;
-    if (existsSync(collectionsPath)) {
-      let collectionsContent = await readFile(collectionsPath, 'utf-8');
-
-      // Remove the collection block using regex
-      const collectionBlockRegex = new RegExp(
-        `\\s*- id:\\s*"?${collectionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"?[\\s\\S]*?(?=\\n\\s*- id:|$)`,
-        'g'
-      );
-      collectionsContent = collectionsContent.replace(collectionBlockRegex, '');
-
-      // Clean up: If no collections left, reset to empty array
-      if (!collectionsContent.includes('- id:')) {
-        collectionsContent = collectionsContent.replace(/collections:[\s\S]*$/, 'collections: []');
-      }
-
-      await writeFile(collectionsPath, collectionsContent, 'utf-8');
-      console.log(`[delete-collection] Removed from collections.yaml`);
-    }
-
+    const kb = await import('../services/kbStorage');
+    const docs = await kb.listDocuments(collectionId);
+    const docIds = docs.map((d) => d.id);
+    const ok = await kb.deleteCollection(collectionId);
+    if (!ok) return c.json({ error: 'Collection not found' }, 404);
+    console.log(`[delete-collection] Deleted collection: ${collectionId} (${docIds.length} documents)`);
     return c.json({
       success: true,
       collection_id: collectionId,
-      documents_deleted: documentCount,
+      documents_deleted: docIds,
     });
   } catch (error: any) {
     console.error('Error deleting collection:', error);
@@ -2325,32 +2294,42 @@ async function findDocumentPath(kbBase: string, docId: string, collectionId?: st
   return null;
 }
 
+// Helper: ohne explizite collection_id-Query im Pfad (Legacy-Endpoint)
+// muss eine Collection erraten werden. Wir suchen die erste Collection
+// in der das Doc liegt — eindeutig, da Doc-IDs collection-scoped sind.
+async function resolveCollectionForDoc(docId: string, hint?: string): Promise<string | null> {
+  const kbStorage = await import('../services/kbStorage');
+  if (hint) {
+    const direct = await kbStorage.getDocument(hint, docId);
+    if (direct) return hint;
+  }
+  const cols = await kbStorage.listCollections();
+  for (const col of cols) {
+    const found = await kbStorage.getDocument(col.id, docId);
+    if (found) return col.id;
+  }
+  return null;
+}
+
 // GET /api/knowledge/documents/:id - Document details (META)
+// Liest aus DB+S3 (kbStorage), nicht mehr aus dem Filesystem. Der alte
+// File-Pfad data/knowledge-base/collections/<id>/documents/<docId>/ ist
+// seit der DB-Migration nicht mehr autoritativ.
 knowledgeStreamRoutes.get('/documents/:id', async (c) => {
   const docId = c.req.param('id');
-  const collectionId = c.req.query('collection_id');
-
+  const hint = c.req.query('collection_id') || undefined;
   try {
-    const { readFile } = await import('fs/promises');
-    const { resolve } = await import('path');
-    const { existsSync } = await import('fs');
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
-
-    const docPath = await findDocumentPath(kbBase, docId, collectionId);
-    if (!docPath) {
-      return c.json({ error: 'Document not found' }, 404);
-    }
-
-    const metaPath = `${docPath}/DOCUMENT_META.md`;
-    if (!existsSync(metaPath)) {
-      return c.json({ error: 'Document meta not found' }, 404);
-    }
-
-    const meta = await readFile(metaPath, 'utf-8');
-    const hasContent = existsSync(`${docPath}/content.md`);
-    const hasIndex = existsSync(`${docPath}/INDEX.md`);
-
-    return c.json({ document_id: docId, meta, hasContent, hasIndex });
+    const colId = await resolveCollectionForDoc(docId, hint);
+    if (!colId) return c.json({ error: 'Document not found' }, 404);
+    const kb = await import('../services/kbStorage');
+    const doc = await kb.getDocument(colId, docId);
+    if (!doc) return c.json({ error: 'Document not found' }, 404);
+    return c.json({
+      document_id: doc.id,
+      meta: doc.metaMd ?? '',
+      hasContent: !!doc.s3KeyContent,
+      hasIndex: !!doc.s3KeyIndex,
+    });
   } catch (error: any) {
     console.error('Error loading document:', error);
     return c.json({ error: 'Failed to load document' }, 500);
@@ -2360,25 +2339,13 @@ knowledgeStreamRoutes.get('/documents/:id', async (c) => {
 // GET /api/knowledge/documents/:id/content - Document content (content.md)
 knowledgeStreamRoutes.get('/documents/:id/content', async (c) => {
   const docId = c.req.param('id');
-  const collectionId = c.req.query('collection_id');
-
+  const hint = c.req.query('collection_id') || undefined;
   try {
-    const { readFile } = await import('fs/promises');
-    const { resolve } = await import('path');
-    const { existsSync } = await import('fs');
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
-
-    const docPath = await findDocumentPath(kbBase, docId, collectionId);
-    if (!docPath) {
-      return c.json({ error: 'Document not found' }, 404);
-    }
-
-    const contentPath = `${docPath}/content.md`;
-    if (!existsSync(contentPath)) {
-      return c.json({ error: 'Content not found' }, 404);
-    }
-
-    const content = await readFile(contentPath, 'utf-8');
+    const colId = await resolveCollectionForDoc(docId, hint);
+    if (!colId) return c.json({ error: 'Document not found' }, 404);
+    const kb = await import('../services/kbStorage');
+    const content = await kb.getDocumentContent(colId, docId);
+    if (content === null) return c.json({ error: 'Content not found' }, 404);
     return c.json({ document_id: docId, content });
   } catch (error: any) {
     console.error('Error loading document content:', error);
@@ -2389,25 +2356,13 @@ knowledgeStreamRoutes.get('/documents/:id/content', async (c) => {
 // GET /api/knowledge/documents/:id/index - Document index (INDEX.md)
 knowledgeStreamRoutes.get('/documents/:id/index', async (c) => {
   const docId = c.req.param('id');
-  const collectionId = c.req.query('collection_id');
-
+  const hint = c.req.query('collection_id') || undefined;
   try {
-    const { readFile } = await import('fs/promises');
-    const { resolve } = await import('path');
-    const { existsSync } = await import('fs');
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
-
-    const docPath = await findDocumentPath(kbBase, docId, collectionId);
-    if (!docPath) {
-      return c.json({ error: 'Document not found' }, 404);
-    }
-
-    const indexPath = `${docPath}/INDEX.md`;
-    if (!existsSync(indexPath)) {
-      return c.json({ error: 'Index not found' }, 404);
-    }
-
-    const index = await readFile(indexPath, 'utf-8');
+    const colId = await resolveCollectionForDoc(docId, hint);
+    if (!colId) return c.json({ error: 'Document not found' }, 404);
+    const kb = await import('../services/kbStorage');
+    const index = await kb.getDocumentIndex(colId, docId);
+    if (index === null) return c.json({ error: 'Index not found' }, 404);
     return c.json({ document_id: docId, index });
   } catch (error: any) {
     console.error('Error loading document index:', error);
@@ -2418,43 +2373,14 @@ knowledgeStreamRoutes.get('/documents/:id/index', async (c) => {
 // DELETE /api/knowledge/documents/:id - Delete a document
 knowledgeStreamRoutes.delete('/documents/:id', async (c) => {
   const docId = c.req.param('id');
-  const collectionId = c.req.query('collection_id');
-
-  if (!collectionId) {
-    return c.json({ error: 'collection_id query parameter is required' }, 400);
-  }
-
+  const hint = c.req.query('collection_id') || undefined;
   try {
-    const { readFile, writeFile, rm } = await import('fs/promises');
-    const { resolve } = await import('path');
-    const { existsSync } = await import('fs');
-    const kbBase = resolve(process.cwd(), '../data/knowledge-base');
-
-    // 1. Delete document directory (now inside collection)
-    const docDir = `${kbBase}/collections/${collectionId}/documents/${docId}`;
-    if (existsSync(docDir)) {
-      await rm(docDir, { recursive: true, force: true });
-    }
-
-    // 2. Remove entry from collection manifest
-    const manifestPath = `${kbBase}/collections/${collectionId}/manifest.yaml`;
-    if (existsSync(manifestPath)) {
-      let manifestContent = await readFile(manifestPath, 'utf-8');
-      // Remove the document block from manifest
-      // Match from "- document_id: <docId>" to next "- document_id:" or end of documents
-      const docBlockRegex = new RegExp(
-        `\\n\\s*- document_id:\\s*"?${docId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"?[\\s\\S]*?(?=\\n\\s*- document_id:|$)`,
-      );
-      manifestContent = manifestContent.replace(docBlockRegex, '');
-      // Update last_updated
-      manifestContent = manifestContent.replace(
-        /last_updated:\s*"?[^"\n]+"?/,
-        `last_updated: "${new Date().toISOString()}"`,
-      );
-      await writeFile(manifestPath, manifestContent, 'utf-8');
-    }
-
-    return c.json({ success: true, document_id: docId, collection_id: collectionId });
+    const colId = await resolveCollectionForDoc(docId, hint);
+    if (!colId) return c.json({ error: 'Document not found' }, 404);
+    const kb = await import('../services/kbStorage');
+    const ok = await kb.deleteDocument(colId, docId);
+    if (!ok) return c.json({ error: 'Document not found' }, 404);
+    return c.json({ success: true, document_id: docId, collection_id: colId });
   } catch (error: any) {
     console.error('Error deleting document:', error);
     return c.json({ error: error.message }, 500);
