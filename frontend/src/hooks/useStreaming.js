@@ -221,8 +221,10 @@ export function useStreaming() {
         return updated;
       });
 
-      // Connect to SSE stream
-      const eventSource = new EventSource(`${API_URL}/chat/${sessionId}/stream`);
+      // Connect to SSE stream — withCredentials, sonst kein Session-Cookie
+      // bei cross-origin (Vite-Dev 5173 → Backend 3001) und der Stream-
+      // Endpoint sieht keinen User -> 403 wegen User-Binding-Check.
+      const eventSource = new EventSource(`${API_URL}/chat/${sessionId}/stream`, { withCredentials: true });
       eventSourceRef.current = eventSource;
 
       eventSource.addEventListener('model_info', (e) => {

@@ -479,39 +479,28 @@ function generateUseWhenFromTriggers(skill: EnhancedSkill): string | undefined {
   return hints.length > 0 ? hints.join('\n') : undefined;
 }
 
-const KB_COLLECTIONS_DIR = resolve(process.cwd(), '../data/knowledge-base/collections');
-
 /**
- * Resolve a knowledge file slug to a KB document content.md path.
- * KB document directories follow the pattern: doc-<slug>-<timestamp>
+ * Resolve a knowledge file slug to a KB document content (DB+S3).
+ * KB document IDs follow the pattern: doc-<slug>-<timestamp>
+ *
+ * Returns the document content directly statt einen File-Pfad — seit der
+ * KB-Migration auf DB+S3 gibt es keine lokalen Files mehr.
  */
-async function resolveKbDocumentFile(slug: string): Promise<string | null> {
-  if (!existsSync(KB_COLLECTIONS_DIR)) return null;
-
+async function resolveKbDocumentContent(slug: string): Promise<string | null> {
   try {
-    const collections = await readdir(KB_COLLECTIONS_DIR, { withFileTypes: true });
-    for (const collection of collections) {
-      if (!collection.isDirectory()) continue;
-
-      const docsDir = join(KB_COLLECTIONS_DIR, collection.name, 'documents');
-      if (!existsSync(docsDir)) continue;
-
-      const docs = await readdir(docsDir, { withFileTypes: true });
-      for (const doc of docs) {
-        if (!doc.isDirectory()) continue;
-        // Match doc-<slug>-<timestamp> pattern
-        if (doc.name.startsWith(`doc-${slug}-`)) {
-          const contentPath = join(docsDir, doc.name, 'content.md');
-          if (existsSync(contentPath)) {
-            return contentPath;
-          }
-        }
+    const kb = await import('../services/kbStorage');
+    const collections = await kb.listCollections();
+    for (const col of collections) {
+      const docs = await kb.listDocuments(col.id);
+      const match = docs.find((d) => d.id.startsWith(`doc-${slug}-`));
+      if (match) {
+        const content = await kb.getDocumentContent(col.id, match.id);
+        if (content) return content;
       }
     }
   } catch (error: any) {
-    console.warn(`[resolveKbDocumentFile] Error searching KB for "${slug}":`, error.message);
+    console.warn(`[resolveKbDocumentContent] Error searching KB for "${slug}":`, error.message);
   }
-
   return null;
 }
 
@@ -528,39 +517,37 @@ export async function loadSkillKnowledgeFiles(skill: EnhancedSkill): Promise<{
   const files: { path: string; content: string }[] = [];
   const errors: string[] = [];
 
-  if (!skill.knowledge?.files || !skill.path) {
+  if (!skill.knowledge?.files) {
     return { files, errors };
   }
 
-  const skillDir = skill.path.replace(/\/SKILL\.(yaml|yml|md)$/, '');
+  // skill.path ist nur bei file-basierten System-Skills gesetzt — bei DB-
+  // basierten Custom-Skills ist es null. Dann ueberspringen wir den
+  // Skill-Dir-Lookup direkt und gehen nur ueber die KB.
+  const skillDir = skill.path ? skill.path.replace(/\/SKILL\.(yaml|yml|md)$/, '') : null;
 
   for (const filePath of skill.knowledge.files) {
-    // 1. Try skill directory first
-    const localPath = join(skillDir, filePath);
-
-    if (existsSync(localPath)) {
-      try {
-        const content = await readFile(localPath, 'utf-8');
-        files.push({ path: filePath, content });
-        continue;
-      } catch (error: any) {
-        errors.push(`Error loading ${filePath}: ${error.message}`);
-        continue;
+    // 1. Try skill directory first (nur wenn der Skill File-basiert ist)
+    if (skillDir) {
+      const localPath = join(skillDir, filePath);
+      if (existsSync(localPath)) {
+        try {
+          const content = await readFile(localPath, 'utf-8');
+          files.push({ path: filePath, content });
+          continue;
+        } catch (error: any) {
+          errors.push(`Error loading ${filePath}: ${error.message}`);
+          continue;
+        }
       }
     }
 
-    // 2. Fall back to KB document search by slug
-    const kbPath = await resolveKbDocumentFile(filePath);
-    if (kbPath) {
-      try {
-        const content = await readFile(kbPath, 'utf-8');
-        files.push({ path: filePath, content });
-        console.log(`[loadSkillKnowledgeFiles] Resolved "${filePath}" from KB: ${kbPath}`);
-        continue;
-      } catch (error: any) {
-        errors.push(`Error loading KB document ${filePath}: ${error.message}`);
-        continue;
-      }
+    // 2. Fall back to KB document search by slug (DB+S3)
+    const kbContent = await resolveKbDocumentContent(filePath);
+    if (kbContent !== null) {
+      files.push({ path: filePath, content: kbContent });
+      console.log(`[loadSkillKnowledgeFiles] Resolved "${filePath}" from KB`);
+      continue;
     }
 
     errors.push(`Knowledge file not found: ${filePath} (checked skill dir and KB collections)`);
