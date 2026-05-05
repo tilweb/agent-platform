@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { theme } from '../config/theme';
 import McpServerEditor from '../components/McpServerEditor';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 
 const styles = {
   container: {
@@ -388,7 +387,7 @@ function McpServersPage({ embedded = false }) {
 
   const fetchServers = async () => {
     try {
-      const response = await fetch(`${API_URL}/mcp/servers`);
+      const response = await apiGet('/mcp/servers');
       if (!response.ok) throw new Error('Failed to fetch servers');
       const data = await response.json();
       setServers(data.servers || []);
@@ -401,7 +400,7 @@ function McpServersPage({ embedded = false }) {
 
   const fetchPresets = async () => {
     try {
-      const response = await fetch(`${API_URL}/mcp/servers/presets`);
+      const response = await apiGet('/mcp/servers/presets');
       if (!response.ok) return;
       const data = await response.json();
       setPresets(data.presets || []);
@@ -417,7 +416,7 @@ function McpServersPage({ embedded = false }) {
 
   const handleConnect = async (serverId) => {
     try {
-      await fetch(`${API_URL}/mcp/servers/${serverId}/connect`, { method: 'POST' });
+      await apiPost(`/mcp/servers/${serverId}/connect`, {});
       await fetchServers();
     } catch (err) {
       setError(err.message);
@@ -426,7 +425,7 @@ function McpServersPage({ embedded = false }) {
 
   const handleDisconnect = async (serverId) => {
     try {
-      await fetch(`${API_URL}/mcp/servers/${serverId}/disconnect`, { method: 'POST' });
+      await apiPost(`/mcp/servers/${serverId}/disconnect`, {});
       await fetchServers();
     } catch (err) {
       setError(err.message);
@@ -436,7 +435,7 @@ function McpServersPage({ embedded = false }) {
   const handleDelete = async (serverId) => {
     if (!confirm('Server wirklich löschen?')) return;
     try {
-      await fetch(`${API_URL}/mcp/servers/${serverId}`, { method: 'DELETE' });
+      await apiDelete(`/mcp/servers/${serverId}`);
       await fetchServers();
     } catch (err) {
       setError(err.message);
@@ -445,16 +444,9 @@ function McpServersPage({ embedded = false }) {
 
   const handleSave = async (serverData) => {
     const isNew = !editingServer;
-    const url = isNew
-      ? `${API_URL}/mcp/servers`
-      : `${API_URL}/mcp/servers/${serverData.id}`;
-    const method = isNew ? 'POST' : 'PUT';
-
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(serverData),
-    });
+    const response = isNew
+      ? await apiPost('/mcp/servers', serverData)
+      : await apiPut(`/mcp/servers/${serverData.id}`, serverData);
 
     if (!response.ok) {
       const data = await response.json();

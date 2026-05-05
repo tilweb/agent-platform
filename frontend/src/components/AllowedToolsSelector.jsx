@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { theme } from '../config/theme';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { apiGet } from '../utils/apiFetch';
 
 const styles = {
   container: {},
@@ -128,7 +127,7 @@ function AllowedToolsSelector({ allowedTools, onChange }) {
 
   const fetchTools = async () => {
     try {
-      const response = await fetch(`${API_URL}/tools`);
+      const response = await apiGet('/tools');
       if (!response.ok) throw new Error('Failed to fetch tools');
       const data = await response.json();
       setAvailableTools(data.tools || []);

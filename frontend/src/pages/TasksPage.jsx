@@ -11,8 +11,7 @@ import { theme } from '../config/theme';
 import { useTasks, useTaskStream } from '../hooks/useTasks';
 import { useToast } from '../components/Toast';
 import { requestNotificationPermission, showBrowserNotification } from '../components/Toast';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { apiGet } from '../utils/apiFetch';
 
 // Helper for relative time
 function getRelativeTime(dateString) {
@@ -926,7 +925,7 @@ function TaskDetailModal({ task, onClose, onCancel }) {
   const loadFullResult = async () => {
     setLoadingResult(true);
     try {
-      const res = await fetch(`${API_URL}/tasks/${displayTask.id}/result`);
+      const res = await apiGet(`/tasks/${displayTask.id}/result`);
       if (res.ok) {
         const data = await res.json();
         setFullResult(data.response);

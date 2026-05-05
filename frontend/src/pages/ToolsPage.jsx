@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { theme } from '../config/theme';
 import { PlugIcon } from '../components/Icons';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 
 const styles = {
   container: {
@@ -481,8 +480,8 @@ function ToolsPage() {
   const fetchTools = async () => {
     try {
       const [toolsRes, customRes] = await Promise.all([
-        fetch(`${API_URL}/tools`),
-        fetch(`${API_URL}/custom-tools`),
+        apiGet('/tools'),
+        apiGet('/custom-tools'),
       ]);
 
       if (!toolsRes.ok) throw new Error('Failed to fetch tools');
@@ -514,7 +513,7 @@ function ToolsPage() {
 
   const handleEdit = async (tool) => {
     try {
-      const response = await fetch(`${API_URL}/custom-tools/${tool.id}`);
+      const response = await apiGet(`/custom-tools/${tool.id}`);
       if (!response.ok) throw new Error('Failed to load tool');
       const data = await response.json();
 
@@ -535,9 +534,7 @@ function ToolsPage() {
     if (!confirm(`Möchten Sie das Tool "${toolId}" wirklich löschen?`)) return;
 
     try {
-      const response = await fetch(`${API_URL}/custom-tools/${toolId}`, {
-        method: 'DELETE',
-      });
+      const response = await apiDelete(`/custom-tools/${toolId}`);
 
       if (!response.ok) {
         const data = await response.json();
@@ -552,9 +549,7 @@ function ToolsPage() {
 
   const handleToggle = async (toolId) => {
     try {
-      const response = await fetch(`${API_URL}/custom-tools/${toolId}/toggle`, {
-        method: 'POST',
-      });
+      const response = await apiPost(`/custom-tools/${toolId}/toggle`, {});
 
       if (!response.ok) {
         const data = await response.json();
@@ -569,15 +564,9 @@ function ToolsPage() {
 
   const handleSave = async () => {
     try {
-      const url = editingTool
-        ? `${API_URL}/custom-tools/${editingTool.id}`
-        : `${API_URL}/custom-tools`;
-
-      const response = await fetch(url, {
-        method: editingTool ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      const response = editingTool
+        ? await apiPut(`/custom-tools/${editingTool.id}`, formData)
+        : await apiPost('/custom-tools', formData);
 
       if (!response.ok) {
         const data = await response.json();
@@ -606,11 +595,7 @@ function ToolsPage() {
         }
       }
 
-      const response = await fetch(`${API_URL}/custom-tools/${editingTool.id}/test`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parameters: testParams }),
-      });
+      const response = await apiPost(`/custom-tools/${editingTool.id}/test`, { parameters: testParams });
 
       const data = await response.json();
       setTestResult(data);
