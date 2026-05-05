@@ -1404,7 +1404,7 @@ async function runDelegatedAgent(
       }
 
       // Track important tool results (images, documents) for injection if LLM doesn't include them
-      if (toolName === 'generate_image' || toolName === 'edit_image' || toolName === 'export_document') {
+      if (toolName === 'generate_image' || toolName === 'edit_image' || toolName === 'export_document' || toolName === 'fill_template_to_docx') {
         try {
           const parsed = JSON.parse(result);
           if (parsed.type === 'generated_image' || parsed.type === 'exported_document') {
@@ -2487,7 +2487,7 @@ export async function* runAgentLoop(
         log('tool_end', `${toolName} (${toolDurationMs}ms)`, { tool: toolName, result: result.slice(0, 500), durationMs: toolDurationMs }, toolDurationMs);
 
         // Track important tool results (images, documents) for injection if LLM doesn't include them
-        if (toolName === 'generate_image' || toolName === 'edit_image' || toolName === 'export_document') {
+        if (toolName === 'generate_image' || toolName === 'edit_image' || toolName === 'export_document' || toolName === 'fill_template_to_docx') {
           try {
             const parsed = JSON.parse(result);
             if (parsed.type === 'generated_image' || parsed.type === 'exported_document') {

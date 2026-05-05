@@ -122,7 +122,8 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
   }
 
   async execute(args: ExportDocumentArgs, context?: ToolContext): Promise<string> {
-    const { title, format, sections, metadata = {} } = args;
+    const { title, format, metadata = {} } = args;
+    let sections: any = args.sections;
 
     // Validate title
     if (!title || title.trim().length === 0) {
@@ -139,6 +140,19 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
         success: false,
         error: `Ungueltiges Format. Unterstuetzt: ${validFormats.join(', ')}`,
       });
+    }
+
+    // Defensive: manche LLMs serialisieren nested objects als JSON-String
+    // statt als Array. Wir parsen das einmal nach bevor wir validieren.
+    if (typeof sections === 'string') {
+      try {
+        sections = JSON.parse(sections);
+      } catch {
+        return JSON.stringify({
+          success: false,
+          error: 'sections konnte nicht als JSON geparsed werden — bitte als Array von Objekten uebergeben.',
+        });
+      }
     }
 
     // Validate sections

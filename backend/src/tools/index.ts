@@ -34,7 +34,7 @@ export { LocalTool, ApiTool, McpTool, mcpClient } from './base';
 // Export tools
 export { localTools, fileReadTool, fileWriteTool, fileListTool } from './local';
 export { WebSearchTool, createWebSearchTool, WebFetchTool, createWebFetchTool, ImageGenerationTool, createImageGenerationTool, ImageEditTool, createImageEditTool } from './api';
-export { DelegateToAgentTool, type DelegationHandler, UserMemoryTool, CreateTaskTool, ReadChatAttachmentTool, ExportDocumentTool, LoadSkillTool, type LoadSkillHandler, type SkillToolsCallback, ExtractDocumentTool } from './special';
+export { DelegateToAgentTool, type DelegationHandler, UserMemoryTool, CreateTaskTool, ReadChatAttachmentTool, ExportDocumentTool, LoadSkillTool, type LoadSkillHandler, type SkillToolsCallback, ExtractDocumentTool, FillTemplateTool } from './special';
 
 // Export knowledge tools
 export { KbSearchTool, KbIndexTool, KbManageTool, knowledgeTools } from './knowledge';
@@ -67,7 +67,7 @@ import { toolRegistry } from './registry';
 import { toolsConfig } from './config';
 import { localTools } from './local';
 import { WebSearchTool, WebFetchTool, ImageGenerationTool, ImageEditTool } from './api';
-import { DelegateToAgentTool, UserMemoryTool, CreateTaskTool, ReadChatAttachmentTool, ExportDocumentTool, LoadSkillTool, ExtractDocumentTool } from './special';
+import { DelegateToAgentTool, UserMemoryTool, CreateTaskTool, ReadChatAttachmentTool, ExportDocumentTool, LoadSkillTool, ExtractDocumentTool, FillTemplateTool } from './special';
 import { registerCustomTools } from './custom';
 import { knowledgeTools } from './knowledge';
 import { tableTools } from './tables';
@@ -141,6 +141,10 @@ export async function setupTools(): Promise<void> {
   // Register export document tool
   const exportDocumentTool = new ExportDocumentTool();
   toolRegistry.register(exportDocumentTool);
+
+  // Register fill template tool — vorlagen-getriebener Document-Builder
+  const fillTemplateTool = new FillTemplateTool();
+  toolRegistry.register(fillTemplateTool);
 
   // Register image generation tools
   const imageGenerationTool = new ImageGenerationTool();
