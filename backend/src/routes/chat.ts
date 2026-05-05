@@ -511,8 +511,10 @@ function formatEventData(event: AgentEvent): Record<string, any> {
   }
 }
 
-// GET /api/chat/:id/agent-log - Get agent log entries for a session
-chatRoutes.get('/:id/agent-log', async (c) => {
+// GET /api/chat/:id/agent-log - Get agent log entries for a session.
+// Admin-only: das Log enthaelt detaillierte Tool-Calls inkl. Argumenten
+// und Resultaten — keine Endnutzer-Sicht.
+chatRoutes.get('/:id/agent-log', authMiddleware, adminMiddleware, async (c) => {
   const sessionId = c.req.param('id');
   const entries = await readAgentLog(sessionId);
   return c.json({ entries });
