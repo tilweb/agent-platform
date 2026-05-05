@@ -792,6 +792,7 @@ function SkillsPage() {
             onSave={handleSaveSkill}
             onDelete={handleDeleteSkill}
             inline={true}
+            existingIds={skills.map((s) => s.id)}
           />
         )}
 
@@ -986,6 +987,7 @@ function SkillsPage() {
             onSave={handleSaveSkill}
             onClose={closeEditor}
             onDelete={handleDeleteSkill}
+            existingIds={skills.map((s) => s.id)}
           />
         )}
       </div>
@@ -1119,6 +1121,7 @@ function SkillsPage() {
           onSave={handleSaveSkill}
           onClose={closeEditor}
           onDelete={handleDeleteSkill}
+          existingIds={skills.map((s) => s.id)}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, memo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -1583,7 +1583,7 @@ const thinkingStyles = {
   },
 };
 
-function ThinkingBlock({ steps, isStreaming, reasoning }) {
+function ThinkingBlock({ steps, isStreaming, reasoning, agentNameById, collectionNameById }) {
   const [expanded, setExpanded] = useState(isStreaming);
   const [reasoningExpanded, setReasoningExpanded] = useState(false);
   const hasSteps = steps && steps.length > 0;
@@ -1701,26 +1701,46 @@ function ThinkingBlock({ steps, isStreaming, reasoning }) {
     }
   };
 
+  // Slug-IDs (z.B. "paul-personalmanagement-agent") gegen den Display-Namen
+  // ("Paul Personal") aus der Agent-Liste tauschen — fallback auf die ID,
+  // falls der Agent nicht im Cache ist (z.B. Connection-Agent zur Runtime).
+  const labelForAgent = (id) => (id && agentNameById?.get(id)) || id;
+
   const getStepLabel = (step) => {
     switch (step.type) {
       case 'model_info': return `${step.providerName} / ${step.modelName}`;
       case 'thinking': return 'Denkt nach...';
-      case 'agent_selected': return `Agent: ${step.agentId}`;
+      case 'agent_selected': return `Agent: ${labelForAgent(step.agentId)}`;
       case 'tool': return `Tool: ${step.tool}`;
       case 'tool_complete': return `Tool: ${step.tool} abgeschlossen`;
-      case 'delegation': return `Delegiert an: ${step.agentId}`;
-      case 'delegation_complete': return `Delegation an ${step.agentId} abgeschlossen`;
-      case 'sub_agent_step': return `${step.agentId}: ${step.message}`;
+      case 'delegation': return `Delegiert an: ${labelForAgent(step.agentId)}`;
+      case 'delegation_complete': return `Delegation an ${labelForAgent(step.agentId)} abgeschlossen`;
+      case 'sub_agent_step': return `${labelForAgent(step.agentId)}: ${step.message}`;
       case 'skill': return step.message;
       case 'workflow': return step.message;
       default: return step.message;
     }
   };
 
+  // Bekannte ID-Felder durch Display-Name ersetzen — der User soll im
+  // Tool-Args-Render keine Slugs sehen, sondern lesbare Namen.
+  // Slug bleibt als Fallback wenn die Map den Eintrag nicht hat.
+  const beautifyArgValue = (key, value) => {
+    if (typeof value !== 'string') return value;
+    const k = key.toLowerCase();
+    if ((k === 'collection_id' || k === 'collection') && collectionNameById?.has(value)) {
+      return collectionNameById.get(value);
+    }
+    if ((k === 'agent_id' || k === 'agentid') && agentNameById?.has(value)) {
+      return agentNameById.get(value);
+    }
+    return value;
+  };
+
   const formatArgs = (args) => {
     if (!args) return null;
     if (typeof args === 'string') return args;
-    return Object.entries(args).map(([k, v]) => `${k}: ${v}`).join(', ');
+    return Object.entries(args).map(([k, v]) => `${k}: ${beautifyArgValue(k, v)}`).join(', ');
   };
 
   const formatDetail = (text, maxLen = 200) => {
@@ -3062,6 +3082,29 @@ function ChatWindow({
 }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const agentNameById = useMemo(
+    () => new Map((agents || []).map((a) => [a.id, a.name])),
+    [agents],
+  );
+
+  // Collection-IDs (slug) → Display-Name fuer Tool-Args wie collection_id.
+  // Einmal beim Mount geladen — Liste aendert sich selten, kein Refresh-Bedarf.
+  const [collectionNameById, setCollectionNameById] = useState(() => new Map());
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiGet('/knowledge/collections');
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const map = new Map((data.collections || []).map((c) => [c.id, c.name]));
+        setCollectionNameById(map);
+      } catch {
+        // Best effort — falls's failt, zeigen wir Slug-IDs wie bisher.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [input, setInput] = useState('');
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [commandMessage, setCommandMessage] = useState(null);
@@ -3822,6 +3865,8 @@ function ChatWindow({
                     steps={msg.thinkingSteps}
                     isStreaming={isStreaming && index === messages.length - 1}
                     reasoning={msg.reasoning}
+                    agentNameById={agentNameById}
+                    collectionNameById={collectionNameById}
                   />
                 )}
 

@@ -235,7 +235,25 @@ const defaultSkill = {
   enabled: true,
 };
 
-const SkillEditor = forwardRef(function SkillEditor({ skill, onSave, onClose, onDelete, inline = false }, ref) {
+/**
+ * Generiert einen URL-safen Slug aus dem Namen — analog zu AgentsPage:
+ * lowercase, Umlaute → ae/oe/ue/ss, alles nicht-alphanumerische zu `-`.
+ * Falls die ID schon vergeben ist, wird `-2`, `-3` etc. angehaengt.
+ */
+function generateUniqueSkillId(name, existingIds = []) {
+  const baseId = (name || '')
+    .toLowerCase()
+    .replace(/[äöüß]/g, c => ({ ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss' }[c]))
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (!baseId) return '';
+  if (!existingIds.includes(baseId)) return baseId;
+  let counter = 2;
+  while (existingIds.includes(`${baseId}-${counter}`)) counter++;
+  return `${baseId}-${counter}`;
+}
+
+const SkillEditor = forwardRef(function SkillEditor({ skill, onSave, onClose, onDelete, inline = false, existingIds = [] }, ref) {
   const [activeTab, setActiveTab] = useState('basics');
   const [formData, setFormData] = useState(defaultSkill);
   const [error, setError] = useState(null);
@@ -298,22 +316,31 @@ const SkillEditor = forwardRef(function SkillEditor({ skill, onSave, onClose, on
   };
 
   const handleSave = async () => {
-    if (!formData.id?.trim()) {
-      setError('ID ist erforderlich');
-      setActiveTab('basics');
-      return;
-    }
     if (!formData.name?.trim()) {
       setError('Name ist erforderlich');
       setActiveTab('basics');
       return;
     }
 
+    // ID nur bei neuen Skills aus dem Namen generieren — bei bestehenden
+    // bleibt sie als stabiler Anker (Skill-Referenzen, Berechtigungen etc.).
+    let finalData = formData;
+    if (isNew && !formData.id?.trim()) {
+      const otherIds = existingIds.filter((id) => id !== formData.id);
+      const generatedId = generateUniqueSkillId(formData.name, otherIds);
+      if (!generatedId) {
+        setError('Aus dem Namen konnte keine gueltige ID erzeugt werden.');
+        setActiveTab('basics');
+        return;
+      }
+      finalData = { ...formData, id: generatedId };
+    }
+
     setIsSaving(true);
     setError(null);
 
     try {
-      await onSave(formData);
+      await onSave(finalData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -333,31 +360,18 @@ const SkillEditor = forwardRef(function SkillEditor({ skill, onSave, onClose, on
 
   const renderBasicsTab = () => (
     <>
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <label style={styles.label}>
-            ID
-            <span style={styles.labelHint}>(eindeutig, keine Leerzeichen)</span>
-          </label>
-          <input
-            type="text"
-            style={styles.input}
-            value={formData.id}
-            onChange={(e) => handleChange('id', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-            placeholder="z.B. code-review"
-            disabled={!isNew}
-          />
-        </div>
-        <div style={styles.field}>
-          <label style={styles.label}>Version</label>
-          <input
-            type="text"
-            style={styles.input}
-            value={formData.version}
-            onChange={(e) => handleChange('version', e.target.value)}
-            placeholder="1.0"
-          />
-        </div>
+      {/* ID wird automatisch aus dem Namen erzeugt (gleiches Pattern wie
+          bei Agents). User-facing zeigen wir den Slug nicht — er bleibt
+          intern als stabiler Anker. */}
+      <div style={styles.field}>
+        <label style={styles.label}>Version</label>
+        <input
+          type="text"
+          style={{ ...styles.input, maxWidth: '200px' }}
+          value={formData.version}
+          onChange={(e) => handleChange('version', e.target.value)}
+          placeholder="1.0"
+        />
       </div>
 
       <div style={styles.field}>
