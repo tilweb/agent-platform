@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { theme } from '../config/theme';
 import SkillEditor from '../components/SkillEditor';
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -545,7 +546,7 @@ function SkillsPage() {
 
   const fetchSkills = async () => {
     try {
-      const response = await fetch(`${API_URL}/skills`);
+      const response = await apiGet('/skills');
       if (!response.ok) throw new Error('Failed to fetch skills');
       const data = await response.json();
       setSkills(data.skills || []);
@@ -580,7 +581,7 @@ function SkillsPage() {
   const reloadSkills = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/skills/reload`, { method: 'POST' });
+      const response = await apiPost('/skills/reload', {});
       if (!response.ok) throw new Error('Failed to reload skills');
       await fetchSkills();
     } catch (err) {
@@ -591,7 +592,7 @@ function SkillsPage() {
 
   const viewSkillDetails = async (skill) => {
     try {
-      const response = await fetch(`${API_URL}/skills/${skill.id}`);
+      const response = await apiGet(`/skills/${skill.id}`);
       if (!response.ok) throw new Error('Failed to load skill details');
       const data = await response.json();
       setDetailSkill(data);
@@ -622,14 +623,9 @@ function SkillsPage() {
 
   const handleSaveSkill = async (skillData) => {
     const isNew = !editorSkill?.id;
-    const url = isNew ? `${API_URL}/skills` : `${API_URL}/skills/${skillData.id}`;
-    const method = isNew ? 'POST' : 'PUT';
-
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(skillData),
-    });
+    const response = isNew
+      ? await apiPost('/skills', skillData)
+      : await apiPut(`/skills/${skillData.id}`, skillData);
 
     if (!response.ok) {
       const data = await response.json();
@@ -647,9 +643,7 @@ function SkillsPage() {
   };
 
   const handleDeleteSkill = async (skillId) => {
-    const response = await fetch(`${API_URL}/skills/${skillId}`, {
-      method: 'DELETE',
-    });
+    const response = await apiDelete(`/skills/${skillId}`);
 
     if (!response.ok) {
       const data = await response.json();
