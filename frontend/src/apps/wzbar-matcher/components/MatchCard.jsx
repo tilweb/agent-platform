@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { theme } from '../../../config/theme';
-import { CopyIcon } from '../../../components/Icons';
+import { CopyIcon, ListIcon } from '../../../components/Icons';
+import NeighborhoodModal from './NeighborhoodModal';
 
 const styles = {
   card: {
@@ -43,6 +44,21 @@ const styles = {
     fontWeight: theme.typography.weights.semibold,
     padding: `${theme.spacing.xs} ${theme.spacing.md}`,
     borderRadius: theme.borderRadius.full,
+  },
+  neighborhoodButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+    backgroundColor: 'transparent',
+    color: theme.colors.textSecondary,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.full,
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
   },
   primaryLabel: {
     fontSize: theme.typography.sizes.xs,
@@ -103,6 +119,7 @@ function confidenceStyle(confidence) {
 
 export default function MatchCard({ candidate, isPrimary = false }) {
   const [copied, setCopied] = useState(false);
+  const [neighborhoodOpen, setNeighborhoodOpen] = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -125,6 +142,15 @@ export default function MatchCard({ candidate, isPrimary = false }) {
           <span style={{ ...styles.badge, ...confidenceStyle(candidate.confidence ?? 0) }}>
             {pct}%
           </span>
+          <button
+            type="button"
+            style={styles.neighborhoodButton}
+            onClick={() => setNeighborhoodOpen(true)}
+            title="Hierarchisches Umfeld dieses Codes anzeigen"
+          >
+            <ListIcon size={12} />
+            Umfeld
+          </button>
         </div>
         <button
           style={{ ...styles.copyButton, ...(copied ? styles.copyButtonSuccess : {}) }}
@@ -140,6 +166,11 @@ export default function MatchCard({ candidate, isPrimary = false }) {
         <div style={styles.langtext}>{candidate.langtext}</div>
       )}
       {candidate.reasoning && <div style={styles.reasoning}>{candidate.reasoning}</div>}
+      <NeighborhoodModal
+        open={neighborhoodOpen}
+        code={candidate.code}
+        onClose={() => setNeighborhoodOpen(false)}
+      />
     </div>
   );
 }

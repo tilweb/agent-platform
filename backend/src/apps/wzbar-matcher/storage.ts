@@ -8,7 +8,7 @@
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { wzbarMatches } from '../../db/schema/wzbar';
-import type { CatalogEntry, EmbeddingsIndex, MatchRecord } from './types';
+import type { CatalogEntry, EmbeddingsIndex, MatchRecord, MultiMatchResult, RetrievalHit } from './types';
 
 const ASSETS_PATH = './src/apps/wzbar-matcher/assets';
 const CATALOG_PATH = `${ASSETS_PATH}/catalog.json`;
@@ -51,14 +51,36 @@ export function generateMatchId(): string {
   return `match-${ts}-${rnd}`;
 }
 
+function normalizeResult(raw: unknown, inputText: string): MultiMatchResult {
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>;
+    if (Array.isArray((obj as { activities?: unknown }).activities)) {
+      return obj as unknown as MultiMatchResult;
+    }
+    // Legacy single-match record: { primary, alternatives }
+    if ((obj as { primary?: unknown }).primary) {
+      return {
+        activities: [
+          {
+            activity: inputText,
+            result: obj as unknown as MultiMatchResult['activities'][number]['result'],
+            retrievalTopK: [],
+          },
+        ],
+      };
+    }
+  }
+  return { activities: [] };
+}
+
 function rowToRecord(row: typeof wzbarMatches.$inferSelect): MatchRecord {
   return {
     id: row.id,
     createdAt: row.createdAt,
     userId: row.userId ?? 'user_default',
     inputText: row.inputText,
-    result: row.result as MatchRecord['result'],
-    retrievalTopK: (row.retrievalTopK ?? []) as MatchRecord['retrievalTopK'],
+    result: normalizeResult(row.result, row.inputText),
+    retrievalTopK: (row.retrievalTopK ?? []) as RetrievalHit[],
     llmModel: row.llmModel ?? '',
     embeddingModel: row.embeddingModel ?? '',
     durationMs: row.durationMs ?? 0,

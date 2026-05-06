@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-05-06
+
+### WZ-Branchen-Matcher — 4-6-stellige Codes + Multi-Tätigkeits-Erkennung
+Erstes Kunden-Feedback umgesetzt: a) IHK trifft regelmaessig auf 5-/6-stellige WZ-Schluessel (Unterklasse / Detail-Unterklasse), nicht nur auf 4-stellige Klassen. b) Eintragungen vom Amtsgericht enthalten oft mehrere distinkte Taetigkeiten (Beispiel "Baulicher Brandschutz, Trockenbau und Umzuege"); IHK kann bis zu 3 Schluessel pro Unternehmen hinterlegen.
+
+- **Catalog 4-6 Stellen**: `catalog-builder.ts` Regex von `^\d{4}$` auf `^\d{4,6}$` gelockert. Catalog wuchs von 720 auf **2112 Eintraege** (662×4-stellig, 923×5-stellig, 530×6-stellig). Embeddings (Multilingual E5 Large, 1024dim) neu generiert.
+- **Pre-Splitter** (`splitter.ts`, neu): LLM-Function-Call zerlegt Input in 1-3 distinkte Taetigkeiten. Variationen ("Hochbau, Tiefbau") werden gebuendelt; Aufzaehlungen ("Brandschutz, Trockenbau, Umzuege") werden gesplittet. Hard-Cap auf 3.
+- **Service-Pipeline**: `service.ts match()` ruft jetzt `splitActivities()` und klassifiziert pro Taetigkeit parallel via `Promise.all`. Aggregierter `MultiMatchResult { activities: ActivityMatch[] }` wird persistiert.
+- **Klassifikator-Prompt**: bevorzugt feinste eindeutige Ebene (Unterklasse > Klasse), faellt auf naechsthoehere Ebene zurueck wenn die Beschreibung die feinere Tiefe nicht eindeutig hergibt.
+- **Public-Function-Schema**: `wzbar-matcher__classify` Output von `{ primary, alternatives }` auf `{ activities: [{ activity, primary, alternatives }] }`. Tool-Description aktualisiert. Breaking Change.
+- **Storage Read-Fallback**: alte Records (`result.primary`) werden beim Read transparent in `MultiMatchResult` mit einer Activity eingepackt — History bleibt lesbar ohne DB-Migration.
+- **Frontend Multi-Block-Layout**: `MatcherPage.jsx` zeigt pro Taetigkeit einen eigenen Block mit Header. Bei Single-Activity wird der Header weggelassen (sieht aus wie vorher). Subtitle aktualisiert. `HistoryList` zeigt Codes der Hauptmatches als ` · `-Liste.
+- **Test-Ergebnis (live)**: "Baulicher Brandschutz, Trockenbau und Umzuege" → 439991 Brandsanierung (85%) · 433101 Akustik- und Trockenbau (95%) · 49420 Umzugstransporte (95%). "Schlachten von Gefluegel" → 10120 (100%, single block).
+- **Umfeld-Modal**: Im MatchCard neben dem Confidence-Pill ein "Umfeld"-Button (ListIcon). Oeffnet ein Modal mit der hierarchischen Nachbarschaft des Codes — alle Codes im Catalog mit gleichem 4-stelligen Klassen-Praefix, gruppiert nach Klasse / Unterklasse / Detail-Unterklasse, eingerueckt nach Tiefe, aktueller Code visuell hervorgehoben. Pro Zeile ein Copy-Button. Beispiel fuer 439991: zeigt 4399 → 43991/43999 → 439991/439992/439993, sodass die IHK selbst entscheiden kann, ob die feinere Tiefe wirklich passt oder eine flachere Ebene besser ist. Endpoint: `GET /api/apps/wzbar-matcher/neighborhood/:code`.
+
+`demo/messe`-Worktree (Railway) unveraendert.
+
 ## 2026-05-03
 
 ### Scalingo-Deployment via Custom-Buildpack — v0.1.0 production-verified
