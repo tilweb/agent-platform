@@ -5,6 +5,7 @@
 import { Hono } from 'hono';
 import { match, history, detail } from './service';
 import { isIndexReady, loadEmbeddings, loadCatalog } from './storage';
+import { getNeighborhood } from './neighborhood';
 import { requireAppAccess } from '../permissions-middleware';
 
 const wzbar = new Hono();
@@ -62,6 +63,24 @@ wzbar.get('/matches/:id', async (c) => {
   } catch (error) {
     console.error('[wzbar-matcher] detail error:', error);
     return c.json({ error: 'Match konnte nicht geladen werden' }, 500);
+  }
+});
+
+/**
+ * GET /api/apps/wzbar-matcher/neighborhood/:code
+ * Liefert das hierarchische Umfeld (Eltern/Geschwister/Kinder) eines WZ-Codes.
+ */
+wzbar.get('/neighborhood/:code', async (c) => {
+  try {
+    const code = c.req.param('code');
+    const nodes = await getNeighborhood(code);
+    return c.json({ code, nodes });
+  } catch (error) {
+    console.error('[wzbar-matcher] neighborhood error:', error);
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Umfeld konnte nicht geladen werden' },
+      400,
+    );
   }
 });
 

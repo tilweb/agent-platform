@@ -116,6 +116,29 @@ const styles = {
     letterSpacing: '0.05em',
     marginBottom: theme.spacing.md,
   },
+  activityBlock: {
+    marginBottom: theme.spacing.xl,
+  },
+  activityHeader: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
+    borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  activityIndex: {
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  activityName: {
+    fontSize: theme.typography.sizes.base,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text,
+  },
   error: {
     padding: theme.spacing.md,
     backgroundColor: theme.colors.errorLight,
@@ -223,7 +246,7 @@ export default function MatcherPage() {
         <h1 style={styles.title}>WZ-Branchen-Matcher</h1>
       </div>
       <p style={styles.subtitle}>
-        Tätigkeitsbeschreibung eingeben → 1 primärer WZ-2008-Schlüssel plus Alternativen für EMMA.
+        Bis zu 3 WZ-2008-Schlüssel pro Eingabe — automatisch nach erkannten Tätigkeiten getrennt. 4- bis 6-stellige Codes.
       </p>
 
       <div style={styles.grid}>
@@ -271,17 +294,31 @@ export default function MatcherPage() {
                 <span>Embedding: {record.embeddingModel}</span>
                 <span>LLM: {record.llmModel}</span>
               </div>
-              {record.result?.primary && (
-                <MatchCard candidate={record.result.primary} isPrimary />
-              )}
-              {record.result?.alternatives?.length > 0 && (
-                <>
-                  <div style={styles.sectionTitle}>Alternativen</div>
-                  {record.result.alternatives.map((alt) => (
-                    <MatchCard key={alt.code} candidate={alt} />
-                  ))}
-                </>
-              )}
+              {(() => {
+                const activities = record.result?.activities || [];
+                const multi = activities.length > 1;
+                return activities.map((am, idx) => (
+                  <div key={`${am.activity}-${idx}`} style={styles.activityBlock}>
+                    {multi && (
+                      <div style={styles.activityHeader}>
+                        <span style={styles.activityIndex}>Tätigkeit {idx + 1}</span>
+                        <span style={styles.activityName}>{am.activity}</span>
+                      </div>
+                    )}
+                    {am.result?.primary && (
+                      <MatchCard candidate={am.result.primary} isPrimary />
+                    )}
+                    {am.result?.alternatives?.length > 0 && (
+                      <>
+                        <div style={styles.sectionTitle}>Alternativen</div>
+                        {am.result.alternatives.map((alt) => (
+                          <MatchCard key={alt.code} candidate={alt} />
+                        ))}
+                      </>
+                    )}
+                  </div>
+                ));
+              })()}
             </div>
           )}
         </div>

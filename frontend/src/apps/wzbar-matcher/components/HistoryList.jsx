@@ -57,6 +57,19 @@ function formatWhen(iso) {
   }
 }
 
+function summarizeCodes(record) {
+  const activities = record?.result?.activities;
+  if (Array.isArray(activities) && activities.length > 0) {
+    const codes = activities
+      .map(a => a?.result?.primary?.code)
+      .filter(Boolean);
+    if (codes.length > 0) return codes.join(' · ');
+  }
+  // Legacy single-match fallback
+  const legacy = record?.result?.primary?.code;
+  return legacy || '—';
+}
+
 export default function HistoryList({ records, activeId, onSelect }) {
   if (!records || records.length === 0) {
     return <div style={styles.empty}>Noch keine Anfragen.</div>;
@@ -74,7 +87,7 @@ export default function HistoryList({ records, activeId, onSelect }) {
           >
             <div style={styles.text}>{r.inputText}</div>
             <div style={styles.meta}>
-              <span style={styles.code}>{r.result?.primary?.code ?? '—'}</span>
+              <span style={styles.code}>{summarizeCodes(r)}</span>
               <span>{formatWhen(r.createdAt)}</span>
             </div>
           </button>

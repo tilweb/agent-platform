@@ -41,12 +41,22 @@ export interface MatchResult {
   alternatives: MatchCandidate[];
 }
 
+export interface ActivityMatch {
+  activity: string;
+  result: MatchResult;
+  retrievalTopK: RetrievalHit[];
+}
+
+export interface MultiMatchResult {
+  activities: ActivityMatch[];
+}
+
 export interface MatchRecord {
   id: string;
   createdAt: string;
   userId: string;
   inputText: string;
-  result: MatchResult;
+  result: MultiMatchResult;
   retrievalTopK: RetrievalHit[];
   llmModel: string;
   embeddingModel: string;

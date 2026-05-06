@@ -1,5 +1,110 @@
 # Changelog
 
+## 2026-05-06
+
+### WZ-Branchen-Matcher — 4-6-stellige Codes + Multi-Tätigkeits-Erkennung
+Erstes Kunden-Feedback umgesetzt: a) IHK trifft regelmaessig auf 5-/6-stellige WZ-Schluessel (Unterklasse / Detail-Unterklasse), nicht nur auf 4-stellige Klassen. b) Eintragungen vom Amtsgericht enthalten oft mehrere distinkte Taetigkeiten (Beispiel "Baulicher Brandschutz, Trockenbau und Umzuege"); IHK kann bis zu 3 Schluessel pro Unternehmen hinterlegen.
+
+- **Catalog 4-6 Stellen**: `catalog-builder.ts` Regex von `^\d{4}$` auf `^\d{4,6}$` gelockert. Catalog wuchs von 720 auf **2112 Eintraege** (662×4-stellig, 923×5-stellig, 530×6-stellig). Embeddings (Multilingual E5 Large, 1024dim) neu generiert.
+- **Pre-Splitter** (`splitter.ts`, neu): LLM-Function-Call zerlegt Input in 1-3 distinkte Taetigkeiten. Variationen ("Hochbau, Tiefbau") werden gebuendelt; Aufzaehlungen ("Brandschutz, Trockenbau, Umzuege") werden gesplittet. Hard-Cap auf 3.
+- **Service-Pipeline**: `service.ts match()` ruft jetzt `splitActivities()` und klassifiziert pro Taetigkeit parallel via `Promise.all`. Aggregierter `MultiMatchResult { activities: ActivityMatch[] }` wird persistiert.
+- **Klassifikator-Prompt**: bevorzugt feinste eindeutige Ebene (Unterklasse > Klasse), faellt auf naechsthoehere Ebene zurueck wenn die Beschreibung die feinere Tiefe nicht eindeutig hergibt.
+- **Public-Function-Schema**: `wzbar-matcher__classify` Output von `{ primary, alternatives }` auf `{ activities: [{ activity, primary, alternatives }] }`. Tool-Description aktualisiert. Breaking Change.
+- **Storage Read-Fallback**: alte Records (`result.primary`) werden beim Read transparent in `MultiMatchResult` mit einer Activity eingepackt — History bleibt lesbar ohne DB-Migration.
+- **Frontend Multi-Block-Layout**: `MatcherPage.jsx` zeigt pro Taetigkeit einen eigenen Block mit Header. Bei Single-Activity wird der Header weggelassen (sieht aus wie vorher). Subtitle aktualisiert. `HistoryList` zeigt Codes der Hauptmatches als ` · `-Liste.
+- **Test-Ergebnis (live)**: "Baulicher Brandschutz, Trockenbau und Umzuege" → 439991 Brandsanierung (85%) · 433101 Akustik- und Trockenbau (95%) · 49420 Umzugstransporte (95%). "Schlachten von Gefluegel" → 10120 (100%, single block).
+- **Umfeld-Modal**: Im MatchCard neben dem Confidence-Pill ein "Umfeld"-Button (ListIcon). Oeffnet ein Modal mit der hierarchischen Nachbarschaft des Codes — alle Codes im Catalog mit gleichem 4-stelligen Klassen-Praefix, gruppiert nach Klasse / Unterklasse / Detail-Unterklasse, eingerueckt nach Tiefe, aktueller Code visuell hervorgehoben. Pro Zeile ein Copy-Button. Beispiel fuer 439991: zeigt 4399 → 43991/43999 → 439991/439992/439993, sodass die IHK selbst entscheiden kann, ob die feinere Tiefe wirklich passt oder eine flachere Ebene besser ist. Endpoint: `GET /api/apps/wzbar-matcher/neighborhood/:code`.
+
+Hinweis: auf `demo/messe` (Railway) bleibt das `storage.ts` YAML-File-basiert (statt Postgres wie auf `main`). Der `normalizeResult()`-Read-Fallback wurde aber portiert, sodass alte YAML-Match-Records nahtlos im neuen Multi-Activity-UI angezeigt werden.
+
+## 2026-05-03
+
+### Scalingo-Deployment via Custom-Buildpack — v0.1.0 production-verified
+Setup fuer Scalingo-Deployment auf `main`. Scalingo unterstuetzt nur Buildpacks (kein Dockerfile-Build). Bun ist offiziell nicht supported, also bauen wir ein eigenes Custom-Buildpack statt Bun→Node-Refactor. Ende-zu-Ende auf `workplace-demo.osc-fr1.scalingo.io` verifiziert (Login + HSTS + ffmpeg).
+
+- **Neues Buildpack-Repo** `tilweb/scalingo-agent-platform-buildpack` (separates GitHub-Repo, Tag `v0.1.0`): `bin/detect`, `bin/compile`, `bin/release`. Installiert Node 22.13.0 LTS + Bun 1.3.7 + ffmpeg 7.0.2 static (alle gepinnt im Cache), baut Frontend (`NPM_CONFIG_PRODUCTION=false npm ci` + `npm run build`), installiert Backend-Deps (`bun install --frozen-lockfile --production`), kopiert Bun + ffmpeg-Binaries in den Slug nach `/app/.bun/bin/` und `/app/.ffmpeg/bin/`, raeumt `frontend/node_modules` (~200 MB) auf — Slug schrumpft von ~801 MiB auf ~414 MiB.
+- **ffmpeg statisch** statt apt: apt-Paket auf Ubuntu 22.04 hat Soft-Dep auf libpulsecommon-16.x die nicht im Stack ist, Crash-Loading mit `libpulsecommon-16.1.so: cannot open shared object`. Statisches Binary von johnvansickle.com hat keine System-Lib-Abhaengigkeiten.
+- **Node 22 LTS** statt Node 20: Vite 7 verlangt Engine `^20.19.0 || >=22.12.0` — Node 20.18.0 zu alt.
+- **`NPM_CONFIG_PRODUCTION=false`** beim Frontend-Install: App-ENV setzt `NODE_ENV=production`, sonst skipt `npm ci` die devDependencies (Vite + @vitejs/plugin-react sind dort) und Build bricht mit `vite: not found`. Vite-Build-Output bleibt produktion-optimiert (Vite handhabt das selbst).
+- **Postgres-ENV-Aliasing** im Custom-Buildpack `.profile.d/agent-platform.sh`: Scalingo-Postgres-Addon setzt `SCALINGO_POSTGRESQL_URL`, unser Code liest `SCALINGO_POSTGRES`, Drizzle-Tools wollen `DATABASE_URL`. Aliasing in alle drei Richtungen — ohne den Fix waere Boot mit "SCALINGO_POSTGRES not set" gescheitert.
+- **App-Repo neue Files**: `.buildpacks` (Multi-Buildpack-Reihenfolge: apt + custom@v0.1.0), `Aptfile` (`ca-certificates` only — ffmpeg via Custom-Buildpack), `Procfile` (`web: cd backend && bun run src/index.ts`).
+- **`Dockerfile` (Root) entfernt** nach erfolgreichem Deploy — Scalingo nutzt nur die Buildpack-Pipeline.
+- **Doku**: `docs/scalingo-deploy.md` auf Buildpack-Flow umgeschrieben, `CONNECTION_ENCRYPTION_KEY`-Hinweis (muss exakt 64 Hex-Zeichen sein) ergaenzt, `FAL_API_KEY`→`FAL_AI_API_KEY` in CLI-Beispielen korrigiert.
+- **`backend/CLAUDE.md`**: Note zu Lokal-Bun + Production-Bun (kein Refactor).
+- **NODE_ENV**: muss als App-ENV explizit gesetzt werden (`scalingo --app workplace-demo env-set NODE_ENV=production`); `scalingo.json`-Defaults greifen nur beim "Deploy on Scalingo"-Button-Flow, nicht bei manuell angelegten Apps. Ohne diese Var serviert Hono kein Frontend (`/` → 404).
+
+`demo/messe`-Worktree (Railway, Bun + Dockerfile) bleibt vollstaendig unangetastet.
+
+### Security-Fixes Cleanup-Sprint — Branch `feature/security-fixes-2026-05-03`
+Letzte Lows + Info-Findings — viele kosmetisch, einer mit echtem Sicherheitswert (L6).
+
+- **L3** `auth/middleware.ts` Session-Extension umformuliert: `lastExtendedAtMs` + `sinceLastExtendMs` statt `Math.abs(...)`-Konstrukt. Verhalten unveraendert, Lesbarkeit verbessert.
+- **L6** IPv6-SSRF-Check substanziell gehaertet: neue `expandIPv6()`-Funktion strippt Zone-IDs/Klammern, expandiert `::` zu 8 Hex-Gruppen, behandelt IPv4-mapped Form. Block-Set erweitert um site-local (fec0::/10), discard-only (100::/64), multicast (ff00::/8) und 6to4-zu-RFC1918 (2002::-Praefix mit privatem IPv4-Anteil). Standalone-Tests: 18/18 Cases pass.
+- **L7** `BRAVE_API_KEY` in `.env.example` dokumentiert (Custom-Tool-Referenz war ohne Template-Eintrag).
+- **I1** Verifikation: Tool-Outputs sind bereits korrekt mit `role: 'tool'` markiert (3 Sites in `agents/loop.ts`). Review-Agent hatte das falsch klassifiziert — kein Code-Change.
+- **I5** `.github/workflows/security-audit.yml` mit `bun audit` (backend) + `npm audit --production` (frontend) auf PR/push/main + woechentlicher Schedule. `continue-on-error: true` — sichtbar, nicht blockend. `audit`-Scripts in beiden `package.json`. Erstlauf zeigt 27 Backend-Vulns (10 high, 16 moderate; davon zwei Hono-Cookie-Issues real relevant) und 1 Frontend-Vuln (yaml stack overflow) — Behebung als separater Dep-Update-Track.
+
+### Security-Fixes Compliance-Bundle M11 + I4 — Branch `feature/security-fixes-2026-05-03`
+Audit-Log auf Compliance-Niveau gebracht.
+
+- **M11** `writeAuditEntry` nutzt jetzt `fs.appendFile` (POSIX-O_APPEND-atomar) statt read-modify-write. Vorher gingen unter Concurrent-Login Audit-Eintraege verloren — Smoke mit 5 parallelen failed-logins bestaetigt: alle Eintraege landen jetzt in der Datei. Plus `cleanupOldAuditLogs()` mit `AUDIT_RETENTION_DAYS` (default 90, 0 = aus), beim Boot + alle 24h. Hash-Chain-Tamper-Detection ausgelassen — Append-Only-Storage (S3 Object-Lock) waere die richtige Hardening-Stufe darueber, gehoert in einen Infra-Plan.
+- **I4** `auditLogin(success=false, username, ...)` pseudonymisiert den Username via sha256-Praefix (`usr_<16-hex>`). Der bei Failed-Login eingegebene String gehoert oft keinem echten Account (Tippfehler, Bot-Scan) und waere damit Eingabe-PII ohne legitime Grundlage. Korrelation fuer Brute-Force-Erkennung bleibt (gleicher Input → gleicher Hash). Successful-Login behaelt Klartext (eigene User-Aktion, DSGVO-zulaessige Grundlage).
+
+### Security-Fixes M6 + M7 + M9 — Branch `feature/security-fixes-2026-05-03`
+Drei Phase-3-Findings geschlossen, plus ein realer Pfad-Traversal-Bug aufgeraeumt.
+
+- **M6** `sanitizeRelPath` zusaetzlich gegen URL-encoded Traversal (Doppel-Decode), Unicode-NFC, Control-Chars + Lone-Surrogates. Plus echter Bug in `routes/chat.ts:2481`: `${kbBase}/incoming/${file.name}` schrieb User-Filename direkt — jetzt `basename()` + Extension-Whitelist. Gleicher Defense-in-Depth-Check in `services/indexer.ts:convertDocument`.
+- **M7** Zwei vorher anonyme KB-Endpoints (`POST /api/knowledge/index`, `POST /api/knowledge/collections`) jetzt mit `authMiddleware`. Mit Scalingo-pro-Tenant-Architektur (eine Instanz pro Customer) reicht User-Level-Auth — Group-Permissions auf Collections sind out-of-scope, da Collections innerhalb einer Tenant-Instanz by-design shared sind.
+- **M9** HSTS-Header `Strict-Transport-Security: max-age=31536000; includeSubDomains` nur in `NODE_ENV=production`. `preload` bewusst nicht (einseitige Chrome-Liste). CSP `unsafe-inline` fuer Styles bleibt — React-Inline-Style-Pattern, Migration ist eigener Track.
+- Smoke verifiziert: beide KB-Endpoints → 401 ohne Cookie, HSTS-Header in Prod-Mode gesetzt.
+
+### Security-Fixes M3 + M4 — Branch `feature/security-fixes-2026-05-03`
+Phase 3 fortgesetzt mit den naechsten zwei Mediums.
+
+- **M3** Zentraler `safeLogger` mit `redact()`-Logik fuer Auth-Felder, Bearer-Tokens, api_key-Querystrings und Basic-Auth-URLs. Migration ueber `services/llm.ts`, `services/llm/adapters/openai.ts`, `tools/custom/CustomApiTool.ts`, `mcp/manager.ts` — die Custom-Tool-/MCP-/LLM-Pfade, in denen Tokens am leichtesten in Error-Bodies leaken konnten.
+- **M4 Sofort** `.env.example` um 7 fehlende OAuth-Vars ergaenzt (FAL_AI, JIRA, PIPEDRIVE, YOUTRACK, DOCUWARE) plus Banner am Anfang mit Hygiene-Empfehlungen (Dev-Keys von Production trennen, Production-Secrets in Scalingo-ENV/Vault, nicht auf Dev-Maschine). Tooling-Schritt (1Password/Doppler) und Rotation-Policy bewusst NICHT Teil dieses Commits — User-Entscheidung.
+- TS-Status: 168 (2 Cascade-Fixes durch Refactor).
+
+### Security-Fixes Phase 3 Quick-Wins — Branch `feature/security-fixes-2026-05-03`
+10 weitere Findings aus dem Medium/Low-Bucket geschlossen — alle als mechanische, klar umrissene Fixes.
+
+- **M1** create-admin.ts in Production nur mit TTY oder `ALLOW_RECOVERY_SCRIPT=true`. **M5** Login-Timing: Dummy-Argon2-Verify auch bei unbekanntem Username (Smoke: 144ms statt <1ms — Username-Enumeration ist zu). **M8** SSE-Stream-Endpoint prueft `pending.userId === getCurrentUserId(c)`. **M10** `createGroup/updateGroup` validieren `memberIds` gegen die users-Tabelle. **M12** `APP_ROLES`/`AUFTRAGS_ROLES` als zentrale const-Tuple plus Type-Guard. **M13** `MARKITDOWN_API_URL` Whitelist auf `*.adacor.ai`/localhost.
+- **L1** Initial-Passwort von 9 → 16 Bytes (≈128 Bit). **L2** `deleteCookie` mit `SESSION_CONFIG.cookieOptions`. **L4** `POST/DELETE /api/auth/users` zusaetzlich mit `sensitiveRateLimit`. **L5** `web_fetch` in Production generische Fehlermeldung.
+- TS-Status: 170 (unveraendert).
+- Nicht gepusht — User reviewed und pusht selbst.
+
+### Security-Fixes Phase 2 (High) + TS Quick-Wins — Branch `feature/security-fixes-2026-05-03`
+Phase 2 mit allen High-Findings und einer Vorab-Bereinigung von Type-Drift.
+
+- **TS Quick-Wins** (commit `9d325e6`): 22 TS-Fehler entfernt, davon ~10 echte Bugs. Highlight: in `extraction/service.ts` und `extraction/learning/service.ts` wurde der Vision-LLM mit `provider.api_url`/`provider.api_key` initialisiert — beide Felder existieren NICHT auf `ProviderConfig`. Korrekt sind `visionModel.base_url` / `visionModel.api_key` aus dem `ResolvedModel`-Wrapper; vorher liefen Vision-Calls je nach Provider mit `baseUrl=undefined`. Plus 5 TS1117 Duplicate-Property-Bugs in PM-Service/Import-Service (z.B. `gross` doppelt im Mapping, `id`/`created_at` doppelt vor und nach `...data`).
+- **Phase 2** (commit `4dc1bf0`): H1 (Skill/MCP Trust-Boundary mit `[BEGIN/END UNTRUSTED SKILL]`-Markern + Sanitization), H2 (Vision-LLM nur `data:`-URIs), H3 (Rate-Limits user-basiert + neuer `importRateLimit` 20/10min auf alle Import-Endpoints), H4 (Total-Size 200 MB fuer Multi-File-Uploads), H5 (Argon2id parallelism in `needsRehash`), H6 (Attachment-IDs auf `randomUUID`), H7 (`skillRoutes` mit auth+admin), H8 (ID-/Filename-Regex-Validation in allen `storage/paths.ts`-Buildern), H9 (`SEED_DEMO_DATA`-Guard in Production).
+- Smoke verifiziert: `/api/custom-tools`, `/api/skills` ohne Cookie → 401.
+- TS-Status: 170 verbleibende preexistierende Errors (keine durch Fixes hinzugefuegt).
+- Nicht gepusht — User reviewed und pusht selbst.
+
+### Security-Fixes Phase 1 (Critical) — Branch `feature/security-fixes-2026-05-03`
+Phase-1-Fixes aus dem Security-Review umgesetzt. 6 Commits, je ein Critical pro Commit.
+
+- **C1** — `customToolRoutes` mit `authMiddleware + adminMiddleware` geschuetzt; `adminMiddleware` zentral in `auth/middleware.ts`. Verifiziert: `GET /api/custom-tools` ohne Cookie → HTTP 401 (vorher 200).
+- **C2** — `c.req.header('x-user-id')` in lieferantenmanagement (19x) und VSM (4x) durch `getCurrentUserId(c)` ersetzt.
+- **C3** — als deferred markiert, Beta-Banner in `ContractsPage.jsx` setzt User-Erwartung.
+- **C4** — `contentDispositionHeader()`-Helper mit Whitelist (PDF, raster Bilder = inline; sonst attachment + RFC-5987-escaped filename). Anwendet auf vertragsmanagement und Chat-Attachments.
+- **C5** — `MarkdownRenderer` in VSM AnalyseTab durch `react-markdown` + `remark-gfm` ersetzt. Letzter `dangerouslySetInnerHTML` im Frontend ist weg.
+- **C6** — `web_fetch` mit `redirect: 'manual'`, max 3 Hops, Re-Validation pro Hop, Loop-Detection.
+
+Nicht gepusht — User reviewed und pusht selbst.
+
+### Security-Review main-Worktree
+Umfangreiche Security-Review des main-Branches (Drizzle/Postgres + S3) durchgefuehrt. Drei Explore-Agenten parallel ueber Auth/RBAC, File-Storage und LLM/SSRF/Frontend, anschliessend manuelle Verifikation der Critical-Findings durch direkte Code-Reads.
+
+- **6 Critical** (C1–C6): unauthentifizierte Custom-Tool-API → SSRF; Lieferantenmanagement vertraut `x-user-id`-Header → Impersonation; Vertragsmanagement Attachment-Download ohne Resource-Level-Ownership → IDOR; `Content-Disposition: inline` + user-kontrollierte Filenames → Stored-XSS; `dangerouslySetInnerHTML` mit LLM-Output ohne Sanitization in VSM AnalyseTab; `web_fetch` folgt Redirects ohne Re-Validation → SSRF-Bypass.
+- **9 High** (H1–H9): Skill-/MCP-Instructions ohne Trust-Boundary, Vision-LLM als SSRF-Proxy, IP-basierte (statt User-basierte) Rate-Limits, fehlendes Total-Size-Limit fuer Multi-File-Upload, Argon2id-Rehash prueft Parallelism nicht, Attachment-IDs schwache Entropie, Skill-Mgmt analog zu C1, Storage-Path ohne ID-Validation, `SEED_DEMO_DATA` ohne Production-Guard.
+- **13 Medium**, **7 Low**, **5 Info** (Defense-in-Depth, Compliance).
+- Eine Agent-Behauptung ("`.env` in Git committed") wurde als **falsch** identifiziert — `.env` ist korrekt gitignored, kein Leak in Git-History.
+- Bericht: `docs/security-review-2026-05-03.md` mit Findings, Severity-Uebersicht, Critical-Files-Mapping, Remediation-Roadmap, Glossar und Code-Snippets als Nachweis.
+- Fix-Plan: `docs/security-fixes-2026-05-03.md` mit konkreten Diffs fuer alle Critical (C1–C6) und High (H1–H9), plus Tabelle fuer Medium/Low.
+- User-Entscheidungen: C5 → Refactor durch `react-markdown` (Option C, Sub-Entscheidung remark-gfm-Dep offen). C3 → DEFERRED, PM-Phase-2-Pattern fuer Vertragsmanagement separat. M2 → CLOSED nach GET-Audit (0 state-changing GETs gefunden, `SameSite=lax` ausreichend). Phase-1-Scope reduziert auf C1, C2, C4, C5, C6 (~1 Tag).
+
 ## 2026-05-02
 
 ### Feature: Vertragsmanagement Multi-File-Import mit Auto-Detection

@@ -1,9 +1,10 @@
 /**
  * WZ-Branchen-Matcher: Katalog- und Embeddings-Builder.
  *
- * Liest docs/WZBAR-Schluesseltabelle.xlsx, filtert auf gültige 4-stellige Codes,
- * schreibt catalog.json, und erzeugt anschliessend embeddings.json über den
- * konfigurierten Platform-Embedding-Provider.
+ * Liest docs/WZBAR-Schluesseltabelle.xlsx, filtert auf gültige 4- bis 6-stellige
+ * Codes (Klasse / Unterklasse / Detail-Unterklasse), schreibt catalog.json, und
+ * erzeugt anschliessend embeddings.json über den konfigurierten Platform-
+ * Embedding-Provider.
  *
  * Aufruf (aus backend/):
  *   /Users/andreasbachmann/.bun/bin/bun run src/apps/wzbar-matcher/catalog-builder.ts
@@ -93,18 +94,20 @@ async function buildCatalog(): Promise<{ catalog: CatalogEntry[]; hash: string }
 
   const catalog: CatalogEntry[] = [];
   const hashInputs: string[] = [];
-  let skippedNot4 = 0;
+  let skippedWrongLength = 0;
   let skippedExpired = 0;
+  const levelCounts: Record<string, number> = { '4': 0, '5': 0, '6': 0 };
 
   for (let r = 2; r <= sheet.rowCount; r++) {
     const row = sheet.getRow(r);
     const schluesselCell = row.getCell(colSchluessel);
     if (schluesselCell.value == null || schluesselCell.value === '') continue;
     const code = String(schluesselCell.value).trim();
-    if (!/^\d{4}$/.test(code)) {
-      skippedNot4++;
+    if (!/^\d{4,6}$/.test(code)) {
+      skippedWrongLength++;
       continue;
     }
+    levelCounts[String(code.length)] = (levelCounts[String(code.length)] ?? 0) + 1;
     const validFrom = colVon ? cellToIso(row.getCell(colVon)) : null;
     const validTo = colBis ? cellToIso(row.getCell(colBis)) : null;
     if (validTo && validTo < today) {
@@ -129,7 +132,7 @@ async function buildCatalog(): Promise<{ catalog: CatalogEntry[]; hash: string }
   catalog.sort((a, b) => a.code.localeCompare(b.code));
   const hash = hashText(hashInputs.slice().sort().join('\n'));
 
-  console.log(`[catalog-builder] xlsx → ${catalog.length} Einträge (4-stellig, gültig). Übersprungen: ${skippedNot4} nicht-4-stellig, ${skippedExpired} abgelaufen.`);
+  console.log(`[catalog-builder] xlsx → ${catalog.length} Einträge (4-6 stellig, gültig). Verteilung: 4=${levelCounts['4']}, 5=${levelCounts['5']}, 6=${levelCounts['6']}. Übersprungen: ${skippedWrongLength} ausserhalb 4-6 Stellen, ${skippedExpired} abgelaufen.`);
   return { catalog, hash };
 }
 

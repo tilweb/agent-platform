@@ -3,7 +3,7 @@
  */
 
 import { parse, stringify } from 'yaml';
-import type { CatalogEntry, EmbeddingsIndex, MatchRecord } from './types';
+import type { CatalogEntry, EmbeddingsIndex, MatchRecord, MultiMatchResult } from './types';
 
 // System-Assets (catalog + embeddings) werden mit dem Container-Image ausgeliefert
 // und NICHT im Daten-Volume gespeichert. Nur matches/ liegt im Volume (Audit-Trail).
@@ -50,6 +50,34 @@ export function generateMatchId(): string {
   return `match-${ts}-${rnd}`;
 }
 
+/**
+ * Read-Side-Fallback fuer Legacy-Records: alte YAML-Dateien speicherten
+ * `result: { primary, alternatives }` (Single-Match). Neue Form ist
+ * `result: { activities: [{ activity, result, retrievalTopK }] }`.
+ * Dieser Helper packt Legacy-Records in das neue Shape ein, damit das UI
+ * History-Eintraege ohne Bruch anzeigt.
+ */
+function normalizeResult(raw: unknown, inputText: string): MultiMatchResult {
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>;
+    if (Array.isArray((obj as { activities?: unknown }).activities)) {
+      return obj as unknown as MultiMatchResult;
+    }
+    if ((obj as { primary?: unknown }).primary) {
+      return {
+        activities: [
+          {
+            activity: inputText,
+            result: obj as unknown as MultiMatchResult['activities'][number]['result'],
+            retrievalTopK: [],
+          },
+        ],
+      };
+    }
+  }
+  return { activities: [] };
+}
+
 export async function saveMatch(record: MatchRecord): Promise<void> {
   await Bun.write(`${MATCHES_PATH}/${record.id}.yaml`, stringify(record));
 }
@@ -58,7 +86,8 @@ export async function getMatch(id: string): Promise<MatchRecord | null> {
   const file = Bun.file(`${MATCHES_PATH}/${id}.yaml`);
   if (!(await file.exists())) return null;
   const content = await file.text();
-  return parse(content) as MatchRecord;
+  const raw = parse(content) as MatchRecord;
+  return { ...raw, result: normalizeResult(raw.result, raw.inputText) };
 }
 
 export async function listMatches(limit = 50): Promise<MatchRecord[]> {
@@ -74,7 +103,8 @@ export async function listMatches(limit = 50): Promise<MatchRecord[]> {
     files.sort((a, b) => b.mtime - a.mtime);
     for (const { path } of files.slice(0, limit)) {
       const content = await Bun.file(path).text();
-      records.push(parse(content) as MatchRecord);
+      const raw = parse(content) as MatchRecord;
+      records.push({ ...raw, result: normalizeResult(raw.result, raw.inputText) });
     }
   } catch {
     // no matches yet
