@@ -6,8 +6,13 @@
 import { Hono } from 'hono';
 import { commandRegistry } from '../commands/registry';
 import type { ExecuteCommandRequest } from '../commands/types';
+import { authMiddleware, getCurrentUserId } from '../auth';
 
 export const commandRoutes = new Hono();
+
+// Alle Commands brauchen authentifizierten User — sonst koennten anonyme Aufrufe
+// Agent-Listen, Skill-Listen etc. abrufen oder Commands ausfuehren.
+commandRoutes.use('/*', authMiddleware);
 
 /**
  * GET /api/commands
@@ -55,7 +60,8 @@ commandRoutes.get('/:id/options', async (c) => {
       return c.json({ error: 'Command not found' }, 404);
     }
 
-    const options = await commandRegistry.getOptions(commandId);
+    const userId = getCurrentUserId(c);
+    const options = await commandRegistry.getOptions(commandId, userId);
     return c.json({ options });
   } catch (error) {
     console.error('Error getting command options:', error);
@@ -76,7 +82,8 @@ commandRoutes.post('/execute', async (c) => {
       return c.json({ error: 'Command is required' }, 400);
     }
 
-    const result = await commandRegistry.execute(command, optionId, args);
+    const userId = getCurrentUserId(c);
+    const result = await commandRegistry.execute(command, optionId, args, userId);
     return c.json(result);
   } catch (error) {
     console.error('Error executing command:', error);
