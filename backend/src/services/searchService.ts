@@ -61,7 +61,7 @@ export async function unifiedSearch(
   // Run searches in parallel with Promise.allSettled
   const searches = await Promise.allSettled([
     sources.includes('chats') ? searchChats(query, userId) : Promise.resolve([]),
-    sources.includes('knowledge') ? searchKnowledgeBase(query) : Promise.resolve([]),
+    sources.includes('knowledge') ? searchKnowledgeBase(query, userId) : Promise.resolve([]),
     sources.includes('confluence') && userId ? searchConfluence(query, userId) : Promise.resolve([]),
     sources.includes('gdrive') && userId ? searchGDrive(query, userId) : Promise.resolve([]),
     sources.includes('gmail') && userId ? searchGmail(query, userId) : Promise.resolve([]),
@@ -170,13 +170,28 @@ async function searchChats(query: string, userId?: string): Promise<SearchResult
 /**
  * Search knowledge base collections and documents
  * Searches in DOCUMENT_META.md files for description, keywords, and questions
+ *
+ * Security: filtert Collections nach `canView`-Berechtigung des Users.
+ * Ohne userId (anonyme Calls) wird die KB nicht durchsucht — kein Default-
+ * Public-Access. Platform-Admins bekommen alle Collections via canView.
  */
-async function searchKnowledgeBase(query: string): Promise<SearchResult[]> {
+async function searchKnowledgeBase(query: string, userId?: string): Promise<SearchResult[]> {
+  if (!userId) {
+    return [];
+  }
   const results: SearchResult[] = [];
   const queryLower = query.toLowerCase();
   try {
     const kb = await import('./kbStorage');
-    const collections = await kb.listCollections();
+    const { listAccessibleResources } = await import('../rbac/accessControl');
+    const allCollections = await kb.listCollections();
+    const accessible = await listAccessibleResources(
+      userId,
+      'collection',
+      allCollections.map(c => c.id),
+    );
+    const allowedIds = new Set(accessible.map(a => a.resourceId));
+    const collections = allCollections.filter(c => allowedIds.has(c.id));
     for (const collection of collections) {
       const docs = await kb.listDocuments(collection.id);
       for (const doc of docs) {
@@ -751,11 +766,17 @@ export interface SmartSearchResponse {
 export async function smartKnowledgeSearch(query: string, triggeringUserId?: string): Promise<SmartSearchResponse> {
   const { llmService } = await import('./llm');
 
+  // Security: ohne userId keine KB-Suche — sonst wuerde der LLM-Re-Ranker
+  // alle Dokumente der Plattform sehen.
+  if (!triggeringUserId) {
+    return { query, results: [], reasoning: 'Keine Berechtigung (kein User-Kontext)' };
+  }
+
   try {
-    // Step 1: Load all collections and their manifests
-    const kbData = await loadKnowledgeBaseIndex();
+    // Step 1: Load all collections and their manifests (gefiltert nach User-Permissions)
+    const kbData = await loadKnowledgeBaseIndex(triggeringUserId);
     if (kbData.documents.length === 0) {
-      return { query, results: [], reasoning: 'Keine Dokumente in der Knowledge Base' };
+      return { query, results: [], reasoning: 'Keine zugaenglichen Dokumente in der Knowledge Base' };
     }
 
     // Step 2: Build prompt for LLM
@@ -1069,13 +1090,22 @@ interface KBIndex {
 }
 
 /**
- * Load all documents from the knowledge base for the LLM to analyze
+ * Load all documents from the knowledge base for the LLM to analyze.
+ * Security: gefiltert nach User-Permissions via `listAccessibleResources`.
  */
-async function loadKnowledgeBaseIndex(): Promise<KBIndex> {
+async function loadKnowledgeBaseIndex(userId: string): Promise<KBIndex> {
   const documents: KBDocument[] = [];
   try {
     const kb = await import('./kbStorage');
-    const collections = await kb.listCollections();
+    const { listAccessibleResources } = await import('../rbac/accessControl');
+    const allCollections = await kb.listCollections();
+    const accessible = await listAccessibleResources(
+      userId,
+      'collection',
+      allCollections.map(c => c.id),
+    );
+    const allowedIds = new Set(accessible.map(a => a.resourceId));
+    const collections = allCollections.filter(c => allowedIds.has(c.id));
     for (const collection of collections) {
       const docs = await kb.listDocuments(collection.id);
       for (const doc of docs) {
