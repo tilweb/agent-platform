@@ -105,6 +105,17 @@ async function fetchDocumentContent(
           return { ...baseResult, error: 'Collection-ID fehlt', source: 'Knowledge Base' };
         }
 
+        // Security: Permission-Check vor Read. Ohne userId verweigern wir,
+        // sonst koennte jeder anonyme Aufruf jede Collection laden.
+        if (!userId) {
+          return { ...baseResult, error: 'Kein User-Kontext — Zugriff verweigert', source: 'Knowledge Base' };
+        }
+        const { canView } = await import('../rbac/accessControl');
+        const access = await canView(userId, 'collection', collectionId);
+        if (!access.allowed) {
+          return { ...baseResult, error: 'Zugriff auf Collection verweigert', source: 'Knowledge Base' };
+        }
+
         const contentPath = join(KB_BASE, 'collections', collectionId, 'documents', docPath, 'content.md');
 
         if (!existsSync(contentPath)) {

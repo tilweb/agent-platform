@@ -12,6 +12,8 @@ import { existsSync } from 'fs';
 import { join, resolve, normalize } from 'path';
 import { LocalTool } from '../base/LocalTool';
 import type { ToolContext } from '../types';
+import { canView, listAccessibleResources } from '../../rbac/accessControl';
+import * as yaml from 'yaml';
 
 const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
 
@@ -66,34 +68,55 @@ export class KbSearchTool extends LocalTool {
   async execute(args: { level: string; collection_id?: string; document_path?: string }, context?: ToolContext): Promise<string> {
     const { level, collection_id, document_path } = args;
 
+    // Security: ohne userId-Kontext duerfen wir KB-Inhalte nicht ausliefern.
+    // Tool wird ueblicherweise aus einem Agent-Loop gerufen, der die userId
+    // aus der HTTP-Session uebernimmt.
+    const userId = context?.userId;
+    if (!userId) {
+      return 'Error: Kein User-Kontext — Knowledge-Base-Zugriff verweigert.';
+    }
+
     try {
       switch (level) {
-        case 'collections':
-          return await readKbFile('collections.yaml');
+        case 'collections': {
+          // Nur Collections, die der User sehen darf (Platform-Admin sieht alle).
+          const raw = await readKbFile('collections.yaml');
+          const parsed = (yaml.parse(raw) ?? {}) as { collections?: Array<Record<string, any>> };
+          const all = Array.isArray(parsed.collections) ? parsed.collections : [];
+          const ids = all.map(c => (c?.id || '') as string).filter(Boolean);
+          const accessible = await listAccessibleResources(userId, 'collection', ids);
+          const allowedIds = new Set(accessible.map(a => a.resourceId));
+          const filtered = all.filter(c => allowedIds.has(c?.id));
+          return yaml.stringify({ collections: filtered }, { lineWidth: 0 });
+        }
 
-        case 'manifest':
-          if (!collection_id) {
-            return 'Error: collection_id ist erforderlich für level=manifest';
-          }
+        case 'manifest': {
+          if (!collection_id) return 'Error: collection_id ist erforderlich für level=manifest';
+          const access = await canView(userId, 'collection', collection_id);
+          if (!access.allowed) return `Error: Zugriff auf Collection "${collection_id}" verweigert.`;
           return await readKbFile(`collections/${collection_id}/manifest.yaml`);
+        }
 
-        case 'meta':
-          if (!document_path || !collection_id) {
-            return 'Error: document_path und collection_id sind erforderlich für level=meta';
-          }
+        case 'meta': {
+          if (!document_path || !collection_id) return 'Error: document_path und collection_id sind erforderlich für level=meta';
+          const access = await canView(userId, 'collection', collection_id);
+          if (!access.allowed) return `Error: Zugriff auf Collection "${collection_id}" verweigert.`;
           return await readKbFile(`collections/${collection_id}/documents/${document_path}/DOCUMENT_META.md`);
+        }
 
-        case 'content':
-          if (!document_path || !collection_id) {
-            return 'Error: document_path und collection_id sind erforderlich für level=content';
-          }
+        case 'content': {
+          if (!document_path || !collection_id) return 'Error: document_path und collection_id sind erforderlich für level=content';
+          const access = await canView(userId, 'collection', collection_id);
+          if (!access.allowed) return `Error: Zugriff auf Collection "${collection_id}" verweigert.`;
           return await readKbFile(`collections/${collection_id}/documents/${document_path}/content.md`);
+        }
 
-        case 'index':
-          if (!document_path || !collection_id) {
-            return 'Error: document_path und collection_id sind erforderlich für level=index';
-          }
+        case 'index': {
+          if (!document_path || !collection_id) return 'Error: document_path und collection_id sind erforderlich für level=index';
+          const access = await canView(userId, 'collection', collection_id);
+          if (!access.allowed) return `Error: Zugriff auf Collection "${collection_id}" verweigert.`;
           return await readKbFile(`collections/${collection_id}/documents/${document_path}/INDEX.md`);
+        }
 
         default:
           return `Error: Unbekanntes Level "${level}". Erlaubt: collections, manifest, meta, content, index`;
@@ -227,16 +250,22 @@ export class KbManageTool extends LocalTool {
     },
     context?: ToolContext,
   ): Promise<string> {
+    // Security: ohne userId-Kontext kein Zugriff.
+    const userId = context?.userId;
+    if (!userId) {
+      return 'Error: Kein User-Kontext — Knowledge-Base-Zugriff verweigert.';
+    }
+
     try {
       switch (args.action) {
         case 'create_collection':
           return await this.createCollection(args);
         case 'list_collections':
-          return await this.listCollections();
+          return await this.listCollections(userId);
         case 'collection_stats':
-          return await this.collectionStats(args.collection_id);
+          return await this.collectionStats(userId, args.collection_id);
         case 'list_documents':
-          return await this.listDocuments(args.collection_id);
+          return await this.listDocuments(userId, args.collection_id);
         default:
           return `Error: Unbekannte Aktion "${args.action}"`;
       }
@@ -319,23 +348,28 @@ export class KbManageTool extends LocalTool {
     });
   }
 
-  private async listCollections(): Promise<string> {
-    const content = await readKbFile('collections.yaml');
-    return content;
+  private async listCollections(userId: string): Promise<string> {
+    const raw = await readKbFile('collections.yaml');
+    const parsed = (yaml.parse(raw) ?? {}) as { collections?: Array<Record<string, any>> };
+    const all = Array.isArray(parsed.collections) ? parsed.collections : [];
+    const ids = all.map(c => (c?.id || '') as string).filter(Boolean);
+    const accessible = await listAccessibleResources(userId, 'collection', ids);
+    const allowedIds = new Set(accessible.map(a => a.resourceId));
+    const filtered = all.filter(c => allowedIds.has(c?.id));
+    return yaml.stringify({ collections: filtered }, { lineWidth: 0 });
   }
 
-  private async collectionStats(collectionId?: string): Promise<string> {
+  private async collectionStats(userId: string, collectionId?: string): Promise<string> {
     if (!collectionId) {
       return 'Error: collection_id ist erforderlich';
     }
+    const access = await canView(userId, 'collection', collectionId);
+    if (!access.allowed) return `Error: Zugriff auf Collection "${collectionId}" verweigert.`;
 
     try {
       const manifest = await readKbFile(`collections/${collectionId}/manifest.yaml`);
-
-      // Count documents by parsing manifest
       const docMatches = manifest.match(/document_id:/g);
       const docCount = docMatches ? docMatches.length : 0;
-
       return JSON.stringify({
         collection_id: collectionId,
         document_count: docCount,
@@ -346,10 +380,12 @@ export class KbManageTool extends LocalTool {
     }
   }
 
-  private async listDocuments(collectionId?: string): Promise<string> {
+  private async listDocuments(userId: string, collectionId?: string): Promise<string> {
     if (!collectionId) {
       return 'Error: collection_id ist erforderlich';
     }
+    const access = await canView(userId, 'collection', collectionId);
+    if (!access.allowed) return `Error: Zugriff auf Collection "${collectionId}" verweigert.`;
 
     try {
       const manifest = await readKbFile(`collections/${collectionId}/manifest.yaml`);
