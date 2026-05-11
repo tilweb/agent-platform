@@ -98,6 +98,30 @@ export class DelegateToAgentTool implements Tool {
       return `Error: Agent "${agent_id}" not found. Available agents: ${available}`;
     }
 
+    // Security: bei User-Agents pruefen, ob der originale User Zugriff hat.
+    // System-Agents (Supervisor, Knowledge, Connection-Agents) sind fuer alle
+    // eingeloggten User zugaenglich; User-Agents brauchen explizite Berechtigung.
+    // `availableAgents` liefert id/name/description — wir laden den vollen
+    // Config-Eintrag fuer das `system`-Flag.
+    try {
+      const { loadAgent } = await import('../../services/agents');
+      const targetFull = await loadAgent(agent_id);
+      if (targetFull && !targetFull.system) {
+        const userId = context?.userId;
+        if (!userId) {
+          return `Error: Kein User-Kontext — Delegation an User-Agent "${agent_id}" verweigert.`;
+        }
+        const { canView } = await import('../../rbac/accessControl');
+        const access = await canView(userId, 'agent', agent_id);
+        if (!access.allowed) {
+          return `Error: Zugriff auf Agent "${agent_id}" verweigert. Du darfst nur an Agents delegieren, fuer die du Berechtigung hast.`;
+        }
+      }
+    } catch (e: any) {
+      console.error('[delegate_to_agent] Permission check failed:', e?.message);
+      return `Error: Berechtigungspruefung fuer Agent "${agent_id}" fehlgeschlagen.`;
+    }
+
     // Execute delegation
     try {
       return await this.handler(agent_id, task, taskContext);
