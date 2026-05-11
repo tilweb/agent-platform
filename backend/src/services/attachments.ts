@@ -19,6 +19,12 @@ const UPLOADS_BASE = join(DATA_BASE, 'chat-uploads');
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB for documents/images
 const MAX_FILE_SIZE_MB = 50;
 
+// Timeouts fuer externe APIs — verhindert haengende Uploads.
+// Markitdown: PDF-Konvertierung dauert bei grossen Docs spuerbar; 2 min Puffer.
+// Whisper: lange Audios (~25 MB) brauchen real bis ~3 min, 5 min Puffer.
+const MARKITDOWN_TIMEOUT_MS = 120 * 1000;
+const WHISPER_TIMEOUT_MS = 300 * 1000;
+
 export interface ChatAttachment {
   id: string;
   sessionId: string;
@@ -214,13 +220,22 @@ class AttachmentsService {
     const formData = new FormData();
     formData.append('document', blob, filename);
 
-    const response = await fetch(this.markitdownUrl, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: formData,
-    });
+    let response: Response;
+    try {
+      response = await fetch(this.markitdownUrl, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: formData,
+        signal: AbortSignal.timeout(MARKITDOWN_TIMEOUT_MS),
+      });
+    } catch (error: any) {
+      if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+        throw new Error(`Markitdown API Timeout nach ${MARKITDOWN_TIMEOUT_MS / 1000}s`);
+      }
+      throw error;
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -337,13 +352,22 @@ class AttachmentsService {
 
       console.log(`[Attachments] Transcribing audio: ${audioFilename} (${audioMimeType}) via ${provider.name}`);
 
-      const response = await fetch(transcriptionUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: whisperForm,
-      });
+      let response: Response;
+      try {
+        response = await fetch(transcriptionUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: whisperForm,
+          signal: AbortSignal.timeout(WHISPER_TIMEOUT_MS),
+        });
+      } catch (error: any) {
+        if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+          throw new Error(`Whisper API Timeout nach ${WHISPER_TIMEOUT_MS / 1000}s`);
+        }
+        throw error;
+      }
 
       if (!response.ok) {
         const errorText = await response.text();

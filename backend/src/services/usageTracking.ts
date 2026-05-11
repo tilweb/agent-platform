@@ -16,7 +16,7 @@ import { usageLog } from '../db/schema/audit';
 export interface UsageContext {
   userId?: string;
   triggeringUserId?: string;
-  source: 'chat' | 'delegation' | 'image_analysis' | 'indexer' | 'search' | 'contract' | 'extraction';
+  source: 'chat' | 'delegation' | 'image_analysis' | 'document_analysis' | 'indexer' | 'search' | 'contract' | 'extraction';
   operation?: string;
   resourceId?: string;
 }

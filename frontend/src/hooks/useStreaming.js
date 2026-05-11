@@ -379,6 +379,46 @@ export function useStreaming() {
         addLogEntry('sub_agent_step', data.message, data, data.agentId);
       });
 
+      // Pro hochgeladenem Document startet ein dedizierter Sub-Agent. Hier nur
+      // Status-Anzeige, Inhalt landet im Supervisor-System-Prompt.
+      eventSource.addEventListener('document_analysis_start', (e) => {
+        const data = JSON.parse(e.data);
+        const pagesNote = data.pages ? ` (~${data.pages} Seiten)` : '';
+        const truncNote = data.truncated ? ' — wird gekürzt' : '';
+        setAgentStatus({
+          type: 'document_analysis',
+          message: `Analysiere ${data.filename}${pagesNote}${truncNote}…`,
+          attachmentId: data.attachmentId,
+          filename: data.filename,
+        });
+        addThinkingStep({
+          type: 'document_analysis',
+          message: `Analysiere ${data.filename}${pagesNote}`,
+          attachmentId: data.attachmentId,
+          filename: data.filename,
+          truncated: !!data.truncated,
+        });
+        addLogEntry('document_analysis_start', `Dokumentanalyse: ${data.filename}`, data);
+      });
+
+      eventSource.addEventListener('document_analysis_end', (e) => {
+        const data = JSON.parse(e.data);
+        const pagesNote = data.pages ? ` (~${data.pages} Seiten)` : '';
+        const relNote = data.relevance ? `, Relevanz: ${data.relevance}` : '';
+        const truncNote = data.truncated ? ' [gekürzt]' : '';
+        addThinkingStep({
+          type: 'document_analysis_complete',
+          message: `${data.filename}${pagesNote}${relNote}${truncNote}`,
+          attachmentId: data.attachmentId,
+          filename: data.filename,
+          relevance: data.relevance,
+          truncated: !!data.truncated,
+          durationMs: data.durationMs,
+        });
+        const durStr = data.durationMs ? ` (${data.durationMs}ms)` : '';
+        addLogEntry('document_analysis_end', `${data.filename} ✓${durStr}`, data);
+      });
+
       eventSource.addEventListener('task_created', (e) => {
         const data = JSON.parse(e.data);
         addThinkingStep({

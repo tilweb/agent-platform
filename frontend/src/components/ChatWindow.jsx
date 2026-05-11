@@ -1690,6 +1690,23 @@ function ThinkingBlock({ steps, isStreaming, reasoning, agentNameById, collectio
               </svg>
             );
         }
+      case 'document_analysis':
+        return isActive
+          ? <div style={{ ...thinkingStyles.spinner, borderTopColor: theme.colors.info, borderRightColor: theme.colors.info }} />
+          : (
+            <svg style={thinkingStyles.stepIcon} viewBox="0 0 24 24" fill="none" stroke={theme.colors.info} strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+          );
+      case 'document_analysis_complete':
+        return (
+          <svg style={thinkingStyles.stepIcon} viewBox="0 0 24 24" fill="none" stroke={theme.colors.success} strokeWidth="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <polyline points="9 13 11 15 15 11" />
+          </svg>
+        );
       default:
         return isActive
           ? <div style={thinkingStyles.spinner} />
@@ -1716,6 +1733,12 @@ function ThinkingBlock({ steps, isStreaming, reasoning, agentNameById, collectio
       case 'delegation': return `Delegiert an: ${labelForAgent(step.agentId)}`;
       case 'delegation_complete': return `Delegation an ${labelForAgent(step.agentId)} abgeschlossen`;
       case 'sub_agent_step': return `${labelForAgent(step.agentId)}: ${step.message}`;
+      case 'document_analysis': return `Analysiere ${step.filename || step.attachmentId}…`;
+      case 'document_analysis_complete': {
+        const rel = step.relevance ? ` · Relevanz: ${step.relevance}` : '';
+        const trunc = step.truncated ? ' [gekürzt]' : '';
+        return `${step.filename || step.attachmentId} analysiert${rel}${trunc}`;
+      }
       case 'skill': return step.message;
       case 'workflow': return step.message;
       default: return step.message;

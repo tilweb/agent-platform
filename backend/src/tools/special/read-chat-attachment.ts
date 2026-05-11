@@ -87,7 +87,23 @@ export class ReadChatAttachmentTool extends LocalTool {
           });
         }
 
-        // Full content
+        // Full content — Hard-Cap, sonst kollidiert das Tool-Result mit dem
+        // Modell-Context-Limit (Qwen 30B 128k → ~480k Zeichen Marge inkl.
+        // System-Prompt + History). Bei 200k-Token-PDFs (>800k Zeichen) wuerden
+        // wir sonst 413 vom Provider bekommen.
+        const FULL_CAP = 360 * 1024; // 360k chars ≈ 90k Tokens
+        if (content.length > FULL_CAP) {
+          return JSON.stringify({
+            success: true,
+            attachment_id: attachment.id,
+            filename: attachment.filename,
+            type: 'document',
+            content: content.substring(0, FULL_CAP) + `\n\n[... Dokument wurde nach ${FULL_CAP} Zeichen gekuerzt — Originallaenge: ${content.length}. Nutze die Pre-Analysis im System-Prompt fuer den Rest, oder rufe das Tool mit format: "summary" auf.]`,
+            truncated: true,
+            totalLength: content.length,
+            cap: FULL_CAP,
+          });
+        }
         return JSON.stringify({
           success: true,
           attachment_id: attachment.id,
