@@ -35,23 +35,24 @@ class CommandRegistry {
   }
 
   /**
-   * Get options for a command
+   * Get options for a command. userId fuer Permission-Filterung (Agents).
    */
-  async getOptions(commandId: string): Promise<CommandOption[]> {
+  async getOptions(commandId: string, userId?: string): Promise<CommandOption[]> {
     const registration = this.commands.get(commandId);
     if (!registration || !registration.getOptions) {
       return [];
     }
-    return registration.getOptions();
+    return registration.getOptions(userId);
   }
 
   /**
-   * Execute a command
+   * Execute a command. userId fuer Permission-Checks (Agent-Auswahl).
    */
   async execute(
     commandId: string,
     optionId?: string,
-    args?: string
+    args?: string,
+    userId?: string,
   ): Promise<CommandResult> {
     const registration = this.commands.get(commandId);
     if (!registration) {
@@ -60,7 +61,7 @@ class CommandRegistry {
         message: `Unbekannter Befehl: /${commandId}`,
       };
     }
-    return registration.execute(optionId, args);
+    return registration.execute(optionId, args, userId);
   }
 
   /**

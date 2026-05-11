@@ -73,15 +73,17 @@ export interface CommandAction {
 
 /**
  * Options Provider Function
- * Returns dynamic options for a command
+ * Returns dynamic options for a command. Optional userId fuer
+ * Permission-Filtering (z.B. nur sichtbare Agents listen).
  */
-export type OptionsProvider = () => Promise<CommandOption[]>;
+export type OptionsProvider = (userId?: string) => Promise<CommandOption[]>;
 
 /**
  * Command Handler Function
- * Executes a command and returns result
+ * Executes a command and returns result. Optional userId fuer
+ * Permission-Checks (z.B. Agent-Auswahl).
  */
-export type CommandHandler = (optionId?: string, args?: string) => Promise<CommandResult>;
+export type CommandHandler = (optionId?: string, args?: string, userId?: string) => Promise<CommandResult>;
 
 /**
  * Full Command Registration

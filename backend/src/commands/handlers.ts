@@ -5,7 +5,8 @@
 
 import { commandRegistry } from './registry';
 import type { CommandOption, CommandResult } from './types';
-import { listAgents } from '../services/agents';
+import { listAgents, loadAgent } from '../services/agents';
+import { canView, listAccessibleResources } from '../rbac/accessControl';
 import { loadSkills } from '../skills';
 import { getProviders, getActiveSelection, setActiveModel, getImageGenModels } from '../services/providers';
 import { llmService } from '../services/llm';
@@ -149,8 +150,20 @@ export function registerCommands(): void {
 
 // ============== Option Providers ==============
 
-async function getAgentOptions(): Promise<CommandOption[]> {
-  const agents = await listAgents();
+async function getAgentOptions(userId?: string): Promise<CommandOption[]> {
+  const allAgents = await listAgents();
+
+  // Security: nur sichtbare Agents listen. System-Agents fuer alle eingeloggten
+  // User, User-Agents nur mit canView. Ohne userId: nur System-Agents.
+  let agents: typeof allAgents;
+  if (userId) {
+    const userAgentIds = allAgents.filter(a => !a.system).map(a => a.id);
+    const accessible = await listAccessibleResources(userId, 'agent', userAgentIds);
+    const allowedIds = new Set(accessible.map(a => a.resourceId));
+    agents = allAgents.filter(a => a.system || allowedIds.has(a.id));
+  } else {
+    agents = allAgents.filter(a => a.system);
+  }
 
   // Auto-routing option first
   const options: CommandOption[] = [
@@ -163,7 +176,7 @@ async function getAgentOptions(): Promise<CommandOption[]> {
     },
   ];
 
-  // Add all agents
+  // Add filtered agents
   for (const agent of agents) {
     options.push({
       id: agent.id,
@@ -271,7 +284,8 @@ async function getSkillOptions(): Promise<CommandOption[]> {
 
 async function executeAgentCommand(
   optionId?: string,
-  _args?: string
+  _args?: string,
+  userId?: string,
 ): Promise<CommandResult> {
   if (!optionId) {
     return {
@@ -291,15 +305,26 @@ async function executeAgentCommand(
     };
   }
 
-  // Verify agent exists
-  const agents = await listAgents();
-  const agent = agents.find((a) => a.id === optionId);
+  // Verify agent exists (loadAgent kennt auch Connection-Agents, die nicht in
+  // listAgents auftauchen)
+  const agent = await loadAgent(optionId);
 
   if (!agent) {
     return {
       success: false,
       message: `Agent "${optionId}" nicht gefunden`,
     };
+  }
+
+  // Security: bei User-Agents Permission pruefen.
+  if (!agent.system) {
+    if (!userId) {
+      return { success: false, message: 'Authentifizierung erforderlich fuer User-Agents' };
+    }
+    const access = await canView(userId, 'agent', agent.id);
+    if (!access.allowed) {
+      return { success: false, message: `Zugriff auf Agent "${agent.id}" verweigert` };
+    }
   }
 
   return {
