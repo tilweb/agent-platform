@@ -5,6 +5,7 @@ import { runAgentLoop, type AgentEvent, type AttachmentWithContent } from '../ag
 import { chatRateLimit, uploadRateLimit } from '../middleware/rateLimit';
 import { generateSessionId, saveConversation, saveChatHistory, loadChatHistory, listChatHistories, searchChatHistories, deleteChatHistory, regenerateChatSummary, regenerateAllMissingSummaries, createShareLink, revokeShareLink, loadChatByShareToken, getShareInfo, loadChatFolders, createChatFolder, deleteChatFolder, updateChatFolders, getChatFolderIds, listChatsInFolder, getFolderChatCounts, addChatMaterial, removeChatMaterial, updateChatMaterials, type MessageAttachment, type ChatMaterial } from '../services/memory';
 import { listAgents, loadAgent, createAgent, updateAgent, deleteAgent, getAgentFull } from '../services/agents';
+import { canView } from '../rbac/accessControl';
 import { authMiddleware, adminMiddleware, optionalAuthMiddleware, getCurrentUserId } from '../auth';
 import {
   loadSkills,
@@ -217,12 +218,25 @@ chatRoutes.post(
     console.log(`Using supervisor agent for orchestration`);
   }
 
-  // Validate agent exists if specified
+  // Validate agent exists AND user has access (für User-Agents).
+  // System-Agents (siehe AgentConfig.system) sind fuer alle eingeloggten User
+  // zugaenglich; User-Agents brauchen canView. Ohne userId verweigern wir den
+  // Zugriff auf User-Agents — sonst koennte jede anonyme Session einen
+  // anderen User-Agent ansprechen.
   if (selectedAgentId) {
     const agent = await loadAgent(selectedAgentId);
     if (!agent) {
       console.warn(`Agent "${selectedAgentId}" not found, falling back to general`);
       selectedAgentId = 'general';
+    } else if (!agent.system) {
+      if (!userId) {
+        return c.json({ error: 'Authentifizierung erforderlich fuer User-Agents' }, 401);
+      }
+      const access = await canView(userId, 'agent', agent.id);
+      if (!access.allowed) {
+        console.warn(`[Chat] User ${userId} hat keinen Zugriff auf Agent ${agent.id} — verweigert`);
+        return c.json({ error: `Zugriff auf Agent "${agent.id}" verweigert` }, 403);
+      }
     }
   }
 

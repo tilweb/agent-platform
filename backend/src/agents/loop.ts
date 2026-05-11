@@ -1017,10 +1017,26 @@ function removeMistralToolCalls(content: string): string {
 }
 
 /**
- * Build the supervisor prompt by injecting the dynamic agent list, user memory, and attachments
+ * Build the supervisor prompt by injecting the dynamic agent list, user memory, and attachments.
+ *
+ * Security: die Agent-Liste wird nach User-Permissions gefiltert — der
+ * Supervisor sieht nur die Agenten, an die der User selbst delegieren darf.
+ * System-Agenten sind fuer alle sichtbar; User-Agenten brauchen `canView`.
+ * Ohne userId werden ausschliesslich System-Agenten aufgelistet (defensiv).
  */
 async function buildSupervisorPrompt(agent: AgentConfig, attachments?: AttachmentWithContent[], userId?: string): Promise<string> {
-  const agents = await listAgents(); // non-internal agents only
+  const allAgents = await listAgents(); // non-internal agents only
+
+  let agents: typeof allAgents;
+  if (userId) {
+    const userAgentIds = allAgents.filter(a => !a.system).map(a => a.id);
+    const { listAccessibleResources } = await import('../rbac/accessControl');
+    const accessible = await listAccessibleResources(userId, 'agent', userAgentIds);
+    const allowedIds = new Set(accessible.map(a => a.resourceId));
+    agents = allAgents.filter(a => a.system || allowedIds.has(a.id));
+  } else {
+    agents = allAgents.filter(a => a.system);
+  }
 
   const agentListLines = agents.map(a => {
     const caps = a.capabilities.length > 0 ? a.capabilities.join(', ') : 'Keine';
