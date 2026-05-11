@@ -215,13 +215,19 @@ async function validateModelForAgent(
 }
 
 export interface AgentEvent {
-  type: 'thinking' | 'response_chunk' | 'reasoning_chunk' | 'tool_start' | 'tool_end' | 'done' | 'error' | 'delegation_start' | 'delegation_end' | 'agent_selected' | 'skill_activated' | 'workflow_step' | 'sub_agent_step' | 'model_info' | 'task_created' | 'system_prompt' | 'context_loaded' | 'iteration_start';
+  type: 'thinking' | 'response_chunk' | 'reasoning_chunk' | 'tool_start' | 'tool_end' | 'done' | 'error' | 'delegation_start' | 'delegation_end' | 'agent_selected' | 'skill_activated' | 'workflow_step' | 'sub_agent_step' | 'model_info' | 'task_created' | 'system_prompt' | 'context_loaded' | 'iteration_start' | 'document_analysis_start' | 'document_analysis_end';
   content?: string;
   toolName?: string;
   toolArgs?: string;
   toolResult?: string;
   agentId?: string;
   task?: string;
+  // Document analysis data (per attachment)
+  attachmentId?: string;
+  filename?: string;
+  pages?: number;
+  truncated?: boolean;
+  relevance?: 'hoch' | 'mittel' | 'niedrig';
   // Skill activation data
   skillId?: string;
   skillName?: string;
@@ -435,6 +441,229 @@ ${analysisResults.join('\n\n---\n\n')}
 `;
 
   return { analysisText, analyzedImages };
+}
+
+// Pro Document-Attachment ein dedizierter LLM-Call mit dem vollen Markdown-Text
+// im Context. Ersetzt die alte 15k-Truncation in buildSupervisorPrompt durch
+// eine echte Pre-Analysis-Section. Pattern analog zu analyzeImagesAutomatically.
+//
+// Token-Budget Qwen 30B: 128k Context. Effektiv nutzbar für Doc: ~120k Tokens
+// (≈ 480k Zeichen). Drei Stufen:
+//   - <15k chars : direkt im Supervisor-Prompt (keine Sub-Analyse, kein Round-Trip)
+//   - 15k-480k   : Document-Agent mit Volltext, einer pro Doc, parallel
+//   - >480k      : auf 480k gekürzt + Warning-Disclaimer im Output
+//
+// Concurrency: 3 parallel. Hard-Cap: 5 Documents pro User-Message.
+const DOC_INLINE_THRESHOLD = 15000;
+const DOC_MAX_CONTENT_LENGTH = 480000;
+const DOC_MAX_CONCURRENT = 3;
+const DOC_MAX_PER_REQUEST = 5;
+
+interface AnalyzedDocument {
+  attachmentId: string;
+  filename: string;
+  pages?: number;
+  relevance: 'hoch' | 'mittel' | 'niedrig' | 'unbekannt';
+  analysisMarkdown: string;
+  truncated: boolean;
+  error?: string;
+}
+
+function parseRelevance(text: string): AnalyzedDocument['relevance'] {
+  const m = text.match(/##\s*Relevanz\s*:\s*(hoch|mittel|niedrig)/i);
+  if (m) return m[1]!.toLowerCase() as AnalyzedDocument['relevance'];
+  return 'unbekannt';
+}
+
+async function analyzeDocumentsAutomatically(
+  attachments: AttachmentWithContent[],
+  userMessage: string,
+  userId: string | undefined,
+  emit: (event: AgentEvent) => void,
+): Promise<{ analysisText: string; analyzedDocumentIds: Set<string>; skippedOversizedCount: number }> {
+  const docAttachments = attachments.filter(
+    att => att.type === 'document' && typeof att.markdownContent === 'string' && att.markdownContent.length > 0,
+  );
+
+  if (docAttachments.length === 0) {
+    return { analysisText: '', analyzedDocumentIds: new Set(), skippedOversizedCount: 0 };
+  }
+
+  // Trennung: kleine Docs (<15k) inline, große (>=15k) via Sub-Agent
+  const smallDocs = docAttachments.filter(d => (d.markdownContent || '').length < DOC_INLINE_THRESHOLD);
+  const bigDocs = docAttachments.filter(d => (d.markdownContent || '').length >= DOC_INLINE_THRESHOLD);
+  const eligibleBig = bigDocs.slice(0, DOC_MAX_PER_REQUEST);
+  const skippedOversized = bigDocs.slice(DOC_MAX_PER_REQUEST);
+
+  console.log(`[AgentLoop] Documents: ${smallDocs.length} inline, ${eligibleBig.length} via Sub-Agent (${skippedOversized.length} skipped due to per-request cap)`);
+
+  // Sub-Agent-Calls parallel, Concurrency-Cap = DOC_MAX_CONCURRENT
+  const subAgentResults: AnalyzedDocument[] = new Array(eligibleBig.length);
+  let nextIndex = 0;
+  const worker = async (): Promise<void> => {
+    while (true) {
+      const idx = nextIndex++;
+      if (idx >= eligibleBig.length) return;
+      const doc = eligibleBig[idx]!;
+      subAgentResults[idx] = await analyzeOneDocument(doc, userMessage, userId, emit);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(DOC_MAX_CONCURRENT, eligibleBig.length) }, worker));
+
+  // Build sections
+  const allSections: string[] = [];
+  let counter = 0;
+
+  for (const doc of smallDocs) {
+    counter += 1;
+    const content = doc.markdownContent || '';
+    const pagesNote = doc.pages ? ` (~${doc.pages} Seiten)` : '';
+    allSections.push(
+      `### ${counter}. ${doc.filename}${pagesNote} — Inline (kleines Dokument, Volltext)\nattachment_id: \`${doc.id}\`\n\n${content}`,
+    );
+  }
+
+  for (const r of subAgentResults) {
+    counter += 1;
+    const sizeNote = r.truncated ? ' — **Original >480k Zeichen, gekürzt für Sub-Agent-Analyse**' : '';
+    const pagesNote = r.pages ? ` (~${r.pages} Seiten)` : '';
+    const errorNote = r.error ? `\n\n[Fehler bei Analyse: ${r.error}]` : '';
+    allSections.push(
+      `### ${counter}. ${r.filename}${pagesNote} — Sub-Agent-Analyse${sizeNote}\nattachment_id: \`${r.attachmentId}\`\n\n${r.analysisMarkdown}${errorNote}`,
+    );
+  }
+
+  if (allSections.length === 0 && skippedOversized.length === 0) {
+    return { analysisText: '', analyzedDocumentIds: new Set(), skippedOversizedCount: 0 };
+  }
+
+  const skippedNote = skippedOversized.length > 0
+    ? `\n\n> Hinweis: ${skippedOversized.length} weitere Dokument(e) wurden NICHT vollanalysiert (Cap: ${DOC_MAX_PER_REQUEST} Sub-Agent-Analysen pro Nachricht). Diese Dokumente:\n${skippedOversized.map(a => `> - \`${a.id}\` ${a.filename}`).join('\n')}\n> Bei Bedarf via \`read_chat_attachment\` mit \`format: "summary"\` oder \`"full"\` nachladen.`
+    : '';
+
+  const intro = subAgentResults.length > 0
+    ? `Pro großem Dokument (≥15k Zeichen) wurde **bereits** ein dedizierter Sub-Agent mit dem vollständigen Inhalt im Context gestartet. Kleine Dokumente sind direkt inline.
+
+**WICHTIG — Antwort-Strategie**:
+1. **Antworte DIREKT aus diesen Analysen.** Sie enthalten die wichtigsten Inhalte, Zitate und eine relevanzgewichtete Antwort auf die User-Frage.
+2. **Delegiere NICHT an \`chat-document-reader\`** — das wäre Doppelarbeit und kann bei großen Dokumenten zu 413-Fehlern führen.
+3. Nur wenn die Analyse für eine sehr spezifische Detailfrage nicht ausreicht: \`read_chat_attachment\` mit \`format: "summary"\` für einen 2k-Auszug. \`format: "full"\` nur als letzte Option und nur, wenn das Dokument klein ist (<50 Seiten).`
+    : `Kleine Dokumente sind direkt inline. Antworte direkt aus diesem Inhalt — keine Delegation an \`chat-document-reader\` nötig.`;
+
+  const analysisText = `
+## Hochgeladene Dokumente
+
+${intro}
+
+${allSections.join('\n\n---\n\n')}${skippedNote}
+
+---
+`;
+
+  const analyzedDocumentIds = new Set<string>([
+    ...smallDocs.map(d => d.id),
+    ...subAgentResults.map(r => r.attachmentId),
+    ...skippedOversized.map(d => d.id),
+  ]);
+
+  return { analysisText, analyzedDocumentIds, skippedOversizedCount: skippedOversized.length };
+}
+
+async function analyzeOneDocument(
+  doc: AttachmentWithContent,
+  userMessage: string,
+  userId: string | undefined,
+  emit: (event: AgentEvent) => void,
+): Promise<AnalyzedDocument> {
+  const started = Date.now();
+  const original = doc.markdownContent || '';
+  const truncated = original.length > DOC_MAX_CONTENT_LENGTH;
+  const docContent = truncated ? original.slice(0, DOC_MAX_CONTENT_LENGTH) + '\n\n[... Dokument wurde an dieser Stelle gekürzt — Original war länger als verarbeitbar ...]' : original;
+
+  emit({
+    type: 'document_analysis_start',
+    attachmentId: doc.id,
+    filename: doc.filename,
+    pages: doc.pages,
+    truncated,
+  });
+
+  const sysPrompt = `Du bist ein Document-Analyzer für ein vom User hochgeladenes Dokument. Du hast den vollständigen Inhalt direkt vor dir und sollst dem Supervisor-Agent eine kompakte, zitatbelegte Analyse liefern.
+
+DOKUMENT: ${doc.filename}${doc.pages ? ` (~${doc.pages} Seiten)` : ''}${truncated ? ' [GEKÜRZT auf 480k Zeichen — Analyse basiert auf dem Anfang]' : ''}
+
+INHALT:
+"""
+${docContent}
+"""
+
+USER-FRAGE:
+"${userMessage}"
+
+Antworte STRENG nach diesem Markdown-Schema:
+
+## Relevanz: hoch | mittel | niedrig
+(Wie relevant ist dieses Dokument für die User-Frage? "hoch" = direkt verwertbare Antwort enthalten, "mittel" = Kontext/Hintergrund, "niedrig" = Frage geht nicht über dieses Dokument.)
+
+## Zusammenfassung
+(Max 5 Sätze. Worum geht das Dokument inhaltlich.)
+
+## Schlüsselstellen
+(Bis zu 5 wörtliche Zitate aus dem Dokument, die für die User-Frage am wichtigsten sind. Format: \`- "..." (Abschnitt/Seite falls erkennbar)\`. Nur Zitate aus dem Dokument, nichts erfinden.)
+
+## Antwort auf User-Frage
+(Wenn Relevanz hoch oder mittel: konkrete Antwort auf "${userMessage}" mit Bezug zu den Zitaten oben. Wenn niedrig: dieses Feld weglassen oder kurz erklären warum nicht antwortbar.)
+${truncated ? '\n## Hinweis: Dokument war länger als 480k Zeichen — diese Analyse basiert nur auf den ersten 160 Seiten.' : ''}`;
+
+  const messages: Message[] = [
+    { role: 'system', content: sysPrompt },
+    { role: 'user', content: 'Erstelle die Analyse gemäss Schema oben.' },
+  ];
+
+  const usageContext: UsageContext = {
+    userId,
+    source: 'document_analysis',
+    operation: doc.id,
+    resourceId: doc.id,
+  };
+
+  let analysisContent = '';
+  let error: string | undefined;
+  try {
+    for await (const chunk of llmService.streamChat(messages, [], usageContext)) {
+      const piece = chunk?.choices?.[0]?.delta?.content;
+      if (piece) analysisContent += piece;
+    }
+    if (!analysisContent.trim()) {
+      error = 'leere Antwort vom Modell';
+    }
+  } catch (e: any) {
+    error = e?.message || String(e);
+    console.error(`[AgentLoop] Document analysis failed for ${doc.filename}:`, error);
+  }
+
+  const relevance = parseRelevance(analysisContent);
+  const result: AnalyzedDocument = {
+    attachmentId: doc.id,
+    filename: doc.filename,
+    pages: doc.pages,
+    relevance,
+    analysisMarkdown: analysisContent || `[Analyse fehlgeschlagen${error ? ': ' + error : ''}]`,
+    truncated,
+    error,
+  };
+
+  emit({
+    type: 'document_analysis_end',
+    attachmentId: doc.id,
+    filename: doc.filename,
+    pages: doc.pages,
+    truncated,
+    relevance: relevance === 'unbekannt' ? undefined : (relevance as 'hoch' | 'mittel' | 'niedrig'),
+    durationMs: Date.now() - started,
+  });
+
+  return result;
 }
 
 async function loadLegacyAgentConfig(): Promise<string> {
@@ -780,17 +1009,17 @@ async function buildSupervisorPrompt(agent: AgentConfig, attachments?: Attachmen
     const MAX_CONTENT_LENGTH = 15000;
 
     const attachmentSections = attachments.map((att, i) => {
-      if (att.type === 'document' && att.markdownContent) {
-        // Inject document content directly
-        const truncatedContent = att.markdownContent.length > MAX_CONTENT_LENGTH
-          ? att.markdownContent.slice(0, MAX_CONTENT_LENGTH) + '\n\n[... gekürzt ...]'
-          : att.markdownContent;
-
+      if (att.type === 'document') {
+        // Document content is injected via documentAnalysisSection (Pre-Analysis) earlier
+        // in the prompt. Hier nur Metadaten — der Inhalt steht oben in der
+        // "Hochgeladene Dokumente"-Sektion. Bewusst KEIN Hinweis auf
+        // read_chat_attachment oder chat-document-reader, um den Supervisor
+        // nicht zur Doppel-Delegation zu verleiten.
+        const pagesNote = att.pages ? ` (~${att.pages} Seiten)` : '';
         return `
-### ${i + 1}. ${att.filename} (Dokument)
+### ${i + 1}. ${att.filename} (Dokument${pagesNote})
 - **attachment_id:** \`${att.id}\`
-
-${truncatedContent}
+- Inhalt + Analyse: siehe Sektion "Hochgeladene Dokumente" weiter oben.
 `;
       } else if (att.type === 'image') {
         // Images are automatically analyzed - include ID for edit_image tool
@@ -1642,6 +1871,41 @@ export async function* runAgentLoop(
     }
   }
 
+  // Pro Document einen Sub-Agent mit dem vollen Inhalt im Context starten.
+  // Kleine Docs (<15k chars) werden inline geliefert (kein Round-Trip), große
+  // (>=15k chars, max 480k) werden parallel von dedizierten Sub-Agents
+  // analysiert. Per-Doc Events (start/end) werden in einem Queue gesammelt und
+  // nach Promise.all an den Stream geliefert.
+  let documentAnalysisSection = '';
+  if (attachments && attachments.some(a => a.type === 'document' && a.markdownContent)) {
+    try {
+      yield { type: 'thinking' };
+      const docEventQueue: AgentEvent[] = [];
+      const { analysisText, analyzedDocumentIds, skippedOversizedCount } = await analyzeDocumentsAutomatically(
+        attachments,
+        userMessage,
+        userId,
+        (event) => { docEventQueue.push(event); },
+      );
+      // Drain per-doc events to the SSE-Stream
+      for (const ev of docEventQueue) {
+        yield ev;
+      }
+      if (analysisText) {
+        documentAnalysisSection = analysisText;
+        console.log(`[AgentLoop] Auto-analyzed ${analyzedDocumentIds.size} document(s); skipped ${skippedOversizedCount} due to per-request cap`);
+        log('context_loaded', `Dokumentanalyse: ${analyzedDocumentIds.size} Dokument(e)`, {
+          contextType: 'document_analysis',
+          length: analysisText.length,
+          preview: analysisText.slice(0, 200),
+          skippedOversizedCount,
+        });
+      }
+    } catch (error: any) {
+      console.error('[AgentLoop] Document analysis failed:', error.message);
+    }
+  }
+
   // Build skill metadata section for agent decision-making (NEW: agent-driven skill loading)
   let skillMetadataSection = '';
   try {
@@ -1657,7 +1921,7 @@ export async function* runAgentLoop(
     console.warn('[AgentLoop] Failed to build skill metadata section:', error);
   }
 
-  let fullSystemPrompt = languageInstruction + contextInfo + projectContextSection + imageAnalysisSection + systemPrompt + skillMetadataSection + readerContextSection;
+  let fullSystemPrompt = languageInstruction + contextInfo + projectContextSection + imageAnalysisSection + documentAnalysisSection + systemPrompt + skillMetadataSection + readerContextSection;
   let agentToolNames = agent?.tools || ['file_read', 'file_write', 'file_list'];
 
   // Log the assembled system prompt with section breakdown
@@ -1667,6 +1931,7 @@ export async function* runAgentLoop(
     if (contextInfo) sections.push({ name: 'Datum/Uhrzeit', charLength: contextInfo.length });
     if (projectContextSection) sections.push({ name: 'Projekt-Kontext', charLength: projectContextSection.length });
     if (imageAnalysisSection) sections.push({ name: 'Bildanalyse', charLength: imageAnalysisSection.length });
+    if (documentAnalysisSection) sections.push({ name: 'Dokumentanalyse', charLength: documentAnalysisSection.length });
     if (systemPrompt) sections.push({ name: 'Agent Prompt', charLength: systemPrompt.length });
     if (skillMetadataSection) sections.push({ name: 'Skill-Katalog', charLength: skillMetadataSection.length });
     if (readerContextSection) sections.push({ name: 'Reader-Dokumente', charLength: readerContextSection.length });
@@ -1764,9 +2029,26 @@ export async function* runAgentLoop(
 
   setLoadSkillHandler(loadSkillHandler);
 
+  // Code-Level Anti-Retry-Schutz: zaehle identische Delegation-Anfragen.
+  // Wenn der Supervisor 3+ Mal mit (gleicher target, gleicher task-Anfang) ruft,
+  // weisen wir die weiteren Calls hart ab — verhindert Endlos-Loops, falls der
+  // Prompt-Schutz versagt.
+  const delegationFingerprints = new Map<string, number>();
+  const DELEGATION_RETRY_LIMIT = 2;
+  const fingerprintFor = (target: string, task: string) => `${target}::${task.slice(0, 200)}`;
+
   // Set up delegation handler for this context
   const delegationCallback = async (targetAgentId: string, task: string, context?: string): Promise<string> => {
     console.log(`Delegating to ${targetAgentId}: ${task}`);
+
+    // Anti-Retry: bei 3+ Calls mit identischer (target, task)-Kombination abbrechen
+    const fp = fingerprintFor(targetAgentId, task);
+    const prevCount = delegationFingerprints.get(fp) ?? 0;
+    if (prevCount >= DELEGATION_RETRY_LIMIT) {
+      console.warn(`[AgentLoop] Anti-Retry: blockiere ${prevCount + 1}. identische Delegation an ${targetAgentId} — ${task.slice(0, 80)}`);
+      return `Error: Identische Delegation (${targetAgentId}) wurde bereits ${prevCount}x mit gleicher Aufgabe versucht und ist gescheitert. Anti-Retry-Schutz greift — weitere Versuche mit identischen Argumenten sind blockiert. Bitte antworte dem User mit dem aktuellen Wissensstand und erklaere, was nicht funktioniert hat. Versuche NICHT, dieselbe Delegation noch einmal.`;
+    }
+    delegationFingerprints.set(fp, prevCount + 1);
 
     // Check if the target agent has a high iteration budget → run as background task
     const targetAgent = await loadAgent(targetAgentId);

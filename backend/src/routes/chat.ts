@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
+import { bodyLimit } from 'hono/body-limit';
 import { runAgentLoop, type AgentEvent, type AttachmentWithContent } from '../agents/loop';
 import { chatRateLimit, uploadRateLimit } from '../middleware/rateLimit';
 import { generateSessionId, saveConversation, saveChatHistory, loadChatHistory, listChatHistories, searchChatHistories, deleteChatHistory, regenerateChatSummary, regenerateAllMissingSummaries, createShareLink, revokeShareLink, loadChatByShareToken, getShareInfo, loadChatFolders, createChatFolder, deleteChatFolder, updateChatFolders, getChatFolderIds, listChatsInFolder, getFolderChatCounts, addChatMaterial, removeChatMaterial, updateChatMaterials, type MessageAttachment, type ChatMaterial } from '../services/memory';
@@ -67,8 +68,28 @@ interface PendingMessage {
 }
 const pendingMessages = new Map<string, PendingMessage>();
 
+// Upload-Limits fuer Chat-Multipart-Requests.
+// MAX_REQUEST_BODY_SIZE ist ein hartes Body-Limit (vor Form-Parsing) gegen
+// Memory-Spikes bei boeswilligen oder fehlgeleiteten Clients.
+// MAX_FILES_PER_REQUEST + MAX_TOTAL_UPLOAD_SIZE sind anwendungs-Layer-Checks
+// nach Form-Parsing fuer klare Fehlermeldungen ans Frontend.
+// MAX_FILE_SIZE pro File bleibt in services/attachments.ts (50 MB).
+const MAX_REQUEST_BODY_SIZE = 220 * 1024 * 1024; // 220 MB inkl. Form-Felder
+const MAX_REQUEST_BODY_SIZE_MB = 220;
+const MAX_FILES_PER_REQUEST = 10;
+const MAX_TOTAL_UPLOAD_SIZE = 200 * 1024 * 1024; // 200 MB Summe
+const MAX_TOTAL_UPLOAD_SIZE_MB = 200;
+
 // POST /api/chat - Start a new chat message (supports JSON or FormData with files)
-chatRoutes.post('/', chatRateLimit, authMiddleware, async (c) => {
+chatRoutes.post(
+  '/',
+  bodyLimit({
+    maxSize: MAX_REQUEST_BODY_SIZE,
+    onError: (c) => c.json({ error: `Request zu groß. Maximum: ${MAX_REQUEST_BODY_SIZE_MB} MB` }, 413),
+  }),
+  chatRateLimit,
+  authMiddleware,
+  async (c) => {
   const contentType = c.req.header('content-type') || '';
   let message: string;
   let existingSessionId: string | undefined;
@@ -115,6 +136,16 @@ chatRoutes.post('/', chatRateLimit, authMiddleware, async (c) => {
     // Collect all files
     const fileEntries = formData.getAll('files');
     files = fileEntries.filter((f): f is File => f instanceof File);
+
+    // Anzahl und Gesamtgroesse pruefen — vor dem Verarbeiten,
+    // damit Memory-Spikes durch processUpload-Schleife verhindert werden.
+    if (files.length > MAX_FILES_PER_REQUEST) {
+      return c.json({ error: `Zu viele Dateien. Maximum: ${MAX_FILES_PER_REQUEST} pro Nachricht.` }, 400);
+    }
+    const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+    if (totalBytes > MAX_TOTAL_UPLOAD_SIZE) {
+      return c.json({ error: `Gesamtgröße der Anhänge zu groß. Maximum: ${MAX_TOTAL_UPLOAD_SIZE_MB} MB.` }, 400);
+    }
   } else {
     // Handle JSON body
     const body = await c.req.json();
@@ -463,6 +494,22 @@ function formatEventData(event: AgentEvent): Record<string, any> {
         agentId: event.subAgentId,
         stepType: event.subStepType,
         message: event.subStepMessage,
+      };
+    case 'document_analysis_start':
+      return {
+        attachmentId: event.attachmentId,
+        filename: event.filename,
+        pages: event.pages,
+        truncated: event.truncated,
+      };
+    case 'document_analysis_end':
+      return {
+        attachmentId: event.attachmentId,
+        filename: event.filename,
+        pages: event.pages,
+        truncated: event.truncated,
+        relevance: event.relevance,
+        durationMs: event.durationMs,
       };
     case 'model_info':
       return {
