@@ -153,16 +153,18 @@ export function registerCommands(): void {
 async function getAgentOptions(userId?: string): Promise<CommandOption[]> {
   const allAgents = await listAgents();
 
-  // Security: nur sichtbare Agents listen. System-Agents fuer alle eingeloggten
-  // User, User-Agents nur mit canView. Ohne userId: nur System-Agents.
+  // Security: nur sichtbare Agents listen. Built-in Agents (system OR internal)
+  // sind fuer alle eingeloggten User sichtbar; User-Agents nur mit canView.
+  // Ohne userId: nur Built-in Agents.
+  const isBuiltIn = (a: typeof allAgents[number]) => a.system || a.internal;
   let agents: typeof allAgents;
   if (userId) {
-    const userAgentIds = allAgents.filter(a => !a.system).map(a => a.id);
+    const userAgentIds = allAgents.filter(a => !isBuiltIn(a)).map(a => a.id);
     const accessible = await listAccessibleResources(userId, 'agent', userAgentIds);
     const allowedIds = new Set(accessible.map(a => a.resourceId));
-    agents = allAgents.filter(a => a.system || allowedIds.has(a.id));
+    agents = allAgents.filter(a => isBuiltIn(a) || allowedIds.has(a.id));
   } else {
-    agents = allAgents.filter(a => a.system);
+    agents = allAgents.filter(isBuiltIn);
   }
 
   // Auto-routing option first
@@ -316,8 +318,8 @@ async function executeAgentCommand(
     };
   }
 
-  // Security: bei User-Agents Permission pruefen.
-  if (!agent.system) {
+  // Security: bei User-Agents Permission pruefen. Built-in = system OR internal.
+  if (!agent.system && !agent.internal) {
     if (!userId) {
       return { success: false, message: 'Authentifizierung erforderlich fuer User-Agents' };
     }

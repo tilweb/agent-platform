@@ -987,15 +987,17 @@ function removeMistralToolCalls(content: string): string {
 async function buildSupervisorPrompt(agent: AgentConfig, attachments?: AttachmentWithContent[], userId?: string): Promise<string> {
   const allAgents = await listAgents(); // non-internal agents only
 
+  // "Built-in" = system OR internal — beide bedeuten "ships with code".
+  const isBuiltIn = (a: typeof allAgents[number]) => a.system || a.internal;
   let agents: typeof allAgents;
   if (userId) {
-    const userAgentIds = allAgents.filter(a => !a.system).map(a => a.id);
+    const userAgentIds = allAgents.filter(a => !isBuiltIn(a)).map(a => a.id);
     const { listAccessibleResources } = await import('../rbac/accessControl');
     const accessible = await listAccessibleResources(userId, 'agent', userAgentIds);
     const allowedIds = new Set(accessible.map(a => a.resourceId));
-    agents = allAgents.filter(a => a.system || allowedIds.has(a.id));
+    agents = allAgents.filter(a => isBuiltIn(a) || allowedIds.has(a.id));
   } else {
-    agents = allAgents.filter(a => a.system);
+    agents = allAgents.filter(isBuiltIn);
   }
 
   const agentListLines = agents.map(a => {

@@ -219,7 +219,8 @@ chatRoutes.post(
   }
 
   // Validate agent exists AND user has access (für User-Agents).
-  // System-Agents (siehe AgentConfig.system) sind fuer alle eingeloggten User
+  // System-Agents (system=true ODER internal=true — beides bedeutet
+  // "ships with code, not user-managed") sind fuer alle eingeloggten User
   // zugaenglich; User-Agents brauchen canView. Ohne userId verweigern wir den
   // Zugriff auf User-Agents — sonst koennte jede anonyme Session einen
   // anderen User-Agent ansprechen.
@@ -228,7 +229,7 @@ chatRoutes.post(
     if (!agent) {
       console.warn(`Agent "${selectedAgentId}" not found, falling back to general`);
       selectedAgentId = 'general';
-    } else if (!agent.system) {
+    } else if (!agent.system && !agent.internal) {
       if (!userId) {
         return c.json({ error: 'Authentifizierung erforderlich fuer User-Agents' }, 401);
       }
