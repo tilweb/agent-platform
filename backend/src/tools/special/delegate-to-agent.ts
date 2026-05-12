@@ -99,14 +99,15 @@ export class DelegateToAgentTool implements Tool {
     }
 
     // Security: bei User-Agents pruefen, ob der originale User Zugriff hat.
-    // System-Agents (Supervisor, Knowledge, Connection-Agents) sind fuer alle
-    // eingeloggten User zugaenglich; User-Agents brauchen explizite Berechtigung.
+    // Built-in Agents (system=true ODER internal=true — beides bedeutet
+    // "ships with code") sind fuer alle eingeloggten User zugaenglich;
+    // User-Agents brauchen explizite Berechtigung.
     // `availableAgents` liefert id/name/description — wir laden den vollen
-    // Config-Eintrag fuer das `system`-Flag.
+    // Config-Eintrag fuer system/internal-Flags.
     try {
       const { loadAgent } = await import('../../services/agents');
       const targetFull = await loadAgent(agent_id);
-      if (targetFull && !targetFull.system) {
+      if (targetFull && !targetFull.system && !targetFull.internal) {
         const userId = context?.userId;
         if (!userId) {
           return `Error: Kein User-Kontext — Delegation an User-Agent "${agent_id}" verweigert.`;
