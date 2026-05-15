@@ -28,9 +28,10 @@ COPY data/ ./data-seed/
 # Copy built frontend
 COPY --from=frontend-build /app/frontend/dist/ ../frontend/dist/
 
-# Copy seed script
+# Copy seed + migration scripts
 COPY scripts/seed-demo-users.ts ./scripts/seed-demo-users.ts
 COPY backend/scripts/seed-demo-pm-owners.ts ./scripts/seed-demo-pm-owners.ts
+COPY backend/scripts/migrate-projekte.ts ./scripts/migrate-projekte.ts
 
 ENV NODE_ENV=production
 ENV PORT=3001
@@ -82,5 +83,7 @@ CMD sh -c '\
   bun run /app/backend/scripts/seed-demo-users.ts && \
   echo "=== Running projectmanagement demo owner seed ===" && \
   SEED_DEMO_OWNERS=true bun run /app/backend/scripts/seed-demo-pm-owners.ts && \
+  echo "=== Migrating Projektauftrag → Projekt (Phase A, idempotent) ===" && \
+  bun run /app/backend/scripts/migrate-projekte.ts && \
   echo "=== Starting server ===" && \
   bun run /app/backend/src/index.ts'

@@ -184,3 +184,84 @@ export async function suggestLifecycleTransition(projektId: string): Promise<Pro
   if (!projekt) return null;
   return null;
 }
+
+// ============== Daten-Migration (Boot-Hook + CLI) ==============
+
+const AUFTRAEGE_PATH = `${BASE_PATH}/projektauftraege`;
+
+function mapAuftragStatusToLifecycle(status: string | null | undefined): ProjektLifecycle {
+  switch ((status || '').toLowerCase()) {
+    case 'active': return 'active';
+    case 'completed': return 'closed';
+    case 'cancelled': return 'cancelled';
+    default: return 'planning';
+  }
+}
+
+/**
+ * Idempotent: legt fuer jeden Auftrag-Ordner unter `projektauftraege/`, fuer
+ * den noch keine `projekte/{id}/metadata.yaml` existiert, ein Projekt-File an.
+ * Wird beim Boot (Railway Dockerfile-CMD ruft das CLI-Script auf) UND lokal
+ * per `bun run scripts/migrate-projekte.ts` ausgefuehrt.
+ *
+ * Behandelt fehlendes `projektauftraege/`-Verzeichnis ohne Crash (frischer
+ * Volume → 0/0).
+ */
+export async function migrateAuftraegeToProjekteIfNeeded(): Promise<{
+  created: number;
+  skipped: number;
+  errors: number;
+}> {
+  await ensureBaseDir();
+  let created = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  const ids: string[] = [];
+  try {
+    const glob = new Bun.Glob('*/metadata.yaml');
+    for await (const path of glob.scan(AUFTRAEGE_PATH)) {
+      const id = path.split('/')[0];
+      if (id) ids.push(id);
+    }
+  } catch {
+    return { created: 0, skipped: 0, errors: 0 };
+  }
+
+  for (const id of ids) {
+    try {
+      const existing = Bun.file(`${PROJEKTE_PATH}/${id}/metadata.yaml`);
+      if (await existing.exists()) {
+        skipped += 1;
+        continue;
+      }
+      const auftragFile = Bun.file(`${AUFTRAEGE_PATH}/${id}/metadata.yaml`);
+      if (!(await auftragFile.exists())) {
+        skipped += 1;
+        continue;
+      }
+      const auftrag = parse(await auftragFile.text()) as any;
+      const now = new Date().toISOString();
+      const projekt: Projekt = {
+        id: auftrag.id,
+        name: auftrag.name,
+        lifecycle: mapAuftragStatusToLifecycle(auftrag.status),
+        portfolioId: undefined,
+        ideeId: auftrag.idee_id ?? undefined,
+        ownerId: auftrag.created_by ?? undefined,
+        metadata: undefined,
+        permissions: auftrag.permissions ?? undefined,
+        version: 1,
+        createdAt: auftrag.created_at ?? now,
+        updatedAt: auftrag.updated_at ?? now,
+      };
+      await Bun.$`mkdir -p ${PROJEKTE_PATH}/${id}`;
+      await Bun.write(`${PROJEKTE_PATH}/${id}/metadata.yaml`, stringify(projekt));
+      created += 1;
+    } catch (err) {
+      errors += 1;
+      console.error(`[migrate-projekte] Fehler bei id=${id}:`, err instanceof Error ? err.message : err);
+    }
+  }
+  return { created, skipped, errors };
+}
