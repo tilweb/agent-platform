@@ -71,6 +71,13 @@
       "when": 1778198400000,
       "tag": "0009_agents_custom",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778716800000,
+      "tag": "0010_projekt_entity",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,42 @@ import { pgSchema, text, timestamp, jsonb, index, integer } from 'drizzle-orm/pg
 export const projektmgmtSchema = pgSchema('projektmgmt');
 
 /**
+ * Projekt: das Top-Level-Objekt fuer den PM-Lifecycle.
+ *
+ * Identitaet + Lifecycle + Hierarchie-Referenzen leben hier. Inhaltliche
+ * Artefakte (Auftrag, Statusberichte, Lessons Learned, Abschluss) sind als
+ * Sub-Resources via FK auf projekte.id angebunden.
+ *
+ * Migration: existierende Projektauftraege werden 1:1 mit gleicher ID als
+ * Projekte angelegt (siehe scripts/migrate-projekte.ts). Dadurch bleiben
+ * bestehende URLs `/apps/projektmanagement/<id>` funktional.
+ *
+ * Lifecycle (explizit + Auto-Vorschlaege):
+ *   planning  → Projekt angelegt, Auftrag noch in Bearbeitung
+ *   active    → Auftrag freigegeben, laufendes Projekt
+ *   closed    → Abschlussbericht erstellt, Projekt erfolgreich beendet
+ *   cancelled → Projekt abgebrochen vor regulaerem Ende
+ */
+export const paProjekte = projektmgmtSchema.table('projekte', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id'),
+  name: text('name').notNull(),
+  lifecycle: text('lifecycle').notNull().default('planning'),  // planning | active | closed | cancelled
+  portfolioId: text('portfolio_id'),                            // FK auf portfolios.id (Phase D), nullable
+  ideeId: text('idee_id'),                                       // FK auf projektideen.id, optional (nicht jedes Projekt entstammt einer Idee)
+  metadata: jsonb('metadata'),                                   // freier Bucket fuer kuenftige Felder ohne Migration
+  permissions: jsonb('permissions'),
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  ownerIdx: index('projekt_owner_idx').on(t.ownerId),
+  lifecycleIdx: index('projekt_lifecycle_idx').on(t.lifecycle),
+  portfolioIdx: index('projekt_portfolio_idx').on(t.portfolioId),
+  ideeIdx: index('projekt_idee_idx').on(t.ideeId),
+}));
+
+/**
  * Projektideen: leichtgewichtige Vorstufe zum Projektauftrag.
  * Eine Idee kann 0..n Projektauftraege auslösen (verlinkt via paProjektauftraege.ideeId).
  * Die Idee bleibt persistent — selbst wenn alle daraus abgeleiteten Auftraege entfernt

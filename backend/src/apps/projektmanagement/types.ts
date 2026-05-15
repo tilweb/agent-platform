@@ -120,6 +120,60 @@ export interface Projektauftrag {
 }
 
 /**
+ * Projekt: Top-Level-Objekt fuer den PM-Lifecycle (Phase A der Entity-
+ * Restruktur). Traegt Identitaet, Lifecycle-Status und Hierarchie-Referenzen.
+ *
+ * Sub-Resources sind via FK auf projekt.id angebunden:
+ *   - Projektauftrag (1:1, formale Definition)
+ *   - Statusberichte (1:n, fortlaufende Reportings)
+ *   - Lessons Learned (1:n, Erkenntnisse — Phase E)
+ *   - Abschlussbericht (1:1, finale Zusammenfassung — Phase E)
+ *
+ * Lifecycle ist explizit setzbar; das System schlaegt Uebergaenge vor wenn
+ * z.B. Auftrag freigegeben oder Abschlussbericht erstellt wird.
+ */
+export type ProjektLifecycle = 'planning' | 'active' | 'closed' | 'cancelled';
+
+export const PROJEKT_LIFECYCLE_VALUES: readonly ProjektLifecycle[] = [
+  'planning', 'active', 'closed', 'cancelled',
+] as const;
+
+export interface Projekt {
+  id: string;
+  name: string;
+  lifecycle: ProjektLifecycle;
+  portfolioId?: string;        // 0..1 zu Portfolio (Phase D)
+  ideeId?: string;             // optional, Herkunfts-Idee
+  ownerId?: string;
+  metadata?: Record<string, any>;
+  permissions?: ResourcePermissions;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Eingabe-DTO fuer createProjekt — minimal, andere Felder werden defaulted.
+ */
+export interface ProjektCreateInput {
+  id?: string;                 // optional — wenn gesetzt, wird 1:1 uebernommen (z.B. Auftrag→Projekt-Migration)
+  name: string;
+  lifecycle?: ProjektLifecycle;
+  portfolioId?: string;
+  ideeId?: string;
+  ownerId?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ProjektUpdateInput {
+  name?: string;
+  lifecycle?: ProjektLifecycle;
+  portfolioId?: string | null;
+  metadata?: Record<string, any>;
+  expectedVersion?: number;     // optimistic concurrency
+}
+
+/**
  * Phase-2: Rollen auf Auftrags-/Idee-Ebene. Owner kann loeschen + Permissions
  * setzen, Editor kann bearbeiten + Statusberichte verwalten, Viewer nur lesen.
  * Statusberichte erben vom Auftrag — keine eigenen Permissions.

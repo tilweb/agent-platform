@@ -2,6 +2,14 @@
 
 ## 2026-05-06
 
+### Projektmanagement Entity-Restruktur — Phase A (Backend, beide Worktrees)
+Vorbereitung fuer den vollen PM-Lifecycle (Projektidee → Projekt → Auftrag → Statusberichte → Lessons Learned → Abschluss → Portfolio). Heute ist `paProjektauftraege` *de facto* das Projekt — das passt nicht zur Vision, in der `Projekt` die Identitaet traegt und `Auftrag/SB/LL/Abschluss` Sub-Resources sind. Phase A liefert die neue Top-Level-Entity parallel zum Auftrag; IDs werden 1:1 uebernommen, damit alte URLs/Bookmarks weiter funktionieren. Doku: `docs/projektmanagement-entity-restruktur-2026-05-06.md`.
+
+- **main (Postgres + Drizzle)**: neue Tabelle `projektmgmt.projekte` mit `id`, `name`, `lifecycle` (`planning|active|closed|cancelled`), `portfolio_id`, `idee_id`, `owner_id`, `metadata`, `permissions`, `version`, `created_at`, `updated_at` + 4 Indexes. Manual SQL-Migration `0010_projekt_entity.sql` (drizzle-kit generate scheiterte am TTY-Prompt) + Journal-Eintrag. Neuer Service `projekt-service.ts` mit Optimistic-Concurrency-Compare-and-Swap (auf `version`). Routes `GET/POST/PUT/DELETE /api/apps/projektmanagement/projekte[/:id]`; `PUT` mappt `VersionConflictError` → HTTP 409. Migration `scripts/migrate-projekte.ts`: idempotent, erster Lauf legte 6 Projekte an, zweiter Lauf 0/6 skipped.
+- **demo/messe (YAML + Bun)**: gleiche TS-Interfaces (`Projekt`, `ProjektCreateInput`, `ProjektUpdateInput`, `ProjektLifecycle`) — camelCase, bewusst abweichend von snake_case-Konvention bei Auftrag/Idee, damit Frontend-Cherry-pick aus main 1:1 passt. Storage ueber `data/apps/projektmanagement/projekte/{id}/metadata.yaml` mit `withLock` + `VersionConflictError` (analog Auftrag). Identische API-Shape und Endpoints wie main. Migrations-Script handhabt fehlendes `projektauftraege/`-Verzeichnis ohne Crash.
+- **Entscheidungen** (im Plan-Mode mit User abgestimmt): 1:1-IDs (kein Linkbruch), Portfolio 0..1 pro Projekt, Projektname am Projekt (nicht am Auftrag), Lifecycle explizit + Auto-Vorschlaege (`suggestLifecycleTransition()` aktuell Stub, befuellt sich in Phase E).
+- **Bewusst out-of-scope in Phase A**: Sub-Resource-FKs (Statusberichte etc.) bleiben auf `paProjektauftraege.id` — werden in spaeteren Phasen umgezogen. IDs sind identisch, alte FKs brechen nicht.
+
 ### WZ-Branchen-Matcher — 4-6-stellige Codes + Multi-Tätigkeits-Erkennung
 Erstes Kunden-Feedback umgesetzt: a) IHK trifft regelmaessig auf 5-/6-stellige WZ-Schluessel (Unterklasse / Detail-Unterklasse), nicht nur auf 4-stellige Klassen. b) Eintragungen vom Amtsgericht enthalten oft mehrere distinkte Taetigkeiten (Beispiel "Baulicher Brandschutz, Trockenbau und Umzuege"); IHK kann bis zu 3 Schluessel pro Unternehmen hinterlegen.
 
