@@ -2,6 +2,34 @@
 
 ## 2026-05-06
 
+### Projektmanagement Entity-Restruktur — Phase B (Frontend Tab-Container)
+Detail-Ansicht eines Projekts startet jetzt in einer **Übersicht** statt im
+Projektauftrag-Wizard. Der bisherige Segmented-Mode-Toggle (Projektauftrag /
+Statusbericht) im Header verschwindet; stattdessen gibt es eine echte Top-Level-
+Tab-Bar **Übersicht | Projektauftrag | Statusberichte**. Das ist die UI-
+Konsequenz aus Phase A: `Projekt` ist die Identitaet, Auftrag/SB sind Sub-Views.
+
+- **In-place-Refactor von `WizardPage.jsx`** (1349 Zeilen, bewusst nicht
+  aufgespalten — State zwischen Auftrag/SB/KI-Analysen ist eng verwoben;
+  Aufspaltung in `ProjectDetailPage.jsx` + `AuftragTab.jsx` + `StatusberichteTab.jsx`
+  laesst sich spaeter machen, der UX-Schmerzpunkt war der Mode-Toggle, nicht die
+  File-Struktur). Mode-State akzeptiert jetzt `uebersicht | auftrag | statusberichte`,
+  Default bei bestehendem Projekt = `uebersicht`. Tab-State synct mit URL
+  `?tab=...` (Browser-Back + Bookmarks funktionieren).
+- **Neue Komponente `ProjektUebersichtPanel.jsx`**: vier Karten (Lifecycle +
+  Version + Update-Datum / Schluesseldaten Auftrag / letzter Statusbericht
+  inkl. Ampel / Platzhalter Abschluss mit Phase-E-Badge). Liest Lifecycle aus
+  der neuen `/api/apps/projektmanagement/projekte/:id` (Phase-A-Entity).
+- **Pill-Style Tab-Bar** gem. `frontend/CLAUDE.md` (analog `ToolsPage.jsx`).
+  Statusberichte-Tab zeigt Count im Label (`Statusberichte (3)`).
+- **Hook**: `useProjektmanagement` exportiert jetzt `getProjekt(id)` — Best-
+  effort, returnt `null` wenn die Projekt-Entity (noch) nicht migriert ist.
+- **Bei neuen Projekten** (`/apps/projektmanagement/neu`) bleibt die Tab-Bar
+  ausgeblendet — Wizard ist allein zustaendig fuer die Erstanlage.
+- **Out-of-scope Phase B**: ContractDetail-aehnliche Header-Refactorisierung,
+  Datei-Aufspaltung, Lessons Learned/Abschluss-Tabs (kommen mit Phase E),
+  Cross-Project-Listen-Page-Restruktur (Phase C).
+
 ### Projektmanagement Entity-Restruktur — Phase A (Backend, beide Worktrees)
 Vorbereitung fuer den vollen PM-Lifecycle (Projektidee → Projekt → Auftrag → Statusberichte → Lessons Learned → Abschluss → Portfolio). Heute ist `paProjektauftraege` *de facto* das Projekt — das passt nicht zur Vision, in der `Projekt` die Identitaet traegt und `Auftrag/SB/LL/Abschluss` Sub-Resources sind. Phase A liefert die neue Top-Level-Entity parallel zum Auftrag; IDs werden 1:1 uebernommen, damit alte URLs/Bookmarks weiter funktionieren. Doku: `docs/projektmanagement-entity-restruktur-2026-05-06.md`.
 

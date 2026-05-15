@@ -137,6 +137,14 @@ export function useProjektmanagement() {
     return data;
   }, []);
 
+  // Phase A: Projekt-Entity (Top-Level). Lebt parallel zum Auftrag, gleiche ID.
+  const getProjekt = useCallback(async (projektId) => {
+    const response = await apiGet(`/apps/projektmanagement/projekte/${projektId}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.projekt;
+  }, []);
+
   // Update Projektauftrag
   const updateProjektauftrag = useCallback(async (projektId, updates, { expectedVersion, force = false } = {}) => {
     const body = { ...updates };
@@ -436,6 +444,7 @@ export function useProjektmanagement() {
     createProjektauftrag,
     createFromVorlage,
     getProjektauftrag,
+    getProjekt,
     updateProjektauftrag,
     updateStep,
     deleteProjektauftrag,

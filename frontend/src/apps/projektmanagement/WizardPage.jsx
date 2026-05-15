@@ -4,9 +4,10 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useProjektmanagement, VersionConflictError } from '../../hooks/useProjektmanagement';
+import ProjektUebersichtPanel from './components/ProjektUebersichtPanel';
 import { usePmResourcePermission, hasMinRole } from '../../hooks/usePmResourcePermission';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import RoleBadge from '../../components/RoleBadge';
@@ -264,28 +265,34 @@ const styles = {
     height: '100%',
     color: theme.colors.textMuted,
   },
-  // Mode Toggle (Segmented Control)
-  modeToggle: {
+  // Top-Level Tab-Bar (Phase B) — Pill-Style analog ToolsPage.jsx
+  topTabBar: {
     display: 'flex',
-    backgroundColor: theme.colors.surfaceHover,
-    borderRadius: theme.borderRadius.lg,
-    padding: '2px',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.md} ${theme.spacing['2xl']}`,
+    borderBottom: `1px solid ${theme.colors.border}`,
+    backgroundColor: 'transparent',
+    flexShrink: 0,
   },
-  modeButton: {
-    padding: `${theme.spacing.xs} ${theme.spacing.lg}`,
-    borderRadius: theme.borderRadius.md,
+  topTab: {
+    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+    backgroundColor: 'transparent',
     border: 'none',
+    borderRadius: theme.borderRadius.md,
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
+    color: theme.colors.textMuted,
     cursor: 'pointer',
     transition: `all ${theme.transitions.fast}`,
-    backgroundColor: 'transparent',
-    color: theme.colors.textMuted,
   },
-  modeButtonActive: {
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-    boxShadow: theme.shadows.sm,
+  topTabActive: {
+    backgroundColor: theme.colors.primaryLight,
+    color: theme.colors.primary,
+  },
+  topTabComingSoon: {
+    color: theme.colors.textMuted,
+    cursor: 'not-allowed',
+    opacity: 0.5,
   },
   // Statusbericht tabs
   sbTabs: {
@@ -363,6 +370,7 @@ function WizardPage() {
   const {
     createProjektauftrag,
     getProjektauftrag,
+    getProjekt,
     updateStep,
     deleteProjektauftrag,
     getConfig,
@@ -400,8 +408,17 @@ function WizardPage() {
   const [stepAnalyses, setStepAnalyses] = useState({});
   // Gesamtbewertung state (for Step8)
   const [gesamtbewertung, setGesamtbewertung] = useState(null);
-  // Statusbericht state
-  const [mode, setMode] = useState('auftrag'); // 'auftrag' | 'statusbericht'
+  // Phase B: Top-Level-Tab-State. URL-synced via ?tab=. Werte: uebersicht | auftrag | statusberichte.
+  // Default fuer bestehende Projekte: 'uebersicht' (sauberer Lifecycle-Einstieg).
+  // Default fuer "neu" (kein id): 'auftrag' (Uebersicht haette keinen Inhalt).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialMode = (() => {
+    const fromUrl = searchParams.get('tab');
+    if (fromUrl === 'uebersicht' || fromUrl === 'auftrag' || fromUrl === 'statusberichte') return fromUrl;
+    return id ? 'uebersicht' : 'auftrag';
+  })();
+  const [mode, setMode] = useState(initialMode);
+  const [projekt, setProjekt] = useState(null); // paProjekte-Row (Lifecycle etc.)
   const [statusberichte, setStatusberichte] = useState([]);
   const [selectedSbId, setSelectedSbId] = useState(null);
   const [currentSb, setCurrentSb] = useState(null);
@@ -423,6 +440,27 @@ function WizardPage() {
       loadProjektauftrag();
     }
   }, [id]);
+
+  // Phase A/B: parallele Projekt-Entity laden. Best-effort — fehlt sie (Auftrag
+  // wurde noch nicht migriert), bleibt projekt=null und Header zeigt fallback.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    getProjekt(id).then((p) => {
+      if (!cancelled) setProjekt(p);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [id, getProjekt]);
+
+  // Tab-State <-> URL-Sync. Setze ?tab=... beim Wechsel, lese beim Mount.
+  const setModeAndUrl = useCallback((next) => {
+    setMode(next);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('tab', next);
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const loadProjektauftrag = async () => {
     try {
@@ -594,7 +632,8 @@ function WizardPage() {
   };
 
   // Show mode toggle if project is active or has statusberichte
-  const showModeToggle = projektauftrag.id && (projektauftrag.status === 'active' || statusberichte.length > 0);
+  // Phase B: keine Conditional-Logic mehr — Tabs sind immer sichtbar.
+  // showModeToggle entfernt; siehe ProjektUebersichtPanel + Top-Tab-Bar.
 
   // Calculate completeness locally
   const calculateCompleteness = useCallback((data) => {
@@ -920,28 +959,6 @@ function WizardPage() {
           </div>
 
           <div style={styles.headerActions}>
-            {showModeToggle && (
-              <div style={styles.modeToggle}>
-                <button
-                  style={{
-                    ...styles.modeButton,
-                    ...(mode === 'auftrag' ? styles.modeButtonActive : {}),
-                  }}
-                  onClick={() => setMode('auftrag')}
-                >
-                  Projektauftrag
-                </button>
-                <button
-                  style={{
-                    ...styles.modeButton,
-                    ...(mode === 'statusbericht' ? styles.modeButtonActive : {}),
-                  }}
-                  onClick={() => setMode('statusbericht')}
-                >
-                  Statusberichte
-                </button>
-              </div>
-            )}
             {mode === 'auftrag' && projektauftrag.id && (
               <ExportDropdown
                 onExport={handleExport}
@@ -957,7 +974,7 @@ function WizardPage() {
                 onDelete={handleDelete}
               />
             )}
-            {mode === 'statusbericht' && currentSb && currentSb.status === 'draft' && canEdit && (
+            {mode === 'statusberichte' && currentSb && currentSb.status === 'draft' && canEdit && (
               <button
                 style={{ ...styles.actionButton, ...styles.deleteButton }}
                 onClick={handleDeleteSb}
@@ -972,33 +989,32 @@ function WizardPage() {
                 Löschen
               </button>
             )}
-            {mode === 'auftrag' ? (
-              canEdit && (
-                <button
-                  style={{
-                    ...styles.actionButton,
-                    ...styles.primaryButton,
-                    opacity: isSaving ? 0.7 : 1,
-                    ...(isDirty && !isSaving ? {
-                      boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
-                    } : {}),
-                  }}
-                  onClick={saveStep}
-                  disabled={isSaving}
-                  onMouseEnter={(e) => {
-                    if (!isSaving) {
-                      e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = theme.colors.primary;
-                  }}
-                >
-                  <SaveIcon />
-                  {isSaving ? 'Speichern...' : isDirty ? 'Speichern *' : 'Speichern'}
-                </button>
-              )
-            ) : currentSb && canEdit && (
+            {mode === 'auftrag' && canEdit && (
+              <button
+                style={{
+                  ...styles.actionButton,
+                  ...styles.primaryButton,
+                  opacity: isSaving ? 0.7 : 1,
+                  ...(isDirty && !isSaving ? {
+                    boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
+                  } : {}),
+                }}
+                onClick={saveStep}
+                disabled={isSaving}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.primary;
+                }}
+              >
+                <SaveIcon />
+                {isSaving ? 'Speichern...' : isDirty ? 'Speichern *' : 'Speichern'}
+              </button>
+            )}
+            {mode === 'statusberichte' && currentSb && canEdit && (
               <button
                 style={{
                   ...styles.actionButton,
@@ -1027,13 +1043,51 @@ function WizardPage() {
         </div>
       </div>
 
+      {/* Top-Level Tabs (Phase B): Uebersicht | Projektauftrag | Statusberichte.
+          Bei "neu" (kein id) blenden wir die Tab-Bar aus — der Wizard ist allein
+          zustaendig, ein neues Projekt anzulegen; die Sub-Resources entstehen
+          erst nach dem ersten Save. */}
+      {id && (
+        <div style={styles.topTabBar}>
+          <button
+            type="button"
+            style={{ ...styles.topTab, ...(mode === 'uebersicht' ? styles.topTabActive : {}) }}
+            onClick={() => setModeAndUrl('uebersicht')}
+          >
+            Übersicht
+          </button>
+          <button
+            type="button"
+            style={{ ...styles.topTab, ...(mode === 'auftrag' ? styles.topTabActive : {}) }}
+            onClick={() => setModeAndUrl('auftrag')}
+          >
+            Projektauftrag
+          </button>
+          <button
+            type="button"
+            style={{ ...styles.topTab, ...(mode === 'statusberichte' ? styles.topTabActive : {}) }}
+            onClick={() => setModeAndUrl('statusberichte')}
+          >
+            Statusberichte{statusberichte.length > 0 ? ` (${statusberichte.length})` : ''}
+          </button>
+        </div>
+      )}
+
       {!canEdit && id && (
         <div style={{ padding: `0 ${theme.spacing['2xl']}`, marginTop: theme.spacing.md }}>
           <ReadOnlyBanner ownerName={projektauftrag.created_by} />
         </div>
       )}
 
-      {mode === 'auftrag' ? (
+      {mode === 'uebersicht' && id && (
+        <ProjektUebersichtPanel
+          projekt={projekt}
+          projektauftrag={projektauftrag}
+          statusberichte={statusberichte}
+        />
+      )}
+
+      {mode === 'auftrag' && (
         <>
           {/* Step Tabs (Horizontal Pill-Style) */}
           <div style={styles.stepTabs}>
@@ -1155,7 +1209,9 @@ function WizardPage() {
             </button>
           </div>
         </>
-      ) : (
+      )}
+
+      {mode === 'statusberichte' && (
         <>
           {/* Statusbericht Main */}
           <div style={styles.main}>
@@ -1282,7 +1338,7 @@ function WizardPage() {
 
       {conflict && (
         <ConflictResolutionModal
-          entityLabel={mode === 'auftrag' ? 'Projektauftrag' : 'Statusbericht'}
+          entityLabel={mode === 'statusberichte' ? 'Statusbericht' : 'Projektauftrag'}
           serverData={conflict.current}
           onReload={handleConflictReload}
           onForce={handleConflictForce}
