@@ -39,6 +39,7 @@ import { syncBuiltInApps } from './apps/registry';
 import { publicApiRouter } from './public-api/router';
 import { brandingRoutes } from './routes/branding';
 import { runMigrations } from './db/migrate';
+import { migrateAuftraegeToProjekteIfNeeded } from './apps/projektmanagement/projekt-service';
 import { ensureBucket } from './storage/s3';
 import { seedDemoUsers } from '../../scripts/seed-demo-users';
 import { seedCustomSkillsFromDisk } from './skills';
@@ -58,6 +59,20 @@ async function initialize() {
     await runMigrations();
   } catch (error) {
     console.error('DB migrations failed:', error);
+  }
+
+  // Daten-Migration Phase A: Projektauftrag → Projekt (1:1, gleiche ID).
+  // Idempotent — Boot 2..N sehen nur "0 created, N skipped". Springt frueh raus
+  // wenn keine DB konfiguriert ist (Dev ohne SCALINGO_POSTGRES).
+  if (process.env.SCALINGO_POSTGRES) {
+    try {
+      const r = await migrateAuftraegeToProjekteIfNeeded();
+      if (r.created > 0 || r.errors > 0) {
+        console.log(`[migrate-projekte] created=${r.created} skipped=${r.skipped} errors=${r.errors}`);
+      }
+    } catch (error) {
+      console.warn('[migrate-projekte] skipped/failed (server will still start):', error instanceof Error ? error.message : error);
+    }
   }
 
   // Demo-Seed-Block — laeuft NUR wenn die Instanz ausdruecklich als Demo-

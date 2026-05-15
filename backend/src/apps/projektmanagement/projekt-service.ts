@@ -13,7 +13,7 @@
 
 import { eq, desc, and } from 'drizzle-orm';
 import { getDb } from '../../db';
-import { paProjekte } from '../../db/schema/projektmgmt';
+import { paProjekte, paProjektauftraege } from '../../db/schema/projektmgmt';
 import type {
   Projekt,
   ProjektCreateInput,
@@ -200,4 +200,68 @@ export async function suggestLifecycleTransition(projektId: string): Promise<Pro
   // implementiert, weil Auftrag-Loader noch nicht den Projekt-FK kennt.
   // Stub returnt null = "kein Vorschlag".
   return null;
+}
+
+// ============== Daten-Migration (Boot-Hook + CLI) ==============
+
+function mapAuftragStatusToLifecycle(status: string | null | undefined): ProjektLifecycle {
+  switch ((status || '').toLowerCase()) {
+    case 'active': return 'active';
+    case 'completed': return 'closed';
+    case 'cancelled': return 'cancelled';
+    default: return 'planning';
+  }
+}
+
+/**
+ * Idempotent: legt fuer jeden Auftrag, der noch kein Projekt mit derselben ID
+ * hat, ein Projekt-Row an. Wird beim Boot aufgerufen (siehe index.ts) und
+ * vom CLI-Script `scripts/migrate-projekte.ts`. Zweite Ausfuehrung ist No-op.
+ *
+ * Wird beim Boot **nach** `runMigrations()` aufgerufen — die DB-Tabelle muss
+ * existieren. Ohne SCALINGO_POSTGRES (Dev ohne DB) gibt `getDb()` einen
+ * Fehler — dann fangen wir den weiter oben in `index.ts` ab.
+ */
+export async function migrateAuftraegeToProjekteIfNeeded(): Promise<{
+  created: number;
+  skipped: number;
+  errors: number;
+}> {
+  const db = getDb();
+  const auftraege = await db.select().from(paProjektauftraege);
+  let created = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  for (const auftrag of auftraege) {
+    try {
+      const existing = await db
+        .select({ id: paProjekte.id })
+        .from(paProjekte)
+        .where(eq(paProjekte.id, auftrag.id))
+        .limit(1);
+      if (existing.length > 0) {
+        skipped += 1;
+        continue;
+      }
+      await db.insert(paProjekte).values({
+        id: auftrag.id,
+        ownerId: auftrag.ownerId,
+        name: auftrag.name,
+        lifecycle: mapAuftragStatusToLifecycle(auftrag.status),
+        portfolioId: null,
+        ideeId: auftrag.ideeId,
+        metadata: null,
+        permissions: auftrag.permissions as never,
+        version: 1,
+        createdAt: auftrag.createdAt,
+        updatedAt: auftrag.updatedAt,
+      });
+      created += 1;
+    } catch (err) {
+      errors += 1;
+      console.error(`[migrate-projekte] Fehler bei id=${auftrag.id}:`, err instanceof Error ? err.message : err);
+    }
+  }
+  return { created, skipped, errors };
 }
