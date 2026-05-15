@@ -2,6 +2,13 @@
 
 ## 2026-05-06
 
+### Projektmanagement Entity-Restruktur — Phase A (Backend, beide Worktrees)
+Vorbereitung fuer den vollen PM-Lifecycle (Projektidee → Projekt → Auftrag → Statusberichte → Lessons Learned → Abschluss → Portfolio). Heute ist `paProjektauftraege` *de facto* das Projekt — das passt nicht zur Vision, in der `Projekt` die Identitaet traegt und `Auftrag/SB/LL/Abschluss` Sub-Resources sind. Phase A liefert die neue Top-Level-Entity parallel zum Auftrag; IDs werden 1:1 uebernommen, damit alte URLs/Bookmarks weiter funktionieren. Doku: `docs/projektmanagement-entity-restruktur-2026-05-06.md` (im main-Worktree).
+
+- **demo/messe (YAML + Bun)**: neue TS-Interfaces (`Projekt`, `ProjektCreateInput`, `ProjektUpdateInput`, `ProjektLifecycle`) — camelCase, bewusst abweichend von snake_case-Konvention bei Auftrag/Idee, damit Frontend-Cherry-pick aus main 1:1 passt. Storage ueber `data/apps/projektmanagement/projekte/{id}/metadata.yaml` mit `withLock` + `VersionConflictError` (analog Auftrag). API-Shape identisch zu main: `GET/POST/PUT/DELETE /api/apps/projektmanagement/projekte[/:id]`; `PUT` mappt `VersionConflictError` → HTTP 409. Migrations-Script `scripts/migrate-projekte.ts` (idempotent, handhabt fehlendes `projektauftraege/`-Verzeichnis ohne Crash).
+- **main (Postgres + Drizzle)**: parallele Implementierung mit Drizzle-Tabelle `projektmgmt.projekte` + `0010_projekt_entity.sql`-Migration + `migrate-projekte.ts`-Script (6 bestehende Auftraege erfolgreich migriert).
+- **Entscheidungen**: 1:1-IDs (kein Linkbruch), Portfolio 0..1 pro Projekt, Projektname am Projekt (nicht am Auftrag), Lifecycle explizit + Auto-Vorschlaege (Stub).
+
 ### WZ-Branchen-Matcher — 4-6-stellige Codes + Multi-Tätigkeits-Erkennung
 Erstes Kunden-Feedback umgesetzt: a) IHK trifft regelmaessig auf 5-/6-stellige WZ-Schluessel (Unterklasse / Detail-Unterklasse), nicht nur auf 4-stellige Klassen. b) Eintragungen vom Amtsgericht enthalten oft mehrere distinkte Taetigkeiten (Beispiel "Baulicher Brandschutz, Trockenbau und Umzuege"); IHK kann bis zu 3 Schluessel pro Unternehmen hinterlegen.
 

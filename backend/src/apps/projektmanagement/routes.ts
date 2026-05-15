@@ -53,6 +53,13 @@ import {
   createAuftragFromIdee,
 } from './idee-service';
 import { VersionConflictError } from './concurrency';
+import {
+  listProjekte,
+  getProjekt,
+  createProjekt,
+  updateProjekt,
+  deleteProjekt,
+} from './projekt-service';
 import { requireAppAccess } from '../permissions-middleware';
 import {
   getEffectiveIdeeRole,
@@ -1634,6 +1641,105 @@ projektmanagement.get('/my-permission/auftrag/:id', async (c) => {
   } catch (error) {
     console.error('Error getting my auftrag role:', error);
     return c.json({ error: 'Failed' }, 500);
+  }
+});
+
+// ============== Projekt Endpoints (Phase A, Top-Level-Entity) ==============
+//
+// `paProjekte` (YAML: data/apps/projektmanagement/projekte/{id}/metadata.yaml)
+// ist die neue Top-Level-Entity. Parallel zu /projektauftraege/* — IDs
+// stimmen 1:1 ueberein (siehe scripts/migrate-projekte.ts). Phase A liefert
+// nur Identitaet + Lifecycle. Spaetere Phasen ziehen Sub-Resource-FKs um.
+//
+// Permission-Modell wird bewusst noch NICHT auf Projekt-Ebene gespiegelt —
+// requireAppAccess auf /apps/projektmanagement reicht fuer Phase A, weil das
+// Projekt aktuell nur Identitaet traegt. Sobald Sub-Resources umgezogen sind,
+// rueckt die Permission-Logik (analog Auftrag) hierher.
+
+projektmanagement.get('/projekte', async (c) => {
+  try {
+    const projekte = await listProjekte();
+    return c.json({ projekte });
+  } catch (error) {
+    console.error('Error listing projekte:', error);
+    return c.json({ error: 'Failed to list projekte' }, 500);
+  }
+});
+
+projektmanagement.get('/projekte/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const projekt = await getProjekt(id);
+    if (!projekt) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+    return c.json({ projekt });
+  } catch (error) {
+    console.error('Error getting projekt:', error);
+    return c.json({ error: 'Failed to get projekt' }, 500);
+  }
+});
+
+projektmanagement.post('/projekte', async (c) => {
+  try {
+    const denied = denyIfNotAppEditor(c);
+    if (denied) return c.json(denied, 403);
+
+    const body = await c.req.json();
+    if (!body?.name || typeof body.name !== 'string') {
+      return c.json({ error: '`name` ist erforderlich' }, 400);
+    }
+    const userId = getCurrentUserId(c) ?? undefined;
+    const projekt = await createProjekt({
+      id: body.id,
+      name: body.name,
+      lifecycle: body.lifecycle,
+      portfolioId: body.portfolioId,
+      ideeId: body.ideeId,
+      ownerId: body.ownerId ?? userId,
+      metadata: body.metadata,
+    });
+    return c.json({ projekt }, 201);
+  } catch (error) {
+    console.error('Error creating projekt:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to create projekt' }, 500);
+  }
+});
+
+projektmanagement.put('/projekte/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const projekt = await updateProjekt(id, {
+      name: body.name,
+      lifecycle: body.lifecycle,
+      portfolioId: body.portfolioId,
+      metadata: body.metadata,
+      expectedVersion: body.expectedVersion,
+    });
+    return c.json({ projekt });
+  } catch (error) {
+    if (error instanceof VersionConflictError) {
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
+    }
+    if (error instanceof Error && /nicht gefunden/.test(error.message)) {
+      return c.json({ error: error.message }, 404);
+    }
+    console.error('Error updating projekt:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to update projekt' }, 500);
+  }
+});
+
+projektmanagement.delete('/projekte/:id', async (c) => {
+  try {
+    const denied = denyIfNotAppEditor(c);
+    if (denied) return c.json(denied, 403);
+
+    const id = c.req.param('id');
+    const ok = await deleteProjekt(id);
+    if (!ok) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting projekt:', error);
+    return c.json({ error: 'Failed to delete projekt' }, 500);
   }
 });
 
