@@ -2,6 +2,23 @@
 
 ## 2026-05-06
 
+### Projektmanagement Entity-Restruktur — Phase B (Frontend Tab-Container)
+Detail-Ansicht eines Projekts startet jetzt in einer **Übersicht** statt im
+Projektauftrag-Wizard. Der bisherige Segmented-Mode-Toggle (Projektauftrag /
+Statusbericht) im Header verschwindet; stattdessen gibt es eine echte Top-Level-
+Tab-Bar **Übersicht | Projektauftrag | Statusberichte**. Identisch zum main-
+Worktree.
+
+- **In-place-Refactor von `WizardPage.jsx`**: Mode-State akzeptiert jetzt
+  `uebersicht | auftrag | statusberichte`, Default bei bestehendem Projekt =
+  `uebersicht`. Tab-State synct mit URL `?tab=...`.
+- **Neue Komponente `ProjektUebersichtPanel.jsx`**: vier Karten (Lifecycle,
+  Schluesseldaten, letzter Statusbericht, Platzhalter Abschluss). Liest
+  Lifecycle aus `/api/apps/projektmanagement/projekte/:id`.
+- **Hook**: `useProjektmanagement` exportiert jetzt `getProjekt(id)`.
+- **Bei neuen Projekten** (`/apps/projektmanagement/neu`) bleibt die Tab-Bar
+  ausgeblendet — Wizard ist allein zustaendig fuer die Erstanlage.
+
 ### Projektmanagement Entity-Restruktur — Phase A (Backend, beide Worktrees)
 Vorbereitung fuer den vollen PM-Lifecycle (Projektidee → Projekt → Auftrag → Statusberichte → Lessons Learned → Abschluss → Portfolio). Heute ist `paProjektauftraege` *de facto* das Projekt — das passt nicht zur Vision, in der `Projekt` die Identitaet traegt und `Auftrag/SB/LL/Abschluss` Sub-Resources sind. Phase A liefert die neue Top-Level-Entity parallel zum Auftrag; IDs werden 1:1 uebernommen, damit alte URLs/Bookmarks weiter funktionieren. Doku: `docs/projektmanagement-entity-restruktur-2026-05-06.md` (im main-Worktree).
 
