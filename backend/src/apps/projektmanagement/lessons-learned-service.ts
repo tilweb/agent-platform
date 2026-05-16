@@ -205,7 +205,7 @@ export async function suggestLessonsLearnedFromStatusberichte(
 
   const prompt = buildSuggestPrompt(projektName, summaries);
   const messages: Message[] = [
-    { role: 'system', content: 'Du bist ein PM-Coach. Antworte AUSSCHLIESSLICH mit valide formatiertem JSON. Keine Erklaerung drumherum.' },
+    { role: 'system', content: 'Du bist ein PM-Coach. Antworte AUSSCHLIESSLICH mit valide formatiertem JSON. Keine Erklärung drumherum. WICHTIG: Schreibe die Texte in korrektem Deutsch mit Umlauten (ä, ö, ü, ß) — NICHT in ASCII-Ersatzschreibung (ae/oe/ue/ss).' },
     { role: 'user', content: prompt },
   ];
   const usageContext: UsageContext = {
@@ -225,25 +225,25 @@ Jede Lesson Learned hat:
 - title: kurzer Titel (max. 80 Zeichen)
 - themengebiet: einer aus [basis, stakeholder, organisation, ziele, inhalt, roadmap, kosten, risiko, lessons_learned, projektidee, auftragsklaerung, umsetzung, projektabschluss]
 - kategorie: SWOT-Klassifikation, einer aus [strength, weakness, opportunity, threat]
-- beschreibung: "Worum geht es?" — 1-3 Saetze, konkret
-- auswirkung: "Was ist die Folge?" — 1-2 Saetze
-- empfehlung: "Was geben wir an andere weiter?" — 1-2 Saetze, generalisiert
+- beschreibung: "Worum geht es?" — 1-3 Sätze, konkret
+- auswirkung: "Was ist die Folge?" — 1-2 Sätze
+- empfehlung: "Was geben wir an andere weiter?" — 1-2 Sätze, generalisiert
 - source: optional — z.B. "SB #3: Risiko XYZ"
 
 Statusberichte (juengste zuerst):
 ${JSON.stringify(summaries, null, 2)}
 
-Antworte als JSON-Objekt mit Schluessel "suggestions": [...]. Beispiel:
+Antworte als JSON-Objekt mit Schlüssel "suggestions": [...]. Beispiel:
 {
   "suggestions": [
     {
-      "title": "Frueher Stakeholder-Workshop hat Anforderungen geschaerft",
+      "title": "Früher Stakeholder-Workshop hat Anforderungen geschärft",
       "themengebiet": "stakeholder",
       "kategorie": "strength",
-      "beschreibung": "Der Kickoff-Workshop in Woche 2 hat die heterogenen Erwartungen frueh transparent gemacht.",
-      "auswirkung": "Spaete Change-Requests wurden vermieden, der Scope blieb stabil.",
+      "beschreibung": "Der Kickoff-Workshop in Woche 2 hat die heterogenen Erwartungen früh transparent gemacht.",
+      "auswirkung": "Späte Change-Requests wurden vermieden, der Scope blieb stabil.",
       "empfehlung": "Bei Projekten mit >3 Stakeholder-Gruppen einen Kickoff-Workshop in den ersten 2 Wochen einplanen.",
-      "source": "SB #1: Stakeholder-Akzeptanz gruen"
+      "source": "SB #1: Stakeholder-Akzeptanz grün"
     }
   ]
 }`;

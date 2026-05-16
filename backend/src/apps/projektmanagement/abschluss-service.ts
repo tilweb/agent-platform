@@ -343,7 +343,7 @@ export async function suggestAbschlussDraft(
 
   const prompt = buildPrompt(projektName, auftrag, sbSummaries, lessons);
   const messages: Message[] = [
-    { role: 'system', content: 'Du bist ein PMO-Berater fuer Projektabschluesse. Antworte AUSSCHLIESSLICH mit valide formatiertem JSON. Keine Erklaerung drumherum.' },
+    { role: 'system', content: 'Du bist ein PMO-Berater für Projektabschlüsse. Antworte AUSSCHLIESSLICH mit valide formatiertem JSON. Keine Erklärung drumherum. WICHTIG: Schreibe die Texte in korrektem Deutsch mit Umlauten (ä, ö, ü, ß) — NICHT in ASCII-Ersatzschreibung (ae/oe/ue/ss).' },
     { role: 'user', content: prompt },
   ];
   const usageContext: UsageContext = {
@@ -361,12 +361,12 @@ function buildPrompt(
   sbSummaries: any[],
   lessons: any[],
 ): string {
-  return `Erstelle einen Initial-Entwurf fuer den Abschlussbericht des Projekts "${projektName}".
+  return `Erstelle einen Initial-Entwurf für den Abschlussbericht des Projekts "${projektName}".
 
 Liefere drei Textfelder:
-- management_summary: 3-6 Saetze, professioneller Management-Ton, konsolidiert die wichtigsten Erkenntnisse aus den Statusberichten ueber die Projektlaufzeit.
-- key_findings: 3-5 Aufzaehlungspunkte, jeweils 1-2 Saetze. Fokus: Wo standen wir am Ende vs. Plan? (Termine, Kosten, Scope, Risiken).
-- folgeprojekt_empfehlung: 2-4 Saetze, konkrete Hinweise fuer Folgeprojekte mit aehnlicher Charakteristik.
+- management_summary: 3-6 Sätze, professioneller Management-Ton, konsolidiert die wichtigsten Erkenntnisse aus den Statusberichten über die Projektlaufzeit.
+- key_findings: 3-5 Aufzählungspunkte, jeweils 1-2 Sätze. Fokus: Wo standen wir am Ende vs. Plan? (Termine, Kosten, Scope, Risiken).
+- folgeprojekt_empfehlung: 2-4 Sätze, konkrete Hinweise für Folgeprojekte mit ähnlicher Charakteristik.
 
 Projektauftrag (Highlights):
 ${auftrag ? JSON.stringify({
@@ -386,8 +386,8 @@ ${JSON.stringify(lessons, null, 2)}
 Antworte als JSON-Objekt. Beispiel:
 {
   "management_summary": "Das Projekt 'X' wurde planmaessig abgeschlossen; der Scope blieb stabil...",
-  "key_findings": "- Terminziel mit 5 Tagen Puffer erreicht\\n- Budget um 3% ueberschritten...",
-  "folgeprojekt_empfehlung": "Bei aehnlich gelagerten Vorhaben empfehlen wir..."
+  "key_findings": "- Terminziel mit 5 Tagen Puffer erreicht\\n- Budget um 3% überschritten...",
+  "folgeprojekt_empfehlung": "Bei ähnlich gelagerten Vorhaben empfehlen wir..."
 }`;
 }
 
