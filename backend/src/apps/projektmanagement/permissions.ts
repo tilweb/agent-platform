@@ -1,33 +1,39 @@
 /**
  * Phase-2 Auftrags-/Idee-Level Berechtigungen fuer das Projektmanagement.
  *
- * Zwei-Ebenen-Modell:
+ * Zwei-Ebenen-Modell mit MAX-Verschmelzung (Slack/GitHub-Style):
  * - **App-Level** (siehe `apps/permissions.ts`): wer hat ueberhaupt Zugriff
  *   auf die App `projektmanagement` und welche App-Rolle (owner/editor/viewer).
- * - **Auftrags-Level** (hier): wer hat welche Rolle auf einer konkreten
- *   Idee/Auftrag. Statusberichte erben vom Auftrag (kein eigenes Feld).
+ *   Diese Rolle ist der **Floor** auf allen Ressourcen der App.
+ * - **Resource-Level** (hier): wer hat welche Rolle auf einer konkreten
+ *   Idee/Auftrag. Statusberichte/LL/Abschluss erben vom Auftrag.
  *
- * Default ohne explizite Auftrags-Permissions: nur der Ersteller (`ownerId`-
- * Spalte / `created_by`-YAML-Feld) ist Owner. Bleibt Owner auch wenn er
- * spaeter keine App-Berechtigung mehr hat — sonst koennten Eintraege verwaisen.
+ * Effektive Rolle = MAX(App-Rolle, Resource-Rolle).
  *
- * Effektive Rolle = max(
- *   ownerId === userId ? 'owner' : null,
- *   permissions.users[userId]?.role,
- *   max(permissions.groups[g]?.role  fuer g in userGroups),
- * ).
+ *   App-Owner-Gruppe (PMO/Fuehrung) sieht und bearbeitet **alle** Auftraege
+ *   der App, auch ohne explizite Auftrags-Permissions.
+ *   App-Editor sieht alles + kann editieren.
+ *   App-Viewer sieht alles read-only.
+ *
+ * Default ohne explizite Auftrags-Permissions: Ersteller (`ownerId` /
+ * `created_by`) ist Owner. Bleibt Owner auch wenn er spaeter keine App-
+ * Berechtigung mehr hat — sonst koennten Eintraege verwaisen.
  */
 
 import { getProjektidee, updateProjektidee } from './idee-storage';
 import { getProjektauftrag, updateProjektauftrag } from './storage';
 import { getUserGroups } from '../../auth/groups';
 import { isAuftragsRole } from './types';
+import { getUserAppPermission } from '../permissions';
+import type { AppRole } from '../types';
 import type {
   AuftragsRole,
   ResourcePermissions,
   Projektidee,
   Projektauftrag,
 } from './types';
+
+const APP_ID = 'projektmanagement';
 
 const ROLE_RANK: Record<AuftragsRole, number> = {
   viewer: 0,
@@ -58,13 +64,20 @@ export function defaultOwnerPermissions(userId: string): ResourcePermissions {
 
 /**
  * Synchroner Resolver — sowohl fuer Idee als auch Auftrag identisch:
- * `ownerId` ist Default-Owner (Ersteller), permissions ergaenzen.
+ * Resource-Rolle + App-Rolle (Floor) gehen mit MAX zusammen.
+ *
+ * - `ownerId` = Ersteller; gibt Owner unabhaengig von der App-Rolle (auch
+ *   wenn er spaeter keine App-Berechtigung mehr hat → keine Datenverwaisung)
+ * - `permissions.users[]` / `permissions.groups[]` = explizite Resource-Overrides
+ * - `appRole` (PMO-Gruppe) = Floor auf alle Ressourcen der App: App-Owner sieht
+ *   und bearbeitet alle Auftraege, App-Editor editiert alles, App-Viewer liest alles
  */
 export function resolveRole(
   userId: string,
   ownerId: string | null | undefined,
   permissions: ResourcePermissions | null | undefined,
   userGroupIds: Set<string>,
+  appRole: AppRole | null | undefined,
 ): AuftragsRole | null {
   let role: AuftragsRole | null = null;
 
@@ -74,20 +87,25 @@ export function resolveRole(
     role = 'owner';
   }
 
-  if (!permissions) return role;
-
-  // 2. Direkte User-Permissions
-  for (const perm of permissions.users ?? []) {
-    if (perm.userId === userId) {
-      role = pickHighest(role, perm.role);
+  // 2. Resource-Level Permissions (User + Gruppe)
+  if (permissions) {
+    for (const perm of permissions.users ?? []) {
+      if (perm.userId === userId) {
+        role = pickHighest(role, perm.role);
+      }
+    }
+    for (const perm of permissions.groups ?? []) {
+      if (userGroupIds.has(perm.groupId)) {
+        role = pickHighest(role, perm.role);
+      }
     }
   }
 
-  // 3. Group-Permissions (alle Gruppen-Mitgliedschaften des Users beruecksichtigen)
-  for (const perm of permissions.groups ?? []) {
-    if (userGroupIds.has(perm.groupId)) {
-      role = pickHighest(role, perm.role);
-    }
+  // 3. App-Rolle als Floor (Slack/GitHub-Modell): wer App-Owner ist, ist
+  //    auch Owner auf jedem Auftrag; App-Editor mind. Editor; App-Viewer
+  //    mind. Viewer. Resource-Permissions koennen nur erhoehen, nie senken.
+  if (appRole) {
+    role = pickHighest(role, appRole as AuftragsRole);
   }
 
   return role;
@@ -107,12 +125,16 @@ export async function getEffectiveIdeeRole(
 ): Promise<AuftragsRole | null> {
   const idee = await getProjektidee(ideeId);
   if (!idee) return null;
-  const userGroupIds = await getUserGroupIds(userId);
+  const [userGroupIds, appRole] = await Promise.all([
+    getUserGroupIds(userId),
+    getUserAppPermission(userId, APP_ID),
+  ]);
   return resolveRole(
     userId,
     (idee as Projektidee & { ownerId?: string }).ownerId ?? idee.created_by,
     idee.permissions ?? null,
     userGroupIds,
+    appRole,
   );
 }
 
@@ -125,12 +147,16 @@ export async function getEffectiveAuftragRole(
 ): Promise<AuftragsRole | null> {
   const auftrag = await getProjektauftrag(auftragId);
   if (!auftrag) return null;
-  const userGroupIds = await getUserGroupIds(userId);
+  const [userGroupIds, appRole] = await Promise.all([
+    getUserGroupIds(userId),
+    getUserAppPermission(userId, APP_ID),
+  ]);
   return resolveRole(
     userId,
     (auftrag as Projektauftrag & { ownerId?: string }).ownerId ?? auftrag.created_by,
     auftrag.permissions ?? null,
     userGroupIds,
+    appRole,
   );
 }
 
@@ -209,7 +235,10 @@ export async function listAccessibleIdeeIds(
   userId: string,
   allIdeen: Projektidee[],
 ): Promise<Map<string, AuftragsRole>> {
-  const userGroupIds = await getUserGroupIds(userId);
+  const [userGroupIds, appRole] = await Promise.all([
+    getUserGroupIds(userId),
+    getUserAppPermission(userId, APP_ID),
+  ]);
   const result = new Map<string, AuftragsRole>();
   for (const idee of allIdeen) {
     const role = resolveRole(
@@ -217,6 +246,7 @@ export async function listAccessibleIdeeIds(
       (idee as Projektidee & { ownerId?: string }).ownerId ?? idee.created_by,
       idee.permissions ?? null,
       userGroupIds,
+      appRole,
     );
     if (role) result.set(idee.id, role);
   }
@@ -227,7 +257,10 @@ export async function listAccessibleAuftragIds(
   userId: string,
   allAuftraege: Projektauftrag[],
 ): Promise<Map<string, AuftragsRole>> {
-  const userGroupIds = await getUserGroupIds(userId);
+  const [userGroupIds, appRole] = await Promise.all([
+    getUserGroupIds(userId),
+    getUserAppPermission(userId, APP_ID),
+  ]);
   const result = new Map<string, AuftragsRole>();
   for (const auftrag of allAuftraege) {
     const role = resolveRole(
@@ -235,6 +268,7 @@ export async function listAccessibleAuftragIds(
       (auftrag as Projektauftrag & { ownerId?: string }).ownerId ?? auftrag.created_by,
       auftrag.permissions ?? null,
       userGroupIds,
+      appRole,
     );
     if (role) result.set(auftrag.id, role);
   }

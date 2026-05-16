@@ -2,6 +2,39 @@
 
 ## 2026-05-16
 
+### Projektmanagement — App-Rolle als Permission-Floor (Slack/GitHub-Modell)
+Die App-Rolle einer Gruppe (`apps.registry.permissions.groups[]`) propagiert
+jetzt automatisch auf alle Ressourcen der App — `App-Owner-Gruppe` (PMO/Führung)
+sieht und bearbeitet alle Aufträge/Ideen unabhängig von expliziten Resource-
+Permissions. Vorher waren App- und Resource-Layer komplett entkoppelt: Demo-
+Gruppe war App-Owner, aber das gab keine Sichtbarkeit auf einzelne Aufträge —
+nur Ersteller und explizit eingetragene User sahen ihre Aufträge.
+
+Modell:
+```
+effektive Rolle = MAX(App-Rolle, Resource-Rolle)
+```
+
+- App-Owner → mind. Owner auf allen Aufträgen der App (sieht/editiert/löscht alles)
+- App-Editor → mind. Editor (sieht alles, kann editieren)
+- App-Viewer → mind. Viewer (sieht alles read-only)
+- Resource-Permissions können **erhöhen** (z.B. einzelner User wird Owner auf
+  einem Auftrag, obwohl er nur App-Viewer ist), aber niemals senken
+- `created_by`-Fallback bleibt als Owner-Backstop für Legacy-Daten
+
+Eingriff:
+- `resolveRole()` bekommt `appRole`-Parameter als Floor (`pickHighest` am Ende)
+- `getEffectiveIdeeRole`, `getEffectiveAuftragRole`, `listAccessibleIdeeIds`,
+  `listAccessibleAuftragIds` laden die App-Rolle einmal pro Request via
+  `getUserAppPermission(userId, 'projektmanagement')` und reichen sie durch
+- Sub-Resourcen (Statusberichte, Lessons Learned, Abschluss) erben automatisch
+  über `denyIfBelowAuftragRole`
+
+Konsequenz fürs Seed-Skript `seed-demo-pm-owners.ts`: ist für die Demo-Gruppe
+nun **nicht mehr nötig**, weil sie via App-Owner-Floor alle Aufträge sieht.
+Bleibt aber sinnvoll, wenn einzelne User außerhalb der Demo-Gruppe explizit
+Owner-Rechte brauchen.
+
 ### Projektmanagement — Default-Permissions auf Resource-Ebene
 Strukturelle Härtung: alle neu erzeugten **Projektaufträge**, **Projektideen**
 und **Projekte** bekommen jetzt explizit `permissions.users[]` mit dem
