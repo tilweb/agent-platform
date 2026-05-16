@@ -2,6 +2,15 @@
 
 ## 2026-05-16
 
+### Projektmanagement — App-Rolle als Permission-Floor (Slack/GitHub-Modell)
+Identisch zum main-Worktree. Die App-Rolle propagiert jetzt automatisch auf
+alle Ressourcen der App: `effektive Rolle = MAX(App-Rolle, Resource-Rolle)`.
+App-Owner-Gruppe (PMO/Führung) sieht und bearbeitet alle Aufträge/Ideen
+unabhängig von expliziten Resource-Permissions. Resource-Permissions können
+nur erhöhen, nie senken. `resolveRole()` bekommt `appRole`-Floor; die vier
+Wrapper (`getEffectiveIdeeRole`, `getEffectiveAuftragRole`, `listAccessible…`)
+laden die App-Rolle pro Request via `getUserAppPermission`.
+
 ### Projektmanagement — Default-Permissions auf Resource-Ebene
 Identisch zum main-Worktree. Neuer Helper `defaultOwnerPermissions(userId)`
 in `permissions.ts`. Neu erzeugte Projektaufträge, Projektideen und Projekte
