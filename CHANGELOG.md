@@ -2,6 +2,14 @@
 
 ## 2026-05-16
 
+### Projektmanagement — Default-Permissions auf Resource-Ebene
+Identisch zum main-Worktree. Neuer Helper `defaultOwnerPermissions(userId)`
+in `permissions.ts`. Neu erzeugte Projektaufträge, Projektideen und Projekte
+bekommen Ersteller als expliziten Owner in `permissions.users[]` — kein
+`permissions: null` mehr. Caller können via `data.permissions` weiterhin
+überschreiben. `created_by`-Fallback im Resolver bleibt als Backstop für
+Legacy-Daten.
+
 ### Bugfix: User-Memory wurde nutzeruebergreifend gemischt
 - `buildSupervisorPrompt` (`backend/src/agents/loop.ts`) rief `loadUserMemory()`
   ohne `userId` auf. Folge: Jeder Supervisor-Prompt — fuer jeden eingeloggten

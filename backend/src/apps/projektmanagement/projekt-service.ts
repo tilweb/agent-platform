@@ -23,6 +23,7 @@ import type {
 } from './types';
 import { PROJEKT_LIFECYCLE_VALUES } from './types';
 import { VersionConflictError, withLock } from './concurrency';
+import { defaultOwnerPermissions } from './permissions';
 
 const BASE_PATH = './data/apps/projektmanagement';
 const PROJEKTE_PATH = `${BASE_PATH}/projekte`;
@@ -100,6 +101,10 @@ export async function createProjekt(input: ProjektCreateInput): Promise<Projekt>
   await ensureBaseDir();
   const id = input.id ?? generateProjektId();
   const now = new Date().toISOString();
+  // Default-Permissions: Ersteller (ownerId) ist explizit Owner. Ohne
+  // ownerId bleibt permissions undefined und der Resolver schlaegt auf
+  // den created_by-Fallback zurueck.
+  const permissions = input.ownerId ? defaultOwnerPermissions(input.ownerId) : undefined;
   const projekt: Projekt = {
     id,
     name: input.name,
@@ -108,7 +113,7 @@ export async function createProjekt(input: ProjektCreateInput): Promise<Projekt>
     ideeId: input.ideeId,
     ownerId: input.ownerId,
     metadata: input.metadata,
-    permissions: undefined,
+    permissions,
     version: 1,
     createdAt: now,
     updatedAt: now,

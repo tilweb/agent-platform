@@ -26,6 +26,7 @@ import {
   getVorlage,
   initializeStorage,
 } from './storage';
+import { defaultOwnerPermissions } from './permissions';
 
 // ============== Projektauftrag CRUD ==============
 
@@ -71,6 +72,9 @@ export async function createProjektauftrag(
     created_at: now,
     updated_at: now,
     created_by: userId,
+    // Default-Permissions: Ersteller ist explizit Owner. Caller kann via
+    // `data.permissions` ueberschreiben.
+    permissions: data.permissions !== undefined ? data.permissions : defaultOwnerPermissions(userId),
   };
 
   await saveProjektauftrag(projektauftrag);

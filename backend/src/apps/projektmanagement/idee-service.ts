@@ -16,6 +16,7 @@ import {
 } from './idee-storage';
 import { generateProjektauftragId, saveProjektauftrag, getProjektauftrag } from './storage';
 import type { Projektidee, BusinessCaseItem, Projektauftrag, Risk } from './types';
+import { defaultOwnerPermissions } from './permissions';
 
 export function generateSubEntityId(prefix = 'item'): string {
   const ts = Date.now().toString(36);
@@ -58,6 +59,8 @@ export async function createIdee(
     created_at: now,
     updated_at: now,
     created_by: userId,
+    // Default-Permissions: Ersteller ist explizit Owner.
+    permissions: payload.permissions !== undefined ? payload.permissions : defaultOwnerPermissions(userId),
   };
   await saveProjektidee(idee);
   const stored = await getProjektidee(id);
@@ -150,6 +153,8 @@ export async function createAuftragFromIdee(
     created_by: userId,
     status: 'draft',
     current_step: 1,
+    // Default-Permissions: Ersteller ist explizit Owner (Phase-2-Pflicht).
+    permissions: defaultOwnerPermissions(userId),
   };
 
   // saveProjektauftrag schreibt die Auftrag-YAML; setAuftragIdeeId ergaenzt

@@ -41,6 +41,21 @@ function pickHighest(a: AuftragsRole | null, b: AuftragsRole | null): AuftragsRo
 }
 
 /**
+ * Default-Permissions fuer neu erzeugte Ressourcen (Idee/Auftrag/Projekt):
+ * Ersteller ist explizit Owner. Sichergestellt dass `permissions` nie null
+ * bleibt — dann reicht keine Resync/Migration mehr fuer Sichtbarkeitsausfall.
+ *
+ * `created_by`-Fallback im Resolver bleibt als Backstop fuer Legacy-Daten;
+ * fuer alles ab dieser Aenderung gilt: Permissions sind die source of truth.
+ */
+export function defaultOwnerPermissions(userId: string): ResourcePermissions {
+  return {
+    users: [{ userId, role: 'owner' }],
+    groups: [],
+  };
+}
+
+/**
  * Synchroner Resolver — sowohl fuer Idee als auch Auftrag identisch:
  * `ownerId` ist Default-Owner (Ersteller), permissions ergaenzen.
  */
