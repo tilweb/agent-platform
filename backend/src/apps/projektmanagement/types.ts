@@ -173,6 +173,95 @@ export interface ProjektUpdateInput {
   expectedVersion?: number;     // optimistic concurrency
 }
 
+// ============== Lessons Learned ==============
+//
+// Phase E (Lessons Learned) — Sub-Resource am Projekt (heute noch via
+// `paProjektauftraege.id` verknuepft, analog Statusberichte).
+//
+// `themengebiet` und `kategorie` sind freie Strings, deren erlaubte Werte
+// aus der App-Config (Einstellungen-Tab) kommen. Defaults stehen unten in
+// LESSON_THEMENGEBIET_DEFAULTS / LESSON_KATEGORIE_DEFAULTS.
+//
+// `kategorie` folgt SWOT (Strength / Weakness / Opportunity / Threat).
+
+export interface LessonLearned {
+  id: string;
+  paId: string;                  // FK auf Projektauftrag (= Projekt-ID nach Phase A)
+  title: string;
+  themengebiet: string;          // siehe LESSON_THEMENGEBIET_DEFAULTS
+  kategorie: string;             // siehe LESSON_KATEGORIE_DEFAULTS
+  beschreibung: string;          // "Worum geht es?"
+  auswirkung: string;            // "Was ist die Folge?"
+  empfehlung: string;            // "Was geben wir an andere weiter?"
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  version: number;               // optimistic concurrency
+}
+
+export interface LessonLearnedCreateInput {
+  title: string;
+  themengebiet?: string;
+  kategorie?: string;
+  beschreibung?: string;
+  auswirkung?: string;
+  empfehlung?: string;
+}
+
+export interface LessonLearnedUpdateInput {
+  title?: string;
+  themengebiet?: string;
+  kategorie?: string;
+  beschreibung?: string;
+  auswirkung?: string;
+  empfehlung?: string;
+  expectedVersion?: number;
+}
+
+/**
+ * Default-Themengebiete fuer Lessons Learned. Editierbar via App-Config
+ * (Einstellungen-Tab). Die Reihenfolge spiegelt grob den Projekt-Lifecycle.
+ */
+export const LESSON_THEMENGEBIET_DEFAULTS = [
+  { value: 'basis', label: 'Basis' },
+  { value: 'stakeholder', label: 'Stakeholder' },
+  { value: 'organisation', label: 'Organisation' },
+  { value: 'ziele', label: 'Ziele' },
+  { value: 'inhalt', label: 'Inhalt' },
+  { value: 'roadmap', label: 'Roadmap' },
+  { value: 'kosten', label: 'Kosten' },
+  { value: 'risiko', label: 'Risiko' },
+  { value: 'lessons_learned', label: 'Lessons Learned' },
+  { value: 'projektidee', label: 'Projektidee' },
+  { value: 'auftragsklaerung', label: 'Auftragsklärung' },
+  { value: 'umsetzung', label: 'Umsetzung' },
+  { value: 'projektabschluss', label: 'Projektabschluss' },
+] as const;
+
+/**
+ * SWOT-Kategorien. Editierbar via App-Config.
+ */
+export const LESSON_KATEGORIE_DEFAULTS = [
+  { value: 'strength', label: 'Strength' },
+  { value: 'weakness', label: 'Weakness' },
+  { value: 'opportunity', label: 'Opportunity' },
+  { value: 'threat', label: 'Threat' },
+] as const;
+
+/**
+ * KI-Vorschlag aus dem suggest-Endpoint. Wird nicht persistiert; User kann
+ * Vorschlaege einzeln annehmen, dann werden sie zu echten Lessons Learned.
+ */
+export interface LessonLearnedSuggestion {
+  title: string;
+  themengebiet: string;
+  kategorie: string;
+  beschreibung: string;
+  auswirkung: string;
+  empfehlung: string;
+  source?: string;               // Hinweis welcher SB / welche Bemerkung den Vorschlag ausgeloest hat
+}
+
 /**
  * Phase-2: Rollen auf Auftrags-/Idee-Ebene. Owner kann loeschen + Permissions
  * setzen, Editor kann bearbeiten + Statusberichte verwalten, Viewer nur lesen.

@@ -2,6 +2,44 @@
 
 ## 2026-05-16
 
+### Projektmanagement — Lessons Learned (Phase E, Backend + Frontend)
+Neue Sub-Resource am Projekt: **Lessons Learned**, SWOT-orientiert (Strength /
+Weakness / Opportunity / Threat) pro Themengebiet (Basis, Stakeholder, …,
+Projektabschluss). Eintraege bestehen aus Titel + Themengebiet/Kategorie
+(Selectboxen, ueber „Einstellungen" pflegbar) + drei Textareas: Beschreibung
+(„Worum geht es?"), Auswirkung („Was ist die Folge?"), Empfehlung („Was geben
+wir an andere weiter?").
+
+- **Sichtbarkeit**: 4. Top-Level-Tab im Projekt-Detail (`?tab=lessons`). Blade-
+  Layout analog Statusberichte: linke Spalte Liste, rechts Detail. Default-
+  Ansicht (kein Eintrag ausgewaehlt) zeigt einen prominenten **„KI-Vorschlaege
+  aus Statusberichten"**-Button.
+- **KI-Suggest**: Endpoint `POST /api/apps/projektmanagement/projektauftraege/
+  :projektId/lessons-learned/suggest` liest die letzten 5 Statusberichte
+  (Management-Summary + Goals-/Roadmap-/Risiko-Bemerkungen + Risiko-Eintraege)
+  und laesst den LLM-Coach 3–7 SWOT-orientierte Lessons Learned ableiten.
+  Vorschlaege sind nicht persistiert; User druckt pro Vorschlag „Uebernehmen"
+  und landet im Edit-Form mit vorbefuellten Feldern.
+- **CRUD-Endpoints** unter `/projektauftraege/:projektId/lessons-learned[/:llId]`
+  (GET-Liste/Detail, POST/PUT/DELETE). Permissions erben vom Auftrag (Viewer
+  liest, Editor+ schreibt/loescht), analog Statusberichte.
+- **Schema main (Drizzle)**: `projektmgmt.lessons_learned` mit FK auf
+  `paProjektauftraege.id`, plus 3 Indexes (pa_id / themengebiet / kategorie).
+  Manual SQL `0011_lessons_learned.sql` + Journal-Eintrag.
+- **Storage demo/messe (YAML)**: `data/apps/projektmanagement/projektauftraege/
+  {id}/lessons-learned/{ll-id}.yaml` mit `withLock` + `VersionConflictError`.
+- **Config**: zwei neue Keys in `DEFAULT_CONFIG` — `lesson_themengebiet`
+  (Basis, Stakeholder, Organisation, Ziele, Inhalt, Roadmap, Kosten, Risiko,
+  Lessons Learned, Projektidee, Auftragsklaerung, Umsetzung, Projektabschluss)
+  und `lesson_kategorie` (SWOT). Im Einstellungen-Tab gepflegt wie die
+  bestehenden Config-Felder.
+- **Frontend-Hook**: `useProjektmanagement` exportiert jetzt
+  `getLessonsLearned`, `getLessonLearned`, `createLessonLearned`,
+  `updateLessonLearned`, `deleteLessonLearned`, `suggestLessonsLearned`.
+- **Neue Komponente** `LessonsLearnedView.jsx`: Blade + Edit-Form +
+  Vorschlags-Karten. SWOT-Kategorie als farbige Badge (Strength=success,
+  Weakness=warning, Opportunity=primary, Threat=error).
+
 ### Projektmanagement Entity-Restruktur — Phase C (Listen-Page-Tabs)
 Listen-Page `ProjektePage` zeigt jetzt die Top-Level-Entities als Tabs:
 **Projekte | Projektideen | Portfolios | Einstellungen**. Bisher waren

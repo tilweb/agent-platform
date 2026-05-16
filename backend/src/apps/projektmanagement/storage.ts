@@ -393,6 +393,27 @@ const DEFAULT_CONFIG = {
     { value: 'vermieden', label: 'Vermieden' },
     { value: 'eingetreten', label: 'Eingetreten' },
   ],
+  lesson_themengebiet: [
+    { value: 'basis', label: 'Basis' },
+    { value: 'stakeholder', label: 'Stakeholder' },
+    { value: 'organisation', label: 'Organisation' },
+    { value: 'ziele', label: 'Ziele' },
+    { value: 'inhalt', label: 'Inhalt' },
+    { value: 'roadmap', label: 'Roadmap' },
+    { value: 'kosten', label: 'Kosten' },
+    { value: 'risiko', label: 'Risiko' },
+    { value: 'lessons_learned', label: 'Lessons Learned' },
+    { value: 'projektidee', label: 'Projektidee' },
+    { value: 'auftragsklaerung', label: 'Auftragsklärung' },
+    { value: 'umsetzung', label: 'Umsetzung' },
+    { value: 'projektabschluss', label: 'Projektabschluss' },
+  ],
+  lesson_kategorie: [
+    { value: 'strength', label: 'Strength' },
+    { value: 'weakness', label: 'Weakness' },
+    { value: 'opportunity', label: 'Opportunity' },
+    { value: 'threat', label: 'Threat' },
+  ],
 };
 
 /**

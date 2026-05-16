@@ -111,3 +111,30 @@ export const paAttachments = projektmgmtSchema.table('attachments', {
 }, (t) => ({
   paIdx: index('pa_attachments_pa_idx').on(t.paId),
 }));
+
+/**
+ * Lessons Learned — Sub-Resource am Projektauftrag/Projekt. SWOT-orientiert
+ * (kategorie ∈ strength/weakness/opportunity/threat), pro Themengebiet aus
+ * der App-Config (Default-Liste siehe types.ts LESSON_THEMENGEBIET_DEFAULTS).
+ *
+ * FK heute noch auf paProjektauftraege.id (= Projekt-ID, da Phase-A-IDs 1:1
+ * uebernommen werden). Spaetere Phase ziehen den FK auf paProjekte.id um.
+ */
+export const paLessonsLearned = projektmgmtSchema.table('lessons_learned', {
+  id: text('id').primaryKey(),
+  paId: text('pa_id').notNull().references(() => paProjektauftraege.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  themengebiet: text('themengebiet').notNull(),
+  kategorie: text('kategorie').notNull(),
+  beschreibung: text('beschreibung').notNull().default(''),
+  auswirkung: text('auswirkung').notNull().default(''),
+  empfehlung: text('empfehlung').notNull().default(''),
+  version: integer('version').notNull().default(1),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  paIdx: index('pa_lessons_learned_pa_idx').on(t.paId),
+  themaIdx: index('pa_lessons_learned_thema_idx').on(t.themengebiet),
+  kategorieIdx: index('pa_lessons_learned_kategorie_idx').on(t.kategorie),
+}));
