@@ -1142,6 +1142,7 @@ function WizardPage() {
         <AbschlussberichtView
           projektId={id}
           projektauftrag={projektauftrag}
+          statusberichte={statusberichte}
           canEdit={canEdit}
           isOwner={auftragRole === 'owner'}
           appConfig={appConfig}

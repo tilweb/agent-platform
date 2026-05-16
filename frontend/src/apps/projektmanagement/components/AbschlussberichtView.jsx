@@ -386,7 +386,18 @@ function Section({ title, defaultOpen, children }) {
   );
 }
 
-export default function AbschlussberichtView({ projektId, projektauftrag, canEdit, isOwner, appConfig, onProjektStatusUpdate }) {
+export default function AbschlussberichtView({ projektId, projektauftrag, statusberichte, canEdit, isOwner, appConfig, onProjektStatusUpdate }) {
+  // Read-only-Tracking-Daten kommen live aus dem letzten Statusbericht — nicht
+  // aus dem `data`-Snapshot. Sonst driftet die Tabelle, sobald jemand nach
+  // Anlage des Abschlussberichts den SB editiert (z.B. Risiko-Status auf
+  // 'eingetreten' aendert). Der Snapshot bleibt im `data` persistiert als
+  // Fallback, falls SBs spaeter geloescht werden.
+  const latestSb = (() => {
+    if (!statusberichte || statusberichte.length === 0) return null;
+    const finalSbs = statusberichte.filter((s) => s.status === 'final');
+    const pool = finalSbs.length > 0 ? finalSbs : statusberichte;
+    return [...pool].sort((a, b) => (b.nummer || 0) - (a.nummer || 0))[0] || null;
+  })();
   const {
     getAbschlussbericht,
     createAbschlussbericht,
@@ -942,7 +953,12 @@ export default function AbschlussberichtView({ projektId, projektauftrag, canEdi
         <h4 style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
           Plan (aus Projektauftrag)
         </h4>
-        {(draft.risks_plan || []).length === 0 ? (
+        {/* Plan-Risiken aus dem Auftrag — `nature` ist die Art (Bedrohung/Chance),
+            `type` waere der Risikotyp (Technisch/Organisatorisch/…). User-Wunsch:
+            beide Tabellen zeigen die Art. Live aus projektauftrag.risks (nicht
+            aus dem `risks_plan`-Snapshot), damit Auftrag-Edits sofort sichtbar
+            sind. */}
+        {(projektauftrag?.risks || draft.risks_plan || []).length === 0 ? (
           <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm, marginBottom: theme.spacing.lg }}>
             Keine geplanten Risiken.
           </div>
@@ -950,7 +966,7 @@ export default function AbschlussberichtView({ projektId, projektauftrag, canEdi
           <table style={{ ...styles.table, marginBottom: theme.spacing.xl }}>
             <thead>
               <tr>
-                <th style={styles.th}>Typ</th>
+                <th style={styles.th}>Art</th>
                 <th style={styles.th}>Beschreibung</th>
                 <th style={styles.th}>Wahrsch.</th>
                 <th style={styles.th}>Auswirk.</th>
@@ -958,9 +974,9 @@ export default function AbschlussberichtView({ projektId, projektauftrag, canEdi
               </tr>
             </thead>
             <tbody>
-              {(draft.risks_plan || []).map((r, i) => (
+              {(projektauftrag?.risks || draft.risks_plan || []).map((r, i) => (
                 <tr key={r.id || i}>
-                  <td style={styles.td}>{riskTypeLabel(r.type)}</td>
+                  <td style={styles.td}>{riskTypeLabel(r.nature || r.type)}</td>
                   <td style={styles.td}>{r.description}</td>
                   <td style={styles.td}>{configLabel(appConfig, 'probability', r.probability)}</td>
                   <td style={styles.td}>{configLabel(appConfig, 'impact', r.impact)}</td>
@@ -973,41 +989,51 @@ export default function AbschlussberichtView({ projektId, projektauftrag, canEdi
         <h4 style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
           Ist (eingetreten/vermieden — aus letztem SB)
         </h4>
-        {(draft.risk_tracking || []).length === 0 ? (
-          <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
-            Keine Risiko-Trackings im SB.
-          </div>
-        ) : (
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Typ</th>
-                <th style={styles.th}>Beschreibung</th>
-                <th style={styles.th}>Status</th>
-                <th style={styles.th}>Massnahmen</th>
-                <th style={styles.th}>Ampel</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(draft.risk_tracking || []).map((r, i) => (
-                <tr key={r.id || i}>
-                  <td style={styles.td}>{riskTypeLabel(r.type)}</td>
-                  <td style={styles.td}>{r.beschreibung}</td>
-                  <td style={styles.td}>{configLabel(appConfig, 'risk_status', r.status)}</td>
-                  <td style={styles.td}>{r.massnahmen}</td>
-                  <td style={styles.td}>
-                    {r.ampel && AMPEL_COLOR[r.ampel] && (
-                      <>
-                        <span style={{ ...styles.ampelDot, backgroundColor: AMPEL_COLOR[r.ampel].fg }} />
-                        {AMPEL_COLOR[r.ampel].label}
-                      </>
-                    )}
-                  </td>
+        {/* Live aus letztem SB (nicht aus draft.risk_tracking-Snapshot) — sonst
+            zeigt die Tabelle veraltete Werte sobald jemand den SB nach Anlage
+            des Abschlussberichts noch editiert. `data.risk_tracking` bleibt als
+            Snapshot persistiert (Fallback wenn keine SBs mehr da sind). */}
+        {(() => {
+          const liveRiskTracking = latestSb?.risk_tracking ?? draft.risk_tracking ?? [];
+          if (liveRiskTracking.length === 0) {
+            return (
+              <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+                Keine Risiko-Trackings im SB.
+              </div>
+            );
+          }
+          return (
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Art</th>
+                  <th style={styles.th}>Beschreibung</th>
+                  <th style={styles.th}>Status</th>
+                  <th style={styles.th}>Massnahmen</th>
+                  <th style={styles.th}>Ampel</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {liveRiskTracking.map((r, i) => (
+                  <tr key={r.id || i}>
+                    <td style={styles.td}>{riskTypeLabel(r.type)}</td>
+                    <td style={styles.td}>{r.beschreibung}</td>
+                    <td style={styles.td}>{configLabel(appConfig, 'risk_status', r.status)}</td>
+                    <td style={styles.td}>{r.massnahmen}</td>
+                    <td style={styles.td}>
+                      {r.ampel && AMPEL_COLOR[r.ampel] && (
+                        <>
+                          <span style={{ ...styles.ampelDot, backgroundColor: AMPEL_COLOR[r.ampel].fg }} />
+                          {AMPEL_COLOR[r.ampel].label}
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          );
+        })()}
       </Section>
 
       <Section title="Stakeholder-Akzeptanz">

@@ -973,8 +973,18 @@ export function mapAbschlussberichtToDocument(
   projektauftrag?: any,
   lessonsLearned?: any[],
   appConfig?: any,
+  statusberichte?: any[],
 ): DocumentData {
   const data = bericht?.data || {};
+  // Read-only-Tracking-Daten kommen live aus dem letzten SB (analog UI) —
+  // sonst zeigen Export-Dokumente veraltete Snapshots wenn nach Anlage des
+  // Berichts der SB editiert wurde.
+  const latestSb = (() => {
+    if (!statusberichte || statusberichte.length === 0) return null;
+    const finalSbs = statusberichte.filter((s: any) => s.status === 'final');
+    const pool = finalSbs.length > 0 ? finalSbs : statusberichte;
+    return [...pool].sort((a: any, b: any) => (b.nummer || 0) - (a.nummer || 0))[0] || null;
+  })();
   const projektName = projektauftrag?.name || '-';
   const sections: DocumentSection[] = [];
 
@@ -1083,10 +1093,14 @@ export function mapAbschlussberichtToDocument(
   }
 
   // Section: Risiken — Plan vs Ist
-  if ((data.risks_plan?.length || 0) > 0 || (data.risk_tracking?.length || 0) > 0) {
-    if ((data.risks_plan?.length || 0) > 0) {
-      const rows = (data.risks_plan || []).map((r: any) => [
-        riskTypeLabel(r.type),
+  // Plan-Risiken live aus projektauftrag.risks (nicht risks_plan-Snapshot).
+  // Art kommt aus `r.nature` (threat/chance) — `r.type` waere Risikotyp.
+  const planRisks = (projektauftrag?.risks || data.risks_plan || []) as any[];
+  const liveRiskTracking = (latestSb?.risk_tracking || data.risk_tracking || []) as any[];
+  if (planRisks.length > 0 || liveRiskTracking.length > 0) {
+    if (planRisks.length > 0) {
+      const rows = planRisks.map((r: any) => [
+        riskTypeLabel(r.nature || r.type),
         r.description || '-',
         configValueLabel(appConfig, 'probability', r.probability),
         configValueLabel(appConfig, 'impact', r.impact),
@@ -1095,11 +1109,11 @@ export function mapAbschlussberichtToDocument(
       sections.push({
         title: 'Risiken (Plan, aus Projektauftrag)',
         type: 'table',
-        content: { headers: ['Typ', 'Beschreibung', 'Wahrsch.', 'Auswirk.', 'Maßnahme'], rows },
+        content: { headers: ['Art', 'Beschreibung', 'Wahrsch.', 'Auswirk.', 'Maßnahme'], rows },
       });
     }
-    if ((data.risk_tracking?.length || 0) > 0) {
-      const rows = (data.risk_tracking || []).map((r: any) => [
+    if (liveRiskTracking.length > 0) {
+      const rows = liveRiskTracking.map((r: any) => [
         riskTypeLabel(r.type),
         r.beschreibung || '-',
         configValueLabel(appConfig, 'risk_status', r.status),
@@ -1109,7 +1123,7 @@ export function mapAbschlussberichtToDocument(
       sections.push({
         title: 'Risiken (Ist, eingetreten/vermieden)',
         type: 'table',
-        content: { headers: ['Typ', 'Beschreibung', 'Status', 'Maßnahmen', 'Ampel'], rows },
+        content: { headers: ['Art', 'Beschreibung', 'Status', 'Maßnahmen', 'Ampel'], rows },
       });
     }
   }
