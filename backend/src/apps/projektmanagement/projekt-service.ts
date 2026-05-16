@@ -22,6 +22,7 @@ import type {
 } from './types';
 import { PROJEKT_LIFECYCLE_VALUES } from './types';
 import { VersionConflictError } from './concurrency';
+import { defaultOwnerPermissions } from './permissions';
 
 // ============== ID + Helpers ==============
 
@@ -86,6 +87,11 @@ export async function createProjekt(input: ProjektCreateInput): Promise<Projekt>
   const id = input.id ?? generateProjektId();
   const lifecycle: ProjektLifecycle = input.lifecycle ?? 'planning';
 
+  // Default-Permissions: Ersteller (ownerId) ist explizit Owner. Wenn kein
+  // ownerId angegeben ist (z.B. interner Aufruf ohne User-Kontext), bleibt
+  // permissions null und der Resolver schlaegt auf `created_by` zurueck.
+  const permissions = input.ownerId ? defaultOwnerPermissions(input.ownerId) : null;
+
   await db.insert(paProjekte).values({
     id,
     ownerId: input.ownerId ?? null,
@@ -94,7 +100,7 @@ export async function createProjekt(input: ProjektCreateInput): Promise<Projekt>
     portfolioId: input.portfolioId ?? null,
     ideeId: input.ideeId ?? null,
     metadata: (input.metadata ?? null) as never,
-    permissions: null,
+    permissions: permissions as never,
     version: 1,
   });
 

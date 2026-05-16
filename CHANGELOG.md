@@ -2,6 +2,23 @@
 
 ## 2026-05-16
 
+### Projektmanagement — Default-Permissions auf Resource-Ebene
+Strukturelle Härtung: alle neu erzeugten **Projektaufträge**, **Projektideen**
+und **Projekte** bekommen jetzt explizit `permissions.users[]` mit dem
+Ersteller als Owner — `permissions: null` ist out. Vorher reichte der
+`created_by`-Fallback im Resolver, was aber bei DB-Resyncs oder Migrationen
+mit `created_by: 'user_default'`/`'migration'` zu unsichtbaren Aufträgen
+führte (siehe heutiger Sichtbarkeitsausfall).
+
+- Neuer Helper `defaultOwnerPermissions(userId)` in `permissions.ts`
+  (`{ users: [{ userId, role: 'owner' }], groups: [] }`).
+- Eingesetzt in `service.createProjektauftrag`, `idee-service.createIdee`,
+  `idee-service.createAuftragFromIdee` und `projekt-service.createProjekt`.
+- Caller können via `data.permissions` weiterhin überschreiben (z.B. bei
+  Imports mit eigener Permission-Map).
+- `created_by`-Fallback im Resolver bleibt als Backstop für Legacy-Daten —
+  für alles ab dieser Änderung gilt: permissions sind die source of truth.
+
 ### Projektmanagement — Abschlussbericht (Phase F, Backend + Frontend)
 Neue 1:1-Sub-Resource am Projekt: **Abschlussbericht**. Vorbefuellt aus dem
 letzten Statusbericht + Projektauftrag-Feldern (Scope, Stakeholder, Risiken
