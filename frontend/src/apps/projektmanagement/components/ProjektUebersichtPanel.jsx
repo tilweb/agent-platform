@@ -13,11 +13,15 @@
 
 import { theme } from '../../../config/theme';
 
-const LIFECYCLE_LABELS = {
-  planning: { label: 'Planung', color: 'muted' },
-  active: { label: 'Aktiv', color: 'primary' },
-  closed: { label: 'Abgeschlossen', color: 'success' },
-  cancelled: { label: 'Abgebrochen', color: 'error' },
+// Farb-Heuristik fuer den manuellen Projektstatus (Config-Werte
+// initiation/planning/execution/closing/stopped — die Liste ist via
+// Einstellungen aenderbar, daher kein 1:1-Mapping moeglich).
+const PROJECT_STATUS_COLOR = {
+  initiation: 'muted',
+  planning: 'muted',
+  execution: 'primary',
+  closing: 'success',
+  stopped: 'error',
 };
 
 const AMPEL_LABELS = {
@@ -98,21 +102,24 @@ const styles = {
   },
 };
 
-function lifecycleBadgeStyle(lifecycle) {
-  const entry = LIFECYCLE_LABELS[lifecycle] || LIFECYCLE_LABELS.planning;
+function projectStatusBadgeStyle(value) {
+  const color = PROJECT_STATUS_COLOR[value] || 'muted';
   const colorMap = {
     muted: { bg: theme.colors.surfaceHover, fg: theme.colors.textMuted },
     primary: { bg: theme.colors.primaryLight, fg: theme.colors.primary },
     success: { bg: theme.colors.successLight, fg: theme.colors.success },
     error: { bg: theme.colors.errorLight, fg: theme.colors.error },
   };
-  const c = colorMap[entry.color];
+  const c = colorMap[color];
   return { backgroundColor: c.bg, color: c.fg };
 }
 
-export default function ProjektUebersichtPanel({ projekt, projektauftrag, statusberichte, abschlussbericht, onNavigate }) {
-  const lifecycle = projekt?.lifecycle || 'planning';
-  const lifecycleEntry = LIFECYCLE_LABELS[lifecycle] || LIFECYCLE_LABELS.planning;
+export default function ProjektUebersichtPanel({ projekt, projektauftrag, statusberichte, abschlussbericht, appConfig, onNavigate }) {
+  // Projektstatus = manuell gepflegtes Feld aus Basis-Tab (auftrag.project_status).
+  // Label-Quelle: App-Config (pflegbar via Einstellungen-Tab).
+  const projectStatus = projektauftrag?.project_status;
+  const projectStatusOption = (appConfig?.project_status || []).find((o) => o.value === projectStatus);
+  const projectStatusLabel = projectStatusOption?.label || (projectStatus ? projectStatus : 'Nicht gesetzt');
   const latestSb = (statusberichte && statusberichte.length > 0)
     ? [...statusberichte].sort((a, b) => b.nummer - a.nummer)[0]
     : null;
@@ -130,19 +137,19 @@ export default function ProjektUebersichtPanel({ projekt, projektauftrag, status
     <div style={styles.container}>
       <div style={styles.grid}>
         <div style={styles.card}>
-          <div style={styles.cardTitle}>Lifecycle</div>
+          <div style={styles.cardTitle}>Projektstatus</div>
           <div style={{ marginBottom: theme.spacing.lg }}>
-            <span style={{ ...styles.lifecycleBadge, ...lifecycleBadgeStyle(lifecycle) }}>
-              {lifecycleEntry.label}
+            <span style={{ ...styles.lifecycleBadge, ...projectStatusBadgeStyle(projectStatus) }}>
+              {projectStatusLabel}
             </span>
           </div>
           <div style={styles.factRow}>
-            <span style={styles.factLabel}>Version</span>
-            <span style={styles.factValue}>{projekt?.version ?? '–'}</span>
+            <span style={styles.factLabel}>Projekttyp</span>
+            <span style={styles.factValue}>{projektauftrag?.project_type || '–'}</span>
           </div>
           <div style={{ ...styles.factRow, ...styles.factRowLast }}>
             <span style={styles.factLabel}>Letzte Aktualisierung</span>
-            <span style={styles.factValue}>{formatDate(projekt?.updatedAt)}</span>
+            <span style={styles.factValue}>{formatDate(projekt?.updatedAt || projektauftrag?.updated_at)}</span>
           </div>
         </div>
 
@@ -156,17 +163,13 @@ export default function ProjektUebersichtPanel({ projekt, projektauftrag, status
             <span style={styles.factLabel}>Auftraggeber</span>
             <span style={styles.factValue}>{projektauftrag?.auftraggeber || '–'}</span>
           </div>
-          <div style={styles.factRow}>
+          <div style={{ ...styles.factRow, ...styles.factRowLast }}>
             <span style={styles.factLabel}>Zeitraum</span>
             <span style={styles.factValue}>
               {projektauftrag?.start_date && projektauftrag?.end_date
                 ? `${projektauftrag.start_date} – ${projektauftrag.end_date}`
                 : '–'}
             </span>
-          </div>
-          <div style={{ ...styles.factRow, ...styles.factRowLast }}>
-            <span style={styles.factLabel}>Projekttyp</span>
-            <span style={styles.factValue}>{projektauftrag?.project_type || '–'}</span>
           </div>
         </div>
 

@@ -2,6 +2,30 @@
 
 ## 2026-05-16
 
+### Projektmanagement — Projektstatus statt Lifecycle in der UI
+Konsolidierung der Status-Anzeige: das **manuell gepflegte `project_status`-Feld**
+(Basis-Tab, Werte aus App-Config: Initiierung/Planung/Umsetzung/Abschluss/
+Gestoppt) ist jetzt die eine Wahrheit im UI. Die Phase-A-`lifecycle`-Spalte
+wird nicht mehr prominent angezeigt — bleibt aus Backward-Compat aber als
+Datenfeld erhalten.
+
+- **WizardPage-Header**: Status-Badge zeigt jetzt `auftrag.project_status`
+  (mit Label aus appConfig) statt `auftrag.status` ("Projektauftragsstatus" =
+  Wizard-Status). Heuristisches Farb-Mapping: Initiierung/Planung = muted,
+  Umsetzung = primary, Abschluss = success, Gestoppt = error.
+- **Übersicht-Tab**: „Lifecycle"-Karte → „Projektstatus"-Karte mit derselben
+  Quelle. Projekttyp zieht in die Status-Karte um (Redundanz aus Schlüssel-
+  daten-Karte entfernt).
+- **Phase F-Modal beim „Als Final markieren"**: zeigt jetzt eine **Selectbox**
+  mit allen `project_status`-Optionen aus der App-Config — der User wählt
+  selbst, ob „Abschluss" oder „Gestoppt" passt (statt fixem `lifecycle: 'closed'`).
+  Callback heißt jetzt `onProjektStatusUpdate`, schreibt via
+  `updateProjektauftrag` mit `expectedVersion` (Concurrency-safe).
+- **`paProjekte.lifecycle`-Spalte**: bleibt unangetastet im DB-Schema,
+  wird vom UI nicht mehr aktiv gesetzt. `suggestLifecycleTransition()` bleibt
+  Stub — kein Auto-Logik, alles manuell vom User pflegbar (auch das war die
+  Ansage).
+
 ### WZ-Branchen-Matcher — Neighborhood in Public-API exponiert
 Neue Public-Function `getNeighborhood` unter
 `POST /api/public/v1/wzbar-matcher/getNeighborhood`. Input: `{ code }`
