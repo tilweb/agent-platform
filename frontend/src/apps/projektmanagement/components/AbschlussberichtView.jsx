@@ -23,6 +23,40 @@ const AMPEL_COLOR = {
   rot: { fg: theme.colors.error, bg: theme.colors.errorLight, label: 'Rot' },
 };
 
+// Risk-Type ist im Wizard hardcoded (kein Config-Eintrag). Mapping deckt
+// sowohl die englischen Wizard-Werte als auch Legacy-deutsche Daten ab.
+const RISK_TYPE_LABEL = {
+  threat: 'Bedrohung',
+  chance: 'Chance',
+  bedrohung: 'Bedrohung',
+  technical: 'Technisch',
+  technisch: 'Technisch',
+  organizational: 'Organisatorisch',
+  organisatorisch: 'Organisatorisch',
+  financial: 'Finanziell',
+  finanziell: 'Finanziell',
+  schedule: 'Terminlich',
+  terminlich: 'Terminlich',
+  resource: 'Ressourcen',
+  ressourcen: 'Ressourcen',
+  external: 'Extern',
+  extern: 'Extern',
+};
+
+function riskTypeLabel(value) {
+  if (!value) return '–';
+  return RISK_TYPE_LABEL[value] || value;
+}
+
+// Allgemeiner Helper fuer Config-basierte Selectboxes (probability/impact/
+// risk_status/risk_strategie/…). Faellt auf den Rohwert zurueck wenn die
+// Option nicht in der Config liegt — so brechen Legacy-Daten nicht.
+function configLabel(appConfig, key, value) {
+  if (!value) return '–';
+  const opt = (appConfig?.[key] || []).find((o) => o.value === value);
+  return opt?.label || value;
+}
+
 const styles = {
   container: {
     flex: 1,
@@ -926,10 +960,10 @@ export default function AbschlussberichtView({ projektId, projektauftrag, canEdi
             <tbody>
               {(draft.risks_plan || []).map((r, i) => (
                 <tr key={r.id || i}>
-                  <td style={styles.td}>{r.type}</td>
+                  <td style={styles.td}>{riskTypeLabel(r.type)}</td>
                   <td style={styles.td}>{r.description}</td>
-                  <td style={styles.td}>{r.probability}</td>
-                  <td style={styles.td}>{r.impact}</td>
+                  <td style={styles.td}>{configLabel(appConfig, 'probability', r.probability)}</td>
+                  <td style={styles.td}>{configLabel(appConfig, 'impact', r.impact)}</td>
                   <td style={styles.td}>{r.mitigation}</td>
                 </tr>
               ))}
@@ -957,9 +991,9 @@ export default function AbschlussberichtView({ projektId, projektauftrag, canEdi
             <tbody>
               {(draft.risk_tracking || []).map((r, i) => (
                 <tr key={r.id || i}>
-                  <td style={styles.td}>{r.type}</td>
+                  <td style={styles.td}>{riskTypeLabel(r.type)}</td>
                   <td style={styles.td}>{r.beschreibung}</td>
-                  <td style={styles.td}>{r.status}</td>
+                  <td style={styles.td}>{configLabel(appConfig, 'risk_status', r.status)}</td>
                   <td style={styles.td}>{r.massnahmen}</td>
                   <td style={styles.td}>
                     {r.ampel && AMPEL_COLOR[r.ampel] && (
