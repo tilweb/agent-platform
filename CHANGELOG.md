@@ -2,6 +2,50 @@
 
 ## 2026-05-16
 
+### Projektmanagement — Abschlussbericht (Phase F, Backend + Frontend)
+Neue 1:1-Sub-Resource am Projekt: **Abschlussbericht**. Vorbefuellt aus dem
+letzten Statusbericht + Projektauftrag-Feldern (Scope, Stakeholder, Risiken
+plan, Organisation, Budget-Plan), ergaenzt um abschluss-spezifische Felder
+(Key-Findings, Stakeholder-Akzeptanz, Uebergabe, Folgeprojekt-Empfehlung,
+Abnahme).
+
+- **5. Top-Level-Tab** im Projekt-Detail (`?tab=abschluss`), Single-Form mit
+  Akkordeon-Sektionen. Empty-State (kein Bericht) zeigt einen prominenten
+  „Abschlussbericht erstellen"-Button — POST triggert Pre-Fill.
+- **Pre-Fill aus letztem SB**: Ampel, Management-Summary, Goals + Tracking,
+  Roadmap (Milestones/Tasks/Quality-Gates mit Ist-Daten), EVM-Kosten, Risiko-
+  Tracking. Bevorzugt finale SBs; Fallback auf neuesten.
+- **Aus Projektauftrag**: Scope-Texte (in/out), Stakeholder-Snapshot,
+  Organisation, Budget-Plan, Original-Risiken — als Soll/Ist-Vergleichsbasis.
+- **Soll/Ist-Dashboard** (computed on-render): Termin-Abweichung in Tagen,
+  Budget-Abweichung %, Ziel-Erfuellung Ø, Risiko-Bilanz (eingetreten/vermieden/
+  aktiv), Stakeholder-Akzeptanz-Verteilung.
+- **Status-Modell** `draft`/`final` mit `finalized_at`. Beim Uebergang
+  draft→final oeffnet das UI ein Modal **„Projekt-Lifecycle auf `closed`
+  setzen?"** (user-confirmed, nutzt `updateProjekt` aus Phase A).
+- **Owner-only**: Loeschen + Wiedereroeffnen. Editor+: Anlegen, Editieren,
+  Finalize.
+- **KI-Entwurf**: Button befuellt `management_summary`, `key_findings` und
+  `folgeprojekt_empfehlung` (basierend auf letzten 5 SBs + Projektauftrag +
+  Lessons Learned). Uebergabe-Daten und Abnahme werden NICHT vorgeschlagen
+  (Halluzinations-Risiko bei Namen).
+- **Lessons Learned-Sektion** im Bericht ist live aus `paLessonsLearned` —
+  kein Drift zwischen LL-Tab und Bericht.
+- **Export PDF/DOCX/XLSX** ueber `mapAbschlussberichtToDocument` mit Soll/Ist-
+  Dashboard + allen Sektionen + LL-Tabelle nach SWOT gruppiert.
+- **Schema main (Drizzle)**: `projektmgmt.abschlussberichte` mit
+  `UNIQUE(pa_id)` (erzwingt 1:1), `data` als jsonb, `status`/`finalized_at`/
+  `version` strukturiert. Manual SQL `0012_abschlussbericht.sql` + Journal-
+  Eintrag.
+- **Storage demo/messe (YAML)**: `data/apps/projektmanagement/projektauftraege/
+  {id}/abschlussbericht.yaml` (Singular) mit `withLock` + `VersionConflictError`.
+- **Frontend-Hook**: `getAbschlussbericht`, `createAbschlussbericht`,
+  `updateAbschlussbericht`, `deleteAbschlussbericht`, `finalizeAbschlussbericht`,
+  `reopenAbschlussbericht`, `suggestAbschlussDraft` + `updateProjekt`
+  (fuer den Lifecycle-Hook).
+- **Übersicht-Tab**: Phase-E-Platzhalter durch echte Abschluss-Karte ersetzt —
+  zeigt Status oder „nicht angelegt" mit „Zum Bericht"-/„Bericht anlegen"-Link.
+
 ### Projektmanagement — Lessons Learned (Phase E, Backend + Frontend)
 Neue Sub-Resource am Projekt: **Lessons Learned**, SWOT-orientiert (Strength /
 Weakness / Opportunity / Threat) pro Themengebiet (Basis, Stakeholder, …,

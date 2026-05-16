@@ -1,4 +1,4 @@
-import { pgSchema, text, timestamp, jsonb, index, integer } from 'drizzle-orm/pg-core';
+import { pgSchema, text, timestamp, jsonb, index, integer, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const projektmgmtSchema = pgSchema('projektmgmt');
 
@@ -137,4 +137,28 @@ export const paLessonsLearned = projektmgmtSchema.table('lessons_learned', {
   paIdx: index('pa_lessons_learned_pa_idx').on(t.paId),
   themaIdx: index('pa_lessons_learned_thema_idx').on(t.themengebiet),
   kategorieIdx: index('pa_lessons_learned_kategorie_idx').on(t.kategorie),
+}));
+
+/**
+ * Abschlussbericht (Phase F) — 1:1 zum Projektauftrag/Projekt, formale
+ * Schluss-Sicht. Vorbefuellt aus dem letzten Statusbericht + Projektauftrag,
+ * ergaenzt um abschluss-spezifische Felder (Stakeholder-Akzeptanz, Uebergabe,
+ * Abnahme).
+ *
+ * UNIQUE(pa_id) erzwingt 1:1. Inhaltliche Felder im jsonb-data (analog SB),
+ * Identitaets-/Lifecycle-Felder strukturiert oben.
+ */
+export const paAbschlussberichte = projektmgmtSchema.table('abschlussberichte', {
+  id: text('id').primaryKey(),
+  paId: text('pa_id').notNull().references(() => paProjektauftraege.id, { onDelete: 'cascade' }),
+  data: jsonb('data').notNull(),
+  status: text('status').notNull().default('draft'),       // 'draft' | 'final'
+  finalizedAt: timestamp('finalized_at', { withTimezone: true, mode: 'string' }),
+  version: integer('version').notNull().default(1),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  paUnique: uniqueIndex('pa_abschlussberichte_pa_unique').on(t.paId),
+  statusIdx: index('pa_abschlussberichte_status_idx').on(t.status),
 }));

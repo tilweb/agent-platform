@@ -262,6 +262,120 @@ export interface LessonLearnedSuggestion {
   source?: string;               // Hinweis welcher SB / welche Bemerkung den Vorschlag ausgeloest hat
 }
 
+// ============== Abschlussbericht (Phase F) ==============
+//
+// 1:1 Sub-Resource am Projektauftrag (= Projekt-ID nach Phase A). Bündelt
+// drei Quellen: (1) letzten SB als Vorbefüllung, (2) Projektauftrag-Felder
+// die im SB fehlen, (3) abschluss-spezifische Felder.
+//
+// Inhaltliche Felder liegen im `data`-jsonb. `status`, `finalized_at` und
+// `version` sind strukturierte Spalten.
+
+export type AbschlussStatus = 'draft' | 'final';
+
+/**
+ * Bewertung der Stakeholder-Akzeptanz am Projektende — pro Stakeholder ein
+ * Eintrag (gemappt via stakeholder_id auf den Auftrag-Snapshot in data).
+ */
+export interface StakeholderAkzeptanz {
+  stakeholder_id: string;
+  name?: string;               // Convenience-Field, vom UI mitgeschickt
+  bewertung: AmpelStatus;      // gruen | gelb | rot
+  bemerkung: string;
+}
+
+/**
+ * Inhaltlicher Datenblob des Abschlussberichts (im jsonb-Feld `data`).
+ * Felder sind Spiegel des Statusbericht-Schemas + Auftrag-Snapshots + Abschluss-
+ * spezifische Blöcke. Pre-Fill-Logik siehe abschluss-service.ts.
+ */
+export interface AbschlussberichtData {
+  // === Basis ===
+  ampel: AmpelStatus;
+  datum: string;                       // Abschluss-Datum (ISO)
+  management_summary: string;
+
+  // === Ziele (aus letztem SB) ===
+  goals_snapshot: string;
+  goals_tracking: CriterionTracking;
+  criteria_snapshot: string[];
+  criteria_tracking: CriterionTracking[];
+
+  // === Roadmap (aus letztem SB) ===
+  milestones_snapshot: MilestoneSnapshot[];
+  milestones_tracking: RoadmapItemTracking[];
+  tasks_snapshot: TaskSnapshot[];
+  tasks_tracking: RoadmapItemTracking[];
+  quality_gates_snapshot: QualityGateSnapshot[];
+  quality_gates_tracking: RoadmapItemTracking[];
+
+  // === Kosten (aus letztem SB) ===
+  cost_budget: number;
+  cost_months: CostMonthData[];
+
+  // === Risiken ===
+  risk_tracking: RiskTrackingItem[];   // aus letztem SB (Ist-Stand)
+  risks_plan: Risk[];                  // aus Auftrag (Original-Risiken)
+
+  // === Aus Projektauftrag (nicht im SB) ===
+  project_type?: string;
+  auftraggeber?: string;
+  description?: string;
+  start_date_plan?: string;
+  end_date_plan?: string;
+  scope?: string;
+  in_scope: string[];
+  out_scope: string[];
+  stakeholders_snapshot: Stakeholder[];
+  organization_snapshot: TeamMember[];
+  budget_plan: BudgetItem[];
+
+  // === Abschluss-spezifisch (User-input) ===
+  key_findings: string;
+  stakeholder_akzeptanz: StakeholderAkzeptanz[];
+  uebergabe_an: string;
+  uebergabe_datum: string;             // ISO
+  uebergabe_inhalte: string;
+  folgeprojekt_empfehlung: string;
+  abnahme_durch: string;
+  abnahme_datum: string;               // ISO
+  abnahme_signiert: boolean;
+}
+
+export interface Abschlussbericht {
+  id: string;
+  paId: string;                        // = Projekt-ID
+  data: AbschlussberichtData;
+  status: AbschlussStatus;
+  finalizedAt?: string;
+  version: number;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AbschlussberichtCreateInput {
+  // Erstanlage: kein User-Input — Server zieht Pre-Fill aus letztem SB + Auftrag.
+  // Future-proof: optional Override fuer Initial-Werte.
+  overrides?: Partial<AbschlussberichtData>;
+}
+
+export interface AbschlussberichtUpdateInput {
+  data?: Partial<AbschlussberichtData>;
+  expectedVersion?: number;
+}
+
+/**
+ * KI-Vorschlag fuer den initialen Entwurf (Management Summary, Key Findings,
+ * Folgeprojekt-Empfehlung). Andere Felder (Uebergabe, Abnahme) bleiben User-
+ * Input — zu sensibel fuer Halluzinationen.
+ */
+export interface AbschlussberichtSuggestion {
+  management_summary: string;
+  key_findings: string;
+  folgeprojekt_empfehlung: string;
+}
+
 /**
  * Phase-2: Rollen auf Auftrags-/Idee-Ebene. Owner kann loeschen + Permissions
  * setzen, Editor kann bearbeiten + Statusberichte verwalten, Viewer nur lesen.

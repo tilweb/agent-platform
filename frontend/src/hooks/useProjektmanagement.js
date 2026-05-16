@@ -145,6 +145,17 @@ export function useProjektmanagement() {
     return data.projekt;
   }, []);
 
+  // Phase A/F: Projekt-Felder updaten (z.B. lifecycle nach Abschluss-Finalize).
+  const updateProjekt = useCallback(async (projektId, updates) => {
+    const response = await apiPut(`/apps/projektmanagement/projekte/${projektId}`, updates);
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to update Projekt');
+    }
+    const data = await response.json();
+    return data.projekt;
+  }, []);
+
   // Update Projektauftrag
   const updateProjektauftrag = useCallback(async (projektId, updates, { expectedVersion, force = false } = {}) => {
     const body = { ...updates };
@@ -508,6 +519,98 @@ export function useProjektmanagement() {
     return data.suggestions || [];
   }, []);
 
+  // ============== Abschlussbericht (Phase F) ==============
+
+  const getAbschlussbericht = useCallback(async (projektId) => {
+    const response = await apiGet(
+      `/apps/projektmanagement/projektauftraege/${projektId}/abschlussbericht`
+    );
+    if (!response.ok) throw new Error('Failed to load Abschlussbericht');
+    const data = await response.json();
+    return data.abschlussbericht;
+  }, []);
+
+  const createAbschlussbericht = useCallback(async (projektId, overrides) => {
+    const response = await apiPost(
+      `/apps/projektmanagement/projektauftraege/${projektId}/abschlussbericht`,
+      overrides ? { overrides } : {}
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to create Abschlussbericht');
+    }
+    const data = await response.json();
+    return data.abschlussbericht;
+  }, []);
+
+  const updateAbschlussbericht = useCallback(async (projektId, dataPatch, { expectedVersion } = {}) => {
+    const body = { data: dataPatch };
+    if (expectedVersion !== undefined) body.expectedVersion = expectedVersion;
+    const response = await apiPut(
+      `/apps/projektmanagement/projektauftraege/${projektId}/abschlussbericht`,
+      body
+    );
+    if (response.status === 409) {
+      const result = await response.json();
+      throw new VersionConflictError(result.current);
+    }
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.error || 'Failed to update Abschlussbericht');
+    }
+    const result = await response.json();
+    return result.abschlussbericht;
+  }, []);
+
+  const deleteAbschlussbericht = useCallback(async (projektId) => {
+    const response = await apiDelete(
+      `/apps/projektmanagement/projektauftraege/${projektId}/abschlussbericht`
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to delete Abschlussbericht');
+    }
+  }, []);
+
+  const finalizeAbschlussbericht = useCallback(async (projektId) => {
+    const response = await apiPost(
+      `/apps/projektmanagement/projektauftraege/${projektId}/abschlussbericht/finalize`,
+      {}
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to finalize Abschlussbericht');
+    }
+    const data = await response.json();
+    return data.abschlussbericht;
+  }, []);
+
+  const reopenAbschlussbericht = useCallback(async (projektId) => {
+    const response = await apiPost(
+      `/apps/projektmanagement/projektauftraege/${projektId}/abschlussbericht/reopen`,
+      {}
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to reopen Abschlussbericht');
+    }
+    const data = await response.json();
+    return data.abschlussbericht;
+  }, []);
+
+  const suggestAbschlussDraft = useCallback(async (projektId) => {
+    const response = await apiPost(
+      `/apps/projektmanagement/projektauftraege/${projektId}/abschlussbericht/suggest`,
+      {}
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to suggest Abschlussbericht draft');
+    }
+    const data = await response.json();
+    return data.suggestion;
+  }, []);
+
   return {
     projektauftraege,
     stats,
@@ -522,6 +625,7 @@ export function useProjektmanagement() {
     createFromVorlage,
     getProjektauftrag,
     getProjekt,
+    updateProjekt,
     updateProjektauftrag,
     updateStep,
     deleteProjektauftrag,
@@ -553,5 +657,13 @@ export function useProjektmanagement() {
     updateLessonLearned,
     deleteLessonLearned,
     suggestLessonsLearned,
+    // Abschlussbericht
+    getAbschlussbericht,
+    createAbschlussbericht,
+    updateAbschlussbericht,
+    deleteAbschlussbericht,
+    finalizeAbschlussbericht,
+    reopenAbschlussbericht,
+    suggestAbschlussDraft,
   };
 }
