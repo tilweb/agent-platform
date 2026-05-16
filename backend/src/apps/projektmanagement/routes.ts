@@ -2043,7 +2043,8 @@ projektmanagement.get('/projektauftraege/:projektId/abschlussbericht/export/:for
     const auftrag = await getProjektauftragDetails(projektId);
     const lessons = await listLessonsLearned(projektId);
     const appConfig = await getConfig();
-    const documentData = mapAbschlussberichtToDocument(bericht, auftrag, lessons, appConfig);
+    const sbs = await listStatusberichte(projektId);
+    const documentData = mapAbschlussberichtToDocument(bericht, auftrag, lessons, appConfig, sbs);
 
     const buffer = await generateDocument(documentData, format);
     const filename = `Abschlussbericht_${auftrag?.name || projektId}.${getFileExtension(format)}`;
