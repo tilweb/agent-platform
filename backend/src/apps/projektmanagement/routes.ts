@@ -68,6 +68,15 @@ import {
   deleteLessonLearned,
   suggestLessonsLearnedFromStatusberichte,
 } from './lessons-learned-service';
+import {
+  getAbschlussbericht,
+  createAbschlussbericht,
+  updateAbschlussbericht,
+  deleteAbschlussbericht,
+  finalizeAbschlussbericht,
+  reopenAbschlussbericht,
+  suggestAbschlussDraft,
+} from './abschluss-service';
 import { requireAppAccess } from '../permissions-middleware';
 import {
   getEffectiveIdeeRole,
@@ -84,6 +93,7 @@ import {
   mapProjektauftragToDocument,
   mapStatusberichtToDocument,
   mapProjektideeToDocument,
+  mapAbschlussberichtToDocument,
   getMimeType,
   getFileExtension,
   type DocumentFormat,
@@ -1877,6 +1887,174 @@ projektmanagement.post('/projektauftraege/:projektId/lessons-learned/suggest', a
   } catch (error) {
     console.error('Error suggesting lessons-learned:', error);
     return c.json({ error: error instanceof Error ? error.message : 'Failed to suggest lessons-learned' }, 500);
+  }
+});
+
+// ============== Abschlussbericht Endpoints (Phase F) ==============
+
+projektmanagement.get('/projektauftraege/:projektId/abschlussbericht', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const bericht = await getAbschlussbericht(projektId);
+    return c.json({ abschlussbericht: bericht });
+  } catch (error) {
+    console.error('Error getting Abschlussbericht:', error);
+    return c.json({ error: 'Failed to get Abschlussbericht' }, 500);
+  }
+});
+
+projektmanagement.post('/projektauftraege/:projektId/abschlussbericht', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    let overrides: any = undefined;
+    try {
+      const body = await c.req.json();
+      overrides = body?.overrides;
+    } catch {
+      // optional Body
+    }
+    const bericht = await createAbschlussbericht(projektId, { overrides }, userId);
+    return c.json({ abschlussbericht: bericht }, 201);
+  } catch (error) {
+    if (error instanceof Error && /existiert bereits/.test(error.message)) {
+      return c.json({ error: error.message }, 409);
+    }
+    console.error('Error creating Abschlussbericht:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to create Abschlussbericht' }, 500);
+  }
+});
+
+projektmanagement.put('/projektauftraege/:projektId/abschlussbericht', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const body = await c.req.json();
+    const bericht = await updateAbschlussbericht(projektId, {
+      data: body?.data,
+      expectedVersion: body?.expectedVersion,
+    });
+    return c.json({ abschlussbericht: bericht });
+  } catch (error) {
+    if (error instanceof VersionConflictError) {
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
+    }
+    if (error instanceof Error && /final/.test(error.message)) {
+      return c.json({ error: error.message }, 409);
+    }
+    if (error instanceof Error && /nicht gefunden/.test(error.message)) {
+      return c.json({ error: error.message }, 404);
+    }
+    console.error('Error updating Abschlussbericht:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to update Abschlussbericht' }, 500);
+  }
+});
+
+projektmanagement.delete('/projektauftraege/:projektId/abschlussbericht', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'owner');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const ok = await deleteAbschlussbericht(projektId);
+    if (!ok) return c.json({ error: 'Abschlussbericht nicht gefunden' }, 404);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting Abschlussbericht:', error);
+    return c.json({ error: 'Failed to delete Abschlussbericht' }, 500);
+  }
+});
+
+projektmanagement.post('/projektauftraege/:projektId/abschlussbericht/finalize', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const bericht = await finalizeAbschlussbericht(projektId);
+    return c.json({ abschlussbericht: bericht });
+  } catch (error) {
+    console.error('Error finalizing Abschlussbericht:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to finalize' }, 500);
+  }
+});
+
+projektmanagement.post('/projektauftraege/:projektId/abschlussbericht/reopen', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'owner');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const bericht = await reopenAbschlussbericht(projektId);
+    return c.json({ abschlussbericht: bericht });
+  } catch (error) {
+    console.error('Error reopening Abschlussbericht:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to reopen' }, 500);
+  }
+});
+
+projektmanagement.post('/projektauftraege/:projektId/abschlussbericht/suggest', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const suggestion = await suggestAbschlussDraft(projektId, userId);
+    return c.json({ suggestion });
+  } catch (error) {
+    console.error('Error suggesting Abschlussbericht draft:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to suggest' }, 500);
+  }
+});
+
+projektmanagement.get('/projektauftraege/:projektId/abschlussbericht/export/:format', async (c) => {
+  try {
+    const projektId = c.req.param('projektId');
+    const format = c.req.param('format') as DocumentFormat;
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowAuftragRole(userId, projektId, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const bericht = await getAbschlussbericht(projektId);
+    if (!bericht) return c.json({ error: 'Abschlussbericht nicht gefunden' }, 404);
+
+    const auftrag = await getProjektauftragDetails(projektId);
+    const lessons = await listLessonsLearned(projektId);
+    const documentData = mapAbschlussberichtToDocument(bericht, auftrag, lessons);
+
+    const buffer = await generateDocument(documentData, format);
+    const filename = `Abschlussbericht_${auftrag?.name || projektId}.${getFileExtension(format)}`;
+    return new Response(buffer, {
+      headers: {
+        'Content-Type': getMimeType(format),
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
+  } catch (error) {
+    console.error('Error exporting Abschlussbericht:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to export' }, 500);
   }
 });
 

@@ -936,6 +936,285 @@ export function mapStatusberichtToDocument(sb: any, projektauftrag?: any): Docum
   };
 }
 
+// ============== Abschlussbericht Mapping ==============
+
+/**
+ * Maps an Abschlussbericht to DocumentData. Combines SB-style sections (Goals/
+ * Roadmap/Cost/Risk-Tracking) with Auftrag-Snapshots (Scope/Stakeholder/Budget-
+ * Plan) and abschluss-spezifische Felder (Findings, Übergabe, Akzeptanz, LL).
+ *
+ * Lessons Learned werden live durchgereicht (nicht im data persistiert).
+ */
+export function mapAbschlussberichtToDocument(
+  bericht: any,
+  projektauftrag?: any,
+  lessonsLearned?: any[],
+): DocumentData {
+  const data = bericht?.data || {};
+  const projektName = projektauftrag?.name || '-';
+  const sections: DocumentSection[] = [];
+
+  // Section: Berichts-Informationen
+  const infoItems: { key: string; value: string | RichCell }[] = [
+    { key: 'Projekt', value: projektName },
+    { key: 'Abschluss-Datum', value: formatDate(data.datum) },
+    { key: 'Gesamt-Ampel', value: getAmpelCell(data.ampel) },
+    { key: 'Status', value: bericht?.status === 'final' ? 'Final' : 'Entwurf' },
+  ];
+  if (bericht?.finalizedAt) infoItems.push({ key: 'Finalisiert am', value: formatDate(bericht.finalizedAt) });
+  if (data.start_date_plan && data.end_date_plan) {
+    infoItems.push({ key: 'Geplanter Zeitraum', value: `${formatDate(data.start_date_plan)} – ${formatDate(data.end_date_plan)}` });
+  }
+  if (data.auftraggeber) infoItems.push({ key: 'Auftraggeber', value: data.auftraggeber });
+  if (data.project_type) infoItems.push({ key: 'Projekttyp', value: getProjectTypeLabel(data.project_type) });
+  sections.push({ title: 'Berichts-Informationen', type: 'keyvalue', content: { items: infoItems } });
+
+  // Section: Soll/Ist-Dashboard (computed)
+  const dashboard = buildAbschlussDashboard(data);
+  if (dashboard.length > 0) {
+    sections.push({ title: 'Soll/Ist-Dashboard', type: 'keyvalue', content: { items: dashboard } });
+  }
+
+  // Section: Management Summary
+  if (data.management_summary) {
+    sections.push({ title: 'Management Summary', type: 'text', content: data.management_summary });
+  }
+
+  // Section: Key Findings
+  if (data.key_findings) {
+    sections.push({ title: 'Key Findings', type: 'text', content: data.key_findings });
+  }
+
+  // Section: Ziele
+  if (data.goals_snapshot || (data.criteria_snapshot?.length > 0)) {
+    const goalsInfo: { key: string; value: string | RichCell }[] = [];
+    if (data.goals_snapshot) goalsInfo.push({ key: 'Ziele', value: data.goals_snapshot });
+    if (data.goals_tracking) {
+      goalsInfo.push(
+        { key: 'Fortschritt', value: data.goals_tracking.fortschritt != null ? `${data.goals_tracking.fortschritt}%` : '-' },
+        { key: 'Ampel', value: getAmpelCell(data.goals_tracking.ampel) },
+      );
+      if (data.goals_tracking.bemerkung) goalsInfo.push({ key: 'Bemerkung', value: data.goals_tracking.bemerkung });
+    }
+    sections.push({ title: 'Ziele', type: 'keyvalue', content: { items: goalsInfo } });
+
+    if ((data.criteria_snapshot?.length || 0) > 0) {
+      const rows = (data.criteria_snapshot || []).map((c: string, i: number) => {
+        const t = data.criteria_tracking?.[i] || {};
+        return [c, t.fortschritt != null ? `${t.fortschritt}%` : '-', getAmpelCell(t.ampel), t.bemerkung || ''];
+      });
+      sections.push({
+        title: 'Kriterien',
+        type: 'table',
+        content: { headers: ['Kriterium', 'Fortschritt', 'Ampel', 'Bemerkung'], rows },
+      });
+    }
+  }
+
+  // Section: Scope (aus Auftrag)
+  if (data.scope || data.in_scope?.length || data.out_scope?.length) {
+    const scopeItems: { key: string; value: string | RichCell }[] = [];
+    if (data.scope) scopeItems.push({ key: 'Beschreibung', value: data.scope });
+    if (data.in_scope?.length) scopeItems.push({ key: 'In Scope', value: data.in_scope.join('\n') });
+    if (data.out_scope?.length) scopeItems.push({ key: 'Out of Scope', value: data.out_scope.join('\n') });
+    sections.push({ title: 'Scope', type: 'keyvalue', content: { items: scopeItems } });
+  }
+
+  // Section: Roadmap (Soll vs Ist via Milestones-Tracking)
+  if ((data.milestones_snapshot?.length || 0) > 0) {
+    const rows = (data.milestones_snapshot || []).map((m: any, i: number) => {
+      const t = data.milestones_tracking?.[i] || {};
+      return [m.name || '-', formatDate(m.date), formatDate(t.ist_datum), t.status || '-', getAmpelCell(t.ampel), t.bemerkung || ''];
+    });
+    sections.push({
+      title: 'Meilensteine',
+      type: 'table',
+      content: { headers: ['Meilenstein', 'Soll', 'Ist', 'Status', 'Ampel', 'Bemerkung'], rows },
+    });
+  }
+
+  // Section: Kosten — wir nutzen den bestehenden EVM-Helper, wenn vorhanden.
+  if ((data.cost_months?.length || 0) > 0) {
+    const evmRows = (data.cost_months || []).map((m: any) => [
+      m.month, fmtCurrency(m.plan), fmtCurrency(m.ist), fmtCurrency(m.forecast),
+    ]);
+    sections.push({
+      title: 'Kosten (EVM)',
+      type: 'table',
+      content: { headers: ['Monat', 'Plan', 'Ist', 'Forecast'], rows: evmRows },
+    });
+    const totalIst = (data.cost_months || []).reduce((sum: number, m: any) => sum + (Number(m.ist) || 0), 0);
+    const abweichung = data.cost_budget ? ((totalIst - data.cost_budget) / data.cost_budget) * 100 : 0;
+    sections.push({
+      title: 'Kosten — Gesamtbild',
+      type: 'keyvalue',
+      content: {
+        items: [
+          { key: 'Gesamtbudget', value: fmtCurrency(data.cost_budget) },
+          { key: 'Ist (Summe)', value: fmtCurrency(totalIst) },
+          { key: 'Abweichung', value: data.cost_budget ? `${abweichung >= 0 ? '+' : ''}${abweichung.toFixed(1)}%` : '-' },
+        ],
+      },
+    });
+  }
+
+  // Section: Risiken — Plan vs Ist
+  if ((data.risks_plan?.length || 0) > 0 || (data.risk_tracking?.length || 0) > 0) {
+    if ((data.risks_plan?.length || 0) > 0) {
+      const rows = (data.risks_plan || []).map((r: any) => [
+        r.type || '-', r.description || '-', r.probability || '-', r.impact || '-', r.mitigation || '-',
+      ]);
+      sections.push({
+        title: 'Risiken (Plan, aus Projektauftrag)',
+        type: 'table',
+        content: { headers: ['Typ', 'Beschreibung', 'Wahrsch.', 'Auswirk.', 'Maßnahme'], rows },
+      });
+    }
+    if ((data.risk_tracking?.length || 0) > 0) {
+      const rows = (data.risk_tracking || []).map((r: any) => [
+        r.type || '-', r.beschreibung || '-', r.status || '-', r.massnahmen || '-', getAmpelCell(r.ampel),
+      ]);
+      sections.push({
+        title: 'Risiken (Ist, eingetreten/vermieden)',
+        type: 'table',
+        content: { headers: ['Typ', 'Beschreibung', 'Status', 'Maßnahmen', 'Ampel'], rows },
+      });
+    }
+  }
+
+  // Section: Stakeholder-Akzeptanz
+  if ((data.stakeholder_akzeptanz?.length || 0) > 0) {
+    const rows = (data.stakeholder_akzeptanz || []).map((s: any) => [
+      s.name || s.stakeholder_id || '-', getAmpelCell(s.bewertung), s.bemerkung || '',
+    ]);
+    sections.push({
+      title: 'Stakeholder-Akzeptanz',
+      type: 'table',
+      content: { headers: ['Stakeholder', 'Bewertung', 'Bemerkung'], rows },
+    });
+  }
+
+  // Section: Übergabe
+  if (data.uebergabe_an || data.uebergabe_datum || data.uebergabe_inhalte) {
+    const ueb: { key: string; value: string | RichCell }[] = [];
+    if (data.uebergabe_an) ueb.push({ key: 'Übergabe an', value: data.uebergabe_an });
+    if (data.uebergabe_datum) ueb.push({ key: 'Datum', value: formatDate(data.uebergabe_datum) });
+    if (data.uebergabe_inhalte) ueb.push({ key: 'Inhalte', value: data.uebergabe_inhalte });
+    sections.push({ title: 'Übergabe', type: 'keyvalue', content: { items: ueb } });
+  }
+
+  // Section: Folgeprojekt-Empfehlung
+  if (data.folgeprojekt_empfehlung) {
+    sections.push({ title: 'Empfehlung für Folgeprojekte', type: 'text', content: data.folgeprojekt_empfehlung });
+  }
+
+  // Section: Lessons Learned (live)
+  if (lessonsLearned && lessonsLearned.length > 0) {
+    const swotOrder = ['strength', 'weakness', 'opportunity', 'threat'];
+    const swotLabels: Record<string, string> = {
+      strength: 'Strength', weakness: 'Weakness', opportunity: 'Opportunity', threat: 'Threat',
+    };
+    const sorted = [...lessonsLearned].sort((a, b) =>
+      swotOrder.indexOf(a.kategorie) - swotOrder.indexOf(b.kategorie),
+    );
+    const rows = sorted.map((l: any) => [
+      l.title || '-',
+      swotLabels[l.kategorie] || l.kategorie || '-',
+      l.themengebiet || '-',
+      l.beschreibung || '',
+      l.empfehlung || '',
+    ]);
+    sections.push({
+      title: 'Lessons Learned',
+      type: 'table',
+      content: { headers: ['Titel', 'Kategorie', 'Themengebiet', 'Beschreibung', 'Empfehlung'], rows },
+    });
+  }
+
+  // Section: Abnahme
+  if (data.abnahme_durch || data.abnahme_datum || data.abnahme_signiert) {
+    const ab: { key: string; value: string | RichCell }[] = [];
+    if (data.abnahme_durch) ab.push({ key: 'Abnahme durch', value: data.abnahme_durch });
+    if (data.abnahme_datum) ab.push({ key: 'Datum', value: formatDate(data.abnahme_datum) });
+    ab.push({ key: 'Formal abgenommen', value: data.abnahme_signiert ? 'Ja' : 'Nein' });
+    sections.push({ title: 'Abnahme', type: 'keyvalue', content: { items: ab } });
+  }
+
+  return {
+    title: `Abschlussbericht — ${projektName}`,
+    metadata: { status: bericht?.status === 'final' ? 'Final' : 'Entwurf' },
+    sections,
+  };
+}
+
+function buildAbschlussDashboard(data: any): { key: string; value: string | RichCell }[] {
+  const items: { key: string; value: string | RichCell }[] = [];
+
+  // Termin-Abweichung
+  if (data.end_date_plan && data.tasks_tracking?.length) {
+    const istEnd = data.tasks_tracking
+      .map((t: any) => t.ist_datum).filter(Boolean).sort().pop();
+    if (istEnd) {
+      const planMs = new Date(data.end_date_plan).getTime();
+      const istMs = new Date(istEnd).getTime();
+      if (!isNaN(planMs) && !isNaN(istMs)) {
+        const diffDays = Math.round((istMs - planMs) / (1000 * 60 * 60 * 24));
+        items.push({ key: 'Termin-Abweichung', value: `${diffDays >= 0 ? '+' : ''}${diffDays} Tage` });
+      }
+    }
+  }
+
+  // Budget-Abweichung
+  if (data.cost_budget && data.cost_months?.length) {
+    const totalIst = data.cost_months.reduce((s: number, m: any) => s + (Number(m.ist) || 0), 0);
+    const pct = ((totalIst - data.cost_budget) / data.cost_budget) * 100;
+    items.push({ key: 'Budget-Abweichung', value: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` });
+  }
+
+  // Goal-Erfüllung
+  if (data.criteria_tracking?.length) {
+    const fortschritte = data.criteria_tracking.map((c: any) => Number(c.fortschritt) || 0);
+    const avg = fortschritte.reduce((s: number, n: number) => s + n, 0) / fortschritte.length;
+    items.push({ key: 'Ziel-Erfüllung (Ø)', value: `${avg.toFixed(0)}%` });
+  }
+
+  // Risiko-Bilanz
+  if (data.risk_tracking?.length) {
+    let eingetreten = 0, vermieden = 0, aktiv = 0;
+    for (const r of data.risk_tracking) {
+      const s = (r.status || '').toLowerCase();
+      if (s === 'eingetreten') eingetreten++;
+      else if (s === 'vermieden') vermieden++;
+      else if (s === 'aktiv' || s === 'bewertet' || s === 'identifiziert') aktiv++;
+    }
+    items.push({
+      key: 'Risiko-Bilanz',
+      value: `${eingetreten} eingetreten / ${vermieden} vermieden / ${aktiv} aktiv`,
+    });
+  }
+
+  // Stakeholder-Zufriedenheit
+  if (data.stakeholder_akzeptanz?.length) {
+    let gruen = 0, gelb = 0, rot = 0;
+    for (const s of data.stakeholder_akzeptanz) {
+      if (s.bewertung === 'gruen') gruen++;
+      else if (s.bewertung === 'gelb') gelb++;
+      else if (s.bewertung === 'rot') rot++;
+    }
+    items.push({
+      key: 'Stakeholder-Akzeptanz',
+      value: `${gruen} gruen / ${gelb} gelb / ${rot} rot`,
+    });
+  }
+
+  return items;
+}
+
+function fmtCurrency(value: number | undefined | null): string {
+  if (value == null || isNaN(Number(value))) return '-';
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(value));
+}
+
 // ============== Helper Functions ==============
 
 function getProjectTypeLabel(type: string): string {

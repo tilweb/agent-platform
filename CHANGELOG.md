@@ -2,6 +2,27 @@
 
 ## 2026-05-16
 
+### Projektmanagement — Abschlussbericht (Phase F, Backend + Frontend)
+Identisch zum main-Worktree, hier YAML-Storage statt Drizzle/Postgres.
+
+- 5. Top-Level-Tab im Projekt-Detail (`?tab=abschluss`), Single-Form mit
+  Akkordeon-Sektionen. Pre-Fill aus letztem SB (Goals, Roadmap, EVM, Risiko-
+  Tracking) + Projektauftrag (Scope, Stakeholder, Org, Budget-Plan, Risiken-
+  Plan). Abschluss-spezifisch: Key-Findings, Stakeholder-Akzeptanz (Ampel
+  pro Stakeholder), Uebergabe, Folgeprojekt-Empfehlung, Abnahme.
+- Soll/Ist-Dashboard (computed): Termin-Abweichung, Budget-Abweichung %,
+  Ziel-Erfuellung, Risiko-Bilanz, Stakeholder-Akzeptanz-Verteilung.
+- Status `draft`/`final`; Modal beim Final-Save „Projekt-Lifecycle auf
+  `closed`?". Owner-only: Loeschen + Wiedereroeffnen.
+- KI-Entwurf-Button befuellt Management-Summary, Key-Findings, Folgeprojekt-
+  Empfehlung (LLM auf Basis SBs + Auftrag + Lessons Learned).
+- Lessons Learned-Sektion live aus `paLessonsLearned`.
+- Export PDF/DOCX/XLSX ueber den geteilten `mapAbschlussberichtToDocument`-
+  Mapper.
+- YAML-Storage: `data/apps/projektmanagement/projektauftraege/{id}/
+  abschlussbericht.yaml`, mit `withLock` + `VersionConflictError`.
+- Übersicht-Tab: Abschluss-Karte aktualisiert mit Status + Link.
+
 ### Projektmanagement — Lessons Learned (Phase E, Backend + Frontend)
 Identisch zum main-Worktree, hier YAML-Storage statt Drizzle/Postgres.
 

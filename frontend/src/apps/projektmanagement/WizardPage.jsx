@@ -9,6 +9,7 @@ import { theme } from '../../config/theme';
 import { useProjektmanagement, VersionConflictError } from '../../hooks/useProjektmanagement';
 import ProjektUebersichtPanel from './components/ProjektUebersichtPanel';
 import LessonsLearnedView from './components/LessonsLearnedView';
+import AbschlussberichtView from './components/AbschlussberichtView';
 import { usePmResourcePermission, hasMinRole } from '../../hooks/usePmResourcePermission';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import RoleBadge from '../../components/RoleBadge';
@@ -372,6 +373,7 @@ function WizardPage() {
     createProjektauftrag,
     getProjektauftrag,
     getProjekt,
+    updateProjekt,
     updateStep,
     deleteProjektauftrag,
     getConfig,
@@ -379,6 +381,7 @@ function WizardPage() {
     createStatusbericht,
     updateStatusbericht: updateSbApi,
     deleteStatusbericht: deleteSbApi,
+    getAbschlussbericht,
   } = useProjektmanagement();
 
   // Phase-2: Effektive Auftrags-Rolle des aktuellen Users. Bei "neu" (ohne id)
@@ -415,11 +418,18 @@ function WizardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialMode = (() => {
     const fromUrl = searchParams.get('tab');
-    if (fromUrl === 'uebersicht' || fromUrl === 'auftrag' || fromUrl === 'statusberichte' || fromUrl === 'lessons') return fromUrl;
+    if (
+      fromUrl === 'uebersicht'
+      || fromUrl === 'auftrag'
+      || fromUrl === 'statusberichte'
+      || fromUrl === 'lessons'
+      || fromUrl === 'abschluss'
+    ) return fromUrl;
     return id ? 'uebersicht' : 'auftrag';
   })();
   const [mode, setMode] = useState(initialMode);
   const [projekt, setProjekt] = useState(null); // paProjekte-Row (Lifecycle etc.)
+  const [abschlussbericht, setAbschlussbericht] = useState(null); // fuer Uebersicht-Karte
   const [statusberichte, setStatusberichte] = useState([]);
   const [selectedSbId, setSelectedSbId] = useState(null);
   const [currentSb, setCurrentSb] = useState(null);
@@ -452,6 +462,16 @@ function WizardPage() {
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [id, getProjekt]);
+
+  // Phase F: Abschlussbericht-Stand fuers Uebersicht-Panel laden (best-effort).
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    getAbschlussbericht(id).then((a) => {
+      if (!cancelled) setAbschlussbericht(a);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [id, getAbschlussbericht, mode]);
 
   // Tab-State <-> URL-Sync. Setze ?tab=... beim Wechsel, lese beim Mount.
   const setModeAndUrl = useCallback((next) => {
@@ -1078,6 +1098,13 @@ function WizardPage() {
           >
             Lessons Learned
           </button>
+          <button
+            type="button"
+            style={{ ...styles.topTab, ...(mode === 'abschluss' ? styles.topTabActive : {}) }}
+            onClick={() => setModeAndUrl('abschluss')}
+          >
+            Abschluss
+          </button>
         </div>
       )}
 
@@ -1092,6 +1119,8 @@ function WizardPage() {
           projekt={projekt}
           projektauftrag={projektauftrag}
           statusberichte={statusberichte}
+          abschlussbericht={abschlussbericht}
+          onNavigate={setModeAndUrl}
         />
       )}
 
@@ -1100,6 +1129,19 @@ function WizardPage() {
           projektId={id}
           canEdit={canEdit}
           appConfig={appConfig}
+        />
+      )}
+
+      {mode === 'abschluss' && id && (
+        <AbschlussberichtView
+          projektId={id}
+          projektauftrag={projektauftrag}
+          canEdit={canEdit}
+          isOwner={auftragRole === 'owner'}
+          onProjektLifecycleUpdate={async (lifecycle) => {
+            const updated = await updateProjekt(id, { lifecycle });
+            setProjekt(updated);
+          }}
         />
       )}
 

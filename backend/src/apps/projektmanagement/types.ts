@@ -245,6 +245,91 @@ export interface LessonLearnedSuggestion {
   source?: string;
 }
 
+// ============== Abschlussbericht (Phase F) ==============
+
+export type AbschlussStatus = 'draft' | 'final';
+
+export interface StakeholderAkzeptanz {
+  stakeholder_id: string;
+  name?: string;
+  bewertung: AmpelStatus;
+  bemerkung: string;
+}
+
+export interface AbschlussberichtData {
+  // Basis
+  ampel: AmpelStatus;
+  datum: string;
+  management_summary: string;
+  // Ziele (aus SB)
+  goals_snapshot: string;
+  goals_tracking: CriterionTracking;
+  criteria_snapshot: string[];
+  criteria_tracking: CriterionTracking[];
+  // Roadmap (aus SB)
+  milestones_snapshot: MilestoneSnapshot[];
+  milestones_tracking: RoadmapItemTracking[];
+  tasks_snapshot: TaskSnapshot[];
+  tasks_tracking: RoadmapItemTracking[];
+  quality_gates_snapshot: QualityGateSnapshot[];
+  quality_gates_tracking: RoadmapItemTracking[];
+  // Kosten (aus SB)
+  cost_budget: number;
+  cost_months: CostMonthData[];
+  // Risiken
+  risk_tracking: RiskTrackingItem[];
+  risks_plan: Risk[];
+  // Aus Auftrag (nicht im SB)
+  project_type?: string;
+  auftraggeber?: string;
+  description?: string;
+  start_date_plan?: string;
+  end_date_plan?: string;
+  scope?: string;
+  in_scope: string[];
+  out_scope: string[];
+  stakeholders_snapshot: Stakeholder[];
+  organization_snapshot: TeamMember[];
+  budget_plan: BudgetItem[];
+  // Abschluss-spezifisch
+  key_findings: string;
+  stakeholder_akzeptanz: StakeholderAkzeptanz[];
+  uebergabe_an: string;
+  uebergabe_datum: string;
+  uebergabe_inhalte: string;
+  folgeprojekt_empfehlung: string;
+  abnahme_durch: string;
+  abnahme_datum: string;
+  abnahme_signiert: boolean;
+}
+
+export interface Abschlussbericht {
+  id: string;
+  paId: string;
+  data: AbschlussberichtData;
+  status: AbschlussStatus;
+  finalizedAt?: string;
+  version: number;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AbschlussberichtCreateInput {
+  overrides?: Partial<AbschlussberichtData>;
+}
+
+export interface AbschlussberichtUpdateInput {
+  data?: Partial<AbschlussberichtData>;
+  expectedVersion?: number;
+}
+
+export interface AbschlussberichtSuggestion {
+  management_summary: string;
+  key_findings: string;
+  folgeprojekt_empfehlung: string;
+}
+
 /**
  * Phase-2: Rollen auf Auftrags-/Idee-Ebene. Owner kann loeschen + Permissions
  * setzen, Editor kann bearbeiten + Statusberichte verwalten, Viewer nur lesen.

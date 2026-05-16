@@ -110,7 +110,7 @@ function lifecycleBadgeStyle(lifecycle) {
   return { backgroundColor: c.bg, color: c.fg };
 }
 
-export default function ProjektUebersichtPanel({ projekt, projektauftrag, statusberichte }) {
+export default function ProjektUebersichtPanel({ projekt, projektauftrag, statusberichte, abschlussbericht, onNavigate }) {
   const lifecycle = projekt?.lifecycle || 'planning';
   const lifecycleEntry = LIFECYCLE_LABELS[lifecycle] || LIFECYCLE_LABELS.planning;
   const latestSb = (statusberichte && statusberichte.length > 0)
@@ -206,15 +206,74 @@ export default function ProjektUebersichtPanel({ projekt, projektauftrag, status
         </div>
 
         <div style={styles.card}>
-          <div style={styles.cardTitle}>
-            Abschluss
-            <span style={styles.comingSoon}>Phase E</span>
-          </div>
-          <div style={styles.emptyHint}>
-            Lessons Learned und Abschlussbericht werden hier sichtbar, sobald sie
-            implementiert sind. Heute ueberspringen wir den formalen Abschluss
-            und tracken Erkenntnisse direkt im Auftrag.
-          </div>
+          <div style={styles.cardTitle}>Abschluss</div>
+          {abschlussbericht ? (
+            <>
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <span style={{
+                  ...styles.lifecycleBadge,
+                  backgroundColor: abschlussbericht.status === 'final' ? theme.colors.successLight : theme.colors.surfaceHover,
+                  color: abschlussbericht.status === 'final' ? theme.colors.success : theme.colors.textMuted,
+                }}>
+                  {abschlussbericht.status === 'final' ? 'Final' : 'Entwurf'}
+                </span>
+              </div>
+              {abschlussbericht.finalizedAt && (
+                <div style={styles.factRow}>
+                  <span style={styles.factLabel}>Finalisiert am</span>
+                  <span style={styles.factValue}>{formatDate(abschlussbericht.finalizedAt)}</span>
+                </div>
+              )}
+              <div style={{ ...styles.factRow, ...styles.factRowLast }}>
+                <span style={styles.factLabel}>Letzte Aktualisierung</span>
+                <span style={styles.factValue}>{formatDate(abschlussbericht.updatedAt)}</span>
+              </div>
+              {onNavigate && (
+                <button
+                  type="button"
+                  style={{
+                    marginTop: theme.spacing.lg,
+                    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius.lg,
+                    backgroundColor: 'transparent',
+                    color: theme.colors.primary,
+                    fontSize: theme.typography.sizes.sm,
+                    fontWeight: theme.typography.weights.medium,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => onNavigate('abschluss')}
+                >
+                  Zum Bericht →
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={styles.emptyHint}>
+                Noch kein Abschlussbericht angelegt.
+              </div>
+              {onNavigate && (
+                <button
+                  type="button"
+                  style={{
+                    marginTop: theme.spacing.lg,
+                    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius.lg,
+                    backgroundColor: 'transparent',
+                    color: theme.colors.primary,
+                    fontSize: theme.typography.sizes.sm,
+                    fontWeight: theme.typography.weights.medium,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => onNavigate('abschluss')}
+                >
+                  Bericht anlegen →
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
