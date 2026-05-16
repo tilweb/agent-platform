@@ -7,57 +7,46 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useProjektmanagement } from '../../hooks/useProjektmanagement';
-import { LightningIcon, ClipboardIcon, BarChartIcon, CheckCircleIcon, AppsIcon } from '../../components/Icons';
+import { LightningIcon, ClipboardIcon, AppsIcon } from '../../components/Icons';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import RoleBadge from '../../components/RoleBadge';
-import ComingSoon from './components/ComingSoon';
 import Einstellungen from './components/Einstellungen';
-import StatusberichteDashboard from './components/StatusberichteDashboard';
 import IdeenPage from './IdeenPage';
 
-// Tab configuration
+// Phase C: Top-Level-Tabs entsprechen den Top-Level-Entities:
+// Projekte | Ideen | Portfolios | Einstellungen.
+// Statusberichte/Abschluss waren bisher fehlplaziert — gehoeren als
+// Sub-Tabs in die Projekt-Detail-View (siehe Phase B/E).
 const TABS = [
+  {
+    id: 'projekte',
+    label: 'Projekte',
+    icon: ClipboardIcon,
+  },
   {
     id: 'ideen',
     label: 'Projektideen',
     icon: LightningIcon,
-    comingSoon: false,
   },
   {
-    id: 'auftraege',
-    label: 'Projektaufträge',
-    icon: ClipboardIcon,
-    comingSoon: false,
-  },
-  {
-    id: 'statusberichte',
-    label: 'Statusberichte',
-    icon: BarChartIcon,
-    comingSoon: false,
-  },
-  {
-    id: 'abschluss',
-    label: 'Projektabschluss',
-    icon: CheckCircleIcon,
-    comingSoon: true,
-    title: 'Projektabschluss',
-    description: 'Dokumentiere Projektergebnisse und Lessons Learned. Führe strukturierte Abschlussreviews durch.',
-  },
-  {
-    id: 'portfolio',
-    label: 'Portfolio',
+    id: 'portfolios',
+    label: 'Portfolios',
     icon: AppsIcon,
-    comingSoon: true,
-    title: 'Portfoliomanagement',
-    description: 'Überblick über alle Projekte im Unternehmen. Ressourcenplanung, Priorisierung und strategische Ausrichtung.',
   },
   {
     id: 'einstellungen',
     label: 'Einstellungen',
     icon: SettingsIcon,
-    comingSoon: false,
   },
 ];
+
+// Alte Tab-IDs (Bookmarks der User) → neue IDs. Unbekannte fallen auf Default zurueck.
+const TAB_ALIASES = {
+  auftraege: 'projekte',
+  statusberichte: 'projekte', // Cross-Project-SB-Dashboard ist heute ueber den jeweiligen Projekt-Tab erreichbar
+  abschluss: 'projekte', // Abschluss ist Sub-Tab im Projekt (Phase E)
+  portfolio: 'portfolios',
+};
 
 const styles = {
   container: {
@@ -310,23 +299,15 @@ const styles = {
     backgroundColor: theme.colors.primaryLight,
     color: theme.colors.primary,
   },
-  comingSoonBadge: {
-    position: 'absolute',
-    top: '-6px',
-    right: '-6px',
-    fontSize: '9px',
-    padding: '2px 6px',
-    backgroundColor: theme.colors.primary,
-    color: 'white',
-    borderRadius: theme.borderRadius.full,
-    fontWeight: theme.typography.weights.semibold,
-  },
 };
 
 function ProjektePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'auftraege';
+  const rawTab = searchParams.get('tab');
+  const aliased = rawTab ? (TAB_ALIASES[rawTab] || rawTab) : null;
+  const knownIds = new Set(TABS.map((t) => t.id));
+  const activeTab = aliased && knownIds.has(aliased) ? aliased : 'projekte';
   const { projektauftraege, stats, isLoading, refresh } = useProjektmanagement();
   const { role: appRole } = useAppPermission();
   const canCreate = appRole === 'owner' || appRole === 'editor';
@@ -341,7 +322,7 @@ function ProjektePage() {
   const [filteredProjekte, setFilteredProjekte] = useState([]);
 
   const handleTabChange = (tabId) => {
-    if (tabId === 'auftraege') {
+    if (tabId === 'projekte') {
       setSearchParams({});
     } else {
       setSearchParams({ tab: tabId });
@@ -437,7 +418,7 @@ function ProjektePage() {
         <div style={styles.header}>
           <div style={styles.headerLeft}>
             <h1 style={styles.title}>Projektmanagement</h1>
-            <p style={styles.subtitle}>Projektaufträge erstellen, analysieren und verwalten</p>
+            <p style={styles.subtitle}>Projekte, Ideen und Portfolios verwalten</p>
           </div>
         </div>
         <div style={styles.loading}>Lade Projekte...</div>
@@ -450,7 +431,7 @@ function ProjektePage() {
       <div style={styles.header}>
         <div style={styles.headerLeft}>
           <h1 style={styles.title}>Projektmanagement</h1>
-          <p style={styles.subtitle}>Projektaufträge erstellen, analysieren und verwalten</p>
+          <p style={styles.subtitle}>Projekte, Ideen und Portfolios verwalten</p>
         </div>
       </div>
 
@@ -481,7 +462,6 @@ function ProjektePage() {
               >
                 <TabIcon size={16} />
                 {tab.label}
-                {tab.comingSoon && <span style={styles.comingSoonBadge}>Soon</span>}
               </button>
             );
           })}
@@ -490,11 +470,11 @@ function ProjektePage() {
         {/* Tab Content */}
         {activeTab === 'einstellungen' ? (
           <Einstellungen />
-        ) : activeTab === 'statusberichte' ? (
-          <StatusberichteDashboard />
         ) : activeTab === 'ideen' ? (
           <IdeenPage embedded />
-        ) : activeTab === 'auftraege' ? (
+        ) : activeTab === 'portfolios' ? (
+          <PortfoliosPlaceholder />
+        ) : activeTab === 'projekte' ? (
           <>
             {/* Action Bar (analog Ideen-Tab) — nur fuer App-Editor/Owner */}
             {canCreate && (
@@ -523,7 +503,7 @@ function ProjektePage() {
                   }}
                 >
                   <PlusIcon />
-                  Neuer Projektauftrag
+                  Neues Projekt
                 </Link>
               </div>
             )}
@@ -595,12 +575,12 @@ function ProjektePage() {
                 </div>
                 <div style={styles.emptyTitle}>
                   {projektauftraege.length === 0
-                    ? 'Noch keine Projektaufträge'
+                    ? 'Noch keine Projekte'
                     : 'Keine Projekte gefunden'}
                 </div>
                 <p style={styles.emptyText}>
                   {projektauftraege.length === 0
-                    ? 'Erstellen Sie Ihren ersten Projektauftrag, um zu beginnen.'
+                    ? 'Erstellen Sie Ihr erstes Projekt, um zu beginnen.'
                     : 'Versuchen Sie, Ihre Filter anzupassen.'}
                 </p>
                 {projektauftraege.length === 0 && canCreate && (
@@ -615,7 +595,7 @@ function ProjektePage() {
                     }}
                   >
                     <PlusIcon />
-                    Neuer Projektauftrag
+                    Neues Projekt
                   </Link>
                 )}
               </div>
@@ -677,23 +657,40 @@ function ProjektePage() {
               </div>
             )}
           </>
-        ) : (
-          // Coming Soon content for other tabs
-          (() => {
-            const currentTab = TABS.find((t) => t.id === activeTab);
-            if (currentTab && currentTab.comingSoon) {
-              return (
-                <ComingSoon
-                  title={currentTab.title}
-                  description={currentTab.description}
-                  icon={currentTab.icon}
-                />
-              );
-            }
-            return null;
-          })()
-        )}
+        ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Phase D bringt Portfolio-CRUD. Bis dahin zeigen wir hier nur einen
+ * informativen Empty-State, damit der Tab nicht leer wirkt — und Anwender
+ * wissen, dass die Funktion bewusst noch nicht da ist.
+ */
+function PortfoliosPlaceholder() {
+  return (
+    <div style={{
+      padding: theme.spacing['2xl'],
+      textAlign: 'center',
+      color: theme.colors.textMuted,
+    }}>
+      <div style={{ marginBottom: theme.spacing.md }}>
+        <AppsIcon size={48} color={theme.colors.textMuted} />
+      </div>
+      <div style={{
+        fontSize: theme.typography.sizes.lg,
+        fontWeight: theme.typography.weights.semibold,
+        color: theme.colors.text,
+        marginBottom: theme.spacing.sm,
+      }}>
+        Portfolios kommen in Phase D
+      </div>
+      <p style={{ fontSize: theme.typography.sizes.sm, maxWidth: 520, margin: '0 auto' }}>
+        Bundles von Projekten fuer PMO-Sicht (Ressourcen, Prioritaeten, strategische
+        Ausrichtung). Sobald die Entity implementiert ist, kannst du Projekte hier
+        gruppieren und filtern.
+      </p>
     </div>
   );
 }

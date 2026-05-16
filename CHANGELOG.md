@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-05-16
+
+### Projektmanagement Entity-Restruktur — Phase C (Listen-Page-Tabs)
+Listen-Page `ProjektePage` zeigt jetzt die Top-Level-Entities als Tabs:
+**Projekte | Projektideen | Portfolios | Einstellungen**. Identisch zum
+main-Worktree (Phase C ist reines Frontend).
+
+- Tabs umgestellt: `auftraege` → `projekte` (Default), `ideen` bleibt,
+  `portfolio` → `portfolios` (sichtbar mit Empty-State, Phase D),
+  `einstellungen` bleibt; entfernt: `statusberichte` und `abschluss`.
+- URL-Aliase fuer alte Bookmarks (`auftraege/statusberichte/abschluss/portfolio`).
+- Coming-Soon-Badges entfernt; `PortfoliosPlaceholder`-Komponente fuer den
+  Empty-State.
+- Action-Button-Label „Neuer Projektauftrag" → „Neues Projekt".
+
 ## 2026-05-06
 
 ### Projektmanagement Entity-Restruktur — Phase B (Frontend Tab-Container)
