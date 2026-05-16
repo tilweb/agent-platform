@@ -2,6 +2,16 @@
 
 ## 2026-05-16
 
+### WZ-Branchen-Matcher — Neighborhood in Public-API exponiert
+Neue Public-Function `getNeighborhood` unter
+`POST /api/public/v1/wzbar-matcher/getNeighborhood`. Input: `{ code }`
+(4-6-stellig). Output: `{ code, nodes: NeighborhoodNode[] }` mit Eltern/
+Geschwistern/Kindern auf den Ebenen 4-6 und Markierung des aktuellen Codes
+(`isCurrent`). Damit koennen externe Konsumenten (z. B. EMMA) das Umfeld
+eines Match-Ergebnisses inspizieren und manuell auf benachbarte Codes
+wechseln — vorher nur via interne Hono-Route (Session-Cookie) erreichbar.
+Rate-Limit: 120/min.
+
 ### Projektmanagement — App-Rolle als Permission-Floor (Slack/GitHub-Modell)
 Die App-Rolle einer Gruppe (`apps.registry.permissions.groups[]`) propagiert
 jetzt automatisch auf alle Ressourcen der App — `App-Owner-Gruppe` (PMO/Führung)

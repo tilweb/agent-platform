@@ -8,6 +8,7 @@
 
 import type { JsonSchema, PublicFunction } from '../../public-api/types';
 import { match } from './service';
+import { getNeighborhood, type NeighborhoodNode } from './neighborhood';
 import type { MatchCandidate } from './types';
 
 interface ClassifyInput {
@@ -36,6 +37,63 @@ const CANDIDATE_SCHEMA: JsonSchema = {
     reasoning: { type: 'string' },
   },
   required: ['code', 'kurztext', 'confidence'],
+};
+
+interface NeighborhoodInput {
+  code: string;
+}
+
+interface NeighborhoodOutput {
+  code: string;
+  nodes: NeighborhoodNode[];
+}
+
+const NEIGHBORHOOD_NODE_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    code: { type: 'string', description: '4- bis 6-stelliger WZ-2008-Schlüssel.' },
+    kurztext: { type: 'string' },
+    langtext: { type: 'string' },
+    level: { type: 'integer', minimum: 4, maximum: 6, description: 'Hierarchie-Ebene (4=Klasse, 5=Unterklasse, 6=Wirtschaftsabteilung).' },
+    indent: { type: 'integer', minimum: 0, maximum: 2, description: 'Einrueckung relativ zur Klasse (level - 4).' },
+    isCurrent: { type: 'boolean', description: 'true fuer den angefragten Code.' },
+  },
+  required: ['code', 'kurztext', 'langtext', 'level', 'indent', 'isCurrent'],
+};
+
+export const getNeighborhoodPublicFunction: PublicFunction<NeighborhoodInput, NeighborhoodOutput> = {
+  id: 'getNeighborhood',
+  description:
+    'Liefert das hierarchische Umfeld (Klasse, Geschwister, Kinder) eines WZ-2008-Schlüssels — alle Codes mit gleichem Klassen-Praefix (4-stellig) auf den Ebenen 4-6. Nuetzlich um den Kontext eines Match-Ergebnisses zu inspizieren und manuell auf benachbarte Codes zu wechseln.',
+  input: {
+    type: 'object',
+    properties: {
+      code: {
+        type: 'string',
+        description: '4- bis 6-stelliger WZ-2008-Schlüssel (nur Ziffern).',
+        minLength: 4,
+        maxLength: 6,
+      },
+    },
+    required: ['code'],
+  },
+  output: {
+    type: 'object',
+    properties: {
+      code: { type: 'string', description: 'Der angefragte Code (Echo).' },
+      nodes: {
+        type: 'array',
+        description: 'Hierarchisch sortierte Knoten (kurz → lang) mit Markierung des aktuellen Codes.',
+        items: NEIGHBORHOOD_NODE_SCHEMA,
+      },
+    },
+    required: ['code', 'nodes'],
+  },
+  defaultRateLimit: { requests: 120, windowSec: 60 },
+  async handler({ code }) {
+    const nodes = await getNeighborhood(code);
+    return { code, nodes };
+  },
 };
 
 export const classifyPublicFunction: PublicFunction<ClassifyInput, ClassifyOutput> = {
