@@ -105,12 +105,22 @@ Beispiele:
 
   async execute(args: UserMemoryArgs, context?: ToolContext): Promise<string> {
     const { action, section, content, priority = 'normal', name, description, active = true, item_id } = args;
+    const userId = context?.userId;
 
     // Validate action
     if (!['save', 'get', 'delete'].includes(action)) {
       return JSON.stringify({
         success: false,
         error: 'Ungueltige Aktion. Verwende "save", "get" oder "delete".',
+      });
+    }
+
+    // Without userId, refuse — otherwise reads/writes would fall back to the
+    // shared `default.yaml` and leak across users.
+    if (!userId) {
+      return JSON.stringify({
+        success: false,
+        error: 'userId fehlt im Tool-Context — User-Memory kann nicht verwendet werden.',
       });
     }
 
@@ -125,7 +135,7 @@ Beispiele:
     try {
       // GET action
       if (action === 'get') {
-        const memory = await loadUserMemory();
+        const memory = await loadUserMemory(userId);
 
         return JSON.stringify({
           success: true,
@@ -142,7 +152,7 @@ Beispiele:
           });
         }
 
-        const deleted = await deleteMemoryItem(section, item_id);
+        const deleted = await deleteMemoryItem(section, item_id, userId);
         return JSON.stringify({
           success: deleted,
           message: deleted ? 'Item geloescht.' : 'Item nicht gefunden.',
@@ -158,7 +168,7 @@ Beispiele:
           });
         }
 
-        const item = await addAboutItem(content, 'agent');
+        const item = await addAboutItem(content, 'agent', userId);
         return JSON.stringify({
           success: true,
           message: `Gespeichert: "${content}"`,
@@ -174,7 +184,7 @@ Beispiele:
           });
         }
 
-        const item = await addInstruction(content, priority, 'agent');
+        const item = await addInstruction(content, priority, 'agent', userId);
         return JSON.stringify({
           success: true,
           message: `Anweisung gespeichert: "${content}" (${priority})`,
@@ -190,7 +200,7 @@ Beispiele:
           });
         }
 
-        const item = await addContextItem(name, description, active, 'agent');
+        const item = await addContextItem(name, description, active, 'agent', userId);
         return JSON.stringify({
           success: true,
           message: `Kontext gespeichert: "${name}"`,

@@ -1009,16 +1009,19 @@ async function buildSupervisorPrompt(agent: AgentConfig, attachments?: Attachmen
     ? agentListLines.join('\n')
     : '(Keine Agenten verfuegbar)';
 
-  // Load and format user memory
+  // Load and format user memory. Skip entirely if userId is unknown to avoid
+  // leaking the shared `default.yaml` into another user's prompt.
   let userMemoryStr = '';
-  try {
-    const memory = await loadUserMemory();
-    if (memory.settings.include_in_prompt) {
-      userMemoryStr = formatMemoryForPrompt(memory);
+  if (userId) {
+    try {
+      const memory = await loadUserMemory(userId);
+      if (memory.settings.include_in_prompt) {
+        userMemoryStr = formatMemoryForPrompt(memory);
+      }
+    } catch (error) {
+      console.warn('Failed to load user memory:', error);
+      userMemoryStr = '';
     }
-  } catch (error) {
-    console.warn('Failed to load user memory:', error);
-    userMemoryStr = '';
   }
 
   // Build attachments section if present - inject document content directly for reliable access

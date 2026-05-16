@@ -2,6 +2,23 @@
 
 ## 2026-05-16
 
+### Bugfix: User-Memory wurde nutzeruebergreifend gemischt
+- `buildSupervisorPrompt` (`backend/src/agents/loop.ts`) rief `loadUserMemory()`
+  ohne `userId` auf. Folge: Jeder Supervisor-Prompt — fuer jeden eingeloggten
+  User — bekam den Inhalt von `data/memory/users/default.yaml` injiziert. Fix:
+  `userId` wird durchgereicht; ohne `userId` wird die Memory-Sektion komplett
+  ausgelassen (kein Fallback mehr auf `default.yaml`).
+- Das `user_memory` Tool (`backend/src/tools/special/user-memory.ts`) reichte
+  `userId` weder beim Lesen (`get`) noch beim Schreiben (`save`/`delete`)
+  durch. Folge: Alle Schreibvorgaenge landeten in `default.yaml` und wurden
+  dadurch fuer alle Nutzer sichtbar. Fix: `context.userId` wird aus dem
+  `ToolContext` gelesen und an `loadUserMemory`, `addAboutItem`,
+  `addInstruction`, `addContextItem` und `deleteMemoryItem` durchgereicht.
+  Ohne `userId` lehnt das Tool die Operation ab.
+- Empfohlene Migration nach Deploy: `data/memory/users/default.yaml` auf dem
+  Railway-Volume pruefen und ggf. leeren — dort sind die akkumulierten
+  Cross-User-Eintraege seit Beginn.
+
 ### Projektmanagement — Abschlussbericht (Phase F, Backend + Frontend)
 Identisch zum main-Worktree, hier YAML-Storage statt Drizzle/Postgres.
 
