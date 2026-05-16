@@ -945,10 +945,34 @@ export function mapStatusberichtToDocument(sb: any, projektauftrag?: any): Docum
  *
  * Lessons Learned werden live durchgereicht (nicht im data persistiert).
  */
+// Risk-Type ist Wizard-hardcoded (kein Config-Eintrag). Mapping deckt
+// englische Wizard-Werte und Legacy-deutsche Daten ab.
+const ABSCHLUSS_RISK_TYPE_LABEL: Record<string, string> = {
+  threat: 'Bedrohung', chance: 'Chance', bedrohung: 'Bedrohung',
+  technical: 'Technisch', technisch: 'Technisch',
+  organizational: 'Organisatorisch', organisatorisch: 'Organisatorisch',
+  financial: 'Finanziell', finanziell: 'Finanziell',
+  schedule: 'Terminlich', terminlich: 'Terminlich',
+  resource: 'Ressourcen', ressourcen: 'Ressourcen',
+  external: 'Extern', extern: 'Extern',
+};
+
+function riskTypeLabel(value: any): string {
+  if (!value) return '-';
+  return ABSCHLUSS_RISK_TYPE_LABEL[String(value)] || String(value);
+}
+
+function configValueLabel(appConfig: any, key: string, value: any): string {
+  if (!value) return '-';
+  const opt = (appConfig?.[key] || []).find((o: any) => o.value === value);
+  return opt?.label || String(value);
+}
+
 export function mapAbschlussberichtToDocument(
   bericht: any,
   projektauftrag?: any,
   lessonsLearned?: any[],
+  appConfig?: any,
 ): DocumentData {
   const data = bericht?.data || {};
   const projektName = projektauftrag?.name || '-';
@@ -1062,7 +1086,11 @@ export function mapAbschlussberichtToDocument(
   if ((data.risks_plan?.length || 0) > 0 || (data.risk_tracking?.length || 0) > 0) {
     if ((data.risks_plan?.length || 0) > 0) {
       const rows = (data.risks_plan || []).map((r: any) => [
-        r.type || '-', r.description || '-', r.probability || '-', r.impact || '-', r.mitigation || '-',
+        riskTypeLabel(r.type),
+        r.description || '-',
+        configValueLabel(appConfig, 'probability', r.probability),
+        configValueLabel(appConfig, 'impact', r.impact),
+        r.mitigation || '-',
       ]);
       sections.push({
         title: 'Risiken (Plan, aus Projektauftrag)',
@@ -1072,7 +1100,11 @@ export function mapAbschlussberichtToDocument(
     }
     if ((data.risk_tracking?.length || 0) > 0) {
       const rows = (data.risk_tracking || []).map((r: any) => [
-        r.type || '-', r.beschreibung || '-', r.status || '-', r.massnahmen || '-', getAmpelCell(r.ampel),
+        riskTypeLabel(r.type),
+        r.beschreibung || '-',
+        configValueLabel(appConfig, 'risk_status', r.status),
+        r.massnahmen || '-',
+        getAmpelCell(r.ampel),
       ]);
       sections.push({
         title: 'Risiken (Ist, eingetreten/vermieden)',
