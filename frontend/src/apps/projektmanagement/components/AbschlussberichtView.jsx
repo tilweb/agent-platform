@@ -352,7 +352,7 @@ function Section({ title, defaultOpen, children }) {
   );
 }
 
-export default function AbschlussberichtView({ projektId, projektauftrag, canEdit, isOwner, onProjektLifecycleUpdate }) {
+export default function AbschlussberichtView({ projektId, projektauftrag, canEdit, isOwner, appConfig, onProjektStatusUpdate }) {
   const {
     getAbschlussbericht,
     createAbschlussbericht,
@@ -373,6 +373,9 @@ export default function AbschlussberichtView({ projektId, projektauftrag, canEdi
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [error, setError] = useState(null);
   const [lifecycleModal, setLifecycleModal] = useState(false);
+  // Selected project_status im Modal — Default = letzter Eintrag aus der Liste
+  // (typischerweise "Gestoppt" oder "Abschluss"), aber User waehlt explizit.
+  const [statusModalValue, setStatusModalValue] = useState('');
   const [lessons, setLessons] = useState([]);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -545,12 +548,18 @@ export default function AbschlussberichtView({ projektId, projektauftrag, canEdi
   };
 
   const handleLifecycleConfirm = async () => {
+    if (!statusModalValue) {
+      setLifecycleModal(false);
+      return;
+    }
+    const chosen = statusModalValue;
     setLifecycleModal(false);
-    if (onProjektLifecycleUpdate) {
+    setStatusModalValue('');
+    if (onProjektStatusUpdate) {
       try {
-        await onProjektLifecycleUpdate('closed');
+        await onProjektStatusUpdate(chosen);
       } catch (err) {
-        setError(`Projekt-Lifecycle konnte nicht aktualisiert werden: ${err.message}`);
+        setError(`Projektstatus konnte nicht aktualisiert werden: ${err.message}`);
       }
     }
   };
@@ -1131,18 +1140,45 @@ export default function AbschlussberichtView({ projektId, projektauftrag, canEdi
       {lifecycleModal && (
         <div style={styles.modalOverlay} onClick={() => setLifecycleModal(false)}>
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalTitle}>Projekt-Lifecycle aktualisieren?</div>
+            <div style={styles.modalTitle}>Projektstatus aktualisieren?</div>
             <div style={styles.modalText}>
-              Der Abschlussbericht ist als Final markiert. Soll der Projekt-Lifecycle
-              jetzt auf „closed" gesetzt werden? Du kannst das auch spaeter in der
-              Projekt-Übersicht aendern.
+              Der Abschlussbericht ist als Final markiert. Soll der Projektstatus
+              jetzt auf einen Endwert (z.B. „Abschluss" oder „Gestoppt") gesetzt
+              werden? Du kannst den Projektstatus auch spaeter im Basis-Tab des
+              Projektauftrags aendern.
+            </div>
+            <div style={{ marginBottom: theme.spacing.xl }}>
+              <label style={{
+                display: 'block',
+                fontSize: theme.typography.sizes.sm,
+                fontWeight: theme.typography.weights.medium,
+                color: theme.colors.text,
+                marginBottom: theme.spacing.xs,
+              }}>
+                Neuer Projektstatus
+              </label>
+              <select
+                style={styles.select}
+                value={statusModalValue}
+                onChange={(e) => setStatusModalValue(e.target.value)}
+              >
+                <option value="">— Bitte waehlen —</option>
+                {(appConfig?.project_status || []).map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
             <div style={styles.modalActions}>
-              <button type="button" style={styles.btn} onClick={() => setLifecycleModal(false)}>
+              <button type="button" style={styles.btn} onClick={() => { setLifecycleModal(false); setStatusModalValue(''); }}>
                 Nein, spaeter
               </button>
-              <button type="button" style={{ ...styles.btn, ...styles.btnPrimary }} onClick={handleLifecycleConfirm}>
-                Ja, auf „closed" setzen
+              <button
+                type="button"
+                style={{ ...styles.btn, ...styles.btnPrimary, opacity: statusModalValue ? 1 : 0.5 }}
+                onClick={handleLifecycleConfirm}
+                disabled={!statusModalValue}
+              >
+                Status setzen
               </button>
             </div>
           </div>

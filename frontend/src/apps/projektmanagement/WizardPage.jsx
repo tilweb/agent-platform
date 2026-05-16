@@ -374,6 +374,7 @@ function WizardPage() {
     getProjektauftrag,
     getProjekt,
     updateProjekt,
+    updateProjektauftrag,
     updateStep,
     deleteProjektauftrag,
     getConfig,
@@ -899,18 +900,22 @@ function WizardPage() {
     );
   }
 
-  // Get status badge style
+  // Get project-status badge style. Anzeigt den manuell gepflegten
+  // `project_status` (Initiierung/Planung/Umsetzung/Abschluss/Gestoppt) —
+  // nicht den Wizard-Status `auftrag.status`. Label-Quelle: App-Config.
   const getStatusBadge = () => {
-    switch (projektauftrag.status) {
-      case 'active':
-        return { style: styles.statusActive, label: 'Aktiv' };
-      case 'completed':
-        return { style: styles.statusCompleted, label: 'Abgeschlossen' };
-      case 'cancelled':
-        return { style: { backgroundColor: theme.colors.errorLight, color: theme.colors.error }, label: 'Abgebrochen' };
-      default:
-        return { style: styles.statusDraft, label: 'Entwurf' };
+    const value = projektauftrag.project_status;
+    if (!value) {
+      return { style: styles.statusDraft, label: 'Nicht gesetzt' };
     }
+    const option = (appConfig?.project_status || []).find((o) => o.value === value);
+    const label = option?.label || value;
+    // Farb-Mapping rein heuristisch — niedrige Stati grau/blau, Abschluss gruen, Gestoppt rot.
+    let style = styles.statusDraft;
+    if (value === 'stopped') style = { backgroundColor: theme.colors.errorLight, color: theme.colors.error };
+    else if (value === 'closing') style = styles.statusCompleted;
+    else if (value === 'execution') style = styles.statusActive;
+    return { style, label };
   };
 
   const statusBadge = getStatusBadge();
@@ -1120,6 +1125,7 @@ function WizardPage() {
           projektauftrag={projektauftrag}
           statusberichte={statusberichte}
           abschlussbericht={abschlussbericht}
+          appConfig={appConfig}
           onNavigate={setModeAndUrl}
         />
       )}
@@ -1138,9 +1144,18 @@ function WizardPage() {
           projektauftrag={projektauftrag}
           canEdit={canEdit}
           isOwner={auftragRole === 'owner'}
-          onProjektLifecycleUpdate={async (lifecycle) => {
-            const updated = await updateProjekt(id, { lifecycle });
-            setProjekt(updated);
+          appConfig={appConfig}
+          onProjektStatusUpdate={async (newProjectStatus) => {
+            // Setzt project_status (manuell pflegbares Feld im Basis-Tab)
+            // via Auftrag-Update. Optimistic concurrency: nutze die aktuelle
+            // Server-Version (sonst Conflict beim parallel offenen Wizard).
+            const updated = await updateProjektauftrag(
+              id,
+              { project_status: newProjectStatus },
+              { expectedVersion: serverVersion ?? undefined },
+            );
+            setProjektauftrag(updated);
+            setServerVersion(updated.version ?? serverVersion);
           }}
         />
       )}

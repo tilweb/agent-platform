@@ -2,6 +2,19 @@
 
 ## 2026-05-16
 
+### Projektmanagement — Projektstatus statt Lifecycle in der UI
+Konsolidierung der Status-Anzeige: das manuell gepflegte `project_status`-Feld
+(Basis-Tab, Werte aus App-Config) ist die eine Wahrheit im UI. Phase-A-
+`lifecycle`-Spalte bleibt aus Backward-Compat, wird aber nicht mehr UI-aktiv.
+
+- WizardPage-Header: Status-Badge zeigt `auftrag.project_status` statt
+  `auftrag.status`. Label aus appConfig.
+- Übersicht-Tab: Lifecycle-Karte → Projektstatus-Karte.
+- Phase F-Modal beim „Als Final markieren": zeigt eine Selectbox mit den
+  `project_status`-Optionen aus der App-Config. Callback heißt
+  `onProjektStatusUpdate`, schreibt via `updateProjektauftrag` mit
+  `expectedVersion` (Concurrency-safe).
+
 ### WZ-Branchen-Matcher — Neighborhood in Public-API exponiert
 Neue Public-Function `getNeighborhood` unter
 `POST /api/public/v1/wzbar-matcher/getNeighborhood`. Input: `{ code }`
