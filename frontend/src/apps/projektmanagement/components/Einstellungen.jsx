@@ -25,6 +25,8 @@ const FIELD_LABELS = {
   roadmap_status: 'Roadmap-Status (Statusberichte)',
   risk_strategie: 'Risiko-Strategie (Statusberichte)',
   risk_status: 'Risiko-Status (Statusberichte)',
+  lesson_themengebiet: 'Themengebiet (Lessons Learned)',
+  lesson_kategorie: 'Kategorie (Lessons Learned)',
 };
 
 // Display order
@@ -44,6 +46,8 @@ const FIELD_ORDER = [
   'roadmap_status',
   'risk_strategie',
   'risk_status',
+  'lesson_themengebiet',
+  'lesson_kategorie',
 ];
 
 // ============== Styles ==============

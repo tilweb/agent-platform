@@ -431,6 +431,83 @@ export function useProjektmanagement() {
     return data.dashboard || [];
   }, []);
 
+  // ============== Lessons Learned (Phase E) ==============
+
+  const getLessonsLearned = useCallback(async (projektId) => {
+    const response = await apiGet(
+      `/apps/projektmanagement/projektauftraege/${projektId}/lessons-learned`
+    );
+    if (!response.ok) throw new Error('Failed to load Lessons Learned');
+    const data = await response.json();
+    return data.lessons || [];
+  }, []);
+
+  const getLessonLearned = useCallback(async (projektId, llId) => {
+    const response = await apiGet(
+      `/apps/projektmanagement/projektauftraege/${projektId}/lessons-learned/${llId}`
+    );
+    if (!response.ok) throw new Error('Lesson Learned not found');
+    const data = await response.json();
+    return data.lesson;
+  }, []);
+
+  const createLessonLearned = useCallback(async (projektId, input) => {
+    const response = await apiPost(
+      `/apps/projektmanagement/projektauftraege/${projektId}/lessons-learned`,
+      input
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to create Lesson Learned');
+    }
+    const data = await response.json();
+    return data.lesson;
+  }, []);
+
+  const updateLessonLearned = useCallback(async (projektId, llId, updates, { expectedVersion } = {}) => {
+    const body = { ...updates };
+    if (expectedVersion !== undefined) body.expectedVersion = expectedVersion;
+    const response = await apiPut(
+      `/apps/projektmanagement/projektauftraege/${projektId}/lessons-learned/${llId}`,
+      body
+    );
+    if (response.status === 409) {
+      const data = await response.json();
+      throw new VersionConflictError(data.current);
+    }
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to update Lesson Learned');
+    }
+    const data = await response.json();
+    return data.lesson;
+  }, []);
+
+  const deleteLessonLearned = useCallback(async (projektId, llId) => {
+    const response = await apiDelete(
+      `/apps/projektmanagement/projektauftraege/${projektId}/lessons-learned/${llId}`
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to delete Lesson Learned');
+    }
+  }, []);
+
+  // KI-Vorschlaege: lange laufender LLM-Call, kann mehrere Sekunden dauern.
+  // Body ist leer — der Endpoint zieht die letzten Statusberichte selbst.
+  const suggestLessonsLearned = useCallback(async (projektId) => {
+    const response = await apiPost(
+      `/apps/projektmanagement/projektauftraege/${projektId}/lessons-learned/suggest`,
+      {}
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to suggest Lessons Learned');
+    }
+    const data = await response.json();
+    return data.suggestions || [];
+  }, []);
+
   return {
     projektauftraege,
     stats,
@@ -469,5 +546,12 @@ export function useProjektmanagement() {
     updateStatusbericht,
     deleteStatusbericht,
     getStatusberichteDashboard,
+    // Lessons Learned
+    getLessonsLearned,
+    getLessonLearned,
+    createLessonLearned,
+    updateLessonLearned,
+    deleteLessonLearned,
+    suggestLessonsLearned,
   };
 }

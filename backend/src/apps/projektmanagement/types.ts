@@ -176,6 +176,75 @@ export interface ProjektUpdateInput {
   expectedVersion?: number;
 }
 
+// ============== Lessons Learned ==============
+
+export interface LessonLearned {
+  id: string;
+  paId: string;
+  title: string;
+  themengebiet: string;
+  kategorie: string;
+  beschreibung: string;
+  auswirkung: string;
+  empfehlung: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  version: number;
+}
+
+export interface LessonLearnedCreateInput {
+  title: string;
+  themengebiet?: string;
+  kategorie?: string;
+  beschreibung?: string;
+  auswirkung?: string;
+  empfehlung?: string;
+}
+
+export interface LessonLearnedUpdateInput {
+  title?: string;
+  themengebiet?: string;
+  kategorie?: string;
+  beschreibung?: string;
+  auswirkung?: string;
+  empfehlung?: string;
+  expectedVersion?: number;
+}
+
+export const LESSON_THEMENGEBIET_DEFAULTS = [
+  { value: 'basis', label: 'Basis' },
+  { value: 'stakeholder', label: 'Stakeholder' },
+  { value: 'organisation', label: 'Organisation' },
+  { value: 'ziele', label: 'Ziele' },
+  { value: 'inhalt', label: 'Inhalt' },
+  { value: 'roadmap', label: 'Roadmap' },
+  { value: 'kosten', label: 'Kosten' },
+  { value: 'risiko', label: 'Risiko' },
+  { value: 'lessons_learned', label: 'Lessons Learned' },
+  { value: 'projektidee', label: 'Projektidee' },
+  { value: 'auftragsklaerung', label: 'Auftragsklärung' },
+  { value: 'umsetzung', label: 'Umsetzung' },
+  { value: 'projektabschluss', label: 'Projektabschluss' },
+] as const;
+
+export const LESSON_KATEGORIE_DEFAULTS = [
+  { value: 'strength', label: 'Strength' },
+  { value: 'weakness', label: 'Weakness' },
+  { value: 'opportunity', label: 'Opportunity' },
+  { value: 'threat', label: 'Threat' },
+] as const;
+
+export interface LessonLearnedSuggestion {
+  title: string;
+  themengebiet: string;
+  kategorie: string;
+  beschreibung: string;
+  auswirkung: string;
+  empfehlung: string;
+  source?: string;
+}
+
 /**
  * Phase-2: Rollen auf Auftrags-/Idee-Ebene. Owner kann loeschen + Permissions
  * setzen, Editor kann bearbeiten + Statusberichte verwalten, Viewer nur lesen.

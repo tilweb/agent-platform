@@ -8,6 +8,7 @@ import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { theme } from '../../config/theme';
 import { useProjektmanagement, VersionConflictError } from '../../hooks/useProjektmanagement';
 import ProjektUebersichtPanel from './components/ProjektUebersichtPanel';
+import LessonsLearnedView from './components/LessonsLearnedView';
 import { usePmResourcePermission, hasMinRole } from '../../hooks/usePmResourcePermission';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import RoleBadge from '../../components/RoleBadge';
@@ -414,7 +415,7 @@ function WizardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialMode = (() => {
     const fromUrl = searchParams.get('tab');
-    if (fromUrl === 'uebersicht' || fromUrl === 'auftrag' || fromUrl === 'statusberichte') return fromUrl;
+    if (fromUrl === 'uebersicht' || fromUrl === 'auftrag' || fromUrl === 'statusberichte' || fromUrl === 'lessons') return fromUrl;
     return id ? 'uebersicht' : 'auftrag';
   })();
   const [mode, setMode] = useState(initialMode);
@@ -1070,6 +1071,13 @@ function WizardPage() {
           >
             Statusberichte{statusberichte.length > 0 ? ` (${statusberichte.length})` : ''}
           </button>
+          <button
+            type="button"
+            style={{ ...styles.topTab, ...(mode === 'lessons' ? styles.topTabActive : {}) }}
+            onClick={() => setModeAndUrl('lessons')}
+          >
+            Lessons Learned
+          </button>
         </div>
       )}
 
@@ -1084,6 +1092,14 @@ function WizardPage() {
           projekt={projekt}
           projektauftrag={projektauftrag}
           statusberichte={statusberichte}
+        />
+      )}
+
+      {mode === 'lessons' && id && (
+        <LessonsLearnedView
+          projektId={id}
+          canEdit={canEdit}
+          appConfig={appConfig}
         />
       )}
 

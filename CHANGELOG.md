@@ -2,6 +2,23 @@
 
 ## 2026-05-16
 
+### Projektmanagement — Lessons Learned (Phase E, Backend + Frontend)
+Identisch zum main-Worktree, hier YAML-Storage statt Drizzle/Postgres.
+
+- 4. Top-Level-Tab im Projekt-Detail (`?tab=lessons`), Blade-Layout (Liste
+  links, Detail rechts), SWOT-orientiert (Strength/Weakness/Opportunity/
+  Threat) pro Themengebiet (Basis…Projektabschluss).
+- Default-Ansicht zeigt KI-Suggest-Button. Endpoint liest die letzten 5
+  Statusberichte und laesst den LLM-Coach 3–7 SWOT-orientierte Lessons
+  Learned ableiten. Vorschlaege sind nicht persistiert.
+- CRUD: `GET/POST/PUT/DELETE /projektauftraege/:projektId/lessons-learned[/:llId]`,
+  plus `POST .../suggest`. Permissions erben vom Auftrag.
+- YAML-Storage unter `data/apps/projektmanagement/projektauftraege/{id}/
+  lessons-learned/{ll-id}.yaml` mit `withLock` + `VersionConflictError`.
+- DEFAULT_CONFIG bekommt `lesson_themengebiet` + `lesson_kategorie`;
+  Einstellungen-Tab listet die Keys.
+- Neue Komponente `LessonsLearnedView.jsx` (analog main).
+
 ### Projektmanagement Entity-Restruktur — Phase C (Listen-Page-Tabs)
 Listen-Page `ProjektePage` zeigt jetzt die Top-Level-Entities als Tabs:
 **Projekte | Projektideen | Portfolios | Einstellungen**. Identisch zum
