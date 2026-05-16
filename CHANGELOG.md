@@ -1,6 +1,33 @@
 # Changelog
 
-## 2026-05-06
+## 2026-05-16
+
+### Projektmanagement Entity-Restruktur — Phase C (Listen-Page-Tabs)
+Listen-Page `ProjektePage` zeigt jetzt die Top-Level-Entities als Tabs:
+**Projekte | Projektideen | Portfolios | Einstellungen**. Bisher waren
+„Statusberichte" und „Projektabschluss" eigenstaendige Top-Level-Tabs —
+das war konzeptionell schief (beide sind Sub-Resources eines Projekts und
+sitzen seit Phase B als Sub-Tabs in der Detail-Ansicht).
+
+- **Tabs umgestellt**: `auftraege` → `projekte` (Default, leere `?tab=`-URL),
+  `ideen` bleibt, `portfolio` → `portfolios` (sichtbar mit Empty-State, Phase D),
+  `einstellungen` bleibt; entfernt: `statusberichte` und `abschluss`.
+- **URL-Aliase**: alte Bookmarks `?tab=auftraege`, `?tab=statusberichte`,
+  `?tab=abschluss`, `?tab=portfolio` leiten auf die neuen Tab-IDs um — kein
+  404 fuer User mit gespeicherten URLs.
+- **„Soon"-Badges entfernt**: Portfolios bekommt einen ordentlichen Empty-State
+  mit Phase-D-Hinweis statt der vagen „Coming Soon"-Badge.
+- **Action-Buttons im Projekte-Tab**: „Neuer Projektauftrag" → „Neues Projekt"
+  (gleicher Endpunkt, semantisch aber der Projekt-Root). Subtitle der Seite
+  von „Projektaufträge erstellen, analysieren und verwalten" auf „Projekte,
+  Ideen und Portfolios verwalten".
+- **`PortfoliosPlaceholder`-Komponente**: schlanker Empty-State im Tab,
+  inline in `ProjektePage.jsx`. Faellt mit Phase D weg, wenn echte
+  Portfolio-CRUD-Views da sind.
+- **Bewusst nicht gemacht**: die Liste im Projekte-Tab liest weiterhin aus
+  `paProjektauftraege` (Status-Badge, Vollstaendigkeits-Bar). Migration auf
+  `paProjekte` (mit Lifecycle-Badge) kommt, sobald Felder vom Auftrag aufs
+  Projekt umziehen — out-of-scope fuer Phase C.
 
 ### Projektmanagement Entity-Restruktur — Phase B (Frontend Tab-Container)
 Detail-Ansicht eines Projekts startet jetzt in einer **Übersicht** statt im
