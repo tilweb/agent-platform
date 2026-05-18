@@ -1761,7 +1761,7 @@ projektmanagement.put('/projekte/:id', async (c) => {
     return c.json({ projekt });
   } catch (error: any) {
     if (error instanceof VersionConflictError) {
-      return c.json({ error: error.message, code: 'VERSION_CONFLICT' }, 409);
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
     }
     console.error('updateProjekt error:', error);
     return c.json({ error: error?.message || 'Failed to update projekt' }, 500);
@@ -1870,7 +1870,7 @@ projektmanagement.put('/projektauftraege/:projektId/lessons-learned/:llId', asyn
     return c.json({ lesson });
   } catch (error) {
     if (error instanceof VersionConflictError) {
-      return c.json({ error: 'version_conflict' }, 409);
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
     }
     if (error instanceof Error && /nicht gefunden/.test(error.message)) {
       return c.json({ error: error.message }, 404);
@@ -1981,7 +1981,7 @@ projektmanagement.put('/projektauftraege/:projektId/abschlussbericht', async (c)
     return c.json({ abschlussbericht: bericht });
   } catch (error) {
     if (error instanceof VersionConflictError) {
-      return c.json({ error: 'version_conflict' }, 409);
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
     }
     if (error instanceof Error && /final/.test(error.message)) {
       return c.json({ error: error.message }, 409);

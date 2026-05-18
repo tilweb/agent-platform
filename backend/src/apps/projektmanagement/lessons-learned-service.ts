@@ -100,9 +100,7 @@ export async function updateLessonLearned(
   const current = await getLessonLearned(paId, llId);
   if (!current) throw new Error(`Lesson Learned ${llId} nicht gefunden`);
   if (input.expectedVersion !== undefined && current.version !== input.expectedVersion) {
-    throw new VersionConflictError(
-      `Lesson Learned ${llId}: version conflict (expected ${input.expectedVersion}, got ${current.version})`,
-    );
+    throw new VersionConflictError(current);
   }
 
   const patch: Record<string, unknown> = {
@@ -127,7 +125,8 @@ export async function updateLessonLearned(
     .returning({ id: paLessonsLearned.id });
 
   if (result.length === 0) {
-    throw new VersionConflictError(`Lesson Learned ${llId}: concurrent update`);
+    const latest = await getLessonLearned(paId, llId);
+    throw new VersionConflictError(latest ?? current);
   }
 
   const updated = await getLessonLearned(paId, llId);

@@ -123,9 +123,9 @@ export async function updateProjekt(id: string, input: ProjektUpdateInput): Prom
   }
 
   if (input.expectedVersion !== undefined && current.version !== input.expectedVersion) {
-    throw new VersionConflictError(
-      `Projekt ${id}: version conflict (expected ${input.expectedVersion}, got ${current.version})`,
-    );
+    // Entity uebergeben (nicht String) — Frontend-Conflict-Modal kann damit
+    // den Server-Stand anzeigen + Diff zur User-Eingabe rendern.
+    throw new VersionConflictError(current);
   }
 
   const patch: Record<string, unknown> = {
@@ -152,9 +152,10 @@ export async function updateProjekt(id: string, input: ProjektUpdateInput): Prom
     .returning({ id: paProjekte.id });
 
   if (result.length === 0) {
-    throw new VersionConflictError(
-      `Projekt ${id}: concurrent update detected`,
-    );
+    // Race: zwischen unserem Read + Update hat ein anderer Client geschrieben.
+    // Aktuellen Server-Stand neu laden und im Error mitgeben.
+    const latest = await getProjekt(id);
+    throw new VersionConflictError(latest ?? current);
   }
 
   const updated = await getProjekt(id);

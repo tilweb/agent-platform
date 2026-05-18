@@ -210,9 +210,7 @@ export async function updateAbschlussbericht(
     throw new Error('Abschlussbericht ist final — bitte erst wiedereroeffnen');
   }
   if (input.expectedVersion !== undefined && current.version !== input.expectedVersion) {
-    throw new VersionConflictError(
-      `Abschlussbericht: version conflict (expected ${input.expectedVersion}, got ${current.version})`,
-    );
+    throw new VersionConflictError(current);
   }
 
   const mergedData: AbschlussberichtData = { ...current.data, ...(input.data ?? {}) };
@@ -228,7 +226,8 @@ export async function updateAbschlussbericht(
     .returning({ id: paAbschlussberichte.id });
 
   if (result.length === 0) {
-    throw new VersionConflictError('Abschlussbericht: concurrent update');
+    const latest = await getAbschlussbericht(paId);
+    throw new VersionConflictError(latest ?? current);
   }
 
   const updated = await getAbschlussbericht(paId);
@@ -262,7 +261,10 @@ export async function finalizeAbschlussbericht(paId: string): Promise<Abschlussb
     } as never)
     .where(and(eq(paAbschlussberichte.paId, paId), eq(paAbschlussberichte.version, current.version)))
     .returning({ id: paAbschlussberichte.id });
-  if (result.length === 0) throw new VersionConflictError('Abschlussbericht: concurrent update');
+  if (result.length === 0) {
+    const latest = await getAbschlussbericht(paId);
+    throw new VersionConflictError(latest ?? current);
+  }
   const finalized = await getAbschlussbericht(paId);
   if (!finalized) throw new Error('Abschlussbericht verschwand nach Finalize');
   return finalized;
@@ -283,7 +285,10 @@ export async function reopenAbschlussbericht(paId: string): Promise<Abschlussber
     } as never)
     .where(and(eq(paAbschlussberichte.paId, paId), eq(paAbschlussberichte.version, current.version)))
     .returning({ id: paAbschlussberichte.id });
-  if (result.length === 0) throw new VersionConflictError('Abschlussbericht: concurrent update');
+  if (result.length === 0) {
+    const latest = await getAbschlussbericht(paId);
+    throw new VersionConflictError(latest ?? current);
+  }
   const reopened = await getAbschlussbericht(paId);
   if (!reopened) throw new Error('Abschlussbericht verschwand nach Reopen');
   return reopened;

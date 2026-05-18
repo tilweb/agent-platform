@@ -291,11 +291,6 @@ const styles = {
     backgroundColor: theme.colors.primaryLight,
     color: theme.colors.primary,
   },
-  topTabComingSoon: {
-    color: theme.colors.textMuted,
-    cursor: 'not-allowed',
-    opacity: 0.5,
-  },
   // Statusbericht tabs
   sbTabs: {
     display: 'flex',
