@@ -269,6 +269,34 @@ const styles = {
     marginRight: theme.spacing.xs,
     verticalAlign: 'middle',
   },
+  ampelGroup: {
+    display: 'flex',
+    gap: theme.spacing.lg,
+  },
+  ampelOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+    borderRadius: theme.borderRadius.lg,
+    border: `2px solid ${theme.colors.border}`,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+    backgroundColor: theme.colors.surface,
+  },
+  ampelOptionReadOnly: {
+    cursor: 'default',
+    opacity: 0.7,
+  },
+  ampelSwatch: {
+    width: 20,
+    height: 20,
+    borderRadius: theme.borderRadius.full,
+  },
+  ampelOptionLabel: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+  },
   banner: {
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
@@ -760,16 +788,39 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
       <Section title="Basis">
         <div style={styles.field}>
           <label style={styles.fieldLabel}>Gesamt-Ampel</label>
-          <select
-            style={styles.select}
-            value={draft.ampel}
-            onChange={(e) => setField('ampel', e.target.value)}
-            disabled={readOnly}
-          >
-            <option value="gruen">Grün</option>
-            <option value="gelb">Gelb</option>
-            <option value="rot">Rot</option>
-          </select>
+          <div style={styles.ampelGroup}>
+            {['gruen', 'gelb', 'rot'].map((key) => {
+              const opt = AMPEL_COLOR[key];
+              const isSelected = draft.ampel === key;
+              return (
+                <div
+                  key={key}
+                  style={{
+                    ...styles.ampelOption,
+                    ...(readOnly ? styles.ampelOptionReadOnly : {}),
+                    borderColor: isSelected ? opt.fg : theme.colors.border,
+                    backgroundColor: isSelected ? `${opt.fg}15` : theme.colors.surface,
+                  }}
+                  onClick={() => { if (!readOnly) setField('ampel', key); }}
+                  onMouseEnter={(e) => {
+                    if (!readOnly && !isSelected) {
+                      e.currentTarget.style.borderColor = opt.fg;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!readOnly && !isSelected) {
+                      e.currentTarget.style.borderColor = theme.colors.border;
+                    }
+                  }}
+                >
+                  <span style={{ ...styles.ampelSwatch, backgroundColor: opt.fg }} />
+                  <span style={{ ...styles.ampelOptionLabel, color: isSelected ? opt.fg : theme.colors.text }}>
+                    {opt.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
         <div style={styles.field}>
           <label style={styles.fieldLabel}>Abschluss-Datum</label>
