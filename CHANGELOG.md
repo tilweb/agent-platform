@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-05-18
+
+### Projektmanagement — Code-Review P3/P4 abgeschlossen
+Drittes + viertes Prio-Set der Code-Review aus Phase F:
+
+- **B3 (Frontend)**: `selectedSbId` wird via `?sb=<id>` URL-synchronisiert.
+  Browser-Back, Bookmarks und Tab-Wechsel behalten die SB-Auswahl. Beim
+  Verlassen des Statusberichte-Tabs wird der Parameter geräumt.
+- **B2 (Backend + Frontend)**: `finalizeAbschlussbericht`/`reopenAbschluss‐
+  bericht` akzeptieren optional `expectedVersion`. Frontend übergibt
+  `bericht.version`, catcht VersionConflictError analog zum normalen Update.
+  Schließt das Race-Window zwischen GET und finalize/reopen.
+- **TD1**: `paProjekte.lifecycle`-Spalte entfernt — sie wurde seit Phase F
+  nicht mehr UI-gesetzt und driftete still vom tatsächlichen Stand weg.
+  Drizzle-Migration `0013_drop_projekte_lifecycle.sql` läuft idempotent
+  beim nächsten Boot. PM-spezifische Status-Wahrheit lebt jetzt vollständig
+  in `auftrag.project_status` (Initiierung/Planung/Umsetzung/Abschluss/
+  Gestoppt). Helpers `suggestLifecycleTransition`, `mapAuftragStatus​To‐
+  Lifecycle`, `ProjektLifecycle`-Type entfernt.
+- **TD3**: DB-seitige Pagination + Status-Filter für `listProjektauftraege`.
+  Route `?limit=N&offset=M` (default 500, max 1000), Status wird via WHERE
+  gefiltert. Antwort enthält `pagination: { limit, offset, hasMore }`.
+  Pagination ist opt-in: Stats und interne Aufrufer ohne `limit` laden
+  weiter alle Rows.
+- **TD5**: Neue Doku `docs/projektmanagement-status-felder-2026-05-18.md`
+  beschreibt die sechs parallel existierenden Status-Felder (Projektidee,
+  Projektauftrag.status, Projektauftrag.project_status, Statusbericht,
+  Abschlussbericht; `paProjekte.lifecycle` entfernt) mit Semantik,
+  Orthogonalität und Code-Locations.
+- **Abschluss-Doku**: `docs/projektmanagement-code-review-2026-05-18.md`
+  konsolidiert P0–P4 mit Status, Commit-Referenzen, Schlüssel-Entscheidungen
+  und den drei falschen Agent-Behauptungen (Transparenz für künftige Reviews).
+
 ## 2026-05-16
 
 ### Projektmanagement — Projektstatus statt Lifecycle in der UI
