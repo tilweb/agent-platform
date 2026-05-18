@@ -55,12 +55,53 @@ async function loadIdeeReference(ideeId: string): Promise<Projektauftrag['idee']
   return rows[0] ? { id: rows[0].id, name: rows[0].name } : undefined;
 }
 
-export async function getProjektauftraege(): Promise<Projektauftrag[]> {
+/**
+ * Optionen fuer `getProjektauftraege` — pagination + DB-seitiges Filtern.
+ *
+ * - `limit`/`offset` werden direkt an SQL durchgereicht (DEFAULT_LIMIT, falls
+ *   nicht uebergeben). Schuetzt vor unbounded Memory bei wachsenden Tabellen.
+ * - `status` wird via WHERE-Klausel auf DB-Ebene gefiltert. Andere Filter
+ *   (project_type, search, ...) bleiben im Service-Layer in-memory, weil sie
+ *   im jsonb-Data leben — DB-Filter dafuer braeuchten jsonb-Indizes.
+ *
+ * Wichtig: die Auftrag-Permission wird **nach** dem DB-Fetch geprueft. Bei
+ * paginierten Requests fuer Nicht-App-Owner kann eine Seite damit sparser
+ * sein, als `limit` suggeriert — das ist bewusst, weil RBAC erst nach dem
+ * Load wirkt. Frontends sollten daher `hasMore` aus der Paginierungs-Antwort
+ * nutzen statt auf gefuellte Seiten zu vertrauen.
+ */
+export interface GetProjektauftraegeOptions {
+  limit?: number;
+  offset?: number;
+  status?: string;
+}
+
+export const DEFAULT_PROJEKTAUFTRAEGE_LIMIT = 500;
+export const MAX_PROJEKTAUFTRAEGE_LIMIT = 1000;
+
+export async function getProjektauftraege(
+  options: GetProjektauftraegeOptions = {},
+): Promise<Projektauftrag[]> {
   const db = getDb();
-  const rows = await db
-    .select()
-    .from(paProjektauftraege)
-    .orderBy(desc(paProjektauftraege.updatedAt));
+
+  const baseQuery = db.select().from(paProjektauftraege);
+  const whereClause = options.status
+    ? baseQuery.where(eq(paProjektauftraege.status, options.status))
+    : baseQuery;
+  let query = whereClause.orderBy(desc(paProjektauftraege.updatedAt));
+
+  // limit ist opt-in. Stats/interne Aufrufer ohne limit laden alle Rows
+  // (Behavior-Erhalt vor TD3). Routen, die paginieren, setzen das limit
+  // explizit (siehe routes.ts /projektauftraege).
+  if (options.limit !== undefined) {
+    const limit = Math.min(Math.max(1, options.limit), MAX_PROJEKTAUFTRAEGE_LIMIT);
+    query = query.limit(limit) as typeof query;
+  }
+  if (options.offset !== undefined) {
+    query = query.offset(Math.max(0, options.offset)) as typeof query;
+  }
+
+  const rows = await query;
   return rows.map(rowToProjektauftrag);
 }
 

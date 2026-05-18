@@ -347,9 +347,19 @@ projektmanagement.post('/projektauftraege/from-vorlage', async (c) => {
 
 /**
  * GET /api/apps/projektmanagement/projektauftraege
+ *
  * Listet nur Auftraege auf die der eingeloggte User mind. viewer-Rolle hat.
  * App-Editor/Owner sieht nicht automatisch alles — nur wo er Auftrags-Mitglied
  * ist (oder Ersteller ist via ownerId).
+ *
+ * Pagination (TD3): `?limit=N&offset=M`. Default 500 / max 1000 (Defense-in-Depth
+ * gegen unbounded Memory). `status` wird DB-seitig gefiltert. Andere Filter
+ * (project_type/search/...) laufen in-memory ueber den geladenen Block.
+ *
+ * Hinweis: Permission-Filter laeuft NACH dem DB-Fetch. Fuer Nicht-App-Owner
+ * koennen Seiten daher sparser sein, als `limit` suggeriert. Clients sollten
+ * `pagination.hasMore` aus der Antwort lesen statt auf gefuellte Seiten zu
+ * vertrauen.
  */
 projektmanagement.get('/projektauftraege', async (c) => {
   try {
@@ -371,15 +381,33 @@ projektmanagement.get('/projektauftraege', async (c) => {
     if (from_date) filters.from_date = from_date;
     if (to_date) filters.to_date = to_date;
 
+    // Pagination: Default-Limit 500 (Defense-in-Depth gegen unbounded Memory).
+    // Client kann via ?limit=N (max 1000) ueberschreiben.
+    const limitParam = c.req.query('limit');
+    const offsetParam = c.req.query('offset');
+    const parsedLimit = limitParam ? parseInt(limitParam, 10) : NaN;
+    const parsedOffset = offsetParam ? parseInt(offsetParam, 10) : NaN;
+    const limit = Number.isFinite(parsedLimit) ? parsedLimit : 500;
+    const offset = Number.isFinite(parsedOffset) ? parsedOffset : 0;
+
     const all = await listProjektauftraege(
-      Object.keys(filters).length > 0 ? filters : undefined
+      Object.keys(filters).length > 0 ? filters : undefined,
+      { limit, offset },
     );
     const accessible = await listAccessibleAuftragIds(userId, all);
     const projektauftraege = all
       .filter((a) => accessible.has(a.id))
       .map((a) => ({ ...a, role: accessible.get(a.id) }));
 
-    return c.json({ projektauftraege });
+    // hasMore-Heuristik: wenn die DB-Antwort genau `limit` Rows zurueckgab,
+    // gibt es vermutlich weitere. Echte Count-Abfrage waere ein zweiter Roundtrip
+    // — nicht noetig fuer den aktuellen UI-Use-Case.
+    const hasMore = all.length >= limit;
+
+    return c.json({
+      projektauftraege,
+      pagination: { limit, offset, hasMore },
+    });
   } catch (error) {
     console.error('Error listing Projektauftraege:', error);
     return c.json({ error: 'Failed to list Projektauftraege' }, 500);

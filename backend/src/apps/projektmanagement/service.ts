@@ -95,21 +95,35 @@ export async function createFromVorlage(
 }
 
 /**
- * List Projektauftraege with optional filtering
+ * Pagination-Optionen fuer `listProjektauftraege`. Defaults siehe storage.ts
+ * (DEFAULT_PROJEKTAUFTRAEGE_LIMIT). `status`-Filter wird zusaetzlich an DB
+ * gereicht — andere Filter laufen weiterhin in-memory ueber den jsonb-Data.
+ */
+export interface ListProjektauftraegePaging {
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * List Projektauftraege with optional filtering + pagination.
  */
 export async function listProjektauftraege(
-  filters?: ProjektauftragFilters
+  filters?: ProjektauftragFilters,
+  paging?: ListProjektauftraegePaging,
 ): Promise<Projektauftrag[]> {
-  let projektauftraege = await getProjektauftraege();
+  // status + LIMIT/OFFSET werden auf DB-Ebene angewendet (Defense-in-Depth
+  // gegen unbounded Memory). Andere Filter laufen anschliessend in-memory.
+  let projektauftraege = await getProjektauftraege({
+    limit: paging?.limit,
+    offset: paging?.offset,
+    status: filters?.status,
+  });
 
   if (!filters) {
     return projektauftraege;
   }
 
-  // Apply filters
-  if (filters.status) {
-    projektauftraege = projektauftraege.filter((p) => p.status === filters.status);
-  }
+  // status wurde bereits DB-seitig angewendet — skip im in-memory-Filter.
 
   if (filters.project_type) {
     projektauftraege = projektauftraege.filter((p) => p.project_type === filters.project_type);
