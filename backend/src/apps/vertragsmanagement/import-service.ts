@@ -17,11 +17,10 @@
  * (`extracted` + `contract_type`) wird in `extracted_history[]` archiviert.
  */
 
-import { llmService, type Message, type ChatOptions } from '../../services/llm';
+import { llmService, type Message } from '../../services/llm';
 import type { UsageContext } from '../../services/usageTracking';
-import { buildFunctionSchema, buildToolChoice } from '../../extraction/schema-builder';
-import { validateExtraction } from '../../extraction/validator';
-import type { ExtractionProfile, FieldGroup, FieldDefinition } from '../../extraction/types';
+import { runPipeline, type PreparedFile } from '../../services/extraction';
+import { contractSchemaToExtractionSchema } from './extraction-adapter';
 import {
   processFilesToText,
   withHeartbeat,
@@ -89,37 +88,8 @@ function mergeReport(report: ImportReport, sub: FileImportReport): void {
   report.warnings.push(...sub.warnings);
 }
 
-/**
- * Konvertiert ein ContractSchema (UI-Schema mit `select`-Typ) in ein
- * ExtractionProfile, das vom shared Function-Schema-Builder verstanden wird.
- * `select` wird zu `text` mit Hint, der die erlaubten Werte auflistet.
- */
-function contractSchemaToProfile(schema: ContractSchema): ExtractionProfile {
-  const fields: Record<string, FieldGroup> = {};
-  for (const [groupName, groupFields] of Object.entries(schema.fields)) {
-    const converted: Record<string, FieldDefinition> = {};
-    for (const [fieldName, field] of Object.entries(groupFields)) {
-      const def: FieldDefinition = {
-        type: field.type === 'select' ? 'text' : field.type,
-        required: field.required,
-        label: field.label,
-      };
-      if (field.options && field.options.length > 0) {
-        def.hint = `Mögliche Werte: ${field.options.join(', ')}`;
-      }
-      converted[fieldName] = def;
-    }
-    fields[groupName] = converted;
-  }
-  return {
-    id: `vm-${schema.id}`,
-    name: schema.name,
-    description: `Auto-generated extraction profile for contract type ${schema.id}`,
-    version: '1.0',
-    detection: { keywords: [] },
-    fields,
-  };
-}
+// Helper `contractSchemaToProfile` ist nach P2 in `./extraction-adapter.ts`
+// gezogen und wird via `contractSchemaToExtractionSchema` aufgerufen.
 
 // ============== Phase 2.5: Klassifikator ==============
 
@@ -248,65 +218,11 @@ Bestimme:
 }
 
 // ============== Phase 3: Extraktion ==============
-
-async function extractWithSchema(
-  combinedText: string,
-  profile: ExtractionProfile,
-  contractName: string,
-  userId?: string,
-): Promise<Record<string, unknown>> {
-  const functionSchema = buildFunctionSchema(profile);
-  const toolChoice = buildToolChoice(profile);
-
-  const systemPrompt = `Du bist Vertragsanalyse-Spezialist. Extrahiere strukturierte Daten aus dem ${contractName}.
-
-Allgemeine Regeln:
-- Datumsangaben immer im Format YYYY-MM-DD
-- Fehlende Werte als null setzen, NICHT erfinden
-- Zahlen als numerische Werte (nicht als String)
-- Text exakt aus den Dokumenten uebernehmen
-- Informationen aus allen Dokumenten zusammenfuehren — der Hauptvertrag ist der Anker, Anhaenge ergaenzen`;
-
-  const messages: Message[] = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: `Extrahiere die strukturierten Daten aus folgendem Vertragswerk:\n\n${combinedText}` },
-  ];
-
-  const usageContext: UsageContext = {
-    userId,
-    source: 'extraction',
-    operation: 'contract_extract',
-  };
-
-  const options: ChatOptions = {
-    userId,
-    toolChoice: toolChoice as ChatOptions['toolChoice'],
-  };
-
-  const response = await llmService.chat(messages, [functionSchema], usageContext, options);
-
-  if (response.tool_calls && response.tool_calls.length > 0) {
-    const args = response.tool_calls[0]!.function.arguments;
-    try {
-      return JSON.parse(args);
-    } catch {
-      throw new Error(`Ungueltiges JSON in Function-Call: ${args.substring(0, 200)}`);
-    }
-  }
-
-  if (response.content) {
-    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try {
-        return JSON.parse(jsonMatch[0]);
-      } catch {
-        // fall through
-      }
-    }
-  }
-
-  throw new Error('LLM hat keine strukturierten Daten zurueckgegeben');
-}
+//
+// Vollstaendig in `backend/src/services/extraction/` ausgelagert (Phase D / P2).
+// Die alte `extractWithSchema`-Funktion ist durch `runPipeline` ersetzt, die
+// pro Schema die konfigurierte Strategy (single-pass / long-text-chunked / ...)
+// waehlt. Truncation ist nicht mehr moeglich.
 
 function countExtractedFields(data: Record<string, unknown>): number {
   let count = 0;
@@ -394,29 +310,53 @@ export async function importContract(
     data: { detected: classification.detected, confidence: classification.confidence, durationMs: Date.now() - classStart },
   });
 
-  // Phase 3: Extraktion mit dynamischem Schema
+  // Phase 3: Extraktion via Heavy-Extraction-Pipeline (Phase D / P2).
+  // Pipeline waehlt selbst die Strategy aus dem Schema (`extraction.strategy`)
+  // und eskaliert bei Bedarf single-pass → long-text-chunked automatisch.
+  // Truncation: niemals — Pipeline arbeitet auf processedFiles[].text (volle
+  // per-File-Texte), nicht auf dem 30k-gekuerzten combinedText.
   const schema = await getSchema(classification.detected);
   if (!schema) {
     throw new Error(`Klassifikator schlug "${classification.detected}" vor, aber kein Schema gefunden.`);
   }
-  const profile = contractSchemaToProfile(schema);
+
+  const extractionSchema = contractSchemaToExtractionSchema(schema);
+  const preparedFiles: PreparedFile[] = processedFiles.map((pf, idx) => ({
+    filename: pf.filename,
+    text: pf.text,
+    mimeType: files[idx]?.mimeType ?? (pf.isImage ? 'image/png' : 'text/plain'),
+    rawBuffer: files[idx]?.buffer,
+  }));
 
   await emit({ type: 'extracting_started', data: { textChars: combinedText.length, contractType: schema.id } });
   const extractStart = Date.now();
-  const extracted = await withHeartbeat(
-    extractWithSchema(combinedText, profile, schema.name, userId),
-    HEARTBEAT_MS,
-    async (elapsedMs) => { await emit({ type: 'extracting_progress', data: { elapsedMs } }); },
-  );
+  const pipelineResult = await runPipeline({
+    files: preparedFiles,
+    schema: extractionSchema,
+    userId,
+    emit: async (ev) => {
+      // Pipeline-Events → VM-Import-Events mappen.
+      if (ev.phase === 'extracting') {
+        await emit({
+          type: 'extracting_progress',
+          data: { elapsedMs: Date.now() - extractStart },
+        });
+      } else if (ev.phase === 'fallback') {
+        report.warnings.push(`Strategy-Eskalation: ${ev.reason}`);
+      }
+    },
+  });
+  const extracted = pipelineResult.extracted;
+  // Provenance + fieldConfidences werden in P4 persistiert + im UI angezeigt.
+  // Heute (P2) verwerfen wir sie — der Roundtrip wurde schon gemacht, nur die
+  // Storage- + UI-Anbindung fehlt.
 
-  // Phase 4: Validation
-  const validation = validateExtraction(extracted, profile);
-  if (validation.errors.length > 0) {
-    for (const err of validation.errors) {
-      report.warnings.push(`Validierung: ${err.field} - ${err.message}`);
-    }
+  // Phase 4: Pipeline-Warnings ins Report-Object einsortieren (Pipeline ruft
+  // validateExtraction intern auf; wir doppeln nicht).
+  for (const w of pipelineResult.warnings) {
+    report.warnings.push(`Validierung: ${w}`);
   }
-  await emit({ type: 'validating', data: { warningCount: validation.errors.length } });
+  await emit({ type: 'validating', data: { warningCount: pipelineResult.warnings.length } });
 
   report.fieldsExtracted = countExtractedFields(extracted);
   await emit({
@@ -553,17 +493,34 @@ export async function reextractContract(
   const combinedText = await getContractDocument(contractId);
   if (!combinedText) throw new Error(`Kein gecachter Vertragstext fuer ${contractId} — Re-Extraktion nicht moeglich.`);
 
-  const profile = contractSchemaToProfile(newSchema);
+  // Heavy-Extraction-Pipeline (Phase D / P2): re-Extraktion nutzt denselben
+  // Strategy-Path wie importContract. Wenn das neue Schema z.B. long-text-chunked
+  // verlangt und das gecachte Markdown lang ist, geht es automatisch via Chunking.
+  const extractionSchema = contractSchemaToExtractionSchema(newSchema);
+  const preparedFiles: PreparedFile[] = [{
+    filename: `${contractId}.md`,
+    text: combinedText,
+    mimeType: 'text/markdown',
+  }];
+
   await emit({ type: 'extracting_started', data: { textChars: combinedText.length, contractType: newSchema.id } });
   const extractStart = Date.now();
-  const extracted = await withHeartbeat(
-    extractWithSchema(combinedText, profile, newSchema.name, userId),
-    HEARTBEAT_MS,
-    async (elapsedMs) => { await emit({ type: 'extracting_progress', data: { elapsedMs } }); },
-  );
+  const pipelineResult = await runPipeline({
+    files: preparedFiles,
+    schema: extractionSchema,
+    userId,
+    emit: async (ev) => {
+      if (ev.phase === 'extracting') {
+        await emit({
+          type: 'extracting_progress',
+          data: { elapsedMs: Date.now() - extractStart },
+        });
+      }
+    },
+  });
+  const extracted = pipelineResult.extracted;
 
-  const validation = validateExtraction(extracted, profile);
-  await emit({ type: 'validating', data: { warningCount: validation.errors.length } });
+  await emit({ type: 'validating', data: { warningCount: pipelineResult.warnings.length } });
 
   const fieldsExtracted = countExtractedFields(extracted);
   await emit({ type: 'extracting_done', data: { fieldsExtracted, durationMs: Date.now() - extractStart } });
@@ -608,7 +565,7 @@ export async function reextractContract(
     filesFailed: 0,
     fieldsExtracted,
     errors: [],
-    warnings: validation.errors.map((e) => `Validierung: ${e.field} - ${e.message}`),
+    warnings: pipelineResult.warnings.map((w) => `Validierung: ${w}`),
   };
   await emit({ type: 'done', data: { contract: updated, report } });
 

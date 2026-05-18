@@ -17,7 +17,12 @@ export interface AppRoute {
  * - editor  = darf inhaltlich aendern, anlegen, evtl. loeschen
  * - viewer  = read-only
  */
-export type AppRole = 'owner' | 'editor' | 'viewer';
+export const APP_ROLES = ['owner', 'editor', 'viewer'] as const;
+export type AppRole = typeof APP_ROLES[number];
+
+export function isAppRole(value: unknown): value is AppRole {
+  return typeof value === 'string' && (APP_ROLES as readonly string[]).includes(value);
+}
 
 export interface AppGroupPermission {
   groupId: string;
@@ -85,6 +90,29 @@ export interface ContractSchemaFieldGroup {
   [fieldName: string]: ContractSchemaField;
 }
 
+/**
+ * Konfiguriert die Heavy-Extraction-Pipeline pro Schema (siehe
+ * `backend/src/services/extraction/`). Optional — wenn nicht gesetzt, gelten
+ * Defaults aus `extraction/defaults.ts` (Strategy `single-pass`, Confidence-
+ * Threshold 0.6 etc.).
+ */
+export interface ContractSchemaExtractionConfig {
+  strategy?: 'single-pass' | 'long-text-chunked' | 'vision-per-page' | 'hybrid';
+  chunk_size_tokens?: number;
+  chunk_overlap_tokens?: number;
+  section_aware?: boolean;
+  merge_strategy?: 'first-non-null' | 'majority-vote' | 'priority-by-section' | 'union';
+  confidence_threshold?: number;
+  vision_fallback?: boolean;
+  vision_detail?: 'low' | 'high';
+  max_pages?: number;
+  max_concurrent?: number;
+  model_override?: {
+    provider_id: string;
+    model_id: string;
+  } | null;
+}
+
 export interface ContractSchema {
   id: string;
   name: string;
@@ -97,6 +125,12 @@ export interface ContractSchema {
     end_date: string;
     value: string;
   };
+  /**
+   * Optional: Konfiguration der Heavy-Extraction-Pipeline fuer diesen
+   * Vertragstyp. Wenn nicht gesetzt, faellt auf `single-pass` mit Defaults
+   * zurueck.
+   */
+  extraction?: ContractSchemaExtractionConfig;
 }
 
 export interface ContractObligation {
@@ -129,10 +163,11 @@ export interface ContractMetadata {
   attachments?: ContractAttachment[];
   primary_attachment_id?: string | null;
   type_detection?: ContractTypeDetection | null;
-  provenance?: Record<string, string[]> | null;
-  extracted_history?: ContractExtractionSnapshot[];
+  provenance?: Record<string, string[]> | null;     // fieldKey → [attachmentId, ...]
+  extracted_history?: ContractExtractionSnapshot[]; // bei Re-Extraktion archiviert
 }
 
+/** 'hauptvertrag' | 'anhang' | 'toolbox' | 'korrespondenz' | 'sonstiges'. */
 export type ContractDocumentRole =
   | 'hauptvertrag'
   | 'anhang'
@@ -153,13 +188,14 @@ export interface ContractAttachment {
 }
 
 export interface ContractTypeDetection {
-  detected: string;
-  confidence: number;
+  detected: string;                                 // contractType-id (z.B. 'mietvertrag')
+  confidence: number;                               // 0..1
   alternatives: { type: string; confidence: number }[];
   user_corrected: boolean;
   corrected_at?: string | null;
 }
 
+/** Bei Re-Extraktion mit anderem Vertragstyp wird der alte Stand archiviert. */
 export interface ContractExtractionSnapshot {
   contract_type: string;
   extracted: Record<string, any>;

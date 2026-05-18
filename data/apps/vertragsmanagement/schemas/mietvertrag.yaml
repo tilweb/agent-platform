@@ -62,3 +62,20 @@ mapping:
   start_date: laufzeit.beginn
   end_date: laufzeit.ende
   value: finanzen.kaltmiete_monatlich * 12
+
+# Heavy-Extraction-Pipeline-Konfiguration (Phase D / P2).
+# Mietvertraege koennen lang sein (60-200 Seiten bei Gewerbe inkl. Anhaengen) —
+# section-aware Chunking gibt mehr Recall als ein-einzelner Pass. Sektionen wie
+# "Finanzen", "Kuendigung", "Nebenkosten" sind im typischen Mietvertrag durch
+# Headings markiert, deren Treffer-Wahrscheinlichkeit beim priority-by-section-
+# Merge die Genauigkeit deutlich anhebt.
+#
+# Hinweis: wenn das Dokument klein ist, eskaliert die Pipeline nicht; einzelne
+# Chunks reichen aus. Hier gibt es keinen Performance-Nachteil fuer kurze Docs.
+extraction:
+  strategy: long-text-chunked
+  chunk_size_tokens: 8000
+  chunk_overlap_tokens: 500
+  section_aware: true
+  merge_strategy: priority-by-section
+  confidence_threshold: 0.7
