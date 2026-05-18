@@ -48,7 +48,6 @@ projekteRoutes.post('/projekte', async (c) => {
     const body = await c.req.json<{
       id?: string;
       name?: string;
-      lifecycle?: string;
       portfolioId?: string;
       ideeId?: string;
       ownerId?: string;
@@ -61,7 +60,6 @@ projekteRoutes.post('/projekte', async (c) => {
     const projekt = await createProjekt({
       id: body.id,
       name: body.name,
-      lifecycle: body.lifecycle as never,
       portfolioId: body.portfolioId,
       ideeId: body.ideeId,
       ownerId: body.ownerId ?? userId,
@@ -79,14 +77,12 @@ projekteRoutes.put('/projekte/:id', async (c) => {
     const id = c.req.param('id');
     const body = await c.req.json<{
       name?: string;
-      lifecycle?: string;
       portfolioId?: string | null;
       metadata?: Record<string, unknown>;
       expectedVersion?: number;
     }>();
     const projekt = await updateProjekt(id, {
       name: body.name,
-      lifecycle: body.lifecycle as never,
       portfolioId: body.portfolioId,
       metadata: body.metadata,
       expectedVersion: body.expectedVersion,

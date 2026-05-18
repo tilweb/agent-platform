@@ -123,31 +123,18 @@ export interface Projektauftrag {
 // ============== Projekt (Top-Level-Entity, Phase A) ==============
 
 /**
- * Lifecycle-Stati eines Projekts. Trennt Identitaet (`paProjekte` /
- * `data/.../projekte/{id}/metadata.yaml`) von Inhalt (Projektauftrag).
- *
- * Phase A: Lifecycle wird explizit gesetzt + Vorschlaege durch
- * `suggestLifecycleTransition()`. Sub-Resource-Status (Auftrag, Statusberichte,
- * Abschluss) treiben spaetere Phasen automatisch Vorschlaege.
- */
-export type ProjektLifecycle = 'planning' | 'active' | 'closed' | 'cancelled';
-
-export const PROJEKT_LIFECYCLE_VALUES: readonly ProjektLifecycle[] = [
-  'planning',
-  'active',
-  'closed',
-  'cancelled',
-] as const;
-
-/**
  * API-Form (camelCase). YAML wird identisch persistiert — neue Entity, kein
  * Legacy-Schema zu wahren. Bewusste Abweichung von Projektauftrag/Projektidee
  * (snake_case), damit das Frontend-Cherry-pick aus main 1:1 passt.
+ *
+ * Status-Wahrheit: PM-Phase lebt im Auftrag-Data unter `project_status`. Eine
+ * frueher hier vorhandene `lifecycle`-Spalte wurde mit dem TD1-Aufraeumen
+ * (Mai 2026) entfernt — sie war nicht mehr UI-gesetzt und driftete still.
+ * Siehe docs/projektmanagement-status-felder-2026-05-18.md.
  */
 export interface Projekt {
   id: string;
   name: string;
-  lifecycle: ProjektLifecycle;
   portfolioId?: string;
   ideeId?: string;
   ownerId?: string;
@@ -161,7 +148,6 @@ export interface Projekt {
 export interface ProjektCreateInput {
   id?: string;
   name: string;
-  lifecycle?: ProjektLifecycle;
   portfolioId?: string;
   ideeId?: string;
   ownerId?: string;
@@ -170,7 +156,6 @@ export interface ProjektCreateInput {
 
 export interface ProjektUpdateInput {
   name?: string;
-  lifecycle?: ProjektLifecycle;
   portfolioId?: string | null;
   metadata?: Record<string, any>;
   expectedVersion?: number;

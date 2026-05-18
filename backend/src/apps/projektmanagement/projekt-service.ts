@@ -19,9 +19,7 @@ import type {
   Projekt,
   ProjektCreateInput,
   ProjektUpdateInput,
-  ProjektLifecycle,
 } from './types';
-import { PROJEKT_LIFECYCLE_VALUES } from './types';
 import { VersionConflictError, withLock } from './concurrency';
 import { defaultOwnerPermissions } from './permissions';
 
@@ -36,10 +34,6 @@ export function generateProjektId(): string {
   return `projekt-${timestamp}-${random}`;
 }
 
-function isLifecycle(value: unknown): value is ProjektLifecycle {
-  return typeof value === 'string' && (PROJEKT_LIFECYCLE_VALUES as readonly string[]).includes(value);
-}
-
 async function ensureBaseDir(): Promise<void> {
   await Bun.$`mkdir -p ${PROJEKTE_PATH}`;
 }
@@ -48,7 +42,6 @@ function normalize(raw: any): Projekt {
   return {
     id: raw.id,
     name: raw.name,
-    lifecycle: isLifecycle(raw.lifecycle) ? raw.lifecycle : 'planning',
     portfolioId: raw.portfolioId ?? undefined,
     ideeId: raw.ideeId ?? undefined,
     ownerId: raw.ownerId ?? undefined,
@@ -108,7 +101,6 @@ export async function createProjekt(input: ProjektCreateInput): Promise<Projekt>
   const projekt: Projekt = {
     id,
     name: input.name,
-    lifecycle: input.lifecycle ?? 'planning',
     portfolioId: input.portfolioId,
     ideeId: input.ideeId,
     ownerId: input.ownerId,
@@ -146,12 +138,6 @@ export async function updateProjekt(id: string, input: ProjektUpdateInput): Prom
 
     const next: Projekt = { ...current };
     if (input.name !== undefined) next.name = input.name;
-    if (input.lifecycle !== undefined) {
-      if (!isLifecycle(input.lifecycle)) {
-        throw new Error(`Ungueltiger Lifecycle-Wert: ${input.lifecycle}`);
-      }
-      next.lifecycle = input.lifecycle;
-    }
     if (input.portfolioId !== undefined) {
       next.portfolioId = input.portfolioId ?? undefined;
     }
@@ -178,30 +164,9 @@ export async function deleteProjekt(id: string): Promise<boolean> {
   });
 }
 
-// ============== Lifecycle-Hinweise ==============
-
-/**
- * Stub fuer Lifecycle-Vorschlaege. Wird in Phase A nicht aufgerufen — kommt
- * mit Phase E (Abschlussbericht) zurueck.
- */
-export async function suggestLifecycleTransition(projektId: string): Promise<ProjektLifecycle | null> {
-  const projekt = await getProjekt(projektId);
-  if (!projekt) return null;
-  return null;
-}
-
 // ============== Daten-Migration (Boot-Hook + CLI) ==============
 
 const AUFTRAEGE_PATH = `${BASE_PATH}/projektauftraege`;
-
-function mapAuftragStatusToLifecycle(status: string | null | undefined): ProjektLifecycle {
-  switch ((status || '').toLowerCase()) {
-    case 'active': return 'active';
-    case 'completed': return 'closed';
-    case 'cancelled': return 'cancelled';
-    default: return 'planning';
-  }
-}
 
 /**
  * Idempotent: legt fuer jeden Auftrag-Ordner unter `projektauftraege/`, fuer
@@ -250,7 +215,6 @@ export async function migrateAuftraegeToProjekteIfNeeded(): Promise<{
       const projekt: Projekt = {
         id: auftrag.id,
         name: auftrag.name,
-        lifecycle: mapAuftragStatusToLifecycle(auftrag.status),
         portfolioId: undefined,
         ideeId: auftrag.idee_id ?? undefined,
         ownerId: auftrag.created_by ?? undefined,
