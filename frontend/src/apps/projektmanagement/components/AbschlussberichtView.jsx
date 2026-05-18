@@ -736,9 +736,9 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
               </div>
             )}
           </div>
-          {isOwner && (
+          {isOwner && !isFinal && (
             <button type="button" style={{ ...styles.btn, ...styles.btnDanger }} onClick={handleDelete}>
-              <TrashIcon size={14} /> Loeschen
+              <TrashIcon size={14} /> Zurücksetzen
             </button>
           )}
         </div>
@@ -1263,9 +1263,9 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
 
       <ConfirmModal
         open={confirmDelete}
-        title="Abschlussbericht löschen?"
-        message="Der Abschlussbericht wird unwiderruflich gelöscht. Statusberichte und Lessons Learned bleiben erhalten."
-        confirmLabel="Löschen"
+        title="Abschlussbericht zurücksetzen?"
+        message="Der Entwurf wird gelöscht und der Abschlussbericht muss neu angelegt werden. Statusberichte und Lessons Learned bleiben erhalten."
+        confirmLabel="Zurücksetzen"
         destructive
         busy={isSaving}
         onConfirm={confirmDeleteNow}
