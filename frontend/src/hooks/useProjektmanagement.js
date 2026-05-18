@@ -564,11 +564,16 @@ export function useProjektmanagement() {
     }
   }, []);
 
-  const finalizeAbschlussbericht = useCallback(async (projektId) => {
+  const finalizeAbschlussbericht = useCallback(async (projektId, { expectedVersion } = {}) => {
+    const body = expectedVersion !== undefined ? { expectedVersion } : {};
     const response = await apiPost(
       `/apps/projektmanagement/projektauftraege/${projektId}/abschlussbericht/finalize`,
-      {}
+      body
     );
+    if (response.status === 409) {
+      const result = await response.json();
+      throw new VersionConflictError(result.current);
+    }
     if (!response.ok) {
       const data = await response.json();
       throw new Error(data.error || 'Failed to finalize Abschlussbericht');
@@ -577,11 +582,16 @@ export function useProjektmanagement() {
     return data.abschlussbericht;
   }, []);
 
-  const reopenAbschlussbericht = useCallback(async (projektId) => {
+  const reopenAbschlussbericht = useCallback(async (projektId, { expectedVersion } = {}) => {
+    const body = expectedVersion !== undefined ? { expectedVersion } : {};
     const response = await apiPost(
       `/apps/projektmanagement/projektauftraege/${projektId}/abschlussbericht/reopen`,
-      {}
+      body
     );
+    if (response.status === 409) {
+      const result = await response.json();
+      throw new VersionConflictError(result.current);
+    }
     if (!response.ok) {
       const data = await response.json();
       throw new Error(data.error || 'Failed to reopen Abschlussbericht');

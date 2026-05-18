@@ -247,10 +247,23 @@ export async function deleteAbschlussbericht(paId: string): Promise<boolean> {
 
 // ============== Status-Transitions ==============
 
-export async function finalizeAbschlussbericht(paId: string): Promise<Abschlussbericht> {
+/**
+ * Status-Transitions akzeptieren optional `expectedVersion`. Wenn der Client
+ * eine Version mitschickt, die nicht der aktuellen entspricht, wird
+ * `VersionConflictError` mit dem aktuellen Server-Stand geworfen — analog zu
+ * `updateAbschlussbericht`. Ohne `expectedVersion` ist die Transition
+ * idempotent (z.B. fuer Server-interne Skripte).
+ */
+export async function finalizeAbschlussbericht(
+  paId: string,
+  expectedVersion?: number,
+): Promise<Abschlussbericht> {
   const db = getDb();
   const current = await getAbschlussbericht(paId);
   if (!current) throw new Error('Abschlussbericht nicht gefunden');
+  if (expectedVersion !== undefined && current.version !== expectedVersion) {
+    throw new VersionConflictError(current);
+  }
   if (current.status === 'final') return current;
   const result = await db
     .update(paAbschlussberichte)
@@ -271,10 +284,16 @@ export async function finalizeAbschlussbericht(paId: string): Promise<Abschlussb
   return finalized;
 }
 
-export async function reopenAbschlussbericht(paId: string): Promise<Abschlussbericht> {
+export async function reopenAbschlussbericht(
+  paId: string,
+  expectedVersion?: number,
+): Promise<Abschlussbericht> {
   const db = getDb();
   const current = await getAbschlussbericht(paId);
   if (!current) throw new Error('Abschlussbericht nicht gefunden');
+  if (expectedVersion !== undefined && current.version !== expectedVersion) {
+    throw new VersionConflictError(current);
+  }
   if (current.status === 'draft') return current;
   const result = await db
     .update(paAbschlussberichte)
