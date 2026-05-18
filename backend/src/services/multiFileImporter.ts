@@ -64,6 +64,15 @@ export interface ProcessFilesOptions {
   maxImageDescChars?: number;
   /** Default: 'multiFileImporter'. Wird im console.log-Prefix angezeigt — Aufrufer setzt z.B. 'PM-Import' oder 'VM-Import'. */
   logPrefix?: string;
+  /**
+   * Wenn `true`: ueberspringt das Char-Budget in `combineTexts` komplett — der
+   * vollstaendige Text aller Files wird in `combinedText` zurueckgegeben.
+   * Defense-in-Depth fuer die Heavy-Extraction-Pipeline (siehe
+   * `backend/src/services/extraction/`), die intern chunked und niemals
+   * truncieren darf. Hat KEINE Auswirkung auf den image-description-Cap
+   * (`maxImageDescChars`). Default: false.
+   */
+  unbounded?: boolean;
 }
 
 // ============== Constants ==============
@@ -337,11 +346,15 @@ export async function processFilesToText(
   const {
     userId,
     emit,
-    maxCombinedChars = DEFAULT_MAX_COMBINED_CHARS,
-    maxCombinedCharsXlsx = DEFAULT_MAX_COMBINED_CHARS_XLSX,
+    maxCombinedChars: rawMaxCombined = DEFAULT_MAX_COMBINED_CHARS,
+    maxCombinedCharsXlsx: rawMaxCombinedXlsx = DEFAULT_MAX_COMBINED_CHARS_XLSX,
     maxImageDescChars = DEFAULT_MAX_IMAGE_DESC_CHARS,
     logPrefix = 'multiFileImporter',
+    unbounded = false,
   } = options;
+
+  const maxCombinedChars = unbounded ? Number.MAX_SAFE_INTEGER : rawMaxCombined;
+  const maxCombinedCharsXlsx = unbounded ? Number.MAX_SAFE_INTEGER : rawMaxCombinedXlsx;
 
   const fire = emit ?? (async () => { /* noop */ });
 
