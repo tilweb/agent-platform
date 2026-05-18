@@ -31,9 +31,27 @@ async function ensureDirectories(): Promise<void> {
 }
 
 /**
- * Get all Projektauftraege
+ * Optionen fuer `getProjektauftraege` — Pagination + DB-aequivalentes Filtern.
+ *
+ * In der YAML-Variante muessen wir alle Files lesen (Glob), dann sortieren,
+ * dann slicen. Bei kleiner Demo-Datenmenge unkritisch. Die API bleibt
+ * identisch zur main-Variante (Postgres), damit Route-Handler 1:1 portierbar
+ * sind.
+ *
+ * Permission-Filter laeuft NACH dem Read in routes.ts — fuer Nicht-App-Owner
+ * koennen Seiten daher sparser sein als `limit` suggeriert.
  */
-export async function getProjektauftraege(): Promise<Projektauftrag[]> {
+export interface GetProjektauftraegeOptions {
+  limit?: number;
+  offset?: number;
+  status?: string;
+}
+
+export const MAX_PROJEKTAUFTRAEGE_LIMIT = 1000;
+
+export async function getProjektauftraege(
+  options: GetProjektauftraegeOptions = {},
+): Promise<Projektauftrag[]> {
   const projektauftraege: Projektauftrag[] = [];
 
   try {
@@ -44,6 +62,7 @@ export async function getProjektauftraege(): Promise<Projektauftrag[]> {
       if (await file.exists()) {
         const content = await file.text();
         const projektauftrag = parse(content) as Projektauftrag;
+        if (options.status && projektauftrag.status !== options.status) continue;
         projektauftraege.push(projektauftrag);
       }
     }
@@ -56,6 +75,13 @@ export async function getProjektauftraege(): Promise<Projektauftrag[]> {
     new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
 
+  // Pagination ist opt-in: ohne `limit` werden alle Rows zurueckgegeben
+  // (Stats + interne Aufrufer). Routen, die paginieren, setzen `limit` explizit.
+  if (options.limit !== undefined) {
+    const limit = Math.min(Math.max(1, options.limit), MAX_PROJEKTAUFTRAEGE_LIMIT);
+    const offset = Math.max(0, options.offset ?? 0);
+    return projektauftraege.slice(offset, offset + limit);
+  }
   return projektauftraege;
 }
 

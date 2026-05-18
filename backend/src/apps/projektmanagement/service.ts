@@ -97,21 +97,33 @@ export async function createFromVorlage(
 }
 
 /**
- * List Projektauftraege with optional filtering
+ * Pagination-Optionen fuer `listProjektauftraege`. Defense-in-Depth gegen
+ * unbounded Memory; ohne `limit` werden alle Auftraege geladen (Stats-Use-Case).
+ */
+export interface ListProjektauftraegePaging {
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * List Projektauftraege with optional filtering + pagination.
  */
 export async function listProjektauftraege(
-  filters?: ProjektauftragFilters
+  filters?: ProjektauftragFilters,
+  paging?: ListProjektauftraegePaging,
 ): Promise<Projektauftrag[]> {
-  let projektauftraege = await getProjektauftraege();
+  // status + LIMIT/OFFSET werden bereits in der Storage-Schicht angewendet.
+  let projektauftraege = await getProjektauftraege({
+    limit: paging?.limit,
+    offset: paging?.offset,
+    status: filters?.status,
+  });
 
   if (!filters) {
     return projektauftraege;
   }
 
-  // Apply filters
-  if (filters.status) {
-    projektauftraege = projektauftraege.filter((p) => p.status === filters.status);
-  }
+  // status wurde bereits in storage angewendet — skip im in-memory-Filter.
 
   if (filters.project_type) {
     projektauftraege = projektauftraege.filter((p) => p.project_type === filters.project_type);

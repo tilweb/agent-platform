@@ -340,6 +340,11 @@ projektmanagement.post('/projektauftraege/from-vorlage', async (c) => {
  * Listet nur Auftraege auf die der eingeloggte User mind. viewer-Rolle hat.
  * App-Editor/Owner sieht nicht automatisch alles — nur wo er Auftrags-Mitglied
  * ist (oder Ersteller ist via ownerId).
+ *
+ * Pagination (TD3): `?limit=N&offset=M`. Default 500 / max 1000. `status`
+ * wird in der Storage-Schicht gefiltert; andere Filter in-memory. Permission-
+ * Filter laeuft NACH dem Fetch — Seiten koennen sparser sein als `limit` fuer
+ * Nicht-App-Owner. Clients sollten `pagination.hasMore` lesen.
  */
 projektmanagement.get('/projektauftraege', async (c) => {
   try {
@@ -361,15 +366,28 @@ projektmanagement.get('/projektauftraege', async (c) => {
     if (from_date) filters.from_date = from_date;
     if (to_date) filters.to_date = to_date;
 
+    const limitParam = c.req.query('limit');
+    const offsetParam = c.req.query('offset');
+    const parsedLimit = limitParam ? parseInt(limitParam, 10) : NaN;
+    const parsedOffset = offsetParam ? parseInt(offsetParam, 10) : NaN;
+    const limit = Number.isFinite(parsedLimit) ? parsedLimit : 500;
+    const offset = Number.isFinite(parsedOffset) ? parsedOffset : 0;
+
     const all = await listProjektauftraege(
-      Object.keys(filters).length > 0 ? filters : undefined
+      Object.keys(filters).length > 0 ? filters : undefined,
+      { limit, offset },
     );
     const accessible = await listAccessibleAuftragIds(userId, all);
     const projektauftraege = all
       .filter((a) => accessible.has(a.id))
       .map((a) => ({ ...a, role: accessible.get(a.id) }));
 
-    return c.json({ projektauftraege });
+    const hasMore = all.length >= limit;
+
+    return c.json({
+      projektauftraege,
+      pagination: { limit, offset, hasMore },
+    });
   } catch (error) {
     console.error('Error listing Projektauftraege:', error);
     return c.json({ error: 'Failed to list Projektauftraege' }, 500);
