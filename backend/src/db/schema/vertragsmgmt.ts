@@ -8,6 +8,12 @@ export const contractSchemas = vertragsmgmtSchema.table('schemas', {
   icon: text('icon'),
   fields: jsonb('fields').notNull(),
   mapping: jsonb('mapping').notNull(),
+  /**
+   * Heavy-Extraction-Pipeline-Konfiguration. NULL = Default (single-pass).
+   * Struktur: { strategy, chunk_size_tokens, merge_strategy, ... }
+   * Siehe ContractSchemaExtractionConfig in apps/types.ts.
+   */
+  extraction: jsonb('extraction'),
   isSystem: text('is_system').notNull().default('false'),  // 'true' fuer im-Code-Schemas
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),

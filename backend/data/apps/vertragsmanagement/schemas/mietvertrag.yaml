@@ -53,3 +53,15 @@ mapping:
   start_date: laufzeit.beginn
   end_date: laufzeit.ende
   value: finanzen.kaltmiete_monatlich * 12
+
+# Heavy-Extraction-Pipeline-Konfiguration (Phase D / P2).
+# Mietvertraege koennen lang sein — section-aware Chunking gibt mehr Recall
+# als ein einzelner Pass. priority-by-section bevorzugt Werte aus Sektionen,
+# deren Heading zum Feld-Gruppen-Namen passt (z.B. "Finanzen", "Laufzeit").
+extraction:
+  strategy: long-text-chunked
+  chunk_size_tokens: 8000
+  chunk_overlap_tokens: 500
+  section_aware: true
+  merge_strategy: priority-by-section
+  confidence_threshold: 0.7

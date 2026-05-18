@@ -90,6 +90,29 @@ export interface ContractSchemaFieldGroup {
   [fieldName: string]: ContractSchemaField;
 }
 
+/**
+ * Konfiguriert die Heavy-Extraction-Pipeline pro Schema (siehe
+ * `backend/src/services/extraction/`). Optional — wenn nicht gesetzt, gelten
+ * Defaults aus `extraction/defaults.ts` (Strategy `single-pass`, Confidence-
+ * Threshold 0.6 etc.).
+ */
+export interface ContractSchemaExtractionConfig {
+  strategy?: 'single-pass' | 'long-text-chunked' | 'vision-per-page' | 'hybrid';
+  chunk_size_tokens?: number;
+  chunk_overlap_tokens?: number;
+  section_aware?: boolean;
+  merge_strategy?: 'first-non-null' | 'majority-vote' | 'priority-by-section' | 'union';
+  confidence_threshold?: number;
+  vision_fallback?: boolean;
+  vision_detail?: 'low' | 'high';
+  max_pages?: number;
+  max_concurrent?: number;
+  model_override?: {
+    provider_id: string;
+    model_id: string;
+  } | null;
+}
+
 export interface ContractSchema {
   id: string;
   name: string;
@@ -102,6 +125,12 @@ export interface ContractSchema {
     end_date: string;
     value: string;
   };
+  /**
+   * Optional: Konfiguration der Heavy-Extraction-Pipeline fuer diesen
+   * Vertragstyp. Wenn nicht gesetzt, faellt auf `single-pass` mit Defaults
+   * zurueck.
+   */
+  extraction?: ContractSchemaExtractionConfig;
 }
 
 export interface ContractObligation {

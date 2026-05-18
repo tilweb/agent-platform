@@ -34,6 +34,7 @@ function rowToSchema(row: typeof schemasTable.$inferSelect): ContractSchema {
     icon: row.icon ?? '',
     fields: row.fields as ContractSchema['fields'],
     mapping: row.mapping as ContractSchema['mapping'],
+    extraction: (row.extraction ?? undefined) as ContractSchema['extraction'],
   };
 }
 
@@ -58,6 +59,7 @@ export async function saveSchema(schema: ContractSchema): Promise<void> {
     icon: schema.icon ?? null,
     fields: schema.fields as never,
     mapping: schema.mapping as never,
+    extraction: (schema.extraction ?? null) as never,
     createdAt: now,
     updatedAt: now,
   }).onConflictDoUpdate({
@@ -67,6 +69,7 @@ export async function saveSchema(schema: ContractSchema): Promise<void> {
       icon: schema.icon ?? null,
       fields: schema.fields as never,
       mapping: schema.mapping as never,
+      extraction: (schema.extraction ?? null) as never,
       updatedAt: now,
     },
   });
