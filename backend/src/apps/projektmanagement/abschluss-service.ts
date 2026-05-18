@@ -231,10 +231,16 @@ export async function deleteAbschlussbericht(paId: string): Promise<boolean> {
 
 // ============== Status-Transitions ==============
 
-export async function finalizeAbschlussbericht(paId: string): Promise<Abschlussbericht> {
+export async function finalizeAbschlussbericht(
+  paId: string,
+  expectedVersion?: number,
+): Promise<Abschlussbericht> {
   return withLock(`abschluss:${paId}`, async () => {
     const current = await getAbschlussbericht(paId);
     if (!current) throw new Error('Abschlussbericht nicht gefunden');
+    if (expectedVersion !== undefined && current.version !== expectedVersion) {
+      throw new VersionConflictError(current);
+    }
     if (current.status === 'final') return current;
     const now = new Date().toISOString();
     const next: Abschlussbericht = {
@@ -249,10 +255,16 @@ export async function finalizeAbschlussbericht(paId: string): Promise<Abschlussb
   });
 }
 
-export async function reopenAbschlussbericht(paId: string): Promise<Abschlussbericht> {
+export async function reopenAbschlussbericht(
+  paId: string,
+  expectedVersion?: number,
+): Promise<Abschlussbericht> {
   return withLock(`abschluss:${paId}`, async () => {
     const current = await getAbschlussbericht(paId);
     if (!current) throw new Error('Abschlussbericht nicht gefunden');
+    if (expectedVersion !== undefined && current.version !== expectedVersion) {
+      throw new VersionConflictError(current);
+    }
     if (current.status === 'draft') return current;
     const next: Abschlussbericht = {
       ...current,

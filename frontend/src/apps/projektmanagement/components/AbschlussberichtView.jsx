@@ -500,13 +500,19 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
     setIsSaving(true);
     setError(null);
     try {
-      const updated = await finalizeAbschlussbericht(projektId);
+      const updated = await finalizeAbschlussbericht(projektId, {
+        expectedVersion: bericht?.version,
+      });
       setBericht(updated);
       setDraft({ ...updated.data });
       setIsDirty(false);
       setLifecycleModal(true);
     } catch (err) {
-      setError(err.message);
+      if (err instanceof VersionConflictError) {
+        setError('Bericht wurde von jemand anderem geaendert. Bitte neu laden.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -516,12 +522,18 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
     setIsSaving(true);
     setError(null);
     try {
-      const updated = await reopenAbschlussbericht(projektId);
+      const updated = await reopenAbschlussbericht(projektId, {
+        expectedVersion: bericht?.version,
+      });
       setBericht(updated);
       setDraft({ ...updated.data });
       setIsDirty(false);
     } catch (err) {
-      setError(err.message);
+      if (err instanceof VersionConflictError) {
+        setError('Bericht wurde von jemand anderem geaendert. Bitte neu laden.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setIsSaving(false);
     }

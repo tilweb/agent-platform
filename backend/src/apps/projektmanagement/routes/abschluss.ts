@@ -135,9 +135,19 @@ abschlussRoutes.post('/projektauftraege/:projektId/abschlussbericht/finalize', a
     const denied = await denyIfBelowAuftragRole(userId, projektId, 'editor');
     if (denied) return c.json({ error: denied.error }, denied.status);
 
-    const bericht = await finalizeAbschlussbericht(projektId);
+    let expectedVersion: number | undefined;
+    try {
+      const body = await c.req.json();
+      expectedVersion = body?.expectedVersion;
+    } catch {
+      // Body optional
+    }
+    const bericht = await finalizeAbschlussbericht(projektId, expectedVersion);
     return c.json({ abschlussbericht: bericht });
   } catch (error) {
+    if (error instanceof VersionConflictError) {
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
+    }
     console.error('Error finalizing Abschlussbericht:', error);
     return c.json({ error: error instanceof Error ? error.message : 'Failed to finalize' }, 500);
   }
@@ -151,9 +161,19 @@ abschlussRoutes.post('/projektauftraege/:projektId/abschlussbericht/reopen', asy
     const denied = await denyIfBelowAuftragRole(userId, projektId, 'owner');
     if (denied) return c.json({ error: denied.error }, denied.status);
 
-    const bericht = await reopenAbschlussbericht(projektId);
+    let expectedVersion: number | undefined;
+    try {
+      const body = await c.req.json();
+      expectedVersion = body?.expectedVersion;
+    } catch {
+      // Body optional
+    }
+    const bericht = await reopenAbschlussbericht(projektId, expectedVersion);
     return c.json({ abschlussbericht: bericht });
   } catch (error) {
+    if (error instanceof VersionConflictError) {
+      return c.json({ error: 'version_conflict', current: error.current }, 409);
+    }
     console.error('Error reopening Abschlussbericht:', error);
     return c.json({ error: error instanceof Error ? error.message : 'Failed to reopen' }, 500);
   }

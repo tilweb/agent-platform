@@ -427,7 +427,9 @@ function WizardPage() {
   const [projekt, setProjekt] = useState(null); // paProjekte-Row (Lifecycle etc.)
   const [abschlussbericht, setAbschlussbericht] = useState(null); // fuer Uebersicht-Karte
   const [statusberichte, setStatusberichte] = useState([]);
-  const [selectedSbId, setSelectedSbId] = useState(null);
+  // Statusbericht-Auswahl wird via URL `?sb=<id>` synchronisiert — damit
+  // Browser-Back + Bookmark + Tab-Wechsel die Auswahl behalten.
+  const [selectedSbId, setSelectedSbId] = useState(() => searchParams.get('sb'));
   const [currentSb, setCurrentSb] = useState(null);
   const [sbTab, setSbTab] = useState('basis');
   const [isSbDirty, setIsSbDirty] = useState(false);
@@ -470,11 +472,26 @@ function WizardPage() {
   }, [id, getAbschlussbericht, mode]);
 
   // Tab-State <-> URL-Sync. Setze ?tab=... beim Wechsel, lese beim Mount.
+  // Beim Verlassen des SB-Tabs raeumen wir `?sb=...` aus der URL — der
+  // Parameter macht nur im SB-Kontext Sinn.
   const setModeAndUrl = useCallback((next) => {
     setMode(next);
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('tab', next);
+      if (next !== 'statusberichte') params.delete('sb');
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // selectedSbId <-> URL-Sync. Beim setSelectedSbId schreiben wir `?sb=<id>`
+  // mit; bei null wird der Parameter entfernt.
+  const setSelectedSbIdAndUrl = useCallback((next) => {
+    setSelectedSbId(next);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next) params.set('sb', next);
+      else params.delete('sb');
       return params;
     }, { replace: true });
   }, [setSearchParams]);
@@ -540,7 +557,7 @@ function WizardPage() {
       setIsSbCreating(true);
       const sb = await createStatusbericht(projektauftrag.id);
       await loadStatusberichte(projektauftrag.id);
-      setSelectedSbId(sb.id);
+      setSelectedSbIdAndUrl(sb.id);
       setSbTab('basis');
     } catch (err) {
       console.error('Error creating Statusbericht:', err);
@@ -582,7 +599,7 @@ function WizardPage() {
     if (!window.confirm('Möchten Sie diesen Statusbericht wirklich löschen?')) return;
     try {
       await deleteSbApi(projektauftrag.id, currentSb.id);
-      setSelectedSbId(null);
+      setSelectedSbIdAndUrl(null);
       setCurrentSb(null);
       await loadStatusberichte(projektauftrag.id);
     } catch (err) {
@@ -596,7 +613,7 @@ function WizardPage() {
     try {
       await deleteSbApi(projektauftrag.id, sbId);
       if (selectedSbId === sbId) {
-        setSelectedSbId(null);
+        setSelectedSbIdAndUrl(null);
         setCurrentSb(null);
       }
       await loadStatusberichte(projektauftrag.id);
@@ -1287,7 +1304,7 @@ function WizardPage() {
             <StatusberichtBlade
               berichte={statusberichte}
               selectedId={selectedSbId}
-              onSelect={setSelectedSbId}
+              onSelect={setSelectedSbIdAndUrl}
               onCreate={handleCreateSb}
               isCreating={isSbCreating}
               onDelete={handleDeleteSbById}
