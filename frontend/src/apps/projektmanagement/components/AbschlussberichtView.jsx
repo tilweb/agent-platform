@@ -16,6 +16,7 @@ import { theme } from '../../../config/theme';
 import { useProjektmanagement, VersionConflictError } from '../../../hooks/useProjektmanagement';
 import { SparklesIcon, TrashIcon } from '../../../components/Icons';
 import { API_URL } from '../../../utils/apiFetch';
+import ConfirmModal from '../../../components/ConfirmModal';
 
 const AMPEL_COLOR = {
   gruen: { fg: theme.colors.success, bg: theme.colors.successLight, label: 'Grün' },
@@ -418,6 +419,7 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [error, setError] = useState(null);
   const [lifecycleModal, setLifecycleModal] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   // Selected project_status im Modal — Default = letzter Eintrag aus der Liste
   // (typischerweise "Gestoppt" oder "Abschluss"), aber User waehlt explizit.
   const [statusModalValue, setStatusModalValue] = useState('');
@@ -539,8 +541,9 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Abschlussbericht wirklich loeschen?')) return;
+  const handleDelete = () => setConfirmDelete(true);
+
+  const confirmDeleteNow = async () => {
     setIsSaving(true);
     try {
       await deleteAbschlussbericht(projektId);
@@ -550,6 +553,7 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
       setError(err.message);
     } finally {
       setIsSaving(false);
+      setConfirmDelete(false);
     }
   };
 
@@ -1256,6 +1260,17 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDelete}
+        title="Abschlussbericht löschen?"
+        message="Der Abschlussbericht wird unwiderruflich gelöscht. Statusberichte und Lessons Learned bleiben erhalten."
+        confirmLabel="Löschen"
+        destructive
+        busy={isSaving}
+        onConfirm={confirmDeleteNow}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

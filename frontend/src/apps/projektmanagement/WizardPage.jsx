@@ -17,6 +17,7 @@ import ReadOnlyBanner from '../../components/ReadOnlyBanner';
 import ConflictResolutionModal from './components/ConflictResolutionModal';
 import OwnerActionsMenu from './components/OwnerActionsMenu';
 import PermissionsModal from './components/PermissionsModal';
+import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../utils/apiFetch';
 
 // Step components
@@ -401,6 +402,9 @@ function WizardPage() {
   const [isDirty, setIsDirty] = useState(false);
   // Phase-2: Permissions-Modal-State
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  // ConfirmModal: { title, message, confirmLabel, onConfirm }
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [isConfirming, setIsConfirming] = useState(false);
   // Optimistic-Concurrency state.
   const [serverVersion, setServerVersion] = useState(null);
   const [conflict, setConflict] = useState(null);
@@ -594,33 +598,24 @@ function WizardPage() {
     }
   };
 
-  const handleDeleteSb = async () => {
+  const handleDeleteSb = () => {
     if (!currentSb || !projektauftrag.id) return;
-    if (!window.confirm('Möchten Sie diesen Statusbericht wirklich löschen?')) return;
-    try {
-      await deleteSbApi(projektauftrag.id, currentSb.id);
-      setSelectedSbIdAndUrl(null);
-      setCurrentSb(null);
-      await loadStatusberichte(projektauftrag.id);
-    } catch (err) {
-      console.error('Error deleting Statusbericht:', err);
-      alert(err.message);
-    }
-  };
-
-  const handleDeleteSbById = async (sbId) => {
-    if (!projektauftrag.id) return;
-    try {
-      await deleteSbApi(projektauftrag.id, sbId);
-      if (selectedSbId === sbId) {
-        setSelectedSbIdAndUrl(null);
-        setCurrentSb(null);
-      }
-      await loadStatusberichte(projektauftrag.id);
-    } catch (err) {
-      console.error('Error deleting Statusbericht:', err);
-      alert(err.message);
-    }
+    setConfirmDialog({
+      title: 'Statusbericht löschen?',
+      message: `Statusbericht #${currentSb.nummer} wird unwiderruflich gelöscht.`,
+      confirmLabel: 'Löschen',
+      onConfirm: async () => {
+        try {
+          await deleteSbApi(projektauftrag.id, currentSb.id);
+          setSelectedSbIdAndUrl(null);
+          setCurrentSb(null);
+          await loadStatusberichte(projektauftrag.id);
+        } catch (err) {
+          console.error('Error deleting Statusbericht:', err);
+          alert(err.message);
+        }
+      },
+    });
   };
 
   // Export Statusbericht
@@ -837,20 +832,24 @@ function WizardPage() {
   };
 
   // Delete project
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!projektauftrag.id) {
       navigate('/apps/projektmanagement');
       return;
     }
-
-    if (window.confirm('Möchten Sie diesen Projektauftrag wirklich löschen?')) {
-      try {
-        await deleteProjektauftrag(projektauftrag.id);
-        navigate('/apps/projektmanagement');
-      } catch (error) {
-        console.error('Error deleting:', error);
-      }
-    }
+    setConfirmDialog({
+      title: 'Projektauftrag löschen?',
+      message: `„${projektauftrag.name || 'Unbenannt'}" wird inkl. aller Statusberichte, Lessons Learned und Abschlussbericht unwiderruflich gelöscht.`,
+      confirmLabel: 'Löschen',
+      onConfirm: async () => {
+        try {
+          await deleteProjektauftrag(projektauftrag.id);
+          navigate('/apps/projektmanagement');
+        } catch (error) {
+          console.error('Error deleting:', error);
+        }
+      },
+    });
   };
 
   // Render current step component
@@ -1012,21 +1011,6 @@ function WizardPage() {
                 onDelete={handleDelete}
               />
             )}
-            {mode === 'statusberichte' && currentSb && currentSb.status === 'draft' && canEdit && (
-              <button
-                style={{ ...styles.actionButton, ...styles.deleteButton }}
-                onClick={handleDeleteSb}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.errorLight;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <TrashIcon />
-                Löschen
-              </button>
-            )}
             {mode === 'auftrag' && canEdit && (
               <button
                 style={{
@@ -1050,31 +1034,6 @@ function WizardPage() {
               >
                 <SaveIcon />
                 {isSaving ? 'Speichern...' : isDirty ? 'Speichern *' : 'Speichern'}
-              </button>
-            )}
-            {mode === 'statusberichte' && currentSb && canEdit && (
-              <button
-                style={{
-                  ...styles.actionButton,
-                  ...styles.primaryButton,
-                  opacity: isSbSaving ? 0.7 : 1,
-                  ...(isSbDirty && !isSbSaving ? {
-                    boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
-                  } : {}),
-                }}
-                onClick={handleSaveSb}
-                disabled={isSbSaving}
-                onMouseEnter={(e) => {
-                  if (!isSbSaving) {
-                    e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.primary;
-                }}
-              >
-                <SaveIcon />
-                {isSbSaving ? 'Speichern...' : isSbDirty ? 'Speichern *' : 'Speichern'}
               </button>
             )}
           </div>
@@ -1307,7 +1266,6 @@ function WizardPage() {
               onSelect={setSelectedSbIdAndUrl}
               onCreate={handleCreateSb}
               isCreating={isSbCreating}
-              onDelete={handleDeleteSbById}
             />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Tabs — nur wenn ein Bericht ausgewählt */}
@@ -1353,13 +1311,55 @@ function WizardPage() {
                       </button>
                     );
                   })}
-                  <div style={{ marginLeft: 'auto' }}>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
                     <ExportDropdown
                       onExport={handleSbExport}
                       formats={['xlsx', 'pdf', 'docx']}
                       isLoading={isSbExporting}
                       loadingFormat={sbExportingFormat}
                     />
+                    {currentSb.status === 'draft' && canEdit && (
+                      <button
+                        type="button"
+                        style={{ ...styles.actionButton, ...styles.deleteButton }}
+                        onClick={handleDeleteSb}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = theme.colors.errorLight;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <TrashIcon />
+                        Löschen
+                      </button>
+                    )}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        style={{
+                          ...styles.actionButton,
+                          ...styles.primaryButton,
+                          opacity: isSbSaving ? 0.7 : 1,
+                          ...(isSbDirty && !isSbSaving ? {
+                            boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
+                          } : {}),
+                        }}
+                        onClick={handleSaveSb}
+                        disabled={isSbSaving}
+                        onMouseEnter={(e) => {
+                          if (!isSbSaving) {
+                            e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = theme.colors.primary;
+                        }}
+                      >
+                        <SaveIcon />
+                        {isSbSaving ? 'Speichern...' : isSbDirty ? 'Speichern *' : 'Speichern'}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1440,6 +1440,26 @@ function WizardPage() {
           onClose={() => setShowPermissionsModal(false)}
         />
       )}
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel || 'Bestätigen'}
+        destructive
+        busy={isConfirming}
+        onConfirm={async () => {
+          if (!confirmDialog) return;
+          setIsConfirming(true);
+          try {
+            await confirmDialog.onConfirm();
+          } finally {
+            setIsConfirming(false);
+            setConfirmDialog(null);
+          }
+        }}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }
