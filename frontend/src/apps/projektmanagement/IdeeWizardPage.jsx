@@ -16,6 +16,7 @@ import ReadOnlyBanner from '../../components/ReadOnlyBanner';
 import ConflictResolutionModal from './components/ConflictResolutionModal';
 import OwnerActionsMenu from './components/OwnerActionsMenu';
 import PermissionsModal from './components/PermissionsModal';
+import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../utils/apiFetch';
 import ExportDropdown from '../../components/ExportDropdown';
 import IdeeBasis from './components/idee-steps/IdeeBasis';
@@ -295,6 +296,8 @@ export default function IdeeWizardPage() {
   const [exportingFormat, setExportingFormat] = useState(null);
   // Phase-2: Permissions-Modal-State
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   // Server-Version fuer Optimistic-Concurrency. Null heisst: Idee noch nicht
   // gespeichert oder Version unbekannt → kein Check beim ersten Save.
   const [serverVersion, setServerVersion] = useState(null);
@@ -403,14 +406,22 @@ export default function IdeeWizardPage() {
     return 'default';
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!idee.id) return;
-    if (!confirm('Diese Projektidee wirklich loeschen? Die abgeleiteten Projektauftraege bleiben bestehen.')) return;
+    setConfirmDelete(true);
+  };
+
+  const confirmDeleteNow = async () => {
+    if (!idee.id) return;
+    setIsDeleting(true);
     try {
       await deleteIdee(idee.id);
       navigate('/apps/projektmanagement?tab=ideen');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setIsDeleting(false);
+      setConfirmDelete(false);
     }
   };
 
@@ -683,6 +694,17 @@ export default function IdeeWizardPage() {
           onClose={() => setShowPermissionsModal(false)}
         />
       )}
+
+      <ConfirmModal
+        open={confirmDelete}
+        title="Projektidee löschen?"
+        message={`„${idee.name || 'Unbenannte Idee'}" wird unwiderruflich gelöscht. Abgeleitete Projektaufträge bleiben bestehen.`}
+        confirmLabel="Löschen"
+        destructive
+        busy={isDeleting}
+        onConfirm={confirmDeleteNow}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

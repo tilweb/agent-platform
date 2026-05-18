@@ -20,6 +20,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { theme } from '../../../config/theme';
 import { useProjektmanagement, VersionConflictError } from '../../../hooks/useProjektmanagement';
 import { TrashIcon, SparklesIcon } from '../../../components/Icons';
+import ConfirmModal from '../../../components/ConfirmModal';
 
 const KATEGORIE_STYLE = {
   strength: { bg: theme.colors.successLight, fg: theme.colors.success, label: 'Strength' },
@@ -386,6 +387,8 @@ export default function LessonsLearnedView({ projektId, canEdit, appConfig }) {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestions, setSuggestions] = useState(null); // null = noch nicht gefragt, [] = leer
   const [error, setError] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Initial load
   const reload = useCallback(async () => {
@@ -461,9 +464,14 @@ export default function LessonsLearnedView({ projektId, canEdit, appConfig }) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!draft || draft._isNew) return;
-    if (!confirm(`Lesson Learned "${draft.title}" loeschen?`)) return;
+    setConfirmDelete(true);
+  };
+
+  const confirmDeleteNow = async () => {
+    if (!draft || draft._isNew) return;
+    setIsDeleting(true);
     try {
       await deleteLessonLearned(projektId, draft.id);
       setSelectedId(null);
@@ -471,6 +479,9 @@ export default function LessonsLearnedView({ projektId, canEdit, appConfig }) {
       await reload();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setIsDeleting(false);
+      setConfirmDelete(false);
     }
   };
 
@@ -566,6 +577,17 @@ export default function LessonsLearnedView({ projektId, canEdit, appConfig }) {
           />
         )}
       </div>
+
+      <ConfirmModal
+        open={confirmDelete}
+        title="Lesson Learned löschen?"
+        message={draft ? `„${draft.title || 'Ohne Titel'}" wird unwiderruflich gelöscht.` : ''}
+        confirmLabel="Löschen"
+        destructive
+        busy={isDeleting}
+        onConfirm={confirmDeleteNow}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }
