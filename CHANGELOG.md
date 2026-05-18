@@ -2,6 +2,22 @@
 
 ## 2026-05-18
 
+### Projektmanagement — UX-Harmonisierung Statusberichte/LL + ConfirmModal
+Drei kleine, aber sichtbare UX-Verbesserungen:
+
+- **StatusberichtBlade angeglichen an LessonsLearnedView**: 260px breit
+  (statt 200px), Item zeigt Titel + Meta-Row (Ampel-Badge + Status + Datum)
+  im gleichen Pattern wie die LL-Liste.
+- **Löschen aus der SB-Liste raus**: Inline-Delete-X entfernt. Löschen
+  passiert nur noch aus der Detail-Toolbar (zusammen mit Save/Export).
+- **SB-Save/Delete-Buttons nach unten**: Aus dem WizardPage-Header in die
+  `sbTabs`-Leiste neben den Export-Dropdown verschoben. Im Header lebt nur
+  noch was zum Auftrag gehört (Permissions/Save/Delete).
+- **ConfirmModal statt window.confirm**: Fünf native Browser-Dialoge ersetzt
+  (SB-Delete, Projektauftrag-Delete, Projektidee-Delete, LL-Delete,
+  Abschlussbericht-Delete). Konsistente UI mit destruktivem roten Button und
+  busy-State während die Aktion läuft.
+
 ### Projektmanagement — Code-Review P3/P4 abgeschlossen
 Drittes + viertes Prio-Set der Code-Review aus Phase F:
 
