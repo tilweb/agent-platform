@@ -174,6 +174,32 @@ const styles = {
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text,
   },
+  dashBreakdown: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.xs,
+  },
+  dashBreakdownRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    fontSize: theme.typography.sizes.sm,
+  },
+  dashBreakdownDot: {
+    width: 10,
+    height: 10,
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
+  dashBreakdownValue: {
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text,
+    minWidth: 20,
+    textAlign: 'right',
+  },
+  dashBreakdownLabel: {
+    color: theme.colors.textSecondary,
+  },
   section: {
     backgroundColor: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
@@ -386,7 +412,14 @@ function buildDashboard(data) {
       else if (s === 'vermieden') v++;
       else if (s === 'aktiv' || s === 'bewertet' || s === 'identifiziert') a++;
     }
-    out.push({ label: 'Risiko-Bilanz', value: `${e} ein / ${v} verm / ${a} aktiv` });
+    out.push({
+      label: 'Risiko-Bilanz',
+      breakdown: [
+        { label: 'Eingetreten', value: e, color: theme.colors.error },
+        { label: 'Vermieden', value: v, color: theme.colors.success },
+        { label: 'Aktiv', value: a, color: theme.colors.warning },
+      ],
+    });
   }
   if ((data?.stakeholder_akzeptanz || []).length) {
     let gr = 0, ge = 0, ro = 0;
@@ -395,7 +428,14 @@ function buildDashboard(data) {
       else if (s.bewertung === 'gelb') ge++;
       else if (s.bewertung === 'rot') ro++;
     }
-    out.push({ label: 'Stakeholder-Akzeptanz', value: `${gr} / ${ge} / ${ro}` });
+    out.push({
+      label: 'Stakeholder-Akzeptanz',
+      breakdown: [
+        { label: 'Grün', value: gr, color: theme.colors.success },
+        { label: 'Gelb', value: ge, color: theme.colors.warning },
+        { label: 'Rot', value: ro, color: theme.colors.error },
+      ],
+    });
   }
   return out;
 }
@@ -779,7 +819,19 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
           {dash.map((d) => (
             <div key={d.label} style={styles.dashCard}>
               <div style={styles.dashLabel}>{d.label}</div>
-              <div style={styles.dashValue}>{d.value}</div>
+              {d.breakdown ? (
+                <div style={styles.dashBreakdown}>
+                  {d.breakdown.map((b) => (
+                    <div key={b.label} style={styles.dashBreakdownRow}>
+                      <span style={{ ...styles.dashBreakdownDot, backgroundColor: b.color }} />
+                      <span style={styles.dashBreakdownValue}>{b.value}</span>
+                      <span style={styles.dashBreakdownLabel}>{b.label}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.dashValue}>{d.value}</div>
+              )}
             </div>
           ))}
         </div>
