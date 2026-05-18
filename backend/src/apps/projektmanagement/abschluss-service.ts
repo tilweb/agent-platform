@@ -21,6 +21,7 @@ import {
 import { VersionConflictError } from './concurrency';
 import { llmService, type Message } from '../../services/llm';
 import type { UsageContext } from '../../services/usageTracking';
+import { withLlmTimeout } from './llm-utils';
 import type {
   Abschlussbericht,
   AbschlussberichtData,
@@ -356,7 +357,10 @@ export async function suggestAbschlussDraft(
     source: 'extraction',
     operation: 'abschlussbericht_suggest',
   };
-  const response = await llmService.chat(messages, undefined, usageContext);
+  const response = await withLlmTimeout(
+    llmService.chat(messages, undefined, usageContext),
+    'abschlussbericht_suggest',
+  );
   return parseSuggestResponse(response.content || '');
 }
 

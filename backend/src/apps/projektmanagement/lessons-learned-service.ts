@@ -14,6 +14,7 @@ import { paLessonsLearned, paStatusberichte, paProjektauftraege } from '../../db
 import { VersionConflictError } from './concurrency';
 import { llmService, type Message } from '../../services/llm';
 import type { UsageContext } from '../../services/usageTracking';
+import { withLlmTimeout } from './llm-utils';
 import type {
   LessonLearned,
   LessonLearnedCreateInput,
@@ -213,7 +214,10 @@ export async function suggestLessonsLearnedFromStatusberichte(
     operation: 'lessons_learned_suggest',
   };
 
-  const response = await llmService.chat(messages, undefined, usageContext);
+  const response = await withLlmTimeout(
+    llmService.chat(messages, undefined, usageContext),
+    'lessons_learned_suggest',
+  );
   return parseSuggestionResponse(response.content || '');
 }
 
