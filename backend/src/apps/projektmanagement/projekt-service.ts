@@ -18,9 +18,7 @@ import type {
   Projekt,
   ProjektCreateInput,
   ProjektUpdateInput,
-  ProjektLifecycle,
 } from './types';
-import { PROJEKT_LIFECYCLE_VALUES } from './types';
 import { VersionConflictError } from './concurrency';
 import { defaultOwnerPermissions } from './permissions';
 
@@ -32,15 +30,10 @@ export function generateProjektId(): string {
   return `projekt-${timestamp}-${random}`;
 }
 
-function isLifecycle(value: unknown): value is ProjektLifecycle {
-  return typeof value === 'string' && (PROJEKT_LIFECYCLE_VALUES as readonly string[]).includes(value);
-}
-
 function rowToProjekt(row: typeof paProjekte.$inferSelect): Projekt {
   return {
     id: row.id,
     name: row.name,
-    lifecycle: (isLifecycle(row.lifecycle) ? row.lifecycle : 'planning'),
     portfolioId: row.portfolioId ?? undefined,
     ideeId: row.ideeId ?? undefined,
     ownerId: row.ownerId ?? undefined,
@@ -85,7 +78,6 @@ export async function listProjekteByIdee(ideeId: string): Promise<Projekt[]> {
 export async function createProjekt(input: ProjektCreateInput): Promise<Projekt> {
   const db = getDb();
   const id = input.id ?? generateProjektId();
-  const lifecycle: ProjektLifecycle = input.lifecycle ?? 'planning';
 
   // Default-Permissions: Ersteller (ownerId) ist explizit Owner. Wenn kein
   // ownerId angegeben ist (z.B. interner Aufruf ohne User-Kontext), bleibt
@@ -96,7 +88,6 @@ export async function createProjekt(input: ProjektCreateInput): Promise<Projekt>
     id,
     ownerId: input.ownerId ?? null,
     name: input.name,
-    lifecycle,
     portfolioId: input.portfolioId ?? null,
     ideeId: input.ideeId ?? null,
     metadata: (input.metadata ?? null) as never,
@@ -133,12 +124,6 @@ export async function updateProjekt(id: string, input: ProjektUpdateInput): Prom
     version: current.version + 1,
   };
   if (input.name !== undefined) patch.name = input.name;
-  if (input.lifecycle !== undefined) {
-    if (!isLifecycle(input.lifecycle)) {
-      throw new Error(`Ungueltiger Lifecycle-Wert: ${input.lifecycle}`);
-    }
-    patch.lifecycle = input.lifecycle;
-  }
   if (input.portfolioId !== undefined) {
     patch.portfolioId = input.portfolioId; // null erlaubt (entfernt Verknuepfung)
   }
@@ -183,42 +168,7 @@ export async function deleteProjekt(id: string): Promise<boolean> {
   return result.length > 0;
 }
 
-// ============== Lifecycle-Hinweise ==============
-
-/**
- * Schlaegt Lifecycle-Uebergaenge auf Basis von Sub-Resource-Zustaenden vor.
- * UI fragt den User vor der Anwendung. Reine Vorschlags-Logik — keine
- * Mutation.
- *
- * Heuristiken:
- *   - Auftrag.status === 'active' und Projekt.lifecycle === 'planning'
- *     → Vorschlag: 'active'
- *   - Abschlussbericht existiert (Phase E) und lifecycle in {planning|active}
- *     → Vorschlag: 'closed'
- *
- * Phase A: rudimentaere Stub-Logik (Auftrag-Status-Read). Spaetere Phasen
- * ergaenzen Abschlussbericht-Check.
- */
-export async function suggestLifecycleTransition(projektId: string): Promise<ProjektLifecycle | null> {
-  const projekt = await getProjekt(projektId);
-  if (!projekt) return null;
-
-  // Hier wuerden wir den Auftrag-Status laden. Phase-A: noch nicht
-  // implementiert, weil Auftrag-Loader noch nicht den Projekt-FK kennt.
-  // Stub returnt null = "kein Vorschlag".
-  return null;
-}
-
 // ============== Daten-Migration (Boot-Hook + CLI) ==============
-
-function mapAuftragStatusToLifecycle(status: string | null | undefined): ProjektLifecycle {
-  switch ((status || '').toLowerCase()) {
-    case 'active': return 'active';
-    case 'completed': return 'closed';
-    case 'cancelled': return 'cancelled';
-    default: return 'planning';
-  }
-}
 
 /**
  * Idempotent: legt fuer jeden Auftrag, der noch kein Projekt mit derselben ID
@@ -255,7 +205,6 @@ export async function migrateAuftraegeToProjekteIfNeeded(): Promise<{
         id: auftrag.id,
         ownerId: auftrag.ownerId,
         name: auftrag.name,
-        lifecycle: mapAuftragStatusToLifecycle(auftrag.status),
         portfolioId: null,
         ideeId: auftrag.ideeId,
         metadata: null,

@@ -5,25 +5,24 @@ export const projektmgmtSchema = pgSchema('projektmgmt');
 /**
  * Projekt: das Top-Level-Objekt fuer den PM-Lifecycle.
  *
- * Identitaet + Lifecycle + Hierarchie-Referenzen leben hier. Inhaltliche
- * Artefakte (Auftrag, Statusberichte, Lessons Learned, Abschluss) sind als
+ * Identitaet + Hierarchie-Referenzen leben hier. Inhaltliche Artefakte
+ * (Auftrag, Statusberichte, Lessons Learned, Abschluss) sind als
  * Sub-Resources via FK auf projekte.id angebunden.
  *
  * Migration: existierende Projektauftraege werden 1:1 mit gleicher ID als
  * Projekte angelegt (siehe scripts/migrate-projekte.ts). Dadurch bleiben
  * bestehende URLs `/apps/projektmanagement/<id>` funktional.
  *
- * Lifecycle (explizit + Auto-Vorschlaege):
- *   planning  → Projekt angelegt, Auftrag noch in Bearbeitung
- *   active    → Auftrag freigegeben, laufendes Projekt
- *   closed    → Abschlussbericht erstellt, Projekt erfolgreich beendet
- *   cancelled → Projekt abgebrochen vor regulaerem Ende
+ * Status-Wahrheit: die PM-Phase lebt seit Phase F im Projektauftrag-Data-Blob
+ * unter `project_status` (Initiierung/Planung/Umsetzung/Abschluss/Gestoppt).
+ * Eine alte `lifecycle`-Spalte hier wurde durch Migration 0013 entfernt — sie
+ * driftete still vom tatsaechlichen Stand weg und war nicht mehr UI-gesetzt.
+ * Siehe docs/projektmanagement-status-felder-2026-05-18.md.
  */
 export const paProjekte = projektmgmtSchema.table('projekte', {
   id: text('id').primaryKey(),
   ownerId: text('owner_id'),
   name: text('name').notNull(),
-  lifecycle: text('lifecycle').notNull().default('planning'),  // planning | active | closed | cancelled
   portfolioId: text('portfolio_id'),                            // FK auf portfolios.id (Phase D), nullable
   ideeId: text('idee_id'),                                       // FK auf projektideen.id, optional (nicht jedes Projekt entstammt einer Idee)
   metadata: jsonb('metadata'),                                   // freier Bucket fuer kuenftige Felder ohne Migration
@@ -33,7 +32,6 @@ export const paProjekte = projektmgmtSchema.table('projekte', {
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({
   ownerIdx: index('projekt_owner_idx').on(t.ownerId),
-  lifecycleIdx: index('projekt_lifecycle_idx').on(t.lifecycle),
   portfolioIdx: index('projekt_portfolio_idx').on(t.portfolioId),
   ideeIdx: index('projekt_idee_idx').on(t.ideeId),
 }));

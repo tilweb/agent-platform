@@ -129,19 +129,14 @@ export interface Projektauftrag {
  *   - Lessons Learned (1:n, Erkenntnisse — Phase E)
  *   - Abschlussbericht (1:1, finale Zusammenfassung — Phase E)
  *
- * Lifecycle ist explizit setzbar; das System schlaegt Uebergaenge vor wenn
- * z.B. Auftrag freigegeben oder Abschlussbericht erstellt wird.
+ * Status-Wahrheit: PM-Phase lebt im Auftrag-Data unter `project_status`. Die
+ * frueheren `lifecycle`-Werte (planning/active/closed/cancelled) wurden mit
+ * Migration 0013 entfernt — sie wurden nicht mehr UI-gesetzt und drifteten
+ * still. Siehe docs/projektmanagement-status-felder-2026-05-18.md.
  */
-export type ProjektLifecycle = 'planning' | 'active' | 'closed' | 'cancelled';
-
-export const PROJEKT_LIFECYCLE_VALUES: readonly ProjektLifecycle[] = [
-  'planning', 'active', 'closed', 'cancelled',
-] as const;
-
 export interface Projekt {
   id: string;
   name: string;
-  lifecycle: ProjektLifecycle;
   portfolioId?: string;        // 0..1 zu Portfolio (Phase D)
   ideeId?: string;             // optional, Herkunfts-Idee
   ownerId?: string;
@@ -158,7 +153,6 @@ export interface Projekt {
 export interface ProjektCreateInput {
   id?: string;                 // optional — wenn gesetzt, wird 1:1 uebernommen (z.B. Auftrag→Projekt-Migration)
   name: string;
-  lifecycle?: ProjektLifecycle;
   portfolioId?: string;
   ideeId?: string;
   ownerId?: string;
@@ -167,7 +161,6 @@ export interface ProjektCreateInput {
 
 export interface ProjektUpdateInput {
   name?: string;
-  lifecycle?: ProjektLifecycle;
   portfolioId?: string | null;
   metadata?: Record<string, any>;
   expectedVersion?: number;     // optimistic concurrency
