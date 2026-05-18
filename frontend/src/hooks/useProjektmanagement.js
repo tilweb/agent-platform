@@ -434,14 +434,6 @@ export function useProjektmanagement() {
     }
   }, []);
 
-  // Get Statusberichte Dashboard
-  const getStatusberichteDashboard = useCallback(async () => {
-    const response = await apiGet('/apps/projektmanagement/statusberichte/dashboard');
-    if (!response.ok) throw new Error('Failed to load dashboard');
-    const data = await response.json();
-    return data.dashboard || [];
-  }, []);
-
   // ============== Lessons Learned (Phase E) ==============
 
   const getLessonsLearned = useCallback(async (projektId) => {
@@ -649,7 +641,6 @@ export function useProjektmanagement() {
     createStatusbericht,
     updateStatusbericht,
     deleteStatusbericht,
-    getStatusberichteDashboard,
     // Lessons Learned
     getLessonsLearned,
     getLessonLearned,
