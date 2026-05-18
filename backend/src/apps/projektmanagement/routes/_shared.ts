@@ -11,7 +11,7 @@
 
 import type { Context } from 'hono';
 import type { AuftragsRole } from '../types';
-import { getEffectiveAuftragRole, getEffectiveIdeeRole } from '../permissions';
+import { getEffectiveAuftragRole, getEffectiveIdeeRole, getEffectivePortfolioRole } from '../permissions';
 
 export const ROLE_RANK: Record<AuftragsRole, number> = { viewer: 0, editor: 1, owner: 2 };
 
@@ -65,6 +65,21 @@ export async function denyIfBelowAuftragRole(
   const role = await getEffectiveAuftragRole(userId, auftragId);
   if (!role) {
     return { error: 'Keine Berechtigung fuer diesen Auftrag.', status: 403 };
+  }
+  if (ROLE_RANK[role] < ROLE_RANK[required]) {
+    return { error: `Berechtigung unzureichend: ${role} (mind. ${required} noetig).`, status: 403 };
+  }
+  return null;
+}
+
+export async function denyIfBelowPortfolioRole(
+  userId: string,
+  portfolioId: string,
+  required: AuftragsRole,
+): Promise<{ error: string; status: 403 | 404 } | null> {
+  const role = await getEffectivePortfolioRole(userId, portfolioId);
+  if (!role) {
+    return { error: 'Keine Berechtigung fuer dieses Portfolio.', status: 403 };
   }
   if (ROLE_RANK[role] < ROLE_RANK[required]) {
     return { error: `Berechtigung unzureichend: ${role} (mind. ${required} noetig).`, status: 403 };

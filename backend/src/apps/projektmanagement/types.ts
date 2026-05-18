@@ -161,6 +161,117 @@ export interface ProjektUpdateInput {
   expectedVersion?: number;
 }
 
+// ============== Portfolio (Phase D) ==============
+//
+// Gruppierung von Projekten fuer PMO-Sicht. 0..1-Kardinalitaet via
+// paProjekte.portfolioId. Loeschen eines Portfolios setzt portfolioId der
+// zugeordneten Projekte auf undefined.
+
+export type PortfolioStatus = 'active' | 'archived';
+
+export const PORTFOLIO_STATUS_VALUES: readonly PortfolioStatus[] = [
+  'active', 'archived',
+] as const;
+
+export interface Portfolio {
+  id: string;
+  name: string;
+  description?: string;
+  strategy?: string;
+  status: PortfolioStatus;
+  ownerId?: string;
+  metadata?: Record<string, any>;
+  permissions?: ResourcePermissions;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PortfolioCreateInput {
+  id?: string;
+  name: string;
+  description?: string;
+  strategy?: string;
+  status?: PortfolioStatus;
+  ownerId?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface PortfolioUpdateInput {
+  name?: string;
+  description?: string | null;
+  strategy?: string | null;
+  status?: PortfolioStatus;
+  metadata?: Record<string, any>;
+  expectedVersion?: number;
+}
+
+// ============== Portfolio-Dashboard (computed) ==============
+
+export interface PortfolioDashboardHealth {
+  gruen: number;
+  gelb: number;
+  rot: number;
+  unbekannt: number;
+}
+
+export interface PortfolioDashboardPhaseMix {
+  initiation: number;
+  planning: number;
+  execution: number;
+  closing: number;
+  stopped: number;
+  unbekannt: number;
+}
+
+export interface PortfolioDashboardBudget {
+  plan_total: number;
+  ist_total: number;
+  abweichung_pct: number | null;
+}
+
+export interface PortfolioDashboardTermine {
+  on_track: number;
+  gefaehrdet: number;
+  verspaetet: number;
+  unbekannt: number;
+}
+
+export interface PortfolioDashboardTopRisk {
+  projekt_id: string;
+  projekt_name: string;
+  risk_text: string;
+  wahrscheinlichkeit: string;
+  auswirkung: string;
+  score: number;
+  ampel?: 'gruen' | 'gelb' | 'rot';
+  status?: string;
+}
+
+export interface PortfolioDashboardSbEntry {
+  projekt_id: string;
+  projekt_name: string;
+  sb_id?: string;
+  sb_nummer?: number;
+  datum?: string;
+  ampel?: 'gruen' | 'gelb' | 'rot';
+  management_summary?: string;
+  status?: 'draft' | 'final';
+}
+
+export interface PortfolioDashboardResponse {
+  portfolio: Portfolio;
+  projekte_total: number;
+  projekte_aktiv: number;
+  projekte_abgeschlossen: number;
+  health: PortfolioDashboardHealth;
+  phase_mix: PortfolioDashboardPhaseMix;
+  budget: PortfolioDashboardBudget;
+  termine: PortfolioDashboardTermine;
+  top_risiken: PortfolioDashboardTopRisk[];
+  letzte_statusberichte: PortfolioDashboardSbEntry[];
+}
+
 // ============== Lessons Learned ==============
 
 export interface LessonLearned {

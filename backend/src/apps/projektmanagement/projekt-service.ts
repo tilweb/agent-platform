@@ -90,6 +90,28 @@ export async function listProjekteByIdee(ideeId: string): Promise<Projekt[]> {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+/**
+ * Reverse-Lookup ueber portfolioId — Projekte eines Portfolios.
+ * Permissions-Filter passiert in den Routes (analog Auftrag-Routes).
+ */
+export async function listProjekteByPortfolio(portfolioId: string): Promise<Projekt[]> {
+  const all = await listProjekte();
+  return all
+    .filter((p) => p.portfolioId === portfolioId)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+}
+
+/**
+ * Listet Projekte ohne Portfolio (portfolioId leer/undefined). Fuer den
+ * „Projekt hinzufuegen"-Selector im Portfolio-Detail.
+ */
+export async function listProjekteWithoutPortfolio(): Promise<{ id: string; name: string }[]> {
+  const all = await listProjekte();
+  return all
+    .filter((p) => !p.portfolioId)
+    .map((p) => ({ id: p.id, name: p.name }));
+}
+
 export async function createProjekt(input: ProjektCreateInput): Promise<Projekt> {
   await ensureBaseDir();
   const id = input.id ?? generateProjektId();

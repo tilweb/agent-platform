@@ -12,6 +12,7 @@
  */
 
 import { theme } from '../../../config/theme';
+import PortfolioAssignCard from './portfolio/PortfolioAssignCard';
 
 // Farb-Heuristik fuer den manuellen Projektstatus (Config-Werte
 // initiation/planning/execution/closing/stopped — die Liste ist via
@@ -114,7 +115,7 @@ function projectStatusBadgeStyle(value) {
   return { backgroundColor: c.bg, color: c.fg };
 }
 
-export default function ProjektUebersichtPanel({ projekt, projektauftrag, statusberichte, abschlussbericht, appConfig, onNavigate }) {
+export default function ProjektUebersichtPanel({ projekt, projektauftrag, statusberichte, abschlussbericht, appConfig, onNavigate, canEdit, onProjektUpdated }) {
   // Projektstatus = manuell gepflegtes Feld aus Basis-Tab (auftrag.project_status).
   // Label-Quelle: App-Config (pflegbar via Einstellungen-Tab).
   const projectStatus = projektauftrag?.project_status;
@@ -172,6 +173,14 @@ export default function ProjektUebersichtPanel({ projekt, projektauftrag, status
             </span>
           </div>
         </div>
+
+        {projekt && (
+          <PortfolioAssignCard
+            projekt={projekt}
+            canEdit={canEdit}
+            onUpdated={onProjektUpdated}
+          />
+        )}
 
         <div style={styles.card}>
           <div style={styles.cardTitle}>Letzter Statusbericht</div>
