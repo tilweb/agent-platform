@@ -613,6 +613,77 @@ export function useProjektmanagement() {
     return data.suggestion;
   }, []);
 
+  // ============== Portfolios (Phase D) ==============
+
+  const listPortfolios = useCallback(async ({ status } = {}) => {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    const response = await apiGet(`/apps/projektmanagement/portfolios${qs}`);
+    if (!response.ok) throw new Error('Failed to list portfolios');
+    const data = await response.json();
+    return data.portfolios || [];
+  }, []);
+
+  const getPortfolio = useCallback(async (portfolioId) => {
+    const response = await apiGet(`/apps/projektmanagement/portfolios/${portfolioId}`);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('Failed to get portfolio');
+    const data = await response.json();
+    return data.portfolio;
+  }, []);
+
+  const createPortfolio = useCallback(async (input) => {
+    const response = await apiPost('/apps/projektmanagement/portfolios', input);
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to create portfolio');
+    }
+    const data = await response.json();
+    return data.portfolio;
+  }, []);
+
+  const updatePortfolio = useCallback(async (portfolioId, updates, { expectedVersion } = {}) => {
+    const body = expectedVersion !== undefined ? { ...updates, expectedVersion } : updates;
+    const response = await apiPut(`/apps/projektmanagement/portfolios/${portfolioId}`, body);
+    if (response.status === 409) {
+      const data = await response.json();
+      throw new VersionConflictError(data.current);
+    }
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to update portfolio');
+    }
+    const data = await response.json();
+    return data.portfolio;
+  }, []);
+
+  const deletePortfolio = useCallback(async (portfolioId) => {
+    const response = await apiDelete(`/apps/projektmanagement/portfolios/${portfolioId}`);
+    if (!response.ok) throw new Error('Failed to delete portfolio');
+    return true;
+  }, []);
+
+  const getPortfolioProjekte = useCallback(async (portfolioId) => {
+    const response = await apiGet(`/apps/projektmanagement/portfolios/${portfolioId}/projekte`);
+    if (!response.ok) throw new Error('Failed to list portfolio projekte');
+    const data = await response.json();
+    return data.projekte || [];
+  }, []);
+
+  const getAvailableProjekteForPortfolio = useCallback(async (portfolioId) => {
+    const response = await apiGet(`/apps/projektmanagement/portfolios/${portfolioId}/projekte/available`);
+    if (!response.ok) throw new Error('Failed to list available projekte');
+    const data = await response.json();
+    return data.projekte || [];
+  }, []);
+
+  const getPortfolioDashboard = useCallback(async (portfolioId) => {
+    const response = await apiGet(`/apps/projektmanagement/portfolios/${portfolioId}/dashboard`);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('Failed to get portfolio dashboard');
+    const data = await response.json();
+    return data.dashboard;
+  }, []);
+
   return {
     projektauftraege,
     stats,
@@ -666,5 +737,14 @@ export function useProjektmanagement() {
     finalizeAbschlussbericht,
     reopenAbschlussbericht,
     suggestAbschlussDraft,
+    // Portfolios (Phase D)
+    listPortfolios,
+    getPortfolio,
+    createPortfolio,
+    updatePortfolio,
+    deletePortfolio,
+    getPortfolioProjekte,
+    getAvailableProjekteForPortfolio,
+    getPortfolioDashboard,
   };
 }

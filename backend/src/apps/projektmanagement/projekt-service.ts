@@ -75,6 +75,20 @@ export async function listProjekteByIdee(ideeId: string): Promise<Projekt[]> {
   return rows.map(rowToProjekt);
 }
 
+/**
+ * Listet Projekte eines Portfolios — Reverse-Lookup ueber portfolioId.
+ * RBAC-Filter passiert in den Routes (analog listAccessibleAuftragIds).
+ */
+export async function listProjekteByPortfolio(portfolioId: string): Promise<Projekt[]> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(paProjekte)
+    .where(eq(paProjekte.portfolioId, portfolioId))
+    .orderBy(desc(paProjekte.updatedAt));
+  return rows.map(rowToProjekt);
+}
+
 export async function createProjekt(input: ProjektCreateInput): Promise<Projekt> {
   const db = getDb();
   const id = input.id ?? generateProjektId();

@@ -41,6 +41,7 @@ import { importRateLimit } from '../../middleware/rateLimit';
 import { projekteRoutes } from './routes/projekte';
 import { lessonsLearnedRoutes } from './routes/lessons-learned';
 import { abschlussRoutes } from './routes/abschluss';
+import { portfoliosRoutes } from './routes/portfolios';
 import {
   createStatusbericht as createSB,
   listStatusberichte,
@@ -93,6 +94,7 @@ projektmanagement.use('*', requireAppAccess('projektmanagement'));
 projektmanagement.route('/', projekteRoutes);
 projektmanagement.route('/', lessonsLearnedRoutes);
 projektmanagement.route('/', abschlussRoutes);
+projektmanagement.route('/', portfoliosRoutes);
 
 // ============== Phase-2 Permission Guards ==============
 

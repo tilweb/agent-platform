@@ -161,6 +161,31 @@ export async function getEffectiveAuftragRole(
 }
 
 /**
+ * Effektive Rolle eines Users auf einem Portfolio. `null` = kein Zugriff.
+ * Pattern identisch zu Auftrag/Idee — App-Floor + Resource-Override + Ersteller-
+ * Fallback.
+ */
+export async function getEffectivePortfolioRole(
+  userId: string,
+  portfolioId: string,
+): Promise<AuftragsRole | null> {
+  const { getPortfolio } = await import('./portfolio-service');
+  const portfolio = await getPortfolio(portfolioId);
+  if (!portfolio) return null;
+  const [userGroupIds, appRole] = await Promise.all([
+    getUserGroupIds(userId),
+    getUserAppPermission(userId, APP_ID),
+  ]);
+  return resolveRole(
+    userId,
+    portfolio.ownerId,
+    portfolio.permissions ?? null,
+    userGroupIds,
+    appRole,
+  );
+}
+
+/**
  * Permissions-Validierung — wirft bei ungueltiger Struktur.
  */
 function validatePermissions(input: unknown): ResourcePermissions {

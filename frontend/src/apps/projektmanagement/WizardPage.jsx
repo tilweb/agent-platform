@@ -1098,6 +1098,8 @@ function WizardPage() {
           abschlussbericht={abschlussbericht}
           appConfig={appConfig}
           onNavigate={setModeAndUrl}
+          canEdit={canEdit}
+          onProjektUpdated={(updated) => setProjekt(updated)}
         />
       )}
 

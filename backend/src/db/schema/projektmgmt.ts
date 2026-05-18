@@ -37,6 +37,33 @@ export const paProjekte = projektmgmtSchema.table('projekte', {
 }));
 
 /**
+ * Portfolio: Gruppierung von Projekten fuer PMO-Sicht. Ein Projekt gehoert zu
+ * 0..1 Portfolios (paProjekte.portfolioId). Loeschen eines Portfolios entfernt
+ * NICHT die Projekte — Projekte werden bei Bedarf auf portfolioId=NULL gesetzt
+ * (kein FK-Constraint, application-level cleanup im Service).
+ *
+ * Phase D fokussiert auf Portfolio Performance + Risk Reporting (PMI/PMBOK).
+ * Strategic Alignment lebt als Markdown-Freitext im `strategy`-Feld — strukturierte
+ * OKR/Value-Driver-Frameworks waeren ein eigenes Vorhaben.
+ */
+export const paPortfolios = projektmgmtSchema.table('portfolios', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id'),
+  name: text('name').notNull(),
+  description: text('description'),                              // 1-2 Saetze Kurzbeschreibung (Card-Subtitle)
+  strategy: text('strategy'),                                    // Markdown: strategische Stossrichtung, Value-Drivers
+  status: text('status').notNull().default('active'),            // 'active' | 'archived'
+  metadata: jsonb('metadata'),
+  permissions: jsonb('permissions'),
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  ownerIdx: index('portfolio_owner_idx').on(t.ownerId),
+  statusIdx: index('portfolio_status_idx').on(t.status),
+}));
+
+/**
  * Projektideen: leichtgewichtige Vorstufe zum Projektauftrag.
  * Eine Idee kann 0..n Projektauftraege auslösen (verlinkt via paProjektauftraege.ideeId).
  * Die Idee bleibt persistent — selbst wenn alle daraus abgeleiteten Auftraege entfernt

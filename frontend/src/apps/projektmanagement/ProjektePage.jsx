@@ -12,6 +12,7 @@ import { useAppPermission } from '../../components/RequireAppPermission';
 import RoleBadge from '../../components/RoleBadge';
 import Einstellungen from './components/Einstellungen';
 import IdeenPage from './IdeenPage';
+import PortfolioList from './components/portfolio/PortfolioList';
 
 // Phase C: Top-Level-Tabs entsprechen den Top-Level-Entities:
 // Projekte | Ideen | Portfolios | Einstellungen.
@@ -473,7 +474,7 @@ function ProjektePage() {
         ) : activeTab === 'ideen' ? (
           <IdeenPage embedded />
         ) : activeTab === 'portfolios' ? (
-          <PortfoliosPlaceholder />
+          <PortfolioList />
         ) : activeTab === 'projekte' ? (
           <>
             {/* Action Bar (analog Ideen-Tab) — nur fuer App-Editor/Owner */}
@@ -659,38 +660,6 @@ function ProjektePage() {
           </>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-/**
- * Phase D bringt Portfolio-CRUD. Bis dahin zeigen wir hier nur einen
- * informativen Empty-State, damit der Tab nicht leer wirkt — und Anwender
- * wissen, dass die Funktion bewusst noch nicht da ist.
- */
-function PortfoliosPlaceholder() {
-  return (
-    <div style={{
-      padding: theme.spacing['2xl'],
-      textAlign: 'center',
-      color: theme.colors.textMuted,
-    }}>
-      <div style={{ marginBottom: theme.spacing.md }}>
-        <AppsIcon size={48} color={theme.colors.textMuted} />
-      </div>
-      <div style={{
-        fontSize: theme.typography.sizes.lg,
-        fontWeight: theme.typography.weights.semibold,
-        color: theme.colors.text,
-        marginBottom: theme.spacing.sm,
-      }}>
-        Portfolios kommen in Phase D
-      </div>
-      <p style={{ fontSize: theme.typography.sizes.sm, maxWidth: 520, margin: '0 auto' }}>
-        Bundles von Projekten fuer PMO-Sicht (Ressourcen, Prioritaeten, strategische
-        Ausrichtung). Sobald die Entity implementiert ist, kannst du Projekte hier
-        gruppieren und filtern.
-      </p>
     </div>
   );
 }

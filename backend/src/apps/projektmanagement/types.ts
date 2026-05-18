@@ -166,6 +166,123 @@ export interface ProjektUpdateInput {
   expectedVersion?: number;     // optimistic concurrency
 }
 
+// ============== Portfolio (Phase D) ==============
+//
+// Gruppierung von Projekten fuer PMO-Sicht. Adressiert primaer Portfolio
+// Performance + Risk Reporting (PMI/PMBOK). Strategic Alignment lebt als
+// Markdown-Freitext im `strategy`-Feld.
+//
+// 0..1-Kardinalitaet via paProjekte.portfolioId. Loeschen eines Portfolios
+// setzt portfolioId der zugeordneten Projekte auf NULL (kein Cascade).
+
+export type PortfolioStatus = 'active' | 'archived';
+
+export const PORTFOLIO_STATUS_VALUES: readonly PortfolioStatus[] = [
+  'active', 'archived',
+] as const;
+
+export interface Portfolio {
+  id: string;
+  name: string;
+  description?: string;
+  strategy?: string;            // Markdown
+  status: PortfolioStatus;
+  ownerId?: string;
+  metadata?: Record<string, any>;
+  permissions?: ResourcePermissions;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PortfolioCreateInput {
+  id?: string;
+  name: string;
+  description?: string;
+  strategy?: string;
+  status?: PortfolioStatus;
+  ownerId?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface PortfolioUpdateInput {
+  name?: string;
+  description?: string | null;
+  strategy?: string | null;
+  status?: PortfolioStatus;
+  metadata?: Record<string, any>;
+  expectedVersion?: number;
+}
+
+// ============== Portfolio-Dashboard (computed, Phase D) ==============
+//
+// Aggregat-Antwort fuer GET /portfolios/:id/dashboard. RBAC-gefiltert: enthaelt
+// nur Projekte, auf die der aufrufende User mind. viewer-Rolle hat.
+
+export interface PortfolioDashboardHealth {
+  gruen: number;
+  gelb: number;
+  rot: number;
+  unbekannt: number;            // Projekte ohne SB oder ohne Ampel
+}
+
+export interface PortfolioDashboardPhaseMix {
+  initiation: number;
+  planning: number;
+  execution: number;
+  closing: number;
+  stopped: number;
+  unbekannt: number;            // Projekte ohne project_status
+}
+
+export interface PortfolioDashboardBudget {
+  plan_total: number;
+  ist_total: number;
+  abweichung_pct: number | null;  // null wenn plan_total = 0
+}
+
+export interface PortfolioDashboardTermine {
+  on_track: number;
+  gefaehrdet: number;             // 1-30 Tage Verzug oder Risiko
+  verspaetet: number;             // > 30 Tage Verzug
+  unbekannt: number;
+}
+
+export interface PortfolioDashboardTopRisk {
+  projekt_id: string;
+  projekt_name: string;
+  risk_text: string;              // beschreibung (gekuerzt max 200 Chars)
+  wahrscheinlichkeit: string;     // Raw-Value aus appConfig.probability ('low'|'medium'|'high')
+  auswirkung: string;             // Raw-Value aus appConfig.impact ('low'|'medium'|'high')
+  score: number;                  // 1..9 (low=1, medium=2, high=3, dann Produkt)
+  ampel?: 'gruen' | 'gelb' | 'rot';
+  status?: string;                // risk_tracking.status
+}
+
+export interface PortfolioDashboardSbEntry {
+  projekt_id: string;
+  projekt_name: string;
+  sb_id?: string;
+  sb_nummer?: number;
+  datum?: string;
+  ampel?: 'gruen' | 'gelb' | 'rot';
+  management_summary?: string;    // gekuerzt (max 200 Chars im Backend)
+  status?: 'draft' | 'final';
+}
+
+export interface PortfolioDashboardResponse {
+  portfolio: Portfolio;
+  projekte_total: number;
+  projekte_aktiv: number;
+  projekte_abgeschlossen: number;
+  health: PortfolioDashboardHealth;
+  phase_mix: PortfolioDashboardPhaseMix;
+  budget: PortfolioDashboardBudget;
+  termine: PortfolioDashboardTermine;
+  top_risiken: PortfolioDashboardTopRisk[];
+  letzte_statusberichte: PortfolioDashboardSbEntry[];
+}
+
 // ============== Lessons Learned ==============
 //
 // Phase E (Lessons Learned) — Sub-Resource am Projekt (heute noch via

@@ -99,6 +99,13 @@
       "when": 1779667200000,
       "tag": "0013_drop_projekte_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1779753600000,
+      "tag": "0014_portfolios",
+      "breakpoints": true
     }
   ]
 }

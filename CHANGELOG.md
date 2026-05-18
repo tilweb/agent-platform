@@ -2,6 +2,44 @@
 
 ## 2026-05-18
 
+### Projektmanagement — Portfolios + PMO-Dashboard (Phase D)
+Top-Level-Entität **Portfolio** zur PMO-Gruppierung von Projekten + ein
+dediziertes Dashboard pro Portfolio. Ursprüngliche Phase D der Entity-
+Restruktur — nach Phasen E (Lessons Learned) + F (Abschluss) jetzt nachgereicht.
+
+- **Backend**: neue Tabelle `projektmgmt.portfolios` (Drizzle-Migration 0014,
+  idempotent), Service `portfolio-service.ts` (CRUD), Aggregator
+  `portfolio-dashboard-service.ts`, Routes-Modul `routes/portfolios.ts`.
+  Permission-Pattern analog Projektauftrag (App-Floor + Resource-Override +
+  Ersteller-Fallback via `getEffectivePortfolioRole`).
+  Demo/messe-Worktree: YAML-Variante unter `data/apps/projektmanagement/portfolios/`.
+- **Datenmodell**: `paProjekte.portfolioId` (existiert seit Phase A) ist
+  jetzt aktiviert — 0..1-Kardinalität. Kein FK-Constraint, weil Portfolio
+  löschen die Projekte nur entkoppelt (`portfolio_id` → NULL), nicht
+  kaskadierend mitlöscht.
+- **Portfolio-Liste** ersetzt den „Phase D"-Placeholder im Tab. Card-Grid
+  mit Status-Badge, Projekt-Counter, Create-Modal.
+- **Portfolio-Detail** (`/apps/projektmanagement/portfolios/:id`) mit 4 Tabs
+  analog Vertragsmanagement-Pattern: Übersicht (= Dashboard), Projekte,
+  Strategie (Markdown), Einstellungen. URL-Sync via `?tab=`.
+- **PMO-Dashboard** (Übersicht-Tab) — Kern des Features:
+  - 4 KPI-Karten: Projekte gesamt, Health (SVG-Donut), Budget-Abweichung %,
+    Termine (im Plan / gefährdet / verspätet).
+  - Phase-Mix Stacked-Bar (Initiierung/Planung/Umsetzung/Abschluss/Gestoppt).
+  - Top-5-Risiken-Tabelle (Score P×A aus Risk-Tracking aller aktiven SBs).
+  - Letzte Statusberichte pro Projekt mit Direct-Link.
+  - **Charts als Inline-SVG** (HealthDonut + PhaseMixBar) — keine
+    Chart-Library-Dependency.
+  - **RBAC-Filter passiert vor Aggregation**: User sieht nur Projekte, auf
+    die er Auftrags-Viewer-Rolle hat — kein Datenleak über aggregierte Counts.
+- **Verknüpfung** Projekt ↔ Portfolio über `PortfolioAssignCard` im
+  Übersicht-Tab des Projekt-Detail. Owner+ kann zuordnen / ändern.
+- **PMI/PMBOK-Mapping**: jedes Dashboard-Element ist konzeptionell verankert
+  (Performance Reporting, Pipeline Balancing, EVM, Risk Register, Status
+  Reporting). Strategic Alignment als Markdown-Freitext im `strategy`-Feld;
+  strukturierte OKR/Value-Driver-Frameworks bewusst out-of-scope.
+- Doku: `docs/projektmanagement-portfolios-2026-05-18.md`
+
 ### Projektmanagement — UX-Harmonisierung Statusberichte/LL + ConfirmModal
 Drei kleine, aber sichtbare UX-Verbesserungen:
 

@@ -39,6 +39,7 @@ const ImportPage = lazy(() => import('./apps/projektmanagement/ImportPage'));
 const WizardPage = lazy(() => import('./apps/projektmanagement/WizardPage'));
 const IdeeWizardPage = lazy(() => import('./apps/projektmanagement/IdeeWizardPage'));
 const IdeenPage = lazy(() => import('./apps/projektmanagement/IdeenPage'));
+const PortfolioDetail = lazy(() => import('./apps/projektmanagement/PortfolioDetail'));
 const LieferantenPage = lazy(() => import('./apps/lieferantenmanagement/LieferantenPage'));
 const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/SupplierDetailPage'));
 const VsmPage = lazy(() => import('./apps/vsm/VsmPage'));
@@ -194,6 +195,7 @@ function AppRoutes() {
                   <Route path="/apps/projektmanagement/ideen/import" element={<RequireAppPermission appId="projektmanagement"><ImportPage mode="idee" /></RequireAppPermission>} />
                   <Route path="/apps/projektmanagement/ideen/neu" element={<RequireAppPermission appId="projektmanagement"><IdeeWizardPage /></RequireAppPermission>} />
                   <Route path="/apps/projektmanagement/ideen/:id" element={<RequireAppPermission appId="projektmanagement"><IdeeWizardPage /></RequireAppPermission>} />
+                  <Route path="/apps/projektmanagement/portfolios/:id" element={<RequireAppPermission appId="projektmanagement"><PortfolioDetail /></RequireAppPermission>} />
                   <Route path="/apps/projektmanagement/:id" element={<RequireAppPermission appId="projektmanagement"><WizardPage /></RequireAppPermission>} />
                   <Route path="/apps/lieferantenmanagement" element={<RequireAppPermission appId="lieferantenmanagement"><LieferantenPage /></RequireAppPermission>} />
                   <Route path="/apps/lieferantenmanagement/:id" element={<RequireAppPermission appId="lieferantenmanagement"><SupplierDetailPage /></RequireAppPermission>} />
