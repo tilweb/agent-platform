@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-05-19
+
+### Extraktion — Heavy-Pipeline mit Strategy-Pattern (Phase D, P0–P4)
+Komplette Neufassung der Daten-Extraktion als hochwertiger Premium-Pfad.
+Truncation ist konsequent verboten; pro Schema waehlbare Strategie.
+
+- **Strategy-Pattern**: vier Strategien (`single-pass`, `long-text-chunked`,
+  `vision-per-page`, `hybrid`). Schema-YAML hat einen optionalen
+  `extraction:`-Block der Strategy + Parameter steuert.
+- **Tokenizer + Chunker**: 3.5-chars/token-Heuristik, section-aware Markdown-
+  Splitter mit Overlap, sucht „saubere" Break-Stellen (Heading → Paragraph →
+  Newline → Satzende → Whitespace).
+- **Merger**: 4 Strategien (first-non-null / majority-vote /
+  priority-by-section / union) + auto-union fuer Array-Felder. Pro Feld
+  Provenance mit Chunk-/Page-Quellen.
+- **Confidence-Scoring**: Heuristik (wie viele Chunks bestaetigen den Wert) +
+  optionale LLM-Self-Reflection pro Feld-Gruppe fuer ambiguose Felder.
+  Schwelle pro Schema.
+- **Vision-Per-Page**: PDF→PNG via `pdftocairo` (System-Tool aus poppler-utils,
+  Bun.spawn — keine npm-Native-Bindings). Pro Seite Vision-LLM-Call. Auch
+  Handschrift, Stempel, Tabellenzeilen.
+- **Hybrid**: Text-Pass + selektives Vision-Fallback fuer low-confidence-
+  Felder. Vision-Werte gewinnen, Text bleibt fuer high-confidence-Felder.
+- **Auto-Eskalation**: `single-pass → long-text-chunked` bei
+  ContextOverflowError. Schema kann „single-pass" sagen — wenn Dokument den
+  Kontext sprengt, eskaliert die Pipeline.
+- **multiFileImporter** bekommt `unbounded: true`-Option — Heavy-Pipeline-
+  Konsumenten umgehen die 30k-Char-Caps.
+- **Vertragsmanagement-Integration**: importContract + reextractContract
+  rufen `runPipeline()` statt der alten extractWithSchema-Logik. Persistiert
+  field_confidences, extraction_provenance, extraction_strategy in den
+  Vertrag (DB-Migration 0015 + 0016, idempotent).
+- **ContractDetail**: low-confidence-Felder (< 0.7) bekommen eine gelbe
+  Wellenlinie + Tooltip „Konfidenz: NN% · Quelle: c:N / p:vision".
+- **Schema-Validation**: Backend lehnt Schemas mit broken mapping-Pfaden ab
+  (`POST /schemas` 400 + Liste an Issues). Frontend zeigt die Issues
+  multiline mit konkretem Pfad-Vergleich.
+- **System-Requirement**: `poppler-utils` (fuer `vision-per-page`/`hybrid`).
+  Mac: `brew install poppler`. Ubuntu: `apt-get install poppler-utils`.
+- **Mietvertrag-Schema** als Demo mit `extraction: { strategy:
+  long-text-chunked, section_aware: true, merge_strategy: priority-by-section }`.
+- 37 neue Tests (tokenizer, defaults, chunker, merger, pdf, schema-validation).
+- Doku: `docs/extraction-pipeline-2026-05-19.md` mit Architektur, Adapter-
+  Howto, Out-of-Scope-Liste.
+- Out-of-Scope: Async-Job-Backend (deferred — SSE-Heartbeat-Streaming reicht
+  fuer Dokumente bis ca. 60 Seiten; 400-Seiten-Async kommt mit eigenem Job-
+  Backend nach).
+
 ## 2026-05-18
 
 ### Projektmanagement — Portfolios + PMO-Dashboard (Phase D)

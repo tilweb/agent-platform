@@ -242,3 +242,14 @@ active:
   image_to_image:
     provider_id: fal-ai
     model_id: fal-ai/nano-banana-pro
+  # Phase D / Heavy-Extraction-Pipeline. Wird von der Pipeline nicht
+  # automatisch resolved — Strategien lesen den Override aus dem Schema-Config
+  # (`extraction.model_override`). Dieser Block dokumentiert die Default-
+  # Empfehlung: Qwen-Thinking liefert hoehere Genauigkeit, kostet aber mehr.
+  # Wenn ein Schema `model_override: null` hat (Default), faellt es auf den
+  # `chat`-Provider zurueck.
+  extraction_heavy:
+    provider_id: adacor
+    model_id: qwen3-a3bthinking-30b-256k
+    max_concurrent: 4
+    timeout_ms: 180000
