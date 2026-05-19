@@ -207,24 +207,44 @@ export function computeDerivedFields(
 } {
   // Helper to get nested value from path like "vertragspartner.vermieter"
   const getNestedValue = (obj: any, path: string): any => {
+    if (!path || typeof path !== 'string') return undefined;
     return path.split('.').reduce((acc, part) => acc?.[part], obj);
   };
 
+  // Defensive: wenn mapping fehlt oder unvollstaendig ist (User-Schema-Bug),
+  // crashen wir nicht — leere Strings zurueckgeben + warnen, damit der Bug
+  // in den Logs sichtbar wird.
+  const mapping = schema.mapping ?? ({} as ContractSchema['mapping']);
+  if (!mapping.party_a || !mapping.party_b || !mapping.start_date || !mapping.end_date || !mapping.value) {
+    console.warn(`[VM-computeDerivedFields] Schema "${schema.id}" hat unvollstaendiges mapping — keine Basisdaten ableitbar. Pflege das Schema im Schema-Editor.`);
+  }
+
+  // Helper: liest, warnt einmal pro Lookup-Fehler.
+  const lookupOrWarn = (key: keyof ContractSchema['mapping']): unknown => {
+    const path = mapping[key];
+    if (!path) return undefined;
+    const value = getNestedValue(extracted, path);
+    if (value === undefined || value === null || value === '') {
+      console.warn(`[VM-computeDerivedFields] Schema "${schema.id}" mapping.${key} = "${path}" — Pfad fand keinen Wert im Extracted-Object. Pruefe ob Pfad zu fields-Block passt.`);
+    }
+    return value;
+  };
+
   // Extract mapped values
-  const party_a = String(getNestedValue(extracted, schema.mapping.party_a) || '');
-  const party_b = String(getNestedValue(extracted, schema.mapping.party_b) || '');
-  const start_date = String(getNestedValue(extracted, schema.mapping.start_date) || '');
-  const end_date = String(getNestedValue(extracted, schema.mapping.end_date) || '');
+  const party_a = String(lookupOrWarn('party_a') || '');
+  const party_b = String(lookupOrWarn('party_b') || '');
+  const start_date = String(lookupOrWarn('start_date') || '');
+  const end_date = String(lookupOrWarn('end_date') || '');
 
   // Compute annual value (handle expressions like "finanzen.kaltmiete_monatlich * 12")
   let annual_value = 0;
-  const valueMapping = schema.mapping.value;
-  if (valueMapping.includes('*')) {
+  const valueMapping = mapping.value;
+  if (valueMapping && valueMapping.includes('*')) {
     const [path, multiplierStr] = valueMapping.split('*').map((s) => s.trim());
     const baseValue = Number(getNestedValue(extracted, path)) || 0;
     const multiplier = Number(multiplierStr) || 1;
     annual_value = baseValue * multiplier;
-  } else {
+  } else if (valueMapping) {
     annual_value = Number(getNestedValue(extracted, valueMapping)) || 0;
   }
 

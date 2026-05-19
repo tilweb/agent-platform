@@ -530,6 +530,18 @@ contracts.post('/schemas', async (c) => {
       return c.json({ error: 'Schema with this ID already exists' }, 409);
     }
 
+    // Validate mapping paths — verhindert dass User-Schemas mit falschen
+    // mapping-Pfaden in der DB landen (sonst keine Basisdaten in der UI).
+    const { validateContractSchema, formatSchemaIssues } = await import('./schema-validation');
+    const issues = validateContractSchema(schema);
+    if (issues.length > 0) {
+      return c.json({
+        error: 'Schema-Validation fehlgeschlagen',
+        details: formatSchemaIssues(issues),
+        issues,
+      }, 400);
+    }
+
     // Import saveSchema from storage
     const { saveSchema } = await import('./storage');
     await saveSchema(schema);
@@ -562,6 +574,17 @@ contracts.put('/schemas/:type', async (c) => {
       ...updates,
       id: typeId, // Ensure ID is not changed
     };
+
+    // Validate mapping paths (siehe POST oben).
+    const { validateContractSchema, formatSchemaIssues } = await import('./schema-validation');
+    const issues = validateContractSchema(updatedSchema);
+    if (issues.length > 0) {
+      return c.json({
+        error: 'Schema-Validation fehlgeschlagen',
+        details: formatSchemaIssues(issues),
+        issues,
+      }, 400);
+    }
 
     // Import saveSchema from storage
     const { saveSchema } = await import('./storage');
