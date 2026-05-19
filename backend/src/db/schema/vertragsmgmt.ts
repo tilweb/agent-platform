@@ -39,6 +39,10 @@ export const contracts = vertragsmgmtSchema.table('contracts', {
   typeDetection: jsonb('type_detection'),                   // { detected, confidence, alternatives, user_corrected, corrected_at }
   provenance: jsonb('provenance'),                          // { fieldKey: [attachmentId, ...] } — woraus stammt jeder Wert
   extractedHistory: jsonb('extracted_history'),             // [{ extracted, contract_type, mapped_at }] — bei Re-Extraktion archiviert
+  // Phase D / P4 — Heavy-Extraction-Pipeline-Output (Confidence, Provenance, Strategy)
+  fieldConfidences: jsonb('field_confidences'),             // Map dotted-path → [0..1]
+  extractionProvenance: jsonb('extraction_provenance'),     // Liste an FieldProvenance-Eintraegen
+  extractionStrategy: text('extraction_strategy'),          // 'single-pass' | 'long-text-chunked' | 'vision-per-page' | 'hybrid'
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({

@@ -240,8 +240,10 @@ export function computeDerivedFields(
   let annual_value = 0;
   const valueMapping = mapping.value;
   if (valueMapping && valueMapping.includes('*')) {
-    const [path, multiplierStr] = valueMapping.split('*').map((s) => s.trim());
-    const baseValue = Number(getNestedValue(extracted, path)) || 0;
+    const parts = valueMapping.split('*').map((s) => s.trim());
+    const path = parts[0] ?? '';
+    const multiplierStr = parts[1] ?? '1';
+    const baseValue = path ? (Number(getNestedValue(extracted, path)) || 0) : 0;
     const multiplier = Number(multiplierStr) || 1;
     annual_value = baseValue * multiplier;
   } else if (valueMapping) {

@@ -84,13 +84,16 @@ export function generateContractId(): string {
 }
 
 function rowToContract(row: typeof contractsTable.$inferSelect): ContractMetadata {
-  // Type-Cast auf row mit Phase-2-Felder — die Drizzle-Spalten sind hinzugefuegt,
+  // Type-Cast auf row mit Phase-2/P4-Felder — die Drizzle-Spalten sind hinzugefuegt,
   // aber Migration kann auf alten Instanzen noch nicht gelaufen sein → defensives default.
   const r = row as typeof contractsTable.$inferSelect & {
     primaryAttachmentId?: string | null;
     typeDetection?: unknown;
     provenance?: unknown;
     extractedHistory?: unknown;
+    fieldConfidences?: unknown;
+    extractionProvenance?: unknown;
+    extractionStrategy?: string | null;
   };
   return {
     id: row.id,
@@ -105,6 +108,9 @@ function rowToContract(row: typeof contractsTable.$inferSelect): ContractMetadat
     type_detection: (r.typeDetection ?? null) as ContractTypeDetection | null,
     provenance: (r.provenance ?? null) as Record<string, string[]> | null,
     extracted_history: (r.extractedHistory ?? []) as ContractExtractionSnapshot[],
+    field_confidences: (r.fieldConfidences ?? null) as ContractMetadata['field_confidences'],
+    extraction_provenance: (r.extractionProvenance ?? null) as ContractMetadata['extraction_provenance'],
+    extraction_strategy: r.extractionStrategy ?? null,
   };
 }
 
@@ -277,6 +283,9 @@ export async function saveContract(metadata: ContractMetadata): Promise<void> {
     typeDetection: (metadata.type_detection ?? null) as never,
     provenance: (metadata.provenance ?? null) as never,
     extractedHistory: (metadata.extracted_history ?? null) as never,
+    fieldConfidences: (metadata.field_confidences ?? null) as never,
+    extractionProvenance: (metadata.extraction_provenance ?? null) as never,
+    extractionStrategy: metadata.extraction_strategy ?? null,
     createdAt: metadata.uploaded_at,
     updatedAt: metadata.uploaded_at,
   }).onConflictDoUpdate({
@@ -291,6 +300,9 @@ export async function saveContract(metadata: ContractMetadata): Promise<void> {
       typeDetection: (metadata.type_detection ?? null) as never,
       provenance: (metadata.provenance ?? null) as never,
       extractedHistory: (metadata.extracted_history ?? null) as never,
+      fieldConfidences: (metadata.field_confidences ?? null) as never,
+      extractionProvenance: (metadata.extraction_provenance ?? null) as never,
+      extractionStrategy: metadata.extraction_strategy ?? null,
       updatedAt: new Date().toISOString(),
     },
   });

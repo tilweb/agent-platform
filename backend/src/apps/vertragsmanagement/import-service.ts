@@ -462,6 +462,10 @@ export async function importContract(
     primary_attachment_id: primaryAttachmentId,
     type_detection: typeDetection,
     provenance,
+    // Heavy-Pipeline P4: Confidence + Provenance + Strategy persistieren.
+    field_confidences: pipelineResult.fieldConfidences,
+    extraction_provenance: pipelineResult.provenance,
+    extraction_strategy: pipelineResult.strategyUsed,
   };
   await saveContract(contract);
 
@@ -557,6 +561,11 @@ export async function reextractContract(
     obligations,
     type_detection: typeDetection,
     extracted_history: history,
+    // Heavy-Pipeline P4: bei Re-Extraktion mit neuem Schema auch Confidence-
+    // Daten frisch persistieren.
+    field_confidences: pipelineResult.fieldConfidences,
+    extraction_provenance: pipelineResult.provenance,
+    extraction_strategy: pipelineResult.strategyUsed,
   };
   await saveContract(updated);
 
