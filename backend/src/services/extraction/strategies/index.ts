@@ -10,6 +10,7 @@ import type { ExtractionStrategy, StrategyId } from '../types';
 import { singlePassStrategy } from './single-pass';
 import { longTextChunkedStrategy } from './long-text-chunked';
 import { visionPerPageStrategy } from './vision-per-page';
+import { hybridStrategy } from './hybrid';
 
 const REGISTRY: Map<StrategyId, ExtractionStrategy> = new Map();
 
@@ -20,7 +21,7 @@ function register(strategy: ExtractionStrategy): void {
 register(singlePassStrategy);
 register(longTextChunkedStrategy);
 register(visionPerPageStrategy);
-// P4: register(hybridStrategy);
+register(hybridStrategy);
 
 export function getStrategy(id: StrategyId): ExtractionStrategy | undefined {
   return REGISTRY.get(id);

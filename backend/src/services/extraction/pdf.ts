@@ -18,9 +18,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 export class PdfRenderError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  public readonly underlyingCause?: unknown;
+  constructor(message: string, underlyingCause?: unknown) {
     super(message);
     this.name = 'PdfRenderError';
+    this.underlyingCause = underlyingCause;
   }
 }
 

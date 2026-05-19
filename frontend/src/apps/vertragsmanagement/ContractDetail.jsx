@@ -701,25 +701,46 @@ function ContractDetail() {
                       {groupName}
                     </div>
                     {Object.entries(fields || {}).map(
-                      ([fieldName, value], fieldIndex, fieldArr) => (
-                        <div
-                          key={fieldName}
-                          style={{
-                            ...styles.fieldRow,
-                            ...(fieldIndex === fieldArr.length - 1 &&
-                            groupIndex === groupArr.length - 1
-                              ? styles.fieldRowLast
-                              : {}),
-                          }}
-                        >
-                          <span style={styles.fieldLabel}>{fieldName}</span>
-                          <span style={styles.fieldValue}>
-                            {value !== null && value !== undefined
-                              ? String(value)
-                              : '-'}
-                          </span>
-                        </div>
-                      )
+                      ([fieldName, value], fieldIndex, fieldArr) => {
+                        const fieldPath = `${groupName}.${fieldName}`;
+                        const confidence = contract.field_confidences?.[fieldPath];
+                        const isLow = typeof confidence === 'number' && confidence < 0.7;
+                        const provenance = contract.extraction_provenance?.find(
+                          (p) => p.field === fieldPath,
+                        );
+                        const tooltip = (typeof confidence === 'number')
+                          ? `Konfidenz: ${(confidence * 100).toFixed(0)}%${provenance?.source ? ` · Quelle: ${provenance.source}` : ''}`
+                          : undefined;
+                        return (
+                          <div
+                            key={fieldName}
+                            style={{
+                              ...styles.fieldRow,
+                              ...(fieldIndex === fieldArr.length - 1 &&
+                              groupIndex === groupArr.length - 1
+                                ? styles.fieldRowLast
+                                : {}),
+                            }}
+                          >
+                            <span style={styles.fieldLabel}>{fieldName}</span>
+                            <span
+                              style={{
+                                ...styles.fieldValue,
+                                ...(isLow ? {
+                                  textDecoration: 'underline wavy',
+                                  textDecorationColor: theme.colors.warning,
+                                  cursor: 'help',
+                                } : {}),
+                              }}
+                              title={tooltip}
+                            >
+                              {value !== null && value !== undefined
+                                ? String(value)
+                                : '-'}
+                            </span>
+                          </div>
+                        );
+                      }
                     )}
                   </div>
                 )

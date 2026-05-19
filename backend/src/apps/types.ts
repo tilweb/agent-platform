@@ -165,6 +165,29 @@ export interface ContractMetadata {
   type_detection?: ContractTypeDetection | null;
   provenance?: Record<string, string[]> | null;     // fieldKey → [attachmentId, ...]
   extracted_history?: ContractExtractionSnapshot[]; // bei Re-Extraktion archiviert
+
+  // Phase D / P4 — Heavy-Extraction-Pipeline-Output. Per-Feld-Konfidenz aus
+  // dem LLM-Self-Reflection-Scoring; Provenance pro Feld (Chunk/Page-Quellen).
+  // Frontend zeigt Felder unter Schema.extraction.confidence_threshold mit
+  // gelber Markierung + Tooltip.
+  field_confidences?: Record<string, number> | null;          // dotted path → [0..1]
+  extraction_provenance?: ContractFieldProvenance[] | null;   // pro Feld eine Source-Notiz
+  /** Welche Strategy hat zuletzt extrahiert (single-pass | long-text-chunked | vision-per-page | hybrid). */
+  extraction_strategy?: string | null;
+}
+
+/**
+ * Ein Provenance-Eintrag der Heavy-Pipeline. `source` ist ein kompaktes Format:
+ *   `c:N`      — Chunk-Index
+ *   `c:N+M`    — mehrere Chunks (Union)
+ *   `p:<page>` — Seite (Vision-Strategy)
+ *   `p:<a>+<b>` — mehrere Seiten
+ */
+export interface ContractFieldProvenance {
+  field: string;
+  value: unknown;
+  source: string;
+  confidence?: number;
 }
 
 /** 'hauptvertrag' | 'anhang' | 'toolbox' | 'korrespondenz' | 'sonstiges'. */
