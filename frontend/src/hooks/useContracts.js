@@ -205,7 +205,14 @@ export function useContracts() {
 
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(data.error || 'Failed to create schema');
+      // Validation-Issues haben einen `details`-String + ein `issues`-Array
+      // mit konkreten Feld/Pfad-Hinweisen.
+      const message = data.details
+        ? `${data.error}\n\n${data.details}`
+        : (data.error || 'Failed to create schema');
+      const err = new Error(message);
+      if (data.issues) err.issues = data.issues;
+      throw err;
     }
 
     const data = await response.json();
@@ -222,7 +229,12 @@ export function useContracts() {
 
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(data.error || 'Failed to update schema');
+      const message = data.details
+        ? `${data.error}\n\n${data.details}`
+        : (data.error || 'Failed to update schema');
+      const err = new Error(message);
+      if (data.issues) err.issues = data.issues;
+      throw err;
     }
 
     const data = await response.json();
