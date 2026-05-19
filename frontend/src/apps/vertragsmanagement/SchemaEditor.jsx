@@ -205,6 +205,9 @@ const styles = {
     borderRadius: theme.borderRadius.md,
     fontSize: theme.typography.sizes.sm,
     marginBottom: theme.spacing.lg,
+    whiteSpace: 'pre-wrap',
+    fontFamily: theme.typography.fontFamily,
+    lineHeight: 1.5,
   },
   aiHelper: {
     padding: theme.spacing.lg,
