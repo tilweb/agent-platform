@@ -41,6 +41,7 @@ import { publicApiRouter } from './public-api/router';
 import { brandingRoutes } from './routes/branding';
 import { runMigrations } from './db/migrate';
 import { migrateAuftraegeToProjekteIfNeeded } from './apps/projektmanagement/projekt-service';
+import { seedContractSchemasFromYamlIfNeeded } from './apps/vertragsmanagement/seed-schemas';
 import { ensureBucket } from './storage/s3';
 import { seedDemoUsers } from '../../scripts/seed-demo-users';
 import { seedCustomSkillsFromDisk } from './skills';
@@ -73,6 +74,18 @@ async function initialize() {
       }
     } catch (error) {
       console.warn('[migrate-projekte] skipped/failed (server will still start):', error instanceof Error ? error.message : error);
+    }
+
+    // Vertragsmanagement: ContractSchemas aus YAML in die DB seeden, falls die
+    // entsprechende `vertragsmgmt.schemas`-Zeile noch fehlt. Idempotent —
+    // bestehende user-editierte Schemas werden NICHT ueberschrieben.
+    try {
+      const r = await seedContractSchemasFromYamlIfNeeded();
+      if (r.created > 0 || r.errors > 0) {
+        console.log(`[seed-contract-schemas] created=${r.created} skipped=${r.skipped} errors=${r.errors}`);
+      }
+    } catch (error) {
+      console.warn('[seed-contract-schemas] skipped/failed (server will still start):', error instanceof Error ? error.message : error);
     }
   }
 
