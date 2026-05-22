@@ -1,0 +1,39 @@
+# Vorgangsmappe — App Config
+#
+# Bestimmt gegen welches DocuWare-Cabinet gesucht wird und welche Felder die
+# Vorgangsnummer (Referenz) und die Doku-Art enthalten.
+#
+# Cabinet-ID ermitteln: in DocuWare-Admin → File Cabinets → Properties, oder
+# per `docuware_list_cabinets`-Tool im Chat.
+
+cabinet:
+  # Dev-Cabinet bei Cofermin. In Prod ggf. anderes Cabinet eintragen.
+  id: "62f6f732-71c6-4b65-a097-da53ebe0be99"
+  displayName: "Test Kaufmaennische Belege"
+
+# DocuWare-DBFieldName der Vorgangsnummer (AB26-xxxxx)
+reference_field: REFERENCE
+
+# DocuWare-DBFieldName der Dokumentenart
+# Cofermin: DOCUMENT_TYPE (Werte: Auftragsbestätigung, Einkaufsrechnung,
+# Verkaufsrechnung, Bestellung, Schriftverkehr, …).
+document_type_field: DOCUMENT_TYPE
+
+# DBFieldName fuer Incoterm (z.B. FOB, CIF). Wird pro Doc oder am Vorgang
+# gepflegt. Wenn ein Doc dieses Feld traegt, gilt der Wert fuer den ganzen
+# Vorgang. Wenn null/nicht vorhanden, kann der Pflicht-Check kein Regelwerk
+# anwenden — der UI zeigt dann einen Hinweis.
+incoterm_field: INCOTERM
+
+# DBFieldName fuer Geschaeftsart ("Lager" / "Strecke").
+geschaeftsart_field: GESCHAFTSART
+
+# DBFieldName fuer den Vorgangs-Status (Business Central). Wird aus
+# einem statusgebenden Doc abgeleitet — siehe Settings → Dokumententypen.
+# Erscheint in der Vorgangs-Subline.
+status_field: BC_STATUS
+
+# DBFieldName fuer den pro-Dokument-Status (z.B. „Genehmigt", „in
+# Bearbeitung"). Wird pro Doc als Pill angezeigt und ist Quelle des
+# Status-Filters in der Detail-Ansicht.
+doc_status_field: STATUS

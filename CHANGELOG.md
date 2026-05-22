@@ -1,5 +1,138 @@
 # Changelog
 
+## 2026-05-21 (noch spaeter)
+
+### Vorgangsmappe — Settings + DB-basierter Pflicht-Doku-Check
+Loese das YAML-`requirements/standard.yaml`-Modell ab. Pflicht-Dokumente werden
+ueber drei DB-gestuetzte Entitaeten gepflegt, die der Admin in der App selbst
+verwalten kann.
+
+- **DB-Schema** (Migration `0017_vorgangsmappe_settings.sql`):
+  - `vorgangsmappe.document_types` (id, label, bereich, match_any, sort_order)
+  - `vorgangsmappe.incoterms` (code, label, description, sort_order)
+  - `vorgangsmappe.required_document_mappings` (incoterm × geschaeftsart × document_type → required)
+- **Boot-Seeder** seedet 76 Doku-Typen (aus Dokumentenmatrix.xlsx, Sheet
+  „Bsp Incoterms" + „Mappe neu") und die 11 Incoterms 2020 (EXW, FCA, FAS,
+  FOB, CPT, CIP, CFR, CIF, DAP, DPU, DDP). Idempotent.
+- **Compliance-Logik** (`compliance.ts`) liest jetzt die Pflicht-Liste aus
+  DB-Mappings auf Basis der pro-Vorgang ermittelten Incoterm/Geschaeftsart
+  (DocuWare-Felder `INCOTERM` und `GESCHAFTSART`, in `config.yaml`
+  konfigurierbar). Wenn beide nicht ermittelbar → `overall: no_rule` mit
+  freundlichem UI-Hinweis.
+- **Settings-API** unter `/api/apps/vorgangsmappe/settings/...`:
+  - `GET/POST/PUT/DELETE /document-types`
+  - `GET/POST/PUT/DELETE /incoterms`
+  - `GET /mappings`, `POST /mappings` (einzel-Upsert),
+    `PUT /mappings/:incoterm/:geschaeftsart` (bulk-Replace fuer Matrix-Editor)
+- **Frontend** `/apps/vorgangsmappe/settings` mit drei Tabs:
+  - Dokumententypen — Tabellenansicht mit Inline-Edit + Bereich-Filter
+  - Incoterms — CRUD
+  - Pflicht-Mapping — Matrix-Editor (Zeilen = DocTypes nach Bereich
+    gruppiert, Spalten = Incoterm × Geschaeftsart, Cells = Checkbox)
+- **Cofermin-Cabinet-Anpassung**: `config.yaml` umgestellt auf die
+  realen DBFieldNames `DOCUMENT_TYPE`, `INCOTERM`, `GESCHAFTSART`.
+
+## 2026-05-21 (spaeter)
+
+### Neue Workplace-App „Vorgangsmappe" (v1, Cofermin-Pilot)
+Schlanke App fuer den schnellen Ueberblick aller Dokumente eines Vorgangs
+(AB26-xxxxx) aus DocuWare. Reine View — keine eigene DB-Persistenz.
+
+- **Backend** (`backend/src/apps/vorgangsmappe/`):
+  - AppConfig + Hono-Routes (`/config`, `/vorgaenge/:reference[/compliance]`,
+    `/search`, `/nlu/preview`).
+  - `service.ts`: AB-Drilldown ueber `executeStructuredSearch`, Datums-Sortierung,
+    Datums-Range-Berechnung, Vorgangstyp-Erkennung.
+  - `nlu.ts`: LLM-Forced-Function-Call (Pattern aus wzbar-matcher) zur
+    Uebersetzung freier Suchanfragen in DialogExpression-Filter; Fast-Path fuer
+    AB-Pattern ohne LLM-Roundtrip.
+  - `compliance.ts`: Wildcard-Matching von Dokumenten gegen YAML-Soll-Listen,
+    ComplianceReport mit `complete/partial/incomplete`.
+  - `config-loader.ts`: YAML-Loader mit 60s-Cache fuer
+    `data/apps/vorgangsmappe/config.yaml` und `requirements/*.yaml`.
+  - `reference-utils.ts`: Normalisierung von AB-Nummern
+    (z.B. `ab26 12345` → `AB26-12345`), Pattern-Erkennung.
+  - Registrierung in `backend/src/apps/registry.ts` + Mount in `routes/apps.ts`.
+
+- **Frontend** (`frontend/src/apps/vorgangsmappe/`):
+  - `VorgangListPage.jsx`: Such-Eingang (AB-Feld + freie LLM-Suche),
+    Trefferliste mit Tabs „Vorgaenge" / „Einzel-Dokumente".
+  - `VorgangDetailPage.jsx`: 3-Spalten-Layout — Compliance-Checklist,
+    Doku-Liste, eingebetteter PDF/Page-Image-Viewer.
+  - `components/`: `ReferenceInput`, `NluSearchBar`, `FilterChips`,
+    `VorgangCard`, `DocumentList`, `DocumentViewer`, `ComplianceChecklist`.
+  - `hooks/useVorgangsmappe.js`: useVorgang, useVorgangsmappeConfig,
+    searchDocuments.
+  - Lazy-Routes in `App.jsx`, Sidebar-Icon `briefcase` mit
+    `BriefcaseNavIcon`.
+
+- **Konfig** (`data/apps/vorgangsmappe/`):
+  - `config.yaml` Pattern fuer Cabinet + Feld-Mapping.
+  - `requirements/standard.yaml` als Default-Soll-Liste
+    (Auftragsbestaetigung, Rechnung, Lieferschein, Zollpapier).
+
+- **Status**: App startet `enabled: false` — Admin schaltet sie via
+  `/api/apps/vorgangsmappe/enable` aktiv und konfiguriert die Cabinet-UUID
+  in `config.yaml`. Cofermin-OAuth-Scopes muessen vom Customer-Admin in
+  DocuWare freigeschaltet werden (siehe vorherige .env-Diskussion).
+
+### Docuware — Viewer + Thumbnail-Proxy fuer Pflicht-Doku-Checks
+Vorbereitung fuer eine kommende Workplace-App, die Pflichtdokumente zu Vorgaengen
+verifiziert: User muss schnell per Thumbnail + Doc-Preview sehen koennen, ob
+die Klassifikation eines DocuWare-Dokuments stimmt.
+
+- **Tool** `docuware_get_document_sections`: listet Sections eines Docs
+  (Original + Anhaenge) inkl. Page-Count und Content-Type. Pflichtbasis
+  fuer Viewer, weil manche DocuWare-Tenants Section-IDs fuer Image-Pfade
+  verlangen.
+- **Tool** `docuware_get_document_viewer_urls`: liefert dem Agent die
+  Backend-Proxy-URLs fuer Thumbnail / Page-Image / Original-File-Download.
+  Damit kann eine UI direkt `<img>`/`<iframe>` einbinden, ohne dass das
+  User-Token ins DOM gelangt.
+- **Backend-Routen** (read-only Proxy, alle authMiddleware):
+  - `GET /api/connections/docuware/cabinets/:cabinetId/documents/:docId/thumbnail`
+  - `GET /api/connections/docuware/cabinets/:cabinetId/documents/:docId/pages/:pageNum`
+  - `GET /api/connections/docuware/cabinets/:cabinetId/documents/:docId/file`
+  Optional `?section_id=...`. Wenn der Doc-Level-Endpoint 404 liefert
+  faellt die Route auf den Section-Level-Pfad zurueck (per Sections-Probe).
+  Cache-Control: 1d fuer Thumbnails, 1h fuer Page-Images, 10min fuer Files.
+- **`/file`-Route** rendert standardmaessig in PDF via
+  `?targetFileType=PDF` — sonst liefert DocuWare ein ZIP mit allen Sections,
+  was iframe-Embedding kaputtmacht. Override:
+  `?format=original` -> ZIP, `?annotations=strip` -> Annotations entfernen.
+- **Probe-Tool** `tools/docuware-test/probe.ts` fuer End-to-End-Smoketests
+  gegen den lokalen User. Bestaetigt gegen Adacor-Tenant:
+  Thumbnail/PageImage/FileDownload (PDF + ZIP) jeweils 200 OK.
+
+### Docuware — Strukturierte Index-Feld-Suche
+Bis jetzt war nur Volltext (`searchTerm=...`) implementiert. Pflicht-Doku-Check
+braucht aber Filter wie „Art des Dokumentes = Vertrag UND Firma = X UND Datum
+zwischen Y und Z" — gezielt auf Index-Felder.
+
+- **Tool** `docuware_list_cabinet_fields`: listet alle filterbaren Felder eines
+  Cabinets (DBFieldName, Label, Type, hasSelectList). Vorstufe fuer dynamische
+  Filter-UIs.
+- **Tool** `docuware_get_field_select_list`: gibt fuer Keyword-Felder die
+  erlaubten Werte zurueck — direkt Dropdown-tauglich.
+- **Tool** `docuware_search_documents_structured`: gezielte Suche per
+  DocuWare's DialogExpression mit `filters: [{field, values}]`. Values
+  unterstuetzen Exact-Match, Wildcards (`*`) und Ranges (zwei Werte fuer
+  Date/Numeric).
+- **Backend-Routen**:
+  - `GET /api/connections/docuware/cabinets/:id/fields`
+  - `GET /api/connections/docuware/cabinets/:id/fields/:fieldName/select-list`
+  - `POST /api/connections/docuware/cabinets/:id/search`
+- **Dialog-Resolver** (`dialogs.ts`) mit 10min in-memory Cache + Hint-basierter
+  Auswahl. Standard = Default-Search-Dialog des Cabinets.
+- **Validation**: Felder werden gegen das Dialog-Schema gematcht, max 20
+  Filter, max 1024 Zeichen pro Value, max 100 Treffer pro Call.
+- **Erkenntnisse aus Live-Test gegen Adacor-Tenant**: Vertragswesen-Cabinet
+  liefert 32 Felder inkl. ART_DES_DOKUMENTES (50 SelectList-Werte), MANDANT,
+  FIRMA, VERTRAGSNUMMER, VERTRAGSBEGINN/-ENDE, DATUM. `?q=...`-Query-String
+  funktioniert NICHT (DocuWare erwartet Base64-DialogExpression), nur die
+  POST-Variante. `/Fields` direkt am Cabinet nicht verfuegbar — Felder kommen
+  ueber den Dialog-Detail.
+
 ## 2026-05-19
 
 ### Extraktion — Heavy-Pipeline mit Strategy-Pattern (Phase D, P0–P4)

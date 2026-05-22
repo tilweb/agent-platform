@@ -17,6 +17,7 @@ import { projektmanagementConfig } from './projektmanagement';
 import { lieferantenmanagementConfig } from './lieferantenmanagement';
 import { vsmConfig } from './vsm';
 import { wzbarMatcherConfig } from './wzbar-matcher';
+import { vorgangsmappeConfig } from './vorgangsmappe';
 
 /**
  * All built-in apps bundled with the backend. On server startup,
@@ -29,6 +30,7 @@ const BUILT_IN_APPS: AppConfig[] = [
   lieferantenmanagementConfig,
   vsmConfig,
   wzbarMatcherConfig,
+  vorgangsmappeConfig,
 ];
 
 let registryCache: AppsRegistry | null = null;

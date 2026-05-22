@@ -1,0 +1,42 @@
+# Pflicht-Doku-Soll-Liste fuer Standard-Vorgaenge (Cofermin Dev).
+#
+# `match_any` wird case-insensitiv gegen den Feldwert in `document_type_field`
+# (aus config.yaml — Cofermin: DOCUMENT_TYPE) gematcht. `*` als Wildcard.
+
+id: standard
+name: Standard-Vorgang
+requirements:
+  - id: auftragsbestaetigung
+    label: Auftragsbestaetigung
+    required: true
+    match_any:
+      - "Auftragsbestätigung"
+      - "Order Confirmation"
+
+  - id: rechnung
+    label: Rechnung (Verkauf oder Einkauf)
+    required: true
+    match_any:
+      - "*Rechnung*"          # matched Einkaufs-, Verkaufs-, Gutschrift…
+      - "Invoice"
+
+  - id: bestellung
+    label: Bestellung
+    required: false
+    match_any:
+      - "Bestellung"
+      - "Purchase Order"
+
+  - id: lieferschein
+    label: Lieferschein
+    required: false
+    match_any:
+      - "Lieferschein"
+      - "Delivery Note"
+
+  - id: zollpapier
+    label: Zollpapier
+    required: false
+    match_any:
+      - "Zoll*"
+      - "Customs*"

@@ -8,6 +8,11 @@ import { getDocuwareConfig, getDocuwareApiUrl, getDocuwareOrgUrl } from './confi
 import { createSearchDocumentsTool } from './tools/search-documents';
 import { createGetDocumentTool } from './tools/get-document';
 import { createListCabinetsTool } from './tools/list-cabinets';
+import { createGetDocumentSectionsTool } from './tools/get-document-sections';
+import { createGetDocumentViewerUrlsTool } from './tools/get-document-viewer-urls';
+import { createListCabinetFieldsTool } from './tools/list-cabinet-fields';
+import { createGetFieldSelectListTool } from './tools/get-field-select-list';
+import { createSearchDocumentsStructuredTool } from './tools/search-documents-structured';
 
 /**
  * Decode JWT payload (middle segment) without signature verification.
@@ -68,6 +73,9 @@ DOCUWARE_CLIENT_SECRET=dein-client-secret
 DOCUWARE_ORG_URL=https://deine-org.docuware.cloud
 DOCUWARE_AUTHORIZATION_URL=https://login-emea.docuware.cloud/<tenant-id>/oauth2/authorize
 DOCUWARE_TOKEN_URL=https://login-emea.docuware.cloud/<tenant-id>/oauth2/token
+# Optional: Scope-Override (nur setzen wenn DocuWare bei OAuth-Start
+# "invalid_scope" zurueckgibt; Defaults: docuware.platform openid dwprofile offline_access)
+# DOCUWARE_SCOPES=docuware.platform openid offline_access
 \`\`\`
 
 ### 6. Backend neu starten
@@ -237,6 +245,11 @@ Nach dem Setzen der Umgebungsvariablen das Backend neu starten.
         createSearchDocumentsTool(this.id),
         createGetDocumentTool(this.id),
         createListCabinetsTool(this.id),
+        createGetDocumentSectionsTool(this.id),
+        createGetDocumentViewerUrlsTool(this.id),
+        createListCabinetFieldsTool(this.id),
+        createGetFieldSelectListTool(this.id),
+        createSearchDocumentsStructuredTool(this.id),
       ];
     }
     return this.tools;

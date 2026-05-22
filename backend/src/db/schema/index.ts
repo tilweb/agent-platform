@@ -24,5 +24,6 @@ export * from './projektmgmt';
 export * from './liefermgmt';
 export * from './vsm';
 export * from './wzbar';
+export * from './vorgangsmappe';
 export * from './generated';
 export * from './agents';

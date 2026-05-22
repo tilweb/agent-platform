@@ -16,6 +16,7 @@ import { tablesRoutes } from './routes/tables';
 import providerRoutes from './routes/providers';
 import { authRoutes } from './routes/auth';
 import { connectionRoutes } from './routes/connections';
+import { docuwareRoutes } from './routes/connections-docuware';
 import { searchRoutes } from './routes/search';
 import { projectRoutes } from './routes/projects';
 import { usersRoutes } from './routes/users';
@@ -42,6 +43,7 @@ import { brandingRoutes } from './routes/branding';
 import { runMigrations } from './db/migrate';
 import { migrateAuftraegeToProjekteIfNeeded } from './apps/projektmanagement/projekt-service';
 import { seedContractSchemasFromYamlIfNeeded } from './apps/vertragsmanagement/seed-schemas';
+import { seedVorgangsmappeSettings } from './apps/vorgangsmappe/seed-settings';
 import { ensureBucket } from './storage/s3';
 import { seedDemoUsers } from '../../scripts/seed-demo-users';
 import { seedCustomSkillsFromDisk } from './skills';
@@ -86,6 +88,21 @@ async function initialize() {
       }
     } catch (error) {
       console.warn('[seed-contract-schemas] skipped/failed (server will still start):', error instanceof Error ? error.message : error);
+    }
+
+    // Vorgangsmappe: Doku-Typen + Default-Incoterms in die DB seeden.
+    // Idempotent — onConflictDoNothing, sodass User-Edits ueber die UI
+    // beim naechsten Boot nicht ueberschrieben werden.
+    try {
+      const r = await seedVorgangsmappeSettings();
+      if (r.documentTypesAdded > 0 || r.incotermsAdded > 0) {
+        console.log(
+          `[seed-vorgangsmappe] doc-types added=${r.documentTypesAdded} skipped=${r.documentTypesSkipped}; ` +
+          `incoterms added=${r.incotermsAdded} skipped=${r.incotermsSkipped}`,
+        );
+      }
+    } catch (error) {
+      console.warn('[seed-vorgangsmappe] skipped/failed (server will still start):', error instanceof Error ? error.message : error);
     }
   }
 
@@ -298,6 +315,10 @@ app.route('/api/branding', brandingRoutes);
 
 // API routes
 app.route('/api/auth', authRoutes);
+// Docuware-spezifische Sub-Routen (Viewer/Thumbnail/File-Download) — muss
+// VOR connectionRoutes registriert werden, sonst frisst dessen `/:id`-Param
+// die `/docuware/...`-URL-Schiene.
+app.route('/api/connections/docuware', docuwareRoutes);
 app.route('/api/connections', connectionRoutes);
 app.route('/api/chat', chatRoutes);
 app.route('/api/chats', chatHistoryRoutes);

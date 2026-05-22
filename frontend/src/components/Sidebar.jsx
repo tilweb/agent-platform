@@ -243,6 +243,7 @@ const navIconColors = {
   vsm: '#0369a1',
   extraction: '#0d9488',
   classifier: '#14b8a6',
+  briefcase: '#a16207',
 };
 
 function Sidebar() {
@@ -842,9 +843,20 @@ function AppNavIcon({ iconId }) {
       return <VsmNavIcon color={navIconColors.vsm} />;
     case 'classifier':
       return <ClassifierNavIcon color={navIconColors.classifier} />;
+    case 'briefcase':
+      return <BriefcaseNavIcon color={navIconColors.briefcase} />;
     default:
       return <AppsNavIcon color={navIconColors.apps} />;
   }
+}
+
+function BriefcaseNavIcon({ color }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  );
 }
 
 function ContractNavIcon({ color }) {

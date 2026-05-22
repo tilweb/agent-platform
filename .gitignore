@@ -63,3 +63,7 @@ backend/data/apps/wzbar-matcher/matches/
 
 # Backend runtime data
 backend/data/audit/
+
+# DocuWare probe artifacts — enthalten echte Tenant-Daten (PDFs, JSON-
+# Responses mit Index-Feldern). Niemals committen.
+tools/docuware-test/output/

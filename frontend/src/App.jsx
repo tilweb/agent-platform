@@ -45,6 +45,9 @@ const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/Suppl
 const VsmPage = lazy(() => import('./apps/vsm/VsmPage'));
 const VsmDetailPage = lazy(() => import('./apps/vsm/VsmDetailPage'));
 const WzbarMatcherPage = lazy(() => import('./apps/wzbar-matcher/MatcherPage'));
+const VorgangListPage = lazy(() => import('./apps/vorgangsmappe/VorgangListPage'));
+const VorgangDetailPage = lazy(() => import('./apps/vorgangsmappe/VorgangDetailPage'));
+const VorgangSettingsPage = lazy(() => import('./apps/vorgangsmappe/SettingsPage'));
 import RequireAppPermission from './components/RequireAppPermission';
 
 // Loading fallback component
@@ -202,6 +205,9 @@ function AppRoutes() {
                   <Route path="/apps/vsm" element={<RequireAppPermission appId="vsm"><VsmPage /></RequireAppPermission>} />
                   <Route path="/apps/vsm/:id" element={<RequireAppPermission appId="vsm"><VsmDetailPage /></RequireAppPermission>} />
                   <Route path="/apps/wzbar-matcher" element={<RequireAppPermission appId="wzbar-matcher"><WzbarMatcherPage /></RequireAppPermission>} />
+                  <Route path="/apps/vorgangsmappe" element={<RequireAppPermission appId="vorgangsmappe"><VorgangListPage /></RequireAppPermission>} />
+                  <Route path="/apps/vorgangsmappe/settings" element={<RequireAppPermission appId="vorgangsmappe"><VorgangSettingsPage /></RequireAppPermission>} />
+                  <Route path="/apps/vorgangsmappe/:reference" element={<RequireAppPermission appId="vorgangsmappe"><VorgangDetailPage /></RequireAppPermission>} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
