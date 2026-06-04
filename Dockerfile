@@ -12,7 +12,9 @@ FROM oven/bun:1-alpine
 WORKDIR /app/backend
 
 # Install system dependencies
-RUN apk add --no-cache ffmpeg
+# poppler-utils liefert pdftocairo fuer die Vision-Extraction-Strategien
+# (vision-per-page / hybrid). Ohne das degradiert hybrid still auf Text-only.
+RUN apk add --no-cache ffmpeg poppler-utils
 
 # Install backend dependencies
 COPY backend/package.json backend/bun.lock ./

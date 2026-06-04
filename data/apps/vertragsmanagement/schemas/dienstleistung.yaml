@@ -59,3 +59,8 @@ mapping:
   start_date: laufzeit.beginn
   end_date: laufzeit.ende
   value: finanzen.verguetung_jaehrlich
+
+extraction:
+  strategy: hybrid
+  vision_fallback: true
+  confidence_threshold: 0.7
