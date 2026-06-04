@@ -202,6 +202,11 @@ export interface ProviderInfo {
   setupGuide?: string;
   /** Nur bei client-credentials-Providern: Felder fuer den Setup-Wizard. */
   credentialFields?: CredentialFieldSpec[];
+  /** Global vom Admin fuer User freigeschaltet (steuert Sichtbarkeit im User-View). */
+  enabledForUsers?: boolean;
+  /** Provider ist einsatzbereit (OAuth-App/ENV vorhanden). Aktuell immer true,
+   *  da nur konfigurierte Provider ueberhaupt registriert werden. */
+  configured?: boolean;
 }
 
 /**

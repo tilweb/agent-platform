@@ -134,6 +134,13 @@
       "when": 1780099200000,
       "tag": "0018_vorgangsmappe_statusgebend",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780185600000,
+      "tag": "0019_connections_provider_settings",
+      "breakpoints": true
     }
   ]
 }

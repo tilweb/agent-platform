@@ -10,7 +10,7 @@
 
 import { eq, and, lt } from 'drizzle-orm';
 import { getDb } from '../db';
-import { userConnections } from '../db/schema/connections';
+import { userConnections, providerSettings } from '../db/schema/connections';
 import { oauthStates as oauthStatesTable } from '../db/schema/auth';
 import type { StoredConnection, TokenSet, ConnectionStatus, EncryptedTokenSet, OAuthState } from './types';
 import { encryptTokens, decryptTokens } from './crypto';
@@ -222,4 +222,40 @@ export async function cleanupExpiredOAuthStates(): Promise<number> {
     .where(lt(oauthStatesTable.expiresAt, nowIso))
     .returning({ id: oauthStatesTable.id });
   return res.length;
+}
+
+// ============================================
+// Provider-Settings (global, Admin-gesteuert)
+// ============================================
+
+/**
+ * Liefert die „fuer User freigeschaltet"-Flags je Provider-ID. Provider ohne
+ * Eintrag gelten als nicht freigeschaltet (Default false). Bei Storage-Fehlern
+ * wird ein leeres Map zurueckgegeben (fail-safe → nichts sichtbar).
+ */
+export async function getProviderEnabledMap(): Promise<Record<string, boolean>> {
+  try {
+    const db = getDb();
+    const rows = await db
+      .select({ provider: providerSettings.provider, enabled: providerSettings.enabledForUsers })
+      .from(providerSettings);
+    const map: Record<string, boolean> = {};
+    for (const r of rows) map[r.provider] = r.enabled;
+    return map;
+  } catch (err) {
+    console.error('[connections] getProviderEnabledMap failed:', err);
+    return {};
+  }
+}
+
+/** Setzt das „fuer User freigeschaltet"-Flag eines Providers (Upsert). */
+export async function setProviderEnabled(providerId: string, enabled: boolean): Promise<void> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.insert(providerSettings)
+    .values({ provider: providerId, enabledForUsers: enabled, updatedAt: now })
+    .onConflictDoUpdate({
+      target: providerSettings.provider,
+      set: { enabledForUsers: enabled, updatedAt: now },
+    });
 }

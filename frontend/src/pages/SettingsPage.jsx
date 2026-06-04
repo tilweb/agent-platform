@@ -254,6 +254,7 @@ const styles = {
 const TABS = [
   // User section
   { id: 'profile', label: 'Profil', icon: UserIcon },
+  { id: 'my-connections', label: 'Meine Verbindungen', icon: ConnectionsIcon },
   { id: 'mymodels', label: 'Meine Modelle', icon: ProvidersIcon },
   // Admin section - Users
   { id: 'divider-users', type: 'divider', label: 'Benutzerverwaltung', adminOnly: true },
@@ -556,10 +557,16 @@ function SettingsPage() {
             <McpServersPage embedded />
           </div>
         );
-      case 'connections':
+      case 'my-connections':
         return (
           <div style={styles.embeddedPage}>
             <ConnectionsPage embedded />
+          </div>
+        );
+      case 'connections':
+        return (
+          <div style={styles.embeddedPage}>
+            <ConnectionsPage embedded admin />
           </div>
         );
       case 'apps':

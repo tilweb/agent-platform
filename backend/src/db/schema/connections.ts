@@ -20,3 +20,14 @@ export const userConnections = connectionsSchema.table('user_connections', {
 }, (t) => ({
   userProviderIdx: index('user_connections_user_provider_idx').on(t.userId, t.provider),
 }));
+
+/**
+ * Globale Admin-Einstellungen pro Connection-Provider. `enabled_for_users`
+ * steuert, ob der Provider in der User-Ansicht („Meine Verbindungen") erscheint
+ * und von Nutzern verbunden werden darf. Default: false (opt-in).
+ */
+export const providerSettings = connectionsSchema.table('provider_settings', {
+  provider: text('provider').primaryKey(),          // confluence | jira | docuware | ...
+  enabledForUsers: boolean('enabled_for_users').notNull().default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+});

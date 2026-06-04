@@ -33,6 +33,8 @@ export {
   loadOAuthState,
   deleteOAuthState,
   cleanupExpiredOAuthStates,
+  getProviderEnabledMap,
+  setProviderEnabled,
 } from './storage';
 
 // Registry
