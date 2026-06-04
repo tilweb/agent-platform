@@ -2,6 +2,16 @@
 
 ## 2026-06-04
 
+### Fix: Extraktion robust gegen hängenden/langsamen Inferenz-Endpoint
+- **Markitdown best-effort für PDFs** (`learning/service.ts`): 15s-Timeout + try/catch;
+  PDF-Extraktion laeuft auch ohne Markitdown weiter (Vision braucht nur den rawBuffer).
+- **Timeout + Retry um den Vision-Call** (`vision-per-page.ts` + `extract-call.ts`):
+  45s-Timeout + 1 Retry pro Seite; haengt eine Seite, wird sie uebersprungen statt die
+  ganze Extraktion zu blockieren.
+- Hinweis: Die Vision-Inferenz (mistral-3-24b) ist serverseitig zeitweise instabil
+  (haengt/sparse), Text-Chat laeuft sauber — infrastrukturseitig.
+- **Beide Worktrees**.
+
 ### Fix: Vision-Extraktion lieferte unvollständige Felder (Kollaps auf Pflichtfelder)
 Beim Live-Test der Sani-Rezepte fielen Extraktionen teils auf genau die 5
 Pflichtfelder zurück (Rest leer), obwohl die rohe Vision-Antwort alle 21 Felder

@@ -24,6 +24,7 @@ import type { UsageContext } from '../../usageTracking';
 import { buildFunctionSchema, buildToolChoice } from '../../../extraction/schema-builder';
 import { validateExtraction } from '../../../extraction/validator';
 import { appendGuidelines } from './prompt';
+import { withTimeoutRetry } from '../extract-call';
 import {
   StrategyExecutionError,
   type CostEstimate,
@@ -225,7 +226,21 @@ Wichtig:
         ];
 
         const t0 = Date.now();
-        const response = await llmService.chat(messages, [functionSchema], usageContext, options);
+        let response;
+        try {
+          response = await withTimeoutRetry(
+            () => llmService.chat(messages, [functionSchema], usageContext, options),
+            { timeoutMs: 45000, retries: 1, label: `vision-per-page ${page.pageId}` },
+          );
+        } catch (err) {
+          // Seite gibt nach Timeout + Retries keine Antwort (Endpoint-Hänger).
+          // Nicht die ganze Extraktion scheitern lassen — Seite ueberspringen,
+          // andere Seiten/Felder bleiben erhalten.
+          console.warn(`[vision-per-page] Seite ${page.pageId}: keine Antwort nach Retries (${err instanceof Error ? err.message : String(err)}) — uebersprungen.`);
+          logCounter += 1;
+          logs.push({ call: logCounter, phase: 'vision-extract', duration_ms: Date.now() - t0, truncated: false });
+          return { chunkIndex: idx, heading: page.pageLabel, data: {} };
+        }
         const durationMs = Date.now() - t0;
 
         let data: Record<string, unknown> = {};
