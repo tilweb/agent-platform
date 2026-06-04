@@ -1,7 +1,7 @@
 # Heavy Extraction Pipeline (Phase D)
 
 **Datum**: 2026-05-19
-**Status**: Implementiert (P0–P4 committed in main + demo/messe)
+**Status**: Implementiert (P0–P5 committed in main + demo/messe)
 **Plan-Referenz**: `.claude/plans/woolly-popping-pony.md`
 
 ## Kontext

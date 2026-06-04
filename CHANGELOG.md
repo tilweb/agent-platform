@@ -2,6 +2,28 @@
 
 ## 2026-06-04
 
+### Vertragsmanagement — Standard-Schemas von single-pass auf hybrid umgestellt
+Bisher liefen die Schemas `nda`, `dienstleistung`, `arbeitsvertrag` und
+`lizenzvertrag` ohne `extraction:`-Block → Default `single-pass`. Single-Pass
+vergibt pauschal Confidence 1.0 pro befuelltem Feld (kein echtes Scoring, da nur
+eine Quelle). Folge: die Low-Confidence-Markierung im ContractDetail (gelbe
+Wellenlinie < threshold) war fuer diese — haeufigsten — Vertragstypen praktisch
+tot, und Scans/Handschrift wurden nie per Vision nachverarbeitet.
+
+- **Schemas** (`{nda,dienstleistung,arbeitsvertrag,lizenzvertrag}.yaml`, je in
+  `backend/data/...` + `data/...`): neuer Block
+  `extraction: { strategy: hybrid, vision_fallback: true,
+  confidence_threshold: 0.7 }`. Pass 1 (long-text-chunked) liefert echte
+  Feld-Confidence; bei >=2 Low-Confidence-Feldern pro Seite startet der
+  Vision-Fallback (pdftocairo → Vision-LLM). Hybrid degradiert sauber auf
+  Text-only, wenn kein PDF/poppler vorhanden ist (kein Import-Abbruch).
+- **System-Dependency poppler-utils** in beiden Deployments ergaenzt, sonst
+  liefe der Vision-Teil ins Leere: Scalingo `Aptfile` (`poppler-utils`),
+  Railway `Dockerfile` (`apk add ... poppler-utils`).
+- Kosten/Latenz: diese Vertragstypen machen jetzt mehrere LLM-Calls
+  (chunked) statt einem, plus optional Vision-Calls bei Low-Confidence.
+- **Beide Worktrees**: main (Scalingo) und demo/messe (Railway).
+
 ### Extraktion — veraltete P0-Phasen-Kommentare aufgeraeumt (Doc-only)
 Reine Kommentar-/Doc-Bereinigung im Heavy-Pipeline-Modul
 (`backend/src/services/extraction/`). Die Kommentare stammten aus dem P0-Skelett

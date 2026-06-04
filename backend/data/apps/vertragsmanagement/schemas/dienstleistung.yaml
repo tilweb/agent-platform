@@ -60,3 +60,8 @@ mapping:
   start_date: laufzeit.beginn
   end_date: laufzeit.ende
   value: verguetung.betrag
+
+extraction:
+  strategy: hybrid
+  vision_fallback: true
+  confidence_threshold: 0.7
