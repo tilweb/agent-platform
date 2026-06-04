@@ -385,18 +385,41 @@ function McpServersPage({ embedded = false }) {
   const [editingServer, setEditingServer] = useState(null);
   const [showDocs, setShowDocs] = useState(false);
   const [docsTab, setDocsTab] = useState('client');
+  // Per-User-OAuth-Status je Server-ID: { [serverId]: { connected, status } }
+  const [oauthStatus, setOauthStatus] = useState({});
 
   const fetchServers = async () => {
     try {
       const response = await fetch(`${API_URL}/mcp/servers`);
       if (!response.ok) throw new Error('Failed to fetch servers');
       const data = await response.json();
-      setServers(data.servers || []);
+      const list = data.servers || [];
+      setServers(list);
+      fetchOAuthStatuses(list);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Per-User-OAuth-Status fuer alle OAuth-Server laden
+  const fetchOAuthStatuses = async (serverList) => {
+    const oauthServers = serverList.filter((s) => s.auth === 'oauth');
+    if (oauthServers.length === 0) return;
+    const entries = await Promise.all(
+      oauthServers.map(async (s) => {
+        try {
+          const res = await fetch(`${API_URL}/mcp/servers/${s.id}/oauth/status`, { credentials: 'include' });
+          if (!res.ok) return [s.id, { connected: false }];
+          const d = await res.json();
+          return [s.id, { connected: !!d.connected, status: d.status }];
+        } catch {
+          return [s.id, { connected: false }];
+        }
+      })
+    );
+    setOauthStatus((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
   };
 
   const fetchPresets = async () => {
@@ -432,6 +455,40 @@ function McpServersPage({ embedded = false }) {
       setError(err.message);
     }
   };
+
+  // Per-User-OAuth-Login starten: Popup mit der Authorization-URL oeffnen.
+  const handleOAuthConnect = async (serverId) => {
+    try {
+      const res = await fetch(`${API_URL}/mcp/servers/${serverId}/oauth/connect`, { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'OAuth-Start fehlgeschlagen');
+      if (data.alreadyConnected) {
+        setOauthStatus((prev) => ({ ...prev, [serverId]: { connected: true } }));
+        return;
+      }
+      if (data.authUrl) {
+        window.open(data.authUrl, 'mcp_oauth', 'width=600,height=720');
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Auf das postMessage des OAuth-Callback-Popups hoeren
+  useEffect(() => {
+    const onMessage = (event) => {
+      const msg = event.data;
+      if (!msg || msg.type !== 'mcp_oauth_callback') return;
+      if (msg.success) {
+        setOauthStatus((prev) => ({ ...prev, [msg.serverId]: { connected: true } }));
+        fetchServers();
+      } else {
+        setError(msg.message || 'Verbindung fehlgeschlagen');
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   const handleDelete = async (serverId) => {
     if (!confirm('Server wirklich löschen?')) return;
@@ -475,9 +532,14 @@ function McpServersPage({ embedded = false }) {
     setEditingServer({
       id: preset.id,
       name: preset.name,
+      transport: preset.transport || 'stdio',
       command: preset.command,
       args: preset.args,
       env: preset.env,
+      url: preset.url,
+      headers: preset.headers,
+      auth: preset.auth || 'none',
+      oauthClient: preset.oauthClient,
       enabled: true,
       autoConnect: true,
     });
@@ -595,7 +657,7 @@ function McpServersPage({ embedded = false }) {
                   >
                     <div style={styles.presetName}>{preset.name}</div>
                     <div style={styles.presetCommand}>
-                      {preset.args?.[1] || preset.command}
+                      {preset.url || preset.args?.[1] || preset.command}
                     </div>
                   </div>
                 ))}
@@ -623,14 +685,20 @@ function McpServersPage({ embedded = false }) {
                 <div style={{ flex: 1 }}>
                   <div style={styles.cardTitle}>{server.name}</div>
                   <div style={styles.cardCommand}>
-                    {server.command} {server.args?.join(' ')}
+                    {server.transport === 'http' || server.transport === 'sse'
+                      ? server.url
+                      : `${server.command || ''} ${server.args?.join(' ') || ''}`}
                   </div>
                 </div>
               </div>
 
               <div style={styles.cardMeta}>
                 <span style={styles.cardStatus}>
-                  Status: {server.status}
+                  {server.auth === 'oauth'
+                    ? (oauthStatus[server.id]?.connected
+                        ? 'Verbunden (dein Konto)'
+                        : 'Nicht verbunden')
+                    : `Status: ${server.status}`}
                 </span>
                 {server.toolCount > 0 && (
                   <span style={styles.cardTools}>
@@ -646,7 +714,17 @@ function McpServersPage({ embedded = false }) {
               )}
 
               <div style={styles.cardActions}>
-                {server.status === 'connected' ? (
+                {server.auth === 'oauth' ? (
+                  <button
+                    style={{
+                      ...styles.actionButton,
+                      ...(oauthStatus[server.id]?.connected ? {} : styles.connectButton),
+                    }}
+                    onClick={() => handleOAuthConnect(server.id)}
+                  >
+                    {oauthStatus[server.id]?.connected ? 'Neu verbinden' : 'Verbinden (Login)'}
+                  </button>
+                ) : server.status === 'connected' ? (
                   <button
                     style={{ ...styles.actionButton, ...styles.disconnectButton }}
                     onClick={() => handleDisconnect(server.id)}

@@ -2545,6 +2545,8 @@ import {
   getMcpPresets,
   type McpServerConfig,
 } from '../mcp';
+import { startMcpOAuth, finishMcpOAuth, mcpConnectionProviderId } from '../mcp/oauth';
+import { loadConnection } from '../connections';
 
 export const mcpRoutes = new Hono();
 
@@ -2575,8 +2577,16 @@ mcpRoutes.post('/servers', async (c) => {
   try {
     const body = await c.req.json() as McpServerConfig;
 
-    if (!body.id || !body.name || !body.command) {
-      return c.json({ error: 'ID, name, and command are required' }, 400);
+    const isRemote = body.transport === 'http' || body.transport === 'sse';
+    if (!body.id || !body.name) {
+      return c.json({ error: 'ID and name are required' }, 400);
+    }
+    if (isRemote ? !body.url : !body.command) {
+      return c.json({
+        error: isRemote
+          ? 'URL is required for http/sse transport'
+          : 'Command is required for stdio transport',
+      }, 400);
     }
 
     const server = await mcpManager.addServer(body);
@@ -2584,6 +2594,71 @@ mcpRoutes.post('/servers', async (c) => {
   } catch (error: any) {
     console.error('Error adding MCP server:', error);
     return c.json({ error: error.message }, 400);
+  }
+});
+
+// GET /api/mcp/servers/:id/oauth/connect - Start per-user OAuth flow (DCR + PKCE)
+mcpRoutes.get('/servers/:id/oauth/connect', authMiddleware, async (c) => {
+  try {
+    const userId = getCurrentUserId(c)!;
+    const serverId = c.req.param('id');
+    const result = await startMcpOAuth(userId, serverId);
+    if (result.status === 'already_connected') {
+      return c.json({ alreadyConnected: true });
+    }
+    return c.json({ authUrl: result.authUrl });
+  } catch (error: any) {
+    console.error('[MCP OAuth] connect error:', error);
+    return c.json({ error: error.message }, 400);
+  }
+});
+
+// GET /api/mcp/servers/:id/oauth/status - Whether the current user is connected
+mcpRoutes.get('/servers/:id/oauth/status', authMiddleware, async (c) => {
+  try {
+    const userId = getCurrentUserId(c)!;
+    const serverId = c.req.param('id');
+    const conn = await loadConnection(userId, mcpConnectionProviderId(serverId));
+    return c.json({ connected: !!conn, status: conn?.connection.status });
+  } catch (error: any) {
+    console.error('[MCP OAuth] status error:', error);
+    return c.json({ error: 'Failed to get OAuth status' }, 500);
+  }
+});
+
+// GET /api/mcp/servers/:id/oauth/callback - OAuth redirect target (popup)
+mcpRoutes.get('/servers/:id/oauth/callback', async (c) => {
+  const serverId = c.req.param('id');
+  const code = c.req.query('code');
+  const state = c.req.query('state');
+  const oauthError = c.req.query('error');
+
+  const popup = (success: boolean, message?: string) => c.html(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${success ? 'Verbunden' : 'Fehler'}</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f5f5f5}.c{text-align:center;padding:2rem;background:#fff;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.1)}.i{font-size:3rem;margin-bottom:1rem}h1{margin:0 0 .5rem;color:${success ? '#10b981' : '#ef4444'}}p{color:#666;margin:0}</style></head>
+<body><div class="c"><div class="i">${success ? '✓' : '✗'}</div><h1>${success ? 'Verbunden!' : 'Verbindung fehlgeschlagen'}</h1><p>${message || (success ? 'Du kannst dieses Fenster schliessen.' : 'Bitte erneut versuchen.')}</p></div>
+<script>if(window.opener){window.opener.postMessage({type:'mcp_oauth_callback',success:${success},serverId:'${serverId}'${message ? `,message:'${message.replace(/'/g, "\\'")}'` : ''}},'*');setTimeout(()=>window.close(),2000);}</script>
+</body></html>`);
+
+  if (oauthError) {
+    console.error(`[MCP OAuth] provider error for ${serverId}:`, oauthError);
+    return popup(false, 'Autorisierung fehlgeschlagen.');
+  }
+  if (!code || !state) {
+    return popup(false, 'Code oder State fehlt.');
+  }
+
+  try {
+    const { userId } = await finishMcpOAuth(serverId, state, code);
+    try {
+      await mcpManager.registerOAuthServerTools(userId, serverId);
+    } catch (toolErr: any) {
+      console.error('[MCP OAuth] tool discovery after connect failed:', toolErr?.message);
+    }
+    return popup(true);
+  } catch (error: any) {
+    console.error('[MCP OAuth] callback error:', error);
+    return popup(false, 'Verbindung fehlgeschlagen.');
   }
 });
 

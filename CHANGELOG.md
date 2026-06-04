@@ -1,5 +1,75 @@
 # Changelog
 
+## 2026-06-04
+
+### MCP: Per-User-OAuth (Notion) — Login pro User via Dynamic Client Registration
+Aufbauend auf dem Remote-Transport (2026-06-02): vollständiger **OAuth-2.1-Flow
+pro User** für Remote-MCP-Server, die ohne Admin-App-Registrierung auskommen
+(Dynamic Client Registration). Jeder User verbindet sein eigenes Konto per
+1-Klick-Login — primärer Use-Case: der offizielle **Notion** Hosted-MCP-Server
+(`https://mcp.notion.com/mcp`). Inkl. eines fertigen **Notion-Assistent-Agents**.
+
+- **OAuth-Adapter** (`mcp/oauth/provider.ts` + `index.ts`): `McpOAuthClientProvider`
+  implementiert das SDK-`OAuthClientProvider`-Interface; das MCP-SDK übernimmt
+  Discovery, DCR (RFC 7591), PKCE und Token-Rotation. Persistenz über das
+  bestehende `connections`-Storage (YAML in diesem Branch): DCR-Client pro Server
+  in der Server-Config, Token pro User, State/Verifier über `oauth_states`.
+- **Per-User-Sessions** (`mcp/userSessions.ts`): pro `(userId, serverId)` eine
+  eigene MCP-Session mit `authProvider`, Caching + Idle-Eviction (15 Min).
+- **Per-User-Tools** (`mcp/tool.ts` `McpOAuthToolWrapper`): global registriert,
+  zur Laufzeit wird `context.userId` → User-Session aufgelöst.
+- **Discovery + Lazy-Re-Registrierung** (`mcp/manager.ts`): Tools nach erstem
+  Connect global registriert; beim Chat-Start re-registriert nach Neustart
+  (`ensureUserOAuthToolsRegistered`). OAuth-Server: kein globaler Auto-Connect.
+- **Routes** (`routes/chat.ts`): `GET /api/mcp/servers/:id/oauth/{connect,status,callback}`.
+- **Config/Typen**: `McpServerConfig.auth: 'none' | 'oauth'` + `oauthClient`;
+  Preset **„Notion (OAuth)"**.
+- **UI** (`McpServersPage.jsx`, `McpServerEditor.jsx`): per-User-„Verbinden
+  (Login)"-Button + Status; Editor mit Auth-Dropdown.
+- **Notion-Agent** (`data/agents/notion-assistant/config.md`): 14 Notion-Tools;
+  Prompt mit Lese-Autonomie, DE/EN-Synonym-Retry, DB-Listing via `collection://`,
+  `create-pages`-Format-Hinweis, Anti-Wiederholungs-Disziplin. `maxIterations: 10`
+  (synchrone statt Hintergrund-Delegation).
+
+#### Bugfixes im Zuge dessen
+- `services/taskExecutor.ts`: Hintergrund-Tasks reichen die `userId` durch (sonst
+  „nicht verbunden" bei per-User-OAuth-Tools).
+- `mcp/tool.ts`: MCP-Tool-Description-Cap 1024 → 8192 (sonst wurde die
+  Aufruf-Format-Spec reicher Tools abgeschnitten). Zugleich kam mit der
+  Spiegelung das Description-Sanitizing (Security) in diesen Branch.
+
+- **Beide Worktrees**: main (Scalingo) und demo/messe (Railway).
+- Doku: `docs/mcp-oauth-notion-2026-06-04.md`.
+
+## 2026-06-02
+
+### MCP: Remote-Transport (Streamable HTTP + SSE) — Anbindung offizieller Remote-Server (z.B. Google Gmail MCP)
+Bisher konnte die Plattform nur **lokale stdio-MCP-Server** (Subprozess via
+`command`/`args`/`env`) anbinden. Neu: **Remote-MCP-Server** ueber Streamable
+HTTP oder SSE inkl. Auth-Header — damit lassen sich von Anbietern gehostete
+Server wie der offizielle Google **Gmail MCP Server** (`gmailmcp.googleapis.com`)
+direkt in der UI konfigurieren.
+
+- **Typen** (`backend/src/mcp/types.ts`): `McpServerConfig` um `transport`
+  (`'stdio' | 'http' | 'sse'`, Default `stdio`), `url` und `headers` erweitert.
+- **Connection** (`backend/src/mcp/connection.ts`): `connect()` verzweigt nach
+  Transport. Neue Factories `createStdioTransport()` (unveraendert) und
+  `createRemoteTransport()` (`StreamableHTTPClientTransport` /
+  `SSEClientTransport`). Header-Werte unterstuetzen `${ENV_VAR}`-Substitution
+  (z.B. `Authorization: Bearer ${GMAIL_OAUTH_TOKEN}`). Bei SSE werden Header
+  zusaetzlich der EventSource-Verbindung mitgegeben.
+- **Config** (`backend/src/mcp/config.ts`): `updateMcpServer()` reicht die neuen
+  Felder durch (sonst Verlust beim Edit). Neue Presets `gmail-google` (Gmail
+  Remote/HTTP) und `remote-http` (generisches Streamable-HTTP-Template).
+- **API** (`routes/chat.ts`): `POST /api/mcp/servers` validiert jetzt `command`
+  (stdio) **oder** `url` (http/sse) statt `command` hart vorauszusetzen.
+- **Frontend** (`McpServerEditor.jsx`, `McpServersPage.jsx`): Transport-Auswahl
+  (stdio/HTTP/SSE); bei Remote werden statt Command/Args/Env ein **URL**-Feld
+  und **HTTP-Header** (Key/Value, z.B. `Authorization`) angezeigt. Server- und
+  Preset-Karten zeigen bei Remote-Servern die URL statt des Commands.
+- **Beide Worktrees**: main (Scalingo) und demo/messe (Railway).
+- Doku: `docs/mcp-remote-transport-2026-06-02.md`.
+
 ## 2026-05-16
 
 ### Projektmanagement — Projektstatus statt Lifecycle in der UI
