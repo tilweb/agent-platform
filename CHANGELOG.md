@@ -2,6 +2,26 @@
 
 ## 2026-06-04
 
+### Extraktion — veraltete P0-Phasen-Kommentare aufgeraeumt (Doc-only)
+Reine Kommentar-/Doc-Bereinigung im Heavy-Pipeline-Modul
+(`backend/src/services/extraction/`). Die Kommentare stammten aus dem P0-Skelett
+und behaupteten, Strategien/Confidence-Scoring kaemen "spaeter" — alle vier
+Strategien sind laengst registriert (P0–P5, 2026-05-18..20). Kein Verhaltens-
+oder API-Change; 31 Extraction-Tests unveraendert gruen.
+
+- `pipeline.ts`: "sobald P1 implementiert ist" → reale Eskalations-Beschreibung;
+  "kommen in P1/P3/P4 dazu" entfernt; Fehlertext "noch nicht verfuegbar (P1)" →
+  "nicht registriert".
+- `strategies/index.ts`: "Spaetere Phasen registrieren …" entfernt.
+- `strategies/single-pass.ts`: "Confidence-Scoring kommt in P1 im Orchestrator"
+  → korrekt: Single-Pass behaelt bewusst triviale 1.0-Confidences, echtes
+  Scoring (`confidence.ts`) lebt in den Multi-Pass-Strategien.
+- `strategies/vision-per-page.ts`: "kann eskalieren (P4-Job)" → korrekt: keine
+  Eskalation, Fehler propagiert mit Installations-Hinweis.
+- `types.ts`: zwei "P5"-Labels → "Async-Job-Backend (deferred)" (P5 war real das
+  Provider-Profil, nicht das Job-Backend).
+- **Beide Worktrees**: main (Scalingo) und demo/messe (Railway).
+
 ### MCP: Per-User-OAuth (Notion) — Login pro User via Dynamic Client Registration
 Aufbauend auf dem Remote-Transport (2026-06-02): vollständiger **OAuth-2.1-Flow
 pro User** für Remote-MCP-Server, die ohne Admin-App-Registrierung auskommen

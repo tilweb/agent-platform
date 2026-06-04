@@ -3,9 +3,8 @@
  *
  * Verantwortlichkeiten:
  *   1. Strategy ausgehend von `schema.config.strategy` waehlen.
- *   2. estimateCost ausfuehren — wenn Single-Pass den Modell-Kontext
- *      sprengen wuerde, automatisch auf `long-text-chunked` eskalieren
- *      (sobald P1 implementiert ist).
+ *   2. Bei `ContextOverflowError` automatisch auf `long-text-chunked`
+ *      eskalieren (Single-Pass sprengt den Modell-Kontext).
  *   3. `strategy.run()` aufrufen, Progress weiterreichen.
  *   4. Result anreichern (Wallzeit, ggf. originalStrategy).
  *
@@ -39,8 +38,6 @@ export interface RunPipelineInput {
  *   single-pass  →  long-text-chunked  →  (Fail)
  *   vision-per-page                    →  (Fail; Vision skaliert ueber Pages)
  *   hybrid                             →  (Fail; Hybrid skaliert eh schon)
- *
- * Long-Text-Chunked + Vision-Per-Page + Hybrid kommen in P1/P3/P4 dazu.
  */
 const ESCALATION_PATH: Record<StrategyId, StrategyId | null> = {
   'single-pass': 'long-text-chunked',
@@ -101,11 +98,11 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineRunR
         }
         const nextStrategy = getStrategy(nextId);
         if (!nextStrategy) {
-          // Eskalations-Ziel noch nicht implementiert (z.B. long-text-chunked in P0).
-          // Konsumenten kriegen einen klaren Fehler, koennen darauf reagieren
-          // (manuell chunking machen oder kuerzere Files schicken).
+          // Eskalations-Ziel nicht in der Registry — sollte nicht passieren,
+          // da alle Strategien registriert sind. Konsumenten kriegen einen
+          // klaren Fehler (manuell chunking machen oder kuerzere Files schicken).
           throw new StrategyExecutionError(
-            `Dokument zu gross fuer "${currentId}". Eskalations-Ziel "${nextId}" ist noch nicht verfuegbar (P1).`,
+            `Dokument zu gross fuer "${currentId}". Eskalations-Ziel "${nextId}" ist nicht registriert.`,
             err,
           );
         }
