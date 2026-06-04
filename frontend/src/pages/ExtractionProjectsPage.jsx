@@ -374,6 +374,7 @@ function CreateProjectView({ onBack, onCreated }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [strategy, setStrategy] = useState('hybrid');
+  const [instructions, setInstructions] = useState('');
   const [fields, setFields] = useState([
     { id: '', label: '', type: 'text', required: true, description: '' },
   ]);
@@ -432,6 +433,7 @@ function CreateProjectView({ onBack, onCreated }) {
         name: name.trim(),
         description: description.trim(),
         fields: fieldsObj,
+        instructions: instructions.trim() || undefined,
         extraction: { strategy },
       });
       if (res.ok) {
@@ -482,7 +484,7 @@ function CreateProjectView({ onBack, onCreated }) {
                 placeholder="z.B. Lieferant, Rechnungsnummer und Bruttobetrag aus Rechnungen"
               />
             </div>
-            <div>
+            <div style={{ marginBottom: theme.spacing.lg }}>
               <label style={styles.label}>Extraktions-Strategie</label>
               <select
                 style={{ ...styles.select, width: '100%' }}
@@ -493,6 +495,15 @@ function CreateProjectView({ onBack, onCreated }) {
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label style={styles.label}>Domänen-Anweisungen (optional)</label>
+              <textarea
+                style={{ ...styles.input, minHeight: '120px', resize: 'vertical', fontFamily: 'inherit' }}
+                value={instructions}
+                onChange={e => setInstructions(e.target.value)}
+                placeholder="Stabile Hinweise an die KI (Format-Regeln, Umgang mit Versatz/Unterschrift, Dokumenttyp …). Wird nicht vom Lernen überschrieben."
+              />
             </div>
           </div>
 
@@ -1121,6 +1132,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
   const [strategy, setStrategy] = useState(project.extraction?.strategy || 'hybrid');
+  const [instructions, setInstructions] = useState(project.instructions || '');
   const [fields, setFields] = useState(
     Object.entries(project.fields).map(([id, f]) => ({ id, label: f.label, type: f.type, required: f.required, description: f.description || '' }))
   );
@@ -1168,6 +1180,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         name: name.trim(),
         description: description.trim(),
         fields: fieldsObj,
+        instructions: instructions,
         extraction: { ...(project.extraction || {}), strategy },
       });
 
@@ -1211,7 +1224,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
           <label style={styles.label}>Beschreibung</label>
           <input style={styles.input} value={description} onChange={e => setDescription(e.target.value)} />
         </div>
-        <div>
+        <div style={{ marginBottom: theme.spacing.lg }}>
           <label style={styles.label}>Extraktions-Strategie</label>
           <select
             style={{ ...styles.select, width: '100%' }}
@@ -1222,6 +1235,15 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
+        </div>
+        <div>
+          <label style={styles.label}>Domänen-Anweisungen (optional)</label>
+          <textarea
+            style={{ ...styles.input, minHeight: '120px', resize: 'vertical', fontFamily: 'inherit' }}
+            value={instructions}
+            onChange={e => setInstructions(e.target.value)}
+            placeholder="Stabile Hinweise an die KI (Format-Regeln, Umgang mit Versatz/Unterschrift, Dokumenttyp …). Wird nicht vom Lernen überschrieben."
+          />
         </div>
       </div>
 

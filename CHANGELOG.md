@@ -2,6 +2,28 @@
 
 ## 2026-06-04
 
+### Extraktion: Sani-Rezepte-Projekt + stabiles instructions-Feld + PDF-Vision-Fix
+Erstes produktives Extraktions-Projekt (Sanitätshaus-Rezepte, gescannte Muster-16-/
+Privatrezepte) plus zwei dafür nötige Erweiterungen am Projekte-Feature.
+
+- **Stabiles `instructions`-Feld** am Projekt (`ExtractionProject.instructions?`):
+  hand-gepflegte Domänen-Anweisungen, die der Lern-Loop NICHT überschreibt (anders als
+  `guidelines`). Adapter rendert `instructions → guidelines → Few-Shot` in
+  `profile.guidelines`. Persistenz im **YAML-Storage** (`project.yaml`) — kein DB-Change
+  (anders als Scalingo, das eine Spalte via Migration bekommt). Routes (POST/PUT) +
+  Frontend-Textarea (Create + Settings).
+- **PDF-`rawBuffer` im Projekte-`extract()`**: `ingest()` liefert für PDFs jetzt die
+  Roh-Bytes mit (`mimeType: application/pdf`), damit `vision-per-page`/`hybrid` die
+  Seiten rendern können. Vorher wurde nur (oft verstümmelter) Markitdown-Text erzeugt →
+  Vision hatte keine Quelle. PDF-Rendering an den echten Scans verifiziert.
+- **Setup-Skript** `backend/scripts/create-sani-rezepte-project.ts` (idempotent): legt
+  das Projekt mit 21 Feldern (je Format-`description`), Strategie `vision-per-page` und
+  den Domänen-`instructions` (Versatz → nach Format statt Position; Unterschrift →
+  darunter lesen + BSNR quer-prüfen + bei Verdeckung null/niedrige Confidence; blasser
+  Druck/Durchscheinen; Seite-2-Stempel ignorieren) an.
+- 2 neue Adapter-Tests (instructions-Reihenfolge); Tests grün.
+- **Beide Worktrees**: main (Scalingo, DB-Spalte) und demo/messe (Railway, YAML).
+
 ### Extraktions-Projekte nutzen jetzt die Heavy-Pipeline (Engine-Tausch)
 Das Learning/Few-Shot-Extraktions-Feature (`backend/src/extraction/learning/`) fuhr
 einen eigenen Single-Pass-Pfad. Jetzt nutzt `extract()` die generische

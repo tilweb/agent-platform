@@ -63,6 +63,7 @@ extractionProjectRoutes.post('/projects', async (c) => {
     name: body.name,
     description: body.description,
     fields: body.fields,
+    instructions: body.instructions,
     extraction: body.extraction,
   });
 
@@ -80,6 +81,7 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
     name: body.name,
     description: body.description,
     fields: body.fields,
+    instructions: body.instructions,
     extraction: body.extraction,
   });
 
