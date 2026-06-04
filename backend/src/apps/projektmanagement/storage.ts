@@ -422,6 +422,19 @@ const DEFAULT_CONFIG = {
     { value: 'opportunity', label: 'Opportunity' },
     { value: 'threat', label: 'Threat' },
   ],
+  // Abschluss-Checkliste: unternehmensspezifische Aufgaben/Rahmenbedingungen,
+  // die beim Projektabschluss immer betrachtet werden. In den Einstellungen
+  // pflegbar. { id, label } statt { value, label } — id ist der stabile Key.
+  abschluss_checkliste: [
+    { id: 'doku_archiviert', label: 'Projektdokumentation vollständig abgelegt/archiviert' },
+    { id: 'ressourcen_freigegeben', label: 'Personal- und Sachressourcen freigegeben' },
+    { id: 'vertraege_geschlossen', label: 'Verträge/Bestellungen abgeschlossen und abgerechnet' },
+    { id: 'restbudget_geklaert', label: 'Restbudget / offene Kosten geklärt' },
+    { id: 'zugriffe_entzogen', label: 'System-Zugänge und Berechtigungen entzogen' },
+    { id: 'abnahme_erfolgt', label: 'Formale Abnahme durch den Auftraggeber erfolgt' },
+    { id: 'lessons_dokumentiert', label: 'Lessons Learned dokumentiert' },
+    { id: 'kommunikation_abschluss', label: 'Projektabschluss an Stakeholder kommuniziert' },
+  ],
 };
 
 /**

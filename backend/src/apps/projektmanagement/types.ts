@@ -352,6 +352,30 @@ export interface StakeholderAkzeptanz {
   bemerkung: string;
 }
 
+/**
+ * Status eines Abschluss-Checklisten-Eintrags.
+ */
+export type ChecklistStatus = 'erledigt' | 'offen' | 'na';
+
+/**
+ * Definition eines Checklisten-Items (in den App-Einstellungen pflegbar,
+ * liegt in der App-Config unter `abschluss_checkliste`).
+ */
+export interface ChecklistItemConfig {
+  id: string;
+  label: string;
+}
+
+/**
+ * Pro-Bericht gespeicherter Zustand eines Checklisten-Items. `label` wird
+ * mitgespeichert (Snapshot), `status` ist die User-Auswahl (Default 'offen').
+ */
+export interface ChecklistItemState {
+  id: string;
+  label: string;
+  status: ChecklistStatus;
+}
+
 export interface AbschlussberichtData {
   // Basis
   ampel: AmpelStatus;
@@ -397,6 +421,9 @@ export interface AbschlussberichtData {
   abnahme_durch: string;
   abnahme_datum: string;
   abnahme_signiert: boolean;
+
+  // Abschluss-Checkliste (unternehmensspezifisch, Items via App-Config)
+  checkliste?: ChecklistItemState[];
 }
 
 export interface Abschlussbericht {

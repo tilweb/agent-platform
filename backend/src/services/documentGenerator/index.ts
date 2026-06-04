@@ -1186,11 +1186,43 @@ export function mapAbschlussberichtToDocument(
     sections.push({ title: 'Abnahme', type: 'keyvalue', content: { items: ab } });
   }
 
+  // Section: Abschluss-Checkliste — Items kommen aus der App-Config
+  // (`abschluss_checkliste`), Status aus dem Bericht (`data.checkliste`).
+  const checklistDefs: Array<{ id: string; label: string }> =
+    Array.isArray(appConfig?.abschluss_checkliste) && appConfig.abschluss_checkliste.length > 0
+      ? appConfig.abschluss_checkliste
+      : (Array.isArray(data.checkliste) ? data.checkliste : []);
+  if (checklistDefs.length > 0) {
+    const savedById = new Map<string, any>(
+      (Array.isArray(data.checkliste) ? data.checkliste : []).map((c: any) => [c.id, c]),
+    );
+    const rows = checklistDefs.map((item) => [
+      item.label,
+      getChecklistStatusCell(savedById.get(item.id)?.status || 'offen'),
+    ]);
+    sections.push({
+      title: 'Checkliste Projektabschluss',
+      type: 'table',
+      content: { headers: ['Aufgabe / Rahmenbedingung', 'Status'], rows },
+    });
+  }
+
   return {
     title: `Abschlussbericht — ${projektName}`,
     metadata: { status: bericht?.status === 'final' ? 'Final' : 'Entwurf' },
     sections,
   };
+}
+
+const CHECKLIST_STATUS_META: Record<string, { label: string; dot: string }> = {
+  erledigt: { label: 'Erledigt', dot: '#22C55E' },
+  offen: { label: 'Offen', dot: '#F59E0B' },
+  na: { label: 'Nicht anwendbar', dot: '#9CA3AF' },
+};
+
+function getChecklistStatusCell(status: string): RichCell {
+  const meta = CHECKLIST_STATUS_META[status] ?? { label: 'Offen', dot: '#F59E0B' };
+  return { text: meta.label, dot: meta.dot };
 }
 
 function buildAbschlussDashboard(data: any): { key: string; value: string | RichCell }[] {

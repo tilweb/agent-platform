@@ -317,6 +317,90 @@ function AuswahloptionenTab({ config, setConfig, hasChanges, setHasChanges, savi
   );
 }
 
+// ============== Abschluss-Checkliste Sub-Component ==============
+
+function ChecklisteTab({ config, setConfig, hasChanges, setHasChanges, saving, onSave }) {
+  const items = config.abschluss_checkliste || [];
+
+  const update = (next) => {
+    setConfig((prev) => ({ ...prev, abschluss_checkliste: next }));
+    setHasChanges(true);
+  };
+
+  const addItem = () =>
+    update([...items, { id: `chk_${Math.random().toString(36).slice(2, 9)}`, label: '' }]);
+  const updateItem = (index, label) => {
+    const next = [...items];
+    next[index] = { ...next[index], label };
+    update(next);
+  };
+  const removeItem = (index) => update(items.filter((_, i) => i !== index));
+
+  return (
+    <>
+      {hasChanges && (
+        <div style={styles.saveBar}>
+          <button
+            style={styles.saveButton}
+            onClick={onSave}
+            disabled={saving}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.primaryHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme.colors.primary; }}
+          >
+            {saving ? 'Speichere...' : 'Änderungen speichern'}
+          </button>
+          <span style={styles.saveHint}>Ungespeicherte Änderungen</span>
+        </div>
+      )}
+
+      <div style={styles.fieldCard}>
+        <div style={styles.fieldTitle}>Abschluss-Checkliste</div>
+        <p style={styles.subtitle}>
+          Aufgaben/Rahmenbedingungen, die beim Projektabschluss unternehmensspezifisch immer
+          betrachtet werden müssen. Sie erscheinen im Abschlussbericht als Selectbox
+          (Erledigt / Offen / Nicht anwendbar) und in den Exporten.
+        </p>
+
+        {items.map((item, index) => (
+          <div key={item.id || index} style={styles.optionRow}>
+            <input
+              style={styles.optionInput}
+              value={item.label}
+              onChange={(e) => updateItem(index, e.target.value)}
+              placeholder="Aufgabe / Rahmenbedingung"
+              onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+              onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
+            />
+            <button
+              style={styles.removeBtn}
+              onClick={() => removeItem(index)}
+              onMouseEnter={(e) => { e.currentTarget.style.color = theme.colors.error; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = theme.colors.textMuted; }}
+            >
+              <TrashIcon />
+            </button>
+          </div>
+        ))}
+
+        <button
+          style={styles.addBtn}
+          onClick={addItem}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = theme.colors.primary;
+            e.currentTarget.style.color = theme.colors.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = theme.colors.border;
+            e.currentTarget.style.color = theme.colors.textMuted;
+          }}
+        >
+          <PlusIcon /> Eintrag hinzufügen
+        </button>
+      </div>
+    </>
+  );
+}
+
 // ============== Main Component ==============
 
 function Einstellungen() {
@@ -359,6 +443,7 @@ function Einstellungen() {
       <div style={styles.tabs}>
         {[
           { id: 'optionen', label: 'Auswahloptionen' },
+          { id: 'checkliste', label: 'Abschluss-Checkliste' },
           { id: 'masterclass', label: 'Masterclass' },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
@@ -387,6 +472,17 @@ function Einstellungen() {
       {/* Tab Content */}
       {activeTab === 'optionen' && (
         <AuswahloptionenTab
+          config={config}
+          setConfig={setConfig}
+          hasChanges={hasChanges}
+          setHasChanges={setHasChanges}
+          saving={saving}
+          onSave={handleSave}
+        />
+      )}
+
+      {activeTab === 'checkliste' && (
+        <ChecklisteTab
           config={config}
           setConfig={setConfig}
           hasChanges={hasChanges}
