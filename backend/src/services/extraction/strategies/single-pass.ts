@@ -10,9 +10,10 @@
  *     dann auf `long-text-chunked`.
  *   - LLM-Modell ist ueberschreibbar (Schema oder Job-Option).
  *   - Provenance ist trivial: alle Felder kommen aus „chunk:0" (gesamtes Doc).
- *   - Confidence ist nicht modelliert — Strategy gibt 1.0 fuer alle gesetzten
- *     Felder und 0.0 fuer null/undefined zurueck. Confidence-Scoring kommt
- *     in P1 als separater Schritt im Orchestrator.
+ *   - Confidence ist bewusst trivial — Strategy gibt 1.0 fuer alle gesetzten
+ *     Felder und 0.0 fuer null/undefined zurueck. Heuristisches/LLM-basiertes
+ *     Scoring (`confidence.ts`) bleibt den Multi-Pass-Strategien
+ *     (`long-text-chunked`, `hybrid`) vorbehalten, wo es mehrere Quellen gibt.
  */
 
 import { llmService, type Message, type ChatOptions } from '../../llm';

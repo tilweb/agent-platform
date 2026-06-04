@@ -116,7 +116,7 @@ export interface CostEstimate {
 
 /**
  * Progress-Events, die eine Strategy emitten kann. Mapping auf SSE im
- * Job-Adapter (P5).
+ * (noch deferrten) Async-Job-Adapter.
  */
 export type ProgressEvent =
   | { phase: 'preparing'; message?: string }
@@ -228,7 +228,7 @@ export interface PipelineRunResult {
   durationMs: number;
 }
 
-// ============== Job-Events (P5 SSE) ==============
+// ============== Job-Events (Async-Job-Backend, deferred) ==============
 
 export type JobStatus =
   | 'queued'

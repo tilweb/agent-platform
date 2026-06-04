@@ -11,8 +11,9 @@
  *   - Text/Markdown: ignoriert (Vision-Strategy braucht visuelle Quellen)
  *
  * Fehler-Pfad:
- *   - pdftocairo nicht installiert → PdfRenderError → Pipeline-Orchestrator
- *     kann eskalieren (heute noch nicht hardcoded, P4-Job).
+ *   - pdftocairo nicht installiert → PdfRenderError. Vision-per-page hat keine
+ *     Eskalation (ESCALATION_PATH = null); der Fehler propagiert mit klarem
+ *     Installations-Hinweis an den Aufrufer.
  *
  * Cost: O(pages) Vision-Calls. Bei 50-Seiten-Lieferschein: 50 Calls.
  * max_concurrent steuert die Parallelitaet.

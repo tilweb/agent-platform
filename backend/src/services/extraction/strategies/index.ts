@@ -2,8 +2,7 @@
  * Strategy-Registry.
  *
  * Eine zentrale Stelle, an der alle Strategien einen Eintrag erhalten. Der
- * Orchestrator (`pipeline.ts`) sucht hier per ID. Spaetere Phasen registrieren
- * `long-text-chunked`, `vision-per-page`, `hybrid`.
+ * Orchestrator (`pipeline.ts`) sucht hier per ID.
  */
 
 import type { ExtractionStrategy, StrategyId } from '../types';
