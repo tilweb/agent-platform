@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { theme } from '../../../../config/theme';
+import { diamondPoints, shieldPath, MILESTONE_COLOR, GATE_COLOR } from '../RoadmapShapes';
 
 const CIRCLE_R = 14;
 const LINE_Y = 30;
@@ -123,11 +124,9 @@ function MilestoneTimeline({ milestones, qualityGates = [] }) {
 
         {/* Timeline nodes */}
         {layout.map((m) => {
-          const isPast = m.timestamp <= today;
           const isGate = m._type === 'gate';
-          const color = isGate
-            ? theme.colors.warning
-            : (isPast ? theme.colors.success : theme.colors.primary);
+          // Meilenstein = grüne Raute, Quality Gate = amber Schild.
+          const color = isGate ? GATE_COLOR : MILESTONE_COLOR;
 
           return (
             <g
@@ -157,18 +156,11 @@ function MilestoneTimeline({ milestones, qualityGates = [] }) {
               onMouseLeave={() => setTooltip(null)}
             >
               {isGate ? (
-                /* Diamond shape for Quality Gates */
-                <rect
-                  x={m.x - CIRCLE_R * 0.75}
-                  y={LINE_Y - CIRCLE_R * 0.75}
-                  width={CIRCLE_R * 1.5}
-                  height={CIRCLE_R * 1.5}
-                  fill={color}
-                  transform={`rotate(45, ${m.x}, ${LINE_Y})`}
-                />
+                /* Schild für Quality Gates */
+                <path d={shieldPath(m.x, LINE_Y, CIRCLE_R)} fill={color} />
               ) : (
-                /* Circle for Milestones */
-                <circle cx={m.x} cy={LINE_Y} r={CIRCLE_R} fill={color} />
+                /* Raute (grün) für Meilensteine */
+                <polygon points={diamondPoints(m.x, LINE_Y, CIRCLE_R)} fill={color} />
               )}
 
               {/* Number */}
