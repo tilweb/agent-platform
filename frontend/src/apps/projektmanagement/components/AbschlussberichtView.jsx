@@ -58,6 +58,43 @@ function configLabel(appConfig, key, value) {
   return opt?.label || value;
 }
 
+// Farben + distinkte Icons je Checklisten-Status (konsistent mit dem Export).
+// Distinkte Formen statt nur Farbe → besser scanbar + farbenblind-freundlich.
+const CHECKLIST_STATUS_COLORS = {
+  erledigt: '#22C55E',
+  offen: '#F59E0B',
+  na: '#9CA3AF',
+};
+
+function ChecklistStatusIcon({ status }) {
+  const color = CHECKLIST_STATUS_COLORS[status] || CHECKLIST_STATUS_COLORS.offen;
+  const common = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 2, style: { flexShrink: 0 } };
+  if (status === 'erledigt') {
+    // gefüllter Kreis + Häkchen
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="10" fill={color} stroke="none" />
+        <path d="M8 12.5l2.5 2.5 5-5.5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (status === 'na') {
+    // Kreis + Minus (nicht anwendbar)
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="8" y1="12" x2="16" y2="12" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  // offen — offener Kreis
+  return (
+    <svg {...common}>
+      <circle cx="12" cy="12" r="10" />
+    </svg>
+  );
+}
+
 const styles = {
   container: {
     flex: 1,
@@ -1284,6 +1321,57 @@ export default function AbschlussberichtView({ projektId, projektauftrag, status
           />
           <label style={styles.fieldLabel}>Formal abgenommen</label>
         </div>
+      </Section>
+
+      <Section title="Checkliste Projektabschluss">
+        {(appConfig?.abschluss_checkliste || []).length === 0 ? (
+          <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+            Es sind noch keine Checklisten-Einträge konfiguriert. Diese können in den
+            Einstellungen unter „Abschluss-Checkliste" gepflegt werden.
+          </div>
+        ) : (
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Aufgabe / Rahmenbedingung</th>
+                <th style={{ ...styles.th, width: 180 }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(appConfig.abschluss_checkliste).map((item) => {
+                const current = (draft.checkliste || []).find((c) => c.id === item.id)?.status || 'offen';
+                return (
+                  <tr key={item.id}>
+                    <td style={styles.td}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                        <ChecklistStatusIcon status={current} />
+                        {item.label}
+                      </span>
+                    </td>
+                    <td style={styles.td}>
+                      <select
+                        style={{ ...styles.select, width: 170 }}
+                        value={current}
+                        onChange={(e) => {
+                          const items = appConfig.abschluss_checkliste || [];
+                          const byId = Object.fromEntries((draft.checkliste || []).map((c) => [c.id, c.status]));
+                          byId[item.id] = e.target.value;
+                          const next = items.map((it) => ({ id: it.id, label: it.label, status: byId[it.id] || 'offen' }));
+                          setField('checkliste', next);
+                        }}
+                        disabled={readOnly}
+                      >
+                        <option value="erledigt">Erledigt</option>
+                        <option value="offen">Offen</option>
+                        <option value="na">Nicht anwendbar</option>
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </Section>
 
       <Section title={`Lessons Learned (${lessons.length})`} defaultOpen={false}>

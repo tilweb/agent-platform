@@ -13,7 +13,10 @@ import {
   paStatusberichte,
   paVorlagen,
 } from '../../db/schema/projektmgmt';
+import { appsRegistry } from '../../db/schema/apps';
 import type { Projektauftrag, Vorlage, Statusbericht } from './types';
+
+const PM_APP_ID = 'projektmanagement';
 import { VersionConflictError, checkVersion } from './concurrency';
 
 export function generateProjektauftragId(): string {
@@ -455,19 +458,64 @@ const DEFAULT_CONFIG = {
     { value: 'opportunity', label: 'Opportunity' },
     { value: 'threat', label: 'Threat' },
   ],
+  // Abschluss-Checkliste: unternehmensspezifische Aufgaben/Rahmenbedingungen,
+  // die beim Projektabschluss immer betrachtet werden. In den Einstellungen
+  // pflegbar. { id, label } statt { value, label } — id ist der stabile Key.
+  abschluss_checkliste: [
+    { id: 'doku_archiviert', label: 'Projektdokumentation vollständig abgelegt/archiviert' },
+    { id: 'ressourcen_freigegeben', label: 'Personal- und Sachressourcen freigegeben' },
+    { id: 'vertraege_geschlossen', label: 'Verträge/Bestellungen abgeschlossen und abgerechnet' },
+    { id: 'restbudget_geklaert', label: 'Restbudget / offene Kosten geklärt' },
+    { id: 'zugriffe_entzogen', label: 'System-Zugänge und Berechtigungen entzogen' },
+    { id: 'abnahme_erfolgt', label: 'Formale Abnahme durch den Auftraggeber erfolgt' },
+    { id: 'lessons_dokumentiert', label: 'Lessons Learned dokumentiert' },
+    { id: 'kommunikation_abschluss', label: 'Projektabschluss an Stakeholder kommuniziert' },
+  ],
 };
 
 /**
- * Aktuell statisch — Override gibt's noch nicht in der DB. In einer
- * Folgemigration koennen wir einen `apps_registry.metadata`-Eintrag
- * fuer Customer-spezifische Overrides nutzen.
+ * App-Config. Defaults (DEFAULT_CONFIG) werden mit kundenspezifischen Overrides
+ * aus `apps.registry.metadata.config` gemerged. Stored gewinnt pro Key, sodass
+ * neue Default-Keys (z.B. nach Updates) trotzdem erscheinen.
  */
 export async function getConfig(): Promise<Record<string, any>> {
+  try {
+    const db = getDb();
+    const rows = await db
+      .select({ metadata: appsRegistry.metadata })
+      .from(appsRegistry)
+      .where(eq(appsRegistry.id, PM_APP_ID))
+      .limit(1);
+    const stored = (rows[0]?.metadata as { config?: Record<string, any> } | null)?.config;
+    if (stored && typeof stored === 'object') {
+      return { ...DEFAULT_CONFIG, ...stored };
+    }
+  } catch (err) {
+    console.error('[projektmanagement] getConfig failed, using defaults:', err);
+  }
   return { ...DEFAULT_CONFIG };
 }
 
-export async function saveConfig(_config: Record<string, any>): Promise<void> {
-  /* no-op fuer den Moment — siehe getConfig */
+/**
+ * Persistiert die Config-Overrides in `apps.registry.metadata.config`. Speichert
+ * nur die vom UI gelieferten Keys (die übrigen kommen weiter aus DEFAULT_CONFIG).
+ */
+export async function saveConfig(config: Record<string, any>): Promise<void> {
+  const db = getDb();
+  const rows = await db
+    .select({ metadata: appsRegistry.metadata })
+    .from(appsRegistry)
+    .where(eq(appsRegistry.id, PM_APP_ID))
+    .limit(1);
+  if (!rows[0]) {
+    console.error(`[projektmanagement] saveConfig: app row "${PM_APP_ID}" not found`);
+    return;
+  }
+  const metadata = (rows[0].metadata as Record<string, any> | null) ?? {};
+  await db
+    .update(appsRegistry)
+    .set({ metadata: { ...metadata, config }, updatedAt: new Date().toISOString() })
+    .where(eq(appsRegistry.id, PM_APP_ID));
 }
 
 export async function initializeStorage(): Promise<void> {
