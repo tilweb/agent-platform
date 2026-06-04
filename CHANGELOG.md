@@ -2,6 +2,26 @@
 
 ## 2026-06-04
 
+### Fix: Extraktion robust gegen hängenden/langsamen Inferenz-Endpoint
+Beim Sani-Live-Test hing `extract()` zeitweise sehr lange (einmal 291s) bzw. scheiterte
+ganz, obwohl der reine Vision-Call (4s) und der Text-Chat (0,6s) funktionierten. Zwei
+Blocker im Projekte-Pfad behoben:
+
+- **Markitdown best-effort für PDFs** (`learning/service.ts`): `ingest()` rief
+  Markitdown ohne Timeout auf und liess die ganze Extraktion scheitern/haengen, wenn
+  der Dienst langsam/down war — obwohl Vision-Strategien nur den `rawBuffer` brauchen
+  (Markitdown ist nur Bonus-Text fuer den Learning-Loop). Jetzt mit 15s-Timeout +
+  try/catch: PDF-Extraktion laeuft auch ohne Markitdown weiter.
+- **Timeout + Retry um den Vision-Call** (`strategies/vision-per-page.ts` +
+  `extract-call.ts:withTimeoutRetry`): der adacor-Endpoint blockiert intermittierend
+  einzelne Vision-Requests. Pro Seite jetzt 45s-Timeout + 1 Retry; haengt eine Seite
+  endgueltig, wird sie uebersprungen (statt die ganze Extraktion zu blockieren) —
+  andere Seiten/Felder bleiben erhalten.
+- Hinweis: Die Vision-Inferenz (mistral-3-24b) ist serverseitig zeitweise instabil
+  (haengt/sparse), waehrend Text-Chat sauber laeuft — das ist infrastrukturseitig.
+  Der Code degradiert jetzt sauber statt zu haengen.
+- **Beide Worktrees**.
+
 ### Fix: Vision-Extraktion lieferte unvollständige Felder (Kollaps auf Pflichtfelder)
 Beim Live-Test der Sani-Rezepte fielen Extraktionen teils auf genau die 5
 Pflichtfelder zurück (Rest leer), obwohl die rohe Vision-Antwort alle 21 Felder

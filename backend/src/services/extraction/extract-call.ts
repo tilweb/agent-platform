@@ -30,6 +30,38 @@ export type ChatFn = (
   options: ChatOptions,
 ) => Promise<ChatResponse>;
 
+/**
+ * Wickelt einen async-Call mit Timeout + Retry. Der adacor-Inferenz-Endpoint
+ * blockiert intermittierend einzelne Vision-Requests (beobachtet: ~290s ohne
+ * Antwort). Der Timeout bricht das Warten ab (der zugrundeliegende Request laeuft
+ * ggf. ins Leere weiter, wird aber ignoriert) und ein Retry holt meist ein gutes
+ * Ergebnis. Wirft den letzten Fehler, wenn alle Versuche scheitern.
+ */
+export async function withTimeoutRetry<T>(
+  fn: () => Promise<T>,
+  opts: { timeoutMs: number; retries: number; label?: string },
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= opts.retries; attempt += 1) {
+    try {
+      return await Promise.race([
+        fn(),
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout nach ${opts.timeoutMs}ms`)), opts.timeoutMs),
+        ),
+      ]);
+    } catch (err) {
+      lastErr = err;
+      if (attempt < opts.retries) {
+        console.warn(
+          `[extraction] ${opts.label ?? 'LLM-Call'}: Versuch ${attempt + 1}/${opts.retries + 1} fehlgeschlagen (${err instanceof Error ? err.message : String(err)}) — neuer Versuch.`,
+        );
+      }
+    }
+  }
+  throw lastErr;
+}
+
 export function parseExtractionResponse(response: ChatResponse): Record<string, unknown> | null {
   if (response.tool_calls && response.tool_calls.length > 0) {
     try {

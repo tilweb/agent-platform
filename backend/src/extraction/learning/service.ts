@@ -80,7 +80,37 @@ async function ingest(source: ExtractionSource): Promise<{
         return { text: content };
       }
 
-      // Convert via Markitdown API
+      // PDFs: Die Roh-Bytes sind die PRIMAERE Quelle fuer die Vision-Strategien
+      // (vision-per-page/hybrid). Markitdown liefert nur Bonus-Text (document_text
+      // fuer den Learning-Loop) und ist bei gescannten PDFs ohnehin unzuverlaessig.
+      // Daher best-effort mit Timeout — ein langsamer/fehlender Markitdown-Dienst
+      // darf die Vision-Extraktion NICHT blockieren oder scheitern lassen.
+      if (ext === '.pdf') {
+        const rawBuffer = await readFile(filePath);
+        let text = '';
+        try {
+          const file = Bun.file(filePath);
+          const formData = new FormData();
+          formData.append('document', file, source.filename);
+          const response = await fetch(MARKITDOWN_URL, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${MARKITDOWN_API_KEY}` },
+            body: formData,
+            signal: AbortSignal.timeout(15000),
+          });
+          if (response.ok) {
+            text = await response.text();
+          } else {
+            console.warn(`[Extraction] Markitdown ${response.status} fuer PDF — fahre nur mit Vision fort.`);
+          }
+        } catch (err) {
+          console.warn('[Extraction] Markitdown nicht erreichbar fuer PDF — fahre nur mit Vision fort:', err instanceof Error ? err.message : err);
+        }
+        return { text, rawBuffer, rawMimeType: 'application/pdf' };
+      }
+
+      // Andere Dokumenttypen (docx/xlsx/…) haben keinen Vision-Fallback — hier ist
+      // Markitdown die einzige Quelle und daher Pflicht.
       const file = Bun.file(filePath);
       const formData = new FormData();
       formData.append('document', file, source.filename);
@@ -96,15 +126,7 @@ async function ingest(source: ExtractionSource): Promise<{
         throw new Error(`Markitdown-Konvertierung fehlgeschlagen: ${response.status} - ${errorText}`);
       }
 
-      const text = await response.text();
-      // Bei PDFs zusaetzlich die Roh-Bytes mitliefern, damit Vision-Strategien
-      // (vision-per-page/hybrid) die Seiten rendern koennen. Der Markitdown-Text
-      // ist bei gescannten Dokumenten oft unzuverlaessig — Vision ist primaer.
-      if (ext === '.pdf') {
-        const rawBuffer = await readFile(filePath);
-        return { text, rawBuffer, rawMimeType: 'application/pdf' };
-      }
-      return { text };
+      return { text: await response.text() };
     }
 
     default:
