@@ -20,6 +20,7 @@ import { llmService, type Message, type ChatOptions } from '../../llm';
 import type { UsageContext } from '../../usageTracking';
 import { buildFunctionSchema, buildToolChoice } from '../../../extraction/schema-builder';
 import { validateExtraction } from '../../../extraction/validator';
+import { appendGuidelines } from './prompt';
 import {
   ContextOverflowError,
   StrategyExecutionError,
@@ -106,14 +107,14 @@ export const singlePassStrategy: ExtractionStrategy = {
     const functionSchema = buildFunctionSchema(input.schema.profile);
     const toolChoice = buildToolChoice(input.schema.profile);
 
-    const systemPrompt = `Du bist Daten-Extraktions-Spezialist. Extrahiere strukturierte Daten aus dem ${input.schema.name}.
+    const systemPrompt = appendGuidelines(`Du bist Daten-Extraktions-Spezialist. Extrahiere strukturierte Daten aus dem ${input.schema.name}.
 
 Allgemeine Regeln:
 - Datumsangaben immer im Format YYYY-MM-DD
 - Fehlende Werte als null setzen, NICHT erfinden
 - Zahlen als numerische Werte (nicht als String)
 - Text exakt aus den Dokumenten uebernehmen
-- Informationen aus allen Dokumenten zusammenfuehren`;
+- Informationen aus allen Dokumenten zusammenfuehren`, input.schema.profile);
 
     const messages: Message[] = [
       { role: 'system', content: systemPrompt },

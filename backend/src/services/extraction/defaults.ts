@@ -18,6 +18,7 @@ export const EXTRACTION_DEFAULTS: ResolvedExtractionConfig = {
   vision_detail: 'high',
   max_pages: 500,
   max_concurrent: 4,
+  validation_repair: false,
   model_override: null,
 };
 
@@ -59,6 +60,7 @@ export function applyExtractionDefaults(
     vision_detail: config.vision_detail ?? EXTRACTION_DEFAULTS.vision_detail,
     max_pages: config.max_pages ?? EXTRACTION_DEFAULTS.max_pages,
     max_concurrent: config.max_concurrent ?? EXTRACTION_DEFAULTS.max_concurrent,
+    validation_repair: config.validation_repair ?? EXTRACTION_DEFAULTS.validation_repair,
     model_override: config.model_override ?? EXTRACTION_DEFAULTS.model_override,
   };
 }

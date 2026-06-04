@@ -2,6 +2,37 @@
 
 ## 2026-06-04
 
+### Extraktions-Projekte nutzen jetzt die Heavy-Pipeline (Engine-Tausch)
+Das Learning/Few-Shot-Extraktions-Feature (`backend/src/extraction/learning/`) fuhr
+einen eigenen Single-Pass-Pfad. Jetzt nutzt `extract()` die generische
+Heavy-Pipeline (`runPipeline()`) — inkl. Chunking, vision-per-page/hybrid,
+Confidence-Scoring und Merge. API, UI und Learning-Zyklus (train/guidelines) bleiben.
+
+- **Adapter** `learning/pipeline-adapter.ts`: `extractionProjectToExtractionSchema()`
+  wickelt die FLACHEN Projekt-Felder in eine synthetische Gruppe (`felder`); `extract()`
+  entpackt das Praefix nach der Pipeline wieder zu flach. Gelernte Guidelines + Few-Shot
+  werden ins bereits existierende `ExtractionProfile.guidelines`-Feld gerendert.
+- **Guidelines-Hook** `services/extraction/strategies/prompt.ts:appendGuidelines()`:
+  alle vier Strategien haengen `profile.guidelines` an ihren System-Prompt. Backward-safe
+  (Vertragsmanagement hat kein `guidelines` → unveraendert).
+- **`extract()` umverdrahtet** (`learning/service.ts`): `ingest` → `PreparedFile[]` →
+  `runPipeline` → entpacken. Bildquellen: `prepareVision` bleibt nur fuer die
+  `document_text`-Erfassung (Learning-Loop); die Extraktion macht die Pipeline.
+- **Strategie pro Projekt konfigurierbar** (Default `hybrid`):
+  `ExtractionProject.extraction?` (`learning/types.ts`), DB-Migration
+  `0020_extraction_project_strategy.sql` (additiv), Storage-Round-Trip
+  (`learning/projects.ts`), Routes (POST/PUT), Frontend-Dropdown
+  (`ExtractionProjectsPage.jsx`, Create + Settings).
+- **Retry-mit-Validierungs-Feedback in die Pipeline portiert**: strategie-agnostischer
+  Repair im Orchestrator (`pipeline.ts` + neues `extract-call.ts:repairExtraction`).
+  Opt-in via `config.validation_repair` (Default false → Vertragsmanagement unveraendert;
+  Projekt-Adapter setzt true → altes Retry-Verhalten bleibt erhalten).
+- 12 neue Tests (Adapter-Roundtrip + Repair-Logik), bestehende 31 unveraendert gruen.
+- Doku: `docs/extraction-projects-heavy-pipeline-2026-06-04.md`.
+- Folge-Schritt: Confidence-Anzeige im Projekte-UI (extract() liefert fieldConfidences schon).
+- **Beide Worktrees**: main (Scalingo, Postgres) und demo/messe (Railway, YAML-Storage —
+  kein DB-Change, `extraction`-Feld in project.yaml).
+
 ### Vertragsmanagement — Standard-Schemas von single-pass auf hybrid umgestellt
 Bisher liefen die Schemas `nda`, `dienstleistung`, `arbeitsvertrag` und
 `lizenzvertrag` ohne `extraction:`-Block → Default `single-pass`. Single-Pass

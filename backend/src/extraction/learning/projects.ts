@@ -21,6 +21,7 @@ function rowToProject(row: typeof extractionProjects.$inferSelect): ExtractionPr
     fields: row.fields as ExtractionProject['fields'],
     guidelines: row.guidelines,
     learning: row.learning as ExtractionProject['learning'],
+    extraction: (row.extraction as ExtractionProject['extraction']) ?? undefined,
   };
 }
 
@@ -40,6 +41,7 @@ export async function createProject(data: {
   name: string;
   description?: string;
   fields: ExtractionProject['fields'];
+  extraction?: ExtractionProject['extraction'];
 }): Promise<ExtractionProject> {
   const id = data.name
     .toLowerCase()
@@ -61,6 +63,7 @@ export async function createProject(data: {
       accuracy_estimate: 0,
       guideline_version: 0,
     },
+    extraction: data.extraction,
   };
 
   const db = getDb();
@@ -71,6 +74,7 @@ export async function createProject(data: {
     fields: project.fields as never,
     guidelines: project.guidelines,
     learning: project.learning as never,
+    extraction: (project.extraction ?? null) as never,
     createdAt: now,
     updatedAt: now,
   });
@@ -80,13 +84,18 @@ export async function createProject(data: {
 
 export async function updateProject(
   id: string,
-  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'guidelines' | 'learning'>>,
+  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'guidelines' | 'learning' | 'extraction'>>,
 ): Promise<ExtractionProject | null> {
   const existing = await getProject(id);
   if (!existing) return null;
+  // Nur explizit gesetzte Felder uebernehmen — `undefined` (z.B. ein PUT ohne
+  // `extraction`) darf bestehende Werte NICHT ueberschreiben.
+  const defined = Object.fromEntries(
+    Object.entries(updates).filter(([, v]) => v !== undefined),
+  );
   const merged: ExtractionProject = {
     ...existing,
-    ...updates,
+    ...defined,
     id,
     updated: new Date().toISOString(),
   };
@@ -98,6 +107,7 @@ export async function updateProject(
       fields: merged.fields as never,
       guidelines: merged.guidelines,
       learning: merged.learning as never,
+      extraction: (merged.extraction ?? null) as never,
       updatedAt: merged.updated,
     })
     .where(eq(extractionProjects.id, id));

@@ -27,6 +27,7 @@ export const extractionProjects = extractionSchema.table('projects', {
   fields: jsonb('fields').notNull(),                 // Record<string, ProjectField>
   guidelines: text('guidelines').notNull().default(''),
   learning: jsonb('learning').notNull(),             // LearningMetadata
+  extraction: jsonb('extraction'),                   // ExtractionConfig (Heavy-Pipeline-Strategie); NULL = Default hybrid
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 });

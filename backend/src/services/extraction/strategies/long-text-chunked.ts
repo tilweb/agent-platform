@@ -20,6 +20,7 @@ import { llmService, type Message, type ChatOptions } from '../../llm';
 import type { UsageContext } from '../../usageTracking';
 import { buildFunctionSchema, buildToolChoice } from '../../../extraction/schema-builder';
 import { validateExtraction } from '../../../extraction/validator';
+import { appendGuidelines } from './prompt';
 import {
   StrategyExecutionError,
   type CostEstimate,
@@ -94,13 +95,13 @@ export const longTextChunkedStrategy: ExtractionStrategy = {
     const functionSchema = buildFunctionSchema(input.schema.profile);
     const toolChoice = buildToolChoice(input.schema.profile);
 
-    const systemPrompt = `Du bist Daten-Extraktions-Spezialist fuer ${input.schema.name}. Du bekommst EINEN Ausschnitt eines laengeren Dokuments — extrahiere alle Felder, die du in DIESEM Ausschnitt findest.
+    const systemPrompt = appendGuidelines(`Du bist Daten-Extraktions-Spezialist fuer ${input.schema.name}. Du bekommst EINEN Ausschnitt eines laengeren Dokuments — extrahiere alle Felder, die du in DIESEM Ausschnitt findest.
 
 Wichtig:
 - Felder, die in diesem Ausschnitt nicht enthalten sind, MUSST du als null zurueckgeben — NICHT erfinden.
 - Datumsangaben im Format YYYY-MM-DD.
 - Zahlen als numerische Werte.
-- Andere Chunks decken den Rest des Dokuments ab; sie werden danach gemergt.`;
+- Andere Chunks decken den Rest des Dokuments ab; sie werden danach gemergt.`, input.schema.profile);
 
     const options: ChatOptions = {
       userId: input.userId,
