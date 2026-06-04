@@ -51,31 +51,35 @@ const FIELDS: Record<string, ProjectField> = {
   hinweis: { type: 'text', required: false, label: 'Hinweise', description: 'Zusatznotizen, z.B. "Genehmigung der KK nötig", "Wechselversorgung", "nach Maß"' },
 };
 
-const INSTRUCTIONS = `Du extrahierst Daten aus deutschen Hilfsmittel-Rezepten für ein Sanitätshaus.
-Es handelt sich um gescannte Kassenrezepte (Muster 16, rosa) oder Privatrezepte (anderes Layout).
+const INSTRUCTIONS = `Du extrahierst Daten aus deutschen Hilfsmittel-Rezepten für ein Sanitätshaus
+(gescannte Kassenrezepte Muster 16 rosa, oder Privatrezepte).
 
-WICHTIG — typische Scan-Probleme:
-- VERSATZ: Der gedruckte Inhalt ist oft gegen die Formular-Felder verschoben (Papiereinzug/Druckeinstellung).
-  Ordne Werte NICHT nach Position zu, sondern nach Inhalt und Format:
+Extrahiere VOLLSTÄNDIG und fülle so viele Felder wie möglich — das Rezept enthält
+in der Regel zu fast allen Feldern Angaben. Gib ein Feld nur dann leer (null) zurück,
+wenn die Information wirklich nicht auf dem Dokument steht oder eine einzelne Stelle
+unleserlich ist. Lass nicht pauschal Felder leer.
+
+So findest du die Werte trotz typischer Scan-Probleme:
+- VERSATZ: Der Druck ist oft gegen die Formular-Felder verschoben. Ordne Werte nach
+  Inhalt/Format zu, nicht nach Position:
   • Kostenträgerkennung (IK): 9 Ziffern, beginnt oft mit 10…
   • Versicherten-Nr.: 1 Buchstabe + 9 Ziffern
   • Status: 7 Ziffern
-  • Betriebsstätten-Nr. (BSNR) und Arzt-Nr. (LANR): je 9 Ziffern
-  • Datum: DD.MM.YY → als YYYY-MM-DD zurückgeben
-- UNTERSCHRIFT: Die Arzt-Unterschrift überschreibt häufig BSNR, Stempel oder Datum.
-  Lies den darunterliegenden Druck so gut wie möglich. Die BSNR steht meist zusätzlich
-  im Arztstempel UND in der Ziffernzeile unten rechts — nutze diese zum Quer-Prüfen.
-  Wenn ein Zeichen durch die Unterschrift verdeckt und unsicher ist: bestes Lesen mit
-  niedriger Confidence, im Zweifel null statt geraten.
-- BLASSER DRUCK / DURCHSCHEINEN: Lies auch kontrastarmen Text sorgfältig. Ignoriere
-  gespiegelten/durchscheinenden Text (Sanitätshaus-Stempel von der Rückseite).
-- MEHRSEITIG: Seiten, die nur einen Sanitätshaus-Stempel/Quittung enthalten (kein
-  Rezept), liefern keine Felder — ignoriere sie.
+  • Betriebsstätten-Nr. (BSNR): 9 Ziffern (linkes der beiden Nummernfelder)
+  • Arzt-Nr. (LANR): 9 Ziffern (rechts neben der BSNR) — IMMER mit auslesen
+  • Datum: DD.MM.YY → als YYYY-MM-DD
+- UNTERSCHRIFT/STEMPEL: Lies den Druck auch dort, wo Unterschrift oder Stempel
+  darüberliegen. BSNR und LANR stehen meist zusätzlich im Arztstempel und in der
+  Ziffernzeile unten rechts — nutze sie zum Bestätigen.
+- Blassen oder kontrastarmen Druck sorgfältig lesen. Gespiegelten/durchscheinenden
+  Text (Stempel von der Rückseite) ignorieren.
+- Mehrseitig: reine Sanitätshaus-Stempel-/Quittungsseiten (kein Rezept) ignorieren.
 
-Felder:
-- Diagnose: ICD-10-Code(s) in "diagnose_icd", Klartext in "diagnose_text". Beides kann vorkommen.
-- HMV-Nummer (z.B. 24.00.05.0002) in "hilfsmittel_nummer"; den vollen Rp-Text in "verordnung_text".
-- Nichts erfinden. Felder, die nicht lesbar/vorhanden sind, als null zurückgeben.`;
+Feld-Hinweise:
+- menge = führende Stückzahl der Verordnung (z.B. "1", "2 Paar").
+- gebuehr_frei = true, wenn das Feld "Gebühr frei" angekreuzt ist.
+- Diagnose: ICD-10-Code(s) in diagnose_icd, Klartext in diagnose_text.
+- HMV-Nummer (z.B. 24.00.05.0002) in hilfsmittel_nummer; vollständiger Rp-Text in verordnung_text.`;
 
 const EXTRACTION = {
   strategy: 'vision-per-page' as const,

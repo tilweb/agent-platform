@@ -79,13 +79,19 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineRunR
         emit,
       );
 
-      // Optionaler, strategie-agnostischer Validierungs-Repair (opt-in via
-      // `config.validation_repair`). Korrigiert das gemergte Ergebnis bei
-      // Validierungsfehlern in einem gezielten LLM-Call.
+      // Optionaler Validierungs-Repair (opt-in via `config.validation_repair`).
+      // Korrigiert das gemergte Ergebnis bei Validierungsfehlern in einem
+      // gezielten, TEXT-basierten LLM-Call.
+      //
+      // NICHT bei `vision-per-page`: dort ist das Dokument rein visuell, und der
+      // `text` der PreparedFile ist leer oder (bei gescannten PDFs via Markitdown)
+      // unbrauchbar. Ein Text-Repair wuerde die guten Vision-Ergebnisse durch eine
+      // Re-Extraktion aus Muell-Text ersetzen. Format-Auto-Korrektur (DE-Daten/
+      // -Zahlen) passiert ohnehin bereits in der Strategy via `validateExtraction`.
       let finalExtracted = result.extracted;
       let finalWarnings = result.warnings;
       let extraCalls = 0;
-      if (input.schema.config.validation_repair) {
+      if (input.schema.config.validation_repair && result.strategyUsed !== 'vision-per-page') {
         const documentText = input.files.map((f) => f.text).filter((t) => t && t.trim()).join('\n\n');
         const chatOptions: ChatOptions = { userId: input.userId };
         const override = input.modelOverride
