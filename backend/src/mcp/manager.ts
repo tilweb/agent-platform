@@ -14,14 +14,18 @@ import {
   deleteMcpServer,
   getEnabledMcpServers,
 } from './config';
-import { McpToolWrapper, createMcpToolWrappers, getMcpToolName } from './tool';
+import { McpToolWrapper, createMcpToolWrappers, createMcpOAuthToolWrappers, getMcpToolName } from './tool';
+import { mcpUserSessions } from './userSessions';
+import { mcpConnectionProviderId } from './oauth/provider';
 import { toolRegistry } from '../tools/registry';
+import { listUserConnections } from '../connections';
 import { safeLog } from '../utils/safeLogger';
 import type { McpServerConfig, McpServerStatus, McpToolInfo } from './types';
 
 class McpManager {
   private initialized = false;
   private registeredTools = new Map<string, Set<string>>(); // serverId -> Set of tool names
+  private ensuredUsers = new Set<string>(); // userIds, deren OAuth-Tools schon (re-)registriert wurden
 
   /**
    * Initialize the MCP manager
@@ -75,6 +79,14 @@ class McpManager {
       throw new Error(`MCP server "${serverId}" not found`);
     }
 
+    // OAuth-Server werden NICHT global verbunden — sie laufen pro User mit
+    // dem jeweiligen OAuth-Token (per-User-Session, siehe MCP-OAuth-Flow).
+    // Ein globaler Connect-Versuch waere unauthentifiziert und wuerde 401en.
+    if (config.auth === 'oauth') {
+      safeLog.info(`Skipping global connect for OAuth MCP server (per-user)`, { serverId });
+      return;
+    }
+
     await mcpClient.connect(config);
     await this.registerToolsFromServer(serverId);
   }
@@ -123,6 +135,64 @@ class McpManager {
 
     this.registeredTools.set(serverId, toolNames);
     safeLog.info(`Registered tools from MCP server`, { count: wrappers.length, serverId });
+  }
+
+  /**
+   * Discover + register tools for an OAuth MCP server (per-user model).
+   *
+   * Wird nach einem erfolgreichen OAuth-Connect aufgerufen. Die Tools werden
+   * EINMAL (mit der Session des ersten verbundenen Users) discovert und global
+   * als per-User-Wrapper registriert. Spaetere User nutzen dieselben Wrapper,
+   * aber ihre eigene Session/ihren eigenen Token zur Laufzeit.
+   */
+  async registerOAuthServerTools(userId: string, serverId: string): Promise<void> {
+    if (this.registeredTools.has(serverId)) {
+      // Tools sind bereits global registriert — nichts zu tun.
+      return;
+    }
+
+    const tools = await mcpUserSessions.listTools(userId, serverId);
+    const wrappers = createMcpOAuthToolWrappers(tools);
+
+    const toolNames = new Set<string>();
+    for (const wrapper of wrappers) {
+      toolRegistry.register(wrapper);
+      toolNames.add(wrapper.name);
+    }
+
+    this.registeredTools.set(serverId, toolNames);
+    safeLog.info(`Registered OAuth MCP tools`, { count: wrappers.length, serverId });
+  }
+
+  /**
+   * Stellt sicher, dass die OAuth-MCP-Tools eines Users (re-)registriert sind.
+   *
+   * Hintergrund: Die globale Tool-Registrierung liegt in-memory und geht bei
+   * einem Backend-Neustart verloren. Diese Methode wird beim Start eines Chat-
+   * Runs aufgerufen: hat der User gespeicherte OAuth-MCP-Connections, deren
+   * Tools (noch) nicht registriert sind, werden sie mit seinem Token lazy
+   * discovert + registriert. Idempotent + pro User nur einmal pro Prozess.
+   */
+  async ensureUserOAuthToolsRegistered(userId: string): Promise<void> {
+    if (!userId || this.ensuredUsers.has(userId)) return;
+    this.ensuredUsers.add(userId);
+
+    try {
+      const conns = await listUserConnections(userId);
+      for (const conn of conns) {
+        const prefix = mcpConnectionProviderId('');
+        if (!conn.providerId.startsWith(prefix)) continue;
+        const serverId = conn.providerId.slice(prefix.length);
+        if (this.registeredTools.has(serverId)) continue;
+        try {
+          await this.registerOAuthServerTools(userId, serverId);
+        } catch (err: any) {
+          safeLog.warn(`Lazy OAuth tool registration failed`, { serverId, error: err?.message });
+        }
+      }
+    } catch (err: any) {
+      safeLog.warn(`ensureUserOAuthToolsRegistered failed`, { userId, error: err?.message });
+    }
   }
 
   /**

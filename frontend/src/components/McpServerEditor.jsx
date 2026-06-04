@@ -191,31 +191,48 @@ function McpServerEditor({ server, presets, onSave, onClose }) {
   const [formData, setFormData] = useState({
     id: '',
     name: '',
+    transport: 'stdio',
     command: 'npx',
     args: [],
     env: {},
+    url: '',
+    headers: {},
+    auth: 'none',
+    oauthClient: undefined,
     enabled: true,
     autoConnect: true,
   });
   const [argsString, setArgsString] = useState('');
   const [envVars, setEnvVars] = useState([]);
+  const [headerVars, setHeaderVars] = useState([]);
   const [error, setError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const isRemote = formData.transport === 'http' || formData.transport === 'sse';
+  const isOAuth = isRemote && formData.auth === 'oauth';
 
   useEffect(() => {
     if (server) {
       setFormData({
         id: server.id || '',
         name: server.name || '',
+        transport: server.transport || 'stdio',
         command: server.command || 'npx',
         args: server.args || [],
         env: server.env || {},
+        url: server.url || '',
+        headers: server.headers || {},
+        auth: server.auth || 'none',
+        oauthClient: server.oauthClient,
         enabled: server.enabled !== false,
         autoConnect: server.autoConnect !== false,
       });
       setArgsString((server.args || []).join(' '));
       setEnvVars(
         Object.entries(server.env || {}).map(([key, value]) => ({ key, value }))
+      );
+      setHeaderVars(
+        Object.entries(server.headers || {}).map(([key, value]) => ({ key, value }))
       );
     }
   }, [server]);
@@ -260,6 +277,29 @@ function McpServerEditor({ server, presets, onSave, onClose }) {
     setFormData(prev => ({ ...prev, env }));
   };
 
+  const syncHeaders = (newHeaderVars) => {
+    setHeaderVars(newHeaderVars);
+    const headers = {};
+    newHeaderVars.forEach(({ key, value }) => {
+      if (key) headers[key] = value;
+    });
+    setFormData(prev => ({ ...prev, headers }));
+  };
+
+  const handleHeaderChange = (index, field, value) => {
+    const next = [...headerVars];
+    next[index] = { ...next[index], [field]: value };
+    syncHeaders(next);
+  };
+
+  const addHeader = () => {
+    setHeaderVars([...headerVars, { key: '', value: '' }]);
+  };
+
+  const removeHeader = (index) => {
+    syncHeaders(headerVars.filter((_, i) => i !== index));
+  };
+
   const handlePresetSelect = (presetId) => {
     if (!presetId) return;
     const preset = presets.find(p => p.id === presetId);
@@ -268,15 +308,23 @@ function McpServerEditor({ server, presets, onSave, onClose }) {
     setFormData({
       id: preset.id,
       name: preset.name,
-      command: preset.command,
+      transport: preset.transport || 'stdio',
+      command: preset.command || 'npx',
       args: preset.args || [],
       env: preset.env || {},
+      url: preset.url || '',
+      headers: preset.headers || {},
+      auth: preset.auth || 'none',
+      oauthClient: preset.oauthClient,
       enabled: true,
       autoConnect: true,
     });
     setArgsString((preset.args || []).join(' '));
     setEnvVars(
       Object.entries(preset.env || {}).map(([key, value]) => ({ key, value }))
+    );
+    setHeaderVars(
+      Object.entries(preset.headers || {}).map(([key, value]) => ({ key, value }))
     );
   };
 
@@ -289,8 +337,13 @@ function McpServerEditor({ server, presets, onSave, onClose }) {
       setError('Name ist erforderlich');
       return;
     }
-    if (!formData.command?.trim()) {
-      setError('Command ist erforderlich');
+    if (isRemote) {
+      if (!formData.url?.trim()) {
+        setError('URL ist fuer Remote-Transport (HTTP/SSE) erforderlich');
+        return;
+      }
+    } else if (!formData.command?.trim()) {
+      setError('Command ist fuer stdio-Transport erforderlich');
       return;
     }
 
@@ -368,71 +421,177 @@ function McpServerEditor({ server, presets, onSave, onClose }) {
             </div>
           </div>
 
-          {/* Command */}
-          <div style={styles.section}>
-            <div style={styles.sectionTitle}>Ausführung</div>
-
-            <div style={styles.field}>
-              <label style={styles.label}>Command</label>
-              <input
-                type="text"
-                style={{ ...styles.input, fontFamily: theme.typography.fontMono }}
-                value={formData.command}
-                onChange={(e) => handleChange('command', e.target.value)}
-                placeholder="npx"
-              />
-            </div>
-
-            <div style={styles.field}>
-              <label style={styles.label}>
-                Arguments
-                <span style={styles.labelHint}>(durch Leerzeichen getrennt)</span>
-              </label>
-              <input
-                type="text"
-                style={{ ...styles.input, fontFamily: theme.typography.fontMono }}
-                value={argsString}
-                onChange={(e) => handleArgsChange(e.target.value)}
-                placeholder="-y @modelcontextprotocol/server-github"
-              />
-            </div>
+          {/* Transport */}
+          <div style={styles.field}>
+            <label style={styles.label}>
+              Transport
+              <span style={styles.labelHint}>(lokal oder Remote)</span>
+            </label>
+            <select
+              style={styles.select}
+              value={formData.transport}
+              onChange={(e) => handleChange('transport', e.target.value)}
+            >
+              <option value="stdio">stdio — lokaler Prozess (npx/bun)</option>
+              <option value="http">HTTP — Remote (Streamable HTTP)</option>
+              <option value="sse">SSE — Remote (Server-Sent Events)</option>
+            </select>
           </div>
 
-          {/* Environment Variables */}
-          <div style={styles.section}>
-            <div style={styles.sectionTitle}>Umgebungsvariablen</div>
+          {/* Ausführung: stdio */}
+          {!isRemote && (
+            <div style={styles.section}>
+              <div style={styles.sectionTitle}>Ausführung</div>
 
-            <div style={styles.envVarList}>
-              {envVars.map((envVar, index) => (
-                <div key={index} style={styles.envVarRow}>
-                  <input
-                    type="text"
-                    style={styles.envVarInput}
-                    value={envVar.key}
-                    onChange={(e) => handleEnvChange(index, 'key', e.target.value)}
-                    placeholder="KEY"
-                  />
-                  <span style={{ color: theme.colors.textMuted }}>=</span>
-                  <input
-                    type="text"
-                    style={styles.envVarInput}
-                    value={envVar.value}
-                    onChange={(e) => handleEnvChange(index, 'value', e.target.value)}
-                    placeholder="value oder ${ENV_VAR}"
-                  />
-                  <button
-                    style={styles.envVarRemove}
-                    onClick={() => removeEnvVar(index)}
-                  >
-                    &times;
-                  </button>
-                </div>
-              ))}
-              <button style={styles.addEnvButton} onClick={addEnvVar}>
-                + Variable hinzufügen
-              </button>
+              <div style={styles.field}>
+                <label style={styles.label}>Command</label>
+                <input
+                  type="text"
+                  style={{ ...styles.input, fontFamily: theme.typography.fontMono }}
+                  value={formData.command}
+                  onChange={(e) => handleChange('command', e.target.value)}
+                  placeholder="npx"
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>
+                  Arguments
+                  <span style={styles.labelHint}>(durch Leerzeichen getrennt)</span>
+                </label>
+                <input
+                  type="text"
+                  style={{ ...styles.input, fontFamily: theme.typography.fontMono }}
+                  value={argsString}
+                  onChange={(e) => handleArgsChange(e.target.value)}
+                  placeholder="-y @modelcontextprotocol/server-github"
+                />
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Endpoint: http/sse */}
+          {isRemote && (
+            <div style={styles.section}>
+              <div style={styles.sectionTitle}>Endpoint</div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>
+                  URL
+                  <span style={styles.labelHint}>(Server-Endpoint)</span>
+                </label>
+                <input
+                  type="text"
+                  style={{ ...styles.input, fontFamily: theme.typography.fontMono }}
+                  value={formData.url}
+                  onChange={(e) => handleChange('url', e.target.value)}
+                  placeholder="https://gmailmcp.googleapis.com/..."
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>
+                  Authentifizierung
+                  <span style={styles.labelHint}>(pro User)</span>
+                </label>
+                <select
+                  style={styles.select}
+                  value={formData.auth}
+                  onChange={(e) => handleChange('auth', e.target.value)}
+                >
+                  <option value="none">Keine / statische Header</option>
+                  <option value="oauth">OAuth (Login pro User, z.B. Notion)</option>
+                </select>
+                {isOAuth && (
+                  <div style={{
+                    marginTop: theme.spacing.sm,
+                    fontSize: theme.typography.sizes.sm,
+                    color: theme.colors.textMuted,
+                  }}>
+                    Jeder User verbindet sein eigenes Konto über den „Verbinden"-Button
+                    auf der Server-Karte. Token werden pro User verschlüsselt gespeichert;
+                    keine manuellen Header nötig.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Environment Variables (nur stdio) */}
+          {!isRemote && (
+            <div style={styles.section}>
+              <div style={styles.sectionTitle}>Umgebungsvariablen</div>
+
+              <div style={styles.envVarList}>
+                {envVars.map((envVar, index) => (
+                  <div key={index} style={styles.envVarRow}>
+                    <input
+                      type="text"
+                      style={styles.envVarInput}
+                      value={envVar.key}
+                      onChange={(e) => handleEnvChange(index, 'key', e.target.value)}
+                      placeholder="KEY"
+                    />
+                    <span style={{ color: theme.colors.textMuted }}>=</span>
+                    <input
+                      type="text"
+                      style={styles.envVarInput}
+                      value={envVar.value}
+                      onChange={(e) => handleEnvChange(index, 'value', e.target.value)}
+                      placeholder="value oder ${ENV_VAR}"
+                    />
+                    <button
+                      style={styles.envVarRemove}
+                      onClick={() => removeEnvVar(index)}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+                <button style={styles.addEnvButton} onClick={addEnvVar}>
+                  + Variable hinzufügen
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* HTTP-Header (nur http/sse ohne OAuth — bei OAuth verwaltet das SDK den Token) */}
+          {isRemote && !isOAuth && (
+            <div style={styles.section}>
+              <div style={styles.sectionTitle}>HTTP-Header</div>
+
+              <div style={styles.envVarList}>
+                {headerVars.map((headerVar, index) => (
+                  <div key={index} style={styles.envVarRow}>
+                    <input
+                      type="text"
+                      style={styles.envVarInput}
+                      value={headerVar.key}
+                      onChange={(e) => handleHeaderChange(index, 'key', e.target.value)}
+                      placeholder="Authorization"
+                    />
+                    <span style={{ color: theme.colors.textMuted }}>:</span>
+                    <input
+                      type="text"
+                      style={styles.envVarInput}
+                      value={headerVar.value}
+                      onChange={(e) => handleHeaderChange(index, 'value', e.target.value)}
+                      placeholder="Bearer ${MCP_TOKEN}"
+                    />
+                    <button
+                      style={styles.envVarRemove}
+                      onClick={() => removeHeader(index)}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+                <button style={styles.addEnvButton} onClick={addHeader}>
+                  + Header hinzufügen
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Options */}
           <div style={styles.field}>

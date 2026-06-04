@@ -42,6 +42,7 @@ import {
 } from '../skills';
 import { addMessage, getMessages, generateSessionId } from '../services/memory';
 import { loadAgent, listAgents, type AgentConfig, type AgentModelConfig } from '../services/agents';
+import { mcpManager } from '../mcp';
 import { loadUserMemory, formatMemoryForPrompt } from '../services/userMemory';
 import { getProjectContext } from '../projects/service';
 import { readFile } from 'fs/promises';
@@ -1755,6 +1756,13 @@ export async function* runAgentLoop(
   const log = (eventType: string, message: string, data?: Record<string, any>, durationMs?: number) => {
     writeAgentLog(sessionId, { eventType, agentId: agentId || undefined, message, data, durationMs });
   };
+
+  // Per-User-OAuth-MCP-Tools (z.B. Notion) sicherstellen — falls die In-Memory-
+  // Registrierung nach einem Backend-Neustart verloren ging, werden sie hier
+  // lazy mit dem gespeicherten User-Token re-registriert (idempotent).
+  if (userId) {
+    await mcpManager.ensureUserOAuthToolsRegistered(userId);
+  }
 
   // Load agent configuration
   let agent: AgentConfig | null = null;

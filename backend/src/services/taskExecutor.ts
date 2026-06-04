@@ -162,13 +162,21 @@ async function executeTask(task: Task): Promise<void> {
     // Determine which agent to use
     const agentId = task.assigned_agent || 'supervisor';
 
+    // userId des Auftraggebers ermitteln — wird fuer per-User-Tools (z.B.
+    // OAuth-MCP-Connections wie Notion) im ToolContext gebraucht. Ohne sie
+    // koennen die Tools den User-Token nicht aufloesen ("nicht verbunden").
+    let taskUserId: string | undefined = task.userId;
+    if (!taskUserId && task.source_session_id) {
+      taskUserId = (await getChatOwnerId(task.source_session_id)) ?? undefined;
+    }
+
     // Collect the full response
     let fullResponse = '';
     let lastProgress = 0;
     const toolCalls: Array<{ name: string; args: string; result: string }> = [];
 
     // Run the agent loop
-    for await (const event of runAgentLoop(sessionId, taskPrompt, { agentId })) {
+    for await (const event of runAgentLoop(sessionId, taskPrompt, { agentId, userId: taskUserId })) {
       // Check if aborted
       if (abortController.signal.aborted) {
         throw new Error('Task was cancelled');

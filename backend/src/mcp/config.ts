@@ -50,6 +50,33 @@ export const MCP_SERVER_PRESETS: Record<string, Omit<McpServerConfig, 'id' | 'en
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-memory'],
   },
+  // --- Remote-Transports (http/sse) ---
+  'gmail-google': {
+    name: 'Gmail MCP Server (Google, offiziell)',
+    transport: 'http',
+    // Offizieller Google Workspace Remote-MCP-Server. Den exakten Endpoint-Pfad
+    // ggf. aus der Google-Doku ergaenzen; Auth via OAuth-Bearer-Token aus der Env.
+    url: 'https://gmailmcp.googleapis.com',
+    headers: {
+      Authorization: 'Bearer ${GMAIL_OAUTH_TOKEN}',
+    },
+  },
+  'remote-http': {
+    name: 'Remote MCP Server (Streamable HTTP)',
+    transport: 'http',
+    url: 'https://example.com/mcp',
+    headers: {
+      Authorization: 'Bearer ${MCP_TOKEN}',
+    },
+  },
+  notion: {
+    name: 'Notion (OAuth)',
+    transport: 'http',
+    // Notions Hosted-MCP-Server. OAuth pro User via Dynamic Client Registration —
+    // kein Admin-App-Setup, jeder User verbindet sein eigenes Notion-Konto.
+    url: 'https://mcp.notion.com/mcp',
+    auth: 'oauth',
+  },
 };
 
 /**
@@ -143,9 +170,14 @@ export async function updateMcpServer(
   const updated: McpServerConfig = {
     id: serverId, // ID cannot be changed
     name: updates.name ?? existing.name,
+    transport: updates.transport ?? existing.transport,
     command: updates.command ?? existing.command,
     args: updates.args ?? existing.args,
     env: updates.env ?? existing.env,
+    url: updates.url ?? existing.url,
+    headers: updates.headers ?? existing.headers,
+    auth: updates.auth ?? existing.auth,
+    oauthClient: updates.oauthClient ?? existing.oauthClient,
     enabled: updates.enabled ?? existing.enabled,
     autoConnect: updates.autoConnect ?? existing.autoConnect,
     timeout: updates.timeout ?? existing.timeout,

@@ -6,13 +6,21 @@
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { spawn, type ChildProcess } from 'child_process';
 import type { McpServerConfig, McpToolInfo, McpCallResult } from './types';
+
+/** Ersetzt ${VAR}-Platzhalter in einem String durch die entsprechende Env-Variable. */
+function resolveEnvPlaceholders(value: string): string {
+  return value.replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] || '');
+}
 
 export class McpConnection {
   private config: McpServerConfig;
   private process: ChildProcess | null = null;
-  private transport: StdioClientTransport | null = null;
+  private transport: Transport | null = null;
   private client: Client | null = null;
   private tools: McpToolInfo[] = [];
   private _status: 'connected' | 'connecting' | 'disconnected' | 'error' = 'disconnected';
@@ -55,46 +63,13 @@ export class McpConnection {
     this._error = null;
 
     try {
-      // Resolve environment variables
-      const env: Record<string, string> = { ...process.env } as Record<string, string>;
-      if (this.config.env) {
-        for (const [key, value] of Object.entries(this.config.env)) {
-          // Replace ${VAR} with actual env value
-          env[key] = value.replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] || '');
-        }
-      }
+      const transportType = this.config.transport || 'stdio';
 
-      // Spawn the server process
-      this.process = spawn(this.config.command, this.config.args || [], {
-        env,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
-
-      // Handle process errors
-      this.process.on('error', (err) => {
-        console.error(`MCP server ${this.config.id} process error:`, err);
-        this._status = 'error';
-        this._error = err.message;
-      });
-
-      this.process.on('exit', (code) => {
-        console.log(`MCP server ${this.config.id} exited with code ${code}`);
-        if (this._status === 'connected') {
-          this._status = 'disconnected';
-        }
-      });
-
-      // Log stderr for debugging
-      this.process.stderr?.on('data', (data) => {
-        console.error(`MCP ${this.config.id} stderr:`, data.toString());
-      });
-
-      // Create transport
-      this.transport = new StdioClientTransport({
-        command: this.config.command,
-        args: this.config.args || [],
-        env,
-      });
+      // Transport je nach Art aufbauen: lokaler Prozess (stdio) oder Remote (http/sse)
+      this.transport =
+        transportType === 'http' || transportType === 'sse'
+          ? this.createRemoteTransport(transportType)
+          : this.createStdioTransport();
 
       // Create client
       this.client = new Client({
@@ -113,13 +88,101 @@ export class McpConnection {
       this._status = 'connected';
       this._connectedAt = Date.now();
 
-      console.log(`Connected to MCP server: ${this.config.name} (${this.tools.length} tools)`);
+      console.log(`Connected to MCP server: ${this.config.name} (${this.tools.length} tools, ${transportType})`);
     } catch (err: any) {
       this._status = 'error';
       this._error = err.message;
       console.error(`Failed to connect to MCP server ${this.config.id}:`, err);
       throw err;
     }
+  }
+
+  /**
+   * Lokalen stdio-Transport aufbauen (Subprozess via command/args/env).
+   */
+  private createStdioTransport(): StdioClientTransport {
+    if (!this.config.command) {
+      throw new Error(`MCP server ${this.config.id}: 'command' ist fuer stdio-Transport erforderlich`);
+    }
+
+    // Resolve environment variables
+    const env: Record<string, string> = { ...process.env } as Record<string, string>;
+    if (this.config.env) {
+      for (const [key, value] of Object.entries(this.config.env)) {
+        // Replace ${VAR} with actual env value
+        env[key] = resolveEnvPlaceholders(value);
+      }
+    }
+
+    // Spawn the server process
+    this.process = spawn(this.config.command, this.config.args || [], {
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    // Handle process errors
+    this.process.on('error', (err) => {
+      console.error(`MCP server ${this.config.id} process error:`, err);
+      this._status = 'error';
+      this._error = err.message;
+    });
+
+    this.process.on('exit', (code) => {
+      console.log(`MCP server ${this.config.id} exited with code ${code}`);
+      if (this._status === 'connected') {
+        this._status = 'disconnected';
+      }
+    });
+
+    // Log stderr for debugging
+    this.process.stderr?.on('data', (data) => {
+      console.error(`MCP ${this.config.id} stderr:`, data.toString());
+    });
+
+    return new StdioClientTransport({
+      command: this.config.command,
+      args: this.config.args || [],
+      env,
+    });
+  }
+
+  /**
+   * Remote-Transport aufbauen (Streamable HTTP oder SSE) inkl. Auth-Header.
+   * Header-Werte koennen ${ENV_VAR} referenzieren (z.B. Authorization: Bearer ${GMAIL_TOKEN}).
+   */
+  private createRemoteTransport(type: 'http' | 'sse'): Transport {
+    if (!this.config.url) {
+      throw new Error(`MCP server ${this.config.id}: 'url' ist fuer ${type}-Transport erforderlich`);
+    }
+
+    let url: URL;
+    try {
+      url = new URL(this.config.url);
+    } catch {
+      throw new Error(`MCP server ${this.config.id}: ungueltige URL "${this.config.url}"`);
+    }
+
+    // Header aufloesen (mit ${ENV}-Substitution)
+    const headers: Record<string, string> = {};
+    if (this.config.headers) {
+      for (const [key, value] of Object.entries(this.config.headers)) {
+        headers[key] = resolveEnvPlaceholders(value);
+      }
+    }
+    const hasHeaders = Object.keys(headers).length > 0;
+    const requestInit = hasHeaders ? { headers } : undefined;
+
+    if (type === 'sse') {
+      // Bei SSE muss der Custom-Header auch der EventSource-Verbindung mitgegeben werden.
+      return new SSEClientTransport(url, {
+        requestInit,
+        eventSourceInit: hasHeaders
+          ? { fetch: (input, init) => fetch(input, { ...init, headers: { ...init?.headers, ...headers } }) }
+          : undefined,
+      });
+    }
+
+    return new StreamableHTTPClientTransport(url, { requestInit });
   }
 
   /**
