@@ -2,6 +2,23 @@
 
 ## 2026-06-04
 
+### Fix: Vision-Extraktion lieferte unvollständige Felder (Kollaps auf Pflichtfelder)
+Beim Live-Test der Sani-Rezepte fielen Extraktionen teils auf genau die 5
+Pflichtfelder zurück (Rest leer), obwohl die rohe Vision-Antwort alle 21 Felder
+enthielt. Zwei Code-Ursachen behoben:
+
+- **Pflichtfelder im Function-Schema** (`learning/pipeline-adapter.ts`): Das
+  Vision-Modell (Mistral 3 24B) erfuellt ein `required`-Schema unter Last manchmal
+  MINIMAL. Der Adapter setzt jetzt **keine `required`-Markierung** mehr ins
+  Extraktions-Schema (A/B: required → 20/5/5, optional → 20/20/20).
+- **Text-Repair überschrieb Vision-Ergebnisse** (`services/extraction/pipeline.ts`):
+  `validation_repair` wird bei `vision-per-page` jetzt uebersprungen (dort ist der
+  text leer/Markitdown-Muell; Repair haette gute Vision-Daten ersetzt).
+- **Sani-`instructions` entschärft** (weniger „null"-Sprache, „extrahiere
+  vollstaendig", BSNR/LANR als Paar).
+- Teil der Schwankung ist endpoint-seitig (adacor-Vision liefert unter Last sparse).
+- **Beide Worktrees**.
+
 ### Extraktion: Sani-Rezepte-Projekt + stabiles instructions-Feld + PDF-Vision-Fix
 Erstes produktives Extraktions-Projekt (Sanitätshaus-Rezepte, gescannte Muster-16-/
 Privatrezepte) plus zwei dafür nötige Erweiterungen am Projekte-Feature.

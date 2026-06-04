@@ -32,7 +32,10 @@ test('wickelt flache Projekt-Felder in EINE synthetische Gruppe', () => {
   const group = schema.profile.fields[PROJECT_FIELD_GROUP] as Record<string, { type: string; required?: boolean; hint?: string }>;
   expect(Object.keys(group)).toEqual(['rechnungsnummer', 'betrag', 'faellig']);
   expect(group.rechnungsnummer!.type).toBe('text');
-  expect(group.rechnungsnummer!.required).toBe(true);
+  // Felder werden bewusst NICHT als required ins Function-Schema uebernommen
+  // (Vision-Modelle erfuellen required-Schemas sonst minimal — Kollaps auf
+  // Pflichtfelder). Trotz project.required=true → false im Profil.
+  expect(group.rechnungsnummer!.required).toBe(false);
   // description → hint
   expect(group.betrag!.hint).toBe('Bruttobetrag in EUR');
 });

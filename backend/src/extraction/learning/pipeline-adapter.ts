@@ -81,7 +81,14 @@ function buildProfile(project: ExtractionProject, guidelines: string): Extractio
   for (const [fieldId, field] of Object.entries(project.fields)) {
     const def: FieldDefinition = {
       type: field.type,
-      required: field.required,
+      // Bewusst KEINE `required`-Markierung im Function-Schema: Vision-Modelle
+      // (z.B. Mistral 3 24B) erfuellen ein required-beschraenktes Schema unter
+      // Last manchmal MINIMAL — sie liefern nur die Pflichtfelder und lassen alle
+      // optionalen weg (beobachtet: Kollaps von 20 auf genau die 5 Pflichtfelder).
+      // Ohne required extrahiert das Modell konsistent vollstaendig. Die
+      // `field.required`-Info des Projekts bleibt fuers UI erhalten, fliesst aber
+      // nicht in die Extraktion ein.
+      required: false,
       label: field.label,
     };
     if (field.description) def.hint = field.description;
