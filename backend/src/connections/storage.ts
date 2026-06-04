@@ -282,3 +282,32 @@ export async function cleanupExpiredOAuthStates(): Promise<number> {
 
   return cleaned;
 }
+
+// ============================================
+// Provider-Settings (global, Admin-gesteuert)
+// ============================================
+
+const PROVIDER_SETTINGS_FILE = join(CONNECTIONS_DIR, '_provider-settings.yaml');
+
+/**
+ * Liefert die „fuer User freigeschaltet"-Flags je Provider-ID. Provider ohne
+ * Eintrag gelten als nicht freigeschaltet (Default false). Fehler → leeres Map.
+ */
+export async function getProviderEnabledMap(): Promise<Record<string, boolean>> {
+  try {
+    const file = Bun.file(PROVIDER_SETTINGS_FILE);
+    if (!(await file.exists())) return {};
+    const data = parseYaml(await file.text()) as Record<string, boolean> | null;
+    return data && typeof data === 'object' ? data : {};
+  } catch (err) {
+    console.error('[connections] getProviderEnabledMap failed:', err);
+    return {};
+  }
+}
+
+/** Setzt das „fuer User freigeschaltet"-Flag eines Providers (merge + write). */
+export async function setProviderEnabled(providerId: string, enabled: boolean): Promise<void> {
+  const map = await getProviderEnabledMap();
+  map[providerId] = enabled;
+  await Bun.write(PROVIDER_SETTINGS_FILE, stringifyYaml(map));
+}

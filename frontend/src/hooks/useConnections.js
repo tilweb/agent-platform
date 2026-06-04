@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-export function useConnections() {
+export function useConnections({ admin = false } = {}) {
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,7 +12,10 @@ export function useConnections() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`${API_BASE}/connections`, {
+      // Admin-Modus: vollstaendige Provider-Liste inkl. Freischalt-Status.
+      // User-Modus: nur fuer User freigeschaltete Provider (Backend-Filter).
+      const path = admin ? '/connections/admin/providers' : '/connections';
+      const res = await fetch(`${API_BASE}${path}`, {
         credentials: 'include',
       });
 
@@ -28,7 +31,7 @@ export function useConnections() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [admin]);
 
   useEffect(() => {
     fetchProviders();
@@ -145,6 +148,22 @@ export function useConnections() {
     }
   }, []);
 
+  // Admin: Provider fuer User freischalten/sperren.
+  const setProviderEnabled = useCallback(async (providerId, enabled) => {
+    const res = await fetch(`${API_BASE}/connections/admin/providers/${providerId}/enabled`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to update provider');
+    }
+    await fetchProviders();
+    return data;
+  }, [fetchProviders]);
+
   return {
     providers,
     loading,
@@ -154,5 +173,6 @@ export function useConnections() {
     connectWithCredentials,
     disconnect,
     checkStatus,
+    setProviderEnabled,
   };
 }

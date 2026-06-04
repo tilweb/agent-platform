@@ -3,7 +3,7 @@
  */
 
 import type { ConnectionProvider, ProviderInfo, ConnectionStatus, TokenSet } from './types';
-import { loadConnection, listUserConnections, saveConnection, updateConnectionTokens } from './storage';
+import { loadConnection, listUserConnections, saveConnection, updateConnectionTokens, getProviderEnabledMap } from './storage';
 import { toolRegistry } from '../tools/registry';
 
 class ConnectionRegistry {
@@ -78,6 +78,7 @@ class ConnectionRegistry {
    */
   async getProviderInfos(userId?: string): Promise<ProviderInfo[]> {
     const infos: ProviderInfo[] = [];
+    const enabledMap = await getProviderEnabledMap();
 
     for (const provider of this.providers.values()) {
       const info: ProviderInfo = {
@@ -87,6 +88,8 @@ class ConnectionRegistry {
         icon: provider.icon,
         authType: provider.authType,
         setupGuide: provider.setupGuide,
+        enabledForUsers: enabledMap[provider.id] ?? false,
+        configured: true,
       };
 
       // Setup-Felder bei Non-OAuth-Providern (z.B. Personio Client-Credentials)

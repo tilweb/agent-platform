@@ -227,9 +227,10 @@ function getStatusText(status) {
 
 // getProviderIcon imported from Icons.jsx
 
-function ConnectionCard({ provider, onConnect, onDisconnect, loading, onShowSetup }) {
+function ConnectionCard({ provider, onConnect, onDisconnect, loading, onShowSetup, admin = false, onToggleEnabled }) {
   const isConnected = provider.status?.status === 'connected';
   const statusStyle = { ...styles.status, ...getStatusStyle(provider.status) };
+  const enabled = !!provider.enabledForUsers;
 
   return (
     <div style={styles.card}>
@@ -243,50 +244,97 @@ function ConnectionCard({ provider, onConnect, onDisconnect, loading, onShowSetu
         </div>
       </div>
 
-      <div style={statusStyle}>
-        <div style={styles.statusDot} />
-        <span style={styles.statusText}>{getStatusText(provider.status)}</span>
-      </div>
+      {admin ? (
+        /* === Admin-Modus: Freischalten + Setup, kein eigenes Verbinden === */
+        <>
+          <div style={{
+            alignSelf: 'flex-start',
+            display: 'inline-flex', alignItems: 'center',
+            padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+            borderRadius: theme.borderRadius.full,
+            fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium,
+            backgroundColor: enabled ? theme.colors.successLight : theme.colors.surfaceHover,
+            color: enabled ? theme.colors.success : theme.colors.textMuted,
+          }}>
+            {enabled ? 'Für Nutzer freigeschaltet' : 'Nicht freigeschaltet'}
+          </div>
 
-      {isConnected && provider.status?.userInfo && (
-        <div style={styles.userInfo}>
-          Connected as: {provider.status.userInfo.name || provider.status.userInfo.email}
-        </div>
-      )}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: theme.spacing.md, marginTop: theme.spacing.sm,
+          }}>
+            <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text }}>
+              Für Nutzer freischalten
+            </span>
+            <button
+              role="switch"
+              aria-checked={enabled}
+              onClick={() => onToggleEnabled(provider.id, !enabled)}
+              disabled={loading}
+              style={{
+                width: 44, height: 24, borderRadius: 999, border: 'none', padding: 0, flexShrink: 0,
+                cursor: loading ? 'default' : 'pointer', position: 'relative',
+                backgroundColor: enabled ? theme.colors.success : theme.colors.border,
+                transition: `background-color ${theme.transitions.fast}`,
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: 2, left: enabled ? 22 : 2,
+                width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff',
+                transition: `left ${theme.transitions.fast}`,
+              }} />
+            </button>
+          </div>
 
-      {isConnected ? (
-        <button
-          style={{ ...styles.button, ...styles.disconnectButton, ...(loading ? styles.buttonDisabled : {}) }}
-          onClick={() => onDisconnect(provider.id)}
-          disabled={loading}
-        >
-          {loading ? 'Disconnecting...' : 'Disconnect'}
-        </button>
+          {provider.setupGuide && (
+            <button
+              style={styles.setupButton}
+              onClick={() => onShowSetup(provider)}
+              onMouseEnter={(e) => {
+                e.target.style.borderColor = theme.colors.primary;
+                e.target.style.color = theme.colors.primary;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.borderColor = theme.colors.border;
+                e.target.style.color = theme.colors.textSecondary;
+              }}
+            >
+              Setup-Anleitung anzeigen
+            </button>
+          )}
+        </>
       ) : (
-        <button
-          style={{ ...styles.button, ...styles.connectButton, ...(loading ? styles.buttonDisabled : {}) }}
-          onClick={() => onConnect(provider.id)}
-          disabled={loading}
-        >
-          {loading ? 'Connecting...' : 'Connect'}
-        </button>
-      )}
+        /* === User-Modus: eigenes Konto verbinden === */
+        <>
+          <div style={statusStyle}>
+            <div style={styles.statusDot} />
+            <span style={styles.statusText}>{getStatusText(provider.status)}</span>
+          </div>
 
-      {provider.setupGuide && (
-        <button
-          style={styles.setupButton}
-          onClick={() => onShowSetup(provider)}
-          onMouseEnter={(e) => {
-            e.target.style.borderColor = theme.colors.primary;
-            e.target.style.color = theme.colors.primary;
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.borderColor = theme.colors.border;
-            e.target.style.color = theme.colors.textSecondary;
-          }}
-        >
-          Setup-Anleitung anzeigen
-        </button>
+          {isConnected && provider.status?.userInfo && (
+            <div style={styles.userInfo}>
+              Verbunden als: {provider.status.userInfo.name || provider.status.userInfo.email}
+            </div>
+          )}
+
+          {isConnected ? (
+            <button
+              style={{ ...styles.button, ...styles.disconnectButton, ...(loading ? styles.buttonDisabled : {}) }}
+              onClick={() => onDisconnect(provider.id)}
+              disabled={loading}
+            >
+              {loading ? 'Trenne...' : 'Trennen'}
+            </button>
+          ) : (
+            <button
+              style={{ ...styles.button, ...styles.connectButton, ...(loading ? styles.buttonDisabled : {}) }}
+              onClick={() => onConnect(provider.id)}
+              disabled={loading}
+            >
+              {loading ? 'Verbinde...' : 'Verbinden'}
+            </button>
+          )}
+        </>
       )}
     </div>
   );
@@ -482,12 +530,24 @@ function CredentialsModal({ provider, onClose, onSubmit, submitting }) {
   );
 }
 
-export default function ConnectionsPage({ embedded = false }) {
-  const { providers, loading, error, connect, connectWithCredentials, disconnect, refresh } = useConnections();
+export default function ConnectionsPage({ embedded = false, admin = false }) {
+  const { providers, loading, error, connect, connectWithCredentials, disconnect, refresh, setProviderEnabled } = useConnections({ admin });
   const [actionLoading, setActionLoading] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [setupProvider, setSetupProvider] = useState(null);
   const [credentialsProvider, setCredentialsProvider] = useState(null);
+
+  const handleToggleEnabled = async (providerId, enabled) => {
+    setActionLoading(providerId);
+    setActionError(null);
+    try {
+      await setProviderEnabled(providerId, enabled);
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const handleConnect = async (providerId) => {
     const provider = providers.find((p) => p.id === providerId);
@@ -549,9 +609,11 @@ export default function ConnectionsPage({ embedded = false }) {
     <div style={embedded ? { width: '100%' } : styles.container}>
       {!embedded && (
         <div style={styles.header}>
-          <h1 style={styles.title}>Connections</h1>
+          <h1 style={styles.title}>{admin ? 'Connections' : 'Meine Verbindungen'}</h1>
           <p style={styles.subtitle}>
-            Connect external services to enable additional tools and capabilities.
+            {admin
+              ? 'Provider einrichten und für Nutzer freischalten.'
+              : 'Verbinde deine eigenen Konten für zusätzliche Tools und Funktionen.'}
           </p>
         </div>
       )}
@@ -563,10 +625,12 @@ export default function ConnectionsPage({ embedded = false }) {
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
             </svg>
-            Connections
+            {admin ? 'Connections' : 'Meine Verbindungen'}
           </h2>
           <p style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
-            Verbinde externe Dienste für zusätzliche Tools und Funktionen.
+            {admin
+              ? 'Provider einrichten und für Nutzer freischalten. Das Verbinden des eigenen Kontos erfolgt unter „Meine Verbindungen".'
+              : 'Verbinde deine eigenen Konten für zusätzliche Tools und Funktionen.'}
           </p>
         </div>
       )}
@@ -579,7 +643,7 @@ export default function ConnectionsPage({ embedded = false }) {
 
       {providers.length === 0 ? (
         <div style={styles.emptyState}>
-          <p>No connection providers available.</p>
+          <p>{admin ? 'Keine Connection-Provider konfiguriert.' : 'Noch keine Verbindungen freigeschaltet. Wende dich an einen Administrator.'}</p>
         </div>
       ) : (
         <div style={styles.grid}>
@@ -591,6 +655,8 @@ export default function ConnectionsPage({ embedded = false }) {
               onDisconnect={handleDisconnect}
               loading={actionLoading === provider.id}
               onShowSetup={setSetupProvider}
+              admin={admin}
+              onToggleEnabled={handleToggleEnabled}
             />
           ))}
         </div>

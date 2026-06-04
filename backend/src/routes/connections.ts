@@ -3,7 +3,7 @@
  */
 
 import { Hono } from 'hono';
-import { authMiddleware, getCurrentUserId } from '../auth';
+import { authMiddleware, getCurrentUserId, getCurrentUser } from '../auth';
 import {
   connectionRegistry,
   saveConnection,
@@ -13,6 +13,8 @@ import {
   loadOAuthState,
   deleteOAuthState,
   isEncryptionConfigured,
+  getProviderEnabledMap,
+  setProviderEnabled,
 } from '../connections';
 import type { OAuthState, TokenSet } from '../connections';
 
@@ -74,7 +76,12 @@ function generateOAuthState(): string {
 connectionRoutes.get('/', authMiddleware, async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
-    const providers = await connectionRegistry.getProviderInfos(userId);
+    const all = await connectionRegistry.getProviderInfos(userId);
+
+    // User-Ansicht ("Meine Verbindungen"): IMMER nur freigeschaltete Provider —
+    // auch fuer Admins. Die vollstaendige Liste + Toggle gibt es im Admin-View
+    // ueber GET /admin/providers.
+    const providers = all.filter((p) => p.enabledForUsers);
 
     return c.json({
       providers,
@@ -83,6 +90,43 @@ connectionRoutes.get('/', authMiddleware, async (c) => {
   } catch (error: any) {
     console.error('List connections error:', error);
     return c.json({ error: 'Failed to list connections' }, 500);
+  }
+});
+
+/**
+ * GET /api/connections/admin/providers - Alle Provider + Freischalt-Status (Admin)
+ * MUSS vor GET /:id registriert sein, sonst matcht /:id "admin".
+ */
+connectionRoutes.get('/admin/providers', authMiddleware, async (c) => {
+  const user = getCurrentUser(c);
+  if (user?.role !== 'admin') return c.json({ error: 'Admin access required' }, 403);
+  try {
+    const providers = await connectionRegistry.getProviderInfos();
+    return c.json({ providers });
+  } catch (error: any) {
+    console.error('Admin list providers error:', error);
+    return c.json({ error: 'Failed to list providers' }, 500);
+  }
+});
+
+/**
+ * PUT /api/connections/admin/providers/:id/enabled - Provider fuer User freischalten (Admin)
+ */
+connectionRoutes.put('/admin/providers/:id/enabled', authMiddleware, async (c) => {
+  const user = getCurrentUser(c);
+  if (user?.role !== 'admin') return c.json({ error: 'Admin access required' }, 403);
+  const providerId = c.req.param('id');
+  try {
+    if (!connectionRegistry.has(providerId)) {
+      return c.json({ error: 'Provider not found' }, 404);
+    }
+    const body = await c.req.json().catch(() => ({} as { enabled?: boolean }));
+    const enabled = !!body.enabled;
+    await setProviderEnabled(providerId, enabled);
+    return c.json({ providerId, enabledForUsers: enabled });
+  } catch (error: any) {
+    console.error('Admin set provider enabled error:', error);
+    return c.json({ error: 'Failed to update provider' }, 500);
   }
 });
 
@@ -139,6 +183,15 @@ connectionRoutes.get('/:id/connect', authMiddleware, async (c) => {
     const provider = connectionRegistry.get(providerId);
     if (!provider) {
       return c.json({ error: 'Provider not found' }, 404);
+    }
+
+    // Nicht-Admins duerfen nur fuer User freigeschaltete Provider verbinden.
+    const user = getCurrentUser(c);
+    if (user?.role !== 'admin') {
+      const enabledMap = await getProviderEnabledMap();
+      if (!enabledMap[providerId]) {
+        return c.json({ error: 'Diese Verbindung ist nicht freigeschaltet.' }, 403);
+      }
     }
 
     if (provider.authType !== 'oauth2') {
@@ -463,6 +516,16 @@ connectionRoutes.post('/:id/credentials', authMiddleware, async (c) => {
     if (!provider) {
       return c.json({ error: 'Provider not found' }, 404);
     }
+
+    // Nicht-Admins duerfen nur fuer User freigeschaltete Provider verbinden.
+    const user = getCurrentUser(c);
+    if (user?.role !== 'admin') {
+      const enabledMap = await getProviderEnabledMap();
+      if (!enabledMap[providerId]) {
+        return c.json({ error: 'Diese Verbindung ist nicht freigeschaltet.' }, 403);
+      }
+    }
+
     if (provider.authType !== 'client-credentials') {
       return c.json({ error: 'Provider does not support credentials-based connect' }, 400);
     }
