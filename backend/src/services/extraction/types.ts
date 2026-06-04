@@ -46,6 +46,12 @@ export interface ExtractionConfig {
   vision_detail?: 'low' | 'high';
   max_pages?: number;
   max_concurrent?: number;
+  /**
+   * Wenn true: nach der Strategy validiert der Orchestrator das (gemergte)
+   * Ergebnis und macht bei Fehlern einen gezielten Repair-LLM-Call (max. 1).
+   * Default false — Konsumenten wie das Extraktions-Projekte-Feature opt-in.
+   */
+  validation_repair?: boolean;
   model_override?: {
     provider_id: string;
     model_id: string;
@@ -67,6 +73,7 @@ export interface ResolvedExtractionConfig {
   vision_detail: 'low' | 'high';
   max_pages: number;
   max_concurrent: number;
+  validation_repair: boolean;
   model_override: { provider_id: string; model_id: string } | null;
 }
 

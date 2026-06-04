@@ -4,6 +4,8 @@
  * Flat, intent-based extraction with learning from corrections.
  */
 
+import type { ExtractionConfig } from '../../services/extraction';
+
 export type FieldType = 'text' | 'number' | 'date' | 'boolean';
 
 export interface ProjectField {
@@ -28,6 +30,12 @@ export interface ExtractionProject {
   fields: Record<string, ProjectField>;
   guidelines: string;
   learning: LearningMetadata;
+  /**
+   * Optionale Heavy-Pipeline-Konfiguration (Strategie + Parameter). Wenn nicht
+   * gesetzt, nutzt der Adapter Default `hybrid`. Pro-Projekt in den
+   * Projekt-Settings konfigurierbar.
+   */
+  extraction?: ExtractionConfig;
 }
 
 export interface TrainingExample {

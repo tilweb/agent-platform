@@ -264,6 +264,14 @@ const FIELD_TYPES = [
   { value: 'boolean', label: 'Ja/Nein' },
 ];
 
+// Heavy-Extraction-Pipeline-Strategien (siehe backend/src/services/extraction/).
+const EXTRACTION_STRATEGIES = [
+  { value: 'hybrid', label: 'Hybrid — Text + Vision-Fallback (empfohlen)' },
+  { value: 'single-pass', label: 'Single-Pass — ein Durchlauf, kurze Dokumente' },
+  { value: 'long-text-chunked', label: 'Long-Text — Chunking fuer lange Dokumente' },
+  { value: 'vision-per-page', label: 'Vision-per-Page — Scans, Fotos, Handschrift' },
+];
+
 // ============== Main Component ==============
 
 export default function ExtractionProjectsPage() {
@@ -365,6 +373,7 @@ export default function ExtractionProjectsPage() {
 function CreateProjectView({ onBack, onCreated }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [strategy, setStrategy] = useState('hybrid');
   const [fields, setFields] = useState([
     { id: '', label: '', type: 'text', required: true, description: '' },
   ]);
@@ -423,6 +432,7 @@ function CreateProjectView({ onBack, onCreated }) {
         name: name.trim(),
         description: description.trim(),
         fields: fieldsObj,
+        extraction: { strategy },
       });
       if (res.ok) {
         const project = await res.json();
@@ -463,7 +473,7 @@ function CreateProjectView({ onBack, onCreated }) {
                 placeholder="z.B. Rechnungen - Basisdaten"
               />
             </div>
-            <div>
+            <div style={{ marginBottom: theme.spacing.lg }}>
               <label style={styles.label}>Beschreibung</label>
               <input
                 style={styles.input}
@@ -471,6 +481,18 @@ function CreateProjectView({ onBack, onCreated }) {
                 onChange={e => setDescription(e.target.value)}
                 placeholder="z.B. Lieferant, Rechnungsnummer und Bruttobetrag aus Rechnungen"
               />
+            </div>
+            <div>
+              <label style={styles.label}>Extraktions-Strategie</label>
+              <select
+                style={{ ...styles.select, width: '100%' }}
+                value={strategy}
+                onChange={e => setStrategy(e.target.value)}
+              >
+                {EXTRACTION_STRATEGIES.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -1098,6 +1120,7 @@ function RulesTab({ project, onProjectUpdated }) {
 function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
+  const [strategy, setStrategy] = useState(project.extraction?.strategy || 'hybrid');
   const [fields, setFields] = useState(
     Object.entries(project.fields).map(([id, f]) => ({ id, label: f.label, type: f.type, required: f.required, description: f.description || '' }))
   );
@@ -1145,6 +1168,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         name: name.trim(),
         description: description.trim(),
         fields: fieldsObj,
+        extraction: { ...(project.extraction || {}), strategy },
       });
 
       if (res.ok) {
@@ -1183,9 +1207,21 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
           <label style={styles.label}>Name</label>
           <input style={styles.input} value={name} onChange={e => setName(e.target.value)} />
         </div>
-        <div>
+        <div style={{ marginBottom: theme.spacing.lg }}>
           <label style={styles.label}>Beschreibung</label>
           <input style={styles.input} value={description} onChange={e => setDescription(e.target.value)} />
+        </div>
+        <div>
+          <label style={styles.label}>Extraktions-Strategie</label>
+          <select
+            style={{ ...styles.select, width: '100%' }}
+            value={strategy}
+            onChange={e => setStrategy(e.target.value)}
+          >
+            {EXTRACTION_STRATEGIES.map(s => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 

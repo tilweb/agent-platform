@@ -4,23 +4,21 @@
  * Orchestrates: extract (using ingest/vision from existing code), train, regenerate guidelines.
  */
 
-import { llmService, type Message, type ChatOptions, createImageContent, type ContentPart } from '../../services/llm';
-import type { UsageContext } from '../../services/usageTracking';
+import { type Message, createImageContent, type ContentPart } from '../../services/llm';
 import { resolveActiveModel } from '../../services/providers';
 import { OpenAIAdapter } from '../../services/llm/adapters/openai';
 import type { ExtractionSource } from '../types';
 import { attachmentsService } from '../../services/attachments';
-import { correctNumber, correctDate } from './validators';
+import { runPipeline, type PreparedFile } from '../../services/extraction';
 import { getProject, updateProject } from './projects';
 import { getExamples, saveExample, selectFewShotExamples } from './examples';
-import { buildFunctionSchema, buildToolChoice, buildSystemPrompt } from './prompt-builder';
 import { generateGuidelines } from './guideline-generator';
-import type { ExtractionProject, TrainingExample } from './types';
+import { extractionProjectToExtractionSchema, PROJECT_FIELD_GROUP } from './pipeline-adapter';
+import type { TrainingExample } from './types';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { extname, resolve } from 'path';
 
-const MAX_RETRIES = 2;
 const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
 const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
 
@@ -117,8 +115,8 @@ async function prepareVision(
   }
 
   const visionAdapter = new OpenAIAdapter({
-    baseUrl: visionModel.provider.api_url,
-    apiKey: visionModel.provider.api_key || null,
+    baseUrl: visionModel.base_url,
+    apiKey: visionModel.api_key || null,
     defaultModel: visionModel.model.id,
   });
 
@@ -150,7 +148,12 @@ Antworte NUR mit dem extrahierten Inhalt, keine eigenen Kommentare.`,
 // ============== Extraction ==============
 
 /**
- * Extract data from document using project definition + learned knowledge
+ * Extract data from document using project definition + learned knowledge.
+ *
+ * Engine ist die generische Heavy-Pipeline (`services/extraction/runPipeline`).
+ * Das Projekt-Schema wird via `extractionProjectToExtractionSchema` adaptiert;
+ * gelernte Guidelines + Few-Shot landen in `profile.guidelines`. Strategie kommt
+ * aus `project.extraction` (Default `hybrid`).
  */
 export async function extract(
   projectId: string,
@@ -160,6 +163,8 @@ export async function extract(
   success: boolean;
   data: Record<string, unknown>;
   document_text: string;
+  fieldConfidences?: Record<string, number>;
+  strategyUsed?: string;
   error?: string;
 }> {
   try {
@@ -173,177 +178,58 @@ export async function extract(
     console.log(`[Extraction] Ingesting document for project ${projectId}...`);
     const ingested = await ingest(source);
 
+    // PreparedFile(s) fuer die Pipeline bauen. document_text wird zusaetzlich
+    // gesichert — der Learning-Loop (train/Few-Shot) braucht den Dokumenttext.
     let documentText: string;
-    if (ingested.text) {
+    const files: PreparedFile[] = [];
+    if (ingested.text && ingested.text.trim()) {
       documentText = ingested.text;
+      files.push({ filename: 'document', text: ingested.text, mimeType: 'text/plain' });
     } else if (ingested.imageBase64 && ingested.imageMimeType) {
+      // Bild: Vision-Beschreibung NUR fuer document_text (Learning-Loop). Die
+      // eigentliche Extraktion macht die Pipeline ueber den rawBuffer
+      // (vision-per-page / hybrid rendern das Bild selbst).
       documentText = await prepareVision(ingested.imageBase64, ingested.imageMimeType, userId);
+      files.push({
+        filename: 'image',
+        text: '',
+        mimeType: ingested.imageMimeType,
+        rawBuffer: Buffer.from(ingested.imageBase64, 'base64'),
+      });
     } else {
       throw new Error('Kein Dokumenttext oder Bild vorhanden');
     }
 
-    if (!documentText.trim()) {
-      throw new Error('Dokument ist leer');
-    }
-
-    // Load few-shot examples
+    // Few-Shot + Schema fuer die Heavy-Pipeline
     const fewShotExamples = await selectFewShotExamples(projectId);
+    const schema = extractionProjectToExtractionSchema(project, fewShotExamples);
 
-    // Build prompt and schema
-    const systemPrompt = buildSystemPrompt(project, fewShotExamples);
-    const functionSchema = buildFunctionSchema(project);
-    const toolChoice = buildToolChoice(project);
+    const result = await runPipeline({
+      files,
+      schema,
+      userId: userId ?? '',
+    });
 
-    // Extract with retries
-    let retries = 0;
-    let lastErrors: string | undefined;
-
-    while (retries <= MAX_RETRIES) {
-      console.log(`[Extraction] Extract attempt ${retries + 1} for project ${projectId}...`);
-
-      const systemParts = [systemPrompt];
-      if (lastErrors) {
-        systemParts.push(
-          '',
-          'ACHTUNG: Dein vorheriger Extraktionsversuch hatte folgende Fehler:',
-          lastErrors,
-          '',
-          'Bitte korrigiere diese Fehler in deiner Antwort.'
-        );
-      }
-
-      const messages: Message[] = [
-        { role: 'system', content: systemParts.join('\n') },
-        { role: 'user', content: `Extrahiere die strukturierten Daten aus folgendem Dokument:\n\n${documentText}` },
-      ];
-
-      const usageContext: UsageContext = {
-        userId,
-        source: 'extraction',
-        operation: 'extract',
-      };
-
-      const options: ChatOptions = {
-        userId,
-        toolChoice: toolChoice as ChatOptions['toolChoice'],
-      };
-
-      const response = await llmService.chat(messages, [functionSchema], usageContext, options);
-
-      let data: Record<string, unknown> | null = null;
-
-      // Parse response
-      if (response.tool_calls && response.tool_calls.length > 0) {
-        const args = response.tool_calls[0]!.function.arguments;
-        try {
-          data = JSON.parse(args);
-        } catch {
-          throw new Error(`Ungueltiges JSON in Function-Call-Antwort: ${args.substring(0, 200)}`);
-        }
-      } else if (response.content) {
-        const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            data = JSON.parse(jsonMatch[0]);
-          } catch {
-            // Fall through
-          }
-        }
-      }
-
-      if (!data) {
-        throw new Error('LLM hat keine strukturierten Daten zurueckgegeben');
-      }
-
-      // Validate + auto-correct
-      const errors = validateFlat(data, project);
-
-      if (errors.length === 0 || retries >= MAX_RETRIES) {
-        console.log(`[Extraction] Done for ${projectId} (${retries} retries, ${errors.length} remaining errors)`);
-        return { success: true, data, document_text: documentText };
-      }
-
-      lastErrors = errors.map(e => `- Feld "${e.field}": ${e.message}`).join('\n');
-      retries++;
+    // Synthetische Gruppe (`felder.<id>`) wieder zu flach entpacken.
+    const data = (result.extracted[PROJECT_FIELD_GROUP] ?? {}) as Record<string, unknown>;
+    const prefix = `${PROJECT_FIELD_GROUP}.`;
+    const fieldConfidences: Record<string, number> = {};
+    for (const [path, conf] of Object.entries(result.fieldConfidences)) {
+      fieldConfidences[path.startsWith(prefix) ? path.slice(prefix.length) : path] = conf;
     }
 
-    throw new Error('Maximale Anzahl an Extraktionsversuchen erreicht');
+    console.log(`[Extraction] Done for ${projectId} via ${result.strategyUsed} (${result.llmCalls} calls, ${result.warnings.length} warnings)`);
+    return {
+      success: true,
+      data,
+      document_text: documentText,
+      fieldConfidences,
+      strategyUsed: result.strategyUsed,
+    };
   } catch (error: any) {
     console.error(`[Extraction] Error for project ${projectId}:`, error.message);
     return { success: false, data: {}, document_text: '', error: error.message };
   }
-}
-
-// ============== Validation for flat fields ==============
-
-interface FieldError {
-  field: string;
-  message: string;
-}
-
-function validateFlat(data: Record<string, unknown>, project: ExtractionProject): FieldError[] {
-  const errors: FieldError[] = [];
-
-  for (const [fieldId, field] of Object.entries(project.fields)) {
-    const value = data[fieldId];
-
-    // Required check
-    if (field.required && (value === null || value === undefined || value === '')) {
-      errors.push({ field: fieldId, message: 'Pflichtfeld fehlt' });
-      continue;
-    }
-
-    if (value === null || value === undefined || value === '') continue;
-
-    // Type validation + auto-correction
-    switch (field.type) {
-      case 'number': {
-        if (typeof value !== 'number') {
-          const corrected = correctNumber(value);
-          if (corrected !== null) {
-            data[fieldId] = corrected;
-          } else {
-            errors.push({ field: fieldId, message: `Erwarteter Typ: Zahl, erhalten: "${value}"` });
-          }
-        }
-        break;
-      }
-      case 'date': {
-        if (typeof value === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-          const corrected = correctDate(value);
-          if (corrected) {
-            data[fieldId] = corrected;
-          } else {
-            errors.push({ field: fieldId, message: `Ungueltiges Datumsformat: "${value}"` });
-          }
-        }
-        break;
-      }
-      case 'boolean': {
-        if (typeof value !== 'boolean') {
-          if (typeof value === 'string') {
-            const lower = value.toLowerCase();
-            if (['true', 'ja', 'yes', '1'].includes(lower)) {
-              data[fieldId] = true;
-            } else if (['false', 'nein', 'no', '0'].includes(lower)) {
-              data[fieldId] = false;
-            } else {
-              errors.push({ field: fieldId, message: `Erwarteter Typ: Boolean, erhalten: "${value}"` });
-            }
-          }
-        }
-        break;
-      }
-      case 'text': {
-        if (typeof value !== 'string' && typeof value === 'number') {
-          data[fieldId] = String(value);
-        }
-        break;
-      }
-    }
-  }
-
-  return errors;
 }
 
 // ============== Training ==============

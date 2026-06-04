@@ -22,6 +22,7 @@
 import { llmService, type Message, type ChatOptions, type ContentPart, type ImageContentPart } from '../../llm';
 import type { UsageContext } from '../../usageTracking';
 import { buildFunctionSchema, buildToolChoice } from '../../../extraction/schema-builder';
+import { appendGuidelines } from './prompt';
 import { validateExtraction } from '../../../extraction/validator';
 import {
   StrategyExecutionError,
@@ -73,7 +74,7 @@ async function runVisionPass(
   const functionSchema = buildFunctionSchema(input.schema.profile);
   const toolChoice = buildToolChoice(input.schema.profile);
 
-  const systemPrompt = `Du bist Daten-Extraktions-Spezialist mit Bildverstehen. Du siehst EINE Seite eines Dokuments und extrahierst alle sichtbaren Felder. Wenn ein Feld auf dieser Seite nicht zu sehen ist → null. Auch Handschrift, Stempel, Unterschriften erfassen.`;
+  const systemPrompt = appendGuidelines(`Du bist Daten-Extraktions-Spezialist mit Bildverstehen. Du siehst EINE Seite eines Dokuments und extrahierst alle sichtbaren Felder. Wenn ein Feld auf dieser Seite nicht zu sehen ist → null. Auch Handschrift, Stempel, Unterschriften erfassen.`, input.schema.profile);
 
   const options: ChatOptions = {
     userId: input.userId,

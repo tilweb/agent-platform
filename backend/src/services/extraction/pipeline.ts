@@ -22,6 +22,8 @@ import {
   type StrategyId,
 } from './types';
 import { getStrategy } from './strategies';
+import { repairExtraction } from './extract-call';
+import type { ChatOptions } from '../llm';
 
 export interface RunPipelineInput {
   files: PreparedFile[];
@@ -77,12 +79,39 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineRunR
         emit,
       );
 
+      // Optionaler, strategie-agnostischer Validierungs-Repair (opt-in via
+      // `config.validation_repair`). Korrigiert das gemergte Ergebnis bei
+      // Validierungsfehlern in einem gezielten LLM-Call.
+      let finalExtracted = result.extracted;
+      let finalWarnings = result.warnings;
+      let extraCalls = 0;
+      if (input.schema.config.validation_repair) {
+        const documentText = input.files.map((f) => f.text).filter((t) => t && t.trim()).join('\n\n');
+        const chatOptions: ChatOptions = { userId: input.userId };
+        const override = input.modelOverride
+          ?? (input.schema.config.model_override
+            ? { providerId: input.schema.config.model_override.provider_id, modelId: input.schema.config.model_override.model_id }
+            : undefined);
+        if (override) chatOptions.modelOverride = override;
+        const repair = await repairExtraction({
+          extracted: result.extracted,
+          profile: input.schema.profile,
+          documentText,
+          userId: input.userId,
+          chatOptions,
+        });
+        finalExtracted = repair.extracted;
+        finalWarnings = repair.warnings;
+        extraCalls = repair.calls;
+        if (extraCalls > 0) await emit({ phase: 'validating', warningCount: finalWarnings.length });
+      }
+
       return {
-        extracted: result.extracted,
+        extracted: finalExtracted,
         fieldConfidences: result.fieldConfidences,
         provenance: result.provenance,
-        warnings: result.warnings,
-        llmCalls: result.llmCalls,
+        warnings: finalWarnings,
+        llmCalls: result.llmCalls + extraCalls,
         strategyUsed: result.strategyUsed,
         strategyOriginal: escalatedFrom ?? (initialStrategyId !== result.strategyUsed ? initialStrategyId : undefined),
         durationMs: Date.now() - startedAt,

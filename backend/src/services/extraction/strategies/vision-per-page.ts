@@ -23,6 +23,7 @@ import { llmService, type Message, type ChatOptions, type ContentPart, type Imag
 import type { UsageContext } from '../../usageTracking';
 import { buildFunctionSchema, buildToolChoice } from '../../../extraction/schema-builder';
 import { validateExtraction } from '../../../extraction/validator';
+import { appendGuidelines } from './prompt';
 import {
   StrategyExecutionError,
   type CostEstimate,
@@ -163,14 +164,14 @@ export const visionPerPageStrategy: ExtractionStrategy = {
     const functionSchema = buildFunctionSchema(input.schema.profile);
     const toolChoice = buildToolChoice(input.schema.profile);
 
-    const systemPrompt = `Du bist Daten-Extraktions-Spezialist mit Bildverstehen. Du bekommst EINE Seite eines mehrseitigen ${input.schema.name}-Dokuments und extrahierst alle Felder, die du auf dieser Seite sehen kannst.
+    const systemPrompt = appendGuidelines(`Du bist Daten-Extraktions-Spezialist mit Bildverstehen. Du bekommst EINE Seite eines mehrseitigen ${input.schema.name}-Dokuments und extrahierst alle Felder, die du auf dieser Seite sehen kannst.
 
 Wichtig:
 - Felder, die auf dieser Seite NICHT zu sehen sind, gib als null zurueck — NICHT erfinden.
 - Lies auch handschriftliche Eintraege, Stempel, Unterschriften.
 - Tabellen-Zeilen genau erfassen — Reihenfolge bewahren.
 - Datumsangaben im Format YYYY-MM-DD.
-- Andere Seiten decken den Rest ab; sie werden nach Merger zusammengefuehrt.`;
+- Andere Seiten decken den Rest ab; sie werden nach Merger zusammengefuehrt.`, input.schema.profile);
 
     const options: ChatOptions = {
       userId: input.userId,

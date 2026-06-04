@@ -2,6 +2,35 @@
 
 ## 2026-06-04
 
+### Extraktions-Projekte nutzen jetzt die Heavy-Pipeline (Engine-Tausch)
+Das Learning/Few-Shot-Extraktions-Feature (`backend/src/extraction/learning/`) fuhr
+einen eigenen Single-Pass-Pfad. Jetzt nutzt `extract()` die generische
+Heavy-Pipeline (`runPipeline()`) — inkl. Chunking, vision-per-page/hybrid,
+Confidence-Scoring und Merge. API, UI und Learning-Zyklus (train/guidelines) bleiben.
+
+- **Adapter** `learning/pipeline-adapter.ts`: flache Projekt-Felder → synthetische
+  Gruppe (`felder`); `extract()` entpackt nach der Pipeline wieder zu flach.
+  Gelernte Guidelines + Few-Shot → `ExtractionProfile.guidelines`.
+- **Guidelines-Hook** `services/extraction/strategies/prompt.ts:appendGuidelines()`
+  in allen vier Strategien (backward-safe — Vertragsmanagement unveraendert).
+- **`extract()` umverdrahtet** (`learning/service.ts`): `ingest` → `PreparedFile[]`
+  → `runPipeline` → entpacken. Bildquellen: `prepareVision` bleibt nur fuer die
+  `document_text`-Erfassung.
+- **Strategie pro Projekt konfigurierbar** (Default `hybrid`):
+  `ExtractionProject.extraction?`, Routes (POST/PUT), Frontend-Dropdown. Persistenz
+  im **YAML-Storage** (`data/extraction-projects/<id>/project.yaml`) — kein
+  DB-Change (anders als Scalingo, das die Spalte via Migration bekommt).
+- **Retry-mit-Validierungs-Feedback in die Pipeline portiert**: strategie-agnostischer
+  Repair im Orchestrator (`pipeline.ts` + neues `extract-call.ts`), opt-in via
+  `config.validation_repair` (Projekt-Adapter setzt true; Vertragsmanagement off).
+- **Bugfix mitgezogen**: `prepareVision` initialisierte den Vision-Adapter mit
+  `visionModel.provider.api_url`/`.api_key` (existieren nicht → `baseUrl=undefined`).
+  Korrigiert auf `visionModel.base_url`/`.api_key` (der Fix war auf main/Scalingo
+  schon drin, fehlte auf demo/messe). Noetig, da die Migration `prepareVision` fuer
+  Bild-Projekte real nutzt.
+- 12 neue Tests, bestehende 31 gruen. Doku: `docs/extraction-projects-heavy-pipeline-2026-06-04.md` (im main-Worktree).
+- **Beide Worktrees**: main (Scalingo, Postgres) und demo/messe (Railway, YAML-Storage).
+
 ### Vertragsmanagement — Standard-Schemas von single-pass auf hybrid umgestellt
 Bisher liefen die Schemas `nda`, `dienstleistung`, `arbeitsvertrag` und
 `lizenzvertrag` ohne `extraction:`-Block → Default `single-pass`. Single-Pass

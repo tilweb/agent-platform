@@ -75,6 +75,7 @@ export async function createProject(data: {
   name: string;
   description?: string;
   fields: ExtractionProject['fields'];
+  extraction?: ExtractionProject['extraction'];
 }): Promise<ExtractionProject> {
   // Generate ID from name
   const id = data.name
@@ -101,6 +102,7 @@ export async function createProject(data: {
       accuracy_estimate: 0,
       guideline_version: 0,
     },
+    ...(data.extraction ? { extraction: data.extraction } : {}),
   };
 
   await writeFile(projectFile(id), stringifyYaml(project), 'utf-8');
@@ -113,14 +115,19 @@ export async function createProject(data: {
  */
 export async function updateProject(
   id: string,
-  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'guidelines' | 'learning'>>
+  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'guidelines' | 'learning' | 'extraction'>>
 ): Promise<ExtractionProject | null> {
   const project = await getProject(id);
   if (!project) return null;
 
+  // Nur explizit gesetzte Felder uebernehmen — `undefined` (z.B. ein PUT ohne
+  // `extraction`) darf bestehende Werte NICHT ueberschreiben.
+  const defined = Object.fromEntries(
+    Object.entries(updates).filter(([, v]) => v !== undefined),
+  );
   const updated: ExtractionProject = {
     ...project,
-    ...updates,
+    ...defined,
     id, // prevent ID change
     updated: new Date().toISOString(),
   };
