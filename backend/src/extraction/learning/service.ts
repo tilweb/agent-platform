@@ -28,6 +28,9 @@ async function ingest(source: ExtractionSource): Promise<{
   text?: string;
   imageBase64?: string;
   imageMimeType?: string;
+  /** Roh-Bytes fuer Vision-Strategien (vision-per-page/hybrid), z.B. bei PDFs. */
+  rawBuffer?: Buffer;
+  rawMimeType?: string;
 }> {
   switch (source.type) {
     case 'text':
@@ -94,6 +97,13 @@ async function ingest(source: ExtractionSource): Promise<{
       }
 
       const text = await response.text();
+      // Bei PDFs zusaetzlich die Roh-Bytes mitliefern, damit Vision-Strategien
+      // (vision-per-page/hybrid) die Seiten rendern koennen. Der Markitdown-Text
+      // ist bei gescannten Dokumenten oft unzuverlaessig — Vision ist primaer.
+      if (ext === '.pdf') {
+        const rawBuffer = await readFile(filePath);
+        return { text, rawBuffer, rawMimeType: 'application/pdf' };
+      }
       return { text };
     }
 
@@ -182,7 +192,19 @@ export async function extract(
     // gesichert — der Learning-Loop (train/Few-Shot) braucht den Dokumenttext.
     let documentText: string;
     const files: PreparedFile[] = [];
-    if (ingested.text && ingested.text.trim()) {
+    if (ingested.rawBuffer && ingested.rawMimeType) {
+      // Vision-faehige Quelle (z.B. PDF): Roh-Bytes fuer vision-per-page/hybrid.
+      // Markitdown-Text (falls vorhanden) bleibt als document_text fuer den
+      // Learning-Loop; die eigentliche Extraktion macht die Pipeline ueber die
+      // gerenderten Seiten.
+      documentText = ingested.text ?? '';
+      files.push({
+        filename: 'document',
+        text: ingested.text ?? '',
+        mimeType: ingested.rawMimeType,
+        rawBuffer: ingested.rawBuffer,
+      });
+    } else if (ingested.text && ingested.text.trim()) {
       documentText = ingested.text;
       files.push({ filename: 'document', text: ingested.text, mimeType: 'text/plain' });
     } else if (ingested.imageBase64 && ingested.imageMimeType) {

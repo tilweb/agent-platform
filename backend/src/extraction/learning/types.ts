@@ -28,6 +28,12 @@ export interface ExtractionProject {
   created: string;
   updated: string;
   fields: Record<string, ProjectField>;
+  /**
+   * Hand-gepflegte Domaenen-Anweisungen. Stabil — wird vom Lern-Loop NICHT
+   * ueberschrieben (anders als `guidelines`). Wird im Vision-/Extraktions-Prompt
+   * VOR den gelernten Guidelines + Few-Shot gerendert.
+   */
+  instructions?: string;
   guidelines: string;
   learning: LearningMetadata;
   /**

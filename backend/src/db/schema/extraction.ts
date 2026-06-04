@@ -25,6 +25,7 @@ export const extractionProjects = extractionSchema.table('projects', {
   name: text('name').notNull(),
   description: text('description').notNull().default(''),
   fields: jsonb('fields').notNull(),                 // Record<string, ProjectField>
+  instructions: text('instructions'),               // Stabile Domaenen-Anweisungen (vom Lern-Loop unberuehrt)
   guidelines: text('guidelines').notNull().default(''),
   learning: jsonb('learning').notNull(),             // LearningMetadata
   extraction: jsonb('extraction'),                   // ExtractionConfig (Heavy-Pipeline-Strategie); NULL = Default hybrid

@@ -42,7 +42,13 @@ export function buildLearningGuidelines(
 ): string {
   const parts: string[] = [];
 
+  // Stabile, hand-gepflegte Domaenen-Anweisungen zuerst (vom Lern-Loop unberuehrt).
+  if (project.instructions && project.instructions.trim()) {
+    parts.push(project.instructions.trim());
+  }
+
   if (project.guidelines && project.guidelines.trim()) {
+    if (parts.length > 0) parts.push('');
     parts.push(
       'Gelernte Extraktionsregeln (aus bisherigen Korrekturen):',
       project.guidelines.trim(),

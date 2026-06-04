@@ -19,6 +19,7 @@ function rowToProject(row: typeof extractionProjects.$inferSelect): ExtractionPr
     created: row.createdAt,
     updated: row.updatedAt,
     fields: row.fields as ExtractionProject['fields'],
+    instructions: row.instructions ?? undefined,
     guidelines: row.guidelines,
     learning: row.learning as ExtractionProject['learning'],
     extraction: (row.extraction as ExtractionProject['extraction']) ?? undefined,
@@ -41,6 +42,7 @@ export async function createProject(data: {
   name: string;
   description?: string;
   fields: ExtractionProject['fields'];
+  instructions?: string;
   extraction?: ExtractionProject['extraction'];
 }): Promise<ExtractionProject> {
   const id = data.name
@@ -57,6 +59,7 @@ export async function createProject(data: {
     created: now,
     updated: now,
     fields: data.fields,
+    instructions: data.instructions,
     guidelines: '',
     learning: {
       total_examples: 0,
@@ -72,6 +75,7 @@ export async function createProject(data: {
     name: project.name,
     description: project.description,
     fields: project.fields as never,
+    instructions: project.instructions ?? null,
     guidelines: project.guidelines,
     learning: project.learning as never,
     extraction: (project.extraction ?? null) as never,
@@ -84,7 +88,7 @@ export async function createProject(data: {
 
 export async function updateProject(
   id: string,
-  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'guidelines' | 'learning' | 'extraction'>>,
+  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'instructions' | 'guidelines' | 'learning' | 'extraction'>>,
 ): Promise<ExtractionProject | null> {
   const existing = await getProject(id);
   if (!existing) return null;
@@ -105,6 +109,7 @@ export async function updateProject(
       name: merged.name,
       description: merged.description,
       fields: merged.fields as never,
+      instructions: merged.instructions ?? null,
       guidelines: merged.guidelines,
       learning: merged.learning as never,
       extraction: (merged.extraction ?? null) as never,

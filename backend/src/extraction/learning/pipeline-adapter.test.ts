@@ -81,6 +81,27 @@ test('ohne Guidelines/Examples bleibt profile.guidelines leer (undefined)', () =
   expect(schema.profile.guidelines).toBeUndefined();
 });
 
+test('stabile instructions werden VOR gelernten guidelines gerendert', () => {
+  const schema = extractionProjectToExtractionSchema(
+    makeProject({
+      instructions: 'STABILE REGEL: BSNR hat 9 Ziffern.',
+      guidelines: 'GELERNT: Datum unten rechts.',
+    }),
+  );
+  const g = schema.profile.guidelines ?? '';
+  expect(g).toContain('STABILE REGEL: BSNR hat 9 Ziffern.');
+  expect(g).toContain('GELERNT: Datum unten rechts.');
+  // instructions zuerst
+  expect(g.indexOf('STABILE REGEL')).toBeLessThan(g.indexOf('GELERNT'));
+});
+
+test('nur instructions (ohne guidelines/examples) landen in profile.guidelines', () => {
+  const schema = extractionProjectToExtractionSchema(
+    makeProject({ instructions: 'Nur Domänen-Regeln.' }),
+  );
+  expect(schema.profile.guidelines).toBe('Nur Domänen-Regeln.');
+});
+
 test('buildLearningGuidelines ist leer ohne Input', () => {
   expect(buildLearningGuidelines(makeProject(), [])).toBe('');
 });
