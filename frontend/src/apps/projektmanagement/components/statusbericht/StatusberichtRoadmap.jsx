@@ -6,6 +6,12 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { theme } from '../../../../config/theme';
+import {
+  diamondPoints,
+  shieldPath,
+  MilestoneDiamondIcon,
+  QualityGateShieldIcon,
+} from '../RoadmapShapes';
 
 const AMPEL_COLORS = {
   gruen: theme.colors.success,
@@ -318,17 +324,11 @@ function SollIstTimeline({ milestonesSnapshot, milestonesTracking, gatesSnapshot
           </span>
         )}
         <span style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
-          <span style={{
-            width: '10px', height: '10px', borderRadius: theme.borderRadius.full,
-            backgroundColor: theme.colors.primary, display: 'inline-block',
-          }} />
+          <MilestoneDiamondIcon size={14} />
           Meilenstein
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
-          <span style={{
-            width: '10px', height: '10px', backgroundColor: theme.colors.warning,
-            display: 'inline-block', transform: 'rotate(45deg)',
-          }} />
+          <QualityGateShieldIcon size={14} />
           Quality Gate
         </span>
       </div>
@@ -424,18 +424,11 @@ function SollIstTimeline({ milestonesSnapshot, milestonesTracking, gatesSnapshot
                 />
               )}
 
-              {/* Soll marker */}
+              {/* Soll marker — Schild (Gate) / Raute (Meilenstein), Status-Farbe */}
               {isGate ? (
-                <rect
-                  x={item.sollX - TL_CIRCLE_R * 0.7}
-                  y={TL_SOLL_Y - TL_CIRCLE_R * 0.7}
-                  width={TL_CIRCLE_R * 1.4}
-                  height={TL_CIRCLE_R * 1.4}
-                  fill={fillColor}
-                  transform={`rotate(45, ${item.sollX}, ${TL_SOLL_Y})`}
-                />
+                <path d={shieldPath(item.sollX, TL_SOLL_Y, TL_CIRCLE_R)} fill={fillColor} />
               ) : (
-                <circle cx={item.sollX} cy={TL_SOLL_Y} r={TL_CIRCLE_R} fill={fillColor} />
+                <polygon points={diamondPoints(item.sollX, TL_SOLL_Y, TL_CIRCLE_R)} fill={fillColor} />
               )}
               <text
                 x={item.sollX} y={TL_SOLL_Y + 4}
@@ -459,17 +452,9 @@ function SollIstTimeline({ milestonesSnapshot, milestonesTracking, gatesSnapshot
               {item.istX !== null && (
                 <>
                   {isGate ? (
-                    <rect
-                      x={item.istX - TL_CIRCLE_R * 0.6}
-                      y={TL_IST_Y - TL_CIRCLE_R * 0.6}
-                      width={TL_CIRCLE_R * 1.2}
-                      height={TL_CIRCLE_R * 1.2}
-                      fill={fillColor}
-                      transform={`rotate(45, ${item.istX}, ${TL_IST_Y})`}
-                      opacity={0.7}
-                    />
+                    <path d={shieldPath(item.istX, TL_IST_Y, TL_CIRCLE_R * 0.85)} fill={fillColor} opacity={0.7} />
                   ) : (
-                    <circle cx={item.istX} cy={TL_IST_Y} r={TL_CIRCLE_R * 0.85} fill={fillColor} opacity={0.7} />
+                    <polygon points={diamondPoints(item.istX, TL_IST_Y, TL_CIRCLE_R * 0.85)} fill={fillColor} opacity={0.7} />
                   )}
                   <text
                     x={item.istX} y={TL_IST_Y + 3}
@@ -749,7 +734,9 @@ function StatusberichtRoadmap({ data, onChange, projektauftrag, config }) {
 
       {/* Meilensteine */}
       <div>
-        <div style={styles.sectionLabel}>Meilensteine</div>
+        <div style={{ ...styles.sectionLabel, display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+          <MilestoneDiamondIcon size={14} /> Meilensteine
+        </div>
         <div style={styles.list}>
           {milestonesSnapshot.map((ms, index) => {
             const track = milestonesTracking[index] || DEFAULT_TRACKING;
@@ -799,7 +786,9 @@ function StatusberichtRoadmap({ data, onChange, projektauftrag, config }) {
 
       {/* Quality Gates */}
       <div>
-        <div style={styles.sectionLabel}>Quality Gates</div>
+        <div style={{ ...styles.sectionLabel, display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+          <QualityGateShieldIcon size={14} /> Quality Gates
+        </div>
         <div style={styles.list}>
           {gatesSnapshot.map((gate, index) => {
             const track = gatesTracking[index] || DEFAULT_TRACKING;

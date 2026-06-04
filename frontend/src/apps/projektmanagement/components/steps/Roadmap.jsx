@@ -4,6 +4,7 @@
 
 import { theme } from '../../../../config/theme';
 import MilestoneTimeline from './MilestoneTimeline';
+import { MilestoneBadge, QualityGateBadge, MilestoneDiamondIcon } from '../RoadmapShapes';
 
 const styles = {
   container: {
@@ -297,7 +298,7 @@ function Roadmap({ data, onChange }) {
       {/* === Sektion 1: Meilensteine === */}
       <div>
         <div style={styles.sectionHeader}>
-          <span style={styles.sectionIcon}><FlagIcon size={20} /></span>
+          <span style={styles.sectionIcon}><MilestoneDiamondIcon size={18} /></span>
           <span style={styles.sectionTitle}>Meilensteine</span>
         </div>
 
@@ -313,9 +314,7 @@ function Roadmap({ data, onChange }) {
           <div style={styles.milestonesList}>
             {milestones.map((milestone, index) => (
               <div key={milestone.id || index} style={styles.milestoneCard}>
-                <div style={styles.milestoneIcon}>
-                  {index + 1}
-                </div>
+                <MilestoneBadge number={index + 1} />
 
                 <div style={styles.milestoneContent}>
                   <div style={styles.milestoneRow}>
@@ -429,35 +428,7 @@ function Roadmap({ data, onChange }) {
           <div style={styles.milestonesList}>
             {qualityGates.map((gate, index) => (
               <div key={gate.id || index} style={styles.milestoneCard}>
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <div style={{
-                    width: '22px',
-                    height: '22px',
-                    backgroundColor: theme.colors.warning,
-                    transform: 'rotate(45deg)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '3px',
-                  }}>
-                    <span style={{
-                      transform: 'rotate(-45deg)',
-                      color: '#fff',
-                      fontSize: theme.typography.sizes.xs,
-                      fontWeight: theme.typography.weights.semibold,
-                      lineHeight: 1,
-                    }}>
-                      {index + 1}
-                    </span>
-                  </div>
-                </div>
+                <QualityGateBadge number={index + 1} />
 
                 <div style={{ ...styles.milestoneContent, gap: 0 }}>
                   <div style={styles.milestoneRow}>
