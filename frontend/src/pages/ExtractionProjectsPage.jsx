@@ -681,6 +681,56 @@ function ProjectDetailView({ projectId, onBack }) {
   );
 }
 
+// ============== Helpers: Spinner + Dokument-Vorschau ==============
+
+function Spinner({ size = 18 }) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: size,
+        height: size,
+        border: `2px solid ${theme.colors.border}`,
+        borderTopColor: theme.colors.primary,
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }}
+    />
+  );
+}
+
+function DocumentPreview({ url, kind, filename, height = 460 }) {
+  if (!url) return null;
+  const frame = {
+    width: '100%',
+    height,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.background,
+  };
+  if (kind === 'pdf') {
+    return <object data={`${url}#toolbar=0`} type="application/pdf" style={frame} aria-label={filename}>
+      <div style={{ padding: theme.spacing.lg, color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+        PDF-Vorschau wird vom Browser nicht angezeigt. <a href={url} target="_blank" rel="noreferrer" style={{ color: theme.colors.primary }}>In neuem Tab öffnen</a>
+      </div>
+    </object>;
+  }
+  if (kind === 'image') {
+    return <div style={{ ...frame, height: 'auto', maxHeight: height, overflow: 'auto', display: 'flex', justifyContent: 'center', padding: theme.spacing.sm }}>
+      <img src={url} alt={filename} style={{ maxWidth: '100%', objectFit: 'contain', borderRadius: theme.borderRadius.md }} />
+    </div>;
+  }
+  return <div style={{ ...frame, height: 'auto', padding: theme.spacing.lg, color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+    Keine Vorschau für diesen Dateityp ({filename}).
+  </div>;
+}
+
+function fileToPreviewKind(file) {
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  const isImg = (file.type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(file.name);
+  return isPdf ? 'pdf' : isImg ? 'image' : 'other';
+}
+
 // ============== Training Tab ==============
 
 function TrainingTab({ project, onProjectUpdated }) {
@@ -693,11 +743,37 @@ function TrainingTab({ project, onProjectUpdated }) {
   const [dragActive, setDragActive] = useState(false);
   const [examples, setExamples] = useState([]);
   const [statusMsg, setStatusMsg] = useState('');
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewKind, setPreviewKind] = useState(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [showRawText, setShowRawText] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadExamples();
   }, [project.id]);
+
+  // Elapsed-Timer waehrend der Extraktion (ehrliches Lebenszeichen, da kein Live-Stream).
+  useEffect(() => {
+    if (!extracting) return;
+    setElapsed(0);
+    const t = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [extracting]);
+
+  // Object-URL der Vorschau beim Unmount/Wechsel freigeben.
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+
+  function setPreviewFromFile(file) {
+    setPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return file ? URL.createObjectURL(file) : null; });
+    setPreviewKind(file ? fileToPreviewKind(file) : null);
+  }
+
+  function clearPreview() {
+    setPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setPreviewKind(null);
+    setShowRawText(false);
+  }
 
   async function loadExamples() {
     try {
@@ -715,6 +791,7 @@ function TrainingTab({ project, onProjectUpdated }) {
     setExtractionResult(null);
     setStatusMsg('');
     setSourceFilename(file ? file.name : 'text-eingabe');
+    if (file) setPreviewFromFile(file);
 
     try {
       let res;
@@ -752,6 +829,7 @@ function TrainingTab({ project, onProjectUpdated }) {
     setExtractionResult(null);
     setStatusMsg('');
     setSourceFilename('text-eingabe');
+    clearPreview();
 
     try {
       const res = await apiPost(`/extraction/projects/${project.id}/extract`, { text: documentText });
@@ -793,6 +871,7 @@ function TrainingTab({ project, onProjectUpdated }) {
         setExtractionResult(null);
         setEditedValues({});
         setDocumentText('');
+        clearPreview();
         loadExamples();
         onProjectUpdated();
       } else {
@@ -846,49 +925,92 @@ function TrainingTab({ project, onProjectUpdated }) {
       {/* Upload / Extract */}
       {!extractionResult && (
         <div style={styles.section}>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           <div style={styles.sectionTitle}>Dokument hochladen</div>
-          <div
-            style={{ ...styles.dropZone, ...(dragActive ? styles.dropZoneActive : {}) }}
-            onDragOver={e => { e.preventDefault(); setDragActive(true); }}
-            onDragLeave={() => setDragActive(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              style={{ display: 'none' }}
-              accept=".pdf,.doc,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.txt,.md"
-              onChange={handleFileChange}
-            />
-            <DocumentIcon size={32} color={theme.colors.textMuted} />
-            <div style={{ marginTop: theme.spacing.md, color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
-              {extracting ? 'Extrahiere...' : 'Datei hierher ziehen oder klicken zum Hochladen'}
-            </div>
-            <div style={{ marginTop: theme.spacing.xs, color: theme.colors.textMuted, fontSize: theme.typography.sizes.xs }}>
-              PDF, Word, Excel, Bilder oder Text
-            </div>
-          </div>
 
-          {/* Text input alternative */}
-          <div style={{ marginTop: theme.spacing.lg }}>
-            <label style={styles.label}>Oder Text direkt eingeben</label>
-            <textarea
-              style={{ ...styles.input, minHeight: '100px', resize: 'vertical', fontFamily: theme.typography.fontMono }}
-              value={documentText}
-              onChange={e => setDocumentText(e.target.value)}
-              placeholder="Dokumenttext hier einfuegen..."
-            />
-            {documentText.trim() && (
-              <button
-                style={{ ...styles.primaryBtn, marginTop: theme.spacing.md }}
-                onClick={handleTextExtract}
-                disabled={extracting}
-              >
-                {extracting ? 'Extrahiere...' : 'Text extrahieren'}
-              </button>
-            )}
-          </div>
+          {extracting ? (
+            <div style={{
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borderRadius.lg,
+              padding: theme.spacing.xl,
+              backgroundColor: theme.colors.surface,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                <Spinner size={20} />
+                <div>
+                  <div style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>
+                    Extrahiere „{sourceFilename}" …
+                  </div>
+                  <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: 2 }}>
+                    Vision-KI liest das Dokument · läuft seit {elapsed}s
+                  </div>
+                </div>
+              </div>
+              <ol style={{ margin: `${theme.spacing.lg} 0 0`, paddingLeft: theme.spacing.xl, color: theme.colors.textMuted, fontSize: theme.typography.sizes.xs, lineHeight: 1.9 }}>
+                <li>Dokument hochladen & Seiten als Bild rendern</li>
+                <li>Vision-Extraktion pro Seite</li>
+                <li>Felder zusammenführen & prüfen</li>
+              </ol>
+              <div style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                Bei mehrseitigen Scans kann das bis ~40 s dauern.
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{ ...styles.dropZone, ...(dragActive ? styles.dropZoneActive : {}) }}
+              onDragOver={e => { e.preventDefault(); setDragActive(true); }}
+              onDragLeave={() => setDragActive(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                style={{ display: 'none' }}
+                accept=".pdf,.doc,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.txt,.md"
+                onChange={handleFileChange}
+              />
+              <DocumentIcon size={32} color={theme.colors.textMuted} />
+              <div style={{ marginTop: theme.spacing.md, color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+                Datei hierher ziehen oder klicken zum Hochladen
+              </div>
+              <div style={{ marginTop: theme.spacing.xs, color: theme.colors.textMuted, fontSize: theme.typography.sizes.xs }}>
+                PDF, Word, Excel, Bilder oder Text
+              </div>
+            </div>
+          )}
+
+          {/* Vorschau des hochgeladenen Dokuments */}
+          {previewUrl && (
+            <div style={{ marginTop: theme.spacing.lg }}>
+              <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, fontWeight: theme.typography.weights.medium }}>
+                VORSCHAU · {sourceFilename}
+              </div>
+              <DocumentPreview url={previewUrl} kind={previewKind} filename={sourceFilename} />
+            </div>
+          )}
+
+          {/* Text-Eingabe als Alternative — nur ohne Datei und ohne laufende Extraktion */}
+          {!previewUrl && !extracting && (
+            <div style={{ marginTop: theme.spacing.lg }}>
+              <label style={styles.label}>Oder Text direkt eingeben</label>
+              <textarea
+                style={{ ...styles.input, minHeight: '100px', resize: 'vertical', fontFamily: theme.typography.fontMono }}
+                value={documentText}
+                onChange={e => setDocumentText(e.target.value)}
+                placeholder="Dokumenttext hier einfuegen..."
+              />
+              {documentText.trim() && (
+                <button
+                  style={{ ...styles.primaryBtn, marginTop: theme.spacing.md }}
+                  onClick={handleTextExtract}
+                  disabled={extracting}
+                >
+                  Text extrahieren
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -921,14 +1043,29 @@ function TrainingTab({ project, onProjectUpdated }) {
           )}
 
           <div style={styles.splitView}>
-            {/* Left: Document text */}
+            {/* Left: Dokument-Vorschau (statt verstümmeltem Roh-Text) */}
             <div>
               <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, fontWeight: theme.typography.weights.medium }}>
-                DOKUMENTTEXT
+                DOKUMENT
               </div>
-              <div style={styles.docPanel}>
-                {documentText || 'Kein Text verfuegbar'}
-              </div>
+              {previewUrl ? (
+                <DocumentPreview url={previewUrl} kind={previewKind} filename={sourceFilename} height={560} />
+              ) : (
+                <div style={styles.docPanel}>{documentText || 'Keine Vorschau verfügbar'}</div>
+              )}
+              {previewUrl && documentText && (
+                <div style={{ marginTop: theme.spacing.sm }}>
+                  <button
+                    onClick={() => setShowRawText(s => !s)}
+                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: theme.colors.primary, fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium }}
+                  >
+                    {showRawText ? 'Erkannten Roh-Text ausblenden' : 'Erkannten Roh-Text anzeigen (oft unzuverlässig)'}
+                  </button>
+                  {showRawText && (
+                    <div style={{ ...styles.docPanel, marginTop: theme.spacing.sm, maxHeight: 200 }}>{documentText}</div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Right: Editable form */}
