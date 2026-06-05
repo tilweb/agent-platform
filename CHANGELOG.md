@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-06-05
+
+### Extraktions-Projekte: Training-Upload-UX — Spinner, Fortschritt, Dokument-Vorschau
+Beim Hochladen im Training-Tab war bisher intransparent, ob/was passiert. Neu:
+- **Status-Karte mit Spinner** statt stillem „Extrahiere…": Dateiname, Elapsed-Timer
+  („laeuft seit Ns") und die Pipeline-Schritte (rendern → Vision pro Seite →
+  zusammenfuehren) inkl. Hinweis auf moegliche Dauer.
+- **Dokument-Vorschau** der hochgeladenen Datei (PDF via <object>, Bilder via <img>)
+  sofort beim Upload und in der Ergebnis-Ansicht — die linke Spalte zeigt jetzt das
+  echte Dokument statt des verstuemmelten Markitdown-Roh-Texts (der ist nur noch
+  optional einklappbar).
+- Reines Frontend (`ExtractionProjectsPage.jsx`), Object-URLs werden sauber freigegeben.
+- Folge-Schritt: Vorschau der gerenderten Seiten-Bilder, die die Vision-KI tatsaechlich
+  sieht (braucht Backend-Endpoint).
+
 ## 2026-06-04
 
 ### Fix: Extraktion robust gegen hängenden/langsamen Inferenz-Endpoint
