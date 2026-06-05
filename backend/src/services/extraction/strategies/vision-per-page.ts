@@ -21,10 +21,9 @@
 
 import { llmService, type Message, type ChatOptions, type ContentPart, type ImageContentPart } from '../../llm';
 import type { UsageContext } from '../../usageTracking';
-import { buildFunctionSchema, buildToolChoice } from '../../../extraction/schema-builder';
 import { validateExtraction } from '../../../extraction/validator';
 import { appendGuidelines } from './prompt';
-import { withTimeoutRetry } from '../extract-call';
+import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject } from '../extract-call';
 import {
   StrategyExecutionError,
   type CostEstimate,
@@ -162,8 +161,10 @@ export const visionPerPageStrategy: ExtractionStrategy = {
       );
     }
 
-    const functionSchema = buildFunctionSchema(input.schema.profile);
-    const toolChoice = buildToolChoice(input.schema.profile);
+    // Freitext-JSON statt erzwungenem Function-Calling: Vision-Modelle auf dem
+    // vLLM-Serving haengen/scheitern bei Forced-Function-Calling auf Bildern.
+    // Freitext-JSON ist zuverlaessig + schnell (siehe extract-call.ts).
+    const jsonInstruction = buildVisionJsonInstruction(input.schema.profile);
 
     const systemPrompt = appendGuidelines(`Du bist Daten-Extraktions-Spezialist mit Bildverstehen. Du bekommst EINE Seite eines mehrseitigen ${input.schema.name}-Dokuments und extrahierst alle Felder, die du auf dieser Seite sehen kannst.
 
@@ -176,7 +177,6 @@ Wichtig:
 
     const options: ChatOptions = {
       userId: input.userId,
-      toolChoice: toolChoice as ChatOptions['toolChoice'],
     };
     // Vision-Per-Page nutzt das Vision-Profile (active.vision in providers.yaml)
     // statt des aktiven Chat-Modells. Schema oder Job-Override kann das aufheben.
@@ -216,7 +216,7 @@ Wichtig:
         };
 
         const userContent: ContentPart[] = [
-          { type: 'text', text: `${page.pageLabel}\n\nExtrahiere alle sichtbaren Felder gemaess Schema.` },
+          { type: 'text', text: `${page.pageLabel}\n\n${jsonInstruction}` },
           imagePart,
         ];
 
@@ -228,8 +228,9 @@ Wichtig:
         const t0 = Date.now();
         let response;
         try {
+          // KEINE Tools/Function-Schema — Freitext-JSON (siehe oben).
           response = await withTimeoutRetry(
-            () => llmService.chat(messages, [functionSchema], usageContext, options),
+            () => llmService.chat(messages, undefined, usageContext, options),
             { timeoutMs: 45000, retries: 1, label: `vision-per-page ${page.pageId}` },
           );
         } catch (err) {
@@ -243,19 +244,9 @@ Wichtig:
         }
         const durationMs = Date.now() - t0;
 
-        let data: Record<string, unknown> = {};
-        if (response.tool_calls && response.tool_calls.length > 0) {
-          const args = response.tool_calls[0]!.function.arguments;
-          try { data = JSON.parse(args); } catch {
-            console.warn(`[vision-per-page] Seite ${page.pageId}: ungueltiges Function-Call-JSON, ignoriere.`);
-          }
-        } else if (response.content) {
-          const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            try { data = JSON.parse(jsonMatch[0]); } catch {
-              console.warn(`[vision-per-page] Seite ${page.pageId}: content-JSON nicht parsebar.`);
-            }
-          }
+        const data: Record<string, unknown> = parseJsonObject(response.content) ?? {};
+        if (Object.keys(data).length === 0) {
+          console.warn(`[vision-per-page] Seite ${page.pageId}: kein JSON in der Antwort parsebar.`);
         }
 
         logCounter += 1;

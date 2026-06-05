@@ -20,7 +20,8 @@ import { llmService, type Message, type ChatOptions } from '../llm';
 import type { UsageContext } from '../usageTracking';
 import { buildFunctionSchema, buildToolChoice } from '../../extraction/schema-builder';
 import { validateExtraction, formatValidationErrors } from '../../extraction/validator';
-import type { ExtractionProfile } from '../../extraction/types';
+import type { ExtractionProfile, FieldDefinition } from '../../extraction/types';
+import { isArrayGroup } from '../../extraction/types';
 
 type ChatResponse = Awaited<ReturnType<typeof llmService.chat>>;
 export type ChatFn = (
@@ -60,6 +61,63 @@ export async function withTimeoutRetry<T>(
     }
   }
   throw lastErr;
+}
+
+/**
+ * Baut eine Freitext-JSON-Extraktions-Anweisung aus dem Profil (Skelett mit
+ * Gruppen + Feldern + Typ-/Label-Hinweisen).
+ *
+ * Hintergrund: Vision-Modelle auf dem vLLM-Serving HAENGEN/scheitern bei
+ * erzwungenem Function-Calling auf Bildern (grammatik-constrainter JSON-Decode
+ * + Vision). Freitext-JSON ist zuverlaessig (bestaetigt: 19/21 in ~5s vs.
+ * Function-Call TIMEOUT). Die Struktur spiegelt `profile.fields`, damit Merger/
+ * Provenance unveraendert funktionieren.
+ */
+export function buildVisionJsonInstruction(profile: ExtractionProfile): string {
+  const typeHint = (f: FieldDefinition): string => {
+    switch (f.type) {
+      case 'boolean': return 'true|false|null';
+      case 'number': return 'Zahl|null';
+      case 'date': return '"YYYY-MM-DD"|null';
+      default: return '"Text"|null';
+    }
+  };
+  const lines: string[] = ['{'];
+  const groups = Object.entries(profile.fields);
+  groups.forEach(([groupName, group], gi) => {
+    const groupComma = gi < groups.length - 1 ? ',' : '';
+    if (isArrayGroup(group)) {
+      lines.push(`  "${groupName}": []${groupComma}`);
+      return;
+    }
+    lines.push(`  "${groupName}": {`);
+    const fields = Object.entries(group as Record<string, FieldDefinition>);
+    fields.forEach(([fid, f], fi) => {
+      const comma = fi < fields.length - 1 ? ',' : '';
+      const label = f.label ? `  // ${f.label}${f.hint ? ' — ' + f.hint : ''}` : '';
+      lines.push(`    "${fid}": ${typeHint(f)}${comma}${label}`);
+    });
+    lines.push(`  }${groupComma}`);
+  });
+  lines.push('}');
+  return `Extrahiere die sichtbaren Felder aus dem Bild und antworte AUSSCHLIESSLICH mit genau diesem JSON-Objekt — keine Erklaerung, kein Markdown-Codeblock. Felder, die auf dem Bild nicht erkennbar sind, als null:\n${lines.join('\n')}`;
+}
+
+/**
+ * Robustes Parsen eines JSON-Objekts aus einer Freitext-LLM-Antwort: entfernt
+ * Markdown-Fences und schneidet das aeusserste `{...}` heraus.
+ */
+export function parseJsonObject(content: string | undefined | null): Record<string, unknown> | null {
+  if (!content) return null;
+  let s = content.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+  const first = s.indexOf('{');
+  const last = s.lastIndexOf('}');
+  if (first === -1 || last === -1 || last <= first) return null;
+  try {
+    return JSON.parse(s.slice(first, last + 1)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 export function parseExtractionResponse(response: ChatResponse): Record<string, unknown> | null {

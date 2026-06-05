@@ -2,6 +2,25 @@
 
 ## 2026-06-05
 
+### Fix: vision-per-page — Freitext-JSON statt erzwungenem Function-Calling (Root Cause der leeren Felder)
+Die Vision-Extraktion lieferte leere Felder bzw. hing teils >1min — obwohl dasselbe
+Bild im normalen Chat (Qwen, Freitext) perfekt gelesen wurde. Ursache gefunden:
+**erzwungenes Function-Calling auf Bildern** bringt das adacor-vLLM-Serving zum
+Haengen (grammatik-constrainter JSON-Decode + Vision). Kontrollierter Test:
+
+- Function-Calling auf Bild: TIMEOUT / TIMEOUT / 3-4 Felder (Mistral **und** Qwen).
+- **Freitext-JSON** auf Bild: **19/21 Felder in ~5s, beide Modelle, jeder Lauf**.
+
+`vision-per-page` ruft das Modell jetzt **ohne Tool/Function-Schema** auf und bittet
+um ein JSON-Objekt (Struktur aus dem Profil, via `extract-call.ts:buildVisionJsonInstruction`),
+das robust geparst wird (`parseJsonObject`). End-to-end ueber `extract()`: konsistent
+18-19/21 Felder in ~9-13s — inkl. der vorher fehlenden BSNR/LANR/menge.
+- Text-Strategien (single-pass/long-text-chunked) bleiben bei Function-Calling
+  (auf Text zuverlaessig). Timeout/Retry + Markitdown-best-effort bleiben aktiv.
+- Offen (gleiche Ursache): die Vision-Fallback-Pass in `hybrid` nutzt noch
+  Function-Calling — Folge-Fix.
+- **Beide Worktrees**.
+
 ### Extraktions-Projekte: Training-Upload-UX — Spinner, Fortschritt, Dokument-Vorschau
 Beim Hochladen im Training-Tab war bisher intransparent, ob/was passiert. Neu:
 - **Status-Karte mit Spinner** statt stillem „Extrahiere…": Dateiname, Elapsed-Timer
