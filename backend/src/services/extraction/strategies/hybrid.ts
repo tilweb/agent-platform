@@ -21,9 +21,9 @@
 
 import { llmService, type Message, type ChatOptions, type ContentPart, type ImageContentPart } from '../../llm';
 import type { UsageContext } from '../../usageTracking';
-import { buildFunctionSchema, buildToolChoice } from '../../../extraction/schema-builder';
 import { appendGuidelines } from './prompt';
 import { validateExtraction } from '../../../extraction/validator';
+import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject } from '../extract-call';
 import {
   StrategyExecutionError,
   type CostEstimate,
@@ -71,14 +71,13 @@ async function runVisionPass(
   pages: PdfPageImage[],
   emit: ProgressEmit,
 ): Promise<{ pageData: VisionPagePass[]; llmCalls: number; logs: LLMResponseLog[] }> {
-  const functionSchema = buildFunctionSchema(input.schema.profile);
-  const toolChoice = buildToolChoice(input.schema.profile);
+  // Freitext-JSON statt Function-Calling (Vision-Modelle haengen sonst auf Bildern).
+  const jsonInstruction = buildVisionJsonInstruction(input.schema.profile);
 
   const systemPrompt = appendGuidelines(`Du bist Daten-Extraktions-Spezialist mit Bildverstehen. Du siehst EINE Seite eines Dokuments und extrahierst alle sichtbaren Felder. Wenn ein Feld auf dieser Seite nicht zu sehen ist → null. Auch Handschrift, Stempel, Unterschriften erfassen.`, input.schema.profile);
 
   const options: ChatOptions = {
     userId: input.userId,
-    toolChoice: toolChoice as ChatOptions['toolChoice'],
   };
 
   const usageContext: UsageContext = {
@@ -107,28 +106,29 @@ async function runVisionPass(
       {
         role: 'user',
         content: [
-          { type: 'text', text: `Seite ${page.pageNumber}\n\nExtrahiere alle sichtbaren Felder.` } as ContentPart,
+          { type: 'text', text: `Seite ${page.pageNumber}\n\n${jsonInstruction}` } as ContentPart,
           imagePart,
         ],
       },
     ];
 
     const t0 = Date.now();
-    const response = await llmService.chat(messages, [functionSchema], usageContext, options);
+    let response;
+    try {
+      // KEINE Tools — Freitext-JSON, mit Timeout + Retry gegen Endpoint-Haenger.
+      response = await withTimeoutRetry(
+        () => llmService.chat(messages, undefined, usageContext, options),
+        { timeoutMs: 45000, retries: 1, label: `hybrid-vision Seite ${page.pageNumber}` },
+      );
+    } catch (err) {
+      console.warn(`[hybrid-vision-fallback] Seite ${page.pageNumber}: keine Antwort nach Retries (${err instanceof Error ? err.message : String(err)}) — uebersprungen.`);
+      logCounter += 1;
+      logs.push({ call: logCounter, phase: 'vision-fallback', duration_ms: Date.now() - t0, truncated: false });
+      return { pageNumber: page.pageNumber, data: {} };
+    }
     const durationMs = Date.now() - t0;
 
-    let data: Record<string, unknown> = {};
-    if (response.tool_calls && response.tool_calls.length > 0) {
-      const args = response.tool_calls[0]!.function.arguments;
-      try { data = JSON.parse(args); } catch {
-        console.warn(`[hybrid-vision-fallback] Seite ${page.pageNumber}: ungueltiges Function-Call-JSON.`);
-      }
-    } else if (response.content) {
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try { data = JSON.parse(jsonMatch[0]); } catch { /* noop */ }
-      }
-    }
+    const data: Record<string, unknown> = parseJsonObject(response.content) ?? {};
 
     logCounter += 1;
     logs.push({ call: logCounter, phase: 'vision-fallback', duration_ms: durationMs, truncated: false });

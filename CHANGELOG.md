@@ -1,6 +1,30 @@
 # Changelog
 
+## 2026-06-06
+
+### Fix: hybrid-Vision-Fallback ebenfalls auf Freitext-JSON (Folge-Fix)
+Wie vision-per-page nutzte auch der Vision-Fallback in `hybrid` Function-Calling auf
+Bildern → dieselben Haenger/leeren Felder. Jetzt Freitext-JSON + Timeout/Retry +
+Seiten-Skip. E2E auf Bicker via hybrid: konsistent 21/21 Felder in ~6s. **Beide Worktrees**.
+
 ## 2026-06-05
+
+### Doku: Connection-Packages-Konzept um Identitätsmodelle & Kommerz erweitert
+`docs/konzept-connection-packages-2026-06-05.md` erweitert (beide Worktrees, identisch).
+Bisher deckte das Konzept nur den OBO-Fall ab (Nutzer verbindet eigenes Konto, Assistent
+handelt in seinem Namen). Neu ergänzt:
+- **Abschnitt 7 „Identitätsmodelle & Betriebsmodi"**: Trennung der Achsen *Identität*
+  (OBO-User vs. Dienst-Identität) und *Auth-Mechanismus* (OAuth vs. API-Key/Service-Account
+  — deckt Integrationen ohne OAuth2 ab); Connection = *Integration* + 1..N *Identitäten*;
+  drei Betriebsmodi (A persönlich/OBO, B1 geteiltes Wissen, B2 autonom/geplant); mehrere
+  Dienst-Identitäten pro Integration; Governance-Kippeffekt (Daten-Gateway); 3-Tore-Modell
+  (Scope/Build/Nutzung), Pflicht-Scope-Beschreibung als Schutzgrenze, Bindungs-Leitplanken
+  (keine In-Chat-Wechsel, OBO=Aufrufer, kein OBO→Dienst-Fallback), HR-Assistent-Beispiel.
+- **Abschnitt 8 „Kommerzielle Betrachtung"**: autonome Dienst-Assistenten (B2) sprengen das
+  Per-Seat-Modell → eigene Preis-/Budget-Achse (Service-Seat/Credits/Hybrid) + Kosten-Governance.
+- Anpassungen an Fundament (Identitäts-Hinweis), Connection-Baustein, Rollen-Tabelle
+  (neu: Assistenten-Erbauer), offene Designfragen (Automatisierungs-Runtime, Kostenmodell)
+  und Glossar (Integration, Identität, OBO, Dienst-Identität, Betriebsmodus).
 
 ### Fix: vision-per-page — Freitext-JSON statt erzwungenem Function-Calling (Root Cause der leeren Felder)
 Die Vision-Extraktion lieferte leere Felder bzw. hing teils >1min, obwohl dasselbe
