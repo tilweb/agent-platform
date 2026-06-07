@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm } from '../utils/apiFetch';
-import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon } from '../components/Icons';
+import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon } from '../components/Icons';
 
 // ============== Styles ==============
 
@@ -725,6 +725,26 @@ function DocumentPreview({ url, kind, filename, height = 460 }) {
   </div>;
 }
 
+function InfoBox({ children, style = {} }) {
+  return (
+    <div style={{
+      display: 'flex',
+      gap: theme.spacing.sm,
+      alignItems: 'flex-start',
+      padding: theme.spacing.md,
+      backgroundColor: theme.colors.primaryLight,
+      borderRadius: theme.borderRadius.lg,
+      fontSize: theme.typography.sizes.xs,
+      color: theme.colors.textSecondary,
+      lineHeight: 1.6,
+      ...style,
+    }}>
+      <HelpCircleIcon size={16} color={theme.colors.primary} style={{ flexShrink: 0, marginTop: 1 }} />
+      <div>{children}</div>
+    </div>
+  );
+}
+
 function fileToPreviewKind(file) {
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
   const isImg = (file.type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(file.name);
@@ -1036,11 +1056,20 @@ function TrainingTab({ project, onProjectUpdated }) {
               color: theme.colors.warning,
               borderRadius: theme.borderRadius.lg,
               fontSize: theme.typography.sizes.sm,
-              marginBottom: theme.spacing.lg,
+              marginBottom: theme.spacing.md,
             }}>
               Du hast Korrekturen vorgenommen — das System lernt daraus!
             </div>
           )}
+
+          <InfoBox style={{ marginBottom: theme.spacing.lg }}>
+            <strong>Was beim „Bestätigen & Lernen" passiert:</strong> Dieses Dokument
+            wird als Beispiel gespeichert (mit deinen Korrekturen). Bei künftigen
+            Extraktionen wird es als <strong>Few-Shot-Beispiel</strong> mitgegeben — und
+            ab <strong>3 Beispielen mit Korrekturen</strong> leitet das System daraus
+            allgemeine <strong>Regeln</strong> ab (Tab „Regeln"). Es wird nichts am
+            Modell trainiert — das Wissen fließt nur in den Prompt ein.
+          </InfoBox>
 
           <div style={styles.splitView}>
             {/* Left: Dokument-Vorschau (statt verstümmeltem Roh-Text) */}
@@ -1142,6 +1171,11 @@ function TrainingTab({ project, onProjectUpdated }) {
       {/* Training Examples List */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Trainingsbeispiele ({examples.length})</div>
+        <InfoBox style={{ marginBottom: theme.spacing.lg }}>
+          Diese Beispiele fließen als <strong>Few-Shot</strong> in künftige Extraktionen
+          ein (es werden bis zu 5 ausgewählt — Korrekturen zuerst, dann die neuesten).
+          Je mehr korrigierte Beispiele pro Rezepttyp, desto treffsicherer die Extraktion.
+        </InfoBox>
         {examples.length === 0 ? (
           <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
             Noch keine Trainingsbeispiele. Lade ein Dokument hoch, um zu beginnen.
@@ -1214,6 +1248,15 @@ function RulesTab({ project, onProjectUpdated }) {
             {regenerating ? 'Generiere...' : 'Neu generieren'}
           </button>
         </div>
+
+        <InfoBox style={{ marginBottom: theme.spacing.lg }}>
+          Diese Regeln werden <strong>automatisch</strong> aus deinen Korrekturen
+          abgeleitet (ab 3 Beispielen mit Korrekturen; „Neu generieren" stößt es manuell
+          an). Sie sind etwas anderes als die festen <strong>Domänen-Anweisungen</strong>
+          unter „Einstellungen" — die schreibst du selbst und sie werden vom Lernen nie
+          überschrieben. Im Extraktions-Prompt kommen beide zusammen: erst deine
+          Anweisungen, dann diese gelernten Regeln, dann die Few-Shot-Beispiele.
+        </InfoBox>
 
         <div style={styles.guidelinesBox}>
           {project.guidelines ? project.guidelines : (

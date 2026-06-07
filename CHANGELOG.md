@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-07
+
+### Extraktions-Projekte: Lern-Loop im UI transparent gemacht
+Erklaerende Info-Boxen (neue `InfoBox`-Komponente) im Training-Tab (was
+„Bestätigen & Lernen" bewirkt), bei der Beispiel-Liste (Few-Shot) und im Regeln-Tab
+(auto-generiert vs. feste Anweisungen, Prompt-Reihenfolge). Reines Frontend. **Beide Worktrees**.
+
 ## 2026-06-06
 
 ### Fix: hybrid-Vision-Fallback ebenfalls auf Freitext-JSON (Folge-Fix)
