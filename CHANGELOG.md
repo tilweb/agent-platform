@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-07
+
+### Extraktions-Projekte: Lern-Loop im UI transparent gemacht
+Erklaerende Info-Boxen an den passenden Stellen, damit Nutzer verstehen, was beim
+Korrigieren/Trainieren passiert (neue `InfoBox`-Komponente):
+- **Training, nach Extraktion**: was „Bestätigen & Lernen" bewirkt (Beispiel speichern
+  → Few-Shot sofort, Regeln ab 3 Korrekturen; kein Modell-Training, nur Prompt).
+- **Trainingsbeispiele-Liste**: dass diese als Few-Shot (max. 5, Korrekturen zuerst)
+  in kuenftige Extraktionen einfliessen.
+- **Regeln-Tab**: dass die Regeln automatisch aus Korrekturen entstehen und sich von den
+  festen Domaenen-Anweisungen (Einstellungen) unterscheiden — inkl. Prompt-Reihenfolge
+  (Anweisungen → gelernte Regeln → Few-Shot).
+- Reines Frontend. **Beide Worktrees**.
+
 ## 2026-06-06
 
 ### Fix: hybrid-Vision-Fallback ebenfalls auf Freitext-JSON (Folge-Fix)
