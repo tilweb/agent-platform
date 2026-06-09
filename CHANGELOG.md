@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-06-09
+
+### Ops: Runbook + Skill für neue Kunden-Instanzen (Scalingo)
+Nach dem Cofermin-Vorfall (S3-`FLOW_S3_*`-Block versehentlich aus `workplace-demo`
+übernommen → geteilter Flow.swiss-Account/Bucket, da S3-Keys nicht instanz-präfixiert sind)
+ein wiederholbares Provisioning-Verfahren gebaut, das genau diese Fehlerklasse per Design
+ausschließt:
+- `docs/runbook-neue-kundeninstanz.md`: geführtes Runbook — Fragebogen, Variablen-Katalog
+  nach vier Klassen (🔴 generieren / 🟡 instanz-spezifisch / 🔵 Connection-OAuth /
+  ⚪ geteilt) auf Basis der realen ENV-Keys, manuelle Tore (Flow.swiss-Account, DNS-CNAME,
+  OAuth-Redirects) mit Verifikation, CLI-Ablauf mit Kosten-Gate fürs Postgres-Addon,
+  Stolperfallen (CSRF/`APP_URL`, Demo-Seed-Guard, S3-Kollision) + Kurz-Checkliste.
+  Ergänzt `docs/scalingo-deploy.md` und `backend/.env.example`, ohne sie zu duplizieren.
+- `.claude/skills/neue-instanz/SKILL.md`: Claude-Code-Skill als geführte Hülle — liest das
+  Runbook, fragt den Fragebogen ab, führt die CLI-Schritte mit harten Gates aus (nie
+  Secrets/`FLOW_S3_*` kopieren, Hash-Verifikation der S3-Trennung, Bestätigung vor billable
+  Addon, keine Klartext-Secrets).
+- S3-Befund Cofermin verifiziert: `FLOW_S3_MASTER` jetzt vom Demo-Account getrennt;
+  `SESSION_SECRET`/`CONNECTION_ENCRYPTION_KEY`/`DOCUWARE_CLIENT_SECRET` waren bereits eigen.
+  Cut-over ohne Migration (Instanz war leer).
+
 ## 2026-06-07
 
 ### Extraktions-Projekte: Lern-Loop im UI transparent gemacht
