@@ -2,6 +2,15 @@
 
 ## 2026-06-11
 
+### Tuning: Schwelle für Task-Auslagerung bei Delegation hochgesetzt (inline statt Hintergrund)
+Bisher wurde eine Delegation an einen Agenten mit `maxIterations > 10`
+(`MAX_DELEGATED_ITERATIONS`) automatisch in einen Hintergrund-Task ausgelagert — das stört
+längere Workflow-Ketten im Chat (und die Task-Übergabe an Agenten ist weniger zuverlässig).
+Neu: eigene, entkoppelte Schwelle `BACKGROUND_TASK_ITERATION_THRESHOLD` (Default **30**,
+per ENV `BACKGROUND_TASK_THRESHOLD` tunebar) nur für die Auslagerungs-Entscheidung
+(`loop.ts`). Der Iterations-Cap selbst (`MAX_DELEGATED_ITERATIONS`) bleibt unverändert, d.h.
+Agenten mit Budget ≤ Schwelle laufen jetzt **synchron inline** im Chat. Beide Worktrees.
+
 ### Feature: Google Docs & Sheets Connector (read+write, ohne Google-Verifizierung)
 Neuer Connection-Provider `google-workspace` ("Google Docs & Sheets") — ein Connect für
 Sheets **und** Docs, nutzt die **zentrale Adacor-Google-App** (`GOOGLE_CLIENT_ID/SECRET`,
