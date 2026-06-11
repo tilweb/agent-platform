@@ -21,48 +21,57 @@ export class GoogleDriveProvider extends OAuthProvider {
   readonly name = 'Google Drive';
   readonly description = 'Zugriff auf Google Drive — Dateien suchen, auflisten und lesen';
   readonly icon = '📁';
-  readonly setupGuide = `## Google Drive Setup
+  readonly setupGuide = `## Google Drive Setup (zentrale Adacor-App)
 
-### 1. Google Cloud Console
-1. Gehe zu [Google Cloud Console](https://console.cloud.google.com/)
-2. Erstelle ein neues Projekt oder wähle ein bestehendes
+> **Einmal von Adacor (Betreiber) einzurichten — gilt für ALLE Workplace-Instanzen.**
+> Es wird **eine** zentrale Google-OAuth-App verwendet, **nicht** eine pro Kunde/Instanz.
+> **Endnutzer** richten in Google **nichts** ein — sie klicken nur „Verbinden".
 
-### 2. Google Drive API aktivieren
-1. Gehe zu "APIs & Services" → "Library"
-2. Suche nach "Google Drive API"
-3. Klicke auf "Enable"
+### Rollen
+- **Adacor (Betreiber/Admin):** legt die zentrale Google-App **einmal** an und pflegt die Redirect-URIs.
+- **Endnutzer (Mitarbeiter eines Kunden):** klickt „Google verbinden" → Google-Consent → fertig. Eigenes Konto, eigener Token. **Keine Google Console.**
 
-### 3. OAuth konfigurieren (Google Auth Platform)
-1. Gehe zu "APIs & Services" → "OAuth consent screen" (oder direkt "Google Auth Platform")
-2. **Branding**: App-Name und Support-Email eintragen
-3. **Zielgruppe**: "Extern" wählen (oder "Intern" für Workspace)
-4. **Datenzugriff**: Klicke "Bereiche hinzufügen" und füge hinzu:
-   - \`Google Drive API\` → \`.../auth/drive.readonly\`
-   - \`Google Drive API\` → \`.../auth/userinfo.email\`
-   - \`Google Drive API\` → \`.../auth/userinfo.profile\`
+### 1. Zentrale Google-Cloud-App (einmalig, NICHT pro Instanz)
+1. [Google Cloud Console](https://console.cloud.google.com/) → **ein** Adacor-Projekt (z. B. "Adacor Workplace"). Für alle Instanzen dasselbe.
+2. "APIs & Services" → "Library" → **Google Drive API** aktivieren. (Für Docs/Sheets später zusätzlich Google Docs/Sheets API.)
 
-### 4. OAuth Client erstellen
-1. Gehe zu **Clients** (im linken Menü)
-2. Klicke "OAuth-Client erstellen"
-3. Anwendungstyp: **Webanwendung**
-4. Name: z.B. "Agent Platform"
-5. **Autorisierte Weiterleitungs-URIs**:
-   \`http://localhost:3001/api/connections/google-drive/callback\`
-6. Klicke "Erstellen"
-7. Kopiere **Client-ID** und **Clientschlüssel**
+### 2. OAuth Consent Screen (einmal)
+1. "APIs & Services" → "OAuth consent screen" / "Google Auth Platform".
+2. **Branding:** App-Name "Adacor Workplace" + Support-Mail.
+3. **Zielgruppe:** "Extern".
+4. **Scopes** hinzufügen:
+   - \`.../auth/drive.readonly\`
+   - \`.../auth/userinfo.email\`
+   - \`.../auth/userinfo.profile\`
 
-### 5. Umgebungsvariablen
-Füge in \`.env\` hinzu:
+### 3. EIN OAuth-Client für alle Instanzen
+1. "Clients" → "OAuth-Client erstellen" → Typ **Webanwendung**, Name "Adacor Workplace".
+2. **Autorisierte Weiterleitungs-URIs** — je Instanz **eine** Zeile, alle in **diesen einen** Client, in **Production-Form**:
 \`\`\`
-GOOGLE_CLIENT_ID=deine-client-id
-GOOGLE_CLIENT_SECRET=dein-client-secret
+https://<instanz-domain>/api/connections/google-drive/callback
+https://demo.workplace-lab.adacor.dev/api/connections/google-drive/callback
+http://localhost:3001/api/connections/google-drive/callback   (nur Dev)
 \`\`\`
+   Google erlaubt viele Redirect-URIs pro Client — alle Instanzen teilen sich diesen einen Client.
+3. **Client-ID** + **Clientschlüssel** kopieren.
 
-### 6. Backend neu starten
-Nach dem Setzen der Umgebungsvariablen das Backend neu starten.
+### 4. Auf JEDER Instanz dieselben Credentials
+\`\`\`
+GOOGLE_CLIENT_ID=<zentrale-client-id>
+GOOGLE_CLIENT_SECRET=<zentrales-secret>
+\`\`\`
+Auf allen Workplace-Instanzen **identisch** setzen, dann Backend neu starten.
 
-### Hinweis
-Bei "Externen" Apps musst du dich selbst als Testnutzer hinzufügen (unter Zielgruppe → Testnutzer), solange die App nicht verifiziert ist.`;
+### 5. Neue Instanz dazu? Nur EIN Handgriff (Adacor)
+Trage **nur** deren Callback-URL (\`https://<neue-instanz>/api/connections/google-drive/callback\`) in **denselben** OAuth-Client ein. Kein neues Projekt, keine neue App, **nichts beim Kunden**.
+
+### Freigabe-Status
+- **Workshop/Pilot:** "Testing"-Modus → unter "Zielgruppe → Testnutzer" die Teilnehmer-Mails eintragen. Keine Google-Verifizierung nötig.
+- **Produktion (viele/externe Nutzer):** die zentrale App **einmal** von Google verifizieren lassen (sensible Scopes). **Einmal für Adacor**, nicht pro Kunde — wie es Notion/Langdock auch einmal gemacht haben.
+
+### Was NICHT nötig ist
+- ❌ Kein eigenes Google-Projekt pro Kunde/Instanz.
+- ❌ Endnutzer machen **nichts** in der Google Console — ein Klick „Verbinden" genügt.`;
 
   private tools: ConnectionTool[] | null = null;
 

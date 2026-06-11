@@ -23,43 +23,29 @@ export class GoogleMailProvider extends OAuthProvider {
   readonly name = 'Google Mail';
   readonly description = 'Zugriff auf Gmail — E-Mails suchen, lesen und Labels verwalten';
   readonly icon = '📧';
-  readonly setupGuide = `## Google Mail Setup
+  readonly setupGuide = `## Google Mail Setup (zentrale Adacor-App)
 
-### 1. Google Cloud Console
-1. Gehe zu [Google Cloud Console](https://console.cloud.google.com/)
-2. Verwende dasselbe Projekt wie für Google Drive (oder erstelle ein neues)
+> Nutzt **dieselbe** zentrale Adacor-Google-App wie Google Drive (siehe Google-Drive-Anleitung).
+> **Eine** App für alle Workplace-Instanzen, **kein** Setup pro Kunde. **Endnutzer** klicken nur „Verbinden".
 
-### 2. Gmail API aktivieren
-1. Gehe zu "APIs & Services" → "Library"
-2. Suche nach "Gmail API"
-3. Klicke auf "Enable"
+### 1. Gmail API aktivieren (im zentralen Projekt)
+"APIs & Services" → "Library" → **Gmail API** → "Enable" — im **selben** Adacor-Projekt wie Drive.
 
-### 3. OAuth Scopes erweitern
-Falls du bereits einen OAuth-Client für Google Drive hast:
-1. Gehe zu "APIs & Services" → "Google Auth Platform" → "Datenzugriff"
-2. Füge den Scope \`.../auth/gmail.modify\` hinzu
+### 2. Scope ergänzen (an der zentralen App)
+"OAuth consent screen" / "Google Auth Platform" → "Datenzugriff" → Scope \`.../auth/gmail.modify\` hinzufügen.
 
-### 4. OAuth Client
-Du kannst dieselbe Client-ID und dasselbe Client-Secret wie für Google Drive verwenden.
-Falls noch kein Client existiert:
-1. Gehe zu **Clients** → "OAuth-Client erstellen"
-2. Anwendungstyp: **Webanwendung**
-3. **Autorisierte Weiterleitungs-URIs**:
-   \`http://localhost:3001/api/connections/google-mail/callback\`
-4. Kopiere **Client-ID** und **Clientschlüssel**
-
-### 5. Umgebungsvariablen
-Füge in \`.env\` hinzu (falls nicht bereits vorhanden):
+### 3. Redirect-URIs je Instanz (im selben OAuth-Client)
+Pro Instanz **eine** Zeile in **denselben** Client (den von Google Drive):
 \`\`\`
-GOOGLE_CLIENT_ID=deine-client-id
-GOOGLE_CLIENT_SECRET=dein-client-secret
+https://<instanz-domain>/api/connections/google-mail/callback
+http://localhost:3001/api/connections/google-mail/callback   (nur Dev)
 \`\`\`
 
-### 6. Backend neu starten
-Nach dem Setzen der Umgebungsvariablen das Backend neu starten.
+### 4. Credentials
+Dieselben \`GOOGLE_CLIENT_ID\` / \`GOOGLE_CLIENT_SECRET\` wie Google Drive — nichts Zusätzliches.
 
 ### Hinweis
-Google Mail nutzt dieselben Credentials wie Google Drive. Du musst lediglich die Gmail API im selben Projekt aktivieren und den Callback-URI hinzufügen.`;
+Eine zentrale App, von **Adacor einmal** eingerichtet. Endnutzer richten in Google **nichts** ein — ein Klick „Verbinden" genügt, eigenes Konto, eigener Token.`;
 
   private tools: ConnectionTool[] | null = null;
 

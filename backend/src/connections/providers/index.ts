@@ -8,6 +8,7 @@ import { connectionRegistry } from '../registry';
 import { confluenceProvider } from './confluence';
 import { googleDriveProvider } from './google-drive';
 import { googleMailProvider } from './google-mail';
+import { googleWorkspaceProvider } from './google-workspace';
 import { jiraProvider } from './jira';
 import { pipedriveProvider } from './pipedrive';
 import { docuwareProvider } from './docuware';
@@ -46,6 +47,13 @@ export function registerProviders(): void {
     connectionRegistry.register(googleMailProvider);
   } catch (error: any) {
     console.warn('Failed to register Google Mail provider:', error.message);
+  }
+
+  // Register Google Docs & Sheets
+  try {
+    connectionRegistry.register(googleWorkspaceProvider);
+  } catch (error: any) {
+    console.warn('Failed to register Google Docs & Sheets provider:', error.message);
   }
 
   // Register Jira
@@ -95,6 +103,7 @@ export function getProviderIds(): string[] {
 export { confluenceProvider } from './confluence';
 export { googleDriveProvider } from './google-drive';
 export { googleMailProvider } from './google-mail';
+export { googleWorkspaceProvider } from './google-workspace';
 export { jiraProvider } from './jira';
 export { pipedriveProvider } from './pipedrive';
 export { docuwareProvider } from './docuware';
