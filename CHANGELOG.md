@@ -2,6 +2,32 @@
 
 ## 2026-06-11
 
+### Feature: Google Docs & Sheets Connector (read+write, ohne Google-Verifizierung)
+Neuer Connection-Provider `google-workspace` ("Google Docs & Sheets") — ein Connect für
+Sheets **und** Docs, nutzt die **zentrale Adacor-Google-App** (`GOOGLE_CLIENT_ID/SECRET`,
+per-User-OAuth wie Drive/Mail). Bewusst Scope **`drive.file`** (non-sensitive) → **keine
+Google-Freigabe/Verifizierung nötig**, auch in Production. Damit legt der Agent **eigene**
+Sheets/Docs an und liest+schreibt sie voll (sowie per Picker freigegebene Dateien) — nicht
+beliebige bestehende Privatdateien (das bräuchte sensible Scopes + Verifizierung).
+- Tools: `gsheets_create_spreadsheet`, `gsheets_write_range`, `gsheets_read_range`,
+  `gdocs_create_document`, `gdocs_append_text`, `gdocs_read_document`.
+- Generische OAuth-Connect/Callback-Routen greifen automatisch (Provider registriert).
+- Setup-Hinweis: im zentralen Projekt Sheets-API + Docs-API aktivieren, Scope `drive.file`
+  am Consent-Screen ergänzen, Callback `…/api/connections/google-workspace/callback` je
+  Instanz im selben Client.
+- Beide Worktrees, tsc 0 Fehler.
+
+### Doku: Google-Connector-Anleitung auf zentrales Adacor-Modell korrigiert
+Die Setup-Anleitung (`setupGuide`) der Google-Drive- und Google-Mail-Connector beschrieb
+fälschlich ein **Pro-Instanz-Setup** (jeder Admin legt ein eigenes Google-Projekt + OAuth-App
+an, nur localhost-Callback) — für den Adacor-SaaS-Betrieb irreführend, weil es so aussah, als
+müsse jeder Kunde Workplace selbst bei Google registrieren. Umgeschrieben auf das korrekte
+**Multi-Tenant-Modell**: **eine** zentrale Adacor-OAuth-App für alle Instanzen, je Instanz nur
+die Callback-URL im selben Client ergänzen, gleiche `GOOGLE_CLIENT_ID/SECRET` überall; klare
+Rollentrennung **Admin=Adacor (einmal)** vs. **Endnutzer=1-Klick-Verbinden (nie Google
+Console)**; Testing-Mode für Workshop, einmalige Google-Verifizierung nur für Production.
+Beide Worktrees, Code-Logik unverändert.
+
 ### Fix: Bounding-Boxes via OCR (Tesseract) statt Vision-Modell — pixelgenau
 Die Vision-Modell-Boxen waren im UI systematisch ~eine Zeile nach oben verschoben.
 Umgestellt auf **OCR-Lokalisierung**: Modell liefert Werte, Tesseract liefert die
