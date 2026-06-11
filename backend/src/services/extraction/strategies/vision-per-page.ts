@@ -23,7 +23,7 @@ import { llmService, type Message, type ChatOptions, type ContentPart, type Imag
 import type { UsageContext } from '../../usageTracking';
 import { validateExtraction } from '../../../extraction/validator';
 import { appendGuidelines } from './prompt';
-import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject } from '../extract-call';
+import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject, normalizeBbox } from '../extract-call';
 import {
   StrategyExecutionError,
   type CostEstimate,
@@ -32,10 +32,12 @@ import {
   type ProgressEmit,
   type StrategyInput,
   type StrategyResult,
+  type FieldBox,
+  type PageImage,
 } from '../types';
 import { mergeChunks, type ChunkExtraction } from '../merger';
 import { scoreConfidences } from '../confidence';
-import { renderPdfToImages, isPdfRendererAvailable, PdfRenderError, type PdfPageImage } from '../pdf';
+import { renderPdfToImages, isPdfRendererAvailable, PdfRenderError, pngDimensions, type PdfPageImage } from '../pdf';
 
 /**
  * Liefert alle Pages (als PNG-Buffer) ueber alle Files. Pro Page wird ein
@@ -47,6 +49,8 @@ interface PageSource {
   pngBuffer: Buffer;
   filename: string;
   pageNumber: number;
+  width: number;             // Pixel (0 = unbekannt)
+  height: number;            // Pixel
 }
 
 async function pLimit<T, R>(items: T[], concurrency: number, worker: (item: T, index: number) => Promise<R>): Promise<R[]> {
@@ -82,15 +86,23 @@ async function collectPages(input: StrategyInput, dpi: number, maxPages: number)
           pngBuffer: p.pngBuffer,
           filename: file.filename,
           pageNumber: p.pageNumber,
+          width: p.width,
+          height: p.height,
         });
       }
     } else if (isImage) {
+      // Maße nur fuer PNG bekannt (IHDR); andere Formate → 0 (dann keine Boxen,
+      // Bild wird aber trotzdem angezeigt).
+      const isPng = file.rawBuffer[0] === 0x89 && file.rawBuffer[1] === 0x50;
+      const dims = isPng ? pngDimensions(file.rawBuffer) : { width: 0, height: 0 };
       out.push({
         pageId: `${file.filename}:1`,
         pageLabel: `${file.filename}`,
         pngBuffer: file.rawBuffer,
         filename: file.filename,
         pageNumber: 1,
+        width: dims.width,
+        height: dims.height,
       });
     }
     // Text/Markdown-Files werden in dieser Strategy nicht beruecksichtigt —
@@ -164,7 +176,7 @@ export const visionPerPageStrategy: ExtractionStrategy = {
     // Freitext-JSON statt erzwungenem Function-Calling: Vision-Modelle auf dem
     // vLLM-Serving haengen/scheitern bei Forced-Function-Calling auf Bildern.
     // Freitext-JSON ist zuverlaessig + schnell (siehe extract-call.ts).
-    const jsonInstruction = buildVisionJsonInstruction(input.schema.profile);
+    const jsonInstruction = buildVisionJsonInstruction(input.schema.profile, true);
 
     const systemPrompt = appendGuidelines(`Du bist Daten-Extraktions-Spezialist mit Bildverstehen. Du bekommst EINE Seite eines mehrseitigen ${input.schema.name}-Dokuments und extrahierst alle Felder, die du auf dieser Seite sehen kannst.
 
@@ -195,7 +207,7 @@ Wichtig:
     const logs: LLMResponseLog[] = [];
     let logCounter = 0;
 
-    const extracts: ChunkExtraction[] = await pLimit(
+    const results = await pLimit(
       pages,
       input.schema.config.max_concurrent,
       async (page, idx) => {
@@ -216,7 +228,7 @@ Wichtig:
         };
 
         const userContent: ContentPart[] = [
-          { type: 'text', text: `${page.pageLabel}\n\n${jsonInstruction}` },
+          { type: 'text', text: `${page.pageLabel}\n\nDas Bild ist ${page.width}x${page.height} Pixel.\n${jsonInstruction}` },
           imagePart,
         ];
 
@@ -240,13 +252,40 @@ Wichtig:
           console.warn(`[vision-per-page] Seite ${page.pageId}: keine Antwort nach Retries (${err instanceof Error ? err.message : String(err)}) — uebersprungen.`);
           logCounter += 1;
           logs.push({ call: logCounter, phase: 'vision-extract', duration_ms: Date.now() - t0, truncated: false });
-          return { chunkIndex: idx, heading: page.pageLabel, data: {} };
+          return {
+            chunkIndex: idx,
+            heading: page.pageLabel,
+            data: {},
+            _boxes: {} as Record<string, FieldBox>,
+            _pageImage: { page: page.pageNumber, dataUri, width: page.width, height: page.height } as PageImage,
+          };
         }
         const durationMs = Date.now() - t0;
 
-        const data: Record<string, unknown> = parseJsonObject(response.content) ?? {};
-        if (Object.keys(data).length === 0) {
+        // Antwort hat pro Feld { value, bbox }. Wert (fuer Merger) und Box trennen.
+        const raw = parseJsonObject(response.content) ?? {};
+        if (Object.keys(raw).length === 0) {
           console.warn(`[vision-per-page] Seite ${page.pageId}: kein JSON in der Antwort parsebar.`);
+        }
+        const data: Record<string, unknown> = {};
+        const pageBoxes: Record<string, FieldBox> = {};
+        for (const [groupName, groupVal] of Object.entries(raw)) {
+          if (!groupVal || typeof groupVal !== 'object' || Array.isArray(groupVal)) {
+            data[groupName] = groupVal;
+            continue;
+          }
+          const outGroup: Record<string, unknown> = {};
+          for (const [fid, fv] of Object.entries(groupVal as Record<string, unknown>)) {
+            if (fv && typeof fv === 'object' && !Array.isArray(fv) && 'value' in (fv as Record<string, unknown>)) {
+              const obj = fv as { value: unknown; bbox?: unknown };
+              outGroup[fid] = obj.value;
+              const box = normalizeBbox(obj.bbox, page.width, page.height);
+              if (box) pageBoxes[`${groupName}.${fid}`] = { page: page.pageNumber, ...box };
+            } else {
+              outGroup[fid] = fv;
+            }
+          }
+          data[groupName] = outGroup;
         }
 
         logCounter += 1;
@@ -259,16 +298,39 @@ Wichtig:
 
         return {
           chunkIndex: idx,
-          // heading benutzen wir hier fuer den Page-Label, damit Provenance lesbar ist
           heading: page.pageLabel,
           data,
+          _boxes: pageBoxes,
+          _pageImage: { page: page.pageNumber, dataUri, width: page.width, height: page.height } as PageImage,
         };
       },
     );
 
+    // Werte fuer den Merger; Boxen/Seitenbilder separat sammeln.
+    const extracts: ChunkExtraction[] = results.map((r) => ({ chunkIndex: r.chunkIndex, heading: r.heading, data: r.data }));
+
     // Merge ueber Seiten: bei `union` werden Tabellen-Zeilen konkateniert.
     await emit({ phase: 'merging', fieldsMerged: 0, fieldsTotal: Object.keys(input.schema.profile.fields).length });
     const { merged, provenance } = mergeChunks(extracts, input.schema.profile, input.schema.config.merge_strategy);
+
+    // Boxen pro Feld: erste Seite (in Reihenfolge), die eine Box geliefert hat —
+    // nur fuer Felder, die im gemergten Ergebnis tatsaechlich einen Wert haben.
+    const boxesByPath: Record<string, FieldBox> = {};
+    for (const r of results) {
+      for (const [path, box] of Object.entries(r._boxes)) {
+        if (!boxesByPath[path]) boxesByPath[path] = box;
+      }
+    }
+    const boxes: Record<string, FieldBox> = {};
+    for (const [path, box] of Object.entries(boxesByPath)) {
+      const [g, f] = path.split('.');
+      const v = (merged as Record<string, Record<string, unknown>>)?.[g!]?.[f!];
+      if (v !== null && v !== undefined && v !== '') boxes[path] = box;
+    }
+    const pageImages: PageImage[] = results
+      .map((r) => r._pageImage)
+      .filter((p): p is PageImage => !!p)
+      .sort((a, b) => a.page - b.page);
 
     // Pretty-up Provenance: Source `c:N` → `p:<pageNumber>`
     for (const p of provenance) {
@@ -298,6 +360,8 @@ Wichtig:
       extracted: merged,
       fieldConfidences: confidences,
       provenance,
+      boxes,
+      pageImages,
       warnings,
       llmCalls: pages.length + confidenceCalls,
       strategyUsed: 'vision-per-page',

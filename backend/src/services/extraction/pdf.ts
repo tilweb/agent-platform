@@ -52,6 +52,14 @@ export async function isPdfRendererAvailable(): Promise<boolean> {
 export interface PdfPageImage {
   pageNumber: number;          // 1-basiert
   pngBuffer: Buffer;
+  width: number;               // Pixel
+  height: number;              // Pixel
+}
+
+/** Liest Breite/Hoehe aus dem PNG-IHDR-Header (Bytes 16-23, Big-Endian). */
+export function pngDimensions(buf: Buffer): { width: number; height: number } {
+  if (buf.length < 24) return { width: 0, height: 0 };
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
 }
 
 export interface RenderOptions {
@@ -112,7 +120,7 @@ export async function renderPdfToImages(
         }
         const pngPath = `${singleOutPrefix}.png`;
         const buf = await readFile(pngPath);
-        out.push({ pageNumber, pngBuffer: buf });
+        out.push({ pageNumber, pngBuffer: buf, ...pngDimensions(buf) });
       }
       return out;
     }
@@ -143,7 +151,7 @@ export async function renderPdfToImages(
     });
     for (let i = 0; i < pngs.length && i < maxPages; i += 1) {
       const buf = await readFile(join(tmpDir, pngs[i]!));
-      out.push({ pageNumber: i + 1, pngBuffer: buf });
+      out.push({ pageNumber: i + 1, pngBuffer: buf, ...pngDimensions(buf) });
     }
     return out;
   } catch (err) {

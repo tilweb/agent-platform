@@ -155,10 +155,34 @@ export interface FieldProvenance {
   confidence?: number;
 }
 
+/**
+ * Bounding-Box eines Feldes auf einer gerenderten Seite — normalisiert (0..1)
+ * relativ zur Seitengroesse, damit Anzeige aufloesungs-unabhaengig ist.
+ */
+export interface FieldBox {
+  page: number;   // 1-basiert
+  x: number;      // links, 0..1
+  y: number;      // oben, 0..1
+  w: number;      // Breite, 0..1
+  h: number;      // Hoehe, 0..1
+}
+
+/** Gerendertes Seitenbild (fuer Overlay-Anzeige im Frontend). */
+export interface PageImage {
+  page: number;
+  dataUri: string;   // data:image/png;base64,...
+  width: number;     // Pixel
+  height: number;    // Pixel
+}
+
 export interface StrategyResult {
   extracted: Record<string, unknown>;
   fieldConfidences: Record<string, number>;   // dotted path → [0..1]
   provenance: FieldProvenance[];
+  /** Optional: pro Feld eine Bounding-Box (nur Vision-Strategien). dotted path → Box. */
+  boxes?: Record<string, FieldBox>;
+  /** Optional: gerenderte Seitenbilder (nur Vision-Strategien). */
+  pageImages?: PageImage[];
   warnings: string[];
   /** Wie viele LLM-Calls hat die Strategy gemacht (fuer Cost-Tracking). */
   llmCalls: number;
@@ -228,6 +252,8 @@ export interface PipelineRunResult {
   extracted: Record<string, unknown>;
   fieldConfidences: Record<string, number>;
   provenance: FieldProvenance[];
+  boxes?: Record<string, FieldBox>;
+  pageImages?: PageImage[];
   warnings: string[];
   llmCalls: number;
   strategyUsed: StrategyId;

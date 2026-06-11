@@ -1,6 +1,46 @@
 # Changelog
 
+## 2026-06-11
+
+### Extraktions-Projekte: Bounding-Box-Overlay — erkannte Felder im Dokument verorten
+Vision-per-page liefert jetzt pro Feld eine **Bounding-Box**, das UI zeigt die erkannten
+Werte als Rechtecke über dem (gerenderten) Dokument. Spike vorab bestätigt: die Boxen
+sitzen brauchbar über den richtigen Bereichen — auch bei Versatz/Scans.
+
+- **Vision liefert `{value, bbox}`** statt nur Wert (`extract-call.ts:buildVisionJsonInstruction`
+  mit `withBbox`; `normalizeBbox` robust gegen 0–1 / 0–1000 / Pixel-Konventionen).
+  `vision-per-page` trennt Wert (für Merger) und Box, sammelt die gerenderten Seitenbilder.
+- **Neue Typen** `FieldBox` (normalisiert 0–1) + `PageImage`; durch `StrategyResult`/
+  `PipelineRunResult` bis in den Projekte-`extract()`-Response (Boxen auf flache Feld-IDs
+  entpackt, Seitenbilder als data-URI). `pdf.ts` liefert jetzt Seiten-Pixelmaße.
+- **Frontend** (`ExtractionProjectsPage.jsx`): neue `BoxOverlay`-Komponente zeichnet die
+  Rechtecke übers Seitenbild; Hover Feld ↔ Box synchron, ◉-Marker an markierten Feldern.
+  Ersetzt im Ergebnis die einfache Vorschau, sobald Boxen/Seitenbilder vorliegen.
+- **Sani-Projekt** auf Qwen umgestellt (`model_override`) — liefert sowohl die zuverlässigere
+  Extraktion als auch die besseren Boxen.
+- Bewusst v1: Boxen nur für `vision-per-page` (nicht hybrid-Text-Pass); Box-Genauigkeit =
+  Modellqualität (für „Fundstelle zeigen" ausreichend, nicht pixelgenau).
+- **Beide Worktrees**.
+
 ## 2026-06-09
+
+### Ops: Runbook/Skill gehärtet beim ersten echten Provisioning-Lauf
+Erste Instanz mit dem `/neue-instanz`-Skill aufgesetzt (`workplace-ruhrpm-workshop`,
+Customer-Modus, nur PM-App, keine Connections). Drei Lehren aus dem Lauf in
+`docs/runbook-neue-kundeninstanz.md` + `.claude/skills/neue-instanz/SKILL.md` eingearbeitet:
+- **Kein kostenloser Sandbox-Postgres-Plan mehr** — kleinster Plan ist `postgresql-starter-512`
+  (kostenpflichtig). Runbook §3.1 korrigiert (vorher `postgresql-sandbox`).
+- **`scalingo env-set` echot Secret-Werte im Klartext** → bei Secrets Pflicht-`>/dev/null 2>&1`
+  + separate Hash-Verifikation; Rotation falls geleakt. In §3.2/§4.1, Stolperfallen und die
+  harten Skill-Regeln aufgenommen (im Lauf selbst aufgetreten und sofort rotiert).
+- **GitHub-Deploy geht vollständig per CLI** (`integration-link-create --auto-deploy` +
+  `integration-link-manual-deploy`) — §3.6 von „Console" auf CLI umgestellt.
+- **`VITE_API_URL` muss `/api` (relativ) sein, nicht die volle URL** — sonst läuft
+  `/auth/status` ins Leere und das Frontend zeigt Login statt Erst-Registrierung. Wert wird
+  zur Build-Zeit gebacken → Änderung braucht Rebuild. §3.3/§4.2/Stolperfallen korrigiert
+  (im Lauf aufgetreten, gefixt + neu deployt).
+- Verifiziert: eigener Flow.swiss-Account (Hash ≠ demo/cofermin), eigener Bucket angelegt,
+  Migrations + Health 200 + HSTS.
 
 ### Ops: Runbook + Skill für neue Kunden-Instanzen (Scalingo)
 Nach dem Cofermin-Vorfall (S3-`FLOW_S3_*`-Block versehentlich aus `workplace-demo`
