@@ -29,13 +29,13 @@ export class DelegateToAgentTool implements Tool {
       type: 'function',
       function: {
         name: this.name,
-        description: 'Delegiere eine Aufgabe an einen spezialisierten Agenten. Nutze dies wenn ein anderer Agent die Aufgabe besser bearbeiten kann. Verfuegbare Agenten sind z.B. knowledge, writer, researcher, general, google-drive, google-mail, confluence, jira, pipedrive, docuware.',
+        description: 'Delegiere eine Aufgabe an einen spezialisierten Agenten. Nutze dies wenn ein anderer Agent die Aufgabe besser bearbeiten kann. Verfuegbare Agenten sind z.B. knowledge, writer, researcher, general, google-workspace (Google Sheets/Docs ANLEGEN & schreiben), google-drive (nur Drive-Dateien LESEN), google-mail, confluence, jira, pipedrive, docuware. Die vollstaendige aktuelle Liste mit Beschreibungen steht im Supervisor-Prompt unter "Verfuegbare Agenten".',
         parameters: {
           type: 'object',
           properties: {
             agent_id: {
               type: 'string',
-              description: 'ID des Ziel-Agenten (z.B. "knowledge", "writer", "researcher", "google-drive", "google-mail", "confluence")',
+              description: 'ID des Ziel-Agenten (z.B. "knowledge", "writer", "researcher", "google-workspace", "google-drive", "google-mail", "confluence")',
             },
             task: {
               type: 'string',

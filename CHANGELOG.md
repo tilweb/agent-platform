@@ -2,6 +2,17 @@
 
 ## 2026-06-11
 
+### Fix: Supervisor-Routing für Google Sheets/Docs (delegierte an google-drive statt google-workspace)
+Der Supervisor delegierte „erstelle ein Google Sheet" an den **read-only** `google-drive`-Agenten
+statt an `google-workspace` (Sheets/Docs anlegen+schreiben) → Sheet wurde nie erstellt. Ursache:
+zwei hartkodierte Stellen kannten den neuen `google-workspace`-Agenten nicht. Behoben:
+- `data/agents/supervisor/config.md`: explizite Google-Agenten-Wahl ergänzt — `google-workspace`
+  für Sheets/Docs **anlegen/schreiben**, `google-drive` nur **lesen**; Beispiel-Delegation für
+  „Erstelle ein Google Sheet …" hinzugefügt.
+- `delegate_to_agent`-Tool-Beschreibung: `google-workspace` in die Agentenliste aufgenommen,
+  `google-drive` als read-only markiert.
+Beide Worktrees.
+
 ### Tuning: Schwelle für Task-Auslagerung bei Delegation hochgesetzt (inline statt Hintergrund)
 Bisher wurde eine Delegation an einen Agenten mit `maxIterations > 10`
 (`MAX_DELEGATED_ITERATIONS`) automatisch in einen Hintergrund-Task ausgelagert — das stört
