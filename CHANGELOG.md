@@ -2,6 +2,24 @@
 
 ## 2026-06-11
 
+### Fix: Bounding-Boxes via OCR (Tesseract) statt Vision-Modell — pixelgenau
+Die Vision-Modell-Boxen (siehe Eintrag unten) waren im echten UI **systematisch um
+~eine Zeile nach oben verschoben** (Modell-Grounding-Ungenauigkeit, nicht über die
+Koordinaten-Konvention fixbar). Umgestellt auf **OCR-Lokalisierung**: das Modell liefert
+weiter die Werte (Freitext-JSON), die **Positionen** kommen aus Tesseract-Wort-Boxen,
+auf die die extrahierten Werte gematcht werden. Ergebnis: **pixelgenaue** Markierungen.
+
+- **Neu `services/extraction/ocr.ts`**: `ocrWordBoxes` (Tesseract via stdin, robust gegen
+  das Subprozess-Hänger-Problem mit `OMP_THREAD_LIMIT`), `locateValue` (Wert→Box-Matching,
+  inkl. DE-Datumsformat-Varianten), `computeOcrBoxes` (pro Feld die erste Seite mit Treffer).
+- `vision-per-page` ruft das Modell wieder nur fuer Werte (bbox-Anfrage zurueckgebaut),
+  Boxen kommen aus `computeOcrBoxes`. Felder ohne klaren OCR-Treffer (Freitext, ICD,
+  Checkboxen) bekommen bewusst **keine** Box statt einer falschen (E2E: 13/19 Felder verortet).
+- **System-Dependency `tesseract-ocr` (+ deu/eng)**: Scalingo `Aptfile`, Railway `Dockerfile`.
+  Fehlt tesseract, laeuft die Extraktion normal weiter (nur ohne Boxen).
+- Transport/UI (FieldBox, Pipeline, BoxOverlay) unveraendert — nur die Box-Quelle wechselt.
+- **Beide Worktrees**.
+
 ### Extraktions-Projekte: Bounding-Box-Overlay — erkannte Felder im Dokument verorten
 Vision-per-page liefert jetzt pro Feld eine **Bounding-Box**, das UI zeigt die erkannten
 Werte als Rechtecke über dem (gerenderten) Dokument. Spike vorab bestätigt: die Boxen

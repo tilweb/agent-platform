@@ -23,7 +23,8 @@ import { llmService, type Message, type ChatOptions, type ContentPart, type Imag
 import type { UsageContext } from '../../usageTracking';
 import { validateExtraction } from '../../../extraction/validator';
 import { appendGuidelines } from './prompt';
-import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject, normalizeBbox } from '../extract-call';
+import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject } from '../extract-call';
+import { computeOcrBoxes } from '../ocr';
 import {
   StrategyExecutionError,
   type CostEstimate,
@@ -176,7 +177,8 @@ export const visionPerPageStrategy: ExtractionStrategy = {
     // Freitext-JSON statt erzwungenem Function-Calling: Vision-Modelle auf dem
     // vLLM-Serving haengen/scheitern bei Forced-Function-Calling auf Bildern.
     // Freitext-JSON ist zuverlaessig + schnell (siehe extract-call.ts).
-    const jsonInstruction = buildVisionJsonInstruction(input.schema.profile, true);
+    // Das Modell liefert nur WERTE — die Bounding-Boxes kommen via OCR (ocr.ts).
+    const jsonInstruction = buildVisionJsonInstruction(input.schema.profile);
 
     const systemPrompt = appendGuidelines(`Du bist Daten-Extraktions-Spezialist mit Bildverstehen. Du bekommst EINE Seite eines mehrseitigen ${input.schema.name}-Dokuments und extrahierst alle Felder, die du auf dieser Seite sehen kannst.
 
@@ -228,7 +230,7 @@ Wichtig:
         };
 
         const userContent: ContentPart[] = [
-          { type: 'text', text: `${page.pageLabel}\n\nDas Bild ist ${page.width}x${page.height} Pixel.\n${jsonInstruction}` },
+          { type: 'text', text: `${page.pageLabel}\n\n${jsonInstruction}` },
           imagePart,
         ];
 
@@ -256,36 +258,14 @@ Wichtig:
             chunkIndex: idx,
             heading: page.pageLabel,
             data: {},
-            _boxes: {} as Record<string, FieldBox>,
             _pageImage: { page: page.pageNumber, dataUri, width: page.width, height: page.height } as PageImage,
           };
         }
         const durationMs = Date.now() - t0;
 
-        // Antwort hat pro Feld { value, bbox }. Wert (fuer Merger) und Box trennen.
-        const raw = parseJsonObject(response.content) ?? {};
-        if (Object.keys(raw).length === 0) {
+        const data: Record<string, unknown> = parseJsonObject(response.content) ?? {};
+        if (Object.keys(data).length === 0) {
           console.warn(`[vision-per-page] Seite ${page.pageId}: kein JSON in der Antwort parsebar.`);
-        }
-        const data: Record<string, unknown> = {};
-        const pageBoxes: Record<string, FieldBox> = {};
-        for (const [groupName, groupVal] of Object.entries(raw)) {
-          if (!groupVal || typeof groupVal !== 'object' || Array.isArray(groupVal)) {
-            data[groupName] = groupVal;
-            continue;
-          }
-          const outGroup: Record<string, unknown> = {};
-          for (const [fid, fv] of Object.entries(groupVal as Record<string, unknown>)) {
-            if (fv && typeof fv === 'object' && !Array.isArray(fv) && 'value' in (fv as Record<string, unknown>)) {
-              const obj = fv as { value: unknown; bbox?: unknown };
-              outGroup[fid] = obj.value;
-              const box = normalizeBbox(obj.bbox, page.width, page.height);
-              if (box) pageBoxes[`${groupName}.${fid}`] = { page: page.pageNumber, ...box };
-            } else {
-              outGroup[fid] = fv;
-            }
-          }
-          data[groupName] = outGroup;
         }
 
         logCounter += 1;
@@ -300,7 +280,6 @@ Wichtig:
           chunkIndex: idx,
           heading: page.pageLabel,
           data,
-          _boxes: pageBoxes,
           _pageImage: { page: page.pageNumber, dataUri, width: page.width, height: page.height } as PageImage,
         };
       },
@@ -313,20 +292,13 @@ Wichtig:
     await emit({ phase: 'merging', fieldsMerged: 0, fieldsTotal: Object.keys(input.schema.profile.fields).length });
     const { merged, provenance } = mergeChunks(extracts, input.schema.profile, input.schema.config.merge_strategy);
 
-    // Boxen pro Feld: erste Seite (in Reihenfolge), die eine Box geliefert hat —
-    // nur fuer Felder, die im gemergten Ergebnis tatsaechlich einen Wert haben.
-    const boxesByPath: Record<string, FieldBox> = {};
-    for (const r of results) {
-      for (const [path, box] of Object.entries(r._boxes)) {
-        if (!boxesByPath[path]) boxesByPath[path] = box;
-      }
-    }
-    const boxes: Record<string, FieldBox> = {};
-    for (const [path, box] of Object.entries(boxesByPath)) {
-      const [g, f] = path.split('.');
-      const v = (merged as Record<string, Record<string, unknown>>)?.[g!]?.[f!];
-      if (v !== null && v !== undefined && v !== '') boxes[path] = box;
-    }
+    // Praezise Boxen via OCR (Tesseract): jeden gemergten Wert auf die Wort-Boxen
+    // der gerenderten Seiten matchen. Vision-Modell-Boxen waren zu ungenau.
+    const boxes: Record<string, FieldBox> = computeOcrBoxes(
+      pages.map((p) => ({ pngBuffer: p.pngBuffer, width: p.width, height: p.height, pageNumber: p.pageNumber })),
+      merged,
+      input.schema.profile,
+    );
     const pageImages: PageImage[] = results
       .map((r) => r._pageImage)
       .filter((p): p is PageImage => !!p)
