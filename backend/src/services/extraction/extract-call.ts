@@ -73,7 +73,7 @@ export async function withTimeoutRetry<T>(
  * Function-Call TIMEOUT). Die Struktur spiegelt `profile.fields`, damit Merger/
  * Provenance unveraendert funktionieren.
  */
-export function buildVisionJsonInstruction(profile: ExtractionProfile, withBbox = false): string {
+export function buildVisionJsonInstruction(profile: ExtractionProfile): string {
   const typeHint = (f: FieldDefinition): string => {
     switch (f.type) {
       case 'boolean': return 'true|false|null';
@@ -82,8 +82,6 @@ export function buildVisionJsonInstruction(profile: ExtractionProfile, withBbox 
       default: return '"Text"|null';
     }
   };
-  const fieldValue = (f: FieldDefinition): string =>
-    withBbox ? `{ "value": ${typeHint(f)}, "bbox": [x_min,y_min,x_max,y_max] }` : typeHint(f);
   const lines: string[] = ['{'];
   const groups = Object.entries(profile.fields);
   groups.forEach(([groupName, group], gi) => {
@@ -97,34 +95,12 @@ export function buildVisionJsonInstruction(profile: ExtractionProfile, withBbox 
     fields.forEach(([fid, f], fi) => {
       const comma = fi < fields.length - 1 ? ',' : '';
       const label = f.label ? `  // ${f.label}${f.hint ? ' — ' + f.hint : ''}` : '';
-      lines.push(`    "${fid}": ${fieldValue(f)}${comma}${label}`);
+      lines.push(`    "${fid}": ${typeHint(f)}${comma}${label}`);
     });
     lines.push(`  }${groupComma}`);
   });
   lines.push('}');
-  const bboxNote = withBbox
-    ? ' Pro Feld zusaetzlich eine "bbox" [x_min,y_min,x_max,y_max] in Pixeln des Bildes, die zeigt, WO der Wert im Bild steht.'
-    : '';
-  return `Extrahiere die sichtbaren Felder aus dem Bild und antworte AUSSCHLIESSLICH mit genau diesem JSON-Objekt — keine Erklaerung, kein Markdown-Codeblock. Felder, die auf dem Bild nicht erkennbar sind, als null.${bboxNote}\n${lines.join('\n')}`;
-}
-
-/**
- * Normalisiert eine vom Modell gelieferte bbox `[x_min,y_min,x_max,y_max]` zu
- * Bruchteilen (0..1) relativ zur Bildgroesse. Robust gegen die ueblichen
- * Konventionen: 0..1 (direkt), 0..1000 (Qwen-VL), oder Pixel.
- */
-export function normalizeBbox(coords: unknown, w: number, h: number): { x: number; y: number; w: number; h: number } | null {
-  if (!Array.isArray(coords) || coords.length !== 4 || coords.some((n) => typeof n !== 'number' || !Number.isFinite(n))) return null;
-  if (!(w > 0) || !(h > 0)) return null;
-  let [x0, y0, x1, y1] = coords as [number, number, number, number];
-  const maxv = Math.max(x0, y0, x1, y1);
-  if (maxv <= 1.0) { /* normalisiert 0..1 */ }
-  else if (maxv <= 1000 && w > 1000) { x0 /= 1000; y0 /= 1000; x1 /= 1000; y1 /= 1000; }
-  else { x0 /= w; x1 /= w; y0 /= h; y1 /= h; }
-  const X0 = Math.max(0, Math.min(x0, x1)), X1 = Math.min(1, Math.max(x0, x1));
-  const Y0 = Math.max(0, Math.min(y0, y1)), Y1 = Math.min(1, Math.max(y0, y1));
-  if (X1 <= X0 || Y1 <= Y0) return null;
-  return { x: X0, y: Y0, w: X1 - X0, h: Y1 - Y0 };
+  return `Extrahiere die sichtbaren Felder aus dem Bild und antworte AUSSCHLIESSLICH mit genau diesem JSON-Objekt — keine Erklaerung, kein Markdown-Codeblock. Felder, die auf dem Bild nicht erkennbar sind, als null:\n${lines.join('\n')}`;
 }
 
 /**

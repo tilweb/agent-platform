@@ -13,8 +13,9 @@ WORKDIR /app/backend
 
 # Install system dependencies
 # poppler-utils liefert pdftocairo fuer die Vision-Extraction-Strategien
-# (vision-per-page / hybrid). Ohne das degradiert hybrid still auf Text-only.
-RUN apk add --no-cache ffmpeg poppler-utils
+# (vision-per-page / hybrid). tesseract-ocr lokalisiert die erkannten Werte fuer
+# die Bounding-Box-Anzeige (Sprachdaten deu+eng).
+RUN apk add --no-cache ffmpeg poppler-utils tesseract-ocr tesseract-ocr-data-deu tesseract-ocr-data-eng
 
 # Install backend dependencies
 COPY backend/package.json backend/bun.lock ./

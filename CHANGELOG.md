@@ -2,6 +2,17 @@
 
 ## 2026-06-11
 
+### Fix: Bounding-Boxes via OCR (Tesseract) statt Vision-Modell — pixelgenau
+Die Vision-Modell-Boxen waren im UI systematisch ~eine Zeile nach oben verschoben.
+Umgestellt auf **OCR-Lokalisierung**: Modell liefert Werte, Tesseract liefert die
+pixelgenauen Wort-Boxen, auf die die Werte gematcht werden.
+- Neu `services/extraction/ocr.ts` (`ocrWordBoxes` via stdin/`OMP_THREAD_LIMIT`,
+  `locateValue` inkl. DE-Datumsformate, `computeOcrBoxes`). `vision-per-page` ruft das
+  Modell wieder nur fuer Werte; Felder ohne klaren OCR-Treffer bekommen keine Box.
+- System-Dependency `tesseract-ocr` (+deu/eng) im Dockerfile (`apk add`). Fehlt es, laeuft
+  die Extraktion ohne Boxen weiter.
+- **Beide Worktrees**.
+
 ### Extraktions-Projekte: Bounding-Box-Overlay — erkannte Felder im Dokument verorten
 Vision-per-page liefert pro Feld eine **Bounding-Box**; das UI zeigt die erkannten Werte
 als Rechtecke über dem gerenderten Dokument (Hover Feld ↔ Box).
