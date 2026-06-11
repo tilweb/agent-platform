@@ -26,7 +26,7 @@ export function createSheetsReadRangeTool(providerId: string): ConnectionTool {
               spreadsheet_id: { type: 'string', description: 'Die ID des Google Sheets' },
               range: {
                 type: 'string',
-                description: 'Bereich in A1-Notation, z.B. "Sheet1!A1:D20"',
+                description: 'Bereich in A1-Notation. OHNE Tabellennamen (z.B. "A1:D20") wird automatisch die erste Tabelle verwendet — EMPFOHLEN. Mit Tabellennamen: GENAU der "firstSheetTitle" aus gsheets_create_spreadsheet — NICHT "Sheet1" raten (DE-Konten: "Tabelle1").',
               },
             },
             required: ['spreadsheet_id', 'range'],

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-12
+
+### Fix: Google-Sheets-Schreibfehler "Unable to parse range: Sheet1!A2" (Locale-Tab-Name)
+Bei DE-Google-Konten heißt das erste Tabellenblatt **"Tabelle1"**, nicht "Sheet1" — der Agent
+riet "Sheet1" und das Schreiben scheiterte. Behoben im `google-workspace`-Connector:
+- `gsheets_create_spreadsheet` gibt jetzt den echten **`firstSheetTitle`** + einen Hinweis
+  zurück (intern auch der Default auf "Tabelle1" statt "Sheet1").
+- Tool-Beschreibungen von `gsheets_write_range`/`gsheets_read_range`: Bereich **ohne
+  Tabellennamen** (z.B. "A1:A6") trifft automatisch die erste Tabelle (empfohlen); mit
+  Tabellenname exakt den `firstSheetTitle` nutzen, **nicht "Sheet1" raten**.
+Hinweis zum Workflow: Der „Deep Researcher" (`researcher`, maxIterations 50) läuft mit dem
+gesetzten `BACKGROUND_TASK_THRESHOLD=50` jetzt **inline** (50 > 50 = false) — die Auslagerung
+im letzten Transkript war ein Timing-Effekt vor Wirksamwerden der Schwelle. Beide Worktrees.
+
 ## 2026-06-11
 
 ### Fix: Supervisor-Routing für Google Sheets/Docs (delegierte an google-drive statt google-workspace)

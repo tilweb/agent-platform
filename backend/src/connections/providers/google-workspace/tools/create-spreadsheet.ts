@@ -19,7 +19,7 @@ export function createCreateSpreadsheetTool(providerId: string): ConnectionTool 
         function: {
           name: 'gsheets_create_spreadsheet',
           description:
-            'Erstellt ein neues Google Sheet (Tabelle) im Google-Konto des Nutzers und gibt dessen ID und Link zurück. Optional kann es direkt mit Werten befüllt werden. Die Tabelle gehört danach dem Nutzer und kann mit gsheets_write_range / gsheets_read_range weiter bearbeitet werden.',
+            'Erstellt ein neues Google Sheet (Tabelle) im Google-Konto des Nutzers und gibt ID, Link und den Tab-Titel der ersten Tabelle (firstSheetTitle, locale-abhängig — bei DE-Konten "Tabelle1", nicht "Sheet1") zurück. Optional direkt mit Werten befüllbar (values, ab A1). Zum späteren Schreiben gsheets_write_range nutzen: Bereich OHNE Tabellennamen (z.B. "A1:A6") trifft automatisch die erste Tabelle.',
           parameters: {
             type: 'object',
             properties: {
@@ -83,10 +83,13 @@ export function createCreateSpreadsheetTool(providerId: string): ConnectionTool 
           sheets?: Array<{ properties?: { title?: string } }>;
         };
 
+        // Tab-Titel des ersten Blatts ist locale-abhaengig (DE: "Tabelle1", EN: "Sheet1").
+        // Zurueckgeben, damit der Agent beim Schreiben NICHT "Sheet1" raet.
+        const firstSheetTitle = sheet.sheets?.[0]?.properties?.title || 'Tabelle1';
+
         let valuesWritten = 0;
         if (Array.isArray(values) && values.length > 0) {
-          const firstSheet = sheet.sheets?.[0]?.properties?.title || 'Sheet1';
-          const range = `${firstSheet}!A1`;
+          const range = `${firstSheetTitle}!A1`;
           const writeRes = await fetch(
             `${SHEETS_API_BASE}/${sheet.spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
             { method: 'PUT', headers, body: JSON.stringify({ values }) }
@@ -101,7 +104,9 @@ export function createCreateSpreadsheetTool(providerId: string): ConnectionTool 
           spreadsheetId: sheet.spreadsheetId,
           url: sheet.spreadsheetUrl,
           title,
+          firstSheetTitle,
           valuesWritten,
+          hint: `Zum Schreiben gsheets_write_range nutzen: Bereich OHNE Tabellennamen (z.B. "A1:A6") trifft automatisch die erste Tabelle, ODER exakt "${firstSheetTitle}!A1" — NICHT "Sheet1" raten.`,
         });
       } catch (error: any) {
         return JSON.stringify({ error: error.message });
