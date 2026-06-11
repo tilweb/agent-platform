@@ -65,6 +65,13 @@ const MAX_DELEGATED_ITERATIONS = 10;
 const MAX_SUPERVISOR_ITERATIONS = 15;
 const MAX_DELEGATION_DEPTH = 2;
 
+// Ab welchem maxIterations-Budget eines Ziel-Agenten eine Delegation in einen
+// Hintergrund-Task ausgelagert wird (statt synchron inline im Chat zu laufen).
+// Bewusst hoeher als MAX_DELEGATED_ITERATIONS und per ENV tunebar, damit laengere
+// Workflow-Ketten im Chat bleiben. Auf 0/leer -> Default 30.
+const BACKGROUND_TASK_ITERATION_THRESHOLD =
+  Number(process.env.BACKGROUND_TASK_THRESHOLD) || 30;
+
 /**
  * Loop state for tracking temporary tools and loaded skills within a single agent loop execution.
  * This state persists across LLM iterations within one runAgentLoop call.
@@ -2079,10 +2086,12 @@ export async function* runAgentLoop(
     }
     delegationFingerprints.set(fp, prevCount + 1);
 
-    // Check if the target agent has a high iteration budget → run as background task
+    // Check if the target agent has a high iteration budget → run as background task.
+    // Schwelle bewusst hoch (BACKGROUND_TASK_ITERATION_THRESHOLD), damit laengere
+    // Workflow-Ketten synchron im Chat laufen statt ausgelagert zu werden.
     const targetAgent = await loadAgent(targetAgentId);
-    if (targetAgent?.maxIterations && targetAgent.maxIterations > MAX_DELEGATED_ITERATIONS) {
-      console.log(`[AgentLoop] Agent ${targetAgentId} has maxIterations=${targetAgent.maxIterations} — creating background task instead of synchronous delegation`);
+    if (targetAgent?.maxIterations && targetAgent.maxIterations > BACKGROUND_TASK_ITERATION_THRESHOLD) {
+      console.log(`[AgentLoop] Agent ${targetAgentId} has maxIterations=${targetAgent.maxIterations} > ${BACKGROUND_TASK_ITERATION_THRESHOLD} — creating background task instead of synchronous delegation`);
       try {
         const { createTask, enqueueTask } = await import('../services/taskService');
         const bgTask = await createTask({
