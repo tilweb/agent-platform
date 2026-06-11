@@ -745,6 +745,53 @@ function InfoBox({ children, style = {} }) {
   );
 }
 
+function BoxOverlay({ pageImages, boxes, data, fields, activeField, onHoverField }) {
+  return (
+    <div>
+      {pageImages.map(img => (
+        <div key={img.page} style={{
+          position: 'relative', display: 'block', width: '100%',
+          marginBottom: theme.spacing.md,
+          border: `1px solid ${theme.colors.border}`,
+          borderRadius: theme.borderRadius.lg, overflow: 'hidden',
+        }}>
+          <img src={img.dataUri} alt={`Seite ${img.page}`} style={{ display: 'block', width: '100%' }} />
+          {Object.entries(boxes).filter(([, b]) => b.page === img.page).map(([fieldId, b]) => {
+            const active = fieldId === activeField;
+            return (
+              <div
+                key={fieldId}
+                onMouseEnter={() => onHoverField(fieldId)}
+                onMouseLeave={() => onHoverField(null)}
+                title={`${fields[fieldId]?.label || fieldId}: ${data[fieldId] ?? ''}`}
+                style={{
+                  position: 'absolute',
+                  left: `${b.x * 100}%`, top: `${b.y * 100}%`,
+                  width: `${b.w * 100}%`, height: `${b.h * 100}%`,
+                  border: `2px solid ${active ? theme.colors.primary : `${theme.colors.primary}66`}`,
+                  backgroundColor: active ? `${theme.colors.primary}22` : 'transparent',
+                  borderRadius: 2, boxSizing: 'border-box', cursor: 'pointer',
+                  zIndex: active ? 3 : 1,
+                }}
+              >
+                {active && (
+                  <span style={{
+                    position: 'absolute', top: -16, left: 0, fontSize: 10,
+                    background: theme.colors.primary, color: '#fff',
+                    padding: '0 3px', whiteSpace: 'nowrap', borderRadius: 2,
+                  }}>
+                    {fields[fieldId]?.label || fieldId}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function fileToPreviewKind(file) {
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
   const isImg = (file.type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(file.name);
@@ -767,6 +814,9 @@ function TrainingTab({ project, onProjectUpdated }) {
   const [previewKind, setPreviewKind] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [showRawText, setShowRawText] = useState(false);
+  const [boxes, setBoxes] = useState({});
+  const [pageImages, setPageImages] = useState([]);
+  const [activeField, setActiveField] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -793,6 +843,9 @@ function TrainingTab({ project, onProjectUpdated }) {
     setPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
     setPreviewKind(null);
     setShowRawText(false);
+    setBoxes({});
+    setPageImages([]);
+    setActiveField(null);
   }
 
   async function loadExamples() {
@@ -829,6 +882,8 @@ function TrainingTab({ project, onProjectUpdated }) {
           setExtractionResult(result.data);
           setDocumentText(result.document_text);
           setEditedValues({ ...result.data });
+          setBoxes(result.boxes ?? {});
+          setPageImages(result.pageImages ?? []);
         } else {
           setStatusMsg(`Fehler: ${result.error}`);
         }
@@ -859,6 +914,8 @@ function TrainingTab({ project, onProjectUpdated }) {
           setExtractionResult(result.data);
           setDocumentText(result.document_text);
           setEditedValues({ ...result.data });
+          setBoxes(result.boxes ?? {});
+          setPageImages(result.pageImages ?? []);
         } else {
           setStatusMsg(`Fehler: ${result.error}`);
         }
@@ -1072,12 +1129,21 @@ function TrainingTab({ project, onProjectUpdated }) {
           </InfoBox>
 
           <div style={styles.splitView}>
-            {/* Left: Dokument-Vorschau (statt verstümmeltem Roh-Text) */}
+            {/* Left: Dokument mit Bounding-Boxes (Fallback: Vorschau/Roh-Text) */}
             <div>
               <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, fontWeight: theme.typography.weights.medium }}>
-                DOKUMENT
+                DOKUMENT{pageImages.length > 0 ? ' · markierte Fundstellen (ungefähr)' : ''}
               </div>
-              {previewUrl ? (
+              {pageImages.length > 0 ? (
+                <BoxOverlay
+                  pageImages={pageImages}
+                  boxes={boxes}
+                  data={editedValues}
+                  fields={project.fields}
+                  activeField={activeField}
+                  onHoverField={setActiveField}
+                />
+              ) : previewUrl ? (
                 <DocumentPreview url={previewUrl} kind={previewKind} filename={sourceFilename} height={560} />
               ) : (
                 <div style={styles.docPanel}>{documentText || 'Keine Vorschau verfügbar'}</div>
@@ -1108,14 +1174,27 @@ function TrainingTab({ project, onProjectUpdated }) {
                   const currentVal = editedValues[fieldId];
                   const isChanged = JSON.stringify(initialVal) !== JSON.stringify(currentVal);
 
+                  const hasBox = !!boxes[fieldId];
                   return (
-                    <div key={fieldId}>
+                    <div
+                      key={fieldId}
+                      onMouseEnter={() => hasBox && setActiveField(fieldId)}
+                      onMouseLeave={() => hasBox && setActiveField(null)}
+                      style={{
+                        borderRadius: theme.borderRadius.md,
+                        padding: theme.spacing.xs,
+                        margin: `0 -${theme.spacing.xs}`,
+                        backgroundColor: activeField === fieldId ? theme.colors.primaryLight : 'transparent',
+                        transition: `background-color ${theme.transitions.fast}`,
+                      }}
+                    >
                       <label style={{
                         ...styles.label,
                         color: isChanged ? theme.colors.warning : theme.colors.text,
                       }}>
                         {field.label || fieldId}
                         {field.required && <span style={{ color: theme.colors.error }}> *</span>}
+                        {hasBox && <span title="Im Dokument markiert" style={{ color: theme.colors.primary, marginLeft: theme.spacing.xs, fontSize: theme.typography.sizes.xs }}>◉</span>}
                         {isChanged && <span style={{ fontSize: theme.typography.sizes.xs, marginLeft: theme.spacing.sm }}>(korrigiert)</span>}
                       </label>
                       {field.type === 'boolean' ? (

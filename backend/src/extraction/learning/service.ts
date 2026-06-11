@@ -196,6 +196,8 @@ export async function extract(
   data: Record<string, unknown>;
   document_text: string;
   fieldConfidences?: Record<string, number>;
+  boxes?: Record<string, { page: number; x: number; y: number; w: number; h: number }>;
+  pageImages?: { page: number; dataUri: string; width: number; height: number }[];
   strategyUsed?: string;
   error?: string;
 }> {
@@ -261,6 +263,11 @@ export async function extract(
     for (const [path, conf] of Object.entries(result.fieldConfidences)) {
       fieldConfidences[path.startsWith(prefix) ? path.slice(prefix.length) : path] = conf;
     }
+    // Boxen ebenfalls auf flache Feld-IDs entpacken (felder.<id> → <id>).
+    const boxes: Record<string, { page: number; x: number; y: number; w: number; h: number }> = {};
+    for (const [path, box] of Object.entries(result.boxes ?? {})) {
+      boxes[path.startsWith(prefix) ? path.slice(prefix.length) : path] = box;
+    }
 
     console.log(`[Extraction] Done for ${projectId} via ${result.strategyUsed} (${result.llmCalls} calls, ${result.warnings.length} warnings)`);
     return {
@@ -268,6 +275,8 @@ export async function extract(
       data,
       document_text: documentText,
       fieldConfidences,
+      boxes,
+      pageImages: result.pageImages,
       strategyUsed: result.strategyUsed,
     };
   } catch (error: any) {

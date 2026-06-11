@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-06-11
+
+### Extraktions-Projekte: Bounding-Box-Overlay — erkannte Felder im Dokument verorten
+Vision-per-page liefert pro Feld eine **Bounding-Box**; das UI zeigt die erkannten Werte
+als Rechtecke über dem gerenderten Dokument (Hover Feld ↔ Box).
+- Vision liefert `{value, bbox}` (`extract-call.ts` + `normalizeBbox`); `vision-per-page`
+  trennt Wert/Box und sammelt Seitenbilder. Neue Typen `FieldBox`/`PageImage` durch die
+  Pipeline bis in den `extract()`-Response. `pdf.ts` liefert Seiten-Pixelmaße.
+- Frontend `BoxOverlay`-Komponente + ◉-Marker an markierten Feldern.
+- Sani-Projekt auf Qwen (`model_override`) — beste Extraktion + Boxen.
+- v1: nur `vision-per-page`; Box-Genauigkeit = Modellqualität (ausreichend für „Fundstelle").
+- **Beide Worktrees**.
+
 ## 2026-06-07
 
 ### Extraktions-Projekte: Lern-Loop im UI transparent gemacht

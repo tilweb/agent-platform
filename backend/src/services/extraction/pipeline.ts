@@ -116,6 +116,8 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineRunR
         extracted: finalExtracted,
         fieldConfidences: result.fieldConfidences,
         provenance: result.provenance,
+        boxes: result.boxes,
+        pageImages: result.pageImages,
         warnings: finalWarnings,
         llmCalls: result.llmCalls + extraCalls,
         strategyUsed: result.strategyUsed,

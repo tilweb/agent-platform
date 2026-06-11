@@ -86,6 +86,8 @@ const EXTRACTION = {
   vision_detail: 'high' as const,
   max_pages: 5,
   validation_repair: true,
+  // Qwen liefert sowohl die zuverlaessigere Extraktion als auch gute Bounding-Boxes.
+  model_override: { provider_id: 'adacor', model_id: 'qwen3-a3b-30b-256k' },
 };
 
 async function main() {
