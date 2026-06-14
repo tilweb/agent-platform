@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-06-14
+
+### Feature: Extraktions-Projekte — Klick-zum-Feld-Navigation (Bounding-Boxes interaktiv)
+Die OCR-Bounding-Boxes im Training-Tab sind jetzt **bidirektional klickbar** — der Nutzer
+springt direkt zwischen Markierung im Dokument und Eingabefeld hin und her, um Fehlerwerte
+schneller zu korrigieren.
+- **Box → Feld:** Klick auf eine Markierung im Dokument scrollt rechts zum zugehörigen
+  Eingabefeld und setzt den Fokus hinein (sofort korrigierbar). Header-Hinweis „Markierung
+  anklicken zum Bearbeiten".
+- **Feld → Box:** Klick auf den `◉`-Marker am Feldlabel scrollt das Dokument zur Box und
+  lässt sie kurz aufblitzen (`@keyframes boxpulse`), inkl. Feld-Label-Tooltip.
+- **Frontend:** `ExtractionProjectsPage.jsx` — `BoxOverlay` um `onBoxClick`/`scrollToField`
+  (+ `boxRefs`/`scrollIntoView`) erweitert; TrainingTab mit `fieldRowRefs` + Handlers
+  `focusFieldFromBox` / `locateOnDoc`. Reines UI, keine Backend-Änderung.
+- **Verifiziert:** Frontend-Build grün (beide Worktrees). In beiden Worktrees gespiegelt.
+
 ## 2026-06-12
 
 ### Fix: Google-Sheets-Schreibfehler "Unable to parse range: Sheet1!A2" (Locale-Tab-Name)
