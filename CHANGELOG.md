@@ -1,6 +1,58 @@
 # Changelog
 
-## 2026-06-12
+## 2026-06-14
+
+### Feature: Extraktions-Projekte — Klick-zum-Feld-Navigation (Bounding-Boxes interaktiv)
+Die OCR-Bounding-Boxes im Training-Tab sind jetzt **bidirektional klickbar** — der Nutzer
+springt direkt zwischen Markierung im Dokument und Eingabefeld hin und her, um Fehlerwerte
+schneller zu korrigieren.
+- **Box → Feld:** Klick auf eine Markierung im Dokument scrollt rechts zum zugehörigen
+  Eingabefeld und setzt den Fokus hinein (sofort korrigierbar). Header-Hinweis „Markierung
+  anklicken zum Bearbeiten".
+- **Feld → Box:** Klick auf den `◉`-Marker am Feldlabel scrollt das Dokument zur Box und
+  lässt sie kurz aufblitzen (`@keyframes boxpulse`), inkl. Feld-Label-Tooltip.
+- **Frontend:** `ExtractionProjectsPage.jsx` — `BoxOverlay` um `onBoxClick`/`scrollToField`
+  (+ `boxRefs`/`scrollIntoView`) erweitert; TrainingTab mit `fieldRowRefs` + Handlers
+  `focusFieldFromBox` / `locateOnDoc`. Reines UI, keine Backend-Änderung.
+- **Verifiziert:** Frontend-Build grün (beide Worktrees). In beiden Worktrees gespiegelt.
+
+## 2026-06-13
+
+### Feature: Podcast-Repurposing — Publishing Phase 2a (Podigee)
+Episode als **Entwurf** auf **Podigee** veröffentlichen (geteilte Marken-Identität, Review-Modus).
+- **Backend:** `publishing/podigee.ts` (Flow: `uploads` → PUT Audio → `episodes` → `productions` →
+  `start?publish_episode=false`). Publish-taugliches Audio (44,1 kHz stereo) wird per ffmpeg aus dem
+  Video extrahiert (`extractAudioToMp3({hq:true})`). Marken-Credentials (Podigee-Token + podcast_id)
+  **verschlüsselt** in `pr_brand_identities` (AES-GCM via `CONNECTION_ENCRYPTION_KEY`, reused aus
+  `connections/crypto`). Neue Tabelle `pr_publications` (Migration `0023`). Routen: `GET/PUT
+  /settings/publishing`, `POST /episodes/:id/publish/podigee`.
+- **Frontend:** Settings → Podigee-Sektion (Token + podcast_id); Episode-Detail → „Veröffentlichen"
+  (Status je Plattform + „Auf Podigee veröffentlichen (Entwurf)").
+- **Hinweis:** App-eigene verschlüsselte Marken-Credentials (kein volles Service-Identity-Framework);
+  Veröffentlichung als **Entwurf** (Marke schaltet final selbst live). **YouTube** folgt als Phase 2b
+  (OAuth-Marken-Channel + resumable Upload + sensibler Scope). Verifiziert: tsc (meine Dateien) 0,
+  Frontend-Build grün, Boot mit Migration 0023. Echter Podigee-Lauf braucht Account/Token (extern).
+- **Korrektur:** Frühere „tsc 0"-Messungen liefen versehentlich über `timeout` (auf macOS nicht
+  vorhanden) → leere Ausgabe. Jetzt real geprüft + reale Typfehler in den neuen Dateien behoben.
+
+### Feature: Neue App „Podcast-Repurposing" (Iteration 1 — Generierung + Review)
+Podcast-Video hochladen → Audio extrahieren (ffmpeg) → transkribieren (Whisper, mit Chunking
+> 24 MB) → pro editierbarer Format-Vorlage generieren: Social-Posts (FB/LinkedIn/TikTok/Insta),
+Blogpost, Danke-Mail an die Gäste + Visuals (16:9/1:1/9:16 via `generate_image`). UI zum
+Prüfen/Editieren/Kopieren/Neu-Generieren je Output. Publishing (geteiltes Marken-Konto) +
+Analytics sind bewusst spätere Phasen (Datenmodell via `brand_identity_id` vorbereitet).
+- **Backend:** App `podcast-repurposing` (eigene, deterministische Pipeline statt Agent-Loop) —
+  `db/schema/podcast-repurposing.ts` (5 Tabellen, Schema `podcast_repurposing`), Migration `0022`,
+  app-eigene `pipeline.ts` (fire-and-forget, Status-Polling), 9 geseedete Format-Vorlagen
+  (`seed-formats.ts`, in Settings editierbar). Whisper-Kern aus `routes/transcription.ts` in
+  `services/transcriptionService.ts` extrahiert (Route nutzt ihn jetzt); neue
+  `services/audioExtraction.ts` (ffmpeg-Extraktion + Größen-Chunking). Reuse: `llmService.chat`,
+  `imageGenerationService` + `imageStorage`, S3.
+- **Frontend:** Episodes-Liste, Upload, Episode-Detail (Pipeline-Progress + Output-/Visual-Cards),
+  Settings (Format-Vorlagen). Routen in `App.jsx`, App `enabled:false` (Admin schaltet frei).
+- **Verifiziert:** tsc 0, Frontend-Build grün, Boot mit Migration 0022 + Seed (9 Formate), Health 200.
+  Voller Upload→Pipeline-E2E (Browser + Video) noch manuell zu bestätigen. Nur MAIN; Railway-Spiegelung
+  offen (Storage-Modell klären). Doku: `docs/podcast-repurposing-app-2026-06-13.md`.
 
 ### Fix: Google-Sheets-Schreibfehler "Unable to parse range: Sheet1!A2" (Locale-Tab-Name)
 Bei DE-Google-Konten heißt das erste Tabellenblatt **"Tabelle1"**, nicht "Sheet1" — der Agent

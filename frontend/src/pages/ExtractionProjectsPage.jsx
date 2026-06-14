@@ -745,9 +745,16 @@ function InfoBox({ children, style = {} }) {
   );
 }
 
-function BoxOverlay({ pageImages, boxes, data, fields, activeField, onHoverField }) {
+function BoxOverlay({ pageImages, boxes, data, fields, activeField, onHoverField, onBoxClick, scrollToField }) {
+  const boxRefs = useRef({});
+  useEffect(() => {
+    if (!scrollToField) return;
+    const el = boxRefs.current[scrollToField];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+  }, [scrollToField]);
   return (
     <div>
+      <style>{`@keyframes boxpulse { 0%,100%{box-shadow:0 0 0 0 ${theme.colors.primary}00} 50%{box-shadow:0 0 0 5px ${theme.colors.primary}99} }`}</style>
       {pageImages.map(img => (
         <div key={img.page} style={{
           position: 'relative', display: 'block', width: '100%',
@@ -758,23 +765,27 @@ function BoxOverlay({ pageImages, boxes, data, fields, activeField, onHoverField
           <img src={img.dataUri} alt={`Seite ${img.page}`} style={{ display: 'block', width: '100%' }} />
           {Object.entries(boxes).filter(([, b]) => b.page === img.page).map(([fieldId, b]) => {
             const active = fieldId === activeField;
+            const pulsing = fieldId === scrollToField;
             return (
               <div
                 key={fieldId}
+                ref={el => { boxRefs.current[fieldId] = el; }}
                 onMouseEnter={() => onHoverField(fieldId)}
                 onMouseLeave={() => onHoverField(null)}
-                title={`${fields[fieldId]?.label || fieldId}: ${data[fieldId] ?? ''}`}
+                onClick={() => onBoxClick && onBoxClick(fieldId)}
+                title={`${fields[fieldId]?.label || fieldId}: ${data[fieldId] ?? ''} — klicken zum Bearbeiten`}
                 style={{
                   position: 'absolute',
                   left: `${b.x * 100}%`, top: `${b.y * 100}%`,
                   width: `${b.w * 100}%`, height: `${b.h * 100}%`,
-                  border: `2px solid ${active ? theme.colors.primary : `${theme.colors.primary}66`}`,
-                  backgroundColor: active ? `${theme.colors.primary}22` : 'transparent',
+                  border: `2px solid ${(active || pulsing) ? theme.colors.primary : `${theme.colors.primary}66`}`,
+                  backgroundColor: (active || pulsing) ? `${theme.colors.primary}22` : 'transparent',
                   borderRadius: 2, boxSizing: 'border-box', cursor: 'pointer',
-                  zIndex: active ? 3 : 1,
+                  zIndex: (active || pulsing) ? 3 : 1,
+                  animation: pulsing ? 'boxpulse 0.6s ease-in-out 2' : undefined,
                 }}
               >
-                {active && (
+                {(active || pulsing) && (
                   <span style={{
                     position: 'absolute', top: -16, left: 0, fontSize: 10,
                     background: theme.colors.primary, color: '#fff',
@@ -817,7 +828,27 @@ function TrainingTab({ project, onProjectUpdated }) {
   const [boxes, setBoxes] = useState({});
   const [pageImages, setPageImages] = useState([]);
   const [activeField, setActiveField] = useState(null);
+  const [scrollToField, setScrollToField] = useState(null);
   const fileInputRef = useRef(null);
+  const fieldRowRefs = useRef({});
+
+  // Box anklicken → zum Feld scrollen + Eingabe fokussieren (zum Korrigieren).
+  function focusFieldFromBox(fieldId) {
+    const row = fieldRowRefs.current[fieldId];
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const input = row.querySelector('input, textarea');
+    if (input) input.focus({ preventScroll: true });
+    setActiveField(fieldId);
+  }
+
+  // Feld/◉ anklicken → Dokument zur Box scrollen + kurz aufblitzen.
+  function locateOnDoc(fieldId) {
+    if (!boxes[fieldId]) return;
+    setActiveField(fieldId);
+    setScrollToField(fieldId);
+    setTimeout(() => setScrollToField(null), 900);
+  }
 
   useEffect(() => {
     loadExamples();
@@ -846,6 +877,7 @@ function TrainingTab({ project, onProjectUpdated }) {
     setBoxes({});
     setPageImages([]);
     setActiveField(null);
+    setScrollToField(null);
   }
 
   async function loadExamples() {
@@ -1132,7 +1164,7 @@ function TrainingTab({ project, onProjectUpdated }) {
             {/* Left: Dokument mit Bounding-Boxes (Fallback: Vorschau/Roh-Text) */}
             <div>
               <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, fontWeight: theme.typography.weights.medium }}>
-                DOKUMENT{pageImages.length > 0 ? ' · markierte Fundstellen (ungefähr)' : ''}
+                DOKUMENT{pageImages.length > 0 ? ' · Markierung anklicken zum Bearbeiten' : ''}
               </div>
               {pageImages.length > 0 ? (
                 <BoxOverlay
@@ -1142,6 +1174,8 @@ function TrainingTab({ project, onProjectUpdated }) {
                   fields={project.fields}
                   activeField={activeField}
                   onHoverField={setActiveField}
+                  onBoxClick={focusFieldFromBox}
+                  scrollToField={scrollToField}
                 />
               ) : previewUrl ? (
                 <DocumentPreview url={previewUrl} kind={previewKind} filename={sourceFilename} height={560} />
@@ -1178,6 +1212,7 @@ function TrainingTab({ project, onProjectUpdated }) {
                   return (
                     <div
                       key={fieldId}
+                      ref={el => { fieldRowRefs.current[fieldId] = el; }}
                       onMouseEnter={() => hasBox && setActiveField(fieldId)}
                       onMouseLeave={() => hasBox && setActiveField(null)}
                       style={{
@@ -1194,7 +1229,13 @@ function TrainingTab({ project, onProjectUpdated }) {
                       }}>
                         {field.label || fieldId}
                         {field.required && <span style={{ color: theme.colors.error }}> *</span>}
-                        {hasBox && <span title="Im Dokument markiert" style={{ color: theme.colors.primary, marginLeft: theme.spacing.xs, fontSize: theme.typography.sizes.xs }}>◉</span>}
+                        {hasBox && (
+                          <span
+                            title="Im Dokument zeigen"
+                            onClick={() => locateOnDoc(fieldId)}
+                            style={{ color: theme.colors.primary, marginLeft: theme.spacing.xs, fontSize: theme.typography.sizes.xs, cursor: 'pointer' }}
+                          >◉</span>
+                        )}
                         {isChanged && <span style={{ fontSize: theme.typography.sizes.xs, marginLeft: theme.spacing.sm }}>(korrigiert)</span>}
                       </label>
                       {field.type === 'boolean' ? (
