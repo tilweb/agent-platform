@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm } from '../utils/apiFetch';
-import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon } from '../components/Icons';
+import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon } from '../components/Icons';
+import ExportDropdown from '../components/ExportDropdown';
 
 // ============== Styles ==============
 
@@ -629,6 +630,7 @@ function ProjectDetailView({ projectId, onBack }) {
 
   const tabs = [
     { id: 'training', label: 'Training' },
+    { id: 'batch', label: 'Verarbeiten' },
     { id: 'rules', label: 'Regeln' },
     { id: 'settings', label: 'Einstellungen' },
   ];
@@ -669,6 +671,9 @@ function ProjectDetailView({ projectId, onBack }) {
 
         {activeTab === 'training' && (
           <TrainingTab project={project} onProjectUpdated={loadProject} />
+        )}
+        {activeTab === 'batch' && (
+          <BatchTab project={project} />
         )}
         {activeTab === 'rules' && (
           <RulesTab project={project} onProjectUpdated={loadProject} />
@@ -807,6 +812,445 @@ function fileToPreviewKind(file) {
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
   const isImg = (file.type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(file.name);
   return isPdf ? 'pdf' : isImg ? 'image' : 'other';
+}
+
+// ============== Verarbeiten Tab (Batch) ==============
+
+const BATCH_STATUS = {
+  pending:    { label: 'Wartet',  bg: theme.colors.surfaceHover, fg: theme.colors.textMuted },
+  processing: { label: 'Läuft',   bg: theme.colors.warningLight, fg: theme.colors.warning },
+  completed:  { label: 'Fertig',  bg: theme.colors.successLight, fg: theme.colors.success },
+  failed:     { label: 'Fehler',  bg: theme.colors.errorLight,   fg: theme.colors.error },
+};
+
+function StatusBadge({ status }) {
+  const s = BATCH_STATUS[status] || BATCH_STATUS.pending;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs,
+      fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium,
+      padding: `2px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full,
+      backgroundColor: s.bg, color: s.fg, whiteSpace: 'nowrap',
+    }}>
+      {status === 'processing' && <Spinner size={10} />}
+      {s.label}
+    </span>
+  );
+}
+
+/** Stringifiziert einen Feldwert für Anzeige/CSV. */
+function fmtValue(v) {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'boolean') return v ? 'Ja' : 'Nein';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+function avgConfidence(conf) {
+  if (!conf) return null;
+  const vals = Object.values(conf).filter(v => typeof v === 'number');
+  if (!vals.length) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+function triggerDownload(blob, filename) {
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+}
+
+function csvCell(value) {
+  const s = fmtValue(value);
+  return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function BatchTab({ project }) {
+  const fieldEntries = Object.entries(project.fields);
+
+  const [queue, setQueue] = useState([]);          // ausgewählte Dateien vor dem Start
+  const [dragActive, setDragActive] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('');
+
+  const [runs, setRuns] = useState([]);            // Lauf-Historie
+  const [activeRun, setActiveRun] = useState(null); // { run, files }
+  const [expandedId, setExpandedId] = useState(null);
+  const [details, setDetails] = useState({});       // fileId -> detail
+  const [loadingFormat, setLoadingFormat] = useState(null);
+  const [tableMsg, setTableMsg] = useState(null);
+
+  const fileInputRef = useRef(null);
+  const base = `/extraction/projects/${project.id}/batches`;
+  const runStatus = activeRun?.run?.status;
+  const isActive = runStatus === 'pending' || runStatus === 'processing';
+
+  useEffect(() => { loadRuns(); /* eslint-disable-next-line */ }, [project.id]);
+
+  // Polling, solange der aktive Lauf läuft.
+  useEffect(() => {
+    if (!activeRun || !isActive) return;
+    const t = setTimeout(() => pollRun(activeRun.run.id), 2000);
+    return () => clearTimeout(t);
+  }, [activeRun, isActive]);
+
+  async function loadRuns() {
+    try {
+      const res = await apiGet(base);
+      if (res.ok) setRuns(await res.json());
+    } catch { /* ignore */ }
+  }
+
+  async function pollRun(runId) {
+    try {
+      const res = await apiGet(`${base}/${runId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setActiveRun(data);
+        if (data.run.status === 'completed' || data.run.status === 'failed') loadRuns();
+      }
+    } catch { /* ignore */ }
+  }
+
+  function addFiles(fileList) {
+    const incoming = Array.from(fileList || []);
+    if (!incoming.length) return;
+    setQueue(prev => {
+      const seen = new Set(prev.map(f => f.name + f.size));
+      return [...prev, ...incoming.filter(f => !seen.has(f.name + f.size))];
+    });
+  }
+
+  async function startBatch() {
+    if (!queue.length) return;
+    setStarting(true);
+    setStatusMsg('');
+    try {
+      const formData = new FormData();
+      queue.forEach(f => formData.append('files', f));
+      const res = await apiPostForm(base, formData);
+      if (res.ok) {
+        const { runId } = await res.json();
+        setQueue([]);
+        setExpandedId(null);
+        setDetails({});
+        await pollRun(runId);
+        loadRuns();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setStatusMsg(`Fehler: ${err.error || res.status}`);
+      }
+    } catch {
+      setStatusMsg('Netzwerkfehler beim Start');
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  async function openRun(runId) {
+    setExpandedId(null);
+    setDetails({});
+    setTableMsg(null);
+    await pollRun(runId);
+  }
+
+  async function removeRun(runId, e) {
+    e.stopPropagation();
+    try {
+      await apiDelete(`${base}/${runId}`);
+      if (activeRun?.run?.id === runId) setActiveRun(null);
+      loadRuns();
+    } catch { /* ignore */ }
+  }
+
+  async function toggleExpand(fileId) {
+    if (expandedId === fileId) { setExpandedId(null); return; }
+    setExpandedId(fileId);
+    if (!details[fileId]) {
+      try {
+        const res = await apiGet(`${base}/${activeRun.run.id}/files/${fileId}`);
+        if (res.ok) {
+          const det = await res.json();
+          setDetails(prev => ({ ...prev, [fileId]: det }));
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
+  function exportCsv() {
+    const header = ['Datei', 'Status', ...fieldEntries.map(([, f]) => f.label || '')];
+    const lines = [header.map(csvCell).join(';')];
+    for (const file of activeRun.files) {
+      lines.push([
+        csvCell(file.filename),
+        csvCell(BATCH_STATUS[file.status]?.label || file.status),
+        ...fieldEntries.map(([fid]) => csvCell(file.data?.[fid])),
+      ].join(';'));
+    }
+    triggerDownload(new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' }), `batch-${activeRun.run.id}.csv`);
+  }
+
+  function exportJson() {
+    const payload = activeRun.files.map(f => ({
+      filename: f.filename, status: f.status,
+      data: f.data, fieldConfidences: f.fieldConfidences, error: f.error,
+    }));
+    triggerDownload(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `batch-${activeRun.run.id}.json`);
+  }
+
+  async function exportXlsx() {
+    const res = await apiGet(`${base}/${activeRun.run.id}/export.xlsx`);
+    if (res.ok) triggerDownload(await res.blob(), `batch-${activeRun.run.id}.xlsx`);
+  }
+
+  async function handleExport(format) {
+    setLoadingFormat(format);
+    try {
+      if (format === 'csv') exportCsv();
+      else if (format === 'json') exportJson();
+      else if (format === 'xlsx') await exportXlsx();
+    } finally {
+      setLoadingFormat(null);
+    }
+  }
+
+  async function writeToTable() {
+    setTableMsg({ loading: true });
+    try {
+      const res = await apiPost(`${base}/${activeRun.run.id}/to-table`, {});
+      if (res.ok) {
+        const { tableName, rowCount, tableId } = await res.json();
+        setTableMsg({ ok: true, text: `${rowCount} Zeile(n) in „${tableName}" geschrieben.`, tableId });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setTableMsg({ ok: false, text: `Fehler: ${err.error || res.status}` });
+      }
+    } catch {
+      setTableMsg({ ok: false, text: 'Netzwerkfehler' });
+    }
+  }
+
+  const doneCount = activeRun ? (activeRun.run.completedCount + activeRun.run.failedCount) : 0;
+
+  return (
+    <div>
+      {/* Upload */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Dokumente verarbeiten</div>
+        <InfoBox>
+          Lade mehrere Dokumente hoch und lass sie durch dieses Projekt extrahieren. Der Lauf wird
+          serverseitig gespeichert — du kannst die Seite verlassen und später zurückkommen.
+        </InfoBox>
+        <div
+          style={{ ...styles.dropZone, ...(dragActive ? styles.dropZoneActive : {}), marginTop: theme.spacing.lg }}
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={(e) => { e.preventDefault(); setDragActive(false); addFiles(e.dataTransfer.files); }}
+        >
+          <DocumentIcon size={28} color={theme.colors.textMuted} />
+          <div style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary }}>
+            Dateien hierher ziehen oder klicken (PDF, Bilder, mehrere möglich)
+          </div>
+          <input
+            ref={fileInputRef} type="file" multiple hidden
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.doc,.docx"
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
+          />
+        </div>
+
+        {queue.length > 0 && (
+          <div style={{ marginTop: theme.spacing.lg }}>
+            {queue.map((f, i) => (
+              <div key={f.name + i} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: `${theme.spacing.sm} ${theme.spacing.md}`, fontSize: theme.typography.sizes.sm,
+                color: theme.colors.text, borderBottom: `1px solid ${theme.colors.border}`,
+              }}>
+                <span>{f.name}</span>
+                <button
+                  onClick={() => setQueue(prev => prev.filter((_, idx) => idx !== i))}
+                  style={{ ...styles.backLink, marginBottom: 0, color: theme.colors.textMuted }}
+                >Entfernen</button>
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: theme.spacing.md, marginTop: theme.spacing.lg, alignItems: 'center' }}>
+              <button style={styles.primaryBtn} onClick={startBatch} disabled={starting}>
+                {starting ? <Spinner size={14} /> : <SparklesIcon size={14} />}
+                {starting ? 'Starte…' : `Extraktion starten (${queue.length})`}
+              </button>
+              <button style={styles.secondaryBtn} onClick={() => setQueue([])} disabled={starting}>Liste leeren</button>
+            </div>
+          </div>
+        )}
+        {statusMsg && <div style={{ marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm, color: theme.colors.error }}>{statusMsg}</div>}
+      </div>
+
+      {/* Lauf-Historie */}
+      {runs.length > 0 && (
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>Läufe</div>
+          {runs.map(r => {
+            const sel = activeRun?.run?.id === r.id;
+            return (
+              <div
+                key={r.id}
+                onClick={() => openRun(r.id)}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: `${theme.spacing.md} ${theme.spacing.lg}`, marginBottom: theme.spacing.sm,
+                  borderRadius: theme.borderRadius.lg, cursor: 'pointer',
+                  border: `1px solid ${theme.colors.border}`,
+                  backgroundColor: sel ? theme.colors.primaryLight : theme.colors.surface,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                  <StatusBadge status={r.status} />
+                  <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text }}>
+                    {r.fileCount} Dokument(e)
+                  </span>
+                  <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                    {new Date(r.createdAt).toLocaleString('de-DE')}
+                    {r.failedCount > 0 ? ` · ${r.failedCount} Fehler` : ''}
+                  </span>
+                </div>
+                <button onClick={(e) => removeRun(r.id, e)} title="Lauf löschen"
+                  style={{ ...styles.backLink, marginBottom: 0, color: theme.colors.textMuted }}>
+                  <TrashIcon size={14} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Ergebnis-Tabelle */}
+      {activeRun && (
+        <div style={styles.section}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+            <div style={{ ...styles.sectionTitle, marginBottom: 0, display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+              Ergebnisse
+              <StatusBadge status={activeRun.run.status} />
+              {isActive && (
+                <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+                  {doneCount}/{activeRun.run.fileCount}
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center' }}>
+              <button style={styles.secondaryBtn} onClick={writeToTable} disabled={tableMsg?.loading}>
+                <TableIcon size={14} /> In Tabelle schreiben
+              </button>
+              <ExportDropdown
+                formats={['xlsx', 'csv', 'json']}
+                onExport={handleExport}
+                isLoading={!!loadingFormat}
+                loadingFormat={loadingFormat}
+              />
+            </div>
+          </div>
+
+          {tableMsg && !tableMsg.loading && (
+            <div style={{
+              marginBottom: theme.spacing.lg, fontSize: theme.typography.sizes.sm,
+              color: tableMsg.ok ? theme.colors.success : theme.colors.error,
+            }}>{tableMsg.text}</div>
+          )}
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: theme.colors.textMuted }}>
+                  <th style={batchTh}>Datei</th>
+                  <th style={batchTh}>Status</th>
+                  {fieldEntries.map(([fid, f]) => <th key={fid} style={batchTh}>{f.label || fid}</th>)}
+                  <th style={batchTh}>Ø</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeRun.files.map(file => {
+                  const conf = avgConfidence(file.fieldConfidences);
+                  const open = expandedId === file.id;
+                  const hasDetail = file.status === 'completed';
+                  return (
+                    <Fragment key={file.id}>
+                      <tr
+                        onClick={() => hasDetail && toggleExpand(file.id)}
+                        style={{ borderTop: `1px solid ${theme.colors.border}`, cursor: hasDetail ? 'pointer' : 'default' }}
+                      >
+                        <td style={batchTd}>{file.filename}</td>
+                        <td style={batchTd}><StatusBadge status={file.status} /></td>
+                        {fieldEntries.map(([fid]) => (
+                          <td key={fid} style={{ ...batchTd, color: file.data?.[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
+                            {fmtValue(file.data?.[fid]) || '—'}
+                          </td>
+                        ))}
+                        <td style={{ ...batchTd, color: theme.colors.textMuted }}>{conf != null ? `${Math.round(conf * 100)}%` : '—'}</td>
+                      </tr>
+                      {open && (
+                        <tr>
+                          <td colSpan={fieldEntries.length + 3} style={{ ...batchTd, backgroundColor: theme.colors.background }}>
+                            <BatchFileDetail detail={details[file.id]} fields={project.fields} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const batchTh = {
+  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+  fontWeight: theme.typography.weights.medium,
+  fontSize: theme.typography.sizes.xs,
+  whiteSpace: 'nowrap',
+};
+const batchTd = {
+  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+  verticalAlign: 'top',
+};
+
+function BatchFileDetail({ detail, fields }) {
+  if (!detail) return <div style={{ padding: theme.spacing.md, color: theme.colors.textMuted }}>Lade Detail…</div>;
+  if (detail.error) return <div style={{ padding: theme.spacing.md, color: theme.colors.error }}>{detail.error}</div>;
+  const hasBoxes = detail.pageImages && detail.pageImages.length > 0;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: hasBoxes ? '1fr 1fr' : '1fr', gap: theme.spacing.lg, padding: theme.spacing.md }}>
+      {hasBoxes && (
+        <div style={{ maxHeight: 420, overflow: 'auto' }}>
+          <BoxOverlay
+            pageImages={detail.pageImages}
+            boxes={detail.boxes || {}}
+            data={detail.data || {}}
+            fields={fields}
+            activeField={null}
+            onHoverField={() => {}}
+          />
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+        {Object.entries(fields).map(([fid, f]) => (
+          <div key={fid} style={{ display: 'flex', gap: theme.spacing.md, fontSize: theme.typography.sizes.sm }}>
+            <span style={{ minWidth: 140, color: theme.colors.textMuted }}>{f.label || fid}</span>
+            <span style={{ color: detail.data?.[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
+              {fmtValue(detail.data?.[fid]) || '—'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ============== Training Tab ==============

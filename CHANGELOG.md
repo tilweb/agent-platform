@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-06-15
+
+### Feature: Manuelle Batch-Extraktion — „Verarbeiten"-Tab (Nutzungsdimension UI)
+Neuer Tab in den Extraktions-Projekten, über den man per **Multi-Upload** mehrere Dokumente durch
+ein angelerntes Projekt jagt, den **Status je Dokument** verfolgt, **Ergebnisse** prüft und
+**exportiert**. Erste der drei geplanten Nutzungsdimensionen (UI; API + App/Agent/Skill folgen).
+- **Serverseitige Persistenz + Hintergrund-Verarbeitung:** Upload startet einen Lauf (fire-and-
+  forget), der die Dokumente mit begrenzter Parallelität (pLimit 3, `EXTRACTION_BATCH_CONCURRENCY`)
+  durch den bestehenden `extract()`-Pfad verarbeitet; das Frontend pollt den Status. Lauf-Historie
+  + Ergebnisse überstehen Reload/Navigation. Fail-Soft je Datei, Temp-Cleanup.
+- **Backend:** neue `extraction/learning/batch-runs.ts` (Persistenz: **Postgres** —
+  `extraction.batch_runs` + `batch_run_files`, Migration `0024`) und `batch-service.ts`
+  (`runBatchExtraction`). Routen unter `/projects/:id/batches`: Start (multipart), Historie,
+  Run+Summaries, Datei-Detail (boxes+pageImages on-demand), `export.xlsx` (`generateDocument`),
+  `to-table` (Felder→Tables-Columns, `createTable`+`addRow`), Delete. Zwei Datentier: Summary fürs
+  Polling, schwere Detail-Daten (Seitenbilder) nur beim Aufklappen. Keine neuen Dependencies.
+- **Frontend (`ExtractionProjectsPage.jsx`):** `BatchTab` mit Multi-Dropzone, Fortschritt +
+  Status-Badges, Lauf-Historie, Ergebnistabelle (Zeile=Dokument, Spalten=Felder, Ø-Confidence),
+  aufklappbarer Detail-Vorschau (wiederverwendetes `BoxOverlay`), `ExportDropdown`
+  (CSV/XLSX/JSON) + „In Tabelle schreiben".
+- **Verifiziert (Scalingo, lokal):** E2E mit 2 Sani-Rezepten — Lauf `processing`→`completed` (2/2),
+  voll extrahiert; Detail 11 Boxes/1 Seitenbild; valides XLSX; Tabelle mit 2 Zeilen; Delete +
+  Reload-Persistenz. tsc ohne neue Fehler, Frontend-Build grün. Railway gespiegelt (YAML-Variante
+  von `batch-runs.ts`, Rest 1:1; YAML-Persistenz per Smoke-Test bestätigt). Doku:
+  `docs/batch-extraktion-ui-2026-06-15.md`.
+
 ## 2026-06-14
 
 ### Feature: Extraktions-Projekte — Klick-zum-Feld-Navigation (Bounding-Boxes interaktiv)

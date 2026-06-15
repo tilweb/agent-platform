@@ -16,7 +16,17 @@ import {
   extract,
   train,
   regenerateGuidelines,
+  createBatchRun,
+  listBatchRuns,
+  getBatchRun,
+  getBatchRunFileDetail,
+  deleteBatchRun,
+  runBatchExtraction,
 } from '../extraction/learning';
+import type { ProjectField } from '../extraction/learning';
+import { createTable, addRow } from '../tables';
+import type { ColumnDefinition, ColumnType } from '../tables/types';
+import { generateDocument } from '../services/documentGenerator';
 
 export const extractionProjectRoutes = new Hono();
 
@@ -206,4 +216,189 @@ extractionProjectRoutes.post('/projects/:id/regenerate', async (c) => {
   } catch (error: any) {
     return c.json({ error: error.message }, 400);
   }
+});
+
+// ============== Batch-Verarbeitung ("Verarbeiten"-Tab) ==============
+
+const FIELD_TYPE_TO_COLUMN: Record<ProjectField['type'], ColumnType> = {
+  text: 'text',
+  number: 'number',
+  date: 'date',
+  boolean: 'boolean',
+};
+
+/** Stringifiziert einen extrahierten Wert für CSV/XLSX-Zellen. */
+function cellString(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'boolean') return value ? 'Ja' : 'Nein';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+/**
+ * POST /projects/:id/batches — Multi-Upload, Lauf anlegen, Hintergrund-Verarbeitung starten.
+ * Antwortet sofort mit { runId } (fire-and-forget); Frontend pollt den Status.
+ */
+extractionProjectRoutes.post('/projects/:id/batches', async (c) => {
+  const projectId = c.req.param('id');
+  const project = await getProject(projectId);
+  if (!project) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+
+  const contentType = c.req.header('content-type') || '';
+  if (!contentType.includes('multipart/form-data')) {
+    return c.json({ error: 'multipart/form-data mit Dateien erforderlich' }, 400);
+  }
+
+  const formData = await c.req.formData();
+  const uploads = formData.getAll('files').filter((f): f is File => f instanceof File);
+  if (uploads.length === 0) {
+    return c.json({ error: 'Keine Dateien hochgeladen' }, 400);
+  }
+
+  // Temp-Dateien ablegen.
+  const { mkdir } = await import('fs/promises');
+  const tmpDir = `/tmp/extraction-batch/${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  await mkdir(tmpDir, { recursive: true });
+
+  const saved: { filename: string; tempPath: string }[] = [];
+  for (const file of uploads) {
+    const safeName = file.name.replace(/[^\w.\-]+/g, '_');
+    const tempPath = `${tmpDir}/${saved.length}_${safeName}`;
+    await Bun.write(tempPath, await file.arrayBuffer());
+    saved.push({ filename: file.name, tempPath });
+  }
+
+  const { runId, files } = await createBatchRun(projectId, saved.map((s) => s.filename));
+  const inputFiles = files.map((f, i) => ({
+    fileId: f.id,
+    filename: f.filename,
+    tempPath: saved[i]!.tempPath,
+  }));
+
+  // Fire-and-forget — kein await.
+  void runBatchExtraction(projectId, runId, inputFiles).catch((err) =>
+    console.error('[batch-extract] runBatchExtraction error:', err),
+  );
+
+  return c.json({ runId, fileCount: inputFiles.length }, 201);
+});
+
+/**
+ * GET /projects/:id/batches — Lauf-Historie.
+ */
+extractionProjectRoutes.get('/projects/:id/batches', async (c) => {
+  const runs = await listBatchRuns(c.req.param('id'));
+  return c.json(runs);
+});
+
+/**
+ * GET /projects/:id/batches/:runId — Run + Datei-Summaries (Polling; ohne pageImages).
+ */
+extractionProjectRoutes.get('/projects/:id/batches/:runId', async (c) => {
+  const result = await getBatchRun(c.req.param('id'), c.req.param('runId'));
+  if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
+  return c.json(result);
+});
+
+/**
+ * GET /projects/:id/batches/:runId/files/:fileId — Detail inkl. boxes + pageImages.
+ */
+extractionProjectRoutes.get('/projects/:id/batches/:runId/files/:fileId', async (c) => {
+  const detail = await getBatchRunFileDetail(c.req.param('id'), c.req.param('runId'), c.req.param('fileId'));
+  if (!detail) return c.json({ error: 'Datei nicht gefunden' }, 404);
+  return c.json(detail);
+});
+
+/**
+ * GET /projects/:id/batches/:runId/export.xlsx — Ergebnistabelle als Excel.
+ */
+extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c) => {
+  const projectId = c.req.param('id');
+  const runId = c.req.param('runId');
+  const project = await getProject(projectId);
+  if (!project) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+  const result = await getBatchRun(projectId, runId);
+  if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
+
+  const fieldEntries = Object.entries(project.fields);
+  const headers = ['Datei', 'Status', ...fieldEntries.map(([, f]) => f.label || '')];
+  const rows = result.files.map((file) => [
+    file.filename,
+    file.status,
+    ...fieldEntries.map(([fid]) => cellString(file.data?.[fid])),
+  ]);
+
+  const buffer = await generateDocument(
+    {
+      title: `Batch-Extraktion — ${project.name}`,
+      metadata: {
+        Projekt: project.name,
+        Dokumente: String(result.files.length),
+        Lauf: runId,
+      },
+      sections: [{ title: 'Ergebnisse', type: 'table', content: { headers, rows } }],
+    },
+    'xlsx',
+  );
+
+  return c.body(buffer as unknown as ArrayBuffer, 200, {
+    'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'Content-Disposition': `attachment; filename="batch-${runId}.xlsx"`,
+  });
+});
+
+/**
+ * POST /projects/:id/batches/:runId/to-table — Ergebnisse in eine neue Tabelle schreiben.
+ */
+extractionProjectRoutes.post('/projects/:id/batches/:runId/to-table', async (c) => {
+  const projectId = c.req.param('id');
+  const runId = c.req.param('runId');
+  const project = await getProject(projectId);
+  if (!project) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+  const result = await getBatchRun(projectId, runId);
+  if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
+
+  const columns: ColumnDefinition[] = [
+    { id: 'quelldatei', name: 'Quelldatei', type: 'text' },
+    ...Object.entries(project.fields).map(([fid, f]) => ({
+      id: fid,
+      name: f.label || fid,
+      type: FIELD_TYPE_TO_COLUMN[f.type] || 'text',
+    })),
+  ];
+
+  const tableId = `extraktion-${projectId}-${Date.now().toString(36)}`;
+  const table = await createTable({
+    id: tableId,
+    name: `Extraktion: ${project.name}`,
+    description: `Batch-Lauf ${runId} (${result.files.length} Dokumente)`,
+    columns,
+  });
+
+  let rowCount = 0;
+  for (const file of result.files) {
+    if (file.status !== 'completed' || !file.data) continue;
+    const data: Record<string, unknown> = { quelldatei: file.filename };
+    for (const [fid, f] of Object.entries(project.fields)) {
+      const v = file.data[fid];
+      data[fid] = FIELD_TYPE_TO_COLUMN[f.type] === 'boolean' ? Boolean(v) : v ?? null;
+    }
+    try {
+      await addRow(table.id, { data });
+      rowCount += 1;
+    } catch (err) {
+      console.error('[batch-extract] to-table addRow error:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  return c.json({ tableId: table.id, tableName: table.name, rowCount });
+});
+
+/**
+ * DELETE /projects/:id/batches/:runId — Lauf löschen.
+ */
+extractionProjectRoutes.delete('/projects/:id/batches/:runId', async (c) => {
+  const deleted = await deleteBatchRun(c.req.param('id'), c.req.param('runId'));
+  if (!deleted) return c.json({ error: 'Lauf nicht gefunden' }, 404);
+  return c.json({ success: true });
 });
