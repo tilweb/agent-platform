@@ -6,3 +6,20 @@ export type { ExtractionProject, TrainingExample, ProjectField, FieldType, Learn
 export { getAllProjects, getProject, createProject, updateProject, deleteProject } from './projects';
 export { getExamples, saveExample, deleteExample } from './examples';
 export { extract, train, regenerateGuidelines } from './service';
+export {
+  createBatchRun,
+  setRunStatus,
+  upsertFileResult,
+  listBatchRuns,
+  getBatchRun,
+  getBatchRunFileDetail,
+  deleteBatchRun,
+} from './batch-runs';
+export type {
+  BatchRunStatus,
+  BatchRunSummary,
+  BatchFileSummary,
+  BatchFileDetail,
+  FileResultPayload,
+} from './batch-runs';
+export { runBatchExtraction } from './batch-service';
