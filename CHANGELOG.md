@@ -2,6 +2,14 @@
 
 ## 2026-06-15
 
+### Fix: Batch-Ergebnistabelle bei vielen Feldern (Layout-Überlauf)
+Bei Projekten mit vielen Feldern (z. B. 21 bei den Sani-Rezepten) lief die Ergebnistabelle weit
+über den Bildschirm hinaus. Ursache: fehlendes `min-width: 0` am Flex-Content-Bereich (die Tabelle
+zwang den ganzen Bereich breiter statt zu scrollen). Jetzt scrollt die Tabelle **horizontal
+innerhalb der Karte**, die **Datei-Spalte ist beim Scrollen fixiert** (sticky), und lange Feldwerte
+werden einzeilig gekürzt (Ellipsis + Tooltip mit dem vollen Wert). Vollständige Werte weiterhin in
+der aufklappbaren Detailansicht und im Export.
+
 ### Feature: Manuelle Batch-Extraktion — „Verarbeiten"-Tab (Nutzungsdimension UI)
 Neuer Tab in den Extraktions-Projekten, über den man per **Multi-Upload** mehrere Dokumente durch
 ein angelerntes Projekt jagt, den **Status je Dokument** verfolgt, **Ergebnisse** prüft und
