@@ -31,6 +31,7 @@ const styles = {
   },
   content: {
     flex: 1,
+    minWidth: 0,
     overflow: 'auto',
     padding: theme.spacing['2xl'],
   },
@@ -1161,11 +1162,14 @@ function BatchTab({ project }) {
             }}>{tableMsg.text}</div>
           )}
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm }}>
+          <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
+            Zeile anklicken für die vollständige Detailansicht · horizontal scrollbar bei vielen Feldern
+          </div>
+          <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+            <table style={{ borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm }}>
               <thead>
                 <tr style={{ textAlign: 'left', color: theme.colors.textMuted }}>
-                  <th style={batchTh}>Datei</th>
+                  <th style={{ ...batchTh, ...batchStickyCol, zIndex: 3 }}>Datei</th>
                   <th style={batchTh}>Status</th>
                   {fieldEntries.map(([fid, f]) => <th key={fid} style={batchTh}>{f.label || fid}</th>)}
                   <th style={batchTh}>Ø</th>
@@ -1182,13 +1186,16 @@ function BatchTab({ project }) {
                         onClick={() => hasDetail && toggleExpand(file.id)}
                         style={{ borderTop: `1px solid ${theme.colors.border}`, cursor: hasDetail ? 'pointer' : 'default' }}
                       >
-                        <td style={batchTd}>{file.filename}</td>
+                        <td style={batchStickyCol} title={file.filename}>{file.filename}</td>
                         <td style={batchTd}><StatusBadge status={file.status} /></td>
-                        {fieldEntries.map(([fid]) => (
-                          <td key={fid} style={{ ...batchTd, color: file.data?.[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
-                            {fmtValue(file.data?.[fid]) || '—'}
-                          </td>
-                        ))}
+                        {fieldEntries.map(([fid]) => {
+                          const val = fmtValue(file.data?.[fid]);
+                          return (
+                            <td key={fid} title={val} style={{ ...batchTdField, color: file.data?.[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
+                              {val || '—'}
+                            </td>
+                          );
+                        })}
                         <td style={{ ...batchTd, color: theme.colors.textMuted }}>{conf != null ? `${Math.round(conf * 100)}%` : '—'}</td>
                       </tr>
                       {open && (
@@ -1219,6 +1226,26 @@ const batchTh = {
 const batchTd = {
   padding: `${theme.spacing.sm} ${theme.spacing.md}`,
   verticalAlign: 'top',
+};
+// Feldwert-Zelle: einzeilig mit Ellipsis, damit die Tabelle bei vielen Feldern
+// kompakt bleibt und horizontal scrollt statt das Layout zu sprengen.
+const batchTdField = {
+  ...batchTd,
+  maxWidth: 180,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
+// Erste Spalte (Datei) fixiert beim horizontalen Scrollen.
+const batchStickyCol = {
+  position: 'sticky',
+  left: 0,
+  zIndex: 2,
+  backgroundColor: theme.colors.surface,
+  maxWidth: 200,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
 };
 
 function BatchFileDetail({ detail, fields }) {
