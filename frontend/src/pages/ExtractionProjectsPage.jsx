@@ -281,10 +281,39 @@ export default function ExtractionProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState(null);
+  const importInputRef = useRef(null);
 
   useEffect(() => {
     loadProjects();
   }, []);
+
+  async function handleImportFile(file) {
+    if (!file) return;
+    setImporting(true);
+    setImportMsg(null);
+    try {
+      const text = await file.text();
+      let bundle;
+      try { bundle = JSON.parse(text); }
+      catch { setImportMsg({ ok: false, text: 'Datei ist kein gültiges JSON.' }); return; }
+      const res = await apiPost('/extraction/projects/import', bundle);
+      if (res.ok) {
+        const proj = await res.json();
+        await loadProjects();
+        setImportMsg({ ok: true, text: `Importiert: „${proj.name}".` });
+        openProject(proj.id);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setImportMsg({ ok: false, text: `Fehler: ${err.error || res.status}` });
+      }
+    } catch {
+      setImportMsg({ ok: false, text: 'Netzwerkfehler beim Import.' });
+    } finally {
+      setImporting(false);
+    }
+  }
 
   async function loadProjects() {
     try {
@@ -325,11 +354,29 @@ export default function ExtractionProjectsPage() {
           <h1 style={styles.title}>Dokumenten-Extraktion</h1>
           <p style={styles.subtitle}>Lernende Extraktion — definiere Felder, trainiere durch Korrektur</p>
         </div>
-        <button style={styles.primaryBtn} onClick={() => setView('create')}>
-          <SparklesIcon size={16} /> Neues Projekt
-        </button>
+        <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center' }}>
+          <button style={styles.secondaryBtn} onClick={() => importInputRef.current?.click()} disabled={importing}>
+            {importing ? <Spinner size={14} /> : <DocumentIcon size={16} />}
+            {importing ? 'Importiere…' : 'Importieren'}
+          </button>
+          <input
+            ref={importInputRef} type="file" hidden accept=".json,application/json"
+            onChange={(e) => { handleImportFile(e.target.files?.[0]); e.target.value = ''; }}
+          />
+          <button style={styles.primaryBtn} onClick={() => setView('create')}>
+            <SparklesIcon size={16} /> Neues Projekt
+          </button>
+        </div>
       </div>
       <div style={styles.content}>
+        {importMsg && (
+          <div style={{
+            marginBottom: theme.spacing.lg, padding: theme.spacing.md,
+            borderRadius: theme.borderRadius.lg, fontSize: theme.typography.sizes.sm,
+            backgroundColor: importMsg.ok ? theme.colors.successLight : theme.colors.errorLight,
+            color: importMsg.ok ? theme.colors.success : theme.colors.error,
+          }}>{importMsg.text}</div>
+        )}
         {loading ? (
           <div style={styles.emptyState}>Laden...</div>
         ) : projects.length === 0 ? (
@@ -1909,6 +1956,25 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   );
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  const [exportWithExamples, setExportWithExamples] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const res = await apiGet(`/extraction/projects/${project.id}/export?examples=${exportWithExamples}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        triggerDownload(blob, `${project.id}${exportWithExamples ? '-mit-beispielen' : ''}.extraction.json`);
+      } else {
+        setStatusMsg('Fehler: Export fehlgeschlagen');
+      }
+    } catch {
+      setStatusMsg('Netzwerkfehler beim Export');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   function addField() {
     setFields([...fields, { id: '', label: '', type: 'text', required: false, description: '' }]);
@@ -2087,6 +2153,30 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Export / Weitergabe */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Export & Weitergabe</div>
+        <InfoBox>
+          Exportiere dieses Projekt als Paket (.json), um es auf einer anderen Workplace-Instanz zu
+          importieren — z. B. eine bewährte Vorlage für andere Kunden. Schema, Domänen-Anweisungen und
+          gelernte Regeln sind immer enthalten.
+        </InfoBox>
+        <label style={{ display: 'flex', alignItems: 'center', marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, cursor: 'pointer' }}>
+          <input
+            type="checkbox" style={styles.checkbox}
+            checked={exportWithExamples}
+            onChange={(e) => setExportWithExamples(e.target.checked)}
+          />
+          Trainingsbeispiele einschließen (enthält Originaldokumente — ggf. personenbezogene Daten)
+        </label>
+        <div style={{ marginTop: theme.spacing.lg }}>
+          <button style={styles.secondaryBtn} onClick={handleExport} disabled={exporting}>
+            {exporting ? <Spinner size={14} /> : <DocumentIcon size={14} />}
+            {exporting ? 'Exportiere…' : 'Projekt exportieren'}
+          </button>
+        </div>
       </div>
 
       {statusMsg && (

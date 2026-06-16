@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-06-16
+
+### Feature: Export & Import von Extraktionsprojekten (Weitergabe als Vorlage)
+Ein gut angelerntes Projekt lässt sich als portables **.json-Paket** exportieren und auf einer
+anderen Workplace-Instanz importieren — z. B. eine bewährte, allgemeingültige Vorlage für andere
+Kunden, ohne sie in den Seed zu zwingen.
+- **Inhalt:** Schema (Felder), Domänen-Anweisungen und gelernte **Guidelines** sind immer dabei
+  (generalisiert, PII-frei). Die rohen **Trainingsbeispiele** (enthalten Originaldokumente/PII)
+  wandern nur mit, wenn beim Export explizit angehakt — Default: ohne.
+- **Import** legt **immer ein neues Projekt** an (frische ID; Name bei Kollision mit „(Import)"-
+  Suffix). Guidelines + Lern-Metadaten werden wiederhergestellt; enthaltene Beispiele angelegt
+  (Korrekturen werden neu abgeleitet).
+- **Backend:** neue `extraction/learning/transfer.ts` (`exportProject`/`importProject`) — baut nur
+  auf bestehenden CRUD-Funktionen auf, daher in beiden Worktrees (Postgres/YAML) identisch, **keine
+  neue Storage-Divergenz**. Routen: `GET /projects/:id/export?examples=` (JSON-Download) und
+  `POST /projects/import` (JSON oder Datei-Upload).
+- **Frontend (`ExtractionProjectsPage.jsx`):** „Importieren"-Button in der Projektliste
+  (JSON-Upload, öffnet danach das neue Projekt) und Bereich „Export & Weitergabe" in den
+  Einstellungen (Checkbox „Trainingsbeispiele einschließen" + Download).
+- **Verifiziert:** Export/Import-Roundtrip mit und ohne Beispiele (Scalingo, E2E gegen laufendes
+  Backend; Guidelines/Learning/Beispiele korrekt, Name-Dedup). tsc ohne neue Fehler, Build grün.
+  Railway gespiegelt (1:1, da nur gemeinsame CRUD genutzt) und YAML-Pfad per Smoke-Test bestätigt.
+
 ## 2026-06-15
 
 ### Fix: Batch-Ergebnistabelle bei vielen Feldern (Layout-Überlauf)

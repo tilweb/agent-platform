@@ -23,3 +23,5 @@ export type {
   FileResultPayload,
 } from './batch-runs';
 export { runBatchExtraction } from './batch-service';
+export { exportProject, importProject } from './transfer';
+export type { ProjectBundle } from './transfer';
