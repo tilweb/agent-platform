@@ -2,6 +2,19 @@
 
 ## 2026-06-16
 
+### Feature: Modell-Auswahl je Extraktionsprojekt in der UI (analog zu Agenten)
+Das `model_override` eines Extraktionsprojekts war bisher nur per Script setzbar und in der UI
+unsichtbar. Jetzt gibt es — wie bei Agenten — ein Dropdown **„KI-Modell (optional)"** bei der
+Projektanlage und in den Einstellungen.
+- Listet die aktiven Chat-/Vision-Modelle (über den `useProviders`-Hook); vision-fähige sind mit
+  „· Vision" markiert (Vision-Strategien brauchen ein vision-fähiges Modell). „System-Standard
+  verwenden" = kein Override.
+- Gespeichert als `extraction.model_override = { provider_id, model_id }` bzw. `null`. Die
+  Backend-Pipeline wendet den Override bereits in allen Strategien + im Repair-Pass an; ein aktuell
+  gesetztes, aber nicht (mehr) in der Provider-Liste vorhandenes Modell bleibt im Dropdown erhalten.
+- Reines Frontend (`ExtractionProjectsPage.jsx`, neue `ModelOverrideSelect`-Komponente). PUT-
+  Roundtrip verifiziert (setzen/ändern/auf System-Standard zurück); Build grün.
+
 ### Feature: Export & Import von Extraktionsprojekten (Weitergabe als Vorlage)
 Ein gut angelerntes Projekt lässt sich als portables **.json-Paket** exportieren und auf einer
 anderen Workplace-Instanz importieren — z. B. eine bewährte, allgemeingültige Vorlage für andere

@@ -3,6 +3,7 @@ import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm } from '../utils/apiFetch';
 import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon } from '../components/Icons';
 import ExportDropdown from '../components/ExportDropdown';
+import { useProviders } from '../hooks/useProviders';
 
 // ============== Styles ==============
 
@@ -417,12 +418,60 @@ export default function ExtractionProjectsPage() {
   );
 }
 
+// ============== Modell-Override-Selektor (analog zu Agenten) ==============
+
+/**
+ * Optionaler Modell-Override für ein Extraktionsprojekt. value ist
+ * `{ provider_id, model_id }` oder null (= System-Standard). Listet die aktiven
+ * Chat-/Vision-Modelle; Vision-fähige sind markiert (vision-Strategien brauchen
+ * ein vision-fähiges Modell).
+ */
+function ModelOverrideSelect({ value, onChange }) {
+  const { enabledProviders, getExtendedCapabilities, isLoading } = useProviders();
+
+  const options = [];
+  for (const p of enabledProviders) {
+    for (const m of (p.models || [])) {
+      if (m.type !== 'llm' && m.type !== 'vllm') continue;
+      const caps = getExtendedCapabilities(m);
+      options.push({
+        key: `${p.id}|${m.id}`,
+        label: `${m.name || m.id}${caps.vision ? ' · Vision' : ''} — ${p.name}`,
+      });
+    }
+  }
+
+  const current = value?.provider_id && value?.model_id ? `${value.provider_id}|${value.model_id}` : '';
+  // Aktuell gesetztes Modell erhalten, auch wenn es (noch) nicht in der Provider-Liste ist.
+  if (current && !options.some(o => o.key === current)) {
+    options.unshift({ key: current, label: `${value.model_id} (aktuell, nicht in Provider-Liste)` });
+  }
+
+  return (
+    <select
+      style={{ ...styles.select, width: '100%' }}
+      value={current}
+      disabled={isLoading}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (!v) { onChange(null); return; }
+        const [provider_id, model_id] = v.split('|');
+        onChange({ provider_id, model_id });
+      }}
+    >
+      <option value="">System-Standard verwenden</option>
+      {options.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+    </select>
+  );
+}
+
 // ============== Create Project View ==============
 
 function CreateProjectView({ onBack, onCreated }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [strategy, setStrategy] = useState('hybrid');
+  const [modelOverride, setModelOverride] = useState(null);
   const [instructions, setInstructions] = useState('');
   const [fields, setFields] = useState([
     { id: '', label: '', type: 'text', required: true, description: '' },
@@ -483,7 +532,7 @@ function CreateProjectView({ onBack, onCreated }) {
         description: description.trim(),
         fields: fieldsObj,
         instructions: instructions.trim() || undefined,
-        extraction: { strategy },
+        extraction: { strategy, ...(modelOverride ? { model_override: modelOverride } : {}) },
       });
       if (res.ok) {
         const project = await res.json();
@@ -544,6 +593,13 @@ function CreateProjectView({ onBack, onCreated }) {
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>
+            </div>
+            <div style={{ marginBottom: theme.spacing.lg }}>
+              <label style={styles.label}>KI-Modell (optional)</label>
+              <ModelOverrideSelect value={modelOverride} onChange={setModelOverride} />
+              <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                Überschreibt das System-Standardmodell für dieses Projekt. Vision-Strategien brauchen ein vision-fähiges Modell.
+              </div>
             </div>
             <div>
               <label style={styles.label}>Domänen-Anweisungen (optional)</label>
@@ -1950,6 +2006,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
   const [strategy, setStrategy] = useState(project.extraction?.strategy || 'hybrid');
+  const [modelOverride, setModelOverride] = useState(project.extraction?.model_override || null);
   const [instructions, setInstructions] = useState(project.instructions || '');
   const [fields, setFields] = useState(
     Object.entries(project.fields).map(([id, f]) => ({ id, label: f.label, type: f.type, required: f.required, description: f.description || '' }))
@@ -2018,7 +2075,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         description: description.trim(),
         fields: fieldsObj,
         instructions: instructions,
-        extraction: { ...(project.extraction || {}), strategy },
+        extraction: { ...(project.extraction || {}), strategy, model_override: modelOverride },
       });
 
       if (res.ok) {
@@ -2072,6 +2129,13 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
+        </div>
+        <div style={{ marginBottom: theme.spacing.lg }}>
+          <label style={styles.label}>KI-Modell (optional)</label>
+          <ModelOverrideSelect value={modelOverride} onChange={setModelOverride} />
+          <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+            Überschreibt das System-Standardmodell für dieses Projekt. Vision-Strategien brauchen ein vision-fähiges Modell.
+          </div>
         </div>
         <div>
           <label style={styles.label}>Domänen-Anweisungen (optional)</label>
