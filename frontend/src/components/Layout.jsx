@@ -10,6 +10,7 @@ const layoutStyles = {
   },
   main: {
     flex: 1,
+    minWidth: 0,  // erlaubt inneren overflow-Containern (z.B. breite Tabellen) zu scrollen, statt den Viewport zu sprengen
     marginLeft: theme.layout.sidebarWidth,
     marginTop: theme.layout.headerHeight,
     display: 'flex',
@@ -17,6 +18,7 @@ const layoutStyles = {
   },
   content: {
     flex: 1,
+    minWidth: 0,
     padding: theme.spacing.xl,
     display: 'flex',
     flexDirection: 'column',
