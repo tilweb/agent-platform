@@ -22,6 +22,8 @@ import {
   getBatchRunFileDetail,
   deleteBatchRun,
   runBatchExtraction,
+  exportProject,
+  importProject,
 } from '../extraction/learning';
 import type { ProjectField } from '../extraction/learning';
 import { createTable, addRow } from '../tables';
@@ -111,6 +113,54 @@ extractionProjectRoutes.delete('/projects/:id', async (c) => {
     return c.json({ error: 'Projekt nicht gefunden' }, 404);
   }
   return c.json({ success: true });
+});
+
+// ============== Export / Import (Projekt-Weitergabe) ==============
+
+/**
+ * POST /projects/import — Projekt aus einem Paket importieren (immer als NEUES
+ * Projekt). Akzeptiert JSON-Body oder multipart mit `file`.
+ *
+ * Vor den `:id`-Routen registriert, damit `import` nicht als :id interpretiert wird.
+ */
+extractionProjectRoutes.post('/projects/import', async (c) => {
+  const contentType = c.req.header('content-type') || '';
+  let bundle: unknown;
+  try {
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await c.req.formData();
+      const file = formData.get('file');
+      if (!(file instanceof File)) return c.json({ error: 'Keine Datei hochgeladen' }, 400);
+      bundle = JSON.parse(await file.text());
+    } else {
+      bundle = await c.req.json();
+    }
+  } catch {
+    return c.json({ error: 'Datei ist kein gültiges JSON' }, 400);
+  }
+
+  try {
+    const project = await importProject(bundle);
+    return c.json(project, 201);
+  } catch (error: any) {
+    return c.json({ error: error.message || 'Import fehlgeschlagen' }, 400);
+  }
+});
+
+/**
+ * GET /projects/:id/export — Projekt als portables JSON-Paket herunterladen.
+ * `?examples=true` schließt die Trainingsbeispiele ein (enthält Originaldokumente/PII).
+ */
+extractionProjectRoutes.get('/projects/:id/export', async (c) => {
+  const projectId = c.req.param('id');
+  const includeExamples = c.req.query('examples') === 'true';
+  const bundle = await exportProject(projectId, includeExamples);
+  if (!bundle) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+  const filename = `${projectId}${includeExamples ? '-mit-beispielen' : ''}.extraction.json`;
+  return c.body(JSON.stringify(bundle, null, 2), 200, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Disposition': `attachment; filename="${filename}"`,
+  });
 });
 
 // ============== Extraction ==============
