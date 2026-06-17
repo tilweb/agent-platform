@@ -5,8 +5,9 @@
 
 import { Hono } from 'hono';
 import { loadProvidersConfig, getProvider } from '../services/providers';
+import { transcribeAudioFile } from '../services/transcriptionService';
 import { uploadRateLimit } from '../middleware/rateLimit';
-import { internalError, validationError, serviceError, errorResponse, ErrorCode } from '../utils/errorHandler';
+import { internalError, validationError, serviceError } from '../utils/errorHandler';
 import { $ } from 'bun';
 import { randomUUID } from 'crypto';
 import { unlink, mkdir } from 'fs/promises';
@@ -108,45 +109,12 @@ transcriptionRoutes.post('/', uploadRateLimit, async (c) => {
       'video/ogg',       // Some browsers report video/ogg for audio
     ];
 
-    const normalizedMimeType = file.type.split(';')[0].trim();
+    const normalizedMimeType = (file.type.split(';')[0] || '').trim();
     console.log(`[Transcription] Received: "${file.type}" -> normalized: "${normalizedMimeType}"`);
     if (!validAudioTypes.includes(normalizedMimeType)) {
       console.log(`[Transcription] REJECTED - valid types:`, validAudioTypes);
       return validationError(c, 'Nicht unterstütztes Audioformat');
     }
-
-    // Get active STT configuration
-    const config = await loadProvidersConfig();
-    const active = config.active.stt;
-
-    if (!active?.provider_id || !active?.model_id) {
-      return errorResponse(c, { code: ErrorCode.SERVICE_UNAVAILABLE, message: 'Spracherkennung nicht konfiguriert' });
-    }
-
-    const provider = await getProvider(active.provider_id);
-    if (!provider || !provider.enabled) {
-      return errorResponse(c, { code: ErrorCode.SERVICE_UNAVAILABLE, message: 'Spracherkennung nicht verfügbar' });
-    }
-
-    // Get model (for model-specific base_url)
-    const model = provider.models?.find(m => m.id === active.model_id);
-    if (!model) {
-      return errorResponse(c, { code: ErrorCode.SERVICE_UNAVAILABLE, message: 'Sprachmodell nicht verfügbar' });
-    }
-
-    // Get API key from environment
-    const apiKey = provider.api_key_env ? process.env[provider.api_key_env] : null;
-    if (!apiKey) {
-      return errorResponse(c, { code: ErrorCode.SERVICE_UNAVAILABLE, message: 'Spracherkennung nicht konfiguriert' });
-    }
-
-    // Determine base URL (model overrides provider)
-    const baseUrl = model.base_url || provider.base_url;
-
-    // Build URL - don't append /transcriptions if already in base_url
-    const transcriptionUrl = baseUrl.includes('/transcriptions')
-      ? baseUrl
-      : `${baseUrl}/transcriptions`;
 
     // Get optional language parameter (default: German)
     const language = (formData.get('language') as string) || 'de';
@@ -164,45 +132,14 @@ transcriptionRoutes.post('/', uploadRateLimit, async (c) => {
       }
     }
 
-    const whisperForm = new FormData();
-    whisperForm.append('file', fileToSend);
-
-    // Always send model parameter - Adacor Whisper API requires it
-    whisperForm.append('model', active.model_id);
-    // Set language for transcription
-    whisperForm.append('language', language);
-
-    // Debug: Log what we're sending
-    const formEntries: string[] = [];
-    whisperForm.forEach((value, key) => {
-      if (value instanceof File) {
-        formEntries.push(`${key}: File(${value.name}, ${value.type}, ${value.size} bytes)`);
-      } else {
-        formEntries.push(`${key}: ${value}`);
-      }
-    });
-    console.log(`[Transcription] URL: ${transcriptionUrl}`);
-    console.log(`[Transcription] FormData: ${formEntries.join(', ')}`);
-
-    // Call Whisper API
-    const response = await fetch(transcriptionUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: whisperForm,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      // Log full error details server-side only
-      console.error('[Transcription] API error:', response.status, errorText);
-      return serviceError(c, new Error(errorText), 'Whisper API');
+    // Whisper-Aufruf über den geteilten Service (Provider-Config, URL-Bau, POST).
+    try {
+      const text = await transcribeAudioFile(fileToSend, language);
+      return c.json({ text });
+    } catch (sttError) {
+      console.error('[Transcription] STT error:', sttError);
+      return serviceError(c, sttError as Error, 'Whisper API');
     }
-
-    const result = await response.json();
-    console.log('[Transcription] API response:', JSON.stringify(result));
-    return c.json({ text: result.text });
   } catch (error) {
     // Log full error details server-side only
     console.error('[Transcription] Error:', error);

@@ -44,6 +44,7 @@ import { runMigrations } from './db/migrate';
 import { migrateAuftraegeToProjekteIfNeeded } from './apps/projektmanagement/projekt-service';
 import { seedContractSchemasFromYamlIfNeeded } from './apps/vertragsmanagement/seed-schemas';
 import { seedVorgangsmappeSettings } from './apps/vorgangsmappe/seed-settings';
+import { seedPodcastRepurposingFormats } from './apps/podcast-repurposing/seed-formats';
 import { ensureBucket } from './storage/s3';
 import { seedDemoUsers } from '../../scripts/seed-demo-users';
 import { seedCustomSkillsFromDisk } from './skills';
@@ -103,6 +104,13 @@ async function initialize() {
       }
     } catch (error) {
       console.warn('[seed-vorgangsmappe] skipped/failed (server will still start):', error instanceof Error ? error.message : error);
+    }
+
+    // Podcast-Repurposing: Format-Vorlagen idempotent seeden.
+    try {
+      await seedPodcastRepurposingFormats();
+    } catch (error) {
+      console.warn('[seed-podcast-repurposing] skipped/failed (server will still start):', error instanceof Error ? error.message : error);
     }
   }
 

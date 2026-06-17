@@ -18,6 +18,7 @@ import { lieferantenmanagementConfig } from './lieferantenmanagement';
 import { vsmConfig } from './vsm';
 import { wzbarMatcherConfig } from './wzbar-matcher';
 import { vorgangsmappeConfig } from './vorgangsmappe';
+import { podcastRepurposingConfig } from './podcast-repurposing';
 
 /**
  * All built-in apps bundled with the backend. On server startup,
@@ -31,6 +32,7 @@ const BUILT_IN_APPS: AppConfig[] = [
   vsmConfig,
   wzbarMatcherConfig,
   vorgangsmappeConfig,
+  podcastRepurposingConfig,
 ];
 
 let registryCache: AppsRegistry | null = null;

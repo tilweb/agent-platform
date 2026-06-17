@@ -100,6 +100,16 @@ export const s3Paths = {
     assertSafeFilename(file);
     return `apps/lieferantenmanagement/${supplierId}/${docId}/${file}`;
   },
+  // Podcast-Repurposing: hochgeladenes Video + extrahiertes Audio pro Episode.
+  prVideo: (episodeId: string, ext: string) => {
+    assertSafeId(episodeId, 'episodeId');
+    assertSafeExt(ext);
+    return `apps/podcast-repurposing/${episodeId}/source.${ext}`;
+  },
+  prAudio: (episodeId: string) => {
+    assertSafeId(episodeId, 'episodeId');
+    return `apps/podcast-repurposing/${episodeId}/audio.mp3`;
+  },
 };
 
 function stripLeadingSlash(p: string): string {

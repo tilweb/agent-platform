@@ -48,6 +48,10 @@ const WzbarMatcherPage = lazy(() => import('./apps/wzbar-matcher/MatcherPage'));
 const VorgangListPage = lazy(() => import('./apps/vorgangsmappe/VorgangListPage'));
 const VorgangDetailPage = lazy(() => import('./apps/vorgangsmappe/VorgangDetailPage'));
 const VorgangSettingsPage = lazy(() => import('./apps/vorgangsmappe/SettingsPage'));
+const PodcastEpisodesPage = lazy(() => import('./apps/podcast-repurposing/EpisodesListPage'));
+const PodcastUploadPage = lazy(() => import('./apps/podcast-repurposing/UploadPage'));
+const PodcastSettingsPage = lazy(() => import('./apps/podcast-repurposing/SettingsPage'));
+const PodcastEpisodeDetailPage = lazy(() => import('./apps/podcast-repurposing/EpisodeDetailPage'));
 import RequireAppPermission from './components/RequireAppPermission';
 
 // Loading fallback component
@@ -208,6 +212,10 @@ function AppRoutes() {
                   <Route path="/apps/vorgangsmappe" element={<RequireAppPermission appId="vorgangsmappe"><VorgangListPage /></RequireAppPermission>} />
                   <Route path="/apps/vorgangsmappe/settings" element={<RequireAppPermission appId="vorgangsmappe"><VorgangSettingsPage /></RequireAppPermission>} />
                   <Route path="/apps/vorgangsmappe/:reference" element={<RequireAppPermission appId="vorgangsmappe"><VorgangDetailPage /></RequireAppPermission>} />
+                  <Route path="/apps/podcast-repurposing" element={<RequireAppPermission appId="podcast-repurposing"><PodcastEpisodesPage /></RequireAppPermission>} />
+                  <Route path="/apps/podcast-repurposing/upload" element={<RequireAppPermission appId="podcast-repurposing"><PodcastUploadPage /></RequireAppPermission>} />
+                  <Route path="/apps/podcast-repurposing/settings" element={<RequireAppPermission appId="podcast-repurposing"><PodcastSettingsPage /></RequireAppPermission>} />
+                  <Route path="/apps/podcast-repurposing/:id" element={<RequireAppPermission appId="podcast-repurposing"><PodcastEpisodeDetailPage /></RequireAppPermission>} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>

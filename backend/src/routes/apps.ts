@@ -27,6 +27,7 @@ import { lieferantenmanagementRoutes } from '../apps/lieferantenmanagement/route
 import { vsmRoutes } from '../apps/vsm/routes';
 import { wzbarMatcherRoutes } from '../apps/wzbar-matcher/routes';
 import { vorgangsmappeRoutes } from '../apps/vorgangsmappe/routes';
+import { podcastRepurposingRoutes } from '../apps/podcast-repurposing/routes';
 
 const apps = new Hono();
 
@@ -78,7 +79,7 @@ apps.get('/:appId', async (c) => {
     const appId = c.req.param('appId');
 
     // Skip if it's a sub-route
-    if (appId === 'enabled' || appId === 'vertragsmanagement' || appId === 'lieferantenmanagement' || appId === 'vsm' || appId === 'wzbar-matcher' || appId === 'vorgangsmappe') {
+    if (appId === 'enabled' || appId === 'vertragsmanagement' || appId === 'lieferantenmanagement' || appId === 'vsm' || appId === 'wzbar-matcher' || appId === 'vorgangsmappe' || appId === 'podcast-repurposing') {
       return c.notFound();
     }
 
@@ -288,5 +289,6 @@ apps.route('/wzbar-matcher', wzbarMatcherRoutes);
 
 // Mount Vorgangsmappe routes
 apps.route('/vorgangsmappe', vorgangsmappeRoutes);
+apps.route('/podcast-repurposing', podcastRepurposingRoutes);
 
 export { apps as appsRoutes };
