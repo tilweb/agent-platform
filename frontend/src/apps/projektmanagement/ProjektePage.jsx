@@ -18,16 +18,18 @@ import PortfolioList from './components/portfolio/PortfolioList';
 // Projekte | Ideen | Portfolios | Einstellungen.
 // Statusberichte/Abschluss waren bisher fehlplaziert — gehoeren als
 // Sub-Tabs in die Projekt-Detail-View (siehe Phase B/E).
+// Reihenfolge folgt dem Projektlebenszyklus: Projektidee -> Projekte -> Portfolios.
+// Einstellungen wird im Render an den rechten Rand geschoben (marginLeft: auto).
 const TABS = [
-  {
-    id: 'projekte',
-    label: 'Projekte',
-    icon: ClipboardIcon,
-  },
   {
     id: 'ideen',
     label: 'Projektideen',
     icon: LightningIcon,
+  },
+  {
+    id: 'projekte',
+    label: 'Projekte',
+    icon: ClipboardIcon,
   },
   {
     id: 'portfolios',
@@ -448,6 +450,8 @@ function ProjektePage() {
                 style={{
                   ...styles.tab,
                   ...(isActive ? styles.tabActive : {}),
+                  // Einstellungen an den rechten Rand schieben (Projektlebenszyklus).
+                  ...(tab.id === 'einstellungen' ? { marginLeft: 'auto' } : {}),
                 }}
                 onClick={() => handleTabChange(tab.id)}
                 onMouseEnter={(e) => {

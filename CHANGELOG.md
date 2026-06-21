@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-21
+
+### PM-App: Tab-Reihenfolge am Projektlebenszyklus ausgerichtet
+Die Top-Level-Navigation der Projektmanagement-App folgt nun dem Lebenszyklus:
+**Projektideen → Projekte → Portfolios**. Der Tab **Einstellungen** wird ans rechte
+Ende der Tab-Leiste geschoben (`marginLeft: auto`).
+- Datei: `frontend/src/apps/projektmanagement/ProjektePage.jsx` (TABS-Array umgeordnet,
+  Render mit Rechts-Ausrichtung für `einstellungen`).
+
 ## 2026-06-16
 
 ### Feature: Modell-Auswahl je Extraktionsprojekt in der UI (analog zu Agenten)
