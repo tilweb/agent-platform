@@ -19,6 +19,7 @@ import PermissionsModal from './components/PermissionsModal';
 import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../utils/apiFetch';
 import ExportDropdown from '../../components/ExportDropdown';
+import StepNav from './components/StepNav';
 import IdeeBasis from './components/idee-steps/IdeeBasis';
 import IdeeZiele from './components/idee-steps/IdeeZiele';
 import Projektkontext from './components/idee-steps/Projektkontext';
@@ -114,59 +115,7 @@ const styles = {
     color: theme.colors.error,
     borderColor: `${theme.colors.error}30`,
   },
-  // Horizontal Step Tabs (Pill-Style) — identisch zu WizardPage
-  stepTabs: {
-    display: 'flex',
-    gap: theme.spacing.sm,
-    padding: `${theme.spacing.md} ${theme.spacing['2xl']}`,
-    backgroundColor: 'transparent',
-    overflowX: 'auto',
-    flexWrap: 'nowrap',
-  },
-  stepTab: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.textMuted,
-    cursor: 'pointer',
-    transition: `all ${theme.transitions.fast}`,
-    whiteSpace: 'nowrap',
-  },
-  stepTabActive: {
-    backgroundColor: theme.colors.primaryLight,
-    color: theme.colors.primary,
-  },
-  stepTabCompleted: {
-    color: theme.colors.success,
-  },
-  stepTabNumber: {
-    width: '20px',
-    height: '20px',
-    borderRadius: theme.borderRadius.full,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: theme.typography.sizes.xs,
-    fontWeight: theme.typography.weights.medium,
-  },
-  stepTabNumberDefault: {
-    backgroundColor: theme.colors.border,
-    color: theme.colors.textMuted,
-  },
-  stepTabNumberActive: {
-    backgroundColor: theme.colors.primary,
-    color: '#fff',
-  },
-  stepTabNumberCompleted: {
-    backgroundColor: theme.colors.success,
-    color: '#fff',
-  },
+  // Step-Tab-Styles leben jetzt in StepNav (components/StepNav.jsx).
   // Main content area
   main: {
     flex: 1,
@@ -286,7 +235,6 @@ export default function IdeeWizardPage() {
 
   const [idee, setIdee] = useState(emptyIdee());
   const [currentStep, setCurrentStep] = useState(1);
-  const [maxVisitedStep, setMaxVisitedStep] = useState(1);
   const [isLoading, setIsLoading] = useState(!!id);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -315,7 +263,6 @@ export default function IdeeWizardPage() {
           setServerVersion(data.version ?? 1);
           const step = data.current_step || 1;
           setCurrentStep(step);
-          setMaxVisitedStep(Math.max(step, 1));
         })
         .catch((err) => {
           console.error(err);
@@ -390,7 +337,6 @@ export default function IdeeWizardPage() {
       if (result === null && error) return;
     }
     setCurrentStep(step);
-    setMaxVisitedStep((prev) => Math.max(prev, step));
   };
 
   const goNext = () => {
@@ -400,9 +346,35 @@ export default function IdeeWizardPage() {
     if (currentStep > 1) goToStep(currentStep - 1);
   };
 
+  // Inhaltsbasierte "erledigt"-Logik — einheitlich wie beim Projektauftrag.
+  const isStepCompleted = (stepNumber) => {
+    switch (stepNumber) {
+      case 1: // Basis
+        return !!idee.name && !!idee.projekt_id;
+      case 2: // Ziele
+        return !!idee.goals;
+      case 3: // Projektkontext
+        return !!idee.context?.ausgangslage
+          || !!idee.context?.rahmenbedingungen
+          || idee.in_scope?.length > 0
+          || idee.out_scope?.length > 0;
+      case 4: // Business Case
+        return idee.business_case?.investitionen?.length > 0
+          || idee.business_case?.nutzen?.length > 0;
+      case 5: // Unternehmensrisiken
+        return idee.unternehmensrisiken?.length > 0;
+      case 6: // Übersicht: kein eigener Inhalt -> erledigt, wenn alle Schritte davor erledigt
+        return [1, 2, 3, 4, 5].every((n) => isStepCompleted(n));
+      default:
+        return false;
+    }
+  };
+
+  // Rein inhaltsbasiert: grün nur bei tatsächlich vorhandenen Daten (kein
+  // positionsbasiertes "Schein-Grün" für bereits passierte Schritte).
   const getStepStatus = (stepNumber) => {
     if (stepNumber === currentStep) return 'active';
-    if (stepNumber < maxVisitedStep) return 'completed';
+    if (isStepCompleted(stepNumber)) return 'completed';
     return 'default';
   };
 
@@ -579,52 +551,8 @@ export default function IdeeWizardPage() {
         </div>
       )}
 
-      {/* Step Tabs (Horizontal Pill-Style) */}
-      <div style={styles.stepTabs}>
-        {STEPS.map((step) => {
-          const status = getStepStatus(step.number);
-          const isActive = status === 'active';
-          const isCompleted = status === 'completed';
-          return (
-            <button
-              key={step.number}
-              type="button"
-              style={{
-                ...styles.stepTab,
-                ...(isActive ? styles.stepTabActive : {}),
-                ...(!isActive && isCompleted ? styles.stepTabCompleted : {}),
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                goToStep(step.number);
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              <div
-                style={{
-                  ...styles.stepTabNumber,
-                  ...(isActive ? styles.stepTabNumberActive : {}),
-                  ...(!isActive && isCompleted ? styles.stepTabNumberCompleted : {}),
-                  ...(!isActive && !isCompleted ? styles.stepTabNumberDefault : {}),
-                }}
-              >
-                {step.number}
-              </div>
-              {step.title}
-            </button>
-          );
-        })}
-      </div>
+      {/* Step Tabs (Horizontal Pill-Style) — siehe StepNav */}
+      <StepNav steps={STEPS} getStatus={getStepStatus} onSelect={goToStep} />
 
       {/* Main content */}
       <div style={styles.main}>

@@ -18,6 +18,23 @@ wie „(Statusberichte)" wurden in den strukturierten Untertitel überführt.
 - Datei: `frontend/src/apps/projektmanagement/components/Einstellungen.jsx`
   (`FIELD_USAGE`-Map + Untertitel-Rendering, Labels bereinigt).
 
+### PM-App: Einheitliche Step-Navigation (Projektauftrag, Projektidee, Statusbericht)
+Die Step-/Sub-Navigation der drei Projektauftrag-basierten Masken ist vereinheitlicht —
+auf Basis des Projektauftrags. Neue gemeinsame Komponente **`StepNav`** (nummerierte
+Kreis-Tabs) ersetzt drei zuvor unterschiedliche, duplizierte Implementierungen:
+- **Statusbericht** erhält jetzt **Nummerierung + Kreise** (vorher reiner Text ohne Nummern);
+  „SB #N" links, Export/Speichern rechts (via `leading`/`trailing`-Props).
+- **Einheitliche, rein inhaltsbasierte „erledigt"-Logik** überall: aktueller Schritt = teal,
+  Pflichtdaten vorhanden = grün, sonst grau. Kein positionsbasiertes „Schein-Grün" mehr für
+  bereits passierte, aber leere Schritte (vorher führte das zu flackernder Übersicht-Färbung
+  je nach Navigation). Die Projektidee nutzt damit nicht mehr die abweichende besuchsbasierte
+  Logik (`maxVisitedStep` entfernt).
+- **Übersicht-Schritte** (ohne eigenen Inhalt) werden grün, sobald alle vorherigen Schritte
+  erledigt sind — einheitlich bei Projektidee (Step 6) und Projektauftrag (Step 8).
+- Dateien: `frontend/src/apps/projektmanagement/components/StepNav.jsx` (neu),
+  `WizardPage.jsx` (Step-Nav + Statusbericht-Sub-Nav via StepNav, `isSbStepCompleted`/
+  `getSbStepStatus`, alte Styles entfernt), `IdeeWizardPage.jsx` (StepNav, `isStepCompleted`).
+
 ## 2026-06-16
 
 ### Feature: Modell-Auswahl je Extraktionsprojekt in der UI (analog zu Agenten)
