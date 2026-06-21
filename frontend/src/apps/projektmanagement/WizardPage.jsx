@@ -31,6 +31,7 @@ import Risiken from './components/steps/Risiken';
 import Uebersicht from './components/steps/Uebersicht';
 import Vergleich from './components/steps/Vergleich';
 import KnowledgePanel from './components/KnowledgePanel';
+import StepNav from './components/StepNav';
 import ExportDropdown from '../../components/ExportDropdown';
 // Statusbericht components
 import StatusberichtBlade from './components/StatusberichtBlade';
@@ -50,6 +51,15 @@ const STEPS = [
   { number: 7, title: 'Risiken', component: Risiken },
   { number: 8, title: 'Übersicht', component: Uebersicht },
   { number: 9, title: 'Vergleich', component: Vergleich },
+];
+
+// Statusbericht-Sub-Nav (id = sbTab-State, number = Anzeige in StepNav).
+const SB_STEPS = [
+  { number: 1, title: 'Basis', id: 'basis' },
+  { number: 2, title: 'Ziele', id: 'ziele' },
+  { number: 3, title: 'Roadmap', id: 'roadmap' },
+  { number: 4, title: 'Kosten', id: 'kosten' },
+  { number: 5, title: 'Risiken', id: 'risiken' },
 ];
 
 const styles = {
@@ -143,59 +153,7 @@ const styles = {
     color: theme.colors.error,
     borderColor: `${theme.colors.error}30`,
   },
-  // Horizontal Step Tabs (Pill-Style)
-  stepTabs: {
-    display: 'flex',
-    gap: theme.spacing.sm,
-    padding: `${theme.spacing.md} ${theme.spacing['2xl']}`,
-    backgroundColor: 'transparent',
-    overflowX: 'auto',
-    flexWrap: 'nowrap',
-  },
-  stepTab: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.textMuted,
-    cursor: 'pointer',
-    transition: `all ${theme.transitions.fast}`,
-    whiteSpace: 'nowrap',
-  },
-  stepTabActive: {
-    backgroundColor: theme.colors.primaryLight,
-    color: theme.colors.primary,
-  },
-  stepTabCompleted: {
-    color: theme.colors.success,
-  },
-  stepTabNumber: {
-    width: '20px',
-    height: '20px',
-    borderRadius: theme.borderRadius.full,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: theme.typography.sizes.xs,
-    fontWeight: theme.typography.weights.medium,
-  },
-  stepTabNumberDefault: {
-    backgroundColor: theme.colors.border,
-    color: theme.colors.textMuted,
-  },
-  stepTabNumberActive: {
-    backgroundColor: theme.colors.primary,
-    color: '#fff',
-  },
-  stepTabNumberCompleted: {
-    backgroundColor: theme.colors.success,
-    color: '#fff',
-  },
+  // Step-Tab-Styles leben jetzt in StepNav (components/StepNav.jsx).
   main: {
     flex: 1,
     display: 'flex',
@@ -289,30 +247,6 @@ const styles = {
     transition: `all ${theme.transitions.fast}`,
   },
   topTabActive: {
-    backgroundColor: theme.colors.primaryLight,
-    color: theme.colors.primary,
-  },
-  // Statusbericht tabs
-  sbTabs: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
-    backgroundColor: 'transparent',
-    flexShrink: 0,
-  },
-  sbTab: {
-    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: theme.borderRadius.md,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.textMuted,
-    cursor: 'pointer',
-    transition: `all ${theme.transitions.fast}`,
-  },
-  sbTabActive: {
     backgroundColor: theme.colors.primaryLight,
     color: theme.colors.primary,
   },
@@ -876,9 +810,11 @@ function WizardPage() {
   };
 
   // Get step status
+  // Rein inhaltsbasiert: grün nur bei tatsächlich vorhandenen Daten (kein
+  // positionsbasiertes "Schein-Grün" für bereits passierte Schritte).
   const getStepStatus = (stepNumber) => {
     if (stepNumber === currentStep) return 'active';
-    if (stepNumber < currentStep || isStepCompleted(stepNumber)) return 'completed';
+    if (isStepCompleted(stepNumber)) return 'completed';
     return 'default';
   };
 
@@ -898,9 +834,40 @@ function WizardPage() {
         return projektauftrag.budget?.length > 0;
       case 7:
         return projektauftrag.risks?.length > 0;
+      case 8: // Übersicht: kein eigener Inhalt -> erledigt, wenn alle Schritte davor erledigt
+        return [1, 2, 3, 4, 5, 6, 7].every((n) => isStepCompleted(n));
+      default: // 9 Vergleich: Analyse-Tool, kein Vollständigkeits-Trigger
+        return false;
+    }
+  };
+
+  // Statusbericht-Sub-Nav: gleiche inhaltsbasierte Logik wie der Projektauftrag.
+  const isSbStepCompleted = (stepNumber) => {
+    if (!currentSb) return false;
+    switch (stepNumber) {
+      case 1: // Basis
+        return !!currentSb.ampel && !!currentSb.datum && !!currentSb.management_summary;
+      case 2: // Ziele
+        return currentSb.criteria_tracking?.length > 0
+          || (currentSb.goals_tracking?.fortschritt ?? -1) >= 0;
+      case 3: // Roadmap
+        return currentSb.milestones_tracking?.length > 0
+          || currentSb.tasks_tracking?.length > 0
+          || currentSb.quality_gates_tracking?.length > 0;
+      case 4: // Kosten
+        return currentSb.cost_budget > 0 || currentSb.cost_months?.length > 0;
+      case 5: // Risiken
+        return currentSb.risk_tracking?.length > 0;
       default:
         return false;
     }
+  };
+
+  const getSbStepStatus = (stepNumber) => {
+    const activeNumber = SB_STEPS.find((s) => s.id === sbTab)?.number ?? 1;
+    if (stepNumber === activeNumber) return 'active';
+    if (isSbStepCompleted(stepNumber)) return 'completed';
+    return 'default';
   };
 
   if (isLoading) {
@@ -1136,52 +1103,8 @@ function WizardPage() {
 
       {mode === 'auftrag' && (
         <>
-          {/* Step Tabs (Horizontal Pill-Style) */}
-          <div style={styles.stepTabs}>
-            {STEPS.map((step) => {
-              const status = getStepStatus(step.number);
-              const isActive = status === 'active';
-              const isCompleted = status === 'completed';
-              return (
-                <button
-                  key={step.number}
-                  type="button"
-                  style={{
-                    ...styles.stepTab,
-                    ...(isActive ? styles.stepTabActive : {}),
-                    ...(!isActive && isCompleted ? styles.stepTabCompleted : {}),
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    goToStep(step.number);
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                  }}
-                >
-                  <div
-                    style={{
-                      ...styles.stepTabNumber,
-                      ...(isActive ? styles.stepTabNumberActive : {}),
-                      ...(!isActive && isCompleted ? styles.stepTabNumberCompleted : {}),
-                      ...(!isActive && !isCompleted ? styles.stepTabNumberDefault : {}),
-                    }}
-                  >
-                    {step.number}
-                  </div>
-                  {step.title}
-                </button>
-              );
-            })}
-          </div>
+          {/* Step Tabs (Horizontal Pill-Style) — siehe StepNav */}
+          <StepNav steps={STEPS} getStatus={getStepStatus} onSelect={goToStep} />
 
           {/* Main content */}
           <div style={styles.main}>
@@ -1270,100 +1193,79 @@ function WizardPage() {
               isCreating={isSbCreating}
             />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {/* Tabs — nur wenn ein Bericht ausgewählt */}
+              {/* Sub-Nav — nur wenn ein Bericht ausgewählt (einheitlich via StepNav) */}
               {currentSb && (
-                <div style={styles.sbTabs}>
-                  <span style={{
-                    fontSize: theme.typography.sizes.sm,
-                    fontWeight: theme.typography.weights.bold,
-                    color: theme.colors.text,
-                    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                    marginRight: theme.spacing.sm,
-                  }}>
-                    SB #{currentSb.nummer}
-                  </span>
-                  {[
-                    { id: 'basis', label: 'Basis' },
-                    { id: 'ziele', label: 'Ziele' },
-                    { id: 'roadmap', label: 'Roadmap' },
-                    { id: 'kosten', label: 'Kosten' },
-                    { id: 'risiken', label: 'Risiken' },
-                  ].map((tab) => {
-                    const isActive = sbTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        style={{
-                          ...styles.sbTab,
-                          ...(isActive ? styles.sbTabActive : {}),
-                        }}
-                        onClick={() => setSbTab(tab.id)}
-                        onMouseEnter={(e) => {
-                          if (!isActive) {
-                            e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isActive) {
+                <StepNav
+                  steps={SB_STEPS}
+                  getStatus={getSbStepStatus}
+                  onSelect={(n) => {
+                    const t = SB_STEPS.find((s) => s.number === n);
+                    if (t) setSbTab(t.id);
+                  }}
+                  leading={(
+                    <span style={{
+                      fontSize: theme.typography.sizes.sm,
+                      fontWeight: theme.typography.weights.bold,
+                      color: theme.colors.text,
+                      padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                      marginRight: theme.spacing.sm,
+                    }}>
+                      SB #{currentSb.nummer}
+                    </span>
+                  )}
+                  trailing={(
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
+                      <ExportDropdown
+                        onExport={handleSbExport}
+                        formats={['xlsx', 'pdf', 'docx']}
+                        isLoading={isSbExporting}
+                        loadingFormat={sbExportingFormat}
+                      />
+                      {currentSb.status === 'draft' && canEdit && (
+                        <button
+                          type="button"
+                          style={{ ...styles.actionButton, ...styles.deleteButton }}
+                          onClick={handleDeleteSb}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = theme.colors.errorLight;
+                          }}
+                          onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = 'transparent';
-                          }
-                        }}
-                      >
-                        {tab.label}
-                      </button>
-                    );
-                  })}
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
-                    <ExportDropdown
-                      onExport={handleSbExport}
-                      formats={['xlsx', 'pdf', 'docx']}
-                      isLoading={isSbExporting}
-                      loadingFormat={sbExportingFormat}
-                    />
-                    {currentSb.status === 'draft' && canEdit && (
-                      <button
-                        type="button"
-                        style={{ ...styles.actionButton, ...styles.deleteButton }}
-                        onClick={handleDeleteSb}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = theme.colors.errorLight;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        <TrashIcon />
-                        Löschen
-                      </button>
-                    )}
-                    {canEdit && (
-                      <button
-                        type="button"
-                        style={{
-                          ...styles.actionButton,
-                          ...styles.primaryButton,
-                          opacity: isSbSaving ? 0.7 : 1,
-                          ...(isSbDirty && !isSbSaving ? {
-                            boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
-                          } : {}),
-                        }}
-                        onClick={handleSaveSb}
-                        disabled={isSbSaving}
-                        onMouseEnter={(e) => {
-                          if (!isSbSaving) {
-                            e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = theme.colors.primary;
-                        }}
-                      >
-                        <SaveIcon />
-                        {isSbSaving ? 'Speichern...' : isSbDirty ? 'Speichern *' : 'Speichern'}
-                      </button>
-                    )}
-                  </div>
-                </div>
+                          }}
+                        >
+                          <TrashIcon />
+                          Löschen
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          style={{
+                            ...styles.actionButton,
+                            ...styles.primaryButton,
+                            opacity: isSbSaving ? 0.7 : 1,
+                            ...(isSbDirty && !isSbSaving ? {
+                              boxShadow: `0 0 0 3px ${theme.colors.primary}30`,
+                            } : {}),
+                          }}
+                          onClick={handleSaveSb}
+                          disabled={isSbSaving}
+                          onMouseEnter={(e) => {
+                            if (!isSbSaving) {
+                              e.currentTarget.style.backgroundColor = theme.colors.primaryHover;
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = theme.colors.primary;
+                          }}
+                        >
+                          <SaveIcon />
+                          {isSbSaving ? 'Speichern...' : isSbDirty ? 'Speichern *' : 'Speichern'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                />
               )}
               {/* Content */}
               <div style={styles.content}>
