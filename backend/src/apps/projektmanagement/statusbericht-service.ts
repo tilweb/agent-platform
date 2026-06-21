@@ -198,6 +198,8 @@ export async function createStatusbericht(projektId: string, userId: string): Pr
     cost_budget: costBudget,
     cost_months: costMonths,
     risk_tracking: riskTracking,
+    organization_snapshot: auftrag.organization || [],
+    stakeholders_snapshot: auftrag.stakeholders || [],
     status: 'draft',
     created_at: now,
     updated_at: now,

@@ -40,6 +40,7 @@ import StatusberichtZiele from './components/statusbericht/StatusberichtZiele';
 import StatusberichtRoadmap from './components/statusbericht/StatusberichtRoadmap';
 import StatusberichtKosten from './components/statusbericht/StatusberichtKosten';
 import StatusberichtRisiken from './components/statusbericht/StatusberichtRisiken';
+import StatusberichtPersonen from './components/statusbericht/StatusberichtPersonen';
 
 const STEPS = [
   { number: 1, title: 'Basis', component: Basis },
@@ -60,6 +61,7 @@ const SB_STEPS = [
   { number: 3, title: 'Roadmap', id: 'roadmap' },
   { number: 4, title: 'Kosten', id: 'kosten' },
   { number: 5, title: 'Risiken', id: 'risiken' },
+  { number: 6, title: 'Personen', id: 'personen' },
 ];
 
 const styles = {
@@ -858,6 +860,9 @@ function WizardPage() {
         return currentSb.cost_budget > 0 || currentSb.cost_months?.length > 0;
       case 5: // Risiken
         return currentSb.risk_tracking?.length > 0;
+      case 6: // Personen (read-only Snapshot)
+        return currentSb.organization_snapshot?.length > 0
+          || currentSb.stakeholders_snapshot?.length > 0;
       default:
         return false;
     }
@@ -1296,10 +1301,16 @@ function WizardPage() {
                         onChange={handleSbChange}
                         projektauftrag={projektauftrag}
                       />
-                    ) : (
+                    ) : sbTab === 'risiken' ? (
                       <StatusberichtRisiken
                         data={currentSb}
                         onChange={handleSbChange}
+                        projektauftrag={projektauftrag}
+                        config={appConfig}
+                      />
+                    ) : (
+                      <StatusberichtPersonen
+                        data={currentSb}
                         projektauftrag={projektauftrag}
                         config={appConfig}
                       />

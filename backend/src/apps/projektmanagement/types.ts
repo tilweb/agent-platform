@@ -45,6 +45,15 @@ export interface TeamMember {
   role: string;
   email?: string;
   availability?: number; // percentage
+  // Im Frontend (Personen-Maske) genutzte Felder — Persistenz via jsonb-Blob.
+  company?: string;
+  status?: string;
+  interest?: string;
+  influence?: string;
+  gruppe?: string;        // konfigurierbar: Auftraggeber / Projektteam / Stakeholder
+  aufgabe?: string;       // Freitext
+  bemerkung?: string;     // Freitext
+  geplanter_einsatz?: { wert: number | string; einheit: '%' | 'PT' }; // nur Projektidee
 }
 
 export interface Stakeholder {
@@ -54,6 +63,7 @@ export interface Stakeholder {
   interest: 'low' | 'medium' | 'high';
   influence: 'low' | 'medium' | 'high';
   expectations?: string;
+  status?: string;
 }
 
 // ============== Projektauftrag ==============
@@ -728,6 +738,10 @@ export interface Statusbericht {
   // Tab: Risiken
   risk_tracking: RiskTrackingItem[];
 
+  // Tab: Personen (read-only Snapshot vom Projektauftrag bei SB-Erstellung)
+  organization_snapshot?: TeamMember[];
+  stakeholders_snapshot?: Stakeholder[];
+
   // Metadata
   status: 'draft' | 'final';
   created_at: string;
@@ -854,6 +868,10 @@ export interface Projektidee {
 
   // Tab 5: Unternehmensrisiken (gleiche Struktur wie Projektrisiken im Auftrag)
   unternehmensrisiken: Risk[];
+
+  // Tab Personen (gleiche Maske wie im Projektauftrag; inkl. geplanter_einsatz)
+  organization?: TeamMember[];
+  stakeholders?: Stakeholder[];
 
   // Tab 6: Uebersicht — read-only-zusammenfassung, kein eigener State
 

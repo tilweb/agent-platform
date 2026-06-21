@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { ArrowLeftIcon } from '../../components/Icons';
 import { useProjektideen, VersionConflictError } from '../../hooks/useProjektideen';
+import { useProjektmanagement } from '../../hooks/useProjektmanagement';
 import { usePmResourcePermission, hasMinRole } from '../../hooks/usePmResourcePermission';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import RoleBadge from '../../components/RoleBadge';
@@ -21,6 +22,7 @@ import { API_URL } from '../../utils/apiFetch';
 import ExportDropdown from '../../components/ExportDropdown';
 import StepNav from './components/StepNav';
 import IdeeBasis from './components/idee-steps/IdeeBasis';
+import IdeePersonen from './components/idee-steps/IdeePersonen';
 import IdeeZiele from './components/idee-steps/IdeeZiele';
 import Projektkontext from './components/idee-steps/Projektkontext';
 import BusinessCase from './components/idee-steps/BusinessCase';
@@ -29,11 +31,12 @@ import IdeeUebersicht from './components/idee-steps/IdeeUebersicht';
 
 const STEPS = [
   { number: 1, title: 'Basis', component: IdeeBasis },
-  { number: 2, title: 'Ziele', component: IdeeZiele },
-  { number: 3, title: 'Projektkontext', component: Projektkontext },
-  { number: 4, title: 'Business Case', component: BusinessCase },
-  { number: 5, title: 'Unternehmensrisiken', component: Unternehmensrisiken },
-  { number: 6, title: 'Übersicht', component: IdeeUebersicht },
+  { number: 2, title: 'Personen', component: IdeePersonen },
+  { number: 3, title: 'Ziele', component: IdeeZiele },
+  { number: 4, title: 'Projektkontext', component: Projektkontext },
+  { number: 5, title: 'Business Case', component: BusinessCase },
+  { number: 6, title: 'Unternehmensrisiken', component: Unternehmensrisiken },
+  { number: 7, title: 'Übersicht', component: IdeeUebersicht },
 ];
 
 const styles = {
@@ -216,6 +219,8 @@ function emptyIdee() {
     out_scope: [],
     business_case: { investitionen: [], nutzen: [] },
     unternehmensrisiken: [],
+    organization: [],
+    stakeholders: [],
     current_step: 1,
   };
 }
@@ -224,6 +229,7 @@ export default function IdeeWizardPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { getIdee, createIdee, updateIdee, deleteIdee, erstelleAuftragAusIdee } = useProjektideen({ autoLoad: false });
+  const { getConfig } = useProjektmanagement();
 
   // Phase-2: Effektive Idee-Rolle. Bei "neu" (ohne id) wird die App-Editor-Rolle
   // gecheckt — der Backend-POST prueft das nochmal hart.
@@ -234,6 +240,7 @@ export default function IdeeWizardPage() {
   const canManagePermissions = canDelete; // Same: nur Owner
 
   const [idee, setIdee] = useState(emptyIdee());
+  const [appConfig, setAppConfig] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(!!id);
   const [isSaving, setIsSaving] = useState(false);
@@ -271,6 +278,11 @@ export default function IdeeWizardPage() {
         .finally(() => setIsLoading(false));
     }
   }, [id, getIdee]);
+
+  // App-Config laden (Auswahloptionen fuer die Personen-Maske).
+  useEffect(() => {
+    getConfig().then(setAppConfig).catch(console.error);
+  }, [getConfig]);
 
   const handleChange = (next) => {
     setIdee(next);
@@ -351,20 +363,22 @@ export default function IdeeWizardPage() {
     switch (stepNumber) {
       case 1: // Basis
         return !!idee.name && !!idee.projekt_id;
-      case 2: // Ziele
+      case 2: // Personen
+        return idee.organization?.length > 0;
+      case 3: // Ziele
         return !!idee.goals;
-      case 3: // Projektkontext
+      case 4: // Projektkontext
         return !!idee.context?.ausgangslage
           || !!idee.context?.rahmenbedingungen
           || idee.in_scope?.length > 0
           || idee.out_scope?.length > 0;
-      case 4: // Business Case
+      case 5: // Business Case
         return idee.business_case?.investitionen?.length > 0
           || idee.business_case?.nutzen?.length > 0;
-      case 5: // Unternehmensrisiken
+      case 6: // Unternehmensrisiken
         return idee.unternehmensrisiken?.length > 0;
-      case 6: // Übersicht: kein eigener Inhalt -> erledigt, wenn alle Schritte davor erledigt
-        return [1, 2, 3, 4, 5].every((n) => isStepCompleted(n));
+      case 7: // Übersicht: kein eigener Inhalt -> erledigt, wenn alle Schritte davor erledigt
+        return [1, 2, 3, 4, 5, 6].every((n) => isStepCompleted(n));
       default:
         return false;
     }
@@ -568,7 +582,8 @@ export default function IdeeWizardPage() {
               <StepComponent
                 projektidee={idee}
                 onChange={handleChange}
-                onCreateAuftrag={currentStep === 6 ? handleCreateAuftrag : undefined}
+                config={appConfig}
+                onCreateAuftrag={currentStep === 7 ? handleCreateAuftrag : undefined}
               />
             </div>
           </fieldset>

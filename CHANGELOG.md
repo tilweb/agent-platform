@@ -2,6 +2,23 @@
 
 ## 2026-06-21
 
+### PM-App: Personen-Maske erweitert + in Projektidee & Statusbericht verfügbar
+Die Eingabemaske „Personen" wurde ausgebaut und modulübergreifend nutzbar gemacht:
+- **Neue Felder** in den Projektteam-Zeilen (analog Toolbox): **Aufgabe** (Freitext),
+  **Gruppe** (neue konfigurierbare Liste, Basiswerte Auftraggeber/Projektteam/Stakeholder),
+  **Bemerkung** (Freitext). Stakeholder-Tab und Klassifizierungs-Matrix unverändert.
+- **Projektidee**: Die Personen-Maske ist nun als eigener Schritt (Step 2) verfügbar —
+  dieselbe Komponente wie im Projektauftrag (`steps/Personen.jsx`, via Adapter
+  `idee-steps/IdeePersonen.jsx`). Zusätzlich Feld **Geplanter Einsatz** (Zahl + %/PT,
+  `{ wert, einheit }`) je Person — Grundlage für spätere Ressourcen-/Portfolio-Planung.
+  Der Idee-Wizard lädt dafür jetzt die App-Config.
+- **Statusbericht**: neuer **read-only Tab „Personen"** (Snapshot bei SB-Erstellung +
+  Drift-Hinweis, analog Ziele/Roadmap) — listet Projektteam + Stakeholder auf.
+- **Config**: neue Liste **„Gruppe"** in den PM-Einstellungen (Backend-Default in
+  `storage.ts`, UI in `Einstellungen.jsx`).
+- Persistenz ohne DB-Migration (jsonb-Blobs); Backend-Typen (`TeamMember`, `Projektidee`,
+  `Statusbericht`) entsprechend ergänzt.
+
 ### PM-App: Tab-Reihenfolge am Projektlebenszyklus ausgerichtet
 Die Top-Level-Navigation der Projektmanagement-App folgt nun dem Lebenszyklus:
 **Projektideen → Projekte → Portfolios**. Der Tab **Einstellungen** wird ans rechte
