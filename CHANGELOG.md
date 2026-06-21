@@ -9,6 +9,15 @@ Ende der Tab-Leiste geschoben (`marginLeft: auto`).
 - Datei: `frontend/src/apps/projektmanagement/ProjektePage.jsx` (TABS-Array umgeordnet,
   Render mit Rechts-Ausrichtung für `einstellungen`).
 
+### PM-App: Konfigurierbare Listen zeigen ihren Einsatzort
+In den PM-Einstellungen (Auswahloptionen) steht nun unter jeder Listenbezeichnung
+ein Untertitel **„Verwendet in: …"**, der das Modul/die Eingabemaske nennt, in der
+die Liste genutzt wird (z. B. Wahrscheinlichkeit → Projekt-Wizard (Risiken),
+Statusberichte, Abschlussbericht). Die bisher in einzelne Labels gebackenen Zusätze
+wie „(Statusberichte)" wurden in den strukturierten Untertitel überführt.
+- Datei: `frontend/src/apps/projektmanagement/components/Einstellungen.jsx`
+  (`FIELD_USAGE`-Map + Untertitel-Rendering, Labels bereinigt).
+
 ## 2026-06-16
 
 ### Feature: Modell-Auswahl je Extraktionsprojekt in der UI (analog zu Agenten)

@@ -22,11 +22,33 @@ const FIELD_LABELS = {
   influence: 'Einfluss',
   probability: 'Wahrscheinlichkeit',
   impact: 'Auswirkung',
-  roadmap_status: 'Roadmap-Status (Statusberichte)',
-  risk_strategie: 'Risiko-Strategie (Statusberichte)',
-  risk_status: 'Risiko-Status (Statusberichte)',
-  lesson_themengebiet: 'Themengebiet (Lessons Learned)',
-  lesson_kategorie: 'Kategorie (Lessons Learned)',
+  roadmap_status: 'Roadmap-Status',
+  risk_strategie: 'Risiko-Strategie',
+  risk_status: 'Risiko-Status',
+  lesson_themengebiet: 'Themengebiet',
+  lesson_kategorie: 'Kategorie',
+};
+
+// Wo jede Liste eingesetzt wird (Modul/Eingabemaske) — als Untertitel unter dem
+// Listentitel. Hilft Konfiguratoren, die Auswirkung einer Änderung einzuschätzen.
+const FIELD_USAGE = {
+  project_type: 'Projekt-Wizard (Basisinfo), Projektideen, Portfolio',
+  project_size: 'Projekt-Wizard (Basisinfo)',
+  priority: 'Projekt-Wizard (Basisinfo)',
+  project_driver: 'Projekt-Wizard (Basisinfo)',
+  project_status: 'Projekt-Wizard (Basisinfo), Abschlussbericht, Portfolio',
+  order_status: 'Projekt-Wizard (Basisinfo)',
+  role: 'Projekt-Wizard (Organisation/Stakeholder), Stakeholder-Matrix',
+  member_status: 'Projekt-Wizard (Organisation/Stakeholder)',
+  interest: 'Projekt-Wizard (Organisation/Stakeholder), Stakeholder-Matrix',
+  influence: 'Projekt-Wizard (Organisation/Stakeholder), Stakeholder-Matrix',
+  probability: 'Projekt-Wizard (Risiken), Statusberichte, Abschlussbericht',
+  impact: 'Projekt-Wizard (Risiken), Statusberichte, Abschlussbericht',
+  roadmap_status: 'Statusberichte (Roadmap)',
+  risk_strategie: 'Statusberichte (Risiken)',
+  risk_status: 'Statusberichte (Risiken), Abschlussbericht',
+  lesson_themengebiet: 'Lessons Learned',
+  lesson_kategorie: 'Lessons Learned',
 };
 
 // Display order
@@ -138,6 +160,14 @@ const styles = {
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text,
+  },
+  fieldUsage: {
+    fontSize: '11px',
+    color: theme.colors.textMuted,
+    marginTop: '2px',
+  },
+  fieldUsageLabel: {
+    fontWeight: theme.typography.weights.medium,
   },
   optionRow: {
     display: 'flex',
@@ -255,7 +285,14 @@ function AuswahloptionenTab({ config, setConfig, hasChanges, setHasChanges, savi
       <div style={styles.grid}>
         {FIELD_ORDER.map((fieldKey) => (
           <div key={fieldKey} style={styles.fieldCard}>
-            <div style={styles.fieldTitle}>{FIELD_LABELS[fieldKey]}</div>
+            <div>
+              <div style={styles.fieldTitle}>{FIELD_LABELS[fieldKey]}</div>
+              {FIELD_USAGE[fieldKey] && (
+                <div style={styles.fieldUsage}>
+                  <span style={styles.fieldUsageLabel}>Verwendet in:</span> {FIELD_USAGE[fieldKey]}
+                </div>
+              )}
+            </div>
 
             <div style={styles.columnLabels}>
               <span style={{ ...styles.columnLabel, flex: 1 }}>Anzeigename</span>
