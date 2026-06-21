@@ -355,6 +355,11 @@ const DEFAULT_CONFIG = {
     { value: 'intern', label: 'Intern' },
     { value: 'extern', label: 'Extern' },
   ],
+  gruppe: [
+    { value: 'auftraggeber', label: 'Auftraggeber' },
+    { value: 'projektteam', label: 'Projektteam' },
+    { value: 'stakeholder', label: 'Stakeholder' },
+  ],
   interest: [
     { value: 'low', label: 'Niedrig' },
     { value: 'medium', label: 'Mittel' },

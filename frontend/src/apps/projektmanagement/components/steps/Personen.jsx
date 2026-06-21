@@ -116,6 +116,11 @@ const styles = {
     color: theme.colors.text,
     cursor: 'pointer',
   },
+  einsatzRow: {
+    display: 'flex',
+    gap: theme.spacing.sm,
+    alignItems: 'center',
+  },
   textarea: {
     padding: theme.spacing.md,
     border: `1px solid ${theme.colors.border}`,
@@ -156,7 +161,7 @@ const styles = {
   },
 };
 
-function Personen({ data, onChange, config }) {
+function Personen({ data, onChange, config, showGeplanterEinsatz = false }) {
   const [activeTab, setActiveTab] = useState('team');
   const organization = data.organization || [];
   const stakeholders = data.stakeholders || [];
@@ -189,8 +194,12 @@ function Personen({ data, onChange, config }) {
       role: '',
       company: '',
       status: '',
+      gruppe: '',
+      aufgabe: '',
       interest: '',
       influence: '',
+      geplanter_einsatz: { wert: '', einheit: '%' },
+      bemerkung: '',
     };
     onChange({ organization: [...organization, newMember] });
   };
@@ -341,6 +350,31 @@ function Personen({ data, onChange, config }) {
                       ))}
                     </select>
                   </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Gruppe</label>
+                    <select
+                      value={member.gruppe || ''}
+                      onChange={(e) => updateTeamMember(index, 'gruppe', e.target.value)}
+                      style={styles.select}
+                    >
+                      <option value="">— Bitte wählen —</option>
+                      {opts('gruppe').map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Aufgabe</label>
+                    <input
+                      type="text"
+                      value={member.aufgabe || ''}
+                      onChange={(e) => updateTeamMember(index, 'aufgabe', e.target.value)}
+                      placeholder="Aufgabe im Projekt"
+                      style={styles.input}
+                      onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+                      onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
+                    />
+                  </div>
                 </div>
                 <div style={styles.itemGrid3}>
                   <div style={styles.formGroup}>
@@ -369,6 +403,48 @@ function Personen({ data, onChange, config }) {
                       ))}
                     </select>
                   </div>
+                  {showGeplanterEinsatz && (
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Geplanter Einsatz</label>
+                      <div style={styles.einsatzRow}>
+                        <input
+                          type="number"
+                          min="0"
+                          value={member.geplanter_einsatz?.wert ?? ''}
+                          onChange={(e) => updateTeamMember(index, 'geplanter_einsatz', {
+                            ...(member.geplanter_einsatz || { einheit: '%' }),
+                            wert: e.target.value,
+                          })}
+                          placeholder="z.B. 50"
+                          style={{ ...styles.input, flex: 1, minWidth: 0 }}
+                          onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+                          onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
+                        />
+                        <select
+                          value={member.geplanter_einsatz?.einheit || '%'}
+                          onChange={(e) => updateTeamMember(index, 'geplanter_einsatz', {
+                            ...(member.geplanter_einsatz || { wert: '' }),
+                            einheit: e.target.value,
+                          })}
+                          style={{ ...styles.select, width: '70px', flexShrink: 0 }}
+                        >
+                          <option value="%">%</option>
+                          <option value="PT">PT</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Bemerkung</label>
+                  <textarea
+                    value={member.bemerkung || ''}
+                    onChange={(e) => updateTeamMember(index, 'bemerkung', e.target.value)}
+                    placeholder="Bemerkung (optional)"
+                    style={styles.textarea}
+                    onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+                    onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
+                  />
                 </div>
               </div>
 
