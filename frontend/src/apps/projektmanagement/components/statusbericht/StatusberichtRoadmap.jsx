@@ -4,14 +4,15 @@
  * Each item: Soll/Ist-Datum, Status, Fortschritt, Ampel, Bemerkung
  */
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { theme } from '../../../../config/theme';
 import {
-  diamondPoints,
-  shieldPath,
   MilestoneDiamondIcon,
   QualityGateShieldIcon,
 } from '../RoadmapShapes';
+import GanttRoadmap from '../GanttRoadmap';
+import RoadmapModal from '../RoadmapModal';
+import { toGanttItems } from '../roadmap-utils';
 
 const AMPEL_COLORS = {
   gruen: theme.colors.success,
@@ -58,6 +59,10 @@ const styles = {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
     border: `1px solid ${theme.colors.border}`,
+  },
+  cardHighlight: {
+    boxShadow: `0 0 0 2px ${theme.colors.primary}`,
+    transition: `box-shadow ${theme.transitions.fast}`,
   },
   cardHeader: {
     display: 'flex',
@@ -200,322 +205,6 @@ const styles = {
   },
 };
 
-// ============== Soll/Ist Timeline ==============
-
-const TL_CIRCLE_R = 14;
-const TL_SOLL_Y = 30;
-const TL_IST_Y = 70;
-const TL_PADDING_X = 32;
-
-function SollIstTimeline({ milestonesSnapshot, milestonesTracking, gatesSnapshot, gatesTracking }) {
-  const containerRef = useRef(null);
-  const [width, setWidth] = useState(0);
-  const [tooltip, setTooltip] = useState(null);
-
-  // Combine milestones + gates with their tracking data
-  const items = useMemo(() => {
-    const ms = milestonesSnapshot
-      .map((m, i) => ({
-        ...m,
-        _type: 'milestone',
-        tracking: milestonesTracking[i] || {},
-        _index: i,
-      }))
-      .filter((m) => m.name && m.date);
-
-    const qg = gatesSnapshot
-      .map((g, i) => ({
-        ...g,
-        _type: 'gate',
-        tracking: gatesTracking[i] || {},
-        _index: i,
-      }))
-      .filter((g) => g.name && g.date);
-
-    return [...ms, ...qg]
-      .map((item) => ({
-        ...item,
-        sollTs: new Date(item.date).getTime(),
-        istTs: item.tracking.ist_datum ? new Date(item.tracking.ist_datum).getTime() : null,
-      }))
-      .sort((a, b) => a.sollTs - b.sollTs);
-  }, [milestonesSnapshot, milestonesTracking, gatesSnapshot, gatesTracking]);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) setWidth(entry.contentRect.width);
-    });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  if (items.length < 2 || width === 0) {
-    return (
-      <div
-        ref={containerRef}
-        style={{ width: '100%', minHeight: items.length < 2 ? 0 : 1 }}
-      />
-    );
-  }
-
-  const svgW = width - 32;
-  // Determine time range including Ist dates
-  let allTimestamps = items.map((i) => i.sollTs);
-  items.forEach((i) => { if (i.istTs) allTimestamps.push(i.istTs); });
-  const minTs = Math.min(...allTimestamps);
-  const maxTs = Math.max(...allTimestamps);
-  const range = maxTs - minTs || 1;
-  const usable = svgW - TL_PADDING_X * 2;
-  const getX = (ts) => TL_PADDING_X + ((ts - minTs) / range) * usable;
-
-  const hasAnyIst = items.some((i) => i.istTs);
-  const svgHeight = hasAnyIst ? TL_IST_Y + TL_CIRCLE_R + 24 : TL_SOLL_Y + TL_CIRCLE_R + 24;
-  const today = Date.now();
-
-  const formatDate = (d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
-
-  // Separate counters
-  let msCount = 0;
-  let qgCount = 0;
-  const layoutItems = items.map((item) => {
-    const num = item._type === 'gate' ? ++qgCount : ++msCount;
-    return { ...item, num, sollX: getX(item.sollTs), istX: item.istTs ? getX(item.istTs) : null };
-  });
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        width: '100%',
-        backgroundColor: theme.colors.surface,
-        border: `1px solid ${theme.colors.border}`,
-        borderRadius: theme.borderRadius.lg,
-        padding: theme.spacing.lg,
-        position: 'relative',
-      }}
-    >
-      {/* Legend */}
-      <div style={{
-        display: 'flex',
-        gap: theme.spacing.lg,
-        marginBottom: theme.spacing.md,
-        fontSize: theme.typography.sizes.xs,
-        color: theme.colors.textMuted,
-      }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
-          <span style={{
-            width: '20px', height: '2px',
-            backgroundColor: theme.colors.border,
-            display: 'inline-block',
-          }} />
-          Soll
-        </span>
-        {hasAnyIst && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
-            <span style={{
-              width: '20px', height: '2px',
-              backgroundColor: theme.colors.textMuted,
-              display: 'inline-block',
-              borderTop: '2px dashed ' + theme.colors.textMuted,
-              height: 0,
-            }} />
-            Ist
-          </span>
-        )}
-        <span style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
-          <MilestoneDiamondIcon size={14} />
-          Meilenstein
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
-          <QualityGateShieldIcon size={14} />
-          Quality Gate
-        </span>
-      </div>
-
-      <svg width={svgW} height={svgHeight} style={{ display: 'block' }}>
-        {/* Soll line */}
-        <line
-          x1={TL_PADDING_X} y1={TL_SOLL_Y}
-          x2={svgW - TL_PADDING_X} y2={TL_SOLL_Y}
-          stroke={theme.colors.border} strokeWidth={2}
-        />
-
-        {/* Ist line (dashed) if any Ist dates exist */}
-        {hasAnyIst && (
-          <line
-            x1={TL_PADDING_X} y1={TL_IST_Y}
-            x2={svgW - TL_PADDING_X} y2={TL_IST_Y}
-            stroke={theme.colors.border} strokeWidth={1}
-            strokeDasharray="4 4"
-          />
-        )}
-
-        {/* Row labels */}
-        <text
-          x={4} y={TL_SOLL_Y + 4}
-          fill={theme.colors.textMuted} fontSize="9"
-          fontFamily={theme.typography.fontFamily}
-          fontWeight={theme.typography.weights.semibold}
-        >
-          SOLL
-        </text>
-        {hasAnyIst && (
-          <text
-            x={4} y={TL_IST_Y + 4}
-            fill={theme.colors.textMuted} fontSize="9"
-            fontFamily={theme.typography.fontFamily}
-            fontWeight={theme.typography.weights.semibold}
-          >
-            IST
-          </text>
-        )}
-
-        {/* Today marker on Soll line */}
-        {today >= minTs && today <= maxTs && (
-          <line
-            x1={getX(today)} y1={TL_SOLL_Y - 12}
-            x2={getX(today)} y2={hasAnyIst ? TL_IST_Y + 12 : TL_SOLL_Y + 12}
-            stroke={theme.colors.warning} strokeWidth={2}
-            strokeLinecap="round" strokeDasharray="3 3"
-          />
-        )}
-
-        {/* Items */}
-        {layoutItems.map((item) => {
-          const ampelColor = AMPEL_COLORS[item.tracking.ampel] || theme.colors.primary;
-          const isGate = item._type === 'gate';
-          const fillColor = ampelColor;
-
-          return (
-            <g
-              key={`${item._type}-${item._index}`}
-              style={{ cursor: 'pointer' }}
-              onMouseEnter={(e) => {
-                const rect = containerRef.current.getBoundingClientRect();
-                setTooltip({
-                  name: item.name,
-                  type: isGate ? 'Quality Gate' : 'Meilenstein',
-                  sollDate: formatDate(item.date),
-                  istDate: item.tracking.ist_datum ? formatDate(item.tracking.ist_datum) : null,
-                  ampel: item.tracking.ampel,
-                  status: item.tracking.status,
-                  fortschritt: item.tracking.fortschritt,
-                  description: item.description,
-                  x: e.clientX - rect.left,
-                  y: e.clientY - rect.top,
-                });
-              }}
-              onMouseMove={(e) => {
-                if (tooltip) {
-                  const rect = containerRef.current.getBoundingClientRect();
-                  setTooltip((prev) => prev ? { ...prev, x: e.clientX - rect.left, y: e.clientY - rect.top } : null);
-                }
-              }}
-              onMouseLeave={() => setTooltip(null)}
-            >
-              {/* Connector line from Soll to Ist */}
-              {item.istX !== null && (
-                <line
-                  x1={item.sollX} y1={TL_SOLL_Y + TL_CIRCLE_R}
-                  x2={item.istX} y2={TL_IST_Y - TL_CIRCLE_R}
-                  stroke={fillColor} strokeWidth={1}
-                  strokeDasharray="3 3" opacity={0.5}
-                />
-              )}
-
-              {/* Soll marker — Schild (Gate) / Raute (Meilenstein), Status-Farbe */}
-              {isGate ? (
-                <path d={shieldPath(item.sollX, TL_SOLL_Y, TL_CIRCLE_R)} fill={fillColor} />
-              ) : (
-                <polygon points={diamondPoints(item.sollX, TL_SOLL_Y, TL_CIRCLE_R)} fill={fillColor} />
-              )}
-              <text
-                x={item.sollX} y={TL_SOLL_Y + 4}
-                textAnchor="middle" fill="#fff" fontSize="11"
-                fontWeight={theme.typography.weights.semibold}
-                fontFamily={theme.typography.fontFamily}
-              >
-                {item.num}
-              </text>
-
-              {/* Soll date label */}
-              <text
-                x={item.sollX} y={TL_SOLL_Y - TL_CIRCLE_R - 6}
-                textAnchor="middle" fill={theme.colors.textMuted} fontSize="10"
-                fontFamily={theme.typography.fontFamily}
-              >
-                {formatDate(item.date)}
-              </text>
-
-              {/* Ist marker (if exists) */}
-              {item.istX !== null && (
-                <>
-                  {isGate ? (
-                    <path d={shieldPath(item.istX, TL_IST_Y, TL_CIRCLE_R * 0.85)} fill={fillColor} opacity={0.7} />
-                  ) : (
-                    <polygon points={diamondPoints(item.istX, TL_IST_Y, TL_CIRCLE_R * 0.85)} fill={fillColor} opacity={0.7} />
-                  )}
-                  <text
-                    x={item.istX} y={TL_IST_Y + 3}
-                    textAnchor="middle" fill="#fff" fontSize="10"
-                    fontWeight={theme.typography.weights.medium}
-                    fontFamily={theme.typography.fontFamily}
-                  >
-                    {item.num}
-                  </text>
-                  {/* Ist date label */}
-                  <text
-                    x={item.istX} y={TL_IST_Y + TL_CIRCLE_R + 14}
-                    textAnchor="middle" fill={theme.colors.textMuted} fontSize="10"
-                    fontFamily={theme.typography.fontFamily}
-                  >
-                    {formatDate(item.tracking.ist_datum)}
-                  </text>
-                </>
-              )}
-            </g>
-          );
-        })}
-      </svg>
-
-      {/* Tooltip */}
-      {tooltip && (
-        <div style={{
-          position: 'absolute',
-          left: tooltip.x,
-          top: tooltip.y - 12,
-          transform: 'translate(-50%, -100%)',
-          backgroundColor: theme.colors.text,
-          color: theme.colors.surface,
-          padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-          borderRadius: theme.borderRadius.md,
-          fontSize: theme.typography.sizes.xs,
-          maxWidth: '280px',
-          pointerEvents: 'none',
-          zIndex: 10,
-          boxShadow: theme.shadows.lg,
-        }}>
-          <div style={{ opacity: 0.6, fontSize: '10px', marginBottom: '2px' }}>{tooltip.type}</div>
-          <div style={{ fontWeight: theme.typography.weights.semibold, fontSize: theme.typography.sizes.sm, marginBottom: '4px' }}>
-            {tooltip.name}
-          </div>
-          {tooltip.description && (
-            <div style={{ opacity: 0.8, lineHeight: 1.4, marginBottom: '4px' }}>{tooltip.description}</div>
-          )}
-          <div style={{ display: 'flex', gap: '12px', opacity: 0.9 }}>
-            <span>Soll: {tooltip.sollDate}</span>
-            {tooltip.istDate && <span>Ist: {tooltip.istDate}</span>}
-          </div>
-          {tooltip.fortschritt !== undefined && (
-            <div style={{ opacity: 0.8, marginTop: '2px' }}>Fortschritt: {tooltip.fortschritt}%</div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function StatusberichtRoadmap({ data, onChange, projektauftrag, config }) {
   const milestonesSnapshot = data.milestones_snapshot || [];
   const milestonesTracking = data.milestones_tracking || [];
@@ -523,6 +212,29 @@ function StatusberichtRoadmap({ data, onChange, projektauftrag, config }) {
   const tasksTracking = data.tasks_tracking || [];
   const gatesSnapshot = data.quality_gates_snapshot || [];
   const gatesTracking = data.quality_gates_tracking || [];
+
+  const [ganttOpen, setGanttOpen] = useState(false);
+  const [highlightId, setHighlightId] = useState(null);
+
+  // Gantt-Items aus Snapshots + Tracking (index-aligned).
+  const ganttItems = toGanttItems({
+    milestones: milestonesSnapshot,
+    qualityGates: gatesSnapshot,
+    tasks: tasksSnapshot,
+    tracking: { milestones: milestonesTracking, gates: gatesTracking, tasks: tasksTracking },
+  });
+  const hasGantt = ganttItems.length > 0;
+
+  const jumpToItem = (it) => {
+    const domId = `gantt-${it.type}-${it.refId}`;
+    setGanttOpen(false);
+    setHighlightId(domId);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(domId);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    setTimeout(() => setHighlightId((cur) => (cur === domId ? null : cur)), 2200);
+  };
 
   const statusOptions = config?.roadmap_status || [
     { value: 'planned', label: 'Geplant' },
@@ -576,8 +288,8 @@ function StatusberichtRoadmap({ data, onChange, projektauftrag, config }) {
     return Math.round(((now - start) / (end - start)) * 100);
   };
 
-  const renderTrackingCard = (key, title, subtitle, sollDatum, track, trackingKey, index, sollProgress) => (
-    <div key={key} style={styles.card}>
+  const renderTrackingCard = (key, title, subtitle, sollDatum, track, trackingKey, index, sollProgress, domId) => (
+    <div key={key} id={domId} style={{ ...styles.card, ...(highlightId === domId ? styles.cardHighlight : {}) }}>
       <div style={styles.cardHeader}>
         <div style={{ flex: 1 }}>
           <div style={styles.cardTitle}>{title}</div>
@@ -724,12 +436,41 @@ function StatusberichtRoadmap({ data, onChange, projektauftrag, config }) {
         </div>
       )}
 
-      {/* Soll/Ist Timeline */}
-      <SollIstTimeline
-        milestonesSnapshot={milestonesSnapshot}
-        milestonesTracking={milestonesTracking}
-        gatesSnapshot={gatesSnapshot}
-        gatesTracking={gatesTracking}
+      {/* Roadmap-Gantt (Soll/Ist mit Ampel) */}
+      {hasGantt && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: theme.spacing.sm }}>
+            <button
+              type="button"
+              onClick={() => setGanttOpen(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs,
+                padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                fontSize: theme.typography.sizes.xs,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.md,
+                backgroundColor: 'transparent', color: theme.colors.textSecondary, cursor: 'pointer',
+              }}
+            >
+              ⛶ Vollbild
+            </button>
+          </div>
+          <GanttRoadmap
+            items={ganttItems}
+            rangeStart={projektauftrag?.start_date}
+            rangeEnd={projektauftrag?.end_date}
+            onItemClick={jumpToItem}
+          />
+        </div>
+      )}
+      <RoadmapModal
+        open={ganttOpen}
+        onClose={() => setGanttOpen(false)}
+        title="Roadmap"
+        items={ganttItems}
+        rangeStart={projektauftrag?.start_date}
+        rangeEnd={projektauftrag?.end_date}
+        onItemClick={jumpToItem}
       />
 
       {/* Meilensteine */}
@@ -748,7 +489,8 @@ function StatusberichtRoadmap({ data, onChange, projektauftrag, config }) {
               track,
               'milestones_tracking',
               index,
-              null
+              null,
+              `gantt-milestone-${ms.id ?? index}`
             );
           })}
           {milestonesSnapshot.length === 0 && (
@@ -775,7 +517,8 @@ function StatusberichtRoadmap({ data, onChange, projektauftrag, config }) {
               track,
               'tasks_tracking',
               index,
-              sollProgress
+              sollProgress,
+              `gantt-task-${task.id ?? index}`
             );
           })}
           {tasksSnapshot.length === 0 && (
@@ -800,7 +543,8 @@ function StatusberichtRoadmap({ data, onChange, projektauftrag, config }) {
               track,
               'quality_gates_tracking',
               index,
-              null
+              null,
+              `gantt-gate-${gate.id ?? index}`
             );
           })}
           {gatesSnapshot.length === 0 && (
