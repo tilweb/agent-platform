@@ -252,6 +252,7 @@ export default function IdeeWizardPage() {
   // Phase-2: Permissions-Modal-State
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmCreateAuftrag, setConfirmCreateAuftrag] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   // Server-Version fuer Optimistic-Concurrency. Null heisst: Idee noch nicht
   // gespeichert oder Version unbekannt → kein Check beim ersten Save.
@@ -450,11 +451,18 @@ export default function IdeeWizardPage() {
     }
   };
 
-  const handleCreateAuftrag = async () => {
+  // Öffnet die Sicherheitsabfrage (echtes Modal statt window.confirm).
+  const handleCreateAuftrag = () => {
     if (!idee.id) {
       setError('Bitte die Idee zuerst speichern.');
       return;
     }
+    setConfirmCreateAuftrag(true);
+  };
+
+  const confirmCreateAuftragNow = async () => {
+    if (!idee.id) return;
+    setConfirmCreateAuftrag(false);
     if (isDirty) {
       const saved = await save();
       if (saved === null && error) return;
@@ -647,6 +655,16 @@ export default function IdeeWizardPage() {
         busy={isDeleting}
         onConfirm={confirmDeleteNow}
         onCancel={() => setConfirmDelete(false)}
+      />
+
+      <ConfirmModal
+        open={confirmCreateAuftrag}
+        title="Projektauftrag aus Idee erstellen?"
+        message={`Aus der Idee „${idee.name || 'Unbenannte Idee'}" wird ein neuer Projektauftrag erstellt. Die Idee bleibt erhalten.`}
+        confirmLabel="Auftrag erstellen"
+        busy={isCreatingAuftrag}
+        onConfirm={confirmCreateAuftragNow}
+        onCancel={() => setConfirmCreateAuftrag(false)}
       />
     </div>
   );
