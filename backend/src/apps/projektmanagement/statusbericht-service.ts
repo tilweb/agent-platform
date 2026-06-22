@@ -178,6 +178,15 @@ export async function createStatusbericht(projektId: string, userId: string): Pr
       };
     });
   }
+  // Personen-Snapshot + Tracking (Tracking aus letztem Bericht uebernehmen).
+  const organizationSnapshot = auftrag.organization || [];
+  const stakeholdersSnapshot = auftrag.stakeholders || [];
+  const defaultPersonTracking = { status: 'unveraendert', bemerkung: '' };
+  const organizationTracking = organizationSnapshot.map((_: any, i: number) =>
+    last?.organization_tracking?.[i] ? { ...last.organization_tracking[i] } : { ...defaultPersonTracking });
+  const stakeholdersTracking = stakeholdersSnapshot.map((_: any, i: number) =>
+    last?.stakeholders_tracking?.[i] ? { ...last.stakeholders_tracking[i] } : { ...defaultPersonTracking });
+
   const sb: Statusbericht = {
     id: generateStatusberichtId(),
     projekt_id: projektId,
@@ -198,8 +207,10 @@ export async function createStatusbericht(projektId: string, userId: string): Pr
     cost_budget: costBudget,
     cost_months: costMonths,
     risk_tracking: riskTracking,
-    organization_snapshot: auftrag.organization || [],
-    stakeholders_snapshot: auftrag.stakeholders || [],
+    organization_snapshot: organizationSnapshot,
+    stakeholders_snapshot: stakeholdersSnapshot,
+    organization_tracking: organizationTracking,
+    stakeholders_tracking: stakeholdersTracking,
     status: 'draft',
     created_at: now,
     updated_at: now,

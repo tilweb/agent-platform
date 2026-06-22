@@ -1311,6 +1311,7 @@ function WizardPage() {
                     ) : (
                       <StatusberichtPersonen
                         data={currentSb}
+                        onChange={handleSbChange}
                         projektauftrag={projektauftrag}
                         config={appConfig}
                       />

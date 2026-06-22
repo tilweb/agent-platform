@@ -87,11 +87,71 @@ const styles = {
     color: theme.colors.textMuted,
     fontStyle: 'italic',
   },
+  trackingBox: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTop: `1px solid ${theme.colors.border}`,
+    display: 'flex',
+    gap: theme.spacing.md,
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+  },
+  trackingField: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.xs,
+  },
+  trackingLabel: {
+    fontSize: '10px',
+    color: theme.colors.textMuted,
+    fontWeight: theme.typography.weights.medium,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  trackingSelect: {
+    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.sm,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
+    cursor: 'pointer',
+  },
+  trackingInput: {
+    flex: 1,
+    minWidth: '180px',
+    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.sm,
+    backgroundColor: theme.colors.background,
+    color: theme.colors.text,
+    outline: 'none',
+  },
 };
 
-function StatusberichtPersonen({ data, projektauftrag, config }) {
+// Personen-Veränderung im Projektverlauf (pro Bericht). Werte stabil halten;
+// Labels sind Anzeige.
+const PERSON_STATUS = [
+  { value: 'unveraendert', label: 'Unverändert' },
+  { value: 'neu', label: 'Neu hinzugekommen' },
+  { value: 'ausgeschieden', label: 'Ausgeschieden' },
+  { value: 'geaendert', label: 'Rolle/Daten geändert' },
+];
+
+function StatusberichtPersonen({ data, projektauftrag, config, onChange }) {
   const organizationSnapshot = data.organization_snapshot || [];
   const stakeholdersSnapshot = data.stakeholders_snapshot || [];
+  const orgTracking = data.organization_tracking || [];
+  const shTracking = data.stakeholders_tracking || [];
+
+  // Tracking-Eintrag aktualisieren (index-aligned zum Snapshot).
+  const updateTracking = (key, index, field, value, count) => {
+    const arr = [...(data[key] || [])];
+    while (arr.length < count) arr.push({ status: 'unveraendert', bemerkung: '' });
+    arr[index] = { ...(arr[index] || { status: 'unveraendert', bemerkung: '' }), [field]: value };
+    onChange && onChange({ [key]: arr });
+  };
 
   const currentOrganization = projektauftrag?.organization || [];
   const currentStakeholders = projektauftrag?.stakeholders || [];
@@ -128,12 +188,48 @@ function StatusberichtPersonen({ data, projektauftrag, config }) {
     </div>
   );
 
+  // Editierbares Tracking je Person (Veränderung im Projektverlauf).
+  const renderTracking = (key, index, tracking, count) => {
+    const t = tracking || { status: 'unveraendert', bemerkung: '' };
+    return (
+      <div style={styles.trackingBox}>
+        <div style={styles.trackingField}>
+          <span style={styles.trackingLabel}>Veränderung</span>
+          <select
+            value={t.status || 'unveraendert'}
+            onChange={(e) => updateTracking(key, index, 'status', e.target.value, count)}
+            style={styles.trackingSelect}
+            disabled={!onChange}
+          >
+            {PERSON_STATUS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ ...styles.trackingField, flex: 1 }}>
+          <span style={styles.trackingLabel}>Bemerkung (Bericht)</span>
+          <input
+            type="text"
+            value={t.bemerkung || ''}
+            onChange={(e) => updateTracking(key, index, 'bemerkung', e.target.value, count)}
+            placeholder="z. B. seit KW 12 im Team, Rolle gewechselt …"
+            style={styles.trackingInput}
+            disabled={!onChange}
+            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
         <h2 style={styles.title}>Personen</h2>
         <p style={styles.subtitle}>
-          Projektteam und Stakeholder zum Zeitpunkt der Statusbericht-Erstellung (read-only).
+          Projektteam und Stakeholder zum Zeitpunkt der Statusbericht-Erstellung (Stammdaten read-only).
+          Veränderungen im Projektverlauf je Person über Status + Bemerkung dokumentieren.
         </p>
       </div>
 
@@ -164,6 +260,7 @@ function StatusberichtPersonen({ data, projektauftrag, config }) {
                   { key: 'Geplanter Einsatz', value: einsatzText(m.geplanter_einsatz) },
                 ])}
                 {m.bemerkung && <div style={styles.freeText}>{m.bemerkung}</div>}
+                {renderTracking('organization_tracking', i, orgTracking[i], organizationSnapshot.length)}
               </div>
             ))}
           </div>
@@ -187,6 +284,7 @@ function StatusberichtPersonen({ data, projektauftrag, config }) {
                   { key: 'Einfluss', value: labelOf('influence', s.influence) },
                 ])}
                 {s.expectations && <div style={styles.freeText}>{s.expectations}</div>}
+                {renderTracking('stakeholders_tracking', i, shTracking[i], stakeholdersSnapshot.length)}
               </div>
             ))}
           </div>
