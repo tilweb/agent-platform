@@ -32,6 +32,7 @@ import Uebersicht from './components/steps/Uebersicht';
 import Vergleich from './components/steps/Vergleich';
 import KnowledgePanel from './components/KnowledgePanel';
 import StepNav from './components/StepNav';
+import StepImportButton from './components/StepImportButton';
 import ExportDropdown from '../../components/ExportDropdown';
 // Statusbericht components
 import StatusberichtBlade from './components/StatusberichtBlade';
@@ -630,6 +631,41 @@ function WizardPage() {
     setIsDirty(true);
   }, [calculateCompleteness]);
 
+  // Additiver Merge eines Step-Imports in den Live-State:
+  // Array-Felder werden ANGEHÄNGT (rein additiv), Skalar-Felder nur gesetzt,
+  // wenn sie aktuell leer sind. Gibt eine Kurz-Zusammenfassung zurück.
+  const STEP_IMPORT_ARRAY_LABELS = {
+    criteria: 'Kriterien', in_scope: 'In-Scope', out_scope: 'Out-Scope',
+    tasks: 'Aufgaben', milestones: 'Meilensteine', quality_gates: 'Quality Gates',
+    budget: 'Budgetposten', risks: 'Risiken', organization: 'Teammitglieder',
+    stakeholders: 'Stakeholder',
+  };
+  const mergeStepImport = (extracted) => {
+    if (!extracted || typeof extracted !== 'object') return 'Keine Daten gefunden';
+    const updates = {};
+    const parts = [];
+    let scalarCount = 0;
+    for (const [key, val] of Object.entries(extracted)) {
+      if (val === undefined || val === null) continue;
+      if (key in STEP_IMPORT_ARRAY_LABELS) {
+        if (Array.isArray(val) && val.length > 0) {
+          updates[key] = [...(projektauftrag[key] || []), ...val];
+          parts.push(`${val.length} ${STEP_IMPORT_ARRAY_LABELS[key]}`);
+        }
+      } else {
+        // Skalar: nur füllen, wenn aktuell leer
+        const cur = projektauftrag[key];
+        if ((cur === undefined || cur === null || cur === '') && val !== '') {
+          updates[key] = val;
+          scalarCount += 1;
+        }
+      }
+    }
+    if (scalarCount > 0) parts.push(`${scalarCount} Feld(er)`);
+    if (Object.keys(updates).length > 0) updateLocalState(updates);
+    return parts.length > 0 ? `${parts.join(', ')} ergänzt` : 'Keine neuen Daten gefunden';
+  };
+
   // Save current step
   const saveStep = async ({ force = false } = {}) => {
     try {
@@ -1110,6 +1146,13 @@ function WizardPage() {
         <>
           {/* Step Tabs (Horizontal Pill-Style) — siehe StepNav */}
           <StepNav steps={STEPS} getStatus={getStepStatus} onSelect={goToStep} />
+
+          {/* Step-bezogener, additiver Dokument-Import (nur editierbare Steps 1–7) */}
+          {canEdit && currentStep <= 7 && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: `0 ${theme.spacing['2xl']}`, marginBottom: theme.spacing.sm }}>
+              <StepImportButton step={currentStep} onMerge={mergeStepImport} />
+            </div>
+          )}
 
           {/* Main content */}
           <div style={styles.main}>

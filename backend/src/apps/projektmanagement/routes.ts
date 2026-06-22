@@ -34,7 +34,7 @@ import {
 import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis } from './analysis';
 import { getConfig, saveConfig } from './storage';
 import type { ProjektauftragFilters } from './types';
-import { importProjektauftrag, importProjektidee } from './import-service';
+import { importProjektauftrag, importProjektidee, extractStepFromFiles } from './import-service';
 import { importRateLimit } from '../../middleware/rateLimit';
 // Aus routes.ts ausgegliederte Sub-Apps (Phase A, E, F).
 // Endpoints + Helpers leben in `./routes/`.
@@ -285,6 +285,80 @@ projektmanagement.post('/projektauftraege/import', importRateLimit, async (c) =>
       { error: error instanceof Error ? error.message : 'Import fehlgeschlagen' },
       500
     );
+  }
+});
+
+/**
+ * Step-bezogener, additiver Dokument-Import (Projektauftrag-Wizard).
+ * Extrahiert NUR die Felder eines Steps und gibt sie zurück (kein Persist);
+ * der additive Merge passiert im Frontend. Muss VOR /:id registriert sein.
+ */
+projektmanagement.post('/projektauftraege/import-step/:step', importRateLimit, async (c) => {
+  try {
+    const denied = denyIfNotAppEditor(c);
+    if (denied) return c.json(denied, 403);
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+
+    const step = parseInt(c.req.param('step'), 10);
+    if (!Number.isInteger(step) || step < 1 || step > 7) {
+      return c.json({ error: 'Ungültiger Step (erlaubt: 1–7)' }, 400);
+    }
+
+    const formData = await c.req.formData();
+    const files: { buffer: Buffer; filename: string; mimeType: string }[] = [];
+    let totalBytes = 0;
+    const MAX_TOTAL_BYTES = 200 * 1024 * 1024;
+    const allowedMimeTypes = new Set([
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/png', 'image/jpeg', 'image/webp', 'image/gif',
+      'text/plain', 'text/markdown',
+    ]);
+
+    for (const [key, value] of formData.entries()) {
+      if (key === 'files' && value instanceof File) {
+        if (files.length >= 10) return c.json({ error: 'Maximal 10 Dateien erlaubt' }, 400);
+        if (value.size > 50 * 1024 * 1024) {
+          return c.json({ error: `Datei "${value.name}" ist zu groß (max. 50 MB)` }, 400);
+        }
+        totalBytes += value.size;
+        if (totalBytes > MAX_TOTAL_BYTES) {
+          return c.json({ error: 'Gesamtgröße aller Dateien überschreitet 200 MB' }, 400);
+        }
+        if (!allowedMimeTypes.has(value.type)) {
+          return c.json({ error: `Dateityp "${value.type}" nicht unterstützt für "${value.name}"` }, 400);
+        }
+        const arrayBuffer = await value.arrayBuffer();
+        files.push({ buffer: Buffer.from(arrayBuffer), filename: value.name, mimeType: value.type });
+      }
+    }
+
+    if (files.length === 0) return c.json({ error: 'Keine Dateien hochgeladen' }, 400);
+
+    console.log(`[PM-StepImport] Step ${step}: received ${files.length} files`);
+
+    return streamSSE(c, async (stream) => {
+      try {
+        await extractStepFromFiles(step, files, userId, async (event) => {
+          await stream.writeSSE({ event: event.type, data: JSON.stringify(event.data) });
+        });
+      } catch (error) {
+        console.error('Error in step import:', error);
+        await stream.writeSSE({
+          event: 'error',
+          data: JSON.stringify({ message: error instanceof Error ? error.message : 'Import fehlgeschlagen' }),
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error in step import:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Import fehlgeschlagen' }, 500);
   }
 });
 
