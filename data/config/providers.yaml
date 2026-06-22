@@ -33,6 +33,21 @@ providers:
         capabilities:
           - chat
         default: false
+      - id: qwen3-5-a3b-35b-256k
+        name: Qwen 3.5 Instruct 35B (256k)
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+          - vision
+        default: false
+      - id: qwen3-5-a3b-35bthinking-256k
+        name: Qwen 3.5 Thinking 35B (256k)
+        type: llm
+        capabilities:
+          - chat
+          - vision
+        default: false
   - id: openai
     name: OpenAI
     api_mode: openai
