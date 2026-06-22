@@ -799,13 +799,16 @@ function parseGesamtResponse(
     const scores: number[] = [];
     for (const step of [2, 3, 4, 5, 6, 7]) {
       const analysis = stepAnalyses[step];
-      if (analysis) {
-        scores.push(analysis.masterclassAnalysis.score);
+      // Defensiv: aeltere/teilweise gespeicherte Analysen koennen kein
+      // masterclassAnalysis haben — dann diesen Schritt ueberspringen statt zu crashen.
+      const mc = analysis?.masterclassAnalysis;
+      if (analysis && typeof mc?.score === 'number') {
+        scores.push(mc.score);
         existingStepScores.push({
           step,
           stepName: analysis.stepName,
-          score: analysis.masterclassAnalysis.score,
-          kurzfazit: analysis.masterclassAnalysis.hinweise[0] || 'Keine Zusammenfassung',
+          score: mc.score,
+          kurzfazit: ensureArray(mc.hinweise)[0] || 'Keine Zusammenfassung',
         });
       }
     }
@@ -843,13 +846,13 @@ function parseGesamtResponse(
     for (const step of [2, 3, 4, 5, 6, 7]) {
       const analysis = stepAnalyses?.[step];
       const kurzfazit = parsed.stepKurzfazite?.[String(step)] ||
-        (analysis?.masterclassAnalysis.hinweise[0]) ||
+        ensureArray(analysis?.masterclassAnalysis?.hinweise)[0] ||
         'Keine Bewertung';
 
       stepScores.push({
         step,
         stepName: STEP_NAMES[step],
-        score: analysis?.masterclassAnalysis.score ?? 50,
+        score: analysis?.masterclassAnalysis?.score ?? 50,
         kurzfazit,
       });
     }

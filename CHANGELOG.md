@@ -2,6 +2,15 @@
 
 ## 2026-06-22
 
+### Fix(PM): KI-Gesamtbewertung crasht nicht mehr bei unvollständigen Schritt-Analysen
+Die Gesamtbewertung brach in manchen Projekten mit
+`undefined is not an object (evaluating 'analysis.masterclassAnalysis.score')` ab.
+Ursache: `parseGesamtResponse` (`analysis.ts`) griff ungeschützt auf
+`analysis.masterclassAnalysis.score`/`.hinweise[0]` zu — bei älteren/teilweise
+gespeicherten Schritt-Analysen ohne `masterclassAnalysis` führte das zum Absturz.
+Behoben durch defensives Optional-Chaining + Fallbacks (Schritt wird übersprungen
+statt zu crashen). Datei: `backend/src/apps/projektmanagement/analysis.ts`.
+
 ### PM-App: KI-Analyse kennt jetzt die erfassbaren Felder (Konzept→Feld-Mapping)
 Die Schritt-Analyse (Stärken/Verbesserungspotential im KnowledgePanel) bekam bisher nur
 die Eingabewerte + Masterclass-Best-Practices — **nicht** das Datenmodell. Dadurch schlug
