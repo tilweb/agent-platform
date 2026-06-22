@@ -2,6 +2,11 @@
 
 ## 2026-06-22
 
+### PM-App: Sicherheitsabfrage vor „Auftrag aus Idee erstellen"
+Bevor aus einer Projektidee ein Projektauftrag erzeugt wird, erscheint nun ein echtes
+Bestätigungs-Modal (`ConfirmModal`) statt der Aktion ohne Rückfrage. Erst nach Bestätigung
+wird gespeichert + der Auftrag erstellt. Datei: `frontend/src/apps/projektmanagement/IdeeWizardPage.jsx`.
+
 ### Fix(PM): KI-Gesamtbewertung crasht nicht mehr bei unvollständigen Schritt-Analysen
 Die Gesamtbewertung brach in manchen Projekten mit
 `undefined is not an object (evaluating 'analysis.masterclassAnalysis.score')` ab.
