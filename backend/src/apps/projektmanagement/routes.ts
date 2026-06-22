@@ -283,7 +283,7 @@ projektmanagement.post('/projektauftraege/import', async (c) => {
  * Extrahiert NUR die Felder eines Steps und gibt sie zurück (kein Persist);
  * der additive Merge passiert im Frontend. Muss VOR /:id registriert sein.
  */
-projektmanagement.post('/projektauftraege/import-step/:step', importRateLimit, async (c) => {
+projektmanagement.post('/projektauftraege/import-step/:step', async (c) => {
   try {
     const denied = denyIfNotAppEditor(c);
     if (denied) return c.json(denied, 403);
