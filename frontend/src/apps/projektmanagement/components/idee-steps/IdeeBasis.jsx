@@ -81,40 +81,10 @@ const styles = {
   },
 };
 
-const STATUS_OPTIONS = [
-  { value: 'draft', label: 'Entwurf' },
-  { value: 'review', label: 'In Pruefung' },
-  { value: 'approved', label: 'Genehmigt' },
-  { value: 'rejected', label: 'Abgelehnt' },
-  { value: 'archived', label: 'Archiviert' },
-];
-
-const PROJECT_TYPE_OPTIONS = [
-  { value: '', label: '— Bitte auswählen —' },
-  { value: 'internal', label: 'Internes Projekt' },
-  { value: 'external', label: 'Externes Projekt' },
-  { value: 'research', label: 'Forschungsprojekt' },
-  { value: 'infrastructure', label: 'Infrastrukturprojekt' },
-];
-
-const PROJEKTGROESSE_OPTIONS = [
-  { value: '', label: '— Bitte auswählen —' },
-  { value: 'klein', label: 'Klein' },
-  { value: 'mittel', label: 'Mittel' },
-  { value: 'gross', label: 'Groß' },
-  { value: 'sehr_gross', label: 'Sehr groß' },
-];
-
-const PRIORITAET_OPTIONS = [
-  { value: '', label: '— Bitte auswählen —' },
-  { value: 'low', label: 'Niedrig' },
-  { value: 'medium', label: 'Mittel' },
-  { value: 'high', label: 'Hoch' },
-  { value: 'critical', label: 'Kritisch' },
-];
-
-export default function IdeeBasis({ projektidee, onChange }) {
+export default function IdeeBasis({ projektidee, onChange, config }) {
   const update = (field, value) => onChange({ ...projektidee, [field]: value });
+  // Auswahloptionen aus der App-Config (einheitlich mit dem Projektauftrag).
+  const opts = (key) => config?.[key] || [];
 
   return (
     <div style={styles.container}>
@@ -164,7 +134,8 @@ export default function IdeeBasis({ projektidee, onChange }) {
             onChange={(e) => update('project_type', e.target.value)}
             style={styles.select}
           >
-            {PROJECT_TYPE_OPTIONS.map((o) => (
+            <option value="">— Bitte wählen —</option>
+            {opts('project_type').map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
@@ -176,7 +147,7 @@ export default function IdeeBasis({ projektidee, onChange }) {
             onChange={(e) => update('status', e.target.value)}
             style={styles.select}
           >
-            {STATUS_OPTIONS.map((o) => (
+            {opts('idee_status').map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
@@ -187,15 +158,16 @@ export default function IdeeBasis({ projektidee, onChange }) {
       <div style={styles.formRow}>
         <div style={styles.formGroup}>
           <label style={styles.label}>Projektstatus</label>
-          <input
-            type="text"
+          <select
             value={projektidee.project_status || ''}
             onChange={(e) => update('project_status', e.target.value)}
-            placeholder="z.B. Konzept, Pre-Approval"
-            style={styles.input}
-            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
-            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
-          />
+            style={styles.select}
+          >
+            <option value="">— Bitte wählen —</option>
+            {opts('project_status').map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
         <div style={styles.formGroup}>
           <label style={styles.label}>Projekttreiber</label>
@@ -220,7 +192,8 @@ export default function IdeeBasis({ projektidee, onChange }) {
             onChange={(e) => update('projektgroesse', e.target.value)}
             style={styles.select}
           >
-            {PROJEKTGROESSE_OPTIONS.map((o) => (
+            <option value="">— Bitte wählen —</option>
+            {opts('project_size').map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
@@ -232,7 +205,8 @@ export default function IdeeBasis({ projektidee, onChange }) {
             onChange={(e) => update('prioritaet', e.target.value)}
             style={styles.select}
           >
-            {PRIORITAET_OPTIONS.map((o) => (
+            <option value="">— Bitte wählen —</option>
+            {opts('priority').map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>

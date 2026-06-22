@@ -2,6 +2,19 @@
 
 ## 2026-06-22
 
+### PM-App: Projektidee-Basisdaten an die Config angebunden
+Die Basisdaten-Auswahlfelder der Projektidee waren hartkodiert. Jetzt kommen sie — wie im
+Projektauftrag — aus der App-Config:
+- **Neue konfigurierbare Liste „Projektidee-Status"** (`idee_status`) in den Einstellungen
+  (Default: Entwurf/In Prüfung/Genehmigt/Abgelehnt/Archiviert). Werte bleiben stabil
+  (Badges/Filter sind daran verdrahtet), Labels editierbar.
+- **Projektstatus** in der Idee ist jetzt ein **Dropdown** (Config `project_status`, dieselbe
+  Liste wie im Projektauftrag) statt Freitext.
+- Projekttyp, Projektgröße, Priorität ebenfalls aus der Config (`project_type`, `project_size`,
+  `priority`) — keine duplizierten Listen mehr in `IdeeBasis.jsx`.
+- Dateien: `backend/.../storage.ts` (Default `idee_status`), `Einstellungen.jsx` (neue Liste),
+  `components/idee-steps/IdeeBasis.jsx` (Config-Anbindung).
+
 ### PM-App: Sicherheitsabfrage vor „Auftrag aus Idee erstellen"
 Bevor aus einer Projektidee ein Projektauftrag erzeugt wird, erscheint nun ein echtes
 Bestätigungs-Modal (`ConfirmModal`) statt der Aktion ohne Rückfrage. Erst nach Bestätigung
