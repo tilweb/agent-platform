@@ -48,6 +48,39 @@ const STEP_NAMES: Record<number, string> = {
   7: 'Organisation & Stakeholder',
 };
 
+// Welche Felder das Tool je Schritt tatsächlich erfassen kann, inkl. Mapping
+// von Masterclass-Konzepten auf vorhandene Felder. Wird in den Analyse-Prompt
+// injiziert, damit das LLM (a) bereits über ein Feld Abgedecktes anerkennt und
+// (b) nur einpflegbare Verbesserungen vorschlägt — statt Felder/Strukturen zu
+// fordern, die es im Tool nicht gibt.
+// WICHTIG: Code-eigen halten und bei Datenmodell-Änderungen mitpflegen
+// (Quelle: STEP_DATA_EXTRACTORS + types.ts). Nicht über den MasterclassEditor
+// editierbar machen — das Schema muss zwingend zum Datenmodell passen.
+const STEP_FIELD_SCHEMA: Record<number, string> = {
+  2: `- goals: Freitext (Projektziele)
+- criteria: Liste von Erfolgskriterien (je Eintrag Freitext)
+Mapping: Messbare/SMART-Kriterien werden als einzelne Einträge in "criteria" erfasst. Es gibt kein separates Feld für Zielgewichtung oder Zieltermine.`,
+  3: `- scope: Freitext (Umfangsbeschreibung)
+- in_scope: Liste (was zum Projekt gehört)
+- out_scope: Liste (Abgrenzung, was NICHT dazugehört)
+Mapping: Abgrenzungen gehören in "out_scope". Kein separates Feld für Annahmen/Abhängigkeiten.`,
+  4: `- tasks: Liste von Aufgaben, je Aufgabe: Name, Verantwortlich (responsible), Startdatum, Enddatum, Aufwand (effort), Status (open/in_progress/completed)
+Mapping: Zuständigkeiten/Verantwortlichkeiten werden je Aufgabe über "responsible" erfasst. Kein separates Arbeitspaket-/Hierarchie-Feld.`,
+  5: `- milestones: Liste von Meilensteinen, je Meilenstein: Name, Datum, Beschreibung (optional)
+Mapping: Kein separates Feld für Quality Gates oder Abhängigkeiten zwischen Meilensteinen.`,
+  6: `- budget: Liste von Budgetposten, je Posten: Bezeichnung (item), Anbieter (provider), Betrag (amount), Kategorie (category)
+- risks: Liste von Risiken, je Risiko: Typ, Beschreibung, Wahrscheinlichkeit (low/medium/high), Auswirkung (low/medium/high), Gegenmaßnahme (mitigation)
+Mapping: Risiko-Strategie/Maßnahmen werden über "mitigation" erfasst. Kein separates Feld für Risiko-Verantwortlichen/-Status oder Budget-Zeitverlauf.`,
+  7: `Projektteam (organization), je Person: Name, Rolle (Auswahlliste), Unternehmen, Status (intern/extern), Gruppe (Auswahl: Auftraggeber/Projektteam/Stakeholder), Aufgabe (Freitext), Interesse, Einfluss, Bemerkung (Freitext).
+Stakeholder (stakeholders), je Person: Name, Rolle/Position, Status, Interesse, Einfluss, Erwartungen (Freitext).
+Mapping wichtig:
+- "Auftraggeber/Sponsor": über Gruppe="Auftraggeber" bzw. die Rolle — es gibt KEIN separates Sponsor-Feld.
+- "Lenkungskreis/Steering Committee": über Gruppe/Rolle abbilden.
+- "Rollenbeschreibung/konkrete Verantwortlichkeiten": über das Feld "Aufgabe".
+- "Stellvertreterregelung": über das Feld "Bemerkung".
+- Es gibt KEIN separates Jobtitel-Feld; die Funktion steht in "Rolle".`,
+};
+
 // Which fields to extract for each step
 // Note: We use ensureArray for array fields to handle cases where empty arrays
 // might be parsed as empty objects from YAML/JSON
@@ -313,6 +346,12 @@ Dein Feedback soll:
 - Verbesserungspotential aufzeigen
 - Inkonsistenzen zwischen Schritten aufdecken
 
+WICHTIG — Bezug auf die im Tool erfassbaren Felder (Abschnitt "Im Tool erfassbare Felder"):
+- Schlage NUR Verbesserungen vor, die der Projektmanager über diese Felder tatsächlich umsetzen kann.
+- Wenn ein Best-Practice-Konzept bereits über ein vorhandenes Feld abgedeckt ist (z. B. Auftraggeber via Gruppe/Rolle), erkenne das als vorhanden an und melde es NICHT als fehlend.
+- Wenn etwas nur über ein Freitextfeld erfassbar ist (z. B. "Bemerkung" oder "Aufgabe"), formuliere die Empfehlung mit klarem Bezug auf dieses Feld (z. B. "… im Feld Bemerkung dokumentieren").
+- Fordere NIEMALS Felder oder Strukturen, die es laut diesem Abschnitt im Tool nicht gibt (z. B. einen separaten Jobtitel).
+
 Antworte IMMER im folgenden JSON-Format (und NUR in diesem Format, ohne zusätzlichen Text):
 
 {
@@ -366,6 +405,12 @@ function buildUserPrompt(
   sections.push('### Aktuelle Eingaben des Projektmanagers:');
   sections.push(formatStepData(step, currentStepData));
   sections.push('');
+
+  if (STEP_FIELD_SCHEMA[step]) {
+    sections.push('### Im Tool erfassbare Felder (Verbesserungen MÜSSEN hierüber umsetzbar sein):');
+    sections.push(STEP_FIELD_SCHEMA[step]);
+    sections.push('');
+  }
 
   if (knowledge.pruefkriterien) {
     sections.push('### Masterclass Prüfkriterien (gegen diese prüfen):');

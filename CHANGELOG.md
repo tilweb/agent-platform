@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-06-22
+
+### PM-App: KI-Analyse kennt jetzt die erfassbaren Felder (Konzept→Feld-Mapping)
+Die Schritt-Analyse (Stärken/Verbesserungspotential im KnowledgePanel) bekam bisher nur
+die Eingabewerte + Masterclass-Best-Practices — **nicht** das Datenmodell. Dadurch schlug
+das LLM Verbesserungen vor, die im Tool gar nicht erfassbar sind, oder meldete bereits über
+ein Feld Abgedecktes (z. B. Auftraggeber via Rolle/Gruppe) als fehlend.
+- Neuer, code-eigener `STEP_FIELD_SCHEMA` (Schritte 2–7) beschreibt je Schritt die
+  erfassbaren Felder **und** das Mapping von Masterclass-Konzepten auf vorhandene Felder
+  (z. B. Auftraggeber→Gruppe/Rolle, Verantwortlichkeiten→Aufgabe, Stellvertreter→Bemerkung,
+  kein separater Jobtitel).
+- `buildUserPrompt`: injiziert die Sektion „Im Tool erfassbare Felder …".
+- `buildSystemPrompt`: Regeln — nur einpflegbare Vorschläge; bereits per Feld Abgedecktes
+  anerkennen statt als fehlend melden; Freitext-Bezug; keine nicht existierenden Felder fordern.
+- Datei: `backend/src/apps/projektmanagement/analysis.ts`. Keine UI-/Datenmodell-Änderung.
+
 ## 2026-06-21
 
 ### PM-App: Personen-Maske erweitert + in Projektidee & Statusbericht verfügbar
