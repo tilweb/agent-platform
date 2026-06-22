@@ -594,6 +594,13 @@ export interface RoadmapItemTracking {
   ist_datum: string;        // Ist-Datum (vs Soll)
 }
 
+// Personen-Veränderung im Projektverlauf (pro Statusbericht, index-aligned zum
+// jeweiligen Personen-Snapshot).
+export interface PersonTracking {
+  status: string;           // 'unveraendert' | 'neu' | 'ausgeschieden' | 'geaendert'
+  bemerkung: string;
+}
+
 export interface MilestoneSnapshot {
   id: string;
   name: string;
@@ -675,6 +682,8 @@ export interface Statusbericht {
   // Tab: Personen (read-only Snapshot vom Projektauftrag bei SB-Erstellung)
   organization_snapshot?: TeamMember[];
   stakeholders_snapshot?: Stakeholder[];
+  organization_tracking?: PersonTracking[];
+  stakeholders_tracking?: PersonTracking[];
 
   // Metadata
   status: 'draft' | 'final';

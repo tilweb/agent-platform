@@ -2,6 +2,18 @@
 
 ## 2026-06-22
 
+### PM-App: Personen im Statusbericht — Veränderungen dokumentierbar
+Der Personen-Tab im Statusbericht war read-only. Jetzt lassen sich je Person
+**Veränderungen im Projektverlauf** erfassen — konsistent zum Snapshot+Tracking-Muster
+der anderen SB-Abschnitte (Ziele/Roadmap/Risiken):
+- Stammdaten (Name, Rolle, Gruppe, …) bleiben **read-only Snapshot** (mit Drift-Hinweis).
+- Pro Person editierbar: **Status** (Unverändert / Neu hinzugekommen / Ausgeschieden /
+  Rolle-Daten geändert) + **Bemerkung** (berichtsbezogen). Tracking wird bei SB-Erstellung
+  aus dem letzten Bericht übernommen.
+- Dateien: `types.ts` (`PersonTracking` + `organization_tracking`/`stakeholders_tracking`),
+  `statusbericht-service.ts` (Prefill), `StatusberichtPersonen.jsx` (editierbar),
+  `WizardPage.jsx` (onChange). Keine DB-Migration (jsonb).
+
 ### PM-App: Neue Gantt-Roadmap (Projektauftrag + Statusbericht)
 Die bisherige Linien-Timeline (unleserlich bei nahen Terminen, nur Meilensteine + QG)
 wurde durch eine **Gantt-/Zeitachsen-Darstellung** ersetzt:
