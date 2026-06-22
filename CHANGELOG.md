@@ -2,6 +2,16 @@
 
 ## 2026-06-22
 
+### Config-Fix: Qwen 3.5 als vision-fähig korrigiert + Standalone Split-Test-Tool
+- **`providers.yaml`**: `qwen3-5-a3b-35b-256k` (Instruct) und `qwen3-5-a3b-35bthinking-256k`
+  (Thinking) haben jetzt die `vision`-Capability. Empirisch am Adacor-Endpoint verifiziert —
+  beide verarbeiten Bilder einwandfrei. Vorher blockierte die Plattform (`loop.ts`
+  Capability-Check) Bildaufgaben für diese Modelle → Ursache, dass Vision-Anwendungsfälle
+  (z. B. Dokument-Split-Prüfung) mit Qwen 3.5 „gar nicht funktionierten".
+- **`tools/document-split-test.ts`** (neu): standalone Bun-Skript (keine Framework-Imports)
+  zur Grenzprüfung von Dokument-Splits via Vision-LLM. CLI-Argumente (Seiten, Modelle,
+  Prompt, Base-URL, Key); läuft beim Kunden mit nur Bun + API-Key.
+
 ### PM-App: Verdrahtete Config-Listen — Schlüssel in der UI gesperrt
 Listen, deren Schlüssel (value) im Code fest verdrahtet sind (Status-Zuordnung/Badges/Filter),
 sind in den PM-Einstellungen jetzt geschützt: **Schlüssel read-only, kein Hinzufügen/Löschen,
