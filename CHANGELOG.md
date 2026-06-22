@@ -2,6 +2,21 @@
 
 ## 2026-06-22
 
+### PM-App: Neue Gantt-Roadmap (Projektauftrag + Statusbericht)
+Die bisherige Linien-Timeline (unleserlich bei nahen Terminen, nur Meilensteine + QG)
+wurde durch eine **Gantt-/Zeitachsen-Darstellung** ersetzt:
+- **Treppenstufen-Lanes** (Greedy-Packing) → keine Überlappung mehr bei nah beieinander
+  liegenden Ereignissen.
+- Zeigt **Hauptaufgaben (Balken)**, **Meilensteine (Raute)** und **Quality Gates (Schild)**
+  auf einer Zeitachse mit Monats-/Quartals-Ticks und **Heute-Marker**.
+- **Hover-Tooltip** + **Klick springt zum Listeneintrag** (scrollt + hebt die Card hervor).
+- **Vollbild-Modal** für lange Laufzeiten; Monat/Quartal-Umschaltung der Achse.
+- **Statusbericht**: gleiche Grafik mit **Ampel-Farben**, Task-**Fortschritt** und
+  **Ist-Datum**-Markern/Abweichung (nutzt das vorhandene Tracking) — inkl. Hauptaufgaben.
+- Neue, wiederverwendbare Komponente `GanttRoadmap.jsx` (custom SVG, kein Dependency) +
+  `RoadmapModal.jsx` + Helfer `roadmap-utils.js`; Item-Modell Portfolio-ready vorbereitet.
+- Alte `MilestoneTimeline.jsx` und interner `SollIstTimeline` entfernt.
+
 ### PM-App: Projektidee-Basisdaten an die Config angebunden
 Die Basisdaten-Auswahlfelder der Projektidee waren hartkodiert. Jetzt kommen sie — wie im
 Projektauftrag — aus der App-Config:

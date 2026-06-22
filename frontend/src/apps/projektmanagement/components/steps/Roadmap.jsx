@@ -2,8 +2,11 @@
  * Roadmap - Meilensteine & Hauptaufgaben (Merge aus Step4Aufgaben + Step5Meilensteine)
  */
 
+import { useState } from 'react';
 import { theme } from '../../../../config/theme';
-import MilestoneTimeline from './MilestoneTimeline';
+import GanttRoadmap from '../GanttRoadmap';
+import RoadmapModal from '../RoadmapModal';
+import { toGanttItems } from '../roadmap-utils';
 import { MilestoneBadge, QualityGateBadge, MilestoneDiamondIcon } from '../RoadmapShapes';
 
 const styles = {
@@ -207,12 +210,34 @@ const styles = {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.text,
   },
+  cardHighlight: {
+    boxShadow: `0 0 0 2px ${theme.colors.primary}`,
+    transition: `box-shadow ${theme.transitions.fast}`,
+  },
 };
 
 function Roadmap({ data, onChange }) {
   const milestones = data.milestones || [];
   const qualityGates = data.quality_gates || [];
   const tasks = data.tasks || [];
+
+  const [ganttOpen, setGanttOpen] = useState(false);
+  const [highlightId, setHighlightId] = useState(null);
+
+  const ganttItems = toGanttItems({ milestones, qualityGates, tasks });
+  const hasGantt = ganttItems.length > 0;
+
+  // Klick auf ein Gantt-Element → zum Listeneintrag scrollen + kurz hervorheben.
+  const jumpToItem = (it) => {
+    const domId = `gantt-${it.type}-${it.refId}`;
+    setGanttOpen(false);
+    setHighlightId(domId);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(domId);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    setTimeout(() => setHighlightId((cur) => (cur === domId ? null : cur)), 2200);
+  };
 
   const generateId = () => Math.random().toString(36).substring(2, 10);
 
@@ -289,11 +314,42 @@ function Roadmap({ data, onChange }) {
         </p>
       </div>
 
-      {/* === Timeline Visualisierung === */}
-      {(milestones.filter((m) => m.name && m.date).length +
-        qualityGates.filter((g) => g.name && g.date).length) >= 2 && (
-        <MilestoneTimeline milestones={milestones} qualityGates={qualityGates} />
+      {/* === Roadmap-Gantt === */}
+      {hasGantt && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: theme.spacing.sm }}>
+            <button
+              type="button"
+              onClick={() => setGanttOpen(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs,
+                padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                fontSize: theme.typography.sizes.xs,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.md,
+                backgroundColor: 'transparent', color: theme.colors.textSecondary, cursor: 'pointer',
+              }}
+            >
+              ⛶ Vollbild
+            </button>
+          </div>
+          <GanttRoadmap
+            items={ganttItems}
+            rangeStart={data.start_date}
+            rangeEnd={data.end_date}
+            onItemClick={jumpToItem}
+          />
+        </div>
       )}
+      <RoadmapModal
+        open={ganttOpen}
+        onClose={() => setGanttOpen(false)}
+        title="Roadmap"
+        items={ganttItems}
+        rangeStart={data.start_date}
+        rangeEnd={data.end_date}
+        onItemClick={jumpToItem}
+      />
 
       {/* === Sektion 1: Meilensteine === */}
       <div>
@@ -313,7 +369,11 @@ function Roadmap({ data, onChange }) {
         ) : (
           <div style={styles.milestonesList}>
             {milestones.map((milestone, index) => (
-              <div key={milestone.id || index} style={styles.milestoneCard}>
+              <div
+                key={milestone.id || index}
+                id={`gantt-milestone-${milestone.id ?? index}`}
+                style={{ ...styles.milestoneCard, ...(highlightId === `gantt-milestone-${milestone.id ?? index}` ? styles.cardHighlight : {}) }}
+              >
                 <MilestoneBadge number={index + 1} />
 
                 <div style={styles.milestoneContent}>
@@ -427,7 +487,11 @@ function Roadmap({ data, onChange }) {
         ) : (
           <div style={styles.milestonesList}>
             {qualityGates.map((gate, index) => (
-              <div key={gate.id || index} style={styles.milestoneCard}>
+              <div
+                key={gate.id || index}
+                id={`gantt-gate-${gate.id ?? index}`}
+                style={{ ...styles.milestoneCard, ...(highlightId === `gantt-gate-${gate.id ?? index}` ? styles.cardHighlight : {}) }}
+              >
                 <QualityGateBadge number={index + 1} />
 
                 <div style={{ ...styles.milestoneContent, gap: 0 }}>
@@ -515,7 +579,11 @@ function Roadmap({ data, onChange }) {
         ) : (
           <div style={styles.tasksList}>
             {tasks.map((task, index) => (
-              <div key={task.id || index} style={styles.taskCard}>
+              <div
+                key={task.id || index}
+                id={`gantt-task-${task.id ?? index}`}
+                style={{ ...styles.taskCard, ...(highlightId === `gantt-task-${task.id ?? index}` ? styles.cardHighlight : {}) }}
+              >
                 <div style={styles.taskHeader}>
                   <span style={styles.taskNumber}>Hauptaufgabe {index + 1}</span>
                   <button
