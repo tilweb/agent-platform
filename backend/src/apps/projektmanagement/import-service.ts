@@ -49,6 +49,7 @@ export type ImportEvent =
   | { type: 'creating';            data: Record<string, never> }
   | { type: 'done';                data: { projektauftrag: Projektauftrag; report: ImportReport } }
   | { type: 'idee_done';           data: { projektidee: Projektidee; report: ImportReport } }
+  | { type: 'step_extracted';      data: { extracted: Partial<Projektauftrag>; report: ImportReport } }
   | { type: 'error';               data: { message: string } };
 
 export type ImportEventCallback = (event: ImportEvent) => void | Promise<void>;
@@ -193,10 +194,11 @@ Die Dokumente können verschiedene Formate und Quellen haben (Screenshots, Tabel
  */
 async function extractWithLLM(
   combinedText: string,
-  userId?: string
+  userId?: string,
+  profile: ExtractionProfile = PROJEKTAUFTRAG_PROFILE,
 ): Promise<Record<string, unknown>> {
-  const functionSchema = buildFunctionSchema(PROJEKTAUFTRAG_PROFILE);
-  const toolChoice = buildToolChoice(PROJEKTAUFTRAG_PROFILE);
+  const functionSchema = buildFunctionSchema(profile);
+  const toolChoice = buildToolChoice(profile);
 
   const systemPrompt = `Du bist ein erfahrener Projektmanagement-Experte und Dokumenten-Extraktions-Spezialist.
 Deine Aufgabe: Extrahiere strukturierte Projektauftragsdaten aus den gegebenen Dokumenten.
@@ -208,7 +210,7 @@ Allgemeine Regeln:
 - Text exakt aus den Dokumenten übernehmen
 - Informationen aus allen Dokumenten zusammenführen
 
-${PROJEKTAUFTRAG_PROFILE.guidelines}`;
+${profile.guidelines}`;
 
   const messages: Message[] = [
     { role: 'system', content: systemPrompt },
@@ -582,6 +584,128 @@ export async function importProjektauftrag(
   await emit({ type: 'done', data: { projektauftrag, report } });
 
   return { projektauftrag, report };
+}
+
+// ============================================================================
+// Step-bezogener Import (Projektauftrag-Wizard) — extrahiert NUR die Felder
+// eines Wizard-Schritts und gibt sie zurück (kein DB-Write). Der additive
+// Merge in den bestehenden Auftrag passiert im Frontend.
+// ============================================================================
+
+// Welche Profil-Feldgruppen pro Wizard-Step extrahiert werden.
+const STEP_PROFILE_GROUPS: Record<number, string[]> = {
+  1: ['basis'],
+  2: ['team', 'stakeholder'],
+  3: ['ziele', 'kriterien'],
+  4: ['ziele', 'in_scope', 'out_scope'],
+  5: ['aufgaben', 'meilensteine', 'quality_gates'],
+  6: ['budget'],
+  7: ['risiken'],
+};
+
+// Welche gemappten Projektauftrag-Keys ein Step zurückgibt (begrenzt das
+// Ergebnis, z.B. damit Step 3 nur goals+criteria liefert, nicht scope).
+const STEP_RESULT_KEYS: Record<number, string[]> = {
+  1: ['name', 'project_id', 'project_type', 'project_status', 'project_driver',
+    'project_size', 'priority', 'start_date', 'end_date', 'projektleiter',
+    'auftraggeber', 'description'],
+  2: ['organization', 'stakeholders'],
+  3: ['goals', 'criteria'],
+  4: ['scope', 'in_scope', 'out_scope'],
+  5: ['tasks', 'milestones', 'quality_gates'],
+  6: ['budget'],
+  7: ['risks'],
+};
+
+// Quality-Gates-Gruppe (im Master-Profil nicht enthalten, nur für Step 5).
+const QUALITY_GATES_GROUP = {
+  _array: true,
+  _item_fields: {
+    name: { type: 'text', required: true, label: 'Quality-Gate-Name' },
+    date: { type: 'date', label: 'Datum' },
+  },
+} as const;
+
+function buildStepProfile(step: number): ExtractionProfile {
+  const groups = STEP_PROFILE_GROUPS[step] || [];
+  const fields: ExtractionProfile['fields'] = {};
+  for (const g of groups) {
+    if (g === 'quality_gates') {
+      fields[g] = QUALITY_GATES_GROUP as unknown as ExtractionProfile['fields'][string];
+    } else if (PROJEKTAUFTRAG_PROFILE.fields[g]) {
+      fields[g] = PROJEKTAUFTRAG_PROFILE.fields[g];
+    }
+  }
+  return {
+    ...PROJEKTAUFTRAG_PROFILE,
+    id: `projektauftrag-step${step}-import`,
+    name: `Projektauftrag Step ${step} Import`,
+    fields,
+  };
+}
+
+/**
+ * Extrahiert die Felder EINES Wizard-Schritts aus Dokumenten (kein Persist).
+ * Gibt ein partielles Projektauftrag-Objekt (nur Step-Keys) zurück; Arrays mit
+ * generierten Sub-Entity-IDs. Der additive Merge erfolgt im Frontend.
+ */
+export async function extractStepFromFiles(
+  step: number,
+  files: { buffer: Buffer; filename: string; mimeType: string }[],
+  userId: string,
+  onEvent?: ImportEventCallback,
+): Promise<{ extracted: Partial<Projektauftrag>; report: ImportReport }> {
+  const report: ImportReport = {
+    filesProcessed: 0, filesFailed: 0, fieldsExtracted: 0, errors: [], warnings: [],
+  };
+  const emit = onEvent ?? (async () => { /* noop */ });
+  const profile = buildStepProfile(step);
+
+  const { combinedText, report: subReport } = await processFilesToText(files, {
+    userId, emit, logPrefix: `PM-StepImport[${step}]`,
+  });
+  mergeReport(report, subReport);
+
+  await emit({ type: 'extracting_started', data: { textChars: combinedText.length } });
+  const extractStart = Date.now();
+  const extractedData = await withHeartbeat(
+    extractWithLLM(combinedText, userId, profile),
+    HEARTBEAT_MS,
+    async (elapsedMs) => { await emit({ type: 'extracting_progress', data: { elapsedMs } }); },
+  );
+
+  const validation = validateExtraction(extractedData, profile);
+  for (const err of validation.errors) {
+    report.warnings.push(`Validierung: ${err.field} - ${err.message}`);
+  }
+
+  const mapped = mapToProjektauftrag(extractedData) as Record<string, unknown>;
+
+  // Quality Gates (nur Step 5) — im Master-Mapper nicht enthalten.
+  if (step === 5) {
+    const qg = (extractedData.quality_gates || []) as Array<Record<string, unknown>>;
+    if (Array.isArray(qg) && qg.length > 0) {
+      mapped.quality_gates = qg
+        .filter((g) => g.name)
+        .map((g) => ({ id: generateSubEntityId(), name: String(g.name || ''), date: String(g.date || '') }));
+    }
+  }
+
+  // Auf die Step-Keys begrenzen.
+  const keys = STEP_RESULT_KEYS[step] || [];
+  const extracted: Record<string, unknown> = {};
+  for (const k of keys) {
+    if (mapped[k] !== undefined) extracted[k] = mapped[k];
+  }
+  report.fieldsExtracted = Object.keys(extracted).length;
+
+  await emit({
+    type: 'extracting_done',
+    data: { fieldsExtracted: report.fieldsExtracted, durationMs: Date.now() - extractStart },
+  });
+  await emit({ type: 'step_extracted', data: { extracted: extracted as Partial<Projektauftrag>, report } });
+
+  return { extracted: extracted as Partial<Projektauftrag>, report };
 }
 
 // ============================================================================

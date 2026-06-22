@@ -2,6 +2,22 @@
 
 ## 2026-06-22
 
+### PM-App: Step-bezogener, additiver Dokument-Import im Projektauftrag-Wizard
+Zusätzlich zum bestehenden Voll-Import gibt es jetzt pro Wizard-Step (1–7) einen
+**„Aus Dokument importieren"**-Button. Er extrahiert nur die Felder des aktuellen Steps
+und ergänzt **additiv**:
+- **Listen-Einträge** (Kriterien, Aufgaben, Meilensteine, Quality Gates, Budget, Risiken,
+  Team, Stakeholder, In/Out-Scope) werden **angehängt** — bestehende nie ersetzt/gelöscht
+  (rein additiv, keine Dedup).
+- **Skalar-Felder** (Basis-Felder, Ziele, Umfang) werden **nur gefüllt, wenn leer**.
+- Merge passiert im Frontend in den Live-State; danach normaler „Speichern"-Flow.
+- Wiederverwendet die bestehende Extraktions-Pipeline (`processFilesToText` → Step-Teilprofil
+  → forced function call); neuer stateless SSE-Endpoint `POST /projektauftraege/import-step/:step`.
+- Nur Projektauftrag (nicht Projektidee). Dateien: `import-service.ts` (`buildStepProfile`,
+  `extractStepFromFiles`, Quality-Gates-Gruppe), `routes.ts` (Endpoint), neue
+  `components/StepImportButton.jsx`, `WizardPage.jsx` (Button + `mergeStepImport`).
+- Kein neues Dependency, keine DB-Migration.
+
 ### PM-App: Personen im Statusbericht — Veränderungen dokumentierbar
 Der Personen-Tab im Statusbericht war read-only. Jetzt lassen sich je Person
 **Veränderungen im Projektverlauf** erfassen — konsistent zum Snapshot+Tracking-Muster
