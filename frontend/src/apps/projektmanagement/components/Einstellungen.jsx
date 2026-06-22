@@ -78,6 +78,12 @@ const FIELD_ORDER = [
   'lesson_kategorie',
 ];
 
+// Listen, deren Schlüssel (value) im Code fest verdrahtet sind (Status-Zuordnung,
+// Badges, Filter). Hier ist nur der Anzeigename editierbar — Schlüssel sind
+// gesperrt und Einträge können nicht hinzugefügt/gelöscht werden, damit die
+// automatische Zuordnung nicht bricht.
+const LOCKED_KEY_FIELDS = new Set(['idee_status']);
+
 // ============== Styles ==============
 
 const styles = {
@@ -174,6 +180,17 @@ const styles = {
   },
   fieldUsageLabel: {
     fontWeight: theme.typography.weights.medium,
+  },
+  lockedHint: {
+    fontSize: '11px',
+    color: theme.colors.textMuted,
+    marginTop: '2px',
+    fontStyle: 'italic',
+  },
+  valueInputLocked: {
+    backgroundColor: theme.colors.surfaceHover,
+    color: theme.colors.textMuted,
+    cursor: 'not-allowed',
   },
   optionRow: {
     display: 'flex',
@@ -289,13 +306,20 @@ function AuswahloptionenTab({ config, setConfig, hasChanges, setHasChanges, savi
       )}
 
       <div style={styles.grid}>
-        {FIELD_ORDER.map((fieldKey) => (
+        {FIELD_ORDER.map((fieldKey) => {
+          const keysLocked = LOCKED_KEY_FIELDS.has(fieldKey);
+          return (
           <div key={fieldKey} style={styles.fieldCard}>
             <div>
               <div style={styles.fieldTitle}>{FIELD_LABELS[fieldKey]}</div>
               {FIELD_USAGE[fieldKey] && (
                 <div style={styles.fieldUsage}>
                   <span style={styles.fieldUsageLabel}>Verwendet in:</span> {FIELD_USAGE[fieldKey]}
+                </div>
+              )}
+              {keysLocked && (
+                <div style={styles.lockedHint}>
+                  🔒 Schlüssel fixiert (Status-Zuordnung) — nur Anzeigename änderbar.
                 </div>
               )}
             </div>
@@ -317,44 +341,53 @@ function AuswahloptionenTab({ config, setConfig, hasChanges, setHasChanges, savi
                   onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
                 />
                 <input
-                  style={styles.valueInput}
+                  style={keysLocked ? { ...styles.valueInput, ...styles.valueInputLocked } : styles.valueInput}
                   value={option.value}
                   onChange={(e) => updateOption(fieldKey, index, 'value', e.target.value)}
                   placeholder="key"
-                  onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
+                  readOnly={keysLocked}
+                  title={keysLocked ? 'Schlüssel ist fixiert (Status-Zuordnung)' : undefined}
+                  onFocus={(e) => { if (!keysLocked) e.target.style.borderColor = theme.colors.primary; }}
                   onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
                 />
-                <button
-                  style={styles.removeBtn}
-                  onClick={() => removeOption(fieldKey, index)}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = theme.colors.error;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = theme.colors.textMuted;
-                  }}
-                >
-                  <TrashIcon />
-                </button>
+                {keysLocked ? (
+                  <span style={{ width: '24px', flexShrink: 0 }} />
+                ) : (
+                  <button
+                    style={styles.removeBtn}
+                    onClick={() => removeOption(fieldKey, index)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = theme.colors.error;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = theme.colors.textMuted;
+                    }}
+                  >
+                    <TrashIcon />
+                  </button>
+                )}
               </div>
             ))}
 
-            <button
-              style={styles.addBtn}
-              onClick={() => addOption(fieldKey)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = theme.colors.primary;
-                e.currentTarget.style.color = theme.colors.primary;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = theme.colors.border;
-                e.currentTarget.style.color = theme.colors.textMuted;
-              }}
-            >
-              <PlusIcon /> Hinzufügen
-            </button>
+            {!keysLocked && (
+              <button
+                style={styles.addBtn}
+                onClick={() => addOption(fieldKey)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = theme.colors.primary;
+                  e.currentTarget.style.color = theme.colors.primary;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = theme.colors.border;
+                  e.currentTarget.style.color = theme.colors.textMuted;
+                }}
+              >
+                <PlusIcon /> Hinzufügen
+              </button>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </>
   );

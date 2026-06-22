@@ -2,6 +2,14 @@
 
 ## 2026-06-22
 
+### PM-App: Verdrahtete Config-Listen — Schlüssel in der UI gesperrt
+Listen, deren Schlüssel (value) im Code fest verdrahtet sind (Status-Zuordnung/Badges/Filter),
+sind in den PM-Einstellungen jetzt geschützt: **Schlüssel read-only, kein Hinzufügen/Löschen,
+nur der Anzeigename ist editierbar** — mit Hinweis „🔒 Schlüssel fixiert". Verhindert, dass die
+automatische Status-Zuordnung durch Schlüssel-Änderungen bricht. Aktuell betrifft das die Liste
+**Projektidee-Status** (`idee_status`); generischer Mechanismus (`LOCKED_KEY_FIELDS`) für künftige
+verdrahtete Listen. Datei: `frontend/src/apps/projektmanagement/components/Einstellungen.jsx`.
+
 ### PM-App: Step-bezogener, additiver Dokument-Import im Projektauftrag-Wizard
 Zusätzlich zum bestehenden Voll-Import gibt es jetzt pro Wizard-Step (1–7) einen
 **„Aus Dokument importieren"**-Button. Er extrahiert nur die Felder des aktuellen Steps
