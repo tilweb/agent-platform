@@ -16,6 +16,7 @@ const FIELD_LABELS = {
   project_driver: 'Projekttreiber',
   project_status: 'Projektstatus',
   order_status: 'Projektauftragsstatus',
+  idee_status: 'Projektidee-Status',
   role: 'Rolle',
   member_status: 'Status (intern/extern)',
   gruppe: 'Gruppe',
@@ -33,12 +34,13 @@ const FIELD_LABELS = {
 // Wo jede Liste eingesetzt wird (Modul/Eingabemaske) — als Untertitel unter dem
 // Listentitel. Hilft Konfiguratoren, die Auswirkung einer Änderung einzuschätzen.
 const FIELD_USAGE = {
-  project_type: 'Projekt-Wizard (Basisinfo), Projektideen, Portfolio',
-  project_size: 'Projekt-Wizard (Basisinfo)',
-  priority: 'Projekt-Wizard (Basisinfo)',
+  project_type: 'Projekt-Wizard (Basisinfo), Projektidee (Basis), Portfolio',
+  project_size: 'Projekt-Wizard (Basisinfo), Projektidee (Basis)',
+  priority: 'Projekt-Wizard (Basisinfo), Projektidee (Basis)',
   project_driver: 'Projekt-Wizard (Basisinfo)',
-  project_status: 'Projekt-Wizard (Basisinfo), Abschlussbericht, Portfolio',
+  project_status: 'Projekt-Wizard (Basisinfo), Projektidee (Basis), Abschlussbericht, Portfolio',
   order_status: 'Projekt-Wizard (Basisinfo)',
+  idee_status: 'Projektidee (Basis)',
   role: 'Projekt-Wizard (Organisation/Stakeholder), Stakeholder-Matrix',
   member_status: 'Projekt-Wizard (Organisation/Stakeholder)',
   gruppe: 'Projekt-Wizard (Personen), Projektidee (Personen)',
@@ -61,6 +63,7 @@ const FIELD_ORDER = [
   'project_driver',
   'project_status',
   'order_status',
+  'idee_status',
   'role',
   'member_status',
   'gruppe',

@@ -378,6 +378,15 @@ const DEFAULT_CONFIG = {
     { value: 'completed', label: 'Abgeschlossen' },
     { value: 'cancelled', label: 'Abgebrochen' },
   ],
+  // Projektidee-Status. Werte sind semantisch verdrahtet (Badges/Filter in der
+  // Ideen-Ansicht) — Labels editierbar, Kern-Werte stabil halten.
+  idee_status: [
+    { value: 'draft', label: 'Entwurf' },
+    { value: 'review', label: 'In Prüfung' },
+    { value: 'approved', label: 'Genehmigt' },
+    { value: 'rejected', label: 'Abgelehnt' },
+    { value: 'archived', label: 'Archiviert' },
+  ],
   role: [
     { value: 'projektleiter', label: 'Projektleiter' },
     { value: 'teilprojektleiter', label: 'Teilprojektleiter' },
