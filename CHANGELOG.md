@@ -2,6 +2,18 @@
 
 ## 2026-07-17
 
+### Infra: Neue Kunden-Instanz `workplace-ihk-leipzig` (Scalingo)
+Neue Customer-Instanz für **IHK Leipzig** provisioniert (Runbook `docs/runbook-neue-kundeninstanz.md`),
+gleicher Ablauf wie `workplace-ihk-darmstadt`:
+- App `workplace-ihk-leipzig` (osc-fr1) + Postgres `postgresql-starter-512`.
+- Customer-Modus (`SEED_DEMO_DATA=false`), `ENABLED_APPS=projektmanagement,wzbar-matcher`,
+  zentrale LLM-Keys (⚪ aus `workplace-demo`), keine Connections. Custom-Domain folgt.
+- **Isolation gewahrt (Cofermin-Lehre):** `SESSION_SECRET`/`CONNECTION_ENCRYPTION_KEY` frisch
+  generiert; **eigener** Flow.swiss-S3-Account (`FLOW_S3_MASTER`-Hash ≠ `workplace-demo` **und**
+  ≠ `workplace-ihk-darmstadt` verifiziert), Bucket `workplace-ihk-leipzig`.
+- Deploy aus main (`d704a7c`) erfolgreich; Health 200, HSTS, Migrations applied, S3-Bucket
+  `[s3] bucket "workplace-ihk-leipzig" created`, `requiresSetup:true` (Admin-Bootstrap bereit).
+
 ### Infra: Neue Kunden-Instanz `workplace-ihk-darmstadt` (Scalingo)
 Neue Customer-Instanz für **IHK Darmstadt** provisioniert (Runbook `docs/runbook-neue-kundeninstanz.md`):
 - App `workplace-ihk-darmstadt` (osc-fr1) + Postgres `postgresql-starter-512`.
