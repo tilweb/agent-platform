@@ -2,6 +2,18 @@
 
 ## 2026-07-17
 
+### Tooling: Monatlicher User-Report über alle Scalingo-Instanzen
+Neues Werkzeug, um die User-Anzahl über **alle** `workplace-*`-Instanzen (Demo wie Kunde)
+abzufragen — abrechnungsrelevant sind die **aktiven** User pro Instanz. Dynamisch: neue
+Instanzen werden automatisch erfasst.
+- `backend/scripts/report-users.ts` (deployed): zählt `auth.users` (total/aktiv/admin),
+  gibt eine `##USERREPORT##`-JSON-Sentinelzeile aus. Read-only.
+- `tools/instance-user-report.ts` (lokal): enumeriert via `scalingo apps`, führt je Instanz
+  einen **detached** One-off aus (`scalingo run --detached` → One-off-ID → Logs pollen; rein
+  API-basiert, da SSH-Tunnel/attached-`run` PTY/SSH-Key bräuchten) und rendert eine Tabelle
+  mit Summe. Fehlertolerant pro Instanz (nicht laufend / Skript fehlt / Timeout ⇒ `n/a`).
+- Konzept & Betrieb: `docs/user-report-scalingo-2026-07-17.md`.
+
 ### Infra: Neue Kunden-Instanz `workplace-ihk-leipzig` (Scalingo)
 Neue Customer-Instanz für **IHK Leipzig** provisioniert (Runbook `docs/runbook-neue-kundeninstanz.md`),
 gleicher Ablauf wie `workplace-ihk-darmstadt`:
