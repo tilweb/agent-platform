@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-07-17
+
+### Infra: Neue Kunden-Instanz `workplace-ihk-darmstadt` (Scalingo)
+Neue Customer-Instanz für **IHK Darmstadt** provisioniert (Runbook `docs/runbook-neue-kundeninstanz.md`):
+- App `workplace-ihk-darmstadt` (osc-fr1) + Postgres `postgresql-starter-512`.
+- Customer-Modus (`SEED_DEMO_DATA=false`), `ENABLED_APPS=projektmanagement,wzbar-matcher`,
+  zentrale LLM-Keys (⚪ aus `workplace-demo`), keine Connections. Custom-Domain folgt.
+- **Isolation gewahrt (Cofermin-Lehre):** `SESSION_SECRET`/`CONNECTION_ENCRYPTION_KEY` frisch
+  generiert; **eigener** Flow.swiss-S3-Account (`FLOW_S3_*`-Hash ≠ `workplace-demo` verifiziert),
+  Bucket `workplace-ihk-darmstadt`.
+- Deploy aus main (`f0a2d28`) erfolgreich; Health 200, HSTS, Migrations applied, S3-Bucket
+  angelegt, `requiresSetup:true` (Admin-Bootstrap bereit).
+
 ## 2026-06-22
 
 ### Config-Fix: Qwen 3.5 als vision-fähig korrigiert + Standalone Split-Test-Tool
