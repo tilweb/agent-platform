@@ -104,24 +104,44 @@ URL=https://$APP.osc-fr1.scalingo.io
 scalingo create $APP --region osc-fr1
 # Projekt-Zuordnung (workplace-pilots) ggf. in der Console.
 ```
-> ⚠️ **Kosten-Gate:** Das Postgres-Addon ist **kostenpflichtig** (außer Sandbox). Vor dem
-> nächsten Schritt explizit bestätigen lassen.
+> ⚠️ **Kosten-Gate:** Es gibt **keinen kostenlosen Sandbox-Plan mehr** (Stand 2026-06).
+> Der kleinste Plan ist **`postgresql-starter-512`** (Starter 512M) — **kostenpflichtig**.
+> Vor dem nächsten Schritt explizit bestätigen lassen. Plan-Liste:
+> `scalingo --app $APP addons-plans postgresql`.
 ```sh
-scalingo --app $APP addons-add postgresql postgresql-sandbox   # Plan je nach Kunde
+scalingo --app $APP addons-add postgresql postgresql-starter-512   # Plan je nach Kunde
+# DB-URLs (DATABASE_URL / SCALINGO_POSTGRESQL_URL) setzt das Addon automatisch.
+# Der Code liest SCALINGO_POSTGRES — das Custom-Buildpack aliased es beim Boot aus
+# SCALINGO_POSTGRESQL_URL. Also NICHTS DB-bezogenes manuell setzen.
 ```
 
 ### 3.2 Generierte Secrets (🔴) — frisch, in einem Rutsch
+> 🔐 **`scalingo env-set` gibt die gesetzten Werte im Klartext aus.** Bei Secrets daher
+> **immer `>/dev/null 2>&1`** anhängen und separat per Key-Name (gehasht) verifizieren —
+> sonst landen die Secrets im Terminal/Transkript.
 ```sh
 scalingo --app $APP env-set \
   SESSION_SECRET="$(openssl rand -hex 32)" \
-  CONNECTION_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+  CONNECTION_ENCRYPTION_KEY="$(openssl rand -hex 32)" >/dev/null 2>&1
+# Verifikation ohne Klartext:
+scalingo --app $APP env 2>/dev/null | grep -E '^(SESSION_SECRET|CONNECTION_ENCRYPTION_KEY)=' \
+  | cut -d= -f1
 ```
-`FLOW_S3_MASTER/SECRET` erst nach Abschnitt 4.1 (neuer Account) setzen.
+`FLOW_S3_MASTER/SECRET` erst nach Abschnitt 4.1 (neuer Account) setzen — **ebenfalls mit
+`>/dev/null`**.
 
 ### 3.3 Instanz-spezifisch (🟡) — interim auf die Scalingo-URL
+> ⚠️ **`VITE_API_URL` ist `/api` (relativ), NICHT die volle URL.** Das Frontend nutzt den
+> Wert direkt als API-Base (`AuthContext.jsx`: `import.meta.env.VITE_API_URL || '…/api'`).
+> Eine volle URL ohne `/api` lässt `/auth/status` ins Leere laufen → Frontend zeigt **Login
+> statt Erst-Registrierung**. Relativ (`/api`, same-origin) ist zudem domain-unabhängig —
+> überlebt den späteren Custom-Domain-Wechsel ohne Rebuild. **`VITE_API_URL` wird zur
+> Build-Zeit ins Bundle gebacken** → Änderung erfordert einen **Rebuild** (§3.6), kein bloßes
+> Restart.
 ```sh
 scalingo --app $APP env-set \
-  APP_URL=$URL FRONTEND_URL=$URL API_BASE_URL=$URL VITE_API_URL=$URL \
+  APP_URL="$URL" FRONTEND_URL="$URL" API_BASE_URL="$URL" \
+  VITE_API_URL=/api \
   ALLOWED_OAUTH_HOSTS=$APP.osc-fr1.scalingo.io \
   NODE_ENV=production TRUST_PROXY=true \
   SEED_DEMO_DATA=false
@@ -153,9 +173,16 @@ scalingo --app $APP env-set \
 
 ### 3.6 Build-Reste entfernen + Deploy
 ```sh
-scalingo --app $APP env-unset CONTAINER_FILE BUILDPACK_URL || true
-# GitHub-Integration + Branch main + Auto-Deploy in der Console (siehe scalingo-deploy.md §4).
+scalingo --app $APP env-unset CONTAINER_FILE BUILDPACK_URL >/dev/null 2>&1 || true
 ```
+**GitHub-Deploy geht vollständig per CLI** (die SCM-Integration ist bereits am Account) —
+keine Console nötig:
+```sh
+scalingo --app $APP integration-link-create --branch main --auto-deploy \
+  https://github.com/tilweb/agent-platform
+scalingo --app $APP integration-link-manual-deploy main   # ersten Build triggern
+```
+Build-Status pollen: `scalingo --app $APP deployments` (Status `building` → `success`).
 
 ---
 
@@ -165,7 +192,7 @@ Genau hier passieren die Fehler — jedes Tor mit **Verifikation**.
 
 ### 4.1 Flow.swiss Object-Storage-Account 🔴
 - In der Flow.swiss-Konsole einen **neuen, eigenen** Storage-Account (Access-Key/Secret) anlegen — **nicht** den einer anderen Instanz wiederverwenden.
-- `FLOW_S3_MASTER/SECRET` per `env-set` setzen.
+- `FLOW_S3_MASTER/SECRET` per `env-set … >/dev/null 2>&1` setzen (Klartext-Echo vermeiden).
 - **Verifikation (Hash-Vergleich gegen Nachbar-Instanz):**
   ```sh
   for a in workplace-demo $APP; do
@@ -178,7 +205,16 @@ Genau hier passieren die Fehler — jedes Tor mit **Verifikation**.
 - CNAME `cofermin.workplace-lab.adacor.dev` → `workplace-<slug>.osc-fr1.scalingo.io`.
 - Dann: `scalingo --app $APP domains-add cofermin.workplace-lab.adacor.dev`
 - **Verifikation:** `dig +short <domain>` zeigt das CNAME-Ziel; TLS-Zertifikat von Scalingo provisioniert (kann einige Minuten dauern).
-- **Danach** `APP_URL/FRONTEND_URL/API_BASE_URL/VITE_API_URL/ALLOWED_OAUTH_HOSTS` von der interim-URL auf die Custom-Domain umstellen (sonst CSRF-„Forbidden").
+- **Danach** `APP_URL/FRONTEND_URL/API_BASE_URL/ALLOWED_OAUTH_HOSTS` von der interim-URL auf die Custom-Domain umstellen (sonst CSRF-„Forbidden"). **`VITE_API_URL=/api` bleibt unverändert** (relativ, same-origin) → kein Rebuild beim Domain-Wechsel nötig.
+- > 🔁 **Pflicht: expliziter Restart nach dem URL-Umstellen.** `index.ts` friert `ALLOWED_ORIGINS`
+  > (aus `FRONTEND_URL`+`API_BASE_URL`) **beim Prozessstart** ein — kein Re-Read pro Request. Der
+  > `env-set`-Auto-Restart propagiert die neuen Origins nicht zuverlässig, der laufende Container
+  > hält weiter die alten (interim-)Origins → Login liefert weiter CSRF-„Forbidden". Daher nach dem
+  > Umstellen **immer** `scalingo --app $APP restart`. Verifikation (kein 403, sondern 400/401):
+  > ```sh
+  > curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<domain>/api/auth/login \
+  >   -H "Origin: https://<domain>" -H "Content-Type: application/json" -d '{"email":"x","password":"x"}'
+  > ```
 
 ### 4.3 OAuth-Redirect-URIs pro Provider 🔵
 - Für jeden aktivierten Provider die **Redirect-URI auf die finale Instanz-Domain** in der jeweiligen Provider-App/Org registrieren (z. B. DocuWare-Org des Kunden).
@@ -204,10 +240,12 @@ scalingo --app $APP logs --lines 200 | grep -E '\[s3\]|migrations|Server startin
 | Symptom | Ursache | Fix |
 |---|---|---|
 | **S3-Kollision / fremde Daten** | `FLOW_S3_*` von anderer Instanz kopiert (Keys nicht präfixiert) | Eigener Flow.swiss-Account (4.1); Hash-Verifikation |
-| **„Forbidden" beim ersten User** | CSRF: `APP_URL`/`ALLOWED_OAUTH_HOSTS` ≠ tatsächlich aufgerufener Host (interim-URL vs. Custom-Domain) | URLs auf den Host stellen, über den real zugegriffen wird |
+| **„Forbidden" beim Login** | CSRF: `FRONTEND_URL`/`API_BASE_URL` ≠ aufgerufener Host — **oder** Prozess hält nach `env-set` noch die alten, eingefrorenen `ALLOWED_ORIGINS` | URLs auf den realen Host stellen **und** `scalingo --app $APP restart` (Origins werden beim Boot eingefroren, siehe 4.2) |
 | **Boot bricht FATAL ab (Demo)** | `SEED_DEMO_DATA=true` ohne `ALLOW_DEMO_SEED_IN_PRODUCTION=true` | beide Flags setzen (Guard gegen versehentliches Demo-Seed) |
 | **OAuth-Tokens unlesbar nach Redeploy** | `CONNECTION_ENCRYPTION_KEY` geändert oder ≠ 64 Hex | Key stabil halten, `openssl rand -hex 32` |
 | **Build kollidiert** | alte `CONTAINER_FILE`/`BUILDPACK_URL` auf der App | `env-unset` (3.6) |
+| **Secret im Terminal/Transkript geleakt** | `scalingo env-set` echot gesetzte Werte im Klartext | bei Secrets `>/dev/null 2>&1`; falls geleakt: Secret **rotieren** (3.2) |
+| **Login-Maske statt Erst-Registrierung** | `VITE_API_URL` ≠ `/api` (volle URL ohne `/api`) → `/auth/status` 404 → `initialized` bleibt null | `VITE_API_URL=/api` + **Rebuild** (build-time-baked, §3.3/§3.6) |
 
 ---
 
