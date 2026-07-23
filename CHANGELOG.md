@@ -2,6 +2,15 @@
 
 ## 2026-07-23
 
+### Doku: Fachkonzept Confluence-Connection (Übergabe ans Produkt-Team)
+Anforderungs-/Fachkonzept zum Neubau der Confluence-Connection in der Produktvariante:
+`docs/fachkonzept-confluence-connection-2026-07-23.md`. Ohne App-Bezug, dafür generische
+Konsumenten (Chat, Unified Search, KB-Import). Enthält Fähigkeiten F1–F7 (mit Lücken F5 Content→
+Markdown, F6 Bild-/Attachment-Proxy, F7 Multi-Instance), User Stories zur Chat-Inhaltsdarstellung
+sowie die Atlassian-Fallstricke E1–E13 (cloudId-Extra-Hop, V1/V2-Split mit CQL nur in V1, Scope-
+Fragmentierung + Reconsent, **rotierende Refresh-Tokens** als Betriebsrisiko #1, Storage-XHTML-
+Konversion u.a.).
+
 ### Doku: Fachkonzept DocuWare-Connection (Übergabe ans Produkt-Team)
 Anforderungs-/Fachkonzept zum Neubau der DocuWare-Connection in der Produktvariante:
 `docs/fachkonzept-docuware-connection-2026-07-23.md`. Enthält Scope/Abgrenzung (Connection =
