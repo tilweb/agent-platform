@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-23
+
+### Doku: Fachkonzept DocuWare-Connection (Übergabe ans Produkt-Team)
+Anforderungs-/Fachkonzept zum Neubau der DocuWare-Connection in der Produktvariante:
+`docs/fachkonzept-docuware-connection-2026-07-23.md`. Enthält Scope/Abgrenzung (Connection =
+Transport/Auth + 9 Fähigkeiten), User Stories (inkl. Chat-Dokumentenansicht), Forward-Compat für
+die Cofermin-Vorgangsmappe (generisch vs. app-spezifisch) sowie die erlernten DocuWare-Fallstricke
+E1–E12 (OAuth-2024-IdP-Migration, Accept-Header, Doc-/Section-Bild-Fallback, DialogExpression-
+Value-Semantik, Scopes/`offline_access`, Dialog-Caching u.a.), damit nichts doppelt erarbeitet wird.
+
 ## 2026-07-17
 
 ### Tooling: Monatlicher User-Report über alle Scalingo-Instanzen
