@@ -2,6 +2,14 @@
 
 ## 2026-07-24
 
+### PM: Step-Tabs mit Icons statt Nummern-Kreisen
+Die Wizard-Steps in Projektidee, Projektauftrag und Statusbericht zeigen in der Step-Leiste jetzt **Icons**
+(im Stil der Menü-Icons) statt nummerierter Kreise — die Nummerierung hatte Nutzer verwirrt. Umgesetzt in
+der gemeinsamen `StepNav.jsx` über eine zentrale Titel→Icon-Zuordnung (`STEP_ICONS`): derselbe Step **nach
+Bezeichnung** (nicht Nummer) trägt in allen drei Bereichen dasselbe Icon (Basis=Document, Personen=User,
+Ziele=Target, Roadmap=Timeline, Kosten=BarChart, Risiken=AlertTriangle, Übersicht=Apps, …). Icons erben
+`currentColor`, die Aktiv/Erledigt-Färbung (primary/success) bleibt. Reine Frontend-Änderung, beide Worktrees.
+
 ### PM: Listenansichten Projektideen & Portfolios an Projekte angeglichen
 Die drei Top-Level-Listen (Tabs in `ProjektePage`) haben jetzt denselben Aufbau — **Aktionsleiste →
 Stats-Grid (4 Karten) → Such-/Filterzeile → Zeilen-Liste**. Führend war die bestehende **Projekte**-
