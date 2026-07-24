@@ -1,11 +1,14 @@
 /**
  * IdeenPage — Liste aller Projektideen.
- * Karten-Layout mit Status-Badges und Anzeige der Anzahl abgeleiteter Auftraege.
+ * Aufbau analog zur Projekte-Liste (ProjektePage): Aktionsleiste → Stats-Grid →
+ * Such-/Filterzeile → Zeilen-Liste. Wird standalone (/ideen) und embedded (Tab
+ * in ProjektePage) genutzt.
  */
 
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { theme } from '../../config/theme';
-import { ArrowLeftIcon } from '../../components/Icons';
+import { ArrowLeftIcon, LightningIcon } from '../../components/Icons';
 import { useProjektideen } from '../../hooks/useProjektideen';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import RoleBadge from '../../components/RoleBadge';
@@ -16,27 +19,6 @@ const styles = {
   header: {
     padding: `${theme.spacing.xl} ${theme.spacing['2xl']}`,
     borderBottom: `1px solid ${theme.colors.border}`,
-  },
-  embeddedActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
-  },
-  importButton: {
-    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
-    backgroundColor: 'transparent',
-    color: theme.colors.text,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    cursor: 'pointer',
-    textDecoration: 'none',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    transition: `all ${theme.transitions.fast}`,
   },
   backLink: {
     display: 'inline-flex',
@@ -52,11 +34,6 @@ const styles = {
     fontWeight: theme.typography.weights.medium,
     textDecoration: 'none',
   },
-  headerContent: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
   title: {
     fontSize: theme.typography.sizes['2xl'],
     fontWeight: theme.typography.weights.bold,
@@ -67,20 +44,6 @@ const styles = {
     fontSize: theme.typography.sizes.base,
     color: theme.colors.textSecondary,
   },
-  newButton: {
-    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
-    backgroundColor: theme.colors.primary,
-    color: '#fff',
-    border: 'none',
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    cursor: 'pointer',
-    textDecoration: 'none',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
   content: {
     flex: 1,
     padding: theme.spacing['2xl'],
@@ -90,68 +53,167 @@ const styles = {
     padding: 0,
     overflow: 'visible',
   },
-  cardGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-    gap: theme.spacing.lg,
+  // Action bar
+  actions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
   },
-  card: {
-    backgroundColor: theme.colors.surface,
+  createButton: {
+    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+    backgroundColor: theme.colors.primary,
+    color: '#fff',
+    border: 'none',
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    textDecoration: 'none',
+  },
+  importButton: {
+    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+    backgroundColor: 'transparent',
+    color: theme.colors.text,
     border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.xl,
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    textDecoration: 'none',
+  },
+  // Stats cards
+  statsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: theme.spacing.lg,
+    marginBottom: theme.spacing['2xl'],
+  },
+  statCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    border: `1px solid ${theme.colors.border}`,
     padding: theme.spacing.xl,
+  },
+  statLabel: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.sm,
+  },
+  statValue: {
+    fontSize: theme.typography.sizes['2xl'],
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text,
+  },
+  statValueSuccess: { color: theme.colors.success },
+  statValueWarning: { color: theme.colors.warning },
+  statValueInfo: { color: theme.colors.info },
+  // Filters
+  filtersRow: {
+    display: 'flex',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+  },
+  searchInput: {
+    flex: 1,
+    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.base,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
+    outline: 'none',
+  },
+  filterSelect: {
+    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.base,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
+    cursor: 'pointer',
+  },
+  // List
+  list: {
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing.md,
+  },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    border: `1px solid ${theme.colors.border}`,
+    padding: theme.spacing.xl,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     cursor: 'pointer',
     transition: `all ${theme.transitions.fast}`,
     textDecoration: 'none',
-    color: 'inherit',
   },
-  cardName: {
+  cardInfo: { flex: 1 },
+  cardTitle: {
     fontSize: theme.typography.sizes.base,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text,
-  },
-  cardMeta: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.xs,
     display: 'flex',
+    alignItems: 'center',
     gap: theme.spacing.sm,
     flexWrap: 'wrap',
-    alignItems: 'center',
   },
-  cardDescription: {
+  cardMeta: {
+    display: 'flex',
+    gap: theme.spacing.lg,
     fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
+    color: theme.colors.textMuted,
   },
-  badge: {
+  statusBadge: {
     fontSize: theme.typography.sizes.xs,
-    padding: `2px ${theme.spacing.sm}`,
+    padding: `${theme.spacing.xs} ${theme.spacing.md}`,
     borderRadius: theme.borderRadius.full,
     fontWeight: theme.typography.weights.medium,
+    flexShrink: 0,
   },
   badgeDraft: { backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted },
   badgeReview: { backgroundColor: theme.colors.warningLight, color: theme.colors.warning },
   badgeApproved: { backgroundColor: theme.colors.successLight, color: theme.colors.success },
   badgeRejected: { backgroundColor: theme.colors.errorLight, color: theme.colors.error },
   badgeArchived: { backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted },
+  // Empty state
   emptyState: {
     textAlign: 'center',
     padding: theme.spacing['3xl'],
     color: theme.colors.textMuted,
-    fontSize: theme.typography.sizes.sm,
+  },
+  emptyIcon: { marginBottom: theme.spacing.lg, opacity: 0.5 },
+  emptyTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+  },
+  emptyText: { fontSize: theme.typography.sizes.sm, marginBottom: theme.spacing.xl },
+  loading: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing['3xl'],
+    color: theme.colors.textMuted,
   },
 };
 
 const STATUS_LABELS = {
   draft: 'Entwurf',
-  review: 'In Pruefung',
+  review: 'In Prüfung',
   approved: 'Genehmigt',
   rejected: 'Abgelehnt',
   archived: 'Archiviert',
@@ -166,10 +228,58 @@ const STATUS_BADGE_STYLE = {
 };
 
 export default function IdeenPage({ embedded = false }) {
-  const navigate = useNavigate();
   const { projektideen, isLoading, error } = useProjektideen();
   const { role: appRole } = useAppPermission();
   const canCreate = appRole === 'owner' || appRole === 'editor';
+
+  const [filters, setFilters] = useState({ search: '', status: '' });
+
+  const filteredIdeen = useMemo(() => {
+    let result = [...projektideen];
+    if (filters.status) {
+      result = result.filter((i) => i.status === filters.status);
+    }
+    if (filters.search) {
+      const s = filters.search.toLowerCase();
+      result = result.filter(
+        (i) =>
+          (i.name || '').toLowerCase().includes(s) ||
+          (i.projektleiter || '').toLowerCase().includes(s)
+      );
+    }
+    return result;
+  }, [projektideen, filters]);
+
+  // Kennzahlen über alle Ideen (nicht gefiltert).
+  const stats = {
+    total: projektideen.length,
+    review: projektideen.filter((i) => i.status === 'review').length,
+    approved: projektideen.filter((i) => i.status === 'approved').length,
+    abgeleitet: projektideen.reduce((sum, i) => sum + (i.abgeleitete_auftraege?.length ?? 0), 0),
+  };
+
+  const actionBar = canCreate && (
+    <div style={styles.actions}>
+      <Link
+        to="/apps/projektmanagement/ideen/import"
+        style={styles.importButton}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+      >
+        <ImportIcon />
+        Dokumente importieren
+      </Link>
+      <Link
+        to="/apps/projektmanagement/ideen/neu"
+        style={styles.createButton}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.primaryHover; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme.colors.primary; }}
+      >
+        <PlusIcon />
+        Neue Projektidee
+      </Link>
+    </div>
+  );
 
   return (
     <div style={embedded ? styles.containerEmbedded : styles.container}>
@@ -178,79 +288,136 @@ export default function IdeenPage({ embedded = false }) {
           <Link to="/apps/projektmanagement" style={styles.backLink}>
             <ArrowLeftIcon /> Projektmanagement
           </Link>
-          <div style={styles.headerContent}>
-            <div>
-              <h1 style={styles.title}>Projektideen</h1>
-              <p style={styles.subtitle}>
-                Erfassen Sie neue Ideen und entwickeln Sie sie ueber Zeit zu konkreten Projektauftraegen weiter.
-              </p>
-            </div>
-            {canCreate && (
-              <Link to="/apps/projektmanagement/ideen/neu" style={styles.newButton}>
-                + Neue Projektidee
-              </Link>
-            )}
-          </div>
+          <h1 style={styles.title}>Projektideen</h1>
+          <p style={styles.subtitle}>
+            Erfassen Sie neue Ideen und entwickeln Sie sie über Zeit zu konkreten Projektaufträgen weiter.
+          </p>
         </div>
       )}
 
       <div style={embedded ? styles.contentEmbedded : styles.content}>
-        {embedded && canCreate && (
-          <div style={styles.embeddedActions}>
-            <Link to="/apps/projektmanagement/ideen/import" style={styles.importButton}>
-              <ImportIcon />
-              Dokumente importieren
-            </Link>
-            <Link to="/apps/projektmanagement/ideen/neu" style={styles.newButton}>
-              + Neue Projektidee
-            </Link>
+        {actionBar}
+
+        {/* Stats */}
+        <div style={styles.statsGrid}>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Gesamt</div>
+            <div style={styles.statValue}>{stats.total}</div>
           </div>
-        )}
-        {isLoading && <div style={styles.emptyState}>Lade Projektideen…</div>}
-        {error && <div style={styles.emptyState}>Fehler: {error}</div>}
-        {!isLoading && !error && projektideen.length === 0 && (
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>In Prüfung</div>
+            <div style={{ ...styles.statValue, ...styles.statValueWarning }}>{stats.review}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Genehmigt</div>
+            <div style={{ ...styles.statValue, ...styles.statValueSuccess }}>{stats.approved}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Abgeleitete Aufträge</div>
+            <div style={{ ...styles.statValue, ...styles.statValueInfo }}>{stats.abgeleitet}</div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div style={styles.filtersRow}>
+          <input
+            type="text"
+            placeholder="Projektideen durchsuchen..."
+            value={filters.search}
+            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            style={styles.searchInput}
+          />
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            style={styles.filterSelect}
+          >
+            <option value="">Alle Status</option>
+            {Object.entries(STATUS_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* List */}
+        {isLoading ? (
+          <div style={styles.loading}>Lade Projektideen…</div>
+        ) : error ? (
+          <div style={{ ...styles.emptyState, color: theme.colors.error }}>Fehler: {error}</div>
+        ) : filteredIdeen.length === 0 ? (
           <div style={styles.emptyState}>
-            Noch keine Projektideen erfasst. Klicken Sie auf <strong>„+ Neue Projektidee"</strong>.
-          </div>
-        )}
-        <div style={styles.cardGrid}>
-          {projektideen.map((idee) => {
-            const badgeStyle = styles[STATUS_BADGE_STYLE[idee.status] ?? 'badgeDraft'];
-            const auftraegeCount = (idee.abgeleitete_auftraege ?? []).length;
-            return (
-              <div
-                key={idee.id}
-                style={styles.card}
-                onClick={() => navigate(`/apps/projektmanagement/ideen/${idee.id}`)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.surface;
-                }}
+            <div style={styles.emptyIcon}>
+              <LightningIcon size={48} color={theme.colors.textMuted} />
+            </div>
+            <div style={styles.emptyTitle}>
+              {projektideen.length === 0 ? 'Noch keine Projektideen' : 'Keine Projektideen gefunden'}
+            </div>
+            <p style={styles.emptyText}>
+              {projektideen.length === 0
+                ? 'Erfassen Sie Ihre erste Projektidee, um zu beginnen.'
+                : 'Versuchen Sie, Ihre Filter anzupassen.'}
+            </p>
+            {projektideen.length === 0 && canCreate && (
+              <Link
+                to="/apps/projektmanagement/ideen/neu"
+                style={styles.createButton}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.primaryHover; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme.colors.primary; }}
               >
-                <div style={{ ...styles.cardName, display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
-                  <span>{idee.name || 'Unbenannte Idee'}</span>
-                  {idee.role && <RoleBadge role={idee.role} size="sm" />}
-                </div>
-                <div style={styles.cardMeta}>
-                  <span style={{ ...styles.badge, ...badgeStyle }}>
+                <PlusIcon />
+                Neue Projektidee
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div style={styles.list}>
+            {filteredIdeen.map((idee) => {
+              const badgeStyle = styles[STATUS_BADGE_STYLE[idee.status] ?? 'badgeDraft'];
+              const auftraegeCount = (idee.abgeleitete_auftraege ?? []).length;
+              return (
+                <Link
+                  key={idee.id}
+                  to={`/apps/projektmanagement/ideen/${idee.id}`}
+                  style={styles.card}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                    e.currentTarget.style.borderColor = theme.colors.primary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.surface;
+                    e.currentTarget.style.borderColor = theme.colors.border;
+                  }}
+                >
+                  <div style={styles.cardInfo}>
+                    <div style={styles.cardTitle}>
+                      <span>{idee.name || 'Unbenannte Idee'}</span>
+                      {idee.role && <RoleBadge role={idee.role} size="sm" />}
+                    </div>
+                    <div style={styles.cardMeta}>
+                      <span>PL: {idee.projektleiter || '-'}</span>
+                      <span>|</span>
+                      <span>{auftraegeCount} Auftrag{auftraegeCount !== 1 ? 'e' : ''}</span>
+                    </div>
+                  </div>
+                  <span style={{ ...styles.statusBadge, ...badgeStyle }}>
                     {STATUS_LABELS[idee.status] ?? idee.status}
                   </span>
-                  {idee.projektleiter && <span>· {idee.projektleiter}</span>}
-                  {auftraegeCount > 0 && (
-                    <span>· {auftraegeCount} Auftrag{auftraegeCount !== 1 ? 'e' : ''}</span>
-                  )}
-                </div>
-                {idee.description && (
-                  <div style={styles.cardDescription}>{idee.description}</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
   );
 }
 

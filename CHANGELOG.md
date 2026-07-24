@@ -2,6 +2,18 @@
 
 ## 2026-07-24
 
+### PM: Listenansichten Projektideen & Portfolios an Projekte angeglichen
+Die drei Top-Level-Listen (Tabs in `ProjektePage`) haben jetzt denselben Aufbau — **Aktionsleiste →
+Stats-Grid (4 Karten) → Such-/Filterzeile → Zeilen-Liste**. Führend war die bestehende **Projekte**-
+Implementierung; ihr Muster wurde 1:1 auf **Projektideen** (`IdeenPage.jsx`) und **Portfolios**
+(`PortfolioList.jsx`) übertragen (vorher: Karten-Grid ohne Zahlen/Suche).
+- Projektideen: Kennzahlen Gesamt · In Prüfung · Genehmigt · Abgeleitete Aufträge; Suchfeld +
+  Status-Filter; Zeilen-Liste mit Status-Badge rechts. Standalone- und Embedded-Modus identisch.
+- Portfolios: Kennzahlen Gesamt · Aktiv · Archiviert · **Budget gesamt** (Summe der Gesamtbudgets aller in
+  Portfolios enthaltenen Projekte, via Projekt-ID = Auftrags-ID); Suchfeld + Status-Filter (jetzt
+  clientseitig, alle Portfolios geladen); „Neues Portfolio" öffnet weiter das Create-Modal.
+- Filterung via `useMemo` (statt setState-im-Effect); reine Frontend-Änderung, in beiden Worktrees identisch.
+
 ### PM: Wissenspool-Chat im Projektauftrag-Slate
 Das rechte Slate im Projektauftrag-Wizard hat einen dritten Tab **Chat**, mit dem man gegen den
 Wissenspool des **aktuellen Schritts** sprechen kann. Antworten sind auf das Masterclass-Wissen des
