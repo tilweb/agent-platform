@@ -378,25 +378,45 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
           results.push(data.analysis);
         }
 
-        // Merge results from multiple backend steps
+        // Merge results from multiple backend steps.
+        // Backend liefert je Step die verschachtelte Form
+        // { masterclassAnalysis, konsistenzAnalysis, stepName, timestamp }.
+        // Wir mergen in genau diese Struktur, damit AnalysisResult sie rendert.
         const prefixes = ['Meilensteine', 'Hauptaufgaben'];
+        const mc = (r) => r?.masterclassAnalysis || {};
+        const ko = (r) => r?.konsistenzAnalysis || {};
+
+        // Konsistenz-Status: der schlechteste gewinnt.
+        const statusRank = { konsistent: 0, warnung: 1, inkonsistent: 2 };
+        const mergedStatus = results.reduce((worst, r) => {
+          const s = ko(r).status || 'konsistent';
+          return (statusRank[s] ?? 0) > (statusRank[worst] ?? 0) ? s : worst;
+        }, 'konsistent');
+
         const merged = {
-          score: Math.round(results.reduce((sum, r) => sum + (r.score || 0), 0) / results.length),
-          staerken: results.flatMap((r, i) =>
-            (r.staerken || []).map(s => `${prefixes[i]}: ${s}`)
-          ),
-          schwaechen: results.flatMap((r, i) =>
-            (r.schwaechen || []).map(s => `${prefixes[i]}: ${s}`)
-          ),
-          hinweise: results.flatMap((r, i) =>
-            (r.hinweise || []).map(h => `${prefixes[i]}: ${h}`)
-          ),
-          konsistenz: {
-            status: results.some(r => r.konsistenz?.status === 'kritisch') ? 'kritisch'
-              : results.some(r => r.konsistenz?.status === 'warnung') ? 'warnung'
-              : 'ok',
+          stepName: 'Roadmap (Meilensteine & Hauptaufgaben)',
+          timestamp: new Date().toISOString(),
+          masterclassAnalysis: {
+            score: Math.round(
+              results.reduce((sum, r) => sum + (mc(r).score || 0), 0) / (results.length || 1)
+            ),
+            staerken: results.flatMap((r, i) =>
+              (mc(r).staerken || []).map(s => `${prefixes[i]}: ${s}`)
+            ),
+            schwaechen: results.flatMap((r, i) =>
+              (mc(r).schwaechen || []).map(s => `${prefixes[i]}: ${s}`)
+            ),
+            hinweise: results.flatMap((r, i) =>
+              (mc(r).hinweise || []).map(h => `${prefixes[i]}: ${h}`)
+            ),
+          },
+          konsistenzAnalysis: {
+            status: mergedStatus,
             findings: results.flatMap((r, i) =>
-              (r.konsistenz?.findings || []).map(f => `${prefixes[i]}: ${f}`)
+              (ko(r).findings || []).map(f => ({
+                ...f,
+                bereich: f.bereich ? `${prefixes[i]}: ${f.bereich}` : prefixes[i],
+              }))
             ),
           },
         };

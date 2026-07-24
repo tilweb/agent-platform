@@ -2,6 +2,16 @@
 
 ## 2026-07-24
 
+### Fix(PM): KI-Analyse im Roadmap-Schritt war leer
+Die KI-Analyse im Projektauftrag-Wizard zeigte im **Roadmap-Schritt** (der als einziger zwei
+Backend-Steps zusammenführt: Meilensteine + Hauptaufgaben) immer Score 0 und leere Stärken/
+Verbesserungen/Empfehlungen/Konsistenz. Ursache: der Merge in `KnowledgePanel.jsx` las die falschen
+Felder (`r.score`/`r.staerken`/`r.konsistenz` statt `r.masterclassAnalysis.*`/`r.konsistenzAnalysis.*`)
+und erzeugte eine flache Struktur, die `AnalysisResult` nicht rendern konnte. Merge liest jetzt aus
+`masterclassAnalysis`/`konsistenzAnalysis` und baut wieder dieselbe verschachtelte Struktur (Score-
+Mittel, präfixierte Stärken/Schwächen/Hinweise, schlechtester Konsistenz-Status, Findings als Objekte
+mit präfixiertem Bereich). Nur Frontend; in beiden Worktrees identisch.
+
 ### PM: Import/Export der Auswahllisten (CSV/Excel) inkl. leerem Template
 Auswahllisten der Projektmanagement-App (19 Listen + Abschluss-Checkliste) lassen sich in den
 Einstellungen jetzt als **Excel** (ein Tabellenblatt pro Liste) oder **CSV** (flach: `liste,
