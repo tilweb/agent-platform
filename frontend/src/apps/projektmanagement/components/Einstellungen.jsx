@@ -2,10 +2,11 @@
  * Einstellungen - Konfigurierbare Select-Optionen + Masterclass-Wissen
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { theme } from '../../../config/theme';
 import { useProjektmanagement } from '../../../hooks/useProjektmanagement';
 import MasterclassEditor from './MasterclassEditor';
+import ConfigImportModal from './ConfigImportModal';
 
 // ============== Auswahloptionen Tab ==============
 
@@ -258,6 +259,62 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
+  // Import/Export Aktionsleiste
+  actionBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    flexWrap: 'wrap',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.xl,
+    marginBottom: theme.spacing.xl,
+  },
+  actionHint: {
+    flex: 1,
+    minWidth: '180px',
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textMuted,
+  },
+  formatToggle: {
+    display: 'flex',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+  },
+  formatBtn: {
+    padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+    backgroundColor: 'transparent',
+    border: 'none',
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.textMuted,
+    cursor: 'pointer',
+  },
+  formatBtnActive: {
+    backgroundColor: theme.colors.primaryLight,
+    color: theme.colors.primary,
+  },
+  actionBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+    backgroundColor: 'transparent',
+    color: theme.colors.text,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+  },
+  actionFeedback: {
+    fontSize: theme.typography.sizes.sm,
+    marginTop: `-${theme.spacing.md}`,
+    marginBottom: theme.spacing.lg,
+  },
 };
 
 // ============== Auswahloptionen Sub-Component ==============
@@ -480,11 +537,21 @@ function ChecklisteTab({ config, setConfig, hasChanges, setHasChanges, saving, o
 // ============== Main Component ==============
 
 function Einstellungen() {
-  const { getConfig, updateConfig } = useProjektmanagement();
+  const {
+    getConfig, updateConfig,
+    downloadConfigFile, previewConfigImport, applyConfigImport,
+  } = useProjektmanagement();
   const [activeTab, setActiveTab] = useState('optionen');
   const [config, setConfig] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Import/Export
+  const [exportFormat, setExportFormat] = useState('xlsx');
+  const [importPreview, setImportPreview] = useState(null);
+  const [ioBusy, setIoBusy] = useState(false);
+  const [ioFeedback, setIoFeedback] = useState(null); // { type: 'success'|'error', text }
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     getConfig().then(setConfig).catch(console.error);
@@ -504,6 +571,42 @@ function Einstellungen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDownload = async (kind) => {
+    setIoBusy(true);
+    setIoFeedback(null);
+    try {
+      await downloadConfigFile(kind, exportFormat);
+    } catch (err) {
+      setIoFeedback({ type: 'error', text: err.message || 'Download fehlgeschlagen' });
+    } finally {
+      setIoBusy(false);
+    }
+  };
+
+  const handleFileChosen = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // erlaubt erneutes Wählen derselben Datei
+    if (!file) return;
+    setIoBusy(true);
+    setIoFeedback(null);
+    try {
+      const preview = await previewConfigImport(file);
+      setImportPreview(preview);
+    } catch (err) {
+      setIoFeedback({ type: 'error', text: err.message || 'Datei konnte nicht gelesen werden' });
+    } finally {
+      setIoBusy(false);
+    }
+  };
+
+  const handleApplyImport = async (selectedKeys) => {
+    const result = await applyConfigImport(importPreview.lists, selectedKeys);
+    setConfig(result.config);
+    setHasChanges(false);
+    setImportPreview(null);
+    setIoFeedback({ type: 'success', text: `${selectedKeys.length} Liste(n) übernommen und gespeichert.` });
   };
 
   return (
@@ -545,6 +648,58 @@ function Einstellungen() {
         })}
       </div>
 
+      {/* Import/Export Aktionsleiste (nicht auf dem Masterclass-Tab) */}
+      {activeTab !== 'masterclass' && (
+        <>
+          <div style={styles.actionBar}>
+            <span style={styles.actionHint}>
+              Auswahllisten als Datei sichern und bei anderen Kunden-Instanzen einspielen.
+            </span>
+            <div style={styles.formatToggle}>
+              {[
+                { id: 'xlsx', label: 'Excel' },
+                { id: 'csv', label: 'CSV' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  style={{ ...styles.formatBtn, ...(exportFormat === f.id ? styles.formatBtnActive : {}) }}
+                  onClick={() => setExportFormat(f.id)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <button style={styles.actionBtn} onClick={() => handleDownload('export')} disabled={ioBusy}>
+              <DownloadIcon /> Exportieren
+            </button>
+            <button style={styles.actionBtn} onClick={() => handleDownload('template')} disabled={ioBusy}>
+              <DownloadIcon /> Leeres Template
+            </button>
+            <button style={styles.actionBtn} onClick={() => fileInputRef.current?.click()} disabled={ioBusy}>
+              <UploadIcon /> Importieren
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.csv"
+              style={{ display: 'none' }}
+              onChange={handleFileChosen}
+            />
+          </div>
+          {ioFeedback && (
+            <div
+              style={{
+                ...styles.actionFeedback,
+                color: ioFeedback.type === 'error' ? theme.colors.error : theme.colors.success,
+              }}
+            >
+              {ioFeedback.text}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Tab Content */}
       {activeTab === 'optionen' && (
         <AuswahloptionenTab
@@ -571,6 +726,14 @@ function Einstellungen() {
       {activeTab === 'masterclass' && (
         <MasterclassEditor />
       )}
+
+      {importPreview && (
+        <ConfigImportModal
+          preview={importPreview}
+          onApply={handleApplyImport}
+          onClose={() => setImportPreview(null)}
+        />
+      )}
     </div>
   );
 }
@@ -591,6 +754,26 @@ function TrashIcon() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
     </svg>
   );
 }

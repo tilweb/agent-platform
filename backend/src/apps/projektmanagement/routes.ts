@@ -33,6 +33,17 @@ import {
 } from './knowledge';
 import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis } from './analysis';
 import { getConfig, saveConfig } from './storage';
+import {
+  exportToExcel,
+  exportToCsv,
+  buildTemplateExcel,
+  buildTemplateCsv,
+  parseExcel,
+  parseCsv,
+  diffConfig,
+  applyImport,
+  lockedWarnings,
+} from './config-io';
 import type { ProjektauftragFilters } from './types';
 import { importProjektauftrag, importProjektidee, extractStepFromFiles } from './import-service';
 import {
@@ -187,6 +198,129 @@ projektmanagement.put('/config', async (c) => {
   } catch (error) {
     console.error('Error saving config:', error);
     return c.json({ error: 'Failed to save config' }, 500);
+  }
+});
+
+// ============== Config Import/Export ==============
+
+const CONFIG_XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/**
+ * GET /api/apps/projektmanagement/config/export?format=xlsx|csv
+ * Aktuelle Auswahllisten als Datei (Transport zwischen Kunden-Instanzen). App-Owner-only.
+ */
+projektmanagement.get('/config/export', async (c) => {
+  const denied = denyIfNotAppOwner(c);
+  if (denied) return c.json(denied, 403);
+  const format = c.req.query('format') === 'csv' ? 'csv' : 'xlsx';
+  try {
+    const config = await getConfig();
+    if (format === 'csv') {
+      return new Response(exportToCsv(config), {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="pm-auswahllisten.csv"',
+        },
+      });
+    }
+    const buffer = await exportToExcel(config);
+    return new Response(buffer as unknown as BodyInit, {
+      headers: {
+        'Content-Type': CONFIG_XLSX_MIME,
+        'Content-Disposition': 'attachment; filename="pm-auswahllisten.xlsx"',
+        'Content-Length': buffer.length.toString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error exporting config:', error);
+    return c.json({ error: 'Failed to export config' }, 500);
+  }
+});
+
+/**
+ * GET /api/apps/projektmanagement/config/template?format=xlsx|csv
+ * Leeres Template: editierbare Listen leer, gesperrte Listen vorbefuellt. App-Owner-only.
+ */
+projektmanagement.get('/config/template', async (c) => {
+  const denied = denyIfNotAppOwner(c);
+  if (denied) return c.json(denied, 403);
+  const format = c.req.query('format') === 'csv' ? 'csv' : 'xlsx';
+  try {
+    const config = await getConfig();
+    if (format === 'csv') {
+      return new Response(buildTemplateCsv(config), {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="pm-auswahllisten-template.csv"',
+        },
+      });
+    }
+    const buffer = await buildTemplateExcel(config);
+    return new Response(buffer as unknown as BodyInit, {
+      headers: {
+        'Content-Type': CONFIG_XLSX_MIME,
+        'Content-Disposition': 'attachment; filename="pm-auswahllisten-template.xlsx"',
+        'Content-Length': buffer.length.toString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error building config template:', error);
+    return c.json({ error: 'Failed to build template' }, 500);
+  }
+});
+
+/**
+ * POST /api/apps/projektmanagement/config/import/preview
+ * Parst eine hochgeladene .xlsx/.csv, liefert Listen + Diff + Warnungen — speichert NICHT.
+ * App-Owner-only.
+ */
+projektmanagement.post('/config/import/preview', async (c) => {
+  const denied = denyIfNotAppOwner(c);
+  if (denied) return c.json(denied, 403);
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get('file');
+    if (!(file instanceof File)) return c.json({ error: 'Keine Datei hochgeladen' }, 400);
+    if (file.size > 5 * 1024 * 1024) return c.json({ error: 'Datei zu groß (max. 5 MB)' }, 400);
+
+    const name = file.name.toLowerCase();
+    const buf = Buffer.from(await file.arrayBuffer());
+    let parsed;
+    if (name.endsWith('.csv')) parsed = parseCsv(buf.toString('utf-8'));
+    else if (name.endsWith('.xlsx')) parsed = await parseExcel(buf);
+    else return c.json({ error: 'Nicht unterstütztes Format. Bitte .xlsx oder .csv verwenden.' }, 400);
+
+    const current = await getConfig();
+    const diff = diffConfig(current, parsed.lists);
+    const warnings = [...parsed.warnings, ...lockedWarnings(current, parsed.lists)];
+    return c.json({ lists: parsed.lists, diff, warnings });
+  } catch (error) {
+    console.error('Error previewing config import:', error);
+    return c.json({ error: 'Import-Vorschau fehlgeschlagen' }, 500);
+  }
+});
+
+/**
+ * POST /api/apps/projektmanagement/config/import/apply
+ * Body: { lists, selectedKeys }. Ersetzt die ausgewaehlten Listen (locked: nur Labels). App-Owner-only.
+ */
+projektmanagement.post('/config/import/apply', async (c) => {
+  const denied = denyIfNotAppOwner(c);
+  if (denied) return c.json(denied, 403);
+  try {
+    const body = await c.req.json();
+    const lists = body?.lists;
+    const selectedKeys = Array.isArray(body?.selectedKeys) ? body.selectedKeys : [];
+    if (!lists || typeof lists !== 'object') return c.json({ error: 'Ungültige Importdaten' }, 400);
+    if (selectedKeys.length === 0) return c.json({ error: 'Keine Liste zum Übernehmen ausgewählt' }, 400);
+
+    const current = await getConfig();
+    const merged = applyImport(current, lists, selectedKeys);
+    await saveConfig(merged);
+    return c.json({ config: merged, applied: selectedKeys });
+  } catch (error) {
+    console.error('Error applying config import:', error);
+    return c.json({ error: 'Import fehlgeschlagen' }, 500);
   }
 });
 
