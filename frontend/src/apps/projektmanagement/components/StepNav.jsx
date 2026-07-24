@@ -15,6 +15,38 @@
  */
 
 import { theme } from '../../../config/theme';
+import {
+  DocumentIcon,
+  UserIcon,
+  TargetIcon,
+  ListIcon,
+  TimelineIcon,
+  BarChartIcon,
+  AlertTriangleIcon,
+  AppsIcon,
+  TableIcon,
+  BookIcon,
+  BriefcaseIcon,
+  CircleIcon,
+} from '../../../components/Icons';
+
+// Icon je Step-Titel — Single Source of Truth für alle drei PM-Wizards
+// (Projektidee, Projektauftrag, Statusbericht). Gleicher Titel ⇒ gleiches Icon,
+// unabhängig von der Nummerierung/Reihenfolge im jeweiligen Bereich.
+const STEP_ICONS = {
+  Basis: DocumentIcon,
+  Personen: UserIcon,
+  Ziele: TargetIcon,
+  Inhalt: ListIcon,
+  Roadmap: TimelineIcon,
+  Kosten: BarChartIcon,
+  Risiken: AlertTriangleIcon,
+  Übersicht: AppsIcon,
+  Vergleich: TableIcon,
+  Projektkontext: BookIcon,
+  'Business Case': BriefcaseIcon,
+  Unternehmensrisiken: AlertTriangleIcon, // gleiches Konzept wie „Risiken"
+};
 
 const styles = {
   stepTabs: {
@@ -48,28 +80,10 @@ const styles = {
   stepTabCompleted: {
     color: theme.colors.success,
   },
-  stepTabNumber: {
-    width: '20px',
-    height: '20px',
-    borderRadius: theme.borderRadius.full,
+  stepTabIcon: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: theme.typography.sizes.xs,
-    fontWeight: theme.typography.weights.medium,
     flexShrink: 0,
-  },
-  stepTabNumberDefault: {
-    backgroundColor: theme.colors.border,
-    color: theme.colors.textMuted,
-  },
-  stepTabNumberActive: {
-    backgroundColor: theme.colors.primary,
-    color: '#fff',
-  },
-  stepTabNumberCompleted: {
-    backgroundColor: theme.colors.success,
-    color: '#fff',
   },
 };
 
@@ -81,6 +95,7 @@ function StepNav({ steps, getStatus, onSelect, leading = null, trailing = null }
         const status = getStatus(step.number);
         const isActive = status === 'active';
         const isCompleted = status === 'completed';
+        const StepIcon = STEP_ICONS[step.title] || CircleIcon;
         return (
           <button
             key={step.number}
@@ -106,16 +121,9 @@ function StepNav({ steps, getStatus, onSelect, leading = null, trailing = null }
               }
             }}
           >
-            <div
-              style={{
-                ...styles.stepTabNumber,
-                ...(isActive ? styles.stepTabNumberActive : {}),
-                ...(!isActive && isCompleted ? styles.stepTabNumberCompleted : {}),
-                ...(!isActive && !isCompleted ? styles.stepTabNumberDefault : {}),
-              }}
-            >
-              {step.number}
-            </div>
+            <span style={styles.stepTabIcon}>
+              <StepIcon size={16} />
+            </span>
             {step.title}
           </button>
         );
