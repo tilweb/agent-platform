@@ -31,7 +31,8 @@ import {
   getTypischeFehler,
   getVerbesserungsvorschlaege,
 } from './knowledge';
-import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis } from './analysis';
+import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis, buildStepChatSystemPrompt } from './analysis';
+import { llmService, type Message } from '../../services/llm';
 import { getConfig, saveConfig } from './storage';
 import {
   exportToExcel,
@@ -1007,6 +1008,71 @@ projektmanagement.get('/knowledge/:step', async (c) => {
     console.error('Error getting knowledge:', error);
     return c.json({ error: 'Failed to get knowledge' }, 500);
   }
+});
+
+/**
+ * POST /api/apps/projektmanagement/knowledge/:step/chat
+ * Wissenspool-Chat für einen Step: streamt die Antwort (SSE), geerdet auf das
+ * Masterclass-Wissen des Steps + die aktuellen Eingaben des Nutzers.
+ * Body: { messages: [{role:'user'|'assistant', content:string}], projektauftrag }
+ */
+projektmanagement.post('/knowledge/:step/chat', async (c) => {
+  const step = parseInt(c.req.param('step'), 10);
+  if (isNaN(step) || step < 1 || step > 7) {
+    return c.json({ error: 'Invalid step number (1-7)' }, 400);
+  }
+
+  const userId = getCurrentUserId(c);
+  if (!userId) return c.json({ error: 'Authentication required' }, 401);
+
+  let body: { messages?: unknown; projektauftrag?: unknown };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  // Nachrichten säubern: nur user/assistant, nicht-leerer Text, letzte 20.
+  const rawMessages = Array.isArray(body.messages) ? body.messages : [];
+  const history: Message[] = rawMessages
+    .filter(
+      (m): m is { role: 'user' | 'assistant'; content: string } =>
+        !!m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim() !== ''
+    )
+    .slice(-20)
+    .map((m) => ({ role: m.role, content: m.content }));
+
+  if (history.length === 0) {
+    return c.json({ error: 'Keine Nachricht übermittelt' }, 400);
+  }
+
+  const projektauftrag = (body.projektauftrag ?? {}) as Parameters<typeof buildStepChatSystemPrompt>[1];
+  const systemPrompt = await buildStepChatSystemPrompt(step, projektauftrag);
+  const messages: Message[] = [{ role: 'system', content: systemPrompt }, ...history];
+
+  const usageContext = {
+    triggeringUserId: userId,
+    source: 'projektmanagement' as const,
+    operation: `knowledge_chat_step_${step}`,
+  };
+
+  return streamSSE(c, async (stream) => {
+    try {
+      for await (const chunk of llmService.streamChat(messages, undefined, usageContext)) {
+        const text = chunk?.choices?.[0]?.delta?.content;
+        if (text) {
+          await stream.writeSSE({ event: 'token', data: JSON.stringify({ text }) });
+        }
+      }
+      await stream.writeSSE({ event: 'done', data: '{}' });
+    } catch (error) {
+      console.error('Error in knowledge chat:', error);
+      await stream.writeSSE({
+        event: 'error',
+        data: JSON.stringify({ message: error instanceof Error ? error.message : 'Chat fehlgeschlagen' }),
+      });
+    }
+  });
 });
 
 /**

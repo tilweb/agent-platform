@@ -171,8 +171,16 @@ export async function generateAnalysisPrompt(step: number): Promise<string | nul
     sections.push('## Prüfkriterien');
     for (const [category, criteria] of Object.entries(knowledge.pruefkriterien)) {
       sections.push(`### ${category}`);
-      for (const criterion of criteria) {
-        sections.push(`- ${criterion}`);
+      // Werte sind i.d.R. string[]; einzelne Steps liefern aber ein (ggf. leeres)
+      // Objekt oder einen String — defensiv behandeln, sonst wirft for..of.
+      if (Array.isArray(criteria)) {
+        for (const criterion of criteria) {
+          sections.push(`- ${criterion}`);
+        }
+      } else if (criteria && typeof criteria === 'object') {
+        sections.push(formatKernkonzepte(criteria as Record<string, any>));
+      } else if (criteria) {
+        sections.push(`- ${criteria}`);
       }
     }
   }

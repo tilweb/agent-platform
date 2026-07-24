@@ -2,6 +2,27 @@
 
 ## 2026-07-24
 
+### PM: Wissenspool-Chat im Projektauftrag-Slate
+Das rechte Slate im Projektauftrag-Wizard hat einen dritten Tab **Chat**, mit dem man gegen den
+Wissenspool des **aktuellen Schritts** sprechen kann. Antworten sind auf das Masterclass-Wissen des
+Steps **und die aktuellen Eingaben des Nutzers** geerdet und **streamen** token-weise (SSE). Tab-
+Reihenfolge jetzt **Chat (Default) → KI-Analyse → Wissen**; der Button „KI-Analyse starten" wurde von
+über den Tabs **in den KI-Analyse-Tab** verschoben (war zuvor verwirrend). Chat-Verlauf ist **ephemeral
+pro Step** (kein Storage; beim Reload zurückgesetzt).
+- Backend: neuer Streaming-Endpoint `POST /knowledge/:step/chat` (`llmService.streamChat`); neue Exporte
+  `buildStepChatSystemPrompt` + `extractStepData` in `analysis.ts` (nutzt bestehendes
+  `generateAnalysisPrompt` + `STEP_DATA_EXTRACTORS`, inkl. neuem Basis-Extractor für Step 1).
+- Frontend: neue `StepChat.jsx` (SSE-Reader nach dem Muster aus `ImportPage`), Tab-Umbau in
+  `KnowledgePanel.jsx`, ephemerer Verlauf in `WizardPage.jsx` (analog `stepAnalyses`, aber nicht gespeichert).
+- Layout: das rechte Slate ist **sticky** (bleibt beim Scrollen im Viewport, feste Höhe = Viewport minus
+  Header), während Seite/Formular unverändert natürlich weiterscrollen — so bleibt die Chat-Eingabe sichtbar,
+  ohne das bestehende Wizard-Layout anzutasten.
+- Assistenten-Antworten rendern **Markdown** (`react-markdown`, kompakter Komponenten-Satz; ohne remark-gfm,
+  um Dependency-Gleichstand beider Worktrees zu wahren).
+- Nebenbei-Fix: `generateAnalysisPrompt` (`knowledge.ts`) crasht nicht mehr, wenn die Prüfkriterien eines
+  Steps als (leeres) Objekt statt Array vorliegen — traf Steps 6/7 und führte zu „Chat fehlgeschlagen".
+- In beiden Worktrees identisch (`analysis.ts`/`knowledge.ts`/Frontend kopiert, `routes.ts`-Block eingefügt).
+
 ### Fix(PM): KI-Analyse im Roadmap-Schritt war leer
 Die KI-Analyse im Projektauftrag-Wizard zeigte im **Roadmap-Schritt** (der als einziger zwei
 Backend-Steps zusammenführt: Meilensteine + Hauptaufgaben) immer Score 0 und leere Stärken/

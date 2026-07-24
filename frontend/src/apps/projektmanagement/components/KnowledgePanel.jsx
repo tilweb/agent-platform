@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { theme } from '../../../config/theme';
 import { apiGet, apiPost } from '../../../utils/apiFetch';
 import AnalysisResult from './AnalysisResult';
+import StepChat from './StepChat';
 
 const styles = {
   container: {
@@ -72,6 +73,7 @@ const styles = {
   },
   content: {
     flex: 1,
+    minHeight: 0, // erlaubt internen Scroll statt Aufblähen (Flexbox-Gotcha)
     overflow: 'auto',
     padding: theme.spacing.lg,
   },
@@ -291,9 +293,9 @@ const ACCORDION_SECTIONS = [
   { id: 'konzepte', label: 'Kernkonzepte', icon: BookIcon, color: theme.colors.info },
 ];
 
-function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysisComplete }) {
+function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysisComplete, chatMessages = [], onChatMessagesChange }) {
   const [knowledge, setKnowledge] = useState(null);
-  const [activeTab, setActiveTab] = useState('wissen');
+  const [activeTab, setActiveTab] = useState('chat');
   const [isLoading, setIsLoading] = useState(false);
 
   // Akkordeon State - welche Sektionen sind offen
@@ -320,10 +322,10 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
     setAnalysisError(null);
   }, [backendStep]);
 
-  // Switch tab when step changes based on whether analysis exists
+  // Chat ist die Default-Ansicht — bei jedem Step-Wechsel dorthin zurück.
   useEffect(() => {
-    setActiveTab(analyses[currentStep] ? 'analyse' : 'wissen');
-  }, [currentStep]); // Nur bei Step-Wechsel, nicht bei analyses-Änderung
+    setActiveTab('chat');
+  }, [currentStep]); // Nur bei Step-Wechsel
 
   // Toggle Akkordeon-Sektion
   const toggleSection = (sectionId) => {
@@ -788,14 +790,16 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
     }
   };
 
-  // Tabs: 2 Tabs für Steps 2-7 (wo Analyse möglich), sonst nur Wissen
+  // Tabs: Chat (Default) → KI-Analyse (nur Steps 2-7) → Wissen
   const tabs = canAnalyze
     ? [
+        { id: 'chat', label: 'Chat', icon: ChatIcon },
         { id: 'analyse', label: 'KI-Analyse', icon: SparklesIcon },
         { id: 'wissen', label: 'Wissen', icon: BookIcon },
       ]
     : [
-        { id: 'wissen', label: 'Masterclass-Wissen', icon: BookIcon },
+        { id: 'chat', label: 'Chat', icon: ChatIcon },
+        { id: 'wissen', label: 'Wissen', icon: BookIcon },
       ];
 
   if (isLoading) {
@@ -827,38 +831,6 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
         <div style={styles.stepTitle}>{knowledge.meta?.title}</div>
         <div style={styles.stepDescription}>{knowledge.meta?.description}</div>
       </div>
-
-      {/* Analyze Button for Steps 2-7 */}
-      {canAnalyze && (
-        <div style={styles.analyzeSection}>
-          <button
-            onClick={handleAnalyze}
-            disabled={isAnalyzing || !projektauftrag}
-            style={{
-              ...styles.analyzeButton,
-              ...(isAnalyzing ? styles.analyzeButtonLoading : {}),
-              ...(!projektauftrag ? styles.analyzeButtonDisabled : {}),
-            }}
-          >
-            {isAnalyzing ? (
-              <>
-                <LoadingSpinner />
-                Analysiere...
-              </>
-            ) : (
-              <>
-                <SparklesIcon />
-                KI-Analyse starten
-              </>
-            )}
-          </button>
-          {analysisError && (
-            <div style={styles.analysisError}>
-              {analysisError}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Tabs - immer anzeigen wenn mehr als 1 Tab */}
       {tabs.length > 1 && (
@@ -893,23 +865,63 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
         </div>
       )}
 
-      {/* Content */}
+      {/* Content — Chat füllt die volle Höhe (eigener Scroll + Eingabe),
+          Analyse/Wissen laufen im gepolsterten Scrollbereich. */}
+      {activeTab === 'chat' ? (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <StepChat
+            backendStep={backendStep}
+            projektauftrag={projektauftrag}
+            messages={chatMessages}
+            onMessagesChange={onChatMessagesChange}
+            disabled={!projektauftrag}
+          />
+        </div>
+      ) : (
       <div style={styles.content}>
-        {/* KI-Analyse Tab */}
+        {/* KI-Analyse Tab — Button jetzt kontextuell hier, nicht mehr über den Tabs */}
         {activeTab === 'analyse' && (
-          analysis ? (
-            <AnalysisResult analysis={analysis} />
-          ) : (
-            <div style={styles.emptyAnalysis}>
-              <div style={styles.emptyAnalysisIcon}>
-                <SparklesIcon size={32} />
+          <>
+            {canAnalyze && (
+              <div style={styles.analyzeSection}>
+                <button
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing || !projektauftrag}
+                  style={{
+                    ...styles.analyzeButton,
+                    ...(isAnalyzing ? styles.analyzeButtonLoading : {}),
+                    ...(!projektauftrag ? styles.analyzeButtonDisabled : {}),
+                  }}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <LoadingSpinner />
+                      Analysiere...
+                    </>
+                  ) : (
+                    <>
+                      <SparklesIcon />
+                      KI-Analyse starten
+                    </>
+                  )}
+                </button>
+                {analysisError && <div style={styles.analysisError}>{analysisError}</div>}
               </div>
-              <p style={styles.emptyAnalysisText}>Noch keine KI-Analyse durchgeführt</p>
-              <p style={styles.emptyAnalysisHint}>
-                Klicken Sie oben auf "KI-Analyse starten", um Ihre Eingaben gegen die Masterclass-Kriterien prüfen zu lassen.
-              </p>
-            </div>
-          )
+            )}
+            {analysis ? (
+              <AnalysisResult analysis={analysis} />
+            ) : (
+              <div style={styles.emptyAnalysis}>
+                <div style={styles.emptyAnalysisIcon}>
+                  <SparklesIcon size={32} />
+                </div>
+                <p style={styles.emptyAnalysisText}>Noch keine KI-Analyse durchgeführt</p>
+                <p style={styles.emptyAnalysisHint}>
+                  Klicken Sie auf "KI-Analyse starten", um Ihre Eingaben gegen die Masterclass-Kriterien prüfen zu lassen.
+                </p>
+              </div>
+            )}
+          </>
         )}
 
         {/* Wissen Tab - Akkordeon */}
@@ -961,11 +973,20 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
 
 // Icons
+function ChatIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+  );
+}
+
 function BookIcon({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
