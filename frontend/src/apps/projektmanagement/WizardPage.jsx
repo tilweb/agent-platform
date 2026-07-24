@@ -160,7 +160,8 @@ const styles = {
   main: {
     flex: 1,
     display: 'flex',
-    overflow: 'hidden',
+    // kein overflow:hidden — würde das sticky-Verhalten des Slates brechen;
+    // die Seite scrollt natürlich weiter (wie vor dem Chat).
   },
   // Main content area
   content: {
@@ -171,15 +172,22 @@ const styles = {
   stepContent: {
     maxWidth: '720px',
   },
-  // Right sidebar - Knowledge panel
+  // Right sidebar - Knowledge panel. Sticky: bleibt beim Scrollen im Viewport,
+  // während die Seite (Formular) darunter natürlich weiterscrollt. Feste Höhe =
+  // Viewport minus Header (oben) und ein Stück Luft (unten) — so ist die
+  // Chat-Eingabe immer sichtbar, ohne das restliche Layout zu verändern.
   rightSidebar: {
     width: '400px',
     minWidth: '400px',
     borderLeft: `1px solid ${theme.colors.border}`,
     backgroundColor: theme.colors.surface,
-    overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
+    position: 'sticky',
+    top: theme.layout.headerHeight,
+    alignSelf: 'flex-start',
+    height: `calc(100vh - ${theme.layout.headerHeight} - ${theme.spacing.xl})`,
+    overflow: 'hidden',
   },
   // Navigation (Rounded Box)
   navigation: {
@@ -347,6 +355,10 @@ function WizardPage() {
   const [conflict, setConflict] = useState(null);
   // Step analyses state (shared between KnowledgePanel and Step8)
   const [stepAnalyses, setStepAnalyses] = useState({});
+
+  // Ephemerer Chat-Verlauf pro Step (Wissenspool-Chat im rechten Slate).
+  // Bewusst NICHT persistiert — lebt nur solange der Wizard offen ist.
+  const [chatHistories, setChatHistories] = useState({});
   // Gesamtbewertung state (for Step8)
   const [gesamtbewertung, setGesamtbewertung] = useState(null);
   // Phase B: Top-Level-Tab-State. URL-synced via ?tab=. Werte: uebersicht | auftrag | statusberichte.
@@ -1175,6 +1187,10 @@ function WizardPage() {
                   onAnalysisComplete={(step, analysis) => {
                     setStepAnalyses(prev => ({ ...prev, [step]: analysis }));
                   }}
+                  chatMessages={chatHistories[currentStep] || []}
+                  onChatMessagesChange={(msgs) =>
+                    setChatHistories(prev => ({ ...prev, [currentStep]: msgs }))
+                  }
                 />
               </div>
             )}

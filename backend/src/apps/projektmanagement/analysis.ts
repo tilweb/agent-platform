@@ -5,7 +5,7 @@
  */
 
 import { llmService, type Message } from '../../services/llm';
-import { getStepKnowledge, type StepKnowledge } from './knowledge';
+import { getStepKnowledge, generateAnalysisPrompt, type StepKnowledge } from './knowledge';
 import type { Projektauftrag } from './types';
 import type { UsageContext } from '../../services/usageTracking';
 
@@ -85,6 +85,15 @@ Mapping wichtig:
 // Note: We use ensureArray for array fields to handle cases where empty arrays
 // might be parsed as empty objects from YAML/JSON
 const STEP_DATA_EXTRACTORS: Record<number, (data: Projektauftrag) => Record<string, any>> = {
+  1: (data) => ({
+    name: data.name,
+    project_type: data.project_type,
+    start_date: data.start_date,
+    end_date: data.end_date,
+    projektleiter: data.projektleiter,
+    auftraggeber: data.auftraggeber,
+    description: data.description,
+  }),
   2: (data) => ({
     goals: data.goals,
     criteria: ensureArray(data.criteria),
@@ -326,6 +335,53 @@ export async function analyzeStep(
   const result = parseAnalysisResponse(response.content || '', step);
 
   return result;
+}
+
+/**
+ * Extrahiert die für einen Step relevanten Auftragsdaten (Chat-/Analyse-Kontext).
+ * Steps ohne Extractor (z. B. 8/9) liefern {}.
+ */
+export function extractStepData(step: number, projektauftrag: Projektauftrag): Record<string, any> {
+  const extractor = STEP_DATA_EXTRACTORS[step];
+  return extractor ? extractor(projektauftrag) : {};
+}
+
+/**
+ * System-Prompt für den Wissenspool-Chat eines Steps: Masterclass-Wissen (als
+ * Grounding) + die aktuellen Eingaben des Nutzers in diesem Step.
+ */
+export async function buildStepChatSystemPrompt(
+  step: number,
+  projektauftrag: Projektauftrag
+): Promise<string> {
+  const knowledgeMd = await generateAnalysisPrompt(step);
+  const stepData = extractStepData(step, projektauftrag);
+  const stepName = STEP_NAMES[step] || `Schritt ${step}`;
+
+  const sections: string[] = [
+    `Du bist ein erfahrener Projektmanagement-Berater nach der RUHR PM Masterclass Methodik.`,
+    `Der Nutzer bearbeitet gerade den Schritt "${stepName}" eines Projektauftrags und stellt dir dazu Fragen.`,
+    `Beantworte seine Fragen konkret, konstruktiv und auf Deutsch. Leitplanken:`,
+    `- Stütze dich AUSSCHLIESSLICH auf das unten stehende Masterclass-Wissen und die aktuellen Eingaben des Nutzers.`,
+    `- Bleib beim Thema dieses Schritts ("${stepName}"). Bei themenfremden Fragen weise freundlich darauf hin.`,
+    `- Erfinde keine Fakten. Wenn das Wissen eine Frage nicht abdeckt, sage das offen.`,
+    `- Beziehe dich, wo sinnvoll, konkret auf die aktuellen Eingaben des Nutzers.`,
+    `- Fasse dich prägnant; nutze bei Bedarf kurze Aufzählungen.`,
+  ];
+
+  if (knowledgeMd) {
+    sections.push(`\n---\n# Masterclass-Wissen zu diesem Schritt\n\n${knowledgeMd}`);
+  } else {
+    sections.push(
+      `\n(Für diesen Schritt liegt kein spezifisches Masterclass-Wissen vor — antworte aus allgemeiner PM-Best-Practice, bleib aber beim Thema.)`
+    );
+  }
+
+  sections.push(
+    `\n---\n## Aktuelle Eingaben des Nutzers in diesem Schritt\n\n\`\`\`json\n${JSON.stringify(stepData, null, 2)}\n\`\`\``
+  );
+
+  return sections.join('\n');
 }
 
 /**
