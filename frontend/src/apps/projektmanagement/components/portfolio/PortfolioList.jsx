@@ -1,12 +1,13 @@
 /**
- * PortfolioList — Tab-Inhalt fuer Portfolios in ProjektePage.
+ * PortfolioList — Tab-Inhalt für Portfolios in ProjektePage.
  *
- * Card-Grid, analog Projekt-Cards. "+ Portfolio"-Button oeffnet ein einfaches
- * Create-Modal (Name + Beschreibung). Klick auf eine Karte navigiert zum
- * Portfolio-Detail.
+ * Aufbau analog zur Projekte-Liste (ProjektePage): Aktionsleiste → Stats-Grid →
+ * Such-/Filterzeile → Zeilen-Liste. Alle Portfolios werden geladen und
+ * clientseitig gefiltert (damit die Kennzahlen Gesamtwerte zeigen). "+ Neues
+ * Portfolio" öffnet ein einfaches Create-Modal (Name + Beschreibung).
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../../../../config/theme';
 import { useProjektmanagement } from '../../../../hooks/useProjektmanagement';
@@ -20,16 +21,67 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
   },
-  toolbar: {
+  // Action bar
+  actions: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.md,
     marginBottom: theme.spacing.xl,
   },
-  toolbarLeft: {
+  createButton: {
+    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+    backgroundColor: theme.colors.primary,
+    color: '#fff',
+    border: 'none',
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  // Stats cards
+  statsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: theme.spacing.lg,
+    marginBottom: theme.spacing['2xl'],
+  },
+  statCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    border: `1px solid ${theme.colors.border}`,
+    padding: theme.spacing.xl,
+  },
+  statLabel: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.sm,
+  },
+  statValue: {
+    fontSize: theme.typography.sizes['2xl'],
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text,
+  },
+  statValueSuccess: { color: theme.colors.success },
+  statValueInfo: { color: theme.colors.info },
+  // Filters
+  filtersRow: {
     display: 'flex',
     gap: theme.spacing.md,
-    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  searchInput: {
+    flex: 1,
+    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.base,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
+    outline: 'none',
   },
   filterSelect: {
     padding: `${theme.spacing.md} ${theme.spacing.lg}`,
@@ -40,42 +92,44 @@ const styles = {
     color: theme.colors.text,
     cursor: 'pointer',
   },
-  createBtn: {
-    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-    backgroundColor: theme.colors.primary,
-    color: '#fff',
-    border: 'none',
-    borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    cursor: 'pointer',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-    gap: theme.spacing.lg,
+  // List
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.md,
   },
   card: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.xl,
+    borderRadius: theme.borderRadius.lg,
     border: `1px solid ${theme.colors.border}`,
     padding: theme.spacing.xl,
-    cursor: 'pointer',
-    transition: `all ${theme.transitions.fast}`,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing.sm,
-  },
-  cardHeader: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: theme.spacing.sm,
+    alignItems: 'center',
+    cursor: 'pointer',
+    transition: `all ${theme.transitions.fast}`,
   },
+  cardInfo: { flex: 1, minWidth: 0 },
   cardTitle: {
-    fontSize: theme.typography.sizes.lg,
+    fontSize: theme.typography.sizes.base,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
+  },
+  cardMeta: {
+    display: 'flex',
+    gap: theme.spacing.lg,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textMuted,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  cardDescription: {
+    color: theme.colors.textMuted,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: '420px',
   },
   statusBadge: {
     fontSize: theme.typography.sizes.xs,
@@ -85,34 +139,32 @@ const styles = {
     flexShrink: 0,
   },
   statusActive: {
-    backgroundColor: theme.colors.primaryLight,
-    color: theme.colors.primary,
+    backgroundColor: theme.colors.successLight,
+    color: theme.colors.success,
   },
   statusArchived: {
     backgroundColor: theme.colors.surfaceHover,
     color: theme.colors.textMuted,
   },
-  cardDescription: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-    lineHeight: 1.5,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
+  // Empty state
+  emptyState: {
+    textAlign: 'center',
+    padding: theme.spacing['3xl'],
+    color: theme.colors.textMuted,
   },
-  cardMeta: {
+  emptyIcon: { marginBottom: theme.spacing.lg, opacity: 0.5 },
+  emptyTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+  },
+  emptyText: { fontSize: theme.typography.sizes.sm, maxWidth: 520, margin: '0 auto' },
+  loading: {
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing.md,
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.textMuted,
-    marginTop: theme.spacing.sm,
-  },
-  empty: {
-    padding: theme.spacing['2xl'],
-    textAlign: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing['3xl'],
     color: theme.colors.textMuted,
   },
   // Modal
@@ -203,114 +255,203 @@ const styles = {
 
 export default function PortfolioList() {
   const navigate = useNavigate();
-  const { listPortfolios, createPortfolio, getPortfolioProjekte } = useProjektmanagement();
+  const { listPortfolios, createPortfolio, getPortfolioProjekte, projektauftraege } = useProjektmanagement();
   const { role: appRole } = useAppPermission('projektmanagement');
   const canCreate = appRole === 'editor' || appRole === 'owner';
 
   const [portfolios, setPortfolios] = useState([]);
   const [projekteCounts, setProjekteCounts] = useState({});
-  const [statusFilter, setStatusFilter] = useState('active');
+  // IDs aller Projekte, die einem Portfolio zugeordnet sind (für die Budget-Summe).
+  const [projektIds, setProjektIds] = useState([]);
+  const [filters, setFilters] = useState({ search: '', status: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
 
+  // Alle Portfolios laden (Filterung clientseitig, damit Kennzahlen Gesamtwerte zeigen).
   const reload = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const filter = statusFilter === 'all' ? undefined : statusFilter;
-      const list = await listPortfolios({ status: filter });
+      const list = await listPortfolios({});
       setPortfolios(list);
-      // Projekt-Counts laden — ein Call pro Portfolio (in der Praxis < 20 Portfolios).
       const counts = {};
+      const ids = [];
       await Promise.all(list.map(async (p) => {
         try {
           const projekte = await getPortfolioProjekte(p.id);
           counts[p.id] = projekte.length;
+          for (const pr of projekte) ids.push(pr.id);
         } catch {
           counts[p.id] = 0;
         }
       }));
       setProjekteCounts(counts);
+      setProjektIds(ids);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, listPortfolios, getPortfolioProjekte]);
+  }, [listPortfolios, getPortfolioProjekte]);
 
   useEffect(() => { reload(); }, [reload]);
 
+  const filtered = useMemo(() => {
+    let result = [...portfolios];
+    if (filters.status) {
+      result = result.filter((p) => (p.status || 'active') === filters.status);
+    }
+    if (filters.search) {
+      const s = filters.search.toLowerCase();
+      result = result.filter(
+        (p) =>
+          (p.name || '').toLowerCase().includes(s) ||
+          (p.description || '').toLowerCase().includes(s)
+      );
+    }
+    return result;
+  }, [portfolios, filters]);
+
+  // Gesamtbudget je Projektauftrag (Projekt-ID == Auftrags-ID). Summe der Budget-Posten.
+  const budgetByAuftrag = useMemo(() => {
+    const m = {};
+    for (const a of projektauftraege) {
+      m[a.id] = (a.budget || []).reduce((sum, item) => sum + (item.amount || 0), 0);
+    }
+    return m;
+  }, [projektauftraege]);
+
+  const stats = {
+    total: portfolios.length,
+    active: portfolios.filter((p) => (p.status || 'active') === 'active').length,
+    archived: portfolios.filter((p) => p.status === 'archived').length,
+    // Summe der Gesamtbudgets aller in Portfolios enthaltenen Projekte.
+    budgetGesamt: projektIds.reduce((sum, id) => sum + (budgetByAuftrag[id] || 0), 0),
+  };
+
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+
   return (
     <div style={styles.container}>
-      <div style={styles.toolbar}>
-        <div style={styles.toolbarLeft}>
-          <select
-            style={styles.filterSelect}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+      {/* Action bar */}
+      {canCreate && (
+        <div style={styles.actions}>
+          <button
+            type="button"
+            style={styles.createButton}
+            onClick={() => setShowCreate(true)}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.primaryHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme.colors.primary; }}
           >
-            <option value="active">Aktive</option>
-            <option value="archived">Archivierte</option>
-            <option value="all">Alle</option>
-          </select>
-        </div>
-        {canCreate && (
-          <button type="button" style={styles.createBtn} onClick={() => setShowCreate(true)}>
-            + Portfolio
+            <PlusIcon />
+            Neues Portfolio
           </button>
-        )}
-      </div>
-
-      {error && (
-        <div style={{ ...styles.empty, color: theme.colors.error }}>{error}</div>
+        </div>
       )}
 
+      {/* Stats */}
+      <div style={styles.statsGrid}>
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>Gesamt</div>
+          <div style={styles.statValue}>{stats.total}</div>
+        </div>
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>Aktiv</div>
+          <div style={{ ...styles.statValue, ...styles.statValueSuccess }}>{stats.active}</div>
+        </div>
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>Archiviert</div>
+          <div style={styles.statValue}>{stats.archived}</div>
+        </div>
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>Budget gesamt</div>
+          <div style={styles.statValue}>{formatCurrency(stats.budgetGesamt)}</div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={styles.filtersRow}>
+        <input
+          type="text"
+          placeholder="Portfolios durchsuchen..."
+          value={filters.search}
+          onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+          style={styles.searchInput}
+        />
+        <select
+          style={styles.filterSelect}
+          value={filters.status}
+          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+        >
+          <option value="">Alle Status</option>
+          <option value="active">Aktiv</option>
+          <option value="archived">Archiviert</option>
+        </select>
+      </div>
+
+      {/* List */}
+      {error && <div style={{ ...styles.emptyState, color: theme.colors.error }}>{error}</div>}
+
       {isLoading ? (
-        <div style={styles.empty}>Lade…</div>
-      ) : portfolios.length === 0 ? (
-        <div style={styles.empty}>
-          <div style={{ marginBottom: theme.spacing.md }}>
+        <div style={styles.loading}>Lade…</div>
+      ) : filtered.length === 0 ? (
+        <div style={styles.emptyState}>
+          <div style={styles.emptyIcon}>
             <AppsIcon size={48} color={theme.colors.textMuted} />
           </div>
-          <div style={{
-            fontSize: theme.typography.sizes.lg,
-            fontWeight: theme.typography.weights.semibold,
-            color: theme.colors.text,
-            marginBottom: theme.spacing.sm,
-          }}>
-            Noch keine Portfolios
+          <div style={styles.emptyTitle}>
+            {portfolios.length === 0 ? 'Noch keine Portfolios' : 'Keine Portfolios gefunden'}
           </div>
-          <p style={{ fontSize: theme.typography.sizes.sm, maxWidth: 520, margin: '0 auto' }}>
-            Portfolios gruppieren Projekte für die PMO-Sicht. Pro Portfolio gibt es ein
-            Dashboard mit Health, Phase-Mix, Top-Risiken und letzten Statusberichten.
+          <p style={styles.emptyText}>
+            {portfolios.length === 0
+              ? 'Portfolios gruppieren Projekte für die PMO-Sicht — mit Dashboard für Health, Phase-Mix, Top-Risiken und letzte Statusberichte.'
+              : 'Versuchen Sie, Ihre Filter anzupassen.'}
           </p>
         </div>
       ) : (
-        <div style={styles.grid}>
-          {portfolios.map((p) => (
-            <div
-              key={p.id}
-              style={styles.card}
-              onClick={() => navigate(`/apps/projektmanagement/portfolios/${p.id}`)}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = theme.colors.primary; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = theme.colors.border; }}
-            >
-              <div style={styles.cardHeader}>
-                <div style={styles.cardTitle}>{p.name}</div>
-                <span style={{
-                  ...styles.statusBadge,
-                  ...(p.status === 'archived' ? styles.statusArchived : styles.statusActive),
-                }}>
-                  {p.status === 'archived' ? 'Archiviert' : 'Aktiv'}
+        <div style={styles.list}>
+          {filtered.map((p) => {
+            const count = projekteCounts[p.id] ?? 0;
+            const isArchived = p.status === 'archived';
+            return (
+              <div
+                key={p.id}
+                style={styles.card}
+                onClick={() => navigate(`/apps/projektmanagement/portfolios/${p.id}`)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                  e.currentTarget.style.borderColor = theme.colors.primary;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.surface;
+                  e.currentTarget.style.borderColor = theme.colors.border;
+                }}
+              >
+                <div style={styles.cardInfo}>
+                  <div style={styles.cardTitle}>{p.name}</div>
+                  <div style={styles.cardMeta}>
+                    <span>{count} {count === 1 ? 'Projekt' : 'Projekte'}</span>
+                    {p.description && (
+                      <>
+                        <span>|</span>
+                        <span style={styles.cardDescription}>{p.description}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <span style={{ ...styles.statusBadge, ...(isArchived ? styles.statusArchived : styles.statusActive) }}>
+                  {isArchived ? 'Archiviert' : 'Aktiv'}
                 </span>
               </div>
-              {p.description && <div style={styles.cardDescription}>{p.description}</div>}
-              <div style={styles.cardMeta}>
-                <span>{projekteCounts[p.id] ?? 0} {projekteCounts[p.id] === 1 ? 'Projekt' : 'Projekte'}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -325,6 +466,15 @@ export default function PortfolioList() {
         />
       )}
     </div>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
   );
 }
 
