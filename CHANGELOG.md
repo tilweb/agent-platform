@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-07-24
+
+### PM: Import/Export der Auswahllisten (CSV/Excel) inkl. leerem Template
+Auswahllisten der Projektmanagement-App (19 Listen + Abschluss-Checkliste) lassen sich in den
+Einstellungen jetzt als **Excel** (ein Tabellenblatt pro Liste) oder **CSV** (flach: `liste,
+schluessel,anzeige`) exportieren und importieren — als Datei-Transport zwischen getrennten Kunden-
+Instanzen (so entstehen faktisch branchenspezifische Sets). Zusätzlich ein **leeres Template** zum
+Download (editierbare Listen leer, gesperrte Liste `idee_status` mit fixen Schlüsseln vorbefüllt).
+Import läuft über eine **Vorschau mit Diff** (pro Liste neu/geändert/entfernt, Checkbox): angehakte
+Listen werden komplett ersetzt, nicht angehakte bleiben unverändert; gesperrte Wert-Listen
+übernehmen nur Anzeigenamen. Alle Endpoints App-Owner-only.
+- Neu: `backend/src/apps/projektmanagement/config-io.ts` (+ Tests), Endpoints in `routes.ts`
+  (`GET config/export`, `GET config/template`, `POST config/import/preview|apply`).
+- Neu: `frontend/.../components/ConfigImportModal.jsx`, Aktionsleiste in `Einstellungen.jsx`,
+  Hook-Methoden in `useProjektmanagement.js`. Nutzt bestehendes ExcelJS (keine neue Dependency).
+- In beiden Worktrees (Scalingo/DB + Railway/YAML) identisch umgesetzt — läuft über die gemeinsame
+  `getConfig()`/`saveConfig()`-Abstraktion.
+
 ## 2026-07-23
 
 ### Doku: Fachkonzept Confluence-Connection (Übergabe ans Produkt-Team)

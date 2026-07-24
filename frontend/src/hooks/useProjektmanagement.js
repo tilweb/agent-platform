@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
+import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
 
 export class VersionConflictError extends Error {
   constructor(currentServerData) {
@@ -358,6 +358,48 @@ export function useProjektmanagement() {
   }, []);
 
   // Update app config
+  // Config Import/Export (Datei-Transport zwischen Kunden-Instanzen)
+  // kind: 'export' (aktuelle Config) | 'template' (leeres Template)
+  const downloadConfigFile = useCallback(async (kind, format = 'xlsx') => {
+    const res = await fetch(
+      `${API_URL}/apps/projektmanagement/config/${kind}?format=${format}`,
+      { credentials: 'include' }
+    );
+    if (!res.ok) {
+      let msg = 'Download fehlgeschlagen';
+      try { msg = (await res.json()).error || msg; } catch { /* nicht-JSON */ }
+      throw new Error(msg);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const ext = format === 'csv' ? 'csv' : 'xlsx';
+    a.download = kind === 'template'
+      ? `pm-auswahllisten-template.${ext}`
+      : `pm-auswahllisten.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  }, []);
+
+  const previewConfigImport = useCallback(async (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await apiPostForm('/apps/projektmanagement/config/import/preview', form);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Import-Vorschau fehlgeschlagen');
+    return data; // { lists, diff, warnings }
+  }, []);
+
+  const applyConfigImport = useCallback(async (lists, selectedKeys) => {
+    const res = await apiPost('/apps/projektmanagement/config/import/apply', { lists, selectedKeys });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Import fehlgeschlagen');
+    return data; // { config, applied }
+  }, []);
+
   const updateConfig = useCallback(async (config) => {
     const response = await apiPut('/apps/projektmanagement/config', config);
     if (!response.ok) {
@@ -716,6 +758,9 @@ export function useProjektmanagement() {
     // Config
     getConfig,
     updateConfig,
+    downloadConfigFile,
+    previewConfigImport,
+    applyConfigImport,
     // Statusberichte
     getStatusberichte,
     getStatusbericht,
