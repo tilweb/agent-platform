@@ -295,7 +295,7 @@ const ACCORDION_SECTIONS = [
 
 function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysisComplete, chatMessages = [], onChatMessagesChange }) {
   const [knowledge, setKnowledge] = useState(null);
-  const [activeTab, setActiveTab] = useState('chat');
+  const [activeTab, setActiveTab] = useState('wissen');
   const [isLoading, setIsLoading] = useState(false);
 
   // Akkordeon State - welche Sektionen sind offen
@@ -322,9 +322,9 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
     setAnalysisError(null);
   }, [backendStep]);
 
-  // Chat ist die Default-Ansicht — bei jedem Step-Wechsel dorthin zurück.
+  // Wissen ist die Default-Ansicht — bei jedem Step-Wechsel dorthin zurück.
   useEffect(() => {
-    setActiveTab('chat');
+    setActiveTab('wissen');
   }, [currentStep]); // Nur bei Step-Wechsel
 
   // Toggle Akkordeon-Sektion
@@ -790,16 +790,16 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
     }
   };
 
-  // Tabs: Chat (Default) → KI-Analyse (nur Steps 2-7) → Wissen
+  // Tab-Reihenfolge: Wissen (Default) → Chat → KI-Analyse (nur Steps 2-7).
   const tabs = canAnalyze
     ? [
+        { id: 'wissen', label: 'Wissen', icon: BookIcon },
         { id: 'chat', label: 'Chat', icon: ChatIcon },
         { id: 'analyse', label: 'KI-Analyse', icon: SparklesIcon },
-        { id: 'wissen', label: 'Wissen', icon: BookIcon },
       ]
     : [
-        { id: 'chat', label: 'Chat', icon: ChatIcon },
         { id: 'wissen', label: 'Wissen', icon: BookIcon },
+        { id: 'chat', label: 'Chat', icon: ChatIcon },
       ];
 
   if (isLoading) {
