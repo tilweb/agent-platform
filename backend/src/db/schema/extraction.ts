@@ -82,6 +82,7 @@ export const extractionBatchRunFiles = extractionSchema.table('batch_run_files',
   strategy: text('strategy'),                           // strategyUsed
   error: text('error'),
   detail: jsonb('detail'),                              // { boxes, pageImages } — nur on-demand
+  audit: jsonb('audit'),                                // { guideline_version, model, strategy }
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({

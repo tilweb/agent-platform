@@ -52,6 +52,12 @@ export interface ExtractionConfig {
    * Default false — Konsumenten wie das Extraktions-Projekte-Feature opt-in.
    */
   validation_repair?: boolean;
+  /**
+   * LLM-Selbstbewertung fuer Confidence-Scores (pro Feld-Gruppe ein Call).
+   * Default true. `false` nutzt nur die guenstige Heuristik — z.B. fuer
+   * Eval-Laeufe des Extraktions-Projekte-Features.
+   */
+  llm_confidence?: boolean;
   model_override?: {
     provider_id: string;
     model_id: string;
@@ -74,6 +80,7 @@ export interface ResolvedExtractionConfig {
   max_pages: number;
   max_concurrent: number;
   validation_repair: boolean;
+  llm_confidence: boolean;
   model_override: { provider_id: string; model_id: string } | null;
 }
 

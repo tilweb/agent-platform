@@ -29,6 +29,13 @@ export interface BatchRunSummary {
   updatedAt: string;
 }
 
+/** Audit-Metadaten eines Ergebnisses (Regel-Stand/Modell/Strategie). */
+export interface FileAudit {
+  guideline_version: number;
+  model: string;
+  strategy?: string;
+}
+
 export interface BatchFileSummary {
   id: string;
   filename: string;
@@ -37,6 +44,7 @@ export interface BatchFileSummary {
   fieldConfidences: Record<string, number> | null;
   strategy: string | null;
   error: string | null;
+  audit: FileAudit | null;
 }
 
 export interface BatchFileDetail extends BatchFileSummary {
@@ -52,6 +60,7 @@ export interface FileResultPayload {
   error?: string;
   boxes?: Record<string, FieldBox>;
   pageImages?: PageImage[];
+  audit?: FileAudit;
 }
 
 function generateRunId(): string {
@@ -131,6 +140,7 @@ export async function upsertFileResult(
       strategy: payload.strategy ?? null,
       error: payload.error ?? null,
       ...(detail ? { detail: detail as never } : {}),
+      ...(payload.audit ? { audit: payload.audit as never } : {}),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(extractionBatchRunFiles.id, fileId));
@@ -188,6 +198,7 @@ export async function getBatchRun(
     fieldConfidences: extractionBatchRunFiles.fieldConfidences,
     strategy: extractionBatchRunFiles.strategy,
     error: extractionBatchRunFiles.error,
+    audit: extractionBatchRunFiles.audit,
   }).from(extractionBatchRunFiles)
     .where(eq(extractionBatchRunFiles.batchRunId, runId))
     .orderBy(extractionBatchRunFiles.createdAt);
@@ -200,6 +211,7 @@ export async function getBatchRun(
     fieldConfidences: (r.fieldConfidences as Record<string, number> | null) ?? null,
     strategy: r.strategy,
     error: r.error,
+    audit: (r.audit as FileAudit | null) ?? null,
   }));
 
   let completedCount = 0, failedCount = 0;
@@ -243,6 +255,7 @@ export async function getBatchRunFileDetail(
     fieldConfidences: (r.fieldConfidences as Record<string, number> | null) ?? null,
     strategy: r.strategy,
     error: r.error,
+    audit: (r.audit as FileAudit | null) ?? null,
     boxes: detail?.boxes ?? null,
     pageImages: detail?.pageImages ?? null,
   };

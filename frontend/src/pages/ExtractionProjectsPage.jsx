@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm } from '../utils/apiFetch';
-import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon } from '../components/Icons';
+import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon } from '../components/Icons';
 import ExportDropdown from '../components/ExportDropdown';
 import { useProviders } from '../hooks/useProviders';
 
@@ -1641,6 +1641,11 @@ function BatchFileDetail({ detail, fields }) {
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+        {detail.audit && (
+          <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+            Strategie {detail.audit.strategy || detail.strategy || '—'} · Modell {detail.audit.model} · Regeln v{detail.audit.guideline_version}
+          </div>
+        )}
         {Object.entries(fields).map(([fid, f]) => {
           if (f.type === 'list') {
             // Positionen als read-only Tabelle unterhalb des Labels.
@@ -1843,8 +1848,8 @@ function TrainingTab({ project, onProjectUpdated }) {
 
       if (res.ok) {
         const result = await res.json();
-        const msg = result.guidelines_updated
-          ? 'Beispiel gespeichert — Regeln wurden aktualisiert!'
+        const msg = result.guidelines_update === 'started'
+          ? 'Beispiel gespeichert — Regeln werden im Hintergrund geprüft (Tab „Regeln").'
           : 'Beispiel gespeichert!';
         setStatusMsg(msg);
         setExtractionResult(null);
@@ -2215,18 +2220,50 @@ function TrainingTab({ project, onProjectUpdated }) {
 
 // ============== Rules Tab ==============
 
+/** Prozentwert deutsch formatieren (1 Nachkommastelle, ohne unnötige Null). */
+function fmtPct(v) {
+  if (v === null || v === undefined) return '—';
+  return `${String(Math.round(v * 10) / 10).replace('.', ',')}%`;
+}
+
+const EVAL_ACTION_LABELS = {
+  accepted: 'Regeln übernommen',
+  rejected: 'Regel-Update verworfen',
+  measured: 'Voll-Eval',
+  initial: 'Erste Messung',
+  error: 'Eval-Fehler',
+};
+
 function RulesTab({ project, onProjectUpdated }) {
-  const [regenerating, setRegenerating] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
 
-  async function handleRegenerate() {
-    setRegenerating(true);
-    setStatusMsg('');
+  const evalState = project.learning?.eval || null;
+  // Stale-Schutz: 'running' älter als 10 min (z.B. nach Backend-Crash) ignorieren.
+  const evalRunning = !!(
+    evalState?.status === 'running' &&
+    evalState.started_at &&
+    Date.now() - new Date(evalState.started_at).getTime() < 10 * 60 * 1000
+  );
+  const champion = evalState?.champion || null;
+  const lastRun = evalState?.last_run || null;
 
+  // Solange ein Eval läuft: Projekt regelmäßig neu laden (Muster BatchTab-Polling).
+  useEffect(() => {
+    if (!evalRunning) return;
+    const t = setTimeout(() => onProjectUpdated(), 3000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [evalRunning, project]);
+
+  async function startAction(path, startMsg) {
+    setBusy(true);
+    setStatusMsg('');
     try {
-      const res = await apiPost(`/extraction/projects/${project.id}/regenerate`);
+      const res = await apiPost(`/extraction/projects/${project.id}/${path}`);
       if (res.ok) {
-        setStatusMsg('Regeln erfolgreich neu generiert!');
+        const r = await res.json();
+        setStatusMsg(r.started === false ? 'Es läuft bereits eine Prüfung — bitte warten.' : startMsg);
         onProjectUpdated();
       } else {
         const err = await res.json();
@@ -2235,18 +2272,146 @@ function RulesTab({ project, onProjectUpdated }) {
     } catch (err) {
       setStatusMsg('Netzwerkfehler');
     } finally {
-      setRegenerating(false);
+      setBusy(false);
     }
   }
 
+  function lastRunText(run) {
+    if (!run) return null;
+    const label = EVAL_ACTION_LABELS[run.action] || run.action;
+    if (run.action === 'rejected' && run.challenger_overall != null && run.champion_overall != null) {
+      const delta = Math.round((run.challenger_overall - run.champion_overall) * 10) / 10;
+      return `${label}: ${String(delta).replace('.', ',').replace('-', '−')} Pp auf ${run.examples} Beispielen — bestehende Regeln bleiben aktiv.`;
+    }
+    if ((run.action === 'accepted') && run.champion_overall != null) {
+      return `${label}: ${fmtPct(run.champion_overall)} → ${fmtPct(run.challenger_overall)} auf ${run.examples} Beispielen.`;
+    }
+    if (run.action === 'accepted' || run.action === 'initial') {
+      return `${label}: ${fmtPct(run.challenger_overall)} auf ${run.examples} Beispielen.`;
+    }
+    if (run.action === 'measured') {
+      return `${label}: ${fmtPct(run.champion_overall)} auf ${run.examples} Beispielen.`;
+    }
+    return `${label}${run.message ? `: ${run.message}` : ''}`;
+  }
+
+  const lastRunColor =
+    lastRun?.action === 'rejected' ? theme.colors.warning
+    : lastRun?.action === 'error' ? theme.colors.error
+    : theme.colors.success;
+
   return (
     <div>
+      {/* Qualität (gemessen) */}
+      <div style={styles.section}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+          <div style={styles.sectionTitle}>Qualität (gemessen)</div>
+          <button
+            style={styles.secondaryBtn}
+            onClick={() => startAction('evaluate', 'Voll-Eval gestartet — läuft im Hintergrund.')}
+            disabled={busy || evalRunning || !(project.learning?.total_examples > 0)}
+          >
+            <BarChartIcon size={14} />
+            Voll-Eval starten
+          </button>
+        </div>
+
+        <InfoBox style={{ marginBottom: theme.spacing.lg }}>
+          Jede Regel-Änderung wird automatisch gegen die Trainingsbeispiele <strong>gemessen</strong>
+          (Champion/Challenger): Die Beispiele werden mit den Kandidaten-Regeln neu extrahiert und
+          Feld für Feld mit deinen bestätigten Werten verglichen. Nur Regeln, die mindestens so gut
+          sind wie die aktuellen, werden übernommen. Gemessen wird text-basiert, ohne Few-Shot.
+        </InfoBox>
+
+        {evalRunning && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+            <Spinner size={16} />
+            <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+              Eval läuft — Regeln werden geprüft… (Seite aktualisiert sich automatisch)
+            </span>
+          </div>
+        )}
+
+        {champion ? (
+          <div>
+            <div style={{ display: 'flex', gap: theme.spacing['2xl'], alignItems: 'baseline', marginBottom: theme.spacing.lg }}>
+              <div>
+                <div style={{ fontSize: theme.typography.sizes['2xl'], fontWeight: theme.typography.weights.bold, color: theme.colors.text }}>
+                  {fmtPct(champion.overall)}
+                </div>
+                <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+                  gemessene Genauigkeit
+                </div>
+              </div>
+              <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                auf {champion.examples} Beispielen · Regeln v{champion.guideline_version} · Modell {champion.model}
+                <br />
+                {new Date(champion.at).toLocaleString('de-DE')}
+              </div>
+            </div>
+
+            {/* Feld-Accuracy */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: theme.spacing.sm }}>
+              {Object.entries(project.fields).map(([fid, f]) => {
+                const pct = champion.by_field?.[fid];
+                const color = pct == null ? theme.colors.textMuted
+                  : pct >= 90 ? theme.colors.success
+                  : pct >= 60 ? theme.colors.warning
+                  : theme.colors.error;
+                return (
+                  <div key={fid} style={{ display: 'flex', justifyContent: 'space-between', gap: theme.spacing.md, fontSize: theme.typography.sizes.sm, padding: `${theme.spacing.xs} ${theme.spacing.sm}`, backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.md }}>
+                    <span style={{ color: theme.colors.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.label || fid}>
+                      {f.label || fid}
+                    </span>
+                    <span style={{ color, fontWeight: theme.typography.weights.medium }}>{fmtPct(pct)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          !evalRunning && (
+            <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+              Noch keine Messung. Ab dem dritten korrigierten Trainingsbeispiel wird automatisch
+              gemessen — oder starte jetzt einen Voll-Eval.
+            </div>
+          )
+        )}
+
+        {lastRun && (
+          <div style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm, color: lastRunColor }}>
+            {lastRunText(lastRun)}
+            <span style={{ color: theme.colors.textMuted }}> · {new Date(lastRun.at).toLocaleString('de-DE')}</span>
+          </div>
+        )}
+
+        {evalState?.history?.length > 1 && (
+          <div style={{ marginTop: theme.spacing.lg }}>
+            <div style={{ fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
+              VERLAUF
+            </div>
+            {evalState.history.slice(0, 8).map((h, i) => (
+              <div key={i} style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: 2 }}>
+                {new Date(h.at).toLocaleString('de-DE')} — {EVAL_ACTION_LABELS[h.action] || h.action}
+                {h.challenger != null && ` · Kandidat ${fmtPct(h.challenger)}`}
+                {h.champion != null && ` · Champion ${fmtPct(h.champion)}`}
+                {h.version != null && ` · v${h.version}`}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div style={styles.section}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
           <div style={styles.sectionTitle}>Gelernte Extraktionsregeln</div>
-          <button style={styles.secondaryBtn} onClick={handleRegenerate} disabled={regenerating}>
+          <button
+            style={styles.secondaryBtn}
+            onClick={() => startAction('regenerate', 'Regel-Update gestartet — Kandidat wird generiert und gemessen.')}
+            disabled={busy || evalRunning}
+          >
             <RefreshIcon size={14} />
-            {regenerating ? 'Generiere...' : 'Neu generieren'}
+            {evalRunning ? 'Prüfung läuft…' : 'Neu ableiten & messen'}
           </button>
         </div>
 
@@ -2281,7 +2446,7 @@ function RulesTab({ project, onProjectUpdated }) {
             <div style={{ fontSize: theme.typography.sizes['2xl'], fontWeight: theme.typography.weights.bold, color: theme.colors.text }}>
               ~{project.learning?.accuracy_estimate || 0}%
             </div>
-            <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Genauigkeit</div>
+            <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>ohne Korrektur (Schätzung)</div>
           </div>
           <div>
             <div style={{ fontSize: theme.typography.sizes['2xl'], fontWeight: theme.typography.weights.bold, color: theme.colors.text }}>

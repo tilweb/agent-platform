@@ -318,7 +318,8 @@ Wichtig:
       merged,
       input.schema.profile,
       input.userId,
-      { useLLM: true },
+      // Abschaltbar via config (z.B. Eval-Laeufe) — Default true.
+      { useLLM: input.schema.config.llm_confidence },
     );
     for (const p of provenance) {
       p.confidence = confidences[p.field] ?? 0;

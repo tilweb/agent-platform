@@ -2,6 +2,43 @@
 
 ## 2026-07-27
 
+### Feature: Extraktion — Eval-Harness & Audit (Ausbau-Welle 2)
+Der Lern-Loop misst sich jetzt selbst: Jede Guideline-Regeneration läuft als
+**Champion/Challenger-Eval** gegen die Trainingsbeispiele — nur messbar bessere oder
+gleich gute Regeln werden übernommen. Regel-Regressionen sind damit ausgeschlossen.
+- **Eval-Mechanik** (`learning/eval.ts`): Beispiele werden text-only re-extrahiert
+  (gespeicherter `document_text`, single-pass mit Auto-Eskalation, **ohne Few-Shot** —
+  Leakage-Vermeidung, gemessen wird genau das, was sich ändert) und Feld für Feld
+  normalisiert gegen die Ground Truth (`corrected_extraction`) verglichen: DE-Zahlen
+  (Epsilon), Datumsformate, Whitespace/Case, Bool-Varianten, **Listen als ordnungs-
+  unabhängiges Multiset**. Metriken: Accuracy je Feld + Overall (Prozent).
+- **Champion/Challenger** (`runGuidelineUpdate` in `learning/service.ts`): läuft im
+  **Hintergrund** (train blockiert nicht mehr; UI pollt `learning.eval.status`).
+  Champion-Score wird gecacht (Eval-Set-Hash aus Beispiel-IDs+Modell+Cap) und nur bei
+  geändertem Set neu gemessen. Cap `EXTRACTION_EVAL_CAP` (20, neueste zuerst),
+  Concurrency `EXTRACTION_EVAL_CONCURRENCY` (3). Bei Eval-Fehlern (>50 % Ausfälle)
+  bleiben die Regeln unverändert (sicherer Default). In-Memory-Lock je Projekt.
+- **Engine additiv**: neuer Config-Schalter `llm_confidence` (Default true) schaltet
+  die LLM-Selbstbewertung der Confidence ab — Eval-Läufe nutzen nur die Heuristik.
+- **Ergebnis-Zustand** in `learning.eval` (jsonb/YAML, keine Projekt-Migration):
+  `champion` (Overall + je Feld + Modell + Version), `last_run`
+  (accepted/rejected/measured/error inkl. Delta), `history` (Cap 20).
+- **Audit an jedem Ergebnis**: `extract()` liefert `audit { guideline_version, model,
+  strategy }`; Batch-Dateien speichern es (Migration `0025` Spalte `audit` jsonb;
+  Railway: YAML-Feld) und Summary/Detail geben es zurück.
+- **UI (RulesTab)**: neuer Abschnitt **„Qualität (gemessen)"** — gemessene Genauigkeit
+  groß, Feld-Accuracy-Grid (grün/gelb/rot), letzter Lauf („Regel-Update verworfen:
+  −x Pp …"), Verlauf; Buttons „Voll-Eval starten" (`POST /projects/:id/evaluate`) und
+  „Neu ableiten & messen"; Live-Polling während des Laufs. Batch-Detail zeigt eine
+  Audit-Zeile (Strategie · Modell · Regeln vN).
+- **Verifiziert:** 123 Backend-Tests grün (19 neue Eval-Tests: Normalisierung,
+  Listen-Multiset, Accuracy-Mathe, Hash, Akzeptanz); E2E lokal: 3 korrigierte
+  Trainings → Hintergrund-Update (running→idle), Champion 100 % auf 3 Beispielen,
+  Regeln v1 übernommen, generierte Regel griff im Folge-Batch nachweislich;
+  Voll-Eval `measured`; Lock verhindert Parallel-Läufe (`started:false`); Batch-Audit
+  in Summary+Detail; Migration 0025 beim Boot. Railway gespiegelt (YAML-Variante von
+  `batch-runs.ts` + Smoke-Test). Doku: `docs/extraktion-eval-harness-2026-07-27.md`.
+
 ### Feature: Extraktion — Listen-Felder / Positionsdaten (Line-Items, Ausbau-Welle 1)
 Extraktionsprojekte können jetzt **wiederholende Positionen** extrahieren (Rechnungs-/
 Lieferschein-/Rezeptpositionen): neuer Feldtyp **„Liste / Positionen"** mit frei definierbaren

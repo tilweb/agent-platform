@@ -321,7 +321,9 @@ und das System leitet daraus wiederverwendbare Regeln ab.
 - **Trainingsbeispiele** (`examples`) speichern den vollen Dokumenttext, den KI-Erstvorschlag, die
   Korrektur und das Delta. Ein Beispiel ohne Korrektur gilt als „bestätigt korrekt".
 - **Guidelines** werden erst ab 3 Beispielen und nur bei tatsächlichen Korrekturen (neu) generiert;
-  `regenerate` erlaubt manuelles Neu-Ableiten.
+  `regenerate` erlaubt manuelles Neu-Ableiten. Seit Welle 2 laufen Regel-Updates als
+  **Champion/Challenger-Eval** gegen die Beispiele (Hintergrund; nur messbar bessere/gleiche
+  Regeln werden übernommen — Details: `docs/extraktion-eval-harness-2026-07-27.md`).
 - **Few-Shot-Auswahl** priorisiert Beispiele *mit* Korrekturen (informativer) und bleibt in einem
   Token-Budget (~4000, max. 5).
 
@@ -491,7 +493,7 @@ strukturelle Lücken zwischen „gutem Werkzeug" und „bestem Tool im Space". D
 | Welle | Titel | Kern | Status |
 |-------|-------|------|--------|
 | **W1** | **Line-Items / Positionsdaten** | Feldtyp `list` mit Spalten; Adapter → Array-Gruppe; Dedupe; Positions-Tabellen in Training/Batch; XLSX-Zusatzblätter | **umgesetzt (2026-07-27)** |
-| **W2** | **Eval-Harness & Audit** | Jede Guideline-Regeneration läuft automatisch als **Champion/Challenger** gegen bestätigte Beispiele (text-only, gedeckelt ~20); nur messbar bessere/gleiche Regeln werden übernommen. Feld-Accuracy-Metriken; Audit-Metadaten (guideline_version + Modell je Ergebnis) | geplant |
+| **W2** | **Eval-Harness & Audit** | Jede Guideline-Regeneration läuft automatisch als **Champion/Challenger** gegen bestätigte Beispiele (text-only, gedeckelt ~20); nur messbar bessere/gleiche Regeln werden übernommen. Feld-Accuracy-Metriken; Audit-Metadaten (guideline_version + Modell je Ergebnis) | **umgesetzt (2026-07-27)** — `docs/extraktion-eval-harness-2026-07-27.md` |
 | **W3** | **Review-Workflow im Batch** | Batch-Ergebnisse korrigierbar → Korrekturen werden Trainingsbeispiele (Batch speichert dafür künftig `document_text`); Konfidenz-Triage (auto-ok / Review-Queue); Kalibrierungs-Messung | geplant |
 | **W4** | **Eingangsstrecke** | Mehrfach-PDF **splitten** (Seitenpaar-Vision, Vorarbeit `tools/document-split-test.ts`) → **klassifizieren** (Muster `classifyContract`) → aufs passende Projekt **routen**; „Posteingang"-UI | geplant |
 | **W5** | **API & Integration** | API-Batch + Webhooks; `pageImages` → S3; fachliche Validierungsregeln (Summen-Check Positionen↔Gesamtbetrag, Stammdaten-Abgleich via Tables); Ähnlichkeits-Few-Shot (Embeddings); Schema-Inferenz beim Onboarding | geplant |
