@@ -14,6 +14,7 @@ import { getProject, updateProject } from './projects';
 import { getExamples, saveExample, selectFewShotExamples } from './examples';
 import { generateGuidelines } from './guideline-generator';
 import { extractionProjectToExtractionSchema, PROJECT_FIELD_GROUP } from './pipeline-adapter';
+import { dedupeListItems } from './list-utils';
 import type { TrainingExample } from './types';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
@@ -257,7 +258,17 @@ export async function extract(
     });
 
     // Synthetische Gruppe (`felder.<id>`) wieder zu flach entpacken.
-    const data = (result.extracted[PROJECT_FIELD_GROUP] ?? {}) as Record<string, unknown>;
+    const data: Record<string, unknown> = {
+      ...((result.extracted[PROJECT_FIELD_GROUP] ?? {}) as Record<string, unknown>),
+    };
+    // Listen-Felder liegen als eigene Array-Gruppen unter ihrer fieldId. Union-
+    // Merge der Engine kann Duplikate erzeugen (Chunk-Overlap, Seiten-Merge) —
+    // exakte Duplikate hier entfernen. Fehlende Liste → immer [] (nie null).
+    for (const [fieldId, field] of Object.entries(project.fields)) {
+      if (field.type !== 'list') continue;
+      const raw = result.extracted[fieldId];
+      data[fieldId] = dedupeListItems(Array.isArray(raw) ? raw : [], field.item_fields ?? {});
+    }
     const prefix = `${PROJECT_FIELD_GROUP}.`;
     const fieldConfidences: Record<string, number> = {};
     for (const [path, conf] of Object.entries(result.fieldConfidences)) {

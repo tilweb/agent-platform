@@ -16,6 +16,10 @@ export interface FieldDefinition {
 export interface ArrayGroupDefinition {
   _array: true;
   _item_fields: Record<string, FieldDefinition>;
+  /** Optionales Label der Liste (fuer die Schema-Description im LLM-Prompt). */
+  _label?: string;
+  /** Optionaler Hinweis an das LLM, was ein Listen-Eintrag ist (und was nicht). */
+  _hint?: string;
 }
 
 export type FieldGroup = Record<string, FieldDefinition> | ArrayGroupDefinition;

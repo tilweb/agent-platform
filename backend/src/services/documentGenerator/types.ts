@@ -13,6 +13,12 @@ export interface DocumentSection {
   title: string;
   type: 'text' | 'table' | 'list' | 'keyvalue';
   content: any;
+  /**
+   * Nur XLSX: Ziel-Tabellenblatt dieser Section. Ohne Angabe landet sie auf dem
+   * Default-Blatt "Daten". Andere Generatoren (pdf/docx/md) ignorieren das Feld
+   * und rendern alle Sections weiterhin sequentiell.
+   */
+  sheet?: string;
 }
 
 /**

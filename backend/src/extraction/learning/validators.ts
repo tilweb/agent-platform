@@ -1,8 +1,54 @@
 /**
  * Validators - Auto-correction helpers for flat field extraction
+ * + strukturelle Validierung der Projekt-Felddefinitionen (POST/PUT/Import).
  *
  * Extracted from the original validator.ts for reuse.
  */
+
+import type { ProjectField } from './types';
+import { PROJECT_FIELD_GROUP } from './pipeline-adapter';
+
+const SCALAR_TYPES = new Set(['text', 'number', 'date', 'boolean']);
+
+/**
+ * Strukturelle Validierung der Projekt-Felder (fuer POST/PUT /projects und
+ * Bundle-Import). Liefert eine deutsche Fehlermeldung oder null, wenn valide.
+ *
+ * Regeln fuer Listen-Felder:
+ *  - `item_fields` muss vorhanden und nicht leer sein
+ *  - jede Spalte hat einen skalaren Typ + Label (keine Listen in Listen)
+ *  - die fieldId einer Liste darf nicht `felder` heissen (Namespace-Kollision
+ *    mit der synthetischen Skalar-Gruppe der Pipeline)
+ */
+export function validateProjectFields(fields: Record<string, ProjectField>): string | null {
+  for (const [fieldId, field] of Object.entries(fields)) {
+    if (!field || typeof field !== 'object') {
+      return `Feld "${fieldId}": ungueltige Definition`;
+    }
+    if (field.type === 'list') {
+      if (fieldId === PROJECT_FIELD_GROUP) {
+        return `Feld "${fieldId}": dieser Name ist fuer Listen-Felder reserviert — bitte anders benennen`;
+      }
+      const itemEntries = Object.entries(field.item_fields ?? {});
+      if (itemEntries.length === 0) {
+        return `Feld "${fieldId}": eine Liste braucht mindestens eine Positions-Spalte`;
+      }
+      for (const [itemId, itemField] of itemEntries) {
+        if (!itemField || typeof itemField !== 'object' || !SCALAR_TYPES.has(itemField.type as string)) {
+          return `Feld "${fieldId}", Spalte "${itemId}": ungueltiger Typ (erlaubt: Text, Zahl, Datum, Ja/Nein)`;
+        }
+        if (!itemField.label || !String(itemField.label).trim()) {
+          return `Feld "${fieldId}", Spalte "${itemId}": Label fehlt`;
+        }
+      }
+      continue;
+    }
+    if (!SCALAR_TYPES.has(field.type as string)) {
+      return `Feld "${fieldId}": unbekannter Typ "${field.type}"`;
+    }
+  }
+  return null;
+}
 
 /**
  * Auto-correct German number format: "1.234,56" → 1234.56

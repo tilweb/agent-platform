@@ -109,6 +109,85 @@ test('buildLearningGuidelines ist leer ohne Input', () => {
   expect(buildLearningGuidelines(makeProject(), [])).toBe('');
 });
 
+// ============== Listen-Felder (Line-Items) ==============
+
+function makeListProject(): ExtractionProject {
+  return makeProject({
+    fields: {
+      rechnungsnummer: { type: 'text', required: true, label: 'Rechnungsnummer' },
+      positionen: {
+        type: 'list',
+        required: false,
+        label: 'Rechnungspositionen',
+        description: 'Eine Zeile je berechneter Position',
+        item_fields: {
+          bezeichnung: { type: 'text', label: 'Bezeichnung' },
+          menge: { type: 'number', label: 'Menge', required: true },
+          einzelpreis: { type: 'number', label: 'Einzelpreis', description: 'Netto in EUR' },
+        },
+      },
+    },
+  });
+}
+
+test('list-Feld wird zur eigenen Array-Gruppe neben der felder-Gruppe', () => {
+  const schema = extractionProjectToExtractionSchema(makeListProject());
+  const groups = Object.keys(schema.profile.fields);
+  expect(groups).toEqual([PROJECT_FIELD_GROUP, 'positionen']);
+
+  // Skalar bleibt in der synthetischen Gruppe
+  const scalars = schema.profile.fields[PROJECT_FIELD_GROUP] as Record<string, { type: string }>;
+  expect(Object.keys(scalars)).toEqual(['rechnungsnummer']);
+
+  // Liste als ArrayGroupDefinition mit gemappten item_fields
+  const list = schema.profile.fields['positionen'] as {
+    _array: boolean;
+    _label?: string;
+    _hint?: string;
+    _item_fields: Record<string, { type: string; required?: boolean; label?: string; hint?: string }>;
+  };
+  expect(list._array).toBe(true);
+  expect(list._label).toBe('Rechnungspositionen');
+  expect(list._hint).toBe('Eine Zeile je berechneter Position');
+  expect(Object.keys(list._item_fields)).toEqual(['bezeichnung', 'menge', 'einzelpreis']);
+  // item_fields: kein required im Function-Schema (Vision-Kollaps), description → hint
+  expect(list._item_fields.menge!.required).toBe(false);
+  expect(list._item_fields.einzelpreis!.hint).toBe('Netto in EUR');
+});
+
+test('Few-Shot rendert Listen-Korrekturen als JSON mit Positions-Zaehler', () => {
+  const examples: TrainingExample[] = [
+    {
+      id: 'ex_list',
+      created: '2026-01-02T00:00:00.000Z',
+      source_filename: 'rechnung2.pdf',
+      document_text: 'Rechnung mit Positionen',
+      initial_extraction: { positionen: [{ bezeichnung: 'A', menge: 1 }] },
+      corrected_extraction: {
+        positionen: [
+          { bezeichnung: 'A', menge: 1 },
+          { bezeichnung: 'B', menge: 2 },
+        ],
+      },
+      corrections: [
+        {
+          field: 'positionen',
+          was: [{ bezeichnung: 'A', menge: 1 }],
+          corrected_to: [
+            { bezeichnung: 'A', menge: 1 },
+            { bezeichnung: 'B', menge: 2 },
+          ],
+        },
+      ],
+      confirmed_correct: false,
+    },
+  ];
+  const g = buildLearningGuidelines(makeListProject(), examples);
+  expect(g).not.toContain('[object Object]');
+  expect(g).toContain('"bezeichnung":"B"');
+  expect(g).toContain('(1 → 2 Positionen)');
+});
+
 test('Round-trip: pipeline-Ergebnis (felder.<id>) entpackt zu flach', () => {
   // Simuliert, was service.extract() nach runPipeline macht.
   const pipelineExtracted: Record<string, unknown> = {

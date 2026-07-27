@@ -43,57 +43,82 @@ function getCellDotColor(cell: CellValue): string | null {
 /**
  * Generate an Excel document from DocumentData
  */
+const DEFAULT_SHEET_NAME = 'Daten';
+
 export async function generateExcel(data: DocumentData): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Agent Platform';
   workbook.created = new Date();
 
-  const sheet = workbook.addWorksheet('Daten', {
-    pageSetup: {
-      paperSize: 9, // A4
-      orientation: 'portrait',
-      fitToPage: true,
-      fitToWidth: 1,
-    },
-  });
-
-  // Set column widths
-  sheet.columns = [
-    { width: 25 },
-    { width: 25 },
-    { width: 20 },
-    { width: 20 },
-    { width: 30 },
-  ];
-
-  let currentRow = 1;
-
-  // Title
-  const titleCell = sheet.getCell(`A${currentRow}`);
-  titleCell.value = data.title;
-  titleCell.font = { size: 16, bold: true, color: { argb: COLORS.text } };
-  sheet.mergeCells(`A${currentRow}:E${currentRow}`);
-  currentRow += 2;
-
-  // Metadata
-  for (const [key, value] of Object.entries(data.metadata)) {
-    const keyCell = sheet.getCell(`A${currentRow}`);
-    keyCell.value = key;
-    keyCell.font = { color: { argb: COLORS.textMuted } };
-
-    const valueCell = sheet.getCell(`B${currentRow}`);
-    valueCell.value = value;
-    valueCell.font = { color: { argb: COLORS.text } };
-
-    currentRow++;
+  // Sections nach Ziel-Blatt gruppieren (`section.sheet`, Default "Daten").
+  // Das Default-Blatt kommt immer zuerst und traegt Titel + Metadata.
+  const sheetOrder: string[] = [DEFAULT_SHEET_NAME];
+  const sectionsBySheet = new Map<string, DocumentSection[]>([[DEFAULT_SHEET_NAME, []]]);
+  for (const section of data.sections) {
+    const name = section.sheet?.trim() || DEFAULT_SHEET_NAME;
+    if (!sectionsBySheet.has(name)) {
+      sectionsBySheet.set(name, []);
+      sheetOrder.push(name);
+    }
+    sectionsBySheet.get(name)!.push(section);
   }
 
-  currentRow += 2;
+  for (const sheetName of sheetOrder) {
+    const sections = sectionsBySheet.get(sheetName)!;
+    const isDefault = sheetName === DEFAULT_SHEET_NAME;
 
-  // Sections
-  for (const section of data.sections) {
-    currentRow = renderSection(sheet, section, currentRow);
-    currentRow += 2;
+    const sheet = workbook.addWorksheet(sheetName, {
+      pageSetup: {
+        paperSize: 9, // A4
+        orientation: 'portrait',
+        fitToPage: true,
+        fitToWidth: 1,
+      },
+    });
+
+    // Spaltenbreiten: dynamisch aus der maximalen Header-Anzahl der
+    // Table-Sections dieses Blatts (mindestens die bisherigen 5 Spalten).
+    const maxCols = Math.max(
+      5,
+      ...sections
+        .filter((s) => s.type === 'table')
+        .map((s) => ((s.content as TableContent)?.headers?.length ?? 0)),
+    );
+    sheet.columns = Array.from({ length: maxCols }, (_, i) => ({
+      width: i === 0 ? 25 : i === maxCols - 1 ? 30 : 20,
+    }));
+
+    let currentRow = 1;
+
+    if (isDefault) {
+      // Title
+      const titleCell = sheet.getCell(`A${currentRow}`);
+      titleCell.value = data.title;
+      titleCell.font = { size: 16, bold: true, color: { argb: COLORS.text } };
+      sheet.mergeCells(`A${currentRow}:E${currentRow}`);
+      currentRow += 2;
+
+      // Metadata
+      for (const [key, value] of Object.entries(data.metadata)) {
+        const keyCell = sheet.getCell(`A${currentRow}`);
+        keyCell.value = key;
+        keyCell.font = { color: { argb: COLORS.textMuted } };
+
+        const valueCell = sheet.getCell(`B${currentRow}`);
+        valueCell.value = value;
+        valueCell.font = { color: { argb: COLORS.text } };
+
+        currentRow++;
+      }
+
+      currentRow += 2;
+    }
+
+    // Sections
+    for (const section of sections) {
+      currentRow = renderSection(sheet, section, currentRow);
+      currentRow += 2;
+    }
   }
 
   const buffer = await workbook.xlsx.writeBuffer();

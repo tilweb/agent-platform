@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-07-27
+
+### Feature: Extraktion — Listen-Felder / Positionsdaten (Line-Items, Ausbau-Welle 1)
+Extraktionsprojekte können jetzt **wiederholende Positionen** extrahieren (Rechnungs-/
+Lieferschein-/Rezeptpositionen): neuer Feldtyp **„Liste / Positionen"** mit frei definierbaren
+Spalten (Text/Zahl/Datum/Ja-Nein, eine Ebene tief). Erste Welle des Ausbaus Richtung
+„bestes Tool im Space" (W1 Line-Items → W2 Eval → W3 Review → W4 Eingangsstrecke → W5 API).
+- **Engine unverändert** — sie konnte Array-Gruppen bereits (`ArrayGroupDefinition`,
+  Schema-Builder, Union-Merge, Validator). Der Projekt-Layer nutzt sie jetzt: jedes list-Feld
+  wird im Adapter zur eigenen Array-Gruppe (`pipeline-adapter.ts`); `extract()` entpackt das
+  Array unter seiner fieldId (fehlend → immer `[]`).
+- **Dedupe** (`learning/list-utils.ts`): Union-Merge konkateniert Chunk-/Seiten-Arrays —
+  exakte Duplikate (normalisiert über alle Spalten) werden im Learning-Layer entfernt.
+  Grenze: fachlich identische Zeilen kollabieren → unterscheidende Spalte (Pos-Nr/Menge) hilft.
+- **Lern-Loop**: corrections erfassen Listen als ein Diff-Eintrag (was/corrected_to als JSON);
+  Few-Shot + Guideline-Generator rendern Listen als JSON statt `[object Object]`, inkl.
+  Positions-Zähler-Hinweis; Guideline-Prompt prüft explizit fehlende/überzählige Positionen
+  und Zeilen-Erkennung (Zwischensummen/Rabatte/Versand sind keine Positionen).
+- **Validierung** (`learning/validators.ts` → POST/PUT + Import): Liste braucht ≥1 Spalte,
+  Spalten skalar+Label, fieldId `felder` reserviert (Namespace-Kollision Pipeline).
+- **Exporte**: XLSX bekommt **pro Listen-Feld ein eigenes Tabellenblatt** (eine Zeile je
+  Position, Spalte „Datei"); dafür kann `generateDocument`/Excel jetzt **Multi-Sheet**
+  (`DocumentSection.sheet`, andere Formate ignorieren es). Hauptblatt/Batch-Tabelle zeigen
+  „N Positionen"; to-table schreibt Listen als JSON-Text-Spalte; CSV: JSON in der Zelle.
+- **Frontend** (`ExtractionProjectsPage.jsx`): Spalten-Subeditor im Feld-Editor (Anlage +
+  Einstellungen), editierbare **Positions-Tabelle** im Training (Zeilen hinzufügen/löschen,
+  typgerechte Zellen), read-only Positions-Tabelle im Batch-Detail. Wichtig: `editedValues`
+  wird jetzt tief kopiert (`structuredClone`), sonst erkennt der Korrektur-Vergleich
+  Zell-Änderungen nicht.
+- **Keine Migration** (fields ist jsonb/YAML); Boxes für Listen bewusst nicht (OCR skippt
+  Array-Gruppen). `required` in Spalten ist nur UI-Marker (Vision-Kollaps-Schutz wie bei
+  Skalarfeldern).
+- **Verifiziert:** 104 Backend-Tests grün (neu: Adapter-Gruppen-Mapping, Round-trip, Few-Shot-
+  Rendering, 7 Dedupe-Fälle); E2E lokal: Projekt mit Positionen-Liste → Extraktion (3 Positionen,
+  DE-Zahlen konvertiert) → Training-Korrektur (ein Listen-Diff) → Zweitlauf nutzt Few-Shot →
+  Batch 2 Dateien → XLSX mit Blättern „Daten"+„Positionen" → to-table 2 Zeilen →
+  Export/Import-Roundtrip (item_fields überleben) → Validierungs-400er. Railway gespiegelt
+  (16 Dateien 1:1, YAML-Roundtrip per Smoke-Test). Doku: `docs/extraktion-line-items-2026-07-27.md`.
+
 ## 2026-07-24
 
 ### PM: Step-Tabs mit Icons statt Nummern-Kreisen

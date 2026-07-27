@@ -84,9 +84,13 @@ export function buildFunctionSchema(profile: ExtractionProfile): ToolDefinition 
       const arrayGroup = group as ArrayGroupDefinition;
       const { properties, required } = buildGroupSchema(arrayGroup._item_fields);
 
+      // Description aus optionalem Label/Hint der Array-Gruppe (Fallback: Gruppenname).
+      const descParts: string[] = [`Liste der ${arrayGroup._label || groupName}`];
+      if (arrayGroup._hint) descParts.push(arrayGroup._hint);
+
       topProperties[groupName] = {
         type: 'array',
-        description: `Liste der ${groupName}`,
+        description: descParts.join('. '),
         items: {
           type: 'object',
           properties,

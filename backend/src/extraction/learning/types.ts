@@ -8,11 +8,32 @@ import type { ExtractionConfig } from '../../services/extraction';
 
 export type FieldType = 'text' | 'number' | 'date' | 'boolean';
 
-export interface ProjectField {
+/** Projekt-Feldtypen: Skalare plus Listen (Positionsdaten, z.B. Rechnungspositionen). */
+export type ProjectFieldType = FieldType | 'list';
+
+/**
+ * Spalte einer Positions-Tabelle (list-Feld). Bewusst KEIN 'list' als Typ —
+ * Listen sind genau eine Ebene tief (keine Verschachtelung).
+ */
+export interface ProjectItemField {
   type: FieldType;
+  label: string;
+  required?: boolean;
+  description?: string;
+}
+
+export interface ProjectField {
+  type: ProjectFieldType;
   required: boolean;
   label: string;
   description?: string;
+  /** Nur bei type === 'list': Spalten der Positions-Tabelle (1 Ebene tief). */
+  item_fields?: Record<string, ProjectItemField>;
+}
+
+/** Type-Guard: ist das Projekt-Feld eine Positions-Liste? */
+export function isListField(f: ProjectField): boolean {
+  return f.type === 'list';
 }
 
 export interface LearningMetadata {

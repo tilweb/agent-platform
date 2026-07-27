@@ -24,6 +24,7 @@ import {
   runBatchExtraction,
   exportProject,
   importProject,
+  validateProjectFields,
 } from '../extraction/learning';
 import type { ProjectField } from '../extraction/learning';
 import { createTable, addRow } from '../tables';
@@ -71,6 +72,11 @@ extractionProjectRoutes.post('/projects', async (c) => {
     return c.json({ error: 'Name und mindestens ein Feld erforderlich' }, 400);
   }
 
+  const fieldError = validateProjectFields(body.fields);
+  if (fieldError) {
+    return c.json({ error: fieldError }, 400);
+  }
+
   const project = await createProject({
     name: body.name,
     description: body.description,
@@ -88,6 +94,13 @@ extractionProjectRoutes.post('/projects', async (c) => {
 extractionProjectRoutes.put('/projects/:id', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
+
+  if (body.fields) {
+    const fieldError = validateProjectFields(body.fields);
+    if (fieldError) {
+      return c.json({ error: fieldError }, 400);
+    }
+  }
 
   const updated = await updateProject(id, {
     name: body.name,
@@ -275,6 +288,8 @@ const FIELD_TYPE_TO_COLUMN: Record<ProjectField['type'], ColumnType> = {
   number: 'number',
   date: 'date',
   boolean: 'boolean',
+  // Listen-Felder landen in Tabellen als JSON-Text (Positionen strukturiert im XLSX-Zusatzblatt).
+  list: 'text',
 };
 
 /** Stringifiziert einen extrahierten Wert für CSV/XLSX-Zellen. */
@@ -283,6 +298,11 @@ function cellString(value: unknown): string {
   if (typeof value === 'boolean') return value ? 'Ja' : 'Nein';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
+}
+
+/** Excel-Sheet-Namen: max. 31 Zeichen, verbotene Zeichen ersetzen. */
+function sanitizeSheetName(name: string): string {
+  return name.replace(/[\[\]:*?/\\]/g, '-').substring(0, 31).trim() || 'Liste';
 }
 
 /**
@@ -375,8 +395,43 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c
   const rows = result.files.map((file) => [
     file.filename,
     file.status,
-    ...fieldEntries.map(([fid]) => cellString(file.data?.[fid])),
+    ...fieldEntries.map(([fid, f]) => {
+      const v = file.data?.[fid];
+      // Listen im Hauptblatt nur als Zusammenfassung — die Positionen stehen
+      // strukturiert im Zusatzblatt des jeweiligen Listen-Felds.
+      if (f.type === 'list') {
+        return Array.isArray(v) && v.length > 0 ? `${v.length} Positionen` : '';
+      }
+      return cellString(v);
+    }),
   ]);
+
+  const sections: Array<{ title: string; type: 'table'; content: { headers: string[]; rows: string[][] }; sheet?: string }> = [
+    { title: 'Ergebnisse', type: 'table', content: { headers, rows } },
+  ];
+
+  // Pro Listen-Feld ein Zusatzblatt: eine Zeile je Position, Spalte "Datei" als Referenz.
+  for (const [fid, f] of fieldEntries) {
+    if (f.type !== 'list') continue;
+    const itemEntries = Object.entries(f.item_fields ?? {});
+    const itemHeaders = ['Datei', ...itemEntries.map(([, itf]) => itf.label || '')];
+    const itemRows = result.files.flatMap((file) => {
+      const items = file.data?.[fid];
+      if (!Array.isArray(items)) return [];
+      return items.map((item) => [
+        file.filename,
+        ...itemEntries.map(([iid]) =>
+          cellString(item && typeof item === 'object' ? (item as Record<string, unknown>)[iid] : null),
+        ),
+      ]);
+    });
+    sections.push({
+      title: f.label || fid,
+      type: 'table',
+      content: { headers: itemHeaders, rows: itemRows },
+      sheet: sanitizeSheetName(f.label || fid),
+    });
+  }
 
   const buffer = await generateDocument(
     {
@@ -386,7 +441,7 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c
         Dokumente: String(result.files.length),
         Lauf: runId,
       },
-      sections: [{ title: 'Ergebnisse', type: 'table', content: { headers, rows } }],
+      sections,
     },
     'xlsx',
   );
@@ -431,7 +486,12 @@ extractionProjectRoutes.post('/projects/:id/batches/:runId/to-table', async (c) 
     const data: Record<string, unknown> = { quelldatei: file.filename };
     for (const [fid, f] of Object.entries(project.fields)) {
       const v = file.data[fid];
-      data[fid] = FIELD_TYPE_TO_COLUMN[f.type] === 'boolean' ? Boolean(v) : v ?? null;
+      if (f.type === 'list') {
+        // Positionen als JSON-Text in der Zelle (Tabellen kennen keine Unterzeilen).
+        data[fid] = JSON.stringify(Array.isArray(v) ? v : []);
+      } else {
+        data[fid] = FIELD_TYPE_TO_COLUMN[f.type] === 'boolean' ? Boolean(v) : v ?? null;
+      }
     }
     try {
       await addRow(table.id, { data });
