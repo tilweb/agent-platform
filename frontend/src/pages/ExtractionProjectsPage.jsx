@@ -265,7 +265,46 @@ const FIELD_TYPES = [
   { value: 'number', label: 'Zahl' },
   { value: 'date', label: 'Datum' },
   { value: 'boolean', label: 'Ja/Nein' },
+  { value: 'list', label: 'Liste / Positionen' },
 ];
+
+// Positions-Spalten sind immer skalar (keine Listen in Listen).
+const ITEM_FIELD_TYPES = FIELD_TYPES.filter(t => t.value !== 'list');
+
+/** Label → Feld-ID (identische Slug-Logik wie im Backend/createProject). */
+function slugifyFieldLabel(label) {
+  return label
+    .toLowerCase()
+    .replace(/[äÄ]/g, 'ae').replace(/[öÖ]/g, 'oe').replace(/[üÜ]/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+}
+
+/** item_fields-Objekt (API) → Array-Form für den Editor. */
+function itemFieldsToArray(obj) {
+  return Object.entries(obj || {}).map(([id, f]) => ({
+    id,
+    label: f.label || id,
+    type: f.type || 'text',
+    required: !!f.required,
+    description: f.description || '',
+  }));
+}
+
+/** Editor-Array → item_fields-Objekt (API). Leere Labels werden verworfen. */
+function itemFieldsToObject(arr) {
+  const obj = {};
+  for (const f of (arr || []).filter(f => f.label && f.label.trim())) {
+    const id = f.id || slugifyFieldLabel(f.label);
+    obj[id] = {
+      type: f.type,
+      label: f.label,
+      ...(f.required ? { required: true } : {}),
+      ...(f.description ? { description: f.description } : {}),
+    };
+  }
+  return obj;
+}
 
 // Heavy-Extraction-Pipeline-Strategien (siehe backend/src/services/extraction/).
 const EXTRACTION_STRATEGIES = [
@@ -465,6 +504,221 @@ function ModelOverrideSelect({ value, onChange }) {
   );
 }
 
+// ============== Listen-Felder: Spalten-Editor + Positions-Tabelle ==============
+
+/**
+ * Subeditor für die Positions-Spalten eines list-Felds (Schema-Definition).
+ * `itemFields` ist die Array-Form ([{id,label,type,required,description}]),
+ * `onChange` bekommt das aktualisierte Array.
+ */
+function ItemFieldsEditor({ itemFields, onChange }) {
+  const list = itemFields || [];
+
+  function update(idx, key, value) {
+    const updated = [...list];
+    updated[idx] = { ...updated[idx], [key]: value };
+    if (key === 'label') {
+      updated[idx].id = slugifyFieldLabel(value);
+    }
+    onChange(updated);
+  }
+
+  return (
+    <div style={{
+      marginTop: theme.spacing.md,
+      paddingLeft: theme.spacing.lg,
+      borderLeft: `1px solid ${theme.colors.border}`,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
+        <span style={{ fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted }}>
+          POSITIONS-SPALTEN
+        </span>
+        <button
+          style={{ ...styles.secondaryBtn, padding: `${theme.spacing.xs} ${theme.spacing.md}` }}
+          onClick={() => onChange([...list, { id: '', label: '', type: 'text', required: false, description: '' }])}
+        >
+          + Spalte
+        </button>
+      </div>
+      {list.length === 0 && (
+        <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
+          Noch keine Spalten — eine Liste braucht mindestens eine Spalte (z.B. Bezeichnung, Menge, Preis).
+        </div>
+      )}
+      {list.map((itf, idx) => (
+        <div key={idx} style={{ display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.sm, alignItems: 'center' }}>
+          <input
+            style={{ ...styles.input, flex: 1 }}
+            value={itf.label}
+            onChange={e => update(idx, 'label', e.target.value)}
+            placeholder="Spalten-Label, z.B. Bezeichnung"
+          />
+          <select
+            style={{ ...styles.select, width: '110px' }}
+            value={itf.type}
+            onChange={e => update(idx, 'type', e.target.value)}
+          >
+            {ITEM_FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+          <input
+            style={{ ...styles.input, flex: 1 }}
+            value={itf.description}
+            onChange={e => update(idx, 'description', e.target.value)}
+            placeholder="Hinweis (optional)"
+          />
+          <label style={{ display: 'flex', alignItems: 'center', fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <input
+              type="checkbox"
+              style={styles.checkbox}
+              checked={itf.required}
+              onChange={e => update(idx, 'required', e.target.checked)}
+            />
+            Pflicht
+          </label>
+          <button
+            style={{ ...styles.dangerBtn, padding: theme.spacing.sm }}
+            onClick={() => onChange(list.filter((_, i) => i !== idx))}
+            title="Spalte entfernen"
+          >
+            <TrashIcon size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const listItemsTh = {
+  padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+  fontWeight: theme.typography.weights.medium,
+  fontSize: theme.typography.sizes.xs,
+  color: theme.colors.textMuted,
+  textAlign: 'left',
+  whiteSpace: 'nowrap',
+};
+const listItemsTd = {
+  padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+  verticalAlign: 'top',
+};
+
+/**
+ * Positions-Tabelle für den Wert eines list-Felds (Training-Korrektur bzw.
+ * read-only in der Batch-Detailansicht). `value` = Array der Positionen,
+ * `itemFields` = item_fields-Objekt aus project.fields.
+ */
+function ListItemsEditor({ value, itemFields, onChange, readOnly = false }) {
+  const items = Array.isArray(value) ? value : [];
+  const itemEntries = Object.entries(itemFields || {});
+
+  function updateCell(rowIdx, itemId, cellValue) {
+    const updated = items.map((it, i) =>
+      i === rowIdx ? { ...(it && typeof it === 'object' ? it : {}), [itemId]: cellValue } : it,
+    );
+    onChange(updated);
+  }
+
+  function addRow() {
+    const empty = {};
+    for (const [iid] of itemEntries) empty[iid] = null;
+    onChange([...items, empty]);
+  }
+
+  if (itemEntries.length === 0) {
+    return <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>Keine Spalten definiert.</div>;
+  }
+
+  return (
+    <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+      <table style={{ borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm, width: '100%' }}>
+        <thead>
+          <tr>
+            {itemEntries.map(([iid, itf]) => (
+              <th key={iid} style={listItemsTh}>
+                {itf.label || iid}
+                {itf.required && <span style={{ color: theme.colors.error }}> *</span>}
+              </th>
+            ))}
+            {!readOnly && <th style={{ ...listItemsTh, width: 34 }} />}
+          </tr>
+        </thead>
+        <tbody>
+          {items.length === 0 && (
+            <tr>
+              <td colSpan={itemEntries.length + (readOnly ? 0 : 1)} style={{ ...listItemsTd, color: theme.colors.textMuted }}>
+                Keine Positionen{readOnly ? '' : ' — mit „+ Position" hinzufügen'}.
+              </td>
+            </tr>
+          )}
+          {items.map((item, rowIdx) => {
+            const rec = item && typeof item === 'object' ? item : {};
+            return (
+              <tr key={rowIdx} style={{ borderTop: `1px solid ${theme.colors.border}` }}>
+                {itemEntries.map(([iid, itf]) => {
+                  const v = rec[iid];
+                  if (readOnly) {
+                    return (
+                      <td key={iid} style={{ ...listItemsTd, color: v != null ? theme.colors.text : theme.colors.textMuted }}>
+                        {fmtValue(v) || '—'}
+                      </td>
+                    );
+                  }
+                  if (itf.type === 'boolean') {
+                    return (
+                      <td key={iid} style={listItemsTd}>
+                        <input
+                          type="checkbox"
+                          style={styles.checkbox}
+                          checked={!!v}
+                          onChange={e => updateCell(rowIdx, iid, e.target.checked)}
+                        />
+                      </td>
+                    );
+                  }
+                  return (
+                    <td key={iid} style={listItemsTd}>
+                      <input
+                        style={{ ...styles.input, minWidth: 90, padding: theme.spacing.sm }}
+                        type={itf.type === 'number' ? 'number' : itf.type === 'date' ? 'date' : 'text'}
+                        step={itf.type === 'number' ? 'any' : undefined}
+                        value={v === null || v === undefined ? '' : String(v)}
+                        onChange={e => {
+                          const cellValue = itf.type === 'number'
+                            ? (e.target.value === '' ? null : parseFloat(e.target.value))
+                            : e.target.value;
+                          updateCell(rowIdx, iid, cellValue);
+                        }}
+                      />
+                    </td>
+                  );
+                })}
+                {!readOnly && (
+                  <td style={listItemsTd}>
+                    <button
+                      style={{ ...styles.dangerBtn, padding: theme.spacing.xs }}
+                      onClick={() => onChange(items.filter((_, i) => i !== rowIdx))}
+                      title="Position entfernen"
+                    >
+                      <TrashIcon size={12} />
+                    </button>
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {!readOnly && (
+        <button
+          style={{ ...styles.secondaryBtn, padding: `${theme.spacing.xs} ${theme.spacing.md}`, marginTop: theme.spacing.sm }}
+          onClick={addRow}
+        >
+          + Position
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ============== Create Project View ==============
 
 function CreateProjectView({ onBack, onCreated }) {
@@ -474,13 +728,13 @@ function CreateProjectView({ onBack, onCreated }) {
   const [modelOverride, setModelOverride] = useState(null);
   const [instructions, setInstructions] = useState('');
   const [fields, setFields] = useState([
-    { id: '', label: '', type: 'text', required: true, description: '' },
+    { id: '', label: '', type: 'text', required: true, description: '', item_fields: [] },
   ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   function addField() {
-    setFields([...fields, { id: '', label: '', type: 'text', required: false, description: '' }]);
+    setFields([...fields, { id: '', label: '', type: 'text', required: false, description: '', item_fields: [] }]);
   }
 
   function removeField(idx) {
@@ -492,11 +746,11 @@ function CreateProjectView({ onBack, onCreated }) {
     updated[idx] = { ...updated[idx], [key]: value };
     // Auto-generate ID from label
     if (key === 'label') {
-      updated[idx].id = value
-        .toLowerCase()
-        .replace(/[äÄ]/g, 'ae').replace(/[öÖ]/g, 'oe').replace(/[üÜ]/g, 'ue').replace(/ß/g, 'ss')
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_|_$/g, '');
+      updated[idx].id = slugifyFieldLabel(value);
+    }
+    // Typwechsel weg von Liste verwirft die Spalten-Definition.
+    if (key === 'type' && value !== 'list') {
+      updated[idx].item_fields = [];
     }
     setFields(updated);
   }
@@ -511,6 +765,11 @@ function CreateProjectView({ onBack, onCreated }) {
       setError('Mindestens ein Feld erforderlich');
       return;
     }
+    const badList = validFields.find(f => f.type === 'list' && Object.keys(itemFieldsToObject(f.item_fields)).length === 0);
+    if (badList) {
+      setError(`Liste "${badList.label}" braucht mindestens eine Positions-Spalte`);
+      return;
+    }
 
     setSaving(true);
     setError('');
@@ -523,6 +782,7 @@ function CreateProjectView({ onBack, onCreated }) {
         required: f.required,
         label: f.label,
         description: f.description || undefined,
+        ...(f.type === 'list' ? { item_fields: itemFieldsToObject(f.item_fields) } : {}),
       };
     }
 
@@ -678,6 +938,12 @@ function CreateProjectView({ onBack, onCreated }) {
                     placeholder="z.B. Name des Lieferanten/Absenders der Rechnung"
                   />
                 </div>
+                {field.type === 'list' && (
+                  <ItemFieldsEditor
+                    itemFields={field.item_fields}
+                    onChange={arr => updateField(idx, 'item_fields', arr)}
+                  />
+                )}
                 {field.id && (
                   <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
                     ID: {field.id}
@@ -1291,10 +1557,15 @@ function BatchTab({ project }) {
                       >
                         <td style={batchStickyCol} title={file.filename}>{file.filename}</td>
                         <td style={batchTd}><StatusBadge status={file.status} /></td>
-                        {fieldEntries.map(([fid]) => {
-                          const val = fmtValue(file.data?.[fid]);
+                        {fieldEntries.map(([fid, f]) => {
+                          const raw = file.data?.[fid];
+                          // Listen kompakt als Zähler — die Positionen zeigt die Detailansicht.
+                          const val = f.type === 'list'
+                            ? (Array.isArray(raw) && raw.length > 0 ? `${raw.length} Positionen` : '')
+                            : fmtValue(raw);
+                          const hasValue = f.type === 'list' ? Array.isArray(raw) && raw.length > 0 : raw != null;
                           return (
-                            <td key={fid} title={val} style={{ ...batchTdField, color: file.data?.[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
+                            <td key={fid} title={val} style={{ ...batchTdField, color: hasValue ? theme.colors.text : theme.colors.textMuted }}>
                               {val || '—'}
                             </td>
                           );
@@ -1370,14 +1641,33 @@ function BatchFileDetail({ detail, fields }) {
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-        {Object.entries(fields).map(([fid, f]) => (
-          <div key={fid} style={{ display: 'flex', gap: theme.spacing.md, fontSize: theme.typography.sizes.sm }}>
-            <span style={{ minWidth: 140, color: theme.colors.textMuted }}>{f.label || fid}</span>
-            <span style={{ color: detail.data?.[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
-              {fmtValue(detail.data?.[fid]) || '—'}
-            </span>
-          </div>
-        ))}
+        {Object.entries(fields).map(([fid, f]) => {
+          if (f.type === 'list') {
+            // Positionen als read-only Tabelle unterhalb des Labels.
+            return (
+              <div key={fid} style={{ fontSize: theme.typography.sizes.sm }}>
+                <div style={{ color: theme.colors.textMuted, marginBottom: theme.spacing.xs }}>
+                  {f.label || fid}
+                  {' '}({Array.isArray(detail.data?.[fid]) ? detail.data[fid].length : 0} Positionen)
+                </div>
+                <ListItemsEditor
+                  value={detail.data?.[fid]}
+                  itemFields={f.item_fields}
+                  onChange={() => {}}
+                  readOnly
+                />
+              </div>
+            );
+          }
+          return (
+            <div key={fid} style={{ display: 'flex', gap: theme.spacing.md, fontSize: theme.typography.sizes.sm }}>
+              <span style={{ minWidth: 140, color: theme.colors.textMuted }}>{f.label || fid}</span>
+              <span style={{ color: detail.data?.[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
+                {fmtValue(detail.data?.[fid]) || '—'}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1487,7 +1777,10 @@ function TrainingTab({ project, onProjectUpdated }) {
         if (result.success) {
           setExtractionResult(result.data);
           setDocumentText(result.document_text);
-          setEditedValues({ ...result.data });
+          // Tiefe Kopie: Listen-Werte (Arrays) dürfen keine Referenzen mit
+          // extractionResult teilen, sonst erkennt der hasChanges-Vergleich
+          // Zell-Änderungen nie.
+          setEditedValues(structuredClone(result.data));
           setBoxes(result.boxes ?? {});
           setPageImages(result.pageImages ?? []);
         } else {
@@ -1519,7 +1812,10 @@ function TrainingTab({ project, onProjectUpdated }) {
         if (result.success) {
           setExtractionResult(result.data);
           setDocumentText(result.document_text);
-          setEditedValues({ ...result.data });
+          // Tiefe Kopie: Listen-Werte (Arrays) dürfen keine Referenzen mit
+          // extractionResult teilen, sonst erkennt der hasChanges-Vergleich
+          // Zell-Änderungen nie.
+          setEditedValues(structuredClone(result.data));
           setBoxes(result.boxes ?? {});
           setPageImages(result.pageImages ?? []);
         } else {
@@ -1810,9 +2106,20 @@ function TrainingTab({ project, onProjectUpdated }) {
                             style={{ color: theme.colors.primary, marginLeft: theme.spacing.xs, fontSize: theme.typography.sizes.xs, cursor: 'pointer' }}
                           >◉</span>
                         )}
+                        {field.type === 'list' && (
+                          <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginLeft: theme.spacing.sm }}>
+                            ({Array.isArray(currentVal) ? currentVal.length : 0} Positionen)
+                          </span>
+                        )}
                         {isChanged && <span style={{ fontSize: theme.typography.sizes.xs, marginLeft: theme.spacing.sm }}>(korrigiert)</span>}
                       </label>
-                      {field.type === 'boolean' ? (
+                      {field.type === 'list' ? (
+                        <ListItemsEditor
+                          value={currentVal}
+                          itemFields={field.item_fields}
+                          onChange={arr => updateEditedValue(fieldId, arr)}
+                        />
+                      ) : field.type === 'boolean' ? (
                         <label style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, fontSize: theme.typography.sizes.sm }}>
                           <input
                             type="checkbox"
@@ -2009,7 +2316,14 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   const [modelOverride, setModelOverride] = useState(project.extraction?.model_override || null);
   const [instructions, setInstructions] = useState(project.instructions || '');
   const [fields, setFields] = useState(
-    Object.entries(project.fields).map(([id, f]) => ({ id, label: f.label, type: f.type, required: f.required, description: f.description || '' }))
+    Object.entries(project.fields).map(([id, f]) => ({
+      id,
+      label: f.label,
+      type: f.type,
+      required: f.required,
+      description: f.description || '',
+      item_fields: itemFieldsToArray(f.item_fields),
+    }))
   );
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
@@ -2034,7 +2348,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   }
 
   function addField() {
-    setFields([...fields, { id: '', label: '', type: 'text', required: false, description: '' }]);
+    setFields([...fields, { id: '', label: '', type: 'text', required: false, description: '', item_fields: [] }]);
   }
 
   function removeField(idx) {
@@ -2045,16 +2359,24 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
     const updated = [...fields];
     updated[idx] = { ...updated[idx], [key]: value };
     if (key === 'label' && !updated[idx].id) {
-      updated[idx].id = value
-        .toLowerCase()
-        .replace(/[äÄ]/g, 'ae').replace(/[öÖ]/g, 'oe').replace(/[üÜ]/g, 'ue').replace(/ß/g, 'ss')
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_|_$/g, '');
+      updated[idx].id = slugifyFieldLabel(value);
+    }
+    // Typwechsel weg von Liste verwirft die Spalten-Definition.
+    if (key === 'type' && value !== 'list') {
+      updated[idx].item_fields = [];
     }
     setFields(updated);
   }
 
   async function handleSave() {
+    const badList = fields.filter(f => f.label.trim()).find(
+      f => f.type === 'list' && Object.keys(itemFieldsToObject(f.item_fields)).length === 0,
+    );
+    if (badList) {
+      setStatusMsg(`Fehler: Liste "${badList.label}" braucht mindestens eine Positions-Spalte`);
+      return;
+    }
+
     setSaving(true);
     setStatusMsg('');
 
@@ -2066,6 +2388,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         required: f.required,
         label: f.label,
         description: f.description || undefined,
+        ...(f.type === 'list' ? { item_fields: itemFieldsToObject(f.item_fields) } : {}),
       };
     }
 
@@ -2212,6 +2535,12 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
                 onChange={e => updateField(idx, 'description', e.target.value)}
               />
             </div>
+            {field.type === 'list' && (
+              <ItemFieldsEditor
+                itemFields={field.item_fields}
+                onChange={arr => updateField(idx, 'item_fields', arr)}
+              />
+            )}
             <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
               ID: {field.id}
             </div>

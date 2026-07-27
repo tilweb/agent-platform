@@ -2,7 +2,10 @@
  * Learning Extraction - Public API
  */
 
-export type { ExtractionProject, TrainingExample, ProjectField, FieldType, LearningMetadata } from './types';
+export type { ExtractionProject, TrainingExample, ProjectField, ProjectItemField, ProjectFieldType, FieldType, LearningMetadata } from './types';
+export { isListField } from './types';
+export { dedupeListItems } from './list-utils';
+export { validateProjectFields } from './validators';
 export { getAllProjects, getProject, createProject, updateProject, deleteProject } from './projects';
 export { getExamples, saveExample, deleteExample } from './examples';
 export { extract, train, regenerateGuidelines } from './service';

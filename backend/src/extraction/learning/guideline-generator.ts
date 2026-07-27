@@ -26,6 +26,13 @@ export async function generateGuidelines(
   // Build field reference
   const fieldLines: string[] = [];
   for (const [fieldId, field] of Object.entries(project.fields)) {
+    if (field.type === 'list') {
+      const cols = Object.entries(field.item_fields ?? {})
+        .map(([iid, itf]) => `${iid} (${itf.label}): Typ=${itf.type}`)
+        .join(', ');
+      fieldLines.push(`- ${fieldId} (${field.label}): Typ=Liste mit Spalten: ${cols}`);
+      continue;
+    }
     fieldLines.push(`- ${fieldId} (${field.label}): Typ=${field.type}, ${field.required ? 'Pflicht' : 'Optional'}`);
   }
 
@@ -42,6 +49,7 @@ Deine Aufgabe:
 2. Leite klare, konkrete Regeln pro Feld ab
 3. Erkenne uebergreifende Muster (z.B. "Lieferantenname steht immer im Absender, nicht im Empfaenger")
 4. Formuliere die Regeln als kurze, aktionsfaehige Anweisungen
+5. Bei Listen-Feldern: pruefe fehlende oder ueberzaehlige Positionen und falsch zugeordnete Spaltenwerte; formuliere Regeln zur Zeilen-Erkennung (z.B. was ist KEINE Position: Zwischensummen, Rabatte, Versandkosten)
 
 Format der Antwort:
 - Pro Feld eine Regel (nur wenn noetig)
@@ -58,7 +66,9 @@ Format der Antwort:
     exampleParts.push(`Korrekte Werte: ${JSON.stringify(example.corrected_extraction)}`);
     exampleParts.push('Korrekturen:');
     for (const c of example.corrections) {
-      exampleParts.push(`  - ${c.field}: "${c.was}" → "${c.corrected_to}"`);
+      // Listen/Objekte als JSON rendern (statt "[object Object]").
+      const fmt = (v: unknown) => (v !== null && typeof v === 'object' ? JSON.stringify(v) : `"${String(v)}"`);
+      exampleParts.push(`  - ${c.field}: ${fmt(c.was)} → ${fmt(c.corrected_to)}`);
     }
   }
 

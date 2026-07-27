@@ -17,18 +17,24 @@
  *      via `appendGuidelines()` an ihren System-Prompt an.
  */
 
-import type { ExtractionProfile, FieldDefinition } from '../types';
+import type { ExtractionProfile, FieldDefinition, FieldGroup } from '../types';
 import {
   applyExtractionDefaults,
   type ExtractionSchema,
 } from '../../services/extraction';
-import type { ExtractionProject, TrainingExample } from './types';
+import type { ExtractionProject, FieldType, TrainingExample } from './types';
 
 /** Name der synthetischen Gruppe, in die flache Projekt-Felder gewickelt werden. */
 export const PROJECT_FIELD_GROUP = 'felder';
 
 function sanitizeId(id: string): string {
   return id.replace(/[^a-z0-9_]/gi, '_');
+}
+
+/** Korrektur-Werte fuer den Few-Shot-Prompt: Objekte/Arrays als JSON, Skalare in Quotes. */
+function fmtCorrectionValue(v: unknown): string {
+  if (v !== null && typeof v === 'object') return JSON.stringify(v);
+  return `"${String(v)}"`;
 }
 
 /**
@@ -67,7 +73,15 @@ export function buildLearningGuidelines(
       if (example.corrections.length > 0) {
         parts.push('Anmerkungen zu Korrekturen:');
         for (const c of example.corrections) {
-          parts.push(`  - Feld "${c.field}": "${c.was}" war falsch, korrekt ist "${c.corrected_to}"`);
+          // Listen/Objekte als JSON rendern (statt "[object Object]"); bei
+          // Listen-Korrekturen zusaetzlich den Positions-Zaehler als Signal.
+          const countHint =
+            Array.isArray(c.was) && Array.isArray(c.corrected_to)
+              ? ` (${c.was.length} → ${c.corrected_to.length} Positionen)`
+              : '';
+          parts.push(
+            `  - Feld "${c.field}": ${fmtCorrectionValue(c.was)} war falsch, korrekt ist ${fmtCorrectionValue(c.corrected_to)}${countHint}`,
+          );
         }
       }
     }
@@ -77,10 +91,37 @@ export function buildLearningGuidelines(
 }
 
 function buildProfile(project: ExtractionProject, guidelines: string): ExtractionProfile {
-  const fields: Record<string, FieldDefinition> = {};
+  const scalarFields: Record<string, FieldDefinition> = {};
+  const groups: Record<string, FieldGroup> = {};
+
   for (const [fieldId, field] of Object.entries(project.fields)) {
+    if (field.type === 'list') {
+      // Listen-Feld → EIGENE Array-Gruppe unter seiner fieldId (die Engine kann
+      // Array-of-Objects nativ: schema-builder/merger/validator). Die Pipeline
+      // liefert das Array dann direkt unter `result.extracted[fieldId]`.
+      const itemFields: Record<string, FieldDefinition> = {};
+      for (const [itemId, itemField] of Object.entries(field.item_fields ?? {})) {
+        const def: FieldDefinition = {
+          type: itemField.type,
+          // Gleiche Begruendung wie unten bei den Skalarfeldern: kein `required`
+          // im Function-Schema (Vision-Kollaps-Risiko). UI-Marker bleibt erhalten.
+          required: false,
+          label: itemField.label,
+        };
+        if (itemField.description) def.hint = itemField.description;
+        itemFields[itemId] = def;
+      }
+      groups[fieldId] = {
+        _array: true,
+        _item_fields: itemFields,
+        _label: field.label,
+        ...(field.description ? { _hint: field.description } : {}),
+      };
+      continue;
+    }
+
     const def: FieldDefinition = {
-      type: field.type,
+      type: field.type as FieldType,
       // Bewusst KEINE `required`-Markierung im Function-Schema: Vision-Modelle
       // (z.B. Mistral 3 24B) erfuellen ein required-beschraenktes Schema unter
       // Last manchmal MINIMAL — sie liefern nur die Pflichtfelder und lassen alle
@@ -92,7 +133,7 @@ function buildProfile(project: ExtractionProject, guidelines: string): Extractio
       label: field.label,
     };
     if (field.description) def.hint = field.description;
-    fields[fieldId] = def;
+    scalarFields[fieldId] = def;
   }
 
   return {
@@ -101,7 +142,9 @@ function buildProfile(project: ExtractionProject, guidelines: string): Extractio
     description: project.description || project.name,
     version: '1.0',
     detection: { keywords: [] },
-    fields: { [PROJECT_FIELD_GROUP]: fields },
+    // Skalare in der synthetischen Gruppe `felder`, jede Liste als eigene
+    // Array-Gruppe daneben. Reihenfolge: `felder` zuerst (stabil fuer Prompts).
+    fields: { [PROJECT_FIELD_GROUP]: scalarFields, ...groups },
     guidelines: guidelines.trim() ? guidelines : undefined,
   };
 }

@@ -20,6 +20,7 @@ import { getProject } from './projects';
 import { updateProject } from './projects';
 import { createProject } from './projects';
 import { getExamples, saveExample } from './examples';
+import { validateProjectFields } from './validators';
 
 export const PROJECT_BUNDLE_FORMAT = 'kiworkplace-extraction-project';
 export const PROJECT_BUNDLE_VERSION = 1;
@@ -123,6 +124,9 @@ function validateBundle(bundle: unknown): asserts bundle is ProjectBundle {
   if (!b.project.fields || Object.keys(b.project.fields).length === 0) {
     throw new Error('Paket enthält keine Felder.');
   }
+  // Strukturelle Feld-Validierung (inkl. Listen-Felder) — defensiv gegen fremde Bundles.
+  const fieldError = validateProjectFields(b.project.fields);
+  if (fieldError) throw new Error(`Ungültige Felder im Paket: ${fieldError}`);
 }
 
 /**
