@@ -186,7 +186,8 @@ Wichtig:
       merged,
       input.schema.profile,
       input.userId,
-      { useLLM: true },
+      // Abschaltbar via config (z.B. Eval-Laeufe) — Default true.
+      { useLLM: input.schema.config.llm_confidence },
     );
 
     // Provenance um Confidence anreichern

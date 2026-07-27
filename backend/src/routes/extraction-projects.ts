@@ -25,6 +25,7 @@ import {
   exportProject,
   importProject,
   validateProjectFields,
+  runFullEval,
 } from '../extraction/learning';
 import type { ProjectField } from '../extraction/learning';
 import { createTable, addRow } from '../tables';
@@ -270,11 +271,24 @@ extractionProjectRoutes.delete('/projects/:id/examples/:exId', async (c) => {
 // ============== Guidelines ==============
 
 /**
- * POST /projects/:id/regenerate — Force regenerate guidelines
+ * POST /projects/:id/regenerate — Regeln neu ableiten (Hintergrund-
+ * Champion/Challenger-Lauf; { started: false } wenn bereits einer laeuft).
  */
 extractionProjectRoutes.post('/projects/:id/regenerate', async (c) => {
   try {
     const result = await regenerateGuidelines(c.req.param('id'));
+    return c.json(result);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 400);
+  }
+});
+
+/**
+ * POST /projects/:id/evaluate — Voll-Eval der aktuellen Regeln (Hintergrund).
+ */
+extractionProjectRoutes.post('/projects/:id/evaluate', async (c) => {
+  try {
+    const result = await runFullEval(c.req.param('id'));
     return c.json(result);
   } catch (error: any) {
     return c.json({ error: error.message }, 400);

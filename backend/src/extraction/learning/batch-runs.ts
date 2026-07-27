@@ -32,6 +32,13 @@ export interface BatchRunSummary {
   updatedAt: string;
 }
 
+/** Audit-Metadaten eines Ergebnisses (Regel-Stand/Modell/Strategie). */
+export interface FileAudit {
+  guideline_version: number;
+  model: string;
+  strategy?: string;
+}
+
 export interface BatchFileSummary {
   id: string;
   filename: string;
@@ -40,6 +47,7 @@ export interface BatchFileSummary {
   fieldConfidences: Record<string, number> | null;
   strategy: string | null;
   error: string | null;
+  audit: FileAudit | null;
 }
 
 export interface BatchFileDetail extends BatchFileSummary {
@@ -55,6 +63,7 @@ export interface FileResultPayload {
   error?: string;
   boxes?: Record<string, FieldBox>;
   pageImages?: PageImage[];
+  audit?: FileAudit;
 }
 
 /** Interne On-Disk-Form (Lauf). */
@@ -134,6 +143,7 @@ function toSummary(f: FileRecord): BatchFileSummary {
     fieldConfidences: f.fieldConfidences ?? null,
     strategy: f.strategy ?? null,
     error: f.error ?? null,
+    audit: f.audit ?? null,
   };
 }
 
@@ -166,6 +176,7 @@ export async function createBatchRun(
       fieldConfidences: null,
       strategy: null,
       error: null,
+      audit: null,
       boxes: null,
       pageImages: null,
       createdAt: now,
@@ -215,6 +226,7 @@ export async function upsertFileResult(
     fieldConfidences: payload.fieldConfidences ?? existing.fieldConfidences ?? null,
     strategy: payload.strategy ?? existing.strategy ?? null,
     error: payload.error ?? null,
+    audit: payload.audit ?? existing.audit ?? null,
     boxes: payload.boxes ?? existing.boxes ?? null,
     pageImages: payload.pageImages ?? existing.pageImages ?? null,
     updatedAt: now,
@@ -294,6 +306,7 @@ export async function getBatchRunFileDetail(
     fieldConfidences: rec.fieldConfidences ?? null,
     strategy: rec.strategy ?? null,
     error: rec.error ?? null,
+    audit: rec.audit ?? null,
     boxes: rec.boxes ?? null,
     pageImages: rec.pageImages ?? null,
   };

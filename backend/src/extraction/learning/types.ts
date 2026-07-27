@@ -36,10 +36,57 @@ export function isListField(f: ProjectField): boolean {
   return f.type === 'list';
 }
 
+/** Gemessener Eval-Score (Champion/Challenger) auf dem Beispiel-Set. */
+export interface EvalScore {
+  /** Anteil korrekter (Beispiel, Feld)-Paare in Prozent (0..100, 1 Nachkommastelle). */
+  overall: number;
+  /** Accuracy je Feld in Prozent. */
+  by_field: Record<string, number>;
+  /** Anzahl erfolgreich ausgewerteter Beispiele. */
+  examples: number;
+}
+
+export type EvalRunAction = 'accepted' | 'rejected' | 'measured' | 'initial' | 'error';
+
+/**
+ * Eval-Zustand des Lern-Loops (Welle 2). Liegt in `learning.eval` (jsonb/YAML —
+ * keine Migration). Champion = Score der aktuell aktiven Guidelines.
+ */
+export interface LearningEvalState {
+  status: 'idle' | 'running';
+  /** Start des laufenden Laufs (Stale-Erkennung: >10 min alt → ignorieren). */
+  started_at?: string;
+  champion?: EvalScore & {
+    eval_set_hash: string;
+    guideline_version: number;
+    model: string;
+    at: string;
+  };
+  last_run?: {
+    at: string;
+    action: EvalRunAction;
+    challenger_overall?: number;
+    champion_overall?: number;
+    examples?: number;
+    message?: string;
+  };
+  /** Kompakte Historie, Cap 20 (neueste zuerst). */
+  history?: Array<{
+    at: string;
+    action: EvalRunAction;
+    champion?: number;
+    challenger?: number;
+    examples?: number;
+    version?: number;
+  }>;
+}
+
 export interface LearningMetadata {
   total_examples: number;
   accuracy_estimate: number;
   guideline_version: number;
+  /** Eval-Harness-Zustand (optional — alte Projekte haben das Feld nicht). */
+  eval?: LearningEvalState;
 }
 
 export interface ExtractionProject {

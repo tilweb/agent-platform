@@ -63,6 +63,7 @@ export async function runBatchExtraction(
           error: result.error,
           boxes: result.boxes,
           pageImages: result.pageImages,
+          audit: result.audit,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

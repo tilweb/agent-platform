@@ -15,7 +15,8 @@ import { getExamples, saveExample, selectFewShotExamples } from './examples';
 import { generateGuidelines } from './guideline-generator';
 import { extractionProjectToExtractionSchema, PROJECT_FIELD_GROUP } from './pipeline-adapter';
 import { dedupeListItems } from './list-utils';
-import type { TrainingExample } from './types';
+import { runEval, evalSetHash, decideAcceptance, evalModelLabel } from './eval';
+import type { TrainingExample, ExtractionProject, LearningEvalState, EvalScore } from './types';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { extname, resolve } from 'path';
@@ -200,6 +201,8 @@ export async function extract(
   boxes?: Record<string, { page: number; x: number; y: number; w: number; h: number }>;
   pageImages?: { page: number; dataUri: string; width: number; height: number }[];
   strategyUsed?: string;
+  /** Audit-Metadaten: mit welchem Regel-Stand/Modell/Strategie extrahiert wurde. */
+  audit?: { guideline_version: number; model: string; strategy?: string };
   error?: string;
 }> {
   try {
@@ -289,6 +292,11 @@ export async function extract(
       boxes,
       pageImages: result.pageImages,
       strategyUsed: result.strategyUsed,
+      audit: {
+        guideline_version: project.learning.guideline_version,
+        model: evalModelLabel(project),
+        strategy: result.strategyUsed,
+      },
     };
   } catch (error: any) {
     console.error(`[Extraction] Error for project ${projectId}:`, error.message);
@@ -296,10 +304,264 @@ export async function extract(
   }
 }
 
-// ============== Training ==============
+// ============== Training & Eval-Orchestrierung (Welle 2) ==============
+
+/** Max. Beispiele je Eval-Lauf (neueste zuerst). */
+const EVAL_CAP = parseInt(process.env.EXTRACTION_EVAL_CAP || '20', 10);
 
 /**
- * Save a training example and potentially regenerate guidelines
+ * In-Memory-Lock: pro Projekt hoechstens ein Guideline-/Eval-Lauf gleichzeitig
+ * (Backend ist single-process). Der persistierte `learning.eval.status` ist nur
+ * Anzeige fuers UI; nach einem Crash bleibt er ggf. auf 'running' — der naechste
+ * Lauf ueberschreibt ihn einfach (UI ignoriert running mit altem started_at).
+ */
+const evalLocks = new Set<string>();
+
+/** History-Eintrag vorn anfuegen, Cap 20. */
+function pushHistory(
+  state: LearningEvalState | undefined,
+  entry: NonNullable<LearningEvalState['history']>[number],
+): NonNullable<LearningEvalState['history']> {
+  return [entry, ...(state?.history ?? [])].slice(0, 20);
+}
+
+/** learning.eval am Projekt aktualisieren (frisch laden, Rest von learning erhalten). */
+async function persistEvalState(
+  projectId: string,
+  mutate: (project: ExtractionProject, evalState: LearningEvalState) => LearningEvalState,
+  alsoUpdate?: (project: ExtractionProject) => { guidelines?: string; guideline_version?: number },
+): Promise<void> {
+  const project = await getProject(projectId);
+  if (!project) return; // Projekt waehrenddessen geloescht — nichts zu schreiben
+  const evalState = mutate(project, project.learning.eval ?? { status: 'idle' });
+  const extra = alsoUpdate?.(project) ?? {};
+  await updateProject(projectId, {
+    ...(extra.guidelines !== undefined ? { guidelines: extra.guidelines } : {}),
+    learning: {
+      ...project.learning,
+      ...(extra.guideline_version !== undefined ? { guideline_version: extra.guideline_version } : {}),
+      eval: evalState,
+    },
+  });
+}
+
+/**
+ * Champion/Challenger-Guideline-Update (Hintergrund): neuen Guidelines-Kandidaten
+ * generieren, gegen die Trainingsbeispiele messen und nur bei >= Champion-Accuracy
+ * uebernehmen. Bei Eval-Fehlern bleibt der Champion unveraendert (sicherer Default).
+ */
+export async function runGuidelineUpdate(projectId: string, userId?: string): Promise<void> {
+  if (evalLocks.has(projectId)) return;
+  evalLocks.add(projectId);
+  try {
+    const project = await getProject(projectId);
+    if (!project) return;
+
+    const allExamples = (await getExamples(projectId)).filter(
+      (e) => e.document_text && e.document_text.trim(),
+    );
+    if (allExamples.length < 1) return;
+    const evalSet = allExamples.slice(0, EVAL_CAP); // getExamples sortiert neueste zuerst
+    const model = evalModelLabel(project);
+    const setHash = evalSetHash(evalSet.map((e) => e.id), model, EVAL_CAP);
+
+    await persistEvalState(projectId, (_p, s) => ({
+      ...s,
+      status: 'running',
+      started_at: new Date().toISOString(),
+    }));
+
+    console.log(`[Extraction] Guideline-Update fuer ${projectId} (${evalSet.length} Eval-Beispiele)...`);
+
+    // 1) Kandidat generieren (aus ALLEN Beispielen, wie bisher).
+    const candidate = await generateGuidelines(project, allExamples, userId);
+
+    // 2) Champion-Score: Cache nutzen, wenn Eval-Set + Version unveraendert.
+    const cached = project.learning.eval?.champion;
+    let champion: EvalScore | null = null;
+    if (
+      cached &&
+      cached.eval_set_hash === setHash &&
+      cached.guideline_version === project.learning.guideline_version
+    ) {
+      champion = cached;
+    } else {
+      const measured = await runEval(project, project.guidelines, evalSet, userId);
+      if (measured.failed) {
+        await finishWithError(projectId, evalSet.length, measured.failures);
+        return;
+      }
+      champion = measured;
+    }
+
+    // 3) Challenger messen.
+    const challenger = await runEval(project, candidate, evalSet, userId);
+    const decision = decideAcceptance(champion?.overall ?? null, challenger);
+    const now = new Date().toISOString();
+
+    if (decision.reason === 'error') {
+      await finishWithError(projectId, evalSet.length, challenger.failures);
+      return;
+    }
+
+    if (decision.accept) {
+      await persistEvalState(
+        projectId,
+        (p, s) => ({
+          status: 'idle',
+          champion: {
+            overall: challenger.overall,
+            by_field: challenger.by_field,
+            examples: challenger.examples,
+            eval_set_hash: setHash,
+            guideline_version: p.learning.guideline_version + 1,
+            model,
+            at: now,
+          },
+          last_run: {
+            at: now,
+            action: decision.reason === 'no-champion' ? 'initial' : 'accepted',
+            challenger_overall: challenger.overall,
+            champion_overall: champion?.overall,
+            examples: challenger.examples,
+          },
+          history: pushHistory(s, {
+            at: now,
+            action: decision.reason === 'no-champion' ? 'initial' : 'accepted',
+            champion: champion?.overall,
+            challenger: challenger.overall,
+            examples: challenger.examples,
+            version: p.learning.guideline_version + 1,
+          }),
+        }),
+        (p) => ({ guidelines: candidate, guideline_version: p.learning.guideline_version + 1 }),
+      );
+      console.log(`[Extraction] Guidelines ${projectId} uebernommen (${challenger.overall}% vs. ${champion?.overall ?? '—'}%)`);
+    } else {
+      await persistEvalState(projectId, (p, s) => ({
+        status: 'idle',
+        // Frisch gemessenen Champion-Score cachen (auch bei Ablehnung wertvoll).
+        champion: champion
+          ? {
+              overall: champion.overall,
+              by_field: champion.by_field,
+              examples: champion.examples,
+              eval_set_hash: setHash,
+              guideline_version: p.learning.guideline_version,
+              model,
+              at: now,
+            }
+          : s.champion,
+        last_run: {
+          at: now,
+          action: 'rejected',
+          challenger_overall: challenger.overall,
+          champion_overall: champion?.overall,
+          examples: challenger.examples,
+        },
+        history: pushHistory(s, {
+          at: now,
+          action: 'rejected',
+          champion: champion?.overall,
+          challenger: challenger.overall,
+          examples: challenger.examples,
+          version: p.learning.guideline_version,
+        }),
+      }));
+      console.log(`[Extraction] Guidelines ${projectId} verworfen (${challenger.overall}% < ${champion?.overall}%)`);
+    }
+  } catch (error: any) {
+    console.error(`[Extraction] Guideline-Update fehlgeschlagen (${projectId}):`, error.message);
+    await persistEvalState(projectId, (_p, s) => ({
+      ...s,
+      status: 'idle',
+      last_run: { at: new Date().toISOString(), action: 'error', message: error.message },
+      history: pushHistory(s, { at: new Date().toISOString(), action: 'error' }),
+    })).catch(() => {});
+  } finally {
+    evalLocks.delete(projectId);
+  }
+}
+
+/** Fehler-Abschluss: zu viele Eval-Beispiele gescheitert — Champion bleibt. */
+async function finishWithError(projectId: string, total: number, failures: number): Promise<void> {
+  const now = new Date().toISOString();
+  const message = `${failures} von ${total} Eval-Extraktionen fehlgeschlagen — Regeln unveraendert`;
+  console.warn(`[Extraction] Eval ${projectId}: ${message}`);
+  await persistEvalState(projectId, (_p, s) => ({
+    ...s,
+    status: 'idle',
+    last_run: { at: now, action: 'error', message },
+    history: pushHistory(s, { at: now, action: 'error' }),
+  }));
+}
+
+/**
+ * Voll-Eval (Hintergrund): misst NUR die aktuellen Guidelines (Champion) neu —
+ * kein Kandidat, keine Uebernahme-Entscheidung.
+ */
+export async function runFullEval(projectId: string, userId?: string): Promise<{ started: boolean }> {
+  if (evalLocks.has(projectId)) return { started: false };
+  const project = await getProject(projectId);
+  if (!project) throw new Error(`Projekt "${projectId}" nicht gefunden`);
+  const examples = (await getExamples(projectId)).filter((e) => e.document_text?.trim());
+  if (examples.length < 1) throw new Error('Mindestens 1 Trainingsbeispiel benoetigt');
+
+  void (async () => {
+    evalLocks.add(projectId);
+    try {
+      const evalSet = examples.slice(0, EVAL_CAP);
+      const model = evalModelLabel(project);
+      const setHash = evalSetHash(evalSet.map((e) => e.id), model, EVAL_CAP);
+      await persistEvalState(projectId, (_p, s) => ({
+        ...s,
+        status: 'running',
+        started_at: new Date().toISOString(),
+      }));
+      const measured = await runEval(project, project.guidelines, evalSet, userId);
+      const now = new Date().toISOString();
+      if (measured.failed) {
+        await finishWithError(projectId, evalSet.length, measured.failures);
+        return;
+      }
+      await persistEvalState(projectId, (p, s) => ({
+        status: 'idle',
+        champion: {
+          overall: measured.overall,
+          by_field: measured.by_field,
+          examples: measured.examples,
+          eval_set_hash: setHash,
+          guideline_version: p.learning.guideline_version,
+          model,
+          at: now,
+        },
+        last_run: { at: now, action: 'measured', champion_overall: measured.overall, examples: measured.examples },
+        history: pushHistory(s, {
+          at: now,
+          action: 'measured',
+          champion: measured.overall,
+          examples: measured.examples,
+          version: p.learning.guideline_version,
+        }),
+      }));
+    } catch (error: any) {
+      console.error(`[Extraction] Voll-Eval fehlgeschlagen (${projectId}):`, error.message);
+      await persistEvalState(projectId, (_p, s) => ({
+        ...s,
+        status: 'idle',
+        last_run: { at: new Date().toISOString(), action: 'error', message: error.message },
+      })).catch(() => {});
+    } finally {
+      evalLocks.delete(projectId);
+    }
+  })();
+
+  return { started: true };
+}
+
+/**
+ * Save a training example. Ab 3 Beispielen (und wenn korrigiert wurde) startet
+ * im Hintergrund das Champion/Challenger-Guideline-Update (`runGuidelineUpdate`).
  */
 export async function train(
   projectId: string,
@@ -312,7 +574,7 @@ export async function train(
   userId?: string
 ): Promise<{
   example: TrainingExample;
-  guidelines_updated: boolean;
+  guidelines_update: 'started' | 'none';
 }> {
   // Save example
   const example = await saveExample(projectId, data);
@@ -328,54 +590,35 @@ export async function train(
     throw new Error(`Projekt "${projectId}" nicht gefunden`);
   }
 
-  let guidelinesUpdated = false;
+  await updateProject(projectId, {
+    learning: {
+      ...project.learning, // eval-Zustand + guideline_version erhalten
+      total_examples: totalExamples,
+      accuracy_estimate: accuracyEstimate,
+    },
+  });
 
-  // Auto-generate guidelines if enough examples with corrections
-  if (totalExamples >= 3 && !example.confirmed_correct) {
-    try {
-      console.log(`[Extraction] Regenerating guidelines for ${projectId} (${totalExamples} examples)...`);
-      const newGuidelines = await generateGuidelines(project, allExamples, userId);
-
-      await updateProject(projectId, {
-        guidelines: newGuidelines,
-        learning: {
-          total_examples: totalExamples,
-          accuracy_estimate: accuracyEstimate,
-          guideline_version: project.learning.guideline_version + 1,
-        },
-      });
-      guidelinesUpdated = true;
-    } catch (error: any) {
-      console.error(`[Extraction] Guideline generation failed:`, error.message);
-      // Still update metadata even if guideline gen fails
-      await updateProject(projectId, {
-        learning: {
-          total_examples: totalExamples,
-          accuracy_estimate: accuracyEstimate,
-          guideline_version: project.learning.guideline_version,
-        },
-      });
-    }
-  } else {
-    await updateProject(projectId, {
-      learning: {
-        total_examples: totalExamples,
-        accuracy_estimate: accuracyEstimate,
-        guideline_version: project.learning.guideline_version,
-      },
-    });
+  // Guideline-Update im Hintergrund (fire-and-forget) — Eval dauert zu lang
+  // fuer den HTTP-Request. Das UI pollt learning.eval.status.
+  let guidelinesUpdate: 'started' | 'none' = 'none';
+  if (totalExamples >= 3 && !example.confirmed_correct && !evalLocks.has(projectId)) {
+    guidelinesUpdate = 'started';
+    void runGuidelineUpdate(projectId, userId).catch((err) =>
+      console.error('[Extraction] runGuidelineUpdate error:', err instanceof Error ? err.message : err),
+    );
   }
 
-  return { example, guidelines_updated: guidelinesUpdated };
+  return { example, guidelines_update: guidelinesUpdate };
 }
 
 /**
- * Force regenerate guidelines
+ * Regeln neu ableiten (Button): laeuft jetzt als Hintergrund-Champion/Challenger-
+ * Lauf. Antwortet sofort; `started:false` wenn bereits ein Lauf aktiv ist.
  */
 export async function regenerateGuidelines(
   projectId: string,
   userId?: string
-): Promise<{ guidelines: string }> {
+): Promise<{ started: boolean }> {
   const project = await getProject(projectId);
   if (!project) {
     throw new Error(`Projekt "${projectId}" nicht gefunden`);
@@ -386,15 +629,9 @@ export async function regenerateGuidelines(
     throw new Error('Mindestens 1 Trainingsbeispiel benoetigt');
   }
 
-  const guidelines = await generateGuidelines(project, examples, userId);
-
-  await updateProject(projectId, {
-    guidelines,
-    learning: {
-      ...project.learning,
-      guideline_version: project.learning.guideline_version + 1,
-    },
-  });
-
-  return { guidelines };
+  if (evalLocks.has(projectId)) return { started: false };
+  void runGuidelineUpdate(projectId, userId).catch((err) =>
+    console.error('[Extraction] runGuidelineUpdate error:', err instanceof Error ? err.message : err),
+  );
+  return { started: true };
 }
