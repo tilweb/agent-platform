@@ -39,6 +39,20 @@ gleich gute Regeln werden übernommen. Regel-Regressionen sind damit ausgeschlos
   in Summary+Detail; Migration 0025 beim Boot. Railway gespiegelt (YAML-Variante von
   `batch-runs.ts` + Smoke-Test). Doku: `docs/extraktion-eval-harness-2026-07-27.md`.
 
+### Infra: Neue Kunden-Instanz `workplace-ihk-essen` (Scalingo)
+Neue Customer-Instanz für **IHK Essen** provisioniert (Runbook `docs/runbook-neue-kundeninstanz.md`),
+gleicher Ablauf wie `workplace-ihk-leipzig` / `workplace-ihk-darmstadt`:
+- App `workplace-ihk-essen` (osc-fr1, Projekt `workplace-pilots`) + Postgres `postgresql-starter-512`.
+- Customer-Modus (`SEED_DEMO_DATA=false`), `ENABLED_APPS=projektmanagement,wzbar-matcher`,
+  zentrale LLM-/Model-Keys (⚪ aus `workplace-ihk-leipzig`-Vault übernommen), keine Connections.
+- **Isolation gewahrt (Cofermin-Lehre):** `SESSION_SECRET`/`CONNECTION_ENCRYPTION_KEY` frisch
+  generiert (je 64 Hex); **eigener** Flow.swiss-S3-Account (`FLOW_S3_MASTER`-Hash `2a755bcf…` ≠
+  `workplace-demo`/`-leipzig`/`-darmstadt` verifiziert), Bucket `workplace-ihk-essen`.
+- Deploy aus main (`174517f`) erfolgreich; Health 200, HSTS, `[db] migrations applied`,
+  `[s3] bucket "workplace-ihk-essen" created`, `requiresSetup:true` (Admin-Bootstrap bereit).
+- **Custom-Domain aktiv:** `ihk-essen.workplace-lab.adacor.dev` (Let's-Encrypt-Cert), URLs umgestellt,
+  Pflicht-`restart` (CSRF-Origin-Freeze) — Login liefert 400 statt 403 verifiziert, Health 200 über die Domain.
+
 ### Feature: Extraktion — Listen-Felder / Positionsdaten (Line-Items, Ausbau-Welle 1)
 Extraktionsprojekte können jetzt **wiederholende Positionen** extrahieren (Rechnungs-/
 Lieferschein-/Rezeptpositionen): neuer Feldtyp **„Liste / Positionen"** mit frei definierbaren
