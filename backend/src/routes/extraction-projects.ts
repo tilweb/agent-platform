@@ -22,6 +22,7 @@ import {
   getBatchRunFileDetail,
   deleteBatchRun,
   runBatchExtraction,
+  upsertFileResult,
   exportProject,
   importProject,
   validateProjectFields,
@@ -238,6 +239,7 @@ extractionProjectRoutes.post('/projects/:id/train', async (c) => {
     document_text: body.document_text,
     initial_extraction: body.initial_extraction,
     corrected_extraction: body.corrected_extraction,
+    field_confidences: body.field_confidences,
   });
 
   return c.json(result);
@@ -391,6 +393,57 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/files/:fileId', async 
   const detail = await getBatchRunFileDetail(c.req.param('id'), c.req.param('runId'), c.req.param('fileId'));
   if (!detail) return c.json({ error: 'Datei nicht gefunden' }, 404);
   return c.json(detail);
+});
+
+/**
+ * POST /projects/:id/batches/:runId/files/:fileId/learn — Batch-Korrektur als
+ * Trainingsbeispiel uebernehmen (Welle 3). Body: { corrected: Record<fieldId, value> }.
+ * Setzt die Datei auf den korrigierten Stand + review_status 'reviewed'.
+ */
+extractionProjectRoutes.post('/projects/:id/batches/:runId/files/:fileId/learn', async (c) => {
+  const projectId = c.req.param('id');
+  const runId = c.req.param('runId');
+  const fileId = c.req.param('fileId');
+
+  const body = await c.req.json().catch(() => null);
+  const corrected = body?.corrected;
+  if (!corrected || typeof corrected !== 'object' || Array.isArray(corrected)) {
+    return c.json({ error: 'corrected (Objekt mit Feldwerten) erforderlich' }, 400);
+  }
+
+  const detail = await getBatchRunFileDetail(projectId, runId, fileId);
+  if (!detail) return c.json({ error: 'Datei nicht gefunden' }, 404);
+  if (detail.status !== 'completed' || !detail.data) {
+    return c.json({ error: 'Nur erfolgreich extrahierte Dateien koennen gelernt werden' }, 400);
+  }
+  if (!detail.documentText || !detail.documentText.trim()) {
+    return c.json({ error: 'Dieser Lauf hat keinen gespeicherten Dokumenttext (aelterer Lauf) — bitte die Datei neu verarbeiten' }, 400);
+  }
+
+  const result = await train(projectId, {
+    source_filename: detail.filename,
+    document_text: detail.documentText,
+    initial_extraction: detail.data,
+    corrected_extraction: corrected,
+    field_confidences: detail.fieldConfidences ?? undefined,
+  });
+
+  // Datei auf den geprueften Stand heben (Tabelle/Exporte zeigen die Korrektur;
+  // das Original bleibt im Trainingsbeispiel als initial_extraction erhalten).
+  await upsertFileResult(projectId, runId, fileId, {
+    status: 'completed',
+    data: corrected,
+    fieldConfidences: detail.fieldConfidences ?? undefined,
+    strategy: detail.strategy ?? undefined,
+    audit: detail.audit ?? undefined,
+    reviewStatus: 'reviewed',
+  });
+
+  return c.json({
+    guidelines_update: result.guidelines_update,
+    review_status: 'reviewed',
+    example_id: result.example.id,
+  });
 });
 
 /**

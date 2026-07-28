@@ -4,8 +4,10 @@
 
 export type { ExtractionProject, TrainingExample, ProjectField, ProjectItemField, ProjectFieldType, FieldType, LearningMetadata } from './types';
 export { isListField } from './types';
+export type { ReviewStatus, CalibrationState } from './types';
 export { dedupeListItems } from './list-utils';
 export { validateProjectFields } from './validators';
+export { computeReviewStatus, resolveReviewThreshold, updateCalibration } from './review';
 export { getAllProjects, getProject, createProject, updateProject, deleteProject } from './projects';
 export { getExamples, saveExample, deleteExample } from './examples';
 export { extract, train, regenerateGuidelines, runGuidelineUpdate, runFullEval } from './service';

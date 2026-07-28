@@ -16,6 +16,7 @@ import { existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { FieldBox, PageImage } from '../../services/extraction/types';
+import type { ReviewStatus } from './types';
 
 const PROJECTS_DIR = resolve(process.cwd(), '../data/extraction-projects');
 
@@ -48,11 +49,15 @@ export interface BatchFileSummary {
   strategy: string | null;
   error: string | null;
   audit: FileAudit | null;
+  /** Review-Triage (Welle 3); null bei fehlgeschlagenen/alten Dateien. */
+  reviewStatus: ReviewStatus | null;
 }
 
 export interface BatchFileDetail extends BatchFileSummary {
   boxes: Record<string, FieldBox> | null;
   pageImages: PageImage[] | null;
+  /** Dokumenttext (Welle 3) — Grundlage fuer "Uebernehmen & lernen"; nur im Detail. */
+  documentText: string | null;
 }
 
 export interface FileResultPayload {
@@ -64,6 +69,8 @@ export interface FileResultPayload {
   boxes?: Record<string, FieldBox>;
   pageImages?: PageImage[];
   audit?: FileAudit;
+  documentText?: string;
+  reviewStatus?: ReviewStatus;
 }
 
 /** Interne On-Disk-Form (Lauf). */
@@ -144,6 +151,7 @@ function toSummary(f: FileRecord): BatchFileSummary {
     strategy: f.strategy ?? null,
     error: f.error ?? null,
     audit: f.audit ?? null,
+    reviewStatus: f.reviewStatus ?? null,
   };
 }
 
@@ -177,8 +185,10 @@ export async function createBatchRun(
       strategy: null,
       error: null,
       audit: null,
+      reviewStatus: null,
       boxes: null,
       pageImages: null,
+      documentText: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -227,8 +237,10 @@ export async function upsertFileResult(
     strategy: payload.strategy ?? existing.strategy ?? null,
     error: payload.error ?? null,
     audit: payload.audit ?? existing.audit ?? null,
+    reviewStatus: payload.reviewStatus ?? existing.reviewStatus ?? null,
     boxes: payload.boxes ?? existing.boxes ?? null,
     pageImages: payload.pageImages ?? existing.pageImages ?? null,
+    documentText: payload.documentText ?? existing.documentText ?? null,
     updatedAt: now,
   };
   await writeFile(fileRecordPath(projectId, runId, fileId), stringifyYaml(updated), 'utf-8');
@@ -307,8 +319,10 @@ export async function getBatchRunFileDetail(
     strategy: rec.strategy ?? null,
     error: rec.error ?? null,
     audit: rec.audit ?? null,
+    reviewStatus: rec.reviewStatus ?? null,
     boxes: rec.boxes ?? null,
     pageImages: rec.pageImages ?? null,
+    documentText: rec.documentText ?? null,
   };
 }
 

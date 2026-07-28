@@ -13,6 +13,8 @@
 
 import { rm } from 'fs/promises';
 import { extract } from './service';
+import { getProject } from './projects';
+import { computeReviewStatus } from './review';
 import { setRunStatus, upsertFileResult } from './batch-runs';
 import type { ExtractionSource } from '../types';
 
@@ -50,11 +52,19 @@ export async function runBatchExtraction(
   try {
     await setRunStatus(projectId, runId, 'processing');
 
+    // Projekt einmal je Lauf laden (Review-Schwelle + Feld-Definitionen fuer Triage).
+    const project = await getProject(projectId);
+
     await pLimit(files, BATCH_CONCURRENCY, async (file) => {
       await upsertFileResult(projectId, runId, file.fileId, { status: 'processing' });
       try {
         const source: ExtractionSource = { type: 'file', path: file.tempPath, filename: file.filename };
         const result = await extract(projectId, source, userId);
+        // Review-Triage (Welle 3): nur fuer erfolgreiche Extraktionen.
+        const reviewStatus =
+          result.success && project
+            ? computeReviewStatus(project, result.data, result.fieldConfidences)
+            : undefined;
         await upsertFileResult(projectId, runId, file.fileId, {
           status: result.success ? 'completed' : 'failed',
           data: result.data,
@@ -64,6 +74,8 @@ export async function runBatchExtraction(
           boxes: result.boxes,
           pageImages: result.pageImages,
           audit: result.audit,
+          documentText: result.document_text,
+          reviewStatus,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

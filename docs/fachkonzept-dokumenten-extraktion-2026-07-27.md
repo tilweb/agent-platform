@@ -364,7 +364,15 @@ Dieselbe Engine, drei Zugänge:
 ```
 
 **Zwei Datentiers:** Der Summary-Response (fürs Polling/die Tabelle) enthält **keine** schweren
-Seitenbilder; Boxen und `pageImages` werden erst beim Aufklappen einer Zeile nachgeladen.
+Seitenbilder; Boxen, `pageImages` und `document_text` werden erst beim Aufklappen einer Zeile
+nachgeladen.
+
+**Review-Workflow (seit Welle 3):** Jede Datei bekommt eine Konfidenz-Triage
+(`auto_ok`/`needs_review`, Schwelle konfigurierbar) mit Filter/Zählern; die Detailansicht ist
+ein Korrektur-Formular — „Übernehmen & lernen" macht die Korrektur zum Trainingsbeispiel und
+setzt die Datei auf „Geprüft". Eine Kalibrierungs-Statistik (RulesTab „Qualität") zeigt, ob
+die Konfidenz echte Fehler voraussagt. Details:
+`docs/extraktion-review-workflow-2026-07-28.md`.
 
 **Export:** CSV/JSON (clientseitig), XLSX (`GET .../export.xlsx` via `generateDocument`) und
 **„In Tabelle schreiben"** (`POST .../to-table`: Projekt-Felder → Tabellen-Spalten, je Dokument
@@ -494,7 +502,7 @@ strukturelle Lücken zwischen „gutem Werkzeug" und „bestem Tool im Space". D
 |-------|-------|------|--------|
 | **W1** | **Line-Items / Positionsdaten** | Feldtyp `list` mit Spalten; Adapter → Array-Gruppe; Dedupe; Positions-Tabellen in Training/Batch; XLSX-Zusatzblätter | **umgesetzt (2026-07-27)** |
 | **W2** | **Eval-Harness & Audit** | Jede Guideline-Regeneration läuft automatisch als **Champion/Challenger** gegen bestätigte Beispiele (text-only, gedeckelt ~20); nur messbar bessere/gleiche Regeln werden übernommen. Feld-Accuracy-Metriken; Audit-Metadaten (guideline_version + Modell je Ergebnis) | **umgesetzt (2026-07-27)** — `docs/extraktion-eval-harness-2026-07-27.md` |
-| **W3** | **Review-Workflow im Batch** | Batch-Ergebnisse korrigierbar → Korrekturen werden Trainingsbeispiele (Batch speichert dafür künftig `document_text`); Konfidenz-Triage (auto-ok / Review-Queue); Kalibrierungs-Messung | geplant |
+| **W3** | **Review-Workflow im Batch** | Batch-Ergebnisse korrigierbar → Korrekturen werden Trainingsbeispiele (Batch speichert dafür künftig `document_text`); Konfidenz-Triage (auto-ok / Review-Queue); Kalibrierungs-Messung | **umgesetzt (2026-07-28)** — `docs/extraktion-review-workflow-2026-07-28.md` |
 | **W4** | **Eingangsstrecke** | Mehrfach-PDF **splitten** (Seitenpaar-Vision, Vorarbeit `tools/document-split-test.ts`) → **klassifizieren** (Muster `classifyContract`) → aufs passende Projekt **routen**; „Posteingang"-UI | geplant |
 | **W5** | **API & Integration** | API-Batch + Webhooks; `pageImages` → S3; fachliche Validierungsregeln (Summen-Check Positionen↔Gesamtbetrag, Stammdaten-Abgleich via Tables); Ähnlichkeits-Few-Shot (Embeddings); Schema-Inferenz beim Onboarding | geplant |
 

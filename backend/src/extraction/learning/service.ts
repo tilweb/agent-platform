@@ -16,6 +16,7 @@ import { generateGuidelines } from './guideline-generator';
 import { extractionProjectToExtractionSchema, PROJECT_FIELD_GROUP } from './pipeline-adapter';
 import { dedupeListItems } from './list-utils';
 import { runEval, evalSetHash, decideAcceptance, evalModelLabel } from './eval';
+import { updateCalibration } from './review';
 import type { TrainingExample, ExtractionProject, LearningEvalState, EvalScore } from './types';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
@@ -570,6 +571,8 @@ export async function train(
     document_text: string;
     initial_extraction: Record<string, unknown>;
     corrected_extraction: Record<string, unknown>;
+    /** Konfidenzen der initialen Extraktion — speist die Kalibrierung (Welle 3). */
+    field_confidences?: Record<string, number>;
   },
   userId?: string
 ): Promise<{
@@ -577,7 +580,12 @@ export async function train(
   guidelines_update: 'started' | 'none';
 }> {
   // Save example
-  const example = await saveExample(projectId, data);
+  const example = await saveExample(projectId, {
+    source_filename: data.source_filename,
+    document_text: data.document_text,
+    initial_extraction: data.initial_extraction,
+    corrected_extraction: data.corrected_extraction,
+  });
 
   // Update project learning metadata
   const allExamples = await getExamples(projectId);
@@ -590,11 +598,24 @@ export async function train(
     throw new Error(`Projekt "${projectId}" nicht gefunden`);
   }
 
+  // Kalibrierung fortschreiben (Welle 3), wenn Konfidenzen mitkamen.
+  const calibration =
+    data.field_confidences && Object.keys(data.field_confidences).length > 0
+      ? updateCalibration(
+          project.learning.calibration,
+          project,
+          data.initial_extraction,
+          data.corrected_extraction,
+          data.field_confidences,
+        )
+      : project.learning.calibration;
+
   await updateProject(projectId, {
     learning: {
       ...project.learning, // eval-Zustand + guideline_version erhalten
       total_examples: totalExamples,
       accuracy_estimate: accuracyEstimate,
+      ...(calibration ? { calibration } : {}),
     },
   });
 
