@@ -81,12 +81,30 @@ export interface LearningEvalState {
   }>;
 }
 
+/** Review-Triage-Status einer Batch-Datei (Welle 3). */
+export type ReviewStatus = 'auto_ok' | 'needs_review' | 'reviewed';
+
+/**
+ * Konfidenz-Kalibrierung (Welle 3): aggregiert je Konfidenz-Bucket (0–0.2 …
+ * 0.8–1.0), wie oft die initiale Extraktion tatsaechlich korrekt war. Wird bei
+ * jedem Korrektur-Training fortgeschrieben (Training-Tab + Batch-Review).
+ */
+export interface CalibrationState {
+  /** 5 Buckets: [0,0.2), [0.2,0.4), [0.4,0.6), [0.6,0.8), [0.8,1.0]. */
+  buckets: Array<{ total: number; correct: number }>;
+  /** Gesamtzahl der (Feld, Beispiel)-Samples. */
+  samples: number;
+  updated_at: string;
+}
+
 export interface LearningMetadata {
   total_examples: number;
   accuracy_estimate: number;
   guideline_version: number;
   /** Eval-Harness-Zustand (optional — alte Projekte haben das Feld nicht). */
   eval?: LearningEvalState;
+  /** Konfidenz-Kalibrierung (optional — waechst mit Korrekturen). */
+  calibration?: CalibrationState;
 }
 
 export interface ExtractionProject {

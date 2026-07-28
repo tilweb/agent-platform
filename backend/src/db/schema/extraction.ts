@@ -83,6 +83,8 @@ export const extractionBatchRunFiles = extractionSchema.table('batch_run_files',
   error: text('error'),
   detail: jsonb('detail'),                              // { boxes, pageImages } — nur on-demand
   audit: jsonb('audit'),                                // { guideline_version, model, strategy }
+  documentText: text('document_text'),                  // Trainings-Grundlage (nur Detail-Select)
+  reviewStatus: text('review_status'),                  // auto_ok|needs_review|reviewed (Welle 3)
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({

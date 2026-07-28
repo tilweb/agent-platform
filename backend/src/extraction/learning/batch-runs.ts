@@ -15,6 +15,7 @@ import { eq, and, desc, inArray } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { extractionBatchRuns, extractionBatchRunFiles } from '../../db/schema/extraction';
 import type { FieldBox, PageImage } from '../../services/extraction/types';
+import type { ReviewStatus } from './types';
 
 export type BatchRunStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
@@ -45,11 +46,15 @@ export interface BatchFileSummary {
   strategy: string | null;
   error: string | null;
   audit: FileAudit | null;
+  /** Review-Triage (Welle 3); null bei fehlgeschlagenen/alten Dateien. */
+  reviewStatus: ReviewStatus | null;
 }
 
 export interface BatchFileDetail extends BatchFileSummary {
   boxes: Record<string, FieldBox> | null;
   pageImages: PageImage[] | null;
+  /** Dokumenttext (Welle 3) — Grundlage fuer "Uebernehmen & lernen"; nur im Detail. */
+  documentText: string | null;
 }
 
 export interface FileResultPayload {
@@ -61,6 +66,8 @@ export interface FileResultPayload {
   boxes?: Record<string, FieldBox>;
   pageImages?: PageImage[];
   audit?: FileAudit;
+  documentText?: string;
+  reviewStatus?: ReviewStatus;
 }
 
 function generateRunId(): string {
@@ -141,6 +148,8 @@ export async function upsertFileResult(
       error: payload.error ?? null,
       ...(detail ? { detail: detail as never } : {}),
       ...(payload.audit ? { audit: payload.audit as never } : {}),
+      ...(payload.documentText !== undefined ? { documentText: payload.documentText } : {}),
+      ...(payload.reviewStatus !== undefined ? { reviewStatus: payload.reviewStatus } : {}),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(extractionBatchRunFiles.id, fileId));
@@ -199,6 +208,7 @@ export async function getBatchRun(
     strategy: extractionBatchRunFiles.strategy,
     error: extractionBatchRunFiles.error,
     audit: extractionBatchRunFiles.audit,
+    reviewStatus: extractionBatchRunFiles.reviewStatus,
   }).from(extractionBatchRunFiles)
     .where(eq(extractionBatchRunFiles.batchRunId, runId))
     .orderBy(extractionBatchRunFiles.createdAt);
@@ -212,6 +222,7 @@ export async function getBatchRun(
     strategy: r.strategy,
     error: r.error,
     audit: (r.audit as FileAudit | null) ?? null,
+    reviewStatus: (r.reviewStatus as ReviewStatus | null) ?? null,
   }));
 
   let completedCount = 0, failedCount = 0;
@@ -256,8 +267,10 @@ export async function getBatchRunFileDetail(
     strategy: r.strategy,
     error: r.error,
     audit: (r.audit as FileAudit | null) ?? null,
+    reviewStatus: (r.reviewStatus as ReviewStatus | null) ?? null,
     boxes: detail?.boxes ?? null,
     pageImages: detail?.pageImages ?? null,
+    documentText: r.documentText ?? null,
   };
 }
 

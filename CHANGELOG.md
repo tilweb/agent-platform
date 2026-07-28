@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-07-28
+
+### Feature: Extraktion — Review-Workflow im Batch (Ausbau-Welle 3)
+Der Produktivbetrieb lernt jetzt mit: Jede Batch-Datei ist direkt in der Detailansicht
+**korrigierbar**, „Übernehmen & lernen" macht die Korrektur zum Trainingsbeispiel —
+das Schwungrad Nutzung→Lernen. Dazu **Konfidenz-Triage** je Datei und eine
+**Kalibrierungs-Statistik**, die zeigt, ob die Konfidenz echte Fehler voraussagt.
+- **Triage** (`learning/review.ts`): nach jeder Batch-Extraktion wird je Datei
+  `auto_ok` oder `needs_review` berechnet — `needs_review`, wenn ein Feld unter der
+  Schwelle liegt UND (Wert vorhanden ODER Pflichtfeld); leere optionale Felder lösen
+  bewusst keinen Dauer-Alarm aus. Schwelle: neues `extraction.review_threshold`
+  (Einstellungen, optional) → sonst `confidence_threshold` → 0.6.
+- **Lernen aus dem Batch**: Batch-Dateien speichern jetzt den `document_text`
+  (Migration `0026`; Railway: YAML-Feld; nur im Detail-Endpoint, nicht im Polling).
+  Neue Route `POST …/batches/:runId/files/:fileId/learn` → `train()` mit
+  initial/corrected → Datei erhält die korrigierten Werte + Status **„Geprüft"**
+  (Original bleibt im Trainingsbeispiel erhalten). Ab dem dritten Beispiel greift
+  automatisch der W2-Champion/Challenger-Lauf.
+- **Kalibrierung** (`learning.calibration`, Aggregat in 5 Konfidenz-Buckets, kein
+  neuer Storage): `train()` nimmt optional `field_confidences` und zählt je Feld,
+  ob die initiale Extraktion tatsächlich korrekt war (typ-normalisiert via W2-
+  `compareField` — Formatabweichungen zählen nicht als Fehler). Gespeist aus beiden
+  Korrekturwegen (Training-Tab sendet seine Konfidenzen jetzt mit; Batch-Review
+  sowieso). RulesTab „Qualität" zeigt ab 10 Stichproben je Bucket „Konfidenz X–Y% →
+  Z% tatsächlich korrekt" + Überkonfidenz-Hinweis.
+- **UI (Verarbeiten-Tab)**: Spalte „Prüfung" mit Badges (Zu prüfen/Auto-OK/Geprüft),
+  Zähler im Lauf-Header, Filter-Chips; Detailansicht ist ein Korrektur-Formular
+  (gemeinsame neue `FieldInputControl` für Skalare — auch das Training-Formular
+  nutzt sie jetzt — plus `ListItemsEditor` für Positionen), mit Konfidenz je Feld
+  und (korrigiert)-Markierung. Alte Läufe ohne Dokumenttext: Hinweis, Lernen inaktiv.
+- **Verifiziert:** 136 Backend-Tests grün (13 neue Review-Tests: Triage-Regeln,
+  Bucket-Mathe, Format-Normalisierung); E2E lokal: Pflichtfeld leer → `needs_review`,
+  learn-Route → Beispiel mit 2 Korrekturen, Datei `reviewed` mit korrigierten Werten,
+  Kalibrierung gefüllt (Bucket 4 korrekt); document_text nur im Detail-Response;
+  Migration 0026 beim Boot. Railway gespiegelt (YAML-Variante + Smoke-Test:
+  reviewStatus in Summary, documentText nur im Detail).
+  Doku: `docs/extraktion-review-workflow-2026-07-28.md`.
+
 ## 2026-07-27
 
 ### Feature: Extraktion — Eval-Harness & Audit (Ausbau-Welle 2)

@@ -719,6 +719,68 @@ function ListItemsEditor({ value, itemFields, onChange, readOnly = false }) {
   );
 }
 
+/**
+ * Typgerechter Eingabe-Baustein für Skalarfelder (boolean/number/date/text).
+ * Gemeinsam genutzt vom Training-Korrektur-Formular und dem Batch-Review.
+ */
+function FieldInputControl({ field, value, onChange, isChanged = false }) {
+  if (field.type === 'boolean') {
+    return (
+      <label style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, fontSize: theme.typography.sizes.sm }}>
+        <input
+          type="checkbox"
+          style={styles.checkbox}
+          checked={!!value}
+          onChange={e => onChange(e.target.checked)}
+        />
+        {value ? 'Ja' : 'Nein'}
+      </label>
+    );
+  }
+  return (
+    <input
+      style={{
+        ...styles.input,
+        borderColor: isChanged ? theme.colors.warning : theme.colors.border,
+      }}
+      type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+      value={value === null || value === undefined ? '' : String(value)}
+      onChange={e => {
+        const val = field.type === 'number'
+          ? (e.target.value === '' ? null : parseFloat(e.target.value))
+          : e.target.value;
+        onChange(val);
+      }}
+      step={field.type === 'number' ? 'any' : undefined}
+    />
+  );
+}
+
+// Review-Triage (Welle 3)
+const REVIEW_LABELS = { auto_ok: 'Auto-OK', needs_review: 'Zu prüfen', reviewed: 'Geprüft' };
+
+function ReviewBadge({ status }) {
+  if (!status) return <span style={{ color: theme.colors.textMuted }}>—</span>;
+  const colors = {
+    auto_ok: { bg: theme.colors.successLight, fg: theme.colors.success },
+    needs_review: { bg: theme.colors.warningLight, fg: theme.colors.warning },
+    reviewed: { bg: theme.colors.primaryLight, fg: theme.colors.primary },
+  }[status] || { bg: theme.colors.surfaceHover, fg: theme.colors.textMuted };
+  return (
+    <span style={{
+      fontSize: theme.typography.sizes.xs,
+      padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+      borderRadius: theme.borderRadius.full,
+      fontWeight: theme.typography.weights.medium,
+      backgroundColor: colors.bg,
+      color: colors.fg,
+      whiteSpace: 'nowrap',
+    }}>
+      {REVIEW_LABELS[status] || status}
+    </span>
+  );
+}
+
 // ============== Create Project View ==============
 
 function CreateProjectView({ onBack, onCreated }) {
@@ -1043,7 +1105,7 @@ function ProjectDetailView({ projectId, onBack }) {
           <TrainingTab project={project} onProjectUpdated={loadProject} />
         )}
         {activeTab === 'batch' && (
-          <BatchTab project={project} />
+          <BatchTab project={project} onProjectUpdated={loadProject} />
         )}
         {activeTab === 'rules' && (
           <RulesTab project={project} onProjectUpdated={loadProject} />
@@ -1239,8 +1301,9 @@ function csvCell(value) {
   return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function BatchTab({ project }) {
+function BatchTab({ project, onProjectUpdated }) {
   const fieldEntries = Object.entries(project.fields);
+  const [reviewFilter, setReviewFilter] = useState('all'); // all | needs_review | auto_ok | reviewed
 
   const [queue, setQueue] = useState([]);          // ausgewählte Dateien vor dem Start
   const [dragActive, setDragActive] = useState(false);
@@ -1349,6 +1412,29 @@ function BatchTab({ project }) {
         }
       } catch { /* ignore */ }
     }
+  }
+
+  /**
+   * Batch-Korrektur als Trainingsbeispiel übernehmen (Welle 3). Aktualisiert
+   * danach Datei-Zeile + Detail lokal (data=corrected, Status „Geprüft").
+   */
+  async function learnFile(fileId, corrected) {
+    const res = await apiPost(`${base}/${activeRun.run.id}/files/${fileId}/learn`, { corrected });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Lernen fehlgeschlagen');
+    }
+    const result = await res.json();
+    setDetails(prev => ({
+      ...prev,
+      [fileId]: { ...(prev[fileId] || {}), data: corrected, reviewStatus: 'reviewed' },
+    }));
+    setActiveRun(prev => prev ? {
+      ...prev,
+      files: prev.files.map(f => f.id === fileId ? { ...f, data: corrected, reviewStatus: 'reviewed' } : f),
+    } : prev);
+    onProjectUpdated?.(); // Lern-Zähler/Eval-Status im Projekt aktualisieren
+    return result;
   }
 
   function exportCsv() {
@@ -1510,6 +1596,14 @@ function BatchTab({ project }) {
                   {doneCount}/{activeRun.run.fileCount}
                 </span>
               )}
+              {!isActive && activeRun.files.some(f => f.reviewStatus === 'needs_review') && (
+                <ReviewBadge status="needs_review" />
+              )}
+              {!isActive && activeRun.files.some(f => f.reviewStatus === 'needs_review') && (
+                <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+                  {activeRun.files.filter(f => f.reviewStatus === 'needs_review').length} Datei(en)
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center' }}>
               <button style={styles.secondaryBtn} onClick={writeToTable} disabled={tableMsg?.loading}>
@@ -1531,8 +1625,37 @@ function BatchTab({ project }) {
             }}>{tableMsg.text}</div>
           )}
 
+          {/* Review-Filter (Welle 3) */}
+          {activeRun.files.some(f => f.reviewStatus) && (
+            <div style={{ display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+              {[
+                { id: 'all', label: `Alle (${activeRun.files.length})` },
+                { id: 'needs_review', label: `Zu prüfen (${activeRun.files.filter(f => f.reviewStatus === 'needs_review').length})` },
+                { id: 'auto_ok', label: `Auto-OK (${activeRun.files.filter(f => f.reviewStatus === 'auto_ok').length})` },
+                { id: 'reviewed', label: `Geprüft (${activeRun.files.filter(f => f.reviewStatus === 'reviewed').length})` },
+              ].map(chip => (
+                <button
+                  key={chip.id}
+                  onClick={() => setReviewFilter(chip.id)}
+                  style={{
+                    padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                    backgroundColor: reviewFilter === chip.id ? theme.colors.primaryLight : 'transparent',
+                    color: reviewFilter === chip.id ? theme.colors.primary : theme.colors.textMuted,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius.full,
+                    fontSize: theme.typography.sizes.xs,
+                    fontWeight: theme.typography.weights.medium,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
-            Zeile anklicken für die vollständige Detailansicht · horizontal scrollbar bei vielen Feldern
+            Zeile anklicken zum Prüfen & Korrigieren · horizontal scrollbar bei vielen Feldern
           </div>
           <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
             <table style={{ borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm }}>
@@ -1540,12 +1663,13 @@ function BatchTab({ project }) {
                 <tr style={{ textAlign: 'left', color: theme.colors.textMuted }}>
                   <th style={{ ...batchTh, ...batchStickyCol, zIndex: 3 }}>Datei</th>
                   <th style={batchTh}>Status</th>
+                  <th style={batchTh}>Prüfung</th>
                   {fieldEntries.map(([fid, f]) => <th key={fid} style={batchTh}>{f.label || fid}</th>)}
                   <th style={batchTh}>Ø</th>
                 </tr>
               </thead>
               <tbody>
-                {activeRun.files.map(file => {
+                {activeRun.files.filter(f => reviewFilter === 'all' || f.reviewStatus === reviewFilter).map(file => {
                   const conf = avgConfidence(file.fieldConfidences);
                   const open = expandedId === file.id;
                   const hasDetail = file.status === 'completed';
@@ -1557,6 +1681,7 @@ function BatchTab({ project }) {
                       >
                         <td style={batchStickyCol} title={file.filename}>{file.filename}</td>
                         <td style={batchTd}><StatusBadge status={file.status} /></td>
+                        <td style={batchTd}><ReviewBadge status={file.reviewStatus} /></td>
                         {fieldEntries.map(([fid, f]) => {
                           const raw = file.data?.[fid];
                           // Listen kompakt als Zähler — die Positionen zeigt die Detailansicht.
@@ -1574,8 +1699,12 @@ function BatchTab({ project }) {
                       </tr>
                       {open && (
                         <tr>
-                          <td colSpan={fieldEntries.length + 3} style={{ ...batchTd, backgroundColor: theme.colors.background }}>
-                            <BatchFileDetail detail={details[file.id]} fields={project.fields} />
+                          <td colSpan={fieldEntries.length + 4} style={{ ...batchTd, backgroundColor: theme.colors.background }}>
+                            <BatchFileDetail
+                              detail={details[file.id]}
+                              fields={project.fields}
+                              onLearn={corrected => learnFile(file.id, corrected)}
+                            />
                           </td>
                         </tr>
                       )}
@@ -1622,10 +1751,50 @@ const batchStickyCol = {
   textOverflow: 'ellipsis',
 };
 
-function BatchFileDetail({ detail, fields }) {
+/**
+ * Batch-Datei-Detail — seit Welle 3 ein Review-Formular: Werte korrigierbar,
+ * „Übernehmen & lernen" macht die Korrektur zum Trainingsbeispiel.
+ */
+function BatchFileDetail({ detail, fields, onLearn }) {
+  const [edited, setEdited] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null); // { ok, text }
+
+  // Bei Datei-/Statuswechsel den Korrektur-State neu aufsetzen (tiefe Kopie!).
+  useEffect(() => {
+    setEdited(detail?.data ? structuredClone(detail.data) : null);
+    setMsg(null);
+    // eslint-disable-next-line
+  }, [detail?.id, detail?.reviewStatus]);
+
   if (!detail) return <div style={{ padding: theme.spacing.md, color: theme.colors.textMuted }}>Lade Detail…</div>;
   if (detail.error) return <div style={{ padding: theme.spacing.md, color: theme.colors.error }}>{detail.error}</div>;
+
   const hasBoxes = detail.pageImages && detail.pageImages.length > 0;
+  const canLearn = !!onLearn && detail.status === 'completed' && !!detail.documentText;
+  const isReviewed = detail.reviewStatus === 'reviewed';
+  const values = edited || detail.data || {};
+  const hasChanges = edited && JSON.stringify(edited) !== JSON.stringify(detail.data);
+
+  async function handleLearn() {
+    if (!edited) return;
+    setSaving(true);
+    setMsg(null);
+    try {
+      const r = await onLearn(edited);
+      setMsg({
+        ok: true,
+        text: r?.guidelines_update === 'started'
+          ? 'Korrektur gelernt — Regeln werden im Hintergrund geprüft (Tab „Regeln").'
+          : 'Korrektur als Trainingsbeispiel gespeichert.',
+      });
+    } catch (err) {
+      setMsg({ ok: false, text: err.message || 'Lernen fehlgeschlagen' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: hasBoxes ? '1fr 1fr' : '1fr', gap: theme.spacing.lg, padding: theme.spacing.md }}>
       {hasBoxes && (
@@ -1647,32 +1816,76 @@ function BatchFileDetail({ detail, fields }) {
           </div>
         )}
         {Object.entries(fields).map(([fid, f]) => {
+          const conf = detail.fieldConfidences?.[fid];
+          const isChanged = edited && JSON.stringify(values[fid]) !== JSON.stringify(detail.data?.[fid]);
+          const label = (
+            <span style={{ color: isChanged ? theme.colors.warning : theme.colors.textMuted }}>
+              {f.label || fid}
+              {typeof conf === 'number' && (
+                <span style={{ marginLeft: theme.spacing.xs, fontSize: theme.typography.sizes.xs }}>
+                  {Math.round(conf * 100)}%
+                </span>
+              )}
+              {isChanged && <span style={{ fontSize: theme.typography.sizes.xs, marginLeft: theme.spacing.xs }}>(korrigiert)</span>}
+            </span>
+          );
           if (f.type === 'list') {
-            // Positionen als read-only Tabelle unterhalb des Labels.
             return (
               <div key={fid} style={{ fontSize: theme.typography.sizes.sm }}>
-                <div style={{ color: theme.colors.textMuted, marginBottom: theme.spacing.xs }}>
-                  {f.label || fid}
-                  {' '}({Array.isArray(detail.data?.[fid]) ? detail.data[fid].length : 0} Positionen)
+                <div style={{ marginBottom: theme.spacing.xs }}>
+                  {label}
+                  {' '}<span style={{ color: theme.colors.textMuted }}>({Array.isArray(values[fid]) ? values[fid].length : 0} Positionen)</span>
                 </div>
                 <ListItemsEditor
-                  value={detail.data?.[fid]}
+                  value={values[fid]}
                   itemFields={f.item_fields}
-                  onChange={() => {}}
-                  readOnly
+                  onChange={arr => setEdited(prev => ({ ...(prev || {}), [fid]: arr }))}
+                  readOnly={!canLearn || isReviewed}
                 />
               </div>
             );
           }
           return (
-            <div key={fid} style={{ display: 'flex', gap: theme.spacing.md, fontSize: theme.typography.sizes.sm }}>
-              <span style={{ minWidth: 140, color: theme.colors.textMuted }}>{f.label || fid}</span>
-              <span style={{ color: detail.data?.[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
-                {fmtValue(detail.data?.[fid]) || '—'}
-              </span>
+            <div key={fid} style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center', fontSize: theme.typography.sizes.sm }}>
+              <span style={{ minWidth: 140 }}>{label}</span>
+              {canLearn && !isReviewed ? (
+                <div style={{ flex: 1, maxWidth: 360 }}>
+                  <FieldInputControl
+                    field={f}
+                    value={values[fid]}
+                    onChange={val => setEdited(prev => ({ ...(prev || {}), [fid]: val }))}
+                    isChanged={!!isChanged}
+                  />
+                </div>
+              ) : (
+                <span style={{ color: values[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
+                  {fmtValue(values[fid]) || '—'}
+                </span>
+              )}
             </div>
           );
         })}
+
+        {/* Review-Aktion (Welle 3) */}
+        <div style={{ marginTop: theme.spacing.md, display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+          {isReviewed ? (
+            <ReviewBadge status="reviewed" />
+          ) : canLearn ? (
+            <button style={styles.primaryBtn} onClick={handleLearn} disabled={saving}>
+              {saving ? <Spinner size={14} /> : <SparklesIcon size={14} />}
+              {hasChanges ? 'Korrektur übernehmen & lernen' : 'Als korrekt bestätigen & lernen'}
+            </button>
+          ) : detail.status === 'completed' ? (
+            <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+              Älterer Lauf ohne gespeicherten Dokumenttext — zum Lernen bitte neu verarbeiten.
+            </span>
+          ) : null}
+          {msg && (
+            <span style={{ fontSize: theme.typography.sizes.sm, color: msg.ok ? theme.colors.success : theme.colors.error }}>
+              {msg.text}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1695,6 +1908,7 @@ function TrainingTab({ project, onProjectUpdated }) {
   const [elapsed, setElapsed] = useState(0);
   const [showRawText, setShowRawText] = useState(false);
   const [boxes, setBoxes] = useState({});
+  const [fieldConfidences, setFieldConfidences] = useState({});
   const [pageImages, setPageImages] = useState([]);
   const [activeField, setActiveField] = useState(null);
   const [scrollToField, setScrollToField] = useState(null);
@@ -1744,6 +1958,7 @@ function TrainingTab({ project, onProjectUpdated }) {
     setPreviewKind(null);
     setShowRawText(false);
     setBoxes({});
+    setFieldConfidences({});
     setPageImages([]);
     setActiveField(null);
     setScrollToField(null);
@@ -1787,6 +2002,7 @@ function TrainingTab({ project, onProjectUpdated }) {
           // Zell-Änderungen nie.
           setEditedValues(structuredClone(result.data));
           setBoxes(result.boxes ?? {});
+          setFieldConfidences(result.fieldConfidences ?? {});
           setPageImages(result.pageImages ?? []);
         } else {
           setStatusMsg(`Fehler: ${result.error}`);
@@ -1822,6 +2038,7 @@ function TrainingTab({ project, onProjectUpdated }) {
           // Zell-Änderungen nie.
           setEditedValues(structuredClone(result.data));
           setBoxes(result.boxes ?? {});
+          setFieldConfidences(result.fieldConfidences ?? {});
           setPageImages(result.pageImages ?? []);
         } else {
           setStatusMsg(`Fehler: ${result.error}`);
@@ -1843,6 +2060,7 @@ function TrainingTab({ project, onProjectUpdated }) {
         source_filename: sourceFilename,
         document_text: documentText,
         initial_extraction: extractionResult,
+        field_confidences: fieldConfidences, // speist die Konfidenz-Kalibrierung
         corrected_extraction: editedValues,
       });
 
@@ -2124,31 +2342,12 @@ function TrainingTab({ project, onProjectUpdated }) {
                           itemFields={field.item_fields}
                           onChange={arr => updateEditedValue(fieldId, arr)}
                         />
-                      ) : field.type === 'boolean' ? (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, fontSize: theme.typography.sizes.sm }}>
-                          <input
-                            type="checkbox"
-                            style={styles.checkbox}
-                            checked={!!getInputValue(fieldId, field)}
-                            onChange={e => updateEditedValue(fieldId, e.target.checked)}
-                          />
-                          {getInputValue(fieldId, field) ? 'Ja' : 'Nein'}
-                        </label>
                       ) : (
-                        <input
-                          style={{
-                            ...styles.input,
-                            borderColor: isChanged ? theme.colors.warning : theme.colors.border,
-                          }}
-                          type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                          value={getInputValue(fieldId, field)}
-                          onChange={e => {
-                            const val = field.type === 'number'
-                              ? (e.target.value === '' ? null : parseFloat(e.target.value))
-                              : e.target.value;
-                            updateEditedValue(fieldId, val);
-                          }}
-                          step={field.type === 'number' ? 'any' : undefined}
+                        <FieldInputControl
+                          field={field}
+                          value={currentVal}
+                          onChange={val => updateEditedValue(fieldId, val)}
+                          isChanged={isChanged}
                         />
                       )}
                     </div>
@@ -2400,6 +2599,36 @@ function RulesTab({ project, onProjectUpdated }) {
             ))}
           </div>
         )}
+
+        {/* Konfidenz-Kalibrierung (Welle 3): sagt die Konfidenz echte Fehler voraus? */}
+        {(project.learning?.calibration?.samples ?? 0) >= 10 && (
+          <div style={{ marginTop: theme.spacing.lg }}>
+            <div style={{ fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
+              KONFIDENZ-KALIBRIERUNG ({project.learning.calibration.samples} Stichproben aus Korrekturen)
+            </div>
+            {project.learning.calibration.buckets.map((b, i) => {
+              if (!b.total) return null;
+              const observed = Math.round((b.correct / b.total) * 100);
+              const lo = i * 20;
+              const hi = i * 20 + 20;
+              // Überkonfident: beobachtete Korrektheit deutlich unter dem Konfidenz-Bereich.
+              const off = observed < lo - 10;
+              return (
+                <div key={i} style={{ display: 'flex', gap: theme.spacing.md, fontSize: theme.typography.sizes.sm, marginBottom: 2 }}>
+                  <span style={{ width: 130, color: theme.colors.textMuted }}>Konfidenz {lo}–{hi}%</span>
+                  <span style={{ color: off ? theme.colors.warning : theme.colors.text }}>
+                    {observed}% tatsächlich korrekt
+                  </span>
+                  <span style={{ color: theme.colors.textMuted }}>({b.total})</span>
+                </div>
+              );
+            })}
+            <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+              Liegt die tatsächliche Korrektheit deutlich unter dem Konfidenz-Bereich, ist das Modell
+              überkonfident — dann die Review-Schwelle in den Einstellungen erhöhen.
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={styles.section}>
@@ -2479,6 +2708,9 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   const [description, setDescription] = useState(project.description);
   const [strategy, setStrategy] = useState(project.extraction?.strategy || 'hybrid');
   const [modelOverride, setModelOverride] = useState(project.extraction?.model_override || null);
+  const [reviewThreshold, setReviewThreshold] = useState(
+    project.extraction?.review_threshold != null ? String(project.extraction.review_threshold) : ''
+  );
   const [instructions, setInstructions] = useState(project.instructions || '');
   const [fields, setFields] = useState(
     Object.entries(project.fields).map(([id, f]) => ({
@@ -2563,7 +2795,13 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         description: description.trim(),
         fields: fieldsObj,
         instructions: instructions,
-        extraction: { ...(project.extraction || {}), strategy, model_override: modelOverride },
+        extraction: {
+          ...(project.extraction || {}),
+          strategy,
+          model_override: modelOverride,
+          // leer = Standard (confidence_threshold bzw. 0.6); undefined entfernt den Key im JSON
+          review_threshold: reviewThreshold === '' ? undefined : Math.min(1, Math.max(0, parseFloat(reviewThreshold))),
+        },
       });
 
       if (res.ok) {
@@ -2623,6 +2861,23 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
           <ModelOverrideSelect value={modelOverride} onChange={setModelOverride} />
           <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
             Überschreibt das System-Standardmodell für dieses Projekt. Vision-Strategien brauchen ein vision-fähiges Modell.
+          </div>
+        </div>
+        <div style={{ marginBottom: theme.spacing.lg }}>
+          <label style={styles.label}>Review-Schwelle (Konfidenz, optional)</label>
+          <input
+            style={{ ...styles.input, maxWidth: 160 }}
+            type="number"
+            min="0"
+            max="1"
+            step="0.05"
+            value={reviewThreshold}
+            onChange={e => setReviewThreshold(e.target.value)}
+            placeholder="0.6 (Standard)"
+          />
+          <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+            Batch-Dateien mit einer Feld-Konfidenz unter dieser Schwelle werden als „Zu prüfen" markiert.
+            Leer = Standard (Pipeline-Schwelle bzw. 0.6).
           </div>
         </div>
         <div>

@@ -58,6 +58,13 @@ export interface ExtractionConfig {
    * Eval-Laeufe des Extraktions-Projekte-Features.
    */
   llm_confidence?: boolean;
+  /**
+   * Konsumenten-Feld (wie model_override fuer Konsumenten nutzbar): Schwelle
+   * fuer die Review-Triage des Extraktions-Projekte-Features (Batch-Dateien
+   * mit Feld-Konfidenz darunter → "Zu pruefen"). Von der Engine IGNORIERT;
+   * Fallback ist confidence_threshold.
+   */
+  review_threshold?: number;
   model_override?: {
     provider_id: string;
     model_id: string;
