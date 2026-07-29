@@ -36,8 +36,12 @@ import type {
   PortfolioRoadmapProjekt,
   PortfolioRoadmapIdee,
   PortfolioDependency,
+  PortfolioCostResponse,
+  PortfolioCostProjekt,
+  PortfolioCostIdee,
   Statusbericht,
   Projektauftrag,
+  Projektidee,
   RiskTrackingItem,
 } from './types';
 
@@ -335,6 +339,120 @@ export async function getPortfolioRoadmap(
   );
 
   return { projekte, ideen, dependencies };
+}
+
+// ============== Kosten-Aggregat ==============
+
+function daysBetween(a?: string, b?: string): number | null {
+  if (!a || !b) return null;
+  const da = new Date(a).getTime();
+  const db = new Date(b).getTime();
+  if (isNaN(da) || isNaN(db)) return null;
+  return Math.round((db - da) / 86400000);
+}
+
+/**
+ * Kosten-Kennzahlen eines Projekts aus Auftrag + letztem finalen Statusbericht.
+ * Portiert die Earned-Value-Logik aus StatusberichtKosten.jsx (identische Formeln):
+ *   EV = Budget × Fortschritt%   ·   CPI = EV/Ist   ·   EAC (Prognose-Budget) = Budget/CPI
+ *   SPI = EV/Plan_bis_Ist        ·   Prognose-Termin = Start + round(Plandauer/SPI)
+ */
+function computeProjektCost(ctx: ProjektContext): PortfolioCostProjekt {
+  const auftrag = ctx.auftrag as (Projektauftrag & { start_date?: string; end_date?: string }) | null;
+  const sb = ctx.latestSb;
+  const budget = Number(sb?.cost_budget) || 0;
+  const months = sb?.cost_months || [];
+  const progress = Number(sb?.goals_tracking?.fortschritt) || 0;
+
+  const ist = months.reduce((s, m) => s + (Number(m.ist) || 0), 0);
+
+  // Letzter Monat mit Ist > 0.
+  let lastIstIndex = -1;
+  for (let i = months.length - 1; i >= 0; i--) {
+    if ((Number(months[i]?.ist) || 0) > 0) { lastIstIndex = i; break; }
+  }
+  let cumPlanAtIst = 0;
+  for (let i = 0; i <= lastIstIndex; i++) cumPlanAtIst += Number(months[i]?.plan) || 0;
+
+  const cumEV = budget * (progress / 100);
+  const latestCpi = (lastIstIndex >= 0 && ist > 0 && cumEV > 0) ? cumEV / ist : null;
+  const latestSpi = (lastIstIndex >= 0 && cumPlanAtIst > 0 && cumEV > 0) ? cumEV / cumPlanAtIst : null;
+
+  const hatPrognose = latestCpi != null && latestCpi > 0;
+  const prognoseBudget = hatPrognose ? budget / (latestCpi as number) : budget;
+
+  const planEnde = auftrag?.start_date && auftrag?.end_date ? auftrag.end_date : undefined;
+  const daysEnd = daysBetween(auftrag?.start_date, auftrag?.end_date);
+  let prognoseEnde: string | undefined;
+  let terminAbweichungTage: number | null = null;
+  if (latestSpi && latestSpi > 0 && daysEnd != null && auftrag?.start_date) {
+    const prognoseDays = Math.round(daysEnd / latestSpi);
+    const startMs = new Date(auftrag.start_date).getTime();
+    if (!isNaN(startMs)) {
+      prognoseEnde = new Date(startMs + prognoseDays * 86400000).toISOString().split('T')[0];
+    }
+    terminAbweichungTage = prognoseDays - daysEnd;
+  }
+
+  return {
+    id: ctx.projektId,
+    name: ctx.projektName,
+    budget,
+    ist,
+    prognose_budget: prognoseBudget,
+    hat_prognose: hatPrognose,
+    plan_ende: planEnde,
+    prognose_ende: prognoseEnde,
+    termin_abweichung_tage: terminAbweichungTage,
+  };
+}
+
+/**
+ * Portfolio-Kosten-Aggregat. RBAC identisch zum Dashboard. Returnt `null`, wenn
+ * das Portfolio nicht existiert.
+ */
+export async function getPortfolioCosts(
+  portfolioId: string,
+  userId: string,
+): Promise<PortfolioCostResponse | null> {
+  const portfolio = await getPortfolio(portfolioId);
+  if (!portfolio) return null;
+
+  const allProjekte = await listProjekteByPortfolio(portfolioId);
+  const accessibleEntries = await Promise.all(
+    allProjekte.map(async (p) => {
+      const role = await getEffectiveAuftragRole(userId, p.id);
+      return role ? p : null;
+    }),
+  );
+  const accessible = accessibleEntries.filter((p): p is NonNullable<typeof p> => p !== null);
+  const contexts = await Promise.all(accessible.map((p) => loadProjektContext(p.id, p.name)));
+  const projekte = contexts.map(computeProjektCost);
+
+  // Ideen — RBAC-gefiltert (Idee-Viewer+); nur grobe Investitionsschaetzung.
+  const allIdeen = await listIdeenByPortfolio(portfolioId);
+  const ideenEntries = await Promise.all(
+    allIdeen.map(async (i) => {
+      const role = await getEffectiveIdeeRole(userId, i.id);
+      return role ? i : null;
+    }),
+  );
+  const ideen: PortfolioCostIdee[] = ideenEntries
+    .filter((i): i is NonNullable<typeof i> => i !== null)
+    .map((i) => {
+      const inv = ((i as Projektidee).business_case?.investitionen || [])
+        .reduce((s, it) => s + (Number(it.betrag) || 0), 0);
+      return { id: i.id, name: i.name, investitionen: inv };
+    });
+
+  const summary = {
+    budget: projekte.reduce((s, p) => s + p.budget, 0),
+    ist: projekte.reduce((s, p) => s + p.ist, 0),
+    prognose_budget: projekte.reduce((s, p) => s + p.prognose_budget, 0),
+    ideen_investitionen: ideen.reduce((s, i) => s + i.investitionen, 0),
+  };
+
+  return { projekte, ideen, summary };
 }
 
 // Suppress unused import warnings — these are re-exports in case future modules

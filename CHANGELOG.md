@@ -2,6 +2,20 @@
 
 ## 2026-07-29
 
+### PM: Portfolio-Detail — Tab „Kosten" (Aggregat aus Projekten + Projektideen)
+Der Platzhalter-Tab „Kosten" ist umgesetzt: eine read-only Kostenübersicht über alle zugeordneten Projekte
+und Projektideen.
+- **KPIs**: Summe Budget / Ist / Prognose (EAC) über alle Projekte + Investitionsschätzung der Projektideen.
+- **Gestapelter Kostenvergleich** (neue `PortfolioCostChart`-Komponente, Custom-SVG): pro Kennzahl
+  (Budget/Ist/Prognose) eine Spalte, gestapelt nach Projektanteil — zeigt Portfolio-Summe + Zusammensetzung.
+- **Detailtabelle** je Projekt: Budget, Ist, Prognose (EAC), Plan-Ende, Prognose-Termin, Δ Tage. Ideen mit
+  ihrer Investitionsschätzung separat.
+- Kennzahlen je Projekt aus dem **letzten genehmigten Statusbericht**: Budget = `cost_budget`, Ist = Σ
+  `cost_months.ist`, **Prognose (EAC) = Budget ÷ CPI**, **Prognose-Termin via SPI** — dieselben Earned-Value-
+  Formeln wie im Statusbericht, serverseitig portiert. Ideen: Σ `business_case.investitionen`.
+- Neuer Aggregat-Endpoint `GET /portfolios/:id/costs` (`getPortfolioCosts`, RBAC-gefiltert wie das Dashboard).
+- In beiden Worktrees (DB + YAML), Frontend byte-identisch.
+
 ### PM: Portfolio-Detail — zentraler Speichern-Button im Header (wie Projektauftrag)
 Der Speichern-Button aller Portfolio-Tabs (Basis, Personen, Ziele, Roadmap) sitzt jetzt — analog zum
 Projektauftrag — **oben rechts im Header** (mit Save-Icon, Glow bei ungespeicherten Änderungen, Label

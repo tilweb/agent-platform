@@ -38,7 +38,7 @@ import {
   denyIfBelowPortfolioRole,
   denyIfNotAppEditor,
 } from './_shared';
-import { getPortfolioDashboard, getPortfolioRoadmap } from '../portfolio-dashboard-service';
+import { getPortfolioDashboard, getPortfolioRoadmap, getPortfolioCosts } from '../portfolio-dashboard-service';
 import type { PortfolioStatus, TeamMember, Stakeholder, PortfolioDependency } from '../types';
 // Hinweis: getPortfolioDashboard kommt aus portfolio-dashboard-service.ts (Phase D3).
 
@@ -387,5 +387,24 @@ portfoliosRoutes.get('/portfolios/:id/roadmap', async (c) => {
   } catch (error) {
     console.error('getPortfolioRoadmap error:', error);
     return c.json({ error: 'Failed to get portfolio roadmap' }, 500);
+  }
+});
+
+// ============== Kosten (Aggregat) ==============
+
+portfoliosRoutes.get('/portfolios/:id/costs', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowPortfolioRole(userId, id, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const costs = await getPortfolioCosts(id, userId);
+    if (!costs) return c.json({ error: 'Portfolio nicht gefunden' }, 404);
+    return c.json({ costs });
+  } catch (error) {
+    console.error('getPortfolioCosts error:', error);
+    return c.json({ error: 'Failed to get portfolio costs' }, 500);
   }
 });
