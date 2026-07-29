@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm } from '../utils/apiFetch';
-import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon } from '../components/Icons';
+import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon, FolderOpenIcon } from '../components/Icons';
 import ExportDropdown from '../components/ExportDropdown';
 import { useProviders } from '../hooks/useProviders';
 
@@ -317,17 +317,35 @@ const EXTRACTION_STRATEGIES = [
 // ============== Main Component ==============
 
 export default function ExtractionProjectsPage() {
-  const [view, setView] = useState('list'); // list | create | detail
+  const [view, setView] = useState('list'); // list | create | detail | inbox
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState(null);
+  const [inboxOpenCount, setInboxOpenCount] = useState(0);
   const importInputRef = useRef(null);
 
   useEffect(() => {
     loadProjects();
+    loadInboxCount();
   }, []);
+
+  // Zähler „offene Posteingang-Posten": laufende Uploads + unzugeordnete Teile.
+  async function loadInboxCount() {
+    try {
+      const res = await apiGet('/extraction/inbox');
+      if (res.ok) {
+        const uploads = await res.json();
+        let count = 0;
+        for (const u of uploads) {
+          if (u.status === 'processing') count += 1;
+          count += (u.parts || []).filter(p => p.status === 'unassigned').length;
+        }
+        setInboxOpenCount(count);
+      }
+    } catch { /* ignore */ }
+  }
 
   async function handleImportFile(file) {
     if (!file) return;
@@ -377,6 +395,7 @@ export default function ExtractionProjectsPage() {
     setView('list');
     setSelectedProjectId(null);
     loadProjects();
+    loadInboxCount();
   }
 
   if (view === 'create') {
@@ -387,6 +406,10 @@ export default function ExtractionProjectsPage() {
     return <ProjectDetailView projectId={selectedProjectId} onBack={goBack} />;
   }
 
+  if (view === 'inbox') {
+    return <InboxView projects={projects} onBack={goBack} onOpenProject={openProject} />;
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -395,6 +418,10 @@ export default function ExtractionProjectsPage() {
           <p style={styles.subtitle}>Lernende Extraktion — definiere Felder, trainiere durch Korrektur</p>
         </div>
         <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center' }}>
+          <button style={styles.secondaryBtn} onClick={() => setView('inbox')}>
+            <FolderOpenIcon size={16} />
+            Posteingang{inboxOpenCount > 0 ? ` (${inboxOpenCount})` : ''}
+          </button>
           <button style={styles.secondaryBtn} onClick={() => importInputRef.current?.click()} disabled={importing}>
             {importing ? <Spinner size={14} /> : <DocumentIcon size={16} />}
             {importing ? 'Importiere…' : 'Importieren'}
@@ -778,6 +805,325 @@ function ReviewBadge({ status }) {
     }}>
       {REVIEW_LABELS[status] || status}
     </span>
+  );
+}
+
+// ============== Posteingang (Welle 4) ==============
+
+const INBOX_STATUS = {
+  processing: { label: 'Wird verarbeitet…', bg: theme.colors.primaryLight, fg: theme.colors.primary },
+  ready: { label: 'Bereit', bg: theme.colors.successLight, fg: theme.colors.success },
+  failed: { label: 'Fehler', bg: theme.colors.errorLight, fg: theme.colors.error },
+};
+
+function InboxStatusBadge({ status }) {
+  const s = INBOX_STATUS[status] || INBOX_STATUS.processing;
+  return (
+    <span style={{
+      fontSize: theme.typography.sizes.xs,
+      padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+      borderRadius: theme.borderRadius.full,
+      fontWeight: theme.typography.weights.medium,
+      backgroundColor: s.bg,
+      color: s.fg,
+      whiteSpace: 'nowrap',
+    }}>
+      {s.label}
+    </span>
+  );
+}
+
+/**
+ * Posteingang: Sammel-Scans hochladen → automatisch splitten, klassifizieren
+ * und (bei sicherer Zuordnung) in die Projekte routen; Rest manuell zuordnen.
+ */
+function InboxView({ projects, onBack, onOpenProject }) {
+  const [uploads, setUploads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('');
+  const [expandedId, setExpandedId] = useState(null);
+  const [routing, setRouting] = useState({});       // partId -> true
+  const [partTargets, setPartTargets] = useState({}); // partId -> project_id
+  const fileInputRef = useRef(null);
+
+  const projectName = (id) => projects.find(p => p.id === id)?.name || id;
+  const anyProcessing = uploads.some(u => u.status === 'processing');
+
+  useEffect(() => { loadUploads(); /* eslint-disable-next-line */ }, []);
+
+  // Polling solange etwas verarbeitet wird.
+  useEffect(() => {
+    if (!anyProcessing) return;
+    const t = setTimeout(() => loadUploads(), 2500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [uploads]);
+
+  async function loadUploads() {
+    try {
+      const res = await apiGet('/extraction/inbox');
+      if (res.ok) setUploads(await res.json());
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  }
+
+  async function handleFiles(files) {
+    const list = Array.from(files || []).filter(Boolean);
+    if (list.length === 0) return;
+    setUploading(true);
+    setStatusMsg('');
+    try {
+      const formData = new FormData();
+      for (const f of list) formData.append('files', f);
+      const res = await apiPostForm('/extraction/inbox', formData);
+      if (res.ok) {
+        await loadUploads();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setStatusMsg(`Fehler: ${err.error || res.status}`);
+      }
+    } catch {
+      setStatusMsg('Netzwerkfehler beim Hochladen');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleRoute(uploadId, part, target) {
+    if (!target) return;
+    setRouting(prev => ({ ...prev, [part.id]: true }));
+    setStatusMsg('');
+    try {
+      const res = await apiPost(`/extraction/inbox/${uploadId}/parts/${part.id}/route`, { project_id: target });
+      if (res.ok) {
+        await loadUploads();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setStatusMsg(`Fehler: ${err.error || res.status}`);
+      }
+    } catch {
+      setStatusMsg('Netzwerkfehler bei der Zuordnung');
+    } finally {
+      setRouting(prev => ({ ...prev, [part.id]: false }));
+    }
+  }
+
+  async function handleDelete(uploadId, e) {
+    e.stopPropagation();
+    if (!confirm('Diesen Posteingang-Eintrag inkl. Teil-Dokumenten löschen?')) return;
+    try {
+      await apiDelete(`/extraction/inbox/${uploadId}`);
+      loadUploads();
+    } catch { /* ignore */ }
+  }
+
+  function classificationLine(part) {
+    const c = part.classification;
+    if (!c) return <span style={{ color: theme.colors.textMuted }}>Keine Klassifikation</span>;
+    if (!c.project_id) {
+      return <span style={{ color: theme.colors.textMuted }}>Kein Projekt erkannt{c.alternatives?.length ? ` — vielleicht: ${c.alternatives.map(a => `${projectName(a.project_id)} (${Math.round(a.confidence * 100)}%)`).join(', ')}` : ''}</span>;
+    }
+    return (
+      <span>
+        <span style={{ color: theme.colors.text, fontWeight: theme.typography.weights.medium }}>
+          {projectName(c.project_id)}
+        </span>
+        <span style={{ color: theme.colors.textMuted }}> · {Math.round(c.confidence * 100)}% sicher</span>
+        {c.alternatives?.length > 0 && (
+          <span style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.xs }}>
+            {' '}(Alternativen: {c.alternatives.map(a => `${projectName(a.project_id)} ${Math.round(a.confidence * 100)}%`).join(', ')})
+          </span>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <div>
+          <button style={styles.backLink} onClick={onBack}>
+            <ArrowLeftIcon size={14} /> Projekte
+          </button>
+          <h1 style={styles.title}>Posteingang</h1>
+          <p style={styles.subtitle}>
+            Gemischte Scans hochladen — Dokumente werden automatisch getrennt, klassifiziert und
+            bei sicherer Zuordnung direkt verarbeitet
+          </p>
+        </div>
+      </div>
+      <div style={styles.content}>
+        {/* Upload */}
+        <div style={styles.section}>
+          <div
+            onDragOver={e => { e.preventDefault(); setDragActive(true); }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={e => { e.preventDefault(); setDragActive(false); handleFiles(e.dataTransfer?.files); }}
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              border: `2px dashed ${dragActive ? theme.colors.primary : theme.colors.border}`,
+              borderRadius: theme.borderRadius.lg,
+              padding: theme.spacing['2xl'],
+              textAlign: 'center',
+              cursor: 'pointer',
+              backgroundColor: dragActive ? theme.colors.primaryLight : theme.colors.surface,
+              transition: `all ${theme.transitions.fast}`,
+            }}
+          >
+            <input
+              ref={fileInputRef} type="file" hidden multiple
+              accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*"
+              onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
+            />
+            <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm }}>
+              {uploading ? <Spinner size={16} /> : <FolderOpenIcon size={18} />}
+              {uploading ? 'Lade hoch…' : 'Dateien hierher ziehen oder klicken (PDF, Bilder — auch Sammel-Scans)'}
+            </div>
+            <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+              Mehrseitige PDFs werden auf Dokumentgrenzen geprüft und getrennt · max. 50 MB je Datei
+            </div>
+          </div>
+          {statusMsg && (
+            <div style={{ marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm, color: theme.colors.error }}>{statusMsg}</div>
+          )}
+        </div>
+
+        {/* Upload-Liste */}
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>Eingänge ({uploads.length})</div>
+          {loading ? (
+            <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>Lade…</div>
+          ) : uploads.length === 0 ? (
+            <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+              Noch keine Eingänge. Lade oben Dokumente hoch.
+            </div>
+          ) : (
+            uploads.map(u => {
+              const open = expandedId === u.id;
+              const unassigned = (u.parts || []).filter(p => p.status === 'unassigned').length;
+              return (
+                <div key={u.id} style={{
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.lg,
+                  marginBottom: theme.spacing.md,
+                  backgroundColor: theme.colors.surface,
+                }}>
+                  <div
+                    onClick={() => setExpandedId(open ? null : u.id)}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: `${theme.spacing.md} ${theme.spacing.lg}`, cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, minWidth: 0 }}>
+                      <InboxStatusBadge status={u.status} />
+                      <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={u.filename}>
+                        {u.filename}
+                      </span>
+                      <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, whiteSpace: 'nowrap' }}>
+                        {u.pageCount ? `${u.pageCount} Seite(n)` : ''}
+                        {u.parts?.length > 1 ? ` · ${u.parts.length} Dokumente erkannt` : ''}
+                        {unassigned > 0 ? ` · ${unassigned} zuzuordnen` : ''}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                      <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                        {new Date(u.createdAt).toLocaleString('de-DE')}
+                      </span>
+                      <button onClick={(e) => handleDelete(u.id, e)} title="Löschen"
+                        style={{ ...styles.dangerBtn, padding: theme.spacing.sm }}>
+                        <TrashIcon size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {(u.error || u.note) && (
+                    <div style={{
+                      padding: `0 ${theme.spacing.lg} ${theme.spacing.md}`,
+                      fontSize: theme.typography.sizes.xs,
+                      color: u.error ? theme.colors.error : theme.colors.textMuted,
+                    }}>
+                      {u.error || u.note}
+                    </div>
+                  )}
+
+                  {open && (u.parts || []).length > 0 && (
+                    <div style={{ borderTop: `1px solid ${theme.colors.border}`, padding: theme.spacing.lg }}>
+                      {u.parts.map(part => (
+                        <div key={part.id} style={{
+                          display: 'flex', gap: theme.spacing.lg, alignItems: 'flex-start',
+                          padding: `${theme.spacing.md} 0`,
+                          borderBottom: `1px solid ${theme.colors.border}`,
+                        }}>
+                          {part.previewDataUri ? (
+                            <img src={part.previewDataUri} alt="" style={{
+                              width: 72, borderRadius: theme.borderRadius.md,
+                              border: `1px solid ${theme.colors.border}`, flexShrink: 0,
+                            }} />
+                          ) : (
+                            <div style={{
+                              width: 72, height: 96, borderRadius: theme.borderRadius.md,
+                              border: `1px solid ${theme.colors.border}`, flexShrink: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: theme.colors.textMuted, backgroundColor: theme.colors.background,
+                            }}>
+                              <DocumentIcon size={22} />
+                            </div>
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>
+                              {part.filename}
+                              <span style={{ color: theme.colors.textMuted, fontWeight: theme.typography.weights.normal }}>
+                                {' '}· Seiten {part.pageFrom}–{part.pageTo}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: theme.typography.sizes.sm, marginTop: theme.spacing.xs }}>
+                              {classificationLine(part)}
+                            </div>
+                            <div style={{ marginTop: theme.spacing.sm }}>
+                              {part.status === 'unassigned' ? (
+                                <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center', flexWrap: 'wrap' }}>
+                                  <select
+                                    style={{ ...styles.select, minWidth: 220 }}
+                                    value={partTargets[part.id] || part.classification?.project_id || ''}
+                                    onChange={e => setPartTargets(prev => ({ ...prev, [part.id]: e.target.value }))}
+                                  >
+                                    <option value="">Projekt wählen…</option>
+                                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                  </select>
+                                  <button
+                                    style={styles.primaryBtn}
+                                    disabled={routing[part.id] || !(partTargets[part.id] || part.classification?.project_id)}
+                                    onClick={() => handleRoute(u.id, part, partTargets[part.id] || part.classification?.project_id)}
+                                  >
+                                    {routing[part.id] ? <Spinner size={14} /> : null}
+                                    Zuordnen & verarbeiten
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => onOpenProject(part.targetProjectId)}
+                                  style={{ ...styles.backLink, marginBottom: 0 }}
+                                >
+                                  → {projectName(part.targetProjectId)} · Lauf gestartet
+                                  {part.status === 'auto_routed' ? ' (automatisch)' : ''}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

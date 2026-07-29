@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-07-29
+
+### Feature: Extraktion — Posteingang / Eingangsstrecke (Ausbau-Welle 4)
+Aus dem Extraktions-Werkzeug wird eine **Dokumenten-Eingangsstrecke**: Der neue
+**Posteingang** nimmt gemischte Scans entgegen, trennt Sammel-PDFs an erkannten
+Dokumentgrenzen, klassifiziert jedes Teil-Dokument gegen die Projekt-Kataloge und routet
+sichere Treffer automatisch als Batch-Lauf ins Zielprojekt (die W3-Review-Triage ist dort
+das zweite Netz). Unsichere Teile warten mit Vorschau + Vorschlag auf manuelle Zuordnung.
+- **Split** (`extraction/inbox/split.ts` + neues `services/extraction/pdf-split.ts`):
+  je Seitenübergang ein Vision-Urteil (erprobter Prompt aus `docs/document-split/`,
+  als TS-Konstante eingebettet — Railway-Image hat kein docs/); nur ein klares „true"
+  trennt (konservativ, Call-Fehler = kein Schnitt). Teil-PDFs via `pdfseparate`+`pdfunite`
+  (poppler, bereits in Aptfile/Dockerfile); Fallback auf „ein Teil + Hinweis" wenn der
+  Splitter fehlt/scheitert (z.B. verschlüsselte PDFs). Seiten-Cap `INBOX_MAX_PAGES` (60).
+- **Klassifikation** (`inbox/classify.ts`): 1 Vision-Call auf die erste Seite je Teil
+  gegen den Projekt-Katalog (id/Name/Beschreibung/Feld-Labels) mit strengen
+  Confidence-Regeln (Muster classifyContract); Antwort-Parsing mit Fallbacks
+  (unbekannte ID → null, Clamping, Alternativen gefiltert).
+- **Auto-Routing**: Teile mit Konfidenz ≥ `INBOX_AUTO_ROUTE_THRESHOLD` (0.8) werden je
+  Projekt zu EINEM Batch-Lauf gebündelt (`createBatchRun` + `runBatchExtraction`
+  wiederverwendet); Projekt-vor-Routing-Check (gelöscht → bleibt unassigned).
+- **Persistenz** (`inbox/store.ts`, divergent): Scalingo = Postgres-Metadaten
+  (Migration `0027`: `inbox_uploads` + `inbox_parts`, echte FK-Cascade) + PDF-Bytes in
+  **S3** (`extraction-inbox/{uploadId}/…`, neue `s3Paths`-Helper — ephemeres FS!);
+  Railway = YAML + Dateien unter `data/extraction-inbox/`. DELETE räumt Bytes mit ab.
+- **Routen** (`routes/extraction-inbox.ts` unter `/api/extraction/inbox`): Multi-Upload
+  (fire-and-forget, 50-MB-Cap), Liste/Detail (Polling), manuelle Zuordnung
+  (`…/parts/:partId/route`), Löschen. Stale-Sweep: processing älter 30 min → failed.
+- **UI**: Header-Button „Posteingang" (mit Offen-Zähler) auf der Projektliste; neue
+  Posteingang-Ansicht mit Multi-Dropzone, Status-Polling, aufklappbaren Eingängen:
+  je Teil Thumbnail (40-dpi-Preview), Seitenbereich, Klassifikation mit Konfidenz +
+  Alternativen, Projekt-Auswahl + „Zuordnen & verarbeiten" bzw. „→ Projekt, Lauf
+  gestartet"-Link.
+- **Verifiziert:** 152 Backend-Tests grün (16 neue: Grenz-Ranges, Verdikt-Parsing,
+  Klassifikations-Parsing, Teil-Dateinamen); E2E lokal: zusammengeklebtes 2-Dokumente-PDF
+  (Rechnung+Lieferschein, via eigenem PDF-Generator + pdfunite) → Split erkannte die
+  Grenze, beide Teile mit 0.95 korrekt klassifiziert und **automatisch geroutet**, beide
+  Ziel-Batch-Läufe completed mit korrekt extrahierten Feldern + Review `auto_ok`
+  (W4→W1–W3-Kette geschlossen); kaputtes PDF → failed mit klarer Meldung; DELETE
+  entfernte alle 3 S3-Objekte; Migration 0027 beim Boot. Railway gespiegelt
+  (YAML/FS-Store + Smoke-Roundtrip). Doku: `docs/extraktion-posteingang-2026-07-29.md`.
+
 ## 2026-07-28
 
 ### Feature: Extraktion — Review-Workflow im Batch (Ausbau-Welle 3)

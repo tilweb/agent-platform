@@ -41,6 +41,7 @@ Logik und UI sind identisch (s. Abschnitt 9).
 | **Extrahieren** | Ein Dokument durch das angelernte Projekt schicken → strukturierte Felder + Konfidenz je Feld. |
 | **Fundstellen anzeigen** | Bei visueller Verarbeitung wird jeder Wert im Dokument-Bild **markiert** (Bounding-Box, per OCR verortet) — nachvollziehbar und korrigierbar. |
 | **Massenverarbeitung** | Multi-Upload vieler Dokumente durch ein Projekt („Verarbeiten"-Tab), serverseitig, mit Status und Export. |
+| **Posteingang (Eingangsstrecke)** | Gemischte Sammel-Scans hochladen — Dokumente werden per Vision an Grenzen getrennt, klassifiziert und bei sicherer Zuordnung automatisch ins passende Projekt geroutet (seit Ausbau-Welle 4). |
 | **Export/Import** | Ein gut angelerntes Projekt als portables `.json`-Paket weitergeben (Vorlage für andere Instanzen). |
 | **Modellwahl** | Pro Projekt ein KI-Modell wählbar (analog zu Agenten); sonst System-Standard. |
 
@@ -503,7 +504,7 @@ strukturelle Lücken zwischen „gutem Werkzeug" und „bestem Tool im Space". D
 | **W1** | **Line-Items / Positionsdaten** | Feldtyp `list` mit Spalten; Adapter → Array-Gruppe; Dedupe; Positions-Tabellen in Training/Batch; XLSX-Zusatzblätter | **umgesetzt (2026-07-27)** |
 | **W2** | **Eval-Harness & Audit** | Jede Guideline-Regeneration läuft automatisch als **Champion/Challenger** gegen bestätigte Beispiele (text-only, gedeckelt ~20); nur messbar bessere/gleiche Regeln werden übernommen. Feld-Accuracy-Metriken; Audit-Metadaten (guideline_version + Modell je Ergebnis) | **umgesetzt (2026-07-27)** — `docs/extraktion-eval-harness-2026-07-27.md` |
 | **W3** | **Review-Workflow im Batch** | Batch-Ergebnisse korrigierbar → Korrekturen werden Trainingsbeispiele (Batch speichert dafür künftig `document_text`); Konfidenz-Triage (auto-ok / Review-Queue); Kalibrierungs-Messung | **umgesetzt (2026-07-28)** — `docs/extraktion-review-workflow-2026-07-28.md` |
-| **W4** | **Eingangsstrecke** | Mehrfach-PDF **splitten** (Seitenpaar-Vision, Vorarbeit `tools/document-split-test.ts`) → **klassifizieren** (Muster `classifyContract`) → aufs passende Projekt **routen**; „Posteingang"-UI | geplant |
+| **W4** | **Eingangsstrecke** | Mehrfach-PDF **splitten** (Seitenpaar-Vision, Vorarbeit `tools/document-split-test.ts`) → **klassifizieren** (Muster `classifyContract`) → aufs passende Projekt **routen**; „Posteingang"-UI | **umgesetzt (2026-07-29)** — `docs/extraktion-posteingang-2026-07-29.md` |
 | **W5** | **API & Integration** | API-Batch + Webhooks; `pageImages` → S3; fachliche Validierungsregeln (Summen-Check Positionen↔Gesamtbetrag, Stammdaten-Abgleich via Tables); Ähnlichkeits-Few-Shot (Embeddings); Schema-Inferenz beim Onboarding | geplant |
 
 Leitgedanke: Der Lern-Loop ist das Differenzierungsmerkmal — W2 macht ihn **beweisbar**
