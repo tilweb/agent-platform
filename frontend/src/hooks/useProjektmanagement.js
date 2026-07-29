@@ -726,6 +726,14 @@ export function useProjektmanagement() {
     return data.dashboard;
   }, []);
 
+  const getPortfolioRoadmap = useCallback(async (portfolioId) => {
+    const response = await apiGet(`/apps/projektmanagement/portfolios/${portfolioId}/roadmap`);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('Failed to get portfolio roadmap');
+    const data = await response.json();
+    return data.roadmap;
+  }, []);
+
   // Portfolio ↔ Projektidee (0..1)
   const getPortfolioIdeen = useCallback(async (portfolioId) => {
     const response = await apiGet(`/apps/projektmanagement/portfolios/${portfolioId}/ideen`);
@@ -822,6 +830,7 @@ export function useProjektmanagement() {
     getPortfolioProjekte,
     getAvailableProjekteForPortfolio,
     getPortfolioDashboard,
+    getPortfolioRoadmap,
     getPortfolioIdeen,
     getAvailableIdeenForPortfolio,
     assignIdeeToPortfolio,
