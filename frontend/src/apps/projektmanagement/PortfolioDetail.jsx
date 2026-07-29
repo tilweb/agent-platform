@@ -10,7 +10,7 @@
  * URL-Sync: ?tab=...
  */
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useProjektmanagement, VersionConflictError } from '../../hooks/useProjektmanagement';
@@ -150,6 +150,10 @@ const TABS = [
 
 const PLACEHOLDER_TABS = new Set(['kosten', 'risiken']);
 
+// Tabs mit einem zentralen Speichern-Button im Header (analog Projektauftrag).
+// Der aktive Tab wird per Ref angesprochen (imperativer save()-Handle).
+const SAVABLE_TABS = new Set(['basis', 'personen', 'ziele', 'roadmap']);
+
 // Anzeigename eines Config-Werts (z.B. Portfoliostatus) — Fallback auf den Wert.
 function optionLabel(appConfig, key, value) {
   const opt = (appConfig?.[key] || []).find((o) => o.value === value);
@@ -176,9 +180,15 @@ export default function PortfolioDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Zentrale Speichern-Steuerung im Header: der aktive Tab meldet seinen
+  // Dirty-/Saving-Zustand (tabState) und stellt save() per Ref bereit.
+  const activeTabRef = useRef(null);
+  const [tabState, setTabState] = useState({ dirty: false, saving: false });
+
   const requestedTab = searchParams.get('tab') || 'uebersicht';
   const activeTab = TABS.find((t) => t.id === requestedTab)?.id || 'uebersicht';
   const setTab = (next) => {
+    setTabState({ dirty: false, saving: false });
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('tab', next);
@@ -245,6 +255,25 @@ export default function PortfolioDetail() {
               <span>{projekteCount} {projekteCount === 1 ? 'Projekt' : 'Projekte'}</span>
             </div>
           </div>
+
+          {canEdit && SAVABLE_TABS.has(activeTab) && (
+            <div style={styles.headerActions}>
+              <button
+                type="button"
+                style={{
+                  ...styles.actionButton,
+                  ...styles.primaryButton,
+                  opacity: tabState.saving ? 0.7 : 1,
+                  ...(tabState.dirty && !tabState.saving ? { boxShadow: `0 0 0 3px ${theme.colors.primary}30` } : {}),
+                }}
+                onClick={() => activeTabRef.current?.save?.()}
+                disabled={tabState.saving}
+              >
+                <SaveIcon />
+                {tabState.saving ? 'Speichern…' : tabState.dirty ? 'Speichern *' : 'Speichern'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -262,10 +291,12 @@ export default function PortfolioDetail() {
         {activeTab === 'basis' && (
           <BasisTab
             key={`${portfolio.id}-${portfolio.version}`}
+            ref={activeTabRef}
             portfolio={portfolio}
             appConfig={appConfig}
             canEdit={canEdit}
             canDelete={canDelete}
+            onStateChange={setTabState}
             onSaved={(p) => setPortfolio(p)}
             onDeleted={() => navigate('/apps/projektmanagement?tab=portfolios')}
             onCountChange={setProjekteCount}
@@ -275,25 +306,31 @@ export default function PortfolioDetail() {
         {activeTab === 'personen' && (
           <PersonenTab
             key={`${portfolio.id}-${portfolio.version}`}
+            ref={activeTabRef}
             portfolio={portfolio}
             appConfig={appConfig}
             canEdit={canEdit}
+            onStateChange={setTabState}
             onSaved={(p) => setPortfolio(p)}
           />
         )}
         {activeTab === 'ziele' && (
           <ZieleTab
             key={`${portfolio.id}-${portfolio.version}`}
+            ref={activeTabRef}
             portfolio={portfolio}
             canEdit={canEdit}
+            onStateChange={setTabState}
             onSaved={(p) => setPortfolio(p)}
           />
         )}
         {activeTab === 'roadmap' && (
           <RoadmapTab
             key={`${portfolio.id}-${portfolio.version}`}
+            ref={activeTabRef}
             portfolio={portfolio}
             canEdit={canEdit}
+            onStateChange={setTabState}
             onSaved={(p) => setPortfolio(p)}
             navigate={navigate}
           />
@@ -310,33 +347,36 @@ export default function PortfolioDetail() {
 // nur mit Portfolio-Labels. Team + Stakeholder werden im Portfolio persistiert
 // (metadata-JSONB auf DB, Top-Level in YAML).
 
-function PersonenTab({ portfolio, appConfig, canEdit, onSaved }) {
+const PersonenTab = forwardRef(function PersonenTab({ portfolio, appConfig, onStateChange, onSaved }, ref) {
   const { updatePortfolio } = useProjektmanagement();
   const [data, setData] = useState({
     organization: portfolio.organization || [],
     stakeholders: portfolio.stakeholders || [],
   });
-  const [isDirty, setIsDirty] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleChange = (patch) => { setData((d) => ({ ...d, ...patch })); setIsDirty(true); };
+  const handleChange = (patch) => {
+    setData((d) => ({ ...d, ...patch }));
+    onStateChange?.({ dirty: true, saving: false });
+  };
 
   const save = async () => {
-    setIsSaving(true); setError(null);
+    onStateChange?.({ dirty: true, saving: true }); setError(null);
     try {
       const updated = await updatePortfolio(portfolio.id, {
         organization: data.organization,
         stakeholders: data.stakeholders,
       }, { expectedVersion: portfolio.version });
+      onStateChange?.({ dirty: false, saving: false });
       onSaved(updated);
-      setIsDirty(false);
     } catch (err) {
       setError(err instanceof VersionConflictError
         ? 'Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.'
         : err.message);
-    } finally { setIsSaving(false); }
+      onStateChange?.({ dirty: true, saving: false });
+    }
   };
+  useImperativeHandle(ref, () => ({ save }));
 
   return (
     <div>
@@ -350,25 +390,9 @@ function PersonenTab({ portfolio, appConfig, canEdit, onSaved }) {
         teamLabel="Portfolioteam"
         stakeholderLabel="Portfolio-Stakeholder"
       />
-      {canEdit && (
-        <div style={{ marginTop: theme.spacing.xl }}>
-          <button
-            type="button"
-            style={{
-              ...styles.actionButton, ...styles.primaryButton,
-              opacity: isSaving ? 0.7 : 1,
-              ...(isDirty && !isSaving ? { boxShadow: `0 0 0 3px ${theme.colors.primary}30` } : {}),
-            }}
-            onClick={save}
-            disabled={isSaving || !isDirty}
-          >
-            {isSaving ? 'Speichern…' : isDirty ? 'Speichern *' : 'Gespeichert'}
-          </button>
-        </div>
-      )}
     </div>
   );
-}
+});
 
 // ============== Ziele-Tab (Portfolioziele + Erfolgskriterien) ==============
 //
@@ -383,33 +407,36 @@ Beispiel:
 - Verbesserung der Ressourcen-Auslastung über alle Projekte um 15%
 - Aufbau einer einheitlichen Projekt-Governance`;
 
-function ZieleTab({ portfolio, canEdit, onSaved }) {
+const ZieleTab = forwardRef(function ZieleTab({ portfolio, onStateChange, onSaved }, ref) {
   const { updatePortfolio } = useProjektmanagement();
   const [data, setData] = useState({
     goals: portfolio.goals || '',
     criteria: portfolio.criteria || [],
   });
-  const [isDirty, setIsDirty] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleChange = (patch) => { setData((d) => ({ ...d, ...patch })); setIsDirty(true); };
+  const handleChange = (patch) => {
+    setData((d) => ({ ...d, ...patch }));
+    onStateChange?.({ dirty: true, saving: false });
+  };
 
   const save = async () => {
-    setIsSaving(true); setError(null);
+    onStateChange?.({ dirty: true, saving: true }); setError(null);
     try {
       const updated = await updatePortfolio(portfolio.id, {
         goals: data.goals,
         criteria: (data.criteria || []).map((c) => c.trim()).filter(Boolean),
       }, { expectedVersion: portfolio.version });
+      onStateChange?.({ dirty: false, saving: false });
       onSaved(updated);
-      setIsDirty(false);
     } catch (err) {
       setError(err instanceof VersionConflictError
         ? 'Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.'
         : err.message);
-    } finally { setIsSaving(false); }
+      onStateChange?.({ dirty: true, saving: false });
+    }
   };
+  useImperativeHandle(ref, () => ({ save }));
 
   return (
     <div>
@@ -424,25 +451,9 @@ function ZieleTab({ portfolio, canEdit, onSaved }) {
         criteriaHint="Definieren Sie messbare Kriterien, an denen der Portfolioerfolg gemessen wird."
         tipText="Gute Portfolioziele richten alle zugeordneten Projekte auf einen gemeinsamen Nutzen aus. Stellen Sie sicher, dass Ihre Ziele:"
       />
-      {canEdit && (
-        <div style={{ marginTop: theme.spacing.xl }}>
-          <button
-            type="button"
-            style={{
-              ...styles.actionButton, ...styles.primaryButton,
-              opacity: isSaving ? 0.7 : 1,
-              ...(isDirty && !isSaving ? { boxShadow: `0 0 0 3px ${theme.colors.primary}30` } : {}),
-            }}
-            onClick={save}
-            disabled={isSaving || !isDirty}
-          >
-            {isSaving ? 'Speichern…' : isDirty ? 'Speichern *' : 'Gespeichert'}
-          </button>
-        </div>
-      )}
     </div>
   );
-}
+});
 
 // ============== Roadmap-Tab (Gantt aus Projekten + Projektideen) ==============
 //
@@ -480,13 +491,11 @@ function RoadmapLegend() {
   );
 }
 
-function RoadmapTab({ portfolio, canEdit, onSaved, navigate }) {
+const RoadmapTab = forwardRef(function RoadmapTab({ portfolio, canEdit, onStateChange, onSaved, navigate }, ref) {
   const { getPortfolioRoadmap, updatePortfolio } = useProjektmanagement();
   const [roadmap, setRoadmap] = useState(null);
   const [deps, setDeps] = useState(portfolio.dependencies || []);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDirty, setIsDirty] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -536,21 +545,28 @@ function RoadmapTab({ portfolio, canEdit, onSaved, navigate }) {
     if (!from || !to || from === to) return;
     if (deps.some((d) => d.from === from && d.to === to)) return;
     setDeps((prev) => [...prev, { from, to }]);
-    setIsDirty(true); setFrom(''); setTo('');
+    setFrom(''); setTo('');
+    onStateChange?.({ dirty: true, saving: false });
   };
-  const removeDep = (idx) => { setDeps((prev) => prev.filter((_, i) => i !== idx)); setIsDirty(true); };
+  const removeDep = (idx) => {
+    setDeps((prev) => prev.filter((_, i) => i !== idx));
+    onStateChange?.({ dirty: true, saving: false });
+  };
 
   const save = async () => {
-    setIsSaving(true); setError(null);
+    onStateChange?.({ dirty: true, saving: true }); setError(null);
     try {
       const updated = await updatePortfolio(portfolio.id, { dependencies: deps }, { expectedVersion: portfolio.version });
-      onSaved(updated); setIsDirty(false);
+      onStateChange?.({ dirty: false, saving: false });
+      onSaved(updated);
     } catch (err) {
       setError(err instanceof VersionConflictError
         ? 'Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.'
         : err.message);
-    } finally { setIsSaving(false); }
+      onStateChange?.({ dirty: true, saving: false });
+    }
   };
+  useImperativeHandle(ref, () => ({ save }));
 
   const onItemClick = (it) => {
     if (it._kind === 'idee') navigate(`/apps/projektmanagement/ideen/${it.refId}`);
@@ -641,26 +657,9 @@ function RoadmapTab({ portfolio, canEdit, onSaved, navigate }) {
           </tbody>
         </table>
       )}
-
-      {canEdit && (
-        <div style={{ marginTop: theme.spacing.xl }}>
-          <button
-            type="button"
-            style={{
-              ...styles.actionButton, ...styles.primaryButton,
-              opacity: isSaving ? 0.7 : 1,
-              ...(isDirty && !isSaving ? { boxShadow: `0 0 0 3px ${theme.colors.primary}30` } : {}),
-            }}
-            onClick={save}
-            disabled={isSaving || !isDirty}
-          >
-            {isSaving ? 'Speichern…' : isDirty ? 'Abhängigkeiten speichern *' : 'Gespeichert'}
-          </button>
-        </div>
-      )}
     </div>
   );
-}
+});
 
 // ============== Projekte-Tab ==============
 
@@ -828,7 +827,7 @@ function ProjekteTab({ portfolioId, canEdit, getPortfolioProjekte, getAvailableP
 
 // ============== Basis-Tab (Stammdaten + Projekt-/Ideen-Zuordnung + Löschen) ==============
 
-function BasisTab({ portfolio, appConfig, canEdit, canDelete, onSaved, onDeleted, onCountChange, navigate }) {
+const BasisTab = forwardRef(function BasisTab({ portfolio, appConfig, canEdit, canDelete, onStateChange, onSaved, onDeleted, onCountChange, navigate }, ref) {
   const {
     updatePortfolio, deletePortfolio,
     getPortfolioProjekte, getAvailableProjekteForPortfolio, updateProjekt,
@@ -847,18 +846,19 @@ function BasisTab({ portfolio, appConfig, canEdit, canDelete, onSaved, onDeleted
   // Formular wird aus dem Portfolio initialisiert; die Komponente wird per key
   // (portfolio.version) neu gemountet, wenn sich das Portfolio ändert (nach Save).
   const [form, setForm] = useState(initForm);
-  const [isDirty, setIsDirty] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const set = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setIsDirty(true); };
+  const set = (k, v) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    onStateChange?.({ dirty: true, saving: false });
+  };
   const opts = (key) => appConfig?.[key] || [];
 
   const save = async () => {
     if (!form.name.trim()) { setError('Name ist erforderlich.'); return; }
-    setIsSaving(true); setError(null);
+    onStateChange?.({ dirty: true, saving: true }); setError(null);
     try {
       const updated = await updatePortfolio(portfolio.id, {
         name: form.name.trim(),
@@ -869,14 +869,16 @@ function BasisTab({ portfolio, appConfig, canEdit, canDelete, onSaved, onDeleted
         start_date: form.start_date || undefined,
         end_date: form.end_date || undefined,
       }, { expectedVersion: portfolio.version });
+      onStateChange?.({ dirty: false, saving: false });
       onSaved(updated);
-      setIsDirty(false);
     } catch (err) {
       setError(err instanceof VersionConflictError
         ? 'Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.'
         : err.message);
-    } finally { setIsSaving(false); }
+      onStateChange?.({ dirty: true, saving: false });
+    }
   };
+  useImperativeHandle(ref, () => ({ save }));
 
   const doDelete = async () => {
     setIsDeleting(true);
@@ -943,20 +945,6 @@ function BasisTab({ portfolio, appConfig, canEdit, canDelete, onSaved, onDeleted
           readOnly={!canEdit}
         />
       </div>
-      {canEdit && (
-        <button
-          type="button"
-          style={{
-            ...styles.actionButton, ...styles.primaryButton,
-            opacity: isSaving ? 0.7 : 1,
-            ...(isDirty && !isSaving ? { boxShadow: `0 0 0 3px ${theme.colors.primary}30` } : {}),
-          }}
-          onClick={save}
-          disabled={isSaving || !isDirty}
-        >
-          {isSaving ? 'Speichern…' : isDirty ? 'Speichern *' : 'Gespeichert'}
-        </button>
-      )}
 
       <div style={sectionTitle}>Zugeordnete Projekte</div>
       <ProjekteTab
@@ -999,7 +987,7 @@ function BasisTab({ portfolio, appConfig, canEdit, canDelete, onSaved, onDeleted
       />
     </div>
   );
-}
+});
 
 // ============== Ideen-Zuordnung (im Basis-Tab) ==============
 
@@ -1135,5 +1123,16 @@ function IdeenTab({ portfolioId, canEdit, getPortfolioIdeen, getAvailableIdeenFo
         </div>
       )}
     </div>
+  );
+}
+
+// Icons (lokal, konsistent mit WizardPage)
+function SaveIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+      <polyline points="17 21 17 13 7 13 7 21" />
+      <polyline points="7 3 7 8 15 8" />
+    </svg>
   );
 }
