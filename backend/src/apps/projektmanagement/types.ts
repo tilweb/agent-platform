@@ -346,6 +346,45 @@ export interface PortfolioRoadmapResponse {
   dependencies: PortfolioDependency[];
 }
 
+// ============== Portfolio-Kosten (computed) ==============
+//
+// Aggregat fuer GET /portfolios/:id/costs. Kennzahlen je Projekt aus dem letzten
+// finalen Statusbericht (Budget = cost_budget, Ist = Summe cost_months.ist,
+// Prognose-Budget = EAC = Budget/CPI, Prognose-Termin via SPI — identische
+// Formeln wie im Statusbericht). Projektideen tragen nur eine grobe
+// Investitionsschaetzung (business_case.investitionen).
+
+export interface PortfolioCostProjekt {
+  id: string;
+  name: string;
+  budget: number;                 // genehmigtes Budget (cost_budget)
+  ist: number;                    // Summe cost_months[].ist
+  prognose_budget: number;        // EAC (Budget/CPI); Fallback = budget, wenn kein CPI
+  hat_prognose: boolean;          // true, wenn ein echter CPI vorlag (sonst Fallback)
+  plan_ende?: string;             // Auftrag.end_date
+  prognose_ende?: string;         // via SPI errechnetes Enddatum
+  termin_abweichung_tage?: number | null;
+}
+
+export interface PortfolioCostIdee {
+  id: string;
+  name: string;
+  investitionen: number;          // Summe business_case.investitionen[].betrag
+}
+
+export interface PortfolioCostSummary {
+  budget: number;
+  ist: number;
+  prognose_budget: number;
+  ideen_investitionen: number;    // Summe der Ideen-Investitionsschaetzung
+}
+
+export interface PortfolioCostResponse {
+  projekte: PortfolioCostProjekt[];
+  ideen: PortfolioCostIdee[];
+  summary: PortfolioCostSummary;
+}
+
 // ============== Lessons Learned ==============
 
 export interface LessonLearned {

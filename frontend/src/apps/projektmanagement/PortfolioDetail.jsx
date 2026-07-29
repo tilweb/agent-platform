@@ -22,6 +22,7 @@ import StepNav from './components/StepNav';
 import Personen from './components/steps/Personen';
 import Ziele from './components/steps/Ziele';
 import GanttRoadmap from './components/GanttRoadmap';
+import PortfolioCostChart from './components/portfolio/PortfolioCostChart';
 
 const styles = {
   container: { height: '100%', display: 'flex', flexDirection: 'column' },
@@ -148,7 +149,7 @@ const TABS = [
   { id: 'risiken', label: 'Risiken' },
 ];
 
-const PLACEHOLDER_TABS = new Set(['kosten', 'risiken']);
+const PLACEHOLDER_TABS = new Set(['risiken']);
 
 // Tabs mit einem zentralen Speichern-Button im Header (analog Projektauftrag).
 // Der aktive Tab wird per Ref angesprochen (imperativer save()-Handle).
@@ -334,6 +335,9 @@ export default function PortfolioDetail() {
             onSaved={(p) => setPortfolio(p)}
             navigate={navigate}
           />
+        )}
+        {activeTab === 'kosten' && (
+          <KostenTab key={portfolio.id} portfolio={portfolio} navigate={navigate} />
         )}
         {PLACEHOLDER_TABS.has(activeTab) && <PlaceholderTab />}
       </div>
@@ -660,6 +664,200 @@ const RoadmapTab = forwardRef(function RoadmapTab({ portfolio, canEdit, onStateC
     </div>
   );
 });
+
+// ============== Kosten-Tab (Aggregat: Budget/Ist/Prognose + Termin) ==============
+//
+// Read-only Übersicht: Summen über alle Projekte + Ideen, gestapelter
+// Kostenvergleich (Budget/Ist/Prognose je Projekt) und eine Detailtabelle mit
+// Prognose-Termin. Aggregat kommt aus GET /portfolios/:id/costs.
+
+const fmtEUR = (n) => new Intl.NumberFormat('de-DE', {
+  style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0,
+}).format(Number(n) || 0);
+const fmtDate = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+function KostenKpi({ label, value }) {
+  return (
+    <div style={{
+      backgroundColor: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
+      borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg,
+    }}>
+      <div style={{
+        fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted,
+        textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: theme.spacing.xs,
+      }}>{label}</div>
+      <div style={{ fontSize: theme.typography.sizes.xl, fontWeight: theme.typography.weights.bold, color: theme.colors.text }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function KostenTab({ portfolio, navigate }) {
+  const { getPortfolioCosts } = useProjektmanagement();
+  const [costs, setCosts] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const reload = useCallback(async () => {
+    setIsLoading(true); setError(null);
+    try { setCosts(await getPortfolioCosts(portfolio.id)); }
+    catch (err) { setError(err.message); }
+    finally { setIsLoading(false); }
+  }, [portfolio.id, getPortfolioCosts]);
+  useEffect(() => { reload(); }, [reload]);
+
+  const projekte = useMemo(() => costs?.projekte || [], [costs]);
+  const ideen = useMemo(() => costs?.ideen || [], [costs]);
+  const summary = costs?.summary || { budget: 0, ist: 0, prognose_budget: 0, ideen_investitionen: 0 };
+
+  const chartProjekte = useMemo(() => projekte.map((p) => ({
+    id: p.id, name: p.name,
+    values: { budget: p.budget, ist: p.ist, prognose_budget: p.prognose_budget },
+  })), [projekte]);
+  const metrics = [
+    { key: 'budget', label: 'Budget' },
+    { key: 'ist', label: 'Ist' },
+    { key: 'prognose_budget', label: 'Prognose (EAC)' },
+  ];
+
+  const sectionTitle = {
+    fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text, margin: `${theme.spacing['2xl']} 0 ${theme.spacing.md}`,
+  };
+  const thRight = { ...styles.th, textAlign: 'right' };
+  const tdRight = { ...styles.td, textAlign: 'right' };
+
+  if (isLoading) return <div style={styles.empty}>Lade Kosten…</div>;
+
+  const hasAny = projekte.length > 0 || ideen.length > 0;
+
+  return (
+    <div>
+      {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
+
+      {!hasAny ? (
+        <div style={styles.empty}>
+          Noch keine Projekte oder Projektideen zugeordnet. Ordne im Tab „Basis" welche zu — ihre Kosten
+          erscheinen dann hier.
+        </div>
+      ) : (
+        <>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+            gap: theme.spacing.lg, marginBottom: theme.spacing.xl,
+          }}>
+            <KostenKpi label="Budget (Projekte)" value={fmtEUR(summary.budget)} />
+            <KostenKpi label="Ist (Projekte)" value={fmtEUR(summary.ist)} />
+            <KostenKpi label="Prognose EAC (Projekte)" value={fmtEUR(summary.prognose_budget)} />
+            <KostenKpi label="Ideen (Investitionsschätzung)" value={fmtEUR(summary.ideen_investitionen)} />
+          </div>
+
+          {projekte.length > 0 && (
+            <>
+              <div style={sectionTitle}>Kostenvergleich (Summe je Kennzahl, gestapelt nach Projekt)</div>
+              <PortfolioCostChart projekte={chartProjekte} metrics={metrics} formatValue={fmtEUR} />
+
+              <div style={sectionTitle}>Projekte</div>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Projekt</th>
+                    <th style={thRight}>Budget</th>
+                    <th style={thRight}>Ist</th>
+                    <th style={thRight}>Prognose (EAC)</th>
+                    <th style={styles.th}>Plan-Ende</th>
+                    <th style={styles.th}>Prognose-Termin</th>
+                    <th style={thRight}>Δ Tage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projekte.map((p) => (
+                    <tr key={p.id}>
+                      <td style={styles.td}>
+                        <button type="button" style={styles.linkLike} onClick={() => navigate(`/apps/projektmanagement/${p.id}`)}>
+                          {p.name}
+                        </button>
+                      </td>
+                      <td style={tdRight}>{fmtEUR(p.budget)}</td>
+                      <td style={tdRight}>{fmtEUR(p.ist)}</td>
+                      <td style={tdRight}>
+                        {fmtEUR(p.prognose_budget)}
+                        {!p.hat_prognose && (
+                          <span style={{ color: theme.colors.textMuted }} title="Keine Ist-/Fortschrittsdaten — Budget angenommen"> *</span>
+                        )}
+                      </td>
+                      <td style={styles.td}>{fmtDate(p.plan_ende)}</td>
+                      <td style={styles.td}>{fmtDate(p.prognose_ende)}</td>
+                      <td style={{
+                        ...tdRight,
+                        color: (p.termin_abweichung_tage ?? 0) > 0 ? theme.colors.error : theme.colors.textMuted,
+                      }}>
+                        {p.termin_abweichung_tage != null
+                          ? (p.termin_abweichung_tage > 0 ? `+${p.termin_abweichung_tage}` : p.termin_abweichung_tage)
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td style={{ ...styles.td, fontWeight: theme.typography.weights.semibold }}>Summe</td>
+                    <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.budget)}</td>
+                    <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.ist)}</td>
+                    <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.prognose_budget)}</td>
+                    <td style={styles.td} />
+                    <td style={styles.td} />
+                    <td style={styles.td} />
+                  </tr>
+                </tbody>
+              </table>
+              <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.sm }}>
+                Budget/Ist/Prognose stammen aus dem letzten genehmigten Statusbericht je Projekt. Prognose (EAC) =
+                Budget ÷ CPI; Prognose-Termin via SPI. „*" = kein Ist/Fortschritt vorhanden, Budget angenommen.
+              </div>
+            </>
+          )}
+
+          {ideen.length > 0 && (
+            <>
+              <div style={sectionTitle}>Projektideen (Investitionsschätzung)</div>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Projektidee</th>
+                    <th style={thRight}>Investition (geschätzt)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ideen.map((i) => (
+                    <tr key={i.id}>
+                      <td style={styles.td}>
+                        <button type="button" style={styles.linkLike} onClick={() => navigate(`/apps/projektmanagement/ideen/${i.id}`)}>
+                          {i.name}
+                        </button>
+                      </td>
+                      <td style={tdRight}>{fmtEUR(i.investitionen)}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td style={{ ...styles.td, fontWeight: theme.typography.weights.semibold }}>Summe</td>
+                    <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.ideen_investitionen)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.sm }}>
+                Projektideen tragen nur eine grobe Investitionsschätzung (Business Case) — kein Ist/Prognose.
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 // ============== Projekte-Tab ==============
 
