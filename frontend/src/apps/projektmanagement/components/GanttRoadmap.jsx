@@ -7,8 +7,12 @@
  *
  * Context-agnostisch (Projektauftrag, Statusbericht, später Portfolio):
  *  - Items: { id, refId, type:'task'|'milestone'|'gate', name, date?, start_date?,
- *            end_date?, description?, tracking? }
+ *            end_date?, description?, tracking?, color? }
  *  - tracking (optional, Statusbericht): { ampel, fortschritt, ist_datum, status }
+ *  - color (optional, Portfolio): explizite Balkenfarbe (überschreibt die
+ *    Typ-Standardfarbe, z.B. Grau für Projekte ohne Ampel / Projektideen).
+ *  - dependencies (optional, Portfolio): [{ from, to }] mit Item-IDs — zeichnet
+ *    Finish-to-Start-Verbindungspfeile zwischen den Balken.
  *  - onItemClick(item): Aufrufer scrollt zum passenden Listeneintrag.
  *
  * Custom SVG (keine Chart-Library) — konsistent mit EarnedValueChart/HealthDonut.
@@ -71,7 +75,7 @@ const tickLabel = (t, granularity) => {
   return d.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
 };
 
-function GanttRoadmap({ items = [], rangeStart, rangeEnd, onItemClick, compact = false }) {
+function GanttRoadmap({ items = [], rangeStart, rangeEnd, onItemClick, compact = false, dependencies = [] }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(0);
   const [tooltip, setTooltip] = useState(null);
@@ -163,10 +167,28 @@ function GanttRoadmap({ items = [], rangeStart, rangeEnd, onItemClick, compact =
 
   const colorOf = (it) => {
     if (it.tracking?.ampel && AMPEL_COLORS[it.tracking.ampel]) return AMPEL_COLORS[it.tracking.ampel];
+    if (it.color) return it.color;
     if (it.type === 'milestone') return MILESTONE_COLOR;
     if (it.type === 'gate') return GATE_COLOR;
     return TASK_COLOR;
   };
+
+  // Abhängigkeits-Konnektoren (Finish-to-Start): vom Balkenende des Vorgängers
+  // zum Balkenanfang des Nachfolgers. Nur zwischen platzierten (terminierten) Items.
+  const depConnectors = useMemo(() => {
+    if (!dependencies?.length || !laid.rows.length) return [];
+    const byId = new Map(laid.rows.map((r) => [r.id, r]));
+    const out = [];
+    for (const d of dependencies) {
+      const s = byId.get(d.from);
+      const t = byId.get(d.to);
+      if (!s || !t || s._point || t._point) continue;
+      const sy = lanesTop + s.lane * LANE_H + LANE_H / 2;
+      const ty = lanesTop + t.lane * LANE_H + LANE_H / 2;
+      out.push({ key: `${d.from}->${d.to}`, sx: s.xEnd, sy, tx: t.xStart, ty });
+    }
+    return out;
+  }, [dependencies, laid.rows, lanesTop]);
 
   const showTooltip = (it, e) => {
     const rect = containerRef.current.getBoundingClientRect();
@@ -261,6 +283,23 @@ function GanttRoadmap({ items = [], rangeStart, rangeEnd, onItemClick, compact =
               </text>
             </g>
           )}
+
+          {/* Abhängigkeits-Konnektoren (unter den Balken gezeichnet) */}
+          {depConnectors.map(({ key, sx, sy, tx, ty }) => {
+            const stub = 8;
+            const c = theme.colors.textSecondary;
+            return (
+              <g key={key} opacity={0.75}>
+                <path
+                  d={`M ${sx} ${sy} L ${sx + stub} ${sy} L ${sx + stub} ${ty} L ${tx} ${ty}`}
+                  fill="none"
+                  stroke={c}
+                  strokeWidth={1.5}
+                />
+                <polygon points={`${tx},${ty} ${tx - 6},${ty - 4} ${tx - 6},${ty + 4}`} fill={c} />
+              </g>
+            );
+          })}
 
           {/* Items */}
           {laid.rows.map((it) => {

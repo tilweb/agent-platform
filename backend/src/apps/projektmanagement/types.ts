@@ -199,6 +199,8 @@ export interface Portfolio {
   // Ziele (Top-Level in der Portfolio-YAML).
   goals?: string;               // Portfolioziele (Freitext)
   criteria?: string[];          // Erfolgskriterien (Liste)
+  // Roadmap: Abhängigkeiten zwischen zugeordneten Projekten (Finish-to-Start).
+  dependencies?: PortfolioDependency[];
   ownerId?: string;
   metadata?: Record<string, any>;
   permissions?: ResourcePermissions;
@@ -221,6 +223,7 @@ export interface PortfolioCreateInput {
   stakeholders?: Stakeholder[];
   goals?: string;
   criteria?: string[];
+  dependencies?: PortfolioDependency[];
   ownerId?: string;
   metadata?: Record<string, any>;
 }
@@ -238,8 +241,15 @@ export interface PortfolioUpdateInput {
   stakeholders?: Stakeholder[];
   goals?: string;
   criteria?: string[];
+  dependencies?: PortfolioDependency[];
   metadata?: Record<string, any>;
   expectedVersion?: number;
+}
+
+/** Abhängigkeit zwischen zwei zugeordneten Projekten (Vorgänger → Nachfolger). */
+export interface PortfolioDependency {
+  from: string; // Projekt-ID (Vorgänger)
+  to: string;   // Projekt-ID (Nachfolger)
 }
 
 // ============== Portfolio-Dashboard (computed) ==============
@@ -306,6 +316,34 @@ export interface PortfolioDashboardResponse {
   termine: PortfolioDashboardTermine;
   top_risiken: PortfolioDashboardTopRisk[];
   letzte_statusberichte: PortfolioDashboardSbEntry[];
+}
+
+// ============== Portfolio-Roadmap (Gantt, computed) ==============
+//
+// Aggregat fuer GET /portfolios/:id/roadmap. Ein Balken pro zugeordnetem Projekt
+// (Termine aus dem Projektauftrag, Ampel aus dem letzten finalen Statusbericht)
+// und pro zugeordneter Projektidee (immer grau). Dazu die gepflegten Projekt-
+// Abhaengigkeiten. RBAC-gefiltert wie das Dashboard.
+
+export interface PortfolioRoadmapProjekt {
+  id: string;
+  name: string;
+  start_date?: string;
+  end_date?: string;
+  ampel?: AmpelStatus;            // aus letztem finalen SB; fehlt → grau
+}
+
+export interface PortfolioRoadmapIdee {
+  id: string;
+  name: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface PortfolioRoadmapResponse {
+  projekte: PortfolioRoadmapProjekt[];
+  ideen: PortfolioRoadmapIdee[];
+  dependencies: PortfolioDependency[];
 }
 
 // ============== Lessons Learned ==============

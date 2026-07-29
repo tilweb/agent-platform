@@ -37,8 +37,8 @@ import {
   denyIfBelowPortfolioRole,
   denyIfNotAppEditor,
 } from './_shared';
-import { getPortfolioDashboard } from '../portfolio-dashboard-service';
-import type { PortfolioStatus, TeamMember, Stakeholder } from '../types';
+import { getPortfolioDashboard, getPortfolioRoadmap } from '../portfolio-dashboard-service';
+import type { PortfolioStatus, TeamMember, Stakeholder, PortfolioDependency } from '../types';
 // Hinweis: getPortfolioDashboard kommt aus portfolio-dashboard-service.ts (Phase D3).
 
 export const portfoliosRoutes = new Hono();
@@ -153,6 +153,7 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       stakeholders?: Stakeholder[];
       goals?: string;
       criteria?: string[];
+      dependencies?: PortfolioDependency[];
       metadata?: Record<string, unknown>;
       expectedVersion?: number;
     }>();
@@ -169,6 +170,7 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       stakeholders: body.stakeholders,
       goals: body.goals,
       criteria: body.criteria,
+      dependencies: body.dependencies,
       metadata: body.metadata,
       expectedVersion: body.expectedVersion,
     });
@@ -361,5 +363,24 @@ portfoliosRoutes.get('/portfolios/:id/dashboard', async (c) => {
   } catch (error) {
     console.error('getPortfolioDashboard error:', error);
     return c.json({ error: 'Failed to get portfolio dashboard' }, 500);
+  }
+});
+
+// ============== Roadmap (Gantt-Aggregat) ==============
+
+portfoliosRoutes.get('/portfolios/:id/roadmap', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowPortfolioRole(userId, id, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const roadmap = await getPortfolioRoadmap(id, userId);
+    if (!roadmap) return c.json({ error: 'Portfolio nicht gefunden' }, 404);
+    return c.json({ roadmap });
+  } catch (error) {
+    console.error('getPortfolioRoadmap error:', error);
+    return c.json({ error: 'Failed to get portfolio roadmap' }, 500);
   }
 });

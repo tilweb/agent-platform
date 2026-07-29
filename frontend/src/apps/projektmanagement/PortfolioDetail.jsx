@@ -10,7 +10,7 @@
  * URL-Sync: ?tab=...
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useProjektmanagement, VersionConflictError } from '../../hooks/useProjektmanagement';
@@ -21,6 +21,7 @@ import PortfolioDashboard from './components/portfolio/PortfolioDashboard';
 import StepNav from './components/StepNav';
 import Personen from './components/steps/Personen';
 import Ziele from './components/steps/Ziele';
+import GanttRoadmap from './components/GanttRoadmap';
 
 const styles = {
   container: { height: '100%', display: 'flex', flexDirection: 'column' },
@@ -147,7 +148,7 @@ const TABS = [
   { id: 'risiken', label: 'Risiken' },
 ];
 
-const PLACEHOLDER_TABS = new Set(['roadmap', 'kosten', 'risiken']);
+const PLACEHOLDER_TABS = new Set(['kosten', 'risiken']);
 
 // Anzeigename eines Config-Werts (z.B. Portfoliostatus) — Fallback auf den Wert.
 function optionLabel(appConfig, key, value) {
@@ -286,6 +287,15 @@ export default function PortfolioDetail() {
             portfolio={portfolio}
             canEdit={canEdit}
             onSaved={(p) => setPortfolio(p)}
+          />
+        )}
+        {activeTab === 'roadmap' && (
+          <RoadmapTab
+            key={`${portfolio.id}-${portfolio.version}`}
+            portfolio={portfolio}
+            canEdit={canEdit}
+            onSaved={(p) => setPortfolio(p)}
+            navigate={navigate}
           />
         )}
         {PLACEHOLDER_TABS.has(activeTab) && <PlaceholderTab />}
@@ -427,6 +437,224 @@ function ZieleTab({ portfolio, canEdit, onSaved }) {
             disabled={isSaving || !isDirty}
           >
             {isSaving ? 'Speichern…' : isDirty ? 'Speichern *' : 'Gespeichert'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============== Roadmap-Tab (Gantt aus Projekten + Projektideen) ==============
+//
+// Ein Balken pro zugeordnetem Projekt (Termine aus dem Auftrag, Balkenfarbe =
+// Ampel des letzten genehmigten Statusberichts, sonst grau) und pro Projektidee
+// (immer grau). Projekt-Abhängigkeiten werden hier gepflegt (Finish-to-Start)
+// und als Verbindungspfeile im Gantt dargestellt. Aggregat kommt aus
+// GET /portfolios/:id/roadmap; Abhängigkeiten werden am Portfolio gespeichert.
+
+const ROADMAP_GREY = theme.colors.textMuted;
+
+function RoadmapLegend() {
+  const dot = (bg) => ({
+    width: 12, height: 12, borderRadius: theme.borderRadius.full,
+    backgroundColor: `${bg}33`, border: `2px solid ${bg}`, flexShrink: 0,
+  });
+  const entries = [
+    [theme.colors.success, 'Status grün'],
+    [theme.colors.warning, 'Status gelb'],
+    [theme.colors.error, 'Status rot'],
+    [ROADMAP_GREY, 'Ohne genehmigten Statusbericht / Projektidee'],
+  ];
+  return (
+    <div style={{
+      display: 'flex', flexWrap: 'wrap', gap: theme.spacing.lg,
+      marginTop: theme.spacing.md, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary,
+    }}>
+      {entries.map(([c, label]) => (
+        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+          <div style={dot(c)} />
+          {label}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RoadmapTab({ portfolio, canEdit, onSaved, navigate }) {
+  const { getPortfolioRoadmap, updatePortfolio } = useProjektmanagement();
+  const [roadmap, setRoadmap] = useState(null);
+  const [deps, setDeps] = useState(portfolio.dependencies || []);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+
+  const reload = useCallback(async () => {
+    setIsLoading(true); setError(null);
+    try { setRoadmap(await getPortfolioRoadmap(portfolio.id)); }
+    catch (err) { setError(err.message); }
+    finally { setIsLoading(false); }
+  }, [portfolio.id, getPortfolioRoadmap]);
+  useEffect(() => { reload(); }, [reload]);
+
+  const projekte = useMemo(() => roadmap?.projekte || [], [roadmap]);
+  const ideen = useMemo(() => roadmap?.ideen || [], [roadmap]);
+
+  const nameById = useMemo(() => {
+    const m = new Map();
+    projekte.forEach((p) => m.set(p.id, p.name));
+    return m;
+  }, [projekte]);
+
+  const ganttItems = useMemo(() => {
+    const items = [];
+    for (const p of projekte) {
+      items.push({
+        id: `projekt-${p.id}`, refId: p.id, _kind: 'projekt', type: 'task', name: p.name,
+        start_date: p.start_date, end_date: p.end_date,
+        tracking: p.ampel ? { ampel: p.ampel } : undefined,
+        color: p.ampel ? undefined : ROADMAP_GREY,
+      });
+    }
+    for (const i of ideen) {
+      items.push({
+        id: `idee-${i.id}`, refId: i.id, _kind: 'idee', type: 'task', name: `${i.name} (Idee)`,
+        start_date: i.start_date, end_date: i.end_date, color: ROADMAP_GREY,
+      });
+    }
+    return items;
+  }, [projekte, ideen]);
+
+  const ganttDeps = useMemo(
+    () => deps.map((d) => ({ from: `projekt-${d.from}`, to: `projekt-${d.to}` })),
+    [deps],
+  );
+
+  const addDep = () => {
+    if (!from || !to || from === to) return;
+    if (deps.some((d) => d.from === from && d.to === to)) return;
+    setDeps((prev) => [...prev, { from, to }]);
+    setIsDirty(true); setFrom(''); setTo('');
+  };
+  const removeDep = (idx) => { setDeps((prev) => prev.filter((_, i) => i !== idx)); setIsDirty(true); };
+
+  const save = async () => {
+    setIsSaving(true); setError(null);
+    try {
+      const updated = await updatePortfolio(portfolio.id, { dependencies: deps }, { expectedVersion: portfolio.version });
+      onSaved(updated); setIsDirty(false);
+    } catch (err) {
+      setError(err instanceof VersionConflictError
+        ? 'Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.'
+        : err.message);
+    } finally { setIsSaving(false); }
+  };
+
+  const onItemClick = (it) => {
+    if (it._kind === 'idee') navigate(`/apps/projektmanagement/ideen/${it.refId}`);
+    else navigate(`/apps/projektmanagement/${it.refId}`);
+  };
+
+  const sectionTitle = {
+    fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text, margin: `${theme.spacing['2xl']} 0 ${theme.spacing.md}`,
+  };
+  const projName = (id) => nameById.get(id) || '(entferntes Projekt)';
+
+  if (isLoading) return <div style={styles.empty}>Lade Roadmap…</div>;
+
+  return (
+    <div>
+      {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
+
+      {ganttItems.length === 0 ? (
+        <div style={styles.empty}>
+          Noch keine Projekte oder Projektideen zugeordnet. Ordne im Tab „Basis" welche zu — sie erscheinen
+          dann hier nach Startdatum.
+        </div>
+      ) : (
+        <>
+          <GanttRoadmap items={ganttItems} dependencies={ganttDeps} onItemClick={onItemClick} />
+          <RoadmapLegend />
+        </>
+      )}
+
+      <div style={sectionTitle}>Abhängigkeiten</div>
+      <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.lg }}>
+        Definiere, welches Projekt einem anderen vorausgeht (Vorgänger → Nachfolger). Die Abhängigkeit wird als
+        Pfeil im Gantt dargestellt.
+      </div>
+
+      {canEdit && (
+        <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center', flexWrap: 'wrap', marginBottom: theme.spacing.lg }}>
+          <select style={styles.select} value={from} onChange={(e) => setFrom(e.target.value)}>
+            <option value="">Vorgänger…</option>
+            {projekte.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <span style={{ color: theme.colors.textMuted }}>→</span>
+          <select style={styles.select} value={to} onChange={(e) => setTo(e.target.value)}>
+            <option value="">Nachfolger…</option>
+            {projekte.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <button
+            type="button"
+            style={{ ...styles.actionButton, ...styles.primaryButton, opacity: (!from || !to || from === to) ? 0.5 : 1 }}
+            onClick={addDep}
+            disabled={!from || !to || from === to}
+          >
+            + Hinzufügen
+          </button>
+        </div>
+      )}
+
+      {deps.length === 0 ? (
+        <div style={styles.empty}>Keine Abhängigkeiten definiert.</div>
+      ) : (
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Vorgänger</th>
+              <th style={styles.th}>Nachfolger</th>
+              <th style={styles.th} />
+            </tr>
+          </thead>
+          <tbody>
+            {deps.map((d, idx) => (
+              <tr key={`${d.from}->${d.to}`}>
+                <td style={styles.td}>{projName(d.from)}</td>
+                <td style={styles.td}>{projName(d.to)}</td>
+                <td style={{ ...styles.td, textAlign: 'right' }}>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      style={{ ...styles.actionButton, ...styles.deleteButton, padding: `${theme.spacing.xs} ${theme.spacing.md}` }}
+                      onClick={() => removeDep(idx)}
+                    >
+                      Entfernen
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {canEdit && (
+        <div style={{ marginTop: theme.spacing.xl }}>
+          <button
+            type="button"
+            style={{
+              ...styles.actionButton, ...styles.primaryButton,
+              opacity: isSaving ? 0.7 : 1,
+              ...(isDirty && !isSaving ? { boxShadow: `0 0 0 3px ${theme.colors.primary}30` } : {}),
+            }}
+            onClick={save}
+            disabled={isSaving || !isDirty}
+          >
+            {isSaving ? 'Speichern…' : isDirty ? 'Abhängigkeiten speichern *' : 'Gespeichert'}
           </button>
         </div>
       )}

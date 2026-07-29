@@ -52,6 +52,7 @@ function normalize(raw: any): Portfolio {
     stakeholders: raw.stakeholders ?? undefined,
     goals: raw.goals ?? undefined,
     criteria: raw.criteria ?? undefined,
+    dependencies: raw.dependencies ?? undefined,
     ownerId: raw.ownerId ?? undefined,
     metadata: raw.metadata ?? undefined,
     permissions: raw.permissions ?? undefined,
@@ -120,6 +121,7 @@ export async function createPortfolio(input: PortfolioCreateInput): Promise<Port
     stakeholders: input.stakeholders,
     goals: input.goals,
     criteria: input.criteria,
+    dependencies: input.dependencies,
     ownerId: input.ownerId,
     metadata: input.metadata,
     permissions,
@@ -165,6 +167,7 @@ export async function updatePortfolio(id: string, input: PortfolioUpdateInput): 
     if (input.stakeholders !== undefined) next.stakeholders = input.stakeholders;
     if (input.goals !== undefined) next.goals = input.goals;
     if (input.criteria !== undefined) next.criteria = input.criteria;
+    if (input.dependencies !== undefined) next.dependencies = input.dependencies;
     if (input.metadata !== undefined) next.metadata = input.metadata;
     next.version = current.version + 1;
     next.updatedAt = new Date().toISOString();

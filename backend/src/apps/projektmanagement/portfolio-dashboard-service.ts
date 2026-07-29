@@ -19,9 +19,10 @@
 import { listProjekteByPortfolio } from './projekt-service';
 import { getProjekt } from './projekt-service';
 import { getPortfolio } from './portfolio-service';
-import { getEffectiveAuftragRole } from './permissions';
+import { getEffectiveAuftragRole, getEffectiveIdeeRole } from './permissions';
 import { getProjektauftrag } from './storage';
 import { listStatusberichte } from './statusbericht-service';
+import { listIdeenByPortfolio } from './idee-storage';
 import type {
   Portfolio,
   PortfolioDashboardResponse,
@@ -31,6 +32,10 @@ import type {
   PortfolioDashboardTermine,
   PortfolioDashboardTopRisk,
   PortfolioDashboardSbEntry,
+  PortfolioRoadmapResponse,
+  PortfolioRoadmapProjekt,
+  PortfolioRoadmapIdee,
+  PortfolioDependency,
   Statusbericht,
   Projektauftrag,
   RiskTrackingItem,
@@ -263,6 +268,73 @@ export async function getPortfolioDashboard(
     top_risiken: buildTopRisks(contexts, 5),
     letzte_statusberichte: buildLatestSbs(contexts),
   };
+}
+
+/**
+ * Portfolio-Roadmap-Aggregat (Gantt). Ein Balken pro zugeordnetem Projekt
+ * (Termine aus dem Projektauftrag, Ampel aus dem letzten finalen SB via
+ * `pickLatestSb`) und pro zugeordneter Projektidee (immer grau). Dazu die am
+ * Portfolio gepflegten Projekt-Abhängigkeiten (auf sichtbare Projekte gefiltert).
+ *
+ * RBAC identisch zum Dashboard: nur Projekte/Ideen, auf die der User mindestens
+ * Viewer-Rolle hat. Returnt `null`, wenn das Portfolio nicht existiert.
+ */
+export async function getPortfolioRoadmap(
+  portfolioId: string,
+  userId: string,
+): Promise<PortfolioRoadmapResponse | null> {
+  const portfolio = await getPortfolio(portfolioId);
+  if (!portfolio) return null;
+
+  const allProjekte = await listProjekteByPortfolio(portfolioId);
+  const accessibleEntries = await Promise.all(
+    allProjekte.map(async (p) => {
+      const role = await getEffectiveAuftragRole(userId, p.id);
+      return role ? p : null;
+    }),
+  );
+  const accessible = accessibleEntries.filter((p): p is NonNullable<typeof p> => p !== null);
+
+  const contexts = await Promise.all(
+    accessible.map((p) => loadProjektContext(p.id, p.name)),
+  );
+
+  const projekte: PortfolioRoadmapProjekt[] = contexts.map((ctx) => {
+    const auftrag = ctx.auftrag as (Projektauftrag & { start_date?: string; end_date?: string }) | null;
+    return {
+      id: ctx.projektId,
+      name: ctx.projektName,
+      start_date: auftrag?.start_date || undefined,
+      end_date: auftrag?.end_date || undefined,
+      ampel: ctx.latestSb?.ampel,
+    };
+  });
+
+  // Ideen — RBAC-gefiltert (Idee-Viewer+), immer ohne Ampel.
+  const allIdeen = await listIdeenByPortfolio(portfolioId);
+  const ideenEntries = await Promise.all(
+    allIdeen.map(async (i) => {
+      const role = await getEffectiveIdeeRole(userId, i.id);
+      return role ? i : null;
+    }),
+  );
+  const ideen: PortfolioRoadmapIdee[] = ideenEntries
+    .filter((i): i is NonNullable<typeof i> => i !== null)
+    .map((i) => ({
+      id: i.id,
+      name: i.name,
+      start_date: i.start_date || undefined,
+      end_date: i.end_date || undefined,
+    }));
+
+  // Abhängigkeiten nur zwischen sichtbaren Projekten (verwaiste/nicht sichtbare
+  // Endpunkte ausfiltern — z.B. entferntes oder nicht zugängliches Projekt).
+  const visibleIds = new Set(projekte.map((p) => p.id));
+  const dependencies: PortfolioDependency[] = (portfolio.dependencies || []).filter(
+    (d) => visibleIds.has(d.from) && visibleIds.has(d.to),
+  );
+
+  return { projekte, ideen, dependencies };
 }
 
 // Suppress unused import warnings — these are re-exports in case future modules

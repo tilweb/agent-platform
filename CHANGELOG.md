@@ -2,6 +2,19 @@
 
 ## 2026-07-29
 
+### PM: Portfolio-Detail — Tab „Roadmap" (Gantt aus Projekten + Projektideen)
+Der Platzhalter-Tab „Roadmap" ist umgesetzt: ein Gantt-Diagramm der zugeordneten Projekte und Projektideen
+nach Startdatum (wiederverwendete `GanttRoadmap`-Komponente).
+- **Balkenfarbe** je Projekt = Ampel des **letzten genehmigten (finalen) Statusberichts** (grün/gelb/rot),
+  sonst grau; **Projektideen immer grau**. Termine der Projekte kommen aus dem Projektauftrag, die Ampel via
+  `pickLatestSb` (dieselbe Logik wie das Portfolio-Dashboard).
+- **Abhängigkeiten** zwischen Projekten (Vorgänger → Nachfolger) werden hier gepflegt und als
+  Finish-to-Start-**Verbindungspfeile** im Gantt dargestellt. Persistenz am Portfolio (Top-Level in der YAML,
+  metadata-JSONB auf DB) — migrationsfrei; Speichern mit optimistischer Versionierung.
+- Neuer Aggregat-Endpoint `GET /portfolios/:id/roadmap` (RBAC-gefiltert wie das Dashboard). `GanttRoadmap` um
+  optionalen `color`-Override und `dependencies`-Prop erweitert (additiv, Projektauftrag-Nutzung unverändert).
+- In beiden Worktrees (DB + YAML), Frontend byte-identisch.
+
 ### PM: Portfolio-Detail — Tab „Ziele" (Portfolioziele + Erfolgskriterien)
 Der Platzhalter-Tab „Ziele" ist umgesetzt — analog zur Ziele-Maske des Projektauftrags (geteilte
 `Ziele`-Komponente, per Label-Props parametrisiert), nur mit Portfoliowording: **Portfolioziele** (Freitext)
