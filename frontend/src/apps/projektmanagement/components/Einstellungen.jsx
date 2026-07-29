@@ -30,6 +30,9 @@ const FIELD_LABELS = {
   risk_status: 'Risiko-Status',
   lesson_themengebiet: 'Themengebiet',
   lesson_kategorie: 'Kategorie',
+  portfolio_type: 'Portfoliotyp',
+  portfolio_driver: 'Portfoliotreiber',
+  portfolio_status: 'Portfoliostatus',
 };
 
 // Wo jede Liste eingesetzt wird (Modul/Eingabemaske) — als Untertitel unter dem
@@ -54,6 +57,9 @@ const FIELD_USAGE = {
   risk_status: 'Statusberichte (Risiken), Abschlussbericht',
   lesson_themengebiet: 'Lessons Learned',
   lesson_kategorie: 'Lessons Learned',
+  portfolio_type: 'Portfolio (Basis)',
+  portfolio_driver: 'Portfolio (Basis)',
+  portfolio_status: 'Portfolio (Basis), Portfolio-Liste',
 };
 
 // Display order
@@ -77,13 +83,16 @@ const FIELD_ORDER = [
   'risk_status',
   'lesson_themengebiet',
   'lesson_kategorie',
+  'portfolio_type',
+  'portfolio_driver',
+  'portfolio_status',
 ];
 
 // Listen, deren Schlüssel (value) im Code fest verdrahtet sind (Status-Zuordnung,
 // Badges, Filter). Hier ist nur der Anzeigename editierbar — Schlüssel sind
 // gesperrt und Einträge können nicht hinzugefügt/gelöscht werden, damit die
 // automatische Zuordnung nicht bricht.
-const LOCKED_KEY_FIELDS = new Set(['idee_status']);
+const LOCKED_KEY_FIELDS = new Set(['idee_status', 'portfolio_status']);
 
 // ============== Styles ==============
 

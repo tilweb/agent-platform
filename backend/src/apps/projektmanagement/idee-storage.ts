@@ -83,6 +83,32 @@ export async function getProjektidee(id: string): Promise<Projektidee | null> {
   return idee;
 }
 
+// ============== Portfolio-Zuordnung (Idee ↔ Portfolio, 0..1) ==============
+
+/** Alle Ideen, die dem Portfolio zugeordnet sind (portfolioId in der Idee-YAML). */
+export async function listIdeenByPortfolio(portfolioId: string): Promise<Projektidee[]> {
+  const all = await getProjektideen();
+  return all.filter((i) => i.portfolioId === portfolioId);
+}
+
+/** Ideen ohne Portfolio-Zuordnung — für den „Idee hinzufügen"-Selector. */
+export async function listIdeenWithoutPortfolio(): Promise<Projektidee[]> {
+  const all = await getProjektideen();
+  return all.filter((i) => !i.portfolioId);
+}
+
+/** Setzt/entfernt die Portfolio-Zuordnung einer Idee (portfolioId=null → entfernen). */
+export async function setIdeePortfolioId(ideeId: string, portfolioId: string | null): Promise<boolean> {
+  const file = Bun.file(`${PROJEKTIDEEN_PATH}/${ideeId}/metadata.yaml`);
+  if (!(await file.exists())) return false;
+  const idee = parse(await file.text()) as Projektidee;
+  if (portfolioId) idee.portfolioId = portfolioId;
+  else delete idee.portfolioId;
+  idee.updated_at = new Date().toISOString();
+  await Bun.write(`${PROJEKTIDEEN_PATH}/${ideeId}/metadata.yaml`, stringify(idee));
+  return true;
+}
+
 export async function saveProjektidee(idee: Projektidee): Promise<void> {
   const dir = `${PROJEKTIDEEN_PATH}/${idee.id}`;
   await Bun.$`mkdir -p ${dir}`;

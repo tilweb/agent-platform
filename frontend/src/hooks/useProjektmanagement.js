@@ -726,6 +726,37 @@ export function useProjektmanagement() {
     return data.dashboard;
   }, []);
 
+  // Portfolio ↔ Projektidee (0..1)
+  const getPortfolioIdeen = useCallback(async (portfolioId) => {
+    const response = await apiGet(`/apps/projektmanagement/portfolios/${portfolioId}/ideen`);
+    if (!response.ok) throw new Error('Failed to list portfolio ideen');
+    const data = await response.json();
+    return data.ideen || [];
+  }, []);
+
+  const getAvailableIdeenForPortfolio = useCallback(async (portfolioId) => {
+    const response = await apiGet(`/apps/projektmanagement/portfolios/${portfolioId}/ideen/available`);
+    if (!response.ok) throw new Error('Failed to list available ideen');
+    const data = await response.json();
+    return data.ideen || [];
+  }, []);
+
+  const assignIdeeToPortfolio = useCallback(async (portfolioId, ideeId) => {
+    const response = await apiPut(`/apps/projektmanagement/portfolios/${portfolioId}/ideen/${ideeId}`, {});
+    if (!response.ok) {
+      const d = await response.json().catch(() => ({}));
+      throw new Error(d.error || 'Failed to assign idee');
+    }
+  }, []);
+
+  const unassignIdeeFromPortfolio = useCallback(async (portfolioId, ideeId) => {
+    const response = await apiDelete(`/apps/projektmanagement/portfolios/${portfolioId}/ideen/${ideeId}`);
+    if (!response.ok) {
+      const d = await response.json().catch(() => ({}));
+      throw new Error(d.error || 'Failed to unassign idee');
+    }
+  }, []);
+
   return {
     projektauftraege,
     stats,
@@ -791,5 +822,9 @@ export function useProjektmanagement() {
     getPortfolioProjekte,
     getAvailableProjekteForPortfolio,
     getPortfolioDashboard,
+    getPortfolioIdeen,
+    getAvailableIdeenForPortfolio,
+    assignIdeeToPortfolio,
+    unassignIdeeFromPortfolio,
   };
 }

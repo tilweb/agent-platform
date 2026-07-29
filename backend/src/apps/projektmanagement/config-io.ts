@@ -51,6 +51,9 @@ export const CONFIG_LISTS: ConfigListMeta[] = [
   { key: 'risk_status', label: 'Risiko-Status', usage: 'Statusberichte (Risiken), Abschlussbericht', keyField: 'value', locked: false },
   { key: 'lesson_themengebiet', label: 'Themengebiet', usage: 'Lessons Learned', keyField: 'value', locked: false },
   { key: 'lesson_kategorie', label: 'Kategorie', usage: 'Lessons Learned', keyField: 'value', locked: false },
+  { key: 'portfolio_type', label: 'Portfoliotyp', usage: 'Portfolio (Basis)', keyField: 'value', locked: false },
+  { key: 'portfolio_driver', label: 'Portfoliotreiber', usage: 'Portfolio (Basis)', keyField: 'value', locked: false },
+  { key: 'portfolio_status', label: 'Portfoliostatus', usage: 'Portfolio (Basis), Portfolio-Liste', keyField: 'value', locked: true },
   { key: 'abschluss_checkliste', label: 'Abschluss-Checkliste', usage: 'Abschlussbericht', keyField: 'id', locked: false },
 ];
 
