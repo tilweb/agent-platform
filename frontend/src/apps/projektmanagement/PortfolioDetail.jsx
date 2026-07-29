@@ -19,6 +19,7 @@ import { ArrowLeftIcon, TrashIcon } from '../../components/Icons';
 import ConfirmModal from '../../components/ConfirmModal';
 import PortfolioDashboard from './components/portfolio/PortfolioDashboard';
 import StepNav from './components/StepNav';
+import Personen from './components/steps/Personen';
 
 const styles = {
   container: { height: '100%', display: 'flex', flexDirection: 'column' },
@@ -145,7 +146,7 @@ const TABS = [
   { id: 'risiken', label: 'Risiken' },
 ];
 
-const PLACEHOLDER_TABS = new Set(['personen', 'ziele', 'roadmap', 'kosten', 'risiken']);
+const PLACEHOLDER_TABS = new Set(['ziele', 'roadmap', 'kosten', 'risiken']);
 
 // Anzeigename eines Config-Werts (z.B. Portfoliostatus) — Fallback auf den Wert.
 function optionLabel(appConfig, key, value) {
@@ -269,8 +270,83 @@ export default function PortfolioDetail() {
             navigate={navigate}
           />
         )}
+        {activeTab === 'personen' && (
+          <PersonenTab
+            key={`${portfolio.id}-${portfolio.version}`}
+            portfolio={portfolio}
+            appConfig={appConfig}
+            canEdit={canEdit}
+            onSaved={(p) => setPortfolio(p)}
+          />
+        )}
         {PLACEHOLDER_TABS.has(activeTab) && <PlaceholderTab />}
       </div>
+    </div>
+  );
+}
+
+// ============== Personen-Tab (Portfolioteam + Portfolio-Stakeholder) ==============
+//
+// Analog zur Personen-Maske des Projektauftrags (geteilte Personen-Komponente),
+// nur mit Portfolio-Labels. Team + Stakeholder werden im Portfolio persistiert
+// (metadata-JSONB auf DB, Top-Level in YAML).
+
+function PersonenTab({ portfolio, appConfig, canEdit, onSaved }) {
+  const { updatePortfolio } = useProjektmanagement();
+  const [data, setData] = useState({
+    organization: portfolio.organization || [],
+    stakeholders: portfolio.stakeholders || [],
+  });
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleChange = (patch) => { setData((d) => ({ ...d, ...patch })); setIsDirty(true); };
+
+  const save = async () => {
+    setIsSaving(true); setError(null);
+    try {
+      const updated = await updatePortfolio(portfolio.id, {
+        organization: data.organization,
+        stakeholders: data.stakeholders,
+      }, { expectedVersion: portfolio.version });
+      onSaved(updated);
+      setIsDirty(false);
+    } catch (err) {
+      setError(err instanceof VersionConflictError
+        ? 'Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.'
+        : err.message);
+    } finally { setIsSaving(false); }
+  };
+
+  return (
+    <div>
+      {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
+      <Personen
+        data={data}
+        onChange={handleChange}
+        config={appConfig}
+        title="Personen"
+        subtitle="Definieren Sie das Portfolioteam und die wichtigsten Portfolio-Stakeholder."
+        teamLabel="Portfolioteam"
+        stakeholderLabel="Portfolio-Stakeholder"
+      />
+      {canEdit && (
+        <div style={{ marginTop: theme.spacing.xl }}>
+          <button
+            type="button"
+            style={{
+              ...styles.actionButton, ...styles.primaryButton,
+              opacity: isSaving ? 0.7 : 1,
+              ...(isDirty && !isSaving ? { boxShadow: `0 0 0 3px ${theme.colors.primary}30` } : {}),
+            }}
+            onClick={save}
+            disabled={isSaving || !isDirty}
+          >
+            {isSaving ? 'Speichern…' : isDirty ? 'Speichern *' : 'Gespeichert'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

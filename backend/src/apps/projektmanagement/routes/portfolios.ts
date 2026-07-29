@@ -38,7 +38,7 @@ import {
   denyIfNotAppEditor,
 } from './_shared';
 import { getPortfolioDashboard } from '../portfolio-dashboard-service';
-import type { PortfolioStatus } from '../types';
+import type { PortfolioStatus, TeamMember, Stakeholder } from '../types';
 // Hinweis: getPortfolioDashboard kommt aus portfolio-dashboard-service.ts (Phase D3).
 
 export const portfoliosRoutes = new Hono();
@@ -149,6 +149,8 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       driver?: string;
       start_date?: string;
       end_date?: string;
+      organization?: TeamMember[];
+      stakeholders?: Stakeholder[];
       metadata?: Record<string, unknown>;
       expectedVersion?: number;
     }>();
@@ -161,6 +163,8 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       driver: body.driver,
       start_date: body.start_date,
       end_date: body.end_date,
+      organization: body.organization,
+      stakeholders: body.stakeholders,
       metadata: body.metadata,
       expectedVersion: body.expectedVersion,
     });

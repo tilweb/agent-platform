@@ -193,6 +193,9 @@ export interface Portfolio {
   driver?: string;
   start_date?: string;
   end_date?: string;
+  // Personen (Top-Level in der Portfolio-YAML).
+  organization?: TeamMember[];  // Portfolioteam
+  stakeholders?: Stakeholder[]; // Portfolio-Stakeholder
   ownerId?: string;
   metadata?: Record<string, any>;
   permissions?: ResourcePermissions;
@@ -211,6 +214,8 @@ export interface PortfolioCreateInput {
   driver?: string;
   start_date?: string;
   end_date?: string;
+  organization?: TeamMember[];
+  stakeholders?: Stakeholder[];
   ownerId?: string;
   metadata?: Record<string, any>;
 }
@@ -224,6 +229,8 @@ export interface PortfolioUpdateInput {
   driver?: string;
   start_date?: string;
   end_date?: string;
+  organization?: TeamMember[];
+  stakeholders?: Stakeholder[];
   metadata?: Record<string, any>;
   expectedVersion?: number;
 }

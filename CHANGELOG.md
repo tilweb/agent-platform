@@ -2,6 +2,14 @@
 
 ## 2026-07-29
 
+### PM: Portfolio-Detail — Tab „Personen" (Portfolioteam + Portfolio-Stakeholder)
+Der Platzhalter-Tab „Personen" ist jetzt voll umgesetzt — komplett analog zur Personen-Maske des
+Projektauftrags (geteilte `Personen`-Komponente, per Label-Props parametrisiert), nur mit den Bezeichnungen
+**Portfolioteam** und **Portfolio-Stakeholder**. Team- und Stakeholder-Einträge (inkl. Interesse/Einfluss-
+Klassifizierung + Matrix) werden am Portfolio persistiert: metadata-JSONB auf DB (main), Top-Level in der
+YAML (demo/messe) — migrationsfrei. Speichern mit optimistischer Versionierung wie im Basis-Tab. In beiden
+Worktrees; Frontend byte-identisch.
+
 ### PM: Portfolio-Detail neu strukturiert — Icon-Tabs + Tab „Basis"
 Die Portfolio-Detailseite folgt jetzt der Projektauftrag-Logik: **Icon-Tab-Leiste** (geteilte `StepNav`,
 Icons per Titel) mit der Zielstruktur **Übersicht · Basis · Personen · Ziele · Roadmap · Kosten · Risiken**.

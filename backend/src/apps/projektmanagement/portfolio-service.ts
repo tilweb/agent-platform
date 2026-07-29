@@ -48,6 +48,8 @@ function normalize(raw: any): Portfolio {
     driver: raw.driver ?? undefined,
     start_date: raw.start_date ?? undefined,
     end_date: raw.end_date ?? undefined,
+    organization: raw.organization ?? undefined,
+    stakeholders: raw.stakeholders ?? undefined,
     ownerId: raw.ownerId ?? undefined,
     metadata: raw.metadata ?? undefined,
     permissions: raw.permissions ?? undefined,
@@ -112,6 +114,8 @@ export async function createPortfolio(input: PortfolioCreateInput): Promise<Port
     driver: input.driver,
     start_date: input.start_date,
     end_date: input.end_date,
+    organization: input.organization,
+    stakeholders: input.stakeholders,
     ownerId: input.ownerId,
     metadata: input.metadata,
     permissions,
@@ -153,6 +157,8 @@ export async function updatePortfolio(id: string, input: PortfolioUpdateInput): 
     if (input.driver !== undefined) next.driver = input.driver;
     if (input.start_date !== undefined) next.start_date = input.start_date;
     if (input.end_date !== undefined) next.end_date = input.end_date;
+    if (input.organization !== undefined) next.organization = input.organization;
+    if (input.stakeholders !== undefined) next.stakeholders = input.stakeholders;
     if (input.metadata !== undefined) next.metadata = input.metadata;
     next.version = current.version + 1;
     next.updatedAt = new Date().toISOString();
