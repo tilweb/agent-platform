@@ -20,6 +20,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import PortfolioDashboard from './components/portfolio/PortfolioDashboard';
 import StepNav from './components/StepNav';
 import Personen from './components/steps/Personen';
+import Ziele from './components/steps/Ziele';
 
 const styles = {
   container: { height: '100%', display: 'flex', flexDirection: 'column' },
@@ -146,7 +147,7 @@ const TABS = [
   { id: 'risiken', label: 'Risiken' },
 ];
 
-const PLACEHOLDER_TABS = new Set(['ziele', 'roadmap', 'kosten', 'risiken']);
+const PLACEHOLDER_TABS = new Set(['roadmap', 'kosten', 'risiken']);
 
 // Anzeigename eines Config-Werts (z.B. Portfoliostatus) — Fallback auf den Wert.
 function optionLabel(appConfig, key, value) {
@@ -279,6 +280,14 @@ export default function PortfolioDetail() {
             onSaved={(p) => setPortfolio(p)}
           />
         )}
+        {activeTab === 'ziele' && (
+          <ZieleTab
+            key={`${portfolio.id}-${portfolio.version}`}
+            portfolio={portfolio}
+            canEdit={canEdit}
+            onSaved={(p) => setPortfolio(p)}
+          />
+        )}
         {PLACEHOLDER_TABS.has(activeTab) && <PlaceholderTab />}
       </div>
     </div>
@@ -330,6 +339,80 @@ function PersonenTab({ portfolio, appConfig, canEdit, onSaved }) {
         subtitle="Definieren Sie das Portfolioteam und die wichtigsten Portfolio-Stakeholder."
         teamLabel="Portfolioteam"
         stakeholderLabel="Portfolio-Stakeholder"
+      />
+      {canEdit && (
+        <div style={{ marginTop: theme.spacing.xl }}>
+          <button
+            type="button"
+            style={{
+              ...styles.actionButton, ...styles.primaryButton,
+              opacity: isSaving ? 0.7 : 1,
+              ...(isDirty && !isSaving ? { boxShadow: `0 0 0 3px ${theme.colors.primary}30` } : {}),
+            }}
+            onClick={save}
+            disabled={isSaving || !isDirty}
+          >
+            {isSaving ? 'Speichern…' : isDirty ? 'Speichern *' : 'Gespeichert'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============== Ziele-Tab (Portfolioziele + Erfolgskriterien) ==============
+//
+// Analog zur Ziele-Maske des Projektauftrags (geteilte Ziele-Komponente), nur mit
+// Portfoliowording. goals (Freitext) + criteria (Liste) werden im Portfolio
+// persistiert (metadata-JSONB auf DB, Top-Level in YAML).
+
+const PORTFOLIO_GOALS_PLACEHOLDER = `Beschreiben Sie die übergeordneten Ziele des Portfolios...
+
+Beispiel:
+- Bündelung aller Digitalisierungs-Initiativen unter einem strategischen Dach
+- Verbesserung der Ressourcen-Auslastung über alle Projekte um 15%
+- Aufbau einer einheitlichen Projekt-Governance`;
+
+function ZieleTab({ portfolio, canEdit, onSaved }) {
+  const { updatePortfolio } = useProjektmanagement();
+  const [data, setData] = useState({
+    goals: portfolio.goals || '',
+    criteria: portfolio.criteria || [],
+  });
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleChange = (patch) => { setData((d) => ({ ...d, ...patch })); setIsDirty(true); };
+
+  const save = async () => {
+    setIsSaving(true); setError(null);
+    try {
+      const updated = await updatePortfolio(portfolio.id, {
+        goals: data.goals,
+        criteria: (data.criteria || []).map((c) => c.trim()).filter(Boolean),
+      }, { expectedVersion: portfolio.version });
+      onSaved(updated);
+      setIsDirty(false);
+    } catch (err) {
+      setError(err instanceof VersionConflictError
+        ? 'Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.'
+        : err.message);
+    } finally { setIsSaving(false); }
+  };
+
+  return (
+    <div>
+      {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
+      <Ziele
+        data={data}
+        onChange={handleChange}
+        title="Ziele"
+        subtitle="Definieren Sie die übergeordneten Portfolioziele und messbaren Erfolgskriterien."
+        goalsLabel="Portfolioziele"
+        goalsPlaceholder={PORTFOLIO_GOALS_PLACEHOLDER}
+        criteriaHint="Definieren Sie messbare Kriterien, an denen der Portfolioerfolg gemessen wird."
+        tipText="Gute Portfolioziele richten alle zugeordneten Projekte auf einen gemeinsamen Nutzen aus. Stellen Sie sicher, dass Ihre Ziele:"
       />
       {canEdit && (
         <div style={{ marginTop: theme.spacing.xl }}>

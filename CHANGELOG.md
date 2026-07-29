@@ -2,6 +2,13 @@
 
 ## 2026-07-29
 
+### PM: Portfolio-Detail — Tab „Ziele" (Portfolioziele + Erfolgskriterien)
+Der Platzhalter-Tab „Ziele" ist umgesetzt — analog zur Ziele-Maske des Projektauftrags (geteilte
+`Ziele`-Komponente, per Label-Props parametrisiert), nur mit Portfoliowording: **Portfolioziele** (Freitext)
+und **Erfolgskriterien** (Liste). Persistenz am Portfolio: metadata-JSONB auf DB (main), Top-Level in der YAML
+(demo/messe) — migrationsfrei. Speichern mit optimistischer Versionierung wie in den übrigen Tabs. In beiden
+Worktrees; Frontend byte-identisch.
+
 ### PM: Portfolio-Detail — Tab „Personen" (Portfolioteam + Portfolio-Stakeholder)
 Der Platzhalter-Tab „Personen" ist jetzt voll umgesetzt — komplett analog zur Personen-Maske des
 Projektauftrags (geteilte `Personen`-Komponente, per Label-Props parametrisiert), nur mit den Bezeichnungen

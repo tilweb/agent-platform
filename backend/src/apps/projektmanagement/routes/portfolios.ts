@@ -152,6 +152,8 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       end_date?: string;
       organization?: TeamMember[];
       stakeholders?: Stakeholder[];
+      goals?: string;
+      criteria?: string[];
       metadata?: Record<string, unknown>;
       expectedVersion?: number;
     }>();
@@ -166,6 +168,8 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       end_date: body.end_date,
       organization: body.organization,
       stakeholders: body.stakeholders,
+      goals: body.goals,
+      criteria: body.criteria,
       metadata: body.metadata,
       expectedVersion: body.expectedVersion,
     });

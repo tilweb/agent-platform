@@ -2,7 +2,6 @@
  * Ziele - Projektziele und Erfolgskriterien
  */
 
-import { useState } from 'react';
 import { theme } from '../../../../config/theme';
 
 const styles = {
@@ -120,7 +119,23 @@ const styles = {
   },
 };
 
-function Ziele({ data, onChange }) {
+const DEFAULT_GOALS_PLACEHOLDER = `Beschreiben Sie die Ziele des Projekts...
+
+Beispiel:
+- Steigerung der Kundenzufriedenheit um 20%
+- Reduzierung der Bearbeitungszeit um 30%
+- Einführung eines neuen digitalen Service-Portals`;
+
+function Ziele({
+  data,
+  onChange,
+  title = '3. Ziele',
+  subtitle = 'Definieren Sie die Projektziele und messbaren Erfolgskriterien.',
+  goalsLabel = 'Projektziele',
+  goalsPlaceholder = DEFAULT_GOALS_PLACEHOLDER,
+  criteriaHint = 'Definieren Sie messbare Kriterien, an denen der Projekterfolg gemessen wird.',
+  tipText = 'Gute Projektziele sind der Schlüssel zum Erfolg. Stellen Sie sicher, dass Ihre Ziele:',
+}) {
   const handleGoalsChange = (value) => {
     onChange({ goals: value });
   };
@@ -143,26 +158,19 @@ function Ziele({ data, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>3. Ziele</h2>
-        <p style={styles.subtitle}>
-          Definieren Sie die Projektziele und messbaren Erfolgskriterien.
-        </p>
+        <h2 style={styles.title}>{title}</h2>
+        <p style={styles.subtitle}>{subtitle}</p>
       </div>
 
       {/* Projektziele */}
       <div style={styles.formGroup}>
         <label style={styles.label}>
-          Projektziele<span style={styles.required}>*</span>
+          {goalsLabel}<span style={styles.required}>*</span>
         </label>
         <textarea
           value={data.goals || ''}
           onChange={(e) => handleGoalsChange(e.target.value)}
-          placeholder="Beschreiben Sie die Ziele des Projekts...
-
-Beispiel:
-- Steigerung der Kundenzufriedenheit um 20%
-- Reduzierung der Bearbeitungszeit um 30%
-- Einführung eines neuen digitalen Service-Portals"
+          placeholder={goalsPlaceholder}
           style={styles.textarea}
           onFocus={(e) => {
             e.target.style.borderColor = theme.colors.primary;
@@ -181,9 +189,7 @@ Beispiel:
         <label style={styles.label}>
           Erfolgskriterien<span style={styles.required}>*</span>
         </label>
-        <p style={styles.hint}>
-          Definieren Sie messbare Kriterien, an denen der Projekterfolg gemessen wird.
-        </p>
+        <p style={styles.hint}>{criteriaHint}</p>
         <div style={styles.criteriaList}>
           {(data.criteria || []).map((criterion, index) => (
             <div key={index} style={styles.criteriaItem}>
@@ -237,7 +243,7 @@ Beispiel:
       <div style={styles.tipBox}>
         <div style={styles.tipTitle}>Tipp: RUHR PM Masterclass</div>
         <p style={styles.tipText}>
-          Gute Projektziele sind der Schlüssel zum Erfolg. Stellen Sie sicher, dass Ihre Ziele:
+          {tipText}
           <br />- Klar und eindeutig formuliert sind
           <br />- Messbare Ergebnisse definieren
           <br />- Realistisch erreichbar sind

@@ -205,6 +205,9 @@ export interface Portfolio {
   // Personen (im metadata-JSONB persistiert, per rowToPortfolio angehoben).
   organization?: TeamMember[];  // Portfolioteam
   stakeholders?: Stakeholder[]; // Portfolio-Stakeholder
+  // Ziele (im metadata-JSONB persistiert).
+  goals?: string;               // Portfolioziele (Freitext)
+  criteria?: string[];          // Erfolgskriterien (Liste)
   ownerId?: string;
   metadata?: Record<string, any>;
   permissions?: ResourcePermissions;
@@ -225,6 +228,8 @@ export interface PortfolioCreateInput {
   end_date?: string;
   organization?: TeamMember[];
   stakeholders?: Stakeholder[];
+  goals?: string;
+  criteria?: string[];
   ownerId?: string;
   metadata?: Record<string, any>;
 }
@@ -240,6 +245,8 @@ export interface PortfolioUpdateInput {
   end_date?: string;
   organization?: TeamMember[];
   stakeholders?: Stakeholder[];
+  goals?: string;
+  criteria?: string[];
   metadata?: Record<string, any>;
   expectedVersion?: number;
 }
