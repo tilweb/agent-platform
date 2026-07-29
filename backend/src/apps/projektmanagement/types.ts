@@ -202,6 +202,9 @@ export interface Portfolio {
   driver?: string;              // portfolio_driver (Config-Liste)
   start_date?: string;
   end_date?: string;
+  // Personen (im metadata-JSONB persistiert, per rowToPortfolio angehoben).
+  organization?: TeamMember[];  // Portfolioteam
+  stakeholders?: Stakeholder[]; // Portfolio-Stakeholder
   ownerId?: string;
   metadata?: Record<string, any>;
   permissions?: ResourcePermissions;
@@ -220,6 +223,8 @@ export interface PortfolioCreateInput {
   driver?: string;
   start_date?: string;
   end_date?: string;
+  organization?: TeamMember[];
+  stakeholders?: Stakeholder[];
   ownerId?: string;
   metadata?: Record<string, any>;
 }
@@ -233,6 +238,8 @@ export interface PortfolioUpdateInput {
   driver?: string;
   start_date?: string;
   end_date?: string;
+  organization?: TeamMember[];
+  stakeholders?: Stakeholder[];
   metadata?: Record<string, any>;
   expectedVersion?: number;
 }

@@ -161,7 +161,16 @@ const styles = {
   },
 };
 
-function Personen({ data, onChange, config, showGeplanterEinsatz = false }) {
+function Personen({
+  data,
+  onChange,
+  config,
+  showGeplanterEinsatz = false,
+  title = '2. Personen',
+  subtitle = 'Definieren Sie das Projektteam und die wichtigsten Stakeholder.',
+  teamLabel = 'Projektteam',
+  stakeholderLabel = 'Stakeholder',
+}) {
   const [activeTab, setActiveTab] = useState('team');
   const organization = data.organization || [];
   const stakeholders = data.stakeholders || [];
@@ -243,10 +252,8 @@ function Personen({ data, onChange, config, showGeplanterEinsatz = false }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>2. Personen</h2>
-        <p style={styles.subtitle}>
-          Definieren Sie das Projektteam und die wichtigsten Stakeholder.
-        </p>
+        <h2 style={styles.title}>{title}</h2>
+        <p style={styles.subtitle}>{subtitle}</p>
       </div>
 
       {/* Tabs */}
@@ -259,7 +266,7 @@ function Personen({ data, onChange, config, showGeplanterEinsatz = false }) {
           }}
           onClick={() => setActiveTab('team')}
         >
-          Projektteam ({organization.length})
+          {teamLabel} ({organization.length})
         </button>
         <button
           type="button"
@@ -269,7 +276,7 @@ function Personen({ data, onChange, config, showGeplanterEinsatz = false }) {
           }}
           onClick={() => setActiveTab('stakeholders')}
         >
-          Stakeholder ({stakeholders.length})
+          {stakeholderLabel} ({stakeholders.length})
         </button>
         <button
           type="button"
@@ -610,7 +617,7 @@ function Personen({ data, onChange, config, showGeplanterEinsatz = false }) {
             }}
           >
             <PlusIcon />
-            Stakeholder hinzufügen
+            {stakeholderLabel} hinzufügen
           </button>
         </div>
       )}
@@ -647,7 +654,7 @@ function Personen({ data, onChange, config, showGeplanterEinsatz = false }) {
                 backgroundColor: theme.colors.primaryLight,
                 border: `2px solid ${theme.colors.primary}`,
               }} />
-              Projektteam ({organization.length})
+              {teamLabel} ({organization.length})
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
               <div style={{
@@ -657,7 +664,7 @@ function Personen({ data, onChange, config, showGeplanterEinsatz = false }) {
                 backgroundColor: theme.colors.primaryLight,
                 border: `2px solid ${theme.colors.primary}`,
               }} />
-              Stakeholder ({stakeholders.length})
+              {stakeholderLabel} ({stakeholders.length})
             </div>
           </div>
         </div>
