@@ -29,6 +29,7 @@ import { imageRoutes } from './routes/images';
 import { notificationRoutes } from './routes/notifications';
 import { extractionProjectRoutes } from './routes/extraction-projects';
 import { extractionJobRoutes } from './routes/extraction-jobs';
+import { extractionInboxRoutes } from './routes/extraction-inbox';
 import { imageGenerationService } from './services/imageGeneration';
 import { setupTools } from './tools';
 import { mcpManager } from './mcp';
@@ -357,6 +358,7 @@ app.route('/api/images', imageRoutes);
 app.route('/api/notifications', notificationRoutes);
 app.route('/api/extraction', extractionProjectRoutes);
 app.route('/api/extraction', extractionJobRoutes);    // Heavy-Pipeline (P0+, /jobs/* Sub-Paths)
+app.route('/api/extraction', extractionInboxRoutes);  // Posteingang (Welle 4, /inbox/* Sub-Paths)
 
 // Production: serve built frontend (same-origin, no CORS needed)
 if (process.env.NODE_ENV === 'production') {

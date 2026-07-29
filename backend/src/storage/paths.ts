@@ -100,6 +100,17 @@ export const s3Paths = {
     assertSafeFilename(file);
     return `apps/lieferantenmanagement/${supplierId}/${docId}/${file}`;
   },
+  // Extraktions-Posteingang (Welle 4): Original + Teil-PDFs je Upload.
+  inboxOriginal: (uploadId: string, ext: string) => {
+    assertSafeId(uploadId, 'uploadId');
+    assertSafeExt(ext);
+    return `extraction-inbox/${uploadId}/original.${ext}`;
+  },
+  inboxPart: (uploadId: string, partId: string) => {
+    assertSafeId(uploadId, 'uploadId');
+    assertSafeId(partId, 'partId');
+    return `extraction-inbox/${uploadId}/parts/${partId}.pdf`;
+  },
   // Podcast-Repurposing: hochgeladenes Video + extrahiertes Audio pro Episode.
   prVideo: (episodeId: string, ext: string) => {
     assertSafeId(episodeId, 'episodeId');

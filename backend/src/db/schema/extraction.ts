@@ -68,6 +68,41 @@ export const extractionBatchRuns = extractionSchema.table('batch_runs', {
 }));
 
 /**
+ * Posteingang (Welle 4): Uploads der Eingangsstrecke. Die PDF-Bytes (Original +
+ * Teile) liegen in S3 (`extraction-inbox/{uploadId}/...`), hier nur Metadaten.
+ */
+export const extractionInboxUploads = extractionSchema.table('inbox_uploads', {
+  id: text('id').primaryKey(),
+  filename: text('filename').notNull(),
+  mimeType: text('mime_type'),
+  pageCount: integer('page_count'),
+  status: text('status').notNull().default('processing'),  // processing|ready|failed
+  error: text('error'),
+  note: text('note'),                                      // z.B. ">60 Seiten — nicht geprueft"
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+});
+
+/** Teil-Dokumente eines Posteingang-Uploads (nach Split + Klassifikation). */
+export const extractionInboxParts = extractionSchema.table('inbox_parts', {
+  id: text('id').primaryKey(),
+  uploadId: text('upload_id').notNull().references(() => extractionInboxUploads.id, { onDelete: 'cascade' }),
+  partIndex: integer('part_index').notNull().default(0),
+  pageFrom: integer('page_from').notNull().default(1),
+  pageTo: integer('page_to').notNull().default(1),
+  filename: text('filename').notNull(),
+  status: text('status').notNull().default('unassigned'),  // unassigned|auto_routed|routed
+  classification: jsonb('classification'),                 // { project_id, confidence, alternatives }
+  targetProjectId: text('target_project_id'),
+  batchRunId: text('batch_run_id'),
+  previewDataUri: text('preview_data_uri'),                // kleines Erste-Seiten-PNG
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  uploadIdx: index('extraction_inbox_parts_upload_idx').on(t.uploadId),
+}));
+
+/**
  * Pro-Datei-Ergebnis eines Batch-Laufs. `detail` (boxes + pageImages) ist schwer
  * (base64-PNGs) und wird im Summary-Select bewusst ausgelassen — nur der Detail-
  * Endpoint liest es.
