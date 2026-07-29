@@ -2,6 +2,13 @@
 
 ## 2026-07-29
 
+### PM: Portfolio-Detail — zentraler Speichern-Button im Header (wie Projektauftrag)
+Der Speichern-Button aller Portfolio-Tabs (Basis, Personen, Ziele, Roadmap) sitzt jetzt — analog zum
+Projektauftrag — **oben rechts im Header** (mit Save-Icon, Glow bei ungespeicherten Änderungen, Label
+„Speichern / Speichern * / Speichern…") statt am Ende des jeweiligen Tab-Inhalts. Der aktive Tab meldet
+seinen Dirty-/Saving-Zustand nach oben und stellt `save()` per Ref bereit (`forwardRef`/`useImperativeHandle`);
+der Header-Button spricht den aktiven Tab an. Frontend byte-identisch in beiden Worktrees.
+
 ### PM: Portfolio-Detail — Tab „Roadmap" (Gantt aus Projekten + Projektideen)
 Der Platzhalter-Tab „Roadmap" ist umgesetzt: ein Gantt-Diagramm der zugeordneten Projekte und Projektideen
 nach Startdatum (wiederverwendete `GanttRoadmap`-Komponente).
