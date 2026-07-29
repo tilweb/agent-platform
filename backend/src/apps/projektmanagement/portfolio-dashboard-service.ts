@@ -39,6 +39,8 @@ import type {
   PortfolioCostResponse,
   PortfolioCostProjekt,
   PortfolioCostIdee,
+  PortfolioRiskResponse,
+  PortfolioRiskItem,
   Statusbericht,
   Projektauftrag,
   Projektidee,
@@ -453,6 +455,66 @@ export async function getPortfolioCosts(
   };
 
   return { projekte, ideen, summary };
+}
+
+// ============== Risiken-Aggregat ==============
+
+/** Stabiler Marker-Key eines Risikos: bevorzugt das Auftrags-Risiko (SB-stabil). */
+function riskKey(projektId: string, r: RiskTrackingItem): string {
+  return `${projektId}:${r.auftrag_risk_id || r.id}`;
+}
+
+/**
+ * Portfolio-Risiken-Aggregat: alle Risiken aus dem letzten finalen Statusbericht
+ * je Projekt (risk_tracking), mit stabilem `key` und `tracked`-Flag aus
+ * portfolio.tracked_risks. RBAC identisch zum Dashboard. Returnt `null`, wenn das
+ * Portfolio nicht existiert.
+ */
+export async function getPortfolioRisks(
+  portfolioId: string,
+  userId: string,
+): Promise<PortfolioRiskResponse | null> {
+  const portfolio = await getPortfolio(portfolioId);
+  if (!portfolio) return null;
+
+  const trackedSet = new Set(portfolio.tracked_risks || []);
+
+  const allProjekte = await listProjekteByPortfolio(portfolioId);
+  const accessibleEntries = await Promise.all(
+    allProjekte.map(async (p) => {
+      const role = await getEffectiveAuftragRole(userId, p.id);
+      return role ? p : null;
+    }),
+  );
+  const accessible = accessibleEntries.filter((p): p is NonNullable<typeof p> => p !== null);
+  const contexts = await Promise.all(accessible.map((p) => loadProjektContext(p.id, p.name)));
+
+  const risiken: PortfolioRiskItem[] = [];
+  for (const ctx of contexts) {
+    const tracking = ctx.latestSb?.risk_tracking || [];
+    for (const r of tracking) {
+      const key = riskKey(ctx.projektId, r);
+      risiken.push({
+        key,
+        projekt_id: ctx.projektId,
+        projekt_name: ctx.projektName,
+        type: r.type,
+        beschreibung: r.beschreibung || '',
+        auswirkung: r.auswirkung || '',
+        wahrscheinlichkeit: r.wahrscheinlichkeit || '',
+        auswirkung_bewertung: r.auswirkung_bewertung || '',
+        score: scoreForRisk(r),
+        ampel: r.ampel,
+        status: r.status || '',
+        strategie: r.strategie || '',
+        verantwortlich: r.verantwortlich || '',
+        tracked: trackedSet.has(key),
+      });
+    }
+  }
+  risiken.sort((a, b) => b.score - a.score);
+
+  return { risiken };
 }
 
 // Suppress unused import warnings — these are re-exports in case future modules

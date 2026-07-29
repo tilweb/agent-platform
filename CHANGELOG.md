@@ -2,6 +2,18 @@
 
 ## 2026-07-29
 
+### PM: Portfolio-Detail — Tab „Risiken" (Aggregat + Dashboard-Tracking-Markierung)
+Der letzte Platzhalter-Tab „Risiken" ist umgesetzt: aggregiert alle Risiken aus dem letzten genehmigten
+Statusbericht aller zugeordneten Projekte in eine sortierbare Tabelle (Projekt, Typ, Risiko, Wahrscheinlichkeit
+× Auswirkung = Score, Ampel, Status, Verantwortlich).
+- Pro Risiko lässt sich per Häkchen markieren, ob es später im **PMO-Dashboard** verfolgt werden soll —
+  gespeichert am Portfolio als `tracked_risks` (stabile Marker-Keys `projektId:auftrag_risk_id|id`, SB-stabil).
+  Savable Tab (zentraler Header-Speichern-Button), migrationsfrei (metadata-JSONB / YAML).
+- Neuer Aggregat-Endpoint `GET /portfolios/:id/risks` (`getPortfolioRisks`, RBAC-gefiltert wie das Dashboard);
+  PUT nimmt `tracked_risks` entgegen. Die eigentliche Dashboard-Auswertung folgt später.
+- Damit sind alle Portfolio-Tabs (Basis · Personen · Ziele · Roadmap · Kosten · Risiken) umgesetzt; das
+  Platzhalter-Gerüst wurde entfernt. In beiden Worktrees (DB + YAML), Frontend byte-identisch.
+
 ### PM: Portfolio-Detail — Tab „Kosten" (Aggregat aus Projekten + Projektideen)
 Der Platzhalter-Tab „Kosten" ist umgesetzt: eine read-only Kostenübersicht über alle zugeordneten Projekte
 und Projektideen.
