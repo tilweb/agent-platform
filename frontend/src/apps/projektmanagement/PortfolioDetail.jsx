@@ -149,11 +149,9 @@ const TABS = [
   { id: 'risiken', label: 'Risiken' },
 ];
 
-const PLACEHOLDER_TABS = new Set(['risiken']);
-
 // Tabs mit einem zentralen Speichern-Button im Header (analog Projektauftrag).
 // Der aktive Tab wird per Ref angesprochen (imperativer save()-Handle).
-const SAVABLE_TABS = new Set(['basis', 'personen', 'ziele', 'roadmap']);
+const SAVABLE_TABS = new Set(['basis', 'personen', 'ziele', 'roadmap', 'risiken']);
 
 // Anzeigename eines Config-Werts (z.B. Portfoliostatus) — Fallback auf den Wert.
 function optionLabel(appConfig, key, value) {
@@ -162,10 +160,6 @@ function optionLabel(appConfig, key, value) {
 }
 function statusLabel(appConfig, status) {
   return optionLabel(appConfig, 'portfolio_status', status);
-}
-
-function PlaceholderTab() {
-  return <div style={styles.empty}>Dieser Bereich wird als Nächstes umgesetzt.</div>;
 }
 
 export default function PortfolioDetail() {
@@ -339,7 +333,17 @@ export default function PortfolioDetail() {
         {activeTab === 'kosten' && (
           <KostenTab key={portfolio.id} portfolio={portfolio} navigate={navigate} />
         )}
-        {PLACEHOLDER_TABS.has(activeTab) && <PlaceholderTab />}
+        {activeTab === 'risiken' && (
+          <RisikenTab
+            key={`${portfolio.id}-${portfolio.version}`}
+            ref={activeTabRef}
+            portfolio={portfolio}
+            canEdit={canEdit}
+            onStateChange={setTabState}
+            onSaved={(p) => setPortfolio(p)}
+            navigate={navigate}
+          />
+        )}
       </div>
     </div>
   );
@@ -858,6 +862,120 @@ function KostenTab({ portfolio, navigate }) {
     </div>
   );
 }
+
+// ============== Risiken-Tab (Aggregat + Dashboard-Tracking-Markierung) ==============
+//
+// Aggregiert alle Risiken aus dem letzten genehmigten Statusbericht der
+// zugeordneten Projekte (GET /portfolios/:id/risks). Pro Risiko kann markiert
+// werden, ob es später im PMO-Dashboard verfolgt wird — gespeichert als
+// portfolio.tracked_risks (Marker-Keys). Savable Tab (Header-Speichern).
+
+const AMPEL_DOT = { gruen: theme.colors.success, gelb: theme.colors.warning, rot: theme.colors.error };
+
+const RisikenTab = forwardRef(function RisikenTab({ portfolio, canEdit, onStateChange, onSaved, navigate }, ref) {
+  const { getPortfolioRisks, updatePortfolio } = useProjektmanagement();
+  const [risiken, setRisiken] = useState([]);
+  const [tracked, setTracked] = useState(() => new Set(portfolio.tracked_risks || []));
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const reload = useCallback(async () => {
+    setIsLoading(true); setError(null);
+    try { const r = await getPortfolioRisks(portfolio.id); setRisiken(r?.risiken || []); }
+    catch (err) { setError(err.message); }
+    finally { setIsLoading(false); }
+  }, [portfolio.id, getPortfolioRisks]);
+  useEffect(() => { reload(); }, [reload]);
+
+  const toggle = (key) => {
+    setTracked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+    onStateChange?.({ dirty: true, saving: false });
+  };
+
+  const save = async () => {
+    onStateChange?.({ dirty: true, saving: true }); setError(null);
+    try {
+      const updated = await updatePortfolio(portfolio.id, { tracked_risks: [...tracked] }, { expectedVersion: portfolio.version });
+      onStateChange?.({ dirty: false, saving: false });
+      onSaved(updated);
+    } catch (err) {
+      setError(err instanceof VersionConflictError
+        ? 'Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.'
+        : err.message);
+      onStateChange?.({ dirty: true, saving: false });
+    }
+  };
+  useImperativeHandle(ref, () => ({ save }));
+
+  const scoreColor = (s) => (s >= 6 ? theme.colors.error : s >= 3 ? theme.colors.warning : theme.colors.textMuted);
+  const thCenter = { ...styles.th, textAlign: 'center' };
+  const tdCenter = { ...styles.td, textAlign: 'center' };
+
+  if (isLoading) return <div style={styles.empty}>Lade Risiken…</div>;
+
+  return (
+    <div>
+      {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
+      <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.lg }}>
+        Risiken aus dem letzten genehmigten Statusbericht aller zugeordneten Projekte. Markiere per Häkchen,
+        welche Risiken später im PMO-Dashboard verfolgt werden sollen — {tracked.size} markiert.
+      </div>
+
+      {risiken.length === 0 ? (
+        <div style={styles.empty}>Keine Risiken in den Statusberichten der zugeordneten Projekte.</div>
+      ) : (
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={thCenter} title="Im Dashboard tracken">Track</th>
+              <th style={styles.th}>Projekt</th>
+              <th style={styles.th}>Typ</th>
+              <th style={styles.th}>Risiko</th>
+              <th style={thCenter}>W</th>
+              <th style={thCenter}>A</th>
+              <th style={thCenter}>Score</th>
+              <th style={thCenter}>Ampel</th>
+              <th style={styles.th}>Status</th>
+              <th style={styles.th}>Verantwortlich</th>
+            </tr>
+          </thead>
+          <tbody>
+            {risiken.map((r) => (
+              <tr key={r.key}>
+                <td style={tdCenter}>
+                  <input type="checkbox" checked={tracked.has(r.key)} disabled={!canEdit} onChange={() => toggle(r.key)} />
+                </td>
+                <td style={styles.td}>
+                  <button type="button" style={styles.linkLike} onClick={() => navigate(`/apps/projektmanagement/${r.projekt_id}`)}>
+                    {r.projekt_name}
+                  </button>
+                </td>
+                <td style={styles.td}>{r.type === 'chance' ? 'Chance' : 'Bedrohung'}</td>
+                <td style={styles.td}>{r.beschreibung || r.auswirkung || '—'}</td>
+                <td style={tdCenter}>{r.wahrscheinlichkeit || '—'}</td>
+                <td style={tdCenter}>{r.auswirkung_bewertung || '—'}</td>
+                <td style={{ ...tdCenter, color: scoreColor(r.score), fontWeight: theme.typography.weights.semibold }}>
+                  {r.score || '—'}
+                </td>
+                <td style={tdCenter}>
+                  {r.ampel
+                    ? <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: theme.borderRadius.full, backgroundColor: AMPEL_DOT[r.ampel] || theme.colors.textMuted }} />
+                    : '—'}
+                </td>
+                <td style={styles.td}>{r.status || '—'}</td>
+                <td style={styles.td}>{r.verantwortlich || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+});
 
 // ============== Projekte-Tab ==============
 

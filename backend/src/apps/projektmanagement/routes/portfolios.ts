@@ -37,7 +37,7 @@ import {
   denyIfBelowPortfolioRole,
   denyIfNotAppEditor,
 } from './_shared';
-import { getPortfolioDashboard, getPortfolioRoadmap, getPortfolioCosts } from '../portfolio-dashboard-service';
+import { getPortfolioDashboard, getPortfolioRoadmap, getPortfolioCosts, getPortfolioRisks } from '../portfolio-dashboard-service';
 import type { PortfolioStatus, TeamMember, Stakeholder, PortfolioDependency } from '../types';
 // Hinweis: getPortfolioDashboard kommt aus portfolio-dashboard-service.ts (Phase D3).
 
@@ -154,6 +154,7 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       goals?: string;
       criteria?: string[];
       dependencies?: PortfolioDependency[];
+      tracked_risks?: string[];
       metadata?: Record<string, unknown>;
       expectedVersion?: number;
     }>();
@@ -171,6 +172,7 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       goals: body.goals,
       criteria: body.criteria,
       dependencies: body.dependencies,
+      tracked_risks: body.tracked_risks,
       metadata: body.metadata,
       expectedVersion: body.expectedVersion,
     });
@@ -401,5 +403,24 @@ portfoliosRoutes.get('/portfolios/:id/costs', async (c) => {
   } catch (error) {
     console.error('getPortfolioCosts error:', error);
     return c.json({ error: 'Failed to get portfolio costs' }, 500);
+  }
+});
+
+// ============== Risiken (Aggregat) ==============
+
+portfoliosRoutes.get('/portfolios/:id/risks', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowPortfolioRole(userId, id, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const risks = await getPortfolioRisks(id, userId);
+    if (!risks) return c.json({ error: 'Portfolio nicht gefunden' }, 404);
+    return c.json({ risks });
+  } catch (error) {
+    console.error('getPortfolioRisks error:', error);
+    return c.json({ error: 'Failed to get portfolio risks' }, 500);
   }
 });

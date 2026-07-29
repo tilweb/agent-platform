@@ -201,6 +201,8 @@ export interface Portfolio {
   criteria?: string[];          // Erfolgskriterien (Liste)
   // Roadmap: Abhängigkeiten zwischen zugeordneten Projekten (Finish-to-Start).
   dependencies?: PortfolioDependency[];
+  // Risiken: Marker-Keys der Risiken, die im PMO-Dashboard getrackt werden sollen.
+  tracked_risks?: string[];
   ownerId?: string;
   metadata?: Record<string, any>;
   permissions?: ResourcePermissions;
@@ -224,6 +226,7 @@ export interface PortfolioCreateInput {
   goals?: string;
   criteria?: string[];
   dependencies?: PortfolioDependency[];
+  tracked_risks?: string[];
   ownerId?: string;
   metadata?: Record<string, any>;
 }
@@ -242,6 +245,7 @@ export interface PortfolioUpdateInput {
   goals?: string;
   criteria?: string[];
   dependencies?: PortfolioDependency[];
+  tracked_risks?: string[];
   metadata?: Record<string, any>;
   expectedVersion?: number;
 }
@@ -383,6 +387,34 @@ export interface PortfolioCostResponse {
   projekte: PortfolioCostProjekt[];
   ideen: PortfolioCostIdee[];
   summary: PortfolioCostSummary;
+}
+
+// ============== Portfolio-Risiken (aggregiert) ==============
+//
+// Aggregat fuer GET /portfolios/:id/risks. Alle Risiken aus dem letzten finalen
+// Statusbericht je Projekt (risk_tracking). `key` ist ein stabiler Marker-Key
+// (projektId:auftrag_risk_id|id); `tracked` spiegelt portfolio.tracked_risks und
+// markiert Risiken, die spaeter im PMO-Dashboard verfolgt werden sollen.
+
+export interface PortfolioRiskItem {
+  key: string;
+  projekt_id: string;
+  projekt_name: string;
+  type: 'bedrohung' | 'chance';
+  beschreibung: string;
+  auswirkung: string;
+  wahrscheinlichkeit: string;
+  auswirkung_bewertung: string;
+  score: number;                   // Wahrscheinlichkeit × Auswirkung
+  ampel?: AmpelStatus;
+  status: string;
+  strategie: string;
+  verantwortlich: string;
+  tracked: boolean;
+}
+
+export interface PortfolioRiskResponse {
+  risiken: PortfolioRiskItem[];
 }
 
 // ============== Lessons Learned ==============
