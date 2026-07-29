@@ -18,6 +18,7 @@ import { useAppPermission } from '../../components/RequireAppPermission';
 import { ArrowLeftIcon, TrashIcon } from '../../components/Icons';
 import ConfirmModal from '../../components/ConfirmModal';
 import PortfolioDashboard from './components/portfolio/PortfolioDashboard';
+import StepNav from './components/StepNav';
 
 const styles = {
   container: { height: '100%', display: 'flex', flexDirection: 'column' },
@@ -132,23 +133,39 @@ const styles = {
   bannerSuccess: { backgroundColor: theme.colors.successLight, color: theme.colors.success },
 };
 
+// Zielstruktur (RuhrPM-Konzept), am Projektauftrag ausgerichtet. `label` = Titel
+// in StepNav und zugleich Schlüssel der Icon-Zuordnung (STEP_ICONS).
 const TABS = [
   { id: 'uebersicht', label: 'Übersicht' },
-  { id: 'projekte', label: 'Projekte' },
-  { id: 'strategie', label: 'Strategie' },
-  { id: 'einstellungen', label: 'Einstellungen' },
+  { id: 'basis', label: 'Basis' },
+  { id: 'personen', label: 'Personen' },
+  { id: 'ziele', label: 'Ziele' },
+  { id: 'roadmap', label: 'Roadmap' },
+  { id: 'kosten', label: 'Kosten' },
+  { id: 'risiken', label: 'Risiken' },
 ];
+
+const PLACEHOLDER_TABS = new Set(['personen', 'ziele', 'roadmap', 'kosten', 'risiken']);
+
+// Anzeigename eines Config-Werts (z.B. Portfoliostatus) — Fallback auf den Wert.
+function optionLabel(appConfig, key, value) {
+  const opt = (appConfig?.[key] || []).find((o) => o.value === value);
+  return opt ? opt.label : (value || '—');
+}
+function statusLabel(appConfig, status) {
+  return optionLabel(appConfig, 'portfolio_status', status);
+}
+
+function PlaceholderTab() {
+  return <div style={styles.empty}>Dieser Bereich wird als Nächstes umgesetzt.</div>;
+}
 
 export default function PortfolioDetail() {
   const { id: portfolioId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { role: appRole } = useAppPermission('projektmanagement');
-  const {
-    getPortfolio, updatePortfolio, deletePortfolio,
-    getPortfolioProjekte, getAvailableProjekteForPortfolio,
-    updateProjekt, getConfig,
-  } = useProjektmanagement();
+  const { getPortfolio, getPortfolioProjekte, getConfig } = useProjektmanagement();
 
   const [portfolio, setPortfolio] = useState(null);
   const [projekteCount, setProjekteCount] = useState(0);
@@ -219,7 +236,7 @@ export default function PortfolioDetail() {
                 ...styles.statusBadge,
                 ...(portfolio.status === 'archived' ? styles.statusArchived : styles.statusActive),
               }}>
-                {portfolio.status === 'archived' ? 'Archiviert' : 'Aktiv'}
+                {statusLabel(appConfig, portfolio.status)}
               </span>
               <span>·</span>
               <span>{projekteCount} {projekteCount === 1 ? 'Projekt' : 'Projekte'}</span>
@@ -228,58 +245,31 @@ export default function PortfolioDetail() {
         </div>
       </div>
 
-      <div style={styles.tabs}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              style={{ ...styles.tab, ...(isActive ? styles.tabActive : {}) }}
-              onClick={() => setTab(tab.id)}
-              onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
-              onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Icon-Tab-Leiste (geteilte StepNav, Icons per Titel) */}
+      <StepNav
+        steps={TABS.map((t, i) => ({ number: i + 1, title: t.label }))}
+        getStatus={(n) => (TABS[n - 1].id === activeTab ? 'active' : 'default')}
+        onSelect={(n) => setTab(TABS[n - 1].id)}
+      />
 
       <div style={styles.content}>
         {activeTab === 'uebersicht' && (
           <PortfolioDashboard portfolioId={portfolioId} appConfig={appConfig} />
         )}
-        {activeTab === 'projekte' && (
-          <ProjekteTab
-            portfolioId={portfolioId}
+        {activeTab === 'basis' && (
+          <BasisTab
+            key={`${portfolio.id}-${portfolio.version}`}
+            portfolio={portfolio}
+            appConfig={appConfig}
             canEdit={canEdit}
-            getPortfolioProjekte={getPortfolioProjekte}
-            getAvailableProjekteForPortfolio={getAvailableProjekteForPortfolio}
-            updateProjekt={updateProjekt}
+            canDelete={canDelete}
+            onSaved={(p) => setPortfolio(p)}
+            onDeleted={() => navigate('/apps/projektmanagement?tab=portfolios')}
             onCountChange={setProjekteCount}
             navigate={navigate}
           />
         )}
-        {activeTab === 'strategie' && (
-          <StrategieTab
-            portfolio={portfolio}
-            canEdit={canEdit}
-            updatePortfolio={updatePortfolio}
-            onSaved={(p) => setPortfolio(p)}
-          />
-        )}
-        {activeTab === 'einstellungen' && (
-          <EinstellungenTab
-            portfolio={portfolio}
-            canEdit={canEdit}
-            canDelete={canDelete}
-            updatePortfolio={updatePortfolio}
-            deletePortfolio={deletePortfolio}
-            onSaved={(p) => setPortfolio(p)}
-            onDeleted={() => navigate('/apps/projektmanagement?tab=portfolios')}
-          />
-        )}
+        {PLACEHOLDER_TABS.has(activeTab) && <PlaceholderTab />}
       </div>
     </div>
   );
@@ -449,71 +439,121 @@ function ProjekteTab({ portfolioId, canEdit, getPortfolioProjekte, getAvailableP
   );
 }
 
-// ============== Strategie-Tab ==============
+// ============== Basis-Tab (Stammdaten + Projekt-/Ideen-Zuordnung + Löschen) ==============
 
-function StrategieTab({ portfolio, canEdit, updatePortfolio, onSaved }) {
-  const [description, setDescription] = useState(portfolio.description || '');
-  const [strategy, setStrategy] = useState(portfolio.strategy || '');
+function BasisTab({ portfolio, appConfig, canEdit, canDelete, onSaved, onDeleted, onCountChange, navigate }) {
+  const {
+    updatePortfolio, deletePortfolio,
+    getPortfolioProjekte, getAvailableProjekteForPortfolio, updateProjekt,
+    getPortfolioIdeen, getAvailableIdeenForPortfolio, assignIdeeToPortfolio, unassignIdeeFromPortfolio,
+  } = useProjektmanagement();
+
+  const initForm = () => ({
+    name: portfolio.name || '',
+    type: portfolio.type || '',
+    status: portfolio.status || 'active',
+    driver: portfolio.driver || '',
+    description: portfolio.description || '',
+    start_date: portfolio.start_date || '',
+    end_date: portfolio.end_date || '',
+  });
+  // Formular wird aus dem Portfolio initialisiert; die Komponente wird per key
+  // (portfolio.version) neu gemountet, wenn sich das Portfolio ändert (nach Save).
+  const [form, setForm] = useState(initForm);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    setDescription(portfolio.description || '');
-    setStrategy(portfolio.strategy || '');
-    setIsDirty(false);
-  }, [portfolio]);
+  const set = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setIsDirty(true); };
+  const opts = (key) => appConfig?.[key] || [];
 
   const save = async () => {
-    setIsSaving(true);
-    setError(null);
+    if (!form.name.trim()) { setError('Name ist erforderlich.'); return; }
+    setIsSaving(true); setError(null);
     try {
-      const updated = await updatePortfolio(
-        portfolio.id,
-        {
-          description: description.trim() || null,
-          strategy: strategy.trim() || null,
-        },
-        { expectedVersion: portfolio.version },
-      );
+      const updated = await updatePortfolio(portfolio.id, {
+        name: form.name.trim(),
+        status: form.status,
+        type: form.type || undefined,
+        driver: form.driver || undefined,
+        description: form.description.trim() || null,
+        start_date: form.start_date || undefined,
+        end_date: form.end_date || undefined,
+      }, { expectedVersion: portfolio.version });
       onSaved(updated);
       setIsDirty(false);
     } catch (err) {
-      if (err instanceof VersionConflictError) {
-        setError('Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.');
-      } else {
-        setError(err.message);
-      }
-    } finally {
-      setIsSaving(false);
-    }
+      setError(err instanceof VersionConflictError
+        ? 'Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.'
+        : err.message);
+    } finally { setIsSaving(false); }
+  };
+
+  const doDelete = async () => {
+    setIsDeleting(true);
+    try { await deletePortfolio(portfolio.id); setConfirmDelete(false); onDeleted(); }
+    catch (err) { setError(err.message); }
+    finally { setIsDeleting(false); }
+  };
+
+  const sectionTitle = {
+    fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text, margin: `${theme.spacing['2xl']} 0 ${theme.spacing.md}`,
   };
 
   return (
     <div>
       {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
-      <div style={styles.field}>
-        <label style={styles.fieldLabel}>Kurzbeschreibung</label>
-        <div style={styles.fieldHint}>1-2 Sätze — wird als Subtitle in der Portfolio-Liste angezeigt.</div>
-        <textarea
-          style={{ ...styles.textarea, minHeight: 70 }}
-          value={description}
-          onChange={(e) => { setDescription(e.target.value); setIsDirty(true); }}
-          readOnly={!canEdit}
-          placeholder="z.B. Bundling aller Digitalisierungs-Initiativen im Geschäftsjahr 2026."
-        />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
+        <div style={styles.field}>
+          <label style={styles.fieldLabel}>ID</label>
+          <input style={{ ...styles.input, color: theme.colors.textMuted }} value={portfolio.id} readOnly />
+        </div>
+        <div style={styles.field}>
+          <label style={styles.fieldLabel}>Name</label>
+          <input style={styles.input} value={form.name} onChange={(e) => set('name', e.target.value)} readOnly={!canEdit} />
+        </div>
+        <div style={styles.field}>
+          <label style={styles.fieldLabel}>Portfoliotyp</label>
+          <select style={styles.select} value={form.type} onChange={(e) => set('type', e.target.value)} disabled={!canEdit}>
+            <option value="">—</option>
+            {opts('portfolio_type').map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div style={styles.field}>
+          <label style={styles.fieldLabel}>Portfoliostatus</label>
+          <select style={styles.select} value={form.status} onChange={(e) => set('status', e.target.value)} disabled={!canEdit}>
+            {opts('portfolio_status').map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div style={styles.field}>
+          <label style={styles.fieldLabel}>Portfoliotreiber</label>
+          <select style={styles.select} value={form.driver} onChange={(e) => set('driver', e.target.value)} disabled={!canEdit}>
+            <option value="">—</option>
+            {opts('portfolio_driver').map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div />
+        <div style={styles.field}>
+          <label style={styles.fieldLabel}>Startdatum</label>
+          <input type="date" style={styles.input} value={form.start_date} onChange={(e) => set('start_date', e.target.value)} readOnly={!canEdit} />
+        </div>
+        <div style={styles.field}>
+          <label style={styles.fieldLabel}>Enddatum</label>
+          <input type="date" style={styles.input} value={form.end_date} onChange={(e) => set('end_date', e.target.value)} readOnly={!canEdit} />
+        </div>
       </div>
       <div style={styles.field}>
-        <label style={styles.fieldLabel}>Strategie (Markdown)</label>
-        <div style={styles.fieldHint}>
-          Strategische Stoßrichtung, Value-Drivers, Prioritäten. Markdown-Syntax (Überschriften, Listen, Links) erlaubt — Rendering folgt später.
-        </div>
+        <label style={styles.fieldLabel}>Kurzbeschreibung</label>
+        <div style={styles.fieldHint}>1-2 Sätze — erscheint als Subtitle in der Portfolio-Liste.</div>
         <textarea
-          style={{ ...styles.textarea, minHeight: 280 }}
-          value={strategy}
-          onChange={(e) => { setStrategy(e.target.value); setIsDirty(true); }}
+          style={{ ...styles.textarea, minHeight: 80 }}
+          value={form.description}
+          onChange={(e) => set('description', e.target.value)}
           readOnly={!canEdit}
-          placeholder={'## Ziele\n- Kostensenkung\n- Time-to-Market\n\n## Value-Drivers\n- ...'}
         />
       </div>
       {canEdit && (
@@ -530,127 +570,183 @@ function StrategieTab({ portfolio, canEdit, updatePortfolio, onSaved }) {
           {isSaving ? 'Speichern…' : isDirty ? 'Speichern *' : 'Gespeichert'}
         </button>
       )}
-    </div>
-  );
-}
 
-// ============== Einstellungen-Tab ==============
+      <div style={sectionTitle}>Zugeordnete Projekte</div>
+      <ProjekteTab
+        portfolioId={portfolio.id}
+        canEdit={canEdit}
+        getPortfolioProjekte={getPortfolioProjekte}
+        getAvailableProjekteForPortfolio={getAvailableProjekteForPortfolio}
+        updateProjekt={updateProjekt}
+        onCountChange={onCountChange}
+        navigate={navigate}
+      />
 
-function EinstellungenTab({ portfolio, canEdit, canDelete, updatePortfolio, deletePortfolio, onSaved, onDeleted }) {
-  const [name, setName] = useState(portfolio.name);
-  const [status, setStatus] = useState(portfolio.status);
-  const [isDirty, setIsDirty] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState(null);
+      <div style={sectionTitle}>Zugeordnete Projektideen</div>
+      <IdeenTab
+        portfolioId={portfolio.id}
+        canEdit={canEdit}
+        getPortfolioIdeen={getPortfolioIdeen}
+        getAvailableIdeenForPortfolio={getAvailableIdeenForPortfolio}
+        assignIdeeToPortfolio={assignIdeeToPortfolio}
+        unassignIdeeFromPortfolio={unassignIdeeFromPortfolio}
+        navigate={navigate}
+      />
 
-  useEffect(() => {
-    setName(portfolio.name);
-    setStatus(portfolio.status);
-    setIsDirty(false);
-  }, [portfolio]);
-
-  const save = async () => {
-    if (!name.trim()) {
-      setError('Name ist erforderlich.');
-      return;
-    }
-    setIsSaving(true);
-    setError(null);
-    try {
-      const updated = await updatePortfolio(
-        portfolio.id,
-        { name: name.trim(), status },
-        { expectedVersion: portfolio.version },
-      );
-      onSaved(updated);
-      setIsDirty(false);
-    } catch (err) {
-      if (err instanceof VersionConflictError) {
-        setError('Das Portfolio wurde von jemand anderem geändert. Bitte neu laden.');
-      } else {
-        setError(err.message);
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const doDelete = async () => {
-    setIsDeleting(true);
-    try {
-      await deletePortfolio(portfolio.id);
-      setConfirmDelete(false);
-      onDeleted();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  return (
-    <div>
-      {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
-      <div style={styles.field}>
-        <label style={styles.fieldLabel}>Name</label>
-        <input
-          style={styles.input}
-          value={name}
-          onChange={(e) => { setName(e.target.value); setIsDirty(true); }}
-          readOnly={!canEdit}
-        />
-      </div>
-      <div style={styles.field}>
-        <label style={styles.fieldLabel}>Status</label>
-        <select
-          style={styles.select}
-          value={status}
-          onChange={(e) => { setStatus(e.target.value); setIsDirty(true); }}
-          disabled={!canEdit}
-        >
-          <option value="active">Aktiv</option>
-          <option value="archived">Archiviert</option>
-        </select>
-      </div>
-
-      <div style={{ display: 'flex', gap: theme.spacing.md, marginTop: theme.spacing.xl }}>
-        {canEdit && (
-          <button
-            type="button"
-            style={{
-              ...styles.actionButton, ...styles.primaryButton,
-              opacity: isSaving ? 0.7 : 1,
-              ...(isDirty && !isSaving ? { boxShadow: `0 0 0 3px ${theme.colors.primary}30` } : {}),
-            }}
-            onClick={save}
-            disabled={isSaving || !isDirty}
-          >
-            {isSaving ? 'Speichern…' : isDirty ? 'Speichern *' : 'Gespeichert'}
-          </button>
-        )}
-        {canDelete && (
-          <button
-            type="button"
-            style={{ ...styles.actionButton, ...styles.deleteButton }}
-            onClick={() => setConfirmDelete(true)}
-          >
+      {canDelete && (
+        <div style={{ marginTop: theme.spacing['2xl'] }}>
+          <button type="button" style={{ ...styles.actionButton, ...styles.deleteButton }} onClick={() => setConfirmDelete(true)}>
             <TrashIcon /> Portfolio löschen
           </button>
-        )}
-      </div>
-
+        </div>
+      )}
       <ConfirmModal
         open={confirmDelete}
         title="Portfolio löschen?"
-        message="Das Portfolio wird gelöscht. Die zugeordneten Projekte werden NICHT mitgelöscht — sie verlieren nur die Portfolio-Zuordnung."
+        message="Das Portfolio wird gelöscht. Die zugeordneten Projekte/Ideen werden NICHT mitgelöscht — sie verlieren nur die Portfolio-Zuordnung."
         confirmLabel="Löschen"
         destructive
         busy={isDeleting}
         onConfirm={doDelete}
         onCancel={() => setConfirmDelete(false)}
       />
+    </div>
+  );
+}
+
+// ============== Ideen-Zuordnung (im Basis-Tab) ==============
+
+function IdeenTab({ portfolioId, canEdit, getPortfolioIdeen, getAvailableIdeenForPortfolio, assignIdeeToPortfolio, unassignIdeeFromPortfolio, navigate }) {
+  const [ideen, setIdeen] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [available, setAvailable] = useState([]);
+  const [selectedToAdd, setSelectedToAdd] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+
+  const reload = useCallback(async () => {
+    setIsLoading(true);
+    try { setIdeen(await getPortfolioIdeen(portfolioId)); }
+    catch (err) { setError(err.message); }
+    finally { setIsLoading(false); }
+  }, [portfolioId, getPortfolioIdeen]);
+  useEffect(() => { reload(); }, [reload]);
+
+  const openAddDialog = async () => {
+    setShowAdd(true);
+    try {
+      const list = await getAvailableIdeenForPortfolio(portfolioId);
+      setAvailable(list);
+      if (list[0]) setSelectedToAdd(list[0].id);
+    } catch (err) { setError(err.message); }
+  };
+  const addIdee = async () => {
+    if (!selectedToAdd) return;
+    setIsAdding(true);
+    try { await assignIdeeToPortfolio(portfolioId, selectedToAdd); setShowAdd(false); setSelectedToAdd(''); await reload(); }
+    catch (err) { setError(err.message); }
+    finally { setIsAdding(false); }
+  };
+  const removeIdee = async (ideeId) => {
+    try { await unassignIdeeFromPortfolio(portfolioId, ideeId); await reload(); }
+    catch (err) { setError(err.message); }
+  };
+
+  return (
+    <div>
+      <div style={styles.toolbar}>
+        <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+          Ideen können nur zugeordnet werden, wenn du sie auch editieren darfst.
+        </div>
+        {canEdit && (
+          <button type="button" style={{ ...styles.actionButton, ...styles.primaryButton }} onClick={openAddDialog}>
+            + Projektidee hinzufügen
+          </button>
+        )}
+      </div>
+
+      {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
+
+      {isLoading ? (
+        <div style={styles.empty}>Lade…</div>
+      ) : ideen.length === 0 ? (
+        <div style={styles.empty}>Keine Projektideen zugeordnet.</div>
+      ) : (
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Projektidee</th>
+              <th style={styles.th}>Status</th>
+              <th style={styles.th} />
+            </tr>
+          </thead>
+          <tbody>
+            {ideen.map((i) => (
+              <tr key={i.id}>
+                <td style={styles.td}>
+                  <button type="button" style={styles.linkLike} onClick={() => navigate(`/apps/projektmanagement/ideen/${i.id}`)}>
+                    {i.name}
+                  </button>
+                </td>
+                <td style={styles.td}>{i.status || '—'}</td>
+                <td style={{ ...styles.td, textAlign: 'right' }}>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      style={{ ...styles.actionButton, ...styles.deleteButton, padding: `${theme.spacing.xs} ${theme.spacing.md}` }}
+                      onClick={() => removeIdee(i.id)}
+                    >
+                      Entfernen
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {showAdd && (
+        <div
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isAdding) setShowAdd(false); }}
+        >
+          <div style={{
+            backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl,
+            padding: theme.spacing.xl, width: '90%', maxWidth: 520,
+            display: 'flex', flexDirection: 'column', gap: theme.spacing.lg,
+          }}>
+            <div style={{ fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold }}>
+              Projektidee hinzufügen
+            </div>
+            {available.length === 0 ? (
+              <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+                Keine Ideen ohne Portfolio verfügbar.
+              </div>
+            ) : (
+              <select style={styles.select} value={selectedToAdd} onChange={(e) => setSelectedToAdd(e.target.value)}>
+                {available.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </select>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md }}>
+              <button type="button" style={styles.actionButton} onClick={() => setShowAdd(false)} disabled={isAdding}>Abbrechen</button>
+              <button
+                type="button"
+                style={{ ...styles.actionButton, ...styles.primaryButton }}
+                onClick={addIdee}
+                disabled={isAdding || !selectedToAdd || available.length === 0}
+              >
+                {isAdding ? 'Hinzufügen…' : 'Hinzufügen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

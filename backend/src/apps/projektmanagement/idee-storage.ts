@@ -76,6 +76,38 @@ export async function getProjektidee(id: string): Promise<Projektidee | null> {
   return idee;
 }
 
+// ============== Portfolio-Zuordnung (Idee ↔ Portfolio, 0..1) ==============
+
+/** Alle Ideen, die dem Portfolio zugeordnet sind (portfolioId im data-JSONB). */
+export async function listIdeenByPortfolio(portfolioId: string): Promise<Projektidee[]> {
+  const all = await getProjektideen();
+  return all.filter((i) => i.portfolioId === portfolioId);
+}
+
+/** Ideen ohne Portfolio-Zuordnung — für den „Idee hinzufügen"-Selector. */
+export async function listIdeenWithoutPortfolio(): Promise<Projektidee[]> {
+  const all = await getProjektideen();
+  return all.filter((i) => !i.portfolioId);
+}
+
+/**
+ * Setzt/entfernt die Portfolio-Zuordnung einer Idee (portfolioId=null → entfernen).
+ * Gezielter data-JSONB-Merge, ohne die volle Idee-Update-Maschinerie.
+ */
+export async function setIdeePortfolioId(ideeId: string, portfolioId: string | null): Promise<boolean> {
+  const db = getDb();
+  const rows = await db.select().from(paProjektideen).where(eq(paProjektideen.id, ideeId)).limit(1);
+  if (!rows[0]) return false;
+  const data = { ...((rows[0].data ?? {}) as Record<string, any>) };
+  if (portfolioId) data.portfolioId = portfolioId;
+  else delete data.portfolioId;
+  await db
+    .update(paProjektideen)
+    .set({ data: data as never, updatedAt: new Date().toISOString(), version: rows[0].version + 1 })
+    .where(eq(paProjektideen.id, ideeId));
+  return true;
+}
+
 export async function saveProjektidee(idee: Projektidee): Promise<void> {
   const db = getDb();
   const now = new Date().toISOString();

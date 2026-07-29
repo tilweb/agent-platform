@@ -32,7 +32,8 @@ import {
   listProjekteWithoutPortfolio,
 } from '../portfolio-service';
 import { listProjekteByPortfolio } from '../projekt-service';
-import { getEffectiveAuftragRole } from '../permissions';
+import { listIdeenByPortfolio, listIdeenWithoutPortfolio, setIdeePortfolioId, getProjektidee } from '../idee-storage';
+import { getEffectiveAuftragRole, getEffectiveIdeeRole } from '../permissions';
 import {
   denyIfBelowPortfolioRole,
   denyIfNotAppEditor,
@@ -100,19 +101,26 @@ portfoliosRoutes.post('/portfolios', async (c) => {
       name?: string;
       description?: string;
       strategy?: string;
-      status?: string;
+      status?: PortfolioStatus;
+      type?: string;
+      driver?: string;
+      start_date?: string;
+      end_date?: string;
       metadata?: Record<string, unknown>;
     }>();
     if (!body?.name || typeof body.name !== 'string' || !body.name.trim()) {
       return c.json({ error: 'name ist erforderlich' }, 400);
     }
 
-    const status = body.status === 'archived' ? 'archived' : 'active';
     const portfolio = await createPortfolio({
       name: body.name,
       description: body.description,
       strategy: body.strategy,
-      status,
+      status: body.status,
+      type: body.type,
+      driver: body.driver,
+      start_date: body.start_date,
+      end_date: body.end_date,
       ownerId: userId,
       metadata: body.metadata,
     });
@@ -138,6 +146,10 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       description?: string | null;
       strategy?: string | null;
       status?: PortfolioStatus;
+      type?: string;
+      driver?: string;
+      start_date?: string;
+      end_date?: string;
       metadata?: Record<string, unknown>;
       expectedVersion?: number;
     }>();
@@ -146,6 +158,10 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       description: body.description,
       strategy: body.strategy,
       status: body.status,
+      type: body.type,
+      driver: body.driver,
+      start_date: body.start_date,
+      end_date: body.end_date,
       metadata: body.metadata,
       expectedVersion: body.expectedVersion,
     });
@@ -227,6 +243,102 @@ portfoliosRoutes.get('/portfolios/:id/projekte/available', async (c) => {
   } catch (error) {
     console.error('list available projekte error:', error);
     return c.json({ error: 'Failed to list available projekte' }, 500);
+  }
+});
+
+// ============== Ideas of Portfolio (0..1 über idee.portfolioId) ==============
+
+portfoliosRoutes.get('/portfolios/:id/ideen', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowPortfolioRole(userId, id, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    // RBAC: nur Ideen, auf die der User Idee-Viewer+-Rolle hat.
+    const all = await listIdeenByPortfolio(id);
+    const withRoles = await Promise.all(
+      all.map(async (i) => {
+        const role = await getEffectiveIdeeRole(userId, i.id);
+        return role ? { ...i, role } : null;
+      }),
+    );
+    const ideen = withRoles.filter((i): i is NonNullable<typeof i> => i !== null);
+    return c.json({ ideen });
+  } catch (error) {
+    console.error('list portfolio ideen error:', error);
+    return c.json({ error: 'Failed to list portfolio ideen' }, 500);
+  }
+});
+
+portfoliosRoutes.get('/portfolios/:id/ideen/available', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowPortfolioRole(userId, id, 'editor');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const candidates = await listIdeenWithoutPortfolio();
+    const accessible = await Promise.all(
+      candidates.map(async (i) => {
+        const role = await getEffectiveIdeeRole(userId, i.id);
+        return role ? i : null;
+      }),
+    );
+    const ideen = accessible.filter((i): i is NonNullable<typeof i> => i !== null);
+    return c.json({ ideen });
+  } catch (error) {
+    console.error('list available ideen error:', error);
+    return c.json({ error: 'Failed to list available ideen' }, 500);
+  }
+});
+
+// Zuordnen: Portfolio-Editor+ UND Idee-Editor+ erforderlich.
+portfoliosRoutes.put('/portfolios/:id/ideen/:ideeId', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const ideeId = c.req.param('ideeId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const pDenied = await denyIfBelowPortfolioRole(userId, id, 'editor');
+    if (pDenied) return c.json({ error: pDenied.error }, pDenied.status);
+    const ideeRole = await getEffectiveIdeeRole(userId, ideeId);
+    if (ideeRole !== 'editor' && ideeRole !== 'owner') {
+      return c.json({ error: 'Idee-Editor-Rolle erforderlich.' }, 403);
+    }
+    const ok = await setIdeePortfolioId(ideeId, id);
+    if (!ok) return c.json({ error: 'Idee nicht gefunden' }, 404);
+    return c.json({ ok: true });
+  } catch (error) {
+    console.error('assign idee to portfolio error:', error);
+    return c.json({ error: 'Failed to assign idee' }, 500);
+  }
+});
+
+// Entfernen: Portfolio-Editor+ (Idee-Editor+ ebenfalls, konsistent zum Zuordnen).
+portfoliosRoutes.delete('/portfolios/:id/ideen/:ideeId', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const ideeId = c.req.param('ideeId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const pDenied = await denyIfBelowPortfolioRole(userId, id, 'editor');
+    if (pDenied) return c.json({ error: pDenied.error }, pDenied.status);
+    const ideeRole = await getEffectiveIdeeRole(userId, ideeId);
+    if (ideeRole !== 'editor' && ideeRole !== 'owner') {
+      return c.json({ error: 'Idee-Editor-Rolle erforderlich.' }, 403);
+    }
+    // Nur entfernen, wenn die Idee wirklich diesem Portfolio zugeordnet ist.
+    const idee = await getProjektidee(ideeId);
+    if (idee && idee.portfolioId === id) {
+      await setIdeePortfolioId(ideeId, null);
+    }
+    return c.json({ ok: true });
+  } catch (error) {
+    console.error('unassign idee error:', error);
+    return c.json({ error: 'Failed to unassign idee' }, 500);
   }
 });
 

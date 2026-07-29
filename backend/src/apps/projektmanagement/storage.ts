@@ -472,6 +472,31 @@ const DEFAULT_CONFIG = {
     { value: 'opportunity', label: 'Opportunity' },
     { value: 'threat', label: 'Threat' },
   ],
+  // Portfolio-Stammdaten (Portfolio-Detail → Basis-Tab).
+  portfolio_type: [
+    { value: 'strategic', label: 'Strategisch' },
+    { value: 'operational', label: 'Operativ' },
+    { value: 'program', label: 'Programm' },
+    { value: 'product', label: 'Produkt' },
+    { value: 'transformation', label: 'Transformation' },
+  ],
+  portfolio_driver: [
+    { value: 'strategic', label: 'Strategisch' },
+    { value: 'legal', label: 'Gesetzlich' },
+    { value: 'operational', label: 'Operativ' },
+    { value: 'market', label: 'Markt' },
+    { value: 'innovation', label: 'Innovation' },
+  ],
+  // Portfoliostatus. Schlüssel `active`/`archived` sind verdrahtet (Archivierung,
+  // Listenfilter, Badges) — nur Anzeigename editierbar. vorbereitung/pausiert/
+  // abgeschlossen sind zusätzliche Lifecycle-Stufen.
+  portfolio_status: [
+    { value: 'vorbereitung', label: 'In Vorbereitung' },
+    { value: 'active', label: 'Aktiv' },
+    { value: 'pausiert', label: 'Pausiert' },
+    { value: 'abgeschlossen', label: 'Abgeschlossen' },
+    { value: 'archived', label: 'Archiviert' },
+  ],
   // Abschluss-Checkliste: unternehmensspezifische Aufgaben/Rahmenbedingungen,
   // die beim Projektabschluss immer betrachtet werden. In den Einstellungen
   // pflegbar. { id, label } statt { value, label } — id ist der stabile Key.

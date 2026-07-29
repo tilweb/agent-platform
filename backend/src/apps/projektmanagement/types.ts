@@ -185,10 +185,10 @@ export interface ProjektUpdateInput {
 // 0..1-Kardinalitaet via paProjekte.portfolioId. Loeschen eines Portfolios
 // setzt portfolioId der zugeordneten Projekte auf NULL (kein Cascade).
 
-export type PortfolioStatus = 'active' | 'archived';
+export type PortfolioStatus = 'vorbereitung' | 'active' | 'pausiert' | 'abgeschlossen' | 'archived';
 
 export const PORTFOLIO_STATUS_VALUES: readonly PortfolioStatus[] = [
-  'active', 'archived',
+  'vorbereitung', 'active', 'pausiert', 'abgeschlossen', 'archived',
 ] as const;
 
 export interface Portfolio {
@@ -197,6 +197,11 @@ export interface Portfolio {
   description?: string;
   strategy?: string;            // Markdown
   status: PortfolioStatus;
+  // Basis-Stammdaten (im metadata-JSONB persistiert, per rowToPortfolio angehoben).
+  type?: string;                // portfolio_type (Config-Liste)
+  driver?: string;              // portfolio_driver (Config-Liste)
+  start_date?: string;
+  end_date?: string;
   ownerId?: string;
   metadata?: Record<string, any>;
   permissions?: ResourcePermissions;
@@ -211,6 +216,10 @@ export interface PortfolioCreateInput {
   description?: string;
   strategy?: string;
   status?: PortfolioStatus;
+  type?: string;
+  driver?: string;
+  start_date?: string;
+  end_date?: string;
   ownerId?: string;
   metadata?: Record<string, any>;
 }
@@ -220,6 +229,10 @@ export interface PortfolioUpdateInput {
   description?: string | null;
   strategy?: string | null;
   status?: PortfolioStatus;
+  type?: string;
+  driver?: string;
+  start_date?: string;
+  end_date?: string;
   metadata?: Record<string, any>;
   expectedVersion?: number;
 }
@@ -842,6 +855,9 @@ export type ProjektideeStatus = 'draft' | 'review' | 'approved' | 'rejected' | '
 
 export interface Projektidee {
   id: string;
+
+  // Portfolio-Zuordnung (0..1) — im data-JSONB der Idee gespeichert.
+  portfolioId?: string | null;
 
   // Tab 1: Basis (alle Felder aus PDF)
   projekt_id?: string;           // optional Kennummer (z.B. PRJ-2026-001)

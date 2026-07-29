@@ -2,6 +2,23 @@
 
 ## 2026-07-29
 
+### PM: Portfolio-Detail neu strukturiert — Icon-Tabs + Tab „Basis"
+Die Portfolio-Detailseite folgt jetzt der Projektauftrag-Logik: **Icon-Tab-Leiste** (geteilte `StepNav`,
+Icons per Titel) mit der Zielstruktur **Übersicht · Basis · Personen · Ziele · Roadmap · Kosten · Risiken**.
+Personen/Ziele/Roadmap/Kosten/Risiken sind vorerst Platzhalter (folgen Schritt für Schritt).
+- **Tab „Basis" (voll):** Stammdaten (ID, Name, Portfoliotyp, Portfoliostatus, Portfoliotreiber,
+  Kurzbeschreibung, Start-/Enddatum) mit zentral pflegbaren Select-Optionen; **Projekt-Zuordnung** (aus dem
+  bisherigen „Projekte"-Tab übernommen) **plus neue Projektideen-Zuordnung**; Portfolio löschen. Die Tabs
+  „Projekte", „Strategie" und „Einstellungen" entfallen (gehen in Basis auf; `strategy`-Feld bleibt erhalten
+  für den späteren Ziele-Tab).
+- **3 neue zentrale Config-Listen** (Einstellungen → Auswahloptionen, inkl. CSV/Excel-Export):
+  `portfolio_type`, `portfolio_driver`, `portfolio_status`. Bei `portfolio_status` sind die Schlüssel
+  `active`/`archived` fixiert (Archivierung/Filter/Badges) — nur Anzeigename editierbar.
+- **Datenmodell:** neue Portfolio-Basisfelder (Typ/Treiber/Start/Ende) migrationsfrei (DB: `metadata`-JSONB,
+  YAML: Top-Level); **Portfolio ↔ Projektidee** über `idee.portfolioId` (neue Endpoints
+  `/portfolios/:id/ideen[/available]` + Zuordnen/Entfernen, RBAC).
+- In **beiden Worktrees** umgesetzt (DB + YAML), Frontend byte-identisch.
+
 ### Feature: Extraktion — Posteingang / Eingangsstrecke (Ausbau-Welle 4)
 Aus dem Extraktions-Werkzeug wird eine **Dokumenten-Eingangsstrecke**: Der neue
 **Posteingang** nimmt gemischte Scans entgegen, trennt Sammel-PDFs an erkannten

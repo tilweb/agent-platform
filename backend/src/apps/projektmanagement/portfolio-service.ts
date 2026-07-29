@@ -31,20 +31,41 @@ function isStatus(value: unknown): value is PortfolioStatus {
   return typeof value === 'string' && (PORTFOLIO_STATUS_VALUES as readonly string[]).includes(value);
 }
 
+// Basis-Stammdaten leben im metadata-JSONB (keine DB-Migration). Anheben in die
+// typisierten Top-Level-Felder beim Lesen.
+const BASIS_META_KEYS = ['type', 'driver', 'start_date', 'end_date'] as const;
+
 function rowToPortfolio(row: typeof paPortfolios.$inferSelect): Portfolio {
+  const meta = (row.metadata ?? {}) as Record<string, any>;
   return {
     id: row.id,
     name: row.name,
     description: row.description ?? undefined,
     strategy: row.strategy ?? undefined,
     status: isStatus(row.status) ? row.status : 'active',
+    type: meta.type ?? undefined,
+    driver: meta.driver ?? undefined,
+    start_date: meta.start_date ?? undefined,
+    end_date: meta.end_date ?? undefined,
     ownerId: row.ownerId ?? undefined,
-    metadata: (row.metadata ?? undefined) as Portfolio['metadata'],
+    metadata: meta as Portfolio['metadata'],
     permissions: (row.permissions ?? undefined) as Portfolio['permissions'],
     version: row.version,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+/** Mergt die Basis-Felder eines Inputs in ein metadata-Objekt (nur definierte). */
+function mergeBasisIntoMetadata(
+  base: Record<string, any>,
+  input: { type?: string; driver?: string; start_date?: string; end_date?: string; metadata?: Record<string, any> },
+): Record<string, any> {
+  const meta = { ...base, ...(input.metadata ?? {}) };
+  for (const k of BASIS_META_KEYS) {
+    if (input[k] !== undefined) meta[k] = input[k];
+  }
+  return meta;
 }
 
 // ============== CRUD ==============
@@ -94,6 +115,7 @@ export async function createPortfolio(input: PortfolioCreateInput): Promise<Port
   // ownerId angegeben ist (z.B. interner Aufruf), bleibt permissions null und
   // der Resolver schlaegt auf `created_by`-Fallback zurueck.
   const permissions = input.ownerId ? defaultOwnerPermissions(input.ownerId) : null;
+  const metadata = mergeBasisIntoMetadata({}, input);
 
   await db.insert(paPortfolios).values({
     id,
@@ -102,7 +124,7 @@ export async function createPortfolio(input: PortfolioCreateInput): Promise<Port
     description: input.description ?? null,
     strategy: input.strategy ?? null,
     status,
-    metadata: (input.metadata ?? null) as never,
+    metadata: (Object.keys(metadata).length ? metadata : null) as never,
     permissions: permissions as never,
     version: 1,
   });
@@ -143,7 +165,13 @@ export async function updatePortfolio(id: string, input: PortfolioUpdateInput): 
     }
     patch.status = input.status;
   }
-  if (input.metadata !== undefined) patch.metadata = input.metadata as never;
+  // Basis-Felder + metadata in das bestehende metadata mergen (nicht überschreiben).
+  const touchesMeta =
+    input.metadata !== undefined ||
+    BASIS_META_KEYS.some((k) => input[k] !== undefined);
+  if (touchesMeta) {
+    patch.metadata = mergeBasisIntoMetadata((current.metadata ?? {}) as Record<string, any>, input) as never;
+  }
 
   const result = await db
     .update(paPortfolios)
