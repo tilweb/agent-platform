@@ -40,6 +40,8 @@ const WizardPage = lazy(() => import('./apps/projektmanagement/WizardPage'));
 const IdeeWizardPage = lazy(() => import('./apps/projektmanagement/IdeeWizardPage'));
 const IdeenPage = lazy(() => import('./apps/projektmanagement/IdeenPage'));
 const PortfolioDetail = lazy(() => import('./apps/projektmanagement/PortfolioDetail'));
+const EcholoopPage = lazy(() => import('./apps/echoloop/EcholoopPage'));
+const EcholoopProzessDetail = lazy(() => import('./apps/echoloop/ProzessDetail'));
 const LieferantenPage = lazy(() => import('./apps/lieferantenmanagement/LieferantenPage'));
 const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/SupplierDetailPage'));
 const VsmPage = lazy(() => import('./apps/vsm/VsmPage'));
@@ -204,6 +206,8 @@ function AppRoutes() {
                   <Route path="/apps/projektmanagement/ideen/:id" element={<RequireAppPermission appId="projektmanagement"><IdeeWizardPage /></RequireAppPermission>} />
                   <Route path="/apps/projektmanagement/portfolios/:id" element={<RequireAppPermission appId="projektmanagement"><PortfolioDetail /></RequireAppPermission>} />
                   <Route path="/apps/projektmanagement/:id" element={<RequireAppPermission appId="projektmanagement"><WizardPage /></RequireAppPermission>} />
+                  <Route path="/apps/echoloop" element={<RequireAppPermission appId="echoloop"><EcholoopPage /></RequireAppPermission>} />
+                  <Route path="/apps/echoloop/prozess/:id" element={<RequireAppPermission appId="echoloop"><EcholoopProzessDetail /></RequireAppPermission>} />
                   <Route path="/apps/lieferantenmanagement" element={<RequireAppPermission appId="lieferantenmanagement"><LieferantenPage /></RequireAppPermission>} />
                   <Route path="/apps/lieferantenmanagement/:id" element={<RequireAppPermission appId="lieferantenmanagement"><SupplierDetailPage /></RequireAppPermission>} />
                   <Route path="/apps/vsm" element={<RequireAppPermission appId="vsm"><VsmPage /></RequireAppPermission>} />

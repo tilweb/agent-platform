@@ -1,5 +1,106 @@
 # Changelog
 
+## 2026-07-30
+
+### Echo-Loop: RGA-Review als Sub-Tabs + interaktive Bauanleitungen
+- **Struktur**: Der RGA-Review ist jetzt in eine Sub-Tab-Leiste gegliedert — „Kennzahlen & Profil"
+  (Kennzahlen + Top-Hebel + Reifegrad-Panel) · „Befunde" · „Bauanleitungen" · „Kundenfassung".
+- **Bauanleitungen** (neu): leitet aus der RGA (Reifegrad-Lücken Ist<Soll + Befunde + Top-Hebel + offene ❓)
+  eine priorisierte, umsetzbare Bauanleitung zum Ziel-Reifegrad ab — geerdet in den Bau-Prinzipien,
+  den 7 Absicherungs-Mustern und den Bau-Ansätzen je Dimension (WB25/44d/50). Bau-Logik-Reihenfolge wie
+  in der Gold-Vorlage: zuerst offene ❓ klären → kundenwirksame Fehler (z. B. Doppelversand D5) → Level-Blocker
+  → Härtung. Karten mit Schritt-Zitaten aus den Befunden.
+- **D-061 interaktiv**: je Bau-Karte abhakbare Schritte + Status (offen/in Arbeit/erledigt/Frage/anders gebaut)
+  + Feedback-Feld; Stand wird am Baustand gespeichert (Bau-Board-Vorstufe, Baustein b).
+- `bauanleitung.ts` `generateBauanleitung` (Instruct, ~15 s, ENV-umschaltbar `ECHOLOOP_BAUANLEITUNG_MODEL`),
+  `<think>`-robuster Parser; Route `POST /baustaende/:id/bauanleitung`. Verifiziert: Generierung (5 Karten,
+  Schritt-Zitate) + Persistenz-Round-Trip (abhaken/Status/Feedback). 3 neue Tests (26 gesamt grün).
+
+### Echo-Loop: Kundenfähige Narrativ-Synthese (P2-Rest, Reasoning-Variante)
+On-demand-Kundenfassung in Gold-Form (D-050-Sprachregeln): nach dem Level-Review erzeugt der Analyst per Button
+eine kundenfähige RGA-Fassung — Exec-Summary (was/Stärken/Kern-Befunde), „neue-Kollegin"-Prosa und je Dimension
+Zweck-Frage + Beleg-Prosa + 2–3 Empfehlungen. Nutzt bewusst die **Reasoning-Variante** (Adacor Qwen 3.5 Thinking,
+`qwen3-5-a3b-35bthinking-256k`), da es echte Analyse-Synthese ist; per ENV umschaltbar (`ECHOLOOP_NARRATIV_MODEL`).
+- `narrative.ts` `synthesizeNarrativ` + `<think>`-robuster Parser; statische Zweck-Fragen je Dimension.
+- On-demand-Route `POST /baustaende/:id/narrativ` als **SSE mit Heartbeat** (die Reasoning-Synthese dauert),
+  speichert das Narrativ am Baustand. Frontend: Button + Kundenfassungs-Abschnitt im RGA-Review.
+- **Latenz-Korrektur (nachträglich):** Das Thinking-Modell läuft in dieser Umgebung in HTTP-Timeouts
+  („The operation timed out"), bevor es antwortet (>180 s ohne Ergebnis) — praktisch nicht nutzbar. Deshalb
+  ist der **Default jetzt Instruct** (`qwen3-5-a3b-35b-256k`, ~17 s, gold-konforme Ausgabe, verifiziert);
+  Reasoning bleibt per ENV verfügbar (`ECHOLOOP_NARRATIV_MODEL=qwen3-5-a3b-35bthinking-256k`), sobald das
+  Endpoint schneller ist. 4 neue Parser-Tests (23 gesamt grün).
+
+### Echo-Loop: LLM-Vor-Benotung auf Adacor Qwen 3.5 Instruct umgestellt
+Die RGA-Vor-Benotung nutzt jetzt gezielt (nur für diese App, via `modelOverride`) **Adacor Qwen 3.5 Instruct
+35B** statt des System-Defaults (Kimi K3 / Nebius). Grund: Instruct passt zur strukturierten JSON-Benotung —
+die eigentliche Denkarbeit leisten die deterministischen Checker-Hinweise (P2). Messung: **~7 s statt ~85 s**
+(Kimi K3), damit läuft der LLM-Pfad tatsächlich durch statt in den Fallback. Die Thinking-Variante
+(`qwen3-5-a3b-35bthinking-256k`) ist für die spätere Analyse-Synthese reserviert. Modelle per ENV
+überschreibbar (`ECHOLOOP_LLM_PROVIDER` / `ECHOLOOP_LLM_MODEL` / `ECHOLOOP_LLM_MODEL_REASON`). Verifiziert
+end-to-end: LLM-Begründungen evidenz-gestützt, Levels weiter 9/10 gold-konform.
+
+### Echo-Loop: Deterministische Level-Hinweise + Gold-Narrativ (P2)
+Zweiter Schritt des Goldstandard-Abgleichs — der Checker liefert jetzt evidenz-gestützte Level-Vorschläge:
+- **`hints.ts` · deriveHints**: übersetzt Checker-Signale (feste Waits/Klicks, OCR, Hardcoding, tote Aufrufe,
+  Endlos-Schleifen, Prozessgröße, Klartext-Kennwort) in einen konservativen **Ist-Level-Vorschlag je Dimension
+  D1–D10+D6b + Belegzeilen**. Wo die Statik nichts entscheiden kann (D3/D4/D5/D7), niedriger Vorschlag + ❓-Beleg.
+- **Zwei neue Detektoren**: Hardcoding-Pfade (`C:\…` → D6/D10) und Klartext-Kennwort-Literale (→ D8).
+- **Fallback-Boden**: Ist das LLM nicht erreichbar, kommen die Ist-Levels + Belege aus den Checker-Hinweisen
+  statt „alles 0". Auf der echten Signal-Nacharbeit-Familie trifft dieser Boden **9 von 10 Gold-Dimensionen exakt**
+  (D1=2 D2=1 D3=1 D4=0 D5=1 D6=1 D7=1 D8=2 D10=0; nur D9 weicht ab) — ganz ohne LLM.
+- **LLM-Kontext**: die Vorschläge gehen als Ausgangspunkt in den Prompt (das LLM verfeinert, statt zu raten).
+- **Deterministische Top-Hebel**: aus den stärksten Signalen priorisiert (D8 Kennwort > D2 Waits > D1 Klicks >
+  D6 Config > OCR) — am Baustand gespeichert und im RGA-Review angezeigt.
+- Belege je Dimension füllen das Reifegrad-Panel vor; Top-Hebel als eigener Abschnitt. 3 neue Tests (19 gesamt grün).
+
+### Echo-Loop: Checker um Bautechnik-Detektoren erweitert (PM-13 feste Wartezeiten, PM-14 feste Klicks)
+Aus dem Abgleich mit dem verifizierten Goldstandard (IHK-DA Veranstaltungsfeedback): Unser Scoring trifft die
+Gold-Note exakt (RG0/RGQ20 reproduziert), aber der Checker deckte bisher nur die stillen Anti-Pattern
+(PM-01…10) ab — nicht die häufigen Reife-Signale, die im Gold die Top-Hebel für D1/D2 sind. Ergänzt:
+- **PM-13 · Feste Wartezeiten (D2)**: erkennt `Warten` im Zeit-Modus (`Subject:Time` + `Timeout`, ms→s
+  umgerechnet), zählt blinde UI-Waits ≥ 0,5 s und grenzt Manipulations-/Sammel-Knoten (WB50) sowie Mini-Waits
+  ab. Der #1-Stabilisierungshebel des Gold-Reports.
+- **PM-14 · Feste Klick-Position (D1)**: erkennt `Klicken` auf absolute Koordinaten (`X:`/`Y:` ohne Anker,
+  robust gegen `OffsetX:`) mit Schritt-Zitaten; `X:0/Y:0` wird als vermutliche Fund-Bindung (❓ Panel)
+  ausgewiesen; Anker-Klicks (`Finden & Klicken`) werden korrekt NICHT geflaggt.
+- Verifiziert gegen echte Exporte (Signal-Nacharbeit): PM-13 liefert gold-analoge Dauer-Listen
+  („1 · 1.5 · 2.5 · 3 · 3.5 · 5 s"), PM-14 die festen Klick-Positionen mit Koordinaten. Die Befunde fließen in
+  den Baustand und in den LLM-Kontext (evidenz-gestützte D1/D2-Vorbenotung). 3 neue Unit-Tests (16 gesamt grün).
+
+### Echo-Loop: Prozess-Ansicht linksbündig + Upload-Fortschritt (SSE)
+- **Prozess-Detail-Layout**: Header und Tab-Menü linksbündig (statt zentrierter 1000px-Spalte), Trenner
+  (Header- und Menü-Unterkante) über die volle Bildschirmbreite.
+- **Upload-Fortschritt**: Die Analyse-Route streamt jetzt per SSE Phasen-Events (Text extrahieren je Datei →
+  Prüfmuster prüfen → KI-Vor-Benotung → Baustand anlegen). Das Frontend zeigt einen Stepper mit Status je
+  Phase + laufendem Sekundenzähler — statt nur „Analysiere…", damit der lange KI-Schritt nicht als „hängt"
+  wirkt. `analyseProzess` nimmt einen `onProgress`-Callback; Frontend konsumiert den Stream (`analyseStream`).
+
+### Echo-Loop: neue Workplace-App — Fundament + Baustein a (RGA-Analyzer)
+Echo-Loop (RPA-Prozess-Reifegradanalyse für EMMA-Studio-Prozesse) wird als **native Workplace-App** neu
+aufgebaut (statt der bisherigen Agenten-/Skill-Implementierung), gemäß Übergabe-Paket `docs/Echo-Loop-App/`.
+Diese erste Scheibe liefert das Datenmodell (Kunde → Prozess → Baustand) und den vollen RGA-Loop (Ansicht A):
+Upload EMMA-Export → deterministischer Prüfmuster-Check → LLM-Vor-Benotung → **Mensch-Review** → Baustand.
+- **DB**: neues `pgSchema('echoloop')` (kunden · prozesse · baustaende · artefakte), Migration `0028_echoloop.sql`.
+  Baustand trägt mehrere Stände je Prozess (append-only) → Verlauf/Vergleich (Baustein c) dockt später an.
+- **Scoring** (`scoring.ts`, deterministisch): Gesamt-RG (Pflicht-Raster WB44, weakest link) · RGQ (Σ Ist/50)
+  · **SE-Quotient** (Σ r·min(Ist,Soll)/Σ r·Soll, Über-Soll gekappt) · RG* (relevanz-gefiltert) · Relevanz-Maske
+  · D6b. Reproduziert die Pilot-Rechnung SOLL-PROFIL_METHODE §4 (SE 95 % · RG* 1 · RGQ 44 %). 6 Unit-Tests.
+- **Checker** (`checker/`, reimplementiert aus PRUEFMUSTER-KATALOG.md): Parser für `pdftotext -layout`-Export
+  (Schritte, Call-Graph via TestCaseID, Schleifen, OCR-Reads, Variablen) + PM-01/02/03/04/04b/09/10.
+  Verifiziert gegen die echte Signal-Nacharbeit-Familie — PM-09 errechnet den dokumentierten Aufruf-Baum-
+  Multiplikator ×16200 für Prozess 1074 (1069→1070→1074). 7 Unit-Tests.
+- **Analyse-Pipeline** (`analysis.ts`): Upload → S3 (optional, mit lokalem Fallback) → `pdftotext -layout`
+  → Checker → LLM-Vor-Benotung D1–D10 (JSON, im Service eingebettet, mit Timeout-Fallback auf manuelle
+  Erfassung) → Baustand-Entwurf. Trennung deterministisch (Zahlen) / LLM (nur Level-Einordnung).
+- **Backend-App**: `apps/echoloop/` (AppConfig, Router, Storage mit Optimistic-Locking, Freigabe-Gate),
+  registriert in `registry.ts` + `routes/apps.ts`.
+- **Frontend**: `apps/echoloop/` — Übersicht (Kunden/Prozesse), Prozess-Detail mit Tabs (Übersicht ·
+  RGA-Review · Analysen), Dropzone-Upload, interaktives **Reifegrad-Panel** (Ist/Soll je Dimension als
+  Lila-Level-Rampe, Relevanz-Maske, Live-RG/RGQ/SE), Kennzahl-Kacheln, Befund-Liste. Sidebar-Icon.
+- **Zugriff**: gruppenbasierte App-Permission (wie alle Apps; Admin konfiguriert via Einstellungen).
+- Verifiziert: 13 Unit-Tests grün, HTTP-Smoke-Test über den vollen Stack (Auth → CRUD → Upload zweier realer
+  EMMA-Exporte → Review → Freigabe), Production-Build sauber. Doku: `docs/echoloop-app-fundament-2026-07-30.md`.
+
 ## 2026-07-29
 
 ### PM: Portfolio-Detail — Tab „Risiken" (Aggregat + Dashboard-Tracking-Markierung)

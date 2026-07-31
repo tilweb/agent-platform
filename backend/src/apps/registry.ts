@@ -19,6 +19,7 @@ import { vsmConfig } from './vsm';
 import { wzbarMatcherConfig } from './wzbar-matcher';
 import { vorgangsmappeConfig } from './vorgangsmappe';
 import { podcastRepurposingConfig } from './podcast-repurposing';
+import { echoloopConfig } from './echoloop';
 
 /**
  * All built-in apps bundled with the backend. On server startup,
@@ -33,6 +34,7 @@ const BUILT_IN_APPS: AppConfig[] = [
   wzbarMatcherConfig,
   vorgangsmappeConfig,
   podcastRepurposingConfig,
+  echoloopConfig,
 ];
 
 let registryCache: AppsRegistry | null = null;

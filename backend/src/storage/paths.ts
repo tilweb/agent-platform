@@ -100,6 +100,13 @@ export const s3Paths = {
     assertSafeFilename(file);
     return `apps/lieferantenmanagement/${supplierId}/${docId}/${file}`;
   },
+  // Echo-Loop: hochgeladene EMMA-Prozess-Export-PDFs je Prozess/Artefakt.
+  echoloopExport: (prozessId: string, artefaktId: string, file: string) => {
+    assertSafeId(prozessId, 'prozessId');
+    assertSafeId(artefaktId, 'artefaktId');
+    assertSafeFilename(file);
+    return `apps/echoloop/${prozessId}/${artefaktId}/${file}`;
+  },
   // Extraktions-Posteingang (Welle 4): Original + Teil-PDFs je Upload.
   inboxOriginal: (uploadId: string, ext: string) => {
     assertSafeId(uploadId, 'uploadId');

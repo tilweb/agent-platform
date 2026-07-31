@@ -28,6 +28,7 @@ import { vsmRoutes } from '../apps/vsm/routes';
 import { wzbarMatcherRoutes } from '../apps/wzbar-matcher/routes';
 import { vorgangsmappeRoutes } from '../apps/vorgangsmappe/routes';
 import { podcastRepurposingRoutes } from '../apps/podcast-repurposing/routes';
+import { echoloopRoutes } from '../apps/echoloop/routes';
 
 const apps = new Hono();
 
@@ -290,5 +291,6 @@ apps.route('/wzbar-matcher', wzbarMatcherRoutes);
 // Mount Vorgangsmappe routes
 apps.route('/vorgangsmappe', vorgangsmappeRoutes);
 apps.route('/podcast-repurposing', podcastRepurposingRoutes);
+apps.route('/echoloop', echoloopRoutes);
 
 export { apps as appsRoutes };
