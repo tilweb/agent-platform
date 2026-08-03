@@ -5,12 +5,14 @@
 export type { ExtractionProject, TrainingExample, ProjectField, ProjectItemField, ProjectFieldType, FieldType, LearningMetadata } from './types';
 export { isListField } from './types';
 export type { ReviewStatus, CalibrationState } from './types';
+export type { ExtractionRule, SumRule, LookupRule, RuleIssue, RuleSeverity } from './types';
 export { dedupeListItems } from './list-utils';
-export { validateProjectFields } from './validators';
+export { validateProjectFields, validateProjectRules } from './validators';
+export { evaluateRules, hasBlockingIssue, describeRule } from './rules';
 export { computeReviewStatus, resolveReviewThreshold, updateCalibration } from './review';
 export { getAllProjects, getProject, createProject, updateProject, deleteProject } from './projects';
 export { getExamples, saveExample, deleteExample } from './examples';
-export { extract, train, regenerateGuidelines, runGuidelineUpdate, runFullEval } from './service';
+export { extract, train, regenerateGuidelines, runGuidelineUpdate, runFullEval, evaluateProjectRules } from './service';
 export type { EvalScore, LearningEvalState, EvalRunAction } from './types';
 export {
   createBatchRun,

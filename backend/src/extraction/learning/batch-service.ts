@@ -60,10 +60,11 @@ export async function runBatchExtraction(
       try {
         const source: ExtractionSource = { type: 'file', path: file.tempPath, filename: file.filename };
         const result = await extract(projectId, source, userId);
-        // Review-Triage (Welle 3): nur fuer erfolgreiche Extraktionen.
+        // Review-Triage (Welle 3) + fachliche Pruefregeln (Welle 5): nur fuer
+        // erfolgreiche Extraktionen.
         const reviewStatus =
           result.success && project
-            ? computeReviewStatus(project, result.data, result.fieldConfidences)
+            ? computeReviewStatus(project, result.data, result.fieldConfidences, result.validations)
             : undefined;
         await upsertFileResult(projectId, runId, file.fileId, {
           status: result.success ? 'completed' : 'failed',
@@ -76,6 +77,7 @@ export async function runBatchExtraction(
           audit: result.audit,
           documentText: result.document_text,
           reviewStatus,
+          validations: result.validations,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

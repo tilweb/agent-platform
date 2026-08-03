@@ -84,6 +84,58 @@ export interface LearningEvalState {
 /** Review-Triage-Status einer Batch-Datei (Welle 3). */
 export type ReviewStatus = 'auto_ok' | 'needs_review' | 'reviewed';
 
+// ============== Fachliche Pruefregeln (Welle 5) ==============
+
+/**
+ * Summen-Check: Die Werte einer Positions-Spalte muessen (in Toleranz) den Wert
+ * eines skalaren Zielfelds ergeben — z.B. Rechnungspositionen ↔ Gesamtbetrag.
+ */
+export interface SumRule {
+  id: string;
+  type: 'sum';
+  /** fieldId eines `list`-Felds. */
+  list_field: string;
+  /** Spalten-Id innerhalb von `item_fields` (numerisch). */
+  item_field: string;
+  /** fieldId des skalaren (numerischen) Zielfelds. */
+  target_field: string;
+  /** Absolute Toleranz; Default 0.01. */
+  tolerance?: number;
+  label?: string;
+}
+
+/**
+ * Stammdaten-Abgleich: Der Feldwert muss in einer Spalte einer Tabelle
+ * (Tables-Feature) vorkommen. Vorstufe zu W6 (kontrollierte Wertelisten) —
+ * die Wertequelle ist bewusst hinter `loadAllowedValues` gekapselt.
+ */
+export interface LookupRule {
+  id: string;
+  type: 'lookup';
+  /** fieldId eines skalaren Felds. */
+  field: string;
+  table_id: string;
+  column_id: string;
+  /** Default 'error' (erzwingt Review); 'warn' nur anzeigen. */
+  severity?: RuleSeverity;
+  label?: string;
+}
+
+export type ExtractionRule = SumRule | LookupRule;
+
+export type RuleSeverity = 'error' | 'warn';
+
+/** Ein konkreter Befund aus der Regelpruefung eines Extraktionsergebnisses. */
+export interface RuleIssue {
+  rule_id: string;
+  type: ExtractionRule['type'];
+  severity: RuleSeverity;
+  /** Klartext fuer die UI (deutsch, mit den beteiligten Werten). */
+  message: string;
+  /** Beteiligte fieldIds — fuer die Markierung im Formular. */
+  fields: string[];
+}
+
 /**
  * Konfidenz-Kalibrierung (Welle 3): aggregiert je Konfidenz-Bucket (0–0.2 …
  * 0.8–1.0), wie oft die initiale Extraktion tatsaechlich korrekt war. Wird bei
@@ -128,6 +180,12 @@ export interface ExtractionProject {
    * Projekt-Settings konfigurierbar.
    */
   extraction?: ExtractionConfig;
+  /**
+   * Fachliche Pruefregeln (Welle 5): Plausibilitaet des Ergebnisses jenseits von
+   * Typ/Format — Summen-Check und Stammdaten-Abgleich. Ein `error`-Befund hebt
+   * die Batch-Datei unabhaengig von der Konfidenz auf "Zu pruefen".
+   */
+  rules?: ExtractionRule[];
 }
 
 export interface TrainingExample {

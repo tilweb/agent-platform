@@ -17,7 +17,9 @@ import { extractionProjectToExtractionSchema, PROJECT_FIELD_GROUP } from './pipe
 import { dedupeListItems } from './list-utils';
 import { runEval, evalSetHash, decideAcceptance, evalModelLabel } from './eval';
 import { updateCalibration } from './review';
-import type { TrainingExample, ExtractionProject, LearningEvalState, EvalScore } from './types';
+import { evaluateRules, normalizeLookupValue, type LoadAllowedValues } from './rules';
+import { getTableWithData } from '../../tables';
+import type { TrainingExample, ExtractionProject, LearningEvalState, EvalScore, RuleIssue } from './types';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { extname, resolve } from 'path';
@@ -180,6 +182,45 @@ Antworte NUR mit dem extrahierten Inhalt, keine eigenen Kommentare.`,
   return result.content;
 }
 
+// ============== Fachliche Pruefregeln (Welle 5) ==============
+
+/**
+ * Wertequelle fuer Stammdaten-Regeln: eine Spalte einer Tabelle (Tables-Feature)
+ * als normalisiertes Set. Fehler werden NICHT geworfen — die Regel-Auswertung
+ * macht daraus einen `warn`-Befund ("nicht pruefbar").
+ */
+const loadTableColumnValues: LoadAllowedValues = async (tableId, columnId) => {
+  try {
+    const table = await getTableWithData(tableId);
+    if (!table) return { error: `Tabelle "${tableId}" nicht gefunden` };
+    if (!table.columns.some((col) => col.id === columnId)) {
+      return { error: `Spalte "${columnId}" existiert in "${table.name}" nicht` };
+    }
+    const values = new Set<string>();
+    for (const row of table.data?.rows ?? []) {
+      const value = row[columnId];
+      if (value === null || value === undefined) continue;
+      const normalized = normalizeLookupValue(value);
+      if (normalized) values.add(normalized);
+    }
+    return { values };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+};
+
+/**
+ * Fachliche Pruefregeln eines Projekts gegen einen Datensatz pruefen — mit der
+ * Tables-Wertequelle verdrahtet. Wird ausserhalb von `extract()` z.B. nach einer
+ * menschlichen Korrektur genutzt (Befunde neu bewerten).
+ */
+export async function evaluateProjectRules(
+  project: ExtractionProject,
+  data: Record<string, unknown>,
+): Promise<RuleIssue[]> {
+  return evaluateRules(project, data, loadTableColumnValues);
+}
+
 // ============== Extraction ==============
 
 /**
@@ -204,6 +245,8 @@ export async function extract(
   strategyUsed?: string;
   /** Audit-Metadaten: mit welchem Regel-Stand/Modell/Strategie extrahiert wurde. */
   audit?: { guideline_version: number; model: string; strategy?: string };
+  /** Befunde der fachlichen Pruefregeln (Welle 5); leer, wenn keine Regeln definiert. */
+  validations?: RuleIssue[];
   error?: string;
 }> {
   try {
@@ -284,6 +327,12 @@ export async function extract(
       boxes[path.startsWith(prefix) ? path.slice(prefix.length) : path] = box;
     }
 
+    // Fachliche Pruefregeln (Welle 5) — Plausibilitaet jenseits von Typ/Konfidenz.
+    const validations = await evaluateRules(project, data, loadTableColumnValues);
+    if (validations.length > 0) {
+      console.log(`[Extraction] ${projectId}: ${validations.length} Regel-Befund(e)`);
+    }
+
     console.log(`[Extraction] Done for ${projectId} via ${result.strategyUsed} (${result.llmCalls} calls, ${result.warnings.length} warnings)`);
     return {
       success: true,
@@ -293,6 +342,7 @@ export async function extract(
       boxes,
       pageImages: result.pageImages,
       strategyUsed: result.strategyUsed,
+      validations,
       audit: {
         guideline_version: project.learning.guideline_version,
         model: evalModelLabel(project),

@@ -23,6 +23,7 @@ function rowToProject(row: typeof extractionProjects.$inferSelect): ExtractionPr
     guidelines: row.guidelines,
     learning: row.learning as ExtractionProject['learning'],
     extraction: (row.extraction as ExtractionProject['extraction']) ?? undefined,
+    rules: (row.rules as ExtractionProject['rules']) ?? undefined,
   };
 }
 
@@ -44,6 +45,7 @@ export async function createProject(data: {
   fields: ExtractionProject['fields'];
   instructions?: string;
   extraction?: ExtractionProject['extraction'];
+  rules?: ExtractionProject['rules'];
 }): Promise<ExtractionProject> {
   const id = data.name
     .toLowerCase()
@@ -67,6 +69,7 @@ export async function createProject(data: {
       guideline_version: 0,
     },
     extraction: data.extraction,
+    rules: data.rules,
   };
 
   const db = getDb();
@@ -79,6 +82,7 @@ export async function createProject(data: {
     guidelines: project.guidelines,
     learning: project.learning as never,
     extraction: (project.extraction ?? null) as never,
+    rules: (project.rules ?? null) as never,
     createdAt: now,
     updatedAt: now,
   });
@@ -88,7 +92,7 @@ export async function createProject(data: {
 
 export async function updateProject(
   id: string,
-  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'instructions' | 'guidelines' | 'learning' | 'extraction'>>,
+  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'instructions' | 'guidelines' | 'learning' | 'extraction' | 'rules'>>,
 ): Promise<ExtractionProject | null> {
   const existing = await getProject(id);
   if (!existing) return null;
@@ -113,6 +117,7 @@ export async function updateProject(
       guidelines: merged.guidelines,
       learning: merged.learning as never,
       extraction: (merged.extraction ?? null) as never,
+      rules: (merged.rules ?? null) as never,
       updatedAt: merged.updated,
     })
     .where(eq(extractionProjects.id, id));

@@ -816,6 +816,36 @@ const INBOX_STATUS = {
   failed: { label: 'Fehler', bg: theme.colors.errorLight, fg: theme.colors.error },
 };
 
+/**
+ * Befunde der fachlichen Prüfregeln (Welle 5) — rot blockiert (erzwingt „Zu prüfen"),
+ * gelb ist nur ein Hinweis (z. B. Stammdaten-Tabelle nicht erreichbar).
+ */
+function ValidationIssues({ issues, style = {} }) {
+  if (!issues || issues.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, ...style }}>
+      {issues.map((issue, idx) => {
+        const isError = issue.severity !== 'warn';
+        return (
+          <div
+            key={issue.rule_id || idx}
+            style={{
+              padding: theme.spacing.md,
+              backgroundColor: isError ? theme.colors.errorLight : theme.colors.warningLight,
+              color: isError ? theme.colors.error : theme.colors.warning,
+              borderRadius: theme.borderRadius.lg,
+              fontSize: theme.typography.sizes.sm,
+            }}
+          >
+            <strong>{isError ? 'Prüfregel verletzt: ' : 'Hinweis: '}</strong>
+            {issue.message}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function InboxStatusBadge({ status }) {
   const s = INBOX_STATUS[status] || INBOX_STATUS.processing;
   return (
@@ -2161,6 +2191,7 @@ function BatchFileDetail({ detail, fields, onLearn }) {
             Strategie {detail.audit.strategy || detail.strategy || '—'} · Modell {detail.audit.model} · Regeln v{detail.audit.guideline_version}
           </div>
         )}
+        <ValidationIssues issues={detail.validations} />
         {Object.entries(fields).map(([fid, f]) => {
           const conf = detail.fieldConfidences?.[fid];
           const isChanged = edited && JSON.stringify(values[fid]) !== JSON.stringify(detail.data?.[fid]);
@@ -2256,6 +2287,7 @@ function TrainingTab({ project, onProjectUpdated }) {
   const [boxes, setBoxes] = useState({});
   const [fieldConfidences, setFieldConfidences] = useState({});
   const [pageImages, setPageImages] = useState([]);
+  const [validations, setValidations] = useState([]);
   const [activeField, setActiveField] = useState(null);
   const [scrollToField, setScrollToField] = useState(null);
   const fileInputRef = useRef(null);
@@ -2306,6 +2338,7 @@ function TrainingTab({ project, onProjectUpdated }) {
     setBoxes({});
     setFieldConfidences({});
     setPageImages([]);
+    setValidations([]);
     setActiveField(null);
     setScrollToField(null);
   }
@@ -2350,6 +2383,7 @@ function TrainingTab({ project, onProjectUpdated }) {
           setBoxes(result.boxes ?? {});
           setFieldConfidences(result.fieldConfidences ?? {});
           setPageImages(result.pageImages ?? []);
+          setValidations(result.validations ?? []);
         } else {
           setStatusMsg(`Fehler: ${result.error}`);
         }
@@ -2386,6 +2420,7 @@ function TrainingTab({ project, onProjectUpdated }) {
           setBoxes(result.boxes ?? {});
           setFieldConfidences(result.fieldConfidences ?? {});
           setPageImages(result.pageImages ?? []);
+          setValidations(result.validations ?? []);
         } else {
           setStatusMsg(`Fehler: ${result.error}`);
         }
@@ -2576,6 +2611,8 @@ function TrainingTab({ project, onProjectUpdated }) {
               </button>
             </div>
           </div>
+
+          <ValidationIssues issues={validations} style={{ marginBottom: theme.spacing.md }} />
 
           {hasChanges && (
             <div style={{
@@ -3049,6 +3086,199 @@ function RulesTab({ project, onProjectUpdated }) {
 
 // ============== Settings Tab ==============
 
+/**
+ * Editor für die fachlichen Prüfregeln (Welle 5). Zwei Regeltypen:
+ * Summen-Check (Positions-Spalte → Zielfeld) und Stammdaten-Abgleich (Tabelle/Spalte).
+ * Die Feld-Auswahl kommt aus dem aktuellen Editor-Stand, damit gerade angelegte
+ * Felder sofort referenzierbar sind.
+ */
+function RulesEditor({ rules, fields, onChange }) {
+  const [tables, setTables] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiGet('/tables');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!cancelled) setTables(json.tables || []);
+      } catch {
+        /* Tabellen sind optional — ohne sie bleibt nur die Summen-Regel nutzbar */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const named = fields.filter(f => f.label.trim());
+  const listFields = named.filter(f => f.type === 'list');
+  const numberFields = named.filter(f => f.type === 'number');
+  const scalarFields = named.filter(f => f.type !== 'list');
+
+  function update(idx, patch) {
+    onChange(rules.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  }
+
+  function addRule(type) {
+    const id = `rule_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
+    onChange([
+      ...rules,
+      type === 'sum'
+        ? { id, type: 'sum', list_field: listFields[0]?.id || '', item_field: '', target_field: numberFields[0]?.id || '' }
+        : { id, type: 'lookup', field: scalarFields[0]?.id || '', table_id: tables[0]?.id || '', column_id: '', severity: 'error' },
+    ]);
+  }
+
+  const selectStyle = { ...styles.select, width: '100%' };
+
+  return (
+    <div style={styles.section}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+        <div style={styles.sectionTitle}>Prüfregeln</div>
+        <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+          <button style={styles.secondaryBtn} onClick={() => addRule('sum')} disabled={listFields.length === 0 || numberFields.length === 0}>
+            + Summen-Check
+          </button>
+          <button style={styles.secondaryBtn} onClick={() => addRule('lookup')} disabled={scalarFields.length === 0 || tables.length === 0}>
+            + Stammdaten-Abgleich
+          </button>
+        </div>
+      </div>
+
+      <InfoBox>
+        Prüfregeln bewerten die <strong>fachliche Plausibilität</strong> — unabhängig von der Konfidenz.
+        Ein verletzter Summen-Check oder ein unbekannter Stammdaten-Wert hebt das Dokument im
+        Verarbeiten-Tab auf „Zu prüfen" und wird dort im Klartext angezeigt.
+        {listFields.length === 0 && ' Für einen Summen-Check braucht das Projekt ein Listen-Feld mit einer Zahl-Spalte.'}
+        {tables.length === 0 && ' Für einen Stammdaten-Abgleich braucht es mindestens eine Tabelle.'}
+      </InfoBox>
+
+      {rules.length === 0 && (
+        <div style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+          Keine Prüfregeln definiert.
+        </div>
+      )}
+
+      {rules.map((rule, idx) => {
+        const listField = listFields.find(f => f.id === rule.list_field);
+        const table = tables.find(t => t.id === rule.table_id);
+        return (
+          <div key={rule.id || idx} style={{
+            padding: theme.spacing.lg,
+            backgroundColor: theme.colors.background,
+            borderRadius: theme.borderRadius.lg,
+            marginTop: theme.spacing.md,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md }}>
+              <div style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>
+                {rule.type === 'sum' ? 'Summen-Check' : 'Stammdaten-Abgleich'}
+              </div>
+              <button
+                style={{ ...styles.dangerBtn, padding: theme.spacing.sm }}
+                onClick={() => onChange(rules.filter((_, i) => i !== idx))}
+                title="Regel entfernen"
+              >
+                <TrashIcon size={14} />
+              </button>
+            </div>
+
+            {rule.type === 'sum' ? (
+              <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <label style={styles.label}>Positionen</label>
+                  <select
+                    style={selectStyle}
+                    value={rule.list_field}
+                    onChange={e => update(idx, { list_field: e.target.value, item_field: '' })}
+                  >
+                    <option value="">— wählen —</option>
+                    {listFields.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <label style={styles.label}>Spalte (Zahl)</label>
+                  <select
+                    style={selectStyle}
+                    value={rule.item_field}
+                    onChange={e => update(idx, { item_field: e.target.value })}
+                  >
+                    <option value="">— wählen —</option>
+                    {(listField?.item_fields || [])
+                      .filter(col => col.type === 'number' && col.label.trim())
+                      .map(col => <option key={col.id} value={col.id}>{col.label}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <label style={styles.label}>muss ergeben</label>
+                  <select
+                    style={selectStyle}
+                    value={rule.target_field}
+                    onChange={e => update(idx, { target_field: e.target.value })}
+                  >
+                    <option value="">— wählen —</option>
+                    {numberFields.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                  </select>
+                </div>
+                <div style={{ width: 120 }}>
+                  <label style={styles.label}>Toleranz</label>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={rule.tolerance ?? ''}
+                    onChange={e => update(idx, { tolerance: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                    placeholder="0.01"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <label style={styles.label}>Feld</label>
+                  <select style={selectStyle} value={rule.field} onChange={e => update(idx, { field: e.target.value })}>
+                    <option value="">— wählen —</option>
+                    {scalarFields.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <label style={styles.label}>Tabelle</label>
+                  <select
+                    style={selectStyle}
+                    value={rule.table_id}
+                    onChange={e => update(idx, { table_id: e.target.value, column_id: '' })}
+                  >
+                    <option value="">— wählen —</option>
+                    {tables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <label style={styles.label}>Spalte</label>
+                  <select style={selectStyle} value={rule.column_id} onChange={e => update(idx, { column_id: e.target.value })}>
+                    <option value="">— wählen —</option>
+                    {(table?.columns || []).map(col => <option key={col.id} value={col.id}>{col.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ width: 160 }}>
+                  <label style={styles.label}>Wirkung</label>
+                  <select
+                    style={selectStyle}
+                    value={rule.severity || 'error'}
+                    onChange={e => update(idx, { severity: e.target.value })}
+                  >
+                    <option value="error">Zu prüfen erzwingen</option>
+                    <option value="warn">Nur Hinweis</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
@@ -3068,6 +3298,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
       item_fields: itemFieldsToArray(f.item_fields),
     }))
   );
+  const [rules, setRules] = useState(project.rules || []);
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [exportWithExamples, setExportWithExamples] = useState(false);
@@ -3141,6 +3372,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         description: description.trim(),
         fields: fieldsObj,
         instructions: instructions,
+        rules,
         extraction: {
           ...(project.extraction || {}),
           strategy,
@@ -3313,6 +3545,9 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
           </div>
         ))}
       </div>
+
+      {/* Prüfregeln (Welle 5) */}
+      <RulesEditor rules={rules} fields={fields} onChange={setRules} />
 
       {/* Export / Weitergabe */}
       <div style={styles.section}>

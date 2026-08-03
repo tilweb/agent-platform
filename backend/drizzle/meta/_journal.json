@@ -204,6 +204,13 @@
       "when": 1785715200000,
       "tag": "0028_echoloop",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1785801600000,
+      "tag": "0029_extraction_rules",
+      "breakpoints": true
     }
   ]
 }
