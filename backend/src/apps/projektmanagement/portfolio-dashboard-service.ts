@@ -541,12 +541,23 @@ function computeProjektCost(ctx: ProjektContext): PortfolioCostProjekt {
   let cumPlanAtIst = 0;
   for (let i = 0; i <= lastIstIndex; i++) cumPlanAtIst += Number(months[i]?.plan) || 0;
 
+  // Plan = geplanter Kostenverlauf (Summe aller Plan-Monate).
+  const plan = months.reduce((s, m) => s + (Number(m.plan) || 0), 0);
+  // Forecast = Prognose der Zukunftsmonate (nach dem letzten Ist-Monat) = ETC.
+  // Ohne Ist-Monat (lastIstIndex = -1) zählen alle Monate als Zukunft.
+  const forecast = months.reduce((s, m, i) => (i > lastIstIndex ? s + (Number(m.forecast) || 0) : s), 0);
+  const istPlusForecast = ist + forecast;
+
   const cumEV = budget * (progress / 100);
   const latestCpi = (lastIstIndex >= 0 && ist > 0 && cumEV > 0) ? cumEV / ist : null;
   const latestSpi = (lastIstIndex >= 0 && cumPlanAtIst > 0 && cumEV > 0) ? cumEV / cumPlanAtIst : null;
 
   const hatPrognose = latestCpi != null && latestCpi > 0;
   const prognoseBudget = hatPrognose ? budget / (latestCpi as number) : budget;
+
+  // △ Kosten = Abweichung Budget -> Kosten-Prognose.
+  const deltaKosten = prognoseBudget - budget;
+  const deltaKostenPct = budget > 0 ? (deltaKosten / budget) * 100 : null;
 
   const planEnde = auftrag?.start_date && auftrag?.end_date ? auftrag.end_date : undefined;
   const daysEnd = daysBetween(auftrag?.start_date, auftrag?.end_date);
@@ -565,9 +576,14 @@ function computeProjektCost(ctx: ProjektContext): PortfolioCostProjekt {
     id: ctx.projektId,
     name: ctx.projektName,
     budget,
+    plan,
     ist,
+    forecast,
+    ist_plus_forecast: istPlusForecast,
     prognose_budget: prognoseBudget,
     hat_prognose: hatPrognose,
+    delta_kosten: deltaKosten,
+    delta_kosten_pct: deltaKostenPct,
     plan_ende: planEnde,
     prognose_ende: prognoseEnde,
     termin_abweichung_tage: terminAbweichungTage,
@@ -612,10 +628,17 @@ export async function getPortfolioCosts(
       return { id: i.id, name: i.name, investitionen: inv };
     });
 
+  const budgetSum = projekte.reduce((s, p) => s + p.budget, 0);
+  const deltaKostenSum = projekte.reduce((s, p) => s + p.delta_kosten, 0);
   const summary = {
-    budget: projekte.reduce((s, p) => s + p.budget, 0),
+    budget: budgetSum,
+    plan: projekte.reduce((s, p) => s + p.plan, 0),
     ist: projekte.reduce((s, p) => s + p.ist, 0),
+    forecast: projekte.reduce((s, p) => s + p.forecast, 0),
+    ist_plus_forecast: projekte.reduce((s, p) => s + p.ist_plus_forecast, 0),
     prognose_budget: projekte.reduce((s, p) => s + p.prognose_budget, 0),
+    delta_kosten: deltaKostenSum,
+    delta_kosten_pct: budgetSum > 0 ? (deltaKostenSum / budgetSum) * 100 : null,
     ideen_investitionen: ideen.reduce((s, i) => s + i.investitionen, 0),
   };
 

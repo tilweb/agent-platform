@@ -419,9 +419,14 @@ export interface PortfolioCostProjekt {
   id: string;
   name: string;
   budget: number;                 // genehmigtes Budget (cost_budget)
-  ist: number;                    // Summe cost_months[].ist
+  plan: number;                   // Summe cost_months[].plan (geplanter Kostenverlauf)
+  ist: number;                    // Summe cost_months[].ist (verbraucht)
+  forecast: number;               // Summe cost_months[].forecast der Zukunftsmonate (ETC)
+  ist_plus_forecast: number;      // ist + forecast (aktueller Forecast-Verlauf, kein Doppelzaehlen)
   prognose_budget: number;        // EAC (Budget/CPI); Fallback = budget, wenn kein CPI
   hat_prognose: boolean;          // true, wenn ein echter CPI vorlag (sonst Fallback)
+  delta_kosten: number;           // prognose_budget - budget (Abweichung Budget -> Prognose)
+  delta_kosten_pct: number | null; // delta_kosten / budget * 100; null wenn budget = 0
   plan_ende?: string;             // Auftrag.end_date
   prognose_ende?: string;         // via SPI errechnetes Enddatum
   termin_abweichung_tage?: number | null;
@@ -435,8 +440,13 @@ export interface PortfolioCostIdee {
 
 export interface PortfolioCostSummary {
   budget: number;
+  plan: number;
   ist: number;
+  forecast: number;
+  ist_plus_forecast: number;
   prognose_budget: number;
+  delta_kosten: number;           // prognose_budget - budget (Summe)
+  delta_kosten_pct: number | null; // delta_kosten / budget * 100; null wenn budget = 0
   ideen_investitionen: number;    // Summe der Ideen-Investitionsschaetzung
 }
 

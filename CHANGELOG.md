@@ -117,6 +117,19 @@ Projekt (`rules`), konfigurierbar in den Projekt-Einstellungen:
 
 ## 2026-07-29
 
+### PM: Portfolio-Kosten überarbeitet (Test-Feedback: Umbenennungen + Plan / Ist+Forecast / △ Kosten)
+- **Umbenennungen**: „Prognose (EAC)" → **Kosten-Prognose**, „Plan-Ende" → **Termin-Ende (PA)**,
+  „Prognose-Termin" → **Termin-Prognose**.
+- **Neue Kennzahlen**: **Plan** (Summe der Plan-Monate, zusätzlich zu Budget), **Forecast** (Summe der
+  Forecast-Zukunftsmonate = ETC), **Ist + Forecast** (verbrauchtes Budget + Forecast, vergangene Monate Ist /
+  künftige Forecast — kein Doppelzählen) und **△ Kosten** (Kosten-Prognose − Budget, dargestellt als
+  „+… € (+… %)", farbcodiert).
+- **KPIs**: Budget · Plan · Ist + Forecast · Kosten-Prognose · △ Kosten · Ideen. **Chart-Balken**: Budget · Plan ·
+  Ist+Forecast · Kosten-Prognose. **Tabelle** um Plan / Ist / Forecast / Ist+Forecast / △ Kosten erweitert
+  (horizontal scrollbar), Termin-Spalten umbenannt.
+- Backend-Aggregat `getPortfolioCosts` (+ `computeProjektCost`) liefert plan / forecast / ist_plus_forecast /
+  delta_kosten (+ pct) je Projekt und in der Summe. Beide Worktrees, Aggregator + Frontend byte-identisch.
+
 ### PM: Portfolio-Roadmap + Dashboard — Abhängigkeiten auch für Projektideen
 Abhängigkeiten (Vorgänger → Nachfolger) ließen sich bisher nur zwischen Projekten pflegen. Jetzt sind auch
 **Projektideen** als Endpunkt wählbar — die Dropdowns sind nach „Projekte" / „Projektideen" gruppiert. Projekt-
