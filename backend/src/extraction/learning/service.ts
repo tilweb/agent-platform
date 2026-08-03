@@ -18,6 +18,7 @@ import { dedupeListItems } from './list-utils';
 import { runEval, evalSetHash, decideAcceptance, evalModelLabel } from './eval';
 import { updateCalibration } from './review';
 import { evaluateRules, normalizeLookupValue, type LoadAllowedValues } from './rules';
+import { applyCatalogs, type ResolveCatalog } from './catalog';
 import { getTableWithData } from '../../tables';
 import type { TrainingExample, ExtractionProject, LearningEvalState, EvalScore, RuleIssue } from './types';
 import { readFile } from 'fs/promises';
@@ -224,24 +225,52 @@ export async function ingestPlainText(
  * als normalisiertes Set. Fehler werden NICHT geworfen — die Regel-Auswertung
  * macht daraus einen `warn`-Befund ("nicht pruefbar").
  */
-const loadTableColumnValues: LoadAllowedValues = async (tableId, columnId) => {
+/**
+ * Rohwerte einer Tabellen-Spalte in Original-Schreibweise, dublettenfrei.
+ * Gemeinsame Basis der Regel-Pruefung (braucht nur die Menge) und der
+ * kontrollierten Wertelisten (brauchen die Schreibweise zum Angleichen).
+ */
+async function readTableColumn(
+  tableId: string,
+  columnId: string,
+): Promise<{ values: string[] } | { error: string }> {
   try {
     const table = await getTableWithData(tableId);
     if (!table) return { error: `Tabelle "${tableId}" nicht gefunden` };
     if (!table.columns.some((col) => col.id === columnId)) {
       return { error: `Spalte "${columnId}" existiert in "${table.name}" nicht` };
     }
-    const values = new Set<string>();
+    const seen = new Set<string>();
+    const values: string[] = [];
     for (const row of table.data?.rows ?? []) {
       const value = row[columnId];
       if (value === null || value === undefined) continue;
-      const normalized = normalizeLookupValue(value);
-      if (normalized) values.add(normalized);
+      const raw = String(value).trim();
+      const normalized = normalizeLookupValue(raw);
+      if (!normalized || seen.has(normalized)) continue;
+      seen.add(normalized);
+      values.push(raw);
     }
     return { values };
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+const loadTableColumnValues: LoadAllowedValues = async (tableId, columnId) => {
+  const result = await readTableColumn(tableId, columnId);
+  if ('error' in result) return result;
+  return { values: new Set(result.values.map(normalizeLookupValue)) };
+};
+
+/** Wertequelle der kontrollierten Wertelisten (Welle 6). */
+const resolveCatalogValues: ResolveCatalog = async (catalog) => {
+  if (catalog.source !== 'table' || !catalog.table_id || !catalog.column_id) {
+    return { error: 'Keine Tabellenspalte hinterlegt' };
+  }
+  const result = await readTableColumn(catalog.table_id, catalog.column_id);
+  if ('error' in result) return result;
+  return { values: result.values.map((value) => ({ value })) };
 };
 
 /**
@@ -253,7 +282,10 @@ export async function evaluateProjectRules(
   project: ExtractionProject,
   data: Record<string, unknown>,
 ): Promise<RuleIssue[]> {
-  return evaluateRules(project, data, loadTableColumnValues);
+  // Kataloge zuerst (gleichen an), dann die Regeln — wie im Extraktionspfad.
+  const catalogIssues = await applyCatalogs(project, data, resolveCatalogValues);
+  const ruleIssues = await evaluateRules(project, data, loadTableColumnValues);
+  return [...catalogIssues, ...ruleIssues];
 }
 
 // ============== Extraction ==============
@@ -363,8 +395,12 @@ export async function extract(
       boxes[path.startsWith(prefix) ? path.slice(prefix.length) : path] = box;
     }
 
-    // Fachliche Pruefregeln (Welle 5) — Plausibilitaet jenseits von Typ/Konfidenz.
-    const validations = await evaluateRules(project, data, loadTableColumnValues);
+    // Kontrollierte Wertelisten (Welle 6) gleichen eindeutige Treffer an, BEVOR
+    // die fachlichen Pruefregeln (Welle 5) laufen — die sollen den bereinigten
+    // Stand sehen (z.B. ein Stammdaten-Lookup auf dem angeglichenen Wert).
+    const catalogIssues = await applyCatalogs(project, data, resolveCatalogValues);
+    const ruleIssues = await evaluateRules(project, data, loadTableColumnValues);
+    const validations = [...catalogIssues, ...ruleIssues];
     if (validations.length > 0) {
       console.log(`[Extraction] ${projectId}: ${validations.length} Regel-Befund(e)`);
     }

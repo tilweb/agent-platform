@@ -2,6 +2,36 @@
 
 ## 2026-08-03
 
+### Feature: Extraktion — kontrollierte Wertelisten als Ground Truth (Ausbau-Welle 6)
+Für sehr viele Felder ist der Wertevorrat vorab bekannt und endlich — Einheiten, Statuscodes,
+Kostenstellen, Dokumentarten, Lieferanten. Ohne hinterlegte Liste rät die Extraktion frei und
+liefert mal „Stk", mal „Stück", mal „stk."; bei hoher Konfidenz fällt das niemandem auf, und die
+Daten sind für jede Auswertung unbrauchbar. Jetzt lässt sich je Feld **und je Positions-Spalte**
+eine Werteliste hinterlegen (statisch gepflegt oder aus einer Tabellenspalte), die an drei Stellen
+wirkt:
+- **Im Prompt**: Die Werte stehen in der Feldbeschreibung — nachweislich in *beiden* Prompt-Pfaden
+  (Function-Schema und Vision-Freitext-JSON), ohne Änderung an einer einzigen Strategie.
+  Bewusst **weiche Bindung** statt hartem `enum`: Ein `enum` zwänge das Modell, auch bei einem echten
+  Ausreißer einen Listenwert zu liefern — der Fehler wäre unsichtbar statt sichtbar.
+- **Beim Angleichen**: Ein eindeutig zuordenbarer Wert wird auf die kanonische Schreibweise gesetzt.
+  Vier Stufen, jede nur bei **genau einem** Kandidaten: exakt (normalisiert) → gepflegtes Synonym →
+  Präfix/Enthalten ab 6 Zeichen („Muster Bau" → „Muster Bau GmbH") → Tippfehler (Levenshtein
+  ≤ max(1, ⌊len/8⌋)). Zwei gleich nahe Kandidaten heißt: **nicht** angleichen, sondern melden.
+  Deterministisch, kein LLM-Call. Jede Ersetzung wird als `info`-Befund mit dem Rohwert protokolliert
+  (neue dritte Stufe neben `error`/`warn`; blockiert nichts).
+- **In der Prüfung**: Ein Wert außerhalb der Liste ist ein Befund und hebt die Datei auf
+  „Zu prüfen" (W5-Mechanik), mit den nächstliegenden Katalogwerten als Hilfestellung.
+- **Ohne Migration**: `catalog` hängt an der Feld-Definition, die als Ganzes in `projects.fields`
+  (jsonb) bzw. im `project.yaml` liegt — reist auch durch Export/Import mit. UI: Editor je Feld und
+  Spalte (Quelle, Werte mit Schreibvarianten nach `=`, „automatisch angleichen", Wirkung).
+  Public-API `projects.list` liefert `allowed_values`.
+- Verifiziert end-to-end: Dokument mit „acme ag"/„Stück" → Modell liefert direkt „Acme AG"/„Stk";
+  Einheit „Sack" wurde **nicht** in die Liste gezwungen → Befund + „Zu prüfen". Korrektur mit
+  „ACME Aktiengesellschaft"/„stück" → beide angeglichen, zwei `info`-Protokolle, gespeicherter Stand
+  kanonisch. Tabellen-Katalog: „muster bau" → „Muster Bau GmbH"; Tabelle gelöscht → `warn` statt
+  Absturz; `auto_map:false` → Rohwert bleibt, stattdessen Befund. Details:
+  `docs/extraktion-wertelisten-2026-08-03.md`. 25 neue Tests (271 gesamt grün).
+
 ### Feature: Extraktion — Ähnlichkeits-Few-Shot (Ausbau-Welle 5, Baustein 5, Welle abgeschlossen)
 Die Few-Shot-Beispiele wurden bisher nach „Korrekturen zuerst, dann jung" gewählt. Das trägt,
 solange ein Projekt **einen** Dokumenttyp sieht — sobald mehrere Ausprägungen zusammenkommen,

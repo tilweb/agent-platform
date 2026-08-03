@@ -22,6 +22,7 @@ import {
   applyExtractionDefaults,
   type ExtractionSchema,
 } from '../../services/extraction';
+import { fieldCatalogHint } from './catalog';
 import type { ExtractionProject, FieldType, TrainingExample } from './types';
 
 /** Name der synthetischen Gruppe, in die flache Projekt-Felder gewickelt werden. */
@@ -108,7 +109,10 @@ function buildProfile(project: ExtractionProject, guidelines: string): Extractio
           required: false,
           label: itemField.label,
         };
-        if (itemField.description) def.hint = itemField.description;
+        // Beschreibung + kontrollierte Werteliste (Welle 6) landen im selben
+        // Hint — beide Prompt-Bauer (Function-Schema und Vision-JSON) rendern ihn.
+        const itemHint = [itemField.description, fieldCatalogHint(itemField)].filter(Boolean).join(' ');
+        if (itemHint) def.hint = itemHint;
         itemFields[itemId] = def;
       }
       groups[fieldId] = {
@@ -132,7 +136,8 @@ function buildProfile(project: ExtractionProject, guidelines: string): Extractio
       required: false,
       label: field.label,
     };
-    if (field.description) def.hint = field.description;
+    const hint = [field.description, fieldCatalogHint(field)].filter(Boolean).join(' ');
+    if (hint) def.hint = hint;
     scalarFields[fieldId] = def;
   }
 

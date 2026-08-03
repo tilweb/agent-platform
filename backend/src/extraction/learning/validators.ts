@@ -5,10 +5,56 @@
  * Extracted from the original validator.ts for reuse.
  */
 
-import type { ExtractionRule, ProjectField } from './types';
+import type { ExtractionRule, FieldCatalog, ProjectField } from './types';
 import { PROJECT_FIELD_GROUP } from './pipeline-adapter';
+import { normalizeForMatch } from './catalog';
 
 const SCALAR_TYPES = new Set(['text', 'number', 'date', 'boolean']);
+
+/**
+ * Strukturelle Pruefung einer kontrollierten Werteliste (Welle 6).
+ * Liefert eine deutsche Fehlermeldung oder null.
+ */
+function validateCatalog(where: string, catalog: FieldCatalog | undefined): string | null {
+  if (!catalog) return null;
+  if (catalog.source !== 'list' && catalog.source !== 'table') {
+    return `${where}: Werteliste braucht eine Quelle (Liste oder Tabellenspalte)`;
+  }
+
+  if (catalog.source === 'table') {
+    if (!catalog.table_id || !catalog.column_id) {
+      return `${where}: Werteliste aus einer Tabelle braucht Tabelle und Spalte`;
+    }
+    return null;
+  }
+
+  const values = catalog.values ?? [];
+  const named = values.filter((v) => v?.value?.trim());
+  if (named.length === 0) return `${where}: Werteliste enthaelt keinen Wert`;
+
+  // Dubletten nach Normalisierung machen jede Zuordnung mehrdeutig — hier
+  // abfangen statt spaeter bei jedem Dokument einen Befund zu erzeugen. Zwei
+  // Schreibvarianten DESSELBEN Werts ("Stück"/"Stueck") sind dagegen nur
+  // redundant, nicht mehrdeutig.
+  const owner = new Map<string, string>();
+  for (const entry of named) {
+    const key = normalizeForMatch(entry.value);
+    if (owner.has(key)) return `${where}: Wert "${entry.value}" ist doppelt in der Werteliste`;
+    owner.set(key, entry.value);
+  }
+  for (const entry of named) {
+    for (const synonym of entry.synonyms ?? []) {
+      const key = normalizeForMatch(synonym);
+      if (!key) continue;
+      const existing = owner.get(key);
+      if (existing !== undefined && existing !== entry.value) {
+        return `${where}: Synonym "${synonym}" zeigt auf "${entry.value}", gehoert aber schon zu "${existing}"`;
+      }
+      owner.set(key, entry.value);
+    }
+  }
+  return null;
+}
 
 /**
  * Strukturelle Validierung der Projekt-Felder (fuer POST/PUT /projects und
@@ -40,12 +86,20 @@ export function validateProjectFields(fields: Record<string, ProjectField>): str
         if (!itemField.label || !String(itemField.label).trim()) {
           return `Feld "${fieldId}", Spalte "${itemId}": Label fehlt`;
         }
+        const columnCatalogError = validateCatalog(`Feld "${fieldId}", Spalte "${itemId}"`, itemField.catalog);
+        if (columnCatalogError) return columnCatalogError;
+      }
+      // Eine Werteliste am Listen-Feld selbst ergibt keinen Sinn (der Wert ist ein Array).
+      if (field.catalog) {
+        return `Feld "${fieldId}": eine Werteliste gehoert an eine Spalte, nicht an die Liste selbst`;
       }
       continue;
     }
     if (!SCALAR_TYPES.has(field.type as string)) {
       return `Feld "${fieldId}": unbekannter Typ "${field.type}"`;
     }
+    const catalogError = validateCatalog(`Feld "${fieldId}"`, field.catalog);
+    if (catalogError) return catalogError;
   }
   return null;
 }

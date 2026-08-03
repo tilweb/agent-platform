@@ -288,6 +288,7 @@ function itemFieldsToArray(obj) {
     type: f.type || 'text',
     required: !!f.required,
     description: f.description || '',
+    catalog: f.catalog || null,
   }));
 }
 
@@ -301,6 +302,7 @@ function itemFieldsToObject(arr) {
       label: f.label,
       ...(f.required ? { required: true } : {}),
       ...(f.description ? { description: f.description } : {}),
+      ...(f.catalog ? { catalog: f.catalog } : {}),
     };
   }
   return obj;
@@ -538,6 +540,153 @@ function ModelOverrideSelect({ value, onChange }) {
  * `itemFields` ist die Array-Form ([{id,label,type,required,description}]),
  * `onChange` bekommt das aktualisierte Array.
  */
+/**
+ * Tabellen-Liste (für Wertelisten aus einer Tabellenspalte). Modul-weit
+ * zwischengespeichert — der Feld-Editor rendert viele Katalog-Editoren, die
+ * sollen nicht je einen eigenen Request auslösen.
+ */
+let tablesCache = null;
+function useTables() {
+  const [tables, setTables] = useState(tablesCache || []);
+  useEffect(() => {
+    if (tablesCache) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiGet('/tables');
+        if (!res.ok) return;
+        const json = await res.json();
+        tablesCache = json.tables || [];
+        if (!cancelled) setTables(tablesCache);
+      } catch {
+        /* Tabellen sind optional — ohne sie bleibt die statische Liste */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return tables;
+}
+
+/** Werteliste ⇄ Textarea: eine Zeile je Wert, Synonyme nach `=` und Komma. */
+function catalogValuesToText(values) {
+  return (values || [])
+    .map(v => (v.synonyms?.length ? `${v.value} = ${v.synonyms.join(', ')}` : v.value))
+    .join('\n');
+}
+
+function textToCatalogValues(text) {
+  return String(text || '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const [value, syn] = line.split('=');
+      const synonyms = (syn || '').split(',').map(s => s.trim()).filter(Boolean);
+      return { value: value.trim(), ...(synonyms.length ? { synonyms } : {}) };
+    })
+    .filter(v => v.value);
+}
+
+/**
+ * Kontrollierte Werteliste eines Feldes (Welle 6): Quelle, Werte/Synonyme,
+ * automatisches Angleichen und Wirkung eines Ausreißers.
+ */
+function CatalogEditor({ catalog, onChange, compact = false }) {
+  const tables = useTables();
+  const source = catalog?.source || 'none';
+  const table = tables.find(t => t.id === catalog?.table_id);
+
+  function setSource(next) {
+    if (next === 'none') return onChange(null);
+    if (next === 'list') return onChange({ source: 'list', values: catalog?.values || [] });
+    return onChange({ source: 'table', table_id: catalog?.table_id || tables[0]?.id || '', column_id: '' });
+  }
+
+  const labelStyle = { ...styles.label, fontSize: theme.typography.sizes.xs };
+
+  return (
+    <div style={{ marginTop: theme.spacing.sm }}>
+      <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ width: compact ? 180 : 220 }}>
+          <label style={labelStyle}>Zulässige Werte</label>
+          <select style={{ ...styles.select, width: '100%' }} value={source} onChange={e => setSource(e.target.value)}>
+            <option value="none">— beliebig —</option>
+            <option value="list">Feste Liste</option>
+            <option value="table" disabled={tables.length === 0}>Aus Tabellenspalte</option>
+          </select>
+        </div>
+
+        {source === 'table' && (
+          <>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <label style={labelStyle}>Tabelle</label>
+              <select
+                style={{ ...styles.select, width: '100%' }}
+                value={catalog.table_id || ''}
+                onChange={e => onChange({ ...catalog, table_id: e.target.value, column_id: '' })}
+              >
+                <option value="">— wählen —</option>
+                {tables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <label style={labelStyle}>Spalte</label>
+              <select
+                style={{ ...styles.select, width: '100%' }}
+                value={catalog.column_id || ''}
+                onChange={e => onChange({ ...catalog, column_id: e.target.value })}
+              >
+                <option value="">— wählen —</option>
+                {(table?.columns || []).map(col => <option key={col.id} value={col.id}>{col.name}</option>)}
+              </select>
+            </div>
+          </>
+        )}
+
+        {source !== 'none' && (
+          <>
+            <div style={{ width: 170 }}>
+              <label style={labelStyle}>Abweichung</label>
+              <select
+                style={{ ...styles.select, width: '100%' }}
+                value={catalog.severity || 'error'}
+                onChange={e => onChange({ ...catalog, severity: e.target.value })}
+              >
+                <option value="error">Zu prüfen erzwingen</option>
+                <option value="warn">Nur Hinweis</option>
+              </select>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', paddingBottom: theme.spacing.sm, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <input
+                type="checkbox"
+                style={styles.checkbox}
+                checked={catalog.auto_map !== false}
+                onChange={e => onChange({ ...catalog, auto_map: e.target.checked })}
+              />
+              automatisch angleichen
+            </label>
+          </>
+        )}
+      </div>
+
+      {source === 'list' && (
+        <div style={{ marginTop: theme.spacing.sm }}>
+          <textarea
+            style={{ ...styles.input, minHeight: 90, resize: 'vertical', fontFamily: 'inherit' }}
+            value={catalogValuesToText(catalog.values)}
+            onChange={e => onChange({ ...catalog, values: textToCatalogValues(e.target.value) })}
+            placeholder={'Ein Wert je Zeile. Schreibvarianten nach "=":\nAcme AG = acme, ACME Aktiengesellschaft\nMuster Bau GmbH'}
+          />
+          <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+            Die Werte gehen in den Extraktions-Prompt; eindeutig zuordenbare Treffer (Groß-/Kleinschreibung,
+            Umlaute, Synonyme, knappe Tippfehler) werden auf die hier hinterlegte Schreibweise angeglichen.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ItemFieldsEditor({ itemFields, onChange }) {
   const list = itemFields || [];
 
@@ -573,7 +722,8 @@ function ItemFieldsEditor({ itemFields, onChange }) {
         </div>
       )}
       {list.map((itf, idx) => (
-        <div key={idx} style={{ display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.sm, alignItems: 'center' }}>
+        <div key={idx} style={{ marginBottom: theme.spacing.md }}>
+        <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
           <input
             style={{ ...styles.input, flex: 1 }}
             value={itf.label}
@@ -609,6 +759,13 @@ function ItemFieldsEditor({ itemFields, onChange }) {
           >
             <TrashIcon size={14} />
           </button>
+        </div>
+        {/* Kontrollierte Werteliste je Spalte (Welle 6), z.B. Einheiten */}
+        <CatalogEditor
+          catalog={itf.catalog}
+          onChange={value => update(idx, 'catalog', value)}
+          compact
+        />
         </div>
       ))}
     </div>
@@ -825,19 +982,25 @@ function ValidationIssues({ issues, style = {} }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, ...style }}>
       {issues.map((issue, idx) => {
-        const isError = issue.severity !== 'warn';
+        // info = Protokoll (z.B. Angleichung an einen Katalogwert) — neutral,
+        // blockiert nichts; warn = Hinweis; alles andere ist ein echter Verstoß.
+        const tone = issue.severity === 'info'
+          ? { bg: theme.colors.surfaceHover, fg: theme.colors.textSecondary, prefix: 'Angeglichen: ' }
+          : issue.severity === 'warn'
+            ? { bg: theme.colors.warningLight, fg: theme.colors.warning, prefix: 'Hinweis: ' }
+            : { bg: theme.colors.errorLight, fg: theme.colors.error, prefix: 'Prüfregel verletzt: ' };
         return (
           <div
-            key={issue.rule_id || idx}
+            key={`${issue.rule_id || 'issue'}-${idx}`}
             style={{
               padding: theme.spacing.md,
-              backgroundColor: isError ? theme.colors.errorLight : theme.colors.warningLight,
-              color: isError ? theme.colors.error : theme.colors.warning,
+              backgroundColor: tone.bg,
+              color: tone.fg,
               borderRadius: theme.borderRadius.lg,
               fontSize: theme.typography.sizes.sm,
             }}
           >
-            <strong>{isError ? 'Prüfregel verletzt: ' : 'Hinweis: '}</strong>
+            <strong>{tone.prefix}</strong>
             {issue.message}
           </div>
         );
@@ -1200,6 +1363,8 @@ function CreateProjectView({ onBack, onCreated }) {
         required: !!f.required,
         description: f.description || '',
         item_fields: itemFieldsToArray(f.item_fields),
+      catalog: f.catalog || null,
+        catalog: f.catalog || null,
       }));
       if (proposed.length === 0) {
         setError('Kein verwertbarer Feldvorschlag — bitte Felder manuell anlegen.');
@@ -1265,7 +1430,9 @@ function CreateProjectView({ onBack, onCreated }) {
         required: f.required,
         label: f.label,
         description: f.description || undefined,
-        ...(f.type === 'list' ? { item_fields: itemFieldsToObject(f.item_fields) } : {}),
+        ...(f.type === 'list'
+          ? { item_fields: itemFieldsToObject(f.item_fields) }
+          : (f.catalog ? { catalog: f.catalog } : {})),
       };
     }
 
@@ -1471,10 +1638,16 @@ function CreateProjectView({ onBack, onCreated }) {
                     placeholder="z.B. Name des Lieferanten/Absenders der Rechnung"
                   />
                 </div>
-                {field.type === 'list' && (
+                {field.type === 'list' ? (
                   <ItemFieldsEditor
                     itemFields={field.item_fields}
                     onChange={arr => updateField(idx, 'item_fields', arr)}
+                  />
+                ) : (
+                  /* Kontrollierte Werteliste (Welle 6) */
+                  <CatalogEditor
+                    catalog={field.catalog}
+                    onChange={value => updateField(idx, 'catalog', value)}
                   />
                 )}
                 {field.id && (
@@ -3417,6 +3590,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
       required: f.required,
       description: f.description || '',
       item_fields: itemFieldsToArray(f.item_fields),
+      catalog: f.catalog || null,
     }))
   );
   const [rules, setRules] = useState(project.rules || []);
@@ -3485,7 +3659,9 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         required: f.required,
         label: f.label,
         description: f.description || undefined,
-        ...(f.type === 'list' ? { item_fields: itemFieldsToObject(f.item_fields) } : {}),
+        ...(f.type === 'list'
+          ? { item_fields: itemFieldsToObject(f.item_fields) }
+          : (f.catalog ? { catalog: f.catalog } : {})),
       };
     }
 
@@ -3659,10 +3835,16 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
                 onChange={e => updateField(idx, 'description', e.target.value)}
               />
             </div>
-            {field.type === 'list' && (
+            {field.type === 'list' ? (
               <ItemFieldsEditor
                 itemFields={field.item_fields}
                 onChange={arr => updateField(idx, 'item_fields', arr)}
+              />
+            ) : (
+              /* Kontrollierte Werteliste (Welle 6) */
+              <CatalogEditor
+                catalog={field.catalog}
+                onChange={value => updateField(idx, 'catalog', value)}
               />
             )}
             <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>

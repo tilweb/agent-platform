@@ -137,12 +137,21 @@ export const projectsListFunction: PublicFunction<Record<string, never>, unknown
           label: f.label,
           type: f.type,
           required: !!f.required,
+          // Kontrollierte Werteliste (Welle 6): der Integrator soll wissen,
+          // welche Werte erlaubt sind. Tabellen-Kataloge werden nicht
+          // ausgerollt (koennen sehr gross sein) — nur die Quelle benannt.
+          ...(f.catalog
+            ? { allowed_values: f.catalog.source === 'list' ? (f.catalog.values ?? []).map((v) => v.value) : `table:${f.catalog.table_id}.${f.catalog.column_id}` }
+            : {}),
           ...(f.type === 'list'
             ? {
                 item_fields: Object.entries(f.item_fields ?? {}).map(([iid, itf]) => ({
                   id: iid,
                   label: itf.label,
                   type: itf.type,
+                  ...(itf.catalog
+                    ? { allowed_values: itf.catalog.source === 'list' ? (itf.catalog.values ?? []).map((v) => v.value) : `table:${itf.catalog.table_id}.${itf.catalog.column_id}` }
+                    : {}),
                 })),
               }
             : {}),
