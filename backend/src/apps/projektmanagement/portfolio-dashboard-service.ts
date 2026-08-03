@@ -32,6 +32,11 @@ import type {
   PortfolioDashboardTermine,
   PortfolioDashboardTopRisk,
   PortfolioDashboardSbEntry,
+  PortfolioGesamtstatus,
+  PortfolioDashboardHinweis,
+  PortfolioDashboardIdeen,
+  PortfolioDashboardProjektRow,
+  PortfolioDashboardDependency,
   PortfolioRoadmapResponse,
   PortfolioRoadmapProjekt,
   PortfolioRoadmapIdee,
@@ -126,7 +131,7 @@ function buildPhaseMix(contexts: ProjektContext[]): PortfolioDashboardPhaseMix {
   return mix;
 }
 
-function buildBudget(contexts: ProjektContext[]): PortfolioDashboardBudget {
+function buildBudget(contexts: ProjektContext[], costRows: PortfolioCostProjekt[]): PortfolioDashboardBudget {
   let plan = 0;
   let ist = 0;
   for (const ctx of contexts) {
@@ -136,8 +141,104 @@ function buildBudget(contexts: ProjektContext[]): PortfolioDashboardBudget {
     const sbIst = (sb.cost_months || []).reduce((s, m) => s + (Number(m.ist) || 0), 0);
     ist += sbIst;
   }
+  const forecast = costRows.reduce((s, c) => s + (Number(c.prognose_budget) || 0), 0);
   const abweichung_pct = plan > 0 ? ((ist - plan) / plan) * 100 : null;
-  return { plan_total: plan, ist_total: ist, abweichung_pct };
+  const forecast_abweichung_pct = plan > 0 ? ((forecast - plan) / plan) * 100 : null;
+  return {
+    plan_total: plan,
+    ist_total: ist,
+    abweichung_pct,
+    forecast_total: forecast,
+    forecast_abweichung_pct,
+  };
+}
+
+/**
+ * Regel-abgeleiteter Sammel-Ampelstatus (KI-Ersatz). Worst-case mit Schwelle:
+ *   rot  wenn rot-Anteil ≥ 25 % der bewerteten Projekte,
+ *   gelb wenn (mind. ein rotes oder gelbes Projekt) — aber unter der rot-Schwelle,
+ *   gruen wenn alle bewerteten grün, 'unbekannt' wenn keine bewerteten Projekte.
+ */
+function buildGesamtstatus(health: PortfolioDashboardHealth): PortfolioGesamtstatus {
+  const bewertet = health.gruen + health.gelb + health.rot;
+  if (bewertet === 0) return 'unbekannt';
+  if (health.rot / bewertet >= 0.25) return 'rot';
+  if (health.rot > 0 || health.gelb > 0) return 'gelb';
+  return 'gruen';
+}
+
+/**
+ * Regel-basierte „Kritische Hinweise" (Ersatz für die KI-Narrative der Vorlage):
+ * abgeleitet aus roten Projekten, hoch bewerteten Top-Risiken, Budget-Forecast-
+ * Überschreitung und Terminverzug. Rot vor Gelb, max. 6 Einträge.
+ */
+function buildHinweise(
+  contexts: ProjektContext[],
+  budget: PortfolioDashboardBudget,
+  termine: PortfolioDashboardTermine,
+  topRisks: PortfolioDashboardTopRisk[],
+): PortfolioDashboardHinweis[] {
+  const out: PortfolioDashboardHinweis[] = [];
+
+  for (const ctx of contexts) {
+    if (ctx.latestSb?.ampel === 'rot') {
+      const summary = truncate(ctx.latestSb.management_summary, 120);
+      out.push({ text: `${ctx.projektName}: Status rot${summary ? ' — ' + summary : ''}`, ampel: 'rot' });
+    }
+  }
+
+  for (const r of topRisks.filter((r) => r.score >= 4).slice(0, 2)) {
+    out.push({
+      text: `${r.projekt_name}: Risiko „${r.risk_text}" (Score ${r.score})`,
+      ampel: r.score >= 6 ? 'rot' : 'gelb',
+    });
+  }
+
+  if (budget.forecast_abweichung_pct != null && budget.forecast_abweichung_pct > 5) {
+    out.push({
+      text: `Budget-Forecast ${budget.forecast_abweichung_pct.toFixed(1)} % über Plan`,
+      ampel: budget.forecast_abweichung_pct > 15 ? 'rot' : 'gelb',
+    });
+  }
+
+  if (termine.verspaetet > 0) {
+    out.push({ text: `${termine.verspaetet} Projekt(e) mit Terminverzug > 30 Tage`, ampel: 'rot' });
+  } else if (termine.gefaehrdet > 0) {
+    out.push({ text: `${termine.gefaehrdet} Projekt(e) mit gefährdetem Termin`, ampel: 'gelb' });
+  }
+
+  out.sort((a, b) => (a.ampel === b.ampel ? 0 : a.ampel === 'rot' ? -1 : 1));
+  return out.slice(0, 6);
+}
+
+const AMPEL_ORDER: Record<string, number> = { rot: 0, gelb: 1, gruen: 2 };
+
+/** Projektübersicht-Zeilen (Programm-Detailansicht): Status/Fortschritt/Budget/Forecast/Hinweis. */
+function buildProjekteDetail(
+  contexts: ProjektContext[],
+  costById: Map<string, PortfolioCostProjekt>,
+): PortfolioDashboardProjektRow[] {
+  const rows: PortfolioDashboardProjektRow[] = contexts.map((ctx) => {
+    const sb = ctx.latestSb;
+    const f = sb?.goals_tracking?.fortschritt;
+    const cost = costById.get(ctx.projektId);
+    return {
+      id: ctx.projektId,
+      name: ctx.projektName,
+      ampel: sb?.ampel,
+      fortschritt: f === undefined || f === null ? null : Number(f),
+      budget: Number(sb?.cost_budget) || 0,
+      forecast: cost ? cost.prognose_budget : 0,
+      hinweis: truncate(sb?.management_summary, 140),
+    };
+  });
+  rows.sort((a, b) => {
+    const av = a.ampel ? (AMPEL_ORDER[a.ampel] ?? 3) : 3;
+    const bv = b.ampel ? (AMPEL_ORDER[b.ampel] ?? 3) : 3;
+    if (av !== bv) return av - bv;
+    return a.name.localeCompare(b.name);
+  });
+  return rows;
 }
 
 function buildTermine(contexts: ProjektContext[]): PortfolioDashboardTermine {
@@ -249,29 +350,90 @@ export async function getPortfolioDashboard(
     accessible.map((p) => loadProjektContext(p.id, p.name)),
   );
 
+  // Phasen-Helper.
+  const phaseOf = (ctx: ProjektContext): string | undefined =>
+    (ctx.auftrag as Projektauftrag & { project_status?: string } | null)?.project_status;
+
   // Aktiv = project_status in {initiation, planning, execution}.
   // Abgeschlossen = project_status in {closing, stopped} ODER Abschlussbericht
   //   final. Phase-D3 vereinfacht: nur project_status — Abschlussbericht-Check
   //   waere ein extra Load.
   const projekte_aktiv = contexts.filter((ctx) => {
-    const s = (ctx.auftrag as Projektauftrag & { project_status?: string } | null)?.project_status;
+    const s = phaseOf(ctx);
     return s === 'initiation' || s === 'planning' || s === 'execution';
   }).length;
   const projekte_abgeschlossen = contexts.filter((ctx) => {
-    const s = (ctx.auftrag as Projektauftrag & { project_status?: string } | null)?.project_status;
+    const s = phaseOf(ctx);
     return s === 'closing' || s === 'stopped';
   }).length;
+
+  // Kosten-Kennzahlen je Projekt einmal berechnen (fuer Budget-Forecast +
+  // Projektuebersicht wiederverwendet).
+  const costRows = contexts.map(computeProjektCost);
+  const costById = new Map(costRows.map((c) => [c.id, c]));
+
+  const health = buildHealth(contexts);
+  const budget = buildBudget(contexts, costRows);
+  const termine = buildTermine(contexts);
+  const top_risiken = buildTopRisks(contexts, 5);
+
+  // Idea-to-Project-Funnel: erste 3 Stufen aus Projektidee-Status (RBAC-gefiltert),
+  // letzte 2 Stufen aus project_status der Projekte.
+  const allIdeen = await listIdeenByPortfolio(portfolioId);
+  const ideenAccessibleEntries = await Promise.all(
+    allIdeen.map(async (i) => ((await getEffectiveIdeeRole(userId, i.id)) ? i : null)),
+  );
+  const ideenAccessible = ideenAccessibleEntries.filter(
+    (i): i is NonNullable<typeof i> => i !== null,
+  );
+  const countIdee = (status: string) =>
+    ideenAccessible.filter((i) => (i as Projektidee).status === status).length;
+  const funnel_idee = countIdee('draft');
+  const funnel_vorbewertung = countIdee('review');
+  const funnel_kandidat = countIdee('approved');
+  const funnel_freigegeben = contexts.filter((ctx) => {
+    const s = phaseOf(ctx);
+    return s === 'initiation' || s === 'planning';
+  }).length;
+  const funnel_laufend = contexts.filter((ctx) => phaseOf(ctx) === 'execution').length;
+  const ideen: PortfolioDashboardIdeen = {
+    total: ideenAccessible.length,
+    funnel_offen: funnel_vorbewertung + funnel_kandidat,
+    funnel: {
+      idee: funnel_idee,
+      vorbewertung: funnel_vorbewertung,
+      kandidat: funnel_kandidat,
+      freigegeben: funnel_freigegeben,
+      laufend: funnel_laufend,
+    },
+  };
+
+  // Abhaengigkeiten (nur zwischen sichtbaren Projekten) mit aufgeloesten Namen.
+  const nameById = new Map(contexts.map((c) => [c.projektId, c.projektName]));
+  const dependencies: PortfolioDashboardDependency[] = ((portfolio as Portfolio).dependencies || [])
+    .filter((d) => nameById.has(d.from) && nameById.has(d.to))
+    .map((d) => ({
+      from: d.from,
+      to: d.to,
+      from_name: nameById.get(d.from) as string,
+      to_name: nameById.get(d.to) as string,
+    }));
 
   return {
     portfolio: portfolio as Portfolio,
     projekte_total: contexts.length,
     projekte_aktiv,
     projekte_abgeschlossen,
-    health: buildHealth(contexts),
+    gesamtstatus: buildGesamtstatus(health),
+    health,
     phase_mix: buildPhaseMix(contexts),
-    budget: buildBudget(contexts),
-    termine: buildTermine(contexts),
-    top_risiken: buildTopRisks(contexts, 5),
+    budget,
+    termine,
+    ideen,
+    kritische_hinweise: buildHinweise(contexts, budget, termine, top_risiken),
+    projekte_detail: buildProjekteDetail(contexts, costById),
+    dependencies,
+    top_risiken,
     letzte_statusberichte: buildLatestSbs(contexts),
   };
 }

@@ -27,6 +27,22 @@ Projekt (`rules`), konfigurierbar in den Projekt-Einstellungen:
 
 ## 2026-07-29
 
+### PM: Portfolio-Detail — Tab „Übersicht" als Executive Dashboard (RuhrPM-Vorlage)
+Der Übersicht-Tab wurde nach der RuhrPM-Dashboard-Vorlage zu einem Executive Dashboard umgebaut — alle Kacheln
+auf einer Seite:
+- **KPI-Reihe**: Gesamtstatus (regel-abgeleiteter Sammel-Ampelstatus), Aktive Projekte (+ kritisch/beobachtet),
+  Projektideen (+ im Funnel), Budget-Forecast (EAC-Summe, %-Abweichung ggü. Plan).
+- **Ampelübersicht** (Grün/Gelb/Rot), **Budgetübersicht** (Plan/Ist/Forecast-Balken), **Kritische Hinweise**
+  (regel-basiert aus roten Projekten, Top-Risiken, Budget-Überschreitung, Terminverzug — KI-Narrativ-Ersatz).
+- **Idea-to-Project-Funnel** (5 Stufen aus Projektidee-Status + `project_status`), **Projektübersicht**
+  (Status/Fortschritt/Budget/Forecast/Hinweis), **Kritische Abhängigkeiten** (aus den Roadmap-Dependencies).
+- **Top-Risiken** und **Letzte Statusberichte** bleiben erhalten.
+- **Ressourcen- & Engpassansicht**: bewusst als Platzhalter — die Heatmap braucht ein Ressourcen-/Kapazitäts­modell
+  (Rollen-Kapazität + Allokation je Monat), das noch nicht erfasst wird.
+- Aggregat `getPortfolioDashboard` erweitert (gesamtstatus, budget.forecast_*, ideen-Funnel, kritische_hinweise,
+  projekte_detail, dependencies) — keine neuen Datenquellen, alles regel-abgeleitet. Beide Worktrees (DB + YAML),
+  Frontend byte-identisch; Aggregator byte-identisch.
+
 ### PM: Portfolio-Detail — Tab „Risiken" (Aggregat + Dashboard-Tracking-Markierung)
 Der letzte Platzhalter-Tab „Risiken" ist umgesetzt: aggregiert alle Risiken aus dem letzten genehmigten
 Statusbericht aller zugeordneten Projekte in eine sortierbare Tabelle (Projekt, Typ, Risiko, Wahrscheinlichkeit

@@ -278,6 +278,54 @@ export interface PortfolioDashboardBudget {
   plan_total: number;
   ist_total: number;
   abweichung_pct: number | null;
+  forecast_total: number;         // Summe EAC (prognose_budget) je Projekt
+  forecast_abweichung_pct: number | null; // Forecast vs Plan; null wenn plan_total = 0
+}
+
+// Regel-abgeleiteter Sammel-Ampelstatus des Portfolios (worst-case mit Schwelle,
+// siehe buildGesamtstatus). 'unbekannt' wenn keine bewerteten Projekte.
+export type PortfolioGesamtstatus = AmpelStatus | 'unbekannt';
+
+// Regel-basierter kritischer Hinweis (KI-Ersatz): abgeleitet aus roten Projekten,
+// Top-Risiken, Budget-Ueberschreitung und verspaeteten Terminen.
+export interface PortfolioDashboardHinweis {
+  text: string;
+  ampel: 'rot' | 'gelb';
+}
+
+// Idea-to-Project-Funnel: Stufenzaehler. Erste 3 Stufen aus Projektidee-Status,
+// letzte 2 aus project_status der Projekte.
+export interface PortfolioDashboardFunnel {
+  idee: number;         // Projektidee.status = 'draft'
+  vorbewertung: number; // Projektidee.status = 'review'
+  kandidat: number;     // Projektidee.status = 'approved'
+  freigegeben: number;  // Projekt project_status = 'initiation' | 'planning'
+  laufend: number;      // Projekt project_status = 'execution'
+}
+
+export interface PortfolioDashboardIdeen {
+  total: number;        // alle zugeordneten Ideen (RBAC-gefiltert)
+  funnel_offen: number; // Ideen im aktiven Funnel (review + approved)
+  funnel: PortfolioDashboardFunnel;
+}
+
+// Zeile der Projektuebersicht-Tabelle (Programm-Detailansicht).
+export interface PortfolioDashboardProjektRow {
+  id: string;
+  name: string;
+  ampel?: 'gruen' | 'gelb' | 'rot';
+  fortschritt: number | null;   // goals_tracking.fortschritt (%), null wenn kein SB
+  budget: number;               // cost_budget aus letztem SB
+  forecast: number;             // EAC (prognose_budget)
+  hinweis?: string;             // gekuerzte management_summary
+}
+
+// Abhaengigkeit mit aufgeloesten Namen (fuer die Graph-Kachel).
+export interface PortfolioDashboardDependency {
+  from: string;
+  to: string;
+  from_name: string;
+  to_name: string;
 }
 
 export interface PortfolioDashboardTermine {
@@ -314,10 +362,15 @@ export interface PortfolioDashboardResponse {
   projekte_total: number;
   projekte_aktiv: number;
   projekte_abgeschlossen: number;
+  gesamtstatus: PortfolioGesamtstatus;   // regel-abgeleiteter Sammel-Ampelstatus
   health: PortfolioDashboardHealth;
   phase_mix: PortfolioDashboardPhaseMix;
   budget: PortfolioDashboardBudget;
   termine: PortfolioDashboardTermine;
+  ideen: PortfolioDashboardIdeen;         // Idea-to-Project-Funnel
+  kritische_hinweise: PortfolioDashboardHinweis[]; // regel-basiert
+  projekte_detail: PortfolioDashboardProjektRow[]; // Programm-Projektuebersicht
+  dependencies: PortfolioDashboardDependency[];    // Abhaengigkeits-Graph
   top_risiken: PortfolioDashboardTopRisk[];
   letzte_statusberichte: PortfolioDashboardSbEntry[];
 }
