@@ -176,6 +176,11 @@ Upload EMMA-Export → deterministischer Prüfmuster-Check → LLM-Vor-Benotung 
 
 ## 2026-07-29
 
+### PM: Portfolio-Liste — Projekte + Projektideen je Portfolio auflisten
+In der Portfolio-Übersicht (Einstieg ins Tool) zeigt jede Zeile jetzt nicht mehr nur die Anzahl, sondern die
+tatsächlich zugeordneten **Projekte** (neutrale Chips) und **Projektideen** (blaue Chips) — mit „keine zugeordnet",
+falls leer. Lädt Projekte + Ideen je Portfolio parallel. Frontend byte-identisch (beide Worktrees).
+
 ### PM: Portfolio-Detail — Tab „Übersicht" als Executive Dashboard (RuhrPM-Vorlage)
 Der Übersicht-Tab wurde nach der RuhrPM-Dashboard-Vorlage zu einem Executive Dashboard umgebaut — alle Kacheln
 auf einer Seite:
