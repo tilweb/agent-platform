@@ -105,7 +105,8 @@ const styles = {
     padding: theme.spacing.xl,
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: theme.spacing.lg,
     cursor: 'pointer',
     transition: `all ${theme.transitions.fast}`,
   },
@@ -114,22 +115,55 @@ const styles = {
     fontSize: theme.typography.sizes.base,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+  },
+  // Projekt-/Ideen-Auflistung
+  listRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    flexWrap: 'wrap',
     marginBottom: theme.spacing.xs,
   },
-  cardMeta: {
-    display: 'flex',
-    gap: theme.spacing.lg,
+  listLabel: {
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    minWidth: 92,
+  },
+  listEmpty: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.textMuted,
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    fontStyle: 'italic',
   },
-  cardDescription: {
+  chip: {
+    fontSize: theme.typography.sizes.xs,
+    padding: `2px ${theme.spacing.sm}`,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceHover,
+    color: theme.colors.textSecondary,
+    border: `1px solid ${theme.colors.border}`,
+    whiteSpace: 'nowrap',
+  },
+  chipIdee: {
+    fontSize: theme.typography.sizes.xs,
+    padding: `2px ${theme.spacing.sm}`,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.infoLight,
+    color: theme.colors.info,
+    border: `1px solid ${theme.colors.infoLight}`,
+    whiteSpace: 'nowrap',
+  },
+  cardDescriptionBlock: {
+    fontSize: theme.typography.sizes.sm,
     color: theme.colors.textMuted,
+    marginTop: theme.spacing.sm,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-    maxWidth: '420px',
+    maxWidth: '520px',
   },
   statusBadge: {
     fontSize: theme.typography.sizes.xs,
@@ -255,12 +289,14 @@ const styles = {
 
 export default function PortfolioList() {
   const navigate = useNavigate();
-  const { listPortfolios, createPortfolio, getPortfolioProjekte, projektauftraege } = useProjektmanagement();
+  const { listPortfolios, createPortfolio, getPortfolioProjekte, getPortfolioIdeen, projektauftraege } = useProjektmanagement();
   const { role: appRole } = useAppPermission('projektmanagement');
   const canCreate = appRole === 'editor' || appRole === 'owner';
 
   const [portfolios, setPortfolios] = useState([]);
-  const [projekteCounts, setProjekteCounts] = useState({});
+  // Zugeordnete Projekte bzw. Projektideen je Portfolio (Objekte mit id + name).
+  const [projekteByPortfolio, setProjekteByPortfolio] = useState({});
+  const [ideenByPortfolio, setIdeenByPortfolio] = useState({});
   // IDs aller Projekte, die einem Portfolio zugeordnet sind (für die Budget-Summe).
   const [projektIds, setProjektIds] = useState([]);
   const [filters, setFilters] = useState({ search: '', status: '' });
@@ -275,25 +311,27 @@ export default function PortfolioList() {
     try {
       const list = await listPortfolios({});
       setPortfolios(list);
-      const counts = {};
+      const projMap = {};
+      const ideenMap = {};
       const ids = [];
       await Promise.all(list.map(async (p) => {
-        try {
-          const projekte = await getPortfolioProjekte(p.id);
-          counts[p.id] = projekte.length;
-          for (const pr of projekte) ids.push(pr.id);
-        } catch {
-          counts[p.id] = 0;
-        }
+        const [projekte, ideen] = await Promise.all([
+          getPortfolioProjekte(p.id).catch(() => []),
+          getPortfolioIdeen(p.id).catch(() => []),
+        ]);
+        projMap[p.id] = projekte;
+        ideenMap[p.id] = ideen;
+        for (const pr of projekte) ids.push(pr.id);
       }));
-      setProjekteCounts(counts);
+      setProjekteByPortfolio(projMap);
+      setIdeenByPortfolio(ideenMap);
       setProjektIds(ids);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, [listPortfolios, getPortfolioProjekte]);
+  }, [listPortfolios, getPortfolioProjekte, getPortfolioIdeen]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -418,7 +456,8 @@ export default function PortfolioList() {
       ) : (
         <div style={styles.list}>
           {filtered.map((p) => {
-            const count = projekteCounts[p.id] ?? 0;
+            const projekte = projekteByPortfolio[p.id] ?? [];
+            const ideen = ideenByPortfolio[p.id] ?? [];
             const isArchived = p.status === 'archived';
             return (
               <div
@@ -436,15 +475,29 @@ export default function PortfolioList() {
               >
                 <div style={styles.cardInfo}>
                   <div style={styles.cardTitle}>{p.name}</div>
-                  <div style={styles.cardMeta}>
-                    <span>{count} {count === 1 ? 'Projekt' : 'Projekte'}</span>
-                    {p.description && (
-                      <>
-                        <span>|</span>
-                        <span style={styles.cardDescription}>{p.description}</span>
-                      </>
+                  <div style={styles.listRow}>
+                    <span style={styles.listLabel}>Projekte</span>
+                    {projekte.length === 0 ? (
+                      <span style={styles.listEmpty}>keine zugeordnet</span>
+                    ) : (
+                      projekte.map((pr) => (
+                        <span key={pr.id} style={styles.chip}>{pr.name}</span>
+                      ))
                     )}
                   </div>
+                  <div style={styles.listRow}>
+                    <span style={styles.listLabel}>Projektideen</span>
+                    {ideen.length === 0 ? (
+                      <span style={styles.listEmpty}>keine zugeordnet</span>
+                    ) : (
+                      ideen.map((i) => (
+                        <span key={i.id} style={styles.chipIdee}>{i.name}</span>
+                      ))
+                    )}
+                  </div>
+                  {p.description && (
+                    <div style={styles.cardDescriptionBlock}>{p.description}</div>
+                  )}
                 </div>
                 <span style={{ ...styles.statusBadge, ...(isArchived ? styles.statusArchived : styles.statusActive) }}>
                   {isArchived ? 'Archiviert' : 'Aktiv'}
