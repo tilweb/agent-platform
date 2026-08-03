@@ -97,6 +97,14 @@ Projekt (`rules`), konfigurierbar in den Projekt-Einstellungen:
 
 ## 2026-07-29
 
+### PM: Portfolio-Roadmap + Dashboard — Abhängigkeiten auch für Projektideen
+Abhängigkeiten (Vorgänger → Nachfolger) ließen sich bisher nur zwischen Projekten pflegen. Jetzt sind auch
+**Projektideen** als Endpunkt wählbar — die Dropdowns sind nach „Projekte" / „Projektideen" gruppiert. Projekt-
+und Ideen-IDs (`projekt-…` / `idee-…`) sind kollisionsfrei, das Kind wird aus dem ID-Präfix abgeleitet (kein
+neues Datenfeld). Der Gantt zeichnet die Pfeile auch für Ideen-Balken; die Dashboard-Kachel „Kritische
+Abhängigkeiten" berücksichtigt Ideen-Abhängigkeiten (mit „(Idee)"-Kennzeichnung). Backend: Roadmap- und
+Dashboard-Aggregat lösen Ideen-Endpunkte mit auf. Beide Worktrees, Frontend + Aggregator byte-identisch.
+
 ### PM: Portfolio-Detail — Tab „Basis": Portfolio-ID editierbar (fachliche Kennung)
 Das ID-Feld im Basis-Tab ist jetzt frei editierbar — analog zur „Projekt-ID" bei Projekten und Projektideen.
 Es ist eine **fachliche Kennung** (`portfolio_id`, z. B. „PF-2026-001"), NICHT der technische Primärschlüssel;
