@@ -48,6 +48,7 @@ export const extractionExamples = extractionSchema.table('examples', {
   correctedExtraction: jsonb('corrected_extraction').notNull(),
   corrections: jsonb('corrections').notNull(),       // Array<{field, was, corrected_to}>
   confirmedCorrect: text('confirmed_correct').notNull().default('false'),
+  embedding: jsonb('embedding'),                     // number[] — Aehnlichkeits-Few-Shot (Welle 5)
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({
   projectIdx: index('extraction_examples_project_idx').on(t.projectId),

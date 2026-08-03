@@ -2,6 +2,26 @@
 
 ## 2026-08-03
 
+### Feature: Extraktion — Ähnlichkeits-Few-Shot (Ausbau-Welle 5, Baustein 5, Welle abgeschlossen)
+Die Few-Shot-Beispiele wurden bisher nach „Korrekturen zuerst, dann jung" gewählt. Das trägt,
+solange ein Projekt **einen** Dokumenttyp sieht — sobald mehrere Ausprägungen zusammenkommen,
+füttert es den Prompt mit Beispielen, die zum aktuellen Dokument nichts sagen. Jetzt wird das
+Anfragedokument mit den Beispielen verglichen (Kosinus auf Embeddings) und die Auswahl **gemischt**:
+erst die ähnlichsten (bis 3, ab Score 0,5), dann die bisherige Ordnung. Die Korrektur-zuerst-Logik
+ist das, was den Lern-Loop informativ macht — Ähnlichkeit ergänzt sie, ersetzt sie nicht.
+- `learning/similarity.ts` (pur/testbar: `cosine`, `rankBySimilarity`, `blendSelection`) +
+  `learning/embeddings.ts` als fehlertolerantes Vorspiel zum LLM-Service (8 s Timeout,
+  `null` statt Fehler). Erster Nutzer des seit Längerem konfigurierten, aber ungenutzten
+  Embedding-Modells (`multilingual-e5-large`, 1024 Dim.).
+- Embedding entsteht beim Speichern eines Beispiels; fehlende werden beim ersten
+  Auswahllauf **im Hintergrund nachgetragen** (max. 20, mit Lock). Migration `0031`, additiv.
+- **Kein Risiko ohne Embeddings**: Ist kein Modell konfiguriert, hängt der Dienst oder steht
+  `EXTRACTION_SIMILARITY_FEWSHOT=0`, bleibt exakt das alte Verhalten — verifiziert.
+- Verifiziert end-to-end an einem Projekt mit zwei Dokumenttypen (3 Rechnungen, 3 Arbeitszeugnisse):
+  Rechnungs-Anfrage → **nur Rechnungs-Beispiele**, Zeugnis-Anfrage → **nur Zeugnis-Beispiele**;
+  ohne Anfragetext bzw. mit Kill-Switch dieselbe Auswahl wie vorher (die 3 jüngsten). Backfill
+  getestet: 2 geleerte Embeddings wurden automatisch nachgezogen. 8 neue Tests (246 gesamt grün).
+
 ### Betrieb: Extraktion — Seitenbilder raus aus der Datenzeile (Ausbau-Welle 5, Baustein 4)
 Die gerenderten Seitenbilder einer Vision-Extraktion lagen als base64-`dataUri` in der
 `detail`-Spalte der Datei-Zeile — **1,2–1,3 MB pro Dokument** (gemessen an bestehenden Läufen), die

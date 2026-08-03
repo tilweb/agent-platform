@@ -330,7 +330,8 @@ export async function extract(
     }
 
     // Few-Shot + Schema fuer die Heavy-Pipeline
-    const fewShotExamples = await selectFewShotExamples(projectId);
+    // Few-Shot: Aehnlichkeit zum aktuellen Dokument mischt sich in die Auswahl (Welle 5).
+    const fewShotExamples = await selectFewShotExamples(projectId, documentText);
     const schema = extractionProjectToExtractionSchema(project, fewShotExamples);
 
     const result = await runPipeline({

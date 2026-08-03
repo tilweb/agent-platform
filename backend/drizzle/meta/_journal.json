@@ -218,6 +218,13 @@
       "when": 1785801700000,
       "tag": "0030_extraction_webhooks",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1785801800000,
+      "tag": "0031_example_embeddings",
+      "breakpoints": true
     }
   ]
 }
