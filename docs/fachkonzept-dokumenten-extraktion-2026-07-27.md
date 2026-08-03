@@ -42,6 +42,8 @@ Logik und UI sind identisch (s. Abschnitt 9).
 | **Fundstellen anzeigen** | Bei visueller Verarbeitung wird jeder Wert im Dokument-Bild **markiert** (Bounding-Box, per OCR verortet) — nachvollziehbar und korrigierbar. |
 | **Massenverarbeitung** | Multi-Upload vieler Dokumente durch ein Projekt („Verarbeiten"-Tab), serverseitig, mit Status und Export. |
 | **Posteingang (Eingangsstrecke)** | Gemischte Sammel-Scans hochladen — Dokumente werden per Vision an Grenzen getrennt, klassifiziert und bei sicherer Zuordnung automatisch ins passende Projekt geroutet (seit Ausbau-Welle 4). |
+| **Fachliche Prüfregeln** | Plausibilität jenseits von Typ/Konfidenz: Summen-Check (Positionen ↔ Gesamtbetrag) und Stammdaten-Abgleich gegen eine Tabelle. Ein Verstoß erzwingt das Review (seit Ausbau-Welle 5). |
+| **Schema-Inferenz** | Feldliste inkl. Positionstabelle aus einem Beispieldokument vorschlagen lassen (seit Welle 5). |
 | **Export/Import** | Ein gut angelerntes Projekt als portables `.json`-Paket weitergeben (Vorlage für andere Instanzen). |
 | **Modellwahl** | Pro Projekt ein KI-Modell wählbar (analog zu Agenten); sonst System-Standard. |
 
@@ -336,7 +338,7 @@ Dieselbe Engine, drei Zugänge:
 
 | # | Dimension | Zugang | Status |
 |---|-----------|--------|--------|
-| a | **API** | `POST /projects/:id/extract` (JSON `{text}` oder Datei-Upload) | vorhanden |
+| a | **API** | Public-API-Functions unter `/api/public/v1/extraktion/…` (`projects.list` · `extract` · `batch.create` · `batch.get`) mit Bearer-Key, Scopes, Rate-Limit, Audit und OpenAPI; Ergebnis-Webhook HMAC-signiert. Intern zusätzlich `POST /projects/:id/extract` (Session-Auth, von der UI genutzt) | vorhanden (API-Layer seit Welle 5) |
 | b | **Eingebettet** | Apps/Agenten/Skills rufen `extract()` bzw. `runPipeline()` direkt auf (z. B. Vertragsmanagement) | vorhanden |
 | c | **Manuelle UI** | „Verarbeiten"-Tab: Multi-Upload → Batch (Abschnitt 8.1) | vorhanden |
 
@@ -374,6 +376,15 @@ ein Korrektur-Formular — „Übernehmen & lernen" macht die Korrektur zum Trai
 setzt die Datei auf „Geprüft". Eine Kalibrierungs-Statistik (RulesTab „Qualität") zeigt, ob
 die Konfidenz echte Fehler voraussagt. Details:
 `docs/extraktion-review-workflow-2026-07-28.md`.
+
+**Prüfregeln (seit Welle 5):** Vor der Triage laufen die fachlichen Regeln des Projekts
+(`project.rules`) gegen das Ergebnis. Ein `error`-Befund (Summe passt nicht, Wert nicht in den
+Stammdaten) setzt die Datei **unabhängig von der Konfidenz** auf „Zu prüfen" und wird im Klartext
+angezeigt. Details: `docs/extraktion-api-integration-2026-08-03.md`.
+
+**Seitenbilder (seit Welle 5):** Die gerenderten PNGs liegen nicht mehr in der Datenzeile, sondern
+in S3 (Scalingo) bzw. im Volume (Railway); die Detailansicht lädt sie über
+`GET .../files/:fileId/pages/:page` (same-origin wegen CSP).
 
 **Export:** CSV/JSON (clientseitig), XLSX (`GET .../export.xlsx` via `generateDocument`) und
 **„In Tabelle schreiben"** (`POST .../to-table`: Projekt-Felder → Tabellen-Spalten, je Dokument
@@ -430,6 +441,8 @@ Installation der Binaries: macOS `brew install poppler tesseract`; Linux/Scaling
 | PUT | `/projects/:id` | ändern (inkl. `extraction`/`model_override`) |
 | DELETE | `/projects/:id` | löschen (+ Beispiele) |
 | POST | `/projects/import` | Paket importieren (JSON oder Datei) → neues Projekt |
+| POST | `/projects/infer-schema` | **Feldvorschlag** aus einem Beispieldokument (legt nichts an) |
+| POST | `/projects/webhook-secret` | neuen Signaturschlüssel vorschlagen (speichert nicht) |
 | GET | `/projects/:id/export?examples=` | Paket herunterladen |
 | POST | `/projects/:id/extract` | **Einzel-Extraktion** (JSON `{text}` oder Datei) |
 | POST | `/projects/:id/train` | Trainingsbeispiel speichern (triggert Guidelines) |
@@ -438,7 +451,8 @@ Installation der Binaries: macOS `brew install poppler tesseract`; Linux/Scaling
 | POST | `/projects/:id/regenerate` | Guidelines manuell neu ableiten |
 | POST | `/projects/:id/batches` | **Batch starten** (multipart, fire-and-forget) |
 | GET | `/projects/:id/batches` · `/…/:runId` | Historie · Lauf-Status (Polling) |
-| GET | `/…/:runId/files/:fileId` | Datei-Detail (boxes + pageImages) |
+| GET | `/…/:runId/files/:fileId` | Datei-Detail (boxes + pageImages-Referenzen + Regel-Befunde) |
+| GET | `/…/:runId/files/:fileId/pages/:page` | **Seitenbild** (PNG, same-origin ausgeliefert) |
 | GET | `/…/:runId/export.xlsx` | XLSX-Download |
 | POST | `/…/:runId/to-table` | Ergebnisse in eine Tabelle schreiben |
 | DELETE | `/…/:runId` | Lauf löschen |
@@ -470,6 +484,11 @@ Installation der Binaries: macOS `brew install poppler tesseract`; Linux/Scaling
 - `guideline-generator.ts` — Regel-Ableitung aus Korrekturen
 - `batch-runs.ts` (divergiert) · `batch-service.ts` (identisch) — Massenverarbeitung
 - `transfer.ts` — Export/Import
+- `rules.ts` — fachliche Prüfregeln (Welle 5; Wertequelle als Callback → Andockpunkt für W6)
+- `schema-infer.ts` — Feldvorschlag aus einem Beispieldokument (Welle 5)
+- `webhook.ts` — HMAC-signierte Ergebnis-Zustellung (Welle 5)
+- `page-store.ts` (divergent) — Seitenbilder in S3 bzw. Volume (Welle 5)
+- `similarity.ts` · `embeddings.ts` — Ähnlichkeits-Few-Shot (Welle 5)
 - `prompt-builder.ts` · `validators.ts` · `types.ts`
 
 **Engine** — `backend/src/services/extraction/`
@@ -482,6 +501,8 @@ Installation der Binaries: macOS `brew install poppler tesseract`; Linux/Scaling
 - `defaults.ts` · `types.ts`
 
 **Sonstiges**
+- `backend/src/extraction/public-functions.ts` — Public-API-Functions (Welle 5)
+- `backend/src/public-api/virtual-apps.ts` — virtuelle App `extraktion` (kein Registry-Eintrag)
 - `backend/src/routes/extraction-projects.ts` — REST-API
 - `backend/src/db/schema/extraction.ts` — Postgres-Tabellen (nur Scalingo)
 - `backend/src/extraction/validator.ts` · `schema-builder.ts` — Validierung & Function-Schema
@@ -489,7 +510,11 @@ Installation der Binaries: macOS `brew install poppler tesseract`; Linux/Scaling
 
 **Weiterführend:** `docs/extraction-projects-heavy-pipeline-2026-06-04.md` (Engine-Migration),
 `docs/batch-extraktion-ui-2026-06-15.md` (Batch-UI),
-`docs/extraktion-line-items-2026-07-27.md` (Listen-Felder, Welle 1).
+`docs/extraktion-line-items-2026-07-27.md` (Listen-Felder, Welle 1),
+`docs/extraktion-eval-harness-2026-07-27.md` (Eval-Harness, Welle 2),
+`docs/extraktion-review-workflow-2026-07-28.md` (Review-Workflow, Welle 3),
+`docs/extraktion-posteingang-2026-07-29.md` (Posteingang, Welle 4),
+`docs/extraktion-api-integration-2026-08-03.md` (API/Prüfregeln/Seitenbilder/Ähnlichkeit, Welle 5).
 
 ---
 
@@ -505,12 +530,15 @@ strukturelle Lücken zwischen „gutem Werkzeug" und „bestem Tool im Space". D
 | **W2** | **Eval-Harness & Audit** | Jede Guideline-Regeneration läuft automatisch als **Champion/Challenger** gegen bestätigte Beispiele (text-only, gedeckelt ~20); nur messbar bessere/gleiche Regeln werden übernommen. Feld-Accuracy-Metriken; Audit-Metadaten (guideline_version + Modell je Ergebnis) | **umgesetzt (2026-07-27)** — `docs/extraktion-eval-harness-2026-07-27.md` |
 | **W3** | **Review-Workflow im Batch** | Batch-Ergebnisse korrigierbar → Korrekturen werden Trainingsbeispiele (Batch speichert dafür künftig `document_text`); Konfidenz-Triage (auto-ok / Review-Queue); Kalibrierungs-Messung | **umgesetzt (2026-07-28)** — `docs/extraktion-review-workflow-2026-07-28.md` |
 | **W4** | **Eingangsstrecke** | Mehrfach-PDF **splitten** (Seitenpaar-Vision, Vorarbeit `tools/document-split-test.ts`) → **klassifizieren** (Muster `classifyContract`) → aufs passende Projekt **routen**; „Posteingang"-UI | **umgesetzt (2026-07-29)** — `docs/extraktion-posteingang-2026-07-29.md` |
-| **W5** | **API & Integration** | API-Batch + Webhooks; `pageImages` → S3; fachliche Validierungsregeln (Summen-Check Positionen↔Gesamtbetrag, Stammdaten-Abgleich via Tables); Ähnlichkeits-Few-Shot (Embeddings); Schema-Inferenz beim Onboarding | geplant |
+| **W5** | **API & Integration + fachliche Härtung** | Fachliche Prüfregeln (Summen-Check Positionen↔Gesamtbetrag, Stammdaten-Abgleich via Tables) mit Zwang zum Review; Schema-Inferenz beim Onboarding; API-Batch + Webhooks (HMAC-signiert) über eine virtuelle Public-API-App; `pageImages` → S3/Volume statt Datenzeile; Ähnlichkeits-Few-Shot (Embeddings) | **umgesetzt (2026-08-03)** — `docs/extraktion-api-integration-2026-08-03.md` |
+| **W6** | **Kontrollierte Wertelisten als Ground Truth** | Je Feld eine hinterlegte **endliche Liste zulässiger Werte** (Auswahlliste/Katalog). Wirkung auf drei Ebenen: **(a)** die Liste geht in den Extraktions-Prompt („wähle genau einen dieser Werte"), **(b)** das Ergebnis wird gegen die Liste normalisiert/gemappt (Synonyme, Schreibvarianten, Groß-/Kleinschreibung), **(c)** ein Wert außerhalb der Liste ist ein Prüfregel-Befund. Andockpunkt: `ProjectField.allowed_values` bzw. Verweis auf eine Tabellenspalte — die W5-`lookup`-Regel ist bewusst so geschnitten, dass W6 dieselbe Wertequelle nutzen kann (`loadAllowedValues`-Callback in `learning/rules.ts`). | geplant |
 
 Leitgedanke: Der Lern-Loop ist das Differenzierungsmerkmal — W2 macht ihn **beweisbar**
 (kein Regressions-Risiko durch Guideline-Updates), W3 macht ihn zum **Schwungrad** (jede
 Korrektur im Produktivbetrieb verbessert das Projekt), W4 macht aus dem Werkzeug eine
-**Dokumenten-Eingangsstrecke**, W5 öffnet alles für **Integration**. Das Fundament
-(Engine, Strategien, Lern-Idee) bleibt unangetastet — die Wellen sind Ausbau, kein Rewrite.
+**Dokumenten-Eingangsstrecke**, W5 öffnet alles für **Integration** und macht das Ergebnis
+fachlich prüfbar, W6 gibt den Feldern eine **Wahrheit, gegen die sie geprüft werden können**.
+Das Fundament (Engine, Strategien, Lern-Idee) bleibt unangetastet — die Wellen sind Ausbau,
+kein Rewrite.
 </content>
 </invoke>
