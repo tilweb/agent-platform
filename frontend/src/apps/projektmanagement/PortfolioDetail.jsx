@@ -1151,6 +1151,7 @@ const BasisTab = forwardRef(function BasisTab({ portfolio, appConfig, canEdit, c
   } = useProjektmanagement();
 
   const initForm = () => ({
+    portfolio_id: portfolio.portfolio_id || '',
     name: portfolio.name || '',
     type: portfolio.type || '',
     status: portfolio.status || 'active',
@@ -1177,6 +1178,7 @@ const BasisTab = forwardRef(function BasisTab({ portfolio, appConfig, canEdit, c
     onStateChange?.({ dirty: true, saving: true }); setError(null);
     try {
       const updated = await updatePortfolio(portfolio.id, {
+        portfolio_id: form.portfolio_id.trim() || undefined,
         name: form.name.trim(),
         status: form.status,
         type: form.type || undefined,
@@ -1214,8 +1216,14 @@ const BasisTab = forwardRef(function BasisTab({ portfolio, appConfig, canEdit, c
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
         <div style={styles.field}>
-          <label style={styles.fieldLabel}>ID</label>
-          <input style={{ ...styles.input, color: theme.colors.textMuted }} value={portfolio.id} readOnly />
+          <label style={styles.fieldLabel}>Portfolio-ID</label>
+          <input
+            style={styles.input}
+            value={form.portfolio_id}
+            onChange={(e) => set('portfolio_id', e.target.value)}
+            placeholder="z.B. PF-2026-001"
+            readOnly={!canEdit}
+          />
         </div>
         <div style={styles.field}>
           <label style={styles.fieldLabel}>Name</label>

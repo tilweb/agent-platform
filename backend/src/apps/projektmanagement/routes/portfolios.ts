@@ -101,6 +101,7 @@ portfoliosRoutes.post('/portfolios', async (c) => {
       description?: string;
       strategy?: string;
       status?: PortfolioStatus;
+      portfolio_id?: string;
       type?: string;
       driver?: string;
       start_date?: string;
@@ -116,6 +117,7 @@ portfoliosRoutes.post('/portfolios', async (c) => {
       description: body.description,
       strategy: body.strategy,
       status: body.status,
+      portfolio_id: body.portfolio_id,
       type: body.type,
       driver: body.driver,
       start_date: body.start_date,
@@ -145,6 +147,7 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       description?: string | null;
       strategy?: string | null;
       status?: PortfolioStatus;
+      portfolio_id?: string;
       type?: string;
       driver?: string;
       start_date?: string;
@@ -163,6 +166,7 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       description: body.description,
       strategy: body.strategy,
       status: body.status,
+      portfolio_id: body.portfolio_id,
       type: body.type,
       driver: body.driver,
       start_date: body.start_date,

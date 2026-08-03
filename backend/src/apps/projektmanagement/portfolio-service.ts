@@ -44,6 +44,7 @@ function normalize(raw: any): Portfolio {
     description: raw.description ?? undefined,
     strategy: raw.strategy ?? undefined,
     status: isStatus(raw.status) ? raw.status : 'active',
+    portfolio_id: raw.portfolio_id ?? undefined,
     type: raw.type ?? undefined,
     driver: raw.driver ?? undefined,
     start_date: raw.start_date ?? undefined,
@@ -114,6 +115,7 @@ export async function createPortfolio(input: PortfolioCreateInput): Promise<Port
     description: input.description,
     strategy: input.strategy,
     status,
+    portfolio_id: input.portfolio_id,
     type: input.type,
     driver: input.driver,
     start_date: input.start_date,
@@ -161,6 +163,7 @@ export async function updatePortfolio(id: string, input: PortfolioUpdateInput): 
       }
       next.status = input.status;
     }
+    if (input.portfolio_id !== undefined) next.portfolio_id = input.portfolio_id;
     if (input.type !== undefined) next.type = input.type;
     if (input.driver !== undefined) next.driver = input.driver;
     if (input.start_date !== undefined) next.start_date = input.start_date;

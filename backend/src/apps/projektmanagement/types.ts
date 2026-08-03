@@ -189,6 +189,8 @@ export interface Portfolio {
   description?: string;
   strategy?: string;
   status: PortfolioStatus;
+  // Fachliche Kennung (frei editierbar, analog project_id) — NICHT der technische `id`.
+  portfolio_id?: string;
   type?: string;
   driver?: string;
   start_date?: string;
@@ -217,6 +219,7 @@ export interface PortfolioCreateInput {
   description?: string;
   strategy?: string;
   status?: PortfolioStatus;
+  portfolio_id?: string;        // fachliche Kennung (metadata)
   type?: string;
   driver?: string;
   start_date?: string;
@@ -236,6 +239,7 @@ export interface PortfolioUpdateInput {
   description?: string | null;
   strategy?: string | null;
   status?: PortfolioStatus;
+  portfolio_id?: string;        // fachliche Kennung (metadata)
   type?: string;
   driver?: string;
   start_date?: string;
