@@ -31,6 +31,16 @@ export interface BatchRunSummary {
   failedCount: number;
   createdAt: string;
   updatedAt: string;
+  /** Webhook-Ziel + Zustellstand (Welle 5); null wenn kein Webhook konfiguriert. */
+  webhook: WebhookState | null;
+}
+
+/** Zustellstand des Ergebnis-Webhooks eines Laufs. */
+export interface WebhookState {
+  url: string;
+  status: 'pending' | 'delivered' | 'failed';
+  attempts: number;
+  error: string | null;
 }
 
 /** Audit-Metadaten eines Ergebnisses (Regel-Stand/Modell/Strategie). */
@@ -83,6 +93,7 @@ interface RunRecord {
   status: BatchRunStatus;
   fileCount: number;
   order: string[];        // fileIds in Upload-Reihenfolge
+  webhook?: WebhookState | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -171,6 +182,7 @@ function counts(files: FileRecord[]): { completed: number; failed: number } {
 export async function createBatchRun(
   projectId: string,
   filenames: string[],
+  webhookUrl?: string,
 ): Promise<{ runId: string; files: { id: string; filename: string }[] }> {
   const runId = generateRunId();
   await ensureDir(runDir(projectId, runId));
@@ -206,11 +218,33 @@ export async function createBatchRun(
     status: 'pending',
     fileCount: filenames.length,
     order: files.map((f) => f.id),
+    webhook: webhookUrl ? { url: webhookUrl, status: 'pending', attempts: 0, error: null } : null,
     createdAt: now,
     updatedAt: now,
   });
 
   return { runId, files };
+}
+
+/** Ziel-URL des Laufs (fuer die Zustellung am Lauf-Ende). */
+export async function getRunWebhookUrl(projectId: string, runId: string): Promise<string | null> {
+  const run = await readRun(projectId, runId);
+  return run?.webhook?.url ?? null;
+}
+
+/** Zustellergebnis am Lauf vermerken. */
+export async function setWebhookResult(
+  projectId: string,
+  runId: string,
+  result: { status: WebhookState['status']; attempts: number; error?: string | null; url?: string },
+): Promise<void> {
+  const run = await readRun(projectId, runId);
+  if (!run) return;
+  const url = result.url ?? run.webhook?.url;
+  if (!url) return;
+  run.webhook = { url, status: result.status, attempts: result.attempts, error: result.error ?? null };
+  run.updatedAt = new Date().toISOString();
+  await writeRun(projectId, run);
 }
 
 export async function setRunStatus(
@@ -281,6 +315,7 @@ export async function listBatchRuns(projectId: string): Promise<BatchRunSummary[
       failedCount: c.failed,
       createdAt: run.createdAt,
       updatedAt: run.updatedAt,
+      webhook: run.webhook ?? null,
     });
   }
   return runs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -304,6 +339,7 @@ export async function getBatchRun(
       failedCount: c.failed,
       createdAt: run.createdAt,
       updatedAt: run.updatedAt,
+      webhook: run.webhook ?? null,
     },
     files: files.map(toSummary),
   };

@@ -2,6 +2,36 @@
 
 ## 2026-08-03
 
+### Feature: Extraktion — API-Batch + Webhooks (Ausbau-Welle 5, Baustein 3)
+Das Feature war nur über die UI bedienbar — jede Verarbeitung brauchte einen Menschen. Die
+Extraktion ist jetzt **headless ansprechbar**, über das bestehende Public-API-Framework
+(Bearer-Key, Scopes, Rate-Limit, Audit, OpenAPI kommen dadurch geschenkt):
+- **Vier Functions** unter `/api/public/v1/extraktion/…`: `projects.list` (welche Projekte/Felder
+  gibt es), `extract` (ein Dokument synchron), `batch.create` (bis 20 Dokumente, antwortet sofort
+  mit `run_id`), `batch.get` (Status + Ergebnisse). Dokumente als base64; Deckel 10 MB je Dokument
+  / 25 MB je Anfrage. Intern läuft exakt die UI-Strecke (`createBatchRun` + `runBatchExtraction`)
+  inklusive Review-Triage (W3), Audit (W2) und Prüfregeln (W5-1).
+- **Virtuelle App statt Registry-Eintrag** (`public-api/virtual-apps.ts`): Ein echter
+  Registry-Eintrag hätte über die Sidebar einen Navigationspunkt auf `/apps/extraktion` erzeugt,
+  der ins Leere führt. Virtuelle Apps existieren nur im Code — erscheinen aber in Discovery,
+  `openapi.json` und im Permissions-Katalog der API-Key-Verwaltung. Abschaltbar per
+  `EXTRACTION_PUBLIC_API=0`.
+- **Webhooks**: `callback_url` je Anfrage, sonst der Projekt-Default aus den Einstellungen
+  (gilt auch für UI-Läufe). Zustellung bei Lauf-Ende mit `X-Workplace-Signature`
+  (HMAC-SHA256 über den Rumpf, Schlüssel je Projekt), 3 Versuche mit Backoff, keine
+  Redirect-Verfolgung, 4xx wird nicht wiederholt. Der Zustellstand steht am Lauf und als Badge in
+  der Lauf-Liste. Das Webhook-Ziel wandert **bewusst nicht** ins Export-Paket (Betriebsgeheimnis).
+- **Framework-Ergänzung `PublicFunctionError`**: Fachliche Fehler (unbekanntes Projekt,
+  überschrittener Deckel) kamen bisher als generischer 500 `internal_error` beim Integrator an.
+  Jetzt liefern sie Status + Klartext (413 `payload_too_large`, 404 `not_found`, 400
+  `invalid_request`); alles Übrige bleibt weiterhin ein 500 ohne Interna.
+- Verifiziert end-to-end: Discovery und `openapi.json` listen die vier Functions;
+  `batch.create` mit zwei Dokumenten + `callback_url` → Lauf lief durch, Webhook traf ein,
+  **Signatur vom Empfänger unabhängig nachgerechnet = identisch**, Regel-Befund und
+  `needs_review` im Payload; Projekt-Default-Webhook feuerte auch für einen UI-Lauf;
+  21 Dokumente → 413 mit Klartext, unbekannter Lauf → 404, Key ohne Scope → 403.
+  19 neue Tests (234 gesamt grün).
+
 ### Feature: Extraktion — Schema-Inferenz beim Onboarding (Ausbau-Welle 5, Baustein 2)
 Der Einstieg in ein neues Extraktionsprojekt war reine Handarbeit (Feldliste tippen, Typen raten,
 Positionstabellen selbst modellieren). Im Anlege-Dialog gibt es jetzt eine Dropzone **„Felder aus

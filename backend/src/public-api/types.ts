@@ -68,6 +68,23 @@ export interface PublicFunction<TIn = Record<string, unknown>, TOut = unknown> {
   handler: (input: TIn, ctx: PublicFunctionContext) => Promise<TOut>;
 }
 
+/**
+ * Fehler, den eine Function bewusst an den Aufrufer durchreichen will
+ * (falsche Id, ueberschrittene Grenze, ungueltige Kombination). Alles andere
+ * bleibt ein 500 `internal_error` — Interna gehoeren nicht nach draussen.
+ */
+export class PublicFunctionError extends Error {
+  readonly status: 400 | 404 | 409 | 413 | 422;
+  readonly code: string;
+
+  constructor(message: string, status: PublicFunctionError['status'] = 400, code = 'invalid_request') {
+    super(message);
+    this.name = 'PublicFunctionError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export interface AuditEntry {
   timestamp: string;
   requestId: string;

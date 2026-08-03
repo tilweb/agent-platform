@@ -78,6 +78,7 @@ export async function createProject(data: {
   instructions?: string;
   extraction?: ExtractionProject['extraction'];
   rules?: ExtractionProject['rules'];
+  webhook?: ExtractionProject['webhook'];
 }): Promise<ExtractionProject> {
   // Generate ID from name
   const id = data.name
@@ -107,6 +108,7 @@ export async function createProject(data: {
     },
     ...(data.extraction ? { extraction: data.extraction } : {}),
     ...(data.rules ? { rules: data.rules } : {}),
+    ...(data.webhook ? { webhook: data.webhook } : {}),
   };
 
   await writeFile(projectFile(id), stringifyYaml(project), 'utf-8');
@@ -119,7 +121,7 @@ export async function createProject(data: {
  */
 export async function updateProject(
   id: string,
-  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'instructions' | 'guidelines' | 'learning' | 'extraction' | 'rules'>>
+  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'instructions' | 'guidelines' | 'learning' | 'extraction' | 'rules' | 'webhook'>>
 ): Promise<ExtractionProject | null> {
   const project = await getProject(id);
   if (!project) return null;

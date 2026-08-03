@@ -33,6 +33,7 @@ import {
   runFullEval,
 } from '../extraction/learning';
 import type { ProjectField } from '../extraction/learning';
+import { generateWebhookSecret, isDeliverableUrl } from '../extraction/learning/webhook';
 import { createTable, addRow } from '../tables';
 import type { ColumnDefinition, ColumnType } from '../tables/types';
 import { generateDocument } from '../services/documentGenerator';
@@ -127,6 +128,23 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
     }
   }
 
+  // Webhook-Ziel (Welle 5): `null` loescht bewusst, `undefined` laesst unberuehrt.
+  let webhook: { url?: string; secret?: string } | undefined;
+  if (body.webhook === null) {
+    webhook = {};
+  } else if (body.webhook && typeof body.webhook === 'object') {
+    const url = typeof body.webhook.url === 'string' ? body.webhook.url.trim() : '';
+    if (url && !isDeliverableUrl(url)) {
+      return c.json({ error: 'Webhook-URL muss mit http:// oder https:// beginnen' }, 400);
+    }
+    webhook = {
+      ...(url ? { url } : {}),
+      ...(typeof body.webhook.secret === 'string' && body.webhook.secret.trim()
+        ? { secret: body.webhook.secret.trim() }
+        : {}),
+    };
+  }
+
   const updated = await updateProject(id, {
     name: body.name,
     description: body.description,
@@ -134,6 +152,7 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
     instructions: body.instructions,
     extraction: body.extraction,
     rules: body.rules,
+    webhook,
   });
 
   if (!updated) {
@@ -336,6 +355,15 @@ extractionProjectRoutes.delete('/projects/:id/examples/:exId', async (c) => {
 });
 
 // ============== Guidelines ==============
+
+/**
+ * POST /projects/webhook-secret — neuen Signaturschluessel vorschlagen (Welle 5).
+ * Speichert NICHT — der Wert landet im Formular und wird mit dem Projekt gesichert.
+ * Kollidiert nicht mit `/projects/:id`, weil es dafuer kein POST gibt.
+ */
+extractionProjectRoutes.post('/projects/webhook-secret', (c) => {
+  return c.json({ secret: generateWebhookSecret() });
+});
 
 /**
  * POST /projects/:id/regenerate — Regeln neu ableiten (Hintergrund-

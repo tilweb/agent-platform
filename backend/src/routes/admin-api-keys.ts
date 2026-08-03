@@ -9,7 +9,7 @@ import { Hono } from 'hono';
 import { getCurrentUser } from '../auth/middleware';
 import { createKey, listKeys, revokeKey } from '../public-api/keys/service';
 import { loadKeyById } from '../public-api/keys/storage';
-import { getApps } from '../apps/registry';
+import { listPublicApps } from '../public-api/virtual-apps';
 import type { ApiKey, ApiKeyScope } from '../public-api/types';
 
 const router = new Hono();
@@ -39,7 +39,7 @@ router.get('/', async (c) => {
  */
 router.get('/permissions', async (c) => {
   try {
-    const apps = await getApps();
+    const apps = await listPublicApps();
     const permissions: Array<{
       id: string;
       appId: string;
