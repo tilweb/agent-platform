@@ -9,8 +9,9 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { getApps } from '../apps/registry';
+import { listPublicApps } from './virtual-apps';
 import type { AppConfig } from '../apps/types';
+import { PublicFunctionError } from './types';
 import type { PublicFunction, PublicFunctionContext, ApiKey } from './types';
 import { scopeMatches, validate } from './validator';
 import { apiKeyAuth, apiKeyRateLimit } from './middleware';
@@ -38,7 +39,7 @@ router.get('/openapi.json', async (c) => {
  */
 router.get('/', apiKeyAuth, async (c) => {
   const key = c.get('apiKey');
-  const apps = await getApps();
+  const apps = await listPublicApps();
 
   const payload = apps
     .filter(app => app.enabled && Array.isArray(app.publicFunctions) && app.publicFunctions.length > 0)
@@ -95,7 +96,7 @@ router.post('/:appId/:functionId', apiKeyAuth, async (c) => {
       errorCode,
       durationMs: Date.now() - started,
     });
-    return c.json(body, status as 200 | 400 | 401 | 403 | 404 | 429 | 500);
+    return c.json(body, status as 200 | 400 | 401 | 403 | 404 | 409 | 413 | 422 | 429 | 500);
   };
 
   // scope
@@ -138,13 +139,18 @@ router.post('/:appId/:functionId', apiKeyAuth, async (c) => {
     const result = await fn.handler(body, ctx);
     return finish(200, { result });
   } catch (err) {
+    // Fachliche Fehler (falsche Id, Grenze ueberschritten) gehoeren dem Aufrufer —
+    // sonst raet er an einem 500 herum. Alles andere bleibt intern.
+    if (err instanceof PublicFunctionError) {
+      return finish(err.status, { error: err.message, code: err.code }, err.code);
+    }
     console.error(`[public-api] handler ${appId}.${functionId} failed:`, err);
     return finish(500, { error: 'Internal error', code: 'internal_error' }, 'internal_error');
   }
 });
 
 async function resolveFunction(appId: string, functionId: string): Promise<PublicFunction | null> {
-  const apps = await getApps();
+  const apps = await listPublicApps();
   const app = apps.find(a => a.id === appId && a.enabled) as AppConfig | undefined;
   if (!app || !Array.isArray(app.publicFunctions)) return null;
   return (app.publicFunctions as PublicFunction[]).find(f => f.id === functionId) ?? null;

@@ -10,7 +10,7 @@
  * nicht drin; die Endpoints sind ohnehin nur mit Bearer-Token aufrufbar.
  */
 
-import { getApps } from '../apps/registry';
+import { listPublicApps } from './virtual-apps';
 import type { PublicFunction, JsonSchema } from './types';
 
 export interface OpenApiSpec {
@@ -38,7 +38,7 @@ function errorSchema(): JsonSchema {
 }
 
 export async function buildOpenApiSpec(baseUrl?: string): Promise<OpenApiSpec> {
-  const apps = await getApps();
+  const apps = await listPublicApps();
 
   const paths: Record<string, Record<string, unknown>> = {};
   const tags: Array<{ name: string; description?: string }> = [];

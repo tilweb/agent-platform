@@ -15,7 +15,9 @@ import { rm } from 'fs/promises';
 import { extract } from './service';
 import { getProject } from './projects';
 import { computeReviewStatus } from './review';
-import { setRunStatus, upsertFileResult } from './batch-runs';
+import { deliverWebhook } from './webhook';
+import { getBatchRun, getRunWebhookUrl, setRunStatus, setWebhookResult, upsertFileResult } from './batch-runs';
+import type { ExtractionProject } from './types';
 import type { ExtractionSource } from '../types';
 
 export interface BatchInputFile {
@@ -42,6 +44,58 @@ async function pLimit<T>(
 }
 
 const BATCH_CONCURRENCY = Number(process.env.EXTRACTION_BATCH_CONCURRENCY) || 3;
+
+/**
+ * Ergebnis-Webhook nach Lauf-Ende (Welle 5). Ziel: `callback_url` des Laufs,
+ * sonst der Projekt-Default. Ohne Ziel passiert nichts. Fehlschlaege werden am
+ * Lauf vermerkt, nicht geworfen — die Ergebnisse bleiben ueber die API abrufbar.
+ */
+async function notifyWebhook(
+  projectId: string,
+  runId: string,
+  project: ExtractionProject | null,
+): Promise<void> {
+  try {
+    const url = (await getRunWebhookUrl(projectId, runId)) || project?.webhook?.url;
+    if (!url) return;
+
+    const result = await getBatchRun(projectId, runId);
+    if (!result) return;
+
+    const payload = {
+      event: 'batch.completed',
+      run_id: runId,
+      project_id: projectId,
+      status: result.run.status,
+      file_count: result.run.fileCount,
+      completed: result.run.completedCount,
+      failed: result.run.failedCount,
+      needs_review: result.files.filter((f) => f.reviewStatus === 'needs_review').length,
+      files: result.files.map((f) => ({
+        filename: f.filename,
+        status: f.status,
+        data: f.data,
+        field_confidences: f.fieldConfidences,
+        review_status: f.reviewStatus,
+        validations: f.validations ?? [],
+        error: f.error,
+      })),
+    };
+
+    const delivery = await deliverWebhook(url, project?.webhook?.secret, payload);
+    await setWebhookResult(projectId, runId, {
+      status: delivery.delivered ? 'delivered' : 'failed',
+      attempts: delivery.attempts,
+      error: delivery.error ?? null,
+      url,
+    });
+    console.log(
+      `[batch-extract] Webhook ${runId} ${delivery.delivered ? 'zugestellt' : `fehlgeschlagen (${delivery.error})`} nach ${delivery.attempts} Versuch(en)`,
+    );
+  } catch (err) {
+    console.error('[batch-extract] Webhook-Zustellung abgebrochen:', err instanceof Error ? err.message : err);
+  }
+}
 
 export async function runBatchExtraction(
   projectId: string,
@@ -87,6 +141,7 @@ export async function runBatchExtraction(
     });
 
     await setRunStatus(projectId, runId, 'completed');
+    await notifyWebhook(projectId, runId, project);
   } catch (err) {
     console.error(`[batch-extract] Lauf ${runId} abgebrochen:`, err instanceof Error ? err.message : err);
     await setRunStatus(projectId, runId, 'failed').catch(() => {});

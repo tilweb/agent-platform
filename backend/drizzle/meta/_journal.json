@@ -211,6 +211,13 @@
       "when": 1785801600000,
       "tag": "0029_extraction_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1785801700000,
+      "tag": "0030_extraction_webhooks",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,10 @@
  * (ggf. personenbezogene Daten). Sie wandern nur ins Paket, wenn beim Export
  * explizit `includeExamples` gesetzt ist. Die gelernten Guidelines sind die
  * generalisierte, PII-freie Essenz und immer enthalten.
+ *
+ * NICHT im Paket: das Webhook-Ziel (`webhook`). URL und Signaturschluessel sind
+ * instanz-/kundenspezifische Betriebsgeheimnisse — eine weitergegebene Vorlage
+ * wuerde sonst fremde Laeufe an den falschen Empfaenger melden.
  */
 
 import type { ExtractionProject } from './types';

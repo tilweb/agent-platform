@@ -28,6 +28,16 @@ export interface BatchRunSummary {
   failedCount: number;
   createdAt: string;
   updatedAt: string;
+  /** Webhook-Ziel + Zustellstand (Welle 5); null wenn kein Webhook konfiguriert. */
+  webhook: WebhookState | null;
+}
+
+/** Zustellstand des Ergebnis-Webhooks eines Laufs. */
+export interface WebhookState {
+  url: string;
+  status: 'pending' | 'delivered' | 'failed';
+  attempts: number;
+  error: string | null;
 }
 
 /** Audit-Metadaten eines Ergebnisses (Regel-Stand/Modell/Strategie). */
@@ -89,6 +99,7 @@ function generateFileId(): string {
 export async function createBatchRun(
   projectId: string,
   filenames: string[],
+  webhookUrl?: string,
 ): Promise<{ runId: string; files: { id: string; filename: string }[] }> {
   const db = getDb();
   const runId = generateRunId();
@@ -99,6 +110,9 @@ export async function createBatchRun(
     projectId,
     status: 'pending',
     fileCount: filenames.length,
+    webhookUrl: webhookUrl ?? null,
+    webhookStatus: webhookUrl ? 'pending' : null,
+    webhookAttempts: webhookUrl ? 0 : null,
     createdAt: now,
     updatedAt: now,
   });
@@ -118,6 +132,42 @@ export async function createBatchRun(
   }
 
   return { runId, files };
+}
+
+function toWebhookState(row: typeof extractionBatchRuns.$inferSelect): WebhookState | null {
+  if (!row.webhookUrl) return null;
+  return {
+    url: row.webhookUrl,
+    status: (row.webhookStatus as WebhookState['status']) ?? 'pending',
+    attempts: row.webhookAttempts ?? 0,
+    error: row.webhookError ?? null,
+  };
+}
+
+/** Ziel-URL des Laufs (fuer die Zustellung am Lauf-Ende). */
+export async function getRunWebhookUrl(_projectId: string, runId: string): Promise<string | null> {
+  const db = getDb();
+  const rows = await db.select({ url: extractionBatchRuns.webhookUrl })
+    .from(extractionBatchRuns).where(eq(extractionBatchRuns.id, runId));
+  return rows[0]?.url ?? null;
+}
+
+/** Zustellergebnis am Lauf vermerken. */
+export async function setWebhookResult(
+  _projectId: string,
+  runId: string,
+  result: { status: WebhookState['status']; attempts: number; error?: string | null; url?: string },
+): Promise<void> {
+  const db = getDb();
+  await db.update(extractionBatchRuns)
+    .set({
+      ...(result.url ? { webhookUrl: result.url } : {}),
+      webhookStatus: result.status,
+      webhookAttempts: result.attempts,
+      webhookError: result.error ?? null,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(extractionBatchRuns.id, runId));
 }
 
 export async function setRunStatus(
@@ -189,6 +239,7 @@ export async function listBatchRuns(projectId: string): Promise<BatchRunSummary[
     failedCount: counts.get(r.id)?.failed ?? 0,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
+    webhook: toWebhookState(r),
   }));
 }
 
@@ -247,6 +298,7 @@ export async function getBatchRun(
       failedCount,
       createdAt: run.createdAt,
       updatedAt: run.updatedAt,
+      webhook: toWebhookState(run),
     },
     files,
   };

@@ -186,6 +186,12 @@ export interface ExtractionProject {
    * die Batch-Datei unabhaengig von der Konfidenz auf "Zu pruefen".
    */
   rules?: ExtractionRule[];
+  /**
+   * Webhook-Ziel des Projekts (Welle 5). `url` ist der Default fuer alle Laeufe
+   * (auch UI-Laeufe); eine `callback_url` in der API-Anfrage schlaegt sie.
+   * `secret` signiert JEDE Zustellung des Projekts (HMAC-SHA256).
+   */
+  webhook?: { url?: string; secret?: string };
 }
 
 export interface TrainingExample {

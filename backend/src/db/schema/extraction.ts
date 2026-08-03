@@ -30,6 +30,7 @@ export const extractionProjects = extractionSchema.table('projects', {
   learning: jsonb('learning').notNull(),             // LearningMetadata
   extraction: jsonb('extraction'),                   // ExtractionConfig (Heavy-Pipeline-Strategie); NULL = Default hybrid
   rules: jsonb('rules'),                             // ExtractionRule[] — fachliche Pruefregeln (Welle 5)
+  webhook: jsonb('webhook'),                         // { url, secret } — Webhook-Ziel (Welle 5)
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 });
@@ -62,6 +63,10 @@ export const extractionBatchRuns = extractionSchema.table('batch_runs', {
   projectId: text('project_id').notNull().references(() => extractionProjects.id, { onDelete: 'cascade' }),
   status: text('status').notNull().default('pending'),  // pending|processing|completed|failed
   fileCount: integer('file_count').notNull().default(0),
+  webhookUrl: text('webhook_url'),                      // Ziel dieses Laufs (Welle 5); NULL = Projekt-Default
+  webhookStatus: text('webhook_status'),                // pending|delivered|failed
+  webhookAttempts: integer('webhook_attempts'),
+  webhookError: text('webhook_error'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({

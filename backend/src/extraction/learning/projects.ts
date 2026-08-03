@@ -24,6 +24,7 @@ function rowToProject(row: typeof extractionProjects.$inferSelect): ExtractionPr
     learning: row.learning as ExtractionProject['learning'],
     extraction: (row.extraction as ExtractionProject['extraction']) ?? undefined,
     rules: (row.rules as ExtractionProject['rules']) ?? undefined,
+    webhook: (row.webhook as ExtractionProject['webhook']) ?? undefined,
   };
 }
 
@@ -46,6 +47,7 @@ export async function createProject(data: {
   instructions?: string;
   extraction?: ExtractionProject['extraction'];
   rules?: ExtractionProject['rules'];
+  webhook?: ExtractionProject['webhook'];
 }): Promise<ExtractionProject> {
   const id = data.name
     .toLowerCase()
@@ -70,6 +72,7 @@ export async function createProject(data: {
     },
     extraction: data.extraction,
     rules: data.rules,
+    webhook: data.webhook,
   };
 
   const db = getDb();
@@ -83,6 +86,7 @@ export async function createProject(data: {
     learning: project.learning as never,
     extraction: (project.extraction ?? null) as never,
     rules: (project.rules ?? null) as never,
+    webhook: (project.webhook ?? null) as never,
     createdAt: now,
     updatedAt: now,
   });
@@ -92,7 +96,7 @@ export async function createProject(data: {
 
 export async function updateProject(
   id: string,
-  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'instructions' | 'guidelines' | 'learning' | 'extraction' | 'rules'>>,
+  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'instructions' | 'guidelines' | 'learning' | 'extraction' | 'rules' | 'webhook'>>,
 ): Promise<ExtractionProject | null> {
   const existing = await getProject(id);
   if (!existing) return null;
@@ -118,6 +122,7 @@ export async function updateProject(
       learning: merged.learning as never,
       extraction: (merged.extraction ?? null) as never,
       rules: (merged.rules ?? null) as never,
+      webhook: (merged.webhook ?? null) as never,
       updatedAt: merged.updated,
     })
     .where(eq(extractionProjects.id, id));

@@ -2044,6 +2044,26 @@ function BatchTab({ project, onProjectUpdated }) {
                     {new Date(r.createdAt).toLocaleString('de-DE')}
                     {r.failedCount > 0 ? ` · ${r.failedCount} Fehler` : ''}
                   </span>
+                  {r.webhook && (
+                    <span
+                      title={r.webhook.error ? `${r.webhook.url} — ${r.webhook.error}` : r.webhook.url}
+                      style={{
+                        fontSize: theme.typography.sizes.xs,
+                        padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                        borderRadius: theme.borderRadius.full,
+                        fontWeight: theme.typography.weights.medium,
+                        whiteSpace: 'nowrap',
+                        backgroundColor: r.webhook.status === 'delivered' ? theme.colors.successLight
+                          : r.webhook.status === 'failed' ? theme.colors.errorLight : theme.colors.surfaceHover,
+                        color: r.webhook.status === 'delivered' ? theme.colors.success
+                          : r.webhook.status === 'failed' ? theme.colors.error : theme.colors.textMuted,
+                      }}
+                    >
+                      {r.webhook.status === 'delivered' ? 'Webhook zugestellt'
+                        : r.webhook.status === 'failed' ? `Webhook fehlgeschlagen (${r.webhook.attempts} Versuche)`
+                        : 'Webhook offen'}
+                    </span>
+                  )}
                 </div>
                 <button onClick={(e) => removeRun(r.id, e)} title="Lauf löschen"
                   style={{ ...styles.backLink, marginBottom: 0, color: theme.colors.textMuted }}>
@@ -3394,6 +3414,8 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
     }))
   );
   const [rules, setRules] = useState(project.rules || []);
+  const [webhookUrl, setWebhookUrl] = useState(project.webhook?.url || '');
+  const [webhookSecret, setWebhookSecret] = useState(project.webhook?.secret || '');
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [exportWithExamples, setExportWithExamples] = useState(false);
@@ -3468,6 +3490,9 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         fields: fieldsObj,
         instructions: instructions,
         rules,
+        webhook: webhookUrl.trim()
+          ? { url: webhookUrl.trim(), ...(webhookSecret.trim() ? { secret: webhookSecret.trim() } : {}) }
+          : null,
         extraction: {
           ...(project.extraction || {}),
           strategy,
@@ -3643,6 +3668,50 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
 
       {/* Prüfregeln (Welle 5) */}
       <RulesEditor rules={rules} fields={fields} onChange={setRules} />
+
+      {/* Integration / Webhook (Welle 5) */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Integration</div>
+        <InfoBox>
+          Läufe dieses Projekts können ihr Ergebnis an eine URL melden — auch die per API
+          (<code>extraktion/batch.create</code>) gestarteten. Jede Zustellung trägt den Header
+          <strong> X-Workplace-Signature</strong> (HMAC-SHA256 über den Rumpf, mit dem Schlüssel unten);
+          der Empfänger prüft damit die Herkunft. 3 Zustellversuche, danach steht der Fehlschlag am Lauf.
+        </InfoBox>
+        <div style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
+          <label style={styles.label}>Webhook-URL (optional)</label>
+          <input
+            style={styles.input}
+            value={webhookUrl}
+            onChange={e => setWebhookUrl(e.target.value)}
+            placeholder="https://example.com/workplace/extraktion"
+          />
+        </div>
+        <div>
+          <label style={styles.label}>Signaturschlüssel</label>
+          <div style={{ display: 'flex', gap: theme.spacing.md }}>
+            <input
+              style={{ ...styles.input, fontFamily: 'monospace' }}
+              value={webhookSecret}
+              onChange={e => setWebhookSecret(e.target.value)}
+              placeholder="Noch kein Schlüssel gesetzt"
+            />
+            <button
+              style={{ ...styles.secondaryBtn, whiteSpace: 'nowrap' }}
+              onClick={async () => {
+                const res = await apiPost('/extraction/projects/webhook-secret', {});
+                if (res.ok) setWebhookSecret((await res.json()).secret);
+              }}
+            >
+              <RefreshIcon size={14} /> Neu erzeugen
+            </button>
+          </div>
+          <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+            Ohne Schlüssel wird unsigniert zugestellt. Ein neuer Schlüssel macht alte Signaturen ungültig —
+            beim Empfänger mit austauschen.
+          </div>
+        </div>
+      </div>
 
       {/* Export / Weitergabe */}
       <div style={styles.section}>
