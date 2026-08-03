@@ -5,7 +5,7 @@
  * Extracted from the original validator.ts for reuse.
  */
 
-import type { ProjectField } from './types';
+import type { ExtractionRule, ProjectField } from './types';
 import { PROJECT_FIELD_GROUP } from './pipeline-adapter';
 
 const SCALAR_TYPES = new Set(['text', 'number', 'date', 'boolean']);
@@ -46,6 +46,59 @@ export function validateProjectFields(fields: Record<string, ProjectField>): str
     if (!SCALAR_TYPES.has(field.type as string)) {
       return `Feld "${fieldId}": unbekannter Typ "${field.type}"`;
     }
+  }
+  return null;
+}
+
+/**
+ * Strukturelle Validierung der fachlichen Pruefregeln (Welle 5) gegen die
+ * Feldliste des Projekts. Liefert eine deutsche Fehlermeldung oder null.
+ *
+ * Regeln referenzieren Felder ueber IDs — wird ein Feld umbenannt/geloescht,
+ * faellt das hier beim Speichern auf (zur Laufzeit gaebe es nur einen Befund).
+ */
+export function validateProjectRules(
+  fields: Record<string, ProjectField>,
+  rules: ExtractionRule[] | undefined,
+): string | null {
+  if (!rules) return null;
+  if (!Array.isArray(rules)) return 'Pruefregeln muessen eine Liste sein';
+
+  const seen = new Set<string>();
+  for (const rule of rules) {
+    if (!rule || typeof rule !== 'object' || !rule.id) {
+      return 'Pruefregel ohne Id';
+    }
+    if (seen.has(rule.id)) return `Pruefregel "${rule.id}": Id doppelt vergeben`;
+    seen.add(rule.id);
+
+    if (rule.type === 'sum') {
+      const listField = fields[rule.list_field];
+      if (!listField) return `Pruefregel "${rule.id}": Listen-Feld "${rule.list_field}" existiert nicht`;
+      if (listField.type !== 'list') return `Pruefregel "${rule.id}": "${rule.list_field}" ist kein Listen-Feld`;
+      const column = listField.item_fields?.[rule.item_field];
+      if (!column) return `Pruefregel "${rule.id}": Spalte "${rule.item_field}" existiert nicht`;
+      if (column.type !== 'number') return `Pruefregel "${rule.id}": Spalte "${rule.item_field}" muss vom Typ Zahl sein`;
+      const target = fields[rule.target_field];
+      if (!target) return `Pruefregel "${rule.id}": Zielfeld "${rule.target_field}" existiert nicht`;
+      if (target.type !== 'number') return `Pruefregel "${rule.id}": Zielfeld "${rule.target_field}" muss vom Typ Zahl sein`;
+      if (rule.tolerance !== undefined && (typeof rule.tolerance !== 'number' || !(rule.tolerance >= 0))) {
+        return `Pruefregel "${rule.id}": Toleranz muss eine Zahl >= 0 sein`;
+      }
+      continue;
+    }
+
+    if (rule.type === 'lookup') {
+      const field = fields[rule.field];
+      if (!field) return `Pruefregel "${rule.id}": Feld "${rule.field}" existiert nicht`;
+      if (field.type === 'list') return `Pruefregel "${rule.id}": Stammdaten-Abgleich geht nicht auf Listen-Feldern`;
+      if (!rule.table_id || !rule.column_id) {
+        return `Pruefregel "${rule.id}": Tabelle und Spalte sind erforderlich`;
+      }
+      continue;
+    }
+
+    return `Pruefregel "${(rule as ExtractionRule).id}": unbekannter Typ "${(rule as { type?: string }).type}"`;
   }
   return null;
 }

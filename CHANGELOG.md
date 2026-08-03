@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-08-03
+
+### Feature: Extraktion — fachliche Prüfregeln (Ausbau-Welle 5, Baustein 1)
+Bisher prüfte das Feature nur **Typ/Format** (Validator) und **Konfidenz** (Review-Triage, Welle 3).
+Beides sagt nichts darüber, ob ein Ergebnis *fachlich* stimmt: Eine Rechnung, deren Positionen nicht
+zum Gesamtbetrag summieren, war mit hoher Konfidenz trotzdem „auto_ok". Neu sind zwei Regeltypen je
+Projekt (`rules`), konfigurierbar in den Projekt-Einstellungen:
+- **Summen-Check** — die Werte einer Positions-Spalte müssen (mit Toleranz, Default 0,01) ein
+  skalares Zielfeld ergeben. Deutsche Zahlformate werden normalisiert; leeres Zielfeld oder leere
+  Liste erzeugen bewusst **keinen** Befund (sonst Dauer-Alarm bei unvollständigen Dokumenten).
+- **Stammdaten-Abgleich** — der Feldwert muss in einer Spalte einer **Tabelle** (Tables-Feature)
+  vorkommen (normalisierter Vergleich: trim/casefold). Nicht ladbare Quelle → `warn` statt falscher
+  Sicherheit.
+- **Wirkung**: Ein `error`-Befund hebt die Batch-Datei **unabhängig von der Konfidenz** auf
+  „Zu prüfen" (`computeReviewStatus`) und wird in Batch-Detail und Training-Tab im Klartext
+  angezeigt. Nach „Übernehmen & lernen" werden die Befunde gegen den korrigierten Stand neu bewertet.
+- `learning/rules.ts` (pur/testbar, Wertequelle als Callback — Andockpunkt für W6),
+  `validateProjectRules` beim Speichern und beim Bundle-Import, Regeln reisen im Export-Paket mit.
+  Migration `0029` (`projects.rules`, `batch_run_files.validations`), additiv ohne Backfill.
+- Verifiziert end-to-end (lokal, Port 3011, echte Extraktion): Testrechnung mit falscher Summe
+  (Positionen 1.500,50 vs. Gesamtbetrag 2.100,00) und unbekanntem Lieferanten erzeugt beide Befunde;
+  bei **Review-Schwelle 0,1** (Konfidenzen 0,5–0,7, Triage könnte nicht auslösen) steht die Datei
+  trotzdem auf „Zu prüfen" — die Regel allein kippt sie. Korrektur per „Übernehmen & lernen" →
+  0 Befunde. Export/Import überträgt die Regeln. 26 neue Unit-Tests (204 gesamt grün).
+
 ## 2026-07-29
 
 ### PM: Portfolio-Detail — Tab „Risiken" (Aggregat + Dashboard-Tracking-Markierung)

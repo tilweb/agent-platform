@@ -16,7 +16,7 @@ import { existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { FieldBox, PageImage } from '../../services/extraction/types';
-import type { ReviewStatus } from './types';
+import type { ReviewStatus, RuleIssue } from './types';
 
 const PROJECTS_DIR = resolve(process.cwd(), '../data/extraction-projects');
 
@@ -51,6 +51,8 @@ export interface BatchFileSummary {
   audit: FileAudit | null;
   /** Review-Triage (Welle 3); null bei fehlgeschlagenen/alten Dateien. */
   reviewStatus: ReviewStatus | null;
+  /** Befunde der fachlichen Pruefregeln (Welle 5); null bei alten Laeufen. */
+  validations: RuleIssue[] | null;
 }
 
 export interface BatchFileDetail extends BatchFileSummary {
@@ -71,6 +73,7 @@ export interface FileResultPayload {
   audit?: FileAudit;
   documentText?: string;
   reviewStatus?: ReviewStatus;
+  validations?: RuleIssue[];
 }
 
 /** Interne On-Disk-Form (Lauf). */
@@ -152,6 +155,7 @@ function toSummary(f: FileRecord): BatchFileSummary {
     error: f.error ?? null,
     audit: f.audit ?? null,
     reviewStatus: f.reviewStatus ?? null,
+    validations: f.validations ?? null,
   };
 }
 
@@ -186,6 +190,7 @@ export async function createBatchRun(
       error: null,
       audit: null,
       reviewStatus: null,
+      validations: null,
       boxes: null,
       pageImages: null,
       documentText: null,
@@ -238,6 +243,7 @@ export async function upsertFileResult(
     error: payload.error ?? null,
     audit: payload.audit ?? existing.audit ?? null,
     reviewStatus: payload.reviewStatus ?? existing.reviewStatus ?? null,
+    validations: payload.validations ?? existing.validations ?? null,
     boxes: payload.boxes ?? existing.boxes ?? null,
     pageImages: payload.pageImages ?? existing.pageImages ?? null,
     documentText: payload.documentText ?? existing.documentText ?? null,
@@ -320,6 +326,7 @@ export async function getBatchRunFileDetail(
     error: rec.error ?? null,
     audit: rec.audit ?? null,
     reviewStatus: rec.reviewStatus ?? null,
+    validations: rec.validations ?? null,
     boxes: rec.boxes ?? null,
     pageImages: rec.pageImages ?? null,
     documentText: rec.documentText ?? null,

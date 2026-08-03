@@ -20,7 +20,7 @@ import { getProject } from './projects';
 import { updateProject } from './projects';
 import { createProject } from './projects';
 import { getExamples, saveExample } from './examples';
-import { validateProjectFields } from './validators';
+import { validateProjectFields, validateProjectRules } from './validators';
 
 export const PROJECT_BUNDLE_FORMAT = 'kiworkplace-extraction-project';
 export const PROJECT_BUNDLE_VERSION = 1;
@@ -45,6 +45,8 @@ export interface ProjectBundle {
     guidelines: string;
     learning: ExtractionProject['learning'];
     extraction?: ExtractionProject['extraction'];
+    /** Fachliche Pruefregeln (Welle 5) — PII-frei, daher immer im Paket. */
+    rules?: ExtractionProject['rules'];
   };
   examples: BundleExample[];
 }
@@ -93,6 +95,7 @@ export async function exportProject(
       guidelines: project.guidelines,
       learning: project.learning,
       extraction: project.extraction,
+      rules: project.rules,
     },
     examples,
   };
@@ -127,6 +130,9 @@ function validateBundle(bundle: unknown): asserts bundle is ProjectBundle {
   // Strukturelle Feld-Validierung (inkl. Listen-Felder) — defensiv gegen fremde Bundles.
   const fieldError = validateProjectFields(b.project.fields);
   if (fieldError) throw new Error(`Ungültige Felder im Paket: ${fieldError}`);
+  // Pruefregeln referenzieren Feld-IDs — ein fremdes Bundle kann inkonsistent sein.
+  const ruleError = validateProjectRules(b.project.fields, b.project.rules);
+  if (ruleError) throw new Error(`Ungültige Prüfregeln im Paket: ${ruleError}`);
 }
 
 /**
@@ -145,6 +151,7 @@ export async function importProject(bundle: unknown): Promise<ExtractionProject>
     fields: src.fields,
     instructions: src.instructions,
     extraction: src.extraction,
+    rules: src.rules,
   });
 
   // Trainingsbeispiele (optional) anlegen.

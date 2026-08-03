@@ -77,6 +77,7 @@ export async function createProject(data: {
   fields: ExtractionProject['fields'];
   instructions?: string;
   extraction?: ExtractionProject['extraction'];
+  rules?: ExtractionProject['rules'];
 }): Promise<ExtractionProject> {
   // Generate ID from name
   const id = data.name
@@ -105,6 +106,7 @@ export async function createProject(data: {
       guideline_version: 0,
     },
     ...(data.extraction ? { extraction: data.extraction } : {}),
+    ...(data.rules ? { rules: data.rules } : {}),
   };
 
   await writeFile(projectFile(id), stringifyYaml(project), 'utf-8');
@@ -117,7 +119,7 @@ export async function createProject(data: {
  */
 export async function updateProject(
   id: string,
-  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'instructions' | 'guidelines' | 'learning' | 'extraction'>>
+  updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'instructions' | 'guidelines' | 'learning' | 'extraction' | 'rules'>>
 ): Promise<ExtractionProject | null> {
   const project = await getProject(id);
   if (!project) return null;

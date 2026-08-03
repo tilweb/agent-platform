@@ -12,7 +12,8 @@
  */
 
 import { compareField } from './eval';
-import type { CalibrationState, ExtractionProject, ReviewStatus } from './types';
+import { hasBlockingIssue } from './rules';
+import type { CalibrationState, ExtractionProject, ReviewStatus, RuleIssue } from './types';
 
 /** Default-Schwelle, wenn weder review_threshold noch confidence_threshold gesetzt. */
 const DEFAULT_REVIEW_THRESHOLD = 0.6;
@@ -38,12 +39,18 @@ function isEmptyValue(v: unknown): boolean {
  * UND (Wert vorhanden ODER Feld required). Leere optionale Felder mit
  * Konfidenz 0 loesen bewusst KEIN Review aus (sonst Dauer-Alarm bei selten
  * belegten Feldern). Fehlende Konfidenz zaehlt wie Konfidenz 0.
+ *
+ * Zusaetzlich (Welle 5): Ein `error`-Befund der fachlichen Pruefregeln erzwingt
+ * das Review UNABHAENGIG von der Konfidenz — ein sicher extrahierter, fachlich
+ * unplausibler Wert ist genau der Fall, den die Konfidenz nicht sieht.
  */
 export function computeReviewStatus(
   project: ExtractionProject,
   data: Record<string, unknown>,
   fieldConfidences: Record<string, number> | undefined,
+  validations?: RuleIssue[],
 ): Extract<ReviewStatus, 'auto_ok' | 'needs_review'> {
+  if (hasBlockingIssue(validations)) return 'needs_review';
   const threshold = resolveReviewThreshold(project);
   for (const [fieldId, field] of Object.entries(project.fields)) {
     const conf = fieldConfidences?.[fieldId] ?? 0;

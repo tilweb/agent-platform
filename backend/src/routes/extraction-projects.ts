@@ -26,6 +26,8 @@ import {
   exportProject,
   importProject,
   validateProjectFields,
+  validateProjectRules,
+  evaluateProjectRules,
   runFullEval,
 } from '../extraction/learning';
 import type { ProjectField } from '../extraction/learning';
@@ -79,12 +81,18 @@ extractionProjectRoutes.post('/projects', async (c) => {
     return c.json({ error: fieldError }, 400);
   }
 
+  const ruleError = validateProjectRules(body.fields, body.rules);
+  if (ruleError) {
+    return c.json({ error: ruleError }, 400);
+  }
+
   const project = await createProject({
     name: body.name,
     description: body.description,
     fields: body.fields,
     instructions: body.instructions,
     extraction: body.extraction,
+    rules: body.rules,
   });
 
   return c.json(project, 201);
@@ -104,12 +112,26 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
     }
   }
 
+  if (body.rules !== undefined || body.fields) {
+    // Regeln referenzieren Feld-IDs — gegen den kuenftigen Feldstand pruefen
+    // (mitgesendete Felder, sonst die bestehenden).
+    const existing = await getProject(id);
+    if (!existing) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+    const effectiveFields = body.fields ?? existing.fields;
+    const effectiveRules = body.rules !== undefined ? body.rules : existing.rules;
+    const ruleError = validateProjectRules(effectiveFields, effectiveRules);
+    if (ruleError) {
+      return c.json({ error: ruleError }, 400);
+    }
+  }
+
   const updated = await updateProject(id, {
     name: body.name,
     description: body.description,
     fields: body.fields,
     instructions: body.instructions,
     extraction: body.extraction,
+    rules: body.rules,
   });
 
   if (!updated) {
@@ -428,6 +450,11 @@ extractionProjectRoutes.post('/projects/:id/batches/:runId/files/:fileId/learn',
     field_confidences: detail.fieldConfidences ?? undefined,
   });
 
+  // Befunde gegen den korrigierten Stand neu bewerten (Welle 5) — sonst haengt
+  // der alte Befund an einer Datei, die der Mensch gerade in Ordnung gebracht hat.
+  const project = await getProject(projectId);
+  const validations = project ? await evaluateProjectRules(project, corrected) : [];
+
   // Datei auf den geprueften Stand heben (Tabelle/Exporte zeigen die Korrektur;
   // das Original bleibt im Trainingsbeispiel als initial_extraction erhalten).
   await upsertFileResult(projectId, runId, fileId, {
@@ -437,12 +464,14 @@ extractionProjectRoutes.post('/projects/:id/batches/:runId/files/:fileId/learn',
     strategy: detail.strategy ?? undefined,
     audit: detail.audit ?? undefined,
     reviewStatus: 'reviewed',
+    validations,
   });
 
   return c.json({
     guidelines_update: result.guidelines_update,
     review_status: 'reviewed',
     example_id: result.example.id,
+    validations,
   });
 });
 
