@@ -30,6 +30,7 @@ import {
   evaluateProjectRules,
   ingestPlainText,
   inferSchema,
+  readPageImage,
   runFullEval,
 } from '../extraction/learning';
 import type { ProjectField } from '../extraction/learning';
@@ -483,9 +484,36 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId', async (c) => {
  * GET /projects/:id/batches/:runId/files/:fileId — Detail inkl. boxes + pageImages.
  */
 extractionProjectRoutes.get('/projects/:id/batches/:runId/files/:fileId', async (c) => {
-  const detail = await getBatchRunFileDetail(c.req.param('id'), c.req.param('runId'), c.req.param('fileId'));
+  const projectId = c.req.param('id');
+  const runId = c.req.param('runId');
+  const fileId = c.req.param('fileId');
+  const detail = await getBatchRunFileDetail(projectId, runId, fileId);
   if (!detail) return c.json({ error: 'Datei nicht gefunden' }, 404);
-  return c.json(detail);
+  // Ausgelagerte Seitenbilder (Welle 5) bekommen ihre Abruf-URL; alte Laeufe
+  // behalten ihren inline-`dataUri`.
+  const pageImages = detail.pageImages?.map((p) =>
+    p.dataUri
+      ? p
+      : { ...p, url: `/extraction/projects/${projectId}/batches/${runId}/files/${fileId}/pages/${p.page}` },
+  );
+  return c.json({ ...detail, pageImages: pageImages ?? null });
+});
+
+/**
+ * GET /projects/:id/batches/:runId/files/:fileId/pages/:page — ein Seitenbild
+ * (Welle 5). Same-origin ausgeliefert, damit die CSP (`img-src 'self'`) greift;
+ * signierte S3-URLs waeren im Browser blockiert.
+ */
+extractionProjectRoutes.get('/projects/:id/batches/:runId/files/:fileId/pages/:page', async (c) => {
+  const page = Number(c.req.param('page'));
+  if (!Number.isInteger(page) || page < 1) return c.json({ error: 'Ungültige Seitenzahl' }, 400);
+
+  const buffer = await readPageImage(c.req.param('runId'), c.req.param('fileId'), page);
+  if (!buffer) return c.json({ error: 'Seitenbild nicht gefunden' }, 404);
+
+  // Kein Cache-Header: die globale Security-Middleware setzt fuer alle
+  // Antworten `no-store` — ein eigener max-age waere wirkungslos.
+  return c.body(buffer as unknown as ArrayBuffer, 200, { 'Content-Type': 'image/png' });
 });
 
 /**

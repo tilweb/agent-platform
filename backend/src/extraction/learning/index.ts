@@ -34,5 +34,7 @@ export type {
   FileAudit,
 } from './batch-runs';
 export { runBatchExtraction } from './batch-service';
+export { readPageImage, savePageImages, deletePageImages } from './page-store';
+export type { StoredPageImage } from './page-store';
 export { exportProject, importProject } from './transfer';
 export type { ProjectBundle } from './transfer';

@@ -16,6 +16,7 @@ import { existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { FieldBox, PageImage } from '../../services/extraction/types';
+import { deletePageImages, savePageImages, type StoredPageImage } from './page-store';
 import type { ReviewStatus, RuleIssue } from './types';
 
 const PROJECTS_DIR = resolve(process.cwd(), '../data/extraction-projects');
@@ -67,7 +68,12 @@ export interface BatchFileSummary {
 
 export interface BatchFileDetail extends BatchFileSummary {
   boxes: Record<string, FieldBox> | null;
-  pageImages: PageImage[] | null;
+  /**
+   * Seitenbilder als Referenz (Welle 5) — die Bytes liegen ausserhalb des
+   * Records und werden ueber die Seiten-Route geliefert. Alte Laeufe tragen
+   * hier weiterhin `dataUri`.
+   */
+  pageImages: StoredPageImage[] | null;
   /** Dokumenttext (Welle 3) — Grundlage fuer "Uebernehmen & lernen"; nur im Detail. */
   documentText: string | null;
 }
@@ -268,6 +274,8 @@ export async function upsertFileResult(
   const existing = await readFileRecord(projectId, runId, fileId);
   if (!existing) return;
   const now = new Date().toISOString();
+  // Seitenbilder aus dem Record auslagern (Welle 5) — hier bleibt nur die Referenz.
+  const storedPages = await savePageImages(runId, fileId, payload.pageImages);
   const updated: FileRecord = {
     ...existing,
     status: payload.status,
@@ -279,7 +287,7 @@ export async function upsertFileResult(
     reviewStatus: payload.reviewStatus ?? existing.reviewStatus ?? null,
     validations: payload.validations ?? existing.validations ?? null,
     boxes: payload.boxes ?? existing.boxes ?? null,
-    pageImages: payload.pageImages ?? existing.pageImages ?? null,
+    pageImages: storedPages ?? existing.pageImages ?? null,
     documentText: payload.documentText ?? existing.documentText ?? null,
     updatedAt: now,
   };
@@ -373,5 +381,6 @@ export async function deleteBatchRun(projectId: string, runId: string): Promise<
   const dir = runDir(projectId, runId);
   if (!existsSync(dir)) return false;
   await rm(dir, { recursive: true, force: true });
+  await deletePageImages(runId);
   return true;
 }
