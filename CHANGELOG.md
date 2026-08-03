@@ -2,6 +2,24 @@
 
 ## 2026-08-03
 
+### Feature: Extraktion — Schema-Inferenz beim Onboarding (Ausbau-Welle 5, Baustein 2)
+Der Einstieg in ein neues Extraktionsprojekt war reine Handarbeit (Feldliste tippen, Typen raten,
+Positionstabellen selbst modellieren). Im Anlege-Dialog gibt es jetzt eine Dropzone **„Felder aus
+Beispieldokument vorschlagen"**: ein LLM-Call liest ein typisches Dokument und schlägt Projektname,
+Beschreibung und die Feldliste vor — **inklusive Positionstabelle als `list`-Feld**. Der Vorschlag
+ersetzt den Feld-Editor-Stand und ist frei bearbeitbar; angelegt wird erst per Button.
+- `learning/schema-infer.ts`: `parseInferredFields` (pur/testbar) sanitisiert IDs (snake_case,
+  Umlaute, Dedup, `felder` reserviert), verwirft ungültige Typen, Listen ohne Spalten und
+  verschachtelte Listen, cappt auf 30 Felder und lässt den Vorschlag zur Sicherheit durch
+  `validateProjectFields` laufen — lieber ein kleinerer, sauberer Entwurf als ein halbgarer.
+- `ingestPlainText` (neu) macht auch **Scans** nutzbar: kein Textlayer → erste Seiten rendern und per
+  Vision beschreiben; reine Bilder direkt per Vision. Route `POST /projects/infer-schema`
+  (multipart oder `{text}`), vor den `:id`-Routen registriert.
+- Verifiziert end-to-end an einem Lieferschein: 11 Felder vorgeschlagen (Datum als `date`,
+  Gewicht/Menge als `number`, „Lieferung vollständig" als `boolean`, Positionen als Liste mit
+  5 Spalten); das daraus angelegte Projekt extrahierte das Dokument vollständig korrekt
+  (3 Positionen, Summe 2.080 kg). 11 neue Tests (215 gesamt grün).
+
 ### Feature: Extraktion — fachliche Prüfregeln (Ausbau-Welle 5, Baustein 1)
 Bisher prüfte das Feature nur **Typ/Format** (Validator) und **Konfidenz** (Review-Triage, Welle 3).
 Beides sagt nichts darüber, ob ein Ergebnis *fachlich* stimmt: Eine Rechnung, deren Positionen nicht

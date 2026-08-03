@@ -28,6 +28,8 @@ import {
   validateProjectFields,
   validateProjectRules,
   evaluateProjectRules,
+  ingestPlainText,
+  inferSchema,
   runFullEval,
 } from '../extraction/learning';
 import type { ProjectField } from '../extraction/learning';
@@ -181,6 +183,47 @@ extractionProjectRoutes.post('/projects/import', async (c) => {
     return c.json(project, 201);
   } catch (error: any) {
     return c.json({ error: error.message || 'Import fehlgeschlagen' }, 400);
+  }
+});
+
+/**
+ * POST /projects/infer-schema — Feldvorschlag aus einem Beispieldokument (Welle 5).
+ *
+ * Akzeptiert multipart mit `file` oder JSON `{ text }`. Legt NICHTS an — der
+ * Vorschlag geht zurueck ins Formular und wird dort bearbeitet.
+ * Vor den `:id`-Routen registriert (wie `/projects/import`).
+ */
+extractionProjectRoutes.post('/projects/infer-schema', async (c) => {
+  const contentType = c.req.header('content-type') || '';
+  let text = '';
+
+  try {
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await c.req.formData();
+      const file = formData.get('file');
+      if (!(file instanceof File)) return c.json({ error: 'Keine Datei hochgeladen' }, 400);
+
+      const { mkdir, rm } = await import('fs/promises');
+      const tmpDir = `/tmp/extraction-infer/${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+      await mkdir(tmpDir, { recursive: true });
+      const tmpPath = `${tmpDir}/${file.name.replace(/[^\w.\-]+/g, '_')}`;
+      try {
+        await Bun.write(tmpPath, await file.arrayBuffer());
+        text = await ingestPlainText({ type: 'file', path: tmpPath, filename: file.name });
+      } finally {
+        await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+      }
+    } else {
+      const body = await c.req.json().catch(() => ({}));
+      text = typeof body.text === 'string' ? body.text : '';
+      if (!text.trim()) return c.json({ error: 'Text oder Datei erforderlich' }, 400);
+    }
+
+    const inferred = await inferSchema(text);
+    return c.json(inferred);
+  } catch (error: any) {
+    console.error('[extraction] infer-schema fehlgeschlagen:', error?.message || error);
+    return c.json({ error: error?.message || 'Feldvorschlag fehlgeschlagen' }, 400);
   }
 });
 
