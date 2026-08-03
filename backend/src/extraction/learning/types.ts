@@ -20,6 +20,8 @@ export interface ProjectItemField {
   label: string;
   required?: boolean;
   description?: string;
+  /** Kontrollierte Werteliste (Welle 6) — auch fuer Positions-Spalten (z.B. Einheit). */
+  catalog?: FieldCatalog;
 }
 
 export interface ProjectField {
@@ -29,6 +31,38 @@ export interface ProjectField {
   description?: string;
   /** Nur bei type === 'list': Spalten der Positions-Tabelle (1 Ebene tief). */
   item_fields?: Record<string, ProjectItemField>;
+  /** Kontrollierte Werteliste (Welle 6); auf Listen-Feldern selbst sinnlos. */
+  catalog?: FieldCatalog;
+}
+
+// ============== Kontrollierte Wertelisten (Welle 6) ==============
+
+/** Ein zulaessiger Wert samt gepflegten Schreibvarianten. */
+export interface CatalogValue {
+  /** Die kanonische Schreibweise — auf sie wird gemappt. */
+  value: string;
+  /** Bekannte Varianten/Abkuerzungen, die auf `value` zeigen. */
+  synonyms?: string[];
+}
+
+/**
+ * Endliche Liste zulaessiger Werte eines Feldes. Wirkt an drei Stellen:
+ * im Extraktions-Prompt (die Werte stehen im Feld-Hinweis), beim Normalisieren
+ * (eindeutige Treffer werden auf die kanonische Schreibweise gesetzt) und in der
+ * Pruefung (ein Wert ausserhalb der Liste ist ein Befund).
+ */
+export interface FieldCatalog {
+  /** 'list' = am Feld gepflegt, 'table' = Spalte einer Tabelle (Tables-Feature). */
+  source: 'list' | 'table';
+  /** Nur bei source 'list'. */
+  values?: CatalogValue[];
+  /** Nur bei source 'table'. */
+  table_id?: string;
+  column_id?: string;
+  /** Wirkung eines Werts ausserhalb der Liste; Default 'error' (erzwingt Review). */
+  severity?: Extract<RuleSeverity, 'error' | 'warn'>;
+  /** Eindeutige Treffer automatisch auf die kanonische Schreibweise setzen; Default true. */
+  auto_map?: boolean;
 }
 
 /** Type-Guard: ist das Projekt-Feld eine Positions-Liste? */
@@ -123,12 +157,16 @@ export interface LookupRule {
 
 export type ExtractionRule = SumRule | LookupRule;
 
-export type RuleSeverity = 'error' | 'warn';
+/**
+ * `error` erzwingt das Review, `warn` ist ein Hinweis, `info` protokolliert nur
+ * (z.B. eine automatische Angleichung an einen Katalogwert) und blockiert nichts.
+ */
+export type RuleSeverity = 'error' | 'warn' | 'info';
 
-/** Ein konkreter Befund aus der Regelpruefung eines Extraktionsergebnisses. */
+/** Ein konkreter Befund aus der Regel-/Katalogpruefung eines Extraktionsergebnisses. */
 export interface RuleIssue {
   rule_id: string;
-  type: ExtractionRule['type'];
+  type: ExtractionRule['type'] | 'catalog';
   severity: RuleSeverity;
   /** Klartext fuer die UI (deutsch, mit den beteiligten Werten). */
   message: string;

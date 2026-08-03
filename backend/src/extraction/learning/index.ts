@@ -9,6 +9,8 @@ export type { ExtractionRule, SumRule, LookupRule, RuleIssue, RuleSeverity } fro
 export { dedupeListItems } from './list-utils';
 export { validateProjectFields, validateProjectRules } from './validators';
 export { evaluateRules, hasBlockingIssue, describeRule } from './rules';
+export { applyCatalogs, matchCatalogValue, renderCatalogHint, normalizeForMatch, levenshtein } from './catalog';
+export type { CatalogValue, FieldCatalog } from './types';
 export { computeReviewStatus, resolveReviewThreshold, updateCalibration } from './review';
 export { getAllProjects, getProject, createProject, updateProject, deleteProject } from './projects';
 export { getExamples, saveExample, deleteExample } from './examples';

@@ -44,6 +44,7 @@ Logik und UI sind identisch (s. Abschnitt 9).
 | **Posteingang (Eingangsstrecke)** | Gemischte Sammel-Scans hochladen — Dokumente werden per Vision an Grenzen getrennt, klassifiziert und bei sicherer Zuordnung automatisch ins passende Projekt geroutet (seit Ausbau-Welle 4). |
 | **Fachliche Prüfregeln** | Plausibilität jenseits von Typ/Konfidenz: Summen-Check (Positionen ↔ Gesamtbetrag) und Stammdaten-Abgleich gegen eine Tabelle. Ein Verstoß erzwingt das Review (seit Ausbau-Welle 5). |
 | **Schema-Inferenz** | Feldliste inkl. Positionstabelle aus einem Beispieldokument vorschlagen lassen (seit Welle 5). |
+| **Kontrollierte Wertelisten** | Je Feld/Spalte eine endliche Liste zulässiger Werte (statisch oder aus einer Tabelle): geht in den Prompt, gleicht Schreibvarianten an und meldet Ausreißer (seit Welle 6). |
 | **Export/Import** | Ein gut angelerntes Projekt als portables `.json`-Paket weitergeben (Vorlage für andere Instanzen). |
 | **Modellwahl** | Pro Projekt ein KI-Modell wählbar (analog zu Agenten); sonst System-Standard. |
 
@@ -118,6 +119,8 @@ ExtractionProject
 ```
 
 **Feldtypen:** `text` · `number` · `date` · `boolean` · `list` (`extraction/learning/types.ts`).
+Jedes skalare Feld und jede Positions-Spalte kann zusaetzlich eine **kontrollierte Werteliste**
+(`catalog`, Welle 6) tragen — statisch gepflegt oder aus einer Tabellenspalte.
 Jedes Feld hat ein `label` (für Mensch + KI) und optional eine `description` als Hinweis an die KI.
 Ein `list`-Feld trägt zusätzlich `item_fields` (skalare Spalten, eine Ebene tief) und wird vom
 Adapter als eigene Array-Gruppe an die Engine gegeben; nach dem Union-Merge entfernt der
@@ -484,7 +487,8 @@ Installation der Binaries: macOS `brew install poppler tesseract`; Linux/Scaling
 - `guideline-generator.ts` — Regel-Ableitung aus Korrekturen
 - `batch-runs.ts` (divergiert) · `batch-service.ts` (identisch) — Massenverarbeitung
 - `transfer.ts` — Export/Import
-- `rules.ts` — fachliche Prüfregeln (Welle 5; Wertequelle als Callback → Andockpunkt für W6)
+- `rules.ts` — fachliche Prüfregeln (Welle 5)
+- `catalog.ts` — kontrollierte Wertelisten: Matching, Angleichung, Prompt-Hinweis (Welle 6)
 - `schema-infer.ts` — Feldvorschlag aus einem Beispieldokument (Welle 5)
 - `webhook.ts` — HMAC-signierte Ergebnis-Zustellung (Welle 5)
 - `page-store.ts` (divergent) — Seitenbilder in S3 bzw. Volume (Welle 5)
@@ -514,7 +518,8 @@ Installation der Binaries: macOS `brew install poppler tesseract`; Linux/Scaling
 `docs/extraktion-eval-harness-2026-07-27.md` (Eval-Harness, Welle 2),
 `docs/extraktion-review-workflow-2026-07-28.md` (Review-Workflow, Welle 3),
 `docs/extraktion-posteingang-2026-07-29.md` (Posteingang, Welle 4),
-`docs/extraktion-api-integration-2026-08-03.md` (API/Prüfregeln/Seitenbilder/Ähnlichkeit, Welle 5).
+`docs/extraktion-api-integration-2026-08-03.md` (API/Prüfregeln/Seitenbilder/Ähnlichkeit, Welle 5),
+`docs/extraktion-wertelisten-2026-08-03.md` (kontrollierte Wertelisten, Welle 6).
 
 ---
 
@@ -531,13 +536,14 @@ strukturelle Lücken zwischen „gutem Werkzeug" und „bestem Tool im Space". D
 | **W3** | **Review-Workflow im Batch** | Batch-Ergebnisse korrigierbar → Korrekturen werden Trainingsbeispiele (Batch speichert dafür künftig `document_text`); Konfidenz-Triage (auto-ok / Review-Queue); Kalibrierungs-Messung | **umgesetzt (2026-07-28)** — `docs/extraktion-review-workflow-2026-07-28.md` |
 | **W4** | **Eingangsstrecke** | Mehrfach-PDF **splitten** (Seitenpaar-Vision, Vorarbeit `tools/document-split-test.ts`) → **klassifizieren** (Muster `classifyContract`) → aufs passende Projekt **routen**; „Posteingang"-UI | **umgesetzt (2026-07-29)** — `docs/extraktion-posteingang-2026-07-29.md` |
 | **W5** | **API & Integration + fachliche Härtung** | Fachliche Prüfregeln (Summen-Check Positionen↔Gesamtbetrag, Stammdaten-Abgleich via Tables) mit Zwang zum Review; Schema-Inferenz beim Onboarding; API-Batch + Webhooks (HMAC-signiert) über eine virtuelle Public-API-App; `pageImages` → S3/Volume statt Datenzeile; Ähnlichkeits-Few-Shot (Embeddings) | **umgesetzt (2026-08-03)** — `docs/extraktion-api-integration-2026-08-03.md` |
-| **W6** | **Kontrollierte Wertelisten als Ground Truth** | Je Feld eine hinterlegte **endliche Liste zulässiger Werte** (Auswahlliste/Katalog). Wirkung auf drei Ebenen: **(a)** die Liste geht in den Extraktions-Prompt („wähle genau einen dieser Werte"), **(b)** das Ergebnis wird gegen die Liste normalisiert/gemappt (Synonyme, Schreibvarianten, Groß-/Kleinschreibung), **(c)** ein Wert außerhalb der Liste ist ein Prüfregel-Befund. Andockpunkt: `ProjectField.allowed_values` bzw. Verweis auf eine Tabellenspalte — die W5-`lookup`-Regel ist bewusst so geschnitten, dass W6 dieselbe Wertequelle nutzen kann (`loadAllowedValues`-Callback in `learning/rules.ts`). | geplant |
+| **W6** | **Kontrollierte Wertelisten als Ground Truth** | Je Feld (und je Positions-Spalte) eine hinterlegte **endliche Liste zulässiger Werte** — statisch gepflegt oder aus einer Tabellenspalte. Wirkung auf drei Ebenen: **(a)** die Werte stehen im Extraktions-Prompt (weiche Bindung, kein hartes `enum` — ein echter Ausreißer bleibt sichtbar), **(b)** eindeutig zuordenbare Werte werden auf die kanonische Schreibweise angeglichen (Normalisierung, Synonyme, Präfix, knappe Tippfehler — deterministisch, protokolliert), **(c)** ein Wert außerhalb der Liste ist ein Befund und erzwingt „Zu prüfen". | **umgesetzt (2026-08-03)** — `docs/extraktion-wertelisten-2026-08-03.md` |
 
 Leitgedanke: Der Lern-Loop ist das Differenzierungsmerkmal — W2 macht ihn **beweisbar**
 (kein Regressions-Risiko durch Guideline-Updates), W3 macht ihn zum **Schwungrad** (jede
 Korrektur im Produktivbetrieb verbessert das Projekt), W4 macht aus dem Werkzeug eine
 **Dokumenten-Eingangsstrecke**, W5 öffnet alles für **Integration** und macht das Ergebnis
-fachlich prüfbar, W6 gibt den Feldern eine **Wahrheit, gegen die sie geprüft werden können**.
+fachlich prüfbar, W6 gibt den Feldern eine **Wahrheit, gegen die sie geprüft werden können** — und macht sie
+zugleich zur Vorgabe im Prompt.
 Das Fundament (Engine, Strategien, Lern-Idee) bleibt unangetastet — die Wellen sind Ausbau,
 kein Rewrite.
 </content>
