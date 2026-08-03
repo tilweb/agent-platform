@@ -2,6 +2,28 @@
 
 ## 2026-08-03
 
+### Betrieb: Extraktion — Seitenbilder raus aus der Datenzeile (Ausbau-Welle 5, Baustein 4)
+Die gerenderten Seitenbilder einer Vision-Extraktion lagen als base64-`dataUri` in der
+`detail`-Spalte der Datei-Zeile — **1,2–1,3 MB pro Dokument** (gemessen an bestehenden Läufen), die
+bei jedem Backup und jeder Replikation mitgeschleppt wurden, obwohl sie nur beim Aufklappen einer
+Zeile gebraucht werden. Die Bytes liegen jetzt außerhalb der Zeile, in der Zeile bleibt eine
+Referenz (Seite + Größe): **552 Byte** für denselben Fall.
+- Neues Modul `learning/page-store.ts` — die zweite bewusst divergente Datei des Features:
+  Scalingo legt die PNGs in **S3** (`extraction-pages/{runId}/{fileId}/p{n}.png`, neuer Helper
+  `s3Paths.batchPageImage` mit Traversal-Schutz), Railway als **Volume-Datei** unter
+  `data/extraction-batch-pages/`. Beim Löschen eines Laufs wird mit aufgeräumt.
+- **Ausgeliefert wird same-origin** über eine neue Route
+  `GET …/batches/:runId/files/:fileId/pages/:page` — signierte S3-URLs wären im Browser an der
+  CSP (`img-src 'self' data: blob:`) gescheitert.
+- **Fail-Soft**: Ist keine Ablage verfügbar (lokale Entwicklung ohne S3) oder scheitert das
+  Schreiben, behält das Bild seinen `dataUri` — eine Extraktion scheitert nie an der Vorschau.
+- **Kein Backfill**: Alte Läufe behalten ihre Inline-Bilder und werden unverändert angezeigt
+  (verifiziert an einem Bestandslauf mit 1,17 MB `dataUri`).
+- Verifiziert end-to-end: Vision-Lauf über ein Test-PDF → `detail` 552 Byte statt >1 MB, Seiten-Route
+  liefert das PNG (1654×2339), Boxen und Werte korrekt, S3-Objekt vorhanden (82 KB) und nach dem
+  Löschen des Laufs weg. 4 neue Tests im Scalingo-Worktree, 6 im Railway-Worktree (dort inklusive
+  Datei-Roundtrip und Traversal-Abwehr).
+
 ### Feature: Extraktion — API-Batch + Webhooks (Ausbau-Welle 5, Baustein 3)
 Das Feature war nur über die UI bedienbar — jede Verarbeitung brauchte einen Menschen. Die
 Extraktion ist jetzt **headless ansprechbar**, über das bestehende Public-API-Framework

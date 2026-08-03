@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { theme } from '../config/theme';
-import { apiGet, apiPost, apiPut, apiDelete, apiPostForm } from '../utils/apiFetch';
+import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
 import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon, FolderOpenIcon } from '../components/Icons';
 import ExportDropdown from '../components/ExportDropdown';
 import { useProviders } from '../hooks/useProviders';
@@ -1670,7 +1670,13 @@ function BoxOverlay({ pageImages, boxes, data, fields, activeField, onHoverField
           border: `1px solid ${theme.colors.border}`,
           borderRadius: theme.borderRadius.lg, overflow: 'hidden',
         }}>
-          <img src={img.dataUri} alt={`Seite ${img.page}`} style={{ display: 'block', width: '100%' }} />
+          {/* Ausgelagerte Seitenbilder (Welle 5) kommen ueber die Seiten-Route;
+              Laeufe vor der Auslagerung tragen weiterhin einen inline-dataUri. */}
+          <img
+            src={img.url ? `${API_URL}${img.url}` : img.dataUri}
+            alt={`Seite ${img.page}`}
+            style={{ display: 'block', width: '100%' }}
+          />
           {Object.entries(boxes).filter(([, b]) => b.page === img.page).map(([fieldId, b]) => {
             const active = fieldId === activeField;
             const pulsing = fieldId === scrollToField;

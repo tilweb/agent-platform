@@ -15,6 +15,7 @@ import { eq, and, desc, inArray } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { extractionBatchRuns, extractionBatchRunFiles } from '../../db/schema/extraction';
 import type { FieldBox, PageImage } from '../../services/extraction/types';
+import { deletePageImages, savePageImages, type StoredPageImage } from './page-store';
 import type { ReviewStatus, RuleIssue } from './types';
 
 export type BatchRunStatus = 'pending' | 'processing' | 'completed' | 'failed';
@@ -64,7 +65,12 @@ export interface BatchFileSummary {
 
 export interface BatchFileDetail extends BatchFileSummary {
   boxes: Record<string, FieldBox> | null;
-  pageImages: PageImage[] | null;
+  /**
+   * Seitenbilder als Referenz (Welle 5) — die Bytes liegen ausserhalb der Zeile
+   * und werden ueber die Seiten-Route geliefert. Alte Laeufe tragen hier
+   * weiterhin `dataUri`.
+   */
+  pageImages: StoredPageImage[] | null;
   /** Dokumenttext (Welle 3) — Grundlage fuer "Uebernehmen & lernen"; nur im Detail. */
   documentText: string | null;
 }
@@ -188,9 +194,11 @@ export async function upsertFileResult(
   payload: FileResultPayload,
 ): Promise<void> {
   const db = getDb();
+  // Seitenbilder aus der Zeile auslagern (Welle 5) — in `detail` bleibt nur die Referenz.
+  const storedPages = await savePageImages(_runId, fileId, payload.pageImages);
   const detail =
-    payload.boxes || payload.pageImages
-      ? { boxes: payload.boxes ?? null, pageImages: payload.pageImages ?? null }
+    payload.boxes || storedPages
+      ? { boxes: payload.boxes ?? null, pageImages: storedPages ?? null }
       : undefined;
   await db.update(extractionBatchRunFiles)
     .set({
@@ -315,7 +323,7 @@ export async function getBatchRunFileDetail(
     .where(and(eq(extractionBatchRunFiles.id, fileId), eq(extractionBatchRunFiles.batchRunId, runId)));
   const r = rows[0];
   if (!r) return null;
-  const detail = (r.detail as { boxes?: Record<string, FieldBox>; pageImages?: PageImage[] } | null) ?? null;
+  const detail = (r.detail as { boxes?: Record<string, FieldBox>; pageImages?: StoredPageImage[] } | null) ?? null;
   return {
     id: r.id,
     filename: r.filename,
@@ -338,5 +346,6 @@ export async function deleteBatchRun(projectId: string, runId: string): Promise<
   const res = await db.delete(extractionBatchRuns)
     .where(and(eq(extractionBatchRuns.id, runId), eq(extractionBatchRuns.projectId, projectId)))
     .returning({ id: extractionBatchRuns.id });
+  if (res.length > 0) await deletePageImages(runId);
   return res.length > 0;
 }

@@ -118,6 +118,19 @@ export const s3Paths = {
     assertSafeId(partId, 'partId');
     return `extraction-inbox/${uploadId}/parts/${partId}.pdf`;
   },
+  /**
+   * Gerenderte Seitenbilder eines Batch-Ergebnisses (Welle 5). Frueher lagen
+   * die base64-PNGs in der `detail`-Spalte der Datei-Zeile und blaehten jede
+   * Postgres-Zeile auf mehrere MB auf.
+   */
+  batchPageImage: (runId: string, fileId: string, page: number) => {
+    assertSafeId(runId, 'runId');
+    assertSafeId(fileId, 'fileId');
+    if (!Number.isInteger(page) || page < 1 || page > 10000) {
+      throw new Error(`Invalid page: ${page}`);
+    }
+    return `extraction-pages/${runId}/${fileId}/p${page}.png`;
+  },
   // Podcast-Repurposing: hochgeladenes Video + extrahiertes Audio pro Episode.
   prVideo: (episodeId: string, ext: string) => {
     assertSafeId(episodeId, 'episodeId');
