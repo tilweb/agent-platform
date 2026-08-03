@@ -519,11 +519,14 @@ const RoadmapTab = forwardRef(function RoadmapTab({ portfolio, canEdit, onStateC
   const projekte = useMemo(() => roadmap?.projekte || [], [roadmap]);
   const ideen = useMemo(() => roadmap?.ideen || [], [roadmap]);
 
+  // Namen aller Endpunkte (Projekte + Ideen) für Dependency-Tabelle. Ideen mit
+  // Suffix „(Idee)" zur Unterscheidung.
   const nameById = useMemo(() => {
     const m = new Map();
     projekte.forEach((p) => m.set(p.id, p.name));
+    ideen.forEach((i) => m.set(i.id, `${i.name} (Idee)`));
     return m;
-  }, [projekte]);
+  }, [projekte, ideen]);
 
   const ganttItems = useMemo(() => {
     const items = [];
@@ -544,8 +547,11 @@ const RoadmapTab = forwardRef(function RoadmapTab({ portfolio, canEdit, onStateC
     return items;
   }, [projekte, ideen]);
 
+  // Gantt-Item-IDs sind mit `projekt-`/`idee-` gewrappt; das Kind ergibt sich aus
+  // dem ID-Präfix des Endpunkts (Projekt-IDs `projekt-…`, Ideen-IDs `idee-…`).
+  const ganttNodeId = (id) => (id.startsWith('idee-') ? `idee-${id}` : `projekt-${id}`);
   const ganttDeps = useMemo(
-    () => deps.map((d) => ({ from: `projekt-${d.from}`, to: `projekt-${d.to}` })),
+    () => deps.map((d) => ({ from: ganttNodeId(d.from), to: ganttNodeId(d.to) })),
     [deps],
   );
 
@@ -585,7 +591,7 @@ const RoadmapTab = forwardRef(function RoadmapTab({ portfolio, canEdit, onStateC
     fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text, margin: `${theme.spacing['2xl']} 0 ${theme.spacing.md}`,
   };
-  const projName = (id) => nameById.get(id) || '(entferntes Projekt)';
+  const projName = (id) => nameById.get(id) || '(entfernt)';
 
   if (isLoading) return <div style={styles.empty}>Lade Roadmap…</div>;
 
@@ -607,20 +613,38 @@ const RoadmapTab = forwardRef(function RoadmapTab({ portfolio, canEdit, onStateC
 
       <div style={sectionTitle}>Abhängigkeiten</div>
       <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.lg }}>
-        Definiere, welches Projekt einem anderen vorausgeht (Vorgänger → Nachfolger). Die Abhängigkeit wird als
-        Pfeil im Gantt dargestellt.
+        Definiere, welches Element einem anderen vorausgeht (Vorgänger → Nachfolger) — Projekte und Projektideen.
+        Die Abhängigkeit wird als Pfeil im Gantt dargestellt.
       </div>
 
       {canEdit && (
         <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center', flexWrap: 'wrap', marginBottom: theme.spacing.lg }}>
           <select style={styles.select} value={from} onChange={(e) => setFrom(e.target.value)}>
             <option value="">Vorgänger…</option>
-            {projekte.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {projekte.length > 0 && (
+              <optgroup label="Projekte">
+                {projekte.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </optgroup>
+            )}
+            {ideen.length > 0 && (
+              <optgroup label="Projektideen">
+                {ideen.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </optgroup>
+            )}
           </select>
           <span style={{ color: theme.colors.textMuted }}>→</span>
           <select style={styles.select} value={to} onChange={(e) => setTo(e.target.value)}>
             <option value="">Nachfolger…</option>
-            {projekte.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {projekte.length > 0 && (
+              <optgroup label="Projekte">
+                {projekte.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </optgroup>
+            )}
+            {ideen.length > 0 && (
+              <optgroup label="Projektideen">
+                {ideen.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </optgroup>
+            )}
           </select>
           <button
             type="button"

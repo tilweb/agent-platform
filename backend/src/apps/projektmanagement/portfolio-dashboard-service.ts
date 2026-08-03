@@ -408,8 +408,10 @@ export async function getPortfolioDashboard(
     },
   };
 
-  // Abhaengigkeiten (nur zwischen sichtbaren Projekten) mit aufgeloesten Namen.
+  // Abhaengigkeiten (zwischen sichtbaren Projekten UND Projektideen) mit
+  // aufgeloesten Namen. Ideen-Endpunkte (`idee-…`) werden mitaufgeloest.
   const nameById = new Map(contexts.map((c) => [c.projektId, c.projektName]));
+  for (const i of ideenAccessible) nameById.set(i.id, (i as Projektidee).name);
   const dependencies: PortfolioDashboardDependency[] = ((portfolio as Portfolio).dependencies || [])
     .filter((d) => nameById.has(d.from) && nameById.has(d.to))
     .map((d) => ({
@@ -495,9 +497,10 @@ export async function getPortfolioRoadmap(
       end_date: i.end_date || undefined,
     }));
 
-  // Abhängigkeiten nur zwischen sichtbaren Projekten (verwaiste/nicht sichtbare
-  // Endpunkte ausfiltern — z.B. entferntes oder nicht zugängliches Projekt).
-  const visibleIds = new Set(projekte.map((p) => p.id));
+  // Abhängigkeiten nur zwischen sichtbaren Projekten UND Projektideen (verwaiste/
+  // nicht sichtbare Endpunkte ausfiltern — z.B. entfernt oder nicht zugänglich).
+  // Projekt-IDs (`projekt-…`) und Ideen-IDs (`idee-…`) sind kollisionsfrei.
+  const visibleIds = new Set([...projekte.map((p) => p.id), ...ideen.map((i) => i.id)]);
   const dependencies: PortfolioDependency[] = (portfolio.dependencies || []).filter(
     (d) => visibleIds.has(d.from) && visibleIds.has(d.to),
   );

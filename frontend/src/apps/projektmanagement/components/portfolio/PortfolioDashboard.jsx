@@ -492,9 +492,9 @@ export default function PortfolioDashboard({ portfolioId, appConfig }) {
           <div style={styles.depList}>
             {dependencies.map((d, idx) => (
               <div key={idx} style={styles.depRow}>
-                <span style={styles.depChip}>{d.from_name}</span>
+                <span style={styles.depChip}>{d.from_name}{d.from?.startsWith('idee-') ? ' (Idee)' : ''}</span>
                 <span style={styles.depArrow}>→</span>
-                <span style={styles.depChip}>{d.to_name}</span>
+                <span style={styles.depChip}>{d.to_name}{d.to?.startsWith('idee-') ? ' (Idee)' : ''}</span>
               </div>
             ))}
           </div>
