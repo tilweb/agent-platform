@@ -1170,6 +1170,51 @@ function CreateProjectView({ onBack, onCreated }) {
   ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [inferring, setInferring] = useState(false);
+  const [inferMsg, setInferMsg] = useState('');
+  const [inferDrag, setInferDrag] = useState(false);
+  const inferInputRef = useRef(null);
+
+  /**
+   * Feldvorschlag aus einem Beispieldokument (Welle 5). Der Vorschlag ersetzt
+   * den Feld-Editor-Stand — bearbeitet wird er hier, angelegt erst per Button.
+   */
+  async function handleInferSchema(file) {
+    if (!file) return;
+    setInferring(true);
+    setInferMsg('');
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiPostForm('/extraction/projects/infer-schema', formData);
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || 'Feldvorschlag fehlgeschlagen');
+        return;
+      }
+      const proposed = Object.entries(json.fields || {}).map(([id, f]) => ({
+        id,
+        label: f.label,
+        type: f.type,
+        required: !!f.required,
+        description: f.description || '',
+        item_fields: itemFieldsToArray(f.item_fields),
+      }));
+      if (proposed.length === 0) {
+        setError('Kein verwertbarer Feldvorschlag — bitte Felder manuell anlegen.');
+        return;
+      }
+      setFields(proposed);
+      if (!name.trim() && json.name) setName(json.name);
+      if (!description.trim() && json.description) setDescription(json.description);
+      setInferMsg(`${proposed.length} Felder vorgeschlagen — bitte prüfen und anpassen.`);
+    } catch {
+      setError('Netzwerkfehler beim Feldvorschlag');
+    } finally {
+      setInferring(false);
+    }
+  }
 
   function addField() {
     setFields([...fields, { id: '', label: '', type: 'text', required: false, description: '', item_fields: [] }]);
@@ -1316,6 +1361,56 @@ function CreateProjectView({ onBack, onCreated }) {
               <div style={styles.sectionTitle}>Felder</div>
               <button style={styles.secondaryBtn} onClick={addField}>+ Feld</button>
             </div>
+
+            {/* Feldvorschlag aus Beispieldokument (Welle 5) */}
+            <div
+              onDragOver={e => { e.preventDefault(); setInferDrag(true); }}
+              onDragLeave={() => setInferDrag(false)}
+              onDrop={e => {
+                e.preventDefault();
+                setInferDrag(false);
+                handleInferSchema(e.dataTransfer.files?.[0]);
+              }}
+              onClick={() => !inferring && inferInputRef.current?.click()}
+              style={{
+                border: `1px dashed ${inferDrag ? theme.colors.primary : theme.colors.border}`,
+                borderRadius: theme.borderRadius.lg,
+                padding: theme.spacing.lg,
+                marginBottom: theme.spacing.lg,
+                textAlign: 'center',
+                cursor: inferring ? 'default' : 'pointer',
+                backgroundColor: inferDrag ? theme.colors.primaryLight : 'transparent',
+              }}
+            >
+              <input
+                ref={inferInputRef}
+                type="file"
+                style={{ display: 'none' }}
+                accept=".pdf,.png,.jpg,.jpeg,.txt,.md,.docx,.xlsx"
+                onChange={e => { handleInferSchema(e.target.files?.[0]); e.target.value = ''; }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary }}>
+                {inferring ? <Spinner size={14} /> : <SparklesIcon size={14} />}
+                {inferring ? 'Analysiere Beispieldokument…' : 'Felder aus Beispieldokument vorschlagen (Datei hierher ziehen)'}
+              </div>
+              <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                Die KI liest ein typisches Dokument und schlägt die Feldliste vor — inklusive Positionstabelle.
+                Der Vorschlag ersetzt die Felder unten und ist frei bearbeitbar.
+              </div>
+            </div>
+
+            {inferMsg && (
+              <div style={{
+                padding: theme.spacing.md,
+                marginBottom: theme.spacing.md,
+                backgroundColor: theme.colors.successLight,
+                color: theme.colors.success,
+                borderRadius: theme.borderRadius.lg,
+                fontSize: theme.typography.sizes.sm,
+              }}>
+                {inferMsg}
+              </div>
+            )}
 
             {fields.map((field, idx) => (
               <div key={idx} style={{

@@ -12,7 +12,9 @@ export { evaluateRules, hasBlockingIssue, describeRule } from './rules';
 export { computeReviewStatus, resolveReviewThreshold, updateCalibration } from './review';
 export { getAllProjects, getProject, createProject, updateProject, deleteProject } from './projects';
 export { getExamples, saveExample, deleteExample } from './examples';
-export { extract, train, regenerateGuidelines, runGuidelineUpdate, runFullEval, evaluateProjectRules } from './service';
+export { extract, train, regenerateGuidelines, runGuidelineUpdate, runFullEval, evaluateProjectRules, ingestPlainText } from './service';
+export { inferSchema, parseInferredFields, slugifyFieldId } from './schema-infer';
+export type { InferredSchema } from './schema-infer';
 export type { EvalScore, LearningEvalState, EvalRunAction } from './types';
 export {
   createBatchRun,

@@ -29,7 +29,7 @@ const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
 
 // ============== Document Ingestion (reused from existing pipeline) ==============
 
-async function ingest(source: ExtractionSource): Promise<{
+export async function ingest(source: ExtractionSource): Promise<{
   text?: string;
   imageBase64?: string;
   imageMimeType?: string;
@@ -180,6 +180,41 @@ Antworte NUR mit dem extrahierten Inhalt, keine eigenen Kommentare.`,
 
   console.log(`[Extraction] Vision extracted ${result.content.length} chars`);
   return result.content;
+}
+
+/**
+ * Dokument → reiner Text, auch fuer Scans (Welle 5, Schema-Inferenz).
+ *
+ * Reihenfolge: Markitdown-Text (falls brauchbar) → Bild via Vision → gescanntes
+ * PDF: erste Seiten rendern und per Vision beschreiben. Wird von der
+ * Schema-Inferenz genutzt, die keine Feld-Definitionen kennt und deshalb nicht
+ * durch die Pipeline gehen kann.
+ */
+export async function ingestPlainText(
+  source: ExtractionSource,
+  userId?: string,
+  maxScanPages = 2,
+): Promise<string> {
+  const ingested = await ingest(source);
+  if (ingested.text && ingested.text.trim().length > 40) return ingested.text;
+
+  if (ingested.imageBase64 && ingested.imageMimeType) {
+    return prepareVision(ingested.imageBase64, ingested.imageMimeType, userId);
+  }
+
+  if (ingested.rawBuffer && ingested.rawMimeType === 'application/pdf') {
+    // Kein Textlayer (gescanntes PDF): die ersten Seiten reichen fuer einen
+    // Feldvorschlag — mehr waere teuer ohne Mehrwert.
+    const { renderPdfToImages } = await import('../../services/extraction/pdf');
+    const pages = await renderPdfToImages(ingested.rawBuffer, { dpi: 150, maxPages: maxScanPages });
+    const parts: string[] = [];
+    for (const page of pages.slice(0, maxScanPages)) {
+      parts.push(await prepareVision(page.pngBuffer.toString('base64'), 'image/png', userId));
+    }
+    return parts.join('\n\n');
+  }
+
+  return ingested.text ?? '';
 }
 
 // ============== Fachliche Pruefregeln (Welle 5) ==============
