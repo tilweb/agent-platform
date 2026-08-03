@@ -197,6 +197,9 @@ export interface Portfolio {
   description?: string;
   strategy?: string;            // Markdown
   status: PortfolioStatus;
+  // Fachliche Kennung (frei editierbar, analog project_id beim Projekt/Idee) —
+  // im metadata-JSONB persistiert, NICHT der technische Primaerschluessel `id`.
+  portfolio_id?: string;
   // Basis-Stammdaten (im metadata-JSONB persistiert, per rowToPortfolio angehoben).
   type?: string;                // portfolio_type (Config-Liste)
   driver?: string;              // portfolio_driver (Config-Liste)
@@ -226,6 +229,7 @@ export interface PortfolioCreateInput {
   description?: string;
   strategy?: string;
   status?: PortfolioStatus;
+  portfolio_id?: string;        // fachliche Kennung (metadata)
   type?: string;
   driver?: string;
   start_date?: string;
@@ -245,6 +249,7 @@ export interface PortfolioUpdateInput {
   description?: string | null;
   strategy?: string | null;
   status?: PortfolioStatus;
+  portfolio_id?: string;        // fachliche Kennung (metadata)
   type?: string;
   driver?: string;
   start_date?: string;

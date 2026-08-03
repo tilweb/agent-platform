@@ -33,7 +33,7 @@ function isStatus(value: unknown): value is PortfolioStatus {
 
 // Stammdaten + Personen leben im metadata-JSONB (keine DB-Migration). Anheben in
 // die typisierten Top-Level-Felder beim Lesen.
-const META_KEYS = ['type', 'driver', 'start_date', 'end_date', 'organization', 'stakeholders', 'goals', 'criteria', 'dependencies', 'tracked_risks'] as const;
+const META_KEYS = ['portfolio_id', 'type', 'driver', 'start_date', 'end_date', 'organization', 'stakeholders', 'goals', 'criteria', 'dependencies', 'tracked_risks'] as const;
 
 function rowToPortfolio(row: typeof paPortfolios.$inferSelect): Portfolio {
   const meta = (row.metadata ?? {}) as Record<string, any>;
@@ -43,6 +43,7 @@ function rowToPortfolio(row: typeof paPortfolios.$inferSelect): Portfolio {
     description: row.description ?? undefined,
     strategy: row.strategy ?? undefined,
     status: isStatus(row.status) ? row.status : 'active',
+    portfolio_id: meta.portfolio_id ?? undefined,
     type: meta.type ?? undefined,
     driver: meta.driver ?? undefined,
     start_date: meta.start_date ?? undefined,

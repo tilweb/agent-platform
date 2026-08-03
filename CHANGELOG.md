@@ -176,6 +176,12 @@ Upload EMMA-Export → deterministischer Prüfmuster-Check → LLM-Vor-Benotung 
 
 ## 2026-07-29
 
+### PM: Portfolio-Detail — Tab „Basis": Portfolio-ID editierbar (fachliche Kennung)
+Das ID-Feld im Basis-Tab ist jetzt frei editierbar — analog zur „Projekt-ID" bei Projekten und Projektideen.
+Es ist eine **fachliche Kennung** (`portfolio_id`, z. B. „PF-2026-001"), NICHT der technische Primärschlüssel;
+migrationsfrei im metadata-JSONB (DB) bzw. Top-Level (YAML) persistiert. Wird über PUT/POST durchgereicht.
+Beide Worktrees (DB + YAML), Frontend byte-identisch.
+
 ### PM: Portfolio-Liste — Projekte + Projektideen je Portfolio auflisten
 In der Portfolio-Übersicht (Einstieg ins Tool) zeigt jede Zeile jetzt nicht mehr nur die Anzahl, sondern die
 tatsächlich zugeordneten **Projekte** (neutrale Chips) und **Projektideen** (blaue Chips) — mit „keine zugeordnet",
