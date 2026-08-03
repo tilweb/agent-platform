@@ -8,6 +8,8 @@ import { readFile, writeFile, readdir, unlink, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { blendSelection, rankBySimilarity } from './similarity';
+import { embedDocument, isSimilarityEnabled } from './embeddings';
 import type { TrainingExample } from './types';
 
 const PROJECTS_DIR = resolve(process.cwd(), '../data/extraction-projects');
@@ -88,6 +90,9 @@ export async function saveExample(
     }
   }
 
+  // Embedding fuer die Aehnlichkeits-Auswahl (Welle 5) — best effort.
+  const embedding = await embedDocument(data.document_text);
+
   const id = generateId();
   const example: TrainingExample = {
     id,
@@ -98,6 +103,7 @@ export async function saveExample(
     corrected_extraction: data.corrected_extraction,
     corrections,
     confirmed_correct: confirmedCorrect,
+    ...(embedding ? { embedding } : {}),
   };
 
   await writeFile(exampleFile(projectId, id), stringifyYaml(example), 'utf-8');
@@ -116,6 +122,38 @@ export async function deleteExample(projectId: string, exampleId: string): Promi
 }
 
 /**
+ * Embeddings fuer Beispiele nachtragen, die noch keins haben (Hintergrund,
+ * gedeckelt). Passiert einmalig nach dem Einbau von Welle 5 bzw. wenn das
+ * Embedding-Modell zwischenzeitlich nicht erreichbar war.
+ */
+const backfillLocks = new Set<string>();
+
+async function backfillEmbeddings(projectId: string, examples: TrainingExample[], cap = 20): Promise<void> {
+  if (backfillLocks.has(projectId)) return;
+  const missing = examples.filter((e) => !e.embedding && e.document_text?.trim()).slice(0, cap);
+  if (missing.length === 0) return;
+
+  backfillLocks.add(projectId);
+  try {
+    let done = 0;
+    for (const example of missing) {
+      const embedding = await embedDocument(example.document_text);
+      if (!embedding) break; // Dienst nicht verfuegbar — spaeter neu versuchen
+      const file = exampleFile(projectId, example.id);
+      if (!existsSync(file)) continue;
+      const current = parseYaml(await readFile(file, 'utf-8')) as TrainingExample;
+      await writeFile(file, stringifyYaml({ ...current, embedding }), 'utf-8');
+      done += 1;
+    }
+    if (done > 0) console.log(`[Extraction] ${done} Beispiel-Embedding(s) fuer ${projectId} nachgetragen`);
+  } catch (err) {
+    console.warn('[Extraction] Embedding-Backfill fehlgeschlagen:', err instanceof Error ? err.message : err);
+  } finally {
+    backfillLocks.delete(projectId);
+  }
+}
+
+/**
  * Select best examples for few-shot prompting
  *
  * Strategy:
@@ -123,9 +161,13 @@ export async function deleteExample(projectId: string, exampleId: string): Promi
  * - Prefer newer examples
  * - Max 5 examples, max ~4000 token budget
  * - Truncate document_text to first 500 chars for few-shot
+ *
+ * Mit `queryText` (Welle 5): die aehnlichsten Beispiele kommen zuerst, der Rest
+ * folgt der bisherigen Ordnung. Ohne Embeddings bleibt es exakt beim Alten.
  */
 export async function selectFewShotExamples(
   projectId: string,
+  queryText?: string,
   maxExamples: number = 5,
   maxTokenBudget: number = 4000
 ): Promise<TrainingExample[]> {
@@ -133,13 +175,23 @@ export async function selectFewShotExamples(
   if (all.length === 0) return [];
 
   // Sort: corrections first, then by date (newest first)
-  const sorted = [...all].sort((a, b) => {
+  let sorted = [...all].sort((a, b) => {
     // Corrections first
     if (a.corrections.length > 0 && b.corrections.length === 0) return -1;
     if (a.corrections.length === 0 && b.corrections.length > 0) return 1;
     // Then by date (newest first)
     return b.created.localeCompare(a.created);
   });
+
+  if (queryText && isSimilarityEnabled() && all.length > maxExamples) {
+    const queryEmbedding = await embedDocument(queryText);
+    if (queryEmbedding) {
+      const ranked = rankBySimilarity(queryEmbedding, all);
+      if (ranked.length > 0) sorted = blendSelection(ranked, sorted, all.length);
+      // Fehlende Embeddings im Hintergrund nachtragen (blockiert die Extraktion nicht).
+      void backfillEmbeddings(projectId, all);
+    }
+  }
 
   const selected: TrainingExample[] = [];
   let estimatedTokens = 0;

@@ -207,4 +207,10 @@ export interface TrainingExample {
     corrected_to: unknown;
   }>;
   confirmed_correct: boolean;
+  /**
+   * Embedding des Dokumenttexts (Welle 5) fuer die Aehnlichkeits-Auswahl der
+   * Few-Shot-Beispiele. Optional — alte Beispiele und Instanzen ohne
+   * Embedding-Modell haben es nicht.
+   */
+  embedding?: number[] | null;
 }

@@ -35,6 +35,8 @@ export type {
 } from './batch-runs';
 export { runBatchExtraction } from './batch-service';
 export { readPageImage, savePageImages, deletePageImages } from './page-store';
+export { cosine, rankBySimilarity, blendSelection } from './similarity';
+export { embedDocument, isSimilarityEnabled } from './embeddings';
 export type { StoredPageImage } from './page-store';
 export { exportProject, importProject } from './transfer';
 export type { ProjectBundle } from './transfer';
