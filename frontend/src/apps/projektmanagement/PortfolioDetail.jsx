@@ -707,8 +707,26 @@ const fmtDate = (d) => {
   const dt = new Date(d);
   return isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
+// Vorzeichen-behafteter Euro-Betrag: „+257.365 €" / „-1.234 €".
+const fmtSignedEUR = (n) => {
+  const v = Number(n) || 0;
+  const s = fmtEUR(Math.abs(v));
+  return v > 0 ? `+${s}` : v < 0 ? `-${s}` : s;
+};
+// △ Kosten: „+257.365 € (+14,0 %)"; ohne Prozent, wenn pct null.
+const fmtDeltaKosten = (eur, pct) => {
+  const base = fmtSignedEUR(eur);
+  if (pct === null || pct === undefined || Number.isNaN(pct)) return base;
+  const p = `${pct >= 0 ? '+' : ''}${pct.toFixed(1).replace('.', ',')} %`;
+  return `${base} (${p})`;
+};
+// Farbe: über Budget (Prognose > Budget) = rot, unter Budget = grün, sonst neutral.
+const deltaKostenColor = (eur) => {
+  const v = Number(eur) || 0;
+  return v > 0 ? theme.colors.error : v < 0 ? theme.colors.success : theme.colors.textMuted;
+};
 
-function KostenKpi({ label, value }) {
+function KostenKpi({ label, value, valueColor }) {
   return (
     <div style={{
       backgroundColor: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
@@ -718,7 +736,7 @@ function KostenKpi({ label, value }) {
         fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted,
         textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: theme.spacing.xs,
       }}>{label}</div>
-      <div style={{ fontSize: theme.typography.sizes.xl, fontWeight: theme.typography.weights.bold, color: theme.colors.text }}>
+      <div style={{ fontSize: theme.typography.sizes.xl, fontWeight: theme.typography.weights.bold, color: valueColor || theme.colors.text }}>
         {value}
       </div>
     </div>
@@ -741,16 +759,23 @@ function KostenTab({ portfolio, navigate }) {
 
   const projekte = useMemo(() => costs?.projekte || [], [costs]);
   const ideen = useMemo(() => costs?.ideen || [], [costs]);
-  const summary = costs?.summary || { budget: 0, ist: 0, prognose_budget: 0, ideen_investitionen: 0 };
+  const summary = costs?.summary || {
+    budget: 0, plan: 0, ist: 0, forecast: 0, ist_plus_forecast: 0,
+    prognose_budget: 0, delta_kosten: 0, delta_kosten_pct: null, ideen_investitionen: 0,
+  };
 
   const chartProjekte = useMemo(() => projekte.map((p) => ({
     id: p.id, name: p.name,
-    values: { budget: p.budget, ist: p.ist, prognose_budget: p.prognose_budget },
+    values: {
+      budget: p.budget, plan: p.plan,
+      ist_plus_forecast: p.ist_plus_forecast, prognose_budget: p.prognose_budget,
+    },
   })), [projekte]);
   const metrics = [
     { key: 'budget', label: 'Budget' },
-    { key: 'ist', label: 'Ist' },
-    { key: 'prognose_budget', label: 'Prognose (EAC)' },
+    { key: 'plan', label: 'Plan' },
+    { key: 'ist_plus_forecast', label: 'Ist + Forecast' },
+    { key: 'prognose_budget', label: 'Kosten-Prognose' },
   ];
 
   const sectionTitle = {
@@ -780,8 +805,14 @@ function KostenTab({ portfolio, navigate }) {
             gap: theme.spacing.lg, marginBottom: theme.spacing.xl,
           }}>
             <KostenKpi label="Budget (Projekte)" value={fmtEUR(summary.budget)} />
-            <KostenKpi label="Ist (Projekte)" value={fmtEUR(summary.ist)} />
-            <KostenKpi label="Prognose EAC (Projekte)" value={fmtEUR(summary.prognose_budget)} />
+            <KostenKpi label="Plan (Projekte)" value={fmtEUR(summary.plan)} />
+            <KostenKpi label="Ist + Forecast (Projekte)" value={fmtEUR(summary.ist_plus_forecast)} />
+            <KostenKpi label="Kosten-Prognose (Projekte)" value={fmtEUR(summary.prognose_budget)} />
+            <KostenKpi
+              label="△ Kosten (Projekte)"
+              value={fmtDeltaKosten(summary.delta_kosten, summary.delta_kosten_pct)}
+              valueColor={deltaKostenColor(summary.delta_kosten)}
+            />
             <KostenKpi label="Ideen (Investitionsschätzung)" value={fmtEUR(summary.ideen_investitionen)} />
           </div>
 
@@ -791,60 +822,81 @@ function KostenTab({ portfolio, navigate }) {
               <PortfolioCostChart projekte={chartProjekte} metrics={metrics} formatValue={fmtEUR} />
 
               <div style={sectionTitle}>Projekte</div>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>Projekt</th>
-                    <th style={thRight}>Budget</th>
-                    <th style={thRight}>Ist</th>
-                    <th style={thRight}>Prognose (EAC)</th>
-                    <th style={styles.th}>Plan-Ende</th>
-                    <th style={styles.th}>Prognose-Termin</th>
-                    <th style={thRight}>Δ Tage</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {projekte.map((p) => (
-                    <tr key={p.id}>
-                      <td style={styles.td}>
-                        <button type="button" style={styles.linkLike} onClick={() => navigate(`/apps/projektmanagement/${p.id}`)}>
-                          {p.name}
-                        </button>
-                      </td>
-                      <td style={tdRight}>{fmtEUR(p.budget)}</td>
-                      <td style={tdRight}>{fmtEUR(p.ist)}</td>
-                      <td style={tdRight}>
-                        {fmtEUR(p.prognose_budget)}
-                        {!p.hat_prognose && (
-                          <span style={{ color: theme.colors.textMuted }} title="Keine Ist-/Fortschrittsdaten — Budget angenommen"> *</span>
-                        )}
-                      </td>
-                      <td style={styles.td}>{fmtDate(p.plan_ende)}</td>
-                      <td style={styles.td}>{fmtDate(p.prognose_ende)}</td>
-                      <td style={{
-                        ...tdRight,
-                        color: (p.termin_abweichung_tage ?? 0) > 0 ? theme.colors.error : theme.colors.textMuted,
-                      }}>
-                        {p.termin_abweichung_tage != null
-                          ? (p.termin_abweichung_tage > 0 ? `+${p.termin_abweichung_tage}` : p.termin_abweichung_tage)
-                          : '—'}
-                      </td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Projekt</th>
+                      <th style={thRight}>Budget</th>
+                      <th style={thRight}>Plan</th>
+                      <th style={thRight}>Ist</th>
+                      <th style={thRight}>Forecast</th>
+                      <th style={thRight}>Ist + Forecast</th>
+                      <th style={thRight}>Kosten-Prognose</th>
+                      <th style={thRight}>△ Kosten</th>
+                      <th style={styles.th}>Termin-Ende (PA)</th>
+                      <th style={styles.th}>Termin-Prognose</th>
+                      <th style={thRight}>△ Tage</th>
                     </tr>
-                  ))}
-                  <tr>
-                    <td style={{ ...styles.td, fontWeight: theme.typography.weights.semibold }}>Summe</td>
-                    <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.budget)}</td>
-                    <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.ist)}</td>
-                    <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.prognose_budget)}</td>
-                    <td style={styles.td} />
-                    <td style={styles.td} />
-                    <td style={styles.td} />
-                  </tr>
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {projekte.map((p) => (
+                      <tr key={p.id}>
+                        <td style={styles.td}>
+                          <button type="button" style={styles.linkLike} onClick={() => navigate(`/apps/projektmanagement/${p.id}`)}>
+                            {p.name}
+                          </button>
+                        </td>
+                        <td style={tdRight}>{fmtEUR(p.budget)}</td>
+                        <td style={tdRight}>{fmtEUR(p.plan)}</td>
+                        <td style={tdRight}>{fmtEUR(p.ist)}</td>
+                        <td style={tdRight}>{fmtEUR(p.forecast)}</td>
+                        <td style={tdRight}>{fmtEUR(p.ist_plus_forecast)}</td>
+                        <td style={tdRight}>
+                          {fmtEUR(p.prognose_budget)}
+                          {!p.hat_prognose && (
+                            <span style={{ color: theme.colors.textMuted }} title="Keine Ist-/Fortschrittsdaten — Budget angenommen"> *</span>
+                          )}
+                        </td>
+                        <td style={{ ...tdRight, color: deltaKostenColor(p.delta_kosten) }}>
+                          {fmtDeltaKosten(p.delta_kosten, p.delta_kosten_pct)}
+                        </td>
+                        <td style={styles.td}>{fmtDate(p.plan_ende)}</td>
+                        <td style={styles.td}>{fmtDate(p.prognose_ende)}</td>
+                        <td style={{
+                          ...tdRight,
+                          color: (p.termin_abweichung_tage ?? 0) > 0 ? theme.colors.error : theme.colors.textMuted,
+                        }}>
+                          {p.termin_abweichung_tage != null
+                            ? (p.termin_abweichung_tage > 0 ? `+${p.termin_abweichung_tage}` : p.termin_abweichung_tage)
+                            : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td style={{ ...styles.td, fontWeight: theme.typography.weights.semibold }}>Summe</td>
+                      <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.budget)}</td>
+                      <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.plan)}</td>
+                      <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.ist)}</td>
+                      <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.forecast)}</td>
+                      <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.ist_plus_forecast)}</td>
+                      <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold }}>{fmtEUR(summary.prognose_budget)}</td>
+                      <td style={{ ...tdRight, fontWeight: theme.typography.weights.semibold, color: deltaKostenColor(summary.delta_kosten) }}>
+                        {fmtDeltaKosten(summary.delta_kosten, summary.delta_kosten_pct)}
+                      </td>
+                      <td style={styles.td} />
+                      <td style={styles.td} />
+                      <td style={styles.td} />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
               <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.sm }}>
-                Budget/Ist/Prognose stammen aus dem letzten genehmigten Statusbericht je Projekt. Prognose (EAC) =
-                Budget ÷ CPI; Prognose-Termin via SPI. „*" = kein Ist/Fortschritt vorhanden, Budget angenommen.
+                Werte stammen aus dem letzten genehmigten Statusbericht je Projekt. <b>Budget</b> = genehmigtes
+                Gesamtbudget · <b>Plan</b> = Summe der Plan-Monate · <b>Ist + Forecast</b> = verbrauchtes Budget plus
+                Forecast der Zukunftsmonate · <b>Kosten-Prognose</b> = EAC (Budget ÷ CPI) · <b>△ Kosten</b> =
+                Kosten-Prognose − Budget · <b>Termin-Prognose</b> via SPI. „*" = kein Ist/Fortschritt vorhanden,
+                Budget angenommen.
               </div>
             </>
           )}
