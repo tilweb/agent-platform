@@ -32,11 +32,12 @@ export interface BudgetItem {
 
 export interface Risk {
   id: string;
+  nature?: 'threat' | 'chance';   // Art: Bedrohung (negativ) / Chance (positiv)
   type: string;
   description: string;
   probability: 'low' | 'medium' | 'high';
   impact: 'low' | 'medium' | 'high';
-  mitigation: string;
+  mitigation?: string;
 }
 
 export interface TeamMember {

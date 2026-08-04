@@ -149,6 +149,21 @@ const LEVEL_LABELS = {
   high: 'Hoch',
 };
 
+// Risiken (übernommen aus der Projektauftrag-Maske): Art + Risikotyp.
+const NATURE_LABELS = {
+  threat: 'Bedrohung',
+  chance: 'Chance',
+};
+
+const RISKTYPE_LABELS = {
+  technical: 'Technisch',
+  organizational: 'Organisatorisch',
+  financial: 'Finanziell',
+  schedule: 'Terminlich',
+  resource: 'Ressourcen',
+  external: 'Extern',
+};
+
 export default function IdeeUebersicht({ projektidee, config, onCreateAuftrag }) {
   const idee = projektidee;
   const bc = idee.business_case ?? { investitionen: [], nutzen: [] };
@@ -314,15 +329,25 @@ export default function IdeeUebersicht({ projektidee, config, onCreateAuftrag })
         ) : (
           <>
             <div style={{ ...styles.riskRow, fontWeight: theme.typography.weights.semibold }}>
-              <div>Beschreibung</div>
+              <div>Art / Beschreibung</div>
               <div>Wahrsch.</div>
               <div>Auswirkung</div>
             </div>
             {idee.unternehmensrisiken.map((r) => (
               <div key={r.id} style={styles.riskRow}>
                 <div>
+                  {r.nature && (
+                    <span style={{
+                      fontSize: theme.typography.sizes.xs,
+                      fontWeight: theme.typography.weights.semibold,
+                      color: r.nature === 'chance' ? theme.colors.success : theme.colors.error,
+                      marginRight: theme.spacing.xs,
+                    }}>
+                      {NATURE_LABELS[r.nature] ?? r.nature}:
+                    </span>
+                  )}
                   {r.description || <em style={{ color: theme.colors.textMuted }}>—</em>}
-                  {r.type && <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>{r.type}</div>}
+                  {r.type && <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>{RISKTYPE_LABELS[r.type] ?? r.type}</div>}
                 </div>
                 <div>{LEVEL_LABELS[r.probability] ?? '—'}</div>
                 <div>{LEVEL_LABELS[r.impact] ?? '—'}</div>

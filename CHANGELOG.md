@@ -248,6 +248,17 @@ Upload EMMA-Export → deterministischer Prüfmuster-Check → LLM-Vor-Benotung 
 
 ## 2026-07-29
 
+### PM: Projektidee — Unternehmensrisiken = Projektauftrag-Risiken-Maske (Test-Feedback Block 3)
+- Der Idee-Tab **„Unternehmensrisiken"** nutzt jetzt die vollständige **Projektauftrag-Risiken-Maske** (schlanker
+  Adapter): **Art (Bedrohung/Chance)**, **Risikotyp**, Beschreibung, Wahrscheinlichkeit/Auswirkung + **Risikomatrix**.
+  Überschrift „Unternehmensrisiken" + Erläuterung bleiben erhalten.
+- `Risiken.jsx` um `title`/`subtitle`-Props erweitert (Defaults = Projektauftrag unverändert) → teilbar.
+- `Risk`-Typ um `nature` (threat/chance) ergänzt; Übersicht + Export zeigen Risiken in neuer Struktur
+  (Art · Risikotyp · Beschreibung · Wahrsch. · Auswirkung).
+- „Auftrag aus Idee erstellen" überträgt Risiken jetzt strukturgleich (vorher gingen Idee-Typwerte verloren).
+- Migration: bestehende Idee-Risiken (alte Typwerte + Gegenmaßnahme) zeigen leere Art/Risikotyp-Felder.
+- Beide Worktrees; types.ts je Worktree, idee-mapper + Frontend byte-identisch.
+
 ### PM: Klassifizierungs-Matrix — Quadranten-Texte konfigurierbar (Test-Feedback Block 2)
 - Neue Config-Liste **`stakeholder_quadrants`** (die 4 Quadranten-Texte der Interesse×Einfluss-Matrix); Labels
   editierbar, Schlüssel gesperrt (wie `idee_status`/`portfolio_status`). Erscheint via DEFAULT_CONFIG-Merge auch
