@@ -7,6 +7,7 @@
 
 import { llmService, type Message } from '../../services/llm';
 import type { UsageContext } from '../../services/usageTracking';
+import { extractionModelOverride } from '../model';
 import type { ExtractionProject, TrainingExample } from './types';
 
 /**
@@ -91,7 +92,14 @@ Format der Antwort:
     operation: 'generate_guidelines',
   };
 
-  const response = await llmService.chat(messages, undefined, usageContext, { userId });
+  // Auf demselben Modell wie die Extraktion — die Regeln beschreiben deren
+  // Verhalten und sollen nicht von der Session-Modellwahl abhaengen.
+  const response = await llmService.chat(messages, undefined, usageContext, {
+    userId,
+    modelOverride: project.extraction?.model_override
+      ? { providerId: project.extraction.model_override.provider_id, modelId: project.extraction.model_override.model_id }
+      : extractionModelOverride(),
+  });
 
   if (!response.content) {
     throw new Error('LLM hat keine Regeln generiert');

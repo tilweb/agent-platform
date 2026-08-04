@@ -5,7 +5,7 @@
  */
 
 import { type Message, createImageContent, type ContentPart } from '../../services/llm';
-import { resolveActiveModel } from '../../services/providers';
+import { resolveModel } from '../../services/providers';
 import { OpenAIAdapter } from '../../services/llm/adapters/openai';
 import type { ExtractionSource } from '../types';
 import { attachmentsService } from '../../services/attachments';
@@ -19,6 +19,7 @@ import { runEval, evalSetHash, decideAcceptance, evalModelLabel } from './eval';
 import { updateCalibration } from './review';
 import { evaluateRules, normalizeLookupValue, type LoadAllowedValues } from './rules';
 import { applyCatalogs, type ResolveCatalog } from './catalog';
+import { EXTRACTION_MODEL_ID, EXTRACTION_PROVIDER_ID, extractionModelLabel } from '../model';
 import { getTableWithData } from '../../tables';
 import type { TrainingExample, ExtractionProject, LearningEvalState, EvalScore, RuleIssue } from './types';
 import { readFile } from 'fs/promises';
@@ -147,9 +148,11 @@ async function prepareVision(
 ): Promise<string> {
   console.log('[Extraction] Using Vision LLM to describe image...');
 
-  const visionModel = await resolveActiveModel('vision', userId);
+  // Festes Extraktions-Modell statt aktivem Vision-Modell — sonst haengt die
+  // Bild-Beschreibung wieder an der Session-Wahl des Nutzers.
+  const visionModel = await resolveModel(EXTRACTION_PROVIDER_ID, EXTRACTION_MODEL_ID);
   if (!visionModel) {
-    throw new Error('Kein Vision-Modell konfiguriert');
+    throw new Error(`Extraktions-Modell ${extractionModelLabel()} nicht verfuegbar (EXTRACTION_LLM_PROVIDER / EXTRACTION_LLM_MODEL)`);
   }
 
   const visionAdapter = new OpenAIAdapter({

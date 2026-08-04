@@ -50,6 +50,14 @@ werden pro Nutzer getrennt und sicher gehalten.
 Anmeldung** (ein Klick „Verbinden"). Mandantentrennung, Berechtigungen und Datenschutz
 bleiben dadurch sauber und zentral geregelt — und genau darauf bauen die Packages auf.
 
+> **Hinweis zum Identitätsmodell:** Das hier beschriebene Modell — *jeder Nutzer
+> verbindet sein eigenes Konto, der Assistent handelt in seinem Namen* — ist der
+> **Standardfall („On-behalf-of", OBO)** und der richtige Default für persönliche
+> Produktivität. Es ist aber **nicht der einzige** Fall: manche Integrationen bieten gar
+> kein per-Nutzer-OAuth, und manche Assistenten sollen mit einer **eigenen, geteilten
+> Identität** handeln statt im Namen einer Einzelperson. Diese Erweiterung beschreibt
+> **Abschnitt 7** — das Fundament hier bleibt davon unberührt.
+
 ---
 
 ## 3. Die vier Bausteine eines Packages
@@ -68,7 +76,10 @@ Im Detail:
 
 - **Connection (Zugang).** Regelt, *dass* und *als wer* zugegriffen wird. Bringt den
   Setup-Teil (OAuth-App, Endpunkte) und den per-Nutzer-Token mit. Diese Schicht existiert
-  heute schon vollständig.
+  heute schon vollständig. **Verfeinerung:** Genau genommen zerfällt dieser Baustein in
+  *Integration* (das Zielsystem + die technische App-Registrierung) und *Identität* (der
+  konkrete Zugang darin — per-Nutzer-OBO oder eine geteilte Dienst-Identität). Eine
+  Integration kann **mehrere Identitäten** tragen — siehe **Abschnitt 7**.
 
 - **Tools (Werkzeuge).** Kleine, klar definierte Fähigkeiten — jeweils *eine* Sache, die
   ein Assistent gegen das System tun kann. Sie sind die **Maschinen-Schnittstelle**: ein
@@ -204,21 +215,236 @@ Ablegen müsste ein Admin freischalten"), statt mit einem Fehler zu scheitern.
 So bekommt das Team aus Abschnitt 5 zunächst einen **reinen Recherche-Assistenten** für
 DocuWare — und der Admin schaltet das Ablegen erst frei, wenn Vertrauen und Prozess stehen.
 
-## 7. Rollen & Verantwortlichkeiten
+## 7. Identitätsmodelle & Betriebsmodi
+
+Die Abschnitte 2–6 beschreiben den **Standardfall**: Jeder Nutzer verbindet sein eigenes
+Konto, und der Assistent handelt **in seinem Namen** (On-behalf-of, OBO). Das ist richtig
+für persönliche Produktivität — deckt aber zwei reale Bedürfnisse **nicht** ab:
+
+- **Integrationen ohne per-Nutzer-OAuth** (viele ERP-/Legacy-Systeme bieten nur API-Keys
+  oder Service-Zugänge).
+- **Assistenten mit eigener, geteilter Identität** — z. B. ein HR-Assistent, der allen
+  Mitarbeitern Fragen zu Richtlinien beantwortet (geteiltes Wissen, nicht „meine" Daten),
+  oder ein Assistent, der jeden Montag automatisch einen Report aus dem ERP erzeugt —
+  **fürs Management, nicht für eine Einzelperson**.
+
+Dieser Abschnitt erweitert das Modell um diese Fälle. Es ist eine **Erweiterung, keine
+Abgrenzung**: OBO bleibt der Default; die folgenden Modi kommen daneben hinzu.
+
+### 7.1 Zwei Achsen, die man trennen muss
+
+Der Standardfall vermischt zwei eigentlich unabhängige Fragen zu einer:
+
+- **Welche Identität?** — *In wessen Vollmacht* handelt der Assistent?
+  → **OBO-Nutzer** (handelt als der Nutzer) vs. **Dienst-Identität** (handelt als er selbst).
+- **Welcher Auth-Mechanismus?** — *Wie* entsteht das Credential?
+  → **interaktives OAuth** (Browser-Login pro Nutzer) vs. **App-/Service-Credentials**
+  (Client-Credentials, **API-Key**, Service-Account, …).
+
+Beide hängen oft zusammen (OBO ⇒ meist interaktives OAuth; Dienst-Identität ⇒ meist
+App-Credentials), sind aber **nicht dasselbe**. Wichtig fürs Konzept: Der **Zugang-Baustein
+ist mechanismus-agnostisch** — er deckt OAuth genauso ab wie API-Key oder Service-Account.
+Damit ist der Fall „Integration ohne OAuth2" gelöst: nicht alle Identitäten müssen über
+einen interaktiven Login entstehen.
+
+Hinzu kommt eine **dritte Dimension — der Auslöser-Kontext**: *interaktiv* (ein Mensch im
+Chat) vs. *autonom/geplant* (kein Mensch dabei). Letzteres kann OBO gar nicht nutzen — ohne
+anwesenden Nutzer gibt es kein persönliches Token, das man verwenden könnte.
+
+### 7.2 Connection = Integration + Identitäten
+
+Daraus folgt die in Abschnitt 3 angekündigte Verfeinerung. Eine Connection ist **nicht ein
+einzelner Zugang**, sondern:
+
+```
+Connection „DocuWare/SharePoint"  (Integration: Zielsystem + App-Registrierung, Admin-Setup)
+ ├── OBO-Token Nutzer A            (persönlich, automatisch beim Verbinden)
+ ├── OBO-Token Nutzer B            (persönlich)
+ ├── Dienst-Identität „HR"         (vom Admin angelegt; Scope: Richtlinien-Site, read-only)
+ └── Dienst-Identität „Legal"      (vom Admin angelegt; Scope: Vertrags-Site, read-only)
+```
+
+Per-Nutzer-OBO und Dienst-Identitäten **koexistieren** auf derselben Integration. Der
+**Assistent bindet an eine konkrete Identität**, nicht nur an „die Connection".
+
+### 7.3 Die drei Betriebsmodi
+
+| Modus | Identität | Auslöser | Typischer Fall |
+|---|---|---|---|
+| **A — Persönlich (OBO)** | Nutzer | interaktiv | „Meine Sachen"-Assistent; jeder sieht nur sein Eigenes |
+| **B1 — Geteilter Wissens-/Service-Zugang** | Dienst-Identität | interaktiv | HR-Assistent liest Richtlinien aus geteilter Quelle für alle |
+| **B2 — Autonom / geplant** | Dienst-Identität | zeit-/ereignisgesteuert | Montags-Sales-Report aus dem ERP, geliefert an eine Gruppe |
+
+### 7.4 Mehrere Dienst-Identitäten pro Integration
+
+Eine Integration kann **mehrere** Dienst-Identitäten tragen (zusätzlich zu den OBO-Token).
+Gründe — alle aus echten Bedürfnissen:
+
+- **Least Privilege / getrennte Scopes** — eine *lesende* Identität für den Report-Assistenten
+  **und** eine *schreibende* für den Auftrags-Assistenten; der Report-Assistent bekommt nie
+  Schreibrechte.
+- **Datendomänen / Abteilungen** — *eine* SharePoint-Integration, aber HR-Identität nur auf
+  die Richtlinien-Site, Legal-Identität nur auf Verträge.
+- **Eigener Kosten-/Budget-Topf** — jede Dienst-Identität ist eine budgetierbare,
+  abrechenbare Einheit (siehe Abschnitt 8).
+- **Audit- & Rate-Isolation** — Aktionen sind einem *benannten* Service-Principal zuordenbar;
+  ein durchdrehender Assistent erschöpft nicht das Kontingent der anderen.
+
+Das ist **Industrie-Standard**: Slack (Bot-Token *und* User-Token auf einer App),
+Salesforce („Integration User" neben User-OAuth), Google Workspace (Service-Account mit
+Domain-Wide-Delegation neben per-Nutzer-OAuth).
+
+### 7.5 Governance: bei Dienst-Identität kippt die Verantwortung
+
+Das ist der sicherheitskritische Kern:
+
+- **Bei OBO** erzwingt das **Quellsystem** die Rechte pro Nutzer — sicher by default. Jeder
+  sieht nur sein Eigenes.
+- **Bei Dienst-Identität** wird der Assistent zum **Daten-Gateway**: Wer den Assistenten
+  nutzen darf, sieht effektiv **alles, was die Dienst-Identität sehen darf**. Die
+  Zugriffskontrolle **verlagert sich** von „wer darf das im Quellsystem" auf zwei neue
+  Hebel: *wie eng ist die Identität gescopt* und *wer darf den Assistenten nutzen*.
+- Zusätzlich geht **Attribution** im Quellsystem verloren — es sieht „den Integrations-Account",
+  nicht die handelnde Person. Das verlangt **plattformseitiges Audit** (wer/welcher Auslöser
+  hat was unter der Dienst-Identität getan).
+
+### 7.6 Das Berechtigungsmodell — drei Tore, klare Owner
+
+Aus 7.5 folgt ein konkretes Modell. **Dienst-Identitäten legt ausschließlich der Admin an**
+(passt in den Admin-Scope aus Abschnitt 2). Er setzt einen **engen Scope** und berechtigt
+**eine oder mehrere Nutzer-Gruppen**, die mit dieser Identität **bauen** dürfen.
+
+| Tor | Was es regelt | Owner |
+|---|---|---|
+| **Scope** der Dienst-Identität | *welche Daten / lesend-schreibend* | **Admin** (bei Anlage) |
+| **Build-Freigabe** (Gruppe) | *wer mit dieser Identität bauen darf* | **Admin** |
+| **Nutzungs-Freigabe** des Assistenten | *wer den fertigen Assistenten nutzen darf* | **Erbauer** |
+
+Entscheidend: **Build-Berechtigung ≠ Nutzungs-Berechtigung.** Die Gruppe steuert nur, *wer
+bauen darf* — **nicht** das spätere Publikum. Ein Erbauer aus der berechtigten Gruppe kann
+einen Assistenten anschließend an **alle** freigeben. Damit liegt die wahre
+Sicherheitsgrenze im **engen Scope, den der Admin setzt** — nicht in der Build-Gruppe.
+
+### 7.7 Pflicht-Transparenz statt zusätzlichem Schloss
+
+Weil der Erbauer das Publikum aufmacht, muss der enge Admin-Scope **verlässlich
+kommuniziert** sein. Deshalb:
+
+- Der Admin **muss** bei Anlage einer Dienst-Identität eine **ausführliche
+  Scope-Beschreibung** hinterlegen (Pflichtfeld). Empfohlen **halb-strukturiert**: *Worauf
+  greift sie zu? · Lesend oder schreibend? · Für welches Publikum gedacht?* + Freitext für
+  Details.
+- Diese Beschreibung wird dem **Erbauer transparent und prominent** angezeigt, wenn er die
+  Tools dieser Identität in seinen Assistenten aufnimmt — und mit einer **expliziten
+  Bestätigung** am **Freigabe-Schritt** („Mir ist bewusst, dass dieser Assistent Daten aus
+  *‹Scope›* an alle freigegebenen Nutzer weitergibt"), denn das Weiten des Publikums ist der
+  riskanteste Moment.
+- Der Hinweis **reist mit dem Assistenten** (Kurzfassung ggf. auch für End-User sichtbar).
+- **Änderungs-Fall:** Ändert der Admin Scope oder Beschreibung, werden betroffene Assistenten
+  **markiert** / ihre Erbauer **re-benachrichtigt**, und die bestätigte **Version** des
+  Scope-Texts wird mitgeführt. So driftet die Beschreibung nicht von der Realität weg.
+
+### 7.8 Bindung Assistent ↔ Identität — die Leitplanken
+
+- **Die Identität wird beim *Bauen* festgelegt, nie im Chat gewechselt.** Jeder Assistent
+  hat **genau eine** Bindung: OBO-des-Aufrufers *oder* eine bestimmte Dienst-Identität.
+- **„OBO" heißt immer „im Namen des aktuellen Aufrufers", niemals des Erbauers.** Ein
+  geteilter OBO-Assistent läuft unter dem Token **jedes Aufrufers** und funktioniert nur,
+  wenn dieser selbst verbunden ist — er **leiht nie** die Identität des Erbauers.
+- **Kein automatischer Fallback** OBO → Dienst-Identität. Das wäre eine
+  **Privilege-Escalation** (ein Nutzer ohne persönlichen Zugriff bekäme über die
+  Dienst-Identität plötzlich Service-Level-Daten).
+- **Der System-Connection-Agent bleibt OBO-only und generisch.** Dienst-Identitäten werden
+  **nicht automatisch zu Agenten** — sie sind ein **Baustein**, den *zweckgebaute*
+  Assistenten (Package-Agent oder vom Nutzer gebaut) bewusst binden. Das verhindert eine
+  Explosion von System-Agenten (kein „User-Agent **und** Service-Agent pro Connection").
+
+### 7.9 Durchgängiges Beispiel: der HR-Assistent (Modus B1)
+
+1. **Admin** legt auf der DocuWare/SharePoint-Connection eine **Dienst-Identität „HR"** an:
+   Scope = *nur die Richtlinien-Site, read-only*, hinterlegt die Pflicht-Beschreibung und
+   berechtigt die **Gruppe „HR"** zum Bauen.
+2. Eine **HR-Mitarbeiterin** baut einen **HR-Assistenten** und stattet ihn mit den
+   DocuWare-Tools **über die Dienst-Identität „HR"** aus. Sie sieht dabei prominent den
+   Scope-Hinweis und bestätigt ihn. (Andere Nutzer ohne HR-Build-Freigabe können diese
+   Identität gar nicht erst wählen.)
+3. Sie gibt den Assistenten **allen Mitarbeitern zur Nutzung** frei.
+4. Jeder Mitarbeiter kann nun HR-Fragen stellen — beantwortet aus den Richtlinien-Dokumenten,
+   **ohne** dass irgendjemand persönlich DocuWare verbunden hat. Die Schutzgrenze ist der
+   **enge Scope**, den der Admin gesetzt und transparent beschrieben hat.
+
+**Abgrenzung zum interaktiven Direktzugriff:** Für **spontane, persönliche** Recherche
+bleibt der **OBO-System-Agent** richtig (jeder sieht nur sein Eigenes — sicher by default).
+Einen rohen „Chat direkt als Dienst-Identität"-Modus gibt es bewusst **nicht** (er wäre ein
+Governance-Loch). Wer eine Dienst-Identität interaktiv nutzen will, **baut sich einen
+Zweck-Assistenten** und wählt ihn aus.
+
+> **Angrenzendes Thema (bewusst ausgespart):** Modus B2 (autonom/geplant) braucht zusätzlich
+> einen **Automatisierungs-Runtime** — Auslöser (Zeitplan, Ereignis/Webhook) und
+> **Ausgabe-Ziele** (in einen Kanal posten, an eine Gruppe mailen). Das ist ein eigenes,
+> angrenzendes Konzept und wird hier nur benannt, nicht ausgeführt.
+
+---
+
+## 8. Kommerzielle Betrachtung: Identität & Kosten
+
+Die Identitätsmodelle haben eine **kommerzielle Dimension**, die das Betriebsmodell direkt
+betrifft — sie gehört bewusst ins Konzept, auch wenn die konkrete Preisgestaltung eine
+Produkt-/Vertriebsentscheidung ist.
+
+Ein **Per-Seat-Modell** (z. B. ein fester Betrag pro Nutzer/Monat) nimmt implizit an: *Jede
+Aktion hängt an einem zahlenden Menschen*, und die Kosten sind durch das **menschliche
+Tempo** gedeckelt. Die drei Betriebsmodi verhalten sich dazu **unterschiedlich**:
+
+| Modus | Wer löst aus | Durch Seat gedeckt? | Bepreisung |
+|---|---|---|---|
+| **A — OBO (persönlich)** | Nutzer | ✅ ja | Per Seat |
+| **B1 — geteiltes Wissen** | Nutzer (interaktiv) | ⚠️ größtenteils | Per Seat (Verbrauch im Blick) |
+| **B2 — autonom / geplant** | Zeitplan / Ereignis | ❌ nein | **Eigene Achse** + Kosten-Governance |
+
+**Warum B2 das Seat-Modell bricht:** Hinter einem autonomen Assistenten steht **kein Seat**.
+Er läuft, ob jemand online ist oder nicht; seine Kosten skalieren mit der
+**Automatisierungsmenge**, nicht mit der Kopfzahl. Ein einziger Nutzer könnte mehrere
+autonome Assistenten anlegen, die rund um die Uhr Ressourcen verbrauchen — die Grenzkosten
+übersteigen den Seat-Preis beliebig.
+
+**Die Konsequenz — eine zweite Preisachse (statt eines Kostenlochs):** Autonome
+Dienst-Assistenten werden als **eigenständige Einheit** bepreist. Gängige Schnitte:
+- **Service-Seat / „digitaler Mitarbeiter"** — ein autonomer Assistent kostet wie ein
+  (Teilzeit-)Kollege, gestaffelt nach Nutzung. Intuitivste Story fürs Management.
+- **Verbrauch / Credits** — ein Pool an Automatisierungs-Credits (pro Lauf / pro Verbrauch),
+  Overage wird berechnet.
+- **Hybrid** — jeder Seat bringt ein kleines Automatisierungs-Kontingent mit; Dienst-Assistenten
+  ziehen aus dem geteilten Pool, darüber hinaus Overage.
+
+**Kosten-Governance ist der Pflicht-Zwilling der Sicherheits-Governance (7.5).** Damit die
+zweite Achse überhaupt betreibbar ist, braucht es:
+- **Budgets / Quotas** pro Dienst-Identität **und** pro Mandant (harte Deckel),
+- **Rate-Limits / Max-Runs** für autonome Assistenten,
+- **Metering & Transparenz** pro Identität/Assistent — für die Abrechnung **und** damit der
+  Kunde den Verbrauch selbst kontrollieren kann.
+
+Das fügt sich mit Abschnitt 7.4 zusammen: **Jede Dienst-Identität ist eine budgetierbare,
+abrechenbare Einheit.**
+
+---
+
+## 9. Rollen & Verantwortlichkeiten
 
 | Rolle | Verantwortung |
 |---|---|
 | **Integration-Entwickler (Package-Owner)** | Baut & pflegt das gesamte Package: Connection, Tools, Agent, Skills, Wissen — als Einheit, versioniert. |
 | **Plattform / System** | Registriert Packages, macht Tools/Agent/Skills verfügbar, kümmert sich um den per-Nutzer-Auth-Mechanismus und die Orchestrierung. |
-| **Admin (beim Kunden)** | Richtet die OAuth-App ein, schaltet das Package frei, regelt Berechtigungen. Einmalig, technisch. |
+| **Admin (beim Kunden)** | Richtet die OAuth-App ein, schaltet das Package frei, regelt Berechtigungen. **Zusätzlich (Abschnitt 7):** legt **Dienst-Identitäten** an, setzt deren engen Scope + Pflicht-Beschreibung und berechtigt **Build-Gruppen**. Einmalig, technisch. |
+| **Assistenten-Erbauer (User)** | Ein Nutzer, der einen **eigenen Assistenten** baut: wählt Tools + Identität (OBO oder eine ihm freigegebene Dienst-Identität) und entscheidet über die **Nutzungs-Freigabe**. Bestätigt dabei den Scope-Hinweis. |
 | **End-User** | Verbindet sein eigenes Konto und nutzt den Assistenten — direkt angesprochen oder automatisch über einen übergeordneten Orchestrator. |
 
-Die Trennung ist bewusst: Fachwissen (Package-Owner) ≠ Betrieb/Freigabe (Admin) ≠ Nutzung
-(End-User).
+Die Trennung ist bewusst: Fachwissen (Package-Owner) ≠ Betrieb/Freigabe (Admin) ≠ Bauen
+(Erbauer) ≠ Nutzung (End-User).
 
 ---
 
-## 8. Lebenszyklus eines Packages
+## 10. Lebenszyklus eines Packages
 
 1. **Bauen** — Das Integrations-Team entwickelt Connection + Tools + Agent + Skills als
    zusammengehöriges Paket.
@@ -235,7 +461,7 @@ Die Trennung ist bewusst: Fachwissen (Package-Owner) ≠ Betrieb/Freigabe (Admin
 
 ---
 
-## 9. Komposition: wie die Bausteine zusammenspielen
+## 11. Komposition: wie die Bausteine zusammenspielen
 
 Im Betrieb greift alles ineinander:
 
@@ -253,7 +479,7 @@ Orchestrator setzt sie zusammen.
 
 ---
 
-## 10. Warum das im skalierbaren Produkt zählt
+## 12. Warum das im skalierbaren Produkt zählt
 
 - **Modularität / Marktplatz-Gedanke.** Integrationen werden zu **steckbaren Paketen**.
   Eine neue Integration = ein neues Package, ohne Eingriff in den Kern. Langfristig denkbar:
@@ -270,7 +496,7 @@ Orchestrator setzt sie zusammen.
 
 ---
 
-## 11. Abgrenzung & bewusst offene Designfragen
+## 13. Abgrenzung & bewusst offene Designfragen
 
 Dieses Dokument gibt **keinen** technischen Bauplan vor — eure Codebase darf das Modell
 anders realisieren (andere Sprache, andere Frameworks, anderer Agenten-/Tool-Mechanismus).
@@ -292,13 +518,38 @@ Bewusst offen gelassen — das sollte das Dev-Team selbst entscheiden:
   verbindlich (Package-Owner) und wie wird sie geprüft? Wie behandelt man Tools mit
   gemischtem Charakter (lesen *und* schreiben)? Gilt die Freischaltung pro Organisation,
   pro Gruppe oder pro Nutzer? Braucht es ein Audit-Log für schreibende Aktionen?
+- **Automatisierungs-Runtime (Modus B2).** Das *Identitätsmodell* für autonome Assistenten
+  steht (Abschnitt 7), der **Auslöse- und Ausgabe-Teil** ist hier bewusst ausgespart:
+  Zeitplan-/Ereignis-Trigger, Ausgabe-Ziele (Kanal/Mail/Dashboard), Fehler-/Retry-Verhalten.
+  Das ist ein eigenes, angrenzendes Konzept.
+- **Kostenmodell & Metering (Abschnitt 8).** *Dass* autonome Assistenten eine eigene
+  Preis-/Budget-Achse brauchen, ist gesetzt; die **konkrete Ausgestaltung** (Service-Seat
+  vs. Credits vs. Hybrid, Quota-Durchsetzung, Verbrauchs-Reporting) ist Produkt-/Vertriebs-
+  und Plattform-Entscheidung.
+
+> **Bereits entschieden (nicht mehr offen):** Identitätsmodelle (OBO vs. Dienst-Identität),
+> dass **nur Admins** Dienst-Identitäten anlegen und Build-Gruppen berechtigen, die
+> **Trennung Build- vs. Nutzungs-Freigabe**, der **enge Scope + Pflicht-Beschreibung** als
+> Schutzgrenze, **keine In-Chat-Identitätswechsel** und **kein OBO→Dienst-Fallback** — siehe
+> Abschnitt 7. Diese Punkte sind als Prinzipien gesetzt, nicht zur Disposition gestellt.
 
 ---
 
-## 12. Glossar
+## 14. Glossar
 
-- **Connection** — Der Zugang zu einem externen System inkl. Anmeldung/OAuth und
-  persönlichem Token pro Nutzer.
+- **Connection** — Der Zugang zu einem externen System. Zerfällt genauer in *Integration*
+  + eine oder mehrere *Identitäten* (siehe unten).
+- **Integration** — Das Zielsystem + die technische App-Registrierung (Basis-Setup), vom
+  Admin einmalig eingerichtet. Trägt 1..N Identitäten.
+- **Identität** — Ein konkreter Zugang innerhalb einer Integration, in einem von zwei Modi:
+  *OBO-pro-Nutzer* oder *Dienst-Identität*.
+- **OBO (On-behalf-of)** — Der Assistent handelt **im Namen des aktuellen Nutzers**, mit
+  dessen persönlichem Token und dessen Rechten. Der Standardfall.
+- **Dienst-Identität (Service-Account)** — Eine geteilte, vom Admin angelegte Identität, mit
+  der ein Assistent **als er selbst** handelt (nicht im Namen einer Einzelperson) — eng
+  gescopt, gruppen-berechtigt, mit Pflicht-Scope-Beschreibung.
+- **Betriebsmodus** — Wie ein Assistent betrieben wird: *persönlich (OBO)*, *geteilter
+  Wissens-/Service-Zugang (B1)* oder *autonom/geplant (B2)*.
 - **Tool** — Eine einzelne, eng umrissene Aktion gegen das System (suchen, lesen, …); die
   Maschinen-Schnittstelle.
 - **Agent** — Ein kuratierter Assistent mit Fachverhalten, der die Tools eines Systems

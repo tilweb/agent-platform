@@ -103,7 +103,7 @@ export async function scoreConfidences(
   merged: Record<string, unknown>,
   profile: ExtractionProfile,
   userId: string,
-  options: { useLLM?: boolean } = {},
+  options: { useLLM?: boolean; modelOverride?: { providerId: string; modelId: string } } = {},
 ): Promise<{ confidences: Record<string, number>; llmCalls: number }> {
   const candidates = gatherFieldCandidates(chunks, merged, profile);
   const confidences: Record<string, number> = {};
@@ -166,7 +166,10 @@ Nutze die Feld-Pfade, die ich dir gebe — keine zusaetzlichen Schluessel.`,
     };
 
     try {
-      const response = await llmService.chat(messages, undefined, usageContext, { userId });
+      const response = await llmService.chat(messages, undefined, usageContext, {
+        userId,
+        ...(options.modelOverride ? { modelOverride: options.modelOverride } : {}),
+      });
       llmCalls += 1;
       const content = response.content || '{}';
       const jsonMatch = content.match(/\{[\s\S]*\}/);

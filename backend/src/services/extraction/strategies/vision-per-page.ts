@@ -319,7 +319,8 @@ Wichtig:
       input.schema.profile,
       input.userId,
       // Abschaltbar via config (z.B. Eval-Laeufe) — Default true.
-      { useLLM: input.schema.config.llm_confidence },
+      // Konfidenz-Call laeuft auf demselben Modell wie die Extraktion.
+      { useLLM: input.schema.config.llm_confidence, ...(options.modelOverride ? { modelOverride: options.modelOverride } : {}) },
     );
     for (const p of provenance) {
       p.confidence = confidences[p.field] ?? 0;
