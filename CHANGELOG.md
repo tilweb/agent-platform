@@ -2,6 +2,19 @@
 
 ## 2026-08-04
 
+### UX: Extraktion — fehlende Erklärtexte ergänzt (Wellen 5/6)
+Eine Durchsicht der Oberfläche nach drei Lücken, die beim Testen aufgefallen sind:
+- **Werteliste aus einer Tabellenspalte** hatte gar keinen Erklärtext (der vorhandene hing nur am
+  Zweig „Feste Liste"). Jetzt steht dort, dass die Spaltenwerte zwar zum Angleichen und Prüfen
+  dienen, aber **bewusst nicht in den Extraktions-Prompt** gehen (Tabellen können zu groß sein) —
+  und dass eine geänderte Tabelle sofort gilt.
+- **„Abweichung" und „automatisch angleichen"** waren nur beschriftet. Jetzt erklärt der Text die
+  tatsächliche Wirkung, inklusive des Unterschieds zwischen an/aus (angeglichen + protokolliert vs.
+  Rohwert bleibt stehen, nur Befund).
+- **Beim Anlegen** wies nichts darauf hin, dass Prüfregeln und Webhook erst in den Einstellungen
+  dazukommen und das Anlernen im Training-Tab passiert — ein Hinweis dazu steht jetzt über dem
+  „Projekt erstellen"-Button.
+
 ### Bugfix: Extraktion — Prüfregel-Buttons taten scheinbar nichts (Welle 5)
 „+ Summen-Check" und „+ Stammdaten-Abgleich" reagierten in manchen Projekten nicht auf Klicks. Sie
 waren `disabled` (fehlendes Listen-Feld, fehlendes Zahl-Feld, keine Tabelle) — aber Inline-Styles
