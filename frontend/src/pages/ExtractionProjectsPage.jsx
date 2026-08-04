@@ -596,6 +596,32 @@ function CatalogEditor({ catalog, onChange, compact = false }) {
   const source = catalog?.source || 'none';
   const table = tables.find(t => t.id === catalog?.table_id);
 
+  /**
+   * Der Rohtext der Werteliste lebt lokal — würde das Textfeld bei jedem
+   * Tastendruck aus den geparsten Werten neu gerendert, käme das Getippte
+   * normalisiert zurück: `trim()` frisst das Leerzeichen am Wortende, und eine
+   * gerade begonnene (noch leere) Zeile verschwindet sofort wieder. Nach außen
+   * gehen weiterhin die geparsten Werte.
+   */
+  const [valueText, setValueText] = useState(() => catalogValuesToText(catalog?.values));
+  const lastEmitted = useRef(valueText);
+
+  // Von außen gesetzte Werte übernehmen (Projektwechsel, Feldvorschlag aus einem
+  // Beispieldokument) — aber niemals die eigene, gerade getippte Eingabe.
+  useEffect(() => {
+    const incoming = catalogValuesToText(catalog?.values);
+    if (incoming !== catalogValuesToText(textToCatalogValues(lastEmitted.current))) {
+      lastEmitted.current = incoming;
+      setValueText(incoming);
+    }
+  }, [catalog?.values]);
+
+  function handleValueText(text) {
+    lastEmitted.current = text;
+    setValueText(text);
+    onChange({ ...catalog, values: textToCatalogValues(text) });
+  }
+
   function setSource(next) {
     if (next === 'none') return onChange(null);
     if (next === 'list') return onChange({ source: 'list', values: catalog?.values || [] });
@@ -673,8 +699,8 @@ function CatalogEditor({ catalog, onChange, compact = false }) {
         <div style={{ marginTop: theme.spacing.sm }}>
           <textarea
             style={{ ...styles.input, minHeight: 90, resize: 'vertical', fontFamily: 'inherit' }}
-            value={catalogValuesToText(catalog.values)}
-            onChange={e => onChange({ ...catalog, values: textToCatalogValues(e.target.value) })}
+            value={valueText}
+            onChange={e => handleValueText(e.target.value)}
             placeholder={'Ein Wert je Zeile. Schreibvarianten nach "=":\nAcme AG = acme, ACME Aktiengesellschaft\nMuster Bau GmbH'}
           />
           <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>

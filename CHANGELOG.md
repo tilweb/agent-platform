@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-08-04
+
+### Bugfix: Extraktion — Werteliste war praktisch nicht eintippbar (Welle 6)
+Im Feld „Zulässige Werte" ließ sich nur ein einziger Begriff eingeben: kein Leerzeichen am
+Wortende, kein Zeilenumbruch. Ursache war das Textfeld selbst — sein Inhalt wurde bei **jedem
+Tastendruck** aus den geparsten Werten neu gerendert, und der Parser normalisiert (`trim()` je Zeile,
+leere Zeilen raus). Damit verschwand das gerade getippte Leerzeichen sofort wieder, und eine neu
+begonnene (noch leere) Zeile ebenso. Der Rohtext lebt jetzt im lokalen State des Editors; nach außen
+gehen weiterhin die geparsten Werte, und von außen gesetzte Werte (Projektwechsel, Feldvorschlag aus
+einem Beispieldokument) überschreiben die eigene Eingabe nicht mehr. Verifiziert mit einer
+Tastendruck-Simulation über die echten Parse-Helfer: getippter und angezeigter Text bleiben
+zeichengleich, die geparste Werteliste stimmt, externes Setzen schlägt weiterhin durch.
+
 ## 2026-08-03
 
 ### Feature: Extraktion — kontrollierte Wertelisten als Ground Truth (Ausbau-Welle 6)
