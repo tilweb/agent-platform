@@ -80,7 +80,7 @@ export default function IdeeZiele({ projektidee, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>2. Ziele</h2>
+        <h2 style={styles.title}>Ziele</h2>
         <p style={styles.subtitle}>
           Skizzieren Sie die Ziele der Projektidee. Erfolgskriterien folgen spaeter im Projektauftrag.
         </p>

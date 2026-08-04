@@ -147,6 +147,19 @@ Projekt (`rules`), konfigurierbar in den Projekt-Einstellungen:
 
 ## 2026-07-29
 
+### PM: Projektidee — Test-Feedback Block 1 (Nummerierung, Projekttreiber-Select, Config-Labels, Personen)
+- **Nummerierung raus**: alle Wissensgebiet-Überschriften ohne führende Nummer (Basis, Personen, Ziele,
+  Projektkontext, Business Case, Unternehmensrisiken, Übersicht) — behebt zugleich die seit „Personen" (Step 2)
+  verschobene Nummerierung.
+- **Projekttreiber** ist jetzt ein **Auswahlfeld** aus der Config-Liste `project_driver` (vorher Freitext).
+- **Übersicht + Export** lösen Projekttyp / Projektgröße / Projektstatus / Priorität / Projekttreiber jetzt über
+  die **Config-Listen** auf statt über hartkodierte Label-Maps — behebt „wird nicht angezeigt" (Custom-Werte)
+  und „Schlüssel statt Name" (Projektstatus).
+- **Personen** (Projektteam + Stakeholder) erscheinen jetzt in **Übersicht** und **Export**.
+- **Business-Case-Beträge** werden formatiert dargestellt („X.XXX,XX €"), beim Editieren roh.
+- **Datum** einheitlich DD.MM.YYYY in Übersicht + Export.
+- Beide Worktrees; Frontend + idee-mapper byte-identisch, Route reicht die App-Config an den Export-Mapper.
+
 ### PM: Portfolio-Kosten überarbeitet (Test-Feedback: Umbenennungen + Plan / Ist+Forecast / △ Kosten)
 - **Umbenennungen**: „Prognose (EAC)" → **Kosten-Prognose**, „Plan-Ende" → **Termin-Ende (PA)**,
   „Prognose-Termin" → **Termin-Prognose**.

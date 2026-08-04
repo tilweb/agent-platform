@@ -89,7 +89,7 @@ export default function IdeeBasis({ projektidee, onChange, config }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>1. Basisdaten</h2>
+        <h2 style={styles.title}>Basisdaten</h2>
         <p style={styles.subtitle}>
           Erfassen Sie die grundlegenden Informationen zur Projektidee.
         </p>
@@ -171,15 +171,16 @@ export default function IdeeBasis({ projektidee, onChange, config }) {
         </div>
         <div style={styles.formGroup}>
           <label style={styles.label}>Projekttreiber</label>
-          <input
-            type="text"
+          <select
             value={projektidee.projekttreiber || ''}
             onChange={(e) => update('projekttreiber', e.target.value)}
-            placeholder="z.B. Marketing, IT-Strategie"
-            style={styles.input}
-            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
-            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
-          />
+            style={styles.select}
+          >
+            <option value="">— Bitte wählen —</option>
+            {opts('project_driver').map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 

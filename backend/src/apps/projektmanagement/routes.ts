@@ -1793,7 +1793,7 @@ projektmanagement.get('/projektideen/:id/export/:format', async (c) => {
       return c.json({ error: 'Unsupported format. Use md, pdf, docx, or json.' }, 400);
     }
 
-    const documentData = mapProjektideeToDocument(idee);
+    const documentData = mapProjektideeToDocument(idee, await getConfig());
     const buffer = await generateDocument(documentData, format as DocumentFormat);
     const mimeType = getMimeType(format as DocumentFormat);
     const extension = getFileExtension(format as DocumentFormat);

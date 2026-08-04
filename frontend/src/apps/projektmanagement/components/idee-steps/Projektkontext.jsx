@@ -169,7 +169,7 @@ export default function Projektkontext({ projektidee, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>3. Projektkontext</h2>
+        <h2 style={styles.title}>Projektkontext</h2>
         <p style={styles.subtitle}>
           Beschreiben Sie das Umfeld, in dem die Idee entstanden ist und realisiert werden soll.
         </p>

@@ -57,10 +57,23 @@ function formatDate(dateStr?: string): string {
   try {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return dateStr;
-    return date.toLocaleDateString('de-DE');
+    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   } catch {
     return dateStr;
   }
+}
+
+// Löst einen Wert über die App-Config-Liste zu ihrem Label auf; Fallback auf die
+// statische Label-Map, dann auf den Rohwert. '-' wenn leer.
+function configLabel(
+  config: Record<string, any> | undefined,
+  key: string,
+  value: string | undefined | null,
+  fallback: Record<string, string> = {},
+): string {
+  if (value == null || value === '') return '-';
+  const found = config?.[key]?.find?.((o: any) => o.value === value);
+  return found?.label ?? fallback[value] ?? value;
 }
 
 function formatCurrency(amount: number): string {
@@ -77,7 +90,7 @@ function fmt(v: string | undefined | null): string {
   return v;
 }
 
-export function mapProjektideeToDocument(idee: Projektidee): DocumentData {
+export function mapProjektideeToDocument(idee: Projektidee, config?: Record<string, any>): DocumentData {
   const sections: DocumentSection[] = [];
 
   // ============== Tab 1: Basis ==============
@@ -88,12 +101,12 @@ export function mapProjektideeToDocument(idee: Projektidee): DocumentData {
       items: [
         { key: 'Projektname', value: fmt(idee.name) },
         { key: 'Projekt-ID', value: fmt(idee.projekt_id) },
-        { key: 'Projekttyp', value: PROJECT_TYPE_LABELS[idee.project_type ?? ''] ?? '-' },
-        { key: 'Projektidee Status', value: STATUS_LABELS[idee.status] ?? idee.status },
-        { key: 'Projektstatus', value: fmt(idee.project_status) },
-        { key: 'Projekttreiber', value: fmt(idee.projekttreiber) },
-        { key: 'Projektgroesse', value: SIZE_LABELS[idee.projektgroesse ?? ''] ?? '-' },
-        { key: 'Prioritaet', value: PRIO_LABELS[idee.prioritaet ?? ''] ?? '-' },
+        { key: 'Projekttyp', value: configLabel(config, 'project_type', idee.project_type, PROJECT_TYPE_LABELS) },
+        { key: 'Projektidee Status', value: configLabel(config, 'idee_status', idee.status, STATUS_LABELS) },
+        { key: 'Projektstatus', value: configLabel(config, 'project_status', idee.project_status) },
+        { key: 'Projekttreiber', value: configLabel(config, 'project_driver', idee.projekttreiber) },
+        { key: 'Projektgroesse', value: configLabel(config, 'project_size', idee.projektgroesse, SIZE_LABELS) },
+        { key: 'Prioritaet', value: configLabel(config, 'priority', idee.prioritaet, PRIO_LABELS) },
         { key: 'Startdatum', value: formatDate(idee.start_date) },
         { key: 'Enddatum', value: formatDate(idee.end_date) },
         { key: 'Projektleiter', value: fmt(idee.projektleiter) },
@@ -101,6 +114,41 @@ export function mapProjektideeToDocument(idee: Projektidee): DocumentData {
       ],
     },
   });
+
+  // ============== Tab 2: Personen ==============
+  const team = idee.organization ?? [];
+  const stakeholders = idee.stakeholders ?? [];
+  if (team.length > 0) {
+    sections.push({
+      title: 'Projektteam',
+      type: 'table',
+      content: {
+        headers: ['Name', 'Rolle', 'Geplanter Einsatz'],
+        rows: team.map((m) => [
+          m.name || '-',
+          m.role || '-',
+          m.geplanter_einsatz?.wert
+            ? `${m.geplanter_einsatz.wert} ${m.geplanter_einsatz.einheit ?? ''}`.trim()
+            : '-',
+        ]),
+      },
+    });
+  }
+  if (stakeholders.length > 0) {
+    sections.push({
+      title: 'Stakeholder',
+      type: 'table',
+      content: {
+        headers: ['Name', 'Rolle', 'Interesse', 'Einfluss'],
+        rows: stakeholders.map((s) => [
+          s.name || '-',
+          s.role || '-',
+          configLabel(config, 'interest', s.interest, LEVEL_LABELS),
+          configLabel(config, 'influence', s.influence, LEVEL_LABELS),
+        ]),
+      },
+    });
+  }
 
   if (idee.description) {
     sections.push({
