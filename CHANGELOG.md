@@ -2,6 +2,19 @@
 
 ## 2026-08-04
 
+### Bugfix: Extraktion — Prüfregel-Buttons taten scheinbar nichts (Welle 5)
+„+ Summen-Check" und „+ Stammdaten-Abgleich" reagierten in manchen Projekten nicht auf Klicks. Sie
+waren `disabled` (fehlendes Listen-Feld, fehlendes Zahl-Feld, keine Tabelle) — aber Inline-Styles
+kennen kein `:disabled`, der gesperrte Button sah also **exakt aus wie ein klickbarer, der nichts
+tut**. Für zwei der vier Sperrgründe fehlte zudem jede Erklärung.
+- Gesperrte Buttons sind jetzt sichtbar ausgegraut, und der Grund steht **im Klartext unter den
+  Buttons** (nicht nur als Tooltip): welches Feld bzw. welche Tabelle fehlt und wo man sie anlegt.
+- Ein Summen-Check wird nur noch angeboten, wenn es ein Listen-Feld **mit Zahl-Spalte** gibt —
+  vorher liess sich in solchen Projekten eine Regel anlegen, die nie vollständig ausfüllbar war.
+- Neue Regeln sind sofort gültig vorbelegt (erste Zahl-Spalte, erste Tabellenspalte). Vorher blieb
+  `item_field` leer, und das Speichern scheiterte an „Prüfregel: Spalte "" existiert nicht" —
+  verifiziert: die neue Vorbelegung speichert durch, die alte wurde abgelehnt.
+
 ### Bugfix: Extraktion — Werteliste war praktisch nicht eintippbar (Welle 6)
 Im Feld „Zulässige Werte" ließ sich nur ein einziger Begriff eingeben: kein Leerzeichen am
 Wortende, kein Zeilenumbruch. Ursache war das Textfeld selbst — sein Inhalt wurde bei **jedem

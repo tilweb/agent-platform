@@ -3431,7 +3431,10 @@ function RulesEditor({ rules, fields, onChange }) {
   }, []);
 
   const named = fields.filter(f => f.label.trim());
-  const listFields = named.filter(f => f.type === 'list');
+  // Nur Listen mit einer Zahl-Spalte taugen für einen Summen-Check — sonst
+  // liesse sich die Regel anlegen, aber nie vollständig ausfüllen.
+  const numberColumns = f => (f.item_fields || []).filter(c => c.type === 'number' && c.label?.trim());
+  const listFields = named.filter(f => f.type === 'list' && numberColumns(f).length > 0);
   const numberFields = named.filter(f => f.type === 'number');
   const scalarFields = named.filter(f => f.type !== 'list');
 
@@ -3441,25 +3444,66 @@ function RulesEditor({ rules, fields, onChange }) {
 
   function addRule(type) {
     const id = `rule_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
+    // Sinnvoll vorbelegen: eine frisch angelegte Regel ist damit sofort gültig
+    // und muss nicht erst durch drei Dropdowns komplettiert werden.
     onChange([
       ...rules,
       type === 'sum'
-        ? { id, type: 'sum', list_field: listFields[0]?.id || '', item_field: '', target_field: numberFields[0]?.id || '' }
-        : { id, type: 'lookup', field: scalarFields[0]?.id || '', table_id: tables[0]?.id || '', column_id: '', severity: 'error' },
+        ? {
+            id,
+            type: 'sum',
+            list_field: listFields[0]?.id || '',
+            item_field: numberColumns(listFields[0] || {})[0]?.id || '',
+            target_field: numberFields[0]?.id || '',
+          }
+        : {
+            id,
+            type: 'lookup',
+            field: scalarFields[0]?.id || '',
+            table_id: tables[0]?.id || '',
+            column_id: tables[0]?.columns?.[0]?.id || '',
+            severity: 'error',
+          },
     ]);
   }
 
+  // Eine Regel braucht Felder, auf die sie zeigen kann. Fehlen die, wird der
+  // Button gesperrt — dann muss aber SICHTBAR sein warum: Inline-Styles kennen
+  // kein `:disabled`, ein gesperrter Button sieht sonst aus wie ein klickbarer,
+  // der nichts tut.
+  const sumBlocked = listFields.length === 0
+    ? 'Ein Summen-Check braucht ein Listen-Feld (Positionen) mit einer Zahl-Spalte — lege oben ein Feld vom Typ „Liste / Positionen" an.'
+    : numberFields.length === 0
+      ? 'Ein Summen-Check braucht ein Zahl-Feld als Ziel (z. B. „Gesamtbetrag") — lege oben ein Feld vom Typ „Zahl" an.'
+      : '';
+  const lookupBlocked = scalarFields.length === 0
+    ? 'Ein Stammdaten-Abgleich braucht mindestens ein einfaches Feld (kein Listen-Feld).'
+    : tables.length === 0
+      ? 'Ein Stammdaten-Abgleich prüft gegen eine Tabellenspalte — es existiert noch keine Tabelle (Verwaltung → Tabellen).'
+      : '';
+
   const selectStyle = { ...styles.select, width: '100%' };
+  const blockedBtnStyle = { ...styles.secondaryBtn, opacity: 0.45, cursor: 'not-allowed' };
 
   return (
     <div style={styles.section}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
         <div style={styles.sectionTitle}>Prüfregeln</div>
         <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-          <button style={styles.secondaryBtn} onClick={() => addRule('sum')} disabled={listFields.length === 0 || numberFields.length === 0}>
+          <button
+            style={sumBlocked ? blockedBtnStyle : styles.secondaryBtn}
+            onClick={() => addRule('sum')}
+            disabled={!!sumBlocked}
+            title={sumBlocked || 'Positions-Spalte muss auf ein Zielfeld summieren'}
+          >
             + Summen-Check
           </button>
-          <button style={styles.secondaryBtn} onClick={() => addRule('lookup')} disabled={scalarFields.length === 0 || tables.length === 0}>
+          <button
+            style={lookupBlocked ? blockedBtnStyle : styles.secondaryBtn}
+            onClick={() => addRule('lookup')}
+            disabled={!!lookupBlocked}
+            title={lookupBlocked || 'Feldwert muss in einer Tabellenspalte vorkommen'}
+          >
             + Stammdaten-Abgleich
           </button>
         </div>
@@ -3469,11 +3513,21 @@ function RulesEditor({ rules, fields, onChange }) {
         Prüfregeln bewerten die <strong>fachliche Plausibilität</strong> — unabhängig von der Konfidenz.
         Ein verletzter Summen-Check oder ein unbekannter Stammdaten-Wert hebt das Dokument im
         Verarbeiten-Tab auf „Zu prüfen" und wird dort im Klartext angezeigt.
-        {listFields.length === 0 && ' Für einen Summen-Check braucht das Projekt ein Listen-Feld mit einer Zahl-Spalte.'}
-        {tables.length === 0 && ' Für einen Stammdaten-Abgleich braucht es mindestens eine Tabelle.'}
       </InfoBox>
 
-      {rules.length === 0 && (
+      {/* Warum ein Button gesperrt ist, gehört sichtbar neben den Button — nicht
+          nur in einen Tooltip, den niemand sucht. */}
+      {(sumBlocked || lookupBlocked) && (
+        <div style={{ marginTop: theme.spacing.md, display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
+          {[sumBlocked, lookupBlocked].filter(Boolean).map((reason, i) => (
+            <div key={i} style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+              {reason}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {rules.length === 0 && !sumBlocked && !lookupBlocked && (
         <div style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
           Keine Prüfregeln definiert.
         </div>
