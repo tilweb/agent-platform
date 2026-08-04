@@ -709,6 +709,26 @@ function CatalogEditor({ catalog, onChange, compact = false }) {
           </div>
         </div>
       )}
+
+      {/* Der Tabellen-Fall braucht eine eigene Erklärung: hier gehen die Werte
+          bewusst NICHT in den Prompt (Tabellen können tausende Zeilen haben). */}
+      {source === 'table' && (
+        <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+          Die Spaltenwerte werden beim Angleichen und Prüfen verwendet, gehen aber <strong>nicht</strong> in
+          den Extraktions-Prompt — dafür können Tabellen zu groß sein. Wer die Werte auch der KI vorgeben
+          will, pflegt sie als feste Liste. Ändert sich die Tabelle, gilt der neue Stand sofort.
+        </div>
+      )}
+
+      {source !== 'none' && (
+        <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+          <strong>Abweichung:</strong> „Zu prüfen erzwingen" hebt das Dokument im Verarbeiten-Tab ins Review —
+          unabhängig davon, wie sicher sich die KI war. „Nur Hinweis" zeigt den Befund an, ohne das Review auszulösen.
+          {' '}<strong>Automatisch angleichen:</strong> {catalog.auto_map !== false
+            ? 'an — eindeutige Treffer werden auf die Katalog-Schreibweise gesetzt und protokolliert (der Rohwert bleibt im Protokoll sichtbar).'
+            : 'aus — der extrahierte Wert bleibt unverändert stehen, die Abweichung wird nur gemeldet.'}
+        </div>
+      )}
     </div>
   );
 }
@@ -1684,6 +1704,14 @@ function CreateProjectView({ onBack, onCreated }) {
               </div>
             ))}
           </div>
+
+          {/* Was hier bewusst NICHT steht, sollte man wissen, bevor man es sucht. */}
+          <InfoBox style={{ marginBottom: theme.spacing.lg }}>
+            <strong>Nach dem Anlegen</strong> kommen in den <strong>Einstellungen</strong> die
+            <strong> Prüfregeln</strong> dazu (Summen-Check über Positionen, Stammdaten-Abgleich gegen eine
+            Tabelle) sowie ein <strong>Webhook</strong> für Ergebnis-Meldungen. Im Tab <strong>Training</strong>
+            lernst du das Projekt an Beispieldokumenten an — ab drei Korrekturen leitet es eigene Regeln ab.
+          </InfoBox>
 
           {error && (
             <div style={{ color: theme.colors.error, fontSize: theme.typography.sizes.sm, marginBottom: theme.spacing.lg }}>
