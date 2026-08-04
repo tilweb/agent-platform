@@ -6,6 +6,7 @@
  * Vorzeichen wird nur in der Berechnung interpretiert.
  */
 
+import { useState } from 'react';
 import { theme } from '../../../../config/theme';
 
 const styles = {
@@ -137,6 +138,49 @@ function formatEuro(value) {
   return value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 }
 
+// Parst einen (auch deutsch formatierten) Betrags-String zu einer Zahl.
+function parseEuro(s) {
+  if (typeof s === 'number') return Number.isFinite(s) ? s : 0;
+  let t = String(s ?? '').replace(/[^\d.,-]/g, '').trim();
+  if (t === '') return 0;
+  if (t.includes('.') && t.includes(',')) t = t.replace(/\./g, '').replace(',', '.'); // 1.234,56
+  else if (t.includes(',')) t = t.replace(',', '.');                                   // 1234,56
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Betrags-Eingabe: zeigt bei Nicht-Fokus formatiert „X.XXX,XX €", beim Fokus die
+// rohe Zahl zum Editieren. Übernimmt den geparsten Wert bei Blur.
+function EuroInput({ value, onChange, style }) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState('');
+  const display = focused
+    ? draft
+    : (Number.isFinite(value)
+      ? value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '');
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      style={style}
+      placeholder="0,00 €"
+      value={display}
+      onFocus={(e) => {
+        setFocused(true);
+        setDraft(value ? String(value) : '');
+        e.target.style.borderColor = theme.colors.primary;
+      }}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={(e) => {
+        setFocused(false);
+        onChange(parseEuro(draft));
+        e.target.style.borderColor = theme.colors.border;
+      }}
+    />
+  );
+}
+
 function generateId(prefix = 'bc') {
   const ts = Date.now().toString(36);
   const r = Math.random().toString(36).substring(2, 7);
@@ -182,16 +226,10 @@ function CategoryBlock({ title, items, onChange, prefix }) {
             onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
             onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
           />
-          <input
-            type="number"
-            min="0"
-            step="100"
-            style={{ ...styles.input, ...styles.numericInput }}
-            placeholder="0"
+          <EuroInput
             value={item.betrag ?? 0}
-            onChange={(e) => update(item.id, 'betrag', Number(e.target.value) || 0)}
-            onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
-            onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
+            onChange={(v) => update(item.id, 'betrag', v)}
+            style={{ ...styles.input, ...styles.numericInput }}
           />
           <button
             style={styles.removeButton}
@@ -242,7 +280,7 @@ export default function BusinessCase({ projektidee, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>4. Business Case</h2>
+        <h2 style={styles.title}>Business Case</h2>
         <p style={styles.hint}>
           Erfassen Sie alle Beträge positiv. Das Vorzeichen wird in der ROI-Berechnung
           automatisch interpretiert (Investitionen negativ, Nutzen positiv).

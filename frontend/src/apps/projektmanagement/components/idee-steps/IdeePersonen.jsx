@@ -16,6 +16,7 @@ export default function IdeePersonen({ projektidee, onChange, config }) {
       config={config}
       onChange={(delta) => onChange({ ...projektidee, ...delta })}
       showGeplanterEinsatz
+      title="Personen"
     />
   );
 }

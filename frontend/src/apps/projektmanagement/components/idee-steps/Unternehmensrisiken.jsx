@@ -153,7 +153,7 @@ export default function Unternehmensrisiken({ projektidee, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>5. Unternehmensrisiken</h2>
+        <h2 style={styles.title}>Unternehmensrisiken</h2>
         <p style={styles.subtitle}>
           Identifizieren und bewerten Sie potenzielle Unternehmensrisiken und -chancen, die mit dieser Idee verbunden sind.
         </p>

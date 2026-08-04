@@ -110,6 +110,20 @@ function fmt(v) {
   return v;
 }
 
+// Löst einen Wert über die Config-Liste zu ihrem Label auf (Fallback: Rohwert).
+function configLabel(config, key, value) {
+  if (value === null || value === undefined || value === '') return null;
+  const found = config?.[key]?.find((o) => o.value === value);
+  return found?.label ?? value;
+}
+
+// Einheitliches Datumsformat DD.MM.YYYY.
+function fmtDate(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? v : d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 function FieldRow({ label, value }) {
   return (
     <>
@@ -129,45 +143,30 @@ const STATUS_LABELS = {
   archived: 'Archiviert',
 };
 
-const PROJECT_TYPE_LABELS = {
-  internal: 'Internes Projekt',
-  external: 'Externes Projekt',
-  research: 'Forschungsprojekt',
-  infrastructure: 'Infrastrukturprojekt',
-};
-
-const SIZE_LABELS = {
-  klein: 'Klein',
-  mittel: 'Mittel',
-  gross: 'Groß',
-  sehr_gross: 'Sehr groß',
-};
-
-const PRIO_LABELS = {
-  low: 'Niedrig',
-  medium: 'Mittel',
-  high: 'Hoch',
-  critical: 'Kritisch',
-};
-
 const LEVEL_LABELS = {
   low: 'Niedrig',
   medium: 'Mittel',
   high: 'Hoch',
 };
 
-export default function IdeeUebersicht({ projektidee, onCreateAuftrag }) {
+export default function IdeeUebersicht({ projektidee, config, onCreateAuftrag }) {
   const idee = projektidee;
   const bc = idee.business_case ?? { investitionen: [], nutzen: [] };
   const sumInvest = bc.investitionen.reduce((a, i) => a + (Number(i.betrag) || 0), 0);
   const sumNutzen = bc.nutzen.reduce((a, i) => a + (Number(i.betrag) || 0), 0);
   const saldo = sumNutzen - sumInvest;
   const auftraege = idee.abgeleitete_auftraege ?? [];
+  const team = idee.organization ?? [];
+  const stakeholders = idee.stakeholders ?? [];
+  const personGroupTitle = {
+    fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text, marginBottom: theme.spacing.xs,
+  };
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>6. Übersicht</h2>
+        <h2 style={styles.title}>Übersicht</h2>
       </div>
 
       <div style={styles.card}>
@@ -175,17 +174,55 @@ export default function IdeeUebersicht({ projektidee, onCreateAuftrag }) {
         <div style={styles.fieldGrid}>
           <FieldRow label="Projektname" value={fmt(idee.name)} />
           <FieldRow label="Projekt-ID" value={fmt(idee.projekt_id)} />
-          <FieldRow label="Projekttyp" value={PROJECT_TYPE_LABELS[idee.project_type] ?? null} />
-          <FieldRow label="Projektidee Status" value={STATUS_LABELS[idee.status] ?? idee.status} />
-          <FieldRow label="Projektstatus" value={fmt(idee.project_status)} />
-          <FieldRow label="Projekttreiber" value={fmt(idee.projekttreiber)} />
-          <FieldRow label="Projektgröße" value={SIZE_LABELS[idee.projektgroesse] ?? null} />
-          <FieldRow label="Priorität" value={PRIO_LABELS[idee.prioritaet] ?? null} />
-          <FieldRow label="Startdatum" value={fmt(idee.start_date)} />
-          <FieldRow label="Enddatum" value={fmt(idee.end_date)} />
+          <FieldRow label="Projekttyp" value={configLabel(config, 'project_type', idee.project_type)} />
+          <FieldRow label="Projektidee Status" value={configLabel(config, 'idee_status', idee.status) ?? (STATUS_LABELS[idee.status] ?? idee.status)} />
+          <FieldRow label="Projektstatus" value={configLabel(config, 'project_status', idee.project_status)} />
+          <FieldRow label="Projekttreiber" value={configLabel(config, 'project_driver', idee.projekttreiber)} />
+          <FieldRow label="Projektgröße" value={configLabel(config, 'project_size', idee.projektgroesse)} />
+          <FieldRow label="Priorität" value={configLabel(config, 'priority', idee.prioritaet)} />
+          <FieldRow label="Startdatum" value={fmtDate(idee.start_date)} />
+          <FieldRow label="Enddatum" value={fmtDate(idee.end_date)} />
           <FieldRow label="Projektleiter" value={fmt(idee.projektleiter)} />
           <FieldRow label="Auftraggeber" value={fmt(idee.auftraggeber)} />
           <FieldRow label="Kurzbeschreibung" value={fmt(idee.description)} />
+        </div>
+      </div>
+
+      <div style={styles.card}>
+        <div style={styles.cardTitle}>Personen</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: theme.spacing.lg }}>
+          <div>
+            <div style={personGroupTitle}>Projektteam</div>
+            {team.length === 0 ? (
+              <div style={styles.noContent}>Keine Teammitglieder erfasst</div>
+            ) : (
+              <ul style={styles.bulletList}>
+                {team.map((m, i) => (
+                  <li key={m.id || i}>
+                    {m.name || '—'}{m.role ? ` — ${m.role}` : ''}
+                    {m.geplanter_einsatz?.wert ? ` (${m.geplanter_einsatz.wert} ${m.geplanter_einsatz.einheit || ''})` : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <div style={personGroupTitle}>Stakeholder</div>
+            {stakeholders.length === 0 ? (
+              <div style={styles.noContent}>Keine Stakeholder erfasst</div>
+            ) : (
+              <ul style={styles.bulletList}>
+                {stakeholders.map((s, i) => (
+                  <li key={s.id || i}>
+                    {s.name || '—'}{s.role ? ` — ${s.role}` : ''}
+                    {(s.interest || s.influence)
+                      ? ` (Interesse: ${configLabel(config, 'interest', s.interest) ?? '—'}, Einfluss: ${configLabel(config, 'influence', s.influence) ?? '—'})`
+                      : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
 
