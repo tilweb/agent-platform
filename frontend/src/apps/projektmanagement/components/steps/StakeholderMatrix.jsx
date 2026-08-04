@@ -6,11 +6,25 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { theme } from '../../../../config/theme';
 
-const PADDING = { top: 24, right: 24, bottom: 56, left: 80 };
+const PADDING = { top: 24, right: 24, bottom: 68, left: 80 };
 const MIN_CELL = 80;
 const AVATAR_R = 18;
 
-function StakeholderMatrix({ people, interestOptions, influenceOptions, roleOptions }) {
+// Bricht ein langes Achsen-Label in mehrere Zeilen (greedy nach Wörtern),
+// damit die X-Achsenbeschriftung lesbar bleibt statt zu überlappen.
+function wrapLabel(label, maxChars = 12) {
+  const words = String(label ?? '').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    if (cur && (cur.length + 1 + w.length) > maxChars) { lines.push(cur); cur = w; }
+    else cur = cur ? `${cur} ${w}` : w;
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
+function StakeholderMatrix({ people, interestOptions, influenceOptions, roleOptions, quadrantOptions }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(600);
   const [tooltip, setTooltip] = useState(null);
@@ -111,13 +125,15 @@ function StakeholderMatrix({ people, interestOptions, influenceOptions, roleOpti
     if (cols < 2 || rows < 2) return [];
     const midCol = Math.floor(cols / 2);
     const midRow = Math.floor(rows / 2);
+    // Quadranten-Texte aus der Config (stakeholder_quadrants); Fallback = Standard.
+    const qLabel = (val, fallback) => (quadrantOptions || []).find((q) => q.value === val)?.label ?? fallback;
     return [
-      { x: midCol / 2, y: midRow / 2, label: 'Ausreichend informieren', color: theme.colors.textMuted },
-      { x: (cols + midCol) / 2, y: midRow / 2, label: 'Regelmäßig informieren', color: theme.colors.textMuted },
-      { x: midCol / 2, y: (rows + midRow) / 2, label: 'Gut informieren und einbeziehen', color: theme.colors.textMuted },
-      { x: (cols + midCol) / 2, y: (rows + midRow) / 2, label: 'Umfangreich informieren und einbeziehen', color: theme.colors.primary },
+      { x: midCol / 2, y: midRow / 2, label: qLabel('hi_influence_lo_interest', 'Ausreichend informieren'), color: theme.colors.textMuted },
+      { x: (cols + midCol) / 2, y: midRow / 2, label: qLabel('hi_influence_hi_interest', 'Regelmäßig informieren'), color: theme.colors.textMuted },
+      { x: midCol / 2, y: (rows + midRow) / 2, label: qLabel('lo_influence_lo_interest', 'Gut informieren und einbeziehen'), color: theme.colors.textMuted },
+      { x: (cols + midCol) / 2, y: (rows + midRow) / 2, label: qLabel('lo_influence_hi_interest', 'Umfangreich informieren und einbeziehen'), color: theme.colors.primary },
     ];
-  }, [cols, rows]);
+  }, [cols, rows, quadrantOptions]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', position: 'relative' }}>
@@ -185,25 +201,31 @@ function StakeholderMatrix({ people, interestOptions, influenceOptions, roleOpti
             );
           })}
 
-          {/* X-axis labels (Interesse) */}
-          {interestOptions.map((opt, i) => (
-            <text
-              key={`xl-${i}`}
-              x={PADDING.left + i * cellW + cellW / 2}
-              y={PADDING.top + gridH + 20}
-              textAnchor="middle"
-              fill={theme.colors.textSecondary}
-              fontSize="12"
-              fontWeight="500"
-            >
-              {opt.label}
-            </text>
-          ))}
+          {/* X-axis labels (Interesse) — mehrzeilig für Lesbarkeit */}
+          {interestOptions.map((opt, i) => {
+            const cx = PADDING.left + i * cellW + cellW / 2;
+            const lines = wrapLabel(opt.label, 12);
+            return (
+              <text
+                key={`xl-${i}`}
+                x={cx}
+                y={PADDING.top + gridH + 16}
+                textAnchor="middle"
+                fill={theme.colors.textSecondary}
+                fontSize="11"
+                fontWeight="500"
+              >
+                {lines.map((ln, li) => (
+                  <tspan key={li} x={cx} dy={li === 0 ? 0 : 12}>{ln}</tspan>
+                ))}
+              </text>
+            );
+          })}
 
           {/* X-axis title */}
           <text
             x={PADDING.left + gridW / 2}
-            y={PADDING.top + gridH + 44}
+            y={PADDING.top + gridH + 56}
             textAnchor="middle"
             fill={theme.colors.text}
             fontSize="12"
@@ -261,7 +283,7 @@ function StakeholderMatrix({ people, interestOptions, influenceOptions, roleOpti
                 <g
                   key={person.id || `${key}-${pi}`}
                   style={{ cursor: 'pointer' }}
-                  onMouseEnter={(e) => {
+                  onMouseEnter={() => {
                     const rect = containerRef.current?.getBoundingClientRect();
                     if (rect) {
                       const scale = rect.width / svgW;
