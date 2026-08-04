@@ -109,7 +109,9 @@ den Lern-Loop informativ macht.
 Erster Nutzer des längst konfigurierten, aber ungenutzten Embedding-Modells
 (`multilingual-e5-large`, 1024 Dim.). Embedding entsteht beim Speichern; fehlende werden im
 Hintergrund nachgetragen (max. 20, mit Lock). Ohne Modell, bei hängendem Dienst oder mit
-`EXTRACTION_SIMILARITY_FEWSHOT=0` bleibt exakt das alte Verhalten.
+`EXTRACTION_SIMILARITY_FEWSHOT=0` bleibt exakt das alte Verhalten. Das Zeitlimit des
+Embedding-Aufrufs steuert `EXTRACTION_EMBED_TIMEOUT_MS` (Default 8000) — läuft es ab, gilt das
+Embedding als nicht verfügbar und die Auswahl fällt zurück, ohne die Extraktion zu verzögern.
 
 ## Persistenz & Divergenz
 
