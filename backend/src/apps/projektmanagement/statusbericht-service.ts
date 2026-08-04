@@ -146,7 +146,7 @@ export async function createStatusbericht(projektId: string, userId: string): Pr
   const costMonths = prefillCostMonths(monthKeys, costBudget, last?.cost_months);
 
   const now = new Date().toISOString();
-  const today = now.split('T')[0];
+  const today = now.split('T')[0] ?? '';
 
   // === Tab: Risiken ===
   let riskTracking: RiskTrackingItem[];
@@ -192,7 +192,7 @@ export async function createStatusbericht(projektId: string, userId: string): Pr
     projekt_id: projektId,
     nummer,
     ampel: 'gruen',
-    datum: now.split('T')[0],
+    datum: now.split('T')[0] ?? '',
     management_summary: '',
     goals_snapshot: goalsSnapshot,
     goals_tracking: goalsTracking,
@@ -295,7 +295,7 @@ export async function getDashboard(): Promise<StatusberichtDashboardEntry[]> {
     const berichte = await getStatusberichte(projekt.id);
     if (berichte.length === 0) continue;
 
-    const latest = berichte[berichte.length - 1];
+    const latest = berichte[berichte.length - 1]!;
     entries.push({
       projekt_id: projekt.id,
       projekt_name: projekt.name,

@@ -879,7 +879,7 @@ function normalizeIdeeProjektgroesse(value: unknown): Projektidee['projektgroess
   const map: Record<string, NonNullable<Projektidee['projektgroesse']>> = {
     klein: 'klein', small: 'klein',
     mittel: 'mittel', medium: 'mittel', mid: 'mittel',
-    gross: 'gross', 'gross': 'gross', large: 'gross', big: 'gross', groß: 'gross',
+    gross: 'gross', large: 'gross', big: 'gross', groß: 'gross',
     sehr_gross: 'sehr_gross', 'sehr gross': 'sehr_gross', 'sehr_groß': 'sehr_gross', 'sehr groß': 'sehr_gross', xlarge: 'sehr_gross',
   };
   return map[value.toLowerCase().trim()];

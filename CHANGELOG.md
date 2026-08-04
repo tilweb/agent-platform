@@ -160,6 +160,16 @@ Projekt (`rules`), konfigurierbar in den Projekt-Einstellungen:
 
 ## 2026-07-29
 
+### PM: tsc-Cleanup Projektmanagement-Modul (0 Fehler)
+Alle vorbestehenden TypeScript-Fehler im `apps/projektmanagement`-Modul behoben (main 21, railway 28) —
+`noUncheckedIndexedAccess`-Guards, `instanceof File`-Typumgebung (FormData-Cast), Buffer→BodyInit-Casts,
+LLM-`source`-Union-Cast, Doppel-Export `updateProjektauftrag` (index.ts).
+- **2 echte Bugs (nur railway)**: doppelte Object-Keys — in `createProjektauftrag` (id/created_at/updated_at/
+  created_by standen vor UND nach `...data`) und in der `import-service`-Größen-Map (`'gross'` doppelt). Beide
+  wurden bereinigt bzw. an die main-Variante angeglichen.
+- Reines Typing/Cleanup ohne Verhaltensänderung (außer den 2 Bug-Fixes). Übrige Module (services/connections/…)
+  bleiben dokumentierte Tech-Debt.
+
 ### PM: Projektidee — abgeleitete Projektaufträge manuell verknüpfbar (Test-Feedback Block 4)
 - Neue Basisdaten-Sektion **„Abgeleitete Projektaufträge"**: vorhandene Projektaufträge **verknüpfen/lösen**
   (setzt/löscht `auftrag.idee_id`) — nicht mehr nur die automatische Erzeugung über „Auftrag aus Idee erstellen".

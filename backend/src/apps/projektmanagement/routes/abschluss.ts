@@ -219,7 +219,7 @@ abschlussRoutes.get('/projektauftraege/:projektId/abschlussbericht/export/:forma
 
     const buffer = await generateDocument(documentData, format);
     const filename = `Abschlussbericht_${auftrag?.name || projektId}.${getFileExtension(format)}`;
-    return new Response(buffer, {
+    return new Response(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': getMimeType(format),
         'Content-Disposition': `attachment; filename="${filename}"`,
