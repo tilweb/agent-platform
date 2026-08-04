@@ -33,6 +33,11 @@ extractionInboxRoutes.post('/inbox', async (c) => {
     return c.json({ error: 'multipart/form-data mit Dateien erforderlich' }, 400);
   }
   const formData = await c.req.formData();
+  // `split=false` behandelt jede Datei als EIN Dokument (keine Trennung an
+  // vermuteten Dokumentgrenzen) — fuer Quellen, die ohnehin je Vorgang eine
+  // Datei liefern. Default bleibt das bisherige Verhalten.
+  const splitRaw = formData.get('split');
+  const split = !(typeof splitRaw === 'string' && ['false', '0', 'nein'].includes(splitRaw.toLowerCase()));
   const uploads = formData.getAll('files').filter((f): f is File => f instanceof File);
   if (uploads.length === 0) {
     return c.json({ error: 'Keine Dateien hochgeladen' }, 400);
@@ -53,7 +58,7 @@ extractionInboxRoutes.post('/inbox', async (c) => {
     const upload = await createUpload({ filename: file.name, mimeType: file.type || undefined });
     created.push({ id: upload.id, filename: upload.filename });
     // Fire-and-forget — die Pipeline räumt tempPath selbst auf.
-    void processInboxUpload(upload.id, tempPath, { filename: file.name, mimeType: file.type || undefined })
+    void processInboxUpload(upload.id, tempPath, { filename: file.name, mimeType: file.type || undefined }, undefined, { split })
       .catch((err) => console.error('[inbox] processInboxUpload error:', err instanceof Error ? err.message : err));
   }
 

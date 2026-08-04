@@ -20,13 +20,17 @@ import { mkdir, rm } from 'fs/promises';
 import { PublicFunctionError } from '../public-api/types';
 import type { JsonSchema, PublicFunction } from '../public-api/types';
 import {
+  buildBatchExportSections,
+  countExportRows,
   createBatchRun,
   extract,
   getAllProjects,
   getBatchRun,
   getProject,
   runBatchExtraction,
+  type ExportFormat,
 } from './learning';
+import { generateDocument } from '../services/documentGenerator';
 import { isDeliverableUrl } from './learning/webhook';
 
 /** Maximale Dokumentenzahl je Batch-Anfrage. */
@@ -374,9 +378,68 @@ export const batchGetFunction: PublicFunction<{ project_id: string; run_id: stri
   },
 };
 
+export const batchExportFunction: PublicFunction<
+  { project_id: string; run_id: string; format?: ExportFormat },
+  unknown
+> = {
+  id: 'batch.export',
+  description:
+    'Liefert die Ergebnisse eines Stapel-Laufs als Excel-Datei (base64). Format "flat" (Default) gibt EIN Blatt mit einer Zeile je Position und wiederholten Belegdaten — direkt zeilenweise einlesbar; "grouped" gibt ein Hauptblatt je Dokument plus ein Zusatzblatt je Positionsliste.',
+  input: {
+    type: 'object',
+    properties: {
+      project_id: { type: 'string', minLength: 1 },
+      run_id: { type: 'string', minLength: 1 },
+      format: { type: 'string', enum: ['flat', 'grouped'], description: 'Default: flat' },
+    },
+    required: ['project_id', 'run_id'],
+  },
+  output: {
+    type: 'object',
+    properties: {
+      filename: { type: 'string' },
+      content_base64: { type: 'string', description: 'XLSX-Datei, base64-kodiert.' },
+      rows: { type: 'integer', description: 'Anzahl Datenzeilen im Export.' },
+      format: { type: 'string' },
+    },
+    required: ['filename', 'content_base64', 'rows'],
+  },
+  defaultRateLimit: { requests: 60, windowSec: 60 },
+  async handler(input) {
+    const project = await getProject(input.project_id);
+    if (!project) throw new PublicFunctionError(`Projekt "${input.project_id}" nicht gefunden`, 404, 'not_found');
+    const result = await getBatchRun(input.project_id, input.run_id);
+    if (!result) throw new PublicFunctionError(`Lauf "${input.run_id}" nicht gefunden`, 404, 'not_found');
+
+    const format: ExportFormat = input.format === 'grouped' ? 'grouped' : 'flat';
+    const sections = buildBatchExportSections(project, result.files, format);
+    const buffer = await generateDocument(
+      {
+        title: `Batch-Extraktion — ${project.name}`,
+        metadata: {
+          Projekt: project.name,
+          Dokumente: String(result.files.length),
+          Lauf: input.run_id,
+          Format: format === 'flat' ? 'flach (eine Zeile je Position)' : 'gruppiert',
+        },
+        sections,
+      },
+      'xlsx',
+    );
+
+    return {
+      filename: `batch-${input.run_id}${format === 'flat' ? '-flach' : ''}.xlsx`,
+      content_base64: Buffer.from(buffer as unknown as Uint8Array).toString('base64'),
+      rows: countExportRows(sections),
+      format,
+    };
+  },
+};
+
 export const extractionPublicFunctions = [
   projectsListFunction,
   extractFunction,
   batchCreateFunction,
   batchGetFunction,
+  batchExportFunction,
 ];

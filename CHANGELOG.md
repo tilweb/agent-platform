@@ -2,6 +2,38 @@
 
 ## 2026-08-05
 
+### Feature: Extraktion — flacher XLSX-Export, Export über die API, Posteingang ohne Split
+Die drei Lücken, die der Ehinger-Vergleich benannt hatte, sind geschlossen:
+- **Flaches XLSX** (`export.xlsx?format=flat`, im Export-Menü als „Excel flach"): EIN Blatt, eine
+  Zeile je Position, Belegdaten wiederholt, dazu die Spalten „Pruefung" und „Befunde". Das ist das
+  Format, das zeilenweise lesende Zielsysteme (RPA, ERP-Import) erwarten — bisher mussten sie
+  Hauptblatt und Zusatzblatt über die Dateispalte selbst zusammenführen. Belege ohne Positionen und
+  fehlgeschlagene Dateien bekommen bewusst trotzdem eine Zeile, sonst verschwinden sie still aus dem
+  Export. Route und API teilen sich den neuen Baustein `learning/export-xlsx.ts`.
+- **`extraktion/batch.export`** (Public-API): liefert dieselbe Datei base64-kodiert samt Zeilenzahl,
+  `format: flat|grouped`. Damit holt ein Integrator das Ergebnis ohne Session-Auth ab —
+  `export.xlsx` hing bisher an der Anmeldung im Browser.
+- **Posteingang ohne Split**: `split=false` am Upload (UI-Häkchen „Sammel-Scans an Dokumentgrenzen
+  trennen", Default unverändert an) behandelt jede Datei als EIN Dokument. Für Quellen mit „eine
+  Datei = ein Vorgang" entfällt damit auch das Seitenpaar-Urteil, also ein KI-Aufruf je
+  Seitenübergang.
+- Verifiziert an echten Belegen: flaches XLSX mit 10 Positionszeilen über die API abgerufen und
+  gelesen; 3-seitiger Lieferschein mit `split=false` → ein Teil über alle Seiten, korrekt
+  klassifiziert und geroutet. Nebenbefund: derselbe Beleg **mit** Trennung ergab ebenfalls nur einen
+  Teil — der konservative Splitter zerschneidet ihn nicht. 7 neue Tests (282 gesamt grün).
+
+### Ehinger-Analyse: Ground Truth verdoppelt (12 von 24 Belegen gelabelt)
+Die Messung aus dem n8n-Vergleich steht jetzt auf der doppelten Stichprobe — 12 manuell gelabelte
+Belege mit 39 Positionen (Sonepar 4 · Elektro Braun 4 · UniElektro 2 · Eldis 2). Die Ergebnisse
+halten: Positionen **39/39**, Mengen und Einheiten **100 %**, **0 erfundene Positionen**,
+Lieferscheinnummer und Lieferdatum **12/12**. Referenznummer **10/12** — beide Fehlschläge sind
+Sonepar-Belege, bei denen die Nummer als unbeschriftete Zahl über der ersten Position steht; beide
+wurden **nicht falsch geraten**, sondern mit Konfidenz 0 als unsicher geliefert. Gemessene
+Stellschraube: Mit `referenznummer` als Pflichtfeld fängt die Review-Triage **beide** Fälle, bei
+4 statt 2 Reviews auf 23 Belegen. Neu geprüfte Härtefälle: zwei Positionen mit identischer
+Artikelnummer bleiben erhalten (Dedupe greift nur bei exakten Duplikaten), und ein Eldis-Zweiseiter
+trifft alle 8 Positionen, obwohl Seite 2 nur eine einzelne Position plus Packmittel-Block trägt.
+
 ### Bugfix: Vision-Extraktion kannte die Spalten von Positionslisten nicht
 Gefunden beim Ehinger-Pilotversuch: Die Vision-Strategie baut ihr Zielschema als Freitext-JSON —
 und gab für `list`-Felder nur `"positionen": []` aus, **ohne die Spalten**. Das Modell erfand

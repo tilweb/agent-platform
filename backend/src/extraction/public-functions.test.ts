@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   batchCreateFunction,
+  batchExportFunction,
   batchGetFunction,
   decodeDocument,
   extractFunction,
@@ -38,9 +39,9 @@ describe('safeName', () => {
 });
 
 describe('Function-Vertraege', () => {
-  test('alle vier Functions sind registriert und eindeutig', () => {
+  test('alle fuenf Functions sind registriert und eindeutig', () => {
     const ids = extractionPublicFunctions.map((f) => f.id);
-    expect(ids).toEqual(['projects.list', 'extract', 'batch.create', 'batch.get']);
+    expect(ids).toEqual(['projects.list', 'extract', 'batch.create', 'batch.get', 'batch.export']);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -55,6 +56,10 @@ describe('Function-Vertraege', () => {
     expect(validate({ project_id: 'p', documents: [{ filename: 'a.pdf' }] }, batchCreateFunction.input)).not.toEqual([]);
     expect(validate({ project_id: 'p', run_id: 'r' }, batchGetFunction.input)).toEqual([]);
     expect(validate({ run_id: 'r' }, batchGetFunction.input)).not.toEqual([]);
+    // Export: Format ist optional, aber wenn gesetzt nur flat|grouped
+    expect(validate({ project_id: 'p', run_id: 'r' }, batchExportFunction.input)).toEqual([]);
+    expect(validate({ project_id: 'p', run_id: 'r', format: 'flat' }, batchExportFunction.input)).toEqual([]);
+    expect(validate({ project_id: 'p', run_id: 'r', format: 'csv' }, batchExportFunction.input)).not.toEqual([]);
   });
 
   test('jede Function hat Beschreibung, Output-Schema und Rate-Limit', () => {
@@ -74,7 +79,7 @@ describe('virtuelle App', () => {
     expect(apps[0]!.enabled).toBe(true);
     // Keine Routen -> kein toter Sidebar-Link
     expect(apps[0]!.routes).toEqual([]);
-    expect(apps[0]!.publicFunctions).toHaveLength(4);
+    expect(apps[0]!.publicFunctions).toHaveLength(5);
   });
 
   test('Scopes greifen wie bei Registry-Apps', () => {

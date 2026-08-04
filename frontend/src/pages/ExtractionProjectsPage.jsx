@@ -1077,6 +1077,8 @@ function InboxStatusBadge({ status }) {
  * und (bei sicherer Zuordnung) in die Projekte routen; Rest manuell zuordnen.
  */
 function InboxView({ projects, onBack, onOpenProject }) {
+  // Trennung von Sammel-Scans; aus, wenn je Vorgang eine Datei kommt.
+  const [splitDocuments, setSplitDocuments] = useState(true);
   const [uploads, setUploads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dragActive, setDragActive] = useState(false);
@@ -1116,6 +1118,8 @@ function InboxView({ projects, onBack, onOpenProject }) {
     try {
       const formData = new FormData();
       for (const f of list) formData.append('files', f);
+      // Ohne Trennung wird jede Datei als EIN Dokument behandelt.
+      if (!splitDocuments) formData.append('split', 'false');
       const res = await apiPostForm('/extraction/inbox', formData);
       if (res.ok) {
         await loadUploads();
@@ -1221,9 +1225,27 @@ function InboxView({ projects, onBack, onOpenProject }) {
               {uploading ? 'Lade hoch…' : 'Dateien hierher ziehen oder klicken (PDF, Bilder — auch Sammel-Scans)'}
             </div>
             <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-              Mehrseitige PDFs werden auf Dokumentgrenzen geprüft und getrennt · max. 50 MB je Datei
+              {splitDocuments
+                ? 'Mehrseitige PDFs werden auf Dokumentgrenzen geprüft und getrennt · max. 50 MB je Datei'
+                : 'Jede Datei gilt als EIN Dokument — keine Trennung, keine Grenzprüfung · max. 50 MB je Datei'}
             </div>
           </div>
+
+          {/* Wer je Vorgang eine Datei liefert (z.B. ein Scan-Roboter), will keine
+              Trennung — sie kostet je Seitenübergang einen KI-Aufruf und kann einen
+              mehrseitigen Beleg fälschlich zerschneiden. */}
+          <label
+            onClick={e => e.stopPropagation()}
+            style={{ display: 'flex', alignItems: 'center', marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, cursor: 'pointer' }}
+          >
+            <input
+              type="checkbox"
+              style={styles.checkbox}
+              checked={splitDocuments}
+              onChange={e => setSplitDocuments(e.target.checked)}
+            />
+            Sammel-Scans an Dokumentgrenzen trennen
+          </label>
           {statusMsg && (
             <div style={{ marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm, color: theme.colors.error }}>{statusMsg}</div>
           )}
@@ -2162,9 +2184,15 @@ function BatchTab({ project, onProjectUpdated }) {
     triggerDownload(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `batch-${activeRun.run.id}.json`);
   }
 
-  async function exportXlsx() {
-    const res = await apiGet(`${base}/${activeRun.run.id}/export.xlsx`);
-    if (res.ok) triggerDownload(await res.blob(), `batch-${activeRun.run.id}.xlsx`);
+  /**
+   * `flach` liefert ein einziges Blatt mit einer Zeile je Position und
+   * wiederholten Belegdaten — das Format, das nachgelagerte Systeme (RPA,
+   * ERP-Import) zeilenweise einlesen.
+   */
+  async function exportXlsx(flach = false) {
+    const url = `${base}/${activeRun.run.id}/export.xlsx${flach ? '?format=flat' : ''}`;
+    const res = await apiGet(url);
+    if (res.ok) triggerDownload(await res.blob(), `batch-${activeRun.run.id}${flach ? '-flach' : ''}.xlsx`);
   }
 
   async function handleExport(format) {
@@ -2172,7 +2200,8 @@ function BatchTab({ project, onProjectUpdated }) {
     try {
       if (format === 'csv') exportCsv();
       else if (format === 'json') exportJson();
-      else if (format === 'xlsx') await exportXlsx();
+      else if (format === 'xlsx') await exportXlsx(false);
+      else if (format === 'xlsx_flat') await exportXlsx(true);
     } finally {
       setLoadingFormat(null);
     }
@@ -2334,7 +2363,7 @@ function BatchTab({ project, onProjectUpdated }) {
                 <TableIcon size={14} /> In Tabelle schreiben
               </button>
               <ExportDropdown
-                formats={['xlsx', 'csv', 'json']}
+                formats={['xlsx', 'xlsx_flat', 'csv', 'json']}
                 onExport={handleExport}
                 isLoading={!!loadingFormat}
                 loadingFormat={loadingFormat}

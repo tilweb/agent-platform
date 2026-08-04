@@ -36,6 +36,8 @@ export type {
   FileAudit,
 } from './batch-runs';
 export { runBatchExtraction } from './batch-service';
+export { buildBatchExportSections, countExportRows, cellString, sanitizeSheetName } from './export-xlsx';
+export type { ExportFormat } from './export-xlsx';
 export { readPageImage, savePageImages, deletePageImages } from './page-store';
 export { cosine, rankBySimilarity, blendSelection } from './similarity';
 export { embedDocument, isSimilarityEnabled } from './embeddings';
