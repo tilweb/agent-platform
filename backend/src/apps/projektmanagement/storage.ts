@@ -114,6 +114,33 @@ export async function getProjektauftrag(projektId: string): Promise<Projektauftr
 }
 
 /**
+ * Referenzen aller Projektauftraege OHNE Idee-Verknuepfung (idee_id fehlt/leer) —
+ * Kandidaten fuer die manuelle Verknuepfung. RBAC-Filter passiert im Aufrufer.
+ */
+export async function listUnlinkedAuftragRefs(): Promise<{ id: string; name: string; status: string }[]> {
+  const all = await getProjektauftraege();
+  return all
+    .filter((a) => !(a as { idee_id?: string }).idee_id)
+    .map((a) => ({ id: a.id, name: a.name, status: (a as { status?: string }).status ?? 'draft' }));
+}
+
+/** Aktuelle idee_id eines Auftrags (oder null). Fuer Unlink-Guard. */
+export async function getAuftragIdeeId(auftragId: string): Promise<string | null> {
+  const a = await getProjektauftrag(auftragId);
+  return a ? ((a as { idee_id?: string }).idee_id ?? null) : null;
+}
+
+/** Setzt (Link) oder loescht (null = Unlink) die Idee-Verknuepfung eines Auftrags. */
+export async function setAuftragIdee(auftragId: string, ideeId: string | null): Promise<void> {
+  const file = Bun.file(`${PROJEKTAUFTRAEGE_PATH}/${auftragId}/metadata.yaml`);
+  if (!(await file.exists())) return;
+  const auftrag = parse(await file.text()) as Projektauftrag & { idee_id?: string };
+  if (ideeId === null) delete auftrag.idee_id;
+  else auftrag.idee_id = ideeId;
+  await Bun.write(`${PROJEKTAUFTRAEGE_PATH}/${auftragId}/metadata.yaml`, stringify(auftrag));
+}
+
+/**
  * Save a Projektauftrag
  */
 export async function saveProjektauftrag(projektauftrag: Projektauftrag): Promise<void> {

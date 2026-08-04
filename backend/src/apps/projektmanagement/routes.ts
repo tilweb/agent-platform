@@ -33,7 +33,7 @@ import {
 } from './knowledge';
 import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis, buildStepChatSystemPrompt } from './analysis';
 import { llmService, type Message } from '../../services/llm';
-import { getConfig, saveConfig } from './storage';
+import { getConfig, saveConfig, listUnlinkedAuftragRefs, getAuftragIdeeId, setAuftragIdee } from './storage';
 import {
   exportToExcel,
   exportToCsv,
@@ -1808,6 +1808,77 @@ projektmanagement.get('/projektideen/:id/export/:format', async (c) => {
   } catch (error) {
     console.error('Error exporting Projektidee:', error);
     return c.json({ error: 'Failed to export Projektidee' }, 500);
+  }
+});
+
+// ============== Abgeleitete Projektauftraege (manuelle Verknuepfung) ==============
+
+// Verfuegbare (noch nicht verknuepfte) Auftraege, auf die der User mind. Editor hat.
+projektmanagement.get('/projektideen/:id/auftraege/available', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowIdeeRole(userId, id, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const refs = await listUnlinkedAuftragRefs();
+    const withAccess = await Promise.all(refs.map(async (r) => {
+      const role = await getEffectiveAuftragRole(userId, r.id);
+      return (role === 'editor' || role === 'owner') ? r : null;
+    }));
+    return c.json({ auftraege: withAccess.filter((r): r is NonNullable<typeof r> => r !== null) });
+  } catch (error) {
+    console.error('Error listing available auftraege:', error);
+    return c.json({ error: 'Failed to list available auftraege' }, 500);
+  }
+});
+
+// Verknuepfen: setzt auftrag.idee_id = ideeId (nur wenn Auftrag noch unverknuepft).
+projektmanagement.post('/projektideen/:id/auftraege/:auftragId/link', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const auftragId = c.req.param('auftragId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const deniedIdee = await denyIfBelowIdeeRole(userId, id, 'editor');
+    if (deniedIdee) return c.json({ error: deniedIdee.error }, deniedIdee.status);
+    const deniedAuftrag = await denyIfBelowAuftragRole(userId, auftragId, 'editor');
+    if (deniedAuftrag) return c.json({ error: deniedAuftrag.error }, deniedAuftrag.status);
+
+    const current = await getAuftragIdeeId(auftragId);
+    if (current && current !== id) {
+      return c.json({ error: 'Auftrag ist bereits mit einer anderen Projektidee verknüpft' }, 409);
+    }
+    await setAuftragIdee(auftragId, id);
+    return c.json({ ok: true });
+  } catch (error) {
+    console.error('Error linking auftrag to idee:', error);
+    return c.json({ error: 'Failed to link auftrag' }, 500);
+  }
+});
+
+// Loesen: setzt auftrag.idee_id = null (nur wenn aktuell mit dieser Idee verknuepft).
+projektmanagement.post('/projektideen/:id/auftraege/:auftragId/unlink', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const auftragId = c.req.param('auftragId');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const deniedIdee = await denyIfBelowIdeeRole(userId, id, 'editor');
+    if (deniedIdee) return c.json({ error: deniedIdee.error }, deniedIdee.status);
+    const deniedAuftrag = await denyIfBelowAuftragRole(userId, auftragId, 'editor');
+    if (deniedAuftrag) return c.json({ error: deniedAuftrag.error }, deniedAuftrag.status);
+
+    const current = await getAuftragIdeeId(auftragId);
+    if (current !== id) {
+      return c.json({ error: 'Auftrag ist nicht mit dieser Projektidee verknüpft' }, 409);
+    }
+    await setAuftragIdee(auftragId, null);
+    return c.json({ ok: true });
+  } catch (error) {
+    console.error('Error unlinking auftrag from idee:', error);
+    return c.json({ error: 'Failed to unlink auftrag' }, 500);
   }
 });
 

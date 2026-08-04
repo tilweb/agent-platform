@@ -781,6 +781,30 @@ export function useProjektmanagement() {
     }
   }, []);
 
+  // Projektidee ↔ abgeleitete Projektaufträge (manuelle Verknüpfung)
+  const getAvailableAuftraegeForIdee = useCallback(async (ideeId) => {
+    const response = await apiGet(`/apps/projektmanagement/projektideen/${ideeId}/auftraege/available`);
+    if (!response.ok) throw new Error('Failed to list available auftraege');
+    const data = await response.json();
+    return data.auftraege || [];
+  }, []);
+
+  const linkAuftragToIdee = useCallback(async (ideeId, auftragId) => {
+    const response = await apiPost(`/apps/projektmanagement/projektideen/${ideeId}/auftraege/${auftragId}/link`, {});
+    if (!response.ok) {
+      const d = await response.json().catch(() => ({}));
+      throw new Error(d.error || 'Failed to link auftrag');
+    }
+  }, []);
+
+  const unlinkAuftragFromIdee = useCallback(async (ideeId, auftragId) => {
+    const response = await apiPost(`/apps/projektmanagement/projektideen/${ideeId}/auftraege/${auftragId}/unlink`, {});
+    if (!response.ok) {
+      const d = await response.json().catch(() => ({}));
+      throw new Error(d.error || 'Failed to unlink auftrag');
+    }
+  }, []);
+
   return {
     projektauftraege,
     stats,
@@ -853,5 +877,8 @@ export function useProjektmanagement() {
     getAvailableIdeenForPortfolio,
     assignIdeeToPortfolio,
     unassignIdeeFromPortfolio,
+    getAvailableAuftraegeForIdee,
+    linkAuftragToIdee,
+    unlinkAuftragFromIdee,
   };
 }

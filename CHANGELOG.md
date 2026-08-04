@@ -147,6 +147,14 @@ Projekt (`rules`), konfigurierbar in den Projekt-Einstellungen:
 
 ## 2026-07-29
 
+### PM: Projektidee — abgeleitete Projektaufträge manuell verknüpfbar (Test-Feedback Block 4)
+- Neue Basisdaten-Sektion **„Abgeleitete Projektaufträge"**: vorhandene Projektaufträge **verknüpfen/lösen**
+  (setzt/löscht `auftrag.idee_id`) — nicht mehr nur die automatische Erzeugung über „Auftrag aus Idee erstellen".
+- Backend (beide Worktrees, DB + YAML): `GET …/auftraege/available` (freie, auf Editor+ gefiltert),
+  `POST …/auftraege/:id/link` + `…/unlink`; Storage `listUnlinkedAuftragRefs` / `getAuftragIdeeId` / `setAuftragIdee`.
+- RBAC: Verknüpfen/Lösen erfordert Editor auf **Idee UND Auftrag**; Guards gegen Fremd-Verknüpfung/-Lösen (409).
+- Hook: `getAvailableAuftraegeForIdee` / `linkAuftragToIdee` / `unlinkAuftragFromIdee`.
+
 ### PM: Projektidee — Unternehmensrisiken = Projektauftrag-Risiken-Maske (Test-Feedback Block 3)
 - Der Idee-Tab **„Unternehmensrisiken"** nutzt jetzt die vollständige **Projektauftrag-Risiken-Maske** (schlanker
   Adapter): **Art (Bedrohung/Chance)**, **Risikotyp**, Beschreibung, Wahrscheinlichkeit/Auswirkung + **Risikomatrix**.
