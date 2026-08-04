@@ -24,3 +24,7 @@ export * from './service';
 export * from './storage';
 export * from './types';
 export * from './analysis';
+// `updateProjektauftrag` wird sowohl von ./service (Wrapper) als auch ./storage
+// exportiert — explizit die Service-Variante re-exportieren, um die Ambiguität
+// aufzulösen (TS2308).
+export { updateProjektauftrag } from './service';

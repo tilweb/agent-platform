@@ -34,6 +34,7 @@ import {
 import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis, buildStepChatSystemPrompt } from './analysis';
 import { llmService, type Message } from '../../services/llm';
 import { getConfig, saveConfig, listUnlinkedAuftragRefs, getAuftragIdeeId, setAuftragIdee } from './storage';
+import type { UsageContext } from '../../services/usageTracking';
 import {
   exportToExcel,
   exportToCsv,
@@ -358,7 +359,7 @@ projektmanagement.post('/projektauftraege/import', importRateLimit, async (c) =>
       'text/plain', 'text/markdown',
     ]);
 
-    for (const [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries() as unknown as Iterable<[string, File | string]>) {
       if (key === 'files' && value instanceof File) {
         // Validate file count
         if (files.length >= 10) {
@@ -456,7 +457,7 @@ projektmanagement.post('/projektauftraege/import-step/:step', importRateLimit, a
       'text/plain', 'text/markdown',
     ]);
 
-    for (const [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries() as unknown as Iterable<[string, File | string]>) {
       if (key === 'files' && value instanceof File) {
         if (files.length >= 10) return c.json({ error: 'Maximal 10 Dateien erlaubt' }, 400);
         if (value.size > 50 * 1024 * 1024) {
@@ -1052,7 +1053,7 @@ projektmanagement.post('/knowledge/:step/chat', async (c) => {
 
   const usageContext = {
     triggeringUserId: userId,
-    source: 'projektmanagement' as const,
+    source: 'projektmanagement' as UsageContext['source'],
     operation: `knowledge_chat_step_${step}`,
   };
 
@@ -1714,7 +1715,7 @@ projektmanagement.post('/projektideen/import', importRateLimit, async (c) => {
       'text/plain', 'text/markdown',
     ]);
 
-    for (const [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries() as unknown as Iterable<[string, File | string]>) {
       if (key === 'files' && value instanceof File) {
         if (files.length >= 10) {
           return c.json({ error: 'Maximal 10 Dateien erlaubt' }, 400);

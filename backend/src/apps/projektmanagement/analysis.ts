@@ -216,7 +216,7 @@ function formatPreviousStepsSummary(projektauftrag: Projektauftrag, stepsToCheck
     if (!extractor) continue;
 
     const stepData = extractor(projektauftrag);
-    const stepName = STEP_NAMES[step];
+    const stepName = STEP_NAMES[step] ?? '';
 
     summaries.push(`### Schritt ${step}: ${stepName}`);
     summaries.push(formatStepData(step, stepData));
@@ -302,10 +302,11 @@ export async function analyzeStep(
 
   // Extract current step data
   const extractor = STEP_DATA_EXTRACTORS[step];
+  if (!extractor) throw new Error(`Kein Daten-Extraktor für Schritt ${step}`);
   const currentStepData = extractor(projektauftrag);
 
   // Get previous steps for consistency check
-  const stepsToCheck = CONSISTENCY_CHECKS[step];
+  const stepsToCheck = CONSISTENCY_CHECKS[step] ?? [];
 
   // Build the analysis prompt
   const systemPrompt = buildSystemPrompt();
@@ -324,7 +325,7 @@ export async function analyzeStep(
 
   const usageContext: UsageContext = {
     triggeringUserId,
-    source: 'projektmanagement',
+    source: 'projektmanagement' as UsageContext['source'],
     operation: `analyze_step_${step}`,
   };
 
@@ -451,7 +452,7 @@ function buildUserPrompt(
   projektauftrag: Projektauftrag,
   stepsToCheck: number[]
 ): string {
-  const stepName = STEP_NAMES[step];
+  const stepName = STEP_NAMES[step] ?? '';
 
   const sections: string[] = [];
 
@@ -491,7 +492,7 @@ function buildUserPrompt(
  * Parse LLM response into StepAnalysisResult
  */
 function parseAnalysisResponse(content: string, step: number): StepAnalysisResult {
-  const stepName = STEP_NAMES[step];
+  const stepName = STEP_NAMES[step] ?? '';
 
   // Try to extract JSON from response
   const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -652,7 +653,7 @@ export async function analyzeGesamt(
 
   const usageContext: UsageContext = {
     triggeringUserId,
-    source: 'projektmanagement',
+    source: 'projektmanagement' as UsageContext['source'],
     operation: 'analyze_gesamt',
   };
 
@@ -907,7 +908,7 @@ function parseGesamtResponse(
 
       stepScores.push({
         step,
-        stepName: STEP_NAMES[step],
+        stepName: STEP_NAMES[step] ?? '',
         score: analysis?.masterclassAnalysis?.score ?? 50,
         kurzfazit,
       });
