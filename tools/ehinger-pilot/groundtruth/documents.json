@@ -1,0 +1,78 @@
+{
+  "_hinweis": [
+    "Manuell aus den Scans gelabelt (visuelle Sichtung Seite fuer Seite), nicht aus einem Modell-Output.",
+    "menge_geliefert = die fachlich relevante Menge (was tatsaechlich geliefert wurde):",
+    "  Sonepar = Spalte 'abweichende Menge', UniElektro = 'Liefermenge',",
+    "  Elektro Braun = 'Geliefert', Eldis = einzige Spalte 'Menge'.",
+    "einheit = kanonischer Katalogwert (ST/M/KG/L); im Dokument steht z.B. 'STK' oder 'Meter'.",
+    "artikelnummer bei Sonepar = die siebenstellige, mit 0 beginnende Nummer UNTER dem Beschreibungstext."
+  ],
+
+  "1898_001": {
+    "lieferant": "sonepar", "seiten": 1,
+    "lieferscheinnummer": "56294390", "referenznummer": "0275062", "lieferdatum": "2024-12-19",
+    "positionen": [
+      { "positionsnummer": "1", "artikelnummer": "0491734", "menge_bestellt": 5, "menge_geliefert": 5, "einheit": "ST" },
+      { "positionsnummer": "2", "artikelnummer": "0498529", "menge_bestellt": 1, "menge_geliefert": 1, "einheit": "ST" },
+      { "positionsnummer": "3", "artikelnummer": "0498530", "menge_bestellt": 1, "menge_geliefert": 1, "einheit": "ST" }
+    ]
+  },
+
+  "1899_001": {
+    "lieferant": "sonepar", "seiten": 1,
+    "lieferscheinnummer": "57949240", "referenznummer": "0275528", "lieferdatum": "2025-02-06",
+    "positionen": [
+      { "positionsnummer": "1", "artikelnummer": "0719420", "menge_bestellt": 1, "menge_geliefert": 1, "einheit": "ST" }
+    ]
+  },
+
+  "2922_001": {
+    "lieferant": "sonepar", "seiten": 1,
+    "_anmerkung": "Scan enthaelt nur Seite 1 von 2 des gedruckten Belegs; roter ERLEDIGT-Stempel ueber dem Dokument.",
+    "lieferscheinnummer": "62756834", "referenznummer": "0277065", "lieferdatum": "2025-06-04",
+    "positionen": [
+      { "positionsnummer": "1", "artikelnummer": "0800765", "menge_bestellt": 4, "menge_geliefert": 4, "einheit": "ST" },
+      { "positionsnummer": "2", "artikelnummer": "0800745", "menge_bestellt": 1, "menge_geliefert": 1, "einheit": "ST" },
+      { "positionsnummer": "3", "artikelnummer": "0800740", "menge_bestellt": 6, "menge_geliefert": 6, "einheit": "ST" },
+      { "positionsnummer": "4", "artikelnummer": "0800600", "menge_bestellt": 2, "menge_geliefert": 2, "einheit": "ST" },
+      { "positionsnummer": "5", "artikelnummer": "0800684", "menge_bestellt": 14, "menge_geliefert": 14, "einheit": "ST" }
+    ]
+  },
+
+  "1900_001": {
+    "lieferant": "unielektro", "seiten": 3,
+    "_anmerkung": "Seite 3 ist eine reine Packstueckliste und darf KEINE Positionen liefern.",
+    "lieferscheinnummer": "662783282", "referenznummer": "0275121", "lieferdatum": "2025-01-08",
+    "positionen": [
+      { "positionsnummer": "00010", "artikelnummer": "32764126", "menge_bestellt": 4, "menge_geliefert": 4, "einheit": "ST" },
+      { "positionsnummer": "00020", "artikelnummer": "05105072", "menge_bestellt": 20, "menge_geliefert": 20, "einheit": "ST" },
+      { "positionsnummer": "00030", "artikelnummer": "05105073", "menge_bestellt": 20, "menge_geliefert": 20, "einheit": "ST" },
+      { "positionsnummer": "00040", "artikelnummer": "01200646", "menge_bestellt": 100, "menge_geliefert": 100, "einheit": "ST" },
+      { "positionsnummer": "00050", "artikelnummer": "01200626", "menge_bestellt": 100, "menge_geliefert": 100, "einheit": "ST" },
+      { "positionsnummer": "00060", "artikelnummer": "05105267", "menge_bestellt": 15, "menge_geliefert": 15, "einheit": "ST" },
+      { "positionsnummer": "00070", "artikelnummer": "02209031", "menge_bestellt": 10, "menge_geliefert": 10, "einheit": "ST" },
+      { "positionsnummer": "00080", "artikelnummer": "02209033", "menge_bestellt": 12, "menge_geliefert": 12, "einheit": "ST" },
+      { "positionsnummer": "00090", "artikelnummer": "02209035", "menge_bestellt": 30, "menge_geliefert": 30, "einheit": "ST" },
+      { "positionsnummer": "00100", "artikelnummer": "02209057", "menge_bestellt": 6, "menge_geliefert": 6, "einheit": "ST" }
+    ]
+  },
+
+  "1903_001": {
+    "lieferant": "eldis", "seiten": 1,
+    "_anmerkung": "Nur EINE Mengenspalte ('Menge'); Referenznummer steht unter 'Ihre Referenz'.",
+    "lieferscheinnummer": "3009528789", "referenznummer": "0275302", "lieferdatum": "2025-01-22",
+    "positionen": [
+      { "positionsnummer": "10", "artikelnummer": "0106826", "menge_bestellt": 500, "menge_geliefert": 500, "einheit": "M" },
+      { "positionsnummer": "20", "artikelnummer": "2470957", "menge_bestellt": 500, "menge_geliefert": 500, "einheit": "M" }
+    ]
+  },
+
+  "2919_001": {
+    "lieferant": "elektrobraun", "seiten": 1,
+    "_anmerkung": "Teillieferung (Bestellt 3, Geliefert 1). Abschnitt VERPACKUNGEN ist keine Position. Referenz steht unter 'Bestell-Nr.'.",
+    "lieferscheinnummer": "3039326/11", "referenznummer": "0277275", "lieferdatum": "2025-07-02",
+    "positionen": [
+      { "positionsnummer": "29", "artikelnummer": "2434584", "menge_bestellt": 3, "menge_geliefert": 1, "einheit": "ST" }
+    ]
+  }
+}

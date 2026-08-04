@@ -1,0 +1,42 @@
+{
+  "name": "Ehinger Pilot Sonepar",
+  "description": "Lieferscheine des Lieferanten Sonepar (Elektro-Grosshandel) fuer Elektro Ehinger GmbH",
+  "extraction": { "strategy": "vision-per-page" },
+  "instructions": "Du extrahierst Lieferscheine von SONEPAR.\n\n- Lieferscheinnummer und Lieferdatum stehen im Kasten mit der Ueberschrift \"Lieferschein\" (Felder \"Lieferscheinnummer\" und \"Datum\").\n- Die Referenznummer steht NUR auf Seite 1, als erste Zeile oben im Positionskasten - oberhalb der ersten Position und oberhalb von Meta-Angaben wie \"SCID\" oder \"SAP\". Sie ist siebenstellig und beginnt mit 027 oder 028. Ist sie nicht zu sehen, gib null zurueck; erfinde sie nicht.\n- ACHTUNG Artikelnummer: In jeder Position stehen zwei Nummern. Die lange Nummer rechts neben der Positionsnummer ist die Lieferanten-Artikelnummer. Die fuer uns relevante Artikelnummer ist die SIEBENSTELLIGE, mit 0 beginnende Nummer UNTER dem Beschreibungstext (z.B. 0491734).\n- Menge = bestellte Menge (Spalte \"Menge\"), Liefermenge = tatsaechlich gelieferte Menge (Spalte \"abweichende Menge\").\n- Eine Position kann sich ueber mehrere Zeilen erstrecken; fuehre den Beschreibungstext zusammen und lasse nichts weg.\n- Packstuecklisten und Verpackungsinformationen am Dokumentende sind KEINE Positionen.\n- Handschriftliche Aenderungen an gedruckten Werten (durchgestrichene Zahl mit handschriftlicher Korrektur daneben) gelten: uebernimm den handschriftlich korrigierten Wert als Liefermenge und setze \"Handschriftliche Aenderung\" auf ja. Haken, Datumsangaben und Unterschriften sind KEINE inhaltlichen Aenderungen.",
+  "fields": {
+    "lieferscheinnummer": { "type": "text", "required": true, "label": "Lieferscheinnummer", "description": "Aus dem Kasten \"Lieferschein\"" },
+    "referenznummer": { "type": "text", "required": false, "label": "Referenznummer", "description": "Siebenstellig, beginnt mit 027 oder 028; nur auf Seite 1" },
+    "lieferdatum": { "type": "date", "required": true, "label": "Lieferdatum", "description": "Feld \"Datum\" im Lieferschein-Kasten" },
+    "handschriftliche_aenderung": { "type": "boolean", "required": false, "label": "Handschriftliche Aenderung", "description": "Ja, wenn handschriftliche Notizen gedruckte Werte aendern (z.B. korrigierte Mengen). Haken, Datum und Unterschrift zaehlen NICHT." },
+    "positionen": {
+      "type": "list",
+      "required": false,
+      "label": "Positionen",
+      "description": "Eine Zeile je Lieferposition; Packstuecklisten ausgenommen",
+      "item_fields": {
+        "positionsnummer": { "type": "text", "label": "Positionsnummer", "description": "z.B. '1' oder '001'" },
+        "artikelnummer": { "type": "text", "label": "Artikelnummer", "description": "Die SIEBENSTELLIGE, mit 0 beginnende Nummer unter dem Beschreibungstext" },
+        "lieferanten_artikelnummer": { "type": "text", "label": "Artikelnummer Lieferant", "description": "Die lange Nummer rechts neben der Positionsnummer" },
+        "beschreibung": { "type": "text", "label": "Beschreibung" },
+        "menge_bestellt": { "type": "number", "label": "Menge bestellt", "description": "Spalte \"Menge\", ohne Einheit" },
+        "menge_geliefert": { "type": "number", "label": "Menge geliefert", "description": "Spalte \"abweichende Menge\", ohne Einheit" },
+        "einheit": {
+          "type": "text",
+          "label": "Einheit",
+          "description": "Mengeneinheit der Position",
+          "catalog": {
+            "source": "list",
+            "auto_map": true,
+            "severity": "warn",
+            "values": [
+              { "value": "ST", "synonyms": ["Stk", "Stueck", "Stück", "St.", "Stk."] },
+              { "value": "M", "synonyms": ["Meter", "m"] },
+              { "value": "KG", "synonyms": ["kg", "Kilogramm"] },
+              { "value": "L", "synonyms": ["Liter", "l"] }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

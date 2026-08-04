@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-08-05
+
+### Bugfix: Vision-Extraktion kannte die Spalten von Positionslisten nicht
+Gefunden beim Ehinger-Pilotversuch: Die Vision-Strategie baut ihr Zielschema als Freitext-JSON —
+und gab für `list`-Felder nur `"positionen": []` aus, **ohne die Spalten**. Das Modell erfand
+daraufhin eigene Schlüssel (`artikel_nr`, `details`, Menge samt Einheit in einem Textfeld), die
+weder der Merger noch die Wertelisten- und Regelprüfung wiederfinden. Im Function-Calling-Pfad
+(Text-Strategien) stand die Struktur längst — betroffen war ausschließlich die **Scan-Strecke**,
+also genau der Weg für Dokumente ohne Textlayer. Jetzt rendert `buildVisionJsonInstruction` die
+Positions-Spalten samt Typ, Label und Hinweis. Messbar an echten Belegen: ein Lieferschein lieferte
+vorher 1 statt 2 Positionen und fremde Spaltennamen, danach 2/2 bzw. 10/10 mit korrekten Feldern.
+Neuer Test deckt die Struktur ab (275 gesamt grün).
+
+### Analyse: Ehinger-Lieferscheine — n8n-Workflow vs. Extraktionsfeature (gemessen)
+Bewertung, ob unser Extraktionsfeature den bestehenden n8n-Workflow bei Kunde Ehinger ablösen kann —
+nicht geschätzt, sondern über alle **24 echten Scans** (54 Seiten) gemessen, gegen manuell gelabelte
+Ground Truth statt gegen einen Modell-Output. Ergebnis: Lieferanten-Klassifikation **24/24** (inkl.
+korrekter Ablehnung eines Fremdlieferanten), auf der gelabelten Stichprobe **22/22 Positionen**,
+Mengen und Einheiten **100 %**, **0 erfundene Positionen**, ein einziger Fehler (nicht gefundene
+Referenznummer, Konfidenz 0 — also erkannt, nicht geraten). Die von n8n selbst als „sehr fragil"
+markierte **handschriftliche Mengenkorrektur** wurde in beiden vorkommenden Fällen korrekt gelöst
+(durchgestrichene 6 → geliefert 2). Aufwand: **1 LLM-Aufruf je Seite** statt 5, keine externen
+Dienste. Drei Produktlücken benannt (flacher XLSX-Export, XLSX über die API, Eingang ohne Split).
+Details: `docs/ehinger-n8n-vs-extraktion-2026-08-04.md`, reproduzierbarer Pilot in
+`tools/ehinger-pilot/`.
+
 ## 2026-08-04
 
 ### Feature: Extraktion läuft auf einem festen Modell (Adacor Qwen 3.5 Instruct)

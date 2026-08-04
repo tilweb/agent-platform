@@ -1,0 +1,113 @@
+{
+  "name": "Ehinger Pilot UniElektro",
+  "description": "Lieferscheine des Lieferanten UNI ELEKTRO fuer Elektro Ehinger GmbH",
+  "extraction": {
+    "strategy": "vision-per-page"
+  },
+  "instructions": "Du extrahierst Lieferscheine von UNI ELEKTRO.\n\n- Lieferscheinnummer und Lieferdatum stehen rechts oben unter \"Lieferscheinnummer / Datum\".\n- Die Referenznummer steht darunter unter \"Referenznummer / Datum\"; sie ist siebenstellig und beginnt mit 027 oder 028. Ist sie nicht zu sehen, gib null zurueck.\n- Positionsspalten: Position | Artikel | Lagerplatz | Auftragsmenge | Liefermenge | ME. Auftragsmenge = bestellt, Liefermenge = geliefert.\n- Unter der Artikelnummer stehen Bezeichnung und weitere Zeilen zur Position (z.B. 'Position im Auftrag'); sie gehoeren zur Beschreibung.\n- Seiten, die nur \"Packstueck Nr.\" und ein Liefergesamtgewicht enthalten, sind Packstuecklisten und liefern KEINE Positionen.\n- Eine Position kann sich ueber mehrere Zeilen erstrecken; fuehre den Beschreibungstext zusammen und lasse nichts weg.\n- Packstuecklisten und Verpackungsinformationen am Dokumentende sind KEINE Positionen.\n- Handschriftliche Aenderungen an gedruckten Werten (durchgestrichene Zahl mit handschriftlicher Korrektur daneben) gelten: uebernimm den handschriftlich korrigierten Wert als gelieferte Menge und setze \"Handschriftliche Aenderung\" auf ja. Haken, Datumsangaben und Unterschriften sind KEINE inhaltlichen Aenderungen.",
+  "fields": {
+    "lieferscheinnummer": {
+      "type": "text",
+      "required": true,
+      "label": "Lieferscheinnummer",
+      "description": "Aus dem Kasten \"Lieferschein\""
+    },
+    "referenznummer": {
+      "type": "text",
+      "required": false,
+      "label": "Referenznummer",
+      "description": "Siebenstellig, beginnt mit 027 oder 028; nur auf Seite 1"
+    },
+    "lieferdatum": {
+      "type": "date",
+      "required": true,
+      "label": "Lieferdatum",
+      "description": "Feld \"Datum\" im Lieferschein-Kasten"
+    },
+    "handschriftliche_aenderung": {
+      "type": "boolean",
+      "required": false,
+      "label": "Handschriftliche Aenderung",
+      "description": "Ja, wenn handschriftliche Notizen gedruckte Werte aendern (z.B. korrigierte Mengen). Haken, Datum und Unterschrift zaehlen NICHT."
+    },
+    "positionen": {
+      "type": "list",
+      "required": false,
+      "label": "Positionen",
+      "description": "Eine Zeile je Lieferposition; Packstuecklisten ausgenommen",
+      "item_fields": {
+        "positionsnummer": {
+          "type": "text",
+          "label": "Positionsnummer",
+          "description": "z.B. '00010' oder '10'"
+        },
+        "artikelnummer": {
+          "type": "text",
+          "label": "Artikelnummer",
+          "description": "Artikel-/Materialnummer der Position"
+        },
+        "lagerplatz": {
+          "type": "text",
+          "label": "Lagerplatz"
+        },
+        "beschreibung": {
+          "type": "text",
+          "label": "Beschreibung"
+        },
+        "menge_bestellt": {
+          "type": "number",
+          "label": "Menge bestellt",
+          "description": "ohne Einheit"
+        },
+        "menge_geliefert": {
+          "type": "number",
+          "label": "Menge geliefert",
+          "description": "ohne Einheit"
+        },
+        "einheit": {
+          "type": "text",
+          "label": "Einheit",
+          "description": "Mengeneinheit der Position",
+          "catalog": {
+            "source": "list",
+            "auto_map": true,
+            "severity": "warn",
+            "values": [
+              {
+                "value": "ST",
+                "synonyms": [
+                  "Stk",
+                  "Stueck",
+                  "Stück",
+                  "St.",
+                  "Stk."
+                ]
+              },
+              {
+                "value": "M",
+                "synonyms": [
+                  "Meter",
+                  "m"
+                ]
+              },
+              {
+                "value": "KG",
+                "synonyms": [
+                  "kg",
+                  "Kilogramm"
+                ]
+              },
+              {
+                "value": "L",
+                "synonyms": [
+                  "Liter",
+                  "l"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

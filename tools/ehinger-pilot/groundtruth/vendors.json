@@ -1,0 +1,13 @@
+{
+  "_hinweis": "Lieferanten-Wahrheit je Beleg, unabhaengig vom LLM per lokalem OCR (tesseract) auf Seite 1 ermittelt und stichprobenartig visuell geprueft. 1905 ist bewusst KEIN Hauptlieferant (Wieland Electric) - der Fallback-Fall.",
+  "1897_001": "sonepar",  "1898_001": "sonepar",  "1899_001": "sonepar",
+  "2921_001": "sonepar",  "2922_001": "sonepar",
+  "1900_001": "unielektro", "1901_001": "unielektro", "1902_001": "unielektro",
+  "2911_001": "unielektro", "2912_001": "unielektro", "2914_001": "unielektro",
+  "2924_001": "unielektro",
+  "1903_001": "eldis", "1904_001": "eldis", "2915_001": "eldis",
+  "1906_001": "elektrobraun", "1907_001": "elektrobraun", "1908_001": "elektrobraun",
+  "1909_001": "elektrobraun", "2913_001": "elektrobraun", "2919_001": "elektrobraun",
+  "2920_001": "elektrobraun", "2923_001": "elektrobraun",
+  "1905_001": "fallback"
+}

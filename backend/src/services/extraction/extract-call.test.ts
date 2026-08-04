@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test';
-import { repairExtraction, parseExtractionResponse, type ChatFn } from './extract-call';
+import { buildVisionJsonInstruction, repairExtraction, parseExtractionResponse, type ChatFn } from './extract-call';
 import type { ExtractionProfile } from '../../extraction/types';
 
 const profile: ExtractionProfile = {
@@ -87,4 +87,31 @@ test('Format-Auto-Korrektur (DE-Zahl) ohne LLM-Call', async () => {
   });
   expect(calls).toBe(0); // validateExtraction korrigiert die Zahl selbst → valid
   expect((res.extracted.felder as Record<string, unknown>).betrag).toBe(1234.56);
+});
+
+test('buildVisionJsonInstruction rendert Listen-Spalten (sonst raet das Modell die Schluessel)', () => {
+  const profile = {
+    id: 'p', name: 'Lieferschein', description: '', version: '1.0',
+    detection: { keywords: [] },
+    fields: {
+      felder: { lieferscheinnummer: { type: 'text', label: 'Lieferscheinnummer' } },
+      positionen: {
+        _array: true,
+        _label: 'Positionen',
+        _hint: 'Packstuecklisten sind keine Positionen',
+        _item_fields: {
+          artikelnummer: { type: 'text', label: 'Artikelnummer', hint: 'siebenstellig' },
+          menge_geliefert: { type: 'number', label: 'Menge geliefert' },
+        },
+      },
+    },
+  } as any;
+
+  const out = buildVisionJsonInstruction(profile);
+  expect(out).toContain('"artikelnummer": "Text"|null');
+  expect(out).toContain('siebenstellig');
+  expect(out).toContain('"menge_geliefert": Zahl|null');
+  expect(out).toContain('Packstuecklisten sind keine Positionen');
+  // Die alte Form (leeres Array ohne Struktur) darf nicht mehr vorkommen
+  expect(out).not.toContain('"positionen": []');
 });
