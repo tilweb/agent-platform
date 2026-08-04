@@ -20,7 +20,7 @@ import { llmService, type Message, type ChatOptions } from '../llm';
 import type { UsageContext } from '../usageTracking';
 import { buildFunctionSchema, buildToolChoice } from '../../extraction/schema-builder';
 import { validateExtraction, formatValidationErrors } from '../../extraction/validator';
-import type { ExtractionProfile, FieldDefinition } from '../../extraction/types';
+import type { ArrayGroupDefinition, ExtractionProfile, FieldDefinition } from '../../extraction/types';
 import { isArrayGroup } from '../../extraction/types';
 
 type ChatResponse = Awaited<ReturnType<typeof llmService.chat>>;
@@ -87,7 +87,24 @@ export function buildVisionJsonInstruction(profile: ExtractionProfile): string {
   groups.forEach(([groupName, group], gi) => {
     const groupComma = gi < groups.length - 1 ? ',' : '';
     if (isArrayGroup(group)) {
-      lines.push(`  "${groupName}": []${groupComma}`);
+      // Listen-Gruppen brauchen ihre SPALTEN im Prompt. Ohne sie sieht das
+      // Modell nur `"positionen": []` und erfindet eigene Schluessel
+      // ("artikel_nr", "details") — der Merger und die Katalog-/Regelpruefung
+      // finden die Werte dann nicht wieder. Im Function-Calling-Pfad
+      // (schema-builder.ts) steht die Struktur laengst; hier fehlte sie.
+      const arrayGroup = group as ArrayGroupDefinition;
+      const itemFields = Object.entries(arrayGroup._item_fields);
+      const head = `  "${groupName}": [`;
+      const desc = arrayGroup._hint ? `  // ${arrayGroup._label || groupName} — ${arrayGroup._hint}` : (arrayGroup._label ? `  // ${arrayGroup._label}` : '');
+      lines.push(`${head}${desc}`);
+      lines.push('    {');
+      itemFields.forEach(([fid, f], fi) => {
+        const comma = fi < itemFields.length - 1 ? ',' : '';
+        const label = f.label ? `  // ${f.label}${f.hint ? ' — ' + f.hint : ''}` : '';
+        lines.push(`      "${fid}": ${typeHint(f)}${comma}${label}`);
+      });
+      lines.push('    }');
+      lines.push(`  ]${groupComma}   // je Zeile ein Objekt; leere Liste, wenn keine Eintraege sichtbar sind`);
       return;
     }
     lines.push(`  "${groupName}": {`);
