@@ -60,7 +60,10 @@ hat, nutzt weiter den Batch-Tab des Projekts direkt).
   + `original.<ext>` + `parts/{partId}.pdf`; `deleteUpload` = Verzeichnis löschen.
 
 ### API (`routes/extraction-inbox.ts`, unter `/api/extraction`)
-`POST /inbox` (Multi-Upload, je Datei ein Eintrag, 50-MB-Cap → 413, antwortet sofort) ·
+`POST /inbox` (Multi-Upload, je Datei ein Eintrag, 50-MB-Cap → 413, antwortet sofort;
+**`split=false`** behandelt jede Datei als EIN Dokument — ohne Grenzprüfung und ohne die
+LLM-Aufrufe je Seitenübergang; UI-Häkchen „Sammel-Scans an Dokumentgrenzen trennen", Default an,
+ergänzt 2026-08-05 für Quellen, die ohnehin je Vorgang eine Datei liefern) ·
 `GET /inbox` (Liste inkl. Teilen; führt den Stale-Sweep aus: processing älter 30 min →
 failed „Verarbeitung unterbrochen") · `GET /inbox/:id` · `POST
 /inbox/:id/parts/:partId/route` ({project_id}; 404/409-Fälle) · `DELETE /inbox/:id`.
@@ -110,3 +113,7 @@ failed „Verarbeitung unterbrochen") · `GET /inbox/:id` · `POST
 - Kein Auto-Preview für Nicht-PDF-Bilder (v1; Klassifikation läuft trotzdem).
 - W5-Kandidaten: E-Mail-/Watchfolder-Eingang, Posteingang per API + Webhooks,
   Sammel-Aktionen („alle Vorschläge übernehmen").
+- **Nachtrag 2026-08-05:** Für Quellen mit „eine Datei = ein Vorgang" (z.B. ein RPA-Roboter, der
+  je Lieferschein scannt) gibt es jetzt `split=false`. Gemessen an einem 3-seitigen Lieferschein:
+  ohne Trennung ein Teil über alle Seiten; **mit** Trennung ebenfalls ein Teil — der konservative
+  Splitter hat den Mehrseiter also nicht zerschnitten.

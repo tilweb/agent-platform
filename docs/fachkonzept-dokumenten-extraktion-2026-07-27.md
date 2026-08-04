@@ -353,7 +353,7 @@ Dieselbe Engine, drei Zugänge:
 
 | # | Dimension | Zugang | Status |
 |---|-----------|--------|--------|
-| a | **API** | Public-API-Functions unter `/api/public/v1/extraktion/…` (`projects.list` · `extract` · `batch.create` · `batch.get`) mit Bearer-Key, Scopes, Rate-Limit, Audit und OpenAPI; Ergebnis-Webhook HMAC-signiert. Intern zusätzlich `POST /projects/:id/extract` (Session-Auth, von der UI genutzt) | vorhanden (API-Layer seit Welle 5) |
+| a | **API** | Public-API-Functions unter `/api/public/v1/extraktion/…` (`projects.list` · `extract` · `batch.create` · `batch.get` · `batch.export`) mit Bearer-Key, Scopes, Rate-Limit, Audit und OpenAPI; Ergebnis-Webhook HMAC-signiert. Intern zusätzlich `POST /projects/:id/extract` (Session-Auth, von der UI genutzt) | vorhanden (API-Layer seit Welle 5) |
 | b | **Eingebettet** | Apps/Agenten/Skills rufen `extract()` bzw. `runPipeline()` direkt auf (z. B. Vertragsmanagement) | vorhanden |
 | c | **Manuelle UI** | „Verarbeiten"-Tab: Multi-Upload → Batch (Abschnitt 8.1) | vorhanden |
 
@@ -401,7 +401,9 @@ angezeigt. Details: `docs/extraktion-api-integration-2026-08-03.md`.
 in S3 (Scalingo) bzw. im Volume (Railway); die Detailansicht lädt sie über
 `GET .../files/:fileId/pages/:page` (same-origin wegen CSP).
 
-**Export:** CSV/JSON (clientseitig), XLSX (`GET .../export.xlsx` via `generateDocument`) und
+**Export:** CSV/JSON (clientseitig), XLSX in zwei Formen (`GET .../export.xlsx`, mit
+`?format=flat` **eine Zeile je Position mit wiederholten Belegdaten** statt Hauptblatt +
+Zusatzblättern — für zeilenweise lesende Zielsysteme) und
 **„In Tabelle schreiben"** (`POST .../to-table`: Projekt-Felder → Tabellen-Spalten, je Dokument
 eine Zeile).
 
@@ -468,7 +470,7 @@ Installation der Binaries: macOS `brew install poppler tesseract`; Linux/Scaling
 | GET | `/projects/:id/batches` · `/…/:runId` | Historie · Lauf-Status (Polling) |
 | GET | `/…/:runId/files/:fileId` | Datei-Detail (boxes + pageImages-Referenzen + Regel-Befunde) |
 | GET | `/…/:runId/files/:fileId/pages/:page` | **Seitenbild** (PNG, same-origin ausgeliefert) |
-| GET | `/…/:runId/export.xlsx` | XLSX-Download |
+| GET | `/…/:runId/export.xlsx?format=flat` | XLSX-Download (gruppiert oder flach) |
 | POST | `/…/:runId/to-table` | Ergebnisse in eine Tabelle schreiben |
 | DELETE | `/…/:runId` | Lauf löschen |
 

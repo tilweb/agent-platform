@@ -96,6 +96,12 @@ const FORMAT_CONFIG = {
     color: '#107C41',
     bgColor: '#E7F5EF',
   },
+  xlsx_flat: {
+    label: 'Excel flach (.xlsx)',
+    description: 'Eine Zeile je Position, Belegdaten wiederholt',
+    color: '#107C41',
+    bgColor: '#E7F5EF',
+  },
   pdf: {
     label: 'PDF (.pdf)',
     description: 'Adobe PDF Dokument',

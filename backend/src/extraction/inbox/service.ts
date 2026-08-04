@@ -37,6 +37,16 @@ import {
 
 const AUTO_ROUTE_THRESHOLD = parseFloat(process.env.INBOX_AUTO_ROUTE_THRESHOLD || '0.8');
 const MAX_PAGES = parseInt(process.env.INBOX_MAX_PAGES || '60', 10);
+
+/** Optionen je Upload. */
+export interface InboxProcessOptions {
+  /**
+   * Mehrseitige PDFs an vermuteten Dokumentgrenzen trennen. Default `true`.
+   * `false` behandelt den Upload als EIN Dokument — kein Seitenpaar-Urteil,
+   * kein Zerschneiden; die Klassifikation laeuft auf Seite 1.
+   */
+  split?: boolean;
+}
 /** processing-Uploads aelter als das gelten als abgebrochen (Server-Restart). */
 const STALE_PROCESSING_MS = 30 * 60 * 1000;
 
@@ -84,6 +94,7 @@ export async function processInboxUpload(
   tempPath: string,
   meta: { filename: string; mimeType?: string },
   userId?: string,
+  options: InboxProcessOptions = {},
 ): Promise<void> {
   try {
     const buffer = Buffer.from(await readFile(tempPath));
@@ -153,10 +164,16 @@ export async function processInboxUpload(
       return;
     }
 
-    // Rendern + Grenzen beurteilen.
-    const pages = await renderPdfToImages(buffer, { dpi: 150 });
-    const boundaries = pages.length > 1 ? await judgeBoundaries(pages, userId) : [];
-    let ranges = rangesFromBoundaries(pages.length, boundaries);
+    // Rendern + Grenzen beurteilen. Ohne Split (`split: false`) wird der Beleg
+    // als EIN Dokument behandelt — sinnvoll, wenn die Quelle ohnehin je Vorgang
+    // eine Datei liefert (z.B. ein RPA-Roboter, der einen Lieferschein scannt).
+    // Dann entfaellt auch das Seitenpaar-Urteil, also ein LLM-Call je Uebergang.
+    const splitEnabled = options.split !== false;
+    const pages = await renderPdfToImages(buffer, { dpi: 150, ...(splitEnabled ? {} : { maxPages: 1 }) });
+    const boundaries = splitEnabled && pages.length > 1 ? await judgeBoundaries(pages, userId) : [];
+    let ranges = splitEnabled
+      ? rangesFromBoundaries(pages.length, boundaries)
+      : [{ from: 1, to: pageCount }];
 
     // Teil-PDFs bauen (bei >1 Teil). Fallback auf 1 Teil, wenn der Splitter
     // fehlt oder scheitert (z.B. verschluesseltes PDF) — kein Hard-Fail.

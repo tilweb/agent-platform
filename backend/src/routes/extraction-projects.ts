@@ -38,6 +38,7 @@ import { generateWebhookSecret, isDeliverableUrl } from '../extraction/learning/
 import { createTable, addRow } from '../tables';
 import type { ColumnDefinition, ColumnType } from '../tables/types';
 import { generateDocument } from '../services/documentGenerator';
+import { buildBatchExportSections, type ExportFormat } from '../extraction/learning/export-xlsx';
 
 export const extractionProjectRoutes = new Hono();
 
@@ -402,19 +403,6 @@ const FIELD_TYPE_TO_COLUMN: Record<ProjectField['type'], ColumnType> = {
   list: 'text',
 };
 
-/** Stringifiziert einen extrahierten Wert für CSV/XLSX-Zellen. */
-function cellString(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'boolean') return value ? 'Ja' : 'Nein';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
-}
-
-/** Excel-Sheet-Namen: max. 31 Zeichen, verbotene Zeichen ersetzen. */
-function sanitizeSheetName(name: string): string {
-  return name.replace(/[\[\]:*?/\\]/g, '-').substring(0, 31).trim() || 'Liste';
-}
-
 /**
  * POST /projects/:id/batches — Multi-Upload, Lauf anlegen, Hintergrund-Verarbeitung starten.
  * Antwortet sofort mit { runId } (fire-and-forget); Frontend pollt den Status.
@@ -580,54 +568,16 @@ extractionProjectRoutes.post('/projects/:id/batches/:runId/files/:fileId/learn',
 extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c) => {
   const projectId = c.req.param('id');
   const runId = c.req.param('runId');
+  // `?format=flat` liefert EIN Blatt mit einer Zeile je Position und
+  // wiederholten Kopfdaten — das Format, das nachgelagerte Systeme erwarten.
+  const format: ExportFormat = c.req.query('format') === 'flat' ? 'flat' : 'grouped';
+
   const project = await getProject(projectId);
   if (!project) return c.json({ error: 'Projekt nicht gefunden' }, 404);
   const result = await getBatchRun(projectId, runId);
   if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
 
-  const fieldEntries = Object.entries(project.fields);
-  const headers = ['Datei', 'Status', ...fieldEntries.map(([, f]) => f.label || '')];
-  const rows = result.files.map((file) => [
-    file.filename,
-    file.status,
-    ...fieldEntries.map(([fid, f]) => {
-      const v = file.data?.[fid];
-      // Listen im Hauptblatt nur als Zusammenfassung — die Positionen stehen
-      // strukturiert im Zusatzblatt des jeweiligen Listen-Felds.
-      if (f.type === 'list') {
-        return Array.isArray(v) && v.length > 0 ? `${v.length} Positionen` : '';
-      }
-      return cellString(v);
-    }),
-  ]);
-
-  const sections: Array<{ title: string; type: 'table'; content: { headers: string[]; rows: string[][] }; sheet?: string }> = [
-    { title: 'Ergebnisse', type: 'table', content: { headers, rows } },
-  ];
-
-  // Pro Listen-Feld ein Zusatzblatt: eine Zeile je Position, Spalte "Datei" als Referenz.
-  for (const [fid, f] of fieldEntries) {
-    if (f.type !== 'list') continue;
-    const itemEntries = Object.entries(f.item_fields ?? {});
-    const itemHeaders = ['Datei', ...itemEntries.map(([, itf]) => itf.label || '')];
-    const itemRows = result.files.flatMap((file) => {
-      const items = file.data?.[fid];
-      if (!Array.isArray(items)) return [];
-      return items.map((item) => [
-        file.filename,
-        ...itemEntries.map(([iid]) =>
-          cellString(item && typeof item === 'object' ? (item as Record<string, unknown>)[iid] : null),
-        ),
-      ]);
-    });
-    sections.push({
-      title: f.label || fid,
-      type: 'table',
-      content: { headers: itemHeaders, rows: itemRows },
-      sheet: sanitizeSheetName(f.label || fid),
-    });
-  }
-
+  const sections = buildBatchExportSections(project, result.files, format);
   const buffer = await generateDocument(
     {
       title: `Batch-Extraktion — ${project.name}`,
@@ -635,6 +585,7 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c
         Projekt: project.name,
         Dokumente: String(result.files.length),
         Lauf: runId,
+        Format: format === 'flat' ? 'flach (eine Zeile je Position)' : 'gruppiert',
       },
       sections,
     },
@@ -643,7 +594,7 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c
 
   return c.body(buffer as unknown as ArrayBuffer, 200, {
     'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'Content-Disposition': `attachment; filename="batch-${runId}.xlsx"`,
+    'Content-Disposition': `attachment; filename="batch-${runId}${format === 'flat' ? '-flach' : ''}.xlsx"`,
   });
 });
 
