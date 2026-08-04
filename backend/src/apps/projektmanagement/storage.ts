@@ -5,7 +5,7 @@
  * Statusberichte und Vorlagen analog. Config bleibt vorerst in-memory (DEFAULT_CONFIG).
  */
 
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, isNull } from 'drizzle-orm';
 import { getDb } from '../../db';
 import {
   paProjektideen,
@@ -121,6 +121,38 @@ export async function getProjektauftrag(projektId: string): Promise<Projektauftr
     auftrag.idee = await loadIdeeReference(rows[0].ideeId);
   }
   return auftrag;
+}
+
+/**
+ * Referenzen aller Projektauftraege OHNE Idee-Verknuepfung (idee_id IS NULL) —
+ * Kandidaten fuer die manuelle Verknuepfung mit einer Projektidee. RBAC-Filter
+ * passiert im Aufrufer (Route).
+ */
+export async function listUnlinkedAuftragRefs(): Promise<{ id: string; name: string; status: string }[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ id: paProjektauftraege.id, name: paProjektauftraege.name, status: paProjektauftraege.status })
+    .from(paProjektauftraege)
+    .where(isNull(paProjektauftraege.ideeId))
+    .orderBy(desc(paProjektauftraege.updatedAt));
+  return rows.map((r) => ({ id: r.id, name: r.name, status: r.status ?? 'draft' }));
+}
+
+/** Aktuelle idee_id eines Auftrags (oder null). Fuer Unlink-Guard. */
+export async function getAuftragIdeeId(auftragId: string): Promise<string | null> {
+  const db = getDb();
+  const rows = await db
+    .select({ ideeId: paProjektauftraege.ideeId })
+    .from(paProjektauftraege)
+    .where(eq(paProjektauftraege.id, auftragId))
+    .limit(1);
+  return rows[0]?.ideeId ?? null;
+}
+
+/** Setzt (Link) oder loescht (null = Unlink) die Idee-Verknuepfung eines Auftrags. */
+export async function setAuftragIdee(auftragId: string, ideeId: string | null): Promise<void> {
+  const db = getDb();
+  await db.update(paProjektauftraege).set({ ideeId }).where(eq(paProjektauftraege.id, auftragId));
 }
 
 export async function saveProjektauftrag(p: Projektauftrag): Promise<void> {

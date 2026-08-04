@@ -3,7 +3,9 @@
  * Visuelles Pattern 1:1 wie components/steps/Basis.jsx.
  */
 
+import { useCallback, useEffect, useState } from 'react';
 import { theme } from '../../../../config/theme';
+import { useProjektmanagement } from '../../../../hooks/useProjektmanagement';
 
 const styles = {
   container: {
@@ -79,12 +81,98 @@ const styles = {
     color: theme.colors.textMuted,
     marginTop: theme.spacing.xs,
   },
+  emptyBox: {
+    padding: theme.spacing.md,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textMuted,
+    fontStyle: 'italic',
+    border: `1px dashed ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.background,
+  },
+  linkedList: { display: 'flex', flexDirection: 'column', gap: theme.spacing.sm },
+  linkedRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.surface,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text,
+  },
+  unlinkBtn: {
+    padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+    backgroundColor: 'transparent',
+    color: theme.colors.error,
+    border: `1px solid ${theme.colors.error}30`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.xs,
+    cursor: 'pointer',
+  },
+  linkControls: { display: 'flex', gap: theme.spacing.md, alignItems: 'center', marginTop: theme.spacing.sm },
+  linkBtn: {
+    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+    backgroundColor: theme.colors.primary,
+    color: '#fff',
+    border: 'none',
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  linkError: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.error,
+    marginBottom: theme.spacing.sm,
+  },
 };
 
 export default function IdeeBasis({ projektidee, onChange, config }) {
   const update = (field, value) => onChange({ ...projektidee, [field]: value });
   // Auswahloptionen aus der App-Config (einheitlich mit dem Projektauftrag).
   const opts = (key) => config?.[key] || [];
+
+  // Abgeleitete Projektaufträge: manuell verknüpfen/lösen (setzt Auftrag.idee_id).
+  const { getAvailableAuftraegeForIdee, linkAuftragToIdee, unlinkAuftragFromIdee } = useProjektmanagement();
+  const [linked, setLinked] = useState(projektidee.abgeleitete_auftraege ?? []);
+  const [available, setAvailable] = useState([]);
+  const [selected, setSelected] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [linkError, setLinkError] = useState(null);
+
+  const reloadAvailable = useCallback(async () => {
+    if (!projektidee.id) return;
+    try { setAvailable(await getAvailableAuftraegeForIdee(projektidee.id)); }
+    catch { setAvailable([]); }
+  }, [projektidee.id, getAvailableAuftraegeForIdee]);
+  useEffect(() => { reloadAvailable(); }, [reloadAvailable]);
+
+  const doLink = async () => {
+    if (!selected) return;
+    setBusy(true); setLinkError(null);
+    try {
+      await linkAuftragToIdee(projektidee.id, selected);
+      const a = available.find((x) => x.id === selected);
+      if (a) setLinked((prev) => [...prev, { id: a.id, name: a.name, status: a.status, created_at: '' }]);
+      setAvailable((prev) => prev.filter((x) => x.id !== selected));
+      setSelected('');
+    } catch (e) { setLinkError(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const doUnlink = async (auftragId) => {
+    setBusy(true); setLinkError(null);
+    try {
+      await unlinkAuftragFromIdee(projektidee.id, auftragId);
+      const a = linked.find((x) => x.id === auftragId);
+      setLinked((prev) => prev.filter((x) => x.id !== auftragId));
+      if (a) setAvailable((prev) => [...prev, { id: a.id, name: a.name, status: a.status }]);
+    } catch (e) { setLinkError(e.message); }
+    finally { setBusy(false); }
+  };
 
   return (
     <div style={styles.container}>
@@ -275,6 +363,52 @@ export default function IdeeBasis({ projektidee, onChange, config }) {
             onFocus={(e) => { e.target.style.borderColor = theme.colors.primary; }}
             onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
           />
+        </div>
+      </div>
+
+      {/* Abgeleitete Projektaufträge — manuelle Verknüpfung */}
+      <div style={styles.formGroup}>
+        <label style={styles.label}>Abgeleitete Projektaufträge</label>
+        <p style={styles.hint}>
+          Vorhandene Projektaufträge dieser Idee zuordnen. Nicht jeder muss automatisch über „Auftrag aus Idee
+          erstellen" entstehen — auch manuell erfasste Aufträge lassen sich hier verknüpfen.
+        </p>
+        {linkError && <div style={styles.linkError}>{linkError}</div>}
+        {linked.length === 0 ? (
+          <div style={styles.emptyBox}>Noch keine Projektaufträge verknüpft.</div>
+        ) : (
+          <div style={styles.linkedList}>
+            {linked.map((a) => (
+              <div key={a.id} style={styles.linkedRow}>
+                <span>{a.name}</span>
+                <button type="button" style={styles.unlinkBtn} onClick={() => doUnlink(a.id)} disabled={busy}>
+                  Lösen
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={styles.linkControls}>
+          <select
+            style={{ ...styles.select, flex: 1 }}
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+          >
+            <option value="">
+              {available.length === 0 ? '— Keine freien Projektaufträge —' : '— Vorhandenen Auftrag wählen —'}
+            </option>
+            {available.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            style={{ ...styles.linkBtn, opacity: (!selected || busy) ? 0.5 : 1 }}
+            onClick={doLink}
+            disabled={!selected || busy}
+          >
+            Verknüpfen
+          </button>
         </div>
       </div>
     </div>
