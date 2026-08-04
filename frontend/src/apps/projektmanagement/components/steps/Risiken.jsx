@@ -134,7 +134,13 @@ const styles = {
   },
 };
 
-function Risiken({ data, onChange, config }) {
+function Risiken({
+  data,
+  onChange,
+  config,
+  title = '7. Risiken',
+  subtitle = 'Identifizieren und bewerten Sie potenzielle Projektrisiken und -chancen.',
+}) {
   const [activeTab, setActiveTab] = useState('eingabe');
   const opts = (key) => config?.[key] || [];
   const risks = data.risks || [];
@@ -170,10 +176,8 @@ function Risiken({ data, onChange, config }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>7. Risiken</h2>
-        <p style={styles.subtitle}>
-          Identifizieren und bewerten Sie potenzielle Projektrisiken und -chancen.
-        </p>
+        <h2 style={styles.title}>{title}</h2>
+        <p style={styles.subtitle}>{subtitle}</p>
       </div>
 
       {/* Tabs */}

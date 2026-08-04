@@ -43,12 +43,16 @@ const LEVEL_LABELS: Record<string, string> = {
 };
 
 const RISK_TYPE_LABELS: Record<string, string> = {
-  strategisch: 'Strategisch',
-  operativ: 'Operativ',
-  finanziell: 'Finanziell',
-  rechtlich: 'Rechtlich',
-  technisch: 'Technisch',
-  markt: 'Markt',
+  technical: 'Technisch',
+  organizational: 'Organisatorisch',
+  financial: 'Finanziell',
+  schedule: 'Terminlich',
+  resource: 'Ressourcen',
+  external: 'Extern',
+};
+
+const RISK_NATURE_LABELS: Record<string, string> = {
+  threat: 'Bedrohung',
   chance: 'Chance',
 };
 
@@ -261,13 +265,13 @@ export function mapProjektideeToDocument(idee: Projektidee, config?: Record<stri
       title: 'Unternehmensrisiken',
       type: 'table',
       content: {
-        headers: ['Typ', 'Beschreibung', 'Wahrsch.', 'Auswirkung', 'Gegenmassnahme'],
+        headers: ['Art', 'Risikotyp', 'Beschreibung', 'Wahrsch.', 'Auswirkung'],
         rows: risiken.map((r) => [
-          RISK_TYPE_LABELS[r.type ?? ''] ?? r.type ?? '-',
+          RISK_NATURE_LABELS[r.nature ?? ''] ?? (r.nature || '-'),
+          RISK_TYPE_LABELS[r.type ?? ''] ?? (r.type || '-'),
           r.description || '-',
           LEVEL_LABELS[r.probability ?? ''] ?? '-',
           LEVEL_LABELS[r.impact ?? ''] ?? '-',
-          r.mitigation || '-',
         ]),
       },
     });
