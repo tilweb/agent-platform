@@ -3541,6 +3541,13 @@ function RulesEditor({ rules, fields, onChange }) {
         Prüfregeln bewerten die <strong>fachliche Plausibilität</strong> — unabhängig von der Konfidenz.
         Ein verletzter Summen-Check oder ein unbekannter Stammdaten-Wert hebt das Dokument im
         Verarbeiten-Tab auf „Zu prüfen" und wird dort im Klartext angezeigt.
+        <div style={{ marginTop: theme.spacing.sm }}>
+          <strong>Stammdaten-Abgleich oder Werteliste am Feld?</strong> Beide prüfen, ob ein Wert in einer
+          hinterlegten Menge vorkommt. Die <strong>Werteliste</strong> (oben bei den Feldern, „Zulässige
+          Werte") kann mehr: Sie gibt die Werte auch der KI vor und gleicht Schreibvarianten automatisch an.
+          Der Stammdaten-Abgleich hier prüft nur — sinnvoll, wenn genau das gewollt ist oder das Feld bereits
+          eine andere Werteliste nutzt. Beides gleichzeitig auf demselben Feld ist doppelt gemoppelt.
+        </div>
       </InfoBox>
 
       {/* Warum ein Button gesperrt ist, gehört sichtbar neben den Button — nicht
