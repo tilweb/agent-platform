@@ -248,6 +248,17 @@ Upload EMMA-Export → deterministischer Prüfmuster-Check → LLM-Vor-Benotung 
 
 ## 2026-07-29
 
+### PM: Klassifizierungs-Matrix — Quadranten-Texte konfigurierbar (Test-Feedback Block 2)
+- Neue Config-Liste **`stakeholder_quadrants`** (die 4 Quadranten-Texte der Interesse×Einfluss-Matrix); Labels
+  editierbar, Schlüssel gesperrt (wie `idee_status`/`portfolio_status`). Erscheint via DEFAULT_CONFIG-Merge auch
+  bei bestehenden Instanzen und im Config-Export/Import.
+- **StakeholderMatrix** liest die Quadranten-Texte aus der Config (Fallback = Standardtexte) — wirkt überall, wo
+  die Matrix genutzt wird: **Projektidee, Projektauftrag, Portfolio**.
+- **X-Achsenbeschriftung mit Zeilenumbruch** (lange Werte wie „1 - extrem gering" brechen um statt zu überlappen),
+  Achsentitel tiefer, mehr Bodenabstand.
+- Config-Usage von `project_driver` um „Projektidee (Basis)" ergänzt.
+- Beide Worktrees; storage.ts je Worktree, config-io + Frontend byte-identisch.
+
 ### PM: Projektidee — Test-Feedback Block 1 (Nummerierung, Projekttreiber-Select, Config-Labels, Personen)
 - **Nummerierung raus**: alle Wissensgebiet-Überschriften ohne führende Nummer (Basis, Personen, Ziele,
   Projektkontext, Business Case, Unternehmensrisiken, Übersicht) — behebt zugleich die seit „Personen" (Step 2)

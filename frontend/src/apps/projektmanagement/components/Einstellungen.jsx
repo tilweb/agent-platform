@@ -23,6 +23,7 @@ const FIELD_LABELS = {
   gruppe: 'Gruppe',
   interest: 'Interesse',
   influence: 'Einfluss',
+  stakeholder_quadrants: 'Klassifizierungs-Matrix (Quadranten)',
   probability: 'Wahrscheinlichkeit',
   impact: 'Auswirkung',
   roadmap_status: 'Roadmap-Status',
@@ -41,7 +42,7 @@ const FIELD_USAGE = {
   project_type: 'Projekt-Wizard (Basisinfo), Projektidee (Basis), Portfolio',
   project_size: 'Projekt-Wizard (Basisinfo), Projektidee (Basis)',
   priority: 'Projekt-Wizard (Basisinfo), Projektidee (Basis)',
-  project_driver: 'Projekt-Wizard (Basisinfo)',
+  project_driver: 'Projekt-Wizard (Basisinfo), Projektidee (Basis)',
   project_status: 'Projekt-Wizard (Basisinfo), Projektidee (Basis), Abschlussbericht, Portfolio',
   order_status: 'Projekt-Wizard (Basisinfo)',
   idee_status: 'Projektidee (Basis)',
@@ -50,6 +51,7 @@ const FIELD_USAGE = {
   gruppe: 'Projekt-Wizard (Personen), Projektidee (Personen)',
   interest: 'Projekt-Wizard (Organisation/Stakeholder), Stakeholder-Matrix',
   influence: 'Projekt-Wizard (Organisation/Stakeholder), Stakeholder-Matrix',
+  stakeholder_quadrants: 'Stakeholder-Matrix (Idee/Auftrag/Portfolio)',
   probability: 'Projekt-Wizard (Risiken), Statusberichte, Abschlussbericht',
   impact: 'Projekt-Wizard (Risiken), Statusberichte, Abschlussbericht',
   roadmap_status: 'Statusberichte (Roadmap)',
@@ -76,6 +78,7 @@ const FIELD_ORDER = [
   'gruppe',
   'interest',
   'influence',
+  'stakeholder_quadrants',
   'probability',
   'impact',
   'roadmap_status',
@@ -92,7 +95,7 @@ const FIELD_ORDER = [
 // Badges, Filter). Hier ist nur der Anzeigename editierbar — Schlüssel sind
 // gesperrt und Einträge können nicht hinzugefügt/gelöscht werden, damit die
 // automatische Zuordnung nicht bricht.
-const LOCKED_KEY_FIELDS = new Set(['idee_status', 'portfolio_status']);
+const LOCKED_KEY_FIELDS = new Set(['idee_status', 'portfolio_status', 'stakeholder_quadrants']);
 
 // ============== Styles ==============
 

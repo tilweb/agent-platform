@@ -415,6 +415,14 @@ const DEFAULT_CONFIG = {
     { value: 'medium', label: 'Mittel' },
     { value: 'high', label: 'Hoch' },
   ],
+  // Klassifizierungs-Matrix (Interesse×Einfluss): die 4 Quadranten-Texte.
+  // Schluessel sind fixiert (Position in der Matrix), nur die Labels sind editierbar.
+  stakeholder_quadrants: [
+    { value: 'hi_influence_lo_interest', label: 'Ausreichend informieren' },
+    { value: 'hi_influence_hi_interest', label: 'Regelmäßig informieren' },
+    { value: 'lo_influence_lo_interest', label: 'Gut informieren und einbeziehen' },
+    { value: 'lo_influence_hi_interest', label: 'Umfangreich informieren und einbeziehen' },
+  ],
   probability: [
     { value: 'low', label: 'Niedrig' },
     { value: 'medium', label: 'Mittel' },

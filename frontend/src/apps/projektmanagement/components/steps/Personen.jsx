@@ -637,6 +637,7 @@ function Personen({
             interestOptions={opts('interest')}
             influenceOptions={opts('influence')}
             roleOptions={opts('role')}
+            quadrantOptions={opts('stakeholder_quadrants')}
           />
           {/* Legend */}
           <div style={{
