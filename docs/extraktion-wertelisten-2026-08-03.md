@@ -123,16 +123,17 @@ beide Frontend-Builds grün.
 **End-to-End (lokal, Port 3011, echte Modelle):**
 
 1. **Prompt (a)** — Katalogwerte nachweislich in beiden Prompt-Pfaden (Function-Schema *und*
-   Vision-JSON), inklusive Positions-Spalten. **Offen:** ein *ausgeführter* Vision-Lauf mit Katalog
-   steht noch aus — der Adacor-Vision-Endpoint lief am 2026-08-04 in beide 45-s-Timeouts, ein
-   Kontrolllauf **ohne** Katalog scheiterte identisch (später antwortete auch der Text-Endpoint
-   nicht mehr auf ein triviales Prompt). Die Kataloge sind als Ursache damit ausgeschlossen; der
-   Nachweis auf der Vision-Strecke ist nachzuholen, sobald der Endpoint wieder liefert.
+   Vision-JSON), inklusive Positions-Spalten. **Vision-Strecke nachgewiesen (2026-08-04):**
+   Test-PDF durch ein `vision-per-page`-Projekt mit zwei Katalogen → Werte korrekt aus dem Bild
+   gelesen, „Stück" → „Stk" und „muster bau" → „Muster Bau GmbH" angeglichen, beides als `info`
+   protokolliert, Datei blieb `auto_ok`, Audit weist `adacor/qwen3-5-a3b-35b-256k` aus.
+   *(Der Lauf war zunächst an Timeouts gescheitert — Ursache war das damals aktive Chat-Modell
+   Nebius/Kimi-K3, nicht die Kataloge; ein Kontrolllauf ohne Katalog scheiterte identisch. Seit der
+   festen Modellbindung der Extraktion läuft er durch.)*
 2. **Modellverhalten** — Dokument mit „acme ag" / „Stück" → Modell liefert direkt „Acme AG" / „Stk".
    Einheit „Sack" (nicht im Katalog) wurde **nicht** in die Liste gezwungen → `error`-Befund,
-   Datei auf „Zu prüfen". *(Der Gegenfall „nur `info`-Befunde ⇒ Datei bleibt `auto_ok`" ist über den
-   Korrektur-Pfad belegt — dort blieb die Datei unblockiert —, als regulärer Batch-Lauf aber noch
-   nicht gezeigt; siehe Endpoint-Ausfall unter Punkt 1.)*
+   Datei auf „Zu prüfen". Der Gegenfall — **nur `info`-Befunde ⇒ Datei bleibt `auto_ok`** — ist im
+   Vision-Lauf aus Punkt 1 belegt (zwei Angleichungen, `auto_ok`).
 3. **Mapping (b)** — Korrektur mit „ACME Aktiengesellschaft" und „stück" über den Live-Pfad:
    beide auf „Acme AG"/„Stk" angeglichen, zwei `info`-Befunde, gespeicherter Stand kanonisch.
 4. **Tabellen-Katalog** — „muster bau" → „Muster Bau GmbH" (Präfix-Treffer) mit `info`-Protokoll.

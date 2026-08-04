@@ -12,7 +12,8 @@
  * im Ziel-Projekt per W3-Review korrigierbar, falsch getrennte nicht).
  */
 
-import { resolveActiveModel } from '../../services/providers';
+import { resolveModel } from '../../services/providers';
+import { EXTRACTION_MODEL_ID, EXTRACTION_PROVIDER_ID, extractionModelLabel } from '../model';
 import { OpenAIAdapter } from '../../services/llm/adapters/openai';
 import { createImageContent, type ContentPart, type Message } from '../../services/llm';
 import { withTimeoutRetry } from '../../services/extraction/extract-call';
@@ -101,9 +102,11 @@ export async function judgeBoundaries(
 ): Promise<boolean[]> {
   if (pages.length < 2) return [];
 
-  const visionModel = await resolveActiveModel('vision', userId);
+  // Festes Extraktions-Modell (siehe extraction/model.ts) — die Eingangsstrecke
+  // darf nicht davon abhaengen, welches Modell im Chat eingestellt ist.
+  const visionModel = await resolveModel(EXTRACTION_PROVIDER_ID, EXTRACTION_MODEL_ID);
   if (!visionModel) {
-    throw new Error('Kein Vision-Modell konfiguriert');
+    throw new Error(`Extraktions-Modell ${extractionModelLabel()} nicht verfuegbar (EXTRACTION_LLM_PROVIDER / EXTRACTION_LLM_MODEL)`);
   }
   const adapter = new OpenAIAdapter({
     baseUrl: visionModel.base_url,

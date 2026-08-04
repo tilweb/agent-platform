@@ -23,6 +23,7 @@ import {
   type ExtractionSchema,
 } from '../../services/extraction';
 import { fieldCatalogHint } from './catalog';
+import { extractionModelConfig } from '../model';
 import type { ExtractionProject, FieldType, TrainingExample } from './types';
 
 /** Name der synthetischen Gruppe, in die flache Projekt-Felder gewickelt werden. */
@@ -169,6 +170,10 @@ export function extractionProjectToExtractionSchema(
   // Projekte behalten ihr altes Retry-mit-Validierungs-Feedback-Verhalten,
   // sofern nicht explizit abgeschaltet.
   config.validation_repair = project.extraction?.validation_repair ?? true;
+  // Die Extraktion bindet ihr Modell selbst (siehe extraction/model.ts) — die
+  // Session-/Nutzerwahl darf sie nicht beeinflussen. Ein projekteigenes Modell
+  // bleibt eine bewusste fachliche Entscheidung und schlaegt die Bindung.
+  config.model_override = project.extraction?.model_override ?? extractionModelConfig();
   return {
     id: `proj_${sanitizeId(project.id)}`,
     name: project.name,

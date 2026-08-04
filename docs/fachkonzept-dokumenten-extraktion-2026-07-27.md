@@ -46,7 +46,7 @@ Logik und UI sind identisch (s. Abschnitt 9).
 | **Schema-Inferenz** | Feldliste inkl. Positionstabelle aus einem Beispieldokument vorschlagen lassen (seit Welle 5). |
 | **Kontrollierte Wertelisten** | Je Feld/Spalte eine endliche Liste zulässiger Werte (statisch oder aus einer Tabelle): geht in den Prompt, gleicht Schreibvarianten an und meldet Ausreißer (seit Welle 6). |
 | **Export/Import** | Ein gut angelerntes Projekt als portables `.json`-Paket weitergeben (Vorlage für andere Instanzen). |
-| **Modellwahl** | Pro Projekt ein KI-Modell wählbar (analog zu Agenten); sonst System-Standard. |
+| **Modellwahl** | Die Extraktion läuft auf einem **festen Modell** (Adacor Qwen 3.5 Instruct) — unabhängig davon, was im Chat eingestellt ist. Pro Projekt ist ein abweichendes Modell wählbar. |
 
 **Drei Nutzungsdimensionen** derselben Pipeline (Abschnitt 8):
 **(a)** via API · **(b)** eingebettet in Apps/Agenten/Skills · **(c)** manuell über die UI.
@@ -289,12 +289,24 @@ verbleibenden echten Fehlern **ein** gezielter LLM-Reparatur-Call, der die Fehle
 Extraktion + Dokumenttext bekommt (max. 1 Pass, kein Retry-Loop). Ohne Dokumenttext (reine
 Bildquelle) entfällt der Call.
 
-### 6.6 Modell-Override
+### 6.6 Modellwahl
 
-Priorität: `input.modelOverride` › `schema.config.model_override` › aktives System-Modell. Der
-Override wird an alle Strategien **und** den Repair-Call durchgereicht. In der UI ist er pro Projekt
-wählbar (Dropdown „KI-Modell (optional)"); vision-fähige Modelle sind markiert, weil Vision-Strategien
-ein solches brauchen.
+Priorität: `input.modelOverride` › projekteigenes Modell (`extraction.model_override`, UI-Dropdown
+„KI-Modell (optional)") › **festes Extraktions-Modell** (`backend/src/extraction/model.ts`).
+
+Das Feature bindet sein Modell seit dem 2026-08-04 selbst — **Adacor Qwen 3.5 Instruct 35B**
+(`chat` + `function_calling` + `vision`, deckt alle vier Strategien ab). Vorher lief die Extraktion
+auf dem *aktiven* System-Modell, und `resolveActiveModel` zieht davor noch die **Modellwahl des
+Nutzers für die laufende Session**: Damit hing die Qualität einer Extraktion daran, was gerade im
+Chat eingestellt war — und ein hängendes Chat-Modell legte die gesamte Extraktion lahm (beobachtet
+am 2026-08-04: Nebius/Kimi-K3 antwortete 120 s lang nicht auf ein triviales Prompt, während Adacor
+in 0,5 s lieferte).
+
+Die Bindung gilt für **alle** LLM-Aufrufe des Features: die vier Strategien, den Repair-Call, die
+Konfidenz-Selbstbewertung, die Bild-Beschreibung, die Regel-Ableitung, die Schema-Inferenz sowie
+Split und Klassifikation im Posteingang. Umschaltbar per `EXTRACTION_LLM_PROVIDER` /
+`EXTRACTION_LLM_MODEL` (für Instanzen ohne Adacor-Zugang); das projekteigene Modell bleibt als
+bewusste fachliche Entscheidung vorrangig.
 
 ---
 

@@ -8,7 +8,8 @@
  * Sicherheit"), Antwort als Freitext-JSON.
  */
 
-import { resolveActiveModel } from '../../services/providers';
+import { resolveModel } from '../../services/providers';
+import { EXTRACTION_MODEL_ID, EXTRACTION_PROVIDER_ID, extractionModelLabel } from '../model';
 import { OpenAIAdapter } from '../../services/llm/adapters/openai';
 import { createImageContent, type ContentPart, type Message } from '../../services/llm';
 import { withTimeoutRetry, parseJsonObject } from '../../services/extraction/extract-call';
@@ -111,9 +112,11 @@ export async function classifyPart(
 ): Promise<PartClassification> {
   if (projects.length === 0) return { project_id: null, confidence: 0, alternatives: [] };
 
-  const visionModel = await resolveActiveModel('vision', userId);
+  // Festes Extraktions-Modell (siehe extraction/model.ts) — die Eingangsstrecke
+  // darf nicht davon abhaengen, welches Modell im Chat eingestellt ist.
+  const visionModel = await resolveModel(EXTRACTION_PROVIDER_ID, EXTRACTION_MODEL_ID);
   if (!visionModel) {
-    throw new Error('Kein Vision-Modell konfiguriert');
+    throw new Error(`Extraktions-Modell ${extractionModelLabel()} nicht verfuegbar (EXTRACTION_LLM_PROVIDER / EXTRACTION_LLM_MODEL)`);
   }
   const adapter = new OpenAIAdapter({
     baseUrl: visionModel.base_url,

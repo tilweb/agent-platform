@@ -4,6 +4,7 @@ import {
   buildLearningGuidelines,
   PROJECT_FIELD_GROUP,
 } from './pipeline-adapter';
+import { EXTRACTION_MODEL_ID, EXTRACTION_PROVIDER_ID } from '../model';
 import type { ExtractionProject, TrainingExample } from './types';
 
 function makeProject(overrides: Partial<ExtractionProject> = {}): ExtractionProject {
@@ -206,4 +207,35 @@ test('Round-trip: pipeline-Ergebnis (felder.<id>) entpackt zu flach', () => {
     flatConf[path.startsWith(prefix) ? path.slice(prefix.length) : path] = conf;
   }
   expect(flatConf).toEqual({ rechnungsnummer: 1.0, betrag: 0.6 });
+});
+
+// ============== Feste Modellbindung (2026-08-04) ==============
+
+test('Extraktion laeuft auf dem festen Extraktions-Modell, nicht auf dem Session-Modell', () => {
+  const schema = extractionProjectToExtractionSchema(makeProject());
+  expect(schema.config.model_override).toEqual({
+    provider_id: EXTRACTION_PROVIDER_ID,
+    model_id: EXTRACTION_MODEL_ID,
+  });
+  // Default ist Adacor Qwen 3.5 Instruct (chat + function_calling + vision).
+  expect(EXTRACTION_PROVIDER_ID).toBe('adacor');
+  expect(EXTRACTION_MODEL_ID).toBe('qwen3-5-a3b-35b-256k');
+});
+
+test('Ein projekteigenes Modell schlaegt die feste Bindung', () => {
+  const project = makeProject({
+    extraction: { strategy: 'hybrid', model_override: { provider_id: 'eigen', model_id: 'mein-modell' } },
+  });
+  const schema = extractionProjectToExtractionSchema(project);
+  expect(schema.config.model_override).toEqual({ provider_id: 'eigen', model_id: 'mein-modell' });
+});
+
+test('Auch Listen-Projekte und andere Strategien erben die Bindung', () => {
+  const schema = extractionProjectToExtractionSchema(makeListProject());
+  expect(schema.config.model_override?.provider_id).toBe(EXTRACTION_PROVIDER_ID);
+  const visionSchema = extractionProjectToExtractionSchema(
+    makeProject({ extraction: { strategy: 'vision-per-page' } }),
+  );
+  expect(visionSchema.config.strategy).toBe('vision-per-page');
+  expect(visionSchema.config.model_override?.model_id).toBe(EXTRACTION_MODEL_ID);
 });

@@ -2,6 +2,28 @@
 
 ## 2026-08-04
 
+### Feature: Extraktion läuft auf einem festen Modell (Adacor Qwen 3.5 Instruct)
+Die Extraktion nutzte bisher das *aktive* System-Modell — und `resolveActiveModel` zieht davor noch
+die **Modellwahl des Nutzers für die laufende Session**. Damit hing die Qualität einer Extraktion
+daran, was jemand gerade im Chat eingestellt hatte, und ein hängendes Chat-Modell legte das ganze
+Feature lahm. Genau das trat heute auf: Das aktive Chat-Modell **Nebius/Kimi-K3 antwortete 120 s
+lang nicht** auf das Prompt „Antworte nur mit: ok", während Adacor in 0,3–1,0 s lieferte
+(`/models`, `qwen3-5-a3b-35b-256k`, `mistral-3-24b-128k` je HTTP 200) — Batch-Läufe scheiterten mit
+„The operation timed out", Vision-Läufe liefen in ihre 45-s-Timeouts.
+- **Neu `backend/src/extraction/model.ts`**: Das Feature bindet sein Modell selbst — **Adacor
+  Qwen 3.5 Instruct 35B** (`chat` + `function_calling` + `vision`, deckt alle vier Strategien ab).
+  Die Session-/Nutzerwahl spielt für die Extraktion keine Rolle mehr.
+- **Gilt für alle LLM-Aufrufe des Features**: die vier Strategien, den Repair-Call, die
+  Konfidenz-Selbstbewertung (bisher gar nicht überschreibbar — `scoreConfidences` bekam dafür einen
+  `modelOverride`), die Bild-Beschreibung, die Regel-Ableitung, die Schema-Inferenz sowie Split und
+  Klassifikation im Posteingang.
+- **Zwei Ausnahmen bleiben**: das projekteigene Modell (Projekt-Einstellungen → „KI-Modell") schlägt
+  die Bindung weiterhin, und `EXTRACTION_LLM_PROVIDER` / `EXTRACTION_LLM_MODEL` erlauben Instanzen
+  ohne Adacor-Zugang eine andere Wahl. Gleiches Muster wie bei Echo-Loop (`ECHOLOOP_LLM_*`).
+- Das Audit-Label (`audit.model`) nennt jetzt das tatsächlich genutzte Modell statt
+  „system-standard". Verifiziert: ein `vision-per-page`-Lauf, der vorher in Timeouts lief, geht
+  durch und weist `adacor/qwen3-5-a3b-35b-256k` aus. 3 neue Tests (274 gesamt grün).
+
 ### UX: Extraktion — fehlende Erklärtexte ergänzt (Wellen 5/6)
 Eine Durchsicht der Oberfläche nach drei Lücken, die beim Testen aufgefallen sind:
 - **Werteliste aus einer Tabellenspalte** hatte gar keinen Erklärtext (der vorhandene hing nur am

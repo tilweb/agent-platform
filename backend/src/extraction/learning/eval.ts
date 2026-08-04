@@ -17,6 +17,7 @@
 import { createHash } from 'crypto';
 import { runPipeline, type PreparedFile } from '../../services/extraction';
 import { extractionProjectToExtractionSchema, PROJECT_FIELD_GROUP } from './pipeline-adapter';
+import { extractionModelLabel } from '../model';
 import { dedupeListItems } from './list-utils';
 import { correctNumber, correctDate } from './validators';
 import type {
@@ -229,7 +230,10 @@ function unpackExtracted(
 /** Anzeigename des Eval-Modells (fuers Audit/Hash — Override oder Systemstandard). */
 export function evalModelLabel(project: ExtractionProject): string {
   const o = project.extraction?.model_override;
-  return o ? `${o.provider_id}/${o.model_id}` : 'system-standard';
+  // Ohne projekteigenes Modell laeuft die Extraktion auf dem festen
+  // Extraktions-Modell (extraction/model.ts) — nicht mehr auf dem
+  // System-/Session-Standard. Das Audit soll das ehrlich benennen.
+  return o ? `${o.provider_id}/${o.model_id}` : extractionModelLabel();
 }
 
 /**

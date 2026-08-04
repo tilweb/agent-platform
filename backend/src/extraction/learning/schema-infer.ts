@@ -17,6 +17,7 @@ import type { UsageContext } from '../../services/usageTracking';
 import { parseJsonObject } from '../../services/extraction/extract-call';
 import { validateProjectFields } from './validators';
 import { PROJECT_FIELD_GROUP } from './pipeline-adapter';
+import { extractionModelOverride } from '../model';
 import type { ProjectField, ProjectItemField } from './types';
 
 /** Obergrenze fuer einen Vorschlag — mehr Felder sind fuer den Einstieg unbrauchbar. */
@@ -186,7 +187,10 @@ export async function inferSchema(documentText: string, userId?: string): Promis
     operation: 'infer_schema',
   };
 
-  const response = await llmService.chat(messages, undefined, usageContext, { userId });
+  const response = await llmService.chat(messages, undefined, usageContext, {
+    userId,
+    modelOverride: extractionModelOverride(),
+  });
   const inferred = parseInferredFields(response.content);
   if (!inferred) {
     throw new Error('Die KI hat keinen verwertbaren Feldvorschlag geliefert — bitte die Felder manuell anlegen.');
