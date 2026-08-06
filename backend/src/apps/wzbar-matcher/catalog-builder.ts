@@ -1,10 +1,15 @@
 /**
- * WZ-Branchen-Matcher: Katalog- und Embeddings-Builder.
+ * WZ-Branchen-Matcher: Katalog- und Embeddings-Builder (WZ 2025).
  *
- * Liest docs/WZBAR-Schluesseltabelle.xlsx, filtert auf gültige 4- bis 6-stellige
- * Codes (Klasse / Unterklasse / Detail-Unterklasse), schreibt catalog.json, und
- * erzeugt anschliessend embeddings.json über den konfigurierten Platform-
- * Embedding-Provider.
+ * Liest docs/WZ2025-Schluesseltabelle.csv (Latin-1 / cp1252, ';'-getrennt,
+ * Spalten KEYTAB_KEY;KEYTAB_KURZTEXT;KEYTAB_LANGTEXT_1;KEYTAB_LANGTEXT_2),
+ * filtert auf gültige 4- bis 7-stellige Codes (Klasse / Unterklasse /
+ * Detail-Unterklasse / nationale Feingliederung), schreibt catalog.json und
+ * erzeugt embeddings.json über den konfigurierten Platform-Embedding-Provider.
+ *
+ * Effizienz: Einträge, deren Embedding-Text sich gegenüber dem bestehenden
+ * embeddings.json nicht geändert hat (gleiches Modell), übernehmen den
+ * vorhandenen Vektor — nur echte Neu-Texte werden neu embedded.
  *
  * Aufruf (aus backend/):
  *   /Users/andreasbachmann/.bun/bin/bun run src/apps/wzbar-matcher/catalog-builder.ts
@@ -12,135 +17,77 @@
  *   /Users/andreasbachmann/.bun/bin/bun run src/apps/wzbar-matcher/catalog-builder.ts --force
  */
 
-import ExcelJS from 'exceljs';
 import { createHash } from 'node:crypto';
 import { llmService } from '../../services/llm';
 import { getPlatformModel } from '../../config/platformModels';
 import type { CatalogEntry, EmbeddingsIndex } from './types';
 
-const XLSX_PATH = '../docs/WZBAR-Schluesseltabelle.xlsx';
+const CSV_PATH = '../docs/WZ2025-Schluesseltabelle.csv';
 const CATALOG_PATH = './src/apps/wzbar-matcher/assets/catalog.json';
 const EMBEDDINGS_PATH = './src/apps/wzbar-matcher/assets/embeddings.json';
 const CONCURRENCY = 8;
+const VALID_FROM = '2025-01-01'; // WZ 2025 gültig ab
 
 const args = process.argv.slice(2);
 const catalogOnly = args.includes('--catalog-only');
 const force = args.includes('--force');
 
-function cellToIso(cell: ExcelJS.Cell): string | null {
-  const v = cell?.value;
-  if (v == null || v === '') return null;
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
-  if (typeof v === 'number' && Number.isFinite(v)) {
-    const ms = Math.round((v - 25569) * 86400 * 1000);
-    const d = new Date(ms);
-    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-  }
-  if (typeof v === 'string') {
-    const d = new Date(v);
-    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-  }
-  return null;
-}
-
-function cellToText(cell: ExcelJS.Cell): string {
-  const v = cell?.value;
-  if (v == null) return '';
-  if (typeof v === 'string') return v.trim();
-  if (typeof v === 'number') return String(v);
-  if (typeof v === 'object' && 'richText' in v && Array.isArray((v as any).richText)) {
-    return (v as any).richText.map((p: any) => p.text || '').join('').trim();
-  }
-  if (typeof v === 'object' && 'text' in v && typeof (v as any).text === 'string') {
-    return (v as any).text.trim();
-  }
-  if (typeof v === 'object' && 'result' in v) {
-    return String((v as any).result ?? '').trim();
-  }
-  return String(v).trim();
-}
-
 function hashText(s: string): string {
   return createHash('sha256').update(s).digest('hex');
 }
 
+function embedText(entry: { kurztext: string; langtext: string }): string {
+  if (entry.langtext && entry.langtext !== entry.kurztext) {
+    return `${entry.kurztext}. ${entry.langtext}`;
+  }
+  return entry.kurztext;
+}
+
 async function buildCatalog(): Promise<{ catalog: CatalogEntry[]; hash: string }> {
-  const xlsxFile = Bun.file(XLSX_PATH);
-  if (!(await xlsxFile.exists())) {
-    throw new Error(`xlsx nicht gefunden: ${XLSX_PATH}`);
+  const csvFile = Bun.file(CSV_PATH);
+  if (!(await csvFile.exists())) {
+    throw new Error(`CSV nicht gefunden: ${CSV_PATH}`);
   }
-  const buffer = Buffer.from(await xlsxFile.arrayBuffer());
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(buffer);
-  const sheet = wb.worksheets[0];
-  if (!sheet) throw new Error('Keine Sheets in xlsx gefunden.');
-
-  const header: Record<string, number> = {};
-  const headerRow = sheet.getRow(1);
-  headerRow.eachCell((cell, col) => {
-    header[String(cell.value ?? '').trim()] = col;
-  });
-  const colSchluessel = header['Schlüssel'];
-  const colKurz = header['Kurztext'];
-  const colLt1 = header['Langtext 1'];
-  const colLt2 = header['Langtext 2'];
-  const colVon = header['Gültig von'];
-  const colBis = header['Gültig bis'];
-  if (!colSchluessel || !colKurz) {
-    throw new Error(`Header nicht wie erwartet. Gefunden: ${Object.keys(header).join(', ')}`);
+  // Quelle ist Latin-1 (cp1252) kodiert — Umlaute sonst kaputt.
+  const raw = new TextDecoder('latin1').decode(new Uint8Array(await csvFile.arrayBuffer()));
+  const lines = raw.split(/\r?\n/);
+  const header = (lines.shift() ?? '').split(';').map((h) => h.trim());
+  const iKey = header.indexOf('KEYTAB_KEY');
+  const iKurz = header.indexOf('KEYTAB_KURZTEXT');
+  const iLt1 = header.indexOf('KEYTAB_LANGTEXT_1');
+  const iLt2 = header.indexOf('KEYTAB_LANGTEXT_2');
+  if (iKey < 0 || iKurz < 0) {
+    throw new Error(`Header nicht wie erwartet. Gefunden: ${header.join(', ')}`);
   }
-
-  const today = new Date().toISOString().slice(0, 10);
 
   const catalog: CatalogEntry[] = [];
   const hashInputs: string[] = [];
   let skippedWrongLength = 0;
-  let skippedExpired = 0;
-  const levelCounts: Record<string, number> = { '4': 0, '5': 0, '6': 0 };
+  const levelCounts: Record<string, number> = { '4': 0, '5': 0, '6': 0, '7': 0 };
 
-  for (let r = 2; r <= sheet.rowCount; r++) {
-    const row = sheet.getRow(r);
-    const schluesselCell = row.getCell(colSchluessel);
-    if (schluesselCell.value == null || schluesselCell.value === '') continue;
-    const code = String(schluesselCell.value).trim();
-    if (!/^\d{4,6}$/.test(code)) {
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const cols = line.split(';');
+    const code = (cols[iKey] ?? '').trim();
+    if (!/^\d{4,7}$/.test(code)) {
       skippedWrongLength++;
       continue;
     }
     levelCounts[String(code.length)] = (levelCounts[String(code.length)] ?? 0) + 1;
-    const validFrom = colVon ? cellToIso(row.getCell(colVon)) : null;
-    const validTo = colBis ? cellToIso(row.getCell(colBis)) : null;
-    if (validTo && validTo < today) {
-      skippedExpired++;
-      continue;
-    }
-    const kurztext = cellToText(row.getCell(colKurz));
-    const lt1 = colLt1 ? cellToText(row.getCell(colLt1)) : '';
-    const lt2 = colLt2 ? cellToText(row.getCell(colLt2)) : '';
-    const langtext = [lt1, lt2 && lt2 !== lt1 ? lt2 : ''].filter(Boolean).join(' — ');
+    const kurztext = (cols[iKurz] ?? '').trim();
+    const lt1 = iLt1 >= 0 ? (cols[iLt1] ?? '').trim() : '';
+    const lt2 = iLt2 >= 0 ? (cols[iLt2] ?? '').trim() : '';
+    const langtext = [lt1, lt2 && lt2 !== lt1 ? lt2 : ''].filter(Boolean).join(' — ') || kurztext;
 
-    catalog.push({
-      code,
-      kurztext,
-      langtext: langtext || kurztext,
-      validFrom,
-      validTo,
-    });
-    hashInputs.push(`${code}|${kurztext}|${langtext}|${validFrom}|${validTo}`);
+    catalog.push({ code, kurztext, langtext, validFrom: VALID_FROM, validTo: null });
+    hashInputs.push(`${code}|${kurztext}|${langtext}|${VALID_FROM}|`);
   }
 
   catalog.sort((a, b) => a.code.localeCompare(b.code));
   const hash = hashText(hashInputs.slice().sort().join('\n'));
 
-  console.log(`[catalog-builder] xlsx → ${catalog.length} Einträge (4-6 stellig, gültig). Verteilung: 4=${levelCounts['4']}, 5=${levelCounts['5']}, 6=${levelCounts['6']}. Übersprungen: ${skippedWrongLength} ausserhalb 4-6 Stellen, ${skippedExpired} abgelaufen.`);
+  console.log(`[catalog-builder] CSV → ${catalog.length} Einträge (4-7 stellig). Verteilung: 4=${levelCounts['4']}, 5=${levelCounts['5']}, 6=${levelCounts['6']}, 7=${levelCounts['7']}. Übersprungen (ausserhalb 4-7 Stellen): ${skippedWrongLength}.`);
   return { catalog, hash };
-}
-
-function embedText(entry: CatalogEntry): string {
-  if (entry.langtext && entry.langtext !== entry.kurztext) {
-    return `${entry.kurztext}. ${entry.langtext}`;
-  }
-  return entry.kurztext;
 }
 
 async function pLimit<T>(items: T[], concurrency: number, worker: (item: T, idx: number) => Promise<void>): Promise<void> {
@@ -155,22 +102,59 @@ async function pLimit<T>(items: T[], concurrency: number, worker: (item: T, idx:
   await Promise.all(runners);
 }
 
-async function buildEmbeddings(catalog: CatalogEntry[], inputHash: string): Promise<EmbeddingsIndex> {
-  const resolved = await getPlatformModel('embeddings');
-  if (!resolved) throw new Error('Kein Embedding-Modell konfiguriert.');
-  const modelId = resolved.model.id;
+/**
+ * Lädt aus dem bestehenden catalog.json + embeddings.json eine Map
+ * embedText → Vektor, um unveränderte Einträge nicht neu embedden zu müssen.
+ * Nur gültig, wenn das gespeicherte Modell dem aktuellen entspricht.
+ */
+async function loadReusableVectors(currentModel: string): Promise<Map<string, number[]>> {
+  const byText = new Map<string, number[]>();
+  if (force) return byText;
+  try {
+    const prevEmb = JSON.parse(await Bun.file(EMBEDDINGS_PATH).text()) as EmbeddingsIndex;
+    if (prevEmb.model !== currentModel) return byText;
+    const prevCat = JSON.parse(await Bun.file(CATALOG_PATH).text()) as CatalogEntry[];
+    const vecByCode = new Map(prevEmb.entries.map((e) => [e.code, e.vector]));
+    for (const e of prevCat) {
+      const v = vecByCode.get(e.code);
+      if (v) byText.set(embedText(e), v);
+    }
+  } catch {
+    /* kein/kaputter Vorlauf — dann eben alles neu embedden */
+  }
+  return byText;
+}
 
+async function buildEmbeddings(
+  catalog: CatalogEntry[],
+  inputHash: string,
+  reuseByText: Map<string, number[]>,
+  modelId: string,
+): Promise<EmbeddingsIndex> {
   const entries: Array<{ code: string; vector: number[] }> = new Array(catalog.length);
+  const toEmbed: Array<{ idx: number; entry: CatalogEntry }> = [];
+  let reused = 0;
+
+  catalog.forEach((entry, idx) => {
+    const v = reuseByText.get(embedText(entry));
+    if (v) {
+      entries[idx] = { code: entry.code, vector: v };
+      reused++;
+    } else {
+      toEmbed.push({ idx, entry });
+    }
+  });
+  console.log(`[catalog-builder] Embeddings: ${reused} wiederverwendet, ${toEmbed.length} neu zu erzeugen.`);
+
   let done = 0;
   const started = Date.now();
-
-  await pLimit(catalog, CONCURRENCY, async (entry, idx) => {
+  await pLimit(toEmbed, CONCURRENCY, async ({ idx, entry }) => {
     const vector = await llmService.embed(embedText(entry));
     entries[idx] = { code: entry.code, vector };
     done++;
-    if (done % 100 === 0 || done === catalog.length) {
+    if (done % 25 === 0 || done === toEmbed.length) {
       const rate = done / ((Date.now() - started) / 1000);
-      console.log(`[catalog-builder] Embeddings: ${done}/${catalog.length} (${rate.toFixed(1)}/s)`);
+      console.log(`[catalog-builder] Neue Embeddings: ${done}/${toEmbed.length} (${rate.toFixed(1)}/s)`);
     }
   });
 
@@ -185,7 +169,12 @@ async function buildEmbeddings(catalog: CatalogEntry[], inputHash: string): Prom
 }
 
 async function main(): Promise<void> {
-  // Catalog
+  // Embedding-Modell zuerst aufloesen — bestimmt, ob Vektoren wiederverwendbar sind.
+  const resolved = catalogOnly ? null : await getPlatformModel('embeddings');
+  const modelId = resolved?.model.id ?? '';
+  const reuseByText = catalogOnly ? new Map<string, number[]>() : await loadReusableVectors(modelId);
+
+  // Catalog bauen (danach ist catalog.json überschrieben — Reuse-Map ist schon geladen).
   const { catalog, hash } = await buildCatalog();
   await Bun.write(CATALOG_PATH, JSON.stringify(catalog, null, 2));
   console.log(`[catalog-builder] ${CATALOG_PATH} geschrieben.`);
@@ -194,13 +183,14 @@ async function main(): Promise<void> {
     console.log('[catalog-builder] --catalog-only: Embeddings übersprungen.');
     return;
   }
+  if (!resolved) throw new Error('Kein Embedding-Modell konfiguriert.');
 
-  // Embeddings
+  // Skip nur wenn Hash + Anzahl exakt passen (nichts geändert).
   const existing = Bun.file(EMBEDDINGS_PATH);
   if (!force && (await existing.exists())) {
     try {
       const prev = JSON.parse(await existing.text()) as EmbeddingsIndex;
-      if (prev.inputHash === hash && prev.entries.length === catalog.length) {
+      if (prev.inputHash === hash && prev.entries.length === catalog.length && prev.model === modelId) {
         console.log('[catalog-builder] Embeddings bereits aktuell (Hash stimmt). Überspringe. (--force zum Erzwingen)');
         return;
       }
@@ -209,12 +199,12 @@ async function main(): Promise<void> {
     }
   }
 
-  const index = await buildEmbeddings(catalog, hash);
+  const index = await buildEmbeddings(catalog, hash, reuseByText, modelId);
   await Bun.write(EMBEDDINGS_PATH, JSON.stringify(index));
   console.log(`[catalog-builder] ${EMBEDDINGS_PATH} geschrieben (model=${index.model}, dim=${index.dimensions}, entries=${index.entries.length}).`);
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('[catalog-builder] Fehler:', err);
   process.exit(1);
 });

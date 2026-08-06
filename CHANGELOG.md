@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-08-06
+
+### WZ-Branchen-Matcher: Katalog auf WZ 2025 aktualisiert (Führungsnullen-Fix + 7-stellige Codes)
+Neue Schlüsseltabelle (WZ2025-CSV) mit dem aktuellen Katalog abgeglichen und eingespielt:
+- **Befund**: Der Katalog war inhaltlich bereits WZ2025 (0 Text-Abweichungen auf 2042 gemeinsamen Codes), aber
+  überall als „WZ 2008" beschriftet. Dazu ein Daten-Bug: der Primärsektor (Abteilungen 01–09 — Land-/Forst­
+  wirtschaft, Fischerei, Bergbau) hatte durch Excel-Zahlenformat **fehlende Führungsnullen** (z. B. Steinkohlen­
+  bergbau als `5100` statt `05100`); 57 vierstellige Klassen fehlten ganz.
+- **Katalog neu aus der sauberen CSV gebaut**: 2112 → **2192 Einträge** (Führungsnullen korrekt, fehlende Codes
+  ergänzt), Scope auf **4–7-stellig** erweitert (23 nationale 7-Steller wie „Reparatur von Baumaschinen" + 3 neue
+  6-Steller, u. a. „Barbiersalons"). Embeddings: 2160 wiederverwendet (textgleich), nur 32 neu erzeugt.
+- **Umbeschriftet**: alle „WZ-2008"→„WZ 2025", „4–6-stellig"→„4–7-stellig" (Prompts, Tool-Beschreibungen, UI,
+  registry.yaml). `neighborhood` MAX_LEVEL 6→7.
+- Builder liest jetzt `docs/WZ2025-Schluesseltabelle.csv` (Latin-1) statt xlsx, mit Embedding-Wiederverwendung.
+  Verifiziert per Retrieval-Smoke-Test (05100 Steinkohle, 962101 Barbiersalons, 3312011 Reparatur von Baumaschinen).
+  Beide Worktrees, Source + Assets byte-identisch.
+
 ## 2026-08-05
 
 ### Feature: Extraktion — flacher XLSX-Export, Export über die API, Posteingang ohne Split

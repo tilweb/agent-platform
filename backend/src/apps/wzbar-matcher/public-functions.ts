@@ -30,7 +30,7 @@ interface ClassifyOutput {
 const CANDIDATE_SCHEMA: JsonSchema = {
   type: 'object',
   properties: {
-    code: { type: 'string', description: '4- bis 6-stelliger WZ-2008-Schlüssel.' },
+    code: { type: 'string', description: '4- bis 7-stelliger WZ-2025-Schlüssel.' },
     kurztext: { type: 'string' },
     langtext: { type: 'string' },
     confidence: { type: 'number', minimum: 0, maximum: 1 },
@@ -51,7 +51,7 @@ interface NeighborhoodOutput {
 const NEIGHBORHOOD_NODE_SCHEMA: JsonSchema = {
   type: 'object',
   properties: {
-    code: { type: 'string', description: '4- bis 6-stelliger WZ-2008-Schlüssel.' },
+    code: { type: 'string', description: '4- bis 7-stelliger WZ-2025-Schlüssel.' },
     kurztext: { type: 'string' },
     langtext: { type: 'string' },
     level: { type: 'integer', minimum: 4, maximum: 6, description: 'Hierarchie-Ebene (4=Klasse, 5=Unterklasse, 6=Wirtschaftsabteilung).' },
@@ -64,13 +64,13 @@ const NEIGHBORHOOD_NODE_SCHEMA: JsonSchema = {
 export const getNeighborhoodPublicFunction: PublicFunction<NeighborhoodInput, NeighborhoodOutput> = {
   id: 'getNeighborhood',
   description:
-    'Liefert das hierarchische Umfeld (Klasse, Geschwister, Kinder) eines WZ-2008-Schlüssels — alle Codes mit gleichem Klassen-Praefix (4-stellig) auf den Ebenen 4-6. Nuetzlich um den Kontext eines Match-Ergebnisses zu inspizieren und manuell auf benachbarte Codes zu wechseln.',
+    'Liefert das hierarchische Umfeld (Klasse, Geschwister, Kinder) eines WZ-2025-Schlüssels — alle Codes mit gleichem Klassen-Praefix (4-stellig) auf den Ebenen 4-7. Nuetzlich um den Kontext eines Match-Ergebnisses zu inspizieren und manuell auf benachbarte Codes zu wechseln.',
   input: {
     type: 'object',
     properties: {
       code: {
         type: 'string',
-        description: '4- bis 6-stelliger WZ-2008-Schlüssel (nur Ziffern).',
+        description: '4- bis 7-stelliger WZ-2025-Schlüssel (nur Ziffern).',
         minLength: 4,
         maxLength: 6,
       },
@@ -99,7 +99,7 @@ export const getNeighborhoodPublicFunction: PublicFunction<NeighborhoodInput, Ne
 export const classifyPublicFunction: PublicFunction<ClassifyInput, ClassifyOutput> = {
   id: 'classify',
   description:
-    'Klassifiziert einen freitextlichen Tätigkeitstext auf 4- bis 6-stellige WZ-2008-Schlüssel. Erkennt automatisch mehrere distinkte Tätigkeiten in einem Text (max. 3) und liefert pro Tätigkeit einen primären Match plus bis zu 3 Alternativen mit Konfidenz und Begründung.',
+    'Klassifiziert einen freitextlichen Tätigkeitstext auf 4- bis 7-stellige WZ-2025-Schlüssel. Erkennt automatisch mehrere distinkte Tätigkeiten in einem Text (max. 3) und liefert pro Tätigkeit einen primären Match plus bis zu 3 Alternativen mit Konfidenz und Begründung.',
   input: {
     type: 'object',
     properties: {

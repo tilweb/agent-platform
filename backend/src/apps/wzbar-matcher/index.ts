@@ -8,7 +8,7 @@ import { classifyPublicFunction, getNeighborhoodPublicFunction } from './public-
 export const wzbarMatcherConfig: AppConfig = {
   id: 'wzbar-matcher',
   name: 'WZ-Branchen-Matcher',
-  description: 'Tätigkeitsbeschreibung → passender WZ-2008-Schlüssel für EMMA',
+  description: 'Tätigkeitsbeschreibung → passender WZ-2025-Schlüssel für EMMA',
   icon: 'classifier',
   version: '1.0.0',
   enabled: true,

@@ -1,5 +1,873 @@
 [
   {
+    "code": "0111",
+    "kurztext": "Anbau von anderem Getreide als Reis sowie von Hülsenfrüchten und Ölsaaten",
+    "langtext": "Anbau von anderem Getreide als Reis sowie von Hülsenfrüchten und Ölsaaten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01110",
+    "kurztext": "Anbau von anderem Getreide als Reis sowie von Hülsenfrüchten und Ölsaaten",
+    "langtext": "Anbau von anderem Getreide als Reis sowie von Hülsenfrüchten und Ölsaaten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0112",
+    "kurztext": "Anbau von Reis",
+    "langtext": "Anbau von Reis",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01120",
+    "kurztext": "Anbau von Reis",
+    "langtext": "Anbau von Reis",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0113",
+    "kurztext": "Anbau von Gemüse und Melonen sowie Wurzeln und Knollen",
+    "langtext": "Anbau von Gemüse und Melonen sowie Wurzeln und Knollen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01131",
+    "kurztext": "Anbau von Gemüse und Melonen",
+    "langtext": "Anbau von Gemüse und Melonen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01132",
+    "kurztext": "Anbau von Kartoffeln sowie sonstigen Wurzeln und Knollen",
+    "langtext": "Anbau von Kartoffeln sowie sonstigen Wurzeln und Knollen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0114",
+    "kurztext": "Anbau von Zuckerrohr",
+    "langtext": "Anbau von Zuckerrohr",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01140",
+    "kurztext": "Anbau von Zuckerrohr",
+    "langtext": "Anbau von Zuckerrohr",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0115",
+    "kurztext": "Anbau von Tabak",
+    "langtext": "Anbau von Tabak",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01150",
+    "kurztext": "Anbau von Tabak",
+    "langtext": "Anbau von Tabak",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0116",
+    "kurztext": "Anbau von Faserpflanzen",
+    "langtext": "Anbau von Faserpflanzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01160",
+    "kurztext": "Anbau von Faserpflanzen",
+    "langtext": "Anbau von Faserpflanzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0119",
+    "kurztext": "Anbau von sonstigen ein- und zweijährigen Pflanzen",
+    "langtext": "Anbau von sonstigen ein- und zweijährigen Pflanzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01191",
+    "kurztext": "Anbau von Zierpflanzen zum Schnitt",
+    "langtext": "Anbau von Zierpflanzen zum Schnitt",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "011911",
+    "kurztext": "Herstellung von Blumengestecken",
+    "langtext": "Herstellung von Blumengestecken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01192",
+    "kurztext": "Erzeugung von Blumensamen",
+    "langtext": "Erzeugung von Blumensamen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01199",
+    "kurztext": "Anbau von sonstigen ein- und zweijährigen Pflanzen a. n. g.",
+    "langtext": "Anbau von sonstigen ein- und zweijährigen Pflanzen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0121",
+    "kurztext": "Anbau von Wein- und Tafeltrauben",
+    "langtext": "Anbau von Wein- und Tafeltrauben",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01210",
+    "kurztext": "Anbau von Wein- und Tafeltrauben",
+    "langtext": "Anbau von Wein- und Tafeltrauben",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0122",
+    "kurztext": "Anbau von tropischen und subtropischen Früchten",
+    "langtext": "Anbau von tropischen und subtropischen Früchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01220",
+    "kurztext": "Anbau von tropischen und subtropischen Früchten",
+    "langtext": "Anbau von tropischen und subtropischen Früchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0123",
+    "kurztext": "Anbau von Zitrusfrüchten",
+    "langtext": "Anbau von Zitrusfrüchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01230",
+    "kurztext": "Anbau von Zitrusfrüchten",
+    "langtext": "Anbau von Zitrusfrüchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0124",
+    "kurztext": "Anbau von Kern- und Steinobst",
+    "langtext": "Anbau von Kern- und Steinobst",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01240",
+    "kurztext": "Anbau von Kern- und Steinobst",
+    "langtext": "Anbau von Kern- und Steinobst",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0125",
+    "kurztext": "Anbau von sonstigem Obst und Nüssen",
+    "langtext": "Anbau von sonstigem Obst und Nüssen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01251",
+    "kurztext": "Anbau von Erdbeeren",
+    "langtext": "Anbau von Erdbeeren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01259",
+    "kurztext": "Anbau von sonstigem Obst und Nüssen a. n. g.",
+    "langtext": "Anbau von sonstigem Obst und Nüssen a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0126",
+    "kurztext": "Anbau von ölhaltigen Früchten",
+    "langtext": "Anbau von ölhaltigen Früchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01260",
+    "kurztext": "Anbau von ölhaltigen Früchten",
+    "langtext": "Anbau von ölhaltigen Früchten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0127",
+    "kurztext": "Anbau von Pflanzen zur Herstellung von Getränken",
+    "langtext": "Anbau von Pflanzen zur Herstellung von Getränken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01270",
+    "kurztext": "Anbau von Pflanzen zur Herstellung von Getränken",
+    "langtext": "Anbau von Pflanzen zur Herstellung von Getränken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0128",
+    "kurztext": "Anbau von Gewürzpflanzen, Pflanzen für aromatische, narkotische und pharmazeutische Zwecke",
+    "langtext": "Anbau von Gewürzpflanzen, Pflanzen für aromatische, narkotische und pharmazeutische Zwecke",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01280",
+    "kurztext": "Anbau von Gewürzpflanzen, Pflanzen für aromatische, narkotische und pharmazeutische Zwecke",
+    "langtext": "Anbau von Gewürzpflanzen, Pflanzen für aromatische, narkotische und pharmazeutische Zwecke",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0129",
+    "kurztext": "Anbau sonstiger mehrjähriger Pflanzen",
+    "langtext": "Anbau sonstiger mehrjähriger Pflanzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01290",
+    "kurztext": "Anbau sonstiger mehrjähriger Pflanzen",
+    "langtext": "Anbau sonstiger mehrjähriger Pflanzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0130",
+    "kurztext": "Betrieb von Baumschulen sowie Anbau von Pflanzen zu Vermehrungszwecken",
+    "langtext": "Betrieb von Baumschulen sowie Anbau von Pflanzen zu Vermehrungszwecken",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01301",
+    "kurztext": "Anbau von Zimmerpflanzen, Beet- und Balkonpflanzen",
+    "langtext": "Anbau von Zimmerpflanzen, Beet- und Balkonpflanzen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01302",
+    "kurztext": "Betrieb von Baumschulen",
+    "langtext": "Betrieb von Baumschulen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0141",
+    "kurztext": "Haltung von Milchkühen",
+    "langtext": "Haltung von Milchkühen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01410",
+    "kurztext": "Haltung von Milchkühen",
+    "langtext": "Haltung von Milchkühen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0142",
+    "kurztext": "Haltung von sonstigen Rindern",
+    "langtext": "Haltung von sonstigen Rindern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01420",
+    "kurztext": "Haltung von sonstigen Rindern",
+    "langtext": "Haltung von sonstigen Rindern",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0143",
+    "kurztext": "Haltung von Pferden und Eseln",
+    "langtext": "Haltung von Pferden und Eseln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01430",
+    "kurztext": "Haltung von Pferden und Eseln",
+    "langtext": "Haltung von Pferden und Eseln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0144",
+    "kurztext": "Haltung von Kamelen",
+    "langtext": "Haltung von Kamelen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01440",
+    "kurztext": "Haltung von Kamelen",
+    "langtext": "Haltung von Kamelen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0145",
+    "kurztext": "Haltung von Schafen und Ziegen",
+    "langtext": "Haltung von Schafen und Ziegen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01450",
+    "kurztext": "Haltung von Schafen und Ziegen",
+    "langtext": "Haltung von Schafen und Ziegen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0146",
+    "kurztext": "Haltung von Schweinen",
+    "langtext": "Haltung von Schweinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01460",
+    "kurztext": "Haltung von Schweinen",
+    "langtext": "Haltung von Schweinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0147",
+    "kurztext": "Haltung von Geflügel",
+    "langtext": "Haltung von Geflügel",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01471",
+    "kurztext": "Haltung von Legehennen zur Konsumeiererzeugung",
+    "langtext": "Haltung von Legehennen zur Konsumeiererzeugung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01472",
+    "kurztext": "Betrieb von Brütereien",
+    "langtext": "Betrieb von Brütereien",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01479",
+    "kurztext": "Haltung von Geflügel a. n. g.",
+    "langtext": "Haltung von Geflügel a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0148",
+    "kurztext": "Sonstige Tierhaltung",
+    "langtext": "Sonstige Tierhaltung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01481",
+    "kurztext": "Haltung von Insekten",
+    "langtext": "Haltung von Insekten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01489",
+    "kurztext": "Sonstige Tierhaltung a. n. g.",
+    "langtext": "Sonstige Tierhaltung a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0150",
+    "kurztext": "Gemischte Landwirtschaft",
+    "langtext": "Gemischte Landwirtschaft",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01500",
+    "kurztext": "Gemischte Landwirtschaft",
+    "langtext": "Gemischte Landwirtschaft",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0161",
+    "kurztext": "Erbringung von landwirtschaftlichen Dienstleistungen für den Pflanzenbau",
+    "langtext": "Erbringung von landwirtschaftlichen Dienstleistungen für den Pflanzenbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01610",
+    "kurztext": "Erbringung von landwirtschaftlichen Dienstleistungen für den Pflanzenbau",
+    "langtext": "Erbringung von landwirtschaftlichen Dienstleistungen für den Pflanzenbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "016101",
+    "kurztext": "Landwirtschaftliches Lohnunternehmen",
+    "langtext": "Landwirtschaftliches Lohnunternehmen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0162",
+    "kurztext": "Erbringung von landwirtschaftlichen Dienstleistungen für die Tierhaltung",
+    "langtext": "Erbringung von landwirtschaftlichen Dienstleistungen für die Tierhaltung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01620",
+    "kurztext": "Erbringung von landwirtschaftlichen Dienstleistungen für die Tierhaltung",
+    "langtext": "Erbringung von landwirtschaftlichen Dienstleistungen für die Tierhaltung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "016201",
+    "kurztext": "Pferdepension",
+    "langtext": "Pferdepension",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "016202",
+    "kurztext": "Hufschmiede, Hufpflege, Klauenpflege",
+    "langtext": "Hufschmiede, Hufpflege, Klauenpflege",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "016203",
+    "kurztext": "Ausbildung und Beritt von Pferden",
+    "langtext": "Ausbildung und Beritt von Pferden",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0163",
+    "kurztext": "Nach der Ernte anfallende Tätigkeiten in der pflanzlichen Erzeugung und Saatgutaufbereitung",
+    "langtext": "Nach der Ernte anfallende Tätigkeiten in der pflanzlichen Erzeugung und Saatgutaufbereitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01631",
+    "kurztext": "Nach der Ernte anfallende Tätigkeiten in der pflanzlichen Erzeugung",
+    "langtext": "Nach der Ernte anfallende Tätigkeiten in der pflanzlichen Erzeugung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01632",
+    "kurztext": "Saatgutaufbereitung",
+    "langtext": "Saatgutaufbereitung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0170",
+    "kurztext": "Jagd, Fallenstellerei und damit verbundene Tätigkeiten",
+    "langtext": "Jagd, Fallenstellerei und damit verbundene Tätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "01700",
+    "kurztext": "Jagd, Fallenstellerei und damit verbundene Tätigkeiten",
+    "langtext": "Jagd, Fallenstellerei und damit verbundene Tätigkeiten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0210",
+    "kurztext": "Forstwirtschaft",
+    "langtext": "Forstwirtschaft",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "02100",
+    "kurztext": "Forstwirtschaft",
+    "langtext": "Forstwirtschaft",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0220",
+    "kurztext": "Holzeinschlag",
+    "langtext": "Holzeinschlag",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "02200",
+    "kurztext": "Holzeinschlag",
+    "langtext": "Holzeinschlag",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0230",
+    "kurztext": "Sammeln von wildwachsenden Produkten, ohne Holz",
+    "langtext": "Sammeln von wildwachsenden Produkten, ohne Holz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "02300",
+    "kurztext": "Sammeln von wildwachsenden Produkten, ohne Holz",
+    "langtext": "Sammeln von wildwachsenden Produkten, ohne Holz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0240",
+    "kurztext": "Erbringung von Dienstleistungen für Forstwirtschaft und Holzeinschlag",
+    "langtext": "Erbringung von Dienstleistungen für Forstwirtschaft und Holzeinschlag",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "02400",
+    "kurztext": "Erbringung von Dienstleistungen für Forstwirtschaft und Holzeinschlag",
+    "langtext": "Erbringung von Dienstleistungen für Forstwirtschaft und Holzeinschlag",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0311",
+    "kurztext": "Meeresfischerei",
+    "langtext": "Meeresfischerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "03110",
+    "kurztext": "Meeresfischerei",
+    "langtext": "Meeresfischerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0312",
+    "kurztext": "Süßwasserfischerei",
+    "langtext": "Süßwasserfischerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "03120",
+    "kurztext": "Süßwasserfischerei",
+    "langtext": "Süßwasserfischerei",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0321",
+    "kurztext": "Meeresaquakultur",
+    "langtext": "Meeresaquakultur",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "03210",
+    "kurztext": "Meeresaquakultur",
+    "langtext": "Meeresaquakultur",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0322",
+    "kurztext": "Süßwasseraquakultur",
+    "langtext": "Süßwasseraquakultur",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "03220",
+    "kurztext": "Süßwasseraquakultur",
+    "langtext": "Süßwasseraquakultur",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0330",
+    "kurztext": "Erbringung von Dienstleistungen für Fischerei und Aquakultur",
+    "langtext": "Erbringung von Dienstleistungen für Fischerei und Aquakultur",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "03300",
+    "kurztext": "Erbringung von Dienstleistungen für Fischerei und Aquakultur",
+    "langtext": "Erbringung von Dienstleistungen für Fischerei und Aquakultur",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0510",
+    "kurztext": "Steinkohlenbergbau",
+    "langtext": "Steinkohlenbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "05100",
+    "kurztext": "Steinkohlenbergbau",
+    "langtext": "Steinkohlenbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0520",
+    "kurztext": "Braunkohlenbergbau",
+    "langtext": "Braunkohlenbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "05200",
+    "kurztext": "Braunkohlenbergbau",
+    "langtext": "Braunkohlenbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0610",
+    "kurztext": "Gewinnung von Erdöl",
+    "langtext": "Gewinnung von Erdöl",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "06100",
+    "kurztext": "Gewinnung von Erdöl",
+    "langtext": "Gewinnung von Erdöl",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0620",
+    "kurztext": "Gewinnung von Erdgas",
+    "langtext": "Gewinnung von Erdgas",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "06200",
+    "kurztext": "Gewinnung von Erdgas",
+    "langtext": "Gewinnung von Erdgas",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0710",
+    "kurztext": "Eisenerzbergbau",
+    "langtext": "Eisenerzbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "07100",
+    "kurztext": "Eisenerzbergbau",
+    "langtext": "Eisenerzbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0721",
+    "kurztext": "Bergbau auf Uran- und Thoriumerze",
+    "langtext": "Bergbau auf Uran- und Thoriumerze",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "07210",
+    "kurztext": "Bergbau auf Uran- und Thoriumerze",
+    "langtext": "Bergbau auf Uran- und Thoriumerze",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0729",
+    "kurztext": "Sonstiger NE-Metallerzbergbau",
+    "langtext": "Sonstiger NE-Metallerzbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "07290",
+    "kurztext": "Sonstiger NE-Metallerzbergbau",
+    "langtext": "Sonstiger NE-Metallerzbergbau",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0811",
+    "kurztext": "Gewinnung von Naturwerksteinen, Kalk- und Gipsstein, Schiefer und sonstigem Gestein",
+    "langtext": "Gewinnung von Naturwerksteinen, Kalk- und Gipsstein, Schiefer und sonstigem Gestein",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "08110",
+    "kurztext": "Gewinnung von Naturwerksteinen, Kalk- und Gipsstein, Schiefer und sonstigem Gestein",
+    "langtext": "Gewinnung von Naturwerksteinen, Kalk- und Gipsstein, Schiefer und sonstigem Gestein",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0812",
+    "kurztext": "Gewinnung von Kies und Sand, Ton und Kaolin",
+    "langtext": "Gewinnung von Kies und Sand, Ton und Kaolin",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "08121",
+    "kurztext": "Gewinnung von Quarzsanden und kieselsauren Sanden",
+    "langtext": "Gewinnung von Quarzsanden und kieselsauren Sanden",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "08122",
+    "kurztext": "Gewinnung von anderen Natursanden und Kies",
+    "langtext": "Gewinnung von anderen Natursanden und Kies",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "08123",
+    "kurztext": "Gewinnung von Kaolin und anderem kaolinhaltigen Ton und Lehm",
+    "langtext": "Gewinnung von Kaolin und anderem kaolinhaltigen Ton und Lehm",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0891",
+    "kurztext": "Bergbau auf chemische und Düngemittelminerale",
+    "langtext": "Bergbau auf chemische und Düngemittelminerale",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "08910",
+    "kurztext": "Bergbau auf chemische und Düngemittelminerale",
+    "langtext": "Bergbau auf chemische und Düngemittelminerale",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0892",
+    "kurztext": "Torfgewinnung",
+    "langtext": "Torfgewinnung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "08920",
+    "kurztext": "Torfgewinnung",
+    "langtext": "Torfgewinnung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0893",
+    "kurztext": "Gewinnung von Salz",
+    "langtext": "Gewinnung von Salz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "08930",
+    "kurztext": "Gewinnung von Salz",
+    "langtext": "Gewinnung von Salz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0899",
+    "kurztext": "Gewinnung von Steinen und Erden a. n. g.",
+    "langtext": "Gewinnung von Steinen und Erden a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "08990",
+    "kurztext": "Gewinnung von Steinen und Erden a. n. g.",
+    "langtext": "Gewinnung von Steinen und Erden a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0910",
+    "kurztext": "Erbringung von Dienstleistungen für die Gewinnung von Erdöl und Erdgas",
+    "langtext": "Erbringung von Dienstleistungen für die Gewinnung von Erdöl und Erdgas",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "09100",
+    "kurztext": "Erbringung von Dienstleistungen für die Gewinnung von Erdöl und Erdgas",
+    "langtext": "Erbringung von Dienstleistungen für die Gewinnung von Erdöl und Erdgas",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "0990",
+    "kurztext": "Erbringung von Dienstleistungen für den sonstigen Bergbau und die Gewinnung von Steinen und Erden",
+    "langtext": "Erbringung von Dienstleistungen für den sonstigen Bergbau und die Gewinnung von Steinen und Erden",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "09900",
+    "kurztext": "Erbringung von Dienstleistungen für den sonstigen Bergbau und die Gewinnung von Steinen und Erden",
+    "langtext": "Erbringung von Dienstleistungen für den sonstigen Bergbau und die Gewinnung von Steinen und Erden",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
     "code": "1011",
     "kurztext": "Schlachten, ohne Schlachten von Geflügel",
     "langtext": "Schlachten, ohne Schlachten von Geflügel",
@@ -490,83 +1358,6 @@
     "validTo": null
   },
   {
-    "code": "1110",
-    "kurztext": "Anbau von anderem Getreide als Reis sowie von Hülsenfrüchten und Ölsaaten",
-    "langtext": "Anbau von anderem Getreide als Reis sowie von Hülsenfrüchten und Ölsaaten",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1120",
-    "kurztext": "Anbau von Reis",
-    "langtext": "Anbau von Reis",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1131",
-    "kurztext": "Anbau von Gemüse und Melonen",
-    "langtext": "Anbau von Gemüse und Melonen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1132",
-    "kurztext": "Anbau von Kartoffeln sowie sonstigen Wurzeln und Knollen",
-    "langtext": "Anbau von Kartoffeln sowie sonstigen Wurzeln und Knollen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1140",
-    "kurztext": "Anbau von Zuckerrohr",
-    "langtext": "Anbau von Zuckerrohr",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1150",
-    "kurztext": "Anbau von Tabak",
-    "langtext": "Anbau von Tabak",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1160",
-    "kurztext": "Anbau von Faserpflanzen",
-    "langtext": "Anbau von Faserpflanzen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1191",
-    "kurztext": "Anbau von Zierpflanzen zum Schnitt",
-    "langtext": "Anbau von Zierpflanzen zum Schnitt",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "11911",
-    "kurztext": "Herstellung von Blumengestecken",
-    "langtext": "Herstellung von Blumengestecken",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1192",
-    "kurztext": "Erzeugung von Blumensamen",
-    "langtext": "Erzeugung von Blumensamen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1199",
-    "kurztext": "Anbau von sonstigen ein- und zweijährigen Pflanzen a. n. g.",
-    "langtext": "Anbau von sonstigen ein- und zweijährigen Pflanzen a. n. g.",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
     "code": "1200",
     "kurztext": "Tabakverarbeitung",
     "langtext": "Tabakverarbeitung",
@@ -577,90 +1368,6 @@
     "code": "12000",
     "kurztext": "Tabakverarbeitung",
     "langtext": "Tabakverarbeitung",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1210",
-    "kurztext": "Anbau von Wein- und Tafeltrauben",
-    "langtext": "Anbau von Wein- und Tafeltrauben",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1220",
-    "kurztext": "Anbau von tropischen und subtropischen Früchten",
-    "langtext": "Anbau von tropischen und subtropischen Früchten",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1230",
-    "kurztext": "Anbau von Zitrusfrüchten",
-    "langtext": "Anbau von Zitrusfrüchten",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1240",
-    "kurztext": "Anbau von Kern- und Steinobst",
-    "langtext": "Anbau von Kern- und Steinobst",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1251",
-    "kurztext": "Anbau von Erdbeeren",
-    "langtext": "Anbau von Erdbeeren",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1259",
-    "kurztext": "Anbau von sonstigem Obst und Nüssen a. n. g.",
-    "langtext": "Anbau von sonstigem Obst und Nüssen a. n. g.",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1260",
-    "kurztext": "Anbau von ölhaltigen Früchten",
-    "langtext": "Anbau von ölhaltigen Früchten",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1270",
-    "kurztext": "Anbau von Pflanzen zur Herstellung von Getränken",
-    "langtext": "Anbau von Pflanzen zur Herstellung von Getränken",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1280",
-    "kurztext": "Anbau von Gewürzpflanzen, Pflanzen für aromatische, narkotische und pharmazeutische Zwecke",
-    "langtext": "Anbau von Gewürzpflanzen, Pflanzen für aromatische, narkotische und pharmazeutische Zwecke",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1290",
-    "kurztext": "Anbau sonstiger mehrjähriger Pflanzen",
-    "langtext": "Anbau sonstiger mehrjähriger Pflanzen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1301",
-    "kurztext": "Anbau von Zimmerpflanzen, Beet- und Balkonpflanzen",
-    "langtext": "Anbau von Zimmerpflanzen, Beet- und Balkonpflanzen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1302",
-    "kurztext": "Betrieb von Baumschulen",
-    "langtext": "Betrieb von Baumschulen",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -813,13 +1520,6 @@
   },
   {
     "code": "1410",
-    "kurztext": "Haltung von Milchkühen",
-    "langtext": "Haltung von Milchkühen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1410",
     "kurztext": "Herstellung von Bekleidung aus gewirktem und gestricktem Stoff",
     "langtext": "Herstellung von Bekleidung aus gewirktem und gestricktem Stoff",
     "validFrom": "2025-01-01",
@@ -857,13 +1557,6 @@
     "code": "14105",
     "kurztext": "Herstellung von sonstiger Bekleidung aus gewirktem und gestricktem Stoff",
     "langtext": "Herstellung von sonstiger Bekleidung aus gewirktem und gestricktem Stoff",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1420",
-    "kurztext": "Haltung von sonstigen Rindern",
-    "langtext": "Haltung von sonstigen Rindern",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -973,76 +1666,6 @@
     "validTo": null
   },
   {
-    "code": "1430",
-    "kurztext": "Haltung von Pferden und Eseln",
-    "langtext": "Haltung von Pferden und Eseln",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1440",
-    "kurztext": "Haltung von Kamelen",
-    "langtext": "Haltung von Kamelen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1450",
-    "kurztext": "Haltung von Schafen und Ziegen",
-    "langtext": "Haltung von Schafen und Ziegen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1460",
-    "kurztext": "Haltung von Schweinen",
-    "langtext": "Haltung von Schweinen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1471",
-    "kurztext": "Haltung von Legehennen zur Konsumeiererzeugung",
-    "langtext": "Haltung von Legehennen zur Konsumeiererzeugung",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1472",
-    "kurztext": "Betrieb von Brütereien",
-    "langtext": "Betrieb von Brütereien",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1479",
-    "kurztext": "Haltung von Geflügel a. n. g.",
-    "langtext": "Haltung von Geflügel a. n. g.",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1481",
-    "kurztext": "Haltung von Insekten",
-    "langtext": "Haltung von Insekten",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1489",
-    "kurztext": "Sonstige Tierhaltung a. n. g.",
-    "langtext": "Sonstige Tierhaltung a. n. g.",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1500",
-    "kurztext": "Gemischte Landwirtschaft",
-    "langtext": "Gemischte Landwirtschaft",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
     "code": "1511",
     "kurztext": "Gerben, Färben, Zurichten von Leder und Fellen",
     "langtext": "Gerben, Färben, Zurichten von Leder und Fellen",
@@ -1088,20 +1711,6 @@
     "code": "152001",
     "kurztext": "Maßanfertigung von Schuhen (ohne orthopädische Schuhe)",
     "langtext": "Maßanfertigung von Schuhen (ohne orthopädische Schuhe)",
-    "validFrom": "2025-01-06",
-    "validTo": null
-  },
-  {
-    "code": "1610",
-    "kurztext": "Erbringung von landwirtschaftlichen Dienstleistungen für den Pflanzenbau",
-    "langtext": "Erbringung von landwirtschaftlichen Dienstleistungen für den Pflanzenbau",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "16101",
-    "kurztext": "Landwirtschaftliches Lohnunternehmen",
-    "langtext": "Landwirtschaftliches Lohnunternehmen",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -1130,34 +1739,6 @@
     "code": "16120",
     "kurztext": "Bearbeitung und Veredlung von Holz",
     "langtext": "Bearbeitung und Veredlung von Holz",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1620",
-    "kurztext": "Erbringung von landwirtschaftlichen Dienstleistungen für die Tierhaltung",
-    "langtext": "Erbringung von landwirtschaftlichen Dienstleistungen für die Tierhaltung",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "16201",
-    "kurztext": "Pferdepension",
-    "langtext": "Pferdepension",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "16202",
-    "kurztext": "Hufschmiede, Hufpflege, Klauenpflege",
-    "langtext": "Hufschmiede, Hufpflege, Klauenpflege",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "16203",
-    "kurztext": "Ausbildung und Beritt von Pferden",
-    "langtext": "Ausbildung und Beritt von Pferden",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -1277,27 +1858,6 @@
     "code": "16280",
     "kurztext": "Herstellung von sonstigen Holzwaren sowie Kork-, Flecht- und Korbwaren",
     "langtext": "Herstellung von sonstigen Holzwaren sowie Kork-, Flecht- und Korbwaren",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1631",
-    "kurztext": "Nach der Ernte anfallende Tätigkeiten in der pflanzlichen Erzeugung",
-    "langtext": "Nach der Ernte anfallende Tätigkeiten in der pflanzlichen Erzeugung",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1632",
-    "kurztext": "Saatgutaufbereitung",
-    "langtext": "Saatgutaufbereitung",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "1700",
-    "kurztext": "Jagd, Fallenstellerei und damit verbundene Tätigkeiten",
-    "langtext": "Jagd, Fallenstellerei und damit verbundene Tätigkeiten",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -1764,13 +2324,6 @@
     "validTo": null
   },
   {
-    "code": "2100",
-    "kurztext": "Forstwirtschaft",
-    "langtext": "Forstwirtschaft",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
     "code": "2110",
     "kurztext": "Herstellung von pharmazeutischen Grundstoffen",
     "langtext": "Herstellung von pharmazeutischen Grundstoffen",
@@ -1795,13 +2348,6 @@
     "code": "21200",
     "kurztext": "Herstellung von pharmazeutischen Spezialitäten und sonstigen pharmazeutischen Erzeugnissen",
     "langtext": "Herstellung von pharmazeutischen Spezialitäten und sonstigen pharmazeutischen Erzeugnissen",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "2200",
-    "kurztext": "Holzeinschlag",
-    "langtext": "Holzeinschlag",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -1935,13 +2481,6 @@
     "code": "22269",
     "kurztext": "Herstellung von sonstigen Kunststoffwaren a. n. g.",
     "langtext": "Herstellung von sonstigen Kunststoffwaren a. n. g.",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "2300",
-    "kurztext": "Sammeln von wildwachsenden Produkten, ohne Holz",
-    "langtext": "Sammeln von wildwachsenden Produkten, ohne Holz",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -2303,13 +2842,6 @@
     "validTo": null
   },
   {
-    "code": "2400",
-    "kurztext": "Erbringung von Dienstleistungen für Forstwirtschaft und Holzeinschlag",
-    "langtext": "Erbringung von Dienstleistungen für Forstwirtschaft und Holzeinschlag",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
     "code": "2410",
     "kurztext": "Erzeugung von Roheisen, Stahl und Ferrolegierungen",
     "langtext": "Erzeugung von Roheisen, Stahl und Ferrolegierungen",
@@ -2663,7 +3195,7 @@
     "code": "25403",
     "kurztext": "Herstellung von Kaltfließpressteilen",
     "langtext": "Herstellung von Kaltfließpressteilen",
-    "validFrom": "2025-01-06",
+    "validFrom": "2025-01-01",
     "validTo": null
   },
   {
@@ -3934,27 +4466,6 @@
     "validTo": null
   },
   {
-    "code": "3110",
-    "kurztext": "Meeresfischerei",
-    "langtext": "Meeresfischerei",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "3120",
-    "kurztext": "Süßwasserfischerei",
-    "langtext": "Süßwasserfischerei",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "3210",
-    "kurztext": "Meeresaquakultur",
-    "langtext": "Meeresaquakultur",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
     "code": "3211",
     "kurztext": "Herstellung von Münzen",
     "langtext": "Herstellung von Münzen",
@@ -3993,13 +4504,6 @@
     "code": "32130",
     "kurztext": "Herstellung von Fantasieschmuck",
     "langtext": "Herstellung von Fantasieschmuck",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "3220",
-    "kurztext": "Süßwasseraquakultur",
-    "langtext": "Süßwasseraquakultur",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -4137,13 +4641,6 @@
     "validTo": null
   },
   {
-    "code": "3300",
-    "kurztext": "Erbringung von Dienstleistungen für Fischerei und Aquakultur",
-    "langtext": "Erbringung von Dienstleistungen für Fischerei und Aquakultur",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
     "code": "3311",
     "kurztext": "Reparatur und Instandhaltung von Metallerzeugnissen",
     "langtext": "Reparatur und Instandhaltung von Metallerzeugnissen",
@@ -4175,6 +4672,20 @@
     "code": "331201",
     "kurztext": "Reparatur von Maschinen",
     "langtext": "Reparatur von Maschinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3312011",
+    "kurztext": "Reparatur von Baumaschinen",
+    "langtext": "Reparatur von Baumaschinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "3312012",
+    "kurztext": "Reparatur von landwirtschaftlichen und forstwirtschaftlichen Maschinen",
+    "langtext": "Reparatur von landwirtschaftlichen und forstwirtschaftlichen Maschinen",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -4973,6 +5484,13 @@
     "code": "410011",
     "kurztext": "Bauunternehmung",
     "langtext": "Bauunternehmung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4100110",
+    "kurztext": "Generalunternehmung",
+    "langtext": "Generalunternehmung",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -7595,6 +8113,62 @@
     "validTo": null
   },
   {
+    "code": "4752011",
+    "kurztext": "Einzelhandel mit Badausstattung, Badzubehör",
+    "langtext": "Einzelhandel mit Badausstattung, Badzubehör",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752012",
+    "kurztext": "Einzelhandel mit Werkzeugen",
+    "langtext": "Einzelhandel mit Werkzeugen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752013",
+    "kurztext": "Einzelhandel mit Kleineisenwaren",
+    "langtext": "Einzelhandel mit Kleineisenwaren",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752014",
+    "kurztext": "Einzelhandel mit Schildern, Stempeln",
+    "langtext": "Einzelhandel mit Schildern, Stempeln",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752015",
+    "kurztext": "Einzelhandel mit Bauelementen",
+    "langtext": "Einzelhandel mit Bauelementen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752016",
+    "kurztext": "Einzelhandel mit Gartengeräten",
+    "langtext": "Einzelhandel mit Gartengeräten",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752017",
+    "kurztext": "Einzelhandel mit Sonnenschutz, Sichtschutz",
+    "langtext": "Einzelhandel mit Sonnenschutz, Sichtschutz",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752018",
+    "kurztext": "Einzelhandel mit Installationsbedarf Gas, Wasser, Heizung",
+    "langtext": "Einzelhandel mit Installationsbedarf Gas, Wasser, Heizung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
     "code": "475202",
     "kurztext": "Einzelhandel mit Anstrichmitteln",
     "langtext": "Einzelhandel mit Anstrichmitteln",
@@ -7605,6 +8179,55 @@
     "code": "475203",
     "kurztext": "Einzelhandel mit Baubedarf, Heimwerkerbedarf",
     "langtext": "Einzelhandel mit Baubedarf, Heimwerkerbedarf",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752031",
+    "kurztext": "Baumärkte",
+    "langtext": "Baumärkte",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752032",
+    "kurztext": "Einzelhandel mit Elektroinstallationszubehör",
+    "langtext": "Einzelhandel mit Elektroinstallationszubehör",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752033",
+    "kurztext": "Einzelhandel mit Solaranlagen, Photovoltaikanlagen",
+    "langtext": "Einzelhandel mit Solaranlagen, Photovoltaikanlagen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752034",
+    "kurztext": "Einzelhandel mit elektrischen Ladestationen, Wandladestationen",
+    "langtext": "Einzelhandel mit elektrischen Ladestationen, Wandladestationen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752035",
+    "kurztext": "Einzelhandel mit Fliesen",
+    "langtext": "Einzelhandel mit Fliesen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752036",
+    "kurztext": "Einzelhandel mit Natursteinen",
+    "langtext": "Einzelhandel mit Natursteinen",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4752039",
+    "kurztext": "Einzelhandel mit sonstigen Waren für Heimwerkerbedarf, Schnittholz, Baustoffe",
+    "langtext": "Einzelhandel mit sonstigen Waren für Heimwerkerbedarf, Schnittholz, Baustoffe",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -7920,6 +8543,20 @@
     "code": "476993",
     "kurztext": "Einzelhandel mit Geschenkartikel",
     "langtext": "Einzelhandel mit Geschenkartikel",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4769931",
+    "kurztext": "Einzelhandel mit Souvenirs",
+    "langtext": "Einzelhandel mit Souvenirs",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "4769932",
+    "kurztext": "Einzelhandel mit Raucherartikeln",
+    "langtext": "Einzelhandel mit Raucherartikeln",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -8764,13 +9401,6 @@
     "validTo": null
   },
   {
-    "code": "5100",
-    "kurztext": "Steinkohlenbergbau",
-    "langtext": "Steinkohlenbergbau",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
     "code": "5110",
     "kurztext": "Personenbeförderung in der Luftfahrt",
     "langtext": "Personenbeförderung in der Luftfahrt",
@@ -8809,13 +9439,6 @@
     "code": "51220",
     "kurztext": "Raumtransport",
     "langtext": "Raumtransport",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "5200",
-    "kurztext": "Braunkohlenbergbau",
-    "langtext": "Braunkohlenbergbau",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -9017,6 +9640,13 @@
   },
   {
     "code": "52269",
+    "kurztext": "Erbringung von sonstigen Dienstleistungen für den Verkehr a. n. g.",
+    "langtext": "Erbringung von sonstigen Dienstleistungen für den Verkehr a. n. g.",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "522691",
     "kurztext": "Erbringung von sonstigen Dienstleistungen für den Verkehr a. n. g.",
     "langtext": "Erbringung von sonstigen Dienstleistungen für den Verkehr a. n. g.",
     "validFrom": "2025-01-01",
@@ -9786,13 +10416,6 @@
     "validTo": null
   },
   {
-    "code": "6100",
-    "kurztext": "Gewinnung von Erdöl",
-    "langtext": "Gewinnung von Erdöl",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
     "code": "6110",
     "kurztext": "Leitungsgebundene, drahtlose und satellitengestützte Telekommunikation",
     "langtext": "Leitungsgebundene, drahtlose und satellitengestützte Telekommunikation",
@@ -9852,13 +10475,6 @@
     "code": "61909",
     "kurztext": "Sonstige Telekommunikation a. n. g.",
     "langtext": "Sonstige Telekommunikation a. n. g.",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "6200",
-    "kurztext": "Gewinnung von Erdgas",
-    "langtext": "Gewinnung von Erdgas",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -10493,6 +11109,13 @@
     "validTo": null
   },
   {
+    "code": "662902",
+    "kurztext": "Rentenberatung",
+    "langtext": "Rentenberatung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
     "code": "6630",
     "kurztext": "Fondsmanagement",
     "langtext": "Fondsmanagement",
@@ -10699,14 +11322,14 @@
     "code": "69102",
     "kurztext": "Patentanwaltskanzleien",
     "langtext": "Patentanwaltskanzleien",
-    "validFrom": "2025-01-06",
+    "validFrom": "2025-01-01",
     "validTo": null
   },
   {
     "code": "69103",
     "kurztext": "Erbringung sonstiger juristischer Dienstleistungen",
     "langtext": "Erbringung sonstiger juristischer Dienstleistungen",
-    "validFrom": "2025-01-06",
+    "validFrom": "2025-01-01",
     "validTo": null
   },
   {
@@ -10748,7 +11371,7 @@
     "code": "69201",
     "kurztext": "Praxen von Wirtschaftsprüfer/innen, Buchprüfer/innen, Wirtschaftsprüfungsgesellschaften",
     "langtext": "Praxen von Wirtschaftsprüferinnen und -prüfern, vereidigten Buchprüferinnen und -prüfern, Wirtschaftsprüfungsgesellschaften und Buchprüfungsgesellschaften",
-    "validFrom": "2025-01-06",
+    "validFrom": "2025-01-01",
     "validTo": null
   },
   {
@@ -10850,6 +11473,20 @@
     "validTo": null
   },
   {
+    "code": "7020011",
+    "kurztext": "Projektmanagement",
+    "langtext": "Projektmanagement",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
+    "code": "7020012",
+    "kurztext": "Marketingberatung",
+    "langtext": "Marketingberatung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
     "code": "702002",
     "kurztext": "Technikberatung, Logistikberatung",
     "langtext": "Technikberatung, Logistikberatung",
@@ -10888,13 +11525,6 @@
     "code": "702007",
     "kurztext": "Interims Management",
     "langtext": "Interims Management",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "7100",
-    "kurztext": "Eisenerzbergbau",
-    "langtext": "Eisenerzbergbau",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -11032,6 +11662,13 @@
     "validTo": null
   },
   {
+    "code": "7112610",
+    "kurztext": "Immobilienberatung",
+    "langtext": "Immobilienberatung",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
     "code": "711262",
     "kurztext": "Büros baufachlicher Sachverständiger",
     "langtext": "Büros baufachlicher Sachverständiger",
@@ -11138,13 +11775,6 @@
   },
   {
     "code": "7210",
-    "kurztext": "Bergbau auf Uran- und Thoriumerze",
-    "langtext": "Bergbau auf Uran- und Thoriumerze",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "7210",
     "kurztext": "Forschung und Entwicklung im Bereich Natur-, Ingenieur-, Agrarwissenschaften und Medizin",
     "langtext": "Forschung und Entwicklung im Bereich Natur-, Ingenieur-, Agrarwissenschaften und Medizin",
     "validFrom": "2025-01-01",
@@ -11203,13 +11833,6 @@
     "code": "72200",
     "kurztext": "Forschung, Entwicklung in Rechts-, Wirtschafts-, Sozial-, Sprach-, Kultur-, Kunstwissenschaft",
     "langtext": "Forschung und Entwicklung im Bereich Rechts-, Wirtschafts- und Sozialwissenschaften sowie im Bereich Sprach-, Kultur- und Kunstwissenschaften",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "7290",
-    "kurztext": "Sonstiger NE-Metallerzbergbau",
-    "langtext": "Sonstiger NE-Metallerzbergbau",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -12015,7 +12638,7 @@
     "code": "80013",
     "kurztext": "Luftsicherheitsdienste",
     "langtext": "Luftsicherheitsdienste",
-    "validFrom": "2025-01-06",
+    "validFrom": "2025-01-01",
     "validTo": null
   },
   {
@@ -12055,13 +12678,6 @@
   },
   {
     "code": "8110",
-    "kurztext": "Gewinnung von Naturwerksteinen, Kalk- und Gipsstein, Schiefer und sonstigem Gestein",
-    "langtext": "Gewinnung von Naturwerksteinen, Kalk- und Gipsstein, Schiefer und sonstigem Gestein",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "8110",
     "kurztext": "Hausmeisterdienste",
     "langtext": "Hausmeisterdienste",
     "validFrom": "2025-01-01",
@@ -12083,13 +12699,6 @@
   },
   {
     "code": "8121",
-    "kurztext": "Gewinnung von Quarzsanden und kieselsauren Sanden",
-    "langtext": "Gewinnung von Quarzsanden und kieselsauren Sanden",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "8121",
     "kurztext": "Allgemeine Gebäudereinigung",
     "langtext": "Allgemeine Gebäudereinigung",
     "validFrom": "2025-01-01",
@@ -12106,13 +12715,6 @@
     "code": "812101",
     "kurztext": "Fensterreinigung",
     "langtext": "Fensterreinigung",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "8122",
-    "kurztext": "Gewinnung von anderen Natursanden und Kies",
-    "langtext": "Gewinnung von anderen Natursanden und Kies",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -12162,13 +12764,6 @@
     "code": "812224",
     "kurztext": "Schankanlagenreinigung, Getränkeleitungsreinigung, Wartung",
     "langtext": "Schankanlagenreinigung, Getränkeleitungsreinigung, Wartung",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "8123",
-    "kurztext": "Gewinnung von Kaolin und anderem kaolinhaltigen Ton und Lehm",
-    "langtext": "Gewinnung von Kaolin und anderem kaolinhaltigen Ton und Lehm",
     "validFrom": "2025-01-01",
     "validTo": null
   },
@@ -12414,7 +13009,7 @@
     "code": "829992",
     "kurztext": "Relocation Service",
     "langtext": "Relocation Service",
-    "validFrom": "2025-01-06",
+    "validFrom": "2025-01-01",
     "validTo": null
   },
   {
@@ -13398,34 +13993,6 @@
     "validTo": null
   },
   {
-    "code": "8910",
-    "kurztext": "Bergbau auf chemische und Düngemittelminerale",
-    "langtext": "Bergbau auf chemische und Düngemittelminerale",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "8920",
-    "kurztext": "Torfgewinnung",
-    "langtext": "Torfgewinnung",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "8930",
-    "kurztext": "Gewinnung von Salz",
-    "langtext": "Gewinnung von Salz",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "8990",
-    "kurztext": "Gewinnung von Steinen und Erden a. n. g.",
-    "langtext": "Gewinnung von Steinen und Erden a. n. g.",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
     "code": "9011",
     "kurztext": "Literarisches Schaffen und Musikkomposition",
     "langtext": "Literarisches Schaffen und Musikkomposition",
@@ -13664,13 +14231,6 @@
     "validTo": null
   },
   {
-    "code": "9100",
-    "kurztext": "Erbringung von Dienstleistungen für die Gewinnung von Erdöl und Erdgas",
-    "langtext": "Erbringung von Dienstleistungen für die Gewinnung von Erdöl und Erdgas",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
     "code": "9111",
     "kurztext": "Bibliotheken",
     "langtext": "Bibliotheken",
@@ -13723,7 +14283,7 @@
     "code": "9122",
     "kurztext": "Historische Stätten und Denkmäler",
     "langtext": "Historische Stätten und Denkmäler",
-    "validFrom": "2025-06-10",
+    "validFrom": "2025-01-01",
     "validTo": null
   },
   {
@@ -14476,6 +15036,13 @@
     "validTo": null
   },
   {
+    "code": "962101",
+    "kurztext": "Barbiersalons",
+    "langtext": "Barbiersalons",
+    "validFrom": "2025-01-01",
+    "validTo": null
+  },
+  {
     "code": "9622",
     "kurztext": "Kosmetiksalons und ähnliche Schönheitsbehandlungen",
     "langtext": "Kosmetiksalons und ähnliche Schönheitsbehandlungen",
@@ -14752,13 +15319,6 @@
     "code": "98200",
     "kurztext": "Erbringungen von Dienstleistungen durch private Haushalte für den Eigenbedarf ohne Schwerpunkt",
     "langtext": "Erbringungen von Dienstleistungen durch private Haushalte für den Eigenbedarf ohne ausgeprägten Schwerpunkt",
-    "validFrom": "2025-01-01",
-    "validTo": null
-  },
-  {
-    "code": "9900",
-    "kurztext": "Erbringung von Dienstleistungen für den sonstigen Bergbau und die Gewinnung von Steinen und Erden",
-    "langtext": "Erbringung von Dienstleistungen für den sonstigen Bergbau und die Gewinnung von Steinen und Erden",
     "validFrom": "2025-01-01",
     "validTo": null
   },
