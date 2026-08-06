@@ -246,7 +246,7 @@ export default function MatcherPage() {
         <h1 style={styles.title}>WZ-Branchen-Matcher</h1>
       </div>
       <p style={styles.subtitle}>
-        Bis zu 3 WZ-2008-Schlüssel pro Eingabe — automatisch nach erkannten Tätigkeiten getrennt. 4- bis 6-stellige Codes.
+        Bis zu 3 WZ-2025-Schlüssel pro Eingabe — automatisch nach erkannten Tätigkeiten getrennt. 4- bis 7-stellige Codes.
       </p>
 
       <div style={styles.grid}>

@@ -5,7 +5,7 @@
 import { llmService, type Message, type ToolDefinition } from '../../services/llm';
 import type { CatalogEntry, MatchResult } from './types';
 
-const SYSTEM_PROMPT = `Du bist ein Experte für die deutsche Wirtschaftszweigklassifikation WZ 2008.
+const SYSTEM_PROMPT = `Du bist ein Experte für die deutsche Wirtschaftszweigklassifikation WZ 2025.
 Deine Aufgabe: Aus einer freitextlichen Tätigkeitsbeschreibung (aus dem Handelsregister) wählst du den passendsten WZ-Schlüssel aus einer vorgegebenen Kandidatenliste aus und benennst bis zu 3 sinnvolle Alternativen.
 
 Hierarchie der WZ-Codes:
@@ -27,7 +27,7 @@ const SCHEMA: ToolDefinition = {
   type: 'function',
   function: {
     name: 'classify_wz_branche',
-    description: 'Wählt den passendsten 4- bis 6-stelligen WZ-2008-Schlüssel aus einer Kandidatenliste und nennt Alternativen.',
+    description: 'Wählt den passendsten 4- bis 7-stelligen WZ-2025-Schlüssel aus einer Kandidatenliste und nennt Alternativen.',
     parameters: {
       type: 'object',
       properties: {
@@ -35,7 +35,7 @@ const SCHEMA: ToolDefinition = {
           type: 'object',
           description: 'Der wahrscheinlichste Match.',
           properties: {
-            code: { type: 'string', description: '4- bis 6-stelliger WZ-Schlüssel aus der Kandidatenliste.' },
+            code: { type: 'string', description: '4- bis 7-stelliger WZ-Schlüssel aus der Kandidatenliste.' },
             confidence: { type: 'number', description: 'Konfidenz zwischen 0 und 1.' },
             reasoning: { type: 'string', description: '1-2 Sätze deutsche Begründung.' },
           },
@@ -67,7 +67,7 @@ function buildUserPrompt(inputText: string, candidates: CatalogEntry[]): string 
 ${inputText}
 """
 
-Kandidatenliste (4- bis 6-stellige WZ-Schlüssel, gemischte Ebenen):
+Kandidatenliste (4- bis 7-stellige WZ-Schlüssel, gemischte Ebenen):
 ${lines.join('\n')}
 
 Wähle den besten Code (bevorzuge feinste eindeutige Ebene) und 0-3 Alternativen.`;

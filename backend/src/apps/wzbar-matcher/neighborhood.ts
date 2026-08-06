@@ -19,17 +19,17 @@ export interface NeighborhoodNode {
   code: string;
   kurztext: string;
   langtext: string;
-  level: number;       // 4 | 5 | 6
-  indent: number;      // 0..2 — visuelle Einrueckung relativ zum kuerzesten Praefix
+  level: number;       // 4 | 5 | 6 | 7
+  indent: number;      // 0..3 — visuelle Einrueckung relativ zum kuerzesten Praefix
   isCurrent: boolean;  // true fuer den abgefragten Code
 }
 
 const MIN_LEVEL = 4;
-const MAX_LEVEL = 6;
+const MAX_LEVEL = 7;
 
 export async function getNeighborhood(code: string): Promise<NeighborhoodNode[]> {
   const target = code.trim();
-  if (!/^\d{4,6}$/.test(target)) {
+  if (!/^\d{4,7}$/.test(target)) {
     throw new Error(`Ungueltiger WZ-Code: ${code}`);
   }
   const catalog = await loadCatalog();
