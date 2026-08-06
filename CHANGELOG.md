@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+### Ops: Neue Kunden-Instanz `workplace-ruhrpm-masterclass` (Scalingo)
+Neue Customer-Instanz für die RuhrPM-Masterclass provisioniert (Runbook `docs/runbook-neue-kundeninstanz.md`):
+- App + Postgres (`starter-512`) im Projekt `workplace-pilots`; **eigener Flow.swiss-S3-Account** (Bucket
+  `workplace-ruhrpm-masterclass`, `FLOW_S3_MASTER`-Hash ≠ Nachbarn verifiziert); frische Secrets (`SESSION_SECRET`,
+  `CONNECTION_ENCRYPTION_KEY` = 64 Hex).
+- Customer-Modus (kein Seed), `ENABLED_APPS=projektmanagement`, Branding Default, keine Connections; ⚪ Vault-Keys
+  (LLM/Model-Routing/Infra) aus `workplace-ihk-darmstadt` übernommen (ohne 🔴-Secrets).
+- Deploy aus `main` (`587ef31`); Health 200, HSTS, `[s3] bucket … created`, Migrations applied. Interim-URL
+  `https://workplace-ruhrpm-masterclass.osc-fr1.scalingo.io`; DNS/Custom-Domain folgt später.
+
 ### WZ-Branchen-Matcher: Katalog auf WZ 2025 aktualisiert (Führungsnullen-Fix + 7-stellige Codes)
 Neue Schlüsseltabelle (WZ2025-CSV) mit dem aktuellen Katalog abgeglichen und eingespielt:
 - **Befund**: Der Katalog war inhaltlich bereits WZ2025 (0 Text-Abweichungen auf 2042 gemeinsamen Codes), aber
