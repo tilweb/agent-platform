@@ -67,3 +67,8 @@ backend/data/audit/
 # DocuWare probe artifacts — enthalten echte Tenant-Daten (PDFs, JSON-
 # Responses mit Index-Feldern). Niemals committen.
 tools/docuware-test/output/
+
+# Segment-Pilot: echte personenbezogene Dokumente + Ground Truth mit Klarnamen — NIE committen
+docs/SplitDocuments/
+tools/segment-pilot/groundtruth/
+tools/segment-pilot/results/

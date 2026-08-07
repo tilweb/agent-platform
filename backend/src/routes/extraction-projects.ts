@@ -26,6 +26,7 @@ import {
   exportProject,
   importProject,
   validateProjectFields,
+  validateProjectSegments,
   validateProjectRules,
   evaluateProjectRules,
   ingestPlainText,
@@ -91,6 +92,11 @@ extractionProjectRoutes.post('/projects', async (c) => {
     return c.json({ error: ruleError }, 400);
   }
 
+  const segmentError = validateProjectSegments(body.segments);
+  if (segmentError) {
+    return c.json({ error: segmentError }, 400);
+  }
+
   const project = await createProject({
     name: body.name,
     description: body.description,
@@ -98,6 +104,7 @@ extractionProjectRoutes.post('/projects', async (c) => {
     instructions: body.instructions,
     extraction: body.extraction,
     rules: body.rules,
+    segments: body.segments,
   });
 
   return c.json(project, 201);
@@ -114,6 +121,13 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
     const fieldError = validateProjectFields(body.fields);
     if (fieldError) {
       return c.json({ error: fieldError }, 400);
+    }
+  }
+
+  if (body.segments !== undefined) {
+    const segmentError = validateProjectSegments(body.segments === null ? undefined : body.segments);
+    if (segmentError) {
+      return c.json({ error: segmentError }, 400);
     }
   }
 
@@ -155,6 +169,8 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
     extraction: body.extraction,
     rules: body.rules,
     webhook,
+    // `null` loescht die Segmenttypen bewusst, `undefined` laesst sie unberuehrt.
+    segments: body.segments === null ? undefined : body.segments,
   });
 
   if (!updated) {

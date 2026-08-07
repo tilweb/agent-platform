@@ -31,6 +31,7 @@ export const extractionProjects = extractionSchema.table('projects', {
   extraction: jsonb('extraction'),                   // ExtractionConfig (Heavy-Pipeline-Strategie); NULL = Default hybrid
   rules: jsonb('rules'),                             // ExtractionRule[] — fachliche Pruefregeln (Welle 5)
   webhook: jsonb('webhook'),                         // { url, secret } — Webhook-Ziel (Welle 5)
+  segments: jsonb('segments'),                       // Record<string, SegmentTypeDef> — Segmenttypen (Welle 10)
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 });
@@ -128,6 +129,7 @@ export const extractionBatchRunFiles = extractionSchema.table('batch_run_files',
   documentText: text('document_text'),                  // Trainings-Grundlage (nur Detail-Select)
   reviewStatus: text('review_status'),                  // auto_ok|needs_review|reviewed (Welle 3)
   validations: jsonb('validations'),                    // RuleIssue[] — fachliche Pruefregeln (Welle 5)
+  segments: jsonb('segments'),                          // SegmentInstance[] — erkannte Segmente (Welle 10)
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({

@@ -1,0 +1,172 @@
+{
+  "_hinweis": [
+    "Familien-Profile fuer den Segmentierungs-Pilot (W10.1) — nur generische",
+    "Segmenttyp-Beschreibungen, keine Personendaten. Die Zuordnung Dokument →",
+    "Profil liegt in groundtruth/mapping.json (lokal, nicht im Repo)."
+  ],
+  "bewerbung": {
+    "anschreiben": {
+      "label": "Anschreiben",
+      "description": "Bewerbungs- oder Begleitschreiben: Briefkopf mit Absender, Empfaengeradresse, Datum, Betreff, Anrede ('Sehr geehrte...'), Fliesstext, Grussformel und meist Unterschrift. Genau eine Seite pro Bewerbung ist typisch."
+    },
+    "lebenslauf": {
+      "label": "Lebenslauf",
+      "description": "Tabellarischer Werdegang: Ueberschrift 'Lebenslauf' oder Name als Titel, oft Foto, Bloecke wie Kontaktdaten, Berufserfahrung, Ausbildung, Faehigkeiten mit Zeitraeumen in Spaltenform. Folgeseiten setzen die Tabellenstruktur fort."
+    },
+    "zeugnis": {
+      "label": "Arbeitszeugnis",
+      "description": "Arbeits-, Zwischen- oder Ausbildungszeugnis eines Arbeitgebers: Firmen-Briefkopf/Logo, Ueberschrift 'Zeugnis'/'Arbeitszeugnis'/'Zwischenzeugnis', Fliesstext ueber Taetigkeit und Leistung einer Person, Ort/Datum und Unterschrift am Ende. Jedes Zeugnis beginnt mit einem eigenen Firmen-Briefkopf.",
+      "repeatable": true
+    },
+    "zertifikat": {
+      "label": "Zertifikat/Urkunde",
+      "description": "Urkunde, Zertifikat oder Teilnahmebescheinigung: grossformatige Ueberschrift ('CERTIFICATE', 'Urkunde', 'Master-Urkunde'), dekoratives Layout oder Siegel/Logo eines Instituts, Name der Person prominent, meist genau eine Seite, oft Querformat.",
+      "repeatable": true
+    },
+    "nachweis": {
+      "label": "Sonstiger Nachweis",
+      "description": "Sonstige beigelegte Belege, die weder Zeugnis noch Urkunde sind: Notenuebersichten, Bewertungsschreiben von Behoerden (z.B. Zeugnisbewertung), Bescheinigungen mit Formularcharakter. Oft Scans oder Fotos in abweichender Qualitaet.",
+      "repeatable": true
+    }
+  },
+  "versicherungspaket": {
+    "anschreiben": {
+      "label": "Anschreiben",
+      "description": "Begleitbrief des Versicherers: Logo oben, Absender-/Empfaengerblock, 'Sehr geehrte...', Aufzaehlung der beigefuegten Unterlagen, Grussformel mit Unterschriften. Kann zwei Seiten haben; die zweite Seite setzt den Brieftext fort und endet mit Unterschriften."
+    },
+    "bescheinigung": {
+      "label": "Bescheinigung/Meldung",
+      "description": "Amtliche oder steuerliche Bescheinigung bzw. Meldung: Ueberschrift wie 'Bescheinigung', 'Erstmeldung', 'Dokumentation der Vorsorgeaufwendungen', tabellarische Betraege/Zeitraeume, Bezug auf Paragraphen. Beginnt mit eigenem Logo-Briefkopf; eine Fortsetzungsseite kann nur die Grussformel/Unterschriften tragen.",
+      "repeatable": true
+    },
+    "infoblatt": {
+      "label": "Informationsblatt",
+      "description": "Beigefuegte Informations- und Bedingungswerke: Ueberschriften wie 'Informationen ueber wichtige Anpassungen', Versicherungsbedingungen mit Paragraphen in Tabellenlayout, Merkblaetter oder Flyer. Tragen oft eine EIGENE Seitenzaehlung ('Seite 1 von 8') — deren Neustart markiert ein neues Blatt.",
+      "repeatable": true
+    }
+  },
+  "energierechnung": {
+    "anschreiben": {
+      "label": "Anschreiben/Deckblatt",
+      "description": "Deckblatt oder Begleitbrief des Versorgers: Logo, Empfaengeradresse, zusammenfassende Kacheln oder Anschreiben-Text zur Rechnung ('Ihre Gutschrift', 'Ihre Jahresrechnung')."
+    },
+    "rechnung": {
+      "label": "Rechnung",
+      "description": "Die eigentliche Rechnungsseite: Rechnungsnummer, Rechnungsbetrag, Positionen/Summen, Zahlungs- oder Erstattungshinweis."
+    },
+    "anlage": {
+      "label": "Anlage/Berechnung",
+      "description": "Rechnerische Anlagen zur Rechnung: kuenftige Abschlagszahlungen, Berechnungsnachweise je Sparte mit Zaehlerstaenden, Preisstufen, CO2-Kosten. Tabellenlastig.",
+      "repeatable": true
+    },
+    "infoblatt": {
+      "label": "Informationsblatt",
+      "description": "Erlaeuternde Beiblaetter: 'Informationen zu Ihrer Rechnung', Begriffserklaerungen, Serviceinformationen, grafische Verbrauchsvergleiche.",
+      "repeatable": true
+    }
+  },
+  "formularpaket": {
+    "formular": {
+      "label": "Anmeldeformular",
+      "description": "Ausfuellbares bzw. ausgefuelltes Antrags-/Anmeldeformular: beschriftete Eingabefelder oder Linien (Name, Adresse, Geburtsdatum...), Ankreuzoptionen, am Ende Ort/Datum/Unterschrift. Kann zwei Seiten umfassen.",
+      "required": true
+    },
+    "einwilligung": {
+      "label": "Einwilligung/Belehrung",
+      "description": "Einseitige Erklaerung mit EIGENEM Unterschriftenblock: Einwilligungen (Fotos, Software, Testverfahren) oder Kenntnisnahme-Belehrungen. Jede beginnt mit eigener Ueberschrift und endet mit Ort/Datum/Unterschrift — jede ist eine eigene Instanz.",
+      "repeatable": true
+    },
+    "vertrag": {
+      "label": "Vertrag",
+      "description": "Vertragsseite mit nummerierten Paragraphen/Klauseln und Unterschriftenblock beider Parteien (z.B. Schulvertrag)."
+    },
+    "infoblatt": {
+      "label": "Informationsblatt",
+      "description": "Reine Informationsseiten OHNE Unterschriftenblock: Ordnungen, Datenschutzinformationen, Merkblaetter.",
+      "repeatable": true
+    }
+  },
+  "vertragswerk": {
+    "vertrag": {
+      "label": "Vertrag",
+      "description": "Das Hauptvertragsdokument: Titelseite mit Vertragsparteien, nummerierte Paragraphen ueber mehrere Seiten, am Ende Unterschriftenseite beider Parteien."
+    },
+    "anhang": {
+      "label": "Anhang",
+      "description": "Anhaenge zum Vertrag: Ueberschrift 'Anhang N' mit Titel, danach Inhalt (Listen, Tabellen, Deckblaetter zu beigefuegten Dokumenten). Jeder Anhang beginnt mit seiner 'Anhang N'-Ueberschrift.",
+      "repeatable": true
+    },
+    "nachweis": {
+      "label": "Beigefuegtes Fremddokument",
+      "description": "Eingebettete Dokumente Dritter mit voellig eigenem Briefkopf/Layout (z.B. Versicherungsbestaetigung eines Versicherers als Nachweis).",
+      "repeatable": true
+    }
+  },
+  "gutachten": {
+    "anschreiben": {
+      "label": "Anschreiben",
+      "description": "Begleitbrief des Labors/Gutachters mit Briefkopf, Anrede und Grussformel."
+    },
+    "gutachten": {
+      "label": "Gutachten",
+      "description": "Der Gutachtentext: durchgehende Kopfzeile mit Gutachten-Nummer und fortlaufender Seitenzahl, Kapitel wie Zusammenfassung, Untersuchungsbefund, Bewertung."
+    },
+    "pruefbericht": {
+      "label": "Pruefbericht",
+      "description": "Formalisierte Pruefberichte als eigene Einheiten: Ueberschrift 'PRUEFBERICHT' mit EIGENER Kennung (z.B. 2026-1136-1), Tabellen zu Probenahme und Ergebnissen, Abschluss 'Ende des Pruefberichts'. Jede neue Kennung ist eine neue Instanz.",
+      "repeatable": true
+    },
+    "infoblatt": {
+      "label": "Informationsblatt",
+      "description": "Erlaeuternde Beiblaetter, z.B. Definition von Orientierungswerten."
+    }
+  },
+  "eingangsrechnung": {
+    "rechnung": {
+      "label": "Rechnung",
+      "description": "Rechnung eines Lieferanten: Rechnungsnummer, Positionen, Betraege, oft mit Freigabe-Stempeln oder Annotationen aus der Buchhaltung."
+    },
+    "leistungsnachweis": {
+      "label": "Leistungsnachweis",
+      "description": "Stundenzettel oder Leistungsnachweis zur Rechnung: Tabelle mit Datum, Stunden, Taetigkeiten, Unterschriften; oft Querformat."
+    },
+    "email": {
+      "label": "E-Mail",
+      "description": "Ausgedruckte E-Mail: Kopfzeilen Von/An/Betreff/Datum, danach der Mailtext."
+    }
+  },
+  "behoerdenschreiben": {
+    "anschreiben": {
+      "label": "Behoerdenschreiben",
+      "description": "Schreiben einer Behoerde: Wappen/Logo, Aktenzeichen, Ansprechpartner-Spalte, Betreff, Fliesstext mit 'gez.'-Zeichnung."
+    },
+    "anlage": {
+      "label": "Anlage",
+      "description": "Beigefuegte Anlagen zum Schreiben: Tabellen (oft Querformat), Listen, ggf. handschriftlich mit 'Anlage' beschriftet.",
+      "repeatable": true
+    }
+  },
+  "nachweis-mappe": {
+    "nachweis": {
+      "label": "Ausweis-/Dokumentkopie",
+      "description": "Kopie oder Scan eines amtlichen Dokuments (Personalausweis, Karte): Vorder- und Rueckseite desselben Dokuments gehoeren zu EINER Instanz, auch wenn sie auf zwei Seiten liegen.",
+      "repeatable": true
+    }
+  },
+  "fahrzeugangebot": {
+    "deckblatt": {
+      "label": "Deckblatt",
+      "description": "Titelseite einer Fahrzeug-Konfiguration: Modellname, Preis prominent, Fahrzeugbilder, Konfigurations-Code."
+    },
+    "infoblatt": {
+      "label": "Pflichtinformation",
+      "description": "Gesetzliche Verbrauchs-/CO2-Informationen: Energieeffizienzklassen-Grafik, Verbrauchswerte, Fussnoten; inklusive reiner Fussnoten-Fortsetzungsseiten.",
+      "repeatable": true
+    },
+    "anlage": {
+      "label": "Ausstattung/Daten",
+      "description": "Technische Daten und Ausstattungslisten: zweispaltige Listen von Ausstattungscodes, technische Kennwerte, Preisblock.",
+      "repeatable": true
+    }
+  }
+}

@@ -5,9 +5,10 @@
  * Extracted from the original validator.ts for reuse.
  */
 
-import type { ExtractionRule, FieldCatalog, ProjectField } from './types';
+import type { ExtractionRule, FieldCatalog, ProjectField, SegmentTypeDef } from './types';
 import { PROJECT_FIELD_GROUP } from './pipeline-adapter';
 import { normalizeForMatch } from './catalog';
+import { BUILTIN_SEGMENT_TYPES } from './types';
 
 const SCALAR_TYPES = new Set(['text', 'number', 'date', 'boolean']);
 
@@ -209,5 +210,46 @@ export function correctDate(value: unknown): string | null {
     return parsed.toISOString().split('T')[0]!;
   }
 
+  return null;
+}
+
+/**
+ * Strukturelle Validierung der Segmenttypen (Welle 10). Deutsche Fehlermeldung
+ * oder null. Die Feld-Definitionen je Segment laufen durch dieselbe Pruefung
+ * wie Projekt-Felder.
+ */
+export function validateProjectSegments(segments: Record<string, SegmentTypeDef> | undefined): string | null {
+  if (segments === undefined) return null;
+  const entries = Object.entries(segments);
+  if (entries.length === 0) {
+    return 'Segmente: mindestens ein Segmenttyp noetig (oder das Feld weglassen)';
+  }
+  for (const [segId, seg] of entries) {
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(segId)) {
+      return `Segment "${segId}": ID bitte klein-alphanumerisch mit Bindestrichen`;
+    }
+    if ((BUILTIN_SEGMENT_TYPES as readonly string[]).includes(segId)) {
+      return `Segment "${segId}": dieser Typ ist eingebaut und kann nicht deklariert werden`;
+    }
+    if (!seg || typeof seg !== 'object') {
+      return `Segment "${segId}": ungueltige Definition`;
+    }
+    if (!seg.label || !String(seg.label).trim()) {
+      return `Segment "${segId}": Label fehlt`;
+    }
+    if (!seg.description || String(seg.description).trim().length < 20) {
+      return `Segment "${segId}": die Beschreibung traegt die Seiten-Klassifikation — bitte ausfuehrlich beschreiben (mind. 20 Zeichen)`;
+    }
+    if (seg.mode !== undefined && seg.mode !== 'extract' && seg.mode !== 'classify-only') {
+      return `Segment "${segId}": mode muss 'extract' oder 'classify-only' sein`;
+    }
+    if (seg.mode === 'classify-only' && seg.fields && Object.keys(seg.fields).length > 0) {
+      return `Segment "${segId}": classify-only-Segmente haben keine Felder`;
+    }
+    if (seg.fields) {
+      const fieldError = validateProjectFields(seg.fields);
+      if (fieldError) return `Segment "${segId}" — ${fieldError}`;
+    }
+  }
   return null;
 }

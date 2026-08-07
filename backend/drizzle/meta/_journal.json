@@ -225,6 +225,13 @@
       "when": 1785801800000,
       "tag": "0031_example_embeddings",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1785888200000,
+      "tag": "0032_extraction_segments",
+      "breakpoints": true
     }
   ]
 }

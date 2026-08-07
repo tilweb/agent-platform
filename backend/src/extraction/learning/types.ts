@@ -206,6 +206,50 @@ export interface LearningMetadata {
   calibration?: CalibrationState;
 }
 
+// ============== Segmentierung (Welle 10) ==============
+
+/**
+ * Ein Segmenttyp eines Profils. `description` ist Prosa fuer die
+ * Seiten-Klassifikation (wie bei `instructions`): Woran erkennt man eine Seite
+ * dieses Typs? Welche Signale markieren den BEGINN einer neuen Instanz
+ * (Briefkopf, "Seite 1 von N", eigene Kennung)?
+ */
+export interface SegmentTypeDef {
+  label: string;
+  /** Prosa-Beschreibung fuer die Seiten-Klassifikation. Pflicht. */
+  description: string;
+  /** Feldsatz des Segments — gleiche Form wie `project.fields`. Nur bei mode 'extract'. */
+  fields?: Record<string, ProjectField>;
+  /**
+   * 'extract' (Default) | 'classify-only': ein Nachweis wird erkannt und belegt
+   * (Typ + Seiten + Kurzbeschreibung), aber nicht feld-extrahiert.
+   */
+  mode?: 'extract' | 'classify-only';
+  /** Duerfen mehrere Instanzen vorkommen (drei Nachweise -> drei Segmente)? */
+  repeatable?: boolean;
+  /** Fehlt das Segment im Dokument -> Befund + "Zu pruefen". */
+  required?: boolean;
+}
+
+/** Eingebaute Segmenttypen — existieren in jedem Segment-Profil, nie deklarierbar. */
+export const BUILTIN_SEGMENT_TYPES = ['leerseite', 'unbekannt'] as const;
+
+/**
+ * Eine erkannte Segment-Instanz am Lauf-Ergebnis. `type` ist ein Schluessel aus
+ * `project.segments` oder ein eingebauter Typ.
+ */
+export interface SegmentInstance {
+  type: string;
+  /** 1..n je Typ (bei repeatable). */
+  instance: number;
+  pageFrom: number;
+  pageTo: number;
+  /** Kleinste Seiten-Klassifikations-Konfidenz der Instanz (0..1). */
+  confidence: number;
+  /** Kurzbeleg bei mode 'classify-only'. */
+  summary?: string;
+}
+
 export interface ExtractionProject {
   id: string;
   name: string;
@@ -233,6 +277,14 @@ export interface ExtractionProject {
    * die Batch-Datei unabhaengig von der Konfidenz auf "Zu pruefen".
    */
   rules?: ExtractionRule[];
+  /**
+   * Segmenttypen (Welle 10): typisierte Abschnitte INNERHALB eines Vorgangs
+   * (Anschreiben + Formular + Nachweis in einem Scan). Kein `segments` =
+   * heutiges Verhalten (ein impliziter Segmenttyp ueber alle Seiten).
+   * Die eingebauten Typen `leerseite` und `unbekannt` existieren immer und
+   * duerfen hier nicht deklariert werden.
+   */
+  segments?: Record<string, SegmentTypeDef>;
   /**
    * Webhook-Ziel des Projekts (Welle 5). `url` ist der Default fuer alle Laeufe
    * (auch UI-Laeufe); eine `callback_url` in der API-Anfrage schlaegt sie.
