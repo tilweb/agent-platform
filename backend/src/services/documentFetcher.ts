@@ -12,13 +12,12 @@ import { readFile, writeFile, mkdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { loadChatHistory, type ChatHistory } from './memory';
+import { convertDocument } from './documentConverter';
 
 const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
 const TEMP_DIR = resolve(process.cwd(), '../data/temp');
 
 // Markitdown API settings (same as indexer.ts)
-const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
 
 export interface ReaderItem {
   id: string;
@@ -232,25 +231,9 @@ async function fetchDocumentContent(
 
             try {
               // Convert via Markitdown API
-              console.log(`[documentFetcher] Converting via Markitdown: ${tempFilename}`);
-              const file = Bun.file(tempFilePath);
-              const formData = new FormData();
-              formData.append('document', file, tempFilename);
-
-              const markitdownResponse = await fetch(MARKITDOWN_URL, {
-                method: 'PUT',
-                headers: {
-                  Authorization: `Bearer ${MARKITDOWN_API_KEY}`,
-                },
-                body: formData,
-              });
-
-              if (!markitdownResponse.ok) {
-                const errorText = await markitdownResponse.text();
-                throw new Error(`Markitdown Konvertierung fehlgeschlagen: ${markitdownResponse.status} - ${errorText}`);
-              }
-
-              const markdownContent = await markitdownResponse.text();
+              console.log(`[documentFetcher] Converting via Konverter (W8): ${tempFilename}`);
+              const fileBuffer = await readFile(tempFilePath);
+              const markdownContent = await convertDocument({ buffer: fileBuffer, filename: tempFilename });
               console.log(`[documentFetcher] Successfully converted, length: ${markdownContent.length}`);
 
               // Clean up temp file
@@ -317,27 +300,13 @@ async function fetchDocumentContent(
                 await writeFile(tempFilePath, Buffer.from(buffer));
 
                 try {
-                  const file = Bun.file(tempFilePath);
-                  const formData = new FormData();
-                  formData.append('document', file, parsed.file?.name || tempFilename);
-
-                  const markitdownResponse = await fetch(MARKITDOWN_URL, {
-                    method: 'PUT',
-                    headers: {
-                      Authorization: `Bearer ${MARKITDOWN_API_KEY}`,
-                    },
-                    body: formData,
-                  });
-
-                  if (markitdownResponse.ok) {
-                    const markdownContent = await markitdownResponse.text();
-                    await rm(tempFilePath, { force: true });
-                    return {
-                      ...baseResult,
-                      content: markdownContent,
-                      source: 'Google Drive',
-                    };
-                  }
+                  const markdownContent = await convertDocument({ buffer: Buffer.from(buffer), filename: parsed.file?.name || tempFilename });
+                  await rm(tempFilePath, { force: true });
+                  return {
+                    ...baseResult,
+                    content: markdownContent,
+                    source: 'Google Drive',
+                  };
                 } catch {
                   // Fallback conversion failed
                 }

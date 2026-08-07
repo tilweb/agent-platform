@@ -26,9 +26,8 @@ import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { extname, resolve } from 'path';
 import { EXTRACTION_SAMPLING } from '../../services/extraction/extract-call';
+import { convertDocument } from '../../services/documentConverter';
 
-const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
 
 // ============== Document Ingestion (reused from existing pipeline) ==============
 
@@ -97,44 +96,19 @@ export async function ingest(source: ExtractionSource): Promise<{
         const rawBuffer = await readFile(filePath);
         let text = '';
         try {
-          const file = Bun.file(filePath);
-          const formData = new FormData();
-          formData.append('document', file, source.filename);
-          const response = await fetch(MARKITDOWN_URL, {
-            method: 'PUT',
-            headers: { Authorization: `Bearer ${MARKITDOWN_API_KEY}` },
-            body: formData,
-            signal: AbortSignal.timeout(15000),
-          });
-          if (response.ok) {
-            text = await response.text();
-          } else {
-            console.warn(`[Extraction] Markitdown ${response.status} fuer PDF — fahre nur mit Vision fort.`);
-          }
+          // Zentraler Konverter (W8), best-effort: die Vision-Extraktion darf
+          // an einem Konverter-Ausfall nicht scheitern.
+          text = await convertDocument({ buffer: rawBuffer, filename: source.filename }, { timeoutMs: 15000 });
         } catch (err) {
-          console.warn('[Extraction] Markitdown nicht erreichbar fuer PDF — fahre nur mit Vision fort:', err instanceof Error ? err.message : err);
+          console.warn('[Extraction] Konverter nicht erreichbar fuer PDF — fahre nur mit Vision fort:', err instanceof Error ? err.message : err);
         }
         return { text, rawBuffer, rawMimeType: 'application/pdf' };
       }
 
-      // Andere Dokumenttypen (docx/xlsx/…) haben keinen Vision-Fallback — hier ist
-      // Markitdown die einzige Quelle und daher Pflicht.
-      const file = Bun.file(filePath);
-      const formData = new FormData();
-      formData.append('document', file, source.filename);
-
-      const response = await fetch(MARKITDOWN_URL, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${MARKITDOWN_API_KEY}` },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Markitdown-Konvertierung fehlgeschlagen: ${response.status} - ${errorText}`);
-      }
-
-      return { text: await response.text() };
+      // Andere Dokumenttypen (docx/xlsx/…) haben keinen Vision-Fallback — hier
+      // ist der Konverter die einzige Quelle und daher Pflicht (W8: zentral).
+      const officeBuffer = await readFile(filePath);
+      return { text: await convertDocument({ buffer: officeBuffer, filename: source.filename }) };
     }
 
     default:

@@ -11,6 +11,7 @@ import { join, resolve, basename, extname } from 'path';
 import { llmService, type Message } from './llm';
 import type { UsageContext } from './usageTracking';
 import * as kb from './kbStorage';
+import { convertDocument as convertViaBackend } from './documentConverter';
 
 const KB_BASE = resolve(process.cwd(), '../data/knowledge-base');
 const INCOMING_DIR = join(KB_BASE, 'incoming');
@@ -31,13 +32,7 @@ interface IndexMetadata {
 }
 
 class IndexerService {
-  private markitdownUrl: string;
-  private apiKey: string;
-
-  constructor() {
-    this.markitdownUrl = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-    this.apiKey = process.env.ADACOR_AI_API_KEY || '';
-  }
+  // URL/Auth/Allowlist liegen zentral im documentConverter (W8).
 
   /**
    * Convert a document to Markdown via Adacor Markitdown API.
@@ -72,43 +67,9 @@ class IndexerService {
       return content;
     }
 
-    // Call Markitdown API for conversion
-    // Bun.file() doesn't recognize uppercase extensions (.PDF → application/octet-stream),
-    // so we read the file as a Blob with explicit MIME type based on extension.
-    const mimeTypes: Record<string, string> = {
-      '.pdf': 'application/pdf',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      '.doc': 'application/msword',
-      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      '.xls': 'application/vnd.ms-excel',
-      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      '.ppt': 'application/vnd.ms-powerpoint',
-      '.html': 'text/html',
-      '.htm': 'text/html',
-      '.csv': 'text/csv',
-      '.rtf': 'application/rtf',
-    };
-    const mimeType = mimeTypes[ext] || 'application/octet-stream';
+    // Zentraler Konverter (W8): MIME-Erkennung, Allowlist, Timeout zentral.
     const fileData = await readFile(fullPath);
-    const blob = new Blob([fileData], { type: mimeType });
-    const formData = new FormData();
-    formData.append('document', blob, fileName);
-
-    const response = await fetch(this.markitdownUrl, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Markitdown API error ${response.status}: ${errorText}`);
-    }
-
-    const markdown = await response.text();
-    return markdown;
+    return await convertViaBackend({ buffer: fileData, filename: fileName });
   }
 
   /**

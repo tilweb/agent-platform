@@ -18,6 +18,7 @@ import type { ExtractionProfile, ExtractionSource } from '../extraction/types';
 import { extname, resolve, join } from 'path';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
+import { convertDocument } from '../services/documentConverter';
 
 const app = new Hono();
 
@@ -264,36 +265,9 @@ app.post('/generate-profile', async (c) => {
         text = await file.text();
       } else {
         // Convert via Markitdown API
-        const tempDir = resolve(process.cwd(), '../data/temp');
-        if (!existsSync(tempDir)) {
-          await mkdir(tempDir, { recursive: true });
-        }
-        const tempPath = join(tempDir, `gen-profile-${Date.now()}-${file.name}`);
+        // Zentraler Konverter (W8) — der Temp-Datei-Umweg entfaellt.
         const buffer = Buffer.from(await file.arrayBuffer());
-        await writeFile(tempPath, buffer);
-
-        try {
-          const markitdownUrl = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-          const apiKey = process.env.ADACOR_AI_API_KEY || '';
-          const bunFile = Bun.file(tempPath);
-          const convertForm = new FormData();
-          convertForm.append('document', bunFile, file.name);
-
-          const convertRes = await fetch(markitdownUrl, {
-            method: 'PUT',
-            headers: { Authorization: `Bearer ${apiKey}` },
-            body: convertForm,
-          });
-
-          if (!convertRes.ok) {
-            const errText = await convertRes.text();
-            throw new Error(`Dokumentkonvertierung fehlgeschlagen: ${convertRes.status} - ${errText}`);
-          }
-
-          text = await convertRes.text();
-        } finally {
-          try { await unlink(tempPath); } catch {}
-        }
+        text = await convertDocument({ buffer, filename: file.name });
       }
     } else {
       const body = await c.req.json<{ text: string; description?: string }>();

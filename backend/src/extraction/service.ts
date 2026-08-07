@@ -22,12 +22,10 @@ import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { extname, resolve } from 'path';
 import { EXTRACTION_SAMPLING } from '../services/extraction/extract-call';
+import { convertDocument } from '../services/documentConverter';
 
 const MAX_RETRIES = 2;
 
-// Markitdown API for file conversion
-const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
 
 /**
  * Stage 1: Ingest - Get document content from source
@@ -92,23 +90,9 @@ async function ingest(source: ExtractionSource): Promise<{
         return { text: content };
       }
 
-      // Convert via Markitdown API
-      const file = Bun.file(filePath);
-      const formData = new FormData();
-      formData.append('document', file, source.filename);
-
-      const response = await fetch(MARKITDOWN_URL, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${MARKITDOWN_API_KEY}` },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Markitdown-Konvertierung fehlgeschlagen: ${response.status} - ${errorText}`);
-      }
-
-      const text = await response.text();
+      // Zentraler Konverter (W8)
+      const buffer = await readFile(filePath);
+      const text = await convertDocument({ buffer, filename: source.filename });
       return { text };
     }
 

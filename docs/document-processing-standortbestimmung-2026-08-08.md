@@ -187,14 +187,29 @@ Rohdaten: `tools/ehinger-pilot/results/run.json` (neu), `run-vor-w7.json` (Vergl
 
 ## Teil C — Roadmap W8/W9
 
-### W8 — Konverter: ein Wrapper, dann Docling (Betriebsform entschieden: Adacor-Endpunkt)
+### W8 — Konverter: ein Wrapper, dann Docling — **umgesetzt 2026-08-08**
 
-1. Zentraler `services/documentConverter.ts` (ein Fetch, eine SSRF-Allowlist, ein Timeout) — die 9
-   kopierten Markitdown-Callsites stellen um. Danach ist der Backend-Tausch ein ENV-Wechsel.
-2. Routing: PDFs mit Textlayer + Office → Docling (Tabellenstruktur); Scans → Vision-Pfad
-   (Docling-OCR/EasyOCR wird bewusst nicht genutzt). Textlayer-Erkennung via `pdftotext`-Stichprobe.
-3. Benchmark auf eigenen Dokumenten: Markitdown vs. Docling (VM-Verträge, PM-Importe, XLSX;
-   Ehinger-Scans als Negativprobe).
+1. **Zentraler `services/documentConverter.ts`** (ein Fetch, EINE SSRF-Allowlist, ein Timeout,
+   zentrale MIME-Erkennung, JSON-oder-Text-Antwortbehandlung). Alle **9** Callsites umgestellt
+   (attachments, multiFileImporter, indexer, Vertragsmanagement, extraction/service,
+   learning/service, Profil-Generierung, Gmail-Attachment, Google-Drive-Fetch); die kopierten
+   Fetches, drei private URL-Konstanten-Paare und zwei doppelte Allowlist-Implementierungen sind
+   weg. Live geprüft: Scan konvertiert unverändert über den Adacor-Endpunkt; eine Allowlist-fremde
+   URL wird **jetzt an jeder Stelle** abgewiesen (vorher nur an 2 von 9). Der VM- und der
+   Profil-Generierungs-Pfad verlieren nebenbei ihren Temp-Datei-Umweg.
+2. **Routing implementiert** (aktiv, sobald `DOCLING_API_URL` gesetzt ist): Office/HTML/CSV/RTF →
+   Docling; PDF **mit** Textlayer (pdftotext-Stichprobe, Seite 1, > 50 Zeichen) → Docling; Scans →
+   Markitdown/Vision-Pfad (Docling-OCR/EasyOCR bewusst nicht genutzt). Jeder Docling-Fehler fällt
+   einzeln auf Markitdown zurück — der Wechsel kann keine bestehende Strecke brechen.
+   **Vertrag an Adacor** (dokumentiert in `.env.example`): wie documentMarkdown — PUT,
+   multipart-Feld `document`, Bearer `ADACOR_AI_API_KEY`, Antwort Markdown.
+3. **Benchmark-Werkzeug** `tools/konverter-benchmark/run.ts` (Dauer, Zeichen, Tabellenzeilen,
+   Überschriften je Backend). Der Docling-Endpunkt existiert noch nicht — gemessen ist die
+   **Markitdown-Baseline**, die den Wechsel bereits begründet: die born-digitale PM-Spezifikation
+   (PDF) kommt mit **0 Tabellenzeilen und 0 Überschriften** zurück (1.682 Zeichen Fließtext);
+   XLSX liefert Pipes, aber ohne Struktur-Reihenfolge (Sheets werden heuristisch umsortiert).
+   Sobald Adacor den Endpunkt stellt, liefert derselbe Aufruf den direkten Vergleich
+   (`results/vergleich-*-baseline.md`).
 
 ### W9 — Kosten & Robustheit
 
