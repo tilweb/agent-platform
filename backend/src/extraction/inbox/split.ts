@@ -132,7 +132,7 @@ export async function judgeBoundaries(
     ];
     try {
       const response = await withTimeoutRetry(
-        () => adapter.chat(messages, visionModel.model.id, undefined, undefined, EXTRACTION_SAMPLING),
+        () => adapter.chat(messages, visionModel.model.id, undefined, undefined, { ...EXTRACTION_SAMPLING, timeoutMs: 45_000 }),
         { timeoutMs: 45000, retries: 1, label: `inbox-split ${pageA.pageNumber}/${pageB.pageNumber}` },
       );
       verdicts[i] = parseBoundaryVerdict(response.content);

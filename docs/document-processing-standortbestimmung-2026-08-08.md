@@ -211,10 +211,34 @@ Rohdaten: `tools/ehinger-pilot/results/run.json` (neu), `run-vor-w7.json` (Vergl
    Sobald Adacor den Endpunkt stellt, liefert derselbe Aufruf den direkten Vergleich
    (`results/vergleich-*-baseline.md`).
 
-### W9 — Kosten & Robustheit
+### W9 — Kosten & Robustheit — **umgesetzt 2026-08-08**
 
-1. DPI-Messung 150 vs. 200 auf der Ehinger-Ground-Truth (−24 % Token je Beleg, wenn die Qualität hält).
-2. Tesseract async (`Bun.spawn`), AbortSignal-Timeouts für alle LLM-Calls.
-3. Eval-Alignment: Champion/Challenger optional auf der Produktionsstrategie messen (Befund 7).
-4. Optional: Barcode-Dekodierung als deterministischer Anker (neue System-Dependency, nur nach
-   Rückfrage).
+1. **DPI-Messung: 150 dpi fällt durch, 200 dpi bleibt Default.** Kompletter Ehinger-Lauf mit
+   `EXTRACTION_VISION_DPI=150` (jetzt konfigurierbar, `defaults.ts`):
+
+   | | 200 dpi | 150 dpi |
+   |---|---|---|
+   | Referenznummer | 10/12 | **8/12** |
+   | Positions-Recall | 39/39 | **34/39** |
+   | Erfundene Positionen | 0 | **5** (2922: Modell ersetzt alle Artikelnummern durch die Referenznummer) |
+   | Mengen/Einheiten (auf gefundenen) | 100 % | 100 % |
+   | Token je Beleg | Basis | ≈ −24 % |
+
+   Die Triage fängt 2922 (needs_review), aber 1899 verliert seine Referenznummer **still** (auto_ok).
+   Entscheidung: die −24 % Token sind zwei zusätzliche stille Fehler und fünf Halluzinationen nicht
+   wert. Rohdaten: `run-150dpi.json` vs. `run-200dpi.json`. Genau für diese Entscheidung war die
+   Messung da — der ENV-Schalter bleibt für künftige Modelle.
+2. **Tesseract async** (`Bun.spawn` statt `spawnSync`, Parallelität 2 wegen `OMP_THREAD_LIMIT=1`):
+   der Event-Loop blockiert nicht mehr für die OCR-Dauer jeder Seite. Toter `computeOcrBoxes`
+   entfernt (die Fusion hat ihn ersetzt).
+3. **Echte Request-Timeouts:** Der OpenAI-Adapter bricht non-streaming Requests jetzt per
+   AbortSignal ab (Default 120 s, je Versuch neu) — vorher lief ein hängender Request nach dem
+   `Promise.race`-Timeout unsichtbar weiter und band einen vLLM-Slot. Vision-/Posteingang-Calls
+   nutzen 45 s synchron zur `withTimeoutRetry`-Uhr. Der Streaming-Pfad (Chat) bleibt bewusst ohne
+   Abort.
+4. **Eval-Alignment ehrlich ausgewiesen** statt simuliert: `EvalScore` trägt jetzt
+   `measured_strategy` / `production_strategy` / `aligned`; bei Vision-Profilen zeigt „Regeln &
+   Qualität" den Hinweis, dass die Messung die Regeln prüft, nicht die Vision-Strecke. Eine echte
+   Vision-Messung bräuchte gespeicherte Seitenbilder je Trainingsbeispiel — dokumentierte
+   Folgearbeit, kein W9-Bestandteil.
+5. Barcode-Anker: bewusst nicht umgesetzt (neue System-Dependency, nur nach Rückfrage).

@@ -2183,6 +2183,24 @@ function BatchTab({ project, onProjectUpdated }) {
 
   useEffect(() => { loadRuns(); /* eslint-disable-next-line */ }, [project.id]);
 
+  // Neuesten Lauf beim Betreten oeffnen — frueher stand die Lauf-Liste sichtbar
+  // da, mit der Auswahlleiste waere der Bereich sonst leer.
+  //
+  // ACHTUNG, hier lag eine Endlosschleife: Stand das Auto-Oeffnen direkt in
+  // loadRuns(), rief openRun -> pollRun bei fertigem Lauf wieder loadRuns() auf
+  // — und zwar mit der ALTEN Closure, in der activeRun noch null war. Die
+  // Bedingung blieb damit ewig wahr und das Backend bekam zwei Anfragen pro
+  // Durchlauf ohne Pause. Als Effekt ausgewertet, wird der State nach dem
+  // Commit gelesen; der Ref-Riegel macht es zusaetzlich einmalig je Profil.
+  const autoOpened = useRef(false);
+  useEffect(() => { autoOpened.current = false; }, [project.id]);
+  useEffect(() => {
+    if (autoOpened.current || activeRun || runs.length === 0) return;
+    autoOpened.current = true;
+    openRun(runs[0].id);
+    // eslint-disable-next-line
+  }, [runs, activeRun]);
+
   // Polling, solange der aktive Lauf läuft.
   useEffect(() => {
     if (!activeRun || !isActive) return;
@@ -2194,12 +2212,7 @@ function BatchTab({ project, onProjectUpdated }) {
     try {
       const res = await apiGet(base);
       if (!res.ok) return;
-      const list = await res.json();
-      setRuns(list);
-      // Neuesten Lauf gleich oeffnen. Frueher stand die Lauf-Liste sichtbar da
-      // und man klickte einen an; mit der Auswahlleiste waere der Bereich sonst
-      // beim Betreten leer.
-      if (list.length > 0 && !activeRun) openRun(list[0].id);
+      setRuns(await res.json());
     } catch { /* ignore */ }
   }
 
@@ -2261,7 +2274,10 @@ function BatchTab({ project, onProjectUpdated }) {
     e.stopPropagation();
     try {
       await apiDelete(`${base}/${runId}`);
-      if (activeRun?.run?.id === runId) setActiveRun(null);
+      if (activeRun?.run?.id === runId) {
+        setActiveRun(null);
+        autoOpened.current = false;   // dann darf der naechstaelteste aufgehen
+      }
       loadRuns();
     } catch { /* ignore */ }
   }
@@ -3636,6 +3652,21 @@ function RulesTab({ project, onProjectUpdated }) {
           Feld für Feld mit deinen bestätigten Werten verglichen. Nur Regeln, die mindestens so gut
           sind wie die aktuellen, werden übernommen. Gemessen wird text-basiert, ohne Few-Shot.
         </InfoBox>
+
+        {champion?.aligned === false && (
+          <div style={{
+            marginBottom: theme.spacing.lg,
+            padding: theme.spacing.md,
+            backgroundColor: theme.colors.warningLight,
+            color: theme.colors.warning,
+            borderRadius: theme.borderRadius.lg,
+            fontSize: theme.typography.sizes.sm,
+          }}>
+            Hinweis: Dieses Profil extrahiert in Produktion mit <strong>{champion.production_strategy}</strong>,
+            die Messung läuft aber text-basiert ({champion.measured_strategy}). Sie prüft damit die
+            Regeln und Anweisungen — nicht die Vision-Strecke selbst.
+          </div>
+        )}
 
         {evalRunning && (
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>

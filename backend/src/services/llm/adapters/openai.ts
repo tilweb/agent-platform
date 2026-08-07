@@ -223,6 +223,8 @@ export class OpenAIAdapter {
       maxTokens?: number;
       /** Zusaetzliche Body-Felder (z.B. vLLM guided_json). Werte hier ueberschreiben nichts Bestehendes. */
       extraBody?: Record<string, unknown>;
+      /** Harter Request-Timeout (AbortSignal). Default 120s — vorher gab es KEINEN Client-Timeout (W9). */
+      timeoutMs?: number;
     }
   ): Promise<{
     content: string | null;
@@ -257,14 +259,31 @@ export class OpenAIAdapter {
 
     const bodyJson = JSON.stringify(body);
 
-    // Retry loop for transient errors
+    // Retry loop for transient errors. Der AbortSignal-Timeout gilt JE
+    // Versuch — ein haengender Endpoint blockiert damit nie laenger als
+    // timeoutMs, und der Retry bekommt einen frischen Request. Der
+    // Streaming-Pfad bleibt bewusst ohne Abort (lange Chats).
+    const timeoutMs = params?.timeoutMs ?? 120_000;
     let response: Response | null = null;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers,
-        body: bodyJson,
-      });
+      try {
+        response = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers,
+          body: bodyJson,
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch (error) {
+        const e = error as { name?: string };
+        if (e?.name === 'TimeoutError' || e?.name === 'AbortError') {
+          if (attempt < MAX_RETRIES) {
+            safeLog.warn(`[OpenAI Adapter] Request-Timeout nach ${Math.round(timeoutMs / 1000)}s (Versuch ${attempt + 1}/${MAX_RETRIES + 1}) — neuer Versuch.`);
+            continue;
+          }
+          throw new Error(`LLM-Request-Timeout nach ${Math.round(timeoutMs / 1000)}s`);
+        }
+        throw error;
+      }
 
       if (response.ok) break;
 

@@ -78,6 +78,15 @@ export interface EvalScore {
   by_field: Record<string, number>;
   /** Anzahl erfolgreich ausgewerteter Beispiele. */
   examples: number;
+  /**
+   * Eval-Alignment (W9): Die Messung laeuft text-basiert (single-pass auf dem
+   * gespeicherten document_text) — Beispiele tragen keine Bilder. Bei
+   * Vision-Profilen misst sie damit NICHT die Produktions-Pipeline; das wird
+   * hier ausgewiesen statt verschwiegen.
+   */
+  measured_strategy?: string;
+  production_strategy?: string;
+  aligned?: boolean;
 }
 
 export type EvalRunAction = 'accepted' | 'rejected' | 'measured' | 'initial' | 'error';

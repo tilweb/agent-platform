@@ -99,19 +99,32 @@ function findInBand(value: unknown, isNumber: boolean, words: OcrWord[], imgH: n
   return null;
 }
 
-export function fuseWithOcr(
+export async function fuseWithOcr(
   pages: OcrPage[],
   extracted: Record<string, unknown>,
   profile: ExtractionProfile,
   opts: { wordsByPage?: OcrWord[][] } = {},
-): FusionOutcome {
+): Promise<FusionOutcome> {
   if (pages.length === 0) return emptyOutcome(false);
   if (!opts.wordsByPage && !isTesseractAvailable()) return emptyOutcome(false);
 
-  const wordsByPage: PageWords[] = pages.map((p, i) => ({
-    page: p,
-    words: opts.wordsByPage ? (opts.wordsByPage[i] ?? []) : ocrWordBoxes(p.pngBuffer),
-  }));
+  // OCR je Seite async (W9.2) mit begrenzter Parallelitaet: OMP_THREAD_LIMIT=1
+  // haelt jeden Prozess einkernig — 2 gleichzeitig ist der vernuenftige Deckel,
+  // sonst spawnt ein 12-Seiter 12 Tesseracts auf einmal.
+  let allWords: OcrWord[][];
+  if (opts.wordsByPage) {
+    allWords = pages.map((_, i) => opts.wordsByPage![i] ?? []);
+  } else {
+    allWords = new Array(pages.length);
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(2, pages.length) }, async () => {
+      while (next < pages.length) {
+        const idx = next++;
+        allWords[idx] = await ocrWordBoxes(pages[idx]!.pngBuffer);
+      }
+    }));
+  }
+  const wordsByPage: PageWords[] = pages.map((p, i) => ({ page: p, words: allWords[i] ?? [] }));
   if (wordsByPage.every((w) => w.words.length === 0)) return emptyOutcome(false);
 
   const outcome = emptyOutcome(true);

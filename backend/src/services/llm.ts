@@ -26,6 +26,8 @@ export interface ChatOptions {
   maxTokens?: number;
   /** Zusaetzliche Request-Body-Felder (z.B. vLLM guided_json). Nur non-streaming chat() + OpenAI-Adapter. */
   extraBody?: Record<string, unknown>;
+  /** Harter Request-Timeout (AbortSignal), Default 120s. Nur non-streaming chat() + OpenAI-Adapter. */
+  timeoutMs?: number;
 }
 
 // Content part types for multimodal messages (text + images)
@@ -447,6 +449,7 @@ export class LLMService {
         temperature: options?.temperature,
         maxTokens: options?.maxTokens,
         extraBody: options?.extraBody,
+        timeoutMs: options?.timeoutMs,
       });
       await trackUsage();
       return {

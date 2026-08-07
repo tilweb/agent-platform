@@ -40,6 +40,7 @@ import { isPdfRendererAvailable, renderPdfToImages, type PdfPageImage } from '..
 import { mergeChunks, type ChunkExtraction } from '../merger';
 import { visionPerPageStrategy } from './vision-per-page';
 import { fuseWithOcr, applyFusionToConfidences } from '../fusion';
+import { extractionVisionDpi } from '../defaults';
 import { HYBRID_VISION_MIN_LOW_CONFIDENCE_FIELDS_PER_PAGE } from '../defaults';
 
 function detectMimeFromBuffer(buf: Buffer): string {
@@ -84,6 +85,7 @@ async function runVisionPass(
   const options: ChatOptions = {
     userId: input.userId,
     ...EXTRACTION_SAMPLING,
+    timeoutMs: 45_000,  // Request-Abort synchron zur withTimeoutRetry-Uhr (W9.3)
   };
   // Modellbindung wie in vision-per-page — der Fallback lief bisher auf dem
   // aktiven Session-Modell und brach damit die feste Extraktions-Modellwahl.
@@ -347,7 +349,7 @@ export const hybridStrategy: ExtractionStrategy = {
     let pages: PdfPageImage[];
     try {
       pages = await renderPdfToImages(pdf.buffer, {
-        dpi: 200,
+        dpi: extractionVisionDpi(),
         maxPages: input.schema.config.max_pages,
       });
     } catch (err) {
@@ -387,7 +389,7 @@ export const hybridStrategy: ExtractionStrategy = {
       }
     }
 
-    const fusion = fuseWithOcr(
+    const fusion = await fuseWithOcr(
       pages.map((p) => ({ pngBuffer: p.pngBuffer, width: p.width, height: p.height, pageNumber: p.pageNumber })),
       merged,
       input.schema.profile,

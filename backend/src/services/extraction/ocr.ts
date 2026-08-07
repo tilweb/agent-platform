@@ -45,19 +45,35 @@ function ocrLang(): string {
   return cachedLang;
 }
 
-/** Tesseract auf einem PNG-Buffer (via stdin) → Wort-Boxen (Pixel). */
-export function ocrWordBoxes(pngBuffer: Buffer): OcrWord[] {
-  const r = spawnSync('tesseract', ['-', 'stdout', '-l', ocrLang(), 'tsv'], {
-    input: pngBuffer,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, OMP_THREAD_LIMIT: '1' },  // stabilisiert tesseract im Subprozess
-  });
-  if (r.status !== 0 || !r.stdout) return [];
-  return r.stdout.split('\n').map((l) => l.split('\t'))
+function parseTsv(stdout: string): OcrWord[] {
+  return stdout.split('\n').map((l) => l.split('\t'))
     .filter((c) => c[0] === '5' && c[11] && c[11].trim())
     .map((c) => ({ left: +c[6]!, top: +c[7]!, width: +c[8]!, height: +c[9]!, conf: +c[10]!, text: c[11]!.trim() }))
     .filter((wd) => Number.isFinite(wd.left) && wd.conf > 30);
+}
+
+/**
+ * Tesseract auf einem PNG-Buffer (via stdin) → Wort-Boxen (Pixel).
+ *
+ * ASYNC (Bun.spawn): die alte spawnSync-Variante blockierte den Bun-Event-Loop
+ * fuer die gesamte OCR-Dauer JEDER Seite — unter Last stand der ganze Server
+ * (W9-Befund #11).
+ */
+export async function ocrWordBoxes(pngBuffer: Buffer): Promise<OcrWord[]> {
+  try {
+    const proc = Bun.spawn(['tesseract', '-', 'stdout', '-l', ocrLang(), 'tsv'], {
+      stdin: pngBuffer,
+      stdout: 'pipe',
+      stderr: 'ignore',
+      env: { ...process.env, OMP_THREAD_LIMIT: '1' },  // stabilisiert tesseract im Subprozess
+    });
+    const stdout = await new Response(proc.stdout).text();
+    const exitCode = await proc.exited;
+    if (exitCode !== 0 || !stdout) return [];
+    return parseTsv(stdout);
+  } catch {
+    return [];
+  }
 }
 
 const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9äöüß]/g, '');
@@ -120,31 +136,3 @@ export function locateValue(
 
 export interface OcrPage { pngBuffer: Buffer; width: number; height: number; pageNumber: number; }
 
-/**
- * Berechnet pro Feld eine Box: OCR je Seite, dann jeden extrahierten Wert
- * lokalisieren. Erste Seite (in Reihenfolge), die den Wert findet, gewinnt.
- * Liefert dotted paths (`<group>.<field>`).
- */
-export function computeOcrBoxes(
-  pages: OcrPage[],
-  extracted: Record<string, unknown>,
-  profile: ExtractionProfile,
-): Record<string, FieldBox> {
-  if (!isTesseractAvailable()) return {};
-  const boxes: Record<string, FieldBox> = {};
-  const wordsByPage = pages.map((p) => ({ page: p, words: ocrWordBoxes(p.pngBuffer) }));
-
-  for (const [groupName, group] of Object.entries(profile.fields)) {
-    if (isArrayGroup(group)) continue;
-    const groupData = (extracted[groupName] ?? {}) as Record<string, unknown>;
-    for (const [fieldId, field] of Object.entries(group as Record<string, FieldDefinition>)) {
-      const value = groupData[fieldId];
-      if (value === null || value === undefined || value === '') continue;
-      for (const { page, words } of wordsByPage) {
-        const box = locateValue(value, field.type, words, page.width, page.height);
-        if (box) { boxes[`${groupName}.${fieldId}`] = { page: page.pageNumber, ...box }; break; }
-      }
-    }
-  }
-  return boxes;
-}
