@@ -63,3 +63,8 @@ backend/data/apps/wzbar-matcher/matches/
 
 # Backend runtime data
 backend/data/audit/
+
+# Segment-Pilot: personenbezogene Dokumente + Ground Truth — NIE committen
+docs/SplitDocuments/
+tools/segment-pilot/groundtruth/
+tools/segment-pilot/results/

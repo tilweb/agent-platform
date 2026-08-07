@@ -7,7 +7,7 @@ export { isListField } from './types';
 export type { ReviewStatus, CalibrationState } from './types';
 export type { ExtractionRule, SumRule, LookupRule, RuleIssue, RuleSeverity } from './types';
 export { dedupeListItems } from './list-utils';
-export { validateProjectFields, validateProjectRules } from './validators';
+export { validateProjectFields, validateProjectRules, validateProjectSegments } from './validators';
 export { evaluateRules, hasBlockingIssue, describeRule } from './rules';
 export { applyCatalogs, matchCatalogValue, renderCatalogHint, normalizeForMatch, levenshtein } from './catalog';
 export type { CatalogValue, FieldCatalog } from './types';

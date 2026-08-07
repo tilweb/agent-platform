@@ -2,6 +2,57 @@
 
 ## 2026-08-08
 
+### Segmentierung (W10.1): Datenmodell + Segmentierer — Vorgang → Segmente
+Erste Umsetzungswelle des Segmentierungs-Konzepts (Reducto-Ansatz, Konzept §3-4):
+- **Datenmodell:** `segments` am Profil (SegmentTypeDef: Prosa-Beschreibung, Feldsatz,
+  classify-only, repeatable, required) + `segments` am Batch-Ergebnis (SegmentInstance[]),
+  Migration 0032, Validator (validateProjectSegments), POST/PUT-Routen. Eingebaute Typen
+  `leerseite` und `unbekannt`. Kein `segments` = heutiges Verhalten, keine Migration noetig.
+- **Segmentierer** (extraction/segmentation/segmenter.ts): Seiten-Klassifikation je Seite
+  (Vision, 150 dpi, guided_json mit enum-Typ + Neustart-Marker + Konfidenz, Modellbindung,
+  45s-Abort) + deterministische Grenzbildung: Typwechsel ⇒ Grenze, Neustart trennt Instanzen
+  desselben repeatable-Typs, Leerseiten trennen ohne Alarm, `unbekannt` und fehlende
+  Pflicht-Segmente werden Befunde, Glaettung nur bei niedriger Konfidenz UND gleichem
+  Nachbartyp beidseits (Einseiter sind der Normalfall — Evaluations-Erkenntnis).
+- **Pilot-Werkzeug** tools/segment-pilot/ mit 10 Familien-Profilen (profiles.json, generisch,
+  ohne Personendaten); Ground Truth, Mapping und Messergebnisse bleiben per .gitignore lokal
+  (personenbezogene Beispiel-Dokumente — bewusste Entscheidung).
+- **Messlauf ueber alle 18 Beispiel-Dokumente (179 Seiten):** Seitentyp-Accuracy 95,5 %,
+  Grenzen 92,2 % Precision / 94,7 % Recall, 78/93 Segmente exakt (+8 auf ±1 Seite), 0 Fehlalarme.
+  Beide Negativfaelle korrekt, Messpaar born-digital ↔ Scan identisch 8/8. Die 15 Abweichungen
+  sind zwei benennbare Fehlerklassen (Neustart-Recall bei gleichen Typen; semantische
+  Hybrid-Seiten) — Arbeitsliste fuer W10.2. Ergebnis im Konzept §11.
+- 10 neue Unit-Tests fuer die Grenzbildung (291 gruen; Railway-Variante speichert Profile als YAML — segments laeuft dort ohne Migration mit).
+
+### Segmentierung (W10.0): 18 Beispiel-Dokumente evaluiert — Ground Truth steht
+Alle 18 PDFs aus docs/SplitDocuments Seite fuer Seite visuell gesichtet und gelabelt:
+**179 Seiten, 93 Segmente, 20 Typen** (tools/segment-pilot/groundtruth/documents.json,
+lueckenlos validiert; Auswertung in Konzept §10). Fuenf Dokumentfamilien: Bewerbungsmappen,
+Versicherungs-/Rechnungspakete, Formular-Pakete (inkl. Messpaar born-digital ↔ unterschriebener
+Scan), Geschaefts-/Behoerdendokumente, bewusste Negativ-/Grenzfaelle (13-seitiger Lebenslauf =
+EIN Segment; Ausweiskopie Vorder-/Rueckseite = ein Nachweis). Beobachtete Grenzsignale
+(Briefkopf-Wechsel, Neustart interner Seitennummerierung, Formatwechsel, Trennblaetter,
+Quasi-Leerseiten) fliessen als Prior in die Typbeschreibungen. Zwei Konsequenzen fuer W10.1:
+Leerseite/Trennblatt als eingebauter Typ; Glaettung darf Einseiter nicht pauschal verdaechtigen
+(57 der 93 Segmente sind einseitig). Damit kann W10.1 starten.
+
+### Konzept: Segmentierung — Vorgang → Segmente → Felder (Welle 10)
+Fachkonzept fuer typisierte Segmente innerhalb EINES Vorgangs
+(docs/document-processing-segmentierung-konzept-2026-08-08.md), Anlass: Kundenfall
+Stadtverwaltung (Anschreiben + Formular + Nachweis in einem Scan) und Reducto Split als
+Marktreferenz. Kernpunkte:
+- Das heutige Modell kennt nur "trennen in unabhaengige Dokumente" (Posteingang) oder "ein
+  monolithisches Dokument = ein Profil" — der Fall braucht das Dritte: zusammenhalten UND
+  unterscheiden. Nebenbefund: der Merger mischt heute Seiten verschiedener Natur
+  (first-non-null greift Werte vom falschen Teil) — Segment-Scoping macht das strukturell
+  unmoeglich.
+- Zielmodell: `segments` am Profil (Prosa-Beschreibung + Feldsatz je Typ, classify-only fuer
+  Nachweise, repeatable, required), Segment-Instanzen am Lauf-Ergebnis, Seiten-Klassifikation
+  statt Paar-Urteil (guided_json, 150 dpi — Klassifikation vertraegt das, Feld-Extraktion nicht),
+  gescopte Extraktion je Segment ueber die BESTEHENDE Pipeline (pageSelection + Sub-Schema).
+- Bestehende Profile sind der Sonderfall "ein Segmenttyp" — keine Migration. Umsetzungsplan
+  W10.1-W10.5 mit Messplan; Pilot wartet auf Beispiel-Scans des Kunden.
+
 ### Welle 9: Kosten & Robustheit — DPI gemessen (200 bleibt), async-OCR, echte Timeouts
 - **DPI-Messung entschieden:** Kompletter Ehinger-Lauf mit 150 dpi (`EXTRACTION_VISION_DPI`, neu
   konfigurierbar) gegen die 200-dpi-Basis: Referenznummer 8/12 statt 10/12, Recall 34/39 statt
