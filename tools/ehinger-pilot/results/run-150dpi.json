@@ -1,0 +1,2838 @@
+[
+  {
+    "beleg": "1897_001",
+    "seiten": 2,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-sonepar",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 15827,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2024-12-19",
+        "referenznummer": "0275064",
+        "lieferscheinnummer": "56298596",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "beschreibung": "eQ-3 HmIP-HAP Access Point",
+            "artikelnummer": "6518113",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "1",
+            "lieferanten_artikelnummer": "1010325907"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "eQ-3 HmIP-DLD Türschlossantrieb",
+            "artikelnummer": "8318509",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "2",
+            "lieferanten_artikelnummer": "1011019047"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "eQ-3 HmIP-PSM-2 Schalt-Mess-Steckdose",
+            "artikelnummer": "8318783",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "3",
+            "lieferanten_artikelnummer": "1011114003"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "eQ-3 HmIP-BSM Schalt-Mess-Aktor für Markenschalter",
+            "artikelnummer": "6518557",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "4",
+            "lieferanten_artikelnummer": "1010338601"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "eQ-3 HmIP-BDT Dimmaktor für Markenschalter",
+            "artikelnummer": "6518565",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "5",
+            "lieferanten_artikelnummer": "1010338609"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "eQ-3 HmIP-FDT Dimmaktor Unterputz",
+            "artikelnummer": "6518778",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "6",
+            "lieferanten_artikelnummer": "1010428325"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 1,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
+        "positionen": 0.4
+      },
+      "validations": [
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 5, Artikelnummer Lieferant: Wert \"1010338609\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "1898_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-sonepar",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 11033,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2024-12-19",
+        "lieferscheinnummer": "56294390",
+        "positionen": [
+          {
+            "einheit": "ST",
+            "beschreibung": "PHOENIX C. D-PTI/3 Deckel L=101mm B=2,2mm grau",
+            "artikelnummer": "0491734",
+            "menge_bestellt": 5,
+            "menge_geliefert": 5,
+            "positionsnummer": "1",
+            "lieferanten_artikelnummer": "1009940956"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "PHOENIX C. UTI 16 BU Durchgangsreihenklemme 6-25qmm 12,2mm bl",
+            "artikelnummer": "0498529",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "2",
+            "lieferanten_artikelnummer": "1009997099"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "PHOENIX C. UTI 16-PE Durchgangsreihenklemme 6-25qmm 12,2mm gn-ge",
+            "artikelnummer": "0498530",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "3",
+            "lieferanten_artikelnummer": "1009997100"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0,
+        "positionen": 1
+      },
+      "validations": []
+    }
+  },
+  {
+    "beleg": "1899_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-sonepar",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 9079,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-02-06",
+        "lieferscheinnummer": "57949240",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "beschreibung": "Eaton DILM80(RDC24) Leistungsschütz 37KW/400V,DC",
+            "artikelnummer": "0719420",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "1",
+            "lieferanten_artikelnummer": "1009516548"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0.7,
+        "positionen": 1
+      },
+      "validations": []
+    }
+  },
+  {
+    "beleg": "1900_001",
+    "seiten": 3,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-unielektro",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 16994,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-01-08",
+        "referenznummer": "0275121",
+        "lieferscheinnummer": "662783282",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": "P-BA0",
+            "beschreibung": "LEDVANCE PL CMFT 625 P 33W 84\nPANEL COMFORT 625 UGR<19 DALI 33W 840 U1\nPosition 1",
+            "artikelnummer": "32764126",
+            "menge_bestellt": 4,
+            "menge_geliefert": 4,
+            "positionsnummer": "00010"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PRKSSF 25/M8\n25/M8 Rohrkabelschuh feindrähtige Kabel\nPosition 3\nPosition im Auftrag: 30",
+            "artikelnummer": "05105072",
+            "menge_bestellt": 20,
+            "menge_geliefert": 20,
+            "positionsnummer": "00020"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PRKSSF 25/M10\n25/M10 Rohrkabelschuh feindrähtige Kabel\nPosition 4\nPosition im Auftrag: 40",
+            "artikelnummer": "05105073",
+            "menge_bestellt": 20,
+            "menge_geliefert": 20,
+            "positionsnummer": "00030"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "KLAUKE 476/12\nADERENDHUELSEN ISOLIERT 10QMM ROT\nPosition 5\nPosition im Auftrag: 50",
+            "artikelnummer": "01200646",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00040"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "KLAUKE 471/10\nADERENDHUELSEN ISOLIERT 1QMM ROT\nPosition 6\nPosition im Auftrag: 60",
+            "artikelnummer": "01200626",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00050"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PSHEM 70\nSammelhalterung Metall bis 70 Kabel\nPosition 7\nPosition im Auftrag: 70",
+            "artikelnummer": "05105267",
+            "menge_bestellt": 15,
+            "menge_geliefert": 15,
+            "positionsnummer": "00060"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BETTERMANN BS-H1-M-40 FT\nBügelschelle 2056 34-40mm\nPosition 8\nPosition im Auftrag: 80",
+            "artikelnummer": "02209031",
+            "menge_bestellt": 10,
+            "menge_geliefert": 10,
+            "positionsnummer": "00070"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BETTERMANN BS-H1-M-52 FT\nBügelschelle 2056 46-52mm\nPosition 9\nPosition im Auftrag: 90",
+            "artikelnummer": "02209033",
+            "menge_bestellt": 12,
+            "menge_geliefert": 12,
+            "positionsnummer": "00080"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BETTERMANN BS-H1-M-64 FT\nBügelschelle 2056 58-64mm\nPosition 10\nPosition im Auftrag: 100",
+            "artikelnummer": "02209035",
+            "menge_bestellt": 30,
+            "menge_geliefert": 30,
+            "positionsnummer": "00090"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BETTERMANN BS-H2-K-16 FT\nBügelschelle 2056 2-fach 12-16mm\nPosition 11\nPosition im Auftrag: 110",
+            "artikelnummer": "02209057",
+            "menge_bestellt": 6,
+            "menge_geliefert": 6,
+            "positionsnummer": "00100"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 1,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
+        "positionen": 1
+      },
+      "validations": []
+    }
+  },
+  {
+    "beleg": "1901_001",
+    "seiten": 2,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-unielektro",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 16509,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-01-22",
+        "referenznummer": "0275306",
+        "lieferscheinnummer": "662913397",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PPHS 4,0X30 4,0x30VG Panheadschraube PZD2 verzinkt Position 1",
+            "artikelnummer": "05103315",
+            "menge_bestellt": 150,
+            "menge_geliefert": 150,
+            "positionsnummer": "00010"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PPHS 4,5X35 4,5 x 35 VG Panheadschraube PZD2 verzink Position 2",
+            "artikelnummer": "05103324",
+            "menge_bestellt": 250,
+            "menge_geliefert": 250,
+            "positionsnummer": "00020"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PPHS 4,5X40 4,5 x 40 VG Panheadschraube PZD2 verzink Position 3",
+            "artikelnummer": "05103325",
+            "menge_bestellt": 250,
+            "menge_geliefert": 250,
+            "positionsnummer": "00030"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PNSN 4-7/25 Schelle mit Nagel 4-7/25 Position 4",
+            "artikelnummer": "05101832",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00040"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PNSN 7-11/25 Schelle mit Nagel 7-11/25 Position 5",
+            "artikelnummer": "05101833",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00050"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PFKD M3X85 M3x85 Federklappdübel Position 6",
+            "artikelnummer": "05103639",
+            "menge_bestellt": 20,
+            "menge_geliefert": 20,
+            "positionsnummer": "00060"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PSSB 3,9X35 3,9x35 GG Schnellbauschraube PH Position 7",
+            "artikelnummer": "05103287",
+            "menge_bestellt": 150,
+            "menge_geliefert": 150,
+            "positionsnummer": "00070"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PSSB 3,9X35 3,9x35 FG Schnellbauschraube PH Position 8",
+            "artikelnummer": "05103283",
+            "menge_bestellt": 150,
+            "menge_geliefert": 150,
+            "positionsnummer": "00080"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-CFH",
+            "beschreibung": "HAGER LFE2003509016 Leitungsführungskanal UV-stabil Position 9",
+            "artikelnummer": "01345728",
+            "menge_bestellt": 10,
+            "menge_geliefert": 10,
+            "positionsnummer": "00090"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "FP270200",
+            "beschreibung": "BETTERMANN BS-H1-M-46 FT Bügelschelle 2056 40-46mm Position 10",
+            "artikelnummer": "02209032",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "00100"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 1,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 0.7,
+        "positionen": 1
+      },
+      "validations": []
+    }
+  },
+  {
+    "beleg": "1902_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-unielektro",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 9690,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-02-06",
+        "referenznummer": "0275484",
+        "lieferscheinnummer": "663048405",
+        "positionen": [
+          {
+            "einheit": "M",
+            "lagerplatz": "R-HKT",
+            "beschreibung": "J-Y(ST)Y 10X2X0,8 Lg grau Trommel\nFernmelde-Innenkabel\nPosition im Auftrag: 80\nCharge EB00394628\nHersteller/DoP: Elmat Schlagheck / ELD39211600",
+            "artikelnummer": "10800352",
+            "menge_bestellt": 50,
+            "menge_geliefert": 50,
+            "positionsnummer": "00010"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0,
+        "positionen": 1
+      },
+      "validations": []
+    }
+  },
+  {
+    "beleg": "1903_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-eldis",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 10262,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-01-22",
+        "referenznummer": "0275302",
+        "lieferscheinnummer": "3009528789",
+        "positionen": [
+          {
+            "einheit": "M",
+            "lagerplatz": null,
+            "beschreibung": "NYM-J 3X2,5 Tr 500m Mantelleitung Lief-Art.Nr. NYM-J3X2,5 TR500M Lagerware",
+            "artikelnummer": "0106826",
+            "menge_bestellt": 500,
+            "menge_geliefert": 500,
+            "positionsnummer": "10"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": null,
+            "beschreibung": "Draka UC900 HS23 C7 S/FTP 4P LSHF 500DW Eca Kupfer Datenkabel Lief-Art.Nr. 60011603 Lagerware",
+            "artikelnummer": "2470957",
+            "menge_bestellt": 500,
+            "menge_geliefert": 500,
+            "positionsnummer": "20"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0,
+        "positionen": 1
+      },
+      "validations": [
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"Meter\" auf den Katalogwert \"M\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 2)\": Wert \"Meter\" auf den Katalogwert \"M\" angeglichen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "1904_001",
+    "seiten": 2,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-eldis",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 25511,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2024-11-27",
+        "referenznummer": "0274771",
+        "lieferscheinnummer": "3009254427",
+        "handschriftliche_aenderung": true,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 445303 SCHUKO-Steckdose m.Shutter System 55 Reinweiß glänzend Lief-Art.Nr. 445303 Lagerware",
+            "artikelnummer": "6915115",
+            "menge_bestellt": 58,
+            "menge_geliefert": 58,
+            "positionsnummer": "10"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 245927 SCHUKO-Steckdose Shutter USB 2f Typ A/C System 55 Reinweiß seiden Lief-Art.Nr. 245927 Lagerware",
+            "artikelnummer": "5958732",
+            "menge_bestellt": 15,
+            "menge_geliefert": 14,
+            "positionsnummer": "20"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 441403 SCHUKO-Steckdose KD+Shutter System 55 Reinweiß glänzend Lief-Art.Nr. 441403 Lagerware",
+            "artikelnummer": "6915089",
+            "menge_bestellt": 5,
+            "menge_geliefert": 5,
+            "positionsnummer": "30"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 021112 Abdeckrahmen 1fach Esprit Glas Weiß Lief-Art.Nr. 021112 Lagerware",
+            "artikelnummer": "0164097",
+            "menge_bestellt": 23,
+            "menge_geliefert": 23,
+            "positionsnummer": "40"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 021212 Abdeckrahmen 2fach Esprit Glas Weiß Lief-Art.Nr. 021212 Lagerware",
+            "artikelnummer": "0164166",
+            "menge_bestellt": 26,
+            "menge_geliefert": 26,
+            "positionsnummer": "50"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 021312 Abdeckrahmen 3fach Esprit Glas Weiß Lief-Art.Nr. 021312 Lagerware",
+            "artikelnummer": "0164253",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "60"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 021412 Abdeckrahmen 4fach Esprit Glas Weiß Lief-Art.Nr. 021412 Lagerware",
+            "artikelnummer": "0164254",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "70"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 257000 Spannungsversorgung DC 24V 700mA REG Elektronik\nLief-Art.Nr. 257000\nLagerware",
+            "artikelnummer": "2485097",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "80"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 213000 Spannungsversorgung 640mA Drossel OneKNX REG\nLief-Art.Nr. 213000\nLagerware",
+            "artikelnummer": "5371916",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "90"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 503800 Schalt-/Jalousieaktor 16/8f 16A REG Komfort KNX Secure\nLief-Art.Nr. 503800\nLagerware",
+            "artikelnummer": "6156827",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "100"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 202500 Dimmaktor 4fach REG Komfort KNX Secure\nLief-Art.Nr. 202500\nLagerware",
+            "artikelnummer": "6361377",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "110"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 213900 Heizungsaktor 6fach Regler OneKNX REG\nLief-Art.Nr. 213900\nLagerware",
+            "artikelnummer": "6915048",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "120"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 206712 G1 230V G1 Glas Weiß\nLief-Art.Nr. 206712\nLagerware",
+            "artikelnummer": "4327018",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "130"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 5001003 Tastsensor4 Komfort 1fach OneKNX TS4 Weiß\nLief-Art.Nr. 5001003\nLagerware",
+            "artikelnummer": "6123654",
+            "menge_bestellt": 4,
+            "menge_geliefert": 4,
+            "positionsnummer": "140"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 502112 Wippenset 1fach Tastsensor4 TS4 Glas Weiß\nLief-Art.Nr. 502112\nLagerware",
+            "artikelnummer": "6123661",
+            "menge_bestellt": 4,
+            "menge_geliefert": 4,
+            "positionsnummer": "150"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 5002003 Tastsensor4 Komfort 2fach OneKNX TS4 Weiß\nLief-Art.Nr. 5002003\nLagerware",
+            "artikelnummer": "6123656",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "160"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 5004003 Tastsensor4 Komfort 4fach OneKNX TS4 Weiß\nLief-Art.Nr. 5004003\nLagerware",
+            "artikelnummer": "6123658",
+            "menge_bestellt": 4,
+            "menge_geliefert": 4,
+            "positionsnummer": "170"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "GIRA 502412 Wippenset 4fach Tastsensor4 TS4 Glas Weiß\nLief-Art.Nr. 502412\nLagerware",
+            "artikelnummer": "6123683",
+            "menge_bestellt": 5,
+            "menge_geliefert": 5,
+            "positionsnummer": "180"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 1,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 0.3,
+        "positionen": 0.4
+      },
+      "validations": [
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 2)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 3)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 4)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 5)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 6)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 7)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 8)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 9)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 10)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 11)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 12)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 13)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 14)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 15)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 16)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 17)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 18)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 2, Menge geliefert: Wert \"14\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 18, Menge bestellt: Wert \"5\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 18, Menge geliefert: Wert \"5\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "1905_001",
+    "seiten": 0,
+    "klassifikation": {
+      "project_id": null,
+      "confidence": 0,
+      "alternatives": []
+    },
+    "dauerMs": 1122
+  },
+  {
+    "beleg": "1906_001",
+    "seiten": 2,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-elektro-braun",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 14449,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-01-22",
+        "referenznummer": "0275308",
+        "lieferscheinnummer": "2977532/1",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "MTR",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "KABEL+LEITUNGEN Mantelleitung Dca hfr NHXMH-J 1x16RM gr TR500 NHXMH-J 1x16RM gr Ursprungsland: DE Zoll-Tarif-Nr.: 85444991 Ausschreibungsp.: 1 1659420XB Hersteller : XBK-KABEL Xaver Bechthold GmbH DOP : 17-0001-06 Link : https://drive.google.com/file/d/0B_UoNY5Ke8dIWTRHQTIITVRCdFU/view",
+            "artikelnummer": "1659420",
+            "menge_bestellt": 50,
+            "menge_geliefert": 50,
+            "positionsnummer": "1"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "KABEL+LEITUNG Schnittkostenbeitrag Zoll-Tarif-Nr.: 0",
+            "artikelnummer": "9900030",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "2"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HENSEL Abzweigdose IP66 4qmm DK 0400 G 104x104x70mm gr Kst Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 Ausschreibungsp.: 3 62000002",
+            "artikelnummer": "2921941",
+            "menge_bestellt": 10,
+            "menge_geliefert": 10,
+            "positionsnummer": "4"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "BETTERMANN Kabelverschraubung M25 V-TEC VM25 LGR V-TEC PA gr unbeh 10mm Ursprungsland: HU Zoll-Tarif-Nr.: 39269097 Ausschreibungsp.: 4 2022868",
+            "artikelnummer": "1192049",
+            "menge_bestellt": 30,
+            "menge_geliefert": 30,
+            "positionsnummer": "5"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "BETTERMANN Gegenmutter M25 PS 116 M25 LGR PS unbeh hfr lgr schlagf Ursprungsland: HU Zoll-Tarif-Nr.: 39269097 Ausschreibungspos.: 5 2049546",
+            "artikelnummer": "6 1191810",
+            "menge_bestellt": 30,
+            "menge_geliefert": 30,
+            "positionsnummer": "6"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "WAGO Steckklemme 5f 450V 32A 221-415 Serie 221 0,2-4qmm Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 Ausschreibungspos.: 6 221-415",
+            "artikelnummer": "7 4699027",
+            "menge_bestellt": 50,
+            "menge_geliefert": 50,
+            "positionsnummer": "7"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "WAGO Steckklemme 3f 450V 32A 221-413 Serie 221 0,2-4qmm Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 Ausschreibungspos.: 7 221-413",
+            "artikelnummer": "8 4699028",
+            "menge_bestellt": 50,
+            "menge_geliefert": 50,
+            "positionsnummer": "8"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 1,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 0.4,
+        "handschriftliche_aenderung": 1,
+        "positionen": 1
+      },
+      "validations": [
+        {
+          "severity": "warn",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"MTR\" steht nicht in der hinterlegten Werteliste. Naechste Katalogwerte: ST · M · KG."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 2)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 3)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 4)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 5)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 6)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 7)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "warn",
+          "message": "Lieferscheinnummer: Wert \"2977532/1\" ist im OCR-Text des Scans nicht belegt — bitte pruefen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "1907_001",
+    "seiten": 4,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-elektro-braun",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 18883,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-01-14",
+        "referenznummer": "0275197",
+        "lieferscheinnummer": "2973876/1",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Stückliste Wandlerumbau bestehend aus: Zoll-Tarif-Nr.: 0 bestehend aus:",
+            "artikelnummer": "9900510",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "1"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Komplettfeld 63A ZH54C1N 1Z 3PBf 2V 1350x250mm Ursprungsland: DE Zoll-Tarif-Nr.: 85371098 ZH54C1N",
+            "artikelnummer": "4350830",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "2"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Komplettfeld 63A ZH53XL 3PBf 4V 1350x250mm SS_5p Ursprungsland: DE Zoll-Tarif-Nr.: 85389099 ZH53XL",
+            "artikelnummer": "1561007",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "3"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Verteilerfeld 5x12TE ZU59VT6APZ2 APZ 1xRfZ m.Ausschn Ursprungsland: DE Zoll-Tarif-Nr.: 85381000 ZU59VT6APZ2",
+            "artikelnummer": "4777261",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "4"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER SLS-Schalter E 3p HTS350E Sammelsch 50A 230V Ursprungsland: FR Zoll-Tarif-Nr.: 85365080 HTS350E",
+            "artikelnummer": "1275372",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "5"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Sammelschienenklemme K96A 65A 16qmm 5/12mm B10,7mm Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 K96A",
+            "artikelnummer": "1214035",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "6"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Einspeiseadapter K96ESA5 201x23mm ws Ursprungsland: DE Zoll-Tarif-Nr.: 85389099 K96ESA5",
+            "artikelnummer": "2147787",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "7"
+          },
+          {
+            "einheit": "VPE",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Steckerstifte KJ03Z 45mm Ursprungsland: DE Zoll-Tarif-Nr.: 74198090 KJ03Z",
+            "artikelnummer": "1214141",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "8"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Leitungsschutzschalter AC MB199 B 6A 1p 415V 1TE 50Hz Ursprungsland: PL Zoll-Tarif-Nr.: 85363010 MB199",
+            "artikelnummer": "1275029",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "9"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Abdeckstreifen Kst S35S 219x54mm ws RAL9010 Ursprungsland: DE Zoll-Tarif-Nr.: 85389099 S35S",
+            "artikelnummer": "1215667",
+            "menge_bestellt": 6,
+            "menge_geliefert": 6,
+            "positionsnummer": "10"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Kombi-Ableiter Sammelsch SPA701Z TN-S TT 400VAC 1,5kV Ursprungsland: DE Zoll-Tarif-Nr.: 85363090 SPA701Z",
+            "artikelnummer": "2319992",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "11"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Plombierhaube U84 Ursprungsland: DE Zoll-Tarif-Nr.: 85389099 U84",
+            "artikelnummer": "4176569",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "12"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Zu-/Abgangskabelbaum Y90E f.1stö.Tragpl 4qmm 1p Ursprungsland: DE Zoll-Tarif-Nr.: 85444290 Y90E",
+            "artikelnummer": "1216889",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "13"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Bestückungspaket APZ ZY5N2LS 1400mm Ursprungsland: DE Zoll-Tarif-Nr.: 85389099 ZY5N2LS",
+            "artikelnummer": "3036794",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "14"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Patchkabel Cat5E ZZ45WAN150 F/FTP IP2X 1,5m bl RJ45 Ursprungsland: CN Zoll-Tarif-Nr.: 85444210 ZZ45WAN150",
+            "artikelnummer": "1024656",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "15"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Modular-Buchse Cat6A ZZ45WAN2PP RJ45 Feldkonf rnd mass Ursprungsland: FR Zoll-Tarif-Nr.: 85444290 ZZ45WAN2PP",
+            "artikelnummer": "1024658",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "16"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Sammelschienenverbinder ZZ55SAVE Feld/Feld 5p 250A Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 ZZ55SAVE",
+            "artikelnummer": "3704176",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "17"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "HAGER Hutschienenadapter ZZ822 ger Kst Ursprungsland: DE Zoll-Tarif-Nr.: 85369095 ZZ822",
+            "artikelnummer": "3102299",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "18"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 1,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
+        "positionen": 0.4
+      },
+      "validations": [
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 2)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 3)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 4)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 5)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 6)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 7)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "warn",
+          "message": "\"Positionen · Einheit (Position 8)\": Wert \"VPE\" steht nicht in der hinterlegten Werteliste. Naechste Katalogwerte: ST · M · KG."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 9)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 10)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 11)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 12)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 13)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 14)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 15)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 16)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 17)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 18)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 3, Menge bestellt: Wert \"1\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 3, Menge geliefert: Wert \"1\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 8, Menge bestellt: Wert \"1\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 8, Menge geliefert: Wert \"1\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 11, Menge bestellt: Wert \"1\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen: 7 weitere unbelegte Zahlenwerte."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "1908_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-elektro-braun",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 11441,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-01-22",
+        "referenznummer": "0275304",
+        "lieferscheinnummer": "2977481/1",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 25,
+            "beschreibung": "KLAUKE Stoßverbinder Normalausfü 729F 120qmm f.Feindr lang Ursprungsland: SK Zoll-Tarif-Nr.: 85359000 Ausschreibungspost.: 1 729F",
+            "artikelnummer": "2124246",
+            "menge_bestellt": 25,
+            "menge_geliefert": 0,
+            "positionsnummer": "1"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "CELLPACK Schrumpfschlauch mittelw SRH2/56-16/BK/1000mm L1m Ø56/16mm sw 3:1 Ursprungsland: DE Zoll-Tarif-Nr.: 39173900 Ausschreibungspost.: 2 127425",
+            "artikelnummer": "1103085",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "2"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 0.4,
+        "handschriftliche_aenderung": 0.7,
+        "positionen": 1
+      },
+      "validations": [
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 2)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "warn",
+          "message": "Lieferscheinnummer: Wert \"2977481/1\" ist im OCR-Text des Scans nicht belegt — bitte pruefen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "1909_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-elektro-braun",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 11107,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2024-12-11",
+        "referenznummer": "0274980",
+        "lieferscheinnummer": "2965594/2",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "KNIPEX Kabelmesser 38mm 98 55 Sichel Kst 1000V Ursprungsland: DE Zoll-Tarif-Nr.: 82119200 Ausschreibungspos.: 1 98 55",
+            "artikelnummer": "4851499",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "1"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "KNIPEX Rohrschneider Ø20-50mm 90 22 10 BK Kst Ursprungsland: DE Zoll-Tarif-Nr.: 82034000 Ausschreibungspos.: 2 90 22 10 BK",
+            "artikelnummer": "3952942",
+            "menge_bestellt": 3,
+            "menge_geliefert": 0,
+            "positionsnummer": "2"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0.7,
+        "positionen": 1
+      },
+      "validations": [
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 2)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "2911_001",
+    "seiten": 12,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-unielektro",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 45202,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-04-04",
+        "referenznummer": "0276280",
+        "lieferscheinnummer": "663571632",
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BETTERMANN CML3518P0200FS PROFILSCHIENE 200MM GELOCHT Position 4 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 40 Referenznummer 0276280",
+            "artikelnummer": "01202781",
+            "menge_bestellt": 20,
+            "menge_geliefert": 20,
+            "positionsnummer": "00010"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-HFL",
+            "beschreibung": "NYM-J 3X1,5 grau Ring 50 m\nPVC-Mantelleitung\nPosition 5\nHersteller/DoP: PRYSMIAN Kabel und Systeme GmbH / 1000853\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 50\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "10901294",
+            "menge_bestellt": 50,
+            "menge_geliefert": 50,
+            "positionsnummer": "00020"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-HFL",
+            "beschreibung": "NYM-J 3X2,5 grau Ring 50 m\nPVC-Mantelleitung\nPosition 6\nHersteller/DoP: PRYSMIAN Kabel und Systeme GmbH / 1000853\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 60\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "10901262",
+            "menge_bestellt": 50,
+            "menge_geliefert": 50,
+            "positionsnummer": "00030"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "K-HKT",
+            "beschreibung": "DRAKA UC900HS 4P S/FTP\nDatenleitung Simplex AWG23 Cat.7 orange\nPosition 7\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 70\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13\nCharge EB00396658\nHersteller/DoP: Draka Comteq Germany GmbH & Co. KG / 1000680",
+            "artikelnummer": "22680000",
+            "menge_bestellt": 250,
+            "menge_geliefert": 250,
+            "positionsnummer": "00040"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "P-BA0",
+            "beschreibung": "RITTAL DK 7507.110\nDK 7507110 Wandverteiler 9HE\nPosition 8\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 80\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "22402370",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00050"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "RITTAL DK 7240.230 STECKDOSENLEISTE 5 DOSEN UEBERSP SCHUTZ Position 9 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 90 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "22400394",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00060"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "P-BA0",
+            "beschreibung": "METZ CONNECT 130920-00-E 19Z 1HE Modulträger 24-Port lichtgrau Position 10 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 100 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "22404607",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00070"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "METZ CONNECT 130894-03-03-E 19 Zoll 1HE Rangierfeld 75mm grau Position 11 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 110 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "22426482",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00080"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "METZ CONNECT 130910-I E-DAT modul Cat.6A 8(8) Buchse Position 12 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 120 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "22404608",
+            "menge_bestellt": 40,
+            "menge_geliefert": 40,
+            "positionsnummer": "00090"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 1701-214 GEHAEUSE 1-FACH ALPINWEISS Position 13 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 130 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02002020",
+            "menge_bestellt": 10,
+            "menge_geliefert": 10,
+            "positionsnummer": "00100"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "KAISER 1556-04 Abzw.-Schalterdose mit Schrauben Position 14 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 140 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01210098",
+            "menge_bestellt": 25,
+            "menge_geliefert": 25,
+            "positionsnummer": "00110"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 1721 NS-214 RAHMEN 1-FACH ALPINWEISS Position 15 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 150 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02002484",
+            "menge_bestellt": 13,
+            "menge_geliefert": 13,
+            "positionsnummer": "00120"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 1722 NS-214 RAHMEN 2-FACH ALPINWEISS Position 16 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 160 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02002488",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "00130"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 1732 NS-214 RAHMEN 2-FACH ALPINWEISS. Position 17 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 170 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02002492",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "00140"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 1803-02-214 ZENTRALSICHEIBE FUER UAE- Position 18 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 180 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02015094",
+            "menge_bestellt": 10,
+            "menge_geliefert": 10,
+            "positionsnummer": "00150"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 20 EUCKS-214 SCHUKO Steckdosen m.erh.BS Position 19 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 190 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02002202",
+            "menge_bestellt": 4,
+            "menge_geliefert": 4,
+            "positionsnummer": "00160"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2000/5 US SERIENSCHALTER UP-EINSATZ Position 20 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 200 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02001702",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00170"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2505-214\nWippe Serienschalter\nPosition 21\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 210\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02001835",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00180"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2000/6 US\nAUS/WECHSELSCHALTER UP-EINS\nPosition 22\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 220\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02001701",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00190"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2506-214\nWippe geschlossen\nPosition 23\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 230\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02001825",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00200"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2020 USGL\nSCHLIESSER 1P. UP- EINSATZ\nPosition 24\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 240\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02001716",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00210"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2520-214\nWippe offen für Symbol\nPosition 25\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 250\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02001847",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00220"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-CFK",
+            "beschreibung": "HAGER BR6513019016\nBrüstungskanal-Unterteil verkehrsweiß\nPosition 26\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 260\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01342379",
+            "menge_bestellt": 4,
+            "menge_geliefert": 4,
+            "positionsnummer": "00230"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-CFK",
+            "beschreibung": "HAGER BR08029016\nBrüstungskanal-Oberenteil verkehrsweiß\nPosition 27\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 270\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01342377",
+            "menge_bestellt": 4,
+            "menge_geliefert": 4,
+            "positionsnummer": "00240"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-CA0",
+            "beschreibung": "HAGER G1612\nTRENNWAND R 1612 1FACH PVC\nPosition 28\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 280\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01308230",
+            "menge_bestellt": 4,
+            "menge_geliefert": 4,
+            "positionsnummer": "00250"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HAGER G2850\nGeräteeinbaudose 1-fach, frontrastend\nPosition 29\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 290\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01319989",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "00260"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HAGER GLS5510\nGeräteeinbaudose C-Profil Daten Standard\nPosition 30\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 300\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01300074",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "00270"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2601/6/20 EW-53\nKombination Steckdose/Wechselschalter\nPosition 31\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 310\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02028100",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00280"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 1763-53\nBeschriftungsträger Schalter/Steckdosen\nPosition 32\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 320\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "02028115",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00290"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BETTERMANN 1809\nPOTENTIAL-AUSGLEICHSCHIENE\nPosition 33\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 330\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01201171",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00300"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BETTERMANN 927/0\nBANDERUNGSSCHELLE F. ROHR\nPosition 34\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 340\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01201132",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00310"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "FP20011C",
+            "beschreibung": "BETTERMANN FBS-S\nBrandschutzschaum in Kartusche\nPosition 35\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 350\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01221557",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00320"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HAGER SH363N\nAUSSCHALTER 63A 3P 2,5PLE\nPosition 36\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 360\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01002811",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00330"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "DEHN DG M TNS 275 FM\nÜS-Ableiter DEHNguard M\nPosition 37\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 370\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01299975",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00340"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HAGER ADZ316D\nFI-LS 3X 1P+N 6kA B-16A 30mA Typ A QC\nPosition 38\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 380\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01000303",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00350"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HAGER VZ407\nPLANTASCHE KLARSICHT\nPosition 39\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 390\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01401717",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "00360"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-HFL",
+            "beschreibung": "NYM-J 1X16 grau Ring 50 m\nPVC-Mantelleitung\nPosition 40\nHersteller/DoP: PRYSMIAN Kabel und Systeme GmbH / 1000852\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 400\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "10901255",
+            "menge_bestellt": 50,
+            "menge_geliefert": 50,
+            "positionsnummer": "00370"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-HFL",
+            "beschreibung": "NYM-J 5X1,5 grau Ring 100 m PVC-Mantelleitung Position 41 Hersteller/DoP: PRYSMIAN Kabel und Systeme GmbH / 1000853 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 410 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "10901274",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00380"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HAGER BR65130W9016 Wandanschlussblende zu BR/A/S 68x130mm Position 42 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 420 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "01340718",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "00390"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "P-BA0",
+            "beschreibung": "PRACHT 5800224-LUNA_BL_ONE LUNA BL ONE 1.2m PCO 1x17/23/32/38W 115° Position 43 Auftrag 204220777 vom 02.04.2025 Position im Auftrag: 430 Referenznummer 0276280 Kommission für Auftrag 204220777: 32507700.13",
+            "artikelnummer": "33706968",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "00400"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "TROMMELTR3",
+            "beschreibung": "Mehrwegtrommel Mehrwegtrommel! Bitte diese Trommel zwingend wieder zurück geben.",
+            "artikelnummer": "TR3",
+            "menge_bestellt": 0,
+            "menge_geliefert": 1,
+            "positionsnummer": "00410"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 1,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 0,
+        "positionen": 1
+      },
+      "validations": []
+    }
+  },
+  {
+    "beleg": "2912_001",
+    "seiten": 4,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-unielektro",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 18413,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-05-12",
+        "referenznummer": "0276765",
+        "lieferscheinnummer": "663858844",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "JUNG 831 W\nTASTER 1-POLIG\nPosition 2\nAuftrag 204465291 vom 12.05.2025\nPosition im Auftrag: 20\nReferenznummer 0276765\n\nKommission für Auftrag 204465291: 32505250",
+            "artikelnummer": "02008072",
+            "menge_bestellt": 35,
+            "menge_geliefert": 35,
+            "positionsnummer": "00010"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "JUNG 90-LED BL\nLED-Leuchte, blau, 110-250 V, 1,1 mA\nPosition 3\nAuftrag 204465291 vom 12.05.2025\nPosition im Auftrag: 30\nReferenznummer 0276765\n\nKommission für Auftrag 204465291: 32505250",
+            "artikelnummer": "02039982",
+            "menge_bestellt": 35,
+            "menge_geliefert": 35,
+            "positionsnummer": "00020"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HENSEL DK0200G Kabelabzweigkasten bis 2,5qmm o.Klemme Position 4 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 40 Referenznummer 0276765 Kommission für Auftrag 204465291: 32505250",
+            "artikelnummer": "01200020",
+            "menge_bestellt": 15,
+            "menge_geliefert": 15,
+            "positionsnummer": "00030"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "K-HKT",
+            "beschreibung": "EIB-Y(ST)Y 2X2X0,8 grün Trommel 500 m KNX/EIB-Busleitung Position 5 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 50 Referenznummer 0276765 Kommission für Auftrag 204465291: 32505250 Charge EB00417342 Hersteller/DoP: Tunisie Cables / 17-E3042-1",
+            "artikelnummer": "10800375",
+            "menge_bestellt": 300,
+            "menge_geliefert": 300,
+            "positionsnummer": "00040"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-HKP",
+            "beschreibung": "DRAKA UC900HS 4P S/FTP Datenleitung Simplex AWG23 Cat.7 orange Position 6 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 60 Referenznummer 0276765 Kommission für Auftrag 204465291: 32505250 Charge EB00402934 Hersteller/DoP: Draka Comteq Germany GmbH & Co. KG / 1000680",
+            "artikelnummer": "22680000",
+            "menge_bestellt": 1000,
+            "menge_geliefert": 1000,
+            "positionsnummer": "00050"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-HFL",
+            "beschreibung": "NYM-J 5X1,5 grau Ring 100 m PVC-Mantelleitung Position 7 Hersteller/DoP: PRYSMIAN Kabel und Systeme GmbH / 1000853 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 70 Referenznummer 0276765 Kommission für Auftrag 204465291: 32505250",
+            "artikelnummer": "10901274",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00060"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PKVM20 Kabelverschraubung M20 PROTEC Position 8 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 80 Referenznummer 0276765 Kommission für Auftrag 204465291: 32505250",
+            "artikelnummer": "05100677",
+            "menge_bestellt": 30,
+            "menge_geliefert": 30,
+            "positionsnummer": "00070"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "PROTEC.CLASS PGMM20 Gegenmutter M20 PROTEC Position 9 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 90 Referenznummer 0276765 Kommission für Auftrag 204465291: 32505250",
+            "artikelnummer": "05100665",
+            "menge_bestellt": 30,
+            "menge_geliefert": 30,
+            "positionsnummer": "00080"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "UVEX 60050 Schutzhandschuh EN: 388, weiß/grau Gr. 9 Position 10 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 100 Referenznummer 0276765 Kommission für Auftrag 204465291: 32505250",
+            "artikelnummer": "01800924",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "00090"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "TROMMELTR3",
+            "beschreibung": "Mehrwegtrommel Mehrwegtrommel! Bitte diese Trommel zwingend wieder zurück geben.",
+            "artikelnummer": "TR3",
+            "menge_bestellt": 0,
+            "menge_geliefert": 2,
+            "positionsnummer": "00100"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 1,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
+        "positionen": 1
+      },
+      "validations": []
+    }
+  },
+  {
+    "beleg": "2913_001",
+    "seiten": 2,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-elektro-braun",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 13988,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-07-08",
+        "referenznummer": "0276971",
+        "lieferscheinnummer": "3029644/2",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "MENNEKES EMOBIL Wallbox 11kVA 3ph\nAMTRON 4You 560 11 C2\nL7,5m 1f 11kW/Ladep IP54\nUrsprungsland: DE\nZoll-Tarif-Nr.: 85044060\n1315011205BK",
+            "artikelnummer": "3867185",
+            "menge_bestellt": 4,
+            "menge_geliefert": 0,
+            "positionsnummer": "1"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 4,
+            "beschreibung": "MENNEKES EMOBIL Wallbox 11kVA 3ph\nAMTRON 4You 560 11 C2\nL8m 1f 11kW/Ladep IP54\nUrsprungsland: DE\nZoll-Tarif-Nr.: 85044060\n1315011205WH",
+            "artikelnummer": "3867186",
+            "menge_bestellt": 4,
+            "menge_geliefert": 0,
+            "positionsnummer": "2"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "MENNEKES EMOBIL Wallbox 11kVA 3ph\nAMTRON 4You 560 11 C2\nL7,5m 1f 11kW/Ladep IP54\nUrsprungsland: DE\nZoll-Tarif-Nr.: 85044060\n1315011205BK",
+            "artikelnummer": "3867185",
+            "menge_bestellt": 5,
+            "menge_geliefert": 5,
+            "positionsnummer": "3"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 1,
+            "beschreibung": "MENNEKES EMOBIL Wallbox 11kVA 3ph\nAMTRON 4You 560 11 C2\nL8m 1f 11kW/Ladep IP54\nUrsprungsland: DE\nZoll-Tarif-Nr.: 85044060\n1315011205WH",
+            "artikelnummer": "4 3867186",
+            "menge_bestellt": 1,
+            "menge_geliefert": 0,
+            "positionsnummer": "4"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.4,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
+        "positionen": 0.3
+      },
+      "validations": [
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 2)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 3)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 4)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "warn",
+          "message": "Lieferdatum: Wert \"2025-07-08\" ist im OCR-Text des Scans nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 4, Rueckstand: Wert \"1\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 4, Menge bestellt: Wert \"1\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "2914_001",
+    "seiten": 7,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-unielektro",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 28032,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-07-28",
+        "referenznummer": "0277721",
+        "lieferscheinnummer": "664504099",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "MENNEKES 801\nWandstecker IP44 16A5P 6H400V\nPosition 1",
+            "artikelnummer": "01500914",
+            "menge_bestellt": 8,
+            "menge_geliefert": 8,
+            "positionsnummer": "00010"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "P-BA0",
+            "beschreibung": "HAGER VA24CN\nAP Kleinverteiler IP30 2RH WS neu\nPosition 2",
+            "artikelnummer": "01405100",
+            "menge_bestellt": 8,
+            "menge_geliefert": 8,
+            "positionsnummer": "00020"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-CFK",
+            "beschreibung": "HAGER LF6009009016\nLeitungsführungskanal verkehrsweiß\nPosition 3",
+            "artikelnummer": "01342432",
+            "menge_bestellt": 16,
+            "menge_geliefert": 16,
+            "positionsnummer": "00030"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BETTERMANN 2955/M20\nQuick-Schelle M20\nPosition 5\nPosition im Auftrag: 50",
+            "artikelnummer": "01205788",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00040"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 1701-214\nGEHAEUSE 1-FACH ALPINWEISS\nPosition 6\nPosition im Auftrag: 60",
+            "artikelnummer": "02002020",
+            "menge_bestellt": 24,
+            "menge_geliefert": 24,
+            "positionsnummer": "00050"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 1702-214\nGEHAEUSE 2-FACH ALPINWEISS\nPosition 7\nPosition im Auftrag: 70",
+            "artikelnummer": "02002028",
+            "menge_bestellt": 16,
+            "menge_geliefert": 16,
+            "positionsnummer": "00060"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2511-214\nRAHMEN 1-FACH ALPINWEISS\nPosition 8\nPosition im Auftrag: 80",
+            "artikelnummer": "02002396",
+            "menge_bestellt": 24,
+            "menge_geliefert": 24,
+            "positionsnummer": "00070"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2512-214\nRAHMEN 2-FACH ALPINWEISS\nPosition 9\nPosition im Auftrag: 90",
+            "artikelnummer": "02002464",
+            "menge_bestellt": 16,
+            "menge_geliefert": 16,
+            "positionsnummer": "00080"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 20 EUC-214\nSCHUKO-STECKDOSE ALPINWEISS\nPosition 10\nPosition im Auftrag: 100",
+            "artikelnummer": "02002148",
+            "menge_bestellt": 20,
+            "menge_geliefert": 20,
+            "positionsnummer": "00090"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2000/6 USK\nAUS/WECHSELSCHALTER KONTROL\nPosition 11\nPosition im Auftrag: 110",
+            "artikelnummer": "02001711",
+            "menge_bestellt": 20,
+            "menge_geliefert": 20,
+            "positionsnummer": "00100"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2000/7 US\nKREUZSCHALTER UP-EINSATZ\nPosition 12\nPosition im Auftrag: 120",
+            "artikelnummer": "02001704",
+            "menge_bestellt": 10,
+            "menge_geliefert": 10,
+            "positionsnummer": "00110"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2020 USGL\nSCHLIESSER 1P. UP- EINSATZ\nPosition 13\nPosition im Auftrag: 130",
+            "artikelnummer": "02001716",
+            "menge_bestellt": 20,
+            "menge_geliefert": 20,
+            "positionsnummer": "00120"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 2661 U\nLICHTSIGNAL UP-EINSATZ\nPosition 14\nPosition im Auftrag: 140",
+            "artikelnummer": "02001731",
+            "menge_bestellt": 8,
+            "menge_geliefert": 8,
+            "positionsnummer": "00130"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BUSCH-JAEGER 8340\nGLUEHLAMPE 230V 3,0MA\nPosition 15\nPosition im Auftrag: 150",
+            "artikelnummer": "02002376",
+            "menge_bestellt": 10,
+            "menge_geliefert": 10,
+            "positionsnummer": "00140"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "SPELSBERG i 12-L GL\nAbzweigdose, Schutzart IP55, max. Leiter\nPosition 16\nPosition im Auftrag: 160",
+            "artikelnummer": "04617299",
+            "menge_bestellt": 16,
+            "menge_geliefert": 16,
+            "positionsnummer": "00150"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HAGER 3268/3VR\nD0-Sich.sockel keramik,3p D02 63A\nPosition 17\nPosition im Auftrag: 170",
+            "artikelnummer": "01433106",
+            "menge_bestellt": 8,
+            "menge_geliefert": 8,
+            "positionsnummer": "00160"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HAGER CDA440D\nFI-Schutzschalter 4P 40A 30mA\nPosition 18\nPosition im Auftrag: 180",
+            "artikelnummer": "01004764",
+            "menge_bestellt": 8,
+            "menge_geliefert": 8,
+            "positionsnummer": "00170"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HAGER MBN116\nSicherungsautomat 1P B-16A 1M\nPosition 19\nPosition im Auftrag: 190",
+            "artikelnummer": "01004833",
+            "menge_bestellt": 16,
+            "menge_geliefert": 16,
+            "positionsnummer": "00180"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "HAGER MBN110\nSicherungsautomat 1P B-10A 1M\nPosition 20\nPosition im Auftrag: 200",
+            "artikelnummer": "01004831",
+            "menge_bestellt": 8,
+            "menge_geliefert": 8,
+            "positionsnummer": "00190"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-HFL",
+            "beschreibung": "NYM-J 3X1,5 grau Ring 50 m\nPVC-Mantelleitung\nPosition 21\nHersteller/DoP: PRYSMIAN Kabel und Systeme GmbH / 1000853\nPosition im Auftrag: 210",
+            "artikelnummer": "10901294",
+            "menge_bestellt": 50,
+            "menge_geliefert": 50,
+            "positionsnummer": "00200"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-HFL",
+            "beschreibung": "NYM-J 5X1,5 grau Ring 50 m\nPVC-Mantelleitung\nPosition 22\nHersteller/DoP: PRYSMIAN Kabel und Systeme GmbH / 1000853\nPosition im Auftrag: 220",
+            "artikelnummer": "10901296",
+            "menge_bestellt": 50,
+            "menge_geliefert": 50,
+            "positionsnummer": "00210"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "WAGO 2273-202\nVERB.DOSENKL. 2X2,5MM2 TRANSP./WEIß\nPosition 23\nPosition im Auftrag: 230",
+            "artikelnummer": "01219886",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00220"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "WAGO 2273-203\nVERB.DOSENKL. 3X2,5MM2 TRANSP./ORANG\nPosition 24\nPosition im Auftrag: 240",
+            "artikelnummer": "01219887",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00230"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "WAGO 2273-204\nVERB.DOSENKL. 4X2,5MM2 TRANSP./ROT\nPosition 25\nPosition im Auftrag: 250",
+            "artikelnummer": "01219888",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00240"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "WAGO 2273-205\nVERB.DOSENKL 5X2,5MM2 GELB/TRANSP.\nPosition 26\nPosition im Auftrag: 260",
+            "artikelnummer": "01219889",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00250"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "WAGO 221-412\n2-Leiter COMPACT-Verbindungsklemme\nPosition 27\nPosition im Auftrag: 270",
+            "artikelnummer": "01235736",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00260"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "WAGO 221-413\n3-Leiter COMPACT-Verbindungsklemme\nPosition 28\nPosition im Auftrag: 280",
+            "artikelnummer": "01235737",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00270"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "WAGO 221-415\n5-Leiter COMPACT-Verbindungsklemme\nPosition 29\nPosition im Auftrag: 290",
+            "artikelnummer": "01235738",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00280"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BACHMANN 375.007\nNetzzuleitung 3 pol m Flachstecker 5,0m\nPosition 30\nPosition im Auftrag: 300",
+            "artikelnummer": "01517051",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "00290"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "BACHMANN 375.003\nNetzzuleitung 3 pol m Flachstecker 3,0m\nPosition 31\nPosition im Auftrag: 310",
+            "artikelnummer": "01517050",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "00300"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "GIRA 109329\nAbdeckrahmen 3fach BSF waagerecht E2 Rei\nPosition 32\nPosition im Auftrag: 320",
+            "artikelnummer": "02042632",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "00310"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "GIRA 445303\nSCHUKO STK SH System 55 Reinweiß\nPosition 33\nPosition im Auftrag: 330",
+            "artikelnummer": "02055939",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "00320"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-BA0",
+            "beschreibung": "H07V-U 1,5 schwarz Ring 100 m\nPVC-Aderleitung\nPosition 34\nHersteller/DoP: Generalcavi s.p.a. / DoP 0360\nPosition im Auftrag: 340",
+            "artikelnummer": "11000202",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00330"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-BA0",
+            "beschreibung": "H07V-U 1,5 blau Ring 100 m RAL5015\nPVC-Aderleitung\nPosition 35\nHersteller/DoP: Generalcavi s.p.a. / DoP 0360\nPosition im Auftrag: 350",
+            "artikelnummer": "11000231",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00340"
+          },
+          {
+            "einheit": "M",
+            "lagerplatz": "P-BA0",
+            "beschreibung": "H07V-U 1,5 violett Ring 100 m\nPVC-Aderleitung\nPosition 36\nHersteller/DoP: nkt cables Warszowice SP.z.o.o. / DOP000035\nPosition im Auftrag: 360",
+            "artikelnummer": "11000421",
+            "menge_bestellt": 100,
+            "menge_geliefert": 100,
+            "positionsnummer": "00350"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": "S-BSP",
+            "beschreibung": "WIHA 2831T18\nSchraubendreher u Bit Set 18-tlg\nPosition 37\nPosition im Auftrag: 370",
+            "artikelnummer": "01892429",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "00360"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 1,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
+        "positionen": 1
+      },
+      "validations": []
+    }
+  },
+  {
+    "beleg": "2915_001",
+    "seiten": 2,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-eldis",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 15143,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-05-29",
+        "referenznummer": "0277031",
+        "lieferscheinnummer": "3010269351",
+        "positionen": [
+          {
+            "einheit": "M",
+            "lagerplatz": null,
+            "beschreibung": "NYCWY 4X25 RM/16 var. Niederspannungs-Erdkabel Lief-Art.Nr. NYCWY4X25/16 TR Lagerware",
+            "artikelnummer": "0112206",
+            "menge_bestellt": 8,
+            "menge_geliefert": 8,
+            "positionsnummer": "10"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "Klauke 4R10 Rohrkabelschuh 25qmm M10 E-Cu galv. verz. Lief-Art.Nr. 4R10 Lagerware",
+            "artikelnummer": "0120938",
+            "menge_bestellt": 4,
+            "menge_geliefert": 4,
+            "positionsnummer": "20"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "Klauke 3R10 Rohrkabelschuh 16qmm M10 E-Cu galv. verz. Lief-Art.Nr. 3R10 Lagerware",
+            "artikelnummer": "0120934",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "30"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "Mersen NH1GG50V63 Sicherungseinsatz gG Gr.1 AC500V 63A sfü Kombikennmelder Lief-Art.Nr. L214659 Lagerware",
+            "artikelnummer": "0148465",
+            "menge_bestellt": 3,
+            "menge_geliefert": 3,
+            "positionsnummer": "40"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "Mersen D02GG40V35 Sicherungseinsatz gG D02 NEOZED AC400V 35A schwarz Lief-Art.Nr. R219826 Lagerware",
+            "artikelnummer": "0148058",
+            "menge_bestellt": 30,
+            "menge_geliefert": 30,
+            "positionsnummer": "50"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "Mersen 01706.035000 Hülsen-Passeinsatz D02 NEOZED 35A E18 Lief-Art.Nr. J216070 Lagerware",
+            "artikelnummer": "0148028",
+            "menge_bestellt": 30,
+            "menge_geliefert": 30,
+            "positionsnummer": "60"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "Mersen D01GG40V10 Sicherungseinsatz gG DQ1 NEOZED AC400V 10A rot Lief-Art.Nr. W211090 Lagerware",
+            "artikelnummer": "0148054",
+            "menge_bestellt": 10,
+            "menge_geliefert": 10,
+            "positionsnummer": "70"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "beschreibung": "Mersen 01705.010000 Hülsen-Passeinsatz D01 10A E14",
+            "artikelnummer": "0148024",
+            "menge_bestellt": 10,
+            "menge_geliefert": 10,
+            "positionsnummer": "80"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 1,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 0,
+        "positionen": 1
+      },
+      "validations": [
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"Meter\" auf den Katalogwert \"M\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 2)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 3)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 4)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 5)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 6)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 7)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 8)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "2919_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-elektro-braun",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 10007,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-07-02",
+        "referenznummer": "0277275",
+        "lieferscheinnummer": "3039326/11",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "EATON Leistungsschütz 3kW 3S DILM7-10(24VDC) DILM 24VDC 7A 1S/Hilf Ursprungsland: DE Zoll-Tarif-Nr.: 85364900 Ausschreibungspos.: 29 276565",
+            "artikelnummer": "2434584",
+            "menge_bestellt": 3,
+            "menge_geliefert": 1,
+            "positionsnummer": "29"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0.7,
+        "positionen": 1
+      },
+      "validations": [
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "2920_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-elektro-braun",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 13285,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-07-03",
+        "referenznummer": "0277385",
+        "lieferscheinnummer": "3043207/1",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 40,
+            "beschreibung": "OSRAM-LEDVANCE LED-Reflektorlampe GU10 LED PAR16 35 36° DIM P 3.4W 930 GU1 PAR16 3,4W 3000K 230lm G Ursprungsland: CN Zoll-Tarif-Nr.: 85395200 Ausschreibungspos.: 1 4099854059896",
+            "artikelnummer": "1362422",
+            "menge_bestellt": 40,
+            "menge_geliefert": 0,
+            "positionsnummer": "1"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "SCHAUM Steckfassung ws 231027 GU10 Kst Schraubbef Ursprungsland: IT Zoll-Tarif-Nr.: 85366190 Ausschreibungspos.: 2 231027",
+            "artikelnummer": "2719148",
+            "menge_bestellt": 20,
+            "menge_geliefert": 20,
+            "positionsnummer": "2"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "WAGO Steckklemme 3f 450V 32A 221-413 Serie 221 0,2-4qmm Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 Ausschreibungspos.: 3 221-413",
+            "artikelnummer": "4699028",
+            "menge_bestellt": 50,
+            "menge_geliefert": 50,
+            "positionsnummer": "3"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0.7,
+        "positionen": 1
+      },
+      "validations": [
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 2)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 3)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "2921_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-sonepar",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 10951,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-07-24",
+        "lieferscheinnummer": "64765277",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "beschreibung": "OBO BETT. TR M10 2M G Gewindestange galv.vz",
+            "artikelnummer": "0432388",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "1",
+            "lieferanten_artikelnummer": "1009598591"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "OBO BETT. TR M10 2M G Gewindestange galv.vz",
+            "artikelnummer": "0432388",
+            "menge_bestellt": 49,
+            "menge_geliefert": 49,
+            "positionsnummer": "2",
+            "lieferanten_artikelnummer": "1009598591"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0.7,
+        "positionen": 1
+      },
+      "validations": []
+    }
+  },
+  {
+    "beleg": "2922_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-sonepar",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 15349,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-06-04",
+        "lieferscheinnummer": "62756834",
+        "handschriftliche_aenderung": false,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "beschreibung": "Busch-J. 1722-24G Rahmen 2-fach studioweiß, waage. 0800765",
+            "artikelnummer": "0277065",
+            "menge_bestellt": 4,
+            "menge_geliefert": 4,
+            "positionsnummer": "1",
+            "lieferanten_artikelnummer": "1009052443"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "Busch-J. 1732-24G Rahmen 2-fach studioweiß, senkr. 0800745",
+            "artikelnummer": "0277065",
+            "menge_bestellt": 1,
+            "menge_geliefert": 1,
+            "positionsnummer": "2",
+            "lieferanten_artikelnummer": "1009052423"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "Busch-J. 1721-24G Rahmen 1-fach studioweiß 0800740",
+            "artikelnummer": "0277065",
+            "menge_bestellt": 6,
+            "menge_geliefert": 6,
+            "positionsnummer": "3",
+            "lieferanten_artikelnummer": "1009052418"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "Busch-J. 1786-24G Wippe sws Aus,Wech.,Kreuz,Tas. 0800600",
+            "artikelnummer": "0277065",
+            "menge_bestellt": 2,
+            "menge_geliefert": 2,
+            "positionsnummer": "4",
+            "lieferanten_artikelnummer": "1009054920"
+          },
+          {
+            "einheit": "ST",
+            "beschreibung": "Busch-J. 20 EUC-24G Steckdosen-Einsatz ws Studioweiß m. Steckan 0800684",
+            "artikelnummer": "0277065",
+            "menge_bestellt": 14,
+            "menge_geliefert": 14,
+            "positionsnummer": "5",
+            "lieferanten_artikelnummer": "1009058250"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0.7,
+        "positionen": 0.4
+      },
+      "validations": [
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 1, Artikelnummer: Wert \"0277065\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 2, Artikelnummer: Wert \"0277065\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 3, Menge bestellt: Wert \"6\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 3, Menge geliefert: Wert \"6\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 3, Artikelnummer Lieferant: Wert \"1009052418\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        },
+        {
+          "severity": "warn",
+          "message": "Positionen: 4 weitere unbelegte Zahlenwerte."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "2923_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-elektro-braun",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 11189,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-07-15",
+        "referenznummer": "0277530",
+        "lieferscheinnummer": "3047289/2",
+        "handschriftliche_aenderung": true,
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "POLLMANN Hauptleitungsklemme 2Eing HLAK 25-1/6 M2 blau bl berührsich REG Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 Ausschreibungspos.: 4 2080174",
+            "artikelnummer": "1443502",
+            "menge_bestellt": 6,
+            "menge_geliefert": 0,
+            "positionsnummer": "4"
+          },
+          {
+            "einheit": "ST",
+            "lagerplatz": null,
+            "rueckstand": 0,
+            "beschreibung": "POLLMANN Hauptleitungsklemme 2Eing HLAK 25-1/6 M2 blau bl berührsich REG Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 Ausschreibungspos.: 5 2080174",
+            "artikelnummer": "1443502",
+            "menge_bestellt": 6,
+            "menge_geliefert": 2,
+            "positionsnummer": "12"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0.7,
+        "positionen": 1
+      },
+      "validations": [
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 1)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        },
+        {
+          "severity": "info",
+          "message": "\"Positionen · Einheit (Position 2)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
+        }
+      ]
+    }
+  },
+  {
+    "beleg": "2924_001",
+    "seiten": 1,
+    "klassifikation": {
+      "project_id": "ehinger-pilot-unielektro",
+      "confidence": 1,
+      "alternatives": []
+    },
+    "dauerMs": 10144,
+    "extraktion": {
+      "strategy": "vision-per-page",
+      "model": "adacor/qwen3-5-a3b-35b-256k",
+      "data": {
+        "lieferdatum": "2025-05-21",
+        "referenznummer": "275878",
+        "lieferscheinnummer": "663947838",
+        "positionen": [
+          {
+            "einheit": "ST",
+            "lagerplatz": "Z",
+            "beschreibung": "ESYLUX SVENJA POLE PENDULUM\nBefestigung SVENJA POLE PENDULUM SET 100\nPosition im Auftrag: 30\n*** Restmenge, 7 ST , wird nachgeliefert ***\nBei diesem Artikel handelt es sich um Beschaffungsware.\nAus diesem Grunde ist eine Rücknahme nicht möglich.",
+            "artikelnummer": "32780657",
+            "menge_bestellt": 17,
+            "menge_geliefert": 3,
+            "positionsnummer": "00010"
+          }
+        ]
+      },
+      "fieldConfidences": {
+        "lieferdatum": 0.95,
+        "referenznummer": 0.95,
+        "lieferscheinnummer": 0.95,
+        "handschriftliche_aenderung": 0,
+        "positionen": 0.4
+      },
+      "validations": [
+        {
+          "severity": "warn",
+          "message": "Positionen, Zeile 1, Menge geliefert: Wert \"3\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
+        }
+      ]
+    }
+  }
+]

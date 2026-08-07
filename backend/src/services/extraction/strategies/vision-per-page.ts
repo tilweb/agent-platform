@@ -25,6 +25,7 @@ import { validateExtraction } from '../../../extraction/validator';
 import { appendGuidelines } from './prompt';
 import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject, EXTRACTION_SAMPLING, guidedJsonBody } from '../extract-call';
 import { fuseWithOcr, applyFusionToConfidences } from '../fusion';
+import { extractionVisionDpi } from '../defaults';
 import {
   StrategyExecutionError,
   type CostEstimate,
@@ -177,7 +178,7 @@ export const visionPerPageStrategy: ExtractionStrategy = {
     const processingIssues: Array<{ severity: 'error' | 'warn'; message: string }> = [];
     let pages: PageSource[];
     try {
-      pages = await collectPages(input, 200, input.schema.config.max_pages, processingIssues);
+      pages = await collectPages(input, extractionVisionDpi(), input.schema.config.max_pages, processingIssues);
     } catch (err) {
       if (err instanceof PdfRenderError) {
         throw new StrategyExecutionError(`PDF-Render fehlgeschlagen: ${err.message}`, err);
@@ -211,6 +212,9 @@ Wichtig:
     const options: ChatOptions = {
       userId: input.userId,
       ...EXTRACTION_SAMPLING,
+      // Der Request selbst bricht jetzt ab (W9.3) — vorher lief er nach dem
+      // Promise.race-Timeout unsichtbar weiter und band einen vLLM-Slot.
+      timeoutMs: 45_000,
     };
     // Vision-Per-Page nutzt das Vision-Profile (active.vision in providers.yaml)
     // statt des aktiven Chat-Modells. Schema oder Job-Override kann das aufheben.
@@ -343,7 +347,7 @@ Wichtig:
     // Listen-Zeilen) UND verifizieren die extrahierten Werte deterministisch —
     // unbelegte Zahlen werden zur Pruefung markiert, belegte Felder brauchen
     // kein LLM-Konfidenz-Urteil mehr.
-    const fusion = fuseWithOcr(
+    const fusion = await fuseWithOcr(
       pages.map((p) => ({ pngBuffer: p.pngBuffer, width: p.width, height: p.height, pageNumber: p.pageNumber })),
       merged,
       input.schema.profile,

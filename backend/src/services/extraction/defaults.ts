@@ -24,6 +24,19 @@ export const EXTRACTION_DEFAULTS: ResolvedExtractionConfig = {
 };
 
 /**
+ * Render-Aufloesung fuer den Vision-Pfad (vision-per-page + hybrid).
+ * Bild-Token dominieren die Kosten (~95 %, quadratisch zur Aufloesung:
+ * 200 dpi ≈ 3.720 Token je Seite, 150 dpi ≈ 2.150). Per ENV verstellbar,
+ * damit die Qualitaet je Aufloesung MESSBAR ist statt geraten
+ * (W9-DPI-Messung, siehe Standortbestimmung 2026-08-08).
+ */
+export function extractionVisionDpi(): number {
+  const raw = Number(process.env.EXTRACTION_VISION_DPI);
+  if (Number.isFinite(raw) && raw >= 72 && raw <= 300) return Math.round(raw);
+  return 200;
+}
+
+/**
  * Schwelle fuer synchron-vs-Job-Entscheidung im Orchestrator.
  * estimateCost.tokens > SYNC_THRESHOLD_TOKENS → Job-Pfad.
  */

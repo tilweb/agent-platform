@@ -274,5 +274,13 @@ export async function runEval(
     }
   });
 
-  return scoreEvalRows(project, rows);
+  const score = scoreEvalRows(project, rows);
+  // Eval-Alignment (W9): text-basierte Messung vs. Produktionsstrategie
+  // ausweisen. Eine echte Vision-Messung braeuchte gespeicherte Seitenbilder
+  // je Beispiel — bewusst als Folgearbeit dokumentiert, nicht simuliert.
+  const production = project.extraction?.strategy ?? 'hybrid';
+  score.measured_strategy = 'single-pass (text)';
+  score.production_strategy = production;
+  score.aligned = production === 'single-pass' || production === 'long-text-chunked';
+  return score;
 }

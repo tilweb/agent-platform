@@ -2,6 +2,23 @@
 
 ## 2026-08-08
 
+### Welle 9: Kosten & Robustheit — DPI gemessen (200 bleibt), async-OCR, echte Timeouts
+- **DPI-Messung entschieden:** Kompletter Ehinger-Lauf mit 150 dpi (`EXTRACTION_VISION_DPI`, neu
+  konfigurierbar) gegen die 200-dpi-Basis: Referenznummer 8/12 statt 10/12, Recall 34/39 statt
+  39/39, **5 erfundene Positionen** auf dem Stempel-Beleg. Die −24 % Token sind das nicht wert —
+  **200 dpi bleibt Default**, der Schalter bleibt fuer kuenftige Modelle. Rohdaten:
+  run-150dpi.json / run-200dpi.json.
+- **Tesseract async** (Bun.spawn, Parallelitaet 2): der Event-Loop blockiert nicht mehr je
+  OCR-Seite — unter Last stand vorher der ganze Server. Toter computeOcrBoxes entfernt.
+- **Echte Request-Timeouts:** non-streaming LLM-Calls brechen jetzt per AbortSignal ab (Default
+  120s, Vision/Posteingang 45s synchron zur Retry-Uhr) — vorher lief ein haengender Request nach
+  dem Promise.race-Timeout unsichtbar weiter und band einen vLLM-Slot. Streaming (Chat) bewusst
+  ohne Abort.
+- **Eval-Alignment ausgewiesen:** Champion/Challenger misst text-basiert; bei Vision-Profilen
+  sagt "Regeln & Qualitaet" das jetzt dazu (EvalScore.aligned), statt eine Messung der
+  Produktionsstrecke zu suggerieren. Echte Vision-Messung braeuchte gespeicherte Seitenbilder je
+  Beispiel — dokumentierte Folgearbeit.
+
 ### Welle 8: Ein Dokument-Konverter statt neun Kopien — Docling-vorbereitet
 Der Markitdown-HTTP-Call war ~9x kopiert (Chat-Anhaenge, Importe, KB-Indexierung, Vertrags-
 management, Document Processing, Gmail/GDrive), mit SSRF-Allowlist an nur 2 und Timeout an nur 1

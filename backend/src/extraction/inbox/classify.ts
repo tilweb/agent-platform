@@ -134,7 +134,7 @@ export async function classifyPart(
   ];
 
   const response = await withTimeoutRetry(
-    () => adapter.chat(messages, visionModel.model.id, undefined, undefined, EXTRACTION_SAMPLING),
+    () => adapter.chat(messages, visionModel.model.id, undefined, undefined, { ...EXTRACTION_SAMPLING, timeoutMs: 45_000 }),
     { timeoutMs: 45000, retries: 1, label: 'inbox-classify' },
   );
   return parseClassification(response.content, projects.map((p) => p.id));

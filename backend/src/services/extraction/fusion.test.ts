@@ -49,9 +49,9 @@ describe('fuseWithOcr — Skalare', () => {
     positionen: [],
   };
 
-  test('belegte Werte werden verified (inkl. DE-Datumsformat) und entschieden', () => {
+  test('belegte Werte werden verified (inkl. DE-Datumsformat) und entschieden', async () => {
     const words = [w('56294390', 100, 100), w('19.12.24', 300, 100)];
-    const out = fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
+    const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
     expect(out.ocrRan).toBe(true);
     expect(out.verdicts['felder.lieferscheinnummer']).toBe('verified');
     expect(out.verdicts['felder.lieferdatum']).toBe('verified');
@@ -59,23 +59,23 @@ describe('fuseWithOcr — Skalare', () => {
     expect(out.boxes['felder.lieferscheinnummer']!.page).toBe(1);
   });
 
-  test('unbelegte NUMMER wird not_found_numeric mit Befund; unbelegter Freitext bleibt weich', () => {
+  test('unbelegte NUMMER wird not_found_numeric mit Befund; unbelegter Freitext bleibt weich', async () => {
     const words = [w('irgendwas', 100, 100), w('anderes', 300, 100)];
-    const out = fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
+    const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
     expect(out.verdicts['felder.lieferscheinnummer']).toBe('not_found_numeric');
     expect(out.findings.some((f) => f.path === 'felder.lieferscheinnummer')).toBe(true);
     expect(out.verdicts['felder.kommentar']).toBe('not_found_text');
     expect(out.decidedPaths.has('felder.kommentar')).toBe(false);
   });
 
-  test('boolean und leere Werte sind not_checkable', () => {
-    const out = fuseWithOcr([page], { felder: { handschrift: true, kommentar: null } }, profile, { wordsByPage: [[w('x', 0, 0)]] });
+  test('boolean und leere Werte sind not_checkable', async () => {
+    const out = await fuseWithOcr([page], { felder: { handschrift: true, kommentar: null } }, profile, { wordsByPage: [[w('x', 0, 0)]] });
     expect(out.verdicts['felder.handschrift']).toBe('not_checkable');
     expect(out.verdicts['felder.kommentar']).toBe('not_checkable');
   });
 
-  test('ohne OCR-Woerter keine Urteile (ocrRan false) — keine falschen Befunde', () => {
-    const out = fuseWithOcr([page], extracted, profile, { wordsByPage: [[]] });
+  test('ohne OCR-Woerter keine Urteile (ocrRan false) — keine falschen Befunde', async () => {
+    const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [[]] });
     expect(out.ocrRan).toBe(false);
     expect(out.findings).toEqual([]);
   });
@@ -90,43 +90,43 @@ describe('fuseWithOcr — Listen-Zeilen', () => {
     ],
   };
 
-  test('Anker (Artikelnummer) verankert die Zeile; Menge wird in der Bande gefunden', () => {
+  test('Anker (Artikelnummer) verankert die Zeile; Menge wird in der Bande gefunden', async () => {
     const words = [
       w('0491734', 100, 400), w('5', 500, 400),
       w('0498529', 100, 500), w('7', 500, 500),
     ];
-    const out = fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
+    const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
     expect(out.verdicts['positionen[0].artikelnummer']).toBe('verified');
     expect(out.verdicts['positionen[0].menge']).toBe('verified');
     expect(out.verdicts['positionen[1].menge']).toBe('verified');
     expect(out.boxes['positionen[1].menge']!.y).toBeCloseTo(500 / 1400, 3);
   });
 
-  test('Menge AUSSERHALB der Zeilen-Bande zaehlt nicht (keine Verwechslung mit fremder Zahl)', () => {
+  test('Menge AUSSERHALB der Zeilen-Bande zaehlt nicht (keine Verwechslung mit fremder Zahl)', async () => {
     const words = [
       w('0491734', 100, 400),
       // "5" steht weit weg (andere Zeile) — darf Zeile 1 nicht verifizieren.
       w('5', 500, 900),
     ];
-    const out = fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
+    const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
     expect(out.verdicts['positionen[0].menge']).toBe('not_found_numeric');
     expect(out.verdicts['positionen']).toBe('not_found_numeric');
     expect(out.findings.some((f) => f.path === 'positionen[0].menge')).toBe(true);
   });
 
-  test('gedrucktes DE-Zahlformat belegt den Zahlwert ("5,00" ↔ 5), auch eine Zeile OBERHALB des Ankers', () => {
+  test('gedrucktes DE-Zahlformat belegt den Zahlwert ("5,00" ↔ 5), auch eine Zeile OBERHALB des Ankers', async () => {
     // Sonepar-Layout: Menge steht in der Zeile UEBER der Artikelnummer.
     const words = [
       w('5,00', 500, 370),
       w('0491734', 100, 400),
       w('0498529', 100, 700), w('7,00', 500, 700),
     ];
-    const out = fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
+    const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
     expect(out.verdicts['positionen[0].menge']).toBe('verified');
     expect(out.verdicts['positionen[1].menge']).toBe('verified');
   });
 
-  test('Nachbar-Anker begrenzt die Bande: Menge der NAECHSTEN Zeile belegt nichts', () => {
+  test('Nachbar-Anker begrenzt die Bande: Menge der NAECHSTEN Zeile belegt nichts', async () => {
     const words = [
       w('0491734', 100, 400),
       // naechste Zeile beginnt bei y440: deren Menge 5,00 liegt nah, gehoert aber zu Zeile 2.
@@ -139,21 +139,21 @@ describe('fuseWithOcr — Listen-Zeilen', () => {
         { artikelnummer: '0498529', menge: 5 },
       ],
     };
-    const out = fuseWithOcr([page], extractedSwapped, profile, { wordsByPage: [words] });
+    const out = await fuseWithOcr([page], extractedSwapped, profile, { wordsByPage: [words] });
     expect(out.verdicts['positionen[0].menge']).toBe('not_found_numeric');
     expect(out.verdicts['positionen[1].menge']).toBe('verified');
   });
 
-  test('ohne Anker keine Aussage ueber die Zeile (kein Befund-Rauschen)', () => {
+  test('ohne Anker keine Aussage ueber die Zeile (kein Befund-Rauschen)', async () => {
     const words = [w('voellig', 100, 100), w('anderes', 300, 100)];
-    const out = fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
+    const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
     expect(out.verdicts['positionen[0].menge']).toBeUndefined();
     expect(out.findings).toEqual([]);
   });
 });
 
 describe('applyFusionToConfidences', () => {
-  test('verified hebt an, unbelegte Zahl deckelt unter die Review-Schwelle', () => {
+  test('verified hebt an, unbelegte Zahl deckelt unter die Review-Schwelle', async () => {
     const out: FusionOutcome = {
       boxes: {}, decidedPaths: new Set(), findings: [], ocrRan: true,
       verdicts: {
@@ -169,7 +169,7 @@ describe('applyFusionToConfidences', () => {
     expect(conf['felder.c']).toBe(0.7);
   });
 
-  test('ohne OCR keine Aenderung', () => {
+  test('ohne OCR keine Aenderung', async () => {
     const out: FusionOutcome = { boxes: {}, decidedPaths: new Set(), findings: [], ocrRan: false, verdicts: { 'felder.a': 'verified' } };
     const conf = { 'felder.a': 0.5 };
     applyFusionToConfidences(conf, out);
