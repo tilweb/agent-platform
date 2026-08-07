@@ -119,6 +119,8 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineRunR
         boxes: result.boxes,
         pageImages: result.pageImages,
         warnings: finalWarnings,
+        fusionFindings: result.fusionFindings,
+        processingIssues: result.processingIssues,
         llmCalls: result.llmCalls + extraCalls,
         strategyUsed: result.strategyUsed,
         strategyOriginal: escalatedFrom ?? (initialStrategyId !== result.strategyUsed ? initialStrategyId : undefined),

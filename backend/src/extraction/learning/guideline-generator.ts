@@ -9,6 +9,7 @@ import { llmService, type Message } from '../../services/llm';
 import type { UsageContext } from '../../services/usageTracking';
 import { extractionModelOverride } from '../model';
 import type { ExtractionProject, TrainingExample } from './types';
+import { EXTRACTION_SAMPLING } from '../../services/extraction/extract-call';
 
 /**
  * Generate extraction guidelines from training examples
@@ -99,6 +100,7 @@ Format der Antwort:
     modelOverride: project.extraction?.model_override
       ? { providerId: project.extraction.model_override.provider_id, modelId: project.extraction.model_override.model_id }
       : extractionModelOverride(),
+    ...EXTRACTION_SAMPLING,
   });
 
   if (!response.content) {

@@ -21,6 +21,7 @@ import type { ExtractionRequest, ExtractionResult, ExtractionSource } from './ty
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { extname, resolve } from 'path';
+import { EXTRACTION_SAMPLING } from '../services/extraction/extract-call';
 
 const MAX_RETRIES = 2;
 
@@ -160,7 +161,7 @@ Antworte NUR mit dem extrahierten Inhalt, keine eigenen Kommentare.`,
   };
 
   // Use non-streaming call via adapter
-  const result = await visionAdapter.chat(messages, visionModel.model.id);
+  const result = await visionAdapter.chat(messages, visionModel.model.id, undefined, undefined, EXTRACTION_SAMPLING);
 
   if (!result.content) {
     throw new Error('Vision-LLM hat keinen Text zurueckgegeben');
@@ -219,6 +220,7 @@ async function extractWithLLM(
   const options: ChatOptions = {
     userId,
     toolChoice: toolChoice as ChatOptions['toolChoice'],
+    ...EXTRACTION_SAMPLING,
   };
 
   const response = await llmService.chat(messages, [profile], usageContext, options);
@@ -442,7 +444,7 @@ Antworte NUR mit dem JSON-Objekt, kein erklaeerender Text.`;
   };
 
   try {
-    const response = await llmService.chat(messages, undefined, usageContext, { userId });
+    const response = await llmService.chat(messages, undefined, usageContext, { userId, ...EXTRACTION_SAMPLING });
 
     if (!response.content) {
       return { success: false, error: 'LLM hat keine Antwort geliefert' };

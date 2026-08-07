@@ -16,7 +16,7 @@ import { resolveModel } from '../../services/providers';
 import { EXTRACTION_MODEL_ID, EXTRACTION_PROVIDER_ID, extractionModelLabel } from '../model';
 import { OpenAIAdapter } from '../../services/llm/adapters/openai';
 import { createImageContent, type ContentPart, type Message } from '../../services/llm';
-import { withTimeoutRetry } from '../../services/extraction/extract-call';
+import { withTimeoutRetry, EXTRACTION_SAMPLING } from '../../services/extraction/extract-call';
 import type { PdfPageImage } from '../../services/extraction/pdf';
 
 const SPLIT_CONCURRENCY = parseInt(process.env.INBOX_SPLIT_CONCURRENCY || '2', 10);
@@ -132,7 +132,7 @@ export async function judgeBoundaries(
     ];
     try {
       const response = await withTimeoutRetry(
-        () => adapter.chat(messages, visionModel.model.id),
+        () => adapter.chat(messages, visionModel.model.id, undefined, undefined, EXTRACTION_SAMPLING),
         { timeoutMs: 45000, retries: 1, label: `inbox-split ${pageA.pageNumber}/${pageB.pageNumber}` },
       );
       verdicts[i] = parseBoundaryVerdict(response.content);

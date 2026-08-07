@@ -23,8 +23,8 @@ import { llmService, type Message, type ChatOptions, type ContentPart, type Imag
 import type { UsageContext } from '../../usageTracking';
 import { validateExtraction } from '../../../extraction/validator';
 import { appendGuidelines } from './prompt';
-import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject } from '../extract-call';
-import { computeOcrBoxes } from '../ocr';
+import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject, EXTRACTION_SAMPLING, guidedJsonBody } from '../extract-call';
+import { fuseWithOcr, applyFusionToConfidences } from '../fusion';
 import {
   StrategyExecutionError,
   type CostEstimate,
@@ -38,7 +38,7 @@ import {
 } from '../types';
 import { mergeChunks, type ChunkExtraction } from '../merger';
 import { scoreConfidences } from '../confidence';
-import { renderPdfToImages, isPdfRendererAvailable, PdfRenderError, pngDimensions, type PdfPageImage } from '../pdf';
+import { renderPdfToImages, isPdfRendererAvailable, PdfRenderError, pngDimensions, countPdfPages, type PdfPageImage } from '../pdf';
 
 /**
  * Liefert alle Pages (als PNG-Buffer) ueber alle Files. Pro Page wird ein
@@ -69,7 +69,12 @@ async function pLimit<T, R>(items: T[], concurrency: number, worker: (item: T, i
   return results;
 }
 
-async function collectPages(input: StrategyInput, dpi: number, maxPages: number): Promise<PageSource[]> {
+async function collectPages(
+  input: StrategyInput,
+  dpi: number,
+  maxPages: number,
+  issues: Array<{ severity: 'error' | 'warn'; message: string }>,
+): Promise<PageSource[]> {
   const out: PageSource[] = [];
 
   for (const file of input.files) {
@@ -80,6 +85,17 @@ async function collectPages(input: StrategyInput, dpi: number, maxPages: number)
 
     if (isPdf) {
       const pages = await renderPdfToImages(file.rawBuffer, { dpi, maxPages: maxPages - out.length });
+      // Gekappte Seiten wurden bisher STILL verworfen — als Befund melden,
+      // sonst liest das Zielsystem ein scheinbar vollstaendiges Ergebnis.
+      try {
+        const total = await countPdfPages(file.rawBuffer);
+        if (total > pages.length) {
+          issues.push({
+            severity: 'error',
+            message: `${file.filename}: nur ${pages.length} von ${total} Seiten verarbeitet (max_pages=${maxPages}) — die restlichen Seiten fehlen im Ergebnis.`,
+          });
+        }
+      } catch { /* pdfinfo nicht verfuegbar — keine Aussage moeglich */ }
       for (const p of pages) {
         out.push({
           pageId: `${file.filename}:${p.pageNumber}`,
@@ -158,9 +174,10 @@ export const visionPerPageStrategy: ExtractionStrategy = {
 
     await emit({ phase: 'preparing' });
 
+    const processingIssues: Array<{ severity: 'error' | 'warn'; message: string }> = [];
     let pages: PageSource[];
     try {
-      pages = await collectPages(input, 200, input.schema.config.max_pages);
+      pages = await collectPages(input, 200, input.schema.config.max_pages, processingIssues);
     } catch (err) {
       if (err instanceof PdfRenderError) {
         throw new StrategyExecutionError(`PDF-Render fehlgeschlagen: ${err.message}`, err);
@@ -179,6 +196,8 @@ export const visionPerPageStrategy: ExtractionStrategy = {
     // Freitext-JSON ist zuverlaessig + schnell (siehe extract-call.ts).
     // Das Modell liefert nur WERTE — die Bounding-Boxes kommen via OCR (ocr.ts).
     const jsonInstruction = buildVisionJsonInstruction(input.schema.profile);
+    // Serverseitig erzwungenes JSON-Schema (null = Kill-Switch aktiv).
+    const guidedBody = guidedJsonBody(input.schema.profile);
 
     const systemPrompt = appendGuidelines(`Du bist Daten-Extraktions-Spezialist mit Bildverstehen. Du bekommst EINE Seite eines mehrseitigen ${input.schema.name}-Dokuments und extrahierst alle Felder, die du auf dieser Seite sehen kannst.
 
@@ -191,6 +210,7 @@ Wichtig:
 
     const options: ChatOptions = {
       userId: input.userId,
+      ...EXTRACTION_SAMPLING,
     };
     // Vision-Per-Page nutzt das Vision-Profile (active.vision in providers.yaml)
     // statt des aktiven Chat-Modells. Schema oder Job-Override kann das aufheben.
@@ -242,16 +262,38 @@ Wichtig:
         const t0 = Date.now();
         let response;
         try {
-          // KEINE Tools/Function-Schema — Freitext-JSON (siehe oben).
-          response = await withTimeoutRetry(
-            () => llmService.chat(messages, undefined, usageContext, options),
-            { timeoutMs: 45000, retries: 1, label: `vision-per-page ${page.pageId}` },
-          );
+          // KEINE Tools/Function-Schema — Function-Calling haengt auf dem
+          // vLLM-Serving mit Bildern. Stattdessen serverseitig erzwungenes
+          // JSON (response_format json_schema): Versuch 1 mit Schema, bei
+          // Fehlschlag Versuch 2 als Freitext-JSON — das deckt zugleich
+          // transiente Endpoint-Haenger ab (vorher: 2 identische Versuche).
+          if (guidedBody) {
+            try {
+              response = await withTimeoutRetry(
+                () => llmService.chat(messages, undefined, usageContext, { ...options, extraBody: guidedBody }),
+                { timeoutMs: 45000, retries: 0, label: `vision-per-page ${page.pageId} (guided)` },
+              );
+            } catch {
+              response = await withTimeoutRetry(
+                () => llmService.chat(messages, undefined, usageContext, options),
+                { timeoutMs: 45000, retries: 0, label: `vision-per-page ${page.pageId} (fallback)` },
+              );
+            }
+          } else {
+            response = await withTimeoutRetry(
+              () => llmService.chat(messages, undefined, usageContext, options),
+              { timeoutMs: 45000, retries: 1, label: `vision-per-page ${page.pageId}` },
+            );
+          }
         } catch (err) {
           // Seite gibt nach Timeout + Retries keine Antwort (Endpoint-Hänger).
           // Nicht die ganze Extraktion scheitern lassen — Seite ueberspringen,
           // andere Seiten/Felder bleiben erhalten.
           console.warn(`[vision-per-page] Seite ${page.pageId}: keine Antwort nach Retries (${err instanceof Error ? err.message : String(err)}) — uebersprungen.`);
+          processingIssues.push({
+            severity: 'error',
+            message: `Seite ${page.pageNumber} (${page.filename}): keine Antwort vom Modell nach 2 Versuchen — Inhalte dieser Seite fehlen im Ergebnis.`,
+          });
           logCounter += 1;
           logs.push({ call: logCounter, phase: 'vision-extract', duration_ms: Date.now() - t0, truncated: false });
           return {
@@ -263,9 +305,14 @@ Wichtig:
         }
         const durationMs = Date.now() - t0;
 
-        const data: Record<string, unknown> = parseJsonObject(response.content) ?? {};
-        if (Object.keys(data).length === 0) {
+        const parsed = parseJsonObject(response.content);
+        const data: Record<string, unknown> = parsed ?? {};
+        if (parsed === null) {
           console.warn(`[vision-per-page] Seite ${page.pageId}: kein JSON in der Antwort parsebar.`);
+          processingIssues.push({
+            severity: 'error',
+            message: `Seite ${page.pageNumber} (${page.filename}): Modellantwort nicht als JSON lesbar — Inhalte dieser Seite fehlen im Ergebnis.`,
+          });
         }
 
         logCounter += 1;
@@ -292,13 +339,16 @@ Wichtig:
     await emit({ phase: 'merging', fieldsMerged: 0, fieldsTotal: Object.keys(input.schema.profile.fields).length });
     const { merged, provenance } = mergeChunks(extracts, input.schema.profile, input.schema.config.merge_strategy);
 
-    // Praezise Boxen via OCR (Tesseract): jeden gemergten Wert auf die Wort-Boxen
-    // der gerenderten Seiten matchen. Vision-Modell-Boxen waren zu ungenau.
-    const boxes: Record<string, FieldBox> = computeOcrBoxes(
+    // OCR-Fusion (W7): Tesseract-Woerter liefern Fundstellen-Boxen (inkl.
+    // Listen-Zeilen) UND verifizieren die extrahierten Werte deterministisch —
+    // unbelegte Zahlen werden zur Pruefung markiert, belegte Felder brauchen
+    // kein LLM-Konfidenz-Urteil mehr.
+    const fusion = fuseWithOcr(
       pages.map((p) => ({ pngBuffer: p.pngBuffer, width: p.width, height: p.height, pageNumber: p.pageNumber })),
       merged,
       input.schema.profile,
     );
+    const boxes: Record<string, FieldBox> = fusion.boxes;
     const pageImages: PageImage[] = results
       .map((r) => r._pageImage)
       .filter((p): p is PageImage => !!p)
@@ -320,14 +370,22 @@ Wichtig:
       input.userId,
       // Abschaltbar via config (z.B. Eval-Laeufe) — Default true.
       // Konfidenz-Call laeuft auf demselben Modell wie die Extraktion.
-      { useLLM: input.schema.config.llm_confidence, ...(options.modelOverride ? { modelOverride: options.modelOverride } : {}) },
+      {
+        useLLM: input.schema.config.llm_confidence,
+        exclude: fusion.decidedPaths,
+        ...(options.modelOverride ? { modelOverride: options.modelOverride } : {}),
+      },
     );
+    // Fusion-Urteile anwenden: verified hebt an, unbelegte Zahlen deckeln
+    // unter die Review-Schwelle.
+    applyFusionToConfidences(confidences, fusion);
     for (const p of provenance) {
       p.confidence = confidences[p.field] ?? 0;
     }
 
     const validation = validateExtraction(merged, input.schema.profile);
     const warnings = validation.errors.map((e) => `${e.field}: ${e.message}`);
+    warnings.push(...fusion.findings.map((f) => f.message));
     await emit({ phase: 'validating', warningCount: warnings.length });
 
     return {
@@ -337,6 +395,8 @@ Wichtig:
       boxes,
       pageImages,
       warnings,
+      fusionFindings: fusion.findings,
+      processingIssues,
       llmCalls: pages.length + confidenceCalls,
       strategyUsed: 'vision-per-page',
       raw_responses: logs,

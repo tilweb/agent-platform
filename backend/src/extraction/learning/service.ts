@@ -25,6 +25,7 @@ import type { TrainingExample, ExtractionProject, LearningEvalState, EvalScore, 
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { extname, resolve } from 'path';
+import { EXTRACTION_SAMPLING } from '../../services/extraction/extract-call';
 
 const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
 const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
@@ -176,7 +177,7 @@ Antworte NUR mit dem extrahierten Inhalt, keine eigenen Kommentare.`,
     { role: 'user', content: contentParts },
   ];
 
-  const result = await visionAdapter.chat(messages, visionModel.model.id);
+  const result = await visionAdapter.chat(messages, visionModel.model.id, undefined, undefined, EXTRACTION_SAMPLING);
 
   if (!result.content) {
     throw new Error('Vision-LLM hat keinen Text zurueckgegeben');
@@ -403,7 +404,27 @@ export async function extract(
     // Stand sehen (z.B. ein Stammdaten-Lookup auf dem angeglichenen Wert).
     const catalogIssues = await applyCatalogs(project, data, resolveCatalogValues);
     const ruleIssues = await evaluateRules(project, data, loadTableColumnValues);
-    const validations = [...catalogIssues, ...ruleIssues];
+    // OCR-Fusion (W7): unbelegte Zahlenwerte aus der Engine als Warn-Befunde —
+    // die Konfidenz ist bereits gedeckelt (Review-Triage greift), der Befund
+    // erklaert dem Pruefer WARUM.
+    const prefixFlat = (path: string) => path.startsWith(prefix) ? path.slice(prefix.length) : path;
+    const fusionIssues: RuleIssue[] = (result.fusionFindings ?? []).map((f) => ({
+      rule_id: 'ocr-abgleich',
+      type: 'ocr',
+      severity: 'warn',
+      message: f.message,
+      fields: [prefixFlat(f.path).split(/[[.]/, 1)[0] ?? ''],
+    }));
+    // Verarbeitungs-Befunde (uebersprungene Seiten, unlesbare Antworten,
+    // gekappte Seiten): severity 'error' erzwingt "Zu pruefen".
+    const processingIssues: RuleIssue[] = (result.processingIssues ?? []).map((i) => ({
+      rule_id: 'verarbeitung',
+      type: 'processing',
+      severity: i.severity,
+      message: i.message,
+      fields: [],
+    }));
+    const validations = [...catalogIssues, ...ruleIssues, ...fusionIssues, ...processingIssues];
     if (validations.length > 0) {
       console.log(`[Extraction] ${projectId}: ${validations.length} Regel-Befund(e)`);
     }

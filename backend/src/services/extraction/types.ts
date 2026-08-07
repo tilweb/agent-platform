@@ -198,6 +198,15 @@ export interface StrategyResult {
   /** Optional: gerenderte Seitenbilder (nur Vision-Strategien). */
   pageImages?: PageImage[];
   warnings: string[];
+  /** OCR-Fusion (W7): unbelegte Zahlenwerte u.ae. — die Lern-Schicht macht daraus Review-Befunde. */
+  fusionFindings?: Array<{ path: string; message: string }>;
+  /**
+   * Verarbeitungs-Befunde (W7): Dinge, die frueher nur in console.warn landeten
+   * und damit fuer den Nutzer unsichtbar waren — uebersprungene Seiten,
+   * unlesbare Modell-Antworten, gekappte Seiten. severity 'error' erzwingt in
+   * der Review-Triage "Zu pruefen".
+   */
+  processingIssues?: Array<{ severity: 'error' | 'warn'; message: string }>;
   /** Wie viele LLM-Calls hat die Strategy gemacht (fuer Cost-Tracking). */
   llmCalls: number;
   /** Die genutzte Strategy-ID (kann von Schema-Config abweichen wenn auto-eskaliert). */

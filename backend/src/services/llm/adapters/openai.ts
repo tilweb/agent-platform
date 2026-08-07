@@ -215,7 +215,15 @@ export class OpenAIAdapter {
     messages: Message[],
     model?: string,
     tools?: ToolDefinition[],
-    toolChoice?: unknown
+    toolChoice?: unknown,
+    params?: {
+      /** Sampling-Temperatur. Extraktion setzt 0 (deterministisch); ohne Angabe gilt der Server-Default. */
+      temperature?: number;
+      /** Obergrenze fuer die Antwortlaenge (Schutz gegen Runaway-Antworten). */
+      maxTokens?: number;
+      /** Zusaetzliche Body-Felder (z.B. vLLM guided_json). Werte hier ueberschreiben nichts Bestehendes. */
+      extraBody?: Record<string, unknown>;
+    }
   ): Promise<{
     content: string | null;
     tool_calls?: Array<{
@@ -229,7 +237,10 @@ export class OpenAIAdapter {
       model: model || this.defaultModel,
       messages,
       stream: false,
+      ...(params?.extraBody ?? {}),
     };
+    if (params?.temperature !== undefined) body.temperature = params.temperature;
+    if (params?.maxTokens !== undefined) body.max_tokens = params.maxTokens;
 
     if (tools && tools.length > 0) {
       body.tools = tools;

@@ -23,7 +23,7 @@ import { llmService, type Message, type ChatOptions, type ContentPart, type Imag
 import type { UsageContext } from '../../usageTracking';
 import { appendGuidelines } from './prompt';
 import { validateExtraction } from '../../../extraction/validator';
-import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject } from '../extract-call';
+import { withTimeoutRetry, buildVisionJsonInstruction, parseJsonObject, EXTRACTION_SAMPLING, guidedJsonBody } from '../extract-call';
 import {
   StrategyExecutionError,
   type CostEstimate,
@@ -33,11 +33,13 @@ import {
   type ProgressEmit,
   type StrategyInput,
   type StrategyResult,
+  type PageImage,
 } from '../types';
 import { longTextChunkedStrategy } from './long-text-chunked';
 import { isPdfRendererAvailable, renderPdfToImages, type PdfPageImage } from '../pdf';
 import { mergeChunks, type ChunkExtraction } from '../merger';
-import { scoreConfidences } from '../confidence';
+import { visionPerPageStrategy } from './vision-per-page';
+import { fuseWithOcr, applyFusionToConfidences } from '../fusion';
 import { HYBRID_VISION_MIN_LOW_CONFIDENCE_FIELDS_PER_PAGE } from '../defaults';
 
 function detectMimeFromBuffer(buf: Buffer): string {
@@ -70,15 +72,26 @@ async function runVisionPass(
   input: StrategyInput,
   pages: PdfPageImage[],
   emit: ProgressEmit,
+  issues: Array<{ severity: 'error' | 'warn'; message: string }>,
 ): Promise<{ pageData: VisionPagePass[]; llmCalls: number; logs: LLMResponseLog[] }> {
   // Freitext-JSON statt Function-Calling (Vision-Modelle haengen sonst auf Bildern).
   const jsonInstruction = buildVisionJsonInstruction(input.schema.profile);
+  // Serverseitig erzwungenes JSON-Schema (null = Kill-Switch aktiv).
+  const guidedBody = guidedJsonBody(input.schema.profile);
 
   const systemPrompt = appendGuidelines(`Du bist Daten-Extraktions-Spezialist mit Bildverstehen. Du siehst EINE Seite eines Dokuments und extrahierst alle sichtbaren Felder. Wenn ein Feld auf dieser Seite nicht zu sehen ist → null. Auch Handschrift, Stempel, Unterschriften erfassen.`, input.schema.profile);
 
   const options: ChatOptions = {
     userId: input.userId,
+    ...EXTRACTION_SAMPLING,
   };
+  // Modellbindung wie in vision-per-page — der Fallback lief bisher auf dem
+  // aktiven Session-Modell und brach damit die feste Extraktions-Modellwahl.
+  const override = input.modelOverride
+    ?? (input.schema.config.model_override
+      ? { providerId: input.schema.config.model_override.provider_id, modelId: input.schema.config.model_override.model_id }
+      : undefined);
+  if (override) options.modelOverride = override;
 
   const usageContext: UsageContext = {
     userId: input.userId,
@@ -115,13 +128,33 @@ async function runVisionPass(
     const t0 = Date.now();
     let response;
     try {
-      // KEINE Tools — Freitext-JSON, mit Timeout + Retry gegen Endpoint-Haenger.
-      response = await withTimeoutRetry(
-        () => llmService.chat(messages, undefined, usageContext, options),
-        { timeoutMs: 45000, retries: 1, label: `hybrid-vision Seite ${page.pageNumber}` },
-      );
+      // KEINE Tools — Function-Calling haengt mit Bildern. Versuch 1 mit
+      // serverseitig erzwungenem JSON, Versuch 2 als Freitext (deckt zugleich
+      // transiente Endpoint-Haenger ab).
+      if (guidedBody) {
+        try {
+          response = await withTimeoutRetry(
+            () => llmService.chat(messages, undefined, usageContext, { ...options, extraBody: guidedBody }),
+            { timeoutMs: 45000, retries: 0, label: `hybrid-vision Seite ${page.pageNumber} (guided)` },
+          );
+        } catch {
+          response = await withTimeoutRetry(
+            () => llmService.chat(messages, undefined, usageContext, options),
+            { timeoutMs: 45000, retries: 0, label: `hybrid-vision Seite ${page.pageNumber} (fallback)` },
+          );
+        }
+      } else {
+        response = await withTimeoutRetry(
+          () => llmService.chat(messages, undefined, usageContext, options),
+          { timeoutMs: 45000, retries: 1, label: `hybrid-vision Seite ${page.pageNumber}` },
+        );
+      }
     } catch (err) {
       console.warn(`[hybrid-vision-fallback] Seite ${page.pageNumber}: keine Antwort nach Retries (${err instanceof Error ? err.message : String(err)}) — uebersprungen.`);
+      issues.push({
+        severity: 'error',
+        message: `Seite ${page.pageNumber}: keine Antwort vom Modell nach 2 Versuchen — Inhalte dieser Seite fehlen im Ergebnis.`,
+      });
       logCounter += 1;
       logs.push({ call: logCounter, phase: 'vision-fallback', duration_ms: Date.now() - t0, truncated: false });
       return { pageNumber: page.pageNumber, data: {} };
@@ -216,7 +249,7 @@ function mergeTextAndVision(
           field: fieldPath,
           value: visionValue,
           source: visProv?.source.replace(/^c:/, 'p:') ?? 'p:vision',
-          confidence: 0.85,  // Vision-Override gibt einen Standard-Boost
+          confidence: 0.7,  // "eine starke Quelle" — die OCR-Fusion entscheidet danach hart
         });
       } else if (textValue !== undefined && textValue !== null) {
         provenance.push({ field: fieldPath, value: textValue, source: 'text', confidence: 1.0 });
@@ -236,7 +269,7 @@ function mergeTextAndVision(
           field: fieldPath,
           value: visionValue,
           source: visProv?.source.replace(/^c:/, 'p:') ?? 'p:vision',
-          confidence: 0.85,
+          confidence: 0.7,
         });
       } else if (textValue !== undefined && textValue !== null && textValue !== '') {
         provenance.push({ field: fieldPath, value: textValue, source: 'text', confidence: 1.0 });
@@ -264,6 +297,18 @@ export const hybridStrategy: ExtractionStrategy = {
   },
 
   async run(input: StrategyInput, emit: ProgressEmit): Promise<StrategyResult> {
+    // ============== Router: Scan ohne Textlayer? ==============
+    // Gescannte PDFs haben keinen (oder verstuemmelten Markitdown-) Text. Ein
+    // Text-Pass darauf liefert nichts, macht aber ALLE Felder low-confidence —
+    // der alte Ablauf zahlte erst den Text-Pass und dann den kompletten
+    // Vision-Pass, und verlor dabei Boxen/Seitenbilder. Direkt die volle
+    // vision-per-page-Strategie (inkl. OCR-Fusion) ist billiger UND besser.
+    const combinedTextLength = input.files.map((f) => (f.text || '').trim()).join('').length;
+    if (combinedTextLength < 200 && findPdfFile(input) && (await isPdfRendererAvailable())) {
+      const visionResult = await visionPerPageStrategy.run(input, emit);
+      return { ...visionResult, strategyUsed: 'vision-per-page' };
+    }
+
     // ============== Pass 1: long-text-chunked ==============
     await emit({ phase: 'preparing' });
     const textResult = await longTextChunkedStrategy.run(input, emit);
@@ -274,6 +319,13 @@ export const hybridStrategy: ExtractionStrategy = {
 
     if (lowConfidenceFields.size === 0) {
       // Alles ok, kein Fallback noetig
+      return { ...textResult, strategyUsed: 'hybrid' };
+    }
+
+    // Unter 2 offenen Feldern lohnt kein Vision-Pass ueber ALLE Seiten — die
+    // Low-Confidence-Menge enthaelt auch jedes nicht gefundene optionale Feld,
+    // sonst feuert der teure Fallback praktisch immer.
+    if (lowConfidenceFields.size < HYBRID_VISION_MIN_LOW_CONFIDENCE_FIELDS_PER_PAGE) {
       return { ...textResult, strategyUsed: 'hybrid' };
     }
 
@@ -307,7 +359,10 @@ export const hybridStrategy: ExtractionStrategy = {
       return { ...textResult, strategyUsed: 'hybrid' };
     }
 
-    const visionPass = await runVisionPass(input, pages, emit);
+    const processingIssues: Array<{ severity: 'error' | 'warn'; message: string }> = [
+      ...(textResult.processingIssues ?? []),
+    ];
+    const visionPass = await runVisionPass(input, pages, emit, processingIssues);
 
     // ============== Merge: Text + Vision ==============
     await emit({ phase: 'merging', fieldsMerged: 0, fieldsTotal: lowConfidenceFields.size });
@@ -318,30 +373,26 @@ export const hybridStrategy: ExtractionStrategy = {
       input.schema.profile,
     );
 
-    // ============== Re-Score Confidence ==============
-    // Vision-Overrides bekommen 0.85-Standard; ungenutzte Vision-Felder behalten ihre Text-Confidence.
-    const visionChunks: ChunkExtraction[] = visionPass.pageData.map((p) => ({
-      chunkIndex: p.pageNumber,
-      data: p.data,
-    }));
-    const { confidences: newConfidences, llmCalls: confidenceCalls } = await scoreConfidences(
-      visionChunks,
-      merged,
-      input.schema.profile,
-      input.userId,
-      { useLLM: false },  // Reine Heuristik — wir haben schon Text-Confidences als Baseline
-    );
-
-    // Heuristik allein reicht hier nicht — wir behalten Text-Confidence wo Vision NICHT eingegriffen hat,
-    // und 0.85 (Vision-Override-Default) wo Vision uebernommen hat.
+    // ============== Confidence + OCR-Fusion ==============
+    // Text-Confidence bleibt, wo Vision nicht eingegriffen hat. Vision-
+    // Overrides starten bei 0.7 ("eine starke Quelle", Heuristik-Skala) statt
+    // des alten Pauschal-0.85 — die OCR-Fusion entscheidet dann hart: belegt
+    // → 0.95, unbelegte Zahl → 0.4 + Befund.
     const finalConfidences: Record<string, number> = { ...textResult.fieldConfidences };
     for (const p of provenance) {
-      if (p.source.startsWith('p:vision') || p.source.startsWith('p:')) {
-        finalConfidences[p.field] = 0.85;
+      if (p.source.startsWith('p:')) {
+        finalConfidences[p.field] = 0.7;
       } else {
-        finalConfidences[p.field] = textResult.fieldConfidences[p.field] ?? newConfidences[p.field] ?? 0.5;
+        finalConfidences[p.field] = textResult.fieldConfidences[p.field] ?? 0.5;
       }
     }
+
+    const fusion = fuseWithOcr(
+      pages.map((p) => ({ pngBuffer: p.pngBuffer, width: p.width, height: p.height, pageNumber: p.pageNumber })),
+      merged,
+      input.schema.profile,
+    );
+    applyFusionToConfidences(finalConfidences, fusion);
 
     // Provenance um Confidence anreichern
     for (const p of provenance) {
@@ -350,22 +401,31 @@ export const hybridStrategy: ExtractionStrategy = {
 
     const validation = validateExtraction(merged, input.schema.profile);
     const warnings = validation.errors.map((e) => `${e.field}: ${e.message}`);
+    warnings.push(...fusion.findings.map((f) => f.message));
     await emit({ phase: 'validating', warningCount: warnings.length });
+
+    // Seitenbilder fuer das Review (der alte hybrid lieferte weder Boxen noch
+    // Bilder — das Review war fuer Hybrid-Ergebnisse blind).
+    const pageImages: PageImage[] = pages.map((p) => ({
+      page: p.pageNumber,
+      dataUri: `data:image/png;base64,${p.pngBuffer.toString('base64')}`,
+      width: p.width,
+      height: p.height,
+    }));
 
     return {
       extracted: merged,
       fieldConfidences: finalConfidences,
       provenance,
+      boxes: fusion.boxes,
+      pageImages,
       warnings,
-      llmCalls: textResult.llmCalls + visionPass.llmCalls + confidenceCalls,
+      fusionFindings: fusion.findings,
+      processingIssues,
+      llmCalls: textResult.llmCalls + visionPass.llmCalls,
       strategyUsed: 'hybrid',
       raw_responses: [...(textResult.raw_responses ?? []), ...visionPass.logs],
     };
   },
 };
 
-// HYBRID_VISION_MIN_LOW_CONFIDENCE_FIELDS_PER_PAGE wird heute nicht direkt
-// benutzt — wir rendern immer alle (begrenzten) Pages und ueberlassen dem Merger
-// die Entscheidung, welches Feld uebernommen wird. Die Konstante wird in einer
-// spaeteren Optimierung verwendet (selektive Page-Rendering).
-void HYBRID_VISION_MIN_LOW_CONFIDENCE_FIELDS_PER_PAGE;

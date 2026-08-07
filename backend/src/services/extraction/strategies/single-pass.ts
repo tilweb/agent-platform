@@ -17,6 +17,7 @@
  */
 
 import { llmService, type Message, type ChatOptions } from '../../llm';
+import { EXTRACTION_SAMPLING } from '../extract-call';
 import type { UsageContext } from '../../usageTracking';
 import { buildFunctionSchema, buildToolChoice } from '../../../extraction/schema-builder';
 import { validateExtraction } from '../../../extraction/validator';
@@ -130,6 +131,7 @@ Allgemeine Regeln:
     const options: ChatOptions = {
       userId: input.userId,
       toolChoice: toolChoice as ChatOptions['toolChoice'],
+      ...EXTRACTION_SAMPLING,
     };
 
     if (input.modelOverride || input.schema.config.model_override) {

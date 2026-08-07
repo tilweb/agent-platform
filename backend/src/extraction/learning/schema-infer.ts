@@ -19,6 +19,7 @@ import { validateProjectFields } from './validators';
 import { PROJECT_FIELD_GROUP } from './pipeline-adapter';
 import { extractionModelOverride } from '../model';
 import type { ProjectField, ProjectItemField } from './types';
+import { EXTRACTION_SAMPLING } from '../../services/extraction/extract-call';
 
 /** Obergrenze fuer einen Vorschlag — mehr Felder sind fuer den Einstieg unbrauchbar. */
 const MAX_FIELDS = 30;
@@ -190,6 +191,7 @@ export async function inferSchema(documentText: string, userId?: string): Promis
   const response = await llmService.chat(messages, undefined, usageContext, {
     userId,
     modelOverride: extractionModelOverride(),
+    ...EXTRACTION_SAMPLING,
   });
   const inferred = parseInferredFields(response.content);
   if (!inferred) {

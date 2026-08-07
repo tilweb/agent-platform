@@ -32,6 +32,16 @@ export type ChatFn = (
 ) => Promise<ChatResponse>;
 
 /**
+ * Sampling fuer ALLE Extraktions-Calls: Temperatur 0, weil Extraktion
+ * deterministisch reproduzierbar sein muss — auf der Server-Default-Temperatur
+ * wuerfelt das Modell bei Grenzfaellen (W7-Befund #4). max_tokens als Schutz
+ * gegen Runaway-Antworten (der Adapter setzte bisher gar keine Grenze).
+ * 8192 traegt die groesste gemessene Seite (41 Positionen ≈ 1k Token) mit
+ * grossem Abstand.
+ */
+export const EXTRACTION_SAMPLING = { temperature: 0, maxTokens: 8192 } as const;
+
+/**
  * Wickelt einen async-Call mit Timeout + Retry. Der adacor-Inferenz-Endpoint
  * blockiert intermittierend einzelne Vision-Requests (beobachtet: ~290s ohne
  * Antwort). Der Timeout bricht das Warten ab (der zugrundeliegende Request laeuft
@@ -118,6 +128,70 @@ export function buildVisionJsonInstruction(profile: ExtractionProfile): string {
   });
   lines.push('}');
   return `Extrahiere die sichtbaren Felder aus dem Bild und antworte AUSSCHLIESSLICH mit genau diesem JSON-Objekt — keine Erklaerung, kein Markdown-Codeblock. Felder, die auf dem Bild nicht erkennbar sind, als null:\n${lines.join('\n')}`;
+}
+
+/**
+ * JSON-Schema fuer serverseitig erzwungene Antworten (vLLM guided decoding
+ * via `response_format: json_schema` — verifiziert am Adacor-Endpunkt:
+ * erzwingt auch gegen einen Prosa-Prompt, funktioniert mit Bild, ~2s/Seite).
+ *
+ * Bewusst NICHT `buildFunctionSchema` wiederverwenden: dort sind die Typen
+ * nicht nullbar. Beim Guided Decode wuerde ein nicht-nullbarer String das
+ * Modell ZWINGEN, fuer ein nicht sichtbares Feld etwas zu erfinden. Hier ist
+ * jedes Feld `[typ, "null"]`, alle Schluessel required (Struktur erzwungen,
+ * Inhalt frei), `additionalProperties: false` (keine erfundenen Schluessel).
+ */
+export function buildGuidedJsonSchema(profile: ExtractionProfile): Record<string, unknown> {
+  const scalar = (f: FieldDefinition): Record<string, unknown> => {
+    switch (f.type) {
+      case 'boolean': return { type: ['boolean', 'null'] };
+      case 'number': return { type: ['number', 'null'] };
+      default: return { type: ['string', 'null'] };
+    }
+  };
+  const properties: Record<string, unknown> = {};
+  for (const [groupName, group] of Object.entries(profile.fields)) {
+    if (isArrayGroup(group)) {
+      const arrayGroup = group as ArrayGroupDefinition;
+      const itemProps: Record<string, unknown> = {};
+      for (const [fid, f] of Object.entries(arrayGroup._item_fields)) itemProps[fid] = scalar(f);
+      properties[groupName] = {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: itemProps,
+          required: Object.keys(itemProps),
+          additionalProperties: false,
+        },
+      };
+      continue;
+    }
+    const groupProps: Record<string, unknown> = {};
+    for (const [fid, f] of Object.entries(group as Record<string, FieldDefinition>)) groupProps[fid] = scalar(f);
+    properties[groupName] = {
+      type: 'object',
+      properties: groupProps,
+      required: Object.keys(groupProps),
+      additionalProperties: false,
+    };
+  }
+  return {
+    type: 'object',
+    properties,
+    required: Object.keys(properties),
+    additionalProperties: false,
+  };
+}
+
+/** Request-Body-Zusatz fuer erzwungenes JSON; Kill-Switch EXTRACTION_GUIDED_JSON=0. */
+export function guidedJsonBody(profile: ExtractionProfile): Record<string, unknown> | null {
+  if (process.env.EXTRACTION_GUIDED_JSON === '0') return null;
+  return {
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'extraktion', schema: buildGuidedJsonSchema(profile) },
+    },
+  };
 }
 
 /**
@@ -219,6 +293,7 @@ Regeln:
       ...(opts.chatOptions ?? {}),
       userId: opts.userId,
       toolChoice: toolChoice as ChatOptions['toolChoice'],
+      ...EXTRACTION_SAMPLING,
     };
 
     const response = await chat(messages, [functionSchema], usageContext, chatOptions);

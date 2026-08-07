@@ -17,6 +17,7 @@
  */
 
 import { llmService, type Message, type ChatOptions } from '../../llm';
+import { EXTRACTION_SAMPLING } from '../extract-call';
 import type { UsageContext } from '../../usageTracking';
 import { buildFunctionSchema, buildToolChoice } from '../../../extraction/schema-builder';
 import { validateExtraction } from '../../../extraction/validator';
@@ -106,6 +107,7 @@ Wichtig:
     const options: ChatOptions = {
       userId: input.userId,
       toolChoice: toolChoice as ChatOptions['toolChoice'],
+      ...EXTRACTION_SAMPLING,
     };
     if (input.modelOverride || input.schema.config.model_override) {
       const override = input.modelOverride
@@ -124,6 +126,7 @@ Wichtig:
     const logs: LLMResponseLog[] = [];
     let chunkLogCounter = 0;
 
+    const processingIssues: Array<{ severity: 'error' | 'warn'; message: string }> = [];
     const extracts: ChunkExtraction[] = await pLimit(
       chunks,
       input.schema.config.max_concurrent,
@@ -140,6 +143,7 @@ Wichtig:
         const durationMs = Date.now() - t0;
 
         let data: Record<string, unknown> = {};
+        let parseFailed = false;
         if (response.tool_calls && response.tool_calls.length > 0) {
           const args = response.tool_calls[0]!.function.arguments;
           try {
@@ -147,6 +151,7 @@ Wichtig:
           } catch {
             // Bei Parse-Fehler: leeres Objekt — Chunk traegt nichts bei, aber blockiert nicht.
             console.warn(`[long-text-chunked] Chunk ${chunk.index}: Ungueltiges Function-Call-JSON, ignoriere.`);
+            parseFailed = true;
           }
         } else if (response.content) {
           const jsonMatch = response.content.match(/\{[\s\S]*\}/);
@@ -155,8 +160,21 @@ Wichtig:
               data = JSON.parse(jsonMatch[0]);
             } catch {
               console.warn(`[long-text-chunked] Chunk ${chunk.index}: Content-JSON nicht parsebar.`);
+              parseFailed = true;
             }
+          } else {
+            parseFailed = true;
           }
+        } else {
+          parseFailed = true;
+        }
+        if (parseFailed) {
+          // Frueher stiller Datenverlust: der Abschnitt fehlt im Ergebnis,
+          // ohne dass es jemand sieht. Jetzt Befund → Review-Triage.
+          processingIssues.push({
+            severity: 'error',
+            message: `Abschnitt ${chunk.index + 1}/${chunks.length}${chunk.heading ? ` (${chunk.heading})` : ''}: Modellantwort nicht lesbar — Inhalte dieses Abschnitts fehlen im Ergebnis.`,
+          });
         }
 
         chunkLogCounter += 1;
@@ -206,6 +224,7 @@ Wichtig:
       fieldConfidences: confidences,
       provenance,
       warnings,
+      processingIssues,
       llmCalls: chunks.length + confidenceCalls,
       strategyUsed: 'long-text-chunked',
       raw_responses: logs,
