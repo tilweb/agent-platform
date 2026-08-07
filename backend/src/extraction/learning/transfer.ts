@@ -126,7 +126,7 @@ function validateBundle(bundle: unknown): asserts bundle is ProjectBundle {
     throw new Error(`Nicht unterstützte Paket-Version (${String(b.version)}).`);
   }
   if (!b.project || typeof b.project.name !== 'string' || !b.project.name.trim()) {
-    throw new Error('Paket enthält keinen Projektnamen.');
+    throw new Error('Paket enthält keinen Profilnamen.');
   }
   if (!b.project.fields || Object.keys(b.project.fields).length === 0) {
     throw new Error('Paket enthält keine Felder.');

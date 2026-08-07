@@ -12,6 +12,8 @@ Pilot im Produkt gefunden (Vision-Prompt ohne Listen-Spalten) und er ist behoben
 **Pilot:** `tools/ehinger-pilot/` (Projekte, Ground Truth, Lauf, Messung) · Rohdaten:
 `tools/ehinger-pilot/results/` · Testbelege: `docs/Ehinger/` (24 Scans, 54 Seiten)
 
+> **Benennung:** Dieses Dokument stammt aus der Zeit vor der Umbenennung (2026-08-07). Die App heißt inzwischen **Document Processing**, das frühere „Extraktionsprojekt" heißt **Profil**, der Vorgang „auslesen". Code, Module und API-Scopes sind unverändert. Siehe `docs/fachkonzept-dokumenten-extraktion-2026-07-27.md` §0.
+
 ---
 
 ## 1. Was der n8n-Workflow tut
@@ -124,6 +126,41 @@ durch einen Entwickler.
 | Laufzeit | — | **20 s je Beleg**, 8,6 s je Seite (7,8 min für alle 24) |
 | Externe Dienste | pdf2image auf Railway | keine (poppler lokal) |
 | Modell | mistral-3-24b + pixtral-12b | Adacor Qwen 3.5 Instruct (fest gebunden) |
+| Token je Beleg | — | **≈ 8.700 (Einseiter)**, Ø **≈ 17.000** über den Testsatz (s. u.) |
+
+### Token-Verbrauch (gemessen, nicht geschätzt)
+
+Für acht Belege (1 · 1 · 1 · 1 · 2 · 3 · 7 · 12 Seiten) wurde die `usage`-Antwort **jedes** echten
+Modellaufrufs mitgeschrieben (`tools/ehinger-pilot/tokens.ts`, Rohdaten `results/tokens.json`).
+Je Beleg fallen **1 Klassifikation + 1 Vision-Aufruf je Seite + 2 Konfidenz-Aufrufe** an:
+
+| Aufruf | Eingabe | Ausgabe | Anmerkung |
+|---|---|---|---|
+| Klassifikation (Bild, 150 dpi) | **2.728** | ~36 | konstant über alle Belege |
+| Vision-Extraktion je Seite (Bild, 200 dpi) | **≈ 4.750** | 76 – 958 | Eingabe konstant, Ausgabe wächst mit der Positionszahl |
+| Konfidenz (reiner Text, 2 Aufrufe) | 250 – 2.100 | ~20 | wächst mit der Positionszahl |
+
+Daraus ergibt sich sehr genau linear (Abweichung < 1.100 Token über den Bereich 8k – 81k):
+
+> **Token je Beleg ≈ 2.100 + 6.580 × Seitenzahl**
+
+- **Einseitiger Lieferschein: ≈ 8.700 Token** (8.400 Eingabe / 300 Ausgabe) — das ist der Median-Fall,
+  die Hälfte der Testbelege hat eine Seite.
+- **Mittel über den echten Belegmix** (24 Belege, 54 Seiten, Ø 2,25 Seiten): **≈ 17.000 Token je Beleg**,
+  in Summe ≈ 406.000 Token für den gesamten Testsatz. Der Mittelwert liegt deutlich über dem Median,
+  weil zwei Ausreißer (7 und 12 Seiten) ihn nach oben ziehen.
+- **95 % davon sind Eingabe.** Gegengemessen mit denselben Prompts *ohne* Bild: der Vision-Prompt
+  (System + Schema + Projekt-Anweisungen) kostet **1.026 Token**, der Klassifikations-Prompt über alle
+  vier Projekte **580** — der Rest ist Bild. Also **≈ 3.720 Token je Seitenbild bei 200 dpi** und
+  ≈ 2.150 bei 150 dpi; deren Verhältnis 1,73 entspricht dem Flächenverhältnis (200/150)² = 1,78, was
+  beide Messungen gegenseitig bestätigt. Der Verbrauch skaliert damit praktisch mit **Seiten und
+  Auflösung**, nicht mit der Prompt-Länge: 200 → 150 dpi würde je Seite rund 1.570 Token sparen
+  (−24 % je Beleg), ist aber vor einer Absenkung an der Trefferquote zu messen.
+- **Vergleich n8n:** Dort geht dasselbe Seitenbild in **vier** der fünf Aufrufe je Seite (Klassifikation,
+  Freitext-Extraktion, Pixtral-Zweitmodell, QA-LLM). Allein die Bild-Eingabe liegt damit bei rund dem
+  Vierfachen unseres Werts; hinzu kommt die Klassifikation je Seite statt einmal je Beleg.
+- Läuft der Eingang über den Posteingang **mit** Trennung, kommt je Seitenübergang ein weiterer
+  Bildaufruf hinzu — mit `split=false` (der Ehinger-Fall: eine Datei = ein Lieferschein) entfällt er.
 
 ## 5. Was der Pilot im Produkt gefunden hat
 

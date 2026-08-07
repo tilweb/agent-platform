@@ -142,25 +142,60 @@ const styles = {
     color: theme.colors.text,
     marginBottom: theme.spacing.xs,
   },
-  tabs: {
+  // Profil-Detail: senkrechte Navigation mit Gruppen (Muster: SettingsPage).
+  // Trennt den taeglichen Betrieb ("Verarbeiten") von der Einrichtung, die man
+  // einmal macht und danach selten anfasst.
+  detailBody: {
     display: 'flex',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xl,
+    gap: theme.spacing.xl,
+    alignItems: 'flex-start',
   },
-  tab: {
-    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: theme.borderRadius.md,
+  navSidebar: {
+    width: '220px',
+    minWidth: '220px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.xs,
+    position: 'sticky',
+    top: theme.spacing.md,
+  },
+  navGroup: {
+    padding: `${theme.spacing.lg} ${theme.spacing.md} ${theme.spacing.sm}`,
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  navItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.textMuted,
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderRadius: theme.borderRadius.md,
     cursor: 'pointer',
     transition: `all ${theme.transitions.fast}`,
+    textAlign: 'left',
+    width: '100%',
   },
-  tabActive: {
+  navItemActive: {
     backgroundColor: theme.colors.primaryLight,
     color: theme.colors.primary,
+  },
+  navItemHint: {
+    padding: `0 ${theme.spacing.md}`,
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textMuted,
+    lineHeight: 1.5,
+  },
+  navContent: {
+    flex: 1,
+    minWidth: 0,
   },
   section: {
     backgroundColor: theme.colors.surface,
@@ -255,6 +290,81 @@ const styles = {
     padding: theme.spacing['3xl'],
     color: theme.colors.textMuted,
     fontSize: theme.typography.sizes.sm,
+  },
+  // Vollbild-Review (Overlay). Das Pruefen eines Belegs braucht Flaeche —
+  // aufgeklappt in der Tabellenzeile blieb dafuer nur eine Restspalte.
+  modalOverlay: {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: theme.spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    border: `1px solid ${theme.colors.border}`,
+    width: '100%',
+    maxWidth: '1600px',
+    height: '92vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+    borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  modalFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+    padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+    borderTop: `1px solid ${theme.colors.border}`,
+  },
+  modalPane: {
+    overflow: 'auto',
+    minWidth: 0,
+    height: '100%',
+  },
+  iconBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    padding: theme.spacing.sm,
+    minWidth: 32,
+    backgroundColor: 'transparent',
+    color: theme.colors.text,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.sm,
+    cursor: 'pointer',
+  },
+  pageThumb: {
+    padding: 2,
+    backgroundColor: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    cursor: 'pointer',
+    flexShrink: 0,
+    lineHeight: 0,
+  },
+  groupLabel: {
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
   },
 };
 
@@ -416,8 +526,8 @@ export default function ExtractionProjectsPage() {
     <div style={styles.container}>
       <div style={styles.header}>
         <div>
-          <h1 style={styles.title}>Dokumenten-Extraktion</h1>
-          <p style={styles.subtitle}>Lernende Extraktion — definiere Felder, trainiere durch Korrektur</p>
+          <h1 style={styles.title}>Document Processing</h1>
+          <p style={styles.subtitle}>Dokumente automatisch auslesen, prüfen und weitergeben — Profile lernen aus Korrekturen</p>
         </div>
         <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center' }}>
           <button style={styles.secondaryBtn} onClick={() => setView('inbox')}>
@@ -433,7 +543,7 @@ export default function ExtractionProjectsPage() {
             onChange={(e) => { handleImportFile(e.target.files?.[0]); e.target.value = ''; }}
           />
           <button style={styles.primaryBtn} onClick={() => setView('create')}>
-            <SparklesIcon size={16} /> Neues Projekt
+            <SparklesIcon size={16} /> Neues Profil
           </button>
         </div>
       </div>
@@ -450,7 +560,7 @@ export default function ExtractionProjectsPage() {
           <div style={styles.emptyState}>Laden...</div>
         ) : projects.length === 0 ? (
           <div style={styles.emptyState}>
-            Noch keine Extraktionsprojekte vorhanden. Erstelle ein neues Projekt, um zu beginnen.
+            Noch keine Profile vorhanden. Erstelle ein neues Profil, um zu beginnen.
           </div>
         ) : (
           <div style={styles.grid}>
@@ -489,7 +599,7 @@ export default function ExtractionProjectsPage() {
 // ============== Modell-Override-Selektor (analog zu Agenten) ==============
 
 /**
- * Optionaler Modell-Override für ein Extraktionsprojekt. value ist
+ * Optionaler Modell-Override für ein Profil. value ist
  * `{ provider_id, model_id }` oder null (= System-Standard). Listet die aktiven
  * Chat-/Vision-Modelle; Vision-fähige sind markiert (vision-Strategien brauchen
  * ein vision-fähiges Modell).
@@ -606,7 +716,7 @@ function CatalogEditor({ catalog, onChange, compact = false }) {
   const [valueText, setValueText] = useState(() => catalogValuesToText(catalog?.values));
   const lastEmitted = useRef(valueText);
 
-  // Von außen gesetzte Werte übernehmen (Projektwechsel, Feldvorschlag aus einem
+  // Von außen gesetzte Werte übernehmen (Profilwechsel, Feldvorschlag aus einem
   // Beispieldokument) — aber niemals die eigene, gerade getippte Eingabe.
   useEffect(() => {
     const incoming = catalogValuesToText(catalog?.values);
@@ -704,7 +814,7 @@ function CatalogEditor({ catalog, onChange, compact = false }) {
             placeholder={'Ein Wert je Zeile. Schreibvarianten nach "=":\nAcme AG = acme, ACME Aktiengesellschaft\nMuster Bau GmbH'}
           />
           <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-            Die Werte gehen in den Extraktions-Prompt; eindeutig zuordenbare Treffer (Groß-/Kleinschreibung,
+            Die Werte gehen in den Prompt; eindeutig zuordenbare Treffer (Groß-/Kleinschreibung,
             Umlaute, Synonyme, knappe Tippfehler) werden auf die hier hinterlegte Schreibweise angeglichen.
           </div>
         </div>
@@ -715,7 +825,7 @@ function CatalogEditor({ catalog, onChange, compact = false }) {
       {source === 'table' && (
         <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
           Die Spaltenwerte werden beim Angleichen und Prüfen verwendet, gehen aber <strong>nicht</strong> in
-          den Extraktions-Prompt — dafür können Tabellen zu groß sein. Wer die Werte auch der KI vorgeben
+          den Prompt — dafür können Tabellen zu groß sein. Wer die Werte auch der KI vorgeben
           will, pflegt sie als feste Liste. Ändert sich die Tabelle, gilt der neue Stand sofort.
         </div>
       )}
@@ -726,7 +836,7 @@ function CatalogEditor({ catalog, onChange, compact = false }) {
           unabhängig davon, wie sicher sich die KI war. „Nur Hinweis" zeigt den Befund an, ohne das Review auszulösen.
           {' '}<strong>Automatisch angleichen:</strong> {catalog.auto_map !== false
             ? 'an — eindeutige Treffer werden auf die Katalog-Schreibweise gesetzt und protokolliert (der Rohwert bleibt im Protokoll sichtbar).'
-            : 'aus — der extrahierte Wert bleibt unverändert stehen, die Abweichung wird nur gemeldet.'}
+            : 'aus — der ausgelesene Wert bleibt unverändert stehen, die Abweichung wird nur gemeldet.'}
         </div>
       )}
     </div>
@@ -1074,7 +1184,7 @@ function InboxStatusBadge({ status }) {
 
 /**
  * Posteingang: Sammel-Scans hochladen → automatisch splitten, klassifizieren
- * und (bei sicherer Zuordnung) in die Projekte routen; Rest manuell zuordnen.
+ * und (bei sicherer Zuordnung) in die Profile routen; Rest manuell zuordnen.
  */
 function InboxView({ projects, onBack, onOpenProject }) {
   // Trennung von Sammel-Scans; aus, wenn je Vorgang eine Datei kommt.
@@ -1166,7 +1276,7 @@ function InboxView({ projects, onBack, onOpenProject }) {
     const c = part.classification;
     if (!c) return <span style={{ color: theme.colors.textMuted }}>Keine Klassifikation</span>;
     if (!c.project_id) {
-      return <span style={{ color: theme.colors.textMuted }}>Kein Projekt erkannt{c.alternatives?.length ? ` — vielleicht: ${c.alternatives.map(a => `${projectName(a.project_id)} (${Math.round(a.confidence * 100)}%)`).join(', ')}` : ''}</span>;
+      return <span style={{ color: theme.colors.textMuted }}>Kein Profil erkannt{c.alternatives?.length ? ` — vielleicht: ${c.alternatives.map(a => `${projectName(a.project_id)} (${Math.round(a.confidence * 100)}%)`).join(', ')}` : ''}</span>;
     }
     return (
       <span>
@@ -1188,7 +1298,7 @@ function InboxView({ projects, onBack, onOpenProject }) {
       <div style={styles.header}>
         <div>
           <button style={styles.backLink} onClick={onBack}>
-            <ArrowLeftIcon size={14} /> Projekte
+            <ArrowLeftIcon size={14} /> Profile
           </button>
           <h1 style={styles.title}>Posteingang</h1>
           <p style={styles.subtitle}>
@@ -1351,7 +1461,7 @@ function InboxView({ projects, onBack, onOpenProject }) {
                                     value={partTargets[part.id] || part.classification?.project_id || ''}
                                     onChange={e => setPartTargets(prev => ({ ...prev, [part.id]: e.target.value }))}
                                   >
-                                    <option value="">Projekt wählen…</option>
+                                    <option value="">Profil wählen…</option>
                                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                   </select>
                                   <button
@@ -1531,17 +1641,17 @@ function CreateProjectView({ onBack, onCreated }) {
       <div style={styles.header}>
         <div>
           <button style={styles.backLink} onClick={onBack}>
-            <ArrowLeftIcon size={14} /> Projekte
+            <ArrowLeftIcon size={14} /> Profile
           </button>
-          <h1 style={styles.title}>Neues Extraktionsprojekt</h1>
-          <p style={styles.subtitle}>Definiere die Felder, die aus Dokumenten extrahiert werden sollen</p>
+          <h1 style={styles.title}>Neues Profil</h1>
+          <p style={styles.subtitle}>Definiere die Felder, die aus Dokumenten ausgelesen werden sollen</p>
         </div>
       </div>
       <div style={styles.content}>
         <div style={{ maxWidth: '700px' }}>
           {/* Project Info */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>Projekt</div>
+            <div style={styles.sectionTitle}>Profil</div>
             <div style={{ marginBottom: theme.spacing.lg }}>
               <label style={styles.label}>Name</label>
               <input
@@ -1561,7 +1671,7 @@ function CreateProjectView({ onBack, onCreated }) {
               />
             </div>
             <div style={{ marginBottom: theme.spacing.lg }}>
-              <label style={styles.label}>Extraktions-Strategie</label>
+              <label style={styles.label}>Strategie</label>
               <select
                 style={{ ...styles.select, width: '100%' }}
                 value={strategy}
@@ -1576,7 +1686,7 @@ function CreateProjectView({ onBack, onCreated }) {
               <label style={styles.label}>KI-Modell (optional)</label>
               <ModelOverrideSelect value={modelOverride} onChange={setModelOverride} />
               <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-                Überschreibt das System-Standardmodell für dieses Projekt. Vision-Strategien brauchen ein vision-fähiges Modell.
+                Überschreibt das System-Standardmodell für dieses Profil. Vision-Strategien brauchen ein vision-fähiges Modell.
               </div>
             </div>
             <div>
@@ -1732,7 +1842,7 @@ function CreateProjectView({ onBack, onCreated }) {
             <strong>Nach dem Anlegen</strong> kommen in den <strong>Einstellungen</strong> die
             <strong> Prüfregeln</strong> dazu (Summen-Check über Positionen, Stammdaten-Abgleich gegen eine
             Tabelle) sowie ein <strong>Webhook</strong> für Ergebnis-Meldungen. Im Tab <strong>Training</strong>
-            lernst du das Projekt an Beispieldokumenten an — ab drei Korrekturen leitet es eigene Regeln ab.
+            lernst du das Profil an Beispieldokumenten an — ab drei Korrekturen leitet es eigene Regeln ab.
           </InfoBox>
 
           {error && (
@@ -1744,7 +1854,7 @@ function CreateProjectView({ onBack, onCreated }) {
           <div style={{ display: 'flex', gap: theme.spacing.md }}>
             <button style={styles.secondaryBtn} onClick={onBack}>Abbrechen</button>
             <button style={styles.primaryBtn} onClick={handleCreate} disabled={saving}>
-              {saving ? 'Erstelle...' : 'Projekt erstellen'}
+              {saving ? 'Erstelle...' : 'Profil erstellen'}
             </button>
           </div>
         </div>
@@ -1757,7 +1867,9 @@ function CreateProjectView({ onBack, onCreated }) {
 
 function ProjectDetailView({ projectId, onBack }) {
   const [project, setProject] = useState(null);
-  const [activeTab, setActiveTab] = useState('training');
+  // Start im Betrieb, nicht in der Einrichtung: ein eingerichtetes Profil wird
+  // taeglich zum Verarbeiten geoeffnet, das Anlernen passiert selten.
+  const [activeTab, setActiveTab] = useState('batch');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -1778,12 +1890,16 @@ function ProjectDetailView({ projectId, onBack }) {
   }
 
   if (loading) return <div style={styles.emptyState}>Laden...</div>;
-  if (!project) return <div style={styles.emptyState}>Projekt nicht gefunden</div>;
+  if (!project) return <div style={styles.emptyState}>Profil nicht gefunden</div>;
 
-  const tabs = [
-    { id: 'training', label: 'Training' },
+  // Betrieb zuerst — das ist der taegliche Weg. Die Einrichtung darunter fasst
+  // zusammen, was zum Aufsetzen des Profils gehoert und danach selten angefasst wird.
+  const navItems = [
+    { type: 'group', id: 'g-betrieb', label: 'Betrieb' },
     { id: 'batch', label: 'Verarbeiten' },
-    { id: 'rules', label: 'Regeln' },
+    { type: 'group', id: 'g-einrichtung', label: 'Einrichtung' },
+    { id: 'training', label: 'Training' },
+    { id: 'rules', label: 'Regeln & Qualität' },
     { id: 'settings', label: 'Einstellungen' },
   ];
 
@@ -1792,7 +1908,7 @@ function ProjectDetailView({ projectId, onBack }) {
       <div style={styles.header}>
         <div>
           <button style={styles.backLink} onClick={onBack}>
-            <ArrowLeftIcon size={14} /> Projekte
+            <ArrowLeftIcon size={14} /> Profile
           </button>
           <h1 style={styles.title}>{project.name}</h1>
           <p style={styles.subtitle}>{project.description}</p>
@@ -1806,33 +1922,49 @@ function ProjectDetailView({ projectId, onBack }) {
         </div>
       </div>
       <div style={styles.content}>
-        {/* Tabs */}
-        <div style={styles.tabs}>
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              style={{ ...styles.tab, ...(activeTab === t.id ? styles.tabActive : {}) }}
-              onClick={() => setActiveTab(t.id)}
-              onMouseEnter={e => { if (activeTab !== t.id) e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
-              onMouseLeave={e => { if (activeTab !== t.id) e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <div style={styles.detailBody}>
+          <div style={styles.navSidebar}>
+            {navItems.map((item, i) => {
+              if (item.type === 'group') {
+                return (
+                  <div key={item.id} style={{ ...styles.navGroup, ...(i === 0 ? { paddingTop: 0 } : {}) }}>
+                    {item.label}
+                  </div>
+                );
+              }
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  style={{ ...styles.navItem, ...(isActive ? styles.navItemActive : {}) }}
+                  onClick={() => setActiveTab(item.id)}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+            <div style={{ ...styles.navItemHint, marginTop: theme.spacing.lg }}>
+              Einrichtung machst du einmal; verarbeitet wird danach täglich.
+            </div>
+          </div>
 
-        {activeTab === 'training' && (
-          <TrainingTab project={project} onProjectUpdated={loadProject} />
-        )}
-        {activeTab === 'batch' && (
-          <BatchTab project={project} onProjectUpdated={loadProject} />
-        )}
-        {activeTab === 'rules' && (
-          <RulesTab project={project} onProjectUpdated={loadProject} />
-        )}
-        {activeTab === 'settings' && (
-          <SettingsTab project={project} onProjectUpdated={loadProject} onDeleted={onBack} />
-        )}
+          <div style={styles.navContent}>
+            {activeTab === 'training' && (
+              <TrainingTab project={project} onProjectUpdated={loadProject} />
+            )}
+            {activeTab === 'batch' && (
+              <BatchTab project={project} onProjectUpdated={loadProject} />
+            )}
+            {activeTab === 'rules' && (
+              <RulesTab project={project} onProjectUpdated={loadProject} />
+            )}
+            {activeTab === 'settings' && (
+              <SettingsTab project={project} onProjectUpdated={loadProject} onDeleted={onBack} />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -2038,7 +2170,8 @@ function BatchTab({ project, onProjectUpdated }) {
 
   const [runs, setRuns] = useState([]);            // Lauf-Historie
   const [activeRun, setActiveRun] = useState(null); // { run, files }
-  const [expandedId, setExpandedId] = useState(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [reviewFileId, setReviewFileId] = useState(null); // offenes Vollbild-Review
   const [details, setDetails] = useState({});       // fileId -> detail
   const [loadingFormat, setLoadingFormat] = useState(null);
   const [tableMsg, setTableMsg] = useState(null);
@@ -2060,7 +2193,13 @@ function BatchTab({ project, onProjectUpdated }) {
   async function loadRuns() {
     try {
       const res = await apiGet(base);
-      if (res.ok) setRuns(await res.json());
+      if (!res.ok) return;
+      const list = await res.json();
+      setRuns(list);
+      // Neuesten Lauf gleich oeffnen. Frueher stand die Lauf-Liste sichtbar da
+      // und man klickte einen an; mit der Auswahlleiste waere der Bereich sonst
+      // beim Betreten leer.
+      if (list.length > 0 && !activeRun) openRun(list[0].id);
     } catch { /* ignore */ }
   }
 
@@ -2095,7 +2234,8 @@ function BatchTab({ project, onProjectUpdated }) {
       if (res.ok) {
         const { runId } = await res.json();
         setQueue([]);
-        setExpandedId(null);
+        setShowUpload(false);
+        setReviewFileId(null);
         setDetails({});
         await pollRun(runId);
         loadRuns();
@@ -2111,7 +2251,7 @@ function BatchTab({ project, onProjectUpdated }) {
   }
 
   async function openRun(runId) {
-    setExpandedId(null);
+    setReviewFileId(null);
     setDetails({});
     setTableMsg(null);
     await pollRun(runId);
@@ -2126,9 +2266,8 @@ function BatchTab({ project, onProjectUpdated }) {
     } catch { /* ignore */ }
   }
 
-  async function toggleExpand(fileId) {
-    if (expandedId === fileId) { setExpandedId(null); return; }
-    setExpandedId(fileId);
+  async function openReview(fileId) {
+    setReviewFileId(fileId);
     if (!details[fileId]) {
       try {
         const res = await apiGet(`${base}/${activeRun.run.id}/files/${fileId}`);
@@ -2159,7 +2298,7 @@ function BatchTab({ project, onProjectUpdated }) {
       ...prev,
       files: prev.files.map(f => f.id === fileId ? { ...f, data: corrected, reviewStatus: 'reviewed' } : f),
     } : prev);
-    onProjectUpdated?.(); // Lern-Zähler/Eval-Status im Projekt aktualisieren
+    onProjectUpdated?.(); // Lern-Zähler/Eval-Status im Profil aktualisieren
     return result;
   }
 
@@ -2225,32 +2364,86 @@ function BatchTab({ project, onProjectUpdated }) {
 
   const doneCount = activeRun ? (activeRun.run.completedCount + activeRun.run.failedCount) : 0;
 
+  // Das Vollbild-Review blaettert durch die GEFILTERTE Liste — wer auf
+  // "Zu pruefen" filtert, geht mit den Pfeilen genau die Problemfaelle durch.
+  const visibleFiles = activeRun
+    ? activeRun.files.filter(f => reviewFilter === 'all' || f.reviewStatus === reviewFilter)
+    : [];
+  const reviewIndex = visibleFiles.findIndex(f => f.id === reviewFileId);
+  const reviewFile = reviewIndex >= 0 ? visibleFiles[reviewIndex] : null;
+
+  function stepReview(delta) {
+    const next = visibleFiles[reviewIndex + delta];
+    if (next) openReview(next.id);
+  }
+
   return (
     <div>
-      {/* Upload */}
+      {/* Kopfleiste: Lauf-Auswahl + Upload in EINER Zeile. Vorher zwei volle
+          Sektionen — der Kopf wuchs mit jedem Lauf und schob die Ergebnisse
+          aus dem Bild. */}
       <div style={styles.section}>
-        <div style={styles.sectionTitle}>Dokumente verarbeiten</div>
-        <InfoBox>
-          Lade mehrere Dokumente hoch und lass sie durch dieses Projekt extrahieren. Der Lauf wird
-          serverseitig gespeichert — du kannst die Seite verlassen und später zurückkommen.
-        </InfoBox>
-        <div
-          style={{ ...styles.dropZone, ...(dragActive ? styles.dropZoneActive : {}), marginTop: theme.spacing.lg }}
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-          onDragLeave={() => setDragActive(false)}
-          onDrop={(e) => { e.preventDefault(); setDragActive(false); addFiles(e.dataTransfer.files); }}
-        >
-          <DocumentIcon size={28} color={theme.colors.textMuted} />
-          <div style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary }}>
-            Dateien hierher ziehen oder klicken (PDF, Bilder, mehrere möglich)
-          </div>
-          <input
-            ref={fileInputRef} type="file" multiple hidden
-            accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.doc,.docx"
-            onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
-          />
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+          {runs.length > 0 && (
+            <>
+              <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Lauf</span>
+              <select
+                value={activeRun?.run?.id || ''}
+                onChange={e => e.target.value && openRun(e.target.value)}
+                style={{ ...styles.select, minWidth: 300 }}
+              >
+                {!activeRun && <option value="">— auswählen —</option>}
+                {runs.map(r => <option key={r.id} value={r.id}>{runLabel(r)}</option>)}
+              </select>
+            </>
+          )}
+          <button style={styles.secondaryBtn} onClick={() => setShowUpload(v => !v)}>
+            <DocumentIcon size={14} /> Dokumente hinzufügen
+          </button>
+          {activeRun && !isActive && (
+            <button
+              style={{ ...styles.backLink, marginBottom: 0, color: theme.colors.textMuted }}
+              onClick={e => removeRun(activeRun.run.id, e)}
+              title="Diesen Lauf löschen"
+            >
+              <TrashIcon size={14} /> Lauf löschen
+            </button>
+          )}
+          {isActive && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+              <Spinner size={14} /> {doneCount}/{activeRun.run.fileCount} verarbeitet
+            </span>
+          )}
         </div>
+
+        {/* Ablage nur bei Bedarf — beim ersten Mal offen, danach auf Knopfdruck. */}
+        {(showUpload || runs.length === 0) && (
+          <>
+            {runs.length === 0 && (
+              <InfoBox style={{ marginTop: theme.spacing.lg }}>
+                Lade mehrere Dokumente hoch und lass sie mit diesem Profil auslesen. Der Lauf wird
+                serverseitig gespeichert — du kannst die Seite verlassen und später zurückkommen.
+              </InfoBox>
+            )}
+            <div
+              style={{ ...styles.dropZone, ...(dragActive ? styles.dropZoneActive : {}), marginTop: theme.spacing.lg }}
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+              onDragLeave={() => setDragActive(false)}
+              onDrop={(e) => { e.preventDefault(); setDragActive(false); addFiles(e.dataTransfer.files); }}
+            >
+              <DocumentIcon size={28} color={theme.colors.textMuted} />
+              <div style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary }}>
+                Dateien hierher ziehen oder klicken (PDF, Bilder, mehrere möglich)
+              </div>
+              <input
+                ref={fileInputRef} type="file" multiple hidden
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.doc,.docx"
+                onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
+              />
+            </div>
+          </>
+        )}
 
         {queue.length > 0 && (
           <div style={{ marginTop: theme.spacing.lg }}>
@@ -2270,7 +2463,7 @@ function BatchTab({ project, onProjectUpdated }) {
             <div style={{ display: 'flex', gap: theme.spacing.md, marginTop: theme.spacing.lg, alignItems: 'center' }}>
               <button style={styles.primaryBtn} onClick={startBatch} disabled={starting}>
                 {starting ? <Spinner size={14} /> : <SparklesIcon size={14} />}
-                {starting ? 'Starte…' : `Extraktion starten (${queue.length})`}
+                {starting ? 'Starte…' : `Auslesen starten (${queue.length})`}
               </button>
               <button style={styles.secondaryBtn} onClick={() => setQueue([])} disabled={starting}>Liste leeren</button>
             </div>
@@ -2278,64 +2471,6 @@ function BatchTab({ project, onProjectUpdated }) {
         )}
         {statusMsg && <div style={{ marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm, color: theme.colors.error }}>{statusMsg}</div>}
       </div>
-
-      {/* Lauf-Historie */}
-      {runs.length > 0 && (
-        <div style={styles.section}>
-          <div style={styles.sectionTitle}>Läufe</div>
-          {runs.map(r => {
-            const sel = activeRun?.run?.id === r.id;
-            return (
-              <div
-                key={r.id}
-                onClick={() => openRun(r.id)}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: `${theme.spacing.md} ${theme.spacing.lg}`, marginBottom: theme.spacing.sm,
-                  borderRadius: theme.borderRadius.lg, cursor: 'pointer',
-                  border: `1px solid ${theme.colors.border}`,
-                  backgroundColor: sel ? theme.colors.primaryLight : theme.colors.surface,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-                  <StatusBadge status={r.status} />
-                  <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text }}>
-                    {r.fileCount} Dokument(e)
-                  </span>
-                  <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-                    {new Date(r.createdAt).toLocaleString('de-DE')}
-                    {r.failedCount > 0 ? ` · ${r.failedCount} Fehler` : ''}
-                  </span>
-                  {r.webhook && (
-                    <span
-                      title={r.webhook.error ? `${r.webhook.url} — ${r.webhook.error}` : r.webhook.url}
-                      style={{
-                        fontSize: theme.typography.sizes.xs,
-                        padding: `${theme.spacing.xs} ${theme.spacing.md}`,
-                        borderRadius: theme.borderRadius.full,
-                        fontWeight: theme.typography.weights.medium,
-                        whiteSpace: 'nowrap',
-                        backgroundColor: r.webhook.status === 'delivered' ? theme.colors.successLight
-                          : r.webhook.status === 'failed' ? theme.colors.errorLight : theme.colors.surfaceHover,
-                        color: r.webhook.status === 'delivered' ? theme.colors.success
-                          : r.webhook.status === 'failed' ? theme.colors.error : theme.colors.textMuted,
-                      }}
-                    >
-                      {r.webhook.status === 'delivered' ? 'Webhook zugestellt'
-                        : r.webhook.status === 'failed' ? `Webhook fehlgeschlagen (${r.webhook.attempts} Versuche)`
-                        : 'Webhook offen'}
-                    </span>
-                  )}
-                </div>
-                <button onClick={(e) => removeRun(r.id, e)} title="Lauf löschen"
-                  style={{ ...styles.backLink, marginBottom: 0, color: theme.colors.textMuted }}>
-                  <TrashIcon size={14} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* Ergebnis-Tabelle */}
       {activeRun && (
@@ -2408,7 +2543,7 @@ function BatchTab({ project, onProjectUpdated }) {
           )}
 
           <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
-            Zeile anklicken zum Prüfen & Korrigieren · horizontal scrollbar bei vielen Feldern
+            Zeile anklicken öffnet das Dokument im Vollbild · horizontal scrollbar bei vielen Feldern
           </div>
           <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
             <table style={{ borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm }}>
@@ -2422,14 +2557,13 @@ function BatchTab({ project, onProjectUpdated }) {
                 </tr>
               </thead>
               <tbody>
-                {activeRun.files.filter(f => reviewFilter === 'all' || f.reviewStatus === reviewFilter).map(file => {
+                {visibleFiles.map(file => {
                   const conf = avgConfidence(file.fieldConfidences);
-                  const open = expandedId === file.id;
                   const hasDetail = file.status === 'completed';
                   return (
                     <Fragment key={file.id}>
                       <tr
-                        onClick={() => hasDetail && toggleExpand(file.id)}
+                        onClick={() => hasDetail && openReview(file.id)}
                         style={{ borderTop: `1px solid ${theme.colors.border}`, cursor: hasDetail ? 'pointer' : 'default' }}
                       >
                         <td style={batchStickyCol} title={file.filename}>{file.filename}</td>
@@ -2450,17 +2584,6 @@ function BatchTab({ project, onProjectUpdated }) {
                         })}
                         <td style={{ ...batchTd, color: theme.colors.textMuted }}>{conf != null ? `${Math.round(conf * 100)}%` : '—'}</td>
                       </tr>
-                      {open && (
-                        <tr>
-                          <td colSpan={fieldEntries.length + 4} style={{ ...batchTd, backgroundColor: theme.colors.background }}>
-                            <BatchFileDetail
-                              detail={details[file.id]}
-                              fields={project.fields}
-                              onLearn={corrected => learnFile(file.id, corrected)}
-                            />
-                          </td>
-                        </tr>
-                      )}
                     </Fragment>
                   );
                 })}
@@ -2469,8 +2592,33 @@ function BatchTab({ project, onProjectUpdated }) {
           </div>
         </div>
       )}
+
+      {reviewFile && (
+        <ReviewModal
+          detail={details[reviewFile.id]}
+          filename={reviewFile.filename}
+          reviewStatus={reviewFile.reviewStatus}
+          fields={project.fields}
+          threshold={project.extraction?.review_threshold ?? 0.6}
+          position={{ index: reviewIndex + 1, total: visibleFiles.length }}
+          onPrev={reviewIndex > 0 ? () => stepReview(-1) : null}
+          onNext={reviewIndex < visibleFiles.length - 1 ? () => stepReview(1) : null}
+          onClose={() => setReviewFileId(null)}
+          onLearn={corrected => learnFile(reviewFile.id, corrected)}
+        />
+      )}
     </div>
   );
+}
+
+/** Lauf-Beschriftung fuer die Auswahl: Zeitpunkt, Umfang, Status auf einen Blick. */
+function runLabel(r) {
+  const when = new Date(r.createdAt).toLocaleString('de-DE', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+  const status = BATCH_STATUS[r.status]?.label || r.status;
+  const fehler = r.failedCount > 0 ? ` · ${r.failedCount} Fehler` : '';
+  return `${when} · ${r.fileCount} Dokument(e) · ${status}${fehler}`;
 }
 
 const batchTh = {
@@ -2505,29 +2653,70 @@ const batchStickyCol = {
 };
 
 /**
- * Batch-Datei-Detail — seit Welle 3 ein Review-Formular: Werte korrigierbar,
- * „Übernehmen & lernen" macht die Korrektur zum Trainingsbeispiel.
+ * Vollbild-Review eines Dokuments aus einem Lauf.
+ *
+ * Vorher klappte das Detail in der Tabellenzeile auf: Vorschau und
+ * Positionstabelle teilten sich eine Restspalte (Beschreibungen abgeschnitten),
+ * und die Seite wuchs mit jedem geoeffneten Dokument. Als Overlay bekommt das
+ * Pruefen die ganze Flaeche, die Liste dahinter bleibt kurz.
+ *
+ * Bedienung: Esc schliesst, Pfeil links/rechts blaettert durch die gefilterte
+ * Liste (nicht, waehrend in einem Feld getippt wird). Ein Klick auf ein Feld
+ * springt zur Fundstelle im Bild, ein Klick auf eine Box springt zum Feld.
  */
-function BatchFileDetail({ detail, fields, onLearn }) {
+function ReviewModal({ detail, filename, reviewStatus, fields, threshold, position, onPrev, onNext, onClose, onLearn }) {
   const [edited, setEdited] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState(null); // { ok, text }
+  const [msg, setMsg] = useState(null);          // { ok, text }
+  const [activePage, setActivePage] = useState(1);
+  const [hoverField, setHoverField] = useState(null);
+  const [scrollToField, setScrollToField] = useState(null);
+  const fieldRefs = useRef({});
 
   // Bei Datei-/Statuswechsel den Korrektur-State neu aufsetzen (tiefe Kopie!).
   useEffect(() => {
     setEdited(detail?.data ? structuredClone(detail.data) : null);
     setMsg(null);
-    // eslint-disable-next-line
+    // Nicht hart auf 1: die Seitenliste kann bei Teil-Dokumenten anders beginnen.
+    setActivePage(detail?.pageImages?.[0]?.page ?? 1);
+    setScrollToField(null);
   }, [detail?.id, detail?.reviewStatus]);
 
-  if (!detail) return <div style={{ padding: theme.spacing.md, color: theme.colors.textMuted }}>Lade Detail…</div>;
-  if (detail.error) return <div style={{ padding: theme.spacing.md, color: theme.colors.error }}>{detail.error}</div>;
+  useEffect(() => {
+    function onKey(e) {
+      const el = e.target;
+      const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+      if (e.key === 'Escape') { onClose(); return; }
+      if (typing) return;   // Pfeiltasten gehoeren beim Tippen ins Feld
+      if (e.key === 'ArrowLeft' && onPrev) onPrev();
+      if (e.key === 'ArrowRight' && onNext) onNext();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, onPrev, onNext]);
 
-  const hasBoxes = detail.pageImages && detail.pageImages.length > 0;
-  const canLearn = !!onLearn && detail.status === 'completed' && !!detail.documentText;
-  const isReviewed = detail.reviewStatus === 'reviewed';
-  const values = edited || detail.data || {};
-  const hasChanges = edited && JSON.stringify(edited) !== JSON.stringify(detail.data);
+  const pages = detail?.pageImages || [];
+  const hasBoxes = pages.length > 0;
+  const canLearn = !!onLearn && detail?.status === 'completed' && !!detail?.documentText;
+  const isReviewed = reviewStatus === 'reviewed' || detail?.reviewStatus === 'reviewed';
+  const values = edited || detail?.data || {};
+  const hasChanges = edited && detail && JSON.stringify(edited) !== JSON.stringify(detail.data);
+
+  /** Feld -> Fundstelle: Seite wechseln und die Box pulsen lassen. */
+  function jumpToBox(fid) {
+    const b = detail?.boxes?.[fid];
+    if (!b) return;
+    if (b.page) setActivePage(b.page);
+    setScrollToField(null);
+    setTimeout(() => setScrollToField(fid), 0);
+  }
+
+  /** Box -> Feld: rechte Spalte zum passenden Eingabefeld scrollen. */
+  function jumpToField(fid) {
+    const el = fieldRefs.current[fid];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHoverField(fid);
+  }
 
   async function handleLearn() {
     if (!edited) return;
@@ -2538,7 +2727,7 @@ function BatchFileDetail({ detail, fields, onLearn }) {
       setMsg({
         ok: true,
         text: r?.guidelines_update === 'started'
-          ? 'Korrektur gelernt — Regeln werden im Hintergrund geprüft (Tab „Regeln").'
+          ? 'Korrektur gelernt — Regeln werden im Hintergrund geprüft („Regeln & Qualität").'
           : 'Korrektur als Trainingsbeispiel gespeichert.',
       });
     } catch (err) {
@@ -2548,97 +2737,211 @@ function BatchFileDetail({ detail, fields, onLearn }) {
     }
   }
 
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: hasBoxes ? '1fr 1fr' : '1fr', gap: theme.spacing.lg, padding: theme.spacing.md }}>
-      {hasBoxes && (
-        <div style={{ maxHeight: 420, overflow: 'auto' }}>
-          <BoxOverlay
-            pageImages={detail.pageImages}
-            boxes={detail.boxes || {}}
-            data={detail.data || {}}
-            fields={fields}
-            activeField={null}
-            onHoverField={() => {}}
-          />
-        </div>
-      )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-        {detail.audit && (
-          <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-            Strategie {detail.audit.strategy || detail.strategy || '—'} · Modell {detail.audit.model} · Regeln v{detail.audit.guideline_version}
-          </div>
-        )}
-        <ValidationIssues issues={detail.validations} />
-        {Object.entries(fields).map(([fid, f]) => {
-          const conf = detail.fieldConfidences?.[fid];
-          const isChanged = edited && JSON.stringify(values[fid]) !== JSON.stringify(detail.data?.[fid]);
-          const label = (
-            <span style={{ color: isChanged ? theme.colors.warning : theme.colors.textMuted }}>
-              {f.label || fid}
-              {typeof conf === 'number' && (
-                <span style={{ marginLeft: theme.spacing.xs, fontSize: theme.typography.sizes.xs }}>
-                  {Math.round(conf * 100)}%
-                </span>
-              )}
-              {isChanged && <span style={{ fontSize: theme.typography.sizes.xs, marginLeft: theme.spacing.xs }}>(korrigiert)</span>}
-            </span>
-          );
-          if (f.type === 'list') {
-            return (
-              <div key={fid} style={{ fontSize: theme.typography.sizes.sm }}>
-                <div style={{ marginBottom: theme.spacing.xs }}>
-                  {label}
-                  {' '}<span style={{ color: theme.colors.textMuted }}>({Array.isArray(values[fid]) ? values[fid].length : 0} Positionen)</span>
-                </div>
-                <ListItemsEditor
-                  value={values[fid]}
-                  itemFields={f.item_fields}
-                  onChange={arr => setEdited(prev => ({ ...(prev || {}), [fid]: arr }))}
-                  readOnly={!canLearn || isReviewed}
-                />
-              </div>
-            );
-          }
-          return (
-            <div key={fid} style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center', fontSize: theme.typography.sizes.sm }}>
-              <span style={{ minWidth: 140 }}>{label}</span>
-              {canLearn && !isReviewed ? (
-                <div style={{ flex: 1, maxWidth: 360 }}>
-                  <FieldInputControl
-                    field={f}
-                    value={values[fid]}
-                    onChange={val => setEdited(prev => ({ ...(prev || {}), [fid]: val }))}
-                    isChanged={!!isChanged}
-                  />
-                </div>
-              ) : (
-                <span style={{ color: values[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
-                  {fmtValue(values[fid]) || '—'}
-                </span>
-              )}
-            </div>
-          );
-        })}
+  // Unsichere Felder zuerst: geprueft wird dort, wo das Risiko sitzt — nicht
+  // stur bei Feld 1. Listen bleiben unten, sie brauchen die volle Breite.
+  const entries = Object.entries(fields);
+  const scalars = entries.filter(([, f]) => f.type !== 'list');
+  const lists = entries.filter(([, f]) => f.type === 'list');
+  const isUncertain = ([fid]) => {
+    const c = detail?.fieldConfidences?.[fid];
+    return typeof c === 'number' && c < threshold;
+  };
+  const uncertain = scalars.filter(isUncertain);
+  const certain = scalars.filter(e => !isUncertain(e));
 
-        {/* Review-Aktion (Welle 3) */}
-        <div style={{ marginTop: theme.spacing.md, display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
-          {isReviewed ? (
-            <ReviewBadge status="reviewed" />
-          ) : canLearn ? (
-            <button style={styles.primaryBtn} onClick={handleLearn} disabled={saving}>
-              {saving ? <Spinner size={14} /> : <SparklesIcon size={14} />}
-              {hasChanges ? 'Korrektur übernehmen & lernen' : 'Als korrekt bestätigen & lernen'}
-            </button>
-          ) : detail.status === 'completed' ? (
-            <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-              Älterer Lauf ohne gespeicherten Dokumenttext — zum Lernen bitte neu verarbeiten.
-            </span>
-          ) : null}
-          {msg && (
-            <span style={{ fontSize: theme.typography.sizes.sm, color: msg.ok ? theme.colors.success : theme.colors.error }}>
-              {msg.text}
+  function renderField([fid, f]) {
+    const conf = detail?.fieldConfidences?.[fid];
+    const isChanged = edited && JSON.stringify(values[fid]) !== JSON.stringify(detail?.data?.[fid]);
+    const hasBox = !!detail?.boxes?.[fid];
+    return (
+      <div
+        key={fid}
+        ref={el => { fieldRefs.current[fid] = el; }}
+        onMouseEnter={() => setHoverField(fid)}
+        onMouseLeave={() => setHoverField(null)}
+        style={{
+          display: 'flex', gap: theme.spacing.md, alignItems: 'center',
+          padding: `${theme.spacing.sm} ${theme.spacing.sm}`,
+          borderRadius: theme.borderRadius.md,
+          backgroundColor: hoverField === fid ? theme.colors.surfaceHover : 'transparent',
+          fontSize: theme.typography.sizes.sm,
+        }}
+      >
+        <span
+          onClick={() => jumpToBox(fid)}
+          title={hasBox ? 'Fundstelle im Dokument zeigen' : undefined}
+          style={{
+            minWidth: 190,
+            cursor: hasBox ? 'pointer' : 'default',
+            color: isChanged ? theme.colors.warning : theme.colors.textMuted,
+          }}
+        >
+          {f.label || fid}
+          {typeof conf === 'number' && (
+            <span style={{
+              marginLeft: theme.spacing.xs,
+              fontSize: theme.typography.sizes.xs,
+              color: conf < threshold ? theme.colors.warning : theme.colors.textMuted,
+            }}>
+              {Math.round(conf * 100)}%
             </span>
           )}
+          {isChanged && <span style={{ fontSize: theme.typography.sizes.xs, marginLeft: theme.spacing.xs }}>(korrigiert)</span>}
+        </span>
+        {canLearn && !isReviewed ? (
+          <div style={{ flex: 1, maxWidth: 460 }}>
+            <FieldInputControl
+              field={f}
+              value={values[fid]}
+              onChange={val => setEdited(prev => ({ ...(prev || {}), [fid]: val }))}
+              isChanged={!!isChanged}
+            />
+          </div>
+        ) : (
+          <span style={{ color: values[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
+            {fmtValue(values[fid]) || '—'}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
+        <div style={styles.modalHeader}>
+          <span style={{ fontWeight: theme.typography.weights.semibold, color: theme.colors.text }}>{filename}</span>
+          <ReviewBadge status={reviewStatus} />
+          <span style={{ flex: 1 }} />
+          <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+            Dokument {position.index}/{position.total}
+          </span>
+          <button
+            style={{ ...styles.iconBtn, opacity: onPrev ? 1 : 0.35, cursor: onPrev ? 'pointer' : 'not-allowed' }}
+            onClick={() => onPrev && onPrev()} disabled={!onPrev} title="Vorheriges Dokument (Pfeil links)"
+          >‹</button>
+          <button
+            style={{ ...styles.iconBtn, opacity: onNext ? 1 : 0.35, cursor: onNext ? 'pointer' : 'not-allowed' }}
+            onClick={() => onNext && onNext()} disabled={!onNext} title="Nächstes Dokument (Pfeil rechts)"
+          >›</button>
+          <button style={styles.iconBtn} onClick={onClose} title="Schließen (Esc)">✕</button>
+        </div>
+
+        {!detail ? (
+          <div style={{ ...styles.emptyState, flex: 1 }}>Lade Dokument…</div>
+        ) : detail.error ? (
+          <div style={{ ...styles.emptyState, flex: 1, color: theme.colors.error }}>{detail.error}</div>
+        ) : (
+          <div style={{
+            flex: 1,
+            display: 'grid',
+            gridTemplateColumns: hasBoxes ? 'minmax(320px, 45%) 1fr' : '1fr',
+            gap: theme.spacing.xl,
+            padding: theme.spacing.xl,
+            overflow: 'hidden',
+          }}>
+            {hasBoxes && (
+              <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <div style={{ ...styles.modalPane, flex: 1 }}>
+                  <BoxOverlay
+                    pageImages={pages.filter(p => p.page === activePage)}
+                    boxes={detail.boxes || {}}
+                    data={detail.data || {}}
+                    fields={fields}
+                    activeField={hoverField}
+                    onHoverField={setHoverField}
+                    onBoxClick={jumpToField}
+                    scrollToField={scrollToField}
+                  />
+                </div>
+                {pages.length > 1 && (
+                  <div style={{ display: 'flex', gap: theme.spacing.sm, overflowX: 'auto', paddingTop: theme.spacing.md, flexShrink: 0 }}>
+                    {pages.map(p => (
+                      <button
+                        key={p.page}
+                        onClick={() => setActivePage(p.page)}
+                        title={`Seite ${p.page}`}
+                        style={{
+                          ...styles.pageThumb,
+                          borderColor: p.page === activePage ? theme.colors.primary : theme.colors.border,
+                        }}
+                      >
+                        <img
+                          src={p.url ? `${API_URL}${p.url}` : p.dataUri}
+                          alt={`Seite ${p.page}`}
+                          style={{ display: 'block', width: 46 }}
+                        />
+                        <span style={{
+                          display: 'block', textAlign: 'center', lineHeight: 1.6,
+                          fontSize: theme.typography.sizes.xs,
+                          color: p.page === activePage ? theme.colors.primary : theme.colors.textMuted,
+                        }}>{p.page}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={styles.modalPane}>
+              {detail.audit && (
+                <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.md }}>
+                  Strategie {detail.audit.strategy || detail.strategy || '—'} · Modell {detail.audit.model} · Regeln v{detail.audit.guideline_version}
+                </div>
+              )}
+              <ValidationIssues issues={detail.validations} />
+
+              {uncertain.length > 0 && (
+                <>
+                  <div style={{ ...styles.groupLabel, color: theme.colors.warning, marginTop: 0 }}>
+                    Unsicher — zuerst prüfen ({uncertain.length})
+                  </div>
+                  {uncertain.map(renderField)}
+                  <div style={styles.groupLabel}>Übrige Felder</div>
+                </>
+              )}
+              {certain.map(renderField)}
+
+              {lists.map(([fid, f]) => (
+                <div key={fid} style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm }}>
+                  <div style={{ marginBottom: theme.spacing.xs, color: theme.colors.textMuted }}>
+                    {f.label || fid} ({Array.isArray(values[fid]) ? values[fid].length : 0} Positionen)
+                  </div>
+                  <ListItemsEditor
+                    value={values[fid]}
+                    itemFields={f.item_fields}
+                    onChange={arr => setEdited(prev => ({ ...(prev || {}), [fid]: arr }))}
+                    readOnly={!canLearn || isReviewed}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={styles.modalFooter}>
+          <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+            Esc schließt · ← → blättert · Feld anklicken zeigt die Fundstelle
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            {msg && (
+              <span style={{ fontSize: theme.typography.sizes.sm, color: msg.ok ? theme.colors.success : theme.colors.error }}>
+                {msg.text}
+              </span>
+            )}
+            {isReviewed ? (
+              <ReviewBadge status="reviewed" />
+            ) : canLearn ? (
+              <button style={styles.primaryBtn} onClick={handleLearn} disabled={saving}>
+                {saving ? <Spinner size={14} /> : <SparklesIcon size={14} />}
+                {hasChanges ? 'Korrektur übernehmen & lernen' : 'Als korrekt bestätigen & lernen'}
+              </button>
+            ) : detail?.status === 'completed' ? (
+              <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                Älterer Lauf ohne gespeicherten Dokumenttext — zum Lernen bitte neu verarbeiten.
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
@@ -2692,7 +2995,7 @@ function TrainingTab({ project, onProjectUpdated }) {
     loadExamples();
   }, [project.id]);
 
-  // Elapsed-Timer waehrend der Extraktion (ehrliches Lebenszeichen, da kein Live-Stream).
+  // Elapsed-Timer waehrend des Auslesens (ehrliches Lebenszeichen, da kein Live-Stream).
   useEffect(() => {
     if (!extracting) return;
     setElapsed(0);
@@ -2769,7 +3072,7 @@ function TrainingTab({ project, onProjectUpdated }) {
         setStatusMsg(`Fehler: ${err.error}`);
       }
     } catch (err) {
-      setStatusMsg('Netzwerkfehler bei der Extraktion');
+      setStatusMsg('Netzwerkfehler beim Auslesen');
     } finally {
       setExtracting(false);
     }
@@ -2899,7 +3202,7 @@ function TrainingTab({ project, onProjectUpdated }) {
                 <Spinner size={20} />
                 <div>
                   <div style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>
-                    Extrahiere „{sourceFilename}" …
+                    Lese „{sourceFilename}" …
                   </div>
                   <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: 2 }}>
                     Vision-KI liest das Dokument · läuft seit {elapsed}s
@@ -2908,7 +3211,7 @@ function TrainingTab({ project, onProjectUpdated }) {
               </div>
               <ol style={{ margin: `${theme.spacing.lg} 0 0`, paddingLeft: theme.spacing.xl, color: theme.colors.textMuted, fontSize: theme.typography.sizes.xs, lineHeight: 1.9 }}>
                 <li>Dokument hochladen & Seiten als Bild rendern</li>
-                <li>Vision-Extraktion pro Seite</li>
+                <li>Seiten einzeln per Vision-KI auslesen</li>
                 <li>Felder zusammenführen & prüfen</li>
               </ol>
               <div style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
@@ -2950,7 +3253,7 @@ function TrainingTab({ project, onProjectUpdated }) {
             </div>
           )}
 
-          {/* Text-Eingabe als Alternative — nur ohne Datei und ohne laufende Extraktion */}
+          {/* Text-Eingabe als Alternative — nur ohne Datei und ohne laufendes Auslesen */}
           {!previewUrl && !extracting && (
             <div style={{ marginTop: theme.spacing.lg }}>
               <label style={styles.label}>Oder Text direkt eingeben</label>
@@ -2966,7 +3269,7 @@ function TrainingTab({ project, onProjectUpdated }) {
                   onClick={handleTextExtract}
                   disabled={extracting}
                 >
-                  Text extrahieren
+                  Text auslesen
                 </button>
               )}
             </div>
@@ -2978,7 +3281,7 @@ function TrainingTab({ project, onProjectUpdated }) {
       {extractionResult && (
         <div style={styles.section}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-            <div style={styles.sectionTitle}>Extraktion pruefen & korrigieren</div>
+            <div style={styles.sectionTitle}>Ergebnis pruefen & korrigieren</div>
             <div style={{ display: 'flex', gap: theme.spacing.md }}>
               <button style={styles.secondaryBtn} onClick={() => { setExtractionResult(null); setEditedValues({}); setDocumentText(''); }}>
                 Abbrechen
@@ -3007,7 +3310,7 @@ function TrainingTab({ project, onProjectUpdated }) {
           <InfoBox style={{ marginBottom: theme.spacing.lg }}>
             <strong>Was beim „Bestätigen & Lernen" passiert:</strong> Dieses Dokument
             wird als Beispiel gespeichert (mit deinen Korrekturen). Bei künftigen
-            Extraktionen wird es als <strong>Few-Shot-Beispiel</strong> mitgegeben — und
+            Läufen wird es als <strong>Few-Shot-Beispiel</strong> mitgegeben — und
             ab <strong>3 Beispielen mit Korrekturen</strong> leitet das System daraus
             allgemeine <strong>Regeln</strong> ab (Tab „Regeln"). Es wird nichts am
             Modell trainiert — das Wissen fließt nur in den Prompt ein.
@@ -3137,9 +3440,9 @@ function TrainingTab({ project, onProjectUpdated }) {
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Trainingsbeispiele ({examples.length})</div>
         <InfoBox style={{ marginBottom: theme.spacing.lg }}>
-          Diese Beispiele fließen als <strong>Few-Shot</strong> in künftige Extraktionen
+          Diese Beispiele fließen als <strong>Few-Shot</strong> in künftige Läufe
           ein (es werden bis zu 5 ausgewählt — Korrekturen zuerst, dann die neuesten).
-          Je mehr korrigierte Beispiele pro Rezepttyp, desto treffsicherer die Extraktion.
+          Je mehr korrigierte Beispiele pro Profil, desto treffsicherer das Auslesen.
         </InfoBox>
         {examples.length === 0 ? (
           <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
@@ -3156,7 +3459,7 @@ function TrainingTab({ project, onProjectUpdated }) {
                   {new Date(ex.created).toLocaleString('de-DE')}
                   {' — '}
                   {ex.confirmed_correct ? (
-                    <span style={{ color: theme.colors.success }}>Korrekt extrahiert</span>
+                    <span style={{ color: theme.colors.success }}>Korrekt ausgelesen</span>
                   ) : (
                     <span style={{ color: theme.colors.warning }}>{ex.corrections_count} Korrektur(en)</span>
                   )}
@@ -3196,6 +3499,42 @@ const EVAL_ACTION_LABELS = {
 function RulesTab({ project, onProjectUpdated }) {
   const [busy, setBusy] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  // Prüfregeln liegen hier statt in den Einstellungen: alle Regeln an einem Ort —
+  // die selbst definierten und die aus Korrekturen gelernten.
+  const [rules, setRules] = useState(project.rules || []);
+  const [rulesSaving, setRulesSaving] = useState(false);
+  const [rulesMsg, setRulesMsg] = useState('');
+
+  // RulesEditor arbeitet auf der Editor-Form der Felder (Array statt Objekt).
+  const fieldsForRules = Object.entries(project.fields).map(([id, f]) => ({
+    id,
+    label: f.label,
+    type: f.type,
+    required: f.required,
+    description: f.description || '',
+    item_fields: itemFieldsToArray(f.item_fields),
+    catalog: f.catalog || null,
+  }));
+
+  async function saveRules() {
+    setRulesSaving(true);
+    setRulesMsg('');
+    try {
+      // Teil-Update: das Backend laesst nicht gesendete Felder unberuehrt.
+      const res = await apiPut(`/extraction/projects/${project.id}`, { rules });
+      if (res.ok) {
+        setRulesMsg('Gespeichert!');
+        onProjectUpdated();
+      } else {
+        const err = await res.json();
+        setRulesMsg(`Fehler: ${err.error}`);
+      }
+    } catch {
+      setRulesMsg('Netzwerkfehler');
+    } finally {
+      setRulesSaving(false);
+    }
+  }
 
   const evalState = project.learning?.eval || null;
   // Stale-Schutz: 'running' älter als 10 min (z.B. nach Backend-Crash) ignorieren.
@@ -3207,7 +3546,7 @@ function RulesTab({ project, onProjectUpdated }) {
   const champion = evalState?.champion || null;
   const lastRun = evalState?.last_run || null;
 
-  // Solange ein Eval läuft: Projekt regelmäßig neu laden (Muster BatchTab-Polling).
+  // Solange ein Eval läuft: Profil regelmäßig neu laden (Muster BatchTab-Polling).
   useEffect(() => {
     if (!evalRunning) return;
     const t = setTimeout(() => onProjectUpdated(), 3000);
@@ -3261,6 +3600,22 @@ function RulesTab({ project, onProjectUpdated }) {
 
   return (
     <div>
+      {/* Prüfregeln — selbst definiert (vorher unter „Einstellungen") */}
+      <RulesEditor rules={rules} fields={fieldsForRules} onChange={setRules} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <button style={styles.primaryBtn} onClick={saveRules} disabled={rulesSaving}>
+          {rulesSaving ? 'Speichere…' : 'Prüfregeln speichern'}
+        </button>
+        {rulesMsg && (
+          <span style={{
+            fontSize: theme.typography.sizes.sm,
+            color: rulesMsg.startsWith('Fehler') || rulesMsg.startsWith('Netzwerk') ? theme.colors.error : theme.colors.success,
+          }}>
+            {rulesMsg}
+          </span>
+        )}
+      </div>
+
       {/* Qualität (gemessen) */}
       <div style={styles.section}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
@@ -3277,7 +3632,7 @@ function RulesTab({ project, onProjectUpdated }) {
 
         <InfoBox style={{ marginBottom: theme.spacing.lg }}>
           Jede Regel-Änderung wird automatisch gegen die Trainingsbeispiele <strong>gemessen</strong>
-          (Champion/Challenger): Die Beispiele werden mit den Kandidaten-Regeln neu extrahiert und
+          (Champion/Challenger): Die Beispiele werden mit den Kandidaten-Regeln neu ausgelesen und
           Feld für Feld mit deinen bestätigten Werten verglichen. Nur Regeln, die mindestens so gut
           sind wie die aktuellen, werden übernommen. Gemessen wird text-basiert, ohne Few-Shot.
         </InfoBox>
@@ -3393,7 +3748,7 @@ function RulesTab({ project, onProjectUpdated }) {
 
       <div style={styles.section}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-          <div style={styles.sectionTitle}>Gelernte Extraktionsregeln</div>
+          <div style={styles.sectionTitle}>Gelernte Regeln</div>
           <button
             style={styles.secondaryBtn}
             onClick={() => startAction('regenerate', 'Regel-Update gestartet — Kandidat wird generiert und gemessen.')}
@@ -3409,7 +3764,7 @@ function RulesTab({ project, onProjectUpdated }) {
           abgeleitet (ab 3 Beispielen mit Korrekturen; „Neu generieren" stößt es manuell
           an). Sie sind etwas anderes als die festen <strong>Domänen-Anweisungen</strong>
           unter „Einstellungen" — die schreibst du selbst und sie werden vom Lernen nie
-          überschrieben. Im Extraktions-Prompt kommen beide zusammen: erst deine
+          überschrieben. Im Prompt kommen beide zusammen: erst deine
           Anweisungen, dann diese gelernten Regeln, dann die Few-Shot-Beispiele.
         </InfoBox>
 
@@ -3529,9 +3884,9 @@ function RulesEditor({ rules, fields, onChange }) {
   // kein `:disabled`, ein gesperrter Button sieht sonst aus wie ein klickbarer,
   // der nichts tut.
   const sumBlocked = listFields.length === 0
-    ? 'Ein Summen-Check braucht ein Listen-Feld (Positionen) mit einer Zahl-Spalte — lege oben ein Feld vom Typ „Liste / Positionen" an.'
+    ? 'Ein Summen-Check braucht ein Listen-Feld (Positionen) mit einer Zahl-Spalte — lege unter „Einstellungen" ein Feld vom Typ „Liste / Positionen" an.'
     : numberFields.length === 0
-      ? 'Ein Summen-Check braucht ein Zahl-Feld als Ziel (z. B. „Gesamtbetrag") — lege oben ein Feld vom Typ „Zahl" an.'
+      ? 'Ein Summen-Check braucht ein Zahl-Feld als Ziel (z. B. „Gesamtbetrag") — lege unter „Einstellungen" ein Feld vom Typ „Zahl" an.'
       : '';
   const lookupBlocked = scalarFields.length === 0
     ? 'Ein Stammdaten-Abgleich braucht mindestens ein einfaches Feld (kein Listen-Feld).'
@@ -3737,7 +4092,6 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
       catalog: f.catalog || null,
     }))
   );
-  const [rules, setRules] = useState(project.rules || []);
   const [webhookUrl, setWebhookUrl] = useState(project.webhook?.url || '');
   const [webhookSecret, setWebhookSecret] = useState(project.webhook?.secret || '');
   const [saving, setSaving] = useState(false);
@@ -3815,7 +4169,8 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         description: description.trim(),
         fields: fieldsObj,
         instructions: instructions,
-        rules,
+        // rules bewusst NICHT: sie werden im Bereich „Regeln & Qualität" gepflegt
+        // und gespeichert; ein Mitsenden des hier veralteten Stands wuerde sie ueberschreiben.
         webhook: webhookUrl.trim()
           ? { url: webhookUrl.trim(), ...(webhookSecret.trim() ? { secret: webhookSecret.trim() } : {}) }
           : null,
@@ -3843,7 +4198,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   }
 
   async function handleDelete() {
-    if (!confirm(`Projekt "${project.name}" wirklich loeschen? Alle Trainingsbeispiele gehen verloren.`)) return;
+    if (!confirm(`Profil "${project.name}" wirklich loeschen? Alle Trainingsbeispiele gehen verloren.`)) return;
 
     try {
       const res = await apiDelete(`/extraction/projects/${project.id}`);
@@ -3859,7 +4214,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
     <div>
       {/* Project Info */}
       <div style={styles.section}>
-        <div style={styles.sectionTitle}>Projekt</div>
+        <div style={styles.sectionTitle}>Profil</div>
         <div style={{ marginBottom: theme.spacing.lg }}>
           <label style={styles.label}>Name</label>
           <input style={styles.input} value={name} onChange={e => setName(e.target.value)} />
@@ -3869,7 +4224,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
           <input style={styles.input} value={description} onChange={e => setDescription(e.target.value)} />
         </div>
         <div style={{ marginBottom: theme.spacing.lg }}>
-          <label style={styles.label}>Extraktions-Strategie</label>
+          <label style={styles.label}>Strategie</label>
           <select
             style={{ ...styles.select, width: '100%' }}
             value={strategy}
@@ -3884,7 +4239,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
           <label style={styles.label}>KI-Modell (optional)</label>
           <ModelOverrideSelect value={modelOverride} onChange={setModelOverride} />
           <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-            Überschreibt das System-Standardmodell für dieses Projekt. Vision-Strategien brauchen ein vision-fähiges Modell.
+            Überschreibt das System-Standardmodell für dieses Profil. Vision-Strategien brauchen ein vision-fähiges Modell.
           </div>
         </div>
         <div style={{ marginBottom: theme.spacing.lg }}>
@@ -3998,14 +4353,12 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         ))}
       </div>
 
-      {/* Prüfregeln (Welle 5) */}
-      <RulesEditor rules={rules} fields={fields} onChange={setRules} />
 
       {/* Integration / Webhook (Welle 5) */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Integration</div>
         <InfoBox>
-          Läufe dieses Projekts können ihr Ergebnis an eine URL melden — auch die per API
+          Läufe dieses Profils können ihr Ergebnis an eine URL melden — auch die per API
           (<code>extraktion/batch.create</code>) gestarteten. Jede Zustellung trägt den Header
           <strong> X-Workplace-Signature</strong> (HMAC-SHA256 über den Rumpf, mit dem Schlüssel unten);
           der Empfänger prüft damit die Herkunft. 3 Zustellversuche, danach steht der Fehlschlag am Lauf.
@@ -4049,7 +4402,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Export & Weitergabe</div>
         <InfoBox>
-          Exportiere dieses Projekt als Paket (.json), um es auf einer anderen Workplace-Instanz zu
+          Exportiere dieses Profil als Paket (.json), um es auf einer anderen Workplace-Instanz zu
           importieren — z. B. eine bewährte Vorlage für andere Kunden. Schema, Domänen-Anweisungen und
           gelernte Regeln sind immer enthalten.
         </InfoBox>
@@ -4064,7 +4417,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         <div style={{ marginTop: theme.spacing.lg }}>
           <button style={styles.secondaryBtn} onClick={handleExport} disabled={exporting}>
             {exporting ? <Spinner size={14} /> : <DocumentIcon size={14} />}
-            {exporting ? 'Exportiere…' : 'Projekt exportieren'}
+            {exporting ? 'Exportiere…' : 'Profil exportieren'}
           </button>
         </div>
       </div>
@@ -4084,7 +4437,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <button style={styles.dangerBtn} onClick={handleDelete}>
-          <TrashIcon size={14} /> Projekt loeschen
+          <TrashIcon size={14} /> Profil loeschen
         </button>
         <button style={styles.primaryBtn} onClick={handleSave} disabled={saving}>
           {saving ? 'Speichere...' : 'Aenderungen speichern'}

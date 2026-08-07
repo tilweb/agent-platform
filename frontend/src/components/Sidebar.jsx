@@ -536,7 +536,7 @@ function Sidebar() {
             <div style={sidebarStyles.iconWrapper}>
               <ExtractionIcon color={navIconColors.extraction} />
             </div>
-            <span>Extraktion</span>
+            <span>Document Processing</span>
           </Link>
           </>}
         </div>
