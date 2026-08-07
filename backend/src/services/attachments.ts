@@ -11,6 +11,7 @@ import { join, resolve, extname, basename, normalize } from 'path';
 import { validateUpload } from '../utils/fileTypeValidator';
 import { $ } from 'bun';
 import { randomUUID } from 'crypto';
+import { convertDocument } from './documentConverter';
 
 const DATA_BASE = resolve(process.cwd(), '../data');
 const UPLOADS_BASE = join(DATA_BASE, 'chat-uploads');
@@ -99,14 +100,9 @@ const AUDIO_MIME_TYPES = [
 const FORMATS_NEEDING_CONVERSION = ['audio/webm', 'video/webm', 'audio/ogg', 'video/ogg', 'audio/mp4', 'audio/x-m4a', 'audio/m4a'];
 
 class AttachmentsService {
-  private markitdownUrl: string;
-  private apiKey: string;
-
   constructor() {
-    this.markitdownUrl = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-    this.apiKey = process.env.ADACOR_AI_API_KEY || '';
-
-    // Warn if using default URL (should be configured in production)
+    // URL-Handling, SSRF-Allowlist und Timeout liegen zentral im
+    // documentConverter (W8) — hier bleibt nur der Hinweis fuer den Betrieb.
     if (!process.env.MARKITDOWN_API_URL) {
       console.warn('[Attachments] MARKITDOWN_API_URL not set, using default. Configure in .env for production.');
     }
@@ -184,51 +180,9 @@ class AttachmentsService {
       return await readFile(filePath, 'utf-8');
     }
 
-    // Call Markitdown API for conversion
-    // Bun.file() doesn't recognize uppercase extensions (.PDF → application/octet-stream),
-    // so we read the file as a Blob with explicit MIME type.
-    const mimeTypes: Record<string, string> = {
-      '.pdf': 'application/pdf',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      '.doc': 'application/msword',
-      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      '.xls': 'application/vnd.ms-excel',
-      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      '.ppt': 'application/vnd.ms-powerpoint',
-      '.html': 'text/html',
-      '.htm': 'text/html',
-      '.csv': 'text/csv',
-      '.rtf': 'application/rtf',
-    };
-    const mimeType = mimeTypes[ext] || 'application/octet-stream';
+    // Zentraler Konverter (W8): Fetch, Allowlist, Timeout, MIME-Erkennung.
     const fileData = await readFile(filePath);
-    const blob = new Blob([fileData], { type: mimeType });
-    const formData = new FormData();
-    formData.append('document', blob, filename);
-
-    let response: Response;
-    try {
-      response = await fetch(this.markitdownUrl, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: formData,
-        signal: AbortSignal.timeout(MARKITDOWN_TIMEOUT_MS),
-      });
-    } catch (error: any) {
-      if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
-        throw new Error(`Markitdown API Timeout nach ${MARKITDOWN_TIMEOUT_MS / 1000}s`);
-      }
-      throw error;
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Markitdown API error ${response.status}: ${errorText}`);
-    }
-
-    return await response.text();
+    return await convertDocument({ buffer: fileData, filename }, { timeoutMs: MARKITDOWN_TIMEOUT_MS });
   }
 
   /**

@@ -10,6 +10,7 @@ import type { ToolDefinition, ToolContext } from '../../../../tools/types';
 import type { ConnectionTool } from '../../../types';
 import { connectionRegistry } from '../../../registry';
 import { GMAIL_API_BASE } from '../config';
+import { convertDocument } from '../../../../services/documentConverter';
 
 /** MIME types that can be converted to text */
 const CONVERTIBLE_TYPES = new Set([
@@ -195,40 +196,11 @@ function findAttachments(
   }
 }
 
-/**
- * Convert document bytes to text via Markitdown API
- */
+/** Konvertierung laeuft zentral (W8) — inkl. JSON-oder-Text-Antwortbehandlung. */
 async function convertViaMarkitdown(
   fileBytes: Uint8Array,
   filename: string,
   mimeType: string
 ): Promise<string> {
-  const markitdownUrl = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-  const apiKey = process.env.ADACOR_AI_API_KEY || '';
-
-  const blob = new Blob([fileBytes], { type: mimeType });
-  const formData = new FormData();
-  formData.append('document', blob, filename);
-
-  const response = await fetch(markitdownUrl, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Markitdown conversion failed: ${response.status} - ${error}`);
-  }
-
-  // Markitdown API may return JSON or plain text depending on version
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    const result = await response.json() as { markdown?: string; text?: string; content?: string };
-    return result.markdown || result.text || result.content || '';
-  }
-  // Plain text response
-  return await response.text();
+  return await convertDocument({ buffer: Buffer.from(fileBytes), filename, mimeType });
 }

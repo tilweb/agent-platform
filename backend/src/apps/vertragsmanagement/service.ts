@@ -20,10 +20,7 @@ import {
   getSchema,
 } from './storage';
 import { analyzeContract, computeDerivedFields } from './extraction';
-
-// Markitdown API configuration
-const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
+import { convertDocument } from '../../services/documentConverter';
 
 // Supported MIME types
 const CONVERTIBLE_TYPES = [
@@ -39,29 +36,7 @@ const TEXT_TYPES = [
 
 // ============== Document Conversion ==============
 
-/**
- * Convert document to Markdown via Markitdown API
- */
-async function convertToMarkdown(filePath: string, filename: string): Promise<string> {
-  const file = Bun.file(filePath);
-  const formData = new FormData();
-  formData.append('document', file, filename);
-
-  const response = await fetch(MARKITDOWN_URL, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${MARKITDOWN_API_KEY}`,
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Markitdown API error ${response.status}: ${errorText}`);
-  }
-
-  return await response.text();
-}
+/** Konvertierung laeuft zentral (W8): Fetch, Allowlist, Timeout im documentConverter. */
 
 /**
  * Process uploaded file and extract text
@@ -78,19 +53,9 @@ async function processDocument(
     return fileBuffer.toString('utf-8');
   }
 
-  // PDF/Word - convert via Markitdown
+  // PDF/Word — zentraler Konverter (W8); der Temp-Datei-Umweg entfaellt.
   if (CONVERTIBLE_TYPES.includes(mimeType) || ['.pdf', '.doc', '.docx'].includes(ext)) {
-    // Save temporarily for Markitdown API
-    const tempPath = `/tmp/contract-${Date.now()}${ext}`;
-    await Bun.write(tempPath, fileBuffer);
-
-    try {
-      const markdown = await convertToMarkdown(tempPath, filename);
-      return markdown;
-    } finally {
-      // Clean up temp file
-      await Bun.$`rm -f ${tempPath}`.quiet();
-    }
+    return await convertDocument({ buffer: fileBuffer, filename });
   }
 
   throw new Error(`Nicht unterstützter Dateityp: ${mimeType || ext}`);

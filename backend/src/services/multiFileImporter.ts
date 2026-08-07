@@ -21,6 +21,7 @@
 import { llmService, type Message, createImageContent, type ContentPart } from './llm';
 import { resolveActiveModel } from './providers';
 import { OpenAIAdapter } from './llm/adapters/openai';
+import { convertDocument } from './documentConverter';
 
 // ============== Public Types ==============
 
@@ -77,8 +78,6 @@ export interface ProcessFilesOptions {
 
 // ============== Constants ==============
 
-const MARKITDOWN_URL = process.env.MARKITDOWN_API_URL || 'https://api.adacor.ai/v1/documentMarkdown/';
-const MARKITDOWN_API_KEY = process.env.ADACOR_AI_API_KEY || '';
 
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
 const TEXT_EXTENSIONS = ['.txt', '.md'];
@@ -166,25 +165,10 @@ async function processFile(
     return buffer.toString('utf-8');
   }
 
-  // Documents: Markitdown API
+  // Documents: zentraler Konverter (W8 — Markitdown, kuenftig Docling-Routing)
   if (DOCUMENT_EXTENSIONS.includes(ext)) {
-    console.log(`[${logPrefix}] Processing document via Markitdown: ${filename}`);
-    const blob = new Blob([buffer as unknown as BlobPart], { type: mimeType });
-    const formData = new FormData();
-    formData.append('document', blob, filename);
-
-    const response = await fetch(MARKITDOWN_URL, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${MARKITDOWN_API_KEY}` },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Markitdown-Konvertierung fehlgeschlagen für ${filename}: ${response.status} - ${errorText}`);
-    }
-
-    const text = await response.text();
+    console.log(`[${logPrefix}] Processing document via Konverter: ${filename}`);
+    const text = await convertDocument({ buffer, filename, mimeType });
     if (ext === '.xlsx' || ext === '.xls') {
       return reorderXlsxSheets(text);
     }

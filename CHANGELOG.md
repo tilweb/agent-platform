@@ -2,6 +2,23 @@
 
 ## 2026-08-08
 
+### Welle 8: Ein Dokument-Konverter statt neun Kopien — Docling-vorbereitet
+Der Markitdown-HTTP-Call war ~9x kopiert (Chat-Anhaenge, Importe, KB-Indexierung, Vertrags-
+management, Document Processing, Gmail/GDrive), mit SSRF-Allowlist an nur 2 und Timeout an nur 1
+der 9 Stellen. Jetzt zentral in `services/documentConverter.ts`:
+- **Ein Fetch, EINE Allowlist (adacor.ai/localhost), ein Timeout (120s)**, zentrale MIME-Erkennung
+  und JSON-oder-Text-Antwortbehandlung. Live geprueft: Scan konvertiert unveraendert; eine
+  Allowlist-fremde URL wird jetzt an JEDER Stelle abgewiesen. VM- und Profil-Generierung verlieren
+  ihren Temp-Datei-Umweg.
+- **Docling-Routing eingebaut** (aktiv per `DOCLING_API_URL`, Adacor-Endpunkt mit demselben
+  Vertrag wie documentMarkdown): Office/HTML/CSV → Docling, PDF mit Textlayer (pdftotext-
+  Stichprobe) → Docling, Scans → wie bisher (Vision-Pfad; Docling-OCR ist auf Scans schwach).
+  Jeder Docling-Fehler faellt einzeln auf Markitdown zurueck.
+- **Benchmark-Werkzeug** `tools/konverter-benchmark/` mit gemessener Markitdown-Baseline — die
+  born-digitale PM-Spezifikation kommt heute mit 0 Tabellenzeilen/0 Ueberschriften zurueck; der
+  Docling-Vergleich laeuft mit demselben Aufruf, sobald der Endpunkt steht.
+- 6 neue Tests (281 gruen), inkl. handgebautem born-digital-PDF fuer die Textlayer-Erkennung.
+
 ### Welle 7: Vertrauen & Grounding — OCR-Fusion, erzwungenes JSON, deterministisches Sampling
 Ergebnis der kritischen Standortbestimmung gegen Mistral Document AI, Azure Document Intelligence
 und Docling (docs/document-processing-standortbestimmung-2026-08-08.md). Die messbare Luecke war
