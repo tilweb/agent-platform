@@ -331,7 +331,7 @@ export async function routePart(
   if (!part) throw new Error('Teil nicht gefunden');
   if (part.status !== 'unassigned') throw new Error('Teil ist bereits zugeordnet');
   const project = await getProject(projectId);
-  if (!project) throw new Error(`Projekt "${projectId}" nicht gefunden`);
+  if (!project) throw new Error(`Profil "${projectId}" nicht gefunden`);
 
   // Bytes: eigenes Teil-PDF, sonst Original (Ein-Teil-Uploads).
   let buffer = await getPartPdf(uploadId, partId);

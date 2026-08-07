@@ -92,7 +92,7 @@ extractionInboxRoutes.post('/inbox/:id/parts/:partId/route', async (c) => {
     return c.json({ error: 'project_id erforderlich' }, 400);
   }
   const project = await getProject(projectId);
-  if (!project) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+  if (!project) return c.json({ error: 'Profil nicht gefunden' }, 404);
 
   try {
     const result = await routePart(uploadId, partId, projectId);

@@ -66,7 +66,7 @@ extractionProjectRoutes.get('/projects', async (c) => {
 extractionProjectRoutes.get('/projects/:id', async (c) => {
   const project = await getProject(c.req.param('id'));
   if (!project) {
-    return c.json({ error: 'Projekt nicht gefunden' }, 404);
+    return c.json({ error: 'Profil nicht gefunden' }, 404);
   }
   return c.json(project);
 });
@@ -121,7 +121,7 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
     // Regeln referenzieren Feld-IDs — gegen den kuenftigen Feldstand pruefen
     // (mitgesendete Felder, sonst die bestehenden).
     const existing = await getProject(id);
-    if (!existing) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+    if (!existing) return c.json({ error: 'Profil nicht gefunden' }, 404);
     const effectiveFields = body.fields ?? existing.fields;
     const effectiveRules = body.rules !== undefined ? body.rules : existing.rules;
     const ruleError = validateProjectRules(effectiveFields, effectiveRules);
@@ -158,7 +158,7 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
   });
 
   if (!updated) {
-    return c.json({ error: 'Projekt nicht gefunden' }, 404);
+    return c.json({ error: 'Profil nicht gefunden' }, 404);
   }
 
   return c.json(updated);
@@ -170,7 +170,7 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
 extractionProjectRoutes.delete('/projects/:id', async (c) => {
   const deleted = await deleteProject(c.req.param('id'));
   if (!deleted) {
-    return c.json({ error: 'Projekt nicht gefunden' }, 404);
+    return c.json({ error: 'Profil nicht gefunden' }, 404);
   }
   return c.json({ success: true });
 });
@@ -256,7 +256,7 @@ extractionProjectRoutes.get('/projects/:id/export', async (c) => {
   const projectId = c.req.param('id');
   const includeExamples = c.req.query('examples') === 'true';
   const bundle = await exportProject(projectId, includeExamples);
-  if (!bundle) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+  if (!bundle) return c.json({ error: 'Profil nicht gefunden' }, 404);
   const filename = `${projectId}${includeExamples ? '-mit-beispielen' : ''}.extraction.json`;
   return c.body(JSON.stringify(bundle, null, 2), 200, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -410,7 +410,7 @@ const FIELD_TYPE_TO_COLUMN: Record<ProjectField['type'], ColumnType> = {
 extractionProjectRoutes.post('/projects/:id/batches', async (c) => {
   const projectId = c.req.param('id');
   const project = await getProject(projectId);
-  if (!project) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+  if (!project) return c.json({ error: 'Profil nicht gefunden' }, 404);
 
   const contentType = c.req.header('content-type') || '';
   if (!contentType.includes('multipart/form-data')) {
@@ -573,7 +573,7 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c
   const format: ExportFormat = c.req.query('format') === 'flat' ? 'flat' : 'grouped';
 
   const project = await getProject(projectId);
-  if (!project) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+  if (!project) return c.json({ error: 'Profil nicht gefunden' }, 404);
   const result = await getBatchRun(projectId, runId);
   if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
 
@@ -605,7 +605,7 @@ extractionProjectRoutes.post('/projects/:id/batches/:runId/to-table', async (c) 
   const projectId = c.req.param('id');
   const runId = c.req.param('runId');
   const project = await getProject(projectId);
-  if (!project) return c.json({ error: 'Projekt nicht gefunden' }, 404);
+  if (!project) return c.json({ error: 'Profil nicht gefunden' }, 404);
   const result = await getBatchRun(projectId, runId);
   if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
 

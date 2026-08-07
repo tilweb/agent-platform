@@ -1,9 +1,34 @@
-# Fachkonzept: Dokumenten-Extraktion (Feature + Pipeline)
+# Fachkonzept: Document Processing (Feature + Pipeline)
 
-**Datum:** 2026-07-27
+**Datum:** 2026-07-27 · Benennung aktualisiert 2026-08-07
 **Autor:** Andreas Bachmann
 **Adressat:** Produkt-/Dev-Team, Fachanwender
 **Status:** Fachkonzept / technische Referenz zum bestehenden Feature
+
+---
+
+## 0. Benennung (Stand 2026-08-07)
+
+Das Feature hieß bis dahin „Extraktion". Der Begriff benannte den *Schritt*, nicht das *Ergebnis*,
+und musste gleichzeitig für die App, den Vorgang und das Konfigurationsobjekt herhalten — daran ist
+er gescheitert. Ebenso verworfen: „OCR" (zu klein — OCR ist Pixel → Zeichen; Tesseract läuft hier
+nur für die Fundstellen-Rahmen) und „Document Intelligence" (Anbieter-Label von Azure).
+
+| Ebene | Begriff | Anmerkung |
+|---|---|---|
+| App | **Document Processing** | so auch in der Sidebar |
+| Untertitel | Dokumente automatisch auslesen, prüfen und weitergeben | |
+| Konfiguration je Absender/Belegart | **Profil** | vorher „Extraktionsprojekt" |
+| der Vorgang | **auslesen** / Lauf | vorher „Extraktion" |
+| Eingangsstrecke | **Posteingang** | unverändert |
+| Code, Module, API-Scopes (`app:extraktion:*`), Parameter (`project_id`) | unverändert | veröffentlichter Vertrag; `extraction`/`project` bleiben die technischen Namen |
+
+Warum nicht „Dokumentart": Bei Ehinger sind alle vier Objekte dieselbe Dokumentart — vier Mal
+Lieferschein, nur von vier Absendern mit vier Layouts. Geschnitten sind sie danach, *wie* die Post
+eines Absenders gelesen wird; genau das benennt „Profil".
+
+Dieses Dokument benutzt in den technischen Kapiteln weiter `ExtractionProject`, `extraction/…` usw.,
+weil es dort Code-Entitäten beschreibt. Umbenannt wurde, was Menschen in der Oberfläche lesen.
 
 ---
 
@@ -102,9 +127,9 @@ das Extraktions-Projekte-Feature ist die generische, anlernbare Variante.
 
 ---
 
-## 4. Datenmodell: das Extraktionsprojekt
+## 4. Datenmodell: das Profil (Code: `ExtractionProject`)
 
-Ein Projekt ist eine **flache** Feldliste plus Lern-Zustand
+Ein Profil ist eine **flache** Feldliste plus Lern-Zustand
 (`extraction/learning/types.ts`):
 
 ```

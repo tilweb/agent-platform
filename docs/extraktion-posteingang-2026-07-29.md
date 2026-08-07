@@ -5,6 +5,8 @@
 **Plan-Referenz:** `.claude/plans/dapper-wondering-oasis.md` (5-Wellen-Roadmap, W4)
 **Fachkonzept:** `docs/fachkonzept-dokumenten-extraktion-2026-07-27.md` §14
 
+> **Benennung:** Dieses Dokument stammt aus der Zeit vor der Umbenennung (2026-08-07). Die App heißt inzwischen **Document Processing**, das frühere „Extraktionsprojekt" heißt **Profil**, der Vorgang „auslesen". Code, Module und API-Scopes sind unverändert. Siehe `docs/fachkonzept-dokumenten-extraktion-2026-07-27.md` §0.
+
 ## Kontext
 
 Bisher galt: ein Projekt = ein Dokumenttyp, und der Anwender ordnet manuell zu. Der reale

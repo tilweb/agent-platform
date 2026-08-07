@@ -1,5 +1,59 @@
 # Changelog
 
+## 2026-08-07
+
+### UI: "Verarbeiten" — kompakte Kopfleiste + Vollbild-Review je Dokument
+Der Bereich stapelte Upload, Lauf-Liste, Ergebnistabelle und das aufgeklappte Dokument in EINER
+Spalte: die Seite wuchs mit jedem Lauf, und fuer Vorschau plus Positionstabelle blieb eine
+Restspalte (Beschreibungen abgeschnitten).
+- **Kopfleiste statt zwei Sektionen:** Laeufe sind jetzt eine Auswahlliste (Zeitpunkt, Umfang,
+  Status), der Upload klappt auf Knopfdruck auf — beim ersten Mal offen. Der Kopf bleibt damit
+  gleich hoch, egal wie viele Laeufe es gibt. Der **neueste Lauf wird automatisch geoeffnet**.
+- **Vollbild-Review:** Klick auf eine Zeile oeffnet das Dokument als Overlay — links die Seite gross
+  mit den Fundstellen-Rahmen und einer Miniaturen-Leiste, rechts die Felder mit Platz.
+  Esc schliesst, Pfeiltasten blaettern durch die **gefilterte** Liste (auf "Zu pruefen" gefiltert
+  geht man genau die Problemfaelle durch), Klick auf ein Feld springt zur Fundstelle, Klick auf
+  eine Box springt zum Feld.
+- **Unsichere Felder zuerst:** Felder unter der Review-Schwelle des Profils stehen im Review oben
+  unter "Unsicher — zuerst pruefen", der Rest darunter. Geprueft wird dort, wo das Risiko sitzt.
+- Die Detailansicht in der Tabellenzeile entfaellt damit (`BatchFileDetail` → `ReviewModal`).
+
+### UI: Profil-Detail nach Betrieb und Einrichtung getrennt
+Die vier gleichrangigen Reiter (Training · Verarbeiten · Regeln · Einstellungen) verschwiegen, dass
+sie zwei verschiedene Dinge sind: **Verarbeiten** ist der taegliche Betrieb, alles andere richtet man
+einmal ein. Jetzt eine senkrechte Navigation mit zwei Gruppen — Muster 1:1 von der Einstellungsseite
+uebernommen (240er Spalte, Gruppenueberschriften, gleiche Aktiv-/Hover-Styles):
+- **BETRIEB** → Verarbeiten · **EINRICHTUNG** → Training · Regeln & Qualitaet · Einstellungen
+- **Der Einstieg ist jetzt „Verarbeiten"** statt „Training". Ein eingerichtetes Profil wird taeglich
+  zum Verarbeiten geoeffnet; das Anlernen ist der seltene Fall.
+- **Alle Regeln an einem Ort:** Die selbst definierten **Pruefregeln** lagen bisher unter
+  „Einstellungen", die aus Korrekturen **gelernten Regeln** unter „Regeln" — zwei Regelarten an zwei
+  Orten. Der Pruefregel-Editor ist jetzt im Bereich „Regeln & Qualitaet", mit eigenem
+  Speichern-Button (Teil-Update `PUT {rules}`).
+- Verifiziert an der laufenden Instanz, beide Richtungen: Das Regel-Update laesst Felder,
+  Anweisungen, Name und Strategie unveraendert; und eine bestehende Regel ueberlebt das Speichern in
+  den Einstellungen, das `rules` bewusst nicht mehr mitsendet.
+- Die Hinweise im Regel-Editor („lege oben ein Feld an") zeigten nach dem Umzug ins Leere und
+  verweisen jetzt auf „Einstellungen".
+
+### Umbenennung: "Extraktion" heisst jetzt "Document Processing", das Projekt heisst "Profil"
+Der alte Name benannte den *Schritt*, nicht das *Ergebnis*, und musste zugleich fuer die App, den
+Vorgang und das Konfigurationsobjekt herhalten — daran ist er gescheitert. Ebenfalls verworfen:
+"OCR" (zu klein — OCR ist Pixel → Zeichen; Tesseract laeuft hier nur fuer die Fundstellen-Rahmen)
+und "Document Intelligence" (Anbieter-Label von Azure).
+- **App: Document Processing** (so auch in der Sidebar), Untertitel „Dokumente automatisch auslesen,
+  pruefen und weitergeben".
+- **Profil** statt „Extraktionsprojekt". Warum nicht „Dokumentart": Bei Ehinger sind alle vier
+  Objekte dieselbe Dokumentart — vier Mal Lieferschein, nur von vier Absendern mit vier Layouts.
+  Geschnitten sind sie danach, *wie* die Post eines Absenders gelesen wird.
+- **auslesen** statt „extrahieren" als Vorgang; „Posteingang" bleibt.
+- Umbenannt wurde nur, was Menschen lesen: 44 Strings in der Oberflaeche, der Sidebar-Eintrag und
+  elf deutsche Fehlermeldungen des Backends, die in der UI erscheinen. **Code, Modulpfade,
+  API-Scopes (`app:extraktion:*`), Function-Ids und Parameter (`project_id`) bleiben unveraendert** —
+  das ist ein veroeffentlichter Vertrag, an dem die EMMA-Anbindung haengt.
+- Die Benennung ist als §0 im Fachkonzept dokumentiert; die beiden aelteren, datierten Dokumente
+  tragen einen Verweis darauf, statt nachtraeglich umgeschrieben zu werden.
+
 ## 2026-08-06
 
 ### WZ-Branchen-Matcher: Katalog auf WZ 2025 aktualisiert (Führungsnullen-Fix + 7-stellige Codes)
