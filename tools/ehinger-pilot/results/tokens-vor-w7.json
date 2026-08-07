@@ -4,19 +4,19 @@
     "lieferant": "ehinger-pilot-sonepar",
     "seiten": 1,
     "positionen": 3,
-    "aufrufe": 3,
-    "prompt_tokens": 8300,
-    "completion_tokens": 496,
-    "total_tokens": 8796,
+    "aufrufe": 4,
+    "prompt_tokens": 8602,
+    "completion_tokens": 520,
+    "total_tokens": 9122,
     "klassifikation": {
       "aufrufe": 1,
       "prompt": 2728,
       "completion": 36
     },
     "extraktion": {
-      "aufrufe": 2,
-      "prompt": 5572,
-      "completion": 460
+      "aufrufe": 3,
+      "prompt": 5874,
+      "completion": 484
     },
     "einzeln": [
       {
@@ -28,11 +28,15 @@
         "completion": 450
       },
       {
+        "prompt": 302,
+        "completion": 24
+      },
+      {
         "prompt": 749,
         "completion": 10
       }
     ],
-    "dauerMs": 11828
+    "dauerMs": 16501
   },
   {
     "beleg": "1899_001",
@@ -40,9 +44,9 @@
     "seiten": 1,
     "positionen": 1,
     "aufrufe": 4,
-    "prompt_tokens": 8182,
-    "completion_tokens": 265,
-    "total_tokens": 8447,
+    "prompt_tokens": 8323,
+    "completion_tokens": 299,
+    "total_tokens": 8622,
     "klassifikation": {
       "aufrufe": 1,
       "prompt": 2728,
@@ -50,8 +54,8 @@
     },
     "extraktion": {
       "aufrufe": 3,
-      "prompt": 5454,
-      "completion": 229
+      "prompt": 5595,
+      "completion": 263
     },
     "einzeln": [
       {
@@ -63,34 +67,34 @@
         "completion": 204
       },
       {
-        "prompt": 236,
-        "completion": 15
+        "prompt": 377,
+        "completion": 49
       },
       {
         "prompt": 395,
         "completion": 10
       }
     ],
-    "dauerMs": 11037
+    "dauerMs": 10547
   },
   {
     "beleg": "1900_001",
     "lieferant": "ehinger-pilot-unielektro",
     "seiten": 3,
     "positionen": 10,
-    "aufrufe": 5,
-    "prompt_tokens": 18996,
-    "completion_tokens": 1549,
-    "total_tokens": 20545,
+    "aufrufe": 6,
+    "prompt_tokens": 19245,
+    "completion_tokens": 1561,
+    "total_tokens": 20806,
     "klassifikation": {
       "aufrufe": 1,
       "prompt": 2728,
       "completion": 37
     },
     "extraktion": {
-      "aufrufe": 4,
-      "prompt": 16268,
-      "completion": 1512
+      "aufrufe": 5,
+      "prompt": 16517,
+      "completion": 1524
     },
     "einzeln": [
       {
@@ -110,11 +114,15 @@
         "completion": 958
       },
       {
+        "prompt": 249,
+        "completion": 12
+      },
+      {
         "prompt": 2096,
         "completion": 10
       }
     ],
-    "dauerMs": 22242
+    "dauerMs": 21576
   },
   {
     "beleg": "1903_001",
@@ -185,9 +193,9 @@
     "seiten": 2,
     "positionen": 8,
     "aufrufe": 5,
-    "prompt_tokens": 14236,
-    "completion_tokens": 1204,
-    "total_tokens": 15440,
+    "prompt_tokens": 14280,
+    "completion_tokens": 1215,
+    "total_tokens": 15495,
     "klassifikation": {
       "aufrufe": 1,
       "prompt": 2728,
@@ -195,8 +203,8 @@
     },
     "extraktion": {
       "aufrufe": 4,
-      "prompt": 11508,
-      "completion": 1168
+      "prompt": 11552,
+      "completion": 1179
     },
     "einzeln": [
       {
@@ -212,15 +220,15 @@
         "completion": 954
       },
       {
-        "prompt": 236,
-        "completion": 15
+        "prompt": 280,
+        "completion": 26
       },
       {
         "prompt": 1666,
         "completion": 10
       }
     ],
-    "dauerMs": 17804
+    "dauerMs": 19132
   },
   {
     "beleg": "2919_001",

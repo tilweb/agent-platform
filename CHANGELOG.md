@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-08-08
+
+### Welle 7: Vertrauen & Grounding — OCR-Fusion, erzwungenes JSON, deterministisches Sampling
+Ergebnis der kritischen Standortbestimmung gegen Mistral Document AI, Azure Document Intelligence
+und Docling (docs/document-processing-standortbestimmung-2026-08-08.md). Die messbare Luecke war
+pixel-verankertes Vertrauen — die Feld-Konfidenz stand auf Heuristik + LLM-Selbsteinschaetzung.
+- **OCR-Fusion** (services/extraction/fusion.ts): Die Tesseract-Woerter (bisher nur Fundstellen-
+  Rahmen) verifizieren jetzt jeden Wert. Belegt → Konfidenz 0.95, LLM-Konfidenz-Call entfaellt;
+  zahlenartig unbelegt → Konfidenz 0.4 + Befund "im OCR-Text nicht belegt" → "Zu pruefen".
+  Zahl-Zellen numerisch verglichen (Papier "5,00" ↔ Modell 5). **Positionszeilen bekommen
+  Fundstellen-Boxen** (Anker = ziffernhaltiger Zellwert, Bande durch Nachbar-Anker begrenzt,
+  identische Artikelnummern der Reihe nach). Null-Mengen bewusst nicht pruefbar (leere Zelle).
+- **Serverseitig erzwungenes JSON** im Vision-Pfad: response_format json_schema am Adacor-vLLM
+  verifiziert (erzwingt auch gegen Prosa-Prompt, laeuft mit Bild in ~2s ohne Haenger; das nackte
+  guided_json-Feld wird still ignoriert). Nullbare Typen je Feld — das Function-Schema haette beim
+  Guided Decode Werte fuer unsichtbare Felder erzwungen. Kill-Switch EXTRACTION_GUIDED_JSON=0.
+- **temperature 0 + max_tokens 8192** fuer ALLE Extraktions-Calls (vorher: Server-Default-Temperatur,
+  kein Limit). Chat-Pfad unveraendert.
+- **Stille Fehler sind jetzt Befunde:** uebersprungene Seite, unlesbare Modellantwort, gekappte
+  Seiten (max_pages) → severity error → erzwungenes "Zu pruefen". Vorher nur console.warn.
+- **Hybrid repariert:** Scan ohne Textlayer routet direkt in die volle vision-per-page-Strategie
+  (3 statt 5+ Calls, mit Boxen/Seitenbildern); Vision-Fallback respektiert jetzt die Modellbindung
+  (lief vorher auf dem Session-Modell!), feuert erst ab 2 offenen Feldern, Pauschal-0.85 ersetzt
+  durch das Fusion-Urteil.
+- **Regression auf allen 24 Ehinger-Belegen:** Qualitaet unveraendert 100 % (39/39 Positionen,
+  12/12 Kopffelder), 17,7 statt 20,3 s je Beleg. Triage 18 auto_ok / 5 zu pruefen — die 5 sind
+  genau die richtigen: beide Handschrift-Belege (vorher stille auto_oks!), der Stempel-Beleg,
+  eine fremde Einheit, eine unsichere Liste. 17 neue Tests (299 gruen).
+
 ## 2026-08-07
 
 ### UI: "Verarbeiten" — kompakte Kopfleiste + Vollbild-Review je Dokument

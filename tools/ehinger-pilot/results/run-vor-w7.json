@@ -7,7 +7,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 17219,
+    "dauerMs": 17832,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -75,7 +75,7 @@
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 0.7,
         "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 1,
         "positionen": 1
@@ -91,14 +91,13 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 12783,
+    "dauerMs": 17262,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
       "data": {
         "lieferdatum": "2024-12-19",
         "lieferscheinnummer": "56294390",
-        "handschriftliche_aenderung": false,
         "positionen": [
           {
             "einheit": "ST",
@@ -130,10 +129,10 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
+        "lieferdatum": 1,
         "referenznummer": 0,
-        "lieferscheinnummer": 0.95,
-        "handschriftliche_aenderung": 0.7,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 0,
         "positionen": 1
       },
       "validations": []
@@ -147,7 +146,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 9543,
+    "dauerMs": 11658,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -168,9 +167,9 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
-        "referenznummer": 0.95,
-        "lieferscheinnummer": 0.95,
+        "lieferdatum": 1,
+        "referenznummer": 1,
+        "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 0,
         "positionen": 1
       },
@@ -185,7 +184,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 19815,
+    "dauerMs": 19509,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -289,7 +288,7 @@
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 0.7,
         "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 1,
         "positionen": 1
@@ -305,7 +304,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 17126,
+    "dauerMs": 17559,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -409,7 +408,7 @@
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 0.7,
         "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 1,
         "positionen": 1
@@ -425,7 +424,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 11895,
+    "dauerMs": 13390,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -433,7 +432,6 @@
         "lieferdatum": "2025-02-06",
         "referenznummer": "0275484",
         "lieferscheinnummer": "663048405",
-        "handschriftliche_aenderung": false,
         "positionen": [
           {
             "einheit": "M",
@@ -447,10 +445,10 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
-        "referenznummer": 0.95,
-        "lieferscheinnummer": 0.95,
-        "handschriftliche_aenderung": 0.7,
+        "lieferdatum": 1,
+        "referenznummer": 1,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 0,
         "positionen": 1
       },
       "validations": []
@@ -464,7 +462,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 10687,
+    "dauerMs": 13158,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -494,9 +492,9 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
-        "referenznummer": 0.95,
-        "lieferscheinnummer": 0.95,
+        "lieferdatum": 1,
+        "referenznummer": 1,
+        "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 0,
         "positionen": 1
       },
@@ -520,7 +518,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 22446,
+    "dauerMs": 25785,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -533,7 +531,7 @@
           {
             "einheit": "ST",
             "lagerplatz": null,
-            "beschreibung": "GIRA 445303 SCHUKO-Steckdose m.Shutter System 55 Reinweiß glänzend Lief-Art.Nr. 445303 Lagerware",
+            "beschreibung": "GIRA 445303 SCHUKO-Steckdose m.Shutter System 55 Reinweiß glänzend\nLief-Art.Nr. 445303\nLagerware",
             "artikelnummer": "6915115",
             "menge_bestellt": 58,
             "menge_geliefert": 58,
@@ -542,7 +540,7 @@
           {
             "einheit": "ST",
             "lagerplatz": null,
-            "beschreibung": "GIRA 245927 SCHUKO-Steckdose Shutter USB 2f Typ A/C System 55 Reinweiß seiden Lief-Art.Nr. 245927 Lagerware",
+            "beschreibung": "GIRA 245927 SCHUKO-Steckdose Shutter USB 2f Typ A/C System 55 Reinweiß seiden\nLief-Art.Nr. 245927\nLagerware",
             "artikelnummer": "5958732",
             "menge_bestellt": 15,
             "menge_geliefert": 14,
@@ -551,7 +549,7 @@
           {
             "einheit": "ST",
             "lagerplatz": null,
-            "beschreibung": "GIRA 441403 SCHUKO-Steckdose KD+Shutter System 55 Reinweiß glänzend Lief-Art.Nr. 441403 Lagerware",
+            "beschreibung": "GIRA 441403 SCHUKO-Steckdose KD+Shutter System 55 Reinweiß glänzend\nLief-Art.Nr. 441403\nLagerware",
             "artikelnummer": "6915089",
             "menge_bestellt": 5,
             "menge_geliefert": 5,
@@ -560,7 +558,7 @@
           {
             "einheit": "ST",
             "lagerplatz": null,
-            "beschreibung": "GIRA 021112 Abdeckrahmen 1fach Esprit Glas Weiß Lief-Art.Nr. 021112 Lagerware",
+            "beschreibung": "GIRA 021112 Abdeckrahmen 1fach Esprit Glas Weiß\nLief-Art.Nr. 021112\nLagerware",
             "artikelnummer": "0164097",
             "menge_bestellt": 23,
             "menge_geliefert": 23,
@@ -569,7 +567,7 @@
           {
             "einheit": "ST",
             "lagerplatz": null,
-            "beschreibung": "GIRA 021212 Abdeckrahmen 2fach Esprit Glas Weiß Lief-Art.Nr. 021212 Lagerware",
+            "beschreibung": "GIRA 021212 Abdeckrahmen 2fach Esprit Glas Weiß\nLief-Art.Nr. 021212\nLagerware",
             "artikelnummer": "0164166",
             "menge_bestellt": 26,
             "menge_geliefert": 26,
@@ -578,7 +576,7 @@
           {
             "einheit": "ST",
             "lagerplatz": null,
-            "beschreibung": "GIRA 021312 Abdeckrahmen 3fach Esprit Glas Weiß Lief-Art.Nr. 021312 Lagerware",
+            "beschreibung": "GIRA 021312 Abdeckrahmen 3fach Esprit Glas Weiß\nLief-Art.Nr. 021312\nLagerware",
             "artikelnummer": "0164253",
             "menge_bestellt": 3,
             "menge_geliefert": 3,
@@ -587,7 +585,7 @@
           {
             "einheit": "ST",
             "lagerplatz": null,
-            "beschreibung": "GIRA 021412 Abdeckrahmen 4fach Esprit Glas Weiß Lief-Art.Nr. 021412 Lagerware",
+            "beschreibung": "GIRA 021412 Abdeckrahmen 4fach Esprit Glas Weiß\nLief-Art.Nr. 021412\nLagerware",
             "artikelnummer": "0164254",
             "menge_bestellt": 1,
             "menge_geliefert": 1,
@@ -705,10 +703,10 @@
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 1,
         "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 0.3,
-        "positionen": 0.3
+        "positionen": 0.7
       },
       "validations": [
         {
@@ -738,14 +736,6 @@
         {
           "severity": "info",
           "message": "\"Positionen · Einheit (Position 7)\": Wert \"Stück\" auf den Katalogwert \"ST\" angeglichen."
-        },
-        {
-          "severity": "warn",
-          "message": "Positionen, Zeile 18, Menge bestellt: Wert \"5\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
-        },
-        {
-          "severity": "warn",
-          "message": "Positionen, Zeile 18, Menge geliefert: Wert \"5\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
         }
       ]
     }
@@ -758,11 +748,11 @@
       "confidence": 0,
       "alternatives": [
         {
-          "project_id": "ehinger-pilot-sonepar",
+          "project_id": "ehinger-pilot-unielektro",
           "confidence": 0
         },
         {
-          "project_id": "ehinger-pilot-unielektro",
+          "project_id": "ehinger-pilot-sonepar",
           "confidence": 0
         },
         {
@@ -771,7 +761,7 @@
         }
       ]
     },
-    "dauerMs": 2837
+    "dauerMs": 2806
   },
   {
     "beleg": "1906_001",
@@ -781,7 +771,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 17415,
+    "dauerMs": 21803,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -839,7 +829,7 @@
             "artikelnummer": "6 1191810",
             "menge_bestellt": 30,
             "menge_geliefert": 30,
-            "positionsnummer": null
+            "positionsnummer": "6"
           },
           {
             "einheit": "ST",
@@ -849,7 +839,7 @@
             "artikelnummer": "7 4699027",
             "menge_bestellt": 50,
             "menge_geliefert": 50,
-            "positionsnummer": null
+            "positionsnummer": "7"
           },
           {
             "einheit": "ST",
@@ -859,13 +849,13 @@
             "artikelnummer": "8 4699028",
             "menge_bestellt": 50,
             "menge_geliefert": 50,
-            "positionsnummer": null
+            "positionsnummer": "8"
           }
         ]
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 0.7,
         "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 1,
         "positionen": 1
@@ -910,7 +900,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 22150,
+    "dauerMs": 25784,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -965,7 +955,7 @@
             "lagerplatz": null,
             "rueckstand": 0,
             "beschreibung": "HAGER SLS-Schalter E 3p HTS350E Sammelsch 50A 230V Ursprungsland: FR Zoll-Tarif-Nr.: 85365080 HTS350E",
-            "artikelnummer": "1275372",
+            "artikelnummer": "5 1275372",
             "menge_bestellt": 1,
             "menge_geliefert": 1,
             "positionsnummer": "5"
@@ -975,7 +965,7 @@
             "lagerplatz": null,
             "rueckstand": 0,
             "beschreibung": "HAGER Sammelschienenklemme K96A 65A 16qmm 5/12mm B10,7mm Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 K96A",
-            "artikelnummer": "1214035",
+            "artikelnummer": "6 1214035",
             "menge_bestellt": 2,
             "menge_geliefert": 2,
             "positionsnummer": "6"
@@ -985,7 +975,7 @@
             "lagerplatz": null,
             "rueckstand": 0,
             "beschreibung": "HAGER Einspeiseadapter K96ESA5 201x23mm ws Ursprungsland: DE Zoll-Tarif-Nr.: 85389099 K96ESA5",
-            "artikelnummer": "2147787",
+            "artikelnummer": "7 2147787",
             "menge_bestellt": 1,
             "menge_geliefert": 1,
             "positionsnummer": "7"
@@ -995,7 +985,7 @@
             "lagerplatz": null,
             "rueckstand": 0,
             "beschreibung": "HAGER Steckerstifte KJ03Z 45mm Ursprungsland: DE Zoll-Tarif-Nr.: 74198090 KJ03Z",
-            "artikelnummer": "1214141",
+            "artikelnummer": "8 1214141",
             "menge_bestellt": 1,
             "menge_geliefert": 1,
             "positionsnummer": "8"
@@ -1005,7 +995,7 @@
             "lagerplatz": null,
             "rueckstand": 0,
             "beschreibung": "HAGER Leitungsschutzschalter AC MB199 B 6A 1p 415V 1TE 50Hz Ursprungsland: PL Zoll-Tarif-Nr.: 85363010 MB199",
-            "artikelnummer": "1275029",
+            "artikelnummer": "9 1275029",
             "menge_bestellt": 2,
             "menge_geliefert": 2,
             "positionsnummer": "9"
@@ -1104,10 +1094,10 @@
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 0.7,
         "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 1,
-        "positionen": 0.4
+        "positionen": 1
       },
       "validations": [
         {
@@ -1181,14 +1171,6 @@
         {
           "severity": "info",
           "message": "\"Positionen · Einheit (Position 18)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
-        },
-        {
-          "severity": "warn",
-          "message": "Positionen, Zeile 5, Menge bestellt: Wert \"1\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
-        },
-        {
-          "severity": "warn",
-          "message": "Positionen, Zeile 5, Menge geliefert: Wert \"1\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
         }
       ]
     }
@@ -1201,7 +1183,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 14982,
+    "dauerMs": 14950,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -1234,10 +1216,10 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
-        "referenznummer": 0.95,
-        "lieferscheinnummer": 0.95,
-        "handschriftliche_aenderung": 0.7,
+        "lieferdatum": 1,
+        "referenznummer": 1,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
         "positionen": 1
       },
       "validations": [
@@ -1260,7 +1242,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 11534,
+    "dauerMs": 13855,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -1274,7 +1256,7 @@
             "einheit": "ST",
             "lagerplatz": null,
             "rueckstand": 0,
-            "beschreibung": "KNIPLEX Kabelmesser 38mm 98 55 Sichel Kst 1000V Ursprungsland: DE Zoll-Tarif-Nr.: 82119200 Ausschreibungspos.: 1 98 55",
+            "beschreibung": "KNIPEX Kabelmesser 38mm 98 55 Sichel Kst 1000V Ursprungsland: DE Zoll-Tarif-Nr.: 82119200 Ausschreibungpos.: 1 98 55",
             "artikelnummer": "4851499",
             "menge_bestellt": 3,
             "menge_geliefert": 3,
@@ -1284,7 +1266,7 @@
             "einheit": "ST",
             "lagerplatz": null,
             "rueckstand": 0,
-            "beschreibung": "KNIPLEX Rohrschneider Ø20-50mm 90 22 10 BK Kst Ursprungsland: DE Zoll-Tarif-Nr.: 82034000 Ausschreibungspos.: 2 90 22 10 BK",
+            "beschreibung": "KNIPEX Rohrschneider Ø20-50mm 90 22 10 BK Kst Ursprungsland: DE Zoll-Tarif-Nr.: 82034000 Ausschreibungpos.: 2 90 22 10 BK",
             "artikelnummer": "3952942",
             "menge_bestellt": 3,
             "menge_geliefert": 0,
@@ -1293,10 +1275,10 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
-        "referenznummer": 0.95,
-        "lieferscheinnummer": 0.95,
-        "handschriftliche_aenderung": 0.7,
+        "lieferdatum": 1,
+        "referenznummer": 1,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
         "positionen": 1
       },
       "validations": [
@@ -1319,7 +1301,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 54186,
+    "dauerMs": 56371,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -1520,7 +1502,7 @@
           {
             "einheit": "ST",
             "lagerplatz": "S-BSP",
-            "beschreibung": "BUSCH-JAEGER 2520-214\nWippe offen für Symbol\nPosition 25\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 250\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "beschreibung": "BUSCH-JAEGER 2520-214\nWippe offen für Symbol\nPosition 25\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 250\nReferenznummer 0276280\nKommission für Auftrag 204220777: 32507700.13",
             "artikelnummer": "02001847",
             "menge_bestellt": 1,
             "menge_geliefert": 1,
@@ -1529,7 +1511,7 @@
           {
             "einheit": "M",
             "lagerplatz": "P-CFK",
-            "beschreibung": "HAGER BR6513019016\nBrüstungskanal-Unterteil verkehrsweiß\nPosition 26\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 260\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "beschreibung": "HAGER BR6513019016\nBrüstungskanal-Unterteil verkehrsweiß\nPosition 26\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 260\nReferenznummer 0276280\nKommission für Auftrag 204220777: 32507700.13",
             "artikelnummer": "01342379",
             "menge_bestellt": 4,
             "menge_geliefert": 4,
@@ -1538,7 +1520,7 @@
           {
             "einheit": "M",
             "lagerplatz": "P-CFK",
-            "beschreibung": "HAGER BR08029016\nBrüstungskanal-Oberteil verkehrsweiß\nPosition 27\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 270\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "beschreibung": "HAGER BR08029016\nBrüstungskanal-Oberteil verkehrsweiß\nPosition 27\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 270\nReferenznummer 0276280\nKommission für Auftrag 204220777: 32507700.13",
             "artikelnummer": "01342377",
             "menge_bestellt": 4,
             "menge_geliefert": 4,
@@ -1547,7 +1529,7 @@
           {
             "einheit": "M",
             "lagerplatz": "P-CA0",
-            "beschreibung": "HAGER G1612\nTRENNWAND R 1612 1FACH PVC\nPosition 28\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 280\nReferenznummer 0276280\n\nKommission für Auftrag 204220777: 32507700.13",
+            "beschreibung": "HAGER G1612\nTRENNWAND R 1612 1FACH PVC\nPosition 28\nAuftrag 204220777 vom 02.04.2025\nPosition im Auftrag: 280\nReferenznummer 0276280\nKommission für Auftrag 204220777: 32507700.13",
             "artikelnummer": "01308230",
             "menge_bestellt": 4,
             "menge_geliefert": 4,
@@ -1701,7 +1683,7 @@
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 0.7,
         "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 0,
         "positionen": 1
@@ -1717,7 +1699,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 20668,
+    "dauerMs": 26211,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -1748,7 +1730,7 @@
           {
             "einheit": "ST",
             "lagerplatz": "S-BSP",
-            "beschreibung": "HENSEL DK0200G Kabelabzweigkasten bis 2,5qmm o.Klemme Position 4 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 40 Referenznummer 0276755 Kommission für Auftrag 204465291: 32505250",
+            "beschreibung": "HENSEL DK0200G\nKabelabzweigkasten bis 2,5qmm o.Klemme\nPosition 4\nAuftrag 204465291 vom 12.05.2025\nPosition im Auftrag: 40\nReferenznummer 0276765\n\nKommission für Auftrag 204465291: 32505250",
             "artikelnummer": "01200020",
             "menge_bestellt": 15,
             "menge_geliefert": 15,
@@ -1757,7 +1739,7 @@
           {
             "einheit": "M",
             "lagerplatz": "K-HKT",
-            "beschreibung": "EIB-Y(ST)Y 2X2X0,8 grün Trommel 500 m KNX/EIB-Busleitung Position 5 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 50 Referenznummer 0276755 Kommission für Auftrag 204465291: 32505250 Charge EB00417342 Hersteller/DoP: Tunisie Cables / 17-E3042-1",
+            "beschreibung": "EIB-Y(ST)Y 2X2X0,8 grün Trommel 500 m\nKNX/EIB-Busleitung\nPosition 5\nAuftrag 204465291 vom 12.05.2025\nPosition im Auftrag: 50\nReferenznummer 0276765\n\nKommission für Auftrag 204465291: 32505250\nCharge EB00417342\nHersteller/DoP: Tunisie Cables / 17-E3042-1",
             "artikelnummer": "10800375",
             "menge_bestellt": 300,
             "menge_geliefert": 300,
@@ -1766,7 +1748,7 @@
           {
             "einheit": "M",
             "lagerplatz": "P-HKP",
-            "beschreibung": "DRAKA UC900HS 4P S/FTP Datenleitung Simplex AWG23 Cat.7 orange Position 6 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 60 Referenznummer 0276755 Kommission für Auftrag 204465291: 32505250 Charge EB00402934 Hersteller/DoP: Draka Comteq Germany GmbH & Co. KG / 1000680",
+            "beschreibung": "DRAKA UC900HS 4P S/FTP\nDatenleitung Simplex AWG23 Cat.7 orange\nPosition 6\nAuftrag 204465291 vom 12.05.2025\nPosition im Auftrag: 60\nReferenznummer 0276765\n\nKommission für Auftrag 204465291: 32505250\nCharge EB00402934\nHersteller/DoP: Draka Comteq Germany GmbH & Co. KG / 1000680",
             "artikelnummer": "22680000",
             "menge_bestellt": 1000,
             "menge_geliefert": 1000,
@@ -1775,7 +1757,7 @@
           {
             "einheit": "M",
             "lagerplatz": "P-HFL",
-            "beschreibung": "NYM-J 5X1,5 grau Ring 100 m PVC-Mantelleitung Position 7 Hersteller/DoP: PRYSMIAN Kabel und Systeme GmbH / 1000853 Auftrag 204465291 vom 12.05.2025 Position im Auftrag: 70 Referenznummer 0276755 Kommission für Auftrag 204465291: 32505250",
+            "beschreibung": "NYM-J 5X1,5 grau Ring 100 m\nPVC-Mantelleitung\nPosition 7\nHersteller/DoP: PRYSMIAN Kabel und Systeme GmbH / 1000853\nAuftrag 204465291 vom 12.05.2025\nPosition im Auftrag: 70\nReferenznummer 0276765\n\nKommission für Auftrag 204465291: 32505250",
             "artikelnummer": "10901274",
             "menge_bestellt": 100,
             "menge_geliefert": 100,
@@ -1821,7 +1803,7 @@
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 0.7,
         "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 1,
         "positionen": 1
@@ -1837,7 +1819,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 16051,
+    "dauerMs": 20349,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -1891,7 +1873,7 @@
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 0.7,
         "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 1,
         "positionen": 0.3
@@ -1924,7 +1906,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 34641,
+    "dauerMs": 37791,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -2027,7 +2009,7 @@
           {
             "einheit": "ST",
             "lagerplatz": "S-BSP",
-            "beschreibung": "BUSCH-JAEGER 2000/7 US\nKREUZSCHALTER UP-EINSATZ\nPosition 12\nPosition im Auftrag: 120",
+            "beschreibung": "BUSCH-JAEGER 2000/7 US KREUZSCHALTER UP-EINSATZ Position 12 Position im Auftrag: 120",
             "artikelnummer": "02001704",
             "menge_bestellt": 10,
             "menge_geliefert": 10,
@@ -2036,7 +2018,7 @@
           {
             "einheit": "ST",
             "lagerplatz": "S-BSP",
-            "beschreibung": "BUSCH-JAEGER 2020 USGL\nSCHLIESSER 1P. UP- EINSATZ\nPosition 13\nPosition im Auftrag: 130",
+            "beschreibung": "BUSCH-JAEGER 2020 USGL SCHLIESSER 1P. UP- EINSATZ Position 13 Position im Auftrag: 130",
             "artikelnummer": "02001716",
             "menge_bestellt": 20,
             "menge_geliefert": 20,
@@ -2045,7 +2027,7 @@
           {
             "einheit": "ST",
             "lagerplatz": "S-BSP",
-            "beschreibung": "BUSCH-JAEGER 2661 U\nLICHTSIGNAL UP-EINSATZ\nPosition 14\nPosition im Auftrag: 140",
+            "beschreibung": "BUSCH-JAEGER 2661 U LICHTSIGNAL UP-EINSATZ Position 14 Position im Auftrag: 140",
             "artikelnummer": "02001731",
             "menge_bestellt": 8,
             "menge_geliefert": 8,
@@ -2054,7 +2036,7 @@
           {
             "einheit": "ST",
             "lagerplatz": "S-BSP",
-            "beschreibung": "BUSCH-JAEGER 8340\nGLUEHLAMPE 230V 3,0MA\nPosition 15\nPosition im Auftrag: 150",
+            "beschreibung": "BUSCH-JAEGER 8340 GLUEHLAMPE 230V 3,0MA Position 15 Position im Auftrag: 150",
             "artikelnummer": "02002376",
             "menge_bestellt": 10,
             "menge_geliefert": 10,
@@ -2063,7 +2045,7 @@
           {
             "einheit": "ST",
             "lagerplatz": "S-BSP",
-            "beschreibung": "SPELSBERG i 12-L GL\nAbzweigdose, Schutzart IP55, max. Leiter\nPosition 16\nPosition im Auftrag: 160",
+            "beschreibung": "SPELSBERG i 12-L GL Abzweigdose, Schutzart IP55, max. Leiter Position 16 Position im Auftrag: 160",
             "artikelnummer": "04617299",
             "menge_bestellt": 16,
             "menge_geliefert": 16,
@@ -2072,7 +2054,7 @@
           {
             "einheit": "ST",
             "lagerplatz": "S-BSP",
-            "beschreibung": "HAGER 3268/3VR\nD0-Sich.sockel keramik,3p D02 63A\nPosition 17\nPosition im Auftrag: 170",
+            "beschreibung": "HAGER 3268/3VR D0-Sich.sockel keramik,3p D02 63A Position 17 Position im Auftrag: 170",
             "artikelnummer": "01433106",
             "menge_bestellt": 8,
             "menge_geliefert": 8,
@@ -2081,7 +2063,7 @@
           {
             "einheit": "ST",
             "lagerplatz": "S-BSP",
-            "beschreibung": "HAGER CDA440D\nFI-Schutzschalter 4P 40A 30mA\nPosition 18\nPosition im Auftrag: 180",
+            "beschreibung": "HAGER CDA440D FI-Schutzschalter 4P 40A 30mA Position 18 Position im Auftrag: 180",
             "artikelnummer": "01004764",
             "menge_bestellt": 8,
             "menge_geliefert": 8,
@@ -2262,7 +2244,7 @@
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 0.7,
         "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 1,
         "positionen": 1
@@ -2278,7 +2260,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 18975,
+    "dauerMs": 20866,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -2286,6 +2268,7 @@
         "lieferdatum": "2025-05-29",
         "referenznummer": "0277031",
         "lieferscheinnummer": "3010269351",
+        "handschriftliche_aenderung": false,
         "positionen": [
           {
             "einheit": "M",
@@ -2363,9 +2346,9 @@
       },
       "fieldConfidences": {
         "lieferdatum": 1,
-        "referenznummer": 0.95,
+        "referenznummer": 1,
         "lieferscheinnummer": 1,
-        "handschriftliche_aenderung": 0,
+        "handschriftliche_aenderung": 1,
         "positionen": 1
       },
       "validations": [
@@ -2412,7 +2395,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 10562,
+    "dauerMs": 12674,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -2420,6 +2403,7 @@
         "lieferdatum": "2025-07-02",
         "referenznummer": "0277275",
         "lieferscheinnummer": "3039326/11",
+        "handschriftliche_aenderung": false,
         "positionen": [
           {
             "einheit": "ST",
@@ -2434,10 +2418,10 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
-        "referenznummer": 0.95,
-        "lieferscheinnummer": 0.95,
-        "handschriftliche_aenderung": 0,
+        "lieferdatum": 0.7,
+        "referenznummer": 0.7,
+        "lieferscheinnummer": 0.7,
+        "handschriftliche_aenderung": 0.7,
         "positionen": 1
       },
       "validations": [
@@ -2456,7 +2440,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 15180,
+    "dauerMs": 18958,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -2470,7 +2454,7 @@
             "einheit": "ST",
             "lagerplatz": null,
             "rueckstand": 40,
-            "beschreibung": "OSRAM-LEDVANCE LED-Reflektorlampe GU10 LED PAR16 35 36° DIM P 3.4W 930 GU1 PAR16 3,4W 3000K 230lm G Ursprungsland: CN Zoll-Tarif-Nr.: 85395200 Ausschreibungpos.: 1 4099854059896",
+            "beschreibung": "OSRAM-LEDVANCE LED-Reflektorlampe GU10 LED PAR16 35 36° DIM P 3.4W 930 GU1 PAR16 3,4W 3000K 230lm G Ursprungsland: CN Zoll-Tarif-Nr.: 85395200 Ausschreibungspos.: 1 4099854059896",
             "artikelnummer": "1362422",
             "menge_bestellt": 40,
             "menge_geliefert": 0,
@@ -2480,7 +2464,7 @@
             "einheit": "ST",
             "lagerplatz": null,
             "rueckstand": 0,
-            "beschreibung": "SCHAUM Steckfassung ws 231027 GU10 Kst Schraubbef Ursprungsland: IT Zoll-Tarif-Nr.: 85366190 Ausschreibungpos.: 2 231027",
+            "beschreibung": "SCHAUM Steckfassung ws 231027 GU10 Kst Schraubbef Ursprungsland: IT Zoll-Tarif-Nr.: 85366190 Ausschreibungspos.: 2 231027",
             "artikelnummer": "2719148",
             "menge_bestellt": 20,
             "menge_geliefert": 20,
@@ -2490,7 +2474,7 @@
             "einheit": "ST",
             "lagerplatz": null,
             "rueckstand": 0,
-            "beschreibung": "WAGO Steckklemme 3f 450V 32A 221-413 Serie 221 0,2-4qmm Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 Ausschreibungpos.: 3 221-413",
+            "beschreibung": "WAGO Steckklemme 3f 450V 32A 221-413 Serie 221 0,2-4qmm Ursprungsland: DE Zoll-Tarif-Nr.: 85369010 Ausschreibungspos.: 3 221-413",
             "artikelnummer": "4699028",
             "menge_bestellt": 50,
             "menge_geliefert": 50,
@@ -2499,10 +2483,10 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
-        "referenznummer": 0.95,
-        "lieferscheinnummer": 0.95,
-        "handschriftliche_aenderung": 0.7,
+        "lieferdatum": 1,
+        "referenznummer": 1,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
         "positionen": 1
       },
       "validations": [
@@ -2529,13 +2513,14 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 11458,
+    "dauerMs": 13404,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
       "data": {
         "lieferdatum": "2025-07-24",
         "lieferscheinnummer": "64765277",
+        "handschriftliche_aenderung": false,
         "positionen": [
           {
             "einheit": "ST",
@@ -2558,10 +2543,10 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
+        "lieferdatum": 1,
         "referenznummer": 0,
-        "lieferscheinnummer": 0.95,
-        "handschriftliche_aenderung": 0,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
         "positionen": 1
       },
       "validations": []
@@ -2575,7 +2560,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 16917,
+    "dauerMs": 18144,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -2633,18 +2618,13 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
-        "referenznummer": 0.95,
-        "lieferscheinnummer": 0.95,
-        "handschriftliche_aenderung": 0.7,
-        "positionen": 0.4
+        "lieferdatum": 1,
+        "referenznummer": 1,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
+        "positionen": 1
       },
-      "validations": [
-        {
-          "severity": "warn",
-          "message": "Positionen, Zeile 3, Artikelnummer Lieferant: Wert \"1009052418\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
-        }
-      ]
+      "validations": []
     }
   },
   {
@@ -2655,7 +2635,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 13922,
+    "dauerMs": 13051,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -2688,11 +2668,11 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
-        "referenznummer": 0.95,
-        "lieferscheinnummer": 0.95,
-        "handschriftliche_aenderung": 0.7,
-        "positionen": 0.4
+        "lieferdatum": 1,
+        "referenznummer": 1,
+        "lieferscheinnummer": 1,
+        "handschriftliche_aenderung": 1,
+        "positionen": 1
       },
       "validations": [
         {
@@ -2702,10 +2682,6 @@
         {
           "severity": "info",
           "message": "\"Positionen · Einheit (Position 2)\": Wert \"STK\" auf den Katalogwert \"ST\" angeglichen."
-        },
-        {
-          "severity": "warn",
-          "message": "Positionen, Zeile 2, Menge bestellt: Wert \"6\" ist im OCR-Text der Zeile nicht belegt — bitte pruefen."
         }
       ]
     }
@@ -2718,7 +2694,7 @@
       "confidence": 1,
       "alternatives": []
     },
-    "dauerMs": 11204,
+    "dauerMs": 13415,
     "extraktion": {
       "strategy": "vision-per-page",
       "model": "adacor/qwen3-5-a3b-35b-256k",
@@ -2739,9 +2715,9 @@
         ]
       },
       "fieldConfidences": {
-        "lieferdatum": 0.95,
-        "referenznummer": 0.95,
-        "lieferscheinnummer": 0.95,
+        "lieferdatum": 1,
+        "referenznummer": 1,
+        "lieferscheinnummer": 1,
         "handschriftliche_aenderung": 0,
         "positionen": 1
       },

@@ -1,7 +1,7 @@
 # Ehinger-Pilot — Messung
 
 Belege gelaufen: 23/24 · Seiten gesamt: 54
-Laufzeit: 7.7 min gesamt, 20.2 s je Beleg, 8.6 s je Seite
+Laufzeit: 6.9 min gesamt, 17.9 s je Beleg, 7.6 s je Seite
 
 ## Klassifikation (alle Belege, Wahrheit per OCR)
 Lieferant korrekt: **100 % (24/24)**
@@ -12,7 +12,7 @@ Lieferant korrekt: **100 % (24/24)**
 - Lieferdatum: **100 % (12/12)**
 
 ## Review-Triage (alle Belege)
-- auto_ok: **21**, zu pruefen: **2**
+- auto_ok: **18**, zu pruefen: **5**
 - 1898_001: auto_ok  ← hat einen Fehler
 - 1899_001: auto_ok
 - 1900_001: auto_ok
@@ -23,8 +23,8 @@ Lieferant korrekt: **100 % (24/24)**
 - 2915_001: auto_ok
 - 2919_001: auto_ok
 - 2921_001: auto_ok  ← hat einen Fehler
-- 2922_001: auto_ok
-- 2923_001: auto_ok
+- 2922_001: needs_review
+- 2923_001: needs_review
 
 ## Positionen (gelabelte Stichprobe)
 - Positionsanzahl exakt: **100 % (12/12)**

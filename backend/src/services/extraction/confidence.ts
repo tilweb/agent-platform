@@ -19,6 +19,7 @@
  */
 
 import { llmService, type Message } from '../llm';
+import { EXTRACTION_SAMPLING } from './extract-call';
 import type { UsageContext } from '../usageTracking';
 import type { ExtractionProfile } from '../../extraction/types';
 import { isArrayGroup } from '../../extraction/types';
@@ -103,7 +104,7 @@ export async function scoreConfidences(
   merged: Record<string, unknown>,
   profile: ExtractionProfile,
   userId: string,
-  options: { useLLM?: boolean; modelOverride?: { providerId: string; modelId: string } } = {},
+  options: { useLLM?: boolean; modelOverride?: { providerId: string; modelId: string }; exclude?: Set<string> } = {},
 ): Promise<{ confidences: Record<string, number>; llmCalls: number }> {
   const candidates = gatherFieldCandidates(chunks, merged, profile);
   const confidences: Record<string, number> = {};
@@ -126,6 +127,9 @@ export async function scoreConfidences(
     const groupCandidates = candidates.filter((c) => c.fieldPath.startsWith(`${groupName}.`) || c.fieldPath === groupName);
     // Skip wenn alle Felder bereits 1.0 oder 0.0 sind (keine Mehrdeutigkeit).
     const ambiguous = groupCandidates.filter((c) => {
+      // Von der OCR-Fusion entschiedene Felder (verified / unbelegte Zahl)
+      // brauchen kein LLM-Urteil mehr — spart den Call fuer den Normalfall.
+      if (options.exclude?.has(c.fieldPath)) return false;
       const score = confidences[c.fieldPath] ?? 0;
       return score > 0 && score < 1;
     });
@@ -168,6 +172,7 @@ Nutze die Feld-Pfade, die ich dir gebe — keine zusaetzlichen Schluessel.`,
     try {
       const response = await llmService.chat(messages, undefined, usageContext, {
         userId,
+        ...EXTRACTION_SAMPLING,
         ...(options.modelOverride ? { modelOverride: options.modelOverride } : {}),
       });
       llmCalls += 1;

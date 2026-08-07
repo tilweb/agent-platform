@@ -12,7 +12,7 @@ import { resolveModel } from '../../services/providers';
 import { EXTRACTION_MODEL_ID, EXTRACTION_PROVIDER_ID, extractionModelLabel } from '../model';
 import { OpenAIAdapter } from '../../services/llm/adapters/openai';
 import { createImageContent, type ContentPart, type Message } from '../../services/llm';
-import { withTimeoutRetry, parseJsonObject } from '../../services/extraction/extract-call';
+import { withTimeoutRetry, parseJsonObject, EXTRACTION_SAMPLING } from '../../services/extraction/extract-call';
 import type { ExtractionProject } from '../learning/types';
 
 export interface PartClassification {
@@ -134,7 +134,7 @@ export async function classifyPart(
   ];
 
   const response = await withTimeoutRetry(
-    () => adapter.chat(messages, visionModel.model.id),
+    () => adapter.chat(messages, visionModel.model.id, undefined, undefined, EXTRACTION_SAMPLING),
     { timeoutMs: 45000, retries: 1, label: 'inbox-classify' },
   );
   return parseClassification(response.content, projects.map((p) => p.id));

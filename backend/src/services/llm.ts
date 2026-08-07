@@ -21,6 +21,12 @@ export interface ChatOptions {
   userId?: string;
   /** Override tool_choice (default: 'auto'). Use object for forced function calling. */
   toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+  /** Sampling-Temperatur (Extraktion: 0). Ohne Angabe gilt der Server-Default. Nur non-streaming chat(). */
+  temperature?: number;
+  /** Obergrenze fuer die Antwortlaenge. Nur non-streaming chat(). */
+  maxTokens?: number;
+  /** Zusaetzliche Request-Body-Felder (z.B. vLLM guided_json). Nur non-streaming chat() + OpenAI-Adapter. */
+  extraBody?: Record<string, unknown>;
 }
 
 // Content part types for multimodal messages (text + images)
@@ -450,7 +456,11 @@ export class LLMService {
 
     if (requestOpenai) {
       const modelId = requestResolved?.model.id;
-      const result = await requestOpenai.chat(messages, modelId, tools, options?.toolChoice);
+      const result = await requestOpenai.chat(messages, modelId, tools, options?.toolChoice, {
+        temperature: options?.temperature,
+        maxTokens: options?.maxTokens,
+        extraBody: options?.extraBody,
+      });
       await trackUsage();
       return {
         content: result.content,
