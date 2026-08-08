@@ -530,11 +530,11 @@ export default function ExtractionProjectsPage() {
           <p style={styles.subtitle}>Dokumente automatisch auslesen, prüfen und weitergeben — Profile lernen aus Korrekturen</p>
         </div>
         <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center' }}>
-          <button style={styles.secondaryBtn} onClick={() => setView('inbox')}>
+          <button style={styles.secondaryBtn} onClick={() => setView('inbox')} title="Gemischte Sammel-Scans hochladen — werden automatisch in einzelne Dokumente getrennt und dem passenden Profil zugeordnet.">
             <FolderOpenIcon size={16} />
             Posteingang{inboxOpenCount > 0 ? ` (${inboxOpenCount})` : ''}
           </button>
-          <button style={styles.secondaryBtn} onClick={() => importInputRef.current?.click()} disabled={importing}>
+          <button style={styles.secondaryBtn} onClick={() => importInputRef.current?.click()} disabled={importing} title="Ein zuvor exportiertes Profil-Paket (.json) laden. Es wird als neues Profil angelegt.">
             {importing ? <Spinner size={14} /> : <DocumentIcon size={16} />}
             {importing ? 'Importiere…' : 'Importieren'}
           </button>
@@ -556,11 +556,27 @@ export default function ExtractionProjectsPage() {
             color: importMsg.ok ? theme.colors.success : theme.colors.error,
           }}>{importMsg.text}</div>
         )}
+        {!loading && (
+          <InfoBox style={{ marginBottom: theme.spacing.lg }}>
+            <span>
+              Ein <strong>Profil</strong> beschreibt einen Dokumenttyp (z.B. Rechnungen) und welche <strong>Felder</strong> daraus
+              ausgelesen werden. Zwei Wege: <strong>Verarbeiten</strong> (im Profil) für einen Stapel gleichartiger Dokumente —
+              <strong> Posteingang</strong> für gemischte Sammel-Scans, die automatisch getrennt und dem richtigen Profil zugeordnet werden.
+            </span>
+          </InfoBox>
+        )}
         {loading ? (
           <div style={styles.emptyState}>Laden...</div>
         ) : projects.length === 0 ? (
-          <div style={styles.emptyState}>
-            Noch keine Profile vorhanden. Erstelle ein neues Profil, um zu beginnen.
+          <div style={{ ...styles.emptyState, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: theme.spacing.md }}>
+            <div>
+              Noch keine Profile. Ein Profil legt fest, welche Felder aus einem Dokumenttyp ausgelesen werden.
+              <br />
+              <span style={{ color: theme.colors.textMuted }}>Tipp: Beim Anlegen kannst du ein Beispieldokument hochladen — die KI schlägt die Felder automatisch vor.</span>
+            </div>
+            <button style={styles.primaryBtn} onClick={() => setView('create')}>
+              <SparklesIcon size={16} /> Erstes Profil anlegen
+            </button>
           </div>
         ) : (
           <div style={styles.grid}>
@@ -1014,7 +1030,7 @@ function ListItemsEditor({ value, itemFields, onChange, readOnly = false, confid
                             {Math.round(conf * 100)}%
                           </span>
                         )}
-                        {hasBox && <span style={{ marginLeft: theme.spacing.xs, color: theme.colors.primary, fontSize: theme.typography.sizes.xs }}>◉</span>}
+                        {hasBox && <span title="Fundstelle im Dokument — klicken zum Anspringen" style={{ marginLeft: theme.spacing.xs, color: theme.colors.primary, fontSize: theme.typography.sizes.xs }}>◉</span>}
                       </td>
                     );
                   }
@@ -1383,8 +1399,12 @@ function InboxView({ projects, onBack, onOpenProject }) {
           {loading ? (
             <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>Lade…</div>
           ) : uploads.length === 0 ? (
-            <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+            <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm, lineHeight: 1.6 }}>
               Noch keine Eingänge. Lade oben Dokumente hoch.
+              <br />
+              So funktioniert's: 1. Scan hochladen → 2. wird in einzelne <strong>Teil-Dokumente</strong> zerlegt →
+              3. jedes Teil-Dokument wird bei sicherer Zuordnung automatisch einem Profil zugeordnet und verarbeitet.
+              Unsichere bleiben als <strong>„zuzuordnen"</strong> stehen und wählst du selbst.
             </div>
           ) : (
             uploads.map(u => {
@@ -1697,6 +1717,11 @@ function CreateProjectView({ onBack, onCreated }) {
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>
+              <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                Im Zweifel <strong>Hybrid</strong> lassen (passt für die meisten PDFs). <strong>Vision-per-Page</strong> für
+                eingescannte/fotografierte Dokumente oder Handschrift. <strong>Long-Text</strong> für sehr lange, reine
+                Textdokumente. <strong>Single-Pass</strong> für kurze, einfache Dokumente.
+              </div>
             </div>
             <div style={{ marginBottom: theme.spacing.lg }}>
               <label style={styles.label}>KI-Modell (optional)</label>
@@ -2549,13 +2574,14 @@ function BatchTab({ project, onProjectUpdated }) {
           {activeRun.files.some(f => f.reviewStatus) && (
             <div style={{ display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
               {[
-                { id: 'all', label: `Alle (${activeRun.files.length})` },
-                { id: 'needs_review', label: `Zu prüfen (${activeRun.files.filter(f => f.reviewStatus === 'needs_review').length})` },
-                { id: 'auto_ok', label: `Auto-OK (${activeRun.files.filter(f => f.reviewStatus === 'auto_ok').length})` },
-                { id: 'reviewed', label: `Geprüft (${activeRun.files.filter(f => f.reviewStatus === 'reviewed').length})` },
+                { id: 'all', label: `Alle (${activeRun.files.length})`, hint: 'Alle Dokumente dieses Laufs' },
+                { id: 'needs_review', label: `Zu prüfen (${activeRun.files.filter(f => f.reviewStatus === 'needs_review').length})`, hint: 'Die KI war unsicher oder eine Prüfregel schlug an — bitte kontrollieren' },
+                { id: 'auto_ok', label: `Auto-OK (${activeRun.files.filter(f => f.reviewStatus === 'auto_ok').length})`, hint: 'KI sicher — kein Handlungsbedarf' },
+                { id: 'reviewed', label: `Geprüft (${activeRun.files.filter(f => f.reviewStatus === 'reviewed').length})`, hint: 'Von dir kontrolliert und bestätigt' },
               ].map(chip => (
                 <button
                   key={chip.id}
+                  title={chip.hint}
                   onClick={() => setReviewFilter(chip.id)}
                   style={{
                     padding: `${theme.spacing.xs} ${theme.spacing.md}`,
@@ -2575,7 +2601,9 @@ function BatchTab({ project, onProjectUpdated }) {
           )}
 
           <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
-            Zeile anklicken öffnet das Dokument im Vollbild · horizontal scrollbar bei vielen Feldern
+            Zeile anklicken öffnet das Dokument im Vollbild · <strong>„Ø"</strong> = durchschnittliche
+            Erkennungssicherheit der KI · <span style={{ color: theme.colors.warning }}>orange</span> markierte
+            Werte liegen unter der Prüfschwelle und sollten kontrolliert werden.
           </div>
           <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
             <table style={{ borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm }}>
@@ -2583,10 +2611,10 @@ function BatchTab({ project, onProjectUpdated }) {
                 <tr style={{ textAlign: 'left', color: theme.colors.textMuted }}>
                   <th style={{ ...batchTh, ...batchStickyCol, zIndex: 3 }}>Datei</th>
                   <th style={batchTh}>Status</th>
-                  <th style={batchTh}>Prüfung</th>
+                  <th style={batchTh} title="Auto-OK = KI sicher, kein Handlungsbedarf · Zu prüfen = bitte kontrollieren · Geprüft = von dir bestätigt">Prüfung</th>
                   {project.segments && <th style={batchTh}>Segmente</th>}
                   {fieldEntries.map(([fid, f]) => <th key={fid} style={batchTh}>{f.label || fid}</th>)}
-                  <th style={batchTh}>Ø</th>
+                  <th style={batchTh} title="Durchschnittliche Erkennungssicherheit der KI über alle Felder (0–100 %). Niedrige Werte bitte prüfen.">Ø</th>
                 </tr>
               </thead>
               <tbody>
@@ -2949,12 +2977,13 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
           style={{
             minWidth: 190,
             cursor: hasBox ? 'pointer' : 'default',
-            color: isChanged ? theme.colors.warning : theme.colors.textMuted,
+            // Blau = von dir geändert (nicht mit der orangen Unsicher-Markierung verwechseln).
+            color: isChanged ? theme.colors.info : theme.colors.textMuted,
           }}
         >
           {f.label || fid}
           {typeof conf === 'number' && (
-            <span style={{
+            <span title="Erkennungssicherheit der KI für dieses Feld. Orange = unter der Prüfschwelle, bitte kontrollieren." style={{
               marginLeft: theme.spacing.xs,
               fontSize: theme.typography.sizes.xs,
               color: conf < threshold ? theme.colors.warning : theme.colors.textMuted,
@@ -2962,7 +2991,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
               {Math.round(conf * 100)}%
             </span>
           )}
-          {isChanged && <span style={{ fontSize: theme.typography.sizes.xs, marginLeft: theme.spacing.xs }}>(korrigiert)</span>}
+          {isChanged && <span title="Von dir geändert" style={{ fontSize: theme.typography.sizes.xs, marginLeft: theme.spacing.xs, color: theme.colors.info }}>(korrigiert)</span>}
         </span>
         {canLearn && !isReviewed ? (
           <div style={{ flex: 1, maxWidth: 460 }}>
@@ -3008,6 +3037,13 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
         ) : detail.error ? (
           <div style={{ ...styles.emptyState, flex: 1, color: theme.colors.error }}>{detail.error}</div>
         ) : (
+          <>
+          {hasBoxes && (
+            <div style={{ padding: `${theme.spacing.sm} ${theme.spacing.xl} 0`, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+              Links das Original, rechts die ausgelesenen Werte. Prüfe zuerst die <span style={{ color: theme.colors.warning }}>orange</span> markierten
+              (unsicheren) Felder, korrigiere bei Bedarf und bestätige unten.
+            </div>
+          )}
           <div style={{
             flex: 1,
             display: 'grid',
@@ -3113,11 +3149,12 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
               ))}
             </div>
           </div>
+          </>
         )}
 
         <div style={styles.modalFooter}>
           <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-            Esc schließt · ← → blättert · Feld anklicken zeigt die Fundstelle
+            Esc schließt · ← → blättert zum nächsten Beleg · Feld anklicken zeigt die Fundstelle im Bild
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
             {msg && (
@@ -3125,10 +3162,20 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
                 {msg.text}
               </span>
             )}
+            {!isReviewed && canLearn && hasChanges && (
+              <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.warning }} title="Deine Änderungen sind noch nicht gespeichert — sie gehen beim Blättern oder Schließen verloren.">
+                ● ungespeichert
+              </span>
+            )}
             {isReviewed ? (
               <ReviewBadge status="reviewed" />
             ) : canLearn ? (
-              <button style={styles.primaryBtn} onClick={handleLearn} disabled={saving}>
+              <button
+                style={styles.primaryBtn}
+                onClick={handleLearn}
+                disabled={saving}
+                title='Speichert deine Prüfung und markiert das Dokument als „Geprüft". „Lernen" verbessert die KI für künftige Dokumente. Nur Ansehen ändert nichts; ungespeicherte Änderungen gehen beim Blättern/Schließen verloren.'
+              >
                 {saving ? <Spinner size={14} /> : <SparklesIcon size={14} />}
                 {hasChanges ? 'Korrektur übernehmen & lernen' : 'Als korrekt bestätigen & lernen'}
               </button>
@@ -3385,6 +3432,11 @@ function TrainingTab({ project, onProjectUpdated }) {
       {!extractionResult && (
         <div style={styles.section}>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <InfoBox style={{ marginBottom: theme.spacing.lg }}>
+            <strong>So lernt das Profil:</strong> Beispieldokument hochladen → ausgelesene Felder prüfen und
+            bei Bedarf korrigieren → „Bestätigen &amp; Lernen". Nach 3 korrigierten Beispielen entstehen
+            automatisch Regeln. Es wird nichts am Modell trainiert — das Wissen fließt in den Prompt ein.
+          </InfoBox>
           <div style={styles.sectionTitle}>Dokument hochladen</div>
 
           {extracting ? (
@@ -3506,7 +3558,7 @@ function TrainingTab({ project, onProjectUpdated }) {
           <InfoBox style={{ marginBottom: theme.spacing.lg }}>
             <strong>Was beim „Bestätigen & Lernen" passiert:</strong> Dieses Dokument
             wird als Beispiel gespeichert (mit deinen Korrekturen). Bei künftigen
-            Läufen wird es als <strong>Few-Shot-Beispiel</strong> mitgegeben — und
+            Läufen wird es als <strong>Beispielvorlage</strong> (Few-Shot) mitgegeben — und
             ab <strong>3 Beispielen mit Korrekturen</strong> leitet das System daraus
             allgemeine <strong>Regeln</strong> ab (Tab „Regeln"). Es wird nichts am
             Modell trainiert — das Wissen fließt nur in den Prompt ein.
@@ -4224,7 +4276,7 @@ function RulesEditor({ rules, fields, onChange }) {
                   </select>
                 </div>
                 <div style={{ width: 120 }}>
-                  <label style={styles.label}>Toleranz</label>
+                  <label style={styles.label} title="Erlaubte Abweichung in derselben Einheit wie das Zielfeld (z.B. 0,01 für Cent-Rundung bei Beträgen).">Toleranz</label>
                   <input
                     style={styles.input}
                     type="number"
@@ -4233,6 +4285,7 @@ function RulesEditor({ rules, fields, onChange }) {
                     value={rule.tolerance ?? ''}
                     onChange={e => update(idx, { tolerance: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
                     placeholder="0.01"
+                    title="Erlaubte Abweichung in derselben Einheit wie das Zielfeld (z.B. 0,01 für Cent-Rundung bei Beträgen)."
                   />
                 </div>
               </div>
@@ -4264,11 +4317,12 @@ function RulesEditor({ rules, fields, onChange }) {
                   </select>
                 </div>
                 <div style={{ width: 160 }}>
-                  <label style={styles.label}>Wirkung</label>
+                  <label style={styles.label} title={'„Zu prüfen erzwingen" hebt das Dokument bei Regelverstoß ins Review (Status „Zu prüfen"). „Nur Hinweis" vermerkt den Verstoß, ohne ein Review auszulösen.'}>Wirkung</label>
                   <select
                     style={selectStyle}
                     value={rule.severity || 'error'}
                     onChange={e => update(idx, { severity: e.target.value })}
+                    title={'„Zu prüfen erzwingen" hebt das Dokument bei Regelverstoß ins Review (Status „Zu prüfen"). „Nur Hinweis" vermerkt den Verstoß, ohne ein Review auszulösen.'}
                   >
                     <option value="error">Zu prüfen erzwingen</option>
                     <option value="warn">Nur Hinweis</option>
@@ -4445,6 +4499,11 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
+          <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+            Im Zweifel <strong>Hybrid</strong> lassen (passt für die meisten PDFs). <strong>Vision-per-Page</strong> für
+            eingescannte/fotografierte Dokumente oder Handschrift. <strong>Long-Text</strong> für sehr lange, reine
+            Textdokumente. <strong>Single-Pass</strong> für kurze, einfache Dokumente.
+          </div>
         </div>
         <div style={{ marginBottom: theme.spacing.lg }}>
           <label style={styles.label}>KI-Modell (optional)</label>
@@ -4466,8 +4525,9 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
             placeholder="0.6 (Standard)"
           />
           <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-            Batch-Dateien mit einer Feld-Konfidenz unter dieser Schwelle werden als „Zu prüfen" markiert.
-            Leer = Standard (Pipeline-Schwelle bzw. 0.6).
+            <strong>Konfidenz</strong> = wie sicher sich die KI beim Auslesen war (0 = unsicher, 1 = sehr sicher).
+            Dokumente mit einem Feld unter dieser Schwelle werden als „Zu prüfen" markiert — höhere Schwelle =
+            mehr Dokumente landen zur manuellen Kontrolle. Leer = Systemvorgabe (0.6).
           </div>
         </div>
         <div>
@@ -4565,10 +4625,38 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
       </div>
 
 
+      {/* Segmente (read-only Übersicht — Pflege via Import/API) */}
+      {project.segments && Object.keys(project.segments).length > 0 && (
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>Segmente</div>
+          <InfoBox style={{ marginBottom: theme.spacing.md }}>
+            Dieses Profil gliedert jedes Dokument in <strong>Segmente</strong> — zusammenhängende Abschnitte eines Typs
+            (z.B. Anschreiben, Formular und Nachweis in einem Sammel-Scan). Jedes Segment wird einzeln ausgelesen.
+            Segment-Definitionen werden derzeit per Profil-Import bzw. API gepflegt, nicht in dieser Oberfläche.
+          </InfoBox>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
+            {Object.entries(project.segments).map(([id, def]) => (
+              <div key={id} style={{ fontSize: theme.typography.sizes.sm }}>
+                <strong>{def.label || id}</strong>
+                <span style={{ color: theme.colors.textMuted }}>
+                  {' — '}
+                  {def.mode === 'classify-only' || !def.fields || Object.keys(def.fields).length === 0
+                    ? 'nur erkennen (keine Felder)'
+                    : `${Object.keys(def.fields).length} Felder`}
+                  {def.repeatable ? ' · mehrfach möglich' : ''}
+                  {def.required ? ' · Pflicht' : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Integration / Webhook (Welle 5) */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Integration</div>
         <InfoBox>
+          <strong>Nur nötig, wenn ein anderes System automatisch benachrichtigt werden soll — sonst leer lassen.</strong>{' '}
           Läufe dieses Profils können ihr Ergebnis an eine URL melden — auch die per API
           (<code>extraktion/batch.create</code>) gestarteten. Jede Zustellung trägt den Header
           <strong> X-Workplace-Signature</strong> (HMAC-SHA256 über den Rumpf, mit dem Schlüssel unten);
@@ -4614,8 +4702,10 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         <div style={styles.sectionTitle}>Export & Weitergabe</div>
         <InfoBox>
           Exportiere dieses Profil als Paket (.json), um es auf einer anderen Workplace-Instanz zu
-          importieren — z. B. eine bewährte Vorlage für andere Kunden. Schema, Domänen-Anweisungen und
-          gelernte Regeln sind immer enthalten.
+          importieren — z. B. eine bewährte Vorlage für andere Kunden. Schema, Domänen-Anweisungen,
+          gelernte Regeln und (falls vorhanden) Segment-Definitionen sind immer enthalten.
+          <br />
+          <span style={{ color: theme.colors.textMuted }}>Nicht enthalten: Webhook-Konfiguration (URL + Signaturschlüssel).</span>
         </InfoBox>
         <label style={{ display: 'flex', alignItems: 'center', marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, cursor: 'pointer' }}>
           <input
