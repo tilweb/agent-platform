@@ -21,7 +21,7 @@ sofern nicht anders vermerkt.
 | 3 | **P1 High** | Batch-Upload ohne Datei-Anzahl-/Größen-Limit, alles in RAM | `routes/extraction-projects.ts:426–468` | **✅ behoben** |
 | 4 | **P2 Medium** | Batch-`tmpDir` wird nie gelöscht (Verzeichnis-Leak) | `learning/batch-service.ts:153` | **✅ behoben** |
 | 5 | **P2 Medium** | Fire-and-forget-Batch ohne Watchdog → Run bleibt bei Crash „läuft" | `routes/extraction-projects.ts:463` | **✅ behoben** |
-| 6 | **P2 Medium** | Triage löst Listen-Positionen in *repeatable* Segmenten nicht auf (verifiziert: Triage-Loch, kein reines Anzeigethema) | `extraction/learning/review.ts:77` | **✅ behoben** (Frontend-Zeilenboxen offen) |
+| 6 | **P2 Medium** | Triage löst Listen-Positionen in *repeatable* Segmenten nicht auf (verifiziert: Triage-Loch, kein reines Anzeigethema) | `extraction/learning/review.ts:77` | **✅ behoben** (inkl. Frontend-Zeilenboxen) |
 | 7 | **P3 Low** | `/jobs/run-sync` immer 401 (kein Middleware setzt `userId`) | `routes/extraction-jobs.ts:44` | mit #1 mitbehoben |
 | 8 | **P3 Low** | Temp-Namen via `Math.random()` statt `crypto.randomUUID()` | `routes/extraction-projects.ts:444` | **✅ behoben** |
 
@@ -38,6 +38,11 @@ sofern nicht anders vermerkt.
 >   Pfad-Walker (Segment-Instanz 1-basiert, Listenzeile 0-basiert), 4 neue Tests. **Offen bleibt** die
 >   Frontend-Darstellung der Positionszeilen mit eigenen Boxen in `SegmentReviewPane` (W10.2-Grenze).
 > - **#8** `crypto.randomUUID()` für alle Temp-Pfade.
+>
+> **Update 2026-08-08 (Runde 3):** #6-Frontend nachgezogen — `SegmentReviewPane` rendert Listenfelder
+> jetzt als Positions-Tabelle statt Wert-Blob. `ListItemsEditor` (read-only) um Zellen-Konfidenz +
+> Box-Sprung erweitert (additiv, `keyPrefix` löst `key.fid[row].sub` auf); die Zeilen-Boxen lagen
+> bereits im `boxes`-Objekt. Damit ist Befund #6 vollständig geschlossen.
 > - **Nebenbefund** (railway-Variante): `getBatchRunFileDetail` gab `segments` nicht zurück (Typlücke,
 >   Segment-Detail-Endpunkt dort ohne Segmente) — mitbehoben.
 

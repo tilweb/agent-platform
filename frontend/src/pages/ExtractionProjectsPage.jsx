@@ -946,7 +946,7 @@ const listItemsTd = {
  * read-only in der Batch-Detailansicht). `value` = Array der Positionen,
  * `itemFields` = item_fields-Objekt aus project.fields.
  */
-function ListItemsEditor({ value, itemFields, onChange, readOnly = false }) {
+function ListItemsEditor({ value, itemFields, onChange, readOnly = false, confidences, boxes, onJumpToBox, keyPrefix, threshold }) {
   const items = Array.isArray(value) ? value : [];
   const itemEntries = Object.entries(itemFields || {});
 
@@ -996,9 +996,25 @@ function ListItemsEditor({ value, itemFields, onChange, readOnly = false }) {
                 {itemEntries.map(([iid, itf]) => {
                   const v = rec[iid];
                   if (readOnly) {
+                    // Segment-Positionen (Welle 10): Zellen-Konfidenz + Box-Sprung,
+                    // sofern keyPrefix gesetzt ist (z.B. "rezept[1].positionen").
+                    const cellKey = keyPrefix ? `${keyPrefix}[${rowIdx}].${iid}` : null;
+                    const conf = cellKey ? confidences?.[cellKey] : undefined;
+                    const hasBox = !!(cellKey && boxes?.[cellKey]);
                     return (
-                      <td key={iid} style={{ ...listItemsTd, color: v != null ? theme.colors.text : theme.colors.textMuted }}>
+                      <td
+                        key={iid}
+                        onClick={() => hasBox && onJumpToBox?.(cellKey)}
+                        title={hasBox ? 'Fundstelle im Dokument zeigen' : undefined}
+                        style={{ ...listItemsTd, color: v != null ? theme.colors.text : theme.colors.textMuted, cursor: hasBox ? 'pointer' : 'default' }}
+                      >
                         {fmtValue(v) || '—'}
+                        {typeof conf === 'number' && (
+                          <span style={{ marginLeft: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: conf < (threshold ?? 0.6) ? theme.colors.warning : theme.colors.textMuted }}>
+                            {Math.round(conf * 100)}%
+                          </span>
+                        )}
+                        {hasBox && <span style={{ marginLeft: theme.spacing.xs, color: theme.colors.primary, fontSize: theme.typography.sizes.xs }}>◉</span>}
                       </td>
                     );
                   }
@@ -2751,6 +2767,29 @@ function SegmentReviewPane({ segments, segmentDefs, segColor, data, fieldConfide
             )}
 
             {!isClassifyOnly && fieldEntries.map(([fid, f]) => {
+              // Listenfelder als Positions-Tabelle mit Zeilen-Boxen + Konfidenz
+              // (Welle 10 Frontend-Nachzug): Boxen liegen als "key.fid[row].sub".
+              if (f.type === 'list') {
+                const rows = Array.isArray(values?.[fid]) ? values[fid] : [];
+                return (
+                  <div key={fid} style={{ padding: `${theme.spacing.xs} ${theme.spacing.md}` }}>
+                    <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.xs }}>
+                      {f.label || fid}
+                      <span style={{ marginLeft: theme.spacing.xs, fontSize: theme.typography.sizes.xs }}>({rows.length} Positionen)</span>
+                    </div>
+                    <ListItemsEditor
+                      readOnly
+                      value={rows}
+                      itemFields={f.item_fields}
+                      confidences={fieldConfidences}
+                      boxes={boxes}
+                      onJumpToBox={onJumpToBox}
+                      keyPrefix={`${key}.${fid}`}
+                      threshold={threshold}
+                    />
+                  </div>
+                );
+              }
               const conf = fieldConfidences[`${key}.${fid}`];
               const boxKey = `${key}.${fid}`;
               const hasBox = !!boxes[boxKey];
