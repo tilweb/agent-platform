@@ -73,15 +73,35 @@ export function computeReviewStatus(
   return 'auto_ok';
 }
 
-/** Loest "segId.feld" / "segId[2].feld" gegen die aggregierte Segment-Datenstruktur auf. */
+/**
+ * Loest einen namespaced Segment-Pfad gegen die aggregierte Datenstruktur auf.
+ * Deckt auch verschachtelte Listen-Positionen ab, z. B.:
+ *   "rezept[2].positionen[0].menge"  (repeatable Segment + Listenzeile)
+ *   "formular.feld"                  (nicht-repeatable Segment)
+ *   "rezept[1].nummer"               (repeatable Segment, Skalarfeld)
+ *
+ * Index-Basis: Die ERSTE Klammer ist die Segment-Instanz und 1-basiert
+ * (Namespace `rezept[1]` = data.rezept[0]); tiefere Klammern sind Listenzeilen
+ * und 0-basiert (wie die Boxen/Konfidenzen aus dem Segment-Sub-Pipeline-Lauf).
+ * Vorher fing die Regex nur EINE Klammer → Listen-Positionen loesten in
+ * Segment-Profilen nie ein Review aus (Code-Review-Befund #6).
+ */
 function resolveSegmentValue(data: Record<string, unknown>, path: string): unknown {
-  const m = path.match(/^([^.[]+)(?:\[(\d+)\])?\.(.+)$/);
-  if (!m) return undefined;
-  const [, segId, instance, fieldId] = m;
-  const seg = data?.[segId!];
-  const obj = instance !== undefined && Array.isArray(seg) ? seg[Number(instance) - 1] : seg;
-  if (!obj || typeof obj !== 'object') return undefined;
-  return (obj as Record<string, unknown>)[fieldId!];
+  const tokens = path.split('.');
+  let cur: unknown = data;
+  for (let i = 0; i < tokens.length; i += 1) {
+    const m = tokens[i]!.match(/^([^[]+)(?:\[(\d+)\])?$/);
+    if (!m) return undefined;
+    const [, key, idxStr] = m;
+    if (cur == null || typeof cur !== 'object') return undefined;
+    cur = (cur as Record<string, unknown>)[key!];
+    if (idxStr !== undefined) {
+      if (!Array.isArray(cur)) return undefined;
+      // i === 0: Segment-Instanz (1-basiert); tiefer: Listenzeile (0-basiert).
+      cur = cur[i === 0 ? Number(idxStr) - 1 : Number(idxStr)];
+    }
+  }
+  return cur;
 }
 
 export function emptyCalibration(): CalibrationState {

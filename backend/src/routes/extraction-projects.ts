@@ -5,6 +5,7 @@
  */
 
 import { Hono } from 'hono';
+import { randomUUID } from 'node:crypto';
 import { authMiddleware } from '../auth/middleware';
 import {
   getAllProjects,
@@ -247,7 +248,7 @@ extractionProjectRoutes.post('/projects/infer-schema', async (c) => {
       if (!(file instanceof File)) return c.json({ error: 'Keine Datei hochgeladen' }, 400);
 
       const { mkdir, rm } = await import('fs/promises');
-      const tmpDir = `/tmp/extraction-infer/${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+      const tmpDir = `/tmp/extraction-infer/${randomUUID()}`;
       await mkdir(tmpDir, { recursive: true });
       const tmpPath = `${tmpDir}/${file.name.replace(/[^\w.\-]+/g, '_')}`;
       try {
@@ -312,7 +313,7 @@ extractionProjectRoutes.post('/projects/:id/extract', async (c) => {
     const { existsSync } = await import('fs');
     if (!existsSync(tmpDir)) await mkdir(tmpDir, { recursive: true });
 
-    const tmpPath = `${tmpDir}/${Date.now()}_${file.name}`;
+    const tmpPath = `${tmpDir}/${randomUUID()}_${file.name}`;
     const buffer = await file.arrayBuffer();
     await Bun.write(tmpPath, buffer);
 
@@ -467,7 +468,7 @@ extractionProjectRoutes.post('/projects/:id/batches', async (c) => {
 
   // Temp-Dateien ablegen.
   const { mkdir } = await import('fs/promises');
-  const tmpDir = `/tmp/extraction-batch/${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const tmpDir = `/tmp/extraction-batch/${randomUUID()}`;
   await mkdir(tmpDir, { recursive: true });
 
   const saved: { filename: string; tempPath: string }[] = [];

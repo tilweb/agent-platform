@@ -34,6 +34,7 @@ import { setupTools } from './tools';
 import { mcpManager } from './mcp';
 import { startExecutor } from './services/taskExecutor';
 import { recoverTasks } from './services/taskService';
+import { recoverStaleRuns } from './extraction/learning';
 import { llmService } from './services/llm';
 import { registerCommands } from './commands';
 import { registerProviders } from './connections/providers';
@@ -101,6 +102,15 @@ async function initialize() {
     await startExecutor();
   } catch (error) {
     console.error('Failed to start task executor:', error);
+  }
+
+  // Verwaiste Document-Processing-Läufe aufräumen (fire-and-forget-Batches, die
+  // ein vorheriger Prozess-Crash/Neustart mitten in 'processing' zurückließ).
+  try {
+    const stale = await recoverStaleRuns();
+    if (stale > 0) console.log(`Recovered ${stale} stale extraction batch run(s)`);
+  } catch (error) {
+    console.error('Failed to recover stale extraction runs:', error);
   }
 }
 initialize().catch(console.error);

@@ -270,6 +270,52 @@ export async function setRunStatus(
   await writeRun(projectId, run);
 }
 
+/**
+ * Beim Backend-Start verwaiste Läufe aufräumen (Befund #5 der Code-Review).
+ *
+ * Ein Batch-Lauf läuft fire-and-forget in-memory; stürzt der Prozess ab oder
+ * wird neu deployed, bleiben Lauf + Dateien für immer auf `processing`/`pending`
+ * stehen (das Frontend pollt endlos). Hier setzen wir solche Reste auf `failed`.
+ * Enumeriert alle Projekt-Verzeichnisse; idempotent.
+ *
+ * @returns Anzahl der auf `failed` gesetzten Läufe.
+ */
+export async function recoverStaleRuns(): Promise<number> {
+  if (!existsSync(PROJECTS_DIR)) return 0;
+  const now = new Date().toISOString();
+  const stale = new Set<BatchRunStatus>(['pending', 'processing']);
+  let recovered = 0;
+
+  const projectDirs = await readdir(PROJECTS_DIR, { withFileTypes: true });
+  for (const proj of projectDirs) {
+    if (!proj.isDirectory()) continue;
+    const dir = runsDir(proj.name);
+    if (!existsSync(dir)) continue;
+    const runEntries = await readdir(dir, { withFileTypes: true });
+    for (const entry of runEntries) {
+      if (!entry.isDirectory()) continue;
+      const run = await readRun(proj.name, entry.name);
+      if (!run || !stale.has(run.status)) continue;
+
+      // Offene Datei-Records auf failed setzen.
+      for (const fileId of run.order) {
+        const rec = await readFileRecord(proj.name, run.id, fileId);
+        if (!rec || !stale.has(rec.status)) continue;
+        rec.status = 'failed';
+        rec.error = 'Verarbeitung durch Backend-Neustart unterbrochen';
+        rec.updatedAt = now;
+        await writeFile(fileRecordPath(proj.name, run.id, fileId), stringifyYaml(rec), 'utf-8');
+      }
+
+      run.status = 'failed';
+      run.updatedAt = now;
+      await writeRun(proj.name, run);
+      recovered += 1;
+    }
+  }
+  return recovered;
+}
+
 export async function upsertFileResult(
   projectId: string,
   runId: string,
@@ -377,6 +423,7 @@ export async function getBatchRunFileDetail(
     audit: rec.audit ?? null,
     reviewStatus: rec.reviewStatus ?? null,
     validations: rec.validations ?? null,
+    segments: rec.segments ?? null,
     boxes: rec.boxes ?? null,
     pageImages: rec.pageImages ?? null,
     documentText: rec.documentText ?? null,
