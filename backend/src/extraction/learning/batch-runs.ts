@@ -190,6 +190,41 @@ export async function setRunStatus(
     .where(eq(extractionBatchRuns.id, runId));
 }
 
+/**
+ * Beim Backend-Start verwaiste Läufe aufräumen (Befund #5 der Code-Review).
+ *
+ * Ein Batch-Lauf läuft fire-and-forget in-memory; stürzt der Prozess ab oder
+ * wird neu deployed, bleiben Lauf + Dateien für immer auf `processing`/`pending`
+ * stehen (das Frontend pollt endlos). Hier setzen wir solche Reste auf `failed`.
+ * Idempotent — betrifft nur noch nicht abgeschlossene Zeilen.
+ *
+ * @returns Anzahl der auf `failed` gesetzten Läufe.
+ */
+export async function recoverStaleRuns(): Promise<number> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const stale: BatchRunStatus[] = ['pending', 'processing'];
+
+  // Erst die (noch offenen) Dateien der betroffenen Läufe, dann die Läufe selbst.
+  const staleRuns = await db.select({ id: extractionBatchRuns.id })
+    .from(extractionBatchRuns)
+    .where(inArray(extractionBatchRuns.status, stale));
+  if (staleRuns.length === 0) return 0;
+
+  const runIds = staleRuns.map((r) => r.id);
+  await db.update(extractionBatchRunFiles)
+    .set({ status: 'failed', error: 'Verarbeitung durch Backend-Neustart unterbrochen', updatedAt: now })
+    .where(and(
+      inArray(extractionBatchRunFiles.batchRunId, runIds),
+      inArray(extractionBatchRunFiles.status, ['pending', 'processing']),
+    ));
+  await db.update(extractionBatchRuns)
+    .set({ status: 'failed', updatedAt: now })
+    .where(inArray(extractionBatchRuns.id, runIds));
+
+  return staleRuns.length;
+}
+
 export async function upsertFileResult(
   _projectId: string,
   _runId: string,

@@ -66,6 +66,45 @@ test('eigene Schwelle greift', () => {
   expect(computeReviewStatus(p2, { name: 'X' }, { name: 0.55 })).toBe('auto_ok');
 });
 
+// ============== Segment-Triage (namespaced Konfidenzen, Befund #6) ==============
+
+// Minimal-Projekt mit gesetztem `segments` — nur die Praesenz aktiviert die
+// namespaced-Triage-Schleife; die Typdefinition selbst wird dort nicht gelesen.
+function makeSegmentProject(): ExtractionProject {
+  const p = makeProject({});
+  return { ...p, segments: { rezept: { label: 'Rezept', description: 'x'.repeat(20), repeatable: true } } as never };
+}
+
+test('Segment: Skalarfeld einer repeatable-Instanz unter Schwelle → needs_review', () => {
+  const p = makeSegmentProject();
+  const data = { rezept: [{ nummer: 'A-1' }, { nummer: 'B-2' }] };
+  expect(computeReviewStatus(p, data, { 'rezept[2].nummer': 0.4 })).toBe('needs_review');
+  expect(computeReviewStatus(p, data, { 'rezept[2].nummer': 0.9 })).toBe('auto_ok');
+});
+
+test('Segment: unsichere Listen-POSITION (verschachtelt) loest jetzt Review aus', () => {
+  // Vorher unaufloesbar (Regex fing nur eine Klammer) → nie Review. Jetzt korrekt.
+  const p = makeSegmentProject();
+  const data = { rezept: [{ nummer: 'A-1', positionen: [{ menge: '5' }, { menge: '2' }] }] };
+  expect(computeReviewStatus(p, data, { 'rezept[1].positionen[1].menge': 0.3 })).toBe('needs_review');
+  expect(computeReviewStatus(p, data, { 'rezept[1].positionen[1].menge': 0.95 })).toBe('auto_ok');
+});
+
+test('Segment: unsichere Listen-Position OHNE Wert (leere Zelle) → KEIN Review', () => {
+  const p = makeSegmentProject();
+  const data = { rezept: [{ positionen: [{ menge: '5' }, {}] }] };
+  // Position 2 hat keine Menge → leer → kein Dauer-Alarm.
+  expect(computeReviewStatus(p, data, { 'rezept[1].positionen[1].menge': 0.2 })).toBe('auto_ok');
+});
+
+test('Segment: nicht-repeatable Segment, Skalarpfad ohne Instanz', () => {
+  const p = makeProject({});
+  const ps = { ...p, segments: { formular: { label: 'Formular', description: 'x'.repeat(20) } } as never };
+  const data = { formular: { feld: 'Wert' } };
+  expect(computeReviewStatus(ps, data, { 'formular.feld': 0.4 })).toBe('needs_review');
+  expect(computeReviewStatus(ps, data, { 'formular.feld': 0.9 })).toBe('auto_ok');
+});
+
 // ============== Kalibrierung ==============
 
 const numField: ProjectField = { type: 'number', required: false, label: 'Betrag' };

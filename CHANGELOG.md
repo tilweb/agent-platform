@@ -21,6 +21,21 @@ Umfassende Code-Review der Extraction-/Document-Processing-Strecke
   rekursiv entfernt (vorher blieben leere Verzeichnisse liegen).
 - Neue SSRF-Testfaelle in `webhook.test.ts` (privater IP-Erkenner, Block interner Ziele).
 
+### Code-Review Document Processing — Folge-Befunde (#5/#6/#8)
+Zweite Runde der Code-Review-Umsetzung:
+- **[#5] Verwaiste Batch-Laeufe:** Ein fire-and-forget-Lauf blieb bei Prozess-Crash/Deploy fuer
+  immer auf `processing` stehen (Frontend pollt endlos). Neue `recoverStaleRuns()` setzt beim
+  Backend-Start alle `pending`/`processing`-Laeufe (+ deren offene Dateien) auf `failed` —
+  eingehaengt in den Startup neben `recoverTasks` (beide Worktrees: Postgres- und YAML-Variante).
+- **[#6] Triage-Loch bei Segment-Listen:** `resolveSegmentValue` (Review-Triage) fing per Regex nur
+  EINE Klammer → verschachtelte Listen-Positionen (`rezept[1].positionen[0].menge`) blieben
+  unaufloesbar, unsichere Positionszeilen in Segment-Profilen loesten NIE ein Review aus. Ersetzt
+  durch einen Pfad-Walker (Segment-Instanz 1-basiert, Listenzeile 0-basiert); 4 neue Tests.
+- **[#8] Temp-Namen:** `Math.random()`/`Date.now()` fuer Temp-Verzeichnisse/-Dateien durch
+  `crypto.randomUUID()` ersetzt (kollisionssicher unter Last).
+- Nebenbefund (railway-Variante): `getBatchRunFileDetail` gab `segments` nicht zurueck (Typluecke) —
+  der Segment-Review-Detail-Endpunkt lieferte dort keine Segmente; behoben.
+
 ### Bugfix: Profil-Export/Import kannte die W10-Segmente nicht
 Beim Pruefen der Weitergabe-Funktion (Anlass: Sani-Rezepte-Profil fuer weitere Kunden) fielen
 zwei Luecken auf: Das Transfer-Paket (Welle 5) exportierte `segments` nicht — ein Segment-Profil

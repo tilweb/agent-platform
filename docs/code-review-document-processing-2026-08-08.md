@@ -20,14 +20,26 @@ sofern nicht anders vermerkt.
 | 2 | **P1 High** | SSRF über Webhook-Ziel (nur Protokoll-Check) | `learning/webhook.ts:46` | **✅ behoben** |
 | 3 | **P1 High** | Batch-Upload ohne Datei-Anzahl-/Größen-Limit, alles in RAM | `routes/extraction-projects.ts:426–468` | **✅ behoben** |
 | 4 | **P2 Medium** | Batch-`tmpDir` wird nie gelöscht (Verzeichnis-Leak) | `learning/batch-service.ts:153` | **✅ behoben** |
-| 5 | **P2 Medium** | Fire-and-forget-Batch ohne Watchdog → Run bleibt bei Crash „läuft" | `routes/extraction-projects.ts:463` | offen |
-| 6 | **P2 Medium** | Konfidenz/Boxen von Listen-Positionen in *repeatable* Segmenten evtl. nicht auflösbar | `extraction/segmentation/segment-extract.ts:157–165` | offen (verifizieren) |
+| 5 | **P2 Medium** | Fire-and-forget-Batch ohne Watchdog → Run bleibt bei Crash „läuft" | `routes/extraction-projects.ts:463` | **✅ behoben** |
+| 6 | **P2 Medium** | Triage löst Listen-Positionen in *repeatable* Segmenten nicht auf (verifiziert: Triage-Loch, kein reines Anzeigethema) | `extraction/learning/review.ts:77` | **✅ behoben** (Frontend-Zeilenboxen offen) |
 | 7 | **P3 Low** | `/jobs/run-sync` immer 401 (kein Middleware setzt `userId`) | `routes/extraction-jobs.ts:44` | mit #1 mitbehoben |
-| 8 | **P3 Low** | Temp-Namen via `Math.random()` statt `crypto.randomUUID()` | `routes/extraction-projects.ts:444` | offen |
+| 8 | **P3 Low** | Temp-Namen via `Math.random()` statt `crypto.randomUUID()` | `routes/extraction-projects.ts:444` | **✅ behoben** |
 
-> **Update 2026-08-08:** Befunde 1–4 direkt umgesetzt (beide Worktrees), Live-Probe + Tests grün.
-> Details siehe CHANGELOG-Eintrag „Security: Code-Review Document Processing". Befund 7 ist durch
-> die Auth-Middleware aus #1 automatisch funktionsfähig. Offen bleiben 5, 6 (erst verifizieren), 8.
+> **Update 2026-08-08 (Runde 1):** Befunde 1–4 umgesetzt (beide Worktrees), Live-Probe + Tests grün.
+> Befund 7 durch die Auth-Middleware aus #1 automatisch funktionsfähig.
+>
+> **Update 2026-08-08 (Runde 2):** Befunde 5, 6, 8 umgesetzt.
+> - **#5** `recoverStaleRuns()` beim Backend-Start (verwaiste `pending`/`processing`-Läufe → `failed`),
+>   eingehängt neben `recoverTasks`. Die per-Request-Timeouts (W9) begrenzen bereits einzelne LLM-Calls,
+>   sodass ein Lauf ohne Crash nicht hängt — der Watchdog deckt den Crash-/Deploy-Fall ab.
+> - **#6** Verifikation ergab: nicht nur Anzeige, sondern ein **Triage-Loch** — `resolveSegmentValue`
+>   fing per Regex nur eine Klammer und lieferte für verschachtelte Listen-Pfade `undefined`, sodass
+>   unsichere Positionszeilen in Segment-Profilen nie ein Review auslösten. Ersetzt durch einen
+>   Pfad-Walker (Segment-Instanz 1-basiert, Listenzeile 0-basiert), 4 neue Tests. **Offen bleibt** die
+>   Frontend-Darstellung der Positionszeilen mit eigenen Boxen in `SegmentReviewPane` (W10.2-Grenze).
+> - **#8** `crypto.randomUUID()` für alle Temp-Pfade.
+> - **Nebenbefund** (railway-Variante): `getBatchRunFileDetail` gab `segments` nicht zurück (Typlücke,
+>   Segment-Detail-Endpunkt dort ohne Segmente) — mitbehoben.
 
 Gut umgesetzt (bewusst hervorgehoben): guided_json + `temperature:0`, OCR-Fusion als
 deterministischer Zahlenprüfer, zentraler `documentConverter` **mit** SSRF-Allowlist,

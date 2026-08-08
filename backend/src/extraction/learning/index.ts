@@ -26,6 +26,7 @@ export {
   getBatchRun,
   getBatchRunFileDetail,
   deleteBatchRun,
+  recoverStaleRuns,
 } from './batch-runs';
 export type {
   BatchRunStatus,
