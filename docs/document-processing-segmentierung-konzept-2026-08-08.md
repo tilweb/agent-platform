@@ -303,6 +303,35 @@ springt auf 10/10. Hartnäckig bleiben die Versorger-Beiblätter (Erdgas 1/7 —
 Layout ohne klare Titelwechsel) und der deklarierte EQE-Grenzfall; beide sind Typ-2-Fälle
 (semantische Hybride), kein Verfahrensproblem.
 
+### W10.3: Review-Gliederung (2026-08-08)
+
+Das Vollbild-Review zeigt Segment-Läufe jetzt als Gliederung: Miniaturen tragen **farbige
+Segment-Marker** (Farbe je Typ, Tooltip mit Label + Instanz), rechts stehen die Segmente in
+Dokumentreihenfolge — Überschrift mit Farbe/Seiten/Konfidenz (Klick springt zur ersten Seite),
+darunter die Felder mit Konfidenz und Fundstellen-Sprung, `classify-only`-Segmente als
+Beleg-Kachel, `unbekannt` rot ausgewiesen. Die Ergebnistabelle bekommt bei Segment-Profilen eine
+**Segmente-Spalte** (Anzahl + Typen). Demo in der lokalen Instanz: Profil
+`segment-demo-formularpaket` mit gelaufenem Batch — der volle Batch-Pfad liefert **8/8 Segmente
+exakt** (alle vier Einwilligungen getrennt), das handschriftliche Datum mit 0.95 + Box, und die
+Triage legt die einzige echte Unsicherheit (`unterschrieben`, Konfidenz 0.3) korrekt zur Prüfung vor.
+
+**Bewusst verschoben:** Grenz-/Typkorrektur im Review (und daraus das Lern-Signal für die
+Seiten-Klassifikation) setzt voraus, dass das **Originaldokument am Lauf gespeichert** wird —
+heute existieren nach dem Lauf nur die gerenderten Seiten (150 dpi), eine Re-Extraktion mit
+korrigierten Grenzen wäre eine Qualitätslüge. Speicher-Entscheidung (S3/DB, Aufbewahrung) ist
+die Voraussetzung; im Review steht dieser Hinweis sichtbar.
+
+### W10.4: Export + Webhook (2026-08-08)
+
+Segment-Profile exportieren jetzt segmentgerecht: **flach** = EIN Blatt, eine Zeile je
+Segment-Instanz (Datei/Status/Prüfung/Befunde + Segment/Instanz/Seiten/Konfidenz/Beleg + Union
+der Segment-Felder — Zellen fremder Typen bleiben leer; auch `classify-only` und `unbekannt`
+bekommen ihre Zeile, sonst verschwänden sie still). **Gruppiert** = Hauptblatt mit
+Segment-Zusammenfassung je Datei + „Segmente"-Blatt. Der Webhook-Payload trägt `segments[]` je
+Datei additiv. Verifiziert am Demo-Lauf: 8 Zeilen, Datum nur in der Formular-Zeile, Datei als
+echtes XLSX gelesen. Route und Public-API (`batch.export`) erben die Aufbereitung über den
+gemeinsamen Baustein.
+
 ## 13. Offene Fragen an den Kundenfall / die Beispiel-Scans
 
 1. Wie viele Segmenttypen realistisch (nur Anschreiben/Formular/Nachweis, oder offene Menge)?

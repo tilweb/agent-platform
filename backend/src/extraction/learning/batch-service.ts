@@ -78,6 +78,7 @@ async function notifyWebhook(
         field_confidences: f.fieldConfidences,
         review_status: f.reviewStatus,
         validations: f.validations ?? [],
+        ...(f.segments ? { segments: f.segments } : {}),
         error: f.error,
       })),
     };

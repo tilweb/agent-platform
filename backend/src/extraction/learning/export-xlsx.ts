@@ -14,7 +14,7 @@
  */
 
 import type { BatchFileSummary } from './batch-runs';
-import type { ExtractionProject, ProjectField } from './types';
+import type { ExtractionProject, ProjectField, SegmentInstance, SegmentTypeDef } from './types';
 
 export type ExportFormat = 'grouped' | 'flat';
 
@@ -144,11 +144,110 @@ function buildGroupedSections(project: ExtractionProject, files: BatchFileSummar
   return sections;
 }
 
+// ============== Segment-Profile (Welle 10.4) ==============
+
+/** Wert einer Segment-Instanz aus der aggregierten data-Struktur. */
+function segmentValues(
+  file: BatchFileSummary,
+  seg: SegmentInstance,
+  def: SegmentTypeDef | undefined,
+): Record<string, unknown> {
+  const raw = file.data?.[seg.type];
+  const v = def?.repeatable && Array.isArray(raw) ? raw[seg.instance - 1] : raw;
+  return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+}
+
+/** Union der Skalarfelder ueber alle Segmenttypen (Reihenfolge: Deklaration). */
+function segmentFieldUnion(defs: Record<string, SegmentTypeDef>): Array<[string, ProjectField, string]> {
+  const out: Array<[string, ProjectField, string]> = [];
+  const seen = new Set<string>();
+  for (const def of Object.values(defs)) {
+    for (const [fid, f] of Object.entries(def.fields ?? {})) {
+      if (f.type === 'list' || seen.has(fid)) continue;
+      seen.add(fid);
+      out.push([fid, f, f.label || fid]);
+    }
+  }
+  return out;
+}
+
+/**
+ * Segment-Blatt: EINE Zeile je Segment-Instanz (auch classify-only und
+ * `unbekannt` — sonst verschwinden sie still aus dem Export), Belegdaten
+ * wiederholt. Feld-Spalten sind die Union ueber alle Segmenttypen; Zellen
+ * fremder Typen bleiben leer.
+ */
+function buildSegmentSection(project: ExtractionProject, files: BatchFileSummary[]): DocumentSection {
+  const defs = project.segments ?? {};
+  const fieldUnion = segmentFieldUnion(defs);
+  const headers = [
+    'Datei', 'Status', 'Pruefung', 'Befunde',
+    'Segment', 'Instanz', 'Seiten', 'Konfidenz', 'Beleg',
+    ...fieldUnion.map(([, , label]) => label),
+  ];
+  const rows: string[][] = [];
+  for (const file of files) {
+    const befunde = (file.validations ?? []).filter((v) => v.severity !== 'info');
+    const kopf = [
+      file.filename,
+      file.status,
+      file.reviewStatus ? (REVIEW_LABEL[file.reviewStatus] ?? file.reviewStatus) : '',
+      befunde.length > 0 ? befunde.map((v) => v.message).join(' | ') : (file.error ?? ''),
+    ];
+    const segs = file.segments ?? [];
+    if (segs.length === 0) {
+      rows.push([...kopf, '', '', '', '', '', ...fieldUnion.map(() => '')]);
+      continue;
+    }
+    for (const seg of segs) {
+      const def = defs[seg.type];
+      const values = segmentValues(file, seg, def);
+      const label = def?.label ?? (seg.type === 'leerseite' ? 'Leer-/Trennseite' : seg.type === 'unbekannt' ? 'Nicht zugeordnet' : seg.type);
+      rows.push([
+        ...kopf,
+        label,
+        String(seg.instance),
+        seg.pageFrom === seg.pageTo ? String(seg.pageFrom) : `${seg.pageFrom}-${seg.pageTo}`,
+        `${Math.round(seg.confidence * 100)}%`,
+        cellString(seg.summary ?? (values as Record<string, unknown>)._beleg ?? ''),
+        ...fieldUnion.map(([fid]) => cellString(values[fid])),
+      ]);
+    }
+  }
+  return { title: 'Segmente', type: 'table', content: { headers, rows } };
+}
+
+/** Segment-Profil, gruppiert: Hauptblatt je Datei + Zusatzblatt je Instanz. */
+function buildSegmentGroupedSections(project: ExtractionProject, files: BatchFileSummary[]): DocumentSection[] {
+  const defs = project.segments ?? {};
+  const headers = ['Datei', 'Status', 'Segmente'];
+  const rows = files.map((file) => [
+    file.filename,
+    file.status,
+    (file.segments ?? [])
+      .map((s) => `${defs[s.type]?.label ?? s.type} (S.${s.pageFrom}${s.pageTo !== s.pageFrom ? `-${s.pageTo}` : ''})`)
+      .join(' | '),
+  ]);
+  const segmentSheet = buildSegmentSection(project, files);
+  segmentSheet.sheet = sanitizeSheetName('Segmente');
+  return [
+    { title: 'Ergebnisse', type: 'table', content: { headers, rows } },
+    segmentSheet,
+  ];
+}
+
 export function buildBatchExportSections(
   project: ExtractionProject,
   files: BatchFileSummary[],
   format: ExportFormat,
 ): DocumentSection[] {
+  // Segment-Profile (Welle 10): eigene Aufbereitung — die Feld-Spalten liegen
+  // in den Segmenttypen, nicht in project.fields.
+  if (project.segments && Object.keys(project.segments).length > 0) {
+    return format === 'flat'
+      ? [buildSegmentSection(project, files)]
+      : buildSegmentGroupedSections(project, files);
+  }
   return format === 'flat' ? [buildFlatSection(project, files)] : buildGroupedSections(project, files);
 }
 
