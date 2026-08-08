@@ -418,6 +418,33 @@ function itemFieldsToObject(arr) {
   return obj;
 }
 
+/** Segment-IDs erlauben nur klein-alphanumerisch + Bindestriche (kein Unterstrich). */
+function slugifySegmentId(label) {
+  return (label || '')
+    .toLowerCase()
+    .replace(/[äÄ]/g, 'ae').replace(/[öÖ]/g, 'oe').replace(/[üÜ]/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/** Editor-Array (Felder) → fields-Objekt (API). Von Profil- UND Segment-Feldern genutzt. */
+function fieldsArrayToObject(fields) {
+  const obj = {};
+  for (const f of (fields || []).filter(f => f.label && f.label.trim())) {
+    const fieldId = f.id || slugifyFieldLabel(f.label);
+    obj[fieldId] = {
+      type: f.type,
+      required: f.required,
+      label: f.label,
+      description: f.description || undefined,
+      ...(f.type === 'list'
+        ? { item_fields: itemFieldsToObject(f.item_fields) }
+        : (f.catalog ? { catalog: f.catalog } : {})),
+    };
+  }
+  return obj;
+}
+
 // Heavy-Extraction-Pipeline-Strategien (siehe backend/src/services/extraction/).
 const EXTRACTION_STRATEGIES = [
   { value: 'hybrid', label: 'Hybrid — Text + Vision-Fallback (empfohlen)' },
@@ -4337,6 +4364,220 @@ function RulesEditor({ rules, fields, onChange }) {
   );
 }
 
+/**
+ * Wiederverwendbarer Feld-Editor (Profil-Felder UND Segment-Felder).
+ * Editor-State ist ein Array; die Umwandlung ins API-Objekt macht der Aufrufer
+ * per fieldsArrayToObject().
+ */
+function FieldsEditor({ fields, onChange, title = 'Felder', addLabel = '+ Feld' }) {
+  function addField() {
+    onChange([...fields, { id: '', label: '', type: 'text', required: false, description: '', item_fields: [] }]);
+  }
+  function removeField(idx) {
+    onChange(fields.filter((_, i) => i !== idx));
+  }
+  function updateField(idx, key, value) {
+    const updated = [...fields];
+    updated[idx] = { ...updated[idx], [key]: value };
+    if (key === 'label' && !updated[idx].id) updated[idx].id = slugifyFieldLabel(value);
+    if (key === 'type' && value !== 'list') updated[idx].item_fields = [];
+    onChange(updated);
+  }
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+        <div style={styles.sectionTitle}>{title}</div>
+        <button style={styles.secondaryBtn} onClick={addField}>{addLabel}</button>
+      </div>
+      {fields.length === 0 && (
+        <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.md }}>
+          Noch keine Felder — „{addLabel}" fügt eines hinzu.
+        </div>
+      )}
+      {fields.map((field, idx) => (
+        <div key={idx} style={{
+          padding: theme.spacing.lg,
+          backgroundColor: theme.colors.background,
+          borderRadius: theme.borderRadius.lg,
+          marginBottom: theme.spacing.md,
+        }}>
+          <div style={{ display: 'flex', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>Label</label>
+              <input style={styles.input} value={field.label} onChange={e => updateField(idx, 'label', e.target.value)} />
+            </div>
+            <div style={{ width: '120px' }}>
+              <label style={styles.label}>Typ</label>
+              <select style={{ ...styles.select, width: '100%' }} value={field.type} onChange={e => updateField(idx, 'type', e.target.value)}>
+                {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: theme.spacing.xs }}>
+              <label style={{ display: 'flex', alignItems: 'center', fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <input type="checkbox" style={styles.checkbox} checked={field.required} onChange={e => updateField(idx, 'required', e.target.checked)} />
+                Pflicht
+              </label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: theme.spacing.xs }}>
+              <button style={{ ...styles.dangerBtn, padding: theme.spacing.sm }} onClick={() => removeField(idx)} title="Feld entfernen">
+                <TrashIcon size={14} />
+              </button>
+            </div>
+          </div>
+          <div>
+            <label style={styles.label}>Beschreibung</label>
+            <input style={styles.input} value={field.description} onChange={e => updateField(idx, 'description', e.target.value)} />
+          </div>
+          {field.type === 'list' ? (
+            <ItemFieldsEditor itemFields={field.item_fields} onChange={arr => updateField(idx, 'item_fields', arr)} />
+          ) : (
+            <CatalogEditor catalog={field.catalog} onChange={value => updateField(idx, 'catalog', value)} />
+          )}
+          {field.id && (
+            <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+              ID: {field.id}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Segment-Editor (Welle 10 — Pflege in der Maske statt nur per Import/API).
+ * Editor-State: Array von { id, label, description, mode, repeatable, required, fields[] };
+ * Umwandlung ins API-Objekt macht der Aufrufer per segmentsArrayToObject().
+ */
+function SegmentsEditor({ segments, onChange }) {
+  function addSegment() {
+    onChange([...segments, { id: '', label: '', description: '', mode: 'extract', repeatable: false, required: false, fields: [] }]);
+  }
+  function removeSegment(idx) {
+    onChange(segments.filter((_, i) => i !== idx));
+  }
+  function updateSegment(idx, patch) {
+    const updated = [...segments];
+    updated[idx] = { ...updated[idx], ...patch };
+    if ('label' in patch && !updated[idx].id) updated[idx].id = slugifySegmentId(patch.label);
+    onChange(updated);
+  }
+  const checkboxLabel = { display: 'flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap' };
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+        <div style={styles.sectionTitle}>Segmente</div>
+        <button style={styles.secondaryBtn} onClick={addSegment}>+ Segmenttyp</button>
+      </div>
+      <InfoBox style={{ marginBottom: theme.spacing.lg }}>
+        Ein <strong>Segment</strong> ist ein zusammenhängender Abschnitt eines Typs innerhalb eines Dokuments
+        (z.B. Anschreiben, Formular und Nachweis in einem Sammel-Scan) — jedes wird einzeln ausgelesen. Die
+        <strong> Beschreibung</strong> steuert, wie die Seiten den Segmenten zugeordnet werden; bitte ausführlich
+        (mind. 20 Zeichen). Ohne Segmenttypen wird das Dokument wie gewohnt als Ganzes ausgelesen.
+      </InfoBox>
+      {segments.length === 0 && (
+        <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.md }}>
+          Keine Segmente definiert — „+ Segmenttyp" fügt einen hinzu.
+        </div>
+      )}
+      {segments.map((seg, idx) => (
+        <div key={idx} style={{
+          padding: theme.spacing.lg,
+          backgroundColor: theme.colors.surface,
+          border: `1px solid ${theme.colors.border}`,
+          borderRadius: theme.borderRadius.lg,
+          marginBottom: theme.spacing.md,
+        }}>
+          <div style={{ display: 'flex', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>Bezeichnung</label>
+              <input style={styles.input} value={seg.label} onChange={e => updateSegment(idx, { label: e.target.value })} placeholder="z.B. Anschreiben" />
+            </div>
+            <div style={{ width: 180 }}>
+              <label style={styles.label}>ID</label>
+              <input style={{ ...styles.input, fontFamily: 'monospace' }} value={seg.id} onChange={e => updateSegment(idx, { id: e.target.value })} placeholder="anschreiben" />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: theme.spacing.xs }}>
+              <button style={{ ...styles.dangerBtn, padding: theme.spacing.sm }} onClick={() => removeSegment(idx)} title="Segmenttyp entfernen">
+                <TrashIcon size={14} />
+              </button>
+            </div>
+          </div>
+          <div style={{ marginBottom: theme.spacing.md }}>
+            <label style={styles.label}>Beschreibung (steuert die Seiten-Zuordnung, mind. 20 Zeichen)</label>
+            <textarea
+              style={{ ...styles.input, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }}
+              value={seg.description}
+              onChange={e => updateSegment(idx, { description: e.target.value })}
+              placeholder="Woran erkennt man diesen Abschnitt? Layout, Überschriften, Absender, typische Inhalte …"
+            />
+          </div>
+          <div style={{ display: 'flex', gap: theme.spacing.lg, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ width: 220 }}>
+              <label style={styles.label}>Modus</label>
+              <select style={{ ...styles.select, width: '100%' }} value={seg.mode} onChange={e => updateSegment(idx, { mode: e.target.value })}>
+                <option value="extract">Felder auslesen</option>
+                <option value="classify-only">Nur erkennen (kein Auslesen)</option>
+              </select>
+            </div>
+            <label style={checkboxLabel} title="Mehrere Instanzen desselben Typs möglich (z.B. drei Nachweise → drei Segmente).">
+              <input type="checkbox" style={styles.checkbox} checked={seg.repeatable} onChange={e => updateSegment(idx, { repeatable: e.target.checked })} />
+              Mehrfach möglich
+            </label>
+            <label style={checkboxLabel} title={'Fehlt dieses Segment im Dokument, wird der Lauf als „Zu prüfen" markiert.'}>
+              <input type="checkbox" style={styles.checkbox} checked={seg.required} onChange={e => updateSegment(idx, { required: e.target.checked })} />
+              Pflicht
+            </label>
+          </div>
+          {seg.mode === 'extract' && (
+            <div style={{ marginTop: theme.spacing.lg, paddingTop: theme.spacing.md, borderTop: `1px solid ${theme.colors.border}` }}>
+              <FieldsEditor title="Felder des Segments" fields={seg.fields} onChange={f => updateSegment(idx, { fields: f })} />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Segment-Editor-Array → segments-Objekt (API). Leere IDs/Labels werden verworfen. */
+function segmentsArrayToObject(segments) {
+  const obj = {};
+  for (const s of segments) {
+    const id = (s.id || slugifySegmentId(s.label)).trim();
+    if (!id || !s.label.trim()) continue;
+    obj[id] = {
+      label: s.label.trim(),
+      description: s.description.trim(),
+      ...(s.mode === 'classify-only' ? { mode: 'classify-only' } : {}),
+      ...(s.repeatable ? { repeatable: true } : {}),
+      ...(s.required ? { required: true } : {}),
+      ...(s.mode !== 'classify-only' ? { fields: fieldsArrayToObject(s.fields) } : {}),
+    };
+  }
+  return obj;
+}
+
+/** Client-seitige Segment-Validierung (spiegelt validators.ts). Gibt Fehlermeldung oder null. */
+function validateSegmentsClient(segments) {
+  const seen = new Set();
+  for (const s of segments) {
+    const id = (s.id || slugifySegmentId(s.label)).trim();
+    if (!id) return 'Ein Segment hat weder ID noch Bezeichnung.';
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) return `Segment „${id}": ID bitte klein-alphanumerisch mit Bindestrichen.`;
+    if (['leerseite', 'unbekannt'].includes(id)) return `Segment „${id}": dieser Typ ist eingebaut und kann nicht angelegt werden.`;
+    if (seen.has(id)) return `Segment-ID „${id}" ist doppelt vergeben.`;
+    seen.add(id);
+    if (!s.label.trim()) return `Segment „${id}": Bezeichnung fehlt.`;
+    if (s.description.trim().length < 20) return `Segment „${id}": Beschreibung mind. 20 Zeichen (sie trägt die Seiten-Zuordnung).`;
+    if (s.mode === 'extract') {
+      const badList = (s.fields || []).filter(f => f.label.trim()).find(f => f.type === 'list' && Object.keys(itemFieldsToObject(f.item_fields)).length === 0);
+      if (badList) return `Segment „${id}": Liste „${badList.label}" braucht mindestens eine Positions-Spalte.`;
+    }
+  }
+  return null;
+}
+
 function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
@@ -4355,6 +4596,25 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
       description: f.description || '',
       item_fields: itemFieldsToArray(f.item_fields),
       catalog: f.catalog || null,
+    }))
+  );
+  const [segments, setSegments] = useState(
+    Object.entries(project.segments || {}).map(([id, s]) => ({
+      id,
+      label: s.label || '',
+      description: s.description || '',
+      mode: s.mode || 'extract',
+      repeatable: !!s.repeatable,
+      required: !!s.required,
+      fields: Object.entries(s.fields || {}).map(([fid, f]) => ({
+        id: fid,
+        label: f.label,
+        type: f.type,
+        required: f.required,
+        description: f.description || '',
+        item_fields: itemFieldsToArray(f.item_fields),
+        catalog: f.catalog || null,
+      })),
     }))
   );
   const [webhookUrl, setWebhookUrl] = useState(project.webhook?.url || '');
@@ -4381,26 +4641,6 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
     }
   }
 
-  function addField() {
-    setFields([...fields, { id: '', label: '', type: 'text', required: false, description: '', item_fields: [] }]);
-  }
-
-  function removeField(idx) {
-    setFields(fields.filter((_, i) => i !== idx));
-  }
-
-  function updateField(idx, key, value) {
-    const updated = [...fields];
-    updated[idx] = { ...updated[idx], [key]: value };
-    if (key === 'label' && !updated[idx].id) {
-      updated[idx].id = slugifyFieldLabel(value);
-    }
-    // Typwechsel weg von Liste verwirft die Spalten-Definition.
-    if (key === 'type' && value !== 'list') {
-      updated[idx].item_fields = [];
-    }
-    setFields(updated);
-  }
 
   async function handleSave() {
     const badList = fields.filter(f => f.label.trim()).find(
@@ -4411,22 +4651,23 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
       return;
     }
 
+    const segmentError = validateSegmentsClient(segments);
+    if (segmentError) {
+      setStatusMsg(`Fehler: ${segmentError}`);
+      return;
+    }
+
     setSaving(true);
     setStatusMsg('');
 
-    const fieldsObj = {};
-    for (const f of fields.filter(f => f.label.trim())) {
-      const fieldId = f.id || f.label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-      fieldsObj[fieldId] = {
-        type: f.type,
-        required: f.required,
-        label: f.label,
-        description: f.description || undefined,
-        ...(f.type === 'list'
-          ? { item_fields: itemFieldsToObject(f.item_fields) }
-          : (f.catalog ? { catalog: f.catalog } : {})),
-      };
-    }
+    const fieldsObj = fieldsArrayToObject(fields);
+
+    // segments: Objekt wenn welche definiert; null (löschen) wenn vorher vorhanden und
+    // jetzt leer; undefined (unberührt lassen) wenn nie vorhanden und weiter leer.
+    const hadSegments = project.segments && Object.keys(project.segments).length > 0;
+    const segmentsPayload = segments.length > 0
+      ? segmentsArrayToObject(segments)
+      : (hadSegments ? null : undefined);
 
     try {
       const res = await apiPut(`/extraction/projects/${project.id}`, {
@@ -4436,6 +4677,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         instructions: instructions,
         // rules bewusst NICHT: sie werden im Bereich „Regeln & Qualität" gepflegt
         // und gespeichert; ein Mitsenden des hier veralteten Stands wuerde sie ueberschreiben.
+        ...(segmentsPayload !== undefined ? { segments: segmentsPayload } : {}),
         webhook: webhookUrl.trim()
           ? { url: webhookUrl.trim(), ...(webhookSecret.trim() ? { secret: webhookSecret.trim() } : {}) }
           : null,
@@ -4543,114 +4785,13 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
 
       {/* Fields */}
       <div style={styles.section}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-          <div style={styles.sectionTitle}>Felder</div>
-          <button style={styles.secondaryBtn} onClick={addField}>+ Feld</button>
-        </div>
-
-        {fields.map((field, idx) => (
-          <div key={idx} style={{
-            padding: theme.spacing.lg,
-            backgroundColor: theme.colors.background,
-            borderRadius: theme.borderRadius.lg,
-            marginBottom: theme.spacing.md,
-          }}>
-            <div style={{ display: 'flex', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>Label</label>
-                <input
-                  style={styles.input}
-                  value={field.label}
-                  onChange={e => updateField(idx, 'label', e.target.value)}
-                />
-              </div>
-              <div style={{ width: '120px' }}>
-                <label style={styles.label}>Typ</label>
-                <select
-                  style={{ ...styles.select, width: '100%' }}
-                  value={field.type}
-                  onChange={e => updateField(idx, 'type', e.target.value)}
-                >
-                  {FIELD_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: theme.spacing.xs }}>
-                <label style={{ display: 'flex', alignItems: 'center', fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  <input
-                    type="checkbox"
-                    style={styles.checkbox}
-                    checked={field.required}
-                    onChange={e => updateField(idx, 'required', e.target.checked)}
-                  />
-                  Pflicht
-                </label>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: theme.spacing.xs }}>
-                <button
-                  style={{ ...styles.dangerBtn, padding: theme.spacing.sm }}
-                  onClick={() => removeField(idx)}
-                  title="Feld entfernen"
-                >
-                  <TrashIcon size={14} />
-                </button>
-              </div>
-            </div>
-            <div>
-              <label style={styles.label}>Beschreibung</label>
-              <input
-                style={styles.input}
-                value={field.description}
-                onChange={e => updateField(idx, 'description', e.target.value)}
-              />
-            </div>
-            {field.type === 'list' ? (
-              <ItemFieldsEditor
-                itemFields={field.item_fields}
-                onChange={arr => updateField(idx, 'item_fields', arr)}
-              />
-            ) : (
-              /* Kontrollierte Werteliste (Welle 6) */
-              <CatalogEditor
-                catalog={field.catalog}
-                onChange={value => updateField(idx, 'catalog', value)}
-              />
-            )}
-            <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-              ID: {field.id}
-            </div>
-          </div>
-        ))}
+        <FieldsEditor fields={fields} onChange={setFields} />
       </div>
 
-
-      {/* Segmente (read-only Übersicht — Pflege via Import/API) */}
-      {project.segments && Object.keys(project.segments).length > 0 && (
-        <div style={styles.section}>
-          <div style={styles.sectionTitle}>Segmente</div>
-          <InfoBox style={{ marginBottom: theme.spacing.md }}>
-            Dieses Profil gliedert jedes Dokument in <strong>Segmente</strong> — zusammenhängende Abschnitte eines Typs
-            (z.B. Anschreiben, Formular und Nachweis in einem Sammel-Scan). Jedes Segment wird einzeln ausgelesen.
-            Segment-Definitionen werden derzeit per Profil-Import bzw. API gepflegt, nicht in dieser Oberfläche.
-          </InfoBox>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-            {Object.entries(project.segments).map(([id, def]) => (
-              <div key={id} style={{ fontSize: theme.typography.sizes.sm }}>
-                <strong>{def.label || id}</strong>
-                <span style={{ color: theme.colors.textMuted }}>
-                  {' — '}
-                  {def.mode === 'classify-only' || !def.fields || Object.keys(def.fields).length === 0
-                    ? 'nur erkennen (keine Felder)'
-                    : `${Object.keys(def.fields).length} Felder`}
-                  {def.repeatable ? ' · mehrfach möglich' : ''}
-                  {def.required ? ' · Pflicht' : ''}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Segmente (Welle 10 — Editor in der Maske) */}
+      <div style={styles.section}>
+        <SegmentsEditor segments={segments} onChange={setSegments} />
+      </div>
 
       {/* Integration / Webhook (Welle 5) */}
       <div style={styles.section}>

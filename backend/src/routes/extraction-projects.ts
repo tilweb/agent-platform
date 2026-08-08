@@ -176,8 +176,9 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
     extraction: body.extraction,
     rules: body.rules,
     webhook,
-    // `null` loescht die Segmenttypen bewusst, `undefined` laesst sie unberuehrt.
-    segments: body.segments === null ? undefined : body.segments,
+    // `null` loescht die Segmenttypen bewusst, `undefined` (weggelassen) laesst sie
+    // unberuehrt. updateProject filtert nur `undefined` heraus, `null` clippt auf null.
+    segments: body.segments,
   });
 
   if (!updated) {
