@@ -36,6 +36,14 @@ Zweite Runde der Code-Review-Umsetzung:
 - Nebenbefund (railway-Variante): `getBatchRunFileDetail` gab `segments` nicht zurueck (Typluecke) —
   der Segment-Review-Detail-Endpunkt lieferte dort keine Segmente; behoben.
 
+### Document Processing: Segment-Review zeigt Positionszeilen mit Fundstellen (#6 Frontend)
+Nachzug zum Triage-Fix: `SegmentReviewPane` rendert Listenfelder eines Segments jetzt als
+Positions-Tabelle (statt als JSON-Wert-Blob). `ListItemsEditor` (read-only) wurde additiv um
+Zellen-Konfidenz und Box-Sprung erweitert — pro Positionszelle wird die Konfidenz (Warnfarbe
+unter Schwelle) und, sofern eine Fundstelle vorliegt, ein klickbarer Sprung ins Dokument
+angezeigt (`keyPrefix` loest `key.fid[zeile].feld` auf; die Zeilen-Boxen lagen bereits vor).
+Damit ist Code-Review-Befund #6 vollstaendig geschlossen.
+
 ### Bugfix: Profil-Export/Import kannte die W10-Segmente nicht
 Beim Pruefen der Weitergabe-Funktion (Anlass: Sani-Rezepte-Profil fuer weitere Kunden) fielen
 zwei Luecken auf: Das Transfer-Paket (Welle 5) exportierte `segments` nicht — ein Segment-Profil
