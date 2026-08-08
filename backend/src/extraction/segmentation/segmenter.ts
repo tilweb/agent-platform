@@ -172,6 +172,13 @@ ${typeLines}
 
 Zusaetzlich: "neustart" = true, wenn auf dieser Seite sichtbar eine NEUE Einheit BEGINNT — z.B. eigener Briefkopf/Logo-Kopf, Anrede/Betreff am Anfang, eine interne Zaehlung, die neu startet ("Seite 1 von N", "1/2"), eine eigene Dokument-Kennung oder ein Titel. Fortsetzungsseiten (laufender Text, fortlaufende Zaehlung wie "Seite 3 von 8") haben neustart = false.
 
+WICHTIG: "neustart" entscheidet, ob zwei AUFEINANDERFOLGENDE Seiten desselben Typs getrennt werden. neustart = true, wenn EINES dieser Signale zutrifft — der Aussteller muss dafuer NICHT wechseln:
+- die Seite beginnt mit einer eigenen Titel-Ueberschrift (auch beim gleichen Aussteller: mehrere Einwilligungserklaerungen einer Schule, mehrere Anlagen eines Versorgers — jede beginnt mit ihrer eigenen Ueberschrift)
+- der Aussteller wechselt (anderes Logo, anderer Firmen-/Behoerdenname im Kopf, anderes Layout)
+- eine interne Zaehlung oder Kennung startet neu ("Seite 1 von N", "1/2", eigene Berichts-/Dokumentnummer)
+- die vorige Einheit war sichtbar abgeschlossen (Unterschriftenblock, "Ende des ...") und diese Seite beginnt etwas Neues
+Nur ECHTE Fortsetzungen (laufender Text/Tabelle ohne neuen Titel, fortlaufende Zaehlung) haben neustart = false.
+
 "confidence" = deine Sicherheit der Typzuordnung (0..1).`;
 }
 

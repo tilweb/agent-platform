@@ -17,7 +17,7 @@ import { join, resolve } from 'path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { FieldBox, PageImage } from '../../services/extraction/types';
 import { deletePageImages, savePageImages, type StoredPageImage } from './page-store';
-import type { ReviewStatus, RuleIssue } from './types';
+import type { ReviewStatus, RuleIssue, SegmentInstance } from './types';
 
 const PROJECTS_DIR = resolve(process.cwd(), '../data/extraction-projects');
 
@@ -64,6 +64,8 @@ export interface BatchFileSummary {
   reviewStatus: ReviewStatus | null;
   /** Befunde der fachlichen Pruefregeln (Welle 5); null bei alten Laeufen. */
   validations: RuleIssue[] | null;
+  /** Segment-Instanzen (Welle 10); null bei segmentlosen Profilen/alten Laeufen. */
+  segments: SegmentInstance[] | null;
 }
 
 export interface BatchFileDetail extends BatchFileSummary {
@@ -90,6 +92,7 @@ export interface FileResultPayload {
   documentText?: string;
   reviewStatus?: ReviewStatus;
   validations?: RuleIssue[];
+  segments?: SegmentInstance[];
 }
 
 /** Interne On-Disk-Form (Lauf). */
@@ -173,6 +176,7 @@ function toSummary(f: FileRecord): BatchFileSummary {
     audit: f.audit ?? null,
     reviewStatus: f.reviewStatus ?? null,
     validations: f.validations ?? null,
+    segments: f.segments ?? null,
   };
 }
 
@@ -209,6 +213,7 @@ export async function createBatchRun(
       audit: null,
       reviewStatus: null,
       validations: null,
+      segments: null,
       boxes: null,
       pageImages: null,
       documentText: null,
@@ -286,6 +291,7 @@ export async function upsertFileResult(
     audit: payload.audit ?? existing.audit ?? null,
     reviewStatus: payload.reviewStatus ?? existing.reviewStatus ?? null,
     validations: payload.validations ?? existing.validations ?? null,
+    segments: payload.segments ?? existing.segments ?? null,
     boxes: payload.boxes ?? existing.boxes ?? null,
     pageImages: storedPages ?? existing.pageImages ?? null,
     documentText: payload.documentText ?? existing.documentText ?? null,

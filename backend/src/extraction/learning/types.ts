@@ -175,7 +175,7 @@ export type RuleSeverity = 'error' | 'warn' | 'info';
 /** Ein konkreter Befund aus der Regel-/Katalogpruefung eines Extraktionsergebnisses. */
 export interface RuleIssue {
   rule_id: string;
-  type: ExtractionRule['type'] | 'catalog' | 'ocr' | 'processing';
+  type: ExtractionRule['type'] | 'catalog' | 'ocr' | 'processing' | 'segment';
   severity: RuleSeverity;
   /** Klartext fuer die UI (deutsch, mit den beteiligten Werten). */
   message: string;

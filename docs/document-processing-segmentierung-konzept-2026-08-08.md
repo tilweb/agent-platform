@@ -267,7 +267,43 @@ jedes Tuning >95 % Seiten-Accuracy und >92 % Grenz-Präzision, mit null Fehlalar
 Fehlerklassen sind die Arbeitsliste für W10.2 (Neustart-Schärfung in den Beschreibungen;
 Fortsetzungsseiten-Logik), nicht Gegenargumente.
 
-## 12. Offene Fragen an den Kundenfall / die Beispiel-Scans
+## 12. W10.2: Gescopte Extraktion + Neustart-Tuning (2026-08-08)
+
+**Gescopte Extraktion umgesetzt** (`extraction/segmentation/segment-extract.ts`): bei Profilen mit
+`segments` klassifiziert `extract()` die Seiten, baut je `extract`-Segment ein Sub-PDF
+(`buildPartPdf`) und schickt es mit dem Sub-Schema des Typs durch die **bestehende** Pipeline —
+Merger, OCR-Fusion, Boxen, Kataloge gelten je Segment unverändert. `classify-only`-Segmente
+erhalten einen Kurzbeleg ohne zusätzlichen Modellaufruf. Ergebnisse aggregiert:
+`data.<segId>` (repeatable als Array), Konfidenzen/Boxen namespaced (`segId[2].feld`), Box-Seiten
+absolut. Persistenz über `batch_run_files.segments`, API (`extract`/`batch.get`) additiv,
+Review-Triage prüft namespaced Konfidenzen; `unbekannt`/fehlende Pflicht-Segmente erzwingen Review.
+
+E2E am unterschriebenen Formular-Paket: 6 Segment-Instanzen, das handschriftliche Datum
+(„Ffm 25.05.2026" → `2026-05-25`) aus dem Formular-Segment extrahiert, Box auf absoluter Seite 2,
+`auto_ok`. Ehinger-Stichprobe: segmentloser Pfad byte-identisch im Verhalten (vision-per-page,
+kein `segments`-Feld).
+
+Bewusste W10.2-Grenzen: Few-Shot/gelernte Regeln bleiben Gesamtdokument-bezogen und werden für
+Segment-Läufe nicht injiziert; Prüfregeln (W5) hängen an Projekt-, nicht an Segment-Feldern.
+Beides Folgearbeit, wenn Segment-Profile in den Lern-Loop gehen.
+
+**Neustart-Tuning, drei Messläufe (ehrliches Protokoll):**
+
+| Lauf | Seitentyp | Grenzen P/R | Segmente exakt |
+|---|---|---|---|
+| 1 (Basis) | 95,5 % | 92,2 / 94,7 % | 78/93 |
+| 2 (Aussteller-Wechsel betont) | 97,2 % | 93,2 / **92,0 %** | **77/93** |
+| 3 (Signale in beide Richtungen) | 96,6 % | 93,4 / 94,7 % | **80/93** (+8 auf ±1) |
+
+Lauf 2 war die Lehrstunde: die Betonung „Aussteller-Wechsel ⇒ Neustart" verklebte Instanzen
+**desselben** Ausstellers (die vier Schul-Einwilligungen, die Versorger-Anlagen). Lauf 3 nennt die
+Signale explizit ausstellerunabhängig (eigene Titel-Überschrift, Zählungs-Neustart, sichtbarer
+Abschluss der Voreinheit) — damit sind 12 von 18 Dokumenten perfekt, die große Bewerbungsmappe
+springt auf 10/10. Hartnäckig bleiben die Versorger-Beiblätter (Erdgas 1/7 — sehr einheitliches
+Layout ohne klare Titelwechsel) und der deklarierte EQE-Grenzfall; beide sind Typ-2-Fälle
+(semantische Hybride), kein Verfahrensproblem.
+
+## 13. Offene Fragen an den Kundenfall / die Beispiel-Scans
 
 1. Wie viele Segmenttypen realistisch (nur Anschreiben/Formular/Nachweis, oder offene Menge)?
 2. Ist die Reihenfolge stabil (Anschreiben immer zuerst?) — wenn ja, wird sie als Prior in die

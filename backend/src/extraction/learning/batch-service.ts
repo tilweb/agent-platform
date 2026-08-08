@@ -132,6 +132,7 @@ export async function runBatchExtraction(
           documentText: result.document_text,
           reviewStatus,
           validations: result.validations,
+          segments: result.segments,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

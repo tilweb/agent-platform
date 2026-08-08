@@ -208,6 +208,7 @@ export const extractFunction: PublicFunction<
         field_confidences: result.fieldConfidences ?? {},
         review_status: computeReviewStatus(project, result.data, result.fieldConfidences, result.validations),
         validations: result.validations ?? [],
+        ...(result.segments ? { segments: result.segments } : {}),
         strategy: result.strategyUsed,
         document_text: result.document_text,
       };
@@ -232,6 +233,7 @@ export const extractFunction: PublicFunction<
         field_confidences: result.fieldConfidences ?? {},
         review_status: computeReviewStatus(project, result.data, result.fieldConfidences, result.validations),
         validations: result.validations ?? [],
+        ...(result.segments ? { segments: result.segments } : {}),
         strategy: result.strategyUsed,
         document_text: result.document_text,
       };
@@ -372,6 +374,7 @@ export const batchGetFunction: PublicFunction<{ project_id: string; run_id: stri
         field_confidences: f.fieldConfidences,
         review_status: f.reviewStatus,
         validations: f.validations ?? [],
+        ...(f.segments ? { segments: f.segments } : {}),
         error: f.error,
       })),
     };

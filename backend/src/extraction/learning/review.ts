@@ -58,7 +58,30 @@ export function computeReviewStatus(
     const hasValue = !isEmptyValue(data?.[fieldId]);
     if (hasValue || field.required) return 'needs_review';
   }
+  // Segment-Profile (Welle 10): Konfidenzen sind namespaced
+  // ("segId.feld" bzw. "segId[2].feld") — jede unter der Schwelle mit
+  // vorhandenem Wert zieht ein Review. `unbekannt`-Segmente und fehlende
+  // Pflicht-Segmente kommen bereits als error-Befund herein (hasBlockingIssue).
+  if (project.segments && fieldConfidences) {
+    for (const [path, conf] of Object.entries(fieldConfidences)) {
+      if (!path.includes('.')) continue;
+      if (conf >= threshold) continue;
+      const value = resolveSegmentValue(data, path);
+      if (!isEmptyValue(value)) return 'needs_review';
+    }
+  }
   return 'auto_ok';
+}
+
+/** Loest "segId.feld" / "segId[2].feld" gegen die aggregierte Segment-Datenstruktur auf. */
+function resolveSegmentValue(data: Record<string, unknown>, path: string): unknown {
+  const m = path.match(/^([^.[]+)(?:\[(\d+)\])?\.(.+)$/);
+  if (!m) return undefined;
+  const [, segId, instance, fieldId] = m;
+  const seg = data?.[segId!];
+  const obj = instance !== undefined && Array.isArray(seg) ? seg[Number(instance) - 1] : seg;
+  if (!obj || typeof obj !== 'object') return undefined;
+  return (obj as Record<string, unknown>)[fieldId!];
 }
 
 export function emptyCalibration(): CalibrationState {
