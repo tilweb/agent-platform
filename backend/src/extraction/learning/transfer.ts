@@ -24,7 +24,7 @@ import { getProject } from './projects';
 import { updateProject } from './projects';
 import { createProject } from './projects';
 import { getExamples, saveExample } from './examples';
-import { validateProjectFields, validateProjectRules } from './validators';
+import { validateProjectFields, validateProjectRules, validateProjectSegments } from './validators';
 
 export const PROJECT_BUNDLE_FORMAT = 'kiworkplace-extraction-project';
 export const PROJECT_BUNDLE_VERSION = 1;
@@ -51,6 +51,8 @@ export interface ProjectBundle {
     extraction?: ExtractionProject['extraction'];
     /** Fachliche Pruefregeln (Welle 5) — PII-frei, daher immer im Paket. */
     rules?: ExtractionProject['rules'];
+    /** Segmenttypen (Welle 10) — Beschreibungen + Feldsaetze, PII-frei. */
+    segments?: ExtractionProject['segments'];
   };
   examples: BundleExample[];
 }
@@ -100,6 +102,7 @@ export async function exportProject(
       learning: project.learning,
       extraction: project.extraction,
       rules: project.rules,
+      segments: project.segments,
     },
     examples,
   };
@@ -128,8 +131,14 @@ function validateBundle(bundle: unknown): asserts bundle is ProjectBundle {
   if (!b.project || typeof b.project.name !== 'string' || !b.project.name.trim()) {
     throw new Error('Paket enthält keinen Profilnamen.');
   }
-  if (!b.project.fields || Object.keys(b.project.fields).length === 0) {
+  // Segment-Profile (Welle 10) tragen ihre Felder IN den Segmenten —
+  // project.fields darf dann leer sein.
+  const hasSegments = !!b.project.segments && Object.keys(b.project.segments).length > 0;
+  if (!hasSegments && (!b.project.fields || Object.keys(b.project.fields).length === 0)) {
     throw new Error('Paket enthält keine Felder.');
+  }
+  if (!b.project.fields || typeof b.project.fields !== 'object') {
+    throw new Error('Paket enthält keine gültige Feld-Struktur.');
   }
   // Strukturelle Feld-Validierung (inkl. Listen-Felder) — defensiv gegen fremde Bundles.
   const fieldError = validateProjectFields(b.project.fields);
@@ -137,6 +146,9 @@ function validateBundle(bundle: unknown): asserts bundle is ProjectBundle {
   // Pruefregeln referenzieren Feld-IDs — ein fremdes Bundle kann inkonsistent sein.
   const ruleError = validateProjectRules(b.project.fields, b.project.rules);
   if (ruleError) throw new Error(`Ungültige Prüfregeln im Paket: ${ruleError}`);
+  // Segmenttypen (Welle 10) — additiv-optional, alte Pakete haben das Feld nicht.
+  const segmentError = validateProjectSegments(b.project.segments);
+  if (segmentError) throw new Error(`Ungültige Segmente im Paket: ${segmentError}`);
 }
 
 /**
@@ -156,6 +168,7 @@ export async function importProject(bundle: unknown): Promise<ExtractionProject>
     instructions: src.instructions,
     extraction: src.extraction,
     rules: src.rules,
+    segments: src.segments,
   });
 
   // Trainingsbeispiele (optional) anlegen.
