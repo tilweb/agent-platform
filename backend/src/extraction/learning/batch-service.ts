@@ -12,6 +12,7 @@
  */
 
 import { rm } from 'fs/promises';
+import { dirname } from 'path';
 import { extract } from './service';
 import { getProject } from './projects';
 import { computeReviewStatus } from './review';
@@ -152,5 +153,8 @@ export async function runBatchExtraction(
     await Promise.all(
       files.map((f) => rm(f.tempPath, { force: true }).catch(() => {})),
     );
+    // Sammelordner mit entfernen — sonst bleiben leere /tmp/extraction-batch/*-Dirs liegen.
+    const tmpDir = files[0] ? dirname(files[0].tempPath) : undefined;
+    if (tmpDir) await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
   }
 }

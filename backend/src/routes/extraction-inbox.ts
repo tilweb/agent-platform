@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono';
+import { authMiddleware } from '../auth/middleware';
 import { mkdir } from 'node:fs/promises';
 import {
   createUpload,
@@ -19,6 +20,9 @@ import {
 import { getProject } from '../extraction/learning';
 
 export const extractionInboxRoutes = new Hono();
+
+// Posteingang erfordert eine gueltige Session (siehe extraction-projects.ts).
+extractionInboxRoutes.use('/*', authMiddleware);
 
 /** Pro-Datei-Limit (multipart wird im RAM gepuffert). */
 const MAX_INBOX_FILE_BYTES = 50 * 1024 * 1024;

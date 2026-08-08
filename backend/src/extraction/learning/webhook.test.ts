@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { deliverWebhook, generateWebhookSecret, isDeliverableUrl, signPayload } from './webhook';
+import { deliverWebhook, generateWebhookSecret, isDeliverableUrl, isPrivateIp, signPayload } from './webhook';
+
+// Diese Tests liefern bewusst an localhost-Testserver — das Opt-in schaltet den
+// SSRF-Schutz fuer interne Ziele frei. Der Schutz selbst wird im Block
+// "SSRF-Schutz" (ohne dieses Flag) geprueft.
+process.env.WEBHOOK_ALLOW_INTERNAL = '1';
 
 describe('signPayload', () => {
   test('ist stabil und hex-kodiert mit sha256-Praefix', () => {
@@ -31,6 +36,46 @@ describe('isDeliverableUrl', () => {
     expect(isDeliverableUrl('nonsens')).toBe(false);
     expect(isDeliverableUrl('')).toBe(false);
   });
+});
+
+describe('SSRF-Schutz (ohne WEBHOOK_ALLOW_INTERNAL)', () => {
+  const withoutOptIn = (fn: () => void | Promise<void>) => async () => {
+    const prev = process.env.WEBHOOK_ALLOW_INTERNAL;
+    delete process.env.WEBHOOK_ALLOW_INTERNAL;
+    try {
+      await fn();
+    } finally {
+      if (prev !== undefined) process.env.WEBHOOK_ALLOW_INTERNAL = prev;
+    }
+  };
+
+  test('isPrivateIp erkennt interne Adressen', () => {
+    expect(isPrivateIp('127.0.0.1')).toBe(true);
+    expect(isPrivateIp('10.0.0.5')).toBe(true);
+    expect(isPrivateIp('172.16.4.4')).toBe(true);
+    expect(isPrivateIp('192.168.1.1')).toBe(true);
+    expect(isPrivateIp('169.254.169.254')).toBe(true); // Cloud-Metadaten
+    expect(isPrivateIp('::1')).toBe(true);
+    expect(isPrivateIp('fd00::1')).toBe(true);
+    expect(isPrivateIp('::ffff:127.0.0.1')).toBe(true); // IPv4-mapped
+    expect(isPrivateIp('8.8.8.8')).toBe(false);
+    expect(isPrivateIp('93.184.216.34')).toBe(false);
+  });
+
+  test('isDeliverableUrl blockt interne Ziele', withoutOptIn(() => {
+    expect(isDeliverableUrl('http://localhost:9099/hook')).toBe(false);
+    expect(isDeliverableUrl('http://127.0.0.1/hook')).toBe(false);
+    expect(isDeliverableUrl('http://169.254.169.254/latest/meta-data/')).toBe(false);
+    expect(isDeliverableUrl('http://192.168.0.10/hook')).toBe(false);
+    expect(isDeliverableUrl('http://intranet.local/hook')).toBe(false);
+    expect(isDeliverableUrl('https://example.com/hook')).toBe(true);
+  }));
+
+  test('deliverWebhook liefert nicht an interne IP-Literale', withoutOptIn(async () => {
+    const r = await deliverWebhook('http://169.254.169.254/latest/meta-data/', 'secret', {});
+    expect(r.delivered).toBe(false);
+    expect(r.attempts).toBe(0);
+  }));
 });
 
 describe('generateWebhookSecret', () => {

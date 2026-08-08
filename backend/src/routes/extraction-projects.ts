@@ -5,6 +5,7 @@
  */
 
 import { Hono } from 'hono';
+import { authMiddleware } from '../auth/middleware';
 import {
   getAllProjects,
   getProject,
@@ -42,6 +43,11 @@ import { generateDocument } from '../services/documentGenerator';
 import { buildBatchExportSections, type ExportFormat } from '../extraction/learning/export-xlsx';
 
 export const extractionProjectRoutes = new Hono();
+
+// Alle Document-Processing-Routen erfordern eine gueltige Session — analog zum
+// Repo-Muster (routes/agents.ts). Ohne diese Zeile lag die gesamte Flaeche
+// (Profile-CRUD, Batch-Upload, extrahierte Kundendaten) unauthentifiziert offen.
+extractionProjectRoutes.use('/*', authMiddleware);
 
 // ============== Project CRUD ==============
 
@@ -419,6 +425,11 @@ const FIELD_TYPE_TO_COLUMN: Record<ProjectField['type'], ColumnType> = {
   list: 'text',
 };
 
+/** Batch-Upload-Limits (multipart wird im RAM gepuffert). */
+const MAX_BATCH_FILES = 50;
+const MAX_BATCH_FILE_BYTES = 50 * 1024 * 1024;    // 50 MB pro Datei
+const MAX_BATCH_TOTAL_BYTES = 200 * 1024 * 1024;  // 200 MB gesamt
+
 /**
  * POST /projects/:id/batches — Multi-Upload, Lauf anlegen, Hintergrund-Verarbeitung starten.
  * Antwortet sofort mit { runId } (fire-and-forget); Frontend pollt den Status.
@@ -437,6 +448,21 @@ extractionProjectRoutes.post('/projects/:id/batches', async (c) => {
   const uploads = formData.getAll('files').filter((f): f is File => f instanceof File);
   if (uploads.length === 0) {
     return c.json({ error: 'Keine Dateien hochgeladen' }, 400);
+  }
+
+  // Upload-Limits (multipart wird im RAM gepuffert → begrenzen).
+  if (uploads.length > MAX_BATCH_FILES) {
+    return c.json({ error: `Zu viele Dateien (max. ${MAX_BATCH_FILES} pro Lauf)` }, 413);
+  }
+  let totalBytes = 0;
+  for (const file of uploads) {
+    if (file.size > MAX_BATCH_FILE_BYTES) {
+      return c.json({ error: `Datei "${file.name}" zu gross (max. ${MAX_BATCH_FILE_BYTES / 1024 / 1024} MB)` }, 413);
+    }
+    totalBytes += file.size;
+  }
+  if (totalBytes > MAX_BATCH_TOTAL_BYTES) {
+    return c.json({ error: `Upload insgesamt zu gross (max. ${MAX_BATCH_TOTAL_BYTES / 1024 / 1024} MB)` }, 413);
   }
 
   // Temp-Dateien ablegen.
