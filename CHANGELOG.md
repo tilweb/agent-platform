@@ -2,6 +2,14 @@
 
 ## 2026-08-08
 
+### Bugfix: Profil-Export/Import kannte die W10-Segmente nicht
+Beim Pruefen der Weitergabe-Funktion (Anlass: Sani-Rezepte-Profil fuer weitere Kunden) fielen
+zwei Luecken auf: Das Transfer-Paket (Welle 5) exportierte `segments` nicht — ein Segment-Profil
+haette beim Transfer STILL seine Segmentdefinition verloren — und die Import-Validierung lehnte
+Segment-Profile ab ("Paket enthaelt keine Felder"), weil deren Felder in den Segmenten leben.
+Beides behoben (additiv-optional, alte Pakete bleiben gueltig, Paket-Version unveraendert);
+Roundtrip fuer beide Profiltypen verifiziert (Segmente und Felder identisch nach Export→Import).
+
 ### Segmentierung (W10.4): Segment-Export + Webhook
 - **XLSX fuer Segment-Profile:** flach = eine Zeile je Segment-Instanz (Segment/Instanz/Seiten/
   Konfidenz/Beleg + Union der Segment-Felder; classify-only und `unbekannt` bekommen bewusst
