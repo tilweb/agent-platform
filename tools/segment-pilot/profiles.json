@@ -15,17 +15,17 @@
     },
     "zeugnis": {
       "label": "Arbeitszeugnis",
-      "description": "Arbeits-, Zwischen- oder Ausbildungszeugnis eines Arbeitgebers: Firmen-Briefkopf/Logo, Ueberschrift 'Zeugnis'/'Arbeitszeugnis'/'Zwischenzeugnis', Fliesstext ueber Taetigkeit und Leistung einer Person, Ort/Datum und Unterschrift am Ende. Jedes Zeugnis beginnt mit einem eigenen Firmen-Briefkopf.",
+      "description": "Arbeits-, Zwischen- oder Ausbildungszeugnis eines Arbeitgebers: Firmen-Briefkopf/Logo, Ueberschrift 'Zeugnis'/'Arbeitszeugnis'/'Zwischenzeugnis', Fliesstext ueber Taetigkeit und Leistung einer Person, Ort/Datum und Unterschrift am Ende. Jedes Zeugnis beginnt mit einem eigenen Firmen-Briefkopf. Der Briefkopf-Wechsel zu einer anderen Firma markiert IMMER den Beginn eines neuen Zeugnisses (neustart).",
       "repeatable": true
     },
     "zertifikat": {
       "label": "Zertifikat/Urkunde",
-      "description": "Urkunde, Zertifikat oder Teilnahmebescheinigung: grossformatige Ueberschrift ('CERTIFICATE', 'Urkunde', 'Master-Urkunde'), dekoratives Layout oder Siegel/Logo eines Instituts, Name der Person prominent, meist genau eine Seite, oft Querformat.",
+      "description": "Urkunde oder Kurs-/Seminarzertifikat: grossformatige Ueberschrift ('CERTIFICATE', 'Urkunde', 'Master-Urkunde'), dekoratives Layout oder Siegel/Logo eines Bildungsinstituts, Name der Person prominent, meist genau eine Seite, oft Querformat. KEINE formularartigen Teilnahmebescheinigungen.",
       "repeatable": true
     },
     "nachweis": {
       "label": "Sonstiger Nachweis",
-      "description": "Sonstige beigelegte Belege, die weder Zeugnis noch Urkunde sind: Notenuebersichten, Bewertungsschreiben von Behoerden (z.B. Zeugnisbewertung), Bescheinigungen mit Formularcharakter. Oft Scans oder Fotos in abweichender Qualitaet.",
+      "description": "Sonstige beigelegte Belege, die weder Arbeitszeugnis noch dekorative Urkunde sind: Notenuebersichten, Bewertungsschreiben von Behoerden (z.B. Zeugnisbewertung), formularartige Teilnahme- oder Erste-Hilfe-Bescheinigungen mit Feldern/Ankreuzkaestchen. Oft Scans oder Fotos in abweichender Qualitaet.",
       "repeatable": true
     }
   },
@@ -56,12 +56,12 @@
     },
     "anlage": {
       "label": "Anlage/Berechnung",
-      "description": "Rechnerische Anlagen zur Rechnung: kuenftige Abschlagszahlungen, Berechnungsnachweise je Sparte mit Zaehlerstaenden, Preisstufen, CO2-Kosten. Tabellenlastig.",
+      "description": "Rechnerische Anlagen zur Rechnung: kuenftige Abschlagszahlungen, Berechnungsnachweise je Sparte mit Zaehlerstaenden, Preisstufen, CO2-Kosten. Tabellenlastig. Jede Anlage mit eigener Ueberschrift ('Ihre kuenftigen Abschlagszahlungen', 'Berechnungsnachweis ...') beginnt eine neue Instanz (neustart).",
       "repeatable": true
     },
     "infoblatt": {
       "label": "Informationsblatt",
-      "description": "Erlaeuternde Beiblaetter: 'Informationen zu Ihrer Rechnung', Begriffserklaerungen, Serviceinformationen, grafische Verbrauchsvergleiche.",
+      "description": "Erlaeuternde Beiblaetter: 'Informationen zu Ihrer Rechnung', Begriffserklaerungen, Serviceinformationen, grafische Verbrauchsvergleiche. Jedes Blatt mit eigener Titel-Ueberschrift ist eine eigene Instanz (neustart).",
       "repeatable": true
     }
   },

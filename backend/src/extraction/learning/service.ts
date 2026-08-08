@@ -21,11 +21,12 @@ import { evaluateRules, normalizeLookupValue, type LoadAllowedValues } from './r
 import { applyCatalogs, type ResolveCatalog } from './catalog';
 import { EXTRACTION_MODEL_ID, EXTRACTION_PROVIDER_ID, extractionModelLabel } from '../model';
 import { getTableWithData } from '../../tables';
-import type { TrainingExample, ExtractionProject, LearningEvalState, EvalScore, RuleIssue } from './types';
+import type { TrainingExample, ExtractionProject, LearningEvalState, EvalScore, RuleIssue, SegmentInstance } from './types';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { extname, resolve } from 'path';
 import { EXTRACTION_SAMPLING } from '../../services/extraction/extract-call';
+import { extractWithSegments } from '../segmentation/segment-extract';
 import { convertDocument } from '../../services/documentConverter';
 
 
@@ -292,6 +293,8 @@ export async function extract(
   audit?: { guideline_version: number; model: string; strategy?: string };
   /** Befunde der fachlichen Pruefregeln (Welle 5); leer, wenn keine Regeln definiert. */
   validations?: RuleIssue[];
+  /** Segment-Instanzen (Welle 10) — nur bei Profilen mit `segments`. */
+  segments?: SegmentInstance[];
   error?: string;
 }> {
   try {
@@ -337,6 +340,30 @@ export async function extract(
       });
     } else {
       throw new Error('Kein Dokumenttext oder Bild vorhanden');
+    }
+
+    // Segment-Profil (Welle 10): eigener Pfad — Seiten klassifizieren, je
+    // Segment gescopte Extraktion ueber die bestehende Pipeline. Nur fuer
+    // visuelle Quellen (PDF); alles andere laeuft wie bisher monolithisch.
+    if (project.segments && Object.keys(project.segments).length > 0 && ingested.rawBuffer && ingested.rawMimeType === 'application/pdf') {
+      const segResult = await extractWithSegments(project, ingested.rawBuffer, userId ?? '', resolveCatalogValues);
+      console.log(`[Extraction] ${projectId}: ${segResult.segments.length} Segment(e), ${segResult.llmCalls} LLM-Calls, ${segResult.validations.length} Befund(e)`);
+      return {
+        success: true,
+        data: segResult.data,
+        document_text: documentText,
+        fieldConfidences: segResult.fieldConfidences,
+        boxes: segResult.boxes,
+        pageImages: segResult.pageImages,
+        strategyUsed: 'segmented',
+        validations: segResult.validations,
+        segments: segResult.segments,
+        audit: {
+          guideline_version: project.learning.guideline_version,
+          model: evalModelLabel(project),
+          strategy: 'segmented',
+        },
+      };
     }
 
     // Few-Shot + Schema fuer die Heavy-Pipeline

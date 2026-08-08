@@ -16,7 +16,7 @@ import { getDb } from '../../db';
 import { extractionBatchRuns, extractionBatchRunFiles } from '../../db/schema/extraction';
 import type { FieldBox, PageImage } from '../../services/extraction/types';
 import { deletePageImages, savePageImages, type StoredPageImage } from './page-store';
-import type { ReviewStatus, RuleIssue } from './types';
+import type { ReviewStatus, RuleIssue, SegmentInstance } from './types';
 
 export type BatchRunStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
@@ -61,6 +61,8 @@ export interface BatchFileSummary {
   reviewStatus: ReviewStatus | null;
   /** Befunde der fachlichen Pruefregeln (Welle 5); null bei alten Laeufen. */
   validations: RuleIssue[] | null;
+  /** Segment-Instanzen (Welle 10); null bei segmentlosen Profilen/alten Laeufen. */
+  segments: SegmentInstance[] | null;
 }
 
 export interface BatchFileDetail extends BatchFileSummary {
@@ -87,6 +89,7 @@ export interface FileResultPayload {
   documentText?: string;
   reviewStatus?: ReviewStatus;
   validations?: RuleIssue[];
+  segments?: SegmentInstance[];
 }
 
 function generateRunId(): string {
@@ -212,6 +215,7 @@ export async function upsertFileResult(
       ...(payload.documentText !== undefined ? { documentText: payload.documentText } : {}),
       ...(payload.reviewStatus !== undefined ? { reviewStatus: payload.reviewStatus } : {}),
       ...(payload.validations !== undefined ? { validations: payload.validations as never } : {}),
+      ...(payload.segments !== undefined ? { segments: payload.segments as never } : {}),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(extractionBatchRunFiles.id, fileId));
@@ -273,6 +277,7 @@ export async function getBatchRun(
     audit: extractionBatchRunFiles.audit,
     reviewStatus: extractionBatchRunFiles.reviewStatus,
     validations: extractionBatchRunFiles.validations,
+    segments: extractionBatchRunFiles.segments,
   }).from(extractionBatchRunFiles)
     .where(eq(extractionBatchRunFiles.batchRunId, runId))
     .orderBy(extractionBatchRunFiles.createdAt);
@@ -288,6 +293,7 @@ export async function getBatchRun(
     audit: (r.audit as FileAudit | null) ?? null,
     reviewStatus: (r.reviewStatus as ReviewStatus | null) ?? null,
     validations: (r.validations as RuleIssue[] | null) ?? null,
+    segments: (r.segments as SegmentInstance[] | null) ?? null,
   }));
 
   let completedCount = 0, failedCount = 0;
@@ -335,6 +341,7 @@ export async function getBatchRunFileDetail(
     audit: (r.audit as FileAudit | null) ?? null,
     reviewStatus: (r.reviewStatus as ReviewStatus | null) ?? null,
     validations: (r.validations as RuleIssue[] | null) ?? null,
+    segments: (r.segments as SegmentInstance[] | null) ?? null,
     boxes: detail?.boxes ?? null,
     pageImages: detail?.pageImages ?? null,
     documentText: r.documentText ?? null,

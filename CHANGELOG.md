@@ -2,6 +2,22 @@
 
 ## 2026-08-08
 
+### Segmentierung (W10.2): gescopte Extraktion je Segment + Neustart-Tuning
+- **Gescopte Extraktion:** Profile mit `segments` extrahieren jetzt JE Segment ueber die
+  bestehende Pipeline (Sub-PDF via buildPartPdf + Sub-Schema des Typs) — Merger, OCR-Fusion,
+  Boxen, Kataloge gelten je Segment unveraendert, kein neuer Extraktionscode. classify-only-
+  Segmente bekommen einen Kurzbeleg ohne Modellaufruf. Aggregation: data.<segId> (repeatable als
+  Array), Konfidenzen/Boxen namespaced, Box-Seiten absolut. Persistenz (batch_run_files.segments),
+  Public-API additiv, Review-Triage prueft namespaced Konfidenzen.
+- **E2E bewiesen** am unterschriebenen Formular-Scan: handschriftliches Datum aus dem Formular-
+  Segment extrahiert (Box auf absoluter Seite), classify-only-Instanzen, auto_ok. Ehinger-
+  Stichprobe: segmentloser Pfad unveraendert.
+- **Neustart-Tuning mit ehrlichem Protokoll** (3 Messlaeufe ueber alle 18 Dokumente): die naive
+  Schaerfung "Aussteller-Wechsel ⇒ Neustart" verklebte Instanzen DESSELBEN Ausstellers
+  (77/93 exakt, Recall -2,7pp); die ausstellerunabhaengige Fassung (eigene Titel-Ueberschrift,
+  Zaehlungs-Neustart, sichtbarer Abschluss) bringt **80/93 exakt** (+8 auf ±1 Seite), Grenzen
+  93,4/94,7 %, 12 von 18 Dokumenten perfekt. Protokoll im Konzept §12.
+
 ### Segmentierung (W10.1): Datenmodell + Segmentierer — Vorgang → Segmente
 Erste Umsetzungswelle des Segmentierungs-Konzepts (Reducto-Ansatz, Konzept §3-4):
 - **Datenmodell:** `segments` am Profil (SegmentTypeDef: Prosa-Beschreibung, Feldsatz,
