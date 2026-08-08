@@ -2,6 +2,26 @@
 
 ## 2026-08-08
 
+### Document Processing: UX-Hinweise & Onboarding (Verständlichkeit für Fachanwender)
+UX-Audit aller Screens (Verarbeiten/Review, Einrichtung, Posteingang, Anlage) und gezielte
+Erklärungstexte an den laienkritischen Stellen — nur Texte/Tooltips, keine Logikänderung:
+- **Konfidenz & Farben & Status erklärt:** Legende über der Ergebnis-Tabelle („Ø" = Erkennungssicherheit,
+  orange = unter Prüfschwelle), Tooltips an den Spaltenköpfen „Prüfung"/„Ø" und an den Filter-Chips
+  (Auto-OK/Zu prüfen/Geprüft), Tooltip an den Feld-Konfidenzen im Review.
+- **Ansehen vs. Speichern:** Review-Button erklärt per Tooltip, dass „Lernen" die KI verbessert und
+  ungespeicherte Änderungen beim Blättern/Schließen verloren gehen; „● ungespeichert"-Indikator bei
+  Änderungen; Onboarding-Zeile im Review („links Original, rechts Werte, orange zuerst prüfen").
+- **Strategie-Auswahl:** Hilfetext unter beiden Strategie-Dropdowns (wann Hybrid/Vision-per-Page/
+  Long-Text/Single-Pass) — vorher ohne jede Erklärung.
+- **Erstkontakt:** Übersicht mit InfoBox („Profil"/„Felder" definiert, Verarbeiten vs. Posteingang
+  gegenübergestellt), ausgebauter Empty-State mit CTA + Beispieldokument-Tipp, Tooltips an den Buttons
+  Posteingang/Importieren; Posteingang-Leerzustand erklärt Teil-Dokument/zuzuordnen/Auto-Routing.
+- **Feinschliff:** ◉-Symbol-Tooltip (Fundstelle), „(korrigiert)" jetzt blau statt orange (keine
+  Verwechslung mit „unsicher"), Toleranz-Einheit erklärt, „Pipeline-Schwelle"→„Systemvorgabe",
+  „Few-Shot"→„Beispielvorlage", Webhook „nur nötig wenn…/sonst leer lassen", Export nennt jetzt was
+  NICHT enthalten ist (Webhook), Training-Tab-Einstieg mit Ablauf-InfoBox, read-only Segment-Übersicht
+  in den Einstellungen (inkl. Hinweis, dass Segmente per Import/API gepflegt werden).
+
 ### Security: Code-Review Document Processing — behobene Befunde
 Umfassende Code-Review der Extraction-/Document-Processing-Strecke
 (`docs/code-review-document-processing-2026-08-08.md`), kritische Befunde direkt behoben:
