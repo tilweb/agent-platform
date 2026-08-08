@@ -2,6 +2,25 @@
 
 ## 2026-08-08
 
+### Security: Code-Review Document Processing — behobene Befunde
+Umfassende Code-Review der Extraction-/Document-Processing-Strecke
+(`docs/code-review-document-processing-2026-08-08.md`), kritische Befunde direkt behoben:
+- **[P0] Authentifizierung:** Die gesamte Document-Processing-Flaeche
+  (`/api/extraction/projects/*`, `/api/extraction/inbox/*`) lag OHNE Session-Pruefung offen
+  (unauth. Zugriff auf Profile, Batch-Upload und extrahierte Kunden-PII) — die Router hatten,
+  anders als das Repo-Muster (routes/agents.ts), keine `authMiddleware`. Behoben:
+  `extractionProjectRoutes.use('/*', authMiddleware)` + gleiches fuer den Posteingang. Live
+  verifiziert: beide Praefixe liefern jetzt 401 ohne Cookie.
+- **[P1] SSRF ueber Webhook-Ziel:** `isDeliverableUrl` pruefte nur das Protokoll. Jetzt Block
+  interner Ziele (localhost/.local/.internal + IP-Literale) synchron bei der Konfiguration und
+  zusaetzlich DNS-Aufloesung zur Zustell-Zeit (Hostnamen, die auf private IPs / 169.254.169.254
+  zeigen). Bewusstes Opt-in `WEBHOOK_ALLOW_INTERNAL=1` fuer interne Consumer.
+- **[P1] Batch-Upload ohne Limits:** `POST /projects/:id/batches` erzwingt jetzt max. 50 Dateien,
+  50 MB je Datei, 200 MB gesamt (413) — vorher unbegrenzt und komplett im RAM.
+- **[P2] Temp-Leak:** Der Sammelordner `/tmp/extraction-batch/<lauf>` wird nach dem Lauf
+  rekursiv entfernt (vorher blieben leere Verzeichnisse liegen).
+- Neue SSRF-Testfaelle in `webhook.test.ts` (privater IP-Erkenner, Block interner Ziele).
+
 ### Bugfix: Profil-Export/Import kannte die W10-Segmente nicht
 Beim Pruefen der Weitergabe-Funktion (Anlass: Sani-Rezepte-Profil fuer weitere Kunden) fielen
 zwei Luecken auf: Das Transfer-Paket (Welle 5) exportierte `segments` nicht — ein Segment-Profil
