@@ -2,6 +2,27 @@
 
 ## 2026-08-08
 
+### Segmentierung (W10.4): Segment-Export + Webhook
+- **XLSX fuer Segment-Profile:** flach = eine Zeile je Segment-Instanz (Segment/Instanz/Seiten/
+  Konfidenz/Beleg + Union der Segment-Felder; classify-only und `unbekannt` bekommen bewusst
+  eigene Zeilen), gruppiert = Hauptblatt-Zusammenfassung + Segmente-Blatt. Route und Public-API
+  (batch.export) erben ueber den gemeinsamen Baustein export-xlsx.ts.
+- **Webhook:** segments[] je Datei additiv im Payload.
+- Verifiziert am Demo-Lauf (8 Zeilen, Datum nur in der Formular-Zeile, XLSX real gelesen);
+  2 neue Tests (293 gruen). Segmentlose Profile unveraendert.
+
+### Segmentierung (W10.3): Segment-Gliederung im Vollbild-Review
+- **Review:** Miniaturen mit farbigen Segment-Markern (Farbe je Typ, Tooltip mit Label+Instanz);
+  rechte Spalte als Gliederung — Segment-Ueberschriften (Klick springt zur Seite) mit Konfidenz,
+  Felder mit Fundstellen-Sprung, classify-only als Beleg-Kachel, `unbekannt` rot. Ergebnistabelle:
+  Segmente-Spalte bei Segment-Profilen. Segmentlose Profile unveraendert.
+- **Demo-Lauf** (lokal, `segment-demo-formularpaket`): voller Batch-Pfad liefert 8/8 Segmente
+  exakt — die vier Einwilligungen desselben Ausstellers werden mit der W10.2-Prompt-Fassung
+  sauber getrennt; Triage legt die einzige echte Unsicherheit (unterschrieben, 0.3) zur Pruefung vor.
+- **Bewusst verschoben:** Grenz-/Typkorrektur + Lern-Signal brauchen gespeicherte Originale am
+  Lauf (heute existieren nach dem Lauf nur gerenderte Seiten) — Speicher-Entscheidung ist
+  dokumentierte Voraussetzung, der Hinweis steht sichtbar im Review.
+
 ### Segmentierung (W10.2): gescopte Extraktion je Segment + Neustart-Tuning
 - **Gescopte Extraktion:** Profile mit `segments` extrahieren jetzt JE Segment ueber die
   bestehende Pipeline (Sub-PDF via buildPartPdf + Sub-Schema des Typs) — Merger, OCR-Fusion,

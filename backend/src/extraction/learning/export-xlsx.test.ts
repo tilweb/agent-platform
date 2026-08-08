@@ -114,3 +114,58 @@ describe('Helfer', () => {
     expect(sanitizeSheetName('')).toBe('Liste');
   });
 });
+
+describe('Segment-Profile (Welle 10.4)', () => {
+  const segProject = {
+    id: 'p', name: 'P', description: '', created: '', updated: '',
+    fields: {}, guidelines: '', learning: { total_examples: 0, guideline_version: 0 },
+    segments: {
+      formular: {
+        label: 'Anmeldeformular',
+        description: 'x'.repeat(30),
+        fields: { datum: { type: 'date', required: false, label: 'Datum' } },
+        required: true,
+      },
+      einwilligung: { label: 'Einwilligung', description: 'y'.repeat(30), mode: 'classify-only', repeatable: true },
+    },
+  } as never;
+  const segFiles = [
+    {
+      id: 'f1', filename: 'a.pdf', status: 'completed', reviewStatus: 'auto_ok',
+      data: {
+        formular: { datum: '2026-05-25' },
+        einwilligung: [{ _beleg: 'Einwilligung, Seite 3' }, { _beleg: 'Einwilligung, Seite 4' }],
+      },
+      fieldConfidences: null, strategy: null, error: null, audit: null, validations: [],
+      segments: [
+        { type: 'formular', instance: 1, pageFrom: 1, pageTo: 2, confidence: 0.9 },
+        { type: 'einwilligung', instance: 1, pageFrom: 3, pageTo: 3, confidence: 0.95, summary: 'Einwilligung, Seite 3' },
+        { type: 'einwilligung', instance: 2, pageFrom: 4, pageTo: 4, confidence: 0.8, summary: 'Einwilligung, Seite 4' },
+        { type: 'unbekannt', instance: 1, pageFrom: 5, pageTo: 5, confidence: 0 },
+      ],
+    },
+  ] as never;
+
+  test('flach: eine Zeile je Segment-Instanz inkl. classify-only und unbekannt', () => {
+    const sections = buildBatchExportSections(segProject, segFiles, 'flat');
+    expect(sections).toHaveLength(1);
+    const { headers, rows } = sections[0]!.content;
+    expect(headers).toContain('Segment');
+    expect(headers).toContain('Datum');
+    expect(rows).toHaveLength(4);
+    const formularRow = rows.find((r) => r[headers.indexOf('Segment')] === 'Anmeldeformular')!;
+    expect(formularRow[headers.indexOf('Datum')]).toBe('2026-05-25');
+    expect(formularRow[headers.indexOf('Seiten')]).toBe('1-2');
+    const zweiteEinwilligung = rows.find((r) => r[headers.indexOf('Instanz')] === '2')!;
+    expect(zweiteEinwilligung[headers.indexOf('Beleg')]).toBe('Einwilligung, Seite 4');
+    expect(rows.some((r) => r[headers.indexOf('Segment')] === 'Nicht zugeordnet')).toBe(true);
+  });
+
+  test('gruppiert: Hauptblatt-Zusammenfassung + Segmente-Blatt', () => {
+    const sections = buildBatchExportSections(segProject, segFiles, 'grouped');
+    expect(sections).toHaveLength(2);
+    expect(sections[0]!.content.rows[0]![2]).toContain('Anmeldeformular (S.1-2)');
+    expect(sections[1]!.sheet).toBe('Segmente');
+    expect(sections[1]!.content.rows).toHaveLength(4);
+  });
+});

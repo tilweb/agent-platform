@@ -2568,6 +2568,7 @@ function BatchTab({ project, onProjectUpdated }) {
                   <th style={{ ...batchTh, ...batchStickyCol, zIndex: 3 }}>Datei</th>
                   <th style={batchTh}>Status</th>
                   <th style={batchTh}>Prüfung</th>
+                  {project.segments && <th style={batchTh}>Segmente</th>}
                   {fieldEntries.map(([fid, f]) => <th key={fid} style={batchTh}>{f.label || fid}</th>)}
                   <th style={batchTh}>Ø</th>
                 </tr>
@@ -2585,6 +2586,13 @@ function BatchTab({ project, onProjectUpdated }) {
                         <td style={batchStickyCol} title={file.filename}>{file.filename}</td>
                         <td style={batchTd}><StatusBadge status={file.status} /></td>
                         <td style={batchTd}><ReviewBadge status={file.reviewStatus} /></td>
+                        {project.segments && (
+                          <td style={{ ...batchTdField, maxWidth: 260 }} title={(file.segments ?? []).map(s => `${project.segments[s.type]?.label ?? s.type} S.${s.pageFrom}-${s.pageTo}`).join(', ')}>
+                            {Array.isArray(file.segments) && file.segments.length > 0
+                              ? `${file.segments.length} Segmente: ${[...new Set(file.segments.map(s => project.segments[s.type]?.label ?? s.type))].join(' · ')}`
+                              : '—'}
+                          </td>
+                        )}
                         {fieldEntries.map(([fid, f]) => {
                           const raw = file.data?.[fid];
                           // Listen kompakt als Zähler — die Positionen zeigt die Detailansicht.
@@ -2615,6 +2623,7 @@ function BatchTab({ project, onProjectUpdated }) {
           filename={reviewFile.filename}
           reviewStatus={reviewFile.reviewStatus}
           fields={project.fields}
+          segmentDefs={project.segments}
           threshold={project.extraction?.review_threshold ?? 0.6}
           position={{ index: reviewIndex + 1, total: visibleFiles.length }}
           onPrev={reviewIndex > 0 ? () => stepReview(-1) : null}
@@ -2680,7 +2689,111 @@ const batchStickyCol = {
  * Liste (nicht, waehrend in einem Feld getippt wird). Ein Klick auf ein Feld
  * springt zur Fundstelle im Bild, ein Klick auf eine Box springt zum Feld.
  */
-function ReviewModal({ detail, filename, reviewStatus, fields, threshold, position, onPrev, onNext, onClose, onLearn }) {
+/**
+ * Segment-Gliederung im Vollbild-Review (Welle 10.3): Instanzen in
+ * Dokumentreihenfolge, je Segment die Felder (read-only mit Konfidenz +
+ * Fundstellen-Sprung) bzw. eine Beleg-Kachel fuer classify-only.
+ * Feld-Lernen fuer Segment-Profile ist dokumentierte Folgearbeit —
+ * der Lern-Loop ist heute Gesamtdokument-bezogen.
+ */
+function SegmentReviewPane({ segments, segmentDefs, segColor, data, fieldConfidences, boxes, threshold, onJumpToPage, onJumpToBox }) {
+  const segKey = (s) => (segmentDefs[s.type]?.repeatable ? `${s.type}[${s.instance}]` : s.type);
+  const segData = (s) => {
+    const raw = data?.[s.type];
+    return (segmentDefs[s.type]?.repeatable && Array.isArray(raw) ? raw[s.instance - 1] : raw) || {};
+  };
+  return (
+    <div>
+      {segments.map((s, i) => {
+        const def = segmentDefs[s.type];
+        const label = def?.label ?? (s.type === 'leerseite' ? 'Leer-/Trennseite' : s.type === 'unbekannt' ? 'Nicht zugeordnet' : s.type);
+        const key = segKey(s);
+        const values = segData(s);
+        const fieldEntries = Object.entries(def?.fields ?? {});
+        const isClassifyOnly = def && (def.mode === 'classify-only' || fieldEntries.length === 0);
+        return (
+          <div key={`${s.type}-${s.instance}-${i}`} style={{ marginBottom: theme.spacing.lg }}>
+            <div
+              onClick={() => onJumpToPage(s.pageFrom)}
+              title="Zur ersten Seite des Segments springen"
+              style={{
+                display: 'flex', alignItems: 'center', gap: theme.spacing.sm,
+                padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                borderRadius: theme.borderRadius.md,
+                backgroundColor: theme.colors.surfaceHover,
+                cursor: 'pointer',
+                fontSize: theme.typography.sizes.sm,
+                fontWeight: theme.typography.weights.semibold,
+              }}
+            >
+              <span style={{ width: 10, height: 10, borderRadius: theme.borderRadius.full, backgroundColor: segColor[s.type], flexShrink: 0 }} />
+              <span style={{ color: s.type === 'unbekannt' ? theme.colors.error : theme.colors.text }}>
+                {label}{def?.repeatable ? ` (${s.instance})` : ''}
+              </span>
+              <span style={{ color: theme.colors.textMuted, fontWeight: theme.typography.weights.medium }}>
+                Seite{s.pageFrom === s.pageTo ? ` ${s.pageFrom}` : `n ${s.pageFrom}–${s.pageTo}`}
+              </span>
+              <span style={{ marginLeft: 'auto', fontSize: theme.typography.sizes.xs, color: s.confidence < threshold ? theme.colors.warning : theme.colors.textMuted }}>
+                {Math.round(s.confidence * 100)}%
+              </span>
+            </div>
+
+            {s.type === 'unbekannt' && (
+              <div style={{ padding: `${theme.spacing.sm} ${theme.spacing.md}`, fontSize: theme.typography.sizes.xs, color: theme.colors.error }}>
+                Diese Seiten passen zu keinem beschriebenen Segmenttyp — bitte pruefen.
+              </div>
+            )}
+
+            {isClassifyOnly && def && (
+              <div style={{ padding: `${theme.spacing.sm} ${theme.spacing.md}`, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary }}>
+                {values?._beleg || s.summary || `${label} erkannt`} — <span style={{ color: theme.colors.textMuted }}>nur Beleg, keine Feld-Extraktion</span>
+              </div>
+            )}
+
+            {!isClassifyOnly && fieldEntries.map(([fid, f]) => {
+              const conf = fieldConfidences[`${key}.${fid}`];
+              const boxKey = `${key}.${fid}`;
+              const hasBox = !!boxes[boxKey];
+              const value = values?.[fid];
+              return (
+                <div key={fid} style={{
+                  display: 'flex', gap: theme.spacing.md, alignItems: 'center',
+                  padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                  fontSize: theme.typography.sizes.sm,
+                }}>
+                  <span
+                    onClick={() => hasBox && onJumpToBox(boxKey)}
+                    title={hasBox ? 'Fundstelle im Dokument zeigen' : undefined}
+                    style={{ minWidth: 190, cursor: hasBox ? 'pointer' : 'default', color: theme.colors.textMuted }}
+                  >
+                    {f.label || fid}
+                    {typeof conf === 'number' && (
+                      <span style={{ marginLeft: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: conf < threshold ? theme.colors.warning : theme.colors.textMuted }}>
+                        {Math.round(conf * 100)}%
+                      </span>
+                    )}
+                  </span>
+                  <span style={{ color: value != null && value !== '' ? theme.colors.text : theme.colors.textMuted }}>
+                    {fmtValue(value) || '—'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+      <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.md }}>
+        Segment-Korrekturen (Grenzen/Typen verschieben) folgen, sobald Originaldokumente am Lauf
+        gespeichert werden — heute liegen nur die gerenderten Seiten vor.
+      </div>
+    </div>
+  );
+}
+
+// Farb-Rotation fuer Segment-Marker (Theme-Farben, keine neuen Hex-Werte).
+const SEGMENT_COLORS = [theme.colors.primary, theme.colors.info, theme.colors.success, theme.colors.warning, theme.colors.error];
+
+function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, threshold, position, onPrev, onNext, onClose, onLearn }) {
   const [edited, setEdited] = useState(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);          // { ok, text }
@@ -2713,6 +2826,14 @@ function ReviewModal({ detail, filename, reviewStatus, fields, threshold, positi
 
   const pages = detail?.pageImages || [];
   const hasBoxes = pages.length > 0;
+  // Segment-Gliederung (Welle 10): Instanzen + Farbzuordnung je Typ + Seiten-Map.
+  const segments = detail?.segments || null;
+  const segColor = {};
+  if (segments) {
+    const types = [...new Set(segments.map(s => s.type))];
+    types.forEach((ty, i) => { segColor[ty] = ty === 'leerseite' ? theme.colors.textMuted : ty === 'unbekannt' ? theme.colors.error : SEGMENT_COLORS[i % SEGMENT_COLORS.length]; });
+  }
+  const segmentOfPage = (page) => segments?.find(s => page >= s.pageFrom && page <= s.pageTo) || null;
   const canLearn = !!onLearn && detail?.status === 'completed' && !!detail?.documentText;
   const isReviewed = reviewStatus === 'reviewed' || detail?.reviewStatus === 'reviewed';
   const values = edited || detail?.data || {};
@@ -2872,14 +2993,19 @@ function ReviewModal({ detail, filename, reviewStatus, fields, threshold, positi
                 </div>
                 {pages.length > 1 && (
                   <div style={{ display: 'flex', gap: theme.spacing.sm, overflowX: 'auto', paddingTop: theme.spacing.md, flexShrink: 0 }}>
-                    {pages.map(p => (
+                    {pages.map(p => {
+                      const seg = segmentOfPage(p.page);
+                      const segLabel = seg ? (segmentDefs?.[seg.type]?.label ?? seg.type) : null;
+                      return (
                       <button
                         key={p.page}
                         onClick={() => setActivePage(p.page)}
-                        title={`Seite ${p.page}`}
+                        title={segLabel ? `Seite ${p.page} — ${segLabel}${seg.instance > 1 ? ` (${seg.instance})` : ''}` : `Seite ${p.page}`}
                         style={{
                           ...styles.pageThumb,
                           borderColor: p.page === activePage ? theme.colors.primary : theme.colors.border,
+                          // Segment-Marker: farbige Oberkante gruppiert die Miniaturen sichtbar.
+                          ...(seg ? { boxShadow: `inset 0 3px 0 0 ${segColor[seg.type]}` } : {}),
                         }}
                       >
                         <img
@@ -2893,7 +3019,8 @@ function ReviewModal({ detail, filename, reviewStatus, fields, threshold, positi
                           color: p.page === activePage ? theme.colors.primary : theme.colors.textMuted,
                         }}>{p.page}</span>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -2907,7 +3034,21 @@ function ReviewModal({ detail, filename, reviewStatus, fields, threshold, positi
               )}
               <ValidationIssues issues={detail.validations} />
 
-              {uncertain.length > 0 && (
+              {segments && (
+                <SegmentReviewPane
+                  segments={segments}
+                  segmentDefs={segmentDefs || {}}
+                  segColor={segColor}
+                  data={detail.data || {}}
+                  fieldConfidences={detail.fieldConfidences || {}}
+                  boxes={detail.boxes || {}}
+                  threshold={threshold}
+                  onJumpToPage={(page) => setActivePage(page)}
+                  onJumpToBox={jumpToBox}
+                />
+              )}
+
+              {!segments && uncertain.length > 0 && (
                 <>
                   <div style={{ ...styles.groupLabel, color: theme.colors.warning, marginTop: 0 }}>
                     Unsicher — zuerst prüfen ({uncertain.length})
@@ -2916,9 +3057,9 @@ function ReviewModal({ detail, filename, reviewStatus, fields, threshold, positi
                   <div style={styles.groupLabel}>Übrige Felder</div>
                 </>
               )}
-              {certain.map(renderField)}
+              {!segments && certain.map(renderField)}
 
-              {lists.map(([fid, f]) => (
+              {!segments && lists.map(([fid, f]) => (
                 <div key={fid} style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm }}>
                   <div style={{ marginBottom: theme.spacing.xs, color: theme.colors.textMuted }}>
                     {f.label || fid} ({Array.isArray(values[fid]) ? values[fid].length : 0} Positionen)
