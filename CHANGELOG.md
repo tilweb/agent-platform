@@ -2,6 +2,25 @@
 
 ## 2026-08-08
 
+### Document Processing: Segment-Editor in der Maske (statt nur Import/API)
+Segmente ließen sich bisher nur per Profil-Import oder API pflegen — jetzt gibt es einen echten
+Editor in den Profil-Einstellungen:
+- **Neuer `SegmentsEditor`**: Segmenttypen hinzufügen/entfernen, je Typ Bezeichnung · ID (auto aus
+  Bezeichnung, klein-alphanumerisch mit Bindestrichen) · Beschreibung (steuert die Seiten-Zuordnung,
+  Pflicht ≥20 Zeichen) · Modus (Felder auslesen / nur erkennen) · „mehrfach möglich" · „Pflicht"; bei
+  Modus „auslesen" ein eingebetteter Feld-Editor je Segment.
+- **Feld-Editor als wiederverwendbare Komponente** `FieldsEditor` extrahiert (vorher 2× inline
+  dupliziert) — genutzt für Profil-Felder und Segment-Felder; geteilte `fieldsArrayToObject`-Umwandlung.
+- **Client-Validierung** spiegelt das Backend (`validators.ts`): ID-Regex, Builtin-Kollision
+  (`leerseite`/`unbekannt`), Doppel-IDs, Beschreibung ≥20 Zeichen, classify-only ohne Felder,
+  Listen brauchen eine Positions-Spalte.
+- **Speichern**: `segments` wird jetzt im PUT-Payload mitgesendet (vorher nie) — Objekt bei
+  vorhandenen Segmenten, `null` löscht, weggelassen = unberührt.
+- **Backend-Bugfix**: Die PUT-Route wandelte `segments: null` in `undefined` um, wodurch
+  `updateProject` (filtert nur `undefined`) die Segmente NICHT löschte — obwohl der Kommentar das
+  versprach. `null` wird jetzt durchgereicht und löscht wie dokumentiert (beide Worktrees).
+- Die read-only Segment-Übersicht in den Einstellungen ist durch den Editor ersetzt.
+
 ### Document Processing: UX-Hinweise & Onboarding (Verständlichkeit für Fachanwender)
 UX-Audit aller Screens (Verarbeiten/Review, Einrichtung, Posteingang, Anlage) und gezielte
 Erklärungstexte an den laienkritischen Stellen — nur Texte/Tooltips, keine Logikänderung:
