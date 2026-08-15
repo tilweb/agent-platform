@@ -23,6 +23,8 @@ import { getEffectiveAuftragRole, getEffectiveIdeeRole } from './permissions';
 import { getProjektauftrag } from './storage';
 import { listStatusberichte } from './statusbericht-service';
 import { listIdeenByPortfolio } from './idee-storage';
+import { getPerson } from './kapazitaet-storage';
+import { getPersonAuslastung } from './kapazitaet-service';
 import type {
   Portfolio,
   PortfolioDashboardResponse,
@@ -46,6 +48,9 @@ import type {
   PortfolioCostIdee,
   PortfolioRiskResponse,
   PortfolioRiskItem,
+  PortfolioCapacityResponse,
+  PortfolioCapacityRow,
+  PortfolioCapacityCell,
   Statusbericht,
   Projektauftrag,
   Projektidee,
@@ -703,6 +708,138 @@ export async function getPortfolioRisks(
   risiken.sort((a, b) => b.score - a.score);
 
   return { risiken };
+}
+
+// ============== Kapazität-Aggregat (Heatmap) ==============
+
+/** "YYYY-MM" aus einem Datum (oder null). */
+function capToMonthKey(d?: string): string | null {
+  if (!d) return null;
+  const s = String(d);
+  return s.length >= 7 ? s.slice(0, 7) : null;
+}
+
+/** Monatsschluessel "YYYY-MM" von `from` bis `to` (inklusive). */
+function capMonthKeys(from: string, to: string): string[] {
+  const [fy, fm] = from.split('-').map((s) => parseInt(s, 10));
+  const [ty, tm] = to.split('-').map((s) => parseInt(s, 10));
+  const out: string[] = [];
+  if (!fy || !fm || !ty || !tm) return out;
+  let y = fy;
+  let m = fm;
+  for (let i = 0; i < 240 && (y < ty || (y === ty && m <= tm)); i++) {
+    out.push(`${y}-${String(m).padStart(2, '0')}`);
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+function emptyCells(months: string[]): PortfolioCapacityCell[] {
+  return months.map((month) => ({ month, kapazitaet: 0, linie: 0, bedarf_genehmigt: 0, bedarf_entwurf: 0 }));
+}
+
+/**
+ * Portfolio-Kapazitäts-Aggregat für die Ressourcen-Heatmap. RBAC identisch zum
+ * Dashboard. Sammelt alle im Portfolio verknüpften Kapazitätspersonen und ihre
+ * GESAMT-Auslastung (Linie + alle verknüpften Projekte, portfolioübergreifend —
+ * so werden echte Engpässe sichtbar). Rückgabe: Personen- UND Rollen-Zeilen je
+ * Monat. Auslastung%/Tönung berechnet das Frontend. `null` wenn Portfolio fehlt.
+ */
+export async function getPortfolioCapacity(
+  portfolioId: string,
+  userId: string,
+  opts: { from?: string; to?: string } = {},
+): Promise<PortfolioCapacityResponse | null> {
+  const portfolio = await getPortfolio(portfolioId);
+  if (!portfolio) return null;
+
+  const allProjekte = await listProjekteByPortfolio(portfolioId);
+  const accessibleEntries = await Promise.all(
+    allProjekte.map(async (p) => {
+      const role = await getEffectiveAuftragRole(userId, p.id);
+      return role ? p : null;
+    }),
+  );
+  const accessible = accessibleEntries.filter((p): p is NonNullable<typeof p> => p !== null);
+  const contexts = await Promise.all(accessible.map((p) => loadProjektContext(p.id, p.name)));
+
+  // Verknüpfte Personen des Portfolios + Monatsrange aus den Auftrags-Zeiträumen.
+  const personIds = new Set<string>();
+  let minMonth: string | null = null;
+  let maxMonth: string | null = null;
+  for (const ctx of contexts) {
+    const auftrag = ctx.auftrag as (Projektauftrag & { start_date?: string; end_date?: string }) | null;
+    for (const m of auftrag?.organization || []) {
+      if (m.person_id) personIds.add(m.person_id);
+    }
+    const s = capToMonthKey(auftrag?.start_date);
+    const e = capToMonthKey(auftrag?.end_date);
+    if (s && (!minMonth || s < minMonth)) minMonth = s;
+    if (e && (!maxMonth || e > maxMonth)) maxMonth = e;
+  }
+
+  const nowYear = new Date().getFullYear();
+  const from = opts.from || minMonth || `${nowYear}-01`;
+  const to = opts.to || maxMonth || `${nowYear}-12`;
+  const months = capMonthKeys(from, to);
+
+  // Personen-Stammdaten (Rolle) + Gesamt-Auslastung (über alle Projekte).
+  const loaded = await Promise.all(
+    [...personIds].map(async (pid) => {
+      const [person, auslastung] = await Promise.all([
+        getPerson(pid),
+        getPersonAuslastung(pid, userId, { from, to }),
+      ]);
+      return { pid, person, auslastung };
+    }),
+  );
+
+  const personen: PortfolioCapacityRow[] = loaded
+    .filter((x) => x.person && x.auslastung)
+    .map(({ pid, person, auslastung }) => {
+      const byMonth = new Map(auslastung!.monate.map((m) => [m.month, m]));
+      return {
+        id: pid,
+        name: person!.name,
+        role: person!.role || null,
+        monate: months.map((month) => {
+          const a = byMonth.get(month);
+          return {
+            month,
+            kapazitaet: a?.kapazitaet ?? 0,
+            linie: a?.linie ?? 0,
+            bedarf_genehmigt: a?.bedarf_genehmigt ?? 0,
+            bedarf_entwurf: a?.bedarf_entwurf ?? 0,
+          };
+        }),
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+
+  // Rollen-Aggregat: summiere je Rolle über die Personen-Zeilen.
+  const rollenMap = new Map<string, PortfolioCapacityCell[]>();
+  for (const p of personen) {
+    const key = p.role || '__none__';
+    if (!rollenMap.has(key)) rollenMap.set(key, emptyCells(months));
+    const cells = rollenMap.get(key)!;
+    p.monate.forEach((c, i) => {
+      const t = cells[i]!;
+      t.kapazitaet += c.kapazitaet;
+      t.linie += c.linie;
+      t.bedarf_genehmigt += c.bedarf_genehmigt;
+      t.bedarf_entwurf += c.bedarf_entwurf;
+    });
+  }
+  const rollen: PortfolioCapacityRow[] = [...rollenMap.entries()]
+    .map(([role, monate]) => ({
+      id: role,
+      name: role === '__none__' ? 'Ohne Rolle' : role,
+      monate,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+
+  return { months, personen, rollen };
 }
 
 // Suppress unused import warnings — these are re-exports in case future modules

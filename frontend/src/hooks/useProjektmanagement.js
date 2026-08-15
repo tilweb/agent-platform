@@ -750,6 +750,14 @@ export function useProjektmanagement() {
     return data.risks;
   }, []);
 
+  const getPortfolioCapacity = useCallback(async (portfolioId) => {
+    const response = await apiGet(`/apps/projektmanagement/portfolios/${portfolioId}/capacity`);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('Failed to get portfolio capacity');
+    const data = await response.json();
+    return data.capacity;
+  }, []);
+
   // Portfolio ↔ Projektidee (0..1)
   const getPortfolioIdeen = useCallback(async (portfolioId) => {
     const response = await apiGet(`/apps/projektmanagement/portfolios/${portfolioId}/ideen`);
@@ -924,6 +932,7 @@ export function useProjektmanagement() {
     getPortfolioRoadmap,
     getPortfolioCosts,
     getPortfolioRisks,
+    getPortfolioCapacity,
     getPortfolioIdeen,
     getAvailableIdeenForPortfolio,
     assignIdeeToPortfolio,
