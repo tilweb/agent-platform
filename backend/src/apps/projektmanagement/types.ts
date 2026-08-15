@@ -574,6 +574,36 @@ export interface PortfolioRiskResponse {
   risiken: PortfolioRiskItem[];
 }
 
+// ============== Portfolio-Kapazität (Heatmap) ==============
+//
+// Aggregat fuer GET /portfolios/:id/capacity. Zeilen wahlweise Personen oder
+// Rollen (aggregiert), Spalten = Monate. Pro Zelle Kapazität/Linie/Bedarf
+// (getrennt genehmigt-laufend vs Entwurf) — Auslastung% berechnet das Frontend.
+// Wichtig: die Belegung je Person ist die GESAMT-Auslastung (Linie + ALLE
+// verknuepften Projekte, auch aus anderen Portfolios), damit echte Engpässe
+// sichtbar werden.
+
+export interface PortfolioCapacityCell {
+  month: string;              // "YYYY-MM"
+  kapazitaet: number;         // 17 × wochenarbeitszeit_pct/100
+  linie: number;              // Linienbelegung
+  bedarf_genehmigt: number;   // Σ Bedarf aus Aufträgen mit status != 'draft'
+  bedarf_entwurf: number;     // Σ Bedarf aus Aufträgen mit status == 'draft'
+}
+
+export interface PortfolioCapacityRow {
+  id: string;                 // person_id (Personen) bzw. Rollen-Wert / '__none__'
+  name: string;               // Personenname bzw. Rollen-Label
+  role?: string | null;       // nur bei Personen-Zeilen: Rollen-Wert
+  monate: PortfolioCapacityCell[];
+}
+
+export interface PortfolioCapacityResponse {
+  months: string[];
+  personen: PortfolioCapacityRow[];
+  rollen: PortfolioCapacityRow[];
+}
+
 // ============== Lessons Learned ==============
 //
 // Phase E (Lessons Learned) — Sub-Resource am Projekt (heute noch via

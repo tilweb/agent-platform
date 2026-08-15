@@ -38,7 +38,7 @@ import {
   denyIfBelowPortfolioRole,
   denyIfNotAppEditor,
 } from './_shared';
-import { getPortfolioDashboard, getPortfolioRoadmap, getPortfolioCosts, getPortfolioRisks } from '../portfolio-dashboard-service';
+import { getPortfolioDashboard, getPortfolioRoadmap, getPortfolioCosts, getPortfolioRisks, getPortfolioCapacity } from '../portfolio-dashboard-service';
 import type { PortfolioStatus, TeamMember, Stakeholder, PortfolioDependency } from '../types';
 // Hinweis: getPortfolioDashboard kommt aus portfolio-dashboard-service.ts (Phase D3).
 
@@ -431,5 +431,27 @@ portfoliosRoutes.get('/portfolios/:id/risks', async (c) => {
   } catch (error) {
     console.error('getPortfolioRisks error:', error);
     return c.json({ error: 'Failed to get portfolio risks' }, 500);
+  }
+});
+
+// ============== Kapazität (Aggregat / Heatmap) ==============
+
+portfoliosRoutes.get('/portfolios/:id/capacity', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const denied = await denyIfBelowPortfolioRole(userId, id, 'viewer');
+    if (denied) return c.json({ error: denied.error }, denied.status);
+
+    const capacity = await getPortfolioCapacity(id, userId, {
+      from: c.req.query('from'),
+      to: c.req.query('to'),
+    });
+    if (!capacity) return c.json({ error: 'Portfolio nicht gefunden' }, 404);
+    return c.json({ capacity });
+  } catch (error) {
+    console.error('getPortfolioCapacity error:', error);
+    return c.json({ error: 'Failed to get portfolio capacity' }, 500);
   }
 });

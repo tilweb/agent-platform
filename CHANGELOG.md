@@ -2,6 +2,19 @@
 
 ## 2026-08-15
 
+### PM: Kapazitätsplanung — Phase 3 (Ressourcen-Heatmap im Portfolio)
+Abschluss: die geplante Ressourcen- & Engpassansicht im Portfolio-Dashboard ist jetzt live (ersetzt den
+Platzhalter in Kachel 6).
+- **Heatmap Rollen/Personen × Monat**: Zeilen umschaltbar **Rollen (aggregiert) ↔ Personen**, Spalten = Monate
+  über den Portfolio-Zeitraum. Zellen getönt nach **Auslastung%** = (Linie + Projektbedarf) / Kapazität:
+  grün ≤85 %, gelb 85–100 %, **rot >100 % (Engpass)**; Tooltip mit Kapazität/Linie/Bedarf.
+- **Szenario-Umschalter**: „nur genehmigt/laufend" vs. „inkl. Entwürfe" (draft-Aufträge) — zeigt den Effekt
+  geplanter Projekte auf die Auslastung.
+- **Neuer Aggregat-Endpoint** `GET /portfolios/:id/capacity` (`getPortfolioCapacity`): sammelt die im Portfolio
+  verknüpften Kapazitätspersonen und ihre **Gesamt-Auslastung** (Linie + alle verknüpften Projekte,
+  **portfolioübergreifend** — echte Engpässe sichtbar), Rollen-Aggregat serverseitig, RBAC wie Dashboard.
+- Frontend: `PortfolioCapacityHeatmap` + Hook `getPortfolioCapacity`. Beide Worktrees.
+
 ### PM: Kapazitätsplanung — Phase 2 (Auftrag-Verknüpfung + Projekt-Bedarf)
 Zweiter Baustein: im Projektauftrag pro Teammitglied die Kapazität planen und die projekt­übergreifende
 Belegung sehen.

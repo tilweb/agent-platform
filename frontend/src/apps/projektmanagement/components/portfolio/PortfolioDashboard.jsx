@@ -7,7 +7,7 @@
  *   3. Idea-to-Project-Funnel (5 Stufen)
  *   4. Projektübersicht (Status/Fortschritt/Budget/Forecast/Hinweis)
  *   5. Kritische Abhängigkeiten (Edge-Liste)
- *   6. Ressourcen- & Engpassansicht (Platzhalter — Ressourcenmodul folgt)
+ *   6. Ressourcen- & Engpassansicht (Kapazitäts-Heatmap: Rollen/Personen × Monat)
  *   7. Top-Risiken (offen)
  *   8. Letzte Statusberichte
  *
@@ -20,6 +20,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../../../../config/theme';
 import { useProjektmanagement } from '../../../../hooks/useProjektmanagement';
+import PortfolioCapacityHeatmap from './PortfolioCapacityHeatmap';
 
 const AMPEL = {
   gruen: { fg: theme.colors.success, bg: theme.colors.successLight, label: 'Grün' },
@@ -501,13 +502,10 @@ export default function PortfolioDashboard({ portfolioId, appConfig }) {
         )}
       </div>
 
-      {/* 6. Ressourcen- & Engpassansicht (Platzhalter) */}
+      {/* 6. Ressourcen- & Engpassansicht (Kapazitäts-Heatmap) */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Ressourcen- & Engpassansicht</div>
-        <div style={styles.placeholder}>
-          Ressourcenmodul folgt — die Heatmap benötigt Rollen-Kapazitäten und Allokation je Monat
-          (verfügbare/geplante Kapazität, Ist-Auslastung), die aktuell noch nicht erfasst werden.
-        </div>
+        <PortfolioCapacityHeatmap portfolioId={portfolioId} appConfig={appConfig} />
       </div>
 
       {/* 7. Top-Risiken */}
