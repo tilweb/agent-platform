@@ -7,12 +7,13 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { theme } from '../../config/theme';
 import { useProjektmanagement } from '../../hooks/useProjektmanagement';
-import { LightningIcon, ClipboardIcon, AppsIcon } from '../../components/Icons';
+import { LightningIcon, ClipboardIcon, AppsIcon, CalendarIcon } from '../../components/Icons';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import RoleBadge from '../../components/RoleBadge';
 import Einstellungen from './components/Einstellungen';
 import IdeenPage from './IdeenPage';
 import PortfolioList from './components/portfolio/PortfolioList';
+import KapazitaetsplanungView from './components/kapazitaet/KapazitaetsplanungView';
 
 // Phase C: Top-Level-Tabs entsprechen den Top-Level-Entities:
 // Projekte | Ideen | Portfolios | Einstellungen.
@@ -35,6 +36,11 @@ const TABS = [
     id: 'portfolios',
     label: 'Portfolios',
     icon: AppsIcon,
+  },
+  {
+    id: 'kapazitaeten',
+    label: 'Kapazitätsplanung',
+    icon: CalendarIcon,
   },
   {
     id: 'einstellungen',
@@ -479,6 +485,8 @@ function ProjektePage() {
           <IdeenPage embedded />
         ) : activeTab === 'portfolios' ? (
           <PortfolioList />
+        ) : activeTab === 'kapazitaeten' ? (
+          <KapazitaetsplanungView />
         ) : activeTab === 'projekte' ? (
           <>
             {/* Action Bar (analog Ideen-Tab) — nur fuer App-Editor/Owner */}

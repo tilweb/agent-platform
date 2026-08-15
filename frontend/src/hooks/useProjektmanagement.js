@@ -805,6 +805,44 @@ export function useProjektmanagement() {
     }
   }, []);
 
+  // Kapazitätsplanung — zentrale Personen-Stammdaten
+  const listKapazitaetspersonen = useCallback(async () => {
+    const response = await apiGet('/apps/projektmanagement/kapazitaeten/personen');
+    if (!response.ok) throw new Error('Failed to list kapazitaetspersonen');
+    const data = await response.json();
+    return data.personen || [];
+  }, []);
+
+  const createKapazitaetsperson = useCallback(async (input) => {
+    const response = await apiPost('/apps/projektmanagement/kapazitaeten/personen', input);
+    if (!response.ok) {
+      const d = await response.json().catch(() => ({}));
+      throw new Error(d.error || 'Failed to create person');
+    }
+    const data = await response.json();
+    return data.person;
+  }, []);
+
+  const updateKapazitaetsperson = useCallback(async (id, input) => {
+    const response = await apiPut(`/apps/projektmanagement/kapazitaeten/personen/${id}`, input);
+    if (!response.ok) {
+      const d = await response.json().catch(() => ({}));
+      const err = new Error(d.error || 'Failed to update person');
+      if (d.error === 'version_conflict') err.current = d.current;
+      throw err;
+    }
+    const data = await response.json();
+    return data.person;
+  }, []);
+
+  const deleteKapazitaetsperson = useCallback(async (id) => {
+    const response = await apiDelete(`/apps/projektmanagement/kapazitaeten/personen/${id}`);
+    if (!response.ok) {
+      const d = await response.json().catch(() => ({}));
+      throw new Error(d.error || 'Failed to delete person');
+    }
+  }, []);
+
   return {
     projektauftraege,
     stats,
@@ -880,5 +918,9 @@ export function useProjektmanagement() {
     getAvailableAuftraegeForIdee,
     linkAuftragToIdee,
     unlinkAuftragFromIdee,
+    listKapazitaetspersonen,
+    createKapazitaetsperson,
+    updateKapazitaetsperson,
+    deleteKapazitaetsperson,
   };
 }

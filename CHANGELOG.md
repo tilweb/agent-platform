@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-08-15
+
+### PM: Kapazitätsplanung — Phase 1 (Haupt-Tab + zentrale Personen-Entität)
+Erster Baustein der Kapazitätsplanung (Ziel: Ressourcen-Heatmap im Portfolio):
+- **Neuer Haupt-Tab „Kapazitätsplanung"** (neben Portfolios, `?tab=kapazitaeten`): zentrale, projekt­übergreifende
+  Personen mit Rolle, **Wochenarbeitszeit %** und **Linien-Belegung** (Ø PT/Monat + Monats-Overrides). Live
+  abgeleitet: **Kapazität/Monat = 17 × WAZ%/100** und „frei für Projekte" je Monat.
+- **Neue Entität `paPersonen`** — main: Drizzle-Tabelle + handgeschriebene Migration `0033_kapazitaet_personen.sql`
+  (+ Journal-Eintrag); railway: YAML unter `data/apps/projektmanagement/personen/{id}/metadata.yaml`.
+  `kapazitaet-storage.ts` (signaturgleich DB↔YAML) + `routes/kapazitaeten.ts` (CRUD, App-Editor+ für Schreiben).
+- Frontend: `KapazitaetsplanungView` + Tab in `ProjektePage` + 4 Hook-Methoden. Beide Worktrees.
+- Basis für Phase 2 (Auftrag-Verknüpfung + Monats-Bedarf) und Phase 3 (Portfolio-Heatmap).
+
 ## 2026-08-08
 
 ### Document Processing: Segment-Editor in der Maske (statt nur Import/API)

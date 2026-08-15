@@ -71,6 +71,7 @@ import { projekteRoutes } from './routes/projekte';
 import { lessonsLearnedRoutes } from './routes/lessons-learned';
 import { abschlussRoutes } from './routes/abschluss';
 import { portfoliosRoutes } from './routes/portfolios';
+import { kapazitaetenRoutes } from './routes/kapazitaeten';
 import { requireAppAccess } from '../permissions-middleware';
 import {
   getEffectiveIdeeRole,
@@ -106,6 +107,7 @@ projektmanagement.route('/', projekteRoutes);
 projektmanagement.route('/', lessonsLearnedRoutes);
 projektmanagement.route('/', abschlussRoutes);
 projektmanagement.route('/', portfoliosRoutes);
+projektmanagement.route('/', kapazitaetenRoutes);
 
 // ============== Phase-2 Permission Guards ==============
 

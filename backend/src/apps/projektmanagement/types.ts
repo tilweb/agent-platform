@@ -172,6 +172,49 @@ export interface ProjektUpdateInput {
   expectedVersion?: number;
 }
 
+// ============== Kapazitätsplanung (Personen) ==============
+//
+// Zentrale, projektübergreifende Personen-Stammdaten für die Kapazitätsplanung.
+// Kapazität/Monat (PT) = 17 × wochenarbeitszeit_pct/100 (Vollzeit-Basis).
+// Linienbelegung reduziert die für Projekte verfügbare Kapazität; Monatswerte
+// (linie_monate) überschreiben den Ø (linie_avg_pt).
+
+export const KAPAZITAET_MAX_PT_MONAT = 17;
+
+export interface Kapazitaetsperson {
+  id: string;
+  name: string;
+  role?: string;
+  wochenarbeitszeit_pct: number;
+  linie_avg_pt: number;
+  linie_monate: Record<string, number>;
+  ownerId?: string;
+  metadata?: Record<string, any>;
+  permissions?: ResourcePermissions;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KapazitaetspersonCreateInput {
+  id?: string;
+  name: string;
+  role?: string;
+  wochenarbeitszeit_pct?: number;
+  linie_avg_pt?: number;
+  linie_monate?: Record<string, number>;
+  ownerId?: string;
+}
+
+export interface KapazitaetspersonUpdateInput {
+  name?: string;
+  role?: string;
+  wochenarbeitszeit_pct?: number;
+  linie_avg_pt?: number;
+  linie_monate?: Record<string, number>;
+  expectedVersion?: number;
+}
+
 // ============== Portfolio (Phase D) ==============
 //
 // Gruppierung von Projekten fuer PMO-Sicht. 0..1-Kardinalitaet via
