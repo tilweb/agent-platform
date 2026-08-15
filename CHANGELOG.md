@@ -2,6 +2,18 @@
 
 ## 2026-08-15
 
+### PM: Kapazitätsplanung — Auslastungs-/Engpassansicht im Tab (pro MA ausklappbar)
+Die Ressourcen- & Engpassansicht (wie im Portfolio) gibt es jetzt auch im Kapazitätsplanung-Tab selbst —
+Sub-Tab „Auslastung & Engpässe" neben „Personen".
+- **Heatmap über alle Personen × Monat**: Gesamt-Auslastung je Monat getönt (grün ≤85 % · gelb 85–100 % ·
+  rot >100 %). Personen ohne Projektlink erscheinen ebenfalls (Linie-only).
+- **Pro MA ausklappbar**: zeigt die Zusammensetzung je Monat — **Kapazität · Linie · Projekte
+  (genehmigt/laufend) · Projektanfragen (Entwürfe) · frei**.
+- **Szenario-Umschalter** „nur genehmigt/laufend" vs. „inkl. Projektanfragen".
+- **Neuer Aggregat-Endpoint** `GET /kapazitaeten/auslastung` (`getKapazitaetOverview`): lädt die Aufträge
+  **einmal** und verteilt den Bedarf je `person_id` (effizienter als N× `getPersonAuslastung`), RBAC-gefiltert.
+- Frontend: `KapazitaetAuslastungView` + Sub-Tab in `KapazitaetsplanungView` + Hook `getKapazitaetOverview`.
+
 ### PM: Kapazitätsplanung — UX-Feinschliff (Name-Placeholder + frische Personenliste)
 - **Neue Person**: das Namensfeld startet leer mit Placeholder „Name der Person" (statt vorbelegtem
   „Neue Person", das erst gelöscht werden musste).

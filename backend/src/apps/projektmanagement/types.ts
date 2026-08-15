@@ -589,6 +589,15 @@ export interface PortfolioCapacityResponse {
   rollen: PortfolioCapacityRow[];
 }
 
+// Gesamtübersicht für die Ressourcen-/Engpassansicht im Kapazitätsplanung-Tab:
+// ALLE zentralen Personen (auch ohne Projektlink → Linie-only) je Monat mit der
+// gleichen Zellen-Aufschlüsselung (Kapazität/Linie/genehmigt/Entwurf). Pro Person
+// im Frontend ausklappbar zur Zusammensetzung Linie/Projekte/Projektanfragen.
+export interface KapazitaetOverviewResponse {
+  months: string[];
+  personen: PortfolioCapacityRow[];
+}
+
 // ============== Lessons Learned ==============
 
 export interface LessonLearned {

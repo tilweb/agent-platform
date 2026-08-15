@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { theme } from '../../../../config/theme';
 import { useProjektmanagement } from '../../../../hooks/useProjektmanagement';
 import { useAppPermission } from '../../../../components/RequireAppPermission';
+import KapazitaetAuslastungView from './KapazitaetAuslastungView';
 
 const MAX_PT = 17; // Vollzeit-Basis PT/Monat
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
@@ -23,6 +24,13 @@ const fmtPT = (n) => (Number(n) || 0).toLocaleString('de-DE', { maximumFractionD
 
 const styles = {
   container: { padding: theme.spacing['2xl'], height: '100%', display: 'flex', flexDirection: 'column' },
+  subTabs: { display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.xl },
+  subTab: {
+    padding: `${theme.spacing.sm} ${theme.spacing.lg}`, backgroundColor: 'transparent', border: 'none',
+    borderRadius: theme.borderRadius.md, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium,
+    color: theme.colors.textMuted, cursor: 'pointer',
+  },
+  subTabActive: { backgroundColor: theme.colors.primaryLight, color: theme.colors.primary },
   actions: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xl, gap: theme.spacing.md },
   intro: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, maxWidth: 640 },
   createButton: {
@@ -80,6 +88,7 @@ export default function KapazitaetsplanungView() {
   const { role: appRole } = useAppPermission('projektmanagement');
   const canEdit = appRole === 'editor' || appRole === 'owner';
 
+  const [view, setView] = useState('personen');   // 'personen' | 'auslastung'
   const [personen, setPersonen] = useState([]);
   const [config, setConfig] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -166,6 +175,15 @@ export default function KapazitaetsplanungView() {
 
   return (
     <div style={styles.container}>
+      <div style={styles.subTabs}>
+        <button type="button" style={{ ...styles.subTab, ...(view === 'personen' ? styles.subTabActive : {}) }} onClick={() => setView('personen')}>Personen</button>
+        <button type="button" style={{ ...styles.subTab, ...(view === 'auslastung' ? styles.subTabActive : {}) }} onClick={() => setView('auslastung')}>Auslastung & Engpässe</button>
+      </div>
+
+      {view === 'auslastung' ? (
+        <KapazitaetAuslastungView appConfig={config} />
+      ) : (
+      <>
       <div style={styles.actions}>
         <div style={styles.intro}>
           Zentrale Personen mit Rolle, Wochenarbeitszeit und Linien-Belegung. Basis für die Projekt-Verfügbarkeit
@@ -280,6 +298,8 @@ export default function KapazitaetsplanungView() {
             );
           })}
         </div>
+      )}
+      </>
       )}
     </div>
   );
