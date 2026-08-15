@@ -821,6 +821,14 @@ export function useProjektmanagement() {
     return data.personen || [];
   }, []);
 
+  // Auslastungs-Gesamtübersicht (alle Personen) für die Engpassansicht.
+  const getKapazitaetOverview = useCallback(async () => {
+    const response = await apiGet('/apps/projektmanagement/kapazitaeten/auslastung');
+    if (!response.ok) throw new Error('Failed to get kapazitaet overview');
+    const data = await response.json();
+    return data.overview;
+  }, []);
+
   const createKapazitaetsperson = useCallback(async (input) => {
     const response = await apiPost('/apps/projektmanagement/kapazitaeten/personen', input);
     if (!response.ok) {
@@ -945,5 +953,6 @@ export function useProjektmanagement() {
     updateKapazitaetsperson,
     deleteKapazitaetsperson,
     getPersonAuslastung,
+    getKapazitaetOverview,
   };
 }
