@@ -846,6 +846,9 @@ function WizardPage() {
       stepAnalyses,
       gesamtbewertung,
       onGesamtbewertungComplete: setGesamtbewertung,
+    } : currentStep === 2 ? {
+      // Personen im Projektauftrag: Kapazitaetsplanung-Panel je Teammitglied.
+      showKapazitaet: true,
     } : {};
 
     return (

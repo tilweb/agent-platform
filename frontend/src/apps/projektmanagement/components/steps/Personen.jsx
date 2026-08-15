@@ -2,9 +2,11 @@
  * Personen - Projektorganisation (Team & Stakeholder)
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { theme } from '../../../../config/theme';
 import StakeholderMatrix from './StakeholderMatrix';
+import AuftragKapazitaetPanel from '../kapazitaet/AuftragKapazitaetPanel';
+import { useProjektmanagement } from '../../../../hooks/useProjektmanagement';
 
 const styles = {
   container: {
@@ -133,6 +135,31 @@ const styles = {
     resize: 'vertical',
     fontFamily: theme.typography.fontFamily,
   },
+  kapWrap: {
+    marginTop: theme.spacing.sm,
+    borderTop: `1px solid ${theme.colors.borderLight}`,
+    paddingTop: theme.spacing.sm,
+  },
+  kapToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.xs} 0`,
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: theme.colors.textSecondary,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+  },
+  kapLinked: {
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.primary,
+    backgroundColor: theme.colors.primaryLight,
+    padding: `2px ${theme.spacing.sm}`,
+    borderRadius: theme.borderRadius.full,
+  },
   removeButton: {
     padding: theme.spacing.sm,
     backgroundColor: 'transparent',
@@ -166,6 +193,7 @@ function Personen({
   onChange,
   config,
   showGeplanterEinsatz = false,
+  showKapazitaet = false,
   title = '2. Personen',
   subtitle = 'Definieren Sie das Projektteam und die wichtigsten Stakeholder.',
   teamLabel = 'Projektteam',
@@ -174,6 +202,24 @@ function Personen({
   const [activeTab, setActiveTab] = useState('team');
   const organization = data.organization || [];
   const stakeholders = data.stakeholders || [];
+
+  // Kapazitätsplanung (nur im Projektauftrag): zentrale Personen laden + Ausklapp-State.
+  const { listKapazitaetspersonen } = useProjektmanagement();
+  const [kapPersonen, setKapPersonen] = useState([]);
+  const [kapOpen, setKapOpen] = useState(() => new Set());
+  const reloadKapPersonen = useCallback(async () => {
+    if (!showKapazitaet) return;
+    const list = await listKapazitaetspersonen().catch(() => []);
+    setKapPersonen(list);
+  }, [showKapazitaet, listKapazitaetspersonen]);
+  // Fetch der Kapazitaetspersonen beim Einblenden; gesetzter State nicht in Effekt-Deps.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { reloadKapPersonen(); }, [reloadKapPersonen]);
+  const toggleKap = (id) => setKapOpen((prev) => {
+    const n = new Set(prev);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  });
 
   const opts = (key) => config?.[key] || [];
 
@@ -453,6 +499,37 @@ function Personen({
                     onBlur={(e) => { e.target.style.borderColor = theme.colors.border; }}
                   />
                 </div>
+
+                {showKapazitaet && (() => {
+                  const memberKey = member.id || index;
+                  const open = kapOpen.has(memberKey);
+                  return (
+                    <div style={styles.kapWrap}>
+                      <button
+                        type="button"
+                        style={styles.kapToggle}
+                        onClick={() => toggleKap(memberKey)}
+                      >
+                        <ChevronIcon open={open} />
+                        Kapazitätsplanung
+                        {member.person_id && <span style={styles.kapLinked}>verknüpft</span>}
+                      </button>
+                      {open && (
+                        <AuftragKapazitaetPanel
+                          member={member}
+                          onChange={(patch) => {
+                            for (const [k, v] of Object.entries(patch)) updateTeamMember(index, k, v);
+                          }}
+                          auftragId={data.id}
+                          startDate={data.start_date}
+                          endDate={data.end_date}
+                          personen={kapPersonen}
+                          canEdit
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <button
@@ -689,6 +766,17 @@ function TrashIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ open }) {
+  return (
+    <svg
+      width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      style={{ transform: open ? 'rotate(90deg)' : 'none', transition: `transform ${theme.transitions.fast}`, flexShrink: 0 }}
+    >
+      <polyline points="9 18 15 12 9 6" />
     </svg>
   );
 }

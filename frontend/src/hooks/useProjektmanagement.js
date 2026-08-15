@@ -843,6 +843,19 @@ export function useProjektmanagement() {
     }
   }, []);
 
+  const getPersonAuslastung = useCallback(async (personId, { from, to, exclude } = {}) => {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (exclude) params.set('exclude', exclude);
+    const qs = params.toString();
+    const response = await apiGet(`/apps/projektmanagement/kapazitaeten/personen/${personId}/auslastung${qs ? `?${qs}` : ''}`);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('Failed to get auslastung');
+    const data = await response.json();
+    return data.auslastung;
+  }, []);
+
   return {
     projektauftraege,
     stats,
@@ -922,5 +935,6 @@ export function useProjektmanagement() {
     createKapazitaetsperson,
     updateKapazitaetsperson,
     deleteKapazitaetsperson,
+    getPersonAuslastung,
   };
 }
