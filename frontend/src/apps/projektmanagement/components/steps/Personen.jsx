@@ -76,6 +76,7 @@ const styles = {
   },
   itemContent: {
     flex: 1,
+    minWidth: 0, // erlaubt overflow-x-Scroll breiter Inhalte (Kapazitäts-Monatstabelle), statt die Card zu sprengen
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing.md,
