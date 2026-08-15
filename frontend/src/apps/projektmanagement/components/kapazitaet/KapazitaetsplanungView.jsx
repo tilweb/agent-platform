@@ -132,7 +132,9 @@ export default function KapazitaetsplanungView() {
     try {
       const p = await createKapazitaetsperson({ name: 'Neue Person', wochenarbeitszeit_pct: 100, linie_avg_pt: 0 });
       await reload();
-      if (p) openEditor(p);
+      // Editor mit leerem Namensfeld öffnen (Placeholder als Hinweis) — der
+      // Nutzer soll nicht erst "Neue Person" löschen müssen.
+      if (p) { openEditor(p); setDraftField('name', ''); }
     } catch (err) { setError(err.message); }
   };
 
@@ -201,7 +203,7 @@ export default function KapazitaetsplanungView() {
                     <div style={styles.fieldRow}>
                       <div style={styles.field}>
                         <label style={styles.label}>Name</label>
-                        <input style={styles.input} value={draft.name} onChange={(e) => setDraftField('name', e.target.value)} readOnly={!canEdit} />
+                        <input style={styles.input} value={draft.name} onChange={(e) => setDraftField('name', e.target.value)} placeholder="Name der Person" readOnly={!canEdit} />
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label}>Rolle / Funktion</label>

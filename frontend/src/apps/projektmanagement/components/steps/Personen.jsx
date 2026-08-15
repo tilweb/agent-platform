@@ -215,11 +215,18 @@ function Personen({
   // Fetch der Kapazitaetspersonen beim Einblenden; gesetzter State nicht in Effekt-Deps.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reloadKapPersonen(); }, [reloadKapPersonen]);
-  const toggleKap = (id) => setKapOpen((prev) => {
-    const n = new Set(prev);
-    if (n.has(id)) n.delete(id); else n.add(id);
-    return n;
-  });
+  const toggleKap = (id) => {
+    const willOpen = !kapOpen.has(id);
+    setKapOpen((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+    // Beim Aufklappen die zentrale Personenliste frisch laden — so erscheinen auch
+    // Personen, die erst nach dem Mount (z.B. parallel im Kapazitätsplanung-Tab)
+    // angelegt wurden, ohne dass der Auftrag erst gespeichert/neu geladen werden muss.
+    if (willOpen) reloadKapPersonen();
+  };
 
   const opts = (key) => config?.[key] || [];
 
