@@ -2,6 +2,13 @@
 
 ## 2026-08-15
 
+### PM: Kapazitätsplanung — UX-Feinschliff (Name-Placeholder + frische Personenliste)
+- **Neue Person**: das Namensfeld startet leer mit Placeholder „Name der Person" (statt vorbelegtem
+  „Neue Person", das erst gelöscht werden musste).
+- **Person-Zuordnung im Projektauftrag**: die Auswahl der zentralen Kapazitätspersonen wird jetzt beim
+  Aufklappen des Panels frisch geladen — parallel (z.B. im Kapazitätsplanung-Tab) angelegte Personen erscheinen
+  sofort, ohne den Auftrag erst speichern/neu laden zu müssen.
+
 ### PM: Kapazitätsplanung — Phase 3 (Ressourcen-Heatmap im Portfolio)
 Abschluss: die geplante Ressourcen- & Engpassansicht im Portfolio-Dashboard ist jetzt live (ersetzt den
 Platzhalter in Kachel 6).
