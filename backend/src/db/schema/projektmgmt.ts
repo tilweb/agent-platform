@@ -64,6 +64,27 @@ export const paPortfolios = projektmgmtSchema.table('portfolios', {
 }));
 
 /**
+ * Kapazitaetsperson: zentrale (projektuebergreifende) Personen-Stammdaten fuer die
+ * Kapazitaetsplanung. Anders als die eingebetteten `organization`-TeamMember (pro
+ * Auftrag/Idee) ist dies eine eigenstaendige Entitaet, auf die Projekt-Teammitglieder
+ * per `person_id` verlinken. Kapazitaets-Felder (role, wochenarbeitszeit_pct,
+ * linie_avg_pt, linie_monate) leben im `metadata`-JSONB und werden im Service
+ * angehoben (Muster wie portfolio-service.ts META_KEYS).
+ */
+export const paPersonen = projektmgmtSchema.table('personen', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id'),
+  name: text('name').notNull(),
+  metadata: jsonb('metadata'),                                   // role, wochenarbeitszeit_pct, linie_avg_pt, linie_monate
+  permissions: jsonb('permissions'),
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  ownerIdx: index('person_owner_idx').on(t.ownerId),
+}));
+
+/**
  * Projektideen: leichtgewichtige Vorstufe zum Projektauftrag.
  * Eine Idee kann 0..n Projektauftraege auslösen (verlinkt via paProjektauftraege.ideeId).
  * Die Idee bleibt persistent — selbst wenn alle daraus abgeleiteten Auftraege entfernt

@@ -232,6 +232,13 @@
       "when": 1785888200000,
       "tag": "0032_extraction_segments",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1785888300000,
+      "tag": "0033_kapazitaet_personen",
+      "breakpoints": true
     }
   ]
 }

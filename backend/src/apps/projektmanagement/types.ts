@@ -177,6 +177,51 @@ export interface ProjektUpdateInput {
   expectedVersion?: number;     // optimistic concurrency
 }
 
+// ============== Kapazitätsplanung (Personen) ==============
+//
+// Zentrale, projektübergreifende Personen-Stammdaten für die Kapazitätsplanung.
+// Eigenständige Entität (anders als die eingebetteten organization-TeamMember pro
+// Auftrag/Idee); Projekt-Teammitglieder verlinken per `person_id` hierauf.
+// Kapazität/Monat (PT) = 17 × wochenarbeitszeit_pct/100 (Vollzeit-Basis nach
+// Urlaub/Krankheit/Weiterbildung). Linienbelegung reduziert die für Projekte
+// verfügbare Kapazität; Monatswerte (linie_monate) überschreiben den Ø (linie_avg_pt).
+
+export const KAPAZITAET_MAX_PT_MONAT = 17;
+
+export interface Kapazitaetsperson {
+  id: string;
+  name: string;
+  role?: string;                          // Config-Liste 'role'
+  wochenarbeitszeit_pct: number;          // z.B. 100
+  linie_avg_pt: number;                   // Ø Linien-PT/Monat
+  linie_monate: Record<string, number>;   // { "YYYY-MM": pt } — überschreibt avg
+  ownerId?: string;
+  metadata?: Record<string, any>;
+  permissions?: ResourcePermissions;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KapazitaetspersonCreateInput {
+  id?: string;
+  name: string;
+  role?: string;
+  wochenarbeitszeit_pct?: number;
+  linie_avg_pt?: number;
+  linie_monate?: Record<string, number>;
+  ownerId?: string;
+}
+
+export interface KapazitaetspersonUpdateInput {
+  name?: string;
+  role?: string;
+  wochenarbeitszeit_pct?: number;
+  linie_avg_pt?: number;
+  linie_monate?: Record<string, number>;
+  expectedVersion?: number;
+}
+
 // ============== Portfolio (Phase D) ==============
 //
 // Gruppierung von Projekten fuer PMO-Sicht. Adressiert primaer Portfolio
