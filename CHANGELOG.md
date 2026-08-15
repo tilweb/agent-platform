@@ -2,6 +2,22 @@
 
 ## 2026-08-15
 
+### PM: Kapazitätsplanung — Phase 2 (Auftrag-Verknüpfung + Projekt-Bedarf)
+Zweiter Baustein: im Projektauftrag pro Teammitglied die Kapazität planen und die projekt­übergreifende
+Belegung sehen.
+- **Personen-Schritt im Auftrag** (`showKapazitaet`): je Teammitglied ein **ausklappbares Panel** —
+  Verknüpfung mit einer zentralen Kapazitätsperson (`person_id`) + gewünschter **Projekt-Bedarf in PT/Monat**
+  (Ø + Monats-Overrides über den Auftrags-Zeitraum). `TeamMember` um `person_id`/`projekt_bedarf` erweitert
+  (migrationsfrei im `data`-JSONB).
+- **Read-only-Belegungssicht** je Monat: Linie, Bedarf aus **anderen genehmigten/laufenden** Projekten
+  (Split nach `status`: `draft` = Entwurf) und „verbleibend frei" — inkl. Rot-Markierung bei Engpass.
+- **Neuer Aggregat-Endpoint** `GET /kapazitaeten/personen/:id/auslastung` (`kapazitaet-service.ts`):
+  summiert Linie + Projektbedarf über **alle** verknüpften Aufträge, RBAC-gefiltert
+  (`getEffectiveAuftragRole`), aktuellen Auftrag optional ausgeschlossen (`exclude`).
+- Frontend: `AuftragKapazitaetPanel` + Verdrahtung in `Personen`/`WizardPage` + Hook `getPersonAuslastung`.
+  Beide Worktrees (main Drizzle / railway YAML, signaturgleich; Frontend byte-identisch).
+- Basis für Phase 3 (Portfolio-Heatmap).
+
 ### PM: Kapazitätsplanung — Phase 1 (Haupt-Tab + zentrale Personen-Entität)
 Erster Baustein der Kapazitätsplanung (Ziel: Ressourcen-Heatmap im Portfolio):
 - **Neuer Haupt-Tab „Kapazitätsplanung"** (neben Portfolios, `?tab=kapazitaeten`): zentrale, projekt­übergreifende

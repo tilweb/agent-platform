@@ -22,6 +22,7 @@ import {
   updatePerson,
   deletePerson,
 } from '../kapazitaet-storage';
+import { getPersonAuslastung } from '../kapazitaet-service';
 import { denyIfNotAppEditor } from './_shared';
 import type { KapazitaetspersonCreateInput, KapazitaetspersonUpdateInput } from '../types';
 
@@ -53,6 +54,25 @@ kapazitaetenRoutes.get('/kapazitaeten/personen/:id', async (c) => {
   } catch (error) {
     console.error('getPerson error:', error);
     return c.json({ error: 'Failed to get person' }, 500);
+  }
+});
+
+// ============== Auslastung (Aggregat ueber alle verknuepften Projekte) ==============
+
+kapazitaetenRoutes.get('/kapazitaeten/personen/:id/auslastung', async (c) => {
+  try {
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const auslastung = await getPersonAuslastung(c.req.param('id'), userId, {
+      from: c.req.query('from'),
+      to: c.req.query('to'),
+      excludeAuftragId: c.req.query('exclude'),
+    });
+    if (!auslastung) return c.json({ error: 'Person nicht gefunden' }, 404);
+    return c.json({ auslastung });
+  } catch (error) {
+    console.error('getPersonAuslastung error:', error);
+    return c.json({ error: 'Failed to get auslastung' }, 500);
   }
 });
 

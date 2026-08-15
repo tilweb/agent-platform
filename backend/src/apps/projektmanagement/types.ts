@@ -55,6 +55,10 @@ export interface TeamMember {
   aufgabe?: string;       // Freitext
   bemerkung?: string;     // Freitext
   geplanter_einsatz?: { wert: number | string; einheit: '%' | 'PT' }; // nur Projektidee
+  // Kapazitätsplanung: optionaler Link auf eine zentrale Kapazitätsperson + der
+  // gewünschte Projekt-Bedarf in PT/Monat (Ø + Monats-Overrides). Nur im Auftrag genutzt.
+  person_id?: string;
+  projekt_bedarf?: { avg?: number; monate?: Record<string, number> };
 }
 
 export interface Stakeholder {
@@ -213,6 +217,33 @@ export interface KapazitaetspersonUpdateInput {
   linie_avg_pt?: number;
   linie_monate?: Record<string, number>;
   expectedVersion?: number;
+}
+
+// Aggregierte Auslastung einer Kapazitätsperson je Monat (Linie + Projektbedarf,
+// getrennt genehmigt/laufend vs Entwurf). Grundlage für die read-only-Sicht im
+// Projektauftrag und für die Portfolio-Heatmap.
+export interface PersonAuslastungMonat {
+  month: string;              // "YYYY-MM"
+  kapazitaet: number;         // 17 × wochenarbeitszeit_pct/100
+  linie: number;              // Linienbelegung
+  bedarf_genehmigt: number;   // Σ Bedarf aus Aufträgen mit status != 'draft'
+  bedarf_entwurf: number;     // Σ Bedarf aus Aufträgen mit status == 'draft'
+  frei_genehmigt: number;     // kapazitaet - linie - bedarf_genehmigt
+}
+
+export interface PersonAuslastungProjekt {
+  auftrag_id: string;
+  name: string;
+  status: string;             // 'draft' | 'active' | 'completed' | 'cancelled'
+  monate: Record<string, number>;  // Bedarf PT je Monat
+}
+
+export interface PersonAuslastung {
+  person_id: string;
+  name: string;
+  wochenarbeitszeit_pct: number;
+  monate: PersonAuslastungMonat[];
+  projekte: PersonAuslastungProjekt[];
 }
 
 // ============== Portfolio (Phase D) ==============
