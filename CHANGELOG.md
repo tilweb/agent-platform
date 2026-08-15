@@ -2,6 +2,11 @@
 
 ## 2026-08-15
 
+### PM: Fix — Kapazitäts-Panel im Projektauftrag sprengte die Personen-Card
+Die Monats-Tabelle im ausklappbaren Kapazitäts-Panel lief über den Card-Rand hinaus. Ursache: das
+Flex-Content-Element hatte kein `min-width: 0`, wodurch es auf Tabellenbreite wuchs statt den vorhandenen
+`overflow-x:auto`-Scroll zu nutzen. Behoben durch `minWidth: 0` an `itemContent` (`Personen.jsx`).
+
 ### PM: Kapazitätsplanung — Auslastungs-/Engpassansicht im Tab (pro MA ausklappbar)
 Die Ressourcen- & Engpassansicht (wie im Portfolio) gibt es jetzt auch im Kapazitätsplanung-Tab selbst —
 Sub-Tab „Auslastung & Engpässe" neben „Personen".
