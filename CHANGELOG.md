@@ -2,6 +2,15 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 2 — Prozess-Steckbriefe + Namenskopplung
+Zwei weitere Phase-2-Bausteine (Reiter 1 + 2), deterministisch, gegen den Übungsfall verifiziert.
+
+- **Prozess-Steckbriefe** (`lvar/steckbriefe.ts`, Reiter 2): Ist/Soll-Paar je Prozess. **MP maschinell** aus dem Call-Graph abgeleitet (ruft andere ∧ wird nicht gerufen); **TP↔SP fachlich → UNENTSCHIEDEN** (nie geraten); CFG-Prozess → SP. **Soll-Kaskade** Entschieden > Twin(RGA) > Struktur-Vorschlag (D-095, als Vorschlag gekennzeichnet). Kritikalität bleibt leer, wenn nicht belegt. Alt-Stand-Badge (Prozess-Stand < Familien-Maximum). Call-Graph aus der echten Koordinaten-Extraktion.
+- **Namenskopplung + Umbenennen-Cockpit** (`lvar/kopplung.ts`, Reiter 1): **Kopplungs-Riss (P-A)** — ein Ziel in einem Prozess schon umbenannt, im anderen noch der alte Name (EMMA koppelt über Namensgleichheit → Übergabe tot, bis beide stehen); Dublette-vs-Konsolidierung aus NK-G4; **Umbenennen-Karten (D-061)** mit append-only Token-IDs, Status + Feedback; Vorabhaken für schon-umbenannte Ziele — außer Reiter 3 sperrt (D-085-Kreuz).
+- **Golden** (Übungsfall): 210 → MP · 213 → UNENTSCHIEDEN · 211/214 → SP; 1 Kopplungs-Riss (C_ArchivPfad), 1 Dublette, 1 Konsolidierung; Vorabhaken gesetzt (C_ArchivPfad) vs. gesperrt (C_DruckerName).
+- **Tests**: Echo-Loop-Suite 156 grün (0 fail, +13).
+- Offen (Phase 2): Verzahnung (Pfad-Befunde → D9/D10, NK-Zustand → RGA), 3-Reiter-Explorer-Frontend.
+
 ### Echo-Loop: PAKET_2-Integration Phase 2 — CFG-Generator (7 Diff-Klassen)
 Zweiter Phase-2-Baustein (Reiter 3), nativ nach TS portiert (Referenz `cfg_generator.py`; D-085-Kreuz + Vorabhaken-Sperre aus `varliste_engine_v1.py`).
 
