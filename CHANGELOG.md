@@ -2,6 +2,16 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 2 — CFG-Generator (7 Diff-Klassen)
+Zweiter Phase-2-Baustein (Reiter 3), nativ nach TS portiert (Referenz `cfg_generator.py`; D-085-Kreuz + Vorabhaken-Sperre aus `varliste_engine_v1.py`).
+
+- **CFG-Generator** (`lvar/cfg.ts`): projiziert die C_-Konfigurations-Variablen einer Familie in eine CONFIG-Tabelle (ein Schlüssel je C_-Zielname) und vergleicht gegen die CONFIG-Excel(s) — **7 Diff-Klassen**: `gleich` · `abweichend` (belegter Wert-Konflikt, alle Kandidaten ohne Vorbelegung) · `unklar` (Panel-Wert aus geratener Umbruch-Zeile) · `nur_excel` · `nur_panel` · `fehlend` · `nicht_verglichen` (CONFIG-Prozess ohne hinterlegte Excel, verhindert Falschbefunde — B5). Plus **Excel-Waisen** (`verwaist`): `verdacht` (halbe Umbenennung) vs. `altlast`.
+- **D-085-Kreuz-Widerspruch**: `C_DruckerName` ist target-seitig `fehlend` UND excel-seitig `verwaist` (Excel kennt noch den alten `DruckerName`) → **Konform-Vorabhaken gesperrt** mit Verdachtshinweis (K-63: kein Reiter markiert vorab als erledigt, was ein anderer offen führt).
+- **Modus selbsterkennend** (ERSTANLAGE ohne Excel / ABGLEICH mit); CSV-Export (Semikolon, BOM).
+- **Golden-Fixture** `cfg-demo.json` (aus `_DATENSATZ.md` §3): Test reproduziert alle 7 Klassen genau einmal + beide Waisen-Arten + die drei abweichend-Kandidaten (Excel 2000 · Panel 1000 · 210 trägt 500).
+- **Tests**: Echo-Loop-Suite 143 grün (0 fail, +8).
+- Offen (Phase 2): Namenskopplung + Umbenennen-Cockpit, Prozess-Steckbriefe (MP/TP/SP), Verzahnung (Pfad→D9/D10), 3-Reiter-Explorer-Frontend.
+
 ### Echo-Loop: PAKET_2-Integration Phase 2 (Start) — NK-Gate G1–G7 (Namenskonvention)
 Beginn von Phase 2 (L-VAR Variablen-Explorer). Erster Baustein: das NK-Gate (deterministischer Kern von Reiter 1), nativ nach TS portiert (Referenz `nk_messung.py`/`varliste_engine_v1.py`, nk_messung ist maßgeblich).
 

@@ -1,0 +1,45 @@
+{
+  "_herkunft": "Modelliert aus _DATENSATZ.md §3 Reiter 3 + der beschriebenen _CONFIG_DEMO_Rechnungslauf.xlsx. Golden für den CFG-Generator: alle 7 Diff-Klassen + Excel-Waisen, jede genau einmal.",
+  "targets": [
+    { "key": "C_EingangPfad", "configProzess": "211", "altName": "Ablageordner Rechnungen", "panelWerte": { "211": "C:\\Musterwerk\\Eingang" } },
+    { "key": "C_PruefSchwelleZahl", "configProzess": "211", "altName": "Schwellwert Betrag", "panelWerte": { "211": "1000", "210": "500" } },
+    { "key": "C_ProtokollVorlageDatei", "configProzess": "211", "altName": "Vorlagendatei Prüfprotokoll", "umbruch": true, "panelWerte": { "211": "C:\\Musterwerk\\Vorlagen\\Protokoll.xlsx" } },
+    { "key": "C_ArchivPfad", "configProzess": "211", "altName": "Archivordner", "panelWerte": {} },
+    { "key": "C_PostfachText", "configProzess": "211", "altName": "Mailpostfach", "panelWerte": { "212": "rechnung@musterwerk.example" } },
+    { "key": "C_DruckerName", "configProzess": "211", "altName": "DruckerName", "panelWerte": { "214": "\\\\srv\\Drucker01" } },
+    { "key": "C_ProtokollDatei", "configProzess": "214", "altName": "Protokolldatei", "panelWerte": { "214": "C:\\Musterwerk\\Protokoll.csv" } },
+    { "key": "C_MonatsPfad", "configProzess": "214", "altName": "Ablagepfad Monat", "panelWerte": { "214": "C:\\Musterwerk\\2026-08" } },
+    { "key": "C_AufbewahrungZahl", "configProzess": "214", "altName": "Aufbewahrungsjahre", "panelWerte": { "214": "10" } }
+  ],
+  "excel": [
+    {
+      "configProzess": "211",
+      "vorhanden": true,
+      "werte": {
+        "C_EingangPfad": "C:\\Musterwerk\\Eingang",
+        "C_PruefSchwelleZahl": "2000",
+        "C_ProtokollVorlageDatei": "C:\\Musterwerk\\Vorlagen\\Protokoll_v2.xlsx",
+        "C_ArchivPfad": "C:\\Musterwerk\\Archiv",
+        "DruckerName": "\\\\srv\\Drucker01",
+        "Faxgeraet": "\\\\srv\\Fax"
+      }
+    },
+    { "configProzess": "214", "vorhanden": false, "werte": {} }
+  ],
+  "_golden": {
+    "klassen": {
+      "C_EingangPfad": "gleich",
+      "C_PruefSchwelleZahl": "abweichend",
+      "C_ProtokollVorlageDatei": "unklar",
+      "C_ArchivPfad": "nur_excel",
+      "C_PostfachText": "nur_panel",
+      "C_DruckerName": "fehlend",
+      "C_ProtokollDatei": "nicht_verglichen",
+      "C_MonatsPfad": "nicht_verglichen",
+      "C_AufbewahrungZahl": "nicht_verglichen"
+    },
+    "verwaist": { "DruckerName": "verdacht", "Faxgeraet": "altlast" },
+    "abweichendKandidaten": { "C_PruefSchwelleZahl": ["2000", "1000", "500"] },
+    "vorabhakenGesperrt": ["C_DruckerName"]
+  }
+}
