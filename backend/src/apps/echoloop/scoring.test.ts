@@ -1,5 +1,8 @@
-import { test, expect } from 'bun:test';
-import { computeScores } from './scoring';
+import { test, expect, describe } from 'bun:test';
+import {
+  computeScores, levelKlasse, bewerteVereinbarungsGates, papierLevelWarnungen,
+  VEREINBARUNGS_GATES,
+} from './scoring';
 
 /**
  * Referenz: docs/Echo-Loop-App/02_Standards/SOLL-PROFIL_METHODE.md §4
@@ -92,4 +95,83 @@ test('Leere Eingabe → alles 0, kein Crash', () => {
   expect(r.rgq).toBe(0);
   expect(r.seQuotient).toBe(0);
   expect(r.rgStar).toBe(0);
+});
+
+// ── Zwei-Naturen der Reife ────────────────────────────────────────────────────
+
+describe('Zwei-Naturen · Level-Klassen', () => {
+  test('L0 Boden · L1–L3 Robustheit · L4–L5 Skalierung', () => {
+    expect(levelKlasse(0)).toBe('boden');
+    expect([1, 2, 3].map(levelKlasse)).toEqual(['robustheit', 'robustheit', 'robustheit']);
+    expect([4, 5].map(levelKlasse)).toEqual(['skalierung', 'skalierung']);
+  });
+});
+
+describe('Zwei-Naturen · Vereinbarungs-Gates (R2/R3)', () => {
+  test('genau vier Gates an D6-L3/D7-L4/D9-L4/D10-L2', () => {
+    expect(VEREINBARUNGS_GATES.map((g) => g.id)).toEqual(['D6-L3', 'D7-L4', 'D9-L4', 'D10-L2']);
+  });
+
+  test('Doppel-Nachweis: Statik+gelebt → nachgewiesen', () => {
+    const g = bewerteVereinbarungsGates(
+      { d6: { ist: 3, soll: 3, relevanz: 1 } },
+      { 'D6-L3': { statik: true, gelebt: true } },
+    ).find((x) => x.id === 'D6-L3')!;
+    expect(g.status).toBe('nachgewiesen');
+    expect(g.hinweis).toBeUndefined();
+  });
+
+  test('Statik ohne gelebt → Papier-Level (hebt Ist NICHT)', () => {
+    const g = bewerteVereinbarungsGates(
+      { d7: { ist: 4, soll: 4, relevanz: 1 } },
+      { 'D7-L4': { statik: true, gelebt: false } },
+    ).find((x) => x.id === 'D7-L4')!;
+    expect(g.status).toBe('papier');
+    expect(g.hinweis).toContain('Papier-Level');
+    // Ist bleibt unangetastet (A-1: keine normative Absenkung).
+    expect(g.istLevel).toBe(4);
+  });
+
+  test('Level erreicht, aber Statik fehlt → nicht_belegt', () => {
+    const g = bewerteVereinbarungsGates(
+      { d9: { ist: 4, soll: 4, relevanz: 1 } },
+      { 'D9-L4': { statik: false } },
+    ).find((x) => x.id === 'D9-L4')!;
+    expect(g.status).toBe('nicht_belegt');
+  });
+
+  test('Level erreicht, kein Nachweis erhoben → ungeprueft (❓ Panel)', () => {
+    const g = bewerteVereinbarungsGates({ d6: { ist: 3, soll: 3, relevanz: 1 } })
+      .find((x) => x.id === 'D6-L3')!;
+    expect(g.status).toBe('ungeprueft');
+    expect(g.hinweis).toContain('❓');
+  });
+
+  test('Soll strebt Gate-Level an, Ist darunter → offen mit Org-Träger (R6)', () => {
+    const g = bewerteVereinbarungsGates({ d7: { ist: 2, soll: 4, relevanz: 1 } })
+      .find((x) => x.id === 'D7-L4')!;
+    expect(g.status).toBe('offen');
+    expect(g.hinweis).toContain('Management');
+  });
+
+  test('weder erreicht noch angestrebt → nicht_relevant', () => {
+    const g = bewerteVereinbarungsGates({ d9: { ist: 1, soll: 1, relevanz: 1 } })
+      .find((x) => x.id === 'D9-L4')!;
+    expect(g.status).toBe('nicht_relevant');
+  });
+
+  test('maskierte Dimension (relevanz=0) → Gate nicht_relevant', () => {
+    const g = bewerteVereinbarungsGates({ d10: { ist: 5, soll: 5, relevanz: 0 } })
+      .find((x) => x.id === 'D10-L2')!;
+    expect(g.status).toBe('nicht_relevant');
+  });
+
+  test('papierLevelWarnungen sammelt Papier + unbelegte Gates', () => {
+    const bew = bewerteVereinbarungsGates(
+      { d6: { ist: 3, soll: 3, relevanz: 1 }, d7: { ist: 4, soll: 4, relevanz: 1 } },
+      { 'D6-L3': { statik: true, gelebt: false }, 'D7-L4': { statik: false } },
+    );
+    const warn = papierLevelWarnungen(bew).map((w) => w.id).sort();
+    expect(warn).toEqual(['D6-L3', 'D7-L4']);
+  });
 });

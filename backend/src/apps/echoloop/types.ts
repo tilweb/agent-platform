@@ -2,7 +2,9 @@
  * Echo-Loop Domänen-Typen (Ebene Kunde → Prozess → Baustand).
  */
 import type { Dim } from './scoring';
+import type { GateNachweis } from './scoring';
 import type { PMFinding } from './checker/types';
+import type { AnalyseTiefe, InputInventar, PanelPflichtEintrag } from './analyse-tiefen';
 
 export type AppRole = 'owner' | 'editor' | 'viewer';
 
@@ -120,6 +122,13 @@ export interface Baustand {
   dimensionen: Record<Dim, DimensionBewertung>;
   befunde: PMFinding[];
   kennzahlen: Kennzahlen;
+  /** Analyse-Tiefe (Seite-1-Prinzip) + Input-Inventar I1–I6, aus denen sie deklariert wurde. */
+  analyseTiefe?: AnalyseTiefe;
+  inputInventar?: InputInventar;
+  /** Panel-Pflichtliste für Fehlerklassen ohne statische Spur (Vollständigkeits-Regel D-072). */
+  panelPflichtliste?: PanelPflichtEintrag[];
+  /** Doppel-Nachweise (T-A + T-B/T-C) je Vereinbarungs-Gate (Zwei-Naturen R3), Key = Gate-ID. */
+  gateNachweise?: Record<string, GateNachweis>;
   /** LLM-Vor-Benotungs-Begründungen je Dimension (Entwurf, vom Menschen zu prüfen). */
   llmBegruendung?: Partial<Record<Dim, string>>;
   /** Deterministische Top-Hebel aus dem Checker (priorisierte Maßnahmen). */

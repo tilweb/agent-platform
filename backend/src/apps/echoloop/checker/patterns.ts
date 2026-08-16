@@ -283,3 +283,112 @@ export function pm10(fam: EmmaFamily): PMFinding[] {
   }
   return out;
 }
+
+// ── PAKET_2-Prüfmuster (beobachtend, statisch) ───────────────────────────────
+// Portiert aus _pruefmuster_check.py (v3.11). Alle NEU hinzukommenden Muster
+// laufen laut Governance BEOBACHTEND (beobachtend:true) — still bis 0 Fehlalarme
+// auf Fixtures, kein Hard-Fail, keine Kennzahl-Färbung. Scharfschaltung nur im
+// Regel-Review. Namens-Hinweis: die scharfen Bautechnik-Muster oben tragen aus
+// dem V0.1-Katalog die Nummern PM-13/PM-14 — das kollidiert mit Sebs PAKET_2-
+// Nummern (dort PM-13 Melde-Kohorten, PM-14 Slot-Kollision). Abstimmungspunkt A-PM.
+
+/** Betrags-Variablen-Erkennung (PM-W-b/-c): Name deutet auf Geldbetrag. */
+const AMOUNT_RE = /(betrag|brutto|netto|summe|preis|amount|entgelt|rechnungsbetrag)/i;
+/** Ausschluss: Zähl-/Positions-Variablen sind legitim ganzzahlig. */
+const NON_AMOUNT_RE = /(anzahl|zeile|count|nummer|index|position|menge)/i;
+const STRING_TYPEN = /^(text|string)$/i;
+const INT_TYPEN = /^(int|ganzzahl)$/i;
+const NUM_TYPEN = /^(int|ganzzahl|dezimal|double|float|decimal|number)$/i;
+
+/**
+ * PM-12 · Endlosschleifen-Verdacht: Schleifen-Deckel MaxLoopCount ≥ 1000
+ * (praktisch „ungebremst"). Graph≠Text — Break-/Statuswege stehen nicht im
+ * Export → immer VERDACHT (❓ am Graph prüfen), nie Behauptung. Beobachtend.
+ */
+export function pm12(fam: EmmaFamily): PMFinding[] {
+  const out: PMFinding[] = [];
+  for (const p of fam.processes) {
+    const hiCap = p.loops.filter((l) => l.maxIstLiteral && Number(l.maxLoopCount) >= 1000);
+    if (!hiCap.length) continue;
+    out.push({
+      pm: 'PM-12', aspekt: 'Endlosschleifen-Verdacht', prozessNr: p.nr,
+      befund: `${hiCap.length} Schleife(n) mit sehr hohem festen Deckel (${hiCap.map((l) => `S${l.schrittId}=${l.maxLoopCount}`).join(', ')}) — praktisch ungebremst. Ob ein Break-/Statusweg greift, ist aus der Statik nicht sichtbar (Graph≠Text) → Verdacht.`,
+      beleg: `MaxLoopCount ≥ 1000 · ${hiCap.map((l) => `S${l.schrittId}`).join(', ')}`,
+      provenienz: '[Panel]', schwere: 'frage',
+      empfehlung: 'Am Graph/Panel prüfen: existiert ein signalbasierter Abbruch (Fund/Status)? Sonst gebundenen Zähler + Reset setzen.',
+      dimensionen: ['D2'], beobachtend: true,
+    });
+  }
+  return out;
+}
+
+/**
+ * PM-17 · Warte-Schritt-Summe: aufsummierte feste Wartezeit je Prozess
+ * (nur wirksame Waits ≥ 50 ms; Kleinstwerte separat). Statisch aus der
+ * Feld-Summe entscheidbar — zeigt den kumulierten Zeit-Engpass. Beobachtend.
+ */
+export function pm17(fam: EmmaFamily): PMFinding[] {
+  const out: PMFinding[] = [];
+  for (const p of fam.processes) {
+    const wirksam = p.fixedWaits.filter((w) => w.sekunden >= 0.05);
+    const klein = p.fixedWaits.length - wirksam.length;
+    const summeS = wirksam.reduce((s, w) => s + w.sekunden, 0);
+    if (summeS <= 0) continue;
+    out.push({
+      pm: 'PM-17', aspekt: 'Warte-Schritt-Summe', prozessNr: p.nr,
+      befund: `${wirksam.length} wirksame feste Wartezeit(en) summieren sich auf ${summeS.toFixed(1)} s je Lauf${klein ? ` (${klein} Kleinstwert(e) < 50 ms ungezählt)` : ''} — kumulierter Zeit-Engpass, skaliert nicht.`,
+      beleg: `Σ Warten = ${Math.round(summeS * 1000)} ms · Schritte ${wirksam.map((w) => `S${w.schrittId}`).join(', ')}`,
+      provenienz: '[G Text]', schwere: 'niedrig',
+      empfehlung: 'Feste Wartezeiten durch signalbasiertes Warten ersetzen; kumulierte Wartezeit ist direkter Durchsatz-Verlust.',
+      dimensionen: ['D2'], beobachtend: true,
+    });
+  }
+  return out;
+}
+
+/**
+ * PM-W-b · Text-zu-Zahl bei Betrags-Variablen: eine betrags-benannte Variable
+ * ist als Text/String typisiert, während im selben Prozess ein numerischer
+ * Zwilling (gleicher Betrags-Name) existiert — Format-/Konvertierungsrisiko
+ * ohne dokumentierte Regel. Statisch aus der Variablentabelle. Beobachtend.
+ */
+export function pmWb(fam: EmmaFamily): PMFinding[] {
+  const out: PMFinding[] = [];
+  for (const p of fam.processes) {
+    const amount = p.variables.filter((v) => AMOUNT_RE.test(v.name) && !NON_AMOUNT_RE.test(v.name));
+    const strVars = amount.filter((v) => STRING_TYPEN.test(v.typ));
+    const numVars = amount.filter((v) => NUM_TYPEN.test(v.typ));
+    if (!strVars.length || !numVars.length) continue;
+    out.push({
+      pm: 'PM-W-b', aspekt: 'Text-zu-Zahl (Betrag)', prozessNr: p.nr,
+      befund: `Betrags-Variable(n) als Text (${strVars.map((v) => v.name).join(', ')}) neben numerischem Zwilling (${numVars.map((v) => `${v.name}:${v.typ}`).join(', ')}) — Text↔Zahl-Konvertierung ohne dokumentierte Format-Regel (Dezimal-/Tausendertrenner) ist eine stille Wertfehler-Quelle.`,
+      beleg: `Betrags-Variablen gemischt typisiert (Text + Zahl)`,
+      provenienz: '[G Text]', schwere: 'niedrig', seedOrBug: 'unklar',
+      empfehlung: 'Format-Regel festlegen (Locale, Dezimaltrenner) und eine kanonische Repräsentation je Betrag; Konvertierung explizit prüfen.',
+      dimensionen: ['D6b'], beobachtend: true,
+    });
+  }
+  return out;
+}
+
+/**
+ * PM-W-c · int-Typ für Betrags-Variablen: eine betrags-benannte Variable ist
+ * ganzzahlig (int) typisiert — kann keine Cent-Beträge halten (261,80 → 261).
+ * Direkt aus der Variablentabelle sichtbar. Beobachtend.
+ */
+export function pmWc(fam: EmmaFamily): PMFinding[] {
+  const out: PMFinding[] = [];
+  for (const p of fam.processes) {
+    const betrag = p.variables.filter((v) => INT_TYPEN.test(v.typ) && AMOUNT_RE.test(v.name) && !NON_AMOUNT_RE.test(v.name));
+    if (!betrag.length) continue;
+    out.push({
+      pm: 'PM-W-c', aspekt: 'int-Typ für Betrag', prozessNr: p.nr,
+      befund: `${betrag.length} Betrags-Variable(n) ganzzahlig typisiert (${betrag.map((v) => `${v.name}:${v.typ}`).join(', ')}) — int kann keine Nachkommastellen halten (261,80 € → 261 €). Stiller Rundungs-/Abschneidefehler.`,
+      beleg: `Variable(n) ${betrag.map((v) => v.varId).join(', ')} · Typ int`,
+      provenienz: '[G Text]', schwere: 'mittel', seedOrBug: 'bug',
+      empfehlung: 'Betrags-Variablen auf Dezimal/Double umstellen; ganzzahlig nur für Stück-/Positionszahlen.',
+      dimensionen: ['D6b'], beobachtend: true,
+    });
+  }
+  return out;
+}

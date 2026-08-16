@@ -2,6 +2,15 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 1 (Teil 1) — deterministischer Kern (Zwei-Naturen · Analyse-Tiefen · PM-Erweiterung)
+Der testbare, LLM-freie Kern von Phase 1. Referenz-Spezifikation aus PAKET_2 (Zwei-Naturen-Standard, Analyse-Tiefen-Katalog, `_pruefmuster_check.py` v3.11) nativ nach TypeScript portiert — Logik, nicht Code.
+
+- **Zwei-Naturen der Reife** (`scoring.ts`): Level-Klassen L1–L3 Robustheit (gebaut) / L4–L5 Skalierung (vereinbart); die vier Vereinbarungs-Gates **D6-L3/D7-L4/D9-L4/D10-L2** mit **Doppel-Nachweis** (T-A Statik + T-B/T-C gelebt) → Status `nachgewiesen | papier | nicht_belegt | ungeprueft | offen | nicht_relevant`, jeweils mit Org-Träger-Benennung (R6). Wichtig (A-1): nur **Darstellung + Prüfung** — die SE-Formel bleibt unverändert (SE-B/SE-W ist Deutung, kein Formelsplit), ein „Papier-Level" senkt das Ist NICHT automatisch (normative WB44-Änderung zieht Seb im Review nach).
+- **Analyse-Tiefen T-A/B/C** (`analyse-tiefen.ts`): Input-Inventar I1–I6 → getragene Tiefe; Seite-1-Prinzip („verspricht nie mehr, als die Tiefe trägt"); T-B-Pflicht bei Betriebsdaten; Behauptungs-Klassen je Tiefe; Klassen-Scan-Pflicht (Einzelfund ohne Voll-Scan = „Zufallsfund"); Vollständigkeits-Regel (Panel-Pflichtliste, Statik liefert LISTE / Panel liefert BEWEIS). Baustand um `analyseTiefe`/`inputInventar`/`panelPflichtliste`/`gateNachweise` erweitert.
+- **Prüfmuster-Erweiterung** (`checker/patterns.ts`): neue statische, **beobachtende** Muster (Governance: still bis 0 FP, kein Hard-Fail) — **PM-12** (Endlosschleifen-Verdacht, Deckel ≥1000, ❓ Panel), **PM-17** (Warte-Schritt-Summe je Prozess), **PM-W-b** (Betrag als Text neben numerischem Zwilling), **PM-W-c** (int-Typ für Betrag → Cent-Verlust). `PMFinding` um `beobachtend`-Flag erweitert. Befund: PM-05/06/08 existieren in Sebs Referenz nur als Backlog (nicht portierbar), PM-07 ist durch PM-10 ersetzt; PM-15/16/18/19/21/RX brauchen Parser-Erweiterungen/Register → nächste Welle. **Abstimmungspunkt A-PM:** unsere PM-13/14 (aus V0.1-Katalog: feste Wartezeiten/Klick-Position) kollidieren nummernmäßig mit Sebs PM-13/14 (Melde-Kohorten/Slot-Kollision).
+- **Tests**: Echo-Loop-Suite 114 grün (0 fail) — +10 Zwei-Naturen, +11 PM, +16 Analyse-Tiefen.
+- Offen (Phase 1 Teil 2): PA-Prüfagenten-Fan-out PA-F1…F4, Bauanleitung Fundament-Welle (R4), K1-Report-Export (HTML/PDF).
+
 ### Echo-Loop: PAKET_2-Integration Phase 0 — Fundament (Koordinaten-Extraktion · L-VAR-Datenspine · Gold-/Tresor-Backbone)
 Start der nativen TypeScript-Integration von Sebastians PAKET_2 (L-VAR Engine v3.11) in die Echo-Loop-App.
 Sebs Python/Skills/Standards sind **Spezifikation** (was & wie), nicht auszuführende Artefakte — portiert wird die

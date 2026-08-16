@@ -124,6 +124,12 @@ export interface PMFinding {
   empfehlung: string;
   /** betroffene RGA-Dimensionen, z.B. ["D2","D4"]. */
   dimensionen: string[];
+  /**
+   * true = beobachtendes Muster (PAKET_2-Governance: läuft still bis 0 Fehlalarme
+   * auf Fixtures, eskaliert NIE hart, färbt keine Kennzahl). Scharf­schaltung nur
+   * im Regel-Review nach FP-Messung. Scharfe Muster (PM-01/02/03…) tragen den Flag nicht.
+   */
+  beobachtend?: boolean;
 }
 
 export interface CheckerResult {

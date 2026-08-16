@@ -145,3 +145,121 @@ export function computeScores(input: DimInput): ScoreResult {
 
   return { dimensionen: dims, levelSum, rgq, gesamtRg, rgStar, seQuotient, limiter, notenZeile };
 }
+
+// ── Zwei-Naturen der Reife (STANDARD_Zwei-Naturen-der-Reife_v1) ──────────────
+//
+// L1–L3 = Robustheit (GEBAUT, am Einzelprozess nachweisbar).
+// L4–L5 = Skalierung (VEREINBART, nur gegen den Haus-Standard nachweisbar). L0 = Boden.
+//
+// Wichtig (A-1): Wir bauen NUR Darstellung + Prüfung der Vereinbarungs-Gates.
+// Die SE-Formel bleibt unverändert (SE-B/SE-W ist Deutung, KEIN Formelsplit).
+// Ein „Papier-Level" senkt hier NICHT automatisch das Ist — die normative
+// WB44-§3b-Änderung zieht Seb im Review nach; wir liefern die Prüf-Flags.
+
+export type LevelKlasse = 'boden' | 'robustheit' | 'skalierung';
+
+/** Natur eines Levels: L0 Boden · L1–L3 Robustheit (gebaut) · L4–L5 Skalierung (vereinbart). */
+export function levelKlasse(level: number): LevelKlasse {
+  if (level <= 0) return 'boden';
+  if (level <= 3) return 'robustheit';
+  return 'skalierung';
+}
+
+/** Ein Vereinbarungs-Gate: sitzt auf genau einer (Dimension, Level)-Zelle (R2). */
+export interface VereinbarungsGate {
+  id: string;        // 'D6-L3'
+  dim: CoreDim;
+  level: number;     // Level-Zelle, an der das Gate sitzt
+  fordert: string;   // Wortlaut der Forderung (R2-Tabelle)
+}
+
+/** Die vier Gates aus R2 (D6-L3/D7-L4/D9-L4/D10-L2) — D10-L2 ist der Namens-Sonderfall auf L2. */
+export const VEREINBARUNGS_GATES: VereinbarungsGate[] = [
+  { id: 'D6-L3', dim: 'd6', level: 3, fordert: 'Einstellungs-Datei mit benannten, versionierten Schlüsseln + Config-Bootstrap (fester Anker, Existenz-Gate, Versionszeile — K-23)' },
+  { id: 'D7-L4', dim: 'd7', level: 4, fordert: 'Kennzahlen-Felder folgen dem Haus-Schema (Lauf-Protokoll-Spalten normiert) — sonst keine Aggregierbarkeit' },
+  { id: 'D9-L4', dim: 'd9', level: 4, fordert: 'Bausteine folgen der dokumentierten Namenskonvention + liegen im Bibliotheks-Namensraum' },
+  { id: 'D10-L2', dim: 'd10', level: 2, fordert: 'Namen ohne Umgebungs-/Personen-Bezüge (kein TEST_, kein Vorname, kein Server)' },
+];
+
+/**
+ * Doppel-Nachweis je Gate (R3): T-A (Statik: Schema/Namen/Version im Export sichtbar)
+ * + T-B/T-C-Stichprobe (gelebt: Stand aktuell, Owner benannt, Protokoll wird geschrieben).
+ * Beide Teile offen (undefined) = noch nicht erhoben → Panel-Frage.
+ */
+export interface GateNachweis {
+  statik?: boolean;    // T-A
+  gelebt?: boolean;    // T-B/T-C
+  belegStatik?: string;
+  belegGelebt?: string;
+}
+
+export type GateStatus =
+  | 'nicht_relevant'   // Level weder erreicht noch angestrebt
+  | 'offen'            // als Soll angestrebt, aber Ist < Gate-Level → Org-Vereinbarung ausstehend
+  | 'nachgewiesen'     // Ist ≥ Gate-Level UND T-A + T-B/T-C erfüllt
+  | 'papier'           // Ist ≥ Gate-Level, Statik da, aber NICHT gelebt → Papier-Level
+  | 'ungeprueft'       // Ist ≥ Gate-Level, aber Nachweis (noch) nicht erhoben → ❓ am Panel
+  | 'nicht_belegt';    // Ist ≥ Gate-Level, aber Statik fehlt → Behauptung ohne Beleg
+
+export interface GateBewertung extends VereinbarungsGate {
+  istLevel: number;
+  sollLevel: number;
+  klasse: LevelKlasse;
+  status: GateStatus;
+  statik: boolean | null;
+  gelebt: boolean | null;
+  /** Kundenfähiger Hinweis mit Org-Träger-Benennung (R6) — nur bei offenen/Papier-Gates gesetzt. */
+  hinweis?: string;
+}
+
+const GATE_ORGTRAEGER: Record<string, string> = {
+  'D6-L3': 'Fachbereich/Admin (Einstellungs-Datei + Versionierung)',
+  'D7-L4': 'Management (Kennzahlen-/Feld-Schema des Hauses)',
+  'D9-L4': 'Plattform-/Bibliotheks-Owner (Namenskonvention + Namensraum)',
+  'D10-L2': 'Betrieb (umgebungs-/personenfreie Namensgebung)',
+};
+
+/**
+ * Bewertet die vier Vereinbarungs-Gates gegen die Ist/Soll-Levels + optionale
+ * Doppel-Nachweise. Rein deterministisch; ändert weder Ist noch SE.
+ */
+export function bewerteVereinbarungsGates(
+  input: DimInput,
+  nachweise: Partial<Record<string, GateNachweis>> = {},
+): GateBewertung[] {
+  const dims = normalizeDims(input);
+  return VEREINBARUNGS_GATES.map((g) => {
+    const ist = dims[g.dim].ist;
+    const soll = dims[g.dim].soll;
+    const relevanz = dims[g.dim].relevanz;
+    const nw = nachweise[g.id] ?? {};
+    const statik = nw.statik ?? null;
+    const gelebt = nw.gelebt ?? null;
+
+    let status: GateStatus;
+    if (relevanz === 1 && ist >= g.level) {
+      if (statik === false) status = 'nicht_belegt';
+      else if (statik === true && gelebt === true) status = 'nachgewiesen';
+      else if (statik === true && gelebt === false) status = 'papier';
+      else status = 'ungeprueft';
+    } else if (relevanz === 1 && soll >= g.level) {
+      status = 'offen';
+    } else {
+      status = 'nicht_relevant';
+    }
+
+    const org = GATE_ORGTRAEGER[g.id] ?? 'die Organisation';
+    let hinweis: string | undefined;
+    if (status === 'offen') hinweis = `${g.id} (${g.fordert}) ist ein Vereinbarungs-Gate — Träger: ${org}. Bau allein hebt das Level nicht.`;
+    else if (status === 'papier') hinweis = `${g.id}: statisch vorhanden, aber nicht gelebt (Papier-Level) — ${org} muss es tragen.`;
+    else if (status === 'nicht_belegt') hinweis = `${g.id}: als erreicht geführt, aber ohne statischen Beleg — am Panel klären.`;
+    else if (status === 'ungeprueft') hinweis = `${g.id}: Doppel-Nachweis (Statik + gelebt) noch offen — ❓ am Panel prüfen.`;
+
+    return { ...g, istLevel: ist, sollLevel: soll, klasse: levelKlasse(g.level), status, statik, gelebt, hinweis };
+  });
+}
+
+/** Gates, deren geführtes Level nicht sauber getragen ist (Papier/unbelegt) — für Panel-Warnung. */
+export function papierLevelWarnungen(bewertungen: GateBewertung[]): GateBewertung[] {
+  return bewertungen.filter((b) => b.status === 'papier' || b.status === 'nicht_belegt');
+}
