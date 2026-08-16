@@ -133,6 +133,8 @@ export interface Baustand {
   llmBegruendung?: Partial<Record<Dim, string>>;
   /** Deterministische Top-Hebel aus dem Checker (priorisierte Maßnahmen). */
   topHebel?: { dim: string; titel: string; wirkung: string }[];
+  /** Adversariale PA-Prüfagenten-Befunde (Stufe 2, beobachtend), dedupliziert gegen die Checker-Anker. */
+  paBefunde?: import('./pruefagenten/types').PAFinding[];
   /** Kundenfähige Narrativ-Synthese (on-demand, Reasoning-Modell) — Gold-Form. */
   narrativ?: Narrativ;
   /** Interaktive Bauanleitung (on-demand generiert, D-061 abhakbar). */

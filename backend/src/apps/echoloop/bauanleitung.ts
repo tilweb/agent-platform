@@ -32,6 +32,29 @@ Bau-Ansätze je Dimension (WB44d):
 - D10 Portabilität: Config/Secrets externalisieren (erledigt meist die D6-Arbeit mit); nur bei geplanter Übertragung.
 Bau-Logik-Reihenfolge der Karten: (1) ZUERST offene ❓ am Panel/Graph klären (aus den „frage"-Befunden) — bestimmt den Umfang. (2) DANN kundenwirksame Fehler zuerst (z. B. Doppelversand D5) — was der Empfänger sofort sieht. (3) DANN der Level-Blocker (Dimension mit größtem Ist<Soll-Abstand, die den Ziel-RG blockiert). (4) DANN Härtung der Wackelkandidaten (Timing D2, Anker D1, Konfiguration D6).`;
 
+/**
+ * Fundament-Welle (R4, Zwei-Naturen-Standard): jede Bauanleitung startet mit
+ * „Fundament ohne Umbau" — drei Anker, die jede weitere Stufe tragen und OHNE
+ * Prozess-Umbau setzbar sind. Deterministisch (nicht LLM-generiert), damit sie
+ * immer und korrekt vorhanden ist; die LLM-Karten bauen darauf auf (ab BK-1).
+ */
+export function fundamentWelle(): Baukarte {
+  return {
+    id: 'BK-F',
+    titel: 'Fundament ohne Umbau (zuerst — Voraussetzung, kein Umbau)',
+    dimension: 'D6',
+    prio: 'hoch',
+    warum: 'Diese drei Anker tragen jede weitere Reifegrad-Stufe und sind ohne Eingriff in die Prozess-Logik setzbar. Sie sind die Fundament-Welle (R4): erst das Fundament, dann der Umbau.',
+    schritte: [
+      { text: 'Config-Bootstrap: Einstellungs-Datei mit fester Ablage (fester Anker), Existenz-Gate beim Start (fehlt die Datei → definierter Stopp statt Blindlauf) und Versionszeile im Kopf (K-23). Sicherstellen, falls noch nicht vorhanden. → Vereinbarungs-Gate D6-L3.', done: false },
+      { text: 'Erfolgs-Semantik: jeder Prozess endet mit einem klaren A_Ergebnis — OK (verarbeitet), NICHTS-ZU-TUN (nichts zu tun, kein Fehler) oder GESTOPPT (bewusst abgebrochen, mit Grund). Kein stiller Erfolg, kein blindes Durchlaufen.', done: false },
+      { text: 'Prozess-Kopfblock: Kopf-Kommentar mit Zweck, Auslöser, Ein-/Ausgaben und Pflege-Owner anlegen — der Prozess dokumentiert sich selbst.', done: false },
+    ],
+    status: 'offen',
+    feedback: '',
+  };
+}
+
 interface RawKarte {
   id?: string;
   titel?: string;
@@ -100,11 +123,11 @@ Antworte AUSSCHLIESSLICH mit JSON in genau dieser Form:
   "zielLevel": ${zielLevel},
   "einleitung": "<2-3 Sätze: Ausgangsstand (RGA), der zentrale Blocker für RG${zielLevel}, was diese Anleitung erreicht>",
   "karten": [
-    { "id": "BK-0", "titel": "Zuerst: offene ❓ am Panel/Graph klären", "dimension": "", "prio": "hoch", "warum": "<warum zuerst>", "schritte": ["<konkreter Schritt mit Schritt-Zitat wo möglich>", "…"] },
-    { "id": "BK-1", "titel": "<Maßnahme> (D5)", "dimension": "D5", "prio": "hoch", "warum": "<kundenwirksam, 1-2 Sätze>", "schritte": ["…"] }
+    { "id": "BK-1", "titel": "Zuerst: offene ❓ am Panel/Graph klären", "dimension": "", "prio": "hoch", "warum": "<warum zuerst>", "schritte": ["<konkreter Schritt mit Schritt-Zitat wo möglich>", "…"] },
+    { "id": "BK-2", "titel": "<Maßnahme> (D5)", "dimension": "D5", "prio": "hoch", "warum": "<kundenwirksam, 1-2 Sätze>", "schritte": ["…"] }
   ]
 }
-Regeln: Reihenfolge = Bau-Logik (siehe oben). Jede Karte adressiert eine konkrete Lücke/einen Befund; Schritte sind imperativ und nennen wo möglich die Schritt-Nummer aus den Befunden (z. B. „S25"). 3–8 Karten. Keine Kennzahlen erfinden. Für Dimensionen ohne Lücke keine Karte.`,
+Regeln: Die Karte „Fundament ohne Umbau" (BK-F: Config-Bootstrap, Erfolgs-Semantik A_Ergebnis, Prozess-Kopfblock) ist bereits als erste Karte gesetzt — NICHT wiederholen; deine Karten bauen darauf auf und beginnen bei BK-1. Reihenfolge = Bau-Logik (siehe oben). Jede Karte adressiert eine konkrete Lücke/einen Befund; Schritte sind imperativ und nennen wo möglich die Schritt-Nummer aus den Befunden (z. B. „S25"). 3–8 Karten. Keine Kennzahlen erfinden. Für Dimensionen ohne Lücke keine Karte.`,
   };
   const user: Message = {
     role: 'user',
@@ -119,8 +142,9 @@ Regeln: Reihenfolge = Bau-Logik (siehe oben). Jede Karte adressiert eine konkret
   const parsed = parseBauanleitungResponse(res.content ?? '');
   if (!parsed) throw new Error('Bauanleitung-Antwort nicht als JSON parsebar');
 
-  const karten: Baukarte[] = (parsed.karten ?? []).map((k, i) => ({
-    id: typeof k.id === 'string' && k.id ? k.id : `BK-${i}`,
+  // Fundament-Welle (R4) fest voran; LLM-Karten bauen darauf auf (BK-1 …).
+  const llmKarten: Baukarte[] = (parsed.karten ?? []).map((k, i) => ({
+    id: typeof k.id === 'string' && k.id && k.id !== 'BK-F' ? k.id : `BK-${i + 1}`,
     titel: k.titel ?? `Maßnahme ${i + 1}`,
     dimension: typeof k.dimension === 'string' ? k.dimension : undefined,
     prio: normPrio(k.prio),
@@ -129,6 +153,7 @@ Regeln: Reihenfolge = Bau-Logik (siehe oben). Jede Karte adressiert eine konkret
     status: 'offen',
     feedback: '',
   }));
+  const karten: Baukarte[] = [fundamentWelle(), ...llmKarten];
 
   return {
     zielLevel,

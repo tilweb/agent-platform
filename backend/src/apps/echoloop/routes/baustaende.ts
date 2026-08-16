@@ -6,7 +6,8 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { getCurrentUserId } from '../../../auth/middleware';
-import { getBaustand, updateBaustand, deleteBaustand, listArtefakte } from '../storage';
+import { getBaustand, updateBaustand, deleteBaustand, listArtefakte, getProzess, getKunde } from '../storage';
+import { renderReportHtml } from '../report';
 import { VersionConflictError } from '../concurrency';
 import { denyIfNotAppEditor } from './_shared';
 import { computeScores } from '../scoring';
@@ -32,6 +33,19 @@ baustaendeRoutes.get('/baustaende/:id', async (c) => {
   const baustand = await getBaustand(c.req.param('id'));
   if (!baustand) return c.json({ error: 'Baustand nicht gefunden' }, 404);
   return c.json({ baustand });
+});
+
+/**
+ * K1-Report als selbsttragendes HTML (Browser: Drucken → PDF; kein Renderer-Dep).
+ * Kundenfassung + Bauanleitung + Kennzahlen + Zwei-Naturen-Gates in einem File.
+ */
+baustaendeRoutes.get('/baustaende/:id/report.html', async (c) => {
+  const baustand = await getBaustand(c.req.param('id'));
+  if (!baustand) return c.json({ error: 'Baustand nicht gefunden' }, 404);
+  const prozess = baustand.prozessId ? await getProzess(baustand.prozessId) : null;
+  const kunde = prozess?.kundeId ? await getKunde(prozess.kundeId) : null;
+  const html = renderReportHtml({ kunde, prozess, baustand });
+  return c.html(html);
 });
 
 baustaendeRoutes.put('/baustaende/:id', async (c) => {

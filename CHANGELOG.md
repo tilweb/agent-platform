@@ -2,6 +2,15 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 1 (Teil 2) — PA-Prüfagenten-Fan-out · Fundament-Welle · K1-Report
+Die LLM-/Rendering-Bausteine von Phase 1, mit Adacor Qwen 3.5 Instruct (bereits angebunden).
+
+- **PA-Prüfagenten-Fan-out PA-F1…F4** (`pruefagenten/`): vier adversariale Agenten parallel zum deterministischen Checker (Stufe 2) — F1 Wertfehler-Ketten (6-Stationen-Herkunftskette), F2 Schleifen/Timing (über die ganze Familie), F3 Melde-Vollständigkeit (Kohorten, braucht Betriebsdaten), F4 Wiederanlauf/Idempotenz. Jeder mit **Refutationsauftrag** (widerlegen statt bestätigen; Graph≠Text → `verify`); Ergebnisse **dedupliziert gegen die Checker-Anker** (kein Doppel-Reporting). Alle Befunde **beobachtend** (0-FP-Regel). Opt-in in `analyseProzess` (`ECHOLOOP_PA_ENABLED`), Ergebnis als `baustand.paBefunde`. Deterministische Teile (Prompt-Bau, Parser, Dedupe) getestet.
+- **Bauanleitung Fundament-Welle (R4)** (`bauanleitung.ts`): jede Bauanleitung startet mit deterministischer erster Karte **BK-F „Fundament ohne Umbau"** — Config-Bootstrap (D6-L3), Erfolgs-Semantik (`A_Ergebnis` OK/NICHTS-ZU-TUN/GESTOPPT), Prozess-Kopfblock. LLM-Karten bauen darauf auf (ab BK-1).
+- **K1-Report-Export** (`report.ts` + `GET /baustaende/:id/report.html`): Kundenfassung + Bauanleitung + Kennzahlen + Zwei-Naturen-Gates + Reifegradprofil als selbsttragendes, druckoptimiertes HTML (Browser: Drucken → PDF; kein Renderer-Dependency). HTML-escaped, maskierte Dimensionen als „maskiert".
+- **Tests**: Echo-Loop-Suite 126 grün (0 fail) — +7 PA, +1 Fundament-Welle, +4 Report. Doku: `docs/echoloop-paket2-phase1-2026-08-16.md` (Teil 2).
+- Offen (nachgelagert): Panel-UI für Analyse-Tiefen/Gates (Frontend), PDF-Renderer (Dependency-Freigabe), PM-15/16/18/19/21/RX (nächste Checker-Welle).
+
 ### Echo-Loop: PAKET_2-Integration Phase 1 (Teil 1) — deterministischer Kern (Zwei-Naturen · Analyse-Tiefen · PM-Erweiterung)
 Der testbare, LLM-freie Kern von Phase 1. Referenz-Spezifikation aus PAKET_2 (Zwei-Naturen-Standard, Analyse-Tiefen-Katalog, `_pruefmuster_check.py` v3.11) nativ nach TypeScript portiert — Logik, nicht Code.
 

@@ -15,6 +15,7 @@ import { runChecker, deriveHints, parseFamily, type CheckerHints } from './check
 import type { PMFinding } from './checker/types';
 import { computeScores, ALL_DIMS, DIM_LABEL, type Dim } from './scoring';
 import { createArtefakt, createBaustand } from './storage';
+import { runPruefagenten, type PAFinding } from './pruefagenten';
 import type { Baustand, DimensionBewertung } from './types';
 
 export interface UploadFile {
@@ -136,6 +137,8 @@ export async function analyseProzess(opts: {
   files: UploadFile[];
   userId?: string;
   onProgress?: ProgressFn;
+  /** PA-Prüfagenten-Fan-out (Stufe 2, adversarial) zusätzlich fahren. Default aus ENV ECHOLOOP_PA_ENABLED. */
+  pruefagenten?: boolean;
 }): Promise<Baustand> {
   const { prozessId, files, userId, onProgress } = opts;
   if (!files.length) throw new Error('Keine Datei hochgeladen');
@@ -197,6 +200,27 @@ export async function analyseProzess(opts: {
     if (grade?.begruendung?.[d]) llmBegruendung[d] = grade.begruendung[d];
   }
 
+  // 4b. PA-Prüfagenten-Fan-out (Stufe 2, adversarial) — optional, ergänzt die
+  //     Checker-Anker um kontextreiche Befunde (Refutation), beobachtend.
+  let paBefunde: PAFinding[] | undefined;
+  const paAn = opts.pruefagenten ?? process.env.ECHOLOOP_PA_ENABLED === 'true';
+  if (paAn) {
+    await emit('pruefagenten', { status: 'start' });
+    try {
+      const fan = await runPruefagenten({
+        exportText: kombinierterText,
+        checkerFindings: checker.findings,
+        userId,
+        onProgress: (agent, status) => emit('pa_agent', { agent, status }),
+      });
+      paBefunde = fan.befunde;
+      await emit('pruefagenten_done', { status: 'done', befunde: fan.befunde.length, zusammengefuehrt: fan.zusammengefuehrt });
+    } catch (err) {
+      console.warn('[echoloop] PA-Fan-out fehlgeschlagen:', err instanceof Error ? err.message : err);
+      await emit('pruefagenten_done', { status: 'fehler' });
+    }
+  }
+
   // 5. Kennzahlen deterministisch
   const s = computeScores(dimensionen);
   const kennzahlen = { gesamtRg: s.gesamtRg, rgStar: s.rgStar, rgq: s.rgq, seQuotient: s.seQuotient, limiter: s.limiter, notenZeile: s.notenZeile };
@@ -214,6 +238,7 @@ export async function analyseProzess(opts: {
     kennzahlen,
     llmBegruendung,
     topHebel: hints.topHebel,
+    paBefunde,
   });
 
   return baustand;

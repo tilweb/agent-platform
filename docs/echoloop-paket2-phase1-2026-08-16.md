@@ -57,15 +57,42 @@ tsc --noEmit                  → keine echoloop-Fehler
 
 ---
 
-## Teil 2 — LLM-/Rendering-Bausteine (offen)
+## Teil 2 — LLM-/Rendering-Bausteine (abgeschlossen)
 
-Mit **Adacor Qwen 3.5** (bereits angebunden: `analysis.ts` Vor-Benotung, `narrative.ts` Kundenfassung). Verifikation hier per Pipeline-Lauf + Sichtprüfung (kein Exact-Match-Test).
+Mit **Adacor Qwen 3.5 Instruct** (bereits angebunden: `analysis.ts` Vor-Benotung, `narrative.ts` Kundenfassung). Der LLM-Lauf ist nicht-deterministisch; getestet sind die reinen Teile (Prompt-Bau, Parser, Merge/Dedupe, Renderer), der LLM-Lauf per Pipeline-Sichtprüfung.
 
-- **PA-Prüfagenten-Fan-out PA-F1…F4** (`pruefagenten/`): statt einer Vor-Benotung vier adversariale Agenten (Wertfehler-Ketten · Schleifen/Timing · Melde-Vollständigkeit · Wiederanlauf), je Refutation; deterministischer Checker gewinnt bei Determinismus, Agent bei Kontext.
-- **Bauanleitung Fundament-Welle (R4)** (`bauanleitung.ts`): jede Bauanleitung startet mit „Fundament ohne Umbau" — Config-Bootstrap · Erfolgs-Semantik (`A_Ergebnis` OK/NICHTS-ZU-TUN/GESTOPPT) · Prozess-Kopfblock.
-- **K1-Report-Export** (`GET /baustaende/:id/report.(html|pdf)`): Kundenfassung + Bauanleitung + Kennzahlen → YNEO-branded HTML/PDF (Living-Styleguide).
-- **Panel-UI** für Analyse-Tiefen + Vereinbarungs-Gates (Frontend-Verdrahtung des Regelmoduls).
+### PA-Prüfagenten-Fan-out PA-F1…F4 (`pruefagenten/`)
 
-**DoD Phase 1 (gesamt):** RGA reproduziert gegen das fiktive Golden-Fixture die gepinnten Kennzahlen; PA-Fan-out 0 FP auf Fixtures; QA-Kette blockt bei Vertrags-Fehlschlag.
+Vier adversariale Agenten laufen **parallel zum deterministischen Checker** (Stufe 2), jeder mit eigenem System-Prompt + **Refutationsauftrag** (widerlegen statt bestätigen; nur was den Widerlegungsversuch übersteht → Status `belegt`; Graph≠Text → `verify`):
+- **PA-F1** Wertfehler-Ketten (6-Stationen-Herkunftskette Ursprung→…→Ziel)
+- **PA-F2** Schleifen/Timing (über die ganze Familie via TestCaseID)
+- **PA-F3** Melde-Vollständigkeit (Kohorten-Abgleich; braucht Betriebsdaten, sonst nur ❓-Design-Risiken)
+- **PA-F4** Wiederanlauf/Idempotenz (Doppelstart/Abbruch/Reset-Hygiene; Empfehlungen als Abnahme-Proben)
+
+Ergebnisse werden **gegen die Checker-Anker dedupliziert** (kein Doppel-Reporting; Checker gewinnt bei Determinismus, Agent bei Kontext). Alle PA-Befunde laufen **beobachtend** (0-FP-Regel). Opt-in in `analyseProzess` (`pruefagenten`-Flag / `ECHOLOOP_PA_ENABLED`), Ergebnis als `baustand.paBefunde`. `PAFinding`-Schema: Fundstelle (Pflicht) · Beleg · Status · Schwere+Dim · Refutation · Empfehlung.
+
+### Bauanleitung Fundament-Welle (R4) (`bauanleitung.ts`)
+
+Jede Bauanleitung startet mit einer **deterministischen** ersten Karte **BK-F „Fundament ohne Umbau"** (nicht LLM-generiert → immer korrekt vorhanden): **Config-Bootstrap** (D6-L3-Anker) · **Erfolgs-Semantik** (`A_Ergebnis` OK/NICHTS-ZU-TUN/GESTOPPT) · **Prozess-Kopfblock**. Die LLM-Karten bauen darauf auf (ab BK-1).
+
+### K1-Report-Export (`report.ts` + `GET /baustaende/:id/report.html`)
+
+Kundenfassung + Bauanleitung + Kennzahlen + **Zwei-Naturen-Gate-Tabelle** + Reifegradprofil als **selbsttragendes, druckoptimiertes HTML** (Browser: Drucken → PDF). Reiner Renderer (`renderReportHtml`), HTML-escaped, maskierte Dimensionen als „maskiert" (nie 0). **PDF-Renderer bewusst nicht als Dependency** (Puppeteer/Playwright wären neu — Rückfrage nötig); Print-CSS deckt den PDF-Bedarf offline ab.
+
+### Verifikation Teil 2
+
+```
+bun test src/apps/echoloop/   → 126 pass · 0 fail · 12 Dateien
+tsc --noEmit                  → keine echoloop-Fehler
+```
+(+12 Tests: +7 PA-Fan-out, +1 Fundament-Welle, +4 Report.)
+
+### Noch offen (nachgelagert)
+
+- **Panel-UI** für Analyse-Tiefen + Vereinbarungs-Gates (Frontend-Verdrahtung des Regelmoduls) — Backend-Regelwerk steht.
+- **PDF-Renderer** (falls echtes PDF statt Print→PDF gewünscht) — braucht Dependency-Freigabe.
+- **PM-15/16/18/19/21/RX** (Parser-Erweiterungen / Register) — nächste Checker-Welle.
+
+**DoD Phase 1 (gesamt):** RGA reproduziert gegen das fiktive Golden-Fixture die gepinnten Kennzahlen; PA-Fan-out 0 FP auf Fixtures; QA-Kette blockt bei Vertrags-Fehlschlag. Deterministischer Kern erfüllt; PA-0-FP-Kalibrierung + QA-Ketten-Gate folgen mit den Fixtures/Betriebsdaten.
 
 **Abstimmungspunkt A-1:** Die WB44-§3b-Gate-Ergänzungen sind laut Zwei-Naturen-Standard „offen — Review-Termin". Wir bauen Darstellung + Prüfung der Vereinbarungs-Gates; die normative WB44-Änderung zieht Seb im Review nach.
