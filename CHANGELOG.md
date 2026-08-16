@@ -2,6 +2,15 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 4 — Register-Workflows · Lagebild · Governance PROD/PROJ
+Die deterministischen Betriebs-/Governance-Kerne von Phase 4 (`betrieb/`), gegen Referenz + Prinzipien portiert.
+
+- **Register-Workflows** (`betrieb/register.ts`): **Regel-Backlog** als Zustandsmaschine (Kandidat → beobachtend → im_review → standard | verworfen) — der einzige Weg zu „standard" führt durchs Review („Standards ändern wir nur konsolidiert im Review, nie nebenbei"); `istScharf` = nur promotete Muster eskalieren hart. **Gold-Registry** mit **supersede-not-overwrite** (neu gepinnter Wert löst den alten ab, Historie bleibt, jede Änderung erklärbar). Bauweg-Register (Variante + `kippt_wenn`).
+- **Lagebild** (`betrieb/lagebild.ts`): Session-Start-Überblick aus der append-only Telemetrie-Senke — Ereignisse je Verfahren/Event, Verbrauch (Züge · Tokens · USD-Schätzung + Budget-Ampel via `verbrauch.ts`), jüngster Gold-Lauf (PASS/FAIL), Tresor-Funde; als Ein-Zeilen-Lage + Struktur.
+- **Governance PROD ↔ PROJ** (`betrieb/governance.ts`): Rollen-Modell je Instanz (ENV `ECHOLOOP_ROLLE`, Default PROJ) — **nur PROD** schaltet scharf (Standard-Promotion + Standard-Änderung), **PROJ** wendet an + meldet Kandidaten (nie beides). Verzahnt mit dem Regel-Backlog (`pruefeGovernance` gated die Promotion).
+- **Tests**: Echo-Loop-Suite 227 grün (0 fail, +20).
+- Offen (Phase 4, eher Infra/Config): **T-B Betriebsdaten-Ingest** (Upload neuer Datenklasse Logs/Archive/Result-Excels als Zeitreihe → hebt Analyse-Tiefe T-A→T-B); **White-Label/Mandant** (Branding je Instanz — in der nativen App weitgehend über Plattform-`PLATFORM_TITLE` erledigt, keine absoluten Pfade mehr).
+
 ### Echo-Loop: PAKET_2-Integration Phase 3 — /verbrauch + Artefakt-QA-Gate
 Zwei weitere Phase-3-Bausteine. **Domänen-Befund:** von den drei angefragten Skills sind `/zusagen` (Gesprächs-Intake, routet an GESPRAECHSSPEICHER/Aufgaben-Board/Cockpit) und `/uebergabe`-Gate-A (Session-Staffelstab-Register) **allgemeine Workflow-Features, nicht Echo-Loop-Domäne** — bewusst NICHT in die App gebaut. Gebaut wurden die zwei fachlich passenden Teile:
 
