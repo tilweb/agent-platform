@@ -10,9 +10,10 @@ import BefundeListe from './components/BefundeListe';
 import Dropzone from './components/Dropzone';
 import VereinbarungsGates from './components/VereinbarungsGates';
 import AnalyseTiefePanel from './components/AnalyseTiefePanel';
+import LvarExplorer from './components/LvarExplorer';
 
 const PURPLE = '#452C71';
-const TABS = [{ id: 'uebersicht', label: 'Übersicht' }, { id: 'rga', label: 'RGA-Review' }, { id: 'analysen', label: 'Analysen' }];
+const TABS = [{ id: 'uebersicht', label: 'Übersicht' }, { id: 'rga', label: 'RGA-Review' }, { id: 'lvar', label: 'L-VAR Explorer' }, { id: 'analysen', label: 'Analysen' }];
 const STATUS_LABEL = { entwurf: 'Entwurf', in_review: 'In Review', freigegeben: 'Freigegeben' };
 const PHASES = [
   { key: 'extract', label: 'Text aus PDF extrahieren' },
@@ -80,6 +81,8 @@ export default function ProzessDetail() {
   const [narrativBusy, setNarrativBusy] = useState(false);
   const [narrativElapsed, setNarrativElapsed] = useState(0);
   const [rgaSub, setRgaSub] = useState('profil');
+  const [lvar, setLvar] = useState(null);
+  const [lvarLoading, setLvarLoading] = useState(false);
   const [bau, setBau] = useState(null);
   const [bauBusy, setBauBusy] = useState(false);
   const [bauDirty, setBauDirty] = useState(false);
@@ -89,6 +92,17 @@ export default function ProzessDetail() {
   const narrativTimerRef = useRef(null);
 
   useEffect(() => { load(); }, [id]);
+
+  // L-VAR-Explorer lazy laden, sobald der Tab zuerst geöffnet wird.
+  useEffect(() => {
+    if (tab !== 'lvar' || lvar || lvarLoading) return;
+    setLvarLoading(true);
+    echoloopApi.getLvar(id)
+      .then(setLvar)
+      .catch(() => setLvar({ leer: true, grund: 'L-VAR konnte nicht geladen werden.' }))
+      .finally(() => setLvarLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Einmal-Fetch beim ersten Öffnen; lvar/lvarLoading als Guard, nicht als Trigger.
+  }, [tab, id]);
 
   async function load() {
     try {
@@ -410,6 +424,15 @@ export default function ProzessDetail() {
               </div>
             )}
           </>
+        )}
+
+        {tab === 'lvar' && (
+          <div style={styles.section}>
+            <div style={styles.sectionTitle}>L-VAR Variablen-Explorer</div>
+            {lvarLoading && !lvar
+              ? <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>Lädt L-VAR-Analyse …</div>
+              : <LvarExplorer lvar={lvar} />}
+          </div>
         )}
 
         {tab === 'rga' && (

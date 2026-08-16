@@ -31,6 +31,8 @@ export const echoloopApi = {
   updateProzess: (id, payload) => apiPut(`${base}/prozesse/${id}`, payload).then(json).then((d) => d.prozess),
   deleteProzess: (id) => apiDelete(`${base}/prozesse/${id}`).then(json),
   listBaustaende: (prozessId) => apiGet(`${base}/prozesse/${prozessId}/baustaende`).then(json).then((d) => d.baustaende),
+  // L-VAR-Explorer (Reiter 1 NK/Kopplung · 2 Steckbriefe · 3 CFG) einer Familie.
+  getLvar: (prozessId) => apiGet(`${base}/prozesse/${prozessId}/lvar`).then(json).then((d) => d.lvar),
 
   // Analyse (Upload) — SSE-Stream mit Phasen-Fortschritt.
   // onEvent(phase, data) je Zwischenschritt; Rückgabe = fertiger Baustand.

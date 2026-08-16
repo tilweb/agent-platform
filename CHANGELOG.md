@@ -2,6 +2,15 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 2 — L-VAR 3-Reiter-Explorer (Assembly + Route + Frontend)
+Der L-VAR-Variablen-Explorer als sichtbarer, bedienbarer Bereich der Prozess-Familie.
+
+- **Assembly** (`lvar/assemble.ts`): führt die vier Verfahren zu einem Ergebnis zusammen — CFG zuerst (liefert die D-085-Vorabhaken-Sperre für Reiter 1), dann NK/Kopplung, Steckbriefe, RGA-Verzahnungs-Hinweise. Reine, testbare Funktion (gegen den Übungsfall: NK 24→21, 7 CFG-Klassen, MP/TP/SP, 1 Riss, Sperre durchgereicht).
+- **Service + Route** (`lvar/service.ts` + `GET /prozesse/:id/lvar`): beschafft Variablen-Fundorte + Call-Graph aus den Phase-0-Tabellen (`el_variablen`/`el_prozess_items`) und das Namensmodul (+ CFG-Eingabe) vom Prozess (`data.lvarNamensmodul`/`lvarCfg`, der von der Projekt-Session geschriebene Teil). Ohne Namensmodul: definierter Leer-Zustand (kein Raten).
+- **Frontend** (`components/LvarExplorer.jsx` + Tab „L-VAR Explorer" in `ProzessDetail`): 3 Reiter — **Variablen & NK** (G1–G7-Ampel, Entscheidungsquote, Kopplung, Umbenennen-Cockpit mit Vorabhaken/Sperre), **Prozess-Steckbriefe** (Typ+Quelle, Soll-Kaskade, Alt-Stand, Call-Graph), **Konfiguration** (7-Klassen-Tabelle, Excel-Waisen, Modus). Plus RGA-Verzahnungs-Hinweise. Lazy-Fetch beim ersten Öffnen.
+- **Tests**: Echo-Loop-Suite 167 grün (0 fail, +6); Frontend-Build grün, eslint 0 Errors.
+- Damit ist Phase 2 (L-VAR) bedienbar; offen bleibt nur der `pfad_befunde`→D9/D10-Rest (eigene Referenz-Kartierung) und die Namensmodul-Authoring-UI.
+
 ### Echo-Loop: PAKET_2-Integration Phase 2 — L-VAR↔RGA-Verzahnung (NK/Kopplung → Dimensionen)
 Querverdrahtung des L-VAR-Zustands in die RGA-Dimensionen (`lvar/verzahnung.ts`), deterministisch.
 

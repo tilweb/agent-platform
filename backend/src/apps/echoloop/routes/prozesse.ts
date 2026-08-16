@@ -9,8 +9,15 @@ import {
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { denyIfNotAppEditor } from './_shared';
+import { lvarFuerProzess } from '../lvar/service';
 
 export const prozesseRoutes = new Hono();
+
+/** L-VAR-Explorer (Reiter 1 NK/Kopplung · 2 Steckbriefe · 3 CFG) einer Prozess-Familie. */
+prozesseRoutes.get('/prozesse/:id/lvar', async (c) => {
+  const lvar = await lvarFuerProzess(c.req.param('id'));
+  return c.json({ lvar });
+});
 
 prozesseRoutes.get('/prozesse/:id', async (c) => {
   const prozess = await getProzess(c.req.param('id'));
