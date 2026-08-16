@@ -2,6 +2,16 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 2 — L-VAR↔RGA-Verzahnung (NK/Kopplung → Dimensionen)
+Querverdrahtung des L-VAR-Zustands in die RGA-Dimensionen (`lvar/verzahnung.ts`), deterministisch.
+
+- **NK-Gate → RGA**: G4-Dublette → **D5** (Konsistenz) + **D9** (Modularität); harter Kanon-Verstoß → **D6**; Fachwert-Präfix → **D8**; verworfene Kategorie-Wörter → **D6**. Erzeugt **Hinweise/Belege, keine Levels** (der Mensch benotet — §3.9 Zustimmung ≠ Zeile).
+- **Kopplungs-Riss → D6b** (Datenfluss): Übergabe über Namensgleichheit tot.
+- **Twin-Import** bereits in den Steckbriefen als `sollTwin` verankert (Soll-Kaskade).
+- Bewusst noch offen (eigene Referenz-Kartierung): **Pfad-Wiederholungs-Analyse** (`pfad_befunde` kürzbar/extern/trenner → D9/D10).
+- **Tests**: Echo-Loop-Suite 161 grün (0 fail, +5).
+- Offen (Phase 2): pfad_befunde-Rest, **3-Reiter-Explorer-Frontend** (macht NK-Gate/CFG/Steckbriefe/Kopplung sichtbar) + Backend-Routen/Storage-Anbindung.
+
 ### Echo-Loop: PAKET_2-Integration Phase 2 — Prozess-Steckbriefe + Namenskopplung
 Zwei weitere Phase-2-Bausteine (Reiter 1 + 2), deterministisch, gegen den Übungsfall verifiziert.
 
