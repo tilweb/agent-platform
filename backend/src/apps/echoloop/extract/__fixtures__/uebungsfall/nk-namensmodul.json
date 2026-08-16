@@ -1,0 +1,53 @@
+{
+  "_herkunft": "Portiert aus _varliste_demo_namen.py (Übungsfall Musterwerk GmbH, NK v2.2). Golden für das NK-Gate G1–G7.",
+  "kd": "DEMO",
+  "familie": "ERECH",
+  "familieLang": "Eingangsrechnungen",
+  "namensraum": "MW",
+  "map": [
+    { "alt": "Ablageordner Rechnungen", "neu": "C_EingangPfad", "rolle": "C" },
+    { "alt": "Archivordner", "neu": "C_ArchivPfad", "rolle": "C" },
+    { "alt": "C_ArchivPfad", "neu": "C_ArchivPfad", "rolle": "C" },
+    { "alt": "Schwellwert Betrag", "neu": "C_PruefSchwelleZahl", "rolle": "C" },
+    { "alt": "Mailpostfach", "neu": "C_PostfachText", "rolle": "C" },
+    { "alt": "C_DruckerName", "neu": "C_DruckerName", "rolle": "C" },
+    { "alt": "Vorlagendatei Prüfprotokoll", "neu": "C_ProtokollVorlageDatei", "rolle": "C" },
+    { "alt": "Protokolldatei", "neu": "C_ProtokollDatei", "rolle": "C" },
+    { "alt": "Ablagepfad Monat", "neu": "C_MonatsPfad", "rolle": "C" },
+    { "alt": "Aufbewahrungsjahre", "neu": "C_AufbewahrungZahl", "rolle": "C" },
+    { "alt": "Aktuelles Datum", "neu": "H_HeuteDatum", "rolle": "H" },
+    { "alt": "Zähler", "neu": "H_LaufZahl", "rolle": "H" },
+    { "alt": "Betreff Filter", "neu": "H_BetreffText", "rolle": "H" },
+    { "alt": "Anlagenordner", "neu": "H_AnlagenPfad", "rolle": "H" },
+    { "alt": "Rechnungsbetrag", "neu": "H_BetragZahl", "rolle": "H" },
+    { "alt": "Rechnungsbetrag alt", "neu": "H_BetragZahl", "rolle": "H" },
+    { "alt": "Lieferantenname", "neu": "H_LieferantText", "rolle": "H" },
+    { "alt": "Prüfprotokoll Zeile", "neu": "H_ZeileZahl", "rolle": "H" },
+    { "alt": "Lauf erfolgreich", "neu": "T_LaufErgebnis", "rolle": "T" },
+    { "alt": "Startzeit", "neu": "T_StartDatum", "rolle": "T" },
+    { "alt": "Anzahl Mails", "neu": "RechnungenAnzahl", "rolle": "U" },
+    { "alt": "Anzahl Rechnungen", "neu": "RechnungenAnzahl", "rolle": "U" },
+    { "alt": "Fehlertext", "neu": "FehlerGrund", "rolle": "U" },
+    { "alt": "Prüfung bestanden", "neu": "PruefungStatus", "rolle": "U" }
+  ],
+  "prozesse": {
+    "210": { "ist": "Rechnungseingang · Hauptlauf", "typ": "MP", "soll": "MW_ERECH_Rechnungslauf_MASTER" },
+    "211": { "ist": "MW_ERECH_Config_UTIL", "typ": "SP", "soll": "MW_ERECH_Config_UTIL" },
+    "212": { "ist": "Postfach auslesen", "typ": "SP", "soll": "MW_ERECH_Postfach-Auslesen_SUB" },
+    "213": { "ist": "Rechnung prüfen", "typ": "TP", "soll": "MW_ERECH_Rechnung-Pruefen_SUB" },
+    "214": { "ist": "Ablage und Protokoll · Config", "typ": "SP" }
+  },
+  "_golden": {
+    "zielnamen": 24,
+    "entschieden": 21,
+    "entscheidungsquote": { "fertig": 2, "umformatiert": 1, "entschieden": 21, "quote_umformatiert": 4.2 },
+    "gates": { "G1": true, "G2": true, "G3": true, "G4": false, "G5": true, "G6": true, "G7": true },
+    "offen": ["G4"],
+    "gold": false,
+    "g4": {
+      "H_BetragZahl": { "art": "dublette", "prozesse": ["213"] },
+      "RechnungenAnzahl": { "art": "konsolidierung", "prozesse": [] }
+    },
+    "g5_nur_umformatiert": ["Protokolldatei → C_ProtokollDatei"]
+  }
+}

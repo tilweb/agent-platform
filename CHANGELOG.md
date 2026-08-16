@@ -2,6 +2,15 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 2 (Start) — NK-Gate G1–G7 (Namenskonvention)
+Beginn von Phase 2 (L-VAR Variablen-Explorer). Erster Baustein: das NK-Gate (deterministischer Kern von Reiter 1), nativ nach TS portiert (Referenz `nk_messung.py`/`varliste_engine_v1.py`, nk_messung ist maßgeblich).
+
+- **NK-Gate G1–G7** (`lvar/nk.ts`): prüft die Zielnamen eines Namensmoduls (alt→neu, Rolle C/H/T/U) einer Familie — G1 Präfix-Kanon (C_/H_/T_ oder Fachwert ohne Präfix), G2 Grammatik (PascalCase, kein Extra-Unterstrich, Negation Nicht/Kein/Ohne verboten), G3 Synonym-Cluster (fachlich/am Panel), G4 Mehrfachzuordnung (**Dublette** selber Prozess vs. **Konsolidierung** verschiedene — via Extraktions-Fundorte), G5 Entscheidungsquote (≤ 5 % „nur umformatiert"), G6 Kategorie-Wörter (Blacklist verworfener Wörter Nr/Ordner/Verzeichnis/Dokument), G7 Modul-Format (genau 4 Rollen).
+- **Soft-Default** (§3.2): hart/sperrend nur bei 3 Kanon-Codes (AUSSERHALB-KANON, PRAEFIX-BEI-FACHWERT, PRAEFIX-ROLLE-BRUCH); `A_Ergebnis` von G1 ausgenommen (Lehre vom 07.08.); alles andere sichtbar, nicht sperrend.
+- **Golden-Fixture** `nk-namensmodul.json` (portiert aus `_varliste_demo_namen.py`): Test reproduziert exakt **24 Zielnamen → 21 entschieden**, G1–G3/G5–G7 erfüllt, G4 offen (Dublette H_BetragZahl in P213, gewollte Konsolidierung RechnungenAnzahl über P210/P212), quote_umformatiert 4,2 %. Prozess-Fundorte aus der echten Koordinaten-Extraktion.
+- **Tests**: Echo-Loop-Suite 135 grün (0 fail, +9).
+- Offen (Phase 2): Namenskopplung + Umbenennen-Cockpit, Prozess-Steckbriefe (MP/TP/SP), CFG-Generator (7 Diff-Klassen), Verzahnung (Pfad-Befunde→D9/D10), 3-Reiter-Explorer-Frontend.
+
 ### Echo-Loop: Panel-UI für Analyse-Tiefen + Vereinbarungs-Gates (Frontend-Verdrahtung Phase 1)
 Das deterministische Regelwerk aus Phase 1 ist jetzt im RGA-Review sichtbar/bedienbar.
 - **Analyse-Tiefe-Deklaration** (`AnalyseTiefePanel.jsx`, Seite-1-Prinzip): T-A/B/C-Wahl + Input-Inventar I1–I6; Live-Warnung bei Über-Versprechen („verspricht nie mehr, als die Tiefe trägt") und T-B-Pflicht bei Betriebsdaten.
