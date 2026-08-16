@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-08-16
+
+### Echo-Loop: PAKET_2-Integration Phase 0 — Fundament (Koordinaten-Extraktion · L-VAR-Datenspine · Gold-/Tresor-Backbone)
+Start der nativen TypeScript-Integration von Sebastians PAKET_2 (L-VAR Engine v3.11) in die Echo-Loop-App.
+Sebs Python/Skills/Standards sind **Spezifikation** (was & wie), nicht auszuführende Artefakte — portiert wird die
+Logik, nicht der Code. Compliance-Rahmen bleibt in Kraft: entwickelt/getestet ausschließlich gegen den **fiktiven
+Übungsfall** (5 Prozesse, 30 Variablen), echte Heinzl-Golden-Daten bleiben bis zur O-14-/Zweckbindungs-Klärung außen vor.
+
+- **Koordinaten-Extraktion** (`extract/bbox.ts` + `extract/emma.ts`): Umstieg von `pdftotext -layout` (Text) auf
+  `pdftotext -bbox` (Wort-Koordinaten) → Spalten-Raster-Bucketing (ID/Name/Typ/Init/Schnittstelle) nativ in TS, ohne
+  Python. Umbruch-Klebung mit `umbruch`-Markierung (→ ❓, nie Befund), Schritt-Erkennung über x-Position (robust gegen
+  fremde Typ-Vokabeln), Call-Graph (TestCaseID), `{CV:nnn - Name}`-Fundstellen (Verknüpfung über den **Namen** — deckt
+  den designierten „Wertfehler"-Fall nnn≠Name), Ausgänge-Zählung, zwei Zeitstände (Prozess-/Druck-Stand). **Volltreffer
+  gegen die Golden-Referenz: 30/30 Variablen · 30/30 Fundstellen · 5/5 Call-Graph/CV/Ausgänge/Zeitstände.**
+- **L-VAR-Datenspine** (`db/schema/echoloop.ts` + Migration `0034_echoloop_lvar.sql`, additiv): neue Tabellen
+  `prozess_items` (Einzelprozess-Steckbrief), `variablen` (Zeilen mit Fundstellen + NK-Feld G1–G7), `cfg`
+  (Konfigurations-Schlüssel, 7 Diff-Klassen), `telemetrie` (append-only). `prozesse` wird zur **Familie** umgewidmet
+  (Zusatzfelder in `data`, keine Spalten-Migration). Persistenz-Brücke `extract/persist.ts` (Extract → DB, idempotent je
+  Familie/Nr).
+- **Gold-Runner** (`qa/gold-runner.ts` + CLI `scripts/echoloop-gold.ts`): aufrufbarer Regressions-/Drift-Läufer über
+  ein Fixture-Set — jede Abweichung ist REGRESSION bis zum bewussten Re-Pin (kein „≥"-Schwellwert, kein Auffangzweig).
+- **Tresor-Sweep** (`qa/tresor.ts`): „kein Secret in Baustand/Artefakt/Export". Redaktion vor Persist (EMMA-`password`-
+  Variablen + Secret-Muster geschwärzt, Fund als Telemetrie), harter Gate (`assertTresorClean`) vor Export/Paket-Bau.
+- **Tests**: `emma.test.ts` (Gold-Fixture-Harness, 37 Fälle) · `gold-runner.test.ts` · `tresor.test.ts` — Echo-Loop-Suite
+  jetzt 78 grün (0 fail). Dokumentation: `docs/echoloop-paket2-phase0-2026-08-16.md`.
+
 ## 2026-08-15
 
 ### PM: Fix — Kapazitäts-Panel im Projektauftrag sprengte die Personen-Card
@@ -361,6 +387,18 @@ und "Document Intelligence" (Anbieter-Label von Azure).
   tragen einen Verweis darauf, statt nachtraeglich umgeschrieben zu werden.
 
 ## 2026-08-06
+
+### Ops: Neue Kunden-Instanz `workplace-ruhrpm-netzwerkpartner` (Scalingo, inkl. Custom-Domain)
+Neue Customer-Instanz für RuhrPM-Netzwerkpartner provisioniert (Runbook `docs/runbook-neue-kundeninstanz.md`):
+- App + Postgres (`starter-512`) im Projekt `workplace-pilots`; **eigener Flow.swiss-S3-Account** (Bucket
+  `workplace-ruhrpm-netzwerkpartner`, `FLOW_S3_MASTER`-Hash ≠ demo/masterclass verifiziert); frische Secrets
+  (`SESSION_SECRET`, `CONNECTION_ENCRYPTION_KEY` = 64 Hex).
+- Customer-Modus, `ENABLED_APPS=projektmanagement`, Branding Default, keine Connections; ⚪ Vault-Keys aus
+  `workplace-ihk-darmstadt` (ohne 🔴-Secrets).
+- Deploy aus `main` (`d19e743`); interim Health 200, `[s3] bucket … created`, Migrations applied.
+- **Custom-Domain `ruhrpm-netzwerkpartner.workplace-lab.adacor.dev`**: CNAME war gesetzt → `domains-add` → URL-
+  Variablen umgestellt (`VITE_API_URL=/api` unverändert) → `restart`. Verifiziert: Health 200, HSTS, Login-CSRF
+  400 (kein „Forbidden"), TLS provisioniert.
 
 ### Ops: Neue Kunden-Instanz `workplace-ruhrpm-masterclass` (Scalingo)
 Neue Customer-Instanz für die RuhrPM-Masterclass provisioniert (Runbook `docs/runbook-neue-kundeninstanz.md`):
@@ -1226,6 +1264,31 @@ Neue Customer-Instanz für **IHK Darmstadt** provisioniert (Runbook `docs/runboo
 - Deploy aus main (`f0a2d28`) erfolgreich; Health 200, HSTS, Migrations applied, S3-Bucket
   angelegt, `requiresSetup:true` (Admin-Bootstrap bereit).
 
+## 2026-06-23
+
+### Echo-Loop: deterministisches Reifegrad-Tool + Quality-Gate
+- **Neues Tool `reifegrad_score`** (`backend/src/tools/special/reifegrad-score.ts`): rechnet aus den
+  D1–D10-Levels deterministisch Level-Summe, **RGQ%**, **Gesamt-RG** (Pflicht-Raster WB44), **Limiter**
+  und die Noten-Zeile. Behebt die LLM-Rechenfehler (z.B. RGQ 18/50 fälschlich als 44 % statt 36 %).
+  Verdrahtet in `echo-loop-reifegrad-auditor`, `echo-loop-bauberater` und Skill `emma-reifegrad-benotung`
+  mit der Pflicht, RGQ/RG nie selbst zu rechnen.
+- **Neuer Agent `echo-loop-quality-gate`** (WB44 §5c): unabhängiger Verifier, der die folgenreichsten
+  Befunde adversarial gegen die Primärquelle prüft (Default „nicht bestätigt"), Secrets klassifiziert,
+  Seed-/Muster-vs-Bug abfängt und die Kennzahlen via `reifegrad_score` unabhängig nachrechnet. Der
+  Bauberater ruft ihn vor der Auslieferung (Auditor-Entwurf → Quality-Gate → Finalisierung). Widerlegte
+  Befunde fließen nicht als Fakt in den Report; Unbelegtes wird `[Panel-Pflicht]`.
+- Beide Agenten laufen auf `qwen3-5-a3b-35b-256k` (locked) und sind System-Agenten (fresh-from-disk).
+
+### Echo-Loop: Benotungs-Kette vereinfacht (Quality-Gate aus dem Hot-Path)
+Die 2-stufige Synthese (Bauberater verschmilzt Auditor-Entwurf + Quality-Gate-Verdikt) hat das
+Ergebnis bei Qwen 3.5 verschlechtert (Profil/RGQ/Noten-Zeile gingen verloren, Note driftete auf RG0).
+Zurückgebaut auf **eine Autorität**: Der **Auditor** liest fokussiert (übergebener `document_path`
+direkt, keine ID-Varianten), macht eine **Selbst-Gegenprüfung** der „kein X"-Befunde an der Quelle
+(z.B. Recovery 1110 → D4 anheben), rechnet per `reifegrad_score` und gibt das **vollständige Schema**
+aus. Der **Bauberater reicht die Auditor-Benotung wörtlich durch** (kein Re-Synthese, kein eigener
+Score-Call; `reifegrad_score` aus seinen Tools entfernt). Der `echo-loop-quality-gate`-Agent bleibt
+verfügbar, ist aber nicht mehr im Standard-Flow (lohnt erst mit stärkerem Modell).
+
 ## 2026-06-22
 
 ### Config-Fix: Qwen 3.5 als vision-fähig korrigiert + Standalone Split-Test-Tool
@@ -1237,6 +1300,19 @@ Neue Customer-Instanz für **IHK Darmstadt** provisioniert (Runbook `docs/runboo
 - **`tools/document-split-test.ts`** (neu): standalone Bun-Skript (keine Framework-Imports)
   zur Grenzprüfung von Dokument-Splits via Vision-LLM. CLI-Argumente (Seiten, Modelle,
   Prompt, Base-URL, Key); läuft beim Kunden mit nur Bun + API-Key.
+
+### Qwen 3.5 Modelle + Echo-Loop-Agenten auf stärkeres Modell
+- **Neue Modelle** (`data/config/providers.yaml`, Provider `adacor`): `qwen3-5-a3b-35b-256k`
+  („Qwen 3.5 Instruct 35B", chat + function_calling) und `qwen3-5-a3b-35bthinking-256k`
+  („Qwen 3.5 Thinking 35B", chat-only). IDs authoritativ vom Adacor-Gateway (`/models`) geholt;
+  function_calling auf dem Instruct-Modell per Smoke-Test verifiziert.
+- **Echo-Loop-Agenten** (`bauberater`, `reengineering`, `reifegrad-auditor`) nutzen jetzt
+  `qwen3-5-a3b-35b-256k` (`model.locked: true`) — bessere Arithmetik/Evidenz-Treue bei der
+  Reifegrad-Benotung. `locked` greift auch bei Delegation (schlägt das Eltern-Modell).
+- **Bugfix DB-Shadowing:** Die Echo-Loop-Agenten waren beim Boot in die `customAgents`-DB migriert
+  worden; `loadAllAgents` ließ die DB-Kopie die `config.md` überschreiben → frühere Prompt-/Modell-
+  Edits waren unwirksam. Fix: Agenten in `SYSTEM_AGENT_IDS` aufgenommen (laden frisch von Platte,
+  keine Migration) + stale DB-Records gelöscht.
 
 ### PM-App: Verdrahtete Config-Listen — Schlüssel in der UI gesperrt
 Listen, deren Schlüssel (value) im Code fest verdrahtet sind (Status-Zuordnung/Badges/Filter),
@@ -1381,6 +1457,40 @@ Kreis-Tabs) ersetzt drei zuvor unterschiedliche, duplizierte Implementierungen:
 - Dateien: `frontend/src/apps/projektmanagement/components/StepNav.jsx` (neu),
   `WizardPage.jsx` (Step-Nav + Statusbericht-Sub-Nav via StepNav, `isSbStepCompleted`/
   `getSbStepStatus`, alte Styles entfernt), `IdeeWizardPage.jsx` (StepNav, `isStepCompleted`).
+
+## 2026-06-19
+
+### Echo-Loop (EMMA): Wissensbasis indexiert (Dev) + S3-Mehrmandanten-Lehre
+Die neutrale Echo-Loop-Wissensbasis wurde lokal in die KB-Collection `emma-echo-loop` indexiert:
+**57 Dokumente** (Metadaten in DB `workplace_dev`, Inhalte in S3). Helfer-Skript:
+`backend/scripts/index-echo-loop.ts` (idempotent).
+- **DB-Collections:** KB-Collections leben zur Laufzeit in Postgres (`kb.createCollection`), nicht in
+  `collections.yaml` — die Collection musste zusätzlich in der DB angelegt werden.
+- **Indexer-Constraint:** `convertDocument` akzeptiert nur flache Dateinamen in `incoming/` (keine
+  Unterordner); Staging-Kopien nach Indexierung entfernt (Originale in `docs/EMMA-Echo-Loop/`).
+- **S3-Isolation (Cofermin-Lehre bestätigt):** Der Code-Default-Bucket `workplace-poc-demo` ist auf
+  dem Flow.swiss-Endpoint **global** belegt. Pro Instanz braucht es einen eigenen Storage-Account
+  **und** einen eindeutigen `FLOW_S3_BUCKET`. Für die Dev-Instanz: eigener Account + Bucket
+  `workplace-dev-andreas` (via `FLOW_S3_BUCKET` in `backend/.env`).
+
+## 2026-06-17
+
+### Feature: Echo-Loop (EMMA) als generische Agenten/Skills/KB abgebildet
+Das Claude-Code-Konstrukt eines Partners zur Analyse/Härtung von **EMMA-Prozessen** (RPA von WIANCO)
+aus `docs/EMMA-Echo-Loop/` wurde rein konfigurativ (kein Produktcode) auf die generischen Features
+des Workplace abgebildet — Iteration 1: Methodik + Wissensbasis + Agenten.
+- **Agenten** (`data/agents/`): `echo-loop-bauberater` (Haupt-/E2E-Berater, `skillMode: allow`),
+  `echo-loop-reengineering` (Tiefenanalyse) und `echo-loop-reifegrad-auditor` (Benotung D1–D10 /
+  RG0–RG5 / RGQ). Reifegrad-Auditor läuft per stehender Regel ungefragt bei jeder Prozessanalyse mit.
+- **Skills** (`data/skills/custom/`): `emma-prozess-reengineering`, `emma-reifegrad-benotung`,
+  `emma-bautechnik-beratung`, `emma-discovery-mining`, `emma-reality-check`, `emma-reporting` — alle
+  an die KB-Collection `emma-echo-loop` gekoppelt. FA-/PA-Rollen als Skill-interne Checklisten.
+- **Knowledge Base**: neue Collection `emma-echo-loop` in `collections.yaml`; 57 neutrale Wissens-
+  dateien in `data/knowledge-base/incoming/emma-echo-loop/` gestaged. Indexierung ist ein bewusster
+  Folgeschritt nach Reseller-/Neutralitäts-Freigabe (Kundennamen-Cases bewusst ausgenommen).
+- **Routing**: Supervisor (`data/agents/supervisor/config.md`) leitet EMMA/RPA-Anfragen an den
+  Bauberater. Mandantenmodell: ein Project/„Space" pro Kunde mit eigener vertraulicher Collection.
+- Doku: `docs/echo-loop-emma-workplace-2026-06-17.md` (inkl. Kunden-Onboarding-Runbook).
 
 ## 2026-06-16
 

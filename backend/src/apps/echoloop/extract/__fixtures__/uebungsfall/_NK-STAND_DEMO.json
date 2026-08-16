@@ -1,0 +1,166 @@
+{
+ "kunde": "Musterwerk GmbH",
+ "kd": "DEMO",
+ "familie": "Eingangsrechnungen",
+ "gemessen": "2026-08-08",
+ "engine": "v3.11",
+ "regel": "NK v2.2 (§A3 + §A3b)",
+ "gates": {
+  "G1": {
+   "titel": "Präfix-Kanon",
+   "bedeutung": "Jeder Zielname trägt ein Präfix aus dem geschlossenen Kanon (C_/H_/T_) oder gar keins (Fachwert). §A3 ③/④",
+   "erfuellt": true
+  },
+  "G2": {
+   "titel": "Grammatik",
+   "bedeutung": "PascalCase, kein Unterstrich ausserhalb des Präfixes, keine Negation im Namen (Ist/Hat/Darf statt Nicht/Kein/Ohne). §A3b ①/③",
+   "erfuellt": true
+  },
+  "G3": {
+   "titel": "Synonym-Cluster",
+   "bedeutung": "Zwei Zielnamen meinen dieselbe Sache. Das ist der teuerste Befund: er ist am Schreibtisch NICHT lösbar, sondern nur fachlich (welche „Zeile“ ist welche?).",
+   "erfuellt": true
+  },
+  "G4": {
+   "titel": "Mehrfachzuordnung",
+   "bedeutung": "Ein Zielname wird von mehreren Alt-Namen beansprucht. Konsolidierung ist gewollt, Kollision nicht — der Explorer unterscheidet beides (siehe unten).",
+   "erfuellt": false
+  },
+  "G5": {
+   "titel": "Entscheidungsquote",
+   "bedeutung": "Anteil Namen, die nur der umformatierte Panel-Name sind. Kanon-Konformität ist kein Konventions-Nachweis.",
+   "erfuellt": true
+  },
+  "G6": {
+   "titel": "Kategorie-Wörter",
+   "bedeutung": "Das Wort am Ende stammt aus der geschlossenen Liste (Pfad·Datei·Datum·Text·Zahl·…). §A3b ②",
+   "erfuellt": true
+  },
+  "G7": {
+   "titel": "Modul-Format",
+   "bedeutung": "ROLLE_TEXT trägt genau vier Rollen: C · H · T · U, wobei U der CODE für „Fachwert ohne Präfix“ ist — kein Präfix `U_`.",
+   "erfuellt": true
+  }
+ },
+ "gold": false,
+ "offen": [
+  "G4"
+ ],
+ "prozessnamen": {
+  "konform": 1,
+  "gesamt": 5,
+  "auspraegung": "Rollen-Suffix",
+  "einheitlich": true,
+  "auspraegungen": {
+   "Rollen-Suffix": [
+    "211"
+   ]
+  },
+  "je_prozess": {
+   "210": {
+    "ist": "Rechnungseingang · Hauptlauf",
+    "soll": "MW_ERECH_Rechnungslauf_MASTER",
+    "ok": false,
+    "gruende": [
+     "enthält Leerzeichen — §A2 verlangt einen zusammenhängenden Namen",
+     "enthält Zeichen ausserhalb von A–Z, 0–9, `_` und `-`",
+     "kein Namensraum und keine Familie erkennbar — Schema ist `<NS>_<FAMILIE>_<Funktion>[_<Rolle>]`"
+    ]
+   },
+   "211": {
+    "ist": "MW_ERECH_Config_UTIL",
+    "soll": "MW_ERECH_Config_UTIL",
+    "ok": true,
+    "gruende": []
+   },
+   "212": {
+    "ist": "Postfach auslesen",
+    "soll": "MW_ERECH_Postfach-Auslesen_SUB",
+    "ok": false,
+    "gruende": [
+     "enthält Leerzeichen — §A2 verlangt einen zusammenhängenden Namen",
+     "kein Namensraum und keine Familie erkennbar — Schema ist `<NS>_<FAMILIE>_<Funktion>[_<Rolle>]`"
+    ]
+   },
+   "213": {
+    "ist": "Rechnung prüfen",
+    "soll": "MW_ERECH_Rechnung-Pruefen_SUB",
+    "ok": false,
+    "gruende": [
+     "enthält Leerzeichen — §A2 verlangt einen zusammenhängenden Namen",
+     "enthält Umlaute/Sonderzeichen — die Funktion wird ohne Umlaute geschrieben (ue/oe/ae/ss)",
+     "enthält Zeichen ausserhalb von A–Z, 0–9, `_` und `-`",
+     "kein Namensraum und keine Familie erkennbar — Schema ist `<NS>_<FAMILIE>_<Funktion>[_<Rolle>]`"
+    ]
+   },
+   "214": {
+    "ist": "Ablage und Protokoll · Config",
+    "soll": "",
+    "ok": false,
+    "gruende": [
+     "enthält Leerzeichen — §A2 verlangt einen zusammenhängenden Namen",
+     "enthält Zeichen ausserhalb von A–Z, 0–9, `_` und `-`",
+     "kein Namensraum und keine Familie erkennbar — Schema ist `<NS>_<FAMILIE>_<Funktion>[_<Rolle>]`"
+    ]
+   }
+  },
+  "geplant": [
+   {
+    "id": "G1",
+    "name": "MW_ERECH_Lauf-Protokoll_TRACK",
+    "typ": "SP"
+   },
+   {
+    "id": "G2",
+    "name": "YN_BASIS_Mail-Anmelden_SUB",
+    "typ": "SP"
+   }
+  ],
+  "hinweis": "§A2 laesst die Auspraegung (Rollen-Suffix vs. Typ-Praefix) offen (❓F5). Verbindlich ist: je Familie EINE, konsequent."
+ },
+ "zielnamen": 24,
+ "entscheidungsquote": {
+  "fertig": 2,
+  "umformatiert": 1,
+  "entschieden": 21,
+  "quote_umformatiert": 4.2
+ },
+ "synonym_cluster": {},
+ "g4": {
+  "H_BetragZahl": {
+   "art": "dublette",
+   "prozesse": [
+    "213"
+   ],
+   "alt": {
+    "Rechnungsbetrag": [
+     "213"
+    ],
+    "Rechnungsbetrag alt": [
+     "213"
+    ]
+   }
+  },
+  "RechnungenAnzahl": {
+   "art": "konsolidierung",
+   "prozesse": [],
+   "alt": {
+    "Anzahl Mails": [
+     "212"
+    ],
+    "Anzahl Rechnungen": [
+     "210"
+    ]
+   }
+  }
+ },
+ "ausnahme": "",
+ "befunde": {
+  "HINWEIS-LAENGE": [
+   "C_ProtokollVorlageDatei  (alt: Vorlagendatei Prüfprotokoll) — Kern 21 Zeichen (>20, Empfehlung, kein Fehler)"
+  ],
+  "G5-NUR-UMFORMATIERT": [
+   "'Protokolldatei' → 'C_ProtokollDatei'"
+  ]
+ }
+}

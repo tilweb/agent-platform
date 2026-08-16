@@ -70,6 +70,80 @@ export const elBaustaende = echoloopSchema.table('baustaende', {
   prozessIdx: index('el_baustand_prozess_idx').on(t.prozessId, t.status),
 }));
 
+/**
+ * PAKET_2 · L-VAR-Datenspine (additiv, Phase 0). Entscheidungspunkt D-A:
+ * `prozesse` wird zur **Familie** umgewidmet (Zusatzfelder — familienkuerzel,
+ * namenskonvention, token_prefix — leben in `prozesse.data`, keine Spalten-Migration);
+ * die Einzelprozesse einer Familie hängen als Kind-Tabelle darunter.
+ *
+ * `el_prozess_items` (Einzelprozess-Steckbrief), `el_variablen` (Variablen mit
+ * Fundstellen + NK-Befunden G1–G7), `el_cfg` (Konfigurations-Schlüssel mit 7 Diff-Klassen).
+ * Herkunft der Extraktion: `apps/echoloop/extract/emma.ts` (koordinatenbasiert).
+ */
+
+/** Einzelprozess innerhalb einer Familie (= `prozesse`). Extraktions-Steckbrief je Lauf. */
+export const elProzessItems = echoloopSchema.table('prozess_items', {
+  id: text('id').primaryKey(),
+  prozessId: text('prozess_id').notNull().references(() => elProzesse.id, { onDelete: 'cascade' }), // Familie
+  baustandId: text('baustand_id'),                  // Analyse-/Extraktionslauf, aus dem der Steckbrief stammt
+  nr: text('nr').notNull(),                          // EMMA-Prozessnummer
+  nameExport: text('name_export'),                  // Export-Name aus dem Prozess-Kopf
+  typ: text('typ'),                                 // Prozesstyp §A9: MP | TP | SP
+  data: jsonb('data').notNull(),                    // { kritikalitaet?, kritGrund?, kopfblock?, prozessStand?, druckStand?, aufrufe?[], cvrefs?[], ausgaenge?, fingerprint? }
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  prozessNrIdx: index('el_pitem_prozess_nr_idx').on(t.prozessId, t.nr),
+}));
+
+/** Variable eines Einzelprozesses (Zeile der EMMA-„Variable Informationen"-Tabelle). */
+export const elVariablen = echoloopSchema.table('variablen', {
+  id: text('id').primaryKey(),
+  prozessItemId: text('prozess_item_id').notNull().references(() => elProzessItems.id, { onDelete: 'cascade' }),
+  prozessId: text('prozess_id').notNull(),          // denormalisierte Familie (für familienweite Dublettencluster)
+  p: text('p').notNull(),                           // Prozessnummer
+  varId: text('var_id').notNull(),                  // EMMA-Variablen-ID
+  name: text('name').notNull(),
+  typ: text('typ'),                                 // string|int|bool|datetime|double|password|Timer
+  schnitt: text('schnitt'),                         // Privat|Eingehend|Ausgehend|EinAus
+  rolle: text('rolle'),                             // NK-Rolle: C_ | H_ | T_ | Fachwert | A_Ergebnis
+  data: jsonb('data').notNull(),                    // { init?, pos?, fund?[], umbruch?, neu?, nkBefunde?: {g1..g7} }
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  itemIdx: index('el_var_item_idx').on(t.prozessItemId),
+  familieNameIdx: index('el_var_familie_name_idx').on(t.prozessId, t.name),
+}));
+
+/** Konfigurations-Schlüssel einer Familie (CFG-Generator, 7 Diff-Klassen). */
+export const elCfg = echoloopSchema.table('cfg', {
+  id: text('id').primaryKey(),
+  prozessId: text('prozess_id').notNull().references(() => elProzesse.id, { onDelete: 'cascade' }), // Familie
+  schluessel: text('schluessel').notNull(),
+  data: jsonb('data').notNull(),                    // { wert?, wertQuelle?, produzent?, konsument?, diffKlasse?, herkunft? }
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  schluesselIdx: index('el_cfg_prozess_schluessel_idx').on(t.prozessId, t.schluessel),
+}));
+
+/**
+ * Append-only Telemetrie-Senke (Prinzip §3.8 Provenienz + Gold-Runner-Läufe,
+ * Tresor-Sweeps, Verbrauchs-Messung). Bewusst OHNE FK/Cascade — der Audit-Log
+ * überlebt das Löschen der referenzierten Entität. Nur Insert, nie Update.
+ */
+export const elTelemetrie = echoloopSchema.table('telemetrie', {
+  id: text('id').primaryKey(),
+  prozessId: text('prozess_id'),
+  baustandId: text('baustand_id'),
+  verfahren: text('verfahren').notNull(),           // lvar | rga | bau | gold | tresor | verbrauch
+  event: text('event').notNull(),                   // extract | gold-run | tresor-sweep | benotung | …
+  data: jsonb('data'),                              // { tokens?, dauerMs?, ergebnis?, drift?, verdikt?, … }
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  prozessIdx: index('el_tel_prozess_idx').on(t.prozessId),
+  verfahrenIdx: index('el_tel_verfahren_idx').on(t.verfahren, t.createdAt),
+}));
+
 /** Hochgeladene EMMA-Export-Artefakte (PDF in S3 + gecachter Textextrakt). */
 export const elArtefakte = echoloopSchema.table('artefakte', {
   id: text('id').primaryKey(),

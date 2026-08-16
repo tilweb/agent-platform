@@ -1,0 +1,754 @@
+{
+ "_meta": {
+  "quelle": "PDF-Ausleitungen 100_Prozesse (ohne _archiv-Segmente)",
+  "extrahiert": "2026-08-08T11:24:19",
+  "werkzeug": "varliste_engine_v3.10 (VF-017)",
+  "zaehlregel": "Variable = Zeile im Abschnitt 'Variable Informationen' mit numerischer ID, gueltigem Typ und Schnittstelle; je Prozess nur der aktive Export. Panel-Pflichtliste P1-P7 bleibt Erfassungsfeld.",
+  "fingerprints": {
+   "210": {
+    "pfad": "100_Prozesse/210_Rechnungseingang_Hauptlauf/Prozess_210_2026-08-05.pdf",
+    "sha256": "6450f100230a588a83cdbb1a733d9a7d8ca05334dc8471af93130d4c74c85b4a",
+    "mtime": "2026-08-08T10:05:33",
+    "bytes": 13334
+   },
+   "211": {
+    "pfad": "100_Prozesse/211_CONFIG_Rechnungslauf/Prozess_211_2026-08-05.pdf",
+    "sha256": "bc8f53bb720b2a322e019332cc167a233e9841b161f1cf382938491fa3f2697a",
+    "mtime": "2026-08-08T10:05:33",
+    "bytes": 10539
+   },
+   "212": {
+    "pfad": "100_Prozesse/212_Postfach_auslesen/Prozess_212_2026-08-04.pdf",
+    "sha256": "5ba705068f39b1934c41cd7572a090fecee2bd5da307b9c229827b8f13bed6bc",
+    "mtime": "2026-08-08T10:05:33",
+    "bytes": 9219
+   },
+   "213": {
+    "pfad": "100_Prozesse/213_Rechnung_pruefen/Prozess_213_2026-07-18.pdf",
+    "sha256": "72c572a57e499b41fe6470ba3a8d19cc30549a3a4550c210d4a8ac66047b5ce8",
+    "mtime": "2026-08-08T10:05:33",
+    "bytes": 12244
+   },
+   "214": {
+    "pfad": "100_Prozesse/214_Ablage_und_Protokoll_Config/Prozess_214_2026-08-05.pdf",
+    "sha256": "decdaebe9cd656c123c5ddb110fd7055d5df646e1fe2708801e2dac076a04f31",
+    "mtime": "2026-08-08T10:05:33",
+    "bytes": 6958
+   }
+  }
+ },
+ "prozesse": {
+  "210": {
+   "name_export": "Prozess 210: Rechnungseingang · Hauptlauf",
+   "prozess_stand": "2026-08-05 14:22:10",
+   "druck_stand": "2026-08-07 09:15:00",
+   "juli_alt": false,
+   "aufrufe": [
+    "211",
+    "212",
+    "213"
+   ],
+   "variablen": 8,
+   "cvrefs": [
+    {
+     "s": "2",
+     "nnn": 3,
+     "name": "Aktuelles Datum"
+    },
+    {
+     "s": "4",
+     "nnn": 5,
+     "name": "Anzahl Rechnungen"
+    },
+    {
+     "s": "5",
+     "nnn": 1,
+     "name": "Ablageordner Rechnungen"
+    },
+    {
+     "s": "7",
+     "nnn": 4,
+     "name": "Zähler"
+    },
+    {
+     "s": "7",
+     "nnn": 4,
+     "name": "Zähler"
+    },
+    {
+     "s": "8",
+     "nnn": 2,
+     "name": "Schwellwert Betrag"
+    },
+    {
+     "s": "9",
+     "nnn": 6,
+     "name": "Lauf erfolgreich"
+    },
+    {
+     "s": "11",
+     "nnn": 8,
+     "name": "Fehlertext"
+    }
+   ],
+   "ausgaenge": {
+    "erfolg": 1,
+    "fehler": 1
+   },
+   "kommentare": []
+  },
+  "211": {
+   "name_export": "Prozess 211: MW_ERECH_Config_UTIL",
+   "prozess_stand": "2026-08-05 14:19:44",
+   "druck_stand": "2026-08-07 09:15:00",
+   "juli_alt": false,
+   "aufrufe": [],
+   "variablen": 6,
+   "cvrefs": [
+    {
+     "s": "2",
+     "nnn": 1,
+     "name": "Ablageordner Rechnungen"
+    },
+    {
+     "s": "3",
+     "nnn": 3,
+     "name": "Schwellwert Betrag"
+    },
+    {
+     "s": "4",
+     "nnn": 4,
+     "name": "Mailpostfach"
+    }
+   ],
+   "ausgaenge": {
+    "erfolg": 1,
+    "fehler": 1
+   },
+   "kommentare": []
+  },
+  "212": {
+   "name_export": "Prozess 212: Postfach auslesen",
+   "prozess_stand": "2026-08-04 11:07:02",
+   "druck_stand": "2026-08-07 09:15:00",
+   "juli_alt": false,
+   "aufrufe": [],
+   "variablen": 5,
+   "cvrefs": [
+    {
+     "s": "2",
+     "nnn": 2,
+     "name": "Betreff Filter"
+    },
+    {
+     "s": "3",
+     "nnn": 1,
+     "name": "Mailpostfach"
+    },
+    {
+     "s": "4",
+     "nnn": 4,
+     "name": "Anlagenordner"
+    },
+    {
+     "s": "5",
+     "nnn": 3,
+     "name": "Anzahl Mails"
+    }
+   ],
+   "ausgaenge": {
+    "erfolg": 1,
+    "fehler": 0
+   },
+   "kommentare": []
+  },
+  "213": {
+   "name_export": "Prozess 213: Rechnung prüfen",
+   "prozess_stand": "2026-07-18 08:31:55",
+   "druck_stand": "2026-08-07 09:15:00",
+   "juli_alt": true,
+   "aufrufe": [
+    "214"
+   ],
+   "variablen": 8,
+   "cvrefs": [
+    {
+     "s": "2",
+     "nnn": 3,
+     "name": "Rechnungsbetrag"
+    },
+    {
+     "s": "3",
+     "nnn": 4,
+     "name": "Lieferantenname"
+    },
+    {
+     "s": "4",
+     "nnn": 3,
+     "name": "Rechnungsbetrag"
+    },
+    {
+     "s": "4",
+     "nnn": 2,
+     "name": "Schwellwert Betrag"
+    },
+    {
+     "s": "5",
+     "nnn": 7,
+     "name": "Prüfprotokoll Zeile"
+    },
+    {
+     "s": "5",
+     "nnn": 3,
+     "name": "Lieferantenname"
+    },
+    {
+     "s": "7",
+     "nnn": 5,
+     "name": "Prüfung bestanden"
+    }
+   ],
+   "ausgaenge": {
+    "erfolg": 1,
+    "fehler": 1
+   },
+   "kommentare": []
+  },
+  "214": {
+   "name_export": "Prozess 214: Ablage und Protokoll · Config",
+   "prozess_stand": "2026-08-05 14:20:31",
+   "druck_stand": "2026-08-07 09:15:00",
+   "juli_alt": false,
+   "aufrufe": [],
+   "variablen": 3,
+   "cvrefs": [
+    {
+     "s": "2",
+     "nnn": 1,
+     "name": "Protokolldatei"
+    },
+    {
+     "s": "3",
+     "nnn": 2,
+     "name": "Ablagepfad Monat"
+    }
+   ],
+   "ausgaenge": {
+    "erfolg": 1,
+    "fehler": 0
+   },
+   "kommentare": []
+  }
+ },
+ "variablen": [
+  {
+   "p": "210",
+   "id": "101",
+   "name": "Ablageordner Rechnungen",
+   "typ": "string",
+   "init": "",
+   "schnitt": "Eingehend",
+   "pos": 1,
+   "stand": "2026-08-05 14:22:10",
+   "fund": [
+    {
+     "s": "5",
+     "typ": "Schleife"
+    }
+   ],
+   "neu": "C_EingangPfad",
+   "rolle": "C"
+  },
+  {
+   "p": "210",
+   "id": "102",
+   "name": "Schwellwert Betrag",
+   "typ": "int",
+   "init": "500",
+   "schnitt": "Eingehend",
+   "pos": 2,
+   "stand": "2026-08-05 14:22:10",
+   "fund": [
+    {
+     "s": "8",
+     "typ": "Tippen"
+    }
+   ],
+   "neu": "C_PruefSchwelleZahl",
+   "rolle": "C"
+  },
+  {
+   "p": "210",
+   "id": "103",
+   "name": "Aktuelles Datum",
+   "typ": "datetime",
+   "init": "",
+   "schnitt": "Privat",
+   "pos": 3,
+   "stand": "2026-08-05 14:22:10",
+   "fund": [
+    {
+     "s": "2",
+     "typ": "Warten"
+    }
+   ],
+   "neu": "H_HeuteDatum",
+   "rolle": "H"
+  },
+  {
+   "p": "210",
+   "id": "104",
+   "name": "Zähler",
+   "typ": "int",
+   "init": "0",
+   "schnitt": "Privat",
+   "pos": 4,
+   "stand": "2026-08-05 14:22:10",
+   "fund": [
+    {
+     "s": "7",
+     "typ": "Warten"
+    }
+   ],
+   "neu": "H_LaufZahl",
+   "rolle": "H"
+  },
+  {
+   "p": "210",
+   "id": "105",
+   "name": "Anzahl Rechnungen",
+   "typ": "int",
+   "init": "",
+   "schnitt": "Eingehend",
+   "pos": 5,
+   "stand": "2026-08-05 14:22:10",
+   "fund": [
+    {
+     "s": "4",
+     "typ": "Verzweigung"
+    }
+   ],
+   "neu": "RechnungenAnzahl",
+   "rolle": "U"
+  },
+  {
+   "p": "210",
+   "id": "106",
+   "name": "Lauf erfolgreich",
+   "typ": "bool",
+   "init": "false",
+   "schnitt": "Ausgehend",
+   "pos": 6,
+   "stand": "2026-08-05 14:22:10",
+   "fund": [
+    {
+     "s": "9",
+     "typ": "Warten"
+    }
+   ],
+   "neu": "T_LaufErgebnis",
+   "rolle": "T"
+  },
+  {
+   "p": "210",
+   "id": "107",
+   "name": "Startzeit",
+   "typ": "datetime",
+   "init": "",
+   "schnitt": "Privat",
+   "pos": 7,
+   "stand": "2026-08-05 14:22:10",
+   "fund": [],
+   "neu": "T_StartDatum",
+   "rolle": "T"
+  },
+  {
+   "p": "210",
+   "id": "108",
+   "name": "Fehlertext",
+   "typ": "string",
+   "init": "",
+   "schnitt": "Ausgehend",
+   "pos": 8,
+   "stand": "2026-08-05 14:22:10",
+   "fund": [
+    {
+     "s": "11",
+     "typ": "Fehler"
+    }
+   ],
+   "neu": "FehlerGrund",
+   "rolle": "U"
+  },
+  {
+   "p": "211",
+   "id": "201",
+   "name": "Ablageordner Rechnungen",
+   "typ": "string",
+   "init": "C:\\Musterwerk\\Rechnungen\\Eingang",
+   "schnitt": "Ausgehend",
+   "pos": 1,
+   "umbruch": [
+    "init"
+   ],
+   "stand": "2026-08-05 14:19:44",
+   "fund": [
+    {
+     "s": "2",
+     "typ": "Warten"
+    }
+   ],
+   "neu": "C_EingangPfad",
+   "rolle": "C"
+  },
+  {
+   "p": "211",
+   "id": "202",
+   "name": "Archivordner",
+   "typ": "string",
+   "init": "",
+   "schnitt": "Ausgehend",
+   "pos": 2,
+   "stand": "2026-08-05 14:19:44",
+   "fund": [],
+   "neu": "C_ArchivPfad",
+   "rolle": "C"
+  },
+  {
+   "p": "211",
+   "id": "203",
+   "name": "Schwellwert Betrag",
+   "typ": "int",
+   "init": "1000",
+   "schnitt": "Ausgehend",
+   "pos": 3,
+   "stand": "2026-08-05 14:19:44",
+   "fund": [
+    {
+     "s": "3",
+     "typ": "Warten"
+    }
+   ],
+   "neu": "C_PruefSchwelleZahl",
+   "rolle": "C"
+  },
+  {
+   "p": "211",
+   "id": "204",
+   "name": "Mailpostfach",
+   "typ": "string",
+   "init": "rechnung@musterwerk.example",
+   "schnitt": "Ausgehend",
+   "pos": 4,
+   "stand": "2026-08-05 14:19:44",
+   "fund": [
+    {
+     "s": "4",
+     "typ": "Warten"
+    }
+   ],
+   "neu": "C_PostfachText",
+   "rolle": "C"
+  },
+  {
+   "p": "211",
+   "id": "205",
+   "name": "C_DruckerName",
+   "typ": "string",
+   "init": "",
+   "schnitt": "Ausgehend",
+   "pos": 5,
+   "stand": "2026-08-05 14:19:44",
+   "fund": [],
+   "neu": "C_DruckerName",
+   "rolle": "C"
+  },
+  {
+   "p": "211",
+   "id": "206",
+   "name": "Vorlagendatei Prüfprotokoll",
+   "typ": "string",
+   "init": "C:\\Musterwerk\\Vorlagen\\Pruefprotokoll-Vorlage.xlsx",
+   "schnitt": "Ausgehend",
+   "pos": 6,
+   "umbruch": [
+    "init"
+   ],
+   "stand": "2026-08-05 14:19:44",
+   "fund": [],
+   "neu": "C_ProtokollVorlageDatei",
+   "rolle": "C"
+  },
+  {
+   "p": "212",
+   "id": "301",
+   "name": "Mailpostfach",
+   "typ": "string",
+   "init": "",
+   "schnitt": "Eingehend",
+   "pos": 1,
+   "stand": "2026-08-04 11:07:02",
+   "fund": [
+    {
+     "s": "3",
+     "typ": "Schleife"
+    }
+   ],
+   "neu": "C_PostfachText",
+   "rolle": "C"
+  },
+  {
+   "p": "212",
+   "id": "302",
+   "name": "Betreff Filter",
+   "typ": "string",
+   "init": "Rechnung",
+   "schnitt": "Privat",
+   "pos": 2,
+   "stand": "2026-08-04 11:07:02",
+   "fund": [
+    {
+     "s": "2",
+     "typ": "Tippen"
+    }
+   ],
+   "neu": "H_BetreffText",
+   "rolle": "H"
+  },
+  {
+   "p": "212",
+   "id": "303",
+   "name": "Anzahl Mails",
+   "typ": "int",
+   "init": "",
+   "schnitt": "Ausgehend",
+   "pos": 3,
+   "stand": "2026-08-04 11:07:02",
+   "fund": [
+    {
+     "s": "5",
+     "typ": "Warten"
+    }
+   ],
+   "neu": "RechnungenAnzahl",
+   "rolle": "U"
+  },
+  {
+   "p": "212",
+   "id": "304",
+   "name": "Anlagenordner",
+   "typ": "string",
+   "init": "C:\\Musterwerk\\Temp\\Anlagen",
+   "schnitt": "Privat",
+   "pos": 4,
+   "stand": "2026-08-04 11:07:02",
+   "fund": [
+    {
+     "s": "4",
+     "typ": "Speichern"
+    }
+   ],
+   "neu": "H_AnlagenPfad",
+   "rolle": "H"
+  },
+  {
+   "p": "212",
+   "id": "305",
+   "name": "Zähler",
+   "typ": "int",
+   "init": "0",
+   "schnitt": "Privat",
+   "pos": 5,
+   "stand": "2026-08-04 11:07:02",
+   "fund": [],
+   "neu": "H_LaufZahl",
+   "rolle": "H"
+  },
+  {
+   "p": "213",
+   "id": "501",
+   "name": "C_ArchivPfad",
+   "typ": "string",
+   "init": "",
+   "schnitt": "Eingehend",
+   "pos": 1,
+   "stand": "2026-07-18 08:31:55",
+   "fund": [],
+   "neu": "C_ArchivPfad",
+   "rolle": "C"
+  },
+  {
+   "p": "213",
+   "id": "502",
+   "name": "Schwellwert Betrag",
+   "typ": "int",
+   "init": "",
+   "schnitt": "Eingehend",
+   "pos": 2,
+   "stand": "2026-07-18 08:31:55",
+   "fund": [
+    {
+     "s": "4",
+     "typ": "Verzweigung"
+    }
+   ],
+   "neu": "C_PruefSchwelleZahl",
+   "rolle": "C"
+  },
+  {
+   "p": "213",
+   "id": "503",
+   "name": "Rechnungsbetrag",
+   "typ": "double",
+   "init": "",
+   "schnitt": "Privat",
+   "pos": 3,
+   "stand": "2026-07-18 08:31:55",
+   "fund": [
+    {
+     "s": "2",
+     "typ": "Warten"
+    },
+    {
+     "s": "4",
+     "typ": "Verzweigung"
+    }
+   ],
+   "neu": "H_BetragZahl",
+   "rolle": "H"
+  },
+  {
+   "p": "213",
+   "id": "504",
+   "name": "Lieferantenname",
+   "typ": "string",
+   "init": "",
+   "schnitt": "Privat",
+   "pos": 4,
+   "stand": "2026-07-18 08:31:55",
+   "fund": [
+    {
+     "s": "3",
+     "typ": "Warten"
+    },
+    {
+     "s": "5",
+     "typ": "Tippen"
+    }
+   ],
+   "neu": "H_LieferantText",
+   "rolle": "H"
+  },
+  {
+   "p": "213",
+   "id": "505",
+   "name": "Prüfung bestanden",
+   "typ": "bool",
+   "init": "false",
+   "schnitt": "Ausgehend",
+   "pos": 5,
+   "stand": "2026-07-18 08:31:55",
+   "fund": [
+    {
+     "s": "7",
+     "typ": "Warten"
+    }
+   ],
+   "neu": "PruefungStatus",
+   "rolle": "U"
+  },
+  {
+   "p": "213",
+   "id": "506",
+   "name": "Rechnungsbetrag alt",
+   "typ": "double",
+   "init": "",
+   "schnitt": "Privat",
+   "pos": 6,
+   "stand": "2026-07-18 08:31:55",
+   "fund": [],
+   "neu": "H_BetragZahl",
+   "rolle": "H"
+  },
+  {
+   "p": "213",
+   "id": "507",
+   "name": "Prüfprotokoll Zeile",
+   "typ": "int",
+   "init": "2",
+   "schnitt": "Privat",
+   "pos": 7,
+   "stand": "2026-07-18 08:31:55",
+   "fund": [
+    {
+     "s": "5",
+     "typ": "Tippen"
+    }
+   ],
+   "neu": "H_ZeileZahl",
+   "rolle": "H"
+  },
+  {
+   "p": "213",
+   "id": "508",
+   "name": "Vorlagendatei Prüfprotokoll",
+   "typ": "string",
+   "init": "",
+   "schnitt": "Eingehend",
+   "pos": 8,
+   "stand": "2026-07-18 08:31:55",
+   "fund": [],
+   "neu": "C_ProtokollVorlageDatei",
+   "rolle": "C"
+  },
+  {
+   "p": "214",
+   "id": "401",
+   "name": "Protokolldatei",
+   "typ": "string",
+   "init": "",
+   "schnitt": "Ausgehend",
+   "pos": 1,
+   "stand": "2026-08-05 14:20:31",
+   "fund": [
+    {
+     "s": "2",
+     "typ": "Warten"
+    }
+   ],
+   "neu": "C_ProtokollDatei",
+   "rolle": "C"
+  },
+  {
+   "p": "214",
+   "id": "402",
+   "name": "Ablagepfad Monat",
+   "typ": "string",
+   "init": "",
+   "schnitt": "Ausgehend",
+   "pos": 2,
+   "stand": "2026-08-05 14:20:31",
+   "fund": [
+    {
+     "s": "3",
+     "typ": "Warten"
+    }
+   ],
+   "neu": "C_MonatsPfad",
+   "rolle": "C"
+  },
+  {
+   "p": "214",
+   "id": "403",
+   "name": "Aufbewahrungsjahre",
+   "typ": "int",
+   "init": "10",
+   "schnitt": "Ausgehend",
+   "pos": 3,
+   "stand": "2026-08-05 14:20:31",
+   "fund": [],
+   "neu": "C_AufbewahrungZahl",
+   "rolle": "C"
+  }
+ ]
+}

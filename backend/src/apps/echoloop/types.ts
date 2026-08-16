@@ -134,3 +134,72 @@ export interface Baustand {
   created_at?: string;
   updated_at?: string;
 }
+
+// ── PAKET_2 · L-VAR-Datenspine (Familie → Einzelprozess → Variable/CFG) ──────
+
+/** NK-Rolle einer Variable (Kanon C_/H_/T_/Fachwert/A_Ergebnis). */
+export type VarRolle = 'C_' | 'H_' | 'T_' | 'Fachwert' | 'A_Ergebnis';
+
+/** NK-Gate-Befunde G1–G7 je Variable (soft-default; hart nur bei Kanon-Verstoß). */
+export type NkBefunde = Partial<Record<'g1' | 'g2' | 'g3' | 'g4' | 'g5' | 'g6' | 'g7', string>>;
+
+/** Persistierte Variable (Zeile der EMMA-„Variable Informationen"-Tabelle). */
+export interface Variable {
+  id: string;
+  prozessItemId: string;
+  prozessId: string;              // Familie (denormalisiert für familienweite Cluster)
+  p: string;                      // Prozessnummer
+  varId: string;                  // EMMA-Variablen-ID
+  name: string;
+  typ?: string;
+  schnitt?: string;
+  rolle?: VarRolle;
+  init?: string;
+  pos?: number;
+  fund?: { s: string; typ: string }[];
+  umbruch?: boolean;              // geratene Umbruch-Klebung → ❓, nie Befund (Prinzip §3.4)
+  neu?: boolean;                  // Ziel-/Neuvorschlag (NK)
+  nkBefunde?: NkBefunde;
+  created_at?: string;
+}
+
+/** Einzelprozess-Steckbrief innerhalb einer Familie (Extraktions-Ergebnis je Lauf). */
+export interface ProzessItem {
+  id: string;
+  prozessId: string;              // Familie
+  baustandId?: string;
+  nr: string;                     // EMMA-Prozessnummer
+  nameExport?: string;
+  typ?: 'MP' | 'TP' | 'SP';       // Prozesstyp §A9
+  kritikalitaet?: string;
+  kritGrund?: string;
+  kopfblock?: string;
+  prozessStand?: string;
+  druckStand?: string;
+  aufrufe?: string[];             // Call-Graph-Ziele (TestCaseID)
+  cvrefs?: { s: string; nnn: number; name: string }[];
+  ausgaenge?: { erfolg: number; fehler: number };
+  fingerprint?: string;
+  version?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** Diff-Klasse eines CFG-Schlüssels (CFG-Generator, 7 Klassen). */
+export type CfgDiffKlasse =
+  | 'deckungsgleich' | 'nur_produzent' | 'nur_konsument' | 'wert_konflikt'
+  | 'quelle_konflikt' | 'waise_produzent' | 'waise_konsument';
+
+/** Konfigurations-Schlüssel einer Familie (CFG-Generator). */
+export interface CfgKey {
+  id: string;
+  prozessId: string;              // Familie
+  schluessel: string;
+  wert?: string;
+  wertQuelle?: string;
+  produzent?: string[];
+  konsument?: string[];
+  diffKlasse?: CfgDiffKlasse;
+  herkunft?: string;
+  created_at?: string;
+}
