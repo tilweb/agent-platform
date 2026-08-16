@@ -2,6 +2,14 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 3 — /verbrauch + Artefakt-QA-Gate
+Zwei weitere Phase-3-Bausteine. **Domänen-Befund:** von den drei angefragten Skills sind `/zusagen` (Gesprächs-Intake, routet an GESPRAECHSSPEICHER/Aufgaben-Board/Cockpit) und `/uebergabe`-Gate-A (Session-Staffelstab-Register) **allgemeine Workflow-Features, nicht Echo-Loop-Domäne** — bewusst NICHT in die App gebaut. Gebaut wurden die zwei fachlich passenden Teile:
+
+- **`/verbrauch`** (`verbrauch.ts`, Referenz `verbrauch.py` v2 + STANDARD_Verbrauch): Token-/Kosten-Messung — 4-Felder-Kostenformel (`in·in_preis + out·out_preis + cr·cache_read + cw·cache_write`) mit Preistabelle je Modell (Opus/Fable/Sonnet/Haiku + `_default`), Aggregation (Züge, je Modell, Kontext-Wiederholungs-Anteil, Züge >600k), **Budget-Ampel** (🟡50/🟠80/🔴100 %, Default 150 USD) + **Kontext-Wächter** (400/600/800k je Zug). Token-Zahlen exakt, USD Schätzung bis geeicht. Dockt an die append-only Telemetrie-Senke (`el_telemetrie`, verfahren='verbrauch') an.
+- **Artefakt-QA-Gate** (`report-qa.ts`, = Übergabe-Gate B, §3.3 „das Ergebnis prüft sich selbst"): prüft einen Baustand VOR der Freigabe auf Pflicht-Elemente (Kennzahlen · vollständiges Profil · Evidenz-Disziplin: maskiert nur mit Begründung) + weiche Prüfungen (Analyse-Tiefe deklariert, Kundenfassung bei Freigabe). **Verdikt VOLL/TEIL/FAIL** — „ein Teil-Vertrag ist kein PASS". In die **Freigabe-Route** verdrahtet: FAIL blockt (HTTP 422 + Verstoßliste, `force`-Override), Frontend zeigt die Verstöße.
+- **Tests**: Echo-Loop-Suite 207 grün (0 fail, +17); Frontend-Build grün.
+- Offen (Phase 3–4): `/zusagen` + `/uebergabe`-Gate-A (falls als allgemeine Workplace-Features gewünscht, außerhalb Echo-Loop); Phase 4 (Betrieb/Härtung/Mandant).
+
 ### Echo-Loop: PAKET_2-Integration Phase 3 — /wertfehler (PM-W-a + Wertketten-Analyse)
 Zweiter Phase-3-Baustein. Referenz `SKILL_wertfehler.md` + PA-Manifest (5 Suchrichtungen). Wertfehler = „Prozess läuft weiter, Wert ist falsch/leer" — Frank Priebes häufigste + teuerste, STILLE Fehlerklasse (kein roter Schritt).
 

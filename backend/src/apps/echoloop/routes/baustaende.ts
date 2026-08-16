@@ -8,6 +8,7 @@ import { streamSSE } from 'hono/streaming';
 import { getCurrentUserId } from '../../../auth/middleware';
 import { getBaustand, updateBaustand, deleteBaustand, listArtefakte, getProzess, getKunde } from '../storage';
 import { renderReportHtml } from '../report';
+import { reportQa } from '../report-qa';
 import { VersionConflictError } from '../concurrency';
 import { denyIfNotAppEditor } from './_shared';
 import { computeScores, bewerteVereinbarungsGates } from '../scoring';
@@ -78,15 +79,20 @@ baustaendeRoutes.post('/baustaende/:id/freigabe', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
   try {
-    const body = await c.req.json<{ expectedVersion?: number }>().catch(() => ({} as { expectedVersion?: number }));
+    const body = await c.req.json<{ expectedVersion?: number; force?: boolean }>().catch(() => ({} as { expectedVersion?: number; force?: boolean }));
     const existing = await getBaustand(c.req.param('id'));
     if (!existing) return c.json({ error: 'Baustand nicht gefunden' }, 404);
+    // Artefakt-QA-Gate (§3.3): FAIL bricht die Freigabe ab — kein ungeprüftes Ergebnis.
+    const qa = reportQa({ ...existing, status: 'freigegeben' });
+    if (qa.verdikt === 'FAIL' && body?.force !== true) {
+      return c.json({ error: 'qa_fail', qa }, 422);
+    }
     const baustand = await updateBaustand(
       c.req.param('id'),
       { status: 'freigegeben', reviewerId: getCurrentUserId(c) },
       { expectedVersion: body?.expectedVersion },
     );
-    return c.json({ baustand });
+    return c.json({ baustand, qa });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
     return c.json({ error: 'Freigabe fehlgeschlagen' }, 500);

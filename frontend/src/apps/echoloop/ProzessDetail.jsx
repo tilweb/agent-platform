@@ -193,10 +193,15 @@ export default function ProzessDetail() {
       // nach Freigabe sicher neu laden (Version könnte durch vorheriges save gestiegen sein)
       const fresh = await echoloopApi.getBaustand(active.id);
       setActive(fresh); setBaustaende((bs) => bs.map((x) => (x.id === fresh.id ? fresh : x)));
-    } catch {
-      const fresh = await echoloopApi.getBaustand(active.id).catch(() => null);
-      if (fresh) { setActive(fresh); setBaustaende((bs) => bs.map((x) => (x.id === fresh.id ? fresh : x))); }
-      else setError('Freigabe fehlgeschlagen.');
+    } catch (e) {
+      // Artefakt-QA-Gate (§3.3): FAIL blockt die Freigabe mit der Verstoßliste.
+      if (e.status === 422 && e.body?.qa) {
+        setError(`Freigabe blockiert (Artefakt-QA ${e.body.qa.verdikt}): ${e.body.qa.verstoesse.join(' · ')}`);
+      } else {
+        const fresh = await echoloopApi.getBaustand(active.id).catch(() => null);
+        if (fresh) { setActive(fresh); setBaustaende((bs) => bs.map((x) => (x.id === fresh.id ? fresh : x))); }
+        else setError('Freigabe fehlgeschlagen.');
+      }
     }
     finally { setSaving(false); }
   }
