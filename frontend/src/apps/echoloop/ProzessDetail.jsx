@@ -83,6 +83,10 @@ export default function ProzessDetail() {
   const [rgaSub, setRgaSub] = useState('profil');
   const [lvar, setLvar] = useState(null);
   const [lvarLoading, setLvarLoading] = useState(false);
+  const [modulOpen, setModulOpen] = useState(false);
+  const [modulText, setModulText] = useState('');
+  const [modulSaving, setModulSaving] = useState(false);
+  const [modulErr, setModulErr] = useState('');
   const [bau, setBau] = useState(null);
   const [bauBusy, setBauBusy] = useState(false);
   const [bauDirty, setBauDirty] = useState(false);
@@ -146,6 +150,25 @@ export default function ProzessDetail() {
   }
   function onTiefeChange({ tiefe, inventar }) {
     setAnalyseTiefe(tiefe); setInputInventar(inventar); setDirty(true);
+  }
+
+  // Namensmodul (alt→neu + optional CFG-Eingabe) am Prozess hinterlegen, dann L-VAR neu laden.
+  async function saveModul() {
+    setModulErr(''); setModulSaving(true);
+    try {
+      const parsed = JSON.parse(modulText);
+      // Akzeptiert { namensmodul, cfg } ODER direkt das Namensmodul (mit .map).
+      const namensmodul = parsed.namensmodul ?? (Array.isArray(parsed.map) ? parsed : null);
+      if (!namensmodul || !Array.isArray(namensmodul.map)) throw new Error('Kein gültiges Namensmodul (Feld „map" fehlt).');
+      const cfg = parsed.cfg ?? (parsed.targets && parsed.excel ? { targets: parsed.targets, excel: parsed.excel } : undefined);
+      await echoloopApi.updateProzess(id, { lvarNamensmodul: namensmodul, ...(cfg ? { lvarCfg: cfg } : {}), expectedVersion: prozess.version });
+      setModulOpen(false); setLvar(null); setLvarLoading(true);
+      const fresh = await echoloopApi.getLvar(id).catch(() => ({ leer: true, grund: 'L-VAR konnte nicht geladen werden.' }));
+      setLvar(fresh); setLvarLoading(false);
+      setProzess(await echoloopApi.getProzess(id));
+    } catch (e) {
+      setModulErr(e.status === 409 ? 'Konflikt: Prozess wurde parallel geändert — neu laden.' : e.message);
+    } finally { setModulSaving(false); }
   }
 
   async function save() {
@@ -428,7 +451,31 @@ export default function ProzessDetail() {
 
         {tab === 'lvar' && (
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>L-VAR Variablen-Explorer</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md, gap: theme.spacing.md, flexWrap: 'wrap' }}>
+              <div style={styles.sectionTitle}>L-VAR Variablen-Explorer</div>
+              {canEdit && (
+                <button style={styles.btnGhost} onClick={() => { setModulOpen((o) => !o); setModulErr(''); }}>
+                  {modulOpen ? 'Abbrechen' : 'Namensmodul bearbeiten / importieren'}
+                </button>
+              )}
+            </div>
+            {modulOpen && (
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, lineHeight: 1.5 }}>
+                  JSON einfügen: entweder das Namensmodul direkt (Feld <code>map</code>: alt→neu, Rolle C/H/T/U; optional <code>prozesse</code>) oder ein Objekt <code>{'{ namensmodul, cfg }'}</code>. Das ist der von der Projekt-Session geschriebene Teil (in Sebs Welt das <code>_..._namen.py</code>).
+                </div>
+                <textarea
+                  value={modulText}
+                  onChange={(e) => setModulText(e.target.value)}
+                  placeholder={'{\n  "namensraum": "MW", "familie": "ERECH",\n  "map": [ { "alt": "Archivordner", "neu": "C_ArchivPfad", "rolle": "C" } ],\n  "prozesse": { "210": { "ist": "…", "typ": "MP" } }\n}'}
+                  style={{ width: '100%', minHeight: 180, fontFamily: theme.typography.fontMono, fontSize: theme.typography.sizes.xs, padding: theme.spacing.md, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none' }}
+                />
+                {modulErr && <div style={{ ...styles.error, marginTop: theme.spacing.sm }}>{modulErr}</div>}
+                <div style={{ marginTop: theme.spacing.sm }}>
+                  <button style={styles.btn} onClick={saveModul} disabled={modulSaving || !modulText.trim()}>{modulSaving ? 'Speichert…' : 'Speichern & analysieren'}</button>
+                </div>
+              </div>
+            )}
             {lvarLoading && !lvar
               ? <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>Lädt L-VAR-Analyse …</div>
               : <LvarExplorer lvar={lvar} />}

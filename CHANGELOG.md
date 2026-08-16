@@ -2,6 +2,9 @@
 
 ## 2026-08-16
 
+### Echo-Loop: L-VAR — Namensmodul-Authoring (Import/Editor)
+Der L-VAR-Explorer ist jetzt ohne Seed nutzbar: das Namensmodul (alt→neu, Rolle C/H/T/U + Prozesse/Typ + optional CFG-Eingabe) lässt sich im L-VAR-Tab als JSON einfügen/importieren und wird am Prozess (`data.lvarNamensmodul`/`lvarCfg`) hinterlegt — der von der Projekt-Session geschriebene Teil (in Sebs Welt das `_..._namen.py`). Nach dem Speichern lädt der Explorer die Analyse neu. Persistenz über das bestehende `PUT /prozesse/:id` (merged ins `data`-jsonb, Optimistic-Locking). Frontend-Build grün, eslint 0 Errors.
+
 ### Echo-Loop: PAKET_2-Integration Phase 2 — L-VAR 3-Reiter-Explorer (Assembly + Route + Frontend)
 Der L-VAR-Variablen-Explorer als sichtbarer, bedienbarer Bereich der Prozess-Familie.
 
