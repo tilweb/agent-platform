@@ -97,11 +97,14 @@ export function extractProcess(pages: Awaited<ReturnType<typeof pdfToBBox>>, fal
     const sp = spalten(row);
     const rowText = row.map((w) => w.text).join(' ');
 
-    // Zeitstempel (DD.MM.YYYY HH:MM:SS → ISO): im Prozess-Kopf = Prozess-Stand, sonst = Druck-Stand.
+    // Zeitstempel (DD.MM.YYYY HH:MM:SS → ISO): der Prozess-Stand steht in KLAMMERN
+    // „(DD.MM.YYYY HH:MM:SS)" — beim Übungsfall in der Kopfzeile, bei echten EMMA-
+    // Exporten (Heinzl) im Body. Die freistehende Datums-Zeile ist der Druck-Stand.
     const dt = rowText.match(DT);
     if (dt) {
       const iso = `${dt[3]}-${dt[2]}-${dt[1]} ${dt[4]}`;
-      if (/Prozess\s+\d+:/.test(rowText)) prozessStand = iso;
+      const inKlammer = new RegExp(`\\(\\s*${dt[1]}\\.${dt[2]}\\.${dt[3]}`).test(rowText);
+      if (inKlammer) prozessStand = iso;
       else druckCand.push(iso);
     }
 

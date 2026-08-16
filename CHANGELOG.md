@@ -2,6 +2,13 @@
 
 ## 2026-08-16
 
+### Echo-Loop: Extraktion — Zeitstempel-Fix aus lokaler Heinzl-Kalibrierung
+Lokale Kalibrierung der Koordinaten-Extraktion gegen die echten Heinzl-Ausleitungen (46 Prozesse · 597 Variablen; strikt lokal, nichts ins Repo). **Kernbefund:** die am synthetischen Übungsfall kalibrierten Spalten-Raster halten auf echten EMMA-Exporten — Variablen-Felder name 99,5 % · typ 100 % · init 99,8 % · schnitt 99,8 % · fund 97,9 %. Genau das, was der Übungsfall laut LIESMICH nicht beweisen konnte, ist damit validiert.
+
+- **Fix `extract/emma.ts`**: der Prozess-Stand wird jetzt an der **Klammer** `(DD.MM.YYYY HH:MM:SS)` erkannt statt an der `Prozess N:`-Kopfzeile — bei echten Exporten steht das Datum im Body, nicht im Kopf. Ergebnis: Zeitstempel-Trefferquote auf Heinzl **0 % → 89,1 %**; Übungsfall-Gold-Runner bleibt 5/5 (die Klammer-Regel deckt beide Fälle).
+- Verbleibende Realdaten-Edge-Cases (für spätere Optimierung, nicht blockierend): aufrufe 82,6 % · cvrefs 76,1 % (die `{CV:nnn}`-Slot-Semantik, die der Übungsfall bewusst nicht beweist) · 13 nicht gematchte Variablen (2,2 %).
+- Compliance: nur Aggregat-Kennzahlen, keine Kundendaten; der Kalibrier-Runner lief im Scratchpad, kein Heinzl-Artefakt im Repo. Echo-Loop-Suite 227 grün.
+
 ### Echo-Loop: PAKET_2-Integration Phase 4 — Register-Workflows · Lagebild · Governance PROD/PROJ
 Die deterministischen Betriebs-/Governance-Kerne von Phase 4 (`betrieb/`), gegen Referenz + Prinzipien portiert.
 
