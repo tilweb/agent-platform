@@ -10,7 +10,7 @@ import { getBaustand, updateBaustand, deleteBaustand, listArtefakte, getProzess,
 import { renderReportHtml } from '../report';
 import { VersionConflictError } from '../concurrency';
 import { denyIfNotAppEditor } from './_shared';
-import { computeScores } from '../scoring';
+import { computeScores, bewerteVereinbarungsGates } from '../scoring';
 import { synthesizeNarrativ } from '../narrative';
 import { generateBauanleitung } from '../bauanleitung';
 import type { Baustand, Kennzahlen } from '../types';
@@ -23,10 +23,14 @@ function kennzahlenAus(dimensionen: Baustand['dimensionen']): Kennzahlen {
   return { gesamtRg: s.gesamtRg, rgStar: s.rgStar, rgq: s.rgq, seQuotient: s.seQuotient, limiter: s.limiter, notenZeile: s.notenZeile };
 }
 
-/** Stateless: Dimensionen rein → Kennzahlen raus (Panel-Live-Recompute). */
+/** Stateless: Dimensionen (+Gate-Nachweise) rein → Kennzahlen + Vereinbarungs-Gates raus (Panel-Live-Recompute). */
 baustaendeRoutes.post('/scoring', async (c) => {
-  const body = await c.req.json<{ dimensionen?: Baustand['dimensionen'] }>();
-  return c.json({ kennzahlen: kennzahlenAus(body?.dimensionen ?? ({} as Baustand['dimensionen'])) });
+  const body = await c.req.json<{ dimensionen?: Baustand['dimensionen']; gateNachweise?: Baustand['gateNachweise'] }>();
+  const dims = body?.dimensionen ?? ({} as Baustand['dimensionen']);
+  return c.json({
+    kennzahlen: kennzahlenAus(dims),
+    gates: bewerteVereinbarungsGates(dims, body?.gateNachweise ?? {}),
+  });
 });
 
 baustaendeRoutes.get('/baustaende/:id', async (c) => {

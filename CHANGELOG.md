@@ -2,6 +2,13 @@
 
 ## 2026-08-16
 
+### Echo-Loop: Panel-UI für Analyse-Tiefen + Vereinbarungs-Gates (Frontend-Verdrahtung Phase 1)
+Das deterministische Regelwerk aus Phase 1 ist jetzt im RGA-Review sichtbar/bedienbar.
+- **Analyse-Tiefe-Deklaration** (`AnalyseTiefePanel.jsx`, Seite-1-Prinzip): T-A/B/C-Wahl + Input-Inventar I1–I6; Live-Warnung bei Über-Versprechen („verspricht nie mehr, als die Tiefe trägt") und T-B-Pflicht bei Betriebsdaten.
+- **Vereinbarungs-Gates** (`VereinbarungsGates.jsx`): die vier Gates D6-L3/D7-L4/D9-L4/D10-L2 mit Ampel-Status + Doppel-Nachweis-Toggles (Statik/gelebt) + Org-Träger-Hinweis. `POST /scoring` liefert jetzt zusätzlich `gates` (Single Source of Truth, Live-Recompute).
+- **PA-Befunde** im befunde-Sub-Tab (Agent · Fundstelle · Status · Refutation · Empfehlung); **K1-Report-Link** im Detail-Header.
+- Persistenz: `analyseTiefe`/`inputInventar`/`gateNachweise` mit dem Baustand gespeichert. Frontend-Build grün, eslint 0 Errors; Backend-Suite weiterhin 126 grün.
+
 ### Echo-Loop: PAKET_2-Integration Phase 1 (Teil 2) — PA-Prüfagenten-Fan-out · Fundament-Welle · K1-Report
 Die LLM-/Rendering-Bausteine von Phase 1, mit Adacor Qwen 3.5 Instruct (bereits angebunden).
 

@@ -8,6 +8,8 @@ import KennzahlBadges from './components/KennzahlBadges';
 import ReifegradPanel from './components/ReifegradPanel';
 import BefundeListe from './components/BefundeListe';
 import Dropzone from './components/Dropzone';
+import VereinbarungsGates from './components/VereinbarungsGates';
+import AnalyseTiefePanel from './components/AnalyseTiefePanel';
 
 const PURPLE = '#452C71';
 const TABS = [{ id: 'uebersicht', label: 'Übersicht' }, { id: 'rga', label: 'RGA-Review' }, { id: 'analysen', label: 'Analysen' }];
@@ -65,6 +67,10 @@ export default function ProzessDetail() {
   const [active, setActive] = useState(null); // full baustand under review
   const [dims, setDims] = useState({});
   const [kennzahlen, setKennzahlen] = useState(null);
+  const [gates, setGates] = useState([]);
+  const [gateNachweise, setGateNachweise] = useState({});
+  const [analyseTiefe, setAnalyseTiefe] = useState('T-A');
+  const [inputInventar, setInputInventar] = useState({});
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -97,26 +103,44 @@ export default function ProzessDetail() {
     setActive(full);
     setDims(full.dimensionen || {});
     setKennzahlen(full.kennzahlen);
+    const nw = full.gateNachweise || {};
+    setGateNachweise(nw);
+    setAnalyseTiefe(full.analyseTiefe || 'T-A');
+    setInputInventar(full.inputInventar || {});
     setBau(full.bauanleitung || null);
     setBauDirty(false);
     setDirty(false);
+    // Vereinbarungs-Gates initial vom Server (Single Source of Truth).
+    try { const r = await echoloopApi.scoring(full.dimensionen || {}, nw); setGates(r.gates || []); } catch { setGates([]); }
     if (switchTab) setTab('rga');
   }
 
   // Live-Recompute (debounced, serverseitig = Single Source of Truth)
-  function onDimsChange(next) {
-    setDims(next); setDirty(true);
+  function recompute(nextDims, nextNw) {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
-      try { setKennzahlen(await echoloopApi.scoring(next)); } catch { /* ignore live errors */ }
+      try { const r = await echoloopApi.scoring(nextDims, nextNw); setKennzahlen(r.kennzahlen); setGates(r.gates || []); } catch { /* ignore live errors */ }
     }, 300);
+  }
+  function onDimsChange(next) {
+    setDims(next); setDirty(true);
+    recompute(next, gateNachweise);
+  }
+  function onGatesChange(nw) {
+    setGateNachweise(nw); setDirty(true);
+    recompute(dims, nw);
+  }
+  function onTiefeChange({ tiefe, inventar }) {
+    setAnalyseTiefe(tiefe); setInputInventar(inventar); setDirty(true);
   }
 
   async function save() {
     if (!active) return;
     setSaving(true); setError('');
     try {
-      const updated = await echoloopApi.updateBaustand(active.id, { dimensionen: dims, expectedVersion: active.version });
+      const updated = await echoloopApi.updateBaustand(active.id, {
+        dimensionen: dims, analyseTiefe, inputInventar, gateNachweise, expectedVersion: active.version,
+      });
       setActive(updated); setKennzahlen(updated.kennzahlen); setDirty(false);
       setBaustaende((bs) => bs.map((x) => (x.id === updated.id ? updated : x)));
     } catch (e) { setError(e.status === 409 ? 'Konflikt: Baustand wurde parallel geändert — neu laden.' : e.message); }
@@ -128,7 +152,7 @@ export default function ProzessDetail() {
     if (dirty) { await save(); }
     setSaving(true); setError('');
     try {
-      const updated = await echoloopApi.freigabe(active.id, active.version + (dirty ? 1 : 0));
+      await echoloopApi.freigabe(active.id, active.version + (dirty ? 1 : 0));
       // nach Freigabe sicher neu laden (Version könnte durch vorheriges save gestiegen sein)
       const fresh = await echoloopApi.getBaustand(active.id);
       setActive(fresh); setBaustaende((bs) => bs.map((x) => (x.id === fresh.id ? fresh : x)));
@@ -351,6 +375,11 @@ export default function ProzessDetail() {
               {active && <span style={styles.noten}>{active.kennzahlen?.notenZeile?.split(' · Limiter')[0]}</span>}
             </div>
           </div>
+          {active && (
+            <a style={styles.btnGhost} href={echoloopApi.reportUrl(active.id)} target="_blank" rel="noreferrer" title="K1-Report als HTML (Drucken → PDF)">
+              Report ↗
+            </a>
+          )}
         </div>
       </div>
 
@@ -397,6 +426,10 @@ export default function ProzessDetail() {
               {rgaSub === 'profil' && (
                 <>
                   <div style={styles.section}>
+                    <div style={styles.sectionTitle}>Analyse-Tiefe (Seite-1-Prinzip)</div>
+                    <AnalyseTiefePanel tiefe={analyseTiefe} inventar={inputInventar} onChange={onTiefeChange} readOnly={readOnly} />
+                  </div>
+                  <div style={styles.section}>
                     <div style={styles.sectionTitle}>Kennzahlen (live)</div>
                     <KennzahlBadges kennzahlen={kennzahlen} />
                   </div>
@@ -431,14 +464,41 @@ export default function ProzessDetail() {
                     )}
                     <ReifegradPanel dimensionen={dims} begruendung={active.llmBegruendung || {}} onChange={onDimsChange} readOnly={readOnly} />
                   </div>
+                  {gates.length > 0 && (
+                    <div style={styles.section}>
+                      <div style={styles.sectionTitle}>Vereinbarungs-Gates (Zwei-Naturen · Skalierung L4–L5)</div>
+                      <VereinbarungsGates gates={gates} nachweise={gateNachweise} onChange={onGatesChange} readOnly={readOnly} />
+                    </div>
+                  )}
                 </>
               )}
 
               {rgaSub === 'befunde' && (
-                <div style={styles.section}>
-                  <div style={styles.sectionTitle}>Deterministische Checker-Befunde ({active.befunde?.length || 0})</div>
-                  <BefundeListe befunde={active.befunde || []} />
-                </div>
+                <>
+                  <div style={styles.section}>
+                    <div style={styles.sectionTitle}>Deterministische Checker-Befunde ({active.befunde?.length || 0})</div>
+                    <BefundeListe befunde={active.befunde || []} />
+                  </div>
+                  {active.paBefunde?.length > 0 && (
+                    <div style={styles.section}>
+                      <div style={styles.sectionTitle}>PA-Prüfagenten (adversarial · beobachtend) — {active.paBefunde.length}</div>
+                      <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.md }}>
+                        Kontextreiche Befunde aus dem Refutations-Fan-out (F1 Wertfehler · F2 Schleifen/Timing · F3 Melde-Vollständigkeit · F4 Wiederanlauf), dedupliziert gegen die Checker-Anker. Status <em>verify</em> = am Panel/Graph prüfen.
+                      </div>
+                      {active.paBefunde.map((f) => (
+                        <div key={f.id} style={{ padding: `${theme.spacing.sm} 0`, borderBottom: `1px solid ${theme.colors.borderLight}` }}>
+                          <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: theme.typography.weights.bold, color: PURPLE, fontSize: theme.typography.sizes.xs }}>{f.agent}</span>
+                            <span style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>{f.titel}</span>
+                            <span style={{ fontSize: '0.7rem', color: theme.colors.textMuted }}>P{f.prozessNr}{f.schrittId != null ? ` S${f.schrittId}` : ''} · {f.status} · {(f.dimensionen || []).join(', ')}</span>
+                          </div>
+                          {f.refutation && <div style={{ fontSize: '0.72rem', color: theme.colors.textMuted, marginTop: 2 }}>Refutation: {f.refutation}</div>}
+                          {f.empfehlung && <div style={{ fontSize: '0.72rem', color: theme.colors.textSecondary, marginTop: 2 }}>→ {f.empfehlung}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
 
               {rgaSub === 'bauanleitung' && (

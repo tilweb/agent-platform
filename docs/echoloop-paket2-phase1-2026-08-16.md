@@ -87,9 +87,17 @@ tsc --noEmit                  → keine echoloop-Fehler
 ```
 (+12 Tests: +7 PA-Fan-out, +1 Fundament-Welle, +4 Report.)
 
+### Panel-UI (Frontend-Verdrahtung, abgeschlossen)
+
+Das Regelwerk aus Teil 1 ist jetzt im RGA-Review sichtbar/bedienbar (`frontend/src/apps/echoloop/`):
+- **Analyse-Tiefe-Deklaration** (`AnalyseTiefePanel.jsx`, Seite-1 des profil-Sub-Tabs): T-A/B/C-Wahl + Input-Inventar I1–I6; Live-Warnung bei Über-Versprechen und T-B-Pflicht (I2).
+- **Vereinbarungs-Gates** (`VereinbarungsGates.jsx`): die vier Gates mit Ampel-Status + Doppel-Nachweis-Toggles (Statik/gelebt), Org-Träger-Hinweis. Status kommt vom Backend — der `POST /scoring`-Endpoint liefert jetzt zusätzlich `gates` (Single Source of Truth, Live-Recompute wie die Kennzahlen).
+- **PA-Befunde** im befunde-Sub-Tab (Agent · Fundstelle · Status · Refutation · Empfehlung).
+- **K1-Report-Link** im Detail-Header (öffnet `report.html`).
+- Persistenz: `analyseTiefe`/`inputInventar`/`gateNachweise` werden mit dem Baustand gespeichert. Frontend-Build grün, eslint 0 Errors.
+
 ### Noch offen (nachgelagert)
 
-- **Panel-UI** für Analyse-Tiefen + Vereinbarungs-Gates (Frontend-Verdrahtung des Regelmoduls) — Backend-Regelwerk steht.
 - **PDF-Renderer** (falls echtes PDF statt Print→PDF gewünscht) — braucht Dependency-Freigabe.
 - **PM-15/16/18/19/21/RX** (Parser-Erweiterungen / Register) — nächste Checker-Welle.
 

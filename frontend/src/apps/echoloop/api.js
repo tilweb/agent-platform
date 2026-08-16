@@ -1,7 +1,7 @@
 /**
  * Echo-Loop API-Wrapper (dünn über apiFetch). Alle Endpunkte unter /apps/echoloop.
  */
-import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../../utils/apiFetch';
+import { apiGet, apiPost, apiPut, apiDelete, API_URL } from '../../utils/apiFetch';
 
 const base = '/apps/echoloop';
 
@@ -123,7 +123,35 @@ export const echoloopApi = {
   freigabe: (id, expectedVersion) => apiPost(`${base}/baustaende/${id}/freigabe`, { expectedVersion }).then(json).then((d) => d.baustand),
   generateBauanleitung: (id, zielLevel) => apiPost(`${base}/baustaende/${id}/bauanleitung`, { zielLevel }).then(json).then((d) => d.baustand),
   deleteBaustand: (id) => apiDelete(`${base}/baustaende/${id}`).then(json),
-  scoring: (dimensionen) => apiPost(`${base}/scoring`, { dimensionen }).then(json).then((d) => d.kennzahlen),
+  // Live-Recompute: { kennzahlen, gates } (Vereinbarungs-Gates aus Dims + Nachweisen).
+  scoring: (dimensionen, gateNachweise) => apiPost(`${base}/scoring`, { dimensionen, gateNachweise }).then(json),
+  // K1-Report als selbsttragendes HTML (Browser: Drucken → PDF).
+  reportUrl: (baustandId) => `${API_URL}${base}/baustaende/${baustandId}/report.html`,
+};
+
+/** Analyse-Tiefen (Seite-1-Prinzip) + Input-Inventar I1–I6 (identisch zum Backend). */
+export const ANALYSE_TIEFEN = [
+  { key: 'T-A', label: 'T-A', verspricht: 'hier KANN etwas schiefgehen — Struktur sicher, Verhalten ❓' },
+  { key: 'T-B', label: 'T-B', verspricht: 'hier GEHT etwas schief — so oft, seit wann (Beweise + Zahlen)' },
+  { key: 'T-C', label: 'T-C', verspricht: 'belegt vollständig, Soll geklärt' },
+];
+export const INPUT_INVENTAR = [
+  { key: 'I1', label: 'Prozess-Exporte' },
+  { key: 'I2', label: 'Betriebsdaten' },
+  { key: 'I3', label: 'Run-Reports + Bilder' },
+  { key: 'I4', label: 'Ordnerstruktur' },
+  { key: 'I5', label: 'Briefing/Interview' },
+  { key: 'I6', label: 'Video/Panel' },
+];
+
+/** Vereinbarungs-Gate-Status → Anzeige (Label + Ampel-Ton). */
+export const GATE_STATUS_META = {
+  nachgewiesen: { label: 'nachgewiesen', ton: 'ok' },
+  papier: { label: 'Papier-Level', ton: 'err' },
+  nicht_belegt: { label: 'unbelegt', ton: 'err' },
+  ungeprueft: { label: 'ungeprüft ❓', ton: 'warn' },
+  offen: { label: 'offen (Vereinbarung)', ton: 'warn' },
+  nicht_relevant: { label: 'nicht relevant', ton: 'mut' },
 };
 
 /** Dimensions-Metadaten (Anzeige-Reihenfolge + Labels, identisch zum Backend). */
