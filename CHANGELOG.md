@@ -2,6 +2,14 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 3 — /wertfehler (PM-W-a + Wertketten-Analyse)
+Zweiter Phase-3-Baustein. Referenz `SKILL_wertfehler.md` + PA-Manifest (5 Suchrichtungen). Wertfehler = „Prozess läuft weiter, Wert ist falsch/leer" — Frank Priebes häufigste + teuerste, STILLE Fehlerklasse (kein roter Schritt).
+
+- **PM-W-a** (`checker/patterns.ts` + Parser-Erweiterung `parse.ts`/`types.ts` für `Keybased`/`Text`/`_NoModificationText`): Key-basiertes Tippen von Pfaden/Kennungen (= Frank PM-W1) — tastenweises Tippen (Keybased:True) verliert still Umschalt-/Doppelzeichen. Auslöser: CV-Pfad-Variable · pfad-/datums-/kennungs-artiger Klartext · lange Kette >20 mit Variablen-Anteil. `_NoModificationText:True` (einsetzen statt tippen) = kein Befund. Beobachtend, D6b. Damit sind **alle drei statischen W-Muster** (PM-W-a/b/c) nativ; W2/W3 (Prüf-Entscheidung, Sentinel/Altwert) bleiben bewusst Panel-Fragen (→ PA-F1).
+- **Wertketten-Analyse** (`checker/wertfehler.ts`): strukturiert die W-Befunde entlang der **6-Stationen-Herkunftskette** (Ursprung→Aufnahme→Ablage→Umformung→Übertragung→Ziel; PM-W-b/c an Ablage, PM-W-a an Übertragung) + führt W2/W3 als stehende ❓-Panel-Fragen + den Methoden-Kern („letzten beweisbar richtigen Punkt finden"). Als **Wertfehler-Kette-Sektion** in den K1-Report eingebunden (wenn W-Befunde vorliegen).
+- **Tests**: Echo-Loop-Suite 190 grün (0 fail, +10).
+- Offen (Phase 3–4): /zusagen, /uebergabe, /verbrauch + Betrieb/Härtung/Mandant.
+
 ### Echo-Loop: PAKET_2-Integration Phase 3 (Start) — /prozess-start (Einbau-Tabelle)
 Erster Phase-3-Baustein (Skill → App-Feature), nativ. Referenz `SKILL_prozess-start.md` + NK-§A8/A9/A10/A11.
 

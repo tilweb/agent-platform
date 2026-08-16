@@ -7,6 +7,7 @@
  * gibt einen vollständigen HTML-String zurück — offline bedienbar, ein File.
  */
 import { ALL_DIMS, CORE_DIMS, DIM_LABEL, computeScores, bewerteVereinbarungsGates, levelKlasse, type Dim } from './scoring';
+import { wertfehlerAnalyse } from './checker';
 import type { Baustand, Kunde, Prozess } from './types';
 
 function esc(s: unknown): string {
@@ -56,6 +57,18 @@ export function renderReportHtml(input: { kunde?: Kunde | null; prozess?: Prozes
         </tbody></table></section>`
     : '';
 
+  // Wertfehler-Kette (/wertfehler) — nur wenn statische W-Befunde vorliegen.
+  const wf = wertfehlerAnalyse(baustand.befunde ?? []);
+  const wertfehlerBlock = wf.statischeBefunde.length
+    ? `<section><h2>Wertfehler-Kette</h2>
+        <p class="hint">Stille Falschwerte („Prozess läuft weiter, Wert ist falsch/leer") entlang der 6-Stationen-Herkunftskette. ${esc(wf.methodenHinweis)}</p>
+        <table class="befunde"><thead><tr><th>Station</th><th>Prüft</th><th>Statische Befunde</th></tr></thead><tbody>
+        ${wf.stationen.map((st) => `<tr><td><strong>${st.nr} ${esc(st.station)}</strong></td><td>${esc(st.prueft)}</td><td>${st.befunde.length ? st.befunde.map((f) => `${esc(f.pm)} (P${esc(f.prozessNr)}${f.schrittId != null ? ` S${esc(f.schrittId)}` : ''})`).join('<br>') : '—'}</td></tr>`).join('')}
+        </tbody></table>
+        <p class="hint"><strong>Am Panel klären (nicht statisch):</strong></p>
+        <ul>${wf.panelFragen.map((q) => `<li>${esc(q)}</li>`).join('')}</ul></section>`
+    : '';
+
   const narrativ = baustand.narrativ;
   const narrativBlock = narrativ
     ? `<section><h2>Kundenfassung</h2>
@@ -100,6 +113,7 @@ export function renderReportHtml(input: { kunde?: Kunde | null; prozess?: Prozes
   ${gateBlock}
   ${narrativBlock}
   ${befundBlock}
+  ${wertfehlerBlock}
   ${bauBlock}
   <footer>Erzeugt aus dem Echo-Loop-Baustand · deterministische Kennzahlen (RG/RGQ/SE) · ${esc(new Date().toISOString().slice(0, 10))}</footer>
 </body></html>`;

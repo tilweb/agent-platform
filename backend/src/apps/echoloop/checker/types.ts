@@ -68,6 +68,18 @@ export interface EmmaVariable {
   schnittstelle: string;
 }
 
+/** Ein `Tippen`-Schritt (fuer PM-W-a Key-Tippen-Zeichenverlust). */
+export interface EmmaKeyTippen {
+  schrittId: number;
+  /** getippter Text (kann {CV:…}-Referenzen + Klartext mischen). */
+  text: string;
+  /** Keybased:True → tastenweises Tippen (verliert Umschalt-/Doppelzeichen still). */
+  keybased: boolean;
+  /** _NoModificationText:True → Text unveraendert eingesetzt (die sichere Variante). */
+  noMod: boolean;
+  nameHint: string;
+}
+
 export interface EmmaProcess {
   /** Prozessnummer (aus "Prozess NNNN" oder Dateiname). */
   nr: string;
@@ -78,6 +90,7 @@ export interface EmmaProcess {
   calls: EmmaCall[];
   fixedWaits: EmmaFixedWait[];
   fixedClicks: EmmaFixedClick[];
+  keyTippen: EmmaKeyTippen[];
   variables: EmmaVariable[];
   /** Alle Datums-/Zeitstempel-Literale (fuer PM-10 Kohorten-Analyse). */
   dateLiterals: string[];

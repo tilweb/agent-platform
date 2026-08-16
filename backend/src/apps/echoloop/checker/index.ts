@@ -3,12 +3,13 @@
  * Prüfmuster-Befunde + Call-Graph. Deterministisch, LLM-frei.
  */
 import { parseFamily } from './parse';
-import { pm01, pm02, pm03, pm04, pm04b, pm09, pm10, pm13, pm14, pm12, pm17, pmWb, pmWc } from './patterns';
+import { pm01, pm02, pm03, pm04, pm04b, pm09, pm10, pm13, pm14, pm12, pm17, pmWa, pmWb, pmWc } from './patterns';
 import type { CheckerResult, PMFinding, Severity } from './types';
 
 export * from './types';
 export { parseFamily, parseProcess } from './parse';
 export { deriveHints, type CheckerHints, type DimHints, type TopHebel } from './hints';
+export { wertfehlerAnalyse, W_MUSTER, type WertfehlerAnalyse, type WertStation } from './wertfehler';
 
 const SEVERITY_RANK: Record<Severity, number> = {
   kritisch: 0, hoch: 1, mittel: 2, frage: 3, niedrig: 4,
@@ -38,6 +39,7 @@ export function runChecker(files: { name: string; text: string }[]): CheckerResu
   const beobachtend = [
     ...pm12(family),
     ...pm17(family),
+    ...pmWa(family),
     ...pmWb(family),
     ...pmWc(family),
   ].sort((a, b) => SEVERITY_RANK[a.schwere] - SEVERITY_RANK[b.schwere]);

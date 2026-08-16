@@ -392,3 +392,39 @@ export function pmWc(fam: EmmaFamily): PMFinding[] {
   }
   return out;
 }
+
+/** {CV:…}-Referenz auf eine Pfad-/Ordner-Variable (für PM-W-a Grund (a)). */
+const CV_PFAD_RE = /\{CV:[^}]*(O_\w+|Pfad|Datei|Ordner|Verzeichnis|Path)[^}]*\}/i;
+
+/**
+ * PM-W-a · Key-basiertes Tippen von Pfaden/Kennungen (= Frank PM-W1). Tastenweises
+ * Tippen (Keybased:True) verliert still Umschalt-/Doppelzeichen → falscher Wert ohne
+ * roten Schritt. Riskant, wenn eine Pfad-/Kennungs-/lange Variablen-Kette getippt
+ * wird und der Text nicht unverändert eingesetzt ist (_NoModificationText). Beobachtend.
+ */
+export function pmWa(fam: EmmaFamily): PMFinding[] {
+  const out: PMFinding[] = [];
+  for (const p of fam.processes) {
+    for (const kt of p.keyTippen ?? []) {
+      if (!kt.keybased || kt.noMod || !kt.text.trim()) continue;
+      const text = kt.text;
+      const plain = text.replace(/\{CV:[^}]*\}/g, '').trim();
+      const gruende: string[] = [];
+      if (CV_PFAD_RE.test(text)) gruende.push('tippt eine Pfad-/Ordner-Variable ({CV:…})');
+      if (/^[\d.,:/ \-]{6,}$/.test(plain) && /\d/.test(plain)) gruende.push('Klartext sieht aus wie Datum/Zahl/Kennung');
+      if (/[\\/]|^[A-Za-z]:|\.[A-Za-z]\w{1,3}$|\*\./.test(plain)) gruende.push('Klartext sieht aus wie Pfad/Dateiname');
+      if (plain.replace(/\s/g, '').length >= 8 && /\d/.test(plain)) gruende.push('Kennung ≥8 Zeichen mit Ziffern');
+      if (text.replace(/\s/g, '').length > 20 && /\{CV:/.test(text)) gruende.push('lange Kette >20 Zeichen mit Variablen-Anteil');
+      if (!gruende.length) continue;
+      out.push({
+        pm: 'PM-W-a', aspekt: 'Key-Tippen-Zeichenverlust', prozessNr: p.nr, schrittId: kt.schrittId,
+        befund: `S${kt.schrittId} tippt tastenweise (Keybased) ${gruende[0]} — tastenweises Tippen verliert still Umschalt-/Doppelzeichen (falscher Wert ohne roten Schritt).`,
+        beleg: `Keybased:True${gruende.length > 1 ? ` · ${gruende.slice(1).join(' · ')}` : ''}`,
+        provenienz: '[G Text]', schwere: 'mittel', seedOrBug: 'unklar',
+        empfehlung: 'Text unverändert = Ja + Key-basiert = Nein (einsetzen statt tippen); Zielfeld nach dem Setzen gegenprüfen.',
+        dimensionen: ['D6b'], beobachtend: true,
+      });
+    }
+  }
+  return out;
+}

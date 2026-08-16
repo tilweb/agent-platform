@@ -9,7 +9,7 @@
  * (TestCaseID, MaxLoopCount, ResetBeforeStart, Subject, TimeOut, ...).
  * Positions-/Spalten-unabhaengig, damit Export-Drift den Checker nicht bricht.
  */
-import type { EmmaProcess, EmmaFamily, EmmaLoop, EmmaOcrRead, EmmaCall, EmmaVariable, EmmaFixedWait, EmmaFixedClick } from './types';
+import type { EmmaProcess, EmmaFamily, EmmaLoop, EmmaOcrRead, EmmaCall, EmmaVariable, EmmaFixedWait, EmmaFixedClick, EmmaKeyTippen } from './types';
 
 /** Seiten-Kopf/-Fuss + Tabellen-Header entfernen. */
 function stripChrome(text: string): string[] {
@@ -105,6 +105,7 @@ export function parseProcess(sourceFile: string, text: string): EmmaProcess {
   const ocrReads = new Map<number, EmmaOcrRead>();
   const fixedWaits = new Map<number, EmmaFixedWait>();
   const fixedClicks = new Map<number, EmmaFixedClick>();
+  const keyTippen = new Map<number, EmmaKeyTippen>();
   const calls: EmmaCall[] = [];
   const seenCall = new Set<string>();
   const dateLiterals = new Set<string>();
@@ -161,6 +162,17 @@ export function parseProcess(sourceFile: string, text: string): EmmaProcess {
       }
     }
 
+    // Tippen-Schritt (PM-W-a): Keybased-Flag ist Tippen-spezifisch. Text kann {CV:…} + Klartext mischen.
+    if (/Keybased:/i.test(b.text) && !keyTippen.has(b.id)) {
+      keyTippen.set(b.id, {
+        schrittId: b.id,
+        text: firstValue(b.text, 'Text') ?? '',
+        keybased: parseBool(firstValue(b.text, 'Keybased')) === true,
+        noMod: parseBool(firstValue(b.text, '_NoModificationText')) === true,
+        nameHint,
+      });
+    }
+
     // Verschachtelter Prozess → TestCaseID (inkl. -1/0 = toter Aufruf)
     for (const tc of allValues(b.text, 'TestCaseID')) {
       const n = Number(tc.match(/-?\d+/)?.[0]);
@@ -188,6 +200,7 @@ export function parseProcess(sourceFile: string, text: string): EmmaProcess {
     ocrReads: [...ocrReads.values()],
     fixedWaits: [...fixedWaits.values()],
     fixedClicks: [...fixedClicks.values()],
+    keyTippen: [...keyTippen.values()],
     calls,
     variables,
     dateLiterals: [...dateLiterals],

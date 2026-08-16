@@ -4,17 +4,19 @@
  * geprüft ist. Alle Muster sind beobachtend (dürfen nicht hart eskalieren).
  */
 import { test, expect, describe } from 'bun:test';
-import { pm12, pm17, pmWb, pmWc } from './patterns';
-import type { EmmaProcess, EmmaFamily, EmmaLoop, EmmaFixedWait, EmmaVariable } from './types';
+import { pm12, pm17, pmWa, pmWb, pmWc } from './patterns';
+import type { EmmaProcess, EmmaFamily, EmmaLoop, EmmaFixedWait, EmmaVariable, EmmaKeyTippen } from './types';
 
 function proc(nr: string, over: Partial<EmmaProcess> = {}): EmmaProcess {
   return {
     nr, name: `Prozess ${nr}`, sourceFile: `Prozess_${nr}.pdf`,
-    loops: [], ocrReads: [], calls: [], fixedWaits: [], fixedClicks: [],
+    loops: [], ocrReads: [], calls: [], fixedWaits: [], fixedClicks: [], keyTippen: [],
     variables: [], dateLiterals: [], hardcodedPaths: [], hasPlaintextPassword: false,
     schrittCount: 0, ...over,
   };
 }
+const kt = (schrittId: number, text: string, keybased = true, noMod = false): EmmaKeyTippen =>
+  ({ schrittId, text, keybased, noMod, nameHint: '' });
 function fam(...processes: EmmaProcess[]): EmmaFamily {
   return { processes, byNr: new Map(processes.map((p) => [p.nr, p])) };
 }
@@ -50,6 +52,28 @@ describe('PM-17 · Warte-Schritt-Summe', () => {
   });
   test('nur Kleinstwerte (< 50 ms) → kein Befund', () => {
     expect(pm17(fam(proc('1', { fixedWaits: [wait(2, 0.02), wait(3, 0.01)] })))).toHaveLength(0);
+  });
+});
+
+describe('PM-W-a · Key-basiertes Tippen', () => {
+  test('Keybased + Pfad-Klartext → Befund (beobachtend)', () => {
+    const f = pmWa(fam(proc('1', { keyTippen: [kt(12, 'C:\\Kunde\\Rechnung.pdf')] })));
+    expect(f).toHaveLength(1);
+    expect(f[0]!.pm).toBe('PM-W-a');
+    expect(f[0]!.beobachtend).toBe(true);
+  });
+  test('Keybased + {CV:…Pfad}-Variable → Befund', () => {
+    const f = pmWa(fam(proc('1', { keyTippen: [kt(5, '{CV:12 - O_ArchivPfad}')] })));
+    expect(f).toHaveLength(1);
+  });
+  test('_NoModificationText:True (einsetzen statt tippen) → kein Befund', () => {
+    expect(pmWa(fam(proc('1', { keyTippen: [kt(12, 'C:\\x\\y.pdf', true, true)] })))).toHaveLength(0);
+  });
+  test('nicht keybased → kein Befund', () => {
+    expect(pmWa(fam(proc('1', { keyTippen: [kt(12, 'C:\\x\\y.pdf', false)] })))).toHaveLength(0);
+  });
+  test('harmloser Kurztext (kein Pfad/Kennung) → kein Befund', () => {
+    expect(pmWa(fam(proc('1', { keyTippen: [kt(12, 'Hallo')] })))).toHaveLength(0);
   });
 });
 
