@@ -2,6 +2,14 @@
 
 ## 2026-08-16
 
+### Echo-Loop: L-VAR — Pfad-Wiederholungs-Analyse (`pfad_befunde` → D9/D10)
+Schließt die Verzahnung (Task 25) ab. Referenz `cfg_generator.py:66-128`, nativ portiert.
+
+- **`lvar/pfad.ts`**: klassifiziert die Pfad-Werte der C_-Schlüssel — `kuerzbar` (Vollpfad unter dem gemeinsamen Stamm → über `C_BasisPfad` + Rest baubar → **D9** Modularität), `extern` (Vollpfad außerhalb des Stamms, anderes Laufwerk/UNC → **D10** Portabilität, ausdrücklich KEIN Defekt), `trenner` (führender Separator, kein Vollpfad → Bau-Geländer). Basispfad-Kaskade: explizit > `C_BasisPfad` > häufigster Präfix (Tiefe ≥2, Zähler >1). Vollpfad-Erkennung `^[A-Za-z]:[\\/]|^\\\\`.
+- **RGA-Mapping** (`pfadNachRga`): kürzbar>1 → D9-Hinweis mit Wiederholungszahl, extern → D10-Hinweis. Erzeugt Hinweise, keine Levels (das Klasse→Level-Mapping steht bewusst nicht in Sebs Code; wir setzen es hier). In die Assembly + `rgaHinweise` verdrahtet, im CFG-Reiter angezeigt.
+- **Golden** (cfg_generator-Testfall): Stamm `J:\EMMA\Fam`, kürzbar [C_ArchivPfad, C_VorlagePfad], extern [C_FremdPfad], trenner [C_TeilPfad], C_BasisPfad in keiner Liste.
+- **Tests**: Echo-Loop-Suite 175 grün (0 fail, +8); Frontend-Build grün.
+
 ### Echo-Loop: L-VAR — Namensmodul-Authoring (Import/Editor)
 Der L-VAR-Explorer ist jetzt ohne Seed nutzbar: das Namensmodul (alt→neu, Rolle C/H/T/U + Prozesse/Typ + optional CFG-Eingabe) lässt sich im L-VAR-Tab als JSON einfügen/importieren und wird am Prozess (`data.lvarNamensmodul`/`lvarCfg`) hinterlegt — der von der Projekt-Session geschriebene Teil (in Sebs Welt das `_..._namen.py`). Nach dem Speichern lädt der Explorer die Analyse neu. Persistenz über das bestehende `PUT /prozesse/:id` (merged ins `data`-jsonb, Optimistic-Locking). Frontend-Build grün, eslint 0 Errors.
 

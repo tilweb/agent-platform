@@ -125,10 +125,23 @@ function Steckbriefe({ steckbriefe }) {
   );
 }
 
-function Cfg({ cfg }) {
-  if (!cfg) return <div style={s.card}><div style={s.muted}>Keine CONFIG-Excel hinterlegt — Reiter 3 zeigt nichts zu vergleichen (ERSTANLAGE).</div></div>;
+function Pfad({ pfad }) {
+  if (!pfad || (!pfad.kuerzbar.length && !pfad.extern.length && !pfad.trenner.length)) return null;
+  return (
+    <div style={s.card}>
+      <div style={s.title}>Pfad-Wiederholung (→ D9/D10){pfad.stamm ? ` · Stamm ${pfad.stamm}` : ''}</div>
+      {pfad.kuerzbar.length > 0 && <div style={{ ...s.muted, marginBottom: 4 }}><Badge ton={PURPLE}>kürzbar ({pfad.kuerzbar.length})</Badge> {pfad.kuerzbar.map((k) => k.schluessel).join(', ')} — über C_BasisPfad + Rest baubar (D9).</div>}
+      {pfad.extern.length > 0 && <div style={{ ...s.muted, marginBottom: 4 }}><Badge ton={theme.colors.warning}>extern ({pfad.extern.length})</Badge> {pfad.extern.map((e) => e.schluessel).join(', ')} — nicht relativ baubar, Umgebungs-Bindung (D10). Kein Defekt.</div>}
+      {pfad.trenner.length > 0 && <div style={{ ...s.muted, marginBottom: 4 }}><Badge ton={theme.colors.textMuted}>trenner ({pfad.trenner.length})</Badge> {pfad.trenner.join(', ')} — führender Separator, sonst „…\\…" beim Zusammensetzen.</div>}
+    </div>
+  );
+}
+
+function Cfg({ cfg, pfad }) {
+  if (!cfg) return <><div style={s.card}><div style={s.muted}>Keine CONFIG-Excel hinterlegt — Reiter 3 zeigt nichts zu vergleichen (ERSTANLAGE).</div></div><Pfad pfad={pfad} /></>;
   return (
     <>
+      <Pfad pfad={pfad} />
       <div style={s.card}>
         <div style={s.title}>Konfiguration · Modus {cfg.modus}</div>
         <div style={s.gateRow}>
@@ -184,7 +197,7 @@ export default function LvarExplorer({ lvar }) {
       </div>
       {reiter === 'variablen' && <Variablen nk={lvar.nk} kopplung={lvar.kopplung} />}
       {reiter === 'steckbriefe' && <Steckbriefe steckbriefe={lvar.steckbriefe} />}
-      {reiter === 'cfg' && <Cfg cfg={lvar.cfg} />}
+      {reiter === 'cfg' && <Cfg cfg={lvar.cfg} pfad={lvar.pfad} />}
       {lvar.rgaHinweise?.length > 0 && (
         <div style={s.card}>
           <div style={s.title}>→ RGA-Verzahnung ({lvar.rgaHinweise.length} Hinweise)</div>

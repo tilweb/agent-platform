@@ -14,6 +14,7 @@ import { analysiereKopplung, type KopplungErgebnis } from './kopplung';
 import { baueSteckbriefe, type Steckbrief, type SteckbriefEingang } from './steckbriefe';
 import { generiereCfg, type CfgErgebnis, type CfgTarget, type CfgExcel } from './cfg';
 import { nkNachRga, type RgaHinweis } from './verzahnung';
+import { pfadBefunde, pfadNachRga, type PfadBefunde, type PfadZeile } from './pfad';
 
 export interface LvarInput {
   namensraum?: string;
@@ -30,6 +31,7 @@ export interface LvarErgebnis {
   kopplung: KopplungErgebnis;
   steckbriefe: Steckbrief[];
   cfg: CfgErgebnis | null;
+  pfad: PfadBefunde | null;
   rgaHinweise: RgaHinweis[];
 }
 
@@ -59,7 +61,17 @@ export function assembleLvar(input: LvarInput): LvarErgebnis {
     callGraph: input.callGraph,
   });
 
+  // Pfad-Wiederholungs-Analyse aus den CFG-Ziel-Pfaden (→ D9/D10).
+  let pfad: PfadBefunde | null = null;
   const rgaHinweise = nkNachRga(nk, kopplung);
+  if (input.cfg) {
+    const zeilen: PfadZeile[] = input.cfg.targets.map((t) => ({
+      schluessel: t.key,
+      wert: Object.values(t.panelWerte).find((v) => (v ?? '').trim()) ?? '',
+    }));
+    pfad = pfadBefunde(zeilen);
+    rgaHinweise.push(...pfadNachRga(pfad));
+  }
 
-  return { nk, kopplung, steckbriefe, cfg, rgaHinweise };
+  return { nk, kopplung, steckbriefe, cfg, pfad, rgaHinweise };
 }
