@@ -2,6 +2,15 @@
 
 ## 2026-08-16
 
+### Echo-Loop: PAKET_2-Integration Phase 3 (Start) — /prozess-start (Einbau-Tabelle)
+Erster Phase-3-Baustein (Skill → App-Feature), nativ. Referenz `SKILL_prozess-start.md` + NK-§A8/A9/A10/A11.
+
+- **`lvar/prozessstart.ts`**: die 8-Spalten-**Einbau-Tabelle** je Prozess (Kern-Deliverable, „Sprechzettel am Panel") — Nr+Ist · Namens-Vorschlag (§A2) · Typ MP/TP/SP + 1-Satz-Begründung · **Kopfblock-Text** (§A8-Format `Name · vX.Y · Zweck · Owner · Takt · Typ · NK`) · Beschreibung · **C_ProzessTyp** (CFG-Wert) · **Frische-Kontrakt** (nur SP: T_LetzterLauf/T_StandDatum, Verstoß wenn beide fehlen, Schwelle als ❓ Fachbereichs-Entscheid) · **Umbenenn-Risiko** (Aufrufer aus Call-Graph, aber Wirkung = `[Panel]`-❓, nie statisch verneint — Graph≠Text). Baut auf den Steckbriefen auf; was der Export nicht hergibt, bleibt ❓.
+- In die L-VAR-Assembly (`einbau`) + neuen **4. Reiter „Prozess-Start (Einbau)"** im Explorer verdrahtet.
+- **Golden** (Übungsfall): 213 → TP · MW_ERECH_Rechnung-Pruefen_SUB · Kopfblock §A8 · SPs (211/212/214) mit Frische-Verstoß (keine T_-Frische-Variablen).
+- **Tests**: Echo-Loop-Suite 180 grün (0 fail, +5); Frontend-Build grün.
+- Offen (Phase 3–4): weitere Skills (/wertfehler ≈ PM-W-b/c+PA-F1, /zusagen, /uebergabe, /verbrauch) + Betrieb/Härtung/Mandant.
+
 ### Echo-Loop: L-VAR — Pfad-Wiederholungs-Analyse (`pfad_befunde` → D9/D10)
 Schließt die Verzahnung (Task 25) ab. Referenz `cfg_generator.py:66-128`, nativ portiert.
 

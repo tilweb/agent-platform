@@ -11,6 +11,7 @@ const PURPLE = '#452C71';
 const REITER = [
   { id: 'variablen', label: 'Variablen & NK' },
   { id: 'steckbriefe', label: 'Prozess-Steckbriefe' },
+  { id: 'einbau', label: 'Prozess-Start (Einbau)' },
   { id: 'cfg', label: 'Konfiguration' },
 ];
 
@@ -137,6 +138,37 @@ function Pfad({ pfad }) {
   );
 }
 
+function Einbau({ einbau }) {
+  if (!einbau?.length) return <div style={s.card}><div style={s.muted}>Keine Einbau-Tabelle.</div></div>;
+  return (
+    <div style={s.card}>
+      <div style={s.title}>Einbau-Tabelle · /prozess-start ({einbau.length})</div>
+      <div style={s.muted}>Sprechzettel für den Menschen am Panel. Was der Export nicht hergibt, bleibt ❓ (Owner/Takt/Frische-Schwelle = Eingabe; Umbenenn-Wirkung = Panel-Frage).</div>
+      <div style={{ ...s.scroll, marginTop: theme.spacing.sm }}>
+        <table style={s.table}>
+          <thead><tr>
+            <th style={s.th}>Nr / Ist</th><th style={s.th}>Namens-Vorschlag</th><th style={s.th}>Typ</th>
+            <th style={s.th}>Kopfblock</th><th style={s.th}>C_ProzessTyp</th><th style={s.th}>Frische (SP)</th><th style={s.th}>Umbenenn-Risiko</th>
+          </tr></thead>
+          <tbody>
+            {einbau.map((z) => (
+              <tr key={z.nr}>
+                <td style={s.td}><strong>{z.nr}</strong><div style={s.muted}>{z.istName}</div></td>
+                <td style={s.td}>{z.namensVorschlag || '—'}<div style={s.muted}>{z.namensVorschlagQuelle}</div></td>
+                <td style={s.td}><Badge ton={TYP_TON[z.typ] || theme.colors.textMuted}>{z.typ}</Badge><div style={s.muted}>{z.typBegruendung}</div></td>
+                <td style={s.td}><code style={{ fontSize: '0.68rem' }}>{z.kopfblock}</code></td>
+                <td style={s.td}>{z.cProzessTyp}</td>
+                <td style={s.td}>{z.frische ? (z.frische.verstoss ? <Badge ton={theme.colors.error}>Frische fehlt</Badge> : <Badge ton={theme.colors.success}>ok</Badge>) : <span style={s.muted}>—</span>}{z.frische && <div style={s.muted}>{z.frische.schwelleVorschlag}</div>}</td>
+                <td style={s.td}><span style={s.muted}>{z.umbenennFrage}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function Cfg({ cfg, pfad }) {
   if (!cfg) return <><div style={s.card}><div style={s.muted}>Keine CONFIG-Excel hinterlegt — Reiter 3 zeigt nichts zu vergleichen (ERSTANLAGE).</div></div><Pfad pfad={pfad} /></>;
   return (
@@ -197,6 +229,7 @@ export default function LvarExplorer({ lvar }) {
       </div>
       {reiter === 'variablen' && <Variablen nk={lvar.nk} kopplung={lvar.kopplung} />}
       {reiter === 'steckbriefe' && <Steckbriefe steckbriefe={lvar.steckbriefe} />}
+      {reiter === 'einbau' && <Einbau einbau={lvar.einbau} />}
       {reiter === 'cfg' && <Cfg cfg={lvar.cfg} pfad={lvar.pfad} />}
       {lvar.rgaHinweise?.length > 0 && (
         <div style={s.card}>

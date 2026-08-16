@@ -15,6 +15,7 @@ import { baueSteckbriefe, type Steckbrief, type SteckbriefEingang } from './stec
 import { generiereCfg, type CfgErgebnis, type CfgTarget, type CfgExcel } from './cfg';
 import { nkNachRga, type RgaHinweis } from './verzahnung';
 import { pfadBefunde, pfadNachRga, type PfadBefunde, type PfadZeile } from './pfad';
+import { einbauTabelle, type EinbauZeile } from './prozessstart';
 
 export interface LvarInput {
   namensraum?: string;
@@ -32,6 +33,7 @@ export interface LvarErgebnis {
   steckbriefe: Steckbrief[];
   cfg: CfgErgebnis | null;
   pfad: PfadBefunde | null;
+  einbau: EinbauZeile[];
   rgaHinweise: RgaHinweis[];
 }
 
@@ -73,5 +75,11 @@ export function assembleLvar(input: LvarInput): LvarErgebnis {
     rgaHinweise.push(...pfadNachRga(pfad));
   }
 
-  return { nk, kopplung, steckbriefe, cfg, pfad, rgaHinweise };
+  const einbau = einbauTabelle({
+    namensraum: input.namensraum ?? input.namensmodul.namensraum,
+    familie: input.familie ?? input.namensmodul.familie,
+    namensmodul: input.namensmodul, fundorte: input.fundorte, callGraph: input.callGraph, prozesseMeta: input.prozesseMeta,
+  });
+
+  return { nk, kopplung, steckbriefe, cfg, pfad, einbau, rgaHinweise };
 }
