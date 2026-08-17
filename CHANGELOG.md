@@ -2,6 +2,9 @@
 
 ## 2026-08-16
 
+### Echo-Loop: Fix — interner Entwicklungs-Hinweis aus der Kunden-UI entfernt
+Der Hilfetext des Namensmodul-Editors (L-VAR-Tab) verwies auf den internen Entwicklungs-Kontext („in Sebs Welt das `_..._namen.py`"). Ersetzt durch eine kundentaugliche Erklärung (Namensmodul = Ist→Ziel-Zuordnung, in der Analyse gepflegt). Grundsatz: keine internen Team-/Herkunfts-Referenzen in sichtbarer UI. Restliches L-VAR-Frontend gegengeprüft — keine weiteren Leaks.
+
 ### Echo-Loop: Extraktion — Zeitstempel-Fix aus lokaler Heinzl-Kalibrierung
 Lokale Kalibrierung der Koordinaten-Extraktion gegen die echten Heinzl-Ausleitungen (46 Prozesse · 597 Variablen; strikt lokal, nichts ins Repo). **Kernbefund:** die am synthetischen Übungsfall kalibrierten Spalten-Raster halten auf echten EMMA-Exporten — Variablen-Felder name 99,5 % · typ 100 % · init 99,8 % · schnitt 99,8 % · fund 97,9 %. Genau das, was der Übungsfall laut LIESMICH nicht beweisen konnte, ist damit validiert.
 

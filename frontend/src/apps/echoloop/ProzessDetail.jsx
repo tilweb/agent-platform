@@ -467,7 +467,7 @@ export default function ProzessDetail() {
             {modulOpen && (
               <div style={{ marginBottom: theme.spacing.lg }}>
                 <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, lineHeight: 1.5 }}>
-                  JSON einfügen: entweder das Namensmodul direkt (Feld <code>map</code>: alt→neu, Rolle C/H/T/U; optional <code>prozesse</code>) oder ein Objekt <code>{'{ namensmodul, cfg }'}</code>. Das ist der von der Projekt-Session geschriebene Teil (in Sebs Welt das <code>_..._namen.py</code>).
+                  JSON einfügen: entweder das Namensmodul direkt (Feld <code>map</code>: alt→neu, Rolle C/H/T/U; optional <code>prozesse</code>) oder ein Objekt <code>{'{ namensmodul, cfg }'}</code>. Das Namensmodul ordnet die Ist-Variablennamen den Zielnamen zu — der in der Analyse gepflegte Teil.
                 </div>
                 <textarea
                   value={modulText}
