@@ -2490,7 +2490,7 @@ knowledgeStreamRoutes.post('/index', authMiddleware, async (c) => {
     }
 
     // Save uploaded file to incoming/
-    const { writeFile } = await import('fs/promises');
+    const { writeFile, mkdir } = await import('fs/promises');
     const { resolve, join } = await import('path');
     const kbBase = resolve(process.cwd(), '../data/knowledge-base');
     const incomingDir = join(kbBase, 'incoming');
@@ -2501,6 +2501,9 @@ knowledgeStreamRoutes.post('/index', authMiddleware, async (c) => {
     if (!incomingPath.startsWith(incomingDir + '/')) {
       return c.json({ error: 'Pfad-Sanitization fehlgeschlagen' }, 400);
     }
+    // incoming/ sicherstellen — auf frischen/ephemeren FS (z.B. Scalingo) existiert
+    // der Ordner nach dem Deploy nicht, sonst ENOENT beim writeFile. (analog documentImporter)
+    await mkdir(incomingDir, { recursive: true });
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(incomingPath, buffer);
 

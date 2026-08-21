@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-21
+
+### KB-Upload: Fix — ENOENT beim Datei-Upload auf frischen Instanzen
+Der Upload in eine Collection (`POST /knowledge/index`) schrieb die Datei nach
+`data/knowledge-base/incoming/`, legte den Ordner aber nie an. Auf frisch deployten/ephemeren
+Instanzen (z.B. Scalingo) existiert er nicht → `ENOENT: … open '…/incoming/<datei>.pdf'`. Behoben durch
+`mkdir(incomingDir, { recursive: true })` vor dem Schreiben (analog `documentImporter.saveToIncoming`).
+Wirkt erst nach Deploy auf die betroffene Instanz. (Beide Worktrees; railway nur der mkdir-Fix, die
+M6-Filename-Sanitization ist dort noch nicht nachgezogen.)
+
 ## 2026-08-16
 
 ### Echo-Loop: Fix — interner Entwicklungs-Hinweis aus der Kunden-UI entfernt
