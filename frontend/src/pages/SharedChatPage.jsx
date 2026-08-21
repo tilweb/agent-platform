@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { theme } from '../config/theme';
@@ -426,7 +427,7 @@ function SharedChatPage() {
                 >
                   {msg.role === 'assistant' ? (
                     <div className="markdown-body">
-                      <ReactMarkdown components={markdownComponents}>
+                      <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
                         {msg.content}
                       </ReactMarkdown>
                     </div>

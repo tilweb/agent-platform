@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { theme } from '../config/theme';
@@ -2654,7 +2655,7 @@ function AssistantMessage({ content, isStreaming: isCurrentlyStreaming, onMarkAs
         </>
       )}
       {textContent ? (
-        <ReactMarkdown components={markdownComponents}>
+        <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
           {textContent}
         </ReactMarkdown>
       ) : (

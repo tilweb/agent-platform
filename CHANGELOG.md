@@ -2,6 +2,13 @@
 
 ## 2026-08-21
 
+### Chat: Fix — Markdown-Tabellen (GFM) wurden als roher Pipe-Text angezeigt
+Im Chat-Fenster wurde `<ReactMarkdown>` ohne `remark-gfm` gerendert — GFM-Tabellen (und Strikethrough,
+Task-Lists, Auto-Links) blieben daher unformatiert, während `**fett**` weiter griff. Plugin `remarkPlugins={[remarkGfm]}`
+in `ChatWindow.jsx` und `SharedChatPage.jsx` ergänzt (Dependency `remark-gfm` war bereits vorhanden; die
+`table/th/td`-Styles in `markdownComponents` existierten schon und greifen jetzt). Nur main — der railway-Worktree
+hat `remark-gfm` nicht als Dependency (bewusst nicht ohne Rückfrage nachgezogen).
+
 ### KB-Upload: Fix — ENOENT beim Datei-Upload auf frischen Instanzen
 Der Upload in eine Collection (`POST /knowledge/index`) schrieb die Datei nach
 `data/knowledge-base/incoming/`, legte den Ordner aber nie an. Auf frisch deployten/ephemeren
