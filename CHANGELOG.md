@@ -2,6 +2,13 @@
 
 ## 2026-08-21
 
+### Chat: UX — Auto-Scroll folgt nur noch, wenn man unten ist (kein Zucken bei Tool-Calls)
+Während Tool-Call-Bursts (Agent arbeitet, keine sichtbare Ausgabe) riss der Chat den Screen bei jeder
+Aktivitätszeile hart nach unten (`scrollIntoView({behavior:'smooth'})` bei jeder `agentStatus`-Änderung) —
+man konnte nicht hochscrollen und der Screen zuckte. Jetzt „stick to bottom": Die Ansicht folgt neuem Inhalt
+nur, wenn man bereits nahe am unteren Rand ist; scrollt man hoch, bleibt die Position erhalten. Scroll ist
+instant (kein Smooth-Restart je Zeile), beim eigenen Senden wird wieder ans Ende gepinnt. (`ChatWindow.jsx`.)
+
 ### KB-Upload: Fix — ENOENT beim Datei-Upload auf frischen Instanzen
 Der Upload in eine Collection (`POST /knowledge/index`) schrieb die Datei nach
 `data/knowledge-base/incoming/`, legte den Ordner aber nie an. Auf frisch deployten/ephemeren
