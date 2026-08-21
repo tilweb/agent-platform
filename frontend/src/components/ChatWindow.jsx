@@ -3150,6 +3150,10 @@ function ChatWindow({
   const [isExporting, setIsExporting] = useState(false);
   const [exportingFormat, setExportingFormat] = useState(null);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  // true, solange der User nahe am unteren Rand ist → dann folgt die Ansicht neuen
+  // Inhalten. Scrollt der User hoch, wird das false und wir reissen ihn NICHT zurück.
+  const stickToBottomRef = useRef(true);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const { executeCommand } = useCommands();
@@ -3204,8 +3208,21 @@ function ChatWindow({
 
   const isAutoSelected = selectedAgentId === null;
 
+  // Verfolgt die Scroll-Position: ist der User (fast) unten, folgen wir neuem Inhalt;
+  // hat er hochgescrollt, lassen wir ihn dort (kein Zurückreissen während Tool-Calls).
+  const handleMessagesScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distanceFromBottom < 80;
+  }, []);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!stickToBottomRef.current) return;
+    const el = messagesContainerRef.current;
+    // Instant (kein 'smooth') — sonst startet die Animation bei jeder Aktivitätszeile
+    // neu und der Screen „zuckt". Beim Anpinnen an den Rand fällt das nicht auf.
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages, agentStatus]);
 
   useEffect(() => {
@@ -3467,6 +3484,9 @@ function ChatWindow({
       return;
     }
     if ((input.trim() || attachedFiles.length > 0) && !isStreaming) {
+      // Eigene Nachricht: Ansicht wieder an den unteren Rand pinnen, auch wenn der
+      // User zuvor hochgescrollt hatte.
+      stickToBottomRef.current = true;
       // Pass both message and files
       onSendMessage(input.trim(), attachedFiles.length > 0 ? attachedFiles : undefined);
       setInput('');
@@ -3817,7 +3837,7 @@ function ChatWindow({
       )}
 
       {/* Messages */}
-      <div style={chatStyles.messagesContainer}>
+      <div style={chatStyles.messagesContainer} ref={messagesContainerRef} onScroll={handleMessagesScroll}>
         {messages.length === 0 ? (
           <div style={chatStyles.emptyState}>
             <div style={chatStyles.emptyIcon}>

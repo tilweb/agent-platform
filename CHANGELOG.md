@@ -2,6 +2,14 @@
 
 ## 2026-08-21
 
+### Chat: UX — Auto-Scroll folgt nur noch, wenn man unten ist (kein Zucken bei Tool-Calls)
+Während Tool-Call-Bursts (Agent arbeitet, keine sichtbare Ausgabe) riss der Chat den Screen bei jeder
+Aktivitätszeile hart nach unten (`scrollIntoView({behavior:'smooth'})` bei jeder `agentStatus`-Änderung) —
+man konnte nicht hochscrollen und der Screen zuckte. Jetzt „stick to bottom": Die Ansicht folgt neuem Inhalt
+nur, wenn man bereits nahe am unteren Rand ist; scrollt man hoch, bleibt die Position erhalten. Scroll ist
+instant (kein Smooth-Restart je Zeile), beim eigenen Senden wird wieder ans Ende gepinnt. (`ChatWindow.jsx`,
+beide Worktrees.)
+
 ### Chat: Fix — Markdown-Tabellen (GFM) wurden als roher Pipe-Text angezeigt
 Im Chat-Fenster wurde `<ReactMarkdown>` ohne `remark-gfm` gerendert — GFM-Tabellen (und Strikethrough,
 Task-Lists, Auto-Links) blieben daher unformatiert, während `**fett**` weiter griff. Plugin `remarkPlugins={[remarkGfm]}`
