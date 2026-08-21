@@ -2515,10 +2515,13 @@ knowledgeStreamRoutes.post('/index', async (c) => {
     }
 
     // Save uploaded file to incoming/
-    const { writeFile } = await import('fs/promises');
+    const { writeFile, mkdir } = await import('fs/promises');
     const { resolve } = await import('path');
     const kbBase = resolve(process.cwd(), '../data/knowledge-base');
     const incomingPath = `${kbBase}/incoming/${file.name}`;
+    // incoming/ sicherstellen — auf frischen/ephemeren FS (z.B. Scalingo) existiert
+    // der Ordner nach dem Deploy nicht, sonst ENOENT beim writeFile.
+    await mkdir(`${kbBase}/incoming`, { recursive: true });
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(incomingPath, buffer);
 
