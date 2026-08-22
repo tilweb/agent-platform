@@ -2,6 +2,18 @@
 
 ## 2026-08-22
 
+### Übersichtsseiten: Kachel-Redesign auf Skills, Knowledge Base & Tabellen ausgerollt
+Nach dem Agenten-Piloten dasselbe Scaffold (PageHeader · Suche · GroupTabs · kompakte `ResourceCard` · Hilfe-Panel)
+auf die drei übrigen Übersichtsseiten angewendet:
+- **Skills**: Gruppen-Tabs Alle · Custom · System, kompakte Kacheln (Icon · Name · `id`+Version · 2-Zeilen-Text ·
+  Badges Workflow/Template/Deaktiviert/System, Edit nur bei Custom). Interne Hinweise (YAML-Pfade) durch
+  kundengerechten Hilfe-Text ersetzt.
+- **Knowledge Base**: Gruppen-Tabs Alle · Eigene · Geteilt · Gesperrt, kompakte Kacheln (Doc-Anzahl als Meta,
+  Rollen-Badge nur bei geteilten, gesperrt ausgegraut). Create-Form unverändert.
+- **Tabellen**: Suche + kompakte Kacheln (Icon · Name · „N Spalten · M Zeilen"); keine Gruppen (kein Ownership im
+  Backend), Vorlagen weiter über den bestehenden Button.
+- Einheitliche Empty-States, konsistentes Grid `minmax(280px)`. Detail-/Editor-Ansichten unverändert.
+
 ### Übersichtsseiten: Kachel-Redesign — geteiltes Scaffold + Agenten-Pilot
 Erster Schritt zu einem einheitlichen, kompakten Kacheldesign für die Übersichtsseiten (Agenten, Skills,
 Knowledge Base, Tabellen), die bisher riesige, uneinheitliche Kacheln und kaum Überblick hatten.

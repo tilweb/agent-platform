@@ -5,6 +5,13 @@ import AccessManager from '../components/AccessManager';
 import RoleBadge from '../components/RoleBadge';
 import ReadOnlyBanner from '../components/ReadOnlyBanner';
 import ConfirmModal from '../components/ConfirmModal';
+import PageHeader from '../components/overview/PageHeader';
+import SearchInput from '../components/overview/SearchInput';
+import GroupTabs from '../components/overview/GroupTabs';
+import ResourceCard, { CardGrid } from '../components/overview/ResourceCard';
+import EmptyState from '../components/overview/EmptyState';
+import HelpPanel from '../components/overview/HelpPanel';
+import { deriveAccessGroups, filterBySearch, sortByName } from '../components/overview/grouping';
 
 // ==========================================
 // Helper Functions
@@ -693,8 +700,12 @@ function KnowledgeBasePage() {
   const [docIndex, setDocIndex] = useState(null);
   const [expandedDocRawMeta, setExpandedDocRawMeta] = useState(null);
 
+  // Overview state (Suche / Gruppen-Tab / Hilfe)
+  const [search, setSearch] = useState('');
+  const [activeGroup, setActiveGroup] = useState('all');
+  const [helpOpen, setHelpOpen] = useState(false);
+
   // Hover states
-  const [hoveredCard, setHoveredCard] = useState(null);
   const [hoveredDoc, setHoveredDoc] = useState(null);
   const [hoveredDelete, setHoveredDelete] = useState(null);
 
@@ -1130,7 +1141,6 @@ function KnowledgeBasePage() {
     setDocIndex(null);
     setExpandedDocRawMeta(null);
     setStatusMessage(null);
-    setHoveredCard(null);
     setSearchFilter('');
     setDocumentMetaCache({});
   }
@@ -1795,43 +1805,46 @@ function KnowledgeBasePage() {
   // ==========================================
   // RENDER: Collections Overview (Default)
   // ==========================================
-  const totalCollections = collections.length;
-  const accessibleCount = collections.filter((c) => c.accessible !== false).length;
-  const totalDocuments = collections.reduce((sum, c) => sum + (c.document_count || 0), 0);
+  const kbGroups = deriveAccessGroups(collections);
+  const kbGroupDefs = [
+    { id: 'all', label: 'Alle', items: collections, always: true },
+    { id: 'own', label: 'Eigene', items: kbGroups.own },
+    { id: 'shared', label: 'Geteilt', items: kbGroups.shared },
+    { id: 'locked', label: 'Gesperrt', items: kbGroups.locked },
+  ];
+  const kbTabs = kbGroupDefs.map((g) => ({ id: g.id, label: g.label, count: g.items.length, always: g.always }));
+  const activeKbDef = kbGroupDefs.find((g) => g.id === activeGroup) || kbGroupDefs[0];
+  const visibleCollections = sortByName(filterBySearch(activeKbDef.items, search));
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <div style={styles.headerContent}>
-          <h1 style={styles.title}>Knowledge Base</h1>
-          <p style={styles.subtitle}>
-            Wissensdatenbank verwalten - Collections, Dokumente und Indizierung
-          </p>
-        </div>
-        <button
-          style={showCreateForm ? styles.buttonSecondary : styles.button}
-          onClick={() => setShowCreateForm(!showCreateForm)}
-        >
-          {showCreateForm ? 'Abbrechen' : 'Neue Collection'}
-        </button>
-      </div>
+      <PageHeader
+        title="Knowledge Base"
+        subtitle="Sammlungen von Dokumenten, die Agenten als Wissen nutzen können."
+        onToggleHelp={() => setHelpOpen((v) => !v)}
+        helpOpen={helpOpen}
+        actions={(
+          <button
+            style={showCreateForm ? styles.buttonSecondary : styles.button}
+            onClick={() => setShowCreateForm(!showCreateForm)}
+          >
+            {showCreateForm ? 'Abbrechen' : 'Neue Collection'}
+          </button>
+        )}
+      />
 
-      {/* Stats Bar */}
-      {!loading && collections.length > 0 && (
-        <div style={styles.statsBar}>
-          <div style={styles.statItem}>
-            <span style={styles.statValue}>{accessibleCount}</span>
-            <span>
-              {accessibleCount === 1 ? 'Collection' : 'Collections'}
-              {accessibleCount < totalCollections && ` (von ${totalCollections})`}
-            </span>
-          </div>
-          <div style={styles.statItem}>
-            <span style={styles.statValue}>{totalDocuments}</span>
-            <span>{totalDocuments === 1 ? 'Dokument' : 'Dokumente'}</span>
-          </div>
-        </div>
-      )}
+      <HelpPanel
+        open={helpOpen}
+        title="Was ist die Knowledge Base?"
+        paragraphs={[
+          'Eine Collection bündelt zusammengehörige Dokumente. Agenten durchsuchen passende Collections automatisch und beantworten Fragen mit Belegen daraus. Über „Relevant bei" steuerst du, wann eine Collection herangezogen wird.',
+        ]}
+        points={[
+          { term: 'Eigene', desc: 'Collections, die dir gehören und die du bearbeiten kannst.' },
+          { term: 'Geteilt', desc: 'Von anderen für dich freigegeben — je nach Rolle ansehen oder mitbearbeiten.' },
+          { term: 'Gesperrt', desc: 'Existieren, aber du hast (noch) keinen Zugriff. Zugriff bei der genannten Stelle anfragen.' },
+        ]}
+      />
 
       {/* Status Message */}
       {statusMessage && (
@@ -1924,107 +1937,50 @@ function KnowledgeBasePage() {
         </div>
       )}
 
+      <div style={{ marginBottom: theme.spacing.lg }}>
+        <SearchInput value={search} onChange={setSearch} placeholder="Collections suchen…" />
+      </div>
+
+      <GroupTabs tabs={kbTabs} active={activeGroup} onChange={setActiveGroup} />
+
       {/* Collections Card Grid */}
       {loading ? (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyText}>Lade Collections...</div>
-        </div>
-      ) : collections.length === 0 ? (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>
-            <KnowledgeIcon color={theme.colors.textMuted} size={48} />
-          </div>
-          <div style={styles.emptyTitle}>Keine Collections vorhanden</div>
-          <div style={styles.emptyText}>
-            Erstelle eine Collection, um Dokumente zu organisieren.
-          </div>
-        </div>
+        <EmptyState title="Lade Collections…" />
+      ) : visibleCollections.length === 0 ? (
+        <EmptyState
+          boxed
+          icon={<KnowledgeIcon color={theme.colors.textMuted} size={44} />}
+          title={search ? 'Keine Collections gefunden' : 'Keine Collections in dieser Gruppe'}
+          subtitle={search ? 'Passe deine Suche oder die Gruppe an.' : 'Erstelle eine Collection, um Dokumente zu organisieren.'}
+          action={!search && (
+            <button style={styles.button} onClick={() => setShowCreateForm(true)}>Neue Collection</button>
+          )}
+        />
       ) : (
-        <div style={styles.cardGrid}>
-          {collections.map((col) => {
+        <CardGrid>
+          {visibleCollections.map((col) => {
             const locked = col.accessible === false;
             const ownerLabel = col.owner
               ? (col.owner.principalType === 'group' ? `Gruppe ${col.owner.name}` : col.owner.name)
               : 'Admin';
+            const sharedRole = !locked && col.role && col.role !== 'owner' ? col.role : null;
+            const docCount = col.document_count || 0;
             return (
-              <div
+              <ResourceCard
                 key={col.id}
-                style={{
-                  ...styles.card,
-                  ...(hoveredCard === col.id && !locked ? styles.cardHover : {}),
-                  ...(locked ? {
-                    opacity: 0.65,
-                    cursor: 'default',
-                    backgroundColor: theme.colors.background,
-                  } : {}),
-                  position: 'relative',
-                }}
-                onMouseEnter={() => { if (!locked) setHoveredCard(col.id); }}
-                onMouseLeave={() => setHoveredCard(prev => prev === col.id ? null : prev)}
-                onClick={locked ? undefined : () => { setHoveredCard(null); loadCollectionDetail(col.id); }}
-                title={locked ? `Kein Zugriff — anfragen bei ${ownerLabel}` : undefined}
-              >
-                {locked && (
-                  <div style={{ position: 'absolute', top: theme.spacing.md, right: theme.spacing.md, color: theme.colors.textMuted }}>
-                    <LockIcon size={16} />
-                  </div>
-                )}
-                <div style={{ marginBottom: theme.spacing.sm }}>
-                  <h3 style={{ ...styles.cardTitle, marginBottom: theme.spacing.xs, display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
-                    <span>{col.name}</span>
-                    {!locked && col.role && <RoleBadge role={col.role} size="sm" />}
-                  </h3>
-                  {locked ? (
-                    <span style={{
-                      ...styles.badge,
-                      backgroundColor: theme.colors.surfaceHover,
-                      color: theme.colors.textMuted,
-                      borderColor: theme.colors.border,
-                    }}>
-                      Kein Zugriff
-                    </span>
-                  ) : (
-                    <span style={styles.badge}>
-                      {col.document_count} {col.document_count === 1 ? 'Dokument' : 'Dokumente'}
-                    </span>
-                  )}
-                </div>
-                <p style={styles.cardDescription}>{col.description}</p>
-                {locked ? (
-                  <div style={{
-                    ...styles.cardMeta,
-                    fontStyle: 'italic',
-                    color: theme.colors.textMuted,
-                  }}>
-                    Zugriff anfragen bei {ownerLabel}
-                  </div>
-                ) : (
-                  <>
-                    {col.last_updated && (
-                      <div style={styles.cardMeta}>
-                        Aktualisiert: {formatDate(col.last_updated)}
-                      </div>
-                    )}
-                    {col.activate_when && col.activate_when.length > 0 && (
-                      <div style={styles.tagContainer}>
-                        {col.activate_when.map((tag, i) => (
-                          <span key={i} style={{ ...styles.tag, backgroundColor: `${theme.colors.primary}10`, color: theme.colors.primary, borderColor: `${theme.colors.primary}30` }}>{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                    {col.never_activate_when && col.never_activate_when.length > 0 && (
-                      <div style={{ ...styles.tagContainer, marginTop: theme.spacing.xs }}>
-                        {col.never_activate_when.map((tag, i) => (
-                          <span key={i} style={{ ...styles.tag, backgroundColor: '#ef444410', color: '#ef4444', borderColor: '#ef444430' }}>{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+                icon={<KnowledgeIcon color={locked ? theme.colors.textMuted : theme.colors.primary} size={22} />}
+                iconBg={theme.colors.primaryLight}
+                title={col.name}
+                titleAccessory={sharedRole ? <RoleBadge role={sharedRole} size="sm" /> : null}
+                meta={locked ? null : `${docCount} ${docCount === 1 ? 'Dokument' : 'Dokumente'}`}
+                description={col.description || ''}
+                locked={locked}
+                lockedHint={`Zugriff anfragen bei ${ownerLabel}`}
+                onClick={() => loadCollectionDetail(col.id)}
+              />
             );
           })}
-        </div>
+        </CardGrid>
       )}
     </div>
   );

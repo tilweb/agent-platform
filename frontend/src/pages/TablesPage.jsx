@@ -8,7 +8,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import { useTables } from '../hooks/useTables';
-import { TableIcon, ListIcon } from '../components/Icons';
+import { TableIcon, ListIcon, TrashIcon } from '../components/Icons';
+import PageHeader from '../components/overview/PageHeader';
+import SearchInput from '../components/overview/SearchInput';
+import ResourceCard, { CardGrid } from '../components/overview/ResourceCard';
+import EmptyState from '../components/overview/EmptyState';
+import HelpPanel from '../components/overview/HelpPanel';
+import { filterBySearch, sortByName } from '../components/overview/grouping';
 
 const styles = {
   container: {
@@ -243,7 +249,8 @@ function TablesPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [hoveredCard, setHoveredCard] = useState(null);
+  const [search, setSearch] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
   const [templates, setTemplates] = useState([]);
 
   useEffect(() => {
@@ -273,43 +280,33 @@ function TablesPage() {
     );
   }
 
+  const visibleTables = sortByName(filterBySearch(tables, search));
+
   return (
     <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <h1 style={styles.title}>Tabellen</h1>
-        <p style={styles.subtitle}>
-          Verwalte strukturierte Daten in flexiblen Tabellen
-        </p>
-      </div>
+      <PageHeader
+        title="Tabellen"
+        subtitle="Strukturierte Daten in flexiblen Tabellen — als Wissensquelle und für Auswertungen."
+        onToggleHelp={() => setHelpOpen((v) => !v)}
+        helpOpen={helpOpen}
+        actions={(
+          <>
+            <button style={{ ...styles.button, ...styles.secondaryButton }} onClick={refresh}>Aktualisieren</button>
+            {templates.length > 0 && (
+              <button style={{ ...styles.button, ...styles.secondaryButton }} onClick={() => setShowTemplateModal(true)}>Vorlage verwenden</button>
+            )}
+            <button style={{ ...styles.button, ...styles.primaryButton }} onClick={() => setShowCreateModal(true)}>+ Neue Tabelle</button>
+          </>
+        )}
+      />
 
-      {/* Toolbar */}
-      <div style={styles.toolbar}>
-        <div style={styles.toolbarLeft}>
-          <button
-            style={{ ...styles.button, ...styles.primaryButton }}
-            onClick={() => setShowCreateModal(true)}
-          >
-            + Neue Tabelle
-          </button>
-          {templates.length > 0 && (
-            <button
-              style={{ ...styles.button, ...styles.secondaryButton }}
-              onClick={() => setShowTemplateModal(true)}
-            >
-              Vorlage verwenden
-            </button>
-          )}
-        </div>
-        <div style={styles.toolbarRight}>
-          <button
-            style={{ ...styles.button, ...styles.secondaryButton }}
-            onClick={refresh}
-          >
-            Aktualisieren
-          </button>
-        </div>
-      </div>
+      <HelpPanel
+        open={helpOpen}
+        title="Was sind Tabellen?"
+        paragraphs={[
+          'Tabellen speichern strukturierte Daten in Spalten und Zeilen — etwa Listen, Kataloge oder Stammdaten. Agenten können daraus lesen, und du kannst sie als Wissensquelle oder für Auswertungen nutzen. Mit einer Vorlage startest du schneller.',
+        ]}
+      />
 
       {/* Error */}
       {error && (
@@ -318,58 +315,52 @@ function TablesPage() {
         </div>
       )}
 
-      {/* Table Grid */}
-      {tables.length === 0 ? (
-        <div style={styles.emptyState}>
-          <p style={{ fontSize: theme.typography.sizes.lg, marginBottom: theme.spacing.md }}>
-            Keine Tabellen vorhanden
-          </p>
-          <p>Erstelle eine neue Tabelle oder verwende eine Vorlage um zu beginnen.</p>
-        </div>
-      ) : (
-        <div style={styles.grid}>
-          {tables.map(table => (
-            <div
-              key={table.id}
-              style={{
-                ...styles.card,
-                ...(hoveredCard === table.id ? styles.cardHover : {}),
-              }}
-              onClick={() => handleOpenTable(table.id)}
-              onMouseEnter={() => setHoveredCard(table.id)}
-              onMouseLeave={() => setHoveredCard(null)}
-            >
-              <div
-                style={{
-                  ...styles.cardActions,
-                  ...(hoveredCard === table.id ? styles.cardActionsVisible : {}),
-                }}
-              >
-                <button
-                  style={styles.iconButton}
-                  onClick={(e) => handleDeleteTable(e, table.id)}
-                  title="Loschen"
-                >
-                  x
-                </button>
-              </div>
+      <div style={{ marginBottom: theme.spacing.lg }}>
+        <SearchInput value={search} onChange={setSearch} placeholder="Tabellen suchen…" />
+      </div>
 
-              <div style={styles.cardIcon}>
-                {table.icon ? table.icon : <TableIcon size={32} />}
-              </div>
-              <div style={styles.cardTitle}>{table.name}</div>
-              <div style={styles.cardDescription}>
-                {table.description || 'Keine Beschreibung'}
-              </div>
-              <div style={styles.cardMeta}>
-                <span>{table.columns?.length || 0} Spalten</span>
-                <span style={styles.cardBadge}>
-                  {table.row_count || 0} Zeilen
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Table Grid */}
+      {visibleTables.length === 0 ? (
+        <EmptyState
+          boxed
+          icon={<TableIcon size={44} color={theme.colors.textMuted} />}
+          title={search ? 'Keine Tabellen gefunden' : 'Keine Tabellen vorhanden'}
+          subtitle={search ? 'Passe deine Suche an.' : 'Erstelle eine neue Tabelle oder verwende eine Vorlage, um zu beginnen.'}
+          action={!search && (
+            <button style={{ ...styles.button, ...styles.primaryButton }} onClick={() => setShowCreateModal(true)}>+ Neue Tabelle</button>
+          )}
+        />
+      ) : (
+        <CardGrid>
+          {visibleTables.map(table => {
+            const cols = table.columns?.length || 0;
+            const rows = table.row_count || 0;
+            return (
+              <ResourceCard
+                key={table.id}
+                icon={table.icon
+                  ? <span style={{ fontSize: 20, lineHeight: 1 }}>{table.icon}</span>
+                  : <TableIcon size={22} color={theme.colors.primary} />}
+                iconBg={theme.colors.primaryLight}
+                title={table.name}
+                meta={`${cols} ${cols === 1 ? 'Spalte' : 'Spalten'} · ${rows} ${rows === 1 ? 'Zeile' : 'Zeilen'}`}
+                description={table.description || ''}
+                footerAction={(
+                  <button
+                    style={styles.iconButton}
+                    onClick={(e) => handleDeleteTable(e, table.id)}
+                    onMouseOver={(e) => e.currentTarget.style.color = theme.colors.error}
+                    onMouseOut={(e) => e.currentTarget.style.color = theme.colors.textMuted}
+                    title="Löschen"
+                  >
+                    <TrashIcon size={16} />
+                  </button>
+                )}
+                onClick={() => handleOpenTable(table.id)}
+              />
+            );
+          })}
+        </CardGrid>
       )}
 
       {/* Create Modal */}
