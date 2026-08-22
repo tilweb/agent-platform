@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { theme } from '../config/theme';
 import SkillEditor from '../components/SkillEditor';
+import PageHeader from '../components/overview/PageHeader';
+import SearchInput from '../components/overview/SearchInput';
+import GroupTabs from '../components/overview/GroupTabs';
+import ResourceCard, { CardGrid } from '../components/overview/ResourceCard';
+import EmptyState from '../components/overview/EmptyState';
+import HelpPanel from '../components/overview/HelpPanel';
+import { deriveAccessGroups, filterBySearch, sortByName } from '../components/overview/grouping';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -445,98 +452,14 @@ const styles = {
   },
 };
 
-// Extracted SkillCard component for reuse in both sections
-function SkillCard({ skill, onView, onEdit }) {
-  return (
-    <div
-      style={{ ...styles.card, cursor: 'pointer' }}
-      onClick={() => onView(skill)}
-      onMouseOver={(e) => {
-        e.currentTarget.style.boxShadow = theme.shadows.lg;
-        e.currentTarget.style.borderColor = skill.system ? '#6366f1' : (skill.hasWorkflow ? '#3b82f6' : '#8b5cf6');
-      }}
-      onMouseOut={(e) => {
-        e.currentTarget.style.boxShadow = 'none';
-        e.currentTarget.style.borderColor = theme.colors.border;
-      }}
-    >
-      <div style={styles.cardHeader}>
-        <div style={{
-          ...styles.cardIcon,
-          ...(skill.hasWorkflow ? styles.cardIconWorkflow : styles.cardIconDefault)
-        }}>
-          {skill.hasWorkflow ? (
-            <WorkflowIcon color="#3b82f6" />
-          ) : (
-            <SkillIcon color="#8b5cf6" />
-          )}
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={styles.cardTitle}>{skill.name}</div>
-          <div style={styles.cardMeta}>
-            <span style={styles.cardId}>{skill.id}</span>
-            <span style={styles.cardVersion}>v{skill.version}</span>
-          </div>
-        </div>
-      </div>
-
-      {skill.description && (
-        <p style={styles.cardDescription}>{skill.description}</p>
-      )}
-
-      {/* Badges */}
-      <div style={styles.badges}>
-        {skill.system && (
-          <span style={{ ...styles.badge, ...styles.badgeSystem }}>
-            System
-          </span>
-        )}
-        {skill.hasWorkflow && (
-          <span style={{ ...styles.badge, ...styles.badgeWorkflow }}>
-            Workflow
-          </span>
-        )}
-        {skill.hasOutput && (
-          <span style={{ ...styles.badge, ...styles.badgeOutput }}>
-            Template
-          </span>
-        )}
-        {!skill.enabled && (
-          <span style={{ ...styles.badge, ...styles.badgeDisabled }}>
-            Deaktiviert
-          </span>
-        )}
-      </div>
-
-      {onEdit && (
-        <div style={styles.cardFooter}>
-          <span></span>
-          <div style={styles.cardActions}>
-            <button
-              style={styles.actionButton}
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(skill);
-              }}
-              onMouseOver={(e) => e.currentTarget.style.color = '#10b981'}
-              onMouseOut={(e) => e.currentTarget.style.color = theme.colors.textMuted}
-              title="Bearbeiten"
-            >
-              <EditIcon />
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function SkillsPage() {
   const [skills, setSkills] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeGroup, setActiveGroup] = useState('all');
+  const [helpOpen, setHelpOpen] = useState(false);
   const [detailSkill, setDetailSkill] = useState(null);
   const [editorSkill, setEditorSkill] = useState(null);
   const [showEditor, setShowEditor] = useState(false);
@@ -557,20 +480,17 @@ function SkillsPage() {
   };
 
   // Filter skills by search query
-  const filteredSkills = skills
-    .filter(skill => {
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
-      return (
-        skill.name?.toLowerCase().includes(query) ||
-        skill.description?.toLowerCase().includes(query)
-      );
-    })
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
-
-  // Separate system and custom skills
-  const systemSkills = filteredSkills.filter(s => s.system);
-  const customSkills = filteredSkills.filter(s => !s.system);
+  // Gruppen: Custom (eigene, bearbeitbar) vs System (eingebaut). Skills haben keine
+  // Ownership/Freigaben — daher nur diese zwei Gruppen.
+  const skillGroups = deriveAccessGroups(skills);
+  const skillGroupDefs = [
+    { id: 'all', label: 'Alle', items: skills, always: true },
+    { id: 'custom', label: 'Custom', items: skillGroups.own },
+    { id: 'system', label: 'System', items: skillGroups.system },
+  ];
+  const skillTabs = skillGroupDefs.map((g) => ({ id: g.id, label: g.label, count: g.items.length, always: g.always }));
+  const activeSkillDef = skillGroupDefs.find((g) => g.id === activeGroup) || skillGroupDefs[0];
+  const visibleSkills = sortByName(filterBySearch(activeSkillDef.items, searchQuery));
 
   const handleBackToOverview = () => {
     setDetailSkill(null);
@@ -1004,32 +924,36 @@ function SkillsPage() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <div style={styles.headerContent}>
-          <h1 style={styles.title}>Enhanced Skills</h1>
-          <p style={styles.subtitle}>
-            Skills erweitern Agenten mit spezialisierten Anweisungen, Tools und Workflows.
-          </p>
-        </div>
-        <div style={styles.headerActions}>
-          <button
-            style={styles.reloadButton}
-            onClick={reloadSkills}
-            onMouseOver={(e) => e.currentTarget.style.borderColor = '#8b5cf6'}
-            onMouseOut={(e) => e.currentTarget.style.borderColor = theme.colors.border}
-          >
-            <ReloadIcon />
-            Neu laden
-          </button>
-          <button
-            style={styles.createButton}
-            onClick={() => openEditor(null)}
-          >
-            <PlusIcon />
-            Neuer Skill
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Skills"
+        subtitle="Skills erweitern Agenten mit spezialisierten Anweisungen, Werkzeugen und Abläufen."
+        onToggleHelp={() => setHelpOpen((v) => !v)}
+        helpOpen={helpOpen}
+        actions={(
+          <>
+            <button style={styles.reloadButton} onClick={reloadSkills}>
+              <ReloadIcon /> Neu laden
+            </button>
+            <button style={styles.createButton} onClick={() => openEditor(null)}>
+              <PlusIcon /> Neuer Skill
+            </button>
+          </>
+        )}
+      />
+
+      <HelpPanel
+        open={helpOpen}
+        title="Was sind Skills?"
+        paragraphs={[
+          'Ein Skill erweitert einen Agenten für eine bestimmte Aufgabe — mit zusätzlichen Anweisungen, Werkzeugen und optional einem festen Ablauf oder einer Dokumentvorlage. Agenten nutzen passende Skills automatisch oder auf Anfrage.',
+        ]}
+        points={[
+          { term: 'Custom', desc: 'Selbst erstellte Skills, die du bearbeiten kannst.' },
+          { term: 'System', desc: 'Fest eingebaute Skills der Plattform (nicht bearbeitbar).' },
+          { term: 'Workflow', desc: 'Der Skill führt einen mehrstufigen Ablauf aus.' },
+          { term: 'Template', desc: 'Der Skill erzeugt ein Dokument nach einer Vorlage.' },
+        ]}
+      />
 
       {error && (
         <div style={styles.error}>
@@ -1043,80 +967,58 @@ function SkillsPage() {
         </div>
       )}
 
-      <div style={styles.searchContainer}>
-        <input
-          style={styles.searchInput}
-          type="text"
-          placeholder="Skills durchsuchen..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+      <div style={{ marginBottom: theme.spacing.lg }}>
+        <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Skills suchen…" />
+      </div>
+
+      <GroupTabs tabs={skillTabs} active={activeGroup} onChange={setActiveGroup} />
+
+      {visibleSkills.length === 0 ? (
+        <EmptyState
+          boxed
+          icon={<SkillIcon size={44} color={theme.colors.textMuted} />}
+          title={searchQuery ? 'Keine Skills gefunden' : 'Keine Skills in dieser Gruppe'}
+          subtitle={searchQuery ? 'Passe deine Suche oder die Gruppe an.' : 'Erstelle einen neuen Skill, um zu beginnen.'}
+          action={!searchQuery && (
+            <button style={styles.createButton} onClick={() => openEditor(null)}><PlusIcon /> Neuer Skill</button>
+          )}
         />
-      </div>
-
-      {filteredSkills.length === 0 ? (
-        <div style={styles.emptyState}>
-          <div style={{ fontSize: '48px', marginBottom: theme.spacing.md, opacity: 0.5 }}>
-            <SkillIcon />
-          </div>
-          <div style={{ fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold, marginBottom: theme.spacing.sm }}>
-            {searchQuery ? 'Keine Skills gefunden' : 'Keine Skills vorhanden'}
-          </div>
-          <div style={{ color: theme.colors.textMuted, marginBottom: theme.spacing.lg }}>
-            {searchQuery
-              ? 'Versuche einen anderen Suchbegriff.'
-              : 'Erstelle YAML-Dateien in data/skills/custom/ um Skills hinzuzufügen.'
-            }
-          </div>
-        </div>
       ) : (
-        <>
-          {/* Custom Skills Section */}
-          {customSkills.length > 0 && (
-            <>
-              <div style={{ ...styles.sectionHeader, ...styles.sectionHeaderFirst }}>
-                <div style={styles.sectionHeaderTitle}>Custom Skills ({customSkills.length})</div>
-                <div style={styles.sectionHeaderSubtitle}>Von dir erstellte und bearbeitbare Skills</div>
-              </div>
-              <div style={styles.grid}>
-                {customSkills.map((skill) => (
-                  <SkillCard
-                    key={skill.id}
-                    skill={skill}
-                    onView={viewSkillDetails}
-                    onEdit={openEditor}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* System Skills Section */}
-          {systemSkills.length > 0 && (
-            <>
-              <div style={styles.sectionHeader}>
-                <div style={styles.sectionHeaderTitle}>System Skills ({systemSkills.length})</div>
-                <div style={styles.sectionHeaderSubtitle}>Vom System bereitgestellte Skills (nicht bearbeitbar)</div>
-              </div>
-              <div style={styles.grid}>
-                {systemSkills.map((skill) => (
-                  <SkillCard
-                    key={skill.id}
-                    skill={skill}
-                    onView={viewSkillDetails}
-                    onEdit={null}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </>
+        <CardGrid>
+          {visibleSkills.map((skill) => {
+            const badges = [];
+            if (skill.hasWorkflow) badges.push({ label: 'Workflow', variant: 'info' });
+            if (skill.hasOutput) badges.push({ label: 'Template', variant: 'primary' });
+            if (!skill.enabled) badges.push({ label: 'Deaktiviert', variant: 'muted' });
+            if (skill.system) badges.push({ label: 'System', variant: 'primary' });
+            return (
+              <ResourceCard
+                key={skill.id}
+                icon={skill.hasWorkflow
+                  ? <WorkflowIcon color={theme.colors.info} size={22} />
+                  : <SkillIcon color={theme.colors.primary} size={22} />}
+                iconBg={skill.hasWorkflow ? theme.colors.infoLight : theme.colors.primaryLight}
+                title={skill.name}
+                meta={`${skill.id} · v${skill.version}`}
+                description={skill.description || ''}
+                badges={badges}
+                footerAction={!skill.system ? (
+                  <button
+                    style={styles.actionButton}
+                    onClick={(e) => { e.stopPropagation(); openEditor(skill); }}
+                    onMouseOver={(e) => e.currentTarget.style.color = theme.colors.success}
+                    onMouseOut={(e) => e.currentTarget.style.color = theme.colors.textMuted}
+                    title="Bearbeiten"
+                  >
+                    <EditIcon />
+                  </button>
+                ) : null}
+                onClick={() => viewSkillDetails(skill)}
+              />
+            );
+          })}
+        </CardGrid>
       )}
-
-      <div style={styles.hint}>
-        <strong>Hinweis:</strong> Skills werden als YAML-Dateien in{' '}
-        <code style={styles.code}>data/skills/custom/[skill-id]/SKILL.yaml</code> verwaltet.
-        Änderungen erfordern einen Neustart oder "Neu laden".
-      </div>
 
       {/* Skill Editor */}
       {showEditor && (
