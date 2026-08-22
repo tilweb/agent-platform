@@ -1,12 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import AccessManager from '../components/AccessManager';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useProviders } from '../hooks/useProviders';
-import { LockIcon } from '../components/Icons';
+import { LockIcon, RobotIcon, PlugIcon } from '../components/Icons';
 import RoleBadge from '../components/RoleBadge';
 import ReadOnlyBanner from '../components/ReadOnlyBanner';
 import ConfirmModal from '../components/ConfirmModal';
+import PageHeader from '../components/overview/PageHeader';
+import SearchInput from '../components/overview/SearchInput';
+import GroupTabs from '../components/overview/GroupTabs';
+import ResourceCard, { CardGrid } from '../components/overview/ResourceCard';
+import EmptyState from '../components/overview/EmptyState';
+import HelpPanel from '../components/overview/HelpPanel';
+import { deriveAccessGroups, filterBySearch, sortByName } from '../components/overview/grouping';
 
 // ==========================================
 // Styles
@@ -711,7 +719,12 @@ function AgentsPage() {
 
   // Detail view state
   const [activeTab, setActiveTab] = useState('tools');
-  const [hoveredCard, setHoveredCard] = useState(null);
+
+  // Overview state (Suche / Gruppen-Tab / Hilfe)
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [activeGroup, setActiveGroup] = useState('all');
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Provider hook for model selection
   const { enabledProviders, getModelsForAgent, getExtendedCapabilities } = useProviders();
@@ -1614,23 +1627,55 @@ function AgentsPage() {
   // RENDER: Overview (Default)
   // ==========================================
 
-  const userAgents = agents.filter(a => !a.system);
-  const systemAgents = agents.filter(a => a.system);
+  const groups = deriveAccessGroups(agents);
+  const groupDefs = [
+    { id: 'all', label: 'Alle', items: agents, always: true },
+    { id: 'own', label: 'Eigene', items: groups.own },
+    { id: 'shared', label: 'Geteilt', items: groups.shared },
+    { id: 'locked', label: 'Gesperrt', items: groups.locked },
+    { id: 'system', label: 'System', items: groups.system },
+  ];
+  const tabs = groupDefs.map((g) => ({ id: g.id, label: g.label, count: g.items.length, always: g.always }));
+  const activeDef = groupDefs.find((g) => g.id === activeGroup) || groupDefs[0];
+  const visibleAgents = sortByName(filterBySearch(activeDef.items, search));
+
+  const secondaryBtn = {
+    ...styles.buttonSecondary,
+    display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm,
+  };
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <div style={styles.headerContent}>
-          <h1 style={styles.title}>Agenten</h1>
-          <p style={styles.subtitle}>
-            Verwalte die verfügbaren KI-Agenten und ihre Konfigurationen.
-          </p>
-        </div>
-        <button style={styles.button} onClick={handleCreateNew}>
-          <PlusIcon />
-          Neuer Agent
-        </button>
-      </div>
+      <PageHeader
+        title="Agenten"
+        subtitle="Verwalte die verfügbaren KI-Agenten und ihre Konfigurationen."
+        onToggleHelp={() => setHelpOpen((v) => !v)}
+        helpOpen={helpOpen}
+        actions={(
+          <>
+            <button style={secondaryBtn} onClick={() => navigate('/tools')} title="Werkzeuge, die Agenten nutzen können">
+              <PlugIcon size={16} /> Tool-Katalog
+            </button>
+            <button style={styles.button} onClick={handleCreateNew}>
+              <PlusIcon /> Neuer Agent
+            </button>
+          </>
+        )}
+      />
+
+      <HelpPanel
+        open={helpOpen}
+        title="Was sind Agenten?"
+        paragraphs={[
+          'Ein Agent ist ein KI-Assistent für eine bestimmte Aufgabe — mit eigenen Anweisungen, Werkzeugen und Fähigkeiten. Du startest ihn im Chat, oder er wird automatisch für passende Anfragen genutzt.',
+        ]}
+        points={[
+          { term: 'Eigene', desc: 'Agenten, die dir gehören und die du bearbeiten kannst.' },
+          { term: 'Geteilt', desc: 'Von anderen für dich freigegeben — je nach Rolle nur ansehen oder mitbearbeiten.' },
+          { term: 'Gesperrt', desc: 'Existieren, aber du hast (noch) keinen Zugriff. Zugriff bei der genannten Stelle anfragen.' },
+          { term: 'System', desc: 'Fest eingebaute Agenten der Plattform — als Vorlage/Katalog nutzbar.' },
+        ]}
+      />
 
       {error && (
         <div style={styles.error}>
@@ -1644,161 +1689,55 @@ function AgentsPage() {
         </div>
       )}
 
-      {/* User Agents Section */}
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <h2 style={styles.sectionTitle}>Eigene Agenten</h2>
-          <span style={styles.sectionCount}>{userAgents.length}</span>
-        </div>
+      <div style={{ marginBottom: theme.spacing.lg }}>
+        <SearchInput value={search} onChange={setSearch} placeholder="Agenten suchen…" />
+      </div>
 
-        {userAgents.length === 0 ? (
-          <div style={styles.emptyState}>
-            <p style={styles.emptyStateText}>
-              Du hast noch keine eigenen Agenten erstellt.
-            </p>
-            <button style={styles.button} onClick={handleCreateNew}>
-              <PlusIcon />
-              Ersten Agent erstellen
-            </button>
-          </div>
-        ) : (
-          <div style={styles.cardGrid}>
-            {userAgents.map((agent) => (
-              <AgentCard
+      <GroupTabs tabs={tabs} active={activeGroup} onChange={setActiveGroup} />
+
+      {visibleAgents.length === 0 ? (
+        <EmptyState
+          boxed
+          icon={<RobotIcon size={44} color={theme.colors.textMuted} />}
+          title={search ? 'Keine Agenten gefunden' : 'Keine Agenten in dieser Gruppe'}
+          subtitle={search ? 'Passe deine Suche oder die Gruppe an.' : 'Erstelle einen neuen Agenten, um zu beginnen.'}
+          action={!search && (
+            <button style={styles.button} onClick={handleCreateNew}><PlusIcon /> Neuer Agent</button>
+          )}
+        />
+      ) : (
+        <CardGrid>
+          {visibleAgents.map((agent) => {
+            const colors = agentColors[agent.id] || agentColors.default;
+            const locked = agent.accessible === false;
+            const isInactive = agent.active === false;
+            const ownerLabel = agent.owner
+              ? (agent.owner.principalType === 'group' ? `Gruppe ${agent.owner.name}` : agent.owner.name)
+              : 'Admin';
+            // Rollen-Badge nur bei GETEILTEN Agenten (Zugriffsstufe) — bei eigenen
+            // wäre „Owner" auf jeder Kachel redundant.
+            const sharedRole = !agent.system && agent.role && agent.role !== 'owner' ? agent.role : null;
+            const badges = [];
+            if (isInactive) badges.push({ label: 'Inaktiv', variant: 'muted' });
+            if (agent.delegatable && !isInactive) badges.push({ label: 'Delegierbar', variant: 'success' });
+            if (agent.system) badges.push({ label: 'System', variant: 'primary' });
+            return (
+              <ResourceCard
                 key={agent.id}
-                agent={agent}
+                icon={<AgentIcon agentId={agent.id} color={locked ? theme.colors.textMuted : colors.color} size={22} />}
+                iconBg={colors.bg}
+                title={agent.name}
+                titleAccessory={sharedRole ? <RoleBadge role={sharedRole} size="sm" /> : null}
+                description={typeof agent.description === 'string' ? agent.description : ''}
+                badges={badges}
+                locked={locked}
+                lockedHint={`Zugriff anfragen bei ${ownerLabel}`}
                 onClick={() => handleSelectAgent(agent)}
-                isHovered={hoveredCard === agent.id}
-                onMouseEnter={() => setHoveredCard(agent.id)}
-                onMouseLeave={() => setHoveredCard(null)}
               />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Divider */}
-      <div style={styles.sectionDivider} />
-
-      {/* System Agents Section */}
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <h2 style={styles.sectionTitle}>System-Agenten</h2>
-          <span style={styles.sectionCount}>{systemAgents.length}</span>
-        </div>
-
-        <div style={styles.cardGrid}>
-          {systemAgents.map((agent) => (
-            <AgentCard
-              key={agent.id}
-              agent={agent}
-              onClick={() => handleSelectAgent(agent)}
-              isHovered={hoveredCard === agent.id}
-              onMouseEnter={() => setHoveredCard(agent.id)}
-              onMouseLeave={() => setHoveredCard(null)}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// Agent Card Component
-// ==========================================
-
-function AgentCard({ agent, onClick, isHovered, onMouseEnter, onMouseLeave }) {
-  const colors = agentColors[agent.id] || agentColors.default;
-  const isInactive = agent.active === false;
-  const locked = agent.accessible === false;
-  const ownerLabel = agent.owner
-    ? (agent.owner.principalType === 'group' ? `Gruppe ${agent.owner.name}` : agent.owner.name)
-    : 'Admin';
-
-  return (
-    <div
-      style={{
-        ...styles.card,
-        ...(isHovered && !locked ? styles.cardHover : {}),
-        ...(isInactive ? { opacity: 0.6 } : {}),
-        ...(locked ? {
-          opacity: 0.65,
-          cursor: 'default',
-          backgroundColor: theme.colors.background,
-        } : {}),
-        position: 'relative',
-      }}
-      onClick={locked ? undefined : onClick}
-      onMouseEnter={locked ? undefined : onMouseEnter}
-      onMouseLeave={locked ? undefined : onMouseLeave}
-      title={locked ? `Kein Zugriff — anfragen bei ${ownerLabel}` : undefined}
-    >
-      {locked && (
-        <div style={{ position: 'absolute', top: theme.spacing.md, right: theme.spacing.md, color: theme.colors.textMuted }}>
-          <LockIcon size={16} />
-        </div>
+            );
+          })}
+        </CardGrid>
       )}
-      <div style={styles.cardHeader}>
-        <div style={{ ...styles.cardIcon, backgroundColor: locked ? theme.colors.surfaceHover : colors.bg }}>
-          <AgentIcon agentId={agent.id} color={locked ? theme.colors.textMuted : colors.color} />
-        </div>
-        <div>
-          <div style={{ ...styles.cardTitleRow, display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
-            <span style={styles.cardTitle}>{agent.name}</span>
-            {!locked && !agent.system && agent.role && <RoleBadge role={agent.role} size="sm" />}
-          </div>
-        </div>
-      </div>
-
-      {!locked && (
-        <p style={styles.cardDescription}>
-          {typeof agent.description === 'string' ? agent.description : ''}
-        </p>
-      )}
-
-      {!locked && agent.capabilities && Array.isArray(agent.capabilities) && agent.capabilities.length > 0 && (
-        <>
-          <div style={styles.capabilitiesTitle}>Fähigkeiten</div>
-          <div style={styles.capabilities}>
-            {agent.capabilities.map((cap, index) => (
-              <span key={index} style={styles.capability}>
-                {typeof cap === 'string' ? cap : String(cap)}
-              </span>
-            ))}
-          </div>
-        </>
-      )}
-
-      <div style={styles.cardFooter}>
-        {locked ? (
-          <span style={{
-            fontStyle: 'italic',
-            color: theme.colors.textMuted,
-            fontSize: theme.typography.sizes.sm,
-          }}>
-            Zugriff anfragen bei {ownerLabel}
-          </span>
-        ) : (
-          <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-            {isInactive && (
-              <span style={{ ...styles.badge, ...styles.badgeMuted }}>
-                Inaktiv
-              </span>
-            )}
-            {agent.delegatable && !isInactive && (
-              <span style={{ ...styles.badge, ...styles.badgeDelegatable }}>
-                Delegierbar
-              </span>
-            )}
-            {agent.system && (
-              <span style={{ ...styles.badge, ...styles.badgeSystem }}>
-                System
-              </span>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
