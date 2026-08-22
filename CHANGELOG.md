@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-08-22
+
+### Übersichtsseiten: Kachel-Redesign — geteiltes Scaffold + Agenten-Pilot
+Erster Schritt zu einem einheitlichen, kompakten Kacheldesign für die Übersichtsseiten (Agenten, Skills,
+Knowledge Base, Tabellen), die bisher riesige, uneinheitliche Kacheln und kaum Überblick hatten.
+- **Neue geteilte Komponenten** in `frontend/src/components/overview/`: `PageHeader`, `SearchInput`,
+  `GroupTabs` (Pill-Tabs mit Zählern), `ResourceCard`/`CardGrid`, `Badge`, `EmptyState`, `HelpPanel` +
+  `grouping.js` (`deriveAccessGroups`/`filterBySearch`/`sortByName`). Bisher rollte jede Seite Card/Tabs/Suche
+  inline — jetzt ein wiederverwendbares Scaffold.
+- **Agenten-Seite als Referenz umgestellt**: Suche + Gruppen-Tabs (Alle · Eigene · Geteilt · Gesperrt · System
+  mit Zählern) + kompakte Kacheln (Icon · Name · 2-Zeilen-Beschreibung · Status-Badges). Rollen-Badge nur bei
+  **geteilten** Agenten (nicht redundant „Owner" auf jeder eigenen Kachel), keine Fähigkeiten-Zahl mehr.
+  `?`-Hilfe-Panel (erklärt Agenten + die Gruppen) und **Tool-Katalog**-Einstieg (→ `/tools`). Editor/Detail
+  unverändert. Skills, Knowledge Base und Tabellen folgen im gleichen Muster.
+
 ## 2026-08-21
 
 ### Chat: UX — Auto-Scroll folgt nur noch, wenn man unten ist (kein Zucken bei Tool-Calls)
