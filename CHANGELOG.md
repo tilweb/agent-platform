@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-24
+
+### Echo-Loop: L-VAR Reiter 1 arbeitsfähig — Umbenennen-Cockpit interaktiv + persistiert (Oberflächen-Korrektur, Scheibe 1)
+**Kontext:** Seb (Workplace-Vertriebspartner) hat die PAKET_2-Umsetzung zurückgewiesen — PAKET_2 lieferte eine **voll interaktive Arbeitsoberfläche** (der Explorer mit abhaken/Feedback/Status je Zeile), wir hatten daraus eine **read-only-Hülle** gemacht. Ziel 1: die Workplace-App als skalierbares Kundenprodukt muss eine **echte Arbeitsoberfläche** sein (Kunde arbeitet selbst darin). Ziel 2 (später): Export zurück in Sebs lokales F&E-Umfeld. Die validierte Analyse-Engine bleibt; wir ergänzen die fehlende Interaktions-/Persistenz-Schicht.
+
+- **Arbeitsstand-Modell** (`lvar/stand.ts`): `LvarStand` = flache `Token→Wert`-Map (Sebs `window.STAND`, serverseitig). Append-only Token-IDs (`<karte>-st/-fb/-hak`, `NK-fb`). `sanitizeStand` hält die Ablage typrein + gedeckelt.
+- **Service + Route**: `lvarFuerProzess` liefert zusätzlich `stand` + `version` (aus `prozess.data.lvarStand`); neue `PUT /prozesse/:id/lvar-stand` speichert den Stand mit Optimistic-Locking.
+- **Reiter 1 interaktiv** (`LvarExplorer.jsx`): Umbenennen-Cockpit mit **Status-Select** (offen/in Arbeit/erledigt/Frage/anders gebaut) + **Feedback-Textarea** + **Vorabhaken** je Karte (D-085-gesperrte bleiben gesperrt), **NK-Feedback**-Feld, **Fortschrittsbalken** „X von N erledigt" (Design-System Teal/Lavendel).
+- **Wiring** (`ProzessDetail.jsx` + `api.js`): Stand laden/ändern/**debounced speichern** (Save-Status-Anzeige), `saveLvarStand`. Read-only bei fehlender Editier-Berechtigung.
+- Backend-Suite 227 grün; Frontend-Build grün, eslint 0 Errors. Reiter 2/3 (Steckbriefe/CFG editierbar) + Export = nächste Scheiben (nach Seb-Abstimmung).
+
 ## 2026-08-22
 
 ### Übersichtsseiten: Kachel-Redesign auf Skills, Knowledge Base & Tabellen ausgerollt

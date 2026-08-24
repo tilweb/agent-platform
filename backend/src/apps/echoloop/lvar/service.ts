@@ -14,16 +14,19 @@
 import { getProzess } from '../storage';
 import { listVariablen, listProzessItems } from '../extract/persist';
 import { assembleLvar, type LvarErgebnis } from './assemble';
+import { sanitizeStand, type LvarStand } from './stand';
 import type { NkNamensmodul } from './nk';
 import type { CfgTarget, CfgExcel } from './cfg';
 
 export interface LvarLeer { leer: true; grund: string; }
+/** Berechnetes Ergebnis + überlagerter menschlicher Arbeitsstand (Sebs window.STAND). */
+export type LvarAnsicht = LvarErgebnis & { stand: LvarStand; version: number };
 
-export async function lvarFuerProzess(prozessId: string): Promise<LvarErgebnis | LvarLeer> {
+export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | LvarLeer> {
   const prozess = await getProzess(prozessId);
   if (!prozess) return { leer: true, grund: 'Prozess nicht gefunden' };
 
-  const data = prozess as unknown as { lvarNamensmodul?: NkNamensmodul; lvarCfg?: { targets: CfgTarget[]; excel: CfgExcel[] }; namensraum?: string; familie?: string };
+  const data = prozess as unknown as { lvarNamensmodul?: NkNamensmodul; lvarCfg?: { targets: CfgTarget[]; excel: CfgExcel[] }; lvarStand?: unknown; namensraum?: string; familie?: string };
   const namensmodul = data.lvarNamensmodul;
   if (!namensmodul || !Array.isArray(namensmodul.map) || namensmodul.map.length === 0) {
     return { leer: true, grund: 'Kein Namensmodul hinterlegt — der Explorer zeigt nur das Variablen-Inventar (Reiter 1 Ist).' };
@@ -33,7 +36,7 @@ export async function lvarFuerProzess(prozessId: string): Promise<LvarErgebnis |
   const fundorte = variablen.map((v) => ({ name: v.name, p: v.p }));
   const callGraph = items.flatMap((it) => (it.aufrufe ?? []).map((nach) => ({ von: it.nr, nach })));
 
-  return assembleLvar({
+  const ergebnis = assembleLvar({
     namensraum: data.namensraum ?? namensmodul.namensraum,
     familie: data.familie ?? namensmodul.familie,
     namensmodul,
@@ -41,4 +44,7 @@ export async function lvarFuerProzess(prozessId: string): Promise<LvarErgebnis |
     callGraph,
     cfg: data.lvarCfg,
   });
+
+  // Menschlicher Arbeitsstand (abhaken/Feedback/Status) als Overlay + Version fürs Optimistic-Locking.
+  return { ...ergebnis, stand: sanitizeStand(data.lvarStand), version: prozess.version ?? 1 };
 }

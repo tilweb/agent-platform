@@ -10,6 +10,7 @@ import {
 import { VersionConflictError } from '../concurrency';
 import { denyIfNotAppEditor } from './_shared';
 import { lvarFuerProzess } from '../lvar/service';
+import { sanitizeStand } from '../lvar/stand';
 
 export const prozesseRoutes = new Hono();
 
@@ -17,6 +18,25 @@ export const prozesseRoutes = new Hono();
 prozesseRoutes.get('/prozesse/:id/lvar', async (c) => {
   const lvar = await lvarFuerProzess(c.req.param('id'));
   return c.json({ lvar });
+});
+
+/** Menschlichen L-VAR-Arbeitsstand (abhaken/Feedback/Status) speichern — Optimistic-Locking. */
+prozesseRoutes.put('/prozesse/:id/lvar-stand', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+  try {
+    const body = await c.req.json<{ stand?: unknown; expectedVersion?: number; force?: boolean }>();
+    const prozess = await updateProzess(
+      c.req.param('id'),
+      { lvarStand: sanitizeStand(body?.stand) } as never,
+      { expectedVersion: body?.expectedVersion, force: body?.force },
+    );
+    if (!prozess) return c.json({ error: 'Prozess nicht gefunden' }, 404);
+    return c.json({ version: prozess.version });
+  } catch (err) {
+    if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: (err.current as { version?: number })?.version }, 409);
+    return c.json({ error: 'Stand speichern fehlgeschlagen' }, 500);
+  }
 });
 
 prozesseRoutes.get('/prozesse/:id', async (c) => {

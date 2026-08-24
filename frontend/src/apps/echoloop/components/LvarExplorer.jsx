@@ -3,10 +3,19 @@ import { theme } from '../../../config/theme';
 
 /**
  * L-VAR-Explorer (Reiter 1 Variablen/NK/Kopplung · 2 Steckbriefe · 3 CFG).
- * Read-only-Darstellung des `lvar`-Ergebnisses (assembleLvar) — Kern der Phase 2.
+ * Reiter 1 ist arbeitsfähig: der menschliche Stand (Status/Feedback/Vorabhaken)
+ * wird über props.stand + props.onStand(token, value) controlled — Sebs
+ * window.STAND-Modell, serverseitig persistiert. props.readOnly bei Freigabe.
  * props.lvar = LvarErgebnis | { leer, grund }
  */
 const PURPLE = '#452C71';
+const TEAL = '#00C7D2';   // Design-System: Fortschritt/Soll-Erfüllung
+const LAV = '#E7DFF7';    // Design-System: Grund/Lavendel
+
+const STATUS_OPT = [
+  { v: 'offen', l: 'offen' }, { v: 'in_arbeit', l: 'in Arbeit' }, { v: 'erledigt', l: 'erledigt' },
+  { v: 'frage', l: 'Frage' }, { v: 'anders_gebaut', l: 'anders gebaut' },
+];
 
 const REITER = [
   { id: 'variablen', label: 'Variablen & NK' },
@@ -34,14 +43,36 @@ const s = {
   badge: { fontSize: '0.68rem', padding: `1px 6px`, borderRadius: theme.borderRadius.full, fontWeight: theme.typography.weights.semibold, whiteSpace: 'nowrap' },
   muted: { color: theme.colors.textMuted, fontSize: theme.typography.sizes.xs },
   scroll: { overflowX: 'auto' },
+  select: { padding: `3px ${theme.spacing.sm}`, fontSize: '0.7rem', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
+  fb: { width: '100%', minWidth: 120, minHeight: 30, padding: `3px ${theme.spacing.sm}`, fontSize: '0.7rem', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none', resize: 'vertical', fontFamily: 'inherit' },
+  chk: { accentColor: PURPLE, cursor: 'pointer' },
+  progWrap: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.sm },
+  progBar: { flex: 1, height: 8, background: LAV, borderRadius: 4, overflow: 'hidden', maxWidth: 260 },
+  progFill: { height: '100%', background: TEAL },
 };
 
 function Badge({ children, ton }) {
   return <span style={{ ...s.badge, backgroundColor: `${ton}22`, color: ton }}>{children}</span>;
 }
 
-function Variablen({ nk, kopplung }) {
+/** Fortschrittsbalken „X von N erledigt (Y %)" (Design-System teal/lavendel). */
+function Fortschritt({ erledigt, gesamt }) {
+  const pct = gesamt ? Math.round((erledigt / gesamt) * 100) : 0;
+  return (
+    <div style={s.progWrap}>
+      <div style={s.progBar}><div style={{ ...s.progFill, width: `${pct}%` }} /></div>
+      <span style={s.muted}>{erledigt} von {gesamt} erledigt ({pct} %)</span>
+    </div>
+  );
+}
+
+function Variablen({ nk, kopplung, stand, onStand, readOnly }) {
   const q = nk.entscheidungsquote;
+  const val = (token, fallback) => (stand[token] !== undefined ? stand[token] : fallback);
+  const statusOf = (k) => val(`${k.id}-st`, k.status);
+  const hakenOf = (k) => (k.gesperrt ? false : !!val(`${k.id}-hak`, k.vorabHaken));
+  const erledigt = kopplung.karten.filter((k) => statusOf(k) === 'erledigt' || hakenOf(k)).length;
+
   return (
     <>
       <div style={s.card}>
@@ -56,6 +87,11 @@ function Variablen({ nk, kopplung }) {
         <div style={{ ...s.muted, marginTop: theme.spacing.sm }}>
           {nk.zielnamen} Ist-Namen → {nk.entschieden} Zielnamen · entschieden {q.entschieden} · umformatiert {q.umformatiert} ({q.quoteUmformatiert}%) · fertig {q.fertig}
           {nk.sperrend && <span style={{ color: theme.colors.error }}> · ⛔ harter Kanon-Verstoß</span>}
+        </div>
+        <div style={{ marginTop: theme.spacing.sm }}>
+          <label style={s.muted}>NK-Feedback (zur Regel selbst):</label>
+          <textarea style={s.fb} value={val('NK-fb', '')} disabled={readOnly}
+            placeholder="Anmerkung zum NK-Gate / zu Regelfällen…" onChange={(e) => onStand('NK-fb', e.target.value)} />
         </div>
       </div>
 
@@ -74,20 +110,31 @@ function Variablen({ nk, kopplung }) {
 
       <div style={s.card}>
         <div style={s.title}>Umbenennen-Cockpit ({kopplung.karten.length})</div>
-        <div style={s.scroll}>
+        <Fortschritt erledigt={erledigt} gesamt={kopplung.karten.length} />
+        <div style={{ ...s.scroll, marginTop: theme.spacing.sm }}>
           <table style={s.table}>
-            <thead><tr><th style={s.th}>Alt</th><th style={s.th}>Neu</th><th style={s.th}>Rolle</th><th style={s.th}>Prozesse</th><th style={s.th}>Status</th></tr></thead>
+            <thead><tr><th style={s.th}>Alt → Neu</th><th style={s.th}>Rolle</th><th style={s.th}>Prozesse</th><th style={s.th}>Vorab</th><th style={s.th}>Status</th><th style={s.th}>Feedback</th></tr></thead>
             <tbody>
               {kopplung.karten.map((k) => (
                 <tr key={k.id}>
-                  <td style={s.td}>{k.alt}</td>
-                  <td style={s.td}><strong>{k.neu}</strong></td>
+                  <td style={s.td}>{k.alt} → <strong>{k.neu}</strong></td>
                   <td style={s.td}>{k.rolle}</td>
                   <td style={s.td}>{k.prozesse.join(', ') || '—'}</td>
                   <td style={s.td}>
-                    {k.gesperrt ? <Badge ton={theme.colors.warning}>gesperrt (Reiter 3)</Badge>
-                      : k.vorabHaken ? <Badge ton={theme.colors.success}>✓ vorab</Badge>
-                      : <Badge ton={theme.colors.textMuted}>{k.status}</Badge>}
+                    {k.gesperrt
+                      ? <Badge ton={theme.colors.warning} >gesperrt</Badge>
+                      : <input type="checkbox" style={s.chk} disabled={readOnly}
+                          checked={hakenOf(k)} onChange={(e) => onStand(`${k.id}-hak`, e.target.checked)} />}
+                  </td>
+                  <td style={s.td}>
+                    <select style={s.select} value={statusOf(k)} disabled={readOnly} onChange={(e) => onStand(`${k.id}-st`, e.target.value)}>
+                      {STATUS_OPT.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+                    </select>
+                  </td>
+                  <td style={{ ...s.td, minWidth: 160 }}>
+                    <textarea style={s.fb} value={val(`${k.id}-fb`, '')} disabled={readOnly}
+                      placeholder={k.gesperrt ? 'Kreuz-Widerspruch am Panel klären…' : 'Feedback / anders gebaut…'}
+                      onChange={(e) => onStand(`${k.id}-fb`, e.target.value)} />
                   </td>
                 </tr>
               ))}
@@ -215,7 +262,7 @@ function Cfg({ cfg, pfad }) {
   );
 }
 
-export default function LvarExplorer({ lvar }) {
+export default function LvarExplorer({ lvar, stand = {}, onStand = () => {}, readOnly = false }) {
   const [reiter, setReiter] = useState('variablen');
   if (!lvar) return null;
   if (lvar.leer) return <div style={s.card}><div style={s.muted}>{lvar.grund}</div></div>;
@@ -227,7 +274,7 @@ export default function LvarExplorer({ lvar }) {
           <button key={r.id} style={{ ...s.tab, ...(reiter === r.id ? s.tabActive : {}) }} onClick={() => setReiter(r.id)}>{r.label}</button>
         ))}
       </div>
-      {reiter === 'variablen' && <Variablen nk={lvar.nk} kopplung={lvar.kopplung} />}
+      {reiter === 'variablen' && <Variablen nk={lvar.nk} kopplung={lvar.kopplung} stand={stand} onStand={onStand} readOnly={readOnly} />}
       {reiter === 'steckbriefe' && <Steckbriefe steckbriefe={lvar.steckbriefe} />}
       {reiter === 'einbau' && <Einbau einbau={lvar.einbau} />}
       {reiter === 'cfg' && <Cfg cfg={lvar.cfg} pfad={lvar.pfad} />}

@@ -33,6 +33,8 @@ export const echoloopApi = {
   listBaustaende: (prozessId) => apiGet(`${base}/prozesse/${prozessId}/baustaende`).then(json).then((d) => d.baustaende),
   // L-VAR-Explorer (Reiter 1 NK/Kopplung · 2 Steckbriefe · 3 CFG) einer Familie.
   getLvar: (prozessId) => apiGet(`${base}/prozesse/${prozessId}/lvar`).then(json).then((d) => d.lvar),
+  // Menschlichen L-VAR-Arbeitsstand speichern (abhaken/Feedback/Status) — Optimistic-Locking.
+  saveLvarStand: (prozessId, stand, expectedVersion) => apiPut(`${base}/prozesse/${prozessId}/lvar-stand`, { stand, expectedVersion }).then(json),
 
   // Analyse (Upload) — SSE-Stream mit Phasen-Fortschritt.
   // onEvent(phase, data) je Zwischenschritt; Rückgabe = fertiger Baustand.

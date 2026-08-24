@@ -83,6 +83,11 @@ export default function ProzessDetail() {
   const [rgaSub, setRgaSub] = useState('profil');
   const [lvar, setLvar] = useState(null);
   const [lvarLoading, setLvarLoading] = useState(false);
+  const [lvarStand, setLvarStand] = useState({});
+  const [lvarVersion, setLvarVersion] = useState(1);
+  const [lvarSave, setLvarSave] = useState(''); // '' | 'saving' | 'saved' | 'error'
+  const lvarSaveRef = useRef(null);
+  const lvarStandRef = useRef({});
   const [modulOpen, setModulOpen] = useState(false);
   const [modulText, setModulText] = useState('');
   const [modulSaving, setModulSaving] = useState(false);
@@ -97,16 +102,41 @@ export default function ProzessDetail() {
 
   useEffect(() => { load(); }, [id]);
 
+  // Berechnetes Ergebnis + menschlichen Arbeitsstand übernehmen.
+  function applyLvar(fresh) {
+    setLvar(fresh);
+    if (fresh && !fresh.leer) {
+      const st = fresh.stand || {};
+      setLvarStand(st); lvarStandRef.current = st;
+      setLvarVersion(fresh.version || 1); setLvarSave('');
+    }
+  }
+
   // L-VAR-Explorer lazy laden, sobald der Tab zuerst geöffnet wird.
   useEffect(() => {
     if (tab !== 'lvar' || lvar || lvarLoading) return;
     setLvarLoading(true);
     echoloopApi.getLvar(id)
-      .then(setLvar)
+      .then(applyLvar)
       .catch(() => setLvar({ leer: true, grund: 'L-VAR konnte nicht geladen werden.' }))
       .finally(() => setLvarLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Einmal-Fetch beim ersten Öffnen; lvar/lvarLoading als Guard, nicht als Trigger.
   }, [tab, id]);
+
+  // Ein Feld des Arbeitsstands ändern → debounced serverseitig speichern (Optimistic-Locking).
+  function onStand(token, value) {
+    const next = { ...lvarStandRef.current, [token]: value };
+    lvarStandRef.current = next; setLvarStand(next); setLvarSave('saving');
+    clearTimeout(lvarSaveRef.current);
+    lvarSaveRef.current = setTimeout(async () => {
+      try {
+        const r = await echoloopApi.saveLvarStand(id, lvarStandRef.current, lvarVersion);
+        setLvarVersion(r.version || lvarVersion + 1); setLvarSave('saved');
+      } catch (e) {
+        setLvarSave(e.status === 409 ? 'conflict' : 'error');
+      }
+    }, 600);
+  }
 
   async function load() {
     try {
@@ -164,7 +194,7 @@ export default function ProzessDetail() {
       await echoloopApi.updateProzess(id, { lvarNamensmodul: namensmodul, ...(cfg ? { lvarCfg: cfg } : {}), expectedVersion: prozess.version });
       setModulOpen(false); setLvar(null); setLvarLoading(true);
       const fresh = await echoloopApi.getLvar(id).catch(() => ({ leer: true, grund: 'L-VAR konnte nicht geladen werden.' }));
-      setLvar(fresh); setLvarLoading(false);
+      applyLvar(fresh); setLvarLoading(false);
       setProzess(await echoloopApi.getProzess(id));
     } catch (e) {
       setModulErr(e.status === 409 ? 'Konflikt: Prozess wurde parallel geändert — neu laden.' : e.message);
@@ -458,11 +488,18 @@ export default function ProzessDetail() {
           <div style={styles.section}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md, gap: theme.spacing.md, flexWrap: 'wrap' }}>
               <div style={styles.sectionTitle}>L-VAR Variablen-Explorer</div>
-              {canEdit && (
-                <button style={styles.btnGhost} onClick={() => { setModulOpen((o) => !o); setModulErr(''); }}>
-                  {modulOpen ? 'Abbrechen' : 'Namensmodul bearbeiten / importieren'}
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                {lvar && !lvar.leer && lvarSave && (
+                  <span style={{ fontSize: theme.typography.sizes.xs, color: lvarSave === 'saved' ? theme.colors.success : lvarSave === 'saving' ? theme.colors.textMuted : theme.colors.error }}>
+                    {lvarSave === 'saving' ? 'Speichert…' : lvarSave === 'saved' ? '✓ Stand gespeichert' : lvarSave === 'conflict' ? 'Konflikt — neu laden' : 'Speichern fehlgeschlagen'}
+                  </span>
+                )}
+                {canEdit && (
+                  <button style={styles.btnGhost} onClick={() => { setModulOpen((o) => !o); setModulErr(''); }}>
+                    {modulOpen ? 'Abbrechen' : 'Namensmodul bearbeiten / importieren'}
+                  </button>
+                )}
+              </div>
             </div>
             {modulOpen && (
               <div style={{ marginBottom: theme.spacing.lg }}>
@@ -483,7 +520,7 @@ export default function ProzessDetail() {
             )}
             {lvarLoading && !lvar
               ? <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>Lädt L-VAR-Analyse …</div>
-              : <LvarExplorer lvar={lvar} />}
+              : <LvarExplorer lvar={lvar} stand={lvarStand} onStand={onStand} readOnly={!canEdit} />}
           </div>
         )}
 
