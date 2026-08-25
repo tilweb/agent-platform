@@ -494,6 +494,12 @@ export default function ProzessDetail() {
                     {lvarSave === 'saving' ? 'Speichert…' : lvarSave === 'saved' ? '✓ Stand gespeichert' : lvarSave === 'conflict' ? 'Konflikt — neu laden' : 'Speichern fehlgeschlagen'}
                   </span>
                 )}
+                {lvar && !lvar.leer && (
+                  <button style={styles.btnGhost} title="Analyse + Arbeitsstand als JSON exportieren (für die lokale Weiterentwicklung)"
+                    onClick={() => echoloopApi.exportLvar(id).catch((e) => setError(`Export fehlgeschlagen: ${e.message}`))}>
+                    Export ↓
+                  </button>
+                )}
                 {canEdit && (
                   <button style={styles.btnGhost} onClick={() => { setModulOpen((o) => !o); setModulErr(''); }}>
                     {modulOpen ? 'Abbrechen' : 'Namensmodul bearbeiten / importieren'}

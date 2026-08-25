@@ -35,6 +35,17 @@ export const echoloopApi = {
   getLvar: (prozessId) => apiGet(`${base}/prozesse/${prozessId}/lvar`).then(json).then((d) => d.lvar),
   // Menschlichen L-VAR-Arbeitsstand speichern (abhaken/Feedback/Status) — Optimistic-Locking.
   saveLvarStand: (prozessId, stand, expectedVersion) => apiPut(`${base}/prozesse/${prozessId}/lvar-stand`, { stand, expectedVersion }).then(json),
+  // L-VAR-Export (Ziel 2) als JSON-Datei herunterladen (für Sebs lokalen Loop).
+  exportLvar: async (prozessId) => {
+    const res = await apiGet(`${base}/prozesse/${prozessId}/lvar-export`);
+    if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.error || `HTTP ${res.status}`); }
+    const blob = await res.blob();
+    const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'echoloop-lvar-export.json';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    a.remove(); URL.revokeObjectURL(url);
+  },
 
   // Analyse (Upload) — SSE-Stream mit Phasen-Fortschritt.
   // onEvent(phase, data) je Zwischenschritt; Rückgabe = fertiger Baustand.

@@ -2,6 +2,13 @@
 
 ## 2026-08-25
 
+### Echo-Loop: L-VAR-Export für Sebs lokalen Loop (Oberflächen-Korrektur, Scheibe 3, erste Fassung)
+Ziel 2 der Korrektur: eine Brücke aus der Kunden-Workplace zurück in Sebs lokales F&E-Umfeld. **Erste Fassung — Schema mit Seb final abzustimmen.**
+
+- **`lvar/export.ts`**: `buildLvarExport` erzeugt EIN JSON, das Sebs lokale Engine ohne Nacharbeit einlesen kann — `daten` im Engine-Format (`prozesse` + `variablen`, angelehnt an `_varliste_..._daten.json`: varId→id, init/pos/fund, Stände/Call-Graph/Ausgänge aus den Items), plus **Namensmodul** (alt→neu, Rolle), **CFG-Eingabe**, den **Kunden-Arbeitsstand** (`window.STAND`: Status/Feedback/Vorabhaken/Entscheidungen) und unsere **Analyse** zum Vergleich. `_meta` (Schema `echoloop-lvar-export/v1`, Quelle, Kunde/Familie).
+- **Route** `GET /prozesse/:id/lvar-export` (JSON-Download mit Dateinamen) + **Frontend-Button „Export ↓"** im L-VAR-Tab (fetch mit Auth → Blob-Download).
+- **Tests**: Echo-Loop-Suite 231 grün (+4); Frontend-Build grün.
+
 ### Echo-Loop: L-VAR Reiter 2 + 3 arbeitsfähig + Suche (Oberflächen-Korrektur, Scheibe 2)
 Fortsetzung der Korrektur read-only→arbeitsfähig. Die Persistenz-Schicht aus Scheibe 1 (`LvarStand`/`onStand`/debounced Save) trägt die neuen Felder unverändert mit.
 

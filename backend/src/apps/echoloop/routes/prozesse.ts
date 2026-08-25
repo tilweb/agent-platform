@@ -11,6 +11,7 @@ import { VersionConflictError } from '../concurrency';
 import { denyIfNotAppEditor } from './_shared';
 import { lvarFuerProzess } from '../lvar/service';
 import { sanitizeStand } from '../lvar/stand';
+import { lvarExportFuerProzess } from '../lvar/export';
 
 export const prozesseRoutes = new Hono();
 
@@ -18,6 +19,15 @@ export const prozesseRoutes = new Hono();
 prozesseRoutes.get('/prozesse/:id/lvar', async (c) => {
   const lvar = await lvarFuerProzess(c.req.param('id'));
   return c.json({ lvar });
+});
+
+/** L-VAR-Export (Ziel 2) als JSON-Download — Brücke in Sebs lokales F&E-Umfeld. */
+prozesseRoutes.get('/prozesse/:id/lvar-export', async (c) => {
+  const exp = await lvarExportFuerProzess(c.req.param('id'));
+  if (!exp) return c.json({ error: 'Kein exportierbarer L-VAR-Stand (Namensmodul fehlt).' }, 404);
+  const name = `echoloop-lvar_${exp._meta.kd || 'export'}_${(exp._meta.familie || '').replace(/[^A-Za-z0-9_-]/g, '')}_${exp._meta.exportiertAm.slice(0, 10)}.json`;
+  c.header('Content-Disposition', `attachment; filename="${name}"`);
+  return c.json(exp);
 });
 
 /** Menschlichen L-VAR-Arbeitsstand (abhaken/Feedback/Status) speichern — Optimistic-Locking. */
