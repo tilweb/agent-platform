@@ -11,11 +11,12 @@
  * Ohne hinterlegtes Namensmodul liefert der Service einen definierten Leer-Zustand
  * (kein Raten) — der Explorer zeigt dann nur das Inventar an.
  */
-import { getProzess } from '../storage';
+import { getProzess, getKunde } from '../storage';
 import { listVariablen, listProzessItems, latestExtractBaustand } from '../extract/persist';
 import { assembleLvar, type LvarErgebnis } from './assemble';
 import { sanitizeStand, type LvarStand } from './stand';
 import { schlageNamenVor, type NamensVorschlag } from './vorschlag';
+import { effektiveNk, type NkConfig } from './nkconfig';
 import { slug } from './kopplung';
 import type { NkNamensmodul, NkRolle } from './nk';
 import type { CfgTarget, CfgExcel } from './cfg';
@@ -38,6 +39,10 @@ export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | 
   if (!prozess) return leer('Prozess nicht gefunden', { variablen: [], prozesse: [] });
 
   const data = prozess as unknown as { lvarNamensmodul?: NkNamensmodul; lvarCfg?: { targets: CfgTarget[]; excel: CfgExcel[] }; lvarStand?: unknown; namensraum?: string; familie?: string };
+
+  // NK-Regelsatz: fixer Paket-Standard + additive Kunden-Config (kunde.data.nkConfig).
+  const kunde = prozess.kundeId ? await getKunde(prozess.kundeId) : null;
+  const nk = effektiveNk((kunde as unknown as { nkConfig?: NkConfig } | null)?.nkConfig);
 
   // Datenbasis: neueste Datenversion (Upload/Baustand) — RGA und L-VAR teilen dieselbe Quelle.
   const baustandId = await latestExtractBaustand(prozessId);
@@ -67,6 +72,7 @@ export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | 
     const { modul, vorschlaege } = schlageNamenVor(
       fundorte,
       variablen.map((v) => ({ name: v.name, p: v.p, typ: v.typ, schnitt: v.schnitt })),
+      { verworfen: nk.verworfen, kategorieWoerter: nk.kategorieWoerter },
     );
     vorschlagMeta = new Map(vorschlaege.map((v) => [v.alt, v]));
     const ov = (alt: string, feld: string, fb: string): string => {
@@ -87,12 +93,13 @@ export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | 
   }
 
   const ergebnis = assembleLvar({
-    namensraum: data.namensraum ?? namensmodul.namensraum,
+    namensraum: data.namensraum ?? nk.namensraum ?? namensmodul.namensraum,
     familie: data.familie ?? namensmodul.familie,
     namensmodul,
     fundorte,
     callGraph,
     cfg: data.lvarCfg,
+    nk,
   });
 
   // Vorschlags-Herkunft an die Umbenennen-Karten hängen (UI: Konfidenz/Begründung).

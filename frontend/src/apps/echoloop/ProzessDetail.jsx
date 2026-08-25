@@ -92,6 +92,15 @@ export default function ProzessDetail() {
   const [modulText, setModulText] = useState('');
   const [modulSaving, setModulSaving] = useState(false);
   const [modulErr, setModulErr] = useState('');
+  // NK-Konvention (Kunde, Scheibe C): additive Anpassung über dem fixen Paket-Standard.
+  const [nkOpen, setNkOpen] = useState(false);
+  const [nkNamensraum, setNkNamensraum] = useState('');
+  const [nkKategorieText, setNkKategorieText] = useState('');
+  const [nkVerworfenText, setNkVerworfenText] = useState('');
+  const [nkAusnahmenText, setNkAusnahmenText] = useState('');
+  const [nkVersion, setNkVersion] = useState(1);
+  const [nkSaving, setNkSaving] = useState(false);
+  const [nkErr, setNkErr] = useState('');
   const [bau, setBau] = useState(null);
   const [bauBusy, setBauBusy] = useState(false);
   const [bauDirty, setBauDirty] = useState(false);
@@ -148,6 +157,44 @@ export default function ProzessDetail() {
     } catch { /* schon gespeichert oder Konflikt — der Reload zeigt den Server-Stand */ }
     try { applyLvar(await echoloopApi.getLvar(id)); }
     catch { setError('L-VAR konnte nicht neu geladen werden.'); }
+  }
+
+  // NK-Konvention des Kunden laden (in die Editor-Felder).
+  async function openNk() {
+    setNkErr('');
+    try {
+      const k = await echoloopApi.getKunde(prozess.kundeId);
+      const c = k?.nkConfig || {};
+      setNkNamensraum(c.namensraum || '');
+      setNkKategorieText((c.kategorieWoerter || []).join(', '));
+      setNkVerworfenText(Object.entries(c.verworfen || {}).map(([a, b]) => `${a}=${b}`).join('\n'));
+      setNkAusnahmenText((c.ausnahmen || []).map((a) => `${a.name}=${a.grund || ''}`).join('\n'));
+      setNkVersion(k?.version || 1);
+    } catch { setNkErr('Kunde konnte nicht geladen werden.'); }
+  }
+
+  // Additive NK-Anpassung am Kunden speichern (Kanon bleibt fix) → L-VAR neu bewerten.
+  async function saveNk() {
+    setNkErr(''); setNkSaving(true);
+    try {
+      const kategorieWoerter = nkKategorieText.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+      const verworfen = {};
+      for (const line of nkVerworfenText.split('\n')) {
+        const [a, b] = line.split('=');
+        if (a?.trim() && b?.trim()) verworfen[a.trim()] = b.trim();
+      }
+      const ausnahmen = [];
+      for (const line of nkAusnahmenText.split('\n')) {
+        const [a, ...rest] = line.split('=');
+        if (a?.trim()) ausnahmen.push({ name: a.trim(), grund: rest.join('=').trim() });
+      }
+      const nkConfig = { namensraum: nkNamensraum.trim() || undefined, kategorieWoerter, verworfen, ausnahmen };
+      await echoloopApi.updateKunde(prozess.kundeId, { nkConfig, expectedVersion: nkVersion });
+      setNkOpen(false);
+      await reloadLvar();
+    } catch (e) {
+      setNkErr(e.status === 409 ? 'Konflikt: Kunde wurde parallel geändert — neu öffnen.' : e.message);
+    } finally { setNkSaving(false); }
   }
 
   async function load() {
@@ -513,12 +560,44 @@ export default function ProzessDetail() {
                   </button>
                 )}
                 {canEdit && (
+                  <button style={styles.btnGhost} onClick={() => { const o = !nkOpen; setNkOpen(o); if (o) openNk(); }}>
+                    {nkOpen ? 'Abbrechen' : 'NK-Konvention'}
+                  </button>
+                )}
+                {canEdit && (
                   <button style={styles.btnGhost} onClick={() => { setModulOpen((o) => !o); setModulErr(''); }}>
                     {modulOpen ? 'Abbrechen' : 'Namensmodul bearbeiten / importieren'}
                   </button>
                 )}
               </div>
             </div>
+            {nkOpen && (
+              <div style={{ marginBottom: theme.spacing.lg, backgroundColor: theme.colors.surface, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg }}>
+                <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.md, lineHeight: 1.5 }}>
+                  Der <strong>NK-Standard ist gesetzt</strong> — hier nur <strong>kundenspezifische Ergänzungen</strong>. Der Kanon (Rollen C_/H_/T_, Grammatik, PascalCase) bleibt fix. Gilt für <strong>alle Prozesse dieses Kunden</strong>.
+                </div>
+                {[
+                  { l: 'Namensraum (Kunden-Präfix)', h: '', v: nkNamensraum, set: setNkNamensraum, ph: 'z. B. MW', ta: false },
+                  { l: 'Zusätzliche Kategorie-Wörter', h: '(Komma- oder zeilengetrennt)', v: nkKategorieText, set: setNkKategorieText, ph: 'Kennung, Vorgang', ta: true },
+                  { l: 'Zusätzliche verworfene Wörter', h: '(je Zeile: Wort=Ersatz)', v: nkVerworfenText, set: setNkVerworfenText, ph: 'Konto=Nummer', ta: true },
+                  { l: 'Dokumentierte Ausnahmen', h: '(je Zeile: Zielname=Grund)', v: nkAusnahmenText, set: setNkAusnahmenText, ph: 'C_LegacyDrucker=Altbestand', ta: true },
+                ].map((f) => (
+                  <label key={f.l} style={{ display: 'block', marginBottom: theme.spacing.md }}>
+                    <span style={{ fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>{f.l} </span>
+                    {f.h && <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>{f.h}</span>}
+                    {f.ta
+                      ? <textarea value={f.v} onChange={(e) => f.set(e.target.value)} placeholder={f.ph}
+                          style={{ width: '100%', minHeight: 54, marginTop: 4, fontFamily: theme.typography.fontMono, fontSize: theme.typography.sizes.xs, padding: theme.spacing.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.background, color: theme.colors.text, outline: 'none', resize: 'vertical' }} />
+                      : <input value={f.v} onChange={(e) => f.set(e.target.value)} placeholder={f.ph}
+                          style={{ width: '100%', marginTop: 4, fontSize: theme.typography.sizes.sm, padding: theme.spacing.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.background, color: theme.colors.text, outline: 'none' }} />}
+                  </label>
+                ))}
+                {nkErr && <div style={{ ...styles.error, marginTop: theme.spacing.sm }}>{nkErr}</div>}
+                <div style={{ marginTop: theme.spacing.sm }}>
+                  <button style={styles.btn} onClick={saveNk} disabled={nkSaving}>{nkSaving ? 'Speichert…' : 'Speichern & anwenden'}</button>
+                </div>
+              </div>
+            )}
             {modulOpen && (
               <div style={{ marginBottom: theme.spacing.lg }}>
                 <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, lineHeight: 1.5 }}>

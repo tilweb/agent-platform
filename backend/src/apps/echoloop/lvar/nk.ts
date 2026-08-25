@@ -103,7 +103,13 @@ function ohnePraefix(neu: string): string {
  * Prüft ein Namensmodul gegen G1–G7. `fundorte` = extrahierte Variablen
  * (Name + Prozess), nötig für die Dublette-vs-Konsolidierung-Unterscheidung (G4).
  */
-export function pruefeNK(modul: NkNamensmodul, fundorte: VarFundort[] = []): NkErgebnis {
+export function pruefeNK(
+  modul: NkNamensmodul,
+  fundorte: VarFundort[] = [],
+  opts: { verworfen?: Record<string, string>; ausnahmen?: Set<string> } = {},
+): NkErgebnis {
+  const verworfen = opts.verworfen ?? VERWORFEN;   // Kunden-Config oder Paket-Standard
+  const ausnahmen = opts.ausnahmen;                 // dokumentierte G6-Ausnahmen
   const map = modul.map;
   const zielnamen = map.length;
 
@@ -187,9 +193,10 @@ export function pruefeNK(modul: NkNamensmodul, fundorte: VarFundort[] = []): NkE
   // ── G6 Kategorie-Wörter (Blacklist: verworfene Wörter, nicht Whitelist) ─────
   const g6Verstoss: string[] = [];
   for (const neu of eindeutig) {
+    if (ausnahmen?.has(neu)) continue;                          // dokumentierte Kunden-Ausnahme
     const kern = ohnePraefix(neu);
     const woerter = kern.match(/[A-ZÄÖÜ][a-zäöüß0-9]*/g) ?? [];
-    for (const w of woerter) if (VERWORFEN[w]) g6Verstoss.push(`${neu}: „${w}" ist verworfen → „${VERWORFEN[w]}" [G6-WORT-VERWORFEN]`);
+    for (const w of woerter) if (verworfen[w]) g6Verstoss.push(`${neu}: „${w}" ist verworfen → „${verworfen[w]}" [G6-WORT-VERWORFEN]`);
   }
 
   // ── G7 Modul-Format (genau die vier Rollen C·H·T·U) ─────────────────────────

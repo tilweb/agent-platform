@@ -43,15 +43,15 @@ function pascal(ist: string): string {
 }
 
 /** §A3b: verworfenes Kategorie-Wort am Ende ersetzen (Ordner→Pfad, Nr→Nummer, …). */
-function ersetzeVerworfen(stamm: string): string {
-  for (const [bad, gut] of Object.entries(VERWORFEN)) {
+function ersetzeVerworfen(stamm: string, verworfen: Record<string, string>): string {
+  for (const [bad, gut] of Object.entries(verworfen)) {
     const re = new RegExp(`${bad}$`, 'i');
     if (re.test(stamm)) return stamm.replace(re, gut);
   }
   return stamm;
 }
 
-const hatKategorieWort = (stamm: string): boolean => KATEGORIE_WOERTER.some((w) => stamm.endsWith(w));
+const hatKategorieWort = (stamm: string, kategorie: string[]): boolean => kategorie.some((w) => stamm.endsWith(w));
 
 /**
  * Erzeugt Namensvorschläge für alle Ist-Variablen + ein daraus gebautes
@@ -61,7 +61,10 @@ const hatKategorieWort = (stamm: string): boolean => KATEGORIE_WOERTER.some((w) 
 export function schlageNamenVor(
   fundorte: VarFundort[],
   variablen: VorschlagEingang[] = [],
+  opts: { verworfen?: Record<string, string>; kategorieWoerter?: string[] } = {},
 ): { modul: NkNamensmodul; vorschlaege: NamensVorschlag[] } {
+  const verworfen = opts.verworfen ?? VERWORFEN;                  // Kunden-Config oder Paket-Standard
+  const kategorie = opts.kategorieWoerter ?? KATEGORIE_WOERTER;
   // Ist-Namen deduplizieren; Prozess-Anzahl aus fundorte, Typ/Schnitt aus variablen.
   const prozesseVon = new Map<string, Set<string>>();
   const merke = (name: string, p: string) => {
@@ -101,13 +104,13 @@ export function schlageNamenVor(
     }
 
     // (3) Namen konstruieren (per Konstruktion G1/G2/G6-konform).
-    const stamm = ersetzeVerworfen(pascal(name));
+    const stamm = ersetzeVerworfen(pascal(name), verworfen);
     const neu = ROLLE_PREFIX[rolle] + stamm;
 
     // (4) Weiche Hinweise — senken die Konfidenz, ändern den Namen NICHT (Mensch entscheidet).
     const hinweise: string[] = [];
     if (NEGATION_WOERTER.some((w) => stamm.includes(w))) hinweise.push('Negation vermeiden (§A3b: Ist/Hat/Darf)');
-    if (!hatKategorieWort(stamm)) hinweise.push('Kategorie-Wort am Ende prüfen (§A3b)');
+    if (!hatKategorieWort(stamm, kategorie)) hinweise.push('Kategorie-Wort am Ende prüfen (§A3b)');
     if (hinweise.length) { begruendung += ' · ' + hinweise.join(' · '); if (konfidenz === 'hoch') konfidenz = 'mittel'; }
 
     return { alt: name, neu, rolle, konfidenz, begruendung, istKonform: false };

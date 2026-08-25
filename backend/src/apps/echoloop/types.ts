@@ -5,6 +5,7 @@ import type { Dim } from './scoring';
 import type { GateNachweis } from './scoring';
 import type { PMFinding } from './checker/types';
 import type { AnalyseTiefe, InputInventar, PanelPflichtEintrag } from './analyse-tiefen';
+import type { NkConfig } from './lvar/nkconfig';
 
 export type AppRole = 'owner' | 'editor' | 'viewer';
 
@@ -14,6 +15,8 @@ export interface Kunde {
   name: string;
   branche?: string;
   notizen?: string;
+  /** Additive, kundenspezifische NK-Anpassung über dem fixen Paket-Standard (Scheibe C). */
+  nkConfig?: NkConfig;
   ownerId?: string;
   permissions?: unknown;
   version?: number;

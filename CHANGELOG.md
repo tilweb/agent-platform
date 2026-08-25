@@ -2,6 +2,14 @@
 
 ## 2026-08-25
 
+### Echo-Loop: NK als konfigurierbarer Standard (Input-Korrektur, Scheibe C)
+Die Namenskonvention ist jetzt ein **Standard mit maximalem Default, der nur pro Kunde additiv angepasst** wird — der Kanon (Rollen-Präfixe C_/H_/T_, Grammatik, PascalCase) bleibt fix und nicht überschreibbar.
+
+- **`lvar/nkconfig.ts`** (neu): `NkConfig` (pro Kunde) + `effektiveNk(override)` — legt additiv über den Paket-Standard: `namensraum` (Kunden-Präfix), zusätzliche `kategorieWoerter`, zusätzliche `verworfen`-Wörter, dokumentierte `ausnahmen` (analog nk_ausnahme). Abgelegt am Kunden (`kunde.data.nkConfig`), gilt für alle seine Prozesse.
+- **Threading**: `pruefeNK` (G6 nutzt effektive verworfen-Liste + nimmt Ausnahme-Namen aus), `schlageNamenVor` (Namens-Konstruktion nutzt effektive verworfen/kategorie), `assembleLvar` (reicht `EffektiveNk` durch), `service.ts` (löst `kunde.nkConfig` auf, Namensraum-Fallback). Ohne Config **identisch zum bisherigen Verhalten**.
+- **Frontend** (`ProzessDetail.jsx`): Button **„NK-Konvention"** im L-VAR-Tab → Panel für Namensraum + zusätzliche Kategorie-Wörter + verworfene Wörter (Wort=Ersatz) + Ausnahmen (Zielname=Grund); Speichern am Kunden → „NK neu bewerten". Klarer Hinweis: „Kanon bleibt fix, gilt für alle Prozesse dieses Kunden."
+- **Tests**: `nkconfig.test.ts` (6, Merge + G6-Wirkung + Ausnahme + Vorschlag); Echo-Loop-Suite **244 grün**, tsc (echoloop) clean, Frontend-Build grün. E2E am Übungsfall: Kunden-verworfen-Wort fließt in den Vorschlag, Reset zurück zum Default.
+
 ### Echo-Loop: NK-Vorschlags-Engine für Variablennamen (Input-Korrektur, Scheibe B)
 Der eigentliche Produkt-Hebel: L-VAR gleicht die Ist-Variablennamen gegen die Namenskonvention ab und **schlägt** je Variable Rolle + konformen Zielnamen **vor** — der Kunde entscheidet. (Der NK-Experte schreibt das lokal von Hand; ein Kunde ist kein NK-Experte, deshalb schlägt die App vor.) Ersetzt den JSON-Import als Default.
 

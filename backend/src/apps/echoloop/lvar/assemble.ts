@@ -16,6 +16,7 @@ import { generiereCfg, type CfgErgebnis, type CfgTarget, type CfgExcel } from '.
 import { nkNachRga, type RgaHinweis } from './verzahnung';
 import { pfadBefunde, pfadNachRga, type PfadBefunde, type PfadZeile } from './pfad';
 import { einbauTabelle, type EinbauZeile } from './prozessstart';
+import type { EffektiveNk } from './nkconfig';
 
 export interface LvarInput {
   namensraum?: string;
@@ -25,6 +26,7 @@ export interface LvarInput {
   callGraph: { von: string; nach: string }[];
   prozesseMeta?: Record<string, SteckbriefEingang>; // Ist/Typ/Soll je Prozess (sonst aus namensmodul.prozesse)
   cfg?: { targets: CfgTarget[]; excel: CfgExcel[] };
+  nk?: EffektiveNk;                                 // effektiver NK-Regelsatz (Default + Kunden-Config)
 }
 
 export interface LvarErgebnis {
@@ -52,7 +54,7 @@ export function assembleLvar(input: LvarInput): LvarErgebnis {
   const cfg = input.cfg ? generiereCfg(input.cfg.targets, input.cfg.excel) : null;
   const gesperrt = cfg ? cfg.schluessel.filter((s) => s.vorabhakenGesperrt).map((s) => s.key) : [];
 
-  const nk = pruefeNK(input.namensmodul, input.fundorte);
+  const nk = pruefeNK(input.namensmodul, input.fundorte, input.nk && { verworfen: input.nk.verworfen, ausnahmen: input.nk.ausnahmen });
   const kopplung = analysiereKopplung(input.namensmodul, input.fundorte, { gesperrt });
 
   const meta = input.prozesseMeta ?? metaAusModul(input.namensmodul);
