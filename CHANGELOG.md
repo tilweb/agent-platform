@@ -2,6 +2,14 @@
 
 ## 2026-08-25
 
+### LLM-Adapter: Retry auf transiente Server-Fehler (500/502/504)
+Der Adacor-Embeddings-Endpunkt liefert sporadische 500er (gemessen ~1/20), obwohl der direkte
+Folgeversuch sofort erfolgreich ist — ein einzelner Blip riss bisher einen ganzen WZ-Branchen-Lauf
+oder eine KB-Indizierung ab, weil `isRetryable` im OpenAI-Adapter nur 429/503 wiederholte. Jetzt
+werden auch 500/502/504 mit Backoff wiederholt (bestehende Retry-Schleifen + `MAX_RETRIES`). Live
+verifiziert: 20× Embed über den Service = 20/20 erfolgreich, der eine 500-Blip wurde transparent
+abgefangen. Der Fehler selbst ist Adacor-seitige Instabilität, kein Code-/Config-Fehler bei uns.
+
 ### Echo-Loop: Export auf das in-App-Modul umgestellt (Input-Korrektur, Scheibe D — abschließend)
 Der L-VAR-Export zog bisher noch das *importierte* `lvarNamensmodul` (ohne Import → 404). Jetzt nutzt er dieselbe Ableitung wie der Explorer.
 

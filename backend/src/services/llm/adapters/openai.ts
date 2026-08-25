@@ -72,7 +72,10 @@ export class OpenAIAdapter {
    * Check if an error response is retryable
    */
   private isRetryable(status: number, body: string): boolean {
-    if (status === 429 || status === 503) return true;
+    // 429 (Rate-Limit) + transiente Server-Fehler. Der Adacor-Embeddings-Endpunkt
+    // liefert z.B. sporadische 500er, obwohl der Folgeversuch sofort klappt —
+    // ein einzelner Blip darf nicht einen ganzen WZ-/KB-Lauf abreißen.
+    if (status === 429 || status === 500 || status === 502 || status === 503 || status === 504) return true;
     if (status === 400) {
       return RETRYABLE_PATTERNS.some(p => body.includes(p));
     }
