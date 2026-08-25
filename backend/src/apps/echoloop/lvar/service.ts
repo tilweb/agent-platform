@@ -15,7 +15,9 @@ import { getProzess } from '../storage';
 import { listVariablen, listProzessItems, latestExtractBaustand } from '../extract/persist';
 import { assembleLvar, type LvarErgebnis } from './assemble';
 import { sanitizeStand, type LvarStand } from './stand';
-import type { NkNamensmodul } from './nk';
+import { schlageNamenVor, type NamensVorschlag } from './vorschlag';
+import { slug } from './kopplung';
+import type { NkNamensmodul, NkRolle } from './nk';
 import type { CfgTarget, CfgExcel } from './cfg';
 
 /** Eine Ist-Variable aus dem Upload (vor jeder Namens-Entscheidung). */
@@ -28,7 +30,7 @@ export interface LvarInventar {
 }
 export interface LvarLeer { leer: true; grund: string; inventar: LvarInventar; }
 /** Berechnetes Ergebnis + überlagerter menschlicher Arbeitsstand (Sebs window.STAND). */
-export type LvarAnsicht = LvarErgebnis & { stand: LvarStand; version: number };
+export type LvarAnsicht = LvarErgebnis & { stand: LvarStand; version: number; vorschlagsBasis?: boolean };
 
 export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | LvarLeer> {
   const leer = (grund: string, inventar: LvarInventar): LvarLeer => ({ leer: true, grund, inventar });
@@ -51,12 +53,37 @@ export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | 
     datenstand: baustandId,
   };
 
-  const namensmodul = data.lvarNamensmodul;
-  if (!namensmodul || !Array.isArray(namensmodul.map) || namensmodul.map.length === 0) {
-    const grund = inventar.variablen.length
-      ? 'Noch keine Namens-Entscheidungen — der Explorer zeigt das Ist-Variablen-Inventar aus dem Upload (Reiter 1).'
-      : 'Noch keine Daten — lade EMMA-Exporte über „Analyse starten" hoch; RGA und L-VAR nutzen dieselbe Datenbasis.';
-    return leer(grund, inventar);
+  // Namensmodul: importiert (Legacy) ODER maschinell vorgeschlagen (Scheibe B).
+  // Die Vorschläge sind der NK-konforme Startpunkt; Kunden-Overrides (neu/rolle)
+  // liegen im Arbeitsstand und werden hier übergelegt (Vorschlag ≠ Entscheid, D-095).
+  const stand = sanitizeStand(data.lvarStand);
+  const importiert = data.lvarNamensmodul;
+  let namensmodul: NkNamensmodul;
+  let vorschlagMeta: Map<string, NamensVorschlag> | null = null;
+
+  if (importiert && Array.isArray(importiert.map) && importiert.map.length > 0) {
+    namensmodul = importiert;                                    // Legacy-Importweg (unverändert)
+  } else if (inventar.variablen.length > 0) {
+    const { modul, vorschlaege } = schlageNamenVor(
+      fundorte,
+      variablen.map((v) => ({ name: v.name, p: v.p, typ: v.typ, schnitt: v.schnitt })),
+    );
+    vorschlagMeta = new Map(vorschlaege.map((v) => [v.alt, v]));
+    const ov = (alt: string, feld: string, fb: string): string => {
+      const val = stand[`UB-${slug(alt)}-${feld}`];
+      return typeof val === 'string' && val ? val : fb;
+    };
+    const validR = (r: string): r is NkRolle => r === 'C' || r === 'H' || r === 'T' || r === 'U';
+    namensmodul = {
+      ...modul,
+      prozesse: Object.fromEntries(items.map((it) => [it.nr, { ist: it.nameExport ?? `Prozess ${it.nr}` }])),
+      map: modul.map.map((e) => {
+        const rolle = ov(e.alt, 'rolle', e.rolle);
+        return { alt: e.alt, neu: ov(e.alt, 'neu', e.neu), rolle: validR(rolle) ? rolle : e.rolle };
+      }),
+    };
+  } else {
+    return leer('Noch keine Daten — lade EMMA-Exporte über „Analyse starten" hoch; RGA und L-VAR nutzen dieselbe Datenbasis.', inventar);
   }
 
   const ergebnis = assembleLvar({
@@ -68,6 +95,14 @@ export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | 
     cfg: data.lvarCfg,
   });
 
-  // Menschlicher Arbeitsstand (abhaken/Feedback/Status) als Overlay + Version fürs Optimistic-Locking.
-  return { ...ergebnis, stand: sanitizeStand(data.lvarStand), version: prozess.version ?? 1 };
+  // Vorschlags-Herkunft an die Umbenennen-Karten hängen (UI: Konfidenz/Begründung).
+  if (vorschlagMeta) {
+    for (const k of ergebnis.kopplung.karten) {
+      const v = vorschlagMeta.get(k.alt);
+      if (v) k.vorschlag = { konfidenz: v.konfidenz, begruendung: v.begruendung, istKonform: v.istKonform };
+    }
+  }
+
+  // Menschlicher Arbeitsstand als Overlay + Version fürs Optimistic-Locking.
+  return { ...ergebnis, stand, version: prozess.version ?? 1, vorschlagsBasis: !!vorschlagMeta };
 }

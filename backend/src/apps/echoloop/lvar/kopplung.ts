@@ -36,6 +36,8 @@ export interface UmbenennenKarte {
   gesperrt: boolean;     // D-085: Reiter 3 sperrt den Vorabhaken
   status: KartenStatus;
   feedback: string;
+  /** Vorschlags-Herkunft (Scheibe B) — gesetzt, wenn neu/rolle maschinell vorgeschlagen sind. */
+  vorschlag?: { konfidenz: 'hoch' | 'mittel' | 'niedrig'; begruendung: string; istKonform: boolean };
 }
 
 export interface KopplungErgebnis {
@@ -45,7 +47,8 @@ export interface KopplungErgebnis {
   karten: UmbenennenKarte[];
 }
 
-function slug(s: string): string {
+/** Stabiler Karten-/Token-Slug aus dem Ist-Namen (append-only, D-061). */
+export function slug(s: string): string {
   return s.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 

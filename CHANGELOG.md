@@ -2,6 +2,14 @@
 
 ## 2026-08-25
 
+### Echo-Loop: NK-Vorschlags-Engine für Variablennamen (Input-Korrektur, Scheibe B)
+Der eigentliche Produkt-Hebel: L-VAR gleicht die Ist-Variablennamen gegen die Namenskonvention ab und **schlägt** je Variable Rolle + konformen Zielnamen **vor** — der Kunde entscheidet. (Der NK-Experte schreibt das lokal von Hand; ein Kunde ist kein NK-Experte, deshalb schlägt die App vor.) Ersetzt den JSON-Import als Default.
+
+- **`lvar/vorschlag.ts`** (neu): `schlageNamenVor(fundorte, variablen)` → je Ist-Name Rolle (C/H/T/U) + Zielname + Konfidenz + Begründung. **Bewusst demütig** — die Rolle ist fachlich-semantisch und nicht zuverlässig aus dem Namen ableitbar (Übungsfall: „Archivordner"→C, „Anlagenordner"→H), daher nur sichere Signale (Kopplung über mehrere Prozesse → U · Schnittstelle Ausgehend/EinAus → T · bereits-konform → Identität), sonst §A3-Safe-Default H_. Namen werden mit denselben Regel-Konstanten konstruiert, gegen die `pruefeNK` prüft (`ROLLE_PREFIX`/`VERWORFEN`/`KATEGORIE_WOERTER`) → per Konstruktion G1/G2/G6-konform. Vorschlag ≠ Entscheid (D-095).
+- **`lvar/service.ts`**: ohne importiertes Modul werden die Vorschläge zum Namensmodul; **Kunden-Overrides** (Name/Rolle) aus dem Arbeitsstand (`UB-<ist>-neu`/`-rolle`) werden darübergelegt, dann normal assembliert. Import bleibt als Legacy-Fallback. `vorschlagsBasis`-Flag + Vorschlags-Meta an den Karten.
+- **Frontend** (`LvarExplorer.jsx`): Reiter 1 — **Zielname editierbar** (Input) + **Rolle als Select** je Zeile, **Vorschlags-Badge** (Konfidenz-Farbe + Begründung), „bereits konform ✓". Button **„↻ NK neu bewerten"** (`ProzessDetail.jsx`: flusht Stand-Save, lädt L-VAR frisch → aktualisiertes NK-Gate/Kopplung).
+- **Tests**: `vorschlag.test.ts` (7, Rollen-Heuristik + Namens-Konstruktion + Konformitäts-Garantie); Echo-Loop-Suite **238 grün**, tsc (echoloop) clean, Frontend-Build grün. End-to-End am Übungsfall: 24 Vorschläge (goldene Zahl), Kunden-Override greift.
+
 ### Echo-Loop: geteilte, versionierte Datenbasis für RGA + L-VAR (Input-Korrektur, Scheibe A)
 Kern-Korrektur nach Annahmen-Validierung: L-VAR soll die Daten auswerten, die **bereits im Prozess aus der RGA** liegen — bisher waren RGA und L-VAR datenseitig entkoppelt (L-VAR las aus leeren Tabellen). Jetzt **ein Upload, eine Datenbasis, beide Verfahren**.
 

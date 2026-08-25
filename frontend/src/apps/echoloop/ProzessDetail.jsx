@@ -138,6 +138,18 @@ export default function ProzessDetail() {
     }, 600);
   }
 
+  // „NK neu bewerten": ausstehenden Stand-Save flushen, dann L-VAR frisch laden
+  // (die geänderten Namen/Rollen fließen serverseitig ins NK-Gate/Kopplung ein).
+  async function reloadLvar() {
+    clearTimeout(lvarSaveRef.current);
+    try {
+      const r = await echoloopApi.saveLvarStand(id, lvarStandRef.current, lvarVersion);
+      setLvarVersion(r.version || lvarVersion + 1);
+    } catch { /* schon gespeichert oder Konflikt — der Reload zeigt den Server-Stand */ }
+    try { applyLvar(await echoloopApi.getLvar(id)); }
+    catch { setError('L-VAR konnte nicht neu geladen werden.'); }
+  }
+
   async function load() {
     try {
       const [p, bs] = await Promise.all([echoloopApi.getProzess(id), echoloopApi.listBaustaende(id)]);
@@ -526,7 +538,7 @@ export default function ProzessDetail() {
             )}
             {lvarLoading && !lvar
               ? <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>Lädt L-VAR-Analyse …</div>
-              : <LvarExplorer lvar={lvar} stand={lvarStand} onStand={onStand} readOnly={!canEdit} />}
+              : <LvarExplorer lvar={lvar} stand={lvarStand} onStand={onStand} readOnly={!canEdit} onReassess={reloadLvar} />}
           </div>
         )}
 

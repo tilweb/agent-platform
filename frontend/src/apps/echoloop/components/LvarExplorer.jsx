@@ -18,6 +18,11 @@ const STATUS_OPT = [
 ];
 const TYP_OPT = [{ v: 'MP' }, { v: 'TP' }, { v: 'SP' }, { v: 'UNENTSCHIEDEN', l: '?' }];
 const KRIT_OPT = [{ v: '', l: 'offen' }, { v: 'hoch', l: 'hoch' }, { v: 'mittel', l: 'mittel' }, { v: 'niedrig', l: 'niedrig' }];
+const ROLLE_OPT = [
+  { v: 'C', l: 'C_ Konstante' }, { v: 'H', l: 'H_ Hilfsvariable' },
+  { v: 'T', l: 'T_ Tracking' }, { v: 'U', l: 'Fachwert (kein Präfix)' },
+];
+const KONF_TON = { hoch: '#2E9E7B', mittel: '#C98A00', niedrig: '#8A8A8A' };
 
 /** Case-insensitiver Freitext-Filter über mehrere Felder. */
 function matchQ(q, ...felder) {
@@ -81,7 +86,7 @@ function Fortschritt({ erledigt, gesamt }) {
   );
 }
 
-function Variablen({ nk, kopplung, stand, onStand, readOnly, q }) {
+function Variablen({ nk, kopplung, stand, onStand, readOnly, q, onReassess, vorschlagsBasis }) {
   const quote = nk.entscheidungsquote;
   const val = (token, fallback) => (stand[token] !== undefined ? stand[token] : fallback);
   const statusOf = (k) => val(`${k.id}-st`, k.status);
@@ -125,7 +130,17 @@ function Variablen({ nk, kopplung, stand, onStand, readOnly, q }) {
       )}
 
       <div style={s.card}>
-        <div style={s.title}>Umbenennen-Cockpit ({kopplung.karten.length})</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+          <div style={s.title}>Umbenennen-Cockpit ({kopplung.karten.length})</div>
+          {onReassess && !readOnly && (
+            <button style={s.kop} onClick={onReassess} title="Geänderte Namen/Rollen gegen die Namenskonvention neu prüfen">↻ NK neu bewerten</button>
+          )}
+        </div>
+        {vorschlagsBasis && (
+          <div style={{ ...s.muted, marginBottom: theme.spacing.sm }}>
+            Die Zielnamen sind maschinelle <strong>Vorschläge</strong> gegen die Namenskonvention — übernimm sie oder passe Name/Rolle an. Nach Änderungen „NK neu bewerten" für das aktualisierte Gate.
+          </div>
+        )}
         <Fortschritt erledigt={erledigt} gesamt={kopplung.karten.length} />
         <div style={{ ...s.scroll, marginTop: theme.spacing.sm }}>
           <table style={s.table}>
@@ -133,8 +148,28 @@ function Variablen({ nk, kopplung, stand, onStand, readOnly, q }) {
             <tbody>
               {karten.map((k) => (
                 <tr key={k.id}>
-                  <td style={s.td}>{k.alt} → <strong>{k.neu}</strong></td>
-                  <td style={s.td}>{k.rolle}</td>
+                  <td style={s.td}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                      <span style={s.muted}>{k.alt} →</span>
+                      <input style={{ ...s.inp, minWidth: 150, fontWeight: theme.typography.weights.semibold }}
+                        value={val(`${k.id}-neu`, k.neu)} disabled={readOnly}
+                        onChange={(e) => onStand(`${k.id}-neu`, e.target.value)} />
+                    </div>
+                    {k.vorschlag && !k.vorschlag.istKonform && (
+                      <div style={{ ...s.muted, marginTop: 3 }}>
+                        <span style={{ ...s.badge, backgroundColor: `${KONF_TON[k.vorschlag.konfidenz]}22`, color: KONF_TON[k.vorschlag.konfidenz] }}>
+                          Vorschlag · {k.vorschlag.konfidenz}
+                        </span> {k.vorschlag.begruendung}
+                      </div>
+                    )}
+                    {k.vorschlag?.istKonform && <div style={{ ...s.muted, marginTop: 3 }}>bereits NK-konform ✓</div>}
+                  </td>
+                  <td style={s.td}>
+                    <select style={s.select} value={val(`${k.id}-rolle`, k.rolle)} disabled={readOnly}
+                      onChange={(e) => onStand(`${k.id}-rolle`, e.target.value)}>
+                      {ROLLE_OPT.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+                    </select>
+                  </td>
                   <td style={s.td}>{k.prozesse.join(', ') || '—'}</td>
                   <td style={s.td}>
                     {k.gesperrt
@@ -373,7 +408,7 @@ function Inventar({ inventar }) {
   );
 }
 
-export default function LvarExplorer({ lvar, stand = {}, onStand = () => {}, readOnly = false }) {
+export default function LvarExplorer({ lvar, stand = {}, onStand = () => {}, readOnly = false, onReassess }) {
   const [reiter, setReiter] = useState('variablen');
   const [q, setQ] = useState('');
   if (!lvar) return null;
@@ -394,7 +429,7 @@ export default function LvarExplorer({ lvar, stand = {}, onStand = () => {}, rea
         ))}
       </div>
       <input style={s.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filtern (Name · Schlüssel · Prozess) …" />
-      {reiter === 'variablen' && <Variablen nk={lvar.nk} kopplung={lvar.kopplung} stand={stand} onStand={onStand} readOnly={readOnly} q={q} />}
+      {reiter === 'variablen' && <Variablen nk={lvar.nk} kopplung={lvar.kopplung} stand={stand} onStand={onStand} readOnly={readOnly} q={q} onReassess={onReassess} vorschlagsBasis={lvar.vorschlagsBasis} />}
       {reiter === 'steckbriefe' && <Steckbriefe steckbriefe={lvar.steckbriefe} stand={stand} onStand={onStand} readOnly={readOnly} q={q} />}
       {reiter === 'einbau' && <Einbau einbau={lvar.einbau} q={q} />}
       {reiter === 'cfg' && <Cfg cfg={lvar.cfg} pfad={lvar.pfad} stand={stand} onStand={onStand} readOnly={readOnly} q={q} />}
