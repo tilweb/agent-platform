@@ -1,25 +1,26 @@
 /**
- * L-VAR-Service — beschafft die Eingaben aus DB/Persistenz und ruft die
- * reine Assembly (`assembleLvar`).
+ * L-VAR-Service — beschafft die Eingaben aus DB/Persistenz und ruft die reine
+ * Assembly (`assembleLvar`). Zentrale Ableitung in `ladeLvarKern` (von Sicht UND
+ * Export genutzt, damit beide dasselbe Namensmodul verwenden):
  *
- *   · Variablen-Fundorte + Call-Graph: aus den in Phase 0 persistierten
- *     `el_variablen` / `el_prozess_items` (Koordinaten-Extraktion).
- *   · Namensmodul (alt→neu, Rolle) + CFG-Eingabe: am Prozess (Familie) hinterlegt
- *     (`data.lvarNamensmodul` / `data.lvarCfg`) — das ist der von der Projekt-
- *     Session geschriebene Teil (in Sebs Welt das `_..._namen.py`).
- *
- * Ohne hinterlegtes Namensmodul liefert der Service einen definierten Leer-Zustand
- * (kein Raten) — der Explorer zeigt dann nur das Inventar an.
+ *   · Variablen-Fundorte + Call-Graph: aus `el_variablen` / `el_prozess_items`
+ *     der neuesten Datenversion (geteilter Upload, Koordinaten-Extraktion).
+ *   · Namensmodul (alt→neu, Rolle): entweder importiert (Legacy) oder maschinell
+ *     VORGESCHLAGEN (Scheibe B) + Kunden-Overrides aus dem Arbeitsstand.
+ *   · NK-Regelsatz: fixer Paket-Standard + additive Kunden-Config (Scheibe C).
  */
 import { getProzess, getKunde } from '../storage';
 import { listVariablen, listProzessItems, latestExtractBaustand } from '../extract/persist';
 import { assembleLvar, type LvarErgebnis } from './assemble';
 import { sanitizeStand, type LvarStand } from './stand';
 import { schlageNamenVor, type NamensVorschlag } from './vorschlag';
-import { effektiveNk, type NkConfig } from './nkconfig';
+import { effektiveNk, type NkConfig, type EffektiveNk } from './nkconfig';
 import { slug } from './kopplung';
 import type { NkNamensmodul, NkRolle } from './nk';
 import type { CfgTarget, CfgExcel } from './cfg';
+import type { Variable, ProzessItem } from '../types';
+
+type LvarCfgInput = { targets: CfgTarget[]; excel: CfgExcel[] };
 
 /** Eine Ist-Variable aus dem Upload (vor jeder Namens-Entscheidung). */
 export interface LvarInventarZeile { name: string; p: string; typ?: string; schnitt?: string; varId: string; }
@@ -33,16 +34,38 @@ export interface LvarLeer { leer: true; grund: string; inventar: LvarInventar; }
 /** Berechnetes Ergebnis + überlagerter menschlicher Arbeitsstand (Sebs window.STAND). */
 export type LvarAnsicht = LvarErgebnis & { stand: LvarStand; version: number; vorschlagsBasis?: boolean };
 
-export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | LvarLeer> {
+/** Voll aufgelöste L-VAR-Grundlage — geteilt von Sicht und Export. */
+export interface LvarKern {
+  data: { lvarCfg?: LvarCfgInput; namensraum?: string; familie?: string };
+  nk: EffektiveNk;
+  variablen: Variable[];
+  items: ProzessItem[];
+  inventar: LvarInventar;
+  namensmodul: NkNamensmodul;
+  vorschlagMeta: Map<string, NamensVorschlag> | null;   // null = importiertes Modul
+  stand: LvarStand;
+  ergebnis: LvarErgebnis;
+  version: number;
+  kundeName?: string;
+  nkConfigRoh?: NkConfig;                                // die additive Kunden-Anpassung (roh)
+}
+
+/**
+ * Lädt Prozess + Datenversion + NK-Config, leitet das effektive Namensmodul ab
+ * (Import ODER Vorschlag ⊕ Kunden-Override) und assembliert. `leer`, wenn es
+ * keine Daten gibt.
+ */
+export async function ladeLvarKern(prozessId: string): Promise<LvarKern | LvarLeer> {
   const leer = (grund: string, inventar: LvarInventar): LvarLeer => ({ leer: true, grund, inventar });
   const prozess = await getProzess(prozessId);
   if (!prozess) return leer('Prozess nicht gefunden', { variablen: [], prozesse: [] });
 
-  const data = prozess as unknown as { lvarNamensmodul?: NkNamensmodul; lvarCfg?: { targets: CfgTarget[]; excel: CfgExcel[] }; lvarStand?: unknown; namensraum?: string; familie?: string };
+  const data = prozess as unknown as { lvarNamensmodul?: NkNamensmodul; lvarCfg?: LvarCfgInput; lvarStand?: unknown; namensraum?: string; familie?: string };
 
   // NK-Regelsatz: fixer Paket-Standard + additive Kunden-Config (kunde.data.nkConfig).
   const kunde = prozess.kundeId ? await getKunde(prozess.kundeId) : null;
-  const nk = effektiveNk((kunde as unknown as { nkConfig?: NkConfig } | null)?.nkConfig);
+  const nkConfigRoh = (kunde as unknown as { nkConfig?: NkConfig } | null)?.nkConfig;
+  const nk = effektiveNk(nkConfigRoh);
 
   // Datenbasis: neueste Datenversion (Upload/Baustand) — RGA und L-VAR teilen dieselbe Quelle.
   const baustandId = await latestExtractBaustand(prozessId);
@@ -58,9 +81,8 @@ export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | 
     datenstand: baustandId,
   };
 
-  // Namensmodul: importiert (Legacy) ODER maschinell vorgeschlagen (Scheibe B).
-  // Die Vorschläge sind der NK-konforme Startpunkt; Kunden-Overrides (neu/rolle)
-  // liegen im Arbeitsstand und werden hier übergelegt (Vorschlag ≠ Entscheid, D-095).
+  // Namensmodul: importiert (Legacy) ODER maschinell vorgeschlagen (Scheibe B) +
+  // Kunden-Overrides (neu/rolle) aus dem Arbeitsstand (Vorschlag ≠ Entscheid, D-095).
   const stand = sanitizeStand(data.lvarStand);
   const importiert = data.lvarNamensmodul;
   let namensmodul: NkNamensmodul;
@@ -110,6 +132,16 @@ export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | 
     }
   }
 
-  // Menschlicher Arbeitsstand als Overlay + Version fürs Optimistic-Locking.
-  return { ...ergebnis, stand, version: prozess.version ?? 1, vorschlagsBasis: !!vorschlagMeta };
+  return {
+    data, nk, variablen, items, inventar, namensmodul, vorschlagMeta,
+    stand, ergebnis, version: prozess.version ?? 1,
+    kundeName: kunde?.name, nkConfigRoh,
+  };
+}
+
+/** Sicht für den Explorer: Ergebnis + Arbeitsstand + Version (oder Leer-Zustand). */
+export async function lvarFuerProzess(prozessId: string): Promise<LvarAnsicht | LvarLeer> {
+  const k = await ladeLvarKern(prozessId);
+  if ('leer' in k) return k;
+  return { ...k.ergebnis, stand: k.stand, version: k.version, vorschlagsBasis: !!k.vorschlagMeta };
 }

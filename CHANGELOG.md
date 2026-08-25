@@ -2,6 +2,15 @@
 
 ## 2026-08-25
 
+### Echo-Loop: Export auf das in-App-Modul umgestellt (Input-Korrektur, Scheibe D — abschließend)
+Der L-VAR-Export zog bisher noch das *importierte* `lvarNamensmodul` (ohne Import → 404). Jetzt nutzt er dieselbe Ableitung wie der Explorer.
+
+- **`service.ts`**: gemeinsame `ladeLvarKern(prozessId)` extrahiert (Datenversion, NK-Config, effektives Namensmodul aus Vorschlag ⊕ Kunden-Override, Assembly). `lvarFuerProzess` (Sicht) **und** `lvarExportFuerProzess` (Export) bauen darauf auf → **kein zweiter Ableitungspfad**, Export = exakt das, was der Explorer zeigt.
+- **`export.ts`**: exportiert das **in-App erarbeitete** Namensmodul (statt nur importiertes) + die **Datenversion** (`_meta.datenstand`) + die additive **Kunden-NK-Config** (`nkConfig`) + `vorschlagsBasis`-Flag. Funktioniert damit proposal-basiert ohne Import.
+- **Tests**: Echo-Loop-Suite **244 grün**, tsc (echoloop) clean. E2E am Übungsfall: Export ohne Import liefert 24-Einträge-Modul, Kunden-NK-Config (Rechnungen→Belege) wirkt und wird mitexportiert, Datenversion dabei.
+
+**Damit ist die Input-Korrektur (A–D) abgeschlossen:** ein Upload → geteilte versionierte Datenbasis → NK-Vorschläge (Kunde entscheidet) → konfigurierbare NK (Default maximal, pro Kunde additiv) → Export zurück in Sebs Loop.
+
 ### Echo-Loop: NK als konfigurierbarer Standard (Input-Korrektur, Scheibe C)
 Die Namenskonvention ist jetzt ein **Standard mit maximalem Default, der nur pro Kunde additiv angepasst** wird — der Kanon (Rollen-Präfixe C_/H_/T_, Grammatik, PascalCase) bleibt fix und nicht überschreibbar.
 
