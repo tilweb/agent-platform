@@ -11,6 +11,8 @@ import { llmService, type Message } from '../../services/llm';
 import { putObject, isS3Configured } from '../../storage/s3';
 import { s3Paths } from '../../storage/paths';
 import { pdfToText } from './extract';
+import { extractProcessFromPdf, type EmmaProcessExtract } from './extract/emma';
+import { saveProzessItem, logTelemetrie } from './extract/persist';
 import { runChecker, deriveHints, parseFamily, type CheckerHints } from './checker';
 import type { PMFinding } from './checker/types';
 import { computeScores, ALL_DIMS, DIM_LABEL, type Dim } from './scoring';
@@ -145,12 +147,24 @@ export async function analyseProzess(opts: {
   const emit = async (phase: string, data: Record<string, unknown> = {}) => { await onProgress?.('progress', { phase, ...data }); };
 
   // 1. Extraktion + Artefakt-Ablage (S3 optional)
+  //    Zwei Extraktionen aus DEMSELBEN Upload: (a) Layout-Text für den RGA-Checker,
+  //    (b) koordinatenbasierter Steckbrief-Extrakt (emma.ts) als geteilte L-VAR-Datenbasis.
   const extracted: { name: string; text: string }[] = [];
+  const varExtracts: EmmaProcessExtract[] = [];
   for (let i = 0; i < files.length; i++) {
     const f = files[i]!;
     await emit('extract', { file: f.filename, index: i + 1, total: files.length });
     const text = await pdfToText(f.bytes);
     extracted.push({ name: f.filename, text });
+
+    // (b) Koordinaten-Extrakt für L-VAR — beobachtend: ein Fehler (z. B. kein
+    //     EMMA-Export) darf die RGA-Analyse nicht abbrechen.
+    try {
+      const ex = await extractProcessFromPdf(f.bytes, String(i + 1));
+      if (ex.variablen.length) varExtracts.push(ex);   // nur echte EMMA-Exporte (Nr fällt sonst nur auf den Index zurück)
+    } catch (err) {
+      console.warn('[echoloop] Koordinaten-Extraktion übersprungen:', f.filename, err instanceof Error ? err.message : err);
+    }
 
     let s3Key = '';
     const artefaktSeg = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -240,6 +254,25 @@ export async function analyseProzess(opts: {
     topHebel: hints.topHebel,
     paBefunde,
   });
+
+  // 6b. L-VAR-Datenbasis persistieren, skopiert auf diesen Baustand (= Datenversion).
+  //     Idempotent je (Familie, Nr, Baustand); ältere Versionen bleiben erhalten.
+  if (varExtracts.length) {
+    let vars = 0;
+    for (const ex of varExtracts) {
+      try {
+        await saveProzessItem(prozessId, baustand.id, ex);
+        vars += ex.variablen.length;
+      } catch (err) {
+        console.warn('[echoloop] Steckbrief-Persistenz fehlgeschlagen:', ex.nr, err instanceof Error ? err.message : err);
+      }
+    }
+    await logTelemetrie({
+      verfahren: 'extract', event: 'persist', prozessId, baustandId: baustand.id,
+      data: { prozesse: varExtracts.length, variablen: vars },
+    });
+    await emit('lvar_daten', { prozesse: varExtracts.length, variablen: vars });
+  }
 
   return baustand;
 }

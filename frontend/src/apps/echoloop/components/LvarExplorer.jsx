@@ -335,11 +335,56 @@ function Cfg({ cfg, pfad, stand, onStand, readOnly, q }) {
   );
 }
 
+/** Ist-Variablen-Inventar aus dem Upload — die Basis, gegen die die NK abgeglichen wird
+ *  (Reiter 1, solange noch keine Namens-Entscheidungen getroffen sind). */
+function Inventar({ inventar }) {
+  const [q, setQ] = useState('');
+  const vars = inventar.variablen || [];
+  const prozesse = inventar.prozesse || [];
+  const nameOf = {};
+  prozesse.forEach((p) => { nameOf[p.nr] = p.nameExport; });
+  const gefiltert = q.trim()
+    ? vars.filter((v) => `${v.name} ${v.p} ${nameOf[v.p] || ''} ${v.typ || ''}`.toLowerCase().includes(q.toLowerCase()))
+    : vars;
+  return (
+    <div style={s.card}>
+      <div style={s.title}>Ist-Variablen-Inventar · {vars.length} Variablen aus {prozesse.length} Prozessen</div>
+      <div style={{ ...s.muted, marginBottom: theme.spacing.sm }}>
+        Diese Namen stammen aus dem hochgeladenen EMMA-Export. Der Abgleich gegen die Namenskonvention und die Namensvorschläge folgen im nächsten Schritt.
+      </div>
+      <input style={s.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filtern (Name · Typ · Prozess) …" />
+      <div style={s.scroll}>
+        <table style={s.table}>
+          <thead><tr><th style={s.th}>Prozess</th><th style={s.th}>Variable (Ist)</th><th style={s.th}>Typ</th><th style={s.th}>Schnittstelle</th></tr></thead>
+          <tbody>
+            {gefiltert.map((v, i) => (
+              <tr key={`${v.p}-${v.varId}-${i}`}>
+                <td style={s.td}>{v.p}{nameOf[v.p] ? ` · ${nameOf[v.p]}` : ''}</td>
+                <td style={s.td}><code>{v.name}</code></td>
+                <td style={s.td}>{v.typ || '—'}</td>
+                <td style={s.td}>{v.schnitt || '—'}</td>
+              </tr>
+            ))}
+            {!gefiltert.length && <tr><td style={s.td} colSpan={4}><span style={s.muted}>Keine Treffer.</span></td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function LvarExplorer({ lvar, stand = {}, onStand = () => {}, readOnly = false }) {
   const [reiter, setReiter] = useState('variablen');
   const [q, setQ] = useState('');
   if (!lvar) return null;
-  if (lvar.leer) return <div style={s.card}><div style={s.muted}>{lvar.grund}</div></div>;
+  if (lvar.leer) {
+    return (
+      <div>
+        <div style={{ ...s.muted, marginBottom: theme.spacing.md }}>{lvar.grund}</div>
+        {lvar.inventar?.variablen?.length > 0 && <Inventar inventar={lvar.inventar} />}
+      </div>
+    );
+  }
 
   return (
     <div>

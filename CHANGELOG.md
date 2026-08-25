@@ -2,6 +2,15 @@
 
 ## 2026-08-25
 
+### Echo-Loop: geteilte, versionierte Datenbasis für RGA + L-VAR (Input-Korrektur, Scheibe A)
+Kern-Korrektur nach Annahmen-Validierung: L-VAR soll die Daten auswerten, die **bereits im Prozess aus der RGA** liegen — bisher waren RGA und L-VAR datenseitig entkoppelt (L-VAR las aus leeren Tabellen). Jetzt **ein Upload, eine Datenbasis, beide Verfahren**.
+
+- **Upload verdrahtet** (`analysis.ts`): Der RGA-Upload führt jetzt aus DEMSELBEN EMMA-Export zusätzlich die koordinatenbasierte Steckbrief-Extraktion (`emma.ts`, real validiert) aus und persistiert sie via `saveProzessItem` — **beobachtend** (ein Nicht-EMMA-PDF bricht die RGA nicht ab). Bisher war dieser Pfad gebaut, aber nirgends aufgerufen.
+- **Versionierung über den Baustand** (`extract/persist.ts`): Steckbriefe/Variablen werden auf den erzeugten Baustand skopiert (= Datenversion); `listProzessItems`/`listVariablen` nehmen optional eine `baustandId`, neuer Helper `latestExtractBaustand` liefert die neueste Datenversion. Jeder neue Upload = neue Version, ältere bleiben append-only erhalten.
+- **L-VAR-Sicht** (`lvar/service.ts`): liest die neueste Datenversion; ohne Namens-Entscheidungen liefert der Service jetzt das **Ist-Variablen-Inventar** (statt nur „leer"). Export (`lvar/export.ts`) zieht dieselbe Datenversion.
+- **Frontend** (`LvarExplorer.jsx`): neuer **Ist-Inventar-View** (Prozess · Variable · Typ · Schnittstelle, filterbar) — die Basis, gegen die im nächsten Schritt (Vorschlags-Engine) die Namenskonvention abgeglichen wird.
+- **Tests**: Echo-Loop-Suite 231 grün, tsc (echoloop) clean, Frontend-Build grün.
+
 ### Echo-Loop: L-VAR-Export für Sebs lokalen Loop (Oberflächen-Korrektur, Scheibe 3, erste Fassung)
 Ziel 2 der Korrektur: eine Brücke aus der Kunden-Workplace zurück in Sebs lokales F&E-Umfeld. **Erste Fassung — Schema mit Seb final abzustimmen.**
 

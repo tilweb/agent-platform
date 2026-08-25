@@ -8,7 +8,7 @@
  * deterministisch: `buildLvarExport` ist über seine Eingaben testbar.
  */
 import { getProzess } from '../storage';
-import { listVariablen, listProzessItems } from '../extract/persist';
+import { listVariablen, listProzessItems, latestExtractBaustand } from '../extract/persist';
 import { assembleLvar, type LvarErgebnis } from './assemble';
 import { sanitizeStand, type LvarStand } from './stand';
 import type { Variable, ProzessItem } from '../types';
@@ -83,7 +83,8 @@ export async function lvarExportFuerProzess(prozessId: string): Promise<LvarExpo
   const namensmodul = data.lvarNamensmodul;
   if (!namensmodul || !Array.isArray(namensmodul.map) || namensmodul.map.length === 0) return null;
 
-  const [variablen, items] = await Promise.all([listVariablen(prozessId), listProzessItems(prozessId)]);
+  const baustandId = await latestExtractBaustand(prozessId);
+  const [variablen, items] = await Promise.all([listVariablen(prozessId, baustandId), listProzessItems(prozessId, baustandId)]);
   const fundorte = variablen.map((v) => ({ name: v.name, p: v.p }));
   const callGraph = items.flatMap((it) => (it.aufrufe ?? []).map((nach) => ({ von: it.nr, nach })));
   const analyse = assembleLvar({

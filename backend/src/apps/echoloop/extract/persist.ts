@@ -8,7 +8,7 @@
  * bestehender Steckbrief wird ersetzt (Cascade räumt die Variablen mit ab),
  * dann frisch geschrieben — kein Auffangzweig, keine Dublette.
  */
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { getDb } from '../../../db';
 import { elProzessItems, elVariablen, elTelemetrie } from '../../../db/schema/echoloop';
 import type { ProzessItem, Variable } from '../types';
@@ -54,18 +54,45 @@ function rowToVariable(row: typeof elVariablen.$inferSelect): Variable {
   };
 }
 
-export async function listProzessItems(prozessId: string): Promise<ProzessItem[]> {
+/** Steckbriefe einer Familie; mit `baustandId` auf eine Datenversion (Upload) skopiert. */
+export async function listProzessItems(prozessId: string, baustandId?: string): Promise<ProzessItem[]> {
   const db = getDb();
-  const rows = await db.select().from(elProzessItems)
-    .where(eq(elProzessItems.prozessId, prozessId)).orderBy(elProzessItems.nr);
+  const cond = baustandId
+    ? and(eq(elProzessItems.prozessId, prozessId), eq(elProzessItems.baustandId, baustandId))
+    : eq(elProzessItems.prozessId, prozessId);
+  const rows = await db.select().from(elProzessItems).where(cond).orderBy(elProzessItems.nr);
   return rows.map(rowToProzessItem);
 }
 
-export async function listVariablen(prozessId: string): Promise<Variable[]> {
+/** Variablen einer Familie; mit `baustandId` auf die Steckbriefe genau dieser Datenversion skopiert. */
+export async function listVariablen(prozessId: string, baustandId?: string): Promise<Variable[]> {
   const db = getDb();
+  if (baustandId) {
+    const items = await db.select({ id: elProzessItems.id }).from(elProzessItems)
+      .where(and(eq(elProzessItems.prozessId, prozessId), eq(elProzessItems.baustandId, baustandId)));
+    const ids = items.map((i) => i.id);
+    if (!ids.length) return [];
+    const rows = await db.select().from(elVariablen)
+      .where(and(eq(elVariablen.prozessId, prozessId), inArray(elVariablen.prozessItemId, ids)))
+      .orderBy(elVariablen.p, elVariablen.varId);
+    return rows.map(rowToVariable);
+  }
   const rows = await db.select().from(elVariablen)
     .where(eq(elVariablen.prozessId, prozessId)).orderBy(elVariablen.p, elVariablen.varId);
   return rows.map(rowToVariable);
+}
+
+/**
+ * Neuester Extraktions-Baustand (Datenversion) einer Familie: der Baustand, aus
+ * dem zuletzt Steckbriefe extrahiert wurden. Grundlage der L-VAR-Sicht („latest wins",
+ * ältere Versionen bleiben append-only erhalten). `undefined`, wenn nichts extrahiert.
+ */
+export async function latestExtractBaustand(prozessId: string): Promise<string | undefined> {
+  const db = getDb();
+  const [row] = await db.select({ baustandId: elProzessItems.baustandId }).from(elProzessItems)
+    .where(eq(elProzessItems.prozessId, prozessId))
+    .orderBy(desc(elProzessItems.createdAt)).limit(1);
+  return row?.baustandId ?? undefined;
 }
 
 // ── Writer ────────────────────────────────────────────────────────────────────
