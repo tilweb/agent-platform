@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-25
+
+### Echo-Loop: L-VAR Reiter 2 + 3 arbeitsfähig + Suche (Oberflächen-Korrektur, Scheibe 2)
+Fortsetzung der Korrektur read-only→arbeitsfähig. Die Persistenz-Schicht aus Scheibe 1 (`LvarStand`/`onStand`/debounced Save) trägt die neuen Felder unverändert mit.
+
+- **Reiter 2 (Prozess-Steckbriefe) interaktiv** (`LvarExplorer.jsx`): **Typ-Entscheidung** MP/TP/SP (die UNENTSCHIEDEN-Fälle setzt der Mensch — Quelle wird „entschieden"), **Kritikalität** (Select) + **Grund**, **Beschreibung** + **Ergebnis** editierbar, **Kopier-Knopf** (Soll-Name · Beschreibung · Ergebnis → Zwischenablage), Fortschritt „X von N entschieden". Tokens `SB-<nr>-typ/-krit/-kritgrund/-beschr/-ergebnis`.
+- **Reiter 3 (Konfiguration) interaktiv**: **Vorabhaken** je Schlüssel (D-085-gesperrte bleiben gesperrt), **Kandidat-Wahl** bei `abweichend`/`unklar` (Auflösung des Wert-Konflikts), **Feedback**, Fortschrittsbalken. Tokens `CFG-<key>-hak/-wahl/-fb`.
+- **Globale Suche** über alle Reiter (Name · Schlüssel · Prozess).
+- **Bewusst NICHT in-app:** Theme-Toggle (hell/dunkel) — die Workplace-App hat ihr eigenes Theme; der Explorer-lokale Umschalter gehört ins standalone HTML-Export (Scheibe 3), nicht in die eingebettete Ansicht.
+- Frontend-Build grün, eslint 0 Errors; Backend unverändert (227 grün). Offen: Export für Sebs lokalen Loop (Scheibe 3), Seb-Abstimmung heute Abend.
+
 ## 2026-08-24
 
 ### Echo-Loop: L-VAR Reiter 1 arbeitsfähig — Umbenennen-Cockpit interaktiv + persistiert (Oberflächen-Korrektur, Scheibe 1)
