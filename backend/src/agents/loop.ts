@@ -60,9 +60,13 @@ import { getSystemAgentModel, type SystemAgentPurpose } from '../config/platform
 import type { ResolvedModel, ModelRequirements } from '../types/providers';
 import { writeAgentLog } from '../services/agentLog';
 
-const MAX_ITERATIONS = 5;
-const MAX_DELEGATED_ITERATIONS = 10;
-const MAX_SUPERVISOR_ITERATIONS = 15;
+// Iterations-Budgets (= LLM-Zuege; in der Praxis ~1 Tool-Aufruf/Zug). Das Limit
+// ist eine Runaway-/Kosten-Notbremse, KEINE Normalbetriebs-Decke — ein realer
+// Ablauf "suchen -> eingrenzen -> lesen -> synthetisieren" braucht schon 3-4
+// Zuege, plus Luft fuer behebbare Tool-Fehler. Per ENV tunebar (leer/0 -> Default).
+const MAX_ITERATIONS = Number(process.env.AGENT_MAX_ITERATIONS) || 12;
+const MAX_DELEGATED_ITERATIONS = Number(process.env.AGENT_MAX_DELEGATED_ITERATIONS) || 20;
+const MAX_SUPERVISOR_ITERATIONS = Number(process.env.AGENT_MAX_SUPERVISOR_ITERATIONS) || 25;
 const MAX_DELEGATION_DEPTH = 2;
 
 // Ab welchem maxIterations-Budget eines Ziel-Agenten eine Delegation in einen
@@ -2882,7 +2886,57 @@ export async function* runAgentLoop(
   setDelegationHandler(null);
   setLoadSkillHandler(null);
 
-  // Max iterations reached
+  // Iterationslimit erreicht ohne finale Antwort. Statt hart mit einem Error
+  // abzubrechen (wie frueher) spiegeln wir das Verhalten des delegierten Loops:
+  // EIN Synthese-Aufruf ohne Tools erzeugt eine Best-Effort-Antwort aus dem,
+  // was bereits gesammelt wurde — der Nutzer bekommt ein verwertbares Ergebnis
+  // mit transparentem Hinweis statt einer leeren Fehlermeldung.
+  console.log(`[AgentLoop] Agent ${agentId}: kein finales Ergebnis nach ${maxIterations} Iterationen, erzwinge Synthese`);
+  yield { type: 'thinking' };
+
+  try {
+    let synthSystemPrompt = fullSystemPrompt;
+    if (loopState.loadedSkillInstructions.length > 0) {
+      synthSystemPrompt += '\n\n' + loopState.loadedSkillInstructions.join('\n\n');
+    }
+
+    const synthHistory = getMessages(sessionId).map((msg) => {
+      if (msg.role === 'tool' && typeof msg.content === 'string' && msg.content.length > 6000) {
+        return { ...msg, content: msg.content.substring(0, 6000) + '\n\n[... gekürzt]' };
+      }
+      return msg;
+    });
+
+    const synthMessages: Message[] = [
+      { role: 'system', content: synthSystemPrompt },
+      ...synthHistory,
+      { role: 'user', content: 'Du hast dein Schritt-Budget erreicht. Erzeuge JETZT die vollständige, strukturierte Endantwort aus den bereits gesammelten Informationen — direkt, ohne weitere Tool-Aufrufe. Nutze, was vorliegt, und markiere echte Lücken transparent. Gib NIEMALS „konnte nichts finden" zurück, wenn relevante Dokumente gelesen wurden.' },
+    ];
+
+    const synthUsageContext: UsageContext = { userId, source: 'chat', operation: agentId || 'default' };
+    const synthChatOptions: ChatOptions = { userId, modelOverride: resolvedModelOverride };
+
+    let synthContent = '';
+    for await (const chunk of llmService.streamChat(synthMessages, [], synthUsageContext, synthChatOptions)) {
+      const delta = chunk?.choices?.[0]?.delta?.content;
+      if (!delta) continue;
+      synthContent += delta;
+      yield { type: 'response_chunk', content: delta };
+    }
+    synthContent = synthContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+    if (synthContent) {
+      addMessage(sessionId, { role: 'assistant', content: synthContent });
+      console.log(`[AgentLoop] Agent ${agentId}: Synthese lieferte ${synthContent.length} Zeichen`);
+      log('done', 'Fertig (Synthese am Schritt-Budget)', {});
+      yield { type: 'done' };
+      return;
+    }
+  } catch (error: any) {
+    console.error(`[AgentLoop] Agent ${agentId}: Synthese fehlgeschlagen:`, error?.message);
+  }
+
+  // Synthese lieferte nichts Verwertbares → als letztes Mittel der Fehler.
   log('error', 'Maximum iterations reached', { error: 'Maximum iterations reached' });
   yield { type: 'error', content: 'Maximum iterations reached' };
 }

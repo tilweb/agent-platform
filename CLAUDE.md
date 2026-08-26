@@ -29,7 +29,7 @@ Bun ist nicht im PATH. Verwende den vollstaendigen Pfad:
 | Komponente | Datei | Beschreibung |
 |-----------|-------|-------------|
 | Entry Point | `index.ts` | Hono App, Middleware, Route-Registrierung |
-| Agent Loop | `agents/loop.ts` | Agentic Loop (5 Iter. main, 10 delegiert, 15 Supervisor) |
+| Agent Loop | `agents/loop.ts` | Agentic Loop (Default 12 Iter. main, 20 delegiert, 25 Supervisor; ENV-tunebar `AGENT_MAX_*_ITERATIONS`, pro-Agent via `maxIterations`; Synthese-Fallback am Limit statt hartem Error) |
 | LLM Service | `services/llm.ts` | Multi-Adapter LLM (OpenAI-compat + Ollama) |
 | Tool Registry | `tools/registry.ts` | Zentrale Tool-Verwaltung |
 | Skills | `skills/` | loader, matcher, activator, workflow |
