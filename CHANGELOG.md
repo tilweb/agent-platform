@@ -1,6 +1,21 @@
 # Changelog
 
-## 2026-08-25
+## 2026-08-26
+
+### Agent-Loop: Iterations-Budgets angehoben + Synthese-Fallback statt hartem Error
+Nutzer stießen auch bei klaren Abläufen an „Maximum iterations reached" — ein Ablauf
+„KB durchsuchen → eingrenzen → Dokument lesen → analysieren" ist schon 3–4 Züge, und ein einzelner
+behebbarer Tool-Fehler (z.B. `kb_search` ohne `collection_id`) kippte das enge Default-Budget von 5.
+- **Defaults angehoben**: direkter Agent 5→**12**, delegiert 10→**20**, Supervisor 15→**25**; zusätzlich
+  per ENV tunebar (`AGENT_MAX_ITERATIONS` / `_DELEGATED_` / `_SUPERVISOR_`, leer/0 = Default). Ein Agent
+  kann sein Budget weiterhin per `maxIterations`-Frontmatter überschreiben.
+- **Synthese-Fallback im Main-Loop**: Erreicht ein direkter Agent das Limit, brach der Loop bisher hart
+  mit `error: Maximum iterations reached` ab — anders als der delegierte Loop, der längst einen
+  Synthese-Aufruf macht. Der Main-Loop spiegelt dieses Verhalten jetzt: ein Aufruf ohne Tools erzeugt
+  eine Best-Effort-Endantwort aus dem bereits Gesammelten (streamt normal, mit Hinweis auf das
+  Schritt-Budget); nur wenn auch das leer bleibt, kommt der Error als letztes Mittel.
+- Der konkret betroffene Agent „HR - Bewerbungsanalyse" hatte kein eigenes Budget (stoppte exakt bei 5)
+  → durch den neuen Default 12 automatisch abgedeckt.
 
 ### LLM-Adapter: Retry auf transiente Server-Fehler (500/502/504)
 Der Adacor-Embeddings-Endpunkt liefert sporadische 500er (gemessen ~1/20), obwohl der direkte
