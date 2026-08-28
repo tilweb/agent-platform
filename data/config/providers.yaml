@@ -159,6 +159,70 @@ providers:
           - chat
           - function_calling
         default: true
+      - id: moonshotai/Kimi-K3
+        name: Kimi K3
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+        default: false
+  - id: lyceum
+    name: Lyceum Technologies
+    api_mode: openai
+    base_url: https://api.lyceum.technology/openai/v1
+    api_key_env: LYCEUM_API_KEY
+    enabled: true
+    company_region: eu
+    datacenter_country: ES
+    models:
+      - id: moonshotai/kimi-k3
+        name: Kimi K3
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+        default: true
+      - id: deepseek/deepseek-v4-pro
+        name: DeepSeek V4 Pro
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+        default: false
+      - id: deepseek/deepseek-v4-flash-0731
+        name: DeepSeek V4 Flash
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+        default: false
+      - id: z-ai/glm-5.2
+        name: GLM 5.2
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+        default: false
+      - id: qwen/qwen3.8-2.4t-a95b
+        name: Qwen 3.8 2.4T A95B
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+        default: false
+      - id: qwen/qwen3.5-9b
+        name: Qwen 3.5 9B
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+        default: false
+      - id: Qwen/Qwen3-Embedding-8B
+        name: Qwen 3 Embedding 8B
+        type: embedding
+        capabilities:
+          - embedding
+        default: false
   - id: adacor-ai-audio
     name: Adacor AI Audio
     api_mode: openai
@@ -240,8 +304,8 @@ providers:
         default: true
 active:
   chat:
-    provider_id: adacor
-    model_id: qwen3-a3b-30b-256k
+    provider_id: nebius-token-factory
+    model_id: moonshotai/Kimi-K3
   vision:
     provider_id: adacor
     model_id: mistral-3-24b-128k
@@ -257,12 +321,6 @@ active:
   image_to_image:
     provider_id: fal-ai
     model_id: fal-ai/nano-banana-pro
-  # Phase D / Heavy-Extraction-Pipeline. Wird von der Pipeline nicht
-  # automatisch resolved — Strategien lesen den Override aus dem Schema-Config
-  # (`extraction.model_override`). Dieser Block dokumentiert die Default-
-  # Empfehlung: Qwen-Thinking liefert hoehere Genauigkeit, kostet aber mehr.
-  # Wenn ein Schema `model_override: null` hat (Default), faellt es auf den
-  # `chat`-Provider zurueck.
   extraction_heavy:
     provider_id: adacor
     model_id: qwen3-a3bthinking-30b-256k
