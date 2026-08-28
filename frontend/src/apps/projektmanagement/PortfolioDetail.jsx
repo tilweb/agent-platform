@@ -137,6 +137,24 @@ const styles = {
   bannerSuccess: { backgroundColor: theme.colors.successLight, color: theme.colors.success },
 };
 
+// Kopfzeile eines Tabs — gleiches Muster wie die Step-Headlines im Projektauftrag
+// (Personen/Ziele bringen ihre Headline über die geteilten Step-Komponenten mit).
+function TabHeader({ title, subtitle }) {
+  return (
+    <div style={{ marginBottom: theme.spacing.lg }}>
+      <h2 style={{
+        fontSize: theme.typography.sizes.xl, fontWeight: theme.typography.weights.semibold,
+        color: theme.colors.text, marginBottom: theme.spacing.sm,
+      }}>{title}</h2>
+      {subtitle && (
+        <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary }}>
+          {subtitle}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Zielstruktur (RuhrPM-Konzept), am Projektauftrag ausgerichtet. `label` = Titel
 // in StepNav und zugleich Schlüssel der Icon-Zuordnung (STEP_ICONS).
 const TABS = [
@@ -281,7 +299,13 @@ export default function PortfolioDetail() {
 
       <div style={styles.content}>
         {activeTab === 'uebersicht' && (
-          <PortfolioDashboard portfolioId={portfolioId} appConfig={appConfig} />
+          <>
+            <TabHeader
+              title="Übersicht"
+              subtitle="KPIs, Phasen-Mix, Top-Risiken und letzte Statusberichte der zugeordneten Projekte."
+            />
+            <PortfolioDashboard portfolioId={portfolioId} appConfig={appConfig} />
+          </>
         )}
         {activeTab === 'basis' && (
           <BasisTab
@@ -597,6 +621,10 @@ const RoadmapTab = forwardRef(function RoadmapTab({ portfolio, canEdit, onStateC
 
   return (
     <div>
+      <TabHeader
+        title="Roadmap"
+        subtitle="Zeitliche Einordnung aller zugeordneten Projekte und Projektideen inkl. Abhängigkeiten."
+      />
       {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
 
       {ganttItems.length === 0 ? (
@@ -791,6 +819,10 @@ function KostenTab({ portfolio, navigate }) {
 
   return (
     <div>
+      <TabHeader
+        title="Kosten"
+        subtitle="Aggregierte Kosten und Termin-Prognosen aller zugeordneten Projekte und Projektideen."
+      />
       {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
 
       {!hasAny ? (
@@ -995,11 +1027,12 @@ const RisikenTab = forwardRef(function RisikenTab({ portfolio, canEdit, onStateC
 
   return (
     <div>
+      <TabHeader
+        title="Risiken"
+        subtitle={<>Risiken aus dem letzten genehmigten Statusbericht aller zugeordneten Projekte. Markiere per Häkchen,
+          welche Risiken später im PMO-Dashboard verfolgt werden sollen — {tracked.size} markiert.</>}
+      />
       {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
-      <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.lg }}>
-        Risiken aus dem letzten genehmigten Statusbericht aller zugeordneten Projekte. Markiere per Häkchen,
-        welche Risiken später im PMO-Dashboard verfolgt werden sollen — {tracked.size} markiert.
-      </div>
 
       {risiken.length === 0 ? (
         <div style={styles.empty}>Keine Risiken in den Statusberichten der zugeordneten Projekte.</div>
@@ -1288,6 +1321,10 @@ const BasisTab = forwardRef(function BasisTab({ portfolio, appConfig, canEdit, c
 
   return (
     <div>
+      <TabHeader
+        title="Basis"
+        subtitle="Stammdaten des Portfolios sowie zugeordnete Projekte und Projektideen."
+      />
       {error && <div style={{ ...styles.banner, ...styles.bannerError }}>{error}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>

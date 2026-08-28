@@ -113,7 +113,7 @@ function Vergleich({ data }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>9. Historischer Vergleich</h2>
+        <h2 style={styles.title}>Historischer Vergleich</h2>
         <p style={styles.subtitle}>
           KI-gestützte Analyse und Vergleich mit historischen Projekten.
         </p>

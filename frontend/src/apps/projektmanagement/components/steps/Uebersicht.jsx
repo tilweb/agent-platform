@@ -604,7 +604,7 @@ function Uebersicht({ data, stepAnalyses = null, gesamtbewertung = null, onGesam
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>8. Übersicht</h2>
+        <h2 style={styles.title}>Übersicht</h2>
         <p style={styles.subtitle}>
           Zusammenfassung Ihres Projektauftrags mit KI-Gesamtbewertung.
         </p>

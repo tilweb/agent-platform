@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-28
+
+### Projektmanagement: Step-Headlines ohne Nummern + fehlende Tab-Headlines im Portfolio-Detail
+Nachdem die Tab-Leisten in Projektauftrag und Statusbericht von Nummerierung auf Icons umgestellt
+wurden, standen die Nummern noch in den Headlines der Projektauftrag-Steps („1. Basisdaten" …
+„9. Historischer Vergleich") — entfernt (inkl. der Default-Titel der geteilten Komponenten
+Personen/Ziele/Risiken). Im Portfolio-Detail fehlte bei mehreren Tabs die Headline komplett:
+Übersicht, Basis, Roadmap, Kosten und Risiken haben jetzt eine Kopfzeile (Titel + Untertitel) im
+gleichen Stil wie die Step-Headlines; Personen und Ziele hatten sie bereits über die geteilten
+Step-Komponenten.
+
 ## 2026-08-26
 
 ### Agent-Loop: Iterations-Budgets angehoben + Synthese-Fallback statt hartem Error

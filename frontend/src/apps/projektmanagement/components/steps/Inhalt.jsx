@@ -181,7 +181,7 @@ function Inhalt({ data, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>4. Inhalt</h2>
+        <h2 style={styles.title}>Inhalt</h2>
         <p style={styles.subtitle}>
           Definieren Sie klar, was zum Projektumfang gehört und was nicht.
         </p>
