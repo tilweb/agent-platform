@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useStreaming } from '../hooks/useStreaming';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useChatFolders } from '../hooks/useChatFolders';
+import { useFavoriteAgents } from '../hooks/useFavoriteAgents';
 import { useAgentContext } from '../context/AgentContext';
 import { useProviders } from '../hooks/useProviders';
 import ChatWindow from '../components/ChatWindow';
@@ -355,6 +356,14 @@ function ChatPage() {
     processedAttachmentIdsRef.current = new Set(); // Clear processed attachments
   }, [clearMessages, startNewChat, isStreaming]);
 
+  // Favoriten-Agent aus der Sidebar: neuen Chat mit vorausgewaehltem Agenten starten
+  const { favoriteAgentIds, saveFavoriteAgents } = useFavoriteAgents();
+  const handleStartAgentChat = useCallback((agentId) => {
+    if (isStreaming) return;
+    handleNewChat();
+    selectAgent(agentId);
+  }, [isStreaming, handleNewChat, selectAgent]);
+
   // Handle model change from /model command
   const handleModelChanged = useCallback((payload) => {
     setSelectedModel({
@@ -474,6 +483,11 @@ function ChatPage() {
         onCreateFolder={createFolder}
         onDeleteFolder={handleDeleteFolder}
         folderChats={folderChats}
+        // Favoriten-Agenten props
+        agents={agents}
+        favoriteAgentIds={favoriteAgentIds}
+        onSaveFavoriteAgents={saveFavoriteAgents}
+        onStartAgentChat={handleStartAgentChat}
       />
       <div style={pageStyles.chatArea}>
         {error && (

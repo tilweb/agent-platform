@@ -2,6 +2,16 @@
 
 ## 2026-08-28
 
+### Chat: Favoriten-Agenten in der Sidebar
+Der Weg über „+" → „Agenten" ist nicht für alle intuitiv. Neue Sektion **„Agenten"** in der
+Chat-Sidebar (zwischen Suche und Ordnern): Nutzer stellen sich per Modal eine persönliche
+Favoritenliste zusammen; ein Klick auf einen Favoriten startet einen neuen Chat mit dem
+vorausgewählten Agenten. Auswahl-Modal bewusst als **Checkbox-Liste mit Suchfeld** statt Kacheln
+(schneller scanbar bei vielen Agenten, Mehrfachauswahl als natürliches Checkbox-Pattern).
+Persistenz pro Nutzer in den User-Preferences (`favorite_agents`, neue Endpoints
+GET/PUT `/api/users/preferences/favorite-agents`). Gelöschte/unzugängliche Agenten fallen beim
+Rendern automatisch raus.
+
 ### Projektmanagement: Kapazitätsplanung hinter Feature-Flag (Einstellungen > Module)
 RuhrPM-Entscheidung: Die Kapazitätsplanung soll nicht direkt für alle Kunden freigeschaltet sein.
 Neues Feature-Flag `features.kapazitaetsplanung` in der App-Config (Default: **aus**), aktivierbar

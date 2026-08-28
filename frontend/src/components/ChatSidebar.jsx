@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { theme } from '../config/theme';
-import { SearchIcon, FolderIcon } from './Icons';
+import { SearchIcon, FolderIcon, PenIcon } from './Icons';
+import { AgentIcon } from './AgentPicker';
+import AgentFavoritesModal from './AgentFavoritesModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -212,6 +214,78 @@ const styles = {
     transition: `all ${theme.transitions.fast}`,
     textAlign: 'center',
   },
+  // Favoriten-Agenten
+  agentsSection: {
+    borderBottom: `1px solid ${theme.colors.border}`,
+    padding: `${theme.spacing.sm} 0`,
+  },
+  agentsSectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: `0 ${theme.spacing.md}`,
+    margin: `0 ${theme.spacing.sm}`,
+  },
+  agentsSectionTitle: {
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  agentsEditButton: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: theme.colors.textMuted,
+    padding: '2px',
+    borderRadius: theme.borderRadius.sm,
+    display: 'flex',
+    alignItems: 'center',
+    transition: `color ${theme.transitions.fast}`,
+  },
+  agentItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    margin: `0 ${theme.spacing.sm}`,
+    borderRadius: theme.borderRadius.md,
+    cursor: 'pointer',
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.text,
+    transition: `background-color ${theme.transitions.fast}`,
+  },
+  agentItemHover: {
+    backgroundColor: theme.colors.surfaceHover,
+  },
+  agentItemIcon: {
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  agentItemName: {
+    flex: 1,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    fontWeight: theme.typography.weights.medium,
+  },
+  addAgentsButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+    margin: `0 ${theme.spacing.sm}`,
+    borderRadius: theme.borderRadius.md,
+    cursor: 'pointer',
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textMuted,
+    border: 'none',
+    backgroundColor: 'transparent',
+    width: 'calc(100% - 16px)',
+    transition: `all ${theme.transitions.fast}`,
+  },
   // Folder styles
   foldersSection: {
     borderBottom: `1px solid ${theme.colors.border}`,
@@ -386,9 +460,16 @@ function ChatSidebar({
   onCreateFolder,
   onDeleteFolder,
   folderChats = [],
+  // Favoriten-Agenten props
+  agents = [],
+  favoriteAgentIds = [],
+  onSaveFavoriteAgents,
+  onStartAgentChat,
 }) {
   const [hoveredId, setHoveredId] = useState(null);
   const [hoveredFolderId, setHoveredFolderId] = useState(null);
+  const [hoveredAgentId, setHoveredAgentId] = useState(null);
+  const [showFavoritesModal, setShowFavoritesModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -487,6 +568,12 @@ function ChatSidebar({
   const isSearchMode = searchResults !== null;
   const isFolderMode = activeFolder !== null && !isSearchMode;
 
+  // Favoriten-IDs zu Agenten auflösen (gelöschte/unzugängliche fallen raus)
+  const favoriteAgents = useMemo(
+    () => favoriteAgentIds.map((id) => agents.find((a) => a.id === id)).filter(Boolean),
+    [favoriteAgentIds, agents],
+  );
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -520,6 +607,64 @@ function ChatSidebar({
           )}
         </div>
       </div>
+
+      {/* Favoriten-Agenten: Schnellstart eines neuen Chats mit einem Agenten */}
+      {!isSearchMode && (
+        <div style={styles.agentsSection}>
+          <div style={styles.agentsSectionHeader}>
+            <span style={styles.agentsSectionTitle}>Agenten</span>
+            {favoriteAgents.length > 0 && (
+              <button
+                style={styles.agentsEditButton}
+                onClick={() => setShowFavoritesModal(true)}
+                onMouseEnter={(e) => { e.currentTarget.style.color = theme.colors.text; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = theme.colors.textMuted; }}
+                title="Favoriten bearbeiten"
+              >
+                <PenIcon size={12} />
+              </button>
+            )}
+          </div>
+          {favoriteAgents.map((agent) => {
+            const isHovered = hoveredAgentId === agent.id;
+            return (
+              <div
+                key={agent.id}
+                style={{
+                  ...styles.agentItem,
+                  ...(isHovered ? styles.agentItemHover : {}),
+                }}
+                onClick={() => onStartAgentChat?.(agent.id)}
+                onMouseEnter={() => setHoveredAgentId(agent.id)}
+                onMouseLeave={() => setHoveredAgentId(null)}
+                title={`Neuen Chat mit ${agent.name} starten`}
+              >
+                <span style={styles.agentItemIcon}>
+                  <AgentIcon agentId={agent.id} style={{ width: 15, height: 15 }} />
+                </span>
+                <span style={styles.agentItemName}>{agent.name}</span>
+              </div>
+            );
+          })}
+          {favoriteAgents.length === 0 && (
+            <button
+              style={styles.addAgentsButton}
+              onClick={() => setShowFavoritesModal(true)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                e.currentTarget.style.color = theme.colors.text;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = theme.colors.textMuted;
+              }}
+            >
+              <span>+</span>
+              <span>Agenten wählen</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Folders Section - always show to allow creating folders */}
       {!isSearchMode && (
@@ -701,6 +846,16 @@ function ChatSidebar({
           </>
         )}
       </div>
+
+      {/* Favoriten-Agenten Auswahl-Modal */}
+      {showFavoritesModal && (
+        <AgentFavoritesModal
+          agents={agents}
+          selectedIds={favoriteAgentIds}
+          onSave={onSaveFavoriteAgents}
+          onClose={() => setShowFavoritesModal(false)}
+        />
+      )}
 
       {/* Delete Folder Confirm Modal */}
       {folderToDelete && (

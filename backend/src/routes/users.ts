@@ -13,6 +13,8 @@ import {
   getAllUserModelPreferences,
   setUserModelPreference,
   clearUserModelPreference,
+  getFavoriteAgents,
+  setFavoriteAgents,
   type ModelPurpose,
 } from '../services/userPreferences';
 import { getProvider, getActiveSelection, getSystemDefaultModel } from '../services/providers';
@@ -226,5 +228,52 @@ usersRoutes.delete('/preferences/models/:purpose', async (c) => {
   } catch (error: any) {
     console.error('Error clearing user preference:', error);
     return c.json({ error: error.message || 'Fehler beim Zurücksetzen' }, 500);
+  }
+});
+
+// ============== User Preferences: Favoriten-Agenten (Chat-Sidebar) ==============
+
+/**
+ * GET /api/users/preferences/favorite-agents
+ * Get the current user's favorite agent IDs
+ */
+usersRoutes.get('/preferences/favorite-agents', async (c) => {
+  const userId = getCurrentUserId(c);
+  if (!userId) {
+    return c.json({ error: 'Authentication required' }, 401);
+  }
+
+  try {
+    const agentIds = await getFavoriteAgents(userId);
+    return c.json({ agent_ids: agentIds });
+  } catch (error: any) {
+    console.error('Error getting favorite agents:', error);
+    return c.json({ error: 'Fehler beim Laden der Favoriten' }, 500);
+  }
+});
+
+/**
+ * PUT /api/users/preferences/favorite-agents
+ * Replace the current user's favorite agent IDs
+ *
+ * Body: { agent_ids: string[] }
+ */
+usersRoutes.put('/preferences/favorite-agents', async (c) => {
+  const userId = getCurrentUserId(c);
+  if (!userId) {
+    return c.json({ error: 'Authentication required' }, 401);
+  }
+
+  try {
+    const body = await c.req.json<{ agent_ids?: unknown }>();
+    if (!Array.isArray(body.agent_ids)) {
+      return c.json({ error: 'agent_ids muss ein Array von Agent-IDs sein' }, 400);
+    }
+
+    const saved = await setFavoriteAgents(userId, body.agent_ids as string[]);
+    return c.json({ success: true, agent_ids: saved });
+  } catch (error: any) {
+    console.error('Error setting favorite agents:', error);
+    return c.json({ error: error.message || 'Fehler beim Speichern der Favoriten' }, 500);
   }
 });

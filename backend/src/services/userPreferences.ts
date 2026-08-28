@@ -122,6 +122,47 @@ export async function clearUserModelPreference(
   }
 }
 
+// ============== Favoriten-Agenten (Chat-Sidebar) ==============
+
+/**
+ * Get the user's favorite agent IDs (empty array if none set).
+ */
+export async function getFavoriteAgents(userId: string): Promise<string[]> {
+  const user = await loadUser(userId);
+  return user?.preferences?.favorite_agents || [];
+}
+
+/**
+ * Replace the user's favorite agent IDs. Deduplicates and caps the list;
+ * an empty array clears the preference.
+ */
+export async function setFavoriteAgents(userId: string, agentIds: string[]): Promise<string[]> {
+  const user = await loadUser(userId);
+  if (!user) {
+    throw new Error(`User '${userId}' not found`);
+  }
+
+  const cleaned = [...new Set(
+    agentIds.filter((id) => typeof id === 'string' && id.trim().length > 0).map((id) => id.trim())
+  )].slice(0, 50);
+
+  if (!user.preferences) {
+    user.preferences = {};
+  }
+  if (cleaned.length === 0) {
+    delete user.preferences.favorite_agents;
+    if (Object.keys(user.preferences).length === 0) {
+      delete user.preferences;
+    }
+  } else {
+    user.preferences.favorite_agents = cleaned;
+  }
+
+  user.updatedAt = new Date().toISOString();
+  await saveUser(user);
+  return cleaned;
+}
+
 /**
  * Clear all model preferences for a user
  *
