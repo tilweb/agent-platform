@@ -2,6 +2,15 @@
 
 ## 2026-08-28
 
+### Chat: read_chat_attachment heilt ID-Tippfehler selbst
+Beobachtet mit Qwen 3.5 Thinking: Das Modell verdreht beim Abtippen langer attachment_ids
+gelegentlich ein Zeichen und lief in ein nacktes „nicht gefunden". Jetzt: Bei unbekannter ID
+wird gegen die Session-Attachments verglichen — ein **eindeutiger** naher Kandidat
+(Levenshtein-Distanz ≤ 3, kein Gleichstand) wird automatisch aufgelöst (Antwort enthält
+einen `note`-Hinweis auf die Korrektur); andernfalls liefert der Fehler die Liste der
+verfügbaren Attachments (IDs + Dateinamen) mit, sodass sich das Modell in einem Schritt
+selbst korrigieren kann.
+
 ### Chat: Dokument-Kontext ist jetzt persistent (kein „Anhang-Vergessen" mehr)
 Agenten „vergaßen" hochgeladene Dokumente in Folge-Turns und baten um erneuten Upload oder
 die attachment_id — Ursache war ephemerer Kontext: Die Dokument-Sektion wurde nur im

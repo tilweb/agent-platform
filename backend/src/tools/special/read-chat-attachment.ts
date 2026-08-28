@@ -9,6 +9,31 @@ import { LocalTool } from '../base/LocalTool';
 import type { ToolContext } from '../types';
 import { attachmentsService } from '../../services/attachments';
 
+// Levenshtein-Distanz für die Tippfehler-Korrektur von attachment_ids: LLMs
+// verdrehen beim Abtippen langer IDs gelegentlich einzelne Zeichen. Ein
+// eindeutiger naher Kandidat wird automatisch aufgeloest statt hart zu failen.
+function editDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const curr = [i, ...new Array<number>(n)];
+    for (let j = 1; j <= n; j++) {
+      curr[j] = Math.min(
+        prev[j]! + 1,
+        curr[j - 1]! + 1,
+        prev[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    prev = curr;
+  }
+  return prev[n]!;
+}
+
+const ID_CORRECTION_MAX_DISTANCE = 3;
+
 export class ReadChatAttachmentTool extends LocalTool {
   constructor() {
     super({
@@ -73,7 +98,40 @@ export class ReadChatAttachmentTool extends LocalTool {
     try {
       // Get attachment from service - try parentSessionId first (for delegation), then current sessionId
       const sessionIdToUse = context?.parentSessionId || context?.sessionId;
-      const attachment = await attachmentsService.getAttachment(attachment_id, sessionIdToUse);
+      let attachment = await attachmentsService.getAttachment(attachment_id, sessionIdToUse);
+      let correctedFrom: string | undefined;
+
+      // Nicht gefunden: Tippfehler-Korrektur gegen die Session-Attachments.
+      // Ein EINDEUTIGER naher Kandidat (Distanz <= 3, kein Gleichstand) wird
+      // automatisch aufgeloest; sonst kommt der Fehler mit der Liste der
+      // verfuegbaren Attachments zurueck, damit sich das Modell in einem
+      // Schritt selbst korrigieren kann.
+      if (!attachment && sessionIdToUse) {
+        const sessionAttachments = await attachmentsService.getSessionAttachments(sessionIdToUse);
+        if (sessionAttachments.length > 0) {
+          const ranked = sessionAttachments
+            .map(att => ({ att, distance: editDistance(att.id, attachment_id) }))
+            .sort((a, b) => a.distance - b.distance);
+          const best = ranked[0]!;
+          const runnerUp = ranked[1];
+          if (best.distance <= ID_CORRECTION_MAX_DISTANCE && (!runnerUp || runnerUp.distance > best.distance)) {
+            attachment = best.att;
+            correctedFrom = attachment_id;
+            console.log(`[ReadChatAttachment] ID auto-korrigiert: "${attachment_id}" -> "${best.att.id}" (Distanz ${best.distance})`);
+          } else {
+            return JSON.stringify({
+              success: false,
+              error: `Attachment "${attachment_id}" nicht gefunden`,
+              hint: 'Verfuegbare Attachments in diesem Chat — nutze exakt eine dieser IDs:',
+              attachments: sessionAttachments.map(att => ({
+                attachment_id: att.id,
+                filename: att.filename,
+                type: att.type,
+              })),
+            });
+          }
+        }
+      }
 
       if (!attachment) {
         return JSON.stringify({
@@ -82,9 +140,17 @@ export class ReadChatAttachmentTool extends LocalTool {
         });
       }
 
+      // Erfolgs-Antworten ggf. um den Korrektur-Hinweis ergaenzen
+      const resolved = attachment;
+      const respond = (payload: Record<string, any>): string => JSON.stringify(
+        correctedFrom
+          ? { ...payload, note: `attachment_id "${correctedFrom}" war fehlerhaft — automatisch aufgeloest zu "${resolved.id}"` }
+          : payload,
+      );
+
       // Metadata only
       if (format === 'metadata') {
-        return JSON.stringify({
+        return respond({
           success: true,
           attachment_id: attachment.id,
           filename: attachment.filename,
@@ -103,7 +169,7 @@ export class ReadChatAttachmentTool extends LocalTool {
         if (format === 'summary') {
           const summary = content.substring(0, 2000);
           const truncated = content.length > 2000;
-          return JSON.stringify({
+          return respond({
             success: true,
             attachment_id: attachment.id,
             filename: attachment.filename,
@@ -120,7 +186,7 @@ export class ReadChatAttachmentTool extends LocalTool {
         // wir sonst 413 vom Provider bekommen.
         const FULL_CAP = 360 * 1024; // 360k chars ≈ 90k Tokens
         if (content.length > FULL_CAP) {
-          return JSON.stringify({
+          return respond({
             success: true,
             attachment_id: attachment.id,
             filename: attachment.filename,
@@ -131,7 +197,7 @@ export class ReadChatAttachmentTool extends LocalTool {
             cap: FULL_CAP,
           });
         }
-        return JSON.stringify({
+        return respond({
           success: true,
           attachment_id: attachment.id,
           filename: attachment.filename,
@@ -143,7 +209,7 @@ export class ReadChatAttachmentTool extends LocalTool {
 
       // Image content
       if (attachment.type === 'image') {
-        return JSON.stringify({
+        return respond({
           success: true,
           attachment_id: attachment.id,
           filename: attachment.filename,
@@ -160,7 +226,7 @@ export class ReadChatAttachmentTool extends LocalTool {
         if (format === 'summary') {
           const summary = transcription.substring(0, 2000);
           const truncated = transcription.length > 2000;
-          return JSON.stringify({
+          return respond({
             success: true,
             attachment_id: attachment.id,
             filename: attachment.filename,
@@ -173,7 +239,7 @@ export class ReadChatAttachmentTool extends LocalTool {
         }
 
         // Full transcription
-        return JSON.stringify({
+        return respond({
           success: true,
           attachment_id: attachment.id,
           filename: attachment.filename,
