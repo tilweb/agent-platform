@@ -151,7 +151,7 @@ function Budget({ data, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>6. Kosten</h2>
+        <h2 style={styles.title}>Kosten</h2>
         <p style={styles.subtitle}>
           Definieren Sie die Projektkosten und die einzelnen Kostenpositionen.
         </p>

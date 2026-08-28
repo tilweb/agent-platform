@@ -129,7 +129,7 @@ Beispiel:
 function Ziele({
   data,
   onChange,
-  title = '3. Ziele',
+  title = 'Ziele',
   subtitle = 'Definieren Sie die Projektziele und messbaren Erfolgskriterien.',
   goalsLabel = 'Projektziele',
   goalsPlaceholder = DEFAULT_GOALS_PLACEHOLDER,

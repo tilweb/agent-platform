@@ -90,7 +90,7 @@ function Basis({ data, onChange, config }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>1. Basisdaten</h2>
+        <h2 style={styles.title}>Basisdaten</h2>
         <p style={styles.subtitle}>
           Erfassen Sie die grundlegenden Informationen zum Projektauftrag.
         </p>

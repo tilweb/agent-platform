@@ -195,7 +195,7 @@ function Personen({
   config,
   showGeplanterEinsatz = false,
   showKapazitaet = false,
-  title = '2. Personen',
+  title = 'Personen',
   subtitle = 'Definieren Sie das Projektteam und die wichtigsten Stakeholder.',
   teamLabel = 'Projektteam',
   stakeholderLabel = 'Stakeholder',

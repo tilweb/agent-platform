@@ -138,7 +138,7 @@ function Risiken({
   data,
   onChange,
   config,
-  title = '7. Risiken',
+  title = 'Risiken',
   subtitle = 'Identifizieren und bewerten Sie potenzielle Projektrisiken und -chancen.',
 }) {
   const [activeTab, setActiveTab] = useState('eingabe');

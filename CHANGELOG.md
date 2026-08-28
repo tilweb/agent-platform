@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-28
+
+### Projektmanagement: Step-Headlines ohne Nummern + fehlende Tab-Headlines im Portfolio-Detail
+Nachdem die Tab-Leisten in Projektauftrag und Statusbericht von Nummerierung auf Icons umgestellt
+wurden, standen die Nummern noch in den Headlines der Projektauftrag-Steps („1. Basisdaten" …
+„9. Historischer Vergleich") — entfernt (inkl. der Default-Titel der geteilten Komponenten
+Personen/Ziele/Risiken). Im Portfolio-Detail fehlte bei mehreren Tabs die Headline komplett:
+Übersicht, Basis, Roadmap, Kosten und Risiken haben jetzt eine Kopfzeile (Titel + Untertitel) im
+gleichen Stil wie die Step-Headlines; Personen und Ziele hatten sie bereits über die geteilten
+Step-Komponenten.
+
 ## 2026-08-26
 
 ### Agent-Loop: Iterations-Budgets angehoben + Synthese-Fallback statt hartem Error
@@ -427,6 +438,45 @@ und "Document Intelligence" (Anbieter-Label von Azure).
   das ist ein veroeffentlichter Vertrag, an dem die EMMA-Anbindung haengt.
 - Die Benennung ist als §0 im Fachkonzept dokumentiert; die beiden aelteren, datierten Dokumente
   tragen einen Verweis darauf, statt nachtraeglich umgeschrieben zu werden.
+
+## 2026-08-06
+
+### Ops: Neue Kunden-Instanz `workplace-ruhrpm-netzwerkpartner` (Scalingo, inkl. Custom-Domain)
+Neue Customer-Instanz für RuhrPM-Netzwerkpartner provisioniert (Runbook `docs/runbook-neue-kundeninstanz.md`):
+- App + Postgres (`starter-512`) im Projekt `workplace-pilots`; **eigener Flow.swiss-S3-Account** (Bucket
+  `workplace-ruhrpm-netzwerkpartner`, `FLOW_S3_MASTER`-Hash ≠ demo/masterclass verifiziert); frische Secrets
+  (`SESSION_SECRET`, `CONNECTION_ENCRYPTION_KEY` = 64 Hex).
+- Customer-Modus, `ENABLED_APPS=projektmanagement`, Branding Default, keine Connections; ⚪ Vault-Keys aus
+  `workplace-ihk-darmstadt` (ohne 🔴-Secrets).
+- Deploy aus `main` (`d19e743`); interim Health 200, `[s3] bucket … created`, Migrations applied.
+- **Custom-Domain `ruhrpm-netzwerkpartner.workplace-lab.adacor.dev`**: CNAME war gesetzt → `domains-add` → URL-
+  Variablen umgestellt (`VITE_API_URL=/api` unverändert) → `restart`. Verifiziert: Health 200, HSTS, Login-CSRF
+  400 (kein „Forbidden"), TLS provisioniert.
+
+### Ops: Neue Kunden-Instanz `workplace-ruhrpm-masterclass` (Scalingo)
+Neue Customer-Instanz für die RuhrPM-Masterclass provisioniert (Runbook `docs/runbook-neue-kundeninstanz.md`):
+- App + Postgres (`starter-512`) im Projekt `workplace-pilots`; **eigener Flow.swiss-S3-Account** (Bucket
+  `workplace-ruhrpm-masterclass`, `FLOW_S3_MASTER`-Hash ≠ Nachbarn verifiziert); frische Secrets (`SESSION_SECRET`,
+  `CONNECTION_ENCRYPTION_KEY` = 64 Hex).
+- Customer-Modus (kein Seed), `ENABLED_APPS=projektmanagement`, Branding Default, keine Connections; ⚪ Vault-Keys
+  (LLM/Model-Routing/Infra) aus `workplace-ihk-darmstadt` übernommen (ohne 🔴-Secrets).
+- Deploy aus `main` (`587ef31`); Health 200, HSTS, `[s3] bucket … created`, Migrations applied. Interim-URL
+  `https://workplace-ruhrpm-masterclass.osc-fr1.scalingo.io`; DNS/Custom-Domain folgt später.
+
+### WZ-Branchen-Matcher: Katalog auf WZ 2025 aktualisiert (Führungsnullen-Fix + 7-stellige Codes)
+Neue Schlüsseltabelle (WZ2025-CSV) mit dem aktuellen Katalog abgeglichen und eingespielt:
+- **Befund**: Der Katalog war inhaltlich bereits WZ2025 (0 Text-Abweichungen auf 2042 gemeinsamen Codes), aber
+  überall als „WZ 2008" beschriftet. Dazu ein Daten-Bug: der Primärsektor (Abteilungen 01–09 — Land-/Forst­
+  wirtschaft, Fischerei, Bergbau) hatte durch Excel-Zahlenformat **fehlende Führungsnullen** (z. B. Steinkohlen­
+  bergbau als `5100` statt `05100`); 57 vierstellige Klassen fehlten ganz.
+- **Katalog neu aus der sauberen CSV gebaut**: 2112 → **2192 Einträge** (Führungsnullen korrekt, fehlende Codes
+  ergänzt), Scope auf **4–7-stellig** erweitert (23 nationale 7-Steller wie „Reparatur von Baumaschinen" + 3 neue
+  6-Steller, u. a. „Barbiersalons"). Embeddings: 2160 wiederverwendet (textgleich), nur 32 neu erzeugt.
+- **Umbeschriftet**: alle „WZ-2008"→„WZ 2025", „4–6-stellig"→„4–7-stellig" (Prompts, Tool-Beschreibungen, UI,
+  registry.yaml). `neighborhood` MAX_LEVEL 6→7.
+- Builder liest jetzt `docs/WZ2025-Schluesseltabelle.csv` (Latin-1) statt xlsx, mit Embedding-Wiederverwendung.
+  Verifiziert per Retrieval-Smoke-Test (05100 Steinkohle, 962101 Barbiersalons, 3312011 Reparatur von Baumaschinen).
+  Beide Worktrees, Source + Assets byte-identisch.
 
 ## 2026-08-06
 

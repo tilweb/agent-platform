@@ -308,7 +308,7 @@ function Roadmap({ data, onChange }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>5. Roadmap</h2>
+        <h2 style={styles.title}>Roadmap</h2>
         <p style={styles.subtitle}>
           Definieren Sie Meilensteine und Hauptaufgaben für Ihr Projekt.
         </p>
