@@ -502,11 +502,14 @@ export default function PortfolioDashboard({ portfolioId, appConfig }) {
         )}
       </div>
 
-      {/* 6. Ressourcen- & Engpassansicht (Kapazitäts-Heatmap) */}
-      <div style={styles.section}>
-        <div style={styles.sectionTitle}>Ressourcen- & Engpassansicht</div>
-        <PortfolioCapacityHeatmap portfolioId={portfolioId} appConfig={appConfig} />
-      </div>
+      {/* 6. Ressourcen- & Engpassansicht (Kapazitäts-Heatmap) — nur mit
+          freigeschaltetem Kapazitaetsplanung-Modul (Einstellungen > Module) */}
+      {appConfig?.features?.kapazitaetsplanung === true && (
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>Ressourcen- & Engpassansicht</div>
+          <PortfolioCapacityHeatmap portfolioId={portfolioId} appConfig={appConfig} />
+        </div>
+      )}
 
       {/* 7. Top-Risiken */}
       <div style={styles.section}>

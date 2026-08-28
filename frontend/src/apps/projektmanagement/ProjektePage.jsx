@@ -316,13 +316,26 @@ function ProjektePage() {
   const rawTab = searchParams.get('tab');
   const aliased = rawTab ? (TAB_ALIASES[rawTab] || rawTab) : null;
   const knownIds = new Set(TABS.map((t) => t.id));
-  const activeTab = aliased && knownIds.has(aliased) ? aliased : 'projekte';
-  const { projektauftraege, stats, isLoading, refresh } = useProjektmanagement();
+  const requestedTab = aliased && knownIds.has(aliased) ? aliased : 'projekte';
+  const { projektauftraege, stats, isLoading, refresh, getConfig } = useProjektmanagement();
   const { role: appRole } = useAppPermission();
   const canCreate = appRole === 'owner' || appRole === 'editor';
   const canSeeSettings = appRole === 'owner';
-  // Tabs gefiltert: Einstellungen nur fuer App-Owner.
-  const visibleTabs = TABS.filter((t) => t.id !== 'einstellungen' || canSeeSettings);
+
+  // App-Config fuer Feature-Flags (Kapazitaetsplanung ist pro Kunde schaltbar).
+  const [appConfig, setAppConfig] = useState(null);
+  useEffect(() => {
+    getConfig().then(setAppConfig).catch(console.error);
+  }, [getConfig]);
+  const kapEnabled = appConfig?.features?.kapazitaetsplanung === true;
+
+  // Tabs gefiltert: Einstellungen nur fuer App-Owner, Kapazitaetsplanung nur
+  // mit aktiviertem Feature-Flag (Einstellungen > Module).
+  const visibleTabs = TABS.filter((t) =>
+    (t.id !== 'einstellungen' || canSeeSettings) &&
+    (t.id !== 'kapazitaeten' || kapEnabled));
+  // Deep-Links auf den deaktivierten Tab fallen auf Projekte zurueck.
+  const activeTab = requestedTab === 'kapazitaeten' && !kapEnabled ? 'projekte' : requestedTab;
   const [filters, setFilters] = useState({
     status: '',
     project_type: '',
@@ -480,7 +493,7 @@ function ProjektePage() {
 
         {/* Tab Content */}
         {activeTab === 'einstellungen' ? (
-          <Einstellungen />
+          <Einstellungen onConfigSaved={setAppConfig} />
         ) : activeTab === 'ideen' ? (
           <IdeenPage embedded />
         ) : activeTab === 'portfolios' ? (
