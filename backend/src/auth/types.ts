@@ -24,6 +24,8 @@ export interface UserPreferences {
     text_to_image?: UserModelPreference;
     image_to_image?: UserModelPreference;
   };
+  // Favoriten-Agenten fuer die Schnellauswahl in der Chat-Sidebar (Agent-IDs)
+  favorite_agents?: string[];
 }
 
 export interface User {

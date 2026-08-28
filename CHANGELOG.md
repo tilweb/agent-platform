@@ -2,6 +2,24 @@
 
 ## 2026-08-28
 
+### Chat: Favoriten-Agenten in der Sidebar
+Der Weg über „+" → „Agenten" ist nicht für alle intuitiv. Neue Sektion **„Agenten"** in der
+Chat-Sidebar (zwischen Suche und Ordnern): Nutzer stellen sich per Modal eine persönliche
+Favoritenliste zusammen; ein Klick auf einen Favoriten startet einen neuen Chat mit dem
+vorausgewählten Agenten. Auswahl-Modal bewusst als **Checkbox-Liste mit Suchfeld** statt Kacheln
+(schneller scanbar bei vielen Agenten, Mehrfachauswahl als natürliches Checkbox-Pattern).
+Persistenz pro Nutzer in den User-Preferences (`favorite_agents`, neue Endpoints
+GET/PUT `/api/users/preferences/favorite-agents`). Gelöschte/unzugängliche Agenten fallen beim
+Rendern automatisch raus.
+
+### LLM-Provider: Lyceum Technologies hinzugefügt
+Neuer Provider `lyceum` in `data/config/providers.yaml` — EU-Anbieter (Berlin/Zürich, Rechenzentren
+in ES/FR/Nordics → Security-Tier 2), 100% OpenAI-kompatibel (`api_mode: openai`, Base-URL
+`https://api.lyceum.technology/openai/v1`, Bearer-Key `lk_…` via `LYCEUM_API_KEY`). Serverless-Modelle
+lt. offizieller Doku: Kimi K3 (Default), DeepSeek V4 Pro/Flash, GLM 5.2, Qwen 3.8 2.4T A95B,
+Qwen 3.5 9B (alle Chat + Function-Calling) sowie Qwen 3 Embedding 8B. Endpoint-Erreichbarkeit
+verifiziert (401 ohne Key, OpenAI-Fehlerformat). Aktive Provider-Zuordnung unverändert.
+
 ### Projektmanagement: Kapazitätsplanung hinter Feature-Flag (Einstellungen > Module)
 RuhrPM-Entscheidung: Die Kapazitätsplanung soll nicht direkt für alle Kunden freigeschaltet sein.
 Neues Feature-Flag `features.kapazitaetsplanung` in der App-Config (Default: **aus**), aktivierbar
