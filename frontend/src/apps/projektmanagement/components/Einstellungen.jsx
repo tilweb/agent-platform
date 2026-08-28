@@ -546,9 +546,75 @@ function ChecklisteTab({ config, setConfig, hasChanges, setHasChanges, saving, o
   );
 }
 
+// ============== Module (Feature-Flags) Sub-Component ==============
+
+// Optionale Module, die pro Kunde freigeschaltet werden. `key` referenziert
+// config.features.<key> (Default im Backend: aus).
+const FEATURE_MODULES = [
+  {
+    key: 'kapazitaetsplanung',
+    label: 'Kapazitätsplanung',
+    description:
+      'Schaltet das Pflegemodul (Tab „Kapazitätsplanung"), die Kapazitätsplanung je '
+      + 'Teammitglied im Projektauftrag (Schritt Personen) und die Ressourcen- & '
+      + 'Engpassansicht (Heatmap) im Portfolio-Dashboard frei.',
+  },
+];
+
+function ModuleTab({ config, setConfig, hasChanges, setHasChanges, saving, onSave }) {
+  const features = config.features || {};
+
+  const setFeature = (key, enabled) => {
+    setConfig((prev) => ({ ...prev, features: { ...(prev.features || {}), [key]: enabled } }));
+    setHasChanges(true);
+  };
+
+  return (
+    <>
+      {hasChanges && (
+        <div style={styles.saveBar}>
+          <button
+            style={styles.saveButton}
+            onClick={onSave}
+            disabled={saving}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.primaryHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme.colors.primary; }}
+          >
+            {saving ? 'Speichere...' : 'Änderungen speichern'}
+          </button>
+          <span style={styles.saveHint}>Ungespeicherte Änderungen</span>
+        </div>
+      )}
+
+      {FEATURE_MODULES.map((mod) => {
+        const enabled = features[mod.key] === true;
+        return (
+          <div key={mod.key} style={styles.fieldCard}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: theme.spacing.md, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(e) => setFeature(mod.key, e.target.checked)}
+                style={{ marginTop: '2px', flexShrink: 0 }}
+              />
+              <div>
+                <div style={styles.fieldTitle}>{mod.label}</div>
+                <div style={{ ...styles.subtitle, marginTop: theme.spacing.xs }}>{mod.description}</div>
+                <div style={{ ...styles.fieldUsage, marginTop: theme.spacing.xs }}>
+                  {enabled ? 'Aktiviert' : 'Deaktiviert (Standard)'}
+                </div>
+              </div>
+            </label>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 // ============== Main Component ==============
 
-function Einstellungen() {
+function Einstellungen({ onConfigSaved }) {
   const {
     getConfig, updateConfig,
     downloadConfigFile, previewConfigImport, applyConfigImport,
@@ -578,6 +644,7 @@ function Einstellungen() {
     try {
       await updateConfig(config);
       setHasChanges(false);
+      onConfigSaved?.(config);
     } catch (err) {
       console.error('Save failed:', err);
     } finally {
@@ -617,6 +684,7 @@ function Einstellungen() {
     const result = await applyConfigImport(importPreview.lists, selectedKeys);
     setConfig(result.config);
     setHasChanges(false);
+    onConfigSaved?.(result.config);
     setImportPreview(null);
     setIoFeedback({ type: 'success', text: `${selectedKeys.length} Liste(n) übernommen und gespeichert.` });
   };
@@ -626,7 +694,7 @@ function Einstellungen() {
       <div style={styles.header}>
         <h2 style={styles.title}>Einstellungen</h2>
         <p style={styles.subtitle}>
-          Konfigurieren Sie Auswahloptionen und Masterclass-Wissen für das Projektmanagement.
+          Konfigurieren Sie Auswahloptionen, Module und Masterclass-Wissen für das Projektmanagement.
         </p>
       </div>
 
@@ -635,6 +703,7 @@ function Einstellungen() {
         {[
           { id: 'optionen', label: 'Auswahloptionen' },
           { id: 'checkliste', label: 'Abschluss-Checkliste' },
+          { id: 'module', label: 'Module' },
           { id: 'masterclass', label: 'Masterclass' },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
@@ -660,8 +729,8 @@ function Einstellungen() {
         })}
       </div>
 
-      {/* Import/Export Aktionsleiste (nicht auf dem Masterclass-Tab) */}
-      {activeTab !== 'masterclass' && (
+      {/* Import/Export Aktionsleiste (nur fuer die Auswahllisten-Tabs) */}
+      {(activeTab === 'optionen' || activeTab === 'checkliste') && (
         <>
           <div style={styles.actionBar}>
             <span style={styles.actionHint}>
@@ -726,6 +795,17 @@ function Einstellungen() {
 
       {activeTab === 'checkliste' && (
         <ChecklisteTab
+          config={config}
+          setConfig={setConfig}
+          hasChanges={hasChanges}
+          setHasChanges={setHasChanges}
+          saving={saving}
+          onSave={handleSave}
+        />
+      )}
+
+      {activeTab === 'module' && (
+        <ModuleTab
           config={config}
           setConfig={setConfig}
           hasChanges={hasChanges}

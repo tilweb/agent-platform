@@ -847,8 +847,9 @@ function WizardPage() {
       gesamtbewertung,
       onGesamtbewertungComplete: setGesamtbewertung,
     } : currentStep === 2 ? {
-      // Personen im Projektauftrag: Kapazitaetsplanung-Panel je Teammitglied.
-      showKapazitaet: true,
+      // Personen im Projektauftrag: Kapazitaetsplanung-Panel je Teammitglied —
+      // nur wenn das Modul freigeschaltet ist (Einstellungen > Module).
+      showKapazitaet: appConfig?.features?.kapazitaetsplanung === true,
     } : {};
 
     return (

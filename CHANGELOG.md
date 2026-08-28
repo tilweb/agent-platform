@@ -2,6 +2,19 @@
 
 ## 2026-08-28
 
+### Projektmanagement: Kapazitätsplanung hinter Feature-Flag (Einstellungen > Module)
+RuhrPM-Entscheidung: Die Kapazitätsplanung soll nicht direkt für alle Kunden freigeschaltet sein.
+Neues Feature-Flag `features.kapazitaetsplanung` in der App-Config (Default: **aus**), aktivierbar
+durch App-Owner im neuen Einstellungen-Subtab **„Module"**. Das Flag steuert alle drei Oberflächen:
+- **Pflegemodul**: Top-Level-Tab „Kapazitätsplanung" wird ausgeblendet (Deep-Links fallen auf
+  „Projekte" zurück)
+- **Projektauftrag**: Kapazitätsplanung je Teammitglied im Schritt „Personen" (`showKapazitaet`)
+- **Portfolio-Dashboard**: Ressourcen- & Engpassansicht (Kapazitäts-Heatmap)
+
+Nach dem Speichern in den Einstellungen greift das Flag sofort (Config-Callback an die
+Projektmanagement-Seite, kein Reload nötig). Die Backend-Routen bleiben unverändert — das Flag ist
+Ausroll-Steuerung, keine Berechtigungsgrenze.
+
 ### Projektmanagement: Step-Headlines ohne Nummern + fehlende Tab-Headlines im Portfolio-Detail
 Nachdem die Tab-Leisten in Projektauftrag und Statusbericht von Nummerierung auf Icons umgestellt
 wurden, standen die Nummern noch in den Headlines der Projektauftrag-Steps („1. Basisdaten" …

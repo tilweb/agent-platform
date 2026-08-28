@@ -550,6 +550,14 @@ const DEFAULT_CONFIG = {
     { id: 'lessons_dokumentiert', label: 'Lessons Learned dokumentiert' },
     { id: 'kommunikation_abschluss', label: 'Projektabschluss an Stakeholder kommuniziert' },
   ],
+  // Feature-Flags: optionale Module, die pro Kunde in den App-Einstellungen
+  // (Tab "Module", App-Owner) freigeschaltet werden. Default: aus.
+  features: {
+    // Kapazitaetsplanung: Pflegemodul (Top-Level-Tab), Planung je Teammitglied
+    // im Projektauftrag (Schritt Personen) und Ressourcen-Heatmap im
+    // Portfolio-Dashboard.
+    kapazitaetsplanung: false,
+  },
 };
 
 /**
