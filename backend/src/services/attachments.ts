@@ -26,6 +26,17 @@ const MAX_FILE_SIZE_MB = 50;
 const MARKITDOWN_TIMEOUT_MS = 120 * 1000;
 const WHISPER_TIMEOUT_MS = 300 * 1000;
 
+// Persistierte Sub-Agent-Analyse eines Dokuments. Wird einmalig beim ersten
+// Turn erstellt und danach in jedem Turn wiederverwendet (statt die teure
+// Analyse pro Nachricht zu wiederholen und wegzuwerfen).
+export interface AttachmentAnalysis {
+  markdown: string;            // Analyse-Markdown des Document-Analyzers
+  relevance: string;           // hoch | mittel | niedrig | unbekannt
+  analyzedForMessage: string;  // User-Frage, auf die sich die Analyse bezieht (gekürzt)
+  analyzedAt: string;
+  truncated?: boolean;         // Original war > Analyse-Cap
+}
+
 export interface ChatAttachment {
   id: string;
   sessionId: string;
@@ -36,6 +47,7 @@ export interface ChatAttachment {
   markdownContent?: string;  // For documents (after conversion)
   base64Data?: string;       // For images
   transcription?: string;    // For audio (after transcription)
+  analysis?: AttachmentAnalysis;  // Persistierte Dokument-Analyse (nur documents)
   metadata: {
     size: number;
     pages?: number;
@@ -501,6 +513,22 @@ class AttachmentsService {
       console.error(`[Attachments] Error loading attachment ${attachmentId}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Persistiert eine Dokument-Analyse am Attachment (metadata.json). Die Datei
+   * wird roh gelesen und nur um das analysis-Feld ergänzt, damit große Inhalte
+   * (content.md) nicht zusätzlich in die metadata.json dupliziert werden.
+   */
+  async saveAttachmentAnalysis(sessionId: string, attachmentId: string, analysis: AttachmentAnalysis): Promise<void> {
+    const metadataPath = join(UPLOADS_BASE, sessionId, attachmentId, 'metadata.json');
+    if (!existsSync(metadataPath)) {
+      throw new Error(`Attachment "${attachmentId}" in Session "${sessionId}" nicht gefunden`);
+    }
+    const raw = await readFile(metadataPath, 'utf-8');
+    const stored = JSON.parse(raw) as ChatAttachment;
+    stored.analysis = analysis;
+    await writeFile(metadataPath, JSON.stringify(stored, null, 2), 'utf-8');
   }
 
   /**

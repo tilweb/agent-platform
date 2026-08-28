@@ -13,21 +13,21 @@ export class ReadChatAttachmentTool extends LocalTool {
   constructor() {
     super({
       name: 'read_chat_attachment',
-      description: 'Liest den Inhalt eines im Chat hochgeladenen Attachments. Fuer Dokumente wird der konvertierte Markdown-Text zurueckgegeben, fuer Bilder die Base64-Daten, fuer Audio die Transkription.',
+      description: 'Liest den Inhalt eines im Chat hochgeladenen Attachments. Fuer Dokumente wird der konvertierte Markdown-Text zurueckgegeben, fuer Bilder die Base64-Daten, fuer Audio die Transkription. Mit format "list" (ohne attachment_id) werden alle Attachments des Chats mit ihren IDs aufgelistet.',
       parameters: {
         type: 'object',
         properties: {
           attachment_id: {
             type: 'string',
-            description: 'Die ID des Attachments (z.B. "att-1234567890-abc123")',
+            description: 'Die ID des Attachments (z.B. "att-1234567890-abc123"). Nicht noetig bei format "list".',
           },
           format: {
             type: 'string',
-            enum: ['full', 'summary', 'metadata'],
-            description: 'Format der Rueckgabe: "full" = vollstaendiger Inhalt (Standard), "summary" = Zusammenfassung (erste 2000 Zeichen), "metadata" = nur Metadaten',
+            enum: ['full', 'summary', 'metadata', 'list'],
+            description: 'Format der Rueckgabe: "full" = vollstaendiger Inhalt (Standard), "summary" = Zusammenfassung (erste 2000 Zeichen), "metadata" = nur Metadaten, "list" = alle Attachments dieses Chats auflisten (keine attachment_id noetig)',
           },
         },
-        required: ['attachment_id'],
+        required: [],
       },
       category: 'attachments',
     });
@@ -36,11 +36,38 @@ export class ReadChatAttachmentTool extends LocalTool {
   async execute(args: Record<string, any>, context?: ToolContext): Promise<string> {
     const { attachment_id, format = 'full' } = args;
 
-    if (!attachment_id) {
-      return JSON.stringify({
-        success: false,
-        error: 'attachment_id ist erforderlich',
-      });
+    // List-Modus: alle Attachments der Chat-Session aufzaehlen — Discovery-
+    // Fallback, wenn dem Agent keine attachment_id (mehr) vorliegt.
+    const listSessionId = context?.parentSessionId || context?.sessionId;
+    if (format === 'list' || !attachment_id) {
+      if (!listSessionId) {
+        return JSON.stringify({
+          success: false,
+          error: 'Keine Chat-Session im Kontext — Auflistung nicht moeglich',
+        });
+      }
+      try {
+        const attachments = await attachmentsService.getSessionAttachments(listSessionId);
+        return JSON.stringify({
+          success: true,
+          count: attachments.length,
+          attachments: attachments.map(att => ({
+            attachment_id: att.id,
+            filename: att.filename,
+            type: att.type,
+            mimeType: att.mimeType,
+            size: att.metadata.size,
+            pages: att.metadata.pages,
+            uploadedAt: att.metadata.convertedAt,
+            hasAnalysis: Boolean(att.analysis),
+          })),
+        });
+      } catch (error: any) {
+        return JSON.stringify({
+          success: false,
+          error: error.message || 'Fehler beim Auflisten der Attachments',
+        });
+      }
     }
 
     try {
