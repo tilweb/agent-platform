@@ -41,6 +41,7 @@ import {
   type SkillLoadResult,
 } from '../skills';
 import { addMessage, getMessages, generateSessionId } from '../services/memory';
+import { attachmentsService, type ChatAttachment, type AttachmentAnalysis } from '../services/attachments';
 import { loadAgent, listAgents, type AgentConfig, type AgentModelConfig } from '../services/agents';
 import { mcpManager } from '../mcp';
 import { loadUserMemory, formatMemoryForPrompt } from '../services/userMemory';
@@ -487,96 +488,184 @@ function parseRelevance(text: string): AnalyzedDocument['relevance'] {
   return 'unbekannt';
 }
 
-async function analyzeDocumentsAutomatically(
-  attachments: AttachmentWithContent[],
+// Session-weite Dokument-Sektion: wird bei JEDEM Turn aus dem persistenten
+// Attachment-Store der Chat-Session gebaut — nicht nur im Upload-Turn. Damit
+// kennt der Agent alle bereits hochgeladenen Dateien inkl. attachment_ids
+// dauerhaft (auch nach Folgefragen und Backend-Neustarts) und fragt nicht
+// faelschlich nach einem erneuten Upload. Analysen großer Dokumente werden
+// einmalig per Sub-Agent erstellt und am Attachment persistiert.
+const SESSION_DOCS_CONTENT_BUDGET = 120000; // Zeichen-Budget für eingebettete Volltexte/Analysen pro Turn
+
+async function buildSessionDocumentsSection(
+  sessionId: string,
+  currentAttachmentIds: Set<string>,
   userMessage: string,
   userId: string | undefined,
   emit: (event: AgentEvent) => void,
 ): Promise<{ analysisText: string; analyzedDocumentIds: Set<string>; skippedOversizedCount: number }> {
-  const docAttachments = attachments.filter(
+  const empty = { analysisText: '', analyzedDocumentIds: new Set<string>(), skippedOversizedCount: 0 };
+
+  let stored: ChatAttachment[] = [];
+  try {
+    stored = await attachmentsService.getSessionAttachments(sessionId);
+  } catch (err) {
+    console.error('[AgentLoop] Failed to load session attachments:', err);
+    return empty;
+  }
+  if (stored.length === 0) return empty;
+
+  // Chronologisch (älteste zuerst) — stabile Nummerierung über Turns hinweg
+  const uploadTime = (att: ChatAttachment) => new Date(att.metadata.convertedAt || 0).getTime();
+  stored.sort((a, b) => uploadTime(a) - uploadTime(b));
+
+  const docs = stored.filter(
     att => att.type === 'document' && typeof att.markdownContent === 'string' && att.markdownContent.length > 0,
   );
+  const nonDocs = stored.filter(att => att.type !== 'document');
 
-  if (docAttachments.length === 0) {
-    return { analysisText: '', analyzedDocumentIds: new Set(), skippedOversizedCount: 0 };
-  }
+  // Priorität für Analyse + Content-Budget: neue Uploads dieser Nachricht
+  // zuerst, danach neueste zuerst.
+  const byPriority = (list: ChatAttachment[]) => [...list].sort((a, b) => {
+    const aCur = currentAttachmentIds.has(a.id) ? 0 : 1;
+    const bCur = currentAttachmentIds.has(b.id) ? 0 : 1;
+    if (aCur !== bCur) return aCur - bCur;
+    return uploadTime(b) - uploadTime(a);
+  });
 
-  // Trennung: kleine Docs (<15k) inline, große (>=15k) via Sub-Agent
-  const smallDocs = docAttachments.filter(d => (d.markdownContent || '').length < DOC_INLINE_THRESHOLD);
-  const bigDocs = docAttachments.filter(d => (d.markdownContent || '').length >= DOC_INLINE_THRESHOLD);
-  const eligibleBig = bigDocs.slice(0, DOC_MAX_PER_REQUEST);
-  const skippedOversized = bigDocs.slice(DOC_MAX_PER_REQUEST);
+  // Große Dokumente (>=15k) ohne persistierte Analyse -> jetzt einmalig
+  // analysieren (Cap pro Request), Ergebnis am Attachment persistieren.
+  const needsAnalysis = byPriority(
+    docs.filter(d => (d.markdownContent || '').length >= DOC_INLINE_THRESHOLD && !d.analysis),
+  );
+  const eligible = needsAnalysis.slice(0, DOC_MAX_PER_REQUEST);
+  const skippedOversized = needsAnalysis.slice(DOC_MAX_PER_REQUEST);
 
-  console.log(`[AgentLoop] Documents: ${smallDocs.length} inline, ${eligibleBig.length} via Sub-Agent (${skippedOversized.length} skipped due to per-request cap)`);
+  if (eligible.length > 0) {
+    console.log(`[AgentLoop] Documents: ${eligible.length} unanalysierte(s) Dokument(e) via Sub-Agent (${skippedOversized.length} skipped due to per-request cap)`);
 
-  // Sub-Agent-Calls parallel, Concurrency-Cap = DOC_MAX_CONCURRENT
-  const subAgentResults: AnalyzedDocument[] = new Array(eligibleBig.length);
-  let nextIndex = 0;
-  const worker = async (): Promise<void> => {
-    while (true) {
-      const idx = nextIndex++;
-      if (idx >= eligibleBig.length) return;
-      const doc = eligibleBig[idx]!;
-      subAgentResults[idx] = await analyzeOneDocument(doc, userMessage, userId, emit);
+    const results: AnalyzedDocument[] = new Array(eligible.length);
+    let nextIndex = 0;
+    const worker = async (): Promise<void> => {
+      while (true) {
+        const idx = nextIndex++;
+        if (idx >= eligible.length) return;
+        const doc = eligible[idx]!;
+        results[idx] = await analyzeOneDocument({
+          id: doc.id,
+          filename: doc.filename,
+          mimeType: doc.mimeType,
+          type: doc.type,
+          size: doc.metadata.size,
+          pages: doc.metadata.pages,
+          markdownContent: doc.markdownContent,
+        }, userMessage, userId, emit);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(DOC_MAX_CONCURRENT, eligible.length) }, worker));
+
+    // Persistieren + in-memory Objekt aktualisieren. Fehl-Analysen werden
+    // NICHT persistiert, damit der nächste Turn es erneut versuchen kann.
+    for (let i = 0; i < eligible.length; i++) {
+      const doc = eligible[i]!;
+      const r = results[i]!;
+      const analysis: AttachmentAnalysis = {
+        markdown: r.analysisMarkdown,
+        relevance: r.relevance,
+        analyzedForMessage: userMessage.slice(0, 500),
+        analyzedAt: new Date().toISOString(),
+        truncated: r.truncated,
+      };
+      doc.analysis = analysis;
+      if (!r.error) {
+        try {
+          await attachmentsService.saveAttachmentAnalysis(sessionId, doc.id, analysis);
+        } catch (err) {
+          console.error(`[AgentLoop] Failed to persist analysis for ${doc.id}:`, err);
+        }
+      }
     }
+  }
+
+  // Content-Budget verteilen: was nicht mehr reinpasst, erscheint nur mit
+  // Metadaten + read_chat_attachment-Hinweis (statt den Context zu sprengen).
+  const contentFor = (doc: ChatAttachment): string | null => {
+    const text = doc.markdownContent || '';
+    if (text.length < DOC_INLINE_THRESHOLD) return text;
+    if (doc.analysis) return doc.analysis.markdown;
+    return null; // keine Analyse (über Request-Cap) -> Metadaten-only
   };
-  await Promise.all(Array.from({ length: Math.min(DOC_MAX_CONCURRENT, eligibleBig.length) }, worker));
-
-  // Build sections
-  const allSections: string[] = [];
-  let counter = 0;
-
-  for (const doc of smallDocs) {
-    counter += 1;
-    const content = doc.markdownContent || '';
-    const pagesNote = doc.pages ? ` (~${doc.pages} Seiten)` : '';
-    allSections.push(
-      `### ${counter}. ${doc.filename}${pagesNote} — Inline (kleines Dokument, Volltext)\nattachment_id: \`${doc.id}\`\n\n${content}`,
-    );
+  const withContent = new Set<string>();
+  let budgetUsed = 0;
+  for (const doc of byPriority(docs)) {
+    const content = contentFor(doc);
+    if (content === null) continue;
+    if (budgetUsed + content.length > SESSION_DOCS_CONTENT_BUDGET && withContent.size > 0) continue;
+    withContent.add(doc.id);
+    budgetUsed += content.length;
   }
 
-  for (const r of subAgentResults) {
-    counter += 1;
-    const sizeNote = r.truncated ? ' — **Original >480k Zeichen, gekürzt für Sub-Agent-Analyse**' : '';
-    const pagesNote = r.pages ? ` (~${r.pages} Seiten)` : '';
-    const errorNote = r.error ? `\n\n[Fehler bei Analyse: ${r.error}]` : '';
-    allSections.push(
-      `### ${counter}. ${r.filename}${pagesNote} — Sub-Agent-Analyse${sizeNote}\nattachment_id: \`${r.attachmentId}\`\n\n${r.analysisMarkdown}${errorNote}`,
-    );
-  }
+  // Rendern in chronologischer Reihenfolge
+  const sections: string[] = [];
+  docs.forEach((doc, i) => {
+    const pagesNote = doc.metadata.pages ? ` (~${doc.metadata.pages} Seiten)` : '';
+    const isNew = currentAttachmentIds.has(doc.id) ? ' — NEU in dieser Nachricht' : '';
+    const uploadNote = doc.metadata.convertedAt
+      ? ` · hochgeladen: ${new Date(doc.metadata.convertedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}`
+      : '';
+    const header = `### ${i + 1}. ${doc.filename}${pagesNote}${isNew}\nattachment_id: \`${doc.id}\`${uploadNote}`;
+    const text = doc.markdownContent || '';
 
-  if (allSections.length === 0 && skippedOversized.length === 0) {
-    return { analysisText: '', analyzedDocumentIds: new Set(), skippedOversizedCount: 0 };
-  }
+    if (!withContent.has(doc.id)) {
+      sections.push(`${header}\n\n(Inhalt hier nicht eingebettet — bei Bedarf via \`read_chat_attachment\` mit dieser attachment_id laden, \`format: "summary"\` zuerst.)`);
+    } else if (text.length < DOC_INLINE_THRESHOLD) {
+      sections.push(`${header}\n\n**Volltext:**\n\n${text}`);
+    } else {
+      const truncNote = doc.analysis?.truncated ? ' — **Original >480k Zeichen, Analyse basiert auf dem Anfang**' : '';
+      const forNote = doc.analysis?.analyzedForMessage
+        ? `\n> Analyse erstellt zur Frage: "${doc.analysis.analyzedForMessage}"`
+        : '';
+      sections.push(`${header}\n\n**Sub-Agent-Analyse**${truncNote}:${forNote}\n\n${doc.analysis?.markdown || ''}`);
+    }
+  });
 
-  const skippedNote = skippedOversized.length > 0
-    ? `\n\n> Hinweis: ${skippedOversized.length} weitere Dokument(e) wurden NICHT vollanalysiert (Cap: ${DOC_MAX_PER_REQUEST} Sub-Agent-Analysen pro Nachricht). Diese Dokumente:\n${skippedOversized.map(a => `> - \`${a.id}\` ${a.filename}`).join('\n')}\n> Bei Bedarf via \`read_chat_attachment\` mit \`format: "summary"\` oder \`"full"\` nachladen.`
+  // Bilder/Audio als Manifest — Inhalt kommt über die Bildanalyse-Sektion
+  // (Upload-Turn) bzw. read_chat_attachment, aber Existenz + ID sind so in
+  // jedem Turn bekannt.
+  const nonDocLines = nonDocs.map(att => {
+    const kind = att.type === 'image' ? 'Bild' : att.type === 'audio' ? 'Audio' : att.type;
+    const extra = att.type === 'audio'
+      ? ' — Transkription via `read_chat_attachment` abrufbar'
+      : att.type === 'image'
+        ? ' — für Bildbearbeitung: `edit_image` mit dieser attachment_id'
+        : '';
+    return `- ${att.filename} (${kind}) — attachment_id: \`${att.id}\`${extra}`;
+  });
+  const nonDocSection = nonDocLines.length > 0
+    ? `\n\n### Weitere Dateien (Bilder/Audio)\n${nonDocLines.join('\n')}`
     : '';
 
-  const intro = subAgentResults.length > 0
-    ? `Pro großem Dokument (≥15k Zeichen) wurde **bereits** ein dedizierter Sub-Agent mit dem vollständigen Inhalt im Context gestartet. Kleine Dokumente sind direkt inline.
+  const skippedNote = skippedOversized.length > 0
+    ? `\n\n> Hinweis: ${skippedOversized.length} weitere Dokument(e) wurden noch NICHT vollanalysiert (Cap: ${DOC_MAX_PER_REQUEST} Sub-Agent-Analysen pro Nachricht). Diese Dokumente:\n${skippedOversized.map(a => `> - \`${a.id}\` ${a.filename}`).join('\n')}\n> Bei Bedarf via \`read_chat_attachment\` mit \`format: "summary"\` oder \`"full"\` nachladen.`
+    : '';
 
-**WICHTIG — Antwort-Strategie**:
-1. **Antworte DIREKT aus diesen Analysen.** Sie enthalten die wichtigsten Inhalte, Zitate und eine relevanzgewichtete Antwort auf die User-Frage.
+  const intro = `Die folgenden Dateien hat der User in DIESEM Chat hochgeladen. Sie liegen dauerhaft vor — in dieser und in allen folgenden Nachrichten. Frage NIEMALS nach einem erneuten Upload und behaupte nicht, eine Datei fehle oder du bräuchtest ihre ID vom User: Die attachment_ids stehen hier.
+
+**Antwort-Strategie**:
+1. **Antworte DIREKT aus den unten eingebetteten Volltexten/Analysen.** Sie enthalten die wichtigsten Inhalte und Zitate.
 2. **Delegiere NICHT an \`chat-document-reader\`** — das wäre Doppelarbeit und kann bei großen Dokumenten zu 413-Fehlern führen.
-3. Nur wenn die Analyse für eine sehr spezifische Detailfrage nicht ausreicht: \`read_chat_attachment\` mit \`format: "summary"\` für einen 2k-Auszug. \`format: "full"\` nur als letzte Option und nur, wenn das Dokument klein ist (<50 Seiten).`
-    : `Kleine Dokumente sind direkt inline. Antworte direkt aus diesem Inhalt — keine Delegation an \`chat-document-reader\` nötig.`;
+3. Nur wenn unten etwas für eine sehr spezifische Detailfrage fehlt: \`read_chat_attachment\` mit der attachment_id (\`format: "summary"\` für einen 2k-Auszug zuerst; \`"full"\` nur bei kleinen Dokumenten <50 Seiten).`;
 
   const analysisText = `
-## Hochgeladene Dokumente
+## Hochgeladene Dokumente & Dateien (dieser Chat)
 
 ${intro}
 
-${allSections.join('\n\n---\n\n')}${skippedNote}
+${sections.join('\n\n---\n\n')}${nonDocSection}${skippedNote}
 
 ---
 `;
 
-  const analyzedDocumentIds = new Set<string>([
-    ...smallDocs.map(d => d.id),
-    ...subAgentResults.map(r => r.attachmentId),
-    ...skippedOversized.map(d => d.id),
-  ]);
+  const analyzedDocumentIds = new Set<string>(docs.map(d => d.id));
 
   return { analysisText, analyzedDocumentIds, skippedOversizedCount: skippedOversized.length };
 }
@@ -1911,39 +2000,42 @@ export async function* runAgentLoop(
     }
   }
 
-  // Pro Document einen Sub-Agent mit dem vollen Inhalt im Context starten.
-  // Kleine Docs (<15k chars) werden inline geliefert (kein Round-Trip), große
-  // (>=15k chars, max 480k) werden parallel von dedizierten Sub-Agents
-  // analysiert. Per-Doc Events (start/end) werden in einem Queue gesammelt und
-  // nach Promise.all an den Stream geliefert.
+  // Session-weite Dokument-Sektion: bei JEDEM Turn aus dem persistenten
+  // Attachment-Store gebaut (nicht nur im Upload-Turn), damit der Agent alle
+  // bereits hochgeladenen Dateien inkl. attachment_ids dauerhaft kennt.
+  // Kleine Docs (<15k chars) inline, große (>=15k, max 480k) einmalig via
+  // Sub-Agent analysiert und persistiert. Per-Doc Events (start/end) werden in
+  // einem Queue gesammelt und nach Promise.all an den Stream geliefert.
   let documentAnalysisSection = '';
-  if (attachments && attachments.some(a => a.type === 'document' && a.markdownContent)) {
-    try {
+  try {
+    const currentAttachmentIds = new Set((attachments || []).map(a => a.id));
+    if (attachments && attachments.some(a => a.type === 'document' && a.markdownContent)) {
       yield { type: 'thinking' };
-      const docEventQueue: AgentEvent[] = [];
-      const { analysisText, analyzedDocumentIds, skippedOversizedCount } = await analyzeDocumentsAutomatically(
-        attachments,
-        userMessage,
-        userId,
-        (event) => { docEventQueue.push(event); },
-      );
-      // Drain per-doc events to the SSE-Stream
-      for (const ev of docEventQueue) {
-        yield ev;
-      }
-      if (analysisText) {
-        documentAnalysisSection = analysisText;
-        console.log(`[AgentLoop] Auto-analyzed ${analyzedDocumentIds.size} document(s); skipped ${skippedOversizedCount} due to per-request cap`);
-        log('context_loaded', `Dokumentanalyse: ${analyzedDocumentIds.size} Dokument(e)`, {
-          contextType: 'document_analysis',
-          length: analysisText.length,
-          preview: analysisText.slice(0, 200),
-          skippedOversizedCount,
-        });
-      }
-    } catch (error: any) {
-      console.error('[AgentLoop] Document analysis failed:', error.message);
     }
+    const docEventQueue: AgentEvent[] = [];
+    const { analysisText, analyzedDocumentIds, skippedOversizedCount } = await buildSessionDocumentsSection(
+      sessionId,
+      currentAttachmentIds,
+      userMessage,
+      userId,
+      (event) => { docEventQueue.push(event); },
+    );
+    // Drain per-doc events to the SSE-Stream
+    for (const ev of docEventQueue) {
+      yield ev;
+    }
+    if (analysisText) {
+      documentAnalysisSection = analysisText;
+      console.log(`[AgentLoop] Session documents section: ${analyzedDocumentIds.size} document(s); skipped ${skippedOversizedCount} due to per-request cap`);
+      log('context_loaded', `Dokumente im Chat: ${analyzedDocumentIds.size} Dokument(e)`, {
+        contextType: 'document_analysis',
+        length: analysisText.length,
+        preview: analysisText.slice(0, 200),
+        skippedOversizedCount,
+      });
+    }
+  } catch (error: any) {
+    console.error('[AgentLoop] Session documents section failed:', error.message);
   }
 
   // Build skill metadata section for agent decision-making (NEW: agent-driven skill loading)

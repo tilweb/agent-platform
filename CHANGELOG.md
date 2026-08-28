@@ -2,6 +2,24 @@
 
 ## 2026-08-28
 
+### Chat: Dokument-Kontext ist jetzt persistent (kein „Anhang-Vergessen" mehr)
+Agenten „vergaßen" hochgeladene Dokumente in Folge-Turns und baten um erneuten Upload oder
+die attachment_id — Ursache war ephemerer Kontext: Die Dokument-Sektion wurde nur im
+Upload-Turn aus der aktuellen Nachricht gebaut, Analysen wurden verworfen, die History trug
+keine Anhang-Infos und `read_chat_attachment` hatte keinen Discovery-Modus. Jetzt:
+- **Session-weite Sektion pro Turn**: `buildSessionDocumentsSection` baut die Sektion bei
+  jedem Turn aus dem persistenten Attachment-Store (Disk) — Volltexte kleiner Docs,
+  Analysen großer Docs, Manifest für Bilder/Audio, alle attachment_ids. Überlebt auch
+  Backend-Neustarts.
+- **Analysen persistiert**: Sub-Agent-Analysen großer Dokumente werden einmalig erstellt
+  und am Attachment gespeichert (`metadata.json`) statt pro Turn verworfen; Alt-Sessions
+  werden beim nächsten Turn nachanalysiert.
+- **Content-Budget** (120k Zeichen/Turn, neue Uploads priorisiert) verhindert
+  Context-Explosion; Überlauf erscheint als Metadaten + Nachlade-Hinweis.
+- **`read_chat_attachment` mit `format: "list"`**: listet alle Session-Attachments mit IDs
+  (auch ohne attachment_id aufrufbar, funktioniert aus Delegationen).
+Details: `docs/chat-attachment-persistenz-2026-08-28.md`.
+
 ### Chat: Favoriten-Agenten in der Sidebar
 Der Weg über „+" → „Agenten" ist nicht für alle intuitiv. Neue Sektion **„Agenten"** in der
 Chat-Sidebar (zwischen Suche und Ordnern): Nutzer stellen sich per Modal eine persönliche
