@@ -99,6 +99,20 @@ GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret
 
 # ============================================
+# Modell-Pinning je Instanz (optional, empfohlen)
+# ============================================
+
+# Pinnt den System-Default eines Zwecks unabhaengig vom active-Block in
+# data/config/providers.yaml. Die Datei wird bei Deployments aus dem Repo
+# synchronisiert — ohne Pin wuerde jede Repo-Aenderung die Modellwahl der
+# Instanz umwerfen. User-Praeferenzen haben weiterhin Vorrang.
+# Zwecke: CHAT, VISION, TTS, STT, TEXT_TO_IMAGE, IMAGE_TO_IMAGE.
+ACTIVE_CHAT_PROVIDER_ID=adacor
+ACTIVE_CHAT_MODEL_ID=qwen3-a3b-30b-256k
+# ACTIVE_VISION_PROVIDER_ID=adacor
+# ACTIVE_VISION_MODEL_ID=mistral-3-24b-128k
+
+# ============================================
 # Sicherheits-Optionen
 # ============================================
 

@@ -341,12 +341,45 @@ export async function deleteModel(providerId: string, modelId: string): Promise<
 
 // ============== Active Selection ==============
 
+type ActivePurpose = 'chat' | 'vision' | 'tts' | 'stt' | 'text_to_image' | 'image_to_image';
+const ACTIVE_PURPOSES: ActivePurpose[] = ['chat', 'vision', 'tts', 'stt', 'text_to_image', 'image_to_image'];
+
 /**
- * Get current active model selection
+ * ENV-Override je Zweck: pinnt den System-Default einer Instanz unabhaengig
+ * vom active-Block in providers.yaml. Hintergrund: providers.yaml wird bei
+ * Deployments aus dem Repo-Seed auf die Instanzen synchronisiert — ohne Pin
+ * wuerde jede Repo-Aenderung am active-Block die Modellwahl aller Instanzen
+ * umwerfen (Kimi-K3-Vorfall 2026-08-28).
+ *
+ * Format: ACTIVE_<PURPOSE>_PROVIDER_ID / ACTIVE_<PURPOSE>_MODEL_ID
+ * (z.B. ACTIVE_CHAT_PROVIDER_ID=adacor, ACTIVE_CHAT_MODEL_ID=qwen3-a3b-30b-256k,
+ * ACTIVE_TEXT_TO_IMAGE_MODEL_ID=...). Beide Variablen muessen gesetzt sein.
+ * User-Praeferenzen haben weiterhin Vorrang — der Pin ersetzt nur den
+ * System-Default aus providers.yaml.
+ */
+function getEnvActiveOverride(purpose: ActivePurpose): { provider_id: string; model_id: string } | null {
+  const prefix = `ACTIVE_${purpose.toUpperCase()}`;
+  const providerId = process.env[`${prefix}_PROVIDER_ID`];
+  const modelId = process.env[`${prefix}_MODEL_ID`];
+  if (!providerId || !modelId) return null;
+  return { provider_id: providerId, model_id: modelId };
+}
+
+/**
+ * Get current active model selection.
+ * ENV-Pins ueberlagern den active-Block aus providers.yaml, damit die UI den
+ * tatsaechlich wirksamen System-Default anzeigt.
  */
 export async function getActiveSelection(): Promise<ProvidersConfig['active']> {
   const config = await loadProvidersConfig();
-  return config.active;
+  const active = { ...config.active };
+  for (const purpose of ACTIVE_PURPOSES) {
+    const envOverride = getEnvActiveOverride(purpose);
+    if (envOverride) {
+      active[purpose] = envOverride;
+    }
+  }
+  return active;
 }
 
 /**
@@ -416,7 +449,17 @@ export async function resolveActiveModel(
     }
   }
 
-  // Priority 2: System default
+  // Priority 2: ENV-Pin der Instanz (deployment-sicher, siehe getEnvActiveOverride)
+  const envOverride = getEnvActiveOverride(purpose);
+  if (envOverride) {
+    const resolved = await resolveModel(envOverride.provider_id, envOverride.model_id);
+    if (resolved && resolved.provider.enabled) {
+      return resolved;
+    }
+    console.warn(`[Provider] ENV override for ${purpose} invalid (${envOverride.provider_id}/${envOverride.model_id}), falling back to providers.yaml`);
+  }
+
+  // Priority 3: System default (providers.yaml active-Block)
   const active = config.active[purpose];
   if (!active.provider_id || !active.model_id) {
     return null;
@@ -431,6 +474,16 @@ export async function resolveActiveModel(
 export async function getSystemDefaultModel(
   purpose: 'chat' | 'vision' | 'tts' | 'stt' | 'text_to_image' | 'image_to_image'
 ): Promise<ResolvedModel | null> {
+  // ENV-Pin der Instanz gewinnt gegen den providers.yaml active-Block
+  const envOverride = getEnvActiveOverride(purpose);
+  if (envOverride) {
+    const resolved = await resolveModel(envOverride.provider_id, envOverride.model_id);
+    if (resolved && resolved.provider.enabled) {
+      return resolved;
+    }
+    console.warn(`[Provider] ENV override for ${purpose} invalid (${envOverride.provider_id}/${envOverride.model_id}), falling back to providers.yaml`);
+  }
+
   const config = await loadProvidersConfig();
   const active = config.active[purpose];
 
