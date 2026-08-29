@@ -304,8 +304,8 @@ providers:
         default: true
 active:
   chat:
-    provider_id: nebius-token-factory
-    model_id: moonshotai/Kimi-K3
+    provider_id: adacor
+    model_id: qwen3-a3b-30b-256k
   vision:
     provider_id: adacor
     model_id: mistral-3-24b-128k
@@ -321,6 +321,12 @@ active:
   image_to_image:
     provider_id: fal-ai
     model_id: fal-ai/nano-banana-pro
+  # Phase D / Heavy-Extraction-Pipeline. Wird von der Pipeline nicht
+  # automatisch resolved — Strategien lesen den Override aus dem Schema-Config
+  # (`extraction.model_override`). Dieser Block dokumentiert die Default-
+  # Empfehlung: Qwen-Thinking liefert hoehere Genauigkeit, kostet aber mehr.
+  # Wenn ein Schema `model_override: null` hat (Default), faellt es auf den
+  # `chat`-Provider zurueck.
   extraction_heavy:
     provider_id: adacor
     model_id: qwen3-a3bthinking-30b-256k

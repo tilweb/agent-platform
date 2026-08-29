@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-29
+
+### Fix: Chat-Default versehentlich auf Kimi K3 umgestellt — zurück auf Adacor Qwen3 30B
+Mit dem Lyceum-Provider-Commit (512efe6) war eine lokale, nicht zum Ausrollen gedachte
+Änderung mitgewandert: `active.chat` stand auf Nebius/Kimi K3 statt Adacor Qwen3 30B. Da
+Instanzen ihre `data/config` beim Start aus dem Repo synchronisieren, wurde Kimi K3 nach
+Deployments überall zum Chat-Default. `active.chat` ist wieder `adacor` /
+`qwen3-a3b-30b-256k` (inkl. wiederhergestelltem Doku-Kommentar zur Heavy-Extraction);
+der Lyceum-Provider selbst bleibt unverändert erhalten. Betroffene Instanzen brauchen
+ein Redeploy, damit der korrigierte Seed greift.
+
 ## 2026-08-28
 
 ### Chat: read_chat_attachment heilt ID-Tippfehler selbst
