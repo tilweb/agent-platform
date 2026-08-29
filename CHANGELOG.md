@@ -2,6 +2,24 @@
 
 ## 2026-08-29
 
+### Provider: Modell-Pinning je Instanz per ENV (deployment-sicher)
+Konsequenz aus dem Kimi-K3-Vorfall: Der `active:`-Block in `providers.yaml` wird bei
+Deployments aus dem Repo-Seed auf die Instanzen synchronisiert — jede Repo-Änderung konnte
+damit die Modellwahl aller Instanzen umwerfen. Neu: `ACTIVE_<PURPOSE>_PROVIDER_ID` /
+`ACTIVE_<PURPOSE>_MODEL_ID` (Zwecke: CHAT, VISION, TTS, STT, TEXT_TO_IMAGE,
+IMAGE_TO_IMAGE) pinnen den System-Default einer Instanz per ENV. Vorrang: User-Präferenz →
+ENV-Pin → providers.yaml. Ungültige Pins (Provider fehlt/deaktiviert) fallen mit Warnung
+auf providers.yaml zurück; `getActiveSelection` zeigt den wirksamen Pin auch in der UI.
+Doku: DEPLOYMENT.md, Abschnitt „Modell-Pinning je Instanz".
+
+### WZ-Branchen-Matcher: verwendet jetzt wirklich das angezeigte Modell
+Der Matcher zeigte im Audit-Log das per ENV gepinnte Platform-Apps-Modell (`PLATFORM_APPS_*`)
+an, die eigentlichen LLM-Calls (Splitter + Classifier) liefen aber ungepinnt über den
+globalen Chat-Default (`active.chat`) — beim Kimi-K3-Vorfall lief der Matcher deshalb auf
+Kimi, obwohl Mistral angezeigt wurde. Jetzt übergeben beide Calls das Platform-Apps-Modell
+als `modelOverride` (Fallback: Chat-Default), und das Anzeige-Label nutzt exakt dieselbe
+Auflösung — Anzeige und Realität sind identisch.
+
 ### Fix: Chat-Default versehentlich auf Kimi K3 umgestellt — zurück auf Adacor Qwen3 30B
 Mit dem Lyceum-Provider-Commit (512efe6) war eine lokale, nicht zum Ausrollen gedachte
 Änderung mitgewandert: `active.chat` stand auf Nebius/Kimi K3 statt Adacor Qwen3 30B. Da
