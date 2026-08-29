@@ -3,7 +3,22 @@
  */
 
 import { llmService, type Message, type ToolDefinition } from '../../services/llm';
+import { getPlatformModel } from '../../config/platformModels';
 import type { CatalogEntry, MatchResult } from './types';
+
+// Modell-Override fuer alle Matcher-LLM-Calls: das per ENV gepinnte
+// Platform-Apps-Modell (PLATFORM_APPS_*), NICHT der globale Chat-Default.
+// Sonst zeigt das Audit-Log das Apps-Modell an, waehrend die Calls tatsaechlich
+// ueber active.chat laufen — Anzeige und Realitaet muessen identisch sein.
+export async function appsModelOverride(): Promise<{ modelOverride: { providerId: string; modelId: string } } | Record<string, never>> {
+  try {
+    const m = await getPlatformModel('apps');
+    if (m) return { modelOverride: { providerId: m.provider.id, modelId: m.model.id } };
+  } catch {
+    /* ignore — Fallback auf Chat-Default */
+  }
+  return {};
+}
 
 const SYSTEM_PROMPT = `Du bist ein Experte für die deutsche Wirtschaftszweigklassifikation WZ 2025.
 Deine Aufgabe: Aus einer freitextlichen Tätigkeitsbeschreibung (aus dem Handelsregister) wählst du den passendsten WZ-Schlüssel aus einer vorgegebenen Kandidatenliste aus und benennst bis zu 3 sinnvolle Alternativen.
@@ -87,7 +102,7 @@ export async function classify(inputText: string, candidates: CatalogEntry[]): P
     messages,
     [SCHEMA],
     { source: 'wzbar-matcher', userId: 'user_default' },
-    { toolChoice: { type: 'function', function: { name: 'classify_wz_branche' } } },
+    { toolChoice: { type: 'function', function: { name: 'classify_wz_branche' } }, ...(await appsModelOverride()) },
   );
 
   if (response.tool_calls && response.tool_calls.length > 0) {

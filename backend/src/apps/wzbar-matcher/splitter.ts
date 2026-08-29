@@ -12,6 +12,7 @@
  */
 
 import { llmService, type Message, type ToolDefinition } from '../../services/llm';
+import { appsModelOverride } from './classifier';
 
 const MAX_ACTIVITIES = 3;
 
@@ -61,7 +62,7 @@ export async function splitActivities(inputText: string): Promise<string[]> {
       messages,
       [SCHEMA],
       { source: 'wzbar-matcher', userId: 'user_default' },
-      { toolChoice: { type: 'function', function: { name: 'split_activities' } } },
+      { toolChoice: { type: 'function', function: { name: 'split_activities' } }, ...(await appsModelOverride()) },
     );
 
     if (response.tool_calls && response.tool_calls.length > 0) {
