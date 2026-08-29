@@ -1142,6 +1142,12 @@ function ProvidersPage({ embedded = false }) {
                 <div style={styles.providerInfo}>
                   <div style={styles.providerName}>
                     {provider.name}
+                    <span
+                      style={{ ...styles.modelId, fontWeight: 400 }}
+                      title="Provider-ID — z.B. für ACTIVE_<ZWECK>_PROVIDER_ID beim Modell-Pinning per ENV"
+                    >
+                      {provider.id}
+                    </span>
                     {provider.protected && (
                       <span style={styles.protectedBadge}>System</span>
                     )}

@@ -2,6 +2,11 @@
 
 ## 2026-08-29
 
+### Einstellungen > KI-Modelle: Provider-ID sichtbar
+Die technische Provider-ID (z.B. `adacor`) wird jetzt als Monospace-Zusatz neben dem
+Provider-Namen angezeigt — nötig für das ENV-Modell-Pinning (`ACTIVE_<ZWECK>_PROVIDER_ID`),
+Tooltip erklärt den Zweck. Die Modell-IDs standen bereits unter den Modellnamen.
+
 ### Provider: Modell-Pinning je Instanz per ENV (deployment-sicher)
 Konsequenz aus dem Kimi-K3-Vorfall: Der `active:`-Block in `providers.yaml` wird bei
 Deployments aus dem Repo-Seed auf die Instanzen synchronisiert — jede Repo-Änderung konnte
