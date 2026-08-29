@@ -20,6 +20,7 @@ import type {
 } from './types';
 import { llmService } from '../../services/llm';
 import { getPlatformModel } from '../../config/platformModels';
+import { getSystemDefaultModel } from '../../services/providers';
 
 const TOP_K = 20;
 
@@ -86,9 +87,19 @@ export async function detail(id: string): Promise<MatchRecord | null> {
 }
 
 async function resolveChatModelLabel(): Promise<string> {
+  // Muss dieselbe Aufloesung nutzen wie die tatsaechlichen LLM-Calls
+  // (appsModelOverride im Classifier/Splitter): Platform-Apps-Modell wenn
+  // gepinnt, sonst der System-Chat-Default — nie ein Modell anzeigen, das
+  // nicht auch wirklich verwendet wird.
   try {
     const m = await getPlatformModel('apps');
     if (m) return `${m.provider.id}/${m.model.id}`;
+  } catch {
+    /* ignore */
+  }
+  try {
+    const fallback = await getSystemDefaultModel('chat');
+    if (fallback) return `${fallback.provider.id}/${fallback.model.id}`;
   } catch {
     /* ignore */
   }
