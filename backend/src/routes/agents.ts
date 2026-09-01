@@ -162,7 +162,7 @@ agentRoutes.post('/', async (c) => {
   try {
     const userId = getCurrentUserId(c)!;
     const body = await c.req.json();
-    const { id, name, description, capabilities, tools, delegatable, active, systemPrompt, model, skillMode, skills } = body;
+    const { id, name, description, capabilities, tools, delegatable, active, systemPrompt, model, skillMode, skills, icon, color } = body;
 
     if (!id || !name) {
       return c.json({ error: 'ID und Name sind erforderlich' }, 400);
@@ -185,6 +185,8 @@ agentRoutes.post('/', async (c) => {
       model,
       skillMode,
       skills,
+      icon,
+      color,
     });
 
     // Initialize RBAC - creator becomes owner
@@ -226,7 +228,7 @@ agentRoutes.put('/:id', async (c) => {
     }
 
     const body = await c.req.json();
-    const { name, description, capabilities, tools, delegatable, active, systemPrompt, model, skillMode, skills } = body;
+    const { name, description, capabilities, tools, delegatable, active, systemPrompt, model, skillMode, skills, icon, color } = body;
 
     const updatedAgent = await updateAgentService(agentId, {
       name,
@@ -239,6 +241,8 @@ agentRoutes.put('/:id', async (c) => {
       model,
       skillMode,
       skills,
+      icon,
+      color,
     });
 
     return c.json({

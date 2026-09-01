@@ -922,7 +922,7 @@ function SkillsPage() {
     <div style={styles.container}>
       <PageHeader
         title="Skills"
-        subtitle="Skills erweitern Agenten mit spezialisierten Anweisungen, Werkzeugen und Abläufen."
+        subtitle="Zusatzfähigkeiten, mit denen ein Agent eine bestimmte Aufgabe besser beherrscht — etwa einen festen Ablauf befolgen oder ein Dokument nach Vorlage erstellen. Einmal angelegt, stehen sie deinen Agenten zur Verfügung."
         onToggleHelp={() => setHelpOpen((v) => !v)}
         helpOpen={helpOpen}
         actions={(

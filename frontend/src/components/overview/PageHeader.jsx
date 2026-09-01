@@ -16,7 +16,7 @@ const styles = {
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.lg, marginBottom: theme.spacing.xl, flexWrap: 'wrap' },
   left: { minWidth: 0 },
   title: { fontSize: theme.typography.sizes['2xl'], fontWeight: theme.typography.weights.semibold, color: theme.colors.text, marginBottom: theme.spacing.sm },
-  subtitle: { fontSize: theme.typography.sizes.base, color: theme.colors.textMuted, margin: 0 },
+  subtitle: { fontSize: theme.typography.sizes.base, color: theme.colors.textMuted, margin: 0, maxWidth: 680, lineHeight: theme.typography.lineHeight.relaxed },
   actions: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexShrink: 0 },
   helpBtn: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',

@@ -286,7 +286,7 @@ function TablesPage() {
     <div style={styles.container}>
       <PageHeader
         title="Tabellen"
-        subtitle="Strukturierte Daten in flexiblen Tabellen — als Wissensquelle und für Auswertungen."
+        subtitle="Eigene Listen und Stammdaten an einem Ort — z. B. Lieferanten, Standorte oder Kataloge. Agenten können daraus nachschlagen, und du nutzt sie als Grundlage für Auswertungen."
         onToggleHelp={() => setHelpOpen((v) => !v)}
         helpOpen={helpOpen}
         actions={(

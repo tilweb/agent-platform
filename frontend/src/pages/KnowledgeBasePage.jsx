@@ -1820,7 +1820,7 @@ function KnowledgeBasePage() {
     <div style={styles.container}>
       <PageHeader
         title="Knowledge Base"
-        subtitle="Sammlungen von Dokumenten, die Agenten als Wissen nutzen können."
+        subtitle="Euer Unternehmenswissen als durchsuchbare Sammlungen — Richtlinien, Verträge, Handbücher und mehr. Damit beantworten Agenten Fragen mit Belegen aus euren eigenen Dokumenten statt aus allgemeinem Wissen."
         onToggleHelp={() => setHelpOpen((v) => !v)}
         helpOpen={helpOpen}
         actions={(

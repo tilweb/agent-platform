@@ -40,6 +40,12 @@ const SYSTEM_AGENT_IDS = new Set([
   'vision-analyzer',
   'researcher',
   'writer',
+  // Echo-Loop (EMMA) — version-controlled in data/agents/, fresh-from-disk laden
+  // (NICHT in die DB migrieren, sonst schatten stale DB-Kopien spätere config.md-Edits).
+  'echo-loop-bauberater',
+  'echo-loop-reengineering',
+  'echo-loop-reifegrad-auditor',
+  'echo-loop-quality-gate',
 ]);
 
 export function isSystemAgentId(id: string): boolean {
@@ -93,6 +99,10 @@ export interface AgentConfig {
   skillMode?: 'all' | 'allow' | 'none';
   /** Maximum iterations for this agent (overrides default in delegation loop) */
   maxIterations?: number;
+  /** Avatar-Icon-ID aus dem festen Icon-Katalog (Frontend). */
+  icon?: string;
+  /** Avatar-Farbe als Hex (z.B. "#8b5cf6") aus der festen Palette (Frontend). */
+  color?: string;
   /**
    * Tombstone-Marker: gesetzt wenn ein File-basierter Agent geloescht wurde.
    * Ueberstimmt das File-Seed im DB-Override-Mechanismus und wird in beiden
@@ -126,6 +136,9 @@ interface AgentFrontmatter {
   skillMode?: 'all' | 'allow' | 'none';
   /** Maximum iterations for this agent */
   maxIterations?: number;
+  /** Avatar-Icon-ID + Farbe (hex) */
+  icon?: string;
+  color?: string;
 }
 
 /**
@@ -274,6 +287,8 @@ function parseAgentMarkdown(agentId: string, content: string): AgentConfig {
     skills: fm.skills,
     skillMode: fm.skillMode,
     maxIterations: typeof fm.maxIterations === 'number' ? fm.maxIterations : undefined,
+    icon: fm.icon || undefined,
+    color: fm.color || undefined,
     tombstone: fm.tombstone === true,
   };
 }
@@ -597,6 +612,14 @@ function generateAgentMarkdown(agent: Omit<AgentConfig, 'systemPrompt'> & { syst
     lines.push(`maxIterations: ${agent.maxIterations}`);
   }
 
+  if (agent.icon) {
+    lines.push(`icon: ${agent.icon}`);
+  }
+
+  if (agent.color) {
+    lines.push(`color: ${agent.color}`);
+  }
+
   // Model configuration
   if (agent.model) {
     lines.push('model:');
@@ -657,6 +680,8 @@ export async function createAgent(agentData: {
   model?: AgentModelConfig;
   skills?: string[];
   skillMode?: 'all' | 'allow' | 'none';
+  icon?: string;
+  color?: string;
 }): Promise<AgentConfig> {
   // Validate ID format
   if (!/^[a-z0-9_-]+$/.test(agentData.id)) {
@@ -726,6 +751,8 @@ export async function updateAgent(agentId: string, agentData: {
   model?: AgentModelConfig;
   skills?: string[];
   skillMode?: 'all' | 'allow' | 'none';
+  icon?: string;
+  color?: string;
 }): Promise<AgentConfig> {
   // Prevent editing connection agents
   if (await isConnectionAgent(agentId)) {
@@ -766,6 +793,8 @@ export async function updateAgent(agentId: string, agentData: {
     model: modelConfig,
     skills: agentData.skills ?? existing.skills,
     skillMode: agentData.skillMode ?? existing.skillMode,
+    icon: agentData.icon ?? existing.icon,
+    color: agentData.color ?? existing.color,
   };
 
   const content = generateAgentMarkdown(updated);

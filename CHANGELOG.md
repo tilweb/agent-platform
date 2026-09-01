@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-09-01
+
+### Agenten: Icon & Farbe pflegbar (Header-Avatar + Picker) + Übersichts-Untertitel
+- **Icon & Farbe je Agent**: Neue Felder `icon` (Katalog-ID) + `color` (Hex) am Agent-Modell —
+  in der Frontmatter persistiert, in create/update/load und `GET /agents` durchgereicht (keine DB-Migration).
+- **Add/Edit-Header**: klickbarer Avatar (zeigt das gewählte Icon in der gewählten Farbe) → **Modal-Picker**
+  mit festem Katalog (24 Icons, 14 Farben, Live-Vorschau, „Übernehmen/Abbrechen"). Der **Name ist jetzt inline
+  im Header editierbar** (Unterstreichung + Stift-Icon signalisieren Editierbarkeit); die separate „Name & Icon"-Box
+  entfällt; die „Delegierbar"-Pill wurde aus dem Detail-Header entfernt.
+- **Übersichts-Kacheln** zeigen das gewählte Icon/Farbe (Fallback: bisheriges per-ID-Icon bzw. graues Default).
+- Neue Frontend-Bausteine: `components/agentIcons.js` (Katalog+Palette), `AgentAvatar`/`AgentGlyph`, `AgentIconPicker`.
+- **Übersichtsseiten-Untertitel** nutzenorientierter formuliert (Agenten/Skills/KB/Tabellen) und auf lesbare
+  Breite (max. 680 px) begrenzt (`components/overview/PageHeader.jsx`).
+
+## 2026-08-31
+
+### Provider: Zwei neue Lyceum-Modelle
+`qwen/qwen3.8-flash-next` (Qwen 3.8 Flash Next, 6B active MoE, multimodal, 256k) und
+`qwen/qwen3.8-27b` (Qwen 3.8 27B, dense, multimodal) beim Lyceum-Provider ergänzt —
+beide mit Chat, Function-Calling und Vision.
+
+### Connections: Setup-Guides zeigen die Callback-URL der eigenen Instanz
+Die OAuth-Setup-Anleitungen (YouTrack, Confluence, Jira, Pipedrive, DocuWare) nannten als
+Redirect-URI hardcoded `http://localhost:3001/...` — auf Kunden-Instanzen falsch. Neu:
+Platzhalter `{{CALLBACK_URL}}` in den Guides, den die Registry beim Ausliefern durch die
+echte Callback-URL der Instanz ersetzt (aus `API_BASE_URL`, identisch zur URL, die der
+OAuth-Flow tatsächlich verwendet); localhost steht nur noch als Zusatz für lokale
+Entwicklung dabei. Die Google-Guides (zentrale Adacor-App mit URIs aller Instanzen)
+bleiben unverändert.
+
 ## 2026-08-29
 
 ### Einstellungen > KI-Modelle: Provider-ID sichtbar

@@ -4,7 +4,7 @@ import { theme } from '../config/theme';
 import AccessManager from '../components/AccessManager';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useProviders } from '../hooks/useProviders';
-import { LockIcon, RobotIcon, PlugIcon } from '../components/Icons';
+import { LockIcon, RobotIcon, PlugIcon, PenIcon } from '../components/Icons';
 import RoleBadge from '../components/RoleBadge';
 import ReadOnlyBanner from '../components/ReadOnlyBanner';
 import ConfirmModal from '../components/ConfirmModal';
@@ -15,6 +15,9 @@ import ResourceCard, { CardGrid } from '../components/overview/ResourceCard';
 import EmptyState from '../components/overview/EmptyState';
 import HelpPanel from '../components/overview/HelpPanel';
 import { deriveAccessGroups, filterBySearch, sortByName } from '../components/overview/grouping';
+import { AgentAvatar, AgentGlyph } from '../components/AgentAvatar';
+import { DEFAULT_AGENT_ICON, DEFAULT_AGENT_COLOR } from '../components/agentIcons';
+import AgentIconPicker from '../components/AgentIconPicker';
 
 // ==========================================
 // Styles
@@ -715,7 +718,10 @@ function AgentsPage() {
     delegatable: true,
     systemPrompt: '',
     model: { provider_id: '', model_id: '' },
+    icon: DEFAULT_AGENT_ICON,
+    color: DEFAULT_AGENT_COLOR,
   });
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   // Detail view state
   const [activeTab, setActiveTab] = useState('tools');
@@ -811,6 +817,8 @@ function AgentsPage() {
       active: true,
       systemPrompt: '',
       model: { provider_id: '', model_id: '' },
+      icon: DEFAULT_AGENT_ICON,
+      color: DEFAULT_AGENT_COLOR,
     });
     setActiveTab('tools');
   };
@@ -837,6 +845,8 @@ function AgentsPage() {
         model: (fullAgent.model && fullAgent.model.provider_id && fullAgent.model.model_id)
           ? fullAgent.model
           : { provider_id: '', model_id: '' },
+        icon: fullAgent.icon || DEFAULT_AGENT_ICON,
+        color: fullAgent.color || DEFAULT_AGENT_COLOR,
       });
       setActiveTab('tools');
     } catch (err) {
@@ -869,6 +879,8 @@ function AgentsPage() {
         active: formData.active,
         systemPrompt: formData.systemPrompt,
         model: modelConfig,
+        icon: formData.icon || DEFAULT_AGENT_ICON,
+        color: formData.color || DEFAULT_AGENT_COLOR,
       };
 
       const response = isCreating
@@ -977,9 +989,6 @@ function AgentsPage() {
     }));
   };
 
-  const colors = selectedAgent
-    ? (agentColors[selectedAgent.id] || agentColors.default)
-    : agentColors.default;
 
   // Generate unique ID from name
   const generateUniqueId = (name) => {
@@ -1036,16 +1045,64 @@ function AgentsPage() {
         {/* Detail Header */}
         <div style={styles.detailHeader}>
           <div style={styles.detailHeaderLeft}>
-            {!isCreating && (
-              <div style={{ ...styles.detailIcon, backgroundColor: colors.bg }}>
-                <AgentIcon agentId={selectedAgent.id} color={colors.color} size={32} />
-              </div>
-            )}
-            <div>
-              <h1 style={{ ...styles.detailTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
-                <span>{pageTitle}</span>
+            {/* Avatar — klickbar öffnet den Icon-Picker */}
+            <button
+              type="button"
+              onClick={() => { if (!isViewOnly) setShowIconPicker(true); }}
+              disabled={isViewOnly}
+              title={isViewOnly ? undefined : 'Icon & Farbe ändern'}
+              style={{ position: 'relative', padding: 0, border: 'none', background: 'none', cursor: isViewOnly ? 'default' : 'pointer', flexShrink: 0 }}
+            >
+              <AgentAvatar icon={formData.icon} color={formData.color} size={56} style={{ borderRadius: theme.borderRadius.lg }} />
+              {!isViewOnly && (
+                <span style={{
+                  position: 'absolute', bottom: -4, right: -4, width: 20, height: 20,
+                  borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.surface,
+                  border: `1px solid ${theme.colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.colors.textMuted,
+                }}>
+                  <PenIcon size={11} />
+                </span>
+              )}
+            </button>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+                {isViewOnly ? (
+                  <h1 style={styles.detailTitle}>{pageTitle}</h1>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flex: 1, minWidth: 0, maxWidth: 560 }}>
+                    <input
+                      value={formData.name}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        const updates = { name };
+                        // ID nur bei NEUEN Agents generieren, nicht bei Bearbeitung
+                        if (isCreating) updates.id = generateUniqueId(name);
+                        setFormData({ ...formData, ...updates });
+                      }}
+                      placeholder="Name des Agenten"
+                      style={{
+                        fontSize: theme.typography.sizes['2xl'],
+                        fontWeight: theme.typography.weights.bold,
+                        color: theme.colors.text,
+                        background: 'transparent',
+                        border: 'none',
+                        borderBottom: `2px solid ${theme.colors.border}`,
+                        borderRadius: 0,
+                        padding: `${theme.spacing.xs} 2px`,
+                        outline: 'none',
+                        width: '100%',
+                        fontFamily: 'inherit',
+                      }}
+                      onFocus={(e) => { e.target.style.borderBottomColor = theme.colors.primary; }}
+                      onBlur={(e) => { e.target.style.borderBottomColor = theme.colors.border; }}
+                      onMouseEnter={(e) => { if (document.activeElement !== e.target) e.target.style.borderBottomColor = theme.colors.textMuted; }}
+                      onMouseLeave={(e) => { if (document.activeElement !== e.target) e.target.style.borderBottomColor = theme.colors.border; }}
+                    />
+                    <PenIcon size={15} color={theme.colors.textMuted} style={{ flexShrink: 0, opacity: 0.7 }} />
+                  </div>
+                )}
                 {!isCreating && !isSystemAgent && selectedAgent?.role && <RoleBadge role={selectedAgent.role} size="sm" />}
-              </h1>
+              </div>
               <div style={styles.detailSubtitle}>
                 {!isCreating && (
                   <>
@@ -1057,11 +1114,6 @@ function AgentsPage() {
                     {selectedAgent.active === false && (
                       <span style={{ ...styles.badge, ...styles.badgeMuted }}>
                         Inaktiv
-                      </span>
-                    )}
-                    {selectedAgent.delegatable && (
-                      <span style={{ ...styles.badge, ...styles.badgeDelegatable }}>
-                        Delegierbar
                       </span>
                     )}
                   </>
@@ -1127,33 +1179,6 @@ function AgentsPage() {
         <div style={styles.twoColumn}>
           {/* Main Column - Form */}
           <div style={styles.mainColumn}>
-            {/* Name */}
-            <div style={styles.formCard}>
-              <h3 style={styles.formCardTitle}>Name</h3>
-
-              <div style={{ marginBottom: 0 }}>
-                <label style={styles.label}>Name</label>
-                <input
-                  style={{
-                    ...styles.input,
-                    ...(isViewOnly ? styles.inputDisabled : {}),
-                  }}
-                  value={formData.name}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    const updates = { name };
-                    // ID nur bei NEUEN Agents generieren, nicht bei Bearbeitung
-                    if (isCreating) {
-                      updates.id = generateUniqueId(name);
-                    }
-                    setFormData({ ...formData, ...updates });
-                  }}
-                  placeholder="z.B. Mein Custom Agent"
-                  disabled={isViewOnly}
-                />
-              </div>
-            </div>
-
             {/* Description & Capabilities - for other agents */}
             <div style={styles.formCard}>
               <h3 style={styles.formCardTitle}>Für andere Agenten</h3>
@@ -1619,6 +1644,15 @@ function AgentsPage() {
           onConfirm={confirmDelete}
           onCancel={cancelDelete}
         />
+
+        {showIconPicker && (
+          <AgentIconPicker
+            icon={formData.icon}
+            color={formData.color}
+            onApply={({ icon, color }) => { setFormData({ ...formData, icon, color }); setShowIconPicker(false); }}
+            onClose={() => setShowIconPicker(false)}
+          />
+        )}
       </div>
     );
   }
@@ -1648,7 +1682,7 @@ function AgentsPage() {
     <div style={styles.container}>
       <PageHeader
         title="Agenten"
-        subtitle="Verwalte die verfügbaren KI-Agenten und ihre Konfigurationen."
+        subtitle="Spezialisierte KI-Assistenten für wiederkehrende Aufgaben — vom Bewerbungscheck bis zum Sortieren von E-Mails. Du startest sie im Chat oder lässt passende Anfragen automatisch übernehmen."
         onToggleHelp={() => setHelpOpen((v) => !v)}
         helpOpen={helpOpen}
         actions={(
@@ -1721,11 +1755,16 @@ function AgentsPage() {
             if (isInactive) badges.push({ label: 'Inaktiv', variant: 'muted' });
             if (agent.delegatable && !isInactive) badges.push({ label: 'Delegierbar', variant: 'success' });
             if (agent.system) badges.push({ label: 'System', variant: 'primary' });
+            // Gewähltes Icon/Farbe (falls gesetzt), sonst Fallback auf die per-ID-Verdrahtung.
+            const glyphColor = agent.color || colors.color;
+            const glyphBg = agent.color ? `${agent.color}22` : colors.bg;
             return (
               <ResourceCard
                 key={agent.id}
-                icon={<AgentIcon agentId={agent.id} color={locked ? theme.colors.textMuted : colors.color} size={22} />}
-                iconBg={colors.bg}
+                icon={agent.icon
+                  ? <AgentGlyph icon={agent.icon} size={22} color={locked ? theme.colors.textMuted : glyphColor} />
+                  : <AgentIcon agentId={agent.id} color={locked ? theme.colors.textMuted : colors.color} size={22} />}
+                iconBg={glyphBg}
                 title={agent.name}
                 titleAccessory={sharedRole ? <RoleBadge role={sharedRole} size="sm" /> : null}
                 description={typeof agent.description === 'string' ? agent.description : ''}
