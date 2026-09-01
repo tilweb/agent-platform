@@ -2,6 +2,15 @@
 
 ## 2026-09-01
 
+### Agenten: Beschreibung & Fähigkeiten automatisch aus dem System-Prompt generiert
+Der Editor-Block „Für andere Agenten" (manuelles Pflegen von Beschreibung + Fähigkeiten) entfällt — für
+KI-Einsteiger zu komplex. Stattdessen erzeugt das Backend beim Speichern beides per LLM aus dem System-Prompt:
+einheitlich formuliert und unabhängig vom einzelnen User → bessere, vergleichbare Grundlage für die
+Delegations-Wahl anderer Agenten. Neu erzeugt beim Anlegen und wenn sich der System-Prompt ändert; robuster
+Fallback (erste Prompt-Sätze), falls kein LLM verfügbar ist — das Speichern scheitert nie.
+(`services/agents.ts`: `generateAgentMetadata` + Einbindung in create/update; `AgentsPage.jsx`: Block entfernt,
+`description`/`capabilities` nicht mehr gesendet.)
+
 ### Agenten: Icon & Farbe pflegbar (Header-Avatar + Picker) + Übersichts-Untertitel
 - **Icon & Farbe je Agent**: Neue Felder `icon` (Katalog-ID) + `color` (Hex) am Agent-Modell —
   in der Frontmatter persistiert, in create/update/load und `GET /agents` durchgereicht (keine DB-Migration).

@@ -7,6 +7,7 @@ import {
   saveCustomAgentRecord,
   deleteCustomAgentRecord,
 } from './agentDbStorage';
+import type { Message } from './llm';
 
 // Lazy import to avoid circular dependencies
 let _connectionRegistry: typeof import('../connections/registry').connectionRegistry | null = null;
@@ -658,6 +659,64 @@ function generateAgentMarkdown(agent: Omit<AgentConfig, 'systemPrompt'> & { syst
 }
 
 /**
+ * Erzeugt Delegation-Metadaten (Beschreibung + Fähigkeiten) aus dem System-Prompt
+ * per LLM — einheitlich formuliert und unabhängig davon, was der/die einzelne
+ * Nutzer:in eingibt. Dient anderen Agenten als Grundlage für die Delegations-Wahl.
+ * Fällt bei Fehlern auf eine simple Ableitung zurück und wirft NIE (Speichern
+ * darf nie an der Generierung scheitern). Lazy-Imports gegen Zirkularität.
+ */
+async function generateAgentMetadata(
+  name: string,
+  systemPrompt: string,
+): Promise<{ description: string; capabilities: string[] }> {
+  const prompt = (systemPrompt || '').trim();
+  const fallback = (): { description: string; capabilities: string[] } => ({
+    description: prompt ? prompt.split(/\n|(?<=\.)\s/)[0]!.slice(0, 220).trim() : '',
+    capabilities: [],
+  });
+  if (!prompt) return fallback();
+
+  try {
+    const { llmService } = await import('./llm');
+    const { parseJsonObject } = await import('./extraction/extract-call');
+
+    const messages: Message[] = [
+      {
+        role: 'system',
+        content:
+          'Du erstellst kurze, sachliche Metadaten für einen KI-Agenten, damit ANDERE Agenten entscheiden ' +
+          'können, ob sie eine Aufgabe an ihn delegieren. Antworte AUSSCHLIESSLICH mit gültigem JSON (keine ' +
+          'Markdown-Fences) nach genau diesem Schema: {"description": string, "capabilities": string[]}. ' +
+          'description = 1–2 prägnante Sätze auf Deutsch: was der Agent tut und wofür er zuständig ist. ' +
+          'capabilities = 3–6 kurze Stichpunkte (je 2–5 Wörter) mit konkreten Fähigkeiten. Sachlich, keine ' +
+          'Werbung, keine Anrede, keine Wiederholung des Namens.',
+      },
+      {
+        role: 'user',
+        content: `Agent-Name: ${name || '(ohne Name)'}\n\nSystem-Prompt des Agenten:\n"""\n${prompt.slice(0, 6000)}\n"""`,
+      },
+    ];
+
+    const res = await llmService.chat(messages);
+    const obj = parseJsonObject(res.content);
+    if (!obj) return fallback();
+
+    const description = typeof obj.description === 'string' ? obj.description.trim() : '';
+    const capabilities = (Array.isArray(obj.capabilities) ? obj.capabilities : [])
+      .filter((c): c is string => typeof c === 'string')
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .slice(0, 8);
+
+    if (!description && capabilities.length === 0) return fallback();
+    return { description: description || fallback().description, capabilities };
+  } catch (err) {
+    console.warn('[agents] generateAgentMetadata failed, using fallback:', (err as Error).message);
+    return fallback();
+  }
+}
+
+/**
  * Check if an agent ID is a connection-based agent
  */
 async function isConnectionAgent(agentId: string): Promise<boolean> {
@@ -710,8 +769,21 @@ export async function createAgent(agentData: {
     locked: true,
   } : undefined;
 
+  // Beschreibung + Fähigkeiten werden nicht mehr vom User gepflegt, sondern aus
+  // dem System-Prompt generiert (einheitlich, für die Delegations-Wahl). Nur
+  // falls doch mitgeliefert (z.B. Import), diese übernehmen.
+  let description = agentData.description;
+  let capabilities = agentData.capabilities;
+  if (!description || !Array.isArray(capabilities) || capabilities.length === 0) {
+    const meta = await generateAgentMetadata(agentData.name, agentData.systemPrompt);
+    description = meta.description;
+    capabilities = meta.capabilities;
+  }
+
   const merged = {
     ...agentData,
+    description,
+    capabilities,
     active: agentData.active !== false,
     internal: false,
     system: false,
@@ -781,15 +853,33 @@ export async function updateAgent(agentId: string, agentData: {
     locked: true,
   } : existing.model;
 
+  const newName = agentData.name ?? existing.name;
+  const newSystemPrompt = agentData.systemPrompt ?? existing.systemPrompt;
+  const promptChanged = agentData.systemPrompt !== undefined && agentData.systemPrompt !== existing.systemPrompt;
+
+  // Beschreibung + Fähigkeiten sind generiert (nicht mehr user-gepflegt). Neu
+  // erzeugen, wenn der System-Prompt sich geändert hat oder sie fehlen; explizit
+  // mitgelieferte Werte (z.B. Import) haben Vorrang.
+  let description = agentData.description ?? existing.description;
+  let capabilities = agentData.capabilities ?? existing.capabilities;
+  if (
+    agentData.description === undefined && agentData.capabilities === undefined &&
+    (promptChanged || !description || !Array.isArray(capabilities) || capabilities.length === 0)
+  ) {
+    const meta = await generateAgentMetadata(newName, newSystemPrompt);
+    description = meta.description;
+    capabilities = meta.capabilities;
+  }
+
   const updated: AgentConfig = {
     ...existing,
-    name: agentData.name ?? existing.name,
-    description: agentData.description ?? existing.description,
-    capabilities: agentData.capabilities ?? existing.capabilities,
+    name: newName,
+    description,
+    capabilities,
     tools: agentData.tools ?? existing.tools,
     delegatable: agentData.delegatable ?? existing.delegatable,
     active: agentData.active ?? existing.active,
-    systemPrompt: agentData.systemPrompt ?? existing.systemPrompt,
+    systemPrompt: newSystemPrompt,
     model: modelConfig,
     skills: agentData.skills ?? existing.skills,
     skillMode: agentData.skillMode ?? existing.skillMode,

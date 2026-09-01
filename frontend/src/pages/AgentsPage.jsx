@@ -870,8 +870,8 @@ function AgentsPage() {
       const payload = {
         id: formData.id,
         name: formData.name,
-        description: formData.description,
-        capabilities: formData.capabilities.split(',').map(s => s.trim()).filter(Boolean),
+        // description + capabilities werden serverseitig aus dem System-Prompt
+        // generiert (einheitlich, für die Delegations-Wahl) — nicht mehr gesendet.
         tools: formData.tools,
         skills: formData.skillMode === 'allow' ? formData.skills : undefined,
         skillMode: formData.skillMode,
@@ -1179,50 +1179,6 @@ function AgentsPage() {
         <div style={styles.twoColumn}>
           {/* Main Column - Form */}
           <div style={styles.mainColumn}>
-            {/* Description & Capabilities - for other agents */}
-            <div style={styles.formCard}>
-              <h3 style={styles.formCardTitle}>Für andere Agenten</h3>
-              <div style={styles.formCardHint}>
-                Diese Informationen helfen dem KI-System zu verstehen, wofür dieser Agent zuständig ist.
-                Wenn ein anderer Agent Hilfe bei einer Aufgabe braucht, nutzt er diese Beschreibung und
-                die Fähigkeiten, um zu entscheiden, ob dieser Agent der richtige Helfer ist.
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Beschreibung</label>
-                <textarea
-                  style={{
-                    ...styles.textarea,
-                    ...(isViewOnly ? styles.inputDisabled : {}),
-                  }}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="z.B. Spezialist für Web-Recherche und Faktenprüfung. Kann im Internet nach aktuellen Informationen suchen und Fakten verifizieren."
-                  disabled={isViewOnly}
-                />
-                <div style={styles.hint}>
-                  Beschreibe in 1-2 Sätzen, was dieser Agent kann und wofür er eingesetzt werden sollte.
-                </div>
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Fähigkeiten (Schlagwörter)</label>
-                <input
-                  style={{
-                    ...styles.input,
-                    ...(isViewOnly ? styles.inputDisabled : {}),
-                  }}
-                  value={formData.capabilities}
-                  onChange={(e) => setFormData({ ...formData, capabilities: e.target.value })}
-                  placeholder="z.B. Recherche, Faktenprüfung, Zusammenfassung"
-                  disabled={isViewOnly}
-                />
-                <div style={styles.hint}>
-                  Kommagetrennte Schlagwörter, die die Stärken des Agenten beschreiben.
-                </div>
-              </div>
-            </div>
-
             {/* Verfügbarkeit */}
             <div style={styles.formCard}>
               <h3 style={styles.formCardTitle}>Verfügbarkeit</h3>
