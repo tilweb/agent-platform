@@ -2,6 +2,14 @@
 
 ## 2026-09-01
 
+### Agenten-Editor: fokussiertes Layout — kompakte Einstellungen (Modal) + großes Instruktionsfeld
+Der Editor war zweispaltig mit großen, raumgreifenden Karten (Verfügbarkeit + Tool-/Skill-/Modell-/Rechte-Panel);
+das Instruktionsfeld zeigte nur einen kleinen Ausschnitt. Neu (inspiriert von ChatGPTs Agent-Editor): einspaltig,
+oben eine **kompakte Einstellungs-Liste** (Verfügbarkeit · Werkzeuge · Skills · Modell · Berechtigungen) mit
+Kurz-Zusammenfassung je Zeile — Details öffnen sich in einem **Einstellungen-Modal** (getabbt, Inhalte 1:1
+wiederverwendet). Das **Instruktionsfeld (System Prompt)** ist im Default deutlich größer (min. 460 px), da
+komplexe Prompts sonst kaum überblickbar sind. (`AgentsPage.jsx`.)
+
 ### Agenten: Beschreibung & Fähigkeiten automatisch aus dem System-Prompt generiert
 Der Editor-Block „Für andere Agenten" (manuelles Pflegen von Beschreibung + Fähigkeiten) entfällt — für
 KI-Einsteiger zu komplex. Stattdessen erzeugt das Backend beim Speichern beides per LLM aus dem System-Prompt:

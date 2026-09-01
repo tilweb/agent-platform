@@ -342,8 +342,77 @@ const styles = {
     fontFamily: theme.typography.fontFamily,
   },
   textareaLarge: {
-    minHeight: '200px',
+    minHeight: '460px',
     fontFamily: theme.typography.fontMono,
+    lineHeight: 1.55,
+  },
+  // Einspaltiger Editor-Body + kompakte Einstellungs-Liste (Details in Modal)
+  editorBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.lg,
+  },
+  settingsList: {
+    backgroundColor: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.xl,
+    overflow: 'hidden',
+  },
+  settingsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+    width: '100%',
+    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderBottom: `1px solid ${theme.colors.borderLight}`,
+    cursor: 'pointer',
+    textAlign: 'left',
+    transition: `background-color ${theme.transitions.fast}`,
+  },
+  settingsRowLabel: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text,
+    flexShrink: 0,
+  },
+  settingsRowValue: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    minWidth: 0,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textMuted,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  settingsChevron: { color: theme.colors.textMuted, flexShrink: 0 },
+  // Einstellungen-Modal
+  modalOverlay: {
+    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: theme.spacing.lg,
+  },
+  settingsModal: {
+    backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl,
+    border: `1px solid ${theme.colors.border}`, boxShadow: theme.shadows.xl,
+    width: '100%', maxWidth: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+  },
+  settingsModalHead: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: `${theme.spacing.lg} ${theme.spacing.xl}`, borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  settingsModalTitle: {
+    fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, margin: 0,
+  },
+  settingsModalBody: {
+    padding: theme.spacing.xl, overflow: 'auto',
+  },
+  closeButton: {
+    background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.textMuted,
+    fontSize: theme.typography.sizes.lg, lineHeight: 1, padding: theme.spacing.xs,
   },
   hint: {
     fontSize: theme.typography.sizes.xs,
@@ -722,6 +791,7 @@ function AgentsPage() {
     color: DEFAULT_AGENT_COLOR,
   });
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Detail view state
   const [activeTab, setActiveTab] = useState('tools');
@@ -1176,129 +1246,145 @@ function AgentsPage() {
         )}
 
         {/* Two Column Layout */}
-        <div style={styles.twoColumn}>
-          {/* Main Column - Form */}
-          <div style={styles.mainColumn}>
-            {/* Verfügbarkeit */}
-            <div style={styles.formCard}>
-              <h3 style={styles.formCardTitle}>Verfügbarkeit</h3>
-
-              {/* Active Toggle */}
-              <div style={{ ...styles.toggleRow, marginBottom: theme.spacing.lg }}>
-                <button
-                  style={{
-                    ...styles.toggleButton,
-                    ...(isViewOnly ? { cursor: 'not-allowed', opacity: 0.5 } : {}),
-                  }}
-                  onClick={() => !isViewOnly && setFormData({ ...formData, active: !formData.active })}
-                  disabled={isViewOnly}
-                  type="button"
-                >
-                  {formData.active ? <ToggleOnIcon /> : <ToggleOffIcon />}
-                </button>
-                <div style={styles.toggleContent}>
-                  <div style={styles.toggleTitle}>
-                    {formData.active ? 'Aktiv' : 'Inaktiv'}
-                  </div>
-                  <div style={styles.toggleDescription}>
-                    {formData.active ? (
-                      <>
-                        Der Agent ist aktiv und kann im Chat ausgewählt sowie per Delegation angesprochen werden.
-                      </>
-                    ) : (
-                      <>
-                        Der Agent ist deaktiviert und weder im Chat noch per Delegation verfügbar.
-                        Er bleibt in der Admin-Ansicht sichtbar und kann jederzeit wieder aktiviert werden.
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Delegation Toggle */}
-              <div style={styles.toggleRow}>
-                <button
-                  style={{
-                    ...styles.toggleButton,
-                    ...(isViewOnly || !formData.active ? { cursor: 'not-allowed', opacity: 0.5 } : {}),
-                  }}
-                  onClick={() => !isViewOnly && formData.active && setFormData({ ...formData, delegatable: !formData.delegatable })}
-                  disabled={isViewOnly || !formData.active}
-                  type="button"
-                >
-                  {formData.delegatable ? <ToggleOnIcon /> : <ToggleOffIcon />}
-                </button>
-                <div style={styles.toggleContent}>
-                  <div style={styles.toggleTitle}>
-                    {formData.delegatable ? 'Automatisch verfügbar' : 'Nur bei direkter Auswahl'}
-                  </div>
-                  <div style={styles.toggleDescription}>
-                    {formData.delegatable ? (
-                      <>
-                        Andere Agenten können diesen Agenten automatisch einschalten, wenn sie
-                        Hilfe bei einer passenden Aufgabe benötigen. Der Supervisor-Agent entscheidet
-                        basierend auf der Beschreibung und den Fähigkeiten, wann dieser Agent zum Einsatz kommt.
-                      </>
-                    ) : (
-                      <>
-                        Dieser Agent wird nur aktiv, wenn du ihn explizit im Chat auswählst.
-                        Andere Agenten können ihn nicht automatisch hinzuziehen. Nutze diese Einstellung
-                        für Agenten, die du nur gezielt für bestimmte Aufgaben einsetzen möchtest.
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* System Prompt */}
-            <div style={styles.formCard}>
-              <h3 style={styles.formCardTitle}>Instruktionen (System Prompt)</h3>
-              <textarea
-                style={{
-                  ...styles.textarea,
-                  ...styles.textareaLarge,
-                  ...(isViewOnly ? styles.inputDisabled : {}),
-                }}
-                value={formData.systemPrompt}
-                onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-                placeholder="Beschreibe, wie der Agent sich verhalten soll..."
-                disabled={isViewOnly}
-              />
-              <div style={styles.hint}>
-                Diese Instruktionen definieren, wie der Agent sich verhält, denkt und kommuniziert.
-              </div>
-            </div>
+        <div style={styles.editorBody}>
+          {/* Kompakte Einstellungen — Details öffnen sich im Modal */}
+          <div style={styles.settingsList}>
+            {[
+              { id: 'availability', label: 'Verfügbarkeit', value: formData.active ? (formData.delegatable ? 'Aktiv · automatisch verfügbar' : 'Aktiv · nur bei Auswahl') : 'Inaktiv' },
+              { id: 'tools', label: 'Werkzeuge', value: `${formData.tools.length} ${formData.tools.length === 1 ? 'Tool' : 'Tools'}` },
+              { id: 'skills', label: 'Skills', value: formData.skillMode === 'all' ? 'Alle' : (formData.skillMode === 'none' ? 'Keine' : `${formData.skills.length} ausgewählt`) },
+              { id: 'model', label: 'Modell', value: formData.model?.model_id || 'Standard' },
+              ...(!isSystemAgent && !isCreating ? [{ id: 'access', label: 'Berechtigungen', value: 'Verwalten' }] : []),
+            ].map((row, i, arr) => (
+              <button
+                key={row.id}
+                type="button"
+                style={{ ...styles.settingsRow, ...(i === arr.length - 1 ? { borderBottom: 'none' } : {}) }}
+                onClick={() => { setActiveTab(row.id); setSettingsOpen(true); }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+              >
+                <span style={styles.settingsRowLabel}>{row.label}</span>
+                <span style={styles.settingsRowValue}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.value}</span>
+                  <span style={styles.settingsChevron}>›</span>
+                </span>
+              </button>
+            ))}
           </div>
 
-          {/* Side Column - Tabbed Panel */}
-          <div style={styles.sideColumn}>
-            {/* Tab Navigation */}
-            <div style={styles.tabsContainer}>
-              {[
-                { id: 'tools', label: 'Tools' },
-                { id: 'skills', label: 'Skills' },
-                { id: 'model', label: 'Modell' },
-                ...(!isSystemAgent && !isCreating ? [{ id: 'access', label: 'Berechtigungen' }] : []),
-              ].map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    style={{
-                      ...styles.tab,
-                      ...(isActive ? styles.tabActive : {}),
-                    }}
-                    onClick={() => setActiveTab(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
+          {/* Instruktionen (System Prompt) — großes, fokussiertes Feld */}
+          <div style={styles.formCard}>
+            <h3 style={styles.formCardTitle}>Instruktionen (System Prompt)</h3>
+            <textarea
+              style={{
+                ...styles.textarea,
+                ...styles.textareaLarge,
+                ...(isViewOnly ? styles.inputDisabled : {}),
+              }}
+              value={formData.systemPrompt}
+              onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+              placeholder="Beschreibe, wie der Agent sich verhalten soll..."
+              disabled={isViewOnly}
+            />
+            <div style={styles.hint}>
+              Diese Instruktionen definieren, wie der Agent sich verhält, denkt und kommuniziert.
             </div>
+          </div>
+        </div>
 
-            {/* Tab Content */}
-            <div style={styles.tabContent}>
+        {/* Einstellungen-Modal (Verfügbarkeit · Tools · Skills · Modell · Berechtigungen) */}
+        {settingsOpen && (
+          <div style={styles.modalOverlay} onClick={() => setSettingsOpen(false)}>
+            <div style={styles.settingsModal} onClick={(e) => e.stopPropagation()}>
+              <div style={styles.settingsModalHead}>
+                <h3 style={styles.settingsModalTitle}>Einstellungen</h3>
+                <button type="button" style={styles.closeButton} onClick={() => setSettingsOpen(false)} aria-label="Schließen">✕</button>
+              </div>
+
+              {/* Tab Navigation */}
+              <div style={{ ...styles.tabsContainer, padding: `0 ${theme.spacing.xl}` }}>
+                {[
+                  { id: 'availability', label: 'Verfügbarkeit' },
+                  { id: 'tools', label: 'Tools' },
+                  { id: 'skills', label: 'Skills' },
+                  { id: 'model', label: 'Modell' },
+                  ...(!isSystemAgent && !isCreating ? [{ id: 'access', label: 'Berechtigungen' }] : []),
+                ].map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      style={{ ...styles.tab, ...(isActive ? styles.tabActive : {}) }}
+                      onClick={() => setActiveTab(tab.id)}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Tab Content */}
+              <div style={styles.settingsModalBody}>
+                {/* Verfügbarkeit */}
+                {activeTab === 'availability' && (
+                  <div>
+                    {/* Active Toggle */}
+                    <div style={{ ...styles.toggleRow, marginBottom: theme.spacing.lg }}>
+                      <button
+                        style={{
+                          ...styles.toggleButton,
+                          ...(isViewOnly ? { cursor: 'not-allowed', opacity: 0.5 } : {}),
+                        }}
+                        onClick={() => !isViewOnly && setFormData({ ...formData, active: !formData.active })}
+                        disabled={isViewOnly}
+                        type="button"
+                      >
+                        {formData.active ? <ToggleOnIcon /> : <ToggleOffIcon />}
+                      </button>
+                      <div style={styles.toggleContent}>
+                        <div style={styles.toggleTitle}>
+                          {formData.active ? 'Aktiv' : 'Inaktiv'}
+                        </div>
+                        <div style={styles.toggleDescription}>
+                          {formData.active ? (
+                            'Der Agent ist aktiv und kann im Chat ausgewählt sowie per Delegation angesprochen werden.'
+                          ) : (
+                            'Der Agent ist deaktiviert und weder im Chat noch per Delegation verfügbar. Er bleibt in der Admin-Ansicht sichtbar und kann jederzeit wieder aktiviert werden.'
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Delegation Toggle */}
+                    <div style={styles.toggleRow}>
+                      <button
+                        style={{
+                          ...styles.toggleButton,
+                          ...(isViewOnly || !formData.active ? { cursor: 'not-allowed', opacity: 0.5 } : {}),
+                        }}
+                        onClick={() => !isViewOnly && formData.active && setFormData({ ...formData, delegatable: !formData.delegatable })}
+                        disabled={isViewOnly || !formData.active}
+                        type="button"
+                      >
+                        {formData.delegatable ? <ToggleOnIcon /> : <ToggleOffIcon />}
+                      </button>
+                      <div style={styles.toggleContent}>
+                        <div style={styles.toggleTitle}>
+                          {formData.delegatable ? 'Automatisch verfügbar' : 'Nur bei direkter Auswahl'}
+                        </div>
+                        <div style={styles.toggleDescription}>
+                          {formData.delegatable ? (
+                            'Andere Agenten können diesen Agenten automatisch einschalten, wenn sie Hilfe bei einer passenden Aufgabe benötigen. Der Supervisor-Agent entscheidet anhand von Beschreibung und Fähigkeiten, wann dieser Agent zum Einsatz kommt.'
+                          ) : (
+                            'Dieser Agent wird nur aktiv, wenn du ihn explizit im Chat auswählst. Andere Agenten können ihn nicht automatisch hinzuziehen — für Agenten, die du nur gezielt einsetzen möchtest.'
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               {/* Tools Tab */}
               {activeTab === 'tools' && (
                 <div>
@@ -1577,9 +1663,10 @@ function AgentsPage() {
                   resourceName={selectedAgent.name}
                 />
               )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <ConfirmModal
           open={!!deleteCandidate}
