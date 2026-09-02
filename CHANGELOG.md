@@ -2,6 +2,13 @@
 
 ## 2026-09-02
 
+### Default-Agent „Dokument befragen"
+Neunter Start-Agent nach demselben Schema: **Dokument befragen** — Dokument hochladen und Fragen dazu stellen.
+Beantwortet ausschließlich auf Basis der im Chat hochgeladenen Dokumente (Tool `read_chat_attachment`; kleine
+Dokumente werden ohnehin in den Kontext injiziert), mit Belegstellen/Zitaten und Dateiname, ohne zu halluzinieren.
+Icon `document`, als Default-Favorit an Position 2 (gleich hinter „Recherchieren") einsortiert.
+(`data/agents/dokument-befragen/`, `SYSTEM_AGENT_IDS`, `DEFAULT_FAVORITE_AGENT_IDS`.)
+
 ### Start-/Default-Agenten („Anti-Blank-Page") — 8 sofort nutzbare Rollen im Chat
 Neue, kuratierte Default-Agenten, die neue Nutzer direkt loslegen lassen — bewusst als Jobs-to-be-done benannt
 (Name = Tätigkeit, Beschreibung = „Ich …"), mit klarem Ergebnisversprechen und Katalog-Icon/-Farbe:

@@ -50,6 +50,7 @@ const SYSTEM_AGENT_IDS = new Set([
   // Start-/Default-Agenten (Anti-Blank-Page) — version-controlled in data/agents/,
   // erscheinen in der /agent-Auswahl und sind Default-Favoriten (siehe DEFAULT_FAVORITE_AGENT_IDS).
   'recherche',
+  'dokument-befragen',
   'themen-briefing',
   'mitdenken',
   'entscheiden',
@@ -66,6 +67,7 @@ const SYSTEM_AGENT_IDS = new Set([
  */
 export const DEFAULT_FAVORITE_AGENT_IDS: string[] = [
   'recherche',
+  'dokument-befragen',
   'themen-briefing',
   'mitdenken',
   'entscheiden',
