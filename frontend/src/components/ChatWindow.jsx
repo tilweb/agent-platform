@@ -859,60 +859,49 @@ const chatStyles = {
     padding: theme.spacing['2xl'],
     textAlign: 'center',
   },
-  emptyIcon: {
-    width: '64px',
-    height: '64px',
-    marginBottom: theme.spacing.lg,
-    color: theme.colors.primary,
-    opacity: 0.8,
-  },
-  emptyTitle: {
-    fontSize: theme.typography.sizes.xl,
+  greeting: {
+    fontSize: theme.typography.sizes['2xl'],
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing['2xl'],
+    textAlign: 'center',
   },
-  emptyDescription: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textMuted,
-    marginBottom: theme.spacing.xl,
-    maxWidth: '280px',
-  },
-  suggestedQuestions: {
-    display: 'flex',
-    flexDirection: 'column',
+  // Gleichmäßiges Kachelraster für die Beispielprompts (zentriert, 2–3 je Reihe)
+  promptGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
     gap: theme.spacing.sm,
     width: '100%',
-    maxWidth: '320px',
+    maxWidth: '560px',
   },
-  suggestedQuestion: {
+  promptTile: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '56px',
     padding: `${theme.spacing.md} ${theme.spacing.lg}`,
     backgroundColor: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.borderRadius.lg,
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
     cursor: 'pointer',
+    textAlign: 'center',
     transition: `all ${theme.transitions.fast}`,
-    textAlign: 'left',
   },
-  infoBox: {
-    marginTop: theme.spacing.xl,
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.warningLight,
-    borderRadius: theme.borderRadius.lg,
-    maxWidth: '320px',
-  },
-  infoBoxTitle: {
+  promptTileTitle: {
     fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.warning,
-    marginBottom: theme.spacing.xs,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text,
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
   },
-  infoBoxText: {
+  inputDisclaimer: {
+    marginTop: theme.spacing.sm,
     fontSize: theme.typography.sizes.xs,
-    color: theme.colors.warning,
-    lineHeight: theme.typography.lineHeight.relaxed,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    lineHeight: theme.typography.lineHeight.normal,
   },
   inputArea: {
     borderTop: `1px solid ${theme.colors.border}`,
@@ -2329,10 +2318,15 @@ function MaterialsToggleButton({ materialsCount, onClick }) {
   );
 }
 
-const suggestedQuestions = [
-  'Was kannst du alles?',
-  'Hilf mir beim Schreiben einer E-Mail',
-  'Zeige mir die verfügbaren Dateien',
+// Allgemeine Beispielprompts für den generellen Chat (Auto-Routing = Supervisor,
+// der als interner Agent nicht in der Agentenliste auftaucht). Werden gezeigt,
+// wenn kein spezialisierter Agent gewählt ist; spezialisierte Agenten bringen
+// ihre eigenen Promptvorschläge mit.
+const GENERAL_PROMPT_SUGGESTIONS = [
+  { title: 'Text zusammenfassen', prompt: 'Fasse mir folgenden Text in den wichtigsten Punkten zusammen: ' },
+  { title: 'E-Mail formulieren', prompt: 'Formuliere mir eine freundliche, professionelle E-Mail zu folgendem Anliegen: ' },
+  { title: 'Übersetzen', prompt: 'Übersetze mir folgenden Text nach Englisch: ' },
+  { title: 'Im Wissen suchen', prompt: 'Suche in unserem Wissen nach Informationen zu: ' },
 ];
 
 // Supported file types for upload - must match backend attachments.ts
@@ -3614,9 +3608,18 @@ function ChatWindow({
     textareaRef.current?.focus();
   }, []);
 
+  // Beispielprompt NICHT direkt senden, sondern das Eingabefeld vorbefüllen —
+  // der Nutzer kann ergänzen/anpassen und dann selbst absenden.
   const handleSuggestedQuestion = (question) => {
-    if (!isStreaming) {
-      onSendMessage(question);
+    if (isStreaming) return;
+    setInput(question);
+    const el = textareaRef.current;
+    if (el) {
+      el.focus();
+      // Cursor ans Ende, nachdem der neue Wert gerendert wurde.
+      requestAnimationFrame(() => {
+        try { el.setSelectionRange(el.value.length, el.value.length); } catch { /* noop */ }
+      });
     }
   };
 
@@ -3630,6 +3633,35 @@ function ChatWindow({
     const agent = agents?.find(a => a.id === selectedAgentId);
     return agent?.name || 'Agent';
   };
+
+  // Persönliche Begrüßung: Vorname + zufällige, teils tageszeitabhängige Phrase.
+  // Stabil pro Nutzer (kein Neu-Würfeln bei jedem Tastendruck).
+  const greeting = useMemo(() => {
+    const first = (user?.displayName || user?.username || '').trim().split(/\s+/)[0] || '';
+    const hour = new Date().getHours();
+    const daypart = hour < 5 ? 'Noch wach' : hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
+    const options = [
+      first ? `${daypart}, ${first}` : daypart,
+      first ? `Was steht an, ${first}?` : 'Was steht an?',
+      first ? `Womit kann ich helfen, ${first}?` : 'Womit kann ich helfen?',
+      first ? `Schön, dich zu sehen, ${first}` : 'Schön, dich zu sehen',
+      first ? `Woran arbeiten wir, ${first}?` : 'Woran arbeiten wir?',
+      first ? `Leg los, ${first}` : 'Leg los',
+    ];
+    return options[Math.floor(Math.random() * options.length)];
+  }, [user?.displayName, user?.username]);
+
+  // Beispielprompts für den Empty-State: der gewählte Agent bringt seine eigenen
+  // mit; ohne spezifischen Agenten (Auto-Routing = Supervisor) die allgemeinen Defaults.
+  const agentPromptSuggestions = useMemo(() => {
+    const agent = agents?.find(a => a.id === selectedAgentId);
+    if (agent) {
+      return Array.isArray(agent.promptSuggestions)
+        ? agent.promptSuggestions.filter(s => s && (s.title?.trim() || s.prompt?.trim()))
+        : [];
+    }
+    return GENERAL_PROMPT_SUGGESTIONS;
+  }, [agents, selectedAgentId]);
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden', gap: theme.spacing.lg }}>
@@ -3840,41 +3872,27 @@ function ChatWindow({
       <div style={chatStyles.messagesContainer} ref={messagesContainerRef} onScroll={handleMessagesScroll}>
         {messages.length === 0 ? (
           <div style={chatStyles.emptyState}>
-            <div style={chatStyles.emptyIcon}>
-              <AssistantIconLarge />
-            </div>
-            <div style={chatStyles.emptyTitle}>KI-Assistent</div>
-            <div style={chatStyles.emptyDescription}>
-              Stelle Fragen oder wähle einen spezialisierten Agenten für deine Aufgabe.
-            </div>
+            <div style={chatStyles.greeting}>{greeting}</div>
 
-            <div style={chatStyles.suggestedQuestions}>
-              {suggestedQuestions.map((question, index) => (
-                <button
-                  key={index}
-                  style={chatStyles.suggestedQuestion}
-                  onClick={() => handleSuggestedQuestion(question)}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.borderColor = theme.colors.primary;
-                    e.currentTarget.style.color = theme.colors.primary;
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.borderColor = theme.colors.border;
-                    e.currentTarget.style.color = theme.colors.textSecondary;
-                  }}
-                >
-                  {question}
-                </button>
-              ))}
-            </div>
-
-            <div style={chatStyles.infoBox}>
-              <div style={chatStyles.infoBoxTitle}>Hinweis:</div>
-              <div style={chatStyles.infoBoxText}>
-                Die Antworten werden durch KI generiert und können Fehler enthalten.
-                Bitte verifiziere wichtige Informationen.
+            {agentPromptSuggestions.length > 0 && (
+              <div style={chatStyles.promptGrid}>
+                {agentPromptSuggestions.map((s, index) => {
+                  const title = s.title?.trim() || s.prompt?.trim();
+                  return (
+                    <button
+                      key={index}
+                      style={chatStyles.promptTile}
+                      onClick={() => handleSuggestedQuestion(s.prompt?.trim() || title)}
+                      onMouseOver={(e) => { e.currentTarget.style.borderColor = theme.colors.primary; }}
+                      onMouseOut={(e) => { e.currentTarget.style.borderColor = theme.colors.border; }}
+                      title={s.prompt?.trim() || title}
+                    >
+                      <span style={chatStyles.promptTileTitle}>{title}</span>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
+            )}
           </div>
         ) : (
           messages.map((msg, index) => {
@@ -4226,6 +4244,9 @@ function ChatWindow({
               </button>
             </div>
           </form>
+          <div style={chatStyles.inputDisclaimer}>
+            KI-Antworten können Fehler enthalten — wichtige Angaben bitte prüfen.
+          </div>
         </div>
       </div>
       </div>
@@ -4273,22 +4294,6 @@ function AssistantIcon() {
       <path d="M12 2L2 7l10 5 10-5-10-5z" />
       <path d="M2 17l10 5 10-5" />
       <path d="M2 12l10 5 10-5" />
-    </svg>
-  );
-}
-
-function AssistantIconLarge() {
-  return (
-    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2v4" />
-      <path d="M12 18v4" />
-      <path d="M4.93 4.93l2.83 2.83" />
-      <path d="M16.24 16.24l2.83 2.83" />
-      <path d="M2 12h4" />
-      <path d="M18 12h4" />
-      <path d="M4.93 19.07l2.83-2.83" />
-      <path d="M16.24 7.76l2.83-2.83" />
     </svg>
   );
 }

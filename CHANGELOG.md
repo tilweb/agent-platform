@@ -2,6 +2,18 @@
 
 ## 2026-09-02
 
+### Chat-Startbildschirm: persönliche Begrüßung, Beispielprompts & Hinweis unter dem Eingabefeld
+Der leere Chat wirkte generisch (Icon + „KI-Assistent" + Subline, statische Beispielfragen, gelbe Hinweisbox).
+Neu:
+- **Persönliche Begrüßung** statt Icon/Titel/Subline: Vorname + zufällige, teils tageszeitabhängige Phrase
+  (z. B. „Guten Morgen, …", „Was steht an, …?", „Womit kann ich helfen?"). Stabil pro Sitzung.
+- **Beispielprompts als Kachelraster** (zentriert, 2–3 je Reihe): der gewählte Agent bringt seine eigenen
+  Promptvorschläge mit; im allgemeinen Chat (Auto-Routing = interner Supervisor) allgemeine Defaults
+  (Text zusammenfassen · E-Mail formulieren · Übersetzen · Im Wissen suchen). Klick **befüllt das Eingabefeld
+  vor** (statt direkt zu senden) und setzt den Cursor ans Ende — die Prompts sind fortführbare Satzanfänge.
+- **KI-Hinweis** aus der Empty-State-Box gelöst und **einzeilig, dezent dauerhaft unter das Eingabefeld**
+  gesetzt („KI-Antworten können Fehler enthalten — wichtige Angaben bitte prüfen."). (`ChatWindow.jsx`.)
+
 ### Übersichtskacheln kompakter + Agenten-Übersicht aufgeräumt
 Die geteilte Übersichtskachel (`ResourceCard`, genutzt von Agenten/Skills/Knowledge Base/Tabellen) war zu
 wuchtig — jetzt schlanker: **Icon-Fläche 40→32 px**, **Karten-Glyph 22→18 px** (konsistent in allen vier
