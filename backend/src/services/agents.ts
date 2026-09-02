@@ -47,7 +47,33 @@ const SYSTEM_AGENT_IDS = new Set([
   'echo-loop-reengineering',
   'echo-loop-reifegrad-auditor',
   'echo-loop-quality-gate',
+  // Start-/Default-Agenten (Anti-Blank-Page) — version-controlled in data/agents/,
+  // erscheinen in der /agent-Auswahl und sind Default-Favoriten (siehe DEFAULT_FAVORITE_AGENT_IDS).
+  'recherche',
+  'themen-briefing',
+  'mitdenken',
+  'entscheiden',
+  'ideen-finden',
+  'text-verbessern',
+  'firma-checken',
+  'termin-vorbereiten',
 ]);
+
+/**
+ * Default-Favoriten für die Chat-Sidebar-Schnellauswahl: werden neuen Nutzern
+ * (die noch keine eigenen Favoriten gesetzt haben) vorbelegt. Reihenfolge =
+ * Anzeigereihenfolge. Siehe getFavoriteAgents() in userPreferences.ts.
+ */
+export const DEFAULT_FAVORITE_AGENT_IDS: string[] = [
+  'recherche',
+  'themen-briefing',
+  'mitdenken',
+  'entscheiden',
+  'ideen-finden',
+  'text-verbessern',
+  'firma-checken',
+  'termin-vorbereiten',
+];
 
 export function isSystemAgentId(id: string): boolean {
   return SYSTEM_AGENT_IDS.has(id);
@@ -230,9 +256,9 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, any>; 
         currentObject = {};
         inNestedObject = true;
       } else if (value.startsWith('[') && value.endsWith(']')) {
-        // Inline array
-        const items = value.slice(1, -1).split(',').map(s => s.trim());
-        frontmatter[key] = items;
+        // Inline array — leeres `[]` ergibt ein echtes leeres Array (nicht ['']).
+        const inner = value.slice(1, -1).trim();
+        frontmatter[key] = inner === '' ? [] : inner.split(',').map(s => s.trim());
         currentKey = null;
         currentArray = null;
         currentObject = null;

@@ -2,6 +2,26 @@
 
 ## 2026-09-02
 
+### Start-/Default-Agenten („Anti-Blank-Page") — 8 sofort nutzbare Rollen im Chat
+Neue, kuratierte Default-Agenten, die neue Nutzer direkt loslegen lassen — bewusst als Jobs-to-be-done benannt
+(Name = Tätigkeit, Beschreibung = „Ich …"), mit klarem Ergebnisversprechen und Katalog-Icon/-Farbe:
+- **Recherchieren** (Web) · **Auf Stand bringen** (Web) · **Mitdenken** · **Entscheiden** (Web) ·
+  **Ideen finden** · **Text verbessern** · **Firma checken** (Web) · **Termin vorbereiten** (Web).
+- Umsetzung als **versionierte System-Agenten** unter `data/agents/<id>/` + `SYSTEM_AGENT_IDS`; erscheinen
+  automatisch in der `/agent`-Auswahl. Web-Agenten haben `web_search`/`web_fetch`, die reinen Denk-/Schreib-
+  Rollen keine Tools (`tools: []`). Nicht delegierbar (Front-line, kein Supervisor-Routing).
+- **Default-Favoriten:** neue Nutzer (ohne eigene Favoriten) bekommen die 8 in der Sidebar-Schnellauswahl
+  vorbelegt. Ein bewusst geleertes Favoriten-Set bleibt leer (kein erneutes Vorbelegen) — dazu speichert
+  `setFavoriteAgents` „leer" jetzt als `[]` statt die Preference zu löschen, und `getFavoriteAgents` liefert
+  die Defaults nur bei „nie gesetzt". (`services/agents.ts` `DEFAULT_FAVORITE_AGENT_IDS`, `userPreferences.ts`.)
+- **Starter-Prompts:** je 3 fortführbare Klick-Prompts pro Agent — erscheinen als Kacheln im leeren Chat und
+  befüllen das Eingabefeld vor.
+- **Einheitliche Grundhaltung** in allen Systemprompts ergänzt: Ton (Deutsch, Du-Form, professionell),
+  Halluzinationsvermeidung, Quellenpflicht (bei Web-Agenten) bzw. Belege-Regel (bei Nicht-Web), sparsames
+  Rückfragenverhalten (Anti-Blank-Page) und angepasste Antwortlänge.
+- Nebenbei: Frontmatter-Parser behandelt leeres Inline-Array `[]` jetzt als echtes `[]` (statt `['']`) —
+  behebt u. a. den latenten `skills: []`-Fall.
+
 ### Agent-Icon & -Farbe durchgängig im Chat
 Das gewählte Agenten-Icon samt Farbe (Katalog-`icon` + `color`) wird jetzt überall im Chat konsistent über den
 icon/farbfähigen `AgentGlyph`/`AgentAvatar` gerendert — statt des alten per-ID-Icons bzw. eines generischen

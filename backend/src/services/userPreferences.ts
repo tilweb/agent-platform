@@ -7,6 +7,7 @@
 
 import { loadUser, saveUser } from '../auth/storage';
 import type { User, UserModelPreference, UserPreferences } from '../auth/types';
+import { DEFAULT_FAVORITE_AGENT_IDS } from './agents';
 
 export type ModelPurpose = 'chat' | 'vision' | 'tts' | 'stt' | 'text_to_image' | 'image_to_image';
 
@@ -125,11 +126,19 @@ export async function clearUserModelPreference(
 // ============== Favoriten-Agenten (Chat-Sidebar) ==============
 
 /**
- * Get the user's favorite agent IDs (empty array if none set).
+ * Get the user's favorite agent IDs.
+ *
+ * Unterscheidet bewusst zwei Zustände:
+ * - `favorite_agents` fehlt (nie gesetzt) → Default-Favoriten vorbelegen, damit
+ *   neue Nutzer sofort die Start-Agenten in der Sidebar-Schnellauswahl sehen.
+ * - `favorite_agents` ist ein (auch leeres) Array → so übernehmen; ein bewusst
+ *   geleertes Array bleibt leer (keine erneute Vorbelegung).
  */
 export async function getFavoriteAgents(userId: string): Promise<string[]> {
   const user = await loadUser(userId);
-  return user?.preferences?.favorite_agents || [];
+  const fav = user?.preferences?.favorite_agents;
+  if (fav === undefined) return [...DEFAULT_FAVORITE_AGENT_IDS];
+  return fav;
 }
 
 /**
@@ -149,14 +158,10 @@ export async function setFavoriteAgents(userId: string, agentIds: string[]): Pro
   if (!user.preferences) {
     user.preferences = {};
   }
-  if (cleaned.length === 0) {
-    delete user.preferences.favorite_agents;
-    if (Object.keys(user.preferences).length === 0) {
-      delete user.preferences;
-    }
-  } else {
-    user.preferences.favorite_agents = cleaned;
-  }
+  // Auch ein leeres Array wird gespeichert (nicht gelöscht): so bleibt „bewusst
+  // geleert" erhalten und wird von getFavoriteAgents NICHT erneut mit Defaults
+  // vorbelegt (siehe dort).
+  user.preferences.favorite_agents = cleaned;
 
   user.updatedAt = new Date().toISOString();
   await saveUser(user);
