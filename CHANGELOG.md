@@ -2,6 +2,10 @@
 
 ## 2026-09-02
 
+### Agenten-Favoriten-Modal: alphabetisch sortiert
+Die Agentenliste im Favoriten-Modal (Chat-Sidebar) wird jetzt alphabetisch nach Name sortiert (deutsche
+Sortierung, Groß-/Kleinschreibung egal) — in der vollen Liste und bei aktiver Suche. (`AgentFavoritesModal.jsx`.)
+
 ### Default-Agent „Dokument befragen"
 Neunter Start-Agent nach demselben Schema: **Dokument befragen** — Dokument hochladen und Fragen dazu stellen.
 Beantwortet ausschließlich auf Basis der im Chat hochgeladenen Dokumente (Tool `read_chat_attachment`; kleine

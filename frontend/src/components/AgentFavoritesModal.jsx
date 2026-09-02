@@ -174,10 +174,13 @@ function AgentFavoritesModal({ agents, selectedIds, onSave, onClose }) {
 
   const filteredAgents = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return agents;
-    return agents.filter((a) =>
-      a.name?.toLowerCase().includes(q) ||
-      (typeof a.description === 'string' && a.description.toLowerCase().includes(q)));
+    const list = q
+      ? agents.filter((a) =>
+          a.name?.toLowerCase().includes(q) ||
+          (typeof a.description === 'string' && a.description.toLowerCase().includes(q)))
+      : agents;
+    // Alphabetisch nach Name (deutsche Sortierung, Groß-/Kleinschreibung egal).
+    return [...list].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de', { sensitivity: 'base' }));
   }, [agents, search]);
 
   const toggle = (agentId) => {
