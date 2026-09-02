@@ -104,6 +104,9 @@ export interface AgentConfig {
   icon?: string;
   /** Avatar-Farbe als Hex (z.B. "#8b5cf6") aus der festen Palette (Frontend). */
   color?: string;
+  /** Zugeordnete Knowledge-Base-Collection-IDs (analog `skills`). Der Agent
+   *  bekommt diese Collections + Dokumentliste in den Kontext injiziert. */
+  collections?: string[];
   /**
    * Tombstone-Marker: gesetzt wenn ein File-basierter Agent geloescht wurde.
    * Ueberstimmt das File-Seed im DB-Override-Mechanismus und wird in beiden
@@ -140,6 +143,8 @@ interface AgentFrontmatter {
   /** Avatar-Icon-ID + Farbe (hex) */
   icon?: string;
   color?: string;
+  /** Zugeordnete KB-Collection-IDs */
+  collections?: string[];
 }
 
 /**
@@ -290,6 +295,7 @@ function parseAgentMarkdown(agentId: string, content: string): AgentConfig {
     maxIterations: typeof fm.maxIterations === 'number' ? fm.maxIterations : undefined,
     icon: fm.icon || undefined,
     color: fm.color || undefined,
+    collections: Array.isArray(fm.collections) ? fm.collections : undefined,
     tombstone: fm.tombstone === true,
   };
 }
@@ -651,6 +657,14 @@ function generateAgentMarkdown(agent: Omit<AgentConfig, 'systemPrompt'> & { syst
     }
   }
 
+  const collections = Array.isArray(agent.collections) ? agent.collections : [];
+  if (collections.length > 0) {
+    lines.push('collections:');
+    for (const c of collections) {
+      lines.push(`  - ${c}`);
+    }
+  }
+
   lines.push('---');
   lines.push('');
   lines.push(agent.systemPrompt);
@@ -741,6 +755,7 @@ export async function createAgent(agentData: {
   skillMode?: 'all' | 'allow' | 'none';
   icon?: string;
   color?: string;
+  collections?: string[];
 }): Promise<AgentConfig> {
   // Validate ID format
   if (!/^[a-z0-9_-]+$/.test(agentData.id)) {
@@ -825,6 +840,7 @@ export async function updateAgent(agentId: string, agentData: {
   skillMode?: 'all' | 'allow' | 'none';
   icon?: string;
   color?: string;
+  collections?: string[];
 }): Promise<AgentConfig> {
   // Prevent editing connection agents
   if (await isConnectionAgent(agentId)) {
@@ -885,6 +901,7 @@ export async function updateAgent(agentId: string, agentData: {
     skillMode: agentData.skillMode ?? existing.skillMode,
     icon: agentData.icon ?? existing.icon,
     color: agentData.color ?? existing.color,
+    collections: agentData.collections ?? existing.collections,
   };
 
   const content = generateAgentMarkdown(updated);

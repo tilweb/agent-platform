@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-09-02
+
+### Agenten-Editor: Wissen zuordnen, Auto-Save & sprechende Zusammenfassungen
+Ausbau des fokussierten Editors zu einer echten Arbeitsfläche:
+- **Wissen je Agent**: Neue Zuordnung von Knowledge-Base-Collections direkt am Agenten (analog zu Fähigkeiten).
+  Die gewählten Collections werden dem Agenten als Wissensquelle in den Kontext injiziert — er durchsucht sie
+  und antwortet mit Belegen daraus. Persistiert in der Frontmatter (`collections`), durchgereicht in
+  create/update/`GET`, injiziert im Haupt- und Delegations-Pfad (`loop.ts`: `buildAgentKnowledgeSection`,
+  Projekt-Kontext in eigene Funktion extrahiert).
+- **Alles im Einstellungs-Modal speichert automatisch** (Verfügbarkeit · Aktionen · Fähigkeiten · Wissen ·
+  Modell): kein separater „Speichern"-Schritt mehr nötig — der Gedankensprung entfällt. Name, Icon und
+  Instruktionen bleiben bewusst am Speichern-Button (Teil-`PUT`, unveränderte Felder bleiben erhalten).
+- **Sprechende Zusammenfassungen statt Zählern**: Die Einstellungs-Zeilen zeigen die tatsächlich gewählten
+  Werte als Pills (Aktionen, Fähigkeiten, Collections). **Berechtigungen** zeigt jetzt auf einen Blick, *wer*
+  den Agenten nutzen darf (Nutzer/Gruppen als Pills, Owner zuerst); **Modell** zeigt Provider + Klarname statt
+  ID/Slug.
+- **Benennung im Editor**: „Werkzeuge" → **Aktionen**, „Skills" → **Fähigkeiten** (verständlicher für Anwender
+  ohne KI-Vorwissen; nur im Agenten-Editor).
+- **Feinschliff**: Editor auf lesbare Breite zentriert (max. 860 px); Instruktions-Hinweis unter die Headline;
+  Trennlinien ober-/unterhalb der Modal-Tabs entfernt; Einstellungs-Modal etwas größer.
+
 ## 2026-09-01
 
 ### Agenten-Editor: fokussiertes Layout — kompakte Einstellungen (Modal) + großes Instruktionsfeld

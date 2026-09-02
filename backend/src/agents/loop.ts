@@ -46,6 +46,7 @@ import { loadAgent, listAgents, type AgentConfig, type AgentModelConfig } from '
 import { mcpManager } from '../mcp';
 import { loadUserMemory, formatMemoryForPrompt } from '../services/userMemory';
 import { getProjectContext } from '../projects/service';
+import { listDocuments as kbListDocuments } from '../services/kbStorage';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 import { existsSync } from 'fs';
@@ -1370,6 +1371,99 @@ function getToolsForAgent(agent: AgentConfig | null, depth: number, temporaryToo
 }
 
 /**
+ * Build the project/space context section (memory + linked KB collections) for a
+ * system prompt. Used by BOTH the main loop and delegated sub-agents, damit der
+ * Space-Kontext (vertrauliche Collection + Memory) auch in delegierten Agenten
+ * ankommt — sonst sucht ein Sub-Agent blind nur in den globalen Collections.
+ */
+async function buildProjectContextSection(
+  projectId: string | undefined,
+  userId: string | undefined,
+): Promise<string> {
+  if (!projectId || !userId) return '';
+  try {
+    const projectContext = await getProjectContext(projectId, userId);
+    if (!projectContext.success || !projectContext.data) return '';
+    const { formattedMemory, projectName, kbCollectionIds } = projectContext.data;
+    let section = '';
+    if (formattedMemory) section += `\n\n${formattedMemory}`;
+    if (kbCollectionIds && kbCollectionIds.length > 0) {
+      section +=
+        `\n\n## Wissens-Collections dieses Space („${projectName}")\n` +
+        `Dieser Space ist mit den folgenden Knowledge-Base-Collections + Dokumenten verknüpft. ` +
+        `Für space-/kundenspezifische Fragen MUSST du diese Dokumente per \`kb_search\` ` +
+        `(level: content) lesen. **Verwende GENAU die unten gelisteten \`document_path\`-Werte — ` +
+        `rate oder erfinde NIEMALS Dokument-IDs.** Allgemeines Methodenwissen steht in den übrigen Collections.`;
+      for (const cid of kbCollectionIds) {
+        let docs: Array<{ id: string; title?: string; filename?: string }> = [];
+        try {
+          docs = (await kbListDocuments(cid)) as any[];
+        } catch {
+          docs = [];
+        }
+        section += `\n\n### Collection \`${cid}\``;
+        if (docs.length === 0) {
+          section += `\n(keine Dokumente / nicht lesbar)`;
+        } else {
+          for (const d of docs.slice(0, 30)) {
+            section += `\n- \`${d.id}\` — ${d.title || d.filename || d.id}`;
+          }
+          if (docs.length > 30) section += `\n- … (${docs.length - 30} weitere)`;
+        }
+      }
+    }
+    if (section) {
+      section += `\n\n---\n`;
+      console.log(
+        `[AgentLoop] Injecting project context for: ${projectName} (collections: ${(kbCollectionIds || []).join(',') || 'none'})`,
+      );
+    }
+    return section;
+  } catch (error) {
+    console.warn('[AgentLoop] Failed to load project context:', error);
+    return '';
+  }
+}
+
+/**
+ * Baut einen Kontext-Abschnitt für die einem AGENTEN direkt zugeordneten
+ * KB-Collections (analog zum Space-Kontext): listet Collections + Dokumente und
+ * weist an, sie per `kb_search` zu nutzen. Leerer String, wenn keine zugeordnet.
+ */
+async function buildAgentKnowledgeSection(collectionIds: string[] | undefined): Promise<string> {
+  if (!collectionIds || collectionIds.length === 0) return '';
+  try {
+    let section =
+      `\n\n## Zugeordnete Wissens-Collections dieses Agenten\n` +
+      `Dieser Agent ist mit den folgenden Knowledge-Base-Collections + Dokumenten verknüpft. ` +
+      `Für passende Fragen MUSST du diese Dokumente per \`kb_search\` (level: content) lesen. ` +
+      `**Verwende GENAU die unten gelisteten \`document_path\`-Werte — rate oder erfinde NIEMALS Dokument-IDs.**`;
+    for (const cid of collectionIds) {
+      let docs: Array<{ id: string; title?: string; filename?: string }> = [];
+      try {
+        docs = (await kbListDocuments(cid)) as any[];
+      } catch {
+        docs = [];
+      }
+      section += `\n\n### Collection \`${cid}\``;
+      if (docs.length === 0) {
+        section += `\n(keine Dokumente / nicht lesbar)`;
+      } else {
+        for (const d of docs.slice(0, 30)) {
+          section += `\n- \`${d.id}\` — ${d.title || d.filename || d.id}`;
+        }
+        if (docs.length > 30) section += `\n- … (${docs.length - 30} weitere)`;
+      }
+    }
+    section += `\n\n---\n`;
+    return section;
+  } catch (error) {
+    console.warn('[AgentLoop] Failed to build agent knowledge section:', error);
+    return '';
+  }
+}
+
+/**
  * Run a delegated agent task (non-streaming, returns result)
  */
 async function runDelegatedAgent(
@@ -1380,7 +1474,8 @@ async function runDelegatedAgent(
   eventCallback?: (event: AgentEvent) => void,
   parentSessionId?: string,
   userId?: string,
-  parentModelOverride?: { providerId: string; modelId: string }
+  parentModelOverride?: { providerId: string; modelId: string },
+  projectId?: string
 ): Promise<string> {
   const agent = await loadAgent(agentId);
   if (!agent) {
@@ -1448,7 +1543,13 @@ async function runDelegatedAgent(
   const currentTime = now.toLocaleTimeString('de-DE', timeOptions);
   const contextInfo = `[AKTUELLES DATUM UND UHRZEIT: ${currentDate}, ${currentTime}]\n\n`;
 
-  const baseSystemPrompt = languageInstruction + contextInfo + agent.systemPrompt + skillInstructions;
+  // Space-/Project-Kontext (Memory + verknüpfte KB-Collections) auch in delegierte
+  // Agenten injizieren — sonst sieht der Sub-Agent die vertrauliche Space-Collection nicht.
+  const delegatedProjectContext = await buildProjectContextSection(projectId, userId);
+  // Dem Agenten direkt zugeordnete KB-Collections (analog skills).
+  const delegatedAgentKnowledge = await buildAgentKnowledgeSection(agent.collections);
+
+  const baseSystemPrompt = languageInstruction + contextInfo + delegatedProjectContext + delegatedAgentKnowledge + agent.systemPrompt + skillInstructions;
 
   // Create tool context - pass parentSessionId for attachment access, userId for connections
   const toolContext: ToolContext = {
@@ -1782,17 +1883,19 @@ async function runDelegatedAgent(
     currentSystemPrompt = appendSkillInstructions(currentSystemPrompt, loopState.loadedSkillInstructions);
 
     const history = getMessages(delegationSessionId);
-    // Aggressively truncate for synthesis — only need key findings, not raw web content
+    // Truncate raw tool content for synthesis, aber großzügig genug, dass z.B. eine
+    // KB-Benotung den gelesenen Dokument-Inhalt nicht verliert (1000 war zu wenig:
+    // Modul 44 ~26k, Kundendatei ~10k → Schema-Synthese unmöglich).
     const synthHistory = history.map((msg, idx) => {
-      if (msg.role === 'tool' && typeof msg.content === 'string' && msg.content.length > 1000) {
-        return { ...msg, content: msg.content.substring(0, 1000) + '\n\n[... truncated]' };
+      if (msg.role === 'tool' && typeof msg.content === 'string' && msg.content.length > 6000) {
+        return { ...msg, content: msg.content.substring(0, 6000) + '\n\n[... gekürzt]' };
       }
       return msg;
     });
     const synthMessages: Message[] = [
       { role: 'system', content: currentSystemPrompt },
       ...synthHistory,
-      { role: 'user', content: 'Fasse jetzt alle gesammelten Informationen in einer vollständigen, strukturierten Antwort zusammen. Antworte direkt mit dem Ergebnis.' },
+      { role: 'user', content: 'Erzeuge JETZT die vollständige, strukturierte Endantwort aus den gesammelten Informationen — direkt, ohne weitere Tool-Aufrufe. Wenn du ein Bewertungs-/Benotungs-Schema befolgst (z.B. Reifegrad D1–D10), gib es vollständig aus. Gib NIEMALS „konnte nichts finden" zurück, wenn relevante Dokumente gelesen wurden — bewerte mit dem, was vorliegt, und markiere echte Lücken transparent.' },
     ];
 
     const synthUsageContext: UsageContext = { userId, source: 'delegation', operation: agentId };
@@ -1994,27 +2097,24 @@ export async function* runAgentLoop(
     }
   }
 
-  // Build project context section if projectId is provided
-  let projectContextSection = '';
-  if (projectId && userId) {
-    try {
-      const projectContext = await getProjectContext(projectId, userId);
-      if (projectContext.success && projectContext.data) {
-        const { formattedMemory, projectName } = projectContext.data;
-        if (formattedMemory) {
-          projectContextSection = `\n\n${formattedMemory}\n\n---\n`;
-          console.log(`[AgentLoop] Injecting project context for: ${projectName}`);
-          log('context_loaded', `Projekt: ${projectName}`, {
-            contextType: 'project',
-            name: projectName,
-            length: formattedMemory.length,
-            preview: formattedMemory.slice(0, 200),
-          });
-        }
-      }
-    } catch (error) {
-      console.warn('[AgentLoop] Failed to load project context:', error);
-    }
+  // Build project context section (memory + verknüpfte KB-Collections) if projectId is provided
+  const projectContextSection = await buildProjectContextSection(projectId, userId);
+  if (projectContextSection) {
+    log('context_loaded', 'Projekt-Kontext geladen', {
+      contextType: 'project',
+      length: projectContextSection.length,
+      preview: projectContextSection.slice(0, 200),
+    });
+  }
+
+  // Dem Agenten direkt zugeordnete KB-Collections (analog skills) in den Kontext geben.
+  const agentKnowledgeSection = await buildAgentKnowledgeSection(agent?.collections);
+  if (agentKnowledgeSection) {
+    log('context_loaded', 'Agent-Wissens-Collections geladen', {
+      contextType: 'project',
+      length: agentKnowledgeSection.length,
+      preview: agentKnowledgeSection.slice(0, 200),
+    });
   }
 
   // Automatically analyze images before processing
@@ -2091,7 +2191,7 @@ export async function* runAgentLoop(
     console.warn('[AgentLoop] Failed to build skill metadata section:', error);
   }
 
-  let fullSystemPrompt = languageInstruction + contextInfo + projectContextSection + imageAnalysisSection + documentAnalysisSection + systemPrompt + skillMetadataSection + readerContextSection;
+  let fullSystemPrompt = languageInstruction + contextInfo + projectContextSection + agentKnowledgeSection + imageAnalysisSection + documentAnalysisSection + systemPrompt + skillMetadataSection + readerContextSection;
   let agentToolNames = agent?.tools || ['file_read', 'file_write', 'file_list'];
 
   // Log the assembled system prompt with section breakdown
@@ -2271,7 +2371,8 @@ export async function* runAgentLoop(
       (event) => subAgentEventQueue.push(event),
       sessionId,  // Pass parent sessionId for attachment access
       userId,     // Pass userId for connection tools
-      resolvedModelOverride  // Pass parent's model override (for inherit:true agents)
+      resolvedModelOverride,  // Pass parent's model override (for inherit:true agents)
+      projectId   // Pass space/project context so sub-agents see the linked KB collection + memory
     );
   };
 

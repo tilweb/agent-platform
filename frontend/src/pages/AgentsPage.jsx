@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import AccessManager from '../components/AccessManager';
@@ -7,6 +7,7 @@ import { useProviders } from '../hooks/useProviders';
 import { LockIcon, RobotIcon, PlugIcon, PenIcon } from '../components/Icons';
 import RoleBadge from '../components/RoleBadge';
 import ReadOnlyBanner from '../components/ReadOnlyBanner';
+import { useResourceAccess } from '../hooks/useResourceAccess';
 import ConfirmModal from '../components/ConfirmModal';
 import PageHeader from '../components/overview/PageHeader';
 import SearchInput from '../components/overview/SearchInput';
@@ -383,13 +384,32 @@ const styles = {
     alignItems: 'center',
     gap: theme.spacing.sm,
     minWidth: 0,
+    justifyContent: 'flex-end',
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.textMuted,
+  },
+  settingsRowChips: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    minWidth: 0,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    flexWrap: 'nowrap',
   },
   settingsChevron: { color: theme.colors.textMuted, flexShrink: 0 },
+  chip: {
+    display: 'inline-block',
+    fontSize: theme.typography.sizes.xs,
+    padding: `2px ${theme.spacing.sm}`,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceHover,
+    color: theme.colors.textSecondary,
+    whiteSpace: 'nowrap',
+    maxWidth: 170,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    flexShrink: 0,
+  },
   // Einstellungen-Modal
   modalOverlay: {
     position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
@@ -398,11 +418,11 @@ const styles = {
   settingsModal: {
     backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl,
     border: `1px solid ${theme.colors.border}`, boxShadow: theme.shadows.xl,
-    width: '100%', maxWidth: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+    width: '100%', maxWidth: 800, maxHeight: '88vh', display: 'flex', flexDirection: 'column',
   },
   settingsModalHead: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: `${theme.spacing.lg} ${theme.spacing.xl}`, borderBottom: `1px solid ${theme.colors.border}`,
+    padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
   },
   settingsModalTitle: {
     fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, margin: 0,
@@ -637,6 +657,31 @@ const styles = {
 // Agent Colors
 // ==========================================
 
+// Kompakte Einstellungs-Zeile: Label links, aktuelle Auswahl (als Chips/Text) +
+// Chevron rechts. Zeigt bewusst die KONKRETEN Werte (Transparenz), nicht nur Zahlen.
+function SettingsRow({ label, isLast = false, onClick, children }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        ...styles.settingsRow,
+        ...(isLast ? { borderBottom: 'none' } : {}),
+        ...(hover ? { backgroundColor: theme.colors.surfaceHover } : {}),
+      }}
+    >
+      <span style={styles.settingsRowLabel}>{label}</span>
+      <span style={styles.settingsRowValue}>
+        <span style={styles.settingsRowChips}>{children}</span>
+        <span style={styles.settingsChevron}>›</span>
+      </span>
+    </button>
+  );
+}
+
 const agentColors = {
   general: { bg: '#14b8a620', color: '#14b8a6' },
   researcher: { bg: '#3b82f620', color: '#3b82f6' },
@@ -758,9 +803,11 @@ function AgentsPage() {
   const [agents, setAgents] = useState([]);
   const [availableTools, setAvailableTools] = useState([]);
   const [availableSkills, setAvailableSkills] = useState([]);
+  const [availableCollections, setAvailableCollections] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingTools, setIsLoadingTools] = useState(false);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [error, setError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -789,9 +836,13 @@ function AgentsPage() {
     model: { provider_id: '', model_id: '' },
     icon: DEFAULT_AGENT_ICON,
     color: DEFAULT_AGENT_COLOR,
+    collections: [],
   });
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Snapshot der zuletzt (auto-)gespeicherten Modal-Felder — verhindert Auto-Save
+  // beim Laden und redundante Requests. null = kein Auto-Save (z.B. beim Anlegen).
+  const modalSavedRef = useRef(null);
 
   // Detail view state
   const [activeTab, setActiveTab] = useState('tools');
@@ -804,6 +855,10 @@ function AgentsPage() {
 
   // Provider hook for model selection
   const { enabledProviders, getModelsForAgent, getExtendedCapabilities } = useProviders();
+
+  // Berechtigte (wer den Agenten nutzen darf) — für die Pills in der Settings-Zeile.
+  // Guard: nur für bestehende (nicht-System-)Agenten laden.
+  const agentAccess = useResourceAccess('agent', selectedAgent && !selectedAgent.system ? selectedAgent.id : null);
 
   // ==========================================
   // Data Loading
@@ -850,6 +905,21 @@ function AgentsPage() {
     }
   };
 
+  const fetchCollections = async () => {
+    setIsLoadingCollections(true);
+    try {
+      const response = await apiGet('/knowledge/collections');
+      if (!response.ok) throw new Error('Failed to fetch collections');
+      const data = await response.json();
+      // Nur zugängliche Collections zur Auswahl anbieten.
+      setAvailableCollections((data.collections || []).filter((c) => c.accessible !== false));
+    } catch (err) {
+      console.error('Error fetching collections:', err);
+    } finally {
+      setIsLoadingCollections(false);
+    }
+  };
+
   useEffect(() => {
     fetchAgents();
   }, []);
@@ -858,6 +928,7 @@ function AgentsPage() {
     if (selectedAgent || isCreating) {
       fetchTools();
       fetchSkills();
+      fetchCollections();
     }
   }, [selectedAgent, isCreating]);
 
@@ -889,7 +960,9 @@ function AgentsPage() {
       model: { provider_id: '', model_id: '' },
       icon: DEFAULT_AGENT_ICON,
       color: DEFAULT_AGENT_COLOR,
+      collections: [],
     });
+    modalSavedRef.current = null; // beim Anlegen kein Auto-Save (erst nach Erstellen)
     setActiveTab('tools');
   };
 
@@ -901,7 +974,7 @@ function AgentsPage() {
 
       setSelectedAgent(fullAgent);
       setIsCreating(false);
-      setFormData({
+      const fd = {
         id: fullAgent.id,
         name: fullAgent.name || '',
         description: typeof fullAgent.description === 'string' ? fullAgent.description : '',
@@ -917,7 +990,11 @@ function AgentsPage() {
           : { provider_id: '', model_id: '' },
         icon: fullAgent.icon || DEFAULT_AGENT_ICON,
         color: fullAgent.color || DEFAULT_AGENT_COLOR,
-      });
+        collections: Array.isArray(fullAgent.collections) ? fullAgent.collections : [],
+      };
+      setFormData(fd);
+      // Auto-Save-Baseline setzen (verhindert Speichern direkt nach dem Laden).
+      modalSavedRef.current = modalFieldsSnapshot(fd);
       setActiveTab('tools');
     } catch (err) {
       setError(err.message);
@@ -951,6 +1028,7 @@ function AgentsPage() {
         model: modelConfig,
         icon: formData.icon || DEFAULT_AGENT_ICON,
         color: formData.color || DEFAULT_AGENT_COLOR,
+        collections: formData.collections || [],
       };
 
       const response = isCreating
@@ -1026,6 +1104,68 @@ function AgentsPage() {
       : [...currentSkills, skillId];
     setFormData({ ...formData, skills: newSkills });
   };
+
+  const handleCollectionToggle = (collectionId) => {
+    if (isViewOnly) return;
+    const current = formData.collections || [];
+    const next = current.includes(collectionId)
+      ? current.filter((c) => c !== collectionId)
+      : [...current, collectionId];
+    setFormData({ ...formData, collections: next });
+  };
+
+  // Serialisierter Snapshot der auto-gespeicherten Modal-Felder.
+  const modalFieldsSnapshot = useCallback((fd) => JSON.stringify({
+    active: fd.active,
+    delegatable: fd.delegatable,
+    tools: fd.tools,
+    skillMode: fd.skillMode,
+    skills: fd.skills,
+    collections: fd.collections,
+    model: fd.model,
+  }), []);
+
+  // Auto-Save der Modal-Einstellungen (nur bestehende, editierbare Agenten) — analog
+  // zur Berechtigungs-Verwaltung, die ebenfalls sofort schreibt. Sendet nur die
+  // Modal-Felder (Name/Instruktionen bleiben am Speichern-Button).
+  const autoSaveAgent = useCallback(async (patch) => {
+    if (!selectedAgent?.id) return false;
+    try {
+      const res = await apiPut(`/agents/${selectedAgent.id}`, patch);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Automatisches Speichern fehlgeschlagen');
+      }
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    }
+  }, [selectedAgent]);
+
+  // Beobachtet die Modal-Felder und speichert Änderungen automatisch (debounced).
+  useEffect(() => {
+    // View-only (System oder reine Betrachter-Rolle) → kein Auto-Save. Inline
+    // berechnet, da `isViewOnly` erst weiter unten im Render deklariert wird.
+    const viewOnly = !!selectedAgent && (selectedAgent.system || (selectedAgent.role && !['owner', 'admin', 'editor'].includes(selectedAgent.role)));
+    if (isCreating || viewOnly || !selectedAgent?.id || modalSavedRef.current == null) return;
+    const snapshot = modalFieldsSnapshot(formData);
+    if (snapshot === modalSavedRef.current) return;
+    const timer = setTimeout(async () => {
+      const modelConfig = formData.model?.provider_id && formData.model?.model_id ? formData.model : undefined;
+      const ok = await autoSaveAgent({
+        active: formData.active,
+        delegatable: formData.delegatable,
+        tools: formData.tools,
+        skillMode: formData.skillMode,
+        skills: formData.skillMode === 'allow' ? formData.skills : undefined,
+        collections: formData.collections,
+        model: modelConfig,
+      });
+      if (ok) modalSavedRef.current = snapshot;
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [formData, isCreating, selectedAgent, autoSaveAgent, modalFieldsSnapshot]);
 
   const toggleCategory = (category) => {
     setExpandedCategories(prev => ({
@@ -1106,7 +1246,7 @@ function AgentsPage() {
       : selectedAgent.name;
 
     return (
-      <div style={styles.container}>
+      <div style={{ ...styles.container, maxWidth: 860, margin: '0 auto' }}>
         {/* Back Link */}
         <button style={styles.backLink} onClick={handleBackToOverview}>
           <ArrowLeftIcon /> Agenten
@@ -1247,35 +1387,92 @@ function AgentsPage() {
 
         {/* Two Column Layout */}
         <div style={styles.editorBody}>
-          {/* Kompakte Einstellungen — Details öffnen sich im Modal */}
+          {/* Kompakte Einstellungen — zeigen die KONKRETE Auswahl, Details im Modal */}
           <div style={styles.settingsList}>
-            {[
-              { id: 'availability', label: 'Verfügbarkeit', value: formData.active ? (formData.delegatable ? 'Aktiv · automatisch verfügbar' : 'Aktiv · nur bei Auswahl') : 'Inaktiv' },
-              { id: 'tools', label: 'Werkzeuge', value: `${formData.tools.length} ${formData.tools.length === 1 ? 'Tool' : 'Tools'}` },
-              { id: 'skills', label: 'Skills', value: formData.skillMode === 'all' ? 'Alle' : (formData.skillMode === 'none' ? 'Keine' : `${formData.skills.length} ausgewählt`) },
-              { id: 'model', label: 'Modell', value: formData.model?.model_id || 'Standard' },
-              ...(!isSystemAgent && !isCreating ? [{ id: 'access', label: 'Berechtigungen', value: 'Verwalten' }] : []),
-            ].map((row, i, arr) => (
-              <button
-                key={row.id}
-                type="button"
-                style={{ ...styles.settingsRow, ...(i === arr.length - 1 ? { borderBottom: 'none' } : {}) }}
-                onClick={() => { setActiveTab(row.id); setSettingsOpen(true); }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-              >
-                <span style={styles.settingsRowLabel}>{row.label}</span>
-                <span style={styles.settingsRowValue}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.value}</span>
-                  <span style={styles.settingsChevron}>›</span>
-                </span>
-              </button>
-            ))}
+            {(() => {
+              const openSettings = (id) => { setActiveTab(id); setSettingsOpen(true); };
+              const muted = { color: theme.colors.textMuted };
+              const showAccess = !isSystemAgent && !isCreating;
+              const renderChips = (items, mapName, max) => {
+                if (!items || items.length === 0) return <span style={muted}>Keine</span>;
+                const shown = items.slice(0, max);
+                const extra = items.length - shown.length;
+                return (
+                  <>
+                    {shown.map((it) => <span key={it} style={styles.chip}>{mapName(it)}</span>)}
+                    {extra > 0 && <span style={styles.chip}>+{extra}</span>}
+                  </>
+                );
+              };
+              // Lesbares Modell-Label: Provider · Modellname (statt roher ID/Slug).
+              const resolveModelLabel = () => {
+                const pid = formData.model?.provider_id;
+                const mid = formData.model?.model_id;
+                if (!pid || !mid) return null;
+                const prov = (enabledProviders || []).find((p) => p.id === pid);
+                const mdl = prov?.models?.find((m) => m.id === mid);
+                return prov && mdl ? `${prov.name} · ${mdl.name}` : mid;
+              };
+              // Berechtigte (wer den Agenten nutzen darf), Owner zuerst.
+              const accessItems = [
+                ...(agentAccess.users || []).map((u) => ({ key: `u:${u.principalId}`, name: u.displayName || u.username || 'Nutzer', role: u.role })),
+                ...(agentAccess.groups || []).map((g) => ({ key: `g:${g.principalId}`, name: g.name ? `Gruppe ${g.name}` : 'Gruppe', role: g.role })),
+              ].sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : 0));
+              return (
+                <>
+                  <SettingsRow label="Verfügbarkeit" onClick={() => openSettings('availability')}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {formData.active ? (formData.delegatable ? 'Aktiv · automatisch verfügbar' : 'Aktiv · nur bei Auswahl') : 'Inaktiv'}
+                    </span>
+                  </SettingsRow>
+
+                  <SettingsRow label="Aktionen" onClick={() => openSettings('tools')}>
+                    {renderChips(formData.tools, (t) => t, 5)}
+                  </SettingsRow>
+
+                  <SettingsRow label="Fähigkeiten" onClick={() => openSettings('skills')}>
+                    {formData.skillMode === 'all'
+                      ? <span>Alle Fähigkeiten</span>
+                      : formData.skillMode === 'none'
+                        ? <span style={muted}>Keine</span>
+                        : renderChips(formData.skills, (id) => availableSkills.find((s) => s.id === id)?.name || id, 4)}
+                  </SettingsRow>
+
+                  <SettingsRow label="Wissen" onClick={() => openSettings('knowledge')}>
+                    {renderChips(formData.collections, (id) => availableCollections.find((c) => c.id === id)?.name || id, 4)}
+                  </SettingsRow>
+
+                  <SettingsRow label="Modell" isLast={!showAccess} onClick={() => openSettings('model')}>
+                    {resolveModelLabel()
+                      ? <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{resolveModelLabel()}</span>
+                      : <span style={muted}>Standard (Systemvorgabe)</span>}
+                  </SettingsRow>
+
+                  {showAccess && (
+                    <SettingsRow label="Berechtigungen" isLast onClick={() => openSettings('access')}>
+                      {agentAccess.loading
+                        ? <span style={muted}>Lädt…</span>
+                        : accessItems.length === 0
+                          ? <span style={muted}>Verwalten</span>
+                          : (
+                            <>
+                              {accessItems.slice(0, 3).map((it) => <span key={it.key} style={styles.chip}>{it.name}</span>)}
+                              {accessItems.length > 3 && <span style={styles.chip}>+{accessItems.length - 3}</span>}
+                            </>
+                          )}
+                    </SettingsRow>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Instruktionen (System Prompt) — großes, fokussiertes Feld */}
           <div style={styles.formCard}>
             <h3 style={styles.formCardTitle}>Instruktionen (System Prompt)</h3>
+            <div style={{ ...styles.hint, marginTop: `-${theme.spacing.sm}`, marginBottom: theme.spacing.md }}>
+              Diese Instruktionen definieren, wie der Agent sich verhält, denkt und kommuniziert.
+            </div>
             <textarea
               style={{
                 ...styles.textarea,
@@ -1287,9 +1484,6 @@ function AgentsPage() {
               placeholder="Beschreibe, wie der Agent sich verhalten soll..."
               disabled={isViewOnly}
             />
-            <div style={styles.hint}>
-              Diese Instruktionen definieren, wie der Agent sich verhält, denkt und kommuniziert.
-            </div>
           </div>
         </div>
 
@@ -1303,11 +1497,12 @@ function AgentsPage() {
               </div>
 
               {/* Tab Navigation */}
-              <div style={{ ...styles.tabsContainer, padding: `0 ${theme.spacing.xl}` }}>
+              <div style={{ ...styles.tabsContainer, padding: `0 ${theme.spacing.xl}`, borderBottom: 'none', marginBottom: 0 }}>
                 {[
                   { id: 'availability', label: 'Verfügbarkeit' },
-                  { id: 'tools', label: 'Tools' },
-                  { id: 'skills', label: 'Skills' },
+                  { id: 'tools', label: 'Aktionen' },
+                  { id: 'skills', label: 'Fähigkeiten' },
+                  { id: 'knowledge', label: 'Wissen' },
                   { id: 'model', label: 'Modell' },
                   ...(!isSystemAgent && !isCreating ? [{ id: 'access', label: 'Berechtigungen' }] : []),
                 ].map((tab) => {
@@ -1390,7 +1585,7 @@ function AgentsPage() {
                 <div>
                   {isLoadingTools ? (
                     <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
-                      Lade verfügbare Tools...
+                      Lade verfügbare Aktionen...
                     </div>
                   ) : (
                     <>
@@ -1485,7 +1680,7 @@ function AgentsPage() {
                 <div>
                   {/* Skill Mode Selection */}
                   <div style={{ marginBottom: theme.spacing.lg }}>
-                    <label style={styles.label}>Skill-Zugriff</label>
+                    <label style={styles.label}>Fähigkeiten-Zugriff</label>
                     <select
                       style={{
                         ...styles.modelSelect,
@@ -1495,16 +1690,16 @@ function AgentsPage() {
                       onChange={(e) => setFormData({ ...formData, skillMode: e.target.value })}
                       disabled={isViewOnly}
                     >
-                      <option value="all">Alle Skills verfügbar</option>
-                      <option value="allow">Nur ausgewählte Skills</option>
-                      <option value="none">Keine Skills</option>
+                      <option value="all">Alle Fähigkeiten verfügbar</option>
+                      <option value="allow">Nur ausgewählte Fähigkeiten</option>
+                      <option value="none">Keine Fähigkeiten</option>
                     </select>
                     <div style={styles.hint}>
                       {formData.skillMode === 'all'
-                        ? 'Der Agent kann alle aktivierten Skills nutzen.'
+                        ? 'Der Agent kann alle aktivierten Fähigkeiten nutzen.'
                         : formData.skillMode === 'none'
-                        ? 'Der Agent kann keine Skills nutzen.'
-                        : 'Der Agent kann nur die unten ausgewählten Skills nutzen.'}
+                        ? 'Der Agent kann keine Fähigkeiten nutzen.'
+                        : 'Der Agent kann nur die unten ausgewählten Fähigkeiten nutzen.'}
                     </div>
                   </div>
 
@@ -1513,7 +1708,7 @@ function AgentsPage() {
                     <>
                       {isLoadingSkills ? (
                         <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
-                          Lade verfügbare Skills...
+                          Lade verfügbare Fähigkeiten...
                         </div>
                       ) : (
                         <>
@@ -1536,7 +1731,7 @@ function AgentsPage() {
                               color: theme.colors.textMuted,
                               fontSize: theme.typography.sizes.sm,
                             }}>
-                              Keine Skills verfügbar
+                              Keine Fähigkeiten verfügbar
                             </div>
                           ) : (
                             <div style={styles.toolGrid}>
@@ -1594,9 +1789,9 @@ function AgentsPage() {
                       color: theme.colors.textMuted,
                     }}>
                       <div style={{ fontWeight: theme.typography.weights.medium, marginBottom: theme.spacing.sm, color: theme.colors.text }}>
-                        Alle Skills aktiv
+                        Alle Fähigkeiten aktiv
                       </div>
-                      Dieser Agent kann alle verfügbaren Skills automatisch nutzen, wenn ein Keyword in der Benutzernachricht erkannt wird.
+                      Dieser Agent kann alle verfügbaren Fähigkeiten automatisch nutzen, wenn ein Keyword in der Benutzernachricht erkannt wird.
                       {availableSkills.length > 0 && (
                         <div style={{ marginTop: theme.spacing.md }}>
                           Verfügbar: {availableSkills.map(s => s.name).join(', ')}
@@ -1614,10 +1809,85 @@ function AgentsPage() {
                       color: theme.colors.textMuted,
                     }}>
                       <div style={{ fontWeight: theme.typography.weights.medium, marginBottom: theme.spacing.sm, color: theme.colors.text }}>
-                        Skills deaktiviert
+                        Fähigkeiten deaktiviert
                       </div>
-                      Dieser Agent kann keine Skills nutzen. Weder automatisches Skill-Matching noch manuelles Laden von Skills ist möglich.
+                      Dieser Agent kann keine Fähigkeiten nutzen. Weder automatisches Matching noch manuelles Laden von Fähigkeiten ist möglich.
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* Knowledge / Collections Tab */}
+              {activeTab === 'knowledge' && (
+                <div>
+                  <div style={{ marginBottom: theme.spacing.lg }}>
+                    <label style={styles.label}>Knowledge-Base-Collections</label>
+                    <div style={styles.hint}>
+                      Diese Collections stehen dem Agenten als Wissensquelle bereit — er liest passende Dokumente
+                      per Suche und antwortet mit Belegen daraus. Analog zu Fähigkeiten wählst du hier gezielt aus.
+                    </div>
+                  </div>
+
+                  {isLoadingCollections ? (
+                    <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+                      Lade Collections...
+                    </div>
+                  ) : availableCollections.length === 0 ? (
+                    <div style={{
+                      padding: theme.spacing.lg,
+                      backgroundColor: theme.colors.surfaceHover,
+                      borderRadius: theme.borderRadius.lg,
+                      textAlign: 'center',
+                      color: theme.colors.textMuted,
+                      fontSize: theme.typography.sizes.sm,
+                    }}>
+                      Keine Collections verfügbar — lege welche in der Knowledge Base an.
+                    </div>
+                  ) : (
+                    <>
+                      {formData.collections.length > 0 && (
+                        <div style={styles.selectedToolsSummary}>
+                          {formData.collections.map((id) => (
+                            <span key={id} style={styles.selectedToolTag}>
+                              {availableCollections.find((c) => c.id === id)?.name || id}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div style={styles.toolGrid}>
+                        {availableCollections.map((col) => {
+                          const isSelected = formData.collections.includes(col.id);
+                          return (
+                            <div
+                              key={col.id}
+                              style={{
+                                ...styles.toolItem,
+                                ...(isSelected ? styles.toolItemSelected : {}),
+                                ...(isViewOnly ? styles.toolItemDisabled : {}),
+                              }}
+                              onClick={() => handleCollectionToggle(col.id)}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {}}
+                                disabled={isViewOnly}
+                                style={{ marginTop: '2px', accentColor: theme.colors.primary }}
+                              />
+                              <div>
+                                <div style={styles.toolName}>{col.name}</div>
+                                <div style={styles.toolDescription}>{col.description || 'Keine Beschreibung'}</div>
+                                {typeof col.document_count === 'number' && (
+                                  <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.xs }}>
+                                    {col.document_count} {col.document_count === 1 ? 'Dokument' : 'Dokumente'}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -1633,7 +1903,7 @@ function AgentsPage() {
                         color: theme.colors.warning,
                         marginBottom: theme.spacing.sm,
                       }}>
-                        Dieser Agent hat Tools - nur Modelle mit Tool-Calling werden angezeigt.
+                        Dieser Agent hat Aktionen - nur Modelle mit Tool-Calling werden angezeigt.
                       </div>
                     )}
                   </div>
