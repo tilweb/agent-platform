@@ -2,6 +2,23 @@
 
 ## 2026-09-02
 
+### Agenten-Editor: Promptvorschläge pflegen (Titel + Prompt, per Drag & Drop sortierbar)
+Neuer Bereich „Promptvorschläge" in der Einstellungssektion und im Einstellungs-Modal: Pro Agent lassen sich
+beliebig viele Vorschläge mit **Titel** (kurze Bezeichnung) und **Prompt** (gesendeter Text) anlegen, bearbeiten,
+entfernen und **per Drag & Drop am Griff umsortieren**. Die Titel erscheinen als Pills in der Einstellungs-Zeile;
+Auto-Save wie bei den übrigen Modal-Feldern. Persistiert als einzeiliges Inline-JSON in der Frontmatter
+(`promptSuggestions`, Objekt-Wrapper — der einfache Frontmatter-Parser kann keine Objekt-Listen/mehrzeiligen
+Werte; mehrzeilige Prompts werden als `\n` escaped → round-trip-sicher). Der eigentliche **Einbau im Chat folgt
+in einem separaten Schritt.** (`AgentsPage.jsx`; `services/agents.ts`: Serialisierung/Parsing; `routes/agents.ts`.)
+Begleitend: Einstellungs-Modal verbreitert (max. 920 px) und die Tab-Leiste gegen Überlauf abgesichert
+(horizontaler Scroll-Fallback), da mit dem neuen Tab sonst „Berechtigungen" abgeschnitten wurde.
+
+### Agenten-Editor: Einleitungen in allen Modal-Tabs
+Jeder Tab im Einstellungs-Modal (Verfügbarkeit · Aktionen · Fähigkeiten · Modell · Berechtigungen) bekommt nun
+— wie zuvor schon Wissen und Promptvorschläge — eine kurze Einleitung, die erklärt, was man dort einstellt und
+wozu es dient. Nebenbei redundante Zweit-Labels entschärft („Fähigkeiten-Zugriff" → „Zugriff"; „KI-Modell
+auswählen" entfernt). (`AgentsPage.jsx`.)
+
 ### Agenten-Editor: Wissen zuordnen, Auto-Save & sprechende Zusammenfassungen
 Ausbau des fokussierten Editors zu einer echten Arbeitsfläche:
 - **Wissen je Agent**: Neue Zuordnung von Knowledge-Base-Collections direkt am Agenten (analog zu Fähigkeiten).

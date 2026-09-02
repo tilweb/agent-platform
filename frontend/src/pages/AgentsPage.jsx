@@ -418,7 +418,7 @@ const styles = {
   settingsModal: {
     backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl,
     border: `1px solid ${theme.colors.border}`, boxShadow: theme.shadows.xl,
-    width: '100%', maxWidth: 800, maxHeight: '88vh', display: 'flex', flexDirection: 'column',
+    width: '100%', maxWidth: 920, maxHeight: '88vh', display: 'flex', flexDirection: 'column',
   },
   settingsModalHead: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -501,6 +501,8 @@ const styles = {
     color: theme.colors.textMuted,
     cursor: 'pointer',
     transition: `all ${theme.transitions.fast}`,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   tabActive: {
     backgroundColor: `${theme.colors.primary}15`,
@@ -590,6 +592,56 @@ const styles = {
     backgroundColor: theme.colors.primaryLight,
     color: theme.colors.primary,
     borderRadius: theme.borderRadius.full,
+  },
+  // Promptvorschläge (Tab)
+  promptCard: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+  },
+  promptDragHandle: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: theme.colors.textMuted,
+    cursor: 'grab',
+    padding: `${theme.spacing.xs} 2px`,
+    marginTop: '2px',
+    flexShrink: 0,
+  },
+  promptRemove: {
+    background: 'none',
+    border: 'none',
+    color: theme.colors.textMuted,
+    cursor: 'pointer',
+    fontSize: theme.typography.sizes.base,
+    lineHeight: 1,
+    padding: theme.spacing.xs,
+    flexShrink: 0,
+  },
+  promptAddButton: {
+    marginTop: theme.spacing.md,
+    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+    backgroundColor: 'transparent',
+    color: theme.colors.primary,
+    border: `1px dashed ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    cursor: 'pointer',
+    width: '100%',
+  },
+  promptEmpty: {
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surfaceHover,
+    borderRadius: theme.borderRadius.lg,
+    textAlign: 'center',
+    color: theme.colors.textMuted,
+    fontSize: theme.typography.sizes.sm,
   },
   // Model selection
   modelSelect: {
@@ -837,12 +889,15 @@ function AgentsPage() {
     icon: DEFAULT_AGENT_ICON,
     color: DEFAULT_AGENT_COLOR,
     collections: [],
+    promptSuggestions: [],
   });
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Snapshot der zuletzt (auto-)gespeicherten Modal-Felder — verhindert Auto-Save
   // beim Laden und redundante Requests. null = kein Auto-Save (z.B. beim Anlegen).
   const modalSavedRef = useRef(null);
+  // Quell-Index beim Drag&Drop-Sortieren der Promptvorschläge.
+  const dragPromptIndex = useRef(null);
 
   // Detail view state
   const [activeTab, setActiveTab] = useState('tools');
@@ -961,6 +1016,7 @@ function AgentsPage() {
       icon: DEFAULT_AGENT_ICON,
       color: DEFAULT_AGENT_COLOR,
       collections: [],
+      promptSuggestions: [],
     });
     modalSavedRef.current = null; // beim Anlegen kein Auto-Save (erst nach Erstellen)
     setActiveTab('tools');
@@ -991,6 +1047,9 @@ function AgentsPage() {
         icon: fullAgent.icon || DEFAULT_AGENT_ICON,
         color: fullAgent.color || DEFAULT_AGENT_COLOR,
         collections: Array.isArray(fullAgent.collections) ? fullAgent.collections : [],
+        promptSuggestions: Array.isArray(fullAgent.promptSuggestions)
+          ? fullAgent.promptSuggestions.map((s) => ({ title: s?.title || '', prompt: s?.prompt || '' }))
+          : [],
       };
       setFormData(fd);
       // Auto-Save-Baseline setzen (verhindert Speichern direkt nach dem Laden).
@@ -1029,6 +1088,7 @@ function AgentsPage() {
         icon: formData.icon || DEFAULT_AGENT_ICON,
         color: formData.color || DEFAULT_AGENT_COLOR,
         collections: formData.collections || [],
+        promptSuggestions: cleanPromptSuggestions(formData.promptSuggestions),
       };
 
       const response = isCreating
@@ -1114,6 +1174,38 @@ function AgentsPage() {
     setFormData({ ...formData, collections: next });
   };
 
+  // Promptvorschläge: verwerfe komplett leere Zeilen, trimme den Titel.
+  const cleanPromptSuggestions = (list) =>
+    (list || [])
+      .map((s) => ({ title: (s.title || '').trim(), prompt: s.prompt || '' }))
+      .filter((s) => s.title !== '' || s.prompt.trim() !== '');
+
+  const addPromptSuggestion = () => {
+    if (isViewOnly) return;
+    setFormData({ ...formData, promptSuggestions: [...(formData.promptSuggestions || []), { title: '', prompt: '' }] });
+  };
+
+  const updatePromptSuggestion = (index, field, value) => {
+    if (isViewOnly) return;
+    const next = (formData.promptSuggestions || []).map((s, i) => (i === index ? { ...s, [field]: value } : s));
+    setFormData({ ...formData, promptSuggestions: next });
+  };
+
+  const removePromptSuggestion = (index) => {
+    if (isViewOnly) return;
+    setFormData({ ...formData, promptSuggestions: (formData.promptSuggestions || []).filter((_, i) => i !== index) });
+  };
+
+  // Drag&Drop-Umsortierung: Element von `from` nach `to` verschieben.
+  const movePromptSuggestion = (from, to) => {
+    if (isViewOnly || from == null || to == null || from === to) return;
+    const list = [...(formData.promptSuggestions || [])];
+    if (from < 0 || from >= list.length || to < 0 || to >= list.length) return;
+    const [moved] = list.splice(from, 1);
+    list.splice(to, 0, moved);
+    setFormData({ ...formData, promptSuggestions: list });
+  };
+
   // Serialisierter Snapshot der auto-gespeicherten Modal-Felder.
   const modalFieldsSnapshot = useCallback((fd) => JSON.stringify({
     active: fd.active,
@@ -1122,6 +1214,7 @@ function AgentsPage() {
     skillMode: fd.skillMode,
     skills: fd.skills,
     collections: fd.collections,
+    promptSuggestions: fd.promptSuggestions,
     model: fd.model,
   }), []);
 
@@ -1160,6 +1253,7 @@ function AgentsPage() {
         skillMode: formData.skillMode,
         skills: formData.skillMode === 'allow' ? formData.skills : undefined,
         collections: formData.collections,
+        promptSuggestions: cleanPromptSuggestions(formData.promptSuggestions),
         model: modelConfig,
       });
       if (ok) modalSavedRef.current = snapshot;
@@ -1442,6 +1536,22 @@ function AgentsPage() {
                     {renderChips(formData.collections, (id) => availableCollections.find((c) => c.id === id)?.name || id, 4)}
                   </SettingsRow>
 
+                  <SettingsRow label="Promptvorschläge" onClick={() => openSettings('prompts')}>
+                    {(formData.promptSuggestions && formData.promptSuggestions.some((s) => (s.title || '').trim() || (s.prompt || '').trim()))
+                      ? (() => {
+                          const named = formData.promptSuggestions.filter((s) => (s.title || '').trim() || (s.prompt || '').trim());
+                          const shown = named.slice(0, 4);
+                          const extra = named.length - shown.length;
+                          return (
+                            <>
+                              {shown.map((s, i) => <span key={i} style={styles.chip}>{(s.title || '').trim() || 'Ohne Titel'}</span>)}
+                              {extra > 0 && <span style={styles.chip}>+{extra}</span>}
+                            </>
+                          );
+                        })()
+                      : <span style={muted}>Keine</span>}
+                  </SettingsRow>
+
                   <SettingsRow label="Modell" isLast={!showAccess} onClick={() => openSettings('model')}>
                     {resolveModelLabel()
                       ? <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{resolveModelLabel()}</span>
@@ -1497,12 +1607,13 @@ function AgentsPage() {
               </div>
 
               {/* Tab Navigation */}
-              <div style={{ ...styles.tabsContainer, padding: `0 ${theme.spacing.xl}`, borderBottom: 'none', marginBottom: 0 }}>
+              <div style={{ ...styles.tabsContainer, padding: `0 ${theme.spacing.xl}`, borderBottom: 'none', marginBottom: 0, overflowX: 'auto' }}>
                 {[
                   { id: 'availability', label: 'Verfügbarkeit' },
                   { id: 'tools', label: 'Aktionen' },
                   { id: 'skills', label: 'Fähigkeiten' },
                   { id: 'knowledge', label: 'Wissen' },
+                  { id: 'prompts', label: 'Promptvorschläge' },
                   { id: 'model', label: 'Modell' },
                   ...(!isSystemAgent && !isCreating ? [{ id: 'access', label: 'Berechtigungen' }] : []),
                 ].map((tab) => {
@@ -1524,6 +1635,13 @@ function AgentsPage() {
                 {/* Verfügbarkeit */}
                 {activeTab === 'availability' && (
                   <div>
+                    <div style={{ marginBottom: theme.spacing.lg }}>
+                      <label style={styles.label}>Verfügbarkeit</label>
+                      <div style={styles.hint}>
+                        Steuere, ob der Agent einsatzbereit ist und ob ihn andere Agenten automatisch hinzuziehen dürfen —
+                        oder ob er nur reagiert, wenn du ihn direkt im Chat auswählst.
+                      </div>
+                    </div>
                     {/* Active Toggle */}
                     <div style={{ ...styles.toggleRow, marginBottom: theme.spacing.lg }}>
                       <button
@@ -1583,6 +1701,13 @@ function AgentsPage() {
               {/* Tools Tab */}
               {activeTab === 'tools' && (
                 <div>
+                  <div style={{ marginBottom: theme.spacing.lg }}>
+                    <label style={styles.label}>Aktionen</label>
+                    <div style={styles.hint}>
+                      Aktionen sind die Werkzeuge, die der Agent ausführen darf — etwa Dateien lesen, im Web suchen
+                      oder die Wissensdatenbank durchsuchen. Nur die hier ausgewählten Aktionen stehen ihm zur Verfügung.
+                    </div>
+                  </div>
                   {isLoadingTools ? (
                     <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
                       Lade verfügbare Aktionen...
@@ -1678,9 +1803,16 @@ function AgentsPage() {
               {/* Skills Tab */}
               {activeTab === 'skills' && (
                 <div>
+                  <div style={{ marginBottom: theme.spacing.lg }}>
+                    <label style={styles.label}>Fähigkeiten</label>
+                    <div style={styles.hint}>
+                      Fähigkeiten sind vordefinierte Arbeitsabläufe, die der Agent bei passenden Anfragen automatisch
+                      anwendet. Lege fest, ob er alle, nur ausgewählte oder keine Fähigkeiten nutzen darf.
+                    </div>
+                  </div>
                   {/* Skill Mode Selection */}
                   <div style={{ marginBottom: theme.spacing.lg }}>
-                    <label style={styles.label}>Fähigkeiten-Zugriff</label>
+                    <label style={styles.label}>Zugriff</label>
                     <select
                       style={{
                         ...styles.modelSelect,
@@ -1892,11 +2024,102 @@ function AgentsPage() {
                 </div>
               )}
 
+              {/* Prompt Suggestions Tab */}
+              {activeTab === 'prompts' && (
+                <div>
+                  <div style={{ marginBottom: theme.spacing.lg }}>
+                    <label style={styles.label}>Promptvorschläge</label>
+                    <div style={styles.hint}>
+                      Vorgefertigte Startfragen, die den Nutzern im Chat mit diesem Agenten angeboten werden.
+                      Der <strong>Titel</strong> erscheint als anklickbarer Vorschlag, der <strong>Prompt</strong> ist
+                      der Text, der dann gesendet wird. Reihenfolge per Ziehen am Griff ändern.
+                    </div>
+                  </div>
+
+                  {(formData.promptSuggestions || []).length === 0 ? (
+                    <div style={styles.promptEmpty}>
+                      Noch keine Promptvorschläge — füge unten den ersten hinzu.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                      {formData.promptSuggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          style={styles.promptCard}
+                          onDragOver={(e) => { if (!isViewOnly) e.preventDefault(); }}
+                          onDrop={(e) => {
+                            if (isViewOnly) return;
+                            e.preventDefault();
+                            movePromptSuggestion(dragPromptIndex.current, index);
+                            dragPromptIndex.current = null;
+                          }}
+                        >
+                          <div
+                            style={styles.promptDragHandle}
+                            draggable={!isViewOnly}
+                            onDragStart={(e) => { dragPromptIndex.current = index; e.dataTransfer.effectAllowed = 'move'; }}
+                            onDragEnd={() => { dragPromptIndex.current = null; }}
+                            title="Zum Sortieren ziehen"
+                            aria-label="Zum Sortieren ziehen"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                              <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" />
+                              <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
+                              <circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />
+                            </svg>
+                          </div>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+                            <input
+                              type="text"
+                              style={{ ...styles.input, ...(isViewOnly ? styles.inputDisabled : {}) }}
+                              value={suggestion.title}
+                              onChange={(e) => updatePromptSuggestion(index, 'title', e.target.value)}
+                              placeholder="Titel — z.B. „Angebot erstellen“"
+                              disabled={isViewOnly}
+                            />
+                            <textarea
+                              style={{ ...styles.textarea, minHeight: '72px', ...(isViewOnly ? styles.inputDisabled : {}) }}
+                              value={suggestion.prompt}
+                              onChange={(e) => updatePromptSuggestion(index, 'prompt', e.target.value)}
+                              placeholder="Prompt — der Text, der beim Klick gesendet wird…"
+                              disabled={isViewOnly}
+                            />
+                          </div>
+                          {!isViewOnly && (
+                            <button
+                              type="button"
+                              style={styles.promptRemove}
+                              onClick={() => removePromptSuggestion(index)}
+                              title="Vorschlag entfernen"
+                              aria-label="Vorschlag entfernen"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!isViewOnly && (
+                    <button type="button" style={styles.promptAddButton} onClick={addPromptSuggestion}>
+                      + Vorschlag hinzufügen
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Model Tab */}
               {activeTab === 'model' && (
                 <div>
+                  <div style={{ marginBottom: theme.spacing.lg }}>
+                    <label style={styles.label}>Modell</label>
+                    <div style={styles.hint}>
+                      Bestimme, welches KI-Modell dieser Agent verwendet. Ohne Auswahl gilt das Standardmodell der
+                      Plattform; ein festgelegtes Modell wird bei jeder Nutzung erzwungen.
+                    </div>
+                  </div>
                   <div style={{ marginBottom: theme.spacing.md }}>
-                    <label style={styles.label}>KI-Modell auswählen</label>
                     {formData.tools.length > 0 && (
                       <div style={{
                         fontSize: theme.typography.sizes.xs,
@@ -1927,11 +2150,17 @@ function AgentsPage() {
 
               {/* Access Tab */}
               {activeTab === 'access' && selectedAgent && !isSystemAgent && (
-                <AccessManager
-                  resourceType="agent"
-                  resourceId={selectedAgent.id}
-                  resourceName={selectedAgent.name}
-                />
+                <div>
+                  <div style={{ ...styles.hint, marginBottom: theme.spacing.lg }}>
+                    Lege fest, wer diesen Agenten sehen und nutzen darf. Owner können ihn bearbeiten und Rechte
+                    vergeben, Betrachter dürfen ihn nur verwenden.
+                  </div>
+                  <AccessManager
+                    resourceType="agent"
+                    resourceId={selectedAgent.id}
+                    resourceName={selectedAgent.name}
+                  />
+                </div>
               )}
               </div>
             </div>

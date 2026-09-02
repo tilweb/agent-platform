@@ -107,6 +107,10 @@ export interface AgentConfig {
   /** Zugeordnete Knowledge-Base-Collection-IDs (analog `skills`). Der Agent
    *  bekommt diese Collections + Dokumentliste in den Kontext injiziert. */
   collections?: string[];
+  /** Vom Nutzer gepflegte Prompt-Vorschläge (Titel + Prompt), Reihenfolge wie
+   *  im Editor. Serialisiert als Inline-JSON (siehe generateAgentMarkdown), da
+   *  der einfache Frontmatter-Parser keine Objekt-Listen/mehrzeiligen Werte kann. */
+  promptSuggestions?: Array<{ title: string; prompt: string }>;
   /**
    * Tombstone-Marker: gesetzt wenn ein File-basierter Agent geloescht wurde.
    * Ueberstimmt das File-Seed im DB-Override-Mechanismus und wird in beiden
@@ -145,6 +149,8 @@ interface AgentFrontmatter {
   color?: string;
   /** Zugeordnete KB-Collection-IDs */
   collections?: string[];
+  /** Prompt-Vorschläge als Inline-JSON-String (Objekt-Wrapper `{"items":[...]}`). */
+  promptSuggestions?: string;
 }
 
 /**
@@ -273,6 +279,27 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, any>; 
 }
 
 /**
+ * Prompt-Vorschläge aus dem Inline-JSON-Frontmatter-Feld lesen. Erwartet den
+ * Objekt-Wrapper `{"items":[{title,prompt},...]}` (oder — tolerant — direkt ein
+ * Array). Ungültige/leere Werte → undefined.
+ */
+function parsePromptSuggestions(raw: unknown): Array<{ title: string; prompt: string }> | undefined {
+  if (!raw || typeof raw !== 'string') return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    const items = Array.isArray(parsed)
+      ? parsed
+      : (parsed && Array.isArray((parsed as any).items) ? (parsed as any).items : []);
+    const clean = items
+      .filter((s: any) => s && typeof s.title === 'string' && typeof s.prompt === 'string')
+      .map((s: any) => ({ title: s.title, prompt: s.prompt }));
+    return clean.length > 0 ? clean : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Helper: Markdown-String → AgentConfig
  */
 function parseAgentMarkdown(agentId: string, content: string): AgentConfig {
@@ -296,6 +323,7 @@ function parseAgentMarkdown(agentId: string, content: string): AgentConfig {
     icon: fm.icon || undefined,
     color: fm.color || undefined,
     collections: Array.isArray(fm.collections) ? fm.collections : undefined,
+    promptSuggestions: parsePromptSuggestions(fm.promptSuggestions),
     tombstone: fm.tombstone === true,
   };
 }
@@ -665,6 +693,18 @@ function generateAgentMarkdown(agent: Omit<AgentConfig, 'systemPrompt'> & { syst
     }
   }
 
+  // Prompt-Vorschläge als einzeiliges Inline-JSON. Der Objekt-Wrapper `{items:[…]}`
+  // verhindert die Inline-Array-Sonderbehandlung (`[…]`) des Frontmatter-Parsers;
+  // mehrzeilige Prompts werden von JSON.stringify als `\n` escaped → round-trip-sicher.
+  const promptSuggestions = Array.isArray(agent.promptSuggestions)
+    ? agent.promptSuggestions
+        .filter((s) => s && typeof s.title === 'string' && typeof s.prompt === 'string')
+        .map((s) => ({ title: s.title, prompt: s.prompt }))
+    : [];
+  if (promptSuggestions.length > 0) {
+    lines.push(`promptSuggestions: ${JSON.stringify({ items: promptSuggestions })}`);
+  }
+
   lines.push('---');
   lines.push('');
   lines.push(agent.systemPrompt);
@@ -756,6 +796,7 @@ export async function createAgent(agentData: {
   icon?: string;
   color?: string;
   collections?: string[];
+  promptSuggestions?: Array<{ title: string; prompt: string }>;
 }): Promise<AgentConfig> {
   // Validate ID format
   if (!/^[a-z0-9_-]+$/.test(agentData.id)) {
@@ -841,6 +882,7 @@ export async function updateAgent(agentId: string, agentData: {
   icon?: string;
   color?: string;
   collections?: string[];
+  promptSuggestions?: Array<{ title: string; prompt: string }>;
 }): Promise<AgentConfig> {
   // Prevent editing connection agents
   if (await isConnectionAgent(agentId)) {
@@ -902,6 +944,7 @@ export async function updateAgent(agentId: string, agentData: {
     icon: agentData.icon ?? existing.icon,
     color: agentData.color ?? existing.color,
     collections: agentData.collections ?? existing.collections,
+    promptSuggestions: agentData.promptSuggestions ?? existing.promptSuggestions,
   };
 
   const content = generateAgentMarkdown(updated);
