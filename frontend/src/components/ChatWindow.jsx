@@ -5,7 +5,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { theme } from '../config/theme';
 import { sanitizeUrl, validateShareUrl } from '../utils/sanitize';
-import { AgentIcon } from './AgentPicker';
+import { AgentGlyph, AgentAvatar } from './AgentAvatar';
 import { CommandPalette } from './CommandPalette';
 import { useCommands } from '../hooks/useCommands';
 import { LinkIcon, FolderIcon, MicrophoneIcon, StopIcon, PaperclipIcon, BookIcon, DocumentIcon, TimelineIcon } from './Icons';
@@ -3694,9 +3694,18 @@ function ChatWindow({
       `}</style>
       {/* Header */}
       <div style={chatStyles.header}>
-        <div style={chatStyles.headerIcon}>
-          <AssistantIcon />
-        </div>
+        {(() => {
+          // Oben im Chat das Icon + Farbe des gewählten Agenten zeigen; bei
+          // Auto-Routing (kein spezifischer Agent) das generische Assistent-Icon.
+          const headerAgent = selectedAgentId ? agents?.find(a => a.id === selectedAgentId) : null;
+          return headerAgent
+            ? <AgentAvatar icon={headerAgent.icon} color={headerAgent.color} size={40} style={{ borderRadius: theme.borderRadius.lg, flexShrink: 0 }} />
+            : (
+              <div style={chatStyles.headerIcon}>
+                <AssistantIcon />
+              </div>
+            );
+        })()}
         <div style={chatStyles.headerText}>
           <div style={chatStyles.headerTitle}>
             {chatTitle || 'KI-Assistent'}
@@ -3910,7 +3919,7 @@ function ChatWindow({
                   <div style={chatStyles.agentBadge}>
                     {msgAgent ? (
                       <>
-                        <AgentIcon agentId={msgAgent.id} style={chatStyles.agentBadgeIcon} />
+                        <AgentGlyph icon={msgAgent.icon} color={msgAgent.color} size={14} />
                         <span>{msgAgent.name}</span>
                         {msg.routedBy === 'auto' && (
                           <span style={{ fontStyle: 'italic', opacity: 0.7 }}>(auto)</span>
@@ -4050,6 +4059,7 @@ function ChatWindow({
             onExecute={handleCommandExecute}
             inputValue={input}
             selectedAgentId={selectedAgentId}
+            agents={agents}
           />
 
           {/* Command Feedback Message */}

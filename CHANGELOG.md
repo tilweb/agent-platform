@@ -2,6 +2,18 @@
 
 ## 2026-09-02
 
+### Agent-Icon & -Farbe durchgängig im Chat
+Das gewählte Agenten-Icon samt Farbe (Katalog-`icon` + `color`) wird jetzt überall im Chat konsistent über den
+icon/farbfähigen `AgentGlyph`/`AgentAvatar` gerendert — statt des alten per-ID-Icons bzw. eines generischen
+Symbols:
+- **Linke Sidebar** (Agenten-Schnellstart über den Chats) und **Favoriten-Modal**.
+- **Chat-Header**: Icon = Icon/Farbe des gewählten Agenten (bei Auto-Routing weiterhin das generische Symbol).
+- **Nachrichten-Bubbles** (Agent-Badge) und **Command-Palette** (Agentenwechsel-Optionen; `auto` und normale
+  Commands behalten ihr Icon).
+- **Bewusst unverändert:** die Kontext-Pills über dem Eingabefeld — dort unterscheiden feste Icons/Farben die
+  Typen (Agent/Skill/Upload/Reader). (`ChatWindow.jsx`, `ChatSidebar.jsx`, `AgentFavoritesModal.jsx`,
+  `CommandPalette.jsx`.)
+
 ### Chat-Startbildschirm: persönliche Begrüßung, Beispielprompts & Hinweis unter dem Eingabefeld
 Der leere Chat wirkte generisch (Icon + „KI-Assistent" + Subline, statische Beispielfragen, gelbe Hinweisbox).
 Neu:

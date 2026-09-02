@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { theme } from '../config/theme';
 import { useCommands } from '../hooks/useCommands';
 import { getCommandIcon, SlashIcon } from './Icons';
+import { AgentGlyph } from './AgentAvatar';
 
 const styles = {
   overlay: {
@@ -160,6 +161,7 @@ export function CommandPalette({
   onExecute,
   inputValue = '',
   selectedAgentId = null,
+  agents = [],
 }) {
   const { commands, options, fetchCommands, fetchOptions, clearOptions, isLoading } = useCommands();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -395,7 +397,15 @@ export function CommandPalette({
               onMouseLeave={() => setHoveredIndex(-1)}
             >
               <div style={styles.itemIcon}>
-                {item.icon ? getCommandIcon(item.icon, { size: 16 }) : (level === 'commands' ? <SlashIcon size={16} /> : '•')}
+                {(() => {
+                  // Für Agenten-Optionen das echte Icon+Farbe des Agenten zeigen
+                  // (die „auto"-Option und normale Commands behalten ihr Icon).
+                  if (level === 'options' && activeCommand?.id === 'agent' && item.id !== 'auto') {
+                    const ag = agents.find((a) => a.id === item.id);
+                    if (ag) return <AgentGlyph icon={ag.icon} color={ag.color} size={16} />;
+                  }
+                  return item.icon ? getCommandIcon(item.icon, { size: 16 }) : (level === 'commands' ? <SlashIcon size={16} /> : '•');
+                })()}
               </div>
               <div style={styles.itemContent}>
                 <div style={styles.itemName}>

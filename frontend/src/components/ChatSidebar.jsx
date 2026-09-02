@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { theme } from '../config/theme';
 import { SearchIcon, FolderIcon, PenIcon } from './Icons';
-import { AgentIcon } from './AgentPicker';
+import { AgentGlyph } from './AgentAvatar';
 import AgentFavoritesModal from './AgentFavoritesModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -640,7 +640,7 @@ function ChatSidebar({
                 title={`Neuen Chat mit ${agent.name} starten`}
               >
                 <span style={styles.agentItemIcon}>
-                  <AgentIcon agentId={agent.id} style={{ width: 15, height: 15 }} />
+                  <AgentGlyph icon={agent.icon} color={agent.color} size={15} />
                 </span>
                 <span style={styles.agentItemName}>{agent.name}</span>
               </div>

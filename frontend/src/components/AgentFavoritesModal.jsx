@@ -8,7 +8,7 @@
 
 import { useState, useMemo } from 'react';
 import { theme } from '../config/theme';
-import { AgentIcon } from './AgentPicker';
+import { AgentGlyph } from './AgentAvatar';
 import { SearchIcon } from './Icons';
 
 const styles = {
@@ -252,7 +252,7 @@ function AgentFavoritesModal({ agents, selectedIds, onSave, onClose }) {
                     onChange={() => toggle(agent.id)}
                   />
                   <span style={styles.rowIcon}>
-                    <AgentIcon agentId={agent.id} style={{ width: 18, height: 18 }} />
+                    <AgentGlyph icon={agent.icon} color={agent.color} size={18} />
                   </span>
                   <span style={styles.rowInfo}>
                     <span style={{ ...styles.rowName, display: 'block' }}>{agent.name}</span>
