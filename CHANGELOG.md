@@ -2,6 +2,20 @@
 
 ## 2026-09-02
 
+### Übersichtskacheln kompakter + Agenten-Übersicht aufgeräumt
+Die geteilte Übersichtskachel (`ResourceCard`, genutzt von Agenten/Skills/Knowledge Base/Tabellen) war zu
+wuchtig — jetzt schlanker: **Icon-Fläche 40→32 px**, **Karten-Glyph 22→18 px** (konsistent in allen vier
+Übersichten), **Titel von `md` (Heading-Anmutung) auf `base`**. Speziell in der **Agenten-Übersicht**:
+- „Delegierbar"-Pill entfernt (auf der Übersicht ohne Mehrwert).
+- **System-Kennzeichnung nach oben neben den Namen** gezogen (wie die Rollen-Pill) → untere Badge-Zeile
+  entfällt bei System-Agenten, spart Platz.
+- Unter den Gruppen-Tabs ein **kontextbezogener Kurzhinweis** je aktiver Gruppe (Eigene/Geteilt/Gesperrt/
+  System/Alle) samt der jeweiligen Einschränkungen (Bearbeiten/Löschen/Zugriff).
+- **„Tool-Katalog"-Button** aus dem Kopf entfernt.
+- In der „Was sind Agenten?"-Hilfebox unten ein **Link zur externen Detailanleitung** (öffnet in neuem Tab;
+  URL noch Platzhalter → `AGENT_DOCS_URL`).
+- Detailansicht: Hinweis „System-Agent nicht bearbeitbar" nun **orange** (Warn-Stil) statt neutral-grau.
+
 ### Agenten-Editor: Promptvorschläge pflegen (Titel + Prompt, per Drag & Drop sortierbar)
 Neuer Bereich „Promptvorschläge" in der Einstellungssektion und im Einstellungs-Modal: Pro Agent lassen sich
 beliebig viele Vorschläge mit **Titel** (kurze Bezeichnung) und **Prompt** (gesendeter Text) anlegen, bearbeiten,

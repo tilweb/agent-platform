@@ -991,8 +991,8 @@ function SkillsPage() {
               <ResourceCard
                 key={skill.id}
                 icon={skill.hasWorkflow
-                  ? <WorkflowIcon color={theme.colors.info} size={22} />
-                  : <SkillIcon color={theme.colors.primary} size={22} />}
+                  ? <WorkflowIcon color={theme.colors.info} size={18} />
+                  : <SkillIcon color={theme.colors.primary} size={18} />}
                 iconBg={skill.hasWorkflow ? theme.colors.infoLight : theme.colors.primaryLight}
                 title={skill.name}
                 meta={`${skill.id} · v${skill.version}`}

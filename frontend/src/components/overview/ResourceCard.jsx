@@ -48,10 +48,10 @@ const styles = {
   cardHover: { borderColor: theme.colors.primary, boxShadow: theme.shadows.md },
   cardLocked: { opacity: 0.6, backgroundColor: theme.colors.background, cursor: 'default' },
   header: { display: 'flex', alignItems: 'flex-start', gap: theme.spacing.md, marginBottom: theme.spacing.sm },
-  iconBox: { width: 40, height: 40, borderRadius: theme.borderRadius.md, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  iconBox: { width: 32, height: 32, borderRadius: theme.borderRadius.md, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   titleWrap: { minWidth: 0, flex: 1 },
   titleRow: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' },
-  title: { fontSize: theme.typography.sizes.md, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, overflow: 'hidden', textOverflow: 'ellipsis' },
+  title: { fontSize: theme.typography.sizes.base, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, overflow: 'hidden', textOverflow: 'ellipsis' },
   meta: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   desc: {
     fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary,

@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { theme } from '../config/theme';
 import AccessManager from '../components/AccessManager';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/apiFetch';
 import { useProviders } from '../hooks/useProviders';
-import { LockIcon, RobotIcon, PlugIcon, PenIcon } from '../components/Icons';
+import { LockIcon, RobotIcon, PenIcon, HelpCircleIcon, LinkIcon } from '../components/Icons';
 import RoleBadge from '../components/RoleBadge';
 import ReadOnlyBanner from '../components/ReadOnlyBanner';
 import { useResourceAccess } from '../hooks/useResourceAccess';
@@ -13,12 +12,16 @@ import PageHeader from '../components/overview/PageHeader';
 import SearchInput from '../components/overview/SearchInput';
 import GroupTabs from '../components/overview/GroupTabs';
 import ResourceCard, { CardGrid } from '../components/overview/ResourceCard';
+import Badge from '../components/overview/Badge';
 import EmptyState from '../components/overview/EmptyState';
 import HelpPanel from '../components/overview/HelpPanel';
 import { deriveAccessGroups, filterBySearch, sortByName } from '../components/overview/grouping';
 import { AgentAvatar, AgentGlyph } from '../components/AgentAvatar';
 import { DEFAULT_AGENT_ICON, DEFAULT_AGENT_COLOR } from '../components/agentIcons';
 import AgentIconPicker from '../components/AgentIconPicker';
+
+// TODO(Doku): Platzhalter — durch die echte URL der externen Detailanleitung zu Agenten ersetzen.
+const AGENT_DOCS_URL = 'https://example.com/hilfe/agenten';
 
 // ==========================================
 // Styles
@@ -410,6 +413,20 @@ const styles = {
     textOverflow: 'ellipsis',
     flexShrink: 0,
   },
+  // Kontexthinweis unter den Gruppen-Tabs
+  groupHint: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: theme.spacing.sm,
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    backgroundColor: theme.colors.surfaceHover,
+    borderRadius: theme.borderRadius.md,
+    color: theme.colors.textSecondary,
+    fontSize: theme.typography.sizes.sm,
+    lineHeight: theme.typography.lineHeight.normal,
+    marginTop: `-${theme.spacing.sm}`,
+    marginBottom: theme.spacing.lg,
+  },
   // Einstellungen-Modal
   modalOverlay: {
     position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
@@ -694,11 +711,11 @@ const styles = {
   },
   systemHint: {
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.surfaceHover,
+    backgroundColor: theme.colors.warningLight,
     borderRadius: theme.borderRadius.lg,
     marginBottom: theme.spacing.lg,
     fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textMuted,
+    color: theme.colors.warning,
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing.sm,
@@ -903,7 +920,6 @@ function AgentsPage() {
   const [activeTab, setActiveTab] = useState('tools');
 
   // Overview state (Suche / Gruppen-Tab / Hilfe)
-  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [activeGroup, setActiveGroup] = useState('all');
   const [helpOpen, setHelpOpen] = useState(false);
@@ -2215,11 +2231,6 @@ function AgentsPage() {
   const activeDef = groupDefs.find((g) => g.id === activeGroup) || groupDefs[0];
   const visibleAgents = sortByName(filterBySearch(activeDef.items, search));
 
-  const secondaryBtn = {
-    ...styles.buttonSecondary,
-    display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm,
-  };
-
   return (
     <div style={styles.container}>
       <PageHeader
@@ -2228,14 +2239,9 @@ function AgentsPage() {
         onToggleHelp={() => setHelpOpen((v) => !v)}
         helpOpen={helpOpen}
         actions={(
-          <>
-            <button style={secondaryBtn} onClick={() => navigate('/tools')} title="Werkzeuge, die Agenten nutzen können">
-              <PlugIcon size={16} /> Tool-Katalog
-            </button>
-            <button style={styles.button} onClick={handleCreateNew}>
-              <PlusIcon /> Neuer Agent
-            </button>
-          </>
+          <button style={styles.button} onClick={handleCreateNew}>
+            <PlusIcon /> Neuer Agent
+          </button>
         )}
       />
 
@@ -2251,6 +2257,20 @@ function AgentsPage() {
           { term: 'Gesperrt', desc: 'Existieren, aber du hast (noch) keinen Zugriff. Zugriff bei der genannten Stelle anfragen.' },
           { term: 'System', desc: 'Fest eingebaute Agenten der Plattform — als Vorlage/Katalog nutzbar.' },
         ]}
+        footer={(
+          <a
+            href={AGENT_DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs,
+              fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium,
+              color: theme.colors.primary, textDecoration: 'none',
+            }}
+          >
+            <LinkIcon size={14} /> Ausführliche Anleitung zu Agenten
+          </a>
+        )}
       />
 
       {error && (
@@ -2270,6 +2290,26 @@ function AgentsPage() {
       </div>
 
       <GroupTabs tabs={tabs} active={activeGroup} onChange={setActiveGroup} />
+
+      {(() => {
+        // Kontextbezogener Kurzhinweis je aktiver Gruppe — was die Gruppe umfasst
+        // und welche Einschränkungen (Bearbeiten/Löschen/Zugriff) damit einhergehen.
+        const GROUP_HINTS = {
+          all: 'Alle für dich sichtbaren Agenten zusammen — eigene, geteilte, gesperrte und System-Agenten.',
+          own: 'Agenten, die dir gehören: bearbeiten, Berechtigungen vergeben und löschen ist möglich.',
+          shared: 'Von anderen für dich freigegeben: je nach Rolle nur ansehen (Betrachter) oder mitbearbeiten (Bearbeiter) — Löschen und Rechtevergabe bleiben dem Owner vorbehalten.',
+          locked: 'Nicht für dich freigegeben: lassen sich nicht öffnen oder nutzen — Zugriff bei der genannten Stelle anfragen.',
+          system: 'Fest eingebaute Agenten der Plattform: lassen sich nicht bearbeiten oder löschen — nutzbar und als Vorlage ansehbar.',
+        };
+        const hint = GROUP_HINTS[activeGroup];
+        if (!hint) return null;
+        return (
+          <div style={styles.groupHint}>
+            <HelpCircleIcon size={16} color={theme.colors.textMuted} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span><strong style={{ color: theme.colors.text, fontWeight: theme.typography.weights.semibold }}>{activeDef.label}</strong> · {hint}</span>
+          </div>
+        );
+      })()}
 
       {visibleAgents.length === 0 ? (
         <EmptyState
@@ -2295,8 +2335,6 @@ function AgentsPage() {
             const sharedRole = !agent.system && agent.role && agent.role !== 'owner' ? agent.role : null;
             const badges = [];
             if (isInactive) badges.push({ label: 'Inaktiv', variant: 'muted' });
-            if (agent.delegatable && !isInactive) badges.push({ label: 'Delegierbar', variant: 'success' });
-            if (agent.system) badges.push({ label: 'System', variant: 'primary' });
             // Gewähltes Icon/Farbe (falls gesetzt), sonst Fallback auf die per-ID-Verdrahtung.
             const glyphColor = agent.color || colors.color;
             const glyphBg = agent.color ? `${agent.color}22` : colors.bg;
@@ -2304,11 +2342,17 @@ function AgentsPage() {
               <ResourceCard
                 key={agent.id}
                 icon={agent.icon
-                  ? <AgentGlyph icon={agent.icon} size={22} color={locked ? theme.colors.textMuted : glyphColor} />
-                  : <AgentIcon agentId={agent.id} color={locked ? theme.colors.textMuted : colors.color} size={22} />}
+                  ? <AgentGlyph icon={agent.icon} size={18} color={locked ? theme.colors.textMuted : glyphColor} />
+                  : <AgentIcon agentId={agent.id} color={locked ? theme.colors.textMuted : colors.color} size={18} />}
                 iconBg={glyphBg}
                 title={agent.name}
-                titleAccessory={sharedRole ? <RoleBadge role={sharedRole} size="sm" /> : null}
+                titleAccessory={
+                  agent.system
+                    ? <Badge variant="primary">System</Badge>
+                    : sharedRole
+                      ? <RoleBadge role={sharedRole} size="sm" />
+                      : null
+                }
                 description={typeof agent.description === 'string' ? agent.description : ''}
                 badges={badges}
                 locked={locked}

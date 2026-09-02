@@ -340,7 +340,7 @@ function TablesPage() {
                 key={table.id}
                 icon={table.icon
                   ? <span style={{ fontSize: 20, lineHeight: 1 }}>{table.icon}</span>
-                  : <TableIcon size={22} color={theme.colors.primary} />}
+                  : <TableIcon size={18} color={theme.colors.primary} />}
                 iconBg={theme.colors.primaryLight}
                 title={table.name}
                 meta={`${cols} ${cols === 1 ? 'Spalte' : 'Spalten'} · ${rows} ${rows === 1 ? 'Zeile' : 'Zeilen'}`}

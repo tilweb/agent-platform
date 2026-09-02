@@ -1968,7 +1968,7 @@ function KnowledgeBasePage() {
             return (
               <ResourceCard
                 key={col.id}
-                icon={<KnowledgeIcon color={locked ? theme.colors.textMuted : theme.colors.primary} size={22} />}
+                icon={<KnowledgeIcon color={locked ? theme.colors.textMuted : theme.colors.primary} size={18} />}
                 iconBg={theme.colors.primaryLight}
                 title={col.name}
                 titleAccessory={sharedRole ? <RoleBadge role={sharedRole} size="sm" /> : null}
