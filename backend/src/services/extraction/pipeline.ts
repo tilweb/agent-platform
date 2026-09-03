@@ -46,6 +46,8 @@ const ESCALATION_PATH: Record<StrategyId, StrategyId | null> = {
   'long-text-chunked': null,
   'vision-per-page': null,
   'hybrid': null,
+  // Deterministisch, kein LLM-Kontext → keine Eskalation (terminal).
+  'template-labelmap': null,
 };
 
 const noopEmit: ProgressEmit = () => undefined;

@@ -387,13 +387,13 @@ export const batchExportFunction: PublicFunction<
 > = {
   id: 'batch.export',
   description:
-    'Liefert die Ergebnisse eines Stapel-Laufs als Excel-Datei (base64). Format "flat" (Default) gibt EIN Blatt mit einer Zeile je Position und wiederholten Belegdaten — direkt zeilenweise einlesbar; "grouped" gibt ein Hauptblatt je Dokument plus ein Zusatzblatt je Positionsliste.',
+    'Liefert die Ergebnisse eines Stapel-Laufs als Excel-Datei (base64). Format "flat" (Default) gibt EIN Blatt mit einer Zeile je Position und wiederholten Belegdaten — direkt zeilenweise einlesbar; "flat-wide" gibt EINE Zeile je Dokument mit den Positionslisten als nummerierten Spalten (ein Datensatz je Beleg); "grouped" gibt ein Hauptblatt je Dokument plus ein Zusatzblatt je Positionsliste.',
   input: {
     type: 'object',
     properties: {
       project_id: { type: 'string', minLength: 1 },
       run_id: { type: 'string', minLength: 1 },
-      format: { type: 'string', enum: ['flat', 'grouped'], description: 'Default: flat' },
+      format: { type: 'string', enum: ['flat', 'flat-wide', 'grouped'], description: 'Default: flat' },
     },
     required: ['project_id', 'run_id'],
   },
@@ -414,8 +414,15 @@ export const batchExportFunction: PublicFunction<
     const result = await getBatchRun(input.project_id, input.run_id);
     if (!result) throw new PublicFunctionError(`Lauf "${input.run_id}" nicht gefunden`, 404, 'not_found');
 
-    const format: ExportFormat = input.format === 'grouped' ? 'grouped' : 'flat';
+    const format: ExportFormat =
+      input.format === 'grouped' ? 'grouped' : input.format === 'flat-wide' ? 'flat-wide' : 'flat';
     const sections = buildBatchExportSections(project, result.files, format);
+    const formatLabel = format === 'grouped'
+      ? 'gruppiert'
+      : format === 'flat-wide'
+        ? 'breit (eine Zeile je Dokument, Listen als Spalten)'
+        : 'flach (eine Zeile je Position)';
+    const suffix = format === 'flat' ? '-flach' : format === 'flat-wide' ? '-breit' : '';
     const buffer = await generateDocument(
       {
         title: `Batch-Extraktion — ${project.name}`,
@@ -423,7 +430,7 @@ export const batchExportFunction: PublicFunction<
           Projekt: project.name,
           Dokumente: String(result.files.length),
           Lauf: input.run_id,
-          Format: format === 'flat' ? 'flach (eine Zeile je Position)' : 'gruppiert',
+          Format: formatLabel,
         },
         sections,
       },
@@ -431,7 +438,7 @@ export const batchExportFunction: PublicFunction<
     );
 
     return {
-      filename: `batch-${input.run_id}${format === 'flat' ? '-flach' : ''}.xlsx`,
+      filename: `batch-${input.run_id}${suffix}.xlsx`,
       content_base64: Buffer.from(buffer as unknown as Uint8Array).toString('base64'),
       rows: countExportRows(sections),
       format,

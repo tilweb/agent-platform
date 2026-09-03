@@ -22,6 +22,8 @@ export interface ProjectItemField {
   description?: string;
   /** Kontrollierte Werteliste (Welle 6) — auch fuer Positions-Spalten (z.B. Einheit). */
   catalog?: FieldCatalog;
+  /** Anker-Aliasse fuer deterministische Strategien (template-labelmap). */
+  aliases?: string[];
 }
 
 export interface ProjectField {
@@ -33,6 +35,8 @@ export interface ProjectField {
   item_fields?: Record<string, ProjectItemField>;
   /** Kontrollierte Werteliste (Welle 6); auf Listen-Feldern selbst sinnlos. */
   catalog?: FieldCatalog;
+  /** Anker-Aliasse fuer deterministische Strategien (template-labelmap). */
+  aliases?: string[];
 }
 
 // ============== Kontrollierte Wertelisten (Welle 6) ==============

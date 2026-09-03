@@ -41,7 +41,7 @@ import { generateWebhookSecret, isDeliverableUrl } from '../extraction/learning/
 import { createTable, addRow } from '../tables';
 import type { ColumnDefinition, ColumnType } from '../tables/types';
 import { generateDocument } from '../services/documentGenerator';
-import { buildBatchExportSections, type ExportFormat } from '../extraction/learning/export-xlsx';
+import { buildBatchExportSections, parseExportFormat, sectionToCsv, type ExportFormat } from '../extraction/learning/export-xlsx';
 
 export const extractionProjectRoutes = new Hono();
 
@@ -612,9 +612,15 @@ extractionProjectRoutes.post('/projects/:id/batches/:runId/files/:fileId/learn',
 extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c) => {
   const projectId = c.req.param('id');
   const runId = c.req.param('runId');
-  // `?format=flat` liefert EIN Blatt mit einer Zeile je Position und
-  // wiederholten Kopfdaten — das Format, das nachgelagerte Systeme erwarten.
-  const format: ExportFormat = c.req.query('format') === 'flat' ? 'flat' : 'grouped';
+  // `?format=flat` = eine Zeile je Position; `flat-wide` = eine Zeile je
+  // Dokument mit den Listen als nummerierten Spalten; sonst gruppiert.
+  const format = parseExportFormat(c.req.query('format'));
+  const suffix = format === 'flat' ? '-flach' : format === 'flat-wide' ? '-breit' : '';
+  const formatLabel = format === 'flat'
+    ? 'flach (eine Zeile je Position)'
+    : format === 'flat-wide'
+      ? 'breit (eine Zeile je Dokument, Listen als Spalten)'
+      : 'gruppiert';
 
   const project = await getProject(projectId);
   if (!project) return c.json({ error: 'Profil nicht gefunden' }, 404);
@@ -629,7 +635,7 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c
         Projekt: project.name,
         Dokumente: String(result.files.length),
         Lauf: runId,
-        Format: format === 'flat' ? 'flach (eine Zeile je Position)' : 'gruppiert',
+        Format: formatLabel,
       },
       sections,
     },
@@ -638,7 +644,34 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c
 
   return c.body(buffer as unknown as ArrayBuffer, 200, {
     'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'Content-Disposition': `attachment; filename="batch-${runId}${format === 'flat' ? '-flach' : ''}.xlsx"`,
+    'Content-Disposition': `attachment; filename="batch-${runId}${suffix}.xlsx"`,
+  });
+});
+
+/**
+ * GET /projects/:id/batches/:runId/export.csv — Ergebnistabelle als CSV.
+ * `?format=flat-wide` (Default hier) = eine Zeile je Dokument, Listen als
+ * nummerierte Spalten; `flat` = eine Zeile je Position. `;`-getrennt (DE-Excel).
+ */
+extractionProjectRoutes.get('/projects/:id/batches/:runId/export.csv', async (c) => {
+  const projectId = c.req.param('id');
+  const runId = c.req.param('runId');
+  const raw = c.req.query('format');
+  const format: ExportFormat = raw === 'flat' ? 'flat' : 'flat-wide';
+
+  const project = await getProject(projectId);
+  if (!project) return c.json({ error: 'Profil nicht gefunden' }, 404);
+  const result = await getBatchRun(projectId, runId);
+  if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
+
+  // flat/flat-wide liefern genau EINE Section → direkt zu CSV serialisieren.
+  const [section] = buildBatchExportSections(project, result.files, format);
+  const csv = section ? sectionToCsv(section) : '';
+  const suffix = format === 'flat' ? '-flach' : '-breit';
+
+  return c.body(csv, 200, {
+    'Content-Type': 'text/csv; charset=utf-8',
+    'Content-Disposition': `attachment; filename="batch-${runId}${suffix}.csv"`,
   });
 });
 

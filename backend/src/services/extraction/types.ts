@@ -23,7 +23,8 @@ export type StrategyId =
   | 'single-pass'
   | 'long-text-chunked'
   | 'vision-per-page'
-  | 'hybrid';
+  | 'hybrid'
+  | 'template-labelmap';
 
 export type MergeStrategyId =
   | 'first-non-null'

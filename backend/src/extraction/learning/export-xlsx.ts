@@ -16,7 +16,7 @@
 import type { BatchFileSummary } from './batch-runs';
 import type { ExtractionProject, ProjectField, SegmentInstance, SegmentTypeDef } from './types';
 
-export type ExportFormat = 'grouped' | 'flat';
+export type ExportFormat = 'grouped' | 'flat' | 'flat-wide';
 
 export interface DocumentSection {
   title: string;
@@ -97,6 +97,68 @@ function buildFlatSection(project: ExtractionProject, files: BatchFileSummary[])
   }
 
   return { title: 'Positionen', type: 'table', content: { headers, rows } };
+}
+
+/**
+ * Breites flaches Blatt: EINE Zeile je Dokument, jede Positionsliste in
+ * NUMMERIERTE Spalten aufgefaltet (Instanz 1..max ueber den Batch). Genau die
+ * Form „ein Datensatz je Beleg, alle Werte als Spalten", die ein CSV/Excel-Import
+ * fuer Massenverarbeitung erwartet (GMBX: ein Bescheid = eine Zeile, Eigentuemer
+ * als E1…/E2…-Spalten). Anders als `flat` multipliziert es keine Zeilen und
+ * faltet ALLE Listen (nicht nur die erste) auf.
+ */
+function buildFlatWideSection(project: ExtractionProject, files: BatchFileSummary[]): DocumentSection {
+  const scalars = scalarFields(project);
+  const lists = listFields(project);
+
+  // Max. Instanzen je Liste ueber den gesamten Batch → Spaltenanzahl.
+  const maxCount = new Map<string, number>();
+  for (const [lid] of lists) {
+    let m = 0;
+    for (const file of files) {
+      const arr = file.data?.[lid];
+      if (Array.isArray(arr)) m = Math.max(m, arr.length);
+    }
+    maxCount.set(lid, m);
+  }
+
+  const headers = [
+    'Datei', 'Status', 'Pruefung', 'Befunde',
+    ...scalars.map(([fid, f]) => f.label || fid),
+  ];
+  for (const [lid, lf] of lists) {
+    const listLabel = lf.label || lid;
+    const itemEntries = Object.entries(lf.item_fields ?? {});
+    headers.push(`${listLabel} (Anzahl)`);
+    for (let n = 1; n <= (maxCount.get(lid) ?? 0); n += 1) {
+      for (const [iid, itf] of itemEntries) headers.push(`${listLabel} ${n} – ${itf.label || iid}`);
+    }
+  }
+
+  const rows: string[][] = [];
+  for (const file of files) {
+    const befunde = (file.validations ?? []).filter((v) => v.severity !== 'info');
+    const row = [
+      file.filename,
+      file.status,
+      file.reviewStatus ? (REVIEW_LABEL[file.reviewStatus] ?? file.reviewStatus) : '',
+      befunde.length > 0 ? befunde.map((v) => v.message).join(' | ') : (file.error ?? ''),
+      ...scalars.map(([fid]) => cellString(file.data?.[fid])),
+    ];
+    for (const [lid, lf] of lists) {
+      const itemEntries = Object.entries(lf.item_fields ?? {});
+      const arr = Array.isArray(file.data?.[lid]) ? (file.data![lid] as unknown[]) : [];
+      row.push(String(arr.length));
+      for (let n = 1; n <= (maxCount.get(lid) ?? 0); n += 1) {
+        const inst = arr[n - 1];
+        const obj = inst && typeof inst === 'object' ? (inst as Record<string, unknown>) : {};
+        for (const [iid] of itemEntries) row.push(cellString(obj[iid]));
+      }
+    }
+    rows.push(row);
+  }
+
+  return { title: 'Datensaetze', type: 'table', content: { headers, rows } };
 }
 
 /** Bisheriges Format: Hauptblatt + je Listen-Feld ein Zusatzblatt. */
@@ -244,11 +306,31 @@ export function buildBatchExportSections(
   // Segment-Profile (Welle 10): eigene Aufbereitung — die Feld-Spalten liegen
   // in den Segmenttypen, nicht in project.fields.
   if (project.segments && Object.keys(project.segments).length > 0) {
-    return format === 'flat'
-      ? [buildSegmentSection(project, files)]
-      : buildSegmentGroupedSections(project, files);
+    // Segment-Profile haben keine flat-wide-Form (Felder liegen in den Typen) —
+    // flach faellt auf das Segment-Blatt zurueck.
+    return format === 'grouped'
+      ? buildSegmentGroupedSections(project, files)
+      : [buildSegmentSection(project, files)];
   }
+  if (format === 'flat-wide') return [buildFlatWideSection(project, files)];
   return format === 'flat' ? [buildFlatSection(project, files)] : buildGroupedSections(project, files);
+}
+
+/**
+ * Serialisiert EINE Section zu CSV (Default `;`-Trenner für DE-Excel, UTF-8-BOM).
+ * Fuer flat/flat-wide gibt es genau eine Section — ideal fuer den CSV-Download.
+ */
+export function sectionToCsv(section: DocumentSection, delimiter = ';'): string {
+  const needsQuote = new RegExp(`["\\r\\n${delimiter === ';' ? ';' : ','}]`);
+  const esc = (v: string): string => (needsQuote.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const lines = [section.content.headers.map(esc).join(delimiter)];
+  for (const r of section.content.rows) lines.push(r.map(esc).join(delimiter));
+  return '﻿' + lines.join('\r\n');
+}
+
+/** Normalisiert einen Query-Param zu einem gueltigen ExportFormat. */
+export function parseExportFormat(raw: string | undefined): ExportFormat {
+  return raw === 'flat' || raw === 'flat-wide' ? raw : 'grouped';
 }
 
 /** Zeilenzahl des Exports (für Meldungen/API-Antwort). */

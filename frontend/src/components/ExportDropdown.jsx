@@ -102,6 +102,30 @@ const FORMAT_CONFIG = {
     color: '#107C41',
     bgColor: '#E7F5EF',
   },
+  xlsx_wide: {
+    label: 'Excel breit (.xlsx)',
+    description: 'Eine Zeile je Dokument, Listen als nummerierte Spalten',
+    color: '#107C41',
+    bgColor: '#E7F5EF',
+  },
+  csv: {
+    label: 'CSV (.csv)',
+    description: 'Kommagetrennte Werte',
+    color: '#0F766E',
+    bgColor: '#E6F4F1',
+  },
+  csv_wide: {
+    label: 'CSV breit (.csv)',
+    description: 'Eine Zeile je Dokument, Listen als nummerierte Spalten',
+    color: '#0F766E',
+    bgColor: '#E6F4F1',
+  },
+  json: {
+    label: 'JSON (.json)',
+    description: 'Rohdaten je Dokument',
+    color: '#B45309',
+    bgColor: '#FEF3E2',
+  },
   pdf: {
     label: 'PDF (.pdf)',
     description: 'Adobe PDF Dokument',

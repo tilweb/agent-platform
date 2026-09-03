@@ -1,5 +1,61 @@
 # Changelog
 
+## 2026-09-03
+
+### Document Processing: GMBX-Massen-Extraktion (Grundsteuermessbescheide) — G1+G2
+Neuer Kundenfall: Grundsteuermessbescheide (GMBX/ELSTER) in Masse (25.000/Gemeinde) nach CSV/Excel,
+eine Zeile je Bescheid. Befund: die Bescheide sind **born-digital** (jsPDF aus ELSTER-XML), sauberer
+Textlayer, strikte Label→Wert-Struktur — **kein OCR/Vision/LLM pro Dokument** nötig.
+- **Neue Extraktions-Strategie `template-labelmap`** (`services/extraction/strategies/`): deterministisch,
+  `llmCalls: 0`, Konfidenz 1.0 bei Label-Beleg. Textquelle ist **layout-erhaltend** (`pdftotext -layout`
+  auf `rawBuffer`) statt des linearisierenden Markitdown/Docling-Markdowns. Ankert an den Feld-`label`s
+  des Profils (nicht an den verschiebbaren Abschnittsnummern); wiederholbare Blöcke = `list`-Felder,
+  eine neue Instanz je Abschnitts-Header „N – <Listenlabel>". Kern-Parser als reine Funktion
+  (`parseLabelmap`) für Unit-Tests herausgelöst. Terminal (keine Auto-Eskalation).
+- **GMBX-Profil** (`extraction/templates/grundsteuer-gmbx.ts`): Kopf/Lage/Zerlegung als flache Felder,
+  Eigentümer als `list`-Feld (1–8 Instanzen), Datum→ISO, Messbetrag als Cent-Ganzzahl. Als Factory
+  (Seed via `createProject` **oder** DB-frei im Test).
+- **Feld-Aliasse** (`FieldDefinition.aliases`, `ProjectField`/`ProjectItemField`): Anker-Alternativen
+  für mehrzeilige Labels und Label-Drift über Formular-Versionen. Durch den Adapter durchgereicht,
+  von LLM-Strategien ignoriert.
+- **Verifiziert gegen 341 echte Bescheide** (in der Engine, nicht nur Prototyp): 341/341 Kernfelder,
+  **0/341** Abweichung Eigentümer-Anzahl, 0 unbekannte Labels, **~9 ms/Bescheid** inkl. pdftotext
+  (Ist-Regex-Lösung: 12 s → ~1000×). 5 Unit-Tests; gesamte Extraction-Suite 247/247 grün.
+- Frontend: `template-labelmap` als Strategie-Option im Projekt-Editor.
+- Konzept + Feldkatalog + Wellenplan: `docs/grundsteuer-gmbx-extraktion-2026-09-03.md`.
+
+### Document Processing: Export „eine Zeile je Dokument" + CSV — G4
+Neue Export-Form für die Massen-Extraktion (`extraction/learning/export-xlsx.ts`):
+- **`flat-wide`**: EIN Blatt, **eine Zeile je Dokument**, jede Positionsliste in **nummerierte Spalten**
+  aufgefaltet (Instanz 1..Batch-Max, z.B. „Eigentümer 1 – Nachname" … „Eigentümer 8 – …") plus eine
+  „(Anzahl)"-Spalte. Faltet alle Listen (nicht nur die erste), multipliziert keine Zeilen.
+- **CSV-Ausgabe** (`sectionToCsv`, `;`-getrennt, UTF-8-BOM für Excel-DE) + neuer Endpunkt
+  `GET …/batches/:runId/export.csv?format=flat-wide|flat`. `export.xlsx` akzeptiert nun zusätzlich
+  `?format=flat-wide`. Public-API `batch.export` um `flat-wide` erweitert (Parität).
+- Frontend: Export-Menü um „Excel breit", „CSV breit" und die zuvor unkonfigurierten „CSV"/„JSON"
+  erweitert (`ExportDropdown`).
+- Verifiziert E2E über die 341 Bescheide: **341 Zeilen · 169 Spalten** (E1–E8 × 16 Owner-Spalten),
+  8-Eigentümer-Fall korrekt, BOM gesetzt. +6 Unit-Tests (flat-wide, CSV-Quoting, Format-Parsing);
+  Extraction-Suite 251/251 grün.
+
+### Document Processing: Konverter-Umgehung für `template-labelmap` (Live-Durchsatz)
+Der generische Ingest rief für JEDES PDF best-effort den Markitdown-Konverter (HTTP zu Adacor,
+gemessen **~2,9 s/Datei**) — auch für `template-labelmap`, das diesen Text gar nicht nutzt (es fährt
+`pdftotext` auf dem `rawBuffer`). Dominierte den Live-Pfad zu ~100 %.
+- **`ingest(source, { skipPdfConvert })`** überspringt den Markitdown-Call; `extract()` setzt das Flag
+  bei Strategie `template-labelmap` und füllt `document_text` günstig aus `pdftotext` (~10 ms).
+- Geteilte **`pdfToLayoutText`** in `services/extraction/pdf.ts` (poppler), genutzt von Strategie + Ingest.
+- **Gemessen:** voller `extract()`-Live-Pfad **~2.919 ms → ~33 ms** je Bescheid (~**88×**); ganzer
+  8er-Batch inkl. DB-Persistenz **266 ms**. 341-Regression unverändert (0/341), Suite 251/251 grün.
+
+### Document Processing: GMBX-Profil geseedet + Live-Durchklick
+- **Seed-Skript** `backend/scripts/seed-grundsteuer-gmbx.ts` (idempotent, `createProject`) — legt das
+  GMBX-Profil in der DB an (37 Felder, 1 Liste, Strategie `template-labelmap`).
+- **Live verifiziert** gegen das laufende Backend/DB: echter Batch über den vollen Service-Layer
+  (`runBatchExtraction` → `extract` → Konverter → `template-labelmap`) — 8/8 completed, 8 auto_ok,
+  0 LLM-Calls; `flat-wide`-CSV korrekt (Owner-Spalten bis zur Batch-Max-Anzahl, pro Zeile richtige
+  Eigentümer-Zahl). Der Lauf ist in der UI unter dem Profil sichtbar.
+
 ## 2026-09-02
 
 ### Agenten-Favoriten-Modal: alphabetisch sortiert

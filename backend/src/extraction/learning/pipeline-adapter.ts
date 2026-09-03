@@ -109,6 +109,7 @@ function buildProfile(project: ExtractionProject, guidelines: string): Extractio
           // im Function-Schema (Vision-Kollaps-Risiko). UI-Marker bleibt erhalten.
           required: false,
           label: itemField.label,
+          ...(itemField.aliases ? { aliases: itemField.aliases } : {}),
         };
         // Beschreibung + kontrollierte Werteliste (Welle 6) landen im selben
         // Hint — beide Prompt-Bauer (Function-Schema und Vision-JSON) rendern ihn.
@@ -136,6 +137,7 @@ function buildProfile(project: ExtractionProject, guidelines: string): Extractio
       // nicht in die Extraktion ein.
       required: false,
       label: field.label,
+      ...(field.aliases ? { aliases: field.aliases } : {}),
     };
     const hint = [field.description, fieldCatalogHint(field)].filter(Boolean).join(' ');
     if (hint) def.hint = hint;

@@ -197,3 +197,31 @@ export async function countPdfPages(pdfBuffer: Buffer): Promise<number> {
     }
   }
 }
+
+/**
+ * Layout-erhaltender Text eines PDFs via `pdftotext -layout` (poppler-utils,
+ * gleiche Paketfamilie wie pdftocairo). Behaelt die zweispaltige Label/Wert-
+ * Struktur born-digitaler Formulare bei — anders als der linearisierende
+ * Markitdown/Docling-Markdown. Quelle: stdin; Ausgabe: stdout.
+ *
+ * Wirft `PdfRenderError`, wenn `pdftotext` nicht im PATH ist oder scheitert.
+ */
+export async function pdfToLayoutText(pdfBuffer: Buffer): Promise<string> {
+  let proc;
+  try {
+    proc = Bun.spawn(['pdftotext', '-layout', '-', '-'], {
+      stdin: pdfBuffer,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+  } catch (err) {
+    throw new PdfRenderError('`pdftotext` (poppler-utils) nicht im PATH.', err);
+  }
+  const text = await new Response(proc.stdout).text();
+  const code = await proc.exited;
+  if (code !== 0) {
+    const stderr = await new Response(proc.stderr).text();
+    throw new PdfRenderError(`pdftotext scheiterte (Code ${code}): ${stderr.slice(0, 200)}`);
+  }
+  return text;
+}

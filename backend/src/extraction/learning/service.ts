@@ -28,11 +28,23 @@ import { extname, resolve } from 'path';
 import { EXTRACTION_SAMPLING } from '../../services/extraction/extract-call';
 import { extractWithSegments } from '../segmentation/segment-extract';
 import { convertDocument } from '../../services/documentConverter';
+import { pdfToLayoutText } from '../../services/extraction/pdf';
 
 
 // ============== Document Ingestion (reused from existing pipeline) ==============
 
-export async function ingest(source: ExtractionSource): Promise<{
+export async function ingest(
+  source: ExtractionSource,
+  opts: {
+    /**
+     * PDF-Konverter (Markitdown, ~Sekunden je Datei via HTTP) ueberspringen.
+     * Fuer deterministische, textlayer-basierte Strategien (template-labelmap),
+     * die `PreparedFile.text` gar nicht nutzen, sondern `pdftotext` auf dem
+     * rawBuffer fahren — der Markitdown-Text waere reiner Overhead.
+     */
+    skipPdfConvert?: boolean;
+  } = {},
+): Promise<{
   text?: string;
   imageBase64?: string;
   imageMimeType?: string;
@@ -96,12 +108,14 @@ export async function ingest(source: ExtractionSource): Promise<{
       if (ext === '.pdf') {
         const rawBuffer = await readFile(filePath);
         let text = '';
-        try {
-          // Zentraler Konverter (W8), best-effort: die Vision-Extraktion darf
-          // an einem Konverter-Ausfall nicht scheitern.
-          text = await convertDocument({ buffer: rawBuffer, filename: source.filename }, { timeoutMs: 15000 });
-        } catch (err) {
-          console.warn('[Extraction] Konverter nicht erreichbar fuer PDF — fahre nur mit Vision fort:', err instanceof Error ? err.message : err);
+        if (!opts.skipPdfConvert) {
+          try {
+            // Zentraler Konverter (W8), best-effort: die Vision-Extraktion darf
+            // an einem Konverter-Ausfall nicht scheitern.
+            text = await convertDocument({ buffer: rawBuffer, filename: source.filename }, { timeoutMs: 15000 });
+          } catch (err) {
+            console.warn('[Extraction] Konverter nicht erreichbar fuer PDF — fahre nur mit Vision fort:', err instanceof Error ? err.message : err);
+          }
         }
         return { text, rawBuffer, rawMimeType: 'application/pdf' };
       }
@@ -304,9 +318,13 @@ export async function extract(
       throw new Error(`Projekt "${projectId}" nicht gefunden`);
     }
 
-    // Ingest document
+    // Ingest document. Deterministische Textlayer-Strategien (template-labelmap)
+    // nutzen `PreparedFile.text` (Markitdown) nicht — den ~sekundenlangen
+    // Konverter-HTTP-Call daher ueberspringen und document_text unten guenstig
+    // aus `pdftotext` fuellen.
+    const skipPdfConvert = project.extraction?.strategy === 'template-labelmap';
     console.log(`[Extraction] Ingesting document for project ${projectId}...`);
-    const ingested = await ingest(source);
+    const ingested = await ingest(source, { skipPdfConvert });
 
     // PreparedFile(s) fuer die Pipeline bauen. document_text wird zusaetzlich
     // gesichert — der Learning-Loop (train/Few-Shot) braucht den Dokumenttext.
@@ -317,7 +335,17 @@ export async function extract(
       // Markitdown-Text (falls vorhanden) bleibt als document_text fuer den
       // Learning-Loop; die eigentliche Extraktion macht die Pipeline ueber die
       // gerenderten Seiten.
-      documentText = ingested.text ?? '';
+      // Konverter uebersprungen (born-digital, template-labelmap): document_text
+      // guenstig aus dem Textlayer (~10 ms via pdftotext) statt aus Markitdown.
+      if (skipPdfConvert && !ingested.text && ingested.rawMimeType === 'application/pdf') {
+        try {
+          documentText = await pdfToLayoutText(ingested.rawBuffer);
+        } catch {
+          documentText = '';
+        }
+      } else {
+        documentText = ingested.text ?? '';
+      }
       files.push({
         filename: 'document',
         text: ingested.text ?? '',

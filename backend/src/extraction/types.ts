@@ -11,6 +11,13 @@ export interface FieldDefinition {
   required?: boolean;
   label?: string;
   hint?: string;
+  /**
+   * Alternative Labels, an denen deterministische Strategien (template-labelmap)
+   * denselben Wert erkennen — fuer mehrzeilige Labels (Anker auf der
+   * wert-tragenden Zeile) und Label-Drift ueber Formular-Versionen/Bundeslaender.
+   * Von LLM-Strategien ignoriert.
+   */
+  aliases?: string[];
 }
 
 export interface ArrayGroupDefinition {

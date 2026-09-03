@@ -451,6 +451,7 @@ const EXTRACTION_STRATEGIES = [
   { value: 'single-pass', label: 'Single-Pass — ein Durchlauf, kurze Dokumente' },
   { value: 'long-text-chunked', label: 'Long-Text — Chunking fuer lange Dokumente' },
   { value: 'vision-per-page', label: 'Vision-per-Page — Scans, Fotos, Handschrift' },
+  { value: 'template-labelmap', label: 'Template — feste Formulare (born-digital), ohne KI, sehr schnell' },
 ];
 
 // ============== Main Component ==============
@@ -2412,19 +2413,30 @@ function BatchTab({ project, onProjectUpdated }) {
    * wiederholten Belegdaten — das Format, das nachgelagerte Systeme (RPA,
    * ERP-Import) zeilenweise einlesen.
    */
-  async function exportXlsx(flach = false) {
-    const url = `${base}/${activeRun.run.id}/export.xlsx${flach ? '?format=flat' : ''}`;
-    const res = await apiGet(url);
-    if (res.ok) triggerDownload(await res.blob(), `batch-${activeRun.run.id}${flach ? '-flach' : ''}.xlsx`);
+  async function exportXlsx(variant = '') {
+    // '' = gruppiert, 'flat' = eine Zeile je Position, 'flat-wide' = eine Zeile je Dokument.
+    const q = variant ? `?format=${variant}` : '';
+    const suffix = variant === 'flat' ? '-flach' : variant === 'flat-wide' ? '-breit' : '';
+    const res = await apiGet(`${base}/${activeRun.run.id}/export.xlsx${q}`);
+    if (res.ok) triggerDownload(await res.blob(), `batch-${activeRun.run.id}${suffix}.xlsx`);
+  }
+
+  // Server-CSV: eine Zeile je Dokument, Listen als nummerierte Spalten (born-digital
+  // Massen-Extraktion). Der Client-CSV (exportCsv) serialisiert Listen als Blob.
+  async function exportCsvWide() {
+    const res = await apiGet(`${base}/${activeRun.run.id}/export.csv?format=flat-wide`);
+    if (res.ok) triggerDownload(await res.blob(), `batch-${activeRun.run.id}-breit.csv`);
   }
 
   async function handleExport(format) {
     setLoadingFormat(format);
     try {
       if (format === 'csv') exportCsv();
+      else if (format === 'csv_wide') await exportCsvWide();
       else if (format === 'json') exportJson();
-      else if (format === 'xlsx') await exportXlsx(false);
-      else if (format === 'xlsx_flat') await exportXlsx(true);
+      else if (format === 'xlsx') await exportXlsx('');
+      else if (format === 'xlsx_flat') await exportXlsx('flat');
+      else if (format === 'xlsx_wide') await exportXlsx('flat-wide');
     } finally {
       setLoadingFormat(null);
     }
@@ -2582,7 +2594,7 @@ function BatchTab({ project, onProjectUpdated }) {
                 <TableIcon size={14} /> In Tabelle schreiben
               </button>
               <ExportDropdown
-                formats={['xlsx', 'xlsx_flat', 'csv', 'json']}
+                formats={['xlsx', 'xlsx_wide', 'xlsx_flat', 'csv_wide', 'csv', 'json']}
                 onExport={handleExport}
                 isLoading={!!loadingFormat}
                 loadingFormat={loadingFormat}

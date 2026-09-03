@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildBatchExportSections, cellString, countExportRows, sanitizeSheetName } from './export-xlsx';
+import { buildBatchExportSections, cellString, countExportRows, sanitizeSheetName, sectionToCsv, parseExportFormat } from './export-xlsx';
 import type { BatchFileSummary } from './batch-runs';
 import type { ExtractionProject } from './types';
 
@@ -167,5 +167,57 @@ describe('Segment-Profile (Welle 10.4)', () => {
     expect(sections[0]!.content.rows[0]![2]).toContain('Anmeldeformular (S.1-2)');
     expect(sections[1]!.sheet).toBe('Segmente');
     expect(sections[1]!.content.rows).toHaveLength(4);
+  });
+});
+
+describe('breites Format (flat-wide)', () => {
+  const zwei = file({ id: 'bf2', filename: 'zwei.pdf', data: {
+    lieferscheinnummer: 'LS-2', lieferdatum: '2026-07-02',
+    positionen: [{ artikelnummer: 'B-1', menge: 1 }],
+  } });
+
+  test('eine Zeile je Dokument, Liste als nummerierte Spalten (Batch-Max)', () => {
+    const [sheet] = buildBatchExportSections(project, [file(), zwei], 'flat-wide');
+    const { headers, rows } = sheet!.content;
+    // Batch-Max Positionen = 2 → Instanz-1- und Instanz-2-Spalten.
+    expect(headers).toEqual([
+      'Datei', 'Status', 'Pruefung', 'Befunde', 'Lieferscheinnummer', 'Lieferdatum',
+      'Positionen (Anzahl)',
+      'Positionen 1 – Artikelnummer', 'Positionen 1 – Menge',
+      'Positionen 2 – Artikelnummer', 'Positionen 2 – Menge',
+    ]);
+    // Genau EINE Zeile je Dokument (nicht je Position).
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toEqual(['beleg.pdf', 'completed', 'ok', '', 'LS-1', '2026-07-01', '2', 'A-1', '5', 'A-2', '3']);
+    // Dokument mit nur 1 Position → Instanz-2-Zellen leer.
+    expect(rows[1]).toEqual(['zwei.pdf', 'completed', 'ok', '', 'LS-2', '2026-07-02', '1', 'B-1', '1', '', '']);
+  });
+
+  test('positionsloses Dokument bekommt trotzdem eine Zeile', () => {
+    const leer = file({ id: 'bf3', filename: 'leer.pdf', data: { lieferscheinnummer: 'LS-0', lieferdatum: '', positionen: [] } });
+    const [sheet] = buildBatchExportSections(project, [leer], 'flat-wide');
+    expect(sheet!.content.rows).toHaveLength(1);
+    expect(sheet!.content.rows[0]![6]).toBe('0'); // Anzahl
+  });
+});
+
+describe('CSV-Serialisierung', () => {
+  test('sectionToCsv: BOM, ;-Trenner, Quoting von Sonderzeichen', () => {
+    const [sheet] = buildBatchExportSections(project, [file({ data: {
+      lieferscheinnummer: 'LS;1', lieferdatum: 'a"b', positionen: [{ artikelnummer: 'X', menge: 2 }],
+    } })], 'flat-wide');
+    const csv = sectionToCsv(sheet!);
+    expect(csv.charCodeAt(0)).toBe(0xFEFF);            // BOM
+    const lines = csv.slice(1).split('\r\n');
+    expect(lines[0]).toContain('Datei;Status');        // ;-getrennt
+    expect(lines[1]).toContain('"LS;1"');              // Trenner → gequotet
+    expect(lines[1]).toContain('"a""b"');              // Quote verdoppelt
+  });
+
+  test('parseExportFormat normalisiert', () => {
+    expect(parseExportFormat('flat-wide')).toBe('flat-wide');
+    expect(parseExportFormat('flat')).toBe('flat');
+    expect(parseExportFormat('quatsch')).toBe('grouped');
+    expect(parseExportFormat(undefined)).toBe('grouped');
   });
 });
