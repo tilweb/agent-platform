@@ -20,6 +20,7 @@
 
 import { correctNumber } from './validators';
 import type {
+  CountRule,
   ExtractionProject,
   ExtractionRule,
   LookupRule,
@@ -109,6 +110,38 @@ export function evaluateSumRule(
 }
 
 /**
+ * Anzahl-Check: Positionen eines `list`-Felds vs. skalares Soll-Anzahl-Feld.
+ * Fehlt die Soll-Anzahl (leer/unparsebar), ist nichts pruefbar → kein Befund.
+ * Deckt anders als der Summen-Check auch den Fall „Instanz fehlt/erfunden" ab.
+ */
+export function evaluateCountRule(
+  rule: CountRule,
+  data: Record<string, unknown>,
+  project: ExtractionProject,
+): RuleIssue | null {
+  if (isEmpty(data[rule.target_field])) return null;
+  const target = correctNumber(data[rule.target_field]);
+  if (target === null) return null;
+
+  const items = data[rule.list_field];
+  const actual = Array.isArray(items) ? items.length : 0;
+  if (actual === target) return null;
+
+  const listLabel = fieldLabel(project, rule.list_field);
+  const targetLabel = fieldLabel(project, rule.target_field);
+  const severity: RuleSeverity = rule.severity === 'warn' ? 'warn' : 'error';
+  return {
+    rule_id: rule.id,
+    type: 'count',
+    severity,
+    message:
+      `"${targetLabel}" nennt ${target}, extrahiert wurde${actual === 1 ? '' : 'n'} aber ${actual} ` +
+      `${listLabel}-Eintrag${actual === 1 ? '' : 'e'}.`,
+    fields: [rule.list_field, rule.target_field],
+  };
+}
+
+/**
  * Stammdaten-Abgleich gegen eine Menge zulaessiger Werte. `allowedValues` ist
  * bereits normalisiert (siehe `normalizeLookupValue`). `null` bedeutet: Quelle
  * nicht ladbar → `warn`-Befund statt falscher Sicherheit.
@@ -175,6 +208,11 @@ export async function evaluateRules(
         if (issue) issues.push(issue);
         continue;
       }
+      if (rule.type === 'count') {
+        const issue = evaluateCountRule(rule, data, project);
+        if (issue) issues.push(issue);
+        continue;
+      }
       if (rule.type === 'lookup') {
         const cacheKey = `${rule.table_id}::${rule.column_id}`;
         let source = sourceCache.get(cacheKey);
@@ -213,6 +251,9 @@ export function hasBlockingIssue(issues: RuleIssue[] | undefined): boolean {
 export function describeRule(rule: ExtractionRule, project: ExtractionProject): string {
   if (rule.type === 'sum') {
     return `Summe "${itemFieldLabel(project, rule.list_field, rule.item_field)}" (${fieldLabel(project, rule.list_field)}) = "${fieldLabel(project, rule.target_field)}"`;
+  }
+  if (rule.type === 'count') {
+    return `Anzahl "${fieldLabel(project, rule.list_field)}" = "${fieldLabel(project, rule.target_field)}"`;
   }
   return `"${fieldLabel(project, rule.field)}" in Tabelle "${rule.table_id}" (Spalte "${rule.column_id}")`;
 }

@@ -17,7 +17,7 @@
  *   - Ohne DB (Tests/Harness): buildGrundsteuerGmbxProject()
  */
 
-import type { ExtractionProject, ProjectField, ProjectItemField } from '../learning/types';
+import type { ExtractionProject, ExtractionRule, ProjectField, ProjectItemField } from '../learning/types';
 
 function txt(label: string, description?: string): ProjectField {
   return { type: 'text', required: false, label, ...(description ? { description } : {}) };
@@ -113,12 +113,29 @@ export const GRUNDSTEUER_GMBX_FIELDS: Record<string, ProjectField> = {
   },
 };
 
+/**
+ * Fachliche Pruefregeln (W5/G3): die extrahierte Eigentuemer-Anzahl muss der im
+ * Bescheid genannten „Anzahl der Eigentuemer" entsprechen. Faengt eine verpasste
+ * oder erfundene Instanz — den einen Fall, den die deterministische Extraktion
+ * selbst nicht sehen kann (sie liest, was da steht).
+ */
+export const GRUNDSTEUER_GMBX_RULES: ExtractionRule[] = [
+  {
+    id: 'eigentuemer-anzahl',
+    type: 'count',
+    list_field: 'eigentuemer',
+    target_field: 'anzahl_eigentuemer',
+    label: 'Anzahl der Eigentuemer stimmt mit den extrahierten Instanzen ueberein',
+  },
+];
+
 /** Projekt-Spezifikation fuer `createProject(...)`. */
 export const GRUNDSTEUER_GMBX_SPEC = {
   name: 'Grundsteuermessbescheide (GMBX)',
   description: 'Massen-Extraktion born-digital Grundsteuermessbescheide (GMBX/ELSTER) — deterministisch, ein Datensatz je Bescheid.',
   fields: GRUNDSTEUER_GMBX_FIELDS,
   extraction: { strategy: 'template-labelmap' as const },
+  rules: GRUNDSTEUER_GMBX_RULES,
 };
 
 /** Vollstaendiges ExtractionProject ohne DB (Tests/Harness). */
@@ -134,5 +151,6 @@ export function buildGrundsteuerGmbxProject(): ExtractionProject {
     guidelines: '',
     learning: { total_examples: 0, accuracy_estimate: 0, guideline_version: 0 },
     extraction: { strategy: 'template-labelmap' },
+    rules: GRUNDSTEUER_GMBX_RULES,
   };
 }

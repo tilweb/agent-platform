@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  evaluateCountRule,
   evaluateLookupRule,
   evaluateRules,
   evaluateSumRule,
@@ -7,7 +8,7 @@ import {
   normalizeLookupValue,
 } from './rules';
 import { validateProjectRules } from './validators';
-import type { ExtractionProject, LookupRule, SumRule } from './types';
+import type { CountRule, ExtractionProject, LookupRule, SumRule } from './types';
 
 function project(overrides: Partial<ExtractionProject> = {}): ExtractionProject {
   return {
@@ -240,5 +241,78 @@ describe('validateProjectRules', () => {
 
   test('negative Toleranz wird abgelehnt', () => {
     expect(validateProjectRules(fields, [{ ...SUM_RULE, tolerance: -1 }])).toContain('Toleranz');
+  });
+});
+
+// ============== count-Regel (G3) ==============
+
+const COUNT_RULE: CountRule = {
+  id: 'c1',
+  type: 'count',
+  list_field: 'positionen',
+  target_field: 'anzahl',
+};
+
+/** Projekt mit zusaetzlichem numerischem Soll-Anzahl-Feld. */
+function projectWithAnzahl(): ExtractionProject {
+  const p = project();
+  p.fields.anzahl = { type: 'number', required: false, label: 'Anzahl Positionen' };
+  return p;
+}
+
+describe('evaluateCountRule', () => {
+  test('Anzahl passt zu den Instanzen → kein Befund', () => {
+    const data = { anzahl: 2, positionen: [{ betrag: 1 }, { betrag: 2 }] };
+    expect(evaluateCountRule(COUNT_RULE, data, projectWithAnzahl())).toBeNull();
+  });
+
+  test('mehr Soll als extrahiert (verpasste Instanz) → error mit Labels', () => {
+    const data = { anzahl: 3, positionen: [{ betrag: 1 }, { betrag: 2 }] };
+    const issue = evaluateCountRule(COUNT_RULE, data, projectWithAnzahl());
+    expect(issue?.severity).toBe('error');
+    expect(issue?.type).toBe('count');
+    expect(issue?.fields).toEqual(['positionen', 'anzahl']);
+    expect(issue?.message).toContain('3');
+    expect(issue?.message).toContain('2');
+  });
+
+  test('Soll gesetzt, aber gar keine Liste extrahiert → error (actual 0)', () => {
+    const data = { anzahl: 2 };
+    expect(evaluateCountRule(COUNT_RULE, data, projectWithAnzahl())?.severity).toBe('error');
+  });
+
+  test('leere Liste bei Soll 0 → kein Befund', () => {
+    const data = { anzahl: 0, positionen: [] };
+    expect(evaluateCountRule(COUNT_RULE, data, projectWithAnzahl())).toBeNull();
+  });
+
+  test('fehlende Soll-Anzahl → nicht pruefbar (kein Befund)', () => {
+    const data = { positionen: [{ betrag: 1 }] };
+    expect(evaluateCountRule(COUNT_RULE, data, projectWithAnzahl())).toBeNull();
+  });
+
+  test('deutsches Zahlformat als Soll wird geparst', () => {
+    const data = { anzahl: '2', positionen: [{ betrag: 1 }, { betrag: 2 }] };
+    expect(evaluateCountRule(COUNT_RULE, data, projectWithAnzahl())).toBeNull();
+  });
+
+  test('severity warn wird respektiert', () => {
+    const data = { anzahl: 3, positionen: [{ betrag: 1 }] };
+    expect(evaluateCountRule({ ...COUNT_RULE, severity: 'warn' }, data, projectWithAnzahl())?.severity).toBe('warn');
+  });
+
+  test('evaluateRules verdrahtet die count-Regel (blockierend)', async () => {
+    const p = projectWithAnzahl();
+    p.rules = [COUNT_RULE];
+    const issues = await evaluateRules(p, { anzahl: 3, positionen: [{ betrag: 1 }] }, async () => ({ values: new Set<string>() }));
+    expect(issues).toHaveLength(1);
+    expect(hasBlockingIssue(issues)).toBe(true);
+  });
+
+  test('validateProjectRules akzeptiert count, prueft Feldtypen', () => {
+    const f = projectWithAnzahl().fields;
+    expect(validateProjectRules(f, [COUNT_RULE])).toBeNull();
+    expect(validateProjectRules(f, [{ ...COUNT_RULE, target_field: 'lieferant' }])).toContain('Zahl');
+    expect(validateProjectRules(f, [{ ...COUNT_RULE, list_field: 'gesamtbetrag' }])).toContain('Listen-Feld');
   });
 });

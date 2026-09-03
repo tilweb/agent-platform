@@ -38,6 +38,17 @@ Neue Export-Form für die Massen-Extraktion (`extraction/learning/export-xlsx.ts
   8-Eigentümer-Fall korrekt, BOM gesetzt. +6 Unit-Tests (flat-wide, CSV-Quoting, Format-Parsing);
   Extraction-Suite 251/251 grün.
 
+### Document Processing: `count`-Prüfregel (Owner-Anzahl) — G3
+Neuer Prüfregeltyp (W5) `count`: die Anzahl der Positionen eines `list`-Felds muss dem Wert eines
+skalaren Zielfelds entsprechen. Fängt den einen Fall, den die deterministische Extraktion selbst nicht
+sehen kann — eine verpasste oder erfundene Instanz (die OCR-Fusion prüft nur *gelieferte* Werte).
+- `CountRule` (`list_field` ↔ `target_field`, Default-Severity `error`); Auswertung `evaluateCountRule`,
+  Dispatch in `evaluateRules`, `describeRule` + `validateProjectRules` erweitert.
+- GMBX-Profil bekommt die Regel `eigentuemer-anzahl` (Eigentümer-Liste ↔ „Anzahl der Eigentümer");
+  Seed-Skript ist jetzt ein **Upsert** (spielt neue Regeln in bestehende Profile nach).
+- Verifiziert: +9 Unit-Tests (Suite 260/260 grün); live gegen das geseedete DB-Profil — 341/8er-Batch
+  weiterhin auto_ok (kein Fehlalarm), bei Soll≠Instanzen blockierender Befund → „Zu prüfen".
+
 ### Document Processing: Konverter-Umgehung für `template-labelmap` (Live-Durchsatz)
 Der generische Ingest rief für JEDES PDF best-effort den Markitdown-Konverter (HTTP zu Adacor,
 gemessen **~2,9 s/Datei**) — auch für `template-labelmap`, das diesen Text gar nicht nutzt (es fährt

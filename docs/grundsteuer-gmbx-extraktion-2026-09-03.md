@@ -350,3 +350,30 @@ Damit loest der Live-Betrieb die ~1000×-Geschichte gegen die 12-s-Regex-Loesung
 Bescheide faellt die reine Konverter-Wartezeit (rechnerisch ~20 h sequentiell) komplett weg. Der
 Markitdown-Call ist auch in Produktion (Scalingo) real — der Fix wirkt dort genauso. Bewusst: fuer
 `template-labelmap` steht `document_text` aus dem Textlayer (nicht Markdown) — exakt der geparste Text.
+
+---
+
+## 12 — G3: `count`-Pruefregel fuer die Eigentuemer-Anzahl (2026-09-03)
+
+Die deterministische Extraktion liest exakt, was im Bescheid steht — sie kann daher nicht erkennen,
+wenn eine Eigentuemer-Instanz **fehlt oder erfunden** wurde (die OCR-Fusion prueft nur GELIEFERTE
+Werte). Genau dafuer der neue W5-Pruefregeltyp:
+
+- **`CountRule`** (`extraction/learning/types.ts`): `list_field` ↔ `target_field`, Default-Severity
+  `error`. Auswertung `evaluateCountRule` (`rules.ts`): fehlt die Soll-Anzahl → nicht pruefbar;
+  sonst `Array.length` vs. Soll (deutsche Zahlformate via `correctNumber`). Dispatch in
+  `evaluateRules`, plus `describeRule` und `validateProjectRules` erweitert (Feldtyp-Checks).
+- **GMBX-Profil**: Regel `eigentuemer-anzahl` (Eigentuemer-Liste ↔ „Anzahl der Eigentuemer"). Das
+  Seed-Skript ist jetzt ein **Upsert** — bestehende Profile bekommen neue Regeln nachgezogen, der
+  Lern-Zustand bleibt unberuehrt.
+
+**Verifiziert:**
+- +9 Unit-Tests (`rules.test.ts`), gesamte Extraction-Suite **260/260** grün, tsc-clean.
+- Live gegen das geseedete DB-Profil: 8er-Batch weiterhin **8/8 auto_ok** (kein Fehlalarm auf den
+  konsistenten 341); bei manipuliertem Soll≠Instanzen ein **blockierender** Befund
+  („‚Anzahl der Eigentuemer' nennt 2, extrahiert wurde aber 1 Eigentuemer-Eintrag.") → erzwingt
+  „Zu pruefen".
+
+Damit ist auch der letzte Blindfleck aus §4 (Fusion sieht keine fehlenden Werte) fuer den
+Eigentuemer-Fall geschlossen. **Offen weiter:** G5 (Haertung gegen eine zweite Gemeinde/Label-Drift);
+Eigentuemer-Ausgabeform final mit dem Kunden.

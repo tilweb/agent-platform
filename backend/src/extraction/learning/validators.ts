@@ -143,6 +143,16 @@ export function validateProjectRules(
       continue;
     }
 
+    if (rule.type === 'count') {
+      const listField = fields[rule.list_field];
+      if (!listField) return `Pruefregel "${rule.id}": Listen-Feld "${rule.list_field}" existiert nicht`;
+      if (listField.type !== 'list') return `Pruefregel "${rule.id}": "${rule.list_field}" ist kein Listen-Feld`;
+      const target = fields[rule.target_field];
+      if (!target) return `Pruefregel "${rule.id}": Zielfeld "${rule.target_field}" existiert nicht`;
+      if (target.type !== 'number') return `Pruefregel "${rule.id}": Zielfeld "${rule.target_field}" muss vom Typ Zahl sein`;
+      continue;
+    }
+
     if (rule.type === 'lookup') {
       const field = fields[rule.field];
       if (!field) return `Pruefregel "${rule.id}": Feld "${rule.field}" existiert nicht`;

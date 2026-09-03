@@ -168,7 +168,26 @@ export interface LookupRule {
   label?: string;
 }
 
-export type ExtractionRule = SumRule | LookupRule;
+/**
+ * Anzahl-Check (Welle „G3"): die Anzahl der Positionen eines `list`-Felds muss
+ * dem Wert eines skalaren Zielfelds entsprechen — z.B. „Anzahl der Eigentuemer"
+ * ↔ tatsaechlich extrahierte Eigentuemer-Instanzen. Faengt „Modell hat eine
+ * Instanz verpasst oder erfunden" — was die OCR-Fusion (prueft nur GELIEFERTE
+ * Werte) prinzipiell nicht sehen kann.
+ */
+export interface CountRule {
+  id: string;
+  type: 'count';
+  /** fieldId eines `list`-Felds. */
+  list_field: string;
+  /** fieldId des skalaren (numerischen) Zielfelds mit der Soll-Anzahl. */
+  target_field: string;
+  /** Default 'error' (erzwingt Review); 'warn' nur anzeigen. */
+  severity?: Extract<RuleSeverity, 'error' | 'warn'>;
+  label?: string;
+}
+
+export type ExtractionRule = SumRule | LookupRule | CountRule;
 
 /**
  * `error` erzwingt das Review, `warn` ist ein Hinweis, `info` protokolliert nur
