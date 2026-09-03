@@ -713,7 +713,67 @@ System-Prompt des Agenten:
 - „Übersetzen" → `Übersetze mir folgenden Text nach Englisch: `
 - „Im Wissen suchen" → `Suche in unserem Wissen nach Informationen zu: `
 
-## 7. Anhang — Traceability (Pilot-Commits, 2026-09-02)
+## 7. Akzeptanzkriterien
+
+Technologieunabhängig und verifizierbar, gruppiert nach Thema. Ein Kriterium gilt als erfüllt, wenn die
+beschriebene Beobachtung reproduzierbar zutrifft.
+
+### 7.1 Agent-Editor
+- [ ] Der Editor ist einspaltig; die Einstellungen erscheinen als kompakte Liste mit einer Kurz-Zusammenfassung je Zeile.
+- [ ] Ein Klick auf eine Einstellungs-Zeile öffnet die Details in einem getabbten Modal (kein separater Vollbild-Editor je Einstellung).
+- [ ] Das Instruktionsfeld (System-Prompt) ist im Default deutlich größer als ein Standard-Textfeld.
+- [ ] Icon und Name werden im Header bearbeitet: Name inline editierbar (Editierbarkeit sichtbar signalisiert), Klick aufs Icon öffnet den Picker; es gibt keine separate „Name & Icon"-Box.
+- [ ] Die Einstellungs-Zeilen zeigen die **tatsächlich gewählten Werte** (Aktionen, Fähigkeiten, Wissen) als Pills — nicht nur Anzahlen. „Berechtigungen" zeigt **wer** den Agenten nutzen darf; „Modell" zeigt **Provider + Klarname** statt ID/Slug.
+- [ ] Änderungen in den Modal-Feldern werden **ohne separaten Speichern-Klick** übernommen; Name/Icon/Instruktionen bleiben am Speichern-Button.
+- [ ] Im Editor heißt es **„Aktionen"** (statt Werkzeuge/Tools) und **„Fähigkeiten"** (statt Skills).
+- [ ] Jeder Modal-Tab beginnt mit einer kurzen Einleitung (was stellt man hier ein, wozu).
+
+### 7.2 Icon & Farbe (Durchgängigkeit)
+- [ ] Der Picker bietet einen **festen Katalog** (24 Icons, 14 Farben) mit Live-Vorschau — kein Freitext, keine Emojis.
+- [ ] Das gewählte Icon + Farbe erscheint **identisch** in: Agenten-Übersicht, Sidebar-Schnellauswahl, Favoriten-Modal, Chat-Header, Nachrichten-Bubbles und Command-Palette.
+- [ ] Die **Kontext-Pills über dem Eingabefeld** bleiben **typbasiert** (Agent/Fähigkeit/Upload/Reader), nicht agentenbasiert.
+- [ ] Ohne gesetztes Icon/Farbe greift ein neutrales Default-Icon/-Farbe (kein Fehler, kein leerer Platz).
+
+### 7.3 Beschreibung & Fähigkeiten (Auto-Metadaten)
+- [ ] Beschreibung und Fähigkeiten werden **beim Speichern automatisch aus dem System-Prompt erzeugt**; es gibt kein manuelles Pflegefeld dafür.
+- [ ] Neu erzeugt beim Anlegen **und** wenn sich der System-Prompt ändert.
+- [ ] Das Speichern **scheitert nie** an der Generierung (robuster Fallback, auch ohne verfügbares LLM).
+
+### 7.4 Promptvorschläge
+- [ ] Im Editor lassen sich Vorschläge (Titel + Prompt) anlegen, bearbeiten, entfernen und **per Drag & Drop** umsortieren.
+- [ ] Im leeren Chat erscheinen die Vorschläge des gewählten Agenten als **Kacheln**.
+- [ ] Ein Klick auf eine Kachel **befüllt das Eingabefeld vor** (sendet **nicht** direkt) und setzt den Cursor ans Ende.
+- [ ] Die Reihenfolge im Chat entspricht der Editor-Reihenfolge.
+
+### 7.5 Knowledge-Base-Zuordnung
+- [ ] Im Modal-Tab „Wissen" lassen sich Collections auswählen; die gewählten Collections werden dem Agenten zur Laufzeit in den Kontext injiziert (Antworten mit Belegen möglich).
+
+### 7.6 Übersichtsseiten & Kacheln
+- [ ] Alle Übersichten (Agenten/Fähigkeiten/Wissen/Tabellen) nutzen dasselbe kompakte Kacheldesign; keine Kachel blockiert mehr ~⅓ der Seite.
+- [ ] Gruppen-Tabs (Alle · Eigene · Geteilt · Gesperrt · System) mit **korrekten Zählern** (Alle = Summe); Umschalten zeigt nur die jeweilige Gruppe.
+- [ ] Unter den Tabs steht ein **kontextbezogener Kurzhinweis**, der sich je aktiver Gruppe ändert und die jeweiligen Einschränkungen nennt.
+- [ ] Die System-Kennzeichnung sitzt **oben am Namen** (nicht in der unteren Badge-Zeile); „gesperrte" Einträge sind ausgegraut, nicht klickbar und zeigen „Zugriff anfragen bei …".
+- [ ] Suche filtert innerhalb der aktiven Gruppe; ein Hilfe-Panel erklärt die Seite in einfacher Sprache.
+
+### 7.7 Chat-Startbildschirm
+- [ ] Der leere Chat zeigt eine **persönliche Begrüßung** (Vorname + Phrase, teils tageszeitabhängig) statt „KI-Assistent" + Icon + Subline; die Begrüßung ist innerhalb einer Sitzung stabil (kein Neu-Würfeln je Tastendruck).
+- [ ] Ist ein spezifischer Agent aktiv, erscheinen dessen Promptvorschläge als Kacheln; ohne spezifischen Agenten die allgemeinen Default-Prompts.
+- [ ] Der KI-Hinweis steht **einzeilig, dezent und dauerhaft unter dem Eingabefeld** (nicht als große Box im leeren Zustand).
+
+### 7.8 Default-Agenten
+- [ ] Die 9 Rollen erscheinen automatisch in der Agenten-Auswahl (`/agent`-Auswahl).
+- [ ] Neue Nutzer **ohne eigene Favoriten** sehen die Rollen in der Sidebar-Schnellauswahl **vorbelegt**; ein bewusst geleertes Favoriten-Set bleibt leer (kein erneutes Vorbelegen).
+- [ ] Jeder Default-System-Prompt enthält den einheitlichen **„Grundhaltung"-Block** (Ton, Halluzinationsvermeidung, Quellen/Belege, sparsames Rückfragen, Antwortlänge).
+- [ ] Web-Rollen belegen Aussagen mit Quellen inkl. Link; **„Dokument befragen"** antwortet ausschließlich auf Basis der hochgeladenen Dokumente, mit Fundstellen/Zitaten und Dateiname, und fordert bei fehlendem Upload freundlich dazu auf.
+- [ ] Namen sind Jobs-to-be-done (Tätigkeit); die Beschreibung beginnt mit „Ich …".
+
+### 7.9 Übergreifende Guidelines
+- [ ] Sichtbare UI-Texte sind Deutsch, Du-Form und enthalten **keine internen Team-/Herkunfts-/Entwicklungs-Verweise**.
+- [ ] Icons sind SVG (keine Emojis); Karten/Panels haben **keine farbigen Akzent-Rahmen**; Form-Felder heben sich sichtbar vom Hintergrund ab.
+
+---
+
+## 8. Anhang — Traceability (Pilot-Commits, 2026-09-02)
 
 Zur Nachverfolgung, welcher Commit welche Anpassung enthält (Pilot-Repo, `main`):
 
