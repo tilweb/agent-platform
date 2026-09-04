@@ -812,6 +812,16 @@ export interface StoredStepAnalysis {
   step: number;
   stepName: string;
   timestamp: string;
+  /**
+   * Hash der analysierten Segment-Daten (Stale-Erkennung). Beim Laden wird der
+   * aktuelle Daten-Hash verglichen; weichen sie ab, ist die Analyse veraltet.
+   */
+  dataHash?: string;
+  /**
+   * Beim Laden gesetzt (nicht persistiert): true, wenn sich die zugrunde
+   * liegenden Daten seit der Analyse geändert haben → UI zeigt „veraltet".
+   */
+  stale?: boolean;
   masterclassAnalysis: {
     staerken: string[];
     schwaechen: string[];

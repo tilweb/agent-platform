@@ -30,8 +30,15 @@ import {
   getPruefkriterien,
   getTypischeFehler,
   getVerbesserungsvorschlaege,
+  getKnowledge,
+  getRawKnowledge,
+  saveKnowledgeJson,
+  listElements,
+  isPmElement,
+  ELEMENT_REGISTRY,
+  type PmElement,
 } from './knowledge';
-import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis, buildStepChatSystemPrompt } from './analysis';
+import { analyzeStep, analyzeGesamt, hasEnoughDataForAnalysis, buildStepChatSystemPrompt, analyzeSegment, buildSegmentChatSystemPrompt } from './analysis';
 import { llmService, type Message } from '../../services/llm';
 import { getConfig, saveConfig, listUnlinkedAuftragRefs, getAuftragIdeeId, setAuftragIdee } from './storage';
 import type { UsageContext } from '../../services/usageTracking';
@@ -939,6 +946,116 @@ projektmanagement.post('/analyse/gesamt', async (c) => {
       500
     );
   }
+});
+
+// ============== Generalisierte (Element, Segment)-Endpunkte ==============
+// Additiv. Die numerischen /analyse/step/:n und /knowledge/:step-Routen bleiben
+// als Projektauftrag-Alias erhalten. Namespaced unter /element/ → kollisionsfrei
+// zu den `:step`-Param-Routen.
+
+function validateElementSegment(
+  elementRaw: string,
+  segment: string,
+): { element: PmElement; segment: string } | { error: string } {
+  if (!isPmElement(elementRaw)) return { error: `Unbekanntes Element: ${elementRaw}` };
+  const def = ELEMENT_REGISTRY[elementRaw];
+  if (!def.segments.some((s) => s.key === segment)) return { error: `Unbekanntes Segment: ${elementRaw}/${segment}` };
+  return { element: elementRaw, segment };
+}
+
+/** GET /elements — Element-Registry (Element + Segmente) für Editor/UI. */
+projektmanagement.get('/elements', (c) => c.json({ elements: listElements() }));
+
+/** POST /analyse/element/:element/:segment — generische Segment-Analyse. */
+projektmanagement.post('/analyse/element/:element/:segment', async (c) => {
+  try {
+    const userId = getCurrentUserId(c);
+    if (!userId) return c.json({ error: 'Authentication required' }, 401);
+    const v = validateElementSegment(c.req.param('element'), c.req.param('segment'));
+    if ('error' in v) return c.json({ error: v.error }, 400);
+    const { entity } = await c.req.json();
+    if (!entity || typeof entity !== 'object') return c.json({ error: 'entity ist erforderlich' }, 400);
+    // Entitäts-RBAC ist element-spezifisch → wird in PM3/PM4 verdrahtet.
+    const analysis = await analyzeSegment(v.element, v.segment, entity, userId);
+    return c.json({ analysis });
+  } catch (error) {
+    console.error('Error analyzing segment:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Analyse fehlgeschlagen' }, 500);
+  }
+});
+
+/** GET /knowledge/element/:element/:segment — Wissen (mit Fallback auf _general). */
+projektmanagement.get('/knowledge/element/:element/:segment', async (c) => {
+  const v = validateElementSegment(c.req.param('element'), c.req.param('segment'));
+  if ('error' in v) return c.json({ error: v.error }, 400);
+  const knowledge = await getKnowledge(v.element, v.segment);
+  if (!knowledge) return c.json({ error: 'Kein Wissen für dieses Segment' }, 404);
+  return c.json({ knowledge });
+});
+
+/** GET /knowledge/element/:element/:segment/raw — Roh-YAML (ohne Fallback, Editor). */
+projektmanagement.get('/knowledge/element/:element/:segment/raw', async (c) => {
+  const v = validateElementSegment(c.req.param('element'), c.req.param('segment'));
+  if ('error' in v) return c.json({ error: v.error }, 400);
+  const yaml = await getRawKnowledge(v.element, v.segment);
+  return c.json({ element: v.element, segment: v.segment, yaml: yaml ?? '' });
+});
+
+/** PUT /knowledge/element/:element/:segment — Wissen speichern (JSON-Objekt → YAML). */
+projektmanagement.put('/knowledge/element/:element/:segment', async (c) => {
+  const denied = denyIfNotAppOwner(c);
+  if (denied) return c.json(denied, 403);
+  const v = validateElementSegment(c.req.param('element'), c.req.param('segment'));
+  if ('error' in v) return c.json({ error: v.error }, 400);
+  try {
+    const { knowledge: data } = await c.req.json();
+    if (!data || typeof data !== 'object') return c.json({ error: 'Missing or invalid knowledge field' }, 400);
+    await saveKnowledgeJson(v.element, v.segment, data);
+    return c.json({ knowledge: await getKnowledge(v.element, v.segment) });
+  } catch (error) {
+    console.error('Error saving knowledge:', error);
+    return c.json({ error: 'Failed to save knowledge' }, 500);
+  }
+});
+
+/** POST /knowledge/element/:element/:segment/chat — Wissenspool-Chat (SSE). */
+projektmanagement.post('/knowledge/element/:element/:segment/chat', async (c) => {
+  const userId = getCurrentUserId(c);
+  if (!userId) return c.json({ error: 'Authentication required' }, 401);
+  const v = validateElementSegment(c.req.param('element'), c.req.param('segment'));
+  if ('error' in v) return c.json({ error: v.error }, 400);
+
+  let body: { messages?: unknown; entity?: unknown };
+  try { body = await c.req.json(); } catch { return c.json({ error: 'Invalid JSON body' }, 400); }
+
+  const rawMessages = Array.isArray(body.messages) ? body.messages : [];
+  const history: Message[] = rawMessages
+    .filter((m): m is { role: 'user' | 'assistant'; content: string } =>
+      !!m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim() !== '')
+    .slice(-20)
+    .map((m) => ({ role: m.role, content: m.content }));
+  if (history.length === 0) return c.json({ error: 'Keine Nachricht übermittelt' }, 400);
+
+  const systemPrompt = await buildSegmentChatSystemPrompt(v.element, v.segment, body.entity ?? {});
+  const messages: Message[] = [{ role: 'system', content: systemPrompt }, ...history];
+  const usageContext = {
+    triggeringUserId: userId,
+    source: 'projektmanagement' as UsageContext['source'],
+    operation: `knowledge_chat_${v.element}_${v.segment}`,
+  };
+
+  return streamSSE(c, async (stream) => {
+    try {
+      for await (const chunk of llmService.streamChat(messages, undefined, usageContext)) {
+        const text = chunk?.choices?.[0]?.delta?.content;
+        if (text) await stream.writeSSE({ event: 'token', data: JSON.stringify({ text }) });
+      }
+      await stream.writeSSE({ event: 'done', data: '{}' });
+    } catch (error) {
+      console.error('Error in segment chat:', error);
+      await stream.writeSSE({ event: 'error', data: JSON.stringify({ message: error instanceof Error ? error.message : 'Chat fehlgeschlagen' }) });
+    }
+  });
 });
 
 // ============== Knowledge Endpoints ==============

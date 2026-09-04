@@ -212,6 +212,20 @@ const styles = {
     textAlign: 'right',
     marginTop: theme.spacing.md,
   },
+
+  // Veraltet-Hinweis (Daten seit der Analyse geändert)
+  staleBanner: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.warning,
+    backgroundColor: theme.colors.warningLight,
+    borderRadius: theme.borderRadius.md,
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    marginBottom: theme.spacing.md,
+    lineHeight: 1.4,
+  },
+  staleBannerLabel: {
+    fontWeight: theme.typography.weights.semibold,
+  },
 };
 
 // Helper to get score color
@@ -360,11 +374,20 @@ function AnalysisResult({ analysis }) {
     return null;
   }
 
-  const { masterclassAnalysis, konsistenzAnalysis, stepName, timestamp } = analysis;
+  const { masterclassAnalysis, konsistenzAnalysis, stepName, timestamp, stale } = analysis;
   const score = masterclassAnalysis?.score || 0;
 
   return (
     <div style={styles.container}>
+      {/* Veraltet-Hinweis: Daten haben sich seit der Analyse geändert */}
+      {stale && (
+        <div style={styles.staleBanner}>
+          <span style={styles.staleBannerLabel}>Veraltet:</span>{' '}
+          Die Daten haben sich seit dieser Analyse geändert — die Empfehlungen passen
+          möglicherweise nicht mehr. Für einen aktuellen Stand neu analysieren.
+        </div>
+      )}
+
       {/* Score Circle */}
       <div style={styles.scoreSection}>
         <div style={styles.scoreCircle}>

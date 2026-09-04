@@ -5,7 +5,14 @@
  */
 
 import { llmService, type Message } from '../../services/llm';
-import { getStepKnowledge, generateAnalysisPrompt, type StepKnowledge } from './knowledge';
+import {
+  getStepKnowledge,
+  getKnowledge,
+  generateAnalysisPrompt,
+  ELEMENT_REGISTRY,
+  type StepKnowledge,
+  type PmElement,
+} from './knowledge';
 import type { Projektauftrag } from './types';
 import type { UsageContext } from '../../services/usageTracking';
 
@@ -35,6 +42,11 @@ export interface StepAnalysisResult {
   timestamp: string;
   masterclassAnalysis: MasterclassAnalysis;
   konsistenzAnalysis: ConsistencyAnalysis;
+  /**
+   * Hash der analysierten Segment-Daten (Stale-Erkennung): weicht der aktuelle
+   * Datenstand davon ab, ist die Analyse veraltet. Optional (Alt-Analysen ohne).
+   */
+  dataHash?: string;
 }
 
 // ============== Step Configuration ==============
@@ -334,6 +346,8 @@ export async function analyzeStep(
 
   // Parse response
   const result = parseAnalysisResponse(response.content || '', step);
+  // Stale-Erkennung: Hash der analysierten Daten mitgeben.
+  result.dataHash = hashSegmentData(currentStepData);
 
   return result;
 }
@@ -345,6 +359,117 @@ export async function analyzeStep(
 export function extractStepData(step: number, projektauftrag: Projektauftrag): Record<string, any> {
   const extractor = STEP_DATA_EXTRACTORS[step];
   return extractor ? extractor(projektauftrag) : {};
+}
+
+// ============== Generalisierte (Element, Segment)-Ebene ==============
+// Additiv — die Projektauftrag-Funktionen oben bleiben unverändert.
+
+/** Stabiler Inhalts-Hash der analysierten Segmentdaten (Stale-Erkennung). */
+export function hashSegmentData(data: unknown): string {
+  const stable = (v: any): any => {
+    if (Array.isArray(v)) return v.map(stable);
+    if (v && typeof v === 'object') {
+      return Object.keys(v).sort().reduce((o: any, k) => { o[k] = stable(v[k]); return o; }, {});
+    }
+    return v;
+  };
+  return Bun.hash(JSON.stringify(stable(data))).toString(16);
+}
+
+/** Extractor: Entität → für ein Segment relevante Daten (Analyse-/Chat-Kontext). */
+export type SegmentExtractor = (entity: any) => Record<string, any>;
+const SEGMENT_EXTRACTORS = new Map<string, SegmentExtractor>();
+
+/** Element+Segment registrieren (PM3/PM4 melden Idee/Portfolio an). */
+export function registerSegmentExtractor(element: PmElement, segment: string, fn: SegmentExtractor): void {
+  SEGMENT_EXTRACTORS.set(`${element}/${segment}`, fn);
+}
+
+function resolveExtractor(element: PmElement, segment: string): SegmentExtractor | null {
+  return SEGMENT_EXTRACTORS.get(`${element}/${segment}`) ?? null;
+}
+
+// Projektauftrag-Extraktoren im generischen Registry spiegeln (Back-Compat-Pfad).
+for (const [n, fn] of Object.entries(STEP_DATA_EXTRACTORS)) {
+  SEGMENT_EXTRACTORS.set(`projektauftrag/step_${n}`, fn as SegmentExtractor);
+}
+
+/** Kontextdaten eines (element, segment) — via Extractor, sonst ganze Entität. */
+export function extractSegmentData(element: PmElement, segment: string, entity: any): Record<string, any> {
+  const ex = resolveExtractor(element, segment);
+  return ex ? ex(entity) : (entity && typeof entity === 'object' ? entity : {});
+}
+
+/** Generischer Wissenspool-Chat-System-Prompt für ein (element, segment). */
+export async function buildSegmentChatSystemPrompt(
+  element: PmElement,
+  segment: string,
+  entity: any,
+): Promise<string> {
+  const knowledgeMd = await generateAnalysisPrompt(element, segment);
+  const contextData = extractSegmentData(element, segment, entity);
+  const elementLabel = ELEMENT_REGISTRY[element]?.label ?? element;
+  const segmentLabel = ELEMENT_REGISTRY[element]?.segments.find((s) => s.key === segment)?.title ?? segment;
+
+  const sections: string[] = [
+    `Du bist ein erfahrener Projektmanagement-Berater nach der RUHR PM Masterclass Methodik.`,
+    `Der Nutzer arbeitet gerade am Bereich "${segmentLabel}" (${elementLabel}) und stellt dir dazu Fragen.`,
+    `Beantworte seine Fragen konkret, konstruktiv und auf Deutsch. Leitplanken:`,
+    `- Stütze dich AUSSCHLIESSLICH auf das unten stehende Masterclass-Wissen und die aktuellen Eingaben des Nutzers.`,
+    `- Bleib beim Thema ("${segmentLabel}"). Bei themenfremden Fragen weise freundlich darauf hin.`,
+    `- Erfinde keine Fakten. Wenn das Wissen eine Frage nicht abdeckt, sage das offen.`,
+    `- Beziehe dich, wo sinnvoll, konkret auf die aktuellen Eingaben des Nutzers.`,
+    `- Fasse dich prägnant; nutze bei Bedarf kurze Aufzählungen.`,
+  ];
+  sections.push(
+    knowledgeMd
+      ? `\n---\n# Masterclass-Wissen zu diesem Bereich\n\n${knowledgeMd}`
+      : `\n(Für diesen Bereich liegt kein spezifisches Masterclass-Wissen vor — antworte aus allgemeiner PM-Best-Practice, bleib aber beim Thema.)`
+  );
+  sections.push(
+    `\n---\n## Aktuelle Eingaben des Nutzers\n\n\`\`\`json\n${JSON.stringify(contextData, null, 2)}\n\`\`\``
+  );
+  return sections.join('\n');
+}
+
+/**
+ * Generische Segment-Analyse (Masterclass-Prüfung eines beliebigen Elements).
+ * Bewusst schlanker als `analyzeStep`: Masterclass-Bewertung gegen das
+ * Segment-Wissen + Segmentdaten, ohne die Auftrag-eigene Cross-Step-Konsistenz.
+ */
+export async function analyzeSegment(
+  element: PmElement,
+  segment: string,
+  entity: any,
+  triggeringUserId?: string,
+): Promise<StepAnalysisResult> {
+  const knowledgeMd = await generateAnalysisPrompt(element, segment);
+  const contextData = extractSegmentData(element, segment, entity);
+  const segmentLabel = ELEMENT_REGISTRY[element]?.segments.find((s) => s.key === segment)?.title ?? segment;
+
+  const systemPrompt = buildSystemPrompt();
+  const userPrompt = [
+    `# Zu analysierender Bereich: ${segmentLabel} (${ELEMENT_REGISTRY[element]?.label ?? element})`,
+    knowledgeMd ? `\n${knowledgeMd}` : '',
+    `\n## Aktuelle Eingaben des Nutzers\n${formatStepData(0, contextData)}`,
+    `\nHinweis: Für diesen Bereich ist KEINE Cross-Step-Konsistenzprüfung gefordert — liefere "konsistenzAnalysis.status": "konsistent" mit leeren findings, es sei denn, es gibt einen inneren Widerspruch in den Eingaben.`,
+  ].filter(Boolean).join('\n');
+
+  const messages: Message[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
+  const usageContext: UsageContext = {
+    triggeringUserId,
+    source: 'projektmanagement' as UsageContext['source'],
+    operation: `analyze_${element}_${segment}`,
+  };
+
+  const response = await llmService.chat(messages, undefined, usageContext);
+  const result = parseAnalysisResponse(response.content || '', 0);
+  result.stepName = segmentLabel;
+  result.dataHash = hashSegmentData(contextData);
+  return result;
 }
 
 /**
