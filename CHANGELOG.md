@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-04
+
+### API-Rate-Limit angehoben (100 → 600/min) + Export-Fehlermeldung
+Das globale `/api/*`-Rate-Limit war **100 Requests/Minute pro IP** — rein IP-basiert (die Middleware
+läuft vor der Auth), sodass sich auf einem Host alle Tabs + Hintergrund-Polling einer Oberfläche
+denselben Bucket teilen. Die daten-schwere Extraktions-Projekte-Seite (Profilliste + Laufliste +
+2s-Polling) sprengte das im Normalbetrieb → `HTTP 429` u. a. beim Profil-Export. Limit auf **600/min**
+(10 Req/s) angehoben — großzügig für echte Nutzung, weiterhin wirksamer DoS-Deckel; Auth-Routen
+behalten ihr striktes eigenes Limit. (`middleware/rateLimit.ts`.)
+Zusätzlich: der Profil-Export im Frontend zeigt jetzt den **echten Grund** (HTTP-Status +
+Server-Meldung, bei 401 „Sitzung abgelaufen") statt des pauschalen „Export fehlgeschlagen".
+
 ## 2026-09-03
 
 ### Document Processing: GMBX-Massen-Extraktion (Grundsteuermessbescheide) — G1+G2

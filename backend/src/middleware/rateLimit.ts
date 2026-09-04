@@ -132,10 +132,17 @@ export const authRateLimit = rateLimit({
 
 /**
  * Standard rate limit for API routes
- * 100 requests per minute
+ * 600 requests per minute (10 req/s pro IP).
+ *
+ * Der Schluessel ist rein IP-basiert (die Middleware laeuft global VOR der
+ * Auth) — auf einem Host teilen sich damit ALLE Tabs/Hintergrund-Polls einer
+ * Oberflaeche einen Bucket. Die daten-schwere Admin-UI (z.B. die Extraktions-
+ * Projekte-Seite: Profilliste + Laufliste + 2s-Polling) sprengt 100/min im
+ * Normalbetrieb; 600/min ist grosszuegig fuer echte Nutzung und bleibt ein
+ * wirksamer DoS-Deckel. Auth-Routen haben ihr eigenes, striktes Limit.
  */
 export const apiRateLimit = rateLimit({
-  limit: 100,
+  limit: 600,
   windowMs: 60 * 1000,
   keyGenerator: (c) => `api:${getClientIp(c)}`,
 });

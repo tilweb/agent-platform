@@ -4644,10 +4644,15 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         const blob = await res.blob();
         triggerDownload(blob, `${project.id}${exportWithExamples ? '-mit-beispielen' : ''}.extraction.json`);
       } else {
-        setStatusMsg('Fehler: Export fehlgeschlagen');
+        // Echten Grund zeigen statt pauschal — Server-Fehlertext, sonst HTTP-Status.
+        let detail = '';
+        try { const j = await res.clone().json(); if (j?.error) detail = ` – ${j.error}`; } catch { /* kein JSON-Body */ }
+        setStatusMsg(res.status === 401
+          ? 'Sitzung abgelaufen – bitte neu anmelden und erneut exportieren.'
+          : `Fehler: Export fehlgeschlagen (HTTP ${res.status}${detail})`);
       }
-    } catch {
-      setStatusMsg('Netzwerkfehler beim Export');
+    } catch (e) {
+      setStatusMsg(`Netzwerkfehler beim Export${e?.message ? ` (${e.message})` : ''}`);
     } finally {
       setExporting(false);
     }
