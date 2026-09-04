@@ -348,6 +348,33 @@ export function useProjektmanagement() {
     return await response.json();
   }, []);
 
+  // Element-Registry (Element + Segmente) für den Masterclass-Editor
+  const getElements = useCallback(async () => {
+    const response = await apiGet('/apps/projektmanagement/elements');
+    if (!response.ok) throw new Error('Failed to load elements');
+    return (await response.json()).elements;
+  }, []);
+
+  // Wissen eines (element, segment) laden (mit Backend-Fallback auf _general)
+  const getSegmentKnowledge = useCallback(async (element, segment) => {
+    const response = await apiGet(`/apps/projektmanagement/knowledge/element/${element}/${segment}`);
+    if (!response.ok) {
+      if (response.status === 404) return null; // noch kein Wissen hinterlegt
+      throw new Error('Failed to load segment knowledge');
+    }
+    return (await response.json()).knowledge;
+  }, []);
+
+  // Wissen eines (element, segment) speichern (JSON-Objekt → YAML)
+  const saveSegmentKnowledge = useCallback(async (element, segment, knowledge) => {
+    const response = await apiPut(`/apps/projektmanagement/knowledge/element/${element}/${segment}`, { knowledge });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to save knowledge');
+    }
+    return await response.json();
+  }, []);
+
   // Get app config (select options)
   const getConfig = useCallback(async () => {
     const response = await apiGet('/apps/projektmanagement/config');
@@ -897,6 +924,9 @@ export function useProjektmanagement() {
     getKnowledgeSummary,
     getStepKnowledge,
     saveKnowledge,
+    getElements,
+    getSegmentKnowledge,
+    saveSegmentKnowledge,
     getAnalysisPrompt,
     // KI-Analyse
     analyzeStep,
