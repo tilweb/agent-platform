@@ -2,6 +2,24 @@
 
 ## 2026-09-04
 
+### PM-App: KI-Assistent für Idee & Portfolio — PM1 (Backend-Generalisierung)
+Vorbereitung, um den KI-Balken (Wissen/Chat/Analyse) vom Projektauftrag auch auf Projektidee und
+Portfolio zu bringen. Das Masterclass-Wissen war an jeder Ebene hart auf die 7 Auftrag-Steps verdrahtet;
+PM1 generalisiert das **additiv** auf **(Element, Segment)** — ohne Verhaltensänderung für den Auftrag.
+- **`knowledge.ts`**: Element-Registry (projektauftrag/projektidee/portfolio/statusbericht) + Auflösung
+  `knowledge/<element>/<segment>.yaml` mit **Fallback** auf `_general`; Auftrag-Dateien bleiben flach;
+  alte step-Funktionen als Back-Compat-Wrapper.
+- **`analysis.ts`**: `analyzeSegment`, `buildSegmentChatSystemPrompt`, **Extractor-Registry**
+  (`registerSegmentExtractor`; Auftrag automatisch registriert), `hashSegmentData` + `dataHash`
+  (Stale-Erkennung, auch am bestehenden `analyzeStep`).
+- **`routes.ts`**: `GET /elements`, `POST /analyse/element/:element/:segment`,
+  `GET/PUT /knowledge/element/:element/:segment[/raw]`, `POST …/chat` (SSE) — namespaced,
+  kollisionsfrei; numerische `:step`-Routen als Alias erhalten.
+- **`types.ts`** `StoredStepAnalysis.dataHash`/`stale`; **`AnalysisResult.jsx`** „Veraltet"-Banner
+  (greift auch beim Auftrag).
+- In **beiden Worktrees** (Postgres + YAML); Wissen ist ohnehin file-basiert. Verifiziert: tsc sauber,
+  44/44 PM-Tests, Auftrag-Wissen byte-identisch. Plan: `docs/pm-ki-assistent-idee-portfolio-plan-2026-09-04.md`.
+
 ### API-Rate-Limit angehoben (100 → 600/min) + Export-Fehlermeldung
 Das globale `/api/*`-Rate-Limit war **100 Requests/Minute pro IP** — rein IP-basiert (die Middleware
 läuft vor der Auth), sodass sich auf einem Host alle Tabs + Hintergrund-Polling einer Oberfläche
