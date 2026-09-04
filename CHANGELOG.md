@@ -2,6 +2,17 @@
 
 ## 2026-09-04
 
+### PM-App: KI-Assistent für Idee & Portfolio — PM2 (MasterclassEditor generalisiert)
+Der Masterclass-Editor (Einstellungen → Masterclass) war fix auf die 7 Projektauftrag-Steps verdrahtet.
+- **Element-Umschalter** (Pill-Tabs aus der `/elements`-Registry): Projektauftrag · Projektidee · Portfolio
+  — je Element sein Segment-Akkordeon. Damit sind die **zwei neuen Sektionen (Idee, Portfolio)** da;
+  Statusbericht bewusst ausgeblendet (folgt separat). Fehlt zu einem Segment noch Wissen, öffnet der
+  Editor ein leeres Gerüst zum Anlegen (für die RuhrPM-Inhalte).
+- Neue Hook-Wrapper `getElements`/`getSegmentKnowledge`/`saveSegmentKnowledge` auf die generischen
+  `/knowledge/element/:element/:segment`-Endpunkte. Der bewährte Sektions-Editor bleibt unverändert.
+- `AnalysisResult.jsx`: ungenutztes `stepName` entfernt (eslint-clean). Reines Frontend → in beiden
+  Worktrees identisch.
+
 ### PM-App: KI-Assistent für Idee & Portfolio — PM1 (Backend-Generalisierung)
 Vorbereitung, um den KI-Balken (Wissen/Chat/Analyse) vom Projektauftrag auch auf Projektidee und
 Portfolio zu bringen. Das Masterclass-Wissen war an jeder Ebene hart auf die 7 Auftrag-Steps verdrahtet;

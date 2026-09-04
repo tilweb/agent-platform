@@ -12,19 +12,14 @@
  * Kein YAML-Wissen noetig — Struktur wird durch Formulare erzwungen.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { theme } from '../../../config/theme';
 import { useProjektmanagement } from '../../../hooks/useProjektmanagement';
 
-const STEP_LABELS = [
-  { step: 1, title: 'Basis-Informationen' },
-  { step: 2, title: 'Ziele & Erfolgskriterien' },
-  { step: 3, title: 'Inhalt & Umfang' },
-  { step: 4, title: 'Hauptaufgaben' },
-  { step: 5, title: 'Meilensteine' },
-  { step: 6, title: 'Budget & Risiken' },
-  { step: 7, title: 'Organisation & Stakeholder' },
-];
+/** Leeres Wissens-Gerüst für ein noch nicht angelegtes Segment. */
+function emptyKnowledge(title) {
+  return { meta: { title: title || '', description: '' }, pruefkriterien: {}, typische_fehler: [], kernkonzepte: {}, verbesserungsvorschlaege: {} };
+}
 
 const KNOWN_KEYS = ['meta', 'kernkonzepte', 'pruefkriterien', 'typische_fehler', 'verbesserungsvorschlaege'];
 
@@ -42,6 +37,15 @@ const SECTIONS = [
 // ============================================================
 
 const s = {
+  // Element-Umschalter (Pill-Tabs)
+  elementTabs: { display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.sm, flexWrap: 'wrap' },
+  elementTab: {
+    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+    backgroundColor: 'transparent', border: 'none', borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium,
+    color: theme.colors.textMuted, cursor: 'pointer', transition: `all ${theme.transitions.fast}`,
+  },
+  elementTabActive: { backgroundColor: theme.colors.primaryLight, color: theme.colors.primary },
   // Step accordion
   stepCard: {
     backgroundColor: theme.colors.surface,
@@ -967,74 +971,104 @@ function StepEditor({ knowledge, onChange, onSave, isSaving, status }) {
 // ============================================================
 
 export default function MasterclassEditor() {
-  const { getStepKnowledge, saveKnowledge } = useProjektmanagement();
-  const [expandedStep, setExpandedStep] = useState(null);
-  const [stepData, setStepData] = useState({});
-  const [stepStatuses, setStepStatuses] = useState({});
-  const [loadingStep, setLoadingStep] = useState(null);
-  const [savingStep, setSavingStep] = useState(null);
+  const { getElements, getSegmentKnowledge, saveSegmentKnowledge } = useProjektmanagement();
+  const [elements, setElements] = useState([]);
+  const [activeElement, setActiveElement] = useState('projektauftrag');
+  const [expandedKey, setExpandedKey] = useState(null); // `${element}/${segment}`
+  const [segData, setSegData] = useState({});           // key → knowledge
+  const [statuses, setStatuses] = useState({});
+  const [loadingKey, setLoadingKey] = useState(null);
+  const [savingKey, setSavingKey] = useState(null);
 
-  const toggleStep = async (step) => {
-    if (expandedStep === step) {
-      setExpandedStep(null);
-      return;
-    }
-    setExpandedStep(step);
+  useEffect(() => {
+    // Element-Registry laden; Statusbericht ist noch nicht verdrahtet (separat).
+    getElements()
+      .then((els) => setElements((els || []).filter((e) => e.element !== 'statusbericht')))
+      .catch(() => setElements([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Mount-Fetch, kein Cascade
+  }, []);
 
-    // Load if not cached
-    if (!stepData[step]) {
+  const activeDef = elements.find((e) => e.element === activeElement);
+  const segments = activeDef?.segments ?? [];
+
+  const toggleSegment = async (element, segment, title) => {
+    const key = `${element}/${segment}`;
+    if (expandedKey === key) { setExpandedKey(null); return; }
+    setExpandedKey(key);
+    if (!segData[key]) {
       try {
-        setLoadingStep(step);
-        const knowledge = await getStepKnowledge(step);
-        setStepData((prev) => ({ ...prev, [step]: knowledge }));
+        setLoadingKey(key);
+        const knowledge = await getSegmentKnowledge(element, segment);
+        setSegData((prev) => ({ ...prev, [key]: knowledge ?? emptyKnowledge(title) }));
       } catch (err) {
-        console.error('Error loading step', step, err);
-        setStepStatuses((prev) => ({ ...prev, [step]: { type: 'error', message: 'Laden fehlgeschlagen' } }));
+        console.error('Error loading segment', key, err);
+        setStatuses((prev) => ({ ...prev, [key]: { type: 'error', message: 'Laden fehlgeschlagen' } }));
       } finally {
-        setLoadingStep(null);
+        setLoadingKey(null);
       }
     }
   };
 
-  const handleChange = (step, knowledge) => {
-    setStepData((prev) => ({ ...prev, [step]: knowledge }));
-    setStepStatuses((prev) => ({ ...prev, [step]: { type: 'dirty' } }));
+  const handleChange = (key, knowledge) => {
+    setSegData((prev) => ({ ...prev, [key]: knowledge }));
+    setStatuses((prev) => ({ ...prev, [key]: { type: 'dirty' } }));
   };
 
-  const handleSave = async (step) => {
-    const knowledge = stepData[step];
+  const handleSave = async (element, segment) => {
+    const key = `${element}/${segment}`;
+    const knowledge = segData[key];
     if (!knowledge) return;
     try {
-      setSavingStep(step);
-      await saveKnowledge(step, knowledge);
-      setStepStatuses((prev) => ({ ...prev, [step]: { type: 'saved' } }));
+      setSavingKey(key);
+      await saveSegmentKnowledge(element, segment, knowledge);
+      setStatuses((prev) => ({ ...prev, [key]: { type: 'saved' } }));
     } catch (err) {
-      setStepStatuses((prev) => ({ ...prev, [step]: { type: 'error', message: err.message } }));
+      setStatuses((prev) => ({ ...prev, [key]: { type: 'error', message: err.message } }));
     } finally {
-      setSavingStep(null);
+      setSavingKey(null);
     }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
       <p style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, marginBottom: theme.spacing.sm }}>
-        Bearbeiten Sie das PM-Masterclass-Wissen, das im Wizard-Sidebar pro Schritt angezeigt wird.
+        Bearbeiten Sie das PM-Masterclass-Wissen je Element und Bereich — es wird im jeweiligen KI-Balken
+        (Wissen &amp; Analyse) genutzt.
       </p>
 
-      {STEP_LABELS.map(({ step, title }) => {
-        const isExpanded = expandedStep === step;
-        const isLoading = loadingStep === step;
+      {/* Element-Umschalter */}
+      <div style={s.elementTabs}>
+        {elements.map((el) => {
+          const isActive = activeElement === el.element;
+          return (
+            <button
+              key={el.element}
+              style={{ ...s.elementTab, ...(isActive ? s.elementTabActive : {}) }}
+              onClick={() => { setActiveElement(el.element); setExpandedKey(null); }}
+              onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+              onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
+            >
+              {el.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Segmente des aktiven Elements */}
+      {segments.map(({ key: segKey, title }) => {
+        const key = `${activeElement}/${segKey}`;
+        const isExpanded = expandedKey === key;
+        const isLoading = loadingKey === key;
 
         return (
-          <div key={step} style={s.stepCard}>
+          <div key={key} style={s.stepCard}>
             <button
               style={s.stepHeader}
-              onClick={() => toggleStep(step)}
+              onClick={() => toggleSegment(activeElement, segKey, title)}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surface; }}
             >
               <div style={s.stepHeaderLeft}>
-                <div style={s.stepNumber}>{step}</div>
                 <span style={s.stepTitle}>{title}</span>
               </div>
               <span style={{
@@ -1050,13 +1084,13 @@ export default function MasterclassEditor() {
                 <div style={{ padding: theme.spacing.xl, textAlign: 'center', color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
                   Lade Wissen...
                 </div>
-              ) : stepData[step] ? (
+              ) : segData[key] ? (
                 <StepEditor
-                  knowledge={stepData[step]}
-                  onChange={(k) => handleChange(step, k)}
-                  onSave={() => handleSave(step)}
-                  isSaving={savingStep === step}
-                  status={stepStatuses[step]}
+                  knowledge={segData[key]}
+                  onChange={(k) => handleChange(key, k)}
+                  onSave={() => handleSave(activeElement, segKey)}
+                  isSaving={savingKey === key}
+                  status={statuses[key]}
                 />
               ) : null
             )}

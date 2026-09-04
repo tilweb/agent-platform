@@ -374,7 +374,7 @@ function AnalysisResult({ analysis }) {
     return null;
   }
 
-  const { masterclassAnalysis, konsistenzAnalysis, stepName, timestamp, stale } = analysis;
+  const { masterclassAnalysis, konsistenzAnalysis, timestamp, stale } = analysis;
   const score = masterclassAnalysis?.score || 0;
 
   return (
