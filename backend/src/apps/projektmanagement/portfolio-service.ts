@@ -18,6 +18,7 @@ import type {
 import { PORTFOLIO_STATUS_VALUES } from './types';
 import { VersionConflictError, withLock } from './concurrency';
 import { defaultOwnerPermissions } from './permissions';
+import { annotateStaleAnalyses } from './analysis';
 import { listProjekte, updateProjekt } from './projekt-service';
 
 const BASE_PATH = './data/apps/projektmanagement';
@@ -55,6 +56,7 @@ function normalize(raw: any): Portfolio {
     criteria: raw.criteria ?? undefined,
     dependencies: raw.dependencies ?? undefined,
     tracked_risks: raw.tracked_risks ?? undefined,
+    analyses: raw.analyses ?? undefined,
     ownerId: raw.ownerId ?? undefined,
     metadata: raw.metadata ?? undefined,
     permissions: raw.permissions ?? undefined,
@@ -100,7 +102,10 @@ export async function getPortfolio(id: string): Promise<Portfolio | null> {
   const file = Bun.file(`${PORTFOLIOS_PATH}/${id}/metadata.yaml`);
   if (!(await file.exists())) return null;
   const content = await file.text();
-  return normalize(parse(content));
+  const portfolio = normalize(parse(content));
+  // Stale-Markierung je gespeicherter Segment-Analyse (Daten seit Analyse geändert?).
+  annotateStaleAnalyses('portfolio', portfolio, portfolio.analyses);
+  return portfolio;
 }
 
 export async function createPortfolio(input: PortfolioCreateInput): Promise<Portfolio> {
@@ -126,6 +131,7 @@ export async function createPortfolio(input: PortfolioCreateInput): Promise<Port
     criteria: input.criteria,
     dependencies: input.dependencies,
     tracked_risks: input.tracked_risks,
+    analyses: input.analyses,
     ownerId: input.ownerId,
     metadata: input.metadata,
     permissions,
@@ -174,6 +180,7 @@ export async function updatePortfolio(id: string, input: PortfolioUpdateInput): 
     if (input.criteria !== undefined) next.criteria = input.criteria;
     if (input.dependencies !== undefined) next.dependencies = input.dependencies;
     if (input.tracked_risks !== undefined) next.tracked_risks = input.tracked_risks;
+    if (input.analyses !== undefined) next.analyses = input.analyses;
     if (input.metadata !== undefined) next.metadata = input.metadata;
     next.version = current.version + 1;
     next.updatedAt = new Date().toISOString();

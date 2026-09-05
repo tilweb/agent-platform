@@ -38,7 +38,7 @@ import {
   denyIfNotAppEditor,
 } from './_shared';
 import { getPortfolioDashboard, getPortfolioRoadmap, getPortfolioCosts, getPortfolioRisks, getPortfolioCapacity } from '../portfolio-dashboard-service';
-import type { PortfolioStatus, TeamMember, Stakeholder, PortfolioDependency } from '../types';
+import type { PortfolioStatus, TeamMember, Stakeholder, PortfolioDependency, StoredStepAnalysis } from '../types';
 // Hinweis: getPortfolioDashboard kommt aus portfolio-dashboard-service.ts (Phase D3).
 
 export const portfoliosRoutes = new Hono();
@@ -158,6 +158,7 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       criteria?: string[];
       dependencies?: PortfolioDependency[];
       tracked_risks?: string[];
+      analyses?: Record<string, StoredStepAnalysis>;
       metadata?: Record<string, unknown>;
       expectedVersion?: number;
     }>();
@@ -177,6 +178,7 @@ portfoliosRoutes.put('/portfolios/:id', async (c) => {
       criteria: body.criteria,
       dependencies: body.dependencies,
       tracked_risks: body.tracked_risks,
+      analyses: body.analyses,
       metadata: body.metadata,
       expectedVersion: body.expectedVersion,
     });

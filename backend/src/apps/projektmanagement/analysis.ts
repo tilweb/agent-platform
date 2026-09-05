@@ -429,6 +429,21 @@ for (const [seg, fn] of Object.entries(IDEE_EXTRACTORS)) {
   SEGMENT_EXTRACTORS.set(`projektidee/${seg}`, fn);
 }
 
+// Portfolio-Extraktor (PM4): ein Segment `_general` — die Portfolio-Definition
+// (Strategie, Ziele, Zusammensetzung) als Analyse-/Chat-Kontext.
+SEGMENT_EXTRACTORS.set('portfolio/_general', (d) => ({
+  name: d.name,
+  strategy: d.strategy,
+  goals: d.goals,
+  criteria: ensureArray(d.criteria),
+  type: d.type,
+  driver: d.driver,
+  organization: ensureArray(d.organization),
+  stakeholders: ensureArray(d.stakeholders),
+  dependencies: ensureArray(d.dependencies),
+  tracked_risks: ensureArray(d.tracked_risks),
+}));
+
 /** Kontextdaten eines (element, segment) — via Extractor, sonst ganze Entität. */
 export function extractSegmentData(element: PmElement, segment: string, entity: any): Record<string, any> {
   const ex = resolveExtractor(element, segment);

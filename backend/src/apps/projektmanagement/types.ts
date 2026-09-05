@@ -280,6 +280,7 @@ export interface Portfolio {
   dependencies?: PortfolioDependency[];
   // Risiken: Marker-Keys der Risiken, die im PMO-Dashboard getrackt werden sollen.
   tracked_risks?: string[];
+  analyses?: Record<string, StoredStepAnalysis>;
   ownerId?: string;
   metadata?: Record<string, any>;
   permissions?: ResourcePermissions;
@@ -305,6 +306,7 @@ export interface PortfolioCreateInput {
   criteria?: string[];
   dependencies?: PortfolioDependency[];
   tracked_risks?: string[];
+  analyses?: Record<string, StoredStepAnalysis>;
   ownerId?: string;
   metadata?: Record<string, any>;
 }
@@ -325,6 +327,7 @@ export interface PortfolioUpdateInput {
   criteria?: string[];
   dependencies?: PortfolioDependency[];
   tracked_risks?: string[];
+  analyses?: Record<string, StoredStepAnalysis>;
   metadata?: Record<string, any>;
   expectedVersion?: number;
 }
