@@ -273,17 +273,38 @@ const styles = {
   },
 };
 
-// Map UI step numbers to backend step numbers (steps 8-9 don't have knowledge)
-// UI order: 1=Basis, 2=Personen, 3=Ziele, 4=Inhalt, 5=Roadmap, 6=Budget, 7=Risiken
-const BACKEND_STEP_MAP = {
-  1: [1],      // Basis
-  2: [7],      // Personen
-  3: [2],      // Ziele
-  4: [3],      // Inhalt
-  5: [5, 4],   // Roadmap: Meilensteine (primary), Hauptaufgaben
-  6: [6],      // Budget
-  7: [6],      // Risiken (same backend step as Budget)
-};
+/**
+ * Führt die Analysen mehrerer Segmente zu EINER zusammen (z.B. Auftrags-Roadmap =
+ * Meilensteine + Hauptaufgaben). `results`: [{ label, analysis }]. Bei genau
+ * einem Eintrag ohne Label bleibt die Analyse unverändert.
+ */
+function mergeAnalyses(results) {
+  if (results.length === 1) return results[0].analysis;
+  const mc = (r) => r?.analysis?.masterclassAnalysis || {};
+  const ko = (r) => r?.analysis?.konsistenzAnalysis || {};
+  const pfx = (r, s) => (r.label ? `${r.label}: ${s}` : s);
+  const statusRank = { konsistent: 0, warnung: 1, inkonsistent: 2 };
+  const mergedStatus = results.reduce((worst, r) => {
+    const s = ko(r).status || 'konsistent';
+    return (statusRank[s] ?? 0) > (statusRank[worst] ?? 0) ? s : worst;
+  }, 'konsistent');
+  return {
+    stepName: results.map((r) => r.label).filter(Boolean).join(' & '),
+    timestamp: new Date().toISOString(),
+    masterclassAnalysis: {
+      score: Math.round(results.reduce((sum, r) => sum + (mc(r).score || 0), 0) / (results.length || 1)),
+      staerken: results.flatMap((r) => (mc(r).staerken || []).map((s) => pfx(r, s))),
+      schwaechen: results.flatMap((r) => (mc(r).schwaechen || []).map((s) => pfx(r, s))),
+      hinweise: results.flatMap((r) => (mc(r).hinweise || []).map((h) => pfx(r, h))),
+    },
+    konsistenzAnalysis: {
+      status: mergedStatus,
+      findings: results.flatMap((r) => (ko(r).findings || []).map((f) => ({
+        ...f, bereich: f.bereich ? pfx(r, f.bereich) : (r.label || f.bereich),
+      }))),
+    },
+  };
+}
 
 // Akkordeon-Sektionen Konfiguration
 const ACCORDION_SECTIONS = [
@@ -293,7 +314,7 @@ const ACCORDION_SECTIONS = [
   { id: 'konzepte', label: 'Kernkonzepte', icon: BookIcon, color: theme.colors.info },
 ];
 
-function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysisComplete, chatMessages = [], onChatMessagesChange }) {
+function KnowledgePanel({ element, segment, analyzeSegments, entity, canAnalyze = false, analysis = null, onAnalysisComplete, chatMessages = [], onChatMessagesChange }) {
   const [knowledge, setKnowledge] = useState(null);
   const [activeTab, setActiveTab] = useState('wissen');
   const [isLoading, setIsLoading] = useState(false);
@@ -305,27 +326,23 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState(null);
 
-  const backendSteps = BACKEND_STEP_MAP[currentStep];
-  const backendStep = backendSteps ? backendSteps[0] : undefined;
-  const canAnalyze = currentStep >= 2 && currentStep <= 7;
-
-  // Aktuelle Analyse für diesen Step (aus Props)
-  const analysis = analyses[currentStep] || null;
+  // Segmente, die die Analyse abdeckt — meist genau eins; der Auftrags-Roadmap-
+  // Step fasst zwei Wissens-Segmente zusammen. Form: [{ key, label }].
+  const analyzeList = (analyzeSegments && analyzeSegments.length)
+    ? analyzeSegments
+    : (segment ? [{ key: segment, label: '' }] : []);
 
   useEffect(() => {
-    if (backendStep) {
-      loadKnowledge();
-    } else {
-      setKnowledge(null);
-    }
-    // Reset error when step changes
+    if (segment) loadKnowledge();
+    else setKnowledge(null);
     setAnalysisError(null);
-  }, [backendStep]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Lade-Fetch bei Segmentwechsel, kein Cascade
+  }, [element, segment]);
 
-  // Wissen ist die Default-Ansicht — bei jedem Step-Wechsel dorthin zurück.
+  // Wissen ist die Default-Ansicht — bei jedem Segmentwechsel dorthin zurück.
   useEffect(() => {
     setActiveTab('wissen');
-  }, [currentStep]); // Nur bei Step-Wechsel
+  }, [element, segment]);
 
   // Toggle Akkordeon-Sektion
   const toggleSection = (sectionId) => {
@@ -337,100 +354,33 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
     });
   };
 
-  // Handle KI analysis
+  // Handle KI analysis — analysiert jedes Segment über den generischen Endpunkt
+  // und mergt das Ergebnis (meist nur eins). Der Aufrufer schlüsselt/speichert.
   const handleAnalyze = async () => {
-    if (!projektauftrag || isAnalyzing || !backendSteps) return;
+    if (!entity || isAnalyzing || analyzeList.length === 0) return;
 
     try {
       setIsAnalyzing(true);
       setAnalysisError(null);
 
-      if (backendSteps.length === 1) {
-        // Single backend step (most cases)
+      const results = [];
+      for (const seg of analyzeList) {
         const response = await apiPost(
-          `/apps/projektmanagement/analyse/step/${backendSteps[0]}`,
-          { projektauftrag }
+          `/apps/projektmanagement/analyse/element/${element}/${seg.key}`,
+          { entity }
         );
-
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.error || 'Analyse fehlgeschlagen');
         }
-
         const data = await response.json();
-        if (onAnalysisComplete) {
-          onAnalysisComplete(currentStep, data.analysis);
-          // Budget (6) and Risiken (7) share backend step 6 — store under both
-          if (currentStep === 6) onAnalysisComplete(7, data.analysis);
-          if (currentStep === 7) onAnalysisComplete(6, data.analysis);
-        }
-      } else {
-        // Multiple backend steps (Roadmap: steps 5+4)
-        const results = [];
-        for (const bs of backendSteps) {
-          const response = await apiPost(
-            `/apps/projektmanagement/analyse/step/${bs}`,
-            { projektauftrag }
-          );
-          if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Analyse fehlgeschlagen');
-          }
-          const data = await response.json();
-          results.push(data.analysis);
-        }
-
-        // Merge results from multiple backend steps.
-        // Backend liefert je Step die verschachtelte Form
-        // { masterclassAnalysis, konsistenzAnalysis, stepName, timestamp }.
-        // Wir mergen in genau diese Struktur, damit AnalysisResult sie rendert.
-        const prefixes = ['Meilensteine', 'Hauptaufgaben'];
-        const mc = (r) => r?.masterclassAnalysis || {};
-        const ko = (r) => r?.konsistenzAnalysis || {};
-
-        // Konsistenz-Status: der schlechteste gewinnt.
-        const statusRank = { konsistent: 0, warnung: 1, inkonsistent: 2 };
-        const mergedStatus = results.reduce((worst, r) => {
-          const s = ko(r).status || 'konsistent';
-          return (statusRank[s] ?? 0) > (statusRank[worst] ?? 0) ? s : worst;
-        }, 'konsistent');
-
-        const merged = {
-          stepName: 'Roadmap (Meilensteine & Hauptaufgaben)',
-          timestamp: new Date().toISOString(),
-          masterclassAnalysis: {
-            score: Math.round(
-              results.reduce((sum, r) => sum + (mc(r).score || 0), 0) / (results.length || 1)
-            ),
-            staerken: results.flatMap((r, i) =>
-              (mc(r).staerken || []).map(s => `${prefixes[i]}: ${s}`)
-            ),
-            schwaechen: results.flatMap((r, i) =>
-              (mc(r).schwaechen || []).map(s => `${prefixes[i]}: ${s}`)
-            ),
-            hinweise: results.flatMap((r, i) =>
-              (mc(r).hinweise || []).map(h => `${prefixes[i]}: ${h}`)
-            ),
-          },
-          konsistenzAnalysis: {
-            status: mergedStatus,
-            findings: results.flatMap((r, i) =>
-              (ko(r).findings || []).map(f => ({
-                ...f,
-                bereich: f.bereich ? `${prefixes[i]}: ${f.bereich}` : prefixes[i],
-              }))
-            ),
-          },
-        };
-
-        if (onAnalysisComplete) {
-          onAnalysisComplete(currentStep, merged);
-        }
+        results.push({ label: seg.label || '', analysis: data.analysis });
       }
 
+      if (onAnalysisComplete) onAnalysisComplete(mergeAnalyses(results));
       setActiveTab('analyse');
     } catch (error) {
-      console.error('Error analyzing step:', error);
+      console.error('Error analyzing:', error);
       setAnalysisError(error.message);
     } finally {
       setIsAnalyzing(false);
@@ -440,12 +390,11 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
   const loadKnowledge = async () => {
     try {
       setIsLoading(true);
-      const response = await apiGet(`/apps/projektmanagement/knowledge/${backendStep}`);
+      const response = await apiGet(`/apps/projektmanagement/knowledge/element/${element}/${segment}`);
       if (response.ok) {
         const data = await response.json();
         setKnowledge(data.knowledge);
       } else {
-        console.error('Knowledge API returned error:', response.status);
         setKnowledge(null);
       }
     } catch (error) {
@@ -456,8 +405,8 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
     }
   };
 
-  // No knowledge for steps 8-9
-  if (!backendStep) {
+  // Kein Wissen ohne Segment (z.B. Auftrags-Übersichts-Steps).
+  if (!segment) {
     return (
       <div style={styles.container}>
         <div style={styles.empty}>
@@ -810,16 +759,9 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
     );
   }
 
-  if (!knowledge) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.empty}>
-          <p>Wissen konnte nicht geladen werden.</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Ohne hinterlegtes Wissen (z.B. Idee/Portfolio vor Einpflege durch RuhrPM)
+  // bleibt der Balken nutzbar: Chat + Analyse arbeiten aus allgemeiner PM-Best-
+  // Practice; der Wissen-Tab zeigt einen Platzhalter.
   return (
     <div style={styles.container}>
       {/* Header */}
@@ -828,8 +770,8 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
           <BookIcon size={16} />
           <span style={styles.title}>PM Masterclass</span>
         </div>
-        <div style={styles.stepTitle}>{knowledge.meta?.title}</div>
-        <div style={styles.stepDescription}>{knowledge.meta?.description}</div>
+        <div style={styles.stepTitle}>{knowledge?.meta?.title}</div>
+        <div style={styles.stepDescription}>{knowledge?.meta?.description}</div>
       </div>
 
       {/* Tabs - immer anzeigen wenn mehr als 1 Tab */}
@@ -870,11 +812,12 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
       {activeTab === 'chat' ? (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <StepChat
-            backendStep={backendStep}
-            projektauftrag={projektauftrag}
+            element={element}
+            segment={segment}
+            entity={entity}
             messages={chatMessages}
             onMessagesChange={onChatMessagesChange}
-            disabled={!projektauftrag}
+            disabled={!entity}
           />
         </div>
       ) : (
@@ -886,11 +829,11 @@ function KnowledgePanel({ currentStep, projektauftrag, analyses = {}, onAnalysis
               <div style={styles.analyzeSection}>
                 <button
                   onClick={handleAnalyze}
-                  disabled={isAnalyzing || !projektauftrag}
+                  disabled={isAnalyzing || !entity}
                   style={{
                     ...styles.analyzeButton,
                     ...(isAnalyzing ? styles.analyzeButtonLoading : {}),
-                    ...(!projektauftrag ? styles.analyzeButtonDisabled : {}),
+                    ...(!entity ? styles.analyzeButtonDisabled : {}),
                   }}
                 >
                   {isAnalyzing ? (

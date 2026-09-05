@@ -21,6 +21,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../utils/apiFetch';
 import ExportDropdown from '../../components/ExportDropdown';
 import StepNav from './components/StepNav';
+import KnowledgePanel from './components/KnowledgePanel';
 import IdeeBasis from './components/idee-steps/IdeeBasis';
 import IdeePersonen from './components/idee-steps/IdeePersonen';
 import IdeeZiele from './components/idee-steps/IdeeZiele';
@@ -38,6 +39,17 @@ const STEPS = [
   { number: 6, title: 'Unternehmensrisiken', component: Unternehmensrisiken },
   { number: 7, title: 'Übersicht', component: IdeeUebersicht },
 ];
+
+// Idee-UI-Step → Masterclass-Segment (Registry-Schlüssel). Übersicht (7) ist
+// eine reine Zusammenfassung → kein KI-Balken.
+const IDEE_SEGMENTS = {
+  1: { segment: 'basis', canAnalyze: true },
+  2: { segment: 'personen', canAnalyze: true },
+  3: { segment: 'ziele', canAnalyze: true },
+  4: { segment: 'projektkontext', canAnalyze: true },
+  5: { segment: 'businesscase', canAnalyze: true },
+  6: { segment: 'unternehmensrisiken', canAnalyze: true },
+};
 
 const styles = {
   container: {
@@ -129,6 +141,15 @@ const styles = {
     flex: 1,
     overflow: 'auto',
     padding: theme.spacing.xl,
+  },
+  rightSidebar: {
+    width: '400px',
+    minWidth: '400px',
+    borderLeft: `1px solid ${theme.colors.border}`,
+    backgroundColor: theme.colors.surface,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
   },
   stepContent: {
     maxWidth: '720px',
@@ -242,6 +263,9 @@ export default function IdeeWizardPage() {
   const [idee, setIdee] = useState(emptyIdee());
   const [appConfig, setAppConfig] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
+  // KI-Balken: Analysen + Chatverläufe je Step (in-session; Persistenz folgt in PM3d).
+  const [ideeAnalyses, setIdeeAnalyses] = useState({});
+  const [chatHistories, setChatHistories] = useState({});
   const [isLoading, setIsLoading] = useState(!!id);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -596,6 +620,20 @@ export default function IdeeWizardPage() {
             </div>
           </fieldset>
         </div>
+        {IDEE_SEGMENTS[currentStep] && (
+          <div style={styles.rightSidebar}>
+            <KnowledgePanel
+              element="projektidee"
+              segment={IDEE_SEGMENTS[currentStep].segment}
+              canAnalyze={IDEE_SEGMENTS[currentStep].canAnalyze}
+              entity={idee}
+              analysis={ideeAnalyses[currentStep] || null}
+              onAnalysisComplete={(analysis) => setIdeeAnalyses((prev) => ({ ...prev, [currentStep]: analysis }))}
+              chatMessages={chatHistories[currentStep] || []}
+              onChatMessagesChange={(msgs) => setChatHistories((prev) => ({ ...prev, [currentStep]: msgs }))}
+            />
+          </div>
+        )}
       </div>
 
       {/* Navigation */}

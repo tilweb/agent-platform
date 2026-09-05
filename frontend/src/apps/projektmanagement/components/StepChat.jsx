@@ -171,7 +171,7 @@ const styles = {
   },
 };
 
-export default function StepChat({ backendStep, projektauftrag, messages = [], onMessagesChange, disabled = false }) {
+export default function StepChat({ element, segment, entity, messages = [], onMessagesChange, disabled = false }) {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState(null);
@@ -182,11 +182,11 @@ export default function StepChat({ backendStep, projektauftrag, messages = [], o
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const canSend = !!input.trim() && !streaming && !disabled && !!backendStep;
+  const canSend = !!input.trim() && !streaming && !disabled && !!segment;
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || streaming || disabled || !backendStep) return;
+    if (!text || streaming || disabled || !segment) return;
 
     const base = [...messages, { role: 'user', content: text }];
     onMessagesChange(base);
@@ -199,12 +199,12 @@ export default function StepChat({ backendStep, projektauftrag, messages = [], o
 
     try {
       const response = await fetch(
-        `${API_URL}/apps/projektmanagement/knowledge/${backendStep}/chat`,
+        `${API_URL}/apps/projektmanagement/knowledge/element/${element}/${segment}/chat`,
         {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: base, projektauftrag }),
+          body: JSON.stringify({ messages: base, entity }),
         }
       );
 

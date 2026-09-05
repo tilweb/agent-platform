@@ -975,7 +975,26 @@ projektmanagement.post('/analyse/element/:element/:segment', async (c) => {
     if ('error' in v) return c.json({ error: v.error }, 400);
     const { entity } = await c.req.json();
     if (!entity || typeof entity !== 'object') return c.json({ error: 'entity ist erforderlich' }, 400);
-    // Entitäts-RBAC ist element-spezifisch → wird in PM3/PM4 verdrahtet.
+
+    // Projektauftrag: die bewährte, reichere Analyse (Cross-Step-Konsistenz +
+    // "im Tool erfassbare Felder"-Schema + Editor-RBAC + Datencheck) unverändert
+    // hinter derselben API weiterverwenden. Segment-Schlüssel: 'step_N'.
+    if (v.element === 'projektauftrag') {
+      const m = /^step_(\d+)$/.exec(v.segment);
+      const step = m ? parseInt(m[1]!, 10) : NaN;
+      if (!Number.isNaN(step)) {
+        if (entity.id) {
+          const denied = await denyIfBelowAuftragRole(userId, entity.id, 'editor');
+          if (denied) return c.json({ error: denied.error }, denied.status);
+        }
+        if (!hasEnoughDataForAnalysis(step, entity)) {
+          return c.json({ error: 'Nicht genügend Daten für Analyse vorhanden. Bitte füllen Sie zuerst die Felder aus.' }, 400);
+        }
+        const analysis = await analyzeStep(step, entity, userId);
+        return c.json({ analysis });
+      }
+    }
+
     const analysis = await analyzeSegment(v.element, v.segment, entity, userId);
     return c.json({ analysis });
   } catch (error) {
@@ -1036,7 +1055,15 @@ projektmanagement.post('/knowledge/element/:element/:segment/chat', async (c) =>
     .map((m) => ({ role: m.role, content: m.content }));
   if (history.length === 0) return c.json({ error: 'Keine Nachricht übermittelt' }, 400);
 
-  const systemPrompt = await buildSegmentChatSystemPrompt(v.element, v.segment, body.entity ?? {});
+  // Projektauftrag: exakt derselbe Chat-Prompt wie bisher (Auftrags-Wording +
+  // Step-Extraktor). Andere Elemente: generischer Prompt.
+  let systemPrompt: string;
+  const stepMatch = v.element === 'projektauftrag' ? /^step_(\d+)$/.exec(v.segment) : null;
+  if (stepMatch) {
+    systemPrompt = await buildStepChatSystemPrompt(parseInt(stepMatch[1]!, 10), (body.entity ?? {}) as Parameters<typeof buildStepChatSystemPrompt>[1]);
+  } else {
+    systemPrompt = await buildSegmentChatSystemPrompt(v.element, v.segment, body.entity ?? {});
+  }
   const messages: Message[] = [{ role: 'system', content: systemPrompt }, ...history];
   const usageContext = {
     triggeringUserId: userId,

@@ -394,6 +394,41 @@ for (const [n, fn] of Object.entries(STEP_DATA_EXTRACTORS)) {
   SEGMENT_EXTRACTORS.set(`projektauftrag/step_${n}`, fn as SegmentExtractor);
 }
 
+// Projektidee-Extraktoren (PM3): je Idee-Segment die relevanten Entitätsfelder.
+const IDEE_EXTRACTORS: Record<string, SegmentExtractor> = {
+  basis: (d) => ({
+    projekt_id: d.projekt_id,
+    name: d.name,
+    project_type: d.project_type,
+    status: d.status,
+    projektstatus: d.project_status,
+    projekttreiber: d.projekttreiber,
+    projektgroesse: d.projektgroesse,
+    prioritaet: d.prioritaet,
+    description: d.description,
+    start_date: d.start_date,
+    end_date: d.end_date,
+    projektleiter: d.projektleiter,
+    auftraggeber: d.auftraggeber,
+  }),
+  ziele: (d) => ({ goals: d.goals }),
+  projektkontext: (d) => ({
+    ausgangslage: d.context?.ausgangslage,
+    rahmenbedingungen: d.context?.rahmenbedingungen,
+    in_scope: ensureArray(d.in_scope),
+    out_scope: ensureArray(d.out_scope),
+  }),
+  businesscase: (d) => ({
+    investitionen: ensureArray(d.business_case?.investitionen),
+    nutzen: ensureArray(d.business_case?.nutzen),
+  }),
+  unternehmensrisiken: (d) => ({ unternehmensrisiken: ensureArray(d.unternehmensrisiken) }),
+  personen: (d) => ({ organization: ensureArray(d.organization), stakeholders: ensureArray(d.stakeholders) }),
+};
+for (const [seg, fn] of Object.entries(IDEE_EXTRACTORS)) {
+  SEGMENT_EXTRACTORS.set(`projektidee/${seg}`, fn);
+}
+
 /** Kontextdaten eines (element, segment) — via Extractor, sonst ganze Entität. */
 export function extractSegmentData(element: PmElement, segment: string, entity: any): Record<string, any> {
   const ex = resolveExtractor(element, segment);
