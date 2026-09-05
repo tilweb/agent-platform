@@ -2,6 +2,19 @@
 
 ## 2026-09-04
 
+### PM-App: KI-Assistent für Idee & Portfolio — PM3a/b/c (ein geteilter KI-Balken)
+Der KI-Balken (Wissen/Chat/Analyse) ist jetzt **ein** geteilter, generischer Baustein für alle Elemente
+— kein Fork zwischen Auftrag und Idee/Portfolio.
+- **`KnowledgePanel` + `StepChat` generisch** (`element, segment, entity`): laden/analysieren/chatten über
+  die generischen `/…/element/:element/:segment`-Endpunkte. Roadmap-Merge als generische `mergeAnalyses`.
+  Ohne hinterlegtes Wissen bleiben Chat/Analyse nutzbar (Platzhalter im Wissen-Tab).
+- **Auftrag mitmigriert, Verhalten 1:1:** `WizardPage` nutzt denselben Baustein; die Auftrags-Glue
+  (UI-Step→Segment, Roadmap-2er, 6↔7) liegt jetzt im Aufrufer. Backend delegiert für `projektauftrag/step_N`
+  an die bewährten `analyzeStep`/`buildStepChatSystemPrompt` (Konsistenz, Feld-Schema, RBAC, exaktes Wording).
+- **Idee-Extraktoren** (`registerSegmentExtractor('projektidee', …)`) je Idee-Segment; **KI-Balken in
+  `IdeeWizardPage`** je Step (Basis…Unternehmensrisiken). Idee-Analysen vorerst in-session (Persistenz = PM3d).
+- Beide Worktrees; tsc sauber, 44/44 PM-Tests je Worktree.
+
 ### PM-App: KI-Assistent für Idee & Portfolio — PM2 (MasterclassEditor generalisiert)
 Der Masterclass-Editor (Einstellungen → Masterclass) war fix auf die 7 Projektauftrag-Steps verdrahtet.
 - **Element-Umschalter** (Pill-Tabs aus der `/elements`-Registry): Projektauftrag · Projektidee · Portfolio

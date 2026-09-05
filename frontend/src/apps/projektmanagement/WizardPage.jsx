@@ -31,6 +31,19 @@ import Risiken from './components/steps/Risiken';
 import Uebersicht from './components/steps/Uebersicht';
 import Vergleich from './components/steps/Vergleich';
 import KnowledgePanel from './components/KnowledgePanel';
+
+// Auftrags-UI-Step → Masterclass-Segment(e). Die UI-Reihenfolge weicht von der
+// Wissens-Reihenfolge ab; der Roadmap-Step deckt zwei Segmente ab (Merge im
+// Panel), Budget/Risiken teilen sich ein Segment. `null` = kein Wissen/Analyse.
+const AUFTRAG_SEGMENTS = {
+  1: { segment: 'step_1', analyzeSegments: [{ key: 'step_1', label: '' }], canAnalyze: false }, // Basis
+  2: { segment: 'step_7', analyzeSegments: [{ key: 'step_7', label: '' }], canAnalyze: true },  // Personen
+  3: { segment: 'step_2', analyzeSegments: [{ key: 'step_2', label: '' }], canAnalyze: true },  // Ziele
+  4: { segment: 'step_3', analyzeSegments: [{ key: 'step_3', label: '' }], canAnalyze: true },  // Inhalt
+  5: { segment: 'step_5', analyzeSegments: [{ key: 'step_5', label: 'Meilensteine' }, { key: 'step_4', label: 'Hauptaufgaben' }], canAnalyze: true }, // Roadmap
+  6: { segment: 'step_6', analyzeSegments: [{ key: 'step_6', label: '' }], canAnalyze: true },  // Budget
+  7: { segment: 'step_6', analyzeSegments: [{ key: 'step_6', label: '' }], canAnalyze: true },  // Risiken
+};
 import StepNav from './components/StepNav';
 import StepImportButton from './components/StepImportButton';
 import ExportDropdown from '../../components/ExportDropdown';
@@ -1182,14 +1195,23 @@ function WizardPage() {
                 <div style={currentStep === 8 ? {} : styles.stepContent}>{renderStepContent()}</div>
               </fieldset>
             </div>
-            {currentStep <= 7 && (
+            {currentStep <= 7 && AUFTRAG_SEGMENTS[currentStep] && (
               <div style={styles.rightSidebar}>
                 <KnowledgePanel
-                  currentStep={currentStep}
-                  projektauftrag={projektauftrag}
-                  analyses={stepAnalyses}
-                  onAnalysisComplete={(step, analysis) => {
-                    setStepAnalyses(prev => ({ ...prev, [step]: analysis }));
+                  element="projektauftrag"
+                  segment={AUFTRAG_SEGMENTS[currentStep].segment}
+                  analyzeSegments={AUFTRAG_SEGMENTS[currentStep].analyzeSegments}
+                  canAnalyze={AUFTRAG_SEGMENTS[currentStep].canAnalyze}
+                  entity={projektauftrag}
+                  analysis={stepAnalyses[currentStep] || null}
+                  onAnalysisComplete={(analysis) => {
+                    setStepAnalyses(prev => {
+                      const next = { ...prev, [currentStep]: analysis };
+                      // Budget (6) und Risiken (7) teilen sich das Wissens-Segment.
+                      if (currentStep === 6) next[7] = analysis;
+                      if (currentStep === 7) next[6] = analysis;
+                      return next;
+                    });
                   }}
                   chatMessages={chatHistories[currentStep] || []}
                   onChatMessagesChange={(msgs) =>
