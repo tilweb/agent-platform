@@ -165,25 +165,69 @@ function ensureArray(value: any): any[] {
   return [];
 }
 
+// Anzeigenamen der Feld-Schlüssel — damit die Analyse/der Chat Felder bei ihrem
+// deutschen Namen nennt (z.B. „Im Projektumfang") statt beim technischen
+// Schlüssel (in_scope). Deckt Auftrag-, Idee- und Portfolio-Extraktor-Keys ab.
+const FIELD_LABELS: Record<string, string> = {
+  // Auftrag/Idee gemeinsam
+  name: 'Name',
+  project_type: 'Projektart',
+  start_date: 'Startdatum',
+  end_date: 'Enddatum',
+  projektleiter: 'Projektleiter',
+  auftraggeber: 'Auftraggeber',
+  description: 'Kurzbeschreibung',
+  goals: 'Ziele',
+  criteria: 'Erfolgskriterien',
+  scope: 'Umfangsbeschreibung',
+  in_scope: 'Im Projektumfang',
+  out_scope: 'Außerhalb des Projekts (Abgrenzung)',
+  tasks: 'Hauptaufgaben',
+  milestones: 'Meilensteine',
+  budget: 'Budget',
+  risks: 'Risiken',
+  organization: 'Projektteam',
+  stakeholders: 'Stakeholder',
+  // Idee
+  projekt_id: 'Projekt-Kennung',
+  projektstatus: 'Projektstatus',
+  projekttreiber: 'Projekttreiber',
+  projektgroesse: 'Projektgröße',
+  prioritaet: 'Priorität',
+  ausgangslage: 'Ausgangslage',
+  rahmenbedingungen: 'Rahmenbedingungen',
+  investitionen: 'Investitionen/Kosten',
+  nutzen: 'Nutzen/Ertrag',
+  unternehmensrisiken: 'Unternehmensrisiken',
+  // Portfolio
+  strategy: 'Strategie',
+  type: 'Portfolio-Art',
+  driver: 'Portfolio-Treiber',
+  dependencies: 'Abhängigkeiten',
+  tracked_risks: 'Getrackte Risiken',
+};
+
 /**
- * Format step data for display in prompt
+ * Format step data for display in prompt. Nutzt Anzeigenamen (FIELD_LABELS),
+ * damit das LLM Felder beim deutschen Namen nennt statt beim technischen Schlüssel.
  */
 function formatStepData(step: number, data: Record<string, any>): string {
   const lines: string[] = [];
 
   for (const [key, value] of Object.entries(data)) {
+    const label = FIELD_LABELS[key] ?? key;
     if (value === undefined || value === null) {
-      lines.push(`${key}: (nicht angegeben)`);
+      lines.push(`${label}: (nicht angegeben)`);
     } else if (Array.isArray(value)) {
       if (value.length === 0) {
-        lines.push(`${key}: (leer)`);
+        lines.push(`${label}: (leer)`);
       } else if (typeof value[0] === 'object') {
-        lines.push(`${key}:`);
+        lines.push(`${label}:`);
         for (const item of value) {
           lines.push(`  - ${formatObject(item)}`);
         }
       } else {
-        lines.push(`${key}:`);
+        lines.push(`${label}:`);
         for (const item of value) {
           lines.push(`  - ${item}`);
         }
@@ -191,12 +235,12 @@ function formatStepData(step: number, data: Record<string, any>): string {
     } else if (typeof value === 'object') {
       // Check if this looks like an empty array that was parsed as an object
       if (Object.keys(value).length === 0) {
-        lines.push(`${key}: (leer)`);
+        lines.push(`${label}: (leer)`);
       } else {
-        lines.push(`${key}: ${formatObject(value)}`);
+        lines.push(`${label}: ${formatObject(value)}`);
       }
     } else {
-      lines.push(`${key}: ${value}`);
+      lines.push(`${label}: ${value}`);
     }
   }
 
@@ -601,6 +645,7 @@ WICHTIG — Bezug auf die im Tool erfassbaren Felder (Abschnitt "Im Tool erfassb
 - Wenn ein Best-Practice-Konzept bereits über ein vorhandenes Feld abgedeckt ist (z. B. Auftraggeber via Gruppe/Rolle), erkenne das als vorhanden an und melde es NICHT als fehlend.
 - Wenn etwas nur über ein Freitextfeld erfassbar ist (z. B. "Bemerkung" oder "Aufgabe"), formuliere die Empfehlung mit klarem Bezug auf dieses Feld (z. B. "… im Feld Bemerkung dokumentieren").
 - Fordere NIEMALS Felder oder Strukturen, die es laut diesem Abschnitt im Tool nicht gibt (z. B. einen separaten Jobtitel).
+- Nenne Felder in deinem Feedback IMMER bei ihrem deutschen Anzeigenamen (wie in den Eingaben oben, z. B. „Im Projektumfang", „Erfolgskriterien", „Hauptaufgaben"), NIEMALS bei technischen Schlüsseln (z. B. in_scope, criteria, tasks) — auch nicht, wenn der Feld-Abschnitt technische Schlüssel verwendet.
 
 Antworte IMMER im folgenden JSON-Format (und NUR in diesem Format, ohne zusätzlichen Text):
 
