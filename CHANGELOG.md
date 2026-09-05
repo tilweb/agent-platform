@@ -2,6 +2,18 @@
 
 ## 2026-09-04
 
+### PM-App: KI-Assistent für Idee & Portfolio — PM4 (Portfolio-KI-Balken)
+Das Portfolio bekommt denselben KI-Balken (Wissen/Chat/Analyse) über den geteilten `KnowledgePanel`.
+- **Portfolio-Extraktor** (`portfolio/_general`): Strategie, Ziele, Kriterien, Team, Abhängigkeiten,
+  getrackte Risiken als Analyse-/Chat-Kontext (ein Element-Wissen, keine per-Tab-Segmente).
+- **KI-Balken auf dem „Übersicht"-Tab** (read-only → kein Konflikt mit der versionsbasierten Tab-
+  Speicherung): Analyse des Portfolios als Ganzes, rechts neben dem Dashboard.
+- **Persistenz + Stale:** `Portfolio.analyses` je Segment — main im `metadata`-jsonb (`META_KEYS` +
+  `rowToPortfolio` + Route-Whitelist), railway in der YAML (`normalize`/create/update). Beim Laden
+  (`getPortfolio` → `annotateStaleAnalyses`) wird `stale` gesetzt → „Veraltet"-Banner. Analyse wird
+  direkt persistiert (kein separater Save nötig).
+- Beide Worktrees; tsc sauber, 44/44 PM-Tests je Worktree.
+
 ### PM-App: KI-Assistent für Idee & Portfolio — PM3d (Idee-Analyse-Persistenz + Stale)
 Idee-Analysen bleiben jetzt erhalten (Sicherung, damit man Empfehlungen abarbeiten kann) — mit
 Veraltet-Markierung, sobald sich die Daten geändert haben.

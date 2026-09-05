@@ -18,6 +18,7 @@ import type {
 import { PORTFOLIO_STATUS_VALUES } from './types';
 import { VersionConflictError } from './concurrency';
 import { defaultOwnerPermissions } from './permissions';
+import { annotateStaleAnalyses } from './analysis';
 
 // ============== ID + Helpers ==============
 
@@ -33,7 +34,7 @@ function isStatus(value: unknown): value is PortfolioStatus {
 
 // Stammdaten + Personen leben im metadata-JSONB (keine DB-Migration). Anheben in
 // die typisierten Top-Level-Felder beim Lesen.
-const META_KEYS = ['portfolio_id', 'type', 'driver', 'start_date', 'end_date', 'organization', 'stakeholders', 'goals', 'criteria', 'dependencies', 'tracked_risks'] as const;
+const META_KEYS = ['portfolio_id', 'type', 'driver', 'start_date', 'end_date', 'organization', 'stakeholders', 'goals', 'criteria', 'dependencies', 'tracked_risks', 'analyses'] as const;
 
 function rowToPortfolio(row: typeof paPortfolios.$inferSelect): Portfolio {
   const meta = (row.metadata ?? {}) as Record<string, any>;
@@ -54,6 +55,7 @@ function rowToPortfolio(row: typeof paPortfolios.$inferSelect): Portfolio {
     criteria: meta.criteria ?? undefined,
     dependencies: meta.dependencies ?? undefined,
     tracked_risks: meta.tracked_risks ?? undefined,
+    analyses: meta.analyses ?? undefined,
     ownerId: row.ownerId ?? undefined,
     metadata: meta as Portfolio['metadata'],
     permissions: (row.permissions ?? undefined) as Portfolio['permissions'],
@@ -110,7 +112,10 @@ export async function listPortfolios(options: ListPortfoliosOptions = {}): Promi
 export async function getPortfolio(id: string): Promise<Portfolio | null> {
   const db = getDb();
   const rows = await db.select().from(paPortfolios).where(eq(paPortfolios.id, id)).limit(1);
-  return rows[0] ? rowToPortfolio(rows[0]) : null;
+  const portfolio = rows[0] ? rowToPortfolio(rows[0]) : null;
+  // Stale-Markierung je gespeicherter Segment-Analyse (Daten seit Analyse geändert?).
+  if (portfolio) annotateStaleAnalyses('portfolio', portfolio, portfolio.analyses);
+  return portfolio;
 }
 
 export async function createPortfolio(input: PortfolioCreateInput): Promise<Portfolio> {

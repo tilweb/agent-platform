@@ -19,6 +19,7 @@ import { ArrowLeftIcon, TrashIcon } from '../../components/Icons';
 import ConfirmModal from '../../components/ConfirmModal';
 import PortfolioDashboard from './components/portfolio/PortfolioDashboard';
 import StepNav from './components/StepNav';
+import KnowledgePanel from './components/KnowledgePanel';
 import Personen from './components/steps/Personen';
 import Ziele from './components/steps/Ziele';
 import GanttRoadmap from './components/GanttRoadmap';
@@ -79,6 +80,19 @@ const styles = {
   },
   tabActive: { backgroundColor: theme.colors.primaryLight, color: theme.colors.primary },
   content: { flex: 1, padding: theme.spacing['2xl'], overflow: 'auto' },
+  uebersichtRow: { display: 'flex', gap: theme.spacing.xl, alignItems: 'flex-start' },
+  kiSidebar: {
+    width: '380px',
+    minWidth: '380px',
+    position: 'sticky',
+    top: theme.spacing.lg,
+    alignSelf: 'flex-start',
+    height: 'calc(100vh - 220px)',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surface,
+  },
   // Generische Form-Helpers (Strategie / Einstellungen)
   field: { display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, marginBottom: theme.spacing.lg },
   fieldLabel: {
@@ -185,13 +199,33 @@ export default function PortfolioDetail() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { role: appRole } = useAppPermission('projektmanagement');
-  const { getPortfolio, getPortfolioProjekte, getConfig } = useProjektmanagement();
+  const { getPortfolio, getPortfolioProjekte, getConfig, updatePortfolio } = useProjektmanagement();
 
   const [portfolio, setPortfolio] = useState(null);
   const [projekteCount, setProjekteCount] = useState(0);
   const [appConfig, setAppConfig] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  // KI-Balken (Übersicht): Chatverlauf in-session; Analyse persistiert an der Idee/Portfolio.
+  const [portfolioChat, setPortfolioChat] = useState([]);
+
+  // KI-Analyse des Portfolios persistieren (Übersicht ist read-only → kein Edit-
+  // Konflikt mit der versionsbasierten Tab-Speicherung).
+  const handlePortfolioAnalyse = async (analysis) => {
+    setPortfolio((prev) => (prev ? { ...prev, analyses: { ...(prev.analyses || {}), _general: analysis } } : prev));
+    try {
+      if (portfolio?.id) {
+        const updated = await updatePortfolio(
+          portfolio.id,
+          { analyses: { ...(portfolio.analyses || {}), _general: analysis } },
+          { expectedVersion: portfolio.version },
+        );
+        setPortfolio(updated);
+      }
+    } catch (e) {
+      console.error('Portfolio-Analyse konnte nicht gespeichert werden:', e);
+    }
+  };
 
   // Zentrale Speichern-Steuerung im Header: der aktive Tab meldet seinen
   // Dirty-/Saving-Zustand (tabState) und stellt save() per Ref bereit.
@@ -299,13 +333,27 @@ export default function PortfolioDetail() {
 
       <div style={styles.content}>
         {activeTab === 'uebersicht' && (
-          <>
-            <TabHeader
-              title="Übersicht"
-              subtitle="KPIs, Phasen-Mix, Top-Risiken und letzte Statusberichte der zugeordneten Projekte."
-            />
-            <PortfolioDashboard portfolioId={portfolioId} appConfig={appConfig} />
-          </>
+          <div style={styles.uebersichtRow}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <TabHeader
+                title="Übersicht"
+                subtitle="KPIs, Phasen-Mix, Top-Risiken und letzte Statusberichte der zugeordneten Projekte."
+              />
+              <PortfolioDashboard portfolioId={portfolioId} appConfig={appConfig} />
+            </div>
+            <div style={styles.kiSidebar}>
+              <KnowledgePanel
+                element="portfolio"
+                segment="_general"
+                canAnalyze
+                entity={portfolio}
+                analysis={portfolio.analyses?._general || null}
+                onAnalysisComplete={handlePortfolioAnalyse}
+                chatMessages={portfolioChat}
+                onChatMessagesChange={setPortfolioChat}
+              />
+            </div>
+          </div>
         )}
         {activeTab === 'basis' && (
           <BasisTab
