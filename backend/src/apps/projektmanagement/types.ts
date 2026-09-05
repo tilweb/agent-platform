@@ -1152,6 +1152,10 @@ export interface Projektidee {
   updated_at: string;
   created_by: string;
   current_step: number;
+  // Gespeicherte KI-Analysen je Masterclass-Segment (Schlüssel = Segment, z.B.
+  // 'basis'). Persistiert als Teil der Idee (jsonb/YAML). Beim Laden wird je
+  // Eintrag `stale` gesetzt, wenn die Segmentdaten sich seit der Analyse änderten.
+  analyses?: Record<string, StoredStepAnalysis>;
   // Optimistic-Concurrency-Counter — bei jedem Save ++; Frontend sendet
   // `expected_version` mit, Backend lehnt mit 409 ab wenn != current.
   version?: number;

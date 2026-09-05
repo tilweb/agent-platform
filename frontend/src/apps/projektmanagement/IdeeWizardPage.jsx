@@ -263,8 +263,8 @@ export default function IdeeWizardPage() {
   const [idee, setIdee] = useState(emptyIdee());
   const [appConfig, setAppConfig] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
-  // KI-Balken: Analysen + Chatverläufe je Step (in-session; Persistenz folgt in PM3d).
-  const [ideeAnalyses, setIdeeAnalyses] = useState({});
+  // KI-Analysen liegen direkt an der Idee (idee.analyses[segment]) → persistieren
+  // beim Speichern der Idee. Chatverläufe bleiben in-session.
   const [chatHistories, setChatHistories] = useState({});
   const [isLoading, setIsLoading] = useState(!!id);
   const [isSaving, setIsSaving] = useState(false);
@@ -627,8 +627,12 @@ export default function IdeeWizardPage() {
               segment={IDEE_SEGMENTS[currentStep].segment}
               canAnalyze={IDEE_SEGMENTS[currentStep].canAnalyze}
               entity={idee}
-              analysis={ideeAnalyses[currentStep] || null}
-              onAnalysisComplete={(analysis) => setIdeeAnalyses((prev) => ({ ...prev, [currentStep]: analysis }))}
+              analysis={idee.analyses?.[IDEE_SEGMENTS[currentStep].segment] || null}
+              onAnalysisComplete={(analysis) => {
+                const seg = IDEE_SEGMENTS[currentStep].segment;
+                setIdee((prev) => ({ ...prev, analyses: { ...(prev.analyses || {}), [seg]: analysis } }));
+                setIsDirty(true);
+              }}
               chatMessages={chatHistories[currentStep] || []}
               onChatMessagesChange={(msgs) => setChatHistories((prev) => ({ ...prev, [currentStep]: msgs }))}
             />

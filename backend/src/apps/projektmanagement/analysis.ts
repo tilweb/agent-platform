@@ -435,6 +435,24 @@ export function extractSegmentData(element: PmElement, segment: string, entity: 
   return ex ? ex(entity) : (entity && typeof entity === 'object' ? entity : {});
 }
 
+/**
+ * Setzt `stale` je gespeicherter Segment-Analyse: true, wenn die aktuellen
+ * Segmentdaten der Entität nicht mehr zum `dataHash` der Analyse passen. Mutiert
+ * die übergebenen Analyse-Objekte (Aufruf beim Laden der Entität).
+ */
+export function annotateStaleAnalyses(
+  element: PmElement,
+  entity: any,
+  analyses: Record<string, { dataHash?: string; stale?: boolean }> | undefined,
+): void {
+  if (!analyses) return;
+  for (const [segment, a] of Object.entries(analyses)) {
+    if (a && typeof a === 'object' && a.dataHash) {
+      a.stale = a.dataHash !== hashSegmentData(extractSegmentData(element, segment, entity));
+    }
+  }
+}
+
 /** Generischer Wissenspool-Chat-System-Prompt für ein (element, segment). */
 export async function buildSegmentChatSystemPrompt(
   element: PmElement,
