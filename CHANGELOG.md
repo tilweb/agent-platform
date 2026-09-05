@@ -2,6 +2,15 @@
 
 ## 2026-09-04
 
+### PM-App: KI-Analyse nennt Felder bei ihrem Anzeigenamen (statt technischer Keys)
+Die KI-Analyse zitierte Felder mit ihren technischen Schlüsseln (z. B. „in_scope ist zu unpräzise"),
+weil die Extrakt-Daten und der Feld-Abschnitt im Prompt Roh-Keys nutzten.
+- Feld-Label-Map (`FIELD_LABELS`) für Auftrag-, Idee- und Portfolio-Keys; `formatStepData` rendert jetzt
+  die deutschen Anzeigenamen (z. B. „Im Projektumfang", „Erfolgskriterien").
+- System-Prompt-Regel ergänzt: Felder im Feedback IMMER beim deutschen Anzeigenamen nennen, nie beim
+  technischen Schlüssel — auch wenn der Feld-Abschnitt Keys verwendet.
+- Gilt für alle Elemente (geteilte `formatStepData`/`buildSystemPrompt`). Beide Worktrees.
+
 ### PM-App: KI-Assistent für Idee & Portfolio — PM4 (Portfolio-KI-Balken)
 Das Portfolio bekommt denselben KI-Balken (Wissen/Chat/Analyse) über den geteilten `KnowledgePanel`.
 - **Portfolio-Extraktor** (`portfolio/_general`): Strategie, Ziele, Kriterien, Team, Abhängigkeiten,
