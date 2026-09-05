@@ -2,6 +2,16 @@
 
 ## 2026-09-04
 
+### PM-App: KI-Assistent für Idee & Portfolio — PM3d (Idee-Analyse-Persistenz + Stale)
+Idee-Analysen bleiben jetzt erhalten (Sicherung, damit man Empfehlungen abarbeiten kann) — mit
+Veraltet-Markierung, sobald sich die Daten geändert haben.
+- Analysen liegen je Masterclass-Segment direkt an der Idee (`idee.analyses[segment]`) und persistieren
+  als Teil der Idee (Postgres-jsonb in main, YAML in railway — beide über die bestehende Save-/Load-Strecke).
+- **Stale-Erkennung** beim Laden (`getIdeeDetails` → `annotateStaleAnalyses`): der aktuelle Segment-
+  Daten-Hash wird gegen den `dataHash` der Analyse geprüft; bei Abweichung `stale: true` → `AnalysisResult`
+  zeigt den „Veraltet"-Banner. Präzise pro Segment.
+- `Projektidee.analyses` als Typ ergänzt. Beide Worktrees; tsc sauber, 44/44 PM-Tests je Worktree.
+
 ### PM-App: KI-Assistent für Idee & Portfolio — PM3a/b/c (ein geteilter KI-Balken)
 Der KI-Balken (Wissen/Chat/Analyse) ist jetzt **ein** geteilter, generischer Baustein für alle Elemente
 — kein Fork zwischen Auftrag und Idee/Portfolio.

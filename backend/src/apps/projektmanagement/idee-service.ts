@@ -16,6 +16,7 @@ import {
 import { generateProjektauftragId, saveProjektauftrag, getProjektauftrag } from './storage';
 import type { Projektidee, BusinessCaseItem, Projektauftrag, Risk } from './types';
 import { defaultOwnerPermissions } from './permissions';
+import { annotateStaleAnalyses } from './analysis';
 
 export function generateSubEntityId(prefix = 'item'): string {
   const ts = Date.now().toString(36);
@@ -42,7 +43,10 @@ export async function listIdeen(): Promise<Projektidee[]> {
 }
 
 export async function getIdeeDetails(id: string): Promise<Projektidee | null> {
-  return getProjektidee(id);
+  const idee = await getProjektidee(id);
+  // Stale-Markierung je gespeicherter Segment-Analyse (Daten seit Analyse geändert?).
+  if (idee) annotateStaleAnalyses('projektidee', idee, idee.analyses);
+  return idee;
 }
 
 export async function createIdee(
