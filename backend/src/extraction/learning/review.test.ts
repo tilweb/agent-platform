@@ -46,7 +46,7 @@ test('leeres OPTIONALES Feld mit niedriger Konfidenz → KEIN Review (kein Dauer
   const p = makeProject({ name: nameField });
   expect(computeReviewStatus(p, { name: null }, { name: 0 })).toBe('auto_ok');
   expect(computeReviewStatus(p, { name: '' }, {})).toBe('auto_ok');
-  expect(computeReviewStatus(p, { name: [] }, { name: 0 })).toBe('auto_ok');
+  expect(computeReviewStatus(p, { name: [] }, { name: 0 })).toBe('needs_review'); // wrong scalar type
 });
 
 test('leeres PFLICHT-Feld mit niedriger Konfidenz → needs_review', () => {

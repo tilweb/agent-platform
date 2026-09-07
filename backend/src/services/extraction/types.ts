@@ -163,6 +163,8 @@ export interface StrategyInput {
  * Eine einzelne Quelle, die ein Feld geliefert hat (fuer Provenance + Re-Extract).
  */
 export interface FieldProvenance {
+  /** Zero-based position within the contributing page/chunk; never deduced from value equality. */
+  sourceRow?: number;
   field: string;                   // dotted path, z.B. "vertragspartner.vermieter"
   value: unknown;
   /** Wo ist der Wert hergekommen? `c:N` Chunk-Index, `p:N` Page-Index. */
@@ -207,7 +209,7 @@ export interface StrategyResult {
    * unlesbare Modell-Antworten, gekappte Seiten. severity 'error' erzwingt in
    * der Review-Triage "Zu pruefen".
    */
-  processingIssues?: Array<{ severity: 'error' | 'warn'; message: string }>;
+  processingIssues?: Array<{ severity: 'error' | 'warn'; message: string; code?: 'validation' | 'changed' }>;
   /** Wie viele LLM-Calls hat die Strategy gemacht (fuer Cost-Tracking). */
   llmCalls: number;
   /** Die genutzte Strategy-ID (kann von Schema-Config abweichen wenn auto-eskaliert). */
@@ -273,6 +275,8 @@ export class StrategyExecutionError extends Error {
 // ============== Pipeline-Result ==============
 
 export interface PipelineRunResult {
+  fusionFindings?: StrategyResult['fusionFindings'];
+  processingIssues?: StrategyResult['processingIssues'];
   extracted: Record<string, unknown>;
   fieldConfidences: Record<string, number>;
   provenance: FieldProvenance[];

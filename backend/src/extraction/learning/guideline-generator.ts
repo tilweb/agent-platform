@@ -1,3 +1,6 @@
+import { extractionChat } from '../../services/extraction/runtime';
+import { segmentExamples } from '../segmentation/corrections';
+import { boundedExampleContexts } from './example-context';
 /**
  * Guideline Generator
  *
@@ -21,9 +24,10 @@ export async function generateGuidelines(
   examples: TrainingExample[],
   userId?: string
 ): Promise<string> {
+  if (project.segments) examples = Object.keys(project.segments).flatMap(type => segmentExamples(project, type, examples).map(example => ({ ...example, document_text: `Abschnittstyp: ${type}\n${example.document_text}` })));
   // Filter examples with corrections (most informative)
-  const correctedExamples = examples.filter(e => e.corrections.length > 0);
-  const confirmedExamples = examples.filter(e => e.confirmed_correct);
+  const correctedExamples = examples.filter(e => e.dataset?.purpose !== 'test' && e.corrections.length > 0);
+  const confirmedExamples = examples.filter(e => e.dataset?.purpose !== 'test' && e.confirmed_correct);
 
   // Build field reference
   const fieldLines: string[] = [];
@@ -37,6 +41,8 @@ export async function generateGuidelines(
     }
     fieldLines.push(`- ${fieldId} (${field.label}): Typ=${field.type}, ${field.required ? 'Pflicht' : 'Optional'}`);
   }
+
+  for (const [id, def] of Object.entries(project.segments ?? {})) fieldLines.push(`Segment ${id}: ${JSON.stringify(def.fields ?? {})}. Regeln immer mit dem Segmenttyp kennzeichnen.`);
 
   const systemPrompt = `Du bist ein Experte fuer Dokumentenanalyse. Analysiere die folgenden Trainingsbeispiele und leite daraus praezise Extraktionsregeln ab.
 
@@ -59,32 +65,13 @@ Format der Antwort:
 - Keine Einleitung, keine Erklaerung, NUR die Regeln
 - Deutsch`;
 
-  const exampleParts: string[] = [];
-
-  for (const example of correctedExamples) {
-    exampleParts.push(`\n--- Beispiel (${example.source_filename}) ---`);
-    exampleParts.push(`Dokumentauszug: "${example.document_text.substring(0, 800)}"`);
-    exampleParts.push(`System-Extraktion: ${JSON.stringify(example.initial_extraction)}`);
-    exampleParts.push(`Korrekte Werte: ${JSON.stringify(example.corrected_extraction)}`);
-    exampleParts.push('Korrekturen:');
-    for (const c of example.corrections) {
-      // Listen/Objekte als JSON rendern (statt "[object Object]").
-      const fmt = (v: unknown) => (v !== null && typeof v === 'object' ? JSON.stringify(v) : `"${String(v)}"`);
-      exampleParts.push(`  - ${c.field}: ${fmt(c.was)} → ${fmt(c.corrected_to)}`);
-    }
-  }
-
-  if (confirmedExamples.length > 0) {
-    exampleParts.push('\n--- Korrekt extrahierte Beispiele ---');
-    for (const example of confirmedExamples.slice(0, 3)) {
-      exampleParts.push(`Dokument: "${example.document_text.substring(0, 300)}..."`);
-      exampleParts.push(`Extraktion: ${JSON.stringify(example.corrected_extraction)}`);
-    }
-  }
+  const exampleText = boundedExampleContexts([...correctedExamples, ...confirmedExamples], 24000);
+  if (!exampleText && examples.some(e => e.dataset?.visual?.length)) return project.guidelines;
+  if (!exampleText) throw new Error('Keine belegten Quellausschnitte für die Regelableitung vorhanden. Bitte ein Beispiel mit lesbarem Dokumenttext speichern.');
 
   const messages: Message[] = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: exampleParts.join('\n') },
+    { role: 'user', content: exampleText },
   ];
 
   const usageContext: UsageContext = {
@@ -95,7 +82,7 @@ Format der Antwort:
 
   // Auf demselben Modell wie die Extraktion — die Regeln beschreiben deren
   // Verhalten und sollen nicht von der Session-Modellwahl abhaengen.
-  const response = await llmService.chat(messages, undefined, usageContext, {
+  const response = await extractionChat(messages, undefined, usageContext, {
     userId,
     modelOverride: project.extraction?.model_override
       ? { providerId: project.extraction.model_override.provider_id, modelId: project.extraction.model_override.model_id }

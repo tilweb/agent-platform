@@ -1,3 +1,4 @@
+import { extractionChat } from '../../services/extraction/runtime';
 /**
  * Schema-Inferenz beim Onboarding (Welle 5).
  *
@@ -188,7 +189,7 @@ export async function inferSchema(documentText: string, userId?: string): Promis
     operation: 'infer_schema',
   };
 
-  const response = await llmService.chat(messages, undefined, usageContext, {
+  const response = await extractionChat(messages, undefined, usageContext, {
     userId,
     modelOverride: extractionModelOverride(),
     ...EXTRACTION_SAMPLING,

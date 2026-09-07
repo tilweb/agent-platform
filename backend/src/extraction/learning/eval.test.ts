@@ -119,7 +119,7 @@ test('Accuracy-Mathe: by_field und overall', () => {
   expect(s.failed).toBe(false);
 });
 
-test('Fehlgeschlagene Zeilen: failures gezaehlt, >50% → failed', () => {
+test('Fehlgeschlagene Zeilen zählen im Nenner und verhindern Übernahme', () => {
   const project = makeProject({ a: textField });
   const rows: EvalRow[] = [
     { expected: { a: 'x' }, actual: { a: 'x' } },
@@ -129,7 +129,8 @@ test('Fehlgeschlagene Zeilen: failures gezaehlt, >50% → failed', () => {
   const s = scoreEvalRows(project, rows);
   expect(s.failures).toBe(2);
   expect(s.failed).toBe(true);
-  expect(s.examples).toBe(1);
+  expect(s.examples).toBe(3);
+  expect(s.overall).toBe(33.3);
 });
 
 test('Leeres Eval-Set → failed', () => {

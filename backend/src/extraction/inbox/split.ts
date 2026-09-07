@@ -8,7 +8,7 @@
  * eingebettet, weil das Railway-Image kein docs/ enthaelt).
  *
  * Konservatives Verhalten: nur ein klares "true" trennt; unklare Antworten und
- * Call-Fehler bedeuten "kein Schnitt" (falsch zusammengelassene Dokumente sind
+ * Call-Fehler bleiben unbekannt (falsch zusammengelassene Dokumente sind
  * im Ziel-Projekt per W3-Review korrigierbar, falsch getrennte nicht).
  */
 
@@ -46,9 +46,10 @@ Output: EXACTLY one lowercase word, either "true" or "false", no punctuation or 
  */
 export function rangesFromBoundaries(
   pageCount: number,
-  boundaries: boolean[],
+  boundaries: Array<boolean | null>,
 ): Array<{ from: number; to: number }> {
   if (pageCount <= 0) return [];
+  if (boundaries.length !== pageCount - 1 || boundaries.some(v => v === null)) throw new Error('Dokumentgrenzen unvollständig oder unbekannt');
   const ranges: Array<{ from: number; to: number }> = [];
   let start = 1;
   for (let page = 1; page < pageCount; page += 1) {
@@ -65,10 +66,10 @@ export function rangesFromBoundaries(
  * Vision-Antwort → Urteil. Nur ein klares "true" (ggf. mit Punkt/Whitespace)
  * trennt; alles andere (auch leer/unparsebar) ist konservativ "kein Schnitt".
  */
-export function parseBoundaryVerdict(content: string | null | undefined): boolean {
-  if (!content) return false;
+export function parseBoundaryVerdict(content: string | null | undefined): boolean | null {
+  if (!content) return null;
   const normalized = content.trim().toLowerCase().replace(/[."'`\s]+$/g, '');
-  return normalized === 'true';
+  return normalized === 'true' ? true : normalized === 'false' ? false : null;
 }
 
 /** Worker-Pool (Muster batch-service.ts). */
@@ -94,12 +95,12 @@ function pageDataUri(page: PdfPageImage): string {
 
 /**
  * Beurteilt alle Seitenuebergaenge eines gerenderten PDFs. Rueckgabe:
- * boolean[] der Laenge pages.length-1. Call-Fehler → false (fail-soft, Log).
+ * boolean[] der Laenge pages.length-1. Call-Fehler → null; unknown boundaries block automatic processing.
  */
 export async function judgeBoundaries(
   pages: PdfPageImage[],
   userId?: string,
-): Promise<boolean[]> {
+): Promise<Array<boolean | null>> {
   if (pages.length < 2) return [];
 
   // Festes Extraktions-Modell (siehe extraction/model.ts) — die Eingangsstrecke
@@ -114,7 +115,7 @@ export async function judgeBoundaries(
     defaultModel: visionModel.model.id,
   });
 
-  const verdicts: boolean[] = new Array(pages.length - 1).fill(false);
+  const verdicts: Array<boolean | null> = new Array(pages.length - 1).fill(false);
   const indices = Array.from({ length: pages.length - 1 }, (_, i) => i);
 
   await pLimit(indices, SPLIT_CONCURRENCY, async (i) => {
@@ -141,7 +142,7 @@ export async function judgeBoundaries(
         `[inbox] Split-Urteil Seite ${pageA.pageNumber}->${pageB.pageNumber} fehlgeschlagen (kein Schnitt angenommen):`,
         err instanceof Error ? err.message : err,
       );
-      verdicts[i] = false;
+      verdicts[i] = null;
     }
   });
 

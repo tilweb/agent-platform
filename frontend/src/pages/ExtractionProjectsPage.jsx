@@ -1,3 +1,5 @@
+import { fieldsToArray, fieldsToObject, validateEditorFields, scopedRuleFields } from '../utils/extractionFields';
+import { isExtractionReleased } from '../utils/extractionRelease';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
@@ -241,6 +243,15 @@ const styles = {
     fontFamily: theme.typography.fontMono,
     lineHeight: theme.typography.lineHeight.relaxed,
   },
+  trainingScrollPanel: {
+    height: 'clamp(320px, 65vh, 760px)',
+    minWidth: 0,
+    overflow: 'auto',
+    overscrollBehavior: 'contain',
+    scrollbarGutter: 'stable',
+    padding: theme.spacing.xs,
+    boxSizing: 'border-box',
+  },
   formPanel: {
     display: 'flex',
     flexDirection: 'column',
@@ -391,32 +402,8 @@ function slugifyFieldLabel(label) {
 }
 
 /** item_fields-Objekt (API) → Array-Form für den Editor. */
-function itemFieldsToArray(obj) {
-  return Object.entries(obj || {}).map(([id, f]) => ({
-    id,
-    label: f.label || id,
-    type: f.type || 'text',
-    required: !!f.required,
-    description: f.description || '',
-    catalog: f.catalog || null,
-  }));
-}
-
-/** Editor-Array → item_fields-Objekt (API). Leere Labels werden verworfen. */
-function itemFieldsToObject(arr) {
-  const obj = {};
-  for (const f of (arr || []).filter(f => f.label && f.label.trim())) {
-    const id = f.id || slugifyFieldLabel(f.label);
-    obj[id] = {
-      type: f.type,
-      label: f.label,
-      ...(f.required ? { required: true } : {}),
-      ...(f.description ? { description: f.description } : {}),
-      ...(f.catalog ? { catalog: f.catalog } : {}),
-    };
-  }
-  return obj;
-}
+const itemFieldsToArray = fieldsToArray;
+const itemFieldsToObject = fieldsToObject;
 
 /** Segment-IDs erlauben nur klein-alphanumerisch + Bindestriche (kein Unterstrich). */
 function slugifySegmentId(label) {
@@ -428,22 +415,7 @@ function slugifySegmentId(label) {
 }
 
 /** Editor-Array (Felder) → fields-Objekt (API). Von Profil- UND Segment-Feldern genutzt. */
-function fieldsArrayToObject(fields) {
-  const obj = {};
-  for (const f of (fields || []).filter(f => f.label && f.label.trim())) {
-    const fieldId = f.id || slugifyFieldLabel(f.label);
-    obj[fieldId] = {
-      type: f.type,
-      required: f.required,
-      label: f.label,
-      description: f.description || undefined,
-      ...(f.type === 'list'
-        ? { item_fields: itemFieldsToObject(f.item_fields) }
-        : (f.catalog ? { catalog: f.catalog } : {})),
-    };
-  }
-  return obj;
-}
+const fieldsArrayToObject = fieldsToObject;
 
 // Heavy-Extraction-Pipeline-Strategien (siehe backend/src/services/extraction/).
 const EXTRACTION_STRATEGIES = [
@@ -627,7 +599,7 @@ export default function ExtractionProjectsPage() {
                       backgroundColor: p.learning.accuracy_estimate >= 80 ? theme.colors.successLight : theme.colors.warningLight,
                       color: p.learning.accuracy_estimate >= 80 ? theme.colors.success : theme.colors.warning,
                     }}>
-                      ~{p.learning.accuracy_estimate}% Genauigkeit
+                      {p.learning.accuracy_estimate}% Lernbeispiele ohne Korrektur
                     </span>
                   )}
                 </div>
@@ -893,7 +865,7 @@ function ItemFieldsEditor({ itemFields, onChange }) {
   function update(idx, key, value) {
     const updated = [...list];
     updated[idx] = { ...updated[idx], [key]: value };
-    if (key === 'label') {
+    if (key === 'label' && !updated[idx].id) {
       updated[idx].id = slugifyFieldLabel(value);
     }
     onChange(updated);
@@ -1198,9 +1170,11 @@ function ValidationIssues({ issues, style = {} }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, ...style }}>
       {issues.map((issue, idx) => {
-        // info = Protokoll (z.B. Angleichung an einen Katalogwert) — neutral,
-        // blockiert nichts; warn = Hinweis; alles andere ist ein echter Verstoß.
-        const tone = issue.severity === 'info'
+        // Die reguläre Quellenprüfung benötigt eine Bestätigung, ist aber kein Regelfehler.
+        const isSourceReview = issue.rule_id === 'quellenpruefung';
+        const tone = isSourceReview
+          ? { bg: theme.colors.warningLight, fg: theme.colors.warning, prefix: 'Bestätigung am Original erforderlich: ' }
+          : issue.severity === 'info'
           ? { bg: theme.colors.surfaceHover, fg: theme.colors.textSecondary, prefix: 'Angeglichen: ' }
           : issue.severity === 'warn'
             ? { bg: theme.colors.warningLight, fg: theme.colors.warning, prefix: 'Hinweis: ' }
@@ -1217,7 +1191,9 @@ function ValidationIssues({ issues, style = {} }) {
             }}
           >
             <strong>{tone.prefix}</strong>
-            {issue.message}
+            {isSourceReview
+              ? 'Bitte gleiche alle Werte und die Vollständigkeit mit dem Original ab. Wenn alles stimmt, kannst du das Dokument als korrekt bestätigen und freigeben.'
+              : issue.message}
           </div>
         );
       })}
@@ -1599,13 +1575,13 @@ function CreateProjectView({ onBack, onCreated }) {
         return;
       }
       const proposed = Object.entries(json.fields || {}).map(([id, f]) => ({
+        ...f,
         id,
         label: f.label,
         type: f.type,
         required: !!f.required,
         description: f.description || '',
         item_fields: itemFieldsToArray(f.item_fields),
-      catalog: f.catalog || null,
         catalog: f.catalog || null,
       }));
       if (proposed.length === 0) {
@@ -1635,7 +1611,7 @@ function CreateProjectView({ onBack, onCreated }) {
     const updated = [...fields];
     updated[idx] = { ...updated[idx], [key]: value };
     // Auto-generate ID from label
-    if (key === 'label') {
+    if (key === 'label' && !updated[idx].id) {
       updated[idx].id = slugifyFieldLabel(value);
     }
     // Typwechsel weg von Liste verwirft die Spalten-Definition.
@@ -1646,6 +1622,8 @@ function CreateProjectView({ onBack, onCreated }) {
   }
 
   async function handleCreate() {
+    const fieldError = validateEditorFields(fields);
+    if (fieldError) { setError(fieldError); return; }
     if (!name.trim()) {
       setError('Name ist erforderlich');
       return;
@@ -1664,19 +1642,7 @@ function CreateProjectView({ onBack, onCreated }) {
     setSaving(true);
     setError('');
 
-    const fieldsObj = {};
-    for (const f of validFields) {
-      const fieldId = f.id || f.label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-      fieldsObj[fieldId] = {
-        type: f.type,
-        required: f.required,
-        label: f.label,
-        description: f.description || undefined,
-        ...(f.type === 'list'
-          ? { item_fields: itemFieldsToObject(f.item_fields) }
-          : (f.catalog ? { catalog: f.catalog } : {})),
-      };
-    }
+    const fieldsObj = fieldsArrayToObject(fields);
 
     try {
       const res = await apiPost('/extraction/projects', {
@@ -1911,7 +1877,7 @@ function CreateProjectView({ onBack, onCreated }) {
             <strong>Nach dem Anlegen</strong> kommen in den <strong>Einstellungen</strong> die
             <strong> Prüfregeln</strong> dazu (Summen-Check über Positionen, Stammdaten-Abgleich gegen eine
             Tabelle) sowie ein <strong>Webhook</strong> für Ergebnis-Meldungen. Im Tab <strong>Training</strong>
-            lernst du das Profil an Beispieldokumenten an — ab drei Korrekturen leitet es eigene Regeln ab.
+            lernst du das Profil an Beispieldokumenten an — neue Lernbeispiele werden vor der Aktivierung an unabhängigen Testdokumenten geprüft.
           </InfoBox>
 
           {error && (
@@ -1967,7 +1933,8 @@ function ProjectDetailView({ projectId, onBack }) {
     { type: 'group', id: 'g-betrieb', label: 'Betrieb' },
     { id: 'batch', label: 'Verarbeiten' },
     { type: 'group', id: 'g-einrichtung', label: 'Einrichtung' },
-    { id: 'training', label: 'Training' },
+    { id: 'setup', label: 'Einrichtung begleiten' },
+    { id: 'training', label: 'Lern- & Testbeispiele' },
     { id: 'rules', label: 'Regeln & Qualität' },
     { id: 'settings', label: 'Einstellungen' },
   ];
@@ -1986,7 +1953,7 @@ function ProjectDetailView({ projectId, onBack }) {
           <span>{Object.keys(project.fields).length} Felder</span>
           <span>{project.learning?.total_examples || 0} Beispiele</span>
           {project.learning?.accuracy_estimate > 0 && (
-            <span>~{project.learning.accuracy_estimate}% Genauigkeit</span>
+            <span>{project.learning.accuracy_estimate}% Lernbeispiele ohne Korrektur</span>
           )}
         </div>
       </div>
@@ -2020,6 +1987,8 @@ function ProjectDetailView({ projectId, onBack }) {
           </div>
 
           <div style={styles.navContent}>
+            {activeTab === 'setup' && <SetupGuide project={project} onNavigate={setActiveTab} />}
+            {activeTab === 'batch' && !project.learning?.total_examples && <InfoBox>Neues Profil: <button style={styles.secondaryBtn} onClick={() => setActiveTab('setup')}>Schritt für Schritt einrichten</button></InfoBox>}
             {activeTab === 'training' && (
               <TrainingTab project={project} onProjectUpdated={loadProject} />
             )}
@@ -2027,7 +1996,7 @@ function ProjectDetailView({ projectId, onBack }) {
               <BatchTab project={project} onProjectUpdated={loadProject} />
             )}
             {activeTab === 'rules' && (
-              <RulesTab project={project} onProjectUpdated={loadProject} />
+              <RulesTab project={project} onProjectUpdated={loadProject} onNavigate={setActiveTab} />
             )}
             {activeTab === 'settings' && (
               <SettingsTab project={project} onProjectUpdated={loadProject} onDeleted={onBack} />
@@ -2103,12 +2072,19 @@ function InfoBox({ children, style = {} }) {
   );
 }
 
-function BoxOverlay({ pageImages, boxes, data, fields, activeField, onHoverField, onBoxClick, scrollToField }) {
+function scrollWithinPanel(panel, element) {
+  if (!panel || !element) return;
+  const offset = element.getBoundingClientRect().top - panel.getBoundingClientRect().top;
+  panel.scrollTo({ top: panel.scrollTop + offset - (panel.clientHeight - element.offsetHeight) / 2, behavior: 'smooth' });
+}
+
+function BoxOverlay({ pageImages, boxes, data, fields, activeField, onHoverField, onBoxClick, scrollToField, scrollContainerRef }) {
   const boxRefs = useRef({});
   useEffect(() => {
     if (!scrollToField) return;
     const el = boxRefs.current[scrollToField];
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    if (el && scrollContainerRef?.current) scrollWithinPanel(scrollContainerRef.current, el);
+    else if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
   }, [scrollToField]);
   return (
     <div>
@@ -2229,7 +2205,7 @@ function csvCell(value) {
 }
 
 function BatchTab({ project, onProjectUpdated }) {
-  const fieldEntries = Object.entries(project.fields);
+  const [diagnosticExport, setDiagnosticExport] = useState(false);
   const [reviewFilter, setReviewFilter] = useState('all'); // all | needs_review | auto_ok | reviewed
 
   const [queue, setQueue] = useState([]);          // ausgewählte Dateien vor dem Start
@@ -2239,6 +2215,7 @@ function BatchTab({ project, onProjectUpdated }) {
 
   const [runs, setRuns] = useState([]);            // Lauf-Historie
   const [activeRun, setActiveRun] = useState(null); // { run, files }
+  const fieldEntries = Object.entries(activeRun?.run?.profile?.fields ?? project.fields);
   const [showUpload, setShowUpload] = useState(false);
   const [reviewFileId, setReviewFileId] = useState(null); // offenes Vollbild-Review
   const [details, setDetails] = useState({});       // fileId -> detail
@@ -2368,8 +2345,8 @@ function BatchTab({ project, onProjectUpdated }) {
    * Batch-Korrektur als Trainingsbeispiel übernehmen (Welle 3). Aktualisiert
    * danach Datei-Zeile + Detail lokal (data=corrected, Status „Geprüft").
    */
-  async function learnFile(fileId, corrected) {
-    const res = await apiPost(`${base}/${activeRun.run.id}/files/${fileId}/learn`, { corrected });
+  async function learnFile(fileId, corrected, purpose = 'none', group = '') {
+    const res = await apiPost(`${base}/${activeRun.run.id}/files/${fileId}/review`, { corrected, learn: purpose === 'train', example_purpose: purpose, example_group: group });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Lernen fehlgeschlagen');
@@ -2377,35 +2354,37 @@ function BatchTab({ project, onProjectUpdated }) {
     const result = await res.json();
     setDetails(prev => ({
       ...prev,
-      [fileId]: { ...(prev[fileId] || {}), data: corrected, reviewStatus: 'reviewed' },
+      [fileId]: { ...(prev[fileId] || {}), data: result.data, reviewStatus: 'reviewed', validations: result.validations, fieldConfidences: {}, boxes: {} },
     }));
     setActiveRun(prev => prev ? {
       ...prev,
-      files: prev.files.map(f => f.id === fileId ? { ...f, data: corrected, reviewStatus: 'reviewed' } : f),
+      files: prev.files.map(f => f.id === fileId ? { ...f, data: result.data, reviewStatus: 'reviewed', validations: result.validations, fieldConfidences: {}, boxes: {} } : f),
     } : prev);
     onProjectUpdated?.(); // Lern-Zähler/Eval-Status im Profil aktualisieren
     return result;
   }
 
   function exportCsv() {
-    const header = ['Datei', 'Status', ...fieldEntries.map(([, f]) => f.label || '')];
+    const header = ['Datei', 'Status', 'Prüfstatus', 'Freigegeben', 'Befunde', ...fieldEntries.map(([, f]) => f.label || '')];
     const lines = [header.map(csvCell).join(';')];
-    for (const file of activeRun.files) {
+    for (const file of activeRun.files.filter(f => diagnosticExport || isExtractionReleased(f))) {
       lines.push([
         csvCell(file.filename),
         csvCell(BATCH_STATUS[file.status]?.label || file.status),
+        csvCell(file.reviewStatus), csvCell(isExtractionReleased(file) ? 'Ja' : 'Nein'),
+        csvCell((file.validations || []).map(v => v.message).join(' | ')),
         ...fieldEntries.map(([fid]) => csvCell(file.data?.[fid])),
       ].join(';'));
     }
-    triggerDownload(new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' }), `batch-${activeRun.run.id}.csv`);
+    triggerDownload(new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' }), `batch-${activeRun.run.id}${diagnosticExport ? '-diagnose' : ''}.csv`);
   }
 
   function exportJson() {
-    const payload = activeRun.files.map(f => ({
-      filename: f.filename, status: f.status,
+    const payload = activeRun.files.filter(f => diagnosticExport || isExtractionReleased(f)).map(f => ({
+      filename: f.filename, status: f.status, reviewStatus: f.reviewStatus, released: isExtractionReleased(f), validations: f.validations,
       data: f.data, fieldConfidences: f.fieldConfidences, error: f.error,
     }));
-    triggerDownload(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `batch-${activeRun.run.id}.json`);
+    triggerDownload(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `batch-${activeRun.run.id}${diagnosticExport ? '-diagnose' : ''}.json`);
   }
 
   /**
@@ -2415,17 +2394,17 @@ function BatchTab({ project, onProjectUpdated }) {
    */
   async function exportXlsx(variant = '') {
     // '' = gruppiert, 'flat' = eine Zeile je Position, 'flat-wide' = eine Zeile je Dokument.
-    const q = variant ? `?format=${variant}` : '';
+    const q = `?format=${variant || 'grouped'}&scope=${diagnosticExport ? 'diagnostic' : 'released'}`;
     const suffix = variant === 'flat' ? '-flach' : variant === 'flat-wide' ? '-breit' : '';
     const res = await apiGet(`${base}/${activeRun.run.id}/export.xlsx${q}`);
-    if (res.ok) triggerDownload(await res.blob(), `batch-${activeRun.run.id}${suffix}.xlsx`);
+    if (res.ok) triggerDownload(await res.blob(), `batch-${activeRun.run.id}${suffix}${diagnosticExport ? '-diagnose' : ''}.xlsx`);
   }
 
   // Server-CSV: eine Zeile je Dokument, Listen als nummerierte Spalten (born-digital
   // Massen-Extraktion). Der Client-CSV (exportCsv) serialisiert Listen als Blob.
   async function exportCsvWide() {
-    const res = await apiGet(`${base}/${activeRun.run.id}/export.csv?format=flat-wide`);
-    if (res.ok) triggerDownload(await res.blob(), `batch-${activeRun.run.id}-breit.csv`);
+    const res = await apiGet(`${base}/${activeRun.run.id}/export.csv?format=flat-wide&scope=${diagnosticExport ? 'diagnostic' : 'released'}`);
+    if (res.ok) triggerDownload(await res.blob(), `batch-${activeRun.run.id}-breit${diagnosticExport ? '-diagnose' : ''}.csv`);
   }
 
   async function handleExport(format) {
@@ -2458,6 +2437,8 @@ function BatchTab({ project, onProjectUpdated }) {
     }
   }
 
+  const measuredDurations = (activeRun?.files || []).map(file => file.audit?.performance?.durationMs).filter(value => Number.isFinite(value)).sort((a, b) => a - b);
+  const durationQuantile = fraction => (measuredDurations[Math.ceil(measuredDurations.length * fraction) - 1] / 1000).toFixed(1);
   const doneCount = activeRun ? (activeRun.run.completedCount + activeRun.run.failedCount) : 0;
 
   // Das Vollbild-Review blaettert durch die GEFILTERTE Liste — wer auf
@@ -2496,6 +2477,16 @@ function BatchTab({ project, onProjectUpdated }) {
           <button style={styles.secondaryBtn} onClick={() => setShowUpload(v => !v)}>
             <DocumentIcon size={14} /> Dokumente hinzufügen
           </button>
+          {activeRun && (isActive || activeRun.run.failedCount > 0) && (
+            <button style={styles.secondaryBtn} onClick={async () => {
+              const action = isActive ? 'cancel' : 'retry';
+              try {
+                const response = await apiPost(`${base}/${activeRun.run.id}/${action}`, {});
+                if (!response.ok) throw new Error((await response.json()).error || 'Aktion fehlgeschlagen');
+                await pollRun(activeRun.run.id); await loadRuns();
+              } catch (error) { alert(error.message); }
+            }}>{isActive ? 'Verarbeitung abbrechen' : 'Fehlgeschlagene Dateien erneut verarbeiten'}</button>
+          )}
           {activeRun && !isActive && (
             <button
               style={{ ...styles.backLink, marginBottom: 0, color: theme.colors.textMuted }}
@@ -2511,6 +2502,11 @@ function BatchTab({ project, onProjectUpdated }) {
             </span>
           )}
         </div>
+
+        {measuredDurations.length > 0 && <details style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizes.sm }}>
+          <summary>Verarbeitungszeiten ({measuredDurations.length} Dateien)</summary>
+          <p>Median: {durationQuantile(0.5)} s · 95. Perzentil: {durationQuantile(0.95)} s. Gemessen ab Start der Datei einschließlich Aufbereitung und Modellwarteschlange; Wartezeit des Stapels vor dem Start ist nicht enthalten.</p>
+        </details>}
 
         {/* Ablage nur bei Bedarf — beim ersten Mal offen, danach auf Knopfdruck. */}
         {(showUpload || runs.length === 0) && (
@@ -2593,6 +2589,9 @@ function BatchTab({ project, onProjectUpdated }) {
               <button style={styles.secondaryBtn} onClick={writeToTable} disabled={tableMsg?.loading}>
                 <TableIcon size={14} /> In Tabelle schreiben
               </button>
+              <label style={{ fontSize: theme.typography.sizes.sm }} title="Standardexport: nur freigegebene Ergebnisse. Diagnose enthält auch ungeprüfte Daten.">
+                <input type="checkbox" checked={diagnosticExport} onChange={e => setDiagnosticExport(e.target.checked)} /> Diagnoseexport (alle)
+              </label>
               <ExportDropdown
                 formats={['xlsx', 'xlsx_wide', 'xlsx_flat', 'csv_wide', 'csv', 'json']}
                 onExport={handleExport}
@@ -2615,7 +2614,7 @@ function BatchTab({ project, onProjectUpdated }) {
               {[
                 { id: 'all', label: `Alle (${activeRun.files.length})`, hint: 'Alle Dokumente dieses Laufs' },
                 { id: 'needs_review', label: `Zu prüfen (${activeRun.files.filter(f => f.reviewStatus === 'needs_review').length})`, hint: 'Die KI war unsicher oder eine Prüfregel schlug an — bitte kontrollieren' },
-                { id: 'auto_ok', label: `Auto-OK (${activeRun.files.filter(f => f.reviewStatus === 'auto_ok').length})`, hint: 'KI sicher — kein Handlungsbedarf' },
+                { id: 'auto_ok', label: `Auto-OK (${activeRun.files.filter(f => f.reviewStatus === 'auto_ok').length})`, hint: 'Automatisch geprüft und freigegeben' },
                 { id: 'reviewed', label: `Geprüft (${activeRun.files.filter(f => f.reviewStatus === 'reviewed').length})`, hint: 'Von dir kontrolliert und bestätigt' },
               ].map(chip => (
                 <button
@@ -2705,14 +2704,27 @@ function BatchTab({ project, onProjectUpdated }) {
           detail={details[reviewFile.id]}
           filename={reviewFile.filename}
           reviewStatus={reviewFile.reviewStatus}
-          fields={project.fields}
-          segmentDefs={project.segments}
+          fields={details[reviewFile.id]?.profile?.fields ?? project.fields}
+          segmentDefs={details[reviewFile.id]?.profile?.segments ?? project.segments}
           threshold={project.extraction?.review_threshold ?? 0.6}
           position={{ index: reviewIndex + 1, total: visibleFiles.length }}
           onPrev={reviewIndex > 0 ? () => stepReview(-1) : null}
           onNext={reviewIndex < visibleFiles.length - 1 ? () => stepReview(1) : null}
           onClose={() => setReviewFileId(null)}
-          onLearn={corrected => learnFile(reviewFile.id, corrected)}
+          onLearn={(corrected, purpose, group) => learnFile(reviewFile.id, corrected, purpose, group)}
+          onDraft={async data => {
+            const response = await apiPost(`${base}/${activeRun.run.id}/files/${reviewFile.id}/draft`, { data });
+            if (!response.ok) throw new Error((await response.json()).error || 'Entwurf konnte nicht gespeichert werden');
+            setDetails(previous => ({ ...previous, [reviewFile.id]: { ...previous[reviewFile.id], reviewDraft: data } }));
+          }}
+          onSegments={async (segments, corrected) => {
+            const response = await apiPost(`${base}/${activeRun.run.id}/files/${reviewFile.id}/segments`, { segments, corrected });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Abschnittskorrektur fehlgeschlagen');
+            setDetails(previous => ({ ...previous, [reviewFile.id]: { ...previous[reviewFile.id], ...result } }));
+            setActiveRun(previous => ({ ...previous, files: previous.files.map(file => file.id === reviewFile.id ? { ...file, ...result } : file) }));
+            return result;
+          }}
         />
       )}
     </div>
@@ -2779,7 +2791,7 @@ const batchStickyCol = {
  * Feld-Lernen fuer Segment-Profile ist dokumentierte Folgearbeit —
  * der Lern-Loop ist heute Gesamtdokument-bezogen.
  */
-function SegmentReviewPane({ segments, segmentDefs, segColor, data, fieldConfidences, boxes, threshold, onJumpToPage, onJumpToBox }) {
+function SegmentReviewPane({ segments, segmentDefs, segColor, data, fieldConfidences, boxes, threshold, onJumpToPage, onJumpToBox, onChange, readOnly }) {
   const segKey = (s) => (segmentDefs[s.type]?.repeatable ? `${s.type}[${s.instance}]` : s.type);
   const segData = (s) => {
     const raw = data?.[s.type];
@@ -2845,7 +2857,8 @@ function SegmentReviewPane({ segments, segmentDefs, segColor, data, fieldConfide
                       <span style={{ marginLeft: theme.spacing.xs, fontSize: theme.typography.sizes.xs }}>({rows.length} Positionen)</span>
                     </div>
                     <ListItemsEditor
-                      readOnly
+                      readOnly={readOnly}
+                      onChange={next => onChange(s, fid, next)}
                       value={rows}
                       itemFields={f.item_fields}
                       confidences={fieldConfidences}
@@ -2879,19 +2892,14 @@ function SegmentReviewPane({ segments, segmentDefs, segColor, data, fieldConfide
                       </span>
                     )}
                   </span>
-                  <span style={{ color: value != null && value !== '' ? theme.colors.text : theme.colors.textMuted }}>
-                    {fmtValue(value) || '—'}
-                  </span>
+                  {readOnly ? <span>{fmtValue(value) || '—'}</span> : <FieldInputControl field={f} value={value} onChange={next => onChange(s, fid, next)} /> }
                 </div>
               );
             })}
           </div>
         );
       })}
-      <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.md }}>
-        Segment-Korrekturen (Grenzen/Typen verschieben) folgen, sobald Originaldokumente am Lauf
-        gespeichert werden — heute liegen nur die gerenderten Seiten vor.
-      </div>
+
     </div>
   );
 }
@@ -2899,8 +2907,13 @@ function SegmentReviewPane({ segments, segmentDefs, segColor, data, fieldConfide
 // Farb-Rotation fuer Segment-Marker (Theme-Farben, keine neuen Hex-Werte).
 const SEGMENT_COLORS = [theme.colors.primary, theme.colors.info, theme.colors.success, theme.colors.warning, theme.colors.error];
 
-function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, threshold, position, onPrev, onNext, onClose, onLearn }) {
+function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, threshold, position, onPrev, onNext, onClose, onLearn, onDraft, onSegments }) {
   const [edited, setEdited] = useState(null);
+  const [examplePurpose, setExamplePurpose] = useState('none');
+  const [exampleGroup, setExampleGroup] = useState('');
+  const [segmentPlan, setSegmentPlan] = useState([]);
+  const [draftStatus, setDraftStatus] = useState('');
+  const draftQueue = useRef(Promise.resolve());
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);          // { ok, text }
   const [activePage, setActivePage] = useState(1);
@@ -2910,25 +2923,29 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
 
   // Bei Datei-/Statuswechsel den Korrektur-State neu aufsetzen (tiefe Kopie!).
   useEffect(() => {
-    setEdited(detail?.data ? structuredClone(detail.data) : null);
+    setEdited(detail?.data ? structuredClone(detail.reviewDraft ?? detail.data) : null);
+    setSegmentPlan(structuredClone(detail?.segments ?? []));
+    setDraftStatus(detail?.reviewDraft ? 'Gespeicherter Entwurf geladen' : '');
+    setExamplePurpose('none');
+    setExampleGroup('');
     setMsg(null);
     // Nicht hart auf 1: die Seitenliste kann bei Teil-Dokumenten anders beginnen.
     setActivePage(detail?.pageImages?.[0]?.page ?? 1);
     setScrollToField(null);
-  }, [detail?.id, detail?.reviewStatus]);
+  }, [detail?.id, detail?.reviewStatus, detail?.segments]);
 
   useEffect(() => {
     function onKey(e) {
       const el = e.target;
       const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
-      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key === 'Escape') { void leaveReview(onClose); return; }
       if (typing) return;   // Pfeiltasten gehoeren beim Tippen ins Feld
-      if (e.key === 'ArrowLeft' && onPrev) onPrev();
-      if (e.key === 'ArrowRight' && onNext) onNext();
+      if (e.key === 'ArrowLeft' && onPrev) void leaveReview(onPrev);
+      if (e.key === 'ArrowRight' && onNext) void leaveReview(onNext);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, onPrev, onNext]);
+  }, [onClose, onPrev, onNext, edited, saving]);
 
   const pages = detail?.pageImages || [];
   const hasBoxes = pages.length > 0;
@@ -2940,10 +2957,52 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
     types.forEach((ty, i) => { segColor[ty] = ty === 'leerseite' ? theme.colors.textMuted : ty === 'unbekannt' ? theme.colors.error : SEGMENT_COLORS[i % SEGMENT_COLORS.length]; });
   }
   const segmentOfPage = (page) => segments?.find(s => page >= s.pageFrom && page <= s.pageTo) || null;
-  const canLearn = !!onLearn && detail?.status === 'completed' && !!detail?.documentText;
-  const isReviewed = reviewStatus === 'reviewed' || detail?.reviewStatus === 'reviewed';
+  const canReview = !!onLearn && detail?.status === 'completed';
+  const isReviewed = (reviewStatus === 'reviewed' || detail?.reviewStatus === 'reviewed') && !(detail?.validations || []).some(i => i.severity === 'error' || i.status === 'not_evaluated');
   const values = edited || detail?.data || {};
   const hasChanges = edited && detail && JSON.stringify(edited) !== JSON.stringify(detail.data);
+
+  async function persistDraft() {
+    if (!onDraft || !edited || isReviewed || !hasChanges) return;
+    const copy = structuredClone(edited);
+    const pending = draftQueue.current.catch(() => {}).then(() => onDraft(copy));
+    draftQueue.current = pending;
+    await pending;
+    setDraftStatus('Entwurf gespeichert');
+  }
+  async function leaveReview(action) {
+    if (saving) return;
+    try { await persistDraft(); action?.(); }
+    catch (error) { setDraftStatus(`Speichern fehlgeschlagen: ${error.message}`); }
+  }
+  useEffect(() => {
+    if (!hasChanges || saving || isReviewed) return;
+    setDraftStatus('Entwurf wird gespeichert…');
+    const timer = setTimeout(() => { void persistDraft().catch(error => setDraftStatus(`Speichern fehlgeschlagen: ${error.message}`)); }, 700);
+    return () => clearTimeout(timer);
+  }, [edited, saving, isReviewed]);
+
+  function editSegmentField(segment, field, value) {
+    setEdited(previous => {
+      const copy = structuredClone(previous ?? {});
+      if (segmentDefs?.[segment.type]?.repeatable) {
+        const rows = Array.isArray(copy[segment.type]) ? copy[segment.type] : [];
+        rows[segment.instance - 1] = { ...(rows[segment.instance - 1] ?? {}), [field]: value };
+        copy[segment.type] = rows;
+      } else copy[segment.type] = { ...(copy[segment.type] ?? {}), [field]: value };
+      return copy;
+    });
+  }
+  async function applySegmentPlan() {
+    setSaving(true); setMsg(null);
+    try {
+      await draftQueue.current.catch(() => {});
+      const result = await onSegments(segmentPlan, edited);
+      setEdited(structuredClone(result.data));
+      setMsg({ ok: true, text: 'Abschnittszuordnung gespeichert. Bitte die Ergebnisse erneut prüfen.' });
+    } catch (error) { setMsg({ ok: false, text: error.message }); }
+    finally { setSaving(false); }
+  }
 
   /** Feld -> Fundstelle: Seite wechseln und die Box pulsen lassen. */
   function jumpToBox(fid) {
@@ -2966,12 +3025,13 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
     setSaving(true);
     setMsg(null);
     try {
-      const r = await onLearn(edited);
+      await draftQueue.current.catch(() => {});
+      const r = await onLearn(edited, examplePurpose, exampleGroup);
       setMsg({
         ok: true,
         text: r?.guidelines_update === 'started'
           ? 'Korrektur gelernt — Regeln werden im Hintergrund geprüft („Regeln & Qualität").'
-          : 'Korrektur als Trainingsbeispiel gespeichert.',
+          : examplePurpose !== 'none' ? 'Prüfung und Beispiel gespeichert.' : 'Prüfung gespeichert und Ergebnis freigegeben.',
       });
     } catch (err) {
       setMsg({ ok: false, text: err.message || 'Lernen fehlgeschlagen' });
@@ -3032,7 +3092,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
           )}
           {isChanged && <span title="Von dir geändert" style={{ fontSize: theme.typography.sizes.xs, marginLeft: theme.spacing.xs, color: theme.colors.info }}>(korrigiert)</span>}
         </span>
-        {canLearn && !isReviewed ? (
+        {canReview && !isReviewed ? (
           <div style={{ flex: 1, maxWidth: 460 }}>
             <FieldInputControl
               field={f}
@@ -3051,7 +3111,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
   }
 
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
+    <div style={styles.modalOverlay} onClick={() => void leaveReview(onClose)}>
       <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
         <div style={styles.modalHeader}>
           <span style={{ fontWeight: theme.typography.weights.semibold, color: theme.colors.text }}>{filename}</span>
@@ -3068,7 +3128,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
             style={{ ...styles.iconBtn, opacity: onNext ? 1 : 0.35, cursor: onNext ? 'pointer' : 'not-allowed' }}
             onClick={() => onNext && onNext()} disabled={!onNext} title="Nächstes Dokument (Pfeil rechts)"
           >›</button>
-          <button style={styles.iconBtn} onClick={onClose} title="Schließen (Esc)">✕</button>
+          <button style={styles.iconBtn} onClick={() => void leaveReview(onClose)} title="Schließen (Esc)">✕</button>
         </div>
 
         {!detail ? (
@@ -3086,11 +3146,14 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
           <div style={{
             flex: 1,
             display: 'grid',
-            gridTemplateColumns: hasBoxes ? 'minmax(320px, 45%) 1fr' : '1fr',
+            gridTemplateColumns: (hasBoxes || detail.documentText) ? 'minmax(320px, 45%) 1fr' : '1fr',
             gap: theme.spacing.xl,
             padding: theme.spacing.xl,
             overflow: 'hidden',
           }}>
+            {!hasBoxes && detail.documentText && (
+              <pre style={{ ...styles.modalPane, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{detail.documentText}</pre>
+            )}
             {hasBoxes && (
               <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                 <div style={{ ...styles.modalPane, flex: 1 }}>
@@ -3148,12 +3211,29 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
               )}
               <ValidationIssues issues={detail.validations} />
 
+              {segments && detail.hasOriginal && onSegments && <details style={{ marginBottom: theme.spacing.lg }}>
+                <summary>Seiten und Abschnittstypen korrigieren</summary>
+                <p>Alle Seiten müssen lückenlos zugeordnet sein. Geänderte Abschnitte werden neu ausgelesen; dortige Feldkorrekturen werden ersetzt.</p>
+                {segmentPlan.map((segment, index) => <div key={index} style={{ display: 'flex', gap: theme.spacing.xs, marginBottom: theme.spacing.sm }}>
+                  <select aria-label={`Typ Abschnitt ${index + 1}`} value={segment.type} onChange={event => setSegmentPlan(plan => plan.map((s, i) => i === index ? { ...s, type: event.target.value } : s))}>
+                    <option value="unbekannt">Bitte zuordnen</option>
+                    <option value="leerseite">Leer-/Trennseite</option>
+                    {Object.entries(segmentDefs ?? {}).map(([id, def]) => <option key={id} value={id}>{def.label}</option>)}
+                  </select>
+                  {['pageFrom', 'pageTo'].map(key => <input key={key} aria-label={`${key === 'pageFrom' ? 'Von' : 'Bis'} Seite Abschnitt ${index + 1}`} type="number" min="1" max={pages.length} value={segment[key]} style={{ width: 60 }} onChange={event => setSegmentPlan(plan => plan.map((s, i) => i === index ? { ...s, [key]: Number(event.target.value) } : s))} />)}
+                  <button disabled={saving || segment.pageFrom >= segment.pageTo} onClick={() => setSegmentPlan(plan => plan.flatMap((s, i) => i === index ? [{ ...s, pageTo: s.pageFrom }, { ...s, pageFrom: s.pageFrom + 1 }] : [s]))}>Teilen</button>
+                  <button disabled={saving || index === 0} onClick={() => setSegmentPlan(plan => plan.filter((_, i) => i !== index).map((s, i) => i === index - 1 ? { ...s, pageTo: segment.pageTo } : s))}>Mit vorherigem verbinden</button>
+                </div>)}
+                <button style={styles.secondaryBtn} disabled={saving || JSON.stringify(segmentPlan) === JSON.stringify(segments)} onClick={applySegmentPlan}>Zuordnung anwenden & betroffene Abschnitte neu auslesen</button>
+              </details>}
               {segments && (
                 <SegmentReviewPane
                   segments={segments}
                   segmentDefs={segmentDefs || {}}
                   segColor={segColor}
-                  data={detail.data || {}}
+                  data={values}
+                  onChange={editSegmentField}
+                  readOnly={isReviewed || saving}
                   fieldConfidences={detail.fieldConfidences || {}}
                   boxes={detail.boxes || {}}
                   threshold={threshold}
@@ -3182,7 +3262,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
                     value={values[fid]}
                     itemFields={f.item_fields}
                     onChange={arr => setEdited(prev => ({ ...(prev || {}), [fid]: arr }))}
-                    readOnly={!canLearn || isReviewed}
+                    readOnly={!canReview || isReviewed}
                   />
                 </div>
               ))}
@@ -3193,30 +3273,54 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
 
         <div style={styles.modalFooter}>
           <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-            Esc schließt · ← → blättert zum nächsten Beleg · Feld anklicken zeigt die Fundstelle im Bild
+            {draftStatus || 'Esc schließt · ← → nächster Beleg · Feld anklicken zeigt die Fundstelle'}
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.md }}>
             {msg && (
               <span style={{ fontSize: theme.typography.sizes.sm, color: msg.ok ? theme.colors.success : theme.colors.error }}>
                 {msg.text}
               </span>
             )}
-            {!isReviewed && canLearn && hasChanges && (
+            {!isReviewed && canReview && hasChanges && (
               <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.warning }} title="Deine Änderungen sind noch nicht gespeichert — sie gehen beim Blättern oder Schließen verloren.">
                 ● ungespeichert
               </span>
             )}
+            {!isReviewed && canReview && (
+              <div style={{ maxWidth: 360 }}>
+                <label style={{ fontSize: theme.typography.sizes.sm }}>
+                  Geprüftes Beispiel speichern (optional)
+                  <select value={examplePurpose} aria-describedby="review-learning-help" onChange={e => setExamplePurpose(e.target.value)} style={{ ...styles.input, marginTop: theme.spacing.xs }}>
+                    <option value="none">Nur freigeben</option>
+                    <option value="train" disabled={!segments?.some(segment => segment.pageTo - segment.pageFrom < 2) && !detail?.documentText && !Object.values(detail?.segmentContexts ?? {}).some(text => text.trim()) && !(detail?.pageImages?.length && detail.pageImages.length <= 2 && !segments)}>Als Lernbeispiel für dieses Profil speichern</option>
+                    <option value="test" disabled={!detail?.hasOriginal}>Als unabhängiges Testbeispiel speichern</option>
+                  </select>
+                </label>
+                <div id="review-learning-help" style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary }}>
+                  {examplePurpose === 'test'
+                    ? 'Prüft künftig die Qualität am Original. Wird niemals zum Lernen verwendet. Wähle ein neues, repräsentatives Dokument.'
+                    : examplePurpose === 'train'
+                      ? 'Wird als Lernkandidat gespeichert – auch ohne Korrekturen. Aktivierung erst nach erfolgreicher Prüfung am unabhängigen Testbestand.'
+                      : 'Gibt dieses Dokument frei. Es wird kein Lern- oder Testbeispiel gespeichert.'}
+                  {!detail?.hasOriginal && ' Für Testbeispiele bitte neu verarbeiten, damit das Original gespeichert wird.'}
+                </div>
+                {examplePurpose === 'test' && <label style={{ fontSize: theme.typography.sizes.xs }}>
+                  Dokumentvariante (optional)
+                  <input style={styles.input} value={exampleGroup} maxLength={100} placeholder="z. B. Scan, Handschrift, Lieferant A" onChange={e => setExampleGroup(e.target.value)} />
+                </label>}
+              </div>
+            )}
             {isReviewed ? (
               <ReviewBadge status="reviewed" />
-            ) : canLearn ? (
+            ) : canReview ? (
               <button
                 style={styles.primaryBtn}
                 onClick={handleLearn}
                 disabled={saving}
-                title='Speichert deine Prüfung und markiert das Dokument als „Geprüft". „Lernen" verbessert die KI für künftige Dokumente. Nur Ansehen ändert nichts; ungespeicherte Änderungen gehen beim Blättern/Schließen verloren.'
+                title='Prüft Pflichtangaben und Regeln und gibt das Dokument frei. Ein Lernbeispiel wird nur gespeichert, wenn du die optionale Auswahl aktivierst.'
               >
                 {saving ? <Spinner size={14} /> : <SparklesIcon size={14} />}
-                {hasChanges ? 'Korrektur übernehmen & lernen' : 'Als korrekt bestätigen & lernen'}
+                {hasChanges ? 'Korrektur prüfen & freigeben' : 'Als korrekt bestätigen & freigeben'}
               </button>
             ) : detail?.status === 'completed' ? (
               <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
@@ -3254,12 +3358,14 @@ function TrainingTab({ project, onProjectUpdated }) {
   const [scrollToField, setScrollToField] = useState(null);
   const fileInputRef = useRef(null);
   const fieldRowRefs = useRef({});
+  const documentPanelRef = useRef(null);
+  const fieldsPanelRef = useRef(null);
 
   // Box anklicken → zum Feld scrollen + Eingabe fokussieren (zum Korrigieren).
   function focusFieldFromBox(fieldId) {
     const row = fieldRowRefs.current[fieldId];
     if (!row) return;
-    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    scrollWithinPanel(fieldsPanelRef.current, row);
     const input = row.querySelector('input, textarea');
     if (input) input.focus({ preventScroll: true });
     setActiveField(fieldId);
@@ -3424,7 +3530,7 @@ function TrainingTab({ project, onProjectUpdated }) {
         setStatusMsg(`Fehler: ${err.error}`);
       }
     } catch (err) {
-      setStatusMsg('Netzwerkfehler');
+      setStatusMsg(err.message || 'Speichern fehlgeschlagen');
     } finally {
       setSaving(false);
     }
@@ -3473,8 +3579,8 @@ function TrainingTab({ project, onProjectUpdated }) {
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           <InfoBox style={{ marginBottom: theme.spacing.lg }}>
             <strong>So lernt das Profil:</strong> Beispieldokument hochladen → ausgelesene Felder prüfen und
-            bei Bedarf korrigieren → „Bestätigen &amp; Lernen". Nach 3 korrigierten Beispielen entstehen
-            automatisch Regeln. Es wird nichts am Modell trainiert — das Wissen fließt in den Prompt ein.
+            bei Bedarf korrigieren → „Bestätigen &amp; Lernen". Neue Beispiele bleiben zunächst Kandidaten. Mit einem getrennten Testbestand wird geprüft,
+            ob die vorgeschlagene Profilverbesserung übernommen wird. Es wird nichts am Modell trainiert; das Wissen fließt in den Prompt ein.
           </InfoBox>
           <div style={styles.sectionTitle}>Dokument hochladen</div>
 
@@ -3590,25 +3696,24 @@ function TrainingTab({ project, onProjectUpdated }) {
               fontSize: theme.typography.sizes.sm,
               marginBottom: theme.spacing.md,
             }}>
-              Du hast Korrekturen vorgenommen — das System lernt daraus!
+              Deine Korrekturen werden zusammen mit dem Lernbeispiel gespeichert.
             </div>
           )}
 
           <InfoBox style={{ marginBottom: theme.spacing.lg }}>
-            <strong>Was beim „Bestätigen & Lernen" passiert:</strong> Dieses Dokument
-            wird als Beispiel gespeichert (mit deinen Korrekturen). Bei künftigen
-            Läufen wird es als <strong>Beispielvorlage</strong> (Few-Shot) mitgegeben — und
-            ab <strong>3 Beispielen mit Korrekturen</strong> leitet das System daraus
-            allgemeine <strong>Regeln</strong> ab (Tab „Regeln"). Es wird nichts am
-            Modell trainiert — das Wissen fließt nur in den Prompt ein.
+            <strong>Was beim „Bestätigen & Lernen" passiert:</strong> Das Dokument wird mit deinen geprüften Werten als Lernbeispiel gespeichert.
+            Neue Beispiele sind zunächst noch nicht aktiv. Unter „Regeln & Qualität“ kannst du mit „Profil verbessern“ prüfen lassen,
+            ob sie bei neuen Dokumenten helfen. Dafür brauchst du separate Testbeispiele. Erst nach bestandenem Vergleich wird die Verbesserung übernommen.
           </InfoBox>
 
-          <div style={styles.splitView}>
+          <div style={{ ...styles.splitView, gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', minHeight: 0 }}>
+
             {/* Left: Dokument mit Bounding-Boxes (Fallback: Vorschau/Roh-Text) */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, fontWeight: theme.typography.weights.medium }}>
                 DOKUMENT{pageImages.length > 0 ? ' · Markierung anklicken zum Bearbeiten' : ''}
               </div>
+              <div ref={documentPanelRef} role="region" aria-label="Dokumentvorschau" tabIndex={0} style={styles.trainingScrollPanel}>
               {pageImages.length > 0 ? (
                 <BoxOverlay
                   pageImages={pageImages}
@@ -3619,11 +3724,12 @@ function TrainingTab({ project, onProjectUpdated }) {
                   onHoverField={setActiveField}
                   onBoxClick={focusFieldFromBox}
                   scrollToField={scrollToField}
+                  scrollContainerRef={documentPanelRef}
                 />
               ) : previewUrl ? (
-                <DocumentPreview url={previewUrl} kind={previewKind} filename={sourceFilename} height={560} />
+                <DocumentPreview url={previewUrl} kind={previewKind} filename={sourceFilename} height="100%" />
               ) : (
-                <div style={styles.docPanel}>{documentText || 'Keine Vorschau verfügbar'}</div>
+                <div style={{ ...styles.docPanel, maxHeight: 'none' }}>{documentText || 'Keine Vorschau verfügbar'}</div>
               )}
               {previewUrl && documentText && (
                 <div style={{ marginTop: theme.spacing.sm }}>
@@ -3638,14 +3744,15 @@ function TrainingTab({ project, onProjectUpdated }) {
                   )}
                 </div>
               )}
+              </div>
             </div>
 
             {/* Right: Editable form */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, fontWeight: theme.typography.weights.medium }}>
                 EXTRAHIERTE FELDER
               </div>
-              <div style={styles.formPanel}>
+              <div ref={fieldsPanelRef} role="region" aria-label="Extrahierte Felder bearbeiten" tabIndex={0} style={{ ...styles.formPanel, ...styles.trainingScrollPanel }}>
                 {Object.entries(project.fields).map(([fieldId, field]) => {
                   const initialVal = extractionResult[fieldId];
                   const currentVal = editedValues[fieldId];
@@ -3725,11 +3832,11 @@ function TrainingTab({ project, onProjectUpdated }) {
 
       {/* Training Examples List */}
       <div style={styles.section}>
-        <div style={styles.sectionTitle}>Trainingsbeispiele ({examples.length})</div>
+        <div style={styles.sectionTitle}>Lern- und Testbeispiele ({examples.length})</div>
         <InfoBox style={{ marginBottom: theme.spacing.lg }}>
-          Diese Beispiele fließen als <strong>Few-Shot</strong> in künftige Läufe
+          Nur Lernbeispiele fließen als <strong>Few-Shot</strong> in künftige Läufe
           ein (es werden bis zu 5 ausgewählt — Korrekturen zuerst, dann die neuesten).
-          Je mehr korrigierte Beispiele pro Profil, desto treffsicherer das Auslesen.
+          Neue Beispiele bleiben zunächst Kandidaten. Erst ein erfolgreicher Vergleich am Testbestand aktiviert sie.
         </InfoBox>
         {examples.length === 0 ? (
           <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
@@ -3745,6 +3852,7 @@ function TrainingTab({ project, onProjectUpdated }) {
                 <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
                   {new Date(ex.created).toLocaleString('de-DE')}
                   {' — '}
+                  <span style={{ color: theme.colors.textMuted }}>{ex.purpose === 'test' ? `Testbeispiel${ex.group ? ` · ${ex.group}` : ''}` : ex.activation === 'candidate' ? 'Lernkandidat · noch nicht aktiv' : 'Aktives Lernbeispiel'}</span>
                   {ex.confirmed_correct ? (
                     <span style={{ color: theme.colors.success }}>Korrekt ausgelesen</span>
                   ) : (
@@ -3767,6 +3875,55 @@ function TrainingTab({ project, onProjectUpdated }) {
   );
 }
 
+function SetupGuide({ project, onNavigate }) {
+  const [examples, setExamples] = useState([]);
+  useEffect(() => { let active = true; apiGet(`/extraction/projects/${project.id}/examples`).then(response => response.json()).then(data => { if (active && Array.isArray(data)) setExamples(data); }); return () => { active = false; }; }, [project.id, project.learning?.dataset_version]);
+  const learning = examples.filter(example => example.purpose !== 'test');
+  const tests = examples.filter(example => example.purpose === 'test');
+  const pending = learning.filter(example => example.activation === 'candidate');
+  const champion = project.learning?.eval?.champion;
+  const steps = [
+    ['Felder und Pflichtangaben festlegen', 'Prüfe die vorgeschlagenen Felder. Nummern mit führenden Nullen sind Text; wiederholte Positionen sind Listen. Bei Anträgen mit Anlagen beschreibe die Abschnittstypen.', 'settings', `${Object.keys(project.fields).length} Felder · ${Object.keys(project.segments ?? {}).length} Abschnittstypen`, 'Felder bearbeiten'],
+    ['Lernbeispiele prüfen', 'Verarbeite typische Dokumente und korrigiere die Werte am Original. Speichere geeignete Fälle als Lernbeispiel. Kandidaten beeinflussen die Verarbeitung erst nach erfolgreicher Prüfung.', 'training', `${learning.length} Lernbeispiele · ${pending.length} noch nicht aktiv`, 'Lern- & Testbeispiele öffnen'],
+    ['Unabhängige Testbeispiele sammeln', 'Verwende neue Dokumente, die noch nicht zum Lernen genutzt wurden. Nimm auch schwierige Scans, Handschrift und unterschiedliche Absender auf. Speichere sie als Testbeispiel und benenne die Variante.', 'batch', `${tests.length} Testbeispiele`, 'Testdokumente verarbeiten'],
+    ['Lernen prüfen und aktivieren', 'Unter Regeln & Qualität mit „Profil verbessern“ neue Lesehinweise prüfen. Nur ohne Ausfälle und ohne schlechtere Felder oder Dokumentvarianten werden Regeln und Lernbeispiele aktiviert.', 'rules', champion && !champion.stale ? `Letzter Test: ${fmtPct(champion.document_accuracy)} vollständig korrekte Dokumente` : 'Aktuelle unabhängige Messung steht aus', 'Regeln & Qualität öffnen'],
+  ];
+  return (
+    <div>
+      <div style={styles.section}>
+        <h2 style={{ ...styles.sectionTitle, marginTop: 0 }}>Vom Beispieldokument zum geprüften Profil</h2>
+        <p style={{ ...styles.cardDesc, margin: 0 }}>
+          Lege zuerst fest, welche Angaben die Weiterverarbeitung wirklich benötigt. Verwende unterschiedliche Dokumente zum Lernen und zur Qualitätsprüfung.
+        </p>
+      </div>
+      <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {steps.map(([title, text, target, status, action], index) => (
+          <li key={target + title} style={styles.section}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: theme.spacing.lg }}>
+              <span aria-hidden="true" style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                width: theme.spacing['2xl'], height: theme.spacing['2xl'],
+                backgroundColor: theme.colors.primaryLight, color: theme.colors.primaryDark,
+                borderRadius: theme.borderRadius.lg, fontSize: theme.typography.sizes.sm,
+                fontWeight: theme.typography.weights.semibold,
+              }}>{index + 1}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={{ ...styles.sectionTitle, marginTop: 0, marginBottom: theme.spacing.sm }}>{title}</h3>
+                <p style={{ ...styles.cardDesc, marginTop: 0 }}>{text}</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: theme.spacing.md }}>
+                  <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary }}>{status}</span>
+                  <button style={styles.secondaryBtn} onClick={() => onNavigate(target)}>{action}</button>
+                </div>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <InfoBox>Ein guter Teststand ist ein Qualitätsnachweis für diese Dokumente. Modellergebnisse werden weiterhin vor der Weitergabe am Original bestätigt.</InfoBox>
+    </div>
+  );
+}
+
 // ============== Rules Tab ==============
 
 /** Prozentwert deutsch formatieren (1 Nachkommastelle, ohne unnötige Null). */
@@ -3776,14 +3933,14 @@ function fmtPct(v) {
 }
 
 const EVAL_ACTION_LABELS = {
-  accepted: 'Regeln übernommen',
-  rejected: 'Regel-Update verworfen',
-  measured: 'Voll-Eval',
-  initial: 'Erste Messung',
-  error: 'Eval-Fehler',
+  accepted: 'Verbesserung übernommen',
+  rejected: 'Bisheriges Profil beibehalten',
+  measured: 'Aktuelles Profil geprüft',
+  initial: 'Erste Verbesserung übernommen',
+  error: 'Prüfung nicht abgeschlossen',
 };
 
-function RulesTab({ project, onProjectUpdated }) {
+function RulesTab({ project, onProjectUpdated, onNavigate }) {
   const [busy, setBusy] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   // Prüfregeln liegen hier statt in den Einstellungen: alle Regeln an einem Ort —
@@ -3792,8 +3949,23 @@ function RulesTab({ project, onProjectUpdated }) {
   const [rulesSaving, setRulesSaving] = useState(false);
   const [rulesMsg, setRulesMsg] = useState('');
 
+  const [exampleCounts, setExampleCounts] = useState(null);
+  const [examplesError, setExamplesError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setExampleCounts(null); setExamplesError(false);
+    apiGet(`/extraction/projects/${project.id}/examples`).then(async response => {
+      if (!response.ok) throw new Error('Beispiele nicht verfügbar');
+      const examples = await response.json();
+      if (!Array.isArray(examples)) throw new Error('Beispiele nicht verfügbar');
+      if (active) setExampleCounts({ learning: examples.filter(e => e.purpose !== 'test').length, tests: examples.filter(e => e.purpose === 'test').length });
+    }).catch(() => { if (active) setExamplesError(true); });
+    return () => { active = false; };
+  }, [project.id, project.learning?.dataset_version]);
+
   // RulesEditor arbeitet auf der Editor-Form der Felder (Array statt Objekt).
-  const fieldsForRules = Object.entries(project.fields).map(([id, f]) => ({
+  const fieldsForRules = Object.entries(scopedRuleFields(project)).map(([id, f]) => ({
+        ...f,
     id,
     label: f.label,
     type: f.type,
@@ -3841,6 +4013,14 @@ function RulesTab({ project, onProjectUpdated }) {
     // eslint-disable-next-line
   }, [evalRunning, project]);
 
+  async function downloadEvaluation(id) {
+    try {
+      const response = await apiGet(`/extraction/projects/${project.id}/evaluations/${id}`);
+      if (!response.ok) throw new Error('Messstand konnte nicht geladen werden.');
+      triggerDownload(await response.blob(), `messstand-${id}.json`);
+    } catch (error) { setStatusMsg(error.message); }
+  }
+
   async function startAction(path, startMsg) {
     setBusy(true);
     setStatusMsg('');
@@ -3862,258 +4042,126 @@ function RulesTab({ project, onProjectUpdated }) {
   }
 
   function lastRunText(run) {
-    if (!run) return null;
-    const label = EVAL_ACTION_LABELS[run.action] || run.action;
-    if (run.action === 'rejected' && run.challenger_overall != null && run.champion_overall != null) {
-      const delta = Math.round((run.challenger_overall - run.champion_overall) * 10) / 10;
-      return `${label}: ${String(delta).replace('.', ',').replace('-', '−')} Pp auf ${run.examples} Beispielen — bestehende Regeln bleiben aktiv.`;
-    }
-    if ((run.action === 'accepted') && run.champion_overall != null) {
-      return `${label}: ${fmtPct(run.champion_overall)} → ${fmtPct(run.challenger_overall)} auf ${run.examples} Beispielen.`;
-    }
-    if (run.action === 'accepted' || run.action === 'initial') {
-      return `${label}: ${fmtPct(run.challenger_overall)} auf ${run.examples} Beispielen.`;
-    }
-    if (run.action === 'measured') {
-      return `${label}: ${fmtPct(run.champion_overall)} auf ${run.examples} Beispielen.`;
-    }
-    return `${label}${run.message ? `: ${run.message}` : ''}`;
+    if (run.action === 'rejected') return `Der Verbesserungsvorschlag wurde nicht übernommen. ${run.challenger_overall != null && run.champion_overall != null ? `Feldqualität im Vergleich: Vorschlag ${fmtPct(run.challenger_overall)}, bisheriges Profil ${fmtPct(run.champion_overall)}. ` : ''}Mindestens ein Prüfkriterium wurde nicht erfüllt. Dein bisheriges Profil bleibt unverändert.`;
+    if (run.action === 'accepted' || run.action === 'initial') return `Die Verbesserung hat den Vergleich mit dem bisherigen Profil bestanden und wurde aktiviert. Neue Verarbeitungen verwenden diesen Stand. Bereits verarbeitete Dokumente bleiben unverändert.`;
+    if (run.action === 'measured') return 'Das aktuelle Profil wurde mit deinen Testdokumenten geprüft. Diese Aktion hat das Profil nicht verändert.';
+    return 'Die Prüfung konnte nicht abgeschlossen werden. Daraus lässt sich keine verlässliche Aussage zur Verbesserung ableiten. Die Fehlerdetails findest du unten.';
   }
-
-  const lastRunColor =
-    lastRun?.action === 'rejected' ? theme.colors.warning
-    : lastRun?.action === 'error' ? theme.colors.error
-    : theme.colors.success;
+  const unavailable = busy || evalRunning || !exampleCounts;
+  const hasTests = (exampleCounts?.tests ?? 0) > 0;
+  const hasLearning = (exampleCounts?.learning ?? 0) > 0;
+  const fieldDefinitions = scopedRuleFields(project);
+  const problemFields = Object.entries(champion?.by_field ?? {}).filter(([, percent]) => percent < 100);
+  const textStyle = { ...styles.cardDesc, marginTop: 0 };
 
   return (
     <div>
-      {/* Prüfregeln — selbst definiert (vorher unter „Einstellungen") */}
-      <RulesEditor rules={rules} fields={fieldsForRules} onChange={setRules} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-        <button style={styles.primaryBtn} onClick={saveRules} disabled={rulesSaving}>
-          {rulesSaving ? 'Speichere…' : 'Prüfregeln speichern'}
-        </button>
-        {rulesMsg && (
-          <span style={{
-            fontSize: theme.typography.sizes.sm,
-            color: rulesMsg.startsWith('Fehler') || rulesMsg.startsWith('Netzwerk') ? theme.colors.error : theme.colors.success,
-          }}>
-            {rulesMsg}
-          </span>
-        )}
-      </div>
-
-      {/* Qualität (gemessen) */}
       <div style={styles.section}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-          <div style={styles.sectionTitle}>Qualität (gemessen)</div>
-          <button
-            style={styles.secondaryBtn}
-            onClick={() => startAction('evaluate', 'Voll-Eval gestartet — läuft im Hintergrund.')}
-            disabled={busy || evalRunning || !(project.learning?.total_examples > 0)}
-          >
-            <BarChartIcon size={14} />
-            Voll-Eval starten
-          </button>
-        </div>
-
+        <h2 style={{ ...styles.sectionTitle, marginTop: 0 }}>Profil prüfen und verbessern</h2>
+        <p style={textStyle}>Hier findest du heraus, ob dein Profil neue Dokumente richtig ausliest. Dafür liest das System deine <strong>Testdokumente erneut</strong> und vergleicht die Ergebnisse mit den Werten, die du als richtig bestätigt hast.</p>
         <InfoBox style={{ marginBottom: theme.spacing.lg }}>
-          Jede Regel-Änderung wird automatisch gegen die Trainingsbeispiele <strong>gemessen</strong>
-          (Champion/Challenger): Die Beispiele werden mit den Kandidaten-Regeln neu ausgelesen und
-          Feld für Feld mit deinen bestätigten Werten verglichen. Nur Regeln, die mindestens so gut
-          sind wie die aktuellen, werden übernommen. Gemessen wird text-basiert, ohne Few-Shot.
+          <strong>So gehst du vor:</strong> Zuerst Lernbeispiele und separate Testbeispiele speichern. Danach kannst du das aktuelle Profil prüfen oder direkt eine Verbesserung ausprobieren. <strong>Du musst die beiden Buttons nicht nacheinander anklicken:</strong> „Profil verbessern“ führt den nötigen Vergleich selbst durch.
         </InfoBox>
-
-        {champion?.aligned === false && (
-          <div style={{
-            marginBottom: theme.spacing.lg,
-            padding: theme.spacing.md,
-            backgroundColor: theme.colors.warningLight,
-            color: theme.colors.warning,
-            borderRadius: theme.borderRadius.lg,
-            fontSize: theme.typography.sizes.sm,
-          }}>
-            Hinweis: Dieses Profil extrahiert in Produktion mit <strong>{champion.production_strategy}</strong>,
-            die Messung läuft aber text-basiert ({champion.measured_strategy}). Sie prüft damit die
-            Regeln und Anweisungen — nicht die Vision-Strecke selbst.
+        <div style={{ ...styles.cardMeta, flexWrap: 'wrap', marginBottom: theme.spacing.lg }}>
+          {exampleCounts ? <span>{exampleCounts.learning} Lernbeispiele · {exampleCounts.tests} Testbeispiele gespeichert</span> : <span>{examplesError ? 'Beispielbestand konnte nicht geladen werden. Bitte die Seite erneut öffnen.' : 'Beispielbestand wird geladen…'}</span>}
+          <button style={{ ...styles.backLink, marginBottom: 0 }} onClick={() => onNavigate('training')}>Lernbeispiele hinzufügen</button>
+          <button style={{ ...styles.backLink, marginBottom: 0 }} onClick={() => onNavigate('batch')}>Testdokumente verarbeiten</button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: theme.spacing.lg }}>
+          <div style={{ padding: theme.spacing.lg, backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg }}>
+            <h3 style={{ ...styles.sectionTitle, marginTop: 0, marginBottom: theme.spacing.sm }}>Wie gut ist mein aktuelles Profil?</h3>
+            <p style={textStyle}>Prüft den aktuellen Stand an deinen Testdokumenten. Du erhältst ein Ergebnis und siehst, welche Felder noch falsch erkannt werden. <strong>Das Profil wird dabei nicht verändert.</strong></p>
+            <button style={styles.secondaryBtn} disabled={unavailable || !hasTests} onClick={() => startAction('evaluate', 'Deine Testdokumente werden mit dem aktuellen Profil neu ausgelesen. Das Profil bleibt unverändert.')}><BarChartIcon size={14} />Aktuelles Profil prüfen</button>
+            {exampleCounts && !hasTests && <p style={{ ...textStyle, marginTop: theme.spacing.md, marginBottom: 0 }}>Speichere dafür zuerst mindestens ein unabhängiges Testbeispiel.</p>}
           </div>
-        )}
-
-        {evalRunning && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-            <Spinner size={16} />
-            <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
-              Eval läuft — Regeln werden geprüft… (Seite aktualisiert sich automatisch)
-            </span>
+          <div style={{ padding: theme.spacing.lg, backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg }}>
+            <h3 style={{ ...styles.sectionTitle, marginTop: 0, marginBottom: theme.spacing.sm }}>Wie kann mein Profil besser werden?</h3>
+            <p style={textStyle}>Erstellt aus deinen Lernbeispielen zusätzliche Lesehinweise. Das System vergleicht den Vorschlag mit dem bisherigen Profil an denselben Testdokumenten. <strong>Der Vorschlag darf kein Feld und keine Dokumentvariante verschlechtern und keine Verarbeitungsausfälle verursachen. Nur dann wird er automatisch aktiviert.</strong></p>
+            <button style={styles.primaryBtn} disabled={unavailable || !hasTests || !hasLearning} onClick={() => startAction('regenerate', 'Eine Verbesserung wird vorbereitet und mit dem bisherigen Profil verglichen. Übernommen wird sie erst nach bestandenem Vergleich.')}><SparklesIcon size={14} />Profil verbessern</button>
+            {exampleCounts && (!hasTests || !hasLearning) && <p style={{ ...textStyle, marginTop: theme.spacing.md, marginBottom: 0 }}>Dafür brauchst du mindestens ein Lernbeispiel und ein anderes Dokument als Testbeispiel.</p>}
           </div>
-        )}
-
-        {champion ? (
-          <div>
-            <div style={{ display: 'flex', gap: theme.spacing['2xl'], alignItems: 'baseline', marginBottom: theme.spacing.lg }}>
-              <div>
-                <div style={{ fontSize: theme.typography.sizes['2xl'], fontWeight: theme.typography.weights.bold, color: theme.colors.text }}>
-                  {fmtPct(champion.overall)}
-                </div>
-                <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
-                  gemessene Genauigkeit
-                </div>
-              </div>
-              <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-                auf {champion.examples} Beispielen · Regeln v{champion.guideline_version} · Modell {champion.model}
-                <br />
-                {new Date(champion.at).toLocaleString('de-DE')}
-              </div>
-            </div>
-
-            {/* Feld-Accuracy */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: theme.spacing.sm }}>
-              {Object.entries(project.fields).map(([fid, f]) => {
-                const pct = champion.by_field?.[fid];
-                const color = pct == null ? theme.colors.textMuted
-                  : pct >= 90 ? theme.colors.success
-                  : pct >= 60 ? theme.colors.warning
-                  : theme.colors.error;
-                return (
-                  <div key={fid} style={{ display: 'flex', justifyContent: 'space-between', gap: theme.spacing.md, fontSize: theme.typography.sizes.sm, padding: `${theme.spacing.xs} ${theme.spacing.sm}`, backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.md }}>
-                    <span style={{ color: theme.colors.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.label || fid}>
-                      {f.label || fid}
-                    </span>
-                    <span style={{ color, fontWeight: theme.typography.weights.medium }}>{fmtPct(pct)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          !evalRunning && (
-            <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
-              Noch keine Messung. Ab dem dritten korrigierten Trainingsbeispiel wird automatisch
-              gemessen — oder starte jetzt einen Voll-Eval.
-            </div>
-          )
-        )}
-
-        {lastRun && (
-          <div style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm, color: lastRunColor }}>
-            {lastRunText(lastRun)}
-            <span style={{ color: theme.colors.textMuted }}> · {new Date(lastRun.at).toLocaleString('de-DE')}</span>
-          </div>
-        )}
-
-        {evalState?.history?.length > 1 && (
-          <div style={{ marginTop: theme.spacing.lg }}>
-            <div style={{ fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
-              VERLAUF
-            </div>
-            {evalState.history.slice(0, 8).map((h, i) => (
-              <div key={i} style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: 2 }}>
-                {new Date(h.at).toLocaleString('de-DE')} — {EVAL_ACTION_LABELS[h.action] || h.action}
-                {h.challenger != null && ` · Kandidat ${fmtPct(h.challenger)}`}
-                {h.champion != null && ` · Champion ${fmtPct(h.champion)}`}
-                {h.version != null && ` · v${h.version}`}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Konfidenz-Kalibrierung (Welle 3): sagt die Konfidenz echte Fehler voraus? */}
-        {(project.learning?.calibration?.samples ?? 0) >= 10 && (
-          <div style={{ marginTop: theme.spacing.lg }}>
-            <div style={{ fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
-              KONFIDENZ-KALIBRIERUNG ({project.learning.calibration.samples} Stichproben aus Korrekturen)
-            </div>
-            {project.learning.calibration.buckets.map((b, i) => {
-              if (!b.total) return null;
-              const observed = Math.round((b.correct / b.total) * 100);
-              const lo = i * 20;
-              const hi = i * 20 + 20;
-              // Überkonfident: beobachtete Korrektheit deutlich unter dem Konfidenz-Bereich.
-              const off = observed < lo - 10;
-              return (
-                <div key={i} style={{ display: 'flex', gap: theme.spacing.md, fontSize: theme.typography.sizes.sm, marginBottom: 2 }}>
-                  <span style={{ width: 130, color: theme.colors.textMuted }}>Konfidenz {lo}–{hi}%</span>
-                  <span style={{ color: off ? theme.colors.warning : theme.colors.text }}>
-                    {observed}% tatsächlich korrekt
-                  </span>
-                  <span style={{ color: theme.colors.textMuted }}>({b.total})</span>
-                </div>
-              );
-            })}
-            <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-              Liegt die tatsächliche Korrektheit deutlich unter dem Konfidenz-Bereich, ist das Modell
-              überkonfident — dann die Review-Schwelle in den Einstellungen erhöhen.
-            </div>
-          </div>
-        )}
+        </div>
+        <p style={{ ...textStyle, marginTop: theme.spacing.lg, marginBottom: 0 }}>Lernbeispiele liefern die Anleitung. Testbeispiele sind die unabhängige Kontrolle und werden nicht zum Lernen verwendet. Um eines anzulegen, öffne „Testdokumente verarbeiten“, prüfe die erkannten Werte und speichere das Dokument bei der Bestätigung als Testbeispiel. Beim Speichern neuer Lernbeispiele kann der Verbesserungsvergleich auch automatisch starten, sobald mindestens drei Lernbeispiele und ein Testbestand vorhanden sind.</p>
       </div>
+
+      {(evalRunning || statusMsg) && <div style={styles.section} role="status" aria-live="polite">
+        {evalRunning && <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}><Spinner size={16} /><strong style={styles.label}>Prüfung läuft – bitte warten</strong></div>}
+        <p style={{ ...textStyle, marginBottom: 0 }}>{statusMsg || 'Testdokumente werden neu ausgelesen und verglichen. Das Ergebnis erscheint hier automatisch.'}</p>
+      </div>}
+
+      {lastRun && <div style={styles.section} aria-live="polite">
+        <h2 style={{ ...styles.sectionTitle, marginTop: 0 }}>{EVAL_ACTION_LABELS[lastRun.action] || 'Letzte Prüfung'}</h2>
+        <p style={textStyle}>{lastRunText(lastRun)}</p>
+        {lastRun.action === 'rejected' && <p style={textStyle}><strong>Nächster Schritt:</strong> Ergänze Lernbeispiele für die noch falsch erkannten Felder und versuche danach erneut „Profil verbessern“. Du musst den abgelehnten Vorschlag nicht selbst zurücksetzen.</p>}
+        <span style={styles.cardMeta}>{new Date(lastRun.at).toLocaleString('de-DE')}</span>
+      </div>}
 
       <div style={styles.section}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-          <div style={styles.sectionTitle}>Gelernte Regeln</div>
-          <button
-            style={styles.secondaryBtn}
-            onClick={() => startAction('regenerate', 'Regel-Update gestartet — Kandidat wird generiert und gemessen.')}
-            disabled={busy || evalRunning}
-          >
-            <RefreshIcon size={14} />
-            {evalRunning ? 'Prüfung läuft…' : 'Neu ableiten & messen'}
-          </button>
-        </div>
-
-        <InfoBox style={{ marginBottom: theme.spacing.lg }}>
-          Diese Regeln werden <strong>automatisch</strong> aus deinen Korrekturen
-          abgeleitet (ab 3 Beispielen mit Korrekturen; „Neu generieren" stößt es manuell
-          an). Sie sind etwas anderes als die festen <strong>Domänen-Anweisungen</strong>
-          unter „Einstellungen" — die schreibst du selbst und sie werden vom Lernen nie
-          überschrieben. Im Prompt kommen beide zusammen: erst deine
-          Anweisungen, dann diese gelernten Regeln, dann die Few-Shot-Beispiele.
-        </InfoBox>
-
-        <div style={styles.guidelinesBox}>
-          {project.guidelines ? project.guidelines : (
-            <span style={{ fontStyle: 'italic' }}>
-              Noch keine Regeln generiert. Regeln werden automatisch nach 3 Trainingsbeispielen mit Korrekturen erstellt.
-            </span>
-          )}
-        </div>
+        <h2 style={{ ...styles.sectionTitle, marginTop: 0 }}>Ergebnis für dein aktuelles Profil</h2>
+        {champion ? <>
+          {champion.stale && <InfoBox style={{ marginBottom: theme.spacing.lg }}>Profil oder Beispiele wurden seit dieser Prüfung geändert. Die folgenden Zahlen gehören zum vorherigen Stand. Klicke auf „Aktuelles Profil prüfen“, um sie zu aktualisieren.</InfoBox>}
+          {champion.aligned !== true && <InfoBox style={{ marginBottom: theme.spacing.lg }}>Diese ältere Messung hat einen anderen Verarbeitungspfad verwendet. Bitte prüfe das aktuelle Profil erneut, bevor du dich auf diese Zahlen verlässt.</InfoBox>}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing['2xl'], marginBottom: theme.spacing.lg }}>
+            <div><div style={styles.title}>{fmtPct(champion.document_accuracy)}</div><div style={styles.label}>Dokumente vollständig korrekt</div></div>
+            <div><div style={styles.title}>{fmtPct(champion.overall)}</div><div style={styles.label}>Feldqualität im Test</div></div>
+          </div>
+          <p style={textStyle}>Geprüft an <strong>{champion.examples} {champion.examples === 1 ? 'Testdokument' : 'Testdokumenten'}</strong> am {new Date(champion.at).toLocaleString('de-DE')}. {champion.failures ?? 0} {champion.failures === 1 ? 'Dokument konnte' : 'Dokumente konnten'} nicht vollständig verarbeitet oder geprüft werden; das zählt als Fehler.</p>
+          <p style={textStyle}>Ein Dokument gilt erst dann als vollständig korrekt, wenn alle benötigten Werte und Positionen stimmen und die Prüfungen bestanden sind. Deshalb kann die Feldqualität hoch sein, obwohl kein Dokument vollständig korrekt ist.</p>
+          {champion.examples === 1 && <InfoBox style={{ marginBottom: theme.spacing.lg }}>Du hast bisher nur ein Dokument getestet. Das zeigt, was bei diesem Dokument funktioniert, aber noch nicht, wie zuverlässig das Profil andere Dokumente verarbeitet. Ergänze weitere Testbeispiele mit unterschiedlichen Varianten.</InfoBox>}
+          {problemFields.length > 0 ? <>
+            <h3 style={{ ...styles.sectionTitle, marginBottom: theme.spacing.sm }}>Diese Felder wurden noch nicht durchgehend richtig erkannt</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
+              {problemFields.map(([id, percent]) => <div key={id} style={{ padding: theme.spacing.md, backgroundColor: theme.colors.warningLight, borderRadius: theme.borderRadius.md, fontSize: theme.typography.sizes.sm, color: theme.colors.text }}>
+                {fieldDefinitions[id]?.label || id} · {fmtPct(percent)} richtig im Test
+              </div>)}
+            </div>
+          </> : <p style={textStyle}>{champion.document_accuracy === 100 ? 'In diesem Testbestand wurden alle Dokumente vollständig richtig verarbeitet. Prüfe auch andere Dokumentvarianten.' : 'Die Einzelwerte zeigen keine Abweichung. Dokumentfehler können zusätzlich durch unvollständige Verarbeitung oder verletzte Prüfregeln entstehen.'}</p>}
+          <InfoBox>Die Prüfung gibt keine Dokumente automatisch frei. Ergebnisse werden weiterhin vor der Weitergabe am Original bestätigt.</InfoBox>
+        </> : <p style={{ ...textStyle, marginBottom: 0 }}>Noch kein Prüfergebnis vorhanden. Speichere separate Testbeispiele und wähle anschließend „Aktuelles Profil prüfen“ oder direkt „Profil verbessern“.</p>}
       </div>
 
-      <div style={styles.section}>
-        <div style={styles.sectionTitle}>Lernfortschritt</div>
-        <div style={{ display: 'flex', gap: theme.spacing['2xl'] }}>
-          <div>
-            <div style={{ fontSize: theme.typography.sizes['2xl'], fontWeight: theme.typography.weights.bold, color: theme.colors.text }}>
-              {project.learning?.total_examples || 0}
-            </div>
-            <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Beispiele</div>
-          </div>
-          <div>
-            <div style={{ fontSize: theme.typography.sizes['2xl'], fontWeight: theme.typography.weights.bold, color: theme.colors.text }}>
-              ~{project.learning?.accuracy_estimate || 0}%
-            </div>
-            <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>ohne Korrektur (Schätzung)</div>
-          </div>
-          <div>
-            <div style={{ fontSize: theme.typography.sizes['2xl'], fontWeight: theme.typography.weights.bold, color: theme.colors.text }}>
-              v{project.learning?.guideline_version || 0}
-            </div>
-            <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Regelversion</div>
-          </div>
-        </div>
-      </div>
+      <details style={styles.section}>
+        <summary style={{ ...styles.sectionTitle, marginBottom: 0, cursor: 'pointer' }}>Aktive Lesehinweise ansehen</summary>
+        <p style={{ ...textStyle, marginTop: theme.spacing.lg }}>Diese zusätzlichen Hinweise hat das System aus Lernbeispielen abgeleitet und nach einem bestandenen Vergleich übernommen. Du musst sie nicht selbst schreiben oder bearbeiten. Deine eigenen Anweisungen unter „Einstellungen“ gelten zusätzlich.</p>
+        <div style={styles.guidelinesBox}>{project.guidelines || 'Noch keine zusätzlichen Lesehinweise aktiv. Dein Feldschema und deine eigenen Anweisungen werden bereits verwendet.'}</div>
+      </details>
 
-      {statusMsg && (
-        <div style={{
-          padding: theme.spacing.md,
-          backgroundColor: statusMsg.startsWith('Fehler') ? theme.colors.errorLight : theme.colors.successLight,
-          color: statusMsg.startsWith('Fehler') ? theme.colors.error : theme.colors.success,
-          borderRadius: theme.borderRadius.lg,
-          fontSize: theme.typography.sizes.sm,
-        }}>
-          {statusMsg}
+      <details style={styles.section}>
+        <summary style={{ ...styles.sectionTitle, marginBottom: 0, cursor: 'pointer' }}>Eigene Prüfregeln bearbeiten (optional)</summary>
+        <p style={{ ...textStyle, marginTop: theme.spacing.lg }}>Hier legst du feste Kontrollen fest, zum Beispiel ob eine Summe stimmt oder eine Nummer in mehreren Abschnitten übereinstimmt. Diese Regeln prüfen Ergebnisse. Sie sind etwas anderes als die automatisch erstellten Lesehinweise. Du brauchst sie nicht anzulegen, um einen Qualitätstest zu starten.</p>
+        <RulesEditor rules={rules} fields={fieldsForRules} onChange={setRules} />
+        <button style={styles.primaryBtn} onClick={saveRules} disabled={rulesSaving}>{rulesSaving ? 'Speichere…' : 'Prüfregeln speichern'}</button>
+        {rulesMsg && <p role="status" style={textStyle}>{rulesMsg}</p>}
+      </details>
+
+      <details style={styles.section}>
+        <summary style={{ ...styles.sectionTitle, marginBottom: 0, cursor: 'pointer' }}>Prüfverlauf und technische Details</summary>
+        <div style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary }}>
+          {lastRun?.message && <p>Letzte Meldung: {lastRun.message}</p>}
+          {champion && <>
+            <p>Modell: {champion.model} · Version der Lesehinweise: {champion.guideline_version}</p>
+            <h3 style={styles.sectionTitle}>Alle Feldwerte im Test</h3>
+            {Object.entries(champion.by_field ?? {}).map(([id, percent]) => <div key={id}>{fieldDefinitions[id]?.label || id}: {fmtPct(percent)}</div>)}
+            <h3 style={{ ...styles.sectionTitle, marginTop: theme.spacing.lg }}>Dokumentvarianten</h3>
+            {Object.entries(champion.by_group ?? {}).map(([group, score]) => <div key={group}>{group}: {fmtPct(score)} vollständig korrekt ({champion.by_group_examples?.[group] ?? '—'} getestet)</div>)}
+            {champion.document_interval && <p>Statistische Unsicherheit: Das 95%-Intervall für vollständig korrekte Dokumente reicht von {fmtPct(champion.document_interval.low)} bis {fmtPct(champion.document_interval.high)}. Kleine Testbestände erlauben nur ungenaue Schätzungen.</p>}
+            {champion.calibration && <>
+              <h3 style={styles.sectionTitle}>Selbsteinschätzung des Modells im Test</h3>
+              <p>„Konfidenz“ beschreibt, wie sicher das System einen Wert einschätzt. Sie ist kein Nachweis, dass der Wert stimmt. Hier wird diese Einschätzung mit den tatsächlich richtigen Werten verglichen.</p>
+              {champion.calibration.buckets.map((b, i) => b.total > 0 && <div key={i}>Eingeschätzte Sicherheit {i * 20}–{i * 20 + 20}%: {fmtPct(b.correct / b.total * 100)} tatsächlich korrekt ({b.total} Feldwerte)</div>)}
+              <p>Ausfälle ohne Feldkonfidenz sind keinem Bereich zugeordnet. Daraus entsteht keine automatische Freigabe.</p>
+            </>}
+          </>}
+          {(project.learning?.calibration?.samples ?? 0) >= 10 && <>
+            <h3 style={styles.sectionTitle}>Selbsteinschätzung bei Lernbeispielen</h3>
+            {project.learning.calibration.buckets.map((b, i) => b.total > 0 && <div key={i}>Eingeschätzte Sicherheit {i * 20}–{i * 20 + 20}%: {fmtPct(b.correct / b.total * 100)} tatsächlich korrekt ({b.total} Feldwerte)</div>)}
+            <p>Diese ausgewählten Lernbeispiele dienen nicht als unabhängiger Qualitätsnachweis.</p>
+          </>}
+          <h3 style={{ ...styles.sectionTitle, marginTop: theme.spacing.lg }}>Bisherige Prüfungen</h3>
+          {(evalState?.history ?? []).slice(0, 8).map((h, i) => <p key={i}>{new Date(h.at).toLocaleString('de-DE')} — {EVAL_ACTION_LABELS[h.action] || h.action}{h.challenger != null && ` · Vorschlag ${fmtPct(h.challenger)}`}{h.champion != null && ` · Bisheriges Profil ${fmtPct(h.champion)}`}</p>)}
+          {lastRun?.evaluation_id && <button style={styles.secondaryBtn} onClick={() => downloadEvaluation(lastRun.evaluation_id)}>Prüfdaten mit Originaldokumenten herunterladen (JSON)</button>}
         </div>
-      )}
+      </details>
     </div>
   );
 }
@@ -4162,7 +4210,7 @@ function RulesEditor({ rules, fields, onChange }) {
     // und muss nicht erst durch drei Dropdowns komplettiert werden.
     onChange([
       ...rules,
-      type === 'sum'
+      type === 'match' ? { id, type: 'match', fields: scalarFields.slice(0, 2).map(field => field.id) } : type === 'count' ? { id, type: 'count', list_field: named.find(field => field.type === 'list')?.id || '', target_field: numberFields[0]?.id || '' } : type === 'sum'
         ? {
             id,
             type: 'sum',
@@ -4220,6 +4268,8 @@ function RulesEditor({ rules, fields, onChange }) {
           >
             + Stammdaten-Abgleich
           </button>
+          <button style={styles.secondaryBtn} disabled={scalarFields.length < 2} onClick={() => addRule('match')}>+ Werte vergleichen</button>
+          <button style={styles.secondaryBtn} disabled={!named.some(field => field.type === 'list') || !numberFields.length} onClick={() => addRule('count')}>+ Anzahl prüfen</button>
         </div>
       </div>
 
@@ -4266,7 +4316,7 @@ function RulesEditor({ rules, fields, onChange }) {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md }}>
               <div style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>
-                {rule.type === 'sum' ? 'Summen-Check' : 'Stammdaten-Abgleich'}
+                {{ sum: 'Summen-Check', lookup: 'Stammdaten-Abgleich', match: 'Werte vergleichen', count: 'Anzahl prüfen' }[rule.type]}
               </div>
               <button
                 style={{ ...styles.dangerBtn, padding: theme.spacing.sm }}
@@ -4277,7 +4327,15 @@ function RulesEditor({ rules, fields, onChange }) {
               </button>
             </div>
 
-            {rule.type === 'sum' ? (
+            {rule.type === 'match' ? <div>
+              {[0, 1].map(position => <select key={position} aria-label={`Vergleichsfeld ${position + 1}`} style={selectStyle} value={rule.fields?.[position] ?? ''} onChange={event => update(idx, { fields: [position === 0 ? event.target.value : rule.fields?.[0] ?? '', position === 1 ? event.target.value : rule.fields?.[1] ?? ''] })}>
+                <option value="">Feld wählen</option>{scalarFields.map(field => <option key={field.id} value={field.id}>{field.label}</option>)}
+              </select>)}
+              <p>Alle Werte müssen übereinstimmen. Bei wiederholten Abschnitten werden alle Instanzen geprüft; fehlende Werte blockieren.</p>
+            </div> : rule.type === 'count' ? <div>
+              <select style={selectStyle} value={rule.list_field} onChange={event => update(idx, { list_field: event.target.value })}><option value="">Liste / Abschnitte wählen</option>{named.filter(field => field.type === 'list').map(field => <option key={field.id} value={field.id}>{field.label}</option>)}</select>
+              <select style={selectStyle} value={rule.target_field} onChange={event => update(idx, { target_field: event.target.value })}><option value="">Sollanzahl wählen</option>{numberFields.map(field => <option key={field.id} value={field.id}>{field.label}</option>)}</select>
+            </div> : rule.type === 'sum' ? (
               <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <label style={styles.label}>Positionen</label>
@@ -4544,6 +4602,7 @@ function SegmentsEditor({ segments, onChange }) {
           {seg.mode === 'extract' && (
             <div style={{ marginTop: theme.spacing.lg, paddingTop: theme.spacing.md, borderTop: `1px solid ${theme.colors.border}` }}>
               <FieldsEditor title="Felder des Segments" fields={seg.fields} onChange={f => updateSegment(idx, { fields: f })} />
+              <RulesEditor rules={seg.rules ?? []} fields={seg.fields} onChange={rules => updateSegment(idx, { rules })} />
             </div>
           )}
         </div>
@@ -4558,13 +4617,15 @@ function segmentsArrayToObject(segments) {
   for (const s of segments) {
     const id = (s.id || slugifySegmentId(s.label)).trim();
     if (!id || !s.label.trim()) continue;
+    const { id: _id, fields: _fields, rules: _rules, ...preserved } = s;
     obj[id] = {
+      ...preserved,
       label: s.label.trim(),
       description: s.description.trim(),
       ...(s.mode === 'classify-only' ? { mode: 'classify-only' } : {}),
       ...(s.repeatable ? { repeatable: true } : {}),
       ...(s.required ? { required: true } : {}),
-      ...(s.mode !== 'classify-only' ? { fields: fieldsArrayToObject(s.fields) } : {}),
+      ...(s.mode !== 'classify-only' ? { fields: fieldsArrayToObject(s.fields), ...(s.rules ? { rules: s.rules } : {}) } : {}),
     };
   }
   return obj;
@@ -4583,6 +4644,8 @@ function validateSegmentsClient(segments) {
     if (!s.label.trim()) return `Segment „${id}": Bezeichnung fehlt.`;
     if (s.description.trim().length < 20) return `Segment „${id}": Beschreibung mind. 20 Zeichen (sie trägt die Seiten-Zuordnung).`;
     if (s.mode === 'extract') {
+      const error = validateEditorFields(s.fields);
+      if (error) return `Segment „${id}“: ${error}`;
       const badList = (s.fields || []).filter(f => f.label.trim()).find(f => f.type === 'list' && Object.keys(itemFieldsToObject(f.item_fields)).length === 0);
       if (badList) return `Segment „${id}": Liste „${badList.label}" braucht mindestens eine Positions-Spalte.`;
     }
@@ -4601,6 +4664,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   const [instructions, setInstructions] = useState(project.instructions || '');
   const [fields, setFields] = useState(
     Object.entries(project.fields).map(([id, f]) => ({
+        ...f,
       id,
       label: f.label,
       type: f.type,
@@ -4612,6 +4676,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   );
   const [segments, setSegments] = useState(
     Object.entries(project.segments || {}).map(([id, s]) => ({
+      ...s,
       id,
       label: s.label || '',
       description: s.description || '',
@@ -4619,6 +4684,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
       repeatable: !!s.repeatable,
       required: !!s.required,
       fields: Object.entries(s.fields || {}).map(([fid, f]) => ({
+        ...f,
         id: fid,
         label: f.label,
         type: f.type,
@@ -4660,6 +4726,8 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
 
 
   async function handleSave() {
+    const fieldError = validateEditorFields(fields);
+    if (fieldError) { setStatusMsg(fieldError); return; }
     const badList = fields.filter(f => f.label.trim()).find(
       f => f.type === 'list' && Object.keys(itemFieldsToObject(f.item_fields)).length === 0,
     );
@@ -4715,7 +4783,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
         setStatusMsg(`Fehler: ${err.error}`);
       }
     } catch (err) {
-      setStatusMsg('Netzwerkfehler');
+      setStatusMsg(err.message || 'Speichern fehlgeschlagen');
     } finally {
       setSaving(false);
     }

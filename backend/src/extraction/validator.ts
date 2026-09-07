@@ -8,62 +8,7 @@
 import type { ExtractionProfile, FieldDefinition, FieldGroup, ArrayGroupDefinition, ValidationReport, ValidationError } from './types';
 import { isArrayGroup } from './types';
 
-/**
- * Auto-correct German number format: "1.234,56" → 1234.56
- */
-function correctNumber(value: unknown): number | null {
-  if (typeof value === 'number') return value;
-  if (typeof value !== 'string') return null;
-
-  let str = value.trim();
-  if (!str) return null;
-
-  // German format: 1.234,56 → remove dots, replace comma with dot
-  if (str.includes(',') && str.includes('.')) {
-    str = str.replace(/\./g, '').replace(',', '.');
-  } else if (str.includes(',')) {
-    // Simple comma: 12,5 → 12.5
-    str = str.replace(',', '.');
-  }
-
-  const num = parseFloat(str);
-  return isNaN(num) ? null : num;
-}
-
-/**
- * Auto-correct date formats to YYYY-MM-DD
- */
-function correctDate(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-
-  const str = value.trim();
-  if (!str) return null;
-
-  // Already in correct format
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-
-  // DD.MM.YYYY (German format)
-  const germanMatch = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (germanMatch) {
-    const [, day, month, year] = germanMatch;
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  }
-
-  // DD/MM/YYYY
-  const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (slashMatch) {
-    const [, day, month, year] = slashMatch;
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  }
-
-  // Try native Date parsing as last resort
-  const parsed = new Date(str);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
-  }
-
-  return null;
-}
+import { correctNumber, correctDate } from './value-parsers';
 
 /**
  * Validate a single field value against its definition
@@ -100,7 +45,7 @@ function validateField(
   // Type validation + auto-correction
   switch (definition.type) {
     case 'number': {
-      if (typeof value !== 'number') {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
         const correctedValue = correctNumber(value);
         if (correctedValue !== null) {
           data[fieldName] = correctedValue;
@@ -113,7 +58,7 @@ function validateField(
     }
     case 'date': {
       if (typeof value === 'string') {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        if (!correctDate(value) || correctDate(value) !== value) {
           const correctedValue = correctDate(value);
           if (correctedValue) {
             data[fieldName] = correctedValue;
@@ -141,6 +86,8 @@ function validateField(
           } else {
             errors.push({ field: path, message: `Erwarteter Typ: Boolean, erhalten: "${value}"`, value });
           }
+        } else {
+          errors.push({ field: path, message: 'Erwarteter Typ: Boolean', value });
         }
       }
       break;
@@ -179,7 +126,7 @@ export function validateExtraction(
       if (!Array.isArray(groupData)) {
         // Check if any item field is required
         const hasRequired = Object.values(arrayGroup._item_fields).some(f => f.required);
-        if (hasRequired) {
+        if (hasRequired || groupData != null) {
           errors.push({ field: groupName, message: 'Erwartetes Array fehlt' });
         }
         continue;
@@ -188,7 +135,10 @@ export function validateExtraction(
       // Validate each item in the array
       for (let i = 0; i < groupData.length; i++) {
         const item = groupData[i] as Record<string, unknown>;
-        if (!item || typeof item !== 'object') continue;
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          errors.push({ field: `${groupName}[${i}]`, message: 'Erwartetes Positionsobjekt fehlt', value: item });
+          continue;
+        }
 
         for (const [fieldName, fieldDef] of Object.entries(arrayGroup._item_fields)) {
           validateField(

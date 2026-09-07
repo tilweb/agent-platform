@@ -1,3 +1,4 @@
+import { extractionChat } from '../runtime';
 /**
  * Long-Text-Chunked Strategy.
  *
@@ -139,7 +140,7 @@ Wichtig:
         ];
 
         const t0 = Date.now();
-        const response = await llmService.chat(messages, [functionSchema], usageContext, options);
+        const response = await extractionChat(messages, [functionSchema], usageContext, options);
         const durationMs = Date.now() - t0;
 
         let data: Record<string, unknown> = {};
@@ -195,7 +196,9 @@ Wichtig:
 
     // ============== Merge ==============
     await emit({ phase: 'merging', fieldsMerged: 0, fieldsTotal: Object.keys(input.schema.profile.fields).length });
-    const { merged, provenance } = mergeChunks(extracts, input.schema.profile, input.schema.config.merge_strategy);
+    const { merged, provenance, issues } = mergeChunks(extracts, input.schema.profile, input.schema.config.merge_strategy);
+
+    processingIssues.push(...issues);
 
     // ============== Confidence-Score ==============
     await emit({ phase: 'scoring', fieldsScored: 0, fieldsTotal: provenance.length });

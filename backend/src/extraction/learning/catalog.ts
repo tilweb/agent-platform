@@ -267,13 +267,17 @@ export async function applyCatalogs(
       issues.push({
         rule_id: `catalog:${target.path}`,
         type: 'catalog',
-        severity: 'warn',
+        severity: 'error',
+        status: 'not_evaluated',
         message: `Werteliste fuer "${target.label}" nicht pruefbar: ${source.error}.`,
         fields: target.fields,
       });
       continue;
     }
-    if (source.values.length === 0) continue; // leerer Katalog = keine Aussage
+    if (source.values.length === 0) {
+      issues.push({ rule_id: `catalog:${target.path}`, type: 'catalog', severity: 'error', status: 'not_evaluated', message: `Werteliste für ${target.label} ist leer — Prüfung nicht möglich.`, fields: target.fields });
+      continue;
+    }
 
     const raw = target.read();
     const match = matchCatalogValue(raw, source.values);

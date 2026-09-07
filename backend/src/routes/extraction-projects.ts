@@ -1,9 +1,17 @@
+import { enqueueBatch, cancelBatch, retryBatch } from '../extraction/learning/jobs';
+import { ruleFields } from '../extraction/learning/rule-scope';
+import { getRunSnapshot } from '../extraction/learning/batch-runs';
+import { profileHash } from '../extraction/learning/snapshot';
 /**
  * Extraction Projects Routes
  *
  * REST API for learning extraction projects, training, and guidelines.
  */
 
+import { notifyWebhook } from '../extraction/learning/batch-service';
+import { checkReview } from '../extraction/learning/review-result';
+import { isReleased } from '../extraction/learning/result-validation';
+import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
 import { authMiddleware } from '../auth/middleware';
@@ -18,12 +26,10 @@ import {
   extract,
   train,
   regenerateGuidelines,
-  createBatchRun,
   listBatchRuns,
   getBatchRun,
   getBatchRunFileDetail,
   deleteBatchRun,
-  runBatchExtraction,
   upsertFileResult,
   exportProject,
   importProject,
@@ -94,7 +100,7 @@ extractionProjectRoutes.post('/projects', async (c) => {
     return c.json({ error: fieldError }, 400);
   }
 
-  const ruleError = validateProjectRules(body.fields, body.rules);
+  const ruleError = validateProjectRules(ruleFields({ fields: body.fields, segments: body.segments }), body.rules);
   if (ruleError) {
     return c.json({ error: ruleError }, 400);
   }
@@ -138,14 +144,14 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
     }
   }
 
-  if (body.rules !== undefined || body.fields) {
+  if (body.rules !== undefined || body.fields || body.segments !== undefined) {
     // Regeln referenzieren Feld-IDs — gegen den kuenftigen Feldstand pruefen
     // (mitgesendete Felder, sonst die bestehenden).
     const existing = await getProject(id);
     if (!existing) return c.json({ error: 'Profil nicht gefunden' }, 404);
     const effectiveFields = body.fields ?? existing.fields;
     const effectiveRules = body.rules !== undefined ? body.rules : existing.rules;
-    const ruleError = validateProjectRules(effectiveFields, effectiveRules);
+    const ruleError = validateProjectRules(ruleFields({ fields: effectiveFields, segments: body.segments === null ? undefined : body.segments ?? existing.segments }), effectiveRules);
     if (ruleError) {
       return c.json({ error: ruleError }, 400);
     }
@@ -327,7 +333,7 @@ extractionProjectRoutes.post('/projects/:id/extract', async (c) => {
     source = { type: 'text', content: body.text };
   }
 
-  const result = await extract(projectId, source);
+  const { original, snapshot, ...result } = await extract(projectId, source);
   return c.json(result);
 });
 
@@ -360,12 +366,17 @@ extractionProjectRoutes.post('/projects/:id/train', async (c) => {
  */
 extractionProjectRoutes.get('/projects/:id/examples', async (c) => {
   const examples = await getExamples(c.req.param('id'));
+  const activeIds = (await getProject(c.req.param('id')))?.learning.approved_example_ids ?? [];
   return c.json(examples.map(e => ({
     id: e.id,
     created: e.created,
     source_filename: e.source_filename,
     corrections_count: e.corrections.length,
     confirmed_correct: e.confirmed_correct,
+    purpose: e.dataset?.purpose ?? 'train',
+    activation: e.dataset?.activation === 'candidate' && !activeIds.includes(e.id) ? 'candidate' : 'active',
+    group: e.dataset?.group,
+    has_original: !!e.dataset?.original,
   })));
 });
 
@@ -480,19 +491,8 @@ extractionProjectRoutes.post('/projects/:id/batches', async (c) => {
     saved.push({ filename: file.name, tempPath });
   }
 
-  const { runId, files } = await createBatchRun(projectId, saved.map((s) => s.filename));
-  const inputFiles = files.map((f, i) => ({
-    fileId: f.id,
-    filename: f.filename,
-    tempPath: saved[i]!.tempPath,
-  }));
-
-  // Fire-and-forget — kein await.
-  void runBatchExtraction(projectId, runId, inputFiles).catch((err) =>
-    console.error('[batch-extract] runBatchExtraction error:', err),
-  );
-
-  return c.json({ runId, fileCount: inputFiles.length }, 201);
+  const { runId, files } = await enqueueBatch(projectId, saved);
+  return c.json({ runId, fileCount: files.length }, 201);
 });
 
 /**
@@ -509,7 +509,8 @@ extractionProjectRoutes.get('/projects/:id/batches', async (c) => {
 extractionProjectRoutes.get('/projects/:id/batches/:runId', async (c) => {
   const result = await getBatchRun(c.req.param('id'), c.req.param('runId'));
   if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
-  return c.json(result);
+  const snapshot = await getRunSnapshot(c.req.param('id'), c.req.param('runId'));
+  return c.json({ ...result, run: { ...result.run, profile: snapshot?.project } });
 });
 
 /**
@@ -528,7 +529,8 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/files/:fileId', async 
       ? p
       : { ...p, url: `/extraction/projects/${projectId}/batches/${runId}/files/${fileId}/pages/${p.page}` },
   );
-  return c.json({ ...detail, pageImages: pageImages ?? null });
+  const { original, snapshot, ...visible } = detail;
+  return c.json({ ...visible, hasOriginal: !!original, profile: snapshot?.project, pageImages: pageImages ?? null });
 });
 
 /**
@@ -553,58 +555,70 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/files/:fileId/pages/:p
  * Trainingsbeispiel uebernehmen (Welle 3). Body: { corrected: Record<fieldId, value> }.
  * Setzt die Datei auf den korrigierten Stand + review_status 'reviewed'.
  */
-extractionProjectRoutes.post('/projects/:id/batches/:runId/files/:fileId/learn', async (c) => {
+async function saveReview(c: Context, learnDefault: boolean) {
   const projectId = c.req.param('id');
   const runId = c.req.param('runId');
   const fileId = c.req.param('fileId');
-
+  if (segmentCorrectionLocks.has(fileId)) return c.json({ error: 'Abschnittskorrektur läuft. Bitte anschließend prüfen.' }, 409);
   const body = await c.req.json().catch(() => null);
-  const corrected = body?.corrected;
-  if (!corrected || typeof corrected !== 'object' || Array.isArray(corrected)) {
-    return c.json({ error: 'corrected (Objekt mit Feldwerten) erforderlich' }, 400);
-  }
-
-  const detail = await getBatchRunFileDetail(projectId, runId, fileId);
-  if (!detail) return c.json({ error: 'Datei nicht gefunden' }, 404);
-  if (detail.status !== 'completed' || !detail.data) {
-    return c.json({ error: 'Nur erfolgreich extrahierte Dateien koennen gelernt werden' }, 400);
-  }
-  if (!detail.documentText || !detail.documentText.trim()) {
-    return c.json({ error: 'Dieser Lauf hat keinen gespeicherten Dokumenttext (aelterer Lauf) — bitte die Datei neu verarbeiten' }, 400);
-  }
-
-  const result = await train(projectId, {
-    source_filename: detail.filename,
-    document_text: detail.documentText,
-    initial_extraction: detail.data,
-    corrected_extraction: corrected,
-    field_confidences: detail.fieldConfidences ?? undefined,
-  });
-
-  // Befunde gegen den korrigierten Stand neu bewerten (Welle 5) — sonst haengt
-  // der alte Befund an einer Datei, die der Mensch gerade in Ordnung gebracht hat.
   const project = await getProject(projectId);
-  const validations = project ? await evaluateProjectRules(project, corrected) : [];
+  if (!project || !(await getBatchRun(projectId, runId))) return c.json({ error: 'Lauf nicht gefunden' }, 404);
+  const detail = await getBatchRunFileDetail(projectId, runId, fileId);
+  if (!detail || detail.status !== 'completed' || !detail.data) return c.json({ error: 'Kein abgeschlossenes Ergebnis' }, 400);
+  const checked = await checkReview(detail.snapshot?.project ?? project, body?.corrected, detail.validations ?? [], (p, data) => evaluateProjectRules(p, data, detail.snapshot));
+  if (!checked.allowed) return c.json({ error: 'Freigabe nicht möglich: ' + checked.validations.map(i => i.message).join('; '), validations: checked.validations }, 422);
+  const test = body?.example_purpose === 'test';
+  const learn = !test && (body?.learn === true || body?.example_purpose === 'train' || (learnDefault && body?.learn !== false));
+  if ((learn || test) && detail.snapshot && profileHash(detail.snapshot.project) !== profileHash(project)) return c.json({ error: 'Das Profil wurde seit der Extraktion geändert. Für ein Lern- oder Testbeispiel bitte neu verarbeiten. Die Freigabe ist ohne Beispielspeicherung möglich.' }, 422);
+  if (test && !detail.original) return c.json({ error: 'Testbeispiele benötigen das Original. Bitte das Dokument neu verarbeiten.' }, 422);
+  if (learn && !detail.segments?.some(segment => segment.pageTo - segment.pageFrom < 2) && !detail.documentText?.trim() && !Object.values(detail.segmentContexts ?? {}).some(text => text.trim()) && !(detail.pageImages?.length && detail.pageImages.length <= 2)) return c.json({ error: 'Kein Lerntext vorhanden. Die Prüfung kann ohne Lernen gespeichert werden.' }, 422);
+  const visual: Array<{ page: number; dataUri: string }> = [];
+  if (learn && detail.pageImages?.length && detail.pageImages.length <= 2 && !detail.segments?.length) {
+    for (const page of detail.pageImages) {
+      const bytes = page.dataUri ? null : await readPageImage(runId, fileId, page.page);
+      if (page.dataUri || bytes) visual.push({ page: page.page, dataUri: page.dataUri ?? `data:image/png;base64,${bytes!.toString('base64')}` });
+    }
+  }
+  const completeVisual = visual.length === detail.pageImages?.length ? visual : undefined;
+  const segmentVisual: Record<string, Array<{ page: number; dataUri: string }>> = {};
+  if (learn) for (const segment of detail.segments ?? []) {
+    if (segment.pageTo - segment.pageFrom >= 2) continue;
+    const definition = detail.snapshot?.project.segments?.[segment.type];
+    if (!definition || definition.mode === 'classify-only') continue;
+    const key = definition.repeatable ? `${segment.type}[${segment.instance}]` : segment.type;
+    const pages = [];
+    for (let pageNumber = segment.pageFrom; pageNumber <= segment.pageTo; pageNumber++) {
+      const page = detail.pageImages?.find(page => page.page === pageNumber);
+      const bytes = page?.dataUri ? null : await readPageImage(runId, fileId, pageNumber);
+      if (page?.dataUri || bytes) pages.push({ page: pageNumber, dataUri: page?.dataUri ?? `data:image/png;base64,${bytes!.toString('base64')}` });
+    }
+    if (pages.length === segment.pageTo - segment.pageFrom + 1) segmentVisual[key] = pages;
+  }
 
-  // Datei auf den geprueften Stand heben (Tabelle/Exporte zeigen die Korrektur;
-  // das Original bleibt im Trainingsbeispiel als initial_extraction erhalten).
+  if (learn && !detail.documentText?.trim() && !Object.values(detail.segmentContexts ?? {}).some(text => text.trim()) && !completeVisual?.length && !Object.keys(segmentVisual).length) return c.json({ error: 'Kein vollständiger visueller Beispielkontext verfügbar.' }, 422);
+  let training;
+  if (learn || test) {
+    try { training = await train(projectId, {
+    dataset: { purpose: test ? 'test' : 'train', visual: completeVisual, segment_contexts: detail.segmentContexts, segment_visual: segmentVisual, original: detail.original, profile_hash: detail.audit?.profile_hash, group: typeof body?.example_group === 'string' ? body.example_group.trim().slice(0, 100) : undefined },
+    source_filename: detail.filename, document_text: detail.documentText ?? '',
+    initial_extraction: detail.data, corrected_extraction: checked.data,
+    field_confidences: detail.fieldConfidences ?? undefined,
+  }); } catch (error) { return c.json({ error: error instanceof Error ? error.message : String(error) }, 422); }
+  }
   await upsertFileResult(projectId, runId, fileId, {
-    status: 'completed',
-    data: corrected,
-    fieldConfidences: detail.fieldConfidences ?? undefined,
-    strategy: detail.strategy ?? undefined,
-    audit: detail.audit ?? undefined,
-    reviewStatus: 'reviewed',
-    validations,
+    status: 'completed', reviewDraft: null, data: checked.data, fieldConfidences: {}, boxes: {},
+    strategy: detail.strategy ?? undefined, audit: detail.audit ?? undefined,
+    reviewStatus: 'reviewed', validations: checked.validations,
   });
-
+  void notifyWebhook(projectId, runId, project, fileId);
   return c.json({
-    guidelines_update: result.guidelines_update,
-    review_status: 'reviewed',
-    example_id: result.example.id,
-    validations,
+    guidelines_update: training?.guidelines_update ?? 'none', review_status: 'reviewed',
+    example_id: training?.example.id, validations: checked.validations, data: checked.data,
   });
-});
+}
+extractionProjectRoutes.post('/projects/:id/batches/:runId/files/:fileId/review', c => saveReview(c, false));
+// Compatibility endpoint; same validation and release boundary.
+extractionProjectRoutes.post('/projects/:id/batches/:runId/files/:fileId/learn', c => saveReview(c, true));
 
 /**
  * GET /projects/:id/batches/:runId/export.xlsx — Ergebnistabelle als Excel.
@@ -622,12 +636,12 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/export.xlsx', async (c
       ? 'breit (eine Zeile je Dokument, Listen als Spalten)'
       : 'gruppiert';
 
-  const project = await getProject(projectId);
+  const project = (await getRunSnapshot(projectId, runId))?.project ?? await getProject(projectId);
   if (!project) return c.json({ error: 'Profil nicht gefunden' }, 404);
   const result = await getBatchRun(projectId, runId);
   if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
 
-  const sections = buildBatchExportSections(project, result.files, format);
+  const sections = buildBatchExportSections(project, c.req.query('scope') === 'diagnostic' ? result.files : result.files.filter(isReleased), format);
   const buffer = await generateDocument(
     {
       title: `Batch-Extraktion — ${project.name}`,
@@ -659,13 +673,13 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/export.csv', async (c)
   const raw = c.req.query('format');
   const format: ExportFormat = raw === 'flat' ? 'flat' : 'flat-wide';
 
-  const project = await getProject(projectId);
+  const project = (await getRunSnapshot(projectId, runId))?.project ?? await getProject(projectId);
   if (!project) return c.json({ error: 'Profil nicht gefunden' }, 404);
   const result = await getBatchRun(projectId, runId);
   if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
 
   // flat/flat-wide liefern genau EINE Section → direkt zu CSV serialisieren.
-  const [section] = buildBatchExportSections(project, result.files, format);
+  const [section] = buildBatchExportSections(project, c.req.query('scope') === 'diagnostic' ? result.files : result.files.filter(isReleased), format);
   const csv = section ? sectionToCsv(section) : '';
   const suffix = format === 'flat' ? '-flach' : '-breit';
 
@@ -681,7 +695,7 @@ extractionProjectRoutes.get('/projects/:id/batches/:runId/export.csv', async (c)
 extractionProjectRoutes.post('/projects/:id/batches/:runId/to-table', async (c) => {
   const projectId = c.req.param('id');
   const runId = c.req.param('runId');
-  const project = await getProject(projectId);
+  const project = (await getRunSnapshot(projectId, runId))?.project ?? await getProject(projectId);
   if (!project) return c.json({ error: 'Profil nicht gefunden' }, 404);
   const result = await getBatchRun(projectId, runId);
   if (!result) return c.json({ error: 'Lauf nicht gefunden' }, 404);
@@ -695,6 +709,7 @@ extractionProjectRoutes.post('/projects/:id/batches/:runId/to-table', async (c) 
     })),
   ];
 
+  if (!result.files.some(isReleased)) return c.json({ error: 'Keine freigegebenen Ergebnisse vorhanden. Bitte zuerst prüfen.' }, 422);
   const tableId = `extraktion-${projectId}-${Date.now().toString(36)}`;
   const table = await createTable({
     id: tableId,
@@ -705,7 +720,7 @@ extractionProjectRoutes.post('/projects/:id/batches/:runId/to-table', async (c) 
 
   let rowCount = 0;
   for (const file of result.files) {
-    if (file.status !== 'completed' || !file.data) continue;
+    if (!isReleased(file) || !file.data) continue;
     const data: Record<string, unknown> = { quelldatei: file.filename };
     for (const [fid, f] of Object.entries(project.fields)) {
       const v = file.data[fid];
@@ -734,4 +749,58 @@ extractionProjectRoutes.delete('/projects/:id/batches/:runId', async (c) => {
   const deleted = await deleteBatchRun(c.req.param('id'), c.req.param('runId'));
   if (!deleted) return c.json({ error: 'Lauf nicht gefunden' }, 404);
   return c.json({ success: true });
+});
+
+/** Evidence export includes original test documents and the frozen execution inputs. */
+extractionProjectRoutes.get('/projects/:id/evaluations/:evaluationId', async c => {
+  const { getEvaluation } = await import('../extraction/learning/evaluation-store');
+  const artifact = await getEvaluation(c.req.param('id'), c.req.param('evaluationId'));
+  if (!artifact) return c.json({ error: 'Messstand nicht gefunden' }, 404);
+  return c.json(artifact);
+});
+
+const segmentCorrectionLocks = new Set<string>();
+
+extractionProjectRoutes.post('/projects/:id/batches/:runId/files/:fileId/draft', async c => {
+  const { id, runId, fileId } = c.req.param();
+  if (segmentCorrectionLocks.has(fileId)) return c.json({ error: 'Die Abschnittszuordnung wird gerade verarbeitet.' }, 409);
+  if (!(await getBatchRun(id, runId))) return c.json({ error: 'Lauf nicht gefunden' }, 404);
+  const detail = await getBatchRunFileDetail(id, runId, fileId);
+  const body = await c.req.json();
+  if (!detail || detail.status !== 'completed' || detail.reviewStatus === 'reviewed') return c.json({ error: 'Kein bearbeitbares Ergebnis' }, 409);
+  if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return c.json({ error: 'Feldwerte erwartet' }, 400);
+  await upsertFileResult(id, runId, fileId, { status: 'completed', reviewDraft: body.data });
+  return c.json({ saved: true });
+});
+
+extractionProjectRoutes.post('/projects/:id/batches/:runId/files/:fileId/segments', async c => {
+  const { id, runId, fileId } = c.req.param();
+  if (segmentCorrectionLocks.has(fileId)) return c.json({ error: 'Die Abschnittszuordnung wird bereits verarbeitet.' }, 409);
+  segmentCorrectionLocks.add(fileId);
+  try {
+    if (!(await getBatchRun(id, runId))) return c.json({ error: 'Lauf nicht gefunden' }, 404);
+    const detail = await getBatchRunFileDetail(id, runId, fileId);
+    if (!detail?.original || !detail.snapshot || !detail.segments || detail.status !== 'completed') return c.json({ error: 'Für Abschnittskorrekturen bitte das Dokument mit gespeichertem Original neu verarbeiten.' }, 422);
+    const body = await c.req.json();
+    const { correctSegmentation } = await import('../extraction/learning/service');
+    const result = await correctSegmentation(detail.snapshot, Buffer.from(detail.original.base64, 'base64'), body.segments, {
+      segments: detail.segments, data: body.corrected ?? detail.reviewDraft ?? detail.data ?? {},
+      fieldConfidences: body.corrected ? {} : detail.fieldConfidences ?? {}, boxes: body.corrected ? {} : detail.boxes ?? {},
+      pageImages: [], validations: detail.validations ?? [], llmCalls: 0, segmentContexts: detail.segmentContexts,
+    });
+    await upsertFileResult(id, runId, fileId, { status: 'completed', data: result.data, fieldConfidences: result.fieldConfidences,
+      boxes: result.boxes, segments: result.segments, segmentContexts: result.segmentContexts,
+      validations: result.validations, reviewStatus: 'needs_review', reviewDraft: null });
+    return c.json({ data: result.data, segments: result.segments, validations: result.validations, fieldConfidences: result.fieldConfidences, boxes: result.boxes, reviewStatus: 'needs_review', reviewDraft: null, llmCalls: result.llmCalls });
+  } catch (error) { return c.json({ error: error instanceof Error ? error.message : String(error) }, 422); }
+  finally { segmentCorrectionLocks.delete(fileId); }
+});
+
+extractionProjectRoutes.post('/projects/:id/batches/:runId/cancel', async c => {
+  const ok = await cancelBatch(c.req.param('id'), c.req.param('runId'));
+  return c.json(ok ? { success: true } : { error: 'Lauf ist nicht mehr aktiv' }, ok ? 200 : 409);
+});
+extractionProjectRoutes.post('/projects/:id/batches/:runId/retry', async c => {
+  const ok = await retryBatch(c.req.param('id'), c.req.param('runId'));
+  return c.json(ok ? { success: true } : { error: 'Keine wiederholbaren Fehler vorhanden' }, ok ? 200 : 409);
 });

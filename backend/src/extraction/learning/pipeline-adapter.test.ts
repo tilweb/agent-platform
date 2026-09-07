@@ -76,7 +76,7 @@ test('rendert gelernte Guidelines + Few-Shot in profile.guidelines', () => {
   );
   const g = schema.profile.guidelines ?? '';
   expect(g).toContain('Rechnungsnummer steht immer oben rechts.');
-  expect(g).toContain('Beispiele aus bisherigen Extraktionen');
+  expect(g).toContain('Geprüfte Beispiele');
   expect(g).toContain('R-2026-001');
 });
 
@@ -156,7 +156,7 @@ test('list-Feld wird zur eigenen Array-Gruppe neben der felder-Gruppe', () => {
   expect(list._item_fields.einzelpreis!.hint).toBe('Netto in EUR');
 });
 
-test('Few-Shot rendert Listen-Korrekturen als JSON mit Positions-Zaehler', () => {
+test('Few-Shot übernimmt keine Listenwerte ohne sichtbaren Quellausschnitt', () => {
   const examples: TrainingExample[] = [
     {
       id: 'ex_list',
@@ -185,8 +185,8 @@ test('Few-Shot rendert Listen-Korrekturen als JSON mit Positions-Zaehler', () =>
   ];
   const g = buildLearningGuidelines(makeListProject(), examples);
   expect(g).not.toContain('[object Object]');
-  expect(g).toContain('"bezeichnung":"B"');
-  expect(g).toContain('(1 → 2 Positionen)');
+  expect(g).not.toContain('Korrekte Extraktion:');
+  expect(g).not.toContain('Positionen)');
 });
 
 test('Round-trip: pipeline-Ergebnis (felder.<id>) entpackt zu flach', () => {

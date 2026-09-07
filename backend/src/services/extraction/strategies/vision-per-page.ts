@@ -1,3 +1,5 @@
+import { extractionChat } from '../runtime';
+import { visualExampleMessages } from '../visual-examples';
 /**
  * Vision-Per-Page Strategy.
  *
@@ -79,7 +81,14 @@ async function collectPages(
   const out: PageSource[] = [];
 
   for (const file of input.files) {
-    if (!file.rawBuffer) continue;
+    if (!file.rawBuffer) {
+      issues.push({ severity: 'error', message: `${file.filename}: Quelle ohne Bilddaten im Vision-Pfad nicht verarbeitet.` });
+      continue;
+    }
+    if (out.length >= maxPages) {
+      issues.push({ severity: 'error', message: `${file.filename}: Quelle wegen Seitenlimit nicht verarbeitet.` });
+      continue;
+    }
 
     const isPdf = file.mimeType === 'application/pdf' || file.filename.toLowerCase().endsWith('.pdf');
     const isImage = file.mimeType.startsWith('image/');
@@ -96,7 +105,7 @@ async function collectPages(
             message: `${file.filename}: nur ${pages.length} von ${total} Seiten verarbeitet (max_pages=${maxPages}) — die restlichen Seiten fehlen im Ergebnis.`,
           });
         }
-      } catch { /* pdfinfo nicht verfuegbar — keine Aussage moeglich */ }
+      } catch { issues.push({ severity: 'error', message: `${file.filename}: Seitenvollständigkeit nicht prüfbar.` }); }
       for (const p of pages) {
         out.push({
           pageId: `${file.filename}:${p.pageNumber}`,
@@ -125,7 +134,7 @@ async function collectPages(
     }
     // Text/Markdown-Files werden in dieser Strategy nicht beruecksichtigt —
     // Vision braucht visuelle Quellen.
-    if (out.length >= maxPages) break;
+
   }
 
   return out;
@@ -260,6 +269,7 @@ Wichtig:
 
         const messages: Message[] = [
           { role: 'system', content: systemPrompt },
+          ...visualExampleMessages(input.schema.profile),
           { role: 'user', content: userContent },
         ];
 
@@ -274,19 +284,19 @@ Wichtig:
           if (guidedBody) {
             try {
               response = await withTimeoutRetry(
-                () => llmService.chat(messages, undefined, usageContext, { ...options, extraBody: guidedBody }),
-                { timeoutMs: 45000, retries: 0, label: `vision-per-page ${page.pageId} (guided)` },
+                () => extractionChat(messages, undefined, usageContext, { ...options, extraBody: guidedBody }),
+                { queued: true, timeoutMs: 45000, retries: 0, label: `vision-per-page ${page.pageId} (guided)` },
               );
             } catch {
               response = await withTimeoutRetry(
-                () => llmService.chat(messages, undefined, usageContext, options),
-                { timeoutMs: 45000, retries: 0, label: `vision-per-page ${page.pageId} (fallback)` },
+                () => extractionChat(messages, undefined, usageContext, options),
+                { queued: true, timeoutMs: 45000, retries: 0, label: `vision-per-page ${page.pageId} (fallback)` },
               );
             }
           } else {
             response = await withTimeoutRetry(
-              () => llmService.chat(messages, undefined, usageContext, options),
-              { timeoutMs: 45000, retries: 1, label: `vision-per-page ${page.pageId}` },
+              () => extractionChat(messages, undefined, usageContext, options),
+              { queued: true, timeoutMs: 45000, retries: 1, label: `vision-per-page ${page.pageId}` },
             );
           }
         } catch (err) {
@@ -341,12 +351,14 @@ Wichtig:
 
     // Merge ueber Seiten: bei `union` werden Tabellen-Zeilen konkateniert.
     await emit({ phase: 'merging', fieldsMerged: 0, fieldsTotal: Object.keys(input.schema.profile.fields).length });
-    const { merged, provenance } = mergeChunks(extracts, input.schema.profile, input.schema.config.merge_strategy);
+    const { merged, provenance, issues } = mergeChunks(extracts, input.schema.profile, input.schema.config.merge_strategy);
+    processingIssues.push(...issues);
 
     // OCR-Fusion (W7): Tesseract-Woerter liefern Fundstellen-Boxen (inkl.
     // Listen-Zeilen) UND verifizieren die extrahierten Werte deterministisch —
     // unbelegte Zahlen werden zur Pruefung markiert, belegte Felder brauchen
     // kein LLM-Konfidenz-Urteil mehr.
+    const validation = validateExtraction(merged, input.schema.profile);
     const fusion = await fuseWithOcr(
       pages.map((p) => ({ pngBuffer: p.pngBuffer, width: p.width, height: p.height, pageNumber: p.pageNumber })),
       merged,
@@ -387,7 +399,6 @@ Wichtig:
       p.confidence = confidences[p.field] ?? 0;
     }
 
-    const validation = validateExtraction(merged, input.schema.profile);
     const warnings = validation.errors.map((e) => `${e.field}: ${e.message}`);
     warnings.push(...fusion.findings.map((f) => f.message));
     await emit({ phase: 'validating', warningCount: warnings.length });

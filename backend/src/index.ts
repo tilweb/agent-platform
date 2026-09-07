@@ -1,3 +1,4 @@
+import { startExtractionWorker } from './extraction/learning/jobs';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
@@ -254,6 +255,7 @@ async function initialize() {
   // ein vorheriger Prozess-Crash/Neustart mitten in 'processing' zurückließ).
   try {
     const stale = await recoverStaleRuns();
+    startExtractionWorker();
     if (stale > 0) console.log(`Recovered ${stale} stale extraction batch run(s)`);
   } catch (error) {
     console.error('Failed to recover stale extraction runs:', error);

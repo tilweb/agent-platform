@@ -1,3 +1,4 @@
+import { extractionChat } from './runtime';
 /**
  * Heavy Extraction Pipeline — Confidence-Scoring per LLM-Self-Reflection.
  *
@@ -14,7 +15,7 @@
  * der einzige Weg, dem User Quality zu signalisieren.
  *
  * Wenn der Confidence-Call scheitert (LLM-Error, Parse-Fehler), faellt die
- * Funktion auf eine simple Heuristik zurueck: 1.0 wenn N ≥ 2 Chunks den
+ * Funktion auf eine simple Heuristik zurueck: 0.7 auch wenn mehrere Chunks den
  * gleichen Wert liefern, 0.7 wenn 1 Chunk, 0.0 sonst.
  */
 
@@ -85,7 +86,7 @@ function heuristicConfidence(candidate: FieldCandidate): number {
     return String(c.value).trim().toLowerCase() === String(candidate.finalValue).trim().toLowerCase();
   }).length;
 
-  if (matchingChunks >= 2) return 1.0;
+  if (matchingChunks >= 2) return 0.7; // Repeated chunks are not independent evidence.
   if (matchingChunks === 1) return 0.6;       // andere Chunks lieferten andere Werte
   return 0.5;                                  // final-Wert kommt aus genau einem Chunk
 }
@@ -170,7 +171,7 @@ Nutze die Feld-Pfade, die ich dir gebe — keine zusaetzlichen Schluessel.`,
     };
 
     try {
-      const response = await llmService.chat(messages, undefined, usageContext, {
+      const response = await extractionChat(messages, undefined, usageContext, {
         userId,
         ...EXTRACTION_SAMPLING,
         ...(options.modelOverride ? { modelOverride: options.modelOverride } : {}),
@@ -183,7 +184,7 @@ Nutze die Feld-Pfade, die ich dir gebe — keine zusaetzlichen Schluessel.`,
       for (const c of ambiguous) {
         const llmScore = parsed[c.fieldPath];
         if (typeof llmScore === 'number' && llmScore >= 0 && llmScore <= 1) {
-          confidences[c.fieldPath] = llmScore;
+          confidences[c.fieldPath] = Math.min(llmScore, 0.7);
         }
       }
     } catch (err) {

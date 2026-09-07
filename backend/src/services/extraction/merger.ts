@@ -17,7 +17,7 @@
 
 import type { ExtractionProfile, FieldGroup, FieldDefinition } from '../../extraction/types';
 import { isArrayGroup } from '../../extraction/types';
-import type { FieldProvenance, MergeStrategyId } from './types';
+import type { FieldProvenance, MergeStrategyId, StrategyResult } from './types';
 
 export interface ChunkExtraction {
   /** Chunk-Index aus dem chunker. */
@@ -29,6 +29,7 @@ export interface ChunkExtraction {
 }
 
 export interface MergeResult {
+  issues: NonNullable<StrategyResult['processingIssues']>;
   merged: Record<string, unknown>;
   provenance: FieldProvenance[];
 }
@@ -173,12 +174,24 @@ export function mergeChunks(
 ): MergeResult {
   const merged: Record<string, unknown> = {};
   const provenance: FieldProvenance[] = [];
+  const issues: NonNullable<StrategyResult['processingIssues']> = [];
 
   for (const [groupName, groupSpec] of Object.entries(profile.fields)) {
     if (isArrayGroup(groupSpec)) {
       // Array-Gruppe: Union-Concat aller Chunk-Arrays.
       const candidates = collectCandidates(chunks, [groupName]);
       const result = pickUnion(candidates);
+      const sources = new Map<string, number>();
+      for (const candidate of candidates) {
+        if (!Array.isArray(candidate.value)) continue;
+        for (const row of candidate.value) {
+          const key = normalizeForVote(row);
+          if (sources.has(key) && sources.get(key) !== candidate.chunkIndex) {
+            if (!issues.some(i => i.message.startsWith(`${groupName}:`))) issues.push({ code: 'changed', severity: 'error', message: `${groupName}: gleiche Positionen aus verschiedenen Seiten/Abschnitten. Alle Zeilen bleiben erhalten; Überlappungen am Original prüfen.` });
+          }
+          sources.set(key, candidate.chunkIndex);
+        }
+      }
       if (!isEmptyValue(result.value)) {
         setDeep(merged, [groupName], result.value);
         provenance.push({
@@ -186,6 +199,14 @@ export function mergeChunks(
           value: result.value,
           source: `c:${result.chunkIndices.join('+')}`,
         });
+        let rowIndex = 0;
+        for (const candidate of candidates) {
+          if (!Array.isArray(candidate.value)) continue;
+          candidate.value.forEach((row, sourceRow) => provenance.push({
+            field: `${groupName}[${rowIndex++}]`, value: row,
+            source: `c:${candidate.chunkIndex}`, sourceRow,
+          }));
+        }
       }
       continue;
     }
@@ -207,5 +228,5 @@ export function mergeChunks(
     }
   }
 
-  return { merged, provenance };
+  return { merged, provenance, issues };
 }

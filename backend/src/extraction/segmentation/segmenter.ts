@@ -1,3 +1,4 @@
+import { modelWork } from '../../services/extraction/runtime';
 /**
  * Segmentierung (Welle 10): Seiten-Klassifikation + deterministische
  * Grenzbildung.
@@ -204,9 +205,9 @@ function guidedSchema(defs: Record<string, SegmentTypeDef>): Record<string, unkn
 export async function classifySegmentPages(
   pages: SegmentPageInput[],
   defs: Record<string, SegmentTypeDef>,
-  opts: { concurrency?: number } = {},
+  opts: { concurrency?: number; model?: { provider_id: string; model_id: string } } = {},
 ): Promise<PageClassification[]> {
-  const visionModel = await resolveModel(EXTRACTION_PROVIDER_ID, EXTRACTION_MODEL_ID);
+  const visionModel = await resolveModel(opts.model?.provider_id ?? EXTRACTION_PROVIDER_ID, opts.model?.model_id ?? EXTRACTION_MODEL_ID);
   if (!visionModel) {
     throw new Error(`Extraktions-Modell ${extractionModelLabel()} nicht verfuegbar`);
   }
@@ -239,12 +240,12 @@ export async function classifySegmentPages(
       ];
       try {
         const response = await withTimeoutRetry(
-          () => adapter.chat(messages, visionModel.model.id, undefined, undefined, {
+          () => modelWork(`${opts.model?.provider_id ?? EXTRACTION_PROVIDER_ID}/${visionModel.model.id}`, () => adapter.chat(messages, visionModel.model.id, undefined, undefined, {
             ...EXTRACTION_SAMPLING,
             timeoutMs: 45_000,
             extraBody,
-          }),
-          { timeoutMs: 45_000, retries: 1, label: `segment-classify Seite ${p.page}` },
+          })),
+          { queued: true, timeoutMs: 45_000, retries: 1, label: `segment-classify Seite ${p.page}` },
         );
         const parsed = parseJsonObject(response.content) as { type?: string; neustart?: boolean; confidence?: number } | null;
         results[idx] = {

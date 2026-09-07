@@ -1,3 +1,6 @@
+import { enqueueBatch } from './learning/jobs';
+import { getRunSnapshot } from './learning/batch-runs';
+import { isReleased } from './learning/result-validation';
 /**
  * Public-API-Functions der Dokumenten-Extraktion (Welle 5).
  *
@@ -5,7 +8,7 @@
  * brauchte einen Menschen. Diese Functions machen dieselbe Strecke headless
  * aufrufbar (Bearer-Key, Scopes, Rate-Limit, Audit, OpenAPI kommen vom
  * Public-API-Framework) und stossen intern exakt den Pfad an, den auch der
- * "Verarbeiten"-Tab nutzt: createBatchRun + runBatchExtraction, inklusive
+ * "Verarbeiten"-Tab nutzt: enqueueBatch + persistenter Worker, inklusive
  * Review-Triage (W3), Audit (W2) und Pruefregeln (W5).
  *
  * Registriert ueber die virtuelle App `extraktion` (public-api/virtual-apps.ts),
@@ -22,12 +25,10 @@ import type { JsonSchema, PublicFunction } from '../public-api/types';
 import {
   buildBatchExportSections,
   countExportRows,
-  createBatchRun,
   extract,
   getAllProjects,
   getBatchRun,
   getProject,
-  runBatchExtraction,
   type ExportFormat,
 } from './learning';
 import { generateDocument } from '../services/documentGenerator';
@@ -296,23 +297,8 @@ export const batchCreateFunction: PublicFunction<
       saved.push({ filename: documents[i]!.filename, tempPath });
     }
 
-    const { runId, files } = await createBatchRun(
-      input.project_id,
-      saved.map((s) => s.filename),
-      input.callback_url,
-    );
-    const inputFiles = files.map((f, i) => ({
-      fileId: f.id,
-      filename: f.filename,
-      tempPath: saved[i]!.tempPath,
-    }));
-
-    // Fire-and-forget — identisch zur UI-Route.
-    void runBatchExtraction(input.project_id, runId, inputFiles).catch((err) =>
-      console.error('[extraction-api] runBatchExtraction error:', err),
-    );
-
-    return { run_id: runId, file_count: inputFiles.length };
+    const { runId, files } = await enqueueBatch(input.project_id, saved, undefined, input.callback_url);
+    return { run_id: runId, file_count: files.length };
   },
 };
 
@@ -409,14 +395,14 @@ export const batchExportFunction: PublicFunction<
   },
   defaultRateLimit: { requests: 60, windowSec: 60 },
   async handler(input) {
-    const project = await getProject(input.project_id);
+    const project = (await getRunSnapshot(input.project_id, input.run_id))?.project ?? await getProject(input.project_id);
     if (!project) throw new PublicFunctionError(`Projekt "${input.project_id}" nicht gefunden`, 404, 'not_found');
     const result = await getBatchRun(input.project_id, input.run_id);
     if (!result) throw new PublicFunctionError(`Lauf "${input.run_id}" nicht gefunden`, 404, 'not_found');
 
     const format: ExportFormat =
       input.format === 'grouped' ? 'grouped' : input.format === 'flat-wide' ? 'flat-wide' : 'flat';
-    const sections = buildBatchExportSections(project, result.files, format);
+    const sections = buildBatchExportSections(project, result.files.filter(isReleased), format);
     const formatLabel = format === 'grouped'
       ? 'gruppiert'
       : format === 'flat-wide'

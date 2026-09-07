@@ -1,4 +1,4 @@
-import { pgSchema, text, timestamp, jsonb, index, integer } from 'drizzle-orm/pg-core';
+import { pgSchema, text, timestamp, jsonb, index, integer, primaryKey } from 'drizzle-orm/pg-core';
 
 export const extractionSchema = pgSchema('extraction');
 
@@ -49,6 +49,7 @@ export const extractionExamples = extractionSchema.table('examples', {
   correctedExtraction: jsonb('corrected_extraction').notNull(),
   corrections: jsonb('corrections').notNull(),       // Array<{field, was, corrected_to}>
   confirmedCorrect: text('confirmed_correct').notNull().default('false'),
+  dataset: jsonb('dataset'),                         // Immutable train/test assignment, original bytes and provenance
   embedding: jsonb('embedding'),                     // number[] — Aehnlichkeits-Few-Shot (Welle 5)
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({
@@ -65,6 +66,7 @@ export const extractionBatchRuns = extractionSchema.table('batch_runs', {
   projectId: text('project_id').notNull().references(() => extractionProjects.id, { onDelete: 'cascade' }),
   status: text('status').notNull().default('pending'),  // pending|processing|completed|failed
   fileCount: integer('file_count').notNull().default(0),
+  snapshot: jsonb('snapshot'),                         // Frozen profile and examples for this batch
   webhookUrl: text('webhook_url'),                      // Ziel dieses Laufs (Welle 5); NULL = Projekt-Default
   webhookStatus: text('webhook_status'),                // pending|delivered|failed
   webhookAttempts: integer('webhook_attempts'),
@@ -135,3 +137,25 @@ export const extractionBatchRunFiles = extractionSchema.table('batch_run_files',
 }, (t) => ({
   batchIdx: index('extraction_batch_run_files_batch_idx').on(t.batchRunId),
 }));
+
+/** Immutable evaluation evidence; deleted with its project. */
+export const extractionEvaluations = extractionSchema.table('evaluations', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull().references(() => extractionProjects.id, { onDelete: 'cascade' }),
+  artifact: jsonb('artifact').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, t => ({ projectIdx: index('extraction_evaluations_project_idx').on(t.projectId) }));
+
+/** Durable batch work; expiring leases and fencing tokens support multiple workers. */
+export const extractionJobs = extractionSchema.table('jobs', {
+  runId: text('run_id').primaryKey().references(() => extractionBatchRuns.id, { onDelete: 'cascade' }),
+  state: text('state').notNull().default('pending'), userId: text('user_id'), token: text('token'),
+  leaseUntil: timestamp('lease_until', { withTimezone: true, mode: 'string' }),
+  attempts: integer('attempts').notNull().default(0), generation: integer('generation').notNull().default(0), error: text('error'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+});
+
+export const extractionModelSlots = extractionSchema.table('model_slots', {
+  modelKey: text('model_key').notNull(), slot: integer('slot').notNull(), token: text('token').notNull(),
+  leaseUntil: timestamp('lease_until', { withTimezone: true, mode: 'string' }).notNull(),
+}, t => ({ pk: primaryKey({ columns: [t.modelKey, t.slot] }) }));

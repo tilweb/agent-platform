@@ -11,16 +11,19 @@
  * nutzen nur die hier exportierten Signaturen.
  */
 
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { eq, and, desc, inArray, isNull, sql } from 'drizzle-orm';
+import { jobFence, fencedWrite } from './job-context';
 import { getDb } from '../../db';
 import { extractionBatchRuns, extractionBatchRunFiles } from '../../db/schema/extraction';
 import type { FieldBox, PageImage } from '../../services/extraction/types';
 import { deletePageImages, savePageImages, type StoredPageImage } from './page-store';
-import type { ReviewStatus, RuleIssue, SegmentInstance } from './types';
+import type { ExtractionSnapshot } from './snapshot';
+import type { OriginalDocument, ReviewStatus, RuleIssue, SegmentInstance } from './types';
 
 export type BatchRunStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export interface BatchRunSummary {
+  profile?: import('./types').ExtractionProject;
   id: string;
   projectId: string;
   status: BatchRunStatus;
@@ -43,6 +46,9 @@ export interface WebhookState {
 
 /** Audit-Metadaten eines Ergebnisses (Regel-Stand/Modell/Strategie). */
 export interface FileAudit {
+  performance?: import("../../services/extraction/runtime").RuntimeMetrics;
+  profile_hash?: string;
+  snapshot_hash?: string;
   guideline_version: number;
   model: string;
   strategy?: string;
@@ -66,6 +72,10 @@ export interface BatchFileSummary {
 }
 
 export interface BatchFileDetail extends BatchFileSummary {
+  reviewDraft?: Record<string, unknown> | null;
+  segmentContexts?: Record<string, string>;
+  original?: OriginalDocument;
+  snapshot?: ExtractionSnapshot;
   boxes: Record<string, FieldBox> | null;
   /**
    * Seitenbilder als Referenz (Welle 5) — die Bytes liegen ausserhalb der Zeile
@@ -78,6 +88,10 @@ export interface BatchFileDetail extends BatchFileSummary {
 }
 
 export interface FileResultPayload {
+  reviewDraft?: Record<string, unknown> | null;
+  segmentContexts?: Record<string, string>;
+  original?: OriginalDocument;
+  snapshot?: ExtractionSnapshot;
   status: BatchRunStatus;
   data?: Record<string, unknown>;
   fieldConfidences?: Record<string, number>;
@@ -109,16 +123,17 @@ export async function createBatchRun(
   projectId: string,
   filenames: string[],
   webhookUrl?: string,
+  durable?: { originals: OriginalDocument[]; snapshot: ExtractionSnapshot; userId?: string },
 ): Promise<{ runId: string; files: { id: string; filename: string }[] }> {
-  const db = getDb();
   const runId = generateRunId();
   const now = new Date().toISOString();
 
+  return getDb().transaction(async db => {
   await db.insert(extractionBatchRuns).values({
     id: runId,
     projectId,
     status: 'pending',
-    fileCount: filenames.length,
+    fileCount: filenames.length, snapshot: durable?.snapshot,
     webhookUrl: webhookUrl ?? null,
     webhookStatus: webhookUrl ? 'pending' : null,
     webhookAttempts: webhookUrl ? 0 : null,
@@ -129,10 +144,11 @@ export async function createBatchRun(
   const files = filenames.map((filename) => ({ id: generateFileId(), filename }));
   if (files.length > 0) {
     await db.insert(extractionBatchRunFiles).values(
-      files.map((f) => ({
+      files.map((f, i) => ({
         id: f.id,
         batchRunId: runId,
         filename: f.filename,
+        detail: durable ? { original: durable.originals[i] } : undefined,
         status: 'pending' as BatchRunStatus,
         createdAt: now,
         updatedAt: now,
@@ -140,7 +156,9 @@ export async function createBatchRun(
     );
   }
 
+  if (durable) await db.execute(sql`INSERT INTO extraction.jobs(run_id, user_id) VALUES (${runId}, ${durable.userId ?? null})`);
   return { runId, files };
+  });
 }
 
 function toWebhookState(row: typeof extractionBatchRuns.$inferSelect): WebhookState | null {
@@ -184,10 +202,11 @@ export async function setRunStatus(
   runId: string,
   status: BatchRunStatus,
 ): Promise<void> {
-  const db = getDb();
+  return fencedWrite(runId, async db => {
   await db.update(extractionBatchRuns)
     .set({ status, updatedAt: new Date().toISOString() })
-    .where(eq(extractionBatchRuns.id, runId));
+    .where(and(eq(extractionBatchRuns.id, runId), jobFence(runId)));
+  });
 }
 
 /**
@@ -208,7 +227,7 @@ export async function recoverStaleRuns(): Promise<number> {
   // Erst die (noch offenen) Dateien der betroffenen Läufe, dann die Läufe selbst.
   const staleRuns = await db.select({ id: extractionBatchRuns.id })
     .from(extractionBatchRuns)
-    .where(inArray(extractionBatchRuns.status, stale));
+    .where(and(inArray(extractionBatchRuns.status, stale), sql`NOT EXISTS (SELECT 1 FROM extraction.jobs j WHERE j.run_id = ${extractionBatchRuns.id})`));
   if (staleRuns.length === 0) return 0;
 
   const runIds = staleRuns.map((r) => r.id);
@@ -231,21 +250,29 @@ export async function upsertFileResult(
   fileId: string,
   payload: FileResultPayload,
 ): Promise<void> {
-  const db = getDb();
+  return fencedWrite(_runId, async db => {
   // Seitenbilder aus der Zeile auslagern (Welle 5) — in `detail` bleibt nur die Referenz.
-  const storedPages = await savePageImages(_runId, fileId, payload.pageImages);
-  const detail =
-    payload.boxes || storedPages
-      ? { boxes: payload.boxes ?? null, pageImages: storedPages ?? null }
-      : undefined;
+  const storedPages = jobFence(_runId) ? payload.pageImages : await savePageImages(_runId, fileId, payload.pageImages);
+  // Updating evidence must preserve already stored page images (review has no new pixels).
+  let detail: Record<string, unknown> | undefined;
+  if (payload.boxes !== undefined || storedPages || payload.original || payload.snapshot || payload.segmentContexts || payload.reviewDraft !== undefined) {
+    detail = {
+      ...(payload.reviewDraft !== undefined ? { reviewDraft: payload.reviewDraft } : {}),
+      ...(payload.segmentContexts ? { segmentContexts: payload.segmentContexts } : {}),
+      ...(payload.original ? { original: payload.original } : {}),
+      ...(payload.snapshot ? { snapshot: payload.snapshot } : {}),
+      ...(payload.boxes !== undefined ? { boxes: payload.boxes } : {}),
+      ...(storedPages ? { pageImages: storedPages } : {}),
+    };
+  }
   await db.update(extractionBatchRunFiles)
     .set({
       status: payload.status,
-      extractedData: (payload.data ?? null) as never,
-      fieldConfidences: (payload.fieldConfidences ?? null) as never,
-      strategy: payload.strategy ?? null,
-      error: payload.error ?? null,
-      ...(detail ? { detail: detail as never } : {}),
+      ...(payload.data !== undefined ? { extractedData: payload.data as never } : {}),
+      ...(payload.fieldConfidences !== undefined ? { fieldConfidences: payload.fieldConfidences as never } : {}),
+      ...(payload.strategy !== undefined ? { strategy: payload.strategy } : {}),
+      ...(payload.error !== undefined ? { error: payload.error } : payload.data !== undefined ? { error: null } : {}),
+      ...(detail ? { detail: sql`COALESCE(${extractionBatchRunFiles.detail}, '{}'::jsonb) || ${JSON.stringify(detail)}::jsonb` as never } : {}),
       ...(payload.audit ? { audit: payload.audit as never } : {}),
       ...(payload.documentText !== undefined ? { documentText: payload.documentText } : {}),
       ...(payload.reviewStatus !== undefined ? { reviewStatus: payload.reviewStatus } : {}),
@@ -253,7 +280,8 @@ export async function upsertFileResult(
       ...(payload.segments !== undefined ? { segments: payload.segments as never } : {}),
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(extractionBatchRunFiles.id, fileId));
+    .where(and(eq(extractionBatchRunFiles.id, fileId), eq(extractionBatchRunFiles.batchRunId, _runId), jobFence(_runId)));
+  });
 }
 
 export async function listBatchRuns(projectId: string): Promise<BatchRunSummary[]> {
@@ -364,7 +392,7 @@ export async function getBatchRunFileDetail(
     .where(and(eq(extractionBatchRunFiles.id, fileId), eq(extractionBatchRunFiles.batchRunId, runId)));
   const r = rows[0];
   if (!r) return null;
-  const detail = (r.detail as { boxes?: Record<string, FieldBox>; pageImages?: StoredPageImage[] } | null) ?? null;
+  const detail = (r.detail as { boxes?: Record<string, FieldBox>; pageImages?: StoredPageImage[]; original?: OriginalDocument; snapshot?: ExtractionSnapshot; segmentContexts?: Record<string, string>; reviewDraft?: Record<string, unknown> } | null) ?? null;
   return {
     id: r.id,
     filename: r.filename,
@@ -377,6 +405,9 @@ export async function getBatchRunFileDetail(
     reviewStatus: (r.reviewStatus as ReviewStatus | null) ?? null,
     validations: (r.validations as RuleIssue[] | null) ?? null,
     segments: (r.segments as SegmentInstance[] | null) ?? null,
+    reviewDraft: detail?.reviewDraft,
+    segmentContexts: detail?.segmentContexts,
+    original: detail?.original, snapshot: detail?.snapshot ?? await getRunSnapshot(_projectId, runId),
     boxes: detail?.boxes ?? null,
     pageImages: detail?.pageImages ?? null,
     documentText: r.documentText ?? null,
@@ -390,4 +421,18 @@ export async function deleteBatchRun(projectId: string, runId: string): Promise<
     .returning({ id: extractionBatchRuns.id });
   if (res.length > 0) await deletePageImages(runId);
   return res.length > 0;
+}
+
+export async function saveRunSnapshot(projectId: string, runId: string, snapshot: ExtractionSnapshot): Promise<ExtractionSnapshot> {
+  await getDb().update(extractionBatchRuns).set({ snapshot: snapshot as never })
+    .where(and(eq(extractionBatchRuns.id, runId), eq(extractionBatchRuns.projectId, projectId), isNull(extractionBatchRuns.snapshot)));
+  const stored = await getRunSnapshot(projectId, runId);
+  if (!stored) throw new Error('Lauf nicht gefunden');
+  return stored;
+}
+
+export async function getRunSnapshot(projectId: string, runId: string): Promise<ExtractionSnapshot | undefined> {
+  const [row] = await getDb().select({ snapshot: extractionBatchRuns.snapshot }).from(extractionBatchRuns)
+    .where(and(eq(extractionBatchRuns.id, runId), eq(extractionBatchRuns.projectId, projectId)));
+  return row?.snapshot as ExtractionSnapshot | undefined;
 }

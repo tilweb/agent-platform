@@ -1,3 +1,4 @@
+import { boundedExampleContexts } from './example-context';
 /**
  * Extraktions-Projekte → Heavy-Extraction-Pipeline-Adapter.
  *
@@ -33,12 +34,6 @@ function sanitizeId(id: string): string {
   return id.replace(/[^a-z0-9_]/gi, '_');
 }
 
-/** Korrektur-Werte fuer den Few-Shot-Prompt: Objekte/Arrays als JSON, Skalare in Quotes. */
-function fmtCorrectionValue(v: unknown): string {
-  if (v !== null && typeof v === 'object') return JSON.stringify(v);
-  return `"${String(v)}"`;
-}
-
 /**
  * Rendert das "Learning" (Layer 3 + 4 aus dem alten `buildSystemPrompt`):
  * gelernte Extraktionsregeln + Few-Shot-Beispiele. Wird ins
@@ -63,31 +58,8 @@ export function buildLearningGuidelines(
     );
   }
 
-  if (examples.length > 0) {
-    if (parts.length > 0) parts.push('');
-    parts.push('Beispiele aus bisherigen Extraktionen:');
-    for (const example of examples) {
-      const docSnippet = example.document_text.substring(0, 500);
-      const correctData = JSON.stringify(example.corrected_extraction, null, 2);
-      parts.push('');
-      parts.push(`Dokument (Auszug): "${docSnippet}${example.document_text.length > 500 ? '...' : ''}"`);
-      parts.push(`Korrekte Extraktion: ${correctData}`);
-      if (example.corrections.length > 0) {
-        parts.push('Anmerkungen zu Korrekturen:');
-        for (const c of example.corrections) {
-          // Listen/Objekte als JSON rendern (statt "[object Object]"); bei
-          // Listen-Korrekturen zusaetzlich den Positions-Zaehler als Signal.
-          const countHint =
-            Array.isArray(c.was) && Array.isArray(c.corrected_to)
-              ? ` (${c.was.length} → ${c.corrected_to.length} Positionen)`
-              : '';
-          parts.push(
-            `  - Feld "${c.field}": ${fmtCorrectionValue(c.was)} war falsch, korrekt ist ${fmtCorrectionValue(c.corrected_to)}${countHint}`,
-          );
-        }
-      }
-    }
-  }
+  const context = boundedExampleContexts(examples, 16000);
+  if (context) parts.push('Geprüfte Beispiele; fehlende Felder im Beispiel sind keine Aussage über ihre Anwesenheit im neuen Dokument:', context);
 
   return parts.join('\n');
 }
@@ -168,7 +140,7 @@ export function extractionProjectToExtractionSchema(
   fewShotExamples: TrainingExample[] = [],
 ): ExtractionSchema {
   const guidelines = buildLearningGuidelines(project, fewShotExamples);
-  const config = applyExtractionDefaults(project.extraction ?? { strategy: 'hybrid', vision_fallback: true });
+  const config = applyExtractionDefaults({ strategy: 'hybrid', ...project.extraction });
   // Projekte behalten ihr altes Retry-mit-Validierungs-Feedback-Verhalten,
   // sofern nicht explizit abgeschaltet.
   config.validation_repair = project.extraction?.validation_repair ?? true;
@@ -179,7 +151,14 @@ export function extractionProjectToExtractionSchema(
   return {
     id: `proj_${sanitizeId(project.id)}`,
     name: project.name,
-    profile: buildProfile(project, guidelines),
+    profile: { ...buildProfile(project, guidelines), visualExamples: fewShotExamples.filter(e => e.dataset?.purpose !== 'test' && e.dataset?.visual?.length && e.dataset.visual.length <= 2).slice(0, 2).map(e => {
+      const expected: Record<string, unknown> = { [PROJECT_FIELD_GROUP]: {} };
+      for (const [id, value] of Object.entries(e.corrected_extraction)) {
+        if (project.fields[id]?.type === 'list') expected[id] = value;
+        else if (project.fields[id]) (expected[PROJECT_FIELD_GROUP] as Record<string, unknown>)[id] = value;
+      }
+      return { images: e.dataset!.visual!.map(page => page.dataUri), expected };
+    }) },
     config,
   };
 }

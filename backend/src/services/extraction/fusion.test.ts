@@ -49,12 +49,12 @@ describe('fuseWithOcr — Skalare', () => {
     positionen: [],
   };
 
-  test('belegte Werte werden verified (inkl. DE-Datumsformat) und entschieden', async () => {
+  test('vollständige Werte werden lokalisiert (inkl. DE-Datumsformat) und entschieden', async () => {
     const words = [w('56294390', 100, 100), w('19.12.24', 300, 100)];
     const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
     expect(out.ocrRan).toBe(true);
-    expect(out.verdicts['felder.lieferscheinnummer']).toBe('verified');
-    expect(out.verdicts['felder.lieferdatum']).toBe('verified');
+    expect(out.verdicts['felder.lieferscheinnummer']).toBe('located');
+    expect(out.verdicts['felder.lieferdatum']).toBe('located');
     expect(out.decidedPaths.has('felder.lieferscheinnummer')).toBe(true);
     expect(out.boxes['felder.lieferscheinnummer']!.page).toBe(1);
   });
@@ -96,9 +96,9 @@ describe('fuseWithOcr — Listen-Zeilen', () => {
       w('0498529', 100, 500), w('7', 500, 500),
     ];
     const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
-    expect(out.verdicts['positionen[0].artikelnummer']).toBe('verified');
-    expect(out.verdicts['positionen[0].menge']).toBe('verified');
-    expect(out.verdicts['positionen[1].menge']).toBe('verified');
+    expect(out.verdicts['positionen[0].artikelnummer']).toBe('located');
+    expect(out.verdicts['positionen[0].menge']).toBe('located');
+    expect(out.verdicts['positionen[1].menge']).toBe('located');
     expect(out.boxes['positionen[1].menge']!.y).toBeCloseTo(500 / 1400, 3);
   });
 
@@ -122,8 +122,8 @@ describe('fuseWithOcr — Listen-Zeilen', () => {
       w('0498529', 100, 700), w('7,00', 500, 700),
     ];
     const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
-    expect(out.verdicts['positionen[0].menge']).toBe('verified');
-    expect(out.verdicts['positionen[1].menge']).toBe('verified');
+    expect(out.verdicts['positionen[0].menge']).toBe('located');
+    expect(out.verdicts['positionen[1].menge']).toBe('located');
   });
 
   test('Nachbar-Anker begrenzt die Bande: Menge der NAECHSTEN Zeile belegt nichts', async () => {
@@ -141,36 +141,36 @@ describe('fuseWithOcr — Listen-Zeilen', () => {
     };
     const out = await fuseWithOcr([page], extractedSwapped, profile, { wordsByPage: [words] });
     expect(out.verdicts['positionen[0].menge']).toBe('not_found_numeric');
-    expect(out.verdicts['positionen[1].menge']).toBe('verified');
+    expect(out.verdicts['positionen[1].menge']).toBe('located');
   });
 
-  test('ohne Anker keine Aussage ueber die Zeile (kein Befund-Rauschen)', async () => {
+  test('fehlender Zeilenanker erzeugt einen Prüfbefund', async () => {
     const words = [w('voellig', 100, 100), w('anderes', 300, 100)];
     const out = await fuseWithOcr([page], extracted, profile, { wordsByPage: [words] });
-    expect(out.verdicts['positionen[0].menge']).toBeUndefined();
-    expect(out.findings).toEqual([]);
+    expect(out.verdicts['positionen[0].menge']).toBe('not_found_numeric');
+    expect(out.findings.length).toBeGreaterThan(0);
   });
 });
 
 describe('applyFusionToConfidences', () => {
-  test('verified hebt an, unbelegte Zahl deckelt unter die Review-Schwelle', async () => {
+  test('Lokalisierung erhöht Konfidenz nicht, unbelegte Zahl deckelt', async () => {
     const out: FusionOutcome = {
       boxes: {}, decidedPaths: new Set(), findings: [], ocrRan: true,
       verdicts: {
-        'felder.a': 'verified',
+        'felder.a': 'located',
         'felder.b': 'not_found_numeric',
         'felder.c': 'not_found_text',
       },
     };
     const conf = { 'felder.a': 0.7, 'felder.b': 0.7, 'felder.c': 0.7 };
     applyFusionToConfidences(conf, out);
-    expect(conf['felder.a']).toBe(0.95);
+    expect(conf['felder.a']).toBe(0.7);
     expect(conf['felder.b']).toBe(0.4);
     expect(conf['felder.c']).toBe(0.7);
   });
 
   test('ohne OCR keine Aenderung', async () => {
-    const out: FusionOutcome = { boxes: {}, decidedPaths: new Set(), findings: [], ocrRan: false, verdicts: { 'felder.a': 'verified' } };
+    const out: FusionOutcome = { boxes: {}, decidedPaths: new Set(), findings: [], ocrRan: false, verdicts: { 'felder.a': 'located' } };
     const conf = { 'felder.a': 0.5 };
     applyFusionToConfidences(conf, out);
     expect(conf['felder.a']).toBe(0.5);

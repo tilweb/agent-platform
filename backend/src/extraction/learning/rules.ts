@@ -41,6 +41,11 @@ function itemFieldLabel(project: ExtractionProject, listField: string, itemField
   return project.fields[listField]?.item_fields?.[itemField]?.label || itemField;
 }
 
+function notEvaluated(rule: ExtractionRule, fields: string[]): RuleIssue {
+  return { rule_id: rule.id, type: rule.type, severity: 'error', status: 'not_evaluated',
+    fields, message: `Regel "${rule.label || rule.id}": benötigte Werte fehlen oder sind ungültig — Prüfung unvollständig.` };
+}
+
 /** Zahl-Formatierung fuer Meldungen (deutsch, 2 Nachkommastellen). */
 export function fmtNumber(value: number): string {
   return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -74,20 +79,19 @@ export function evaluateSumRule(
   const items = data[rule.list_field];
   const target = correctNumber(data[rule.target_field]);
 
-  if (!Array.isArray(items) || items.length === 0) return null;
-  if (isEmpty(data[rule.target_field]) || target === null) return null;
+  if (!Array.isArray(items) || items.length === 0 || isEmpty(data[rule.target_field]) || target === null) return notEvaluated(rule, [rule.list_field, rule.target_field]);
 
   let sum = 0;
   let counted = 0;
   for (const item of items) {
-    if (!item || typeof item !== 'object') continue;
+    if (!item || typeof item !== 'object') return notEvaluated(rule, [rule.list_field]);
     const raw = (item as Record<string, unknown>)[rule.item_field];
     const num = correctNumber(raw);
-    if (num === null) continue;
+    if (num === null) return notEvaluated(rule, [rule.list_field]);
     sum += num;
     counted += 1;
   }
-  if (counted === 0) return null;
+  if (counted === 0) return notEvaluated(rule, [rule.list_field]);
 
   const tolerance = typeof rule.tolerance === 'number' && rule.tolerance >= 0 ? rule.tolerance : DEFAULT_TOLERANCE;
   const diff = Math.abs(sum - target);
@@ -119,9 +123,9 @@ export function evaluateCountRule(
   data: Record<string, unknown>,
   project: ExtractionProject,
 ): RuleIssue | null {
-  if (isEmpty(data[rule.target_field])) return null;
+  if (isEmpty(data[rule.target_field])) return notEvaluated(rule, [rule.target_field]);
   const target = correctNumber(data[rule.target_field]);
-  if (target === null) return null;
+  if (target === null) return notEvaluated(rule, [rule.target_field]);
 
   const items = data[rule.list_field];
   const actual = Array.isArray(items) ? items.length : 0;
@@ -160,14 +164,15 @@ export function evaluateLookupRule(
     return {
       rule_id: rule.id,
       type: 'lookup',
-      severity: 'warn',
+      severity,
+      status: 'not_evaluated',
       message: `Stammdaten fuer "${label}" nicht pruefbar: ${sourceError || `Tabelle "${rule.table_id}" nicht verfuegbar`}.`,
       fields: [rule.field],
     };
   }
 
   const raw = data[rule.field];
-  if (isEmpty(raw)) return null; // leeres Feld ist Sache der Pflichtfeld-/Konfidenz-Pruefung
+  if (isEmpty(raw)) return notEvaluated(rule, [rule.field]);
 
   if (allowedValues.has(normalizeLookupValue(raw))) return null;
 
@@ -203,6 +208,12 @@ export async function evaluateRules(
 
   for (const rule of rules) {
     try {
+      if (rule.type === 'match') {
+        const values = rule.fields.flatMap(field => Array.isArray(data[field]) ? data[field] as unknown[] : [data[field]]);
+        if (values.length < 2 || values.some(value => isEmpty(value) || typeof value === 'object') || rule.fields.some(field => Array.isArray(data[field]) && !(data[field] as unknown[]).length)) issues.push(notEvaluated(rule, rule.fields));
+        else if (values.some(value => normalizeLookupValue(value) !== normalizeLookupValue(values[0]))) issues.push({ rule_id: rule.id, type: 'match', severity: 'error', fields: rule.fields, message: `Regel „${rule.label || rule.id}“: Werte stimmen nicht überein.` });
+        continue;
+      }
       if (rule.type === 'sum') {
         const issue = evaluateSumRule(rule, data, project);
         if (issue) issues.push(issue);
@@ -232,7 +243,8 @@ export async function evaluateRules(
       issues.push({
         rule_id: rule.id,
         type: rule.type,
-        severity: 'warn',
+        severity: 'error',
+        status: 'not_evaluated',
         message: `Regel "${rule.label || rule.id}" konnte nicht geprueft werden.`,
         fields: [],
       });
@@ -244,11 +256,12 @@ export async function evaluateRules(
 
 /** Gibt es einen blockierenden Befund (→ erzwingt "Zu pruefen")? */
 export function hasBlockingIssue(issues: RuleIssue[] | undefined): boolean {
-  return !!issues?.some((i) => i.severity === 'error');
+  return !!issues?.some((i) => i.severity === 'error' || i.status === 'not_evaluated');
 }
 
 /** Kurzbeschreibung einer Regel fuer Listen/Anzeige. */
 export function describeRule(rule: ExtractionRule, project: ExtractionProject): string {
+  if (rule.type === 'match') return rule.fields.map(field => fieldLabel(project, field)).join(' = ');
   if (rule.type === 'sum') {
     return `Summe "${itemFieldLabel(project, rule.list_field, rule.item_field)}" (${fieldLabel(project, rule.list_field)}) = "${fieldLabel(project, rule.target_field)}"`;
   }

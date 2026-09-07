@@ -8,6 +8,7 @@
  * liefert die Pipeline einfach keine Boxen (Extraktion laeuft normal weiter).
  */
 
+import { correctNumber } from '../../extraction/value-parsers';
 import { spawnSync } from 'child_process';
 import type { ExtractionProfile, FieldDefinition } from '../../extraction/types';
 import { isArrayGroup } from '../../extraction/types';
@@ -103,33 +104,25 @@ export function locateValue(
   if (!(imgW > 0) || !(imgH > 0) || words.length === 0) return null;
 
   for (const search of valueSearchStrings(value, type)) {
-    const tokens = search.split(/\s+/).map(norm).filter((t) => t.length >= 3);
-    if (tokens.length === 0) continue;
-
-    const used = new Set<number>();
-    const matched: OcrWord[] = [];
-    for (const tok of tokens) {
-      let best = -1, bestScore = 0;
-      words.forEach((wd, i) => {
-        if (used.has(i)) return;
-        const nw = norm(wd.text);
-        let score = 0;
-        if (nw === tok) score = 3;
-        else if (nw.length >= 4 && (nw.includes(tok) || tok.includes(nw))) score = 2;
-        if (score > bestScore) { bestScore = score; best = i; }
-      });
-      if (best >= 0) { used.add(best); matched.push(words[best]!); }
+    const tokens = search.split(/\s+/).map(norm).filter(Boolean);
+    if (!tokens.length) continue;
+    for (let start = 0; start <= words.length - tokens.length; start++) {
+      const matched = words.slice(start, start + tokens.length);
+      const exact = type === 'number'
+        ? tokens.length === 1 && correctNumber(matched[0]!.text) === correctNumber(value) && correctNumber(value) !== null
+        : matched.every((word, i) => norm(word.text) === tokens[i]);
+      if (!exact) continue;
+      // All words must be adjacent in a small region, not scattered over the page.
+      if (matched.some((word, i) => i > 0 && (
+        Math.abs(word.top - matched[i - 1]!.top) > 2 * Math.max(word.height, matched[i - 1]!.height)
+        || Math.abs(word.left - (matched[i - 1]!.left + matched[i - 1]!.width)) > imgW * 0.15
+      ))) continue;
+      const L = Math.min(...matched.map(m => m.left));
+      const T = Math.min(...matched.map(m => m.top));
+      const R = Math.max(...matched.map(m => m.left + m.width));
+      const B = Math.max(...matched.map(m => m.top + m.height));
+      return { x: L / imgW, y: T / imgH, w: (R - L) / imgW, h: (B - T) / imgH };
     }
-    if (matched.length === 0 || matched.length < Math.ceil(tokens.length / 2)) continue;
-
-    const L = Math.min(...matched.map((m) => m.left));
-    const T = Math.min(...matched.map((m) => m.top));
-    const R = Math.max(...matched.map((m) => m.left + m.width));
-    const B = Math.max(...matched.map((m) => m.top + m.height));
-    // Plausibilitaet: ein gematchter Wert sollte nicht das halbe Blatt umspannen
-    // (dann wurden vermutlich weit entfernte Woerter erwischt).
-    if ((B - T) / imgH > 0.5) continue;
-    return { x: L / imgW, y: T / imgH, w: (R - L) / imgW, h: (B - T) / imgH };
   }
   return null;
 }

@@ -22,6 +22,7 @@ import {
   type StrategyId,
 } from './types';
 import { getStrategy } from './strategies';
+import { finalizeResult } from './finalize';
 import { repairExtraction } from './extract-call';
 import type { ChatOptions } from '../llm';
 
@@ -71,7 +72,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineRunR
     }
 
     try {
-      const result = await strategy.run(
+      let result = await strategy.run(
         {
           files: input.files,
           schema: input.schema,
@@ -90,6 +91,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineRunR
       // unbrauchbar. Ein Text-Repair wuerde die guten Vision-Ergebnisse durch eine
       // Re-Extraktion aus Muell-Text ersetzen. Format-Auto-Korrektur (DE-Daten/
       // -Zahlen) passiert ohnehin bereits in der Strategy via `validateExtraction`.
+      const beforeRepair = structuredClone(result.extracted);
       let finalExtracted = result.extracted;
       let finalWarnings = result.warnings;
       let extraCalls = 0;
@@ -114,13 +116,14 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineRunR
         if (extraCalls > 0) await emit({ phase: 'validating', warningCount: finalWarnings.length });
       }
 
+      result = finalizeResult({ ...result, extracted: finalExtracted, warnings: finalWarnings }, beforeRepair, input.schema.profile);
       return {
-        extracted: finalExtracted,
+        extracted: result.extracted,
         fieldConfidences: result.fieldConfidences,
         provenance: result.provenance,
         boxes: result.boxes,
         pageImages: result.pageImages,
-        warnings: finalWarnings,
+        warnings: result.warnings,
         fusionFindings: result.fusionFindings,
         processingIssues: result.processingIssues,
         llmCalls: result.llmCalls + extraCalls,

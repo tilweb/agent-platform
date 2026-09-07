@@ -1,39 +1,16 @@
-/**
- * OCR-Fusion (W7): deterministische Verifikation der Vision-Extraktion gegen
- * die Tesseract-Woerter, die fuer die Fundstellen-Boxen ohnehin berechnet
- * werden.
- *
- * Warum: Die Feld-Konfidenz war bisher Heuristik + LLM-Selbsteinschaetzung —
- * notorisch unkalibriert. Ob ein extrahierter Wert WOERTLICH auf der Seite
- * steht, ist dagegen billig und hart pruefbar. Fuer Zahlen/Nummern (die
- * gefaehrlichste Halluzinationsklasse: plausibel aussehende, falsche Ziffern)
- * ist das der entscheidende Prüfer — genau die Faehigkeit, mit der
- * Wettbewerber (Wort-Level-Konfidenz aus Pixeln) punkten.
- *
- * Urteile je Feld:
- *   - verified            Wert im OCR-Text belegt → Konfidenz hoch, kein LLM-Call noetig
- *   - not_found_numeric   zahlenartiger Wert OHNE OCR-Beleg → Konfidenz gedeckelt + Befund
- *   - not_found_text      Freitext ohne Beleg → keine harte Aussage (OCR-Rauschen), LLM darf urteilen
- *   - not_checkable       leer, boolean, kein OCR verfuegbar
- *
- * Wichtig fuer Handschrift: handschriftliche Werte liest Tesseract oft NICHT —
- * ein handschriftlich korrigierter Zahlenwert wird damit bewusst zur Pruefung
- * vorgelegt (not_found_numeric → needs_review), nicht verworfen. Der Wert
- * selbst bleibt unveraendert.
- *
- * Zusaetzlich werden Fundstellen-Boxen fuer LISTEN-Zeilen berechnet (bisher
- * uebersprang computeOcrBoxes Array-Gruppen — das Review zeigte fuer die
- * Positionstabelle keine Fundstellen): je Zeile verankert der markanteste
- * Zellwert die vertikale Bande, kurze Werte (Mengen) werden nur innerhalb
- * dieser Bande gesucht — sonst traefe "2" irgendeine 2 der Seite.
+/** OCR localization and missing-value findings.
+ * A full textual occurrence is `located`, not proof of label or column ownership.
+ * Localization never raises confidence. Reused or absent numeric row anchors
+ * produce review findings; identical extracted rows are never removed here.
  */
 
+import { correctNumber } from '../../extraction/value-parsers';
 import type { ExtractionProfile, FieldDefinition, ArrayGroupDefinition } from '../../extraction/types';
 import { isArrayGroup } from '../../extraction/types';
 import type { FieldBox } from './types';
 import { isTesseractAvailable, ocrWordBoxes, locateValue, type OcrWord, type OcrPage } from './ocr';
 
-export type FusionVerdict = 'verified' | 'not_found_numeric' | 'not_found_text' | 'not_checkable';
+export type FusionVerdict = 'located' | 'not_found_numeric' | 'not_found_text' | 'not_checkable';
 
 export interface FusionFinding {
   /** Flacher Feld-Pfad, z.B. "felder.referenznummer" oder "positionen[3].menge_geliefert". */
@@ -69,14 +46,9 @@ function emptyOutcome(ocrRan: boolean): FusionOutcome {
 interface PageWords { page: OcrPage; words: OcrWord[] }
 
 /** Deutsches Zahlformat parsen ("5,00", "1.234,56", "250") — sonst NaN. */
-function parseDeNumber(s: string): number {
-  const cleaned = s.trim().replace(/[^0-9.,-]/g, '');
-  if (!/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(cleaned) && !/^-?\d+([.,]\d+)?$/.test(cleaned)) return NaN;
-  return parseFloat(cleaned.replace(/\.(?=\d{3})/g, '').replace(',', '.'));
-}
 
 /**
- * Wortsuche innerhalb einer vertikalen Bande. Zahl-Zellen werden NUMERISCH
+ * Wortsuche innerhalb einer vertikalen Bande (keine Bestätigung der Spaltenrolle). Zahl-Zellen werden NUMERISCH
  * verglichen — auf dem Papier steht "5,00", das Modell liefert korrekt 5;
  * ein String-Vergleich wuerde jeden Mengenwert als unbelegt melden.
  */
@@ -88,13 +60,14 @@ function findInBand(value: unknown, isNumber: boolean, words: OcrWord[], imgH: n
     const yMid = (wd.top + wd.height / 2) / imgH;
     if (yMid < bandTop || yMid > bandBottom) continue;
     if (isNumber && Number.isFinite(numTarget)) {
-      const parsed = parseDeNumber(wd.text);
-      if (Number.isFinite(parsed) && Math.abs(parsed - numTarget) < 0.005) return wd;
+      const parsed = correctNumber(wd.text);
+      if (parsed !== null && Math.abs(parsed - numTarget) < 1e-9) return wd;
+      continue;
     }
     const nw = norm(wd.text);
     if (nw === target) return wd;
-    // Laengere Werte duerfen als Substring stecken (z.B. Artikelnummer mit Prefix im selben Wort).
-    if (target.length >= 4 && nw.includes(target)) return wd;
+
+
   }
   return null;
 }
@@ -153,7 +126,7 @@ export async function fuseWithOcr(
       }
       if (located) {
         outcome.boxes[path] = { page: located.pageNumber, ...located.box };
-        outcome.verdicts[path] = 'verified';
+        outcome.verdicts[path] = 'located';
         outcome.decidedPaths.add(path);
       } else if (isNumericLike(value, field.type)) {
         outcome.verdicts[path] = 'not_found_numeric';
@@ -173,8 +146,7 @@ export async function fuseWithOcr(
 
 /**
  * Listen-Zeilen: markanteste Zelle verankert die Zeilen-Bande, uebrige Zellen
- * werden nur innerhalb der Bande gesucht. Ohne Anker keine Aussage (OCR zu
- * schwach fuer diese Zeile) — bewusst keine Befund-Flut auf schlechten Scans.
+ * werden nur innerhalb der Bande gesucht. Fehlende oder bereits belegte Anker erzeugen Prüfbefunde.
  */
 function fuseArrayGroup(
   groupName: string,
@@ -206,20 +178,21 @@ function fuseArrayGroup(
       .filter((c) => c.n.length >= 5 && isNumericLike(c.value, c.f.type))
       .sort((a, b) => b.n.length - a.n.length);
     for (const cand of anchorCandidates) {
-      // Alle exakten Vorkommen (auch als Substring in laengeren Woertern) einsammeln,
+      // Vollständige Vorkommen einsammeln,
       // ueber die Seiten in Lesereihenfolge.
       const occurrences: Array<{ pw: PageWords; wd: OcrWord }> = [];
       for (const pw of wordsByPage) {
         for (const wd of pw.words) {
           const nw = norm(wd.text);
-          if (nw === cand.n || (cand.n.length >= 6 && nw.includes(cand.n))) {
+          if (nw === cand.n) {
             occurrences.push({ pw, wd });
           }
         }
       }
       if (occurrences.length === 0) continue;
       const seen = occurrenceCounter.get(cand.n) ?? 0;
-      const hit = occurrences[Math.min(seen, occurrences.length - 1)]!;
+      if (seen >= occurrences.length) continue;
+      const hit = occurrences[seen]!;
       occurrenceCounter.set(cand.n, seen + 1);
       const { pw, wd } = hit;
       return {
@@ -245,11 +218,19 @@ function fuseArrayGroup(
     if (!row || typeof row !== 'object') return;
     const cells = row as Record<string, unknown>;
     const anchor = anchors[idx];
-    if (!anchor) return;  // keine Aussage ueber diese Zeile
+    if (!anchor) {
+      for (const [fid, f] of itemFields) {
+        if (cells[fid] != null && cells[fid] !== '' && isNumericLike(cells[fid], f.type)) {
+          outcome.verdicts[`${groupName}[${idx}].${fid}`] = 'not_found_numeric';
+          numericFindings.push({ path: `${groupName}[${idx}].${fid}`, message: `${group._label || groupName}, Zeile ${idx + 1}: kein eindeutiger OCR-Zeilenanker — Position prüfen.` });
+        }
+      }
+      return;
+    }
 
     const rowKey = (fid: string) => `${groupName}[${idx}].${fid}`;
     outcome.boxes[rowKey(anchor.fid)] = { page: anchor.pageWords.page.pageNumber, ...anchor.box };
-    outcome.verdicts[rowKey(anchor.fid)] = 'verified';
+    outcome.verdicts[rowKey(anchor.fid)] = 'located';
 
     const h = Math.max(anchor.box.h, 0.006);
     let bandTop = anchor.box.y - 3 * h;
@@ -286,7 +267,7 @@ function fuseArrayGroup(
           w: hit.width / page.width,
           h: hit.height / page.height,
         };
-        outcome.verdicts[key] = 'verified';
+        outcome.verdicts[key] = 'located';
       } else if (isNumericLike(value, f.type)) {
         outcome.verdicts[key] = 'not_found_numeric';
         numericFindings.push({
@@ -321,8 +302,9 @@ export function applyFusionToConfidences(
 ): void {
   if (!outcome.ocrRan) return;
   for (const [path, verdict] of Object.entries(outcome.verdicts)) {
-    if (verdict === 'verified' && path in confidences) {
-      confidences[path] = Math.max(confidences[path] ?? 0, 0.95);
+    if (verdict === 'located' && path in confidences) {
+      // Text occurrence does not establish label/column ownership. Never raise confidence.
+      confidences[path] = Math.min(confidences[path] ?? 0, 0.7);
     } else if (verdict === 'not_found_numeric' && path in confidences) {
       // Deckel unter die Review-Schwelle (Default 0.6): Wert vorhanden, aber
       // nicht belegt → zur Pruefung. Kein hartes 0 — der Wert kann stimmen

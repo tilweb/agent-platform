@@ -1,3 +1,4 @@
+import { extractionChat } from '../runtime';
 /**
  * Single-Pass Strategy — ein LLM-Call ueber das gesamte Dokument.
  *
@@ -10,7 +11,7 @@
  *     dann auf `long-text-chunked`.
  *   - LLM-Modell ist ueberschreibbar (Schema oder Job-Option).
  *   - Provenance ist trivial: alle Felder kommen aus „chunk:0" (gesamtes Doc).
- *   - Confidence ist bewusst trivial — Strategy gibt 1.0 fuer alle gesetzten
+ *   - Confidence ist bewusst trivial — Strategy gibt 0.7 fuer alle gesetzten
  *     Felder und 0.0 fuer null/undefined zurueck. Heuristisches/LLM-basiertes
  *     Scoring (`confidence.ts`) bleibt den Multi-Pass-Strategien
  *     (`long-text-chunked`, `hybrid`) vorbehalten, wo es mehrere Quellen gibt.
@@ -145,7 +146,7 @@ Allgemeine Regeln:
     await emit({ phase: 'extracting', chunkIndex: 0, chunkTotal: 1 });
 
     const t0 = Date.now();
-    const response = await llmService.chat(messages, [functionSchema], usageContext, options);
+    const response = await extractionChat(messages, [functionSchema], usageContext, options);
     const durationMs = Date.now() - t0;
 
     let extracted: Record<string, unknown> = {};
@@ -184,10 +185,10 @@ Allgemeine Regeln:
       field: p.path,
       value: p.value,
       source: 'c:0',
-      confidence: 1.0,
+      confidence: 0.7,
     }));
     const fieldConfidences: Record<string, number> = {};
-    for (const p of paths) fieldConfidences[p.path] = 1.0;
+    for (const p of paths) fieldConfidences[p.path] = 0.7;
 
     await emit({ phase: 'validating', warningCount: warnings.length });
 

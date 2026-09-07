@@ -127,6 +127,10 @@ export function validateProjectRules(
     if (seen.has(rule.id)) return `Pruefregel "${rule.id}": Id doppelt vergeben`;
     seen.add(rule.id);
 
+    if (rule.type === 'match') {
+      if (!Array.isArray(rule.fields) || rule.fields.length < 2 || new Set(rule.fields).size !== rule.fields.length || rule.fields.some(id => !fields[id])) return `Prüfregel „${rule.id}“: mindestens zwei unterschiedliche vorhandene Felder wählen.`;
+      continue;
+    }
     if (rule.type === 'sum') {
       const listField = fields[rule.list_field];
       if (!listField) return `Pruefregel "${rule.id}": Listen-Feld "${rule.list_field}" existiert nicht`;
@@ -168,60 +172,7 @@ export function validateProjectRules(
   return null;
 }
 
-/**
- * Auto-correct German number format: "1.234,56" → 1234.56
- */
-export function correctNumber(value: unknown): number | null {
-  if (typeof value === 'number') return value;
-  if (typeof value !== 'string') return null;
-
-  let str = value.trim();
-  if (!str) return null;
-
-  // German format: 1.234,56 → remove dots, replace comma with dot
-  if (str.includes(',') && str.includes('.')) {
-    str = str.replace(/\./g, '').replace(',', '.');
-  } else if (str.includes(',')) {
-    str = str.replace(',', '.');
-  }
-
-  const num = parseFloat(str);
-  return isNaN(num) ? null : num;
-}
-
-/**
- * Auto-correct date formats to YYYY-MM-DD
- */
-export function correctDate(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-
-  const str = value.trim();
-  if (!str) return null;
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-
-  // DD.MM.YYYY (German format)
-  const germanMatch = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (germanMatch) {
-    const [, day, month, year] = germanMatch;
-    return `${year}-${month!.padStart(2, '0')}-${day!.padStart(2, '0')}`;
-  }
-
-  // DD/MM/YYYY
-  const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (slashMatch) {
-    const [, day, month, year] = slashMatch;
-    return `${year}-${month!.padStart(2, '0')}-${day!.padStart(2, '0')}`;
-  }
-
-  // Try native Date parsing
-  const parsed = new Date(str);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0]!;
-  }
-
-  return null;
-}
+export { correctNumber, correctDate } from '../value-parsers';
 
 /**
  * Strukturelle Validierung der Segmenttypen (Welle 10). Deutsche Fehlermeldung
@@ -256,6 +207,8 @@ export function validateProjectSegments(segments: Record<string, SegmentTypeDef>
     if (seg.mode === 'classify-only' && seg.fields && Object.keys(seg.fields).length > 0) {
       return `Segment "${segId}": classify-only-Segmente haben keine Felder`;
     }
+    const ruleError = validateProjectRules(seg.fields ?? {}, seg.rules);
+    if (ruleError) return `Segment „${segId}“: ${ruleError}`;
     if (seg.fields) {
       const fieldError = validateProjectFields(seg.fields);
       if (fieldError) return `Segment "${segId}" — ${fieldError}`;

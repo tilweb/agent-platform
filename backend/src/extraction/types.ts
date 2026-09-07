@@ -40,6 +40,7 @@ export { isArrayGroup };
 // ============== Extraction Profile ==============
 
 export interface ExtractionProfile {
+  visualExamples?: Array<{ images: string[]; expected: Record<string, unknown> }>;
   id: string;
   name: string;
   description: string;

@@ -1,24 +1,12 @@
-/**
- * Eval-Harness fuer den Lern-Loop (Welle 2).
- *
- * Misst, wie gut ein Guidelines-Text die Trainingsbeispiele reproduziert:
- * jedes Beispiel wird text-only re-extrahiert (gespeicherter `document_text`,
- * single-pass, LLM-Confidence aus) und Feld fuer Feld normalisiert gegen die
- * Ground Truth (`corrected_extraction`) verglichen.
- *
- * Bewusste Design-Entscheidungen:
- *  - OHNE Few-Shot: Few-Shot speist sich aus demselben Beispiel-Pool — ein
- *    Beispiel saehe sich selbst (Leakage). Das Eval misst genau das, was sich
- *    bei einem Guideline-Update aendert: instructions + guidelines.
- *  - Text-only: Beispiele speichern nur `document_text`, keine Originaldatei.
- *    Guenstige Naeherung; Vision-Qualitaet wird nicht mitgemessen.
- */
-
+import { withPriority } from '../../services/extraction/runtime';
+/** Independent holdout evaluation through the production extraction entry point. */
 import { createHash } from 'crypto';
-import { runPipeline, type PreparedFile } from '../../services/extraction';
-import { extractionProjectToExtractionSchema, PROJECT_FIELD_GROUP } from './pipeline-adapter';
+import { mkdtemp, writeFile, rm } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join, basename } from 'path';
+import { createSnapshot, profileHash, stableHash, sameDocument, type ExtractionSnapshot } from './snapshot';
+import { updateCalibration } from './review';
 import { extractionModelLabel } from '../model';
-import { dedupeListItems } from './list-utils';
 import { correctNumber, correctDate } from './validators';
 import type {
   ExtractionProject,
@@ -33,7 +21,8 @@ const EVAL_CONCURRENCY = parseInt(process.env.EXTRACTION_EVAL_CONCURRENCY || '3'
 const NUMBER_EPSILON = 0.005;
 
 export interface EvalOutcome extends EvalScore {
-  /** true, wenn zu viele Beispiele scheiterten (>50 %) — Ergebnis unbrauchbar. */
+  case_results?: Array<{ id: string; group?: string; error?: string; actual?: Record<string, unknown>; validations?: import('./types').RuleIssue[]; field_confidences?: Record<string, number>; strategy?: string }>;
+  /** true bei mindestens einem Ausfall; verhindert die Regelübernahme. */
   failed: boolean;
   /** Anzahl der Beispiele, deren Re-Extraktion fehlschlug. */
   failures: number;
@@ -137,34 +126,62 @@ export function compareField(field: ProjectField, expected: unknown, actual: unk
 }
 
 export type EvalRow =
-  | { expected: Record<string, unknown>; actual: Record<string, unknown> }
-  | { error: string };
+  | { expected: Record<string, unknown>; actual: Record<string, unknown>; valid?: boolean; group?: string }
+  | { error: string; group?: string };
+
+/** Wilson 95% interval for document-level successes; fields are not independent samples. */
+export function documentInterval(correct: number, total: number): { low: number; high: number } {
+  if (!total) return { low: 0, high: 100 };
+  const z2 = 1.96 ** 2, p = correct / total, denominator = 1 + z2 / total;
+  const middle = (p + z2 / (2 * total)) / denominator;
+  const margin = 1.96 * Math.sqrt(p * (1 - p) / total + z2 / (4 * total ** 2)) / denominator;
+  return { low: Math.max(0, Math.round((middle - margin) * 1000) / 10), high: Math.min(100, Math.round((middle + margin) * 1000) / 10) };
+}
 
 /** Aggregiert Vergleichs-Zeilen zu Feld-/Gesamt-Accuracy (Prozent, 1 Dezimale). */
 export function scoreEvalRows(project: ExtractionProject, rows: EvalRow[]): EvalOutcome {
-  const fieldIds = Object.keys(project.fields);
+  const scoredFields: Record<string, ProjectField> = { ...project.fields };
+  // Segment fields are scored as complete instances including duplicate counts.
+  for (const [id, segment] of Object.entries(project.segments ?? {})) {
+    scoredFields[id] = { type: 'text', label: segment.label, required: !!segment.required };
+  }
+  const fieldIds = Object.keys(scoredFields);
+  const matchesField = (id: string, expected: unknown, actual: unknown) => project.segments?.[id]
+    ? stableHash(expected ?? null) === stableHash(actual ?? null)
+    : compareField(scoredFields[id]!, expected, actual);
   const ok = rows.filter((r): r is Extract<EvalRow, { expected: unknown }> => !('error' in r));
   const failures = rows.length - ok.length;
 
   const byField: Record<string, number> = {};
   let matchesTotal = 0;
   for (const fieldId of fieldIds) {
-    const field = project.fields[fieldId]!;
+
     let matches = 0;
     for (const row of ok) {
-      if (compareField(field, row.expected[fieldId], row.actual[fieldId])) matches += 1;
+      if (matchesField(fieldId, row.expected[fieldId], row.actual[fieldId])) matches += 1;
     }
     matchesTotal += matches;
-    byField[fieldId] = ok.length > 0 ? Math.round((matches / ok.length) * 1000) / 10 : 0;
+    byField[fieldId] = rows.length > 0 ? Math.round((matches / rows.length) * 1000) / 10 : 0;
   }
 
-  const pairs = ok.length * fieldIds.length;
+  const pairs = rows.length * fieldIds.length;
+  const documentCorrect = (row: EvalRow) => !('error' in row) && row.valid !== false && fieldIds.every(id => matchesField(id, row.expected[id], row.actual[id]));
+  const by_group: Record<string, number> = {};
+  const by_group_examples: Record<string, number> = {};
+  for (const group of new Set(rows.map(r => r.group ?? 'nicht zugeordnet'))) {
+    const subset = rows.filter(r => (r.group ?? 'nicht zugeordnet') === group);
+    by_group_examples[group] = subset.length;
+    by_group[group] = Math.round(subset.filter(documentCorrect).length / subset.length * 1000) / 10;
+  }
   return {
     overall: pairs > 0 ? Math.round((matchesTotal / pairs) * 1000) / 10 : 0,
     by_field: byField,
-    examples: ok.length,
+    examples: rows.length,
+    document_accuracy: rows.length ? Math.round(rows.filter(documentCorrect).length / rows.length * 1000) / 10 : 0,
+    by_group, by_group_examples,
+    document_interval: documentInterval(rows.filter(documentCorrect).length, rows.length),
     failures,
-    failed: rows.length === 0 || failures > rows.length / 2,
+    failed: rows.length === 0 || fieldIds.length === 0 || failures > 0,
   };
 }
 
@@ -182,11 +199,19 @@ export function evalSetHash(exampleIds: string[], model: string, cap: number): s
  * neuere Regeln spiegeln mehr Beispiele).
  */
 export function decideAcceptance(
-  championOverall: number | null,
+  championOverall: number | EvalScore | null,
   challenger: EvalOutcome,
 ): { accept: boolean; reason: 'error' | 'better-or-equal' | 'worse' | 'no-champion' } {
-  if (challenger.failed) return { accept: false, reason: 'error' };
+  if (challenger.failed || challenger.failures > 0 || challenger.aligned === false) return { accept: false, reason: 'error' };
   if (championOverall === null) return { accept: true, reason: 'no-champion' };
+  if (typeof championOverall === 'object') {
+    const champion = championOverall;
+    if (champion.examples !== challenger.examples || champion.dataset_hash !== challenger.dataset_hash
+      || (challenger.document_accuracy ?? 0) < (champion.document_accuracy ?? 0)
+      || Object.entries(champion.by_field).some(([id, score]) => (challenger.by_field[id] ?? 0) < score)
+      || Object.entries(champion.by_group ?? {}).some(([id, score]) => (challenger.by_group?.[id] ?? 0) < score)) return { accept: false, reason: 'worse' };
+    championOverall = champion.overall;
+  }
   return challenger.overall >= championOverall
     ? { accept: true, reason: 'better-or-equal' }
     : { accept: false, reason: 'worse' };
@@ -211,22 +236,6 @@ async function pLimit<T>(
   await Promise.all(runners);
 }
 
-/** Entpackt ein Pipeline-Ergebnis zu flachen Projekt-Feldern (wie extract()). */
-function unpackExtracted(
-  project: ExtractionProject,
-  extracted: Record<string, unknown>,
-): Record<string, unknown> {
-  const data: Record<string, unknown> = {
-    ...((extracted[PROJECT_FIELD_GROUP] ?? {}) as Record<string, unknown>),
-  };
-  for (const [fieldId, field] of Object.entries(project.fields)) {
-    if (field.type !== 'list') continue;
-    const raw = extracted[fieldId];
-    data[fieldId] = dedupeListItems(Array.isArray(raw) ? raw : [], field.item_fields ?? {});
-  }
-  return data;
-}
-
 /** Anzeigename des Eval-Modells (fuers Audit/Hash — Override oder Systemstandard). */
 export function evalModelLabel(project: ExtractionProject): string {
   const o = project.extraction?.model_override;
@@ -238,49 +247,65 @@ export function evalModelLabel(project: ExtractionProject): string {
 
 /**
  * Misst einen Guidelines-Text gegen die uebergebenen Beispiele.
- * Fail-Soft je Beispiel; `failed` wenn >50 % scheitern.
+ * Alle Fälle zählen; ein Ausfall verhindert die Übernahme.
  */
 export async function runEval(
   project: ExtractionProject,
   guidelinesText: string,
   examples: TrainingExample[],
   userId?: string,
+  trainingExamples: TrainingExample[] = [],
+  captured?: ExtractionSnapshot,
+  runner?: typeof import('./service').extract,
 ): Promise<EvalOutcome> {
-  // Schema einmal bauen: Projekt-Kopie mit Kandidaten-Guidelines, KEIN Few-Shot.
-  const schema = extractionProjectToExtractionSchema(
-    { ...project, guidelines: guidelinesText },
-    [],
-  );
-  schema.config.strategy = 'single-pass'; // Engine eskaliert bei Overflow selbst zu chunked
-  schema.config.llm_confidence = false;   // Heuristik reicht — Scores werden nicht verglichen
-
+  const { extract, captureSnapshot } = await import('./service');
+  const snapshot = captured ? createSnapshot({ ...captured.project, guidelines: guidelinesText }, trainingExamples)
+    : await captureSnapshot({ ...project, guidelines: guidelinesText }, trainingExamples);
+  if (captured) snapshot.references = structuredClone(captured.references);
+  snapshot.hash = stableHash({ hash: snapshot.hash, references: snapshot.references });
   const rows: EvalRow[] = new Array(examples.length);
-  await pLimit(examples, EVAL_CONCURRENCY, async (example, idx) => {
+  const results: Array<Awaited<ReturnType<typeof extract>> | undefined> = new Array(examples.length);
+  await pLimit(examples, Math.max(1, EVAL_CONCURRENCY || 1), async (example, idx) => {
+    let dir: string | undefined;
+    const group = example.dataset?.group || 'nicht zugeordnet';
     try {
-      const files: PreparedFile[] = [
-        {
-          filename: example.source_filename || 'beispiel',
-          text: example.document_text,
-          mimeType: 'text/plain',
-        },
-      ];
-      const result = await runPipeline({ files, schema, userId: userId ?? '' });
-      rows[idx] = {
-        expected: example.corrected_extraction,
-        actual: unpackExtracted(project, result.extracted),
-      };
+      if (trainingExamples.some(e => sameDocument(e, example))) throw new Error('Testdokument im Lernbestand');
+      if (example.dataset?.purpose !== 'test' || !example.dataset.original) throw new Error('Kein unabhängiges Testbeispiel mit Original');
+      const original = example.dataset.original;
+      const bytes = Buffer.from(original.base64, 'base64');
+      if (createHash('sha256').update(bytes).digest('hex') !== original.sha256) throw new Error('Original-Prüfsumme stimmt nicht');
+      dir = await mkdtemp(join(tmpdir(), 'extraction-eval-'));
+      const filename = basename(original.filename);
+      const path = join(dir, filename);
+      await writeFile(path, bytes);
+      const result = await withPriority('evaluation', () => (runner ?? extract)(project.id, { type: 'file', path, filename }, userId, snapshot));
+      results[idx] = result;
+      if (!result.success || result.validations?.some(i => i.rule_id === 'verarbeitung' || i.rule_id === 'segmentierung' || i.status === 'not_evaluated')) {
+        throw new Error(result.error || 'Verarbeitung unvollständig oder Prüfung nicht ausgeführt');
+      }
+      rows[idx] = { expected: example.corrected_extraction, actual: result.data, valid: !result.validations?.some(i => i.rule_id !== 'quellenpruefung' && i.severity === 'error'), group };
     } catch (err) {
-      rows[idx] = { error: err instanceof Error ? err.message : String(err) };
+      rows[idx] = { error: err instanceof Error ? err.message : String(err), group };
+    } finally {
+      if (dir) await rm(dir, { recursive: true, force: true });
     }
   });
-
   const score = scoreEvalRows(project, rows);
-  // Eval-Alignment (W9): text-basierte Messung vs. Produktionsstrategie
-  // ausweisen. Eine echte Vision-Messung braeuchte gespeicherte Seitenbilder
-  // je Beispiel — bewusst als Folgearbeit dokumentiert, nicht simuliert.
-  const production = project.extraction?.strategy ?? 'hybrid';
-  score.measured_strategy = 'single-pass (text)';
-  score.production_strategy = production;
-  score.aligned = production === 'single-pass' || production === 'long-text-chunked';
+  let calibration: import('./types').CalibrationState | undefined;
+  for (let idx = 0; idx < examples.length; idx++) {
+    const result = results[idx];
+    if (result?.success && result.fieldConfidences) calibration = updateCalibration(calibration, project, result.data, examples[idx]!.corrected_extraction, result.fieldConfidences);
+  }
+  score.case_results = rows.map((row, index) => ({ id: examples[index]!.id, group: row.group,
+    error: 'error' in row ? row.error : undefined, actual: results[index]?.data,
+    validations: results[index]?.validations, field_confidences: results[index]?.fieldConfidences, strategy: results[index]?.strategyUsed }));
+  score.calibration = calibration;
+  score.dataset_version = project.learning.dataset_version ?? 0;
+  score.measured_strategy = project.segments ? 'segmented' : snapshot.project.extraction!.strategy;
+  score.production_strategy = score.measured_strategy;
+  score.aligned = true;
+  score.dataset_hash = stableHash(examples.map(e => ({ id: e.id, truth: e.corrected_extraction, source: e.dataset?.original?.sha256, group: e.dataset?.group })).sort((a,b) => a.id.localeCompare(b.id)));
+  score.dataset_manifest = examples.map(e => ({ id: e.id, source_sha256: e.dataset?.original?.sha256, group: e.dataset?.group, truth: structuredClone(e.corrected_extraction) }));
+  score.profile_hash = profileHash(snapshot.project);
   return score;
 }

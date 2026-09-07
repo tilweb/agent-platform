@@ -248,13 +248,14 @@ describe('applyCatalogs', () => {
     expect(issues[0]!.severity).toBe('info');
   });
 
-  test('nicht ladbare Tabelle meldet warn statt zu blockieren', async () => {
+  test('nicht ladbare Tabelle blockiert unvollständige Prüfung', async () => {
     const p = project();
     p.fields.lieferant!.catalog = { source: 'table', table_id: 'weg', column_id: 'name' };
     const issues = await applyCatalogs(p, { lieferant: 'Irgendwer' }, async () => ({ error: 'Tabelle "weg" nicht gefunden' }));
-    expect(issues[0]!.severity).toBe('warn');
+    expect(issues[0]!.severity).toBe('error');
+    expect(issues[0]!.status).toBe('not_evaluated');
     expect(issues[0]!.message).toContain('nicht pruefbar');
-    expect(hasBlockingIssue(issues)).toBe(false);
+    expect(hasBlockingIssue(issues)).toBe(true);
   });
 
   test('ohne Kataloge passiert nichts', async () => {

@@ -5,6 +5,12 @@ import { extractionProjectToExtractionSchema } from '../../../extraction/learnin
 
 const profile = extractionProjectToExtractionSchema(buildGrundsteuerGmbxProject()).profile;
 
+test('widersprüchliche wiederholte Labels werden nicht still überschrieben', () => {
+  const result = parseLabelmap('Aktenzeichen    111111\nAktenzeichen    222222', profile);
+  expect(result.conflicts).toEqual(['felder.aktenzeichen']);
+  expect((result.extracted.felder as Record<string, unknown>).aktenzeichen).toBe('111111');
+});
+
 // Layout-Text wie von `pdftotext -layout` (rechtsbuendige Label-Spalte, >=2 Spaces zum Wert).
 const MIT_ZERLEGUNG = `Grundsteuermessbeträge nach GrStRefG von
 2019 (GMBX)

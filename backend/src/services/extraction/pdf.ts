@@ -1,3 +1,4 @@
+import { prepared } from './runtime';
 /**
  * Heavy Extraction Pipeline — PDF-Seiten zu PNG-Images rendern.
  *
@@ -16,6 +17,13 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+function spawnPdf(command: string[], options: { stdin?: Buffer; stdout: 'pipe'; stderr: 'pipe' }) {
+  const proc = Bun.spawn(command, options);
+  const timer = setTimeout(() => proc.kill(), 120_000);
+  proc.exited.then(() => clearTimeout(timer), () => clearTimeout(timer));
+  return proc;
+}
 
 export class PdfRenderError extends Error {
   public readonly underlyingCause?: unknown;
@@ -37,7 +45,7 @@ export async function isPdfRendererAvailable(): Promise<boolean> {
   if (pdftocairoChecked) return pdftocairoAvailable;
   pdftocairoChecked = true;
   try {
-    const proc = Bun.spawn(['pdftocairo', '-v'], {
+    const proc = spawnPdf(['pdftocairo', '-v'], {
       stdout: 'pipe',
       stderr: 'pipe',
     });
@@ -80,7 +88,7 @@ export interface RenderOptions {
  * Wirft `PdfRenderError` bei Fehler — `vision-per-page` interpretiert das als
  * Hinweis, dass diese Datei nicht via Vision-Pfad gehen kann.
  */
-export async function renderPdfToImages(
+async function renderPdfToImagesUncached(
   pdfBuffer: Buffer,
   options: RenderOptions = {},
 ): Promise<PdfPageImage[]> {
@@ -109,7 +117,7 @@ export async function renderPdfToImages(
       const out: PdfPageImage[] = [];
       for (const pageNumber of pages.slice(0, maxPages)) {
         const singleOutPrefix = join(tmpDir, `single-${pageNumber}`);
-        const proc = Bun.spawn(
+        const proc = spawnPdf(
           ['pdftocairo', '-png', '-singlefile', '-r', String(dpi), '-f', String(pageNumber), '-l', String(pageNumber), pdfPath, singleOutPrefix],
           { stdout: 'pipe', stderr: 'pipe' },
         );
@@ -126,8 +134,8 @@ export async function renderPdfToImages(
     }
 
     // Alle Seiten in einem Aufruf
-    const proc = Bun.spawn(
-      ['pdftocairo', '-png', '-r', String(dpi), pdfPath, outPrefix],
+    const proc = spawnPdf(
+      ['pdftocairo', '-png', '-r', String(dpi), '-f', '1', '-l', String(maxPages), pdfPath, outPrefix],
       { stdout: 'pipe', stderr: 'pipe' },
     );
     const exitCode = await proc.exited;
@@ -171,7 +179,7 @@ export async function renderPdfToImages(
  * hat, gibts mindestens 1 Seite. Fuer den exakten Count fragen wir pdfinfo,
  * sofern vorhanden. Fallback: rendere mit hohem Limit, zaehle Output.
  */
-export async function countPdfPages(pdfBuffer: Buffer): Promise<number> {
+async function countPdfPagesUncached(pdfBuffer: Buffer): Promise<number> {
   if (!(await isPdfRendererAvailable())) return 0;
 
   let tmpDir: string | null = null;
@@ -182,7 +190,7 @@ export async function countPdfPages(pdfBuffer: Buffer): Promise<number> {
 
     // pdfinfo ist ebenfalls Teil von poppler-utils
     try {
-      const proc = Bun.spawn(['pdfinfo', pdfPath], { stdout: 'pipe', stderr: 'pipe' });
+      const proc = spawnPdf(['pdfinfo', pdfPath], { stdout: 'pipe', stderr: 'pipe' });
       const out = await new Response(proc.stdout).text();
       await proc.exited;
       const match = out.match(/Pages:\s*(\d+)/);
@@ -206,10 +214,10 @@ export async function countPdfPages(pdfBuffer: Buffer): Promise<number> {
  *
  * Wirft `PdfRenderError`, wenn `pdftotext` nicht im PATH ist oder scheitert.
  */
-export async function pdfToLayoutText(pdfBuffer: Buffer): Promise<string> {
+async function pdfToLayoutTextUncached(pdfBuffer: Buffer): Promise<string> {
   let proc;
   try {
-    proc = Bun.spawn(['pdftotext', '-layout', '-', '-'], {
+    proc = spawnPdf(['pdftotext', '-layout', '-', '-'], {
       stdin: pdfBuffer,
       stdout: 'pipe',
       stderr: 'pipe',
@@ -225,3 +233,19 @@ export async function pdfToLayoutText(pdfBuffer: Buffer): Promise<string> {
   }
   return text;
 }
+
+const pageViews = new WeakMap<Buffer, { parent: Buffer; from: number; to: number; limit: number }>();
+/** A sub-PDF keeps its own text but shares the parent's exact-resolution pixels. */
+export function registerPdfView(bytes: Buffer, parent: Buffer, from: number, to: number, limit: number) {
+  pageViews.set(bytes, { parent, from, to, limit });
+}
+export function renderPdfToImages(bytes: Buffer, options: RenderOptions = {}): Promise<PdfPageImage[]> {
+  const view = pageViews.get(bytes);
+  if (view && !options.pageSelection) {
+    return renderPdfToImages(view.parent, { dpi: options.dpi, maxPages: view.limit }).then(pages => pages.filter(p => p.pageNumber >= view.from && p.pageNumber <= view.to).slice(0, options.maxPages ?? 500).map(p => ({ ...p, pageNumber: p.pageNumber-view.from+1 })));
+  }
+  const normalized = { dpi: options.dpi ?? 200, maxPages: options.maxPages ?? 500, pageSelection: options.pageSelection };
+  return prepared('render', bytes, normalized, () => renderPdfToImagesUncached(bytes, normalized));
+}
+export function countPdfPages(bytes: Buffer): Promise<number> { return prepared('pages', bytes, null, () => countPdfPagesUncached(bytes)); }
+export function pdfToLayoutText(bytes: Buffer): Promise<string> { return prepared('layout', bytes, null, () => pdfToLayoutTextUncached(bytes)); }

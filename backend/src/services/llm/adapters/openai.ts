@@ -1,3 +1,4 @@
+import { recordProviderAttempt, recordProviderUsage } from '../../extraction/telemetry';
 /**
  * OpenAI API Adapter
  * Handles chat completions for OpenAI-compatible APIs
@@ -287,6 +288,7 @@ export class OpenAIAdapter {
     let response: Response | null = null;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
+        recordProviderAttempt();
         response = await fetch(`${this.baseUrl}/chat/completions`, {
           method: 'POST',
           headers,
@@ -323,6 +325,7 @@ export class OpenAIAdapter {
     }
 
     interface ChatResponse {
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
       choices: Array<{
         message: {
           content: string | null;
@@ -336,6 +339,7 @@ export class OpenAIAdapter {
       }>;
     }
     const json = await response.json() as ChatResponse;
+    recordProviderUsage(json.usage);
     const choice = json.choices[0];
 
     if (!choice) {

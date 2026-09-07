@@ -1,3 +1,4 @@
+import { extractionChat } from './runtime';
 /**
  * Validierungs-getriebener Repair-Pass.
  *
@@ -50,17 +51,17 @@ export const EXTRACTION_SAMPLING = { temperature: 0, maxTokens: 8192 } as const;
  */
 export async function withTimeoutRetry<T>(
   fn: () => Promise<T>,
-  opts: { timeoutMs: number; retries: number; label?: string },
+  opts: { timeoutMs: number; retries: number; label?: string; queued?: boolean },
 ): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= opts.retries; attempt += 1) {
     try {
-      return await Promise.race([
-        fn(),
-        new Promise<T>((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout nach ${opts.timeoutMs}ms`)), opts.timeoutMs),
-        ),
-      ]);
+      // Queued model calls use the provider's aborting timeout, starting after admission.
+      if (opts.queued) return await fn();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try { return await Promise.race([fn(), new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Timeout nach ${opts.timeoutMs}ms`)), opts.timeoutMs);
+      })]); } finally { if (timer) clearTimeout(timer); }
     } catch (err) {
       lastErr = err;
       if (attempt < opts.retries) {
@@ -250,7 +251,7 @@ export interface RepairResult {
 }
 
 export async function repairExtraction(opts: RepairOptions): Promise<RepairResult> {
-  const chat: ChatFn = opts.chat ?? ((m, t, u, o) => llmService.chat(m, t, u, o));
+  const chat: ChatFn = opts.chat ?? ((m, t, u, o) => extractionChat(m, t, u, o));
   const maxPasses = opts.maxPasses ?? 1;
   let current = opts.extracted;
   let calls = 0;

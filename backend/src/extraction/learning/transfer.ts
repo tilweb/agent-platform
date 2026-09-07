@@ -1,3 +1,4 @@
+import { ruleFields } from './rule-scope';
 /**
  * Export/Import von Extraktions-Projekten als portables Paket.
  *
@@ -30,6 +31,7 @@ export const PROJECT_BUNDLE_FORMAT = 'kiworkplace-extraction-project';
 export const PROJECT_BUNDLE_VERSION = 1;
 
 interface BundleExample {
+  dataset?: import('./types').ExampleDataset;
   source_filename: string;
   document_text: string;
   initial_extraction: Record<string, unknown>;
@@ -81,6 +83,7 @@ export async function exportProject(
   if (includeExamples) {
     const all = await getExamples(projectId);
     examples = all.map((e) => ({
+      dataset: e.dataset ? { ...e.dataset, activation: e.dataset.activation === 'candidate' && !project.learning.approved_example_ids?.includes(e.id) ? 'candidate' : 'active' } : undefined,
       source_filename: e.source_filename,
       document_text: e.document_text,
       initial_extraction: e.initial_extraction,
@@ -99,7 +102,7 @@ export async function exportProject(
       fields: project.fields,
       instructions: project.instructions,
       guidelines: project.guidelines,
-      learning: project.learning,
+      learning: { total_examples: project.learning.total_examples, accuracy_estimate: project.learning.accuracy_estimate, guideline_version: project.learning.guideline_version },
       extraction: project.extraction,
       rules: project.rules,
       segments: project.segments,
@@ -144,7 +147,7 @@ function validateBundle(bundle: unknown): asserts bundle is ProjectBundle {
   const fieldError = validateProjectFields(b.project.fields);
   if (fieldError) throw new Error(`Ungültige Felder im Paket: ${fieldError}`);
   // Pruefregeln referenzieren Feld-IDs — ein fremdes Bundle kann inkonsistent sein.
-  const ruleError = validateProjectRules(b.project.fields, b.project.rules);
+  const ruleError = validateProjectRules(ruleFields(b.project), b.project.rules);
   if (ruleError) throw new Error(`Ungültige Prüfregeln im Paket: ${ruleError}`);
   // Segmenttypen (Welle 10) — additiv-optional, alte Pakete haben das Feld nicht.
   const segmentError = validateProjectSegments(b.project.segments);
@@ -177,6 +180,7 @@ export async function importProject(bundle: unknown): Promise<ExtractionProject>
     for (const ex of bundle.examples) {
       try {
         await saveExample(created.id, {
+          dataset: ex.dataset,
           source_filename: ex.source_filename || 'import',
           document_text: ex.document_text || '',
           initial_extraction: ex.initial_extraction || {},
@@ -190,7 +194,8 @@ export async function importProject(bundle: unknown): Promise<ExtractionProject>
 
   // Gelernte Daten wiederherstellen (NACH den Beispielen, damit die Counts stimmen).
   const learning = {
-    total_examples: hasExamples ? bundle.examples.length : 0,
+    ...(await getProject(created.id))!.learning,
+    total_examples: hasExamples ? (await getExamples(created.id)).filter(e => e.dataset?.purpose !== 'test').length : 0,
     accuracy_estimate: hasExamples ? (src.learning?.accuracy_estimate ?? 0) : 0,
     guideline_version: src.learning?.guideline_version ?? (src.guidelines ? 1 : 0),
   };

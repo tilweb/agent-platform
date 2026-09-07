@@ -70,7 +70,7 @@ export function applyExtractionDefaults(
     section_aware: config.section_aware ?? EXTRACTION_DEFAULTS.section_aware,
     merge_strategy: config.merge_strategy ?? EXTRACTION_DEFAULTS.merge_strategy,
     confidence_threshold: config.confidence_threshold ?? EXTRACTION_DEFAULTS.confidence_threshold,
-    vision_fallback: config.vision_fallback ?? EXTRACTION_DEFAULTS.vision_fallback,
+    vision_fallback: config.vision_fallback ?? ((config.strategy ?? EXTRACTION_DEFAULTS.strategy) === 'hybrid'),
     vision_detail: config.vision_detail ?? EXTRACTION_DEFAULTS.vision_detail,
     max_pages: config.max_pages ?? EXTRACTION_DEFAULTS.max_pages,
     max_concurrent: config.max_concurrent ?? EXTRACTION_DEFAULTS.max_concurrent,

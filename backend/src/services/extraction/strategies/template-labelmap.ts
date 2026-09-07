@@ -102,13 +102,14 @@ function buildMaps(profile: ExtractionProfile) {
 export function parseLabelmap(
   text: string,
   profile: ExtractionProfile,
-): { extracted: Record<string, unknown>; unknownLabels: string[] } {
+): { extracted: Record<string, unknown>; unknownLabels: string[]; conflicts: string[] } {
   const { doc, lists } = buildMaps(profile);
   const scalars: Record<string, Record<string, unknown>> = {};
   const rows: Record<string, Array<Record<string, unknown>>> = {};
   const openRow: Record<string, Record<string, unknown> | null> = {};
   for (const lg of lists) { rows[lg.group] = []; openRow[lg.group] = null; }
   const unknownLabels = new Set<string>();
+  const conflicts = new Set<string>();
 
   for (const line of text.split('\n')) {
     const sec = line.match(SECTION_RE);
@@ -129,7 +130,10 @@ export function parseLabelmap(
 
     const d = doc.get(nl);
     if (d) {
-      (scalars[d.group] ??= {})[d.field] = coerce(kv[1], d.type);
+      const group = scalars[d.group] ??= {};
+      const value = coerce(kv[1], d.type);
+      if (d.field in group && JSON.stringify(group[d.field]) !== JSON.stringify(value)) conflicts.add(`${d.group}.${d.field}`);
+      else group[d.field] = value;
       continue;
     }
     let matched = false;
@@ -138,7 +142,9 @@ export function parseLabelmap(
       if (item) {
         let row = openRow[lg.group];
         if (!row) { row = {}; rows[lg.group]!.push(row); openRow[lg.group] = row; }
-        row[item.field] = coerce(kv[1], item.type);
+        const value = coerce(kv[1], item.type);
+        if (item.field in row && JSON.stringify(row[item.field]) !== JSON.stringify(value)) conflicts.add(`${lg.group}.${item.field}`);
+        else row[item.field] = value;
         matched = true;
         break;
       }
@@ -148,14 +154,18 @@ export function parseLabelmap(
 
   const extracted: Record<string, unknown> = { ...scalars };
   for (const lg of lists) extracted[lg.group] = rows[lg.group];
-  return { extracted, unknownLabels: [...unknownLabels] };
+  return { extracted, unknownLabels: [...unknownLabels], conflicts: [...conflicts] };
 }
 
 /** Ergebnis-Objekt → dotted paths (Arrays als EIN Feld, analog single-pass). */
 function collectPaths(obj: unknown, prefix = ''): Array<{ path: string; value: unknown }> {
   const out: Array<{ path: string; value: unknown }> = [];
   if (obj === null || obj === undefined) return out;
-  if (Array.isArray(obj)) { if (obj.length) out.push({ path: prefix, value: obj }); return out; }
+  if (Array.isArray(obj)) {
+    if (obj.length) out.push({ path: prefix, value: obj });
+    obj.forEach((row, index) => out.push(...collectPaths(row, `${prefix}[${index}]`)));
+    return out;
+  }
   if (typeof obj !== 'object') {
     if (!(typeof obj === 'string' && obj.trim() === '')) out.push({ path: prefix, value: obj });
     return out;
@@ -196,15 +206,15 @@ export const templateLabelmapStrategy: ExtractionStrategy = {
 
     await emit({ phase: 'extracting', chunkIndex: 0, chunkTotal: 1 });
 
-    const { extracted, unknownLabels } = parseLabelmap(text, input.schema.profile);
+    const { extracted, unknownLabels, conflicts } = parseLabelmap(text, input.schema.profile);
 
+    const validation = validateExtraction(extracted, input.schema.profile);
     // Provenance + Konfidenz 1.0 fuer jedes belegte Feld.
     const paths = collectPaths(extracted);
     const provenance: FieldProvenance[] = paths.map((p) => ({ field: p.path, value: p.value, source: 'c:0', confidence: 1.0 }));
     const fieldConfidences: Record<string, number> = {};
     for (const p of paths) fieldConfidences[p.path] = 1.0;
 
-    const validation = validateExtraction(extracted, input.schema.profile);
     const warnings = validation.errors.map((e) => `${e.field}: ${e.message}`);
 
     // Befund: unbekannte Labels (keinem Profil-Feld zugeordnet) → Review-Triage.
@@ -212,8 +222,9 @@ export const templateLabelmapStrategy: ExtractionStrategy = {
     // bewusst KEINE Strategie-Logik, sondern gehoeren als W5-Pruefregel ans
     // Projekt — die Strategie bleibt domaenen-frei.
     const processingIssues: StrategyResult['processingIssues'] = [];
+    if (conflicts.length) processingIssues.push({ code: 'changed', severity: 'error', message: `Widersprüchliche Labelwerte: ${conflicts.join(', ')} — am Original prüfen.` });
     if (unknownLabels.length > 0) {
-      processingIssues.push({ severity: 'warn', message: `Unbekannte Labels (keinem Feld zugeordnet): ${unknownLabels.join(' · ')}` });
+      processingIssues.push({ severity: 'error', message: `Unbekannte Labels (keinem Feld zugeordnet): ${unknownLabels.join(' · ')}` });
     }
 
     await emit({ phase: 'validating', warningCount: warnings.length });

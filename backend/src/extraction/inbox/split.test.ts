@@ -32,9 +32,9 @@ test('pageCount 0 → leer', () => {
   expect(rangesFromBoundaries(0, [])).toEqual([]);
 });
 
-test('Laengen-Mismatch: fehlende Urteile = kein Schnitt, ueberzaehlige ignoriert', () => {
-  expect(rangesFromBoundaries(4, [true])).toEqual([{ from: 1, to: 1 }, { from: 2, to: 4 }]);
-  expect(rangesFromBoundaries(2, [true, true, true])).toEqual([{ from: 1, to: 1 }, { from: 2, to: 2 }]);
+test('unvollständige Grenzen verhindern stilles Zusammenlegen', () => {
+  expect(() => rangesFromBoundaries(4, [true])).toThrow();
+  expect(() => rangesFromBoundaries(2, [null])).toThrow();
 });
 
 // ============== parseBoundaryVerdict ==============
@@ -45,11 +45,11 @@ test('klares true trennt (auch mit Punkt/Case/Whitespace)', () => {
   expect(parseBoundaryVerdict('TRUE\n')).toBe(true);
 });
 
-test('false und alles Unklare trennen NICHT (konservativ)', () => {
+test('unbekannt bleibt von false unterscheidbar', () => {
   expect(parseBoundaryVerdict('false')).toBe(false);
-  expect(parseBoundaryVerdict('true, weil ...')).toBe(false);
-  expect(parseBoundaryVerdict('Das ist true')).toBe(false);
-  expect(parseBoundaryVerdict('')).toBe(false);
-  expect(parseBoundaryVerdict(null)).toBe(false);
-  expect(parseBoundaryVerdict(undefined)).toBe(false);
+  expect(parseBoundaryVerdict('true, weil ...')).toBeNull();
+  expect(parseBoundaryVerdict('Das ist true')).toBeNull();
+  expect(parseBoundaryVerdict('')).toBeNull();
+  expect(parseBoundaryVerdict(null)).toBeNull();
+  expect(parseBoundaryVerdict(undefined)).toBeNull();
 });

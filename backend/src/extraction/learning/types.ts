@@ -80,14 +80,21 @@ export interface EvalScore {
   overall: number;
   /** Accuracy je Feld in Prozent. */
   by_field: Record<string, number>;
-  /** Anzahl erfolgreich ausgewerteter Beispiele. */
+  failures?: number;
+  document_accuracy?: number;
+  by_group?: Record<string, number>;
+  by_group_examples?: Record<string, number>;
+  evaluation_id?: string;
+  dataset_version?: number;
+  stale?: boolean;
+  dataset_hash?: string;
+  dataset_manifest?: Array<{ id: string; source_sha256?: string; group?: string; truth: Record<string, unknown> }>;
+  document_interval?: { low: number; high: number };
+  profile_hash?: string;
+  calibration?: CalibrationState;
+  /** Anzahl aller ausgewerteten Beispiele, einschließlich Ausfällen. */
   examples: number;
-  /**
-   * Eval-Alignment (W9): Die Messung laeuft text-basiert (single-pass auf dem
-   * gespeicherten document_text) — Beispiele tragen keine Bilder. Bei
-   * Vision-Profilen misst sie damit NICHT die Produktions-Pipeline; das wird
-   * hier ausgewiesen statt verschwiegen.
-   */
+  /** Older scores may be text-only; new evaluations replay original files through production. */
   measured_strategy?: string;
   production_strategy?: string;
   aligned?: boolean;
@@ -110,6 +117,7 @@ export interface LearningEvalState {
     at: string;
   };
   last_run?: {
+    evaluation_id?: string;
     at: string;
     action: EvalRunAction;
     challenger_overall?: number;
@@ -119,6 +127,7 @@ export interface LearningEvalState {
   };
   /** Kompakte Historie, Cap 20 (neueste zuerst). */
   history?: Array<{
+    evaluation_id?: string;
     at: string;
     action: EvalRunAction;
     champion?: number;
@@ -187,7 +196,9 @@ export interface CountRule {
   label?: string;
 }
 
-export type ExtractionRule = SumRule | LookupRule | CountRule;
+export interface MatchRule { id: string; type: 'match'; fields: string[]; label?: string }
+
+export type ExtractionRule = SumRule | LookupRule | CountRule | MatchRule;
 
 /**
  * `error` erzwingt das Review, `warn` ist ein Hinweis, `info` protokolliert nur
@@ -197,6 +208,8 @@ export type RuleSeverity = 'error' | 'warn' | 'info';
 
 /** Ein konkreter Befund aus der Regel-/Katalogpruefung eines Extraktionsergebnisses. */
 export interface RuleIssue {
+  /** Execution outcome; a missing required check cannot release a document. */
+  status?: 'passed' | 'failed' | 'not_evaluated';
   rule_id: string;
   type: ExtractionRule['type'] | 'catalog' | 'ocr' | 'processing' | 'segment';
   severity: RuleSeverity;
@@ -220,6 +233,10 @@ export interface CalibrationState {
 }
 
 export interface LearningMetadata {
+  approved_example_ids?: string[];
+  dataset_version?: number;
+  /** Document fingerprints retain the train/test assignment after example deletion. */
+  document_roles?: Record<string, 'train' | 'test'>;
   total_examples: number;
   accuracy_estimate: number;
   guideline_version: number;
@@ -238,6 +255,7 @@ export interface LearningMetadata {
  * (Briefkopf, "Seite 1 von N", eigene Kennung)?
  */
 export interface SegmentTypeDef {
+  rules?: ExtractionRule[];
   label: string;
   /** Prosa-Beschreibung fuer die Seiten-Klassifikation. Pflicht. */
   description: string;
@@ -316,7 +334,27 @@ export interface ExtractionProject {
   webhook?: { url?: string; secret?: string };
 }
 
+export interface OriginalDocument {
+  /** Exact uploaded bytes; retained only in detail/example storage, never summary responses. */
+  base64: string;
+  filename: string;
+  sha256: string;
+}
+
+export interface ExampleDataset {
+  purpose: 'train' | 'test';
+  activation?: 'candidate' | 'active';
+  visual?: Array<{ dataUri: string; page: number }>;
+  segment_contexts?: Record<string, string>;
+  segment_visual?: Record<string, Array<{ dataUri: string; page: number }>>;
+  original?: OriginalDocument;
+  /** User-defined document variant for subgroup regression checks. */
+  group?: string;
+  profile_hash?: string;
+}
+
 export interface TrainingExample {
+  dataset?: ExampleDataset;
   id: string;
   created: string;
   source_filename: string;

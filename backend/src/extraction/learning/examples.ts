@@ -1,3 +1,4 @@
+import { getProject } from './projects';
 /**
  * Training Examples — Postgres-backed (Drizzle).
  *
@@ -8,10 +9,13 @@
 
 import { eq, and, desc } from 'drizzle-orm';
 import { getDb } from '../../db';
-import { extractionExamples } from '../../db/schema/extraction';
+import { createHash } from 'crypto';
+import { extractionExamples, extractionProjects } from '../../db/schema/extraction';
 import { blendSelection, rankBySimilarity } from './similarity';
 import { embedDocument, isSimilarityEnabled } from './embeddings';
-import type { TrainingExample } from './types';
+import { exampleContext } from './example-context';
+import { sameDocument, documentKeys } from './snapshot';
+import type { TrainingExample, ExampleDataset } from './types';
 
 function generateId(): string {
   const ts = Date.now().toString(36);
@@ -22,6 +26,7 @@ function generateId(): string {
 function rowToExample(row: typeof extractionExamples.$inferSelect): TrainingExample {
   return {
     id: row.id,
+    dataset: (row.dataset as ExampleDataset | null) ?? undefined,
     created: row.createdAt,
     source_filename: row.sourceFilename,
     document_text: row.documentText,
@@ -44,12 +49,18 @@ export async function getExamples(projectId: string): Promise<TrainingExample[]>
 export async function saveExample(
   projectId: string,
   data: {
+    dataset?: ExampleDataset;
     source_filename: string;
     document_text: string;
     initial_extraction: Record<string, unknown>;
     corrected_extraction: Record<string, unknown>;
   },
 ): Promise<TrainingExample> {
+  if (data.dataset && !['train', 'test'].includes(data.dataset.purpose)) throw new Error('Ungültiger Beispielzweck');
+  if (data.dataset?.original) {
+    const hash = createHash('sha256').update(Buffer.from(data.dataset.original.base64, 'base64')).digest('hex');
+    if (hash !== data.dataset.original.sha256) throw new Error('Original-Prüfsumme stimmt nicht');
+  }
   const corrections: TrainingExample['corrections'] = [];
   let confirmedCorrect = true;
   for (const [field, correctedValue] of Object.entries(data.corrected_extraction)) {
@@ -60,13 +71,20 @@ export async function saveExample(
     }
   }
 
+  const existing = await getExamples(projectId);
+  const candidate = { ...data, dataset: data.dataset ?? { purpose: 'train' } } as TrainingExample;
+  const duplicate = existing.find(e => sameDocument(e, candidate));
+  if (duplicate) throw new Error('Dieses Dokument ist bereits im Lern- oder Testbestand. Doppelte Dokumente dürfen die Messung nicht beeinflussen.');
+  if (candidate.dataset?.purpose === 'test' && !candidate.dataset.original) throw new Error('Ein Testbeispiel benötigt das gespeicherte Original. Bitte neu verarbeiten.');
+
   // Embedding fuer die Aehnlichkeits-Auswahl (Welle 5) — best effort.
-  const embedding = await embedDocument(data.document_text);
+  const embedding = candidate.dataset?.purpose === 'test' ? null : await embedDocument(data.document_text);
 
   const id = generateId();
   const now = new Date().toISOString();
   const example: TrainingExample = {
     id,
+    dataset: candidate.dataset,
     created: now,
     source_filename: data.source_filename,
     document_text: data.document_text,
@@ -78,27 +96,59 @@ export async function saveExample(
   };
 
   const db = getDb();
-  await db.insert(extractionExamples).values({
-    id,
-    projectId,
-    sourceFilename: example.source_filename,
-    documentText: example.document_text,
-    initialExtraction: example.initial_extraction as never,
-    correctedExtraction: example.corrected_extraction as never,
-    corrections: example.corrections as never,
-    confirmedCorrect: confirmedCorrect ? 'true' : 'false',
-    embedding: (embedding ?? null) as never,
-    createdAt: now,
+  await db.transaction(async tx => {
+    const [project] = await tx.select().from(extractionProjects).where(eq(extractionProjects.id, projectId)).for('update');
+    if (!project) throw new Error('Profil nicht gefunden');
+    const rows = await tx.select().from(extractionExamples).where(eq(extractionExamples.projectId, projectId));
+    if (rows.map(rowToExample).some(e => sameDocument(e, example))) throw new Error('Dieses Dokument ist bereits im Lern- oder Testbestand.');
+    const learning = project.learning as import('./types').LearningMetadata;
+    const roles = { ...learning.document_roles };
+    // Backfill roles for existing examples before any deletion can erase provenance.
+    for (const e of rows.map(rowToExample)) for (const key of documentKeys(e)) roles[key] = e.dataset?.purpose ?? 'train';
+    const purpose = example.dataset?.purpose ?? 'train';
+    const keys = documentKeys(example);
+    if (keys.some(key => roles[key] && roles[key] !== purpose)) throw new Error('Dieses Dokument wurde bereits für einen anderen Zweck verwendet und kann nicht zwischen Lernen und Test wechseln.');
+    for (const key of keys) roles[key] = purpose;
+    await tx.insert(extractionExamples).values({
+      id,
+      projectId,
+      sourceFilename: example.source_filename,
+      dataset: example.dataset as never,
+      documentText: example.document_text,
+      initialExtraction: example.initial_extraction as never,
+      correctedExtraction: example.corrected_extraction as never,
+      corrections: example.corrections as never,
+      confirmedCorrect: confirmedCorrect ? 'true' : 'false',
+      embedding: (embedding ?? null) as never,
+      createdAt: now,
+    });
+    await tx.update(extractionProjects).set({ learning: { ...learning, document_roles: roles, dataset_version: (learning.dataset_version ?? 0) + 1,
+      accuracy_estimate: (() => {
+        const training = [...rows.map(rowToExample), example].filter(e => e.dataset?.purpose !== 'test');
+        return training.length ? Math.round(training.filter(e => e.confirmed_correct).length / training.length * 100) : 0;
+      })(),
+      total_examples: rows.filter(r => (r.dataset as ExampleDataset | null)?.purpose !== 'test').length + (purpose === 'train' ? 1 : 0),
+    } as never }).where(eq(extractionProjects.id, projectId));
   });
   return example;
 }
 
 export async function deleteExample(projectId: string, exampleId: string): Promise<boolean> {
-  const db = getDb();
-  const res = await db.delete(extractionExamples)
-    .where(and(eq(extractionExamples.projectId, projectId), eq(extractionExamples.id, exampleId)))
-    .returning({ id: extractionExamples.id });
-  return res.length > 0;
+  return getDb().transaction(async tx => {
+    const [project] = await tx.select().from(extractionProjects).where(eq(extractionProjects.id, projectId)).for('update');
+    if (!project) return false;
+    const rows = await tx.select().from(extractionExamples).where(eq(extractionExamples.projectId, projectId));
+    const learning = project.learning as import('./types').LearningMetadata;
+    const roles = { ...learning.document_roles };
+    for (const e of rows.map(rowToExample)) for (const key of documentKeys(e)) roles[key] = e.dataset?.purpose ?? 'train';
+    const res = await tx.delete(extractionExamples).where(and(eq(extractionExamples.projectId, projectId), eq(extractionExamples.id, exampleId))).returning({ id: extractionExamples.id });
+    const remaining = rows.filter(r => r.id !== exampleId && (r.dataset as ExampleDataset | null)?.purpose !== 'test');
+    await tx.update(extractionProjects).set({ learning: { ...learning, document_roles: roles, dataset_version: (learning.dataset_version ?? 0) + 1, total_examples: remaining.length,
+      accuracy_estimate: remaining.length ? Math.round(remaining.filter(r => r.confirmedCorrect === 'true').length / remaining.length * 100) : 0,
+      eval: { ...learning.eval, status: 'idle', champion: undefined },
+    } as never }).where(eq(extractionProjects.id, projectId));
+    return res.length > 0;
+  });
 }
 
 /**
@@ -144,8 +194,10 @@ export async function selectFewShotExamples(
   queryText?: string,
   maxExamples: number = 5,
   maxTokenBudget: number = 4000,
+  frozenExamples?: TrainingExample[],
 ): Promise<TrainingExample[]> {
-  const all = await getExamples(projectId);
+  const approved = frozenExamples ? [] : (await getProject(projectId))?.learning.approved_example_ids ?? [];
+  const all = (frozenExamples ?? await getExamples(projectId)).filter(e => e.dataset?.purpose !== 'test' && (frozenExamples || e.dataset?.activation !== 'candidate' || approved.includes(e.id)));
   if (all.length === 0) return [];
 
   let sorted = [...all].sort((a, b) => {
@@ -162,18 +214,26 @@ export async function selectFewShotExamples(
         sorted = blendSelection(ranked, sorted, all.length);
       }
       // Fehlende Embeddings im Hintergrund nachtragen (blockiert die Extraktion nicht).
-      void backfillEmbeddings(projectId, all);
+      if (!frozenExamples) void backfillEmbeddings(projectId, all);
     }
   }
 
+  const seenGroups = new Set<string>();
+  const diverse: TrainingExample[] = [], remainder: TrainingExample[] = [];
+  for (const example of sorted) {
+    const group = example.dataset?.group ?? '';
+    if (seenGroups.has(group)) remainder.push(example);
+    else { seenGroups.add(group); diverse.push(example); }
+  }
+  sorted = [...diverse, ...remainder];
   const selected: TrainingExample[] = [];
   let estimatedTokens = 0;
   for (const example of sorted) {
     if (selected.length >= maxExamples) break;
-    const docSnippet = example.document_text.substring(0, 500);
-    const correctedJson = JSON.stringify(example.corrected_extraction);
-    const tokenEstimate = Math.ceil((docSnippet.length + correctedJson.length) / 4);
-    if (estimatedTokens + tokenEstimate > maxTokenBudget) break;
+    const context = exampleContext(example);
+    if (!context && !example.dataset?.visual?.length) continue;
+    const tokenEstimate = Math.ceil(context.length / 3);
+    if (estimatedTokens + tokenEstimate > maxTokenBudget) continue;
     selected.push(example);
     estimatedTokens += tokenEstimate;
   }

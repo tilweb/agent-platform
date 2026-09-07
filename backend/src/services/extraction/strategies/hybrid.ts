@@ -1,3 +1,5 @@
+import { extractionChat } from '../runtime';
+import { visualExampleMessages } from '../visual-examples';
 /**
  * Hybrid Strategy — Text-Pass + selektives Vision-Fallback.
  *
@@ -36,12 +38,12 @@ import {
   type PageImage,
 } from '../types';
 import { longTextChunkedStrategy } from './long-text-chunked';
-import { isPdfRendererAvailable, renderPdfToImages, type PdfPageImage } from '../pdf';
+import { isPdfRendererAvailable, renderPdfToImages, countPdfPages, type PdfPageImage } from '../pdf';
 import { mergeChunks, type ChunkExtraction } from '../merger';
 import { visionPerPageStrategy } from './vision-per-page';
 import { fuseWithOcr, applyFusionToConfidences } from '../fusion';
 import { extractionVisionDpi } from '../defaults';
-import { HYBRID_VISION_MIN_LOW_CONFIDENCE_FIELDS_PER_PAGE } from '../defaults';
+
 
 function detectMimeFromBuffer(buf: Buffer): string {
   if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
@@ -118,6 +120,7 @@ async function runVisionPass(
 
     const messages: Message[] = [
       { role: 'system', content: systemPrompt },
+          ...visualExampleMessages(input.schema.profile),
       {
         role: 'user',
         content: [
@@ -136,19 +139,19 @@ async function runVisionPass(
       if (guidedBody) {
         try {
           response = await withTimeoutRetry(
-            () => llmService.chat(messages, undefined, usageContext, { ...options, extraBody: guidedBody }),
-            { timeoutMs: 45000, retries: 0, label: `hybrid-vision Seite ${page.pageNumber} (guided)` },
+            () => extractionChat(messages, undefined, usageContext, { ...options, extraBody: guidedBody }),
+            { queued: true, timeoutMs: 45000, retries: 0, label: `hybrid-vision Seite ${page.pageNumber} (guided)` },
           );
         } catch {
           response = await withTimeoutRetry(
-            () => llmService.chat(messages, undefined, usageContext, options),
-            { timeoutMs: 45000, retries: 0, label: `hybrid-vision Seite ${page.pageNumber} (fallback)` },
+            () => extractionChat(messages, undefined, usageContext, options),
+            { queued: true, timeoutMs: 45000, retries: 0, label: `hybrid-vision Seite ${page.pageNumber} (fallback)` },
           );
         }
       } else {
         response = await withTimeoutRetry(
-          () => llmService.chat(messages, undefined, usageContext, options),
-          { timeoutMs: 45000, retries: 1, label: `hybrid-vision Seite ${page.pageNumber}` },
+          () => extractionChat(messages, undefined, usageContext, options),
+          { queued: true, timeoutMs: 45000, retries: 1, label: `hybrid-vision Seite ${page.pageNumber}` },
         );
       }
     } catch (err) {
@@ -163,7 +166,9 @@ async function runVisionPass(
     }
     const durationMs = Date.now() - t0;
 
-    const data: Record<string, unknown> = parseJsonObject(response.content) ?? {};
+    const parsed = parseJsonObject(response.content);
+    if (!parsed) issues.push({ severity: 'error', message: `Seite ${page.pageNumber}: Modellantwort nicht lesbar — erneute Verarbeitung erforderlich.` });
+    const data: Record<string, unknown> = parsed ?? {};
 
     logCounter += 1;
     logs.push({ call: logCounter, phase: 'vision-fallback', duration_ms: durationMs, truncated: false });
@@ -207,13 +212,13 @@ function mergeTextAndVision(
   visionPages: VisionPagePass[],
   lowConfidenceFields: Set<string>,
   profile: StrategyInput['schema']['profile'],
-): { merged: Record<string, unknown>; provenance: FieldProvenance[] } {
+): { merged: Record<string, unknown>; provenance: FieldProvenance[]; issues: NonNullable<StrategyResult['processingIssues']> } {
   // Vision-Daten via Merger ueber Pages (union fuer Arrays, first-non-null fuer Skalare)
   const visionChunks: ChunkExtraction[] = visionPages.map((p) => ({
     chunkIndex: p.pageNumber,
     data: p.data,
   }));
-  const { merged: visionMerged, provenance: visionProvenance } = mergeChunks(visionChunks, profile, 'first-non-null');
+  const { merged: visionMerged, provenance: visionProvenance, issues } = mergeChunks(visionChunks, profile, 'first-non-null');
 
   // Resultat: Text-Werte fuer high-confidence-Felder + Vision fuer low-confidence
   const result = JSON.parse(JSON.stringify(textResult)) as Record<string, unknown>;
@@ -254,7 +259,7 @@ function mergeTextAndVision(
           confidence: 0.7,  // "eine starke Quelle" — die OCR-Fusion entscheidet danach hart
         });
       } else if (textValue !== undefined && textValue !== null) {
-        provenance.push({ field: fieldPath, value: textValue, source: 'text', confidence: 1.0 });
+        provenance.push({ field: fieldPath, value: textValue, source: 'text', confidence: 0.7 });
       }
       continue;
     }
@@ -274,12 +279,12 @@ function mergeTextAndVision(
           confidence: 0.7,
         });
       } else if (textValue !== undefined && textValue !== null && textValue !== '') {
-        provenance.push({ field: fieldPath, value: textValue, source: 'text', confidence: 1.0 });
+        provenance.push({ field: fieldPath, value: textValue, source: 'text', confidence: 0.7 });
       }
     }
   }
 
-  return { merged: result, provenance };
+  return { merged: result, provenance, issues };
 }
 
 export const hybridStrategy: ExtractionStrategy = {
@@ -305,6 +310,9 @@ export const hybridStrategy: ExtractionStrategy = {
     // der alte Ablauf zahlte erst den Text-Pass und dann den kompletten
     // Vision-Pass, und verlor dabei Boxen/Seitenbilder. Direkt die volle
     // vision-per-page-Strategie (inkl. OCR-Fusion) ist billiger UND besser.
+    if (input.files.some((f) => f.rawBuffer && f.mimeType.startsWith('image/'))) {
+      return visionPerPageStrategy.run(input, emit);
+    }
     const combinedTextLength = input.files.map((f) => (f.text || '').trim()).join('').length;
     if (combinedTextLength < 200 && findPdfFile(input) && (await isPdfRendererAvailable())) {
       const visionResult = await visionPerPageStrategy.run(input, emit);
@@ -324,13 +332,7 @@ export const hybridStrategy: ExtractionStrategy = {
       return { ...textResult, strategyUsed: 'hybrid' };
     }
 
-    // Unter 2 offenen Feldern lohnt kein Vision-Pass ueber ALLE Seiten — die
-    // Low-Confidence-Menge enthaelt auch jedes nicht gefundene optionale Feld,
-    // sonst feuert der teure Fallback praktisch immer.
-    if (lowConfidenceFields.size < HYBRID_VISION_MIN_LOW_CONFIDENCE_FIELDS_PER_PAGE) {
-      return { ...textResult, strategyUsed: 'hybrid' };
-    }
-
+    // Even one uncertain field deserves the configured visual fallback.
     const visionFallbackEnabled = input.schema.config.vision_fallback;
     const pdf = findPdfFile(input);
     if (!visionFallbackEnabled || !pdf) {
@@ -340,7 +342,7 @@ export const hybridStrategy: ExtractionStrategy = {
 
     if (!(await isPdfRendererAvailable())) {
       console.warn('[hybrid] Vision-Fallback gewuenscht, aber pdftocairo nicht installiert. Behalte Text-Resultat.');
-      return { ...textResult, strategyUsed: 'hybrid' };
+      return { ...textResult, strategyUsed: 'hybrid', processingIssues: [...(textResult.processingIssues ?? []), { severity: 'error', message: 'Erforderlicher Vision-Abgleich nicht möglich: PDF-Renderer fehlt.' }] };
     }
 
     // ============== Pass 2: Vision-Fallback ==============
@@ -354,32 +356,36 @@ export const hybridStrategy: ExtractionStrategy = {
       });
     } catch (err) {
       console.warn('[hybrid] PDF-Render fehlgeschlagen, behalte Text-Resultat:', err instanceof Error ? err.message : err);
-      return { ...textResult, strategyUsed: 'hybrid' };
+      return { ...textResult, strategyUsed: 'hybrid', processingIssues: [...(textResult.processingIssues ?? []), { severity: 'error', message: 'PDF-Rendering fehlgeschlagen — erforderlicher Vision-Abgleich fehlt.' }] };
     }
 
     if (pages.length === 0) {
-      return { ...textResult, strategyUsed: 'hybrid' };
+      return { ...textResult, strategyUsed: 'hybrid', processingIssues: [...(textResult.processingIssues ?? []), { severity: 'error', message: 'Keine Seiten für den Vision-Abgleich verfügbar.' }] };
     }
 
     const processingIssues: Array<{ severity: 'error' | 'warn'; message: string }> = [
       ...(textResult.processingIssues ?? []),
     ];
+    try {
+      const total = await countPdfPages(pdf.buffer);
+      if (total !== pages.length) processingIssues.push({ severity: 'error', message: `Vision-Abgleich unvollständig: ${pages.length} von ${total} Seiten.` });
+    } catch { processingIssues.push({ severity: 'error', message: 'Vollständigkeit des Vision-Abgleichs nicht prüfbar.' }); }
     const visionPass = await runVisionPass(input, pages, emit, processingIssues);
 
     // ============== Merge: Text + Vision ==============
     await emit({ phase: 'merging', fieldsMerged: 0, fieldsTotal: lowConfidenceFields.size });
-    const { merged, provenance } = mergeTextAndVision(
+    const { merged, provenance, issues } = mergeTextAndVision(
       textResult.extracted,
       visionPass.pageData,
       lowConfidenceFields,
       input.schema.profile,
     );
 
+    processingIssues.push(...issues);
+
     // ============== Confidence + OCR-Fusion ==============
     // Text-Confidence bleibt, wo Vision nicht eingegriffen hat. Vision-
-    // Overrides starten bei 0.7 ("eine starke Quelle", Heuristik-Skala) statt
-    // des alten Pauschal-0.85 — die OCR-Fusion entscheidet dann hart: belegt
-    // → 0.95, unbelegte Zahl → 0.4 + Befund.
+    // Overrides start at a heuristic 0.7. OCR can lower, never raise, this score.
     const finalConfidences: Record<string, number> = { ...textResult.fieldConfidences };
     for (const p of provenance) {
       if (p.source.startsWith('p:')) {
@@ -389,6 +395,7 @@ export const hybridStrategy: ExtractionStrategy = {
       }
     }
 
+    const validation = validateExtraction(merged, input.schema.profile);
     const fusion = await fuseWithOcr(
       pages.map((p) => ({ pngBuffer: p.pngBuffer, width: p.width, height: p.height, pageNumber: p.pageNumber })),
       merged,
@@ -401,7 +408,6 @@ export const hybridStrategy: ExtractionStrategy = {
       p.confidence = finalConfidences[p.field] ?? p.confidence;
     }
 
-    const validation = validateExtraction(merged, input.schema.profile);
     const warnings = validation.errors.map((e) => `${e.field}: ${e.message}`);
     warnings.push(...fusion.findings.map((f) => f.message));
     await emit({ phase: 'validating', warningCount: warnings.length });

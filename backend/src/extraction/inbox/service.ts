@@ -1,3 +1,4 @@
+import { enqueueBatch } from '../learning/jobs';
 /**
  * Posteingang (Welle 4) — Verarbeitungs-Pipeline (fire-and-forget).
  *
@@ -16,8 +17,6 @@ import { join } from 'node:path';
 import { renderPdfToImages, countPdfPages, PdfRenderError, type PdfPageImage } from '../../services/extraction/pdf';
 import { buildPartPdf, isPdfSplitterAvailable, PdfSplitError } from '../../services/extraction/pdf-split';
 import { getAllProjects, getProject } from '../learning/projects';
-import { createBatchRun } from '../learning/batch-runs';
-import { runBatchExtraction, type BatchInputFile } from '../learning/batch-service';
 import { judgeBoundaries, rangesFromBoundaries } from './split';
 import { classifyPart, partFilename, type PartClassification } from './classify';
 import {
@@ -73,15 +72,7 @@ async function routePartsToProject(
     await Bun.write(tempPath, buffer);
     saved.push({ filename: part.filename, tempPath });
   }
-  const { runId, files } = await createBatchRun(projectId, saved.map((s) => s.filename));
-  const inputFiles: BatchInputFile[] = files.map((f, i) => ({
-    fileId: f.id,
-    filename: f.filename,
-    tempPath: saved[i]!.tempPath,
-  }));
-  void runBatchExtraction(projectId, runId, inputFiles, userId).catch((err) =>
-    console.error('[inbox] runBatchExtraction error:', err instanceof Error ? err.message : err),
-  );
+  const { runId } = await enqueueBatch(projectId, saved, userId);
   return runId;
 }
 
@@ -148,6 +139,9 @@ export async function processInboxUpload(
     await updateUpload(uploadId, { pageCount });
 
     // Seiten-Cap: nicht splitten, aber klassifizieren.
+    if (pageCount > MAX_PAGES && options.split !== false) {
+      throw new Error(`${pageCount} Seiten: Dokumentgrenzen können nur bis ${MAX_PAGES} Seiten geprüft werden. Bitte in kleinere Stapel aufteilen.`);
+    }
     if (pageCount > MAX_PAGES) {
       const firstPage = await renderPdfToImages(buffer, { dpi: 150, pageSelection: [1] });
       const preview = await renderPreview(buffer, 1);
@@ -171,6 +165,7 @@ export async function processInboxUpload(
     const splitEnabled = options.split !== false;
     const pages = await renderPdfToImages(buffer, { dpi: 150, ...(splitEnabled ? {} : { maxPages: 1 }) });
     const boundaries = splitEnabled && pages.length > 1 ? await judgeBoundaries(pages, userId) : [];
+    if (boundaries.some(b => b === null)) throw new Error('Dokumentgrenzen nicht sicher prüfbar. Keine automatische Zuordnung; bitte erneut verarbeiten.');
     let ranges = splitEnabled
       ? rangesFromBoundaries(pages.length, boundaries)
       : [{ from: 1, to: pageCount }];
@@ -181,8 +176,7 @@ export async function processInboxUpload(
     const partBuffers: Buffer[] = [];
     if (ranges.length > 1) {
       if (!(await isPdfSplitterAvailable())) {
-        note = 'pdfseparate/pdfunite fehlt — Dokument nicht getrennt (poppler-utils installieren)';
-        ranges = [{ from: 1, to: pages.length }];
+        throw new Error('Dokumenttrennung erforderlich, aber PDF-Splitter nicht verfügbar.');
       } else {
         const tmpPdf = `${tempPath}.split-src.pdf`;
         await Bun.write(tmpPdf, buffer);
@@ -193,9 +187,7 @@ export async function processInboxUpload(
         } catch (err) {
           const msg = err instanceof PdfSplitError ? err.message : String(err);
           console.warn(`[inbox] Teil-PDF-Bau fehlgeschlagen (${uploadId}):`, msg);
-          note = 'Dokument konnte nicht getrennt werden — als Ganzes übernommen';
-          ranges = [{ from: 1, to: pages.length }];
-          partBuffers.length = 0;
+          throw new Error('Dokument konnte nicht getrennt werden — keine automatische Weiterverarbeitung.');
         } finally {
           await rm(tmpPdf, { force: true }).catch(() => {});
         }

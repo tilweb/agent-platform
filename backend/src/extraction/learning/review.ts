@@ -11,6 +11,7 @@
  * ob die Konfidenz echte Fehler vorhersagt (ueber-/unterkonfident).
  */
 
+import { validateProjectResult } from './result-validation';
 import { compareField } from './eval';
 import { hasBlockingIssue } from './rules';
 import type { CalibrationState, ExtractionProject, ReviewStatus, RuleIssue } from './types';
@@ -50,6 +51,7 @@ export function computeReviewStatus(
   fieldConfidences: Record<string, number> | undefined,
   validations?: RuleIssue[],
 ): Extract<ReviewStatus, 'auto_ok' | 'needs_review'> {
+  if (validateProjectResult(project, data).length) return 'needs_review';
   if (hasBlockingIssue(validations)) return 'needs_review';
   const threshold = resolveReviewThreshold(project);
   for (const [fieldId, field] of Object.entries(project.fields)) {
@@ -57,6 +59,18 @@ export function computeReviewStatus(
     if (conf >= threshold) continue;
     const hasValue = !isEmptyValue(data?.[fieldId]);
     if (hasValue || field.required) return 'needs_review';
+  }
+  // Cell confidence is independent of the aggregate list score.
+  if (!project.segments) {
+    for (const [fieldId, field] of Object.entries(project.fields)) {
+      if (field.type !== 'list' || !Array.isArray(data[fieldId])) continue;
+      for (const [index, row] of (data[fieldId] as Record<string, unknown>[]).entries()) {
+        for (const itemId of Object.keys(field.item_fields ?? {})) {
+          const conf = fieldConfidences?.[`${fieldId}[${index}].${itemId}`] ?? 0;
+          if (!isEmptyValue(row[itemId]) && (!Number.isFinite(conf) || conf < threshold)) return 'needs_review';
+        }
+      }
+    }
   }
   // Segment-Profile (Welle 10): Konfidenzen sind namespaced
   // ("segId.feld" bzw. "segId[2].feld") — jede unter der Schwelle mit

@@ -97,20 +97,20 @@ describe('evaluateSumRule', () => {
     expect(evaluateSumRule({ ...SUM_RULE, tolerance: 0.5 }, data, project())).not.toBeNull();
   });
 
-  test('leere Liste oder leeres Zielfeld erzeugt keinen Befund', () => {
-    expect(evaluateSumRule(SUM_RULE, { gesamtbetrag: 30, positionen: [] }, project())).toBeNull();
-    expect(evaluateSumRule(SUM_RULE, { gesamtbetrag: null, positionen: [{ betrag: 10 }] }, project())).toBeNull();
-    expect(evaluateSumRule(SUM_RULE, { positionen: [{ betrag: 10 }] }, project())).toBeNull();
+  test('leere Liste oder leeres Zielfeld blockiert die Prüfung', () => {
+    expect(evaluateSumRule(SUM_RULE, { gesamtbetrag: 30, positionen: [] }, project())).toMatchObject({ status: 'not_evaluated', severity: 'error' });
+    expect(evaluateSumRule(SUM_RULE, { gesamtbetrag: null, positionen: [{ betrag: 10 }] }, project())).toMatchObject({ status: 'not_evaluated', severity: 'error' });
+    expect(evaluateSumRule(SUM_RULE, { positionen: [{ betrag: 10 }] }, project())).toMatchObject({ status: 'not_evaluated', severity: 'error' });
   });
 
-  test('nicht-numerische Positionen werden uebersprungen, nicht als 0 gewertet', () => {
+  test('nicht-numerische Positionen blockieren die Prüfung', () => {
     const data = { gesamtbetrag: 10, positionen: [{ betrag: 10 }, { betrag: 'k.A.' }] };
-    expect(evaluateSumRule(SUM_RULE, data, project())).toBeNull();
+    expect(evaluateSumRule(SUM_RULE, data, project())).toMatchObject({ status: 'not_evaluated', severity: 'error' });
   });
 
-  test('nur unlesbare Positionen erzeugen keinen Befund', () => {
+  test('nur unlesbare Positionen blockieren die Prüfung', () => {
     const data = { gesamtbetrag: 10, positionen: [{ betrag: 'n/a' }] };
-    expect(evaluateSumRule(SUM_RULE, data, project())).toBeNull();
+    expect(evaluateSumRule(SUM_RULE, data, project())).toMatchObject({ status: 'not_evaluated', severity: 'error' });
   });
 });
 
@@ -144,14 +144,15 @@ describe('evaluateLookupRule', () => {
     expect(issue!.severity).toBe('warn');
   });
 
-  test('leerer Wert erzeugt keinen Befund', () => {
-    expect(evaluateLookupRule(LOOKUP_RULE, { lieferant: '' }, allowed, project())).toBeNull();
-    expect(evaluateLookupRule(LOOKUP_RULE, { lieferant: null }, allowed, project())).toBeNull();
+  test('leerer Wert blockiert die Prüfung', () => {
+    expect(evaluateLookupRule(LOOKUP_RULE, { lieferant: '' }, allowed, project())).toMatchObject({ status: 'not_evaluated', severity: 'error' });
+    expect(evaluateLookupRule(LOOKUP_RULE, { lieferant: null }, allowed, project())).toMatchObject({ status: 'not_evaluated', severity: 'error' });
   });
 
-  test('nicht ladbare Quelle erzeugt warn statt error', () => {
+  test('nicht ladbare Pflichtquelle blockiert die Freigabe', () => {
     const issue = evaluateLookupRule(LOOKUP_RULE, { lieferant: 'Fremdfirma' }, null, project(), 'Tabelle weg');
-    expect(issue!.severity).toBe('warn');
+    expect(issue!.severity).toBe('error');
+    expect(issue!.status).toBe('not_evaluated');
     expect(issue!.message).toContain('Tabelle weg');
   });
 });
@@ -189,7 +190,7 @@ describe('evaluateRules', () => {
     const issues = await evaluateRules(p, data, async () => ({ error: 'DB weg' }));
     expect(issues).toHaveLength(2);
     expect(issues[0]!.type).toBe('sum');
-    expect(issues[1]!.severity).toBe('warn');
+    expect(issues[1]!.severity).toBe('error');
     expect(hasBlockingIssue(issues)).toBe(true);
   });
 });
@@ -286,9 +287,9 @@ describe('evaluateCountRule', () => {
     expect(evaluateCountRule(COUNT_RULE, data, projectWithAnzahl())).toBeNull();
   });
 
-  test('fehlende Soll-Anzahl → nicht pruefbar (kein Befund)', () => {
+  test('fehlende Soll-Anzahl → nicht pruefbar (blockierend)', () => {
     const data = { positionen: [{ betrag: 1 }] };
-    expect(evaluateCountRule(COUNT_RULE, data, projectWithAnzahl())).toBeNull();
+    expect(evaluateCountRule(COUNT_RULE, data, projectWithAnzahl())).toMatchObject({ status: 'not_evaluated', severity: 'error' });
   });
 
   test('deutsches Zahlformat als Soll wird geparst', () => {
