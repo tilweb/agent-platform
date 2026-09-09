@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-09-06
+
+### PM-App: Kriteriengestützter Analyse-Score — nachvollziehbar bis 100
+Der Analyse-Score war bislang eine holistische LLM-Zahl: 100 praktisch unerreichbar, der Weg dorthin
+undurchsichtig, und das Umsetzen zweier Vorschläge bewegte den Wert oft kaum. Neu bewertet das LLM
+**jedes hinterlegte Masterclass-Prüfkriterium einzeln** (erfüllt / teilweise / nicht + konkreter Hinweis),
+den **Score berechnet der Code** als gewichteter Erfüllungsanteil (erfüllt=1, teilweise=0,5, offen=0) → 100
+ist real erreichbar und der Weg dorthin als Checkliste sichtbar.
+- **Backend** (`analysis.ts`): Typen `KriteriumStatus`/`KriteriumBewertung`, Felder `kriterien`/`scored`
+  an `MasterclassAnalysis`. Helfer `flattenKriterien`/`formatKriterienNummeriert`/`buildMasterclassFromKriterien`.
+  `buildSystemPrompt` fordert JSON-Verdikte je Kriterium-Nr statt eines Zahlen-Scores; `buildUserPrompt`
+  listet die Kriterien nummeriert. `analyzeStep` **und** `analyzeSegment` fahren mit **Temperatur 0**
+  (reproduzierbar). Prosa (Stärken/Schwächen/Hinweise) bleibt als Coaching erhalten.
+- **Frontend** (`AnalysisResult.jsx`): Kriterien-Checkliste mit Status-Icon + Hinweis (was noch fehlt),
+  Score als „N von M Kriterien erfüllt". Ohne hinterlegte Kriterien: Hinweis statt irreführender 0.
+  `KnowledgePanel.mergeAnalyses` führt Kriterien über Teil-Segmente zusammen und rechnet den Merge-Score
+  passend zur Checkliste.
+- Beide Worktrees; tsc sauber, 44/44 PM-Tests je Worktree.
+
+### PM-App: Risiko-Schritt — Kriterien-Bugfixes (Folge des Score-Umbaus)
+Beim Testen des Schritts „Budget & Risiken" fielen drei Punkte auf:
+- **`[object Object]` in der Kriterien-Checkliste behoben:** Die Kategorie `pruefkriterien.risikoabdeckung`
+  ist ein verschachtelter Referenz-Block (`{ typische_risiken: [...] }`), kein Pass/Fail-Kriterium.
+  `flattenKriterien` stringifizierte ihn zu „[object Object]". Jetzt zählen nur echte String-Kriterien;
+  verschachtelte Objekt-Kategorien werden übersprungen.
+- **Gegenmaßnahme-Feld wieder im Formular:** Das Kriterium „Maßnahmen definiert" war unerreichbar, weil
+  das `mitigation`-Eingabefeld aus dem Risiken-Formular entfernt worden war (Datenmodell/Reports/RiskMatrix
+  hatten es aber weiter). Eingabefeld „Gegenmaßnahme" wieder eingeblendet → Kriterium ist wieder erfüllbar.
+- **Kriterium „Verantwortliche zugeordnet" entfernt:** Es gibt kein Feld dafür (der Analyse-Prompt sagt das
+  dem LLM auch) — als unerfüllbares Kriterium aus `pruefkriterien.risiken` gestrichen (der Verantwortliche
+  kann in der Gegenmaßnahme notiert werden, siehe Platzhalter).
+- Beide Worktrees; tsc sauber, 44/44 PM-Tests je Worktree, Lint grün.
+
 ## 2026-09-04
 
 ### PM-App: KI-Analyse nennt Felder bei ihrem Anzeigenamen (statt technischer Keys)

@@ -65,6 +65,53 @@ const styles = {
     color: theme.colors.textMuted,
     lineHeight: 1.5,
   },
+  scoreProgressText: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
+  },
+
+  // Kriterien-Checkliste (der nachvollziehbare Weg zu 100)
+  kriteriumItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.xs,
+  },
+  kriteriumBody: {
+    flex: 1,
+  },
+  kriteriumText: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text,
+    lineHeight: 1.5,
+  },
+  kriteriumStatusLabel: {
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    marginTop: '2px',
+  },
+  kriteriumHinweis: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textSecondary,
+    lineHeight: 1.5,
+    marginTop: theme.spacing.xs,
+  },
+
+  // Hinweis, wenn (noch) keine Prüfkriterien hinterlegt sind
+  noCriteriaNote: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    lineHeight: 1.5,
+  },
 
   // Section styles
   section: {
@@ -301,6 +348,55 @@ function CircleProgress({ score }) {
   );
 }
 
+// Darstellung je Kriteriums-Status (erfuellt / teilweise / nicht)
+function getKriteriumMeta(status) {
+  switch (status) {
+    case 'erfuellt':
+      return { label: 'Erfüllt', color: theme.colors.success, bg: theme.colors.successLight, Icon: CheckIcon };
+    case 'teilweise':
+      return { label: 'Teilweise', color: theme.colors.warning, bg: theme.colors.warningLight, Icon: WarningIcon };
+    default:
+      return { label: 'Offen', color: theme.colors.error, bg: theme.colors.errorLight, Icon: AlertIcon };
+  }
+}
+
+// Kriterien-Checkliste: macht den Weg zu 100 nachvollziehbar (jedes Kriterium
+// mit Status + konkretem Hinweis, was noch fehlt).
+function KriterienChecklist({ kriterien }) {
+  return (
+    <div style={styles.section}>
+      <div style={styles.sectionHeader}>
+        <span style={{ ...styles.sectionTitle, color: theme.colors.text }}>Prüfkriterien</span>
+        <span style={{
+          ...styles.sectionCount,
+          backgroundColor: theme.colors.surfaceHover,
+          color: theme.colors.textMuted,
+        }}>
+          {kriterien.length}
+        </span>
+      </div>
+      <ul style={styles.itemsList}>
+        {kriterien.map((k, index) => {
+          const meta = getKriteriumMeta(k.status);
+          const Icon = meta.Icon;
+          return (
+            <li key={index} style={{ ...styles.kriteriumItem, backgroundColor: meta.bg }}>
+              <span style={styles.itemIcon}><Icon /></span>
+              <div style={styles.kriteriumBody}>
+                <div style={styles.kriteriumText}>{k.text}</div>
+                <div style={{ ...styles.kriteriumStatusLabel, color: meta.color }}>{meta.label}</div>
+                {k.hinweis && k.status !== 'erfuellt' && (
+                  <div style={styles.kriteriumHinweis}>{k.hinweis}</div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 // Section component for strengths, weaknesses, hints
 function Section({ title, items, variant }) {
   const variantStyles = {
@@ -376,6 +472,11 @@ function AnalysisResult({ analysis }) {
 
   const { masterclassAnalysis, konsistenzAnalysis, timestamp, stale } = analysis;
   const score = masterclassAnalysis?.score || 0;
+  const kriterien = ensureArray(masterclassAnalysis?.kriterien);
+  // scored === false → keine Kriterien hinterlegt, Score nicht aussagekräftig.
+  const scored = masterclassAnalysis?.scored !== false && kriterien.length > 0;
+  const erfuelltCount = kriterien.filter((k) => k.status === 'erfuellt').length;
+  const teilweiseCount = kriterien.filter((k) => k.status === 'teilweise').length;
 
   return (
     <div style={styles.container}>
@@ -388,22 +489,36 @@ function AnalysisResult({ analysis }) {
         </div>
       )}
 
-      {/* Score Circle */}
-      <div style={styles.scoreSection}>
-        <div style={styles.scoreCircle}>
-          <CircleProgress score={score} />
-          <div style={{ textAlign: 'center', zIndex: 1 }}>
-            <div style={{ ...styles.scoreValue, color: getScoreColor(score) }}>
-              {score}
+      {/* Score: nur wenn Kriterien vorhanden — sonst wäre 0 irreführend */}
+      {scored ? (
+        <div style={styles.scoreSection}>
+          <div style={styles.scoreCircle}>
+            <CircleProgress score={score} />
+            <div style={{ textAlign: 'center', zIndex: 1 }}>
+              <div style={{ ...styles.scoreValue, color: getScoreColor(score) }}>
+                {score}
+              </div>
+              <div style={styles.scoreLabel}>/ 100</div>
             </div>
-            <div style={styles.scoreLabel}>/ 100</div>
+          </div>
+          <div style={styles.scoreMeta}>
+            <div style={styles.scoreTitle}>Masterclass-Bewertung</div>
+            <div style={styles.scoreProgressText}>
+              {erfuelltCount} von {kriterien.length} Kriterien erfüllt
+              {teilweiseCount > 0 && ` · ${teilweiseCount} teilweise`}
+            </div>
+            <div style={styles.scoreDescription}>{getScoreDescription(score)}</div>
           </div>
         </div>
-        <div style={styles.scoreMeta}>
-          <div style={styles.scoreTitle}>Masterclass-Bewertung</div>
-          <div style={styles.scoreDescription}>{getScoreDescription(score)}</div>
+      ) : (
+        <div style={styles.noCriteriaNote}>
+          Für diesen Bereich sind noch keine Prüfkriterien in der Masterclass hinterlegt.
+          Die folgende Rückmeldung ist eine allgemeine Einschätzung ohne Punktbewertung.
         </div>
-      </div>
+      )}
+
+      {/* Kriterien-Checkliste: der nachvollziehbare Weg zu 100 */}
+      {kriterien.length > 0 && <KriterienChecklist kriterien={kriterien} />}
 
       {/* Strengths */}
       <Section
