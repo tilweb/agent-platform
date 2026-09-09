@@ -103,7 +103,6 @@ pruefkriterien:
     - "Wahrscheinlichkeit bewertet"
     - "Auswirkung bewertet"
     - "Maßnahmen definiert"
-    - "Verantwortliche zugeordnet"
 
   risikoabdeckung:
     typische_risiken:

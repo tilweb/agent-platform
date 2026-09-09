@@ -288,11 +288,23 @@ function mergeAnalyses(results) {
     const s = ko(r).status || 'konsistent';
     return (statusRank[s] ?? 0) > (statusRank[worst] ?? 0) ? s : worst;
   }, 'konsistent');
+  // Kriterien über alle Teil-Segmente sammeln (Text mit Segment-Label prefixen),
+  // damit die Checkliste je Segment sichtbar bleibt.
+  const mergedKriterien = results.flatMap((r) => (mc(r).kriterien || []).map((k) => ({ ...k, text: pfx(r, k.text) })));
+  const scored = results.some((r) => mc(r).scored !== false && (mc(r).kriterien || []).length > 0);
+  // Score aus den zusammengeführten Kriterien neu berechnen, damit er exakt zur
+  // Checkliste passt (erfüllt=1, teilweise=0.5, offen=0). Fallback: Mittelwert.
+  const kWeight = { erfuellt: 1, teilweise: 0.5, nicht: 0 };
+  const mergedScore = mergedKriterien.length > 0
+    ? Math.round(100 * mergedKriterien.reduce((s, k) => s + (kWeight[k.status] ?? 0), 0) / mergedKriterien.length)
+    : Math.round(results.reduce((sum, r) => sum + (mc(r).score || 0), 0) / (results.length || 1));
   return {
     stepName: results.map((r) => r.label).filter(Boolean).join(' & '),
     timestamp: new Date().toISOString(),
     masterclassAnalysis: {
-      score: Math.round(results.reduce((sum, r) => sum + (mc(r).score || 0), 0) / (results.length || 1)),
+      score: mergedScore,
+      scored,
+      kriterien: mergedKriterien,
       staerken: results.flatMap((r) => (mc(r).staerken || []).map((s) => pfx(r, s))),
       schwaechen: results.flatMap((r) => (mc(r).schwaechen || []).map((s) => pfx(r, s))),
       hinweise: results.flatMap((r) => (mc(r).hinweise || []).map((h) => pfx(r, h))),

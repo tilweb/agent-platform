@@ -18,11 +18,27 @@ import type { UsageContext } from '../../services/usageTracking';
 
 // ============== Types ==============
 
+export type KriteriumStatus = 'erfuellt' | 'teilweise' | 'nicht';
+
+/** Einzelbewertung eines Masterclass-Prüfkriteriums (Basis des Scores). */
+export interface KriteriumBewertung {
+  text: string;             // Wortlaut des Prüfkriteriums
+  status: KriteriumStatus;  // erfüllt | teilweise | nicht erfüllt
+  hinweis?: string;         // konkreter, umsetzbarer Hinweis (bei teilweise/nicht)
+}
+
 export interface MasterclassAnalysis {
   staerken: string[];       // What was done well
   schwaechen: string[];     // Areas for improvement
   hinweise: string[];       // Concrete recommendations
-  score: number;            // 0-100 rating
+  score: number;            // 0-100 — im Code aus den Kriterien berechnet
+  /** Einzelbewertung je Prüfkriterium (Grundlage des Scores). */
+  kriterien?: KriteriumBewertung[];
+  /**
+   * true, wenn Prüfkriterien vorlagen und der Score daraus berechnet wurde.
+   * false = kein aussagekräftiger Score (z.B. Element ohne hinterlegte Kriterien).
+   */
+  scored?: boolean;
 }
 
 export interface ConsistencyFinding {
@@ -289,23 +305,87 @@ function formatPreviousStepsSummary(projektauftrag: Projektauftrag, stepsToCheck
   return summaries.join('\n');
 }
 
-/**
- * Format pruefkriterien for prompt
- */
-function formatPruefkriterien(pruefkriterien: Record<string, string[]>): string {
-  const lines: string[] = [];
+// ============== Kriteriengestützter Score ==============
 
-  for (const [category, criteria] of Object.entries(pruefkriterien)) {
-    lines.push(`### ${category}`);
-    // Use ensureArray to handle cases where criteria might be {} instead of []
-    const criteriaArray = ensureArray(criteria);
-    for (const criterion of criteriaArray) {
-      lines.push(`- ${criterion}`);
+/**
+ * Prüfkriterien (kategorisiert) → flache, geordnete Liste (stabile Reihenfolge).
+ * Nur echte String-Kriterien zählen: Manche Kategorien enthalten stattdessen
+ * verschachtelte Referenz-Blöcke (z.B. `risikoabdeckung.typische_risiken`) —
+ * die sind kein Pass/Fail-Kriterium und werden übersprungen (sonst „[object Object]").
+ */
+function flattenKriterien(pruefkriterien?: Record<string, unknown>): string[] {
+  if (!pruefkriterien || typeof pruefkriterien !== 'object') return [];
+  const out: string[] = [];
+  for (const category of Object.values(pruefkriterien)) {
+    if (!Array.isArray(category)) continue; // verschachtelte Objekt-Kategorien sind Referenz, keine Kriterien
+    for (const c of category) {
+      if (typeof c === 'string') {
+        const s = c.trim();
+        if (s) out.push(s);
+      }
     }
-    lines.push('');
+  }
+  return out;
+}
+
+/** Nummerierte Liste für den Prompt (1-basiert = Kriterium-Nr). */
+function formatKriterienNummeriert(kriterien: string[]): string {
+  return kriterien.map((k, i) => `${i + 1}. ${k}`).join('\n');
+}
+
+const KRITERIUM_WEIGHT: Record<KriteriumStatus, number> = { erfuellt: 1, teilweise: 0.5, nicht: 0 };
+
+function toStringArray(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((s) => typeof s === 'string' && s.trim()).map((s) => String(s)) : [];
+}
+
+/**
+ * Baut die MasterclassAnalysis mit im CODE berechnetem Score. Liegen Kriterien
+ * vor, ist der Score = gewichteter Anteil erfüllt (teilweise = ½), 100 erreichbar
+ * und der Weg dahin über die Einzelkriterien nachvollziehbar. Ohne Kriterien:
+ * kein aussagekräftiger Score (`scored: false`), nur die LLM-Prosa.
+ */
+function buildMasterclassFromKriterien(
+  kriterienTexte: string[],
+  rawKriterien: unknown,
+  prose: { staerken?: unknown; schwaechen?: unknown; hinweise?: unknown },
+): MasterclassAnalysis {
+  if (kriterienTexte.length === 0) {
+    return {
+      staerken: toStringArray(prose.staerken),
+      schwaechen: toStringArray(prose.schwaechen),
+      hinweise: toStringArray(prose.hinweise),
+      score: 0,
+      kriterien: [],
+      scored: false,
+    };
   }
 
-  return lines.join('\n');
+  const byNr = new Map<number, { status: KriteriumStatus; hinweis?: string }>();
+  for (const k of Array.isArray(rawKriterien) ? rawKriterien : []) {
+    const nr = Number((k as any)?.nr);
+    const st = (k as any)?.status;
+    const status: KriteriumStatus = st === 'erfuellt' || st === 'teilweise' || st === 'nicht' ? st : 'nicht';
+    const hinweis = typeof (k as any)?.hinweis === 'string' ? (k as any).hinweis.trim() : undefined;
+    if (Number.isInteger(nr) && nr >= 1) byNr.set(nr, { status, hinweis });
+  }
+
+  const kriterien: KriteriumBewertung[] = kriterienTexte.map((text, i) => {
+    const v = byNr.get(i + 1);
+    return { text, status: v?.status ?? 'nicht', hinweis: v?.hinweis || undefined };
+  });
+
+  const score = Math.round(
+    100 * kriterien.reduce((s, k) => s + KRITERIUM_WEIGHT[k.status], 0) / kriterien.length,
+  );
+
+  const staerken = toStringArray(prose.staerken).length
+    ? toStringArray(prose.staerken)
+    : kriterien.filter((k) => k.status === 'erfuellt').map((k) => k.text);
+  const schwaechen = kriterien.filter((k) => k.status === 'nicht').map((k) => k.text);
+  const hinweise = kriterien.filter((k) => k.status !== 'erfuellt' && k.hinweis).map((k) => k.hinweis!);
+
+  return { staerken, schwaechen, hinweise, score, kriterien, scored: true };
 }
 
 /**
@@ -385,11 +465,15 @@ export async function analyzeStep(
     operation: `analyze_step_${step}`,
   };
 
-  // Call LLM
-  const response = await llmService.chat(messages, undefined, usageContext);
+  // Call LLM — Temperatur 0 für reproduzierbare Kriterienurteile.
+  const response = await llmService.chat(messages, undefined, usageContext, { temperature: 0, maxTokens: 2000 });
 
-  // Parse response
-  const result = parseAnalysisResponse(response.content || '', step);
+  // Parse: Score wird im Code aus den Kriterien berechnet.
+  const result = parseAnalysisResponse(response.content || '', {
+    stepName: STEP_NAMES[step] ?? '',
+    kriterienTexte: flattenKriterien(knowledge.pruefkriterien),
+  });
+  result.step = step;
   // Stale-Erkennung: Hash der analysierten Daten mitgeben.
   result.dataHash = hashSegmentData(currentStepData);
 
@@ -555,6 +639,8 @@ export async function analyzeSegment(
   entity: any,
   triggeringUserId?: string,
 ): Promise<StepAnalysisResult> {
+  const knowledge = await getKnowledge(element, segment);
+  const kriterienTexte = flattenKriterien(knowledge?.pruefkriterien);
   const knowledgeMd = await generateAnalysisPrompt(element, segment);
   const contextData = extractSegmentData(element, segment, entity);
   const segmentLabel = ELEMENT_REGISTRY[element]?.segments.find((s) => s.key === segment)?.title ?? segment;
@@ -564,6 +650,9 @@ export async function analyzeSegment(
     `# Zu analysierender Bereich: ${segmentLabel} (${ELEMENT_REGISTRY[element]?.label ?? element})`,
     knowledgeMd ? `\n${knowledgeMd}` : '',
     `\n## Aktuelle Eingaben des Nutzers\n${formatStepData(0, contextData)}`,
+    kriterienTexte.length
+      ? `\n## Zu bewertende Prüfkriterien (bewerte JEDES einzeln über seine Nr):\n${formatKriterienNummeriert(kriterienTexte)}`
+      : `\n(Für diesen Bereich sind keine spezifischen Prüfkriterien hinterlegt — gib allgemeines Feedback als staerken/schwaechen/hinweise, "kriterien" leer.)`,
     `\nHinweis: Für diesen Bereich ist KEINE Cross-Step-Konsistenzprüfung gefordert — liefere "konsistenzAnalysis.status": "konsistent" mit leeren findings, es sei denn, es gibt einen inneren Widerspruch in den Eingaben.`,
   ].filter(Boolean).join('\n');
 
@@ -577,9 +666,8 @@ export async function analyzeSegment(
     operation: `analyze_${element}_${segment}`,
   };
 
-  const response = await llmService.chat(messages, undefined, usageContext);
-  const result = parseAnalysisResponse(response.content || '', 0);
-  result.stepName = segmentLabel;
+  const response = await llmService.chat(messages, undefined, usageContext, { temperature: 0, maxTokens: 2000 });
+  const result = parseAnalysisResponse(response.content || '', { stepName: segmentLabel, kriterienTexte });
   result.dataHash = hashSegmentData(contextData);
   return result;
 }
@@ -650,29 +738,25 @@ WICHTIG — Bezug auf die im Tool erfassbaren Felder (Abschnitt "Im Tool erfassb
 Antworte IMMER im folgenden JSON-Format (und NUR in diesem Format, ohne zusätzlichen Text):
 
 {
-  "masterclassAnalysis": {
-    "staerken": ["Stärke 1", "Stärke 2"],
-    "schwaechen": ["Schwäche 1", "Schwäche 2"],
-    "hinweise": ["Konkreter Hinweis 1", "Konkreter Hinweis 2"],
-    "score": 75
-  },
+  "kriterien": [
+    { "nr": 1, "status": "erfuellt", "hinweis": "" },
+    { "nr": 2, "status": "teilweise", "hinweis": "Konkreter, über die Tool-Felder umsetzbarer Verbesserungshinweis" },
+    { "nr": 3, "status": "nicht", "hinweis": "..." }
+  ],
+  "staerken": ["Kurze Würdigung dessen, was gut ist"],
   "konsistenzAnalysis": {
     "status": "konsistent",
     "findings": [
-      {
-        "bereich": "Ziele vs Aufgaben",
-        "beschreibung": "Konkrete Beobachtung",
-        "empfehlung": "Was getan werden sollte"
-      }
+      { "bereich": "Ziele vs Aufgaben", "beschreibung": "Konkrete Beobachtung", "empfehlung": "Was getan werden sollte" }
     ]
   }
 }
 
-Der Score (0-100) sollte widerspiegeln:
-- 0-40: Grundlegende Probleme, wesentliche Nacharbeit nötig
-- 41-60: Ausbaufähig, mehrere Verbesserungen empfohlen
-- 61-80: Gut, kleinere Optimierungen möglich
-- 81-100: Sehr gut bis exzellent
+Regeln für die Bewertung:
+- Stehen unten NUMMERIERTE Prüfkriterien: Bewerte JEDES Kriterium per seiner "nr" mit status "erfuellt" | "teilweise" | "nicht". Bei "teilweise"/"nicht" gib einen konkreten, umsetzbaren "hinweis" (bezogen auf die Tool-Felder); bei "erfuellt" lass "hinweis" leer. "staerken" darf kurze Würdigungen enthalten; "schwaechen"/"hinweise" fülle NICHT selbst — die werden aus den Kriterien abgeleitet.
+- Stehen KEINE Prüfkriterien: lass "kriterien" leer ([]) und liefere "staerken", "schwaechen" und "hinweise" als Prosa.
+- VERGIB KEINEN Zahlen-Score — der Reifegrad wird im Tool aus den Kriterien berechnet.
+- Sei bei "erfuellt" nicht kleinlich: Ist ein Kriterium inhaltlich sinnvoll abgedeckt, ist es "erfuellt" (100 % ist erreichbar). "teilweise" nur bei echtem, benennbarem Rest.
 
 Der Konsistenz-Status:
 - "konsistent": Keine wesentlichen Widersprüche
@@ -707,9 +791,11 @@ function buildUserPrompt(
     sections.push('');
   }
 
-  if (knowledge.pruefkriterien) {
-    sections.push('### Masterclass Prüfkriterien (gegen diese prüfen):');
-    sections.push(formatPruefkriterien(knowledge.pruefkriterien));
+  const kriterienTexte = flattenKriterien(knowledge.pruefkriterien);
+  if (kriterienTexte.length > 0) {
+    sections.push('### Zu bewertende Prüfkriterien (bewerte JEDES einzeln über seine Nr):');
+    sections.push(formatKriterienNummeriert(kriterienTexte));
+    sections.push('');
   }
 
   if (knowledge.typische_fehler) {
@@ -729,48 +815,38 @@ function buildUserPrompt(
 /**
  * Parse LLM response into StepAnalysisResult
  */
-function parseAnalysisResponse(content: string, step: number): StepAnalysisResult {
-  const stepName = STEP_NAMES[step] ?? '';
+function parseAnalysisResponse(
+  content: string,
+  ctx: { stepName: string; kriterienTexte: string[] },
+): StepAnalysisResult {
+  const { stepName, kriterienTexte } = ctx;
+  const fail = (msg: string): StepAnalysisResult => ({
+    step: 0,
+    stepName,
+    timestamp: new Date().toISOString(),
+    masterclassAnalysis: { staerken: [], schwaechen: [msg], hinweise: [], score: 0, kriterien: [], scored: false },
+    konsistenzAnalysis: { status: 'warnung', findings: [] },
+  });
 
-  // Try to extract JSON from response
   const jsonMatch = content.match(/\{[\s\S]*\}/);
-
-  if (!jsonMatch) {
-    // Return default/error result if parsing fails
-    return {
-      step,
-      stepName,
-      timestamp: new Date().toISOString(),
-      masterclassAnalysis: {
-        staerken: [],
-        schwaechen: ['Analyse konnte nicht durchgeführt werden'],
-        hinweise: ['Bitte versuchen Sie es erneut'],
-        score: 0,
-      },
-      konsistenzAnalysis: {
-        status: 'warnung',
-        findings: [],
-      },
-    };
-  }
+  if (!jsonMatch) return fail('Analyse konnte nicht durchgeführt werden');
 
   try {
     const parsed = JSON.parse(jsonMatch[0]);
-
-    // Validate and normalize the response
-    const masterclass = parsed.masterclassAnalysis || parsed.masterclass_analysis || {};
     const konsistenz = parsed.konsistenzAnalysis || parsed.konsistenz_analysis || {};
 
+    // Score wird im CODE aus den Kriterien berechnet (nicht vom LLM).
+    const masterclassAnalysis = buildMasterclassFromKriterien(
+      kriterienTexte,
+      parsed.kriterien,
+      { staerken: parsed.staerken, schwaechen: parsed.schwaechen, hinweise: parsed.hinweise },
+    );
+
     return {
-      step,
+      step: 0,
       stepName,
       timestamp: new Date().toISOString(),
-      masterclassAnalysis: {
-        staerken: Array.isArray(masterclass.staerken) ? masterclass.staerken : [],
-        schwaechen: Array.isArray(masterclass.schwaechen) ? masterclass.schwaechen : [],
-        hinweise: Array.isArray(masterclass.hinweise) ? masterclass.hinweise : [],
-        score: typeof masterclass.score === 'number' ? Math.min(100, Math.max(0, masterclass.score)) : 50,
-      },
+      masterclassAnalysis,
       konsistenzAnalysis: {
         status: ['konsistent', 'warnung', 'inkonsistent'].includes(konsistenz.status)
           ? konsistenz.status
@@ -786,22 +862,7 @@ function parseAnalysisResponse(content: string, step: number): StepAnalysisResul
     };
   } catch (error) {
     console.error('Failed to parse analysis response:', error);
-
-    return {
-      step,
-      stepName,
-      timestamp: new Date().toISOString(),
-      masterclassAnalysis: {
-        staerken: [],
-        schwaechen: ['Analyse-Antwort konnte nicht verarbeitet werden'],
-        hinweise: [],
-        score: 0,
-      },
-      konsistenzAnalysis: {
-        status: 'warnung',
-        findings: [],
-      },
-    };
+    return fail('Analyse-Antwort konnte nicht verarbeitet werden');
   }
 }
 

@@ -155,6 +155,7 @@ function Risiken({
       description: '',
       probability: '',
       impact: '',
+      mitigation: '',
     };
     onChange({ risks: [...risks, newRisk] });
   };
@@ -276,6 +277,15 @@ function Risiken({
                     value={risk.description || ''}
                     onChange={(e) => updateRisk(index, 'description', e.target.value)}
                     placeholder="Beschreiben Sie das Risiko..."
+                    style={styles.textarea}
+                  />
+                </div>
+                <div style={{ ...styles.formGroup, ...styles.itemGridFull }}>
+                  <label style={styles.label}>Gegenmaßnahme</label>
+                  <textarea
+                    value={risk.mitigation || ''}
+                    onChange={(e) => updateRisk(index, 'mitigation', e.target.value)}
+                    placeholder="Welche Maßnahme senkt Wahrscheinlichkeit oder Auswirkung? Wer verantwortet sie?"
                     style={styles.textarea}
                   />
                 </div>
