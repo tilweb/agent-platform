@@ -8,14 +8,17 @@
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { wzbarMatches } from '../../db/schema/wzbar';
-import type { CatalogEntry, EmbeddingsIndex, MatchRecord, MultiMatchResult, RetrievalHit } from './types';
+import type { AliasIndex, AliasMeta, CatalogEntry, EmbeddingsIndex, MatchRecord, MultiMatchResult, RetrievalHit } from './types';
 
 const ASSETS_PATH = './src/apps/wzbar-matcher/assets';
 const CATALOG_PATH = `${ASSETS_PATH}/catalog.json`;
 const EMBEDDINGS_PATH = `${ASSETS_PATH}/embeddings.json`;
+export const ALIAS_META_PATH = `${ASSETS_PATH}/alias-embeddings.meta.json`;
+export const ALIAS_BIN_PATH = `${ASSETS_PATH}/alias-embeddings.bin`;
 
 let catalogCache: CatalogEntry[] | null = null;
 let embeddingsCache: EmbeddingsIndex | null = null;
+let aliasCache: AliasIndex | null | undefined; // undefined = noch nicht geladen, null = nicht vorhanden
 
 export async function loadCatalog(): Promise<CatalogEntry[]> {
   if (catalogCache) return catalogCache;
@@ -37,6 +40,34 @@ export async function loadEmbeddings(): Promise<EmbeddingsIndex> {
   const content = await file.text();
   embeddingsCache = JSON.parse(content) as EmbeddingsIndex;
   return embeddingsCache;
+}
+
+/**
+ * Alias-Index (M4) — optional: fehlt die Datei, laeuft das Retrieval ohne
+ * Aliase weiter. Vektoren liegen als Float32-Binaerdatei neben der Meta-JSON.
+ */
+export async function loadAliasIndex(): Promise<AliasIndex | null> {
+  if (aliasCache !== undefined) return aliasCache;
+  const metaFile = Bun.file(ALIAS_META_PATH);
+  const binFile = Bun.file(ALIAS_BIN_PATH);
+  if (!(await metaFile.exists()) || !(await binFile.exists())) {
+    aliasCache = null;
+    return aliasCache;
+  }
+  try {
+    const meta = JSON.parse(await metaFile.text()) as AliasMeta;
+    const vectors = new Float32Array(await binFile.arrayBuffer());
+    if (vectors.length !== meta.entries.length * meta.dimensions) {
+      console.error(`[wzbar-matcher] Alias-Index inkonsistent (${vectors.length} Werte, erwartet ${meta.entries.length * meta.dimensions}) — ignoriere Aliase.`);
+      aliasCache = null;
+      return aliasCache;
+    }
+    aliasCache = { ...meta, vectors };
+  } catch (error) {
+    console.error('[wzbar-matcher] Alias-Index konnte nicht geladen werden — ignoriere Aliase:', error);
+    aliasCache = null;
+  }
+  return aliasCache;
 }
 
 export async function isIndexReady(): Promise<boolean> {
@@ -121,4 +152,5 @@ export async function listMatches(limit = 50): Promise<MatchRecord[]> {
 export function invalidateCaches(): void {
   catalogCache = null;
   embeddingsCache = null;
+  aliasCache = undefined;
 }

@@ -6,13 +6,14 @@
  *   3. aggregierter MultiMatchResult, persist
  */
 
-import { generateMatchId, getMatch, listMatches, loadCatalog, loadEmbeddings, saveMatch } from './storage';
-import { topK } from './retrieval';
+import { generateMatchId, getMatch, listMatches, loadAliasIndex, loadCatalog, loadEmbeddings, saveMatch } from './storage';
+import { topKWithAliases } from './retrieval';
 import { buildLiftMap } from './level-lift';
 import { classify } from './classifier';
 import { splitActivities } from './splitter';
 import type {
   ActivityMatch,
+  AliasIndex,
   CatalogEntry,
   EmbeddingsIndex,
   MatchRecord,
@@ -30,14 +31,21 @@ const TOP_K = 20;
 export interface MatchDeps {
   byCode: Map<string, CatalogEntry>;
   index: EmbeddingsIndex;
+  aliases: AliasIndex | null;
   liftTo: Map<string, string>;
 }
 
 export async function buildMatchDeps(): Promise<MatchDeps> {
-  const [catalog, index] = await Promise.all([loadCatalog(), loadEmbeddings()]);
+  const [catalog, index, aliases] = await Promise.all([loadCatalog(), loadEmbeddings(), loadAliasIndex()]);
   const byCode = new Map<string, CatalogEntry>();
   for (const entry of catalog) byCode.set(entry.code, entry);
-  return { byCode, index, liftTo: buildLiftMap(catalog) };
+  // Aliase nur verwenden, wenn sie mit demselben Modell gebaut wurden wie der
+  // Katalog-Index — sonst sind die Similarities nicht vergleichbar.
+  const usableAliases = aliases && aliases.model === index.model ? aliases : null;
+  if (aliases && !usableAliases) {
+    console.error(`[wzbar-matcher] Alias-Index-Modell (${aliases.model}) passt nicht zum Embedding-Index (${index.model}) — ignoriere Aliase.`);
+  }
+  return { byCode, index, aliases: usableAliases, liftTo: buildLiftMap(catalog) };
 }
 
 /**
@@ -63,7 +71,7 @@ export async function retrieveCandidates(
     ...searchVariants.filter(v => v.trim() && v.trim().toLowerCase() !== activityKey),
   ];
   const vectors = await Promise.all(queries.map(q => llmService.embed(q)));
-  const hitsPerQuery = vectors.map(vec => topK(vec, deps.index.entries, TOP_K));
+  const hitsPerQuery = vectors.map(vec => topKWithAliases(vec, deps.index.entries, deps.aliases, TOP_K));
   const hits = hitsPerQuery.length === 1 ? hitsPerQuery[0]! : aggregateRetrievalHits(hitsPerQuery);
 
   const candidates: CatalogEntry[] = [];

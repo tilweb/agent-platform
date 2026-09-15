@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-16
+
+### WZ-Branchen-Matcher: Alias-Anreicherung des Retrievals (IHK-Feedback M4)
+Löst die Fehlerklasse „produktspezifische Umschreibung findet ihren Sammel-Code nicht":
+`alias-builder.ts` embeddet die enrich-Hälfte der amtlichen Destatis-Stichwörter (17.934
+Texte) als separate Vektoren je Code (Float32-Bin 73,5 MB + Meta-JSON; keine Kappung —
+die Sammel-Codes mit hunderten Stichwörtern sind genau die Problemfälle).
+`topKWithAliases` nimmt pro Code die beste Similarity über Katalogtext + Aliase; ohne
+Alias-Dateien oder bei Modell-Mismatch läuft das Retrieval unverändert weiter.
+Split-Integrität per Unit-Test: nur die enrich-Hälfte darf in die Embeddings, die
+eval-Hälfte bleibt dem Harness vorbehalten. Messung (n=158, seed 42): Recall@20
+78,5→96,8 %, Primary-Hit 55,7→68,4 %, Exakt-Quote 43,7→60,1 %, Top-4-Hit 71,5→90,5 %.
+Gegenüber der Ur-Baseline vor M1: Recall +26,5 pp, Top-4 +26,6 pp. Engpass ist jetzt die
+LLM-Wahl bei Produkt-Nuancen (Kandidat vorhanden, falsche Wahl) — via Harness messbar.
+
 ## 2026-09-15
 
 ### WZ-Branchen-Matcher: Classifier-Prompt-Fixes (IHK-Feedback, nach M3)

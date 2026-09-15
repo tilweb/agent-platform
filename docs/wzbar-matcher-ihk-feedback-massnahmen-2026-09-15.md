@@ -38,7 +38,7 @@ Beide Fälle wurden lokal mit der echten Pipeline (Splitter → Embedding-Retrie
 | M2a | Eval-Harness + Seed-Golden-Set (Recall@20 + Precision@1) | Messbarkeit | ~1 T | **umgesetzt (2026-09-15)** |
 | M2b | Produktions-Replay (Export `wzbar.matches` der 3 IHK-Instanzen, unüberwachte Metriken, Replay-Diff) | Messbarkeit auf Echtdaten | ~1 T | offen |
 | M3 | Query-Expansion im Splitter (Normalisierungs-Variante mit-embedden, Union per Max-Similarity) | Fall 2 (konkret) | ~1 T | **umgesetzt (2026-09-15)** |
-| M4 | Alias-Anreicherung des Katalogs (Destatis-Stichwörter `enrich`-Hälfte + kuratierte IHK-Begriffe, separate Vektoren pro Code) | Fall 2 (Fehlerklasse) | ~2–3 T | offen |
+| M4 | Alias-Anreicherung des Katalogs (Destatis-Stichwörter `enrich`-Hälfte, separate Vektoren pro Code) | Fall 2 (Fehlerklasse) | ~2–3 T | **umgesetzt (2026-09-16)** |
 
 Reihenfolge: M1 → M2 → M3 → M4. LLM-berührende Änderungen (Prompt-Korrekturen, M3, M4) erst mit M2-Messung verifizieren.
 
@@ -128,6 +128,27 @@ Bewusst NICHT angefasst: der Classifier-System-Prompt (beschreibt Hierarchie nur
 
 - Unit-Tests `level-lift.test.ts` gegen den echten Katalog: `4311→43110` wird geliftet, `10510` (Einzelkind mit anderem Text) NICHT, `43110` (zwei Kinder) NICHT.
 - Pipeline-Test „Abbruch": Kandidatenliste enthält nach Lift nur noch `43110` (nicht mehr `4311`); LLM-Primary = `43110`.
+
+### M4 — Umsetzung (2026-09-16)
+
+**Design**: `alias-builder.ts` embeddet die **enrich-Hälfte** der Destatis-Stichwörter (17.934 Texte; der `splitOf`-Hash aus `eval/destatis.ts` ist die einzige Quelle der Wahrheit für den Split — die eval-Hälfte bleibt dem Harness vorbehalten, per Unit-Test abgesichert). Jeder Alias wird als **separater Vektor** gespeichert, nicht in den Katalogtext gemischt (Mischtexte verwässern den E5-Fingerabdruck). `topKWithAliases` nimmt pro Code die beste Similarity über Katalogtext + alle Alias-Vektoren; ohne Alias-Dateien läuft das Retrieval unverändert (Feature ist optional/abschaltbar). Modell-Guard: Aliase werden ignoriert, wenn sie nicht mit demselben Embedding-Modell gebaut wurden wie der Katalog-Index.
+
+**Format-Entscheidung**: Float32-Binärdatei (`assets/alias-embeddings.bin`, 73,5 MB) + Meta-JSON (1,4 MB) statt JSON (~380 MB). Keine Kappung pro Code — die Sammel-Codes mit hunderten Produkt-Stichwörtern (46149 Handelsvermittlung sonstige Waren: 583) sind genau die, an denen das Retrieval scheiterte. Bewusster Trade-off: +73,5 MB im Repo/Image (unter GitHubs 100-MB-Dateilimit); bei Bedarf später Int8-Quantisierung (¼ Größe) oder Kappung. Build-Dauer: ~28 min bei ~10,5 Embeddings/s (API-bound); Rebuild dank Text+Modell-Reuse inkrementell. Retrieval-Latenz unkritisch: der Scan über ~20k statt 2,2k Vektoren kostet einstellige Millisekunden, die Embed-API dominiert.
+
+**Messung (n=158, seed 42, je ein Lauf)**:
+
+| Metrik (gesamt) | Ur-Baseline | vor M4 (M3 + Prompt-Fixes) | M4 |
+|---|---|---|---|
+| Recall@20 | 70,3 % | 78,5 % | **96,8 %** |
+| Primary-Hit | 54,4 % | 55,7 % | **68,4 %** |
+| davon exakt | 35,4 % | 43,7 % | **60,1 %** |
+| Top-4-Hit | 63,9 % | 71,5 % | **90,5 %** |
+
+Nur noch 5 Retrieval-Misses im gesamten Set (z. B. „Babymassage"), „zu flach" 0×. Der Engpass liegt jetzt eindeutig in Stufe 3: Von 46 verbleibenden Komplett-Fehlgriffen haben ~41 den richtigen Code in den Kandidaten — das LLM greift bei Produkt-Nuancen daneben. Hebel dafür wären ein stärkeres gepinntes Apps-Modell oder mehr Kandidaten-Kontext, beides via Harness messbar.
+
+Kuratierte Fälle in diesem Lauf: 7/8 Primary (Top-4 8/8) — „Baulicher Brandschutz" kippte nichtdeterministisch auf `712009 Brandschutzberatung`, das über die Aliase neu in die Kandidaten kommt; über mehrere Läufe ist der Fall wechselhaft, der Soll-Code steht stets in den Top-4.
+
+**Achtung fürs Deployment**: Die Alias-Dateien sind Build-Time-Assets wie `embeddings.json` — sie shippen mit dem Image. Nach einem Katalog-Rebuild mit anderem Embedding-Modell muss auch der Alias-Builder neu laufen (sonst greift der Modell-Guard und die Aliase sind wirkungslos).
 
 ## Offene Punkte
 

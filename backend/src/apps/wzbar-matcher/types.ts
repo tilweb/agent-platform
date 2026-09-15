@@ -41,6 +41,24 @@ export interface MatchResult {
   alternatives: MatchCandidate[];
 }
 
+/**
+ * Alias-Index (M4): zusaetzliche Embedding-Vektoren pro Code aus der
+ * enrich-Haelfte der Destatis-Stichwoerter. Metadaten als JSON, Vektoren als
+ * Float32-Binaerdatei (Reihenfolge = entries-Reihenfolge).
+ */
+export interface AliasMeta {
+  model: string;
+  dimensions: number;
+  builtAt: string;
+  sourceFile: string;
+  entries: Array<{ text: string; codes: string[] }>;
+}
+
+export interface AliasIndex extends AliasMeta {
+  /** Alle Vektoren konkateniert; Vektor i = vectors.subarray(i*dim, (i+1)*dim). */
+  vectors: Float32Array;
+}
+
 export interface ActivityMatch {
   activity: string;
   /** Fachsprachliche Suchvarianten aus der Query-Expansion (M3), falls genutzt. */
