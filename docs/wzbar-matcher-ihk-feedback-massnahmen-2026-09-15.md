@@ -37,7 +37,7 @@ Beide Fälle wurden lokal mit der echten Pipeline (Splitter → Embedding-Retrie
 | M1 | Ebenen-Normalisierung (deterministischer Lift) | Fall 1 | ~0,5 T | **umgesetzt (2026-09-15)** |
 | M2a | Eval-Harness + Seed-Golden-Set (Recall@20 + Precision@1) | Messbarkeit | ~1 T | **umgesetzt (2026-09-15)** |
 | M2b | Produktions-Replay (Export `wzbar.matches` der 3 IHK-Instanzen, unüberwachte Metriken, Replay-Diff) | Messbarkeit auf Echtdaten | ~1 T | offen |
-| M3 | Query-Expansion im Splitter (Normalisierungs-Variante mit-embedden, Union per Max-Similarity) | Fall 2 (konkret) | ~1 T | offen |
+| M3 | Query-Expansion im Splitter (Normalisierungs-Variante mit-embedden, Union per Max-Similarity) | Fall 2 (konkret) | ~1 T | **umgesetzt (2026-09-15)** |
 | M4 | Alias-Anreicherung des Katalogs (Destatis-Stichwörter `enrich`-Hälfte + kuratierte IHK-Begriffe, separate Vektoren pro Code) | Fall 2 (Fehlerklasse) | ~2–3 T | offen |
 
 Reihenfolge: M1 → M2 → M3 → M4. LLM-berührende Änderungen (Prompt-Korrekturen, M3, M4) erst mit M2-Messung verifizieren.
@@ -65,6 +65,25 @@ Da von den IHKen kurzfristig keine Soll-Codes zu bekommen sind (Nutzung von drei
 Diagnose (gesamt): exact 56, deeper 30, **shallower 2** (M1 wirkt — „zu flach" ist praktisch eliminiert), same-class 8, wrong 62. Von den 62 wrong entfallen 47 auf Retrieval-Misses (richtiger Code nicht in Top-20) — **die Fehlermasse liegt in Stufe 2**, nur ~9 %-Punkte sind LLM-Fehlgriffe trotz korrektem Kandidaten. Das bestätigt die M3/M4-Priorisierung.
 
 Einordnung: Die Destatis-Stichwörter sind produktspezifische Kurzformen („Rheumadecken, Herstellung", „X, Handelsvermittlung") — als Paraphrase-Stresstest härter als typische IHK-Freitexte. Die Baseline ist eine konservative Untergrenze, kein Produktions-Precision-Wert.
+
+### M3 — Umsetzung (2026-09-15)
+
+**Design**: Die Query-Expansion reitet auf dem Splitter-Call mit — das `split_activities`-Schema liefert pro Tätigkeit zusätzlich 0–2 `searchVariants` in amtlicher Fachsprache („persönlich haftender Gesellschafter" → „Komplementärgesellschaft"). **Kein zusätzlicher LLM-Call, keine zusätzliche Latenz** (nur +1–2 parallele Embedding-Calls, ~150 ms). `retrieveCandidates` embeddet Original + Varianten, vereinigt die Trefferlisten per Max-Similarity je Code (Reuse von `aggregateRetrievalHits`) und kappt wieder auf Top-20; danach greift der M1-Lift wie gehabt. `ActivityMatch.queryVariants` macht die Varianten im Audit-Record nachvollziehbar. `splitActivities` liefert jetzt `SplitActivity[]` (`{text, searchVariants}`) statt `string[]`.
+
+**Befund aus der ersten Messung**: Expansion v1 verschlechterte das Destatis-Set (Primary-Hit 53,3 → 48,7 %), obwohl die kuratierten Fälle profitierten. Ursache (per Einzelfall-Analyse): Der Splitter zerriss die Handelsform-Muster der Stichwörter — „Gemüsesalate, Handelsvermittlung" wurde in die zwei unklassifizierbaren Tätigkeiten „Gemüsesalate" + „Handelsvermittlung" gesplittet; außerdem wechselten Varianten teils die Handelsform („Einzelhandel" → „Großhandel"). Beide Fehler treffen auch echte Handelsregister-Texte. Fix: zwei zusätzliche Prompt-Regeln (Produkt + Handels-/Tätigkeitsform ist EINE Tätigkeit; Varianten behalten Handelsform und Produkt bei).
+
+**Messung (gleiches Setup wie Baseline: n=158, seed 42, Qwen3 30B; je ein Lauf, LLM-Nichtdeterminismus ±1–2 pp)**:
+
+| Metrik (gesamt) | Baseline (ohne Expansion) | M3 final |
+|---|---|---|
+| Recall@20 | 70,3 % | **77,8 %** (+7,5 pp) |
+| Primary-Hit (exact+deeper) | 54,4 % | **56,3 %** (+1,9 pp) |
+| davon exakt | 35,4 % | 38,0 % |
+| Top-4-Hit | 63,9 % | **72,8 %** (+8,9 pp) |
+
+Kuratierte Fälle: Recall 8/8 (vorher 7/8 — **der IHK-Komplementär-Fall ist gelöst**, Splitter liefert exakt „Komplementärgesellschaft" als Variante), Primary-Hit 87,5 %, Top-4 100 %. Einziger verbleibender kuratierter Primary-Fehlgriff: „Baulicher Brandschutz" → `439991 Brandsanierung` statt `43230` (der richtige Code steht in den Alternativen).
+
+Interpretation: Das Retrieval verbessert sich deutlich (+7,5 pp Recall, +8,9 pp Top-4); der Primary-Hit steigt moderat, weil nun häufiger das LLM der Engpass ist (richtiger Kandidat vorhanden, falsche Wahl). Das verschiebt die Priorität für die nächste Iteration Richtung Classifier-Prompt (Few-Shot, Ebenen-Beschreibung) — jetzt via Harness messbar. Für die Produkt-Kurzformen („Rheumadecken") bleibt M4 (Alias-Anreicherung) der richtige Hebel.
 
 ### M1 — Umsetzung (dieses Dokument begleitender Commit)
 

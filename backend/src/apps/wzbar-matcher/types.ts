@@ -43,6 +43,8 @@ export interface MatchResult {
 
 export interface ActivityMatch {
   activity: string;
+  /** Fachsprachliche Suchvarianten aus der Query-Expansion (M3), falls genutzt. */
+  queryVariants?: string[];
   result: MatchResult;
   retrievalTopK: RetrievalHit[];
 }

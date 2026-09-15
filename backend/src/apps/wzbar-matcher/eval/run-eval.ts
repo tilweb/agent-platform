@@ -9,11 +9,15 @@
  *
  * Flags: --mode retrieval|full (default retrieval), --sample N (default 150),
  *        --seed N (default 42), --only curated|destatis|all (default all),
- *        --concurrency N (default 4, nur full), --out <pfad.json>
+ *        --concurrency N (default 4), --out <pfad.json>,
+ *        --no-expand (Query-Expansion/Splitter ueberspringen — Vergleich zur
+ *        Vor-M3-Baseline; mit Expansion kostet auch der Retrieval-Modus einen
+ *        LLM-Call pro Fall)
  */
 
 import { parse as parseYaml } from 'yaml';
 import { buildMatchDeps, matchActivity, retrieveCandidates } from '../service';
+import { splitActivities } from '../splitter';
 import { aggregate, isHit, judgeCode, pool, recallHit } from './harness';
 import type { Aggregate, CaseResult, EvalCase, EvalSource } from './harness';
 import { parseStichwoerter, sampleEvalCases } from './destatis';
@@ -29,6 +33,7 @@ const seed = Number(flag('seed', '42'));
 const only = flag('only', 'all') as EvalSource | 'all';
 const concurrency = Number(flag('concurrency', '4'));
 const outPath = flag('out', '');
+const expand = !process.argv.includes('--no-expand');
 
 const deps = await buildMatchDeps();
 
@@ -55,18 +60,36 @@ if (only !== 'curated') {
 const valid = cases.filter(c => c.expected.every(e => deps.byCode.has(e)));
 const dropped = cases.length - valid.length;
 if (dropped > 0) console.log(`WARNUNG: ${dropped} Faelle mit katalogfremden Codes uebersprungen`);
-console.log(`Eval-Faelle: ${valid.length} (${valid.filter(c => c.source === 'curated').length} curated, ${valid.filter(c => c.source === 'destatis').length} destatis), Modus: ${mode}\n`);
+console.log(`Eval-Faelle: ${valid.length} (${valid.filter(c => c.source === 'curated').length} curated, ${valid.filter(c => c.source === 'destatis').length} destatis), Modus: ${mode}, Expansion: ${expand ? 'an' : 'aus'}\n`);
 
 // --- Ausfuehren -------------------------------------------------------------
 
 const started = Date.now();
-const results: CaseResult[] = await pool(valid, mode === 'full' ? concurrency : 8, async (c, i) => {
+let expandedCount = 0;
+let multiSplitCount = 0;
+
+const results: CaseResult[] = await pool(valid, mode === 'full' || expand ? concurrency : 8, async (c, i) => {
   if ((i + 1) % 25 === 0) console.log(`  ... ${i + 1}/${valid.length}`);
+
+  // Produktionsidentischer Pfad: Splitter liefert Text + Suchvarianten.
+  // Eval-Faelle sind single-activity; bei Mehrfach-Splits zaehlt die erste.
+  let text = c.text;
+  let variants: string[] = [];
+  if (expand) {
+    const acts = await splitActivities(c.text);
+    if (acts.length > 0) {
+      text = acts[0]!.text;
+      variants = acts[0]!.searchVariants;
+      if (variants.length > 0) expandedCount++;
+      if (acts.length > 1) multiSplitCount++;
+    }
+  }
+
   if (mode === 'retrieval') {
-    const { candidates } = await retrieveCandidates(c.text, deps);
+    const { candidates } = await retrieveCandidates(text, deps, variants);
     return { case: c, recallHit: recallHit(candidates, c.expected, deps.liftTo) };
   }
-  const am = await matchActivity(c.text, deps);
+  const am = await matchActivity(text, deps, variants);
   const candidates = am.retrievalTopK
     .map(h => deps.byCode.get(deps.liftTo.get(h.code) ?? h.code))
     .filter((e): e is NonNullable<typeof e> => Boolean(e));
@@ -110,12 +133,13 @@ if (misses.length > 0) {
   }
 }
 
-console.log(`\nDauer: ${((Date.now() - started) / 1000).toFixed(1)}s`);
+if (expand) console.log(`\nExpansion: ${expandedCount}/${valid.length} Faelle mit Suchvarianten, ${multiSplitCount} Mehrfach-Splits`);
+console.log(`Dauer: ${((Date.now() - started) / 1000).toFixed(1)}s`);
 
 if (outPath) {
   await Bun.write(outPath, JSON.stringify({
     ranAt: new Date().toISOString(),
-    mode, seed, sampleN,
+    mode, seed, sampleN, expand,
     aggregate: { total: aggregate(results, mode === 'full'), ...Object.fromEntries(Object.entries(bySource).map(([s, rs]) => [s, aggregate(rs, mode === 'full')])) },
     results,
   }, null, 2));

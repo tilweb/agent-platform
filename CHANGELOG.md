@@ -2,6 +2,18 @@
 
 ## 2026-09-15
 
+### WZ-Branchen-Matcher: Query-Expansion im Splitter (IHK-Feedback M3)
+Löst den Komplementär-Fall: Der Splitter liefert pro Tätigkeit jetzt 0–2 fachsprachliche
+Suchvarianten im selben Forced-Function-Call („persönlich haftender Gesellschafter" →
+„Komplementärgesellschaft") — kein zusätzlicher LLM-Call, keine Latenz. Das Retrieval
+embeddet Original + Varianten parallel und vereinigt per Max-Similarity je Code
+(`ActivityMatch.queryVariants` im Audit-Record). Nebenbefund aus der Eval: Der Splitter
+zerriss Handelsform-Muster („Gemüsesalate, Handelsvermittlung" → zwei unklassifizierbare
+Hälften) und Varianten wechselten teils die Handelsform — beides per Prompt-Regel fixiert.
+Messung (n=158, seed 42, vs. Baseline): Recall@20 70,3→77,8 %, Top-4-Hit 63,9→72,8 %,
+Primary-Hit 54,4→56,3 %; kuratierte Fälle Recall 8/8, IHK-Komplementär-Fall end-to-end
+gelöst. Nächster Engpass laut Diagnose: Classifier-Wahl bei vorhandenem Kandidaten.
+
 ### WZ-Branchen-Matcher: Eval-Harness + Golden Set (IHK-Feedback M2a)
 Messbarkeit ohne IHK-Soll-Codes: Der Klassifikationsserver bietet zur WZ 2025 einen
 amtlichen Stichwörter-Export (36.184 Paare Stichwort→Code, jetzt
