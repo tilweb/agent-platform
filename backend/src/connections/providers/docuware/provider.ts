@@ -52,7 +52,7 @@ export class DocuwareProvider extends OAuthProvider {
 ### 2. OAuth App erstellen
 1. Erstelle eine neue OAuth-App/Integration
 2. Name: z.B. "Agent Platform"
-3. Callback URL: \`http://localhost:3001/api/connections/docuware/callback\`
+3. Callback URL dieser Instanz: \`{{CALLBACK_URL}}\` (lokale Entwicklung: \`http://localhost:3001/api/connections/docuware/callback\`)
 4. Berechtigungen: Lesezugriff auf Dokumente und Ablagestrukturen
 
 ### 3. Credentials kopieren

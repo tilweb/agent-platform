@@ -80,6 +80,11 @@ class ConnectionRegistry {
     const infos: ProviderInfo[] = [];
     const enabledMap = await getProviderEnabledMap();
 
+    // Callback-URL der laufenden Instanz fuer die Setup-Guides: Platzhalter
+    // {{CALLBACK_URL}} wird ersetzt, damit die Anleitungen auf jeder Instanz
+    // die richtige Redirect-URI zeigen (nicht hardcoded localhost).
+    const apiBaseUrl = (process.env.API_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
+
     for (const provider of this.providers.values()) {
       const info: ProviderInfo = {
         id: provider.id,
@@ -87,7 +92,10 @@ class ConnectionRegistry {
         description: provider.description,
         icon: provider.icon,
         authType: provider.authType,
-        setupGuide: provider.setupGuide,
+        setupGuide: provider.setupGuide?.replaceAll(
+          '{{CALLBACK_URL}}',
+          `${apiBaseUrl}/api/connections/${provider.id}/callback`,
+        ),
         enabledForUsers: enabledMap[provider.id] ?? false,
         configured: true, // nur konfigurierte Provider werden ueberhaupt registriert
       };

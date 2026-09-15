@@ -45,7 +45,7 @@ export class JiraProvider extends OAuthProvider {
    - User Identity API: \`read:me\`
    - Jira API: \`read:jira-work\`, \`read:jira-user\`, \`write:jira-work\`
 3. Gehe zu "Authorization" → "Add" → "OAuth 2.0 (3LO)"
-4. Callback URL: \`http://localhost:3001/api/connections/jira/callback\`
+4. Callback URL dieser Instanz: \`{{CALLBACK_URL}}\` (lokale Entwicklung: \`http://localhost:3001/api/connections/jira/callback\`)
 
 ### 3. Credentials kopieren
 1. Gehe zu "Settings"

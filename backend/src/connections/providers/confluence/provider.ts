@@ -45,7 +45,7 @@ export class ConfluenceProvider extends OAuthProvider {
    - User Identity API: \`read:me\`
    - Confluence API (granular): \`read:page:confluence\`, \`read:space:confluence\`, \`read:content:confluence\`, \`search:confluence\`
 3. Gehe zu "Authorization" → "Add" → "OAuth 2.0 (3LO)"
-4. Callback URL: \`http://localhost:3001/api/connections/confluence/callback\`
+4. Callback URL dieser Instanz: \`{{CALLBACK_URL}}\` (lokale Entwicklung: \`http://localhost:3001/api/connections/confluence/callback\`)
 
 ### 3. Credentials kopieren
 1. Gehe zu "Settings"
