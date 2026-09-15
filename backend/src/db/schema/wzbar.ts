@@ -6,7 +6,7 @@ export const wzbarMatches = wzbarSchema.table('matches', {
   id: text('id').primaryKey(),
   userId: text('user_id'),
   inputText: text('input_text').notNull(),
-  result: jsonb('result').notNull(),                // {primary, alternatives}
+  result: jsonb('result').notNull(),                // {activities: [{activity, result: {primary, alternatives}, retrievalTopK}]}
   retrievalTopK: jsonb('retrieval_top_k'),
   llmModel: text('llm_model'),
   embeddingModel: text('embedding_model'),

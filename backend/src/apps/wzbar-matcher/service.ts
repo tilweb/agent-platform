@@ -8,6 +8,7 @@
 
 import { generateMatchId, getMatch, listMatches, loadCatalog, loadEmbeddings, saveMatch } from './storage';
 import { topK } from './retrieval';
+import { buildLiftMap } from './level-lift';
 import { classify } from './classifier';
 import { splitActivities } from './splitter';
 import type {
@@ -33,6 +34,7 @@ export async function match(inputText: string, userId = 'user_default'): Promise
   const [catalog, index] = await Promise.all([loadCatalog(), loadEmbeddings()]);
   const byCode = new Map<string, CatalogEntry>();
   for (const entry of catalog) byCode.set(entry.code, entry);
+  const liftTo = buildLiftMap(catalog);
 
   const activities = await splitActivities(trimmed);
   if (activities.length === 0) activities.push(trimmed);
@@ -41,10 +43,18 @@ export async function match(inputText: string, userId = 'user_default'): Promise
     activities.map(async (activity) => {
       const queryVector = await llmService.embed(activity);
       const hits = topK(queryVector, index.entries, TOP_K);
+      // Kandidaten auf die tiefste textgleiche Ebene anheben und deduplizieren:
+      // 4311 und 43110 ("Abbrucharbeiten") landen sonst beide mit identischer
+      // Similarity in den Top-K, und die Ebenen-Wahl bliebe dem LLM ueberlassen.
+      // retrievalTopK im Audit-Record bleibt bewusst der rohe Retrieval-Stand.
       const candidates: CatalogEntry[] = [];
+      const seenCodes = new Set<string>();
       for (const hit of hits) {
-        const entry = byCode.get(hit.code);
-        if (entry) candidates.push(entry);
+        const entry = byCode.get(liftTo.get(hit.code) ?? hit.code);
+        if (entry && !seenCodes.has(entry.code)) {
+          seenCodes.add(entry.code);
+          candidates.push(entry);
+        }
       }
       const result = await classify(activity, candidates);
       return {

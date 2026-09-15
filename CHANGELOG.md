@@ -2,6 +2,19 @@
 
 ## 2026-09-15
 
+### WZ-Branchen-Matcher: Ebenen-Normalisierung (IHK-Feedback M1)
+IHK-Feedback „Abbruch liefert 4311 statt 43110": Nicht untergliederte Klassen haben im
+Katalog genau eine **textgleiche** Unterklasse (474 Paare); beide landeten mit identischer
+Embedding-Similarity in den Top-K und die Ebenen-Wahl hing am LLM. Neu: `level-lift.ts`
+hebt Retrieval-Kandidaten deterministisch auf den tiefsten textgleichen
+Einzelkind-Nachfahren an und dedupliziert — das LLM bekommt die zu flache Ebene gar nicht
+mehr angeboten (deckt auch den sanitize-Fallback ab). Lift bewusst NUR bei textgleichem
+Einzelkind, da nationale 6-/7-Steller keine vollständigen Partitionen sind (10510
+Milcherzeugnisse → 105101 Käserei wäre falsch). Flankierend: Registry-Seed-Beschreibung
+WZ-2008→WZ-2025, getNeighborhood-Schema auf 7-Steller (maxLength/level/indent) korrigiert,
+veralteter Schema-Kommentar in `wzbar.ts`. Analyse + Maßnahmenplan (M2–M4 offen):
+`docs/wzbar-matcher-ihk-feedback-massnahmen-2026-09-15.md`.
+
 ### KI-Modelle-Seite: Modellkatalog statt Provider-Boxen und Tier-Bannern
 Konzeptwechsel „Adacor als Modellrouter": Kunden beziehen Modelle aus einer Hand, keine
 eigenen Provider-Verträge. Die Seite zeigt jetzt einen **flachen Modellkatalog** (Suche,
