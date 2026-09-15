@@ -283,16 +283,32 @@ export async function updateModel(
     throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
   }
 
+  // Sperren eines Modells verhindern, das aktuell System-Standard ist —
+  // sonst laufen Chat/Vision/etc. beim naechsten Request ins Leere.
+  if (updates.enabled === false) {
+    for (const [purpose, sel] of Object.entries(config.active)) {
+      if (sel && (sel as any).provider_id === providerId && (sel as any).model_id === modelId) {
+        throw new Error(`Modell ist aktuell System-Standard für "${purpose}" — erst dort ein anderes Modell wählen, dann sperren.`);
+      }
+    }
+  }
+
   const modelIndex = provider.models.indexOf(existingModel);
+  // Bestehende Felder erhalten (z.B. protected, supported_aspects), nur die
+  // uebergebenen Updates anwenden. id/protected sind nicht per Update aenderbar.
   const updatedModel: ModelConfig = {
-    id: existingModel.id, // ID cannot be changed
+    ...existingModel,
     name: updates.name ?? existingModel.name,
     type: updates.type ?? existingModel.type,
     capabilities: updates.capabilities ?? existingModel.capabilities,
     default: updates.default ?? existingModel.default,
+    enabled: updates.enabled ?? existingModel.enabled,
     base_url: updates.base_url ?? existingModel.base_url,
     context_length: updates.context_length ?? existingModel.context_length,
     max_tokens: updates.max_tokens ?? existingModel.max_tokens,
+    datacenter_country: updates.datacenter_country ?? existingModel.datacenter_country,
+    id: existingModel.id, // ID cannot be changed
+    protected: existingModel.protected,
   };
 
   provider.models[modelIndex] = updatedModel;
@@ -405,6 +421,9 @@ export async function setActiveModel(
     if (!model) {
       throw new Error(`Model '${modelId}' not found in provider '${providerId}'`);
     }
+    if (model.enabled === false) {
+      throw new Error(`Modell '${modelId}' ist gesperrt — erst im Modellkatalog freigeben.`);
+    }
   }
 
   config.active[purpose] = {
@@ -438,9 +457,9 @@ export async function resolveActiveModel(
   if (userId) {
     const userPreference = await getUserModelPreference(userId, purpose as ModelPurpose);
     if (userPreference?.provider_id && userPreference?.model_id) {
-      // Validate the user's preferred model exists and provider is enabled
+      // Validate the user's preferred model exists, provider is enabled and model not gesperrt
       const resolved = await resolveModel(userPreference.provider_id, userPreference.model_id);
-      if (resolved && resolved.provider.enabled) {
+      if (resolved && resolved.provider.enabled && resolved.model.enabled !== false) {
         console.log(`[Provider] Using user preference for ${purpose}: ${userPreference.provider_id}/${userPreference.model_id}`);
         return resolved;
       }
@@ -449,7 +468,9 @@ export async function resolveActiveModel(
     }
   }
 
-  // Priority 2: ENV-Pin der Instanz (deployment-sicher, siehe getEnvActiveOverride)
+  // Priority 2: ENV-Pin der Instanz (deployment-sicher, siehe getEnvActiveOverride).
+  // Bewusst OHNE model.enabled-Check: der Pin ist eine Ops-Entscheidung und darf
+  // nicht durch eine Katalog-Sperre ins Leere laufen.
   const envOverride = getEnvActiveOverride(purpose);
   if (envOverride) {
     const resolved = await resolveModel(envOverride.provider_id, envOverride.model_id);

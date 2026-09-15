@@ -95,9 +95,11 @@ export interface ModelConfig {
   capabilities: ModelCapability[];
   default?: boolean;
   protected?: boolean;  // System models cannot be deleted
+  enabled?: boolean;  // false = im Modellkatalog fuer Nutzer/Defaults gesperrt (undefined = aktiv)
   base_url?: string;  // Override provider base_url
   context_length?: number;
   max_tokens?: number;
+  datacenter_country?: string;  // Residency-Override je Modell (sonst gilt das Provider-Land)
   // Image generation specific
   supported_sizes?: string[];      // ["1024x1024", "1792x1024"]
   supported_aspects?: string[];    // ["1:1", "16:9", "9:16"]

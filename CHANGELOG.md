@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-09-15
+
+### KI-Modelle-Seite: Modellkatalog statt Provider-Boxen und Tier-Bannern
+Konzeptwechsel „Adacor als Modellrouter": Kunden beziehen Modelle aus einer Hand, keine
+eigenen Provider-Verträge. Die Seite zeigt jetzt einen **flachen Modellkatalog** (Suche,
+Fähigkeits-Filter, „Nur EU/EWR"-Filter) mit Freigabe-Toggle je Modell, Hersteller,
+Kontextfenster und **Data-Residency-Flagge** als einzigem sichtbaren Datenschutz-Signal —
+volle Transparenz (Betreiber, Firmensitz, ruhige Schutzniveau-Einordnung, AV-über-Adacor-
+Hinweis) im Detail-Dialog je Modell. Die vier Security-Tier-Banner sind ersetzt durch eine
+ruhige Management-Zeile; die Provider-Verwaltung (CRUD/Tests/Keys) liegt eingeklappt unter
+„Technische Konfiguration". Neu im Datenmodell: `model.enabled` (gesperrte Modelle
+verschwinden aus allen Auswahllisten; System-Standards können nicht gesperrt, gesperrte
+nicht als Standard gewählt werden; ENV-Pins umgehen die Sperre bewusst) und
+`model.datacenter_country` (Residency-Override je Modell). Modell-Modal kann jetzt auch
+Kontextfenster und Residency pflegen; `updateModel` verliert keine Felder mehr
+(protected/supported_aspects blieben bisher auf der Strecke). Der Katalog ist in
+Data-Residency-Sektionen gegliedert — Deutschland zuerst, dann Europa, USA,
+International (Souveränitäts-Positionierung).
+Details: `docs/ki-modelle-modellkatalog-2026-09-15.md`.
+
 ## 2026-09-06
 
 ### PM-App: Kriteriengestützter Analyse-Score — nachvollziehbar bis 100
