@@ -210,6 +210,23 @@ providers:
           - chat
           - function_calling
         default: false
+      - id: qwen/qwen3.8-flash-next
+        name: Qwen 3.8 Flash Next (256k)
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+          - vision
+        context_length: 256000
+        default: false
+      - id: qwen/qwen3.8-27b
+        name: Qwen 3.8 27B
+        type: llm
+        capabilities:
+          - chat
+          - function_calling
+          - vision
+        default: false
       - id: qwen/qwen3.5-9b
         name: Qwen 3.5 9B
         type: llm
@@ -217,6 +234,7 @@ providers:
           - chat
           - function_calling
         default: false
+        enabled: true
       - id: Qwen/Qwen3-Embedding-8B
         name: Qwen 3 Embedding 8B
         type: embedding
