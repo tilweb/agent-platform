@@ -2,6 +2,20 @@
 
 ## 2026-09-15
 
+### WZ-Branchen-Matcher: Eval-Harness + Golden Set (IHK-Feedback M2a)
+Messbarkeit ohne IHK-Soll-Codes: Der Klassifikationsserver bietet zur WZ 2025 einen
+amtlichen Stichwörter-Export (36.184 Paare Stichwort→Code, jetzt
+`docs/WZ2025-Stichwoerter.csv`) — echtes Gold statt LLM-Pseudo-Labels. Neues Eval-Modul
+`backend/src/apps/wzbar-matcher/eval/`: `run-eval.ts` misst Recall@20 (Retrieval) und
+Precision@1 (End-to-End) gegen kuratierte Fälle + deterministisches Destatis-Sample;
+Vergleichslogik behandelt tiefere Codes innerhalb der erwarteten Unterklasse als Treffer
+und weist „zu flach" (die IHK-Fehlerklasse) separat aus. Kritisch: deterministischer
+Eval/Enrich-Split der Stichwörter — M4 (Alias-Anreicherung) darf nur die enrich-Hälfte
+verwenden. Eval und Produktion teilen den Code-Pfad (service.ts exportiert
+buildMatchDeps/retrieveCandidates/matchActivity). Baseline (n=158): Recall@20 70,3 %,
+Primary-Hit 54,4 %, „zu flach" nur noch 2× (M1 wirkt); Fehlermasse liegt im Retrieval →
+bestätigt M3/M4-Priorisierung. Details im Maßnahmen-Doc.
+
 ### WZ-Branchen-Matcher: Ebenen-Normalisierung (IHK-Feedback M1)
 IHK-Feedback „Abbruch liefert 4311 statt 43110": Nicht untergliederte Klassen haben im
 Katalog genau eine **textgleiche** Unterklasse (474 Paare); beide landeten mit identischer

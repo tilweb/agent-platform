@@ -14,6 +14,7 @@ import { splitActivities } from './splitter';
 import type {
   ActivityMatch,
   CatalogEntry,
+  EmbeddingsIndex,
   MatchRecord,
   MatchResult,
   MultiMatchResult,
@@ -25,44 +26,71 @@ import { getSystemDefaultModel } from '../../services/providers';
 
 const TOP_K = 20;
 
+/** Gemeinsam geladene Ressourcen fuer Matching und Eval-Harness. */
+export interface MatchDeps {
+  byCode: Map<string, CatalogEntry>;
+  index: EmbeddingsIndex;
+  liftTo: Map<string, string>;
+}
+
+export async function buildMatchDeps(): Promise<MatchDeps> {
+  const [catalog, index] = await Promise.all([loadCatalog(), loadEmbeddings()]);
+  const byCode = new Map<string, CatalogEntry>();
+  for (const entry of catalog) byCode.set(entry.code, entry);
+  return { byCode, index, liftTo: buildLiftMap(catalog) };
+}
+
+/**
+ * Retrieval-Stufe fuer eine einzelne Taetigkeit: embed → top-K → Kandidaten
+ * auf die tiefste textgleiche Ebene anheben und deduplizieren. 4311 und 43110
+ * ("Abbrucharbeiten") landen sonst beide mit identischer Similarity in den
+ * Top-K, und die Ebenen-Wahl bliebe dem LLM ueberlassen.
+ */
+export async function retrieveCandidates(
+  activity: string,
+  deps: MatchDeps,
+): Promise<{ hits: RetrievalHit[]; candidates: CatalogEntry[] }> {
+  const queryVector = await llmService.embed(activity);
+  const hits = topK(queryVector, deps.index.entries, TOP_K);
+  const candidates: CatalogEntry[] = [];
+  const seenCodes = new Set<string>();
+  for (const hit of hits) {
+    const entry = deps.byCode.get(deps.liftTo.get(hit.code) ?? hit.code);
+    if (entry && !seenCodes.has(entry.code)) {
+      seenCodes.add(entry.code);
+      candidates.push(entry);
+    }
+  }
+  return { hits, candidates };
+}
+
+/**
+ * Volle Pipeline fuer eine einzelne Taetigkeit (Retrieval + LLM-Re-Ranking).
+ * retrievalTopK im Audit-Record bleibt bewusst der rohe Retrieval-Stand.
+ */
+export async function matchActivity(activity: string, deps: MatchDeps): Promise<ActivityMatch> {
+  const { hits, candidates } = await retrieveCandidates(activity, deps);
+  const result = await classify(activity, candidates);
+  return {
+    activity,
+    result: sanitizeResult(result, candidates),
+    retrievalTopK: hits,
+  } satisfies ActivityMatch;
+}
+
 export async function match(inputText: string, userId = 'user_default'): Promise<MatchRecord> {
   const trimmed = inputText.trim();
   if (!trimmed) throw new Error('inputText darf nicht leer sein');
 
   const started = Date.now();
 
-  const [catalog, index] = await Promise.all([loadCatalog(), loadEmbeddings()]);
-  const byCode = new Map<string, CatalogEntry>();
-  for (const entry of catalog) byCode.set(entry.code, entry);
-  const liftTo = buildLiftMap(catalog);
+  const deps = await buildMatchDeps();
 
   const activities = await splitActivities(trimmed);
   if (activities.length === 0) activities.push(trimmed);
 
   const activityMatches: ActivityMatch[] = await Promise.all(
-    activities.map(async (activity) => {
-      const queryVector = await llmService.embed(activity);
-      const hits = topK(queryVector, index.entries, TOP_K);
-      // Kandidaten auf die tiefste textgleiche Ebene anheben und deduplizieren:
-      // 4311 und 43110 ("Abbrucharbeiten") landen sonst beide mit identischer
-      // Similarity in den Top-K, und die Ebenen-Wahl bliebe dem LLM ueberlassen.
-      // retrievalTopK im Audit-Record bleibt bewusst der rohe Retrieval-Stand.
-      const candidates: CatalogEntry[] = [];
-      const seenCodes = new Set<string>();
-      for (const hit of hits) {
-        const entry = byCode.get(liftTo.get(hit.code) ?? hit.code);
-        if (entry && !seenCodes.has(entry.code)) {
-          seenCodes.add(entry.code);
-          candidates.push(entry);
-        }
-      }
-      const result = await classify(activity, candidates);
-      return {
-        activity,
-        result: sanitizeResult(result, candidates),
-        retrievalTopK: hits,
-      } satisfies ActivityMatch;
-    }),
+    activities.map(activity => matchActivity(activity, deps)),
   );
 
   const llmModel = await resolveChatModelLabel();
@@ -80,7 +108,7 @@ export async function match(inputText: string, userId = 'user_default'): Promise
     result: multiResult,
     retrievalTopK: aggregatedTopK,
     llmModel,
-    embeddingModel: index.model,
+    embeddingModel: deps.index.model,
     durationMs: Date.now() - started,
   };
 

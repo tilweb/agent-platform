@@ -1,0 +1,36 @@
+# Kuratierte Eval-Faelle fuer den WZ-Branchen-Matcher (M2a).
+# expected ist any-of: jeder gelistete Code (oder ein tieferer Code darunter)
+# zaehlt als Treffer. Nur verifizierte WZ-2025-Codes eintragen (Abgleich gegen
+# assets/catalog.json bzw. docs/WZ2025-Stichwoerter.csv).
+cases:
+  - text: Abbruch
+    expected: ["43110"]
+    note: IHK-Feedback 2026-09-15, Fall 1 (lieferte vor M1 teils 4311)
+  - text: Abbrucharbeiten
+    expected: ["43110"]
+    note: Vor M1 waehlte das LLM 3/3 die zu spezifische 431101 Entkernung
+  - text: Bauwerksabbruch
+    expected: ["43110"]
+    note: Destatis-Stichwort (Kontrolle Umschreibung)
+  - text: persönlich haftender Gesellschafter
+    expected: ["69103", "70104"]
+    note: >-
+      IHK-Feedback 2026-09-15, Fall 2. Destatis unterscheidet: reine
+      Haftungsfunktion → 69.10.3, Verwaltung/Fuehrung von Unternehmen →
+      70.10.4 (dort 701041 Komplementaergesellschaften). Beide vertretbar.
+  - text: Komplementär
+    expected: ["69103", "70104"]
+    note: IHK-Feedback Fall 2, Gegenprobe mit Fachbegriff
+  - text: Komplementärgesellschaft
+    expected: ["69103", "70104"]
+  - text: Baulicher Brandschutz
+    expected: ["43230"]
+    note: >-
+      Bekannte Schwaeche aus docs/wzbar-matcher-multi-activity-2026-05-06.md
+      (damals 432901). WZ 2025: Brandschutzarbeiten (Waermedaemmung) → 43.23.0.
+  - text: Autos bekleben und schicke machen
+    expected: ["95311", "95313"]
+    note: >-
+      Umgangssprache-Beispiel aus docs/wzbar-matcher-pipeline.md. WZ 2025:
+      95311 Lackieren (darunter 953111 Folienbeklebung) bzw. 95313 Sonstige
+      Instandhaltung (darunter 953134 Tuning).

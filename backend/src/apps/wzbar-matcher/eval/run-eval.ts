@@ -1,0 +1,125 @@
+/**
+ * Eval-Runner fuer den WZ-Branchen-Matcher.
+ *
+ * Aufruf (im backend/):
+ *   bun src/apps/wzbar-matcher/eval/run-eval.ts                       # Retrieval-only (nur Embedding-Calls)
+ *   bun src/apps/wzbar-matcher/eval/run-eval.ts --mode full           # inkl. LLM-Re-Ranking (Precision@1)
+ *   bun src/apps/wzbar-matcher/eval/run-eval.ts --sample 300 --seed 7 # groesseres Destatis-Sample
+ *   bun src/apps/wzbar-matcher/eval/run-eval.ts --only curated --mode full
+ *
+ * Flags: --mode retrieval|full (default retrieval), --sample N (default 150),
+ *        --seed N (default 42), --only curated|destatis|all (default all),
+ *        --concurrency N (default 4, nur full), --out <pfad.json>
+ */
+
+import { parse as parseYaml } from 'yaml';
+import { buildMatchDeps, matchActivity, retrieveCandidates } from '../service';
+import { aggregate, isHit, judgeCode, pool, recallHit } from './harness';
+import type { Aggregate, CaseResult, EvalCase, EvalSource } from './harness';
+import { parseStichwoerter, sampleEvalCases } from './destatis';
+
+function flag(name: string, fallback: string): string {
+  const idx = process.argv.indexOf(`--${name}`);
+  return idx !== -1 && process.argv[idx + 1] ? process.argv[idx + 1]! : fallback;
+}
+
+const mode = flag('mode', 'retrieval') as 'retrieval' | 'full';
+const sampleN = Number(flag('sample', '150'));
+const seed = Number(flag('seed', '42'));
+const only = flag('only', 'all') as EvalSource | 'all';
+const concurrency = Number(flag('concurrency', '4'));
+const outPath = flag('out', '');
+
+const deps = await buildMatchDeps();
+
+// --- Faelle laden -----------------------------------------------------------
+
+const cases: EvalCase[] = [];
+
+if (only !== 'destatis') {
+  const curatedRaw = parseYaml(await Bun.file(new URL('./cases-curated.yaml', import.meta.url)).text()) as {
+    cases: Array<{ text: string; expected: string[]; note?: string }>;
+  };
+  for (const c of curatedRaw.cases) cases.push({ ...c, source: 'curated' });
+}
+
+if (only !== 'curated') {
+  const csv = await Bun.file(new URL('../../../../../docs/WZ2025-Stichwoerter.csv', import.meta.url)).text();
+  const all = parseStichwoerter(csv);
+  const sample = sampleEvalCases(all, sampleN, seed);
+  for (const c of sample) cases.push({ ...c, source: 'destatis' });
+  console.log(`Destatis: ${all.length} Stichwoerter gesamt, Sample ${sample.length} aus der Eval-Haelfte (seed ${seed})`);
+}
+
+// Labels gegen den Katalog validieren — nicht aufloesbare Faelle raus.
+const valid = cases.filter(c => c.expected.every(e => deps.byCode.has(e)));
+const dropped = cases.length - valid.length;
+if (dropped > 0) console.log(`WARNUNG: ${dropped} Faelle mit katalogfremden Codes uebersprungen`);
+console.log(`Eval-Faelle: ${valid.length} (${valid.filter(c => c.source === 'curated').length} curated, ${valid.filter(c => c.source === 'destatis').length} destatis), Modus: ${mode}\n`);
+
+// --- Ausfuehren -------------------------------------------------------------
+
+const started = Date.now();
+const results: CaseResult[] = await pool(valid, mode === 'full' ? concurrency : 8, async (c, i) => {
+  if ((i + 1) % 25 === 0) console.log(`  ... ${i + 1}/${valid.length}`);
+  if (mode === 'retrieval') {
+    const { candidates } = await retrieveCandidates(c.text, deps);
+    return { case: c, recallHit: recallHit(candidates, c.expected, deps.liftTo) };
+  }
+  const am = await matchActivity(c.text, deps);
+  const candidates = am.retrievalTopK
+    .map(h => deps.byCode.get(deps.liftTo.get(h.code) ?? h.code))
+    .filter((e): e is NonNullable<typeof e> => Boolean(e));
+  const primaryLevel = judgeCode(am.result.primary.code, c.expected, deps.liftTo);
+  const allCodes = [am.result.primary.code, ...am.result.alternatives.map(a => a.code)];
+  return {
+    case: c,
+    recallHit: recallHit(candidates, c.expected, deps.liftTo),
+    primary: am.result.primary.code,
+    primaryConfidence: am.result.primary.confidence,
+    primaryLevel,
+    top4Hit: allCodes.some(code => isHit(judgeCode(code, c.expected, deps.liftTo))),
+  };
+});
+
+// --- Report -----------------------------------------------------------------
+
+const pct = (x: number | undefined) => (x === undefined ? '—' : `${(x * 100).toFixed(1)}%`);
+
+function printAggregate(label: string, agg: Aggregate) {
+  console.log(`\n${label} (n=${agg.n})`);
+  console.log(`  Recall@20:     ${pct(agg.recallAt20)}`);
+  if (mode === 'full') {
+    console.log(`  Primary-Hit:   ${pct(agg.primaryHit)}  (exakt: ${pct(agg.primaryExact)})`);
+    console.log(`  Top-4-Hit:     ${pct(agg.top4Hit)}`);
+    console.log(`  Diagnose:      ${JSON.stringify(agg.levels)}`);
+  }
+}
+
+const bySource: Record<string, CaseResult[]> = {};
+for (const r of results) (bySource[r.case.source] ??= []).push(r);
+for (const [source, rs] of Object.entries(bySource)) printAggregate(source, aggregate(rs, mode === 'full'));
+printAggregate('GESAMT', aggregate(results, mode === 'full'));
+
+const misses = results.filter(r => (mode === 'full' ? !isHit(r.primaryLevel ?? 'wrong') : !r.recallHit));
+if (misses.length > 0) {
+  console.log(`\nFehlgriffe (${misses.length}, max. 30 gezeigt):`);
+  for (const m of misses.slice(0, 30)) {
+    const got = mode === 'full' ? `primary=${m.primary} [${m.primaryLevel}]` : 'nicht in Top-20';
+    console.log(`  - "${m.case.text}" erwartet ${m.case.expected.join('|')} → ${got}`);
+  }
+}
+
+console.log(`\nDauer: ${((Date.now() - started) / 1000).toFixed(1)}s`);
+
+if (outPath) {
+  await Bun.write(outPath, JSON.stringify({
+    ranAt: new Date().toISOString(),
+    mode, seed, sampleN,
+    aggregate: { total: aggregate(results, mode === 'full'), ...Object.fromEntries(Object.entries(bySource).map(([s, rs]) => [s, aggregate(rs, mode === 'full')])) },
+    results,
+  }, null, 2));
+  console.log(`Report: ${outPath}`);
+}
+
+process.exit(0);
