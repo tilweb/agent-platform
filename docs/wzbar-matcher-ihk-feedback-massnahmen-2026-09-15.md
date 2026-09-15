@@ -85,6 +85,26 @@ Kuratierte Fälle: Recall 8/8 (vorher 7/8 — **der IHK-Komplementär-Fall ist g
 
 Interpretation: Das Retrieval verbessert sich deutlich (+7,5 pp Recall, +8,9 pp Top-4); der Primary-Hit steigt moderat, weil nun häufiger das LLM der Engpass ist (richtiger Kandidat vorhanden, falsche Wahl). Das verschiebt die Priorität für die nächste Iteration Richtung Classifier-Prompt (Few-Shot, Ebenen-Beschreibung) — jetzt via Harness messbar. Für die Produkt-Kurzformen („Rheumadecken") bleibt M4 (Alias-Anreicherung) der richtige Hebel.
 
+### Classifier-Prompt-Fixes (2026-09-15, nach M3)
+
+Die bei M1 zurückgestellten Prompt-Korrekturen, jetzt harness-verifiziert. Drei Änderungen in `classifier.ts`:
+
+1. **Hierarchie korrekt beschrieben**: 4-stellig Klasse, 5-stellig Unterklasse (amtliche Verschlüsselungsebene), 6-/7-stellig nationale **Spezialfälle ohne vollständige Aufteilung** — vorher stand dort „6-stellig = feinste Ebene" mit erfundenem „a.n.g."-Beispiel. Neue Ebenen-Regel: Unterklasse wählen, Spezialfall nur wenn die Beschreibung ihn ausdrücklich benennt; dazu zwei Few-Shot-Beispiele (Abbrucharbeiten → 43110 statt 431101; Reifendienst → 953131). Kandidatenliste kennzeichnet jetzt jede Ebene (`Klasse`/`Unterklasse`/`Spezialfall`).
+2. **Wirtschaftsform-Regel**: Herstellung/Reparatur/Einzelhandel/Großhandel/Handelsvermittlung sind getrennte Zweige — der Code muss zur Form der Tätigkeit passen (häufige Destatis-Fehlerklasse).
+3. **Suchvarianten in den Classifier-Prompt**: Zwischenmessung zeigte, dass die strengere Spezialfall-Regel den Komplementär-Fall kippte — die Variante „Komplementärgesellschaft" benennt den Spezialfall `701041` wörtlich, aber der Classifier sah nur den Originaltext. Die Splitter-Varianten stehen jetzt als „gleichwertige Umformulierungen" im User-Prompt (`classify(text, candidates, searchVariants)`).
+
+**Messung (n=158, seed 42, je ein Lauf)**:
+
+| Metrik (gesamt) | M3 | + Prompt-Fixes |
+|---|---|---|
+| Recall@20 | 77,8 % | 78,5 % (Rauschen) |
+| Primary-Hit | 56,3 % | 55,7 % (Rauschen) |
+| davon exakt | 38,0 % | **43,7 %** (+5,7 pp) |
+| Top-4-Hit | 72,8 % | 71,5 % (Rauschen) |
+| curated Primary-Hit | 87,5 % | **100 %** (8/8) |
+
+Die Ebenen-Disziplin wirkt: „deeper"-Treffer (richtige Unterklasse, aber unbelegter Spezialfall) sinken von 29 auf 19, exakte Treffer steigen von 60 auf 69 — die IHK bekommt häufiger genau die amtliche Verschlüsselungsebene. Alle kuratierten Fälle (beide IHK-Fälle, Brandschutz, Umgangssprache) sitzen end-to-end. Verbleibende Destatis-Fehler: ~34 Retrieval-Misses (M4-Territorium) und ~29 LLM-Fehlwahlen bei Produkt-Nuancen (z. B. „Kräcker" → 10710 Brot statt 10720 Dauerbackwaren).
+
 ### M1 — Umsetzung (dieses Dokument begleitender Commit)
 
 Neue Datei `backend/src/apps/wzbar-matcher/level-lift.ts`:

@@ -89,7 +89,7 @@ export async function matchActivity(
   searchVariants: string[] = [],
 ): Promise<ActivityMatch> {
   const { hits, candidates } = await retrieveCandidates(activity, deps, searchVariants);
-  const result = await classify(activity, candidates);
+  const result = await classify(activity, candidates, searchVariants);
   return {
     activity,
     ...(searchVariants.length > 0 ? { queryVariants: searchVariants } : {}),

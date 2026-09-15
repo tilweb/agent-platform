@@ -2,6 +2,17 @@
 
 ## 2026-09-15
 
+### WZ-Branchen-Matcher: Classifier-Prompt-Fixes (IHK-Feedback, nach M3)
+Harness-verifizierte Prompt-Iteration: Hierarchie korrekt beschrieben (5-stellig =
+amtliche Verschlüsselungsebene; 6/7-Steller = Spezialfälle OHNE vollständige Aufteilung —
+vorher „6-stellig = feinste Ebene" mit erfundenem a.n.g.-Beispiel), Ebenen-Regel mit
+Few-Shots (Spezialfall nur bei ausdrücklicher Nennung), Wirtschaftsform-Regel
+(Einzel-/Großhandel/Herstellung nicht verwechseln), Ebenen-Label je Kandidat. Wichtigster
+Baustein: Die Splitter-Suchvarianten stehen jetzt auch im Classifier-Prompt — die strenge
+Spezialfall-Regel hatte sonst den Komplementär-Fall gekippt (Variante benennt 701041
+wörtlich, Originaltext nicht). Messung: Exakt-Quote 38,0→43,7 %, kuratierte Fälle 8/8
+Primary-Hit (beide IHK-Fälle + Brandschutz end-to-end gelöst), übrige Metriken stabil.
+
 ### WZ-Branchen-Matcher: Query-Expansion im Splitter (IHK-Feedback M3)
 Löst den Komplementär-Fall: Der Splitter liefert pro Tätigkeit jetzt 0–2 fachsprachliche
 Suchvarianten im selben Forced-Function-Call („persönlich haftender Gesellschafter" →

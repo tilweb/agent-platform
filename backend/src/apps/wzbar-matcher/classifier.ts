@@ -24,19 +24,24 @@ const SYSTEM_PROMPT = `Du bist ein Experte für die deutsche Wirtschaftszweigkla
 Deine Aufgabe: Aus einer freitextlichen Tätigkeitsbeschreibung (aus dem Handelsregister) wählst du den passendsten WZ-Schlüssel aus einer vorgegebenen Kandidatenliste aus und benennst bis zu 3 sinnvolle Alternativen.
 
 Hierarchie der WZ-Codes:
-- 4-stellig = Klasse (z.B. 4329 — Sonstige Bauinstallation)
-- 5-stellig = Unterklasse (z.B. 43290 — Sonstige Bauinstallation a.n.g.)
-- 6-stellig = Detail-Unterklasse, feinste Ebene (z.B. 432901 — Wärme-, Schall- und Brandschutzinstallation)
+- 4-stellig = Klasse
+- 5-stellig = Unterklasse — die amtliche Verschlüsselungsebene
+- 6-/7-stellig = nationale Detail-Unterklassen: benannte SPEZIALFÄLLE innerhalb einer Unterklasse, KEINE vollständige Aufteilung. Eine Unterklasse ist auch dann die richtige Wahl, wenn keiner ihrer benannten Spezialfälle zutrifft.
 
 Regeln:
 - Du darfst ausschliesslich Codes verwenden, die in der Kandidatenliste stehen. Keine Codes erfinden.
-- **Bevorzuge die feinste passende Ebene.** Wenn die Tätigkeitsbeschreibung **eindeutig** zu einem 5- oder 6-stelligen Code passt, wähle diesen. Bei Unsicherheit über die feinere Ebene wähle die nächsthöhere (kürzere) Ebene — lieber korrekt 4-stellig als spekulativ 6-stellig.
+- **Ebenen-Wahl**: Wähle die 5-stellige Unterklasse, deren Beschreibung die Tätigkeit abdeckt. Einen 6-/7-stelligen Spezialfall nur, wenn die Tätigkeitsbeschreibung genau diese Spezialisierung ausdrücklich benennt — nicht, weil er thematisch verwandt klingt. Einen 4-stelligen Code nur, wenn keine passende Unterklasse in der Liste steht.
+- **Wirtschaftsform beachten**: Herstellung, Reparatur, Einzelhandel, Großhandel und Handelsvermittlung sind in der WZ getrennte Zweige. Der gewählte Code muss zur Form der Tätigkeit passen — für eine Einzelhandels-Tätigkeit keinen Großhandels- oder Herstellungscode wählen, auch wenn das Produkt stimmt.
 - Der primäre Code ist der wahrscheinlichste Match.
 - Alternativen werden nur angegeben, wenn sie plausibel sind (confidence ≥ 0.2). Bei eindeutigem Match darf alternatives leer sein.
 - Alternativen können auch tiefere oder flachere Ebenen desselben Themengebietes sein.
 - confidence ist ein Wert zwischen 0 und 1.
 - reasoning ist eine 1-2 Sätze kurze, deutsche Begründung, warum der Code passt — bei tieferen Ebenen kurz erwähnen, warum die feinere Ebene gerechtfertigt ist.
-- Achte auf typische Umgangssprache und Schreibfehler in der Tätigkeitsbeschreibung.`;
+- Achte auf typische Umgangssprache und Schreibfehler in der Tätigkeitsbeschreibung.
+
+Beispiele für die Ebenen-Wahl:
+- "Abbrucharbeiten" → 43110 (Unterklasse deckt die Tätigkeit ab), NICHT 431101 "Entkernung von Gebäuden" (Spezialfall, den die Beschreibung nicht nennt).
+- "Reifendienst" → 953131 (die Beschreibung benennt exakt diesen Spezialfall).`;
 
 const SCHEMA: ToolDefinition = {
   type: 'function',
@@ -75,27 +80,40 @@ const SCHEMA: ToolDefinition = {
   },
 };
 
-function buildUserPrompt(inputText: string, candidates: CatalogEntry[]): string {
-  const lines = candidates.map(c => `- ${c.code}: ${c.kurztext}${c.langtext && c.langtext !== c.kurztext ? ` — ${c.langtext}` : ''}`);
+function levelLabel(code: string): string {
+  if (code.length === 4) return 'Klasse';
+  if (code.length === 5) return 'Unterklasse';
+  return 'Spezialfall';
+}
+
+function buildUserPrompt(inputText: string, candidates: CatalogEntry[], searchVariants: string[]): string {
+  const lines = candidates.map(c => `- ${c.code} (${levelLabel(c.code)}): ${c.kurztext}${c.langtext && c.langtext !== c.kurztext ? ` — ${c.langtext}` : ''}`);
+  // Die fachsprachlichen Umformulierungen aus dem Splitter zaehlen bei der
+  // Ebenen-Wahl als Teil der Beschreibung: benennt eine Variante einen
+  // Spezialfall woertlich (z.B. "Komplementaergesellschaft"), darf er
+  // gewaehlt werden, obwohl der Originaltext ihn nicht nennt.
+  const variantBlock = searchVariants.length > 0
+    ? `\nFachsprachliche Umformulierungen derselben Tätigkeit (gleichwertig zur Beschreibung):\n${searchVariants.map(v => `- ${v}`).join('\n')}\n`
+    : '';
   return `Tätigkeitsbeschreibung:
 """
 ${inputText}
 """
-
-Kandidatenliste (4- bis 7-stellige WZ-Schlüssel, gemischte Ebenen):
+${variantBlock}
+Kandidatenliste (gemischte Ebenen):
 ${lines.join('\n')}
 
-Wähle den besten Code (bevorzuge feinste eindeutige Ebene) und 0-3 Alternativen.`;
+Wähle den besten Code (Unterklasse, außer Beschreibung oder Umformulierung benennt ausdrücklich einen Spezialfall) und 0-3 Alternativen.`;
 }
 
-export async function classify(inputText: string, candidates: CatalogEntry[]): Promise<MatchResult> {
+export async function classify(inputText: string, candidates: CatalogEntry[], searchVariants: string[] = []): Promise<MatchResult> {
   if (candidates.length === 0) {
     throw new Error('Keine Kandidaten für das LLM-Re-Ranking vorhanden.');
   }
 
   const messages: Message[] = [
     { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: buildUserPrompt(inputText, candidates) },
+    { role: 'user', content: buildUserPrompt(inputText, candidates, searchVariants) },
   ];
 
   const response = await llmService.chat(
