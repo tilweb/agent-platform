@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-09-15
+
+### KI-Modelle-Seite: Modellkatalog statt Provider-Boxen und Tier-Bannern
+Konzeptwechsel „Adacor als Modellrouter": Kunden beziehen Modelle aus einer Hand, keine
+eigenen Provider-Verträge. Die Seite zeigt jetzt einen **flachen Modellkatalog** (Suche,
+Fähigkeits-Filter, „Nur EU/EWR"-Filter) mit Freigabe-Toggle je Modell, Hersteller,
+Kontextfenster und **Data-Residency-Flagge** als einzigem sichtbaren Datenschutz-Signal —
+volle Transparenz (Betreiber, Firmensitz, ruhige Schutzniveau-Einordnung, AV-über-Adacor-
+Hinweis) im Detail-Dialog je Modell. Die vier Security-Tier-Banner sind ersetzt durch eine
+ruhige Management-Zeile; die Provider-Verwaltung (CRUD/Tests/Keys) liegt eingeklappt unter
+„Technische Konfiguration". Neu im Datenmodell: `model.enabled` (gesperrte Modelle
+verschwinden aus allen Auswahllisten; System-Standards können nicht gesperrt, gesperrte
+nicht als Standard gewählt werden; ENV-Pins umgehen die Sperre bewusst) und
+`model.datacenter_country` (Residency-Override je Modell). Modell-Modal kann jetzt auch
+Kontextfenster und Residency pflegen; `updateModel` verliert keine Felder mehr
+(protected/supported_aspects blieben bisher auf der Strecke). Der Katalog ist in
+Data-Residency-Sektionen gegliedert — Deutschland zuerst, dann Europa, USA,
+International (Souveränitäts-Positionierung).
+Details: `docs/ki-modelle-modellkatalog-2026-09-15.md`.
+
+## 2026-08-31
+
+### Connections: Setup-Guides zeigen die Callback-URL der eigenen Instanz
+Die OAuth-Setup-Anleitungen (YouTrack, Confluence, Jira, Pipedrive, DocuWare) nannten als
+Redirect-URI hardcoded `http://localhost:3001/...` — auf Kunden-Instanzen falsch. Neu:
+Platzhalter `{{CALLBACK_URL}}` in den Guides, den die Registry beim Ausliefern durch die
+echte Callback-URL der Instanz ersetzt (aus `API_BASE_URL`, identisch zur URL, die der
+OAuth-Flow tatsächlich verwendet); localhost steht nur noch als Zusatz für lokale
+Entwicklung dabei. Die Google-Guides (zentrale Adacor-App mit URIs aller Instanzen)
+bleiben unverändert.
+
 ## 2026-08-29
 
 ### Einstellungen > KI-Modelle: Provider-ID sichtbar

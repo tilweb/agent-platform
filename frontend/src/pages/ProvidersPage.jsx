@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { theme } from '../config/theme';
 import { useProviders } from '../hooks/useProviders';
+import ModelCatalog from '../components/ModelCatalog';
+import {
+  companyRegions,
+  getRegionLabel,
+  favoriteCountries,
+  allCountries,
+  getCountryByCode,
+  typeColors,
+} from '../utils/providerMeta';
 
 const styles = {
   container: {
@@ -498,45 +507,6 @@ const styles = {
     cursor: 'help',
   },
   // Security tier section
-  tierSection: {
-    marginBottom: theme.spacing.xl,
-  },
-  tierHeader: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: theme.spacing.lg,
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.md,
-  },
-  tierShields: {
-    display: 'flex',
-    gap: '2px',
-    flexShrink: 0,
-    marginTop: '2px',
-  },
-  tierInfo: {
-    flex: 1,
-  },
-  tierLabel: {
-    fontSize: theme.typography.sizes.base,
-    fontWeight: theme.typography.weights.semibold,
-    marginBottom: '2px',
-  },
-  tierSubtitle: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    marginBottom: theme.spacing.xs,
-  },
-  tierDescription: {
-    fontSize: theme.typography.sizes.sm,
-    lineHeight: '1.5',
-  },
-  tierProviders: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing.sm,
-  },
   securityBadge: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -549,208 +519,12 @@ const styles = {
   },
 };
 
-const typeColors = {
-  llm: { bg: '#3b82f620', color: '#3b82f6' },
-  vllm: { bg: '#8b5cf620', color: '#8b5cf6' },
-  tts: { bg: '#10b98120', color: '#10b981' },
-  stt: { bg: '#f59e0b20', color: '#f59e0b' },
-  image_gen: { bg: '#ec489920', color: '#ec4899' },
-};
-
 const providerIcons = {
   adacor: { icon: 'A', bg: '#3b82f620', color: '#3b82f6' },
   openai: { icon: 'O', bg: '#10b98120', color: '#10b981' },
   anthropic: { icon: 'C', bg: '#f59e0b20', color: '#f59e0b' },
   ollama: { icon: 'L', bg: '#8b5cf620', color: '#8b5cf6' },
   custom: { icon: '+', bg: '#ec489920', color: '#ec4899' },
-};
-
-// Company region options
-const companyRegions = [
-  { value: 'germany', label: 'Deutschland', flag: '🇩🇪' },
-  { value: 'eu', label: 'EU', flag: '🇪🇺' },
-  { value: 'world', label: 'International', flag: '🌍' },
-];
-
-// EU/EEA countries for security tier calculation
-const EU_COUNTRIES = [
-  'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR',
-  'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL',
-  'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
-  'IS', 'LI', 'NO', // EEA
-  'CH', 'GB' // Adequate countries
-];
-
-// Security tier calculation
-function calculateSecurityTier(companyRegion, datacenterCountry) {
-  const isGermanCompany = companyRegion === 'germany';
-  const isEuCompany = companyRegion === 'eu' || isGermanCompany;
-  const isGermanDC = datacenterCountry === 'DE';
-  const isEuDC = datacenterCountry ? EU_COUNTRIES.includes(datacenterCountry) : false;
-
-  if (isGermanCompany && isGermanDC) return 1;
-  if (isEuCompany && isEuDC) return 2;
-  if (!isEuCompany && isEuDC) return 3;
-  return 4;
-}
-
-// Security tier definitions
-const securityTiers = {
-  1: {
-    label: 'Maximale Sicherheit',
-    subtitle: 'Deutscher Anbieter · Deutsches Rechenzentrum',
-    description: 'Höchstes Datenschutzniveau. Deutscher Anbieter mit Serverinfrastruktur in deutschen Rechenzentren. Vollständige DSGVO-Konformität unter deutschem Recht.',
-    color: '#10b981', // green
-    bgColor: '#10b98115',
-    borderColor: '#10b98140',
-    shieldCount: 4,
-  },
-  2: {
-    label: 'Sehr hohe Sicherheit',
-    subtitle: 'EU-Anbieter · EU-Rechenzentrum',
-    description: 'Europäischer Anbieter mit Rechenzentren innerhalb der EU/EWR. DSGVO-konform ohne Drittlandtransfer.',
-    color: '#3b82f6', // blue
-    bgColor: '#3b82f615',
-    borderColor: '#3b82f640',
-    shieldCount: 3,
-  },
-  3: {
-    label: 'Hohe Sicherheit',
-    subtitle: 'Internationaler Anbieter · EU-Datenresidenz',
-    description: 'Internationaler Anbieter (z.B. US-Hyperscaler) mit garantierter Datenverarbeitung in europäischen Rechenzentren. EU-Datenresidenz vertraglich zugesichert.',
-    color: '#f59e0b', // amber
-    bgColor: '#f59e0b15',
-    borderColor: '#f59e0b40',
-    shieldCount: 2,
-  },
-  4: {
-    label: 'Standard',
-    subtitle: 'Internationaler Anbieter · Weltweite Rechenzentren',
-    description: 'Internationaler Anbieter ohne EU-Datenresidenz. Datenverarbeitung kann außerhalb der EU erfolgen. Zusätzliche vertragliche Absicherungen empfohlen.',
-    color: '#6b7280', // gray
-    bgColor: '#6b728015',
-    borderColor: '#6b728040',
-    shieldCount: 1,
-  },
-};
-
-// Country list with favorites first, then alphabetically sorted
-const favoriteCountries = [
-  { code: 'DE', name: 'Deutschland', flag: '🇩🇪' },
-  { code: 'NL', name: 'Niederlande', flag: '🇳🇱' },
-  { code: 'FR', name: 'Frankreich', flag: '🇫🇷' },
-  { code: 'CH', name: 'Schweiz', flag: '🇨🇭' },
-  { code: 'FI', name: 'Finnland', flag: '🇫🇮' },
-  { code: 'SE', name: 'Schweden', flag: '🇸🇪' },
-  { code: 'US', name: 'USA', flag: '🇺🇸' },
-  { code: 'GB', name: 'Großbritannien', flag: '🇬🇧' },
-];
-
-const allCountries = [
-  { code: 'AF', name: 'Afghanistan', flag: '🇦🇫' },
-  { code: 'AL', name: 'Albanien', flag: '🇦🇱' },
-  { code: 'DZ', name: 'Algerien', flag: '🇩🇿' },
-  { code: 'AD', name: 'Andorra', flag: '🇦🇩' },
-  { code: 'AO', name: 'Angola', flag: '🇦🇴' },
-  { code: 'AR', name: 'Argentinien', flag: '🇦🇷' },
-  { code: 'AM', name: 'Armenien', flag: '🇦🇲' },
-  { code: 'AU', name: 'Australien', flag: '🇦🇺' },
-  { code: 'AT', name: 'Österreich', flag: '🇦🇹' },
-  { code: 'AZ', name: 'Aserbaidschan', flag: '🇦🇿' },
-  { code: 'BH', name: 'Bahrain', flag: '🇧🇭' },
-  { code: 'BD', name: 'Bangladesch', flag: '🇧🇩' },
-  { code: 'BY', name: 'Belarus', flag: '🇧🇾' },
-  { code: 'BE', name: 'Belgien', flag: '🇧🇪' },
-  { code: 'BA', name: 'Bosnien und Herzegowina', flag: '🇧🇦' },
-  { code: 'BR', name: 'Brasilien', flag: '🇧🇷' },
-  { code: 'BG', name: 'Bulgarien', flag: '🇧🇬' },
-  { code: 'CA', name: 'Kanada', flag: '🇨🇦' },
-  { code: 'CL', name: 'Chile', flag: '🇨🇱' },
-  { code: 'CN', name: 'China', flag: '🇨🇳' },
-  { code: 'CO', name: 'Kolumbien', flag: '🇨🇴' },
-  { code: 'HR', name: 'Kroatien', flag: '🇭🇷' },
-  { code: 'CY', name: 'Zypern', flag: '🇨🇾' },
-  { code: 'CZ', name: 'Tschechien', flag: '🇨🇿' },
-  { code: 'DK', name: 'Dänemark', flag: '🇩🇰' },
-  { code: 'DE', name: 'Deutschland', flag: '🇩🇪' },
-  { code: 'EG', name: 'Ägypten', flag: '🇪🇬' },
-  { code: 'EE', name: 'Estland', flag: '🇪🇪' },
-  { code: 'FI', name: 'Finnland', flag: '🇫🇮' },
-  { code: 'FR', name: 'Frankreich', flag: '🇫🇷' },
-  { code: 'GE', name: 'Georgien', flag: '🇬🇪' },
-  { code: 'GR', name: 'Griechenland', flag: '🇬🇷' },
-  { code: 'GB', name: 'Großbritannien', flag: '🇬🇧' },
-  { code: 'HK', name: 'Hongkong', flag: '🇭🇰' },
-  { code: 'HU', name: 'Ungarn', flag: '🇭🇺' },
-  { code: 'IS', name: 'Island', flag: '🇮🇸' },
-  { code: 'IN', name: 'Indien', flag: '🇮🇳' },
-  { code: 'ID', name: 'Indonesien', flag: '🇮🇩' },
-  { code: 'IR', name: 'Iran', flag: '🇮🇷' },
-  { code: 'IQ', name: 'Irak', flag: '🇮🇶' },
-  { code: 'IE', name: 'Irland', flag: '🇮🇪' },
-  { code: 'IL', name: 'Israel', flag: '🇮🇱' },
-  { code: 'IT', name: 'Italien', flag: '🇮🇹' },
-  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
-  { code: 'JO', name: 'Jordanien', flag: '🇯🇴' },
-  { code: 'KZ', name: 'Kasachstan', flag: '🇰🇿' },
-  { code: 'KE', name: 'Kenia', flag: '🇰🇪' },
-  { code: 'KR', name: 'Südkorea', flag: '🇰🇷' },
-  { code: 'KW', name: 'Kuwait', flag: '🇰🇼' },
-  { code: 'LV', name: 'Lettland', flag: '🇱🇻' },
-  { code: 'LB', name: 'Libanon', flag: '🇱🇧' },
-  { code: 'LI', name: 'Liechtenstein', flag: '🇱🇮' },
-  { code: 'LT', name: 'Litauen', flag: '🇱🇹' },
-  { code: 'LU', name: 'Luxemburg', flag: '🇱🇺' },
-  { code: 'MY', name: 'Malaysia', flag: '🇲🇾' },
-  { code: 'MT', name: 'Malta', flag: '🇲🇹' },
-  { code: 'MX', name: 'Mexiko', flag: '🇲🇽' },
-  { code: 'MD', name: 'Moldawien', flag: '🇲🇩' },
-  { code: 'MC', name: 'Monaco', flag: '🇲🇨' },
-  { code: 'ME', name: 'Montenegro', flag: '🇲🇪' },
-  { code: 'MA', name: 'Marokko', flag: '🇲🇦' },
-  { code: 'NL', name: 'Niederlande', flag: '🇳🇱' },
-  { code: 'NZ', name: 'Neuseeland', flag: '🇳🇿' },
-  { code: 'NG', name: 'Nigeria', flag: '🇳🇬' },
-  { code: 'MK', name: 'Nordmazedonien', flag: '🇲🇰' },
-  { code: 'NO', name: 'Norwegen', flag: '🇳🇴' },
-  { code: 'OM', name: 'Oman', flag: '🇴🇲' },
-  { code: 'PK', name: 'Pakistan', flag: '🇵🇰' },
-  { code: 'PA', name: 'Panama', flag: '🇵🇦' },
-  { code: 'PE', name: 'Peru', flag: '🇵🇪' },
-  { code: 'PH', name: 'Philippinen', flag: '🇵🇭' },
-  { code: 'PL', name: 'Polen', flag: '🇵🇱' },
-  { code: 'PT', name: 'Portugal', flag: '🇵🇹' },
-  { code: 'QA', name: 'Katar', flag: '🇶🇦' },
-  { code: 'RO', name: 'Rumänien', flag: '🇷🇴' },
-  { code: 'RU', name: 'Russland', flag: '🇷🇺' },
-  { code: 'SA', name: 'Saudi-Arabien', flag: '🇸🇦' },
-  { code: 'RS', name: 'Serbien', flag: '🇷🇸' },
-  { code: 'SG', name: 'Singapur', flag: '🇸🇬' },
-  { code: 'SK', name: 'Slowakei', flag: '🇸🇰' },
-  { code: 'SI', name: 'Slowenien', flag: '🇸🇮' },
-  { code: 'ZA', name: 'Südafrika', flag: '🇿🇦' },
-  { code: 'ES', name: 'Spanien', flag: '🇪🇸' },
-  { code: 'SE', name: 'Schweden', flag: '🇸🇪' },
-  { code: 'CH', name: 'Schweiz', flag: '🇨🇭' },
-  { code: 'TW', name: 'Taiwan', flag: '🇹🇼' },
-  { code: 'TH', name: 'Thailand', flag: '🇹🇭' },
-  { code: 'TR', name: 'Türkei', flag: '🇹🇷' },
-  { code: 'UA', name: 'Ukraine', flag: '🇺🇦' },
-  { code: 'AE', name: 'Vereinigte Arabische Emirate', flag: '🇦🇪' },
-  { code: 'US', name: 'USA', flag: '🇺🇸' },
-  { code: 'UY', name: 'Uruguay', flag: '🇺🇾' },
-  { code: 'UZ', name: 'Usbekistan', flag: '🇺🇿' },
-  { code: 'VN', name: 'Vietnam', flag: '🇻🇳' },
-].sort((a, b) => a.name.localeCompare(b.name, 'de'));
-
-// Helper to get country by code
-const getCountryByCode = (code) => {
-  return allCountries.find(c => c.code === code) || favoriteCountries.find(c => c.code === code);
-};
-
-// Helper to get region label
-const getRegionLabel = (region) => {
-  return companyRegions.find(r => r.value === region) || null;
 };
 
 const defaultProviderForm = {
@@ -769,6 +543,8 @@ const defaultModelForm = {
   type: 'llm',
   capabilities: ['chat'],
   default: false,
+  context_length: '',
+  datacenter_country: '',
 };
 
 function ProvidersPage({ embedded = false }) {
@@ -801,6 +577,7 @@ function ProvidersPage({ embedded = false }) {
   const [modelProviderId, setModelProviderId] = useState(null);
   const [testResult, setTestResult] = useState(null);
   const [isTesting, setIsTesting] = useState(false);
+  const [showTechnical, setShowTechnical] = useState(false);
 
   const toggleProvider = (id) => {
     setExpandedProviders((prev) => ({
@@ -894,18 +671,40 @@ function ProvidersPage({ embedded = false }) {
       type: model.type,
       capabilities: model.capabilities || [],
       default: model.default || false,
+      context_length: model.context_length ? String(model.context_length) : '',
+      datacenter_country: model.datacenter_country || '',
     });
     setShowModelModal(true);
   };
 
   const handleSaveModel = async () => {
     try {
+      const contextRaw = String(modelForm.context_length || '').trim();
+      const payload = {
+        ...modelForm,
+        context_length: contextRaw ? Number(contextRaw) : undefined,
+        datacenter_country: modelForm.datacenter_country || undefined,
+      };
+      if (payload.context_length !== undefined && !Number.isFinite(payload.context_length)) {
+        setError('Kontextfenster muss eine Zahl sein (Tokens).');
+        return;
+      }
       if (editingModel) {
-        await updateModel(modelProviderId, editingModel.id, modelForm);
+        await updateModel(modelProviderId, editingModel.id, payload);
       } else {
-        await addModel(modelProviderId, modelForm);
+        await addModel(modelProviderId, payload);
       }
       setShowModelModal(false);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Modell im Katalog freigeben/sperren
+  const handleToggleModel = async (providerId, model, nextEnabled) => {
+    try {
+      await updateModel(providerId, model.id, { enabled: nextEnabled });
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -961,50 +760,46 @@ function ProvidersPage({ embedded = false }) {
           <div style={styles.headerContent}>
             <h1 style={styles.title}>KI-Modelle</h1>
             <p style={styles.subtitle}>
-              Verwalte Provider und Modelle für Chat, Vision, Text-to-Speech und Speech-to-Text.
+              Modellkatalog dieser Instanz — Freigaben, Standards und Datenschutz-Informationen.
             </p>
           </div>
-          <button
-            style={styles.addButton}
-            onClick={handleCreateProvider}
-            onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-          >
-            <PlusIcon />
-            Neuer Provider
-          </button>
         </div>
       )}
 
       {embedded && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.xl }}>
-          <div>
-            <h2 style={{ fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, marginBottom: theme.spacing.xs, display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.colors.primary} strokeWidth="2">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
-                <polyline points="7.5 19.79 7.5 14.6 3 12" />
-                <polyline points="21 12 16.5 14.6 16.5 19.79" />
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                <line x1="12" y1="22.08" x2="12" y2="12" />
-              </svg>
-              KI-Modelle
-            </h2>
-            <p style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
-              Verwalte Provider und Modelle für Chat, Vision, TTS, STT und Bildgenerierung.
-            </p>
-          </div>
-          <button
-            style={styles.addButton}
-            onClick={handleCreateProvider}
-            onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-          >
-            <PlusIcon />
-            Neuer Provider
-          </button>
+        <div style={{ marginBottom: theme.spacing.xl }}>
+          <h2 style={{ fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, marginBottom: theme.spacing.xs, display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.colors.primary} strokeWidth="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+              <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+              <polyline points="7.5 19.79 7.5 14.6 3 12" />
+              <polyline points="21 12 16.5 14.6 16.5 19.79" />
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+            KI-Modelle
+          </h2>
+          <p style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+            Modellkatalog dieser Instanz — Freigaben, Standards und Datenschutz-Informationen.
+          </p>
         </div>
       )}
+
+      {/* Management-Rahmen: eine ruhige Zeile statt Tier-Bannern */}
+      <div style={{
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textSecondary,
+        backgroundColor: theme.colors.surface,
+        border: `1px solid ${theme.colors.border}`,
+        borderRadius: theme.borderRadius.lg,
+        padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+        marginBottom: theme.spacing.xl,
+        lineHeight: 1.5,
+      }}>
+        Alle Modelle werden über die Adacor-Plattform bereitgestellt und abgerechnet.
+        Datenschutzprüfung, Verträge und Subdienstleister-Management laufen zentral über
+        Adacor — es entstehen keine eigenen Vertragsbeziehungen zu Modellanbietern.
+      </div>
 
       {displayError && (
         <div style={styles.error}>
@@ -1020,9 +815,10 @@ function ProvidersPage({ embedded = false }) {
 
       {/* Active Models Section - System Defaults */}
       <div style={styles.activeSection}>
-        <h2 style={styles.activeSectionTitle}>System Defaults</h2>
+        <h2 style={styles.activeSectionTitle}>System-Standards</h2>
         <p style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.lg }}>
-          Diese Einstellungen gelten für alle Benutzer ohne eigene Modell-Präferenzen.
+          Diese Modelle gelten für alle Benutzer ohne eigene Modell-Präferenz. Per ENV gepinnte
+          Zwecke (ACTIVE_*) zeigen den wirksamen Pin — eine Änderung hier bleibt dann ohne Wirkung.
         </p>
         <div style={styles.activeGrid}>
           {['chat', 'vision', 'tts', 'stt', 'text_to_image', 'image_to_image'].map((purpose) => {
@@ -1064,59 +860,47 @@ function ProvidersPage({ embedded = false }) {
         </div>
       </div>
 
-      {/* Providers List - Grouped by Security Tier */}
+      {/* Modellkatalog — die Kundensicht auf alle Modelle */}
+      <ModelCatalog
+        providers={providers}
+        onToggleModel={handleToggleModel}
+        onEditModel={handleEditModel}
+      />
+
+      {/* Technische Konfiguration (Provider) — eingeklappt; nur fuers Instanz-Setup */}
       <div style={styles.section}>
-        <div style={styles.sectionHeader}>
+        <div
+          style={{ ...styles.sectionHeader, cursor: 'pointer' }}
+          onClick={() => setShowTechnical((v) => !v)}
+        >
           <h2 style={styles.sectionTitle}>
-            Provider nach Datensicherheit
+            Technische Konfiguration (Provider)
             <span style={styles.sectionBadge}>{providers.length}</span>
           </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            {showTechnical && (
+              <button
+                style={styles.addButton}
+                onClick={(e) => { e.stopPropagation(); handleCreateProvider(); }}
+                onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
+                onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
+              >
+                <PlusIcon />
+                Neuer Provider
+              </button>
+            )}
+            <ChevronIcon
+              style={{
+                ...styles.chevron,
+                ...(showTechnical ? styles.chevronExpanded : {}),
+              }}
+            />
+          </div>
         </div>
 
-        {[1, 2, 3, 4].map((tier) => {
-          const tierConfig = securityTiers[tier];
-          const tierProviders = providers.filter(
-            (p) => calculateSecurityTier(p.company_region, p.datacenter_country) === tier
-          );
-
-          if (tierProviders.length === 0) return null;
-
-          return (
-            <div key={tier} style={styles.tierSection}>
-              {/* Tier Header */}
-              <div
-                style={{
-                  ...styles.tierHeader,
-                  backgroundColor: tierConfig.bgColor,
-                  border: `1px solid ${tierConfig.borderColor}`,
-                }}
-              >
-                <div style={styles.tierShields}>
-                  {[...Array(4)].map((_, i) => (
-                    <ShieldIcon
-                      key={i}
-                      size={18}
-                      filled={i < tierConfig.shieldCount}
-                      color={tierConfig.color}
-                    />
-                  ))}
-                </div>
-                <div style={styles.tierInfo}>
-                  <div style={{ ...styles.tierLabel, color: tierConfig.color }}>
-                    {tierConfig.label}
-                  </div>
-                  <div style={{ ...styles.tierSubtitle, color: tierConfig.color }}>
-                    {tierConfig.subtitle}
-                  </div>
-                  <div style={{ ...styles.tierDescription, color: theme.colors.textMuted }}>
-                    {tierConfig.description}
-                  </div>
-                </div>
-              </div>
-
-              {/* Providers in this tier */}
-              <div style={styles.tierProviders}>
-                {tierProviders.map((provider) => {
+        {showTechnical && (
+          <div>
+                {providers.map((provider) => {
           const isExpanded = expandedProviders[provider.id];
           const iconConfig = providerIcons[provider.id] || providerIcons.custom;
           const providerTestResult = testResult?.providerId === provider.id ? testResult : null;
@@ -1361,10 +1145,8 @@ function ProvidersPage({ embedded = false }) {
             </div>
           );
         })}
-              </div>
-            </div>
-          );
-        })}
+          </div>
+        )}
       </div>
 
       {/* Provider Modal */}
@@ -1560,7 +1342,48 @@ function ProvidersPage({ embedded = false }) {
                   <option value="tts">TTS (Text-to-Speech)</option>
                   <option value="stt">STT (Speech-to-Text)</option>
                   <option value="image_gen">Image Gen (Bildgenerierung)</option>
+                  <option value="embedding">Embedding</option>
                 </select>
+              </div>
+
+              <div style={styles.formRow}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Kontextfenster (Tokens)</label>
+                  <input
+                    style={{ ...styles.input, ...styles.inputMono }}
+                    value={modelForm.context_length}
+                    onChange={(e) => setModelForm({ ...modelForm, context_length: e.target.value })}
+                    placeholder="z.B. 256000"
+                  />
+                  <div style={styles.hint}>Wird im Modellkatalog angezeigt (optional)</div>
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Rechenzentrum-Land (Override)</label>
+                  <select
+                    style={{ ...styles.input, cursor: 'pointer' }}
+                    value={modelForm.datacenter_country}
+                    onChange={(e) => setModelForm({ ...modelForm, datacenter_country: e.target.value })}
+                  >
+                    <option value="">Wie Provider</option>
+                    <optgroup label="Favoriten">
+                      {favoriteCountries.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          {country.flag} {country.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Alle Länder">
+                      {allCountries
+                        .filter(c => !favoriteCountries.some(f => f.code === c.code))
+                        .map((country) => (
+                          <option key={country.code} value={country.code}>
+                            {country.flag} {country.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  </select>
+                  <div style={styles.hint}>Nur setzen, wenn dieses Modell woanders läuft als der Provider</div>
+                </div>
               </div>
 
               <div style={styles.formGroup}>
@@ -1644,14 +1467,6 @@ function ChevronIcon({ style }) {
   return (
     <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}>
       <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
-function ShieldIcon({ size = 18, filled = true, color = 'currentColor' }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : 'none'} stroke={color} strokeWidth="2">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" opacity={filled ? 1 : 0.3} />
     </svg>
   );
 }

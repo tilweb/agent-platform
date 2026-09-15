@@ -220,6 +220,7 @@ export function useProviders() {
       const results = [];
       for (const provider of enabledProviders) {
         for (const model of provider.models) {
+          if (model.enabled === false) continue; // im Katalog gesperrt
           let matches = false;
           const caps = Array.isArray(model.capabilities) ? model.capabilities : [];
           if (purpose === 'chat') {
