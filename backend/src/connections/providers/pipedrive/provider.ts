@@ -35,7 +35,7 @@ export class PipedriveProvider extends OAuthProvider {
 ### 2. App erstellen
 1. Wähle "Create private app" (für eigene Nutzung)
 2. Name: z.B. "Agent Platform"
-3. Callback URL: \`http://localhost:3001/api/connections/pipedrive/callback\`
+3. Callback URL dieser Instanz: \`{{CALLBACK_URL}}\` (lokale Entwicklung: \`http://localhost:3001/api/connections/pipedrive/callback\`)
 
 ### 3. OAuth Scopes auswählen
 Unter "OAuth & access scopes" folgende aktivieren:

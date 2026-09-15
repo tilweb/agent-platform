@@ -40,8 +40,9 @@ Die Service-ID findest du unter: Hub → Services → YouTrack → Client-ID
 ### 2. Redirect-URI registrieren
 1. Gehe zu \`https://firma.youtrack.cloud/hub/services\`
 2. Oeffne den **YouTrack**-Service
-3. Fuege bei **Umleitungs-URIs** hinzu:
-   \`http://localhost:3001/api/connections/youtrack/callback\`
+3. Fuege bei **Umleitungs-URIs** die Callback-URL **dieser Instanz** hinzu:
+   \`{{CALLBACK_URL}}\`
+   (Weitere Umgebungen jeweils als eigene Zeile ergaenzen, z.B. lokale Entwicklung: \`http://localhost:3001/api/connections/youtrack/callback\`)
 
 ### 3. Backend neu starten
 
