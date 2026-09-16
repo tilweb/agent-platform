@@ -5,7 +5,7 @@
  * wzbar-matcher/assets/`). Nur das Audit-Log der Matches wandert in die DB.
  */
 
-import { eq, desc } from 'drizzle-orm';
+import { and, eq, desc } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { wzbarMatches } from '../../db/schema/wzbar';
 import type { AliasIndex, AliasMeta, CatalogEntry, EmbeddingsIndex, MatchRecord, MultiMatchResult, RetrievalHit } from './types';
@@ -115,6 +115,8 @@ function rowToRecord(row: typeof wzbarMatches.$inferSelect): MatchRecord {
     llmModel: row.llmModel ?? '',
     embeddingModel: row.embeddingModel ?? '',
     durationMs: row.durationMs ?? 0,
+    inputHash: row.inputHash ?? undefined,
+    pipelineVersion: row.pipelineVersion ?? undefined,
   };
 }
 
@@ -129,8 +131,28 @@ export async function saveMatch(record: MatchRecord): Promise<void> {
     llmModel: record.llmModel,
     embeddingModel: record.embeddingModel,
     durationMs: record.durationMs,
+    inputHash: record.inputHash,
+    pipelineVersion: record.pipelineVersion,
     createdAt: record.createdAt,
   });
+}
+
+/**
+ * Ergebnis-Cache: juengster Match mit gleichem Input-Hash und gleicher
+ * Pipeline-Version. Leere Ergebnisse (0 Activities) werden nie
+ * wiederverwendet.
+ */
+export async function findCachedMatch(inputHash: string, pipelineVersion: string): Promise<MatchRecord | null> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(wzbarMatches)
+    .where(and(eq(wzbarMatches.inputHash, inputHash), eq(wzbarMatches.pipelineVersion, pipelineVersion)))
+    .orderBy(desc(wzbarMatches.createdAt))
+    .limit(1);
+  if (!rows[0]) return null;
+  const record = rowToRecord(rows[0]);
+  return record.result.activities.length > 0 ? record : null;
 }
 
 export async function getMatch(id: string): Promise<MatchRecord | null> {

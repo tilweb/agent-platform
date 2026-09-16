@@ -72,6 +72,12 @@ export interface MultiMatchResult {
 }
 
 export interface MatchRecord {
+  /** sha256 des normalisierten inputText — Schluessel des Ergebnis-Caches. */
+  inputHash?: string;
+  /** Pipeline-Version beim Erzeugen; Cache-Treffer nur bei identischer Version. */
+  pipelineVersion?: string;
+  /** Transient (nicht persistiert): Ergebnis kam aus dem Cache. */
+  cached?: boolean;
   id: string;
   createdAt: string;
   userId: string;

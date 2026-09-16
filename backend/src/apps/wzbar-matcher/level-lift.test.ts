@@ -1,6 +1,15 @@
 import { describe, expect, test } from 'bun:test';
 import { buildLiftMap } from './level-lift';
+import { cacheKey } from './service';
 import type { CatalogEntry } from './types';
+
+describe('cacheKey (Ergebnis-Cache)', () => {
+  test('normalisiert Whitespace und Gross-/Kleinschreibung', () => {
+    expect(cacheKey('Abbrucharbeiten')).toBe(cacheKey('  abbrucharbeiten  '));
+    expect(cacheKey('Abbruch  und\n Entkernung')).toBe(cacheKey('abbruch und entkernung'));
+    expect(cacheKey('Abbrucharbeiten')).not.toBe(cacheKey('Abbrucharbeiten GmbH'));
+  });
+});
 
 function entry(code: string, kurztext: string): CatalogEntry {
   return { code, kurztext, langtext: kurztext, validFrom: '2025-01-01', validTo: null };

@@ -256,6 +256,14 @@ Bewertung: temperature 0 bleibt drin (korrekte Hygiene für eine Klassifikations
 2. `seed`-Parameter (vLLM unterstützt seed; erfordert kleine Erweiterung des OpenAI-Adapters) — reduziert, garantiert aber unter Batching ebenfalls nicht vollständig.
 3. Self-Consistency (3× klassifizieren, Mehrheitsentscheid) — 3× Kosten/Latenz, für die interaktive App unpassend.
 
+### Ergebnis-Cache umgesetzt (2026-09-16)
+
+- **Schlüssel**: sha256 über den normalisierten `inputText` (Whitespace kollabiert, lowercased) — dieselbe fachliche Eingabe trifft unabhängig von Formatierung. **Gültigkeit**: nur bei identischer `PIPELINE_VERSION` (Konstante in `service.ts`, aktuell `2026-09-16.1`) — **bei jeder verhaltensrelevanten Änderung an Prompts/Retrieval/Lift/Aliassen/Katalog hochzählen**, sonst liefert der Cache Alt-Ergebnisse.
+- **Speicherung**: zwei neue Spalten `input_hash` + `pipeline_version` in `wzbar.matches` (Migration `0038_wzbar_match_cache.sql`, additiv/idempotent) + Index. Cache-Treffer legen **keinen neuen Record** an (History füllt sich nicht mit Duplikaten; Nutzungszählung wiederholter Anfragen entfällt dafür) und tragen transient `cached: true` in der API-Antwort. Leere Ergebnisse (0 Activities) werden nie wiederverwendet; Lookup-Fehler fallen auf Neuberechnung zurück. Escape-Hatch: `WZBAR_MATCH_CACHE=off`.
+- Der Eval-Harness ist unberührt (nutzt `matchActivity` direkt, nicht `match()`).
+- **Live-Test**: identische Eingabe mit anderer Formatierung/Groß-Kleinschreibung → zweiter Aufruf **4 ms statt 7,9 s**, gleiche Record-ID, `cached: true`.
+- Optionaler UI-Folgeschritt: `cached`-Flag in der MatcherPage anzeigen („aus früherem Lauf").
+
 ## Offene Punkte
 
 - **Deploy auf die drei IHK-Instanzen** (alle Maßnahmen sind bisher nur lokal/main): danach Fall-1-Quote (Anteil 4-stelliger Primaries) via `prod-analysis.ts` als Vorher/Nachher-Beleg ziehen — sollte von 9–16 % auf ~0 fallen.

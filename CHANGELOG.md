@@ -2,6 +2,17 @@
 
 ## 2026-09-16
 
+### WZ-Branchen-Matcher: Ergebnis-Cache (Konsistenz + Latenz)
+Identische (normalisierte) Eingaben liefern jetzt garantiert dasselbe Ergebnis: sha256
+über den whitespace-kollabierten, lowercased inputText + PIPELINE_VERSION-Konstante als
+Gültigkeitsanker (bei verhaltensrelevanten Pipeline-Änderungen hochzählen!). Neue Spalten
+input_hash/pipeline_version in wzbar.matches (Migration 0038, additiv). Cache-Treffer
+legen keinen neuen Record an und tragen transient `cached: true`; leere Ergebnisse werden
+nie wiederverwendet, Lookup-Fehler fallen auf Neuberechnung zurück; Escape-Hatch
+WZBAR_MATCH_CACHE=off. Live-Test: Wiederholung 4 ms statt 7,9 s bei gleicher Record-ID.
+Löst das Konsistenz-Symptom („gleicher Text, andere Antwort"), das temperature 0 auf dem
+nichtdeterministischen Endpoint nicht beheben konnte.
+
 ### WZ-Branchen-Matcher: temperature 0 für Matcher-Calls (Konsistenz-Messung)
 Alle drei Matcher-LLM-Calls (split/condense/classify) laufen jetzt mit temperature 0 —
 korrekte Hygiene für Klassifikation, Regressionscheck ohne Befund. Ehrlicher Messbefund:

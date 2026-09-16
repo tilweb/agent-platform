@@ -6,7 +6,8 @@
  *   3. aggregierter MultiMatchResult, persist
  */
 
-import { generateMatchId, getMatch, listMatches, loadAliasIndex, loadCatalog, loadEmbeddings, saveMatch } from './storage';
+import { createHash } from 'node:crypto';
+import { findCachedMatch, generateMatchId, getMatch, listMatches, loadAliasIndex, loadCatalog, loadEmbeddings, saveMatch } from './storage';
 import { topKWithAliases } from './retrieval';
 import { buildLiftMap } from './level-lift';
 import { classify } from './classifier';
@@ -26,6 +27,24 @@ import { getPlatformModel } from '../../config/platformModels';
 import { getSystemDefaultModel } from '../../services/providers';
 
 const TOP_K = 20;
+
+/**
+ * Pipeline-Version fuer den Ergebnis-Cache: Bei JEDER verhaltensrelevanten
+ * Aenderung (Prompts, Retrieval, Lift, Aliase, Katalog, Modell-Logik)
+ * hochzaehlen — sonst liefert der Cache Ergebnisse der alten Pipeline.
+ */
+export const PIPELINE_VERSION = '2026-09-16.1';
+
+/**
+ * Cache-Schluessel: Whitespace-kollabiert und lowercased — dieselbe fachliche
+ * Eingabe soll unabhaengig von Formatierung denselben Treffer ziehen. Der
+ * Adacor-Endpoint ist selbst bei temperature 0 nicht deterministisch
+ * (vLLM-Batching); der Cache ist der verlaessliche Konsistenz-Hebel.
+ */
+export function cacheKey(inputText: string): string {
+  const normalized = inputText.trim().replace(/\s+/g, ' ').toLowerCase();
+  return createHash('sha256').update(normalized).digest('hex');
+}
 
 /** Gemeinsam geladene Ressourcen fuer Matching und Eval-Harness. */
 export interface MatchDeps {
@@ -111,6 +130,16 @@ export async function match(inputText: string, userId = 'user_default'): Promise
   if (!trimmed) throw new Error('inputText darf nicht leer sein');
 
   const started = Date.now();
+  const inputHash = cacheKey(trimmed);
+
+  if (process.env.WZBAR_MATCH_CACHE !== 'off') {
+    try {
+      const cached = await findCachedMatch(inputHash, PIPELINE_VERSION);
+      if (cached) return { ...cached, cached: true };
+    } catch (error) {
+      console.error('[wzbar-matcher] Cache-Lookup fehlgeschlagen — rechne neu:', error);
+    }
+  }
 
   const deps = await buildMatchDeps();
 
@@ -138,6 +167,8 @@ export async function match(inputText: string, userId = 'user_default'): Promise
     llmModel,
     embeddingModel: deps.index.model,
     durationMs: Date.now() - started,
+    inputHash,
+    pipelineVersion: PIPELINE_VERSION,
   };
 
   await saveMatch(record);
