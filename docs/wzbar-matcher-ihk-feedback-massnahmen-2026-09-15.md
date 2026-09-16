@@ -36,7 +36,7 @@ Beide Fälle wurden lokal mit der echten Pipeline (Splitter → Embedding-Retrie
 |---|----------|------|---------|--------|
 | M1 | Ebenen-Normalisierung (deterministischer Lift) | Fall 1 | ~0,5 T | **umgesetzt (2026-09-15)** |
 | M2a | Eval-Harness + Seed-Golden-Set (Recall@20 + Precision@1) | Messbarkeit | ~1 T | **umgesetzt (2026-09-15)** |
-| M2b | Produktions-Replay (Export `wzbar.matches` der 3 IHK-Instanzen, unüberwachte Metriken, Replay-Diff) | Messbarkeit auf Echtdaten | ~1 T | offen |
+| M2b | Produktions-Replay (Export `wzbar.matches` der 3 IHK-Instanzen, unüberwachte Metriken, Replay-Diff) | Messbarkeit auf Echtdaten | ~1 T | **umgesetzt (2026-09-16)** |
 | M3 | Query-Expansion im Splitter (Normalisierungs-Variante mit-embedden, Union per Max-Similarity) | Fall 2 (konkret) | ~1 T | **umgesetzt (2026-09-15)** |
 | M4 | Alias-Anreicherung des Katalogs (Destatis-Stichwörter `enrich`-Hälfte, separate Vektoren pro Code) | Fall 2 (Fehlerklasse) | ~2–3 T | **umgesetzt (2026-09-16)** |
 
@@ -150,9 +150,38 @@ Kuratierte Fälle in diesem Lauf: 7/8 Primary (Top-4 8/8) — „Baulicher Brand
 
 **Achtung fürs Deployment**: Die Alias-Dateien sind Build-Time-Assets wie `embeddings.json` — sie shippen mit dem Image. Nach einem Katalog-Rebuild mit anderem Embedding-Modell muss auch der Alias-Builder neu laufen (sonst greift der Modell-Guard und die Aliase sind wirkungslos).
 
+### M2b — Umsetzung (2026-09-16)
+
+**Werkzeuge** (`backend/src/apps/wzbar-matcher/eval/`): `export-prod-matches.ts` (Read-only-Export via `scalingo db-tunnel`, Connection Strings aus `backend/.env` — `SCALINGO_POSTGRES_IHKESSEN/IHKDARMSTADT/IHKLEIPZIG`, nie auf der Kommandozeile), `prod-analysis.ts` (unüberwachte Metriken), `replay.ts` (Replay-Diff gegen die aktuelle Pipeline, Differenzliste = Review-Menge). Zugang: SSH-Key `macbook-andreas` im Scalingo-Account registriert (Account hatte keinen; DBs sind ohne Internet-Zugriff konfiguriert). Die Export-/Diff-JSONs enthalten Kundendaten und bleiben bewusst außerhalb des Repos.
+
+**Produktionsbefunde (Stand 2026-09-16, 1.932 Matches: Essen 19, Darmstadt 1.818, Leipzig 95)**:
+
+- **Fall-1-Quote verifiziert**: 9,0 % (Darmstadt) / 8,8 % (Leipzig) / 16,2 % (Essen) aller Primaries sind 4-stellig — die IHK-Beschwerde quantifiziert. Nach M1-Deploy sollte der Wert auf ~0 fallen (Monitoring-Metrik).
+- **Überspezifisch ist der häufigere Produktionsfehler**: bloßes „Abbrucharbeiten" → `431102 Demontage von Industrieanlagen` (85 %), mehrfach belegt; 50–60 % aller Primaries sind 6-/7-stellig. Bestätigt die Classifier-Prompt-Fixes.
+- **Modell-Erklärung für den 4311-Lauf**: Die Instanzen liefen auf `adacor/mistral-3-24b-128k` bzw. `adacor/qwen3-5-a3b-35b-256k` — nicht auf dem lokal getesteten Qwen3 30B. Der Original-Lauf ist so plausibel erklärt (kleineres Modell, altes Prompt ohne Ebenen-Regel).
+- **Nutzungsmuster**: ~1,9 Tätigkeiten/Match (Multi-Activity dominiert), Konfidenz fast uniform 0,95 (kaum kalibriert), Median-Dauer 5–6 s, Milieu v. a. Bau/Handwerk/Reinigung/Hausmeister. Sachbearbeiter stellen teils den erwarteten Code voran („43110 Abbrucharbeiten, …") — ein UI-Hinweis, dass ein „Soll-Code bestätigen"-Feedback-Feld gut angenommen würde.
+- Essens „persönlich haftende"-Fall von 2026-08-06 wurde mit `70104` (95 %) korrekt beantwortet (Formulierung enthielt „Geschäftsführung").
+
+**Replay-Diff** (119 jüngste Matches durch die aktuelle Pipeline M1+M3+M4): 98 geändert — davon 15 reine Ebenen-Lifts (M1), 27 innerhalb derselben Klasse (v. a. Überspezifisch→Unterklasse), 56 klassenübergreifend (Gemisch aus echten Verbesserungen wie „Planung Tiefengeothermie" `422101`→`71123 Ingenieurbüros` und modellbedingten Abweichungen — Produktions- und Lokal-Modell unterscheiden sich). Die 56 sind die priorisierte Hand-Review-Menge vor einem Deploy; Diff-Reports liegen lokal (`replay-{essen,darmstadt,leipzig}.json`).
+
+### Modell-Benchmark (2026-09-16)
+
+Alle chat-fähigen Kandidaten unter identischen Bedingungen (n=158, seed 42, volle Pipeline M1+M3+M4, Destatis-Teilset n=150):
+
+| Modell | Primary-Hit | exakt | Top-4 | Anmerkung |
+|---|---|---|---|---|
+| Adacor Qwen 3.5 Instruct 35B | 70,0 % | **64,0 %** | 87,3 % | aktuell auf allen 3 Instanzen gepinnt |
+| Adacor Qwen 3 30B | 70,0 % | 63,3 % | **92,0 %** | lokaler Referenz-Pin |
+| Adacor Qwen 3.5 Thinking 35B | 68,7 % | 62,7 % | 89,3 % | kein Genauigkeitsgewinn, mehr Latenz/Kosten |
+| Adacor Mistral 3 24B | 63,3 % | 56,0 % | 71,3 % | bis Ende 08/2026 auf den Instanzen; klar schwächer |
+| Lyceum Qwen 3.8 27B / Flash Next | — | — | — | nicht messbar: reproduzierbare >120s-Timeouts des Endpoints (3 Versuche, auch Concurrency 3) — für die interaktive App disqualifizierend |
+
+**Empfehlung**: Beim gepinnten **Adacor Qwen 3.5 Instruct 35B bleiben** — beste Exakt-Quote, gleichauf beim Primary-Hit, produktionserprobt; der Unterschied zu Qwen 3 30B liegt im Rauschbereich, ein Wechsel lohnt nicht. Die Thinking-Variante und Mistral sind für den Matcher raus. Wesentliche Einsicht: Die Modellwahl bewegt maximal ~7 pp — die Pipeline-Maßnahmen M1–M4 brachten +14 pp Primary/+27 pp Top-4. Nebenbefund: `run-eval.ts` ist jetzt fehlertolerant (Einzelfall-Fehler brechen den Lauf nicht mehr ab, werden gezählt und ausgewiesen).
+
 ## Offene Punkte
 
-- Audit-Records der IHK-Instanz einsehen, um den originalen `4311`-Lauf zu verifizieren (welches Modell, welcher Pfad).
-- M2b: `wzbar.matches` der drei IHK-Instanzen exportieren (unüberwachte Metriken, Replay-Diff-Werkzeug); die echten Eingabetexte werden zugleich Basis für spätere Gold-Labels, falls die IHKen doch Soll-Codes liefern.
-- M3/M4 gegen die M2a-Baseline umsetzen (Ziel: Recall@20 deutlich über 70 %; jede Änderung mit identischem seed/sample vergleichen).
-- Beim WZ-2025-Katalog-Update prüfen, ob der Klassifikationsserver-Stichwörter-Export aktualisiert wurde (Stand der Datei: 2026-08-07).
+- **Deploy auf die drei IHK-Instanzen** (alle Maßnahmen sind bisher nur lokal/main): danach Fall-1-Quote (Anteil 4-stelliger Primaries) via `prod-analysis.ts` als Vorher/Nachher-Beleg ziehen — sollte von 9–16 % auf ~0 fallen.
+- Hand-Review der 56 klassenübergreifenden Replay-Differenzen vor dem Deploy (Diff-Reports lokal; enthalten Kundendaten, nicht ins Repo).
+- ~~Apps-Modell auf den Instanzen prüfen~~ → erledigt, siehe Modell-Benchmark: aktuelles Pin (Qwen 3.5 35B) ist die richtige Wahl; Lyceum-Endpoint bei Interesse später erneut testen (Timeouts am 16.09.).
+- Produktidee aus den Echtdaten: Sachbearbeiter geben den erwarteten Code oft schon mit ein → ein „Soll-Code bestätigen/korrigieren"-Feedback-Feld hätte hohe Akzeptanz und liefert echte Gold-Labels.
+- Beim WZ-2025-Katalog-Update prüfen, ob der Klassifikationsserver-Stichwörter-Export aktualisiert wurde (Stand der Datei: 2026-08-07); danach `alias-builder.ts` neu laufen lassen.

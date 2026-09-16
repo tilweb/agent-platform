@@ -2,6 +2,29 @@
 
 ## 2026-09-16
 
+### WZ-Branchen-Matcher: Modell-Benchmark + fehlertoleranter Eval-Runner
+Sechs Kandidaten unter identischen Bedingungen gemessen (n=158, volle Pipeline):
+Empfehlung ist das bereits gepinnte Adacor Qwen 3.5 Instruct 35B (beste Exakt-Quote
+64 %, Primary 70 % — gleichauf mit Qwen 3 30B, Rauschbereich); Thinking-Variante ohne
+Gewinn, Mistral 3 24B klar schwächer (−7 pp), Lyceum-Endpoint wegen reproduzierbarer
+120s-Timeouts nicht bewertbar. Kernbefund: Modellwahl bewegt ≤7 pp, die
+Pipeline-Maßnahmen M1–M4 brachten +14 pp Primary/+27 pp Top-4. `run-eval.ts` bricht bei
+Einzelfall-Fehlern (Timeout/API) nicht mehr komplett ab, sondern zählt sie und weist die
+Quoten auf Basis der erfolgreichen Fälle aus.
+
+### WZ-Branchen-Matcher: Produktions-Replay der drei IHK-Instanzen (IHK-Feedback M2b)
+Neue Eval-Werkzeuge: `export-prod-matches.ts` (Read-only-Export via scalingo db-tunnel,
+Connection Strings nur aus .env), `prod-analysis.ts` (unüberwachte Metriken ohne
+Soll-Codes), `replay.ts` (Diff echter Eingaben gegen die aktuelle Pipeline — die
+Differenzliste ist die Review-Menge). Befunde aus 1.932 Produktions-Matches
+(Essen/Darmstadt/Leipzig): Fall-1-Quote 9–16 % 4-stellige Primaries (IHK-Beschwerde
+quantifiziert, Monitoring-Metrik für den M1-Deploy), Überspezifisch ist der häufigere
+Fehler („Abbrucharbeiten"→431102 Demontage), Instanzen liefen auf mistral-3-24b bzw.
+qwen3-5-a3b (erklärt den nicht reproduzierbaren 4311-Lauf), Konfidenz uniform 0,95.
+Replay der 119 jüngsten Matches: 98 geändert (15 reine M1-Lifts, 27 klassenintern,
+56 klassenübergreifend als Hand-Review-Menge vor Deploy). Kundendaten-Exporte bleiben
+außerhalb des Repos.
+
 ### WZ-Branchen-Matcher: Alias-Anreicherung des Retrievals (IHK-Feedback M4)
 Löst die Fehlerklasse „produktspezifische Umschreibung findet ihren Sammel-Code nicht":
 `alias-builder.ts` embeddet die enrich-Hälfte der amtlichen Destatis-Stichwörter (17.934

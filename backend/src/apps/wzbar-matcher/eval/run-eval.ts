@@ -68,8 +68,20 @@ const started = Date.now();
 let expandedCount = 0;
 let multiSplitCount = 0;
 
-const results: CaseResult[] = await pool(valid, mode === 'full' || expand ? concurrency : 8, async (c, i) => {
+let caseErrors = 0;
+
+const results: (CaseResult | null)[] = await pool(valid, mode === 'full' || expand ? concurrency : 8, async (c, i) => {
   if ((i + 1) % 25 === 0) console.log(`  ... ${i + 1}/${valid.length}`);
+  try {
+    return await runCase(c);
+  } catch (error) {
+    caseErrors++;
+    console.error(`  FEHLER bei "${c.text.slice(0, 50)}": ${String(error).slice(0, 120)}`);
+    return null;
+  }
+});
+
+async function runCase(c: EvalCase): Promise<CaseResult> {
 
   // Produktionsidentischer Pfad: Splitter liefert Text + Suchvarianten.
   // Eval-Faelle sind single-activity; bei Mehrfach-Splits zaehlt die erste.
@@ -103,7 +115,12 @@ const results: CaseResult[] = await pool(valid, mode === 'full' || expand ? conc
     primaryLevel,
     top4Hit: allCodes.some(code => isHit(judgeCode(code, c.expected, deps.liftTo))),
   };
-});
+}
+
+const okResults: CaseResult[] = results.filter((r): r is CaseResult => r !== null);
+if (caseErrors > 0) {
+  console.log(`\nWARNUNG: ${caseErrors}/${valid.length} Faelle mit Fehlern (Timeout/API) — Quoten beziehen sich auf die ${okResults.length} erfolgreichen.`);
+}
 
 // --- Report -----------------------------------------------------------------
 
@@ -120,11 +137,11 @@ function printAggregate(label: string, agg: Aggregate) {
 }
 
 const bySource: Record<string, CaseResult[]> = {};
-for (const r of results) (bySource[r.case.source] ??= []).push(r);
+for (const r of okResults) (bySource[r.case.source] ??= []).push(r);
 for (const [source, rs] of Object.entries(bySource)) printAggregate(source, aggregate(rs, mode === 'full'));
-printAggregate('GESAMT', aggregate(results, mode === 'full'));
+printAggregate('GESAMT', aggregate(okResults, mode === 'full'));
 
-const misses = results.filter(r => (mode === 'full' ? !isHit(r.primaryLevel ?? 'wrong') : !r.recallHit));
+const misses = okResults.filter(r => (mode === 'full' ? !isHit(r.primaryLevel ?? 'wrong') : !r.recallHit));
 if (misses.length > 0) {
   console.log(`\nFehlgriffe (${misses.length}, max. 30 gezeigt):`);
   for (const m of misses.slice(0, 30)) {
@@ -140,8 +157,9 @@ if (outPath) {
   await Bun.write(outPath, JSON.stringify({
     ranAt: new Date().toISOString(),
     mode, seed, sampleN, expand,
-    aggregate: { total: aggregate(results, mode === 'full'), ...Object.fromEntries(Object.entries(bySource).map(([s, rs]) => [s, aggregate(rs, mode === 'full')])) },
-    results,
+    aggregate: { total: aggregate(okResults, mode === 'full'), ...Object.fromEntries(Object.entries(bySource).map(([s, rs]) => [s, aggregate(rs, mode === 'full')])) },
+    results: okResults,
+    caseErrors,
   }, null, 2));
   console.log(`Report: ${outPath}`);
 }
