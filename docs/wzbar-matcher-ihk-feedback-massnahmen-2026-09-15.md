@@ -178,6 +178,36 @@ Alle chat-fähigen Kandidaten unter identischen Bedingungen (n=158, seed 42, vol
 
 **Empfehlung**: Beim gepinnten **Adacor Qwen 3.5 Instruct 35B bleiben** — beste Exakt-Quote, gleichauf beim Primary-Hit, produktionserprobt; der Unterschied zu Qwen 3 30B liegt im Rauschbereich, ein Wechsel lohnt nicht. Die Thinking-Variante und Mistral sind für den Matcher raus. Wesentliche Einsicht: Die Modellwahl bewegt maximal ~7 pp — die Pipeline-Maßnahmen M1–M4 brachten +14 pp Primary/+27 pp Top-4. Nebenbefund: `run-eval.ts` ist jetzt fehlertolerant (Einzelfall-Fehler brechen den Lauf nicht mehr ab, werden gezählt und ausgewiesen).
 
+## Analyse: Lange, detaillierte Gegenstandstexte (IHK-Rückmeldung 2, 2026-09-16 — nur Analyse, nicht umgesetzt)
+
+**Meldung**: Bei sehr ausführlichen Unternehmensgegenständen (juristisch durchformulierte Texte mit Spiegelstrich-Aufzählungen) seien die Teiltätigkeiten „auch für Menschen nur beim genauen Durchlesen zu unterscheiden" — Verdacht: „Embedding funktioniert nicht gut, weil die Tätigkeiten zu nah beieinander sind." Beispiel: Tiefengeothermie-Erkundung, 1.548 Zeichen, 8 Spiegelstriche.
+
+**Empirische Befunde** (3 Pipeline-Läufe + gezielte Embedding-Messungen mit dem Beispieltext):
+
+1. **Primärdefekt ist der Splitter, nicht das Embedding**: Der Text ist fachlich EINE Tätigkeit (Geothermie-Erkundung; die 8 Spiegelstriche sind juristische Facetten davon). Der Splitter erkennt das korrekt — aber die Prompt-Regel „Bei einzelner Tätigkeit gibst du sie **unverändert** zurück" führt dann in 2 von 3 Läufen dazu, dass der **komplette 1.548-Zeichen-Text als eine ‚Activity' durchgereicht wird** (das `maxLength: 80` im Function-Schema wird von der API nicht erzwungen). In diesen Läufen liefert der Splitter zudem **keine Suchvarianten** — die M3-Expansion fällt komplett aus. In 1 von 3 Läufen verdichtet er dagegen sauber auf einen 120-Zeichen-Kern mit Varianten.
+2. **Damit ist auch das Ergebnis nichtdeterministisch**: Lauf mit Verdichtung → `43130 Test- und Suchbohrung` (95 %, fachlich gut vertretbar); Läufe mit Volltext-Durchreichung → `09100 Dienstleistungen für die Gewinnung von **Erdöl und Erdgas**` (95 %, fachlich schief). Zweimal „95 % Konfidenz" für verschiedene Antworten — genau die Inkonsistenz, die beim Kunden ankommt.
+3. **Die Embedding-Verwässerung ist real und messbar**, trifft aber den Volltext, nicht die Einzeltätigkeiten:
+   | Query | Top-1 | Similarity-Spread Top1–Top20 | Fach-Kandidaten in Top-20 |
+   |---|---|---|---|
+   | Volltext (1,5k Zeichen) | 43130 @ 0,869 | **0,029 (flach)** | 4 von 7, plus Rauschen (62.20 IT, 26.70 Optik, 28.42 Werkzeugmaschinen) |
+   | Nur Kernsatz („Erkundung geothermischer Ressourcen…") | 43130 @ 0,905 | 0,036 | sauber |
+   | **Nur die Boilerplate-Verben** („Planung, Koordination, … von Maßnahmen") | Öffentliche Verwaltung / Hörfunk / Grundstücksverwaltung | **0,013 (reines Rauschen)** | KEINE |
+   | Einzelner Spiegelstrich (geolog. Untersuchungen) | 43130 @ **0,930** | **0,051 (scharf)** | sauber |
+   
+   Die juristischen Rahmenverben (~40 % des Textes) ziehen den Volltext-Fingerabdruck in eine generische „Verwaltung von Maßnahmen"-Region; die Einzelpunkte für sich diskriminieren dagegen **gut** — die Kundenbeobachtung „zu nah beieinander" gilt für den Mischtext, nicht für die Teiltätigkeiten.
+4. **Latente Grenze**: `multilingual-e5-large` kappt bei 512 Tokens. Das Beispiel (~450 Tokens) liegt knapp darunter — noch längere Gegenstände (im HR üblich) verlieren hintere Spiegelstriche **stillschweigend**.
+5. **Fachliche Restunsicherheit unabhängig von der Technik**: Für „Aufsuchung eigener geothermischer Ressourcen" ist der Soll-Code auch für Menschen nicht eindeutig (vertretbar: 43130 Test-/Suchbohrung, 09900 DL sonstiger Bergbau, 42210 per amtlichem Stichwort „Bohrarbeiten für Geothermieanlagen", 35300 künftige Wärmeerzeugung). `09900` hat **null lexikalische Nähe** zu Geothermie und keinerlei Alias — selbst perfektes Retrieval kann ihn nicht anbieten. → Rückfrage an die IHK nach dem Soll-Code lohnt; der Fall ist zugleich das beste Argument für das „Soll-Code bestätigen"-Feedback-Feld.
+
+**Lösungsoptionen (Skizze, bewusst nicht umgesetzt)**:
+
+- **S1 — Splitter-Härtung für Langtexte** (adressiert Punkt 1+2, kleinster Eingriff): „unverändert zurückgeben" auf kurze Eingaben (~≤120 Zeichen) begrenzen; lange Ein-Tätigkeits-Texte werden auf einen prägnanten Kern verdichtet, Suchvarianten sind Pflicht. Zusätzlich **Code-seitiger Guard** statt Schema-Hoffnung: Activity-Text > ~200 Zeichen → Kernsatz-Verdichtung erzwingen. Erwartung: stellt Verhalten von „Lauf 1" deterministisch her.
+- **S2 — Boilerplate-Dämpfung**: juristische Rahmenformeln („Planung/Koordination/Verwaltung von Maßnahmen", „Erwerb/Halten/Übertragung", „insbesondere") vor dem Embedden entfernen bzw. den Splitter Nominalkerne extrahieren lassen. Ergänzend zu S1, geringes Risiko.
+- **S3 — Facetten-Modell statt Multi-Activity** (größerer Umbau, fachlich sauberste Lösung): Spiegelstriche einzeln retrieven (diskriminieren scharf, s. Messung), dann ein Aggregations-Schritt „eine Haupttätigkeit + unterstützende Facetten" statt heute „max. 3 gleichrangige Tätigkeiten". Liefert der IHK genau die Struktur, die ein Sachbearbeiter bildet (Haupt- vs. Nebentätigkeit).
+- **S4 — Eval-Kategorie ‚Langtexte'**: die längsten echten Eingaben aus den Prod-Exporten (Darmstadt) als neue Golden-Set-Kategorie + **Konsistenz-Metrik** (3 Läufe → gleiche Antwort?). Ohne das bleibt die Fehlerklasse unbemessen und jede S1–S3-Änderung unverifizierbar.
+- Flankierend: Token-Guard/Warnung bei Eingaben nahe der 512-Token-Grenze.
+
+Empfohlene Reihenfolge bei Umsetzung: S4 (messen) → S1 (+S2) → S3 nur, falls S1/S2 die Klasse nicht schließen.
+
 ## Offene Punkte
 
 - **Deploy auf die drei IHK-Instanzen** (alle Maßnahmen sind bisher nur lokal/main): danach Fall-1-Quote (Anteil 4-stelliger Primaries) via `prod-analysis.ts` als Vorher/Nachher-Beleg ziehen — sollte von 9–16 % auf ~0 fallen.
