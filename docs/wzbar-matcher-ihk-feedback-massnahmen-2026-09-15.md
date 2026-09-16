@@ -224,6 +224,29 @@ Empfohlene Reihenfolge bei Umsetzung: S4 (messen) → S1 (+S2) → S3 nur, falls
 
 Damit ist die Fehlerklasse jetzt beziffert und jede S1–S3-Änderung nachweisbar. **Latenz-Befund für die S1-Umsetzung**: Die Verdichtung im Splitter (S1) kostet keine zusätzlichen Calls und dürfte die Latenz sogar senken (kürzere Classifier-Prompts, weniger Passthrough-Mehrfach-Activities); falls Langtexte trotzdem über ~5 s bleiben, braucht es UX-seitig eine Zwischenanzeige (z. B. erkannte Tätigkeiten streamen, bevor die Codes da sind).
 
+### S1 — Splitter-Härtung umgesetzt (2026-09-16)
+
+Drei Bausteine in `splitter.ts`:
+1. **Prompt**: „unverändert zurückgeben" gilt nur noch für kurze Eingaben (≤ ~120 Z.); lange Ein-Tätigkeits-Texte werden zwingend auf einen ≤80-Zeichen-Kern verdichtet (Fachgebiet muss enthalten sein, juristische Rahmenformeln fallen weg), Suchvarianten sind bei Verdichtung Pflicht.
+2. **Code-Guard**: Activities > 200 Zeichen (Schema-`maxLength` wird von der API nicht erzwungen) laufen durch einen dedizierten Verdichtungs-Call (`condense_activity`); bei dessen Scheitern Head-Truncation auf ~160 Z. (bei HR-Gegenständen trägt der Kopfsatz fast immer den Kern). Wichtig: auch der Kein-Output-Fallback des Splitters (LLM antwortet ohne `tool_calls` — kommt vor, ohne Exception) läuft jetzt durch den Guard; vorher war das ein stiller Passthrough-Pfad.
+3. **Robustheits-Beifang**: `sanitizeResult` crashte, wenn das LLM `alternatives` als Nicht-Array lieferte (`?? []` schützt nicht vor falschem Typ) — trifft auch Produktion; jetzt hart abgesichert (Array-/Objekt-Check, Fallback Top-1). `longtext-eval.ts` ist zudem je Lauf fehlertolerant.
+
+**Messung (gleiche 9 Fälle × 3 Läufe) — Baseline → S1**:
+
+| Metrik | Baseline | S1 |
+|---|---|---|
+| Passthrough-Quote | 56 % | **0 %** |
+| Varianten-Quote | 81 % | **96 %** |
+| Latenz p50 / p90 | 9,0 s / 12,2 s | 8,8 s / 12,7 s |
+| Konsistenz (n=9!) | 44 % | 22 % |
+| Geothermie-Fall | 3/3 Hit (Glückslauf; tags zuvor 2/3 Passthrough) | 2/3 Hit, Verdichtung 3/3 sauber |
+
+Regressionscheck Standard-Eval (n=158, full): Recall 97,5 %, Primary 67,7 %, Top-4 87,3 % — im Rauschband der M4-Werte, Normalfälle unberührt.
+
+**Ehrliche Einordnung**: S1 erreicht sein mechanisches Ziel vollständig (kein Passthrough mehr, Expansion fast immer aktiv, Verdichtungsqualität stabil gut — z. B. „Erkundung und Aufsuchung geothermischer Ressourcen (Tiefengeothermie)"). Die **Konsistenz** verbessert sich dadurch aber nicht — der Flip sitzt nachweislich im **Classifier** bei Beinahe-Gleichstand der Kandidaten (Geothermie: 43130@0,900 vs. 09100@0,884; das Modell wählt mal so, mal so, jeweils „95 %"). Konsistenz-Hebel wäre deterministisches Decoding (temperature 0 / seed für `classify`/`condense`/`split`) bzw. eine Tie-Break-Regel — als Folgemaßnahme messbar. Die Metrik selbst ist bei n=9 grob (±11 pp je Fall).
+
+**Zwei Latenz-Befunde für die UX-Diskussion**: (a) Langtexte bleiben bei ~9 s Median — die Zwischenanzeige (Tätigkeiten vor Codes) wird gebraucht. (b) Ein Lauf zeigte **482 s**: die Retry-Kette des OpenAI-Adapters (3 × 120 s Timeout + Backoff) kann einen interaktiven Nutzer im API-Störungsfall minutenlang blockieren — für die App wäre ein Fail-fast-Budget (z. B. max. 1 Retry, 30-s-Deckel) sinnvoll.
+
 ## Offene Punkte
 
 - **Deploy auf die drei IHK-Instanzen** (alle Maßnahmen sind bisher nur lokal/main): danach Fall-1-Quote (Anteil 4-stelliger Primaries) via `prod-analysis.ts` als Vorher/Nachher-Beleg ziehen — sollte von 9–16 % auf ~0 fallen.

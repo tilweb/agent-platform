@@ -2,6 +2,19 @@
 
 ## 2026-09-16
 
+### WZ-Branchen-Matcher: Splitter-Härtung für Langtexte (S1 zur IHK-Rückmeldung 2)
+Lange Gegenstandstexte werden jetzt zuverlässig verdichtet statt roh durchgereicht:
+Prompt-Regel („unverändert" nur bis ~120 Z., sonst ≤80-Zeichen-Kern mit Fachgebiet,
+Rahmenformeln fallen weg, Varianten Pflicht) + Code-Guard (Activities >200 Z. →
+Verdichtungs-Call, Fallback Head-Truncation; auch der stille Kein-Output-Fallback läuft
+jetzt durch den Guard). Robustheits-Beifang: sanitizeResult crashte bei LLM-Antworten
+mit alternatives als Nicht-Array — auch produktionsrelevant, jetzt abgesichert.
+Messung (9 Langtext-Fälle × 3): Passthrough 56→0 %, Varianten 81→96 %, Verdichtung
+stabil sauber; Regressionscheck n=158 im Rauschband. Konsistenz bleibt Classifier-
+limitiert (Beinahe-Gleichstand-Flips, je „95 %") → Folgemaßnahme deterministisches
+Decoding. Latenz-Befunde: Langtexte ~9 s Median (UX-Zwischenanzeige nötig); Adapter-
+Retry-Kette kann im Störungsfall ~8 min blockieren (Fail-fast-Budget empfohlen).
+
 ### WZ-Branchen-Matcher: Langtext-Eval (S4 zur IHK-Rückmeldung 2)
 Neues Eval-Werkzeug `longtext-eval.ts` + kuratierte Langtext-Fälle: misst die Klasse
 „ausführliche Gegenstandstexte" über Verhaltens-Metriken (Konsistenz über N Läufe,

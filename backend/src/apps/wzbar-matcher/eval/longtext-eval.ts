@@ -98,8 +98,16 @@ for (const c of cases) {
   const runResults: RunResult[] = [];
   for (let r = 0; r < runs; r++) {
     const t0 = Date.now();
-    const acts = await splitActivities(c.text);
-    const matches = await Promise.all(acts.map(a => matchActivity(a.text, deps, a.searchVariants)));
+    let acts;
+    let matches;
+    try {
+      acts = await splitActivities(c.text);
+      matches = await Promise.all(acts.map(a => matchActivity(a.text, deps, a.searchVariants)));
+    } catch (error) {
+      console.error(`  FEHLER bei ${c.id} Lauf ${r + 1}: ${String(error).slice(0, 120)}`);
+      runResults.push({ primaries: ['FEHLER'], activityCount: 0, passthrough: false, hasVariants: false, durationMs: Date.now() - t0 });
+      continue;
+    }
     const durationMs = Date.now() - t0;
     const primaries = matches.map(m => m.result.primary.code).sort();
     const result: RunResult = {

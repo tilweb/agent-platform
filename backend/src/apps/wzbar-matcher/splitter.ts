@@ -24,6 +24,13 @@ import { appsModelOverride } from './classifier';
 
 const MAX_ACTIVITIES = 3;
 const MAX_VARIANTS = 2;
+/**
+ * S1-Guard: Activities laenger als das hier sind Splitter-Passthrough
+ * (Schema-maxLength wird von der API nicht erzwungen) und werden per
+ * Verdichtungs-Call nachbehandelt. Muss zum Passthrough-Schwellwert im
+ * eval/longtext-eval.ts passen.
+ */
+const MAX_ACTIVITY_CHARS = 200;
 
 export interface SplitActivity {
   text: string;
@@ -36,7 +43,8 @@ Regeln:
 - Liefere maximal ${MAX_ACTIVITIES} Tätigkeiten zurück.
 - **Distinkt** heißt: deutlich unterschiedliche Tätigkeitsfelder, die in der WZ-Klassifikation in unterschiedlichen Bereichen liegen würden (z.B. "Brandschutz" vs. "Trockenbau" vs. "Umzüge").
 - **Variationen einer Tätigkeit** werden zusammengefasst (z.B. "Hochbau, Tiefbau, Spezialtiefbau" → eine Tätigkeit "Hoch- und Tiefbau"; "Cloud-Architektur, Deployment, Monitoring" → eine Tätigkeit "Cloud-Engineering").
-- Bei einzelner Tätigkeit gibst du sie unverändert als einziges Element zurück.
+- Bei einer einzelnen, bereits kurzen Tätigkeit (bis ca. 120 Zeichen) gibst du sie unverändert als einziges Element zurück.
+- **Lange Beschreibungen werden IMMER verdichtet**: Ausführliche Gegenstandstexte (z.B. mit Spiegelstrich-Aufzählungen) beschreiben meist EINE Tätigkeit mit juristischen Facetten. Verdichte auf einen prägnanten Kern von max. 80 Zeichen, der das Fachgebiet/die Branche benennt (z.B. "Erkundung und Aufsuchung geothermischer Ressourcen (Tiefengeothermie)"). Juristische Rahmenformeln ("Planung, Koordination, Verwaltung von Maßnahmen", "Erwerb, Halten, Übertragung von Rechten", "Beantragung von Genehmigungen", "Eingehung von Kooperationen") sind KEINE Tätigkeiten und fallen weg. Niemals den Originaltext ungekürzt zurückgeben.
 - Jede Tätigkeit ist ein kurzer, eigenständig klassifizierbarer deutscher Tätigkeitsbegriff (3-80 Zeichen). Keine Aufzählungen mit Komma innerhalb einer Tätigkeit.
 - **Produkt + Handels-/Tätigkeitsform ist EINE Tätigkeit**: Formulierungen wie "X, Handelsvermittlung", "X, Großhandel", "X, Einzelhandel", "X, Herstellung", "X, Reparatur" bedeuten "Handelsvermittlung von X" usw. Niemals Produkt und Form in getrennte Tätigkeiten aufsplitten — formuliere sie als eine Tätigkeit aus (z.B. "Gemüsesalate, Handelsvermittlung" → "Handelsvermittlung von Gemüsesalaten").
 - Allgemeine Floskeln wie "und alle damit verbundenen Tätigkeiten", "sowie Handel mit allen erlaubten Waren" werden ignoriert (nicht als eigene Tätigkeit zurückgegeben).
@@ -46,7 +54,8 @@ Zusätzlich lieferst du pro Tätigkeit 0–${MAX_VARIANTS} **Suchvarianten** (se
 - Beispiele: "persönlich haftender Gesellschafter" → ["Komplementärgesellschaft"]; "Autos schicke machen" → ["Fahrzeugaufbereitung", "Lackieren von Kraftwagen"]; "Webseiten bauen" → ["Webdesign", "Erbringung von Dienstleistungen der Informationstechnologie"].
 - Kurze Nominalphrasen (3-80 Zeichen). Keine Sätze, keine WZ-Codes, nichts erfinden.
 - Suchvarianten behalten die Handels-/Tätigkeitsform des Originals bei (Einzelhandel bleibt Einzelhandel, Herstellung bleibt Herstellung) und bezeichnen dasselbe Produkt — nicht auf ein anderes oder allgemeineres Produkt ausweichen.
-- Wenn die Tätigkeit bereits fachsprachlich formuliert ist, lasse searchVariants leer.`;
+- Wenn die Tätigkeit bereits fachsprachlich formuliert ist, lasse searchVariants leer.
+- Bei verdichteten langen Beschreibungen sind 1-2 searchVariants Pflicht.`;
 
 const SCHEMA: ToolDefinition = {
   type: 'function',
@@ -123,7 +132,9 @@ export async function splitActivities(inputText: string): Promise<SplitActivity[
   }
 
   if (activities.length === 0) {
-    return [{ text: trimmed, searchVariants: [] }];
+    // Kein verwertbarer LLM-Output (Fehler ODER Antwort ohne tool_calls) —
+    // Rohtext als Single-Activity, laeuft unten durch den S1-Guard.
+    activities = [{ text: trimmed, searchVariants: [] }];
   }
 
   // Dedupe (case-insensitive) und Hard-Cap
@@ -137,5 +148,78 @@ export async function splitActivities(inputText: string): Promise<SplitActivity[
     }
     if (unique.length >= MAX_ACTIVITIES) break;
   }
-  return unique;
+
+  // S1-Guard: Passthrough-Activities (Rohtext statt Verdichtung) nachverdichten.
+  return Promise.all(unique.map(a => (a.text.length <= MAX_ACTIVITY_CHARS ? a : condenseActivity(a.text))));
+}
+
+const CONDENSE_SCHEMA: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'condense_activity',
+    description: 'Verdichtet eine ausführliche Tätigkeitsbeschreibung auf ihren prägnanten Kern.',
+    parameters: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', minLength: 3, maxLength: 80, description: 'Kern-Tätigkeit, max. 80 Zeichen, benennt das Fachgebiet.' },
+        searchVariants: {
+          type: 'array',
+          minItems: 1,
+          maxItems: MAX_VARIANTS,
+          items: { type: 'string', minLength: 3, maxLength: 80 },
+          description: '1-2 fachsprachliche Umformulierungen.',
+        },
+      },
+      required: ['text', 'searchVariants'],
+    },
+  },
+};
+
+/**
+ * Verdichtet eine zu lange Activity (Splitter-Passthrough) auf ihren Kern.
+ * Fallback bei LLM-Fehlern: Kopf des Textes bis zur Wortgrenze — bei
+ * Handelsregister-Gegenstaenden traegt der erste Satz fast immer den Kern.
+ */
+async function condenseActivity(longText: string): Promise<SplitActivity> {
+  const messages: Message[] = [
+    {
+      role: 'system',
+      content: `Du verdichtest ausführliche Tätigkeitsbeschreibungen aus dem deutschen Handelsregister auf ihren Kern.
+Regeln:
+- Liefere die EINE Kern-Tätigkeit in max. 80 Zeichen; das Fachgebiet/die Branche muss enthalten sein.
+- Juristische Rahmenformeln ("Planung, Koordination, Verwaltung von Maßnahmen", "Erwerb, Halten, Übertragung von Rechten", "Beantragung von Genehmigungen", "Eingehung von Kooperationen") fallen weg — sie sind keine Tätigkeiten.
+- Dazu 1-2 searchVariants in amtlicher Fachsprache der WZ-Klassifikation.`,
+    },
+    { role: 'user', content: `Tätigkeitsbeschreibung:\n"""\n${longText}\n"""\n\nVerdichte auf die Kern-Tätigkeit.` },
+  ];
+
+  try {
+    const response = await llmService.chat(
+      messages,
+      [CONDENSE_SCHEMA],
+      { source: 'wzbar-matcher', userId: 'user_default' },
+      { toolChoice: { type: 'function', function: { name: 'condense_activity' } }, ...(await appsModelOverride()) },
+    );
+    if (response.tool_calls && response.tool_calls.length > 0) {
+      const parsed = JSON.parse(response.tool_calls[0]!.function.arguments) as { text?: unknown; searchVariants?: unknown };
+      const text = String(parsed.text ?? '').trim();
+      if (text.length >= 3) {
+        return {
+          text: text.length > MAX_ACTIVITY_CHARS ? headTruncate(text) : text,
+          searchVariants: Array.isArray(parsed.searchVariants)
+            ? parsed.searchVariants.map(v => String(v).trim()).filter(Boolean).slice(0, MAX_VARIANTS)
+            : [],
+        };
+      }
+    }
+  } catch (error) {
+    console.error('[wzbar-matcher/splitter] Verdichtungs-Fehler, Fallback zu Head-Truncation:', error);
+  }
+  return { text: headTruncate(longText), searchVariants: [] };
+}
+
+function headTruncate(text: string, maxChars = 160): string {
+  const head = text.slice(0, maxChars);
+  const cut = Math.max(head.lastIndexOf(' '), head.lastIndexOf('\n'));
+  return (cut > 60 ? head.slice(0, cut) : head).trim();
 }

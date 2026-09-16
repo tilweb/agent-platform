@@ -193,17 +193,23 @@ function sanitizeResult(result: MatchResult, candidates: CatalogEntry[]): MatchR
 
   const resolveCandidate = (code: string, fallback: CatalogEntry) => byCode.get(code) ?? fallback;
 
-  const primaryEntry = byCode.get(result.primary.code) ?? candidates[0]!;
+  // Das LLM liefert trotz Schema gelegentlich fehlende/falsch getypte Felder
+  // (primary kein Objekt, alternatives kein Array) — hart absichern statt
+  // crashen; Fallback ist wie beim Whitelist-Verstoss der Top-1-Kandidat.
+  const rawPrimary = result?.primary && typeof result.primary === 'object' ? result.primary : { code: '', confidence: 0, reasoning: '' };
+  const rawAlternatives = Array.isArray(result?.alternatives) ? result.alternatives : [];
+
+  const primaryEntry = byCode.get(rawPrimary.code) ?? candidates[0]!;
   const primary = {
     code: primaryEntry.code,
     kurztext: primaryEntry.kurztext,
     langtext: primaryEntry.langtext,
-    confidence: clamp(result.primary.confidence ?? 0),
-    reasoning: (result.primary.reasoning ?? '').trim(),
+    confidence: clamp(rawPrimary.confidence ?? 0),
+    reasoning: (rawPrimary.reasoning ?? '').trim(),
   };
 
   const usedCodes = new Set([primary.code]);
-  const alternatives = (result.alternatives ?? [])
+  const alternatives = rawAlternatives
     .filter(a => a && typeof a.code === 'string' && byCode.has(a.code) && !usedCodes.has(a.code))
     .slice(0, 3)
     .map(a => {
