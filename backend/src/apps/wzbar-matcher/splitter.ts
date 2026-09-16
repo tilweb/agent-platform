@@ -105,7 +105,7 @@ export async function splitActivities(inputText: string): Promise<SplitActivity[
       messages,
       [SCHEMA],
       { source: 'wzbar-matcher', userId: 'user_default' },
-      { toolChoice: { type: 'function', function: { name: 'split_activities' } }, ...(await appsModelOverride()) },
+      { toolChoice: { type: 'function', function: { name: 'split_activities' } }, temperature: 0, ...(await appsModelOverride()) },
     );
 
     if (response.tool_calls && response.tool_calls.length > 0) {
@@ -198,7 +198,7 @@ Regeln:
       messages,
       [CONDENSE_SCHEMA],
       { source: 'wzbar-matcher', userId: 'user_default' },
-      { toolChoice: { type: 'function', function: { name: 'condense_activity' } }, ...(await appsModelOverride()) },
+      { toolChoice: { type: 'function', function: { name: 'condense_activity' } }, temperature: 0, ...(await appsModelOverride()) },
     );
     if (response.tool_calls && response.tool_calls.length > 0) {
       const parsed = JSON.parse(response.tool_calls[0]!.function.arguments) as { text?: unknown; searchVariants?: unknown };

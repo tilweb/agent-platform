@@ -2,6 +2,16 @@
 
 ## 2026-09-16
 
+### WZ-Branchen-Matcher: temperature 0 für Matcher-Calls (Konsistenz-Messung)
+Alle drei Matcher-LLM-Calls (split/condense/classify) laufen jetzt mit temperature 0 —
+korrekte Hygiene für Klassifikation, Regressionscheck ohne Befund. Ehrlicher Messbefund:
+Die Konsistenz löst das NICHT — der Adacor-Endpoint ist vLLM-typisch (Batching) auch bei
+temperature 0 nicht deterministisch, identische Eingaben flippen weiter zwischen
+Beinahe-Gleichstand-Kandidaten. Empfohlener echter Hebel laut Doc: Ergebnis-Cache über
+wzbar.matches (identischer Input → gespeichertes Ergebnis; behebt Symptom vollständig
+und senkt Wiederholungs-Latenz auf ~0); Alternativen seed-Parameter/Self-Consistency
+verworfen bzw. nachrangig.
+
 ### WZ-Branchen-Matcher: Splitter-Härtung für Langtexte (S1 zur IHK-Rückmeldung 2)
 Lange Gegenstandstexte werden jetzt zuverlässig verdichtet statt roh durchgereicht:
 Prompt-Regel („unverändert" nur bis ~120 Z., sonst ≤80-Zeichen-Kern mit Fachgebiet,

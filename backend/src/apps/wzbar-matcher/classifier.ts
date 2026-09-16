@@ -120,7 +120,9 @@ export async function classify(inputText: string, candidates: CatalogEntry[], se
     messages,
     [SCHEMA],
     { source: 'wzbar-matcher', userId: 'user_default' },
-    { toolChoice: { type: 'function', function: { name: 'classify_wz_branche' } }, ...(await appsModelOverride()) },
+    // temperature 0: deterministisches Decoding — bei Beinahe-Gleichstand der
+    // Kandidaten soll dieselbe Eingabe nicht mal so, mal so klassifiziert werden.
+    { toolChoice: { type: 'function', function: { name: 'classify_wz_branche' } }, temperature: 0, ...(await appsModelOverride()) },
   );
 
   if (response.tool_calls && response.tool_calls.length > 0) {

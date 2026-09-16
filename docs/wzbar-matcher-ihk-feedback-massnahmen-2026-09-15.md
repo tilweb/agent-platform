@@ -247,6 +247,15 @@ Regressionscheck Standard-Eval (n=158, full): Recall 97,5 %, Primary 67,7 %, Top
 
 **Zwei Latenz-Befunde für die UX-Diskussion**: (a) Langtexte bleiben bei ~9 s Median — die Zwischenanzeige (Tätigkeiten vor Codes) wird gebraucht. (b) Ein Lauf zeigte **482 s**: die Retry-Kette des OpenAI-Adapters (3 × 120 s Timeout + Backoff) kann einen interaktiven Nutzer im API-Störungsfall minutenlang blockieren — für die App wäre ein Fail-fast-Budget (z. B. max. 1 Retry, 30-s-Deckel) sinnvoll.
 
+### Deterministisches Decoding (temperature 0) — Messung 2026-09-16
+
+`temperature: 0` in allen drei Matcher-Calls (split/condense/classify; die Option wurde vom LLM-Service bereits durchgereicht). **Ergebnis: löst die Konsistenz NICHT** — Langtext-Konsistenz 33 % (Vorlauf 22 %, Rauschband bei n=9), der Geothermie-Fall flippt weiterhin 43130/09100/43130 bei identischer Eingabe. Der Adacor-Endpoint (vLLM-typisch: Continuous Batching, Floating-Point-Nichtdeterminismus) ist auch bei temperature 0 nicht deterministisch. Regressionscheck n=158: Recall 96,2 / Primary 69,6 / Top-4 86,7 % — Rauschband, kein Schaden; Varianten-Quote jetzt 100 %.
+
+Bewertung: temperature 0 bleibt drin (korrekte Hygiene für eine Klassifikationsaufgabe, kein gemessener Nachteil), ist aber als Konsistenz-Hebel widerlegt. Echte Konsistenz braucht einen der folgenden Wege:
+1. **Ergebnis-Cache** (empfohlen): identischer (normalisierter) `inputText` → gespeichertes Ergebnis aus `wzbar.matches` zurückgeben statt neu rechnen. Behebt das sichtbare Symptom („gleicher Text, andere Antwort") vollständig, senkt Latenz für Wiederholungen auf ~0, invalidierbar bei Pipeline-Updates (Versions-Feld im Record). Kein LLM-Verhalten nötig.
+2. `seed`-Parameter (vLLM unterstützt seed; erfordert kleine Erweiterung des OpenAI-Adapters) — reduziert, garantiert aber unter Batching ebenfalls nicht vollständig.
+3. Self-Consistency (3× klassifizieren, Mehrheitsentscheid) — 3× Kosten/Latenz, für die interaktive App unpassend.
+
 ## Offene Punkte
 
 - **Deploy auf die drei IHK-Instanzen** (alle Maßnahmen sind bisher nur lokal/main): danach Fall-1-Quote (Anteil 4-stelliger Primaries) via `prod-analysis.ts` als Vorher/Nachher-Beleg ziehen — sollte von 9–16 % auf ~0 fallen.
