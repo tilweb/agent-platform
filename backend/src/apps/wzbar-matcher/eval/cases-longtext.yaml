@@ -1,0 +1,23 @@
+# Langtext-Eval-Faelle (S4, IHK-Rueckmeldung 2): sehr ausfuehrliche
+# Gegenstandstexte mit Spiegelstrich-Aufzaehlungen. `expected` ist optional
+# und any-of; wo der Soll-Code fachlich offen ist, steht die vertretbare
+# Menge (mit note). Unlabelte Echtfaelle kommen zur Laufzeit per
+# --from-export aus den Produktions-Exporten dazu (Kundendaten, nicht im Repo).
+cases:
+  - id: geothermie-erkundung
+    expected: ["43130", "09900", "42210", "35300"]
+    note: >-
+      IHK-Rueckmeldung 2 (2026-09-16). Soll-Code von der IHK noch nicht
+      bestaetigt — expected ist die fachlich vertretbare Menge
+      (Test-/Suchbohrung, DL sonstiger Bergbau, Bohrarbeiten fuer
+      Geothermieanlagen lt. amtlichem Stichwort, kuenftige Waermeerzeugung).
+    text: |
+      Die Planung, Koordination, Beauftragung, Durchführung und Verwaltung von Maßnahmen zur Erkundung und Aufsuchung geothermischer Ressourcen, insbesondere im Bereich der Tiefengeothermie. Hierzu gehören insbesondere:
+      - der Erwerb, das Halten, die Nutzung, Verwaltung und Übertragung bergrechtlicher Berechtigungen, insbesondere von Aufsuchungserlaubnissen nach dem Bundesberggesetz;
+      - die Beantragung und Durchführung bergrechtlicher Betriebsplanverfahren sowie sonstiger behördlicher Genehmigungs- und Zulassungsverfahren im Zusammenhang mit Erkundungsmaßnahmen;
+      - die Durchführung und Beauftragung geologischer, geophysikalischer, hydrogeologischer, seismischer und sonstiger wissenschaftlich-technischer Untersuchungen;
+      - die Planung, Beantragung, Koordination und Durchführung von Expiorations- und Erkundungsmaßnahmen;
+      - die Beantragung und Abwicklung öffentlicher Fördermittel sowie die Durchführung von Forschungs-, Entwicklungs- und Demonstrationsvorhaben;
+      - die Erhebung, Verarbeitung, Auswertung, Nutzung und Verwertung von geologischen, geophysikalischen und sonstigen projektrelevanten Daten einschließlich der Einräumung und Übertragung von Nutzungsrechten;
+      - der Erwerb, die Sicherung und Verwaltung von Grundstücks-, Nutzungs-, Leitungs-, Wegerechten sowie sonstigen dinglichen oder schuldrechtlichen Rechten, soweit diese der Durchführung von Erkundungsmaßnahmen dienen;
+      - die Eingehung und Durchführung von Kooperationen, Arbeitsgemeinschaften, Konsortien und sonstigen Gemeinschaftsprojekten mit öffentlichen oder privaten Partnern.

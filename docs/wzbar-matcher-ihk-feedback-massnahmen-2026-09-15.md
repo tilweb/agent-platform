@@ -208,6 +208,22 @@ Alle chat-fähigen Kandidaten unter identischen Bedingungen (n=158, seed 42, vol
 
 Empfohlene Reihenfolge bei Umsetzung: S4 (messen) → S1 (+S2) → S3 nur, falls S1/S2 die Klasse nicht schließen.
 
+### S4 — Langtext-Eval umgesetzt (2026-09-16)
+
+`eval/longtext-eval.ts` + `eval/cases-longtext.yaml`: misst die Langtext-Klasse über **Verhaltens-Metriken** (R Wiederholungen je Fall, bewusst sequenziell für ehrliche Nutzer-Latenz), da für Langtexte meist keine Soll-Codes existieren: Konsistenz des Primary-Sets, Passthrough-Quote (Splitter reicht Rohtext >200 Z. durch), Varianten-Quote (M3 aktiv?), Latenz p50/p90, Trunkierungs-Risiko (>~1800 Z. ≈ e5-512-Token-Grenze), optional Hit gegen eine any-of-Erwartungsmenge. Echtfälle kommen per `--from-export` aus den Prod-Exporten (Kundendaten bleiben lokal); kuratiert ist der Geothermie-Fall mit fachlich vertretbarer Erwartungsmenge (Soll-Code von IHK noch offen).
+
+**Baseline (2026-09-16, 9 Fälle = Geothermie + 8 längste Darmstadt-Echtfälle, je 3 Läufe)**:
+
+| Metrik | Wert | Einordnung |
+|---|---|---|
+| Konsistenz | **44 %** | 5 von 9 Fällen liefern über 3 Läufe unterschiedliche Primary-Sets |
+| Passthrough-Quote | **56 %** der Läufe | Splitter verdichtet Langtexte mehrheitlich nicht |
+| Varianten-Quote | 81 % | M3 fällt bei Passthrough teils aus |
+| **Latenz** | **p50 9,0 s / p90 12,2 s / max 15,0 s** | **deutlich über dem UX-Budget von ~3–5 s** — Langtexte sind ~2× so langsam wie der Normalfall (Prod-Median 5,4 s) |
+| Hit (nur Geothermie-Fall) | 3/3 | in dieser Messreihe verdichtete der Splitter den Fall jedes Mal (43130); tags zuvor 2/3 Passthrough — genau die gemessene Instabilität |
+
+Damit ist die Fehlerklasse jetzt beziffert und jede S1–S3-Änderung nachweisbar. **Latenz-Befund für die S1-Umsetzung**: Die Verdichtung im Splitter (S1) kostet keine zusätzlichen Calls und dürfte die Latenz sogar senken (kürzere Classifier-Prompts, weniger Passthrough-Mehrfach-Activities); falls Langtexte trotzdem über ~5 s bleiben, braucht es UX-seitig eine Zwischenanzeige (z. B. erkannte Tätigkeiten streamen, bevor die Codes da sind).
+
 ## Offene Punkte
 
 - **Deploy auf die drei IHK-Instanzen** (alle Maßnahmen sind bisher nur lokal/main): danach Fall-1-Quote (Anteil 4-stelliger Primaries) via `prod-analysis.ts` als Vorher/Nachher-Beleg ziehen — sollte von 9–16 % auf ~0 fallen.

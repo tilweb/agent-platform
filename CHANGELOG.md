@@ -2,6 +2,15 @@
 
 ## 2026-09-16
 
+### WZ-Branchen-Matcher: Langtext-Eval (S4 zur IHK-Rückmeldung 2)
+Neues Eval-Werkzeug `longtext-eval.ts` + kuratierte Langtext-Fälle: misst die Klasse
+„ausführliche Gegenstandstexte" über Verhaltens-Metriken (Konsistenz über N Läufe,
+Splitter-Passthrough-Quote, Varianten-Quote, sequenziell gemessene Nutzer-Latenz,
+e5-Trunkierungs-Risiko), Echtfälle per --from-export aus den Prod-Exporten. Baseline
+(9 Fälle × 3 Läufe): nur 44 % Konsistenz, 56 % Passthrough, Latenz p50 9,0 s / p90 12,2 s
+— Langtexte liegen deutlich über dem UX-Budget von ~3–5 s. Damit ist die Fehlerklasse
+beziffert; nächster Schritt S1 (Splitter-Härtung, senkt voraussichtlich auch Latenz).
+
 ### WZ-Branchen-Matcher: Modell-Benchmark + fehlertoleranter Eval-Runner
 Sechs Kandidaten unter identischen Bedingungen gemessen (n=158, volle Pipeline):
 Empfehlung ist das bereits gepinnte Adacor Qwen 3.5 Instruct 35B (beste Exakt-Quote
