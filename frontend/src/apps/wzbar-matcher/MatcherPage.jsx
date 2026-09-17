@@ -169,6 +169,15 @@ const styles = {
     color: theme.colors.textMuted,
     fontStyle: 'italic',
   },
+  recomputeLink: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.primary,
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    fontWeight: theme.typography.weights.medium,
+  },
   status: {
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.textMuted,
@@ -219,12 +228,12 @@ export default function MatcherPage() {
   // SSE-Variante: zeigt die erkannten Tätigkeiten an, sobald der Splitter
   // fertig ist, während die Codes noch rechnen. Wirft bei Server-Fehlern
   // (Event `error`) mit err.serverError=true — dann KEIN Fallback-Rerun.
-  const doMatchStream = async (text) => {
+  const doMatchStream = async (text, force) => {
     const res = await fetch(`${API_URL}/apps/wzbar-matcher/match/stream`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inputText: text }),
+      body: JSON.stringify({ inputText: text, force }),
     });
     if (!res.ok || !res.body) throw new Error(`Stream nicht verfügbar (${res.status})`);
 
@@ -263,7 +272,7 @@ export default function MatcherPage() {
     if (!gotRecord) throw new Error('Stream ohne Ergebnis beendet');
   };
 
-  const doMatch = async () => {
+  const doMatch = async (force = false) => {
     const text = input.trim();
     if (!text || loading) return;
     setError(null);
@@ -271,7 +280,7 @@ export default function MatcherPage() {
     setPendingActivities(null);
     setLoading(true);
     try {
-      await doMatchStream(text);
+      await doMatchStream(text, force);
       loadHistory();
     } catch (err) {
       if (err?.serverError) {
@@ -279,7 +288,7 @@ export default function MatcherPage() {
       } else {
         // Transport-Problem (z.B. Proxy ohne SSE) — Fallback auf klassischen POST
         try {
-          const res = await apiPost('/apps/wzbar-matcher/match', { inputText: text });
+          const res = await apiPost('/apps/wzbar-matcher/match', { inputText: text, force });
           const data = await res.json();
           if (!res.ok) {
             setError(data?.error || 'Match fehlgeschlagen');
@@ -348,7 +357,7 @@ export default function MatcherPage() {
                 <button
                   type="button"
                   style={{ ...styles.btnPrimary, ...(loading || !input.trim() ? styles.btnDisabled : {}) }}
-                  onClick={doMatch}
+                  onClick={() => doMatch()}
                   disabled={loading || !input.trim()}
                 >
                   {loading ? 'Ermittle…' : 'Schlüssel ermitteln'}
@@ -387,7 +396,20 @@ export default function MatcherPage() {
                 <span>Dauer: {record.durationMs} ms</span>
                 <span>Embedding: {record.embeddingModel}</span>
                 <span>LLM: {record.llmModel}</span>
-                {record.cached && <span style={styles.cachedBadge}>aus früherem Lauf</span>}
+                {record.cached && (
+                  <>
+                    <span style={styles.cachedBadge}>aus früherem Lauf</span>
+                    <button
+                      type="button"
+                      style={styles.recomputeLink}
+                      onClick={() => doMatch(true)}
+                      disabled={loading}
+                      title="Cache umgehen und den Schlüssel frisch ermitteln — das neue Ergebnis ersetzt den gespeicherten Treffer"
+                    >
+                      Neu ermitteln
+                    </button>
+                  </>
+                )}
               </div>
               {(() => {
                 const activities = record.result?.activities || [];

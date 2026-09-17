@@ -2,6 +2,15 @@
 
 ## 2026-09-17
 
+### WZ-Branchen-Matcher: „Neu ermitteln" bei Cache-Treffern
+Der Ergebnis-Cache fror die erste Antwort ein — bei einem Fehlgriff gab es keinen
+Nutzerweg heraus. Jetzt: force-Parameter in beiden Match-Endpoints + „Neu ermitteln"-Link
+neben dem „aus früherem Lauf"-Badge. Die Neuberechnung ersetzt den Cache-Eintrag
+automatisch (jüngster Record je Input-Hash gewinnt — kein Löschen nötig); der
+Sachbearbeiter kuratiert den Cache damit faktisch mit. Live verifiziert inkl.
+Ersetzungs-Semantik. Fix nebenbei: Haupt-Button reichte das Click-Event nicht mehr als
+force-Argument durch.
+
 ### WZ-Branchen-Matcher: G1 Originaltext-Kontext + diversifiziertes Langtext-Eval
 Langtext-Verteilung erhoben (104 Prod-Fälle >300 Z.: 55 Komma-Listen, 40 Prosa, 8 Pipe,
 1 Spiegelstrich — der Geothermie-Stil ist ein Ausreißer); Langtext-Eval um drei

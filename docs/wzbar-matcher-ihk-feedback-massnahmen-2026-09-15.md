@@ -262,7 +262,9 @@ Bewertung: temperature 0 bleibt drin (korrekte Hygiene für eine Klassifikations
 - **Speicherung**: zwei neue Spalten `input_hash` + `pipeline_version` in `wzbar.matches` (Migration `0038_wzbar_match_cache.sql`, additiv/idempotent) + Index. Cache-Treffer legen **keinen neuen Record** an (History füllt sich nicht mit Duplikaten; Nutzungszählung wiederholter Anfragen entfällt dafür) und tragen transient `cached: true` in der API-Antwort. Leere Ergebnisse (0 Activities) werden nie wiederverwendet; Lookup-Fehler fallen auf Neuberechnung zurück. Escape-Hatch: `WZBAR_MATCH_CACHE=off`.
 - Der Eval-Harness ist unberührt (nutzt `matchActivity` direkt, nicht `match()`).
 - **Live-Test**: identische Eingabe mit anderer Formatierung/Groß-Kleinschreibung → zweiter Aufruf **4 ms statt 7,9 s**, gleiche Record-ID, `cached: true`.
-- Optionaler UI-Folgeschritt: `cached`-Flag in der MatcherPage anzeigen („aus früherem Lauf").
+- Optionaler UI-Folgeschritt: `cached`-Flag in der MatcherPage anzeigen („aus früherem Lauf"). *(Umgesetzt, s. Kleinmaßnahmen.)*
+
+**„Neu ermitteln" (2026-09-17)**: Der Cache fror bislang die *erste* Antwort ein — bei einem Fehlgriff gab es für Sachbearbeiter keinen Ausweg. Statt „Cache leeren": `force`-Parameter in beiden Match-Endpoints (überspringt nur den Lookup) + „Neu ermitteln"-Link neben dem Cache-Badge. Da der Cache stets den **jüngsten** Record je Input-Hash nimmt, **ersetzt** die Neuberechnung den alten Eintrag automatisch — kein Löschen nötig, und der Nutzer kuratiert den Cache faktisch mit (Vorläufer der Feedback-Funktion aus dem IHK-Briefing). Live verifiziert: frisch → Cache-Hit → force (neue ID) → Cache liefert fortan die neue ID. Nebenwirkung dokumentiert: auch ein schlechteres Force-Ergebnis übernimmt den Cache; akzeptiert, weil der Button nur bei Cache-Treffern angeboten wird.
 
 ### Kleinmaßnahmen (2026-09-16): Fail-fast, cached-Badge, UX-Zwischenanzeige
 

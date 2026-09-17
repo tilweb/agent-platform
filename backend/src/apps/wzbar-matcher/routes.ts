@@ -20,13 +20,13 @@ wzbar.use('*', requireAppAccess('wzbar-matcher'));
  */
 wzbar.post('/match', async (c) => {
   try {
-    const body = await c.req.json<{ inputText?: string }>();
+    const body = await c.req.json<{ inputText?: string; force?: boolean }>();
     const inputText = (body?.inputText ?? '').trim();
     if (!inputText) {
       return c.json({ error: 'inputText fehlt' }, 400);
     }
     const userId = 'user_default';
-    const record = await match(inputText, userId);
+    const record = await match(inputText, userId, undefined, body?.force === true);
     return c.json({ record }, 201);
   } catch (error) {
     console.error('[wzbar-matcher] match error:', error);
@@ -44,8 +44,9 @@ wzbar.post('/match', async (c) => {
  * mit dem Endergebnis bzw. `error`. Cache-Treffer liefern direkt `record`.
  */
 wzbar.post('/match/stream', async (c) => {
-  const body = await c.req.json<{ inputText?: string }>().catch(() => null);
+  const body = await c.req.json<{ inputText?: string; force?: boolean }>().catch(() => null);
   const inputText = (body?.inputText ?? '').trim();
+  const force = body?.force === true;
 
   return streamSSE(c, async (stream) => {
     if (!inputText) {
@@ -59,7 +60,7 @@ wzbar.post('/match/stream', async (c) => {
           event: 'activities',
           data: JSON.stringify({ activities: activities.map(a => ({ text: a.text })) }),
         });
-      });
+      }, force);
       await stream.writeSSE({ event: 'record', data: JSON.stringify({ record }) });
     } catch (error) {
       console.error('[wzbar-matcher] match/stream error:', error);

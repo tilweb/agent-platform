@@ -130,11 +130,16 @@ export async function matchActivity(
  * @param onActivities Progress-Hook fuer die UX-Zwischenanzeige: wird nach dem
  *   Splitter mit den erkannten Taetigkeiten aufgerufen, waehrend die
  *   Klassifikation noch laeuft. Bei Cache-Treffern nicht aufgerufen.
+ * @param bypassCache "Neu ermitteln": Cache-Lookup ueberspringen und frisch
+ *   rechnen. Der neue Record ist danach automatisch der juengste Treffer fuer
+ *   diesen Input-Hash — die Neuberechnung ERSETZT damit den alten
+ *   Cache-Eintrag, ohne dass geloescht werden muss.
  */
 export async function match(
   inputText: string,
   userId = 'user_default',
   onActivities?: (activities: SplitActivity[]) => void,
+  bypassCache = false,
 ): Promise<MatchRecord> {
   const trimmed = inputText.trim();
   if (!trimmed) throw new Error('inputText darf nicht leer sein');
@@ -142,7 +147,7 @@ export async function match(
   const started = Date.now();
   const inputHash = cacheKey(trimmed);
 
-  if (process.env.WZBAR_MATCH_CACHE !== 'off') {
+  if (!bypassCache && process.env.WZBAR_MATCH_CACHE !== 'off') {
     try {
       const cached = await findCachedMatch(inputHash, PIPELINE_VERSION);
       if (cached) return { ...cached, cached: true };
