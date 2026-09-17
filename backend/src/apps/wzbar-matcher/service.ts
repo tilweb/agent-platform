@@ -33,7 +33,7 @@ const TOP_K = 20;
  * Aenderung (Prompts, Retrieval, Lift, Aliase, Katalog, Modell-Logik)
  * hochzaehlen — sonst liefert der Cache Ergebnisse der alten Pipeline.
  */
-export const PIPELINE_VERSION = '2026-09-16.1';
+export const PIPELINE_VERSION = '2026-09-17.1';
 
 /**
  * Cache-Schluessel: Whitespace-kollabiert und lowercased — dieselbe fachliche

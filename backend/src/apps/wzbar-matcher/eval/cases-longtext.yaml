@@ -7,6 +7,15 @@ cases:
   # Struktur-Vielfalt gemaess Prod-Verteilung (104 Langtexte: 55 Komma-Listen,
   # 40 Prosa, 8 Pipe, 1 Spiegelstrich) — synthetisch, aber den echten Faellen
   # nachempfunden; Codes gegen amtliche Stichwoerter verifiziert.
+  - id: wirtschaftsformen-spielwaren
+    expected: ["32400", "46491", "4764"]
+    minActivities: 2
+    note: >-
+      IHK-Test 2026-09-17: Herstellung und Handel desselben Produkts sind
+      DISTINKTE Taetigkeiten (Abschnitt C vs. G) — wurde faelschlich zu einer
+      gebuendelt. Fachliche Nuance: Vertrieb EIGENER Erzeugnisse gehoert zur
+      Herstellung; die Trennung laesst dem Sachbearbeiter die Entscheidung.
+    text: Produktion von Spielwaren und Handel mit Spielwaren
   - id: struktur-kommaliste-facility
     expected: ["81210", "81100", "81301", "81239"]
     note: >-

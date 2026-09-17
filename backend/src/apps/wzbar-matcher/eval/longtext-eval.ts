@@ -51,15 +51,17 @@ interface LongtextCase {
   id: string;
   text: string;
   expected?: string[];
+  /** Mindestzahl erkannter Taetigkeiten (z.B. Herstellung + Handel = 2). */
+  minActivities?: number;
   source: 'curated' | 'export';
 }
 
 const cases: LongtextCase[] = [];
 
 const curated = parseYaml(await Bun.file(new URL('./cases-longtext.yaml', import.meta.url)).text()) as {
-  cases: Array<{ id: string; text: string; expected?: string[] }>;
+  cases: Array<{ id: string; text: string; expected?: string[]; minActivities?: number }>;
 };
-for (const c of curated.cases) cases.push({ id: c.id, text: c.text.trim(), expected: c.expected, source: 'curated' });
+for (const c of curated.cases) cases.push({ id: c.id, text: c.text.trim(), expected: c.expected, minActivities: c.minActivities, source: 'curated' });
 
 if (fromExport) {
   const records = (await Bun.file(fromExport).json()) as MatchRecord[];
@@ -118,7 +120,9 @@ for (const c of cases) {
       durationMs,
     };
     if (c.expected) {
-      result.hit = primaries.some(p => isHit(judgeCode(p, c.expected!, deps.liftTo)));
+      const codeHit = primaries.some(p => isHit(judgeCode(p, c.expected!, deps.liftTo)));
+      const countOk = c.minActivities === undefined || acts.length >= c.minActivities;
+      result.hit = codeHit && countOk;
     }
     runResults.push(result);
   }

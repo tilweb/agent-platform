@@ -2,6 +2,15 @@
 
 ## 2026-09-17
 
+### WZ-Branchen-Matcher: Wirtschaftsformen werden getrennt erkannt
+Nutzertest-Befund: „Produktion von Spielwaren und Handel mit Spielwaren" wurde als eine
+Tätigkeit gebündelt (Übergeneralisierung der Handelsform-Regel aus M3). Neue Splitter-
+Gegenregel: verschiedene Wirtschaftsformen (Herstellung/Handel/Vermittlung/Reparatur/
+Vermietung) sind auch beim selben Produkt distinkte Tätigkeiten. Verifiziert ohne
+Regression (Handelsform-Fälle bleiben eine Tätigkeit; n=158: Primary 71,5 %, 0 Über-
+splittungen); Regressionsfall mit neuem minActivities-Feld im Langtext-Eval.
+PIPELINE_VERSION auf 2026-09-17.1 — invalidiert auch bereits gecachte Fehlbündelungen.
+
 ### WZ-Branchen-Matcher: „Neu ermitteln" bei Cache-Treffern
 Der Ergebnis-Cache fror die erste Antwort ein — bei einem Fehlgriff gab es keinen
 Nutzerweg heraus. Jetzt: force-Parameter in beiden Match-Endpoints + „Neu ermitteln"-Link

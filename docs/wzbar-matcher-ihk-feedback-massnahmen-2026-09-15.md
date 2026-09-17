@@ -286,6 +286,12 @@ Nach dem berechtigten Einwand, das S3-Facetten-Design sei auf den Geothermie-Fal
 
 Fachliche Randnotiz: Für Geothermie-Aufsuchung ist selbst amtlich kein eindeutiger Code ausgewiesen (das einzige Geothermie-Stichwort „Bohrarbeiten für Geothermieanlagen" zeigt auf 42.21.0) — die Soll-Code-Rückfrage an die IHK bleibt der einzige Weg zur echten Wahrheit für diesen Fall.
 
+### Wirtschaftsformen-Split (2026-09-17, aus Nutzertest)
+
+„Produktion von Spielwaren und Handel mit Spielwaren" wurde als **eine** Tätigkeit gebündelt — Nebenwirkung der M3-Regel „Produkt + Handelsform ist EINE Tätigkeit" (gedacht gegen das Zerreißen von „X, Handelsvermittlung", vom Modell aber auf „gleiches Produkt = gleiche Tätigkeit" übergeneralisiert). Fix: explizite Gegenregel im Splitter-Prompt („Verschiedene Wirtschaftsformen sind DISTINKTE Tätigkeiten — auch beim selben Produkt"), mit Klarstellung des Verhältnisses beider Regeln. Verifiziert: Spielwaren/Möbel jetzt 2 Tätigkeiten, die Handelsform-Fälle (Gemüsesalate, Fahrzeugbereifungen) bleiben korrekt 1, Dreifach-Split unverändert; Standard-Eval n=158: Primary 71,5 % (bester Wert), 0 Übersplittungen im Destatis-Set. Regressionsfall `wirtschaftsformen-spielwaren` im Langtext-Eval (neues Feld `minActivities`). **PIPELINE_VERSION → `2026-09-17.1`** (invalidiert auch bereits gecachte Fehlbündelungen).
+
+Fachliche Nuance (ggf. fürs IHK-Gespräch): Nach WZ-Grundsatz gehört der Vertrieb **eigener** Erzeugnisse zur Herstellung — nur Handel mit Fremdware ist eigenständig. Der Gegenstandstext verrät das meist nicht; die Trennung in zwei Tätigkeiten lässt dem Sachbearbeiter die Entscheidung, statt sie zu verstecken.
+
 ## Offene Punkte
 
 - **Deploy auf die drei IHK-Instanzen** (alle Maßnahmen sind bisher nur lokal/main): danach Fall-1-Quote (Anteil 4-stelliger Primaries) via `prod-analysis.ts` als Vorher/Nachher-Beleg ziehen — sollte von 9–16 % auf ~0 fallen.
