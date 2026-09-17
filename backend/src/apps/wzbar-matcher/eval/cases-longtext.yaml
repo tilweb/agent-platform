@@ -4,6 +4,42 @@
 # Menge (mit note). Unlabelte Echtfaelle kommen zur Laufzeit per
 # --from-export aus den Produktions-Exporten dazu (Kundendaten, nicht im Repo).
 cases:
+  # Struktur-Vielfalt gemaess Prod-Verteilung (104 Langtexte: 55 Komma-Listen,
+  # 40 Prosa, 8 Pipe, 1 Spiegelstrich) — synthetisch, aber den echten Faellen
+  # nachempfunden; Codes gegen amtliche Stichwoerter verifiziert.
+  - id: struktur-kommaliste-facility
+    expected: ["81210", "81100", "81301", "81239"]
+    note: >-
+      Komma-Liste (haeufigste Langtext-Struktur). Gebaeudereinigung 81.21.0,
+      Hausmeister 81.10.0, Gartenpflege 81.30.1, Winterdienst 81.23.9.
+    text: >-
+      Facility-Management-Leistungen aller Art, insbesondere die laufende
+      Unterhaltsreinigung von Buero- und Wohngebaeuden, Hausmeisterservice mit
+      Objektbetreuung, Gartenpflege und Gruenanlagenpflege, Winterdienst mit
+      Schnee- und Eisbeseitigung, Treppenhausreinigung sowie kleinere
+      Instandhaltungs- und Reparaturarbeiten in und an Gebaeuden nebst allen
+      damit zusammenhaengenden Dienstleistungen.
+  - id: struktur-prosa-it
+    expected: ["62103", "62101", "62900"]
+    note: >-
+      Fliesstext-Prosa mit "insbesondere" (zweithaeufigste Struktur).
+      Anwendungssoftware 62.10.3, Webdesign 62.10.1.
+    text: >-
+      Gegenstand des Unternehmens ist die Erbringung von IT-Dienstleistungen,
+      insbesondere die Entwicklung, Anpassung und Pflege individueller
+      Anwendungssoftware fuer kleine und mittlere Unternehmen, die Konzeption
+      und Gestaltung von Internetauftritten und Online-Shops sowie die damit
+      im Zusammenhang stehende Beratung, Einfuehrungsunterstuetzung und
+      Schulung der Anwender einschliesslich der Uebernahme von Wartungs- und
+      Supportleistungen.
+  - id: struktur-pipe-garten
+    expected: ["8130", "81239"]
+    note: Pipe-getrennte Stichpunkte (dritte Struktur). Gartenbau 81.30, Winterdienst 81.23.9.
+    text: >-
+      Rasenpflege: maehen, vertikutieren, duengen|Heckenschnitt und
+      Gehoelzpflege|Baumfaellarbeiten bis 5 m Hoehe|Winterdienst und
+      Kehrarbeiten fuer Privathaushalte und Gewerbe|kleinere Pflaster- und
+      Wegebauarbeiten im Garten
   - id: geothermie-erkundung
     expected: ["43130", "09900", "42210", "35300"]
     note: >-

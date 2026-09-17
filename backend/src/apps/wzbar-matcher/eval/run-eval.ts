@@ -101,7 +101,7 @@ async function runCase(c: EvalCase): Promise<CaseResult> {
     const { candidates } = await retrieveCandidates(text, deps, variants);
     return { case: c, recallHit: recallHit(candidates, c.expected, deps.liftTo) };
   }
-  const am = await matchActivity(text, deps, variants);
+  const am = await matchActivity(text, deps, variants, c.text);
   const candidates = am.retrievalTopK
     .map(h => deps.byCode.get(deps.liftTo.get(h.code) ?? h.code))
     .filter((e): e is NonNullable<typeof e> => Boolean(e));

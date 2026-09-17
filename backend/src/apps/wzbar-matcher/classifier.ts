@@ -45,6 +45,7 @@ Regeln:
 - confidence ist ein Wert zwischen 0 und 1.
 - reasoning ist eine 1-2 Sätze kurze, deutsche Begründung, warum der Code passt — bei tieferen Ebenen kurz erwähnen, warum die feinere Ebene gerechtfertigt ist.
 - Achte auf typische Umgangssprache und Schreibfehler in der Tätigkeitsbeschreibung.
+- Wenn ein vollständiger Gegenstandstext als Kontext mitgegeben ist, nutze ihn für die Branchen- und Produktabgrenzung (welcher Rohstoff, welche Branche, welche Kundengruppe tatsächlich gemeint ist). Der Kontext ergänzt die Tätigkeitsbeschreibung, ersetzt sie aber nicht.
 
 Beispiele für die Ebenen-Wahl:
 - "Abbrucharbeiten" → 43110 (Unterklasse deckt die Tätigkeit ab), NICHT 431101 "Entkernung von Gebäuden" (Spezialfall, den die Beschreibung nicht nennt).
@@ -93,7 +94,17 @@ function levelLabel(code: string): string {
   return 'Spezialfall';
 }
 
-function buildUserPrompt(inputText: string, candidates: CatalogEntry[], searchVariants: string[]): string {
+/**
+ * G1 (Langtext-Analyse): Der Classifier bekommt den vollstaendigen
+ * Originaltext als Kontext mit — die verdichtete Activity allein verliert
+ * sonst genau die Details (Rohstoff, Branche), die bei Beinahe-Gleichstand
+ * der Kandidaten entscheiden. Nur relevant, wenn der Originaltext deutlich
+ * laenger ist als die Activity selbst.
+ */
+const CONTEXT_MAX_CHARS = 2000;
+const CONTEXT_MIN_EXTRA_CHARS = 40;
+
+function buildUserPrompt(inputText: string, candidates: CatalogEntry[], searchVariants: string[], originalContext?: string): string {
   const lines = candidates.map(c => `- ${c.code} (${levelLabel(c.code)}): ${c.kurztext}${c.langtext && c.langtext !== c.kurztext ? ` — ${c.langtext}` : ''}`);
   // Die fachsprachlichen Umformulierungen aus dem Splitter zaehlen bei der
   // Ebenen-Wahl als Teil der Beschreibung: benennt eine Variante einen
@@ -102,25 +113,28 @@ function buildUserPrompt(inputText: string, candidates: CatalogEntry[], searchVa
   const variantBlock = searchVariants.length > 0
     ? `\nFachsprachliche Umformulierungen derselben Tätigkeit (gleichwertig zur Beschreibung):\n${searchVariants.map(v => `- ${v}`).join('\n')}\n`
     : '';
+  const contextBlock = originalContext && originalContext.length > inputText.length + CONTEXT_MIN_EXTRA_CHARS
+    ? `\nVollständiger Gegenstandstext (Kontext — die Tätigkeit ist ein Teil davon):\n"""\n${originalContext.slice(0, CONTEXT_MAX_CHARS)}\n"""\n`
+    : '';
   return `Tätigkeitsbeschreibung:
 """
 ${inputText}
 """
-${variantBlock}
+${contextBlock}${variantBlock}
 Kandidatenliste (gemischte Ebenen):
 ${lines.join('\n')}
 
 Wähle den besten Code (Unterklasse, außer Beschreibung oder Umformulierung benennt ausdrücklich einen Spezialfall) und 0-3 Alternativen.`;
 }
 
-export async function classify(inputText: string, candidates: CatalogEntry[], searchVariants: string[] = []): Promise<MatchResult> {
+export async function classify(inputText: string, candidates: CatalogEntry[], searchVariants: string[] = [], originalContext?: string): Promise<MatchResult> {
   if (candidates.length === 0) {
     throw new Error('Keine Kandidaten für das LLM-Re-Ranking vorhanden.');
   }
 
   const messages: Message[] = [
     { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: buildUserPrompt(inputText, candidates, searchVariants) },
+    { role: 'user', content: buildUserPrompt(inputText, candidates, searchVariants, originalContext) },
   ];
 
   const response = await llmService.chat(

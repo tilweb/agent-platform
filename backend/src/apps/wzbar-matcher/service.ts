@@ -114,9 +114,10 @@ export async function matchActivity(
   activity: string,
   deps: MatchDeps,
   searchVariants: string[] = [],
+  originalContext?: string,
 ): Promise<ActivityMatch> {
   const { hits, candidates } = await retrieveCandidates(activity, deps, searchVariants);
-  const result = await classify(activity, candidates, searchVariants);
+  const result = await classify(activity, candidates, searchVariants, originalContext);
   return {
     activity,
     ...(searchVariants.length > 0 ? { queryVariants: searchVariants } : {}),
@@ -161,7 +162,7 @@ export async function match(
   }
 
   const activityMatches: ActivityMatch[] = await Promise.all(
-    activities.map(activity => matchActivity(activity.text, deps, activity.searchVariants)),
+    activities.map(activity => matchActivity(activity.text, deps, activity.searchVariants, trimmed)),
   );
 
   const llmModel = await resolveChatModelLabel();

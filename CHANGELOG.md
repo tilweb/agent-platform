@@ -1,6 +1,18 @@
 # Changelog
 
-## 2026-09-16
+## 2026-09-17
+
+### WZ-Branchen-Matcher: G1 Originaltext-Kontext + diversifiziertes Langtext-Eval
+Langtext-Verteilung erhoben (104 Prod-Fälle >300 Z.: 55 Komma-Listen, 40 Prosa, 8 Pipe,
+1 Spiegelstrich — der Geothermie-Stil ist ein Ausreißer); Langtext-Eval um drei
+synthetische Strukturfälle mit amtlich verifizierten Codes ergänzt. G1: Der Classifier
+bekommt den vollen Gegenstandstext als Kontext (classify(..., originalContext), gekappt
+2.000 Z.) — konzeptionell richtig, bleibt drin, löst den semantisch-nahen Zielfall aber
+messbar NICHT. Reasoning-Trace zeigt die echte Ursache: Das Modell wählt bewusst einen
+falschen Oberbegriff, weil der passende Restklassen-Code (09900) nie Kandidat wird —
+dessen amtliche Stichwörter decken nur Steinbrüche/Kohle ab, nicht die Breite der
+Restklasse. Nächste generische Hebel im Doc: Erläuterungstexte des Klassifikationsservers
+als zusätzliche Code-Vektoren + stratifizierter Eval/Enrich-Split.
 
 ### WZ-Branchen-Matcher: Fail-fast-Budget, cached-Badge, Zwischenanzeige
 Drei UX-Kleinmaßnahmen: (1) Matcher-LLM-Calls mit 30-s-Timeout und max. 1 Retry (Worst

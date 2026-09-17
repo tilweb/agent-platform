@@ -102,7 +102,7 @@ for (const c of cases) {
     let matches;
     try {
       acts = await splitActivities(c.text);
-      matches = await Promise.all(acts.map(a => matchActivity(a.text, deps, a.searchVariants)));
+      matches = await Promise.all(acts.map(a => matchActivity(a.text, deps, a.searchVariants, c.text)));
     } catch (error) {
       console.error(`  FEHLER bei ${c.id} Lauf ${r + 1}: ${String(error).slice(0, 120)}`);
       runResults.push({ primaries: ['FEHLER'], activityCount: 0, passthrough: false, hasVariants: false, durationMs: Date.now() - t0 });

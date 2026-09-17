@@ -55,7 +55,7 @@ const diffs: ReplayDiff[] = await pool(records, concurrency, async (r, i) => {
   const detail: ReplayDiff['detail'] = [];
   try {
     const acts = await splitActivities(r.inputText);
-    const matches = await Promise.all(acts.map(a => matchActivity(a.text, deps, a.searchVariants)));
+    const matches = await Promise.all(acts.map(a => matchActivity(a.text, deps, a.searchVariants, r.inputText)));
     replayPrimaries = matches.map(m => m.result.primary.code).sort();
     for (const m of matches) {
       detail.push({ activity: m.activity, primary: m.result.primary.code, confidence: m.result.primary.confidence, reasoning: m.result.primary.reasoning });
