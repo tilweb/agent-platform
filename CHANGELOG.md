@@ -2,6 +2,15 @@
 
 ## 2026-09-16
 
+### WZ-Branchen-Matcher: Fail-fast-Budget, cached-Badge, Zwischenanzeige
+Drei UX-Kleinmaßnahmen: (1) Matcher-LLM-Calls mit 30-s-Timeout und max. 1 Retry (Worst
+Case ~61 s statt ~480 s bei API-Störungen; OpenAI-Adapter kann maxRetries jetzt pro Call,
+Default unverändert). (2) Cache-Treffer zeigen „aus früherem Lauf" in der Meta-Zeile.
+(3) Neuer SSE-Endpoint POST /match/stream + onActivities-Hook: die erkannten Tätigkeiten
+erscheinen nach ~1,9 s („WZ-Schlüssel wird ermittelt…"), während die Klassifikation noch
+läuft — gefühlte Wartezeit −70 %; automatischer Fallback auf den klassischen POST bei
+Transportproblemen.
+
 ### WZ-Branchen-Matcher: Ergebnis-Cache (Konsistenz + Latenz)
 Identische (normalisierte) Eingaben liefern jetzt garantiert dasselbe Ergebnis: sha256
 über den whitespace-kollabierten, lowercased inputText + PIPELINE_VERSION-Konstante als

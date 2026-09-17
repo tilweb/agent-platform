@@ -10,6 +10,13 @@ import type { CatalogEntry, MatchResult } from './types';
 // Platform-Apps-Modell (PLATFORM_APPS_*), NICHT der globale Chat-Default.
 // Sonst zeigt das Audit-Log das Apps-Modell an, waehrend die Calls tatsaechlich
 // ueber active.chat laufen — Anzeige und Realitaet muessen identisch sein.
+/**
+ * Fail-fast-Budget fuer alle interaktiven Matcher-Calls: 30s-Timeout, max.
+ * 1 Retry (Worst Case ~61s statt ~480s mit den Adapter-Defaults 120s x 3
+ * Retries). Ein Sachbearbeiter wartet nicht 8 Minuten auf eine Stoerung.
+ */
+export const MATCHER_LLM_BUDGET = { timeoutMs: 30_000, maxRetries: 1 } as const;
+
 export async function appsModelOverride(): Promise<{ modelOverride: { providerId: string; modelId: string } } | Record<string, never>> {
   try {
     const m = await getPlatformModel('apps');
@@ -122,7 +129,7 @@ export async function classify(inputText: string, candidates: CatalogEntry[], se
     { source: 'wzbar-matcher', userId: 'user_default' },
     // temperature 0: deterministisches Decoding — bei Beinahe-Gleichstand der
     // Kandidaten soll dieselbe Eingabe nicht mal so, mal so klassifiziert werden.
-    { toolChoice: { type: 'function', function: { name: 'classify_wz_branche' } }, temperature: 0, ...(await appsModelOverride()) },
+    { toolChoice: { type: 'function', function: { name: 'classify_wz_branche' } }, temperature: 0, ...MATCHER_LLM_BUDGET, ...(await appsModelOverride()) },
   );
 
   if (response.tool_calls && response.tool_calls.length > 0) {

@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { theme } from '../../config/theme';
 import { apiGet, apiPost } from '../../utils/apiFetch';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 import { ClassifierIcon } from '../../components/Icons';
 import MatchCard from './components/MatchCard';
 import HistoryList from './components/HistoryList';
@@ -148,10 +150,24 @@ const styles = {
   },
   meta: {
     display: 'flex',
+    alignItems: 'center',
     gap: theme.spacing.md,
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.textMuted,
     marginBottom: theme.spacing.lg,
+  },
+  cachedBadge: {
+    fontSize: theme.typography.sizes.xs,
+    padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+    borderRadius: theme.borderRadius.full,
+    fontWeight: theme.typography.weights.medium,
+    backgroundColor: theme.colors.surfaceHover,
+    color: theme.colors.textMuted,
+  },
+  pendingHint: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textMuted,
+    fontStyle: 'italic',
   },
   status: {
     fontSize: theme.typography.sizes.xs,
@@ -169,6 +185,7 @@ export default function MatcherPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [record, setRecord] = useState(null);
+  const [pendingActivities, setPendingActivities] = useState(null);
   const [error, setError] = useState(null);
   const [history, setHistory] = useState([]);
   const [status, setStatus] = useState(null);
@@ -199,24 +216,84 @@ export default function MatcherPage() {
     loadStatus();
   }, [loadHistory, loadStatus]);
 
+  // SSE-Variante: zeigt die erkannten Tätigkeiten an, sobald der Splitter
+  // fertig ist, während die Codes noch rechnen. Wirft bei Server-Fehlern
+  // (Event `error`) mit err.serverError=true — dann KEIN Fallback-Rerun.
+  const doMatchStream = async (text) => {
+    const res = await fetch(`${API_URL}/apps/wzbar-matcher/match/stream`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputText: text }),
+    });
+    if (!res.ok || !res.body) throw new Error(`Stream nicht verfügbar (${res.status})`);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let gotRecord = false;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let sep;
+      while ((sep = buffer.indexOf('\n\n')) !== -1) {
+        const rawEvent = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        let event = 'message';
+        let data = '';
+        for (const line of rawEvent.split('\n')) {
+          if (line.startsWith('event:')) event = line.slice(6).trim();
+          else if (line.startsWith('data:')) data += line.slice(5).trim();
+        }
+        if (!data) continue;
+        const payload = JSON.parse(data);
+        if (event === 'activities') {
+          setPendingActivities(payload.activities || []);
+        } else if (event === 'record') {
+          setRecord(payload.record);
+          gotRecord = true;
+        } else if (event === 'error') {
+          const err = new Error(payload.error || 'Match fehlgeschlagen');
+          err.serverError = true;
+          throw err;
+        }
+      }
+    }
+    if (!gotRecord) throw new Error('Stream ohne Ergebnis beendet');
+  };
+
   const doMatch = async () => {
     const text = input.trim();
     if (!text || loading) return;
     setError(null);
+    setRecord(null);
+    setPendingActivities(null);
     setLoading(true);
     try {
-      const res = await apiPost('/apps/wzbar-matcher/match', { inputText: text });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data?.error || 'Match fehlgeschlagen');
-      } else {
-        setRecord(data.record);
-        loadHistory();
-      }
+      await doMatchStream(text);
+      loadHistory();
     } catch (err) {
-      setError(err?.message || 'Match fehlgeschlagen');
+      if (err?.serverError) {
+        setError(err.message);
+      } else {
+        // Transport-Problem (z.B. Proxy ohne SSE) — Fallback auf klassischen POST
+        try {
+          const res = await apiPost('/apps/wzbar-matcher/match', { inputText: text });
+          const data = await res.json();
+          if (!res.ok) {
+            setError(data?.error || 'Match fehlgeschlagen');
+          } else {
+            setRecord(data.record);
+            loadHistory();
+          }
+        } catch (fallbackErr) {
+          setError(fallbackErr?.message || 'Match fehlgeschlagen');
+        }
+      }
     } finally {
       setLoading(false);
+      setPendingActivities(null);
     }
   };
 
@@ -287,12 +364,30 @@ export default function MatcherPage() {
 
           {error && <div style={styles.error}>{error}</div>}
 
+          {loading && pendingActivities && pendingActivities.length > 0 && (
+            <div style={styles.panel}>
+              <div style={styles.sectionTitle}>
+                {pendingActivities.length === 1 ? 'Erkannte Tätigkeit' : `${pendingActivities.length} erkannte Tätigkeiten`}
+              </div>
+              {pendingActivities.map((a, idx) => (
+                <div key={`${a.text}-${idx}`} style={styles.activityBlock}>
+                  <div style={styles.activityHeader}>
+                    {pendingActivities.length > 1 && <span style={styles.activityIndex}>Tätigkeit {idx + 1}</span>}
+                    <span style={styles.activityName}>{a.text}</span>
+                  </div>
+                  <div style={styles.pendingHint}>WZ-Schlüssel wird ermittelt…</div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {record && (
             <div>
               <div style={styles.meta}>
                 <span>Dauer: {record.durationMs} ms</span>
                 <span>Embedding: {record.embeddingModel}</span>
                 <span>LLM: {record.llmModel}</span>
+                {record.cached && <span style={styles.cachedBadge}>aus früherem Lauf</span>}
               </div>
               {(() => {
                 const activities = record.result?.activities || [];

@@ -11,7 +11,7 @@ import { findCachedMatch, generateMatchId, getMatch, listMatches, loadAliasIndex
 import { topKWithAliases } from './retrieval';
 import { buildLiftMap } from './level-lift';
 import { classify } from './classifier';
-import { splitActivities } from './splitter';
+import { splitActivities, type SplitActivity } from './splitter';
 import type {
   ActivityMatch,
   AliasIndex,
@@ -125,7 +125,16 @@ export async function matchActivity(
   } satisfies ActivityMatch;
 }
 
-export async function match(inputText: string, userId = 'user_default'): Promise<MatchRecord> {
+/**
+ * @param onActivities Progress-Hook fuer die UX-Zwischenanzeige: wird nach dem
+ *   Splitter mit den erkannten Taetigkeiten aufgerufen, waehrend die
+ *   Klassifikation noch laeuft. Bei Cache-Treffern nicht aufgerufen.
+ */
+export async function match(
+  inputText: string,
+  userId = 'user_default',
+  onActivities?: (activities: SplitActivity[]) => void,
+): Promise<MatchRecord> {
   const trimmed = inputText.trim();
   if (!trimmed) throw new Error('inputText darf nicht leer sein');
 
@@ -145,6 +154,11 @@ export async function match(inputText: string, userId = 'user_default'): Promise
 
   const activities = await splitActivities(trimmed);
   if (activities.length === 0) activities.push({ text: trimmed, searchVariants: [] });
+  try {
+    onActivities?.(activities);
+  } catch {
+    /* Progress-Fehler duerfen den Match nicht stoppen */
+  }
 
   const activityMatches: ActivityMatch[] = await Promise.all(
     activities.map(activity => matchActivity(activity.text, deps, activity.searchVariants)),

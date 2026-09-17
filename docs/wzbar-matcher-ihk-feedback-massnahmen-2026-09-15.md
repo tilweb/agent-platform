@@ -264,6 +264,12 @@ Bewertung: temperature 0 bleibt drin (korrekte Hygiene für eine Klassifikations
 - **Live-Test**: identische Eingabe mit anderer Formatierung/Groß-Kleinschreibung → zweiter Aufruf **4 ms statt 7,9 s**, gleiche Record-ID, `cached: true`.
 - Optionaler UI-Folgeschritt: `cached`-Flag in der MatcherPage anzeigen („aus früherem Lauf").
 
+### Kleinmaßnahmen (2026-09-16): Fail-fast, cached-Badge, UX-Zwischenanzeige
+
+1. **Fail-fast-Budget** (`MATCHER_LLM_BUDGET` in `classifier.ts`): alle drei Matcher-Calls laufen mit 30-s-Timeout und max. 1 Retry — Worst Case ~61 s statt ~480 s bei API-Störungen. Dafür wurde der OpenAI-Adapter minimal erweitert: `maxRetries` ist jetzt (wie `timeoutMs`) eine optionale Per-Call-Option; Default (3 Retries) für alle anderen Aufrufer unverändert.
+2. **cached-Badge**: Die MatcherPage zeigt bei Cache-Treffern „aus früherem Lauf" in der Meta-Zeile.
+3. **UX-Zwischenanzeige**: Neuer SSE-Endpoint `POST /match/stream` (Event `activities` sobald der Splitter fertig ist, dann `record`/`error`); `service.match()` hat dafür einen `onActivities`-Progress-Hook. Das Frontend zeigt die erkannten Tätigkeiten mit „WZ-Schlüssel wird ermittelt…", während die Klassifikation läuft — gemessen kommt der Zwischenstand nach **~1,9 s**, das Endergebnis nach ~6,6 s (gefühlte Wartezeit −70 %). Bei Transportproblemen (z. B. Proxy ohne SSE) fällt das Frontend automatisch auf den klassischen `POST /match` zurück; bei Server-Fehlern gibt es bewusst keinen Fallback-Rerun.
+
 ## Offene Punkte
 
 - **Deploy auf die drei IHK-Instanzen** (alle Maßnahmen sind bisher nur lokal/main): danach Fall-1-Quote (Anteil 4-stelliger Primaries) via `prod-analysis.ts` als Vorher/Nachher-Beleg ziehen — sollte von 9–16 % auf ~0 fallen.

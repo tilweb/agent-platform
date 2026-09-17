@@ -246,6 +246,8 @@ export class OpenAIAdapter {
       extraBody?: Record<string, unknown>;
       /** Harter Request-Timeout (AbortSignal). Default 120s — vorher gab es KEINEN Client-Timeout (W9). */
       timeoutMs?: number;
+      /** Max. Wiederholungen bei transienten Fehlern/Timeouts. Default MAX_RETRIES (3) — interaktive Aufrufer koennen ein Fail-fast-Budget setzen. */
+      maxRetries?: number;
     }
   ): Promise<{
     content: string | null;
@@ -285,8 +287,9 @@ export class OpenAIAdapter {
     // timeoutMs, und der Retry bekommt einen frischen Request. Der
     // Streaming-Pfad bleibt bewusst ohne Abort (lange Chats).
     const timeoutMs = params?.timeoutMs ?? 120_000;
+    const maxRetries = params?.maxRetries ?? MAX_RETRIES;
     let response: Response | null = null;
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         recordProviderAttempt();
         response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -298,8 +301,8 @@ export class OpenAIAdapter {
       } catch (error) {
         const e = error as { name?: string };
         if (e?.name === 'TimeoutError' || e?.name === 'AbortError') {
-          if (attempt < MAX_RETRIES) {
-            safeLog.warn(`[OpenAI Adapter] Request-Timeout nach ${Math.round(timeoutMs / 1000)}s (Versuch ${attempt + 1}/${MAX_RETRIES + 1}) — neuer Versuch.`);
+          if (attempt < maxRetries) {
+            safeLog.warn(`[OpenAI Adapter] Request-Timeout nach ${Math.round(timeoutMs / 1000)}s (Versuch ${attempt + 1}/${maxRetries + 1}) — neuer Versuch.`);
             continue;
           }
           throw new Error(`LLM-Request-Timeout nach ${Math.round(timeoutMs / 1000)}s`);
@@ -311,9 +314,9 @@ export class OpenAIAdapter {
 
       const error = await response.text();
 
-      if (attempt < MAX_RETRIES && this.isRetryable(response.status, error)) {
+      if (attempt < maxRetries && this.isRetryable(response.status, error)) {
         const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
-        safeLog.warn(`[OpenAI Adapter] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES})`, {
+        safeLog.warn(`[OpenAI Adapter] Retryable error (attempt ${attempt + 1}/${maxRetries})`, {
           errorPreview: error.substring(0, 100),
           delayMs: delay,
         });

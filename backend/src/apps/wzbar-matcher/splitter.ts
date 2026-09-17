@@ -20,7 +20,7 @@
  */
 
 import { llmService, type Message, type ToolDefinition } from '../../services/llm';
-import { appsModelOverride } from './classifier';
+import { appsModelOverride, MATCHER_LLM_BUDGET } from './classifier';
 
 const MAX_ACTIVITIES = 3;
 const MAX_VARIANTS = 2;
@@ -105,7 +105,7 @@ export async function splitActivities(inputText: string): Promise<SplitActivity[
       messages,
       [SCHEMA],
       { source: 'wzbar-matcher', userId: 'user_default' },
-      { toolChoice: { type: 'function', function: { name: 'split_activities' } }, temperature: 0, ...(await appsModelOverride()) },
+      { toolChoice: { type: 'function', function: { name: 'split_activities' } }, temperature: 0, ...MATCHER_LLM_BUDGET, ...(await appsModelOverride()) },
     );
 
     if (response.tool_calls && response.tool_calls.length > 0) {
@@ -198,7 +198,7 @@ Regeln:
       messages,
       [CONDENSE_SCHEMA],
       { source: 'wzbar-matcher', userId: 'user_default' },
-      { toolChoice: { type: 'function', function: { name: 'condense_activity' } }, temperature: 0, ...(await appsModelOverride()) },
+      { toolChoice: { type: 'function', function: { name: 'condense_activity' } }, temperature: 0, ...MATCHER_LLM_BUDGET, ...(await appsModelOverride()) },
     );
     if (response.tool_calls && response.tool_calls.length > 0) {
       const parsed = JSON.parse(response.tool_calls[0]!.function.arguments) as { text?: unknown; searchVariants?: unknown };

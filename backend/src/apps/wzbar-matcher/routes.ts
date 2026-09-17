@@ -3,6 +3,7 @@
  */
 
 import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
 import { match, history, detail } from './service';
 import { isIndexReady, loadEmbeddings, loadCatalog } from './storage';
 import { getNeighborhood } from './neighborhood';
@@ -34,6 +35,40 @@ wzbar.post('/match', async (c) => {
       500,
     );
   }
+});
+
+/**
+ * POST /api/apps/wzbar-matcher/match/stream — SSE-Variante fuer die
+ * UX-Zwischenanzeige: Event `activities` sobald der Splitter fertig ist
+ * (erkannte Taetigkeiten, waehrend die Codes noch rechnen), dann `record`
+ * mit dem Endergebnis bzw. `error`. Cache-Treffer liefern direkt `record`.
+ */
+wzbar.post('/match/stream', async (c) => {
+  const body = await c.req.json<{ inputText?: string }>().catch(() => null);
+  const inputText = (body?.inputText ?? '').trim();
+
+  return streamSSE(c, async (stream) => {
+    if (!inputText) {
+      await stream.writeSSE({ event: 'error', data: JSON.stringify({ error: 'inputText fehlt' }) });
+      return;
+    }
+    try {
+      const record = await match(inputText, 'user_default', (activities) => {
+        // fire-and-forget: writeSSE ist async, aber der Match soll nicht warten
+        void stream.writeSSE({
+          event: 'activities',
+          data: JSON.stringify({ activities: activities.map(a => ({ text: a.text })) }),
+        });
+      });
+      await stream.writeSSE({ event: 'record', data: JSON.stringify({ record }) });
+    } catch (error) {
+      console.error('[wzbar-matcher] match/stream error:', error);
+      await stream.writeSSE({
+        event: 'error',
+        data: JSON.stringify({ error: error instanceof Error ? error.message : 'Match fehlgeschlagen' }),
+      });
+    }
+  });
 });
 
 /**

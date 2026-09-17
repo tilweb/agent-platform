@@ -29,6 +29,8 @@ export interface ChatOptions {
   extraBody?: Record<string, unknown>;
   /** Harter Request-Timeout (AbortSignal), Default 120s. Nur non-streaming chat() + OpenAI-Adapter. */
   timeoutMs?: number;
+  /** Max. Wiederholungen bei transienten Fehlern/Timeouts (Default 3). Fail-fast-Budget fuer interaktive Aufrufer. Nur non-streaming chat() + OpenAI-Adapter. */
+  maxRetries?: number;
 }
 
 // Content part types for multimodal messages (text + images)
@@ -463,6 +465,7 @@ export class LLMService {
         maxTokens: options?.maxTokens,
         extraBody: options?.extraBody,
         timeoutMs: options?.timeoutMs,
+        maxRetries: options?.maxRetries,
       });
       await trackUsage();
       return {
