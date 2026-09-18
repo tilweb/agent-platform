@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-18
+
+### Projektmanagement-App: Begriff „Masterclass" → „PM-Wissen"
+Kundensichtbares Vokabular vereinheitlicht: Alle UI-Texte („PM Masterclass", „Masterclass-
+Wissen", „Masterclass-Bewertung", „RUHR PM Masterclass" etc.) sowie die LLM-Prompt-
+Formulierungen (Berater-Persona, Wissens-Sektionen, Prüfkriterien) sprechen jetzt von
+„PM-Wissen". Interne Code-Identifier (`masterclassAnalysis`-Feld, `MasterclassAnalysis`-
+Interface, `MasterclassEditor`-Komponente, Tab-`id`) bleiben unverändert, um persistierte
+Analyse-Daten nicht zu brechen.
+
 ## 2026-09-15
 
 ### KI-Modelle-Seite: Modellkatalog statt Provider-Boxen und Tier-Bannern

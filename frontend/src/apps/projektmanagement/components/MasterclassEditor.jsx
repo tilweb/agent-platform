@@ -1032,7 +1032,7 @@ export default function MasterclassEditor() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
       <p style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, marginBottom: theme.spacing.sm }}>
-        Bearbeiten Sie das PM-Masterclass-Wissen je Element und Bereich — es wird im jeweiligen KI-Balken
+        Bearbeiten Sie das PM-Wissen je Element und Bereich — es wird im jeweiligen KI-Balken
         (Wissen &amp; Analyse) genutzt.
       </p>
 

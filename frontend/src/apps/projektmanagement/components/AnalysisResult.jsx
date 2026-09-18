@@ -502,7 +502,7 @@ function AnalysisResult({ analysis }) {
             </div>
           </div>
           <div style={styles.scoreMeta}>
-            <div style={styles.scoreTitle}>Masterclass-Bewertung</div>
+            <div style={styles.scoreTitle}>PM-Bewertung</div>
             <div style={styles.scoreProgressText}>
               {erfuelltCount} von {kriterien.length} Kriterien erfüllt
               {teilweiseCount > 0 && ` · ${teilweiseCount} teilweise`}
@@ -512,7 +512,7 @@ function AnalysisResult({ analysis }) {
         </div>
       ) : (
         <div style={styles.noCriteriaNote}>
-          Für diesen Bereich sind noch keine Prüfkriterien in der Masterclass hinterlegt.
+          Für diesen Bereich sind noch keine Prüfkriterien im PM-Wissen hinterlegt.
           Die folgende Rückmeldung ist eine allgemeine Einschätzung ohne Punktbewertung.
         </div>
       )}

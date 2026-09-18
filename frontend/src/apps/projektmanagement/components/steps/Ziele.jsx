@@ -241,7 +241,7 @@ function Ziele({
 
       {/* Tipp-Box */}
       <div style={styles.tipBox}>
-        <div style={styles.tipTitle}>Tipp: RUHR PM Masterclass</div>
+        <div style={styles.tipTitle}>Tipp: PM-Wissen</div>
         <p style={styles.tipText}>
           {tipText}
           <br />- Klar und eindeutig formuliert sind

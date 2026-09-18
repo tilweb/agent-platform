@@ -252,7 +252,7 @@ export default function StepChat({ element, segment, entity, messages = [], onMe
               <ChatIcon size={28} />
             </div>
             Frag den Wissenspool zu diesem Schritt — z. B. „Worauf kommt es hier an?" oder
-            „Passt meine aktuelle Eingabe?". Antworten stützen sich auf das Masterclass-Wissen
+            „Passt meine aktuelle Eingabe?". Antworten stützen sich auf das PM-Wissen
             und deine bisherigen Eingaben.
           </div>
         ) : (
