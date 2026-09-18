@@ -168,7 +168,7 @@ function Vergleich({ data }) {
           Was ist der historische Vergleich?
         </div>
         <p style={styles.infoText}>
-          Die KI-gestützte Vergleichsanalyse basiert auf der RUHR PM Masterclass Methodik
+          Die KI-gestützte Vergleichsanalyse basiert auf dem hinterlegten PM-Wissen
           und vergleicht Ihren Projektauftrag mit einer Datenbank historischer Projekte.
           Die Analyse erfolgt in vier Domänen (People, Risks, Milestones, General) und
           liefert konkrete Handlungsempfehlungen basierend auf Erfahrungen aus

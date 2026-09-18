@@ -608,10 +608,10 @@ export async function buildSegmentChatSystemPrompt(
   const segmentLabel = ELEMENT_REGISTRY[element]?.segments.find((s) => s.key === segment)?.title ?? segment;
 
   const sections: string[] = [
-    `Du bist ein erfahrener Projektmanagement-Berater nach der RUHR PM Masterclass Methodik.`,
+    `Du bist ein erfahrener Projektmanagement-Berater und arbeitest auf Basis des hinterlegten PM-Wissens.`,
     `Der Nutzer arbeitet gerade am Bereich "${segmentLabel}" (${elementLabel}) und stellt dir dazu Fragen.`,
     `Beantworte seine Fragen konkret, konstruktiv und auf Deutsch. Leitplanken:`,
-    `- Stütze dich AUSSCHLIESSLICH auf das unten stehende Masterclass-Wissen und die aktuellen Eingaben des Nutzers.`,
+    `- Stütze dich AUSSCHLIESSLICH auf das unten stehende PM-Wissen und die aktuellen Eingaben des Nutzers.`,
     `- Bleib beim Thema ("${segmentLabel}"). Bei themenfremden Fragen weise freundlich darauf hin.`,
     `- Erfinde keine Fakten. Wenn das Wissen eine Frage nicht abdeckt, sage das offen.`,
     `- Beziehe dich, wo sinnvoll, konkret auf die aktuellen Eingaben des Nutzers.`,
@@ -619,8 +619,8 @@ export async function buildSegmentChatSystemPrompt(
   ];
   sections.push(
     knowledgeMd
-      ? `\n---\n# Masterclass-Wissen zu diesem Bereich\n\n${knowledgeMd}`
-      : `\n(Für diesen Bereich liegt kein spezifisches Masterclass-Wissen vor — antworte aus allgemeiner PM-Best-Practice, bleib aber beim Thema.)`
+      ? `\n---\n# PM-Wissen zu diesem Bereich\n\n${knowledgeMd}`
+      : `\n(Für diesen Bereich liegt kein spezifisches PM-Wissen vor — antworte aus allgemeiner PM-Best-Practice, bleib aber beim Thema.)`
   );
   sections.push(
     `\n---\n## Aktuelle Eingaben des Nutzers\n\n\`\`\`json\n${JSON.stringify(contextData, null, 2)}\n\`\`\``
@@ -685,10 +685,10 @@ export async function buildStepChatSystemPrompt(
   const stepName = STEP_NAMES[step] || `Schritt ${step}`;
 
   const sections: string[] = [
-    `Du bist ein erfahrener Projektmanagement-Berater nach der RUHR PM Masterclass Methodik.`,
+    `Du bist ein erfahrener Projektmanagement-Berater und arbeitest auf Basis des hinterlegten PM-Wissens.`,
     `Der Nutzer bearbeitet gerade den Schritt "${stepName}" eines Projektauftrags und stellt dir dazu Fragen.`,
     `Beantworte seine Fragen konkret, konstruktiv und auf Deutsch. Leitplanken:`,
-    `- Stütze dich AUSSCHLIESSLICH auf das unten stehende Masterclass-Wissen und die aktuellen Eingaben des Nutzers.`,
+    `- Stütze dich AUSSCHLIESSLICH auf das unten stehende PM-Wissen und die aktuellen Eingaben des Nutzers.`,
     `- Bleib beim Thema dieses Schritts ("${stepName}"). Bei themenfremden Fragen weise freundlich darauf hin.`,
     `- Erfinde keine Fakten. Wenn das Wissen eine Frage nicht abdeckt, sage das offen.`,
     `- Beziehe dich, wo sinnvoll, konkret auf die aktuellen Eingaben des Nutzers.`,
@@ -696,10 +696,10 @@ export async function buildStepChatSystemPrompt(
   ];
 
   if (knowledgeMd) {
-    sections.push(`\n---\n# Masterclass-Wissen zu diesem Schritt\n\n${knowledgeMd}`);
+    sections.push(`\n---\n# PM-Wissen zu diesem Schritt\n\n${knowledgeMd}`);
   } else {
     sections.push(
-      `\n(Für diesen Schritt liegt kein spezifisches Masterclass-Wissen vor — antworte aus allgemeiner PM-Best-Practice, bleib aber beim Thema.)`
+      `\n(Für diesen Schritt liegt kein spezifisches PM-Wissen vor — antworte aus allgemeiner PM-Best-Practice, bleib aber beim Thema.)`
     );
   }
 
@@ -714,11 +714,11 @@ export async function buildStepChatSystemPrompt(
  * Build system prompt for LLM
  */
 function buildSystemPrompt(): string {
-  return `Du bist ein erfahrener Projektmanagement-Berater nach der RUHR PM Masterclass Methodik.
+  return `Du bist ein erfahrener Projektmanagement-Berater und arbeitest auf Basis des hinterlegten PM-Wissens.
 Deine Aufgabe ist es, die Eingaben eines Projektmanagers kritisch aber konstruktiv zu analysieren.
 
 Du prüfst:
-1. Gegen die Masterclass-Prüfkriterien (Best Practices)
+1. Gegen die PM-Prüfkriterien (Best Practices)
 2. Auf typische Fehler (die vermieden werden sollten)
 3. Auf Konsistenz mit bereits erfassten Projektdaten
 
@@ -969,7 +969,7 @@ export async function analyzeGesamt(
  * Build system prompt for Gesamtbewertung
  */
 function buildGesamtSystemPrompt(): string {
-  return `Du bist ein erfahrener Projektmanagement-Berater nach der RUHR PM Masterclass Methodik.
+  return `Du bist ein erfahrener Projektmanagement-Berater und arbeitest auf Basis des hinterlegten PM-Wissens.
 Du erstellst eine Gesamtbewertung eines Projektauftrags basierend auf:
 1. Dem vollständigen Projektauftrag
 2. Den bereits durchgeführten Einzelschritt-Analysen (falls vorhanden)

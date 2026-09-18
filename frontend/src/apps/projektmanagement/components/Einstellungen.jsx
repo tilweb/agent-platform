@@ -694,7 +694,7 @@ function Einstellungen({ onConfigSaved }) {
       <div style={styles.header}>
         <h2 style={styles.title}>Einstellungen</h2>
         <p style={styles.subtitle}>
-          Konfigurieren Sie Auswahloptionen, Module und Masterclass-Wissen für das Projektmanagement.
+          Konfigurieren Sie Auswahloptionen, Module und PM-Wissen für das Projektmanagement.
         </p>
       </div>
 
@@ -704,7 +704,7 @@ function Einstellungen({ onConfigSaved }) {
           { id: 'optionen', label: 'Auswahloptionen' },
           { id: 'checkliste', label: 'Abschluss-Checkliste' },
           { id: 'module', label: 'Module' },
-          { id: 'masterclass', label: 'Masterclass' },
+          { id: 'masterclass', label: 'PM-Wissen' },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
           return (

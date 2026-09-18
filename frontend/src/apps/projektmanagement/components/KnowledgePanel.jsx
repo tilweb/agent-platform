@@ -425,7 +425,7 @@ function KnowledgePanel({ element, segment, analyzeSegments, entity, canAnalyze 
           <div style={styles.emptyIcon}>
             <BookIcon size={32} />
           </div>
-          <p>Kein Masterclass-Wissen für diesen Schritt verfügbar.</p>
+          <p>Kein PM-Wissen für diesen Schritt verfügbar.</p>
         </div>
       </div>
     );
@@ -766,7 +766,7 @@ function KnowledgePanel({ element, segment, analyzeSegments, entity, canAnalyze 
   if (isLoading) {
     return (
       <div style={styles.container}>
-        <div style={styles.loading}>Lade Masterclass-Wissen...</div>
+        <div style={styles.loading}>Lade PM-Wissen...</div>
       </div>
     );
   }
@@ -780,7 +780,7 @@ function KnowledgePanel({ element, segment, analyzeSegments, entity, canAnalyze 
       <div style={styles.header}>
         <div style={styles.headerIcon}>
           <BookIcon size={16} />
-          <span style={styles.title}>PM Masterclass</span>
+          <span style={styles.title}>PM-Wissen</span>
         </div>
         <div style={styles.stepTitle}>{knowledge?.meta?.title}</div>
         <div style={styles.stepDescription}>{knowledge?.meta?.description}</div>
@@ -872,7 +872,7 @@ function KnowledgePanel({ element, segment, analyzeSegments, entity, canAnalyze 
                 </div>
                 <p style={styles.emptyAnalysisText}>Noch keine KI-Analyse durchgeführt</p>
                 <p style={styles.emptyAnalysisHint}>
-                  Klicken Sie auf "KI-Analyse starten", um Ihre Eingaben gegen die Masterclass-Kriterien prüfen zu lassen.
+                  Klicken Sie auf "KI-Analyse starten", um Ihre Eingaben gegen die im PM-Wissen hinterlegten Kriterien prüfen zu lassen.
                 </p>
               </div>
             )}
