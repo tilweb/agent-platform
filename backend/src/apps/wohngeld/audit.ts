@@ -12,12 +12,12 @@
 import type { Context } from 'hono';
 import { getCurrentUser, getCurrentUserId } from '../../auth/middleware';
 import { addAuditEintrag } from './storage';
-import type { FeldDiff } from './types';
+import type { FeldDiff, AuditEintrag } from './types';
 
 /** Objekt-Typen im Protokoll (siehe Spec Abschnitt 4). */
 export type AuditObjektTyp =
   | 'vorgang' | 'person' | 'dokument' | 'pruefschritt' | 'schreiben'
-  | 'notiz' | 'feldstatus' | 'akte' | 'verfuegung' | 'chat' | 'textbaustein' | 'posteingang';
+  | 'notiz' | 'feldstatus' | 'akte' | 'verfuegung' | 'chat' | 'textbaustein' | 'posteingang' | 'protokoll';
 
 export interface AuditEvent {
   aktion: string;
@@ -101,6 +101,54 @@ export function diffToVorherNachher(diff: FeldDiff): { vorher: Record<string, un
     nachher[feld] = neu;
   }
   return { vorher, nachher };
+}
+
+// ── CSV-Export des Protokolls (GOV-4) ───────────────────────────────────────
+
+/** Ein CSV-Feld quoten (Excel-kompatibel: immer quoten, `"` verdoppeln). */
+function csvCell(value: unknown): string {
+  if (value == null) return '""';
+  const s = typeof value === 'string' ? value : String(value);
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+/** Detail-Zusammenfassung inkl. Diff (kompakt) für die CSV-Spalte `detail`. */
+function detailMitDiff(e: AuditEintrag): string {
+  const parts: string[] = [];
+  if (e.detail) parts.push(e.detail);
+  if (e.vorher !== undefined && e.vorher !== null) parts.push(`vorher=${JSON.stringify(e.vorher)}`);
+  if (e.nachher !== undefined && e.nachher !== null) parts.push(`nachher=${JSON.stringify(e.nachher)}`);
+  return parts.join(' | ');
+}
+
+/** CSV-Spalten (Reihenfolge + Header). */
+const CSV_HEADER = [
+  'timestamp', 'akteur_name', 'akteur_rolle', 'aktion', 'objekt_typ',
+  'objekt_id', 'vorgang_id', 'ergebnis', 'detail', 'ip',
+] as const;
+
+/**
+ * Reiner CSV-Bau (testbar). Semikolon-getrennt (deutsches Excel), CRLF-Zeilen,
+ * UTF-8-BOM vorangestellt (Umlaute in Excel). Eine Kopfzeile + eine Zeile je Eintrag.
+ */
+export function auditEintraegeToCsv(eintraege: AuditEintrag[]): string {
+  const lines: string[] = [];
+  lines.push(CSV_HEADER.join(';'));
+  for (const e of eintraege) {
+    lines.push([
+      csvCell(e.timestamp),
+      csvCell(e.akteurName ?? ''),
+      csvCell(e.akteurRolle ?? ''),
+      csvCell(e.aktion),
+      csvCell(e.objektTyp),
+      csvCell(e.objektId ?? ''),
+      csvCell(e.vorgangId ?? ''),
+      csvCell(e.ergebnis),
+      csvCell(detailMitDiff(e)),
+      csvCell(e.ip ?? ''),
+    ].join(';'));
+  }
+  return '﻿' + lines.join('\r\n') + '\r\n';
 }
 
 /**

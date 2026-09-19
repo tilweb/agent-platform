@@ -4,7 +4,7 @@ import { theme } from '../../config/theme';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import {
   wohngeldApi, WOHNGELDART_LABEL, ANTRAGSART_LABEL, STATUS_LABEL, STATUS_ORDER,
-  ACCENT, ACCENT_LIGHT,
+  ACCENT, ACCENT_LIGHT, AKTION_LABEL, APP_ROLE_LABEL, aktionLabel,
 } from './api';
 import StatusBadge from './components/StatusBadge';
 
@@ -56,7 +56,20 @@ const styles = {
   input: { width: '100%', padding: theme.spacing.md, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, fontSize: theme.typography.sizes.sm, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none', marginBottom: theme.spacing.lg },
   select: { width: '100%', padding: theme.spacing.md, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, fontSize: theme.typography.sizes.sm, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer', marginBottom: theme.spacing.lg },
   modalActions: { display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md, marginTop: theme.spacing.sm },
+  // Protokoll (GOV-4)
+  protoBar: { display: 'flex', gap: theme.spacing.md, marginBottom: theme.spacing.lg, flexWrap: 'wrap', alignItems: 'flex-end' },
+  protoField: { display: 'flex', flexDirection: 'column', gap: theme.spacing.xs },
+  protoLabel: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, fontWeight: theme.typography.weights.medium },
+  protoInput: { padding: `${theme.spacing.sm} ${theme.spacing.md}`, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none' },
+  protoCount: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.md },
+  detailCell: { padding: `${theme.spacing.md} ${theme.spacing.lg}`, color: theme.colors.textSecondary, borderBottom: `1px solid ${theme.colors.borderLight}`, whiteSpace: 'normal', maxWidth: 320 },
 };
+
+/** Objekt-Kurzbeschreibung eines Protokolleintrags. */
+function objektText(e) {
+  const id = e.objektId ? ` ${e.objektId}` : '';
+  return `${e.objektTyp}${id}`;
+}
 
 function fmtDate(iso) {
   if (!iso) return '—';
@@ -64,10 +77,17 @@ function fmtDate(iso) {
   catch { return iso.slice(0, 10); }
 }
 
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+  catch { return iso.slice(0, 16); }
+}
+
 export default function WohngeldPage() {
   const navigate = useNavigate();
   const { role } = useAppPermission();
   const canEdit = role === 'owner' || role === 'editor';
+  const isOwner = role === 'owner';
 
   const [vorgaenge, setVorgaenge] = useState([]);
   const [akten, setAkten] = useState({}); // akteId -> akte
@@ -94,6 +114,15 @@ export default function WohngeldPage() {
   const [aufgaben, setAufgaben] = useState([]);
   const [aufgabenLoading, setAufgabenLoading] = useState(false);
   const [aufgabenLoaded, setAufgabenLoaded] = useState(false);
+
+  // Admin/DSB-Protokoll (GOV-4, nur Owner)
+  const [protokoll, setProtokoll] = useState([]);
+  const [protGesamt, setProtGesamt] = useState(0);
+  const [protLoading, setProtLoading] = useState(false);
+  const [protLoaded, setProtLoaded] = useState(false);
+  const [protExporting, setProtExporting] = useState(false);
+  const [protFilter, setProtFilter] = useState({ von: '', bis: '', aktion: '', vorgangId: '' });
+  const [akteurQuery, setAkteurQuery] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -148,6 +177,55 @@ export default function WohngeldPage() {
     })();
     return () => { cancelled = true; };
   }, [viewMode, aufgabenLoaded]);
+
+  // Serverseitige Protokoll-Filter (Zeitraum/Aktion/Vorgang). Akteur wird lokal gefiltert.
+  function buildProtFilter() {
+    const f = {};
+    if (protFilter.von) f.von = `${protFilter.von}T00:00:00.000Z`;
+    if (protFilter.bis) f.bis = `${protFilter.bis}T23:59:59.999Z`;
+    if (protFilter.aktion) f.aktion = protFilter.aktion;
+    if (protFilter.vorgangId.trim()) f.vorgangId = protFilter.vorgangId.trim();
+    return f;
+  }
+
+  async function loadProtokoll() {
+    setProtLoading(true); setError('');
+    try {
+      const { eintraege, gesamt } = await wohngeldApi.listAudit(buildProtFilter());
+      setProtokoll(eintraege || []);
+      setProtGesamt(gesamt ?? (eintraege || []).length);
+      setProtLoaded(true);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setProtLoading(false);
+    }
+  }
+
+  async function exportProtokoll() {
+    setProtExporting(true); setError('');
+    try {
+      await wohngeldApi.exportAudit(buildProtFilter());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setProtExporting(false);
+    }
+  }
+
+  // Protokoll erst bei Bedarf laden (beim ersten Wechsel in die Ansicht).
+  useEffect(() => {
+    if (viewMode !== 'protokoll' || !isOwner || protLoaded) return;
+    loadProtokoll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, isOwner, protLoaded]);
+
+  // Lokale Akteur-Textsuche über die geladenen Protokolleinträge.
+  const protokollGefiltert = useMemo(() => {
+    const q = akteurQuery.trim().toLowerCase();
+    if (!q) return protokoll;
+    return protokoll.filter((e) => (e.akteurName || '').toLowerCase().includes(q));
+  }, [protokoll, akteurQuery]);
 
   function antragstellerName(v) {
     const a = akten[v.akteId];
@@ -234,6 +312,9 @@ export default function WohngeldPage() {
         <button style={{ ...styles.viewTab, ...(viewMode === 'wiedervorlage' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('wiedervorlage')}>Wiedervorlage / Fristen</button>
         <button style={{ ...styles.viewTab, ...(viewMode === 'akten' ? styles.viewTabActive : {}) }} onClick={() => { setViewMode('akten'); setSelectedAkte(null); }}>Akten</button>
         <button style={{ ...styles.viewTab, ...(viewMode === 'aufgaben' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('aufgaben')}>Aufgaben</button>
+        {isOwner && (
+          <button style={{ ...styles.viewTab, ...(viewMode === 'protokoll' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('protokoll')}>Protokoll</button>
+        )}
       </div>
 
       {viewMode === 'vorgaenge' && (
@@ -482,6 +563,94 @@ export default function WohngeldPage() {
             </div>
           </div>
         )
+      )}
+
+      {viewMode === 'protokoll' && isOwner && (
+        <>
+          <p style={{ ...styles.subtitle, marginTop: 0, marginBottom: theme.spacing.md }}>
+            Datenschutz-/Revisionssicht: alle protokollierten Aktionen inklusive Lesezugriffen (Fall geöffnet) und Exporten.
+            Nur für die Rolle Owner (DSB/Revision) sichtbar.
+          </p>
+          <div style={styles.protoBar}>
+            <div style={styles.protoField}>
+              <span style={styles.protoLabel}>Von</span>
+              <input type="date" style={styles.protoInput} value={protFilter.von} onChange={(e) => setProtFilter({ ...protFilter, von: e.target.value })} />
+            </div>
+            <div style={styles.protoField}>
+              <span style={styles.protoLabel}>Bis</span>
+              <input type="date" style={styles.protoInput} value={protFilter.bis} onChange={(e) => setProtFilter({ ...protFilter, bis: e.target.value })} />
+            </div>
+            <div style={styles.protoField}>
+              <span style={styles.protoLabel}>Aktion</span>
+              <select style={{ ...styles.protoInput, cursor: 'pointer' }} value={protFilter.aktion} onChange={(e) => setProtFilter({ ...protFilter, aktion: e.target.value })}>
+                <option value="">Alle Aktionen</option>
+                {Object.entries(AKTION_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <div style={styles.protoField}>
+              <span style={styles.protoLabel}>Vorgang (ID)</span>
+              <input style={styles.protoInput} placeholder="vorgang-…" value={protFilter.vorgangId} onChange={(e) => setProtFilter({ ...protFilter, vorgangId: e.target.value })} />
+            </div>
+            <div style={styles.protoField}>
+              <span style={styles.protoLabel}>Akteur</span>
+              <input style={styles.protoInput} placeholder="Name filtern…" value={akteurQuery} onChange={(e) => setAkteurQuery(e.target.value)} />
+            </div>
+            <button style={styles.btn} onClick={loadProtokoll} disabled={protLoading}>
+              {protLoading ? 'Lädt…' : 'Filtern'}
+            </button>
+            <button style={styles.btnGhost} onClick={exportProtokoll} disabled={protExporting || protLoading}>
+              {protExporting ? 'Exportiert…' : 'Als CSV exportieren'}
+            </button>
+          </div>
+
+          {protLoading ? (
+            <div style={styles.empty}>Lädt…</div>
+          ) : protokollGefiltert.length === 0 ? (
+            <div style={styles.empty}>Keine Protokolleinträge für diesen Filter.</div>
+          ) : (
+            <>
+              <div style={styles.protoCount}>
+                {protokollGefiltert.length} angezeigt
+                {protGesamt > protokoll.length ? ` · ${protGesamt} gesamt (Limit erreicht — Filter verfeinern)` : ''}
+              </div>
+              <div style={styles.tableWrap}>
+                <div style={styles.tableScroll}>
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Zeit</th>
+                        <th style={styles.th}>Akteur</th>
+                        <th style={styles.th}>Rolle</th>
+                        <th style={styles.th}>Aktion</th>
+                        <th style={styles.th}>Objekt</th>
+                        <th style={styles.th}>Vorgang</th>
+                        <th style={styles.th}>Detail</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {protokollGefiltert.map((e) => (
+                        <tr key={e.id}>
+                          <td style={{ ...styles.td, color: theme.colors.textMuted }}>{fmtDateTime(e.timestamp)}</td>
+                          <td style={styles.td}>{e.akteurName || '—'}</td>
+                          <td style={styles.td}>{e.akteurRolle ? (APP_ROLE_LABEL[e.akteurRolle] || e.akteurRolle) : '—'}</td>
+                          <td style={styles.td}>{aktionLabel(e.aktion)}</td>
+                          <td style={styles.td}>{objektText(e)}</td>
+                          <td
+                            style={{ ...styles.td, ...(e.vorgangId ? { color: ACCENT, cursor: 'pointer' } : { color: theme.colors.textMuted }) }}
+                            onClick={e.vorgangId ? () => navigate(`/apps/wohngeld/vorgang/${e.vorgangId}`) : undefined}
+                          >
+                            {e.vorgangId || '—'}
+                          </td>
+                          <td style={styles.detailCell}>{e.detail || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </>
       )}
 
       {dialog && (

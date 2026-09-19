@@ -232,6 +232,57 @@ export const wohngeldApi = {
     if (buffer.trim()) handleBlock(buffer);
   },
 
+  // Admin/DSB-Protokoll (GOV-4 — nur Owner)
+  /** Gesamt-Protokoll mit Filtern laden → { eintraege, gesamt }. */
+  listAudit: (filter = {}) => {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(filter)) {
+      if (v != null && String(v).trim() !== '') q.set(k, String(v).trim());
+    }
+    const qs = q.toString();
+    return apiGet(`${base}/audit${qs ? `?${qs}` : ''}`).then(json);
+  },
+  /** Protokoll als CSV exportieren — löst einen Browser-Download aus. */
+  exportAudit: async (filter = {}) => {
+    const q = new URLSearchParams({ format: 'csv' });
+    for (const [k, v] of Object.entries(filter)) {
+      if (v != null && String(v).trim() !== '') q.set(k, String(v).trim());
+    }
+    const res = await fetch(`${API_URL}${base}/audit/export?${q.toString()}`, { credentials: 'include' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^"]+)"?/);
+    const filename = m ? m[1] : 'Protokoll.csv';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  },
+
+  // Betroffenen-Auskunft (Art. 15 DSGVO — GOV-4)
+  /** Auskunft einer Person als PDF oder JSON herunterladen — löst einen Browser-Download aus. */
+  exportAuskunft: async (personId, format) => {
+    const res = await fetch(`${API_URL}${base}/personen/${personId}/auskunft/export?format=${format}`, { credentials: 'include' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^"]+)"?/);
+    const filename = m ? m[1] : `Auskunft.${format}`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  },
+
   /** Schreiben als PDF oder Word (docx) herunterladen — löst einen Browser-Download aus. */
   exportSchreiben: async (id, format) => {
     const res = await fetch(`${API_URL}${base}/schreiben/${id}/export?format=${format}`, { credentials: 'include' });
@@ -416,6 +467,8 @@ export const AKTION_LABEL = {
   'textbaustein.geaendert': 'Textbaustein geändert',
   'textbaustein.geloescht': 'Textbaustein gelöscht',
   'chat.frage': 'Chat-Frage gestellt',
+  'protokoll.exportiert': 'Protokoll exportiert',
+  'person.auskunft_exportiert': 'Betroffenen-Auskunft exportiert',
 };
 
 /** Lesbares Label einer Audit-Aktion (mit Rohwert-Fallback). */

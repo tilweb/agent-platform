@@ -15,6 +15,7 @@ import { feldstatusRoutes } from './routes/feldstatus';
 import { notizenRoutes } from './routes/notizen';
 import { textbausteineRoutes } from './routes/textbausteine';
 import { aufgabenRoutes } from './routes/aufgaben';
+import { auditRoutes } from './routes/audit';
 
 const wohngeld = new Hono();
 
@@ -32,5 +33,6 @@ wohngeld.route('/', feldstatusRoutes);
 wohngeld.route('/', notizenRoutes);
 wohngeld.route('/', textbausteineRoutes);
 wohngeld.route('/', aufgabenRoutes);
+wohngeld.route('/', auditRoutes);
 
 export { wohngeld as wohngeldRoutes };

@@ -5,7 +5,7 @@
  * `version`/timestamps kommen aus den Spalten. `data: data as never` ist die
  * etablierte jsonb-Cast-Konvention.
  */
-import { eq, and, or, desc, inArray, sql as rawSql } from 'drizzle-orm';
+import { eq, and, or, gte, lte, desc, inArray, count, sql as rawSql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import {
   wgAkten, wgVorgaenge, wgPersonen, wgDokumente, wgPruefschritte, wgSchreiben, wgAktivitaeten, wgChatMessages,
@@ -505,26 +505,48 @@ export async function listAuditEintraege(vorgangId: string): Promise<AuditEintra
   return rows.map(rowToAudit);
 }
 
-/**
- * Gesamt-Protokoll mit einfachen Filtern (Vorbereitung GOV-4 Admin/DSB-Ansicht).
- * Hier bewusst simpel gehalten — Suche/Export folgen in GOV-4.
- */
-export async function listAuditEintraegeGesamt(filter?: {
+/** Filter für die Admin/DSB-Gesamt-Protokoll-Ansicht (GOV-4). */
+export interface AuditGesamtFilter {
   aktion?: string;
   akteurId?: string;
   objektTyp?: string;
   vorgangId?: string;
+  von?: string;   // ISO-Timestamp (inklusive Untergrenze)
+  bis?: string;   // ISO-Timestamp (inklusive Obergrenze)
   limit?: number;
-}): Promise<AuditEintrag[]> {
-  const db = getDb();
+}
+
+/** Baut die WHERE-Bedingungen für einen Audit-Filter (intern, wiederverwendet für Count). */
+function auditFilterConds(filter?: AuditGesamtFilter) {
   const conds = [];
   if (filter?.aktion) conds.push(eq(wgAuditLog.aktion, filter.aktion));
   if (filter?.akteurId) conds.push(eq(wgAuditLog.akteurId, filter.akteurId));
   if (filter?.objektTyp) conds.push(eq(wgAuditLog.objektTyp, filter.objektTyp));
   if (filter?.vorgangId) conds.push(eq(wgAuditLog.vorgangId, filter.vorgangId));
+  if (filter?.von) conds.push(gte(wgAuditLog.timestamp, filter.von));
+  if (filter?.bis) conds.push(lte(wgAuditLog.timestamp, filter.bis));
+  return conds;
+}
+
+/**
+ * Gesamt-Protokoll mit Filtern (GOV-4 Admin/DSB-Ansicht). Sortierung neueste
+ * zuerst, sinnvolles Standard-Limit. Deckt auch Lesezugriffe/Exporte mit ab.
+ */
+export async function listAuditEintraegeGesamt(filter?: AuditGesamtFilter): Promise<AuditEintrag[]> {
+  const db = getDb();
+  const conds = auditFilterConds(filter);
+  const limit = Math.min(Math.max(filter?.limit ?? 500, 1), 5000);
   const q = db.select().from(wgAuditLog).where(conds.length ? and(...conds) : undefined);
-  const rows = await q.orderBy(desc(wgAuditLog.timestamp)).limit(filter?.limit ?? 500);
+  const rows = await q.orderBy(desc(wgAuditLog.timestamp)).limit(limit);
   return rows.map(rowToAudit);
+}
+
+/** Gesamtzahl der Audit-Einträge für einen Filter (ohne Limit) — für die Sicht. */
+export async function countAuditEintraegeGesamt(filter?: AuditGesamtFilter): Promise<number> {
+  const db = getDb();
+  const conds = auditFilterConds(filter);
+  const rows = await db.select({ n: count() }).from(wgAuditLog).where(conds.length ? and(...conds) : undefined);
+  return Number(rows[0]?.n ?? 0);
 }
 
 // ── Fall-Chat (append-only) ────────────────────────────────────────────────

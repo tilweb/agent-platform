@@ -11,6 +11,19 @@ export function denyIfNotAppEditor(c: Context): { error: string } | null {
   return null;
 }
 
+/**
+ * Owner-/DSB-Gate. Das Gesamt-Protokoll ist eine Datenschutz-/Revisionssicht
+ * (DSB), nicht für jeden Bearbeiter — nur `owner` darf zugreifen. Gibt
+ * Fehlerobjekt zurück oder null.
+ */
+export function denyIfNotAppOwner(c: Context): { error: string } | null {
+  const appRole = c.get('appRole') as AppRole | undefined;
+  if (appRole !== 'owner') {
+    return { error: 'App-Owner-Rolle (DSB/Revision) erforderlich.' };
+  }
+  return null;
+}
+
 /** Wirksame App-Rolle aus dem Context (von requireAppAccess gesetzt). */
 export function getAppRole(c: Context): AppRole | undefined {
   return c.get('appRole') as AppRole | undefined;

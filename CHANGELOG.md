@@ -2,6 +2,43 @@
 
 ## 2026-09-19
 
+### Wohngeld — GOV-4 Admin/DSB-Protokollansicht + Betroffenen-Auskunft (Governance, `docs/wohngeld-governance-spec-2026-09-19.md`)
+Umsetzung der Welle GOV-4 (deckt G-A Sicht + G-I / Art. 15/20 DSGVO, §35 SGB I). Keine neuen npm-Dependencies, keine Migration.
+
+**Zugriffsschutz.** Neuer Helfer `denyIfNotAppOwner(c)` in `routes/_shared.ts` (403 wenn appRole ≠ `owner`) —
+das Gesamt-Protokoll ist DSB-/Revisionssicht, nicht für alle Bearbeiter.
+
+**Admin/DSB-Protokollansicht.** Neue Route `GET /audit` (Owner-Gate) mit Filtern
+`akteurId, vorgangId, aktion, objektTyp, von, bis, limit` → `{ eintraege, gesamt }`. Storage:
+`listAuditEintraegeGesamt` um Zeitraum-Filter (`von`/`bis`) + gedeckeltes Limit (max 5000) erweitert,
+neu `countAuditEintraegeGesamt`. `GET /audit/export?format=csv` (Owner-Gate) liefert ein CSV
+(Semikolon, CRLF, UTF-8-BOM; Felder timestamp, akteur_name, akteur_rolle, aktion, objekt_typ,
+objekt_id, vorgang_id, ergebnis, detail inkl. Diff, ip) als Attachment — der Export selbst wird
+auditiert (`protokoll.exportiert`). Reiner CSV-Bau `auditEintraegeToCsv()` in `audit.ts` (testbar,
+Injection-sicher). Neue Route-Datei `routes/audit.ts`, registriert in `routes.ts`.
+Frontend: neuer View-Modus **„Protokoll"** in `WohngeldPage.jsx` — nur sichtbar/aktiv für
+`role === 'owner'`. Filterleiste (Zeitraum, Aktion, Vorgang, Akteur — Akteur lokal über die geladene
+Liste), Tabelle (Zeit, Akteur, Rolle, Aktion lesbar, Objekt, Vorgang klickbar, Detail) + Button
+„Als CSV exportieren". Enthält Lesezugriffe (`vorgang.geoeffnet`) und Exporte.
+
+**Betroffenen-Auskunft (Art. 15/20).** Neue Route `GET /personen/:id/auskunft/export?format=pdf|json`
+(Editor-Gate) sammelt ALLE zur Person gespeicherten Fachdaten (Stammdaten, Einkommen, Vermögen,
+Unterhalt, Transferleistungen, Pflege/Behinderung) plus Kontext (zugehöriger Vorgang mit
+Antrags-ID/Wohngeldart/Status/Adresse/Miete, Dokumentenliste der Person NUR mit Typ/Datum — keine
+Datei-Bytes, Protokoll-Auszug des Vorgangs) → `generateDocument(pdf)` bzw. JSON. Dateiname
+`Auskunft-<Nachname>.<ext>`; der Export wird auditiert (`person.auskunft_exportiert`). Reine Mapper
+`auskunftToDocument()`/`auskunftToJson()` in neuer Datei `auskunft-export.ts` (Muster wie
+`verfuegung-export.ts`). Frontend: Button **„Auskunft (Art. 15) exportieren"** (PDF/JSON, nur canEdit)
+in `PersonCard.jsx`; `api.js` um `listAudit`, `exportAudit`, `exportAuskunft` erweitert.
+
+**Tests.** `auskunft-export.test.ts` (Mapping Person→DocumentData/JSON, keine Datei-Bytes) +
+CSV-Bau-Tests in `audit.test.ts`. Backend `bun test src/apps/wohngeld/` grün (147 Tests),
+`tsc --noEmit` ohne Wohngeld-Fehler; Frontend eslint + build grün.
+
+**Bewusste Vereinfachungen.** Akteur-Filter arbeitet lokal auf der geladenen Ergebnismenge
+(Backend bietet `akteurId` exakt); Zeitraum-/Aktions-/Vorgang-Filter laufen serverseitig und gelten
+auch für den CSV-Export. Kein PDF-Export der Gesamt-Protokollansicht (CSV genügt für Revision).
+
 ### Wohngeld — GOV-3 KI-Governance & Nutzungstransparenz (Governance, `docs/wohngeld-governance-spec-2026-09-19.md`)
 Umsetzung der Welle GOV-3 (deckt G-H / AI Act Art. 12/13/14, Art. 22 DSGVO). Keine neuen npm-Dependencies.
 

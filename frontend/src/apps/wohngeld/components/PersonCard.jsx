@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { theme } from '../../../config/theme';
 import { CommentIcon, PlusIcon, TrashIcon } from '../../../components/Icons';
-import { ROLLE_LABEL, ERWERBSSTATUS_LABEL, UNTERHALT_KATEGORIE_LABEL, ACCENT } from '../api';
+import { ROLLE_LABEL, ERWERBSSTATUS_LABEL, UNTERHALT_KATEGORIE_LABEL, ACCENT, wohngeldApi } from '../api';
 import { FeldGrid } from './SektionCard';
 import FeldStatusMark from './FeldStatusMark';
 import { fsKey } from '../feldStatusMap';
@@ -32,6 +32,9 @@ const styles = {
   leReset: { padding: `2px ${theme.spacing.md}`, fontSize: theme.typography.sizes.xs, borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
   leEmpty: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.xs },
   leReadRow: { display: 'flex', justifyContent: 'space-between', gap: theme.spacing.md, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, padding: '2px 0' },
+  auskunftRow: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap', marginTop: theme.spacing.md, paddingTop: theme.spacing.md, borderTop: `1px solid ${theme.colors.borderLight}` },
+  auskunftLabel: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted },
+  auskunftBtn: { display: 'inline-flex', alignItems: 'center', gap: 4, padding: `4px ${theme.spacing.md}`, fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
 };
 
 function eur(v) {
@@ -154,8 +157,22 @@ export default function PersonCard({
   onBestaetigen, onVerwerfen, onSavePerson, notizCount, onNotizClick,
 }) {
   const [open, setOpen] = useState(false);
+  const [auskunftBusy, setAuskunftBusy] = useState(false);
+  const [auskunftError, setAuskunftError] = useState('');
   const einkommen = p.einkommen || [];
   const pb = p.pflege_behinderung || {};
+
+  async function exportAuskunft(format) {
+    setAuskunftBusy(true);
+    setAuskunftError('');
+    try {
+      await wohngeldApi.exportAuskunft(p.id, format);
+    } catch (err) {
+      setAuskunftError(err.message);
+    } finally {
+      setAuskunftBusy(false);
+    }
+  }
 
   const fsFor = (feldPfad) => feldStatusMap[fsKey('person', p.id, feldPfad)];
   const mark = (feldPfad) => {
@@ -349,6 +366,19 @@ export default function PersonCard({
             )}
             onSave={(rows) => onSavePerson?.(p.id, { transferleistungenDetail: rows })}
           />
+
+          {canEdit && (
+            <div style={styles.auskunftRow}>
+              <span style={styles.auskunftLabel}>Betroffenenrechte (Art. 15 DSGVO):</span>
+              <button style={styles.auskunftBtn} onClick={() => exportAuskunft('pdf')} disabled={auskunftBusy}>
+                {auskunftBusy ? 'Erstellt…' : 'Auskunft (Art. 15) exportieren · PDF'}
+              </button>
+              <button style={styles.auskunftBtn} onClick={() => exportAuskunft('json')} disabled={auskunftBusy}>
+                JSON
+              </button>
+              {auskunftError && <span style={{ ...styles.auskunftLabel, color: theme.colors.error }}>{auskunftError}</span>}
+            </div>
+          )}
         </div>
       )}
     </div>
