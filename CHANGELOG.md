@@ -2,6 +2,19 @@
 
 ## 2026-09-19
 
+### Wohngeld — Fall-Chat C1 (grounded Fall-Q&A)
+Fall-gebundener Chat in der App `wohngeld`: Fragen zum Vorgang werden ausschließlich aus den
+erfassten Vorgangsdaten und Nachweisen beantwortet (Recht-RAG folgt in C2). Backend: neue
+append-only Tabelle `wohngeld.chat_messages` (Migration `0040_wohngeld_chat`), Storage
+(`listChatMessages`/`addChatMessage`), reine/testbare Kontext-Assemblierung `chat-context.ts`
+(`buildFallKontext` inkl. §13-Gesamteinkommen-Herleitung, längenbegrenzt), SSE-Route
+`GET/POST /vorgaenge/:id/chat` mit Guardrail-System-Prompt und Quellen-Auflösung
+(Modell markiert genutzte Dokumente via `<<QUELLEN: …>>`-Block, Backend entfernt ihn aus dem
+sichtbaren Text und mappt auf klickbare Fall-Quellen). Modell per ENV `WOHNGELD_CHAT_PROVIDER`/
+`WOHNGELD_CHAT_MODEL` (Fallback wie App-Default). Frontend: schwebendes Chat-Panel `FallChat.jsx`
+(Streaming, Quellen-Chips, Vorschlags-Prompts, Vertraulichkeitshinweis) plus Trigger in
+`VorgangDetail.jsx`. Unit-Tests für `buildFallKontext` grün.
+
 ### Wohngeld — Phase 4: Dokument-Upload, Klassifikation & Extraktion (Posteingang)
 Der Posteingang der App `wohngeld` ist jetzt arbeitsfähig: Antragsunterlagen werden hochgeladen
 (S3 falls konfiguriert, sonst lokaler Fallback unter `data/apps/wohngeld/uploads/`), per

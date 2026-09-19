@@ -110,6 +110,17 @@ export const wgSchreiben = wohngeldSchema.table('schreiben', {
   vorgangIdx: index('wg_schreiben_vorgang_idx').on(t.vorgangId),
 }));
 
+/** Fall-Chat — Nachrichten (append-only). Verlauf pro Vorgang (grounded Fall-Q&A). */
+export const wgChatMessages = wohngeldSchema.table('chat_messages', {
+  id: text('id').primaryKey(),
+  vorgangId: text('vorgang_id').notNull().references(() => wgVorgaenge.id, { onDelete: 'cascade' }),
+  rolle: text('rolle').notNull().default('user'),
+  data: jsonb('data').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  vorgangIdx: index('wg_chat_vorgang_idx').on(t.vorgangId),
+}));
+
 /** Aktivität / Audit-Eintrag (append-only). */
 export const wgAktivitaeten = wohngeldSchema.table('aktivitaeten', {
   id: text('id').primaryKey(),

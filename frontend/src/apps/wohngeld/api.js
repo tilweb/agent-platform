@@ -91,6 +91,63 @@ export const wohngeldApi = {
   updateSchreiben: (id, payload) => apiPut(`${base}/schreiben/${id}`, payload).then(json).then((d) => d.schreiben),
   deleteSchreiben: (id) => apiDelete(`${base}/schreiben/${id}`).then(json),
 
+  // Fall-Chat (grounded Fall-Q&A, Stufe C1)
+  /** Chat-Verlauf eines Vorgangs laden. */
+  getChat: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/chat`).then(json).then((d) => d.messages),
+
+  /**
+   * Frage stellen und Antwort als SSE-Stream konsumieren.
+   * Callbacks: onDelta(textChunk), onSources(sources[]), onDone(message), onError(msg).
+   */
+  streamChat: async (vorgangId, message, { onDelta, onSources, onDone, onError } = {}) => {
+    let res;
+    try {
+      res = await fetch(`${API_URL}${base}/vorgaenge/${vorgangId}/chat`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+    } catch {
+      onError?.('Verbindung fehlgeschlagen');
+      return;
+    }
+    if (!res.ok || !res.body) {
+      const body = await res.json().catch(() => ({}));
+      onError?.(body.error || `HTTP ${res.status}`);
+      return;
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    const handleBlock = (block) => {
+      let event = 'message';
+      let data = '';
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event:')) event = line.slice(6).trim();
+        else if (line.startsWith('data:')) data += line.slice(5).trim();
+      }
+      if (!data) return;
+      let parsed;
+      try { parsed = JSON.parse(data); } catch { return; }
+      if (event === 'delta') onDelta?.(parsed.content || '');
+      else if (event === 'sources') onSources?.(parsed.sources || []);
+      else if (event === 'done') onDone?.(parsed.message);
+      else if (event === 'error') onError?.(parsed.message || 'Antwort fehlgeschlagen');
+    };
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buffer.indexOf('\n\n')) >= 0) {
+        handleBlock(buffer.slice(0, idx));
+        buffer = buffer.slice(idx + 2);
+      }
+    }
+    if (buffer.trim()) handleBlock(buffer);
+  },
+
   /** Schreiben als PDF oder Word (docx) herunterladen — löst einen Browser-Download aus. */
   exportSchreiben: async (id, format) => {
     const res = await fetch(`${API_URL}${base}/schreiben/${id}/export?format=${format}`, { credentials: 'include' });

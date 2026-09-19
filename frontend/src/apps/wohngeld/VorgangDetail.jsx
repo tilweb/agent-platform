@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
-import { ArrowLeftIcon, UploadIcon } from '../../components/Icons';
+import { ArrowLeftIcon, UploadIcon, ChatIcon } from '../../components/Icons';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import {
   wohngeldApi,
@@ -13,6 +13,7 @@ import StatusBadge from './components/StatusBadge';
 import SektionCard, { FeldGrid } from './components/SektionCard';
 import PersonCard from './components/PersonCard';
 import PruefschrittItem from './components/PruefschrittItem';
+import FallChat from './components/FallChat';
 
 const MAIN_TABS = [
   { id: 'uebersicht', label: 'Übersicht' },
@@ -34,6 +35,7 @@ const PRUEF_FILTER = [
 
 const styles = {
   page: { width: '100%' },
+  chatFab: { position: 'fixed', bottom: theme.spacing.xl, right: theme.spacing.xl, display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm, padding: `${theme.spacing.md} ${theme.spacing.lg}`, backgroundColor: ACCENT, color: '#fff', border: 'none', borderRadius: theme.borderRadius.full, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, cursor: 'pointer', boxShadow: '0 8px 20px rgba(0, 0, 0, 0.18)', zIndex: 1100 },
   header: { padding: `${theme.spacing.xl} ${theme.spacing['2xl']}`, borderBottom: `1px solid ${theme.colors.border}` },
   backLink: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.sm, color: ACCENT, cursor: 'pointer', marginBottom: theme.spacing.md, border: 'none', background: 'none', padding: 0, fontWeight: theme.typography.weights.medium },
   crumb: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.xs },
@@ -98,6 +100,7 @@ export default function VorgangDetail() {
   const [error, setError] = useState('');
   const [mainTab, setMainTab] = useState('uebersicht');
   const [sideTab, setSideTab] = useState('details');
+  const [chatOpen, setChatOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const dokUploadRef = useRef(null);
 
@@ -668,6 +671,26 @@ export default function VorgangDetail() {
           </div>
         </div>
       </div>
+
+      {/* Fall-Chat: schwebender Trigger + Panel */}
+      {!chatOpen && (
+        <button
+          style={styles.chatFab}
+          onClick={() => setChatOpen(true)}
+          title="Assistent zum Vorgang"
+          aria-label="Assistent zum Vorgang öffnen"
+        >
+          <ChatIcon size={20} color="#fff" />
+          <span>Assistent</span>
+        </button>
+      )}
+      {chatOpen && (
+        <FallChat
+          vorgang={{ id: vorgang.id, antragsId: vorgang.antragsId }}
+          onClose={() => setChatOpen(false)}
+          onOpenDokument={() => setSideTab('dokumente')}
+        />
+      )}
     </div>
   );
 }

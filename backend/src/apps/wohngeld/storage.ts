@@ -8,11 +8,11 @@
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { getDb } from '../../db';
 import {
-  wgAkten, wgVorgaenge, wgPersonen, wgDokumente, wgPruefschritte, wgSchreiben, wgAktivitaeten,
+  wgAkten, wgVorgaenge, wgPersonen, wgDokumente, wgPruefschritte, wgSchreiben, wgAktivitaeten, wgChatMessages,
 } from '../../db/schema/wohngeld';
 import type {
   Akte, Vorgang, Person, Dokument, Pruefschritt, Schreiben, Aktivitaet,
-  VorgangSnapshot, PruefBefund,
+  VorgangSnapshot, PruefBefund, ChatMessage, ChatSource,
 } from './types';
 import { VersionConflictError, checkVersion } from './concurrency';
 
@@ -436,6 +436,62 @@ export async function addAktivitaet(input: { vorgangId: string; typ: string; akt
     data: { beschreibung: input.beschreibung } as never, createdAt: now,
   });
   return (await listAktivitaeten(input.vorgangId))[0]!;
+}
+
+// ── Fall-Chat (append-only) ────────────────────────────────────────────────
+
+function rowToChatMessage(r: typeof wgChatMessages.$inferSelect): ChatMessage {
+  const data = (r.data ?? {}) as { content?: string; sources?: ChatSource[]; model?: string; tokens?: number };
+  return {
+    id: r.id,
+    vorgangId: r.vorgangId,
+    rolle: r.rolle as ChatMessage['rolle'],
+    content: data.content ?? '',
+    sources: data.sources,
+    model: data.model,
+    tokens: data.tokens,
+    created_at: r.createdAt,
+  };
+}
+
+/** Chat-Verlauf eines Vorgangs, chronologisch (älteste zuerst). */
+export async function listChatMessages(vorgangId: string): Promise<ChatMessage[]> {
+  const db = getDb();
+  const rows = await db.select().from(wgChatMessages)
+    .where(eq(wgChatMessages.vorgangId, vorgangId))
+    .orderBy(wgChatMessages.createdAt);
+  return rows.map(rowToChatMessage);
+}
+
+/** Neue Chat-Nachricht anhängen (append-only). */
+export async function addChatMessage(input: {
+  vorgangId: string;
+  rolle: ChatMessage['rolle'];
+  content: string;
+  sources?: ChatSource[];
+  model?: string;
+  tokens?: number;
+}): Promise<ChatMessage> {
+  const db = getDb();
+  const now = nowIso();
+  const id = genId('chat');
+  await db.insert(wgChatMessages).values({
+    id, vorgangId: input.vorgangId, rolle: input.rolle,
+    data: {
+      content: input.content,
+      sources: input.sources,
+      model: input.model,
+      tokens: input.tokens,
+    } as never,
+    createdAt: now,
+  });
+  return (await getChatMessage(id))!;
+}
+
+async function getChatMessage(id: string): Promise<ChatMessage | null> {
+  const db = getDb();
+  const rows = await db.select().from(wgChatMessages).where(eq(wgChatMessages.id, id)).limit(1);
+  return rows[0] ? rowToChatMessage(rows[0]) : null;
 }
 
 // ── Snapshot (Input für die Regel-Engine) ──────────────────────────────────

@@ -268,6 +268,32 @@ export interface Aktivitaet {
   created_at: string;
 }
 
+// ── Fall-Chat (grounded Fall-Q&A, Stufe C1) ────────────────────────────────
+
+/**
+ * Quelle einer belegten Chat-Aussage. In C1 ausschließlich Fall-Dokumente
+ * (Recht-RAG folgt in C2). Wird aus dem vom Modell markierten Quellen-Block
+ * aufgelöst (Dokument-ID → Label).
+ */
+export interface ChatSource {
+  art: 'dokument';
+  dokumentId: string;
+  label: string;
+  seite?: number;
+}
+
+/** Chat-Nachricht (append-only) im Fall-Verlauf eines Vorgangs. */
+export interface ChatMessage {
+  id: string;
+  vorgangId: string;
+  rolle: 'user' | 'assistant';
+  content: string;
+  sources?: ChatSource[];
+  model?: string;
+  tokens?: number;
+  created_at: string;
+}
+
 // ── Regel-Engine (Input/Output der reinen Prüf-Funktionen) ──────────────────
 
 /** Aggregierter Fall-Snapshot als Input für die Regel-Engine (rein, DB-frei). */
