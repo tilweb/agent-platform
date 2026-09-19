@@ -9,11 +9,12 @@ import { eq, and, desc, inArray } from 'drizzle-orm';
 import { getDb } from '../../db';
 import {
   wgAkten, wgVorgaenge, wgPersonen, wgDokumente, wgPruefschritte, wgSchreiben, wgAktivitaeten, wgChatMessages,
-  wgFeldStatus, wgNotizen, wgTextbausteine,
+  wgFeldStatus, wgNotizen, wgTextbausteine, wgAuditLog,
 } from '../../db/schema/wohngeld';
 import type {
   Akte, Vorgang, Person, Dokument, Pruefschritt, Schreiben, Aktivitaet,
   VorgangSnapshot, PruefBefund, ChatMessage, ChatSource, FeldStatus, FeldStatusZielTyp, Notiz, Textbaustein,
+  AuditEintrag,
 } from './types';
 import { VersionConflictError, checkVersion } from './concurrency';
 
@@ -439,6 +440,92 @@ export async function addAktivitaet(input: { vorgangId: string; typ: string; akt
   return (await listAktivitaeten(input.vorgangId))[0]!;
 }
 
+// ── GOV-1 Audit-Log (append-only, revisionssicher) ─────────────────────────
+
+function rowToAudit(r: typeof wgAuditLog.$inferSelect): AuditEintrag {
+  return {
+    id: r.id,
+    timestamp: r.timestamp,
+    akteurId: r.akteurId ?? undefined,
+    akteurName: r.akteurName ?? undefined,
+    akteurRolle: r.akteurRolle ?? undefined,
+    aktion: r.aktion,
+    objektTyp: r.objektTyp,
+    objektId: r.objektId ?? undefined,
+    vorgangId: r.vorgangId ?? undefined,
+    ergebnis: r.ergebnis,
+    vorher: (r.vorher ?? undefined) as unknown,
+    nachher: (r.nachher ?? undefined) as unknown,
+    detail: r.detail ?? undefined,
+    ip: r.ip ?? undefined,
+  };
+}
+
+/** Einen Audit-Eintrag anhängen (append-only — es gibt bewusst kein Update/Delete). */
+export async function addAuditEintrag(input: {
+  akteurId?: string | null;
+  akteurName?: string | null;
+  akteurRolle?: string | null;
+  aktion: string;
+  objektTyp: string;
+  objektId?: string | null;
+  vorgangId?: string | null;
+  ergebnis?: string;
+  vorher?: unknown;
+  nachher?: unknown;
+  detail?: string | null;
+  ip?: string | null;
+}): Promise<void> {
+  const db = getDb();
+  await db.insert(wgAuditLog).values({
+    id: genId('audit'),
+    akteurId: input.akteurId ?? null,
+    akteurName: input.akteurName ?? null,
+    akteurRolle: input.akteurRolle ?? null,
+    aktion: input.aktion,
+    objektTyp: input.objektTyp,
+    objektId: input.objektId ?? null,
+    vorgangId: input.vorgangId ?? null,
+    ergebnis: input.ergebnis ?? 'ok',
+    vorher: (input.vorher ?? null) as never,
+    nachher: (input.nachher ?? null) as never,
+    detail: input.detail ?? null,
+    ip: input.ip ?? null,
+    timestamp: nowIso(),
+  });
+}
+
+/** Fall-Protokoll eines Vorgangs (neueste zuerst). */
+export async function listAuditEintraege(vorgangId: string): Promise<AuditEintrag[]> {
+  const db = getDb();
+  const rows = await db.select().from(wgAuditLog)
+    .where(eq(wgAuditLog.vorgangId, vorgangId))
+    .orderBy(desc(wgAuditLog.timestamp));
+  return rows.map(rowToAudit);
+}
+
+/**
+ * Gesamt-Protokoll mit einfachen Filtern (Vorbereitung GOV-4 Admin/DSB-Ansicht).
+ * Hier bewusst simpel gehalten — Suche/Export folgen in GOV-4.
+ */
+export async function listAuditEintraegeGesamt(filter?: {
+  aktion?: string;
+  akteurId?: string;
+  objektTyp?: string;
+  vorgangId?: string;
+  limit?: number;
+}): Promise<AuditEintrag[]> {
+  const db = getDb();
+  const conds = [];
+  if (filter?.aktion) conds.push(eq(wgAuditLog.aktion, filter.aktion));
+  if (filter?.akteurId) conds.push(eq(wgAuditLog.akteurId, filter.akteurId));
+  if (filter?.objektTyp) conds.push(eq(wgAuditLog.objektTyp, filter.objektTyp));
+  if (filter?.vorgangId) conds.push(eq(wgAuditLog.vorgangId, filter.vorgangId));
+  const q = db.select().from(wgAuditLog).where(conds.length ? and(...conds) : undefined);
+  const rows = await q.orderBy(desc(wgAuditLog.timestamp)).limit(filter?.limit ?? 500);
+  return rows.map(rowToAudit);
+}
+
 // ── Fall-Chat (append-only) ────────────────────────────────────────────────
 
 function rowToChatMessage(r: typeof wgChatMessages.$inferSelect): ChatMessage {
@@ -623,7 +710,7 @@ export async function addNotiz(input: { vorgangId: string; anker: string; autor?
   return (await getNotiz(id))!;
 }
 
-async function getNotiz(id: string): Promise<Notiz | null> {
+export async function getNotiz(id: string): Promise<Notiz | null> {
   const db = getDb();
   const rows = await db.select().from(wgNotizen).where(eq(wgNotizen.id, id)).limit(1);
   return rows[0] ? rowToNotiz(rows[0]) : null;

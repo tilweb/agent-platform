@@ -11,9 +11,10 @@ import { Hono } from 'hono';
 import { getCurrentUserId } from '../../../auth/middleware';
 import {
   getAkte, createAkte, getVorgang, createVorgang, updateVorgang,
-  listPersonen, createPerson, createDokument, addAktivitaet,
+  listPersonen, createPerson, createDokument,
   getVorgangSnapshot, syncPruefschritte, setFeldStatus,
 } from '../storage';
+import { audit } from '../audit';
 import { pruefeVorgang } from '../checker';
 import { pdfToText } from '../extract';
 import { klassifiziereUndExtrahiere, type ExtraktionErgebnis, type ExtrahierteStammdaten } from '../extraction';
@@ -240,9 +241,9 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
     }
   }
 
-  await addAktivitaet({
-    vorgangId: vorgang.id, typ: 'posteingang', akteur: userId,
-    beschreibung: `${angelegt.length} Dokument(e) aus dem Posteingang zugeordnet${istNeuerVorgang ? ' (neuer Vorgang)' : ''}`,
+  await audit(c, {
+    aktion: 'dokument.hochgeladen', objektTyp: 'posteingang', objektId: vorgang.id, vorgangId: vorgang.id,
+    detail: `${angelegt.length} Dokument(e) aus dem Posteingang zugeordnet${istNeuerVorgang ? ' (neuer Vorgang)' : ''}`,
   });
 
   // 5. Optional direkt prüfen.
@@ -303,9 +304,9 @@ posteingangRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) => {
     angelegt.push(dok);
   }
 
-  await addAktivitaet({
-    vorgangId, typ: 'dokument', akteur: userId,
-    beschreibung: `${angelegt.length} Dokument(e) hochgeladen und klassifiziert`,
+  await audit(c, {
+    aktion: 'dokument.hochgeladen', objektTyp: 'dokument', objektId: angelegt[0]?.id, vorgangId,
+    detail: `${angelegt.length} Dokument(e) hochgeladen und klassifiziert`,
   });
 
   return c.json({ dokumente: angelegt, dokument: angelegt[0] }, 201);

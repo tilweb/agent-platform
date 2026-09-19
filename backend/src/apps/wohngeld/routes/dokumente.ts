@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import { getCurrentUserId } from '../../../auth/middleware';
-import { listDokumente, getDokument, createDokument, updateDokument, deleteDokument, getVorgang, addAktivitaet } from '../storage';
+import { listDokumente, getDokument, createDokument, updateDokument, deleteDokument, getVorgang } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { loadDokumentDatei } from '../filestore';
 import { denyIfNotAppEditor } from './_shared';
+import { audit, auditUpdate } from '../audit';
 
 export const dokumenteRoutes = new Hono();
 
@@ -52,6 +52,8 @@ dokumenteRoutes.get('/dokumente/:id/datei', async (c) => {
     return c.json({ error: 'Datei konnte nicht geladen werden' }, 404);
   }
   if (!bytes) return c.json({ error: 'Keine Datei hinterlegt' }, 404);
+  // Download/Weitergabe protokollieren (Übermittlung §§ 67d ff. SGB X).
+  await audit(c, { aktion: 'dokument.heruntergeladen', objektTyp: 'dokument', objektId: dokument.id, vorgangId: dokument.vorgangId, detail: dokument.titel });
   const name = dateinameFuer(dokument);
   const body = new Uint8Array(bytes);
   return new Response(body, {
@@ -74,10 +76,7 @@ dokumenteRoutes.post('/dokumente/:id/ablegen', async (c) => {
   const dokument = await getDokument(id);
   if (!dokument) return c.json({ error: 'Dokument nicht gefunden' }, 404);
   const updated = await updateDokument(id, { abgelegt: true });
-  await addAktivitaet({
-    vorgangId: dokument.vorgangId, typ: 'dokument', akteur: getCurrentUserId(c),
-    beschreibung: `Dokument „${dateinameFuer(dokument)}" ins Fachverfahren abgelegt`,
-  });
+  await audit(c, { aktion: 'dokument.abgelegt', objektTyp: 'dokument', objektId: id, vorgangId: dokument.vorgangId, detail: dateinameFuer(dokument) });
   return c.json({ dokument: updated });
 });
 
@@ -88,6 +87,7 @@ dokumenteRoutes.post('/vorgaenge/:vorgangId/dokumente', async (c) => {
   if (!(await getVorgang(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
   const body = await c.req.json<Record<string, unknown>>();
   const dokument = await createDokument({ ...body, vorgangId });
+  await audit(c, { aktion: 'dokument.erstellt', objektTyp: 'dokument', objektId: dokument.id, vorgangId, detail: dokument.titel });
   return c.json({ dokument }, 201);
 });
 
@@ -98,8 +98,13 @@ dokumenteRoutes.put('/dokumente/:id', async (c) => {
     const body = await c.req.json<{ expectedVersion?: number; force?: boolean; [k: string]: unknown }>();
     const { expectedVersion, force, ...updates } = body ?? {};
     delete (updates as Record<string, unknown>).vorgangId;
+    const before = await getDokument(c.req.param('id'));
     const dokument = await updateDokument(c.req.param('id'), updates, { expectedVersion, force });
     if (!dokument) return c.json({ error: 'Dokument nicht gefunden' }, 404);
+    await auditUpdate(c, {
+      aktion: 'dokument.geaendert', objektTyp: 'dokument', objektId: dokument.id, vorgangId: dokument.vorgangId,
+      before, after: dokument, felder: ['typ', 'titel', 'personId', 'istOriginal', 'abgelegt'],
+    });
     return c.json({ dokument });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
@@ -110,6 +115,9 @@ dokumenteRoutes.put('/dokumente/:id', async (c) => {
 dokumenteRoutes.delete('/dokumente/:id', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
-  const ok = await deleteDokument(c.req.param('id'));
+  const id = c.req.param('id');
+  const before = await getDokument(id);
+  const ok = await deleteDokument(id);
+  if (ok) await audit(c, { aktion: 'dokument.geloescht', objektTyp: 'dokument', objektId: id, vorgangId: before?.vorgangId, detail: before?.titel });
   return ok ? c.json({ ok: true }) : c.json({ error: 'Dokument nicht gefunden' }, 404);
 });

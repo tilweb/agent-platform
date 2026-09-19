@@ -7,12 +7,12 @@
  *  - POST   /vorgaenge/:id/feldstatus/alle-bestaetigen    → alle offenen bestätigen
  */
 import { Hono } from 'hono';
-import { getCurrentUserId } from '../../../auth/middleware';
 import {
   listFeldStatus, getFeldStatus, bestaetigeFeld, bestaetigeAlle, loescheFeldStatus,
-  getVorgang, updateVorgang, getPerson, updatePerson, addAktivitaet,
+  getVorgang, updateVorgang, getPerson, updatePerson,
 } from '../storage';
 import { denyIfNotAppEditor } from './_shared';
+import { audit } from '../audit';
 import type { Vorgang } from '../types';
 
 export const feldstatusRoutes = new Hono();
@@ -47,6 +47,7 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/bestaetigen', asyn
   if (denied) return c.json(denied, 403);
   const fs = await bestaetigeFeld(c.req.param('fsId'));
   if (!fs) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
+  await audit(c, { aktion: 'feld.bestaetigt', objektTyp: 'feldstatus', objektId: fs.id, vorgangId: fs.vorgangId, detail: fs.feldPfad });
   return c.json({ feldStatus: fs });
 });
 
@@ -64,6 +65,7 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/verwerfen', async 
     if (person) await updatePerson(fs.zielId, clearPersonUpdates(fs.feldPfad));
   }
   await loescheFeldStatus(fs.id);
+  await audit(c, { aktion: 'feld.verworfen', objektTyp: 'feldstatus', objektId: fs.id, vorgangId: fs.vorgangId, detail: fs.feldPfad });
   return c.json({ ok: true });
 });
 
@@ -72,9 +74,6 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/alle-bestaetigen', async
   if (denied) return c.json(denied, 403);
   const vorgangId = c.req.param('vorgangId');
   const feldStatus = await bestaetigeAlle(vorgangId);
-  await addAktivitaet({
-    vorgangId, typ: 'feldstatus', akteur: getCurrentUserId(c),
-    beschreibung: 'Alle offenen KI-Vorschläge bestätigt',
-  });
+  await audit(c, { aktion: 'feld.alle_bestaetigt', objektTyp: 'feldstatus', vorgangId, detail: 'Alle offenen KI-Vorschläge bestätigt' });
   return c.json({ feldStatus });
 });

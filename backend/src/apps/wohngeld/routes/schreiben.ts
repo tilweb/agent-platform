@@ -1,8 +1,7 @@
 import { Hono } from 'hono';
-import { getCurrentUserId } from '../../../auth/middleware';
 import {
   listSchreiben, getSchreiben, createSchreiben, updateSchreiben, deleteSchreiben,
-  getVorgang, updateVorgang, getAkte, listPersonen, listPruefschritte, addAktivitaet,
+  getVorgang, updateVorgang, getAkte, listPersonen, listPruefschritte,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { generiereAnforderungsschreiben } from '../schreiben-generator';
@@ -10,6 +9,7 @@ import { fmtDe } from '../bwz';
 import { schreibenToDocument } from '../schreiben-export';
 import { generateDocument, getMimeType, type DocumentFormat } from '../../../services/documentGenerator';
 import { denyIfNotAppEditor } from './_shared';
+import { audit } from '../audit';
 
 export const schreibenRoutes = new Hono();
 
@@ -36,6 +36,7 @@ schreibenRoutes.get('/schreiben/:id/export', async (c) => {
   const akte = vorgang ? await getAkte(vorgang.akteId) : null;
   const doc = schreibenToDocument(schreiben, vorgang, akte);
   const buffer = await generateDocument(doc, format);
+  await audit(c, { aktion: 'schreiben.exportiert', objektTyp: 'schreiben', objektId: schreiben.id, vorgangId: schreiben.vorgangId, detail: format });
   const base = `Anforderungsschreiben-${vorgang?.antragsId ?? schreiben.id}`;
   return new Response(new Uint8Array(buffer), {
     headers: {
@@ -74,12 +75,12 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/generieren', async (c) => 
       const schreiben = await updateSchreiben(body.schreibenId, {
         betreff: entwurf.betreff, frist: entwurf.frist, body: entwurf.body, items: entwurf.items,
       }, { expectedVersion: bestehend.version });
-      await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: 'Anforderungsschreiben neu erzeugt' });
+      await audit(c, { aktion: 'schreiben.generiert', objektTyp: 'schreiben', objektId: body.schreibenId, vorgangId, detail: 'neu erzeugt' });
       return c.json({ schreiben }, 200);
     }
   }
   const schreiben = await createSchreiben({ vorgangId, ...entwurf });
-  await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: 'Anforderungsschreiben generiert' });
+  await audit(c, { aktion: 'schreiben.generiert', objektTyp: 'schreiben', objektId: schreiben.id, vorgangId });
   return c.json({ schreiben }, 201);
 });
 
@@ -105,7 +106,7 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/:sid/versendet', async (c)
       wiedervorlage: frist ?? undefined,
     }, { expectedVersion: vorgang.version });
     const fristTxt = frist ? fmtDe(frist) : 'ohne Frist';
-    await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: `Anforderung versendet, Frist ${fristTxt}` });
+    await audit(c, { aktion: 'schreiben.versendet', objektTyp: 'schreiben', objektId: sid, vorgangId, detail: `Frist ${fristTxt}` });
     return c.json({ vorgang: updated });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
@@ -135,11 +136,11 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/text-anhaengen', async (c)
       const body0 = (juengstes.body ?? '').trimEnd();
       const neuerBody = body0 ? `${body0}\n\n${text}` : text;
       const schreiben = await updateSchreiben(juengstes.id, { body: neuerBody }, { expectedVersion: juengstes.version });
-      await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: 'Assistenz-Text ins Anforderungsschreiben übernommen' });
+      await audit(c, { aktion: 'schreiben.text_angehaengt', objektTyp: 'schreiben', objektId: juengstes.id, vorgangId, detail: 'Assistenz-Text übernommen' });
       return c.json({ schreiben }, 200);
     }
     const schreiben = await createSchreiben({ vorgangId, art: 'erstanforderung', body: text });
-    await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: 'Anforderungsschreiben aus Assistenz-Text angelegt' });
+    await audit(c, { aktion: 'schreiben.text_angehaengt', objektTyp: 'schreiben', objektId: schreiben.id, vorgangId, detail: 'Schreiben aus Assistenz-Text angelegt' });
     return c.json({ schreiben }, 201);
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
@@ -156,6 +157,7 @@ schreibenRoutes.put('/schreiben/:id', async (c) => {
     delete (updates as Record<string, unknown>).vorgangId;
     const schreiben = await updateSchreiben(c.req.param('id'), updates, { expectedVersion, force });
     if (!schreiben) return c.json({ error: 'Schreiben nicht gefunden' }, 404);
+    await audit(c, { aktion: 'schreiben.geaendert', objektTyp: 'schreiben', objektId: schreiben.id, vorgangId: schreiben.vorgangId });
     return c.json({ schreiben });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
@@ -166,6 +168,9 @@ schreibenRoutes.put('/schreiben/:id', async (c) => {
 schreibenRoutes.delete('/schreiben/:id', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
-  const ok = await deleteSchreiben(c.req.param('id'));
+  const id = c.req.param('id');
+  const before = await getSchreiben(id);
+  const ok = await deleteSchreiben(id);
+  if (ok) await audit(c, { aktion: 'schreiben.geloescht', objektTyp: 'schreiben', objektId: id, vorgangId: before?.vorgangId });
   return ok ? c.json({ ok: true }) : c.json({ error: 'Schreiben nicht gefunden' }, 404);
 });

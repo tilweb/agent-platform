@@ -7,7 +7,7 @@ import {
   wohngeldApi,
   WOHNGELDART_LABEL, ANTRAGSART_LABEL, STATUS_LABEL, STATUS_ORDER,
   PRIORITAET_LABEL, ROLLE_LABEL, DOKUMENT_TYP_LABEL, SCHREIBEN_ART_LABEL,
-  VERFUEGUNG_ENTSCHEIDUNG_LABEL,
+  VERFUEGUNG_ENTSCHEIDUNG_LABEL, APP_ROLE_LABEL, aktionLabel,
   ACCENT, ACCENT_LIGHT,
 } from './api';
 import StatusBadge from './components/StatusBadge';
@@ -74,6 +74,15 @@ const styles = {
   bestaetigungDot: { width: 7, height: 7, borderRadius: theme.borderRadius.full, backgroundColor: ACCENT, flexShrink: 0 },
   sideTitle: { fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', margin: `${theme.spacing.md} 0 ${theme.spacing.sm}` },
   activity: { fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, padding: `${theme.spacing.sm} 0`, borderBottom: `1px solid ${theme.colors.borderLight}`, lineHeight: 1.5 },
+  protoAktion: { color: theme.colors.text, fontWeight: theme.typography.weights.medium },
+  protoMeta: { color: theme.colors.textMuted, marginTop: 1 },
+  protoRolle: { fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0 5px', borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted },
+  protoToggle: { display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 3, fontSize: '0.65rem', color: ACCENT, background: 'none', border: 'none', padding: 0, cursor: 'pointer' },
+  protoDiff: { marginTop: theme.spacing.xs, padding: theme.spacing.sm, backgroundColor: theme.colors.surfaceHover, borderRadius: theme.borderRadius.md, display: 'flex', flexDirection: 'column', gap: 4 },
+  protoDiffRow: { display: 'grid', gridTemplateColumns: 'minmax(70px, auto) 1fr', columnGap: theme.spacing.sm, fontSize: '0.65rem', lineHeight: 1.4 },
+  protoDiffFeld: { color: theme.colors.textMuted, fontWeight: theme.typography.weights.medium },
+  protoAlt: { color: theme.colors.error, textDecoration: 'line-through', wordBreak: 'break-word' },
+  protoNeu: { color: theme.colors.success, wordBreak: 'break-word' },
   label: { display: 'block', fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text, marginBottom: theme.spacing.xs },
   textarea: { width: '100%', minHeight: 260, fontFamily: theme.typography.fontFamily, fontSize: theme.typography.sizes.sm, padding: theme.spacing.md, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none', resize: 'vertical', lineHeight: 1.6 },
   placeholder: { textAlign: 'center', padding: theme.spacing['3xl'], color: theme.colors.textMuted },
@@ -134,6 +143,12 @@ function fmtDateTime(iso) {
 function eur(v) {
   if (v == null) return '—';
   return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+}
+/** Protokoll-Diff-Wert lesbar darstellen (Objekte/Arrays kompakt als JSON). */
+function fmtProtoValue(v) {
+  if (v == null || v === '') return '—';
+  if (typeof v === 'object') { try { return JSON.stringify(v); } catch { return String(v); } }
+  return String(v);
 }
 /** Überfällig = Datum liegt vor heute (Tagesvergleich). Leeres/ungültiges Datum → false. */
 function istUeberfaellig(iso) {
@@ -211,6 +226,9 @@ export default function VorgangDetail() {
   const [neuerTodo, setNeuerTodo] = useState('');
   const [todosCollapsed, setTodosCollapsed] = useState(false);
   const [neuesLabel, setNeuesLabel] = useState('');
+
+  // Fall-Protokoll (GOV-1): welche Einträge ihren Vorher/Nachher-Diff aufgeklappt zeigen
+  const [protokollOffen, setProtokollOffen] = useState({});
 
   useEffect(() => {
     let cancelled = false;
@@ -333,7 +351,8 @@ export default function VorgangDetail() {
     return <div style={{ padding: theme.spacing['2xl'] }}>{error ? <div style={styles.error}>{error}</div> : 'Lädt…'}</div>;
   }
 
-  const { vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten } = detail;
+  const { vorgang, akte, personen, dokumente, pruefschritte, schreiben } = detail;
+  const protokoll = detail.protokoll || [];
   const feldStatus = detail.feldStatus || [];
   const notizen = detail.notizen || [];
   const feldStatusMap = buildFeldStatusMap(feldStatus);
@@ -1269,15 +1288,50 @@ export default function VorgangDetail() {
                   </div>
                 )}
 
-                <div style={styles.sideTitle}>Aktivitäten</div>
-                {aktivitaeten.length === 0
-                  ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Noch keine Aktivitäten.</div>
-                  : aktivitaeten.slice().reverse().map((a) => (
-                    <div key={a.id} style={styles.activity}>
-                      <div style={{ color: theme.colors.text }}>{a.beschreibung || a.typ}</div>
-                      <div style={{ color: theme.colors.textMuted }}>{fmtDateTime(a.created_at)}{a.akteur ? ` · ${a.akteur}` : ''}</div>
-                    </div>
-                  ))}
+                <div style={styles.sideTitle}>Protokoll</div>
+                {protokoll.length === 0
+                  ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Noch keine protokollierten Aktionen.</div>
+                  : protokoll.map((e) => {
+                    const diffFelder = e.vorher && typeof e.vorher === 'object'
+                      ? Object.keys({ ...(e.vorher || {}), ...(e.nachher || {}) })
+                      : [];
+                    const hatDiff = diffFelder.length > 0;
+                    const offen = !!protokollOffen[e.id];
+                    return (
+                      <div key={e.id} style={styles.activity}>
+                        <div style={styles.protoAktion}>{aktionLabel(e.aktion)}</div>
+                        {e.detail && <div style={{ color: theme.colors.textSecondary }}>{e.detail}</div>}
+                        <div style={styles.protoMeta}>
+                          {fmtDateTime(e.timestamp)}
+                          {e.akteurName ? ` · ${e.akteurName}` : ''}
+                          {e.akteurRolle ? <> · <span style={styles.protoRolle}>{APP_ROLE_LABEL[e.akteurRolle] || e.akteurRolle}</span></> : ''}
+                        </div>
+                        {hatDiff && (
+                          <button
+                            style={styles.protoToggle}
+                            onClick={() => setProtokollOffen((m) => ({ ...m, [e.id]: !m[e.id] }))}
+                          >
+                            <ChevronDownIcon size={11} style={{ transform: offen ? 'rotate(180deg)' : 'none' }} />
+                            {offen ? 'Änderungen ausblenden' : 'Änderungen anzeigen'}
+                          </button>
+                        )}
+                        {hatDiff && offen && (
+                          <div style={styles.protoDiff}>
+                            {diffFelder.map((feld) => (
+                              <div key={feld} style={styles.protoDiffRow}>
+                                <span style={styles.protoDiffFeld}>{feld}</span>
+                                <span>
+                                  <span style={styles.protoAlt}>{fmtProtoValue(e.vorher?.[feld])}</span>
+                                  {' → '}
+                                  <span style={styles.protoNeu}>{fmtProtoValue(e.nachher?.[feld])}</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             )}
 

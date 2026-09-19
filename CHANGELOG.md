@@ -2,6 +2,37 @@
 
 ## 2026-09-19
 
+### Wohngeld — GOV-1 Audit-/Protokoll-Kern (Governance, `docs/wohngeld-governance-spec-2026-09-19.md`)
+Umsetzung der Welle GOV-1 (deckt G-A/B/C/D/E/F): **jede fachlich relevante Aktion der Sachbearbeitung**
+wird in einem einheitlichen, append-only Postgres-Log protokolliert — inkl. **Lesezugriff** auf einen
+Fall (§ 35 SGB I) und **Downloads/Exporten** (§§ 67d ff. SGB X). Neue Migration `0043_wohngeld_audit.sql`
+(Journal idx 43), keine neuen npm-Dependencies. Rückwärtskompatibel: die Legacy-Tabelle `aktivitaeten`
+bleibt bestehen, neue Einträge laufen über das Audit-Log.
+
+**Datenmodell.** Neue Tabelle `wohngeld.audit_log` (`wgAuditLog` in `db/schema/wohngeld.ts`, Typ
+`AuditEintrag` in `types.ts`): `id, timestamp, akteur_id, akteur_name, akteur_rolle, aktion, objekt_typ,
+objekt_id, vorgang_id, ergebnis, vorher (jsonb), nachher (jsonb), detail, ip`. Indizes auf `vorgang_id`
+und `timestamp`. Append-only (bewusst KEINE Update/Delete-Funktion), kein FK auf `vorgang_id` (Eintrag
+überdauert die Löschung des Vorgangs), **keine Hash-Kette** (Nicht-Ziel für GOV-1, später).
+
+**Zentraler Helfer** `backend/src/apps/wohngeld/audit.ts`: `audit(c, event)` liest den Akteur aus dem
+Hono-Context (id + Name aus `displayName||username` + wirksame `appRole` + IP aus `x-forwarded-for`/
+`x-real-ip`) und schreibt eine Zeile. Fehler beim Protokollieren brechen die Fach-Aktion NIE ab
+(try/catch). Reiner Helfer `diffFelder(vorher, nachher, felder[])` (+ `auditUpdate`) erzeugt den
+Vorher/Nachher-Diff der Kernfelder (G-D); Unit-Tests in `audit.test.ts`.
+
+**Coverage (geloggte Aktionen).** Alle Schreib-Routes: Akte/Vorgang/Person/Dokument/Prüfschritt/
+Schreiben/Notiz/Textbaustein (create/update mit Diff/delete), Prüfung, BWZ-Übernahme, Verfügung
+speichern, Feld bestätigen/verwerfen/alle-bestätigen, Posteingang verteilen + Direkt-Upload, Chat-Frage.
+Zugriffs-/Export-Middleware (inline): Fall geöffnet (`vorgang.geoeffnet` auf `/detail`), Dokument-Datei
+(`dokument.heruntergeladen`), Schreiben-Export, Verfügung-Export. Reine List-GETs werden bewusst nicht
+protokolliert (Datensparsamkeit).
+
+**Fall-Protokoll (Frontend).** Der Details-Tab liefert jetzt `protokoll` (via `/detail`); der bisherige
+Bereich „Aktivitäten" in `VorgangDetail.jsx` ist zum **„Protokoll"** aufgewertet — chronologische Liste
+mit Zeit, Akteur (Name), wirksamer Rolle, lesbarem Aktions-Label und aufklappbarem Vorher/Nachher-Diff
+(Label-Maps `AKTION_LABEL`/`APP_ROLE_LABEL` in `api.js`).
+
 ### Wohngeld — Demo-Seed (`backend/scripts/seed-wohngeld.ts`, nicht committen)
 Idempotentes Seed-Skript, das die Wohngeld-App mit realistischen synthetischen Demo-Daten befüllt
 (zum Live-Durchklicken). Legt ~9 Vorgänge über 8 Akten an (u. a. Goldfall Petermann mit Widersprüchen,

@@ -166,7 +166,7 @@ export const wgTextbausteine = wohngeldSchema.table('textbausteine', {
   kategorieIdx: index('wg_textbaustein_kategorie_idx').on(t.kategorie),
 }));
 
-/** Aktivität / Audit-Eintrag (append-only). */
+/** Aktivität / Legacy-Verlauf (append-only). Rückwärtskompatibel — neue Einträge laufen über audit_log. */
 export const wgAktivitaeten = wohngeldSchema.table('aktivitaeten', {
   id: text('id').primaryKey(),
   vorgangId: text('vorgang_id').notNull().references(() => wgVorgaenge.id, { onDelete: 'cascade' }),
@@ -176,4 +176,32 @@ export const wgAktivitaeten = wohngeldSchema.table('aktivitaeten', {
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({
   vorgangIdx: index('wg_aktivitaet_vorgang_idx').on(t.vorgangId),
+}));
+
+/**
+ * GOV-1 — Audit-/Protokoll-Log (append-only, revisionssicher).
+ * Erfasst JEDE fachlich relevante Aktion der Sachbearbeitung inkl. Lesezugriff
+ * auf einen Fall und Downloads/Exporte. Akteur mit id+name+rolle+ip, bei
+ * Änderungen Vorher/Nachher-Diff. KEINE Update-/Delete-API (nur INSERT).
+ * KEINE Hash-Kette (Nicht-Ziel für GOV-1). Kein FK auf vorgang_id — der
+ * Eintrag muss die Löschung des Vorgangs überdauern.
+ */
+export const wgAuditLog = wohngeldSchema.table('audit_log', {
+  id: text('id').primaryKey(),
+  timestamp: timestamp('timestamp', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  akteurId: text('akteur_id'),
+  akteurName: text('akteur_name'),
+  akteurRolle: text('akteur_rolle'),
+  aktion: text('aktion').notNull(),
+  objektTyp: text('objekt_typ').notNull(),
+  objektId: text('objekt_id'),
+  vorgangId: text('vorgang_id'),
+  ergebnis: text('ergebnis').notNull().default('ok'),
+  vorher: jsonb('vorher'),
+  nachher: jsonb('nachher'),
+  detail: text('detail'),
+  ip: text('ip'),
+}, (t) => ({
+  vorgangIdx: index('wg_audit_vorgang_idx').on(t.vorgangId),
+  timestampIdx: index('wg_audit_timestamp_idx').on(t.timestamp),
 }));

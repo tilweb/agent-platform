@@ -362,6 +362,65 @@ export const VERFUEGUNG_ENTSCHEIDUNG_LABEL = {
   abgelehnt: 'Abgelehnt',
 };
 
+/** Wirksame App-Rolle im Protokoll (GOV-1). */
+export const APP_ROLE_LABEL = {
+  owner: 'Owner',
+  editor: 'Bearbeiter',
+  viewer: 'Leser',
+};
+
+/**
+ * Lesbare Labels der Audit-Aktionen (GOV-1 Fall-Protokoll).
+ * Fallback in `aktionLabel()`: unbekannte Aktion → Rohwert.
+ */
+export const AKTION_LABEL = {
+  'vorgang.geoeffnet': 'Fall geöffnet',
+  'vorgang.erstellt': 'Vorgang erstellt',
+  'vorgang.geaendert': 'Vorgang geändert',
+  'vorgang.geloescht': 'Vorgang gelöscht',
+  'akte.erstellt': 'Akte erstellt',
+  'akte.geaendert': 'Akte geändert',
+  'akte.geloescht': 'Akte gelöscht',
+  'person.erstellt': 'Person angelegt',
+  'person.geaendert': 'Person geändert',
+  'person.geloescht': 'Person gelöscht',
+  'dokument.erstellt': 'Dokument erfasst',
+  'dokument.hochgeladen': 'Dokument(e) hochgeladen',
+  'dokument.geaendert': 'Dokument geändert',
+  'dokument.geloescht': 'Dokument gelöscht',
+  'dokument.abgelegt': 'Dokument ins Fachverfahren abgelegt',
+  'dokument.heruntergeladen': 'Dokument heruntergeladen',
+  'dokument.vorschau': 'Dokument angesehen',
+  'feld.bestaetigt': 'KI-Vorschlag bestätigt',
+  'feld.verworfen': 'KI-Vorschlag verworfen',
+  'feld.alle_bestaetigt': 'Alle KI-Vorschläge bestätigt',
+  'pruefung.ausgefuehrt': 'Prüfung ausgeführt',
+  'pruefschritt.angelegt': 'Prüfschritt angelegt',
+  'pruefschritt.status_geaendert': 'Prüfschritt-Status geändert',
+  'pruefschritt.geaendert': 'Prüfschritt geändert',
+  'pruefschritt.geloescht': 'Prüfschritt gelöscht',
+  'schreiben.generiert': 'Anforderungsschreiben generiert',
+  'schreiben.geaendert': 'Schreiben geändert',
+  'schreiben.versendet': 'Schreiben versendet',
+  'schreiben.exportiert': 'Schreiben exportiert',
+  'schreiben.text_angehaengt': 'Text ins Schreiben übernommen',
+  'schreiben.geloescht': 'Schreiben gelöscht',
+  'verfuegung.gespeichert': 'Verfügung gespeichert',
+  'verfuegung.exportiert': 'Verfügung exportiert',
+  'bwz.uebernommen': 'Bewilligungszeitraum übernommen',
+  'notiz.erstellt': 'Notiz angelegt',
+  'notiz.geloescht': 'Notiz gelöscht',
+  'textbaustein.erstellt': 'Textbaustein angelegt',
+  'textbaustein.geaendert': 'Textbaustein geändert',
+  'textbaustein.geloescht': 'Textbaustein gelöscht',
+  'chat.frage': 'Chat-Frage gestellt',
+};
+
+/** Lesbares Label einer Audit-Aktion (mit Rohwert-Fallback). */
+export function aktionLabel(aktion) {
+  return AKTION_LABEL[aktion] || aktion;
+}
+
 /** App-Akzentfarbe (ruhiges Blau), konsistent über alle Wohngeld-Seiten. */
 export const ACCENT = '#2563EB';
 export const ACCENT_LIGHT = '#EFF4FE';

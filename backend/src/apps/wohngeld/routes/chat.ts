@@ -18,6 +18,7 @@ import {
   listChatMessages, addChatMessage,
 } from '../storage';
 import { buildFallKontext } from '../chat-context';
+import { audit } from '../audit';
 import { sucheRecht } from '../recht/retrieval';
 import { chunkLabel } from '../recht/corpus';
 import type { ChatSource, ChatAction } from '../types';
@@ -158,6 +159,9 @@ chatRoutes.post('/vorgaenge/:id/chat', async (c) => {
   if (!frage) return c.json({ error: 'message ist erforderlich' }, 400);
 
   const userId = getCurrentUserId(c);
+
+  // Chat-Frage protokollieren (nur Metadaten — kein Prompt-Volltext im Audit).
+  await audit(c, { aktion: 'chat.frage', objektTyp: 'chat', vorgangId, detail: `${frage.length} Zeichen` });
 
   // Fall-Kontext frisch aufbauen (kein veralteter Kontext).
   const snapshot = await getVorgangSnapshot(vorgangId);

@@ -3,9 +3,10 @@ import { getCurrentUserId } from '../../../auth/middleware';
 import {
   listVorgaenge, getVorgang, createVorgang, updateVorgang, deleteVorgang,
   getAkte, listAkten, listPersonen, listDokumente, listPruefschritte, listSchreiben, listAktivitaeten,
-  getVorgangSnapshot, syncPruefschritte, addAktivitaet, listFeldStatus, listNotizen,
+  getVorgangSnapshot, syncPruefschritte, listFeldStatus, listNotizen, listAuditEintraege,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
+import { audit, auditUpdate } from '../audit';
 import { pruefeVorgang } from '../checker';
 import { berechneVorgangEinkommen, unterhaltsabzuegeFuer } from '../einkommen';
 import { berechneBwzVorschlag } from '../bwz';
@@ -63,12 +64,14 @@ vorgaengeRoutes.get('/vorgaenge/:id/detail', async (c) => {
   const id = c.req.param('id');
   const vorgang = await getVorgang(id);
   if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
-  const [akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten, feldStatus, notizen] = await Promise.all([
+  // Lesezugriff auf Sozialdaten protokollieren (§ 35 SGB I) — Fall geöffnet.
+  await audit(c, { aktion: 'vorgang.geoeffnet', objektTyp: 'vorgang', objektId: id, vorgangId: id });
+  const [akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten, feldStatus, notizen, protokoll] = await Promise.all([
     getAkte(vorgang.akteId), listPersonen(id), listDokumente(id),
     listPruefschritte(id), listSchreiben(id), listAktivitaeten(id),
-    listFeldStatus(id), listNotizen(id),
+    listFeldStatus(id), listNotizen(id), listAuditEintraege(id),
   ]);
-  return c.json({ vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten, feldStatus, notizen });
+  return c.json({ vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten, feldStatus, notizen, protokoll });
 });
 
 /**
@@ -93,7 +96,7 @@ vorgaengeRoutes.post('/vorgaenge', async (c) => {
   const akte = await getAkte(body.akteId);
   if (!akte) return c.json({ error: 'Akte nicht gefunden' }, 404);
   const vorgang = await createVorgang({ ...body, akteId: body.akteId, ownerId: getCurrentUserId(c) });
-  await addAktivitaet({ vorgangId: vorgang.id, typ: 'erstellt', akteur: getCurrentUserId(c), beschreibung: 'Vorgang erstellt' });
+  await audit(c, { aktion: 'vorgang.erstellt', objektTyp: 'vorgang', objektId: vorgang.id, vorgangId: vorgang.id, detail: vorgang.antragsId });
   return c.json({ vorgang }, 201);
 });
 
@@ -105,8 +108,14 @@ vorgaengeRoutes.put('/vorgaenge/:id', async (c) => {
     const { expectedVersion, force, ...updates } = body ?? {};
     delete (updates as Record<string, unknown>).permissions;
     delete (updates as Record<string, unknown>).akteId;
+    const before = await getVorgang(c.req.param('id'));
     const vorgang = await updateVorgang(c.req.param('id'), updates, { expectedVersion, force });
     if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+    await auditUpdate(c, {
+      aktion: 'vorgang.geaendert', objektTyp: 'vorgang', objektId: vorgang.id, vorgangId: vorgang.id,
+      before, after: vorgang,
+      felder: ['status', 'wohngeldart', 'antragsart', 'sachbearbeiter', 'prioritaet', 'wohnung', 'bwz', 'frist', 'wiedervorlage'],
+    });
     return c.json({ vorgang });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
@@ -117,7 +126,10 @@ vorgaengeRoutes.put('/vorgaenge/:id', async (c) => {
 vorgaengeRoutes.delete('/vorgaenge/:id', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
-  const ok = await deleteVorgang(c.req.param('id'));
+  const id = c.req.param('id');
+  const before = await getVorgang(id);
+  const ok = await deleteVorgang(id);
+  if (ok) await audit(c, { aktion: 'vorgang.geloescht', objektTyp: 'vorgang', objektId: id, vorgangId: id, detail: before?.antragsId });
   return ok ? c.json({ ok: true }) : c.json({ error: 'Vorgang nicht gefunden' }, 404);
 });
 
@@ -133,7 +145,7 @@ vorgaengeRoutes.post('/vorgaenge/:id/pruefen', async (c) => {
   if (!snapshot) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
   const befunde = pruefeVorgang(snapshot);
   const pruefschritte = await syncPruefschritte(id, befunde);
-  await addAktivitaet({ vorgangId: id, typ: 'pruefung', akteur: getCurrentUserId(c), beschreibung: `Prüfung ausgeführt — ${befunde.length} Befund(e)` });
+  await audit(c, { aktion: 'pruefung.ausgefuehrt', objektTyp: 'vorgang', objektId: id, vorgangId: id, detail: `${befunde.length} Befund(e)` });
   return c.json({ pruefschritte, befundeCount: befunde.length });
 });
 
@@ -156,7 +168,7 @@ vorgaengeRoutes.post('/vorgaenge/:id/bwz-vorschlag-uebernehmen', async (c) => {
       bwz_start: vorschlag.start,
       bwz_ende: vorschlag.ende,
     }, { expectedVersion: vorgang.version });
-    await addAktivitaet({ vorgangId: id, typ: 'bwz', akteur: getCurrentUserId(c), beschreibung: `Bewilligungszeitraum-Vorschlag übernommen (${vorschlag.start} – ${vorschlag.ende})` });
+    await audit(c, { aktion: 'bwz.uebernommen', objektTyp: 'vorgang', objektId: id, vorgangId: id, detail: `${vorschlag.start} – ${vorschlag.ende}` });
     return c.json({ vorgang: updated });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
@@ -180,6 +192,7 @@ vorgaengeRoutes.get('/vorgaenge/:id/verfuegung/export', async (c) => {
   const einkommen = berechneVorgangEinkommen(snapshot.personen, snapshot.dokumente, unterhalt);
   const doc = verfuegungToDocument(snapshot.vorgang, akte, snapshot.personen, einkommen, pruefschritte);
   const buffer = await generateDocument(doc, format);
+  await audit(c, { aktion: 'verfuegung.exportiert', objektTyp: 'verfuegung', objektId: id, vorgangId: id, detail: format });
   const base = `Verfuegung-${snapshot.vorgang.antragsId}`;
   return new Response(new Uint8Array(buffer), {
     headers: {
@@ -212,7 +225,12 @@ vorgaengeRoutes.put('/vorgaenge/:id/verfuegung', async (c) => {
       },
       status: 'entscheidung',
     }, { expectedVersion: body.expectedVersion ?? vorgang.version });
-    await addAktivitaet({ vorgangId: id, typ: 'verfuegung', akteur: getCurrentUserId(c), beschreibung: `Verfügung gespeichert — Entscheidung: ${entscheidung}` });
+    await audit(c, {
+      aktion: 'verfuegung.gespeichert', objektTyp: 'verfuegung', objektId: id, vorgangId: id,
+      detail: `Entscheidung: ${entscheidung}`,
+      vorher: { entscheidung: vorgang.verfuegung?.entscheidung ?? null },
+      nachher: { entscheidung },
+    });
     return c.json({ vorgang: updated });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);

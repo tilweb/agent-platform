@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
-import { getCurrentUserId } from '../../../auth/middleware';
 import {
   listPruefschritte, getPruefschritt, createPruefschritt, updatePruefschritt, deletePruefschritt,
-  getVorgang, addAktivitaet,
+  getVorgang,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { denyIfNotAppEditor } from './_shared';
+import { audit } from '../audit';
 
 export const pruefschritteRoutes = new Hono();
 
@@ -22,6 +22,7 @@ pruefschritteRoutes.post('/vorgaenge/:vorgangId/pruefschritte', async (c) => {
   const body = await c.req.json<{ titel?: string; [k: string]: unknown }>();
   if (!body?.titel?.trim()) return c.json({ error: 'titel ist erforderlich' }, 400);
   const pruefschritt = await createPruefschritt({ ...body, vorgangId, titel: body.titel.trim() });
+  await audit(c, { aktion: 'pruefschritt.angelegt', objektTyp: 'pruefschritt', objektId: pruefschritt.id, vorgangId, detail: pruefschritt.titel });
   return c.json({ pruefschritt }, 201);
 });
 
@@ -37,11 +38,12 @@ pruefschritteRoutes.put('/pruefschritte/:id', async (c) => {
     const pruefschritt = await updatePruefschritt(c.req.param('id'), updates, { expectedVersion, force });
     if (!pruefschritt) return c.json({ error: 'Prüfschritt nicht gefunden' }, 404);
     if (before && updates.status && updates.status !== before.status) {
-      await addAktivitaet({
-        vorgangId: pruefschritt.vorgangId, typ: 'pruefschritt',
-        akteur: getCurrentUserId(c),
-        beschreibung: `Prüfschritt „${pruefschritt.titel}" → ${updates.status}`,
+      await audit(c, {
+        aktion: 'pruefschritt.status_geaendert', objektTyp: 'pruefschritt', objektId: pruefschritt.id, vorgangId: pruefschritt.vorgangId,
+        detail: pruefschritt.titel, vorher: { status: before.status }, nachher: { status: pruefschritt.status },
       });
+    } else {
+      await audit(c, { aktion: 'pruefschritt.geaendert', objektTyp: 'pruefschritt', objektId: pruefschritt.id, vorgangId: pruefschritt.vorgangId, detail: pruefschritt.titel });
     }
     return c.json({ pruefschritt });
   } catch (err) {
@@ -53,6 +55,9 @@ pruefschritteRoutes.put('/pruefschritte/:id', async (c) => {
 pruefschritteRoutes.delete('/pruefschritte/:id', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
-  const ok = await deletePruefschritt(c.req.param('id'));
+  const id = c.req.param('id');
+  const before = await getPruefschritt(id);
+  const ok = await deletePruefschritt(id);
+  if (ok) await audit(c, { aktion: 'pruefschritt.geloescht', objektTyp: 'pruefschritt', objektId: id, vorgangId: before?.vorgangId, detail: before?.titel });
   return ok ? c.json({ ok: true }) : c.json({ error: 'Prüfschritt nicht gefunden' }, 404);
 });

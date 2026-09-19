@@ -357,7 +357,7 @@ export interface Textbaustein extends Timestamped {
   text: string;
 }
 
-/** Aktivität / Audit-Eintrag (append-only). */
+/** Aktivität (Legacy-Verlauf, append-only). Rückwärtskompatibel — neue Einträge laufen über AuditEintrag. */
 export interface Aktivitaet {
   id: string;
   vorgangId: string;
@@ -365,6 +365,32 @@ export interface Aktivitaet {
   akteur?: string;
   beschreibung?: string;
   created_at: string;
+}
+
+/** Geänderte Felder eines Updates: feldPfad → { alt, neu }. */
+export type FeldDiff = Record<string, { alt: unknown; neu: unknown }>;
+
+/**
+ * GOV-1 — Audit-/Protokoll-Eintrag (append-only, revisionssicher).
+ * Eine Zeile je fachlich relevanter Aktion — inkl. Lesezugriff (`vorgang.geoeffnet`)
+ * und Downloads/Exporte. Akteur vollständig (id+name+rolle+ip); bei Änderungen
+ * Vorher/Nachher als Diff der Kernfelder.
+ */
+export interface AuditEintrag {
+  id: string;
+  timestamp: string;
+  akteurId?: string;
+  akteurName?: string;
+  akteurRolle?: string;          // 'owner' | 'editor' | 'viewer' (wirksame Rolle zum Zeitpunkt)
+  aktion: string;                // Enum, z. B. 'vorgang.geaendert', 'dokument.hochgeladen'
+  objektTyp: string;             // vorgang | person | dokument | pruefschritt | schreiben | notiz | feldstatus | akte | verfuegung | chat | textbaustein
+  objektId?: string;
+  vorgangId?: string;            // Fallbezug (für Filter)
+  ergebnis: string;              // 'ok' | 'fehler'
+  vorher?: unknown;
+  nachher?: unknown;
+  detail?: string;
+  ip?: string;
 }
 
 // ── Feld-Provenienz (Welle 2, WP3) ─────────────────────────────────────────
