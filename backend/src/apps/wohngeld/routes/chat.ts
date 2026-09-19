@@ -21,6 +21,7 @@ import { buildFallKontext } from '../chat-context';
 import { audit } from '../audit';
 import { sucheRecht } from '../recht/retrieval';
 import { chunkLabel } from '../recht/corpus';
+import { wohngeldUsageMetadata } from '../ki-governance';
 import type { ChatSource, ChatAction } from '../types';
 
 export const chatRoutes = new Hono();
@@ -221,6 +222,7 @@ chatRoutes.post('/vorgaenge/:id/chat', async (c) => {
         resourceId: vorgangId,
         userId,
         triggeringUserId: userId,
+        metadata: wohngeldUsageMetadata({ providerId: CHAT_MODEL.providerId, modelId: CHAT_MODEL.modelId, vorgangId, mitRechtKorpus: true }),
       }, { modelOverride: { providerId: CHAT_MODEL.providerId, modelId: CHAT_MODEL.modelId } })) {
         const delta = chunk?.choices?.[0]?.delta?.content;
         if (!delta) continue;

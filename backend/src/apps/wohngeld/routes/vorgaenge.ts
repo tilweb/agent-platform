@@ -3,7 +3,7 @@ import { getCurrentUserId } from '../../../auth/middleware';
 import {
   listVorgaenge, getVorgang, createVorgang, updateVorgang, deleteVorgang,
   getAkte, listAkten, listPersonen, listDokumente, listPruefschritte, listSchreiben, listAktivitaeten,
-  getVorgangSnapshot, syncPruefschritte, listFeldStatus, listNotizen, listAuditEintraege,
+  getVorgangSnapshot, syncPruefschritte, listFeldStatus, listNotizen, listAuditEintraege, listKiNutzung,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { audit, auditUpdate } from '../audit';
@@ -74,6 +74,20 @@ vorgaengeRoutes.get('/vorgaenge/:id/detail', async (c) => {
     listFeldStatus(id), listNotizen(id), listAuditEintraege(id),
   ]);
   return c.json({ vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten, feldStatus, notizen, protokoll, vierAugen: vierAugenAktiv() });
+});
+
+/**
+ * KI-Nutzung je Vorgang (GOV-3 / AI Act Art. 12): welche KI-Assistenz wurde
+ * WANN, mit WELCHEM Modell, zu WELCHEM Zweck und unter WELCHEM Wissensstand
+ * für diesen Fall eingesetzt. Nur Metadaten (kein Prompt-Volltext). Zugriff
+ * läuft über requireAppAccess (App-Nutzer mit Fallzugriff).
+ */
+vorgaengeRoutes.get('/vorgaenge/:id/ki-nutzung', async (c) => {
+  const id = c.req.param('id');
+  const vorgang = await getVorgang(id);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const eintraege = await listKiNutzung(id);
+  return c.json({ eintraege });
 });
 
 /**

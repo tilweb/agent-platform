@@ -19,6 +19,13 @@ export interface UsageContext {
   source: 'chat' | 'delegation' | 'image_analysis' | 'document_analysis' | 'indexer' | 'search' | 'contract' | 'extraction';
   operation?: string;
   resourceId?: string;
+  /**
+   * Zusaetzliche, frei belegbare Metadaten (werden in die jsonb-`metadata`-Spalte
+   * gemergt). Genutzt fuer KI-Governance/AI-Act (z. B. modelId, providerId,
+   * vorgangId, promptVersion, rechtStand) — damit im Nachhinein nachvollziehbar
+   * ist, welches Modell/welche Wissensbasis eine Antwort erzeugt hat.
+   */
+  metadata?: Record<string, unknown>;
 }
 
 export interface UsageEntry {
@@ -97,7 +104,8 @@ class UsageTrackingService {
   async track(context: UsageContext, provider: string, model: string): Promise<void> {
     const id = generateUsageId();
     const timestamp = new Date().toISOString();
-    const meta: UsageMeta = {
+    const meta: UsageMeta & Record<string, unknown> = {
+      ...(context.metadata ?? {}),
       triggeringUserId: context.triggeringUserId,
       operation: context.operation,
       resourceId: context.resourceId,

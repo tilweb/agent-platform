@@ -54,6 +54,8 @@ export const wohngeldApi = {
   pruefen: (id) => apiPost(`${base}/vorgaenge/${id}/pruefen`, {}).then(json),
   // § 13-Gesamteinkommen (read-only, angenommene §16-Abzugskategorien).
   getEinkommen: (id) => apiGet(`${base}/vorgaenge/${id}/einkommen`).then(json).then((d) => d.einkommen),
+  // KI-Nutzung je Vorgang (GOV-3 — Transparenz über eingesetzte KI-Assistenz)
+  getKiNutzung: (id) => apiGet(`${base}/vorgaenge/${id}/ki-nutzung`).then(json).then((d) => d.eintraege),
   // Bewilligungszeitraum-Vorschlag übernehmen (12 Monate ab Antragsmonat, §22/§25).
   bwzVorschlagUebernehmen: (id) => apiPost(`${base}/vorgaenge/${id}/bwz-vorschlag-uebernehmen`, {}).then(json).then((d) => d.vorgang),
 
@@ -419,6 +421,20 @@ export const AKTION_LABEL = {
 /** Lesbares Label einer Audit-Aktion (mit Rohwert-Fallback). */
 export function aktionLabel(aktion) {
   return AKTION_LABEL[aktion] || aktion;
+}
+
+/**
+ * Lesbarer Zweck eines KI-Nutzungseintrags (GOV-3). Mappt operation, sonst source.
+ * Fallback: Rohwert.
+ */
+export const KI_ZWECK_LABEL = {
+  wohngeld_fall_chat: 'Fall-Chat (Frage zum Vorgang)',
+  wohngeld_klassifikation: 'Dokument-Klassifikation & Extraktion',
+  chat: 'Chat',
+  document_analysis: 'Dokumentanalyse',
+};
+export function kiZweckLabel(eintrag) {
+  return KI_ZWECK_LABEL[eintrag?.operation] || KI_ZWECK_LABEL[eintrag?.source] || eintrag?.operation || eintrag?.source || 'KI-Nutzung';
 }
 
 /** App-Akzentfarbe (ruhiges Blau), konsistent über alle Wohngeld-Seiten. */

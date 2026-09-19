@@ -34,7 +34,7 @@ export interface RechtChunk {
   url: string;
 }
 
-const RECHTSSTAND = '2026-09 (nach Wohngeld-Plus-Reform)';
+export const RECHTSSTAND = '2026-09 (nach Wohngeld-Plus-Reform)';
 const U = (n: number) => `https://www.gesetze-im-internet.de/wogg/__${n}.html`;
 const U_WOGV = (n: number) => `https://www.gesetze-im-internet.de/wogv/__${n}.html`;
 

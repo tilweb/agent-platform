@@ -5,16 +5,17 @@
  * `version`/timestamps kommen aus den Spalten. `data: data as never` ist die
  * etablierte jsonb-Cast-Konvention.
  */
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { eq, and, or, desc, inArray, sql as rawSql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import {
   wgAkten, wgVorgaenge, wgPersonen, wgDokumente, wgPruefschritte, wgSchreiben, wgAktivitaeten, wgChatMessages,
   wgFeldStatus, wgNotizen, wgTextbausteine, wgAuditLog,
 } from '../../db/schema/wohngeld';
+import { usageLog } from '../../db/schema/audit';
 import type {
   Akte, Vorgang, Person, Dokument, Pruefschritt, Schreiben, Aktivitaet,
   VorgangSnapshot, PruefBefund, ChatMessage, ChatSource, FeldStatus, FeldStatusZielTyp, Notiz, Textbaustein,
-  AuditEintrag,
+  AuditEintrag, KiNutzungEintrag,
 } from './types';
 import { VersionConflictError, checkVersion } from './concurrency';
 
@@ -772,6 +773,43 @@ export async function loescheTextbaustein(id: string): Promise<boolean> {
   const db = getDb();
   const r = await db.delete(wgTextbausteine).where(eq(wgTextbausteine.id, id)).returning({ id: wgTextbausteine.id });
   return r.length > 0;
+}
+
+// ── KI-Nutzung je Vorgang (GOV-3 / AI Act Art. 12) ──────────────────────────
+
+/**
+ * Liest die KI-Nutzungseintraege eines Falls aus dem zentralen `audit.usage_log`.
+ * Fallbezug: metadata.vorgangId ODER metadata.resourceId == vorgangId (beide werden
+ * von den Wohngeld-LLM-Aufrufen gesetzt). Neueste zuerst. Nur Metadaten — KEIN
+ * Prompt-/Antwort-Volltext (Datensparsamkeit).
+ */
+export async function listKiNutzung(vorgangId: string): Promise<KiNutzungEintrag[]> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(usageLog)
+    .where(
+      or(
+        rawSql`${usageLog.metadata}->>'vorgangId' = ${vorgangId}`,
+        rawSql`${usageLog.metadata}->>'resourceId' = ${vorgangId}`,
+      ),
+    )
+    .orderBy(desc(usageLog.timestamp));
+  return rows.map((r) => {
+    const meta = (r.metadata ?? {}) as Record<string, unknown>;
+    return {
+      timestamp: r.timestamp,
+      source: r.source ?? '',
+      operation: typeof meta.operation === 'string' ? meta.operation : undefined,
+      modelId: r.modelId ?? (typeof meta.modelId === 'string' ? meta.modelId : undefined) ?? undefined,
+      providerId: r.providerId ?? (typeof meta.providerId === 'string' ? meta.providerId : undefined) ?? undefined,
+      promptVersion: typeof meta.promptVersion === 'string' ? meta.promptVersion : undefined,
+      rechtStand: typeof meta.rechtStand === 'string' ? meta.rechtStand : undefined,
+      promptTokens: r.promptTokens ?? undefined,
+      completionTokens: r.completionTokens ?? undefined,
+      totalTokens: r.totalTokens ?? undefined,
+    };
+  });
 }
 
 // ── Snapshot (Input für die Regel-Engine) ──────────────────────────────────

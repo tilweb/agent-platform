@@ -2,6 +2,42 @@
 
 ## 2026-09-19
 
+### Wohngeld — GOV-3 KI-Governance & Nutzungstransparenz (Governance, `docs/wohngeld-governance-spec-2026-09-19.md`)
+Umsetzung der Welle GOV-3 (deckt G-H / AI Act Art. 12/13/14, Art. 22 DSGVO). Keine neuen npm-Dependencies.
+
+**Vollständiger `usageContext` bei allen Wohngeld-LLM-Aufrufen.** Beide LLM-Call-Sites der App
+(Fall-Chat `routes/chat.ts` streamChat + Dokument-Klassifikation `extraction.ts` chat) setzen jetzt
+`resourceId = vorgangId` (Fallbezug) und einen `metadata`-Block mit **Modell-ID, Provider,
+Prompt-/Regelkatalog-Version** (`WOHNGELD_PROMPT_VERSION`) und — beim Rechts-Chat — dem **Rechtsstand**
+des §-Korpus. Neue Konstanten/Helfer in `backend/src/apps/wohngeld/ki-governance.ts`; `RECHTSSTAND`
+aus `recht/corpus.ts` exportiert. `UsageContext` (services/usageTracking.ts) um optionales `metadata`
+erweitert (additiv, wird in die jsonb-`metadata`-Spalte gemergt). Der Klassifikations-Aufruf am Vorgang
+(`posteingang.ts`) reicht `vorgangId` durch (Inbox-Preview ohne Fallbezug bleibt ohne).
+
+**Token-Zählung: NICHT umgesetzt (bewusste Limitation).** Der OpenAI-Adapter liest `json.usage` zwar,
+gibt sie aber nicht zurück; `llmService.chat`/`streamChat` und `usageTracking.track()` reichen keine
+Token-Zahlen durch, und der Streaming-Pfad liefert ohne `stream_options.include_usage` ohnehin keine
+Usage. Eine Befüllung der Spalten `prompt/completion/total_tokens` erforderte einen plattformweiten
+Adapter-/Service-Umbau — bewusst zurückgestellt (Spec „nur ohne tiefen Adapter-Umbau"). Die Sicht
+zeigt Tokens an, sobald vorhanden.
+
+**„KI-Nutzung je Vorgang"-Sicht.** Neuer Endpoint `GET /vorgaenge/:id/ki-nutzung` liest aus
+`audit.usage_log` alle Einträge mit `metadata.vorgangId == id` ODER `metadata.resourceId == id`
+(neueste zuerst; nur Metadaten, kein Prompt-Volltext) — Storage-Helfer `listKiNutzung()`, Typ
+`KiNutzungEintrag`. Frontend: neuer Abschnitt „KI-Nutzung" im Details-Tab von `VorgangDetail.jsx`
+(Zeitpunkt, Zweck lesbar, Modell, Prompt-/Rechtsstand, ggf. Tokens) + Hinweis „KI nur assistierend,
+Mensch entscheidet". Läuft hinter `requireAppAccess`.
+
+**Transparenzhinweis (Art. 13/14 DSGVO / AI Act).** Neuer idempotenter Default-Textbaustein
+„KI-Transparenzhinweis" (Kategorie „Allgemein") via Migration `0044_wohngeld_ki_transparenz.sql`
+(Journal idx 44, feste ID + ON CONFLICT DO NOTHING). Der Verfügungs-Export (`verfuegung-export.ts`)
+erhält einen Schluss-Hinweis, dass KI-Assistenz genutzt und die Entscheidung durch einen Menschen
+getroffen wurde (keine automatisierte Einzelentscheidung, Art. 22 DSGVO).
+
+**AI-Act-Assistenz-Bewertung (Doku).** Neuer ausfüllbarer Entwurf
+`docs/wohngeld-ai-act-assistenz-bewertung-2026-09-19.md` (Art. 6 Abs. 3: echte Assistenz, kein
+Profiling; Human-in-the-Loop-Belege, technische Absicherung, offene Punkte für DSB/Kommune).
+
 ### Wohngeld — GOV-2 Funktionstrennung + Admin-Enforcement (Governance, `docs/wohngeld-governance-spec-2026-09-19.md`)
 Umsetzung der Welle GOV-2 (deckt G-G): Least Privilege konsistent, serverseitiges Admin-Enforcement an
 der App-Verwaltung + Audit, sowie opt-in Vier-Augen-Prinzip für die Verfügung. Keine neue Migration,

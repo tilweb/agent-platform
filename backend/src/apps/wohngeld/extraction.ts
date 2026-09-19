@@ -10,6 +10,7 @@
  * passen — die Regel-Engine (checker/) konsumiert genau diese Felder.
  */
 import { llmService, type Message } from '../../services/llm';
+import { wohngeldUsageMetadata } from './ki-governance';
 import type { DokumentTyp, DokumentAnalyse, Wohngeldart, Antragsart } from './types';
 
 /** Aus dem Wohngeldantrag extrahierte Stammdaten (befüllen Vorgang + Antragsteller). */
@@ -215,7 +216,7 @@ Regeln:
  */
 export async function klassifiziereUndExtrahiere(
   text: string,
-  opts: { userId?: string; filename?: string } = {},
+  opts: { userId?: string; filename?: string; vorgangId?: string } = {},
 ): Promise<ExtraktionErgebnis> {
   const trimmed = (text || '').trim();
   if (!trimmed) return fallbackErgebnis();
@@ -234,6 +235,8 @@ export async function klassifiziereUndExtrahiere(
         operation: 'wohngeld_klassifikation',
         triggeringUserId: opts.userId,
         userId: opts.userId,
+        resourceId: opts.vorgangId,
+        metadata: wohngeldUsageMetadata({ providerId: MODEL.providerId, modelId: MODEL.modelId, vorgangId: opts.vorgangId }),
       }, {
         modelOverride: MODEL,
       }),

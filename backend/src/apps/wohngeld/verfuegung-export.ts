@@ -145,6 +145,12 @@ export function verfuegungToDocument(
     title: '', type: 'text',
     content: 'Hinweis: Diese Verfügung ist eine Zusammenfassung zur Entscheidungsfindung. Sie enthält keine Betragsfestsetzung nach §19 WoGG und ist keine rechtsverbindliche Bescheidvorlage.',
   });
+  // KI-Transparenz (Art. 13/14 DSGVO, AI Act) + Art. 22 DSGVO: keine automatisierte
+  // Einzelentscheidung — die Entscheidung trifft ein Mensch.
+  sections.push({
+    title: '', type: 'text',
+    content: 'KI-Transparenzhinweis: Bei der Bearbeitung dieses Vorgangs wurde ein KI-gestützter Assistent zur Vollständigkeits- und Plausibilitätsprüfung sowie zur Aufbereitung von Unterlagen eingesetzt. Es findet keine automatisierte Einzelentscheidung statt (Art. 22 DSGVO); die Entscheidung wurde von einer Sachbearbeiterin bzw. einem Sachbearbeiter geprüft und getroffen.',
+  });
 
   return {
     title: `Verfügung – ${vorgang.antragsId}`,

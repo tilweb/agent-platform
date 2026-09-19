@@ -7,7 +7,7 @@ import {
   wohngeldApi,
   WOHNGELDART_LABEL, ANTRAGSART_LABEL, STATUS_LABEL, STATUS_ORDER,
   PRIORITAET_LABEL, ROLLE_LABEL, DOKUMENT_TYP_LABEL, SCHREIBEN_ART_LABEL,
-  VERFUEGUNG_ENTSCHEIDUNG_LABEL, APP_ROLE_LABEL, aktionLabel,
+  VERFUEGUNG_ENTSCHEIDUNG_LABEL, APP_ROLE_LABEL, aktionLabel, kiZweckLabel,
   ACCENT, ACCENT_LIGHT,
 } from './api';
 import StatusBadge from './components/StatusBadge';
@@ -229,6 +229,8 @@ export default function VorgangDetail() {
 
   // Fall-Protokoll (GOV-1): welche Einträge ihren Vorher/Nachher-Diff aufgeklappt zeigen
   const [protokollOffen, setProtokollOffen] = useState({});
+  // KI-Nutzung je Vorgang (GOV-3): Transparenz über eingesetzte KI-Assistenz
+  const [kiNutzung, setKiNutzung] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -247,6 +249,10 @@ export default function VorgangDetail() {
         const tb = await wohngeldApi.listTextbausteine();
         if (!cancelled) setTextbausteine(tb);
       } catch { /* Textbausteine optional */ }
+      try {
+        const ki = await wohngeldApi.getKiNutzung(id);
+        if (!cancelled) setKiNutzung(ki);
+      } catch { /* KI-Nutzung optional — Übersicht funktioniert auch ohne */ }
     })();
     return () => { cancelled = true; };
   }, [id]);
@@ -1344,6 +1350,30 @@ export default function VorgangDetail() {
                       </div>
                     );
                   })}
+
+                <div style={styles.sideTitle}>KI-Nutzung</div>
+                <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, lineHeight: 1.5 }}>
+                  KI wird nur assistierend eingesetzt (Prüfung/Aufbereitung). Die Entscheidung trifft ein Mensch.
+                </div>
+                {kiNutzung.length === 0
+                  ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Für diesen Fall wurde noch keine KI-Assistenz genutzt.</div>
+                  : kiNutzung.map((e, i) => (
+                      <div key={`${e.timestamp}-${i}`} style={styles.activity}>
+                        <div style={styles.protoAktion}>{kiZweckLabel(e)}</div>
+                        <div style={styles.protoMeta}>
+                          {fmtDateTime(e.timestamp)}
+                          {e.modelId ? ` · Modell: ${e.modelId}` : ''}
+                          {e.totalTokens != null ? ` · ${e.totalTokens} Tokens` : ''}
+                        </div>
+                        {(e.promptVersion || e.rechtStand) && (
+                          <div style={styles.protoMeta}>
+                            {e.promptVersion ? `Prompt-Stand: ${e.promptVersion}` : ''}
+                            {e.promptVersion && e.rechtStand ? ' · ' : ''}
+                            {e.rechtStand ? `Rechtsstand: ${e.rechtStand}` : ''}
+                          </div>
+                        )}
+                      </div>
+                    ))}
               </div>
             )}
 

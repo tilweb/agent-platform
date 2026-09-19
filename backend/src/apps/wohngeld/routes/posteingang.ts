@@ -286,7 +286,7 @@ posteingangRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) => {
 
     const stored = await storeUpload(bytes, file.name, file.type || 'application/octet-stream');
     const text = await extractText(file, bytes);
-    const ergebnis = await klassifiziereUndExtrahiere(text, { userId, filename: stored.filename });
+    const ergebnis = await klassifiziereUndExtrahiere(text, { userId, filename: stored.filename, vorgangId });
     const ref = resolveStorageRef(stored.storageRef);
 
     const dok = await createDokument({

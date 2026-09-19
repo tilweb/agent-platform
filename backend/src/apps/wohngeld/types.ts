@@ -393,6 +393,24 @@ export interface AuditEintrag {
   ip?: string;
 }
 
+/**
+ * Ein KI-Nutzungseintrag eines Falls (GOV-3 / AI Act Art. 12) — abgeleitet aus
+ * `audit.usage_log`. Nur Metadaten (kein Prompt-/Antwort-Volltext): wann wurde
+ * WELCHES Modell zu WELCHEM Zweck unter WELCHEM Wissensstand eingesetzt.
+ */
+export interface KiNutzungEintrag {
+  timestamp: string;
+  source: string;                // z. B. 'chat', 'document_analysis'
+  operation?: string;            // z. B. 'wohngeld_fall_chat', 'wohngeld_klassifikation'
+  modelId?: string;
+  providerId?: string;
+  promptVersion?: string;        // Prompt-/Regelkatalog-Stand
+  rechtStand?: string;           // Rechtsstand des genutzten §-Korpus (nur Fall-Chat)
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+}
+
 // ── Feld-Provenienz (Welle 2, WP3) ─────────────────────────────────────────
 
 /** Ziel-Entität eines Feld-Status. */
