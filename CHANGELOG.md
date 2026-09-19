@@ -2,6 +2,17 @@
 
 ## 2026-09-19
 
+### Wohngeld — Demo-Seed (`backend/scripts/seed-wohngeld.ts`, nicht committen)
+Idempotentes Seed-Skript, das die Wohngeld-App mit realistischen synthetischen Demo-Daten befüllt
+(zum Live-Durchklicken). Legt ~9 Vorgänge über 8 Akten an (u. a. Goldfall Petermann mit Widersprüchen,
+frischer Posteingang, Familie in Wiedervorlage, überfälliger Selbständigen-Fall, Vermögen über
+Freigrenze, § 7-Transferausschluss, Lastenzuschuss, abgeschlossene Bewilligung; eine Akte mit zwei
+Vorgängen). Alle Demo-Akten tragen den Marker `data.demo === true`; beim Start werden bestehende
+Demo-Akten gelöscht (cascadet) und neu angelegt (`--keep` überspringt den Reset). Nutzt echte
+Prüfungen (`pruefeVorgang` + `syncPruefschritte`), generiert Anforderungsschreiben, setzt Feld-Provenienz,
+Notizen, Chat-Nachrichten und BWZ-Vorschläge. Ohne gesetzte DB-Env (`SCALINGO_POSTGRES`) bricht das
+Skript freundlich ab. Ausführung: `cd backend && /Users/andreasbachmann/.bun/bin/bun run scripts/seed-wohngeld.ts`.
+
 ### Wohngeld — Fall-Chat C3 (Formulieren + Übernahme) + C4 (Aktions-Vorschläge, Human-in-the-Loop)
 Umsetzung der Stufen C3/C4 aus `docs/wohngeld-fall-chat-spec-2026-09-19.md`. Baut auf C1/C2 auf,
 **keine neue Migration** (Chat-Aktionen liegen im vorhandenen `chat_messages.data`-jsonb), keine neuen
