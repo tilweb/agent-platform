@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { listDokumente, getDokument, createDokument, updateDokument, deleteDokument, getVorgang } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { loadDokumentDatei } from '../filestore';
-import { denyIfNotAppEditor } from './_shared';
+import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit, auditUpdate } from '../audit';
 
 export const dokumenteRoutes = new Hono();
@@ -75,6 +75,8 @@ dokumenteRoutes.post('/dokumente/:id/ablegen', async (c) => {
   const id = c.req.param('id');
   const dokument = await getDokument(id);
   if (!dokument) return c.json({ error: 'Dokument nicht gefunden' }, 404);
+  const eingeschr = await denyIfVorgangEingeschraenkt(dokument.vorgangId);
+  if (eingeschr) return c.json(eingeschr, 403);
   const updated = await updateDokument(id, { abgelegt: true });
   await audit(c, { aktion: 'dokument.abgelegt', objektTyp: 'dokument', objektId: id, vorgangId: dokument.vorgangId, detail: dateinameFuer(dokument) });
   return c.json({ dokument: updated });
@@ -84,7 +86,10 @@ dokumenteRoutes.post('/vorgaenge/:vorgangId/dokumente', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
   const vorgangId = c.req.param('vorgangId');
-  if (!(await getVorgang(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const vorgang = await getVorgang(vorgangId);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const eingeschr = denyIfEingeschraenkt(vorgang);
+  if (eingeschr) return c.json(eingeschr, 403);
   const body = await c.req.json<Record<string, unknown>>();
   const dokument = await createDokument({ ...body, vorgangId });
   await audit(c, { aktion: 'dokument.erstellt', objektTyp: 'dokument', objektId: dokument.id, vorgangId, detail: dokument.titel });
@@ -99,6 +104,8 @@ dokumenteRoutes.put('/dokumente/:id', async (c) => {
     const { expectedVersion, force, ...updates } = body ?? {};
     delete (updates as Record<string, unknown>).vorgangId;
     const before = await getDokument(c.req.param('id'));
+    const eingeschr = await denyIfVorgangEingeschraenkt(before?.vorgangId);
+    if (eingeschr) return c.json(eingeschr, 403);
     const dokument = await updateDokument(c.req.param('id'), updates, { expectedVersion, force });
     if (!dokument) return c.json({ error: 'Dokument nicht gefunden' }, 404);
     await auditUpdate(c, {
@@ -117,6 +124,8 @@ dokumenteRoutes.delete('/dokumente/:id', async (c) => {
   if (denied) return c.json(denied, 403);
   const id = c.req.param('id');
   const before = await getDokument(id);
+  const eingeschr = await denyIfVorgangEingeschraenkt(before?.vorgangId);
+  if (eingeschr) return c.json(eingeschr, 403);
   const ok = await deleteDokument(id);
   if (ok) await audit(c, { aktion: 'dokument.geloescht', objektTyp: 'dokument', objektId: id, vorgangId: before?.vorgangId, detail: before?.titel });
   return ok ? c.json({ ok: true }) : c.json({ error: 'Dokument nicht gefunden' }, 404);

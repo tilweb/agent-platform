@@ -11,7 +11,7 @@ import {
   listFeldStatus, getFeldStatus, bestaetigeFeld, bestaetigeAlle, loescheFeldStatus,
   getVorgang, updateVorgang, getPerson, updatePerson,
 } from '../storage';
-import { denyIfNotAppEditor } from './_shared';
+import { denyIfNotAppEditor, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit } from '../audit';
 import type { Vorgang } from '../types';
 
@@ -45,6 +45,8 @@ feldstatusRoutes.get('/vorgaenge/:vorgangId/feldstatus', async (c) => {
 feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/bestaetigen', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
+  const eingeschr = await denyIfVorgangEingeschraenkt(c.req.param('vorgangId'));
+  if (eingeschr) return c.json(eingeschr, 403);
   const fs = await bestaetigeFeld(c.req.param('fsId'));
   if (!fs) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
   await audit(c, { aktion: 'feld.bestaetigt', objektTyp: 'feldstatus', objektId: fs.id, vorgangId: fs.vorgangId, detail: fs.feldPfad });
@@ -54,6 +56,8 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/bestaetigen', asyn
 feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/verwerfen', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
+  const eingeschr = await denyIfVorgangEingeschraenkt(c.req.param('vorgangId'));
+  if (eingeschr) return c.json(eingeschr, 403);
   const fs = await getFeldStatus(c.req.param('fsId'));
   if (!fs) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
 
@@ -73,6 +77,8 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/alle-bestaetigen', async
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
   const vorgangId = c.req.param('vorgangId');
+  const eingeschr = await denyIfVorgangEingeschraenkt(vorgangId);
+  if (eingeschr) return c.json(eingeschr, 403);
   const feldStatus = await bestaetigeAlle(vorgangId);
   await audit(c, { aktion: 'feld.alle_bestaetigt', objektTyp: 'feldstatus', vorgangId, detail: 'Alle offenen KI-Vorschläge bestätigt' });
   return c.json({ feldStatus });

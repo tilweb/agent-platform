@@ -50,6 +50,12 @@ export const wohngeldApi = {
   createVorgang: (payload) => apiPost(`${base}/vorgaenge`, payload).then(json).then((d) => d.vorgang),
   updateVorgang: (id, payload) => apiPut(`${base}/vorgaenge/${id}`, payload).then(json).then((d) => d.vorgang),
   deleteVorgang: (id) => apiDelete(`${base}/vorgaenge/${id}`).then(json),
+  // GOV-5 — Legal Hold setzen/aufheben (Owner). Verhindert die Löschung.
+  setLegalHold: (id, legalHold, expectedVersion) => apiPut(`${base}/vorgaenge/${id}/legal-hold`, { legalHold, expectedVersion }).then(json).then((d) => d.vorgang),
+  // GOV-5 / Art. 18 — Verarbeitungs-Einschränkung setzen (Editor) / aufheben (Owner).
+  setEinschraenkung: (id, eingeschraenkt, expectedVersion) => apiPut(`${base}/vorgaenge/${id}/einschraenkung`, { eingeschraenkt, expectedVersion }).then(json).then((d) => d.vorgang),
+  // GOV-5 — Löschfällige Vorgänge (Owner): Frist abgelaufen, kein Legal Hold.
+  listLoeschfaellig: () => apiGet(`${base}/loeschfaellig`).then(json).then((d) => d.loeschfaellig),
   // Regel-Engine ausführen (Vollständigkeit + Plausibilität).
   pruefen: (id) => apiPost(`${base}/vorgaenge/${id}/pruefen`, {}).then(json),
   // § 13-Gesamteinkommen (read-only, angenommene §16-Abzugskategorien).
@@ -431,6 +437,10 @@ export const AKTION_LABEL = {
   'vorgang.erstellt': 'Vorgang erstellt',
   'vorgang.geaendert': 'Vorgang geändert',
   'vorgang.geloescht': 'Vorgang gelöscht',
+  'vorgang.legal_hold_gesetzt': 'Löschsperre (Legal Hold) gesetzt',
+  'vorgang.legal_hold_aufgehoben': 'Löschsperre (Legal Hold) aufgehoben',
+  'vorgang.einschraenkung_gesetzt': 'Verarbeitung eingeschränkt (Art. 18)',
+  'vorgang.einschraenkung_aufgehoben': 'Einschränkung aufgehoben',
   'akte.erstellt': 'Akte erstellt',
   'akte.geaendert': 'Akte geändert',
   'akte.geloescht': 'Akte gelöscht',

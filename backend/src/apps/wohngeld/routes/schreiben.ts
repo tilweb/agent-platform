@@ -8,7 +8,7 @@ import { generiereAnforderungsschreiben } from '../schreiben-generator';
 import { fmtDe } from '../bwz';
 import { schreibenToDocument } from '../schreiben-export';
 import { generateDocument, getMimeType, type DocumentFormat } from '../../../services/documentGenerator';
-import { denyIfNotAppEditor } from './_shared';
+import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit } from '../audit';
 
 export const schreibenRoutes = new Hono();
@@ -56,6 +56,8 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/generieren', async (c) => 
   const vorgangId = c.req.param('vorgangId');
   const vorgang = await getVorgang(vorgangId);
   if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const eingeschr = denyIfEingeschraenkt(vorgang);
+  if (eingeschr) return c.json(eingeschr, 403);
   const body = await c.req.json<{ art?: string; fristTage?: number; schreibenId?: string }>().catch(() => ({} as { art?: string; fristTage?: number; schreibenId?: string }));
   const [personen, pruefschritte] = await Promise.all([listPersonen(vorgangId), listPruefschritte(vorgangId)]);
   const entwurf = generiereAnforderungsschreiben(vorgang, personen, pruefschritte, {
@@ -96,6 +98,8 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/:sid/versendet', async (c)
   const sid = c.req.param('sid');
   const vorgang = await getVorgang(vorgangId);
   if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const eingeschr = denyIfEingeschraenkt(vorgang);
+  if (eingeschr) return c.json(eingeschr, 403);
   const schreiben = await getSchreiben(sid);
   if (!schreiben || schreiben.vorgangId !== vorgangId) return c.json({ error: 'Schreiben nicht gefunden' }, 404);
   try {
@@ -125,6 +129,8 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/text-anhaengen', async (c)
   const vorgangId = c.req.param('vorgangId');
   const vorgang = await getVorgang(vorgangId);
   if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const eingeschr = denyIfEingeschraenkt(vorgang);
+  if (eingeschr) return c.json(eingeschr, 403);
   const body = await c.req.json<{ text?: string }>().catch(() => ({} as { text?: string }));
   const text = (body?.text ?? '').trim();
   if (!text) return c.json({ error: 'text ist erforderlich' }, 400);
@@ -155,6 +161,9 @@ schreibenRoutes.put('/schreiben/:id', async (c) => {
     const body = await c.req.json<{ expectedVersion?: number; force?: boolean; [k: string]: unknown }>();
     const { expectedVersion, force, ...updates } = body ?? {};
     delete (updates as Record<string, unknown>).vorgangId;
+    const before = await getSchreiben(c.req.param('id'));
+    const eingeschr = await denyIfVorgangEingeschraenkt(before?.vorgangId);
+    if (eingeschr) return c.json(eingeschr, 403);
     const schreiben = await updateSchreiben(c.req.param('id'), updates, { expectedVersion, force });
     if (!schreiben) return c.json({ error: 'Schreiben nicht gefunden' }, 404);
     await audit(c, { aktion: 'schreiben.geaendert', objektTyp: 'schreiben', objektId: schreiben.id, vorgangId: schreiben.vorgangId });
@@ -170,6 +179,8 @@ schreibenRoutes.delete('/schreiben/:id', async (c) => {
   if (denied) return c.json(denied, 403);
   const id = c.req.param('id');
   const before = await getSchreiben(id);
+  const eingeschr = await denyIfVorgangEingeschraenkt(before?.vorgangId);
+  if (eingeschr) return c.json(eingeschr, 403);
   const ok = await deleteSchreiben(id);
   if (ok) await audit(c, { aktion: 'schreiben.geloescht', objektTyp: 'schreiben', objektId: id, vorgangId: before?.vorgangId });
   return ok ? c.json({ ok: true }) : c.json({ error: 'Schreiben nicht gefunden' }, 404);

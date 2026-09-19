@@ -21,6 +21,11 @@ const styles = {
     padding: `${theme.spacing.sm} ${theme.spacing.lg}`, backgroundColor: 'transparent', color: theme.colors.text, border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.borderRadius.lg, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, cursor: 'pointer',
   },
+  btnDanger: {
+    padding: `6px ${theme.spacing.md}`, backgroundColor: 'transparent', color: theme.colors.error, border: `1px solid ${theme.colors.error}30`,
+    borderRadius: theme.borderRadius.md, fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, cursor: 'pointer', whiteSpace: 'nowrap',
+  },
+  hint: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.lg, lineHeight: 1.5 },
   toolbar: { display: 'flex', gap: theme.spacing.md, marginBottom: theme.spacing.lg, flexWrap: 'wrap', alignItems: 'center' },
   search: {
     flex: 1, minWidth: 220, padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontSize: theme.typography.sizes.base,
@@ -124,6 +129,13 @@ export default function WohngeldPage() {
   const [protFilter, setProtFilter] = useState({ von: '', bis: '', aktion: '', vorgangId: '' });
   const [akteurQuery, setAkteurQuery] = useState('');
 
+  // Löschfällige Vorgänge (GOV-5, nur Owner)
+  const [loeschfaellig, setLoeschfaellig] = useState([]);
+  const [lfLoading, setLfLoading] = useState(false);
+  const [lfLoaded, setLfLoaded] = useState(false);
+  const [lfDeleteTarget, setLfDeleteTarget] = useState(null); // Vorgang für Bestätigungsdialog
+  const [lfDeleting, setLfDeleting] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -220,6 +232,40 @@ export default function WohngeldPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, isOwner, protLoaded]);
 
+  async function loadLoeschfaellig() {
+    setLfLoading(true); setError('');
+    try {
+      const items = await wohngeldApi.listLoeschfaellig();
+      setLoeschfaellig(items || []);
+      setLfLoaded(true);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLfLoading(false);
+    }
+  }
+
+  // Löschfällige Vorgänge erst bei Bedarf laden (beim ersten Wechsel in die Ansicht).
+  useEffect(() => {
+    if (viewMode !== 'loeschfaellig' || !isOwner || lfLoaded) return;
+    loadLoeschfaellig();
+  }, [viewMode, isOwner, lfLoaded]);
+
+  async function confirmLoeschen() {
+    if (!lfDeleteTarget) return;
+    setLfDeleting(true); setError('');
+    try {
+      await wohngeldApi.deleteVorgang(lfDeleteTarget.id);
+      setLoeschfaellig((list) => list.filter((v) => v.id !== lfDeleteTarget.id));
+      setVorgaenge((vs) => vs.filter((v) => v.id !== lfDeleteTarget.id));
+      setLfDeleteTarget(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLfDeleting(false);
+    }
+  }
+
   // Lokale Akteur-Textsuche über die geladenen Protokolleinträge.
   const protokollGefiltert = useMemo(() => {
     const q = akteurQuery.trim().toLowerCase();
@@ -314,6 +360,9 @@ export default function WohngeldPage() {
         <button style={{ ...styles.viewTab, ...(viewMode === 'aufgaben' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('aufgaben')}>Aufgaben</button>
         {isOwner && (
           <button style={{ ...styles.viewTab, ...(viewMode === 'protokoll' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('protokoll')}>Protokoll</button>
+        )}
+        {isOwner && (
+          <button style={{ ...styles.viewTab, ...(viewMode === 'loeschfaellig' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('loeschfaellig')}>Löschfällig</button>
         )}
       </div>
 
@@ -651,6 +700,79 @@ export default function WohngeldPage() {
             </>
           )}
         </>
+      )}
+
+      {viewMode === 'loeschfaellig' && isOwner && (
+        <>
+          <p style={styles.hint}>
+            Vorgänge, deren gesetzliche Aufbewahrungsfrist abgelaufen ist und für die kein Legal Hold besteht.
+            Die Löschung erfolgt manuell und muss bestätigt werden — es gibt keine automatische Löschung.
+          </p>
+          {lfLoading ? (
+            <div style={styles.empty}>Lädt…</div>
+          ) : loeschfaellig.length === 0 ? (
+            <div style={styles.empty}>Keine löschfälligen Vorgänge.</div>
+          ) : (
+            <div style={styles.tableWrap}>
+              <div style={styles.tableScroll}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Antrags-ID</th>
+                      <th style={styles.th}>Antragsteller</th>
+                      <th style={styles.th}>Status</th>
+                      <th style={styles.th}>Aufbewahrung bis</th>
+                      <th style={styles.th}>Aktion</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loeschfaellig.map((v) => (
+                      <tr key={v.id}>
+                        <td
+                          style={{ ...styles.td, fontWeight: theme.typography.weights.medium, color: ACCENT, cursor: 'pointer' }}
+                          onClick={() => navigate(`/apps/wohngeld/vorgang/${v.id}`)}
+                        >
+                          {v.antragsId}
+                        </td>
+                        <td style={styles.td}>{v.antragsteller}</td>
+                        <td style={styles.td}><StatusBadge status={v.status} /></td>
+                        <td style={{ ...styles.td, color: theme.colors.error, fontWeight: theme.typography.weights.semibold }}>{fmtDate(v.aufbewahrungBis)}</td>
+                        <td style={styles.td}>
+                          <button style={styles.btnDanger} onClick={() => setLfDeleteTarget(v)}>Löschen</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {lfDeleteTarget && (
+        <div style={styles.overlay} onClick={() => !lfDeleting && setLfDeleteTarget(null)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalTitle}>Vorgang endgültig löschen?</div>
+            <p style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text, marginBottom: theme.spacing.md, lineHeight: 1.6 }}>
+              Der Vorgang <strong>{lfDeleteTarget.antragsId}</strong> ({lfDeleteTarget.antragsteller}) und alle zugehörigen
+              Personen, Dokumente, Prüfschritte und Schreiben werden unwiderruflich gelöscht.
+            </p>
+            <p style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.lg, lineHeight: 1.6 }}>
+              Aufbewahrungsfrist abgelaufen am {fmtDate(lfDeleteTarget.aufbewahrungBis)}. Diese Aktion wird protokolliert.
+            </p>
+            <div style={styles.modalActions}>
+              <button style={styles.btnGhost} onClick={() => setLfDeleteTarget(null)} disabled={lfDeleting}>Abbrechen</button>
+              <button
+                style={{ ...styles.btn, backgroundColor: theme.colors.error }}
+                onClick={confirmLoeschen}
+                disabled={lfDeleting}
+              >
+                {lfDeleting ? 'Löscht…' : 'Endgültig löschen'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {dialog && (

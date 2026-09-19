@@ -174,6 +174,12 @@ export interface Vorgang extends Timestamped, Versioned {
   todos?: VorgangTodo[];
   /** Verfügung/Entscheidung (Welle 5, WP11). */
   verfuegung?: VorgangVerfuegung;
+  /** GOV-5 — Aufbewahrungs-Enddatum (ISO). Bei Abschluss automatisch gesetzt (Retention). */
+  aufbewahrungBis?: string;
+  /** GOV-5 — Legal Hold: verhindert Löschung, auch nach Fristablauf. */
+  legalHold?: boolean;
+  /** GOV-5 — Verarbeitung eingeschränkt (Art. 18 DSGVO): nur noch lesend. */
+  eingeschraenkt?: boolean;
   permissions?: AppPermissions;
 }
 

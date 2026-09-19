@@ -69,6 +69,10 @@ const styles = {
   editLabel: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted },
   error: { padding: theme.spacing.md, backgroundColor: theme.colors.errorLight, color: theme.colors.error, borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.md, fontSize: theme.typography.sizes.sm },
   info: { padding: theme.spacing.md, backgroundColor: theme.colors.infoLight, color: theme.colors.info, borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.md, fontSize: theme.typography.sizes.sm },
+  einschrBanner: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, padding: `${theme.spacing.md} ${theme.spacing['2xl']}`, backgroundColor: theme.colors.warningLight, color: theme.colors.warning, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, borderBottom: `1px solid ${theme.colors.border}` },
+  govRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm, padding: '3px 0' },
+  govLabel: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted },
+  govValue: { fontSize: theme.typography.sizes.sm, color: theme.colors.text, fontWeight: theme.typography.weights.medium },
   bestaetigungBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, padding: `${theme.spacing.sm} ${theme.spacing.md}`, backgroundColor: ACCENT_LIGHT, borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.md, fontSize: theme.typography.sizes.sm, flexWrap: 'wrap' },
   bestaetigungText: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm, color: theme.colors.text },
   bestaetigungDot: { width: 7, height: 7, borderRadius: theme.borderRadius.full, backgroundColor: ACCENT, flexShrink: 0 },
@@ -174,7 +178,8 @@ export default function VorgangDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useAppPermission();
-  const canEdit = role === 'owner' || role === 'editor';
+  const canEditRole = role === 'owner' || role === 'editor';
+  const isOwner = role === 'owner';
 
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState('');
@@ -358,6 +363,9 @@ export default function VorgangDetail() {
   }
 
   const { vorgang, akte, personen, dokumente, pruefschritte, schreiben } = detail;
+  // GOV-5 / Art. 18: bei eingeschränkter Verarbeitung sind alle Bearbeiten-Aktionen gesperrt (nur lesend).
+  const eingeschraenkt = !!vorgang.eingeschraenkt;
+  const canEdit = canEditRole && !eingeschraenkt;
   const protokoll = detail.protokoll || [];
   const feldStatus = detail.feldStatus || [];
   const notizen = detail.notizen || [];
@@ -436,6 +444,35 @@ export default function VorgangDetail() {
     setBusy(true); setError('');
     try {
       const updated = await wohngeldApi.updateVorgang(id, { status, expectedVersion: vorgang.version });
+      setDetail((d) => ({ ...d, vorgang: updated }));
+      await reload();
+    } catch (e) {
+      if (e.status === 409) { setError('Konflikt: Der Vorgang wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); }
+      else setError(e.message);
+    } finally { setBusy(false); }
+  }
+
+  // ── GOV-5: Legal Hold & Verarbeitungs-Einschränkung (Art. 18) ──
+  async function toggleLegalHold() {
+    setBusy(true); setError('');
+    try {
+      const updated = await wohngeldApi.setLegalHold(id, !vorgang.legalHold, vorgang.version);
+      setDetail((d) => ({ ...d, vorgang: updated }));
+      await reload();
+    } catch (e) {
+      if (e.status === 409) { setError('Konflikt: Der Vorgang wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); }
+      else setError(e.message);
+    } finally { setBusy(false); }
+  }
+  async function toggleEinschraenkung() {
+    const setzen = !vorgang.eingeschraenkt;
+    const frage = setzen
+      ? 'Verarbeitung nach Art. 18 DSGVO einschränken? Der Vorgang wird dann für alle Bearbeiten-Aktionen gesperrt (nur lesend).'
+      : 'Einschränkung aufheben und den Vorgang wieder zur Bearbeitung freigeben?';
+    if (!window.confirm(frage)) return;
+    setBusy(true); setError('');
+    try {
+      const updated = await wohngeldApi.setEinschraenkung(id, setzen, vorgang.version);
       setDetail((d) => ({ ...d, vorgang: updated }));
       await reload();
     } catch (e) {
@@ -717,6 +754,13 @@ export default function VorgangDetail() {
           )}
         </div>
       </div>
+
+      {eingeschraenkt && (
+        <div style={styles.einschrBanner}>
+          <InfoIcon size={16} color={theme.colors.warning} />
+          Verarbeitung eingeschränkt (Art. 18 DSGVO) — dieser Vorgang ist gesperrt und kann nur gelesen werden.
+        </div>
+      )}
 
       <div style={styles.layout}>
         {/* ── MITTE ── */}
@@ -1248,6 +1292,35 @@ export default function VorgangDetail() {
                     )}
                   </>
                 )}
+
+                {/* GOV-5 — Aufbewahrung, Legal Hold & Verarbeitungs-Einschränkung */}
+                <div style={styles.sideTitle}>Aufbewahrung & Schutz</div>
+                <div style={styles.govRow}>
+                  <span style={styles.govLabel}>Aufbewahrung bis</span>
+                  <span style={styles.govValue}>{vorgang.aufbewahrungBis ? fmtDate(vorgang.aufbewahrungBis) : 'Bei Abschluss'}</span>
+                </div>
+                <div style={styles.govRow}>
+                  <span style={styles.govLabel}>Legal Hold</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                    <span style={styles.govValue}>{vorgang.legalHold ? 'Aktiv (Löschsperre)' : 'Nein'}</span>
+                    {isOwner && (
+                      <button style={styles.btnSmall} onClick={toggleLegalHold} disabled={busy}>
+                        {vorgang.legalHold ? 'Aufheben' : 'Setzen'}
+                      </button>
+                    )}
+                  </span>
+                </div>
+                <div style={styles.govRow}>
+                  <span style={styles.govLabel}>Verarbeitung (Art. 18)</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                    <span style={{ ...styles.govValue, ...(eingeschraenkt ? { color: theme.colors.warning } : {}) }}>
+                      {eingeschraenkt ? 'Eingeschränkt' : 'Normal'}
+                    </span>
+                    {eingeschraenkt
+                      ? (isOwner && <button style={styles.btnSmall} onClick={toggleEinschraenkung} disabled={busy}>Aufheben</button>)
+                      : (canEditRole && <button style={styles.btnSmall} onClick={toggleEinschraenkung} disabled={busy}>Einschränken</button>)}
+                  </span>
+                </div>
 
                 <div style={{ ...styles.sideTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.xs, cursor: 'pointer' }} onClick={() => setTodosCollapsed((v) => !v)}>
                   <ChevronDownIcon size={12} style={{ transform: todosCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: `transform ${theme.transitions.fast}` }} />

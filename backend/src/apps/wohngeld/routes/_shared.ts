@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { getVorgang } from '../storage';
 
 type AppRole = 'owner' | 'editor' | 'viewer';
 
@@ -48,4 +49,32 @@ export function vierAugenAktiv(): boolean {
 export function darfEntscheiden(appRole: AppRole | string | undefined, vierAugen: boolean): boolean {
   if (vierAugen) return appRole === 'owner';
   return appRole === 'owner' || appRole === 'editor';
+}
+
+/**
+ * GOV-5 / Art. 18 DSGVO — reiner Helfer: sperrt schreibende Zugriffe, wenn die
+ * Verarbeitung des Vorgangs eingeschränkt ist ("nur lesend"). Gibt Fehlerobjekt
+ * zurück oder null. Das Setzen/Aufheben der Einschränkung selbst ist davon
+ * ausgenommen (eigene Route).
+ */
+export function denyIfEingeschraenkt(
+  vorgang: { eingeschraenkt?: boolean } | null | undefined,
+): { error: string } | null {
+  if (vorgang?.eingeschraenkt) {
+    return { error: 'Verarbeitung eingeschränkt (Art. 18 DSGVO) — nur lesend.' };
+  }
+  return null;
+}
+
+/**
+ * Bequemer Wrapper: lädt den Vorgang und prüft die Einschränkung. Für Routen,
+ * die nur die vorgangId (bzw. die eines Kind-Objekts) kennen. Fehlende ID → null
+ * (nichts zu sperren).
+ */
+export async function denyIfVorgangEingeschraenkt(
+  vorgangId: string | null | undefined,
+): Promise<{ error: string } | null> {
+  if (!vorgangId) return null;
+  const vorgang = await getVorgang(vorgangId);
+  return denyIfEingeschraenkt(vorgang);
 }

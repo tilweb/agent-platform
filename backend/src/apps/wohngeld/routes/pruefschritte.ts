@@ -4,7 +4,7 @@ import {
   getVorgang,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
-import { denyIfNotAppEditor } from './_shared';
+import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit } from '../audit';
 
 export const pruefschritteRoutes = new Hono();
@@ -18,7 +18,10 @@ pruefschritteRoutes.post('/vorgaenge/:vorgangId/pruefschritte', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
   const vorgangId = c.req.param('vorgangId');
-  if (!(await getVorgang(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const vorgang = await getVorgang(vorgangId);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const eingeschr = denyIfEingeschraenkt(vorgang);
+  if (eingeschr) return c.json(eingeschr, 403);
   const body = await c.req.json<{ titel?: string; [k: string]: unknown }>();
   if (!body?.titel?.trim()) return c.json({ error: 'titel ist erforderlich' }, 400);
   const pruefschritt = await createPruefschritt({ ...body, vorgangId, titel: body.titel.trim() });
@@ -35,6 +38,8 @@ pruefschritteRoutes.put('/pruefschritte/:id', async (c) => {
     const { expectedVersion, force, ...updates } = body ?? {};
     delete (updates as Record<string, unknown>).vorgangId;
     const before = await getPruefschritt(c.req.param('id'));
+    const eingeschr = await denyIfVorgangEingeschraenkt(before?.vorgangId);
+    if (eingeschr) return c.json(eingeschr, 403);
     const pruefschritt = await updatePruefschritt(c.req.param('id'), updates, { expectedVersion, force });
     if (!pruefschritt) return c.json({ error: 'Prüfschritt nicht gefunden' }, 404);
     if (before && updates.status && updates.status !== before.status) {
@@ -57,6 +62,8 @@ pruefschritteRoutes.delete('/pruefschritte/:id', async (c) => {
   if (denied) return c.json(denied, 403);
   const id = c.req.param('id');
   const before = await getPruefschritt(id);
+  const eingeschr = await denyIfVorgangEingeschraenkt(before?.vorgangId);
+  if (eingeschr) return c.json(eingeschr, 403);
   const ok = await deletePruefschritt(id);
   if (ok) await audit(c, { aktion: 'pruefschritt.geloescht', objektTyp: 'pruefschritt', objektId: id, vorgangId: before?.vorgangId, detail: before?.titel });
   return ok ? c.json({ ok: true }) : c.json({ error: 'Prüfschritt nicht gefunden' }, 404);

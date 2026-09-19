@@ -2,6 +2,46 @@
 
 ## 2026-09-19
 
+### Wohngeld — GOV-5 Aufbewahrung/Löschung + Legal Hold + Verarbeitungs-Einschränkung (Governance, `docs/wohngeld-governance-spec-2026-09-19.md`)
+Umsetzung der Welle GOV-5 (deckt G-J Aufbewahrung/Löschung + G-I / Art. 18 DSGVO). Alles in
+`vorgang.data` (neue optionale Felder `aufbewahrungBis`, `legalHold`, `eingeschraenkt`) — **keine
+Migration**, rückwärtskompatibel. Keine neuen npm-Dependencies.
+
+**Aufbewahrung (Retention).** Neuer reiner, getesteter Helfer `retention.ts`:
+`berechneAufbewahrungBis(status, antragsart, stichtag, jahre?)` (nur bei Abschluss-Status
+`abgeschlossen`/`entscheidung` = Stichtag + Frist; Default 10 J. via ENV `WOHNGELD_AUFBEWAHRUNG_JAHRE`,
+kürzere Frist 2 J. für abgelehnte Verfügungen via `WOHNGELD_AUFBEWAHRUNG_ABGELEHNT_JAHRE`),
+`istLoeschfaellig(vorgang, heute)` (Frist strikt < heute UND kein Legal Hold), plus `addJahre`
+(29.02.-Kappung) und `istAbschlussStatus`. In `routes/vorgaenge.ts` setzt `PUT /vorgaenge/:id` und
+`PUT …/verfuegung` die `aufbewahrungBis` automatisch beim Wechsel in einen Abschluss-Status —
+nur wenn noch nicht gesetzt (nie überschreiben).
+
+**Legal Hold + Löschung mit Bestätigung.** `DELETE /vorgaenge/:id` blockiert bei gesetztem
+`legalHold` (409, klare Meldung) — kein stilles Hard-Delete. Neue Route `PUT /vorgaenge/:id/legal-hold`
+(Owner-Gate) setzt/entfernt die Löschsperre, auditiert (`vorgang.legal_hold_gesetzt`/`_aufgehoben`).
+Neue Route `GET /loeschfaellig` (Owner-Gate) listet löschfällige Vorgänge (Frist abgelaufen, kein
+Legal Hold), angereichert um Antragsteller/Status/`aufbewahrungBis`. Frontend: neuer View-Modus
+**„Löschfällig"** in `WohngeldPage.jsx` (nur Owner) — Liste + „Löschen" je Zeile mit
+Bestätigungsdialog (Hinweis auf abgelaufene Frist, Löschung über die bestehende DELETE-Route).
+
+**Verarbeitungs-Einschränkung (Art. 18 DSGVO).** Reiner Helfer `denyIfEingeschraenkt(vorgang)` +
+Wrapper `denyIfVorgangEingeschraenkt(vorgangId)` in `routes/_shared.ts` (Meldung „Verarbeitung
+eingeschränkt (Art. 18 DSGVO) — nur lesend.", 403). Durchgesetzt in den kern-mutierenden Routen:
+`PUT /vorgaenge/:id`, `POST …/pruefen`, `POST …/bwz-vorschlag-uebernehmen`, `PUT …/verfuegung`,
+Personen create/update/delete, Dokumente create/update/delete/ablegen, Prüfschritte create/update/delete,
+Feld-Status bestätigen/verwerfen/alle-bestätigen, Schreiben generieren/versendet/text-anhängen/update/delete.
+Das generische `PUT /vorgaenge/:id` strippt zudem `legalHold`/`eingeschraenkt` (nur über die eigenen
+auditierten Routen änderbar). Neue Route `PUT /vorgaenge/:id/einschraenkung` — Setzen: Editor-Gate,
+Aufheben: Owner-Gate — auditiert (`vorgang.einschraenkung_gesetzt`/`_aufgehoben`). Frontend
+`VorgangDetail.jsx`: deutlicher Banner „Verarbeitung eingeschränkt" im Detail, Details-Tab-Abschnitt
+„Aufbewahrung & Schutz" (Aufbewahrung bis, Legal-Hold-Toggle für Owner, Einschränkungs-Toggle:
+Setzen Editor/Aufheben Owner), und **alle Bearbeiten-Aktionen sind gesperrt/ausgegraut** solange
+der Vorgang eingeschränkt ist (`canEdit = canEditRole && !eingeschraenkt`).
+
+**Tests.** `retention.test.ts` (17 Fälle: Abschluss-Status, Fristberechnung inkl. Schaltjahr-Kappung,
+Löschfälligkeit inkl. Legal Hold). Backend `bun test src/apps/wohngeld/` grün (161 Tests),
+`tsc --noEmit` ohne Wohngeld-Fehler; Frontend eslint + build grün.
+
 ### Wohngeld — GOV-4 Admin/DSB-Protokollansicht + Betroffenen-Auskunft (Governance, `docs/wohngeld-governance-spec-2026-09-19.md`)
 Umsetzung der Welle GOV-4 (deckt G-A Sicht + G-I / Art. 15/20 DSGVO, §35 SGB I). Keine neuen npm-Dependencies, keine Migration.
 

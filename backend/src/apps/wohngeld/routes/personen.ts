@@ -4,7 +4,7 @@ import {
   getVorgang, getAkte, listDokumente, listAuditEintraege,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
-import { denyIfNotAppEditor } from './_shared';
+import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit, auditUpdate } from '../audit';
 import { auskunftToDocument, auskunftToJson } from '../auskunft-export';
 import { generateDocument, getMimeType, type DocumentFormat } from '../../../services/documentGenerator';
@@ -74,7 +74,10 @@ personenRoutes.post('/vorgaenge/:vorgangId/personen', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
   const vorgangId = c.req.param('vorgangId');
-  if (!(await getVorgang(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const vorgang = await getVorgang(vorgangId);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const eingeschr = denyIfEingeschraenkt(vorgang);
+  if (eingeschr) return c.json(eingeschr, 403);
   const body = await c.req.json<Record<string, unknown>>();
   const person = await createPerson({ ...body, vorgangId });
   await audit(c, {
@@ -92,6 +95,8 @@ personenRoutes.put('/personen/:id', async (c) => {
     const { expectedVersion, force, ...updates } = body ?? {};
     delete (updates as Record<string, unknown>).vorgangId;
     const before = await getPerson(c.req.param('id'));
+    const eingeschr = await denyIfVorgangEingeschraenkt(before?.vorgangId);
+    if (eingeschr) return c.json(eingeschr, 403);
     const person = await updatePerson(c.req.param('id'), updates, { expectedVersion, force });
     if (!person) return c.json({ error: 'Person nicht gefunden' }, 404);
     await auditUpdate(c, {
@@ -110,6 +115,8 @@ personenRoutes.delete('/personen/:id', async (c) => {
   if (denied) return c.json(denied, 403);
   const id = c.req.param('id');
   const before = await getPerson(id);
+  const eingeschr = await denyIfVorgangEingeschraenkt(before?.vorgangId);
+  if (eingeschr) return c.json(eingeschr, 403);
   const ok = await deletePerson(id);
   if (ok) await audit(c, {
     aktion: 'person.geloescht', objektTyp: 'person', objektId: id, vorgangId: before?.vorgangId,
