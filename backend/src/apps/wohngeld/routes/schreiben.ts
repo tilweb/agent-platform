@@ -113,6 +113,40 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/:sid/versendet', async (c)
   }
 });
 
+/**
+ * Chat-Assistenz-Text an ein Schreiben anhängen (C3, Editor-Gate).
+ * Hängt `text` als neuen Absatz an das JÜNGSTE Schreiben des Vorgangs an;
+ * existiert noch keines, wird ein neues angelegt. Gibt `{ schreiben }` zurück.
+ */
+schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/text-anhaengen', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+  const vorgangId = c.req.param('vorgangId');
+  const vorgang = await getVorgang(vorgangId);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const body = await c.req.json<{ text?: string }>().catch(() => ({} as { text?: string }));
+  const text = (body?.text ?? '').trim();
+  if (!text) return c.json({ error: 'text ist erforderlich' }, 400);
+
+  const bestehende = await listSchreiben(vorgangId); // desc(createdAt) → [0] = jüngstes
+  const juengstes = bestehende[0];
+  try {
+    if (juengstes) {
+      const body0 = (juengstes.body ?? '').trimEnd();
+      const neuerBody = body0 ? `${body0}\n\n${text}` : text;
+      const schreiben = await updateSchreiben(juengstes.id, { body: neuerBody }, { expectedVersion: juengstes.version });
+      await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: 'Assistenz-Text ins Anforderungsschreiben übernommen' });
+      return c.json({ schreiben }, 200);
+    }
+    const schreiben = await createSchreiben({ vorgangId, art: 'erstanforderung', body: text });
+    await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: 'Anforderungsschreiben aus Assistenz-Text angelegt' });
+    return c.json({ schreiben }, 201);
+  } catch (err) {
+    if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
+    return c.json({ error: 'Anhängen fehlgeschlagen' }, 500);
+  }
+});
+
 schreibenRoutes.put('/schreiben/:id', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);

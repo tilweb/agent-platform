@@ -2,6 +2,31 @@
 
 ## 2026-09-19
 
+### Wohngeld — Fall-Chat C3 (Formulieren + Übernahme) + C4 (Aktions-Vorschläge, Human-in-the-Loop)
+Umsetzung der Stufen C3/C4 aus `docs/wohngeld-fall-chat-spec-2026-09-19.md`. Baut auf C1/C2 auf,
+**keine neue Migration** (Chat-Aktionen liegen im vorhandenen `chat_messages.data`-jsonb), keine neuen
+npm-Dependencies. Leitprinzip: **nichts wird ohne Klick ausgeführt.**
+
+**C3 — Formulieren + Übernahme.** Assistenz-Antworten sind jetzt direkt weiterverwendbar. Backend: neuer
+Endpoint `POST /vorgaenge/:vorgangId/schreiben/text-anhaengen` (Editor-Gate) hängt den Text als neuen
+Absatz an das **jüngste** Schreiben des Vorgangs an (existiert keins, wird eins angelegt) und
+protokolliert die Aktivität. Textbaustein- und Notiz-Speichern nutzen die bestehenden Endpoints
+(`POST /textbausteine`, `POST /vorgaenge/:id/notizen` mit Anker `chat`). Frontend (`FallChat`): unter
+jeder Assistenz-Antwort ein dezentes Menü „In Anforderungsschreiben übernehmen" · „Als Textbaustein
+speichern" (kleiner Dialog Kategorie + Titel) · „Als Notiz speichern" — nur für Editor/Owner; nach
+Erfolg kurze Inline-Bestätigung + Detail-Reload via neue Prop `onDidMutate`.
+
+**C4 — Aktions-Vorschläge (Function-Calling ohne Auto-Ausführung).** Der System-Prompt lässt das Modell
+am Ende optional maschinenlesbare Marker `<<AKTION: id[, id]>>` ausgeben. Backend (`routes/chat.ts`):
+neue reine, getestete Funktionen `parseAntwort` (trennt sichtbaren Text von `<<QUELLEN:…>>`- und
+`<<AKTION:…>>`-Markern, `safeEmitLength` hält beide Marker-Präfixe während des Streamings zurück) und
+`resolveAktionen` (filtert gegen die **Whitelist** `pruefen` · `schreiben_generieren` · `bwz_uebernehmen`,
+dedupliziert, mappt auf deutsche Labels — alles andere wird ignoriert). Vorschläge werden im `done`-Event
+gesendet und in `ChatMessage.data.actions` (`types.ts`: `ChatAction`) persistiert. Frontend: Aktionen als
+Buttons unter der Antwort (nur Editor/Owner) → **Bestätigungsdialog** → führt die bestehende App-Aktion
+aus (`pruefen`/`generiereSchreiben`/`bwzVorschlagUebernehmen`), danach Detail-Reload + Inline-Bestätigung.
+Test: `routes/chat.test.ts` deckt Marker-Parsing + Whitelist ab.
+
 ### Wohngeld — Welle 5 der Gap-Umsetzung (WP9 Akten-Browser + Aufgaben, WP10 Dokumente/Ablage + Vorschau, WP11 Verfügung)
 Umsetzung von Welle 5 aus `docs/wohngeld-gap-umsetzung-specs-2026-09-19.md`. Rückwärtskompatibel,
 **keine neue Migration** — neue Daten liegen in `vorgang.data`/`dokument.data`, Dateien werden über den

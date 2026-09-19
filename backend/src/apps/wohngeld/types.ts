@@ -418,6 +418,16 @@ export type ChatSource =
   | { art: 'dokument'; dokumentId: string; label: string; seite?: number }
   | { art: 'recht'; ref: string; label: string; url?: string };
 
+/**
+ * Vom Modell vorgeschlagene App-Aktion (Stufe G / C4). NUR Vorschlag — die
+ * Ausführung passiert erst nach Klick + Bestätigung durch den Menschen.
+ * `id` stammt aus einer festen Whitelist; `label` ist der deutsche Anzeigetext.
+ */
+export interface ChatAction {
+  id: string;
+  label: string;
+}
+
 /** Chat-Nachricht (append-only) im Fall-Verlauf eines Vorgangs. */
 export interface ChatMessage {
   id: string;
@@ -425,6 +435,8 @@ export interface ChatMessage {
   rolle: 'user' | 'assistant';
   content: string;
   sources?: ChatSource[];
+  /** Vorgeschlagene Aktionen (C4) — nur bei Assistenz-Antworten, Ausführung per Klick. */
+  actions?: ChatAction[];
   model?: string;
   tokens?: number;
   created_at: string;

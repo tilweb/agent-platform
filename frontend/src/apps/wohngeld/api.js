@@ -96,6 +96,8 @@ export const wohngeldApi = {
   deleteSchreiben: (id) => apiDelete(`${base}/schreiben/${id}`).then(json),
   // Schreiben als versendet markieren (WP7 — setzt Status + Frist/Wiedervorlage).
   markSchreibenVersendet: (vorgangId, sid) => apiPost(`${base}/vorgaenge/${vorgangId}/schreiben/${sid}/versendet`, {}).then(json).then((d) => d.vorgang),
+  // Assistenz-Text an das jüngste Schreiben anhängen (C3 — legt bei Bedarf ein neues an).
+  anhaengenSchreibenText: (vorgangId, text) => apiPost(`${base}/vorgaenge/${vorgangId}/schreiben/text-anhaengen`, { text }).then(json).then((d) => d.schreiben),
 
   // Wiedervorlage / Fristen (WP7 — offene Fristen über alle Vorgänge)
   listWiedervorlage: () => apiGet(`${base}/wiedervorlage`).then(json).then((d) => d.wiedervorlage),
@@ -212,7 +214,7 @@ export const wohngeldApi = {
       try { parsed = JSON.parse(data); } catch { return; }
       if (event === 'delta') onDelta?.(parsed.content || '');
       else if (event === 'sources') onSources?.(parsed.sources || []);
-      else if (event === 'done') onDone?.(parsed.message);
+      else if (event === 'done') onDone?.(parsed.message, parsed.actions || []);
       else if (event === 'error') onError?.(parsed.message || 'Antwort fehlgeschlagen');
     };
     for (;;) {

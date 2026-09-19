@@ -1453,6 +1453,8 @@ export default function VorgangDetail() {
           vorgang={{ id: vorgang.id, antragsId: vorgang.antragsId }}
           onClose={() => setChatOpen(false)}
           onOpenDokument={(docId) => { if (docId) jumpToDokument(docId); else { setSideCollapsed(false); setSideTab('dokumente'); } }}
+          canEdit={canEdit}
+          onDidMutate={reload}
         />
       )}
 

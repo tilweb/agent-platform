@@ -442,13 +442,14 @@ export async function addAktivitaet(input: { vorgangId: string; typ: string; akt
 // ── Fall-Chat (append-only) ────────────────────────────────────────────────
 
 function rowToChatMessage(r: typeof wgChatMessages.$inferSelect): ChatMessage {
-  const data = (r.data ?? {}) as { content?: string; sources?: ChatSource[]; model?: string; tokens?: number };
+  const data = (r.data ?? {}) as { content?: string; sources?: ChatSource[]; actions?: ChatMessage['actions']; model?: string; tokens?: number };
   return {
     id: r.id,
     vorgangId: r.vorgangId,
     rolle: r.rolle as ChatMessage['rolle'],
     content: data.content ?? '',
     sources: data.sources,
+    actions: data.actions,
     model: data.model,
     tokens: data.tokens,
     created_at: r.createdAt,
@@ -470,6 +471,7 @@ export async function addChatMessage(input: {
   rolle: ChatMessage['rolle'];
   content: string;
   sources?: ChatSource[];
+  actions?: ChatMessage['actions'];
   model?: string;
   tokens?: number;
 }): Promise<ChatMessage> {
@@ -481,6 +483,7 @@ export async function addChatMessage(input: {
     data: {
       content: input.content,
       sources: input.sources,
+      actions: input.actions,
       model: input.model,
       tokens: input.tokens,
     } as never,
