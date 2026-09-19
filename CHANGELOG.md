@@ -2,6 +2,20 @@
 
 ## 2026-09-18
 
+### Neue App „Wohngeld" — Antragsassistent (Vollständigkeits- & Plausibilitätsprüfung)
+Neue native Workplace-App `wohngeld` für kommunale Wohngeldstellen: Assistenz für die
+Vollständigkeits- und Plausibilitätsprüfung von Wohngeldanträgen (Posteingang → Vorgang →
+Prüfung/Nachforderung), Human-in-the-Loop, **keine** Betragsberechnung (§ 19 WoGG bewusst
+out of scope). Kern ist eine deterministische, getestete Regel-Engine (Vollständigkeit +
+Plausibilität, ~Regel-Katalog aus WoGG/WoGV) plus §13-Einkommensaggregation; LLM nur für
+spätere Extraktion/Textausformulierung. Enthält: DB-Schema `wohngeld` (7 Tabellen, Migration
+0039), Backend-Routes (Akten/Vorgänge/Personen/Dokumente/Prüfschritte/Schreiben inkl.
+`/detail` und `/pruefen`), Frontend (Vorgangsliste, dreispaltige Detail-Ansicht mit Tabs +
+rechter Prüf-/Dokumente-Seitenleiste, Posteingang-Gerüst) und einen Anforderungsschreiben-
+Generator. 27/27 Unit-Tests grün (Goldfall „Petermann"). Offen: Phase 4 (Upload/Dokument-
+Extraktion) und Phase 5 (Word-Export). Doku: `docs/wohngeld-antragsassistent-spec-2026-09-18.md`,
+`docs/wohngeld-regelkatalog-2026-09-18.md`, `docs/wohngeld-goldfall-petermann-2026-09-18.md`.
+
 ### Projektmanagement-App: Begriff „Masterclass" → „PM-Wissen"
 Kundensichtbares Vokabular vereinheitlicht: Alle UI-Texte („PM Masterclass", „Masterclass-
 Wissen", „Masterclass-Bewertung", „RUHR PM Masterclass" etc.) sowie die LLM-Prompt-

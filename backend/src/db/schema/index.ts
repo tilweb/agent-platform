@@ -27,5 +27,6 @@ export * from './wzbar';
 export * from './vorgangsmappe';
 export * from './podcast-repurposing';
 export * from './echoloop';
+export * from './wohngeld';
 export * from './generated';
 export * from './agents';

@@ -274,6 +274,13 @@
       "when": 1789552800000,
       "tag": "0038_wzbar_match_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1789639200000,
+      "tag": "0039_wohngeld",
+      "breakpoints": true
     }
   ]
 }

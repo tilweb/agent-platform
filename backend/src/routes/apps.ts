@@ -29,6 +29,7 @@ import { wzbarMatcherRoutes } from '../apps/wzbar-matcher/routes';
 import { vorgangsmappeRoutes } from '../apps/vorgangsmappe/routes';
 import { podcastRepurposingRoutes } from '../apps/podcast-repurposing/routes';
 import { echoloopRoutes } from '../apps/echoloop/routes';
+import { wohngeldRoutes } from '../apps/wohngeld/routes';
 
 const apps = new Hono();
 
@@ -292,5 +293,6 @@ apps.route('/wzbar-matcher', wzbarMatcherRoutes);
 apps.route('/vorgangsmappe', vorgangsmappeRoutes);
 apps.route('/podcast-repurposing', podcastRepurposingRoutes);
 apps.route('/echoloop', echoloopRoutes);
+apps.route('/wohngeld', wohngeldRoutes);
 
 export { apps as appsRoutes };

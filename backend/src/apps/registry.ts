@@ -20,6 +20,7 @@ import { wzbarMatcherConfig } from './wzbar-matcher';
 import { vorgangsmappeConfig } from './vorgangsmappe';
 import { podcastRepurposingConfig } from './podcast-repurposing';
 import { echoloopConfig } from './echoloop';
+import { wohngeldConfig } from './wohngeld';
 
 /**
  * All built-in apps bundled with the backend. On server startup,
@@ -35,6 +36,7 @@ const BUILT_IN_APPS: AppConfig[] = [
   vorgangsmappeConfig,
   podcastRepurposingConfig,
   echoloopConfig,
+  wohngeldConfig,
 ];
 
 let registryCache: AppsRegistry | null = null;
