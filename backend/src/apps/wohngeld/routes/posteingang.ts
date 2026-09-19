@@ -69,7 +69,7 @@ posteingangRoutes.post('/posteingang/upload', async (c) => {
 
     const stored = await storeUpload(bytes, file.name, file.type || 'application/octet-stream');
     const text = await extractText(file, bytes);
-    const ergebnis = await klassifiziereUndExtrahiere(text, { userId, filename: stored.filename });
+    const ergebnis = await klassifiziereUndExtrahiere(bytes, file.type || 'application/octet-stream', { userId, filename: stored.filename });
 
     previews.push({
       ...ergebnis,
@@ -120,6 +120,8 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
   // Antrags-Preview (steuert Stammdaten-Übernahme) suchen.
   const antragPreview = dokumente.find((d) => d.typ === 'wohngeldantrag' && d.stammdaten);
   const stammdaten = antragPreview?.stammdaten;
+  // Confidence je feld_status-Feldpfad aus der Extraction-Pipeline (kann fehlen).
+  const confByPfad = antragPreview?.confidenceByPfad ?? {};
 
   // 1. Akte auflösen/anlegen (aus vorhandenem Vorgang ableiten, sonst akteId, sonst neueAkte).
   let akte = null as Awaited<ReturnType<typeof getAkte>>;
@@ -223,11 +225,15 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
   }
 
   // 4b. Feld-Provenienz (WP3): extrahierte Antrags-Felder als KI-Vorschlag markieren.
+  //     Confidence aus der Pipeline mitschreiben; `bestaetigt` bleibt immer false
+  //     (Human-in-the-Loop). conf===0 (Reparatur/Änderung) ⇒ "prüfen" — ebenfalls
+  //     bestaetigt=false, hier nur explizit dokumentiert.
   if (stammdaten) {
     for (const feldPfad of feldStatusVorgangPfade(stammdaten)) {
       await setFeldStatus({
         vorgangId: vorgang.id, zielTyp: 'vorgang', zielId: vorgang.id,
         feldPfad, quelle: 'llm', bestaetigt: false, quellDokumentId: antragDokumentId,
+        confidence: confByPfad[feldPfad],
       });
     }
     // Person-Felder nur markieren, wenn die Antragsteller-Person aus dieser Extraktion neu entstand.
@@ -236,6 +242,7 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
         await setFeldStatus({
           vorgangId: vorgang.id, zielTyp: 'person', zielId: antragstellerId,
           feldPfad, quelle: 'llm', bestaetigt: false, quellDokumentId: antragDokumentId,
+          confidence: confByPfad[feldPfad],
         });
       }
     }
@@ -286,7 +293,7 @@ posteingangRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) => {
 
     const stored = await storeUpload(bytes, file.name, file.type || 'application/octet-stream');
     const text = await extractText(file, bytes);
-    const ergebnis = await klassifiziereUndExtrahiere(text, { userId, filename: stored.filename, vorgangId });
+    const ergebnis = await klassifiziereUndExtrahiere(bytes, file.type || 'application/octet-stream', { userId, filename: stored.filename, vorgangId });
     const ref = resolveStorageRef(stored.storageRef);
 
     const dok = await createDokument({

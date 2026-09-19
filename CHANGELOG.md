@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-09-20
+
+### Wohngeld — Posteingang-Extraktion auf Plattform-Extraction-Feature umgestellt (`docs/wohngeld-extraction-umbau-spec-2026-09-20.md`)
+Die schema-gebundene Stammdaten-/Analyse-Extraktion des Wohngeld-Posteingangs läuft jetzt über das
+Plattform-Kernstück `runPipeline` (`src/services/extraction/`) statt über den eigenen Freitext-LLM-Call.
+Gewinn: OCR/Scan-Fähigkeit (Vision-Strategie `hybrid`), Confidence pro Feld, DE-Zahl/Datum-Reparatur.
+Scope MINIMAL (eine Datei = ein Dokument); die DB-gekoppelte Plattform-Inbox/Projekte und der
+Mehrdokument-Split wurden bewusst NICHT übernommen. Keine neuen npm-Dependencies, keine Migration.
+
+- **Neu `src/apps/wohngeld/extraction-schema.ts`:** `WOHNGELD_SCHEMA(strategy)` (inline `ExtractionProfile`
+  mit Feldgruppen antragsteller/adresse/wohnung/antrag/analyse; Config via `applyExtractionDefaults` mit
+  `extractionModelConfig()`, `validation_repair:true`, `llm_confidence:true`; Enum-Werte nur als `hint`).
+  Reine Funktion `mapPipelineToErgebnis(extracted, fieldConfidences)` → `{stammdaten, analyse, confidenceByPfad}`,
+  wiederverwendet die Enum-Guards `pickStammdaten`/`pickAnalyse` und übersetzt Pipeline-Feldpfade auf die
+  `feld_status`-Pfade aus `feldstatus-mapping.ts`.
+- **`extraction.ts` umgebaut:** Klassifikator entschlackt — der eigene LLM-Call liefert nur noch `typ`
+  (enum-strikt) + `titel` (`parseExtraktion` entsprechend reduziert). Neue Signatur
+  `klassifiziereUndExtrahiere(bytes, mimeType, opts)`: gewinnt Text via `pdfToLayoutText`, erkennt Scans
+  (leerer PDF-Text oder Bild → `hybrid` mit `rawBuffer`, sonst `single-pass`), extrahiert bei
+  `wohngeldantrag` via `runPipeline` und mappt das Ergebnis. Graceful: jeder Fehler (kein Provider,
+  poppler fehlt, Pipeline wirft) → neutrales Fallback, der Upload crasht nie.
+- **`extract.ts`:** `pdfToText` ist jetzt ein dünner Wrapper um `pdfToLayoutText` (keine doppelte
+  pdftotext-Logik mehr).
+- **`routes/posteingang.ts`:** reicht `bytes`+`mimeType` durch; beim Verteilen schreibt `setFeldStatus`
+  die je-Feld-Confidence aus `confidenceByPfad` mit (`bestaetigt` bleibt immer false — Human-in-the-Loop).
+- **Tests:** `extraction.test.ts` testet den Klassifikator (`parseExtraktion`, nur typ/titel + Fallback)
+  und die reine `mapPipelineToErgebnis` mit gemocktem Pipeline-Ergebnis (Stammdaten/Analyse/Confidence
+  inkl. Enum-Guard); `runPipeline` selbst wird nicht im Test aufgerufen.
+
+### Wohngeld — Pipeline-Analyse jetzt auch für Nachweis-Dokumente (typ-spezifische Schemas)
+Nachtrag zum Umbau oben: damit die Plausibilitätsprüfung (`checker/plausibilitaet.ts`) ihre Signale
+behält, extrahiert die Pipeline die `DokumentAnalyse`-Felder nun auch für die relevanten
+Nachweis-Typen (nicht mehr nur `wohngeldantrag`). Weiterhin MINIMAL (eine Datei = ein Dokument,
+`runPipeline`, kein Split/keine Inbox).
+
+- **`extraction-schema.ts`:** pro-Typ-Schemas + Selektor `schemaFuerTyp(typ, strategy)`:
+  `mietvertrag`/`mietbescheinigung` → `miete`, `wohnflaeche_qm`, `unterschrift_vorhanden`;
+  `kontoauszug` → `mietzahlung_erkannt`, `kapitalertraege_erkannt`, `mieteinnahmen_erkannt`;
+  `rentenbescheid` → `rentenart_vorhanden`, `grundrentenzeiten_vorhanden`, `betrag`;
+  `wohngeldantrag` unverändert (Stammdaten + `unterschrift`/`datum`); andere Typen → kein Schema,
+  nur Klassifikation wie bisher. Neue reine Funktion `mapPipelineToAnalyse(typ, extracted,
+  fieldConfidences)` → `{ analyse, confidenceByPfad }` (nutzt weiter `pickAnalyse` als Guard).
+  Checker-Kompatibilität: `kapitalertraege_erkannt === true` → `analyse.erkannte_einkuenfte`
+  enthält `'kapitalertraege'`, `mieteinnahmen_erkannt === true` → `'v_und_v'`.
+- **`extraction.ts`:** `klassifiziereUndExtrahiere` wählt nach der Klassifikation `schemaFuerTyp`;
+  bei Antrag → `mapPipelineToErgebnis` (Stammdaten+Analyse), bei Nachweis-Typen →
+  `mapPipelineToAnalyse` (nur Analyse), sonst wie bisher leer. Graceful-Fallback unverändert.
+- **Tests:** `mapPipelineToAnalyse` je Typ (rein) — u.a. Kontoauszug `kapitalertraege_erkannt:true`
+  → `erkannte_einkuenfte:['kapitalertraege']`, Miet-/Rentennachweis-Felder — plus Selektor-Tests.
+
 ## 2026-09-19
 
 ### Wohngeld — GOV-6 organisatorische Governance-Vorlagen (Doku, `docs/wohngeld-governance/`)

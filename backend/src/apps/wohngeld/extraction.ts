@@ -1,16 +1,27 @@
 /**
  * Wohngeld — Klassifikation & Extraktion (Phase 4).
  *
- * Trennung: `parseExtraktion` ist rein/testbar (LLM-JSON → typisiertes Ergebnis,
- * robust gegen Fließtext, kaputtes JSON und unbekannte Typen). `klassifiziere-
- * UndExtrahiere` baut den Prompt, ruft den llmService (Timeout-Race wie echoloop)
- * und reicht die Antwort an `parseExtraktion` durch.
+ * Zweistufig:
+ *   1. Klassifikation (wohngeld-eigen, enum-strikt): ein LLM-Call bestimmt nur
+ *      `typ` (DokumentTyp) + `titel`. `parseExtraktion` ist rein/testbar und
+ *      robust gegen Fließtext, kaputtes JSON und unbekannte Typen.
+ *   2. Stammdaten/Analyse (nur bei `wohngeldantrag`): via Plattform-Extraction
+ *      `runPipeline` (born-digital → single-pass, Scan/Bild → hybrid mit Vision).
+ *      `mapPipelineToErgebnis` bildet das Ergebnis auf die Wohngeld-Typen ab und
+ *      liefert Confidence je `feld_status`-Feldpfad.
  *
  * Der Daten-Contract (Feldnamen in `analyse` + `typ`-Enum) MUSS exakt zu types.ts
  * passen — die Regel-Engine (checker/) konsumiert genau diese Felder.
+ *
+ * Graceful: kein Provider, fehlendes poppler, oder werfende Pipeline → neutrales
+ * Fallback-Ergebnis. Der Upload darf niemals crashen.
  */
 import { llmService, type Message } from '../../services/llm';
+import { runPipeline, type PreparedFile, type StrategyId } from '../../services/extraction';
+import { pdfToLayoutText } from '../../services/extraction/pdf';
+import { extractionModelOverride } from '../../extraction/model';
 import { wohngeldUsageMetadata } from './ki-governance';
+import { schemaFuerTyp, mapPipelineToErgebnis, mapPipelineToAnalyse } from './extraction-schema';
 import type { DokumentTyp, DokumentAnalyse, Wohngeldart, Antragsart } from './types';
 
 /** Aus dem Wohngeldantrag extrahierte Stammdaten (befüllen Vorgang + Antragsteller). */
@@ -41,6 +52,8 @@ export interface ExtraktionErgebnis {
   titel?: string;
   analyse: DokumentAnalyse;
   stammdaten?: ExtrahierteStammdaten;
+  /** Confidence je `feld_status`-Feldpfad (0..1), aus der Extraction-Pipeline. */
+  confidenceByPfad?: Record<string, number>;
 }
 
 /** Modell-Wahl (Adacor Qwen, per ENV überschreibbar — gleiche Defaults wie echoloop). */
@@ -95,7 +108,7 @@ function asStringArray(v: unknown): string[] | undefined {
   return out.length ? out : undefined;
 }
 
-function pickAnalyse(raw: unknown): DokumentAnalyse {
+export function pickAnalyse(raw: unknown): DokumentAnalyse {
   const a = (raw ?? {}) as Record<string, unknown>;
   const out: DokumentAnalyse = {};
   const miete = asNumber(a.miete); if (miete !== undefined) out.miete = miete;
@@ -110,7 +123,7 @@ function pickAnalyse(raw: unknown): DokumentAnalyse {
   return out;
 }
 
-function pickStammdaten(raw: unknown): ExtrahierteStammdaten | undefined {
+export function pickStammdaten(raw: unknown): ExtrahierteStammdaten | undefined {
   const s = (raw ?? {}) as Record<string, unknown>;
   const out: ExtrahierteStammdaten = {};
 
@@ -143,8 +156,11 @@ function pickStammdaten(raw: unknown): ExtrahierteStammdaten | undefined {
 }
 
 /**
- * Robustes Parsen der LLM-Antwort. Toleriert Fließtext um das JSON, kaputtes JSON
- * (→ Fallback) und unbekannte `typ`-Werte (→ 'sonstiges'). Nie werfend.
+ * Robustes Parsen der Klassifikator-Antwort — nur noch `typ` + `titel`.
+ * Toleriert Fließtext um das JSON, kaputtes JSON (→ Fallback) und unbekannte
+ * `typ`-Werte (→ 'sonstiges'). Nie werfend. Stammdaten/Analyse liefert nicht
+ * mehr der Klassifikator, sondern die Extraction-Pipeline (siehe
+ * `klassifiziereUndExtrahiere`); `analyse` bleibt hier daher leer.
  */
 export function parseExtraktion(jsonRaw: string): ExtraktionErgebnis {
   if (!jsonRaw || typeof jsonRaw !== 'string') return fallbackErgebnis();
@@ -164,85 +180,157 @@ export function parseExtraktion(jsonRaw: string): ExtraktionErgebnis {
     ? (rawTyp as DokumentTyp)
     : 'sonstiges';
 
-  const ergebnis: ExtraktionErgebnis = { typ, analyse: pickAnalyse(parsed.analyse) };
+  const ergebnis: ExtraktionErgebnis = { typ, analyse: {} };
   const titel = asString(parsed.titel);
   if (titel) ergebnis.titel = titel;
-  const stammdaten = pickStammdaten(parsed.stammdaten);
-  if (stammdaten) ergebnis.stammdaten = stammdaten;
   return ergebnis;
 }
 
 // ── LLM-Prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Du bist ein Assistent zur Klassifikation und Datenextraktion von Unterlagen in einem deutschen Wohngeldverfahren.
-Analysiere den Text EINES eingescannten Dokuments und antworte AUSSCHLIESSLICH mit JSON — kein Fließtext, keine Erklärung, keine Markdown-Codefences.
+const SYSTEM_PROMPT = `Du bist ein Assistent zur Klassifikation von Unterlagen in einem deutschen Wohngeldverfahren.
+Analysiere den Text EINES Dokuments und antworte AUSSCHLIESSLICH mit JSON — kein Fließtext, keine Erklärung, keine Markdown-Codefences.
 
 Erlaubte Werte für "typ" (genau einer):
 wohngeldantrag | personalausweis | mietvertrag | mietbescheinigung | rentenbescheid | verdienstbescheinigung | gehaltsabrechnung | kontoauszug | kv_pv_nachweis | schwerbehindertenausweis | pflegenachweis | kindergeldnachweis | unterhaltsnachweis | transferleistungsbescheid | vermoegensnachweis | sonstiges
 
-Antworte in genau diesem Schema (nur zutreffende Felder setzen, unbekannte Felder weglassen):
+Antworte in genau diesem Schema:
 {
   "typ": "<einer der erlaubten Werte>",
-  "titel": "<kurzer sprechender Titel des Dokuments>",
-  "analyse": {
-    "miete": <Bruttokaltmiete in EUR als Zahl, z.B. aus Mietvertrag/Mietbescheinigung>,
-    "wohnflaeche_qm": <Wohnfläche in m² als Zahl>,
-    "unterschrift_vorhanden": <true|false — ist das Dokument unterschrieben?>,
-    "datum_vorhanden": <true|false — trägt das Dokument ein Datum?>,
-    "rentenart_vorhanden": <true|false — nennt ein Rentenbescheid die Rentenart?>,
-    "grundrentenzeiten_vorhanden": <true|false — sind Grundrentenzeiten ausgewiesen?>,
-    "mietzahlung_erkannt": <true|false — zeigt ein Kontoauszug eine Mietabbuchung?>,
-    "erkannte_einkuenfte": ["<z.B. kapitalertraege, lohn_gehalt, rente>"],
-    "betrag": <generischer Betrag in EUR, z.B. Renten-/Gehaltshöhe>
-  },
-  "stammdaten": {
-    "antragsdatum": "<ISO-Datum JJJJ-MM-TT>",
-    "wohngeldart": "mietzuschuss|lastenzuschuss",
-    "antragsart": "erstantrag|weiterleistungsantrag|erhoehungsantrag|aenderungsantrag",
-    "antragsteller": { "vorname": "", "nachname": "", "geburtsdatum": "<ISO>" },
-    "adresse": { "strasse": "", "hausnummer": "", "plz": "", "ort": "" },
-    "wohnung": { "miete": <Zahl>, "wohnflaeche_qm": <Zahl> }
-  }
+  "titel": "<kurzer sprechender Titel des Dokuments>"
 }
 
 Regeln:
-- "stammdaten" NUR ausfüllen, wenn "typ" = "wohngeldantrag" ist. Für alle anderen Typen "stammdaten" weglassen.
-- Zahlen als reine Zahlen (Punkt als Dezimaltrenner), nicht als Text mit Einheit.
-- Ist ein Wert nicht sicher erkennbar, das Feld weglassen (nicht raten). Im Zweifel "typ": "sonstiges".`;
+- Bestimme ausschließlich den Dokumenttyp und einen kurzen Titel. Keine weiteren Felder.
+- Ist der Typ nicht sicher erkennbar, "typ": "sonstiges".`;
+
+/** Schwelle: unter so viel Text gilt ein PDF als Scan (kein born-digital Text). */
+const SCAN_TEXT_THRESHOLD = 20;
+
+/** Gewonnener Text + Scan-Erkennung eines Uploads. */
+interface TextGewinnung {
+  text: string;
+  /** true → Scan/Bild: Vision-Pfad (hybrid + rawBuffer). */
+  scanMode: boolean;
+}
 
 /**
- * Klassifiziert + extrahiert ein Dokument aus seinem Text. Graceful:
- * leerer Text oder LLM-Fehler/Timeout → neutrales Fallback-Ergebnis.
+ * Text gewinnen + Scan-Erkennung (pragmatisch). Born-digital PDF → Layout-Text
+ * via Plattform-`pdfToLayoutText`. Bild oder (nahezu) leerer PDF-Text → Scan.
+ * Wirft nie — poppler fehlt/PDF kaputt → leerer Text (→ Scan bzw. Fallback).
  */
-export async function klassifiziereUndExtrahiere(
+async function gewinneText(bytes: Uint8Array, mimeType: string): Promise<TextGewinnung> {
+  const isImage = (mimeType || '').startsWith('image/');
+  if (isImage) return { text: '', scanMode: true };
+
+  let text = '';
+  try {
+    text = await pdfToLayoutText(Buffer.from(bytes));
+  } catch (err) {
+    console.warn('[wohngeld] pdfToLayoutText fehlgeschlagen:', err instanceof Error ? err.message : err);
+    text = '';
+  }
+  const scanMode = text.trim().length < SCAN_TEXT_THRESHOLD;
+  return { text, scanMode };
+}
+
+/**
+ * Klassifikator (wohngeld-eigen, enum-strikt): ein LLM-Call → `typ` + `titel`.
+ * Nutzt den vorhandenen Text bzw. bei Scans nur den Dateinamen als knappen
+ * Kontext. Wirft nicht — Fehler/Timeout werfen (vom Aufrufer gefangen).
+ */
+async function klassifiziere(
   text: string,
-  opts: { userId?: string; filename?: string; vorgangId?: string } = {},
+  opts: { userId?: string; filename?: string; vorgangId?: string },
 ): Promise<ExtraktionErgebnis> {
   const trimmed = (text || '').trim();
-  if (!trimmed) return fallbackErgebnis();
+  const kontext = trimmed
+    ? `## Dokument-Text (gekürzt)\n${trimmed.slice(0, 14000)}`
+    : '## Dokument-Text\n(kein maschinenlesbarer Text — evtl. Scan. Bestimme den Typ soweit möglich aus dem Dateinamen.)';
 
   const user: Message = {
     role: 'user',
-    content: `Dateiname: ${opts.filename ?? '(unbekannt)'}\n\n## Dokument-Text (gekürzt)\n${trimmed.slice(0, 14000)}`,
+    content: `Dateiname: ${opts.filename ?? '(unbekannt)'}\n\n${kontext}`,
   };
   const system: Message = { role: 'system', content: SYSTEM_PROMPT };
 
+  const TIMEOUT_MS = Number(process.env.WOHNGELD_LLM_TIMEOUT_MS) || 90_000;
+  const res = await Promise.race([
+    llmService.chat([system, user], undefined, {
+      source: 'document_analysis',
+      operation: 'wohngeld_klassifikation',
+      triggeringUserId: opts.userId,
+      userId: opts.userId,
+      resourceId: opts.vorgangId,
+      metadata: wohngeldUsageMetadata({ providerId: MODEL.providerId, modelId: MODEL.modelId, vorgangId: opts.vorgangId }),
+    }, {
+      modelOverride: MODEL,
+    }),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`LLM-Timeout nach ${TIMEOUT_MS}ms`)), TIMEOUT_MS)),
+  ]);
+  return parseExtraktion(res.content ?? '');
+}
+
+/**
+ * Klassifiziert ein Dokument und extrahiert — nur bei `wohngeldantrag` —
+ * Stammdaten + Analyse via Plattform-Extraction-Pipeline.
+ *
+ * Ablauf:
+ *   (a) Text gewinnen + Scan erkennen (`gewinneText`).
+ *   (b) Klassifikation (eigener enum-strikter LLM-Call).
+ *   (c) `wohngeldantrag` → `runPipeline` (born-digital: single-pass; Scan/Bild:
+ *       hybrid mit `rawBuffer`) + Mapping auf Wohngeld-Typen inkl. Confidence.
+ *   (d) sonst leere Stammdaten.
+ *
+ * Graceful: jeder Fehler (kein Provider, poppler fehlt, Pipeline wirft) →
+ * neutrales Fallback-Ergebnis. Der Upload bricht nie ab.
+ */
+export async function klassifiziereUndExtrahiere(
+  bytes: Uint8Array,
+  mimeType: string,
+  opts: { userId?: string; filename?: string; vorgangId?: string } = {},
+): Promise<ExtraktionErgebnis> {
   try {
-    const TIMEOUT_MS = Number(process.env.WOHNGELD_LLM_TIMEOUT_MS) || 90_000;
-    const res = await Promise.race([
-      llmService.chat([system, user], undefined, {
-        source: 'document_analysis',
-        operation: 'wohngeld_klassifikation',
-        triggeringUserId: opts.userId,
-        userId: opts.userId,
-        resourceId: opts.vorgangId,
-        metadata: wohngeldUsageMetadata({ providerId: MODEL.providerId, modelId: MODEL.modelId, vorgangId: opts.vorgangId }),
-      }, {
-        modelOverride: MODEL,
-      }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`LLM-Timeout nach ${TIMEOUT_MS}ms`)), TIMEOUT_MS)),
-    ]);
-    return parseExtraktion(res.content ?? '');
+    // (a) Text + Scan-Erkennung
+    const { text, scanMode } = await gewinneText(bytes, mimeType);
+
+    // (b) Klassifikation
+    const klass = await klassifiziere(text, opts);
+
+    // (c) Schema-gebundene Extraktion via Plattform-Pipeline — nur wenn fuer den
+    //     Typ ein Schema existiert (Antrag ODER Miet-/Konto-/Rentennachweis).
+    const strategy: StrategyId = scanMode ? 'hybrid' : 'single-pass';
+    const schema = schemaFuerTyp(klass.typ, strategy);
+    // (d) Kein Schema fuer diesen Typ → nur Klassifikation, keine Analyse/Stammdaten.
+    if (!schema) return klass;
+
+    const prepared: PreparedFile = scanMode
+      ? { filename: opts.filename ?? 'dokument', text, mimeType: mimeType || 'application/pdf', rawBuffer: Buffer.from(bytes) }
+      : { filename: opts.filename ?? 'dokument', text, mimeType: mimeType || 'application/pdf' };
+
+    const result = await runPipeline({
+      files: [prepared],
+      schema,
+      userId: opts.userId ?? '',
+      modelOverride: extractionModelOverride(),
+    });
+
+    // Wohngeldantrag: Stammdaten + Analyse + Confidence fuer feld_status.
+    if (klass.typ === 'wohngeldantrag') {
+      const mapped = mapPipelineToErgebnis(result.extracted, result.fieldConfidences);
+      const ergebnis: ExtraktionErgebnis = { typ: 'wohngeldantrag', analyse: mapped.analyse };
+      if (klass.titel) ergebnis.titel = klass.titel;
+      if (Object.keys(mapped.stammdaten).length) ergebnis.stammdaten = mapped.stammdaten;
+      if (Object.keys(mapped.confidenceByPfad).length) ergebnis.confidenceByPfad = mapped.confidenceByPfad;
+      return ergebnis;
+    }
+
+    // Nachweis-Dokumente (mietvertrag/mietbescheinigung/kontoauszug/rentenbescheid):
+    // nur Analyse, keine Stammdaten.
+    const mappedAnalyse = mapPipelineToAnalyse(klass.typ, result.extracted, result.fieldConfidences);
+    const ergebnis: ExtraktionErgebnis = { typ: klass.typ, analyse: mappedAnalyse.analyse };
+    if (klass.titel) ergebnis.titel = klass.titel;
+    return ergebnis;
   } catch (err) {
     console.warn('[wohngeld] Klassifikation/Extraktion fehlgeschlagen:', err instanceof Error ? err.message : err);
     return fallbackErgebnis();

@@ -1,29 +1,14 @@
 /**
- * PDF → Text via `pdftotext -layout` (poppler-utils, System-Abhängigkeit im
- * Backend, vgl. echoloop/extract.ts). `-layout` bewahrt die Spaltenstruktur von
- * Formularen/Bescheinigungen (Key:Value je Zeile), die Klassifikation/Extraktion
- * als Kontext nutzt.
+ * PDF → Layout-Text. Dünner Wrapper um die Plattform-Extraction-Funktion
+ * `pdfToLayoutText` (poppler-utils, `pdftotext -layout`), damit die
+ * pdftotext-Logik nur an EINER Stelle gepflegt wird. `-layout` bewahrt die
+ * Spaltenstruktur von Formularen/Bescheinigungen (Key:Value je Zeile).
  */
+import { pdfToLayoutText } from '../../services/extraction/pdf';
 
-/** Liest PDF-Bytes über stdin, gibt Layout-Text über stdout zurück. */
+/** Liest PDF-Bytes, gibt Layout-Text zurück (delegiert an die Plattform-Pipeline). */
 export async function pdfToText(bytes: Uint8Array): Promise<string> {
-  let proc: ReturnType<typeof Bun.spawn>;
-  try {
-    proc = Bun.spawn(['pdftotext', '-layout', '-', '-'], {
-      stdin: bytes,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
-  } catch (e) {
-    throw new Error('pdftotext (poppler-utils) nicht verfügbar: ' + (e as Error).message);
-  }
-  const text = await new Response(proc.stdout as ReadableStream).text();
-  const code = await proc.exited;
-  if (code !== 0 && !text.trim()) {
-    const err = await new Response(proc.stderr as ReadableStream).text();
-    throw new Error(`pdftotext exit ${code}: ${err.slice(0, 200)}`);
-  }
-  return text;
+  return pdfToLayoutText(Buffer.from(bytes));
 }
 
 /** Prüft einmalig, ob pdftotext im PATH liegt (für Health/Diagnose). */
