@@ -9,6 +9,7 @@ import { personenRoutes } from './routes/personen';
 import { dokumenteRoutes } from './routes/dokumente';
 import { pruefschritteRoutes } from './routes/pruefschritte';
 import { schreibenRoutes } from './routes/schreiben';
+import { posteingangRoutes } from './routes/posteingang';
 
 const wohngeld = new Hono();
 
@@ -20,5 +21,6 @@ wohngeld.route('/', personenRoutes);
 wohngeld.route('/', dokumenteRoutes);
 wohngeld.route('/', pruefschritteRoutes);
 wohngeld.route('/', schreibenRoutes);
+wohngeld.route('/', posteingangRoutes);
 
 export { wohngeld as wohngeldRoutes };

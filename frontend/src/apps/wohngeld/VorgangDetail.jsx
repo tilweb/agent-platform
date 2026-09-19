@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
-import { ArrowLeftIcon } from '../../components/Icons';
+import { ArrowLeftIcon, UploadIcon } from '../../components/Icons';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import {
   wohngeldApi,
@@ -99,6 +99,7 @@ export default function VorgangDetail() {
   const [mainTab, setMainTab] = useState('uebersicht');
   const [sideTab, setSideTab] = useState('details');
   const [busy, setBusy] = useState(false);
+  const dokUploadRef = useRef(null);
 
   // Übersicht-Bearbeitung (Vorgang-Ebene)
   const [editMode, setEditMode] = useState(false);
@@ -127,6 +128,21 @@ export default function VorgangDetail() {
   async function reload() {
     try { setDetail(await wohngeldApi.getVorgangDetail(id)); }
     catch (e) { setError(e.message); }
+  }
+
+  async function uploadDokumente(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await wohngeldApi.uploadVorgangDokument(id, files);
+      await reload();
+    } catch (e) {
+      setError(e.message || 'Upload fehlgeschlagen');
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (!detail) {
@@ -472,7 +488,9 @@ export default function VorgangDetail() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md, gap: theme.spacing.md, flexWrap: 'wrap' }}>
                         <span style={styles.chip}>{SCHREIBEN_ART_LABEL[s.art] || s.art}</span>
                         <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                          <button style={styles.btnSmall} onClick={() => download(`${s.betreff || 'Schreiben'}.txt`, `${st.betreff}\n\n${st.body}`)}>Als Text-Datei herunterladen</button>
+                          <button style={styles.btnSmall} onClick={() => wohngeldApi.exportSchreiben(s.id, 'pdf').catch((e) => setError(e.message))}>Als PDF herunterladen</button>
+                          <button style={styles.btnSmall} onClick={() => wohngeldApi.exportSchreiben(s.id, 'docx').catch((e) => setError(e.message))}>Als Word-Datei herunterladen</button>
+                          <button style={styles.btnSmall} onClick={() => download(`${s.betreff || 'Schreiben'}.txt`, `${st.betreff}\n\n${st.body}`)}>Als Text-Datei</button>
                           {canEdit && <button style={styles.btn} onClick={() => saveSchreiben(s)} disabled={busy}>Speichern</button>}
                         </div>
                       </div>
@@ -602,6 +620,18 @@ export default function VorgangDetail() {
 
             {sideTab === 'dokumente' && (
               <div>
+                {canEdit && (
+                  <div style={{ marginBottom: theme.spacing.md }}>
+                    <button style={{ ...styles.btnSmall, display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs }} onClick={() => dokUploadRef.current?.click()} disabled={busy}>
+                      <UploadIcon size={14} /> {busy ? 'Lädt…' : 'Dokument hochladen'}
+                    </button>
+                    <input
+                      ref={dokUploadRef} type="file" multiple accept="application/pdf"
+                      style={{ display: 'none' }}
+                      onChange={(e) => { uploadDokumente(e.target.files); e.target.value = ''; }}
+                    />
+                  </div>
+                )}
                 {(() => {
                   const nachweise = dokumente.filter((d) => !d.istOriginal);
                   const originale = dokumente.filter((d) => d.istOriginal);

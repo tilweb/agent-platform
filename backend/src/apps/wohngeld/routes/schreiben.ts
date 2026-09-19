@@ -2,10 +2,12 @@ import { Hono } from 'hono';
 import { getCurrentUserId } from '../../../auth/middleware';
 import {
   listSchreiben, getSchreiben, createSchreiben, updateSchreiben, deleteSchreiben,
-  getVorgang, listPersonen, listPruefschritte, addAktivitaet,
+  getVorgang, getAkte, listPersonen, listPruefschritte, addAktivitaet,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { generiereAnforderungsschreiben } from '../schreiben-generator';
+import { schreibenToDocument } from '../schreiben-export';
+import { generateDocument, getMimeType, type DocumentFormat } from '../../../services/documentGenerator';
 import { denyIfNotAppEditor } from './_shared';
 
 export const schreibenRoutes = new Hono();
@@ -18,6 +20,28 @@ schreibenRoutes.get('/schreiben/:id', async (c) => {
   const schreiben = await getSchreiben(c.req.param('id'));
   if (!schreiben) return c.json({ error: 'Schreiben nicht gefunden' }, 404);
   return c.json({ schreiben });
+});
+
+/** Schreiben als PDF oder Word (docx) herunterladen. Read-only. */
+schreibenRoutes.get('/schreiben/:id/export', async (c) => {
+  const fmtParam = (c.req.query('format') ?? 'pdf').toLowerCase();
+  if (fmtParam !== 'pdf' && fmtParam !== 'docx') {
+    return c.json({ error: 'format muss pdf oder docx sein' }, 400);
+  }
+  const format = fmtParam as DocumentFormat;
+  const schreiben = await getSchreiben(c.req.param('id'));
+  if (!schreiben) return c.json({ error: 'Schreiben nicht gefunden' }, 404);
+  const vorgang = await getVorgang(schreiben.vorgangId);
+  const akte = vorgang ? await getAkte(vorgang.akteId) : null;
+  const doc = schreibenToDocument(schreiben, vorgang, akte);
+  const buffer = await generateDocument(doc, format);
+  const base = `Anforderungsschreiben-${vorgang?.antragsId ?? schreiben.id}`;
+  return new Response(new Uint8Array(buffer), {
+    headers: {
+      'Content-Type': getMimeType(format),
+      'Content-Disposition': `attachment; filename="${base}.${format}"`,
+    },
+  });
 });
 
 /**

@@ -107,6 +107,12 @@ export const s3Paths = {
     assertSafeFilename(file);
     return `apps/echoloop/${prozessId}/${artefaktId}/${file}`;
   },
+  // Wohngeld (Phase 4): hochgeladene Antragsunterlagen/Nachweise je Upload-Segment.
+  wohngeldUpload: (segment: string, file: string) => {
+    assertSafeId(segment, 'segment');
+    assertSafeFilename(file);
+    return `apps/wohngeld/uploads/${segment}/${file}`;
+  },
   // Extraktions-Posteingang (Welle 4): Original + Teil-PDFs je Upload.
   inboxOriginal: (uploadId: string, ext: string) => {
     assertSafeId(uploadId, 'uploadId');

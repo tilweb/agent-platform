@@ -2,9 +2,19 @@
  * Wohngeld API-Wrapper (dünn über apiFetch). Alle Endpunkte unter /apps/wohngeld.
  * Assistenz für Vollständigkeits- und Plausibilitätsprüfung von Wohngeldanträgen.
  */
-import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/apiFetch';
+import { apiGet, apiPost, apiPut, apiDelete, API_URL } from '../../utils/apiFetch';
 
 const base = '/apps/wohngeld';
+
+/** Multipart-Upload (kein JSON-Content-Type — Browser setzt Boundary selbst). */
+async function postForm(endpoint, formData) {
+  const res = await fetch(`${API_URL}${base}${endpoint}`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+  return res;
+}
 
 async function json(res) {
   if (!res.ok) {
@@ -55,6 +65,20 @@ export const wohngeldApi = {
   updateDokument: (id, payload) => apiPut(`${base}/dokumente/${id}`, payload).then(json).then((d) => d.dokument),
   deleteDokument: (id) => apiDelete(`${base}/dokumente/${id}`).then(json),
 
+  // Posteingang (Upload + Klassifikation + Verteilung)
+  uploadPosteingang: (files) => {
+    const fd = new FormData();
+    Array.from(files).forEach((f) => fd.append('files', f));
+    return postForm('/posteingang/upload', fd).then(json).then((d) => d.previews);
+  },
+  verteilePosteingang: (payload) => apiPost(`${base}/posteingang/verteilen`, payload).then(json),
+  uploadVorgangDokument: (vorgangId, file) => {
+    const fd = new FormData();
+    const list = Array.isArray(file) || file instanceof FileList ? Array.from(file) : [file];
+    list.forEach((f) => fd.append('files', f));
+    return postForm(`/vorgaenge/${vorgangId}/dokumente/upload`, fd).then(json).then((d) => d.dokumente);
+  },
+
   // Prüfschritte
   listPruefschritte: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/pruefschritte`).then(json).then((d) => d.pruefschritte),
   createPruefschritt: (vorgangId, payload) => apiPost(`${base}/vorgaenge/${vorgangId}/pruefschritte`, payload).then(json).then((d) => d.pruefschritt),
@@ -66,6 +90,24 @@ export const wohngeldApi = {
   generiereSchreiben: (vorgangId, payload) => apiPost(`${base}/vorgaenge/${vorgangId}/schreiben/generieren`, payload).then(json).then((d) => d.schreiben),
   updateSchreiben: (id, payload) => apiPut(`${base}/schreiben/${id}`, payload).then(json).then((d) => d.schreiben),
   deleteSchreiben: (id) => apiDelete(`${base}/schreiben/${id}`).then(json),
+
+  /** Schreiben als PDF oder Word (docx) herunterladen — löst einen Browser-Download aus. */
+  exportSchreiben: async (id, format) => {
+    const res = await fetch(`${API_URL}${base}/schreiben/${id}/export?format=${format}`, { credentials: 'include' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^"]+)"?/);
+    const filename = m ? m[1] : `Anforderungsschreiben.${format}`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  },
 };
 
 // ── Label-Maps (Anzeige für Enums) ──────────────────────────────────────────

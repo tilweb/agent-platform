@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-09-19
+
+### Wohngeld — Phase 4: Dokument-Upload, Klassifikation & Extraktion (Posteingang)
+Der Posteingang der App `wohngeld` ist jetzt arbeitsfähig: Antragsunterlagen werden hochgeladen
+(S3 falls konfiguriert, sonst lokaler Fallback unter `data/apps/wohngeld/uploads/`), per
+`pdftotext -layout` in Text überführt und vom LLM klassifiziert (Dokumenttyp aus der Enum) +
+extrahiert (Analyse-Felder für die Regel-Engine, Stammdaten aus dem Wohngeldantrag). Backend:
+`extract.ts` (poppler), reine/testbare `extraction.ts` (`parseExtraktion` + `klassifiziereUndExtrahiere`,
+graceful Fallback → `sonstiges`), `filestore.ts` (S3/local), Routes `POST /posteingang/upload`,
+`POST /posteingang/verteilen` (legt Akte/Vorgang an, übernimmt Stammdaten in Vorgang + Antragsteller,
+löst danach die Prüfung aus) und `POST /vorgaenge/:id/dokumente/upload`. Frontend: Posteingang-
+Split-View (Stammdaten editierbar, klassifizierte Dokumentliste mit Typ-Korrektur, Verteilung auf
+Akte/Vorgang, Dateivorschau) und Upload-Button im Dokumente-Tab der Vorgang-Detailseite.
+Modell per ENV `WOHNGELD_LLM_PROVIDER`/`WOHNGELD_LLM_MODEL`. Unit-Tests für `parseExtraktion` grün.
+
+### Wohngeld — Phase 5: Anforderungsschreiben-Export (PDF & Word)
+Die generierten Anforderungsschreiben lassen sich jetzt als **PDF** und **Word (.docx)**
+herunterladen — über den bestehenden `documentGenerator`-Service (keine neue Dependency).
+Backend: `schreiben-export.ts` (mappt Betreff/Frist/Empfänger + Markdown-Body strukturerhaltend
+auf `DocumentData`) + `GET /schreiben/:id/export?format=pdf|docx`. Frontend: Buttons „Als PDF
+herunterladen" / „Als Word-Datei herunterladen" im Schreiben-Tab (Blob-Download mit Cookies).
+Gesamtstand App `wohngeld`: 37/37 Unit-Tests grün, Frontend-Build grün.
+
 ## 2026-09-18
 
 ### Neue App „Wohngeld" — Antragsassistent (Vollständigkeits- & Plausibilitätsprüfung)
@@ -13,7 +36,7 @@ spätere Extraktion/Textausformulierung. Enthält: DB-Schema `wohngeld` (7 Tabel
 `/detail` und `/pruefen`), Frontend (Vorgangsliste, dreispaltige Detail-Ansicht mit Tabs +
 rechter Prüf-/Dokumente-Seitenleiste, Posteingang-Gerüst) und einen Anforderungsschreiben-
 Generator. 27/27 Unit-Tests grün (Goldfall „Petermann"). Offen: Phase 4 (Upload/Dokument-
-Extraktion) und Phase 5 (Word-Export). Doku: `docs/wohngeld-antragsassistent-spec-2026-09-18.md`,
+Extraktion) und Phase 5 (Export). Doku: `docs/wohngeld-antragsassistent-spec-2026-09-18.md`,
 `docs/wohngeld-regelkatalog-2026-09-18.md`, `docs/wohngeld-goldfall-petermann-2026-09-18.md`.
 
 ### Projektmanagement-App: Begriff „Masterclass" → „PM-Wissen"
