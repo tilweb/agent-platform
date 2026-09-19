@@ -2,6 +2,18 @@
 
 ## 2026-09-19
 
+### Wohngeld — GOV-6 organisatorische Governance-Vorlagen (Doku, `docs/wohngeld-governance/`)
+Umsetzung der Welle GOV-6 (deckt G-K organisatorische Deliverables + G-L Barrierefreiheit) als reine,
+ausfüllbare Behörden-Vorlagen — kein Code. Neuer Ordner `docs/wohngeld-governance/` mit sieben
+Dokumenten, jeweils mit `[…]`-Platzhaltern für kommunespezifische Angaben, Verweisen auf die
+konkreten App-Mechanismen (audit_log, Rollen owner/editor/viewer + requireAppAccess, KI-Provenienz
+`feld_status`, `aufbewahrungBis`/Legal-Hold/Löschfällig-Ansicht/`eingeschraenkt`) und §§/Art.-Bezug:
+`00-README.md` (Übersicht + Pflegehinweis), `01-datenschutz-folgenabschaetzung-dsfa.md` (Art. 35 DSGVO),
+`02-verzeichnis-verarbeitungstaetigkeiten-vvt.md` (Art. 30), `03-tom-uebersicht.md` (Art. 32 / BSI
+OPS.1.1.5, DER.1), `04-loeschkonzept.md` (§§ 27/33 WoGG, § 45 SGB X, Art. 17/18), `05-auftragsverarbeitung-av-bausteine.md`
+(Art. 28 DSGVO + § 80 SGB X), `06-bitv-barrierefreiheit-checkliste.md` (BITV 2.0 / EN 301549).
+Verweist auf Spec/Recherche + bestehende AI-Act-Assistenz-Bewertung (GOV-3). Keine Code-/Test-Änderung.
+
 ### Wohngeld — GOV-5 Aufbewahrung/Löschung + Legal Hold + Verarbeitungs-Einschränkung (Governance, `docs/wohngeld-governance-spec-2026-09-19.md`)
 Umsetzung der Welle GOV-5 (deckt G-J Aufbewahrung/Löschung + G-I / Art. 18 DSGVO). Alles in
 `vorgang.data` (neue optionale Felder `aufbewahrungBis`, `legalHold`, `eingeschraenkt`) — **keine
