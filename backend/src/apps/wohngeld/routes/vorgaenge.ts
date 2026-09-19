@@ -7,6 +7,7 @@ import {
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { pruefeVorgang } from '../checker';
+import { berechneVorgangEinkommen } from '../einkommen';
 import { denyIfNotAppEditor } from './_shared';
 
 export const vorgaengeRoutes = new Hono();
@@ -33,6 +34,19 @@ vorgaengeRoutes.get('/vorgaenge/:id/detail', async (c) => {
     listPruefschritte(id), listSchreiben(id), listAktivitaeten(id),
   ]);
   return c.json({ vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten });
+});
+
+/**
+ * § 13-Gesamteinkommen des Vorgangs (read-only, keine Betragsberechnung § 19).
+ * Leitet §16-Abzugskategorien pragmatisch aus den vorhandenen Merkmalen ab
+ * (siehe berechneVorgangEinkommen) — im UI als angenommene Kategorien kennzeichnen.
+ */
+vorgaengeRoutes.get('/vorgaenge/:id/einkommen', async (c) => {
+  const id = c.req.param('id');
+  const snapshot = await getVorgangSnapshot(id);
+  if (!snapshot) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const einkommen = berechneVorgangEinkommen(snapshot.personen, snapshot.dokumente);
+  return c.json({ einkommen });
 });
 
 vorgaengeRoutes.post('/vorgaenge', async (c) => {

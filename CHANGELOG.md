@@ -2,6 +2,33 @@
 
 ## 2026-09-19
 
+### Wohngeld — Welle 1 der Gap-Umsetzung (WP1 §13-Einkommensansicht + WP2 UX)
+Umsetzung von Welle 1 aus `docs/wohngeld-gap-umsetzung-specs-2026-09-19.md`.
+
+**WP1 — §13-Einkommensansicht sichtbar machen.** Backend: neue reine Funktionen in
+`einkommen.ts` — `abzugskategorienFuer(person, dokumente)` leitet die §16-Abzugskategorien
+pragmatisch aus vorhandenen Merkmalen ab (KV/PV-Nachweis bzw. Erwerbs-/Renteneinkommen → kvPv;
+Lohn/selbstständig → steuern; Erwerbsstatus angestellt/selbstständig → rv; als Annahme im Code
+dokumentiert) und `berechneVorgangEinkommen(personen, dokumente, unterhaltsabzuege=0)` ruft
+`gesamteinkommen(...)` mit den je Person abgeleiteten Kategorien und liefert `proPerson`
+(Name, Jahreseinkommen, Freibeträge, angesetzte Kategorien) + Haushaltssummen +
+`gesamteinkommenJahr/Monat`. Neue read-only Route `GET /vorgaenge/:id/einkommen`. Frontend:
+`api.getEinkommen(id)`; in der Übersicht-Sektion „Einkommen & Abzugsbeträge" eine Ergebniszeile
+„Anrechenbares Gesamteinkommen (§13 WoGG)" (monatlich/jährlich), aufklappbare Herleitung je Person
+(§14 nach §16-Abzug − §17-Freibetrag) und Haushaltssumme − §18, mit Hinweis „angenommene
+Abzugskategorien — bitte prüfen". Keine Betragsberechnung (§19).
+
+**WP2 — Essenzielle-Angaben-Prüfschritt + Übersicht-UX.** Backend: neue Regel `essenzielle-angaben`
+(Vollständigkeit, fallübergreifend) in `checker/nachweise.ts` — feuert, wenn Antragsteller-Name,
+Antragsdatum, Adresse (PLZ/Ort oder Straße), Miete bei Mietzuschuss oder mindestens eine Person
+fehlt; Belegtext listet die fehlenden Angaben. Frontend: `SektionCard` optional einklappbar
+(`collapsible`/`defaultOpen`, Chevron, lokaler Zustand); Übersicht-Sektionen einklappbar;
+Prüfschritt-Beleg als klickbarer Dokument-Chip, der in den Dokumente-Tab springt und das Dokument
+kurz hervorhebt (Flash + Scroll); Antrags-ID-Kopierbutton im Kopf und rechte Seitenleiste
+ein-/ausklappbar. Neue Icons `ChevronDownIcon`, `PanelRightIcon`. Tests: `einkommen.test.ts` und
+`checker/checker.test.ts` erweitert (App `wohngeld` 71/71 grün), tsc ohne neue Fehler,
+Frontend-Build grün.
+
 ### Wohngeld — Fall-Chat C2 (Recht-Wissensbasis mit §-Zitaten)
 Der Fall-Chat der App `wohngeld` beantwortet jetzt zusätzlich Rechtsfragen mit belegten
 Paragraphen-Fundstellen (WoGG/WoGV). Bewusste Architektur-Entscheidung: kein Embedding-/KB-Infra-

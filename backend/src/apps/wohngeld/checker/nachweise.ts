@@ -25,6 +25,26 @@ export function pruefeNachweise(snapshot: VorgangSnapshot): PruefBefund[] {
   const { vorgang, personen, dokumente } = snapshot;
   const befunde: PruefBefund[] = [];
 
+  // ── Essenzielle Kernangaben (Erfassungs-Vollständigkeit, fallübergreifend) ──
+  // Prüft, ob die Basis-Stammdaten überhaupt erfasst sind — unabhängig von Nachweisen.
+  const hatAntragstellerName = personen.some(p => `${p.vorname} ${p.nachname}`.trim().length > 0);
+  const w = vorgang.wohnung ?? {};
+  const hatAdresse = (!!w.plz && !!w.ort) || !!w.strasse;
+  const hatMiete = vorgang.wohngeldart !== 'mietzuschuss' || (w.miete ?? 0) > 0;
+  const fehlend: string[] = [];
+  if (!hatAntragstellerName) fehlend.push('Name des Antragstellers');
+  if (!vorgang.antragsdatum) fehlend.push('Antragsdatum');
+  if (!hatAdresse) fehlend.push('Adresse (PLZ/Ort oder Straße)');
+  if (!hatMiete) fehlend.push('Miethöhe (Mietzuschuss)');
+  if (personen.length === 0) fehlend.push('mindestens eine Person im Haushalt');
+  if (fehlend.length > 0) {
+    befunde.push({
+      regelId: 'essenzielle-angaben', kategorie: 'vollstaendigkeit', typ: 'anforderung',
+      titel: 'Essenzielle Angaben fehlen',
+      belegtext: `Folgende Kernangaben zum Vorgang fehlen und sollten vor der Prüfung erfasst werden: ${fehlend.join(', ')}.`,
+    });
+  }
+
   // ── Haushalt / Antrag ────────────────────────────────────────────────
   if (!hasDocHousehold(dokumente, 'wohngeldantrag')) {
     befunde.push({

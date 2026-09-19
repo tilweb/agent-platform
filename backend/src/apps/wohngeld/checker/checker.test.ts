@@ -120,3 +120,44 @@ describe('Goldfall Petermann — Regel-Engine', () => {
     expect(b?.belegtext).toContain('14');
   });
 });
+
+describe('Essenzielle Angaben — Vollständigkeit der Kernangaben', () => {
+  function vollstaendigerFall(): VorgangSnapshot {
+    return {
+      vorgang: mkVorgang({
+        antragsdatum: '2026-08-12',
+        wohnung: { strasse: 'Hauptstr.', hausnummer: '1', plz: '12345', ort: 'Musterstadt', miete: 704, wohnflaeche_qm: 63 },
+      }),
+      personen: [mkPerson({ id: 'p1', rolle: 'antragsteller', vorname: 'Max', nachname: 'Muster' })],
+      dokumente: [],
+    };
+  }
+
+  test('vollständiger Fall → Regel feuert nicht', () => {
+    const befunde = pruefeVorgang(vollstaendigerFall());
+    expect(has(befunde, 'essenzielle-angaben')).toBe(false);
+  });
+
+  test('fehlendes Antragsdatum → Regel feuert und nennt es im Belegtext', () => {
+    const snap = vollstaendigerFall();
+    snap.vorgang.antragsdatum = undefined;
+    const befunde = pruefeVorgang(snap);
+    expect(has(befunde, 'essenzielle-angaben')).toBe(true);
+    const b = befunde.find(x => x.regelId === 'essenzielle-angaben');
+    expect(b?.belegtext).toContain('Antragsdatum');
+  });
+
+  test('fehlende Miete bei Mietzuschuss → Regel feuert', () => {
+    const snap = vollstaendigerFall();
+    snap.vorgang.wohnung = { strasse: 'Hauptstr.', plz: '12345', ort: 'Musterstadt' };
+    const befunde = pruefeVorgang(snap);
+    expect(has(befunde, 'essenzielle-angaben')).toBe(true);
+  });
+
+  test('keine Person erfasst → Regel feuert', () => {
+    const snap = vollstaendigerFall();
+    snap.personen = [];
+    const befunde = pruefeVorgang(snap);
+    expect(has(befunde, 'essenzielle-angaben')).toBe(true);
+  });
+});

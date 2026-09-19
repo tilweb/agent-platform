@@ -52,6 +52,8 @@ export const wohngeldApi = {
   deleteVorgang: (id) => apiDelete(`${base}/vorgaenge/${id}`).then(json),
   // Regel-Engine ausführen (Vollständigkeit + Plausibilität).
   pruefen: (id) => apiPost(`${base}/vorgaenge/${id}/pruefen`, {}).then(json),
+  // § 13-Gesamteinkommen (read-only, angenommene §16-Abzugskategorien).
+  getEinkommen: (id) => apiGet(`${base}/vorgaenge/${id}/einkommen`).then(json).then((d) => d.einkommen),
 
   // Personen
   listPersonen: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/personen`).then(json).then((d) => d.personen),

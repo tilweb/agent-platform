@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
-import { ArrowLeftIcon, UploadIcon, ChatIcon } from '../../components/Icons';
+import { ArrowLeftIcon, UploadIcon, ChatIcon, CopyIcon, PanelRightIcon, ChevronDownIcon } from '../../components/Icons';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import {
   wohngeldApi,
@@ -32,6 +32,12 @@ const PRUEF_FILTER = [
   { id: 'offen', label: 'Offen' },
   { id: 'erledigt', label: 'Erledigt' },
 ];
+// Anzeige der angenommenen §16-Abzugskategorien.
+const ABZUG_KAT_LABEL = { kvPv: 'KV/PV', steuern: 'Steuern', rv: 'RV' };
+function abzugKatText(kat) {
+  const on = Object.entries(ABZUG_KAT_LABEL).filter(([k]) => kat?.[k]).map(([, l]) => l);
+  return on.length ? on.join(' + ') : 'keine';
+}
 
 const styles = {
   page: { width: '100%' },
@@ -66,6 +72,17 @@ const styles = {
   placeholder: { textAlign: 'center', padding: theme.spacing['3xl'], color: theme.colors.textMuted },
   chip: { fontSize: theme.typography.sizes.xs, padding: `2px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted },
   docItem: { padding: `${theme.spacing.sm} 0`, borderBottom: `1px solid ${theme.colors.borderLight}` },
+  iconBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xs, background: 'none', border: 'none', borderRadius: theme.borderRadius.md, cursor: 'pointer' },
+  copiedHint: { position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 2, fontSize: '0.65rem', color: theme.colors.textMuted, backgroundColor: theme.colors.surfaceHover, borderRadius: theme.borderRadius.sm, padding: '1px 6px', whiteSpace: 'nowrap' },
+  sideToggle: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, padding: `4px ${theme.spacing.sm}`, background: 'none', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, color: theme.colors.textMuted, cursor: 'pointer', fontSize: theme.typography.sizes.xs },
+  ekResult: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: theme.spacing.md, padding: `${theme.spacing.md} 0`, borderTop: `1px solid ${theme.colors.border}`, marginTop: theme.spacing.md, flexWrap: 'wrap' },
+  ekResultLabel: { fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.semibold, color: theme.colors.text },
+  ekResultValue: { fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.bold, color: theme.colors.text },
+  ekResultSub: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, fontWeight: theme.typography.weights.normal },
+  ekHint: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.xs },
+  ekToggle: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: ACCENT, background: 'none', border: 'none', padding: 0, cursor: 'pointer', marginTop: theme.spacing.sm },
+  ekHerleitung: { fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, backgroundColor: theme.colors.surfaceHover, borderRadius: theme.borderRadius.md, padding: theme.spacing.md, marginTop: theme.spacing.sm, lineHeight: 1.7 },
+  ekRow: { display: 'flex', justifyContent: 'space-between', gap: theme.spacing.md },
 };
 
 function fmtDate(iso) {
@@ -104,6 +121,16 @@ export default function VorgangDetail() {
   const [busy, setBusy] = useState(false);
   const dokUploadRef = useRef(null);
 
+  // § 13-Einkommen (read-only)
+  const [einkommen, setEinkommen] = useState(null);
+  const [herleitungOffen, setHerleitungOffen] = useState({}); // personId -> bool
+
+  // UX: Antrags-ID kopieren, Seitenleiste ein-/ausklappen, Dokument-Sprung
+  const [copied, setCopied] = useState(false);
+  const [sideCollapsed, setSideCollapsed] = useState(false);
+  const [highlightDocId, setHighlightDocId] = useState(null);
+  const docRefs = useRef({});
+
   // Übersicht-Bearbeitung (Vorgang-Ebene)
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState(null);
@@ -124,13 +151,41 @@ export default function VorgangDetail() {
       } catch (e) {
         if (!cancelled) setError(e.message);
       }
+      try {
+        const ek = await wohngeldApi.getEinkommen(id);
+        if (!cancelled) setEinkommen(ek);
+      } catch { /* Einkommen optional — Übersicht funktioniert auch ohne */ }
     })();
     return () => { cancelled = true; };
   }, [id]);
 
+  // Dokument-Sprung: kurzes Hervorheben + Scroll, danach Flash zurücksetzen.
+  useEffect(() => {
+    if (!highlightDocId) return undefined;
+    const el = docRefs.current[highlightDocId];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const t = setTimeout(() => setHighlightDocId(null), 2000);
+    return () => clearTimeout(t);
+  }, [highlightDocId]);
+
   async function reload() {
     try { setDetail(await wohngeldApi.getVorgangDetail(id)); }
     catch (e) { setError(e.message); }
+    try { setEinkommen(await wohngeldApi.getEinkommen(id)); }
+    catch { /* ignore */ }
+  }
+
+  function copyAntragsId(antragsId) {
+    navigator.clipboard?.writeText(antragsId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }).catch(() => {});
+  }
+
+  function jumpToDokument(dokumentId) {
+    setSideCollapsed(false);
+    setSideTab('dokumente');
+    setHighlightDocId(dokumentId);
   }
 
   async function uploadDokumente(fileList) {
@@ -157,6 +212,11 @@ export default function VorgangDetail() {
   const antragstellerName = antragsteller
     ? [antragsteller.vorname, antragsteller.nachname].filter(Boolean).join(' ')
     : (akte?.antragstellerName || akte?.name || '—');
+
+  const dokLabel = (docId) => {
+    const d = dokumente.find((x) => x.id === docId);
+    return d ? (DOKUMENT_TYP_LABEL[d.typ] || d.typ) : 'Beleg-Dokument';
+  };
 
   // ── Ampel-Zählung: offene Prüfschritte grob je Sektion (personId/Kategorie/Stichwort). ──
   const offen = pruefschritte.filter((p) => p.status === 'offen');
@@ -303,7 +363,18 @@ export default function VorgangDetail() {
         <div style={styles.crumb}>Vorgänge › {vorgang.antragsId}</div>
         <div style={styles.headRow}>
           <div>
-            <h1 style={styles.title}>{vorgang.antragsId}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+              <h1 style={styles.title}>{vorgang.antragsId}</h1>
+              <button
+                style={{ ...styles.iconBtn, position: 'relative' }}
+                onClick={() => copyAntragsId(vorgang.antragsId)}
+                title="Antrags-ID kopieren"
+                aria-label="Antrags-ID kopieren"
+              >
+                <CopyIcon size={16} color={theme.colors.textMuted} />
+                {copied && <span style={styles.copiedHint}>kopiert</span>}
+              </button>
+            </div>
             <div style={styles.subtitle}>
               <span>{antragstellerName}</span>
               <StatusBadge status={vorgang.status} />
@@ -344,6 +415,7 @@ export default function VorgangDetail() {
               <SektionCard
                 title="Allgemein"
                 offenCount={countAllgemein}
+                collapsible
                 action={canEdit && (
                   editMode
                     ? <div style={{ display: 'flex', gap: theme.spacing.sm }}>
@@ -376,7 +448,7 @@ export default function VorgangDetail() {
                 )}
               </SektionCard>
 
-              <SektionCard title="Personen" offenCount={countPersonen}>
+              <SektionCard title="Personen" offenCount={countPersonen} collapsible>
                 {personen.length === 0
                   ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Noch keine Personen erfasst.</div>
                   : personen.map((p) => <PersonCard key={p.id} person={p} />)}
@@ -385,6 +457,7 @@ export default function VorgangDetail() {
               <SektionCard
                 title="Wohnung & Miete"
                 offenCount={countWohnung}
+                collapsible
               >
                 {editMode ? (
                   <div style={styles.editRow}>
@@ -419,7 +492,7 @@ export default function VorgangDetail() {
                 )}
               </SektionCard>
 
-              <SektionCard title="Einkommen & Abzugsbeträge" offenCount={countEinkommen}>
+              <SektionCard title="Einkommen & Abzugsbeträge" offenCount={countEinkommen} collapsible>
                 {personen.length === 0 ? (
                   <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Keine Personen mit Einkommensangaben.</div>
                 ) : (
@@ -452,9 +525,73 @@ export default function VorgangDetail() {
                     );
                   })
                 )}
+
+                {einkommen && (
+                  <>
+                    <div style={styles.ekResult}>
+                      <span style={styles.ekResultLabel}>Anrechenbares Gesamteinkommen (§13 WoGG)</span>
+                      <span style={styles.ekResultValue}>
+                        {eur(einkommen.gesamteinkommenMonat)} / Mon.
+                        <span style={styles.ekResultSub}> · {eur(einkommen.gesamteinkommenJahr)} / Jahr</span>
+                      </span>
+                    </div>
+                    <div style={styles.ekHint}>
+                      Read-only. §16-Abzugskategorien sind angenommen — bitte prüfen. Keine Wohngeldbetrag-Berechnung (§19).
+                    </div>
+                    {(einkommen.proPerson || []).map((z) => {
+                      const offen = !!herleitungOffen[z.personId];
+                      return (
+                        <div key={z.personId} style={{ marginTop: theme.spacing.sm }}>
+                          <button
+                            style={styles.ekToggle}
+                            onClick={() => setHerleitungOffen((m) => ({ ...m, [z.personId]: !m[z.personId] }))}
+                            aria-expanded={offen}
+                          >
+                            <ChevronDownIcon size={12} style={{ transform: offen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: `transform ${theme.transitions.fast}` }} />
+                            Herleitung {z.name}
+                          </button>
+                          {offen && (
+                            <div style={styles.ekHerleitung}>
+                              <div style={styles.ekRow}>
+                                <span>Jahreseinkommen (§14 nach §16-Abzug · {abzugKatText(z.abzugskategorien)})</span>
+                                <span>{eur(z.jahreseinkommen)}</span>
+                              </div>
+                              <div style={styles.ekRow}>
+                                <span>− Freibeträge (§17)</span>
+                                <span>{eur(z.freibetraege)}</span>
+                              </div>
+                              <div style={{ ...styles.ekRow, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, borderTop: `1px solid ${theme.colors.border}`, marginTop: theme.spacing.xs, paddingTop: theme.spacing.xs }}>
+                                <span>Anrechenbar (Jahr)</span>
+                                <span>{eur(Math.max(0, z.jahreseinkommen - z.freibetraege))}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <div style={{ ...styles.ekHerleitung, marginTop: theme.spacing.md }}>
+                      <div style={styles.ekRow}>
+                        <span>Summe Jahreseinkommen (Haushalt)</span>
+                        <span>{eur(einkommen.summeJahreseinkommen)}</span>
+                      </div>
+                      <div style={styles.ekRow}>
+                        <span>− Freibeträge gesamt (§17)</span>
+                        <span>{eur(einkommen.summeFreibetraege)}</span>
+                      </div>
+                      <div style={styles.ekRow}>
+                        <span>− Unterhaltsabzüge (§18)</span>
+                        <span>{eur(einkommen.unterhaltsabzuege)}</span>
+                      </div>
+                      <div style={{ ...styles.ekRow, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, borderTop: `1px solid ${theme.colors.border}`, marginTop: theme.spacing.xs, paddingTop: theme.spacing.xs }}>
+                        <span>Gesamteinkommen (§13, Jahr)</span>
+                        <span>{eur(einkommen.gesamteinkommenJahr)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </SektionCard>
 
-              <SektionCard title="Bewilligungszeitraum & Zahlung" offenCount={countZahlung}>
+              <SektionCard title="Bewilligungszeitraum & Zahlung" offenCount={countZahlung} collapsible>
                 {editMode ? (
                   <div style={styles.editRow}>
                     <span style={styles.editLabel}>Zeitraum von</span>
@@ -516,7 +653,7 @@ export default function VorgangDetail() {
                 const list = pruefschritte.filter((p) => p.kategorie === 'plausibilitaet');
                 if (list.length === 0) return <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Keine Plausibilitäts-Prüfschritte. Starte rechts „Neu prüfen".</div>;
                 return list.map((p) => (
-                  <PruefschrittItem key={p.id} pruefschritt={p} canEdit={canEdit} busy={busy} onStatus={(s) => setPruefStatus(p, s)} />
+                  <PruefschrittItem key={p.id} pruefschritt={p} canEdit={canEdit} busy={busy} onStatus={(s) => setPruefStatus(p, s)} onOpenDokument={jumpToDokument} dokumentLabel={dokLabel(p.quellDokumentId)} />
                 ));
               })()}
             </SektionCard>
@@ -548,13 +685,26 @@ export default function VorgangDetail() {
         </div>
 
         {/* ── RECHTE SEITENLEISTE ── */}
+        {sideCollapsed ? (
+          <div style={{ flexShrink: 0 }}>
+            <button style={styles.sideToggle} onClick={() => setSideCollapsed(false)} title="Seitenleiste einblenden">
+              <PanelRightIcon size={14} /> Einblenden
+            </button>
+          </div>
+        ) : (
         <div style={styles.side}>
           <div style={styles.sideCard}>
-            <div style={styles.tabs}>
-              {SIDE_TABS.map((t) => (
-                <button key={t.id} style={{ ...styles.tab, ...(sideTab === t.id ? styles.tabActive : {}) }} onClick={() => setSideTab(t.id)}>{t.label}</button>
-              ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
+              <div style={{ ...styles.tabs, marginBottom: 0 }}>
+                {SIDE_TABS.map((t) => (
+                  <button key={t.id} style={{ ...styles.tab, ...(sideTab === t.id ? styles.tabActive : {}) }} onClick={() => setSideTab(t.id)}>{t.label}</button>
+                ))}
+              </div>
+              <button style={styles.iconBtn} onClick={() => setSideCollapsed(true)} title="Seitenleiste ausblenden" aria-label="Seitenleiste ausblenden">
+                <PanelRightIcon size={16} color={theme.colors.textMuted} />
+              </button>
             </div>
+            <div style={{ marginBottom: theme.spacing.lg }} />
 
             {sideTab === 'details' && (
               <div>
@@ -603,7 +753,7 @@ export default function VorgangDetail() {
                     <div key={g.key} style={{ marginBottom: theme.spacing.md }}>
                       <div style={styles.sideTitle}>{g.label} ({g.items.length})</div>
                       {g.items.map((p) => (
-                        <PruefschrittItem key={p.id} pruefschritt={p} canEdit={canEdit} busy={busy} onStatus={(s) => setPruefStatus(p, s)} />
+                        <PruefschrittItem key={p.id} pruefschritt={p} canEdit={canEdit} busy={busy} onStatus={(s) => setPruefStatus(p, s)} onOpenDokument={jumpToDokument} dokumentLabel={dokLabel(p.quellDokumentId)} />
                       ))}
                     </div>
                   ));
@@ -639,7 +789,16 @@ export default function VorgangDetail() {
                   const nachweise = dokumente.filter((d) => !d.istOriginal);
                   const originale = dokumente.filter((d) => d.istOriginal);
                   const renderDoc = (d) => (
-                    <div key={d.id} style={styles.docItem}>
+                    <div
+                      key={d.id}
+                      ref={(el) => { docRefs.current[d.id] = el; }}
+                      style={{
+                        ...styles.docItem,
+                        ...(highlightDocId === d.id
+                          ? { backgroundColor: ACCENT_LIGHT, borderRadius: theme.borderRadius.md, transition: `background-color ${theme.transitions.fast}`, marginLeft: -theme.spacing.sm, marginRight: -theme.spacing.sm, paddingLeft: theme.spacing.sm, paddingRight: theme.spacing.sm }
+                          : { transition: `background-color ${theme.transitions.fast}` }),
+                      }}
+                    >
                       <div style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>
                         {DOKUMENT_TYP_LABEL[d.typ] || d.typ}
                       </div>
@@ -670,6 +829,7 @@ export default function VorgangDetail() {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Fall-Chat: schwebender Trigger + Panel */}
@@ -688,7 +848,7 @@ export default function VorgangDetail() {
         <FallChat
           vorgang={{ id: vorgang.id, antragsId: vorgang.antragsId }}
           onClose={() => setChatOpen(false)}
-          onOpenDokument={() => setSideTab('dokumente')}
+          onOpenDokument={(docId) => { if (docId) jumpToDokument(docId); else { setSideCollapsed(false); setSideTab('dokumente'); } }}
         />
       )}
     </div>
