@@ -34,6 +34,7 @@ Fachlicher Hinweis dazu aus dem Stichwortverzeichnis, der für eure Pflegepraxis
 
 - **Treffgenauigkeit:** Wir messen die Qualität jetzt laufend gegen eine Prüfmenge aus amtlichen Stichwörtern. Nach der Überarbeitung steht der zutreffende Schlüssel in rund **9 von 10 Fällen unter den angezeigten Vorschlägen** (vorher rund 6 von 10); auch der erstgenannte Vorschlag trifft deutlich häufiger exakt die richtige Unterklasse.
 - **Handelsformen:** Einzelhandel, Großhandel, Handelsvermittlung und Herstellung werden strikter auseinandergehalten — eine Einzelhandelstätigkeit erhält keinen Großhandelsschlüssel mehr, nur weil die Ware übereinstimmt.
+- **Mehrere Wirtschaftsformen, mehrere Schlüssel:** „Produktion von Spielwaren und Handel mit Spielwaren" wird jetzt als zwei getrennte Tätigkeiten erkannt und einzeln verschlüsselt — vorher wurde das zu einer Tätigkeit zusammengefasst.
 - **Verlässlichkeit:** Dieselbe Eingabe liefert jetzt garantiert dasselbe Ergebnis. Wiederholte Anfragen zu einem bereits geprüften Text werden ohne Wartezeit beantwortet und als **„aus früherem Lauf"** gekennzeichnet.
 - **Neu ermitteln:** Sollte ein gespeichertes Ergebnis einmal nicht überzeugen, kann der Sachbearbeiter es direkt neben dieser Kennzeichnung per Klick **neu ermitteln lassen** — das neue Ergebnis ersetzt dann das gespeicherte. Ein einmal danebengegangener Vorschlag bleibt also nicht „festgefroren".
 - **Bedienung bei längeren Texten:** Bei ausführlichen Gegenstandstexten zeigt der Matcher die erkannten Tätigkeiten sofort an, während die Schlüsselermittlung noch läuft — du siehst nach etwa zwei Sekunden, wie das System den Text gegliedert hat. Störungen der Verarbeitung führen nicht mehr zu minutenlangen Wartezeiten, sondern zu einer schnellen Fehlermeldung.
@@ -66,6 +67,7 @@ Wir können den Matcher auf jede dieser Lesarten ausrichten — aber die Entsche
 3. **Anzahl der Vorschläge:** Der Matcher liefert heute bis zu drei Tätigkeiten je Eingabe mit jeweils einem Hauptvorschlag und Alternativen. Passt dieser Zuschnitt zu eurem Pflegeprozess?
 4. **Prüffälle:** Könntet ihr uns 10–20 typische Fälle aus eurer Praxis mit dem von euch vergebenen Soll-Schlüssel bereitstellen? Damit können wir die Qualität künftig direkt an eurem Maßstab messen statt nur an der amtlichen Stichwortliste.
 5. **Rückmelde-Funktion:** Uns fällt auf, dass eure Sachbearbeiter dem Matcher häufig den erwarteten Schlüssel bereits mitgeben („43110 Abbrucharbeiten, …"). Wäre eine Funktion hilfreich, mit der der vorgeschlagene Schlüssel direkt bestätigt oder korrigiert werden kann? Eure Korrekturen würden die Trefferqualität dann fortlaufend verbessern.
+6. **Herstellung mit Vertrieb:** Nach WZ-Grundsatz gehört der Vertrieb *eigener* Erzeugnisse zur Herstellung; nur der Handel mit Fremdware ist ein eigener Zweig — dem Gegenstandstext ist das aber meist nicht anzusehen. Der Matcher weist bei „Herstellung und Handel mit X" deshalb bewusst beide Tätigkeiten aus und überlässt die Entscheidung eurer Sachbearbeitung. Passt das so, oder wünscht ihr eine andere Behandlung (z. B. Handel nur bei erkennbarem Fremdwarenhandel)?
 
 ---
 

@@ -6,6 +6,7 @@ Mit dem nächsten Update erhält der WZ-Branchen-Matcher eine umfassend überarb
 
 - **Immer die amtliche Ebene:** Der Matcher gibt jetzt mindestens die 5-stellige Unterklasse aus (z. B. 43.11.0 statt 43.11). Nationale Feinschlüssel (6-/7-stellig) werden nur noch vorgeschlagen, wenn die Tätigkeitsbeschreibung die Spezialisierung ausdrücklich benennt — „Reifendienst" führt zum Feinschlüssel 95.31.31, ein allgemeines „Abbrucharbeiten" bleibt korrekt bei 43.11.0.
 - **Handelsformen sauber getrennt:** Einzelhandel, Großhandel, Handelsvermittlung und Herstellung werden strikt unterschieden — eine Einzelhandelstätigkeit erhält keinen Großhandelsschlüssel mehr, nur weil die Ware übereinstimmt.
+- **Mehrere Wirtschaftsformen, mehrere Schlüssel:** „Produktion von Spielwaren und Handel mit Spielwaren" wird jetzt als zwei getrennte Tätigkeiten erkannt und einzeln verschlüsselt — Herstellung und Handel liegen in der WZ in verschiedenen Abschnitten. Ob der Handel als Vertrieb eigener Erzeugnisse zur Herstellung gehört, bleibt bewusst die Entscheidung der Sachbearbeitung.
 
 ## Deutlich bessere Begriffserkennung
 
@@ -21,7 +22,9 @@ In internen Messungen gegen amtliche Stichwörter steht der zutreffende Schlüss
 
 ## Komfort bei längeren Texten
 
-Bei ausführlichen Gegenstandstexten zeigt der Matcher die **erkannten Tätigkeiten sofort** an, während die Schlüsselermittlung noch läuft — nach etwa zwei Sekunden ist sichtbar, wie das System den Text gegliedert hat. Verarbeitungsstörungen führen nicht mehr zu langen Wartezeiten, sondern zu einer schnellen, klaren Fehlermeldung.
+Ausführliche, juristisch formulierte Gegenstandstexte (etwa mit langen Aufzählungen zu Rechteverwaltung, Genehmigungen oder Kooperationen) erkennt der Matcher jetzt zuverlässig als das, was sie meist sind: **eine wirtschaftliche Haupttätigkeit mit rechtlichen Nebenpunkten** — statt an den Nebenpunkten zu zerfasern.
+
+Dabei zeigt er die **erkannten Tätigkeiten sofort** an, während die Schlüsselermittlung noch läuft — nach etwa zwei Sekunden ist sichtbar, wie das System den Text gegliedert hat. Verarbeitungsstörungen führen nicht mehr zu langen Wartezeiten, sondern zu einer schnellen, klaren Fehlermeldung.
 
 ## Rückmeldungen willkommen
 
