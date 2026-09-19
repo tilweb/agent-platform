@@ -108,6 +108,13 @@ export interface Akte extends Timestamped, Versioned {
   permissions?: AppPermissions;
 }
 
+/** Ein Bewilligungszeitraum (§ 25 WoGG, i. d. R. 12 Monate). */
+export interface Bewilligungszeitraum {
+  id: string;
+  start?: string;  // ISO (YYYY-MM-DD)
+  ende?: string;   // ISO (YYYY-MM-DD)
+}
+
 /** Wohnung & Miete (Teil des Vorgangs). */
 export interface WohnungMiete {
   strasse?: string;
@@ -135,8 +142,10 @@ export interface Vorgang extends Timestamped, Versioned {
   ownerId?: string;
   // Domänen-Details (im data-jsonb):
   antragsdatum?: string;         // ISO
-  bwz_start?: string;            // Bewilligungszeitraum
+  bwz_start?: string;            // Legacy-Bewilligungszeitraum (weiter befüllt für Kompatibilität)
   bwz_ende?: string;
+  /** Bewilligungszeiträume als Liste (Welle 3, WP5). Führend, wenn vorhanden. */
+  bwz?: Bewilligungszeitraum[];
   iban?: string;
   wohnung?: WohnungMiete;
   labels?: string[];
@@ -158,6 +167,43 @@ export interface PflegeBehinderung {
   schwerbehinderungsgrad?: number;
   pflegegrad?: number;
   pflegebeduerftig?: boolean;
+}
+
+/** Empfänger-Kategorie einer Unterhaltsverpflichtung (§ 18 WoGG). */
+export type UnterhaltEmpfaengerKategorie =
+  | 'auswaertige_ausbildung'   // Nr. 1
+  | 'kind_anderer_elternteil'  // Nr. 2
+  | 'ehegatte_getrennt'        // Nr. 3
+  | 'sonstige';                // Nr. 4
+
+/** Eine Vermögensposition einer Person (§ 21 Nr. 3). */
+export interface VermoegenPosition {
+  id: string;
+  art: string;             // z. B. 'Bankguthaben', 'Wertpapiere', 'Bausparvertrag'
+  betrag?: number;
+}
+
+/** Eine Unterhaltsverpflichtung gegenüber Person außerhalb des Haushalts (§ 18). */
+export interface Unterhaltsverpflichtung {
+  id: string;
+  empfaengerKategorie: UnterhaltEmpfaengerKategorie;
+  betrag?: number;
+  titelVorhanden: boolean;  // Titel/Vereinbarung/Bescheid → Abzug bis tatsächliche Höhe
+}
+
+/** Ein erhaltener Unterhaltsanspruch (§ 14 Abs. 2 Nr. 19–22). */
+export interface Unterhaltsanspruch {
+  id: string;
+  art: string;             // z. B. 'Kindesunterhalt', 'Ehegattenunterhalt', 'Unterhaltsvorschuss'
+  betrag?: number;
+}
+
+/** Eine Transferleistung einer Person (§ 7 WoGG — mögliche Ausschlusswirkung). */
+export interface TransferleistungDetail {
+  id: string;
+  art: string;             // z. B. 'Bürgergeld', 'Grundsicherung', 'AsylbLG'
+  kduEnthalten: boolean;   // Unterkunftskosten in der Leistung enthalten → Ausschluss § 7
+  bescheidVorhanden: boolean;
 }
 
 /** Person (Antragsteller / Haushaltsmitglied). */
@@ -183,8 +229,13 @@ export interface Person extends Timestamped, Versioned {
   hat_werbungskosten?: boolean;
   pflege_behinderung?: PflegeBehinderung;
   einkommen?: Einkommensposition[];
-  vermoegen?: number;             // z. B. Bankguthaben
-  transferleistungen?: string[];
+  vermoegen?: number;             // Legacy: Einzelzahl (weiter unterstützt); führend ist vermoegenPositionen
+  transferleistungen?: string[];  // Legacy: Freitext-Liste; führend ist transferleistungenDetail
+  // Strukturierte Listen (Welle 3, WP5):
+  vermoegenPositionen?: VermoegenPosition[];
+  unterhaltsverpflichtungen?: Unterhaltsverpflichtung[];
+  unterhaltsansprueche?: Unterhaltsanspruch[];
+  transferleistungenDetail?: TransferleistungDetail[];
   bemerkung?: string;
 }
 
@@ -247,6 +298,18 @@ export interface Pruefschritt extends Timestamped, Versioned {
   automatisch: boolean;
 }
 
+/**
+ * Ein Anforderungspunkt eines Schreibens mit Provenienz (Welle 3, WP6).
+ * Verknüpft die Textzeile mit dem auslösenden Prüfschritt/Beleg.
+ */
+export interface SchreibenItem {
+  text: string;
+  regelId?: string;
+  quellDokumentId?: string;
+  personId?: string;
+  titel?: string;                // Titel des zugehörigen Prüfschritts (für ⓘ-Anzeige)
+}
+
 /** Nachforderungsschreiben. */
 export interface Schreiben extends Timestamped, Versioned {
   id: string;
@@ -255,7 +318,16 @@ export interface Schreiben extends Timestamped, Versioned {
   betreff?: string;
   frist?: string;                // ISO
   body?: string;                 // generierter Text (Markdown/HTML)
+  items?: SchreibenItem[];       // je Anforderungspunkt mit Bezug (Provenienz)
   exportPfad?: string;
+}
+
+/** Pflegbarer Textbaustein für Anforderungsschreiben (Welle 3, WP6). */
+export interface Textbaustein extends Timestamped {
+  id: string;
+  kategorie: string;             // z. B. 'Miete', 'Einkommen', 'Allgemein'
+  titel: string;
+  text: string;
 }
 
 /** Aktivität / Audit-Eintrag (append-only). */

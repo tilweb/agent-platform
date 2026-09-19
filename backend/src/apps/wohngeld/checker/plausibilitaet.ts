@@ -6,6 +6,8 @@
  * (aus den Nachweisen extrahierte Werte).
  */
 import type { VorgangSnapshot, Dokument, Person, DokumentTyp, PruefBefund } from '../types';
+import { haushaltsVermoegen, vermoegensFreigrenze } from '../einkommen';
+import { berechneBwzVorschlag, fmtDe } from '../bwz';
 
 function docsOfType(dokumente: Dokument[], ...typen: DokumentTyp[]): Dokument[] {
   return dokumente.filter(d => typen.includes(d.typ));
@@ -119,6 +121,51 @@ export function pruefePlausibilitaet(snapshot: VorgangSnapshot): PruefBefund[] {
         titel: 'Rentenart/Grundrentenzeiten unklar',
         belegtext: `Der Rentenbescheid für ${label} weist Rentenart bzw. Grundrentenzeiten nicht aus — für die Freibetragsprüfung (§ 17) nachfordern.`,
         quellDokumentId: rente.id,
+      });
+    }
+  }
+
+  // ── Vermögen über Freigrenze (§ 21 Nr. 3) ────────────────────────────
+  const vermoegenSumme = haushaltsVermoegen(personen);
+  if (vermoegenSumme > 0) {
+    const freigrenze = vermoegensFreigrenze(personen.length || 1);
+    if (vermoegenSumme > freigrenze) {
+      befunde.push({
+        regelId: 'plausi-vermoegen-ueber-freigrenze', kategorie: 'plausibilitaet', typ: 'anforderung',
+        titel: 'Vermögen über Freigrenze',
+        belegtext: `Das Haushaltsvermögen (${euro(vermoegenSumme)}) überschreitet die Freigrenze von ${euro(freigrenze)} `
+          + `(60.000 € + 30.000 € je weiterem Mitglied, ${personen.length} Mitglied(er)). `
+          + `Vermögensnachweise und Zweckerklärung anfordern, dann Einzelfallbewertung (§ 21 Nr. 3 WoGG).`,
+      });
+    }
+  }
+
+  // ── Ausschluss wegen Transferleistung mit enthaltenen Unterkunftskosten (§ 7) ──
+  for (const p of personen) {
+    const mitKdu = (p.transferleistungenDetail ?? []).filter(t => t.kduEnthalten);
+    if (mitKdu.length > 0) {
+      const label = `${p.vorname} ${p.nachname}`.trim() || 'Ein Haushaltsmitglied';
+      const arten = mitKdu.map(t => t.art).filter(Boolean).join(', ');
+      befunde.push({
+        regelId: 'ausschluss-person-transferbezug', personId: p.id, kategorie: 'plausibilitaet', typ: 'info',
+        titel: 'Möglicher Wohngeld-Ausschluss (§ 7)',
+        belegtext: `${label} bezieht eine Transferleistung mit enthaltenen Unterkunftskosten`
+          + `${arten ? ` (${arten})` : ''}. Prüfen, ob nach § 7 WoGG ein Ausschluss vorliegt und das `
+          + `Mitglied bei der Wohngeldberechnung außer Betracht bleibt.`,
+      });
+    }
+  }
+
+  // ── Bewilligungszeitraum-Vorschlag (§ 22/§ 25) ───────────────────────
+  const hatBwz = (vorgang.bwz?.length ?? 0) > 0 || !!vorgang.bwz_start;
+  if (!hatBwz && vorgang.antragsdatum) {
+    const vorschlag = berechneBwzVorschlag(vorgang.antragsdatum);
+    if (vorschlag) {
+      befunde.push({
+        regelId: 'bwz-vorschlag-pruefen', kategorie: 'plausibilitaet', typ: 'info',
+        titel: 'Bewilligungszeitraum festlegen',
+        belegtext: `Es ist noch kein Bewilligungszeitraum erfasst. Vorschlag: 12 Monate ab Antragsmonat `
+          + `(${fmtDe(vorschlag.start)} – ${fmtDe(vorschlag.ende)}, § 22/§ 25 WoGG).`,
       });
     }
   }

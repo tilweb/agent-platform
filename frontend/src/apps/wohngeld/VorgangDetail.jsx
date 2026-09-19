@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
-import { ArrowLeftIcon, UploadIcon, ChatIcon, CopyIcon, PanelRightIcon, ChevronDownIcon } from '../../components/Icons';
+import { ArrowLeftIcon, UploadIcon, ChatIcon, CopyIcon, PanelRightIcon, ChevronDownIcon, InfoIcon, PlusIcon, TrashIcon, SearchIcon } from '../../components/Icons';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import {
   wohngeldApi,
@@ -89,6 +89,16 @@ const styles = {
   ekToggle: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: ACCENT, background: 'none', border: 'none', padding: 0, cursor: 'pointer', marginTop: theme.spacing.sm },
   ekHerleitung: { fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, backgroundColor: theme.colors.surfaceHover, borderRadius: theme.borderRadius.md, padding: theme.spacing.md, marginTop: theme.spacing.sm, lineHeight: 1.7 },
   ekRow: { display: 'flex', justifyContent: 'space-between', gap: theme.spacing.md },
+  tbPanel: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, padding: theme.spacing.md, marginTop: theme.spacing.sm, backgroundColor: theme.colors.surface },
+  tbSearch: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, padding: `4px ${theme.spacing.sm}`, marginBottom: theme.spacing.sm, backgroundColor: theme.colors.background },
+  tbSearchInput: { flex: 1, border: 'none', outline: 'none', background: 'transparent', color: theme.colors.text, fontSize: theme.typography.sizes.sm },
+  tbList: { maxHeight: 220, overflowY: 'auto' },
+  tbItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm, padding: theme.spacing.sm, borderBottom: `1px solid ${theme.colors.borderLight}`, cursor: 'pointer' },
+  tbKat: { fontSize: '0.65rem', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' },
+  tbItemTitel: { fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text },
+  tbItemText: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: 2, lineHeight: 1.4 },
+  bezugList: { marginTop: theme.spacing.md, borderTop: `1px solid ${theme.colors.borderLight}`, paddingTop: theme.spacing.sm },
+  bezugItem: { display: 'flex', alignItems: 'flex-start', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, padding: '3px 0' },
 };
 
 function fmtDate(iso) {
@@ -147,6 +157,13 @@ export default function VorgangDetail() {
 
   // Schreiben-Editor (id -> {betreff, frist, body, version})
   const [schreibenEdit, setSchreibenEdit] = useState({});
+  // Textbausteine (WP6): globale Snippet-Liste + Picker/Verwaltung
+  const [textbausteine, setTextbausteine] = useState([]);
+  const [tbOpenFor, setTbOpenFor] = useState(null); // schreiben-id, für das der Picker offen ist
+  const [tbQuery, setTbQuery] = useState('');
+  const [tbManage, setTbManage] = useState(false);
+  const [tbForm, setTbForm] = useState({ kategorie: 'Allgemein', titel: '', text: '' });
+  const bodyRefs = useRef({});
 
   // Notizen-Panel (WP4): { anker, label } oder null
   const [notizPanel, setNotizPanel] = useState(null);
@@ -164,6 +181,10 @@ export default function VorgangDetail() {
         const ek = await wohngeldApi.getEinkommen(id);
         if (!cancelled) setEinkommen(ek);
       } catch { /* Einkommen optional — Übersicht funktioniert auch ohne */ }
+      try {
+        const tb = await wohngeldApi.listTextbausteine();
+        if (!cancelled) setTextbausteine(tb);
+      } catch { /* Textbausteine optional */ }
     })();
     return () => { cancelled = true; };
   }, [id]);
@@ -365,6 +386,49 @@ export default function VorgangDetail() {
     } finally { setBusy(false); }
   }
 
+  async function neuErzeugen(s) {
+    if (!window.confirm('„Neu erzeugen" überschreibt den aktuellen Entwurf dieses Schreibens mit den aktuellen offenen Prüfschritten. Fortfahren?')) return;
+    setBusy(true); setError('');
+    try {
+      await wohngeldApi.generiereSchreiben(id, { schreibenId: s.id, art: s.art });
+      setSchreibenEdit((m) => { const n = { ...m }; delete n[s.id]; return n; });
+      await reload();
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+
+  // ── Textbausteine (WP6): einfügen an Cursorposition + Verwaltung ──
+  function insertBaustein(s, tb) {
+    const cur = editState(s);
+    const body = cur.body || '';
+    const ta = bodyRefs.current[s.id];
+    let next;
+    if (ta && typeof ta.selectionStart === 'number' && document.activeElement === ta) {
+      const pos = ta.selectionStart;
+      next = `${body.slice(0, pos)}${tb.text}${body.slice(pos)}`;
+    } else {
+      next = body ? `${body}\n\n${tb.text}` : tb.text;
+    }
+    setEditField(s, 'body', next);
+    setTbOpenFor(null); setTbQuery('');
+  }
+  async function addTextbaustein() {
+    if (!tbForm.titel.trim() || !tbForm.text.trim()) return;
+    setBusy(true); setError('');
+    try {
+      await wohngeldApi.createTextbaustein({ kategorie: (tbForm.kategorie || 'Allgemein').trim(), titel: tbForm.titel.trim(), text: tbForm.text.trim() });
+      setTbForm({ kategorie: 'Allgemein', titel: '', text: '' });
+      setTextbausteine(await wohngeldApi.listTextbausteine());
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+  async function deleteTextbaustein(tb) {
+    setBusy(true); setError('');
+    try { await wohngeldApi.deleteTextbaustein(tb.id); setTextbausteine(await wohngeldApi.listTextbausteine()); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+
   // ── Feld-Status (WP3): KI-Vorschläge bestätigen/verwerfen ──
   async function bestaetigeFeld(fs) {
     setBusy(true); setError('');
@@ -389,6 +453,34 @@ export default function VorgangDetail() {
     return fs ? <FeldStatusMark fs={fs} canEdit={canEdit} busy={busy} onBestaetigen={bestaetigeFeld} onVerwerfen={verwerfeFeld} /> : null;
   }
 
+  // ── Personen-Listen (WP5): strukturierte Angaben speichern (data-Merge) ──
+  async function savePersonData(personId, patch) {
+    const person = detail.personen.find((x) => x.id === personId);
+    if (!person) return;
+    setBusy(true); setError('');
+    try {
+      const updated = await wohngeldApi.updatePerson(personId, { ...patch, expectedVersion: person.version });
+      setDetail((d) => ({ ...d, personen: d.personen.map((x) => (x.id === updated.id ? updated : x)) }));
+      try { setEinkommen(await wohngeldApi.getEinkommen(id)); } catch { /* ignore */ }
+    } catch (e) {
+      if (e.status === 409) { setError('Konflikt: Die Person wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); }
+      else setError(e.message);
+    } finally { setBusy(false); }
+  }
+
+  // ── Bewilligungszeitraum-Vorschlag übernehmen (WP5) ──
+  async function bwzVorschlagUebernehmen() {
+    setBusy(true); setError('');
+    try {
+      const updated = await wohngeldApi.bwzVorschlagUebernehmen(id);
+      setDetail((d) => ({ ...d, vorgang: updated }));
+      await reload();
+    } catch (e) {
+      if (e.status === 409) { setError('Konflikt: Der Vorgang wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); }
+      else setError(e.message);
+    } finally { setBusy(false); }
+  }
+
   // ── Notizen (WP4) ──
   async function addNotiz(anker, text) {
     setBusy(true); setError('');
@@ -407,6 +499,11 @@ export default function VorgangDetail() {
   const w = vorgang.wohnung || {};
   const adresse = [w.strasse, w.hausnummer].filter(Boolean).join(' ');
   const ortZeile = [w.plz, w.ort].filter(Boolean).join(' ');
+  // Bewilligungszeitraum: Liste ist führend, sonst Legacy-Felder.
+  const bwzListe = (vorgang.bwz && vorgang.bwz.length)
+    ? vorgang.bwz
+    : ((vorgang.bwz_start || vorgang.bwz_ende) ? [{ id: 'legacy', start: vorgang.bwz_start, ende: vorgang.bwz_ende }] : []);
+  const bwzVorschlagOffen = pruefschritte.some((p) => p.regelId === 'bwz-vorschlag-pruefen' && p.status === 'offen');
 
   return (
     <div style={styles.page}>
@@ -531,6 +628,7 @@ export default function VorgangDetail() {
                       busy={busy}
                       onBestaetigen={bestaetigeFeld}
                       onVerwerfen={verwerfeFeld}
+                      onSavePerson={savePersonData}
                       notizCount={notizCount(`person:${p.id}`)}
                       onNotizClick={() => setNotizPanel({ anker: `person:${p.id}`, label: [p.vorname, p.nachname].filter(Boolean).join(' ') || 'Person' })}
                     />
@@ -682,7 +780,16 @@ export default function VorgangDetail() {
                 )}
               </SektionCard>
 
-              <SektionCard title="Bewilligungszeitraum & Zahlung" offenCount={countZahlung} collapsible>
+              <SektionCard
+                title="Bewilligungszeitraum & Zahlung"
+                offenCount={countZahlung}
+                collapsible
+                action={canEdit && bwzVorschlagOffen && !editMode && (
+                  <button style={styles.btnSmall} onClick={bwzVorschlagUebernehmen} disabled={busy} title="12 Monate ab Antragsmonat übernehmen">
+                    {busy ? 'Übernimmt…' : 'Vorschlag übernehmen'}
+                  </button>
+                )}
+              >
                 {editMode ? (
                   <div style={styles.editRow}>
                     <span style={styles.editLabel}>Zeitraum von</span>
@@ -693,10 +800,23 @@ export default function VorgangDetail() {
                     <input style={styles.input} value={form.iban} onChange={(e) => setForm({ ...form, iban: e.target.value })} />
                   </div>
                 ) : (
-                  <FeldGrid felder={[
-                    { label: 'Bewilligungszeitraum', value: (vorgang.bwz_start || vorgang.bwz_ende) ? `${fmtDate(vorgang.bwz_start)} – ${fmtDate(vorgang.bwz_ende)}` : '—' },
-                    { label: 'IBAN', value: vorgang.iban || '—' },
-                  ]} />
+                  <>
+                    <div style={styles.sideTitle}>Bewilligungszeiträume</div>
+                    {bwzListe.length === 0 ? (
+                      <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>
+                        Noch kein Bewilligungszeitraum erfasst.{bwzVorschlagOffen ? ' Vorschlag: 12 Monate ab Antragsmonat (§22/§25).' : ''}
+                      </div>
+                    ) : (
+                      bwzListe.map((b) => (
+                        <div key={b.id} style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text, padding: '2px 0' }}>
+                          {fmtDate(b.start)} – {fmtDate(b.ende)}
+                        </div>
+                      ))
+                    )}
+                    <div style={{ marginTop: theme.spacing.sm }}>
+                      <FeldGrid felder={[{ label: 'IBAN', value: vorgang.iban || '—' }]} />
+                    </div>
+                  </>
                 )}
               </SektionCard>
             </>
@@ -705,8 +825,45 @@ export default function VorgangDetail() {
           {mainTab === 'schreiben' && (
             <SektionCard
               title="Schreiben"
-              action={canEdit && <button style={styles.btn} onClick={generiereSchreiben} disabled={busy}>{busy ? 'Erstellt…' : 'Anforderungsschreiben generieren'}</button>}
+              action={canEdit && (
+                <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+                  <button style={styles.btnSmall} onClick={() => setTbManage((v) => !v)}>Textbausteine verwalten</button>
+                  <button style={styles.btn} onClick={generiereSchreiben} disabled={busy}>{busy ? 'Erstellt…' : 'Anforderungsschreiben generieren'}</button>
+                </div>
+              )}
             >
+              {tbManage && canEdit && (
+                <div style={{ ...styles.tbPanel, marginBottom: theme.spacing.lg }}>
+                  <div style={styles.label}>Textbausteine verwalten</div>
+                  <div style={styles.tbList}>
+                    {textbausteine.length === 0
+                      ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Noch keine Textbausteine.</div>
+                      : textbausteine.map((tb) => (
+                        <div key={tb.id} style={styles.tbItem}>
+                          <div style={{ flex: 1 }}>
+                            <div style={styles.tbKat}>{tb.kategorie}</div>
+                            <div style={styles.tbItemTitel}>{tb.titel}</div>
+                            <div style={styles.tbItemText}>{tb.text}</div>
+                          </div>
+                          <button style={styles.iconBtn} onClick={() => deleteTextbaustein(tb)} disabled={busy} title="Löschen" aria-label="Textbaustein löschen">
+                            <TrashIcon size={14} color={theme.colors.textMuted} />
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
+                    <input style={styles.input} placeholder="Kategorie" value={tbForm.kategorie} onChange={(e) => setTbForm({ ...tbForm, kategorie: e.target.value })} />
+                    <input style={styles.input} placeholder="Titel" value={tbForm.titel} onChange={(e) => setTbForm({ ...tbForm, titel: e.target.value })} />
+                  </div>
+                  <textarea style={{ ...styles.input, minHeight: 60, marginTop: theme.spacing.sm, resize: 'vertical' }} placeholder="Text des Bausteins" value={tbForm.text} onChange={(e) => setTbForm({ ...tbForm, text: e.target.value })} />
+                  <div style={{ marginTop: theme.spacing.sm }}>
+                    <button style={styles.btnSmall} onClick={addTextbaustein} disabled={busy || !tbForm.titel.trim() || !tbForm.text.trim()}>
+                      <PlusIcon size={12} /> Baustein hinzufügen
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {schreiben.length === 0 ? (
                 <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
                   Noch keine Schreiben. Aus den offenen Anforderungen lässt sich ein Nachforderungsschreiben erzeugen.
@@ -714,14 +871,17 @@ export default function VorgangDetail() {
               ) : (
                 schreiben.map((s) => {
                   const st = editState(s);
+                  const pickerOpen = tbOpenFor === s.id;
+                  const tbFiltered = textbausteine.filter((tb) => `${tb.kategorie} ${tb.titel} ${tb.text}`.toLowerCase().includes(tbQuery.trim().toLowerCase()));
                   return (
                     <div key={s.id} style={{ border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg, marginBottom: theme.spacing.md }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md, gap: theme.spacing.md, flexWrap: 'wrap' }}>
                         <span style={styles.chip}>{SCHREIBEN_ART_LABEL[s.art] || s.art}</span>
-                        <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                        <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
                           <button style={styles.btnSmall} onClick={() => wohngeldApi.exportSchreiben(s.id, 'pdf').catch((e) => setError(e.message))}>Als PDF herunterladen</button>
                           <button style={styles.btnSmall} onClick={() => wohngeldApi.exportSchreiben(s.id, 'docx').catch((e) => setError(e.message))}>Als Word-Datei herunterladen</button>
                           <button style={styles.btnSmall} onClick={() => download(`${s.betreff || 'Schreiben'}.txt`, `${st.betreff}\n\n${st.body}`)}>Als Text-Datei</button>
+                          {canEdit && <button style={styles.btnSmall} onClick={() => neuErzeugen(s)} disabled={busy}>Neu erzeugen</button>}
                           {canEdit && <button style={styles.btn} onClick={() => saveSchreiben(s)} disabled={busy}>Speichern</button>}
                         </div>
                       </div>
@@ -729,8 +889,57 @@ export default function VorgangDetail() {
                       <input style={{ ...styles.input, marginBottom: theme.spacing.md }} value={st.betreff} disabled={!canEdit} onChange={(e) => setEditField(s, 'betreff', e.target.value)} />
                       <label style={styles.label}>Frist</label>
                       <input type="date" style={{ ...styles.input, marginBottom: theme.spacing.md, maxWidth: 200 }} value={st.frist} disabled={!canEdit} onChange={(e) => setEditField(s, 'frist', e.target.value)} />
-                      <label style={styles.label}>Text</label>
-                      <textarea style={styles.textarea} value={st.body} disabled={!canEdit} onChange={(e) => setEditField(s, 'body', e.target.value)} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
+                        <label style={styles.label}>Text</label>
+                        {canEdit && (
+                          <button style={styles.btnSmall} onClick={() => { setTbOpenFor(pickerOpen ? null : s.id); setTbQuery(''); }}>
+                            {pickerOpen ? 'Bausteine schließen' : 'Textbaustein einfügen'}
+                          </button>
+                        )}
+                      </div>
+                      {pickerOpen && canEdit && (
+                        <div style={styles.tbPanel}>
+                          <div style={styles.tbSearch}>
+                            <SearchIcon size={14} color={theme.colors.textMuted} />
+                            <input style={styles.tbSearchInput} placeholder="Textbaustein suchen…" value={tbQuery} autoFocus onChange={(e) => setTbQuery(e.target.value)} />
+                          </div>
+                          <div style={styles.tbList}>
+                            {tbFiltered.length === 0
+                              ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, padding: theme.spacing.sm }}>Kein Baustein gefunden.</div>
+                              : tbFiltered.map((tb) => (
+                                <div key={tb.id} style={styles.tbItem} onClick={() => insertBaustein(s, tb)} title="In den Text einfügen">
+                                  <div style={{ flex: 1 }}>
+                                    <div style={styles.tbKat}>{tb.kategorie}</div>
+                                    <div style={styles.tbItemTitel}>{tb.titel}</div>
+                                    <div style={styles.tbItemText}>{tb.text}</div>
+                                  </div>
+                                  <PlusIcon size={14} color={ACCENT} />
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                      <textarea ref={(el) => { bodyRefs.current[s.id] = el; }} style={styles.textarea} value={st.body} disabled={!canEdit} onChange={(e) => setEditField(s, 'body', e.target.value)} />
+                      {(s.items || []).length > 0 && (
+                        <div style={styles.bezugList}>
+                          <div style={styles.sideTitle}>Bezug je Anforderungspunkt</div>
+                          {s.items.map((it, idx) => {
+                            const person = it.personId ? personen.find((x) => x.id === it.personId) : null;
+                            const personName = person ? [person.vorname, person.nachname].filter(Boolean).join(' ') : null;
+                            const bezug = [it.titel, personName, it.quellDokumentId ? dokLabel(it.quellDokumentId) : null].filter(Boolean).join(' · ');
+                            return (
+                              <div key={idx} style={styles.bezugItem} title={bezug}>
+                                {it.quellDokumentId ? (
+                                  <button style={{ ...styles.iconBtn, padding: 0 }} onClick={() => jumpToDokument(it.quellDokumentId)} title="Beleg im Dokumente-Tab öffnen" aria-label="Beleg öffnen">
+                                    <InfoIcon size={13} color={ACCENT} />
+                                  </button>
+                                ) : <InfoIcon size={13} color={theme.colors.textMuted} style={{ flexShrink: 0, marginTop: 1 }} />}
+                                <span>{bezug || it.text}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })

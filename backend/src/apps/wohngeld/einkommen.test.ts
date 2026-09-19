@@ -3,6 +3,7 @@ import {
   abzugssatz16, jahreseinkommenRoh, jahreseinkommen, freibetraege17,
   gesamteinkommen, vermoegensFreigrenze, FREIBETRAG_17,
   abzugskategorienFuer, berechneVorgangEinkommen,
+  unterhaltsabzuegeFuer, unterhaltsabzuegeFuerPerson, vermoegenSummeFuer, haushaltsVermoegen,
 } from './einkommen';
 import type { Person, Dokument } from './types';
 
@@ -126,5 +127,60 @@ describe('Vorgangs-Einkommen (berechneVorgangEinkommen)', () => {
     const r = berechneVorgangEinkommen([p], [], 3000);
     expect(r.unterhaltsabzuege).toBe(3000);
     expect(r.gesamteinkommenJahr).toBeCloseTo(12000 * 0.9 - 3000, 5);
+  });
+});
+
+describe('Unterhaltsabzüge § 18 (unterhaltsabzuegeFuer)', () => {
+  test('ohne Titel: gedeckelt auf Kategorie-Höchstbetrag', () => {
+    const p = mkPerson({ unterhaltsverpflichtungen: [
+      { id: 'u1', empfaengerKategorie: 'kind_anderer_elternteil', betrag: 5000, titelVorhanden: false }, // max 3000
+    ] });
+    expect(unterhaltsabzuegeFuerPerson(p)).toBe(3000);
+  });
+  test('mit Titel: tatsächliche Höhe (über Höchstbetrag hinaus)', () => {
+    const p = mkPerson({ unterhaltsverpflichtungen: [
+      { id: 'u1', empfaengerKategorie: 'kind_anderer_elternteil', betrag: 5000, titelVorhanden: true },
+    ] });
+    expect(unterhaltsabzuegeFuerPerson(p)).toBe(5000);
+  });
+  test('ohne Titel unter Höchstbetrag: tatsächlicher Betrag', () => {
+    const p = mkPerson({ unterhaltsverpflichtungen: [
+      { id: 'u1', empfaengerKategorie: 'ehegatte_getrennt', betrag: 4000, titelVorhanden: false }, // max 6000
+    ] });
+    expect(unterhaltsabzuegeFuerPerson(p)).toBe(4000);
+  });
+  test('summiert über mehrere Personen', () => {
+    const p1 = mkPerson({ id: 'p1', unterhaltsverpflichtungen: [
+      { id: 'u1', empfaengerKategorie: 'sonstige', betrag: 9000, titelVorhanden: false }, // max 3000
+    ] });
+    const p2 = mkPerson({ id: 'p2', unterhaltsverpflichtungen: [
+      { id: 'u2', empfaengerKategorie: 'auswaertige_ausbildung', betrag: 2000, titelVorhanden: false },
+    ] });
+    expect(unterhaltsabzuegeFuer([p1, p2])).toBe(3000 + 2000);
+  });
+  test('keine Verpflichtungen → 0', () => {
+    expect(unterhaltsabzuegeFuer([mkPerson()])).toBe(0);
+  });
+});
+
+describe('Vermögenssumme (Listen + Legacy)', () => {
+  test('Summe aus vermoegenPositionen', () => {
+    const p = mkPerson({ vermoegenPositionen: [
+      { id: 'v1', art: 'Bankguthaben', betrag: 10000 },
+      { id: 'v2', art: 'Wertpapiere', betrag: 5000 },
+    ] });
+    expect(vermoegenSummeFuer(p)).toBe(15000);
+  });
+  test('Fallback auf Legacy vermoegen wenn keine Positionen', () => {
+    expect(vermoegenSummeFuer(mkPerson({ vermoegen: 12500 }))).toBe(12500);
+  });
+  test('Positionen sind führend gegenüber Legacy', () => {
+    const p = mkPerson({ vermoegen: 99999, vermoegenPositionen: [{ id: 'v1', art: 'x', betrag: 100 }] });
+    expect(vermoegenSummeFuer(p)).toBe(100);
+  });
+  test('haushaltsVermoegen summiert über Personen', () => {
+    const p1 = mkPerson({ id: 'p1', vermoegenPositionen: [{ id: 'v1', art: 'x', betrag: 40000 }] });
+    const p2 = mkPerson({ id: 'p2', vermoegen: 20000 });
+    expect(haushaltsVermoegen([p1, p2])).toBe(60000);
   });
 });

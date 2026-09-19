@@ -54,12 +54,23 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/generieren', async (c) => 
   const vorgangId = c.req.param('vorgangId');
   const vorgang = await getVorgang(vorgangId);
   if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
-  const body = await c.req.json<{ art?: string; fristTage?: number }>().catch(() => ({} as { art?: string; fristTage?: number }));
+  const body = await c.req.json<{ art?: string; fristTage?: number; schreibenId?: string }>().catch(() => ({} as { art?: string; fristTage?: number; schreibenId?: string }));
   const [personen, pruefschritte] = await Promise.all([listPersonen(vorgangId), listPruefschritte(vorgangId)]);
   const entwurf = generiereAnforderungsschreiben(vorgang, personen, pruefschritte, {
     art: (body?.art as never) ?? 'erstanforderung',
     fristTage: body?.fristTage ?? 14,
   });
+  // „Neu erzeugen": vorhandenen Entwurf überschreiben, statt einen neuen anzulegen.
+  if (body?.schreibenId) {
+    const bestehend = await getSchreiben(body.schreibenId);
+    if (bestehend && bestehend.vorgangId === vorgangId) {
+      const schreiben = await updateSchreiben(body.schreibenId, {
+        betreff: entwurf.betreff, frist: entwurf.frist, body: entwurf.body, items: entwurf.items,
+      }, { expectedVersion: bestehend.version });
+      await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: 'Anforderungsschreiben neu erzeugt' });
+      return c.json({ schreiben }, 200);
+    }
+  }
   const schreiben = await createSchreiben({ vorgangId, ...entwurf });
   await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: 'Anforderungsschreiben generiert' });
   return c.json({ schreiben }, 201);

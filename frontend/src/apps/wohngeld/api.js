@@ -54,6 +54,8 @@ export const wohngeldApi = {
   pruefen: (id) => apiPost(`${base}/vorgaenge/${id}/pruefen`, {}).then(json),
   // § 13-Gesamteinkommen (read-only, angenommene §16-Abzugskategorien).
   getEinkommen: (id) => apiGet(`${base}/vorgaenge/${id}/einkommen`).then(json).then((d) => d.einkommen),
+  // Bewilligungszeitraum-Vorschlag übernehmen (12 Monate ab Antragsmonat, §22/§25).
+  bwzVorschlagUebernehmen: (id) => apiPost(`${base}/vorgaenge/${id}/bwz-vorschlag-uebernehmen`, {}).then(json).then((d) => d.vorgang),
 
   // Personen
   listPersonen: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/personen`).then(json).then((d) => d.personen),
@@ -98,6 +100,12 @@ export const wohngeldApi = {
   bestaetigeFeld: (vorgangId, fsId) => apiPost(`${base}/vorgaenge/${vorgangId}/feldstatus/${fsId}/bestaetigen`, {}).then(json).then((d) => d.feldStatus),
   verwerfeFeld: (vorgangId, fsId) => apiPost(`${base}/vorgaenge/${vorgangId}/feldstatus/${fsId}/verwerfen`, {}).then(json),
   bestaetigeAlleFelder: (vorgangId) => apiPost(`${base}/vorgaenge/${vorgangId}/feldstatus/alle-bestaetigen`, {}).then(json).then((d) => d.feldStatus),
+
+  // Textbausteine (WP6 — pflegbare Snippets für Anforderungsschreiben)
+  listTextbausteine: () => apiGet(`${base}/textbausteine`).then(json).then((d) => d.textbausteine),
+  createTextbaustein: (payload) => apiPost(`${base}/textbausteine`, payload).then(json).then((d) => d.textbaustein),
+  updateTextbaustein: (id, payload) => apiPut(`${base}/textbausteine/${id}`, payload).then(json).then((d) => d.textbaustein),
+  deleteTextbaustein: (id) => apiDelete(`${base}/textbausteine/${id}`).then(json),
 
   // Notizen (WP4 — Kommentare je Sektion/Person)
   listNotizen: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/notizen`).then(json).then((d) => d.notizen),
@@ -275,6 +283,14 @@ export const DOKUMENT_TYP_LABEL = {
   transferleistungsbescheid: 'Transferleistungsbescheid',
   vermoegensnachweis: 'Vermögensnachweis',
   sonstiges: 'Sonstiges',
+};
+
+/** Empfänger-Kategorien der Unterhaltsverpflichtung (§ 18 WoGG). */
+export const UNTERHALT_KATEGORIE_LABEL = {
+  auswaertige_ausbildung: 'Auswärtige Ausbildung',
+  kind_anderer_elternteil: 'Kind (anderer Elternteil)',
+  ehegatte_getrennt: 'Getrennt lebender Ehegatte',
+  sonstige: 'Sonstige',
 };
 
 /** App-Akzentfarbe (ruhiges Blau), konsistent über alle Wohngeld-Seiten. */

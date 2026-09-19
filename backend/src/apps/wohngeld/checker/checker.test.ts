@@ -161,3 +161,72 @@ describe('Essenzielle Angaben — Vollständigkeit der Kernangaben', () => {
     expect(has(befunde, 'essenzielle-angaben')).toBe(true);
   });
 });
+
+describe('Welle 3 — Vermögen/Transfer/BWZ-Regeln (WP5)', () => {
+  test('Vermögen über Freigrenze (§21 Nr.3) feuert bei Überschreitung', () => {
+    const snap: VorgangSnapshot = {
+      vorgang: mkVorgang(),
+      personen: [
+        mkPerson({ id: 'p1', rolle: 'antragsteller', vorname: 'A', nachname: 'X',
+          vermoegenPositionen: [{ id: 'v1', art: 'Wertpapiere', betrag: 80000 }] }),
+        mkPerson({ id: 'p2', rolle: 'ehegatte', vorname: 'B', nachname: 'X', vermoegen: 20000 }),
+      ], // Summe 100.000 > Freigrenze (2 Pers.) = 90.000
+      dokumente: [],
+    };
+    const befunde = pruefeVorgang(snap);
+    expect(has(befunde, 'plausi-vermoegen-ueber-freigrenze')).toBe(true);
+    const b = befunde.find(x => x.regelId === 'plausi-vermoegen-ueber-freigrenze');
+    expect(b?.belegtext).toContain('90.000');
+  });
+
+  test('Vermögen unter Freigrenze → Regel feuert nicht', () => {
+    const snap: VorgangSnapshot = {
+      vorgang: mkVorgang(),
+      personen: [mkPerson({ id: 'p1', rolle: 'antragsteller', vorname: 'A', nachname: 'X', vermoegen: 50000 })],
+      dokumente: [],
+    };
+    expect(has(pruefeVorgang(snap), 'plausi-vermoegen-ueber-freigrenze')).toBe(false);
+  });
+
+  test('§7-Ausschluss-Hinweis bei Transferleistung mit enthaltenen Unterkunftskosten', () => {
+    const snap: VorgangSnapshot = {
+      vorgang: mkVorgang(),
+      personen: [mkPerson({ id: 'p1', rolle: 'antragsteller', vorname: 'A', nachname: 'X',
+        transferleistungenDetail: [{ id: 't1', art: 'Bürgergeld', kduEnthalten: true, bescheidVorhanden: true }] })],
+      dokumente: [],
+    };
+    const befunde = pruefeVorgang(snap);
+    expect(has(befunde, 'ausschluss-person-transferbezug', 'p1')).toBe(true);
+  });
+
+  test('§7-Regel feuert nicht ohne enthaltene Unterkunftskosten', () => {
+    const snap: VorgangSnapshot = {
+      vorgang: mkVorgang(),
+      personen: [mkPerson({ id: 'p1', rolle: 'antragsteller', vorname: 'A', nachname: 'X',
+        transferleistungenDetail: [{ id: 't1', art: 'Kindergeld', kduEnthalten: false, bescheidVorhanden: true }] })],
+      dokumente: [],
+    };
+    expect(has(pruefeVorgang(snap), 'ausschluss-person-transferbezug')).toBe(false);
+  });
+
+  test('BWZ-Vorschlag-Regel feuert bei fehlendem BWZ + vorhandenem Antragsdatum', () => {
+    const snap: VorgangSnapshot = {
+      vorgang: mkVorgang({ antragsdatum: '2026-08-12', bwz_start: undefined, bwz_ende: undefined, bwz: undefined }),
+      personen: [mkPerson({ id: 'p1', rolle: 'antragsteller', vorname: 'A', nachname: 'X' })],
+      dokumente: [],
+    };
+    const befunde = pruefeVorgang(snap);
+    expect(has(befunde, 'bwz-vorschlag-pruefen')).toBe(true);
+    const b = befunde.find(x => x.regelId === 'bwz-vorschlag-pruefen');
+    expect(b?.belegtext).toContain('01.08.2026');
+  });
+
+  test('BWZ-Vorschlag-Regel feuert nicht, wenn BWZ-Liste vorhanden', () => {
+    const snap: VorgangSnapshot = {
+      vorgang: mkVorgang({ antragsdatum: '2026-08-12', bwz: [{ id: 'b1', start: '2026-08-01', ende: '2027-07-31' }] }),
+      personen: [mkPerson({ id: 'p1', rolle: 'antragsteller', vorname: 'A', nachname: 'X' })],
+      dokumente: [],
+    };
+    expect(has(pruefeVorgang(snap), 'bwz-vorschlag-pruefen')).toBe(false);
+  });
+});

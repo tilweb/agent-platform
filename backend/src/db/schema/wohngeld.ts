@@ -154,6 +154,18 @@ export const wgNotizen = wohngeldSchema.table('notizen', {
   vorgangIdx: index('wg_notizen_vorgang_idx').on(t.vorgangId),
 }));
 
+/** Pflegbare Textbausteine für Anforderungsschreiben (Welle 3, WP6). */
+export const wgTextbausteine = wohngeldSchema.table('textbausteine', {
+  id: text('id').primaryKey(),
+  kategorie: text('kategorie').notNull().default('Allgemein'),
+  titel: text('titel').notNull().default(''),
+  text: text('text').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  kategorieIdx: index('wg_textbaustein_kategorie_idx').on(t.kategorie),
+}));
+
 /** Aktivität / Audit-Eintrag (append-only). */
 export const wgAktivitaeten = wohngeldSchema.table('aktivitaeten', {
   id: text('id').primaryKey(),

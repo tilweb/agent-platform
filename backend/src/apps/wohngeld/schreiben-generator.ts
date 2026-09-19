@@ -5,7 +5,7 @@
  * Entwurf, gegliedert je Person + fallübergreifend. Reine Funktion — testbar.
  * Die LLM-gestützte Ausformulierung kann später darauf aufsetzen.
  */
-import type { Vorgang, Person, Pruefschritt, Schreiben, SchreibenArt } from './types';
+import type { Vorgang, Person, Pruefschritt, Schreiben, SchreibenArt, SchreibenItem } from './types';
 
 function addDays(iso: string, days: number): string {
   const d = new Date(iso);
@@ -37,7 +37,7 @@ export function generiereAnforderungsschreiben(
   personen: Person[],
   pruefschritte: Pruefschritt[],
   options: GeneratorOptions = {},
-): Pick<Schreiben, 'art' | 'betreff' | 'frist' | 'body'> {
+): Pick<Schreiben, 'art' | 'betreff' | 'frist' | 'body' | 'items'> {
   const offene = pruefschritte.filter(p => p.status === 'offen' && p.typ === 'anforderung');
   const stichtag = options.stichtag ?? new Date().toISOString().slice(0, 10);
   const frist = addDays(stichtag, options.fristTage ?? 14);
@@ -60,6 +60,13 @@ export function generiereAnforderungsschreiben(
   }
 
   const lines: string[] = [];
+  const items: SchreibenItem[] = [];
+  const punktText = (ps: Pruefschritt) => `${ps.titel}${ps.belegtext ? ` — ${ps.belegtext}` : ''}`;
+  const pushItem = (ps: Pruefschritt) => items.push({
+    text: punktText(ps), regelId: ps.regelId, titel: ps.titel,
+    quellDokumentId: ps.quellDokumentId, personId: ps.personId,
+  });
+
   lines.push(`Sehr geehrte Damen und Herren,`);
   lines.push('');
   lines.push(`für die weitere Bearbeitung Ihres Wohngeldantrags benötigen wir noch folgende Unterlagen bzw. Angaben. Bitte reichen Sie diese bis zum **${fmtDate(frist)}** ein.`);
@@ -67,15 +74,15 @@ export function generiereAnforderungsschreiben(
 
   if (fallweit.length) {
     lines.push(`**Allgemein**`);
-    for (const ps of fallweit) lines.push(`- ${ps.titel}${ps.belegtext ? ` — ${ps.belegtext}` : ''}`);
+    for (const ps of fallweit) { lines.push(`- ${punktText(ps)}`); pushItem(ps); }
     lines.push('');
   }
 
   for (const p of personen) {
-    const items = byPerson.get(p.id);
-    if (!items?.length) continue;
+    const psItems = byPerson.get(p.id);
+    if (!psItems?.length) continue;
     lines.push(`**${personLabel(p)}**`);
-    for (const ps of items) lines.push(`- ${ps.titel}${ps.belegtext ? ` — ${ps.belegtext}` : ''}`);
+    for (const ps of psItems) { lines.push(`- ${punktText(ps)}`); pushItem(ps); }
     lines.push('');
   }
 
@@ -92,5 +99,6 @@ export function generiereAnforderungsschreiben(
     betreff,
     frist,
     body: lines.join('\n'),
+    items,
   };
 }

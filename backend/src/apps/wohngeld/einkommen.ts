@@ -129,6 +129,42 @@ export function vermoegensFreigrenze(anzahlHaushaltsmitglieder: number): number 
 }
 
 /**
+ * Vermögenssumme einer Person: Summe der strukturierten `vermoegenPositionen`,
+ * ansonsten der Legacy-Einzelwert `vermoegen`. Rückwärtskompatibel.
+ */
+export function vermoegenSummeFuer(person: Person): number {
+  const positionen = person.vermoegenPositionen;
+  if (positionen && positionen.length > 0) {
+    return positionen.reduce((s, p) => s + Math.max(0, p.betrag ?? 0), 0);
+  }
+  return Math.max(0, person.vermoegen ?? 0);
+}
+
+/** Haushalts-Vermögenssumme über alle Personen (§ 21 Nr. 3). */
+export function haushaltsVermoegen(personen: Person[]): number {
+  return personen.reduce((s, p) => s + vermoegenSummeFuer(p), 0);
+}
+
+/**
+ * § 18 — Unterhaltsabzüge einer einzelnen Person aus ihren `unterhaltsverpflichtungen`.
+ * Je Position: mit Titel → tatsächliche Höhe (betrag); ohne Titel → gedeckelt auf den
+ * kategoriespezifischen Höchstbetrag (UNTERHALT_18_MAX).
+ */
+export function unterhaltsabzuegeFuerPerson(person: Person): number {
+  const posn = person.unterhaltsverpflichtungen ?? [];
+  return posn.reduce((sum, u) => {
+    const betrag = Math.max(0, u.betrag ?? 0);
+    const max = UNTERHALT_18_MAX[u.empfaengerKategorie] ?? UNTERHALT_18_MAX.sonstige;
+    return sum + (u.titelVorhanden ? betrag : Math.min(betrag, max));
+  }, 0);
+}
+
+/** § 18 — Summe der Unterhaltsabzüge über alle Haushaltsmitglieder. */
+export function unterhaltsabzuegeFuer(personen: Person[]): number {
+  return personen.reduce((s, p) => s + unterhaltsabzuegeFuerPerson(p), 0);
+}
+
+/**
  * ANNAHME (pragmatisch, nicht rechtsverbindlich): Die § 16-Abzugskategorien werden
  * aus vorhandenen Merkmalen einer Person + ihren Dokumenten abgeleitet. Die echte
  * Prüfung (welche Beiträge tatsächlich abziehbar sind) obliegt der Sachbearbeitung

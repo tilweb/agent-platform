@@ -9,11 +9,11 @@ import { eq, and, desc, inArray } from 'drizzle-orm';
 import { getDb } from '../../db';
 import {
   wgAkten, wgVorgaenge, wgPersonen, wgDokumente, wgPruefschritte, wgSchreiben, wgAktivitaeten, wgChatMessages,
-  wgFeldStatus, wgNotizen,
+  wgFeldStatus, wgNotizen, wgTextbausteine,
 } from '../../db/schema/wohngeld';
 import type {
   Akte, Vorgang, Person, Dokument, Pruefschritt, Schreiben, Aktivitaet,
-  VorgangSnapshot, PruefBefund, ChatMessage, ChatSource, FeldStatus, FeldStatusZielTyp, Notiz,
+  VorgangSnapshot, PruefBefund, ChatMessage, ChatSource, FeldStatus, FeldStatusZielTyp, Notiz, Textbaustein,
 } from './types';
 import { VersionConflictError, checkVersion } from './concurrency';
 
@@ -629,6 +629,58 @@ async function getNotiz(id: string): Promise<Notiz | null> {
 export async function loescheNotiz(id: string): Promise<boolean> {
   const db = getDb();
   const r = await db.delete(wgNotizen).where(eq(wgNotizen.id, id)).returning({ id: wgNotizen.id });
+  return r.length > 0;
+}
+
+// ── Textbausteine (WP6) ─────────────────────────────────────────────────────
+
+function rowToTextbaustein(r: typeof wgTextbausteine.$inferSelect): Textbaustein {
+  return {
+    id: r.id, kategorie: r.kategorie, titel: r.titel, text: r.text,
+    created_at: r.createdAt, updated_at: r.updatedAt,
+  };
+}
+
+export async function listTextbausteine(): Promise<Textbaustein[]> {
+  const db = getDb();
+  const rows = await db.select().from(wgTextbausteine)
+    .orderBy(wgTextbausteine.kategorie, wgTextbausteine.titel);
+  return rows.map(rowToTextbaustein);
+}
+
+async function getTextbaustein(id: string): Promise<Textbaustein | null> {
+  const db = getDb();
+  const rows = await db.select().from(wgTextbausteine).where(eq(wgTextbausteine.id, id)).limit(1);
+  return rows[0] ? rowToTextbaustein(rows[0]) : null;
+}
+
+export async function createTextbaustein(input: { kategorie: string; titel: string; text: string }): Promise<Textbaustein> {
+  const db = getDb();
+  const now = nowIso();
+  const id = genId('tb');
+  await db.insert(wgTextbausteine).values({
+    id, kategorie: input.kategorie || 'Allgemein', titel: input.titel, text: input.text,
+    createdAt: now, updatedAt: now,
+  });
+  return (await getTextbaustein(id))!;
+}
+
+export async function updateTextbaustein(id: string, updates: Partial<Pick<Textbaustein, 'kategorie' | 'titel' | 'text'>>): Promise<Textbaustein | null> {
+  const db = getDb();
+  const existing = await getTextbaustein(id);
+  if (!existing) return null;
+  await db.update(wgTextbausteine).set({
+    kategorie: updates.kategorie ?? existing.kategorie,
+    titel: updates.titel ?? existing.titel,
+    text: updates.text ?? existing.text,
+    updatedAt: nowIso(),
+  }).where(eq(wgTextbausteine.id, id));
+  return getTextbaustein(id);
+}
+
+export async function loescheTextbaustein(id: string): Promise<boolean> {
+  const db = getDb();
+  const r = await db.delete(wgTextbausteine).where(eq(wgTextbausteine.id, id)).returning({ id: wgTextbausteine.id });
   return r.length > 0;
 }
 

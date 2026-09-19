@@ -2,6 +2,44 @@
 
 ## 2026-09-19
 
+### Wohngeld — Welle 3 der Gap-Umsetzung (WP5 strukturierte Listen + BWZ, WP6 Schreiben/Textbausteine)
+Umsetzung von Welle 3 aus `docs/wohngeld-gap-umsetzung-specs-2026-09-19.md`. Rückwärtskompatibel —
+bestehende Felder/Tests bleiben unverändert.
+
+**WP5 — Strukturierte Listen + Bewilligungszeitraum-Vorschlag.** Neue optionale Arrays in `person.data`
+(`types.ts`, kein neues Schema): `vermoegenPositionen[]` (art/betrag), `unterhaltsverpflichtungen[]`
+(empfaengerKategorie/betrag/titelVorhanden, § 18), `unterhaltsansprueche[]` (art/betrag),
+`transferleistungenDetail[]` (art/kduEnthalten/bescheidVorhanden, § 7). Legacy `vermoegen`/
+`transferleistungen` bleiben erhalten (Listen sind führend). Vorgang: `bwz[]` (Liste) zusätzlich zu
+Legacy `bwz_start`/`bwz_ende` (weiter befüllt). Engine (`einkommen.ts`, rein + getestet):
+`unterhaltsabzuegeFuer(personen)` (§ 18: ohne Titel → gedeckelt auf `UNTERHALT_18_MAX`, mit Titel →
+tatsächliche Höhe), `vermoegenSummeFuer`/`haushaltsVermoegen`. Die `GET …/einkommen`-Route übergibt
+nun die §-18-Summe (statt 0). Neues reines Modul `bwz.ts` (`berechneBwzVorschlag` = 12 Monate ab
+Antragsmonat, § 22/§ 25). Neue Regeln in `checker/plausibilitaet.ts`:
+`plausi-vermoegen-ueber-freigrenze` (anforderung, § 21 Nr. 3), `ausschluss-person-transferbezug`
+(info, § 7 bei `kduEnthalten`), `bwz-vorschlag-pruefen` (info, wenn kein BWZ + Antragsdatum). Route
+`POST /vorgaenge/:id/bwz-vorschlag-uebernehmen` setzt die BWZ-Liste + Legacy-Felder. Frontend:
+schlanke „+"-Inline-Editor-Listen je Person (`PersonCard`, nur canEdit, Speichern via `updatePerson`
+mit data-Merge); BWZ-Liste im Übersicht-Tab + Button „Vorschlag übernehmen" (nur wenn Prüfschritt
+offen). Tests: `bwz.test.ts` (neu), `einkommen.test.ts` (§18/Vermögenssumme), `checker.test.ts`
+(Freigrenze/§7/BWZ). Nicht-Ziele bewusst ausgelassen: keine taggenaue Teil-BWZ, keine §-19-Rechnung.
+
+**WP6 — Anforderungsschreiben aufwerten.** Neue Tabelle `wohngeld.textbausteine` (id/kategorie/titel/
+text; Migration `0042_wohngeld_textbausteine.sql`, Journal idx 42, idempotent + Seed via
+`INSERT … ON CONFLICT DO NOTHING`). Geseedete Default-Bausteine: **Miete** („Aktuelle
+Mietbescheinigung", „Nachweis der Mietzahlung"), **Einkommen** („Verdienstbescheinigung",
+„Aktueller Rentenbescheid"), **Allgemein** („Fristsetzung", „Rückfragen"). Storage-CRUD
+(`listTextbausteine`/`create`/`update`/`loesche`); Routes `routes/textbausteine.ts` (GET offen,
+POST/PUT/DELETE editor-gated). Generator (`schreiben-generator.ts`) liefert zusätzlich ein
+`items[]`-Array (text/regelId/quellDokumentId/personId/titel) je Anforderungspunkt (Provenienz);
+`schreiben.data.items` fließt über den Storage-Spread mit. `POST …/schreiben/generieren` akzeptiert
+optional `schreibenId` → überschreibt den bestehenden Entwurf statt neu anzulegen. Frontend
+(Schreiben-Tab): durchsuchbarer Textbaustein-Picker (fügt an Cursorposition bzw. am Ende ein),
+kleine Verwaltung (hinzufügen/löschen), „Neu erzeugen"-Button mit Bestätigung, sowie „Bezug je
+Anforderungspunkt" mit ⓘ (`InfoIcon`) — klickbar zum Beleg im Dokumente-Tab. Nicht-Ziele: kein
+WYSIWYG, keine Serienbriefe, keine erzwungene Themen-Gliederung. Verifikation: `bun test
+src/apps/wohngeld/` 100/100 grün, tsc ohne neue wohngeld-Fehler, `eslint src/apps/wohngeld` + Build grün.
+
 ### Wohngeld — Welle 2 der Gap-Umsetzung (WP3 Feld-Bestätigung + WP4 Notizen)
 Umsetzung von Welle 2 aus `docs/wohngeld-gap-umsetzung-specs-2026-09-19.md`.
 

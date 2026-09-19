@@ -7,7 +7,8 @@ import {
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { pruefeVorgang } from '../checker';
-import { berechneVorgangEinkommen } from '../einkommen';
+import { berechneVorgangEinkommen, unterhaltsabzuegeFuer } from '../einkommen';
+import { berechneBwzVorschlag } from '../bwz';
 import { denyIfNotAppEditor } from './_shared';
 
 export const vorgaengeRoutes = new Hono();
@@ -46,7 +47,8 @@ vorgaengeRoutes.get('/vorgaenge/:id/einkommen', async (c) => {
   const id = c.req.param('id');
   const snapshot = await getVorgangSnapshot(id);
   if (!snapshot) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
-  const einkommen = berechneVorgangEinkommen(snapshot.personen, snapshot.dokumente);
+  const unterhalt = unterhaltsabzuegeFuer(snapshot.personen);
+  const einkommen = berechneVorgangEinkommen(snapshot.personen, snapshot.dokumente, unterhalt);
   return c.json({ einkommen });
 });
 
@@ -100,4 +102,31 @@ vorgaengeRoutes.post('/vorgaenge/:id/pruefen', async (c) => {
   const pruefschritte = await syncPruefschritte(id, befunde);
   await addAktivitaet({ vorgangId: id, typ: 'pruefung', akteur: getCurrentUserId(c), beschreibung: `Prüfung ausgeführt — ${befunde.length} Befund(e)` });
   return c.json({ pruefschritte, befundeCount: befunde.length });
+});
+
+/**
+ * Bewilligungszeitraum-Vorschlag übernehmen: 12 Monate ab Antragsmonat (§ 22/§ 25).
+ * Setzt die BWZ-Liste (führend) und die Legacy-Felder bwz_start/bwz_ende (Kompatibilität).
+ */
+vorgaengeRoutes.post('/vorgaenge/:id/bwz-vorschlag-uebernehmen', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+  const id = c.req.param('id');
+  const vorgang = await getVorgang(id);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const vorschlag = berechneBwzVorschlag(vorgang.antragsdatum);
+  if (!vorschlag) return c.json({ error: 'Kein Antragsdatum vorhanden — Vorschlag nicht berechenbar' }, 400);
+  const bwzId = `bwz-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    const updated = await updateVorgang(id, {
+      bwz: [{ id: bwzId, start: vorschlag.start, ende: vorschlag.ende }],
+      bwz_start: vorschlag.start,
+      bwz_ende: vorschlag.ende,
+    }, { expectedVersion: vorgang.version });
+    await addAktivitaet({ vorgangId: id, typ: 'bwz', akteur: getCurrentUserId(c), beschreibung: `Bewilligungszeitraum-Vorschlag übernommen (${vorschlag.start} – ${vorschlag.ende})` });
+    return c.json({ vorgang: updated });
+  } catch (err) {
+    if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
+    return c.json({ error: 'Übernahme fehlgeschlagen' }, 500);
+  }
 });
