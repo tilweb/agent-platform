@@ -2,10 +2,11 @@ import { Hono } from 'hono';
 import { getCurrentUserId } from '../../../auth/middleware';
 import {
   listSchreiben, getSchreiben, createSchreiben, updateSchreiben, deleteSchreiben,
-  getVorgang, getAkte, listPersonen, listPruefschritte, addAktivitaet,
+  getVorgang, updateVorgang, getAkte, listPersonen, listPruefschritte, addAktivitaet,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { generiereAnforderungsschreiben } from '../schreiben-generator';
+import { fmtDe } from '../bwz';
 import { schreibenToDocument } from '../schreiben-export';
 import { generateDocument, getMimeType, type DocumentFormat } from '../../../services/documentGenerator';
 import { denyIfNotAppEditor } from './_shared';
@@ -60,6 +61,12 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/generieren', async (c) => 
     art: (body?.art as never) ?? 'erstanforderung',
     fristTage: body?.fristTage ?? 14,
   });
+  // Frist/Wiedervorlage vorbelegen (Status NICHT ändern — erst beim „versendet", WP7).
+  if (entwurf.frist) {
+    try {
+      await updateVorgang(vorgangId, { frist: entwurf.frist, wiedervorlage: entwurf.frist }, { expectedVersion: vorgang.version });
+    } catch { /* Vorbelegung ist optional — keine harte Blockade des Generierens */ }
+  }
   // „Neu erzeugen": vorhandenen Entwurf überschreiben, statt einen neuen anzulegen.
   if (body?.schreibenId) {
     const bestehend = await getSchreiben(body.schreibenId);
@@ -74,6 +81,36 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/generieren', async (c) => 
   const schreiben = await createSchreiben({ vorgangId, ...entwurf });
   await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: 'Anforderungsschreiben generiert' });
   return c.json({ schreiben }, 201);
+});
+
+/**
+ * Schreiben als „versendet" markieren (Welle 4, WP7): Vorgang-Status auf
+ * `warte_auf_rueckmeldung`, Frist + Wiedervorlage = Frist des Schreibens,
+ * Aktivität protokollieren. Editor-Gate.
+ */
+schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/:sid/versendet', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+  const vorgangId = c.req.param('vorgangId');
+  const sid = c.req.param('sid');
+  const vorgang = await getVorgang(vorgangId);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const schreiben = await getSchreiben(sid);
+  if (!schreiben || schreiben.vorgangId !== vorgangId) return c.json({ error: 'Schreiben nicht gefunden' }, 404);
+  try {
+    const frist = schreiben.frist;
+    const updated = await updateVorgang(vorgangId, {
+      status: 'warte_auf_rueckmeldung',
+      frist: frist ?? undefined,
+      wiedervorlage: frist ?? undefined,
+    }, { expectedVersion: vorgang.version });
+    const fristTxt = frist ? fmtDe(frist) : 'ohne Frist';
+    await addAktivitaet({ vorgangId, typ: 'schreiben', akteur: getCurrentUserId(c), beschreibung: `Anforderung versendet, Frist ${fristTxt}` });
+    return c.json({ vorgang: updated });
+  } catch (err) {
+    if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
+    return c.json({ error: 'Aktion fehlgeschlagen' }, 500);
+  }
 });
 
 schreibenRoutes.put('/schreiben/:id', async (c) => {

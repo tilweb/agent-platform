@@ -115,6 +115,13 @@ export interface Bewilligungszeitraum {
   ende?: string;   // ISO (YYYY-MM-DD)
 }
 
+/** Aufgabe/Todo eines Vorgangs (Welle 4, WP8). */
+export interface VorgangTodo {
+  id: string;
+  text: string;
+  erledigt: boolean;
+}
+
 /** Wohnung & Miete (Teil des Vorgangs). */
 export interface WohnungMiete {
   strasse?: string;
@@ -149,6 +156,12 @@ export interface Vorgang extends Timestamped, Versioned {
   iban?: string;
   wohnung?: WohnungMiete;
   labels?: string[];
+  /** Frist des zuletzt versendeten Anforderungsschreibens (Welle 4, WP7). ISO. */
+  frist?: string;
+  /** Wiedervorlagedatum (Welle 4, WP7). ISO. */
+  wiedervorlage?: string;
+  /** Aufgaben/Todos je Vorgang (Welle 4, WP8). */
+  todos?: VorgangTodo[];
   permissions?: AppPermissions;
 }
 

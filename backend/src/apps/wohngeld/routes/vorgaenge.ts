@@ -2,13 +2,14 @@ import { Hono } from 'hono';
 import { getCurrentUserId } from '../../../auth/middleware';
 import {
   listVorgaenge, getVorgang, createVorgang, updateVorgang, deleteVorgang,
-  getAkte, listPersonen, listDokumente, listPruefschritte, listSchreiben, listAktivitaeten,
+  getAkte, listAkten, listPersonen, listDokumente, listPruefschritte, listSchreiben, listAktivitaeten,
   getVorgangSnapshot, syncPruefschritte, addAktivitaet, listFeldStatus, listNotizen,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { pruefeVorgang } from '../checker';
 import { berechneVorgangEinkommen, unterhaltsabzuegeFuer } from '../einkommen';
 import { berechneBwzVorschlag } from '../bwz';
+import { istUeberfaellig } from '../fristen';
 import { denyIfNotAppEditor } from './_shared';
 
 export const vorgaengeRoutes = new Hono();
@@ -17,6 +18,33 @@ vorgaengeRoutes.get('/vorgaenge', async (c) => {
   const akteId = c.req.query('akteId');
   const status = c.req.query('status');
   return c.json({ vorgaenge: await listVorgaenge({ akteId, status }) });
+});
+
+/**
+ * Wiedervorlage-/Fristen-Liste (Welle 4, WP7): alle Vorgänge mit gesetzter
+ * Wiedervorlage, angereichert um Antragsteller (aus Akte) + Überfälligkeit.
+ * Heute-Datum serverseitig, sortiert nach Wiedervorlagedatum (früheste zuerst).
+ */
+vorgaengeRoutes.get('/wiedervorlage', async (c) => {
+  const heute = new Date().toISOString().slice(0, 10);
+  const [vorgaenge, akten] = await Promise.all([listVorgaenge(), listAkten()]);
+  const akteById = new Map(akten.map((a) => [a.id, a]));
+  const items = vorgaenge
+    .filter((v) => !!v.wiedervorlage)
+    .map((v) => {
+      const akte = akteById.get(v.akteId);
+      return {
+        id: v.id,
+        antragsId: v.antragsId,
+        antragsteller: akte?.antragstellerName || akte?.name || '—',
+        status: v.status,
+        wiedervorlage: v.wiedervorlage,
+        frist: v.frist,
+        ueberfaellig: istUeberfaellig(v.wiedervorlage, heute),
+      };
+    })
+    .sort((a, b) => (a.wiedervorlage! < b.wiedervorlage! ? -1 : a.wiedervorlage! > b.wiedervorlage! ? 1 : 0));
+  return c.json({ wiedervorlage: items });
 });
 
 vorgaengeRoutes.get('/vorgaenge/:id', async (c) => {

@@ -32,6 +32,13 @@ const styles = {
     fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, cursor: 'pointer',
   },
   filterTabActive: { backgroundColor: ACCENT_LIGHT, color: ACCENT, borderColor: ACCENT_LIGHT },
+  viewSwitch: { display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.lg },
+  viewTab: {
+    padding: `${theme.spacing.sm} ${theme.spacing.lg}`, backgroundColor: 'transparent', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg,
+    fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, cursor: 'pointer',
+  },
+  viewTabActive: { backgroundColor: ACCENT_LIGHT, color: ACCENT, borderColor: ACCENT_LIGHT },
+  wvBadge: { fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, padding: `2px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.errorLight, color: theme.colors.error, marginLeft: theme.spacing.sm },
   tableWrap: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.xl, overflow: 'hidden', backgroundColor: theme.colors.surface },
   tableScroll: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm, minWidth: 820 },
@@ -71,6 +78,12 @@ export default function WohngeldPage() {
   const [dialog, setDialog] = useState(null); // { name, wohngeldart, antragsart }
   const [saving, setSaving] = useState(false);
 
+  // Ansicht: Vorgangsliste oder Wiedervorlage/Fristen (WP7)
+  const [viewMode, setViewMode] = useState('vorgaenge');
+  const [wiedervorlage, setWiedervorlage] = useState([]);
+  const [wvLoading, setWvLoading] = useState(false);
+  const [wvLoaded, setWvLoaded] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -88,6 +101,24 @@ export default function WohngeldPage() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Wiedervorlage-Liste erst bei Bedarf laden (beim Wechsel in die Ansicht).
+  useEffect(() => {
+    if (viewMode !== 'wiedervorlage' || wvLoaded) return undefined;
+    let cancelled = false;
+    (async () => {
+      setWvLoading(true);
+      try {
+        const wv = await wohngeldApi.listWiedervorlage();
+        if (!cancelled) { setWiedervorlage(wv); setWvLoaded(true); }
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      } finally {
+        if (!cancelled) setWvLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [viewMode, wvLoaded]);
 
   function antragstellerName(v) {
     const a = akten[v.akteId];
@@ -148,6 +179,13 @@ export default function WohngeldPage() {
 
       {error && <div style={styles.error}>{error}</div>}
 
+      <div style={styles.viewSwitch}>
+        <button style={{ ...styles.viewTab, ...(viewMode === 'vorgaenge' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('vorgaenge')}>Vorgänge</button>
+        <button style={{ ...styles.viewTab, ...(viewMode === 'wiedervorlage' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('wiedervorlage')}>Wiedervorlage / Fristen</button>
+      </div>
+
+      {viewMode === 'vorgaenge' && (
+      <>
       <div style={styles.toolbar}>
         <input
           style={styles.search}
@@ -212,6 +250,52 @@ export default function WohngeldPage() {
             </table>
           </div>
         </div>
+      )}
+      </>
+      )}
+
+      {viewMode === 'wiedervorlage' && (
+        wvLoading ? (
+          <div style={styles.empty}>Lädt…</div>
+        ) : wiedervorlage.length === 0 ? (
+          <div style={styles.empty}>Keine offenen Wiedervorlagen oder Fristen.</div>
+        ) : (
+          <div style={styles.tableWrap}>
+            <div style={styles.tableScroll}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Antrags-ID</th>
+                    <th style={styles.th}>Antragsteller</th>
+                    <th style={styles.th}>Status</th>
+                    <th style={styles.th}>Wiedervorlage</th>
+                    <th style={styles.th}>Frist</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wiedervorlage.map((w) => (
+                    <tr
+                      key={w.id}
+                      style={{ ...styles.row, ...(w.ueberfaellig ? { backgroundColor: theme.colors.errorLight } : {}) }}
+                      onClick={() => navigate(`/apps/wohngeld/vorgang/${w.id}`)}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = w.ueberfaellig ? theme.colors.errorLight : theme.colors.surfaceHover; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = w.ueberfaellig ? theme.colors.errorLight : 'transparent'; }}
+                    >
+                      <td style={{ ...styles.td, fontWeight: theme.typography.weights.medium }}>{w.antragsId}</td>
+                      <td style={styles.td}>{w.antragsteller}</td>
+                      <td style={styles.td}><StatusBadge status={w.status} /></td>
+                      <td style={{ ...styles.td, ...(w.ueberfaellig ? { color: theme.colors.error, fontWeight: theme.typography.weights.semibold } : {}) }}>
+                        {fmtDate(w.wiedervorlage)}
+                        {w.ueberfaellig && <span style={styles.wvBadge}>überfällig</span>}
+                      </td>
+                      <td style={{ ...styles.td, color: theme.colors.textMuted }}>{fmtDate(w.frist)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       )}
 
       {dialog && (

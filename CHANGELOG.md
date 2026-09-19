@@ -2,6 +2,31 @@
 
 ## 2026-09-19
 
+### Wohngeld — Welle 4 der Gap-Umsetzung (WP7 Fristen/Wiedervorlage + Status-Automatik, WP8 Todos/Labels)
+Umsetzung von Welle 4 aus `docs/wohngeld-gap-umsetzung-specs-2026-09-19.md`. Rückwärtskompatibel,
+**keine neue Migration** — alle neuen Daten liegen in `vorgang.data`.
+
+**WP7 — Fristen, Wiedervorlage & Status-Automatik.** Neue optionale Vorgang-Felder (`types.ts`):
+`frist?`, `wiedervorlage?` (ISO). Neues reines, getestetes Modul `fristen.ts`
+(`istUeberfaellig(iso, heuteIso)` = Frist strikt vor heute; `tageBisFrist(iso, heuteIso)`) mit
+`fristen.test.ts`. Neue Route `POST /vorgaenge/:id/schreiben/:sid/versendet` (Editor-Gate): setzt
+Vorgang-Status `warte_auf_rueckmeldung`, `frist` + `wiedervorlage` = Frist des Schreibens und
+protokolliert die Aktivität „Anforderung versendet, Frist <Datum>". Beim Generieren/„Neu erzeugen"
+eines Schreibens werden `frist`/`wiedervorlage` aus der Schreiben-Frist **vorbelegt** (Status bleibt
+unverändert). Neue Route `GET /wiedervorlage`: alle Vorgänge mit gesetzter Wiedervorlage, angereichert
+um Antragsteller (aus Akte), Status, Frist und `ueberfaellig` (Heute-Datum serverseitig), sortiert nach
+Datum. Frontend: neue Ansicht „Wiedervorlage / Fristen" als View-Umschalter auf `WohngeldPage`
+(überfällige rot hervorgehoben, Zeile → Vorgang); im `VorgangDetail` Schreiben-Tab Button „Als
+versendet markieren" und im Details-Tab Anzeige von Frist/Wiedervorlage (überfällig hervorgehoben).
+Nicht-Ziele bewusst ausgelassen: kein Kalender-Widget, keine E-Mails, keine Eskalationsstufen.
+
+**WP8 — Todos & Labels.** Neues optionales Vorgang-Feld `todos[]` (id/text/erledigt) in `vorgang.data`;
+Labels nutzen das bestehende `vorgang.labels[]`. Frontend (Details-Tab rechts): einklappbare
+Todos-Sektion mit Zähler offener Todos (Checkbox zum Umschalten, „+ Todo", Löschen) und Labels-Sektion
+(Chips mit „×", „+ Label"). Speichern jeweils via `updateVorgang` (data-Merge, `expectedVersion`), nur
+für Editor/Owner. Nicht-Ziele bewusst ausgelassen: keine Fälligkeit/Zuweisung je Todo, keine globale
+Label-Taxonomie.
+
 ### Wohngeld — Welle 3 der Gap-Umsetzung (WP5 strukturierte Listen + BWZ, WP6 Schreiben/Textbausteine)
 Umsetzung von Welle 3 aus `docs/wohngeld-gap-umsetzung-specs-2026-09-19.md`. Rückwärtskompatibel —
 bestehende Felder/Tests bleiben unverändert.

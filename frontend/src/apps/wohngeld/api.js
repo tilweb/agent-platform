@@ -94,6 +94,11 @@ export const wohngeldApi = {
   generiereSchreiben: (vorgangId, payload) => apiPost(`${base}/vorgaenge/${vorgangId}/schreiben/generieren`, payload).then(json).then((d) => d.schreiben),
   updateSchreiben: (id, payload) => apiPut(`${base}/schreiben/${id}`, payload).then(json).then((d) => d.schreiben),
   deleteSchreiben: (id) => apiDelete(`${base}/schreiben/${id}`).then(json),
+  // Schreiben als versendet markieren (WP7 — setzt Status + Frist/Wiedervorlage).
+  markSchreibenVersendet: (vorgangId, sid) => apiPost(`${base}/vorgaenge/${vorgangId}/schreiben/${sid}/versendet`, {}).then(json).then((d) => d.vorgang),
+
+  // Wiedervorlage / Fristen (WP7 — offene Fristen über alle Vorgänge)
+  listWiedervorlage: () => apiGet(`${base}/wiedervorlage`).then(json).then((d) => d.wiedervorlage),
 
   // Feld-Status (WP3 — KI-Vorschlag-Bestätigung auf Feldebene)
   listFeldStatus: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/feldstatus`).then(json).then((d) => d.feldStatus),

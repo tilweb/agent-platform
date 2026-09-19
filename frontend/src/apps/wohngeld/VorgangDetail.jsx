@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
-import { ArrowLeftIcon, UploadIcon, ChatIcon, CopyIcon, PanelRightIcon, ChevronDownIcon, InfoIcon, PlusIcon, TrashIcon, SearchIcon } from '../../components/Icons';
+import { ArrowLeftIcon, UploadIcon, ChatIcon, CopyIcon, PanelRightIcon, ChevronDownIcon, InfoIcon, PlusIcon, TrashIcon, SearchIcon, CheckIcon, XIcon, ClockIcon } from '../../components/Icons';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import {
   wohngeldApi,
@@ -99,6 +99,15 @@ const styles = {
   tbItemText: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: 2, lineHeight: 1.4 },
   bezugList: { marginTop: theme.spacing.md, borderTop: `1px solid ${theme.colors.borderLight}`, paddingTop: theme.spacing.sm },
   bezugItem: { display: 'flex', alignItems: 'flex-start', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, padding: '3px 0' },
+  fristRow: { display: 'flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.sm, color: theme.colors.text, padding: '2px 0' },
+  fristLabel: { color: theme.colors.textMuted, minWidth: 110 },
+  ueberfaelligBadge: { fontSize: '0.65rem', fontWeight: theme.typography.weights.semibold, padding: `1px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.errorLight, color: theme.colors.error },
+  todoItem: { display: 'flex', alignItems: 'flex-start', gap: theme.spacing.sm, padding: '3px 0' },
+  todoCheck: { flexShrink: 0, width: 16, height: 16, marginTop: 2, borderRadius: theme.borderRadius.sm, border: `1px solid ${theme.colors.border}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: theme.colors.surface, padding: 0 },
+  todoText: { flex: 1, fontSize: theme.typography.sizes.sm, color: theme.colors.text, lineHeight: 1.4 },
+  miniRow: { display: 'flex', gap: theme.spacing.sm, marginTop: theme.spacing.sm },
+  labelChip: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: theme.typography.sizes.xs, padding: `2px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted },
+  labelRemove: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: theme.colors.textMuted },
 };
 
 function fmtDate(iso) {
@@ -114,6 +123,18 @@ function fmtDateTime(iso) {
 function eur(v) {
   if (v == null) return '—';
   return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+}
+/** Überfällig = Datum liegt vor heute (Tagesvergleich). Leeres/ungültiges Datum → false. */
+function istUeberfaellig(iso) {
+  if (!iso) return false;
+  const d = new Date(iso.slice(0, 10));
+  if (Number.isNaN(d.getTime())) return false;
+  const heute = new Date();
+  heute.setHours(0, 0, 0, 0);
+  return d.getTime() < heute.getTime();
+}
+function genLocalId(prefix) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 function download(name, text) {
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
@@ -167,6 +188,11 @@ export default function VorgangDetail() {
 
   // Notizen-Panel (WP4): { anker, label } oder null
   const [notizPanel, setNotizPanel] = useState(null);
+
+  // Todos & Labels (WP8)
+  const [neuerTodo, setNeuerTodo] = useState('');
+  const [todosCollapsed, setTodosCollapsed] = useState(false);
+  const [neuesLabel, setNeuesLabel] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -495,6 +521,31 @@ export default function VorgangDetail() {
     finally { setBusy(false); }
   }
 
+  // ── Vorgang-data speichern (Merge, Optimistic Locking) — Basis für Todos/Labels (WP8) ──
+  async function saveVorgangData(patch) {
+    setBusy(true); setError('');
+    try {
+      const updated = await wohngeldApi.updateVorgang(id, { ...patch, expectedVersion: vorgang.version });
+      setDetail((d) => ({ ...d, vorgang: updated }));
+    } catch (e) {
+      if (e.status === 409) { setError('Konflikt: Der Vorgang wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); }
+      else setError(e.message);
+    } finally { setBusy(false); }
+  }
+
+  // ── Schreiben als versendet markieren (WP7) ──
+  async function markVersendet(s) {
+    if (!window.confirm('Schreiben als versendet markieren? Der Vorgang wird auf „Wartet auf Rückmeldung" gesetzt und die Frist als Wiedervorlage übernommen.')) return;
+    setBusy(true); setError('');
+    try {
+      await wohngeldApi.markSchreibenVersendet(id, s.id);
+      await reload();
+    } catch (e) {
+      if (e.status === 409) { setError('Konflikt: Der Vorgang wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); }
+      else setError(e.message);
+    } finally { setBusy(false); }
+  }
+
   // ── Sektionen der Übersicht ──
   const w = vorgang.wohnung || {};
   const adresse = [w.strasse, w.hausnummer].filter(Boolean).join(' ');
@@ -504,6 +555,30 @@ export default function VorgangDetail() {
     ? vorgang.bwz
     : ((vorgang.bwz_start || vorgang.bwz_ende) ? [{ id: 'legacy', start: vorgang.bwz_start, ende: vorgang.bwz_ende }] : []);
   const bwzVorschlagOffen = pruefschritte.some((p) => p.regelId === 'bwz-vorschlag-pruefen' && p.status === 'offen');
+
+  // ── Todos & Labels (WP8) ──
+  const todos = vorgang.todos || [];
+  const todosOffen = todos.filter((t) => !t.erledigt).length;
+  const labels = vorgang.labels || [];
+  function addTodo() {
+    const text = neuerTodo.trim();
+    if (!text) return;
+    saveVorgangData({ todos: [...todos, { id: genLocalId('todo'), text, erledigt: false }] });
+    setNeuerTodo('');
+  }
+  function toggleTodo(t) { saveVorgangData({ todos: todos.map((x) => (x.id === t.id ? { ...x, erledigt: !x.erledigt } : x)) }); }
+  function deleteTodo(t) { saveVorgangData({ todos: todos.filter((x) => x.id !== t.id) }); }
+  function addLabel() {
+    const l = neuesLabel.trim();
+    if (!l || labels.includes(l)) { setNeuesLabel(''); return; }
+    saveVorgangData({ labels: [...labels, l] });
+    setNeuesLabel('');
+  }
+  function removeLabel(l) { saveVorgangData({ labels: labels.filter((x) => x !== l) }); }
+
+  // Frist/Wiedervorlage (WP7)
+  const fristUeberfaellig = istUeberfaellig(vorgang.frist);
+  const wvUeberfaellig = istUeberfaellig(vorgang.wiedervorlage);
 
   return (
     <div style={styles.page}>
@@ -882,6 +957,7 @@ export default function VorgangDetail() {
                           <button style={styles.btnSmall} onClick={() => wohngeldApi.exportSchreiben(s.id, 'docx').catch((e) => setError(e.message))}>Als Word-Datei herunterladen</button>
                           <button style={styles.btnSmall} onClick={() => download(`${s.betreff || 'Schreiben'}.txt`, `${st.betreff}\n\n${st.body}`)}>Als Text-Datei</button>
                           {canEdit && <button style={styles.btnSmall} onClick={() => neuErzeugen(s)} disabled={busy}>Neu erzeugen</button>}
+                          {canEdit && <button style={styles.btnSmall} onClick={() => markVersendet(s)} disabled={busy}>Als versendet markieren</button>}
                           {canEdit && <button style={styles.btn} onClick={() => saveSchreiben(s)} disabled={busy}>Speichern</button>}
                         </div>
                       </div>
@@ -1013,10 +1089,86 @@ export default function VorgangDetail() {
                   { label: 'Priorität', value: PRIORITAET_LABEL[vorgang.prioritaet] || vorgang.prioritaet },
                   { label: 'Letzte Änderung', value: fmtDateTime(vorgang.updated_at) },
                 ]} />
+
+                {(vorgang.frist || vorgang.wiedervorlage) && (
+                  <>
+                    <div style={styles.sideTitle}>Fristen</div>
+                    {vorgang.wiedervorlage && (
+                      <div style={styles.fristRow}>
+                        <ClockIcon size={14} color={wvUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
+                        <span style={styles.fristLabel}>Wiedervorlage</span>
+                        <span style={wvUeberfaellig ? { color: theme.colors.error, fontWeight: theme.typography.weights.semibold } : {}}>{fmtDate(vorgang.wiedervorlage)}</span>
+                        {wvUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
+                      </div>
+                    )}
+                    {vorgang.frist && (
+                      <div style={styles.fristRow}>
+                        <ClockIcon size={14} color={fristUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
+                        <span style={styles.fristLabel}>Frist</span>
+                        <span style={fristUeberfaellig ? { color: theme.colors.error, fontWeight: theme.typography.weights.semibold } : {}}>{fmtDate(vorgang.frist)}</span>
+                        {fristUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div style={{ ...styles.sideTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.xs, cursor: 'pointer' }} onClick={() => setTodosCollapsed((v) => !v)}>
+                  <ChevronDownIcon size={12} style={{ transform: todosCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: `transform ${theme.transitions.fast}` }} />
+                  Todos{todosOffen > 0 ? ` (${todosOffen} offen)` : ''}
+                </div>
+                {!todosCollapsed && (
+                  <div>
+                    {todos.length === 0 && <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Keine Todos.</div>}
+                    {todos.map((t) => (
+                      <div key={t.id} style={styles.todoItem}>
+                        <button
+                          style={{ ...styles.todoCheck, ...(t.erledigt ? { backgroundColor: ACCENT, borderColor: ACCENT } : {}), ...(canEdit ? {} : { cursor: 'default' }) }}
+                          onClick={() => canEdit && toggleTodo(t)}
+                          disabled={busy || !canEdit}
+                          title={t.erledigt ? 'Als offen markieren' : 'Als erledigt markieren'}
+                          aria-label={t.erledigt ? 'Todo als offen markieren' : 'Todo als erledigt markieren'}
+                        >
+                          {t.erledigt && <CheckIcon size={12} color="#fff" />}
+                        </button>
+                        <span style={{ ...styles.todoText, ...(t.erledigt ? { textDecoration: 'line-through', color: theme.colors.textMuted } : {}) }}>{t.text}</span>
+                        {canEdit && (
+                          <button style={styles.iconBtn} onClick={() => deleteTodo(t)} disabled={busy} title="Todo löschen" aria-label="Todo löschen">
+                            <TrashIcon size={13} color={theme.colors.textMuted} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {canEdit && (
+                      <div style={styles.miniRow}>
+                        <input style={styles.input} placeholder="Neues Todo" value={neuerTodo} onChange={(e) => setNeuerTodo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addTodo(); }} />
+                        <button style={styles.btnSmall} onClick={addTodo} disabled={busy || !neuerTodo.trim()}>+ Todo</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div style={styles.sideTitle}>Labels</div>
-                {(vorgang.labels || []).length === 0
+                {labels.length === 0
                   ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Keine Labels.</div>
-                  : <div style={{ display: 'flex', gap: theme.spacing.xs, flexWrap: 'wrap' }}>{vorgang.labels.map((l) => <span key={l} style={styles.chip}>{l}</span>)}</div>}
+                  : <div style={{ display: 'flex', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
+                      {labels.map((l) => (
+                        <span key={l} style={styles.labelChip}>
+                          {l}
+                          {canEdit && (
+                            <button style={styles.labelRemove} onClick={() => removeLabel(l)} disabled={busy} title="Label entfernen" aria-label={`Label ${l} entfernen`}>
+                              <XIcon size={11} />
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>}
+                {canEdit && (
+                  <div style={styles.miniRow}>
+                    <input style={styles.input} placeholder="Neues Label" value={neuesLabel} onChange={(e) => setNeuesLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addLabel(); }} />
+                    <button style={styles.btnSmall} onClick={addLabel} disabled={busy || !neuesLabel.trim()}>+ Label</button>
+                  </div>
+                )}
+
                 <div style={styles.sideTitle}>Aktivitäten</div>
                 {aktivitaeten.length === 0
                   ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Noch keine Aktivitäten.</div>
