@@ -51,6 +51,18 @@ export function BookIcon({ size = 20, color = 'currentColor', style = {} }) {
   );
 }
 
+export function ScaleIcon({ size = 20, color = 'currentColor', style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <path d="M12 3v18" />
+      <path d="M7 21h10" />
+      <path d="M5 7h14" />
+      <path d="M8 3.5 5 7l-2.5 5a3.5 3.5 0 0 0 7 0L7 7" />
+      <path d="M16 3.5 19 7l2.5 5a3.5 3.5 0 0 1-7 0L17 7" />
+    </svg>
+  );
+}
+
 export function PaperclipIcon({ size = 20, color = 'currentColor', style = {} }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" style={style}>
@@ -295,6 +307,27 @@ export function CircleIcon({ size = 20, color = 'currentColor', style = {} }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke="none" style={style}>
       <circle cx="12" cy="12" r="6" />
+    </svg>
+  );
+}
+
+// Unendlich — Standardmodell (keine Kosten pro Token)
+export function InfinityIcon({ size = 20, color = 'currentColor', style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z" />
+    </svg>
+  );
+}
+
+// Münzen — Premium-Modell (Abrechnung pro Token)
+export function CoinsIcon({ size = 20, color = 'currentColor', style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M18.09 10.37A6 6 0 1 1 10.34 18" />
+      <path d="M7 6h1v4" />
+      <path d="m16.71 13.88.7.71-2.82 2.82" />
     </svg>
   );
 }

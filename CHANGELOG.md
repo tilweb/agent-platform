@@ -2,6 +2,25 @@
 
 ## 2026-09-19
 
+### Wohngeld — Fall-Chat C2 (Recht-Wissensbasis mit §-Zitaten)
+Der Fall-Chat der App `wohngeld` beantwortet jetzt zusätzlich Rechtsfragen mit belegten
+Paragraphen-Fundstellen (WoGG/WoGV). Bewusste Architektur-Entscheidung: kein Embedding-/KB-Infra-
+Umbau, sondern ein **kuratierter statischer Rechts-Korpus als TS-Modul** (`recht/corpus.ts`,
+amtlicher Wortlaut von gesetze-im-internet.de, je Chunk Gesetz/§/Absatz/Titel/Tags/Rechtsstand/URL)
+plus **deterministisches, testbares Retrieval** (`recht/retrieval.ts`, `sucheRecht()`): Normalisierung
+(Umlaute/ß, Stopwords), Token-Overlap mit Feld-Gewichtung (tags > titel > text) und §-Boost bei
+expliziter Paragraphen-Nennung — rein, ohne IO/DB. Korpus deckt die operativen Paragraphen ab
+(WoGG §§ 3, 5, 7, 8, 9, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25, 27; WoGV § 6; § 14 pro Absatz
+gechunkt). Backend: Route `POST /vorgaenge/:id/chat` retrievt je Frage die Top-k §-Chunks als
+zusätzlichen Rechts-Kontextblock, System-Prompt trennt Fall-Belege (Dokument) von Rechts-Belegen
+(§-Fundstelle) und verbietet freies Zitieren; Quellen-Marker erweitert (`recht:<chunk-id>` neben
+Dokument-IDs), `ChatSource` um Recht-Variante ergänzt (`{art:'recht', ref, label, url}`). Frontend:
+Recht-Quellen als eigene Chips mit Waage-Icon (`ScaleIcon`), Klick öffnet den Gesetzestext im neuen
+Tab. Tests: neue `recht/retrieval.test.ts` (Abnahme-Anker: Elterngeld→§14, Haft/Ausschluss→§7/§5,
+Vermögen-Freigrenze→§21, Bewilligungszeitraum→§25, Miete/abziehbare Kosten→§9/WoGV§6). App `wohngeld`:
+62/62 Unit-Tests grün, tsc ohne neue Fehler, Frontend-Build grün. Bewusste Vereinfachung: sehr lange
+Absätze (v. a. § 14 Abs. 2) sind inhaltstreu leicht gekürzt („[…]"), nichts umformuliert/erfunden.
+
 ### Wohngeld — Fall-Chat C1 (grounded Fall-Q&A)
 Fall-gebundener Chat in der App `wohngeld`: Fragen zum Vorgang werden ausschließlich aus den
 erfassten Vorgangsdaten und Nachweisen beantwortet (Recht-RAG folgt in C2). Backend: neue

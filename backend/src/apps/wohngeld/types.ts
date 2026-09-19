@@ -268,19 +268,18 @@ export interface Aktivitaet {
   created_at: string;
 }
 
-// ── Fall-Chat (grounded Fall-Q&A, Stufe C1) ────────────────────────────────
+// ── Fall-Chat (grounded Fall-Q&A, Stufen C1 + C2) ──────────────────────────
 
 /**
- * Quelle einer belegten Chat-Aussage. In C1 ausschließlich Fall-Dokumente
- * (Recht-RAG folgt in C2). Wird aus dem vom Modell markierten Quellen-Block
- * aufgelöst (Dokument-ID → Label).
+ * Quelle einer belegten Chat-Aussage. Wird aus dem vom Modell markierten
+ * Quellen-Block aufgelöst:
+ *  - `dokument`: Fall-Nachweis (C1), Auflösung Dokument-ID → Label.
+ *  - `recht`:    Rechtsquelle aus dem statischen Korpus (C2), Auflösung
+ *                Chunk-ID → Label/URL (§ + Gesetz + Titel, klickbar).
  */
-export interface ChatSource {
-  art: 'dokument';
-  dokumentId: string;
-  label: string;
-  seite?: number;
-}
+export type ChatSource =
+  | { art: 'dokument'; dokumentId: string; label: string; seite?: number }
+  | { art: 'recht'; ref: string; label: string; url?: string };
 
 /** Chat-Nachricht (append-only) im Fall-Verlauf eines Vorgangs. */
 export interface ChatMessage {

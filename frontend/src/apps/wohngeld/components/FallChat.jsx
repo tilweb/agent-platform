@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { theme } from '../../../config/theme';
-import { ChatIcon, SendIcon, XIcon, DocumentIcon } from '../../../components/Icons';
+import { ChatIcon, SendIcon, XIcon, DocumentIcon, ScaleIcon } from '../../../components/Icons';
 import { wohngeldApi, ACCENT, ACCENT_LIGHT } from '../api';
 
 /** Kontextuelle Startfragen (grounded Fall-Q&A). */
@@ -8,6 +8,7 @@ const VORSCHLAEGE = [
   'Was fehlt noch?',
   'Wie hoch ist das anrechenbare Einkommen?',
   'Ist die Miethöhe plausibel?',
+  'Zählt Elterngeld zum Einkommen?',
 ];
 
 /**
@@ -191,17 +192,30 @@ function MessageBubble({ message, onOpenDokument }) {
       <div style={styles.assistantBubble}>{message.content}</div>
       {message.sources && message.sources.length > 0 && (
         <div style={styles.sourceRow}>
-          {message.sources.map((s) => (
-            <button
-              key={s.dokumentId}
-              style={styles.sourceChip}
-              onClick={() => onOpenDokument?.(s.dokumentId)}
-              title={s.label}
-            >
-              <DocumentIcon size={12} color={ACCENT} />
-              <span style={styles.sourceLabel}>{s.label}</span>
-            </button>
-          ))}
+          {message.sources.map((s) =>
+            s.art === 'recht' ? (
+              <button
+                key={`recht-${s.ref}`}
+                style={styles.sourceChip}
+                onClick={() => { if (s.url) window.open(s.url, '_blank', 'noopener,noreferrer'); }}
+                title={s.url ? `${s.label} – Gesetzestext öffnen` : s.label}
+                disabled={!s.url}
+              >
+                <ScaleIcon size={12} color={ACCENT} />
+                <span style={styles.sourceLabel}>{s.label}</span>
+              </button>
+            ) : (
+              <button
+                key={`dok-${s.dokumentId}`}
+                style={styles.sourceChip}
+                onClick={() => onOpenDokument?.(s.dokumentId)}
+                title={s.label}
+              >
+                <DocumentIcon size={12} color={ACCENT} />
+                <span style={styles.sourceLabel}>{s.label}</span>
+              </button>
+            ),
+          )}
         </div>
       )}
     </div>
