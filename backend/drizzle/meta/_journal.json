@@ -288,6 +288,13 @@
       "when": 1789725600000,
       "tag": "0040_wohngeld_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1789812000000,
+      "tag": "0041_wohngeld_feldstatus_notizen",
+      "breakpoints": true
     }
   ]
 }

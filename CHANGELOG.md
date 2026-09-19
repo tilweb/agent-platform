@@ -2,6 +2,33 @@
 
 ## 2026-09-19
 
+### Wohngeld — Welle 2 der Gap-Umsetzung (WP3 Feld-Bestätigung + WP4 Notizen)
+Umsetzung von Welle 2 aus `docs/wohngeld-gap-umsetzung-specs-2026-09-19.md`.
+
+**WP3 — KI-Vorschlag-Bestätigung auf Feldebene.** Neue generische Tabelle `wohngeld.feld_status`
+(`ziel_typ`, `ziel_id`, `feld_pfad`, `quelle`, `bestaetigt`, `quell_dokument_id`, `confidence`;
+Migration `0041_wohngeld_feldstatus_notizen.sql`, Journal idx 41). Typ `FeldStatus`; Storage
+`listFeldStatus`/`setFeldStatus` (Upsert per (vorgang,zielTyp,zielId,feldPfad))/`bestaetigeFeld`/
+`bestaetigeAlle`/`loescheFeldStatus`. Beim Verteilen im Posteingang werden die aus dem
+Wohngeldantrag befüllten Vorgang-Felder (antragsdatum, wohngeldart, antragsart, wohnung.*) und —
+nur bei neu angelegter Antragsteller-Person — deren Namens-/Geburtsdatum-Felder als
+`quelle='llm', bestaetigt=false` mit Quell-Dokument markiert (reines, getestetes Mapping in
+`feldstatus-mapping.ts`). Routes (`routes/feldstatus.ts`): `GET /vorgaenge/:id/feldstatus`,
+`POST …/:fsId/bestaetigen`, `POST …/:fsId/verwerfen` (leert den Feldwert am Pfad + löscht den
+Status), `POST …/alle-bestaetigen`; Schreib-Endpoints editor-gated. Detail-Endpoint liefert
+`feldStatus` mit. Frontend: `FeldStatusMark` (dezenter Punkt + ✓/✗) an den wichtigsten Feldern in
+„Allgemein", „Wohnung & Miete" und in `PersonCard`; Bestätigungs-Leiste über der Übersicht mit
+Anzahl offener Vorschläge + „Alle bestätigen"; neue Icons `CheckIcon`. Nach jeder Aktion Reload.
+
+**WP4 — Kommentare/Notizen je Sektion.** Tabelle `wohngeld.notizen` (append-only: `anker`, `autor`,
+`text`) in derselben Migration. Typ `Notiz`; Storage `listNotizen`/`addNotiz`/`loescheNotiz`.
+Routes (`routes/notizen.ts`): `GET /vorgaenge/:id/notizen`, `POST …/notizen {anker,text}`,
+`DELETE /notizen/:id` (autor = aktueller User; editor-gated). Detail-Endpoint liefert `notizen` mit.
+Frontend: Sprechblasen-Icon mit Zähler (`CommentIcon`) an den Sektions-Köpfen
+(Allgemein/Personen/Wohnung/Einkommen) und an `PersonCard`; Klick öffnet `NotizPanel` mit Liste
+(Autor/Zeitpunkt) + Eingabe „Notiz hinzufügen". Tests: `feldstatus-mapping.test.ts` (App
+`wohngeld` 78/78 grün), tsc ohne neue wohngeld-Fehler, eslint `src/apps/wohngeld` + Frontend-Build grün.
+
 ### Wohngeld — Welle 1 der Gap-Umsetzung (WP1 §13-Einkommensansicht + WP2 UX)
 Umsetzung von Welle 1 aus `docs/wohngeld-gap-umsetzung-specs-2026-09-19.md`.
 

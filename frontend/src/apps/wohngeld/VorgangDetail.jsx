@@ -14,6 +14,9 @@ import SektionCard, { FeldGrid } from './components/SektionCard';
 import PersonCard from './components/PersonCard';
 import PruefschrittItem from './components/PruefschrittItem';
 import FallChat from './components/FallChat';
+import FeldStatusMark from './components/FeldStatusMark';
+import { buildFeldStatusMap, fsKey } from './feldStatusMap';
+import NotizPanel from './components/NotizPanel';
 
 const MAIN_TABS = [
   { id: 'uebersicht', label: 'Übersicht' },
@@ -65,6 +68,9 @@ const styles = {
   editLabel: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted },
   error: { padding: theme.spacing.md, backgroundColor: theme.colors.errorLight, color: theme.colors.error, borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.md, fontSize: theme.typography.sizes.sm },
   info: { padding: theme.spacing.md, backgroundColor: theme.colors.infoLight, color: theme.colors.info, borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.md, fontSize: theme.typography.sizes.sm },
+  bestaetigungBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, padding: `${theme.spacing.sm} ${theme.spacing.md}`, backgroundColor: ACCENT_LIGHT, borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.md, fontSize: theme.typography.sizes.sm, flexWrap: 'wrap' },
+  bestaetigungText: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm, color: theme.colors.text },
+  bestaetigungDot: { width: 7, height: 7, borderRadius: theme.borderRadius.full, backgroundColor: ACCENT, flexShrink: 0 },
   sideTitle: { fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', margin: `${theme.spacing.md} 0 ${theme.spacing.sm}` },
   activity: { fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, padding: `${theme.spacing.sm} 0`, borderBottom: `1px solid ${theme.colors.borderLight}`, lineHeight: 1.5 },
   label: { display: 'block', fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text, marginBottom: theme.spacing.xs },
@@ -142,6 +148,9 @@ export default function VorgangDetail() {
   // Schreiben-Editor (id -> {betreff, frist, body, version})
   const [schreibenEdit, setSchreibenEdit] = useState({});
 
+  // Notizen-Panel (WP4): { anker, label } oder null
+  const [notizPanel, setNotizPanel] = useState(null);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -208,6 +217,11 @@ export default function VorgangDetail() {
   }
 
   const { vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten } = detail;
+  const feldStatus = detail.feldStatus || [];
+  const notizen = detail.notizen || [];
+  const feldStatusMap = buildFeldStatusMap(feldStatus);
+  const offeneFelder = Object.values(feldStatusMap);
+  const notizCount = (anker) => notizen.filter((n) => n.anker === anker).length;
   const antragsteller = personen.find((p) => p.rolle === 'antragsteller');
   const antragstellerName = antragsteller
     ? [antragsteller.vorname, antragsteller.nachname].filter(Boolean).join(' ')
@@ -351,6 +365,44 @@ export default function VorgangDetail() {
     } finally { setBusy(false); }
   }
 
+  // ── Feld-Status (WP3): KI-Vorschläge bestätigen/verwerfen ──
+  async function bestaetigeFeld(fs) {
+    setBusy(true); setError('');
+    try { await wohngeldApi.bestaetigeFeld(id, fs.id); await reload(); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+  async function verwerfeFeld(fs) {
+    setBusy(true); setError('');
+    try { await wohngeldApi.verwerfeFeld(id, fs.id); await reload(); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+  async function bestaetigeAlleFelder() {
+    setBusy(true); setError('');
+    try { await wohngeldApi.bestaetigeAlleFelder(id); await reload(); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+  function vfsMark(feldPfad) {
+    const fs = feldStatusMap[fsKey('vorgang', vorgang.id, feldPfad)];
+    return fs ? <FeldStatusMark fs={fs} canEdit={canEdit} busy={busy} onBestaetigen={bestaetigeFeld} onVerwerfen={verwerfeFeld} /> : null;
+  }
+
+  // ── Notizen (WP4) ──
+  async function addNotiz(anker, text) {
+    setBusy(true); setError('');
+    try { await wohngeldApi.addNotiz(id, { anker, text }); await reload(); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+  async function deleteNotiz(n) {
+    setBusy(true); setError('');
+    try { await wohngeldApi.deleteNotiz(n.id); await reload(); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+
   // ── Sektionen der Übersicht ──
   const w = vorgang.wohnung || {};
   const adresse = [w.strasse, w.hausnummer].filter(Boolean).join(' ');
@@ -412,10 +464,23 @@ export default function VorgangDetail() {
 
           {mainTab === 'uebersicht' && (
             <>
+              {offeneFelder.length > 0 && (
+                <div style={styles.bestaetigungBar}>
+                  <span style={styles.bestaetigungText}>
+                    <span style={styles.bestaetigungDot} />
+                    {offeneFelder.length} {offeneFelder.length === 1 ? 'KI-Vorschlag' : 'KI-Vorschläge'} aus Dokumenten — bitte bestätigen oder verwerfen
+                  </span>
+                  {canEdit && (
+                    <button style={styles.btnSmall} onClick={bestaetigeAlleFelder} disabled={busy}>Alle bestätigen</button>
+                  )}
+                </div>
+              )}
               <SektionCard
                 title="Allgemein"
                 offenCount={countAllgemein}
                 collapsible
+                notizCount={notizCount('sektion:allgemein')}
+                onNotizClick={() => setNotizPanel({ anker: 'sektion:allgemein', label: 'Allgemein' })}
                 action={canEdit && (
                   editMode
                     ? <div style={{ display: 'flex', gap: theme.spacing.sm }}>
@@ -440,24 +505,44 @@ export default function VorgangDetail() {
                   </div>
                 ) : (
                   <FeldGrid felder={[
-                    { label: 'Antragsdatum', value: fmtDate(vorgang.antragsdatum) },
-                    { label: 'Wohngeldart', value: WOHNGELDART_LABEL[vorgang.wohngeldart] },
-                    { label: 'Antragsart', value: ANTRAGSART_LABEL[vorgang.antragsart] },
+                    { label: 'Antragsdatum', value: fmtDate(vorgang.antragsdatum), mark: vfsMark('antragsdatum') },
+                    { label: 'Wohngeldart', value: WOHNGELDART_LABEL[vorgang.wohngeldart], mark: vfsMark('wohngeldart') },
+                    { label: 'Antragsart', value: ANTRAGSART_LABEL[vorgang.antragsart], mark: vfsMark('antragsart') },
                     { label: 'Antragsteller', value: antragstellerName },
                   ]} />
                 )}
               </SektionCard>
 
-              <SektionCard title="Personen" offenCount={countPersonen} collapsible>
+              <SektionCard
+                title="Personen"
+                offenCount={countPersonen}
+                collapsible
+                notizCount={notizCount('sektion:personen')}
+                onNotizClick={() => setNotizPanel({ anker: 'sektion:personen', label: 'Personen' })}
+              >
                 {personen.length === 0
                   ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Noch keine Personen erfasst.</div>
-                  : personen.map((p) => <PersonCard key={p.id} person={p} />)}
+                  : personen.map((p) => (
+                    <PersonCard
+                      key={p.id}
+                      person={p}
+                      feldStatusMap={feldStatusMap}
+                      canEdit={canEdit}
+                      busy={busy}
+                      onBestaetigen={bestaetigeFeld}
+                      onVerwerfen={verwerfeFeld}
+                      notizCount={notizCount(`person:${p.id}`)}
+                      onNotizClick={() => setNotizPanel({ anker: `person:${p.id}`, label: [p.vorname, p.nachname].filter(Boolean).join(' ') || 'Person' })}
+                    />
+                  ))}
               </SektionCard>
 
               <SektionCard
                 title="Wohnung & Miete"
                 offenCount={countWohnung}
                 collapsible
+                notizCount={notizCount('sektion:wohnung')}
+                onNotizClick={() => setNotizPanel({ anker: 'sektion:wohnung', label: 'Wohnung & Miete' })}
               >
                 {editMode ? (
                   <div style={styles.editRow}>
@@ -482,17 +567,23 @@ export default function VorgangDetail() {
                   </div>
                 ) : (
                   <FeldGrid felder={[
-                    { label: 'Adresse', value: adresse || '—' },
-                    { label: 'PLZ / Ort', value: ortZeile || '—' },
-                    { label: 'Wohnfläche', value: w.wohnflaeche_qm != null ? `${w.wohnflaeche_qm} m²` : '—' },
-                    { label: 'Miete (Bruttokalt)', value: eur(w.miete) },
+                    { label: 'Adresse', value: adresse || '—', mark: vfsMark('wohnung.strasse') || vfsMark('wohnung.hausnummer') },
+                    { label: 'PLZ / Ort', value: ortZeile || '—', mark: vfsMark('wohnung.plz') || vfsMark('wohnung.ort') },
+                    { label: 'Wohnfläche', value: w.wohnflaeche_qm != null ? `${w.wohnflaeche_qm} m²` : '—', mark: vfsMark('wohnung.wohnflaeche_qm') },
+                    { label: 'Miete (Bruttokalt)', value: eur(w.miete), mark: vfsMark('wohnung.miete') },
                     { label: 'Heizkosten', value: eur(w.heizkosten) },
                     { label: 'Warmwasser', value: eur(w.warmwasser) },
                   ]} />
                 )}
               </SektionCard>
 
-              <SektionCard title="Einkommen & Abzugsbeträge" offenCount={countEinkommen} collapsible>
+              <SektionCard
+                title="Einkommen & Abzugsbeträge"
+                offenCount={countEinkommen}
+                collapsible
+                notizCount={notizCount('sektion:einkommen')}
+                onNotizClick={() => setNotizPanel({ anker: 'sektion:einkommen', label: 'Einkommen & Abzugsbeträge' })}
+              >
                 {personen.length === 0 ? (
                   <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Keine Personen mit Einkommensangaben.</div>
                 ) : (
@@ -849,6 +940,18 @@ export default function VorgangDetail() {
           vorgang={{ id: vorgang.id, antragsId: vorgang.antragsId }}
           onClose={() => setChatOpen(false)}
           onOpenDokument={(docId) => { if (docId) jumpToDokument(docId); else { setSideCollapsed(false); setSideTab('dokumente'); } }}
+        />
+      )}
+
+      {notizPanel && (
+        <NotizPanel
+          label={notizPanel.label}
+          notizen={notizen.filter((n) => n.anker === notizPanel.anker)}
+          canEdit={canEdit}
+          busy={busy}
+          onAdd={(text) => addNotiz(notizPanel.anker, text)}
+          onDelete={deleteNotiz}
+          onClose={() => setNotizPanel(null)}
         />
       )}
     </div>

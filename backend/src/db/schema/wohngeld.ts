@@ -7,7 +7,7 @@
  *
  * Akte → Vorgang → { Personen, Dokumente, Prüfschritte, Schreiben, Aktivitäten }
  */
-import { pgSchema, text, integer, boolean, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgSchema, text, integer, boolean, real, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
 
 export const wohngeldSchema = pgSchema('wohngeld');
 
@@ -119,6 +119,39 @@ export const wgChatMessages = wohngeldSchema.table('chat_messages', {
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (t) => ({
   vorgangIdx: index('wg_chat_vorgang_idx').on(t.vorgangId),
+}));
+
+/**
+ * Feld-Provenienz (Welle 2, WP3) — generisch statt Umbau jedes Feldes.
+ * Jeder aus Dokumenten extrahierte Wert ist ein Vorschlag (`quelle='llm', bestaetigt=false`),
+ * den die Sachbearbeitung bestätigt oder verwirft. Schlüssel: (vorgang_id, ziel_typ, ziel_id, feld_pfad).
+ */
+export const wgFeldStatus = wohngeldSchema.table('feld_status', {
+  id: text('id').primaryKey(),
+  vorgangId: text('vorgang_id').notNull().references(() => wgVorgaenge.id, { onDelete: 'cascade' }),
+  zielTyp: text('ziel_typ').notNull().default('vorgang'), // 'vorgang' | 'person'
+  zielId: text('ziel_id').notNull(),
+  feldPfad: text('feld_pfad').notNull(),                  // z. B. 'wohnung.miete' oder 'geburtsdatum'
+  quelle: text('quelle').notNull().default('llm'),        // 'llm' | 'mensch'
+  bestaetigt: boolean('bestaetigt').notNull().default(false),
+  quellDokumentId: text('quell_dokument_id'),
+  confidence: real('confidence'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  vorgangIdx: index('wg_feldstatus_vorgang_idx').on(t.vorgangId),
+}));
+
+/** Kommentare/Notizen je Sektion oder Person (Welle 2, WP4, append-only). */
+export const wgNotizen = wohngeldSchema.table('notizen', {
+  id: text('id').primaryKey(),
+  vorgangId: text('vorgang_id').notNull().references(() => wgVorgaenge.id, { onDelete: 'cascade' }),
+  anker: text('anker').notNull(), // z. B. 'sektion:allgemein' | 'person:<id>'
+  autor: text('autor'),
+  text: text('text').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  vorgangIdx: index('wg_notizen_vorgang_idx').on(t.vorgangId),
 }));
 
 /** Aktivität / Audit-Eintrag (append-only). */

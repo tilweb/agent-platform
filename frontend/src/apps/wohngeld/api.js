@@ -93,6 +93,17 @@ export const wohngeldApi = {
   updateSchreiben: (id, payload) => apiPut(`${base}/schreiben/${id}`, payload).then(json).then((d) => d.schreiben),
   deleteSchreiben: (id) => apiDelete(`${base}/schreiben/${id}`).then(json),
 
+  // Feld-Status (WP3 — KI-Vorschlag-Bestätigung auf Feldebene)
+  listFeldStatus: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/feldstatus`).then(json).then((d) => d.feldStatus),
+  bestaetigeFeld: (vorgangId, fsId) => apiPost(`${base}/vorgaenge/${vorgangId}/feldstatus/${fsId}/bestaetigen`, {}).then(json).then((d) => d.feldStatus),
+  verwerfeFeld: (vorgangId, fsId) => apiPost(`${base}/vorgaenge/${vorgangId}/feldstatus/${fsId}/verwerfen`, {}).then(json),
+  bestaetigeAlleFelder: (vorgangId) => apiPost(`${base}/vorgaenge/${vorgangId}/feldstatus/alle-bestaetigen`, {}).then(json).then((d) => d.feldStatus),
+
+  // Notizen (WP4 — Kommentare je Sektion/Person)
+  listNotizen: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/notizen`).then(json).then((d) => d.notizen),
+  addNotiz: (vorgangId, payload) => apiPost(`${base}/vorgaenge/${vorgangId}/notizen`, payload).then(json).then((d) => d.notiz),
+  deleteNotiz: (id) => apiDelete(`${base}/notizen/${id}`).then(json),
+
   // Fall-Chat (grounded Fall-Q&A, Stufe C1)
   /** Chat-Verlauf eines Vorgangs laden. */
   getChat: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/chat`).then(json).then((d) => d.messages),

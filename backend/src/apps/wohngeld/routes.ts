@@ -11,6 +11,8 @@ import { pruefschritteRoutes } from './routes/pruefschritte';
 import { schreibenRoutes } from './routes/schreiben';
 import { posteingangRoutes } from './routes/posteingang';
 import { chatRoutes } from './routes/chat';
+import { feldstatusRoutes } from './routes/feldstatus';
+import { notizenRoutes } from './routes/notizen';
 
 const wohngeld = new Hono();
 
@@ -24,5 +26,7 @@ wohngeld.route('/', pruefschritteRoutes);
 wohngeld.route('/', schreibenRoutes);
 wohngeld.route('/', posteingangRoutes);
 wohngeld.route('/', chatRoutes);
+wohngeld.route('/', feldstatusRoutes);
+wohngeld.route('/', notizenRoutes);
 
 export { wohngeld as wohngeldRoutes };

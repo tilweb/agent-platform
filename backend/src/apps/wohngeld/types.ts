@@ -268,6 +268,44 @@ export interface Aktivitaet {
   created_at: string;
 }
 
+// ── Feld-Provenienz (Welle 2, WP3) ─────────────────────────────────────────
+
+/** Ziel-Entität eines Feld-Status. */
+export type FeldStatusZielTyp = 'vorgang' | 'person';
+
+/** Herkunft eines Feldwerts. */
+export type FeldQuelle = 'llm' | 'mensch';
+
+/**
+ * Feld-Provenienz: markiert einen extrahierten Feldwert als Vorschlag, den die
+ * Sachbearbeitung bestätigt/verwirft. Generisch statt Umbau jedes Feldes.
+ */
+export interface FeldStatus {
+  id: string;
+  vorgangId: string;
+  zielTyp: FeldStatusZielTyp;
+  zielId: string;
+  feldPfad: string;             // z. B. 'wohnung.miete' oder 'geburtsdatum'
+  quelle: FeldQuelle;
+  bestaetigt: boolean;
+  quellDokumentId?: string;
+  confidence?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Notizen je Sektion/Person (Welle 2, WP4) ────────────────────────────────
+
+/** Interne Notiz zu einer Sektion oder Person eines Vorgangs (append-only). */
+export interface Notiz {
+  id: string;
+  vorgangId: string;
+  anker: string;                // z. B. 'sektion:allgemein' | 'person:<id>'
+  autor?: string;
+  text: string;
+  created_at: string;
+}
+
 // ── Fall-Chat (grounded Fall-Q&A, Stufen C1 + C2) ──────────────────────────
 
 /**

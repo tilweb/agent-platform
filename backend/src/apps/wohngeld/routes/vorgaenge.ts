@@ -3,7 +3,7 @@ import { getCurrentUserId } from '../../../auth/middleware';
 import {
   listVorgaenge, getVorgang, createVorgang, updateVorgang, deleteVorgang,
   getAkte, listPersonen, listDokumente, listPruefschritte, listSchreiben, listAktivitaeten,
-  getVorgangSnapshot, syncPruefschritte, addAktivitaet,
+  getVorgangSnapshot, syncPruefschritte, addAktivitaet, listFeldStatus, listNotizen,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { pruefeVorgang } from '../checker';
@@ -29,11 +29,12 @@ vorgaengeRoutes.get('/vorgaenge/:id/detail', async (c) => {
   const id = c.req.param('id');
   const vorgang = await getVorgang(id);
   if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
-  const [akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten] = await Promise.all([
+  const [akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten, feldStatus, notizen] = await Promise.all([
     getAkte(vorgang.akteId), listPersonen(id), listDokumente(id),
     listPruefschritte(id), listSchreiben(id), listAktivitaeten(id),
+    listFeldStatus(id), listNotizen(id),
   ]);
-  return c.json({ vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten });
+  return c.json({ vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten, feldStatus, notizen });
 });
 
 /**

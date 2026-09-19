@@ -12,11 +12,12 @@ import { getCurrentUserId } from '../../../auth/middleware';
 import {
   getAkte, createAkte, getVorgang, createVorgang, updateVorgang,
   listPersonen, createPerson, createDokument, addAktivitaet,
-  getVorgangSnapshot, syncPruefschritte,
+  getVorgangSnapshot, syncPruefschritte, setFeldStatus,
 } from '../storage';
 import { pruefeVorgang } from '../checker';
 import { pdfToText } from '../extract';
 import { klassifiziereUndExtrahiere, type ExtraktionErgebnis, type ExtrahierteStammdaten } from '../extraction';
+import { feldStatusVorgangPfade, feldStatusPersonPfade } from '../feldstatus-mapping';
 import { storeUpload, resolveStorageRef } from '../filestore';
 import { denyIfNotAppEditor } from './_shared';
 import type { WohnungMiete } from '../types';
@@ -166,6 +167,8 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
   }
 
   // 3. Stammdaten übernehmen (Wohnung + Antragsteller-Person) — bei Antrag vorhanden.
+  let antragstellerId: string | undefined;
+  let antragstellerNeu = false;
   if (stammdaten) {
     const updates: Record<string, unknown> = {};
     if (stammdaten.antragsdatum && !vorgang.antragsdatum) updates.antragsdatum = stammdaten.antragsdatum;
@@ -180,20 +183,26 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
     const at = stammdaten.antragsteller;
     if (at && (at.vorname || at.nachname)) {
       const personen = await listPersonen(vorgang.id);
-      if (!personen.some((p) => p.rolle === 'antragsteller')) {
-        await createPerson({
+      const bestehend = personen.find((p) => p.rolle === 'antragsteller');
+      if (!bestehend) {
+        const neu = await createPerson({
           vorgangId: vorgang.id,
           rolle: 'antragsteller',
           vorname: at.vorname ?? '',
           nachname: at.nachname ?? '',
           geburtsdatum: at.geburtsdatum,
         });
+        antragstellerId = neu.id;
+        antragstellerNeu = true;
+      } else {
+        antragstellerId = bestehend.id;
       }
     }
   }
 
   // 4. Dokumente anlegen.
   const angelegt = [];
+  let antragDokumentId: string | undefined;
   for (const d of dokumente) {
     const ref = resolveStorageRef(d.storageRef);
     const dok = await createDokument({
@@ -208,7 +217,27 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
       extrahierterText: (d.extrahierterTextGekuerzt || '').slice(0, 20000),
       analyse: d.analyse,
     });
+    if (antragPreview && d === antragPreview) antragDokumentId = dok.id;
     angelegt.push(dok);
+  }
+
+  // 4b. Feld-Provenienz (WP3): extrahierte Antrags-Felder als KI-Vorschlag markieren.
+  if (stammdaten) {
+    for (const feldPfad of feldStatusVorgangPfade(stammdaten)) {
+      await setFeldStatus({
+        vorgangId: vorgang.id, zielTyp: 'vorgang', zielId: vorgang.id,
+        feldPfad, quelle: 'llm', bestaetigt: false, quellDokumentId: antragDokumentId,
+      });
+    }
+    // Person-Felder nur markieren, wenn die Antragsteller-Person aus dieser Extraktion neu entstand.
+    if (antragstellerNeu && antragstellerId) {
+      for (const feldPfad of feldStatusPersonPfade(stammdaten.antragsteller)) {
+        await setFeldStatus({
+          vorgangId: vorgang.id, zielTyp: 'person', zielId: antragstellerId,
+          feldPfad, quelle: 'llm', bestaetigt: false, quellDokumentId: antragDokumentId,
+        });
+      }
+    }
   }
 
   await addAktivitaet({

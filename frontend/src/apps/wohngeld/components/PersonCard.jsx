@@ -1,11 +1,20 @@
 import { useState } from 'react';
 import { theme } from '../../../config/theme';
+import { CommentIcon } from '../../../components/Icons';
 import { ROLLE_LABEL, ERWERBSSTATUS_LABEL, ACCENT } from '../api';
 import { FeldGrid } from './SektionCard';
+import FeldStatusMark from './FeldStatusMark';
+import { fsKey } from '../feldStatusMap';
 
 const styles = {
   card: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, marginBottom: theme.spacing.sm, overflow: 'hidden' },
   head: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, padding: theme.spacing.md, cursor: 'pointer' },
+  notizBtn: {
+    display: 'inline-flex', alignItems: 'center', gap: 3,
+    padding: `2px ${theme.spacing.sm}`, background: 'none',
+    border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.full,
+    color: theme.colors.textMuted, cursor: 'pointer', fontSize: theme.typography.sizes.xs,
+  },
   name: { fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.semibold, color: theme.colors.text },
   rolle: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: 2 },
   body: { padding: `0 ${theme.spacing.md} ${theme.spacing.md}`, borderTop: `1px solid ${theme.colors.borderLight}` },
@@ -24,13 +33,22 @@ function fullName(p) {
   return [p.titel, p.vorname, p.nachname].filter(Boolean).join(' ') || 'Person';
 }
 
-export default function PersonCard({ person: p }) {
+export default function PersonCard({
+  person: p, feldStatusMap = {}, canEdit = false, busy = false,
+  onBestaetigen, onVerwerfen, notizCount, onNotizClick,
+}) {
   const [open, setOpen] = useState(false);
   const einkommen = p.einkommen || [];
   const pb = p.pflege_behinderung || {};
 
+  const fsFor = (feldPfad) => feldStatusMap[fsKey('person', p.id, feldPfad)];
+  const mark = (feldPfad) => {
+    const fs = fsFor(feldPfad);
+    return fs ? <FeldStatusMark fs={fs} canEdit={canEdit} busy={busy} onBestaetigen={onBestaetigen} onVerwerfen={onVerwerfen} /> : null;
+  };
+
   const persoenlich = [
-    { label: 'Geburtsdatum', value: p.geburtsdatum },
+    { label: 'Geburtsdatum', value: p.geburtsdatum, mark: mark('geburtsdatum') },
     { label: 'Geburtsort', value: p.geburtsort },
     { label: 'Geburtsname', value: p.geburtsname },
     { label: 'Familienstand', value: p.familienstand },
@@ -63,12 +81,29 @@ export default function PersonCard({ person: p }) {
         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
       >
         <div>
-          <div style={styles.name}>{open ? '▾ ' : '▸ '}{fullName(p)}</div>
+          <div style={styles.name}>
+            {open ? '▾ ' : '▸ '}{fullName(p)}
+            {(fsFor('nachname') || fsFor('vorname')) && (
+              <span onClick={(e) => e.stopPropagation()}>
+                {mark('nachname')}{mark('vorname')}
+              </span>
+            )}
+          </div>
           <div style={styles.rolle}>{ROLLE_LABEL[p.rolle] || p.rolle}</div>
         </div>
-        <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-          {einkommen.length > 0 ? `${einkommen.length} Einkommenspos.` : ''}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }} onClick={(e) => e.stopPropagation()}>
+          {einkommen.length > 0 && (
+            <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+              {einkommen.length} Einkommenspos.
+            </span>
+          )}
+          {onNotizClick && (
+            <button style={styles.notizBtn} onClick={onNotizClick} title="Notizen">
+              <CommentIcon size={13} />
+              {notizCount > 0 && <span>{notizCount}</span>}
+            </button>
+          )}
+        </div>
       </div>
 
       {open && (

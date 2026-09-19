@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { theme } from '../../../config/theme';
-import { ChevronDownIcon } from '../../../components/Icons';
+import { ChevronDownIcon, CommentIcon } from '../../../components/Icons';
 import { ACCENT } from '../api';
 
 const styles = {
@@ -23,6 +23,12 @@ const styles = {
     padding: `2px ${theme.spacing.sm}`,
     borderRadius: theme.borderRadius.full,
   },
+  notizBtn: {
+    display: 'inline-flex', alignItems: 'center', gap: 3,
+    padding: `2px ${theme.spacing.sm}`, background: 'none',
+    border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.full,
+    color: theme.colors.textMuted, cursor: 'pointer', fontSize: theme.typography.sizes.xs,
+  },
 };
 
 /**
@@ -30,7 +36,7 @@ const styles = {
  * offenCount = Anzahl offener zugehöriger Prüfschritte (0 = grün/ok).
  * Optional einklappbar (collapsible + defaultOpen) — Zustand lokal, Chevron im Titel.
  */
-export default function SektionCard({ title, offenCount, action, children, collapsible = false, defaultOpen = true }) {
+export default function SektionCard({ title, offenCount, action, children, collapsible = false, defaultOpen = true, notizCount, onNotizClick }) {
   const [open, setOpen] = useState(defaultOpen);
   const hasOpen = offenCount > 0;
   const ampelStyle = hasOpen
@@ -61,6 +67,12 @@ export default function SektionCard({ title, offenCount, action, children, colla
               {hasOpen ? `${offenCount} offen` : 'vollständig'}
             </span>
           )}
+          {onNotizClick && (
+            <button style={styles.notizBtn} onClick={onNotizClick} title="Notizen">
+              <CommentIcon size={13} />
+              {notizCount > 0 && <span>{notizCount}</span>}
+            </button>
+          )}
           {action}
         </div>
       </div>
@@ -69,22 +81,22 @@ export default function SektionCard({ title, offenCount, action, children, colla
   );
 }
 
-/** Kleines Feld-Grid (Label/Wert) für Detailsektionen. */
+/** Kleines Feld-Grid (Label/Wert) für Detailsektionen. `mark` = optionaler Node hinter dem Wert (z. B. FeldStatusMark). */
 export function FeldGrid({ felder }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 220px) 1fr', rowGap: theme.spacing.sm, columnGap: theme.spacing.lg }}>
       {felder.map((f) => (
-        <FeldZeile key={f.label} label={f.label} value={f.value} />
+        <FeldZeile key={f.label} label={f.label} value={f.value} mark={f.mark} />
       ))}
     </div>
   );
 }
 
-export function FeldZeile({ label, value }) {
+export function FeldZeile({ label, value, mark }) {
   return (
     <>
       <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>{label}</div>
-      <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text }}>{value ?? '—'}</div>
+      <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text }}>{value ?? '—'}{mark}</div>
     </>
   );
 }
