@@ -7,6 +7,7 @@ import {
   wohngeldApi,
   WOHNGELDART_LABEL, ANTRAGSART_LABEL, STATUS_LABEL, STATUS_ORDER,
   PRIORITAET_LABEL, ROLLE_LABEL, DOKUMENT_TYP_LABEL, SCHREIBEN_ART_LABEL,
+  VERFUEGUNG_ENTSCHEIDUNG_LABEL,
   ACCENT, ACCENT_LIGHT,
 } from './api';
 import StatusBadge from './components/StatusBadge';
@@ -108,6 +109,16 @@ const styles = {
   miniRow: { display: 'flex', gap: theme.spacing.sm, marginTop: theme.spacing.sm },
   labelChip: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: theme.typography.sizes.xs, padding: `2px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted },
   labelRemove: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: theme.colors.textMuted },
+  docActions: { display: 'flex', gap: theme.spacing.xs, flexWrap: 'wrap', marginTop: theme.spacing.xs },
+  docLinkBtn: { fontSize: theme.typography.sizes.xs, color: ACCENT, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: theme.typography.weights.medium },
+  ablageBadge: { fontSize: '0.65rem', fontWeight: theme.typography.weights.semibold, padding: `1px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full },
+  docGroupTitle: { fontSize: '0.7rem', color: theme.colors.textMuted, fontWeight: theme.typography.weights.semibold, marginTop: theme.spacing.sm, marginBottom: 2 },
+  previewOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: theme.spacing.xl },
+  previewBox: { backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl, width: '90%', maxWidth: 900, height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: `1px solid ${theme.colors.border}` },
+  previewHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, padding: `${theme.spacing.md} ${theme.spacing.lg}`, borderBottom: `1px solid ${theme.colors.border}` },
+  previewFrame: { flex: 1, width: '100%', border: 'none', backgroundColor: theme.colors.background },
+  previewFallback: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.md, color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl },
+  verfRow: { display: 'grid', gridTemplateColumns: 'minmax(140px, 220px) 1fr', rowGap: theme.spacing.md, columnGap: theme.spacing.lg, alignItems: 'start', marginBottom: theme.spacing.lg },
 };
 
 function fmtDate(iso) {
@@ -157,6 +168,13 @@ export default function VorgangDetail() {
   const [chatOpen, setChatOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const dokUploadRef = useRef(null);
+
+  // Dateivorschau (WP10): { url, contentType, name } — objectURL wird beim Wechsel/Unmount freigegeben
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Verfügung (WP11): lokaler Formzustand, initial aus vorgang.verfuegung
+  const [verfForm, setVerfForm] = useState(null);
 
   // § 13-Einkommen (read-only)
   const [einkommen, setEinkommen] = useState(null);
@@ -224,11 +242,63 @@ export default function VorgangDetail() {
     return () => clearTimeout(t);
   }, [highlightDocId]);
 
+  // Vorschau-objectURL freigeben (beim Wechsel auf eine neue Vorschau und beim Unmount).
+  useEffect(() => {
+    if (!preview?.url) return undefined;
+    return () => URL.revokeObjectURL(preview.url);
+  }, [preview]);
+
   async function reload() {
     try { setDetail(await wohngeldApi.getVorgangDetail(id)); }
     catch (e) { setError(e.message); }
     try { setEinkommen(await wohngeldApi.getEinkommen(id)); }
     catch { /* ignore */ }
+  }
+
+  // ── Dateivorschau / Download / Ablage (WP10) ──
+  async function openPreview(d) {
+    setPreviewLoading(true); setError('');
+    try {
+      const { url, contentType } = await wohngeldApi.loadDokumentDatei(d.id);
+      setPreview({ url, contentType, name: DOKUMENT_TYP_LABEL[d.typ] || d.typ });
+    } catch (e) {
+      setError(e.message || 'Vorschau nicht verfügbar');
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+  function closePreview() { setPreview(null); }
+  async function downloadDoc(d) {
+    try { await wohngeldApi.downloadDokumentDatei(d.id, d.quelle || `${DOKUMENT_TYP_LABEL[d.typ] || 'dokument'}`); }
+    catch (e) { setError(e.message); }
+  }
+  async function downloadAlleOriginale(originale) {
+    // Vereinfachung: sequentieller Einzel-Download je Datei (kein ZIP — keine neue Dependency).
+    setError('');
+    for (const d of originale) {
+      try { await wohngeldApi.downloadDokumentDatei(d.id, d.quelle || `original-${d.id}`); }
+      catch { /* best-effort: einzelne Fehler überspringen */ }
+    }
+  }
+  async function ablegen(d) {
+    setBusy(true); setError('');
+    try { await wohngeldApi.ablegenDokument(d.id); await reload(); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+
+  // ── Verfügung (WP11) ──
+  async function saveVerfuegung(vfState) {
+    setBusy(true); setError('');
+    try {
+      const updated = await wohngeldApi.saveVerfuegung(id, { entscheidung: vfState.entscheidung, bemerkung: vfState.bemerkung, expectedVersion: vorgang.version });
+      setDetail((d) => ({ ...d, vorgang: updated }));
+      setVerfForm(null);
+      await reload();
+    } catch (e) {
+      if (e.status === 409) { setError('Konflikt: Der Vorgang wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); setVerfForm(null); }
+      else setError(e.message);
+    } finally { setBusy(false); }
   }
 
   function copyAntragsId(antragsId) {
@@ -1047,17 +1117,47 @@ export default function VorgangDetail() {
             </SektionCard>
           )}
 
-          {mainTab === 'verfuegung' && (
-            <SektionCard title="Verfügung">
-              <div style={styles.placeholder}>
-                <div style={{ fontSize: theme.typography.sizes.md, fontWeight: theme.typography.weights.medium, color: theme.colors.textSecondary, marginBottom: theme.spacing.sm }}>In Vorbereitung</div>
-                <div style={{ fontSize: theme.typography.sizes.sm, maxWidth: 420, margin: '0 auto', lineHeight: 1.5, marginBottom: theme.spacing.lg }}>
-                  Die Erstellung der abschließenden Verfügung folgt in einem späteren Schritt.
+          {mainTab === 'verfuegung' && (() => {
+            const vf = vorgang.verfuegung || {};
+            const vfState = verfForm ?? { entscheidung: vf.entscheidung || 'offen', bemerkung: vf.bemerkung || '' };
+            return (
+              <SektionCard title="Verfügung">
+                <div style={styles.info}>
+                  Zusammenfassung aus Vorgangsdaten (Personen, Einkommen §13, Miete, Prüfstatus) zur Entscheidungsfindung.
+                  Keine Betragsfestsetzung (§19) und keine rechtsverbindliche Bescheidvorlage.
                 </div>
-                <button style={{ ...styles.btnGhost, cursor: 'not-allowed', opacity: 0.5 }} disabled title="Noch nicht verfügbar">Verfügung herunterladen</button>
-              </div>
-            </SektionCard>
-          )}
+                <div style={styles.verfRow}>
+                  <span style={styles.editLabel}>Entscheidung</span>
+                  <select
+                    style={{ ...styles.input, maxWidth: 280 }}
+                    value={vfState.entscheidung}
+                    disabled={!canEdit || busy}
+                    onChange={(e) => setVerfForm({ ...vfState, entscheidung: e.target.value })}
+                  >
+                    {Object.entries(VERFUEGUNG_ENTSCHEIDUNG_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                  <span style={styles.editLabel}>Bemerkung</span>
+                  <textarea
+                    style={{ ...styles.input, minHeight: 100, resize: 'vertical' }}
+                    placeholder="Interne Begründung / Hinweise zur Entscheidung"
+                    value={vfState.bemerkung}
+                    disabled={!canEdit || busy}
+                    onChange={(e) => setVerfForm({ ...vfState, bemerkung: e.target.value })}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+                  {canEdit && <button style={styles.btn} onClick={() => saveVerfuegung(vfState)} disabled={busy}>{busy ? 'Speichert…' : 'Speichern'}</button>}
+                  <button style={styles.btnGhost} onClick={() => wohngeldApi.exportVerfuegung(id, 'pdf').catch((e) => setError(e.message))}>Verfügung als PDF herunterladen</button>
+                  <button style={styles.btnGhost} onClick={() => wohngeldApi.exportVerfuegung(id, 'docx').catch((e) => setError(e.message))}>Als Word herunterladen</button>
+                </div>
+                {vf.erstelltAm && (
+                  <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.md }}>
+                    Zuletzt gespeichert: {fmtDateTime(vf.erstelltAm)}
+                  </div>
+                )}
+              </SektionCard>
+            );
+          })()}
         </div>
 
         {/* ── RECHTE SEITENLEISTE ── */}
@@ -1238,8 +1338,24 @@ export default function VorgangDetail() {
                   </div>
                 )}
                 {(() => {
+                  const hatDatei = (d) => !!(d.s3Key || d.pfad);
                   const nachweise = dokumente.filter((d) => !d.istOriginal);
                   const originale = dokumente.filter((d) => d.istOriginal);
+                  // Gruppierung nach Eingangsdatum (neueste zuerst); ohne Datum ans Ende.
+                  const groupByDatum = (list) => {
+                    const sorted = [...list].sort((a, b) => {
+                      const av = a.eingegangenAm || a.created_at || '';
+                      const bv = b.eingegangenAm || b.created_at || '';
+                      return av < bv ? 1 : av > bv ? -1 : 0;
+                    });
+                    const map = new Map();
+                    for (const d of sorted) {
+                      const key = d.eingegangenAm ? fmtDate(d.eingegangenAm) : 'Ohne Eingangsdatum';
+                      if (!map.has(key)) map.set(key, []);
+                      map.get(key).push(d);
+                    }
+                    return [...map.entries()];
+                  };
                   const renderDoc = (d) => (
                     <div
                       key={d.id}
@@ -1251,12 +1367,17 @@ export default function VorgangDetail() {
                           : { transition: `background-color ${theme.transitions.fast}` }),
                       }}
                     >
-                      <div style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>
-                        {DOKUMENT_TYP_LABEL[d.typ] || d.typ}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
+                        <div style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>
+                          {DOKUMENT_TYP_LABEL[d.typ] || d.typ}
+                        </div>
+                        <span style={{ ...styles.ablageBadge, ...(d.abgelegt ? { backgroundColor: theme.colors.successLight, color: theme.colors.success } : { backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted }) }}>
+                          {d.abgelegt ? 'abgelegt' : 'nicht abgelegt'}
+                        </span>
                       </div>
                       {d.titel && <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>{d.titel}</div>}
                       <div style={{ fontSize: '0.7rem', color: theme.colors.textMuted, marginTop: 2 }}>
-                        {[d.quelle, d.seiten ? `${d.seiten} S.` : null, d.eingegangenAm ? fmtDate(d.eingegangenAm) : null].filter(Boolean).join(' · ')}
+                        {[d.quelle, d.seiten ? `${d.seiten} S.` : null].filter(Boolean).join(' · ')}
                       </div>
                       {(d.flags || []).length > 0 && (
                         <div style={{ display: 'flex', gap: theme.spacing.xs, flexWrap: 'wrap', marginTop: theme.spacing.xs }}>
@@ -1265,15 +1386,46 @@ export default function VorgangDetail() {
                           ))}
                         </div>
                       )}
+                      <div style={styles.docActions}>
+                        {hatDatei(d) ? (
+                          <>
+                            <button style={styles.docLinkBtn} onClick={() => openPreview(d)} disabled={previewLoading}>Vorschau</button>
+                            <span style={{ color: theme.colors.borderLight }}>·</span>
+                            <button style={styles.docLinkBtn} onClick={() => downloadDoc(d)}>Herunterladen</button>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>Keine Datei hinterlegt</span>
+                        )}
+                        {canEdit && !d.abgelegt && (
+                          <>
+                            <span style={{ color: theme.colors.borderLight }}>·</span>
+                            <button style={styles.docLinkBtn} onClick={() => ablegen(d)} disabled={busy}>Ins Fachverfahren abgelegt</button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
+                  const renderGruppiert = (list, leerText) => {
+                    if (list.length === 0) return <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>{leerText}</div>;
+                    return groupByDatum(list).map(([datum, docs]) => (
+                      <div key={datum}>
+                        <div style={styles.docGroupTitle}>{datum}</div>
+                        {docs.map(renderDoc)}
+                      </div>
+                    ));
+                  };
                   if (dokumente.length === 0) return <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Noch keine Dokumente.</div>;
                   return (
                     <>
                       <div style={styles.sideTitle}>Nachweise ({nachweise.length})</div>
-                      {nachweise.length === 0 ? <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>Keine klassifizierten Nachweise.</div> : nachweise.map(renderDoc)}
-                      <div style={styles.sideTitle}>Originaldateien ({originale.length})</div>
-                      {originale.length === 0 ? <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>Keine Originaldateien.</div> : originale.map(renderDoc)}
+                      {renderGruppiert(nachweise, 'Keine klassifizierten Nachweise.')}
+                      <div style={{ ...styles.sideTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
+                        <span>Originaldateien ({originale.length})</span>
+                        {originale.filter(hatDatei).length > 0 && (
+                          <button style={styles.docLinkBtn} onClick={() => downloadAlleOriginale(originale.filter(hatDatei))} title="Jede Originaldatei einzeln herunterladen">Alle herunterladen</button>
+                        )}
+                      </div>
+                      {renderGruppiert(originale, 'Keine Originaldateien.')}
                     </>
                   );
                 })()}
@@ -1314,6 +1466,30 @@ export default function VorgangDetail() {
           onDelete={deleteNotiz}
           onClose={() => setNotizPanel(null)}
         />
+      )}
+
+      {preview && (
+        <div style={styles.previewOverlay} onClick={closePreview}>
+          <div style={styles.previewBox} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.previewHead}>
+              <span style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.semibold, color: theme.colors.text }}>{preview.name}</span>
+              <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
+                <button style={styles.btnSmall} onClick={() => window.open(preview.url, '_blank', 'noopener')}>In neuem Tab öffnen</button>
+                <button style={styles.iconBtn} onClick={closePreview} title="Schließen" aria-label="Vorschau schließen">
+                  <XIcon size={16} color={theme.colors.textMuted} />
+                </button>
+              </div>
+            </div>
+            {(preview.contentType.includes('pdf') || preview.contentType.startsWith('image/') || preview.contentType.startsWith('text/')) ? (
+              <iframe src={preview.url} style={styles.previewFrame} title={preview.name} />
+            ) : (
+              <div style={styles.previewFallback}>
+                <div>Für diesen Dateityp ist keine Inline-Vorschau möglich.</div>
+                <button style={styles.btn} onClick={() => window.open(preview.url, '_blank', 'noopener')}>In neuem Tab öffnen</button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

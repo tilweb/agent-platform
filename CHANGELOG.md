@@ -2,6 +2,45 @@
 
 ## 2026-09-19
 
+### Wohngeld — Welle 5 der Gap-Umsetzung (WP9 Akten-Browser + Aufgaben, WP10 Dokumente/Ablage + Vorschau, WP11 Verfügung)
+Umsetzung von Welle 5 aus `docs/wohngeld-gap-umsetzung-specs-2026-09-19.md`. Rückwärtskompatibel,
+**keine neue Migration** — neue Daten liegen in `vorgang.data`/`dokument.data`, Dateien werden über den
+bestehenden `filestore` (S3 bzw. lokal) geladen.
+
+**WP9 — Akten-Browser + Aufgaben.** Als View-Modi der `WohngeldPage` (Umschalter erweitert: „Vorgänge"
+· „Wiedervorlage / Fristen" · „Akten" · „Aufgaben"). Akten-Browser: Akten-Liste (Name/Antragsteller/
+Adresse) → Auswahl zeigt die Vorgänge der Akte (`GET /akten/:id/vorgaenge`), Zeile → Vorgang. Aufgaben:
+neues reines, getestetes Modul `aufgaben.ts` (`aggregiereAufgaben(vorgaenge, akten, heute)`) mit
+`aufgaben.test.ts` und Route `GET /aufgaben` — aggregiert offene Todos (WP8) + gesetzte Wiedervorlagen
+(WP7) über alle Vorgänge, angereichert um Antrags-ID/Antragsteller/Status, überfällige Fristen zuerst und
+hervorgehoben; Zeile → Vorgang. Nicht-Ziele ausgelassen: kein Kalender-Modul, keine Rechteverwaltung.
+
+**WP10 — Dokumente-Tab & Ablage + Dateivorschau.** Datei-Serving: neue Route `GET /dokumente/:id/datei`
+lädt die Bytes über `filestore.loadDokumentDatei` (S3 `getObject` bzw. lokale Datei via `pfad`) und
+antwortet mit aus der Dateiendung abgeleitetem `Content-Type` und `Content-Disposition: inline`
+(unbekannt → `application/octet-stream`, keine Datei → 404). Ablage-Status: neues Feld
+`dokument.data.abgelegt?` (`types.ts`) + Route `POST /dokumente/:id/ablegen` (Editor-Gate) setzt
+`abgelegt=true` und protokolliert die Aktivität. Frontend (Dokumente-Tab rechts in `VorgangDetail`):
+Dokumente **nach Eingangsdatum gruppiert** (neueste zuerst), **Nachweise** und **Originaldateien**
+getrennt, Flags als hervorgehobene Chips, Seitenzahl. **Dateivorschau** über Fetch der Datei als Blob
+(credentials) → ObjectURL → `<iframe>` in einem Modal (PDF/Bild/Text inline, sonst „In neuem Tab
+öffnen"); kein PDF-Rendering-Lib. **„Alle herunterladen"** für Originaldateien als best-effort
+sequentieller Einzel-Download (kein ZIP — Vereinfachung, keine neue Dependency). Je Dokument Badge
+„abgelegt/nicht abgelegt" + Button „Ins Fachverfahren abgelegt". Nicht-Ziele ausgelassen: keine echte
+Fachverfahren-Schnittstelle, kein Annotations-Viewer, kein ZIP.
+
+**WP11 — Verfügung erzeugen.** Neues optionales Feld `vorgang.data.verfuegung?`
+(`entscheidung`/`bemerkung`/`erstelltAm`, `types.ts`). Neues Modul `verfuegung-export.ts`
+(`verfuegungToDocument(...)` → `DocumentData`: Kopf, Personen, §13-Einkommen via
+`berechneVorgangEinkommen`, Wohnung/Miete, erledigte vs. offene Anforderungen, Entscheidung + Bemerkung
++ §19-Hinweis) mit `verfuegung-export.test.ts`. Routen: `GET /vorgaenge/:id/verfuegung/export?format=
+pdf|docx` (über `documentGenerator`) und `PUT /vorgaenge/:id/verfuegung` (Editor-Gate) — speichert
+Entscheidung/Bemerkung, setzt Status `entscheidung`, `erstelltAm` und protokolliert die Aktivität.
+Frontend: Verfügung-Tab (Platzhalter ersetzt) mit Dropdown Entscheidung, Bemerkung-Textarea,
+„Speichern" und „Verfügung als PDF/Word herunterladen" (Blob-Download); Hinweis, dass keine
+Betragsfestsetzung (§19) erfolgt. Nicht-Ziele ausgelassen: keine rechtsverbindliche Bescheidvorlage,
+keine §19-Berechnung.
+
 ### Wohngeld — Welle 4 der Gap-Umsetzung (WP7 Fristen/Wiedervorlage + Status-Automatik, WP8 Todos/Labels)
 Umsetzung von Welle 4 aus `docs/wohngeld-gap-umsetzung-specs-2026-09-19.md`. Rückwärtskompatibel,
 **keine neue Migration** — alle neuen Daten liegen in `vorgang.data`.

@@ -6,9 +6,9 @@
  * Zurückgegeben wird ein opaker `storageRef` (`s3:<key>` bzw. `local:<key>`), der
  * beim Anlegen des Dokuments in `s3Key`/`pfad` aufgelöst wird.
  */
-import { resolve, join, dirname } from 'node:path';
+import { resolve, join, dirname, isAbsolute } from 'node:path';
 import { mkdir } from 'node:fs/promises';
-import { isS3Configured, putObject } from '../../storage/s3';
+import { isS3Configured, putObject, getObject } from '../../storage/s3';
 import { s3Paths } from '../../storage/paths';
 
 const DATA_DIR = resolve(process.cwd(), '../data');
@@ -62,4 +62,23 @@ export function resolveStorageRef(storageRef?: string): ResolvedRef {
   if (storageRef.startsWith('s3:')) return { s3Key: storageRef.slice(3) };
   if (storageRef.startsWith('local:')) return { pfad: storageRef.slice(6) };
   return {};
+}
+
+/**
+ * Lädt die hinterlegten Bytes eines Dokuments (S3 via `s3Key`, sonst lokale
+ * Datei via `pfad`). Gibt `null` zurück, wenn keine Datei referenziert ist oder
+ * die lokale Datei fehlt. Für das Datei-Serving (Welle 5, WP10).
+ */
+export async function loadDokumentDatei(ref: ResolvedRef): Promise<Uint8Array | null> {
+  if (ref.s3Key) {
+    const buf = await getObject(ref.s3Key);
+    return new Uint8Array(buf);
+  }
+  if (ref.pfad) {
+    const abs = isAbsolute(ref.pfad) ? ref.pfad : join(DATA_DIR, ref.pfad);
+    const file = Bun.file(abs);
+    if (!(await file.exists())) return null;
+    return new Uint8Array(await file.arrayBuffer());
+  }
+  return null;
 }

@@ -122,6 +122,16 @@ export interface VorgangTodo {
   erledigt: boolean;
 }
 
+/** Entscheidung einer Verfügung (Welle 5, WP11). KEINE §19-Betragsfestsetzung. */
+export type VerfuegungEntscheidung = 'bewilligt' | 'abgelehnt' | 'teilweise' | 'offen';
+
+/** Verfügung/Entscheidung eines Vorgangs (Welle 5, WP11). */
+export interface VorgangVerfuegung {
+  entscheidung?: VerfuegungEntscheidung;
+  bemerkung?: string;
+  erstelltAm?: string;   // ISO
+}
+
 /** Wohnung & Miete (Teil des Vorgangs). */
 export interface WohnungMiete {
   strasse?: string;
@@ -162,6 +172,8 @@ export interface Vorgang extends Timestamped, Versioned {
   wiedervorlage?: string;
   /** Aufgaben/Todos je Vorgang (Welle 4, WP8). */
   todos?: VorgangTodo[];
+  /** Verfügung/Entscheidung (Welle 5, WP11). */
+  verfuegung?: VorgangVerfuegung;
   permissions?: AppPermissions;
 }
 
@@ -292,6 +304,8 @@ export interface Dokument extends Timestamped, Versioned {
   extrahierterText?: string;     // pdftotext-Ergebnis (gekürzt)
   flags?: DokumentFlag[];
   analyse?: DokumentAnalyse;
+  /** Ins Fachverfahren abgelegt (Welle 5, WP10). Nur Status, keine echte Schnittstelle. */
+  abgelegt?: boolean;
 }
 
 /** Prüfschritt (Vollständigkeit oder Plausibilität). */

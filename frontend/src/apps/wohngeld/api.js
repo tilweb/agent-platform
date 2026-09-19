@@ -100,6 +100,60 @@ export const wohngeldApi = {
   // Wiedervorlage / Fristen (WP7 — offene Fristen über alle Vorgänge)
   listWiedervorlage: () => apiGet(`${base}/wiedervorlage`).then(json).then((d) => d.wiedervorlage),
 
+  // Aufgaben (WP9 — offene Todos + fällige Fristen über alle Vorgänge)
+  listAufgaben: () => apiGet(`${base}/aufgaben`).then(json).then((d) => d.aufgaben),
+
+  // Dokumente-Datei (WP10 — Serving/Vorschau/Ablage)
+  /** URL des Datei-Endpunkts (nur für Referenz — Vorschau nutzt loadDokumentDatei wegen credentials). */
+  dokumentDateiUrl: (id) => `${API_URL}${base}/dokumente/${id}/datei`,
+  /** Datei als Blob laden (credentials) → { url, contentType, blob }. Aufrufer gibt objectURL wieder frei. */
+  loadDokumentDatei: async (id) => {
+    const res = await fetch(`${API_URL}${base}/dokumente/${id}/datei`, { credentials: 'include' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    return { url: URL.createObjectURL(blob), contentType: res.headers.get('Content-Type') || blob.type || '', blob };
+  },
+  /** Datei als Download auslösen. */
+  downloadDokumentDatei: async (id, filename) => {
+    const res = await fetch(`${API_URL}${base}/dokumente/${id}/datei`, { credentials: 'include' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename || `dokument-${id}`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  },
+  /** Dokument „ins Fachverfahren abgelegt" markieren (Editor-Gate). */
+  ablegenDokument: (id) => apiPost(`${base}/dokumente/${id}/ablegen`, {}).then(json).then((d) => d.dokument),
+
+  // Verfügung (WP11)
+  /** Entscheidung + Bemerkung speichern → Status entscheidung. */
+  saveVerfuegung: (id, payload) => apiPut(`${base}/vorgaenge/${id}/verfuegung`, payload).then(json).then((d) => d.vorgang),
+  /** Verfügung als PDF/Word herunterladen — löst einen Browser-Download aus. */
+  exportVerfuegung: async (id, format) => {
+    const res = await fetch(`${API_URL}${base}/vorgaenge/${id}/verfuegung/export?format=${format}`, { credentials: 'include' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^"]+)"?/);
+    const filename = m ? m[1] : `Verfuegung.${format}`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  },
+
   // Feld-Status (WP3 — KI-Vorschlag-Bestätigung auf Feldebene)
   listFeldStatus: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/feldstatus`).then(json).then((d) => d.feldStatus),
   bestaetigeFeld: (vorgangId, fsId) => apiPost(`${base}/vorgaenge/${vorgangId}/feldstatus/${fsId}/bestaetigen`, {}).then(json).then((d) => d.feldStatus),
@@ -296,6 +350,14 @@ export const UNTERHALT_KATEGORIE_LABEL = {
   kind_anderer_elternteil: 'Kind (anderer Elternteil)',
   ehegatte_getrennt: 'Getrennt lebender Ehegatte',
   sonstige: 'Sonstige',
+};
+
+/** Entscheidung der Verfügung (WP11). */
+export const VERFUEGUNG_ENTSCHEIDUNG_LABEL = {
+  offen: 'Offen',
+  bewilligt: 'Bewilligt',
+  teilweise: 'Teilweise bewilligt',
+  abgelehnt: 'Abgelehnt',
 };
 
 /** App-Akzentfarbe (ruhiges Blau), konsistent über alle Wohngeld-Seiten. */

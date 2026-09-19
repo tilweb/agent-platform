@@ -38,6 +38,7 @@ const styles = {
     fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, cursor: 'pointer',
   },
   viewTabActive: { backgroundColor: ACCENT_LIGHT, color: ACCENT, borderColor: ACCENT_LIGHT },
+  backLink: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.sm, color: ACCENT, cursor: 'pointer', marginBottom: theme.spacing.md, border: 'none', background: 'none', padding: 0, fontWeight: theme.typography.weights.medium },
   wvBadge: { fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, padding: `2px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.errorLight, color: theme.colors.error, marginLeft: theme.spacing.sm },
   tableWrap: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.xl, overflow: 'hidden', backgroundColor: theme.colors.surface },
   tableScroll: { overflowX: 'auto' },
@@ -78,11 +79,21 @@ export default function WohngeldPage() {
   const [dialog, setDialog] = useState(null); // { name, wohngeldart, antragsart }
   const [saving, setSaving] = useState(false);
 
-  // Ansicht: Vorgangsliste oder Wiedervorlage/Fristen (WP7)
+  // Ansicht: Vorgangsliste, Wiedervorlage/Fristen (WP7), Akten oder Aufgaben (WP9)
   const [viewMode, setViewMode] = useState('vorgaenge');
   const [wiedervorlage, setWiedervorlage] = useState([]);
   const [wvLoading, setWvLoading] = useState(false);
   const [wvLoaded, setWvLoaded] = useState(false);
+
+  // Akten-Browser (WP9)
+  const [selectedAkte, setSelectedAkte] = useState(null);
+  const [akteVorgaenge, setAkteVorgaenge] = useState([]);
+  const [akteVgLoading, setAkteVgLoading] = useState(false);
+
+  // Aufgaben (WP9)
+  const [aufgaben, setAufgaben] = useState([]);
+  const [aufgabenLoading, setAufgabenLoading] = useState(false);
+  const [aufgabenLoaded, setAufgabenLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,9 +131,48 @@ export default function WohngeldPage() {
     return () => { cancelled = true; };
   }, [viewMode, wvLoaded]);
 
+  // Aufgaben erst bei Bedarf laden (beim Wechsel in die Ansicht).
+  useEffect(() => {
+    if (viewMode !== 'aufgaben' || aufgabenLoaded) return undefined;
+    let cancelled = false;
+    (async () => {
+      setAufgabenLoading(true);
+      try {
+        const a = await wohngeldApi.listAufgaben();
+        if (!cancelled) { setAufgaben(a); setAufgabenLoaded(true); }
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      } finally {
+        if (!cancelled) setAufgabenLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [viewMode, aufgabenLoaded]);
+
   function antragstellerName(v) {
     const a = akten[v.akteId];
     return a?.antragstellerName || a?.name || '—';
+  }
+
+  const aktenListe = useMemo(
+    () => Object.values(akten).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de')),
+    [akten],
+  );
+  function akteAdresse(a) {
+    return [[a.strasse, a.hausnummer].filter(Boolean).join(' '), [a.plz, a.ort].filter(Boolean).join(' ')]
+      .filter(Boolean).join(', ') || '—';
+  }
+  async function openAkte(a) {
+    setSelectedAkte(a);
+    setAkteVgLoading(true);
+    setError('');
+    try {
+      setAkteVorgaenge(await wohngeldApi.listAkteVorgaenge(a.id));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAkteVgLoading(false);
+    }
   }
 
   const filtered = useMemo(() => {
@@ -182,6 +232,8 @@ export default function WohngeldPage() {
       <div style={styles.viewSwitch}>
         <button style={{ ...styles.viewTab, ...(viewMode === 'vorgaenge' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('vorgaenge')}>Vorgänge</button>
         <button style={{ ...styles.viewTab, ...(viewMode === 'wiedervorlage' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('wiedervorlage')}>Wiedervorlage / Fristen</button>
+        <button style={{ ...styles.viewTab, ...(viewMode === 'akten' ? styles.viewTabActive : {}) }} onClick={() => { setViewMode('akten'); setSelectedAkte(null); }}>Akten</button>
+        <button style={{ ...styles.viewTab, ...(viewMode === 'aufgaben' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('aufgaben')}>Aufgaben</button>
       </div>
 
       {viewMode === 'vorgaenge' && (
@@ -291,6 +343,140 @@ export default function WohngeldPage() {
                       <td style={{ ...styles.td, color: theme.colors.textMuted }}>{fmtDate(w.frist)}</td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      )}
+
+      {viewMode === 'akten' && (
+        selectedAkte ? (
+          <>
+            <button style={styles.backLink} onClick={() => { setSelectedAkte(null); setAkteVorgaenge([]); }}>‹ Alle Akten</button>
+            <div style={{ marginBottom: theme.spacing.lg }}>
+              <div style={{ fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold, color: theme.colors.text }}>
+                {selectedAkte.antragstellerName || selectedAkte.name}
+              </div>
+              <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>{akteAdresse(selectedAkte)}</div>
+            </div>
+            {akteVgLoading ? (
+              <div style={styles.empty}>Lädt…</div>
+            ) : akteVorgaenge.length === 0 ? (
+              <div style={styles.empty}>Keine Vorgänge in dieser Akte.</div>
+            ) : (
+              <div style={styles.tableWrap}>
+                <div style={styles.tableScroll}>
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Antrags-ID</th>
+                        <th style={styles.th}>Wohngeldart</th>
+                        <th style={styles.th}>Antragsart</th>
+                        <th style={styles.th}>Status</th>
+                        <th style={styles.th}>Letzte Änderung</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {akteVorgaenge.map((v) => (
+                        <tr
+                          key={v.id}
+                          style={styles.row}
+                          onClick={() => navigate(`/apps/wohngeld/vorgang/${v.id}`)}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >
+                          <td style={{ ...styles.td, fontWeight: theme.typography.weights.medium }}>{v.antragsId}</td>
+                          <td style={styles.td}>{WOHNGELDART_LABEL[v.wohngeldart] || v.wohngeldart}</td>
+                          <td style={styles.td}>{ANTRAGSART_LABEL[v.antragsart] || v.antragsart}</td>
+                          <td style={styles.td}><StatusBadge status={v.status} /></td>
+                          <td style={{ ...styles.td, color: theme.colors.textMuted }}>{fmtDate(v.updated_at)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          loading ? (
+            <div style={styles.empty}>Lädt…</div>
+          ) : aktenListe.length === 0 ? (
+            <div style={styles.empty}>Noch keine Akten.</div>
+          ) : (
+            <div style={styles.tableWrap}>
+              <div style={styles.tableScroll}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Akte</th>
+                      <th style={styles.th}>Antragsteller</th>
+                      <th style={styles.th}>Adresse</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {aktenListe.map((a) => (
+                      <tr
+                        key={a.id}
+                        style={styles.row}
+                        onClick={() => openAkte(a)}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surfaceHover; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        <td style={{ ...styles.td, fontWeight: theme.typography.weights.medium }}>{a.name}</td>
+                        <td style={styles.td}>{a.antragstellerName || '—'}</td>
+                        <td style={{ ...styles.td, color: theme.colors.textMuted }}>{akteAdresse(a)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        )
+      )}
+
+      {viewMode === 'aufgaben' && (
+        aufgabenLoading ? (
+          <div style={styles.empty}>Lädt…</div>
+        ) : aufgaben.length === 0 ? (
+          <div style={styles.empty}>Keine offenen Aufgaben oder Fristen.</div>
+        ) : (
+          <div style={styles.tableWrap}>
+            <div style={styles.tableScroll}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Art</th>
+                    <th style={styles.th}>Antrags-ID</th>
+                    <th style={styles.th}>Antragsteller</th>
+                    <th style={styles.th}>Aufgabe</th>
+                    <th style={styles.th}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aufgaben.map((t, i) => {
+                    const ueberfaellig = t.art === 'frist' && t.ueberfaellig;
+                    return (
+                      <tr
+                        key={`${t.art}-${t.vorgangId}-${t.todoId || i}`}
+                        style={{ ...styles.row, ...(ueberfaellig ? { backgroundColor: theme.colors.errorLight } : {}) }}
+                        onClick={() => navigate(`/apps/wohngeld/vorgang/${t.vorgangId}`)}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = ueberfaellig ? theme.colors.errorLight : theme.colors.surfaceHover; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ueberfaellig ? theme.colors.errorLight : 'transparent'; }}
+                      >
+                        <td style={styles.td}>{t.art === 'todo' ? 'Todo' : 'Wiedervorlage'}</td>
+                        <td style={{ ...styles.td, fontWeight: theme.typography.weights.medium }}>{t.antragsId}</td>
+                        <td style={styles.td}>{t.antragsteller}</td>
+                        <td style={{ ...styles.td, whiteSpace: 'normal', ...(ueberfaellig ? { color: theme.colors.error, fontWeight: theme.typography.weights.semibold } : {}) }}>
+                          {t.art === 'todo' ? t.text : fmtDate(t.wiedervorlage)}
+                          {ueberfaellig && <span style={styles.wvBadge}>überfällig</span>}
+                        </td>
+                        <td style={styles.td}><StatusBadge status={t.status} /></td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

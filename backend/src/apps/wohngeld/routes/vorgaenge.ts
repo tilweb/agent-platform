@@ -10,7 +10,12 @@ import { pruefeVorgang } from '../checker';
 import { berechneVorgangEinkommen, unterhaltsabzuegeFuer } from '../einkommen';
 import { berechneBwzVorschlag } from '../bwz';
 import { istUeberfaellig } from '../fristen';
+import { verfuegungToDocument } from '../verfuegung-export';
+import { generateDocument, getMimeType, type DocumentFormat } from '../../../services/documentGenerator';
+import type { VerfuegungEntscheidung } from '../types';
 import { denyIfNotAppEditor } from './_shared';
+
+const VERFUEGUNG_ENTSCHEIDUNGEN: VerfuegungEntscheidung[] = ['bewilligt', 'abgelehnt', 'teilweise', 'offen'];
 
 export const vorgaengeRoutes = new Hono();
 
@@ -156,5 +161,61 @@ vorgaengeRoutes.post('/vorgaenge/:id/bwz-vorschlag-uebernehmen', async (c) => {
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
     return c.json({ error: 'Übernahme fehlgeschlagen' }, 500);
+  }
+});
+
+/**
+ * Verfügung als PDF oder Word (docx) herunterladen (Welle 5, WP11). Read-only.
+ * Zusammenfassung aus Vorgangsdaten + §13-Ergebnis + Prüfstatus. KEINE §19-Betragsfestsetzung.
+ */
+vorgaengeRoutes.get('/vorgaenge/:id/verfuegung/export', async (c) => {
+  const fmtParam = (c.req.query('format') ?? 'pdf').toLowerCase();
+  if (fmtParam !== 'pdf' && fmtParam !== 'docx') return c.json({ error: 'format muss pdf oder docx sein' }, 400);
+  const format = fmtParam as DocumentFormat;
+  const id = c.req.param('id');
+  const snapshot = await getVorgangSnapshot(id);
+  if (!snapshot) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const [akte, pruefschritte] = await Promise.all([getAkte(snapshot.vorgang.akteId), listPruefschritte(id)]);
+  const unterhalt = unterhaltsabzuegeFuer(snapshot.personen);
+  const einkommen = berechneVorgangEinkommen(snapshot.personen, snapshot.dokumente, unterhalt);
+  const doc = verfuegungToDocument(snapshot.vorgang, akte, snapshot.personen, einkommen, pruefschritte);
+  const buffer = await generateDocument(doc, format);
+  const base = `Verfuegung-${snapshot.vorgang.antragsId}`;
+  return new Response(new Uint8Array(buffer), {
+    headers: {
+      'Content-Type': getMimeType(format),
+      'Content-Disposition': `attachment; filename="${base}.${format}"`,
+    },
+  });
+});
+
+/**
+ * Verfügung speichern (Welle 5, WP11): Entscheidung + Bemerkung in vorgang.data,
+ * Status → `entscheidung`, erstelltAm setzen, Aktivität. Editor-Gate.
+ */
+vorgaengeRoutes.put('/vorgaenge/:id/verfuegung', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+  const id = c.req.param('id');
+  const vorgang = await getVorgang(id);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  type VerfuegungBody = { entscheidung?: string; bemerkung?: string; expectedVersion?: number };
+  const body = await c.req.json<VerfuegungBody>().catch(() => ({} as VerfuegungBody));
+  const entscheidung = VERFUEGUNG_ENTSCHEIDUNGEN.includes(body.entscheidung as VerfuegungEntscheidung)
+    ? (body.entscheidung as VerfuegungEntscheidung) : 'offen';
+  try {
+    const updated = await updateVorgang(id, {
+      verfuegung: {
+        entscheidung,
+        bemerkung: body.bemerkung?.trim() || undefined,
+        erstelltAm: vorgang.verfuegung?.erstelltAm ?? new Date().toISOString(),
+      },
+      status: 'entscheidung',
+    }, { expectedVersion: body.expectedVersion ?? vorgang.version });
+    await addAktivitaet({ vorgangId: id, typ: 'verfuegung', akteur: getCurrentUserId(c), beschreibung: `Verfügung gespeichert — Entscheidung: ${entscheidung}` });
+    return c.json({ vorgang: updated });
+  } catch (err) {
+    if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
+    return c.json({ error: 'Speichern fehlgeschlagen' }, 500);
   }
 });
