@@ -17,8 +17,10 @@ import {
   listAppPermissions,
   replaceAppPermissions,
 } from '../apps/permissions';
-import { getCurrentUserId } from '../auth/middleware';
-import { authMiddleware } from '../auth/middleware';
+import { getCurrentUserId, getCurrentUser } from '../auth/middleware';
+import { authMiddleware, adminMiddleware } from '../auth/middleware';
+import { audit, AuditCategory, AuditAction } from '../services/auditLog';
+import type { Context } from 'hono';
 import { listGroups } from '../auth/groups';
 import { loadUser } from '../auth/storage';
 import { contractRoutes } from '../apps/vertragsmanagement/routes';
@@ -37,6 +39,42 @@ const apps = new Hono();
 // Per-App-Berechtigungen pruefen die requireAppAccess-Middleware in den
 // jeweiligen Sub-Routern (siehe z.B. projektmanagement/routes.ts).
 apps.use('*', authMiddleware);
+
+/** Client-IP aus den üblichen Proxy-Headern (erste IP aus x-forwarded-for). */
+function clientIp(c: Context): string | undefined {
+  const fwd = c.req.header('x-forwarded-for');
+  if (fwd) {
+    const first = fwd.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  return c.req.header('x-real-ip') || undefined;
+}
+
+/**
+ * Protokolliert eine Admin-Änderung an der App-Verwaltung (Enable/Disable/
+ * Permissions) im zentralen Audit-Log. Fehler schlucken — Audit darf die
+ * eigentliche Aktion nie brechen.
+ */
+async function auditAppAdmin(
+  c: Context,
+  action: AuditAction,
+  appId: string,
+  details: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const user = getCurrentUser(c);
+    await audit(AuditCategory.ADMIN_ACTION, action, {
+      userId: user?.id,
+      username: user?.username,
+      ipAddress: clientIp(c),
+      resourceType: 'app',
+      resourceId: appId,
+      details,
+    });
+  } catch (err) {
+    console.error('[apps] audit failed:', err);
+  }
+}
 
 // ============== App Registry Endpoints ==============
 
@@ -102,7 +140,7 @@ apps.get('/:appId', async (c) => {
  * PUT /api/apps/:appId/enable
  * Enable an app (admin only)
  */
-apps.put('/:appId/enable', async (c) => {
+apps.put('/:appId/enable', adminMiddleware, async (c) => {
   try {
     const appId = c.req.param('appId');
     const app = await enableApp(appId);
@@ -117,6 +155,7 @@ apps.put('/:appId/enable', async (c) => {
       return c.json({ error: 'App not found' }, 404);
     }
 
+    await auditAppAdmin(c, AuditAction.SETTINGS_CHANGED, appId, { operation: 'enable' });
     return c.json({ app });
   } catch (error) {
     console.error('Error enabling app:', error);
@@ -128,7 +167,7 @@ apps.put('/:appId/enable', async (c) => {
  * PUT /api/apps/:appId/disable
  * Disable an app (admin only)
  */
-apps.put('/:appId/disable', async (c) => {
+apps.put('/:appId/disable', adminMiddleware, async (c) => {
   try {
     const appId = c.req.param('appId');
     const app = await disableApp(appId);
@@ -137,6 +176,7 @@ apps.put('/:appId/disable', async (c) => {
       return c.json({ error: 'App not found' }, 404);
     }
 
+    await auditAppAdmin(c, AuditAction.SETTINGS_CHANGED, appId, { operation: 'disable' });
     return c.json({ app });
   } catch (error) {
     console.error('Error disabling app:', error);
@@ -169,7 +209,7 @@ apps.get('/:appId/permissions', async (c) => {
  * PUT /api/apps/:appId/permissions
  * Voller Overwrite — Body: { permissions: [{ groupId, role }] }. Admin-only.
  */
-apps.put('/:appId/permissions', async (c) => {
+apps.put('/:appId/permissions', adminMiddleware, async (c) => {
   try {
     const appId = c.req.param('appId');
     const app = await getApp(appId);
@@ -179,6 +219,9 @@ apps.put('/:appId/permissions', async (c) => {
     const body = await c.req.json();
     const incoming = Array.isArray(body?.permissions) ? body.permissions : [];
     const saved = await replaceAppPermissions(appId, incoming);
+    await auditAppAdmin(c, AuditAction.PERMISSION_CHANGED, appId, {
+      groupCount: Array.isArray(saved) ? saved.length : undefined,
+    });
     return c.json({ permissions: saved });
   } catch (error) {
     console.error('Error updating app permissions:', error);

@@ -1139,6 +1139,11 @@ export default function VorgangDetail() {
           {mainTab === 'verfuegung' && (() => {
             const vf = vorgang.verfuegung || {};
             const vfState = verfForm ?? { entscheidung: vf.entscheidung || 'offen', bemerkung: vf.bemerkung || '' };
+            const vierAugen = !!detail.vierAugen;
+            const darfEntscheiden = !vierAugen || role === 'owner';
+            const FINALE_ENTSCHEIDUNGEN = ['bewilligt', 'abgelehnt', 'teilweise'];
+            const finaleGesperrt = vierAugen && !darfEntscheiden;
+            const saveGesperrt = finaleGesperrt && FINALE_ENTSCHEIDUNGEN.includes(vfState.entscheidung);
             return (
               <SektionCard title="Verfügung">
                 <div style={styles.info}>
@@ -1153,8 +1158,15 @@ export default function VorgangDetail() {
                     disabled={!canEdit || busy}
                     onChange={(e) => setVerfForm({ ...vfState, entscheidung: e.target.value })}
                   >
-                    {Object.entries(VERFUEGUNG_ENTSCHEIDUNG_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    {Object.entries(VERFUEGUNG_ENTSCHEIDUNG_LABEL).map(([v, l]) => (
+                      <option key={v} value={v} disabled={finaleGesperrt && FINALE_ENTSCHEIDUNGEN.includes(v)}>{l}</option>
+                    ))}
                   </select>
+                  {finaleGesperrt && (
+                    <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: theme.spacing.xs }}>
+                      Finale Entscheidung nur durch Freigabeberechtigte (Vier-Augen-Prinzip). Sie können vorbereiten und eine Bemerkung setzen.
+                    </div>
+                  )}
                   <span style={styles.editLabel}>Bemerkung</span>
                   <textarea
                     style={{ ...styles.input, minHeight: 100, resize: 'vertical' }}
@@ -1165,7 +1177,7 @@ export default function VorgangDetail() {
                   />
                 </div>
                 <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
-                  {canEdit && <button style={styles.btn} onClick={() => saveVerfuegung(vfState)} disabled={busy}>{busy ? 'Speichert…' : 'Speichern'}</button>}
+                  {canEdit && <button style={styles.btn} onClick={() => saveVerfuegung(vfState)} disabled={busy || saveGesperrt}>{busy ? 'Speichert…' : 'Speichern'}</button>}
                   <button style={styles.btnGhost} onClick={() => wohngeldApi.exportVerfuegung(id, 'pdf').catch((e) => setError(e.message))}>Verfügung als PDF herunterladen</button>
                   <button style={styles.btnGhost} onClick={() => wohngeldApi.exportVerfuegung(id, 'docx').catch((e) => setError(e.message))}>Als Word herunterladen</button>
                 </div>

@@ -10,3 +10,29 @@ export function denyIfNotAppEditor(c: Context): { error: string } | null {
   }
   return null;
 }
+
+/** Wirksame App-Rolle aus dem Context (von requireAppAccess gesetzt). */
+export function getAppRole(c: Context): AppRole | undefined {
+  return c.get('appRole') as AppRole | undefined;
+}
+
+/**
+ * Vier-Augen-Prinzip aktiv? Opt-in per ENV-Schalter `WOHNGELD_VIERAUGEN`
+ * (default aus). Ist er an, darf eine finale Verfügungs-Entscheidung nur die
+ * appRole `owner` (Entscheider) speichern — der `editor` bereitet vor.
+ */
+export function vierAugenAktiv(): boolean {
+  const raw = (process.env.WOHNGELD_VIERAUGEN || '').trim().toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'on' || raw === 'yes' || raw === 'ja';
+}
+
+/**
+ * Reiner Helfer (testbar): Darf ein Nutzer mit `appRole` eine FINALE
+ * Verfügungs-Entscheidung speichern?
+ *  - Vier-Augen aus: jeder Editor/Owner darf entscheiden (unverändertes Verhalten).
+ *  - Vier-Augen an:  nur `owner` (Entscheider-Rolle), Bearbeiter ≠ Entscheider.
+ */
+export function darfEntscheiden(appRole: AppRole | string | undefined, vierAugen: boolean): boolean {
+  if (vierAugen) return appRole === 'owner';
+  return appRole === 'owner' || appRole === 'editor';
+}

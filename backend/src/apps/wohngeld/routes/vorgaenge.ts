@@ -14,9 +14,11 @@ import { istUeberfaellig } from '../fristen';
 import { verfuegungToDocument } from '../verfuegung-export';
 import { generateDocument, getMimeType, type DocumentFormat } from '../../../services/documentGenerator';
 import type { VerfuegungEntscheidung } from '../types';
-import { denyIfNotAppEditor } from './_shared';
+import { denyIfNotAppEditor, vierAugenAktiv, darfEntscheiden, getAppRole } from './_shared';
 
 const VERFUEGUNG_ENTSCHEIDUNGEN: VerfuegungEntscheidung[] = ['bewilligt', 'abgelehnt', 'teilweise', 'offen'];
+/** Finale Entscheidungen (unterliegen dem Vier-Augen-Prinzip); `offen` = Vorbereitung. */
+const FINALE_ENTSCHEIDUNGEN: VerfuegungEntscheidung[] = ['bewilligt', 'abgelehnt', 'teilweise'];
 
 export const vorgaengeRoutes = new Hono();
 
@@ -71,7 +73,7 @@ vorgaengeRoutes.get('/vorgaenge/:id/detail', async (c) => {
     listPruefschritte(id), listSchreiben(id), listAktivitaeten(id),
     listFeldStatus(id), listNotizen(id), listAuditEintraege(id),
   ]);
-  return c.json({ vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten, feldStatus, notizen, protokoll });
+  return c.json({ vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten, feldStatus, notizen, protokoll, vierAugen: vierAugenAktiv() });
 });
 
 /**
@@ -216,6 +218,12 @@ vorgaengeRoutes.put('/vorgaenge/:id/verfuegung', async (c) => {
   const body = await c.req.json<VerfuegungBody>().catch(() => ({} as VerfuegungBody));
   const entscheidung = VERFUEGUNG_ENTSCHEIDUNGEN.includes(body.entscheidung as VerfuegungEntscheidung)
     ? (body.entscheidung as VerfuegungEntscheidung) : 'offen';
+  // Vier-Augen-Prinzip (opt-in): finale Entscheidung nur durch Freigabeberechtigte (owner).
+  const vierAugen = vierAugenAktiv();
+  const istFinal = FINALE_ENTSCHEIDUNGEN.includes(entscheidung);
+  if (istFinal && !darfEntscheiden(getAppRole(c), vierAugen)) {
+    return c.json({ error: 'Finale Entscheidung nur durch Freigabeberechtigte (Vier-Augen-Prinzip).' }, 403);
+  }
   try {
     const updated = await updateVorgang(id, {
       verfuegung: {
@@ -227,7 +235,7 @@ vorgaengeRoutes.put('/vorgaenge/:id/verfuegung', async (c) => {
     }, { expectedVersion: body.expectedVersion ?? vorgang.version });
     await audit(c, {
       aktion: 'verfuegung.gespeichert', objektTyp: 'verfuegung', objektId: id, vorgangId: id,
-      detail: `Entscheidung: ${entscheidung}`,
+      detail: `Entscheidung: ${entscheidung}${vierAugen ? ' · Vier-Augen aktiv' : ''}`,
       vorher: { entscheidung: vorgang.verfuegung?.entscheidung ?? null },
       nachher: { entscheidung },
     });

@@ -2,6 +2,35 @@
 
 ## 2026-09-19
 
+### Wohngeld — GOV-2 Funktionstrennung + Admin-Enforcement (Governance, `docs/wohngeld-governance-spec-2026-09-19.md`)
+Umsetzung der Welle GOV-2 (deckt G-G): Least Privilege konsistent, serverseitiges Admin-Enforcement an
+der App-Verwaltung + Audit, sowie opt-in Vier-Augen-Prinzip für die Verfügung. Keine neue Migration,
+keine neuen npm-Dependencies.
+
+**Editor-Gate konsistent.** Verifiziert, dass **alle** schreibenden Wohngeld-Routes `denyIfNotAppEditor`
+prüfen (403 sonst): Akte/Vorgang/Person/Dokument/Prüfschritt/Schreiben/Notiz/Textbaustein
+(create/update/delete), Prüfung, BWZ-Übernahme, Verfügung, Feld bestätigen/verwerfen, Posteingang
+verteilen + Uploads. **Ausnahme:** Fall-Chat (`POST /vorgaenge/:id/chat`) bleibt für viewer erlaubt
+(nur Lesen/Fragen; C4-Aktionen laufen über die gegateten Routes). Keine Lücken gefunden — bereits
+vollständig aus GOV-1.
+
+**Admin-Enforcement + Audit an der App-Verwaltung** (`backend/src/routes/apps.ts`): `PUT /:appId/enable`,
+`/disable` und `/permissions` sind jetzt zusätzlich zu `authMiddleware` mit `adminMiddleware` abgesichert
+(403 für Nicht-Admins, konsistent zum „admin only"-Kommentar). Jede dieser Änderungen wird über das
+bestehende `services/auditLog.ts` protokolliert (Kategorie `ADMIN_ACTION`; Aktion `SETTINGS_CHANGED` mit
+`operation: enable/disable` bzw. `PERMISSION_CHANGED`), inkl. Akteur + IP. Bislang ungenutzte Enums
+werden damit erstmals genutzt.
+
+**Vier-Augen-Prinzip (opt-in).** Neuer ENV-Schalter `WOHNGELD_VIERAUGEN` (default aus). Ist er an, darf
+eine **finale Entscheidung** (`bewilligt`/`abgelehnt`/`teilweise`) in `PUT /vorgaenge/:id/verfuegung` nur
+die appRole `owner` (Entscheider) speichern; `editor` darf weiter vorbereiten (`offen`) und die Bemerkung
+setzen — finale Entscheidung → 403 mit klarer Meldung. Reiner Helfer `darfEntscheiden(appRole, vierAugen)`
+in `routes/_shared.ts` (+ Unit-Test `routes/vieraugen.test.ts`). Der `/detail`-Response liefert
+`vierAugen: boolean`; im Audit-Detail der Verfügung wird vermerkt, ob Vier-Augen aktiv war. Frontend
+`VorgangDetail.jsx` (Verfügung-Tab): bei aktivem Vier-Augen und Nicht-`owner` sind die finalen
+Entscheidungs-Optionen + der Speichern-Button gesperrt, mit Hinweis „Finale Entscheidung nur durch
+Freigabeberechtigte (Vier-Augen-Prinzip)".
+
 ### Wohngeld — GOV-1 Audit-/Protokoll-Kern (Governance, `docs/wohngeld-governance-spec-2026-09-19.md`)
 Umsetzung der Welle GOV-1 (deckt G-A/B/C/D/E/F): **jede fachlich relevante Aktion der Sachbearbeitung**
 wird in einem einheitlichen, append-only Postgres-Log protokolliert — inkl. **Lesezugriff** auf einen
