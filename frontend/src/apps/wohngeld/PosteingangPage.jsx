@@ -1,11 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
-import { ArrowLeftIcon, UploadIcon, DocumentIcon, RefreshIcon, TrashIcon } from '../../components/Icons';
+import {
+  ArrowLeftIcon, UploadIcon, DocumentIcon, RefreshIcon, TrashIcon,
+  CheckCircleIcon, AlertTriangleIcon, InfoIcon, ChevronDownIcon, UserIcon,
+} from '../../components/Icons';
 import {
   wohngeldApi, ACCENT, ACCENT_LIGHT,
   DOKUMENT_TYP_LABEL, WOHNGELDART_LABEL, ANTRAGSART_LABEL,
 } from './api';
+
+const LEVEL_LABEL = { hoch: 'Hohe Übereinstimmung', mittel: 'Mögliche Übereinstimmung', gering: 'Geringe Übereinstimmung' };
+const STATUS_LABEL = { gleich: 'Übereinstimmung', abweichung: 'Abweichung', fehlt: 'Fehlt' };
+
+/** Identifizierendes Match-Signal aus den Previews eines Eingangs (Antrag-Stammdaten + Nachweis-Identität). */
+function buildMatchInput(previews, stammPayload) {
+  const antrag = previews.find((p) => p.typ === 'wohngeldantrag' && p.stammdaten);
+  const stammdaten = stammPayload || antrag?.stammdaten;
+  // Erstes Nachweis-Dokument mit Identitäts-Signal (z. B. Ausweis-Scan).
+  const identitaet = previews.map((p) => p.identitaet).find((i) => i && (i.nachname || i.vorname || i.geburtsdatum));
+  if (!stammdaten && !identitaet) return null;
+  return { stammdaten, identitaet };
+}
 
 const styles = {
   page: { width: '100%' },
@@ -44,7 +60,72 @@ const styles = {
   preview: { flex: 1, minHeight: 300, backgroundColor: theme.colors.background, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, padding: theme.spacing.md, fontFamily: theme.typography.fontMono, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, whiteSpace: 'pre-wrap', overflow: 'auto', lineHeight: 1.5 },
   placeholder: { flex: 1, minHeight: 300, border: `1px dashed ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.textMuted, gap: theme.spacing.sm },
   error: { padding: theme.spacing.md, backgroundColor: theme.colors.errorLight, color: theme.colors.error, borderRadius: theme.borderRadius.md, fontSize: theme.typography.sizes.sm, marginBottom: theme.spacing.md },
+
+  // Vorschlags-Zuordnung
+  matchHead: { display: 'flex', alignItems: 'flex-start', gap: theme.spacing.md, marginBottom: theme.spacing.md },
+  matchTitle: { fontSize: theme.typography.sizes.md, fontWeight: theme.typography.weights.semibold, color: theme.colors.text },
+  matchSub: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginTop: 2 },
+  levelBadge: { fontSize: theme.typography.sizes.xs, padding: `${theme.spacing.xs} ${theme.spacing.md}`, borderRadius: theme.borderRadius.full, fontWeight: theme.typography.weights.medium, whiteSpace: 'nowrap' },
+  hinweisAbweichung: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, padding: theme.spacing.md, backgroundColor: theme.colors.warningLight, color: theme.colors.warning, borderRadius: theme.borderRadius.md, fontSize: theme.typography.sizes.sm, marginTop: theme.spacing.md, fontWeight: theme.typography.weights.medium },
+
+  cmpTable: { width: '100%', borderCollapse: 'collapse', marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm },
+  cmpHeadCell: { textAlign: 'left', padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: `1px solid ${theme.colors.border}` },
+  cmpCell: { padding: `${theme.spacing.sm} ${theme.spacing.sm}`, borderBottom: `1px solid ${theme.colors.border}`, color: theme.colors.text, verticalAlign: 'top' },
+  cmpLabel: { color: theme.colors.textMuted, fontWeight: theme.typography.weights.medium, whiteSpace: 'nowrap' },
+  cmpMissing: { color: theme.colors.textLight, fontStyle: 'italic' },
+  cmpStatus: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium },
+
+  matchButtons: { display: 'flex', gap: theme.spacing.md, marginTop: theme.spacing.lg, flexWrap: 'wrap' },
+  weitereToggle: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm, color: ACCENT, cursor: 'pointer', border: 'none', background: 'none', padding: 0, fontWeight: theme.typography.weights.medium },
+  weitereItem: { marginTop: theme.spacing.lg, paddingTop: theme.spacing.lg, borderTop: `1px solid ${theme.colors.border}` },
 };
+
+/** Farbwahl je Vergleichsstatus (kein Farbrahmen — nur Hintergrund/Text). */
+function statusStyle(status) {
+  if (status === 'gleich') return { backgroundColor: theme.colors.successLight, color: theme.colors.success };
+  if (status === 'abweichung') return { backgroundColor: theme.colors.warningLight, color: theme.colors.warning };
+  return { backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted };
+}
+
+function levelBadgeStyle(level) {
+  if (level === 'hoch') return { backgroundColor: theme.colors.successLight, color: theme.colors.success };
+  if (level === 'mittel') return { backgroundColor: theme.colors.warningLight, color: theme.colors.warning };
+  return { backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted };
+}
+
+/** Transparenz-Vergleichstabelle: Nachreichung ↔ Vorgang, je Feld ein Status. */
+function VergleichTabelle({ vergleich }) {
+  if (!vergleich?.length) return null;
+  return (
+    <table style={styles.cmpTable}>
+      <thead>
+        <tr>
+          <th style={styles.cmpHeadCell}>Feld</th>
+          <th style={styles.cmpHeadCell}>Aus der Nachreichung</th>
+          <th style={styles.cmpHeadCell}>Im Vorgang</th>
+          <th style={styles.cmpHeadCell}>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {vergleich.map((z) => (
+          <tr key={z.feld}>
+            <td style={{ ...styles.cmpCell, ...styles.cmpLabel }}>{z.label}</td>
+            <td style={styles.cmpCell}>{z.ausDokument || <span style={styles.cmpMissing}>—</span>}</td>
+            <td style={styles.cmpCell}>{z.imVorgang || <span style={styles.cmpMissing}>—</span>}</td>
+            <td style={styles.cmpCell}>
+              <span style={{ ...styles.cmpStatus, ...statusStyle(z.status), padding: `2px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full }}>
+                {z.status === 'gleich' && <CheckCircleIcon size={12} />}
+                {z.status === 'abweichung' && <AlertTriangleIcon size={12} />}
+                {z.status === 'fehlt' && <InfoIcon size={12} />}
+                {STATUS_LABEL[z.status]}
+              </span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 const TYP_OPTIONS = Object.keys(DOKUMENT_TYP_LABEL);
 
@@ -101,6 +182,12 @@ export default function PosteingangPage() {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState(null);
 
+  // Zuordnungs-Vorschlag
+  const [matchKandidaten, setMatchKandidaten] = useState([]);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [showManual, setShowManual] = useState(false); // manuellen Picker erzwungen anzeigen
+  const [weitereOffen, setWeitereOffen] = useState(false);
+
   // Verteilung
   const [akten, setAkten] = useState([]);
   const [akteMode, setAkteMode] = useState('new'); // 'new' | 'existing'
@@ -153,10 +240,59 @@ export default function PosteingangPage() {
         const a = antrag.stammdaten.antragsteller;
         setNeueAkteName([a.nachname, a.vorname].filter(Boolean).join(', '));
       }
+      // Zuordnungs-Vorschlag ermitteln (rein informativ — es wird nichts zugeordnet).
+      await ermittleVorschlag(list);
     } catch (e) {
       setError(e.message || 'Upload fehlgeschlagen');
     } finally {
       setUploading(false);
+    }
+  }
+
+  /**
+   * Vorschlag ermitteln: identifizierende Daten des Eingangs gegen bestehende
+   * Vorgänge abgleichen. Bei einem tragfähigen Kandidaten (hoch/mittel) wird die
+   * Vorschlagskarte gezeigt; sonst direkt der manuelle Picker.
+   */
+  async function ermittleVorschlag(list) {
+    setMatchKandidaten([]);
+    setWeitereOffen(false);
+    const input = buildMatchInput(list);
+    if (!input) { setShowManual(true); return; } // zu wenig Daten → rein manuell
+    setMatchLoading(true);
+    try {
+      const kandidaten = await wohngeldApi.matchPosteingang(input);
+      setMatchKandidaten(kandidaten || []);
+      const best = (kandidaten || [])[0];
+      // Kein/zu schwacher Match → manueller Picker (heutiges Verhalten).
+      setShowManual(!(best && (best.level === 'hoch' || best.level === 'mittel')));
+    } catch {
+      setMatchKandidaten([]);
+      setShowManual(true);
+    } finally {
+      setMatchLoading(false);
+    }
+  }
+
+  /** Alle Previews an einen bestehenden Vorgang zuordnen (bestätigter Vorschlag). */
+  async function zuordnenZuVorgang(vorgangId, matchLevel) {
+    if (!previews.length || assigning) return;
+    setAssigning(true);
+    setError(null);
+    try {
+      const stammPayload = stammToPayload(stamm);
+      const dokumente = previews.map((p) =>
+        p.typ === 'wohngeldantrag' ? { ...p, stammdaten: stammPayload } : p
+      );
+      const res = await wohngeldApi.verteilePosteingang({
+        vorgangId, dokumente, pruefen: true, viaVorschlag: true, matchLevel,
+      });
+      const newVorgangId = res?.vorgang?.id || vorgangId;
+      if (newVorgangId) navigate(`/apps/wohngeld/vorgang/${newVorgangId}`);
+    } catch (e) {
+      setError(e.message || 'Zuordnung fehlgeschlagen');
+    } finally {
+      setAssigning(false);
     }
   }
 
@@ -201,6 +337,54 @@ export default function PosteingangPage() {
     && !(akteMode === 'existing' && vorgangMode === 'existing' && !vorgangId);
 
   const s = (key) => (v) => setStamm((prev) => ({ ...prev, [key]: v }));
+
+  const bestKandidat = matchKandidaten[0];
+  const zeigeVorschlag = Boolean(bestKandidat && (bestKandidat.level === 'hoch' || bestKandidat.level === 'mittel'));
+  const weitereKandidaten = matchKandidaten.slice(1).filter((k) => k.level === 'hoch' || k.level === 'mittel' || k.level === 'gering');
+  const hatAbweichung = (k) => (k?.vergleich || []).some((z) => z.status === 'abweichung');
+
+  /** Ein Kandidatenblock: Titel + Level-Badge + Vergleichstabelle + Zuordnen-Button. */
+  const renderKandidat = (k, { primary }) => (
+    <>
+      <div style={styles.matchHead}>
+        {hatAbweichung(k)
+          ? <AlertTriangleIcon size={20} color={theme.colors.warning} style={{ flexShrink: 0, marginTop: 2 }} />
+          : <CheckCircleIcon size={20} color={ACCENT} style={{ flexShrink: 0, marginTop: 2 }} />}
+        <div style={{ flex: 1 }}>
+          <div style={styles.matchTitle}>
+            {primary ? 'Vermutlich zuzuordnen: ' : ''}{k.antragstellerName || 'Unbenannter Vorgang'}
+            {k.antragsId ? ` · ${k.antragsId}` : ''}
+          </div>
+          {k.akteName && <div style={styles.matchSub}>Akte: {k.akteName}</div>}
+        </div>
+        <span style={{ ...styles.levelBadge, ...levelBadgeStyle(k.level) }}>{LEVEL_LABEL[k.level] || k.level}</span>
+      </div>
+
+      <VergleichTabelle vergleich={k.vergleich} />
+
+      {hatAbweichung(k) && (
+        <div style={styles.hinweisAbweichung}>
+          <AlertTriangleIcon size={16} /> Angaben weichen ab — bitte prüfen.
+        </div>
+      )}
+
+      <div style={styles.matchButtons}>
+        <button
+          style={{ ...styles.btnPrimary, opacity: assigning ? 0.5 : 1, cursor: assigning ? 'not-allowed' : 'pointer' }}
+          onClick={() => zuordnenZuVorgang(k.vorgangId, k.level)}
+          disabled={assigning}
+        >
+          {assigning ? <RefreshIcon size={16} /> : <DocumentIcon size={16} color="#fff" />}
+          {assigning ? 'Wird zugeordnet…' : 'Diesem Vorgang zuordnen'}
+        </button>
+        {primary && (
+          <button style={styles.btnSecondary} onClick={() => setShowManual(true)} disabled={assigning}>
+            <UserIcon size={14} /> Anderer Vorgang / neu
+          </button>
+        )}
+      </div>
+    </>
+  );
 
   return (
     <div style={styles.page}>
@@ -361,7 +545,38 @@ export default function PosteingangPage() {
                 ))}
               </div>
 
-              {/* Verteilung */}
+              {/* Zuordnungs-Vorschlag (Vorschlag — keine automatische Zuordnung) */}
+              {matchLoading && (
+                <div style={styles.pane}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
+                    <RefreshIcon size={16} /> Passenden Vorgang suchen…
+                  </div>
+                </div>
+              )}
+
+              {!matchLoading && zeigeVorschlag && (
+                <div style={styles.pane}>
+                  <div style={styles.paneTitle}>Zuordnungs-Vorschlag</div>
+                  {renderKandidat(bestKandidat, { primary: true })}
+
+                  {weitereKandidaten.length > 0 && (
+                    <>
+                      <button style={styles.weitereToggle} onClick={() => setWeitereOffen((o) => !o)}>
+                        <ChevronDownIcon size={14} style={{ transform: weitereOffen ? 'rotate(180deg)' : 'none' }} />
+                        {weitereOffen ? 'Weitere Kandidaten ausblenden' : `Weitere Kandidaten (${weitereKandidaten.length})`}
+                      </button>
+                      {weitereOffen && weitereKandidaten.map((k) => (
+                        <div key={k.vorgangId} style={styles.weitereItem}>
+                          {renderKandidat(k, { primary: false })}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Verteilung (manuell) — Fallback bzw. wenn kein tragfähiger Vorschlag */}
+              {(showManual || !zeigeVorschlag) && (
               <div style={styles.pane}>
                 <div style={styles.paneTitle}>Verteilung</div>
 
@@ -418,6 +633,7 @@ export default function PosteingangPage() {
                   </button>
                 </div>
               </div>
+              )}
             </>
           )}
         </div>

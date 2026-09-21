@@ -11,13 +11,14 @@ import { Hono } from 'hono';
 import { getCurrentUserId } from '../../../auth/middleware';
 import {
   getAkte, createAkte, getVorgang, createVorgang, updateVorgang,
-  listPersonen, createPerson, createDokument,
+  listPersonen, createPerson, createDokument, listVorgaenge,
   getVorgangSnapshot, syncPruefschritte, setFeldStatus,
 } from '../storage';
 import { audit } from '../audit';
 import { pruefeVorgang } from '../checker';
 import { pdfToText } from '../extract';
-import { klassifiziereUndExtrahiere, type ExtraktionErgebnis, type ExtrahierteStammdaten } from '../extraction';
+import { klassifiziereUndExtrahiere, type ExtraktionErgebnis, type ExtrahierteStammdaten, type Identitaet } from '../extraction';
+import { matchVorgaenge, type MatchIdent, type MatchKandidat } from '../matching';
 import { feldStatusVorgangPfade, feldStatusPersonPfade } from '../feldstatus-mapping';
 import { storeUpload, resolveStorageRef } from '../filestore';
 import { denyIfNotAppEditor } from './_shared';
@@ -82,6 +83,70 @@ posteingangRoutes.post('/posteingang/upload', async (c) => {
   return c.json({ previews, preview: previews[0] });
 });
 
+/**
+ * Baut das Identitäts-Signal (`MatchIdent`) aus den identifizierenden Daten eines
+ * Eingangs: Antrag-Stammdaten (Name + Adresse) und/oder Nachweis-Identität
+ * (nachname/vorname/geburtsdatum). Name-Felder aus `identitaet` haben Vorrang.
+ */
+function buildIdent(stammdaten?: ExtrahierteStammdaten, identitaet?: Identitaet): MatchIdent {
+  const at = stammdaten?.antragsteller;
+  const ad = stammdaten?.adresse;
+  return {
+    nachname: identitaet?.nachname ?? at?.nachname,
+    vorname: identitaet?.vorname ?? at?.vorname,
+    geburtsdatum: identitaet?.geburtsdatum ?? at?.geburtsdatum,
+    plz: ad?.plz,
+    ort: ad?.ort,
+    strasse: ad?.strasse,
+    hausnummer: ad?.hausnummer,
+  };
+}
+
+/**
+ * Zuordnungs-Vorschlag: gleicht die identifizierenden Daten eines Eingangs gegen
+ * ALLE bestehenden Vorgänge ab (Vorgang + Akte + Antragsteller-Person). Reine
+ * Vorschlagsfunktion — es wird NICHTS zugeordnet.
+ * Body `{ stammdaten?, identitaet? }` → `{ kandidaten: ScoredKandidat[] }`.
+ */
+posteingangRoutes.post('/posteingang/match', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+
+  const body = await c.req.json<{ stammdaten?: ExtrahierteStammdaten; identitaet?: Identitaet }>().catch(() => null);
+  if (!body) return c.json({ error: 'Ungültiger Request-Body' }, 400);
+
+  const ident = buildIdent(body.stammdaten, body.identitaet);
+
+  // Kandidaten aus allen Vorgängen zusammentragen (Vorgang + Akte + Antragsteller).
+  const vorgaenge = await listVorgaenge();
+  const kandidaten: MatchKandidat[] = await Promise.all(
+    vorgaenge.map(async (v): Promise<MatchKandidat> => {
+      const [akte, personen] = await Promise.all([getAkte(v.akteId), listPersonen(v.id)]);
+      const at = personen.find((p) => p.rolle === 'antragsteller');
+      const w = v.wohnung ?? {};
+      const antragstellerName = at
+        ? [at.nachname, at.vorname].filter(Boolean).join(', ')
+        : akte?.antragstellerName ?? akte?.name;
+      return {
+        vorgangId: v.id,
+        antragsId: v.antragsId,
+        akteName: akte?.name,
+        antragstellerName,
+        nachname: at?.nachname || undefined,
+        vorname: at?.vorname || undefined,
+        geburtsdatum: at?.geburtsdatum || undefined,
+        plz: w.plz ?? akte?.plz,
+        ort: w.ort ?? akte?.ort,
+        strasse: w.strasse ?? akte?.strasse,
+        hausnummer: w.hausnummer ?? akte?.hausnummer,
+      };
+    }),
+  );
+
+  const scored = matchVorgaenge(ident, kandidaten);
+  return c.json({ kandidaten: scored });
+});
+
 /** Stammdaten aus dem Wohngeldantrag in Vorgang (Wohnung) mergen. */
 function mergeWohnung(base: WohnungMiete | undefined, s: ExtrahierteStammdaten): WohnungMiete {
   const w: WohnungMiete = { ...(base ?? {}) };
@@ -109,6 +174,10 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
     neuerVorgang?: Record<string, unknown>;
     dokumente?: Preview[];
     pruefen?: boolean;
+    /** Kam die Zuordnung über einen bestätigten System-Vorschlag zustande? (Audit) */
+    viaVorschlag?: boolean;
+    /** Match-Level des bestätigten Vorschlags (hoch/mittel/gering). (Audit) */
+    matchLevel?: string;
   }>().catch(() => null);
 
   if (!body) return c.json({ error: 'Ungültiger Request-Body' }, 400);
@@ -248,9 +317,15 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
     }
   }
 
+  // Zuordnung per bestätigtem System-Vorschlag (bestehender Vorgang) gesondert
+  // protokollieren — nachvollziehbar, wer welchen Vorschlag bestätigt hat.
+  const viaVorschlag = body.viaVorschlag === true && !istNeuerVorgang && !!body.vorgangId;
   await audit(c, {
-    aktion: 'dokument.hochgeladen', objektTyp: 'posteingang', objektId: vorgang.id, vorgangId: vorgang.id,
-    detail: `${angelegt.length} Dokument(e) aus dem Posteingang zugeordnet${istNeuerVorgang ? ' (neuer Vorgang)' : ''}`,
+    aktion: viaVorschlag ? 'dokument.zugeordnet' : 'dokument.hochgeladen',
+    objektTyp: 'posteingang', objektId: vorgang.id, vorgangId: vorgang.id,
+    detail: viaVorschlag
+      ? `${angelegt.length} Dokument(e) per Zuordnungs-Vorschlag zugeordnet (Übereinstimmung: ${body.matchLevel ?? 'unbekannt'})`
+      : `${angelegt.length} Dokument(e) aus dem Posteingang zugeordnet${istNeuerVorgang ? ' (neuer Vorgang)' : ''}`,
   });
 
   // 5. Optional direkt prüfen.
@@ -316,5 +391,15 @@ posteingangRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) => {
     detail: `${angelegt.length} Dokument(e) hochgeladen und klassifiziert`,
   });
 
-  return c.json({ dokumente: angelegt, dokument: angelegt[0] }, 201);
+  // Konsistenz mit /verteilen: nach dem Anlegen automatisch prüfen, damit sich
+  // Direkt-Upload und Posteingang-Verteilung gleich verhalten.
+  let befundeCount: number | undefined;
+  const snapshot = await getVorgangSnapshot(vorgangId);
+  if (snapshot) {
+    const befunde = pruefeVorgang(snapshot);
+    await syncPruefschritte(vorgangId, befunde);
+    befundeCount = befunde.length;
+  }
+
+  return c.json({ dokumente: angelegt, dokument: angelegt[0], befundeCount }, 201);
 });

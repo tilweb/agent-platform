@@ -17,8 +17,19 @@ import {
   type ExtractionSchema,
   type StrategyId,
 } from '../../services/extraction';
-import { pickStammdaten, pickAnalyse, type ExtrahierteStammdaten } from './extraction';
+import { pickStammdaten, pickAnalyse, pickIdentitaet, type ExtrahierteStammdaten, type Identitaet } from './extraction';
 import type { DokumentAnalyse, DokumentTyp } from './types';
+
+/**
+ * Optionale Identitäts-Feldgruppe für Nachweis-Dokumente. Liefert das leichte
+ * Match-Signal (nachname/vorname/geburtsdatum), damit auch ein Ausweis-/
+ * Nachweis-Scan einem Vorgang zugeordnet werden kann — oder eben nicht.
+ */
+const IDENTITAET_FELDER = {
+  nachname: { type: 'text', label: 'Nachname der im Dokument genannten Person' },
+  vorname: { type: 'text', label: 'Vorname der im Dokument genannten Person' },
+  geburtsdatum: { type: 'date', label: 'Geburtsdatum der Person (ISO JJJJ-MM-TT)' },
+} as const;
 
 /**
  * ExtractionProfile fuer den Wohngeldantrag. Feldgruppen so benannt, dass das
@@ -80,6 +91,7 @@ const MIET_PROFILE: ExtractionProfile = {
   version: '1.0',
   detection: { keywords: ['mietvertrag', 'mietbescheinigung', 'miete', 'vermieter'] },
   fields: {
+    identitaet: { ...IDENTITAET_FELDER },
     analyse: {
       miete: { type: 'number', label: 'Bruttokaltmiete in EUR laut Dokument' },
       wohnflaeche_qm: { type: 'number', label: 'Wohnflaeche in m2 laut Dokument' },
@@ -95,6 +107,7 @@ const KONTO_PROFILE: ExtractionProfile = {
   version: '1.0',
   detection: { keywords: ['kontoauszug', 'iban', 'buchung', 'saldo'] },
   fields: {
+    identitaet: { ...IDENTITAET_FELDER },
     analyse: {
       mietzahlung_erkannt: { type: 'boolean', label: 'Ist auf dem Auszug eine Mietabbuchung/Mietzahlung erkennbar? true/false' },
       kapitalertraege_erkannt: { type: 'boolean', label: 'Sind Kapitalertraege (Zinsen, Dividenden) erkennbar? true/false' },
@@ -110,11 +123,43 @@ const RENTEN_PROFILE: ExtractionProfile = {
   version: '1.0',
   detection: { keywords: ['rentenbescheid', 'rente', 'deutsche rentenversicherung'] },
   fields: {
+    identitaet: { ...IDENTITAET_FELDER },
     analyse: {
       rentenart_vorhanden: { type: 'boolean', label: 'Nennt der Bescheid die Rentenart? true/false' },
       grundrentenzeiten_vorhanden: { type: 'boolean', label: 'Sind Grundrentenzeiten ausgewiesen? true/false' },
       betrag: { type: 'number', label: 'Rentenbetrag in EUR (monatlich)' },
     },
+  },
+};
+
+/**
+ * Personalausweis: kein Analyse-Signal für den Checker, aber ein starkes
+ * Identitäts-Signal fürs Zuordnungs-Matching (nachname/vorname/geburtsdatum).
+ */
+const AUSWEIS_PROFILE: ExtractionProfile = {
+  id: 'wohngeld-personalausweis',
+  name: 'Personalausweis',
+  description: 'Identitäts-Extraktion aus einem Personalausweis (Name, Geburtsdatum) für die Vorgangs-Zuordnung.',
+  version: '1.0',
+  detection: { keywords: ['personalausweis', 'bundesrepublik deutschland', 'identity card', 'ausweis'] },
+  fields: {
+    identitaet: { ...IDENTITAET_FELDER },
+  },
+};
+
+/**
+ * Generisches Identitäts-Schema für BELIEBIGE Nachreichungen ohne eigenes Fach-Schema
+ * (Nachreichungen können alles sein). Extrahiert nur Name/Geburtsdatum als Match-Signal
+ * für die Vorgangs-Zuordnung. Ohne verwertbare Identität → kein Vorschlag (sicherer Fallback).
+ */
+const IDENTITAET_PROFILE: ExtractionProfile = {
+  id: 'wohngeld-identitaet',
+  name: 'Identität',
+  description: 'Leichte Identitäts-Extraktion (Name, Geburtsdatum) für die Vorgangs-Zuordnung beliebiger Nachreichungen.',
+  version: '1.0',
+  detection: { keywords: [] },
+  fields: {
+    identitaet: { ...IDENTITAET_FELDER },
   },
 };
 
@@ -141,15 +186,21 @@ export function WOHNGELD_SCHEMA(strategy: StrategyId): ExtractionSchema {
  * keine Pipeline-Extraktion vorgesehen ist (dann nur Klassifikation).
  *
  *   wohngeldantrag                    → Stammdaten + Analyse (unterschrift/datum)
- *   mietvertrag | mietbescheinigung   → miete, wohnflaeche_qm, unterschrift
- *   kontoauszug                       → mietzahlung, kapitalertraege, mieteinnahmen
- *   rentenbescheid                    → rentenart, grundrentenzeiten, betrag
- *   sonstige                          → null
+ *   personalausweis                   → identitaet (nachname/vorname/geburtsdatum)
+ *   mietvertrag | mietbescheinigung   → identitaet + miete, wohnflaeche_qm, unterschrift
+ *   kontoauszug                       → identitaet + mietzahlung, kapitalertraege, mieteinnahmen
+ *   rentenbescheid                    → identitaet + rentenart, grundrentenzeiten, betrag
+ *   alle übrigen Typen                → identitaet (generisch, nur für die Zuordnung)
+ *
+ * Es gibt bewusst KEIN `null` mehr: Nachreichungen können alles sein, daher bekommt jeder
+ * klassifizierte Typ mindestens eine leichte Identitäts-Extraktion als Match-Signal.
  */
-export function schemaFuerTyp(typ: DokumentTyp, strategy: StrategyId): ExtractionSchema | null {
+export function schemaFuerTyp(typ: DokumentTyp, strategy: StrategyId): ExtractionSchema {
   switch (typ) {
     case 'wohngeldantrag':
       return WOHNGELD_SCHEMA(strategy);
+    case 'personalausweis':
+      return { id: AUSWEIS_PROFILE.id, name: AUSWEIS_PROFILE.name, profile: AUSWEIS_PROFILE, config: baseConfig(strategy) };
     case 'mietvertrag':
     case 'mietbescheinigung':
       return { id: MIET_PROFILE.id, name: MIET_PROFILE.name, profile: MIET_PROFILE, config: baseConfig(strategy) };
@@ -158,7 +209,7 @@ export function schemaFuerTyp(typ: DokumentTyp, strategy: StrategyId): Extractio
     case 'rentenbescheid':
       return { id: RENTEN_PROFILE.id, name: RENTEN_PROFILE.name, profile: RENTEN_PROFILE, config: baseConfig(strategy) };
     default:
-      return null;
+      return { id: IDENTITAET_PROFILE.id, name: IDENTITAET_PROFILE.name, profile: IDENTITAET_PROFILE, config: baseConfig(strategy) };
   }
 }
 
@@ -189,6 +240,8 @@ const PIPELINE_TO_FELDSTATUS: Record<string, string> = {
 export interface PipelineMapping {
   stammdaten: ExtrahierteStammdaten;
   analyse: DokumentAnalyse;
+  /** Identitäts-Signal (aus `stammdaten.antragsteller` abgeleitet) fürs Matching. */
+  identitaet?: Identitaet;
   /** Confidence je `feld_status`-Feldpfad (0..1). */
   confidenceByPfad: Record<string, number>;
 }
@@ -217,6 +270,7 @@ export function mapPipelineToErgebnis(
   };
   const stammdaten = pickStammdaten(stammRaw) ?? {};
   const analyse = pickAnalyse(e.analyse);
+  const identitaet = pickIdentitaet(stammdaten.antragsteller);
 
   const confidenceByPfad: Record<string, number> = {};
   for (const [pipelinePath, conf] of Object.entries(fieldConfidences ?? {})) {
@@ -224,12 +278,14 @@ export function mapPipelineToErgebnis(
     if (feldPfad && typeof conf === 'number') confidenceByPfad[feldPfad] = conf;
   }
 
-  return { stammdaten, analyse, confidenceByPfad };
+  return { stammdaten, analyse, identitaet, confidenceByPfad };
 }
 
 /** Ergebnis des reinen Analyse-Mappings (Nachweis-Dokumente). */
 export interface AnalyseMapping {
   analyse: DokumentAnalyse;
+  /** Identitäts-Signal aus der `identitaet`-Feldgruppe (Match gegen bestehende Vorgänge). */
+  identitaet?: Identitaet;
   /** Confidence je DokumentAnalyse-Feldname (0..1). */
   confidenceByPfad: Record<string, number>;
 }
@@ -253,6 +309,7 @@ export function mapPipelineToAnalyse(
   fieldConfidences: Record<string, number> | undefined,
 ): AnalyseMapping {
   const e = (extracted ?? {}) as Record<string, unknown>;
+  const identitaet = pickIdentitaet(e.identitaet);
   const rawAnalyse = { ...((e.analyse ?? {}) as Record<string, unknown>) };
 
   // Kontoauszug: boolesche Erkennungs-Flags → erkannte_einkuenfte[] (Checker-kompatibel).
@@ -279,5 +336,5 @@ export function mapPipelineToAnalyse(
     if (ziel in analyse) confidenceByPfad[ziel] = conf;
   }
 
-  return { analyse, confidenceByPfad };
+  return { analyse, identitaet, confidenceByPfad };
 }

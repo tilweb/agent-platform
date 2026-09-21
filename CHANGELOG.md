@@ -2,6 +2,23 @@
 
 ## 2026-09-22
 
+### Wohngeld — Posteingang: Zuordnungs-Vorschlag mit transparentem Abgleich
+Nachgereichte Dokumente schlägt das System jetzt dem passenden bestehenden Vorgang **vor** — ohne je
+automatisch zuzuordnen (Human-in-the-Loop). Neues reines Matching-Modul `backend/src/apps/wohngeld/matching.ts`
+(`matchVorgaenge`) gleicht identifizierende Daten der Nachreichung feld-für-feld gegen Vorgang + Akte +
+Antragsteller ab: gewichteter Score je Signal (Antrags-ID sehr stark, Nachname/Geburtsdatum stark,
+Vorname/PLZ+Ort/Straße+Nr. mittel), Level hoch/mittel/gering aus Schwellen, Abweichung in einem starken
+Signal dämpft den Level (nie „hoch"). Rückgabe je Kandidat inkl. `vergleich[]` (gleich/abweichend/fehlt) für
+die Transparenz-UI; ohne identifizierende Daten → **kein Vorschlag** (rein manuell). Nachweise (Ausweis,
+Rentenbescheid, Miet-/Kontonachweis) bekommen eine optionale `identitaet`-Feldgruppe im Extraktions-Schema
+(nachname/vorname/geburtsdatum) — damit hat auch ein Ausweis-Scan ein Match-Signal. Neuer Endpoint
+`POST /posteingang/match` (Editor-Gate). Frontend `PosteingangPage`: Vorschlagskarte mit **immer sichtbarer
+Vergleichstabelle** (Nachreichung ↔ Vorgang), deutlicher Abweichungs-Hinweis (Warn-Farbe, kein Farbrahmen),
+Buttons „Diesem Vorgang zuordnen" (ohne Vorauswahl) und „Anderer Vorgang / neu" (manueller Picker), weitere
+Kandidaten aufklappbar. Zuordnung per Vorschlag wird im Audit protokolliert (`dokument.zugeordnet` mit
+Match-Level). Konsistenz-Fix: Direkt-Upload am Vorgang (`/vorgaenge/:id/dokumente/upload`) löst jetzt wie
+`verteilen` automatisch die Prüfung aus und liefert `befundeCount`. Unit-Tests `matching.test.ts`.
+
 ### Wohngeld — Seitenpanel: einheitlich einklappbare Sektionen + Kachel-Datensätze
 Neue Komponente `PanelSection` fasst alle Sektionen des rechten Seitenpanels (Tabs Details/Prüfschritte/
 Dokumente) in klar abgegrenzte, **einheitlich einklappbare** Karten (Chevron + Uppercase-Titel + optionaler

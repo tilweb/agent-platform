@@ -84,6 +84,8 @@ export const wohngeldApi = {
     return postForm('/posteingang/upload', fd).then(json).then((d) => d.previews);
   },
   verteilePosteingang: (payload) => apiPost(`${base}/posteingang/verteilen`, payload).then(json),
+  /** Zuordnungs-Vorschlag: identifizierende Daten gegen bestehende Vorgänge abgleichen → { kandidaten }. */
+  matchPosteingang: (payload) => apiPost(`${base}/posteingang/match`, payload).then(json).then((d) => d.kandidaten),
   uploadVorgangDokument: (vorgangId, file) => {
     const fd = new FormData();
     const list = Array.isArray(file) || file instanceof FileList ? Array.from(file) : [file];
@@ -449,6 +451,7 @@ export const AKTION_LABEL = {
   'person.geloescht': 'Person gelöscht',
   'dokument.erstellt': 'Dokument erfasst',
   'dokument.hochgeladen': 'Dokument(e) hochgeladen',
+  'dokument.zugeordnet': 'Dokument(e) per Vorschlag zugeordnet',
   'dokument.geaendert': 'Dokument geändert',
   'dokument.geloescht': 'Dokument gelöscht',
   'dokument.abgelegt': 'Dokument ins Fachverfahren abgelegt',

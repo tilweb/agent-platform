@@ -219,14 +219,19 @@ describe('mapPipelineToAnalyse — je Dokumenttyp', () => {
 
 describe('schemaFuerTyp — Selektor', () => {
   test('bekannte Typen liefern ein Schema', () => {
-    for (const typ of ['wohngeldantrag', 'mietvertrag', 'mietbescheinigung', 'kontoauszug', 'rentenbescheid'] as const) {
+    // personalausweis liefert (nur) ein Identitäts-Schema fürs Zuordnungs-Matching.
+    for (const typ of ['wohngeldantrag', 'personalausweis', 'mietvertrag', 'mietbescheinigung', 'kontoauszug', 'rentenbescheid'] as const) {
       expect(schemaFuerTyp(typ, 'single-pass')).not.toBeNull();
     }
   });
 
-  test('unbekannte/nicht abgedeckte Typen → null', () => {
-    expect(schemaFuerTyp('personalausweis', 'single-pass')).toBeNull();
-    expect(schemaFuerTyp('sonstiges', 'single-pass')).toBeNull();
+  test('beliebige/nicht fachspezifische Typen → generisches Identitäts-Schema (kein null)', () => {
+    // Nachreichungen können alles sein: jeder Typ bekommt mind. ein Identitäts-Schema als Match-Signal.
+    for (const typ of ['sonstiges', 'kindergeldnachweis', 'schwerbehindertenausweis', 'unterhaltsnachweis'] as const) {
+      const schema = schemaFuerTyp(typ, 'single-pass');
+      expect(schema).not.toBeNull();
+      expect(schema.profile.fields.identitaet).toBeDefined();
+    }
   });
 
   test('Strategy wird in die Config uebernommen', () => {

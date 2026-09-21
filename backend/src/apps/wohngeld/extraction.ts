@@ -46,12 +46,26 @@ export interface ExtrahierteStammdaten {
   };
 }
 
+/**
+ * Leichte Identitäts-Signale eines Dokuments (Grundlage des Zuordnungs-Matchings).
+ * Aus dem Antrag: aus `stammdaten.antragsteller` abgeleitet. Aus Nachweisen
+ * (Ausweis, Rentenbescheid, Miet-/Kontonachweis): eigene `identitaet`-Feldgruppe.
+ * Kein identifizierendes Feld → kein Match-Signal → kein Vorschlag.
+ */
+export interface Identitaet {
+  nachname?: string;
+  vorname?: string;
+  geburtsdatum?: string;
+}
+
 /** Ergebnis von Klassifikation + Extraktion eines einzelnen Dokuments. */
 export interface ExtraktionErgebnis {
   typ: DokumentTyp;
   titel?: string;
   analyse: DokumentAnalyse;
   stammdaten?: ExtrahierteStammdaten;
+  /** Identitäts-Signal für das Zuordnungs-Matching (Antrag: aus Stammdaten; Nachweis: eigene Extraktion). */
+  identitaet?: Identitaet;
   /** Confidence je `feld_status`-Feldpfad (0..1), aus der Extraction-Pipeline. */
   confidenceByPfad?: Record<string, number>;
 }
@@ -152,6 +166,19 @@ export function pickStammdaten(raw: unknown): ExtrahierteStammdaten | undefined 
   const flaeche = asNumber(wh.wohnflaeche_qm); if (flaeche !== undefined) wohnung.wohnflaeche_qm = flaeche;
   if (Object.keys(wohnung).length) out.wohnung = wohnung;
 
+  return Object.keys(out).length ? out : undefined;
+}
+
+/**
+ * Reiner Guard für das Identitäts-Signal (nachname/vorname/geburtsdatum). Kein
+ * identifizierendes Feld → `undefined` (dann kein Match-Signal → kein Vorschlag).
+ */
+export function pickIdentitaet(raw: unknown): Identitaet | undefined {
+  const s = (raw ?? {}) as Record<string, unknown>;
+  const out: Identitaet = {};
+  const nachname = asString(s.nachname); if (nachname) out.nachname = nachname;
+  const vorname = asString(s.vorname); if (vorname) out.vorname = vorname;
+  const geburtsdatum = asString(s.geburtsdatum); if (geburtsdatum) out.geburtsdatum = geburtsdatum;
   return Object.keys(out).length ? out : undefined;
 }
 
@@ -297,12 +324,11 @@ export async function klassifiziereUndExtrahiere(
     // (b) Klassifikation
     const klass = await klassifiziere(text, opts);
 
-    // (c) Schema-gebundene Extraktion via Plattform-Pipeline — nur wenn fuer den
-    //     Typ ein Schema existiert (Antrag ODER Miet-/Konto-/Rentennachweis).
+    // (c) Schema-gebundene Extraktion via Plattform-Pipeline. Jeder Typ bekommt ein Schema:
+    //     Antrag → Stammdaten+Analyse; Fach-Nachweise → Analyse+Identität; alle übrigen Typen
+    //     → generische Identitäts-Extraktion (Match-Signal für die Vorgangs-Zuordnung).
     const strategy: StrategyId = scanMode ? 'hybrid' : 'single-pass';
     const schema = schemaFuerTyp(klass.typ, strategy);
-    // (d) Kein Schema fuer diesen Typ → nur Klassifikation, keine Analyse/Stammdaten.
-    if (!schema) return klass;
 
     const prepared: PreparedFile = scanMode
       ? { filename: opts.filename ?? 'dokument', text, mimeType: mimeType || 'application/pdf', rawBuffer: Buffer.from(bytes) }
@@ -321,6 +347,7 @@ export async function klassifiziereUndExtrahiere(
       const ergebnis: ExtraktionErgebnis = { typ: 'wohngeldantrag', analyse: mapped.analyse };
       if (klass.titel) ergebnis.titel = klass.titel;
       if (Object.keys(mapped.stammdaten).length) ergebnis.stammdaten = mapped.stammdaten;
+      if (mapped.identitaet) ergebnis.identitaet = mapped.identitaet;
       if (Object.keys(mapped.confidenceByPfad).length) ergebnis.confidenceByPfad = mapped.confidenceByPfad;
       return ergebnis;
     }
@@ -330,6 +357,7 @@ export async function klassifiziereUndExtrahiere(
     const mappedAnalyse = mapPipelineToAnalyse(klass.typ, result.extracted, result.fieldConfidences);
     const ergebnis: ExtraktionErgebnis = { typ: klass.typ, analyse: mappedAnalyse.analyse };
     if (klass.titel) ergebnis.titel = klass.titel;
+    if (mappedAnalyse.identitaet) ergebnis.identitaet = mappedAnalyse.identitaet;
     return ergebnis;
   } catch (err) {
     console.warn('[wohngeld] Klassifikation/Extraktion fehlgeschlagen:', err instanceof Error ? err.message : err);
