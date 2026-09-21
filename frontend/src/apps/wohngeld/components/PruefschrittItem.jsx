@@ -4,7 +4,7 @@ import { DocumentIcon } from '../../../components/Icons';
 import { PRUEF_TYP_LABEL, PRUEF_KATEGORIE_LABEL, ACCENT, ACCENT_LIGHT } from '../api';
 
 const styles = {
-  item: { padding: `${theme.spacing.sm} 0`, borderBottom: `1px solid ${theme.colors.borderLight}` },
+  item: { padding: theme.spacing.md, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.background, marginBottom: theme.spacing.sm },
   head: { display: 'flex', gap: theme.spacing.sm, alignItems: 'flex-start', flexWrap: 'wrap' },
   titel: { fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text, flex: 1, minWidth: 160 },
   titelDone: { textDecoration: 'line-through', color: theme.colors.textMuted },

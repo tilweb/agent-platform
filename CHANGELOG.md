@@ -2,6 +2,15 @@
 
 ## 2026-09-22
 
+### Wohngeld — Seitenpanel: einheitlich einklappbare Sektionen + Kachel-Datensätze
+Neue Komponente `PanelSection` fasst alle Sektionen des rechten Seitenpanels (Tabs Details/Prüfschritte/
+Dokumente) in klar abgegrenzte, **einheitlich einklappbare** Karten (Chevron + Uppercase-Titel + optionaler
+Zähler/Aktion, neutrale Rahmen). Details-Tab: „Allgemein", „Aufbewahrung & Schutz", „Todos" (Zähler offener),
+„Labels", „KI-Nutzung"; Prüfschritte-Tab: Gruppen (Allgemein/je Person) mit Zähler; Dokumente-Tab: „Nachweise"/
+„Originaldateien" mit Zähler (Upload/„Alle herunterladen" bleiben erhalten). Einzelne Datensätze (Prüfschritte,
+Dokumente, KI-Nutzung, Protokoll) jetzt als abgegrenzte Kacheln (neutraler Rahmen + dezenter Hintergrund) statt
+feiner Trennlinien; Key-Value-Zeilen mit dezenter Zeilentrennung. Reine Frontend-/Styling-Änderung, Verhalten unverändert.
+
 ### Wohngeld — Layout: breiteres Seitenpanel + Protokoll als eigener Vorgangs-Tab
 Das rechte Seitenpanel (Details/Prüfschritte/Dokumente) ist breiter (360→440 px, min 360), die
 Hauptfläche gibt entsprechend Platz ab — die Detailinfos rechts haben jetzt mehr Raum. Das lange

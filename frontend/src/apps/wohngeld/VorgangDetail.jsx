@@ -14,6 +14,7 @@ import StatusBadge from './components/StatusBadge';
 import SektionCard, { FeldGrid } from './components/SektionCard';
 import PersonCard from './components/PersonCard';
 import PruefschrittItem from './components/PruefschrittItem';
+import PanelSection from './components/PanelSection';
 import FallChat from './components/FallChat';
 import FeldStatusMark from './components/FeldStatusMark';
 import { buildFeldStatusMap, fsKey } from './feldStatusMap';
@@ -78,7 +79,10 @@ const styles = {
   bestaetigungText: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm, color: theme.colors.text },
   bestaetigungDot: { width: 7, height: 7, borderRadius: theme.borderRadius.full, backgroundColor: ACCENT, flexShrink: 0 },
   sideTitle: { fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', margin: `${theme.spacing.md} 0 ${theme.spacing.sm}` },
-  activity: { fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, padding: `${theme.spacing.sm} 0`, borderBottom: `1px solid ${theme.colors.borderLight}`, lineHeight: 1.5 },
+  activity: { fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, padding: theme.spacing.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.background, marginBottom: theme.spacing.sm, lineHeight: 1.5 },
+  kvRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: theme.spacing.md, padding: `${theme.spacing.sm} 0`, borderBottom: `1px solid ${theme.colors.borderLight}` },
+  kvLabel: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, flexShrink: 0 },
+  kvValue: { fontSize: theme.typography.sizes.sm, color: theme.colors.text, textAlign: 'right', wordBreak: 'break-word' },
   protoAktion: { color: theme.colors.text, fontWeight: theme.typography.weights.medium },
   protoMeta: { color: theme.colors.textMuted, marginTop: 1 },
   protoRolle: { fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0 5px', borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted },
@@ -92,7 +96,7 @@ const styles = {
   textarea: { width: '100%', minHeight: 260, fontFamily: theme.typography.fontFamily, fontSize: theme.typography.sizes.sm, padding: theme.spacing.md, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none', resize: 'vertical', lineHeight: 1.6 },
   placeholder: { textAlign: 'center', padding: theme.spacing['3xl'], color: theme.colors.textMuted },
   chip: { fontSize: theme.typography.sizes.xs, padding: `2px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted },
-  docItem: { padding: `${theme.spacing.sm} 0`, borderBottom: `1px solid ${theme.colors.borderLight}` },
+  docItem: { padding: theme.spacing.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.background, marginBottom: theme.spacing.sm },
   iconBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xs, background: 'none', border: 'none', borderRadius: theme.borderRadius.md, cursor: 'pointer' },
   copiedHint: { position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 2, fontSize: '0.65rem', color: theme.colors.textMuted, backgroundColor: theme.colors.surfaceHover, borderRadius: theme.borderRadius.sm, padding: '1px 6px', whiteSpace: 'nowrap' },
   sideToggle: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, padding: `4px ${theme.spacing.sm}`, background: 'none', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, color: theme.colors.textMuted, cursor: 'pointer', fontSize: theme.typography.sizes.xs },
@@ -175,6 +179,19 @@ function download(name, text) {
   a.remove(); URL.revokeObjectURL(url);
 }
 
+/** Label/Wert-Zeilen mit dezenter Trennlinie (letzte Zeile ohne Rahmen). */
+function KvRows({ rows }) {
+  return rows.map((r, i) => (
+    <div
+      key={r.label}
+      style={{ ...styles.kvRow, ...(i === rows.length - 1 ? { borderBottom: 'none', paddingBottom: 0 } : {}) }}
+    >
+      <span style={styles.kvLabel}>{r.label}</span>
+      <span style={styles.kvValue}>{r.value}</span>
+    </div>
+  ));
+}
+
 export default function VorgangDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -230,7 +247,6 @@ export default function VorgangDetail() {
 
   // Todos & Labels (WP8)
   const [neuerTodo, setNeuerTodo] = useState('');
-  const [todosCollapsed, setTodosCollapsed] = useState(false);
   const [neuesLabel, setNeuesLabel] = useState('');
 
   // Fall-Protokoll (GOV-1): welche Einträge ihren Vorher/Nachher-Diff aufgeklappt zeigen
@@ -1316,143 +1332,142 @@ export default function VorgangDetail() {
 
             {sideTab === 'details' && (
               <div>
-                <FeldGrid felder={[
-                  { label: 'Sachbearbeiter', value: vorgang.sachbearbeiter || '—' },
-                  { label: 'Priorität', value: PRIORITAET_LABEL[vorgang.prioritaet] || vorgang.prioritaet },
-                  { label: 'Letzte Änderung', value: fmtDateTime(vorgang.updated_at) },
-                ]} />
+                <PanelSection title="Allgemein">
+                  <KvRows rows={[
+                    { label: 'Sachbearbeiter', value: vorgang.sachbearbeiter || '—' },
+                    { label: 'Priorität', value: PRIORITAET_LABEL[vorgang.prioritaet] || vorgang.prioritaet },
+                    { label: 'Letzte Änderung', value: fmtDateTime(vorgang.updated_at) },
+                  ]} />
 
-                {(vorgang.frist || vorgang.wiedervorlage) && (
-                  <>
-                    <div style={styles.sideTitle}>Fristen</div>
-                    {vorgang.wiedervorlage && (
-                      <div style={styles.fristRow}>
-                        <ClockIcon size={14} color={wvUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
-                        <span style={styles.fristLabel}>Wiedervorlage</span>
-                        <span style={wvUeberfaellig ? { color: theme.colors.error, fontWeight: theme.typography.weights.semibold } : {}}>{fmtDate(vorgang.wiedervorlage)}</span>
-                        {wvUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
-                      </div>
-                    )}
-                    {vorgang.frist && (
-                      <div style={styles.fristRow}>
-                        <ClockIcon size={14} color={fristUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
-                        <span style={styles.fristLabel}>Frist</span>
-                        <span style={fristUeberfaellig ? { color: theme.colors.error, fontWeight: theme.typography.weights.semibold } : {}}>{fmtDate(vorgang.frist)}</span>
-                        {fristUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
-                      </div>
-                    )}
-                  </>
-                )}
+                  {(vorgang.frist || vorgang.wiedervorlage) && (
+                    <>
+                      <div style={styles.sideTitle}>Fristen</div>
+                      {vorgang.wiedervorlage && (
+                        <div style={styles.fristRow}>
+                          <ClockIcon size={14} color={wvUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
+                          <span style={styles.fristLabel}>Wiedervorlage</span>
+                          <span style={wvUeberfaellig ? { color: theme.colors.error, fontWeight: theme.typography.weights.semibold } : {}}>{fmtDate(vorgang.wiedervorlage)}</span>
+                          {wvUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
+                        </div>
+                      )}
+                      {vorgang.frist && (
+                        <div style={styles.fristRow}>
+                          <ClockIcon size={14} color={fristUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
+                          <span style={styles.fristLabel}>Frist</span>
+                          <span style={fristUeberfaellig ? { color: theme.colors.error, fontWeight: theme.typography.weights.semibold } : {}}>{fmtDate(vorgang.frist)}</span>
+                          {fristUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </PanelSection>
 
                 {/* GOV-5 — Aufbewahrung, Legal Hold & Verarbeitungs-Einschränkung */}
-                <div style={styles.sideTitle}>Aufbewahrung & Schutz</div>
-                <div style={styles.govRow}>
-                  <span style={styles.govLabel}>Aufbewahrung bis</span>
-                  <span style={styles.govValue}>{vorgang.aufbewahrungBis ? fmtDate(vorgang.aufbewahrungBis) : 'Bei Abschluss'}</span>
-                </div>
-                <div style={styles.govRow}>
-                  <span style={styles.govLabel}>Legal Hold</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm }}>
-                    <span style={styles.govValue}>{vorgang.legalHold ? 'Aktiv (Löschsperre)' : 'Nein'}</span>
-                    {isOwner && (
-                      <button style={styles.btnSmall} onClick={toggleLegalHold} disabled={busy}>
-                        {vorgang.legalHold ? 'Aufheben' : 'Setzen'}
-                      </button>
-                    )}
-                  </span>
-                </div>
-                <div style={styles.govRow}>
-                  <span style={styles.govLabel}>Verarbeitung (Art. 18)</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm }}>
-                    <span style={{ ...styles.govValue, ...(eingeschraenkt ? { color: theme.colors.warning } : {}) }}>
-                      {eingeschraenkt ? 'Eingeschränkt' : 'Normal'}
-                    </span>
-                    {eingeschraenkt
-                      ? (isOwner && <button style={styles.btnSmall} onClick={toggleEinschraenkung} disabled={busy}>Aufheben</button>)
-                      : (canEditRole && <button style={styles.btnSmall} onClick={toggleEinschraenkung} disabled={busy}>Einschränken</button>)}
-                  </span>
-                </div>
-
-                <div style={{ ...styles.sideTitle, display: 'flex', alignItems: 'center', gap: theme.spacing.xs, cursor: 'pointer' }} onClick={() => setTodosCollapsed((v) => !v)}>
-                  <ChevronDownIcon size={12} style={{ transform: todosCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: `transform ${theme.transitions.fast}` }} />
-                  Todos{todosOffen > 0 ? ` (${todosOffen} offen)` : ''}
-                </div>
-                {!todosCollapsed && (
-                  <div>
-                    {todos.length === 0 && <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Keine Todos.</div>}
-                    {todos.map((t) => (
-                      <div key={t.id} style={styles.todoItem}>
-                        <button
-                          style={{ ...styles.todoCheck, ...(t.erledigt ? { backgroundColor: ACCENT, borderColor: ACCENT } : {}), ...(canEdit ? {} : { cursor: 'default' }) }}
-                          onClick={() => canEdit && toggleTodo(t)}
-                          disabled={busy || !canEdit}
-                          title={t.erledigt ? 'Als offen markieren' : 'Als erledigt markieren'}
-                          aria-label={t.erledigt ? 'Todo als offen markieren' : 'Todo als erledigt markieren'}
-                        >
-                          {t.erledigt && <CheckIcon size={12} color="#fff" />}
+                <PanelSection title="Aufbewahrung & Schutz">
+                  <div style={{ ...styles.govRow, borderBottom: `1px solid ${theme.colors.borderLight}` }}>
+                    <span style={styles.govLabel}>Aufbewahrung bis</span>
+                    <span style={styles.govValue}>{vorgang.aufbewahrungBis ? fmtDate(vorgang.aufbewahrungBis) : 'Bei Abschluss'}</span>
+                  </div>
+                  <div style={{ ...styles.govRow, borderBottom: `1px solid ${theme.colors.borderLight}` }}>
+                    <span style={styles.govLabel}>Legal Hold</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                      <span style={styles.govValue}>{vorgang.legalHold ? 'Aktiv (Löschsperre)' : 'Nein'}</span>
+                      {isOwner && (
+                        <button style={styles.btnSmall} onClick={toggleLegalHold} disabled={busy}>
+                          {vorgang.legalHold ? 'Aufheben' : 'Setzen'}
                         </button>
-                        <span style={{ ...styles.todoText, ...(t.erledigt ? { textDecoration: 'line-through', color: theme.colors.textMuted } : {}) }}>{t.text}</span>
-                        {canEdit && (
-                          <button style={styles.iconBtn} onClick={() => deleteTodo(t)} disabled={busy} title="Todo löschen" aria-label="Todo löschen">
-                            <TrashIcon size={13} color={theme.colors.textMuted} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    {canEdit && (
-                      <div style={styles.miniRow}>
-                        <input style={styles.input} placeholder="Neues Todo" value={neuerTodo} onChange={(e) => setNeuerTodo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addTodo(); }} />
-                        <button style={styles.btnSmall} onClick={addTodo} disabled={busy || !neuerTodo.trim()}>+ Todo</button>
-                      </div>
-                    )}
+                      )}
+                    </span>
                   </div>
-                )}
-
-                <div style={styles.sideTitle}>Labels</div>
-                {labels.length === 0
-                  ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Keine Labels.</div>
-                  : <div style={{ display: 'flex', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
-                      {labels.map((l) => (
-                        <span key={l} style={styles.labelChip}>
-                          {l}
-                          {canEdit && (
-                            <button style={styles.labelRemove} onClick={() => removeLabel(l)} disabled={busy} title="Label entfernen" aria-label={`Label ${l} entfernen`}>
-                              <XIcon size={11} />
-                            </button>
-                          )}
-                        </span>
-                      ))}
-                    </div>}
-                {canEdit && (
-                  <div style={styles.miniRow}>
-                    <input style={styles.input} placeholder="Neues Label" value={neuesLabel} onChange={(e) => setNeuesLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addLabel(); }} />
-                    <button style={styles.btnSmall} onClick={addLabel} disabled={busy || !neuesLabel.trim()}>+ Label</button>
+                  <div style={styles.govRow}>
+                    <span style={styles.govLabel}>Verarbeitung (Art. 18)</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                      <span style={{ ...styles.govValue, ...(eingeschraenkt ? { color: theme.colors.warning } : {}) }}>
+                        {eingeschraenkt ? 'Eingeschränkt' : 'Normal'}
+                      </span>
+                      {eingeschraenkt
+                        ? (isOwner && <button style={styles.btnSmall} onClick={toggleEinschraenkung} disabled={busy}>Aufheben</button>)
+                        : (canEditRole && <button style={styles.btnSmall} onClick={toggleEinschraenkung} disabled={busy}>Einschränken</button>)}
+                    </span>
                   </div>
-                )}
+                </PanelSection>
 
-                <div style={styles.sideTitle}>KI-Nutzung</div>
-                <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, lineHeight: 1.5 }}>
-                  KI wird nur assistierend eingesetzt (Prüfung/Aufbereitung). Die Entscheidung trifft ein Mensch.
-                </div>
-                {kiNutzung.length === 0
-                  ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Für diesen Fall wurde noch keine KI-Assistenz genutzt.</div>
-                  : kiNutzung.map((e, i) => (
-                      <div key={`${e.timestamp}-${i}`} style={styles.activity}>
-                        <div style={styles.protoAktion}>{kiZweckLabel(e)}</div>
-                        <div style={styles.protoMeta}>
-                          {fmtDateTime(e.timestamp)}
-                          {e.modelId ? ` · Modell: ${e.modelId}` : ''}
-                          {e.totalTokens != null ? ` · ${e.totalTokens} Tokens` : ''}
-                        </div>
-                        {(e.promptVersion || e.rechtStand) && (
+                <PanelSection title="Todos" count={todosOffen > 0 ? todosOffen : undefined}>
+                  {todos.length === 0 && <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Keine Todos.</div>}
+                  {todos.map((t) => (
+                    <div key={t.id} style={styles.todoItem}>
+                      <button
+                        style={{ ...styles.todoCheck, ...(t.erledigt ? { backgroundColor: ACCENT, borderColor: ACCENT } : {}), ...(canEdit ? {} : { cursor: 'default' }) }}
+                        onClick={() => canEdit && toggleTodo(t)}
+                        disabled={busy || !canEdit}
+                        title={t.erledigt ? 'Als offen markieren' : 'Als erledigt markieren'}
+                        aria-label={t.erledigt ? 'Todo als offen markieren' : 'Todo als erledigt markieren'}
+                      >
+                        {t.erledigt && <CheckIcon size={12} color="#fff" />}
+                      </button>
+                      <span style={{ ...styles.todoText, ...(t.erledigt ? { textDecoration: 'line-through', color: theme.colors.textMuted } : {}) }}>{t.text}</span>
+                      {canEdit && (
+                        <button style={styles.iconBtn} onClick={() => deleteTodo(t)} disabled={busy} title="Todo löschen" aria-label="Todo löschen">
+                          <TrashIcon size={13} color={theme.colors.textMuted} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {canEdit && (
+                    <div style={styles.miniRow}>
+                      <input style={styles.input} placeholder="Neues Todo" value={neuerTodo} onChange={(e) => setNeuerTodo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addTodo(); }} />
+                      <button style={styles.btnSmall} onClick={addTodo} disabled={busy || !neuerTodo.trim()}>+ Todo</button>
+                    </div>
+                  )}
+                </PanelSection>
+
+                <PanelSection title="Labels" count={labels.length > 0 ? labels.length : undefined}>
+                  {labels.length === 0
+                    ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Keine Labels.</div>
+                    : <div style={{ display: 'flex', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
+                        {labels.map((l) => (
+                          <span key={l} style={styles.labelChip}>
+                            {l}
+                            {canEdit && (
+                              <button style={styles.labelRemove} onClick={() => removeLabel(l)} disabled={busy} title="Label entfernen" aria-label={`Label ${l} entfernen`}>
+                                <XIcon size={11} />
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                      </div>}
+                  {canEdit && (
+                    <div style={styles.miniRow}>
+                      <input style={styles.input} placeholder="Neues Label" value={neuesLabel} onChange={(e) => setNeuesLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addLabel(); }} />
+                      <button style={styles.btnSmall} onClick={addLabel} disabled={busy || !neuesLabel.trim()}>+ Label</button>
+                    </div>
+                  )}
+                </PanelSection>
+
+                <PanelSection title="KI-Nutzung" count={kiNutzung.length > 0 ? kiNutzung.length : undefined}>
+                  <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, lineHeight: 1.5 }}>
+                    KI wird nur assistierend eingesetzt (Prüfung/Aufbereitung). Die Entscheidung trifft ein Mensch.
+                  </div>
+                  {kiNutzung.length === 0
+                    ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Für diesen Fall wurde noch keine KI-Assistenz genutzt.</div>
+                    : kiNutzung.map((e, i) => (
+                        <div key={`${e.timestamp}-${i}`} style={styles.activity}>
+                          <div style={styles.protoAktion}>{kiZweckLabel(e)}</div>
                           <div style={styles.protoMeta}>
-                            {e.promptVersion ? `Prompt-Stand: ${e.promptVersion}` : ''}
-                            {e.promptVersion && e.rechtStand ? ' · ' : ''}
-                            {e.rechtStand ? `Rechtsstand: ${e.rechtStand}` : ''}
+                            {fmtDateTime(e.timestamp)}
+                            {e.modelId ? ` · Modell: ${e.modelId}` : ''}
+                            {e.totalTokens != null ? ` · ${e.totalTokens} Tokens` : ''}
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          {(e.promptVersion || e.rechtStand) && (
+                            <div style={styles.protoMeta}>
+                              {e.promptVersion ? `Prompt-Stand: ${e.promptVersion}` : ''}
+                              {e.promptVersion && e.rechtStand ? ' · ' : ''}
+                              {e.rechtStand ? `Rechtsstand: ${e.rechtStand}` : ''}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                </PanelSection>
               </div>
             )}
 
@@ -1477,12 +1492,11 @@ export default function VorgangDetail() {
                     if (items.length) groups.push({ key: p.id, label: [p.vorname, p.nachname].filter(Boolean).join(' ') || 'Person', items });
                   }
                   return groups.filter((g) => g.items.length).map((g) => (
-                    <div key={g.key} style={{ marginBottom: theme.spacing.md }}>
-                      <div style={styles.sideTitle}>{g.label} ({g.items.length})</div>
+                    <PanelSection key={g.key} title={g.label} count={g.items.length}>
                       {g.items.map((p) => (
                         <PruefschrittItem key={p.id} pruefschritt={p} canEdit={canEdit} busy={busy} onStatus={(s) => setPruefStatus(p, s)} onOpenDokument={jumpToDokument} dokumentLabel={dokLabel(p.quellDokumentId)} />
                       ))}
-                    </div>
+                    </PanelSection>
                   ));
                 })()}
 
@@ -1538,7 +1552,7 @@ export default function VorgangDetail() {
                       style={{
                         ...styles.docItem,
                         ...(highlightDocId === d.id
-                          ? { backgroundColor: ACCENT_LIGHT, borderRadius: theme.borderRadius.md, transition: `background-color ${theme.transitions.fast}`, marginLeft: -theme.spacing.sm, marginRight: -theme.spacing.sm, paddingLeft: theme.spacing.sm, paddingRight: theme.spacing.sm }
+                          ? { backgroundColor: ACCENT_LIGHT, transition: `background-color ${theme.transitions.fast}` }
                           : { transition: `background-color ${theme.transitions.fast}` }),
                       }}
                     >
@@ -1592,15 +1606,18 @@ export default function VorgangDetail() {
                   if (dokumente.length === 0) return <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Noch keine Dokumente.</div>;
                   return (
                     <>
-                      <div style={styles.sideTitle}>Nachweise ({nachweise.length})</div>
-                      {renderGruppiert(nachweise, 'Keine klassifizierten Nachweise.')}
-                      <div style={{ ...styles.sideTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
-                        <span>Originaldateien ({originale.length})</span>
-                        {originale.filter(hatDatei).length > 0 && (
-                          <button style={styles.docLinkBtn} onClick={() => downloadAlleOriginale(originale.filter(hatDatei))} title="Jede Originaldatei einzeln herunterladen">Alle herunterladen</button>
-                        )}
-                      </div>
-                      {renderGruppiert(originale, 'Keine Originaldateien.')}
+                      <PanelSection title="Nachweise" count={nachweise.length}>
+                        {renderGruppiert(nachweise, 'Keine klassifizierten Nachweise.')}
+                      </PanelSection>
+                      <PanelSection
+                        title="Originaldateien"
+                        count={originale.length}
+                        action={originale.filter(hatDatei).length > 0
+                          ? <button style={styles.docLinkBtn} onClick={() => downloadAlleOriginale(originale.filter(hatDatei))} title="Jede Originaldatei einzeln herunterladen">Alle herunterladen</button>
+                          : null}
+                      >
+                        {renderGruppiert(originale, 'Keine Originaldateien.')}
+                      </PanelSection>
                     </>
                   );
                 })()}
