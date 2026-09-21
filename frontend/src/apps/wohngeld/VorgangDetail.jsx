@@ -25,6 +25,7 @@ const MAIN_TABS = [
   { id: 'plausibilitaet', label: 'Plausibilitätsprüfung' },
   { id: 'prognose', label: 'Einkommensprognose' },
   { id: 'verfuegung', label: 'Verfügung' },
+  { id: 'protokoll', label: 'Protokoll' },
 ];
 const SIDE_TABS = [
   { id: 'details', label: 'Details' },
@@ -54,8 +55,8 @@ const styles = {
   subtitle: { fontSize: theme.typography.sizes.base, color: theme.colors.textSecondary, display: 'flex', gap: theme.spacing.md, alignItems: 'center', marginTop: theme.spacing.xs, flexWrap: 'wrap' },
   headActions: { display: 'flex', gap: theme.spacing.md, alignItems: 'center' },
   layout: { display: 'flex', gap: theme.spacing.lg, alignItems: 'flex-start', padding: theme.spacing.xl, flexWrap: 'wrap' },
-  main: { flex: 1, minWidth: 320 },
-  side: { width: 360, flexShrink: 0, minWidth: 300 },
+  main: { flex: 1, minWidth: 300 },
+  side: { width: 440, flexShrink: 0, minWidth: 360 },
   tabs: { display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.lg, flexWrap: 'wrap' },
   tab: { padding: `${theme.spacing.sm} ${theme.spacing.md}`, backgroundColor: 'transparent', border: 'none', borderRadius: theme.borderRadius.md, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, cursor: 'pointer' },
   tabActive: { backgroundColor: ACCENT_LIGHT, color: ACCENT },
@@ -1241,6 +1242,54 @@ export default function VorgangDetail() {
               </SektionCard>
             );
           })()}
+
+          {mainTab === 'protokoll' && (
+            <SektionCard title={`Protokoll${protokoll.length ? ` (${protokoll.length})` : ''}`}>
+              {protokoll.length === 0
+                ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Noch keine protokollierten Aktionen.</div>
+                : protokoll.map((e) => {
+                  const diffFelder = e.vorher && typeof e.vorher === 'object'
+                    ? Object.keys({ ...(e.vorher || {}), ...(e.nachher || {}) })
+                    : [];
+                  const hatDiff = diffFelder.length > 0;
+                  const offen = !!protokollOffen[e.id];
+                  return (
+                    <div key={e.id} style={styles.activity}>
+                      <div style={styles.protoAktion}>{aktionLabel(e.aktion)}</div>
+                      {e.detail && <div style={{ color: theme.colors.textSecondary }}>{e.detail}</div>}
+                      <div style={styles.protoMeta}>
+                        {fmtDateTime(e.timestamp)}
+                        {e.akteurName ? ` · ${e.akteurName}` : ''}
+                        {e.akteurRolle ? <> · <span style={styles.protoRolle}>{APP_ROLE_LABEL[e.akteurRolle] || e.akteurRolle}</span></> : ''}
+                      </div>
+                      {hatDiff && (
+                        <button
+                          style={styles.protoToggle}
+                          onClick={() => setProtokollOffen((m) => ({ ...m, [e.id]: !m[e.id] }))}
+                        >
+                          <ChevronDownIcon size={11} style={{ transform: offen ? 'rotate(180deg)' : 'none' }} />
+                          {offen ? 'Änderungen ausblenden' : 'Änderungen anzeigen'}
+                        </button>
+                      )}
+                      {hatDiff && offen && (
+                        <div style={styles.protoDiff}>
+                          {diffFelder.map((feld) => (
+                            <div key={feld} style={styles.protoDiffRow}>
+                              <span style={styles.protoDiffFeld}>{feld}</span>
+                              <span>
+                                <span style={styles.protoAlt}>{fmtProtoValue(e.vorher?.[feld])}</span>
+                                {' → '}
+                                <span style={styles.protoNeu}>{fmtProtoValue(e.nachher?.[feld])}</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </SektionCard>
+          )}
         </div>
 
         {/* ── RECHTE SEITENLEISTE ── */}
@@ -1380,51 +1429,6 @@ export default function VorgangDetail() {
                     <button style={styles.btnSmall} onClick={addLabel} disabled={busy || !neuesLabel.trim()}>+ Label</button>
                   </div>
                 )}
-
-                <div style={styles.sideTitle}>Protokoll</div>
-                {protokoll.length === 0
-                  ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Noch keine protokollierten Aktionen.</div>
-                  : protokoll.map((e) => {
-                    const diffFelder = e.vorher && typeof e.vorher === 'object'
-                      ? Object.keys({ ...(e.vorher || {}), ...(e.nachher || {}) })
-                      : [];
-                    const hatDiff = diffFelder.length > 0;
-                    const offen = !!protokollOffen[e.id];
-                    return (
-                      <div key={e.id} style={styles.activity}>
-                        <div style={styles.protoAktion}>{aktionLabel(e.aktion)}</div>
-                        {e.detail && <div style={{ color: theme.colors.textSecondary }}>{e.detail}</div>}
-                        <div style={styles.protoMeta}>
-                          {fmtDateTime(e.timestamp)}
-                          {e.akteurName ? ` · ${e.akteurName}` : ''}
-                          {e.akteurRolle ? <> · <span style={styles.protoRolle}>{APP_ROLE_LABEL[e.akteurRolle] || e.akteurRolle}</span></> : ''}
-                        </div>
-                        {hatDiff && (
-                          <button
-                            style={styles.protoToggle}
-                            onClick={() => setProtokollOffen((m) => ({ ...m, [e.id]: !m[e.id] }))}
-                          >
-                            <ChevronDownIcon size={11} style={{ transform: offen ? 'rotate(180deg)' : 'none' }} />
-                            {offen ? 'Änderungen ausblenden' : 'Änderungen anzeigen'}
-                          </button>
-                        )}
-                        {hatDiff && offen && (
-                          <div style={styles.protoDiff}>
-                            {diffFelder.map((feld) => (
-                              <div key={feld} style={styles.protoDiffRow}>
-                                <span style={styles.protoDiffFeld}>{feld}</span>
-                                <span>
-                                  <span style={styles.protoAlt}>{fmtProtoValue(e.vorher?.[feld])}</span>
-                                  {' → '}
-                                  <span style={styles.protoNeu}>{fmtProtoValue(e.nachher?.[feld])}</span>
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
 
                 <div style={styles.sideTitle}>KI-Nutzung</div>
                 <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, lineHeight: 1.5 }}>

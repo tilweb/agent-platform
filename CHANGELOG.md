@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-22
+
+### Wohngeld — Layout: breiteres Seitenpanel + Protokoll als eigener Vorgangs-Tab
+Das rechte Seitenpanel (Details/Prüfschritte/Dokumente) ist breiter (360→440 px, min 360), die
+Hauptfläche gibt entsprechend Platz ab — die Detailinfos rechts haben jetzt mehr Raum. Das lange
+Fall-**Protokoll** wandert aus dem Details-Panel in einen **eigenen Haupt-Tab „Protokoll"** des
+Vorgangs (mehr Breite/Höhe für die Historie). KI-Nutzung bleibt im Details-Panel. Kein Backend-Change.
+
 ## 2026-09-21
 
 ### Wohngeld — „n offen"-Sektions-Pills sind jetzt klickbar (Absprung zu offenen Prüfschritten)
