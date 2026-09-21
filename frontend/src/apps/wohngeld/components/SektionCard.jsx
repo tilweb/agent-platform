@@ -36,7 +36,7 @@ const styles = {
  * offenCount = Anzahl offener zugehöriger Prüfschritte (0 = grün/ok).
  * Optional einklappbar (collapsible + defaultOpen) — Zustand lokal, Chevron im Titel.
  */
-export default function SektionCard({ title, offenCount, action, children, collapsible = false, defaultOpen = true, notizCount, onNotizClick }) {
+export default function SektionCard({ title, offenCount, onOffenClick, action, children, collapsible = false, defaultOpen = true, notizCount, onNotizClick }) {
   const [open, setOpen] = useState(defaultOpen);
   const hasOpen = offenCount > 0;
   const ampelStyle = hasOpen
@@ -63,9 +63,20 @@ export default function SektionCard({ title, offenCount, action, children, colla
         </div>
         <div style={styles.right}>
           {typeof offenCount === 'number' && (
-            <span style={{ ...styles.ampel, ...ampelStyle }}>
-              {hasOpen ? `${offenCount} offen` : 'vollständig'}
-            </span>
+            hasOpen && onOffenClick ? (
+              <button
+                type="button"
+                style={{ ...styles.ampel, ...ampelStyle, border: 'none', cursor: 'pointer' }}
+                onClick={onOffenClick}
+                title="Offene Punkte anzeigen"
+              >
+                {offenCount} offen
+              </button>
+            ) : (
+              <span style={{ ...styles.ampel, ...ampelStyle }}>
+                {hasOpen ? `${offenCount} offen` : 'vollständig'}
+              </span>
+            )
           )}
           {onNotizClick && (
             <button style={styles.notizBtn} onClick={onNotizClick} title="Notizen">

@@ -390,6 +390,8 @@ export default function VorgangDetail() {
   const countWohnung = offen.filter((p) => matches(p, /miet|wohn|heiz|warmwasser|fläche|flaeche/i)).length;
   const countEinkommen = offen.filter((p) => matches(p, /einkomm|einkünf|einkuenf|gehalt|lohn|rente|verdienst|abzug/i)).length;
   const countZahlung = offen.filter((p) => matches(p, /iban|zahlung|bewilligung|konto/i)).length;
+  // Klick auf eine „n offen"-Pill → rechte Seitenleiste öffnet die offenen Prüfschritte.
+  const zeigeOffene = () => { setSideTab('pruefschritte'); setPruefFilter('offen'); };
 
   // ── Übersicht-Bearbeitung ──
   function startEdit() {
@@ -788,7 +790,7 @@ export default function VorgangDetail() {
               )}
               <SektionCard
                 title="Allgemein"
-                offenCount={countAllgemein}
+                offenCount={countAllgemein} onOffenClick={zeigeOffene}
                 collapsible
                 notizCount={notizCount('sektion:allgemein')}
                 onNotizClick={() => setNotizPanel({ anker: 'sektion:allgemein', label: 'Allgemein' })}
@@ -826,7 +828,7 @@ export default function VorgangDetail() {
 
               <SektionCard
                 title="Personen"
-                offenCount={countPersonen}
+                offenCount={countPersonen} onOffenClick={zeigeOffene}
                 collapsible
                 notizCount={notizCount('sektion:personen')}
                 onNotizClick={() => setNotizPanel({ anker: 'sektion:personen', label: 'Personen' })}
@@ -851,7 +853,7 @@ export default function VorgangDetail() {
 
               <SektionCard
                 title="Wohnung & Miete"
-                offenCount={countWohnung}
+                offenCount={countWohnung} onOffenClick={zeigeOffene}
                 collapsible
                 notizCount={notizCount('sektion:wohnung')}
                 onNotizClick={() => setNotizPanel({ anker: 'sektion:wohnung', label: 'Wohnung & Miete' })}
@@ -891,7 +893,7 @@ export default function VorgangDetail() {
 
               <SektionCard
                 title="Einkommen & Abzugsbeträge"
-                offenCount={countEinkommen}
+                offenCount={countEinkommen} onOffenClick={zeigeOffene}
                 collapsible
                 notizCount={notizCount('sektion:einkommen')}
                 onNotizClick={() => setNotizPanel({ anker: 'sektion:einkommen', label: 'Einkommen & Abzugsbeträge' })}
@@ -996,7 +998,7 @@ export default function VorgangDetail() {
 
               <SektionCard
                 title="Bewilligungszeitraum & Zahlung"
-                offenCount={countZahlung}
+                offenCount={countZahlung} onOffenClick={zeigeOffene}
                 collapsible
                 action={canEdit && bwzVorschlagOffen && !editMode && (
                   <button style={styles.btnSmall} onClick={bwzVorschlagUebernehmen} disabled={busy} title="12 Monate ab Antragsmonat übernehmen">

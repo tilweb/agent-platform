@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-21
+
+### Wohngeld — „n offen"-Sektions-Pills sind jetzt klickbar (Absprung zu offenen Prüfschritten)
+Die orangenen „n offen"-Pills an den Übersicht-Sektionen zeigten nur eine Zahl, ohne Weg zu den
+konkreten Punkten. Sie sind jetzt anklickbar und öffnen die rechte Seitenleiste im Tab
+„Prüfschritte" mit Filter „Offen". `SektionCard` erhält `onOffenClick`; `VorgangDetail` verdrahtet
+alle fünf Sektionen. Kein Backend-Change.
+
 ## 2026-09-20
 
 ### Wohngeld — Posteingang-Extraktion auf Plattform-Extraction-Feature umgestellt (`docs/wohngeld-extraction-umbau-spec-2026-09-20.md`)
