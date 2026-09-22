@@ -2,6 +2,13 @@
 
 ## 2026-09-22
 
+### Wohngeld — Dokument-Aktionen als Icon-Buttons + Löschen mit Bestätigungs-Modal
+Die Aktionen je Dokument (Dokumente-Tab) sind jetzt Icon-Buttons mit Tooltip statt Text-Links:
+Vorschau (Auge), Herunterladen (Pfeil), Ins Fachverfahren ablegen (Archiv). Neu: **Dokument
+löschen** (Papierkorb, Danger) mit **Sicherheits-Modal** (Abbrechen/Löschen) — nach dem Löschen
+wird die Prüfung automatisch neu ausgeführt (entfernter Nachweis öffnet ggf. wieder eine
+Anforderung). Neue Icons `EyeIcon`/`DownloadIcon`.
+
 ### Wohngeld — Extraktions-Transparenz pro Dokument
 - **Neu:** Sichtbar, WAS die KI aus einem Dokument gezogen hat — als Verzeichnisbaum
   (Gruppen-Knoten + Blätter, durchgehende vertikale Linie + Abzweigung je Blatt), mit

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { theme } from '../../config/theme';
-import { ArrowLeftIcon, UploadIcon, ChatIcon, CopyIcon, PanelRightIcon, ChevronDownIcon, InfoIcon, PlusIcon, TrashIcon, SearchIcon, CheckIcon, XIcon, ClockIcon } from '../../components/Icons';
+import { ArrowLeftIcon, UploadIcon, ChatIcon, CopyIcon, PanelRightIcon, ChevronDownIcon, InfoIcon, PlusIcon, TrashIcon, SearchIcon, CheckIcon, XIcon, ClockIcon, EyeIcon, DownloadIcon, ArchiveIcon } from '../../components/Icons';
 import { useAppPermission } from '../../components/RequireAppPermission';
 import {
   wohngeldApi,
@@ -130,6 +130,13 @@ const styles = {
   labelRemove: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: theme.colors.textMuted },
   docActions: { display: 'flex', gap: theme.spacing.xs, flexWrap: 'wrap', marginTop: theme.spacing.xs },
   docLinkBtn: { fontSize: theme.typography.sizes.xs, color: ACCENT, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: theme.typography.weights.medium },
+  iconAction: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.textSecondary, cursor: 'pointer' },
+  iconActionDanger: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: `1px solid ${theme.colors.error}30`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.error, cursor: 'pointer' },
+  btnDanger: { padding: `${theme.spacing.sm} ${theme.spacing.lg}`, backgroundColor: theme.colors.error, color: '#fff', border: 'none', borderRadius: theme.borderRadius.lg, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, cursor: 'pointer' },
+  confirmModal: { backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl, border: `1px solid ${theme.colors.border}`, padding: theme.spacing.xl, width: '90%', maxWidth: 440 },
+  confirmTitle: { fontSize: theme.typography.sizes.lg, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, marginBottom: theme.spacing.sm },
+  confirmText: { fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, lineHeight: 1.5, marginBottom: theme.spacing.lg },
+  confirmActions: { display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md },
   ablageBadge: { fontSize: '0.65rem', fontWeight: theme.typography.weights.semibold, padding: `1px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full },
   docGroupTitle: { fontSize: '0.7rem', color: theme.colors.textMuted, fontWeight: theme.typography.weights.semibold, marginTop: theme.spacing.sm, marginBottom: 2 },
   previewOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: theme.spacing.xl },
@@ -215,6 +222,8 @@ export default function VorgangDetail() {
   // Dateivorschau (WP10): { url, contentType, name, dok } — objectURL wird beim Wechsel/Unmount freigegeben
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  // Dokument-Löschung mit Sicherheits-Modal: das zu löschende Dokument (oder null).
+  const [docToDelete, setDocToDelete] = useState(null);
   // Extraktions-Transparenz: aufgeklappte Dokument-Kacheln (Set von Dokument-IDs)
   const [extraktionOffen, setExtraktionOffen] = useState(() => new Set());
 
@@ -345,6 +354,23 @@ export default function VorgangDetail() {
     try { await wohngeldApi.ablegenDokument(d.id); await reload(); }
     catch (e) { setError(e.message); }
     finally { setBusy(false); }
+  }
+
+  // Dokument löschen (nach Modal-Bestätigung): entfernen → neu prüfen → neu laden.
+  async function confirmDeleteDoc() {
+    if (!docToDelete) return;
+    setBusy(true); setError('');
+    try {
+      await wohngeldApi.deleteDokument(docToDelete.id);
+      // Nachweis entfernt → Prüfung neu ausführen, damit offene Anforderungen wieder erscheinen.
+      try { await wohngeldApi.pruefen(id); } catch { /* Prüfung best-effort */ }
+      setDocToDelete(null);
+      await reload();
+    } catch (e) {
+      setError(e.message || 'Dokument konnte nicht gelöscht werden');
+    } finally {
+      setBusy(false);
+    }
   }
 
   // ── Verfügung (WP11) ──
@@ -1592,18 +1618,17 @@ export default function VorgangDetail() {
                       <div style={styles.docActions}>
                         {hatDatei(d) ? (
                           <>
-                            <button style={styles.docLinkBtn} onClick={() => openPreview(d)} disabled={previewLoading}>Vorschau</button>
-                            <span style={{ color: theme.colors.borderLight }}>·</span>
-                            <button style={styles.docLinkBtn} onClick={() => downloadDoc(d)}>Herunterladen</button>
+                            <button style={styles.iconAction} onClick={() => openPreview(d)} disabled={previewLoading} title="Vorschau" aria-label="Vorschau"><EyeIcon size={15} /></button>
+                            <button style={styles.iconAction} onClick={() => downloadDoc(d)} title="Herunterladen" aria-label="Herunterladen"><DownloadIcon size={15} /></button>
                           </>
                         ) : (
                           <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>Keine Datei hinterlegt</span>
                         )}
                         {canEdit && !d.abgelegt && (
-                          <>
-                            <span style={{ color: theme.colors.borderLight }}>·</span>
-                            <button style={styles.docLinkBtn} onClick={() => ablegen(d)} disabled={busy}>Ins Fachverfahren abgelegt</button>
-                          </>
+                          <button style={styles.iconAction} onClick={() => ablegen(d)} disabled={busy} title="Ins Fachverfahren ablegen" aria-label="Ins Fachverfahren ablegen"><ArchiveIcon size={15} /></button>
+                        )}
+                        {canEdit && (
+                          <button style={styles.iconActionDanger} onClick={() => setDocToDelete(d)} disabled={busy} title="Dokument löschen" aria-label="Dokument löschen"><TrashIcon size={15} /></button>
                         )}
                       </div>
                       {(() => {
@@ -1700,6 +1725,22 @@ export default function VorgangDetail() {
           onDelete={deleteNotiz}
           onClose={() => setNotizPanel(null)}
         />
+      )}
+
+      {docToDelete && (
+        <div style={styles.previewOverlay} onClick={() => { if (!busy) setDocToDelete(null); }}>
+          <div style={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.confirmTitle}>Dokument löschen?</div>
+            <p style={styles.confirmText}>
+              „{DOKUMENT_TYP_LABEL[docToDelete.typ] || docToDelete.typ}{docToDelete.quelle ? ` · ${docToDelete.quelle}` : ''}" wird aus dem Vorgang entfernt.
+              Die Prüfung wird anschließend neu ausgeführt. Dieser Schritt kann nicht rückgängig gemacht werden.
+            </p>
+            <div style={styles.confirmActions}>
+              <button style={styles.btnGhost} onClick={() => setDocToDelete(null)} disabled={busy}>Abbrechen</button>
+              <button style={styles.btnDanger} onClick={confirmDeleteDoc} disabled={busy}>{busy ? 'Löscht…' : 'Löschen'}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {preview && (
