@@ -209,6 +209,28 @@ describe('Welle 3 — Vermögen/Transfer/BWZ-Regeln (WP5)', () => {
     expect(has(pruefeVorgang(snap), 'ausschluss-person-transferbezug')).toBe(false);
   });
 
+  test('§7-Ausschluss feuert bei forml-Ausschluss-Eintrag (ausschluesse[]) + nennt Grund-Label', () => {
+    const snap: VorgangSnapshot = {
+      vorgang: mkVorgang(),
+      personen: [mkPerson({ id: 'p1', rolle: 'antragsteller', vorname: 'A', nachname: 'X',
+        ausschluesse: [{ id: 'x1', grund: 'sgb2_buergergeld', von: '2026-01-01' }] })],
+      dokumente: [],
+    };
+    const befunde = pruefeVorgang(snap);
+    expect(has(befunde, 'ausschluss-person-transferbezug', 'p1')).toBe(true);
+    const b = befunde.find(x => x.regelId === 'ausschluss-person-transferbezug');
+    expect(b?.belegtext).toContain('Bürgergeld');
+  });
+
+  test('§7-Regel feuert nicht ohne Ausschluss/Transfer-Angaben', () => {
+    const snap: VorgangSnapshot = {
+      vorgang: mkVorgang(),
+      personen: [mkPerson({ id: 'p1', rolle: 'antragsteller', vorname: 'A', nachname: 'X' })],
+      dokumente: [],
+    };
+    expect(has(pruefeVorgang(snap), 'ausschluss-person-transferbezug')).toBe(false);
+  });
+
   test('BWZ-Vorschlag-Regel feuert bei fehlendem BWZ + vorhandenem Antragsdatum', () => {
     const snap: VorgangSnapshot = {
       vorgang: mkVorgang({ antragsdatum: '2026-08-12', bwz_start: undefined, bwz_ende: undefined, bwz: undefined }),

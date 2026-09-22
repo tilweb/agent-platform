@@ -4,6 +4,7 @@ import {
   gesamteinkommen, vermoegensFreigrenze, FREIBETRAG_17,
   abzugskategorienFuer, berechneVorgangEinkommen,
   unterhaltsabzuegeFuer, unterhaltsabzuegeFuerPerson, vermoegenSummeFuer, haushaltsVermoegen,
+  frequenzProJahr,
 } from './einkommen';
 import type { Person, Dokument } from './types';
 
@@ -160,6 +161,63 @@ describe('Unterhaltsabzüge § 18 (unterhaltsabzuegeFuer)', () => {
   });
   test('keine Verpflichtungen → 0', () => {
     expect(unterhaltsabzuegeFuer([mkPerson()])).toBe(0);
+  });
+});
+
+describe('frequenzProJahr (reiner Helfer)', () => {
+  test('Faktoren je Frequenz', () => {
+    expect(frequenzProJahr('taeglich')).toBe(365);
+    expect(frequenzProJahr('woechentlich')).toBe(52);
+    expect(frequenzProJahr('vierzehntaegig')).toBe(26);
+    expect(frequenzProJahr('monatlich')).toBe(12);
+    expect(frequenzProJahr('vierteljaehrlich')).toBe(4);
+    expect(frequenzProJahr('jaehrlich')).toBe(1);
+    expect(frequenzProJahr('einmalig')).toBe(1);
+    expect(frequenzProJahr('schwankend')).toBe(12);
+    expect(frequenzProJahr('sonstige')).toBe(12);
+  });
+  test('fehlende/unbekannte Frequenz → 12 (wie monatlich)', () => {
+    expect(frequenzProJahr(undefined)).toBe(12);
+  });
+});
+
+describe('§18 — neue forml-Shape (verwandtschaft + frequenz)', () => {
+  test('monatlicher Betrag → Jahresbetrag = betrag × 12, ungekappt unter Grenze', () => {
+    const p = mkPerson({ unterhaltsverpflichtungen: [
+      { id: 'u1', verwandtschaft: 'ehegatte_getrennt', betrag: 400, frequenz: 'monatlich' }, // 4800 < 6000
+    ] });
+    expect(unterhaltsabzuegeFuerPerson(p)).toBe(4800);
+  });
+  test('Kappung je Verwandtschaft: kind → 3000', () => {
+    const p = mkPerson({ unterhaltsverpflichtungen: [
+      { id: 'u1', verwandtschaft: 'kind', betrag: 500, frequenz: 'monatlich' }, // 6000 → gekappt auf 3000
+    ] });
+    expect(unterhaltsabzuegeFuerPerson(p)).toBe(3000);
+  });
+  test('ehegatte_getrennt → 6000 (höhere Grenze)', () => {
+    const p = mkPerson({ unterhaltsverpflichtungen: [
+      { id: 'u1', verwandtschaft: 'ehegatte_getrennt', betrag: 800, frequenz: 'monatlich' }, // 9600 → gekappt auf 6000
+    ] });
+    expect(unterhaltsabzuegeFuerPerson(p)).toBe(6000);
+  });
+  test('elternteil → wie sonstige (3000)', () => {
+    const p = mkPerson({ unterhaltsverpflichtungen: [
+      { id: 'u1', verwandtschaft: 'elternteil', betrag: 5000, frequenz: 'jaehrlich' },
+    ] });
+    expect(unterhaltsabzuegeFuerPerson(p)).toBe(3000);
+  });
+  test('jährliche Frequenz: Betrag = Jahresbetrag', () => {
+    const p = mkPerson({ unterhaltsverpflichtungen: [
+      { id: 'u1', verwandtschaft: 'auswaertige_ausbildung', betrag: 2500, frequenz: 'jaehrlich' },
+    ] });
+    expect(unterhaltsabzuegeFuerPerson(p)).toBe(2500);
+  });
+  test('gemischte neue + Legacy-Einträge werden addiert', () => {
+    const p = mkPerson({ unterhaltsverpflichtungen: [
+      { id: 'u1', verwandtschaft: 'kind', betrag: 100, frequenz: 'monatlich' }, // 1200
+      { id: 'u2', empfaengerKategorie: 'ehegatte_getrennt', betrag: 4000, titelVorhanden: false }, // 4000 (< 6000)
+    ] });
+    expect(unterhaltsabzuegeFuerPerson(p)).toBe(1200 + 4000);
   });
 });
 

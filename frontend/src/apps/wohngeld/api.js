@@ -447,12 +447,47 @@ export const DOKUMENT_TYP_LABEL = {
   sonstiges: 'Sonstiges',
 };
 
-/** Empfänger-Kategorien der Unterhaltsverpflichtung (§ 18 WoGG). */
+/** Empfänger-Kategorien der Unterhaltsverpflichtung (§ 18 WoGG) — Legacy-Shape. */
 export const UNTERHALT_KATEGORIE_LABEL = {
   auswaertige_ausbildung: 'Auswärtige Ausbildung',
   kind_anderer_elternteil: 'Kind (anderer Elternteil)',
   ehegatte_getrennt: 'Getrennt lebender Ehegatte',
   sonstige: 'Sonstige',
+};
+
+/** Zahlungsfrequenz einer Betragsangabe (forml-Feldset, Welle 2). */
+export const FREQUENZ_LABEL = {
+  taeglich: 'täglich',
+  woechentlich: 'wöchentlich',
+  vierzehntaegig: '14-täglich',
+  monatlich: 'monatlich',
+  vierteljaehrlich: 'vierteljährlich',
+  jaehrlich: 'jährlich',
+  einmalig: 'einmalig',
+  schwankend: 'schwankend',
+  sonstige: 'sonstige',
+};
+
+/** Verwandtschaftsverhältnis Empfänger einer Unterhaltsverpflichtung (forml-Feldset). */
+export const VERWANDTSCHAFT_LABEL = {
+  kind: 'Kind',
+  ehegatte_getrennt: 'Getrennt lebender/früherer Ehegatte/Lebenspartner',
+  elternteil: 'Elternteil',
+  auswaertige_ausbildung: 'Person in auswärtiger Ausbildung',
+  sonstige: 'Sonstige',
+};
+
+/** Ausschluss-Grund nach § 7 WoGG (forml-Feldset, Welle 2). */
+export const AUSSCHLUSS_GRUND_LABEL = {
+  sgb2_buergergeld: 'Leistung nach SGB II (Bürgergeld)',
+  grundsicherung_alter_em: 'Grundsicherung im Alter/bei Erwerbsminderung',
+  hilfe_lebensunterhalt_sgb12: 'Hilfe zum Lebensunterhalt (SGB XII)',
+  ergaenzende_hilfe_bvg: 'Ergänzende Hilfe zum Lebensunterhalt (nach BVG)',
+  hilfe_stationaer: 'Hilfe in einer stationären Einrichtung zum Lebensunterhalt',
+  kinder_jugendhilfe_sgb8: 'Leistungen der Kinder- und Jugendhilfe (SGB VIII)',
+  asylblg: 'Grundleistungen nach dem AsylbLG',
+  ausbildungsfoerderung: 'Ausbildungsförderung (BAföG/BAB, § 20 Abs. 2 WoGG)',
+  sonstiger_grund: 'Sonstiger Grund',
 };
 
 /** Entscheidung der Verfügung (WP11). */

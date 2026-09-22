@@ -25,6 +25,39 @@ Vereinheitlichte Editier- und KI-Vorschlag-UX im Übersicht-Tab (`VorgangDetail`
   (textMuted) / Wert rechts. Neue Label-Maps in `api.js` (Geschlecht, Familienstand,
   Einkommens-Art, GdB-/Pflegegrad-Optionen). Backend unberührt (neue Felder landen im `data`-jsonb).
 
+### Wohngeld — forml-Listenblöcke je Person + Fachlogik (U2)
+Die reichen „+"-Listenblöcke des forml-Feldsets je Person, Spec
+`docs/wohngeld-hauptformular-ux-spec-2026-09-22.md` (U2). Rückwärtskompatibel, keine Migration
+(alles in `person.data`).
+- **Generischer `ListEditor` (PersonCard) umgebaut:** Block-Bearbeiten-Muster (Bearbeiten →
+  Verwerfen/Speichern) konsistent zu U1; außerhalb read-only Zusammenfassung. Im Bearbeiten-Modus
+  ist jeder Eintrag ein **einklappbarer Unter-Block** (Kopf „Neu · X" bzw. Zusammenfassung), Felder
+  über ein Feld-Schema `[{ key, label, type: 'text'|'number'|'date'|'select', options?, suffix? }]`
+  (Zeilen mit dünner Trennlinie, Select mit Platzhalter-Affordanz, Datum `tt.mm.jjjj`, Betrag mit
+  „€"). „+" zum Hinzufügen, Papierkorb je Eintrag. Legacy-Felder bleiben beim Speichern erhalten.
+- **Blöcke je Person:** Vermögen, **Kinderbetreuungskosten** (neu), Unterhaltsverpflichtungen (§18,
+  erweitert um Verwandtschaft/Empfänger-Name/Frequenz), Unterhaltsansprüche (erweitert um
+  Von-Name/Frequenz), **Ausschlüsse (§7)** (neu — ersetzt den Transferleistungen-Altblock; Altdaten
+  werden als Hinweis weiter angezeigt). Neue Label-Maps `FREQUENZ_LABEL`, `VERWANDTSCHAFT_LABEL`,
+  `AUSSCHLUSS_GRUND_LABEL` in `api.js`.
+- **Datenmodell (`types.ts`):** neue optionale Interfaces `Kinderbetreuungskosten`, `Ausschluss`,
+  Typen `Frequenz`, `UnterhaltVerwandtschaft`, `AusschlussGrund`; `Unterhaltsverpflichtung`/
+  `Unterhaltsanspruch` um die neue Shape erweitert (Legacy-Felder optional, weiter lesbar);
+  `Person.kinderbetreuungskosten` + `Person.ausschluesse`.
+- **§7 (`checker/plausibilitaet.ts`):** `ausschluss-person-transferbezug` feuert jetzt bei ≥1
+  `ausschluesse[]`-Eintrag (Belegtext nennt das Grund-Label) **ODER** wie bisher bei Legacy
+  `transferleistungenDetail.kduEnthalten`.
+- **§18 (`einkommen.ts`):** neuer reiner Helfer `frequenzProJahr(frequenz)` (taeglich 365,
+  woechentlich 52, vierzehntaegig 26, monatlich 12, vierteljaehrlich 4, jaehrlich 1, einmalig 1,
+  schwankend 12, sonstige 12, fehlend → 12) und `UNTERHALT_18_MAX_VERWANDTSCHAFT`.
+  `unterhaltsabzuegeFuerPerson` rechnet neue Einträge als `betrag × frequenzProJahr(frequenz)`,
+  gekappt je Verwandtschaft (kind/auswaertige_ausbildung/elternteil/sonstige → 3000,
+  ehegatte_getrennt → 6000); Legacy-Shape (empfaengerKategorie + titelVorhanden) unverändert.
+- **Kinderbetreuungskosten:** nur Erfassung/Anzeige — **kein** §13-Abzug (Nicht-Ziel).
+- **Auskunft-Export (Art. 15):** Kinderbetreuung + Ausschlüsse als Abschnitte ergänzt, Unterhalt
+  auf beide Shapes umgestellt. Tests: `einkommen.test.ts` (frequenzProJahr + §18 neue Shape),
+  `checker.test.ts` (§7 via `ausschluesse[]`) — 198 Tests grün, Goldfall unberührt.
+
 ### Wohngeld — Frist & Wiedervorlage einzeln setzbar + Prefill (Frist + 3 Tage)
 Frist und Wiedervorlage sind im Details-Tab jetzt einzeln als Datumsfelder editierbar (canEdit).
 Prefill-Regel: Wiedervorlage = **Frist + 3 Tage** — beim Generieren/„Versenden" eines

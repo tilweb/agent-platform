@@ -11,7 +11,7 @@
  *   Jahreseinkommen (§14)  = Σ positive Einkünfte + Hinzurechnungen − §16-Pauschale
  *   Monatswert = Gesamteinkommen / 12 (§13 Abs. 2)
  */
-import type { Person, Dokument } from './types';
+import type { Person, Dokument, Frequenz, UnterhaltVerwandtschaft } from './types';
 
 /** § 16 — abziehbare Beitrags-/Steuerkategorien (je 10 %, max. 30 %). */
 export interface Abzugskategorien16 {
@@ -35,6 +35,37 @@ export const UNTERHALT_18_MAX = {
   ehegatte_getrennt: 6000,        // Nr. 3
   sonstige: 3000,                 // Nr. 4
 } as const;
+
+/**
+ * § 18 — Kappungsgrenze je Verwandtschaftsverhältnis (neue forml-Shape).
+ * Mappt das UI-Verwandtschaftsfeld auf die § 18-Höchstbeträge.
+ */
+export const UNTERHALT_18_MAX_VERWANDTSCHAFT: Record<UnterhaltVerwandtschaft, number> = {
+  kind: UNTERHALT_18_MAX.kind_anderer_elternteil,       // 3000
+  auswaertige_ausbildung: UNTERHALT_18_MAX.auswaertige_ausbildung, // 3000
+  ehegatte_getrennt: UNTERHALT_18_MAX.ehegatte_getrennt, // 6000
+  elternteil: UNTERHALT_18_MAX.sonstige,                 // 3000
+  sonstige: UNTERHALT_18_MAX.sonstige,                   // 3000
+};
+
+/**
+ * Umrechnungsfaktor einer Zahlungsfrequenz auf einen Jahresbetrag (reiner Helfer).
+ * `einmalig` zählt als 1× (Jahresbetrag = Betrag); fehlend/unbekannt → 12 (wie monatlich).
+ */
+export function frequenzProJahr(frequenz?: Frequenz): number {
+  switch (frequenz) {
+    case 'taeglich': return 365;
+    case 'woechentlich': return 52;
+    case 'vierzehntaegig': return 26;
+    case 'monatlich': return 12;
+    case 'vierteljaehrlich': return 4;
+    case 'jaehrlich': return 1;
+    case 'einmalig': return 1;
+    case 'schwankend': return 12;
+    case 'sonstige': return 12;
+    default: return 12;
+  }
+}
 
 /**
  * § 16 — Staffel-Abzugssatz: 10 % je zutreffender Kategorie, max. 30 %.
@@ -147,14 +178,24 @@ export function haushaltsVermoegen(personen: Person[]): number {
 
 /**
  * § 18 — Unterhaltsabzüge einer einzelnen Person aus ihren `unterhaltsverpflichtungen`.
- * Je Position: mit Titel → tatsächliche Höhe (betrag); ohne Titel → gedeckelt auf den
- * kategoriespezifischen Höchstbetrag (UNTERHALT_18_MAX).
+ *
+ * Neue forml-Shape (`verwandtschaft` gesetzt): Jahresbetrag = `betrag` × `frequenzProJahr(frequenz)`,
+ * gekappt auf den verwandtschaftsspezifischen Höchstbetrag (UNTERHALT_18_MAX_VERWANDTSCHAFT).
+ *
+ * Legacy-Shape (`empfaengerKategorie`): `betrag` ist bereits ein Jahresbetrag; mit Titel →
+ * tatsächliche Höhe, ohne Titel → gedeckelt auf UNTERHALT_18_MAX[empfaengerKategorie].
  */
 export function unterhaltsabzuegeFuerPerson(person: Person): number {
   const posn = person.unterhaltsverpflichtungen ?? [];
   return posn.reduce((sum, u) => {
     const betrag = Math.max(0, u.betrag ?? 0);
-    const max = UNTERHALT_18_MAX[u.empfaengerKategorie] ?? UNTERHALT_18_MAX.sonstige;
+    if (u.verwandtschaft) {
+      const jahr = betrag * frequenzProJahr(u.frequenz);
+      const max = UNTERHALT_18_MAX_VERWANDTSCHAFT[u.verwandtschaft] ?? UNTERHALT_18_MAX.sonstige;
+      return sum + Math.min(jahr, max);
+    }
+    // Legacy
+    const max = (u.empfaengerKategorie && UNTERHALT_18_MAX[u.empfaengerKategorie]) ?? UNTERHALT_18_MAX.sonstige;
     return sum + (u.titelVorhanden ? betrag : Math.min(betrag, max));
   }, 0);
 }

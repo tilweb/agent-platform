@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { theme } from '../../../config/theme';
-import { CommentIcon, PlusIcon, TrashIcon } from '../../../components/Icons';
+import { CommentIcon, PlusIcon, TrashIcon, ChevronDownIcon } from '../../../components/Icons';
 import {
   ROLLE_LABEL, ERWERBSSTATUS_LABEL, UNTERHALT_KATEGORIE_LABEL,
   GESCHLECHT_LABEL, FAMILIENSTAND_LABEL, EINKOMMENSART_LABEL,
+  FREQUENZ_LABEL, VERWANDTSCHAFT_LABEL, AUSSCHLUSS_GRUND_LABEL,
   GDB_OPTIONS, PFLEGEGRAD_OPTIONS, ACCENT, wohngeldApi,
 } from '../api';
 import { FeldGrid } from './SektionCard';
@@ -48,6 +49,20 @@ const styles = {
   leReset: { padding: `2px ${theme.spacing.md}`, fontSize: theme.typography.sizes.xs, borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
   leEmpty: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.xs },
   leReadRow: { display: 'flex', justifyContent: 'space-between', gap: theme.spacing.md, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, padding: '2px 0' },
+  // ── forml-Listenblöcke (U2): einklappbare Unter-Blöcke je Eintrag ──
+  leBlock: { marginTop: theme.spacing.xs },
+  leSummaryRow: { fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, padding: `${theme.spacing.xs} 0`, borderBottom: `1px solid ${theme.colors.borderLight}` },
+  itemBlock: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.xs, overflow: 'hidden' },
+  itemHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, padding: `6px ${theme.spacing.sm}` },
+  itemToggle: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: theme.colors.text, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, textAlign: 'left' },
+  itemChevron: { transition: `transform ${theme.transitions.fast}`, flexShrink: 0, color: theme.colors.textMuted },
+  itemHeadTitle: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  itemBody: { padding: `0 ${theme.spacing.sm} ${theme.spacing.sm}`, borderTop: `1px solid ${theme.colors.borderLight}` },
+  fieldRow: { display: 'grid', gridTemplateColumns: 'minmax(120px, 180px) 1fr', alignItems: 'center', gap: theme.spacing.sm, padding: `6px 0` },
+  fieldLabel: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted },
+  fieldInput: { width: '100%', padding: `4px ${theme.spacing.sm}`, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none' },
+  inputWithSuffix: { display: 'flex', alignItems: 'center', gap: theme.spacing.xs },
+  suffix: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted },
   auskunftRow: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap', marginTop: theme.spacing.md, paddingTop: theme.spacing.md, borderTop: `1px solid ${theme.colors.borderLight}` },
   auskunftLabel: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted },
   auskunftBtn: { display: 'inline-flex', alignItems: 'center', gap: 4, padding: `4px ${theme.spacing.md}`, fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
@@ -71,103 +86,110 @@ function rowId() {
 }
 
 /**
- * Schlanke „+"-Editor-Liste für eine strukturierte Personen-Liste (WP5).
- * cols: [{ key, label, type: 'text'|'number'|'select'|'checkbox', options?, width? }]
- * Lokaler Draft; „Speichern" erscheint nur bei Änderungen. Read-only ohne canEdit.
+ * Reicher „+"-Listeneditor für strukturierte Personen-Listen (forml-Feldset, U2).
+ * Jeder Eintrag ist im Bearbeiten-Modus ein einklappbarer Unter-Block mit einem
+ * Feld-Schema; außerhalb des Bearbeiten-Modus eine read-only Zusammenfassung.
+ * Block-Bearbeiten-Muster (Bearbeiten → Verwerfen/Speichern) konsistent zu U1.
+ *
+ *   fields:  [{ key, label, type: 'text'|'number'|'date'|'select', options?, suffix? }]
+ *   summary: (item) => string  — Zusammenfassungszeile (read-only + Item-Kopf)
+ *   note:    optionaler Knoten unter der Kopfzeile (z. B. Legacy-Hinweis)
  */
-function ListEditor({ title, items, cols, canEdit, busy, onSave, emptyText, renderRead }) {
+function ListEditor({ title, itemLabel, items, fields, canEdit, busy, onSave, emptyText, summary, note = null }) {
   const initial = items || [];
-  const [draft, setDraft] = useState(null); // null = nicht im Bearbeitungsmodus
+  const [draft, setDraft] = useState(null);     // null = read-only
+  const [openIdx, setOpenIdx] = useState({});   // aufgeklappte Items im Bearbeiten-Modus
   const editing = draft !== null;
-  const rows = editing ? draft : initial;
 
-  const emptyRow = () => { const r = { id: rowId() }; for (const c of cols) r[c.key] = c.type === 'checkbox' ? false : ''; return r; };
-  const start = () => setDraft(initial.length ? initial.map((r) => ({ ...r })) : [emptyRow()]);
+  const emptyRow = () => { const r = { id: rowId() }; for (const f of fields) r[f.key] = ''; return r; };
+  const start = () => {
+    setDraft(initial.length ? initial.map((r) => ({ ...r })) : [emptyRow()]);
+    setOpenIdx(initial.length ? {} : { 0: true });
+  };
+  const cancel = () => { setDraft(null); setOpenIdx({}); };
   const setCell = (idx, key, val) => setDraft((d) => d.map((r, i) => (i === idx ? { ...r, [key]: val } : r)));
-  const addRow = () => setDraft((d) => [...(d || []), emptyRow()]);
+  const addRow = () => setDraft((d) => {
+    const next = [...(d || []), emptyRow()];
+    setOpenIdx((o) => ({ ...o, [next.length - 1]: true }));
+    return next;
+  });
   const removeRow = (idx) => setDraft((d) => d.filter((_, i) => i !== idx));
-  const cancel = () => setDraft(null);
+  const toggle = (idx) => setOpenIdx((o) => ({ ...o, [idx]: !o[idx] }));
+  const hasContent = (r) => fields.some((f) => r[f.key] !== undefined && r[f.key] !== '' && r[f.key] != null);
+
   const save = () => {
     const cleaned = (draft || [])
       .map((r) => {
-        const out = { id: r.id || rowId() };
-        for (const c of cols) {
-          if (c.type === 'number') out[c.key] = r[c.key] === '' || r[c.key] == null ? undefined : Number(r[c.key]);
-          else if (c.type === 'checkbox') out[c.key] = !!r[c.key];
-          else out[c.key] = (r[c.key] ?? '').trim ? (r[c.key] ?? '').trim() : r[c.key];
+        const out = { ...r, id: r.id || rowId() };   // Legacy-Felder erhalten (nicht hart entfernen)
+        for (const f of fields) {
+          if (f.type === 'number') out[f.key] = r[f.key] === '' || r[f.key] == null ? undefined : Number(r[f.key]);
+          else out[f.key] = typeof r[f.key] === 'string' ? (r[f.key].trim() || undefined) : r[f.key];
         }
         return out;
       })
-      // Zeilen ohne inhaltliche Angabe verwerfen (leere Textfelder + kein Betrag)
-      .filter((r) => cols.some((c) => (c.type === 'checkbox' ? false : r[c.key] !== undefined && r[c.key] !== '')));
+      .filter((r) => fields.some((f) => r[f.key] !== undefined && r[f.key] !== ''));
     onSave(cleaned);
-    setDraft(null);
+    setDraft(null); setOpenIdx({});
   };
 
-  if (!canEdit) {
-    if (!initial.length) return renderRead ? null : <div style={styles.leEmpty}>{emptyText}</div>;
-    return <div>{initial.map((r) => (renderRead ? renderRead(r) : (
-      <div key={r.id} style={styles.leReadRow}>
-        {cols.map((c) => (
-          <span key={c.key}>{c.type === 'checkbox' ? (r[c.key] ? c.label : '') : (c.type === 'select' ? (c.options?.[r[c.key]] ?? r[c.key]) : r[c.key])}</span>
-        ))}
-      </div>
-    )))}</div>;
-  }
-
+  // ── read-only Zusammenfassung ──
   if (!editing) {
     return (
-      <div>
+      <div style={styles.leBlock}>
+        <SecHead title={title} editing={false} canEdit={canEdit} busy={busy} onEdit={start} />
+        {note}
         {initial.length === 0
           ? <div style={styles.leEmpty}>{emptyText}</div>
-          : initial.map((r) => (renderRead ? renderRead(r) : (
-            <div key={r.id} style={styles.leReadRow}>
-              {cols.map((c) => (
-                <span key={c.key}>{c.type === 'checkbox' ? (r[c.key] ? c.label : '—') : (c.type === 'select' ? (c.options?.[r[c.key]] ?? r[c.key]) : (r[c.key] || '—'))}</span>
-              ))}
-            </div>
-          )))}
-        <button style={{ ...styles.leAdd, marginTop: theme.spacing.xs }} onClick={start} disabled={busy}>
-          <PlusIcon size={12} /> {initial.length ? `${title} bearbeiten` : `${title} hinzufügen`}
-        </button>
+          : initial.map((r) => <div key={r.id} style={styles.leSummaryRow}>{summary(r)}</div>)}
       </div>
     );
   }
 
+  // ── Bearbeiten-Modus: einklappbare Unter-Blöcke ──
   return (
-    <div>
-      {rows.map((r, idx) => (
-        <div key={r.id || idx} style={styles.leRow}>
-          {cols.map((c) => {
-            if (c.type === 'checkbox') return (
-              <label key={c.key} style={styles.leCheck}>
-                <input type="checkbox" checked={!!r[c.key]} onChange={(e) => setCell(idx, c.key, e.target.checked)} /> {c.label}
-              </label>
-            );
-            if (c.type === 'select') return (
-              <select key={c.key} style={{ ...styles.leInput, flex: c.width || 1 }} value={r[c.key] ?? ''} onChange={(e) => setCell(idx, c.key, e.target.value)}>
-                {Object.entries(c.options).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            );
-            return (
-              <input
-                key={c.key}
-                type={c.type === 'number' ? 'number' : 'text'}
-                style={{ ...styles.leInput, flex: c.width || 1 }}
-                placeholder={c.label}
-                value={r[c.key] ?? ''}
-                onChange={(e) => setCell(idx, c.key, e.target.value)}
-              />
-            );
-          })}
-          <button style={styles.leRemove} onClick={() => removeRow(idx)} title="Zeile entfernen" aria-label="Zeile entfernen"><TrashIcon size={13} /></button>
-        </div>
-      ))}
-      <button style={styles.leAdd} onClick={addRow}><PlusIcon size={12} /> Zeile</button>
-      <div style={styles.leActions}>
-        <button style={styles.leSave} onClick={save} disabled={busy}>Speichern</button>
-        <button style={styles.leReset} onClick={cancel} disabled={busy}>Abbrechen</button>
-      </div>
+    <div style={styles.leBlock}>
+      <SecHead title={title} editing canEdit={canEdit} busy={busy} onSave={save} onCancel={cancel} />
+      {note}
+      {draft.map((r, idx) => {
+        const isOpen = !!openIdx[idx];
+        const head = hasContent(r) ? summary(r) : `Neu · ${itemLabel}`;
+        return (
+          <div key={r.id || idx} style={styles.itemBlock}>
+            <div style={styles.itemHead}>
+              <button style={styles.itemToggle} onClick={() => toggle(idx)} aria-expanded={isOpen} title={isOpen ? 'Einklappen' : 'Ausklappen'}>
+                <ChevronDownIcon size={14} style={{ ...styles.itemChevron, transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                <span style={styles.itemHeadTitle}>{head}</span>
+              </button>
+              <button style={styles.leRemove} onClick={() => removeRow(idx)} title="Eintrag entfernen" aria-label="Eintrag entfernen"><TrashIcon size={13} /></button>
+            </div>
+            {isOpen && (
+              <div style={styles.itemBody}>
+                {fields.map((f, fi) => (
+                  <div key={f.key} style={{ ...styles.fieldRow, borderBottom: fi === fields.length - 1 ? 'none' : `1px solid ${theme.colors.borderLight}` }}>
+                    <span style={styles.fieldLabel}>{f.label}</span>
+                    {f.type === 'select' ? (
+                      <select style={styles.fieldInput} value={r[f.key] ?? ''} onChange={(e) => setCell(idx, f.key, e.target.value)}>
+                        <option value="">— bitte wählen —</option>
+                        {Object.entries(f.options || {}).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    ) : f.type === 'date' ? (
+                      <input type="date" style={styles.fieldInput} placeholder="tt.mm.jjjj" value={r[f.key] ? String(r[f.key]).slice(0, 10) : ''} onChange={(e) => setCell(idx, f.key, e.target.value)} />
+                    ) : f.type === 'number' ? (
+                      <div style={styles.inputWithSuffix}>
+                        <input type="number" style={{ ...styles.fieldInput, flex: 1 }} placeholder={f.label} value={r[f.key] ?? ''} onChange={(e) => setCell(idx, f.key, e.target.value)} />
+                        {f.suffix && <span style={styles.suffix}>{f.suffix}</span>}
+                      </div>
+                    ) : (
+                      <input type="text" style={styles.fieldInput} placeholder={f.label} value={r[f.key] ?? ''} onChange={(e) => setCell(idx, f.key, e.target.value)} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <button style={styles.leAdd} onClick={addRow}><PlusIcon size={12} /> {itemLabel} hinzufügen</button>
     </div>
   );
 }
@@ -534,83 +556,118 @@ export default function PersonCard({
             ) : <div style={styles.leEmpty}>Keine Einkommenspositionen erfasst.</div>
           )}
 
-          <div style={styles.secHead}><span style={styles.subTitle}>Vermögen</span></div>
-          {(!p.vermoegenPositionen || p.vermoegenPositionen.length === 0) && p.vermoegen != null && (
-            <div style={styles.leEmpty}>Bisher als Einzelwert erfasst: {eur(p.vermoegen)}</div>
-          )}
+          {/* ── Vermögen ── */}
           <ListEditor
-            title="Vermögensposition"
+            title="Vermögen"
+            itemLabel="Vermögensposition"
             items={p.vermoegenPositionen}
             canEdit={canEdit}
             busy={busy}
             emptyText="Keine Vermögenspositionen erfasst."
-            cols={[
-              { key: 'art', label: 'Art (z. B. Bankguthaben)', type: 'text', width: 2 },
-              { key: 'betrag', label: 'Betrag (€)', type: 'number', width: 1 },
+            fields={[
+              { key: 'art', label: 'Art', type: 'text' },
+              { key: 'betrag', label: 'Betrag', type: 'number', suffix: '€' },
             ]}
-            renderRead={(r) => (
-              <div key={r.id} style={styles.leReadRow}><span>{r.art || '—'}</span><span>{eur(r.betrag)}</span></div>
-            )}
+            summary={(r) => [r.art || 'Vermögensposition', r.betrag != null ? eur(r.betrag) : null].filter(Boolean).join(' · ')}
+            note={(!p.vermoegenPositionen || p.vermoegenPositionen.length === 0) && p.vermoegen != null
+              ? <div style={styles.leEmpty}>Bisher als Einzelwert erfasst: {eur(p.vermoegen)}</div>
+              : null}
             onSave={(rows) => onSavePerson?.(p.id, { vermoegenPositionen: rows })}
           />
 
-          <div style={styles.secHead}><span style={styles.subTitle}>Unterhaltsverpflichtungen (§18)</span></div>
+          {/* ── Kinderbetreuungskosten (nur Erfassung/Anzeige — kein §13-Abzug) ── */}
           <ListEditor
-            title="Verpflichtung"
+            title="Kinderbetreuungskosten"
+            itemLabel="Kinderbetreuungskosten"
+            items={p.kinderbetreuungskosten}
+            canEdit={canEdit}
+            busy={busy}
+            emptyText="Keine Kinderbetreuungskosten erfasst."
+            fields={[
+              { key: 'frequenz', label: 'Frequenz', type: 'select', options: FREQUENZ_LABEL },
+              { key: 'bemerkung', label: 'Bemerkung', type: 'text' },
+              { key: 'betrag', label: 'Betrag', type: 'number', suffix: '€' },
+            ]}
+            summary={(r) => [r.bemerkung || 'Kinderbetreuung', r.frequenz ? FREQUENZ_LABEL[r.frequenz] : null, r.betrag != null ? eur(r.betrag) : null].filter(Boolean).join(' · ')}
+            onSave={(rows) => onSavePerson?.(p.id, { kinderbetreuungskosten: rows })}
+          />
+
+          {/* ── Unterhaltsverpflichtungen (§18) ── */}
+          <ListEditor
+            title="Unterhaltsverpflichtungen (§18)"
+            itemLabel="Unterhaltsverpflichtung"
             items={p.unterhaltsverpflichtungen}
             canEdit={canEdit}
             busy={busy}
             emptyText="Keine Unterhaltsverpflichtungen erfasst."
-            cols={[
-              { key: 'empfaengerKategorie', label: 'Empfänger', type: 'select', options: UNTERHALT_KATEGORIE_LABEL, width: 2 },
-              { key: 'betrag', label: 'Betrag/Jahr (€)', type: 'number', width: 1 },
-              { key: 'titelVorhanden', label: 'Titel', type: 'checkbox' },
+            fields={[
+              { key: 'verwandtschaft', label: 'Verwandtschaft', type: 'select', options: VERWANDTSCHAFT_LABEL },
+              { key: 'empfaengerVorname', label: 'Vorname Empfänger', type: 'text' },
+              { key: 'empfaengerNachname', label: 'Nachname Empfänger', type: 'text' },
+              { key: 'frequenz', label: 'Frequenz', type: 'select', options: FREQUENZ_LABEL },
+              { key: 'betrag', label: 'Betrag', type: 'number', suffix: '€' },
             ]}
-            renderRead={(r) => (
-              <div key={r.id} style={styles.leReadRow}>
-                <span>{UNTERHALT_KATEGORIE_LABEL[r.empfaengerKategorie] || r.empfaengerKategorie}{r.titelVorhanden ? ' · mit Titel' : ''}</span>
-                <span>{eur(r.betrag)}</span>
-              </div>
-            )}
+            summary={(r) => {
+              const kat = r.verwandtschaft ? VERWANDTSCHAFT_LABEL[r.verwandtschaft]
+                : r.empfaengerKategorie ? UNTERHALT_KATEGORIE_LABEL[r.empfaengerKategorie] : null;
+              const name = [r.empfaengerVorname, r.empfaengerNachname].filter(Boolean).join(' ');
+              return [name || kat || 'Verpflichtung', name && kat ? `(${kat})` : null,
+                r.frequenz ? FREQUENZ_LABEL[r.frequenz] : (r.titelVorhanden ? 'mit Titel' : null),
+                r.betrag != null ? eur(r.betrag) : null].filter(Boolean).join(' · ');
+            }}
             onSave={(rows) => onSavePerson?.(p.id, { unterhaltsverpflichtungen: rows })}
           />
 
-          <div style={styles.secHead}><span style={styles.subTitle}>Unterhaltsansprüche</span></div>
+          {/* ── Unterhaltsansprüche ── */}
           <ListEditor
-            title="Anspruch"
+            title="Unterhaltsansprüche"
+            itemLabel="Unterhaltsanspruch"
             items={p.unterhaltsansprueche}
             canEdit={canEdit}
             busy={busy}
             emptyText="Keine Unterhaltsansprüche erfasst."
-            cols={[
-              { key: 'art', label: 'Art (z. B. Kindesunterhalt)', type: 'text', width: 2 },
-              { key: 'betrag', label: 'Betrag/Mon. (€)', type: 'number', width: 1 },
+            fields={[
+              { key: 'vonVorname', label: 'Vorname (von)', type: 'text' },
+              { key: 'vonNachname', label: 'Nachname (von)', type: 'text' },
+              { key: 'frequenz', label: 'Frequenz', type: 'select', options: FREQUENZ_LABEL },
+              { key: 'betrag', label: 'Betrag', type: 'number', suffix: '€' },
             ]}
-            renderRead={(r) => (
-              <div key={r.id} style={styles.leReadRow}><span>{r.art || '—'}</span><span>{eur(r.betrag)}</span></div>
-            )}
+            summary={(r) => {
+              const name = [r.vonVorname, r.vonNachname].filter(Boolean).join(' ');
+              return [name || r.art || 'Anspruch', r.frequenz ? FREQUENZ_LABEL[r.frequenz] : null, r.betrag != null ? eur(r.betrag) : null].filter(Boolean).join(' · ');
+            }}
             onSave={(rows) => onSavePerson?.(p.id, { unterhaltsansprueche: rows })}
           />
 
-          <div style={styles.secHead}><span style={styles.subTitle}>Transferleistungen</span></div>
+          {/* ── Ausschlüsse (§7) — ersetzt Transferleistungen; Altdaten als Hinweis ── */}
           <ListEditor
-            title="Transferleistung"
-            items={p.transferleistungenDetail}
+            title="Ausschlüsse (§7)"
+            itemLabel="Ausschluss"
+            items={p.ausschluesse}
             canEdit={canEdit}
             busy={busy}
-            emptyText="Keine Transferleistungen erfasst."
-            cols={[
-              { key: 'art', label: 'Art (z. B. Bürgergeld)', type: 'text', width: 2 },
-              { key: 'kduEnthalten', label: 'KdU enthalten', type: 'checkbox' },
-              { key: 'bescheidVorhanden', label: 'Bescheid', type: 'checkbox' },
+            emptyText="Keine Ausschlüsse erfasst."
+            fields={[
+              { key: 'grund', label: 'Grund', type: 'select', options: AUSSCHLUSS_GRUND_LABEL },
+              { key: 'von', label: 'Von', type: 'date' },
+              { key: 'bis', label: 'Bis', type: 'date' },
+              { key: 'freitext', label: 'Bemerkung', type: 'text' },
             ]}
-            renderRead={(r) => (
-              <div key={r.id} style={styles.leReadRow}>
-                <span>{r.art || '—'}{r.kduEnthalten ? ' · KdU enthalten' : ''}</span>
-                <span>{r.bescheidVorhanden ? 'Bescheid vorhanden' : 'ohne Bescheid'}</span>
-              </div>
-            )}
-            onSave={(rows) => onSavePerson?.(p.id, { transferleistungenDetail: rows })}
+            summary={(r) => [r.grund ? AUSSCHLUSS_GRUND_LABEL[r.grund] : (r.freitext || 'Ausschluss'),
+              (r.von || r.bis) ? `${fmtDate(r.von) || '?'} – ${fmtDate(r.bis) || '?'}` : null].filter(Boolean).join(' · ')}
+            note={p.transferleistungenDetail?.length > 0
+              ? (
+                <div style={{ marginBottom: theme.spacing.xs }}>
+                  <div style={styles.leEmpty}>Frühere Transferleistungs-Angaben (Altbestand):</div>
+                  {p.transferleistungenDetail.map((t) => (
+                    <div key={t.id} style={styles.leSummaryRow}>
+                      {[t.art || '—', t.kduEnthalten ? 'KdU enthalten' : null, t.bescheidVorhanden ? 'Bescheid' : null].filter(Boolean).join(' · ')}
+                    </div>
+                  ))}
+                </div>
+              )
+              : null}
+            onSave={(rows) => onSavePerson?.(p.id, { ausschluesse: rows })}
           />
 
           {canEdit && (

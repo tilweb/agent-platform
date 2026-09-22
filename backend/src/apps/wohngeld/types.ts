@@ -200,12 +200,47 @@ export interface PflegeBehinderung {
   pflegebeduerftig?: boolean;
 }
 
-/** Empfänger-Kategorie einer Unterhaltsverpflichtung (§ 18 WoGG). */
+/** Empfänger-Kategorie einer Unterhaltsverpflichtung (§ 18 WoGG) — Legacy-Shape. */
 export type UnterhaltEmpfaengerKategorie =
   | 'auswaertige_ausbildung'   // Nr. 1
   | 'kind_anderer_elternteil'  // Nr. 2
   | 'ehegatte_getrennt'        // Nr. 3
   | 'sonstige';                // Nr. 4
+
+/**
+ * Verwandtschaftsverhältnis zum Empfänger einer Unterhaltsverpflichtung
+ * (forml-Feldset, Welle 2). Steuert die § 18-Kappung (siehe einkommen.ts).
+ */
+export type UnterhaltVerwandtschaft =
+  | 'kind'
+  | 'ehegatte_getrennt'        // getrennt lebender/früherer Ehegatte/Lebenspartner
+  | 'elternteil'
+  | 'auswaertige_ausbildung'   // Person in auswärtiger Ausbildung
+  | 'sonstige';
+
+/** Zahlungsfrequenz einer Betragsangabe (forml-Feldset, Welle 2). */
+export type Frequenz =
+  | 'taeglich'
+  | 'woechentlich'
+  | 'vierzehntaegig'
+  | 'monatlich'
+  | 'vierteljaehrlich'
+  | 'jaehrlich'
+  | 'einmalig'
+  | 'schwankend'
+  | 'sonstige';
+
+/** Ausschluss-Grund nach § 7 WoGG (forml-Feldset, Welle 2). */
+export type AusschlussGrund =
+  | 'sgb2_buergergeld'
+  | 'grundsicherung_alter_em'
+  | 'hilfe_lebensunterhalt_sgb12'
+  | 'ergaenzende_hilfe_bvg'
+  | 'hilfe_stationaer'
+  | 'kinder_jugendhilfe_sgb8'
+  | 'asylblg'
+  | 'ausbildungsfoerderung'
+  | 'sonstiger_grund';
 
 /** Eine Vermögensposition einer Person (§ 21 Nr. 3). */
 export interface VermoegenPosition {
@@ -214,19 +249,54 @@ export interface VermoegenPosition {
   betrag?: number;
 }
 
-/** Eine Unterhaltsverpflichtung gegenüber Person außerhalb des Haushalts (§ 18). */
-export interface Unterhaltsverpflichtung {
+/** Kinderbetreuungskosten einer Person (Erfassung/Anzeige — KEIN § 13-Abzug). */
+export interface Kinderbetreuungskosten {
   id: string;
-  empfaengerKategorie: UnterhaltEmpfaengerKategorie;
+  frequenz?: Frequenz;
+  bemerkung?: string;
   betrag?: number;
-  titelVorhanden: boolean;  // Titel/Vereinbarung/Bescheid → Abzug bis tatsächliche Höhe
 }
 
-/** Ein erhaltener Unterhaltsanspruch (§ 14 Abs. 2 Nr. 19–22). */
+/**
+ * Eine Unterhaltsverpflichtung gegenüber Person außerhalb des Haushalts (§ 18).
+ * Führend ist die neue Shape (`verwandtschaft` + `frequenz`); die Legacy-Felder
+ * (`empfaengerKategorie` + `titelVorhanden`) bleiben lesbar und werden weiter unterstützt.
+ */
+export interface Unterhaltsverpflichtung {
+  id: string;
+  // Neue Shape (forml-Feldset, Welle 2):
+  verwandtschaft?: UnterhaltVerwandtschaft;
+  empfaengerVorname?: string;
+  empfaengerNachname?: string;
+  frequenz?: Frequenz;
+  betrag?: number;
+  // Legacy-Shape (weiter unterstützt):
+  empfaengerKategorie?: UnterhaltEmpfaengerKategorie;
+  titelVorhanden?: boolean;  // Titel/Vereinbarung/Bescheid → Abzug bis tatsächliche Höhe
+}
+
+/**
+ * Ein erhaltener Unterhaltsanspruch (§ 14 Abs. 2 Nr. 19–22). Führend ist die neue
+ * Shape (`vonVorname`/`vonNachname` + `frequenz`); Legacy-`art` bleibt lesbar.
+ */
 export interface Unterhaltsanspruch {
   id: string;
-  art: string;             // z. B. 'Kindesunterhalt', 'Ehegattenunterhalt', 'Unterhaltsvorschuss'
+  // Neue Shape (forml-Feldset, Welle 2):
+  vonVorname?: string;
+  vonNachname?: string;
+  frequenz?: Frequenz;
   betrag?: number;
+  // Legacy-Shape:
+  art?: string;            // z. B. 'Kindesunterhalt', 'Ehegattenunterhalt', 'Unterhaltsvorschuss'
+}
+
+/** Ein Ausschluss-Tatbestand nach § 7 WoGG (forml-Feldset, Welle 2). */
+export interface Ausschluss {
+  id: string;
+  grund?: AusschlussGrund;
+  von?: string;            // ISO (YYYY-MM-DD)
+  bis?: string;            // ISO (YYYY-MM-DD)
+  freitext?: string;
 }
 
 /** Eine Transferleistung einer Person (§ 7 WoGG — mögliche Ausschlusswirkung). */
@@ -266,7 +336,10 @@ export interface Person extends Timestamped, Versioned {
   vermoegenPositionen?: VermoegenPosition[];
   unterhaltsverpflichtungen?: Unterhaltsverpflichtung[];
   unterhaltsansprueche?: Unterhaltsanspruch[];
-  transferleistungenDetail?: TransferleistungDetail[];
+  transferleistungenDetail?: TransferleistungDetail[];  // Legacy: führend sind jetzt `ausschluesse`
+  // forml-Feldset (Welle 2):
+  kinderbetreuungskosten?: Kinderbetreuungskosten[];
+  ausschluesse?: Ausschluss[];
   bemerkung?: string;
 }
 

@@ -26,6 +26,19 @@ const EINKUNFTS_LABEL: Record<string, string> = {
   rente: 'Renteneinkünfte',
 };
 
+/** Ausschluss-Grund → Belegtext-Label (§ 7 WoGG). */
+const AUSSCHLUSS_GRUND_LABEL: Record<string, string> = {
+  sgb2_buergergeld: 'Leistung nach SGB II (Bürgergeld)',
+  grundsicherung_alter_em: 'Grundsicherung im Alter/bei Erwerbsminderung',
+  hilfe_lebensunterhalt_sgb12: 'Hilfe zum Lebensunterhalt (SGB XII)',
+  ergaenzende_hilfe_bvg: 'Ergänzende Hilfe zum Lebensunterhalt (nach BVG)',
+  hilfe_stationaer: 'Hilfe in einer stationären Einrichtung zum Lebensunterhalt',
+  kinder_jugendhilfe_sgb8: 'Leistungen der Kinder- und Jugendhilfe (SGB VIII)',
+  asylblg: 'Grundleistungen nach dem AsylbLG',
+  ausbildungsfoerderung: 'Ausbildungsförderung (BAföG/BAB, § 20 Abs. 2 WoGG)',
+  sonstiger_grund: 'Sonstiger Grund',
+};
+
 export function pruefePlausibilitaet(snapshot: VorgangSnapshot): PruefBefund[] {
   const { vorgang, personen, dokumente } = snapshot;
   const befunde: PruefBefund[] = [];
@@ -140,18 +153,23 @@ export function pruefePlausibilitaet(snapshot: VorgangSnapshot): PruefBefund[] {
     }
   }
 
-  // ── Ausschluss wegen Transferleistung mit enthaltenen Unterkunftskosten (§ 7) ──
+  // ── Ausschluss nach § 7 (forml-Ausschlüsse ODER Legacy-Transferleistung mit KdU) ──
   for (const p of personen) {
+    const ausschluesse = p.ausschluesse ?? [];
     const mitKdu = (p.transferleistungenDetail ?? []).filter(t => t.kduEnthalten);
-    if (mitKdu.length > 0) {
+    if (ausschluesse.length > 0 || mitKdu.length > 0) {
       const label = `${p.vorname} ${p.nachname}`.trim() || 'Ein Haushaltsmitglied';
-      const arten = mitKdu.map(t => t.art).filter(Boolean).join(', ');
+      const gruende = ausschluesse
+        .map(a => (a.grund && AUSSCHLUSS_GRUND_LABEL[a.grund]) || a.freitext || 'Ausschlussgrund')
+        .filter(Boolean);
+      const legacyArten = mitKdu.map(t => t.art).filter(Boolean);
+      const details = [...gruende, ...legacyArten].join(', ');
       befunde.push({
         regelId: 'ausschluss-person-transferbezug', personId: p.id, kategorie: 'plausibilitaet', typ: 'info',
         titel: 'Möglicher Wohngeld-Ausschluss (§ 7)',
-        belegtext: `${label} bezieht eine Transferleistung mit enthaltenen Unterkunftskosten`
-          + `${arten ? ` (${arten})` : ''}. Prüfen, ob nach § 7 WoGG ein Ausschluss vorliegt und das `
-          + `Mitglied bei der Wohngeldberechnung außer Betracht bleibt.`,
+        belegtext: `${label} — möglicher Ausschlussgrund nach § 7 WoGG`
+          + `${details ? ` (${details})` : ''}. Prüfen, ob das Mitglied bei der `
+          + `Wohngeldberechnung außer Betracht bleibt.`,
       });
     }
   }

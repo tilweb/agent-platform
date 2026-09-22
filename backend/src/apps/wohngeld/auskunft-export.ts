@@ -11,7 +11,7 @@ import type { DocumentData, DocumentSection } from '../../services/documentGener
 import type {
   Person, Vorgang, Akte, Dokument, AuditEintrag,
   Einkommensposition, VermoegenPosition, Unterhaltsverpflichtung,
-  Unterhaltsanspruch, TransferleistungDetail,
+  Unterhaltsanspruch, TransferleistungDetail, Kinderbetreuungskosten, Ausschluss,
 } from './types';
 
 const WOHNGELDART_LABEL: Record<string, string> = { mietzuschuss: 'Mietzuschuss', lastenzuschuss: 'Lastenzuschuss' };
@@ -42,6 +42,25 @@ const DOKUMENT_TYP_LABEL: Record<string, string> = {
 const UNTERHALT_KATEGORIE_LABEL: Record<string, string> = {
   auswaertige_ausbildung: 'Auswärtige Ausbildung', kind_anderer_elternteil: 'Kind (anderer Elternteil)',
   ehegatte_getrennt: 'Getrennt lebender Ehegatte', sonstige: 'Sonstige',
+};
+const VERWANDTSCHAFT_LABEL: Record<string, string> = {
+  kind: 'Kind', ehegatte_getrennt: 'Getrennt lebender/früherer Ehegatte/Lebenspartner',
+  elternteil: 'Elternteil', auswaertige_ausbildung: 'Person in auswärtiger Ausbildung', sonstige: 'Sonstige',
+};
+const FREQUENZ_LABEL: Record<string, string> = {
+  taeglich: 'täglich', woechentlich: 'wöchentlich', vierzehntaegig: '14-täglich', monatlich: 'monatlich',
+  vierteljaehrlich: 'vierteljährlich', jaehrlich: 'jährlich', einmalig: 'einmalig', schwankend: 'schwankend', sonstige: 'sonstige',
+};
+const AUSSCHLUSS_GRUND_LABEL: Record<string, string> = {
+  sgb2_buergergeld: 'Leistung nach SGB II (Bürgergeld)',
+  grundsicherung_alter_em: 'Grundsicherung im Alter/bei Erwerbsminderung',
+  hilfe_lebensunterhalt_sgb12: 'Hilfe zum Lebensunterhalt (SGB XII)',
+  ergaenzende_hilfe_bvg: 'Ergänzende Hilfe zum Lebensunterhalt (nach BVG)',
+  hilfe_stationaer: 'Hilfe in einer stationären Einrichtung zum Lebensunterhalt',
+  kinder_jugendhilfe_sgb8: 'Leistungen der Kinder- und Jugendhilfe (SGB VIII)',
+  asylblg: 'Grundleistungen nach dem AsylbLG',
+  ausbildungsfoerderung: 'Ausbildungsförderung (BAföG/BAB, § 20 Abs. 2 WoGG)',
+  sonstiger_grund: 'Sonstiger Grund',
 };
 /** Kompakte, lesbare Labels der Protokoll-Aktionen (Auszug — Fallback: Rohwert). */
 const AKTION_LABEL: Record<string, string> = {
@@ -106,10 +125,12 @@ export function auskunftToJson(input: AuskunftInput): Record<string, unknown> {
       einkommen: p.einkommen ?? [],
       vermoegen: p.vermoegen,
       vermoegenPositionen: p.vermoegenPositionen ?? [],
+      kinderbetreuungskosten: p.kinderbetreuungskosten ?? [],
       unterhaltsverpflichtungen: p.unterhaltsverpflichtungen ?? [],
       unterhaltsansprueche: p.unterhaltsansprueche ?? [],
       transferleistungen: p.transferleistungen ?? [],
       transferleistungenDetail: p.transferleistungenDetail ?? [],
+      ausschluesse: p.ausschluesse ?? [],
       bemerkung: p.bemerkung,
       created_at: p.created_at, updated_at: p.updated_at,
     },
@@ -209,16 +230,32 @@ export function auskunftToDocument(input: AuskunftInput): DocumentData {
     });
   }
 
+  // ── Kinderbetreuungskosten ──
+  const kbk: Kinderbetreuungskosten[] = p.kinderbetreuungskosten ?? [];
+  if (kbk.length) {
+    sections.push({
+      title: 'Kinderbetreuungskosten', type: 'table',
+      content: {
+        headers: ['Bemerkung', 'Frequenz', 'Betrag'],
+        rows: kbk.map((k) => [k.bemerkung || '—', (k.frequenz && FREQUENZ_LABEL[k.frequenz]) || '—', eur(k.betrag)]),
+      },
+    });
+  }
+
   // ── Unterhaltsverpflichtungen (§18) ──
   const uVerpf: Unterhaltsverpflichtung[] = p.unterhaltsverpflichtungen ?? [];
   if (uVerpf.length) {
     sections.push({
       title: 'Unterhaltsverpflichtungen (§ 18 WoGG)', type: 'table',
       content: {
-        headers: ['Empfänger', 'Betrag', 'Titel vorhanden'],
-        rows: uVerpf.map((u) => [
-          UNTERHALT_KATEGORIE_LABEL[u.empfaengerKategorie] ?? u.empfaengerKategorie, eur(u.betrag), u.titelVorhanden ? 'Ja' : 'Nein',
-        ]),
+        headers: ['Verhältnis / Empfänger', 'Frequenz', 'Betrag'],
+        rows: uVerpf.map((u) => {
+          const verhaeltnis = (u.verwandtschaft && VERWANDTSCHAFT_LABEL[u.verwandtschaft])
+            || (u.empfaengerKategorie && UNTERHALT_KATEGORIE_LABEL[u.empfaengerKategorie]) || '—';
+          const name = [u.empfaengerVorname, u.empfaengerNachname].filter(Boolean).join(' ');
+          const freq = (u.frequenz && FREQUENZ_LABEL[u.frequenz]) || (u.titelVorhanden ? 'mit Titel' : '—');
+          return [name ? `${verhaeltnis} (${name})` : verhaeltnis, freq, eur(u.betrag)];
+        }),
       },
     });
   }
@@ -228,7 +265,27 @@ export function auskunftToDocument(input: AuskunftInput): DocumentData {
   if (uAnspr.length) {
     sections.push({
       title: 'Unterhaltsansprüche', type: 'table',
-      content: { headers: ['Art', 'Betrag'], rows: uAnspr.map((u) => [u.art || '—', eur(u.betrag)]) },
+      content: {
+        headers: ['Von / Art', 'Frequenz', 'Betrag'],
+        rows: uAnspr.map((u) => {
+          const von = [u.vonVorname, u.vonNachname].filter(Boolean).join(' ') || u.art || '—';
+          return [von, (u.frequenz && FREQUENZ_LABEL[u.frequenz]) || '—', eur(u.betrag)];
+        }),
+      },
+    });
+  }
+
+  // ── Ausschlüsse (§7) ──
+  const ausschluesse: Ausschluss[] = p.ausschluesse ?? [];
+  if (ausschluesse.length) {
+    sections.push({
+      title: 'Ausschlüsse (§ 7 WoGG)', type: 'table',
+      content: {
+        headers: ['Grund', 'Von', 'Bis', 'Bemerkung'],
+        rows: ausschluesse.map((a) => [
+          (a.grund && AUSSCHLUSS_GRUND_LABEL[a.grund]) || '—', fmtDate(a.von), fmtDate(a.bis), a.freitext || '—',
+        ]),
+      },
     });
   }
 
