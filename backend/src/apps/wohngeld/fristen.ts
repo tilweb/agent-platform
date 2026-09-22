@@ -18,6 +18,20 @@ function toUtcDay(day: string): number {
   return Date.UTC(y, m - 1, d);
 }
 
+/** Standard-Puffer: Wiedervorlage = Frist + N Tage (ENV-tunebar, Default 3). */
+export const WIEDERVORLAGE_PUFFER_TAGE = Number(process.env.WOHNGELD_WIEDERVORLAGE_PUFFER_TAGE) || 3;
+
+/**
+ * ISO-Datum + n Tage → YYYY-MM-DD. Ungültiges/leeres Datum → undefined.
+ * Rein (kein Date.now), zeitzonensicher über UTC-Tagesrechnung.
+ */
+export function plusTage(iso: string | undefined, n: number): string | undefined {
+  const day = dayPart(iso);
+  if (day === null) return undefined;
+  const ms = toUtcDay(day) + n * 24 * 60 * 60 * 1000;
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
 /**
  * Ist die Frist überfällig? Überfällig = Frist liegt VOR heute (strikt <).
  * Frist == heute gilt noch nicht als überfällig. Fehlende/ungültige Frist → false.

@@ -2,6 +2,13 @@
 
 ## 2026-09-22
 
+### Wohngeld — Frist & Wiedervorlage einzeln setzbar + Prefill (Frist + 3 Tage)
+Frist und Wiedervorlage sind im Details-Tab jetzt einzeln als Datumsfelder editierbar (canEdit).
+Prefill-Regel: Wiedervorlage = **Frist + 3 Tage** — beim Generieren/„Versenden" eines
+Anforderungsschreibens (Backend) und beim manuellen Setzen der Frist im UI (nur solange die
+Wiedervorlage leer ist; eine manuell gesetzte Wiedervorlage wird nie überschrieben). Puffer über
+`WOHNGELD_WIEDERVORLAGE_PUFFER_TAGE` (Default 3) konfigurierbar; neuer reiner Helfer `plusTage`.
+
 ### Wohngeld — Dokument-Aktionen als Icon-Buttons + Löschen mit Bestätigungs-Modal
 Die Aktionen je Dokument (Dokumente-Tab) sind jetzt Icon-Buttons mit Tooltip statt Text-Links:
 Vorschau (Auge), Herunterladen (Pfeil), Ins Fachverfahren ablegen (Archiv). Neu: **Dokument

@@ -5,6 +5,7 @@ import {
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { generiereAnforderungsschreiben } from '../schreiben-generator';
+import { plusTage, WIEDERVORLAGE_PUFFER_TAGE } from '../fristen';
 import { fmtDe } from '../bwz';
 import { schreibenToDocument } from '../schreiben-export';
 import { generateDocument, getMimeType, type DocumentFormat } from '../../../services/documentGenerator';
@@ -67,7 +68,7 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/generieren', async (c) => 
   // Frist/Wiedervorlage vorbelegen (Status NICHT ändern — erst beim „versendet", WP7).
   if (entwurf.frist) {
     try {
-      await updateVorgang(vorgangId, { frist: entwurf.frist, wiedervorlage: entwurf.frist }, { expectedVersion: vorgang.version });
+      await updateVorgang(vorgangId, { frist: entwurf.frist, wiedervorlage: plusTage(entwurf.frist, WIEDERVORLAGE_PUFFER_TAGE) }, { expectedVersion: vorgang.version });
     } catch { /* Vorbelegung ist optional — keine harte Blockade des Generierens */ }
   }
   // „Neu erzeugen": vorhandenen Entwurf überschreiben, statt einen neuen anzulegen.
@@ -107,7 +108,7 @@ schreibenRoutes.post('/vorgaenge/:vorgangId/schreiben/:sid/versendet', async (c)
     const updated = await updateVorgang(vorgangId, {
       status: 'warte_auf_rueckmeldung',
       frist: frist ?? undefined,
-      wiedervorlage: frist ?? undefined,
+      wiedervorlage: plusTage(frist, WIEDERVORLAGE_PUFFER_TAGE) ?? frist ?? undefined,
     }, { expectedVersion: vorgang.version });
     const fristTxt = frist ? fmtDe(frist) : 'ohne Frist';
     await audit(c, { aktion: 'schreiben.versendet', objektTyp: 'schreiben', objektId: sid, vorgangId, detail: `Frist ${fristTxt}` });

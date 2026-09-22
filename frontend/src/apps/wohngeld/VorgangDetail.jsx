@@ -121,6 +121,7 @@ const styles = {
   bezugItem: { display: 'flex', alignItems: 'flex-start', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, padding: '3px 0' },
   fristRow: { display: 'flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.sm, color: theme.colors.text, padding: '2px 0' },
   fristLabel: { color: theme.colors.textMuted, minWidth: 110 },
+  fristInput: { padding: `4px ${theme.spacing.sm}`, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none' },
   ueberfaelligBadge: { fontSize: '0.65rem', fontWeight: theme.typography.weights.semibold, padding: `1px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.errorLight, color: theme.colors.error },
   todoItem: { display: 'flex', alignItems: 'flex-start', gap: theme.spacing.sm, padding: '3px 0' },
   todoCheck: { flexShrink: 0, width: 16, height: 16, marginTop: 2, borderRadius: theme.borderRadius.sm, border: `1px solid ${theme.colors.border}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: theme.colors.surface, padding: 0 },
@@ -156,6 +157,15 @@ function fmtDate(iso) {
   try { return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
   catch { return iso.slice(0, 10); }
 }
+/** ISO-Datum (YYYY-MM-DD) + n Tage → YYYY-MM-DD. Leer/ungültig → ''. */
+function plusTageISO(iso, n) {
+  if (!iso) return '';
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return '';
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
 function fmtDateTime(iso) {
   if (!iso) return '—';
   try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
@@ -724,9 +734,19 @@ export default function VorgangDetail() {
     } finally { setBusy(false); }
   }
 
+  // Frist/Wiedervorlage einzeln setzen; beim Setzen der Frist die Wiedervorlage
+  // auf Frist + 3 Tage vorbelegen, solange noch keine Wiedervorlage gesetzt ist.
+  function setFristFeld(feld, wert) {
+    const patch = { [feld]: wert || undefined };
+    if (feld === 'frist' && wert && !vorgang.wiedervorlage) {
+      patch.wiedervorlage = plusTageISO(wert, 3) || undefined;
+    }
+    saveVorgangData(patch);
+  }
+
   // ── Schreiben als versendet markieren (WP7) ──
   async function markVersendet(s) {
-    if (!window.confirm('Schreiben als versendet markieren? Der Vorgang wird auf „Wartet auf Rückmeldung" gesetzt und die Frist als Wiedervorlage übernommen.')) return;
+    if (!window.confirm('Schreiben als versendet markieren? Der Vorgang wird auf „Wartet auf Rückmeldung" gesetzt; die Wiedervorlage wird auf Frist + 3 Tage vorbelegt.')) return;
     setBusy(true); setError('');
     try {
       await wohngeldApi.markSchreibenVersendet(id, s.id);
@@ -1379,17 +1399,27 @@ export default function VorgangDetail() {
                     { label: 'Letzte Änderung', value: fmtDateTime(vorgang.updated_at) },
                   ]} />
 
-                  {(vorgang.frist || vorgang.wiedervorlage) && (
+                  <div style={styles.sideTitle}>Fristen</div>
+                  {canEdit ? (
                     <>
-                      <div style={styles.sideTitle}>Fristen</div>
-                      {vorgang.wiedervorlage && (
-                        <div style={styles.fristRow}>
-                          <ClockIcon size={14} color={wvUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
-                          <span style={styles.fristLabel}>Wiedervorlage</span>
-                          <span style={wvUeberfaellig ? { color: theme.colors.error, fontWeight: theme.typography.weights.semibold } : {}}>{fmtDate(vorgang.wiedervorlage)}</span>
-                          {wvUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
-                        </div>
-                      )}
+                      <div style={styles.fristRow}>
+                        <ClockIcon size={14} color={fristUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
+                        <span style={styles.fristLabel}>Frist</span>
+                        <input type="date" style={styles.fristInput} value={vorgang.frist ? vorgang.frist.slice(0, 10) : ''} disabled={busy} onChange={(e) => setFristFeld('frist', e.target.value)} />
+                        {fristUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
+                      </div>
+                      <div style={styles.fristRow}>
+                        <ClockIcon size={14} color={wvUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
+                        <span style={styles.fristLabel}>Wiedervorlage</span>
+                        <input type="date" style={styles.fristInput} value={vorgang.wiedervorlage ? vorgang.wiedervorlage.slice(0, 10) : ''} disabled={busy} onChange={(e) => setFristFeld('wiedervorlage', e.target.value)} />
+                        {wvUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: theme.colors.textMuted, marginTop: 2 }}>
+                        Beim Setzen der Frist wird die Wiedervorlage automatisch auf Frist + 3 Tage vorbelegt (nur solange sie leer ist).
+                      </div>
+                    </>
+                  ) : (vorgang.frist || vorgang.wiedervorlage) ? (
+                    <>
                       {vorgang.frist && (
                         <div style={styles.fristRow}>
                           <ClockIcon size={14} color={fristUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
@@ -1398,7 +1428,17 @@ export default function VorgangDetail() {
                           {fristUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
                         </div>
                       )}
+                      {vorgang.wiedervorlage && (
+                        <div style={styles.fristRow}>
+                          <ClockIcon size={14} color={wvUeberfaellig ? theme.colors.error : theme.colors.textMuted} />
+                          <span style={styles.fristLabel}>Wiedervorlage</span>
+                          <span style={wvUeberfaellig ? { color: theme.colors.error, fontWeight: theme.typography.weights.semibold } : {}}>{fmtDate(vorgang.wiedervorlage)}</span>
+                          {wvUeberfaellig && <span style={styles.ueberfaelligBadge}>überfällig</span>}
+                        </div>
+                      )}
                     </>
+                  ) : (
+                    <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Keine Fristen gesetzt.</div>
                   )}
                 </PanelSection>
 
