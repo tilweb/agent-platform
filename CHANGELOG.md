@@ -2,6 +2,13 @@
 
 ## 2026-09-22
 
+### Wohngeld — Übersichts-Listen: stabile Breite + Tab-Icons
+- **Kein Springen mehr zwischen den Listen-Views:** global `scrollbar-gutter: stable` (App.jsx) —
+  der Fensterscrollbalken reserviert immer seinen Platz, die zentrierte Seite verschiebt sich nicht
+  mehr, wenn eine lange Liste (Vorgänge) vs. kurze (Akten) angezeigt wird. Alle Views teilen denselben
+  1100px-Container.
+- **Tab-Leiste mit Icons** (Vorgänge/Wiedervorlage/Akten/Aufgaben/Protokoll/Löschfällig), umbrechbar.
+
 ### Wohngeld — Posteingang: Zuordnungs-Vorschlag mit transparentem Abgleich
 Nachgereichte Dokumente schlägt das System jetzt dem passenden bestehenden Vorgang **vor** — ohne je
 automatisch zuzuordnen (Human-in-the-Loop). Neues reines Matching-Modul `backend/src/apps/wohngeld/matching.ts`

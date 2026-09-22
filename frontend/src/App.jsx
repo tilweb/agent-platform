@@ -114,6 +114,12 @@ const globalStyles = `
     color: inherit;
   }
 
+  /* Scrollbalken-Platz immer reservieren, damit zentrierte Seiten beim
+     Erscheinen/Verschwinden der vertikalen Scrollbar nicht horizontal springen. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;

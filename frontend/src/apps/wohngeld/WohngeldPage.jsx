@@ -7,6 +7,7 @@ import {
   ACCENT, ACCENT_LIGHT, AKTION_LABEL, APP_ROLE_LABEL, aktionLabel,
 } from './api';
 import StatusBadge from './components/StatusBadge';
+import { ListIcon, ClockIcon, FolderIcon, ClipboardIcon, TimelineIcon, TrashIcon } from '../../components/Icons';
 
 const styles = {
   container: { padding: `${theme.spacing.xl} ${theme.spacing['2xl']}`, maxWidth: 1100, margin: '0 auto' },
@@ -37,8 +38,9 @@ const styles = {
     fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, cursor: 'pointer',
   },
   filterTabActive: { backgroundColor: ACCENT_LIGHT, color: ACCENT, borderColor: ACCENT_LIGHT },
-  viewSwitch: { display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.lg },
+  viewSwitch: { display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.lg, flexWrap: 'wrap' },
   viewTab: {
+    display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs,
     padding: `${theme.spacing.sm} ${theme.spacing.lg}`, backgroundColor: 'transparent', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg,
     fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, cursor: 'pointer',
   },
@@ -354,15 +356,15 @@ export default function WohngeldPage() {
       {error && <div style={styles.error}>{error}</div>}
 
       <div style={styles.viewSwitch}>
-        <button style={{ ...styles.viewTab, ...(viewMode === 'vorgaenge' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('vorgaenge')}>Vorgänge</button>
-        <button style={{ ...styles.viewTab, ...(viewMode === 'wiedervorlage' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('wiedervorlage')}>Wiedervorlage / Fristen</button>
-        <button style={{ ...styles.viewTab, ...(viewMode === 'akten' ? styles.viewTabActive : {}) }} onClick={() => { setViewMode('akten'); setSelectedAkte(null); }}>Akten</button>
-        <button style={{ ...styles.viewTab, ...(viewMode === 'aufgaben' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('aufgaben')}>Aufgaben</button>
+        <button style={{ ...styles.viewTab, ...(viewMode === 'vorgaenge' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('vorgaenge')}><ListIcon size={15} /> Vorgänge</button>
+        <button style={{ ...styles.viewTab, ...(viewMode === 'wiedervorlage' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('wiedervorlage')}><ClockIcon size={15} /> Wiedervorlage / Fristen</button>
+        <button style={{ ...styles.viewTab, ...(viewMode === 'akten' ? styles.viewTabActive : {}) }} onClick={() => { setViewMode('akten'); setSelectedAkte(null); }}><FolderIcon size={15} /> Akten</button>
+        <button style={{ ...styles.viewTab, ...(viewMode === 'aufgaben' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('aufgaben')}><ClipboardIcon size={15} /> Aufgaben</button>
         {isOwner && (
-          <button style={{ ...styles.viewTab, ...(viewMode === 'protokoll' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('protokoll')}>Protokoll</button>
+          <button style={{ ...styles.viewTab, ...(viewMode === 'protokoll' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('protokoll')}><TimelineIcon size={15} /> Protokoll</button>
         )}
         {isOwner && (
-          <button style={{ ...styles.viewTab, ...(viewMode === 'loeschfaellig' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('loeschfaellig')}>Löschfällig</button>
+          <button style={{ ...styles.viewTab, ...(viewMode === 'loeschfaellig' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('loeschfaellig')}><TrashIcon size={15} /> Löschfällig</button>
         )}
       </div>
 
