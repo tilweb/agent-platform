@@ -58,6 +58,26 @@ Die reichen „+"-Listenblöcke des forml-Feldsets je Person, Spec
   auf beide Shapes umgestellt. Tests: `einkommen.test.ts` (frequenzProJahr + §18 neue Shape),
   `checker.test.ts` (§7 via `ausschluesse[]`) — 198 Tests grün, Goldfall unberührt.
 
+### Wohngeld — PersonCard-Unterabschnitte als abgegrenzte Karten (U2-Schliff)
+Alle Unterabschnitte einer Person (Persönliches, Pflege & Behinderung, Sonstiges, Einkommen sowie
+die forml-Listenblöcke Vermögen/Kinderbetreuungskosten/Unterhalt×2/Ausschlüsse) sind jetzt in die
+bestehende Komponente `PanelSection` gehüllt — bordered, einklappbar, neutrale Kopfzeile (statt der
+lauten blauen Überschriften) mit Aktion **Bearbeiten** bzw. **Verwerfen/Speichern** rechts.
+- **`PanelSection` erweitert:** neuer `unbestaetigt`-Punkt (pulsierender KI-Punkt neben dem Titel,
+  auch eingeklappt sichtbar) und optionaler **kontrollierter** Offen-Zustand (`open` + `onToggle`),
+  damit „Bearbeiten" eine eingeklappte Karte automatisch aufklappt. Rückwärtskompatibel — die
+  bestehende Nutzung im rechten Panel (`VorgangDetail`) bleibt unverändert (unkontrolliert).
+- **`ListEditor` gibt Kopf-Aktion an `PanelSection.action` und Body an `children`;** Verhalten
+  (einklappbare Items, Feld-Schema, Speichern) unverändert. Der bisherige `SecHead` weicht der
+  Helfer-Komponente `SecAction` (nur die Buttons).
+- **Collapse-Defaults für den Überblick:** leere Blöcke (Vermögen/Kinderbetreuung/Unterhalt/
+  Ausschlüsse ohne Einträge, Pflege ohne Angaben) starten **eingeklappt**; Blöcke mit Inhalt
+  (Persönliches, Einkommen mit Positionen, Sonstiges mit Werten) **offen** — man sieht auf einen
+  Blick, wo etwas erfasst ist.
+- **KI-Punkt je Abschnitt:** `unbestaetigt` wird pro Unterabschnitt aus den zugehörigen
+  Feldstatus-Pfaden abgeleitet und an `PanelSection` durchgereicht (konsistent zu U1). Nur
+  theme.js-Werte, dezente 1px-Border, keine farbigen Akzentrahmen. Backend unberührt.
+
 ### Wohngeld — Frist & Wiedervorlage einzeln setzbar + Prefill (Frist + 3 Tage)
 Frist und Wiedervorlage sind im Details-Tab jetzt einzeln als Datumsfelder editierbar (canEdit).
 Prefill-Regel: Wiedervorlage = **Frist + 3 Tage** — beim Generieren/„Versenden" eines

@@ -8,6 +8,7 @@ import {
   GDB_OPTIONS, PFLEGEGRAD_OPTIONS, ACCENT, wohngeldApi,
 } from '../api';
 import { FeldGrid } from './SektionCard';
+import PanelSection from './PanelSection';
 import FeldStatusMark, { FeldStatusDot, FeldStatusFreigabe } from './FeldStatusMark';
 import { fsKey } from '../feldStatusMap';
 
@@ -95,16 +96,18 @@ function rowId() {
  *   summary: (item) => string  — Zusammenfassungszeile (read-only + Item-Kopf)
  *   note:    optionaler Knoten unter der Kopfzeile (z. B. Legacy-Hinweis)
  */
-function ListEditor({ title, itemLabel, items, fields, canEdit, busy, onSave, emptyText, summary, note = null }) {
+function ListEditor({ title, itemLabel, items, fields, canEdit, busy, onSave, emptyText, summary, note = null, unbestaetigt = false }) {
   const initial = items || [];
   const [draft, setDraft] = useState(null);     // null = read-only
   const [openIdx, setOpenIdx] = useState({});   // aufgeklappte Items im Bearbeiten-Modus
+  const [sectionOpen, setSectionOpen] = useState(initial.length > 0); // Karte offen, wenn Inhalt
   const editing = draft !== null;
 
   const emptyRow = () => { const r = { id: rowId() }; for (const f of fields) r[f.key] = ''; return r; };
   const start = () => {
     setDraft(initial.length ? initial.map((r) => ({ ...r })) : [emptyRow()]);
     setOpenIdx(initial.length ? {} : { 0: true });
+    setSectionOpen(true);   // beim Bearbeiten immer aufklappen
   };
   const cancel = () => { setDraft(null); setOpenIdx({}); };
   const setCell = (idx, key, val) => setDraft((d) => d.map((r, i) => (i === idx ? { ...r, [key]: val } : r)));
@@ -132,65 +135,68 @@ function ListEditor({ title, itemLabel, items, fields, canEdit, busy, onSave, em
     setDraft(null); setOpenIdx({});
   };
 
-  // ── read-only Zusammenfassung ──
-  if (!editing) {
-    return (
-      <div style={styles.leBlock}>
-        <SecHead title={title} editing={false} canEdit={canEdit} busy={busy} onEdit={start} />
-        {note}
-        {initial.length === 0
-          ? <div style={styles.leEmpty}>{emptyText}</div>
-          : initial.map((r) => <div key={r.id} style={styles.leSummaryRow}>{summary(r)}</div>)}
-      </div>
-    );
-  }
+  const action = <SecAction editing={editing} canEdit={canEdit} busy={busy} onEdit={start} onSave={save} onCancel={cancel} />;
 
-  // ── Bearbeiten-Modus: einklappbare Unter-Blöcke ──
   return (
-    <div style={styles.leBlock}>
-      <SecHead title={title} editing canEdit={canEdit} busy={busy} onSave={save} onCancel={cancel} />
+    <PanelSection
+      title={title}
+      action={action}
+      unbestaetigt={unbestaetigt}
+      open={sectionOpen}
+      onToggle={setSectionOpen}
+    >
       {note}
-      {draft.map((r, idx) => {
-        const isOpen = !!openIdx[idx];
-        const head = hasContent(r) ? summary(r) : `Neu · ${itemLabel}`;
-        return (
-          <div key={r.id || idx} style={styles.itemBlock}>
-            <div style={styles.itemHead}>
-              <button style={styles.itemToggle} onClick={() => toggle(idx)} aria-expanded={isOpen} title={isOpen ? 'Einklappen' : 'Ausklappen'}>
-                <ChevronDownIcon size={14} style={{ ...styles.itemChevron, transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
-                <span style={styles.itemHeadTitle}>{head}</span>
-              </button>
-              <button style={styles.leRemove} onClick={() => removeRow(idx)} title="Eintrag entfernen" aria-label="Eintrag entfernen"><TrashIcon size={13} /></button>
-            </div>
-            {isOpen && (
-              <div style={styles.itemBody}>
-                {fields.map((f, fi) => (
-                  <div key={f.key} style={{ ...styles.fieldRow, borderBottom: fi === fields.length - 1 ? 'none' : `1px solid ${theme.colors.borderLight}` }}>
-                    <span style={styles.fieldLabel}>{f.label}</span>
-                    {f.type === 'select' ? (
-                      <select style={styles.fieldInput} value={r[f.key] ?? ''} onChange={(e) => setCell(idx, f.key, e.target.value)}>
-                        <option value="">— bitte wählen —</option>
-                        {Object.entries(f.options || {}).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                      </select>
-                    ) : f.type === 'date' ? (
-                      <input type="date" style={styles.fieldInput} placeholder="tt.mm.jjjj" value={r[f.key] ? String(r[f.key]).slice(0, 10) : ''} onChange={(e) => setCell(idx, f.key, e.target.value)} />
-                    ) : f.type === 'number' ? (
-                      <div style={styles.inputWithSuffix}>
-                        <input type="number" style={{ ...styles.fieldInput, flex: 1 }} placeholder={f.label} value={r[f.key] ?? ''} onChange={(e) => setCell(idx, f.key, e.target.value)} />
-                        {f.suffix && <span style={styles.suffix}>{f.suffix}</span>}
+      {!editing ? (
+        // ── read-only Zusammenfassung ──
+        initial.length === 0
+          ? <div style={styles.leEmpty}>{emptyText}</div>
+          : initial.map((r) => <div key={r.id} style={styles.leSummaryRow}>{summary(r)}</div>)
+      ) : (
+        // ── Bearbeiten-Modus: einklappbare Unter-Blöcke ──
+        <>
+          {draft.map((r, idx) => {
+            const isOpen = !!openIdx[idx];
+            const head = hasContent(r) ? summary(r) : `Neu · ${itemLabel}`;
+            return (
+              <div key={r.id || idx} style={styles.itemBlock}>
+                <div style={styles.itemHead}>
+                  <button style={styles.itemToggle} onClick={() => toggle(idx)} aria-expanded={isOpen} title={isOpen ? 'Einklappen' : 'Ausklappen'}>
+                    <ChevronDownIcon size={14} style={{ ...styles.itemChevron, transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                    <span style={styles.itemHeadTitle}>{head}</span>
+                  </button>
+                  <button style={styles.leRemove} onClick={() => removeRow(idx)} title="Eintrag entfernen" aria-label="Eintrag entfernen"><TrashIcon size={13} /></button>
+                </div>
+                {isOpen && (
+                  <div style={styles.itemBody}>
+                    {fields.map((f, fi) => (
+                      <div key={f.key} style={{ ...styles.fieldRow, borderBottom: fi === fields.length - 1 ? 'none' : `1px solid ${theme.colors.borderLight}` }}>
+                        <span style={styles.fieldLabel}>{f.label}</span>
+                        {f.type === 'select' ? (
+                          <select style={styles.fieldInput} value={r[f.key] ?? ''} onChange={(e) => setCell(idx, f.key, e.target.value)}>
+                            <option value="">— bitte wählen —</option>
+                            {Object.entries(f.options || {}).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                          </select>
+                        ) : f.type === 'date' ? (
+                          <input type="date" style={styles.fieldInput} placeholder="tt.mm.jjjj" value={r[f.key] ? String(r[f.key]).slice(0, 10) : ''} onChange={(e) => setCell(idx, f.key, e.target.value)} />
+                        ) : f.type === 'number' ? (
+                          <div style={styles.inputWithSuffix}>
+                            <input type="number" style={{ ...styles.fieldInput, flex: 1 }} placeholder={f.label} value={r[f.key] ?? ''} onChange={(e) => setCell(idx, f.key, e.target.value)} />
+                            {f.suffix && <span style={styles.suffix}>{f.suffix}</span>}
+                          </div>
+                        ) : (
+                          <input type="text" style={styles.fieldInput} placeholder={f.label} value={r[f.key] ?? ''} onChange={(e) => setCell(idx, f.key, e.target.value)} />
+                        )}
                       </div>
-                    ) : (
-                      <input type="text" style={styles.fieldInput} placeholder={f.label} value={r[f.key] ?? ''} onChange={(e) => setCell(idx, f.key, e.target.value)} />
-                    )}
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        );
-      })}
-      <button style={styles.leAdd} onClick={addRow}><PlusIcon size={12} /> {itemLabel} hinzufügen</button>
-    </div>
+            );
+          })}
+          <button style={styles.leAdd} onClick={addRow}><PlusIcon size={12} /> {itemLabel} hinzufügen</button>
+        </>
+      )}
+    </PanelSection>
   );
 }
 
@@ -198,20 +204,19 @@ function fullName(p) {
   return [p.titel, p.vorname, p.nachname].filter(Boolean).join(' ') || 'Person';
 }
 
-/** Sektions-Kopf mit Bearbeiten- bzw. Verwerfen/Speichern-Buttons. */
-function SecHead({ title, editing, canEdit, busy, onEdit, onSave, onCancel }) {
-  return (
-    <div style={styles.secHead}>
-      <span style={styles.subTitle}>{title}</span>
-      {canEdit && (editing ? (
-        <span style={styles.secBtns}>
-          <button style={styles.secBtnGhost} onClick={onCancel} disabled={busy}>Verwerfen</button>
-          <button style={styles.secBtnPrimary} onClick={onSave} disabled={busy}>{busy ? 'Speichert…' : 'Speichern'}</button>
-        </span>
-      ) : (
-        <button style={styles.secBtnGhost} onClick={onEdit}>Bearbeiten</button>
-      ))}
-    </div>
+/**
+ * Kopf-Aktion einer Sektion für `PanelSection.action`: Bearbeiten bzw. im Edit-Modus
+ * Verwerfen/Speichern. Rendert nichts ohne Bearbeiten-Recht.
+ */
+function SecAction({ editing, canEdit, busy, onEdit, onSave, onCancel }) {
+  if (!canEdit) return null;
+  return editing ? (
+    <span style={styles.secBtns}>
+      <button style={styles.secBtnGhost} onClick={onCancel} disabled={busy}>Verwerfen</button>
+      <button style={styles.secBtnPrimary} onClick={onSave} disabled={busy}>{busy ? 'Speichert…' : 'Speichern'}</button>
+    </span>
+  ) : (
+    <button style={styles.secBtnGhost} onClick={onEdit}>Bearbeiten</button>
   );
 }
 
@@ -243,6 +248,7 @@ export default function PersonCard({
 }) {
   const [open, setOpen] = useState(false);
   const [editSec, setEditSec] = useState(null);   // 'persoenlich' | 'sonstiges' | 'pflege' | 'einkommen' | null
+  const [openSec, setOpenSec] = useState({});     // Offen-Zustand je feste Sektion (sonst Default)
   const [draft, setDraft] = useState(null);
   const [auskunftBusy, setAuskunftBusy] = useState(false);
   const [auskunftError, setAuskunftError] = useState('');
@@ -274,9 +280,26 @@ export default function PersonCard({
   // Person enthält ≥1 unbestätigten KI-Vorschlag? (Head-Punkt-Indikator)
   const personUnbestaetigt = Object.keys(feldStatusMap).some((k) => k.startsWith(`person:${p.id}:`));
 
+  // Unbestätigte KI-Feldstatus je Sektion (für den KI-Punkt an der jeweiligen Karte).
+  const fsPrefix = `person:${p.id}:`;
+  const fsKeys = Object.keys(feldStatusMap).filter((k) => k.startsWith(fsPrefix)).map((k) => k.slice(fsPrefix.length));
+  const secUnbest = {
+    persoenlich: fsKeys.some((f) => ['geburtsname', 'titel', 'geburtsdatum', 'geburtsort', 'geschlecht', 'familienstand', 'telefon', 'email', 'erwerbsstatus', 'bemerkung'].includes(f)),
+    pflege: fsKeys.some((f) => f.startsWith('pflege_behinderung')),
+    sonstiges: fsKeys.some((f) => ['staatsangehoerigkeit', 'erhaelt_kindergeld', 'hat_werbungskosten', 'aufforderung_wohngeld', 'eu_ewr'].includes(f)),
+    einkommen: fsKeys.some((f) => f.startsWith('einkommen')),
+    vermoegen: fsKeys.some((f) => f.startsWith('vermoegen')),
+    kinderbetreuung: fsKeys.some((f) => f.startsWith('kinderbetreuung')),
+    uverpf: fsKeys.some((f) => f.startsWith('unterhaltsverpflichtungen')),
+    uanspr: fsKeys.some((f) => f.startsWith('unterhaltsansprueche')),
+    ausschluesse: fsKeys.some((f) => f.startsWith('ausschluesse')),
+  };
+
   // ── Sektions-Edit-Handling ──
-  const startSec = (sec) => { setDraft(buildDraft(p)); setEditSec(sec); };
+  const startSec = (sec) => { setDraft(buildDraft(p)); setEditSec(sec); setOpenSec((s) => ({ ...s, [sec]: true })); };
   const cancelSec = () => { setEditSec(null); setDraft(null); };
+  // Offen-Props einer festen Sektion (kontrolliert; fällt auf `def` zurück).
+  const secOpenProps = (key, def) => ({ open: openSec[key] ?? def, onToggle: (v) => setOpenSec((s) => ({ ...s, [key]: v })) });
   const setField = (key, val) => setDraft((d) => ({ ...d, [key]: val }));
   const saveSec = async (patchBuilder) => {
     await onSavePerson?.(p.id, patchBuilder(draft));
@@ -388,18 +411,23 @@ export default function PersonCard({
       {open && (
         <div style={styles.body}>
           {/* ── Persönliches ── */}
-          <SecHead
-            title="Persönliches" editing={persoenlichEditing} canEdit={canEdit} busy={busy}
-            onEdit={() => startSec('persoenlich')} onCancel={cancelSec}
-            onSave={() => saveSec((d) => ({
-              nachname: d.nachname.trim(), vorname: d.vorname.trim(),
-              geburtsname: d.geburtsname.trim() || undefined, titel: d.titel.trim() || undefined,
-              geburtsdatum: d.geburtsdatum || undefined, geburtsort: d.geburtsort.trim() || undefined,
-              geschlecht: d.geschlecht || undefined, familienstand: d.familienstand || undefined,
-              telefon: d.telefon.trim() || undefined, email: d.email.trim() || undefined,
-              erwerbsstatus: d.erwerbsstatus || undefined, bemerkung: d.bemerkung.trim() || undefined,
-            }))}
-          />
+          <PanelSection
+            title="Persönliches"
+            unbestaetigt={secUnbest.persoenlich}
+            {...secOpenProps('persoenlich', persoenlichRead.length > 0)}
+            action={<SecAction
+              editing={persoenlichEditing} canEdit={canEdit} busy={busy}
+              onEdit={() => startSec('persoenlich')} onCancel={cancelSec}
+              onSave={() => saveSec((d) => ({
+                nachname: d.nachname.trim(), vorname: d.vorname.trim(),
+                geburtsname: d.geburtsname.trim() || undefined, titel: d.titel.trim() || undefined,
+                geburtsdatum: d.geburtsdatum || undefined, geburtsort: d.geburtsort.trim() || undefined,
+                geschlecht: d.geschlecht || undefined, familienstand: d.familienstand || undefined,
+                telefon: d.telefon.trim() || undefined, email: d.email.trim() || undefined,
+                erwerbsstatus: d.erwerbsstatus || undefined, bemerkung: d.bemerkung.trim() || undefined,
+              }))}
+            />}
+          >
           {persoenlichEditing ? (
             <div style={styles.editGrid}>
               <span style={styles.editLabel}>Nachname</span>
@@ -441,19 +469,25 @@ export default function PersonCard({
               ? <FeldGrid felder={persoenlichRead} />
               : <div style={styles.leEmpty}>Keine persönlichen Angaben erfasst.</div>
           )}
+          </PanelSection>
 
           {/* ── Pflege & Behinderung ── */}
-          <SecHead
-            title="Pflege & Behinderung" editing={pflegeEditing} canEdit={canEdit} busy={busy}
-            onEdit={() => startSec('pflege')} onCancel={cancelSec}
-            onSave={() => saveSec((d) => ({
-              pflege_behinderung: {
-                schwerbehinderungsgrad: d.pb_schwerbehinderungsgrad === '' ? undefined : Number(d.pb_schwerbehinderungsgrad),
-                pflegegrad: d.pb_pflegegrad === '' ? undefined : Number(d.pb_pflegegrad),
-                pflegebeduerftig: !!d.pb_pflegebeduerftig,
-              },
-            }))}
-          />
+          <PanelSection
+            title="Pflege & Behinderung"
+            unbestaetigt={secUnbest.pflege}
+            {...secOpenProps('pflege', pflegeRead.length > 0)}
+            action={<SecAction
+              editing={pflegeEditing} canEdit={canEdit} busy={busy}
+              onEdit={() => startSec('pflege')} onCancel={cancelSec}
+              onSave={() => saveSec((d) => ({
+                pflege_behinderung: {
+                  schwerbehinderungsgrad: d.pb_schwerbehinderungsgrad === '' ? undefined : Number(d.pb_schwerbehinderungsgrad),
+                  pflegegrad: d.pb_pflegegrad === '' ? undefined : Number(d.pb_pflegegrad),
+                  pflegebeduerftig: !!d.pb_pflegebeduerftig,
+                },
+              }))}
+            />}
+          >
           {pflegeEditing ? (
             <div style={styles.editGrid}>
               <span style={styles.editLabel}>Schwerbehinderungsgrad (GdB)</span>
@@ -474,17 +508,23 @@ export default function PersonCard({
               ? <FeldGrid felder={pflegeRead} />
               : <div style={styles.leEmpty}>Keine Angaben zu Pflege & Behinderung.</div>
           )}
+          </PanelSection>
 
           {/* ── Sonstiges ── */}
-          <SecHead
-            title="Sonstiges" editing={sonstigesEditing} canEdit={canEdit} busy={busy}
-            onEdit={() => startSec('sonstiges')} onCancel={cancelSec}
-            onSave={() => saveSec((d) => ({
-              erhaelt_kindergeld: !!d.erhaelt_kindergeld, hat_werbungskosten: !!d.hat_werbungskosten,
-              aufforderung_wohngeld: !!d.aufforderung_wohngeld, eu_ewr: !!d.eu_ewr,
-              staatsangehoerigkeit: d.staatsangehoerigkeit.trim() || undefined,
-            }))}
-          />
+          <PanelSection
+            title="Sonstiges"
+            unbestaetigt={secUnbest.sonstiges}
+            {...secOpenProps('sonstiges', sonstigesRead.length > 0)}
+            action={<SecAction
+              editing={sonstigesEditing} canEdit={canEdit} busy={busy}
+              onEdit={() => startSec('sonstiges')} onCancel={cancelSec}
+              onSave={() => saveSec((d) => ({
+                erhaelt_kindergeld: !!d.erhaelt_kindergeld, hat_werbungskosten: !!d.hat_werbungskosten,
+                aufforderung_wohngeld: !!d.aufforderung_wohngeld, eu_ewr: !!d.eu_ewr,
+                staatsangehoerigkeit: d.staatsangehoerigkeit.trim() || undefined,
+              }))}
+            />}
+          >
           {sonstigesEditing ? (
             <div>
               <div style={styles.checkRow}>
@@ -503,13 +543,19 @@ export default function PersonCard({
               ? <FeldGrid felder={sonstigesRead} />
               : <div style={styles.leEmpty}>Keine sonstigen Angaben erfasst.</div>
           )}
+          </PanelSection>
 
           {/* ── Einkommen ── */}
-          <SecHead
-            title="Einkommen" editing={einkommenEditing} canEdit={canEdit} busy={busy}
-            onEdit={() => startSec('einkommen')} onCancel={cancelSec}
-            onSave={() => saveSec(buildEinkommenPatch)}
-          />
+          <PanelSection
+            title="Einkommen"
+            unbestaetigt={secUnbest.einkommen}
+            {...secOpenProps('einkommen', einkommen.length > 0)}
+            action={<SecAction
+              editing={einkommenEditing} canEdit={canEdit} busy={busy}
+              onEdit={() => startSec('einkommen')} onCancel={cancelSec}
+              onSave={() => saveSec(buildEinkommenPatch)}
+            />}
+          >
           {einkommenEditing ? (
             <div>
               {draft.einkommen.length === 0 && <div style={styles.leEmpty}>Keine Positionen — mit „Position" hinzufügen.</div>}
@@ -555,6 +601,7 @@ export default function PersonCard({
               </table>
             ) : <div style={styles.leEmpty}>Keine Einkommenspositionen erfasst.</div>
           )}
+          </PanelSection>
 
           {/* ── Vermögen ── */}
           <ListEditor
@@ -568,6 +615,7 @@ export default function PersonCard({
               { key: 'art', label: 'Art', type: 'text' },
               { key: 'betrag', label: 'Betrag', type: 'number', suffix: '€' },
             ]}
+            unbestaetigt={secUnbest.vermoegen}
             summary={(r) => [r.art || 'Vermögensposition', r.betrag != null ? eur(r.betrag) : null].filter(Boolean).join(' · ')}
             note={(!p.vermoegenPositionen || p.vermoegenPositionen.length === 0) && p.vermoegen != null
               ? <div style={styles.leEmpty}>Bisher als Einzelwert erfasst: {eur(p.vermoegen)}</div>
@@ -588,6 +636,7 @@ export default function PersonCard({
               { key: 'bemerkung', label: 'Bemerkung', type: 'text' },
               { key: 'betrag', label: 'Betrag', type: 'number', suffix: '€' },
             ]}
+            unbestaetigt={secUnbest.kinderbetreuung}
             summary={(r) => [r.bemerkung || 'Kinderbetreuung', r.frequenz ? FREQUENZ_LABEL[r.frequenz] : null, r.betrag != null ? eur(r.betrag) : null].filter(Boolean).join(' · ')}
             onSave={(rows) => onSavePerson?.(p.id, { kinderbetreuungskosten: rows })}
           />
@@ -607,6 +656,7 @@ export default function PersonCard({
               { key: 'frequenz', label: 'Frequenz', type: 'select', options: FREQUENZ_LABEL },
               { key: 'betrag', label: 'Betrag', type: 'number', suffix: '€' },
             ]}
+            unbestaetigt={secUnbest.uverpf}
             summary={(r) => {
               const kat = r.verwandtschaft ? VERWANDTSCHAFT_LABEL[r.verwandtschaft]
                 : r.empfaengerKategorie ? UNTERHALT_KATEGORIE_LABEL[r.empfaengerKategorie] : null;
@@ -632,6 +682,7 @@ export default function PersonCard({
               { key: 'frequenz', label: 'Frequenz', type: 'select', options: FREQUENZ_LABEL },
               { key: 'betrag', label: 'Betrag', type: 'number', suffix: '€' },
             ]}
+            unbestaetigt={secUnbest.uanspr}
             summary={(r) => {
               const name = [r.vonVorname, r.vonNachname].filter(Boolean).join(' ');
               return [name || r.art || 'Anspruch', r.frequenz ? FREQUENZ_LABEL[r.frequenz] : null, r.betrag != null ? eur(r.betrag) : null].filter(Boolean).join(' · ');
@@ -653,6 +704,7 @@ export default function PersonCard({
               { key: 'bis', label: 'Bis', type: 'date' },
               { key: 'freitext', label: 'Bemerkung', type: 'text' },
             ]}
+            unbestaetigt={secUnbest.ausschluesse}
             summary={(r) => [r.grund ? AUSSCHLUSS_GRUND_LABEL[r.grund] : (r.freitext || 'Ausschluss'),
               (r.von || r.bis) ? `${fmtDate(r.von) || '?'} – ${fmtDate(r.bis) || '?'}` : null].filter(Boolean).join(' · ')}
             note={p.transferleistungenDetail?.length > 0
