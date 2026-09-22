@@ -11,14 +11,16 @@
  */
 
 import type { ExtractionProfile } from '../../extraction/types';
-import { extractionModelConfig } from '../../extraction/model';
+import { extractionModelConfig, EXTRACTION_MODEL_ID } from '../../extraction/model';
 import {
   applyExtractionDefaults,
   type ExtractionSchema,
   type StrategyId,
+  type PipelineRunResult,
 } from '../../services/extraction';
 import { pickStammdaten, pickAnalyse, pickIdentitaet, type ExtrahierteStammdaten, type Identitaet } from './extraction';
-import type { DokumentAnalyse, DokumentTyp } from './types';
+import { WOHNGELD_PROMPT_VERSION } from './ki-governance';
+import type { DokumentAnalyse, DokumentTyp, DokumentExtraktion, DokumentExtraktionFeld } from './types';
 
 /**
  * Optionale Identitäts-Feldgruppe für Nachweis-Dokumente. Liefert das leichte
@@ -337,4 +339,152 @@ export function mapPipelineToAnalyse(
   }
 
   return { analyse, identitaet, confidenceByPfad };
+}
+
+// ── Extraktions-Transparenz (Baum-Übersicht) ────────────────────────────────
+
+/** Deutsche Anzeige-Labels für Enum-Werte (Baum-Übersicht). */
+const WGA_LABEL: Record<string, string> = {
+  mietzuschuss: 'Mietzuschuss',
+  lastenzuschuss: 'Lastenzuschuss',
+};
+const ANTRAGSART_LABEL: Record<string, string> = {
+  erstantrag: 'Erstantrag',
+  weiterleistungsantrag: 'Weiterleistungsantrag',
+  erhoehungsantrag: 'Erhöhungsantrag',
+  aenderungsantrag: 'Änderungsantrag',
+};
+const EINKUNFTSART_LABEL: Record<string, string> = {
+  kapitalertraege: 'Kapitalerträge',
+  v_und_v: 'Vermietung/Verpachtung',
+};
+
+/** ISO-Datum (JJJJ-MM-TT…) → TT.MM.JJJJ; sonst Roh-Wert. */
+function fmtDatum(iso?: string): string | undefined {
+  if (!iso) return undefined;
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : String(iso);
+}
+/** Zahl → Euro (de-DE). */
+function fmtEuro(v?: number): string | undefined {
+  if (v == null || !Number.isFinite(v)) return undefined;
+  return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+}
+/** Zahl → „72 m²". */
+function fmtQm(v?: number): string | undefined {
+  if (v == null || !Number.isFinite(v)) return undefined;
+  return `${v.toLocaleString('de-DE')} m²`;
+}
+/** boolean → „vorhanden"/„fehlt". */
+function fmtVorhanden(v?: boolean): string | undefined {
+  if (v === true) return 'vorhanden';
+  if (v === false) return 'fehlt';
+  return undefined;
+}
+/** boolean → „ja"/„nein". */
+function fmtJaNein(v?: boolean): string | undefined {
+  if (v === true) return 'ja';
+  if (v === false) return 'nein';
+  return undefined;
+}
+/** erkannte_einkuenfte[] → lesbare, komma-getrennte Liste. */
+function fmtEinkuenfte(arr?: string[]): string | undefined {
+  if (!Array.isArray(arr) || !arr.length) return undefined;
+  return arr.map((x) => EINKUNFTSART_LABEL[x] ?? x).join(', ');
+}
+
+/** Seite (aus Provenienz-Source `p:N`) für einen Pipeline-Feldpfad. */
+function seiteAusProvenance(provenance: PipelineRunResult['provenance'] | undefined, pfad: string): number | undefined {
+  const prov = provenance?.find((p) => p.field === pfad);
+  if (!prov || typeof prov.source !== 'string') return undefined;
+  const m = prov.source.match(/p:(\d+)/);
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Gemappte Werte, aus denen die Übersicht gebaut wird. */
+export interface ExtraktionUebersichtTeile {
+  stammdaten?: ExtrahierteStammdaten;
+  analyse?: DokumentAnalyse;
+  identitaet?: Identitaet;
+}
+
+/**
+ * Reine Funktion: baut aus den gemappten Werten (Stammdaten/Analyse/Identität)
+ * plus `result.fieldConfidences`/`result.provenance` die `felder`-Liste der
+ * Extraktions-Transparenz — mit lesbaren deutschen Labels, formatierten Werten,
+ * Konfidenz je Feld und (falls vorhanden) Seitenzahl.
+ *
+ * Gruppen: Antragsteller/Adresse/Wohnung/Antrag (nur beim Antrag),
+ * Identität (Nachweise ohne Stammdaten), Analyse (Nachweise).
+ *
+ * Setzt bewusst KEIN `erzeugtAm` (Date.now() gehört in den Aufruf-/Route-Kontext,
+ * damit die Funktion in Testpfaden deterministisch bleibt).
+ */
+export function baueExtraktionsUebersicht(
+  typ: DokumentTyp,
+  teile: ExtraktionUebersichtTeile,
+  result?: PipelineRunResult,
+): DokumentExtraktion {
+  void typ; // Layout leitet sich aus den vorhandenen Teilen ab, nicht aus dem Typ.
+  const felder: DokumentExtraktionFeld[] = [];
+  const fc = result?.fieldConfidences ?? {};
+  const prov = result?.provenance;
+
+  const add = (gruppe: string, label: string, pfad: string | undefined, wert: string | undefined): void => {
+    if (wert == null || wert === '') return;
+    const feld: DokumentExtraktionFeld = { gruppe, label, wert };
+    if (pfad) {
+      const c = fc[pfad];
+      if (typeof c === 'number') feld.confidence = c;
+      const s = seiteAusProvenance(prov, pfad);
+      if (s !== undefined) feld.seite = s;
+    }
+    felder.push(feld);
+  };
+
+  const s = teile.stammdaten;
+  if (s) {
+    // Antrag: Antragsteller / Adresse / Wohnung / Antrag.
+    add('Antragsteller', 'Vorname', 'antragsteller.vorname', s.antragsteller?.vorname);
+    add('Antragsteller', 'Nachname', 'antragsteller.nachname', s.antragsteller?.nachname);
+    add('Antragsteller', 'Geburtsdatum', 'antragsteller.geburtsdatum', fmtDatum(s.antragsteller?.geburtsdatum));
+    add('Adresse', 'Straße', 'adresse.strasse', s.adresse?.strasse);
+    add('Adresse', 'Hausnummer', 'adresse.hausnummer', s.adresse?.hausnummer);
+    add('Adresse', 'PLZ', 'adresse.plz', s.adresse?.plz);
+    add('Adresse', 'Ort', 'adresse.ort', s.adresse?.ort);
+    add('Wohnung', 'Bruttokaltmiete', 'wohnung.miete', fmtEuro(s.wohnung?.miete));
+    add('Wohnung', 'Wohnfläche', 'wohnung.wohnflaeche_qm', fmtQm(s.wohnung?.wohnflaeche_qm));
+    add('Antrag', 'Antragsdatum', 'antrag.antragsdatum', fmtDatum(s.antragsdatum));
+    add('Antrag', 'Wohngeldart', 'antrag.wohngeldart', s.wohngeldart ? WGA_LABEL[s.wohngeldart] : undefined);
+    add('Antrag', 'Antragsart', 'antrag.antragsart', s.antragsart ? ANTRAGSART_LABEL[s.antragsart] : undefined);
+  } else if (teile.identitaet) {
+    // Nachweis: Identitäts-Signal.
+    const id = teile.identitaet;
+    add('Identität', 'Nachname', 'identitaet.nachname', id.nachname);
+    add('Identität', 'Vorname', 'identitaet.vorname', id.vorname);
+    add('Identität', 'Geburtsdatum', 'identitaet.geburtsdatum', fmtDatum(id.geburtsdatum));
+  }
+
+  const a = teile.analyse;
+  if (a) {
+    add('Analyse', 'Miete laut Dokument', 'analyse.miete', fmtEuro(a.miete));
+    add('Analyse', 'Wohnfläche laut Dokument', 'analyse.wohnflaeche_qm', fmtQm(a.wohnflaeche_qm));
+    add('Analyse', 'Unterschrift', 'analyse.unterschrift_vorhanden', fmtVorhanden(a.unterschrift_vorhanden));
+    add('Analyse', 'Datum', 'analyse.datum_vorhanden', fmtVorhanden(a.datum_vorhanden));
+    add('Analyse', 'Rentenart', 'analyse.rentenart_vorhanden', fmtVorhanden(a.rentenart_vorhanden));
+    add('Analyse', 'Grundrentenzeiten', 'analyse.grundrentenzeiten_vorhanden', fmtVorhanden(a.grundrentenzeiten_vorhanden));
+    add('Analyse', 'Mietzahlung erkannt', 'analyse.mietzahlung_erkannt', fmtJaNein(a.mietzahlung_erkannt));
+    // erkannte_einkuenfte hat keinen direkten Pipeline-Confidence-Pfad (abgeleitet).
+    add('Analyse', 'Erkannte Einkünfte', undefined, fmtEinkuenfte(a.erkannte_einkuenfte));
+    add('Analyse', 'Betrag', 'analyse.betrag', fmtEuro(a.betrag));
+  }
+
+  const uebersicht: DokumentExtraktion = { felder };
+  if (felder.length) {
+    uebersicht.modell = EXTRACTION_MODEL_ID;
+    uebersicht.stand = WOHNGELD_PROMPT_VERSION;
+  }
+  return uebersicht;
 }

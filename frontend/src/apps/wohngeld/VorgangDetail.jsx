@@ -19,6 +19,7 @@ import FallChat from './components/FallChat';
 import FeldStatusMark from './components/FeldStatusMark';
 import { buildFeldStatusMap, fsKey } from './feldStatusMap';
 import NotizPanel from './components/NotizPanel';
+import ExtraktionsBaum from './components/ExtraktionsBaum';
 
 const MAIN_TABS = [
   { id: 'uebersicht', label: 'Übersicht' },
@@ -132,8 +133,12 @@ const styles = {
   ablageBadge: { fontSize: '0.65rem', fontWeight: theme.typography.weights.semibold, padding: `1px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full },
   docGroupTitle: { fontSize: '0.7rem', color: theme.colors.textMuted, fontWeight: theme.typography.weights.semibold, marginTop: theme.spacing.sm, marginBottom: 2 },
   previewOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: theme.spacing.xl },
-  previewBox: { backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl, width: '90%', maxWidth: 900, height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: `1px solid ${theme.colors.border}` },
+  previewBox: { backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl, width: '92%', maxWidth: 1180, height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: `1px solid ${theme.colors.border}` },
   previewHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, padding: `${theme.spacing.md} ${theme.spacing.lg}`, borderBottom: `1px solid ${theme.colors.border}` },
+  previewBody: { flex: 1, display: 'flex', minHeight: 0 },
+  previewViewer: { flex: '2 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column' },
+  previewPanel: { flex: '1 1 300px', minWidth: 280, maxWidth: 400, borderLeft: `1px solid ${theme.colors.border}`, overflowY: 'auto', padding: theme.spacing.lg, backgroundColor: theme.colors.surface },
+  previewPanelTitle: { fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: theme.spacing.md },
   previewFrame: { flex: 1, width: '100%', border: 'none', backgroundColor: theme.colors.background },
   previewFallback: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.md, color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl },
   verfRow: { display: 'grid', gridTemplateColumns: 'minmax(140px, 220px) 1fr', rowGap: theme.spacing.md, columnGap: theme.spacing.lg, alignItems: 'start', marginBottom: theme.spacing.lg },
@@ -207,9 +212,11 @@ export default function VorgangDetail() {
   const [busy, setBusy] = useState(false);
   const dokUploadRef = useRef(null);
 
-  // Dateivorschau (WP10): { url, contentType, name } — objectURL wird beim Wechsel/Unmount freigegeben
+  // Dateivorschau (WP10): { url, contentType, name, dok } — objectURL wird beim Wechsel/Unmount freigegeben
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  // Extraktions-Transparenz: aufgeklappte Dokument-Kacheln (Set von Dokument-IDs)
+  const [extraktionOffen, setExtraktionOffen] = useState(() => new Set());
 
   // Verfügung (WP11): lokaler Formzustand, initial aus vorgang.verfuegung
   const [verfForm, setVerfForm] = useState(null);
@@ -306,7 +313,7 @@ export default function VorgangDetail() {
     setPreviewLoading(true); setError('');
     try {
       const { url, contentType } = await wohngeldApi.loadDokumentDatei(d.id);
-      setPreview({ url, contentType, name: DOKUMENT_TYP_LABEL[d.typ] || d.typ });
+      setPreview({ url, contentType, name: DOKUMENT_TYP_LABEL[d.typ] || d.typ, dok: d });
     } catch (e) {
       setError(e.message || 'Vorschau nicht verfügbar');
     } finally {
@@ -314,6 +321,13 @@ export default function VorgangDetail() {
     }
   }
   function closePreview() { setPreview(null); }
+  function toggleExtraktion(docId) {
+    setExtraktionOffen((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId); else next.add(docId);
+      return next;
+    });
+  }
   async function downloadDoc(d) {
     try { await wohngeldApi.downloadDokumentDatei(d.id, d.quelle || `${DOKUMENT_TYP_LABEL[d.typ] || 'dokument'}`); }
     catch (e) { setError(e.message); }
@@ -1592,6 +1606,32 @@ export default function VorgangDetail() {
                           </>
                         )}
                       </div>
+                      {(() => {
+                        const hatWerte = (d.extraktion?.felder?.length || 0) > 0 || !!d.analyse;
+                        if (!hatWerte) return null;
+                        const offen = extraktionOffen.has(d.id);
+                        return (
+                          <div style={{ marginTop: theme.spacing.xs }}>
+                            <button
+                              style={{ ...styles.docLinkBtn, display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                              onClick={() => toggleExtraktion(d.id)}
+                              aria-expanded={offen}
+                            >
+                              <ChevronDownIcon size={12} style={{ transform: offen ? 'rotate(180deg)' : 'none', transition: `transform ${theme.transitions.fast}` }} />
+                              {offen ? 'Extrahierte Werte ausblenden' : 'Extrahierte Werte anzeigen'}
+                            </button>
+                            {offen && (
+                              <div style={{ marginTop: theme.spacing.sm }}>
+                                <ExtraktionsBaum
+                                  extraktion={d.extraktion}
+                                  analyseFallback={d.analyse}
+                                  hinweise={pruefschritte.filter((p) => p.quellDokumentId === d.id)}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                   const renderGruppiert = (list, leerText) => {
@@ -1674,14 +1714,28 @@ export default function VorgangDetail() {
                 </button>
               </div>
             </div>
-            {(preview.contentType.includes('pdf') || preview.contentType.startsWith('image/') || preview.contentType.startsWith('text/')) ? (
-              <iframe src={preview.url} style={styles.previewFrame} title={preview.name} />
-            ) : (
-              <div style={styles.previewFallback}>
-                <div>Für diesen Dateityp ist keine Inline-Vorschau möglich.</div>
-                <button style={styles.btn} onClick={() => window.open(preview.url, '_blank', 'noopener')}>In neuem Tab öffnen</button>
+            <div style={styles.previewBody}>
+              <div style={styles.previewViewer}>
+                {(preview.contentType.includes('pdf') || preview.contentType.startsWith('image/') || preview.contentType.startsWith('text/')) ? (
+                  <iframe src={preview.url} style={styles.previewFrame} title={preview.name} />
+                ) : (
+                  <div style={styles.previewFallback}>
+                    <div>Für diesen Dateityp ist keine Inline-Vorschau möglich.</div>
+                    <button style={styles.btn} onClick={() => window.open(preview.url, '_blank', 'noopener')}>In neuem Tab öffnen</button>
+                  </div>
+                )}
               </div>
-            )}
+              {preview.dok && ((preview.dok.extraktion?.felder?.length || 0) > 0 || !!preview.dok.analyse) && (
+                <div style={styles.previewPanel}>
+                  <div style={styles.previewPanelTitle}>Aus dem Dokument extrahiert</div>
+                  <ExtraktionsBaum
+                    extraktion={preview.dok.extraktion}
+                    analyseFallback={preview.dok.analyse}
+                    hinweise={pruefschritte.filter((p) => p.quellDokumentId === preview.dok.id)}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

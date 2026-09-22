@@ -2,6 +2,23 @@
 
 ## 2026-09-22
 
+### Wohngeld — Extraktions-Transparenz pro Dokument
+- **Neu:** Sichtbar, WAS die KI aus einem Dokument gezogen hat — als Verzeichnisbaum
+  (Gruppen-Knoten + Blätter, durchgehende vertikale Linie + Abzweigung je Blatt), mit
+  **Konfidenz** je Wert (fehlend/0 → Badge „prüfen") und optionaler Seitenzahl.
+- **Backend:** Neuer Typ `DokumentExtraktion` (`felder[{gruppe,label,wert,confidence,seite}]`,
+  `modell`/`stand`/`erzeugtAm`) + `Dokument.extraktion?`. Reiner Helfer
+  `baueExtraktionsUebersicht(typ, teile, result?)` (extraction-schema.ts) baut aus den gemappten
+  Werten (Stammdaten/Analyse/Identität) + `result.fieldConfidences`/`provenance` die Feldliste
+  mit deutschen Labels, formatierten Werten (Datum TT.MM.JJJJ, Euro, ja/nein, m²) und
+  Konfidenz/Seite. Befüllt in `klassifiziereUndExtrahiere`; persistiert in `posteingang.ts`
+  (`verteilen` + Direkt-Upload). Unit-Tests in `extraction.test.ts`.
+- **Frontend:** Neue Komponente `ExtraktionsBaum.jsx` (theme-konform, neutrale Baumlinie).
+  Im Dokumente-Tab je Kachel Toggle „Extrahierte Werte anzeigen"; in der Dateivorschau ein
+  Panel „Aus dem Dokument extrahiert" neben dem iframe (Modal verbreitert). Zweiter Ast
+  „Ausgelöste Hinweise" (Prüfschritte mit `quellDokumentId === dok.id`). Fallback aus
+  `dokument.analyse`, damit auch Seed-/Bestandsdokumente Werte zeigen.
+
 ### Wohngeld — Übersichts-Listen: gleiche Breite + Tab-Icons
 - **Alle Listen-Views gleich breit:** Der Seiten-Container schrumpfte (durch `margin:0 auto` im
   Flex-Column-Layout, das Stretch deaktiviert) auf die Inhaltsbreite — Views mit wenigen Spalten

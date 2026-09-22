@@ -21,8 +21,8 @@ import { runPipeline, type PreparedFile, type StrategyId } from '../../services/
 import { pdfToLayoutText } from '../../services/extraction/pdf';
 import { extractionModelOverride } from '../../extraction/model';
 import { wohngeldUsageMetadata } from './ki-governance';
-import { schemaFuerTyp, mapPipelineToErgebnis, mapPipelineToAnalyse } from './extraction-schema';
-import type { DokumentTyp, DokumentAnalyse, Wohngeldart, Antragsart } from './types';
+import { schemaFuerTyp, mapPipelineToErgebnis, mapPipelineToAnalyse, baueExtraktionsUebersicht } from './extraction-schema';
+import type { DokumentTyp, DokumentAnalyse, DokumentExtraktion, Wohngeldart, Antragsart } from './types';
 
 /** Aus dem Wohngeldantrag extrahierte Stammdaten (befüllen Vorgang + Antragsteller). */
 export interface ExtrahierteStammdaten {
@@ -68,6 +68,8 @@ export interface ExtraktionErgebnis {
   identitaet?: Identitaet;
   /** Confidence je `feld_status`-Feldpfad (0..1), aus der Extraction-Pipeline. */
   confidenceByPfad?: Record<string, number>;
+  /** Transparente Übersicht der gezogenen Werte (Extraktions-Baum) — nur bei Pipeline-Lauf. */
+  extraktion?: DokumentExtraktion;
 }
 
 /** Modell-Wahl (Adacor Qwen, per ENV überschreibbar — gleiche Defaults wie echoloop). */
@@ -349,6 +351,13 @@ export async function klassifiziereUndExtrahiere(
       if (Object.keys(mapped.stammdaten).length) ergebnis.stammdaten = mapped.stammdaten;
       if (mapped.identitaet) ergebnis.identitaet = mapped.identitaet;
       if (Object.keys(mapped.confidenceByPfad).length) ergebnis.confidenceByPfad = mapped.confidenceByPfad;
+      const uebersicht = baueExtraktionsUebersicht('wohngeldantrag', {
+        stammdaten: mapped.stammdaten, analyse: mapped.analyse, identitaet: mapped.identitaet,
+      }, result);
+      if (uebersicht.felder.length) {
+        uebersicht.erzeugtAm = new Date().toISOString();
+        ergebnis.extraktion = uebersicht;
+      }
       return ergebnis;
     }
 
@@ -358,6 +367,13 @@ export async function klassifiziereUndExtrahiere(
     const ergebnis: ExtraktionErgebnis = { typ: klass.typ, analyse: mappedAnalyse.analyse };
     if (klass.titel) ergebnis.titel = klass.titel;
     if (mappedAnalyse.identitaet) ergebnis.identitaet = mappedAnalyse.identitaet;
+    const uebersicht = baueExtraktionsUebersicht(klass.typ, {
+      analyse: mappedAnalyse.analyse, identitaet: mappedAnalyse.identitaet,
+    }, result);
+    if (uebersicht.felder.length) {
+      uebersicht.erzeugtAm = new Date().toISOString();
+      ergebnis.extraktion = uebersicht;
+    }
     return ergebnis;
   } catch (err) {
     console.warn('[wohngeld] Klassifikation/Extraktion fehlgeschlagen:', err instanceof Error ? err.message : err);

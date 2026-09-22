@@ -1,6 +1,9 @@
 import { test, expect, describe } from 'bun:test';
 import { parseExtraktion } from './extraction';
-import { mapPipelineToErgebnis, mapPipelineToAnalyse, schemaFuerTyp } from './extraction-schema';
+import { mapPipelineToErgebnis, mapPipelineToAnalyse, schemaFuerTyp, baueExtraktionsUebersicht } from './extraction-schema';
+import { WOHNGELD_PROMPT_VERSION } from './ki-governance';
+import { EXTRACTION_MODEL_ID } from '../../extraction/model';
+import type { PipelineRunResult } from '../../services/extraction';
 
 // ── Klassifikator (parseExtraktion) — nur noch typ + titel ────────────────────
 
@@ -236,5 +239,92 @@ describe('schemaFuerTyp — Selektor', () => {
 
   test('Strategy wird in die Config uebernommen', () => {
     expect(schemaFuerTyp('kontoauszug', 'hybrid')?.config.strategy).toBe('hybrid');
+  });
+});
+
+// ── baueExtraktionsUebersicht — Transparenz-Baum ─────────────────────────────
+
+/** Minimaler PipelineRunResult-Stub für die reine Übersicht-Funktion. */
+function stubResult(over: Partial<PipelineRunResult>): PipelineRunResult {
+  return {
+    extracted: {}, fieldConfidences: {}, provenance: [], warnings: [],
+    llmCalls: 0, strategyUsed: 'single-pass', durationMs: 0, ...over,
+  };
+}
+
+describe('baueExtraktionsUebersicht — Transparenz-Baum', () => {
+  test('Antrag: Gruppierung + Formatierung (Datum/Euro/qm/Enum)', () => {
+    const u = baueExtraktionsUebersicht('wohngeldantrag', {
+      stammdaten: {
+        antragsdatum: '2026-03-01',
+        wohngeldart: 'mietzuschuss',
+        antragsart: 'erstantrag',
+        antragsteller: { vorname: 'Erika', nachname: 'Muster', geburtsdatum: '1959-07-12' },
+        adresse: { strasse: 'Hauptstraße', hausnummer: '5', plz: '65760', ort: 'Eschborn' },
+        wohnung: { miete: 620.5, wohnflaeche_qm: 62 },
+      },
+      analyse: { unterschrift_vorhanden: true, datum_vorhanden: false },
+    });
+
+    const byLabel = (l: string) => u.felder.find((f) => f.label === l);
+    expect(byLabel('Geburtsdatum')?.wert).toBe('12.07.1959');
+    expect(byLabel('Antragsdatum')?.wert).toBe('01.03.2026');
+    expect(byLabel('Antragsdatum')?.gruppe).toBe('Antrag');
+    expect(byLabel('Wohngeldart')?.wert).toBe('Mietzuschuss');
+    expect(byLabel('Antragsart')?.wert).toBe('Erstantrag');
+    expect(byLabel('Bruttokaltmiete')?.wert).toContain('620,50');
+    expect(byLabel('Bruttokaltmiete')?.gruppe).toBe('Wohnung');
+    expect(byLabel('Wohnfläche')?.wert).toBe('62 m²');
+    expect(byLabel('Vorname')?.gruppe).toBe('Antragsteller');
+    expect(byLabel('Straße')?.gruppe).toBe('Adresse');
+    // Analyse-Booleans → vorhanden/fehlt
+    expect(byLabel('Unterschrift')?.wert).toBe('vorhanden');
+    expect(byLabel('Unterschrift')?.gruppe).toBe('Analyse');
+    expect(byLabel('Datum')?.wert).toBe('fehlt');
+    // Antrag ⇒ keine separate Identitäts-Gruppe
+    expect(u.felder.some((f) => f.gruppe === 'Identität')).toBe(false);
+    // Metadaten
+    expect(u.modell).toBe(EXTRACTION_MODEL_ID);
+    expect(u.stand).toBe(WOHNGELD_PROMPT_VERSION);
+    // reine Funktion: kein erzeugtAm
+    expect(u.erzeugtAm).toBeUndefined();
+  });
+
+  test('confidence + seite werden aus fieldConfidences/provenance gemappt', () => {
+    const result = stubResult({
+      fieldConfidences: { 'antragsteller.nachname': 0.92, 'wohnung.miete': 0.4 },
+      provenance: [
+        { field: 'antragsteller.nachname', value: 'Muster', source: 'p:3' },
+        { field: 'wohnung.miete', value: 620.5, source: 'p:1+2' },
+      ],
+    });
+    const u = baueExtraktionsUebersicht('wohngeldantrag', {
+      stammdaten: { antragsteller: { nachname: 'Muster' }, wohnung: { miete: 620.5 } },
+    }, result);
+    const nachname = u.felder.find((f) => f.label === 'Nachname');
+    expect(nachname?.confidence).toBe(0.92);
+    expect(nachname?.seite).toBe(3);
+    const miete = u.felder.find((f) => f.label === 'Bruttokaltmiete');
+    expect(miete?.confidence).toBe(0.4);
+    expect(miete?.seite).toBe(1); // erste Seite aus "p:1+2"
+  });
+
+  test('Nachweis: Identitäts-Gruppe + Analyse (kein Stammdaten)', () => {
+    const u = baueExtraktionsUebersicht('kontoauszug', {
+      identitaet: { nachname: 'Muster', vorname: 'Erika', geburtsdatum: '1959-07-12' },
+      analyse: { mietzahlung_erkannt: true, erkannte_einkuenfte: ['kapitalertraege', 'v_und_v'] },
+    });
+    const byLabel = (l: string) => u.felder.find((f) => f.label === l);
+    expect(byLabel('Nachname')?.gruppe).toBe('Identität');
+    expect(byLabel('Geburtsdatum')?.wert).toBe('12.07.1959');
+    expect(byLabel('Mietzahlung erkannt')?.wert).toBe('ja');
+    expect(byLabel('Erkannte Einkünfte')?.wert).toBe('Kapitalerträge, Vermietung/Verpachtung');
+  });
+
+  test('leere Teile → keine Felder, keine Metadaten', () => {
+    const u = baueExtraktionsUebersicht('sonstiges', {});
+    expect(u.felder).toEqual([]);
+    expect(u.modell).toBeUndefined();
+    expect(u.stand).toBeUndefined();
   });
 });

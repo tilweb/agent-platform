@@ -294,6 +294,35 @@ export interface DokumentAnalyse {
   betrag?: number;                      // generischer Betrag (z. B. Renten-/Gehaltshöhe)
 }
 
+/** Ein einzelner, aus dem Dokument gezogener Wert (für die Transparenz-Ansicht). */
+export interface DokumentExtraktionFeld {
+  /** Gruppen-Knoten im Extraktions-Baum, z. B. 'Antragsteller' | 'Adresse' | 'Analyse'. */
+  gruppe?: string;
+  /** Lesbares deutsches Label des Feldes. */
+  label: string;
+  /** Formatierter Anzeigewert (Datum TT.MM.JJJJ, Euro, ja/nein …). */
+  wert: string;
+  /** Konfidenz des Extraktionswerts (0..1), sofern die Pipeline sie geliefert hat. */
+  confidence?: number;
+  /** Seite im Dokument, aus der der Wert stammt (aus der Provenienz `p:N`). */
+  seite?: number;
+}
+
+/**
+ * Transparente Zusammenfassung dessen, WAS die KI aus einem Dokument gezogen hat.
+ * Wird beim Anlegen eines Dokuments aus der Extraktion befüllt (Posteingang
+ * `verteilen` + Direkt-Upload) und im `data`-jsonb abgelegt (keine Migration).
+ */
+export interface DokumentExtraktion {
+  felder: DokumentExtraktionFeld[];
+  /** Genutztes Extraktionsmodell (Modell-ID). */
+  modell?: string;
+  /** Prompt-/Regelkatalog-Stand (Nachvollziehbarkeit). */
+  stand?: string;
+  /** Zeitpunkt der Extraktion (ISO). Im Aufruf-/Route-Kontext gesetzt. */
+  erzeugtAm?: string;
+}
+
 /** Dokument / Nachweis (Eingang). */
 export interface Dokument extends Timestamped, Versioned {
   id: string;
@@ -310,6 +339,8 @@ export interface Dokument extends Timestamped, Versioned {
   extrahierterText?: string;     // pdftotext-Ergebnis (gekürzt)
   flags?: DokumentFlag[];
   analyse?: DokumentAnalyse;
+  /** Transparente Übersicht der extrahierten Werte (Extraktions-Baum). */
+  extraktion?: DokumentExtraktion;
   /** Ins Fachverfahren abgelegt (Welle 5, WP10). Nur Status, keine echte Schnittstelle. */
   abgelegt?: boolean;
 }

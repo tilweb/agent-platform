@@ -288,6 +288,7 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
       eingegangenAm: new Date().toISOString(),
       extrahierterText: (d.extrahierterTextGekuerzt || '').slice(0, 20000),
       analyse: d.analyse,
+      extraktion: d.extraktion,
     });
     if (antragPreview && d === antragPreview) antragDokumentId = dok.id;
     angelegt.push(dok);
@@ -382,6 +383,7 @@ posteingangRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) => {
       eingegangenAm: new Date().toISOString(),
       extrahierterText: text.slice(0, 20000),
       analyse: ergebnis.analyse,
+      extraktion: ergebnis.extraktion,
     });
     angelegt.push(dok);
   }
