@@ -16,7 +16,7 @@ import PersonCard from './components/PersonCard';
 import PruefschrittItem from './components/PruefschrittItem';
 import PanelSection from './components/PanelSection';
 import FallChat from './components/FallChat';
-import FeldStatusMark from './components/FeldStatusMark';
+import { FeldStatusDot, FeldStatusFreigabe } from './components/FeldStatusMark';
 import { buildFeldStatusMap, fsKey } from './feldStatusMap';
 import NotizPanel from './components/NotizPanel';
 import ExtraktionsBaum from './components/ExtraktionsBaum';
@@ -250,8 +250,8 @@ export default function VorgangDetail() {
   const [highlightDocId, setHighlightDocId] = useState(null);
   const docRefs = useRef({});
 
-  // Übersicht-Bearbeitung (Vorgang-Ebene)
-  const [editMode, setEditMode] = useState(false);
+  // Übersicht-Bearbeitung pro Block (U1): Set von Block-Keys ('allgemein'|'wohnung'|'bwz')
+  const [editBlocks, setEditBlocks] = useState(() => new Set());
   const [form, setForm] = useState(null);
 
   // Prüfschritte
@@ -460,10 +460,12 @@ export default function VorgangDetail() {
   // Klick auf eine „n offen"-Pill → rechte Seitenleiste öffnet die offenen Prüfschritte.
   const zeigeOffene = () => { setSideTab('pruefschritte'); setPruefFilter('offen'); };
 
-  // ── Übersicht-Bearbeitung ──
-  function startEdit() {
+  // ── Übersicht-Bearbeitung pro Block (U1) ──
+  function num(v) { return v === '' || v == null ? undefined : Number(v); }
+  // Vollständiges Form-Objekt aus dem Vorgang (alle editierbaren Vorgang-Felder).
+  function fullForm() {
     const w = vorgang.wohnung || {};
-    setForm({
+    return {
       antragsdatum: vorgang.antragsdatum || '',
       wohngeldart: vorgang.wohngeldart,
       antragsart: vorgang.antragsart,
@@ -474,39 +476,84 @@ export default function VorgangDetail() {
         strasse: w.strasse || '', hausnummer: w.hausnummer || '', plz: w.plz || '', ort: w.ort || '',
         wohnflaeche_qm: w.wohnflaeche_qm ?? '', miete: w.miete ?? '', heizkosten: w.heizkosten ?? '', warmwasser: w.warmwasser ?? '',
       },
-    });
-    setEditMode(true);
+    };
   }
-  function num(v) { return v === '' || v == null ? undefined : Number(v); }
-  async function saveEdit() {
+  // Frische Feld-Defaults eines Blocks (für Start und Verwerfen).
+  function blockDefaults(block) {
+    const f = fullForm();
+    if (block === 'allgemein') return { antragsdatum: f.antragsdatum, wohngeldart: f.wohngeldart, antragsart: f.antragsart };
+    if (block === 'wohnung') return { wohnung: f.wohnung };
+    if (block === 'bwz') return { bwz_start: f.bwz_start, bwz_ende: f.bwz_ende, iban: f.iban };
+    return {};
+  }
+  const isBlockEdit = (block) => editBlocks.has(block);
+  function startBlockEdit(block) {
+    const base = form || fullForm();
+    setForm({ ...base, ...blockDefaults(block) });
+    setEditBlocks((s) => { const n = new Set(s); n.add(block); return n; });
+  }
+  function cancelBlockEdit(block) {
+    const next = new Set(editBlocks); next.delete(block);
+    setEditBlocks(next);
+    if (next.size === 0) setForm(null);
+    else setForm((f) => ({ ...f, ...blockDefaults(block) }));
+  }
+  // Payload nur der Felder des jeweiligen Blocks (Merge im Backend).
+  function blockPayload(block) {
+    if (block === 'allgemein') return {
+      antragsdatum: form.antragsdatum || undefined,
+      wohngeldart: form.wohngeldart,
+      antragsart: form.antragsart,
+    };
+    if (block === 'wohnung') return {
+      wohnung: {
+        strasse: form.wohnung.strasse || undefined,
+        hausnummer: form.wohnung.hausnummer || undefined,
+        plz: form.wohnung.plz || undefined,
+        ort: form.wohnung.ort || undefined,
+        wohnflaeche_qm: num(form.wohnung.wohnflaeche_qm),
+        miete: num(form.wohnung.miete),
+        heizkosten: num(form.wohnung.heizkosten),
+        warmwasser: num(form.wohnung.warmwasser),
+      },
+    };
+    if (block === 'bwz') return {
+      bwz_start: form.bwz_start || undefined,
+      bwz_ende: form.bwz_ende || undefined,
+      iban: form.iban || undefined,
+    };
+    return {};
+  }
+  async function saveBlock(block) {
     setBusy(true); setError('');
     try {
-      const payload = {
-        antragsdatum: form.antragsdatum || undefined,
-        wohngeldart: form.wohngeldart,
-        antragsart: form.antragsart,
-        bwz_start: form.bwz_start || undefined,
-        bwz_ende: form.bwz_ende || undefined,
-        iban: form.iban || undefined,
-        wohnung: {
-          strasse: form.wohnung.strasse || undefined,
-          hausnummer: form.wohnung.hausnummer || undefined,
-          plz: form.wohnung.plz || undefined,
-          ort: form.wohnung.ort || undefined,
-          wohnflaeche_qm: num(form.wohnung.wohnflaeche_qm),
-          miete: num(form.wohnung.miete),
-          heizkosten: num(form.wohnung.heizkosten),
-          warmwasser: num(form.wohnung.warmwasser),
-        },
-        expectedVersion: vorgang.version,
-      };
-      const updated = await wohngeldApi.updateVorgang(id, payload);
+      const updated = await wohngeldApi.updateVorgang(id, { ...blockPayload(block), expectedVersion: vorgang.version });
       setDetail((d) => ({ ...d, vorgang: updated }));
-      setEditMode(false);
+      const next = new Set(editBlocks); next.delete(block);
+      setEditBlocks(next);
+      if (next.size === 0) setForm(null);
     } catch (e) {
-      if (e.status === 409) { setError('Konflikt: Der Vorgang wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); setEditMode(false); }
+      if (e.status === 409) { setError('Konflikt: Der Vorgang wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); setEditBlocks(new Set()); setForm(null); }
       else setError(e.message);
     } finally { setBusy(false); }
+  }
+  // Kopf-Aktion je Block: „Bearbeiten" bzw. „Verwerfen"/„Speichern" (+ optionaler Zusatz-Button).
+  function blockAction(block, extra) {
+    if (!canEdit) return extra || null;
+    if (isBlockEdit(block)) {
+      return (
+        <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+          <button style={styles.btnSmall} onClick={() => cancelBlockEdit(block)} disabled={busy}>Verwerfen</button>
+          <button style={styles.btn} onClick={() => saveBlock(block)} disabled={busy}>{busy ? 'Speichert…' : 'Speichern'}</button>
+        </div>
+      );
+    }
+    return (
+      <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
+        {extra}
+        <button style={styles.btnSmall} onClick={() => startBlockEdit(block)}>Bearbeiten</button>
+      </div>
+    );
   }
 
   async function changeStatus(status) {
@@ -675,10 +722,18 @@ export default function VorgangDetail() {
     catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }
-  function vfsMark(feldPfad) {
+  // KI-Punkt am Zeilenanfang (vor dem Label) …
+  function vfsDot(feldPfad) {
     const fs = feldStatusMap[fsKey('vorgang', vorgang.id, feldPfad)];
-    return fs ? <FeldStatusMark fs={fs} canEdit={canEdit} busy={busy} onBestaetigen={bestaetigeFeld} onVerwerfen={verwerfeFeld} /> : null;
+    return fs ? <FeldStatusDot fs={fs} /> : null;
   }
+  // … und die Freigabe (✓/✗) am Wert — immer verfügbar (kein Bearbeiten-Modus nötig).
+  function vfsFreigabe(feldPfad) {
+    const fs = feldStatusMap[fsKey('vorgang', vorgang.id, feldPfad)];
+    return fs ? <FeldStatusFreigabe fs={fs} canEdit={canEdit} busy={busy} onBestaetigen={bestaetigeFeld} onVerwerfen={verwerfeFeld} /> : null;
+  }
+  // Block enthält ≥1 unbestätigten KI-Vorschlag? (Headline-Punkt an der SektionCard)
+  const vfsExists = (feldPfad) => !!feldStatusMap[fsKey('vorgang', vorgang.id, feldPfad)];
 
   // ── Personen-Listen (WP5): strukturierte Angaben speichern (data-Merge) ──
   async function savePersonData(personId, patch) {
@@ -758,6 +813,11 @@ export default function VorgangDetail() {
   }
 
   // ── Sektionen der Übersicht ──
+  // Unbestätigte KI-Vorschläge je Block → Headline-Punkt an der SektionCard.
+  const unbestAllgemein = ['antragsdatum', 'wohngeldart', 'antragsart'].some(vfsExists);
+  const unbestWohnung = ['wohnung.strasse', 'wohnung.hausnummer', 'wohnung.plz', 'wohnung.ort', 'wohnung.wohnflaeche_qm', 'wohnung.miete', 'wohnung.heizkosten', 'wohnung.warmwasser'].some(vfsExists);
+  const unbestBwz = ['iban', 'bwz_start', 'bwz_ende'].some(vfsExists);
+  const unbestPersonen = Object.keys(feldStatusMap).some((k) => k.startsWith('person:'));
   const w = vorgang.wohnung || {};
   const adresse = [w.strasse, w.hausnummer].filter(Boolean).join(' ');
   const ortZeile = [w.plz, w.ort].filter(Boolean).join(' ');
@@ -869,18 +929,12 @@ export default function VorgangDetail() {
                 title="Allgemein"
                 offenCount={countAllgemein} onOffenClick={zeigeOffene}
                 collapsible
+                unbestaetigt={unbestAllgemein}
                 notizCount={notizCount('sektion:allgemein')}
                 onNotizClick={() => setNotizPanel({ anker: 'sektion:allgemein', label: 'Allgemein' })}
-                action={canEdit && (
-                  editMode
-                    ? <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                        <button style={styles.btnSmall} onClick={() => setEditMode(false)} disabled={busy}>Abbrechen</button>
-                        <button style={styles.btn} onClick={saveEdit} disabled={busy}>{busy ? 'Speichert…' : 'Speichern'}</button>
-                      </div>
-                    : <button style={styles.btnSmall} onClick={startEdit}>Bearbeiten</button>
-                )}
+                action={blockAction('allgemein')}
               >
-                {editMode ? (
+                {isBlockEdit('allgemein') ? (
                   <div style={styles.editRow}>
                     <span style={styles.editLabel}>Antragsdatum</span>
                     <input type="date" style={styles.input} value={form.antragsdatum} onChange={(e) => setForm({ ...form, antragsdatum: e.target.value })} />
@@ -895,9 +949,9 @@ export default function VorgangDetail() {
                   </div>
                 ) : (
                   <FeldGrid felder={[
-                    { label: 'Antragsdatum', value: fmtDate(vorgang.antragsdatum), mark: vfsMark('antragsdatum') },
-                    { label: 'Wohngeldart', value: WOHNGELDART_LABEL[vorgang.wohngeldart], mark: vfsMark('wohngeldart') },
-                    { label: 'Antragsart', value: ANTRAGSART_LABEL[vorgang.antragsart], mark: vfsMark('antragsart') },
+                    { label: 'Antragsdatum', value: fmtDate(vorgang.antragsdatum), dot: vfsDot('antragsdatum'), mark: vfsFreigabe('antragsdatum') },
+                    { label: 'Wohngeldart', value: WOHNGELDART_LABEL[vorgang.wohngeldart], dot: vfsDot('wohngeldart'), mark: vfsFreigabe('wohngeldart') },
+                    { label: 'Antragsart', value: ANTRAGSART_LABEL[vorgang.antragsart], dot: vfsDot('antragsart'), mark: vfsFreigabe('antragsart') },
                     { label: 'Antragsteller', value: antragstellerName },
                   ]} />
                 )}
@@ -907,6 +961,7 @@ export default function VorgangDetail() {
                 title="Personen"
                 offenCount={countPersonen} onOffenClick={zeigeOffene}
                 collapsible
+                unbestaetigt={unbestPersonen}
                 notizCount={notizCount('sektion:personen')}
                 onNotizClick={() => setNotizPanel({ anker: 'sektion:personen', label: 'Personen' })}
               >
@@ -932,10 +987,12 @@ export default function VorgangDetail() {
                 title="Wohnung & Miete"
                 offenCount={countWohnung} onOffenClick={zeigeOffene}
                 collapsible
+                unbestaetigt={unbestWohnung}
                 notizCount={notizCount('sektion:wohnung')}
                 onNotizClick={() => setNotizPanel({ anker: 'sektion:wohnung', label: 'Wohnung & Miete' })}
+                action={blockAction('wohnung')}
               >
-                {editMode ? (
+                {isBlockEdit('wohnung') ? (
                   <div style={styles.editRow}>
                     <span style={styles.editLabel}>Straße / Hausnr.</span>
                     <div style={{ display: 'flex', gap: theme.spacing.sm }}>
@@ -958,10 +1015,10 @@ export default function VorgangDetail() {
                   </div>
                 ) : (
                   <FeldGrid felder={[
-                    { label: 'Adresse', value: adresse || '—', mark: vfsMark('wohnung.strasse') || vfsMark('wohnung.hausnummer') },
-                    { label: 'PLZ / Ort', value: ortZeile || '—', mark: vfsMark('wohnung.plz') || vfsMark('wohnung.ort') },
-                    { label: 'Wohnfläche', value: w.wohnflaeche_qm != null ? `${w.wohnflaeche_qm} m²` : '—', mark: vfsMark('wohnung.wohnflaeche_qm') },
-                    { label: 'Miete (Bruttokalt)', value: eur(w.miete), mark: vfsMark('wohnung.miete') },
+                    { label: 'Adresse', value: adresse || '—', dot: vfsDot('wohnung.strasse') || vfsDot('wohnung.hausnummer'), mark: vfsFreigabe('wohnung.strasse') || vfsFreigabe('wohnung.hausnummer') },
+                    { label: 'PLZ / Ort', value: ortZeile || '—', dot: vfsDot('wohnung.plz') || vfsDot('wohnung.ort'), mark: vfsFreigabe('wohnung.plz') || vfsFreigabe('wohnung.ort') },
+                    { label: 'Wohnfläche', value: w.wohnflaeche_qm != null ? `${w.wohnflaeche_qm} m²` : '—', dot: vfsDot('wohnung.wohnflaeche_qm'), mark: vfsFreigabe('wohnung.wohnflaeche_qm') },
+                    { label: 'Miete (Bruttokalt)', value: eur(w.miete), dot: vfsDot('wohnung.miete'), mark: vfsFreigabe('wohnung.miete') },
                     { label: 'Heizkosten', value: eur(w.heizkosten) },
                     { label: 'Warmwasser', value: eur(w.warmwasser) },
                   ]} />
@@ -1077,13 +1134,14 @@ export default function VorgangDetail() {
                 title="Bewilligungszeitraum & Zahlung"
                 offenCount={countZahlung} onOffenClick={zeigeOffene}
                 collapsible
-                action={canEdit && bwzVorschlagOffen && !editMode && (
+                unbestaetigt={unbestBwz}
+                action={blockAction('bwz', canEdit && bwzVorschlagOffen && !isBlockEdit('bwz') ? (
                   <button style={styles.btnSmall} onClick={bwzVorschlagUebernehmen} disabled={busy} title="12 Monate ab Antragsmonat übernehmen">
                     {busy ? 'Übernimmt…' : 'Vorschlag übernehmen'}
                   </button>
-                )}
+                ) : null)}
               >
-                {editMode ? (
+                {isBlockEdit('bwz') ? (
                   <div style={styles.editRow}>
                     <span style={styles.editLabel}>Zeitraum von</span>
                     <input type="date" style={styles.input} value={form.bwz_start} onChange={(e) => setForm({ ...form, bwz_start: e.target.value })} />

@@ -365,6 +365,46 @@ export const ERWERBSSTATUS_LABEL = {
   sonstiges: 'Sonstiges',
 };
 
+/** Geschlecht (Person). Gespeicherter Wert = Enum-Key aus types.ts. */
+export const GESCHLECHT_LABEL = {
+  maennlich: 'Männlich',
+  weiblich: 'Weiblich',
+  divers: 'Divers',
+};
+
+/**
+ * Familienstand (Person). Als Freitext behandelt, aber Select angeboten.
+ * Werte = Enum-Keys; Legacy-Freitext bleibt lesbar (Fallback auf Rohwert bei Anzeige).
+ */
+export const FAMILIENSTAND_LABEL = {
+  ledig: 'Ledig',
+  verheiratet: 'Verheiratet',
+  eingetragene_lebenspartnerschaft: 'Eingetragene Lebenspartnerschaft',
+  getrennt_lebend: 'Getrennt lebend',
+  geschieden: 'Geschieden',
+  verwitwet: 'Verwitwet',
+};
+
+/** Art einer Einkommensposition (§14 WoGG). Werte = gespeicherte Enum-Keys. */
+export const EINKOMMENSART_LABEL = {
+  lohn_gehalt: 'Lohn / Gehalt',
+  rente: 'Rente',
+  kapitalertraege: 'Kapitalerträge',
+  v_und_v: 'Vermietung & Verpachtung',
+  selbststaendig: 'Selbstständige Tätigkeit',
+  alg1: 'Arbeitslosengeld I',
+  krankengeld: 'Krankengeld',
+  elterngeld: 'Elterngeld',
+  unterhalt: 'Unterhalt',
+  sonstiges: 'Sonstiges',
+};
+
+/** Schwerbehinderungsgrad (GdB) — Auswahlwerte (leer = ohne). */
+export const GDB_OPTIONS = ['', '20', '30', '40', '50', '60', '70', '80', '90', '100'];
+
+/** Pflegegrad — Auswahlwerte (leer = ohne). */
+export const PFLEGEGRAD_OPTIONS = ['', '1', '2', '3', '4', '5'];
+
 export const PRUEF_KATEGORIE_LABEL = {
   vollstaendigkeit: 'Vollständigkeit',
   plausibilitaet: 'Plausibilität',

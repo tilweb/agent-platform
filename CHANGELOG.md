@@ -2,6 +2,29 @@
 
 ## 2026-09-22
 
+### Wohngeld — Hauptformular-Konsistenz-UX (U1)
+Vereinheitlichte Editier- und KI-Vorschlag-UX im Übersicht-Tab (`VorgangDetail`), Spec
+`docs/wohngeld-hauptformular-ux-spec-2026-09-22.md`.
+- **Bearbeiten pro Block statt global:** Der globale „Bearbeiten"-Toggle entfällt. Jeder Block
+  (Allgemein, Wohnung & Miete, Bewilligungszeitraum & Zahlung sowie je Person die Sektionen
+  Persönliches / Pflege & Behinderung / Sonstiges / Einkommen) hat im Kopf einen eigenen
+  **„Bearbeiten"** → im Bearbeiten-Modus **„Verwerfen"/„Speichern"**. Kein Feld ist ohne den
+  Bearbeiten-Modus seines Blocks editierbar (einheitlich). Speichern via `updateVorgang`/
+  `updatePerson` mit `expectedVersion` (Optimistic Locking, 409-Handling).
+- **Alle Person-Felder + Einkommen editierbar:** Persönliches (inkl. Geburtsdatum als Datepicker,
+  Anzeige `TT.MM.JJJJ`; Geschlecht/Familienstand/Erwerbsstatus als Dropdown), Sonstiges
+  (Checkboxen + Staatsangehörigkeit), Pflege (Schwerbehinderungsgrad /20–100 & Pflegegrad /1–5 als
+  Dropdown, Pflegebedürftig), Einkommen (Positionen add/edit/remove: Art-Dropdown, Bezeichnung,
+  Betrag monatlich/jährlich mit ×12/÷12-Ableitungshilfe, berücksichtigt).
+- **KI-Vorschlag-Punkt neu verteilt:** pulsierender blauer Punkt am **Zeilenanfang** (vor dem
+  Label); die Freigabe **✓/✗ bleibt am Wert** und immer verfügbar (kein Bearbeiten-Modus nötig).
+  `FeldStatusMark` in `FeldStatusDot` + `FeldStatusFreigabe` aufgeteilt. Zusätzlicher
+  **Headline-Punkt** an der `SektionCard` (neue Prop `unbestaetigt`), auch bei eingeklapptem Block
+  sichtbar. Neue Keyframe `@keyframes wg-pulse` in `App.jsx`.
+- **Feinschliff:** einheitliche Feldzeilen mit dünner Trennlinie (`borderLight`), Label links
+  (textMuted) / Wert rechts. Neue Label-Maps in `api.js` (Geschlecht, Familienstand,
+  Einkommens-Art, GdB-/Pflegegrad-Optionen). Backend unberührt (neue Felder landen im `data`-jsonb).
+
 ### Wohngeld — Frist & Wiedervorlage einzeln setzbar + Prefill (Frist + 3 Tage)
 Frist und Wiedervorlage sind im Details-Tab jetzt einzeln als Datumsfelder editierbar (canEdit).
 Prefill-Regel: Wiedervorlage = **Frist + 3 Tage** — beim Generieren/„Versenden" eines

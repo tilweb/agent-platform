@@ -158,6 +158,12 @@ const globalStyles = `
     background-color: ${theme.colors.primaryLight};
     color: ${theme.colors.primaryDark};
   }
+
+  /* Wohngeld: dezenter Puls fuer unbestaetigte KI-Vorschlag-Punkte */
+  @keyframes wg-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.7); }
+  }
 `;
 
 function AppRoutes() {

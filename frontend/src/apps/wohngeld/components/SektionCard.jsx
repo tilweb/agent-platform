@@ -29,14 +29,17 @@ const styles = {
     border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.full,
     color: theme.colors.textMuted, cursor: 'pointer', fontSize: theme.typography.sizes.xs,
   },
+  // Pulsierender KI-Punkt rechts neben dem Titel — auch bei eingeklapptem Block sichtbar.
+  headlineDot: { display: 'inline-block', width: 8, height: 8, borderRadius: theme.borderRadius.full, backgroundColor: ACCENT, flexShrink: 0, animation: 'wg-pulse 1.6s ease-in-out infinite' },
 };
 
 /**
  * Sektion mit Titel + optionaler Ampel „n offen" (abgeleitet aus offenen Prüfschritten).
  * offenCount = Anzahl offener zugehöriger Prüfschritte (0 = grün/ok).
  * Optional einklappbar (collapsible + defaultOpen) — Zustand lokal, Chevron im Titel.
+ * `unbestaetigt` = true → pulsierender KI-Punkt neben dem Titel (≥1 offener KI-Vorschlag im Block).
  */
-export default function SektionCard({ title, offenCount, onOffenClick, action, children, collapsible = false, defaultOpen = true, notizCount, onNotizClick }) {
+export default function SektionCard({ title, offenCount, onOffenClick, action, children, collapsible = false, defaultOpen = true, notizCount, onNotizClick, unbestaetigt = false }) {
   const [open, setOpen] = useState(defaultOpen);
   const hasOpen = offenCount > 0;
   const ampelStyle = hasOpen
@@ -59,6 +62,9 @@ export default function SektionCard({ title, offenCount, onOffenClick, action, c
             </button>
           ) : (
             <div style={styles.title}>{title}</div>
+          )}
+          {unbestaetigt && (
+            <span style={styles.headlineDot} title="Enthält unbestätigte KI-Vorschläge" aria-label="Unbestätigte KI-Vorschläge" />
           )}
         </div>
         <div style={styles.right}>
@@ -92,22 +98,34 @@ export default function SektionCard({ title, offenCount, onOffenClick, action, c
   );
 }
 
-/** Kleines Feld-Grid (Label/Wert) für Detailsektionen. `mark` = optionaler Node hinter dem Wert (z. B. FeldStatusMark). */
+/**
+ * Kleines Feld-Grid (Label/Wert) für Detailsektionen.
+ * `dot`  = optionaler Node vor dem Label (KI-Punkt am Zeilenanfang, FeldStatusDot).
+ * `mark` = optionaler Node hinter dem Wert (Freigabe ✓/✗, FeldStatusFreigabe).
+ * Jede Zeile bekommt eine dünne Trennlinie (borderLight), die letzte Zeile nicht.
+ */
 export function FeldGrid({ felder }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 220px) 1fr', rowGap: theme.spacing.sm, columnGap: theme.spacing.lg }}>
-      {felder.map((f) => (
-        <FeldZeile key={f.label} label={f.label} value={f.value} mark={f.mark} />
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 220px) 1fr', columnGap: theme.spacing.lg }}>
+      {felder.map((f, i) => (
+        <FeldZeile key={f.label} label={f.label} value={f.value} mark={f.mark} dot={f.dot} last={i === felder.length - 1} />
       ))}
     </div>
   );
 }
 
-export function FeldZeile({ label, value, mark }) {
+export function FeldZeile({ label, value, mark, dot, last = false }) {
+  const cell = {
+    fontSize: theme.typography.sizes.sm,
+    padding: `${theme.spacing.sm} 0`,
+    borderBottom: last ? 'none' : `1px solid ${theme.colors.borderLight}`,
+  };
   return (
     <>
-      <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>{label}</div>
-      <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text }}>{value ?? '—'}{mark}</div>
+      <div style={{ ...cell, color: theme.colors.textMuted, display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
+        {dot}{label}
+      </div>
+      <div style={{ ...cell, color: theme.colors.text }}>{value ?? '—'}{mark}</div>
     </>
   );
 }

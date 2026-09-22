@@ -1,14 +1,19 @@
 import { useState } from 'react';
 import { theme } from '../../../config/theme';
 import { CommentIcon, PlusIcon, TrashIcon } from '../../../components/Icons';
-import { ROLLE_LABEL, ERWERBSSTATUS_LABEL, UNTERHALT_KATEGORIE_LABEL, ACCENT, wohngeldApi } from '../api';
+import {
+  ROLLE_LABEL, ERWERBSSTATUS_LABEL, UNTERHALT_KATEGORIE_LABEL,
+  GESCHLECHT_LABEL, FAMILIENSTAND_LABEL, EINKOMMENSART_LABEL,
+  GDB_OPTIONS, PFLEGEGRAD_OPTIONS, ACCENT, wohngeldApi,
+} from '../api';
 import { FeldGrid } from './SektionCard';
-import FeldStatusMark from './FeldStatusMark';
+import FeldStatusMark, { FeldStatusDot, FeldStatusFreigabe } from './FeldStatusMark';
 import { fsKey } from '../feldStatusMap';
 
 const styles = {
   card: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, marginBottom: theme.spacing.sm, overflow: 'hidden' },
   head: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, padding: theme.spacing.md, cursor: 'pointer' },
+  headDot: { display: 'inline-block', width: 8, height: 8, borderRadius: theme.borderRadius.full, backgroundColor: ACCENT, flexShrink: 0, marginLeft: theme.spacing.xs, animation: 'wg-pulse 1.6s ease-in-out infinite', verticalAlign: 'middle' },
   notizBtn: {
     display: 'inline-flex', alignItems: 'center', gap: 3,
     padding: `2px ${theme.spacing.sm}`, background: 'none',
@@ -18,10 +23,21 @@ const styles = {
   name: { fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.semibold, color: theme.colors.text },
   rolle: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: 2 },
   body: { padding: `0 ${theme.spacing.md} ${theme.spacing.md}`, borderTop: `1px solid ${theme.colors.borderLight}` },
-  subTitle: { fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em', margin: `${theme.spacing.md} 0 ${theme.spacing.sm}` },
+  secHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm, margin: `${theme.spacing.md} 0 ${theme.spacing.sm}` },
+  subTitle: { fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em' },
+  secBtnGhost: { padding: `4px ${theme.spacing.md}`, fontSize: theme.typography.sizes.xs, borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
+  secBtnPrimary: { padding: `4px ${theme.spacing.md}`, fontSize: theme.typography.sizes.xs, borderRadius: theme.borderRadius.md, border: 'none', backgroundColor: ACCENT, color: '#fff', cursor: 'pointer' },
+  secBtns: { display: 'flex', gap: theme.spacing.sm },
+  editGrid: { display: 'grid', gridTemplateColumns: 'minmax(140px, 200px) 1fr', rowGap: theme.spacing.sm, columnGap: theme.spacing.lg, alignItems: 'center' },
+  editLabel: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, display: 'flex', alignItems: 'center', gap: theme.spacing.xs },
+  input: { width: '100%', padding: `6px ${theme.spacing.sm}`, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none' },
+  checkRow: { display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, marginTop: theme.spacing.xs },
+  check: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm, fontSize: theme.typography.sizes.sm, color: theme.colors.text, cursor: 'pointer' },
   einkTable: { width: '100%', borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm },
   th: { textAlign: 'left', padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, fontWeight: theme.typography.weights.medium, borderBottom: `1px solid ${theme.colors.borderLight}` },
   td: { padding: `${theme.spacing.xs} ${theme.spacing.sm}`, color: theme.colors.text, borderBottom: `1px solid ${theme.colors.borderLight}` },
+  ekEditRow: { display: 'grid', gridTemplateColumns: '1.4fr 1.6fr 1fr 1fr auto', gap: theme.spacing.sm, alignItems: 'center', marginBottom: theme.spacing.xs },
+  ekCheckRow: { display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm, flexWrap: 'wrap' },
   leRow: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.xs },
   leInput: { flex: 1, minWidth: 60, padding: `4px ${theme.spacing.sm}`, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none' },
   leCheck: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, whiteSpace: 'nowrap', cursor: 'pointer' },
@@ -41,6 +57,14 @@ function eur(v) {
   if (v == null) return '—';
   return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 }
+/** Datum ISO (YYYY-MM-DD) → TT.MM.JJJJ; Freitext/leer unverändert. */
+function fmtDate(v) {
+  if (!v) return null;
+  const iso = String(v).slice(0, 10);
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : String(v);
+}
+function num(v) { return v === '' || v == null ? undefined : Number(v); }
 
 function rowId() {
   return (globalThis.crypto?.randomUUID?.() || `row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
@@ -152,11 +176,52 @@ function fullName(p) {
   return [p.titel, p.vorname, p.nachname].filter(Boolean).join(' ') || 'Person';
 }
 
+/** Sektions-Kopf mit Bearbeiten- bzw. Verwerfen/Speichern-Buttons. */
+function SecHead({ title, editing, canEdit, busy, onEdit, onSave, onCancel }) {
+  return (
+    <div style={styles.secHead}>
+      <span style={styles.subTitle}>{title}</span>
+      {canEdit && (editing ? (
+        <span style={styles.secBtns}>
+          <button style={styles.secBtnGhost} onClick={onCancel} disabled={busy}>Verwerfen</button>
+          <button style={styles.secBtnPrimary} onClick={onSave} disabled={busy}>{busy ? 'Speichert…' : 'Speichern'}</button>
+        </span>
+      ) : (
+        <button style={styles.secBtnGhost} onClick={onEdit}>Bearbeiten</button>
+      ))}
+    </div>
+  );
+}
+
+/** Draft-Shape aus einer Person aufbauen (Basisfelder + Pflege + Einkommen). */
+function buildDraft(p) {
+  const pb = p.pflege_behinderung || {};
+  return {
+    nachname: p.nachname || '', vorname: p.vorname || '', geburtsname: p.geburtsname || '',
+    titel: p.titel || '', geburtsdatum: p.geburtsdatum ? String(p.geburtsdatum).slice(0, 10) : '',
+    geburtsort: p.geburtsort || '', telefon: p.telefon || '', email: p.email || '', bemerkung: p.bemerkung || '',
+    geschlecht: p.geschlecht || '', familienstand: p.familienstand || '', erwerbsstatus: p.erwerbsstatus || '',
+    staatsangehoerigkeit: p.staatsangehoerigkeit || '',
+    erhaelt_kindergeld: !!p.erhaelt_kindergeld, hat_werbungskosten: !!p.hat_werbungskosten,
+    aufforderung_wohngeld: !!p.aufforderung_wohngeld, eu_ewr: !!p.eu_ewr,
+    pb_schwerbehinderungsgrad: pb.schwerbehinderungsgrad != null ? String(pb.schwerbehinderungsgrad) : '',
+    pb_pflegegrad: pb.pflegegrad != null ? String(pb.pflegegrad) : '',
+    pb_pflegebeduerftig: !!pb.pflegebeduerftig,
+    einkommen: (p.einkommen || []).map((e) => ({
+      id: e.id || rowId(), art: e.art || 'lohn_gehalt', bezeichnung: e.bezeichnung || '',
+      betrag_monatlich: e.betrag_monatlich ?? '', betrag_jaehrlich: e.betrag_jaehrlich ?? '',
+      beruecksichtigt: e.beruecksichtigt !== false,
+    })),
+  };
+}
+
 export default function PersonCard({
   person: p, feldStatusMap = {}, canEdit = false, busy = false,
   onBestaetigen, onVerwerfen, onSavePerson, notizCount, onNotizClick,
 }) {
   const [open, setOpen] = useState(false);
+  const [editSec, setEditSec] = useState(null);   // 'persoenlich' | 'sonstiges' | 'pflege' | 'einkommen' | null
+  const [draft, setDraft] = useState(null);
   const [auskunftBusy, setAuskunftBusy] = useState(false);
   const [auskunftError, setAuskunftError] = useState('');
   const einkommen = p.einkommen || [];
@@ -175,35 +240,91 @@ export default function PersonCard({
   }
 
   const fsFor = (feldPfad) => feldStatusMap[fsKey('person', p.id, feldPfad)];
+  const dot = (feldPfad) => <FeldStatusDot fs={fsFor(feldPfad)} />;
+  const freigabe = (feldPfad) => (
+    <FeldStatusFreigabe fs={fsFor(feldPfad)} canEdit={canEdit} busy={busy} onBestaetigen={onBestaetigen} onVerwerfen={onVerwerfen} />
+  );
+  // Head-Marke (Punkt + Freigabe) für Name — bleibt am Namen sichtbar.
   const mark = (feldPfad) => {
     const fs = fsFor(feldPfad);
     return fs ? <FeldStatusMark fs={fs} canEdit={canEdit} busy={busy} onBestaetigen={onBestaetigen} onVerwerfen={onVerwerfen} /> : null;
   };
+  // Person enthält ≥1 unbestätigten KI-Vorschlag? (Head-Punkt-Indikator)
+  const personUnbestaetigt = Object.keys(feldStatusMap).some((k) => k.startsWith(`person:${p.id}:`));
 
-  const persoenlich = [
-    { label: 'Geburtsdatum', value: p.geburtsdatum, mark: mark('geburtsdatum') },
-    { label: 'Geburtsort', value: p.geburtsort },
+  // ── Sektions-Edit-Handling ──
+  const startSec = (sec) => { setDraft(buildDraft(p)); setEditSec(sec); };
+  const cancelSec = () => { setEditSec(null); setDraft(null); };
+  const setField = (key, val) => setDraft((d) => ({ ...d, [key]: val }));
+  const saveSec = async (patchBuilder) => {
+    await onSavePerson?.(p.id, patchBuilder(draft));
+    setEditSec(null); setDraft(null);
+  };
+
+  // Einkommen-Draft-Helfer (mit ×12 / ÷12-Ableitung als Hilfe)
+  const ekEmpty = () => ({ id: rowId(), art: 'lohn_gehalt', bezeichnung: '', betrag_monatlich: '', betrag_jaehrlich: '', beruecksichtigt: true });
+  const setEk = (idx, key, val) => setDraft((d) => ({ ...d, einkommen: d.einkommen.map((r, i) => (i === idx ? { ...r, [key]: val } : r)) }));
+  const setEkMonat = (idx, val) => setDraft((d) => ({
+    ...d,
+    einkommen: d.einkommen.map((r, i) => {
+      if (i !== idx) return r;
+      const next = { ...r, betrag_monatlich: val };
+      if (val !== '' && (r.betrag_jaehrlich === '' || r.betrag_jaehrlich == null)) next.betrag_jaehrlich = Math.round(Number(val) * 12);
+      return next;
+    }),
+  }));
+  const setEkJahr = (idx, val) => setDraft((d) => ({
+    ...d,
+    einkommen: d.einkommen.map((r, i) => {
+      if (i !== idx) return r;
+      const next = { ...r, betrag_jaehrlich: val };
+      if (val !== '' && (r.betrag_monatlich === '' || r.betrag_monatlich == null)) next.betrag_monatlich = Math.round((Number(val) / 12) * 100) / 100;
+      return next;
+    }),
+  }));
+  const addEk = () => setDraft((d) => ({ ...d, einkommen: [...d.einkommen, ekEmpty()] }));
+  const removeEk = (idx) => setDraft((d) => ({ ...d, einkommen: d.einkommen.filter((_, i) => i !== idx) }));
+  const buildEinkommenPatch = (d) => ({
+    einkommen: d.einkommen
+      .map((r) => ({
+        id: r.id || rowId(), art: r.art || 'sonstiges', bezeichnung: (r.bezeichnung || '').trim() || undefined,
+        betrag_monatlich: num(r.betrag_monatlich), betrag_jaehrlich: num(r.betrag_jaehrlich), beruecksichtigt: !!r.beruecksichtigt,
+      }))
+      .filter((r) => r.betrag_monatlich != null || r.betrag_jaehrlich != null || r.bezeichnung),
+  });
+
+  // ── Read-Ansichten (nur befüllte Felder) ──
+  const persoenlichRead = [
+    { label: 'Geburtsdatum', value: fmtDate(p.geburtsdatum), dot: dot('geburtsdatum'), mark: freigabe('geburtsdatum') },
+    { label: 'Geburtsort', value: p.geburtsort, dot: dot('geburtsort'), mark: freigabe('geburtsort') },
     { label: 'Geburtsname', value: p.geburtsname },
-    { label: 'Familienstand', value: p.familienstand },
-    { label: 'Erwerbsstatus', value: p.erwerbsstatus ? ERWERBSSTATUS_LABEL[p.erwerbsstatus] : null },
+    { label: 'Geschlecht', value: p.geschlecht ? (GESCHLECHT_LABEL[p.geschlecht] || p.geschlecht) : null, dot: dot('geschlecht'), mark: freigabe('geschlecht') },
+    { label: 'Familienstand', value: p.familienstand ? (FAMILIENSTAND_LABEL[p.familienstand] || p.familienstand) : null, dot: dot('familienstand'), mark: freigabe('familienstand') },
+    { label: 'Erwerbsstatus', value: p.erwerbsstatus ? (ERWERBSSTATUS_LABEL[p.erwerbsstatus] || p.erwerbsstatus) : null, dot: dot('erwerbsstatus'), mark: freigabe('erwerbsstatus') },
     { label: 'Staatsangehörigkeit', value: p.staatsangehoerigkeit },
     { label: 'Telefon', value: p.telefon },
     { label: 'E-Mail', value: p.email },
-  ].filter((f) => f.value != null && f.value !== '');
-
-  const sonstiges = [
-    { label: 'EU/EWR', value: p.eu_ewr == null ? null : (p.eu_ewr ? 'Ja' : 'Nein') },
-    { label: 'Erhält Kindergeld', value: p.erhaelt_kindergeld == null ? null : (p.erhaelt_kindergeld ? 'Ja' : 'Nein') },
-    { label: 'Werbungskosten', value: p.hat_werbungskosten == null ? null : (p.hat_werbungskosten ? 'Ja' : 'Nein') },
-    { label: 'Transferleistungen', value: (p.transferleistungen || []).join(', ') || null },
     { label: 'Bemerkung', value: p.bemerkung },
   ].filter((f) => f.value != null && f.value !== '');
 
-  const pflege = [
+  const sonstigesRead = [
+    { label: 'Erhält Kindergeld', value: p.erhaelt_kindergeld == null ? null : (p.erhaelt_kindergeld ? 'Ja' : 'Nein') },
+    { label: 'Werbungskosten', value: p.hat_werbungskosten == null ? null : (p.hat_werbungskosten ? 'Ja' : 'Nein') },
+    { label: 'Aufforderung Wohngeld', value: p.aufforderung_wohngeld == null ? null : (p.aufforderung_wohngeld ? 'Ja' : 'Nein') },
+    { label: 'EU/EWR', value: p.eu_ewr == null ? null : (p.eu_ewr ? 'Ja' : 'Nein') },
+    { label: 'Staatsangehörigkeit', value: p.staatsangehoerigkeit },
+  ].filter((f) => f.value != null && f.value !== '');
+
+  const pflegeRead = [
     { label: 'Behinderungsgrad (GdB)', value: pb.schwerbehinderungsgrad != null ? String(pb.schwerbehinderungsgrad) : null },
     { label: 'Pflegegrad', value: pb.pflegegrad != null ? String(pb.pflegegrad) : null },
     { label: 'Pflegebedürftig', value: pb.pflegebeduerftig == null ? null : (pb.pflegebeduerftig ? 'Ja' : 'Nein') },
   ].filter((f) => f.value != null);
+
+  const persoenlichEditing = editSec === 'persoenlich';
+  const sonstigesEditing = editSec === 'sonstiges';
+  const pflegeEditing = editSec === 'pflege';
+  const einkommenEditing = editSec === 'einkommen';
 
   return (
     <div style={styles.card}>
@@ -220,6 +341,9 @@ export default function PersonCard({
               <span onClick={(e) => e.stopPropagation()}>
                 {mark('nachname')}{mark('vorname')}
               </span>
+            )}
+            {!open && personUnbestaetigt && !fsFor('nachname') && !fsFor('vorname') && (
+              <span style={styles.headDot} title="Enthält unbestätigte KI-Vorschläge" aria-label="Unbestätigte KI-Vorschläge" />
             )}
           </div>
           <div style={styles.rolle}>{ROLLE_LABEL[p.rolle] || p.rolle}</div>
@@ -241,30 +365,152 @@ export default function PersonCard({
 
       {open && (
         <div style={styles.body}>
-          {persoenlich.length > 0 && (
-            <>
-              <div style={styles.subTitle}>Persönliches</div>
-              <FeldGrid felder={persoenlich} />
-            </>
+          {/* ── Persönliches ── */}
+          <SecHead
+            title="Persönliches" editing={persoenlichEditing} canEdit={canEdit} busy={busy}
+            onEdit={() => startSec('persoenlich')} onCancel={cancelSec}
+            onSave={() => saveSec((d) => ({
+              nachname: d.nachname.trim(), vorname: d.vorname.trim(),
+              geburtsname: d.geburtsname.trim() || undefined, titel: d.titel.trim() || undefined,
+              geburtsdatum: d.geburtsdatum || undefined, geburtsort: d.geburtsort.trim() || undefined,
+              geschlecht: d.geschlecht || undefined, familienstand: d.familienstand || undefined,
+              telefon: d.telefon.trim() || undefined, email: d.email.trim() || undefined,
+              erwerbsstatus: d.erwerbsstatus || undefined, bemerkung: d.bemerkung.trim() || undefined,
+            }))}
+          />
+          {persoenlichEditing ? (
+            <div style={styles.editGrid}>
+              <span style={styles.editLabel}>Nachname</span>
+              <input style={styles.input} value={draft.nachname} onChange={(e) => setField('nachname', e.target.value)} />
+              <span style={styles.editLabel}>Vorname</span>
+              <input style={styles.input} value={draft.vorname} onChange={(e) => setField('vorname', e.target.value)} />
+              <span style={styles.editLabel}>Geburtsname</span>
+              <input style={styles.input} value={draft.geburtsname} onChange={(e) => setField('geburtsname', e.target.value)} />
+              <span style={styles.editLabel}>Titel</span>
+              <input style={styles.input} value={draft.titel} onChange={(e) => setField('titel', e.target.value)} />
+              <span style={styles.editLabel}>{dot('geburtsdatum')}Geburtsdatum</span>
+              <input type="date" style={styles.input} placeholder="tt.mm.jjjj" value={draft.geburtsdatum} onChange={(e) => setField('geburtsdatum', e.target.value)} />
+              <span style={styles.editLabel}>Geburtsort</span>
+              <input style={styles.input} value={draft.geburtsort} onChange={(e) => setField('geburtsort', e.target.value)} />
+              <span style={styles.editLabel}>{dot('geschlecht')}Geschlecht</span>
+              <select style={styles.input} value={draft.geschlecht} onChange={(e) => setField('geschlecht', e.target.value)}>
+                <option value="">—</option>
+                {Object.entries(GESCHLECHT_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+              <span style={styles.editLabel}>{dot('familienstand')}Familienstand</span>
+              <select style={styles.input} value={draft.familienstand} onChange={(e) => setField('familienstand', e.target.value)}>
+                <option value="">—</option>
+                {Object.entries(FAMILIENSTAND_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+              <span style={styles.editLabel}>Telefon</span>
+              <input style={styles.input} value={draft.telefon} onChange={(e) => setField('telefon', e.target.value)} />
+              <span style={styles.editLabel}>E-Mail</span>
+              <input style={styles.input} value={draft.email} onChange={(e) => setField('email', e.target.value)} />
+              <span style={styles.editLabel}>{dot('erwerbsstatus')}Erwerbsstatus</span>
+              <select style={styles.input} value={draft.erwerbsstatus} onChange={(e) => setField('erwerbsstatus', e.target.value)}>
+                <option value="">—</option>
+                {Object.entries(ERWERBSSTATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+              <span style={styles.editLabel}>Bemerkung</span>
+              <input style={styles.input} value={draft.bemerkung} onChange={(e) => setField('bemerkung', e.target.value)} />
+            </div>
+          ) : (
+            persoenlichRead.length > 0
+              ? <FeldGrid felder={persoenlichRead} />
+              : <div style={styles.leEmpty}>Keine persönlichen Angaben erfasst.</div>
           )}
 
-          {pflege.length > 0 && (
-            <>
-              <div style={styles.subTitle}>Pflege & Behinderung</div>
-              <FeldGrid felder={pflege} />
-            </>
+          {/* ── Pflege & Behinderung ── */}
+          <SecHead
+            title="Pflege & Behinderung" editing={pflegeEditing} canEdit={canEdit} busy={busy}
+            onEdit={() => startSec('pflege')} onCancel={cancelSec}
+            onSave={() => saveSec((d) => ({
+              pflege_behinderung: {
+                schwerbehinderungsgrad: d.pb_schwerbehinderungsgrad === '' ? undefined : Number(d.pb_schwerbehinderungsgrad),
+                pflegegrad: d.pb_pflegegrad === '' ? undefined : Number(d.pb_pflegegrad),
+                pflegebeduerftig: !!d.pb_pflegebeduerftig,
+              },
+            }))}
+          />
+          {pflegeEditing ? (
+            <div style={styles.editGrid}>
+              <span style={styles.editLabel}>Schwerbehinderungsgrad (GdB)</span>
+              <select style={styles.input} value={draft.pb_schwerbehinderungsgrad} onChange={(e) => setField('pb_schwerbehinderungsgrad', e.target.value)}>
+                {GDB_OPTIONS.map((v) => <option key={v} value={v}>{v === '' ? '—' : v}</option>)}
+              </select>
+              <span style={styles.editLabel}>Pflegegrad</span>
+              <select style={styles.input} value={draft.pb_pflegegrad} onChange={(e) => setField('pb_pflegegrad', e.target.value)}>
+                {PFLEGEGRAD_OPTIONS.map((v) => <option key={v} value={v}>{v === '' ? '—' : v}</option>)}
+              </select>
+              <span style={styles.editLabel}>Pflegebedürftig</span>
+              <label style={styles.check}>
+                <input type="checkbox" checked={draft.pb_pflegebeduerftig} onChange={(e) => setField('pb_pflegebeduerftig', e.target.checked)} /> Ja
+              </label>
+            </div>
+          ) : (
+            pflegeRead.length > 0
+              ? <FeldGrid felder={pflegeRead} />
+              : <div style={styles.leEmpty}>Keine Angaben zu Pflege & Behinderung.</div>
           )}
 
-          {sonstiges.length > 0 && (
-            <>
-              <div style={styles.subTitle}>Sonstiges</div>
-              <FeldGrid felder={sonstiges} />
-            </>
+          {/* ── Sonstiges ── */}
+          <SecHead
+            title="Sonstiges" editing={sonstigesEditing} canEdit={canEdit} busy={busy}
+            onEdit={() => startSec('sonstiges')} onCancel={cancelSec}
+            onSave={() => saveSec((d) => ({
+              erhaelt_kindergeld: !!d.erhaelt_kindergeld, hat_werbungskosten: !!d.hat_werbungskosten,
+              aufforderung_wohngeld: !!d.aufforderung_wohngeld, eu_ewr: !!d.eu_ewr,
+              staatsangehoerigkeit: d.staatsangehoerigkeit.trim() || undefined,
+            }))}
+          />
+          {sonstigesEditing ? (
+            <div>
+              <div style={styles.checkRow}>
+                <label style={styles.check}><input type="checkbox" checked={draft.erhaelt_kindergeld} onChange={(e) => setField('erhaelt_kindergeld', e.target.checked)} /> Erhält Kindergeld</label>
+                <label style={styles.check}><input type="checkbox" checked={draft.hat_werbungskosten} onChange={(e) => setField('hat_werbungskosten', e.target.checked)} /> Werbungskosten</label>
+                <label style={styles.check}><input type="checkbox" checked={draft.aufforderung_wohngeld} onChange={(e) => setField('aufforderung_wohngeld', e.target.checked)} /> Aufforderung Wohngeld</label>
+                <label style={styles.check}><input type="checkbox" checked={draft.eu_ewr} onChange={(e) => setField('eu_ewr', e.target.checked)} /> EU/EWR</label>
+              </div>
+              <div style={{ ...styles.editGrid, marginTop: theme.spacing.sm }}>
+                <span style={styles.editLabel}>Staatsangehörigkeit</span>
+                <input style={styles.input} value={draft.staatsangehoerigkeit} onChange={(e) => setField('staatsangehoerigkeit', e.target.value)} />
+              </div>
+            </div>
+          ) : (
+            sonstigesRead.length > 0
+              ? <FeldGrid felder={sonstigesRead} />
+              : <div style={styles.leEmpty}>Keine sonstigen Angaben erfasst.</div>
           )}
 
-          {einkommen.length > 0 && (
-            <>
-              <div style={styles.subTitle}>Einkommenspositionen</div>
+          {/* ── Einkommen ── */}
+          <SecHead
+            title="Einkommen" editing={einkommenEditing} canEdit={canEdit} busy={busy}
+            onEdit={() => startSec('einkommen')} onCancel={cancelSec}
+            onSave={() => saveSec(buildEinkommenPatch)}
+          />
+          {einkommenEditing ? (
+            <div>
+              {draft.einkommen.length === 0 && <div style={styles.leEmpty}>Keine Positionen — mit „Position" hinzufügen.</div>}
+              {draft.einkommen.map((r, idx) => (
+                <div key={r.id || idx}>
+                  <div style={styles.ekEditRow}>
+                    <select style={styles.leInput} value={r.art} onChange={(e) => setEk(idx, 'art', e.target.value)}>
+                      {Object.entries(EINKOMMENSART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                    <input style={styles.leInput} placeholder="Bezeichnung" value={r.bezeichnung} onChange={(e) => setEk(idx, 'bezeichnung', e.target.value)} />
+                    <input type="number" style={styles.leInput} placeholder="€/Mon." value={r.betrag_monatlich} onChange={(e) => setEkMonat(idx, e.target.value)} />
+                    <input type="number" style={styles.leInput} placeholder="€/Jahr" value={r.betrag_jaehrlich} onChange={(e) => setEkJahr(idx, e.target.value)} />
+                    <button style={styles.leRemove} onClick={() => removeEk(idx)} title="Position entfernen" aria-label="Position entfernen"><TrashIcon size={13} /></button>
+                  </div>
+                  <label style={{ ...styles.leCheck, marginBottom: theme.spacing.sm }}>
+                    <input type="checkbox" checked={!!r.beruecksichtigt} onChange={(e) => setEk(idx, 'beruecksichtigt', e.target.checked)} /> berücksichtigt
+                  </label>
+                </div>
+              ))}
+              <button style={styles.leAdd} onClick={addEk}><PlusIcon size={12} /> Position</button>
+            </div>
+          ) : (
+            einkommen.length > 0 ? (
               <table style={styles.einkTable}>
                 <thead>
                   <tr>
@@ -277,7 +523,7 @@ export default function PersonCard({
                 <tbody>
                   {einkommen.map((e) => (
                     <tr key={e.id}>
-                      <td style={styles.td}>{e.bezeichnung || e.art}</td>
+                      <td style={styles.td}>{e.bezeichnung || EINKOMMENSART_LABEL[e.art] || e.art}</td>
                       <td style={styles.td}>{eur(e.betrag_monatlich)}</td>
                       <td style={styles.td}>{eur(e.betrag_jaehrlich)}</td>
                       <td style={styles.td}>{e.beruecksichtigt ? 'ja' : 'nein'}</td>
@@ -285,10 +531,10 @@ export default function PersonCard({
                   ))}
                 </tbody>
               </table>
-            </>
+            ) : <div style={styles.leEmpty}>Keine Einkommenspositionen erfasst.</div>
           )}
 
-          <div style={styles.subTitle}>Vermögen</div>
+          <div style={styles.secHead}><span style={styles.subTitle}>Vermögen</span></div>
           {(!p.vermoegenPositionen || p.vermoegenPositionen.length === 0) && p.vermoegen != null && (
             <div style={styles.leEmpty}>Bisher als Einzelwert erfasst: {eur(p.vermoegen)}</div>
           )}
@@ -308,7 +554,7 @@ export default function PersonCard({
             onSave={(rows) => onSavePerson?.(p.id, { vermoegenPositionen: rows })}
           />
 
-          <div style={styles.subTitle}>Unterhaltsverpflichtungen (§18)</div>
+          <div style={styles.secHead}><span style={styles.subTitle}>Unterhaltsverpflichtungen (§18)</span></div>
           <ListEditor
             title="Verpflichtung"
             items={p.unterhaltsverpflichtungen}
@@ -329,7 +575,7 @@ export default function PersonCard({
             onSave={(rows) => onSavePerson?.(p.id, { unterhaltsverpflichtungen: rows })}
           />
 
-          <div style={styles.subTitle}>Unterhaltsansprüche</div>
+          <div style={styles.secHead}><span style={styles.subTitle}>Unterhaltsansprüche</span></div>
           <ListEditor
             title="Anspruch"
             items={p.unterhaltsansprueche}
@@ -346,7 +592,7 @@ export default function PersonCard({
             onSave={(rows) => onSavePerson?.(p.id, { unterhaltsansprueche: rows })}
           />
 
-          <div style={styles.subTitle}>Transferleistungen</div>
+          <div style={styles.secHead}><span style={styles.subTitle}>Transferleistungen</span></div>
           <ListEditor
             title="Transferleistung"
             items={p.transferleistungenDetail}
