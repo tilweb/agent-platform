@@ -105,6 +105,16 @@ const globalStyles = `
     font-family: ${theme.typography.fontFamily};
   }
 
+  /* Kein hängenbleibender Fokus-Rahmen nach Maus-Klick; Tastatur-Fokus bleibt
+     für Barrierefreiheit sichtbar (:focus-visible). */
+  button:focus:not(:focus-visible) {
+    outline: none;
+  }
+  button:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
+  }
+
   textarea {
     font-family: ${theme.typography.fontFamily};
   }
