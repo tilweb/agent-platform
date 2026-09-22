@@ -10,7 +10,10 @@ import StatusBadge from './components/StatusBadge';
 import { ListIcon, ClockIcon, FolderIcon, ClipboardIcon, TimelineIcon, TrashIcon } from '../../components/Icons';
 
 const styles = {
-  container: { padding: `${theme.spacing.xl} ${theme.spacing['2xl']}`, maxWidth: 1100, margin: '0 auto' },
+  // width:100% ist wichtig: ohne explizite Breite schrumpft der Container im Flex-Column-Layout
+  // (margin:0 auto deaktiviert das Stretch) auf die Inhaltsbreite — dann wären Views mit wenigen
+  // Spalten (Akten/Fristen/Aufgaben) schmaler als die mit vielen. So sind alle Views gleich breit.
+  container: { width: '100%', boxSizing: 'border-box', padding: `${theme.spacing.xl} ${theme.spacing['2xl']}`, maxWidth: 1100, margin: '0 auto' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.xl, gap: theme.spacing.lg },
   title: { fontSize: theme.typography.sizes['2xl'], fontWeight: theme.typography.weights.bold, color: theme.colors.text },
   subtitle: { fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted, marginTop: theme.spacing.xs, maxWidth: 640, lineHeight: 1.5 },

@@ -2,11 +2,13 @@
 
 ## 2026-09-22
 
-### Wohngeld — Übersichts-Listen: stabile Breite + Tab-Icons
-- **Kein Springen mehr zwischen den Listen-Views:** global `scrollbar-gutter: stable` (App.jsx) —
-  der Fensterscrollbalken reserviert immer seinen Platz, die zentrierte Seite verschiebt sich nicht
-  mehr, wenn eine lange Liste (Vorgänge) vs. kurze (Akten) angezeigt wird. Alle Views teilen denselben
-  1100px-Container.
+### Wohngeld — Übersichts-Listen: gleiche Breite + Tab-Icons
+- **Alle Listen-Views gleich breit:** Der Seiten-Container schrumpfte (durch `margin:0 auto` im
+  Flex-Column-Layout, das Stretch deaktiviert) auf die Inhaltsbreite — Views mit wenigen Spalten
+  (Akten/Fristen/Aufgaben) waren dadurch schmaler als Vorgänge/Protokoll. Fix: `width:100%` +
+  `box-sizing:border-box` am Container → immer volle Breite bis `maxWidth` (1100).
+- **Kein horizontales Springen** beim Erscheinen/Verschwinden der Fenster-Scrollbar: global
+  `scrollbar-gutter: stable` (App.jsx).
 - **Tab-Leiste mit Icons** (Vorgänge/Wiedervorlage/Akten/Aufgaben/Protokoll/Löschfällig), umbrechbar.
 
 ### Wohngeld — Posteingang: Zuordnungs-Vorschlag mit transparentem Abgleich
