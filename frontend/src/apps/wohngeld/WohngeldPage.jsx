@@ -7,7 +7,8 @@ import {
   ACCENT, ACCENT_LIGHT, AKTION_LABEL, APP_ROLE_LABEL, aktionLabel,
 } from './api';
 import StatusBadge from './components/StatusBadge';
-import { ListIcon, ClockIcon, FolderIcon, ClipboardIcon, TimelineIcon, TrashIcon, MailIcon } from '../../components/Icons';
+import { ListIcon, ClockIcon, FolderIcon, ClipboardIcon, TimelineIcon, TrashIcon, MailIcon, ScaleIcon } from '../../components/Icons';
+import RegelKatalog from './components/RegelKatalog';
 
 const styles = {
   // Volle verfügbare Breite (keine 1100px-Deckelung) — breite Tabellen mit vielen Spalten
@@ -368,6 +369,7 @@ export default function WohngeldPage() {
         <button style={{ ...styles.viewTab, ...(viewMode === 'wiedervorlage' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('wiedervorlage')}><ClockIcon size={15} /> Wiedervorlage / Fristen</button>
         <button style={{ ...styles.viewTab, ...(viewMode === 'akten' ? styles.viewTabActive : {}) }} onClick={() => { setViewMode('akten'); setSelectedAkte(null); }}><FolderIcon size={15} /> Akten</button>
         <button style={{ ...styles.viewTab, ...(viewMode === 'aufgaben' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('aufgaben')}><ClipboardIcon size={15} /> Aufgaben</button>
+        <button style={{ ...styles.viewTab, ...(viewMode === 'regeln' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('regeln')}><ScaleIcon size={15} /> Prüfregeln</button>
         {isOwner && (
           <button style={{ ...styles.viewTab, ...(viewMode === 'protokoll' ? styles.viewTabActive : {}) }} onClick={() => setViewMode('protokoll')}><TimelineIcon size={15} /> Protokoll</button>
         )}
@@ -576,6 +578,8 @@ export default function WohngeldPage() {
           )
         )
       )}
+
+      {viewMode === 'regeln' && <RegelKatalog />}
 
       {viewMode === 'aufgaben' && (
         aufgabenLoading ? (

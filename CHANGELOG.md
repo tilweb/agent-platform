@@ -2,6 +2,13 @@
 
 ## 2026-09-24
 
+### Wohngeld — Prüfregeln als aufrufbare Dokumentation
+Jede Prüfregel ist jetzt im Code beschrieben (`checker/regeln.ts`): Auslöser in Klartext, geforderter Nachweis,
+Rechtsgrundlage, Erledigung und Hinweise zur Anwendung (bekannte Grenzen). Ein Wächter-Test verlangt eine
+Beschreibung für jede erzeugte Regel-ID. `GET /api/apps/wohngeld/regeln`; neuer Reiter „Prüfregeln" auf der
+Wohngeld-Übersicht (gruppiert, durchsuchbar, Filter Vollständigkeit/Plausibilität); „Warum?" an jedem automatischen
+Prüfschritt klappt die Regelbeschreibung auf. Spec: `docs/wohngeld-pruefregeln-doku-spec-2026-09-24.md`.
+
 ### Wohngeld — Messwerkzeug für das Golden Dataset
 Neues Skript `backend/scripts/wohngeld-golden/messung.ts` lässt die App-Funktionen (Split `pruefeUndTrenne`,
 `klassifiziereUndExtrahiere`, Prüfregeln `pruefeVorgang`) ohne DB gegen die 30 Fälle laufen und vergleicht mit den

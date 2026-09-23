@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import RegelDetails from './RegelDetails';
 import { theme } from '../../../config/theme';
 import { DocumentIcon } from '../../../components/Icons';
-import { PRUEF_TYP_LABEL, PRUEF_KATEGORIE_LABEL, ACCENT, ACCENT_LIGHT } from '../api';
+import { PRUEF_TYP_LABEL, PRUEF_KATEGORIE_LABEL, ACCENT, ACCENT_LIGHT, wohngeldApi } from '../api';
 
 const styles = {
   item: { padding: theme.spacing.md, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.background, marginBottom: theme.spacing.sm },
@@ -13,6 +14,8 @@ const styles = {
   belegLink: { fontSize: theme.typography.sizes.xs, color: ACCENT, cursor: 'pointer', background: 'none', border: 'none', padding: 0, marginTop: theme.spacing.xs },
   beleg: { fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, lineHeight: 1.5, marginTop: theme.spacing.xs, backgroundColor: theme.colors.surfaceHover, borderRadius: theme.borderRadius.md, padding: theme.spacing.sm },
   docChip: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: ACCENT, backgroundColor: ACCENT_LIGHT, border: 'none', borderRadius: theme.borderRadius.full, padding: `3px ${theme.spacing.sm}`, cursor: 'pointer' },
+  links: { display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' },
+  regel: { marginTop: theme.spacing.xs, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, padding: theme.spacing.sm, backgroundColor: theme.colors.surface },
   actions: { display: 'flex', gap: theme.spacing.xs, marginTop: theme.spacing.sm, flexWrap: 'wrap' },
   btn: { fontSize: theme.typography.sizes.xs, padding: `4px ${theme.spacing.md}`, borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
 };
@@ -37,7 +40,23 @@ function statusBadgeStyle(status) {
  */
 export default function PruefschrittItem({ pruefschritt: p, onStatus, canEdit, busy, onOpenDokument, dokumentLabel }) {
   const [open, setOpen] = useState(false);
+  const [warum, setWarum] = useState(false);
+  const [regel, setRegel] = useState(null);
+  const [regelFehler, setRegelFehler] = useState(null);
   const done = p.status !== 'offen';
+  const basisId = (p.regelId || '').split(':')[0];
+
+  async function warumUmschalten() {
+    const neu = !warum;
+    setWarum(neu);
+    if (neu && !regel && !regelFehler) {
+      try {
+        const d = await wohngeldApi.getRegeln();
+        const r = d.regeln.find((x) => x.id === basisId);
+        if (r) setRegel(r); else setRegelFehler('Zu diesem Prüfschritt gibt es keine Regelbeschreibung (manuell angelegt).');
+      } catch (e) { setRegelFehler(e.message || 'Regelbeschreibung konnte nicht geladen werden'); }
+    }
+  }
   return (
     <div style={styles.item}>
       <div style={styles.head}>
@@ -60,13 +79,23 @@ export default function PruefschrittItem({ pruefschritt: p, onStatus, canEdit, b
           </button>
         </div>
       )}
-      {p.belegtext && (
-        <>
+      <div style={styles.links}>
+        {p.belegtext && (
           <button style={styles.belegLink} onClick={() => setOpen((o) => !o)}>
             {open ? 'Beleg ausblenden' : 'Beleg anzeigen'}
           </button>
-          {open && <div style={styles.beleg}>{p.belegtext}</div>}
-        </>
+        )}
+        {p.automatisch !== false && p.regelId && (
+          <button style={styles.belegLink} onClick={warumUmschalten} aria-expanded={warum}>
+            {warum ? 'Regel ausblenden' : 'Warum?'}
+          </button>
+        )}
+      </div>
+      {open && p.belegtext && <div style={styles.beleg}>{p.belegtext}</div>}
+      {warum && (
+        <div style={styles.regel}>
+          {regel ? <RegelDetails regel={regel} kompakt /> : <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>{regelFehler || 'Lädt…'}</span>}
+        </div>
       )}
       {canEdit && (
         <div style={styles.actions}>

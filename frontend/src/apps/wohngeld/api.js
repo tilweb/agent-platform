@@ -27,6 +27,8 @@ async function json(res) {
   return res.json();
 }
 
+let regelnCache = null;
+
 export const wohngeldApi = {
   // Akten
   listAkten: () => apiGet(`${base}/akten`).then(json).then((d) => d.akten),
@@ -143,6 +145,11 @@ export const wohngeldApi = {
   listWiedervorlage: () => apiGet(`${base}/wiedervorlage`).then(json).then((d) => d.wiedervorlage),
 
   // Aufgaben (WP9 — offene Todos + fällige Fristen über alle Vorgänge)
+  // Prüfregeln (aufrufbare Dokumentation) — einmal je Sitzung geladen.
+  getRegeln: () => {
+    regelnCache ??= apiGet(`${base}/regeln`).then(json).catch((e) => { regelnCache = null; throw e; });
+    return regelnCache;
+  },
   listAufgaben: () => apiGet(`${base}/aufgaben`).then(json).then((d) => d.aufgaben),
 
   // Dokumente-Datei (WP10 — Serving/Vorschau/Ablage)

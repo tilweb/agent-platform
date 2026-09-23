@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { REGELKATALOG, REGELKATALOG_STAND, REGEL_GRUPPE_LABEL } from '../checker/regeln';
 import {
   listPruefschritte, getPruefschritt, createPruefschritt, updatePruefschritt, deletePruefschritt,
   getVorgang,
@@ -8,6 +9,9 @@ import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt }
 import { audit } from '../audit';
 
 export const pruefschritteRoutes = new Hono();
+
+/** GET /regeln — Beschreibung aller Prüfregeln (aufrufbare Dokumentation, lesend). */
+pruefschritteRoutes.get('/regeln', (c) => c.json({ stand: REGELKATALOG_STAND, gruppen: REGEL_GRUPPE_LABEL, regeln: REGELKATALOG }));
 
 pruefschritteRoutes.get('/vorgaenge/:vorgangId/pruefschritte', async (c) => {
   return c.json({ pruefschritte: await listPruefschritte(c.req.param('vorgangId')) });
