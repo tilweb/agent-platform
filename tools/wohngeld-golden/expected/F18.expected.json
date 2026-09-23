@@ -1,0 +1,246 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F18",
+  "titel": "Ehepaar, Mieterhöhung nicht im Antrag berücksichtigt",
+  "gruppe": "C",
+  "varianten": {
+    "digital": "F18-digital.pdf",
+    "scan": "F18-scan.pdf"
+  },
+  "seiten": 24,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Dennis",
+      "nachname": "Hoffmann",
+      "geburtsdatum": "1988-11-02",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Laura",
+      "nachname": "Hoffmann",
+      "geburtsdatum": "1990-06-17",
+      "rolle": "Ehefrau"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-25",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Dennis",
+          "antragsteller.nachname": "Hoffmann",
+          "antragsteller.geburtsdatum": "1988-11-02",
+          "adresse.strasse": "Wormser Straße",
+          "adresse.hausnummer": "63",
+          "adresse.plz": "55130",
+          "adresse.ort": "Mainz",
+          "wohnung.miete": 710,
+          "wohnung.wohnflaeche_qm": 67
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Dennis Hoffmann",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Hoffmann",
+          "vorname": "Dennis",
+          "geburtsdatum": "1988-11-02"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Laura Hoffmann",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Hoffmann",
+          "vorname": "Laura",
+          "geburtsdatum": "1990-06-17"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Hoffmann",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2890
+        },
+        "identitaet": {
+          "nachname": "Hoffmann",
+          "vorname": "Dennis"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Hoffmann",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2890
+        },
+        "identitaet": {
+          "nachname": "Hoffmann",
+          "vorname": "Dennis"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Hoffmann",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2890
+        },
+        "identitaet": {
+          "nachname": "Hoffmann",
+          "vorname": "Dennis"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 17,
+      "seiteBis": 20,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 710,
+          "wohnflaeche_qm": 67,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Hoffmann",
+          "vorname": "Dennis"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 21,
+      "seiteBis": 21,
+      "typ": "mietvertrag",
+      "art": "mieterhoehung",
+      "titel": "Mieterhöhungsverlangen",
+      "erwartet": {
+        "analyse": {
+          "miete": 777,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Hoffmann"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 22,
+      "seiteBis": 23,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 777,
+          "wohnflaeche_qm": 67,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Hoffmann",
+          "vorname": "Dennis"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 24,
+      "seiteBis": 24,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Hoffmann",
+          "vorname": "Dennis"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "plausi-miethoehe-abweichung"
+    ],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Antrag: Gesamtmiete 810,00 € (Bruttokaltmiete 710,00 €) — Stand vor der Mieterhöhung, deckungsgleich mit dem Mietvertrag.",
+    "Vermieterbescheinigung, Mieterhöhung ab 01.07.2026 und Kontoauszug Juli 2026: Gesamtmiete 877,00 € (Bruttokaltmiete 777,00 €)."
+  ]
+}

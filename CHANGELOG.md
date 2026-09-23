@@ -2,6 +2,16 @@
 
 ## 2026-09-23
 
+### Wohngeld — Golden Dataset: Generator + Pilot (F01, F18, F30)
+Neues Werkzeug `tools/wohngeld-golden/` (eigenes Paket mit pdf-lib, Backend-Lockfile unberührt) erzeugt
+synthetische Wohngeld-Sammel-PDFs aus typisierten Fallbeschreibungen: amtlicher Antrag und
+Vermieterbescheinigung per Formularfeldern ausgefüllt und flach gemacht (inkl. gezeichneter Unterschrift),
+Nachweise als HTML-Vorlagen über Chrome gedruckt (Personalausweis, Rentenanpassung, Mietvertrag,
+Kontoauszug, Verdienstabrechnung, Mieterhöhung, Stromrechnung), Störungen (fehlende/doppelte Seiten,
+quer, Leerseite), Scan-Variante ohne Textebene. Je Fall `expected.json` mit Dokumentgrenzen, App-Typen,
+erwarteten Feldwerten und Prüfbefunden; Konsistenztest per `bun test`. Pilot: F01 (Referenz), F18
+(Miethöhen-Widerspruch), F30 (Chaos-Einsendung).
+
 ### Wohngeld — Mehrdokument-Split im Posteingang
 Sammel-PDFs (Antrag + Nachweise in einer Datei) werden bei der Auswertung an Dokumentgrenzen
 automatisch in eigene Dokumente getrennt. Nutzt die Plattform-Bausteine der Document-Processing-Inbox

@@ -1,0 +1,157 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F01",
+  "titel": "Alleinstehende Rentnerin, Altersrente, Sozialwohnung",
+  "gruppe": "A",
+  "varianten": {
+    "digital": "F01-digital.pdf",
+    "scan": "F01-scan.pdf"
+  },
+  "seiten": 21,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Waltraud",
+      "nachname": "Kessler",
+      "geburtsdatum": "1952-03-14",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-18",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Waltraud",
+          "antragsteller.nachname": "Kessler",
+          "antragsteller.geburtsdatum": "1952-03-14",
+          "adresse.strasse": "Am Lindenhof",
+          "adresse.hausnummer": "12",
+          "adresse.plz": "34127",
+          "adresse.ort": "Kassel",
+          "wohnung.miete": 388.5,
+          "wohnung.wohnflaeche_qm": 48
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Waltraud Kessler",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Kessler",
+          "vorname": "Waltraud",
+          "geburtsdatum": "1952-03-14"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 14,
+      "typ": "rentenbescheid",
+      "art": "rentenbescheid",
+      "titel": "Rentenanpassung 2026 Kessler",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "rentenart_vorhanden": true,
+          "betrag": 1184.2
+        },
+        "identitaet": {
+          "nachname": "Kessler",
+          "vorname": "Waltraud"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 15,
+      "seiteBis": 18,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 388.5,
+          "wohnflaeche_qm": 48,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kessler",
+          "vorname": "Waltraud"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 19,
+      "seiteBis": 20,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 388.5,
+          "wohnflaeche_qm": 48,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kessler",
+          "vorname": "Waltraud"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 21,
+      "seiteBis": 21,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Kessler",
+          "vorname": "Waltraud"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  }
+}

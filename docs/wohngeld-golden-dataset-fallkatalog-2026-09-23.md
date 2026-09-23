@@ -111,7 +111,7 @@ Störungen — und dass die App keine falschen Befunde erzeugt.
 | F27 | Witwer, Ehefrau vor 5 Monaten verstorben | A, PA, Sterbeurkunde, Rentenbescheid (Witwerrente), Sterbegeld-Mitteilung, MV, VB, KA | Frage 8 verstorbenes Haushaltsmitglied; Frage 18 einmalige Einnahme | keine |
 | F28 ✍ | Getrennte Eltern, Kind im Wechselmodell (40 % Betreuung) | A, UH (Variante b), PA ×2, Betreuungsvereinbarung, GA ×3, Kindergeld, MV, VB, KA | Kind lebt teils beim anderen Elternteil (Frage 6) | keine |
 | F29 | Großfamilie mit 6 Personen: Elterngeld, Kurzarbeitergeld, Zuschuss der Großeltern, Geburt erwartet | A + Zusatzblatt Haushaltsmitglieder 5–6, PA ×2, Elterngeldbescheid, GA mit Kurzarbeit ×3, Kindergeld, Erklärung Großeltern, MV, VB, KA | Mehr als 4 Haushaltsmitglieder; Fragen 9, 26 und 27 (angekündigte Mieterhöhung); **über 40 Seiten** (Split-Grenze) | keine; Split-Hinweis „über 40 Seiten" erwartet |
-| F30 | „Chaos-Einsendung": Paar, beide Arbeitnehmer | A (S. 7 fehlt, S. 4 doppelt), HB, GA ×3 je Person, KA quer eingescannt, Stromrechnung, MV, VB, leere Rückseite | Falsche Reihenfolge (Nachweise vor dem Antrag), fremdes Dokument, Leerseite | `essenzielle-angaben` (fehlende Seite); Split und Klassifikation unter Störung |
+| F30 | „Chaos-Einsendung": Paar, beide Arbeitnehmer | A (S. 10 fehlt, S. 4 doppelt), HB, GA ×3 je Person, KA quer eingescannt, Stromrechnung, MV, VB, leere Rückseite | Falsche Reihenfolge (Nachweise vor dem Antrag), fremdes Dokument, Leerseite | `essenzielle-angaben` (Seite 10 mit Miete und Wohnfläche fehlt); Split und Klassifikation unter Störung |
 
 ✍ = handschriftähnlich ausgefüllt.
 
@@ -188,3 +188,23 @@ später ein Messlauf direkt gegen die App-Ausgabe vergleichen.
    beide Varianten, Erwartungsdateien.
 3. Ausbau auf alle 30 Fälle.
 4. Messwerkzeug: App-Auswertung je Fall gegen `expected.json`, Trefferquoten je Messgröße.
+
+## 9. Pilot-Stand (2026-09-23)
+
+Gebaut und geprüft: **F01, F18, F30** in beiden Varianten. Generator unter `tools/wohngeld-golden/`
+(Anleitung im README), Erwartungsdateien unter `tools/wohngeld-golden/expected/`.
+
+| Fall | Seiten | Dokumente | Besonderheit |
+|---|---|---|---|
+| F01 | 21 | 6 | Referenzfall, alle Werte stimmig |
+| F18 | 24 | 10 | Antrag 810 € Gesamtmiete, Vermieterbescheinigung/Mieterhöhung/Kontoauszug 877 € |
+| F30 | 29 | 15 | Chaos-Reihenfolge, Antragsseite 10 fehlt, Seite 4 doppelt, Kontoauszug quer, Fremddokument, Leerseite |
+
+Abweichungen vom ursprünglichen Plan:
+- Fallbeschreibungen sind typisierte TypeScript-Dateien statt JSON (Tippfehler fallen beim Übersetzen auf).
+  Die vollständige Wahrheit steht in der erzeugten `expected.json`.
+- Die Miete in den Erwartungen ist die **Bruttokaltmiete** (Gesamtmiete ohne Heiz- und Warmwasserkosten),
+  weil die App-Extraktion dieses Feld so definiert.
+- Die Formulare verlieren beim Flachmachen ihre Barrierefreiheits-Tags. Ein ausgedruckter Antrag hat ohnehin keine.
+- Ein Konsistenztest (`bun test`) prüft je Fall Seitenbereiche, Namen, Mietbeträge und gewollte Widersprüche
+  gegen die erzeugte PDF.

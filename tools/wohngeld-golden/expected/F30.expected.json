@@ -1,0 +1,338 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F30",
+  "titel": "Chaos-Einsendung: Paar, beide Arbeitnehmer",
+  "gruppe": "D",
+  "varianten": {
+    "digital": "F30-digital.pdf",
+    "scan": "F30-scan.pdf"
+  },
+  "seiten": 29,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Sandra",
+      "nachname": "Wegener",
+      "geburtsdatum": "1983-01-29",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Thomas",
+      "nachname": "Wegener",
+      "geburtsdatum": "1980-07-08",
+      "rolle": "Ehemann"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 1,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Wegener",
+      "person": "P2",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2710
+        },
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Thomas"
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 2,
+      "seiteBis": 2,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Wegener",
+      "person": "P2",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2710
+        },
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Thomas"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 3,
+      "seiteBis": 3,
+      "typ": "sonstiges",
+      "art": "hinweisblatt",
+      "titel": "Hinweisblatt zum Wohngeldantrag (Beilage)"
+    },
+    {
+      "nr": 4,
+      "seiteVon": 4,
+      "seiteBis": 14,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "stoerungen": [
+        "Seite(n) 10 fehlen",
+        "Seite(n) 4 doppelt eingescannt"
+      ],
+      "originalSeiten": [
+        1,
+        2,
+        3,
+        4,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        11
+      ],
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-02",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Sandra",
+          "antragsteller.nachname": "Wegener",
+          "antragsteller.geburtsdatum": "1983-01-29",
+          "adresse.strasse": "Heeper Straße",
+          "adresse.hausnummer": "118a",
+          "adresse.plz": "33607",
+          "adresse.ort": "Bielefeld",
+          "wohnung.miete": null,
+          "wohnung.wohnflaeche_qm": null
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Sandra Wegener",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Sandra",
+          "geburtsdatum": "1983-01-29"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Wegener",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1640
+        },
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Sandra"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 17,
+      "seiteBis": 17,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Wegener",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1640
+        },
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Sandra"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Wegener",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1640
+        },
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Sandra"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 19,
+      "seiteBis": 19,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "stoerungen": [
+        "quer eingescannt (90° gedreht)"
+      ],
+      "originalSeiten": [
+        1
+      ],
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Sandra"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 20,
+      "seiteBis": 20,
+      "typ": "sonstiges",
+      "art": "stromrechnung",
+      "titel": "Stromjahresabrechnung (fremdes Dokument)"
+    },
+    {
+      "nr": 11,
+      "seiteVon": 21,
+      "seiteBis": 24,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 670,
+          "wohnflaeche_qm": 74,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Sandra"
+        }
+      }
+    },
+    {
+      "nr": 12,
+      "seiteVon": 25,
+      "seiteBis": 25,
+      "typ": "sonstiges",
+      "art": "leerseite",
+      "titel": "Leerseite (leere Rückseite)",
+      "leerseite": true,
+      "hinweis": "Leere Rückseite — darf beim Split auch dem Nachbardokument zugeschlagen werden"
+    },
+    {
+      "nr": 13,
+      "seiteVon": 26,
+      "seiteBis": 26,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Thomas Wegener",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Thomas",
+          "geburtsdatum": "1980-07-08"
+        }
+      }
+    },
+    {
+      "nr": 14,
+      "seiteVon": 27,
+      "seiteBis": 28,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 670,
+          "wohnflaeche_qm": 74,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Sandra"
+        }
+      }
+    },
+    {
+      "nr": 15,
+      "seiteVon": 29,
+      "seiteBis": 29,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Wegener",
+      "person": "P2",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2710
+        },
+        "identitaet": {
+          "nachname": "Wegener",
+          "vorname": "Thomas"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "essenzielle-angaben"
+    ],
+    "befundeOhneAppRegel": [
+      "Antrag unvollständig: Seite 10 fehlt (Fragen 21–27, Miete und Wohnfläche)"
+    ],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Split: 15 Dokumente in gestörter Reihenfolge; Gehaltsabrechnungen derselben Person sind getrennte Dokumente je Monat.",
+    "Antrag hat 11 Seiten im Original: Seite 10 fehlt, Seite 4 liegt doppelt vor (Sendung: 11 Seiten).",
+    "Stromrechnung und Hinweisblatt gehören nicht zum Antrag (Typ sonstiges); Leerseite ist eine leere Rückseite."
+  ]
+}
