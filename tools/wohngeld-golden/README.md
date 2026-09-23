@@ -30,6 +30,23 @@ Ausgabe:
 | `out/<Fall>/<Fall>-scan.pdf` | gerastert, schief, ohne Textebene | nein |
 | `expected/<Fall>.expected.json` | Erwartung: Dokumentgrenzen, Typen, Feldwerte, Befunde | ja |
 
+## Messen (App gegen das Dataset)
+
+Das Messwerkzeug liegt im Backend, weil es die App-Funktionen direkt aufruft
+(Spec: `docs/wohngeld-golden-messwerkzeug-spec-2026-09-24.md`). Im Ordner `backend/`:
+
+```sh
+bun run scripts/wohngeld-golden/messung.ts --stufen regelwerk      # nur Prüfregeln, ohne KI, < 1 s
+bun run scripts/wohngeld-golden/messung.ts --faelle F01,F18        # alle Stufen, digitale Variante
+bun run scripts/wohngeld-golden/messung.ts --variante beide        # alle 30 Fälle, digital + scan
+bun run scripts/wohngeld-golden/messung.ts --ende-zu-ende          # Extraktion auf den Split-Ergebnissen
+```
+
+Stufen: `split`, `extraktion`, `posteingang` (Prüfregeln auf dem Stand nach dem Posteingang),
+`regelwerk` (Prüfregeln auf korrekt erfasstem Fall). KI-Ergebnisse werden je Dokument-Hash, Modell und
+Prompt-Stand gecacht (`out/messung/cache`), `--ohne-cache` erzwingt neue Aufrufe. Ergebnis und Bericht:
+`out/messung/<Zeitstempel>/ergebnis.json` und `bericht.md`. Poppler muss im `PATH` liegen.
+
 ## Aufbau
 
 - `src/faelle/` — eine Datei je Fall (einzige Datenquelle), Registrierung in `index.ts`

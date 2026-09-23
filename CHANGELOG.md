@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-24
+
+### Wohngeld — Messwerkzeug für das Golden Dataset
+Neues Skript `backend/scripts/wohngeld-golden/messung.ts` lässt die App-Funktionen (Split `pruefeUndTrenne`,
+`klassifiziereUndExtrahiere`, Prüfregeln `pruefeVorgang`) ohne DB gegen die 30 Fälle laufen und vergleicht mit den
+Erwartungsdateien: Split-Schnitte, Dokumenttyp, Feldwerte (normalisiert), Prüfbefunde auf zwei Ebenen
+(Stand nach Posteingang und korrekt erfasster Fall). KI-Ergebnisse gecacht, Bericht als Markdown + JSON.
+Spec: `docs/wohngeld-golden-messwerkzeug-spec-2026-09-24.md`.
+
+### Fix: Wettlauf in `isPdfSplitterAvailable`
+Parallele Aufrufe während der ersten Prüfung bekamen dauerhaft „nicht verfügbar" (Flag vor Prüfungsende gesetzt).
+Jetzt wird das Prüf-Promise gecacht (`services/extraction/pdf-split.ts`).
+
 ## 2026-09-23
 
 ### Wohngeld — Golden Dataset komplett (30 Fälle)

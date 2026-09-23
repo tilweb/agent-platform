@@ -22,23 +22,26 @@ export class PdfSplitError extends Error {
   }
 }
 
-let splitterChecked = false;
-let splitterAvailable = false;
+let splitterPruefung: Promise<boolean> | null = null;
 
-/** Einmaliger Health-Check: sind `pdfseparate` UND `pdfunite` im PATH? (cached) */
-export async function isPdfSplitterAvailable(): Promise<boolean> {
-  if (splitterChecked) return splitterAvailable;
-  splitterChecked = true;
-  try {
-    for (const bin of ['pdfseparate', 'pdfunite']) {
-      const proc = Bun.spawn([bin, '-v'], { stdout: 'pipe', stderr: 'pipe' });
-      await proc.exited;
+/**
+ * Einmaliger Health-Check: sind `pdfseparate` UND `pdfunite` im PATH? (cached)
+ * Das Promise selbst wird gecacht — parallele Aufrufer warten auf dieselbe Prüfung
+ * (vorher lieferte ein zweiter Aufrufer während der laufenden Prüfung fälschlich `false`).
+ */
+export function isPdfSplitterAvailable(): Promise<boolean> {
+  splitterPruefung ??= (async () => {
+    try {
+      for (const bin of ['pdfseparate', 'pdfunite']) {
+        const proc = Bun.spawn([bin, '-v'], { stdout: 'pipe', stderr: 'pipe' });
+        await proc.exited;
+      }
+      return true;
+    } catch {
+      return false;
     }
-    splitterAvailable = true;
-  } catch {
-    splitterAvailable = false;
-  }
-  return splitterAvailable;
+  })();
+  return splitterPruefung;
 }
 
 /**
