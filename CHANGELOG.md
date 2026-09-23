@@ -2,6 +2,12 @@
 
 ## 2026-09-24
 
+### Fix: „System message must be at the beginning" (Fall-Chat u. a.)
+Qwen 3.5 über vLLM akzeptiert nur eine Systemnachricht am Anfang. Der Wohngeld-Fall-Chat schickt drei
+(Anweisungen, Fall-Kontext, Rechts-Kontext) → HTTP 400. Zentral im OpenAI-Adapter (`normalisiereSystemNachrichten`,
+Stream- und Nicht-Stream-Pfad): führende Systemnachrichten werden zusammengeführt, spätere Systemnachrichten
+werden zu gekennzeichneten User-Nachrichten. Live gegen Adacor Qwen 3.5 geprüft (vorher 400, nachher korrekte Antwort).
+
 ### Fix (UI, app-weit): Fokus-Rahmen nach Mausklick
 Der „schwarze Rahmen" erschien weiterhin, wenn nach einem Mausklick eine Taste gedrückt wurde (Scrollen mit
 Leertaste/Pfeilen, Escape, Kürzel) — Browser werten das als Tastatur-Fokus — und an Nicht-Button-Elementen

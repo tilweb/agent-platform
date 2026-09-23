@@ -53,6 +53,30 @@ function sanitizeMessages(messages: Message[]): Message[] {
   });
 }
 
+/**
+ * Systemnachrichten normalisieren: Manche Chat-Vorlagen (u. a. Qwen 3.5 über vLLM) erlauben
+ * genau EINE Systemnachricht und nur am Anfang ("System message must be at the beginning").
+ * - Alle führenden Systemnachrichten werden (in Reihenfolge) zu einer zusammengeführt.
+ * - Spätere Systemnachrichten (mitten im Verlauf) werden zu User-Nachrichten mit Kennzeichnung,
+ *   damit ihr Inhalt an der richtigen Stelle im Verlauf bleibt.
+ * Für Anbieter, die mehrere Systemnachrichten erlauben, ist das inhaltlich gleichwertig.
+ */
+export function normalisiereSystemNachrichten(messages: Message[]): Message[] {
+  const fuehrend: string[] = [];
+  let i = 0;
+  while (i < messages.length && messages[i]!.role === 'system' && typeof messages[i]!.content === 'string') {
+    fuehrend.push(messages[i]!.content as string);
+    i++;
+  }
+  const rest = messages.slice(i).map((m): Message => (
+    m.role === 'system' && typeof m.content === 'string'
+      ? { ...m, role: 'user', content: `[Systemhinweis]\n${m.content}` }
+      : m
+  ));
+  if (fuehrend.length <= 1) return i === 0 ? rest : [messages[0]!, ...rest];
+  return [{ ...messages[0]!, content: fuehrend.join('\n\n') }, ...rest];
+}
+
 // Transient errors that should be retried (e.g. vLLM "Already borrowed")
 const RETRYABLE_PATTERNS = ['Already borrowed', 'overloaded', 'temporarily unavailable'];
 const MAX_RETRIES = 3;
@@ -93,7 +117,7 @@ export class OpenAIAdapter {
   ): AsyncGenerator<StreamChunk> {
     const body: Record<string, unknown> = {
       model: model || this.defaultModel,
-      messages: sanitizeMessages(messages),
+      messages: sanitizeMessages(normalisiereSystemNachrichten(messages)),
       stream: true,
     };
 
@@ -260,7 +284,7 @@ export class OpenAIAdapter {
   }> {
     const body: Record<string, unknown> = {
       model: model || this.defaultModel,
-      messages,
+      messages: sanitizeMessages(normalisiereSystemNachrichten(messages)),
       stream: false,
       ...(params?.extraBody ?? {}),
     };
