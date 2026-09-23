@@ -2,6 +2,12 @@
 
 ## 2026-09-24
 
+### Wohngeld — Fall-Chat rendert Markdown
+Antworten des Fall-Chats (fertig und während des Streamings) werden als Markdown dargestellt (`react-markdown` +
+`remark-gfm`, wie in anderen App-Chats): Überschriften, Listen, Fettdruck, Tabellen, Zitate, Links. Übernahmen ins
+Anschreiben, als Textbaustein oder Notiz werden in Klartext umgewandelt (`markdownText.js`), damit keine
+`**`/`#`-Zeichen in Bürgerbriefen landen.
+
 ### Fix: „System message must be at the beginning" (Fall-Chat u. a.)
 Qwen 3.5 über vLLM akzeptiert nur eine Systemnachricht am Anfang. Der Wohngeld-Fall-Chat schickt drei
 (Anweisungen, Fall-Kontext, Rechts-Kontext) → HTTP 400. Zentral im OpenAI-Adapter (`normalisiereSystemNachrichten`,

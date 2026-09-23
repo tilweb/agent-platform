@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { markdownZuText } from '../markdownText';
 import { theme } from '../../../config/theme';
 import {
   ChatIcon, SendIcon, XIcon, DocumentIcon, ScaleIcon,
@@ -27,6 +30,33 @@ const VORSCHLAEGE = [
  *  - canEdit?: boolean                       (nur dann Übernahme-/Aktions-Bedienung)
  *  - onDidMutate?: () => void                (nach Mutationen → Detail-Reload)
  */
+// Markdown-Darstellung der Assistenten-Antworten (kompakt, im Stil der Chat-Blase).
+const mdH = { fontWeight: 600, fontSize: theme.typography.sizes.sm, margin: '0.6em 0 0.25em' };
+const mdZelle = { border: `1px solid ${theme.colors.border}`, padding: '0.25em 0.5em', textAlign: 'left', verticalAlign: 'top' };
+const md = {
+  p: ({ children }) => <p style={{ margin: '0 0 0.5em' }}>{children}</p>,
+  ul: ({ children }) => <ul style={{ margin: '0.25em 0 0.5em', paddingLeft: '1.2em' }}>{children}</ul>,
+  ol: ({ children }) => <ol style={{ margin: '0.25em 0 0.5em', paddingLeft: '1.2em' }}>{children}</ol>,
+  li: ({ children }) => <li style={{ margin: '0.1em 0' }}>{children}</li>,
+  h1: ({ children }) => <div style={mdH}>{children}</div>,
+  h2: ({ children }) => <div style={mdH}>{children}</div>,
+  h3: ({ children }) => <div style={mdH}>{children}</div>,
+  h4: ({ children }) => <div style={mdH}>{children}</div>,
+  strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+  blockquote: ({ children }) => <blockquote style={{ margin: '0.3em 0', paddingLeft: '0.7em', borderLeft: `3px solid ${theme.colors.border}`, color: theme.colors.textSecondary }}>{children}</blockquote>,
+  code: ({ children }) => <code style={{ background: theme.colors.surface, padding: '0.1em 0.3em', borderRadius: 4, fontSize: '0.9em' }}>{children}</code>,
+  pre: ({ children }) => <pre style={{ margin: '0.3em 0', whiteSpace: 'pre-wrap', overflowX: 'auto' }}>{children}</pre>,
+  a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: ACCENT }}>{children}</a>,
+  table: ({ children }) => <div style={{ overflowX: 'auto', margin: '0.3em 0 0.5em' }}><table style={{ borderCollapse: 'collapse', fontSize: '0.95em' }}>{children}</table></div>,
+  th: ({ children }) => <th style={{ ...mdZelle, fontWeight: 600, background: theme.colors.surface }}>{children}</th>,
+  td: ({ children }) => <td style={mdZelle}>{children}</td>,
+  hr: () => <hr style={{ border: 'none', borderTop: `1px solid ${theme.colors.border}`, margin: '0.5em 0' }} />,
+};
+
+function Markdown({ text }) {
+  return <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>{text || ''}</ReactMarkdown>;
+}
+
 export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = false, onDidMutate }) {
   const [minimized, setMinimized] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -198,7 +228,7 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
 
             {streamingText && (
               <div style={styles.assistantRow}>
-                <div style={styles.assistantBubble}>{streamingText}</div>
+                <div style={styles.assistantBubble}><Markdown text={streamingText} /></div>
               </div>
             )}
 
@@ -339,7 +369,7 @@ function MessageBubble({ message, canEdit, onOpenDokument, onUebernehmen, onText
   const actions = message.actions || [];
   return (
     <div style={styles.assistantRow}>
-      <div style={styles.assistantBubble}>{message.content}</div>
+      <div style={styles.assistantBubble}><Markdown text={message.content} /></div>
 
       {message.sources && message.sources.length > 0 && (
         <div style={styles.sourceRow}>
@@ -385,15 +415,15 @@ function MessageBubble({ message, canEdit, onOpenDokument, onUebernehmen, onText
       {/* C3: dezentes Übernahme-Menü (nur canEdit, nur mit Inhalt) */}
       {canEdit && message.content && (
         <div style={styles.menuRow}>
-          <button style={styles.menuBtn} onClick={() => onUebernehmen?.(message.content)}>
+          <button style={styles.menuBtn} onClick={() => onUebernehmen?.(markdownZuText(message.content))}>
             <PenIcon size={12} color={theme.colors.textMuted} />
             <span>In Anforderungsschreiben übernehmen</span>
           </button>
-          <button style={styles.menuBtn} onClick={() => onTextbaustein?.(message.content)}>
+          <button style={styles.menuBtn} onClick={() => onTextbaustein?.(markdownZuText(message.content))}>
             <ClipboardIcon size={12} color={theme.colors.textMuted} />
             <span>Als Textbaustein speichern</span>
           </button>
-          <button style={styles.menuBtn} onClick={() => onNotiz?.(message.content)}>
+          <button style={styles.menuBtn} onClick={() => onNotiz?.(markdownZuText(message.content))}>
             <DocumentIcon size={12} color={theme.colors.textMuted} />
             <span>Als Notiz speichern</span>
           </button>
@@ -496,7 +526,7 @@ const styles = {
     borderRadius: theme.borderRadius.lg,
     fontSize: theme.typography.sizes.sm,
     lineHeight: 1.5,
-    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
   },
   infoRow: {
     display: 'flex',
