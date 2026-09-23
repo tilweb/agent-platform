@@ -178,7 +178,7 @@ später ein Messlauf direkt gegen die App-Ausgabe vergleichen.
   App-Typ. Die Erwartung ordnet sie dem nächstliegenden Typ zu. Der Datensatz zeigt, ob eigene Typen nötig sind.
 - **Handschrift und Scans** sind Annäherungen. Echte Belege aus einer Pilotkommune bleiben der
   bessere Abnahmetest.
-- **Ablage:** Generator, Fallbeschreibungen und Erwartungsdateien kommen ins Repo (`tools/wohngeld-golden/`).
+- **Ablage:** Generator, Fallbeschreibungen und Erwartungsdateien kommen ins Repo (`tools/wohngeld-golden/`, eigenes Paket mit eigener `pdf-lib`-Abhängigkeit, damit der Backend-Lockfile unberührt bleibt).
   Die erzeugten PDFs landen lokal in einem nicht eingecheckten Ausgabeordner und lassen sich jederzeit neu erzeugen.
 
 ## 8. Nächste Schritte
