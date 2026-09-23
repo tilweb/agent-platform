@@ -3,10 +3,12 @@
  * Gehalt netto), Miete an den Vermieter, Alltagsausgaben (seeded). Optionen:
  * - mieteBar: keine Mietüberweisung, stattdessen Barabhebung (F21)
  * - zusatzEingang: { text, betrag } regelmäßiger, nicht angegebener Eingang (F21)
+ * - buchungen: weitere Buchungen [{ tag, text, zweck, betrag }] (Kindergeld, Unterhalt, Minijob …)
+ * - ohneGehalt: Personen-IDs, deren Gehalt nicht auf diesem Konto eingeht
  */
 import { datum, esc, eur, ganz, htmlDoc, htmlZuPdf, ibanFormat, monatName, rng, rund2, tageImMonat, wahl, zwischen } from '../lib';
 import type { DokSpec, ErzeugtesDokument, Fall, Person } from '../types';
-import { hatKinder, nettoLohn } from './gehaltsabrechnung';
+import { bruttoAus, hatKinder, nettoLohn } from './gehaltsabrechnung';
 
 interface Buchung { tag: number; text: string; zweck: string; betrag: number }
 
@@ -21,7 +23,7 @@ export async function erzeugeKontoauszug(fall: Fall, spec: DokSpec): Promise<Erz
   const monat = spec.monat ?? fall.antragsdatum.slice(0, 7);
   const r = rng(`${fall.id}:konto:${monat}`);
   const w = fall.wohnung;
-  const opt = (spec.optionen ?? {}) as { mieteBar?: boolean; zusatzEingang?: { text: string; betrag: number; tag: number } };
+  const opt = (spec.optionen ?? {}) as { mieteBar?: boolean; zusatzEingang?: { text: string; betrag: number; tag: number }; buchungen?: Buchung[]; ohneGehalt?: string[] };
   const tage = tageImMonat(monat);
   const inhaber = fall.personen.filter((p) => p.id === 'P1' || /(ehe|partner)/i.test(p.verhaeltnis ?? ''));
   const gesamtmiete = w.grundmiete + w.nebenkosten + w.heizkosten + w.warmwasser;
@@ -29,11 +31,12 @@ export async function erzeugeKontoauszug(fall: Fall, spec: DokSpec): Promise<Erz
 
   for (const p of inhaber) {
     if (p.rente) b.push({ tag: tage, text: p.rente.traeger.toUpperCase(), zweck: `RV-Rente ${monatName(monat)} VSNR ${p.rente.versicherungsnummer.replace(/\s/g, '')}`, betrag: renteZahl(p) });
-    if (p.beschaeftigung) {
-      const brutto = p.einnahmen.find((e) => /gehalt|lohn/i.test(e.art))?.brutto ?? 0;
+    if (p.beschaeftigung && !opt.ohneGehalt?.includes(p.id)) {
+      const brutto = bruttoAus(p);
       b.push({ tag: tage - 1, text: p.beschaeftigung.arbeitgeber, zweck: `LOHN/GEHALT ${monat.slice(5)}/${monat.slice(0, 4)} PERS.NR ${p.beschaeftigung.personalnummer}`, betrag: nettoLohn(brutto, p, hatKinder(fall)).netto });
     }
   }
+  for (const x of opt.buchungen ?? []) b.push(x);
   if (opt.zusatzEingang) b.push({ tag: opt.zusatzEingang.tag, text: opt.zusatzEingang.text, zweck: `Verdienst ${monat.slice(5)}/${monat.slice(0, 4)}`, betrag: opt.zusatzEingang.betrag });
 
   if (opt.mieteBar) {

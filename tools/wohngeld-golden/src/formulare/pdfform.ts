@@ -6,14 +6,25 @@
 import {
   PDFDocument, PDFCheckBox, PDFTextField, PDFRadioGroup, PDFForm, StandardFonts, rgb, PDFName, PDFRef, PDFArray, type PDFPage,
 } from 'pdf-lib';
-import { unterschriftPfad } from '../lib';
+import { esc, htmlZuPdf, rng, unterschriftPfad, wahl, zwischen } from '../lib';
 
 export const norm = (n: string) => n.replace(/\s+/g, '').replace(/^MZ1\.3-/, '');
+
+/**
+ * Die Standardschrift (Helvetica/WinAnsi) kennt z. B. türkische Sonderzeichen nicht.
+ * Im getippten Formular werden sie ersetzt — wie bei einer Eingabe ohne passende Tastatur.
+ */
+const WINANSI_ERSATZ: Record<string, string> = { 'ı': 'i', 'İ': 'I', 'ş': 's', 'Ş': 'S', 'ğ': 'g', 'Ğ': 'G', 'ț': 't', 'ș': 's', 'ą': 'a', 'ę': 'e', 'ł': 'l', 'Ł': 'L', 'ń': 'n', 'ś': 's', 'ź': 'z', 'ż': 'z', 'ć': 'c', 'č': 'c', 'Č': 'C', 'ř': 'r', 'ě': 'e', 'ă': 'a', 'ő': 'o', 'ű': 'u' };
+export const winAnsi = (s: string) => s.replace(/[^\u0000-\u00ff€]/g, (c) => WINANSI_ERSATZ[c] ?? c.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
 
 export class Formular {
   /** Einheitliche Schriftgröße der Textfelder (Vorlage nutzt Auto-Größe). */
   schriftgroesse = 10;
   private groessen = new Map<string, number>();
+  /** Handschrift-Modus: Werte nicht in Felder, sondern als Handschrift-Ebene über das Formular. */
+  handschrift: false | { seed: string } = false;
+  private hand: Array<{ seite: number; x: number; y: number; w: number; h: number; wert: string; kreuz?: boolean }> = [];
+  private seitenVonWidget?: Map<string, number>;
   private unterschriften: Array<{ seite: number; x: number; y: number; name: string; breite: number }> = [];
   private constructor(public doc: PDFDocument, private form: PDFForm, private index: Map<string, string>) {}
 
@@ -30,13 +41,34 @@ export class Formular {
     return this.form.getField(echt);
   }
 
+  /** Seiten-Index (0-basiert) je Widget-Referenz — über die /Annots der Seiten. */
+  private widgetPositionen(name: string): Array<{ seite: number; x: number; y: number; w: number; h: number }> {
+    if (!this.seitenVonWidget) {
+      this.seitenVonWidget = new Map();
+      this.doc.getPages().forEach((page, i) => {
+        const annots = page.node.lookup(PDFName.of('Annots'));
+        if (annots instanceof PDFArray) for (const r of annots.asArray()) if (r instanceof PDFRef) this.seitenVonWidget!.set(r.toString(), i);
+      });
+    }
+    const f = this.feld(name);
+    return f.acroField.getWidgets().map((w) => {
+      const ref = this.doc.context.getObjectRef(w.dict);
+      const r = w.getRectangle();
+      return { seite: ref ? (this.seitenVonWidget!.get(ref.toString()) ?? 0) : 0, x: r.x, y: r.y, w: r.width, h: r.height };
+    });
+  }
+
   /** Textfeld setzen (leere Werte werden übersprungen); optional eigene Schriftgröße. */
   text(name: string, wert: string | number | undefined | null, groesse?: number): void {
     if (wert === undefined || wert === null || wert === '') return;
+    if (this.handschrift) {
+      for (const p of this.widgetPositionen(name)) this.hand.push({ ...p, wert: String(wert) });
+      return;
+    }
     const f = this.feld(name);
     if (groesse) this.groessen.set(f.getName(), groesse);
     if (!(f instanceof PDFTextField)) throw new Error(`${name} ist kein Textfeld`);
-    const s = String(wert);
+    const s = winAnsi(String(wert));
     const max = f.getMaxLength();
     f.setText(max && s.length > max ? s.slice(0, max) : s);
   }
@@ -44,6 +76,10 @@ export class Formular {
   /** Checkbox ankreuzen. */
   kreuz(name: string, an = true): void {
     if (!an) return;
+    if (this.handschrift) {
+      for (const p of this.widgetPositionen(name)) this.hand.push({ ...p, wert: 'X', kreuz: true });
+      return;
+    }
     const f = this.feld(name);
     if (!(f instanceof PDFCheckBox)) throw new Error(`${name} ist keine Checkbox`);
     f.check();
@@ -84,6 +120,40 @@ export class Formular {
   }
 
   /**
+   * Handschrift-Ebene: je Formularseite eine transparente HTML-Seite mit den Werten
+   * an den Feldpositionen (Handschrift-Schrift, leichte Schräglage/Versatz), über
+   * Chrome gedruckt und über die Formularseite gelegt.
+   */
+  private async handschriftEbene(seed: string): Promise<void> {
+    const r = rng(`hand:${seed}`);
+    const schrift = wahl(r, ["'Bradley Hand'", "'Noteworthy'", "'Marker Felt'", "'Chalkboard SE'"] as const);
+    const blockschrift = schrift === "'Marker Felt'" || r() < 0.25;
+    const seiten = this.doc.getPages();
+    const { width: W, height: H } = seiten[0]!.getSize();
+    const html = seiten.map((_, i) => {
+      const spans = this.hand.filter((e) => e.seite === i).map((e) => {
+        const dreh = zwischen(r, -1.6, 1.6).toFixed(2);
+        const dx = zwischen(r, 1, 5).toFixed(1);
+        if (e.kreuz) {
+          const g = Math.min(e.h, e.w) * 1.15;
+          return `<div style="position:absolute;left:${e.x + e.w / 2 - g * 0.32}pt;top:${H - e.y - e.h / 2 - g * 0.78}pt;font-size:${g.toFixed(1)}pt;transform:rotate(${dreh}deg)">x</div>`;
+        }
+        const mehrzeilig = e.h > 30 || e.wert.includes('\n');
+        const groesse = mehrzeilig ? 11.5 : Math.min(13, Math.max(7.5, e.h * 0.78));
+        const wert = blockschrift ? e.wert.toUpperCase() : e.wert;
+        return `<div style="position:absolute;left:${e.x + Number(dx)}pt;top:${H - e.y - e.h + (mehrzeilig ? 1 : e.h * 0.02)}pt;width:${e.w + 40}pt;font-size:${groesse.toFixed(1)}pt;line-height:1.15;white-space:pre-line;transform:rotate(${dreh}deg);transform-origin:left center">${esc(wert)}</div>`;
+      }).join('');
+      return `<div class="s">${spans}</div>`;
+    }).join('');
+    const css = `@page{size:${W}pt ${H}pt;margin:0} html,body{margin:0;padding:0;background:transparent} .s{position:relative;width:${W}pt;height:${H}pt;overflow:hidden;page-break-after:always} .s:last-child{page-break-after:auto} div{font-family:${schrift},cursive;color:#1b2a78}`;
+    const pdf = await htmlZuPdf(`<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${html}</body></html>`);
+    const ebene = await PDFDocument.load(pdf);
+    const n = Math.min(ebene.getPageCount(), seiten.length);
+    const eingebettet = await this.doc.embedPdf(ebene, Array.from({ length: n }, (_, i) => i));
+    eingebettet.forEach((e, i) => seiten[i]!.drawPage(e, { x: 0, y: 0, width: W, height: H }));
+  }
+
+  /**
    * Nach dem Flachmachen: verwaiste Widget-Verweise aus /Annots entfernen und die
    * Tag-Struktur (barrierefreie Vorlage) verwerfen — sie zeigt sonst auf gelöschte
    * Widgets und erzeugt defekte Verweise. Ein „Ausdruck" braucht keine Tags.
@@ -115,6 +185,7 @@ export class Formular {
     this.form.updateFieldAppearances(font);
     this.form.flatten();
     this.aufraeumen();
+    if (this.handschrift && this.hand.length) await this.handschriftEbene(this.handschrift.seed);
     this.zeichneUnterschriften();
     this.doc.setTitle(meta.titel);
     this.doc.setSubject('SYNTHETISCH — Testdaten Wohngeld Golden Dataset, keine echte Person');

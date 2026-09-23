@@ -12,28 +12,36 @@ import { erzeugeMietvertrag } from './nachweise/mietvertrag';
 import { erzeugePersonalausweis } from './nachweise/personalausweis';
 import { erzeugeRentenbescheid } from './nachweise/rentenbescheid';
 import { erzeugeHinweisblatt, erzeugeLeerseite, erzeugeMieterhoehung, erzeugeStromrechnung } from './nachweise/sonstige';
-import type { DokSpec, ErzeugtesDokument, Fall, Person } from './types';
+import type { DokArt, DokSpec, ErzeugtesDokument, Fall, Generator, Person } from './types';
+import { ERWEITERUNGEN } from './nachweise/registry';
 
-function person(fall: Fall, id?: string): Person {
+export function person(fall: Fall, id?: string): Person {
   const p = fall.personen.find((x) => x.id === (id ?? 'P1'));
   if (!p) throw new Error(`${fall.id}: Person ${id} unbekannt`);
   return p;
 }
 
+/** Basis-Generatoren (Pilot). Weitere Familien melden sich über eigene Tabellen an. */
+const BASIS: Partial<Record<DokArt, Generator>> = {
+  antrag: (f) => erzeugeAntrag(f),
+  vermieterbescheinigung: (f) => erzeugeVermieterbescheinigung(f),
+  personalausweis: (f, s) => erzeugePersonalausweis(f, person(f, s.person)),
+  rentenbescheid: (f, s) => erzeugeRentenbescheid(f, person(f, s.person)),
+  mietvertrag: (f) => erzeugeMietvertrag(f),
+  kontoauszug: (f, s) => erzeugeKontoauszug(f, s),
+  gehaltsabrechnung: (f, s) => erzeugeGehaltsabrechnung(f, person(f, s.person), s),
+  mieterhoehung: (f) => erzeugeMieterhoehung(f),
+  stromrechnung: (f) => erzeugeStromrechnung(f),
+  hinweisblatt: () => erzeugeHinweisblatt(),
+  leerseite: () => erzeugeLeerseite(),
+};
+
+const GENERATOREN: Partial<Record<DokArt, Generator>> = { ...BASIS, ...ERWEITERUNGEN };
+
 export async function erzeugeDokument(fall: Fall, spec: DokSpec): Promise<ErzeugtesDokument> {
-  switch (spec.art) {
-    case 'antrag': return erzeugeAntrag(fall);
-    case 'vermieterbescheinigung': return erzeugeVermieterbescheinigung(fall);
-    case 'personalausweis': return erzeugePersonalausweis(fall, person(fall, spec.person));
-    case 'rentenbescheid': return erzeugeRentenbescheid(fall, person(fall, spec.person));
-    case 'mietvertrag': return erzeugeMietvertrag(fall);
-    case 'kontoauszug': return erzeugeKontoauszug(fall, spec);
-    case 'gehaltsabrechnung': return erzeugeGehaltsabrechnung(fall, person(fall, spec.person), spec);
-    case 'mieterhoehung': return erzeugeMieterhoehung(fall);
-    case 'stromrechnung': return erzeugeStromrechnung(fall);
-    case 'hinweisblatt': return erzeugeHinweisblatt();
-    case 'leerseite': return erzeugeLeerseite();
-  }
+  const g = GENERATOREN[spec.art];
+  if (!g) throw new Error(`${fall.id}: kein Generator für Dokumentart „${spec.art}"`);
+  return g(fall, spec);
 }
 
 export interface DokumentEintrag {
