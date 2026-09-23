@@ -421,6 +421,8 @@ export interface Dokument extends Timestamped, Versioned {
   extraktion?: DokumentExtraktion;
   /** Ins Fachverfahren abgelegt (Welle 5, WP10). Nur Status, keine echte Schnittstelle. */
   abgelegt?: boolean;
+  /** Erkennung über das DP-Segmentprofil (Lernsignal, Lernbeispiel). */
+  profil?: ProfilErkennung;
 }
 
 /** Prüfschritt (Vollständigkeit oder Plausibilität). */
@@ -567,6 +569,24 @@ export interface PosteingangDatei {
   teilVon?: PosteingangTeilVon;
   /** Ergebnis der Grenzprüfung an einer ungetrennten PDF. */
   trennung?: PosteingangTrennung;
+  /** Erkennung über das Document-Processing-Profil (Abschnitt + Rohwerte). */
+  profil?: ProfilErkennung;
+}
+
+/** Herkunft einer Auswertung aus dem DP-Segmentprofil „Wohngeld-Eingang". */
+export interface ProfilErkennung {
+  /** Abschnittstyp des Profils, z. B. „lohnersatzbescheid". */
+  abschnitt: string;
+  /** Klassifikations-Konfidenz (0..1). */
+  konfidenz: number;
+  /** Rohwerte des Profils — Initialextraktion für Lernbeispiele. */
+  rohwerte: Record<string, unknown>;
+  quelle: 'datenbank' | 'vorlage';
+  profilHash?: string;
+  /** Entscheidungen der Sachbearbeitung je Feld-Status-Pfad (Lernsignal). */
+  entscheidungen?: Record<string, 'bestaetigt' | 'verworfen'>;
+  /** ID des daraus erzeugten DP-Lernbeispiels. */
+  lernbeispielId?: string;
 }
 
 /** Herkunft eines Teil-Dokuments: das Original + Seitenbereich. */

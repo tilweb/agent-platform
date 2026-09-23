@@ -4,6 +4,7 @@ import { listAkten, getAkte, createAkte, updateAkte, deleteAkte, listVorgaenge }
 import { VersionConflictError } from '../concurrency';
 import { denyIfNotAppEditor } from './_shared';
 import { audit, auditUpdate } from '../audit';
+import { loescheLernbeispieleVorgang } from '../lernbeispiele';
 
 export const aktenRoutes = new Hono();
 
@@ -59,6 +60,8 @@ aktenRoutes.delete('/akten/:id', async (c) => {
   if (denied) return c.json(denied, 403);
   const id = c.req.param('id');
   const before = await getAkte(id);
+  // DP-Lernbeispiele der enthaltenen Vorgänge mitlöschen (Datenschutz).
+  for (const v of await listVorgaenge({ akteId: id })) await loescheLernbeispieleVorgang(v.id);
   const ok = await deleteAkte(id);
   if (ok) await audit(c, { aktion: 'akte.geloescht', objektTyp: 'akte', objektId: id, detail: before?.name });
   return ok ? c.json({ ok: true }) : c.json({ error: 'Akte nicht gefunden' }, 404);

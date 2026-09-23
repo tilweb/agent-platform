@@ -193,7 +193,7 @@ export interface TrennErgebnis {
 }
 
 /** Baut die Teil-Dateien (Bytes speichern, Provenienz setzen). */
-async function baueTeile(
+export async function baueTeile(
   original: PosteingangDatei, bytes: Uint8Array, seitenGesamt: number,
   bereiche: SeitenBereich[], manuell: boolean, deps: SplitDeps,
 ): Promise<PosteingangDatei[]> {

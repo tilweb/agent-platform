@@ -28,8 +28,9 @@ import {
 } from '../posteingang-helpers';
 import {
   splitAktiv, brauchtGrenzpruefung, pruefeUndTrenne, trenneManuell, findeOriginal,
-  ersetzeGruppe, alleSpeicherRefs, istPdf, type SeitenBereich,
+  ersetzeGruppe, alleSpeicherRefs, istPdf, baueTeile, defaultSplitDeps, type SeitenBereich,
 } from '../posteingang-split';
+import { erkenneDokumente, erkennungPerProfil, ladeProfil, type ErkannterAbschnitt } from '../dp-erkennung';
 import type { Posteingang, PosteingangDatei, PosteingangQuelle, DokumentTyp } from '../types';
 
 export const posteingangQueueRoutes = new Hono();
@@ -54,6 +55,7 @@ function dateiZuPreview(d: PosteingangDatei): Preview {
     dateiname: d.dateiname,
     extrahierterTextGekuerzt: d.extrahierterTextGekuerzt ?? '',
     storageRef: d.s3Key ? `s3:${d.s3Key}` : d.pfad ? `local:${d.pfad}` : '',
+    ...(d.profil ? { profil: d.profil } : {}),
   };
 }
 
@@ -213,6 +215,63 @@ function bereicheText(bereiche?: SeitenBereich[]): string {
   return (bereiche ?? []).map((b) => (b.from === b.to ? `S. ${b.from}` : `S. ${b.from}–${b.to}`)).join(', ');
 }
 
+/** Übernimmt einen erkannten Profil-Abschnitt als Auswertung in die Datei (mutiert `d`). */
+function uebernimmAbschnitt(d: PosteingangDatei, a: ErkannterAbschnitt, quelle: 'datenbank' | 'vorlage', profilHash?: string): void {
+  d.typ = a.typ;
+  d.titel = a.titel;
+  d.analyse = a.analyse;
+  d.stammdaten = a.stammdaten;
+  d.identitaet = a.identitaet;
+  d.extraktion = { ...a.extraktion!, erzeugtAm: new Date().toISOString() };
+  d.fieldConfidences = a.confidenceByPfad;
+  d.extrahierterTextGekuerzt = a.text.slice(0, 4000);
+  d.analyseFehler = undefined;
+  d.profil = { abschnitt: a.abschnitt, konfidenz: a.konfidenz, rohwerte: a.rohwerte, quelle, profilHash };
+}
+
+/**
+ * Erkennung über das DP-Segmentprofil (Standard): je PDF Seiten klassifizieren, in
+ * Abschnitte trennen und auslesen — ersetzt Grenzprüfung + eigene Klassifikation.
+ * Bereits getrennte Teile und manuell festgelegte Dateien werden nicht neu getrennt;
+ * dort bestimmt der größte erkannte Abschnitt Typ und Felder. Nicht-PDFs und Fehler
+ * laufen über den bisherigen Weg.
+ */
+async function erkenneMitProfil(dateien: PosteingangDatei[], userId: string | null | undefined) {
+  const out: PosteingangDatei[] = [];
+  const protokoll: Array<{ dateiname: string; bereiche?: SeitenBereich[]; modell?: string }> = [];
+  const profil = await ladeProfil();
+  for (const d of dateien) {
+    if (!istPdf(d)) { await analysiereDatei(d, userId); out.push(d); continue; }
+    try {
+      const bytes = await loadDokumentDatei({ s3Key: d.s3Key, pfad: d.pfad });
+      if (!bytes) { d.analyseFehler = 'Datei nicht auffindbar (kein hinterlegter Inhalt)'; out.push(d); continue; }
+      const r = await erkenneDokumente(bytes, { filename: d.dateiname, userId: userId ?? undefined, profil });
+      if (!r.abschnitte.length) { d.analyseFehler = 'Keine Inhalte erkannt (nur Leerseiten?)'; out.push(d); continue; }
+      const trennen = splitAktiv() && brauchtGrenzpruefung(d) && r.abschnitte.length > 1;
+      if (!trennen) {
+        // Ganze Datei als ein Dokument: größter Abschnitt bestimmt Typ und Felder.
+        const groesster = [...r.abschnitte].sort((x, y) => (y.seiteBis - y.seiteVon) - (x.seiteBis - x.seiteVon))[0]!;
+        uebernimmAbschnitt(d, groesster, r.quelle, r.profilHash);
+        if (!d.teilVon && !d.trennung) d.trennung = { status: 'ein_dokument', seitenGesamt: r.seiten };
+        out.push(d);
+        continue;
+      }
+      const bereiche = r.abschnitte.map((a) => ({ from: a.seiteVon, to: a.seiteBis }));
+      const teile = await baueTeile(d, bytes, r.seiten, bereiche, false, defaultSplitDeps);
+      teile.forEach((t, i) => uebernimmAbschnitt(t, r.abschnitte[i]!, r.quelle, r.profilHash));
+      out.push(...teile);
+      protokoll.push({ dateiname: d.dateiname, bereiche, modell: `Profil „Wohngeld-Eingang" (${r.quelle === 'datenbank' ? 'gepflegter Stand' : 'Vorlage'})` });
+    } catch (err) {
+      console.warn('[wohngeld] Profil-Erkennung fehlgeschlagen — bisheriger Weg:', err instanceof Error ? err.message : err);
+      const alt = await trenneSammelPdfs([d], userId);
+      for (const x of alt.dateien) await analysiereDatei(x, userId);
+      out.push(...alt.dateien);
+      protokoll.push(...alt.protokoll);
+    }
+  }
+  return { dateien: out, protokoll };
+}
+
 /**
  * Mehrdokument-Split vor der Klassifikation: jede Sammel-PDF wird (konservativ)
  * an erkannten Dokumentgrenzen in Teil-Dateien getrennt. Liefert die neue
@@ -259,8 +318,11 @@ posteingangQueueRoutes.post('/posteingang/analysieren', async (c) => {
 
     await updatePosteingang(id, { status: 'in_analyse', bearbeiterId: userId ?? undefined });
     try {
-      // Mehrdokument-Split (Sammel-Scans) vor der Klassifikation.
-      const split = await trenneSammelPdfs(eingang.dateien.map((d) => ({ ...d })), userId);
+      // Erkennung: DP-Segmentprofil (Standard) oder bisheriger Weg (Split + eigene Klassifikation).
+      const profilWeg = erkennungPerProfil();
+      const split = profilWeg
+        ? await erkenneMitProfil(eingang.dateien.map((d) => ({ ...d })), userId)
+        : await trenneSammelPdfs(eingang.dateien.map((d) => ({ ...d })), userId);
       const dateien = split.dateien;
       for (const t of split.protokoll) {
         await audit(c, {
@@ -269,7 +331,7 @@ posteingangQueueRoutes.post('/posteingang/analysieren', async (c) => {
         });
       }
 
-      for (const d of dateien) await analysiereDatei(d, userId);
+      if (!profilWeg) for (const d of dateien) await analysiereDatei(d, userId);
 
       const { kandidaten, betreff, alleFehler, status } = await umschlagAuswerten(dateien, eingang.betreff);
       const updated = await updatePosteingang(id, { dateien, matchVorschlag: kandidaten, betreff, status });
@@ -332,8 +394,13 @@ posteingangQueueRoutes.post('/posteingang/:id/trennung', async (c) => {
   const userId = getCurrentUserId(c);
   let updates: Partial<Posteingang> = { dateien };
   if (eingang.status === 'analysiert' || eingang.status === 'fehler') {
-    for (const d of dateien) {
-      if (!d.typ && !d.analyseFehler) await analysiereDatei(d, userId);
+    const neu = dateien.filter((d) => !d.typ && !d.analyseFehler);
+    if (erkennungPerProfil()) {
+      // Manuell gebildete Teile/Dateien nicht erneut trennen (brauchtGrenzpruefung = false).
+      const ergebnis = await erkenneMitProfil(neu, userId);
+      for (const d of neu) Object.assign(d, ergebnis.dateien.find((x) => x.hash === d.hash) ?? d);
+    } else {
+      for (const d of neu) await analysiereDatei(d, userId);
     }
     const { kandidaten, betreff, status } = await umschlagAuswerten(dateien, eingang.betreff);
     updates = { dateien, matchVorschlag: kandidaten, betreff, status };

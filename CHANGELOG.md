@@ -2,6 +2,19 @@
 
 ## 2026-09-24
 
+### Wohngeld — Erkennung über das Document-Processing-Segmentprofil „Wohngeld-Eingang"
+Der Posteingang nutzt jetzt die Segmentierung des Document Processing statt eigener Grenzprüfung und rein
+textbasierter Klassifikation: Seiten werden per Bilderkennung (auch Scans) gegen Prosa-Beschreibungen von
+23 Abschnittstypen klassifiziert, Grenzen deterministisch gebildet (Typwechsel, Neustart bei wiederholbaren
+Nachweisen), je Abschnitt ausgelesen. Vorlage `extraction/templates/wohngeld-eingang.ts`; die App legt das Profil
+beim ersten Gebrauch an, danach ist es in der DP-Oberfläche pflegbar (nie bearbeitete Profile werden per
+Fingerabdruck auf neue Vorlagenstände angehoben). Miete wird in Bestandteilen gelesen, die Bruttokaltmiete im Code
+berechnet. `WOHNGELD_ERKENNUNG=legacy` schaltet zurück. Golden Dataset als DP-Testbestand
+(`scripts/wohngeld-golden/testbestand.ts`), Messwerkzeug mit `--erkennung profil`. Opt-in
+`WOHNGELD_LERNBEISPIELE=true`: Bestätigungen/Verwerfungen der Sachbearbeitung werden nach vollständiger
+Entscheidung zu einem DP-Lernbeispiel (Kandidat), das beim Löschen von Dokument/Vorgang/Akte mitgelöscht wird.
+Spec: `docs/wohngeld-dp-segmentprofil-spec-2026-09-24.md`.
+
 ### Wohngeld — Fall-Chat rendert Markdown
 Antworten des Fall-Chats (fertig und während des Streamings) werden als Markdown dargestellt (`react-markdown` +
 `remark-gfm`, wie in anderen App-Chats): Überschriften, Listen, Fettdruck, Tabellen, Zitate, Links. Übernahmen ins

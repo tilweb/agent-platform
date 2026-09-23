@@ -13,6 +13,7 @@ import {
 } from '../storage';
 import { denyIfNotAppEditor, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit } from '../audit';
+import { vermerkeEntscheidungen } from '../lernbeispiele';
 import type { Vorgang } from '../types';
 
 export const feldstatusRoutes = new Hono();
@@ -50,6 +51,7 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/bestaetigen', asyn
   const fs = await bestaetigeFeld(c.req.param('fsId'));
   if (!fs) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
   await audit(c, { aktion: 'feld.bestaetigt', objektTyp: 'feldstatus', objektId: fs.id, vorgangId: fs.vorgangId, detail: fs.feldPfad });
+  await vermerkeEntscheidungen(fs.vorgangId, [fs], 'bestaetigt');
   return c.json({ feldStatus: fs });
 });
 
@@ -69,6 +71,7 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/verwerfen', async 
     if (person) await updatePerson(fs.zielId, clearPersonUpdates(fs.feldPfad));
   }
   await loescheFeldStatus(fs.id);
+  await vermerkeEntscheidungen(fs.vorgangId, [fs], 'verworfen');
   await audit(c, { aktion: 'feld.verworfen', objektTyp: 'feldstatus', objektId: fs.id, vorgangId: fs.vorgangId, detail: fs.feldPfad });
   return c.json({ ok: true });
 });
@@ -79,7 +82,9 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/alle-bestaetigen', async
   const vorgangId = c.req.param('vorgangId');
   const eingeschr = await denyIfVorgangEingeschraenkt(vorgangId);
   if (eingeschr) return c.json(eingeschr, 403);
+  const offenVorher = (await listFeldStatus(vorgangId)).filter((f) => !f.bestaetigt);
   const feldStatus = await bestaetigeAlle(vorgangId);
+  await vermerkeEntscheidungen(vorgangId, offenVorher, 'bestaetigt');
   await audit(c, { aktion: 'feld.alle_bestaetigt', objektTyp: 'feldstatus', vorgangId, detail: 'Alle offenen KI-Vorschläge bestätigt' });
   return c.json({ feldStatus });
 });

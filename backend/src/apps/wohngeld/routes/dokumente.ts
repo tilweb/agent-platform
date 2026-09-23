@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { listDokumente, getDokument, createDokument, updateDokument, deleteDokument, getVorgang } from '../storage';
+import { loescheLernbeispiele } from '../lernbeispiele';
 import { VersionConflictError } from '../concurrency';
 import { loadDokumentDatei } from '../filestore';
 import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
@@ -126,6 +127,7 @@ dokumenteRoutes.delete('/dokumente/:id', async (c) => {
   const before = await getDokument(id);
   const eingeschr = await denyIfVorgangEingeschraenkt(before?.vorgangId);
   if (eingeschr) return c.json(eingeschr, 403);
+  if (before) await loescheLernbeispiele([before]); // DP-Lernbeispiel mitlöschen (Datenschutz)
   const ok = await deleteDokument(id);
   if (ok) await audit(c, { aktion: 'dokument.geloescht', objektTyp: 'dokument', objektId: id, vorgangId: before?.vorgangId, detail: before?.titel });
   return ok ? c.json({ ok: true }) : c.json({ error: 'Dokument nicht gefunden' }, 404);

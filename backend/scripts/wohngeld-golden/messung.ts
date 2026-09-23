@@ -7,6 +7,8 @@
  *   bun run scripts/wohngeld-golden/messung.ts --faelle F01,F18 --variante beide
  *   bun run scripts/wohngeld-golden/messung.ts --stufen regelwerk    # nur Regeln, ohne LLM (Sekunden)
  *   Optionen: --stufen split,extraktion,posteingang,regelwerk  --ende-zu-ende  --ohne-cache  --parallel 3
+ *   --erkennung profil   Split + Typ + Felder aus EINEM Lauf des DP-Segmentprofils „Wohngeld-Eingang"
+ *                        (statt bisheriger Grenzprüfung + eigener Klassifikation)
  */
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -18,6 +20,8 @@ import { defaultSplitDeps, pruefeUndTrenne } from '../../src/apps/wohngeld/poste
 import { extractionModelLabel } from '../../src/extraction/model';
 import { buildPartPdf } from '../../src/services/extraction/pdf-split';
 import { erzeugeBericht } from './bericht';
+import { erkenneDokumente, ladeProfil } from '../../src/apps/wohngeld/dp-erkennung';
+import { stableHash } from '../../src/extraction/learning/snapshot';
 import { posteingangSnapshot, regelwerkSnapshot, type ErwartungKurz, type ExtraktionKurz, type FallKurz } from './snapshot';
 import {
   ordneZu, splitMetrik, vergleicheFelder, werteBefundeAus,
@@ -38,6 +42,7 @@ const stufen = new Set((opt('stufen') ?? 'split,extraktion,posteingang,regelwerk
 const endeZuEnde = flag('ende-zu-ende');
 const ohneCache = flag('ohne-cache');
 const parallel = Number(opt('parallel') ?? 3);
+const erkennung = (opt('erkennung') ?? 'legacy') === 'profil' ? 'profil' : 'legacy';
 
 // ── Hilfen ───────────────────────────────────────────────────────────────────
 const sha = (b: Uint8Array | string) => new Bun.CryptoHasher('sha256').update(b).digest('hex');
@@ -90,7 +95,9 @@ const auswahl = FAELLE.filter((f) => !faelleFilter || faelleFilter.includes(f.id
 const lauf = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const ausgabe = join(TOOLS, 'out', 'messung', lauf);
 await mkdir(ausgabe, { recursive: true });
-console.log(`Messlauf ${lauf} · ${auswahl.length} Fälle · Variante(n) ${varianten.join('+')} · Stufen ${[...stufen].join(',')}${endeZuEnde ? ' · Ende-zu-Ende' : ' · Orakel-Grenzen'} · Modell ${MODELL}`);
+const profil = erkennung === 'profil' ? await ladeProfil() : null;
+const profilSchluessel = profil ? stableHash([profil.profil.segments, profil.profil.instructions, profil.profil.extraction, profil.beispiele.map((b) => b.id)]) : '';
+console.log(`Messlauf ${lauf} · ${auswahl.length} Fälle · Variante(n) ${varianten.join('+')} · Stufen ${[...stufen].join(',')}${endeZuEnde ? ' · Ende-zu-Ende' : ' · Orakel-Grenzen'} · Modell ${MODELL}${profil ? ` · Erkennung: DP-Profil (${profil.quelle})` : ''}`);
 
 const ergebnisse: FallMessung[] = [];
 for (const fall of auswahl) {
@@ -114,6 +121,34 @@ for (const fall of auswahl) {
     const bytes = braucht ? new Uint8Array(await Bun.file(pdfPfad).arrayBuffer()) : new Uint8Array();
     const pdfHash = braucht ? sha(bytes) : '';
     const erwartetBereiche: Bereich[] = erw.dokumente.map((d) => ({ von: d.seiteVon, bis: d.seiteBis }));
+
+    // 0. Erkennung über das DP-Segmentprofil: Split + Typ + Felder aus einem Lauf.
+    if (profil && (stufen.has('split') || stufen.has('extraktion') || stufen.has('posteingang'))) {
+      const { wert, cache } = await mitCache('profil', `${pdfHash}|${profilSchluessel}`, async () => {
+        const r = await erkenneDokumente(bytes, { filename: `${fall.id}-${variante}.pdf`, profil });
+        return { abschnitte: r.abschnitte.map((a) => ({ von: a.seiteVon, bis: a.seiteBis, abschnitt: a.abschnitt, typ: a.typ, analyse: a.analyse, stammdaten: a.stammdaten, identitaet: a.identitaet })), hinweise: r.hinweise };
+      });
+      const teile = wert.abschnitte.map((a) => ({ von: a.von, bis: a.bis }));
+      m.split = { metrik: splitMetrik(erw.dokumente, teile), gefunden: teile, hinweis: wert.hinweise.join(' ') || undefined, cache };
+      const zuordnung = ordneZu(erw.dokumente, teile);
+      m.dokumente = erw.dokumente.map((d, i) => {
+        const a = zuordnung[i]! >= 0 ? wert.abschnitte[zuordnung[i]!] : undefined;
+        return {
+          nr: d.nr, seiteVon: d.seiteVon, seiteBis: d.seiteBis, art: d.art,
+          typErwartet: d.typ, typErkannt: a?.typ ?? null, teil: a ? { von: a.von, bis: a.bis } : null,
+          felder: a ? vergleicheFelder(d.erwartet as never, { stammdaten: a.stammdaten, analyse: a.analyse, identitaet: a.identitaet }) : [],
+        };
+      });
+      if (stufen.has('posteingang')) {
+        const app = pruefeVorgang(posteingangSnapshot(wert.abschnitte.map((a) => ({ typ: a.typ, analyse: a.analyse, stammdaten: a.stammdaten })))).map((b) => b.regelId);
+        m.posteingang = { app, ...werteBefundeAus(app, erw.pruefung) };
+      }
+      m.dauerSek = Math.round((performance.now() - t0) / 100) / 10;
+      ergebnisse.push(m);
+      console.log(`${fall.id} ${variante.padEnd(7)} Profil: Split ${m.split.metrik.treffer}/${m.split.metrik.erwarteteSchnitte} Schnitte, ${m.split.metrik.fehlalarme} Fehlschnitte · ${m.dokumente.filter((x) => x.typErkannt === x.typErwartet).length}/${m.dokumente.length} Typ${m.posteingang ? ` · Posteingang verfehlt ${m.posteingang.verfehlt.length}` : ''} (${m.dauerSek}s${cache ? ', Cache' : ''})`);
+      await Bun.write(join(ausgabe, 'ergebnis.json'), JSON.stringify({ lauf, modell: MODELL, promptStand: WOHNGELD_PROMPT_VERSION, endeZuEnde, erkennung, ergebnisse }, null, 2));
+      continue;
+    }
 
     // 1. Split
     let gefunden: Bereich[] | null = null;
@@ -189,6 +224,6 @@ for (const fall of auswahl) {
   }
 }
 
-await Bun.write(join(ausgabe, 'bericht.md'), erzeugeBericht({ lauf, modell: MODELL, endeZuEnde, ergebnisse }));
+await Bun.write(join(ausgabe, 'bericht.md'), erzeugeBericht({ lauf, modell: MODELL, endeZuEnde: endeZuEnde || erkennung === 'profil', ergebnisse, erkennung }));
 console.log(`\nErgebnis: ${join(ausgabe, 'ergebnis.json')}\nBericht:  ${join(ausgabe, 'bericht.md')}`);
 process.exit(0);

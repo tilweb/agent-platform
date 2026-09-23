@@ -36,6 +36,8 @@ export const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 /** Ein einzelnes Preview-Objekt (Client zeigt es an, sendet es unverändert an /verteilen zurück). */
 export interface Preview extends ExtraktionErgebnis {
   dateiname: string;
+  /** Erkennung über das DP-Segmentprofil (wird am Dokument gespeichert). */
+  profil?: import('../types').ProfilErkennung;
   extrahierterTextGekuerzt: string;
   storageRef: string;
 }
@@ -313,6 +315,7 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
       extrahierterText: (d.extrahierterTextGekuerzt || '').slice(0, 20000),
       analyse: d.analyse,
       extraktion: d.extraktion,
+      ...(d.profil ? { profil: d.profil } : {}),
     });
     if (antragPreview && d === antragPreview) antragDokumentId = dok.id;
     angelegt.push(dok);

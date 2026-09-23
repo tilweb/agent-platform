@@ -7,6 +7,7 @@ import {
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { audit, auditUpdate } from '../audit';
+import { loescheLernbeispieleVorgang } from '../lernbeispiele';
 import { pruefeVorgang } from '../checker';
 import { berechneVorgangEinkommen, unterhaltsabzuegeFuer } from '../einkommen';
 import { berechneBwzVorschlag } from '../bwz';
@@ -209,6 +210,7 @@ vorgaengeRoutes.delete('/vorgaenge/:id', async (c) => {
   if (before.legalHold) {
     return c.json({ error: 'Löschung gesperrt: Für diesen Vorgang besteht ein Legal Hold.' }, 409);
   }
+  await loescheLernbeispieleVorgang(id); // DP-Lernbeispiele mitlöschen (Datenschutz)
   const ok = await deleteVorgang(id);
   if (ok) await audit(c, { aktion: 'vorgang.geloescht', objektTyp: 'vorgang', objektId: id, vorgangId: id, detail: before.antragsId });
   return ok ? c.json({ ok: true }) : c.json({ error: 'Vorgang nicht gefunden' }, 404);

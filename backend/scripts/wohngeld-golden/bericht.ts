@@ -24,9 +24,10 @@ function regelStatistik(liste: FallMessung[], ebene: 'posteingang' | 'regelwerk'
   return [...s.entries()].sort((a, b) => (b[1].verfehlt.length + b[1].fehlalarm.length) - (a[1].verfehlt.length + a[1].fehlalarm.length) || a[0].localeCompare(b[0]));
 }
 
-export function erzeugeBericht(d: { lauf: string; modell: string; endeZuEnde: boolean; ergebnisse: FallMessung[] }): string {
+export function erzeugeBericht(d: { lauf: string; modell: string; endeZuEnde: boolean; ergebnisse: FallMessung[]; erkennung?: 'legacy' | 'profil' }): string {
   const teile: string[] = [];
   teile.push(`# Messbericht Wohngeld Golden Dataset — ${d.lauf}\n`);
+  teile.push(`Erkennung: ${d.erkennung === 'profil' ? 'Document-Processing-Segmentprofil „Wohngeld-Eingang"' : 'bisheriger Weg (Grenzprüfung + eigene Klassifikation)'}\n`);
   teile.push(`Modell: \`${d.modell}\` · Dokumentgrenzen für die Extraktion: ${d.endeZuEnde ? 'aus dem Split (Ende-zu-Ende)' : 'erwartete Grenzen (Orakel)'} · Fälle: ${new Set(d.ergebnisse.map((e) => e.fall)).size}\n`);
 
   // ── Übersicht je Variante ──
