@@ -24,7 +24,7 @@ const styles = {
   },
   name: { fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.semibold, color: theme.colors.text },
   rolle: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginTop: 2 },
-  body: { padding: `0 ${theme.spacing.md} ${theme.spacing.md}`, borderTop: `1px solid ${theme.colors.borderLight}` },
+  body: { padding: theme.spacing.md, borderTop: `1px solid ${theme.colors.borderLight}` },
   secHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm, margin: `${theme.spacing.md} 0 ${theme.spacing.sm}` },
   subTitle: { fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em' },
   secBtnGhost: { padding: `4px ${theme.spacing.md}`, fontSize: theme.typography.sizes.xs, borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
