@@ -26,6 +26,10 @@ import {
   sha256Hex, sha256HexString, envelopeHash, leiteBetreffAb,
   darfAuswerten, darfZuordnen, istTerminal,
 } from '../posteingang-helpers';
+import {
+  splitAktiv, brauchtGrenzpruefung, pruefeUndTrenne, trenneManuell, findeOriginal,
+  ersetzeGruppe, alleSpeicherRefs, istPdf, type SeitenBereich,
+} from '../posteingang-split';
 import type { Posteingang, PosteingangDatei, PosteingangQuelle, DokumentTyp } from '../types';
 
 export const posteingangQueueRoutes = new Hono();
@@ -173,6 +177,65 @@ posteingangQueueRoutes.get('/posteingang/:id/datei/:idx', async (c) => {
 
 // ── S2: Auswertung (manuell, einzeln + Sammel) ──────────────────────────────
 
+/** Klassifiziert + extrahiert eine Datei (mutiert `d`). Fehler landen in `analyseFehler`. */
+async function analysiereDatei(d: PosteingangDatei, userId: string | null | undefined): Promise<void> {
+  try {
+    const bytes = await loadDokumentDatei({ s3Key: d.s3Key, pfad: d.pfad });
+    if (!bytes) { d.analyseFehler = 'Datei nicht auffindbar (kein hinterlegter Inhalt)'; return; }
+    const text = await extractTextFromBytes(bytes, d.contentType, d.dateiname);
+    const erg = await klassifiziereUndExtrahiere(bytes, d.contentType || 'application/octet-stream', { userId: userId ?? undefined, filename: d.dateiname });
+    d.typ = erg.typ;
+    d.titel = erg.titel;
+    d.analyse = erg.analyse;
+    d.stammdaten = erg.stammdaten;
+    d.identitaet = erg.identitaet;
+    d.extraktion = erg.extraktion;
+    d.fieldConfidences = erg.confidenceByPfad;
+    d.extrahierterTextGekuerzt = text.slice(0, 4000);
+    d.analyseFehler = undefined;
+  } catch (err) {
+    d.analyseFehler = err instanceof Error ? err.message : String(err);
+  }
+}
+
+/** Umschlag-Ebene nach der Datei-Auswertung: Match-Vorschlag, Betreff, Status. */
+async function umschlagAuswerten(dateien: PosteingangDatei[], betreffAlt?: string) {
+  // Umschlag-Match: Antrag-Stammdaten + erste Nachweis-Identität über alle Dateien.
+  const antrag = dateien.find((d) => d.typ === 'wohngeldantrag' && d.stammdaten);
+  const identitaet = dateien.map((d) => d.identitaet).find((i) => i && (i.nachname || i.vorname || i.geburtsdatum));
+  const kandidaten = await ermittleMatchKandidaten(buildIdent(antrag?.stammdaten, identitaet));
+  const betreff = leiteBetreffAb(dateien) ?? betreffAlt;
+  const alleFehler = dateien.length > 0 && dateien.every((d) => d.analyseFehler);
+  return { kandidaten, betreff, alleFehler, status: (alleFehler ? 'fehler' : 'analysiert') as Posteingang['status'] };
+}
+
+function bereicheText(bereiche?: SeitenBereich[]): string {
+  return (bereiche ?? []).map((b) => (b.from === b.to ? `S. ${b.from}` : `S. ${b.from}–${b.to}`)).join(', ');
+}
+
+/**
+ * Mehrdokument-Split vor der Klassifikation: jede Sammel-PDF wird (konservativ)
+ * an erkannten Dokumentgrenzen in Teil-Dateien getrennt. Liefert die neue
+ * Dateiliste + Protokoll der Trennungen fürs Audit.
+ */
+async function trenneSammelPdfs(dateien: PosteingangDatei[], userId: string | null | undefined) {
+  if (!splitAktiv()) return { dateien, protokoll: [] as Array<{ dateiname: string; bereiche?: SeitenBereich[]; modell?: string }> };
+  const out: PosteingangDatei[] = [];
+  const protokoll: Array<{ dateiname: string; bereiche?: SeitenBereich[]; modell?: string }> = [];
+  for (const d of dateien) {
+    if (!brauchtGrenzpruefung(d)) { out.push(d); continue; }
+    try {
+      const r = await pruefeUndTrenne(d, { userId: userId ?? undefined });
+      out.push(...r.dateien);
+      if (r.getrennt) protokoll.push({ dateiname: d.dateiname, bereiche: r.bereiche, modell: r.modell });
+    } catch (err) {
+      console.warn('[wohngeld] Mehrdokument-Split fehlgeschlagen:', err instanceof Error ? err.message : err);
+      out.push({ ...d, trennung: { status: 'unsicher', hinweis: 'Dokumentgrenzen konnten nicht geprüft werden — als ein Dokument behandelt.' } });
+    }
+  }
+  return { dateien: out, protokoll };
+}
+
 /**
  * POST /posteingang/analysieren — { ids: [...] }. Sequenziell je Eingang: je Datei
  * klassifizieren/extrahieren, dann Umschlag-Match, Betreff ableiten, Status setzen.
@@ -196,35 +259,19 @@ posteingangQueueRoutes.post('/posteingang/analysieren', async (c) => {
 
     await updatePosteingang(id, { status: 'in_analyse', bearbeiterId: userId ?? undefined });
     try {
-      const dateien: PosteingangDatei[] = eingang.dateien.map((d) => ({ ...d }));
-      for (const d of dateien) {
-        try {
-          const bytes = await loadDokumentDatei({ s3Key: d.s3Key, pfad: d.pfad });
-          if (!bytes) { d.analyseFehler = 'Datei nicht auffindbar (kein hinterlegter Inhalt)'; continue; }
-          const text = await extractTextFromBytes(bytes, d.contentType, d.dateiname);
-          const erg = await klassifiziereUndExtrahiere(bytes, d.contentType || 'application/octet-stream', { userId, filename: d.dateiname });
-          d.typ = erg.typ;
-          d.titel = erg.titel;
-          d.analyse = erg.analyse;
-          d.stammdaten = erg.stammdaten;
-          d.identitaet = erg.identitaet;
-          d.extraktion = erg.extraktion;
-          d.fieldConfidences = erg.confidenceByPfad;
-          d.extrahierterTextGekuerzt = text.slice(0, 4000);
-          d.analyseFehler = undefined;
-        } catch (err) {
-          d.analyseFehler = err instanceof Error ? err.message : String(err);
-        }
+      // Mehrdokument-Split (Sammel-Scans) vor der Klassifikation.
+      const split = await trenneSammelPdfs(eingang.dateien.map((d) => ({ ...d })), userId);
+      const dateien = split.dateien;
+      for (const t of split.protokoll) {
+        await audit(c, {
+          aktion: 'posteingang.getrennt', objektTyp: 'posteingang', objektId: id,
+          detail: `„${t.dateiname}" automatisch in ${t.bereiche?.length ?? 0} Dokumente getrennt (${bereicheText(t.bereiche)})${t.modell ? ` · Modell ${t.modell}` : ''}`,
+        });
       }
 
-      // Umschlag-Match: Antrag-Stammdaten + erste Nachweis-Identität über alle Dateien.
-      const antrag = dateien.find((d) => d.typ === 'wohngeldantrag' && d.stammdaten);
-      const identitaet = dateien.map((d) => d.identitaet).find((i) => i && (i.nachname || i.vorname || i.geburtsdatum));
-      const kandidaten = await ermittleMatchKandidaten(buildIdent(antrag?.stammdaten, identitaet));
+      for (const d of dateien) await analysiereDatei(d, userId);
 
-      const betreff = leiteBetreffAb(dateien) ?? eingang.betreff;
-      const alleFehler = dateien.length > 0 && dateien.every((d) => d.analyseFehler);
-      const status = alleFehler ? 'fehler' : 'analysiert';
+      const { kandidaten, betreff, alleFehler, status } = await umschlagAuswerten(dateien, eingang.betreff);
       const updated = await updatePosteingang(id, { dateien, matchVorschlag: kandidaten, betreff, status });
 
       await audit(c, {
@@ -244,6 +291,63 @@ posteingangQueueRoutes.post('/posteingang/analysieren', async (c) => {
   }
 
   return c.json({ ergebnisse });
+});
+
+/**
+ * POST /posteingang/:id/trennung — { hash, startSeiten? }. Manuelle Korrektur des
+ * Mehrdokument-Splits: `hash` = Hash des Originals (bzw. der ungetrennten Datei),
+ * `startSeiten` = Seiten, auf denen ein neues Dokument beginnt. Leer/[1] ⇒ als ein
+ * Dokument behandeln. War der Eingang schon ausgewertet, werden die neuen Dateien
+ * sofort ausgewertet und der Match-Vorschlag neu berechnet.
+ */
+posteingangQueueRoutes.post('/posteingang/:id/trennung', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+
+  const id = c.req.param('id');
+  const eingang = await getPosteingang(id);
+  if (!eingang) return c.json({ error: 'Eingang nicht gefunden' }, 404);
+  if (istTerminal(eingang.status)) return c.json({ error: `Eingang ist bereits ${eingang.status}` }, 409);
+  if (eingang.status === 'in_analyse') return c.json({ error: 'Auswertung läuft gerade — bitte kurz warten' }, 409);
+
+  const body = await c.req.json<{ hash?: string; startSeiten?: unknown }>().catch(() => null);
+  const hash = typeof body?.hash === 'string' ? body.hash : '';
+  const startSeiten = Array.isArray(body?.startSeiten) ? body!.startSeiten.map((n) => Number(n)) : [];
+  const gefunden = hash ? findeOriginal(eingang.dateien, hash) : null;
+  if (!gefunden) return c.json({ error: 'Datei nicht gefunden' }, 404);
+  if (!istPdf(gefunden.original)) return c.json({ error: 'Nur PDF-Dateien können getrennt werden' }, 400);
+
+  let ergebnis: Awaited<ReturnType<typeof trenneManuell>>;
+  try {
+    ergebnis = await trenneManuell(gefunden.original, startSeiten);
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Trennung fehlgeschlagen' }, 400);
+  }
+
+  // Bytes der bisherigen Teile entfernen (best-effort) — das Original bleibt.
+  const alteTeile = eingang.dateien.filter((d) => d.teilVon?.hash === hash);
+  for (const t of alteTeile) await removeStoredFile({ s3Key: t.s3Key, pfad: t.pfad });
+
+  const dateien = ersetzeGruppe(eingang.dateien, hash, ergebnis.dateien).map((d) => ({ ...d }));
+  const userId = getCurrentUserId(c);
+  let updates: Partial<Posteingang> = { dateien };
+  if (eingang.status === 'analysiert' || eingang.status === 'fehler') {
+    for (const d of dateien) {
+      if (!d.typ && !d.analyseFehler) await analysiereDatei(d, userId);
+    }
+    const { kandidaten, betreff, status } = await umschlagAuswerten(dateien, eingang.betreff);
+    updates = { dateien, matchVorschlag: kandidaten, betreff, status };
+  }
+  const updated = await updatePosteingang(id, updates);
+
+  await audit(c, {
+    aktion: ergebnis.getrennt ? 'posteingang.getrennt' : 'posteingang.trennung_aufgehoben',
+    objektTyp: 'posteingang', objektId: id,
+    detail: ergebnis.getrennt
+      ? `„${gefunden.original.dateiname}" manuell in ${ergebnis.bereiche?.length ?? 0} Dokumente getrennt (${bereicheText(ergebnis.bereiche)})`
+      : `„${gefunden.original.dateiname}" manuell als ein Dokument (${ergebnis.seitenGesamt} Seiten) festgelegt`,
+  });
+  return c.json({ posteingang: updated });
 });
 
 // ── S3: Zuordnung / Verwerfen / Patch / Löschen ─────────────────────────────
@@ -357,8 +461,9 @@ posteingangQueueRoutes.delete('/posteingang/:id', async (c) => {
   const eingang = await getPosteingang(id);
   if (!eingang) return c.json({ error: 'Eingang nicht gefunden' }, 404);
 
-  for (const d of eingang.dateien) {
-    await removeStoredFile({ s3Key: d.s3Key, pfad: d.pfad });
+  // Teile UND Originale getrennter Sammel-PDFs entfernen.
+  for (const ref of alleSpeicherRefs(eingang.dateien)) {
+    await removeStoredFile(ref);
   }
   const geloescht = await deletePosteingang(id);
   await audit(c, { aktion: 'posteingang.geloescht', objektTyp: 'posteingang', objektId: id, detail: `${eingang.dateien.length} Datei(en) entfernt` });

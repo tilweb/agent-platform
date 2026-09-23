@@ -2,6 +2,21 @@
 
 ## 2026-09-23
 
+### Wohngeld — Mehrdokument-Split im Posteingang
+Sammel-PDFs (Antrag + Nachweise in einer Datei) werden bei der Auswertung an Dokumentgrenzen
+automatisch in eigene Dokumente getrennt. Nutzt die Plattform-Bausteine der Document-Processing-Inbox
+wieder (`judgeBoundaries` Vision-Grenzurteil, `rangesFromBoundaries`, `buildPartPdf` via poppler) —
+neues Modul `apps/wohngeld/posteingang-split.ts`. Konservativ: nur sichere Urteile trennen; bei
+unsicheren Urteilen, fehlendem poppler oder > `WOHNGELD_SPLIT_MAX_SEITEN` (Default 40) bleibt die Datei
+ein Dokument mit Hinweis. Original bleibt erhalten (`teilVon` je Teil), Löschen entfernt Teile + Original.
+Korrektur durch die Fachkraft: `POST /posteingang/:id/trennung` (`{hash, startSeiten}`) — „Neues Dokument
+beginnt auf Seite 1, 4, 7" oder „Als ein Dokument"; neue Teile werden direkt ausgewertet. UI:
+getrennte Teile gruppiert mit Seitenangabe, „Trennung korrigieren"/„Trennen…", Hinweis bei unsicherer
+Prüfung. Audit `posteingang.getrennt`/`trennung_aufgehoben` (inkl. Modell); Audit-Labels für alle
+Posteingang-Aktionen ergänzt. Abschaltbar per `WOHNGELD_SPLIT=false`. Live-Smoke (Qwen 3.5, 9-seitiges
+Bündel): Mietvertrag S. 1–4 und Ausweis Vorder-/Rückseite korrekt zusammengehalten, ~21 s.
+Spec: `docs/wohngeld-posteingang-mehrdok-split-spec-2026-09-23.md`. 229 Tests grün.
+
 ### Wohngeld — Persistente Posteingang-Warteschlange (S1: Intake + Queue)
 Neue Tabelle `wohngeld.posteingang` (Migration `0045_wohngeld_posteingang.sql`, idempotent) + Typen
 (`Posteingang`, `PosteingangDatei`, `PosteingangStatus`, `PosteingangQuelle`) + Storage-CRUD. Jeder

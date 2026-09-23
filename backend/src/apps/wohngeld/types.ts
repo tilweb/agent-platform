@@ -563,6 +563,34 @@ export interface PosteingangDatei {
   fieldConfidences?: Record<string, number>;
   extrahierterTextGekuerzt?: string;
   analyseFehler?: string;
+  /** Gesetzt an jedem Teil einer getrennten Sammel-PDF (Mehrdokument-Split). */
+  teilVon?: PosteingangTeilVon;
+  /** Ergebnis der Grenzprüfung an einer ungetrennten PDF. */
+  trennung?: PosteingangTrennung;
+}
+
+/** Herkunft eines Teil-Dokuments: das Original + Seitenbereich. */
+export interface PosteingangTeilVon {
+  dateiname: string;
+  s3Key?: string;
+  pfad?: string;
+  hash: string;
+  contentType: string;
+  groesse: number;
+  seitenGesamt: number;
+  seiteVon: number;
+  seiteBis: number;
+  teilNr: number;
+  teileGesamt: number;
+  manuell?: boolean;
+}
+
+/** Ergebnis der Dokumentgrenzen-Prüfung einer (ungetrennten) PDF. */
+export interface PosteingangTrennung {
+  status: 'ein_dokument' | 'unsicher' | 'nicht_moeglich';
+  seitenGesamt?: number;
+  hinweis?: string;
+  manuell?: boolean;
 }
 
 /**

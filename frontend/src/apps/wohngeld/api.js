@@ -111,6 +111,7 @@ export const wohngeldApi = {
   /** Zuordnung: { akteId?|neueAkte?, vorgangId?, pruefen?, viaVorschlag?, matchLevel?, stammdaten? }. */
   zuordnenPosteingang: (id, payload) => apiPost(`${base}/posteingang/${id}/zuordnen`, payload).then(json),
   verwerfenPosteingang: (id, grund) => apiPost(`${base}/posteingang/${id}/verwerfen`, { grund }).then(json).then((d) => d.posteingang),
+  trennePosteingang: (id, hash, startSeiten) => apiPost(`${base}/posteingang/${id}/trennung`, { hash, startSeiten }).then(json).then((d) => d.posteingang),
   patchPosteingang: (id, payload) => apiPatch(`${base}/posteingang/${id}`, payload).then(json).then((d) => d.posteingang),
   deletePosteingang: (id) => apiDelete(`${base}/posteingang/${id}`).then(json),
   /** URL einer Umschlag-Datei (inline-Vorschau). */
@@ -609,6 +610,17 @@ export const AKTION_LABEL = {
   'chat.frage': 'Chat-Frage gestellt',
   'protokoll.exportiert': 'Protokoll exportiert',
   'person.auskunft_exportiert': 'Betroffenen-Auskunft exportiert',
+  'posteingang.eingegangen': 'Posteingang: Eingang erfasst',
+  'posteingang.dublette_ignoriert': 'Posteingang: Doppel-Einlieferung erkannt',
+  'posteingang.datei_gelesen': 'Posteingang: Datei angesehen',
+  'posteingang.analysiert': 'Posteingang: ausgewertet',
+  'posteingang.analyse_fehler': 'Posteingang: Auswertung fehlgeschlagen',
+  'posteingang.getrennt': 'Posteingang: Sammel-PDF getrennt',
+  'posteingang.trennung_aufgehoben': 'Posteingang: als ein Dokument festgelegt',
+  'posteingang.zugeordnet': 'Posteingang: zugeordnet',
+  'posteingang.verworfen': 'Posteingang: verworfen',
+  'posteingang.geaendert': 'Posteingang: korrigiert',
+  'posteingang.geloescht': 'Posteingang: gelöscht',
 };
 
 /** Lesbares Label einer Audit-Aktion (mit Rohwert-Fallback). */

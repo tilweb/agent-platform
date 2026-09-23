@@ -171,7 +171,7 @@ Sammelaktion = Schleife über `ids` (sequenziell, um LLM-Last zu begrenzen; Teil
 ## 13. Offene Punkte / Risiken
 
 - **Service-Auth** für die Scan-Pipeline (Token/mTLS) — Entscheidung offen.
-- **Mehrdok-Split**: ein Umschlag = eine PDF mit mehreren Dokumenten — braucht Seiten-Segmentierung; separater Ausbau.
+- ~~**Mehrdok-Split**~~ — umgesetzt, siehe `wohngeld-posteingang-mehrdok-split-spec-2026-09-23.md`.
 - **Retention-Fristen** für unzugeordnete Eingänge: konkrete Dauer fachlich (mit Kommune/DSB) festzulegen.
 - **LLM-Last** bei großen Sammel-Auswertungen: sequenziell + Fortschrittsanzeige; ggf. Begrenzung/Queueing.
 - **`overview/`-Bausteine**: prüfen, ob sie 1:1 passen oder die Queue eine eigene Tabelle braucht.

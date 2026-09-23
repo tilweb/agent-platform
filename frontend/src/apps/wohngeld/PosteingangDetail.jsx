@@ -69,6 +69,13 @@ const styles = {
   cmpStatus: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium },
 
   matchButtons: { display: 'flex', gap: theme.spacing.md, marginTop: theme.spacing.lg, flexWrap: 'wrap' },
+  groupHead: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, padding: `${theme.spacing.sm} ${theme.spacing.sm} ${theme.spacing.xs}`, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, flexWrap: 'wrap' },
+  groupName: { fontWeight: theme.typography.weights.semibold, color: theme.colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 260 },
+  groupBody: { marginLeft: theme.spacing.lg, paddingLeft: theme.spacing.sm, borderLeft: `2px solid ${theme.colors.border}` },
+  seitenBadge: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, whiteSpace: 'nowrap' },
+  linkBtn: { border: 'none', background: 'none', padding: 0, color: ACCENT, cursor: 'pointer', fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, whiteSpace: 'nowrap' },
+  trennHinweis: { display: 'flex', alignItems: 'flex-start', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, backgroundColor: theme.colors.warningLight, borderRadius: theme.borderRadius.md, padding: `${theme.spacing.xs} ${theme.spacing.sm}`, margin: `0 ${theme.spacing.sm} ${theme.spacing.sm}` },
+  trennForm: { margin: `${theme.spacing.xs} ${theme.spacing.sm} ${theme.spacing.md}`, padding: theme.spacing.md, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, backgroundColor: theme.colors.background },
   weitereToggle: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm, color: ACCENT, cursor: 'pointer', border: 'none', background: 'none', padding: 0, fontWeight: theme.typography.weights.medium },
   weitereItem: { marginTop: theme.spacing.lg, paddingTop: theme.spacing.lg, borderTop: `1px solid ${theme.colors.border}` },
 };
@@ -88,6 +95,37 @@ function statusStyle(status) {
   if (status === 'abweichung') return { backgroundColor: theme.colors.warningLight, color: theme.colors.warning };
   return { backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted };
 }
+function seitenText(von, bis) {
+  return von === bis ? `S. ${von}` : `S. ${von}–${bis}`;
+}
+
+/**
+ * Gruppiert die Dateiliste für die Anzeige: Teile einer getrennten Sammel-PDF
+ * (gleicher `teilVon.hash`) werden zu einer Gruppe, alle anderen Dateien bleiben
+ * einzeln. Der Original-Index bleibt erhalten (Auswahl/Typ-PATCH arbeiten per Index).
+ */
+function gruppiereDateien(dateien) {
+  const gruppen = [];
+  const byHash = new Map();
+  dateien.forEach((d, i) => {
+    const h = d.teilVon?.hash;
+    if (!h) { gruppen.push({ typ: 'einzeln', eintraege: [{ d, i }] }); return; }
+    let g = byHash.get(h);
+    if (!g) { g = { typ: 'getrennt', hash: h, teilVon: d.teilVon, eintraege: [] }; byHash.set(h, g); gruppen.push(g); }
+    g.eintraege.push({ d, i });
+  });
+  for (const g of gruppen) if (g.typ === 'getrennt') g.eintraege.sort((a, b) => a.d.teilVon.seiteVon - b.d.teilVon.seiteVon);
+  return gruppen;
+}
+
+/** Kann diese (ungetrennte) Datei manuell getrennt werden? */
+function istTrennbar(d) {
+  const pdf = d.contentType === 'application/pdf' || /\.pdf$/i.test(d.dateiname || '');
+  if (!pdf || d.teilVon) return false;
+  const t = d.trennung;
+  return Boolean(t && (t.seitenGesamt > 1 || t.status === 'unsicher' || t.status === 'nicht_moeglich'));
+}
+
 function levelBadgeStyle(level) {
   if (level === 'hoch') return { backgroundColor: theme.colors.successLight, color: theme.colors.success };
   if (level === 'mittel') return { backgroundColor: theme.colors.warningLight, color: theme.colors.warning };
@@ -157,6 +195,7 @@ export default function PosteingangDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [trennEdit, setTrennEdit] = useState(null); // { hash, seitenGesamt, wert }
   const [stamm, setStamm] = useState(emptyStamm());
   const [busy, setBusy] = useState(false);
   const [weitereOffen, setWeitereOffen] = useState(false);
@@ -241,6 +280,31 @@ export default function PosteingangDetail() {
     setEingang((prev) => prev ? { ...prev, dateien: prev.dateien.map((d, i) => (i === index ? { ...d, typ } : d)) } : prev);
     try { await wohngeldApi.patchPosteingang(id, { dateiTypen: [{ index, typ }] }); }
     catch (e) { setError(e.message || 'Typ konnte nicht gespeichert werden'); }
+  }
+
+  function oeffneTrennung(hash, seitenGesamt, startSeiten) {
+    setTrennEdit({ hash, seitenGesamt, wert: (startSeiten && startSeiten.length ? startSeiten : [1]).join(', ') });
+  }
+
+  async function trennungSpeichern(alsEinDokument) {
+    if (!trennEdit || busy) return;
+    let startSeiten = [];
+    if (!alsEinDokument) {
+      const teile = trennEdit.wert.split(/[,;\s]+/).filter(Boolean);
+      startSeiten = teile.map((t) => Number(t));
+      if (!startSeiten.length || startSeiten.some((n) => !Number.isInteger(n) || n < 1)) {
+        setError('Bitte Seitenzahlen als ganze Zahlen angeben, z. B. „1, 4, 7".');
+        return;
+      }
+    }
+    setBusy(true); setError(null);
+    try {
+      await wohngeldApi.trennePosteingang(id, trennEdit.hash, startSeiten);
+      setTrennEdit(null);
+      setSelectedIndex(0);
+      await laden();
+    } catch (e) { setError(e.message || 'Trennung konnte nicht gespeichert werden'); }
+    finally { setBusy(false); }
   }
 
   async function zuordnenZuVorgang(zielVorgangId, matchLevel) {
@@ -447,15 +511,63 @@ export default function PosteingangDetail() {
                 {/* Nachweise */}
                 <div style={styles.pane}>
                   <div style={styles.paneTitle}>Erkannte Dokumente ({dateien.length})</div>
-                  {dateien.map((d, i) => (
-                    <div key={`${d.dateiname}-${i}`} style={{ ...styles.docRow, ...(i === selectedIndex ? styles.docRowActive : {}) }} onClick={() => setSelectedIndex(i)}>
-                      <DocumentIcon size={16} color={theme.colors.textMuted} />
-                      <div style={{ ...styles.docName, flex: 1 }} title={d.dateiname}>{d.dateiname}{d.analyseFehler ? ' — Fehler' : ''}</div>
-                      <select style={styles.typeSelect} value={d.typ || 'sonstiges'} onClick={(e) => e.stopPropagation()} onChange={(e) => setTyp(i, e.target.value)}>
-                        {TYP_OPTIONS.map((t) => <option key={t} value={t}>{DOKUMENT_TYP_LABEL[t]}</option>)}
-                      </select>
-                    </div>
-                  ))}
+                  {gruppiereDateien(dateien).map((g) => {
+                    const renderRow = ({ d, i }, teil) => (
+                      <div key={`${d.hash || d.dateiname}-${i}`} style={{ ...styles.docRow, ...(i === selectedIndex ? styles.docRowActive : {}) }} onClick={() => setSelectedIndex(i)}>
+                        <DocumentIcon size={16} color={theme.colors.textMuted} />
+                        <div style={{ ...styles.docName, flex: 1 }} title={d.dateiname}>
+                          {teil ? (d.titel || DOKUMENT_TYP_LABEL[d.typ] || d.dateiname) : d.dateiname}{d.analyseFehler ? ' — Fehler' : ''}
+                        </div>
+                        {teil && <span style={styles.seitenBadge}>{seitenText(d.teilVon.seiteVon, d.teilVon.seiteBis)}</span>}
+                        {!teil && istTrennbar(d) && (
+                          <button style={styles.linkBtn} disabled={busy} onClick={(e) => { e.stopPropagation(); oeffneTrennung(d.hash, d.trennung?.seitenGesamt, [1]); }}>Trennen…</button>
+                        )}
+                        <select style={styles.typeSelect} value={d.typ || 'sonstiges'} onClick={(e) => e.stopPropagation()} onChange={(e) => setTyp(i, e.target.value)}>
+                          {TYP_OPTIONS.map((t) => <option key={t} value={t}>{DOKUMENT_TYP_LABEL[t]}</option>)}
+                        </select>
+                      </div>
+                    );
+                    const formHash = g.typ === 'getrennt' ? g.hash : g.eintraege[0].d.hash;
+                    const trennForm = trennEdit && trennEdit.hash === formHash && (
+                      <div style={styles.trennForm}>
+                        <label style={styles.label}>Neues Dokument beginnt auf Seite</label>
+                        <input style={styles.input} value={trennEdit.wert} placeholder="z. B. 1, 4, 7" onChange={(e) => setTrennEdit((t) => ({ ...t, wert: e.target.value }))} />
+                        <p style={{ ...styles.hint, fontSize: theme.typography.sizes.xs, marginTop: theme.spacing.xs }}>
+                          {trennEdit.seitenGesamt ? `Die Datei hat ${trennEdit.seitenGesamt} Seiten. ` : ''}Jede Zahl markiert den Beginn eines Dokuments. Neue Teile werden direkt ausgewertet.
+                        </p>
+                        <div style={{ display: 'flex', gap: theme.spacing.sm, marginTop: theme.spacing.sm, flexWrap: 'wrap' }}>
+                          <button style={{ ...styles.btnPrimary, opacity: busy ? 0.5 : 1 }} disabled={busy} onClick={() => trennungSpeichern(false)}>{busy ? 'Wird gespeichert…' : 'Übernehmen'}</button>
+                          <button style={styles.btnSecondary} disabled={busy} onClick={() => trennungSpeichern(true)}>Als ein Dokument</button>
+                          <button style={styles.btnSecondary} disabled={busy} onClick={() => setTrennEdit(null)}>Abbrechen</button>
+                        </div>
+                      </div>
+                    );
+                    if (g.typ === 'einzeln') {
+                      const d = g.eintraege[0].d;
+                      const hinweis = d.trennung && d.trennung.status !== 'ein_dokument' ? d.trennung.hinweis : null;
+                      return (
+                        <div key={`e-${g.eintraege[0].i}`}>
+                          {renderRow(g.eintraege[0], false)}
+                          {hinweis && <div style={styles.trennHinweis}><InfoIcon size={14} style={{ flexShrink: 0, marginTop: 1 }} /> {hinweis}</div>}
+                          {trennForm}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={`g-${g.hash}`}>
+                        <div style={styles.groupHead}>
+                          <span style={styles.groupName} title={g.teilVon.dateiname}>{g.teilVon.dateiname}</span>
+                          <span>· {g.teilVon.seitenGesamt} Seiten · in {g.eintraege.length} Dokumente getrennt{g.teilVon.manuell ? ' (manuell)' : ''}</span>
+                          <button style={{ ...styles.linkBtn, marginLeft: 'auto' }} disabled={busy}
+                            onClick={() => oeffneTrennung(g.hash, g.teilVon.seitenGesamt, g.eintraege.map((e) => e.d.teilVon.seiteVon))}>
+                            Trennung korrigieren
+                          </button>
+                        </div>
+                        <div style={styles.groupBody}>{g.eintraege.map((e) => renderRow(e, true))}</div>
+                        {trennForm}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Zuordnungs-Vorschlag */}
