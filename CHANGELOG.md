@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-23
+
+### Wohngeld — Demo-Seed ans Boot-Seeding verdrahtet (`SEED_DEMO_DATA`)
+Die bisher standalone laufende Seed-Logik nach `backend/src/apps/wohngeld/seed-demo.ts` ausgelagert
+(`export async function seedWohngeldDemo({ reset? })`) und im Boot-Seed-Block von `backend/src/index.ts`
+eingehängt (nach dem KB-Seed, non-fatal try/catch, Log `[seed] Wohngeld demo: created … / skipped`). So
+entstehen auf der Demo-Instanz (`SEED_DEMO_DATA=true` + `SCALINGO_POSTGRES`) die Demo-Vorgänge beim
+Start automatisch. **create-if-absent** beim Boot (reset=false): existiert bereits ≥1 Akte mit
+`data.demo===true`, passiert nichts — Boot-Neustarts wischen keine Tester-Änderungen weg.
+`backend/scripts/seed-wohngeld.ts` ist nun ein dünner CLI-Wrapper (Env-Guard + `closeSql`; Standard =
+Reset, `--keep` = create-if-absent).
+
 ## 2026-09-22
 
 ### Wohngeld — Hauptformular-Konsistenz-UX (U1)

@@ -54,6 +54,7 @@ import { seedCustomSkillsFromDisk } from './skills';
 import { seedProjectsFromDisk } from './projects';
 import { seedChatsFromDisk } from './services/chatStorage';
 import { seedKbFromDisk } from './services/kbStorage';
+import { seedWohngeldDemo } from './apps/wohngeld/seed-demo';
 
 const app = new Hono();
 
@@ -179,6 +180,19 @@ async function initialize() {
       await seedKbFromDisk();
     } catch (error) {
       console.warn('[seed] KB seed skipped:', error instanceof Error ? error.message : error);
+    }
+
+    try {
+      // create-if-absent: legt Demo-Vorgaenge nur an, wenn noch keine Demo-Akte
+      // existiert — so ueberschreiben Boot-Neustarts keine Tester-Aenderungen.
+      const wg = await seedWohngeldDemo();
+      if (wg.skipped) {
+        console.log('[seed] Wohngeld demo: skipped (Demo-Akten bereits vorhanden)');
+      } else {
+        console.log(`[seed] Wohngeld demo: created ${wg.aktenCreated} Akten / ${wg.vorgaengeCreated} Vorgaenge`);
+      }
+    } catch (error) {
+      console.warn('[seed] Wohngeld demo seed skipped:', error instanceof Error ? error.message : error);
     }
   } else if (process.env.SCALINGO_POSTGRES) {
     console.log('[seed] SEED_DEMO_DATA != "true" — skipping demo seeds (Customer-Mode)');
