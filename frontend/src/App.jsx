@@ -106,12 +106,20 @@ const globalStyles = `
     font-family: ${theme.typography.fontFamily};
   }
 
-  /* Kein hängenbleibender Fokus-Rahmen nach Maus-Klick; Tastatur-Fokus bleibt
-     für Barrierefreiheit sichtbar (:focus-visible). */
+  /* Fokus-Rahmen: nach Maus-/Touch-Bedienung kein Rahmen an klickbaren Elementen
+     (auch nicht, wenn danach eine Taste gedrückt wird) — per Tab-Navigation bleibt
+     er für Barrierefreiheit sichtbar. Modus setzt utils/eingabeModus.js.
+     Texteingaben behalten ihre eigene Fokus-Darstellung. */
   button:focus:not(:focus-visible) {
     outline: none;
   }
-  button:focus-visible {
+  html[data-eingabe="maus"] :is(button, a, summary, select, label, [role], [tabindex],
+    input[type="checkbox"], input[type="radio"], input[type="file"], input[type="range"],
+    input[type="button"], input[type="submit"], input[type="color"]):focus {
+    outline: none;
+  }
+  html:not([data-eingabe="maus"]) :is(button, a, summary, select, [role], [tabindex],
+    input[type="checkbox"], input[type="radio"], input[type="file"], input[type="range"]):focus-visible {
     outline: 2px solid ${theme.colors.primary};
     outline-offset: 2px;
   }

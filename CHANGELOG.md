@@ -2,6 +2,14 @@
 
 ## 2026-09-24
 
+### Fix (UI, app-weit): Fokus-Rahmen nach Mausklick
+Der „schwarze Rahmen" erschien weiterhin, wenn nach einem Mausklick eine Taste gedrückt wurde (Scrollen mit
+Leertaste/Pfeilen, Escape, Kürzel) — Browser werten das als Tastatur-Fokus — und an Nicht-Button-Elementen
+(Links, Auswahlfelder, Checkboxen, `summary`, `[role]`/`[tabindex]`). Neu: `utils/eingabeModus.js` merkt die
+Eingabeart (`html[data-eingabe]`: Maus/Touch vs. Tab-Navigation); die globale Regel in `App.jsx` blendet den
+Rahmen nach Zeiger-Bedienung aus und zeigt ihn bei Tab-Navigation einheitlich (2px, Primärfarbe). Texteingaben
+behalten ihre Fokus-Darstellung. Per Playwright verifiziert (Klick, Klick+Pfeil/Escape, Tab, Shift+Tab).
+
 ### Wohngeld — Prüfschritt-Aktionen als Icon-Buttons
 Wie bei den Dokumenten: Beleg anzeigen (Auge), Warum? (Fragezeichen) und Beleg-Dokument öffnen als neutrale
 Icon-Buttons mit Tooltip (aufgeklappt in Akzentfarbe), rechts farbig hervorgehoben Erledigt (grün, Häkchen) und
