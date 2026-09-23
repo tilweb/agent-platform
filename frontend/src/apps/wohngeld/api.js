@@ -2,7 +2,7 @@
  * Wohngeld API-Wrapper (dünn über apiFetch). Alle Endpunkte unter /apps/wohngeld.
  * Assistenz für Vollständigkeits- und Plausibilitätsprüfung von Wohngeldanträgen.
  */
-import { apiGet, apiPost, apiPut, apiDelete, API_URL } from '../../utils/apiFetch';
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete, API_URL } from '../../utils/apiFetch';
 
 const base = '/apps/wohngeld';
 
@@ -86,6 +86,35 @@ export const wohngeldApi = {
   verteilePosteingang: (payload) => apiPost(`${base}/posteingang/verteilen`, payload).then(json),
   /** Zuordnungs-Vorschlag: identifizierende Daten gegen bestehende Vorgänge abgleichen → { kandidaten }. */
   matchPosteingang: (payload) => apiPost(`${base}/posteingang/match`, payload).then(json).then((d) => d.kandidaten),
+
+  // Posteingang-Warteschlange (persistent, multi-antragsfähig)
+  /** Intake: 1..n Dateien nur speichern (kein Auto-Analyse). opts: { quelle, eingegangenAm, betreff }. */
+  ingestPosteingang: (files, opts = {}) => {
+    const fd = new FormData();
+    Array.from(files).forEach((f) => fd.append('files', f));
+    if (opts.quelle) fd.append('quelle', opts.quelle);
+    if (opts.eingegangenAm) fd.append('eingegangenAm', opts.eingegangenAm);
+    if (opts.betreff) fd.append('betreff', opts.betreff);
+    return postForm('/posteingang/ingest', fd).then(json);
+  },
+  /** Queue laden (Filter status/quelle). */
+  listPosteingang: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.status) q.set('status', params.status);
+    if (params.quelle) q.set('quelle', params.quelle);
+    const qs = q.toString();
+    return apiGet(`${base}/posteingang${qs ? `?${qs}` : ''}`).then(json).then((d) => d.posteingang);
+  },
+  getPosteingang: (id) => apiGet(`${base}/posteingang/${id}`).then(json).then((d) => d.posteingang),
+  /** Auswertung starten (einzeln oder Sammel) → { ergebnisse }. */
+  analysierePosteingang: (ids) => apiPost(`${base}/posteingang/analysieren`, { ids }).then(json).then((d) => d.ergebnisse),
+  /** Zuordnung: { akteId?|neueAkte?, vorgangId?, pruefen?, viaVorschlag?, matchLevel?, stammdaten? }. */
+  zuordnenPosteingang: (id, payload) => apiPost(`${base}/posteingang/${id}/zuordnen`, payload).then(json),
+  verwerfenPosteingang: (id, grund) => apiPost(`${base}/posteingang/${id}/verwerfen`, { grund }).then(json).then((d) => d.posteingang),
+  patchPosteingang: (id, payload) => apiPatch(`${base}/posteingang/${id}`, payload).then(json).then((d) => d.posteingang),
+  deletePosteingang: (id) => apiDelete(`${base}/posteingang/${id}`).then(json),
+  /** URL einer Umschlag-Datei (inline-Vorschau). */
+  posteingangDateiUrl: (id, idx) => `${API_URL}${base}/posteingang/${id}/datei/${idx}`,
   uploadVorgangDokument: (vorgangId, file) => {
     const fd = new FormData();
     const list = Array.isArray(file) || file instanceof FileList ? Array.from(file) : [file];
@@ -340,6 +369,29 @@ export const STATUS_ORDER = [
   'entscheidung',
   'abgeschlossen',
 ];
+
+/** Status eines Posteingangs (Warteschlange). */
+export const POSTEINGANG_STATUS_LABEL = {
+  eingegangen: 'Eingegangen',
+  in_analyse: 'In Auswertung',
+  analysiert: 'Ausgewertet',
+  fehler: 'Fehler',
+  zugeordnet: 'Zugeordnet',
+  verworfen: 'Verworfen',
+};
+
+/** Anzeigereihenfolge der Posteingang-Status (Filter-Tabs). */
+export const POSTEINGANG_STATUS_ORDER = [
+  'eingegangen', 'in_analyse', 'analysiert', 'fehler', 'zugeordnet', 'verworfen',
+];
+
+/** Einlieferungs-Kanal eines Posteingangs. */
+export const POSTEINGANG_QUELLE_LABEL = {
+  manuell: 'Manuell',
+  scan: 'Scan',
+  email: 'E-Mail',
+  import: 'Import',
+};
 
 export const PRIORITAET_LABEL = {
   niedrig: 'Niedrig',

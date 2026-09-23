@@ -21,7 +21,7 @@ import {
   createAkte, createVorgang, createPerson, createDokument, updateVorgang,
   createSchreiben, addNotiz, addChatMessage, addAktivitaet, setFeldStatus,
   getVorgangSnapshot, syncPruefschritte, listPruefschritte, updatePruefschritt,
-  listAkten, deleteAkte,
+  listAkten, deleteAkte, createPosteingang, listPosteingang, deletePosteingang,
 } from './storage';
 import { pruefeVorgang } from './checker';
 import { generiereAnforderungsschreiben } from './schreiben-generator';
@@ -457,12 +457,81 @@ async function szenarioAbgeschlossen(bilanz: Bilanz, zaehle: Zaehle): Promise<vo
   await addAktivitaet({ vorgangId: v.id, typ: 'entscheidung', akteur: 'Katharina Vogel', beschreibung: 'Antrag bewilligt — Verfügung erstellt.' });
 }
 
+/** 9) Posteingang-Warteschlange — einige Beispiel-Eingänge (ohne echte Bytes). */
+async function szenarioPosteingangQueue(): Promise<void> {
+  // A) Frisch eingegangen (Scan), noch nicht ausgewertet.
+  await createPosteingang({
+    quelle: 'scan',
+    eingegangenAm: tage(-1) + 'T08:15:00.000Z',
+    status: 'eingegangen',
+    hash: 'demo-eingang-a',
+    data: { demo: true },
+    dateien: [
+      { dateiname: 'antrag_scan_001.pdf', contentType: 'application/pdf', groesse: 245678, hash: 'demo-a-1' },
+      { dateiname: 'mietvertrag_scan.pdf', contentType: 'application/pdf', groesse: 132044, hash: 'demo-a-2' },
+    ],
+  });
+
+  // B) Manuell eingegangen und bereits ausgewertet (analysiert), Match offen.
+  await createPosteingang({
+    quelle: 'manuell',
+    eingegangenAm: tage(-2) + 'T10:42:00.000Z',
+    status: 'analysiert',
+    betreff: 'Wagner, Thomas — Erstantrag',
+    hash: 'demo-eingang-b',
+    matchVorschlag: [],
+    data: { demo: true },
+    dateien: [
+      {
+        dateiname: 'wohngeldantrag_wagner.pdf', contentType: 'application/pdf', groesse: 384210, hash: 'demo-b-1',
+        typ: 'wohngeldantrag', titel: 'Wohngeldantrag (Mietzuschuss)',
+        analyse: { unterschrift_vorhanden: true, datum_vorhanden: true },
+        stammdaten: {
+          antragsdatum: tage(-3), wohngeldart: 'mietzuschuss', antragsart: 'erstantrag',
+          antragsteller: { vorname: 'Thomas', nachname: 'Wagner', geburtsdatum: '1972-04-19' },
+          adresse: { strasse: 'Ahornweg', hausnummer: '8', plz: '55116', ort: 'Mainz' },
+          wohnung: { miete: 745, wohnflaeche_qm: 66 },
+        },
+        fieldConfidences: { 'wohnung.miete': 0.86, 'wohnung.wohnflaeche_qm': 0.74 },
+        extrahierterTextGekuerzt: 'Antrag auf Wohngeld (Mietzuschuss) — Thomas Wagner, Ahornweg 8, 55116 Mainz …',
+      },
+      {
+        dateiname: 'gehaltsabrechnung_wagner.pdf', contentType: 'application/pdf', groesse: 92110, hash: 'demo-b-2',
+        typ: 'gehaltsabrechnung', titel: 'Gehaltsabrechnung',
+        analyse: { betrag: 2150 },
+        identitaet: { vorname: 'Thomas', nachname: 'Wagner' },
+        extrahierterTextGekuerzt: 'Verdienstabrechnung — Netto 2.150,00 EUR …',
+      },
+    ],
+  });
+
+  // C) Verworfen (Fehleinlieferung) — mit Grund.
+  await createPosteingang({
+    quelle: 'email',
+    eingegangenAm: tage(-4) + 'T14:03:00.000Z',
+    status: 'verworfen',
+    betreff: 'Werbe-PDF (kein Antrag)',
+    verworfenGrund: 'Kein Wohngeldbezug — Werbesendung.',
+    hash: 'demo-eingang-c',
+    data: { demo: true },
+    dateien: [
+      { dateiname: 'newsletter.pdf', contentType: 'application/pdf', groesse: 51200, hash: 'demo-c-1' },
+    ],
+  });
+}
+
 // ── öffentlicher Einstieg ────────────────────────────────────────────────────
 
 /** IDs aller vorhandenen Demo-Akten (`data.demo === true`). */
 async function findeDemoAkten(): Promise<string[]> {
   const akten = await listAkten();
   return akten.filter(a => (a as unknown as { demo?: boolean }).demo === true).map(a => a.id);
+}
+
+/** IDs aller vorhandenen Demo-Posteingänge (`data.demo === true`). */
+async function findeDemoPosteingang(): Promise<string[]> {
+  const eingaenge = await listPosteingang();
+  return eingaenge.filter(p => (p.data as { demo?: boolean } | undefined)?.demo === true).map(p => p.id);
 }
 
 /**
@@ -483,6 +552,7 @@ export async function seedWohngeldDemo(opts: { reset?: boolean } = {}): Promise<
   }
   if (reset && bestehende.length > 0) {
     for (const id of bestehende) await deleteAkte(id);
+    for (const id of await findeDemoPosteingang()) await deletePosteingang(id);
   }
 
   const bilanz: Bilanz = { akten: 0, vorgaenge: 0, byStatus: {} };
@@ -496,6 +566,7 @@ export async function seedWohngeldDemo(opts: { reset?: boolean } = {}): Promise<
   await szenarioTransfer(bilanz, zaehle);
   await szenarioLastenzuschuss(bilanz, zaehle);
   await szenarioAbgeschlossen(bilanz, zaehle);
+  await szenarioPosteingangQueue();
 
   return { aktenCreated: bilanz.akten, vorgaengeCreated: bilanz.vorgaenge, skipped: false };
 }

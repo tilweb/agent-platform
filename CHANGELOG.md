@@ -2,6 +2,43 @@
 
 ## 2026-09-23
 
+### Wohngeld — Persistente Posteingang-Warteschlange (S1: Intake + Queue)
+Neue Tabelle `wohngeld.posteingang` (Migration `0045_wohngeld_posteingang.sql`, idempotent) + Typen
+(`Posteingang`, `PosteingangDatei`, `PosteingangStatus`, `PosteingangQuelle`) + Storage-CRUD. Jeder
+Eingang ist ein Umschlag/Batch (1..n Dateien), der als Warteschlange erhalten bleibt. `POST /posteingang/ingest`
+(multipart, Browser + headless/Scan über dieselbe Naht) **speichert nur** — keine Auto-Extraktion; Dedupe
+per Umschlag-Hash (SHA-256 über die sortierten Datei-Hashes, alternativ `idempotencyKey`). `GET /posteingang`
+(Filter status/quelle), `GET /posteingang/:id`, `GET /posteingang/:id/datei/:idx` (inline-Vorschau, Audit).
+Queue-UI (`PosteingangPage.jsx`): Tabelle Quelle · Eingang · Betreff/Dateien · Status · Typ · Match-Hinweis ·
+Aktionen, Statusfilter, Mehrfachauswahl, Dropzone → ingest (ohne Auswertung).
+
+### Wohngeld — Posteingang S2: Manuelle Auswertung
+`POST /posteingang/analysieren` (`{ids:[]}`, einzeln + Sammel, sequenziell): je Datei
+`klassifiziereUndExtrahiere` + Textauszug → `dateien[i]` (typ/analyse/stammdaten/confidences/Text),
+Umschlag-Match (`buildIdent` + `matchVorgaenge`) → `matchVorschlag`, Betreff ableiten, Status
+`analysiert`/`fehler` (Teilfehler pro Eingang isoliert). Detail-/Verarbeitungsansicht als eigene Route
+`/apps/wohngeld/posteingang/:id` (`PosteingangDetail.jsx`) mit den recycelten Panels (Stammdaten, Nachweise
+mit Typ-Override, Dateivorschau, Zuordnungs-Vorschlag + Vergleichstabelle, Verteilung).
+
+### Wohngeld — Posteingang S3: Zuordnung, Verwerfen, Retention, Audit
+Kernlogik von `POST /posteingang/verteilen` in aufrufbare Funktion `verteileDokumente(c, {...})` extrahiert;
+alter Endpoint UND `POST /posteingang/:id/zuordnen` nutzen sie (kein Copy-Paste). `zuordnen` rekonstruiert
+die Previews aus den gespeicherten Refs (kein Re-Upload), `vorgangId` ⇒ Nachreichung an bestehenden Vorgang.
+`POST /posteingang/:id/verwerfen` (`{grund}`), `PATCH /posteingang/:id` (betreff/eingegangenAm/dateien[i].typ),
+`DELETE /posteingang/:id` (Row + lokale Bytes best-effort). Jede Aktion schreibt einen `audit_log`-Eintrag
+(objektTyp `posteingang`). Demo-Seed um Beispiel-Eingänge (eingegangen/analysiert/verworfen, `data.demo=true`)
+erweitert. Reine Helfer (`posteingang-helpers.ts`: Hashing, Zustandsautomat, Betreff) mit Unit-Tests.
+
+### Wohngeld — Posteingang S4: Scan-Naht vorbereitet
+`ingest` akzeptiert `quelle=scan` + `eingegangenAm` (Stempeldatum, fristauslösend) + `idempotencyKey`;
+Dedupe/Idempotenz greift. Service-Auth (Token/mTLS für die headless Pipeline) als TODO markiert
+(heute Session/Editor).
+
+### Wohngeld — Posteingang aus der Oberfläche erreichbar
+Die Posteingang-Seite (`/apps/wohngeld/posteingang`) war gebaut und geroutet, aber ohne UI-Einstieg
+(nur per direkter URL erreichbar). Im Header der Wohngeld-Übersicht einen `Posteingang`-Button
+(secondary, `MailIcon`) neben „+ Neuer Vorgang" ergänzt (`canEdit`-gated), der dorthin navigiert.
+
 ### Wohngeld — Demo-Seed ans Boot-Seeding verdrahtet (`SEED_DEMO_DATA`)
 Die bisher standalone laufende Seed-Logik nach `backend/src/apps/wohngeld/seed-demo.ts` ausgelagert
 (`export async function seedWohngeldDemo({ reset? })`) und im Boot-Seed-Block von `backend/src/index.ts`

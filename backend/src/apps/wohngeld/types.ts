@@ -10,6 +10,11 @@
  * `data` jsonb für den Domänenrest + `permissions` + `version` (Optimistic Locking).
  */
 
+// Typ-only Importe (werden beim Transpilieren entfernt — kein Laufzeit-Zyklus,
+// obwohl extraction.ts/matching.ts ihrerseits aus dieser Datei Typen beziehen).
+import type { ExtrahierteStammdaten, Identitaet } from './extraction';
+import type { ScoredKandidat } from './matching';
+
 // ── gemeinsame Basis ────────────────────────────────────────────────────────
 
 export interface Timestamped {
@@ -519,6 +524,66 @@ export interface KiNutzungEintrag {
   promptTokens?: number;
   completionTokens?: number;
   totalTokens?: number;
+}
+
+// ── Posteingang-Warteschlange (persistenter Umschlag/Batch) ─────────────────
+
+/** Kanal, über den ein Eingang eingeliefert wurde. */
+export type PosteingangQuelle = 'manuell' | 'scan' | 'email' | 'import';
+
+/** Zustand eines Eingangs im Zustandsautomaten (siehe Spec §4). */
+export type PosteingangStatus =
+  | 'eingegangen'
+  | 'in_analyse'
+  | 'analysiert'
+  | 'fehler'
+  | 'zugeordnet'
+  | 'verworfen';
+
+/**
+ * Eine Datei im Umschlag. Vor der Analyse nur Ablage-/Metadaten; nach der Analyse
+ * zusätzlich Klassifikation + extrahierte Werte. Die Analyse-Felder (`stammdaten`,
+ * `identitaet`, `extraktion`, `fieldConfidences`) werden gespeichert, damit die
+ * Zuordnung verlustfrei aus den Refs rekonstruiert werden kann (kein Re-Upload).
+ */
+export interface PosteingangDatei {
+  dateiname: string;
+  s3Key?: string;
+  pfad?: string;
+  contentType: string;
+  groesse: number;
+  hash: string;                 // Datei-Hash (SHA-256, hex) — Dedupe/Idempotenz
+  // nach Analyse befüllt:
+  typ?: DokumentTyp;            // Klassifikation (überschreibbar)
+  titel?: string;
+  analyse?: DokumentAnalyse;
+  stammdaten?: ExtrahierteStammdaten;  // nur beim Wohngeldantrag
+  identitaet?: Identitaet;             // Match-Signal aus Nachweisen
+  extraktion?: DokumentExtraktion;
+  fieldConfidences?: Record<string, number>;
+  extrahierterTextGekuerzt?: string;
+  analyseFehler?: string;
+}
+
+/**
+ * Eingang = Umschlag/Batch. Persistente Warteschlange (multi-antragsfähig).
+ * `matchVorschlag` ist das Ergebnis der Umschlag-Match-Ermittlung auf
+ * Umschlag-Ebene (Kandidaten inkl. Level + Vergleichstabelle).
+ */
+export interface Posteingang extends Timestamped, Versioned {
+  id: string;
+  quelle: PosteingangQuelle;
+  eingegangenAm: string;          // ISO — fristauslösend (rechtlich relevant)
+  betreff?: string;
+  status: PosteingangStatus;
+  dateien: PosteingangDatei[];
+  matchVorschlag?: ScoredKandidat[];
+  zugeordneterVorgangId?: string;
+  zugeordneteAkteId?: string;
+  bearbeiterId?: string;
+  verworfenGrund?: string;
+  hash?: string;                  // Umschlag-Hash (Dedupe gegen Doppel-Scans)
+  data?: Record<string, unknown>; // Erweiterungen (z. B. demo:true, idempotencyKey)
 }
 
 // ── Feld-Provenienz (Welle 2, WP3) ─────────────────────────────────────────

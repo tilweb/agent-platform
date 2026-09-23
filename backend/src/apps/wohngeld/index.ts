@@ -17,6 +17,7 @@ export const wohngeldConfig: AppConfig = {
     { path: '/apps/wohngeld', component: 'WohngeldPage' },
     { path: '/apps/wohngeld/vorgang/:id', component: 'VorgangDetail' },
     { path: '/apps/wohngeld/posteingang', component: 'PosteingangPage' },
+    { path: '/apps/wohngeld/posteingang/:id', component: 'PosteingangDetail' },
   ],
 };
 

@@ -7,7 +7,7 @@
  * beim Anlegen des Dokuments in `s3Key`/`pfad` aufgelöst wird.
  */
 import { resolve, join, dirname, isAbsolute } from 'node:path';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, unlink } from 'node:fs/promises';
 import { isS3Configured, putObject, getObject } from '../../storage/s3';
 import { s3Paths } from '../../storage/paths';
 
@@ -81,4 +81,18 @@ export async function loadDokumentDatei(ref: ResolvedRef): Promise<Uint8Array | 
     return new Uint8Array(await file.arrayBuffer());
   }
   return null;
+}
+
+/**
+ * Entfernt die lokal abgelegten Bytes eines Verweises (best-effort, DSGVO/Retention).
+ * Nur lokaler Fallback — S3-Objekte bleiben unberührt (eigenes Lifecycle). Wirft nie.
+ */
+export async function removeStoredFile(ref: ResolvedRef): Promise<void> {
+  if (!ref.pfad) return;
+  try {
+    const abs = isAbsolute(ref.pfad) ? ref.pfad : join(DATA_DIR, ref.pfad);
+    await unlink(abs);
+  } catch {
+    /* best-effort: fehlende Datei ist kein Fehler */
+  }
 }

@@ -179,6 +179,36 @@ export const wgAktivitaeten = wohngeldSchema.table('aktivitaeten', {
 }));
 
 /**
+ * Persistente Posteingang-Warteschlange (S1–S4) — jeder Eintrag ist ein
+ * Umschlag/Batch (1..n Dateien) und kann ein neuer Antrag ODER eine Nachreichung
+ * sein. `dateien` (jsonb) hält den Umschlag-Inhalt inkl. Analyseergebnissen; die
+ * rohen Bytes liegen weiterhin im Filestore (referenziert je Datei). KEIN FK auf
+ * `zugeordneter_vorgang_id`/`zugeordnete_akte_id`: der Eingang muss die Löschung
+ * des Vorgangs überdauern (wie audit_log).
+ */
+export const wgPosteingang = wohngeldSchema.table('posteingang', {
+  id: text('id').primaryKey(),
+  quelle: text('quelle').notNull().default('manuell'),
+  eingegangenAm: timestamp('eingegangen_am', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  betreff: text('betreff'),
+  status: text('status').notNull().default('eingegangen'),
+  dateien: jsonb('dateien').notNull().default([]),
+  matchVorschlag: jsonb('match_vorschlag'),
+  zugeordneterVorgangId: text('zugeordneter_vorgang_id'),
+  zugeordneteAkteId: text('zugeordnete_akte_id'),
+  bearbeiterId: text('bearbeiter_id'),
+  verworfenGrund: text('verworfen_grund'),
+  hash: text('hash'),
+  data: jsonb('data').notNull().default({}),
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, (t) => ({
+  statusIdx: index('wg_posteingang_status_idx').on(t.status),
+  eingegangenIdx: index('wg_posteingang_eingegangen_idx').on(t.eingegangenAm),
+}));
+
+/**
  * GOV-1 — Audit-/Protokoll-Log (append-only, revisionssicher).
  * Erfasst JEDE fachlich relevante Aktion der Sachbearbeitung inkl. Lesezugriff
  * auf einen Fall und Downloads/Exporte. Akteur mit id+name+rolle+ip, bei

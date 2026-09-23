@@ -3,11 +3,16 @@
  *
  *  - POST /posteingang/upload      : Datei(en) hochladen, extrahieren, Preview
  *                                    zurückgeben (noch KEINE Bindung an Vorgang).
- *  - POST /posteingang/verteilen   : Previews einer Akte/einem Vorgang zuordnen,
- *                                    Dokumente anlegen, Stammdaten übernehmen.
+ *  - POST /posteingang/match       : Zuordnungs-Vorschlag ermitteln.
+ *  - POST /posteingang/verteilen   : Previews einer Akte/einem Vorgang zuordnen.
  *  - POST /vorgaenge/:id/dokumente/upload : Direkt-Upload am Vorgang (Detailseite).
+ *
+ * Die Kernlogik von `verteilen` ist als aufrufbare Funktion `verteileDokumente`
+ * extrahiert; sowohl der alte Endpoint als auch die persistente Warteschlange
+ * (`posteingang-queue.ts`, `zuordnen`) nutzen sie — kein Copy-Paste.
  */
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { getCurrentUserId } from '../../../auth/middleware';
 import {
   getAkte, createAkte, getVorgang, createVorgang, updateVorgang,
@@ -18,33 +23,42 @@ import { audit } from '../audit';
 import { pruefeVorgang } from '../checker';
 import { pdfToText } from '../extract';
 import { klassifiziereUndExtrahiere, type ExtraktionErgebnis, type ExtrahierteStammdaten, type Identitaet } from '../extraction';
-import { matchVorgaenge, type MatchIdent, type MatchKandidat } from '../matching';
+import { matchVorgaenge, type MatchIdent, type MatchKandidat, type ScoredKandidat } from '../matching';
 import { feldStatusVorgangPfade, feldStatusPersonPfade } from '../feldstatus-mapping';
 import { storeUpload, resolveStorageRef } from '../filestore';
 import { denyIfNotAppEditor } from './_shared';
-import type { WohnungMiete } from '../types';
+import type { WohnungMiete, Akte, Vorgang, Dokument } from '../types';
 
 export const posteingangRoutes = new Hono();
 
-const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+export const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 
 /** Ein einzelnes Preview-Objekt (Client zeigt es an, sendet es unverändert an /verteilen zurück). */
-interface Preview extends ExtraktionErgebnis {
+export interface Preview extends ExtraktionErgebnis {
   dateiname: string;
   extrahierterTextGekuerzt: string;
   storageRef: string;
 }
 
-/** Text aus einer hochgeladenen Datei ziehen (nur PDF; andere Formate → leer, beobachtend). */
-async function extractText(file: File, bytes: Uint8Array): Promise<string> {
-  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+/**
+ * Text aus rohen Bytes ziehen (nur PDF; andere Formate → leer, beobachtend).
+ * Wird sowohl beim Browser-Upload (File) als auch bei der späteren Auswertung aus
+ * bereits gespeicherten Refs (Warteschlange) genutzt.
+ */
+export async function extractTextFromBytes(bytes: Uint8Array, contentType: string, filename: string): Promise<string> {
+  const isPdf = contentType === 'application/pdf' || /\.pdf$/i.test(filename);
   if (!isPdf) return '';
   try {
     return await pdfToText(bytes);
   } catch (err) {
-    console.warn('[wohngeld] pdftotext fehlgeschlagen für', file.name, err instanceof Error ? err.message : err);
+    console.warn('[wohngeld] pdftotext fehlgeschlagen für', filename, err instanceof Error ? err.message : err);
     return '';
   }
+}
+
+/** Text aus einer hochgeladenen Datei ziehen (Wrapper über extractTextFromBytes). */
+async function extractText(file: File, bytes: Uint8Array): Promise<string> {
+  return extractTextFromBytes(bytes, file.type, file.name);
 }
 
 /** Upload + Extraktion → Preview (ohne Persistenz eines Dokuments). */
@@ -88,7 +102,7 @@ posteingangRoutes.post('/posteingang/upload', async (c) => {
  * Eingangs: Antrag-Stammdaten (Name + Adresse) und/oder Nachweis-Identität
  * (nachname/vorname/geburtsdatum). Name-Felder aus `identitaet` haben Vorrang.
  */
-function buildIdent(stammdaten?: ExtrahierteStammdaten, identitaet?: Identitaet): MatchIdent {
+export function buildIdent(stammdaten?: ExtrahierteStammdaten, identitaet?: Identitaet): MatchIdent {
   const at = stammdaten?.antragsteller;
   const ad = stammdaten?.adresse;
   return {
@@ -103,21 +117,11 @@ function buildIdent(stammdaten?: ExtrahierteStammdaten, identitaet?: Identitaet)
 }
 
 /**
- * Zuordnungs-Vorschlag: gleicht die identifizierenden Daten eines Eingangs gegen
- * ALLE bestehenden Vorgänge ab (Vorgang + Akte + Antragsteller-Person). Reine
- * Vorschlagsfunktion — es wird NICHTS zugeordnet.
- * Body `{ stammdaten?, identitaet? }` → `{ kandidaten: ScoredKandidat[] }`.
+ * Ermittelt den Zuordnungs-Vorschlag: gleicht `ident` gegen ALLE bestehenden
+ * Vorgänge ab (Vorgang + Akte + Antragsteller-Person). Reine Vorschlagsfunktion.
+ * Wird vom `/match`-Endpoint und von der Warteschlangen-Auswertung genutzt.
  */
-posteingangRoutes.post('/posteingang/match', async (c) => {
-  const denied = denyIfNotAppEditor(c);
-  if (denied) return c.json(denied, 403);
-
-  const body = await c.req.json<{ stammdaten?: ExtrahierteStammdaten; identitaet?: Identitaet }>().catch(() => null);
-  if (!body) return c.json({ error: 'Ungültiger Request-Body' }, 400);
-
-  const ident = buildIdent(body.stammdaten, body.identitaet);
-
-  // Kandidaten aus allen Vorgängen zusammentragen (Vorgang + Akte + Antragsteller).
+export async function ermittleMatchKandidaten(ident: MatchIdent): Promise<ScoredKandidat[]> {
   const vorgaenge = await listVorgaenge();
   const kandidaten: MatchKandidat[] = await Promise.all(
     vorgaenge.map(async (v): Promise<MatchKandidat> => {
@@ -142,8 +146,23 @@ posteingangRoutes.post('/posteingang/match', async (c) => {
       };
     }),
   );
+  return matchVorgaenge(ident, kandidaten);
+}
 
-  const scored = matchVorgaenge(ident, kandidaten);
+/**
+ * Zuordnungs-Vorschlag: gleicht die identifizierenden Daten eines Eingangs gegen
+ * ALLE bestehenden Vorgänge ab. Reine Vorschlagsfunktion — es wird NICHTS zugeordnet.
+ * Body `{ stammdaten?, identitaet? }` → `{ kandidaten: ScoredKandidat[] }`.
+ */
+posteingangRoutes.post('/posteingang/match', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+
+  const body = await c.req.json<{ stammdaten?: ExtrahierteStammdaten; identitaet?: Identitaet }>().catch(() => null);
+  if (!body) return c.json({ error: 'Ungültiger Request-Body' }, 400);
+
+  const ident = buildIdent(body.stammdaten, body.identitaet);
+  const scored = await ermittleMatchKandidaten(ident);
   return c.json({ kandidaten: scored });
 });
 
@@ -159,52 +178,57 @@ function mergeWohnung(base: WohnungMiete | undefined, s: ExtrahierteStammdaten):
   return w;
 }
 
+/** Eingabe der Verteilungs-Kernlogik. */
+export interface VerteilenInput {
+  akteId?: string;
+  neueAkte?: Record<string, unknown>;
+  vorgangId?: string;
+  neuerVorgang?: Record<string, unknown>;
+  dokumente: Preview[];
+  pruefen?: boolean;
+  /** Kam die Zuordnung über einen bestätigten System-Vorschlag zustande? (Audit) */
+  viaVorschlag?: boolean;
+  /** Match-Level des bestätigten Vorschlags (hoch/mittel/gering). (Audit) */
+  matchLevel?: string;
+  /** Eingangsdatum des Umschlags (fristauslösend) — für die Dokument-Provenienz. */
+  eingegangenAm?: string;
+}
+
+/** Ergebnis der Verteilungs-Kernlogik (Fehler als Wert, damit der Aufrufer den HTTP-Status setzt). */
+export type VerteilenResult =
+  | { ok: true; vorgang: Vorgang; akte: Akte; dokumente: Dokument[]; befundeCount?: number; istNeuerVorgang: boolean }
+  | { ok: false; status: 400 | 404 | 500; error: string };
+
 /**
- * Verteilung: Previews einer (ggf. neuen) Akte/einem (ggf. neuen) Vorgang zuordnen.
- * Body: { akteId?, neueAkte?, vorgangId?, neuerVorgang?, dokumente:[preview...], pruefen? }
+ * Kernlogik der Verteilung (extrahiert, wiederverwendbar): Akte/Vorgang
+ * auflösen/anlegen (bzw. an bestehenden Vorgang anhängen = Nachreichung),
+ * Stammdaten übernehmen, Dokumente anlegen, Feld-Provenienz setzen, optional
+ * prüfen, Audit. Liest die Bytes NICHT neu — die Refs stecken in den Previews.
  */
-posteingangRoutes.post('/posteingang/verteilen', async (c) => {
-  const denied = denyIfNotAppEditor(c);
-  if (denied) return c.json(denied, 403);
-
-  const body = await c.req.json<{
-    akteId?: string;
-    neueAkte?: Record<string, unknown>;
-    vorgangId?: string;
-    neuerVorgang?: Record<string, unknown>;
-    dokumente?: Preview[];
-    pruefen?: boolean;
-    /** Kam die Zuordnung über einen bestätigten System-Vorschlag zustande? (Audit) */
-    viaVorschlag?: boolean;
-    /** Match-Level des bestätigten Vorschlags (hoch/mittel/gering). (Audit) */
-    matchLevel?: string;
-  }>().catch(() => null);
-
-  if (!body) return c.json({ error: 'Ungültiger Request-Body' }, 400);
-  const dokumente = Array.isArray(body.dokumente) ? body.dokumente : [];
-  if (!dokumente.length) return c.json({ error: 'Keine Dokumente zum Zuordnen übergeben' }, 400);
+export async function verteileDokumente(c: Context, input: VerteilenInput): Promise<VerteilenResult> {
+  const dokumente = Array.isArray(input.dokumente) ? input.dokumente : [];
+  if (!dokumente.length) return { ok: false, status: 400, error: 'Keine Dokumente zum Zuordnen übergeben' };
 
   const userId = getCurrentUserId(c);
 
   // Antrags-Preview (steuert Stammdaten-Übernahme) suchen.
   const antragPreview = dokumente.find((d) => d.typ === 'wohngeldantrag' && d.stammdaten);
   const stammdaten = antragPreview?.stammdaten;
-  // Confidence je feld_status-Feldpfad aus der Extraction-Pipeline (kann fehlen).
   const confByPfad = antragPreview?.confidenceByPfad ?? {};
 
-  // 1. Akte auflösen/anlegen (aus vorhandenem Vorgang ableiten, sonst akteId, sonst neueAkte).
-  let akte = null as Awaited<ReturnType<typeof getAkte>>;
-  let vorgang = null as Awaited<ReturnType<typeof getVorgang>>;
+  // 1. Akte auflösen/anlegen.
+  let akte: Awaited<ReturnType<typeof getAkte>> = null;
+  let vorgang: Awaited<ReturnType<typeof getVorgang>> = null;
 
-  if (body.vorgangId) {
-    vorgang = await getVorgang(body.vorgangId);
-    if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  if (input.vorgangId) {
+    vorgang = await getVorgang(input.vorgangId);
+    if (!vorgang) return { ok: false, status: 404, error: 'Vorgang nicht gefunden' };
     akte = await getAkte(vorgang.akteId);
-  } else if (body.akteId) {
-    akte = await getAkte(body.akteId);
-    if (!akte) return c.json({ error: 'Akte nicht gefunden' }, 404);
-  } else if (body.neueAkte || stammdaten) {
-    const src = (body.neueAkte ?? {}) as Record<string, unknown>;
+  } else if (input.akteId) {
+    akte = await getAkte(input.akteId);
+    if (!akte) return { ok: false, status: 404, error: 'Akte nicht gefunden' };
+  } else if (input.neueAkte || stammdaten) {
+    const src = (input.neueAkte ?? {}) as Record<string, unknown>;
     const nameFromStamm = stammdaten?.antragsteller
       ? [stammdaten.antragsteller.nachname, stammdaten.antragsteller.vorname].filter(Boolean).join(', ')
       : undefined;
@@ -220,14 +244,14 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
       ownerId: userId,
     });
   } else {
-    return c.json({ error: 'akteId, neueAkte oder vorgangId ist erforderlich' }, 400);
+    return { ok: false, status: 400, error: 'akteId, neueAkte oder vorgangId ist erforderlich' };
   }
-  if (!akte) return c.json({ error: 'Akte konnte nicht ermittelt werden' }, 500);
+  if (!akte) return { ok: false, status: 500, error: 'Akte konnte nicht ermittelt werden' };
 
   // 2. Vorgang auflösen/anlegen.
   const istNeuerVorgang = !vorgang;
   if (!vorgang) {
-    const src = (body.neuerVorgang ?? {}) as Record<string, unknown>;
+    const src = (input.neuerVorgang ?? {}) as Record<string, unknown>;
     vorgang = await createVorgang({
       akteId: akte.id,
       wohngeldart: stammdaten?.wohngeldart,
@@ -251,7 +275,6 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
       vorgang = await updateVorgang(vorgang.id, updates) ?? vorgang;
     }
 
-    // Antragsteller-Person anlegen, falls noch keine existiert und ein Name vorliegt.
     const at = stammdaten.antragsteller;
     if (at && (at.vorname || at.nachname)) {
       const personen = await listPersonen(vorgang.id);
@@ -273,8 +296,9 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
   }
 
   // 4. Dokumente anlegen.
-  const angelegt = [];
+  const angelegt: Dokument[] = [];
   let antragDokumentId: string | undefined;
+  const eingegangenAm = input.eingegangenAm || new Date().toISOString();
   for (const d of dokumente) {
     const ref = resolveStorageRef(d.storageRef);
     const dok = await createDokument({
@@ -285,7 +309,7 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
       istOriginal: false,
       s3Key: ref.s3Key,
       pfad: ref.pfad,
-      eingegangenAm: new Date().toISOString(),
+      eingegangenAm,
       extrahierterText: (d.extrahierterTextGekuerzt || '').slice(0, 20000),
       analyse: d.analyse,
       extraktion: d.extraktion,
@@ -295,9 +319,6 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
   }
 
   // 4b. Feld-Provenienz (WP3): extrahierte Antrags-Felder als KI-Vorschlag markieren.
-  //     Confidence aus der Pipeline mitschreiben; `bestaetigt` bleibt immer false
-  //     (Human-in-the-Loop). conf===0 (Reparatur/Änderung) ⇒ "prüfen" — ebenfalls
-  //     bestaetigt=false, hier nur explizit dokumentiert.
   if (stammdaten) {
     for (const feldPfad of feldStatusVorgangPfade(stammdaten)) {
       await setFeldStatus({
@@ -306,7 +327,6 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
         confidence: confByPfad[feldPfad],
       });
     }
-    // Person-Felder nur markieren, wenn die Antragsteller-Person aus dieser Extraktion neu entstand.
     if (antragstellerNeu && antragstellerId) {
       for (const feldPfad of feldStatusPersonPfade(stammdaten.antragsteller)) {
         await setFeldStatus({
@@ -318,20 +338,19 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
     }
   }
 
-  // Zuordnung per bestätigtem System-Vorschlag (bestehender Vorgang) gesondert
-  // protokollieren — nachvollziehbar, wer welchen Vorschlag bestätigt hat.
-  const viaVorschlag = body.viaVorschlag === true && !istNeuerVorgang && !!body.vorgangId;
+  // Zuordnung per bestätigtem System-Vorschlag (bestehender Vorgang) gesondert protokollieren.
+  const viaVorschlag = input.viaVorschlag === true && !istNeuerVorgang && !!input.vorgangId;
   await audit(c, {
     aktion: viaVorschlag ? 'dokument.zugeordnet' : 'dokument.hochgeladen',
     objektTyp: 'posteingang', objektId: vorgang.id, vorgangId: vorgang.id,
     detail: viaVorschlag
-      ? `${angelegt.length} Dokument(e) per Zuordnungs-Vorschlag zugeordnet (Übereinstimmung: ${body.matchLevel ?? 'unbekannt'})`
+      ? `${angelegt.length} Dokument(e) per Zuordnungs-Vorschlag zugeordnet (Übereinstimmung: ${input.matchLevel ?? 'unbekannt'})`
       : `${angelegt.length} Dokument(e) aus dem Posteingang zugeordnet${istNeuerVorgang ? ' (neuer Vorgang)' : ''}`,
   });
 
   // 5. Optional direkt prüfen.
   let befundeCount: number | undefined;
-  if (body.pruefen !== false) {
+  if (input.pruefen !== false) {
     const snapshot = await getVorgangSnapshot(vorgang.id);
     if (snapshot) {
       const befunde = pruefeVorgang(snapshot);
@@ -340,7 +359,23 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
     }
   }
 
-  return c.json({ vorgang, akte, dokumente: angelegt, befundeCount }, 201);
+  return { ok: true, vorgang, akte, dokumente: angelegt, befundeCount, istNeuerVorgang };
+}
+
+/**
+ * Verteilung: Previews einer (ggf. neuen) Akte/einem (ggf. neuen) Vorgang zuordnen.
+ * Body: { akteId?, neueAkte?, vorgangId?, neuerVorgang?, dokumente:[preview...], pruefen? }
+ */
+posteingangRoutes.post('/posteingang/verteilen', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+
+  const body = await c.req.json<VerteilenInput>().catch(() => null);
+  if (!body) return c.json({ error: 'Ungültiger Request-Body' }, 400);
+
+  const result = await verteileDokumente(c, { ...body, dokumente: Array.isArray(body.dokumente) ? body.dokumente : [] });
+  if (!result.ok) return c.json({ error: result.error }, result.status);
+  return c.json({ vorgang: result.vorgang, akte: result.akte, dokumente: result.dokumente, befundeCount: result.befundeCount }, 201);
 });
 
 /** Direkt-Upload am Vorgang (Dokumente-Tab der Detailseite). */
@@ -393,8 +428,6 @@ posteingangRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) => {
     detail: `${angelegt.length} Dokument(e) hochgeladen und klassifiziert`,
   });
 
-  // Konsistenz mit /verteilen: nach dem Anlegen automatisch prüfen, damit sich
-  // Direkt-Upload und Posteingang-Verteilung gleich verhalten.
   let befundeCount: number | undefined;
   const snapshot = await getVorgangSnapshot(vorgangId);
   if (snapshot) {

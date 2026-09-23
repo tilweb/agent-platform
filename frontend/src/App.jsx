@@ -45,6 +45,7 @@ const EcholoopProzessDetail = lazy(() => import('./apps/echoloop/ProzessDetail')
 const WohngeldPage = lazy(() => import('./apps/wohngeld/WohngeldPage'));
 const WohngeldVorgangDetail = lazy(() => import('./apps/wohngeld/VorgangDetail'));
 const WohngeldPosteingangPage = lazy(() => import('./apps/wohngeld/PosteingangPage'));
+const WohngeldPosteingangDetail = lazy(() => import('./apps/wohngeld/PosteingangDetail'));
 const LieferantenPage = lazy(() => import('./apps/lieferantenmanagement/LieferantenPage'));
 const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/SupplierDetailPage'));
 const VsmPage = lazy(() => import('./apps/vsm/VsmPage'));
@@ -235,6 +236,7 @@ function AppRoutes() {
                   <Route path="/apps/echoloop/prozess/:id" element={<RequireAppPermission appId="echoloop"><EcholoopProzessDetail /></RequireAppPermission>} />
                   <Route path="/apps/wohngeld" element={<RequireAppPermission appId="wohngeld"><WohngeldPage /></RequireAppPermission>} />
                   <Route path="/apps/wohngeld/posteingang" element={<RequireAppPermission appId="wohngeld"><WohngeldPosteingangPage /></RequireAppPermission>} />
+                  <Route path="/apps/wohngeld/posteingang/:id" element={<RequireAppPermission appId="wohngeld"><WohngeldPosteingangDetail /></RequireAppPermission>} />
                   <Route path="/apps/wohngeld/vorgang/:id" element={<RequireAppPermission appId="wohngeld"><WohngeldVorgangDetail /></RequireAppPermission>} />
                   <Route path="/apps/lieferantenmanagement" element={<RequireAppPermission appId="lieferantenmanagement"><LieferantenPage /></RequireAppPermission>} />
                   <Route path="/apps/lieferantenmanagement/:id" element={<RequireAppPermission appId="lieferantenmanagement"><SupplierDetailPage /></RequireAppPermission>} />

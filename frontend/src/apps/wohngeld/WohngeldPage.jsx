@@ -7,7 +7,7 @@ import {
   ACCENT, ACCENT_LIGHT, AKTION_LABEL, APP_ROLE_LABEL, aktionLabel,
 } from './api';
 import StatusBadge from './components/StatusBadge';
-import { ListIcon, ClockIcon, FolderIcon, ClipboardIcon, TimelineIcon, TrashIcon } from '../../components/Icons';
+import { ListIcon, ClockIcon, FolderIcon, ClipboardIcon, TimelineIcon, TrashIcon, MailIcon } from '../../components/Icons';
 
 const styles = {
   // Volle verfügbare Breite (keine 1100px-Deckelung) — breite Tabellen mit vielen Spalten
@@ -350,9 +350,14 @@ export default function WohngeldPage() {
           </p>
         </div>
         {canEdit && (
-          <button style={styles.btn} onClick={() => setDialog({ name: '', wohngeldart: 'mietzuschuss', antragsart: 'erstantrag' })}>
-            + Neuer Vorgang
-          </button>
+          <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+            <button style={{ ...styles.btnGhost, display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs }} onClick={() => navigate('/apps/wohngeld/posteingang')}>
+              <MailIcon size={15} /> Posteingang
+            </button>
+            <button style={styles.btn} onClick={() => setDialog({ name: '', wohngeldart: 'mietzuschuss', antragsart: 'erstantrag' })}>
+              + Neuer Vorgang
+            </button>
+          </div>
         )}
       </div>
 

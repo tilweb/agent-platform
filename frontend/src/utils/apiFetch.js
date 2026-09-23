@@ -45,6 +45,14 @@ export const apiPut = (endpoint, body) => apiFetch(endpoint, {
 });
 
 /**
+ * PATCH Request mit JSON-Body
+ */
+export const apiPatch = (endpoint, body) => apiFetch(endpoint, {
+  method: 'PATCH',
+  body: JSON.stringify(body),
+});
+
+/**
  * DELETE Request
  */
 export const apiDelete = (endpoint) => apiFetch(endpoint, { method: 'DELETE' });
