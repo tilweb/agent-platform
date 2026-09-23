@@ -2,6 +2,11 @@
 
 ## 2026-09-24
 
+### Wohngeld — Prüfschritt-Aktionen als Icon-Buttons
+Wie bei den Dokumenten: Beleg anzeigen (Auge), Warum? (Fragezeichen) und Beleg-Dokument öffnen als neutrale
+Icon-Buttons mit Tooltip (aufgeklappt in Akzentfarbe), rechts farbig hervorgehoben Erledigt (grün, Häkchen) und
+Verwerfen (rot, X); Wieder öffnen als Kreispfeil.
+
 ### Wohngeld — Prüfregeln als aufrufbare Dokumentation
 Jede Prüfregel ist jetzt im Code beschrieben (`checker/regeln.ts`): Auslöser in Klartext, geforderter Nachweis,
 Rechtsgrundlage, Erledigung und Hinweise zur Anwendung (bekannte Grenzen). Ein Wächter-Test verlangt eine

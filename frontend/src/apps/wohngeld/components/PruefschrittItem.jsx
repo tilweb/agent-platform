@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import RegelDetails from './RegelDetails';
 import { theme } from '../../../config/theme';
-import { DocumentIcon } from '../../../components/Icons';
+import { DocumentIcon, EyeIcon, HelpCircleIcon, CheckIcon, XIcon, RefreshIcon } from '../../../components/Icons';
 import { PRUEF_TYP_LABEL, PRUEF_KATEGORIE_LABEL, ACCENT, ACCENT_LIGHT, wohngeldApi } from '../api';
 
 const styles = {
@@ -11,13 +11,15 @@ const styles = {
   titelDone: { textDecoration: 'line-through', color: theme.colors.textMuted },
   badge: { fontSize: '0.7rem', fontWeight: theme.typography.weights.medium, padding: `2px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full, whiteSpace: 'nowrap' },
   meta: { fontSize: '0.7rem', color: theme.colors.textMuted, marginTop: 2 },
-  belegLink: { fontSize: theme.typography.sizes.xs, color: ACCENT, cursor: 'pointer', background: 'none', border: 'none', padding: 0, marginTop: theme.spacing.xs },
   beleg: { fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, lineHeight: 1.5, marginTop: theme.spacing.xs, backgroundColor: theme.colors.surfaceHover, borderRadius: theme.borderRadius.md, padding: theme.spacing.sm },
-  docChip: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: ACCENT, backgroundColor: ACCENT_LIGHT, border: 'none', borderRadius: theme.borderRadius.full, padding: `3px ${theme.spacing.sm}`, cursor: 'pointer' },
-  links: { display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' },
   regel: { marginTop: theme.spacing.xs, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, padding: theme.spacing.sm, backgroundColor: theme.colors.surface },
-  actions: { display: 'flex', gap: theme.spacing.xs, marginTop: theme.spacing.sm, flexWrap: 'wrap' },
-  btn: { fontSize: theme.typography.sizes.xs, padding: `4px ${theme.spacing.md}`, borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
+  // Aktionen als Icon-Buttons (Muster der Dokument-Aktionen): neutral links, Status-Aktionen farbig rechts.
+  aktionen: { display: 'flex', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.sm, flexWrap: 'wrap' },
+  trenner: { flex: 1 },
+  icon: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.textSecondary, cursor: 'pointer' },
+  iconAktiv: { borderColor: ACCENT, backgroundColor: ACCENT_LIGHT, color: ACCENT },
+  iconErledigt: { borderColor: `${theme.colors.success}55`, backgroundColor: theme.colors.successLight, color: theme.colors.success },
+  iconVerwerfen: { borderColor: `${theme.colors.error}40`, backgroundColor: theme.colors.errorLight, color: theme.colors.error },
 };
 
 function typBadgeStyle(typ) {
@@ -68,48 +70,48 @@ export default function PruefschrittItem({ pruefschritt: p, onStatus, canEdit, b
         {done && <span style={{ ...styles.badge, ...statusBadgeStyle(p.status) }}>{p.status === 'erledigt' ? 'erledigt' : 'verworfen'}</span>}
         {!p.automatisch && <span style={{ ...styles.badge, backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted }}>manuell</span>}
       </div>
-      {p.quellDokumentId && onOpenDokument && (
-        <div>
-          <button
-            style={styles.docChip}
-            onClick={() => onOpenDokument(p.quellDokumentId)}
-            title="Zum referenzierten Dokument springen"
-          >
-            <DocumentIcon size={12} /> {dokumentLabel || 'Beleg-Dokument'}
-          </button>
-        </div>
-      )}
-      <div style={styles.links}>
-        {p.belegtext && (
-          <button style={styles.belegLink} onClick={() => setOpen((o) => !o)}>
-            {open ? 'Beleg ausblenden' : 'Beleg anzeigen'}
-          </button>
-        )}
-        {p.automatisch !== false && p.regelId && (
-          <button style={styles.belegLink} onClick={warumUmschalten} aria-expanded={warum}>
-            {warum ? 'Regel ausblenden' : 'Warum?'}
-          </button>
-        )}
-      </div>
       {open && p.belegtext && <div style={styles.beleg}>{p.belegtext}</div>}
       {warum && (
         <div style={styles.regel}>
           {regel ? <RegelDetails regel={regel} kompakt /> : <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>{regelFehler || 'Lädt…'}</span>}
         </div>
       )}
-      {canEdit && (
-        <div style={styles.actions}>
-          {p.status !== 'erledigt' && (
-            <button style={styles.btn} disabled={busy} onClick={() => onStatus('erledigt')}>Als erledigt</button>
-          )}
-          {p.status !== 'verworfen' && (
-            <button style={styles.btn} disabled={busy} onClick={() => onStatus('verworfen')}>Verwerfen</button>
-          )}
-          {p.status !== 'offen' && (
-            <button style={styles.btn} disabled={busy} onClick={() => onStatus('offen')}>Wieder öffnen</button>
-          )}
-        </div>
-      )}
+      <div style={styles.aktionen}>
+        {p.belegtext && (
+          <button style={{ ...styles.icon, ...(open ? styles.iconAktiv : {}) }} onClick={() => setOpen((o) => !o)}
+            title={open ? 'Beleg ausblenden' : 'Beleg anzeigen'} aria-label={open ? 'Beleg ausblenden' : 'Beleg anzeigen'} aria-pressed={open}>
+            <EyeIcon size={15} />
+          </button>
+        )}
+        {p.automatisch !== false && p.regelId && (
+          <button style={{ ...styles.icon, ...(warum ? styles.iconAktiv : {}) }} onClick={warumUmschalten}
+            title={warum ? 'Regel ausblenden' : 'Warum? Regel anzeigen'} aria-label={warum ? 'Regel ausblenden' : 'Warum? Regel anzeigen'} aria-pressed={warum}>
+            <HelpCircleIcon size={15} />
+          </button>
+        )}
+        {p.quellDokumentId && onOpenDokument && (
+          <button style={styles.icon} onClick={() => onOpenDokument(p.quellDokumentId)}
+            title={`Zum Beleg-Dokument: ${dokumentLabel || 'Beleg-Dokument'}`} aria-label={`Zum Beleg-Dokument: ${dokumentLabel || 'Beleg-Dokument'}`}>
+            <DocumentIcon size={15} />
+          </button>
+        )}
+        <span style={styles.trenner} />
+        {canEdit && p.status !== 'erledigt' && (
+          <button style={{ ...styles.icon, ...styles.iconErledigt }} disabled={busy} onClick={() => onStatus('erledigt')} title="Als erledigt markieren" aria-label="Als erledigt markieren">
+            <CheckIcon size={15} />
+          </button>
+        )}
+        {canEdit && p.status !== 'verworfen' && (
+          <button style={{ ...styles.icon, ...styles.iconVerwerfen }} disabled={busy} onClick={() => onStatus('verworfen')} title="Verwerfen" aria-label="Verwerfen">
+            <XIcon size={15} />
+          </button>
+        )}
+        {canEdit && p.status !== 'offen' && (
+          <button style={styles.icon} disabled={busy} onClick={() => onStatus('offen')} title="Wieder öffnen" aria-label="Wieder öffnen">
+            <RefreshIcon size={15} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
