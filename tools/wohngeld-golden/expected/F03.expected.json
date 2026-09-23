@@ -1,0 +1,253 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F03",
+  "titel": "Alleinerziehende Mutter, Teilzeit, Unterhaltsvorschuss (handschriftlich)",
+  "gruppe": "A",
+  "varianten": {
+    "digital": "F03-digital.pdf",
+    "scan": "F03-scan.pdf"
+  },
+  "seiten": 26,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Şeyma",
+      "nachname": "Kılıç",
+      "geburtsdatum": "1991-10-06",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Elif",
+      "nachname": "Kılıç",
+      "geburtsdatum": "2018-04-22",
+      "rolle": "Tochter"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-27",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Şeyma",
+          "antragsteller.nachname": "Kılıç",
+          "antragsteller.geburtsdatum": "1991-10-06",
+          "adresse.strasse": "Vor dem Steintor",
+          "adresse.hausnummer": "78",
+          "adresse.plz": "28203",
+          "adresse.ort": "Bremen",
+          "wohnung.miete": 600,
+          "wohnung.wohnflaeche_qm": 57
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Şeyma Kılıç",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Kılıç",
+          "vorname": "Şeyma",
+          "geburtsdatum": "1991-10-06"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Kılıç",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1640
+        },
+        "identitaet": {
+          "nachname": "Kılıç",
+          "vorname": "Şeyma"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Kılıç",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1640
+        },
+        "identitaet": {
+          "nachname": "Kılıç",
+          "vorname": "Şeyma"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Kılıç",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1640
+        },
+        "identitaet": {
+          "nachname": "Kılıç",
+          "vorname": "Şeyma"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 17,
+      "typ": "kindergeldnachweis",
+      "art": "kindergeldbescheid",
+      "titel": "Kindergeldbescheid Kılıç",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 259
+        },
+        "identitaet": {
+          "nachname": "Kılıç",
+          "vorname": "Şeyma"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 18,
+      "seiteBis": 19,
+      "typ": "unterhaltsnachweis",
+      "art": "uvs_bescheid",
+      "titel": "Unterhaltsvorschuss-Bescheid Elif",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 299
+        },
+        "identitaet": {
+          "nachname": "Kılıç",
+          "vorname": "Şeyma"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 20,
+      "seiteBis": 23,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 600,
+          "wohnflaeche_qm": 57,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kılıç",
+          "vorname": "Şeyma"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 24,
+      "seiteBis": 25,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 600,
+          "wohnflaeche_qm": 57,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kılıç",
+          "vorname": "Şeyma"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 26,
+      "seiteBis": 26,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Kılıç",
+          "vorname": "Şeyma"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "identitaet-jede-person",
+        "person": "P2",
+        "grund": "App verlangt Ausweis auch für Kinder"
+      }
+    ]
+  },
+  "hinweise": [
+    "Antrag handschriftlich ausgefüllt; Namen mit türkischen Sonderzeichen (Şeyma Kılıç).",
+    "Unterhaltsvorschuss 299 € (2. Altersstufe) als Einnahme der Tochter; Kindesvater zahlt nicht — Frage 17 = Ja, Höhe nicht bekannt.",
+    "Kontoauszug Juli 2026: Gehalt, UVS 299 € und Kindergeld 259 € gehen ein, Miete 690 € geht ab."
+  ]
+}

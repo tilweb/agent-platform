@@ -1,0 +1,166 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F26",
+  "titel": "Heimbewohnerin mit Pflegegrad 4, Betreuer unterschreibt",
+  "gruppe": "D",
+  "varianten": {
+    "digital": "F26-digital.pdf",
+    "scan": "F26-scan.pdf"
+  },
+  "seiten": 20,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Hildegard",
+      "nachname": "Petersen",
+      "geburtsdatum": "1938-02-11",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-15",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Hildegard",
+          "antragsteller.nachname": "Petersen",
+          "antragsteller.geburtsdatum": "1938-02-11",
+          "adresse.strasse": "Travegrund",
+          "adresse.hausnummer": "14",
+          "adresse.plz": "23568",
+          "adresse.ort": "Lübeck",
+          "wohnung.miete": null,
+          "wohnung.wohnflaeche_qm": null
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "sonstiges",
+      "art": "betreuerausweis",
+      "titel": "Betreuerausweis",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Petersen",
+          "vorname": "Hildegard"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 15,
+      "typ": "mietvertrag",
+      "art": "heimvertrag",
+      "titel": "Wohn- und Betreuungsvertrag (Pflegeheim)",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Petersen",
+          "vorname": "Hildegard"
+        },
+        "analyse": {
+          "miete": 1064.7,
+          "unterschrift_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 16,
+      "seiteBis": 17,
+      "typ": "rentenbescheid",
+      "art": "rentenbescheid",
+      "titel": "Rentenanpassung 2026 Petersen",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "rentenart_vorhanden": true,
+          "betrag": 1480
+        },
+        "identitaet": {
+          "nachname": "Petersen",
+          "vorname": "Hildegard"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 18,
+      "seiteBis": 19,
+      "typ": "pflegenachweis",
+      "art": "pflegebescheid",
+      "titel": "Pflegegrad-Bescheid Petersen",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1855
+        },
+        "identitaet": {
+          "nachname": "Petersen",
+          "vorname": "Hildegard"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 20,
+      "seiteBis": 20,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Petersen",
+          "vorname": "Hildegard"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "identitaet-jede-person"
+    ],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Heimbewohnerin (Frage 21): Wohnraumnachweis ist der Wohn- und Betreuungsvertrag; Mietvertrag und Vermieterbescheinigung sind fachlich NICHT zu fordern. Wohngeldrelevante Miete = Unterkunft + Investitionskosten = 1.064,70 €/Monat.",
+    "Die App wird vermutlich `vermieterbescheinigung` melden (kein Dokument vom Typ mietbescheinigung) — erwartete Übermeldung. `mietvertrag` greift nicht, weil der Heimvertrag als Typ mietvertrag erwartet wird; wird er anders klassifiziert, meldet die App auch `mietvertrag`.",
+    "Im Antrag ist bei Heimbewohnern keine Miete eingetragen (Seite 10 entfällt) — die App meldet deshalb voraussichtlich auch `essenzielle-angaben` (Miethöhe fehlt), fachlich ist die Miete aus dem Heimvertrag zu übernehmen.",
+    "Unterschrift auf Seite 11 durch den rechtlichen Betreuer Frank Mertens (Betreuerausweis AG Lübeck, Aufgabenkreis Behörden/Vermögen), Auszahlung des Wohngelds an den Heimträger (Frage 30).",
+    "Kein Personalausweis der Antragstellerin beigefügt ⇒ identitaet-jede-person (Abweichung vom Katalog, der „keine Befunde\" nennt; nach Leitfaden ist ein fehlender Ausweis bei Erwachsenen ein fachlicher Befund).",
+    "Pflegegrad 4 vollstationär: Pflegekassenbescheid liegt vor (pflegegrad-nachweis erfüllt).",
+    "Kontoauszug August: Rente 1.297,22 € netto, Umbuchung 800 € vom Sparkonto, Dauerauftrag Eigenanteil 1.685,89 € an den Heimträger."
+  ]
+}

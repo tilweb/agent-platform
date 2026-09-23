@@ -1,0 +1,290 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F13",
+  "titel": "Paar, beide Arbeitnehmer, Pflichtangaben im Antrag leer (Handschrift)",
+  "gruppe": "B",
+  "varianten": {
+    "digital": "F13-digital.pdf",
+    "scan": "F13-scan.pdf"
+  },
+  "seiten": 26,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Ronny",
+      "nachname": "Lehmann",
+      "geburtsdatum": "1979-12-05",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Mandy",
+      "nachname": "Richter",
+      "geburtsdatum": "1983-07-30",
+      "rolle": "Lebensgefährtin"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-21",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Ronny",
+          "antragsteller.nachname": "Lehmann",
+          "antragsteller.geburtsdatum": "1979-12-05",
+          "adresse.strasse": "Zeisigwaldstraße",
+          "adresse.hausnummer": "46",
+          "adresse.plz": "09130",
+          "adresse.ort": "Chemnitz",
+          "wohnung.miete": null,
+          "wohnung.wohnflaeche_qm": null
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Ronny Lehmann",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Lehmann",
+          "vorname": "Ronny",
+          "geburtsdatum": "1979-12-05"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Mandy Richter",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Richter",
+          "vorname": "Mandy",
+          "geburtsdatum": "1983-07-30"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Lehmann",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2050
+        },
+        "identitaet": {
+          "nachname": "Lehmann",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Lehmann",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2050
+        },
+        "identitaet": {
+          "nachname": "Lehmann",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Lehmann",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2050
+        },
+        "identitaet": {
+          "nachname": "Lehmann",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 17,
+      "seiteBis": 17,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Richter",
+      "person": "P2",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1180
+        },
+        "identitaet": {
+          "nachname": "Richter",
+          "vorname": "Mandy"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Richter",
+      "person": "P2",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1180
+        },
+        "identitaet": {
+          "nachname": "Richter",
+          "vorname": "Mandy"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 19,
+      "seiteBis": 19,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Richter",
+      "person": "P2",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1180
+        },
+        "identitaet": {
+          "nachname": "Richter",
+          "vorname": "Mandy"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 20,
+      "seiteBis": 23,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 530,
+          "wohnflaeche_qm": 68,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Lehmann",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 11,
+      "seiteVon": 24,
+      "seiteBis": 25,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 530,
+          "wohnflaeche_qm": 68,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Lehmann",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 12,
+      "seiteVon": 26,
+      "seiteBis": 26,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Lehmann",
+          "vorname": "Ronny"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "essenzielle-angaben"
+    ],
+    "befundeOhneAppRegel": [
+      "Geburtsdatum des 2. Haushaltsmitglieds (Mandy Richter) fehlt im Antrag (Frage 6)",
+      "Wohnfläche fehlt im Antrag (Frage 22)"
+    ],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Antragsseite 10: Wohnfläche und Gesamtmiete leer ⇒ Miethöhe fehlt (essenzielle-angaben). Mietvertrag/Vermieterbescheinigung/Kontoauszug zeigen 68 m² und 630,00 € Gesamtmiete (Bruttokaltmiete 530,00 €).",
+    "Da Miete und Fläche im Antrag fehlen, sind plausi-miethoehe-abweichung und plausi-wohnflaeche-abweichung NICHT zu erwarten.",
+    "Geburtsdatum der Lebensgefährtin fehlt nur im Antrag; der Personalausweis enthält es (30.07.1983). Mietvertrag und Kontoauszug laufen nur auf Ronny Lehmann."
+  ]
+}

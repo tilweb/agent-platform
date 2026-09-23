@@ -1,0 +1,592 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F29",
+  "titel": "Großfamilie mit 6 Personen: Kurzarbeit, Elterngeld, Zuschuss Großeltern",
+  "gruppe": "D",
+  "varianten": {
+    "digital": "F29-digital.pdf",
+    "scan": "F29-scan.pdf"
+  },
+  "seiten": 42,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Ronny",
+      "nachname": "Kretzschmar",
+      "geburtsdatum": "1985-06-04",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Jana",
+      "nachname": "Kretzschmar",
+      "geburtsdatum": "1990-03-15",
+      "rolle": "Ehefrau"
+    },
+    {
+      "id": "P3",
+      "vorname": "Paul",
+      "nachname": "Kretzschmar",
+      "geburtsdatum": "2009-01-27",
+      "rolle": "Sohn"
+    },
+    {
+      "id": "P4",
+      "vorname": "Emma",
+      "nachname": "Kretzschmar",
+      "geburtsdatum": "2015-02-09",
+      "rolle": "Tochter"
+    },
+    {
+      "id": "P5",
+      "vorname": "Ben",
+      "nachname": "Kretzschmar",
+      "geburtsdatum": "2021-04-30",
+      "rolle": "Sohn"
+    },
+    {
+      "id": "P6",
+      "vorname": "Lina",
+      "nachname": "Kretzschmar",
+      "geburtsdatum": "2025-11-14",
+      "rolle": "Tochter"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-09",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Ronny",
+          "antragsteller.nachname": "Kretzschmar",
+          "antragsteller.geburtsdatum": "1985-06-04",
+          "adresse.strasse": "Gorbitzer Hangweg",
+          "adresse.hausnummer": "23",
+          "adresse.plz": "01169",
+          "adresse.ort": "Dresden",
+          "wohnung.miete": 975,
+          "wohnung.wohnflaeche_qm": 98
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "wohngeldantrag",
+      "art": "zusatzblatt_haushalt",
+      "titel": "Zusatzblatt weitere Haushaltsmitglieder",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Ronny Kretzschmar",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny",
+          "geburtsdatum": "1985-06-04"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Jana Kretzschmar",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Jana",
+          "geburtsdatum": "1990-03-15"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Paul Kretzschmar",
+      "person": "P3",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Paul",
+          "geburtsdatum": "2009-01-27"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Januar 2026 Kretzschmar",
+      "person": "P1",
+      "monat": "2026-01",
+      "erwartet": {
+        "analyse": {
+          "betrag": 3150
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 17,
+      "seiteBis": 17,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Februar 2026 Kretzschmar",
+      "person": "P1",
+      "monat": "2026-02",
+      "erwartet": {
+        "analyse": {
+          "betrag": 3150
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung März 2026 Kretzschmar",
+      "person": "P1",
+      "monat": "2026-03",
+      "erwartet": {
+        "analyse": {
+          "betrag": 3150
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 19,
+      "seiteBis": 19,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung April 2026 Kretzschmar",
+      "person": "P1",
+      "monat": "2026-04",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1890,
+          "kurzarbeitergeld": 598.32
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 20,
+      "seiteBis": 20,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Kretzschmar",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1575,
+          "kurzarbeitergeld": 764.72
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 11,
+      "seiteVon": 21,
+      "seiteBis": 21,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Kretzschmar",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1575,
+          "kurzarbeitergeld": 764.72
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 12,
+      "seiteVon": 22,
+      "seiteBis": 22,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Kretzschmar",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1260,
+          "kurzarbeitergeld": 931.14
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 13,
+      "seiteVon": 23,
+      "seiteBis": 23,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung August 2026 Kretzschmar",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1575,
+          "kurzarbeitergeld": 764.72
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 14,
+      "seiteVon": 24,
+      "seiteBis": 24,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Kretzschmar",
+      "person": "P3",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1020
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Paul"
+        }
+      }
+    },
+    {
+      "nr": 15,
+      "seiteVon": 25,
+      "seiteBis": 25,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Kretzschmar",
+      "person": "P3",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1020
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Paul"
+        }
+      }
+    },
+    {
+      "nr": 16,
+      "seiteVon": 26,
+      "seiteBis": 26,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung August 2026 Kretzschmar",
+      "person": "P3",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1020
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Paul"
+        }
+      }
+    },
+    {
+      "nr": 17,
+      "seiteVon": 27,
+      "seiteBis": 28,
+      "typ": "verdienstbescheinigung",
+      "art": "elterngeldbescheid",
+      "titel": "Elterngeldbescheid Kretzschmar",
+      "person": "P2",
+      "erwartet": {
+        "analyse": {
+          "betrag": 780
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Jana"
+        }
+      }
+    },
+    {
+      "nr": 18,
+      "seiteVon": 29,
+      "seiteBis": 30,
+      "typ": "kindergeldnachweis",
+      "art": "kindergeldbescheid",
+      "titel": "Kindergeldbescheid Kretzschmar",
+      "person": "P2",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1036
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Jana"
+        }
+      }
+    },
+    {
+      "nr": 19,
+      "seiteVon": 31,
+      "seiteBis": 32,
+      "typ": "sonstiges",
+      "art": "kita_gebuehrenbescheid",
+      "titel": "Kita-Gebührenbescheid Kretzschmar",
+      "person": "P2",
+      "erwartet": {
+        "analyse": {
+          "betrag": 186
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Jana"
+        }
+      }
+    },
+    {
+      "nr": 20,
+      "seiteVon": 33,
+      "seiteBis": 33,
+      "typ": "sonstiges",
+      "art": "zuwendungserklaerung",
+      "titel": "Zuwendungserklärung Heidrun Lehmann",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Jana"
+        },
+        "analyse": {
+          "betrag": 200
+        }
+      }
+    },
+    {
+      "nr": 21,
+      "seiteVon": 34,
+      "seiteBis": 37,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 975,
+          "wohnflaeche_qm": 98,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 22,
+      "seiteVon": 38,
+      "seiteBis": 39,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 975,
+          "wohnflaeche_qm": 98,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 23,
+      "seiteVon": 40,
+      "seiteBis": 40,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juni 2026",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 24,
+      "seiteVon": 41,
+      "seiteBis": 41,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    },
+    {
+      "nr": 25,
+      "seiteVon": 42,
+      "seiteBis": 42,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Kretzschmar",
+          "vorname": "Ronny"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P3",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P4",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "identitaet-jede-person",
+        "person": "P4",
+        "grund": "App verlangt Ausweis auch für Kinder"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P5",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "identitaet-jede-person",
+        "person": "P5",
+        "grund": "App verlangt Ausweis auch für Kinder"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P6",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "identitaet-jede-person",
+        "person": "P6",
+        "grund": "App verlangt Ausweis auch für Kinder"
+      }
+    ]
+  },
+  "hinweise": [
+    "Split: Die Sammel-PDF hat mehr als 40 Seiten — die automatische Trennung der App greift bei dieser Seitenzahl nicht; erwartet wird ein Hinweis „über 40 Seiten\" bzw. manuelle Trennung.",
+    "6 Haushaltsmitglieder: im Antrag P1–P5 (Seite 2/3 und Einnahmen), das 6. Mitglied (Lina, *14.11.2025) steht auf dem Zusatzblatt direkt hinter dem Antrag (App-Typ wohngeldantrag, gehört zum Antrag).",
+    "Kurzarbeit ab April 2026: Soll-Entgelt 3.150,00 €, Ist-Entgelt 1.260–1.890 €; im Antrag Ist-Entgelt 1.575 € + Kurzarbeitergeld 764,72 €. Abrechnungen Januar–August (Januar–März volles Entgelt).",
+    "Elterngeld 780,00 €/Monat für Lina (12 Lebensmonate), Kindergeld 4 × 259 € = 1.036,00 € (Paul in Ausbildung), Kita-Beitrag Ben 186,00 € + 72,00 € Essen (Frage 14).",
+    "Frage 26: Großmutter Heidrun Lehmann zahlt seit 01.2026 monatlich 200 € Mietzuschuss per Dauerauftrag (Erklärung + Kontoauszüge).",
+    "Frage 9: Geburt eines weiteren Kindes erwartet (18.01.2027); Frage 27: Mieterhöhung ab 01.11.2026 auf 1.198 € Gesamtmiete angekündigt (Vermieterbescheinigung zeigt die aktuelle Miete 1.140 €)."
+  ]
+}

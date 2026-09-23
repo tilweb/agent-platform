@@ -1,0 +1,264 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F08",
+  "titel": "Familie mit zwei Kindern, Minijob- und Kindergeldnachweis fehlen",
+  "gruppe": "B",
+  "varianten": {
+    "digital": "F08-digital.pdf",
+    "scan": "F08-scan.pdf"
+  },
+  "seiten": 23,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Andrej",
+      "nachname": "Weber",
+      "geburtsdatum": "1986-03-19",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Olga",
+      "nachname": "Weber",
+      "geburtsdatum": "1988-11-27",
+      "rolle": "Ehefrau"
+    },
+    {
+      "id": "P3",
+      "vorname": "Sofia",
+      "nachname": "Weber",
+      "geburtsdatum": "2016-09-02",
+      "rolle": "Tochter"
+    },
+    {
+      "id": "P4",
+      "vorname": "Maxim",
+      "nachname": "Weber",
+      "geburtsdatum": "2021-01-15",
+      "rolle": "Sohn"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-01",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Andrej",
+          "antragsteller.nachname": "Weber",
+          "antragsteller.geburtsdatum": "1986-03-19",
+          "adresse.strasse": "Halberstädter Straße",
+          "adresse.hausnummer": "115",
+          "adresse.plz": "39112",
+          "adresse.ort": "Magdeburg",
+          "wohnung.miete": 640,
+          "wohnung.wohnflaeche_qm": 78
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Andrej Weber",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Weber",
+          "vorname": "Andrej",
+          "geburtsdatum": "1986-03-19"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Olga Weber",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Weber",
+          "vorname": "Olga",
+          "geburtsdatum": "1988-11-27"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Weber",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2640
+        },
+        "identitaet": {
+          "nachname": "Weber",
+          "vorname": "Andrej"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Weber",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2640
+        },
+        "identitaet": {
+          "nachname": "Weber",
+          "vorname": "Andrej"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung August 2026 Weber",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2640
+        },
+        "identitaet": {
+          "nachname": "Weber",
+          "vorname": "Andrej"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 17,
+      "seiteBis": 20,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 640,
+          "wohnflaeche_qm": 78,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Weber",
+          "vorname": "Andrej"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 21,
+      "seiteBis": 22,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 640,
+          "wohnflaeche_qm": 78,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Weber",
+          "vorname": "Andrej"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 23,
+      "seiteBis": 23,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Weber",
+          "vorname": "Andrej"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "verdienstbescheinigung",
+      "kindergeld-nachweis"
+    ],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P3",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "identitaet-jede-person",
+        "person": "P3",
+        "grund": "App verlangt Ausweis auch für Kinder"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P4",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "identitaet-jede-person",
+        "person": "P4",
+        "grund": "App verlangt Ausweis auch für Kinder"
+      }
+    ]
+  },
+  "hinweise": [
+    "Lücke 1: Die Ehefrau gibt einen Minijob (480 €) an, legt aber keine Abrechnungen vor — `verdienstbescheinigung` für P2. Der Lohneingang ist nur auf dem Kontoauszug sichtbar.",
+    "Lücke 2: Kindergeld 2 × 259 € geht auf dem Kontoauszug ein, ein Kindergeldbescheid fehlt — `kindergeld-nachweis`."
+  ]
+}

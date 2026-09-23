@@ -21,6 +21,8 @@ export class Formular {
   /** Einheitliche Schriftgröße der Textfelder (Vorlage nutzt Auto-Größe). */
   schriftgroesse = 10;
   private groessen = new Map<string, number>();
+  private abdecken: Array<{ seite: number; x: number; y: number; w: number; h: number }> = [];
+  private freieTexte: Array<{ seite: number; x: number; y: number; w: number; h: number; wert: string }> = [];
   /** Handschrift-Modus: Werte nicht in Felder, sondern als Handschrift-Ebene über das Formular. */
   handschrift: false | { seed: string } = false;
   private hand: Array<{ seite: number; x: number; y: number; w: number; h: number; wert: string; kreuz?: boolean }> = [];
@@ -58,19 +60,32 @@ export class Formular {
     });
   }
 
-  /** Textfeld setzen (leere Werte werden übersprungen); optional eigene Schriftgröße. */
-  text(name: string, wert: string | number | undefined | null, groesse?: number): void {
+  /**
+   * Textfeld setzen (leere Werte werden übersprungen); optional eigene Schriftgröße.
+   * `nurSeite` (1-basiert): Wert nur im Widget auf dieser Seite zeigen — Widgets
+   * desselben Felds auf anderen Seiten werden nach dem Flachmachen abgedeckt.
+   */
+  text(name: string, wert: string | number | undefined | null, groesse?: number, nurSeite?: number): void {
     if (wert === undefined || wert === null || wert === '') return;
+    const positionen = this.widgetPositionen(name);
     if (this.handschrift) {
-      for (const p of this.widgetPositionen(name)) this.hand.push({ ...p, wert: String(wert) });
+      for (const p of positionen) if (!nurSeite || p.seite === nurSeite - 1) this.hand.push({ ...p, wert: String(wert) });
       return;
     }
+    if (nurSeite) for (const p of positionen) if (p.seite !== nurSeite - 1) this.abdecken.push(p);
     const f = this.feld(name);
     if (groesse) this.groessen.set(f.getName(), groesse);
     if (!(f instanceof PDFTextField)) throw new Error(`${name} ist kein Textfeld`);
     const s = winAnsi(String(wert));
     const max = f.getMaxLength();
     f.setText(max && s.length > max ? s.slice(0, max) : s);
+  }
+
+  /** Text an eine feste Position schreiben (für Stellen ohne eigenes Formularfeld); Seite 1-basiert. */
+  textAn(seite: number, x: number, y: number, w: number, h: number, wert: string): void {
+    if (!wert) return;
+    const e = { seite: seite - 1, x, y, w, h, wert };
+    if (this.handschrift) this.hand.push(e); else this.freieTexte.push(e);
   }
 
   /** Checkbox ankreuzen. */
@@ -185,6 +200,12 @@ export class Formular {
     this.form.updateFieldAppearances(font);
     this.form.flatten();
     this.aufraeumen();
+    for (const a of this.abdecken) {
+      this.doc.getPage(a.seite).drawRectangle({ x: a.x + 1, y: a.y + 1, width: a.w - 2, height: a.h - 2, color: rgb(1, 1, 1) });
+    }
+    for (const t of this.freieTexte) {
+      this.doc.getPage(t.seite).drawText(winAnsi(t.wert), { x: t.x + 2, y: t.y + (t.h - this.schriftgroesse) / 2 + 2, size: this.schriftgroesse, font });
+    }
     if (this.handschrift && this.hand.length) await this.handschriftEbene(this.handschrift.seed);
     this.zeichneUnterschriften();
     this.doc.setTitle(meta.titel);

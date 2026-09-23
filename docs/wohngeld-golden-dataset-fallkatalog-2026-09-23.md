@@ -208,3 +208,36 @@ Abweichungen vom ursprünglichen Plan:
 - Die Formulare verlieren beim Flachmachen ihre Barrierefreiheits-Tags. Ein ausgedruckter Antrag hat ohnehin keine.
 - Ein Konsistenztest (`bun test`) prüft je Fall Seitenbereiche, Namen, Mietbeträge und gewollte Widersprüche
   gegen die erzeugte PDF.
+
+## 10. Endstand (2026-09-23)
+
+Alle **30 Fälle** sind gebaut, je digital und als Scan: 730 Seiten und 291 Dokumente je Variante, 8 Fälle
+handschriftlich. Ein kompletter Lauf dauert rund 40 Sekunden. `bun test` prüft 150 Konsistenzbedingungen, alle grün.
+Anleitung für weitere Fälle: `tools/wohngeld-golden/LEITFADEN-FAELLE.md`.
+
+**Abdeckung der App-Regeln:** 19 der 23 Regeln sind in mindestens einem Fall fachlich erwartet.
+`bwz-vorschlag-pruefen` erscheint als Standardbefund in jedem datierten Antrag, `krankenversicherung-nachweis` als
+bekannte App-Übermeldung. Zwei Regeln werden bewusst nicht erwartet:
+- `plausi-rentenart-fehlt` wertet nur einen eingereichten Rentenbescheid aus. In F09 fehlt der Bescheid, die unklare
+  Rentenart steht deshalb unter „ohne App-Regel".
+- `vermoegensnachweise` greift nur ohne Vermögensbeleg. In F22 liegt der Depotauszug bei; der Widerspruch zu Frage 20
+  steht unter „ohne App-Regel".
+
+**Abweichungen vom Katalog (Abschnitt 4), fachlich begründet:**
+- F02: Die Schwärzung im Kontoauszug entfällt (vom Generator nicht abbildbar).
+- F04: Das Formular kennt kein eigenes Kästchen für den Weiterleistungsantrag; erkennbar ist er nur an der Wohngeldnummer.
+  Die App-Regel `mietvertrag` wird vermutlich feuern, fachlich wird bei Weiterleistung kein neuer Mietvertrag verlangt.
+- F11: `plausi-mietzahlung-fehlt` ist nicht erwartet, weil sie einen vorhandenen Kontoauszug voraussetzt.
+- F12: `antrag-vollstaendig-unterschrieben` bleibt fachlich erwartet, obwohl die App-Regel nur bei ganz fehlendem Antrag feuert.
+  Ein fehlendes Formulardatum ist kein Pflichtangaben-Befund, weil der Eingang als Antragsdatum gilt.
+- F15: Der Antragsteller weist sich per Aufenthaltstitel aus (App-Typ Personalausweis).
+- F20, F28: Die Jugendlichen (13–16 Jahre) haben eigene Personalausweise.
+- F21: Der nicht angegebene Minijob steht unter „ohne App-Regel".
+- F26: Ohne Ausweis der Heimbewohnerin ist `identitaet-jede-person` erwartet (Katalog: keine).
+- F29: Für die 40-Seiten-Grenze kamen weitere Unterlagen hinzu (8 Abrechnungen, Auszubildender Sohn, Kita, 3 Kontoauszüge): 42 Seiten.
+
+**Eigenheiten der amtlichen Vorlage**, im Generator abgefangen:
+- Bei den Fragen 18, 19 und 28 passen Feldnamen und Positionen nicht zusammen; die Werte werden nach Position zugeordnet.
+- Das Feld Familienstand des 1. Haushaltsmitglieds hat ein zweites Widget an der Stelle des 4. Mitglieds.
+- Die Tag-Struktur der barrierefreien Vorlage verweist nach dem Flachmachen auf gelöschte Felder und wird entfernt.
+- Die Standardschrift kennt keine türkischen/polnischen Sonderzeichen; das getippte Formular ersetzt sie (ş→s).

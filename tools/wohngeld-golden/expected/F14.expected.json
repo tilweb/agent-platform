@@ -1,0 +1,164 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F14",
+  "titel": "Rentnerin mit Schwerbehinderung und Pflegegrad 3, Nachweise fehlen",
+  "gruppe": "B",
+  "varianten": {
+    "digital": "F14-digital.pdf",
+    "scan": "F14-scan.pdf"
+  },
+  "seiten": 21,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Hildegard",
+      "nachname": "Moosbauer",
+      "geburtsdatum": "1950-06-19",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-12",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Hildegard",
+          "antragsteller.nachname": "Moosbauer",
+          "antragsteller.geburtsdatum": "1950-06-19",
+          "adresse.strasse": "Bärenkellerstraße",
+          "adresse.hausnummer": "31",
+          "adresse.plz": "86156",
+          "adresse.ort": "Augsburg",
+          "wohnung.miete": 515,
+          "wohnung.wohnflaeche_qm": 46
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Hildegard Moosbauer",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Moosbauer",
+          "vorname": "Hildegard",
+          "geburtsdatum": "1950-06-19"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 14,
+      "typ": "rentenbescheid",
+      "art": "rentenbescheid",
+      "titel": "Rentenanpassung 2026 Moosbauer",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "rentenart_vorhanden": true,
+          "betrag": 1078.4
+        },
+        "identitaet": {
+          "nachname": "Moosbauer",
+          "vorname": "Hildegard"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 15,
+      "seiteBis": 18,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 515,
+          "wohnflaeche_qm": 46,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Moosbauer",
+          "vorname": "Hildegard"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 19,
+      "seiteBis": 20,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 515,
+          "wohnflaeche_qm": 46,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Moosbauer",
+          "vorname": "Hildegard"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 21,
+      "seiteBis": 21,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Moosbauer",
+          "vorname": "Hildegard"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "schwerbehinderung-nachweis",
+      "pflegegrad-nachweis"
+    ],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Frage 15 = Ja: GdB 70, Pflegegrad 3, häuslich pflegebedürftig — ohne Schwerbehindertenausweis und ohne Bescheid der Pflegekasse.",
+    "Kontoauszug Juli 2026 zeigt Pflegegeld 599,00 € (Pflegegrad 3) — Indiz, ersetzt den Pflegebescheid nicht; Pflegegeld ist kein Einkommen im Sinne des WoGG und steht deshalb nicht unter den Einnahmen."
+  ]
+}

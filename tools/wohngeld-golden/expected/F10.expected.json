@@ -1,0 +1,164 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F10",
+  "titel": "Alleinstehende Angestellte, Mietvertrag und Vermieterbescheinigung fehlen",
+  "gruppe": "B",
+  "varianten": {
+    "digital": "F10-digital.pdf",
+    "scan": "F10-scan.pdf"
+  },
+  "seiten": 16,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Melanie",
+      "nachname": "Grünewald",
+      "geburtsdatum": "1994-02-08",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-10",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Melanie",
+          "antragsteller.nachname": "Grünewald",
+          "antragsteller.geburtsdatum": "1994-02-08",
+          "adresse.strasse": "Frankfurter Straße",
+          "adresse.hausnummer": "58",
+          "adresse.plz": "97082",
+          "adresse.ort": "Würzburg",
+          "wohnung.miete": 540,
+          "wohnung.wohnflaeche_qm": 41
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Melanie Grünewald",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Grünewald",
+          "vorname": "Melanie",
+          "geburtsdatum": "1994-02-08"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Grünewald",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1890
+        },
+        "identitaet": {
+          "nachname": "Grünewald",
+          "vorname": "Melanie"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Grünewald",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1890
+        },
+        "identitaet": {
+          "nachname": "Grünewald",
+          "vorname": "Melanie"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung August 2026 Grünewald",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1890
+        },
+        "identitaet": {
+          "nachname": "Grünewald",
+          "vorname": "Melanie"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Grünewald",
+          "vorname": "Melanie"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "mietvertrag",
+      "vermieterbescheinigung"
+    ],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Lücke: Weder Mietvertrag noch Vermieterbescheinigung liegen bei. Die Miete (612 €, Bruttokaltmiete 540 €) steht nur im Antrag und als Dauerauftrag auf dem Kontoauszug.",
+    "Ohne Mietdokument kann die App Miethöhe/Wohnfläche nicht gegenprüfen — es darf kein Miet-Widerspruch gemeldet werden."
+  ]
+}

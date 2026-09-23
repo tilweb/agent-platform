@@ -1,0 +1,356 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F02",
+  "titel": "Ehepaar mit zwei Kindern, Vollzeit und Minijob, Kita-Kosten",
+  "gruppe": "A",
+  "varianten": {
+    "digital": "F02-digital.pdf",
+    "scan": "F02-scan.pdf"
+  },
+  "seiten": 30,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Duc Anh",
+      "nachname": "Nguyen",
+      "geburtsdatum": "1987-05-09",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Thi Mai",
+      "nachname": "Nguyen",
+      "geburtsdatum": "1990-12-14",
+      "rolle": "Ehefrau"
+    },
+    {
+      "id": "P3",
+      "vorname": "Linh",
+      "nachname": "Nguyen",
+      "geburtsdatum": "2019-03-27",
+      "rolle": "Tochter"
+    },
+    {
+      "id": "P4",
+      "vorname": "Bao",
+      "nachname": "Nguyen",
+      "geburtsdatum": "2023-02-11",
+      "rolle": "Sohn"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-20",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Duc Anh",
+          "antragsteller.nachname": "Nguyen",
+          "antragsteller.geburtsdatum": "1987-05-09",
+          "adresse.strasse": "Merseburger Straße",
+          "adresse.hausnummer": "147",
+          "adresse.plz": "04177",
+          "adresse.ort": "Leipzig",
+          "wohnung.miete": 800,
+          "wohnung.wohnflaeche_qm": 86
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Duc Anh Nguyen",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Duc Anh",
+          "geburtsdatum": "1987-05-09"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Thi Mai Nguyen",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Thi Mai",
+          "geburtsdatum": "1990-12-14"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Nguyen",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2780
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Duc Anh"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Nguyen",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2780
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Duc Anh"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Nguyen",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2780
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Duc Anh"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 17,
+      "seiteBis": 17,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Nguyen",
+      "person": "P2",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 520
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Thi Mai"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Nguyen",
+      "person": "P2",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 520
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Thi Mai"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 19,
+      "seiteBis": 19,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Nguyen",
+      "person": "P2",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 520
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Thi Mai"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 20,
+      "seiteBis": 21,
+      "typ": "kindergeldnachweis",
+      "art": "kindergeldbescheid",
+      "titel": "Kindergeldbescheid Nguyen",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 518
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Duc Anh"
+        }
+      }
+    },
+    {
+      "nr": 11,
+      "seiteVon": 22,
+      "seiteBis": 23,
+      "typ": "sonstiges",
+      "art": "kita_gebuehrenbescheid",
+      "titel": "Kita-Gebührenbescheid Nguyen",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 185
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Duc Anh"
+        }
+      }
+    },
+    {
+      "nr": 12,
+      "seiteVon": 24,
+      "seiteBis": 27,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 800,
+          "wohnflaeche_qm": 86,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Duc Anh"
+        }
+      }
+    },
+    {
+      "nr": 13,
+      "seiteVon": 28,
+      "seiteBis": 29,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 800,
+          "wohnflaeche_qm": 86,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Duc Anh"
+        }
+      }
+    },
+    {
+      "nr": 14,
+      "seiteVon": 30,
+      "seiteBis": 30,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Nguyen",
+          "vorname": "Duc Anh"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P3",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "identitaet-jede-person",
+        "person": "P3",
+        "grund": "App verlangt Ausweis auch für Kinder"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P4",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "identitaet-jede-person",
+        "person": "P4",
+        "grund": "App verlangt Ausweis auch für Kinder"
+      }
+    ]
+  },
+  "hinweise": [
+    "Haushalt mit 4 Personen: Einkommen Lohn 2.780 € (Vollzeit) + Minijob 520 € (netto = brutto); Kindergeld 2 × 259 € auf dem Kontoauszug.",
+    "Frage 14: Kinderbetreuung 185 € monatlich für Bao — deckungsgleich mit dem Kita-Gebührenbescheid (Verpflegungsentgelt 72 € separat).",
+    "Kita-Gebührenbescheid ist kein App-Nachweistyp (sonstiges); er stützt Frage 14.",
+    "Katalog nennt „Kontoauszug teilweise geschwärzt\" — vom Generator nicht umsetzbar, daher ungeschwärzt."
+  ]
+}

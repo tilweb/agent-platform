@@ -33,7 +33,9 @@ export async function erzeugeKontoauszug(fall: Fall, spec: DokSpec): Promise<Erz
     if (p.rente) b.push({ tag: tage, text: p.rente.traeger.toUpperCase(), zweck: `RV-Rente ${monatName(monat)} VSNR ${p.rente.versicherungsnummer.replace(/\s/g, '')}`, betrag: renteZahl(p) });
     if (p.beschaeftigung && !opt.ohneGehalt?.includes(p.id)) {
       const brutto = bruttoAus(p);
-      b.push({ tag: tage - 1, text: p.beschaeftigung.arbeitgeber, zweck: `LOHN/GEHALT ${monat.slice(5)}/${monat.slice(0, 4)} PERS.NR ${p.beschaeftigung.personalnummer}`, betrag: nettoLohn(brutto, p, hatKinder(fall)).netto });
+      const quelle = p.einnahmen.find((e) => e.brutto === brutto && /gehalt|lohn|minijob|vergütung|entgelt|geringfügig/i.test(e.art));
+      const minijob = /minijob|geringfügig/i.test(quelle?.art ?? '');
+      b.push({ tag: tage - 1, text: p.beschaeftigung.arbeitgeber, zweck: `LOHN/GEHALT ${monat.slice(5)}/${monat.slice(0, 4)} PERS.NR ${p.beschaeftigung.personalnummer}`, betrag: minijob ? brutto : nettoLohn(brutto, p, hatKinder(fall)).netto });
     }
   }
   for (const x of opt.buchungen ?? []) b.push(x);

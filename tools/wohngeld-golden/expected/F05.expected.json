@@ -1,0 +1,286 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F05",
+  "titel": "Mutter angestellt, volljähriger Sohn in Ausbildung",
+  "gruppe": "A",
+  "varianten": {
+    "digital": "F05-digital.pdf",
+    "scan": "F05-scan.pdf"
+  },
+  "seiten": 26,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Ramona",
+      "nachname": "Pietsch",
+      "geburtsdatum": "1978-07-21",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Kevin",
+      "nachname": "Pietsch",
+      "geburtsdatum": "2006-11-03",
+      "rolle": "Sohn"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-12",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Ramona",
+          "antragsteller.nachname": "Pietsch",
+          "antragsteller.geburtsdatum": "1978-07-21",
+          "adresse.strasse": "Wanheimer Straße",
+          "adresse.hausnummer": "266",
+          "adresse.plz": "47053",
+          "adresse.ort": "Duisburg",
+          "wohnung.miete": 665,
+          "wohnung.wohnflaeche_qm": 71
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Ramona Pietsch",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Ramona",
+          "geburtsdatum": "1978-07-21"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Kevin Pietsch",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Kevin",
+          "geburtsdatum": "2006-11-03"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Pietsch",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2360
+        },
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Ramona"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Pietsch",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2360
+        },
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Ramona"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Pietsch",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2360
+        },
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Ramona"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 17,
+      "seiteBis": 17,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Pietsch",
+      "person": "P2",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1085
+        },
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Kevin"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Pietsch",
+      "person": "P2",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1085
+        },
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Kevin"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 19,
+      "seiteBis": 19,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Pietsch",
+      "person": "P2",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1085
+        },
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Kevin"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 20,
+      "seiteBis": 23,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 665,
+          "wohnflaeche_qm": 71,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Ramona"
+        }
+      }
+    },
+    {
+      "nr": 11,
+      "seiteVon": 24,
+      "seiteBis": 25,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 665,
+          "wohnflaeche_qm": 71,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Ramona"
+        }
+      }
+    },
+    {
+      "nr": 12,
+      "seiteVon": 26,
+      "seiteBis": 26,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Pietsch",
+          "vorname": "Ramona"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Zwei Einkommen: Gehalt der Mutter 2.360 € und Ausbildungsvergütung des Sohns 1.085 € (Abrechnungen als „Abrechnung Ausbildungsvergütung\").",
+    "Sohn ist volljährig (19) und legt einen eigenen Personalausweis vor.",
+    "Frage 5 (Zweitwohnsitz) = Ja: fachlich gemeint ist der Zweitwohnsitz des Sohns am Berufsschulort (Blockunterricht). Das Formular fragt Frage 5 nur für die antragstellende Person ab; der Haken steht deshalb dort.",
+    "Kontoauszug (Konto der Mutter): Gehalt der Mutter und Ausbildungsvergütung des Sohns (netto 855,52 €) gehen dort ein, wie in beiden Abrechnungen angegeben."
+  ]
+}

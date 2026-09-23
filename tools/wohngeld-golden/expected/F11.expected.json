@@ -1,0 +1,260 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F11",
+  "titel": "Ehepaar nach abgelehntem Bürgergeld, Jobcenter fordert Wohngeld-Antrag",
+  "gruppe": "B",
+  "varianten": {
+    "digital": "F11-digital.pdf",
+    "scan": "F11-scan.pdf"
+  },
+  "seiten": 27,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Kevin",
+      "nachname": "Brandes",
+      "geburtsdatum": "1985-04-22",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Jasmin",
+      "nachname": "Brandes",
+      "geburtsdatum": "1988-09-03",
+      "rolle": "Ehefrau"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-14",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Kevin",
+          "antragsteller.nachname": "Brandes",
+          "antragsteller.geburtsdatum": "1985-04-22",
+          "adresse.strasse": "Kolberger Weg",
+          "adresse.hausnummer": "9",
+          "adresse.plz": "44141",
+          "adresse.ort": "Dortmund",
+          "wohnung.miete": 620,
+          "wohnung.wohnflaeche_qm": 64
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Kevin Brandes",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Brandes",
+          "vorname": "Kevin",
+          "geburtsdatum": "1985-04-22"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Jasmin Brandes",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Brandes",
+          "vorname": "Jasmin",
+          "geburtsdatum": "1988-09-03"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 15,
+      "typ": "verdienstbescheinigung",
+      "art": "alg1_bescheid",
+      "titel": "Arbeitslosengeld-Bescheid Brandes",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1149.9
+        },
+        "identitaet": {
+          "nachname": "Brandes",
+          "vorname": "Kevin"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Brandes",
+      "person": "P2",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1256
+        },
+        "identitaet": {
+          "nachname": "Brandes",
+          "vorname": "Jasmin"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 17,
+      "seiteBis": 17,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Brandes",
+      "person": "P2",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1256
+        },
+        "identitaet": {
+          "nachname": "Brandes",
+          "vorname": "Jasmin"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Brandes",
+      "person": "P2",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1256
+        },
+        "identitaet": {
+          "nachname": "Brandes",
+          "vorname": "Jasmin"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 19,
+      "seiteBis": 20,
+      "typ": "transferleistungsbescheid",
+      "art": "jobcenter_ablehnung",
+      "titel": "Ablehnungsbescheid Jobcenter",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Brandes",
+          "vorname": "Kevin"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 21,
+      "seiteBis": 21,
+      "typ": "sonstiges",
+      "art": "jobcenter_aufforderung",
+      "titel": "Jobcenter-Aufforderung § 12a SGB II",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Brandes",
+          "vorname": "Kevin"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 22,
+      "seiteBis": 25,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 620,
+          "wohnflaeche_qm": 64,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Brandes",
+          "vorname": "Kevin"
+        }
+      }
+    },
+    {
+      "nr": 11,
+      "seiteVon": 26,
+      "seiteBis": 27,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 620,
+          "wohnflaeche_qm": 64,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Brandes",
+          "vorname": "Kevin"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "mietzahlungsnachweis"
+    ],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Kein Kontoauszug in der Sendung ⇒ Nachweis der aktuellen Mietzahlung fehlt (mietzahlungsnachweis).",
+    "plausi-mietzahlung-fehlt (Katalog) setzt einen Kontoauszug OHNE Mietbuchung voraus und kann ohne Kontoauszug nicht feuern — fachlich ist es derselbe Mangel, daher nicht zusätzlich erwartet.",
+    "Frage 10: Bürgergeld beantragt 08.06.2026, abgelehnt 06.07.2026 (innerhalb von 2 Monaten vor Antrag) ⇒ kein Ausschluss nach § 7 WoGG; Frage 11 = Ja (Aufforderung Jobcenter nach § 12a SGB II vom 09.07.2026).",
+    "Arbeitslosengeld-Bescheid (Leistungssatz 38,33 €/Tag = 1.149,90 €/Monat) ist Einkommensnachweis von Kevin Brandes (Typ verdienstbescheinigung); Jobcenter-Aufforderung ist Typ sonstiges."
+  ]
+}

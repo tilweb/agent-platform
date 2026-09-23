@@ -1,0 +1,196 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F27",
+  "titel": "Witwer, Ehefrau vor 5 Monaten verstorben, Sterbegeld",
+  "gruppe": "D",
+  "varianten": {
+    "digital": "F27-digital.pdf",
+    "scan": "F27-scan.pdf"
+  },
+  "seiten": 23,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Josef",
+      "nachname": "Pöllmann",
+      "geburtsdatum": "1963-03-02",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-08",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Josef",
+          "antragsteller.nachname": "Pöllmann",
+          "antragsteller.geburtsdatum": "1963-03-02",
+          "adresse.strasse": "Brandlberger Anger",
+          "adresse.hausnummer": "6",
+          "adresse.plz": "93057",
+          "adresse.ort": "Regensburg",
+          "wohnung.miete": 635,
+          "wohnung.wohnflaeche_qm": 58
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Josef Pöllmann",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Pöllmann",
+          "vorname": "Josef",
+          "geburtsdatum": "1963-03-02"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "sonstiges",
+      "art": "sterbeurkunde",
+      "titel": "Sterbeurkunde Christa Pöllmann",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Pöllmann",
+          "vorname": "Josef"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 15,
+      "typ": "rentenbescheid",
+      "art": "rentenbescheid",
+      "titel": "Rentenanpassung 2026 Pöllmann",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "rentenart_vorhanden": true,
+          "betrag": 1182.5
+        },
+        "identitaet": {
+          "nachname": "Pöllmann",
+          "vorname": "Josef"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "sonstiges",
+      "art": "sterbegeld_mitteilung",
+      "titel": "Sterbegeld-Mitteilung",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 3280
+        },
+        "identitaet": {
+          "nachname": "Pöllmann",
+          "vorname": "Josef"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 17,
+      "seiteBis": 20,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 635,
+          "wohnflaeche_qm": 58,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Pöllmann",
+          "vorname": "Josef"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 21,
+      "seiteBis": 22,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 635,
+          "wohnflaeche_qm": 58,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Pöllmann",
+          "vorname": "Josef"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 23,
+      "seiteBis": 23,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Pöllmann",
+          "vorname": "Josef"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Ehefrau Christa Pöllmann am 06.04.2026 verstorben (Frage 8 „Ja\", kein Transferbezug, kein Umzug); Haushalt seither 1 Person.",
+    "Laufendes Einkommen: große Witwerrente 1.182,50 € brutto seit 07.04.2026 (Rentenanpassungsmitteilung nennt Rentenart „Große Witwerrente\").",
+    "Frage 18: Sterbegeld der Sterbekasse 3.280,00 €, ausgezahlt am 30.04.2026 — Sterbegeld-Mitteilung bestätigt Betrag und Datum.",
+    "Sterbeurkunde und Sterbegeld-Mitteilung sind App-Typ sonstiges; es gibt keine Regel, die sie verlangt."
+  ]
+}

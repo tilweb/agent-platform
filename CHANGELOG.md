@@ -2,6 +2,13 @@
 
 ## 2026-09-23
 
+### Wohngeld — Golden Dataset komplett (30 Fälle)
+Alle 30 Fälle des Katalogs gebaut (`tools/wohngeld-golden/src/faelle/`), je digital und als Scan: 730 Seiten,
+291 Dokumente, 8 Fälle handschriftlich. Erwartungsdateien unter `tools/wohngeld-golden/expected/`, 150
+Konsistenzprüfungen grün. Generator-Korrekturen: Feldzuordnung der Fragen 18/19/28 nach Position (Vorlage
+vertauscht Feldnamen), doppeltes Familienstand-Widget auf Seite 3, Minijob im Kontoauszug netto = brutto,
+Namensvergleich im Test ohne Diakritika. Endstand und Abweichungen: Fallkatalog Abschnitt 10.
+
 ### Wohngeld — Golden Dataset: Generator + Pilot (F01, F18, F30)
 Neues Werkzeug `tools/wohngeld-golden/` (eigenes Paket mit pdf-lib, Backend-Lockfile unberührt) erzeugt
 synthetische Wohngeld-Sammel-PDFs aus typisierten Fallbeschreibungen: amtlicher Antrag und

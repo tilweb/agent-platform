@@ -1,0 +1,278 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F06",
+  "titel": "Selbständiger Handwerker und Ehefrau angestellt, hohe Fahrtkosten",
+  "gruppe": "A",
+  "varianten": {
+    "digital": "F06-digital.pdf",
+    "scan": "F06-scan.pdf"
+  },
+  "seiten": 27,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Marco",
+      "nachname": "Ferraro",
+      "geburtsdatum": "1982-04-02",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Julia",
+      "nachname": "Ferraro",
+      "geburtsdatum": "1985-01-26",
+      "rolle": "Ehefrau"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-03",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Marco",
+          "antragsteller.nachname": "Ferraro",
+          "antragsteller.geburtsdatum": "1982-04-02",
+          "adresse.strasse": "Lehener Straße",
+          "adresse.hausnummer": "94",
+          "adresse.plz": "79106",
+          "adresse.ort": "Freiburg im Breisgau",
+          "wohnung.miete": 885,
+          "wohnung.wohnflaeche_qm": 66
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Marco Ferraro",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Marco",
+          "geburtsdatum": "1982-04-02"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Julia Ferraro",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Julia",
+          "geburtsdatum": "1985-01-26"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 15,
+      "typ": "verdienstbescheinigung",
+      "art": "steuerbescheid",
+      "titel": "Einkommensteuerbescheid 2025 Ferraro",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 22800
+        },
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Marco"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "verdienstbescheinigung",
+      "art": "euer",
+      "titel": "Einnahmen-Überschuss-Rechnung 2025 Ferraro Fliesen & Naturstein",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 22800
+        },
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Marco"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 17,
+      "seiteBis": 17,
+      "typ": "kv_pv_nachweis",
+      "art": "kv_beitragsnachweis",
+      "titel": "Beitragsbescheinigung Kranken-/Pflegeversicherung Ferraro",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 464.9
+        },
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Marco"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Ferraro",
+      "person": "P2",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1420
+        },
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Julia"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 19,
+      "seiteBis": 19,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Ferraro",
+      "person": "P2",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1420
+        },
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Julia"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 20,
+      "seiteBis": 20,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung August 2026 Ferraro",
+      "person": "P2",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1420
+        },
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Julia"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 21,
+      "seiteBis": 24,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 885,
+          "wohnflaeche_qm": 66,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Marco"
+        }
+      }
+    },
+    {
+      "nr": 11,
+      "seiteVon": 25,
+      "seiteBis": 26,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 885,
+          "wohnflaeche_qm": 66,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Marco"
+        }
+      }
+    },
+    {
+      "nr": 12,
+      "seiteVon": 27,
+      "seiteBis": 27,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Ferraro",
+          "vorname": "Marco"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Einkommen des Selbständigen: Gewinn 2025 lt. EÜR und Einkommensteuerbescheid 22.800 € (1.900 €/Monat), Privatentnahme 1.900 € auf dem Kontoauszug.",
+    "Privat krankenversichert: Beitragsbescheinigung KV 412,60 € + PV 52,30 € = 464,90 €/Monat, Lastschrift auf dem Kontoauszug. Fachlich ist hier ein eigener KV-Nachweis erforderlich — und er liegt vor.",
+    "Frage 13: Werbungskosten der Ehefrau 235 €/Monat (Pendelweg nach Endingen) über dem Arbeitnehmer-Pauschbetrag.",
+    "Frage 25: Tiefgaragen-Stellplatz 40 €/Monat separat an einen Dritten (nicht Teil der Miete, nicht in der Vermieterbescheinigung)."
+  ]
+}

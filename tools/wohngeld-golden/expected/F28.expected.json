@@ -1,0 +1,280 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F28",
+  "titel": "Getrennter Vater, Sohn im Wechselmodell (40 %)",
+  "gruppe": "D",
+  "varianten": {
+    "digital": "F28-digital.pdf",
+    "scan": "F28-scan.pdf"
+  },
+  "seiten": 28,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Marek",
+      "nachname": "Nowicki",
+      "geburtsdatum": "1983-09-12",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Julian",
+      "nachname": "Nowicki",
+      "geburtsdatum": "2010-03-21",
+      "rolle": "Sohn"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-01",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Marek",
+          "antragsteller.nachname": "Nowicki",
+          "antragsteller.geburtsdatum": "1983-09-12",
+          "adresse.strasse": "Holzlarer Mühlenpfad",
+          "adresse.hausnummer": "15",
+          "adresse.plz": "53229",
+          "adresse.ort": "Bonn",
+          "wohnung.miete": 790,
+          "wohnung.wohnflaeche_qm": 69
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 13,
+      "typ": "unterhaltsnachweis",
+      "art": "unterhaltsanlage",
+      "titel": "Anlage Unterhaltsverpflichtungen",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Marek"
+        },
+        "analyse": {
+          "betrag": 210
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Marek Nowicki",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Marek",
+          "geburtsdatum": "1983-09-12"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Julian Nowicki",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Julian",
+          "geburtsdatum": "2010-03-21"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "sonstiges",
+      "art": "betreuungsvereinbarung",
+      "titel": "Betreuungsvereinbarung (Wechselmodell)",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Marek"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 17,
+      "seiteBis": 17,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Nowicki",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2640
+        },
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Marek"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Nowicki",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2640
+        },
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Marek"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 19,
+      "seiteBis": 19,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung August 2026 Nowicki",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2640
+        },
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Marek"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 20,
+      "seiteBis": 21,
+      "typ": "kindergeldnachweis",
+      "art": "kindergeldbescheid",
+      "titel": "Kindergeldbescheid Nowicki",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 259
+        },
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Marek"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 22,
+      "seiteBis": 25,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 790,
+          "wohnflaeche_qm": 69,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Marek"
+        }
+      }
+    },
+    {
+      "nr": 11,
+      "seiteVon": 26,
+      "seiteBis": 27,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 790,
+          "wohnflaeche_qm": 69,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Marek"
+        }
+      }
+    },
+    {
+      "nr": 12,
+      "seiteVon": 28,
+      "seiteBis": 28,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Nowicki",
+          "vorname": "Marek"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Sohn Julian (16) lebt im Wechselmodell 40/60 (Betreuungsvereinbarung ab 01.11.2025) und zählt zum Haushalt des Vaters (Frage 6); Kindergeld 259 € bezieht nach Vereinbarung der Vater.",
+    "Unterhalt 210 €/Monat an das Kind im Haushalt der Mutter: Frage 16 „Ja\" und Anlage Unterhaltsverpflichtungen Spalte b (Absetzbetrag bis 3.000 €/Jahr); Kontoauszug August zeigt die Zahlung.",
+    "Beide Haushaltsmitglieder haben einen Personalausweis (Sohn ab 16 ausweispflichtig).",
+    "Betreuungsvereinbarung ist App-Typ sonstiges; Anlage Unterhalt ist Typ unterhaltsnachweis."
+  ]
+}

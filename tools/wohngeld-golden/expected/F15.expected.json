@@ -1,0 +1,252 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F15",
+  "titel": "Familie mit türkischer Staatsangehörigkeit, Nachweise der Ehefrau fehlen",
+  "gruppe": "B",
+  "varianten": {
+    "digital": "F15-digital.pdf",
+    "scan": "F15-scan.pdf"
+  },
+  "seiten": 24,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Murat",
+      "nachname": "Yıldız",
+      "geburtsdatum": "1986-03-09",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Elif",
+      "nachname": "Yıldız",
+      "geburtsdatum": "1990-11-27",
+      "rolle": "Ehefrau"
+    },
+    {
+      "id": "P3",
+      "vorname": "Deniz",
+      "nachname": "Yıldız",
+      "geburtsdatum": "2019-05-14",
+      "rolle": "Sohn"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-19",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Murat",
+          "antragsteller.nachname": "Yıldız",
+          "antragsteller.geburtsdatum": "1986-03-09",
+          "adresse.strasse": "Karlsterner Straße",
+          "adresse.hausnummer": "15",
+          "adresse.plz": "68219",
+          "adresse.ort": "Mannheim",
+          "wohnung.miete": 755,
+          "wohnung.wohnflaeche_qm": 71
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "aufenthaltstitel",
+      "titel": "Aufenthaltstitel Murat Yıldız",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Yıldız",
+          "vorname": "Murat",
+          "geburtsdatum": "1986-03-09"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Yıldız",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2480
+        },
+        "identitaet": {
+          "nachname": "Yıldız",
+          "vorname": "Murat"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Yıldız",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2480
+        },
+        "identitaet": {
+          "nachname": "Yıldız",
+          "vorname": "Murat"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Yıldız",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2480
+        },
+        "identitaet": {
+          "nachname": "Yıldız",
+          "vorname": "Murat"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 17,
+      "typ": "kindergeldnachweis",
+      "art": "kindergeldbescheid",
+      "titel": "Kindergeldbescheid Yıldız",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 259
+        },
+        "identitaet": {
+          "nachname": "Yıldız",
+          "vorname": "Murat"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 18,
+      "seiteBis": 21,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 755,
+          "wohnflaeche_qm": 71,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Yıldız",
+          "vorname": "Murat"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 22,
+      "seiteBis": 23,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 755,
+          "wohnflaeche_qm": 71,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Yıldız",
+          "vorname": "Murat"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 24,
+      "seiteBis": 24,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Yıldız",
+          "vorname": "Murat"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "identitaet-jede-person"
+    ],
+    "befundeOhneAppRegel": [
+      "Aufenthaltstitel der Ehefrau Elif Yıldız fehlt (Drittstaatsangehörige, Wohngeldberechtigung nach § 3 Abs. 5 WoGG nicht belegt)"
+    ],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P3",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "identitaet-jede-person",
+        "person": "P3",
+        "grund": "App verlangt Ausweis auch für Kinder"
+      }
+    ]
+  },
+  "hinweise": [
+    "identitaet-jede-person ist fachlich nur für die Ehefrau (P2) erwartet; für den Sohn (P3, 7 Jahre) meldet die App den Befund vermutlich zusätzlich.",
+    "Identität des Antragstellers ist über den elektronischen Aufenthaltstitel (Niederlassungserlaubnis) belegt — Klassifikation personalausweis.",
+    "Frage 6: Verpflichtungserklärung nach § 68 AufenthG = Nein. Im getippten Antrag steht „Yildiz\" (ohne ı), in den Nachweisen „Yıldız\".",
+    "Kindergeld 259,00 € für Deniz auf dem Kontoauszug Juli 2026, passend zum Kindergeldbescheid."
+  ]
+}

@@ -1,0 +1,206 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F07",
+  "titel": "Rentner mit GdB 80 und Pflegegrad 2 (häuslich)",
+  "gruppe": "A",
+  "varianten": {
+    "digital": "F07-digital.pdf",
+    "scan": "F07-scan.pdf"
+  },
+  "seiten": 25,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Hans-Jürgen",
+      "nachname": "Thießen",
+      "geburtsdatum": "1949-06-12",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-24",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Hans-Jürgen",
+          "antragsteller.nachname": "Thießen",
+          "antragsteller.geburtsdatum": "1949-06-12",
+          "adresse.strasse": "Elisabethstraße",
+          "adresse.hausnummer": "61",
+          "adresse.plz": "24143",
+          "adresse.ort": "Kiel",
+          "wohnung.miete": 480,
+          "wohnung.wohnflaeche_qm": 46
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Hans-Jürgen Thießen",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Thießen",
+          "vorname": "Hans-Jürgen",
+          "geburtsdatum": "1949-06-12"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 14,
+      "typ": "rentenbescheid",
+      "art": "rentenbescheid",
+      "titel": "Rentenanpassung 2026 Thießen",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "rentenart_vorhanden": true,
+          "betrag": 1265.3
+        },
+        "identitaet": {
+          "nachname": "Thießen",
+          "vorname": "Hans-Jürgen"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "schwerbehindertenausweis",
+      "art": "schwerbehindertenausweis",
+      "titel": "Schwerbehindertenausweis Hans-Jürgen Thießen",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Thießen",
+          "vorname": "Hans-Jürgen",
+          "geburtsdatum": "1949-06-12"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 16,
+      "seiteBis": 17,
+      "typ": "pflegenachweis",
+      "art": "pflegebescheid",
+      "titel": "Pflegegrad-Bescheid Thießen",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 347
+        },
+        "identitaet": {
+          "nachname": "Thießen",
+          "vorname": "Hans-Jürgen"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "kv_pv_nachweis",
+      "art": "kv_karte",
+      "titel": "Gesundheitskarte Hans-Jürgen Thießen",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Thießen",
+          "vorname": "Hans-Jürgen",
+          "geburtsdatum": "1949-06-12"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 19,
+      "seiteBis": 22,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 480,
+          "wohnflaeche_qm": 46,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Thießen",
+          "vorname": "Hans-Jürgen"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 23,
+      "seiteBis": 24,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 480,
+          "wohnflaeche_qm": 46,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Thießen",
+          "vorname": "Hans-Jürgen"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 25,
+      "seiteBis": 25,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Thießen",
+          "vorname": "Hans-Jürgen"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": []
+  },
+  "hinweise": [
+    "Frage 15: GdB 80 und Pflegegrad 2, häusliche Pflege — belegt durch Schwerbehindertenausweis (unbefristet) und Pflegekassenbescheid.",
+    "KV-Karte (AOK NordWest) liegt als KV-Nachweis vor; die App sollte hier also keinen KV-Befund melden.",
+    "Pflegegeld 347 € geht auf dem Kontoauszug ein, ist aber keine Einnahme im Sinne des WoGG und steht deshalb nicht im Antrag."
+  ]
+}

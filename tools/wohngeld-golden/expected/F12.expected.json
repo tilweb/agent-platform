@@ -1,0 +1,202 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F12",
+  "titel": "Alleinstehende Arbeitnehmerin, Antrag ohne Unterschrift und Datum",
+  "gruppe": "B",
+  "varianten": {
+    "digital": "F12-digital.pdf",
+    "scan": "F12-scan.pdf"
+  },
+  "seiten": 22,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Nele",
+      "nachname": "Hartmann",
+      "geburtsdatum": "1994-02-11",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": null,
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Nele",
+          "antragsteller.nachname": "Hartmann",
+          "antragsteller.geburtsdatum": "1994-02-11",
+          "adresse.strasse": "Am Lindenkamp",
+          "adresse.hausnummer": "7",
+          "adresse.plz": "30449",
+          "adresse.ort": "Hannover",
+          "wohnung.miete": 505,
+          "wohnung.wohnflaeche_qm": 46
+        },
+        "analyse": {
+          "unterschrift_vorhanden": false,
+          "datum_vorhanden": false
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Nele Hartmann",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Hartmann",
+          "vorname": "Nele",
+          "geburtsdatum": "1994-02-11"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Hartmann",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1980
+        },
+        "identitaet": {
+          "nachname": "Hartmann",
+          "vorname": "Nele"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Hartmann",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1980
+        },
+        "identitaet": {
+          "nachname": "Hartmann",
+          "vorname": "Nele"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung August 2026 Hartmann",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1980
+        },
+        "identitaet": {
+          "nachname": "Hartmann",
+          "vorname": "Nele"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 19,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 505,
+          "wohnflaeche_qm": 46,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Hartmann",
+          "vorname": "Nele"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 20,
+      "seiteBis": 21,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 505,
+          "wohnflaeche_qm": 46,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Hartmann",
+          "vorname": "Nele"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 22,
+      "seiteBis": 22,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Hartmann",
+          "vorname": "Nele"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "antrag-vollstaendig-unterschrieben",
+      "plausi-antrag-ohne-unterschrift",
+      "plausi-antrag-ohne-datum"
+    ],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Antragsseite 11: Datumsfeld leer, Unterschriftsfeld leer — sonst vollständig und stimmig.",
+    "antrag-vollstaendig-unterschrieben ist fachlich erwartet (kein wirksam unterschriebener Antrag); die App-Regel feuert heute aber nur, wenn gar kein Antrag vorliegt — hier wird die App diesen Befund voraussichtlich NICHT melden (Regellücke), sondern nur die beiden plausi-Befunde.",
+    "Ohne Datum fehlt der Standardbefund bwz-vorschlag-pruefen; übernimmt die App das Antragsdatum nur aus dem Formular, kann zusätzlich essenzielle-angaben (Antragsdatum) erscheinen — fachlich gilt der Posteingang als Antragsdatum."
+  ]
+}

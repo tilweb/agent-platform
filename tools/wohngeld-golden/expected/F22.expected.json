@@ -1,0 +1,185 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F22",
+  "titel": "Alleinstehender Rentner, Vermögen verschwiegen (Depot 140.000 €)",
+  "gruppe": "C",
+  "varianten": {
+    "digital": "F22-digital.pdf",
+    "scan": "F22-scan.pdf"
+  },
+  "seiten": 22,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Günther",
+      "nachname": "Schäfle",
+      "geburtsdatum": "1951-10-07",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-10",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Günther",
+          "antragsteller.nachname": "Schäfle",
+          "antragsteller.geburtsdatum": "1951-10-07",
+          "adresse.strasse": "Hallschlager Weg",
+          "adresse.hausnummer": "9",
+          "adresse.plz": "70376",
+          "adresse.ort": "Stuttgart",
+          "wohnung.miete": 640,
+          "wohnung.wohnflaeche_qm": 52
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Günther Schäfle",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Schäfle",
+          "vorname": "Günther",
+          "geburtsdatum": "1951-10-07"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 14,
+      "typ": "rentenbescheid",
+      "art": "rentenbescheid",
+      "titel": "Rentenanpassung 2026 Schäfle",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "rentenart_vorhanden": true,
+          "betrag": 1290
+        },
+        "identitaet": {
+          "nachname": "Schäfle",
+          "vorname": "Günther"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 15,
+      "seiteBis": 18,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 640,
+          "wohnflaeche_qm": 52,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Schäfle",
+          "vorname": "Günther"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 19,
+      "seiteBis": 20,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 640,
+          "wohnflaeche_qm": 52,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Schäfle",
+          "vorname": "Günther"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 21,
+      "seiteBis": 21,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Schäfle",
+          "vorname": "Günther"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 22,
+      "seiteBis": 22,
+      "typ": "vermoegensnachweis",
+      "art": "depotauszug",
+      "titel": "Depotauszug Neckarsparkasse Stuttgart zum 31.08.2026",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 140216.84
+        },
+        "identitaet": {
+          "nachname": "Schäfle",
+          "vorname": "Günther"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "plausi-vermoegen-ueber-freigrenze"
+    ],
+    "befundeOhneAppRegel": [
+      "Widerspruch: Frage 20 (Vermögen über Freigrenze) mit „Nein\" beantwortet, der beigelegte Depotauszug weist zum 31.08.2026 ein Vermögen von 140.216,84 € aus — Angabe berichtigen lassen, Zweckerklärung anfordern, Wohngeld nach § 21 Nr. 3 WoGG voraussichtlich ausgeschlossen"
+    ],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Freigrenze für 1 Haushaltsmitglied: 60.000 €; Depot/Tagesgeld/Festgeld zusammen 140.216,84 €.",
+    "Die App liest das Personenvermögen nicht aus Dokumenten, sondern nur aus der erfassten Personenangabe (p.vermoegen / vermoegenPositionen). Weil Frage 20 „Nein\" ist, meldet sie plausi-vermoegen-ueber-freigrenze voraussichtlich erst, nachdem die Sachbearbeitung den Depotwert erfasst hat.",
+    "`vermoegensnachweise` wird fachlich NICHT erwartet: der Vermögensnachweis (Depotauszug, Typ vermoegensnachweis) liegt bereits vor. Auch nach Erfassung des Vermögens meldet die App diese Regel deshalb nicht.",
+    "Keine Kapitalerträge auf dem Girokonto (thesaurierender ETF, Zinsen auf dem Tagesgeldkonto) — kein Befund zu unerklärten Einkünften erwartet."
+  ]
+}

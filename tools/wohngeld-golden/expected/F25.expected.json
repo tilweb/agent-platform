@@ -1,0 +1,222 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F25",
+  "titel": "Hauptmieter mit Untervermietung eines Zimmers",
+  "gruppe": "D",
+  "varianten": {
+    "digital": "F25-digital.pdf",
+    "scan": "F25-scan.pdf"
+  },
+  "seiten": 24,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Tobias",
+      "nachname": "Reinhardt",
+      "geburtsdatum": "1985-12-03",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-27",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Tobias",
+          "antragsteller.nachname": "Reinhardt",
+          "antragsteller.geburtsdatum": "1985-12-03",
+          "adresse.strasse": "Kirchheimer Feldweg",
+          "adresse.hausnummer": "42",
+          "adresse.plz": "69124",
+          "adresse.ort": "Heidelberg",
+          "wohnung.miete": 840,
+          "wohnung.wohnflaeche_qm": 66
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Tobias Reinhardt",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Reinhardt",
+          "vorname": "Tobias",
+          "geburtsdatum": "1985-12-03"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Reinhardt",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2050
+        },
+        "identitaet": {
+          "nachname": "Reinhardt",
+          "vorname": "Tobias"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Reinhardt",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2050
+        },
+        "identitaet": {
+          "nachname": "Reinhardt",
+          "vorname": "Tobias"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Reinhardt",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2050
+        },
+        "identitaet": {
+          "nachname": "Reinhardt",
+          "vorname": "Tobias"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 19,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 840,
+          "wohnflaeche_qm": 66,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Reinhardt",
+          "vorname": "Tobias"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 20,
+      "seiteBis": 21,
+      "typ": "mietvertrag",
+      "art": "untermietvertrag",
+      "titel": "Untermietvertrag (möbliertes Zimmer)",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Reinhardt",
+          "vorname": "Tobias"
+        },
+        "analyse": {
+          "miete": 350,
+          "wohnflaeche_qm": 14,
+          "unterschrift_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 22,
+      "seiteBis": 23,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 840,
+          "wohnflaeche_qm": 66,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Reinhardt",
+          "vorname": "Tobias"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 24,
+      "seiteBis": 24,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Reinhardt",
+          "vorname": "Tobias"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [
+      "Untermieteinnahmen 350 €/Monat (davon 40 € Heizung) aus der Untervermietung eines 14-m²-Zimmers sind bei der Wohngeldberechnung zu berücksichtigen (Fragen 28/29) — keine App-Regel"
+    ],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Hauptmietvertrag, Vermieterbescheinigung und Kontoauszug: Gesamtmiete 945 € (Bruttokaltmiete 840 €), 66 m².",
+    "Untermietvertrag ab 01.03.2026: Zimmer 14 m², 250 € Grundentgelt + 60 € Betriebskosten + 40 € Heizung = 350 €; Zustimmung der Vermieterin vom 09.02.2026.",
+    "Der Untermietvertrag hat den App-Typ mietvertrag (Miete 350 €). Die App vergleicht nur das ERSTE Miet-Dokument mit dem Antrag; läge der Untermietvertrag vorn, entstünde ein falscher plausi-miethoehe-abweichung-Befund."
+  ]
+}

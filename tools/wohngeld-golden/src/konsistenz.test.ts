@@ -8,6 +8,7 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { FAELLE } from './faelle';
 import { antragsWerte } from './formulare/antrag';
+import { winAnsi } from './formulare/pdfform';
 import { OUT, ROOT, eur } from './lib';
 
 async function seitenText(pdf: string, von: number, bis: number): Promise<string> {
@@ -40,8 +41,10 @@ for (const fall of FAELLE) {
       for (const d of erw.dokumente) {
         if (!d.person || d.art === 'antrag' && d.stoerungen) continue;
         const p = fall.personen.find((x) => x.id === d.person)!;
-        const text = (await seitenText(pdf, d.seiteVon, d.seiteBis)).toUpperCase();
-        expect(text).toContain(p.nachname.toUpperCase());
+        // Vergleich ohne Diakritika: das getippte Formular ersetzt Sonderzeichen (ś→s, ş→s).
+        const glatt = (x: string) => winAnsi(x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+        const text = glatt(await seitenText(pdf, d.seiteVon, d.seiteBis));
+        expect(text).toContain(glatt(p.nachname));
       }
     });
 
@@ -52,7 +55,8 @@ for (const fall of FAELLE) {
         const text = await seitenText(pdf, d.seiteVon, d.seiteBis);
         if (d.art === 'vermieterbescheinigung') expect(text).toContain(gesamtAktuell);
         if (d.art === 'kontoauszug' && d.erwartet?.analyse?.mietzahlung_erkannt) expect(text).toContain(gesamtAktuell);
-        if (d.art === 'antrag' && !d.originalSeiten?.length) expect(text).toContain(eur(antragsWerte(fall).gesamtmiete));
+        const mieteImAntrag = !fall.antrag?.leer?.includes('gesamtmiete') && fall.antrag?.status !== 'heim';
+        if (d.art === 'antrag' && !d.stoerungen?.length && mieteImAntrag && !fall.antrag?.handschrift) expect(text).toContain(eur(antragsWerte(fall).gesamtmiete));
       }
     });
 

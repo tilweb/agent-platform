@@ -1,0 +1,147 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F09",
+  "titel": "Alleinstehender Rentner, Rentenbescheid fehlt (handschriftlich)",
+  "gruppe": "B",
+  "varianten": {
+    "digital": "F09-digital.pdf",
+    "scan": "F09-scan.pdf"
+  },
+  "seiten": 19,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Gerhard",
+      "nachname": "Altmeyer",
+      "geburtsdatum": "1957-12-03",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-17",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Gerhard",
+          "antragsteller.nachname": "Altmeyer",
+          "antragsteller.geburtsdatum": "1957-12-03",
+          "adresse.strasse": "Mainzer Straße",
+          "adresse.hausnummer": "157",
+          "adresse.plz": "66121",
+          "adresse.ort": "Saarbrücken",
+          "wohnung.miete": 513,
+          "wohnung.wohnflaeche_qm": 51
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Gerhard Altmeyer",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Altmeyer",
+          "vorname": "Gerhard",
+          "geburtsdatum": "1957-12-03"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 16,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 513,
+          "wohnflaeche_qm": 51,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Altmeyer",
+          "vorname": "Gerhard"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 17,
+      "seiteBis": 18,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 513,
+          "wohnflaeche_qm": 51,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Altmeyer",
+          "vorname": "Gerhard"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 19,
+      "seiteBis": 19,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Altmeyer",
+          "vorname": "Gerhard"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "rentenbescheid"
+    ],
+    "befundeOhneAppRegel": [
+      "Rentenart im Antrag nicht angegeben (nur „Rente\") — die App-Regel `plausi-rentenart-fehlt` wertet nur einen vorliegenden Rentenbescheid aus"
+    ],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Lücke 1: Rentenbescheid fehlt; die Rente (Zahlbetrag der DRV Saarland) ist nur auf dem Kontoauszug sichtbar — `rentenbescheid`.",
+    "Lücke 2: Im Antrag steht als Einnahmeart nur „Rente\" (1.147,60 €) ohne Rentenart — fachlich `plausi-rentenart-fehlt`. Achtung: Die App-Regel wertet heute nur einen vorliegenden Rentenbescheid aus und wird ohne Bescheid vermutlich nicht feuern (App-Lücke).",
+    "Antrag handschriftlich ausgefüllt."
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F24",
+  "titel": "Studentin mit BAföG in einer WG (Ausschluss § 20 Abs. 2 WoGG)",
+  "gruppe": "D",
+  "varianten": {
+    "digital": "F24-digital.pdf",
+    "scan": "F24-scan.pdf"
+  },
+  "seiten": 21,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Zofia",
+      "nachname": "Kowalczyk",
+      "geburtsdatum": "2004-01-19",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-14",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Zofia",
+          "antragsteller.nachname": "Kowalczyk",
+          "antragsteller.geburtsdatum": "2004-01-19",
+          "adresse.strasse": "Kanonierweg",
+          "adresse.hausnummer": "18",
+          "adresse.plz": "48151",
+          "adresse.ort": "Münster",
+          "wohnung.miete": 390,
+          "wohnung.wohnflaeche_qm": 24
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Zofia Kowalczyk",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Kowalczyk",
+          "vorname": "Zofia",
+          "geburtsdatum": "2004-01-19"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 14,
+      "typ": "verdienstbescheinigung",
+      "art": "bafoeg_bescheid",
+      "titel": "BAföG-Bescheid Kowalczyk",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 812
+        },
+        "identitaet": {
+          "nachname": "Kowalczyk",
+          "vorname": "Zofia"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 15,
+      "seiteBis": 18,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 390,
+          "wohnflaeche_qm": 24,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kowalczyk",
+          "vorname": "Zofia"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 19,
+      "seiteBis": 20,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 390,
+          "wohnflaeche_qm": 24,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kowalczyk",
+          "vorname": "Zofia"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 21,
+      "seiteBis": 21,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Kowalczyk",
+          "vorname": "Zofia"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [
+      "Ausschluss nach § 20 Abs. 2 WoGG: Die Antragstellerin lebt allein in ihrem Haushalt (Mitbewohner gehören nicht zum Haushalt) und erhält BAföG — Wohngeld ist ausgeschlossen, Ablehnung vorbereiten"
+    ],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "WG mit zwei weiteren Personen (Frage 7 „Ja\"): eigener Zimmer-Mietvertrag über 24 m² (Zimmer + Anteil Gemeinschaftsfläche), Gesamtmiete 445 €.",
+    "BAföG-Bescheid: 812 €/Monat, Bewilligungszeitraum 01.10.2025–30.09.2026 (Einkommensnachweis, App-Typ verdienstbescheinigung).",
+    "Die App kennt den Ausschlussgrund „Ausbildungsförderung\" nur, wenn die Sachbearbeitung ihn an der Person erfasst (dann ausschluss-person-transferbezug); aus BAföG-Bescheid oder Antrag leitet sie ihn nicht selbst ab."
+  ]
+}

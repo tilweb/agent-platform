@@ -1,0 +1,249 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F23",
+  "titel": "Mischhaushalt: Mutter Arbeitnehmerin, Tochter bezieht Bürgergeld",
+  "gruppe": "C",
+  "varianten": {
+    "digital": "F23-digital.pdf",
+    "scan": "F23-scan.pdf"
+  },
+  "seiten": 25,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Aylin",
+      "nachname": "Yıldırım",
+      "geburtsdatum": "1975-02-14",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Derya",
+      "nachname": "Yıldırım",
+      "geburtsdatum": "2000-06-30",
+      "rolle": "Tochter"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-03",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Aylin",
+          "antragsteller.nachname": "Yıldırım",
+          "antragsteller.geburtsdatum": "1975-02-14",
+          "adresse.strasse": "Karnaper Bogen",
+          "adresse.hausnummer": "33",
+          "adresse.plz": "45329",
+          "adresse.ort": "Essen",
+          "wohnung.miete": 620,
+          "wohnung.wohnflaeche_qm": 71
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Aylin Yıldırım",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Yıldırım",
+          "vorname": "Aylin",
+          "geburtsdatum": "1975-02-14"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Derya Yıldırım",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Yıldırım",
+          "vorname": "Derya",
+          "geburtsdatum": "2000-06-30"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Yıldırım",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2180
+        },
+        "identitaet": {
+          "nachname": "Yıldırım",
+          "vorname": "Aylin"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Yıldırım",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2180
+        },
+        "identitaet": {
+          "nachname": "Yıldırım",
+          "vorname": "Aylin"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung August 2026 Yıldırım",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2180
+        },
+        "identitaet": {
+          "nachname": "Yıldırım",
+          "vorname": "Aylin"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 17,
+      "seiteBis": 18,
+      "typ": "transferleistungsbescheid",
+      "art": "buergergeld_bescheid",
+      "titel": "Bürgergeld-Bescheid Yıldırım",
+      "person": "P2",
+      "erwartet": {
+        "analyse": {
+          "betrag": 925.5
+        },
+        "identitaet": {
+          "nachname": "Yıldırım",
+          "vorname": "Derya"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 19,
+      "seiteBis": 22,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 620,
+          "wohnflaeche_qm": 71,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Yıldırım",
+          "vorname": "Aylin"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 23,
+      "seiteBis": 24,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 620,
+          "wohnflaeche_qm": 71,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Yıldırım",
+          "vorname": "Aylin"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 25,
+      "seiteBis": 25,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Yıldırım",
+          "vorname": "Aylin"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "ausschluss-person-transferbezug"
+    ],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Tochter Derya (26) bildet eine eigene Bedarfsgemeinschaft (über 25) und bezieht Bürgergeld inkl. Kosten der Unterkunft (Kopfteil 1/2) ⇒ nach § 7 Abs. 1 WoGG vom Wohngeld ausgeschlossen, Mutter bleibt wohngeldberechtigt (Mischhaushalt).",
+    "Bürgergeld-Bescheid: Regelbedarf 563 € + Unterkunft 310,00 € + Heizung 52,50 € = 925,50 €/Monat ab 01.05.2026.",
+    "Kontoauszug August: Tochter überweist ihren Mietanteil 362,50 € an die Mutter; die Mutter zahlt die volle Miete 725 € an den Vermieter.",
+    "Die App meldet ausschluss-person-transferbezug nur, wenn der Transferbezug an der Person erfasst ist (Ausschluss/Transferleistung mit KdU) — die Angabe steht in Frage 10."
+  ]
+}

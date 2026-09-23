@@ -190,7 +190,8 @@ export interface AntragAngaben {
   /** Frage 27: Mietänderung in den nächsten 12 Monaten. */
   mieteAenderung?: { richtung: 'verringern' | 'erhoehen'; wann: string; grund: string; zukuenftig: number };
   /** Frage 28/29: Untervermietung/Mitbenutzung. */
-  untervermietung?: { flaeche: number; entgeltlich: boolean; entgelt: number; heizung?: number; strom?: number; garage?: number };
+  /** art 'ueberlassen' = Teil der Wohnung anderen überlassen (z. B. Untervermietung eines Zimmers), 'mitbewohnt' = von anderen mitbewohnt. */
+  untervermietung?: { flaeche: number; art: 'ueberlassen' | 'mitbewohnt'; entgelt: number; heizung?: number; strom?: number; garage?: number };
   beruflichGenutzt?: number;
   /** Frage 30: Auszahlung an Dritte (z. B. Vermieter/Heim). */
   zahlungAn?: NamePerson & { anschrift: string; bank: string; iban: string };

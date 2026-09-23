@@ -1,0 +1,224 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F21",
+  "titel": "Alleinstehende Teilzeitkraft, nicht angegebener Minijob, Miete bar",
+  "gruppe": "C",
+  "varianten": {
+    "digital": "F21-digital.pdf",
+    "scan": "F21-scan.pdf"
+  },
+  "seiten": 23,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Nadine",
+      "nachname": "Brückmann",
+      "geburtsdatum": "1991-05-23",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-04",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Nadine",
+          "antragsteller.nachname": "Brückmann",
+          "antragsteller.geburtsdatum": "1991-05-23",
+          "adresse.strasse": "Merheimer Gartenweg",
+          "adresse.hausnummer": "27",
+          "adresse.plz": "51065",
+          "adresse.ort": "Köln",
+          "wohnung.miete": 550,
+          "wohnung.wohnflaeche_qm": 41
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Nadine Brückmann",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Brückmann",
+          "vorname": "Nadine",
+          "geburtsdatum": "1991-05-23"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Brückmann",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1380
+        },
+        "identitaet": {
+          "nachname": "Brückmann",
+          "vorname": "Nadine"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Brückmann",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1380
+        },
+        "identitaet": {
+          "nachname": "Brückmann",
+          "vorname": "Nadine"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung August 2026 Brückmann",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "betrag": 1380
+        },
+        "identitaet": {
+          "nachname": "Brückmann",
+          "vorname": "Nadine"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 19,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 550,
+          "wohnflaeche_qm": 41,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Brückmann",
+          "vorname": "Nadine"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 20,
+      "seiteBis": 21,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 550,
+          "wohnflaeche_qm": 41,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Brückmann",
+          "vorname": "Nadine"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 22,
+      "seiteBis": 22,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": false
+        },
+        "identitaet": {
+          "nachname": "Brückmann",
+          "vorname": "Nadine"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 23,
+      "seiteBis": 23,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": false
+        },
+        "identitaet": {
+          "nachname": "Brückmann",
+          "vorname": "Nadine"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "plausi-mietzahlung-fehlt"
+    ],
+    "befundeOhneAppRegel": [
+      "Nicht angegebene Einnahme: regelmäßiger Eingang „Gaststätte Zum Mülheimer Hafen GmbH\" (480 €/Monat, Minijob) auf den Kontoauszügen Juli und August — im Antrag ist nur die Teilzeitbeschäftigung angegeben; Nacherklärung und Minijob-Nachweise anfordern"
+    ],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Antrag: nur Teilzeitgehalt 1.380 € brutto; Gehaltsabrechnungen Juni–August bestätigen das.",
+    "Kontoauszüge Juli und August: je ein Eingang von 480 € „Verdienst\" vom Gastronomiebetrieb (Minijob neben der Hauptbeschäftigung).",
+    "Keine Mietüberweisung an den Vermieter; stattdessen Barabhebung 650 € am 2. des Monats (Gesamtmiete 620 €) — die App meldet plausi-mietzahlung-fehlt je Kontoauszug (2×).",
+    "Eine App-Regel für unerklärte Lohneingänge greift nicht: die Einkunftsart Lohn/Gehalt ist bereits angegeben."
+  ]
+}

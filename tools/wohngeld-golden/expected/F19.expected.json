@@ -1,0 +1,202 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F19",
+  "titel": "Alleinstehender Arbeitnehmer, Wohnfläche im Antrag zu klein, altes Wohngeld läuft aus (Handschrift)",
+  "gruppe": "C",
+  "varianten": {
+    "digital": "F19-digital.pdf",
+    "scan": "F19-scan.pdf"
+  },
+  "seiten": 22,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Tobias",
+      "nachname": "Rehkamp",
+      "geburtsdatum": "1991-05-23",
+      "rolle": "antragsteller"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-06",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Tobias",
+          "antragsteller.nachname": "Rehkamp",
+          "antragsteller.geburtsdatum": "1991-05-23",
+          "adresse.strasse": "Hasestraße",
+          "adresse.hausnummer": "104",
+          "adresse.plz": "49074",
+          "adresse.ort": "Osnabrück",
+          "wohnung.miete": 660,
+          "wohnung.wohnflaeche_qm": 62
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Tobias Rehkamp",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Rehkamp",
+          "vorname": "Tobias",
+          "geburtsdatum": "1991-05-23"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Rehkamp",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2120
+        },
+        "identitaet": {
+          "nachname": "Rehkamp",
+          "vorname": "Tobias"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Rehkamp",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2120
+        },
+        "identitaet": {
+          "nachname": "Rehkamp",
+          "vorname": "Tobias"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Rehkamp",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2120
+        },
+        "identitaet": {
+          "nachname": "Rehkamp",
+          "vorname": "Tobias"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 19,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 660,
+          "wohnflaeche_qm": 72,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Rehkamp",
+          "vorname": "Tobias"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 20,
+      "seiteBis": 21,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 660,
+          "wohnflaeche_qm": 72,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Rehkamp",
+          "vorname": "Tobias"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 22,
+      "seiteBis": 22,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Rehkamp",
+          "vorname": "Tobias"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "plausi-wohnflaeche-abweichung"
+    ],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Wohnfläche: Antrag 62 m², Mietvertrag und Vermieterbescheinigung 72 m². Miete stimmt überall überein (Gesamtmiete 765,00 €, Bruttokaltmiete 660,00 €).",
+    "Frage 4 = Ja: Wohngeld für die bisherige Wohnung in Bramsche (Landkreis Osnabrück, bewilligt bis 31.08.2026). Der Kontoauszug Juli 2026 zeigt am 30.07. noch 164,00 € Wohngeld für 08/2026, obwohl der Umzug zum 01.07.2026 erfolgte ⇒ Einstellung/Erstattung beim Landkreis und Doppelbezug ab 08/2026 klären (keine App-Regel).",
+    "Personalausweis noch mit der Ausstellungsbehörde Stadt Bramsche."
+  ]
+}

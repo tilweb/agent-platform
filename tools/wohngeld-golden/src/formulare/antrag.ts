@@ -99,7 +99,11 @@ export async function erzeugeAntrag(fall: Fall): Promise<ErzeugtesDokument> {
     f.text(`ET_HaushaltHHM${n}Geburtsort`, p.geburtsort);
     if (!leer.has(`${p.id}.staatsangehoerigkeit`)) f.text(n >= 3 ? `ET_HaushaltHHM${n}Staatsangehörigkeit2` : `ET_HaushaltHHM${n}Staatsangehörigkeiten`, p.staatsangehoerigkeit);
     f.kreuz(`CB_HaushaltHHM${n}Geschlecht${GESCHLECHT[p.geschlecht]}`);
-    f.text(`ET_HaushaltHHM${n}FamStand`, FAMSTAND_TEXT[p.familienstand]);
+    // Vorlage: „HHM1FamStand" hat ein zweites Widget an der Stelle des 4. Mitglieds (Seite 3);
+    // ein eigenes HHM4-Feld fehlt. HHM1 nur auf Seite 2, HHM4 frei an die Position schreiben.
+    if (n === 1) f.text('ET_HaushaltHHM1FamStand', FAMSTAND_TEXT[p.familienstand], undefined, 2);
+    else if (n === 4) f.textAn(3, 113, 669, 200, 18, FAMSTAND_TEXT[p.familienstand]);
+    else f.text(`ET_HaushaltHHM${n}FamStand`, FAMSTAND_TEXT[p.familienstand]);
     f.text(`ET_HaushaltHHM${n}VerhältnisAngP`, p.verhaeltnis);
     f.text(`ET_HaushaltHHM${n}ErwerbStatus`, ERWERB_TEXT[p.erwerb]);
   });
@@ -214,8 +218,9 @@ export async function erzeugeAntrag(fall: Fall): Promise<ErzeugtesDokument> {
   a.einmalig?.slice(0, 2).forEach((x, i) => {
     const n = i + 1;
     name(x.person, `ET_SonstEinEinmHHM${n}Familienname`, `ET_SonstEinEinmHHM${n}Vorname`);
-    f.text(`ET_SonstEinEinmHHM${n}Art`, x.art);
-    f.text(`ET_SonstEinEinmHHM${n}Höhe`, eur(x.betrag));
+    // Vorlage: Feld „…Höhe" sitzt unter der Überschrift „Art", Feld „…Art" unter „Betrag".
+    f.text(`ET_SonstEinEinmHHM${n}Höhe`, x.art);
+    f.text(`ET_SonstEinEinmHHM${n}Art`, eur(x.betrag));
     f.text(`DA_SonstEinEinmHHM${n}DatumZahlung`, datum(x.datum));
   });
   if (a.einnahmeAenderung) {
@@ -223,10 +228,13 @@ export async function erzeugeAntrag(fall: Fall): Promise<ErzeugtesDokument> {
     a.einnahmeAenderung.eintraege.slice(0, 2).forEach((x, i) => {
       const n = i + 1;
       name(x.person, `ET_SonstEinErhHHM${n}Familienname`, `ET_SonstEinErhHHM${n}Vorname`);
-      f.text(`ET_SonstEinErhHHM${n}Einnahmeart`, x.art);
-      f.text(`ET_SonstEinErhHHM${n}ZeitpunktVeränderung`, datum(x.zeitpunkt));
-      f.text(`ET_SonstEinErhHHM${n}Grund`, x.grund);
-      f.text(`ET_SonstEinErhHHM${n}Butto`, eur(x.betrag));
+      // Vorlage: Feldnamen sind gegenüber den Überschriften verschoben (nach Position zugeordnet):
+      // unter „Einnahmeart" liegt „…ZeitpunktVeränderung", unter „Zeitpunkt" „…Einnahmeart",
+      // unter „Grund" „…Butto", unter „zukünftige Brutto-Einnahmen" „…Grund".
+      f.text(`ET_SonstEinErhHHM${n}ZeitpunktVeränderung`, x.art);
+      f.text(`ET_SonstEinErhHHM${n}Einnahmeart`, datum(x.zeitpunkt));
+      f.text(`ET_SonstEinErhHHM${n}Butto`, x.grund);
+      f.text(`ET_SonstEinErhHHM${n}Grund`, eur(x.betrag));
     });
   } else f.kreuz('CB_SonstEinErhNein');
   f.jaNein('CB_SonstEinVermögen', !!a.vermoegen);
@@ -275,7 +283,8 @@ export async function erzeugeAntrag(fall: Fall): Promise<ErzeugtesDokument> {
     // ── Seite 11: Frage 28/29 Untervermietung ──
     if (a.untervermietung) {
       const u = a.untervermietung;
-      if (u.entgeltlich) { f.kreuz('CB_NutzWohnraumAndPersEntgeltlich'); f.text('ET_NutzWohnraumAndPersEntgeltlichFläche', zahl(u.flaeche)); }
+      // Vorlage: „…Überlassen" = obere Zeile „anderen Personen … überlassen", „…Entgeltlich" = untere Zeile „… mitbewohnt".
+      if (u.art === 'mitbewohnt') { f.kreuz('CB_NutzWohnraumAndPersEntgeltlich'); f.text('ET_NutzWohnraumAndPersEntgeltlichFläche', zahl(u.flaeche)); }
       else { f.kreuz('CB_NutzWohnraumAndPersÜberlassen'); f.text('ET_NutzWohnraumAndPersÜberlassenFläche', zahl(u.flaeche)); }
       f.text('ET_NutzUnterBetrag', eur(u.entgelt));
       if (u.heizung) { f.kreuz('CB_NutzUnterHeizung'); f.text('ET_NutzUnterHeizungBetrag', eur(u.heizung)); }

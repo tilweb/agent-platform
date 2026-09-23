@@ -1,0 +1,158 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F04",
+  "titel": "Rentnerehepaar, Weiterleistungsantrag",
+  "gruppe": "A",
+  "varianten": {
+    "digital": "F04-digital.pdf",
+    "scan": "F04-scan.pdf"
+  },
+  "seiten": 18,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Zbigniew",
+      "nachname": "Kowalczyk",
+      "geburtsdatum": "1956-02-17",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Halina",
+      "nachname": "Kowalczyk",
+      "geburtsdatum": "1958-08-30",
+      "rolle": "Ehefrau"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-08",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "weiterleistungsantrag",
+          "antragsteller.vorname": "Zbigniew",
+          "antragsteller.nachname": "Kowalczyk",
+          "antragsteller.geburtsdatum": "1956-02-17",
+          "adresse.strasse": "Gibitzenhofstraße",
+          "adresse.hausnummer": "203",
+          "adresse.plz": "90443",
+          "adresse.ort": "Nürnberg",
+          "wohnung.miete": 715,
+          "wohnung.wohnflaeche_qm": 63
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 13,
+      "typ": "rentenbescheid",
+      "art": "rentenbescheid",
+      "titel": "Rentenanpassung 2026 Kowalczyk",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "rentenart_vorhanden": true,
+          "betrag": 1318.4
+        },
+        "identitaet": {
+          "nachname": "Kowalczyk",
+          "vorname": "Zbigniew"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 14,
+      "seiteBis": 15,
+      "typ": "rentenbescheid",
+      "art": "rentenbescheid",
+      "titel": "Rentenanpassung 2026 Kowalczyk",
+      "person": "P2",
+      "erwartet": {
+        "analyse": {
+          "rentenart_vorhanden": true,
+          "betrag": 742.9
+        },
+        "identitaet": {
+          "nachname": "Kowalczyk",
+          "vorname": "Halina"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 16,
+      "seiteBis": 17,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 715,
+          "wohnflaeche_qm": 63,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kowalczyk",
+          "vorname": "Zbigniew"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Kowalczyk",
+          "vorname": "Zbigniew"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Weiterleistungsantrag mit Wohngeldnummer: Mietvertrag und Personalausweise liegen aus dem Erstantrag in der Akte — fachlich keine Nachforderung.",
+    "Die App-Regel „mietvertrag\" feuert trotzdem (sie kennt keinen Weiterleistungsantrag); ebenso „identitaet-jede-person\" für beide Eheleute. Beides sind erwartete App-Übermeldungen, keine fachlichen Befunde.",
+    "Zwei Renteneingänge (DRV Nordbayern) auf dem gemeinsamen Konto; Miete 815 € (Bruttokaltmiete 715 €)."
+  ]
+}

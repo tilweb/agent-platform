@@ -1,0 +1,305 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F16",
+  "titel": "Geschiedener Vater zahlt Unterhalt, Zahlungsnachweis fehlt",
+  "gruppe": "B",
+  "varianten": {
+    "digital": "F16-digital.pdf",
+    "scan": "F16-scan.pdf"
+  },
+  "seiten": 28,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Steffen",
+      "nachname": "Kühn",
+      "geburtsdatum": "1982-08-30",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Anja",
+      "nachname": "Wendt",
+      "geburtsdatum": "1987-01-12",
+      "rolle": "Lebensgefährtin"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-08-27",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Steffen",
+          "antragsteller.nachname": "Kühn",
+          "antragsteller.geburtsdatum": "1982-08-30",
+          "adresse.strasse": "Ringelbergstraße",
+          "adresse.hausnummer": "22",
+          "adresse.plz": "99085",
+          "adresse.ort": "Erfurt",
+          "wohnung.miete": 670,
+          "wohnung.wohnflaeche_qm": 69
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 13,
+      "typ": "unterhaltsnachweis",
+      "art": "unterhaltsanlage",
+      "titel": "Anlage Unterhaltsverpflichtungen",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Kühn",
+          "vorname": "Steffen"
+        },
+        "analyse": {
+          "betrag": 579
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Steffen Kühn",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Kühn",
+          "vorname": "Steffen",
+          "geburtsdatum": "1982-08-30"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Anja Wendt",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Wendt",
+          "vorname": "Anja",
+          "geburtsdatum": "1987-01-12"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Kühn",
+      "person": "P1",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2290
+        },
+        "identitaet": {
+          "nachname": "Kühn",
+          "vorname": "Steffen"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 17,
+      "seiteBis": 17,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Kühn",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2290
+        },
+        "identitaet": {
+          "nachname": "Kühn",
+          "vorname": "Steffen"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 18,
+      "seiteBis": 18,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Kühn",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2290
+        },
+        "identitaet": {
+          "nachname": "Kühn",
+          "vorname": "Steffen"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 19,
+      "seiteBis": 19,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Mai 2026 Wendt",
+      "person": "P2",
+      "monat": "2026-05",
+      "erwartet": {
+        "analyse": {
+          "betrag": 980
+        },
+        "identitaet": {
+          "nachname": "Wendt",
+          "vorname": "Anja"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 20,
+      "seiteBis": 20,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Wendt",
+      "person": "P2",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 980
+        },
+        "identitaet": {
+          "nachname": "Wendt",
+          "vorname": "Anja"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 21,
+      "seiteBis": 21,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Wendt",
+      "person": "P2",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 980
+        },
+        "identitaet": {
+          "nachname": "Wendt",
+          "vorname": "Anja"
+        }
+      }
+    },
+    {
+      "nr": 11,
+      "seiteVon": 22,
+      "seiteBis": 25,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 670,
+          "wohnflaeche_qm": 69,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kühn",
+          "vorname": "Steffen"
+        }
+      }
+    },
+    {
+      "nr": 12,
+      "seiteVon": 26,
+      "seiteBis": 27,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 670,
+          "wohnflaeche_qm": 69,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Kühn",
+          "vorname": "Steffen"
+        }
+      }
+    },
+    {
+      "nr": 13,
+      "seiteVon": 28,
+      "seiteBis": 28,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug Juli 2026",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Kühn",
+          "vorname": "Steffen"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [],
+    "befundeOhneAppRegel": [
+      "Nachweis der Unterhaltszahlung für Lena Kühn fehlt (Titel/Jugendamtsurkunde und Zahlungsbelege) — nur Frage 16 und Anlage Unterhalt ausgefüllt"
+    ],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Frage 16 und Anlage Unterhaltsverpflichtungen: 579,00 € monatlich an die Tochter Lena (geb. 18.02.2014, lebt bei der Mutter in Gotha).",
+    "Der Kontoauszug Juli 2026 (Gehaltskonto Steffen Kühn) zeigt KEINE Unterhaltsüberweisung — die Zahlung ist nirgends belegt.",
+    "Die Anlage Unterhalt ist Typ unterhaltsnachweis, belegt aber nur die Angabe, nicht die Zahlung. Mietvertrag und Konto laufen nur auf Steffen Kühn (Lebensgefährtin nicht Mitmieterin)."
+  ]
+}

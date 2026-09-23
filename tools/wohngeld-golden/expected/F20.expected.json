@@ -1,0 +1,276 @@
+{
+  "schema": "wohngeld-golden/expected@1",
+  "fall": "F20",
+  "titel": "Alleinerziehender Vater, 2 Kinder, Mietvertrag ohne Unterschriften",
+  "gruppe": "C",
+  "varianten": {
+    "digital": "F20-digital.pdf",
+    "scan": "F20-scan.pdf"
+  },
+  "seiten": 26,
+  "personen": [
+    {
+      "id": "P1",
+      "vorname": "Christian",
+      "nachname": "Wolter",
+      "geburtsdatum": "1984-10-15",
+      "rolle": "antragsteller"
+    },
+    {
+      "id": "P2",
+      "vorname": "Jonas",
+      "nachname": "Wolter",
+      "geburtsdatum": "2010-03-02",
+      "rolle": "Sohn"
+    },
+    {
+      "id": "P3",
+      "vorname": "Mia",
+      "nachname": "Wolter",
+      "geburtsdatum": "2013-07-21",
+      "rolle": "Tochter"
+    }
+  ],
+  "dokumente": [
+    {
+      "nr": 1,
+      "seiteVon": 1,
+      "seiteBis": 11,
+      "typ": "wohngeldantrag",
+      "art": "antrag",
+      "titel": "Wohngeldantrag (Mietzuschuss)",
+      "person": "P1",
+      "erwartet": {
+        "stammdaten": {
+          "antragsdatum": "2026-09-10",
+          "wohngeldart": "mietzuschuss",
+          "antragsart": "erstantrag",
+          "antragsteller.vorname": "Christian",
+          "antragsteller.nachname": "Wolter",
+          "antragsteller.geburtsdatum": "1984-10-15",
+          "adresse.strasse": "Drewitzer Anger",
+          "adresse.hausnummer": "27",
+          "adresse.plz": "14480",
+          "adresse.ort": "Potsdam",
+          "wohnung.miete": 910,
+          "wohnung.wohnflaeche_qm": 78
+        },
+        "analyse": {
+          "unterschrift_vorhanden": true,
+          "datum_vorhanden": true
+        }
+      }
+    },
+    {
+      "nr": 2,
+      "seiteVon": 12,
+      "seiteBis": 12,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Christian Wolter",
+      "person": "P1",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Wolter",
+          "vorname": "Christian",
+          "geburtsdatum": "1984-10-15"
+        }
+      }
+    },
+    {
+      "nr": 3,
+      "seiteVon": 13,
+      "seiteBis": 13,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Jonas Wolter",
+      "person": "P2",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Wolter",
+          "vorname": "Jonas",
+          "geburtsdatum": "2010-03-02"
+        }
+      }
+    },
+    {
+      "nr": 4,
+      "seiteVon": 14,
+      "seiteBis": 14,
+      "typ": "personalausweis",
+      "art": "personalausweis",
+      "titel": "Personalausweis Mia Wolter",
+      "person": "P3",
+      "erwartet": {
+        "identitaet": {
+          "nachname": "Wolter",
+          "vorname": "Mia",
+          "geburtsdatum": "2013-07-21"
+        }
+      }
+    },
+    {
+      "nr": 5,
+      "seiteVon": 15,
+      "seiteBis": 15,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juni 2026 Wolter",
+      "person": "P1",
+      "monat": "2026-06",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2560
+        },
+        "identitaet": {
+          "nachname": "Wolter",
+          "vorname": "Christian"
+        }
+      }
+    },
+    {
+      "nr": 6,
+      "seiteVon": 16,
+      "seiteBis": 16,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung Juli 2026 Wolter",
+      "person": "P1",
+      "monat": "2026-07",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2560
+        },
+        "identitaet": {
+          "nachname": "Wolter",
+          "vorname": "Christian"
+        }
+      }
+    },
+    {
+      "nr": 7,
+      "seiteVon": 17,
+      "seiteBis": 17,
+      "typ": "gehaltsabrechnung",
+      "art": "gehaltsabrechnung",
+      "titel": "Verdienstabrechnung August 2026 Wolter",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "betrag": 2560
+        },
+        "identitaet": {
+          "nachname": "Wolter",
+          "vorname": "Christian"
+        }
+      }
+    },
+    {
+      "nr": 8,
+      "seiteVon": 18,
+      "seiteBis": 19,
+      "typ": "kindergeldnachweis",
+      "art": "kindergeldbescheid",
+      "titel": "Kindergeldbescheid Wolter",
+      "person": "P1",
+      "erwartet": {
+        "analyse": {
+          "betrag": 518
+        },
+        "identitaet": {
+          "nachname": "Wolter",
+          "vorname": "Christian"
+        }
+      }
+    },
+    {
+      "nr": 9,
+      "seiteVon": 20,
+      "seiteBis": 23,
+      "typ": "mietvertrag",
+      "art": "mietvertrag",
+      "titel": "Mietvertrag",
+      "erwartet": {
+        "analyse": {
+          "miete": 910,
+          "wohnflaeche_qm": 78,
+          "unterschrift_vorhanden": false
+        },
+        "identitaet": {
+          "nachname": "Wolter",
+          "vorname": "Christian"
+        }
+      }
+    },
+    {
+      "nr": 10,
+      "seiteVon": 24,
+      "seiteBis": 25,
+      "typ": "mietbescheinigung",
+      "art": "vermieterbescheinigung",
+      "titel": "Vermieterbescheinigung",
+      "erwartet": {
+        "analyse": {
+          "miete": 910,
+          "wohnflaeche_qm": 78,
+          "unterschrift_vorhanden": true
+        },
+        "identitaet": {
+          "nachname": "Wolter",
+          "vorname": "Christian"
+        }
+      }
+    },
+    {
+      "nr": 11,
+      "seiteVon": 26,
+      "seiteBis": 26,
+      "typ": "kontoauszug",
+      "art": "kontoauszug",
+      "titel": "Kontoauszug August 2026",
+      "person": "P1",
+      "monat": "2026-08",
+      "erwartet": {
+        "analyse": {
+          "mietzahlung_erkannt": true
+        },
+        "identitaet": {
+          "nachname": "Wolter",
+          "vorname": "Christian"
+        }
+      }
+    }
+  ],
+  "pruefung": {
+    "befunde": [
+      "plausi-mietvertrag-unsigniert"
+    ],
+    "befundeOhneAppRegel": [],
+    "standardbefunde": [
+      "bwz-vorschlag-pruefen"
+    ],
+    "appVermutlichZusaetzlich": [
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P1",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P2",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      },
+      {
+        "regelId": "krankenversicherung-nachweis",
+        "person": "P3",
+        "grund": "App verlangt KV/PV-Nachweis für jede Person; fachlich meist über Gehaltsabrechnung/Rentenbescheid belegt"
+      }
+    ]
+  },
+  "hinweise": [
+    "Mietvertrag (4 Seiten) ohne Unterschrift von Mieter und Vermieter; Vermieterbescheinigung ist unterschrieben und bestätigt die Werte (Gesamtmiete 1.040,00 €, 78 m²).",
+    "Kindesunterhalt der Mutter (je 465,00 €, zusammen 930,00 €) steht im Antrag bei den Kindern und geht auf dem Konto des Vaters ein; Kindergeld 2 × 259,00 €.",
+    "Beide Kinder haben einen eigenen Personalausweis (Jonas 16, Mia 13) — identitaet-jede-person ist daher auch in der App nicht zu erwarten."
+  ]
+}
