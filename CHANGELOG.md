@@ -2,6 +2,12 @@
 
 ## 2026-09-24
 
+### Wohngeld — Posteingang-Detail: echte Dokumentvorschau statt Textspalte
+Die rechte Spalte zeigte bisher nur den extrahierten Text der Datei (bei Scans leer, daher unverständlich). Jetzt
+zeigt sie das links angeklickte Dokument als Vorschau (PDF bzw. Bild, bei getrennten Sammel-PDFs genau die Seiten des
+Teils), mit Dokumenttyp, Seitenbereich, Dateiname und „In neuem Tab". Darunter aufklappbar „Aus diesem Dokument
+erkannt" (die ausgelesenen Werte) zum direkten Abgleich. Die Spalte bleibt beim Scrollen der Dokumentliste sichtbar.
+
 ### Wohngeld — Posteingang: Auswertung im Hintergrund mit sichtbarem Fortschritt
 „Auswertung starten" antwortet sofort; die Auswertung läuft im Hintergrund weiter (nacheinander je Eingang).
 Liste und Detailseite zeigen den Fortschritt (Abfrage alle 2 s): Schrittliste „Datei laden → Seiten erkennen →

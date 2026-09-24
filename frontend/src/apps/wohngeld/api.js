@@ -120,6 +120,16 @@ export const wohngeldApi = {
   deletePosteingang: (id) => apiDelete(`${base}/posteingang/${id}`).then(json),
   /** URL einer Umschlag-Datei (inline-Vorschau). */
   posteingangDateiUrl: (id, idx) => `${API_URL}${base}/posteingang/${id}/datei/${idx}`,
+  /** Datei eines Eingangs als Blob laden (credentials) → { url, contentType }. Aufrufer gibt objectURL frei. */
+  loadPosteingangDatei: async (id, idx) => {
+    const res = await fetch(`${API_URL}${base}/posteingang/${id}/datei/${idx}`, { credentials: 'include' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    return { url: URL.createObjectURL(blob), contentType: res.headers.get('Content-Type') || blob.type || '' };
+  },
   uploadVorgangDokument: (vorgangId, file) => {
     const fd = new FormData();
     const list = Array.isArray(file) || file instanceof FileList ? Array.from(file) : [file];

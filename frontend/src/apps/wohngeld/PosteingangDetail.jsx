@@ -11,6 +11,7 @@ import {
   POSTEINGANG_STATUS_LABEL, POSTEINGANG_QUELLE_LABEL,
 } from './api';
 import AuswertungsFortschritt from './components/AuswertungsFortschritt';
+import ExtraktionsBaum from './components/ExtraktionsBaum';
 import { istHaengend } from './fortschritt';
 
 const LEVEL_LABEL = { hoch: 'Hohe Übereinstimmung', mittel: 'Mögliche Übereinstimmung', gering: 'Geringe Übereinstimmung' };
@@ -28,9 +29,16 @@ const styles = {
   headerActions: { display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' },
   badge: { display: 'inline-block', fontSize: theme.typography.sizes.xs, padding: `${theme.spacing.xs} ${theme.spacing.md}`, borderRadius: theme.borderRadius.full, fontWeight: theme.typography.weights.medium, whiteSpace: 'nowrap' },
 
-  split: { display: 'flex', gap: theme.spacing.lg, padding: `${theme.spacing.xl} ${theme.spacing['2xl']}`, alignItems: 'stretch', flexWrap: 'wrap' },
+  split: { display: 'flex', gap: theme.spacing.lg, padding: `${theme.spacing.xl} ${theme.spacing['2xl']}`, alignItems: 'flex-start', flexWrap: 'wrap' },
   leftCol: { flex: 1.3, minWidth: 340, display: 'flex', flexDirection: 'column', gap: theme.spacing.lg },
-  rightCol: { flex: 1, minWidth: 300, display: 'flex' },
+  rightCol: { flex: 1, minWidth: 320, display: 'flex', flexDirection: 'column', position: 'sticky', top: 'calc(env(safe-area-inset-top, 0px) + 16px)', alignSelf: 'flex-start', maxHeight: 'calc(100vh - 32px)' },
+  vorschauPane: { display: 'flex', flexDirection: 'column', gap: theme.spacing.sm, minHeight: 0, overflow: 'auto' },
+  vorschauKopf: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm },
+  vorschauMeta: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  vorschauLink: { fontSize: theme.typography.sizes.xs, color: ACCENT, whiteSpace: 'nowrap' },
+  vorschauFrame: { width: '100%', height: 'min(72vh, 900px)', minHeight: 420, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.background },
+  werte: { borderTop: `1px solid ${theme.colors.border}`, paddingTop: theme.spacing.sm, display: 'grid', gap: theme.spacing.sm },
+  werteBtn: { display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text, justifySelf: 'start' },
   pane: { flex: 1, backgroundColor: theme.colors.surface, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.xl, padding: theme.spacing.xl, display: 'flex', flexDirection: 'column' },
   paneTitle: { fontSize: theme.typography.sizes.md, fontWeight: theme.typography.weights.semibold, color: theme.colors.text, marginBottom: theme.spacing.md },
   sectionTitle: { fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.semibold, color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: theme.spacing.sm, marginTop: theme.spacing.md },
@@ -201,6 +209,9 @@ export default function PosteingangDetail() {
   const [stamm, setStamm] = useState(emptyStamm());
   const [busy, setBusy] = useState(false);
   const [weitereOffen, setWeitereOffen] = useState(false);
+  // Vorschau des links gewählten Dokuments (Blob-URL, mit Anmeldung geladen).
+  const [vorschau, setVorschau] = useState(null); // { idx, url, contentType } | { idx, fehler }
+  const [werteOffen, setWerteOffen] = useState(true);
 
   // Verteilung (manuell)
   const [akten, setAkten] = useState([]);
@@ -264,6 +275,26 @@ export default function PosteingangDetail() {
 
   const dateien = eingang?.dateien || [];
   const selected = dateien[selectedIndex];
+  const vorschauSchluessel = selected ? `${selectedIndex}|${selected.s3Key || selected.pfad || selected.dateiname}` : '';
+
+  // Vorschau laden, sobald links ein anderes Dokument gewählt wird; alte Blob-URL freigeben.
+  useEffect(() => {
+    if (!vorschauSchluessel) return undefined;
+    let cancelled = false;
+    let url = null;
+    (async () => {
+      try {
+        const r = await wohngeldApi.loadPosteingangDatei(id, selectedIndex);
+        if (cancelled) { URL.revokeObjectURL(r.url); return; }
+        url = r.url;
+        setVorschau({ idx: selectedIndex, url: r.url, contentType: r.contentType });
+      } catch (e) {
+        if (!cancelled) setVorschau({ idx: selectedIndex, fehler: e.message || 'Vorschau nicht verfügbar' });
+      }
+    })();
+    return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Schlüssel bündelt Index + Datei
+  }, [vorschauSchluessel, id]);
   const s = (key) => (v) => setStamm((prev) => ({ ...prev, [key]: v }));
 
   async function auswerten() {
@@ -649,27 +680,42 @@ export default function PosteingangDetail() {
 
           {/* RECHTS: Vorschau */}
           <div style={styles.rightCol}>
-            <div style={styles.pane}>
-              <div style={styles.paneTitle}>Dateivorschau</div>
+            <div style={{ ...styles.pane, ...styles.vorschauPane }}>
               {selected ? (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-                    <DocumentIcon size={16} color={ACCENT} />
-                    <span style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, color: theme.colors.text }}>{selected.dateiname}</span>
-                    <a href={wohngeldApi.posteingangDateiUrl(id, selectedIndex)} target="_blank" rel="noreferrer" style={{ marginLeft: 'auto', fontSize: theme.typography.sizes.xs, color: ACCENT }}>Öffnen</a>
+                  <div style={styles.vorschauKopf}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={styles.paneTitle}>{selected.titel || DOKUMENT_TYP_LABEL[selected.typ] || 'Dokument'}</div>
+                      <div style={styles.vorschauMeta}>
+                        {selected.teilVon ? `${seitenText(selected.teilVon.seiteVon, selected.teilVon.seiteBis)} · ` : ''}{selected.dateiname}
+                      </div>
+                    </div>
+                    <a href={wohngeldApi.posteingangDateiUrl(id, selectedIndex)} target="_blank" rel="noreferrer" style={styles.vorschauLink}>In neuem Tab</a>
                   </div>
-                  <div style={styles.preview}>
-                    {selected.analyseFehler
-                      ? `Auswertung fehlgeschlagen: ${selected.analyseFehler}`
-                      : (selected.extrahierterTextGekuerzt?.trim()
-                        ? selected.extrahierterTextGekuerzt
-                        : 'Für dieses Dokument liegt noch kein extrahierter Text vor (z. B. Bild-Scan ohne Textebene, oder noch nicht ausgewertet).')}
-                  </div>
+                  {selected.analyseFehler && <div style={{ ...styles.hint, color: theme.colors.error }}>Auswertung fehlgeschlagen: {selected.analyseFehler}</div>}
+                  {(() => {
+                    const v = vorschau && vorschau.idx === selectedIndex ? vorschau : null;
+                    if (!v) return <div style={styles.placeholder}><RefreshIcon size={20} /><div style={styles.hint}>Vorschau wird geladen …</div></div>;
+                    if (v.fehler) return <div style={styles.placeholder}><div style={styles.hint}>Vorschau nicht verfügbar: {v.fehler}</div></div>;
+                    const zeigbar = v.contentType.includes('pdf') || v.contentType.startsWith('image/') || v.contentType.startsWith('text/');
+                    return zeigbar
+                      ? <iframe src={v.url} title={`Vorschau ${selected.dateiname}`} style={styles.vorschauFrame} />
+                      : <div style={styles.placeholder}><div style={styles.hint}>Für diesen Dateityp gibt es keine Vorschau — bitte „In neuem Tab" öffnen.</div></div>;
+                  })()}
+                  {(selected.extraktion?.felder?.length > 0 || selected.analyse) && (
+                    <div style={styles.werte}>
+                      <button style={styles.werteBtn} onClick={() => setWerteOffen((o) => !o)} aria-expanded={werteOffen}>
+                        <ChevronDownIcon size={14} style={{ transform: werteOffen ? 'rotate(180deg)' : 'none' }} />
+                        Aus diesem Dokument erkannt
+                      </button>
+                      {werteOffen && <ExtraktionsBaum extraktion={selected.extraktion} analyseFallback={selected.analyse} />}
+                    </div>
+                  )}
                 </>
               ) : (
                 <div style={styles.placeholder}>
                   <DocumentIcon size={36} color={theme.colors.textLight} />
-                  <div style={styles.hint}>Wählen Sie links ein Dokument, um die Vorschau zu sehen.</div>
+                  <div style={styles.hint}>Wählen Sie links ein Dokument — die Vorschau erscheint hier.</div>
                 </div>
               )}
             </div>
