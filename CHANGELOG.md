@@ -2,6 +2,14 @@
 
 ## 2026-09-24
 
+### Fix: Dokumentvorschau auf den Instanzen (Posteingang und Vorgang)
+Die Vorschau bettete die Datei als Blob in einen Rahmen ein; die Content-Security-Policy der Instanzen erlaubt keine
+eingebetteten Rahmen (kein `frame-src`), daher zeigte Chrome nur ein Blockiert-Symbol (lokal unauffällig, weil der
+Entwicklungsserver die Richtlinie nicht setzt). Jetzt rendert der Server die Seiten als Bilder
+(`/posteingang/:id/datei/:idx/vorschau|seite/:n`, `/dokumente/:id/vorschau|seite/:n`, pdftocairo, ~110 dpi);
+die Oberfläche zeigt sie untereinander (hintere Seiten erst beim Scrollen). Funktioniert ohne Browser-PDF-Viewer und
+ohne Lockerung der Sicherheitsrichtlinie. Ansicht wird protokolliert (`dokument.angesehen`).
+
 ### Wohngeld — Zuordnungs-Vorschlag im Posteingang strenger
 Bisher reichte ein gleicher Nachname für „Mögliche Übereinstimmung", auch wenn Vorname, Geburtsdatum und Adresse
 abwichen. Jetzt: Abweichungen ziehen Punkte ab (Name/Geburtsdatum/Nummer voll, Adressfelder halb); ein abweichendes

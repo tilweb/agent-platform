@@ -20,6 +20,7 @@ import { FeldStatusDot, FeldStatusFreigabe } from './components/FeldStatusMark';
 import { buildFeldStatusMap, fsKey } from './feldStatusMap';
 import NotizPanel from './components/NotizPanel';
 import ExtraktionsBaum from './components/ExtraktionsBaum';
+import SeitenVorschau from './components/SeitenVorschau';
 
 const MAIN_TABS = [
   { id: 'uebersicht', label: 'Übersicht' },
@@ -236,7 +237,6 @@ export default function VorgangDetail() {
 
   // Dateivorschau (WP10): { url, contentType, name, dok } — objectURL wird beim Wechsel/Unmount freigegeben
   const [preview, setPreview] = useState(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
   // Dokument-Löschung mit Sicherheits-Modal: das zu löschende Dokument (oder null).
   const [docToDelete, setDocToDelete] = useState(null);
   // Extraktions-Transparenz: aufgeklappte Dokument-Kacheln (Set von Dokument-IDs)
@@ -352,16 +352,11 @@ export default function VorgangDetail() {
   }
 
   // ── Dateivorschau / Download / Ablage (WP10) ──
-  async function openPreview(d) {
-    setPreviewLoading(true); setError('');
-    try {
-      const { url, contentType } = await wohngeldApi.loadDokumentDatei(d.id);
-      setPreview({ url, contentType, name: DOKUMENT_TYP_LABEL[d.typ] || d.typ, dok: d });
-    } catch (e) {
-      setError(e.message || 'Vorschau nicht verfügbar');
-    } finally {
-      setPreviewLoading(false);
-    }
+  // Vorschau als serverseitig gerenderte Seitenbilder (kein eingebetteter PDF-Viewer — die
+  // Content-Security-Policy der Instanz blockiert Blob-Rahmen).
+  function openPreview(d) {
+    setError('');
+    setPreview({ name: DOKUMENT_TYP_LABEL[d.typ] || d.typ, dok: d });
   }
   function closePreview() { setPreview(null); }
   function toggleExtraktion(docId) {
@@ -1827,7 +1822,7 @@ export default function VorgangDetail() {
                       <div style={styles.docActions}>
                         {hatDatei(d) ? (
                           <>
-                            <button style={styles.iconAction} onClick={() => openPreview(d)} disabled={previewLoading} title="Vorschau" aria-label="Vorschau"><EyeIcon size={15} /></button>
+                            <button style={styles.iconAction} onClick={() => openPreview(d)} title="Vorschau" aria-label="Vorschau"><EyeIcon size={15} /></button>
                             <button style={styles.iconAction} onClick={() => downloadDoc(d)} title="Herunterladen" aria-label="Herunterladen"><DownloadIcon size={15} /></button>
                           </>
                         ) : (
@@ -1958,7 +1953,7 @@ export default function VorgangDetail() {
             <div style={styles.previewHead}>
               <span style={{ fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.semibold, color: theme.colors.text }}>{preview.name}</span>
               <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
-                <button style={styles.btnSmall} onClick={() => window.open(preview.url, '_blank', 'noopener')}>In neuem Tab öffnen</button>
+                <button style={styles.btnSmall} onClick={() => window.open(wohngeldApi.dokumentDateiUrl(preview.dok.id), '_blank', 'noopener')}>In neuem Tab öffnen</button>
                 <button style={styles.iconBtn} onClick={closePreview} title="Schließen" aria-label="Vorschau schließen">
                   <XIcon size={16} color={theme.colors.textMuted} />
                 </button>
@@ -1966,14 +1961,13 @@ export default function VorgangDetail() {
             </div>
             <div style={styles.previewBody}>
               <div style={styles.previewViewer}>
-                {(preview.contentType.includes('pdf') || preview.contentType.startsWith('image/') || preview.contentType.startsWith('text/')) ? (
-                  <iframe src={preview.url} style={styles.previewFrame} title={preview.name} />
-                ) : (
-                  <div style={styles.previewFallback}>
-                    <div>Für diesen Dateityp ist keine Inline-Vorschau möglich.</div>
-                    <button style={styles.btn} onClick={() => window.open(preview.url, '_blank', 'noopener')}>In neuem Tab öffnen</button>
-                  </div>
-                )}
+                <SeitenVorschau
+                  schluessel={preview.dok.id}
+                  titel={preview.name}
+                  ladeInfo={() => wohngeldApi.dokumentVorschau(preview.dok.id)}
+                  seiteUrl={(n) => wohngeldApi.dokumentSeiteUrl(preview.dok.id, n)}
+                  hoehe="calc(90vh - 90px)"
+                />
               </div>
               {preview.dok && ((preview.dok.extraktion?.felder?.length || 0) > 0 || !!preview.dok.analyse) && (
                 <div style={styles.previewPanel}>

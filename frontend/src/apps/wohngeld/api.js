@@ -120,6 +120,11 @@ export const wohngeldApi = {
   deletePosteingang: (id) => apiDelete(`${base}/posteingang/${id}`).then(json),
   /** URL einer Umschlag-Datei (inline-Vorschau). */
   posteingangDateiUrl: (id, idx) => `${API_URL}${base}/posteingang/${id}/datei/${idx}`,
+  /** Seitenvorschau (serverseitig gerenderte Bilder). */
+  posteingangVorschau: (id, idx) => apiGet(`${base}/posteingang/${id}/datei/${idx}/vorschau`).then(json),
+  posteingangSeiteUrl: (id, idx, n) => `${API_URL}${base}/posteingang/${id}/datei/${idx}/seite/${n}`,
+  dokumentVorschau: (id) => apiGet(`${base}/dokumente/${id}/vorschau`).then(json),
+  dokumentSeiteUrl: (id, n) => `${API_URL}${base}/dokumente/${id}/seite/${n}`,
   /** Datei eines Eingangs als Blob laden (credentials) → { url, contentType }. Aufrufer gibt objectURL frei. */
   loadPosteingangDatei: async (id, idx) => {
     const res = await fetch(`${API_URL}${base}/posteingang/${id}/datei/${idx}`, { credentials: 'include' });
@@ -609,6 +614,7 @@ export const AKTION_LABEL = {
   'dokument.geloescht': 'Dokument gelöscht',
   'dokument.abgelegt': 'Dokument ins Fachverfahren abgelegt',
   'dokument.heruntergeladen': 'Dokument heruntergeladen',
+  'dokument.angesehen': 'Dokument angesehen (Vorschau)',
   'dokument.vorschau': 'Dokument angesehen',
   'feld.bestaetigt': 'KI-Vorschlag bestätigt',
   'feld.verworfen': 'KI-Vorschlag verworfen',

@@ -17,6 +17,8 @@ import {
   setzePosteingangFortschritt,
 } from '../storage';
 import { mitFortschritt } from '../../../extraction/fortschritt';
+import { seitenAntwort } from './seitenvorschau-route';
+import { vorschauInfo } from '../seitenvorschau';
 import { FortschrittMelder, ausErkennung, istHaengend, type PosteingangFortschritt } from '../posteingang-fortschritt';
 import { audit } from '../audit';
 import { denyIfNotAppEditor, denyIfEingeschraenkt } from './_shared';
@@ -150,6 +152,37 @@ posteingangQueueRoutes.get('/posteingang/:id', async (c) => {
   const eingang = await getPosteingang(c.req.param('id'));
   if (!eingang) return c.json({ error: 'Eingang nicht gefunden' }, 404);
   return c.json({ posteingang: eingang });
+});
+
+/** Datei eines Eingangs laden (gemeinsam für Datei, Vorschau-Info und Seitenbild). */
+async function ladeEingangsDatei(id: string, idxRaw: string) {
+  const eingang = await getPosteingang(id);
+  if (!eingang) return { fehler: 'Eingang nicht gefunden' as const };
+  const idx = Number(idxRaw);
+  const datei = Number.isInteger(idx) ? eingang.dateien[idx] : undefined;
+  if (!datei) return { fehler: 'Datei nicht gefunden' as const };
+  const bytes = await loadDokumentDatei({ s3Key: datei.s3Key, pfad: datei.pfad }).catch(() => null);
+  if (!bytes) return { fehler: 'Keine Datei hinterlegt' as const };
+  return { eingang, datei, bytes };
+}
+
+/** GET /posteingang/:id/datei/:idx/vorschau — { art: pdf|bild|keine, seiten } (Lesezugriff wird protokolliert). */
+posteingangQueueRoutes.get('/posteingang/:id/datei/:idx/vorschau', async (c) => {
+  const r = await ladeEingangsDatei(c.req.param('id'), c.req.param('idx'));
+  if ('fehler' in r) return c.json({ error: r.fehler }, 404);
+  await audit(c, { aktion: 'posteingang.datei_gelesen', objektTyp: 'posteingang', objektId: r.eingang.id, detail: `${r.datei.dateiname} (Vorschau)` });
+  try {
+    return c.json(await vorschauInfo(r.bytes, r.datei.contentType));
+  } catch (err) {
+    return c.json({ error: `Vorschau nicht möglich: ${err instanceof Error ? err.message : err}` }, 500);
+  }
+});
+
+/** GET /posteingang/:id/datei/:idx/seite/:n — Seite n als PNG (Bilder: das Bild selbst). */
+posteingangQueueRoutes.get('/posteingang/:id/datei/:idx/seite/:n', async (c) => {
+  const r = await ladeEingangsDatei(c.req.param('id'), c.req.param('idx'));
+  if ('fehler' in r) return c.json({ error: r.fehler }, 404);
+  return seitenAntwort(r.bytes, r.datei.contentType, Number(c.req.param('n')));
 });
 
 /** GET /posteingang/:id/datei/:idx — Bytes einer Umschlag-Datei (inline). */

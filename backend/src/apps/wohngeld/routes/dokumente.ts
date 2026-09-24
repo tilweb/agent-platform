@@ -6,6 +6,8 @@ import { loadDokumentDatei } from '../filestore';
 import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit, auditUpdate } from '../audit';
 import { pruefeAutomatisch } from '../pruefung';
+import { vorschauInfo } from '../seitenvorschau';
+import { seitenAntwort } from './seitenvorschau-route';
 
 export const dokumenteRoutes = new Hono();
 
@@ -44,6 +46,29 @@ dokumenteRoutes.get('/dokumente/:id', async (c) => {
  * mit passendem Content-Type und `Content-Disposition: inline` (native
  * Browser-Vorschau). Keine hinterlegte Datei → 404.
  */
+/** GET /dokumente/:id/vorschau — { art, seiten } (Lesezugriff wird protokolliert). */
+dokumenteRoutes.get('/dokumente/:id/vorschau', async (c) => {
+  const dokument = await getDokument(c.req.param('id'));
+  if (!dokument) return c.json({ error: 'Dokument nicht gefunden' }, 404);
+  const bytes = await loadDokumentDatei({ s3Key: dokument.s3Key, pfad: dokument.pfad }).catch(() => null);
+  if (!bytes) return c.json({ error: 'Keine Datei hinterlegt' }, 404);
+  await audit(c, { aktion: 'dokument.angesehen', objektTyp: 'dokument', objektId: dokument.id, vorgangId: dokument.vorgangId, detail: dokument.titel });
+  try {
+    return c.json(await vorschauInfo(bytes, contentTypeForName(dateinameFuer(dokument))));
+  } catch (err) {
+    return c.json({ error: `Vorschau nicht möglich: ${err instanceof Error ? err.message : err}` }, 500);
+  }
+});
+
+/** GET /dokumente/:id/seite/:n — Seite n als PNG. */
+dokumenteRoutes.get('/dokumente/:id/seite/:n', async (c) => {
+  const dokument = await getDokument(c.req.param('id'));
+  if (!dokument) return c.json({ error: 'Dokument nicht gefunden' }, 404);
+  const bytes = await loadDokumentDatei({ s3Key: dokument.s3Key, pfad: dokument.pfad }).catch(() => null);
+  if (!bytes) return c.json({ error: 'Keine Datei hinterlegt' }, 404);
+  return seitenAntwort(bytes, contentTypeForName(dateinameFuer(dokument)), Number(c.req.param('n')));
+});
+
 dokumenteRoutes.get('/dokumente/:id/datei', async (c) => {
   const dokument = await getDokument(c.req.param('id'));
   if (!dokument) return c.json({ error: 'Dokument nicht gefunden' }, 404);
