@@ -72,3 +72,26 @@ Restfehler Stand d: 3 × Unterhaltsanlage S. 2 geschnitten, 2 × Mietvertrag S. 
 
 Berichte: `tools/wohngeld-golden/out/messung/2026-09-23T22-37-03` (b), `…/2026-09-24T00-15-10` (c),
 `…/2026-09-24T01-54-45` (d) — lokal, nicht eingecheckt.
+
+## Nachtrag: Haushalt aus dem Antrag und Personenzuordnung (Profil 2026-09-24e, Lauf `2026-09-24T05-40-28`)
+
+Umsetzung: `docs/wohngeld-posteingang-haushalt-zuordnung-spec-2026-09-24.md` (Commit `cc8d049`). Der Posteingang legt
+den Haushalt aus dem Antrag an und ordnet Nachweise per Name/Geburtsdatum den Personen zu; Ausweis-/KV-Regel ab 18.
+
+| Variante | Posteingang-Prüfung Treffer · Fehlalarme (vorher) | Personen gefunden | Rolle | Erwerbsstatus | Einkommensarten | Nachweise richtig zugeordnet |
+|---|---|---|---|---|---|---|
+| digital | **92 % · 28** (80 % · 49) | 98 % | 98 % | 98 % | 95 % | 98 % (2 falsch, 2 offen) |
+| scan | **94 % · 28** (80 % · 48) | 96 % | 98 % | 98 % | 96 % | 97 % (4 falsch, 2 offen) |
+
+Split und Typ unverändert (100 % Schnitte, 99,7 % Typ); Regelwerk allein weiter 94 %.
+
+Rest-Abweichungen der Posteingang-Prüfung:
+- **35 der 56 Fehlalarme** sind `plausi-mietvertrag-unsigniert` — die bekannte Unterschrift-Lücke der hybriden
+  Extraktion (siehe „Offene Hebel").
+- `identitaet-jede-person` (F04, F24, F27), `plausi-kontoauszug-unerklaerte-einkuenfte` (F23, F25, F29): einzelne
+  Zuordnungs-/Kontoauszugs-Fälle.
+- Verfehlt: Vermögensgrenze F22 (Wertangaben aus Frage 20 nicht vollständig gelesen), Miethöhe F18
+  (Regel vergleicht nur das erste Mietdokument), Antrag ohne Unterschrift F12.
+- Zuordnung „falsch": Unterhaltsvorschuss-Bescheide gehen an den Elternteil (Adressat), die Erwartung nennt das Kind
+  — fachlich zu klären, welche Person der Nachweis betrifft. F09 Scan: Name der antragstellenden Person falsch gelesen,
+  dadurch keine Person gefunden.
