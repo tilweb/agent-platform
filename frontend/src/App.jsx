@@ -173,6 +173,15 @@ const globalStyles = `
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.35; transform: scale(0.7); }
   }
+
+  /* Wohngeld: unbestimmter Fortschrittsbalken (Auswertung ohne Zähler) */
+  @keyframes wg-fortschritt {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(290%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [role="progressbar"] > div { animation: none !important; }
+  }
 `;
 
 function AppRoutes() {

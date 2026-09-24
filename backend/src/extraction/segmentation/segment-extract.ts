@@ -33,6 +33,7 @@ import type { PreparedFile, FieldBox, PageImage } from '../../services/extractio
 import { registerPdfView, renderPdfToImages, countPdfPages, pdfToLayoutText } from '../../services/extraction/pdf';
 import { buildPartPdf } from '../../services/extraction/pdf-split';
 import { classifySegmentPages, buildSegments } from './segmenter';
+import { meldeFortschritt } from '../fortschritt';
 
 export interface SegmentExtractionResult {
   segments: SegmentInstance[];
@@ -67,9 +68,13 @@ export async function extractWithSegments(
   if (pageCount > limit) throw new Error(`Segmentierung unvollständig: ${pageCount} Seiten überschreiten das Limit ${limit}.`);
   const pages = await renderPdfToImages(rawBuffer, { dpi: 150, maxPages: limit });
   if (pages.length !== pageCount) throw new Error('Nicht alle Seiten konnten für die Segmentierung gelesen werden.');
+  meldeFortschritt({ schritt: 'seiten_gerendert', gesamt: pages.length });
   const proposed = correction ? { segments: validateSegmentPlan(project, correction.segments, pageCount), findings: [] }
     : buildSegments(await classifySegmentPages(pages.map(p => ({ page: p.pageNumber, pngBuffer: p.pngBuffer })), defs, { model: project.extraction?.model_override ?? undefined }), defs);
   const { segments, findings } = proposed;
+  meldeFortschritt({ schritt: 'abschnitte_erkannt', anzahl: segments.filter((x) => defs[x.type]).length });
+  const zuLesen = segments.filter((x) => defs[x.type]).length;
+  let gelesen = 0;
   let llmCalls = correction ? 0 : pages.length;
   const segmentContexts: Record<string, string> = {};
 
@@ -102,6 +107,7 @@ export async function extractWithSegments(
     for (const seg of segments) {
       const def = defs[seg.type];
       if (!def) continue;  // leerseite/unbekannt: nur ausweisen, nichts extrahieren
+      meldeFortschritt({ schritt: 'abschnitt_auslesen', fertig: gelesen++, gesamt: zuLesen, label: def.label });
 
       const key = segKey(seg, def);
 

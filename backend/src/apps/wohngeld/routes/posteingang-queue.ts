@@ -10,10 +10,14 @@
  * derselbe Weg für Browser (manuell) und headless (scan), Dedupe per Hash.
  */
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { getCurrentUserId } from '../../../auth/middleware';
 import {
   createPosteingang, getPosteingang, listPosteingang, updatePosteingang, deletePosteingang, getVorgang,
+  setzePosteingangFortschritt,
 } from '../storage';
+import { mitFortschritt } from '../../../extraction/fortschritt';
+import { FortschrittMelder, ausErkennung, istHaengend, type PosteingangFortschritt } from '../posteingang-fortschritt';
 import { audit } from '../audit';
 import { denyIfNotAppEditor, denyIfEingeschraenkt } from './_shared';
 import { storeUpload, resolveStorageRef, loadDokumentDatei, removeStoredFile } from '../filestore';
@@ -236,16 +240,20 @@ function uebernimmAbschnitt(d: PosteingangDatei, a: ErkannterAbschnitt, quelle: 
  * dort bestimmt der größte erkannte Abschnitt Typ und Felder. Nicht-PDFs und Fehler
  * laufen über den bisherigen Weg.
  */
-async function erkenneMitProfil(dateien: PosteingangDatei[], userId: string | null | undefined) {
+async function erkenneMitProfil(dateien: PosteingangDatei[], userId: string | null | undefined, melder?: FortschrittMelder) {
   const out: PosteingangDatei[] = [];
   const protokoll: Array<{ dateiname: string; bereiche?: SeitenBereich[]; modell?: string }> = [];
   const profil = await ladeProfil();
-  for (const d of dateien) {
-    if (!istPdf(d)) { await analysiereDatei(d, userId); out.push(d); continue; }
+  for (const [i, d] of dateien.entries()) {
+    melder?.setze({ phase: 'laden', text: `Datei „${d.dateiname}" wird geladen`, datei: d.dateiname, dateiNr: i + 1, dateienGesamt: dateien.length });
+    if (!istPdf(d)) { melder?.setze({ phase: 'auslesen', text: `„${d.dateiname}" wird ausgelesen` }); await analysiereDatei(d, userId); out.push(d); continue; }
     try {
       const bytes = await loadDokumentDatei({ s3Key: d.s3Key, pfad: d.pfad });
       if (!bytes) { d.analyseFehler = 'Datei nicht auffindbar (kein hinterlegter Inhalt)'; out.push(d); continue; }
-      const r = await erkenneDokumente(bytes, { filename: d.dateiname, userId: userId ?? undefined, profil });
+      const r = await mitFortschritt(
+        (e) => melder?.setze(ausErkennung(e)),
+        () => erkenneDokumente(bytes, { filename: d.dateiname, userId: userId ?? undefined, profil }),
+      );
       if (!r.abschnitte.length) { d.analyseFehler = 'Keine Inhalte erkannt (nur Leerseiten?)'; out.push(d); continue; }
       const trennen = splitAktiv() && brauchtGrenzpruefung(d) && r.abschnitte.length > 1;
       if (!trennen) {
@@ -309,20 +317,48 @@ posteingangQueueRoutes.post('/posteingang/analysieren', async (c) => {
   if (!ids.length) return c.json({ error: 'Keine ids übergeben' }, 400);
 
   const userId = getCurrentUserId(c);
-  const ergebnisse: Array<{ id: string; ok: boolean; error?: string; posteingang?: Posteingang | null }> = [];
+  const gestartet: string[] = [];
+  const abgelehnt: Array<{ id: string; error: string }> = [];
 
+  // Annehmen: Status „in_analyse", Fortschritt „wartet". Die Arbeit läuft danach im Hintergrund.
   for (const id of ids) {
     const eingang = await getPosteingang(id);
-    if (!eingang) { ergebnisse.push({ id, ok: false, error: 'Eingang nicht gefunden' }); continue; }
-    if (!darfAuswerten(eingang.status)) { ergebnisse.push({ id, ok: false, error: `Status „${eingang.status}" ist nicht auswertbar`, posteingang: eingang }); continue; }
-
+    if (!eingang) { abgelehnt.push({ id, error: 'Eingang nicht gefunden' }); continue; }
+    const haengt = eingang.status === 'in_analyse' && istHaengend(eingang.data?.fortschritt as PosteingangFortschritt | undefined);
+    if (!darfAuswerten(eingang.status) && !haengt) {
+      abgelehnt.push({ id, error: `Status „${eingang.status}" ist nicht auswertbar` });
+      continue;
+    }
     await updatePosteingang(id, { status: 'in_analyse', bearbeiterId: userId ?? undefined });
+    const jetzt = new Date().toISOString();
+    await setzePosteingangFortschritt(id, { phase: 'wartet', text: gestartet.length ? `Wartet (Position ${gestartet.length + 1})` : 'Startet …', gestartet: jetzt, aktualisiert: jetzt } satisfies PosteingangFortschritt);
+    gestartet.push(id);
+  }
+
+  void werteImHintergrundAus(c, gestartet, userId);
+  return c.json({ gestartet, abgelehnt }, 202);
+});
+
+/** Wertet angenommene Eingänge nacheinander aus; Fehler je Eingang isoliert. */
+async function werteImHintergrundAus(c: Context, ids: string[], userId: string | null | undefined): Promise<void> {
+  for (const id of ids) {
+    const eingang = await getPosteingang(id);
+    if (!eingang) continue;
+    const melder = new FortschrittMelder(id, setzePosteingangFortschritt);
     try {
       // Erkennung: DP-Segmentprofil (Standard) oder bisheriger Weg (Split + eigene Klassifikation).
       const profilWeg = erkennungPerProfil();
-      const split = profilWeg
-        ? await erkenneMitProfil(eingang.dateien.map((d) => ({ ...d })), userId)
-        : await trenneSammelPdfs(eingang.dateien.map((d) => ({ ...d })), userId);
+      let split;
+      if (profilWeg) {
+        split = await erkenneMitProfil(eingang.dateien.map((d) => ({ ...d })), userId, melder);
+      } else {
+        melder.setze({ phase: 'trennen', text: 'Dokumentgrenzen werden geprüft' });
+        split = await trenneSammelPdfs(eingang.dateien.map((d) => ({ ...d })), userId);
+        for (const [i, d] of split.dateien.entries()) {
+          melder.setze({ phase: 'auslesen', text: `Dokument ${i + 1} von ${split.dateien.length} wird ausgelesen`, fertig: i, gesamt: split.dateien.length });
+          await analysiereDatei(d, userId);
+        }
+      }
       const dateien = split.dateien;
       for (const t of split.protokoll) {
         await audit(c, {
@@ -331,29 +367,27 @@ posteingangQueueRoutes.post('/posteingang/analysieren', async (c) => {
         });
       }
 
-      if (!profilWeg) for (const d of dateien) await analysiereDatei(d, userId);
-
+      melder.setze({ phase: 'abschluss', text: 'Zuordnung zu bestehenden Vorgängen wird geprüft' });
       const { kandidaten, betreff, alleFehler, status } = await umschlagAuswerten(dateien, eingang.betreff);
-      const updated = await updatePosteingang(id, { dateien, matchVorschlag: kandidaten, betreff, status });
+      await updatePosteingang(id, { dateien, matchVorschlag: kandidaten, betreff, status });
 
       await audit(c, {
         aktion: alleFehler ? 'posteingang.analyse_fehler' : 'posteingang.analysiert',
         objektTyp: 'posteingang', objektId: id, ergebnis: alleFehler ? 'fehler' : 'ok',
         detail: `${dateien.length} Datei(en) ausgewertet${kandidaten.length ? `, ${kandidaten.length} Vorschlag/Vorschläge` : ''}`,
       });
-      ergebnisse.push({ id, ok: !alleFehler, posteingang: updated });
     } catch (err) {
-      const updated = await updatePosteingang(id, { status: 'fehler' });
+      console.warn('[wohngeld] Auswertung fehlgeschlagen:', id, err instanceof Error ? err.message : err);
+      await updatePosteingang(id, { status: 'fehler' }).catch(() => null);
       await audit(c, {
         aktion: 'posteingang.analyse_fehler', objektTyp: 'posteingang', objektId: id, ergebnis: 'fehler',
         detail: err instanceof Error ? err.message : String(err),
-      });
-      ergebnisse.push({ id, ok: false, error: 'Auswertung fehlgeschlagen', posteingang: updated });
+      }).catch(() => {});
+    } finally {
+      await melder.ende();
     }
   }
-
-  return c.json({ ergebnisse });
-});
+}
 
 /**
  * POST /posteingang/:id/trennung — { hash, startSeiten? }. Manuelle Korrektur des

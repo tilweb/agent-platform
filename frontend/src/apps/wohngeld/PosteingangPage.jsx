@@ -8,6 +8,8 @@ import {
   wohngeldApi, ACCENT, ACCENT_LIGHT,
   DOKUMENT_TYP_LABEL, POSTEINGANG_STATUS_LABEL, POSTEINGANG_STATUS_ORDER, POSTEINGANG_QUELLE_LABEL,
 } from './api';
+import { FortschrittKurz } from './components/AuswertungsFortschritt';
+import { istHaengend } from './fortschritt';
 
 const LEVEL_LABEL = { hoch: 'Hohe Übereinstimmung', mittel: 'Mögliche Übereinstimmung', gering: 'Geringe Übereinstimmung' };
 
@@ -95,8 +97,8 @@ export default function PosteingangPage() {
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const laden = useCallback(async (filter) => {
-    setLoading(true);
+  const laden = useCallback(async (filter, { still = false } = {}) => {
+    if (!still) setLoading(true);
     try {
       const list = await wohngeldApi.listPosteingang(filter ? { status: filter } : {});
       setEingaenge(list || []);
@@ -109,6 +111,14 @@ export default function PosteingangPage() {
   }, []);
 
   useEffect(() => { laden(statusFilter); }, [laden, statusFilter]);
+
+  // Während Auswertungen laufen: alle 2 s still nachladen (Fortschritt in der Liste).
+  const laeuft = eingaenge.some((e) => e.status === 'in_analyse' && !istHaengend(e));
+  useEffect(() => {
+    if (!laeuft) return undefined;
+    const t = setInterval(() => { laden(statusFilter, { still: true }); }, 2000);
+    return () => clearInterval(t);
+  }, [laeuft, laden, statusFilter]);
 
   async function handleFiles(fileList) {
     const files = Array.from(fileList || []);
@@ -135,7 +145,7 @@ export default function PosteingangPage() {
 
   const selectedIds = [...selected];
   const selectedEintraege = eingaenge.filter((e) => selected.has(e.id));
-  const auswertbar = selectedEintraege.filter((e) => ['eingegangen', 'analysiert', 'fehler'].includes(e.status));
+  const auswertbar = selectedEintraege.filter((e) => ['eingegangen', 'analysiert', 'fehler'].includes(e.status) || istHaengend(e));
   const zuordenbar = selectedEintraege.filter((e) => e.status === 'analysiert');
 
   async function auswertenAuswahl() {
@@ -144,9 +154,11 @@ export default function PosteingangPage() {
     setBusy(true);
     setError(null);
     try {
-      await wohngeldApi.analysierePosteingang(ids);
+      // Startet im Hintergrund; die Liste zeigt den Fortschritt je Eingang.
+      const r = await wohngeldApi.analysierePosteingang(ids);
+      if (r?.abgelehnt?.length) setError(`${r.abgelehnt.length} Eingang/Eingänge nicht gestartet: ${r.abgelehnt.map((a) => a.error).join('; ')}`);
       setSelected(new Set());
-      await laden(statusFilter);
+      await laden(statusFilter, { still: true });
     } catch (e) {
       setError(e.message || 'Auswertung fehlgeschlagen');
     } finally {
@@ -255,7 +267,10 @@ export default function PosteingangPage() {
                       <div style={styles.strong}>{titel}</div>
                       <div style={styles.muted}>{anzahl} Datei{anzahl === 1 ? '' : 'en'}</div>
                     </td>
-                    <td style={styles.td}><span style={{ ...styles.badge, ...statusTone(e.status) }}>{POSTEINGANG_STATUS_LABEL[e.status] || e.status}</span></td>
+                    <td style={styles.td}>
+                      <span style={{ ...styles.badge, ...statusTone(e.status) }}>{POSTEINGANG_STATUS_LABEL[e.status] || e.status}</span>
+                      {e.status === 'in_analyse' && <FortschrittKurz eingang={e} />}
+                    </td>
                     <td style={styles.td}>{typ || <span style={styles.muted}>—</span>}</td>
                     <td style={styles.td}>
                       {best

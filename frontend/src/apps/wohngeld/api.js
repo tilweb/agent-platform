@@ -110,8 +110,8 @@ export const wohngeldApi = {
     return apiGet(`${base}/posteingang${qs ? `?${qs}` : ''}`).then(json).then((d) => d.posteingang);
   },
   getPosteingang: (id) => apiGet(`${base}/posteingang/${id}`).then(json).then((d) => d.posteingang),
-  /** Auswertung starten (einzeln oder Sammel) → { ergebnisse }. */
-  analysierePosteingang: (ids) => apiPost(`${base}/posteingang/analysieren`, { ids }).then(json).then((d) => d.ergebnisse),
+  /** Auswertung starten (einzeln oder Sammel) — läuft im Hintergrund → { gestartet, abgelehnt }. */
+  analysierePosteingang: (ids) => apiPost(`${base}/posteingang/analysieren`, { ids }).then(json),
   /** Zuordnung: { akteId?|neueAkte?, vorgangId?, pruefen?, viaVorschlag?, matchLevel?, stammdaten? }. */
   zuordnenPosteingang: (id, payload) => apiPost(`${base}/posteingang/${id}/zuordnen`, payload).then(json),
   verwerfenPosteingang: (id, grund) => apiPost(`${base}/posteingang/${id}/verwerfen`, { grund }).then(json).then((d) => d.posteingang),

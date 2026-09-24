@@ -2,6 +2,15 @@
 
 ## 2026-09-24
 
+### Wohngeld — Posteingang: Auswertung im Hintergrund mit sichtbarem Fortschritt
+„Auswertung starten" antwortet sofort; die Auswertung läuft im Hintergrund weiter (nacheinander je Eingang).
+Liste und Detailseite zeigen den Fortschritt (Abfrage alle 2 s): Schrittliste „Datei laden → Seiten erkennen →
+Dokumente trennen → Dokumente auslesen → Zuordnung vorschlagen" mit Zählern („Seite 7 von 18 erkannt",
+„Dokument 2 von 5 wird ausgelesen: Rentenbescheid"), Fortschrittsbalken und Laufzeit; in der Liste als Kurzanzeige.
+Meldet eine Auswertung sich 10 Minuten nicht (z. B. Neustart), kann sie erneut gestartet werden. Technik:
+`extraction/fortschritt.ts` (AsyncLocalStorage, ohne Signaturänderungen; Segmentierung meldet Seiten und Abschnitte),
+`apps/wohngeld/posteingang-fortschritt.ts` (gedrosselt, ohne Versionssprung in `data.fortschritt`).
+
 ### Wohngeld — Assistent: Verlauf zurücksetzen, Gesetzes-Karten ohne Farbrand
 Der Chat-Verlauf lässt sich je Modus zurücksetzen (Button im Chat-Kopf, Bestätigungszeile; nur Bearbeitende;
 `DELETE /vorgaenge/:id/chat?modus=antrag|gesetz`, Audit `chat.zurueckgesetzt` mit Anzahl). Die Fundstellen-Karten

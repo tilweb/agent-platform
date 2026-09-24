@@ -26,6 +26,7 @@ import { OpenAIAdapter } from '../../services/llm/adapters/openai';
 import type { Message, ContentPart } from '../../services/llm';
 import { EXTRACTION_PROVIDER_ID, EXTRACTION_MODEL_ID, extractionModelLabel } from '../model';
 import { withTimeoutRetry, parseJsonObject, EXTRACTION_SAMPLING } from '../../services/extraction/extract-call';
+import { meldeFortschritt } from '../fortschritt';
 
 // ============== Pure Grenzbildung (testbar ohne Modell) ==============
 
@@ -223,6 +224,7 @@ export async function classifySegmentPages(
   };
 
   const results: PageClassification[] = new Array(pages.length);
+  let klassifiziert = 0;
   let next = 0;
   const concurrency = Math.max(1, Math.min(opts.concurrency ?? 3, pages.length));
   await Promise.all(Array.from({ length: concurrency }, async () => {
@@ -258,6 +260,7 @@ export async function classifySegmentPages(
         console.warn(`[segmenter] Seite ${p.page}: keine Antwort (${err instanceof Error ? err.message : String(err)}) — als 'unbekannt' markiert.`);
         results[idx] = { page: p.page, type: 'unbekannt', neustart: false, confidence: 0 };
       }
+      meldeFortschritt({ schritt: 'seite_klassifiziert', fertig: ++klassifiziert, gesamt: pages.length });
     }
   }));
   return results;

@@ -10,6 +10,8 @@ import {
   DOKUMENT_TYP_LABEL, WOHNGELDART_LABEL, ANTRAGSART_LABEL,
   POSTEINGANG_STATUS_LABEL, POSTEINGANG_QUELLE_LABEL,
 } from './api';
+import AuswertungsFortschritt from './components/AuswertungsFortschritt';
+import { istHaengend } from './fortschritt';
 
 const LEVEL_LABEL = { hoch: 'Hohe Übereinstimmung', mittel: 'Mögliche Übereinstimmung', gering: 'Geringe Übereinstimmung' };
 const STATUS_LABEL = { gleich: 'Übereinstimmung', abweichung: 'Abweichung', fehlt: 'Fehlt' };
@@ -210,11 +212,12 @@ export default function PosteingangDetail() {
   const [vorgangId, setVorgangId] = useState('');
   const [showManual, setShowManual] = useState(false);
 
-  const laden = useCallback(async () => {
-    setLoading(true);
+  const laden = useCallback(async ({ still = false } = {}) => {
+    if (!still) setLoading(true);
     try {
       const e = await wohngeldApi.getPosteingang(id);
       setEingang(e);
+      if (still && e.status === 'in_analyse') return; // Formularwerte erst nach Abschluss übernehmen
       const antrag = (e.dateien || []).find((d) => d.typ === 'wohngeldantrag' && d.stammdaten) || (e.dateien || []).find((d) => d.typ === 'wohngeldantrag');
       setStamm(antrag ? stammFromDatei(antrag) : emptyStamm());
       if (antrag?.stammdaten?.antragsteller) {
@@ -232,6 +235,14 @@ export default function PosteingangDetail() {
   }, [id]);
 
   useEffect(() => { laden(); }, [laden]);
+
+  // Während der Auswertung alle 2 s nachladen (Fortschritt), danach einmal vollständig.
+  const laeuft = eingang?.status === 'in_analyse' && !istHaengend(eingang);
+  useEffect(() => {
+    if (!laeuft) return undefined;
+    const t = setInterval(() => { laden({ still: true }); }, 2000);
+    return () => clearInterval(t);
+  }, [laeuft, laden]);
 
   useEffect(() => {
     let cancelled = false;
@@ -259,8 +270,9 @@ export default function PosteingangDetail() {
     if (busy) return;
     setBusy(true); setError(null);
     try {
-      await wohngeldApi.analysierePosteingang([id]);
-      await laden();
+      const r = await wohngeldApi.analysierePosteingang([id]);
+      if (r?.abgelehnt?.length) setError(r.abgelehnt[0].error);
+      await laden({ still: true });
     } catch (e) { setError(e.message || 'Auswertung fehlgeschlagen'); }
     finally { setBusy(false); }
   }
@@ -348,7 +360,7 @@ export default function PosteingangDetail() {
   const weitereKandidaten = kandidaten.slice(1);
   const hatAbweichung = (k) => (k?.vergleich || []).some((z) => z.status === 'abweichung');
   const analysiert = eingang.status === 'analysiert';
-  const auswertbar = ['eingegangen', 'fehler'].includes(eingang.status);
+  const auswertbar = ['eingegangen', 'fehler'].includes(eingang.status) || istHaengend(eingang);
   const inAnalyse = eingang.status === 'in_analyse';
   const terminal = eingang.status === 'zugeordnet' || eingang.status === 'verworfen';
 
@@ -462,9 +474,7 @@ export default function PosteingangDetail() {
             )}
             {inAnalyse && (
               <div style={styles.pane}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm }}>
-                  <RefreshIcon size={16} /> Auswertung läuft…
-                </div>
+                <AuswertungsFortschritt eingang={eingang} />
               </div>
             )}
 

@@ -924,6 +924,18 @@ export async function createPosteingang(input: Partial<Posteingang> = {}): Promi
   return (await getPosteingang(id))!;
 }
 
+/**
+ * Fortschritt der Auswertung am Eingang setzen/entfernen — ohne Versionssprung und ohne
+ * `updatedAt` (reine Anzeige, darf parallele Änderungen nicht in Konflikte treiben).
+ */
+export async function setzePosteingangFortschritt(id: string, fortschritt: unknown | null): Promise<void> {
+  const db = getDb();
+  const data = fortschritt === null
+    ? rawSql`coalesce(${wgPosteingang.data}, '{}'::jsonb) - 'fortschritt'`
+    : rawSql`jsonb_set(coalesce(${wgPosteingang.data}, '{}'::jsonb), '{fortschritt}', ${JSON.stringify(fortschritt)}::jsonb)`;
+  await db.update(wgPosteingang).set({ data: data as never }).where(eq(wgPosteingang.id, id));
+}
+
 export async function updatePosteingang(id: string, updates: Partial<Posteingang>, opts: { expectedVersion?: number; force?: boolean } = {}): Promise<Posteingang | null> {
   const db = getDb();
   const existing = await getPosteingang(id);
