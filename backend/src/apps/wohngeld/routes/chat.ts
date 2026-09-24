@@ -23,6 +23,7 @@ import { sucheRecht } from '../recht/retrieval';
 import { chunkLabel } from '../recht/corpus';
 import { wohngeldUsageMetadata } from '../ki-governance';
 import type { ChatSource, ChatAction } from '../types';
+import { ergebnisZeile, ganzerParagraph, schlageNach, type ModellAufruf } from '../recht/nachschlagen';
 
 export const chatRoutes = new Hono();
 
@@ -178,11 +179,12 @@ chatRoutes.post('/vorgaenge/:id/chat', async (c) => {
   // Bisheriger Verlauf (append-only) → Prompt-Historie.
   const verlauf = await listChatMessages(vorgangId);
   const history: Message[] = verlauf
+    .filter((m) => (m.modus ?? 'antrag') === 'antrag') // Gesetz-Nachschlagen gehört nicht in den Fall-Dialog
     .slice(-MAX_HISTORY)
     .map((m) => ({ role: m.rolle, content: m.content }));
 
   // User-Nachricht persistieren (vor dem LLM-Aufruf).
-  await addChatMessage({ vorgangId, rolle: 'user', content: frage });
+  await addChatMessage({ vorgangId, rolle: 'user', content: frage, modus: 'antrag' });
 
   const dokIdsHinweis = kontext.dokumente.length
     ? kontext.dokumente.map((d) => `[${d.id}] ${d.label}`).join('\n')
@@ -250,7 +252,7 @@ chatRoutes.post('/vorgaenge/:id/chat', async (c) => {
 
       // Assistant-Nachricht persistieren (bereinigter Text + Quellen + Aktions-Vorschläge).
       const saved = await addChatMessage({
-        vorgangId, rolle: 'assistant', content, sources,
+        vorgangId, rolle: 'assistant', content, sources, modus: 'antrag',
         actions: actions.length ? actions : undefined,
         model: CHAT_MODEL.modelId,
       });
@@ -265,4 +267,61 @@ chatRoutes.post('/vorgaenge/:id/chat', async (c) => {
       });
     }
   });
+});
+
+// ── Gesetz nachschlagen (nur Wortlaut) ──────────────────────────────────────
+
+/**
+ * POST — Gesetzesfrage: findet die passende Stelle in WoGG/WoGV/SGB I und liefert sie im
+ * amtlichen Wortlaut. Das Modell wählt nur Absatz-IDs aus einer Vorauswahl; es formuliert nichts.
+ * Spec: docs/wohngeld-gesetzes-nachschlagen-spec-2026-09-24.md
+ */
+chatRoutes.post('/vorgaenge/:id/chat/gesetz', async (c) => {
+  const vorgangId = c.req.param('id');
+  if (!(await getVorgang(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const body = await c.req.json<{ message?: string }>().catch(() => ({} as { message?: string }));
+  const frage = (body?.message ?? '').trim();
+  if (!frage) return c.json({ error: 'message ist erforderlich' }, 400);
+  const userId = getCurrentUserId(c);
+
+  await audit(c, { aktion: 'chat.gesetzfrage', objektTyp: 'chat', vorgangId, detail: `${frage.length} Zeichen` });
+  const frageMsg = await addChatMessage({ vorgangId, rolle: 'user', content: frage, modus: 'gesetz' });
+
+  const modell: ModellAufruf = async (system, user, schema) => {
+    const TIMEOUT_MS = 45_000;
+    const res = await Promise.race([
+      llmService.chat([{ role: 'system', content: system }, { role: 'user', content: user }], undefined, {
+        source: 'chat',
+        operation: 'wohngeld_gesetz_nachschlagen',
+        resourceId: vorgangId,
+        userId,
+        triggeringUserId: userId,
+        metadata: wohngeldUsageMetadata({ providerId: CHAT_MODEL.providerId, modelId: CHAT_MODEL.modelId, vorgangId, mitRechtKorpus: true }),
+      }, {
+        modelOverride: { providerId: CHAT_MODEL.providerId, modelId: CHAT_MODEL.modelId },
+        temperature: 0,
+        extraBody: { response_format: { type: 'json_schema', json_schema: { name: 'fundstellen', schema } } },
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Timeout nach ${TIMEOUT_MS} ms`)), TIMEOUT_MS)),
+    ]);
+    return res.content ?? '';
+  };
+
+  const ergebnis = await schlageNach(frage, modell);
+  const antwort = await addChatMessage({
+    vorgangId, rolle: 'assistant', modus: 'gesetz',
+    content: ergebnisZeile(ergebnis),
+    fundstellen: ergebnis.fundstellen,
+    auswahl: ergebnis.auswahl,
+    suchbegriffe: ergebnis.suchbegriffe,
+    ...(ergebnis.auswahl === 'modell' ? { model: CHAT_MODEL.modelId } : {}),
+  });
+  return c.json({ frage: frageMsg, antwort });
+});
+
+/** GET — alle Absätze des Paragraphen einer Fundstelle („ganzen § anzeigen"). */
+chatRoutes.get('/recht/paragraph/:id', (c) => {
+  const absaetze = ganzerParagraph(c.req.param('id'));
+  if (!absaetze.length) return c.json({ error: 'Fundstelle nicht gefunden' }, 404);
+  return c.json({ absaetze });
 });

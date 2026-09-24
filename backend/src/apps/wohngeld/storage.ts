@@ -552,12 +552,16 @@ export async function countAuditEintraegeGesamt(filter?: AuditGesamtFilter): Pro
 // ── Fall-Chat (append-only) ────────────────────────────────────────────────
 
 function rowToChatMessage(r: typeof wgChatMessages.$inferSelect): ChatMessage {
-  const data = (r.data ?? {}) as { content?: string; sources?: ChatSource[]; actions?: ChatMessage['actions']; model?: string; tokens?: number };
+  const data = (r.data ?? {}) as Partial<ChatMessage>;
   return {
     id: r.id,
     vorgangId: r.vorgangId,
     rolle: r.rolle as ChatMessage['rolle'],
     content: data.content ?? '',
+    modus: data.modus ?? 'antrag',
+    ...(data.fundstellen ? { fundstellen: data.fundstellen } : {}),
+    ...(data.auswahl ? { auswahl: data.auswahl } : {}),
+    ...(data.suchbegriffe ? { suchbegriffe: data.suchbegriffe } : {}),
     sources: data.sources,
     actions: data.actions,
     model: data.model,
@@ -584,6 +588,10 @@ export async function addChatMessage(input: {
   actions?: ChatMessage['actions'];
   model?: string;
   tokens?: number;
+  modus?: ChatMessage['modus'];
+  fundstellen?: ChatMessage['fundstellen'];
+  auswahl?: ChatMessage['auswahl'];
+  suchbegriffe?: ChatMessage['suchbegriffe'];
 }): Promise<ChatMessage> {
   const db = getDb();
   const now = nowIso();
@@ -596,6 +604,10 @@ export async function addChatMessage(input: {
       actions: input.actions,
       model: input.model,
       tokens: input.tokens,
+      modus: input.modus,
+      fundstellen: input.fundstellen,
+      auswahl: input.auswahl,
+      suchbegriffe: input.suchbegriffe,
     } as never,
     createdAt: now,
   });

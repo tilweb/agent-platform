@@ -8,6 +8,19 @@ import {
   PenIcon, ClipboardIcon, LightningIcon, CheckIcon,
 } from '../../../components/Icons';
 import { wohngeldApi, ACCENT, ACCENT_LIGHT } from '../api';
+import GesetzAntwort from './GesetzAntwort';
+
+/** Akzent des Gesetz-Modus (Teal) — sichtbar anders als der Antrags-Modus (Blau). */
+const GESETZ_ACCENT = theme.colors.primaryDark;
+const GESETZ_LIGHT = theme.colors.primaryLight;
+
+/** Startfragen im Gesetz-Modus. */
+const GESETZ_VORSCHLAEGE = [
+  'Was zählt zum Jahreseinkommen?',
+  'Wer ist vom Wohngeld ausgeschlossen?',
+  'Folgen fehlender Mitwirkung',
+  '§ 5 WoGG',
+];
 
 /** Kontextuelle Startfragen (grounded Fall-Q&A). */
 const VORSCHLAEGE = [
@@ -59,6 +72,8 @@ function Markdown({ text }) {
 
 export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = false, onDidMutate }) {
   const [minimized, setMinimized] = useState(false);
+  // Modus wählt nur der Mensch: 'antrag' (Fall-Chat) oder 'gesetz' (Wortlaut nachschlagen).
+  const [modus, setModus] = useState('antrag');
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -83,11 +98,11 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
   // Autoscroll ans Ende.
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages, streamingText, minimized]);
+  }, [messages, streamingText, minimized, modus]);
 
   /** Kurze, nicht-persistente Bestätigung inline im Verlauf. */
   function pushInfo(text) {
-    setMessages((prev) => [...prev, { id: `info-${Date.now()}`, rolle: 'info', content: text }]);
+    setMessages((prev) => [...prev, { id: `info-${Date.now()}`, rolle: 'info', content: text, modus }]);
   }
 
   async function send(text) {
@@ -97,14 +112,26 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
     setInput('');
     setBusy(true);
     setStreamingText('');
+    if (modus === 'gesetz') {
+      const lokal = { id: `local-${Date.now()}`, rolle: 'user', content: frage, modus: 'gesetz' };
+      setMessages((prev) => [...prev, lokal]);
+      try {
+        const { antwort } = await wohngeldApi.gesetzFrage(vorgang.id, frage);
+        setMessages((prev) => [...prev, antwort]);
+      } catch (e) {
+        setError(e.message || 'Nachschlagen fehlgeschlagen');
+      }
+      setBusy(false);
+      return;
+    }
     // Optimistisch die Nutzerfrage anzeigen.
-    setMessages((prev) => [...prev, { id: `local-${Date.now()}`, rolle: 'user', content: frage }]);
+    setMessages((prev) => [...prev, { id: `local-${Date.now()}`, rolle: 'user', content: frage, modus: 'antrag' }]);
 
     let acc = '';
     await wohngeldApi.streamChat(vorgang.id, frage, {
       onDelta: (chunk) => { acc += chunk; setStreamingText(acc); },
       onDone: (msg, actions) => {
-        setMessages((prev) => [...prev, msg || { id: `a-${Date.now()}`, rolle: 'assistant', content: acc, actions }]);
+        setMessages((prev) => [...prev, msg || { id: `a-${Date.now()}`, rolle: 'assistant', content: acc, actions, modus: 'antrag' }]);
         setStreamingText('');
       },
       onError: (msg) => { setError(msg || 'Antwort fehlgeschlagen'); setStreamingText(''); },
@@ -175,15 +202,19 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
     }
   }
 
-  const hasMessages = messages.length > 0 || streamingText;
+  const gesetz = modus === 'gesetz';
+  const sichtbar = messages.filter((m) => (m.modus || 'antrag') === modus);
+  const hasMessages = sichtbar.length > 0 || (!gesetz && streamingText);
+  const akzent = gesetz ? GESETZ_ACCENT : ACCENT;
+  const vorschlaege = gesetz ? GESETZ_VORSCHLAEGE : VORSCHLAEGE;
 
   return (
-    <div style={{ ...styles.panel, ...(minimized ? styles.panelMin : {}) }}>
+    <div style={{ ...styles.panel, ...(gesetz ? styles.panelGesetz : {}), ...(minimized ? styles.panelMin : {}) }}>
       {/* Kopf */}
-      <div style={styles.header}>
+      <div style={{ ...styles.header, backgroundColor: akzent }}>
         <div style={styles.headerTitle}>
-          <ChatIcon size={16} color="#fff" />
-          <span>Vorgang {vorgang.antragsId}</span>
+          {gesetz ? <ScaleIcon size={16} color="#fff" /> : <ChatIcon size={16} color="#fff" />}
+          <span>{gesetz ? 'Gesetz nachschlagen' : `Vorgang ${vorgang.wohngeldnummer || vorgang.antragsId}`}</span>
         </div>
         <div style={styles.headerActions}>
           <button
@@ -204,16 +235,41 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
 
       {!minimized && (
         <>
+          {/* Moduswahl: nur durch den Menschen */}
+          <div style={styles.modusLeiste} role="tablist" aria-label="Art der Frage">
+            <button
+              role="tab"
+              aria-selected={!gesetz}
+              style={{ ...styles.modusBtn, ...(!gesetz ? { ...styles.modusAktiv, color: ACCENT, borderColor: ACCENT } : {}) }}
+              onClick={() => setModus('antrag')}
+              disabled={busy}
+            >
+              <ChatIcon size={14} color={!gesetz ? ACCENT : theme.colors.textMuted} />
+              Zum Antrag
+            </button>
+            <button
+              role="tab"
+              aria-selected={gesetz}
+              style={{ ...styles.modusBtn, ...(gesetz ? { ...styles.modusAktiv, color: GESETZ_ACCENT, borderColor: GESETZ_ACCENT } : {}) }}
+              onClick={() => setModus('gesetz')}
+              disabled={busy}
+            >
+              <ScaleIcon size={14} color={gesetz ? GESETZ_ACCENT : theme.colors.textMuted} />
+              Gesetz nachschlagen
+            </button>
+          </div>
+
           {/* Nachrichten */}
-          <div style={styles.list} ref={listRef}>
+          <div style={{ ...styles.list, ...(gesetz ? { backgroundColor: theme.colors.background } : {}) }} ref={listRef}>
             {!hasMessages && (
               <div style={styles.empty}>
-                Fragen Sie zum Vorgang — die Antworten stützen sich ausschließlich auf die erfassten
-                Vorgangsdaten und Nachweise.
+                {gesetz
+                  ? 'Stellen Sie eine Frage zu WoGG, WoGV oder den Mitwirkungspflichten (§§ 60–67 SGB I). Angezeigt wird ausschließlich die passende Stelle im amtlichen Wortlaut — ohne Auslegung und ohne Bezug auf diesen Vorgang.'
+                  : 'Fragen Sie zum Vorgang — die Antworten stützen sich ausschließlich auf die erfassten Vorgangsdaten und Nachweise.'}
               </div>
             )}
 
-            {messages.map((m) => (
+            {sichtbar.map((m) => (
               <MessageBubble
                 key={m.id}
                 message={m}
@@ -226,7 +282,7 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
               />
             ))}
 
-            {streamingText && (
+            {!gesetz && streamingText && (
               <div style={styles.assistantRow}>
                 <div style={styles.assistantBubble}><Markdown text={streamingText} /></div>
               </div>
@@ -234,7 +290,7 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
 
             {busy && !streamingText && (
               <div style={styles.assistantRow}>
-                <div style={{ ...styles.assistantBubble, color: theme.colors.textMuted }}>Suche im Fall …</div>
+                <div style={{ ...styles.assistantBubble, color: theme.colors.textMuted }}>{gesetz ? 'Suche im Gesetz …' : 'Suche im Fall …'}</div>
               </div>
             )}
 
@@ -243,13 +299,13 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
 
           {/* Vorschlags-Chips */}
           <div style={styles.chips}>
-            {VORSCHLAEGE.map((v) => (
+            {vorschlaege.map((v) => (
               <button
                 key={v}
                 style={styles.chip}
                 disabled={busy}
                 onClick={() => send(v)}
-                onMouseEnter={(e) => { if (!busy) e.currentTarget.style.backgroundColor = ACCENT_LIGHT; }}
+                onMouseEnter={(e) => { if (!busy) e.currentTarget.style.backgroundColor = gesetz ? GESETZ_LIGHT : ACCENT_LIGHT; }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme.colors.surface; }}
               >
                 {v}
@@ -264,12 +320,12 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Frage zum Vorgang …"
+              placeholder={gesetz ? 'Frage zu WoGG, WoGV oder SGB I … oder z. B. „§ 14 WoGG"' : 'Frage zum Vorgang …'}
               rows={1}
               disabled={busy}
             />
             <button
-              style={{ ...styles.sendBtn, ...(busy || !input.trim() ? styles.sendBtnDisabled : {}) }}
+              style={{ ...styles.sendBtn, backgroundColor: akzent, ...(busy || !input.trim() ? styles.sendBtnDisabled : {}) }}
               onClick={() => send()}
               disabled={busy || !input.trim()}
               title="Senden"
@@ -281,8 +337,9 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
 
           {/* Vertraulichkeitshinweis */}
           <div style={styles.hint}>
-            Nachrichten werden vertraulich behandelt und nicht weitergegeben. Die Entscheidung im
-            Einzelfall treffen Sie.
+            {gesetz
+              ? 'Zeigt ausschließlich den Gesetzeswortlaut — keine Auslegung, keine Anwendung auf den Fall. Quelle: gesetze-im-internet.de.'
+              : 'Nachrichten werden vertraulich behandelt und nicht weitergegeben. Die Entscheidung im Einzelfall treffen Sie.'}
           </div>
         </>
       )}
@@ -353,6 +410,14 @@ function MessageBubble({ message, canEdit, onOpenDokument, onUebernehmen, onText
     return (
       <div style={styles.userRow}>
         <div style={styles.userBubble}>{message.content}</div>
+      </div>
+    );
+  }
+
+  if (message.modus === 'gesetz' && message.rolle === 'assistant') {
+    return (
+      <div style={styles.assistantRow}>
+        <GesetzAntwort message={message} />
       </div>
     );
   }
@@ -449,6 +514,36 @@ const styles = {
     boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
     zIndex: 1200,
     overflow: 'hidden',
+  },
+  panelGesetz: {
+    width: '560px',
+  },
+  modusLeiste: {
+    display: 'flex',
+    gap: theme.spacing.xs,
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    borderBottom: `1px solid ${theme.colors.border}`,
+    backgroundColor: theme.colors.surface,
+  },
+  modusBtn: {
+    flex: 1,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    padding: `6px ${theme.spacing.sm}`,
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.textMuted,
+    backgroundColor: 'transparent',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.md,
+    cursor: 'pointer',
+  },
+  modusAktiv: {
+    backgroundColor: theme.colors.surface,
+    fontWeight: theme.typography.weights.semibold,
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.06)',
   },
   panelMin: {
     maxHeight: 'none',

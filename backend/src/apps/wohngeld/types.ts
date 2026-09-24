@@ -706,11 +706,34 @@ export interface ChatAction {
 }
 
 /** Chat-Nachricht (append-only) im Fall-Verlauf eines Vorgangs. */
+/** Chat-Modus: Fragen zum Antrag (Fall-Chat) oder Gesetz nachschlagen (nur Wortlaut). */
+export type ChatModus = 'antrag' | 'gesetz';
+
+/** Eine angezeigte Gesetzesstelle (Momentaufnahme des Wortlauts zum Zeitpunkt der Frage). */
+export interface ChatFundstelle {
+  id: string;
+  gesetz: string;
+  paragraph: string;
+  absatz?: string;
+  titel: string;
+  text: string;
+  url: string;
+  stand: string;
+}
+
 export interface ChatMessage {
   id: string;
   vorgangId: string;
   rolle: 'user' | 'assistant';
   content: string;
+  /** Fehlt ⇒ 'antrag' (Verläufe vor Einführung des Gesetz-Modus). */
+  modus?: ChatModus;
+  /** Nur Modus 'gesetz': gefundene Stellen im Wortlaut. */
+  fundstellen?: ChatFundstelle[];
+  /** Nur Modus 'gesetz': wie die Stellen ausgewählt wurden. */
+  auswahl?: 'modell' | 'vorauswahl' | 'direkt' | 'keine';
+  /** Nur Modus 'gesetz': Suchbegriffe (Wortstämme) für die Hervorhebung. */
+  suchbegriffe?: string[];
   sources?: ChatSource[];
   /** Vorgeschlagene Aktionen (C4) — nur bei Assistenz-Antworten, Ausführung per Klick. */
   actions?: ChatAction[];

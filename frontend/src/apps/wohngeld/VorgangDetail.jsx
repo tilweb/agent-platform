@@ -1916,7 +1916,7 @@ export default function VorgangDetail() {
       )}
       {chatOpen && (
         <FallChat
-          vorgang={{ id: vorgang.id, antragsId: vorgang.antragsId }}
+          vorgang={{ id: vorgang.id, antragsId: vorgang.antragsId, wohngeldnummer: vorgang.wohngeldnummer }}
           onClose={() => setChatOpen(false)}
           onOpenDokument={(docId) => { if (docId) jumpToDokument(docId); else { setSideCollapsed(false); setSideTab('dokumente'); } }}
           canEdit={canEdit}

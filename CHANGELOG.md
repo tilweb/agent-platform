@@ -2,6 +2,19 @@
 
 ## 2026-09-24
 
+### Wohngeld — Assistent: „Gesetz nachschlagen"
+Der Assistent im Vorgang hat einen zweiten, per Umschalter gewählten Modus „Gesetz nachschlagen" (Teal statt Blau,
+eigener Verlauf, eigene Vorschläge, breiteres Panel). Er beantwortet Fragen zu den gesetzlichen Regelungen
+ausschließlich mit der passenden Stelle im amtlichen Wortlaut: Karten mit Fundstelle, Überschrift, Wortlaut
+(Suchbegriffe hervorgehoben), Stand, „ganzen § anzeigen", „kopieren", Link zur amtlichen Fassung. Keine Auslegung,
+keine Anwendung auf den Fall. Korpus: WoGG und WoGV vollständig, SGB I §§ 60–67, aus der amtlichen XML von
+gesetze-im-internet.de in Absätze zerlegt (`scripts/wohngeld-recht/importiere-gesetze.ts` →
+`recht/gesetze.generated.ts`, 244 Absätze). Ablauf: direkte Paragraphen-Abfrage ohne Modell; sonst deterministische
+Vorauswahl (BM25, Überschriften, alltagssprachliche Suchbegriffe, Wortzerlegung) und Auswahl durch das Modell, das
+nur Absatz-IDs aus der Vorauswahl zurückgibt (JSON-Schema); angezeigt wird immer der Korpus-Text. Fällt das Modell
+aus, erscheint die Vorauswahl mit Vermerk. Audit `chat.gesetzfrage`. Der Antrags-Chat übernimmt Gesetz-Nachrichten
+nicht in seinen Verlauf. Spec: `docs/wohngeld-gesetzes-nachschlagen-spec-2026-09-24.md`.
+
 ### Wohngeld — Rückmeldungen aus dem ersten Anwendungstest (Punkte 1–5)
 - **„Nicht geprüft" statt „vollständig":** Ohne Prüflauf zeigen die Sektionen „nicht geprüft" statt Grün; die
   Prüfschritte-Leiste zeigt „Jetzt prüfen" bzw. „Zuletzt geprüft: …". Der Prüfzeitpunkt wird ohne Versionssprung

@@ -224,6 +224,10 @@ export const wohngeldApi = {
 
   // Fall-Chat (grounded Fall-Q&A, Stufe C1)
   /** Chat-Verlauf eines Vorgangs laden. */
+  /** Gesetz nachschlagen: Fundstellen im Wortlaut (kein Streaming). Liefert { frage, antwort }. */
+  gesetzFrage: (vorgangId, message) => apiPost(`${base}/vorgaenge/${vorgangId}/chat/gesetz`, { message }).then(json),
+  /** Alle Absätze des Paragraphen einer Fundstelle. */
+  getParagraph: (fundstellenId) => apiGet(`${base}/recht/paragraph/${encodeURIComponent(fundstellenId)}`).then(json).then((d) => d.absaetze),
   getChat: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/chat`).then(json).then((d) => d.messages),
 
   /**
@@ -617,6 +621,7 @@ export const AKTION_LABEL = {
   'textbaustein.geaendert': 'Textbaustein geändert',
   'textbaustein.geloescht': 'Textbaustein gelöscht',
   'chat.frage': 'Chat-Frage gestellt',
+  'chat.gesetzfrage': 'Gesetz nachgeschlagen',
   'protokoll.exportiert': 'Protokoll exportiert',
   'person.auskunft_exportiert': 'Betroffenen-Auskunft exportiert',
   'posteingang.eingegangen': 'Posteingang: Eingang erfasst',
@@ -643,6 +648,7 @@ export function aktionLabel(aktion) {
  */
 export const KI_ZWECK_LABEL = {
   wohngeld_fall_chat: 'Fall-Chat (Frage zum Vorgang)',
+  wohngeld_gesetz_nachschlagen: 'Gesetz nachschlagen (Auswahl der Fundstellen)',
   wohngeld_klassifikation: 'Dokument-Klassifikation & Extraktion',
   chat: 'Chat',
   document_analysis: 'Dokumentanalyse',
