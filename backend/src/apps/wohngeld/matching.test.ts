@@ -55,7 +55,7 @@ describe('matchVorgaenge', () => {
     expect(zeile(top, 'antragsId')?.status).toBe('gleich');
   });
 
-  test('Name gleich, Geburtsdatum abweichend → Abweichung markiert, Level gedämpft', () => {
+  test('Name + Adresse gleich, Geburtsdatum abweichend → andere Person, kein Vorschlag (gering)', () => {
     const res = matchVorgaenge(
       {
         nachname: 'Müller', vorname: 'Erika', geburtsdatum: '01.01.1975',
@@ -65,16 +65,46 @@ describe('matchVorgaenge', () => {
     );
     expect(res).toHaveLength(1);
     const top = res[0]!;
-    // Rohscore läge (ohne Geburtsdatum) über der Hoch-Schwelle …
-    expect(top.score).toBeGreaterThanOrEqual(55);
-    // … die starke Abweichung dämpft aber auf „mittel".
-    expect(top.level).toBe('mittel');
+    expect(top.level).toBe('gering');
     expect(zeile(top, 'geburtsdatum')?.status).toBe('abweichung');
     expect(zeile(top, 'geburtsdatum')?.ausDokument).toBe('01.01.1975');
     expect(zeile(top, 'geburtsdatum')?.imVorgang).toBe('1960-05-12');
   });
 
-  test('mehrere ähnliche Kandidaten → mehrere Vorschläge, absteigend sortiert', () => {
+  test('nur Nachname gleich, sonst alles abweichend → kein Kandidat (Rückmeldung aus dem Test)', () => {
+    const reinhardt: MatchKandidat = {
+      vorgangId: 'vorgang-r', antragsId: '832-458-318', nachname: 'Reinhardt', vorname: 'Werner', geburtsdatum: '1958-08-22',
+      plz: '79104', ort: 'Freiburg', strasse: 'Höhenweg', hausnummer: '4',
+    };
+    const res = matchVorgaenge(
+      { nachname: 'Reinhardt', vorname: 'Tobias', geburtsdatum: '1985-12-03', plz: '69124', ort: 'Heidelberg', strasse: 'Kirchheimer Feldweg', hausnummer: '42' },
+      [reinhardt],
+    );
+    expect(res).toEqual([]);
+  });
+
+  test('nur Nachname gleich, übrige Angaben fehlen → gering, kein Vorschlag', () => {
+    const res = matchVorgaenge({ nachname: 'Müller' }, [KANDIDAT]);
+    expect(res[0]!.level).toBe('gering');
+  });
+
+  test('Nachname + Geburtsdatum gleich (Vorname fehlt) → hoch', () => {
+    const res = matchVorgaenge({ nachname: 'Müller', geburtsdatum: '1960-05-12' }, [KANDIDAT]);
+    expect(res[0]!.level).toBe('hoch');
+  });
+
+  test('Nachname + Adresse gleich, Rest fehlt → mittel', () => {
+    const res = matchVorgaenge({ nachname: 'Müller', strasse: 'Hauptstraße', hausnummer: '5' }, [KANDIDAT]);
+    expect(res[0]!.level).toBe('mittel');
+  });
+
+  test('Wohngeldnummer gleich, Geburtsdatum vertippt → bleibt Vorschlag (mittel)', () => {
+    const res = matchVorgaenge({ aktenzeichen: '123-456-789', nachname: 'Müller', geburtsdatum: '12.05.1961' }, [KANDIDAT]);
+    expect(res[0]!.level).toBe('mittel');
+    expect(zeile(res[0]!, 'antragsId')?.label).toBe('Wohngeldnummer');
+  });
+
+  test('Namensvetter wird aussortiert, der echte Treffer bleibt', () => {
     const zweiterMueller: MatchKandidat = {
       vorgangId: 'vorgang-2', antragsId: '999-888-777',
       akteName: 'Müller, Hans', antragstellerName: 'Müller, Hans',
@@ -84,14 +114,8 @@ describe('matchVorgaenge', () => {
       { nachname: 'Müller', vorname: 'Erika', geburtsdatum: '1960-05-12' },
       [zweiterMueller, KANDIDAT],
     );
-    expect(res.length).toBeGreaterThanOrEqual(2);
-    const [erster, zweiter] = [res[0]!, res[1]!];
-    // Exakter Treffer (KANDIDAT) muss vor dem nur-Nachname-Treffer stehen.
-    expect(erster.vorgangId).toBe('vorgang-1');
-    expect(erster.score).toBeGreaterThan(zweiter.score);
-    // Zweiter: nur Nachname gleich, Vorname/Geburtsdatum abweichend.
-    expect(zeile(zweiter, 'nachname')?.status).toBe('gleich');
-    expect(zeile(zweiter, 'vorname')?.status).toBe('abweichung');
+    expect(res.map((r) => r.vorgangId)).toEqual(['vorgang-1']);
+    expect(res[0]!.level).toBe('hoch');
   });
 
   test('keine identifizierenden Daten → leeres Ergebnis (kein Vorschlag)', () => {

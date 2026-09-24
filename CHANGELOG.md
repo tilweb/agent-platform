@@ -2,6 +2,13 @@
 
 ## 2026-09-24
 
+### Wohngeld — Zuordnungs-Vorschlag im Posteingang strenger
+Bisher reichte ein gleicher Nachname für „Mögliche Übereinstimmung", auch wenn Vorname, Geburtsdatum und Adresse
+abwichen. Jetzt: Abweichungen ziehen Punkte ab (Name/Geburtsdatum/Nummer voll, Adressfelder halb); ein abweichendes
+Geburtsdatum gilt als andere Person (höchstens „gering", außer die Wohngeldnummer stimmt); ein Vorschlag braucht
+mindestens zwei unabhängige Übereinstimmungen (Nachname, Vorname, Geburtsdatum, Adresse). „Gering" wird nicht als
+Vorschlag gezeigt. Vergleichszeile „Antrags-ID" heißt jetzt „Wohngeldnummer".
+
 ### Wohngeld — Posteingang-Detail: echte Dokumentvorschau statt Textspalte
 Die rechte Spalte zeigte bisher nur den extrahierten Text der Datei (bei Scans leer, daher unverständlich). Jetzt
 zeigt sie das links angeklickte Dokument als Vorschau (PDF bzw. Bild, bei getrennten Sammel-PDFs genau die Seiten des

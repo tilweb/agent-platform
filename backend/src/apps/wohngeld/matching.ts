@@ -115,7 +115,7 @@ interface FeldDef {
 }
 
 const FELD_DEFS: FeldDef[] = [
-  { feld: 'antragsId', label: 'Antrags-ID', weight: 60, strong: true, norm: normId, doc: (i) => i.antragsId || i.aktenzeichen, vorg: (k) => k.antragsId },
+  { feld: 'antragsId', label: 'Wohngeldnummer', weight: 60, strong: true, norm: normId, doc: (i) => i.antragsId || i.aktenzeichen, vorg: (k) => k.antragsId },
   { feld: 'nachname', label: 'Nachname', weight: 30, strong: true, norm: normText, doc: (i) => i.nachname, vorg: (k) => k.nachname },
   { feld: 'geburtsdatum', label: 'Geburtsdatum', weight: 25, strong: true, norm: normDate, doc: (i) => i.geburtsdatum, vorg: (k) => k.geburtsdatum },
   { feld: 'vorname', label: 'Vorname', weight: 12, strong: false, norm: normText, doc: (i) => i.vorname, vorg: (k) => k.vorname },
@@ -133,6 +133,17 @@ function levelFromScore(score: number): MatchLevel {
   if (score >= LEVEL_HOCH) return 'hoch';
   if (score >= LEVEL_MITTEL) return 'mittel';
   return 'gering';
+}
+
+/**
+ * Unabhängige Übereinstimmungen: Nachname, Vorname, Geburtsdatum je für sich; die Adresse zählt
+ * als eine, wenn Straße + Hausnummer oder PLZ + Ort übereinstimmen.
+ */
+export function unabhaengigeTreffer(gleich: Set<string>): number {
+  let n = 0;
+  for (const f of ['nachname', 'vorname', 'geburtsdatum']) if (gleich.has(f)) n++;
+  if ((gleich.has('strasse') && gleich.has('hausnummer')) || (gleich.has('plz') && gleich.has('ort'))) n++;
+  return n;
 }
 
 /** Enthält `ident` mindestens ein identifizierendes Feld (nach Normalisierung)? */
@@ -153,6 +164,8 @@ export function matchVorgaenge(ident: MatchIdent, kandidaten: MatchKandidat[]): 
   for (const k of kandidaten) {
     let score = 0;
     let starkeAbweichung = false;
+    const gleich = new Set<string>();
+    const abweichend = new Set<string>();
     const vergleich: VergleichZeile[] = [];
 
     for (const d of FELD_DEFS) {
@@ -168,8 +181,13 @@ export function matchVorgaenge(ident: MatchIdent, kandidaten: MatchKandidat[]): 
       else if (docN === vorgN) status = 'gleich';
       else status = 'abweichung';
 
-      if (status === 'gleich') score += d.weight;
-      if (status === 'abweichung' && d.strong) starkeAbweichung = true;
+      // Übereinstimmungen zählen voll; Abweichungen ziehen ab (starke Merkmale voll, übrige zur Hälfte).
+      if (status === 'gleich') { score += d.weight; gleich.add(d.feld); }
+      if (status === 'abweichung') {
+        score -= d.strong ? d.weight : d.weight / 2;
+        abweichend.add(d.feld);
+        if (d.strong) starkeAbweichung = true;
+      }
 
       vergleich.push({
         feld: d.feld,
@@ -183,9 +201,15 @@ export function matchVorgaenge(ident: MatchIdent, kandidaten: MatchKandidat[]): 
     if (score <= 0) continue;
 
     let level = levelFromScore(score);
-    // Eine Abweichung in einem starken Signal (Name/Geburtsdatum/Antrags-ID)
+    const nummerGleich = gleich.has('antragsId');
+    // Eine Abweichung in einem starken Signal (Name/Geburtsdatum/Nummer)
     // verhindert „hoch" — die Sachbearbeitung soll ausdrücklich prüfen.
     if (starkeAbweichung && level === 'hoch') level = 'mittel';
+    // Abweichendes Geburtsdatum ⇒ vermutlich eine andere Person (z. B. Namensvetter, Elternteil/Kind),
+    // es sei denn, die Wohngeldnummer stimmt überein.
+    if (abweichend.has('geburtsdatum') && !nummerGleich) level = 'gering';
+    // Ein Vorschlag braucht mindestens zwei unabhängige Übereinstimmungen — der Nachname allein reicht nie.
+    if (!nummerGleich && unabhaengigeTreffer(gleich) < 2) level = 'gering';
 
     results.push({
       vorgangId: k.vorgangId,
