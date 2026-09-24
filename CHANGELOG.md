@@ -2,6 +2,11 @@
 
 ## 2026-09-24
 
+### Wohngeld — Assistent: Verlauf zurücksetzen, Gesetzes-Karten ohne Farbrand
+Der Chat-Verlauf lässt sich je Modus zurücksetzen (Button im Chat-Kopf, Bestätigungszeile; nur Bearbeitende;
+`DELETE /vorgaenge/:id/chat?modus=antrag|gesetz`, Audit `chat.zurueckgesetzt` mit Anzahl). Die Fundstellen-Karten
+im Gesetz-Modus haben keinen farbigen linken Akzentrand mehr (Frontend-Richtlinie: nur neutrale 1px-Rahmen).
+
 ### Wohngeld — Assistent: „Gesetz nachschlagen"
 Der Assistent im Vorgang hat einen zweiten, per Umschalter gewählten Modus „Gesetz nachschlagen" (Teal statt Blau,
 eigener Verlauf, eigene Vorschläge, breiteres Panel). Er beantwortet Fragen zu den gesetzlichen Regelungen

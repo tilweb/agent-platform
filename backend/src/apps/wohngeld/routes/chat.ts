@@ -15,8 +15,9 @@ import { getCurrentUserId } from '../../../auth/middleware';
 import { llmService, type Message } from '../../../services/llm';
 import {
   getVorgang, getVorgangSnapshot, listPruefschritte,
-  listChatMessages, addChatMessage,
+  listChatMessages, addChatMessage, loescheChatVerlauf,
 } from '../storage';
+import { denyIfNotAppEditor } from './_shared';
 import { buildFallKontext } from '../chat-context';
 import { audit } from '../audit';
 import { sucheRecht } from '../recht/retrieval';
@@ -83,6 +84,24 @@ chatRoutes.get('/vorgaenge/:id/chat', async (c) => {
   const vorgangId = c.req.param('id');
   if (!(await getVorgang(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
   return c.json({ messages: await listChatMessages(vorgangId) });
+});
+
+/**
+ * DELETE — Verlauf eines Modus zurücksetzen (`?modus=antrag|gesetz`, Standard antrag).
+ * Nur Bearbeitende; protokolliert wird die Anzahl, nicht der Inhalt.
+ */
+chatRoutes.delete('/vorgaenge/:id/chat', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+  const vorgangId = c.req.param('id');
+  if (!(await getVorgang(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const modus = c.req.query('modus') === 'gesetz' ? 'gesetz' : 'antrag';
+  const geloescht = await loescheChatVerlauf(vorgangId, modus);
+  await audit(c, {
+    aktion: 'chat.zurueckgesetzt', objektTyp: 'chat', vorgangId,
+    detail: `${modus === 'gesetz' ? 'Gesetz nachschlagen' : 'Fragen zum Antrag'}: ${geloescht} Nachricht(en) gelöscht`,
+  });
+  return c.json({ ok: true, geloescht });
 });
 
 /**

@@ -108,7 +108,7 @@ export default function GesetzAntwort({ message }) {
 
 const styles = {
   antwort: { display: 'flex', flexDirection: 'column', gap: theme.spacing.sm, width: '100%' },
-  karte: { border: `1px solid ${theme.colors.border}`, borderLeft: `3px solid ${G}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, overflow: 'hidden' },
+  karte: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, overflow: 'hidden' },
   kartenKopf: { display: 'flex', alignItems: 'baseline', gap: theme.spacing.sm, padding: `${theme.spacing.sm} ${theme.spacing.md}`, backgroundColor: G_LIGHT, flexWrap: 'wrap' },
   fundstelle: { fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.semibold, color: G },
   titel: { fontSize: theme.typography.sizes.xs, color: theme.colors.text },

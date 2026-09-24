@@ -228,6 +228,8 @@ export const wohngeldApi = {
   gesetzFrage: (vorgangId, message) => apiPost(`${base}/vorgaenge/${vorgangId}/chat/gesetz`, { message }).then(json),
   /** Alle Absätze des Paragraphen einer Fundstelle. */
   getParagraph: (fundstellenId) => apiGet(`${base}/recht/paragraph/${encodeURIComponent(fundstellenId)}`).then(json).then((d) => d.absaetze),
+  /** Chat-Verlauf eines Modus ('antrag' | 'gesetz') zurücksetzen. */
+  resetChat: (vorgangId, modus) => apiDelete(`${base}/vorgaenge/${vorgangId}/chat?modus=${modus}`).then(json),
   getChat: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/chat`).then(json).then((d) => d.messages),
 
   /**
@@ -622,6 +624,7 @@ export const AKTION_LABEL = {
   'textbaustein.geloescht': 'Textbaustein gelöscht',
   'chat.frage': 'Chat-Frage gestellt',
   'chat.gesetzfrage': 'Gesetz nachgeschlagen',
+  'chat.zurueckgesetzt': 'Chat-Verlauf zurückgesetzt',
   'protokoll.exportiert': 'Protokoll exportiert',
   'person.auskunft_exportiert': 'Betroffenen-Auskunft exportiert',
   'posteingang.eingegangen': 'Posteingang: Eingang erfasst',

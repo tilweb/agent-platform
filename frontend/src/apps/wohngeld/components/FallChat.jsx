@@ -5,7 +5,7 @@ import { markdownZuText } from '../markdownText';
 import { theme } from '../../../config/theme';
 import {
   ChatIcon, SendIcon, XIcon, DocumentIcon, ScaleIcon,
-  PenIcon, ClipboardIcon, LightningIcon, CheckIcon,
+  PenIcon, ClipboardIcon, LightningIcon, CheckIcon, RefreshIcon,
 } from '../../../components/Icons';
 import { wohngeldApi, ACCENT, ACCENT_LIGHT } from '../api';
 import GesetzAntwort from './GesetzAntwort';
@@ -74,6 +74,7 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
   const [minimized, setMinimized] = useState(false);
   // Modus wählt nur der Mensch: 'antrag' (Fall-Chat) oder 'gesetz' (Wortlaut nachschlagen).
   const [modus, setModus] = useState('antrag');
+  const [resetFrage, setResetFrage] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -137,6 +138,21 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
       onError: (msg) => { setError(msg || 'Antwort fehlgeschlagen'); setStreamingText(''); },
     });
     setBusy(false);
+  }
+
+  // Verlauf des aktuellen Modus zurücksetzen (nach Bestätigung).
+  async function resetVerlauf() {
+    setBusy(true); setError('');
+    try {
+      await wohngeldApi.resetChat(vorgang.id, modus);
+      setMessages((prev) => prev.filter((m) => (m.modus || 'antrag') !== modus));
+      setStreamingText('');
+    } catch (e) {
+      setError(e.message || 'Zurücksetzen fehlgeschlagen');
+    } finally {
+      setResetFrage(false);
+      setBusy(false);
+    }
   }
 
   function onKeyDown(e) {
@@ -217,6 +233,17 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
           <span>{gesetz ? 'Gesetz nachschlagen' : `Vorgang ${vorgang.wohngeldnummer || vorgang.antragsId}`}</span>
         </div>
         <div style={styles.headerActions}>
+          {canEdit && !minimized && sichtbar.length > 0 && (
+            <button
+              style={styles.headerBtn}
+              onClick={() => setResetFrage(true)}
+              disabled={busy}
+              title="Verlauf zurücksetzen"
+              aria-label="Verlauf zurücksetzen"
+            >
+              <RefreshIcon size={16} color="#fff" />
+            </button>
+          )}
           <button
             style={styles.headerBtn}
             onClick={() => setMinimized((m) => !m)}
@@ -241,7 +268,7 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
               role="tab"
               aria-selected={!gesetz}
               style={{ ...styles.modusBtn, ...(!gesetz ? { ...styles.modusAktiv, color: ACCENT, borderColor: ACCENT } : {}) }}
-              onClick={() => setModus('antrag')}
+              onClick={() => { setModus('antrag'); setResetFrage(false); }}
               disabled={busy}
             >
               <ChatIcon size={14} color={!gesetz ? ACCENT : theme.colors.textMuted} />
@@ -251,13 +278,23 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
               role="tab"
               aria-selected={gesetz}
               style={{ ...styles.modusBtn, ...(gesetz ? { ...styles.modusAktiv, color: GESETZ_ACCENT, borderColor: GESETZ_ACCENT } : {}) }}
-              onClick={() => setModus('gesetz')}
+              onClick={() => { setModus('gesetz'); setResetFrage(false); }}
               disabled={busy}
             >
               <ScaleIcon size={14} color={gesetz ? GESETZ_ACCENT : theme.colors.textMuted} />
               Gesetz nachschlagen
             </button>
           </div>
+
+          {resetFrage && (
+            <div style={styles.resetLeiste} role="alertdialog" aria-label="Verlauf zurücksetzen">
+              <span>Verlauf „{gesetz ? 'Gesetz nachschlagen' : 'Zum Antrag'}" für diesen Vorgang löschen?</span>
+              <div style={{ display: 'flex', gap: theme.spacing.xs }}>
+                <button style={styles.resetAbbrechen} onClick={() => setResetFrage(false)} disabled={busy}>Abbrechen</button>
+                <button style={styles.resetLoeschen} onClick={resetVerlauf} disabled={busy}>Löschen</button>
+              </div>
+            </div>
+          )}
 
           {/* Nachrichten */}
           <div style={{ ...styles.list, ...(gesetz ? { backgroundColor: theme.colors.background } : {}) }} ref={listRef}>
@@ -514,6 +551,36 @@ const styles = {
     boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
     zIndex: 1200,
     overflow: 'hidden',
+  },
+  resetLeiste: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+    flexWrap: 'wrap',
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.text,
+    backgroundColor: theme.colors.warningLight,
+    borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  resetAbbrechen: {
+    padding: '3px 8px',
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.text,
+    backgroundColor: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius.sm,
+    cursor: 'pointer',
+  },
+  resetLoeschen: {
+    padding: '3px 8px',
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.error,
+    backgroundColor: theme.colors.surface,
+    border: `1px solid ${theme.colors.error}30`,
+    borderRadius: theme.borderRadius.sm,
+    cursor: 'pointer',
   },
   panelGesetz: {
     width: '560px',

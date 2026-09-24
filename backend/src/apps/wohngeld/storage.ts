@@ -579,6 +579,21 @@ export async function listChatMessages(vorgangId: string): Promise<ChatMessage[]
   return rows.map(rowToChatMessage);
 }
 
+/**
+ * Chat-Verlauf eines Modus zurücksetzen (Nachrichten löschen). Nachrichten ohne Modus
+ * (vor Einführung des Gesetz-Modus) zählen zum Antrags-Modus. Liefert die Anzahl.
+ */
+export async function loescheChatVerlauf(vorgangId: string, modus: 'antrag' | 'gesetz'): Promise<number> {
+  const db = getDb();
+  const modusBedingung = modus === 'antrag'
+    ? rawSql`coalesce(${wgChatMessages.data}->>'modus', 'antrag') = 'antrag'`
+    : rawSql`${wgChatMessages.data}->>'modus' = 'gesetz'`;
+  const r = await db.delete(wgChatMessages)
+    .where(and(eq(wgChatMessages.vorgangId, vorgangId), modusBedingung))
+    .returning({ id: wgChatMessages.id });
+  return r.length;
+}
+
 /** Neue Chat-Nachricht anhängen (append-only). */
 export async function addChatMessage(input: {
   vorgangId: string;
