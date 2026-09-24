@@ -4,6 +4,7 @@
  * docs/wohngeld-regelkatalog-2026-09-18.md (Abschnitt 1).
  */
 import type { VorgangSnapshot, Person, Dokument, DokumentTyp, PruefBefund } from '../types';
+import { alterAm } from '../haushalt';
 
 function hasDocForPerson(dokumente: Dokument[], typ: DokumentTyp, personId: string): boolean {
   return dokumente.some(d => d.typ === typ && d.personId === personId);
@@ -80,12 +81,17 @@ export function pruefeNachweise(snapshot: VorgangSnapshot): PruefBefund[] {
   }
 
   // ── Personenbezogene Nachweise ───────────────────────────────────────
+  // Stichtag für Altersgrenzen: Antragsdatum, sonst heute.
+  const stichtag = vorgang.antragsdatum || new Date().toISOString().slice(0, 10);
   for (const p of personen) {
     const arten = incomeArten(p);
     const label = personLabel(p);
+    // Minderjährige: im Antrag erfasst, i. d. R. familienversichert — kein eigener Ausweis-/KV-Nachweis.
+    // Ohne Geburtsdatum wird weiter verlangt (Alter unbekannt).
+    const minderjaehrig = (alterAm(p.geburtsdatum, stichtag) ?? 99) < 18;
 
-    // Identität — immer je Person
-    if (!hasDocForPerson(dokumente, 'personalausweis', p.id)) {
+    // Identität — je volljähriger Person
+    if (!minderjaehrig && !hasDocForPerson(dokumente, 'personalausweis', p.id)) {
       befunde.push({
         regelId: 'identitaet-jede-person', personId: p.id, kategorie: 'vollstaendigkeit', typ: 'anforderung',
         titel: 'Personalausweis',
@@ -93,8 +99,8 @@ export function pruefeNachweise(snapshot: VorgangSnapshot): PruefBefund[] {
       });
     }
 
-    // Kranken-/Pflegeversicherung — immer je Person (relevant für § 16)
-    if (!hasDocForPerson(dokumente, 'kv_pv_nachweis', p.id)) {
+    // Kranken-/Pflegeversicherung — je volljähriger Person (relevant für § 16)
+    if (!minderjaehrig && !hasDocForPerson(dokumente, 'kv_pv_nachweis', p.id)) {
       befunde.push({
         regelId: 'krankenversicherung-nachweis', personId: p.id, kategorie: 'vollstaendigkeit', typ: 'anforderung',
         titel: 'Nachweis Kranken-/Pflegeversicherung',

@@ -56,5 +56,5 @@ test('GET /regeln liefert Katalog, Gruppen und Stand', async () => {
   const d = await res.json() as { stand: string; gruppen: Record<string, string>; regeln: Array<{ id: string }> };
   expect(d.regeln.length).toBe(REGELKATALOG.length);
   expect(d.gruppen.wohnen).toBe('Wohnung und Miete');
-  expect(d.stand).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  expect(d.stand).toMatch(/^\d{4}-\d{2}-\d{2}[a-z]?$/);
 });

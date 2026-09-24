@@ -459,6 +459,20 @@ export function baueExtraktionsUebersicht(
     add('Antrag', 'Antragsdatum', 'antrag.antragsdatum', fmtDatum(s.antragsdatum));
     add('Antrag', 'Wohngeldart', 'antrag.wohngeldart', s.wohngeldart ? WGA_LABEL[s.wohngeldart] : undefined);
     add('Antrag', 'Antragsart', 'antrag.antragsart', s.antragsart ? ANTRAGSART_LABEL[s.antragsart] : undefined);
+    const h = s.haushalt;
+    if (h) {
+      const nm = (x: { vorname?: string; nachname?: string }) => [x.vorname, x.nachname].filter(Boolean).join(' ');
+      add('Haushalt', 'Erwerbsstatus Antragsteller', undefined, h.antragstellerErwerbsstatus);
+      h.mitglieder.forEach((m, i) => add('Haushalt', `${i + 1}. Haushaltsmitglied`, undefined,
+        [nm(m), m.geburtsdatum ? `geb. ${fmtDatum(m.geburtsdatum)}` : '', m.verhaeltnis, m.erwerbsstatus].filter(Boolean).join(', ')));
+      h.einnahmen.forEach((e) => add('Haushalt', `Einnahme ${nm(e)}`.trim(), undefined,
+        [e.art, fmtEuro(e.brutto), e.turnus].filter(Boolean).join(', ')));
+      h.behinderung.forEach((b) => add('Haushalt', `Schwerbehinderung/Pflege ${nm(b)}`.trim(), undefined,
+        [b.gdb ? `GdB ${b.gdb}` : '', b.pflegegrad ? `Pflegegrad ${b.pflegegrad}` : '', b.haeuslich ? 'häuslich pflegebedürftig' : ''].filter(Boolean).join(', ')));
+      h.transfer.forEach((t) => add('Haushalt', `Transferleistung ${nm(t)}`.trim(), undefined,
+        [t.leistung, t.bewilligt ? `bewilligt ${fmtDatum(t.bewilligt)}` : '', t.weggefallen ? `weggefallen ${fmtDatum(t.weggefallen)}` : '', t.abgelehnt ? `abgelehnt ${fmtDatum(t.abgelehnt)}` : ''].filter(Boolean).join(', ')));
+      add('Haushalt', 'Vermögen (Frage 20)', undefined, fmtEuro(h.vermoegen));
+    }
   } else if (teile.identitaet) {
     // Nachweis: Identitäts-Signal.
     const id = teile.identitaet;

@@ -252,3 +252,28 @@ describe('Welle 3 — Vermögen/Transfer/BWZ-Regeln (WP5)', () => {
     expect(has(pruefeVorgang(snap), 'bwz-vorschlag-pruefen')).toBe(false);
   });
 });
+
+describe('Altersgrenze Ausweis/KV (Stichtag Antragsdatum)', () => {
+  const snap = (geb?: string): VorgangSnapshot => ({
+    vorgang: mkVorgang({ antragsdatum: '2026-08-12' }),
+    personen: [
+      mkPerson({ id: 'pa', rolle: 'antragsteller', vorname: 'A', nachname: 'X', geburtsdatum: '1980-01-01' }),
+      mkPerson({ id: 'pk', rolle: 'kind', vorname: 'K', nachname: 'X', ...(geb ? { geburtsdatum: geb } : {}) }),
+    ],
+    dokumente: [],
+  });
+  test('Kind unter 18: kein Ausweis- und kein KV-Befund', () => {
+    const b = pruefeVorgang(snap('2012-05-05'));
+    expect(has(b, 'identitaet-jede-person', 'pk')).toBe(false);
+    expect(has(b, 'krankenversicherung-nachweis', 'pk')).toBe(false);
+    expect(has(b, 'identitaet-jede-person', 'pa')).toBe(true);
+  });
+  test('18. Geburtstag vor dem Antragsdatum: Befunde wie bei Erwachsenen', () => {
+    const b = pruefeVorgang(snap('2008-08-12'));
+    expect(has(b, 'identitaet-jede-person', 'pk')).toBe(true);
+    expect(has(b, 'krankenversicherung-nachweis', 'pk')).toBe(true);
+  });
+  test('ohne Geburtsdatum weiter verlangt', () => {
+    expect(has(pruefeVorgang(snap()), 'identitaet-jede-person', 'pk')).toBe(true);
+  });
+});

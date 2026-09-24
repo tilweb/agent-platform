@@ -51,6 +51,30 @@ export function erzeugeBericht(d: { lauf: string; modell: string; endeZuEnde: bo
   }
   teile.push('## Übersicht\n');
   teile.push(tabelle(['Variante', 'Split', 'Dokumente exakt getrennt', 'Typ richtig', 'Felder richtig', 'Prüfung Posteingang (Treffer · Fehlalarme)'], zeilen));
+
+  // ── Haushalt + Zuordnung (Posteingang) ──
+  if (d.ergebnisse.some((e) => e.haushalt)) {
+    const hz: Array<Array<string | number>> = [];
+    for (const v of varianten) {
+      const l = d.ergebnisse.filter((e) => e.variante === v);
+      const h = l.filter((e) => e.haushalt).map((e) => e.haushalt!);
+      const z = l.filter((e) => e.zuordnung).map((e) => e.zuordnung!);
+      const sum = <T,>(xs: T[], f: (x: T) => number) => xs.reduce((a, x) => a + f(x), 0);
+      const gef = sum(h, (x) => x.gefunden);
+      hz.push([
+        v,
+        `${pz(gef, sum(h, (x) => x.erwartet))} (${sum(h, (x) => x.angelegt)} angelegt / ${sum(h, (x) => x.erwartet)} erwartet)`,
+        pz(sum(h, (x) => x.rolleRichtig), gef), pz(sum(h, (x) => x.erwerbRichtig), gef), pz(sum(h, (x) => x.einkommenRichtig), gef),
+        `${pz(sum(z, (x) => x.richtig), sum(z, (x) => x.geprueft))} · ${sum(z, (x) => x.falsch)} falsch · ${sum(z, (x) => x.offen)} offen`,
+      ]);
+    }
+    teile.push('\n## Haushalt und Zuordnung (Posteingang)\n');
+    teile.push(tabelle(['Variante', 'Personen gefunden', 'Rolle richtig', 'Erwerbsstatus richtig', 'Einkommensarten richtig', 'Nachweise richtig zugeordnet'], hz));
+    const falsch = d.ergebnisse.filter((e) => e.zuordnung?.beispiele.length).map((e) => `- ${e.fall} ${e.variante}: ${e.zuordnung!.beispiele.join('; ')}`);
+    if (falsch.length) teile.push(`\nFalsch zugeordnet (Beispiele):\n\n${falsch.join('\n')}`);
+    const fehlend = d.ergebnisse.filter((e) => e.haushalt && e.haushalt.gefunden < e.haushalt.erwartet).map((e) => `${e.fall}/${e.variante[0]} ${e.haushalt!.gefunden}/${e.haushalt!.erwartet}`);
+    if (fehlend.length) teile.push(`\nHaushalt unvollständig: ${fehlend.join(', ')}`);
+  }
   const rw = d.ergebnisse.filter((e, i, arr) => e.regelwerk && arr.findIndex((x) => x.fall === e.fall) === i).map((e) => e.regelwerk!);
   if (rw.length) {
     const erwartet = rw.reduce((s, a) => s + a.treffer.length + a.verfehlt.length, 0);

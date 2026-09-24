@@ -66,6 +66,8 @@ const styles = {
   btn: { padding: `${theme.spacing.sm} ${theme.spacing.lg}`, backgroundColor: ACCENT, color: '#fff', border: 'none', borderRadius: theme.borderRadius.lg, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, cursor: 'pointer' },
   btnGhost: { padding: `${theme.spacing.sm} ${theme.spacing.lg}`, backgroundColor: 'transparent', color: theme.colors.text, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, cursor: 'pointer' },
   btnSmall: { padding: `4px ${theme.spacing.md}`, fontSize: theme.typography.sizes.xs, borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
+  docPersonRow: { display: 'flex', alignItems: 'center', gap: theme.spacing.xs, marginTop: 4, flexWrap: 'wrap' },
+  docPersonSelect: { padding: '2px 6px', fontSize: '0.75rem', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer', maxWidth: '100%' },
   select: { padding: `6px ${theme.spacing.md}`, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
   input: { width: '100%', padding: theme.spacing.sm, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none' },
   editRow: { display: 'grid', gridTemplateColumns: 'minmax(140px, 220px) 1fr', rowGap: theme.spacing.sm, columnGap: theme.spacing.lg, alignItems: 'center' },
@@ -364,6 +366,24 @@ export default function VorgangDetail() {
     try { await wohngeldApi.ablegenDokument(d.id); await reload(); }
     catch (e) { setError(e.message); }
     finally { setBusy(false); }
+  }
+
+  // Nachweis einer Person zuordnen (oder dem Haushalt): speichern → neu prüfen → neu laden.
+  // Der Hinweis „Person nicht eindeutig zuordenbar" entfällt mit der Entscheidung.
+  async function zuordnenPerson(d, personId) {
+    setBusy(true); setError('');
+    try {
+      await wohngeldApi.updateDokument(d.id, {
+        personId: personId || null,
+        flags: (d.flags || []).filter((f) => f.code !== 'person-unklar'),
+        expectedVersion: d.version,
+      });
+      try { await wohngeldApi.pruefen(id); } catch { /* Prüfung best-effort */ }
+      await reload();
+    } catch (e) {
+      if (e.status === 409) { setError('Konflikt: Das Dokument wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); }
+      else setError(e.message);
+    } finally { setBusy(false); }
   }
 
   // Dokument löschen (nach Modal-Bestätigung): entfernen → neu prüfen → neu laden.
@@ -1703,6 +1723,30 @@ export default function VorgangDetail() {
                         </span>
                       </div>
                       {d.titel && <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>{d.titel}</div>}
+                      {(canEdit || d.personId) && !d.istOriginal && (() => {
+                        const person = personen.find((p) => p.id === d.personId);
+                        const label = (p) => `${p.vorname || ''} ${p.nachname || ''}`.trim() || 'Person ohne Namen';
+                        return (
+                          <div style={styles.docPersonRow}>
+                            <span style={{ fontSize: '0.7rem', color: theme.colors.textMuted }}>Person:</span>
+                            {canEdit ? (
+                              <select
+                                style={styles.docPersonSelect}
+                                value={d.personId || ''}
+                                onChange={(e) => zuordnenPerson(d, e.target.value)}
+                                disabled={busy}
+                                aria-label="Person zuordnen"
+                                title="Nachweis einer Person zuordnen"
+                              >
+                                <option value="">Haushalt (keine Person)</option>
+                                {personen.map((p) => <option key={p.id} value={p.id}>{label(p)}</option>)}
+                              </select>
+                            ) : (
+                              <span style={{ fontSize: '0.7rem', color: theme.colors.text }}>{person ? label(person) : 'Haushalt'}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div style={{ fontSize: '0.7rem', color: theme.colors.textMuted, marginTop: 2 }}>
                         {[d.quelle, d.seiten ? `${d.seiten} S.` : null].filter(Boolean).join(' · ')}
                       </div>

@@ -31,12 +31,20 @@ export interface FallFuerWahrheit {
   wohngeldnummer?: string;
   antragsart: string;
   antragsdatum: string;
-  personen: Array<{ id: string; vorname: string; nachname: string; geburtsdatum: string; rente?: { art: string } }>;
+  personen: Array<{
+    id: string; vorname: string; nachname: string; geburtsdatum: string; rente?: { art: string };
+    erwerb?: string; verhaeltnis?: string; einnahmen?: Array<{ art: string; brutto: number; turnus: string }>;
+  }>;
   wohnung: { strasse: string; hausnummer: string; plz: string; ort: string; flaeche: number; grundmiete: number; nebenkosten: number; heizkosten: number; warmwasser: number };
   antragAbweichung?: { gesamtmiete?: number; heizkosten?: number; flaeche?: number };
   mieterhoehung?: { alteGrundmiete: number };
   unterschrift: { antrag: boolean; antragDatum: boolean; mietvertrag: boolean };
-  antrag?: { leer?: string[]; status?: string; garage?: number; haushaltsenergie?: number; service?: number };
+  antrag?: {
+    leer?: string[]; status?: string; garage?: number; haushaltsenergie?: number; service?: number;
+    transfer?: Array<{ person: string; leistung: string; beantragt?: string; bewilligt?: string; weggefallen?: string; abgelehnt?: string }>;
+    schwerbehinderung?: Array<{ person: string; gdb?: number; pflegegrad?: number; haeuslich?: boolean }>;
+    vermoegen?: { immobilie?: number; geld?: number; gegenstaende?: number; sonstiges?: number };
+  };
   dokumente: Array<{ art: string; person?: string; optionen?: Record<string, unknown> }>;
 }
 
@@ -45,6 +53,42 @@ export interface ErwartungFuerWahrheit {
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Angekreuztes Erwerbsstatus-Kästchen (Frage 1) bzw. eingetragener Text (Frage 6), wie im Formular. */
+const ERWERB_KASTEN: Record<string, string> = {
+  Arbeitnehmer: 'Arbeitnehmer/in', 'Selbständiger': 'Selbständige/r', Azubi: 'Auszubildende/r oder Student/in',
+  Rentner: 'Rentner/in oder Pensionär/in', Arbeitslos: 'zurzeit arbeitslos', Nichterwerbsperson: 'sonstige Nichterwerbsperson',
+};
+const ERWERB_EINTRAG: Record<string, string> = {
+  Arbeitnehmer: 'Arbeitnehmer/in', 'Selbständiger': 'Selbständig', Azubi: 'Auszubildende/r', Rentner: 'Rentner/in',
+  Nichterwerbsperson: 'Nichterwerbsperson', Arbeitslos: 'arbeitslos',
+};
+
+/** Haushaltsfelder des Antrags (Fragen 1, 6, 10, 12, 15, 20) — so, wie der Generator sie einträgt. */
+export function haushaltWahrheit(fall: FallFuerWahrheit): Record<string, unknown> {
+  const a = fall.antrag ?? {};
+  const leer = new Set(a.leer ?? []);
+  const P = (id: string) => fall.personen.find((p) => p.id === id) ?? fall.personen[0]!;
+  const v = a.vermoegen;
+  return {
+    antragsteller_erwerbsstatus: fall.personen[0]!.erwerb ? ERWERB_KASTEN[fall.personen[0]!.erwerb] ?? null : null,
+    haushaltsmitglieder: fall.personen.slice(1, 5).map((p) => ({
+      nachname: p.nachname, vorname: p.vorname, geburtsdatum: leer.has(`${p.id}.geburtsdatum`) ? null : p.geburtsdatum,
+      verhaeltnis: p.verhaeltnis ?? null, erwerbsstatus: p.erwerb ? ERWERB_EINTRAG[p.erwerb] ?? null : null,
+    })),
+    einnahmen: fall.personen.slice(0, 5).flatMap((p) => ((p.einnahmen ?? []).length ? p.einnahmen! : [{ art: 'keine Einnahmen', brutto: NaN, turnus: '' }])
+      .slice(0, 4).map((e) => ({ nachname: p.nachname, vorname: p.vorname, art: e.art, brutto: Number.isFinite(e.brutto) ? e.brutto : null, turnus: Number.isFinite(e.brutto) ? e.turnus : null }))),
+    behinderung_pflege: (a.schwerbehinderung ?? []).slice(0, 2).map((x) => ({
+      nachname: P(x.person).nachname, vorname: P(x.person).vorname, gdb: x.gdb ?? null, pflegegrad: x.pflegegrad ?? null, haeuslich_pflegebeduerftig: !!x.haeuslich,
+    })),
+    transferleistungen: (a.transfer ?? []).slice(0, 3).map((t) => ({
+      nachname: P(t.person).nachname, vorname: P(t.person).vorname, leistung: t.leistung,
+      datum_beantragung: t.beantragt ?? null, datum_bewilligung: t.bewilligt ?? null, datum_wegfall: t.weggefallen ?? null, datum_ablehnung: t.abgelehnt ?? null,
+    })),
+    vermoegen_immobilien: v?.immobilie ?? null, vermoegen_geld: v?.geld ?? null,
+    vermoegen_wertgegenstaende: v?.gegenstaende ?? null, vermoegen_sonstige: v?.sonstiges ?? null,
+  };
+}
 const oderNull = (n: number | undefined) => (n && n > 0 ? n : null);
 const beleg = (label: string, von: number, bis: number) => `${label}, Seite${von === bis ? ` ${von}` : `n ${von}–${bis}`}`;
 
@@ -89,6 +133,7 @@ export function profilWahrheit(fall: FallFuerWahrheit, erw: ErwartungFuerWahrhei
           garage: heim ? null : oderNull(a.garage),
           haushaltsenergie: heim ? null : oderNull(a.haushaltsenergie),
           unterschrift_vorhanden: fall.unterschrift.antrag, datum_vorhanden: fall.unterschrift.antragDatum,
+          ...haushaltWahrheit(fall),
         };
         break;
       }

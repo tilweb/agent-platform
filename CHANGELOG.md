@@ -2,6 +2,18 @@
 
 ## 2026-09-24
 
+### Wohngeld — Haushalt aus dem Antrag, Nachweise den Personen zuordnen
+Der Posteingang legt beim neuen Vorgang den ganzen Haushalt aus dem Antrag an statt nur der antragstellenden
+Person: Haushaltsmitglieder (Frage 6) mit Rolle und Erwerbsstatus, Einnahmen je Person (Frage 12, als noch nicht
+berücksichtigte Positionen), Schwerbehinderung/Pflegegrad (Frage 15), laufende Transferleistungen als § 7-Ausschluss
+(Frage 10) und Vermögen (Frage 20). Alle Personen sind KI-Vorschläge (Feld-Status unbestätigt). Personenbezogene
+Nachweise werden deterministisch über Geburtsdatum und Namen der passenden Person zugeordnet; nicht eindeutige
+bekommen den Hinweis „Person nicht eindeutig zuordenbar". Leben Kinder unter 18 im Haushalt, wird Kindergeldbezug
+angenommen. Am Dokument lässt sich die Person ändern (danach Neuprüfung). Regeln Ausweis und Kranken-/
+Pflegeversicherung gelten nur noch ab 18 Jahren (Katalogstand 2026-09-24b). Profilvorlage 2026-09-24e;
+Messwerkzeug nutzt dieselben Funktionen und misst Haushalt und Zuordnung.
+Spec: `docs/wohngeld-posteingang-haushalt-zuordnung-spec-2026-09-24.md`.
+
 ### Wohngeld — Segmentprofil geschärft, Messung gegen das Golden Dataset
 Profilvorlage „Wohngeld-Eingang" auf Stand 2026-09-24d: wiederholbare Nachweise (Gehaltsabrechnung,
 Rentenbescheid, Kontoauszug, Bescheide, Ausweise) nennen das sichtbare Neustart-Signal (eigener Kopf/Adressfeld),

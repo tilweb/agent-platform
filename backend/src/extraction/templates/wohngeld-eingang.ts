@@ -10,11 +10,11 @@
  *
  * Spec: docs/wohngeld-dp-segmentprofil-spec-2026-09-24.md
  */
-import type { ExtractionProject, ProjectField, SegmentTypeDef } from '../learning/types';
+import type { ExtractionProject, ProjectField, ProjectItemField, SegmentTypeDef } from '../learning/types';
 
 export const WOHNGELD_PROFIL_ID = 'wohngeld-eingang';
 /** Bei fachlichen Änderungen der Vorlage hochzählen (steht in der Profilbeschreibung). */
-export const WOHNGELD_PROFIL_VORLAGE_STAND = '2026-09-24d';
+export const WOHNGELD_PROFIL_VORLAGE_STAND = '2026-09-24e';
 
 const txt = (label: string, description?: string): ProjectField => ({ type: 'text', required: false, label, ...(description ? { description } : {}) });
 const num = (label: string, description?: string): ProjectField => ({ type: 'number', required: false, label, ...(description ? { description } : {}) });
@@ -22,6 +22,12 @@ const dat = (label: string, description?: string): ProjectField => ({ type: 'dat
 /** Beträge stehen im Dokument mit Dezimalkomma („468,50") — als Zahl 468.5 angeben, nie ohne Komma. */
 const EURO = 'Betrag mit Dezimalkomma im Dokument (z. B. „468,50") als Zahl 468.5 angeben — Nachkommastellen nicht verlieren';
 const bool = (label: string, description?: string): ProjectField => ({ type: 'boolean', required: false, label, ...(description ? { description } : {}) });
+const spalte = (type: 'text' | 'number' | 'date' | 'boolean', label: string, description?: string): ProjectItemField => ({ type, label, ...(description ? { description } : {}) });
+const liste = (label: string, description: string, item_fields: Record<string, ProjectItemField>): ProjectField => ({ type: 'list', required: false, label, description, item_fields });
+const NAME_SPALTEN = {
+  nachname: spalte('text', 'Familienname'),
+  vorname: spalte('text', 'Vorname(n)'),
+};
 
 const PERSON = {
   nachname: txt('Nachname', 'Familienname der Person, auf die sich das Dokument bezieht'),
@@ -41,6 +47,37 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
       antragsteller_nachname: txt('Familienname der antragstellenden Person', 'Frage 1'),
       antragsteller_vorname: txt('Vorname(n) der antragstellenden Person', 'Frage 1'),
       antragsteller_geburtsdatum: dat('Geburtsdatum der antragstellenden Person', 'Frage 1'),
+      antragsteller_erwerbsstatus: txt('Erwerbsstatus der antragstellenden Person', 'Frage 1, das angekreuzte Kästchen unter „Erwerbsstatus" als Formulartext, z. B. „Arbeitnehmer/in", „Rentner/in oder Pensionär/in", „sonstige Nichterwerbsperson"'),
+      haushaltsmitglieder: liste('Haushaltsmitglieder', 'Frage 6 („Angaben für das 1.–4. Haushaltsmitglied"): je ausgefülltem Block eine Zeile, leere Blöcke weglassen. Die antragstellende Person (Frage 1) gehört NICHT dazu.', {
+        ...NAME_SPALTEN,
+        geburtsdatum: spalte('date', 'Geburtsdatum'),
+        verhaeltnis: spalte('text', 'Verhältnis zu Ihnen', 'wie eingetragen, z. B. „Ehefrau", „Sohn", „Lebensgefährte"'),
+        erwerbsstatus: spalte('text', 'Erwerbsstatus', 'wie eingetragen, z. B. „Arbeitnehmer/in", „Nichterwerbsperson"'),
+      }),
+      einnahmen: liste('Einnahmen je Person', 'Frage 12 („Einnahmen der antragstellenden Person", „Einnahmen des 1.–4. Haushaltsmitgliedes"): je ausgefüllter Zeile „Art der Einnahme" eine Zeile mit dem Namen aus dem Block-Kopf. Steht dort „keine Einnahmen", eine Zeile mit art „keine Einnahmen". Leere Zeilen weglassen.', {
+        ...NAME_SPALTEN,
+        art: spalte('text', 'Art der Einnahme', 'wie eingetragen, z. B. „Gehalt/Lohn", „Altersrente", „Minijob"'),
+        brutto: spalte('number', 'Brutto in EUR', EURO),
+        turnus: spalte('text', 'Turnus', 'z. B. „monatlich", „jährlich"'),
+      }),
+      behinderung_pflege: liste('Schwerbehinderung/Pflegegrad', 'Frage 15, nur wenn „Ja": je ausgefülltem Personenblock eine Zeile.', {
+        ...NAME_SPALTEN,
+        gdb: spalte('number', 'Grad der Behinderung'),
+        pflegegrad: spalte('number', 'Pflegegrad'),
+        haeuslich_pflegebeduerftig: spalte('boolean', 'häuslich pflegebedürftig angekreuzt'),
+      }),
+      transferleistungen: liste('Transferleistungen', 'Frage 10, nur wenn „Ja": je ausgefülltem Personenblock eine Zeile.', {
+        ...NAME_SPALTEN,
+        leistung: spalte('text', 'Welche Leistung', 'wie eingetragen, z. B. „Bürgergeld (SGB II)"'),
+        datum_beantragung: spalte('date', 'Datum der Beantragung'),
+        datum_bewilligung: spalte('date', 'Datum der Bewilligung'),
+        datum_wegfall: spalte('date', 'Datum des Wegfalls'),
+        datum_ablehnung: spalte('date', 'Datum der Ablehnung'),
+      }),
+      vermoegen_immobilien: num('Vermögen: Immobilien, Grundbesitz', 'Frage 20, Wertangabe in EUR, nur wenn „Ja" — ' + EURO),
+      vermoegen_geld: num('Vermögen: Geldvermögen, Forderungen', 'Frage 20 — ' + EURO),
+      vermoegen_wertgegenstaende: num('Vermögen: Wertgegenstände', 'Frage 20 — ' + EURO),
+      vermoegen_sonstige: num('Vermögen: sonstige Vermögenswerte', 'Frage 20 — ' + EURO),
       strasse: txt('Straße der Wohnung', 'Frage 2'),
       hausnummer: txt('Hausnummer', 'Frage 2'),
       plz: txt('Postleitzahl', 'Frage 2'),

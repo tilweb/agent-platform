@@ -16,7 +16,7 @@ import type { Context } from 'hono';
 import { getCurrentUserId } from '../../../auth/middleware';
 import {
   getAkte, createAkte, getVorgang, createVorgang, updateVorgang,
-  listPersonen, createPerson, createDokument, listVorgaenge,
+  listPersonen, createPerson, updatePerson, createDokument, listVorgaenge,
   getVorgangSnapshot, syncPruefschritte, setFeldStatus,
 } from '../storage';
 import { audit } from '../audit';
@@ -26,8 +26,9 @@ import { klassifiziereUndExtrahiere, type ExtraktionErgebnis, type ExtrahierteSt
 import { matchVorgaenge, type MatchIdent, type MatchKandidat, type ScoredKandidat } from '../matching';
 import { feldStatusVorgangPfade, feldStatusPersonPfade } from '../feldstatus-mapping';
 import { storeUpload, resolveStorageRef } from '../filestore';
+import { flagPersonUnklar, kindergeldEmpfaenger, ordneNachweisZu, personenAusAntrag } from '../haushalt';
 import { denyIfNotAppEditor } from './_shared';
-import type { WohnungMiete, Akte, Vorgang, Dokument } from '../types';
+import type { WohnungMiete, Akte, Vorgang, Dokument, Person } from '../types';
 
 export const posteingangRoutes = new Hono();
 
@@ -266,7 +267,7 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
 
   // 3. Stammdaten übernehmen (Wohnung + Antragsteller-Person) — bei Antrag vorhanden.
   let antragstellerId: string | undefined;
-  let antragstellerNeu = false;
+  const neuePersonen: Person[] = [];
   if (stammdaten) {
     const updates: Record<string, unknown> = {};
     if (stammdaten.antragsdatum && !vorgang.antragsdatum) updates.antragsdatum = stammdaten.antragsdatum;
@@ -277,32 +278,29 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
       vorgang = await updateVorgang(vorgang.id, updates) ?? vorgang;
     }
 
-    const at = stammdaten.antragsteller;
-    if (at && (at.vorname || at.nachname)) {
-      const personen = await listPersonen(vorgang.id);
-      const bestehend = personen.find((p) => p.rolle === 'antragsteller');
-      if (!bestehend) {
-        const neu = await createPerson({
-          vorgangId: vorgang.id,
-          rolle: 'antragsteller',
-          vorname: at.vorname ?? '',
-          nachname: at.nachname ?? '',
-          geburtsdatum: at.geburtsdatum,
-        });
-        antragstellerId = neu.id;
-        antragstellerNeu = true;
-      } else {
-        antragstellerId = bestehend.id;
+    // Haushalt anlegen — nur, wenn der Vorgang noch keine Personen hat (Spec Haushalt §3.2).
+    const vorhanden = await listPersonen(vorgang.id);
+    if (vorhanden.length === 0) {
+      const { personen: entwuerfe } = personenAusAntrag(stammdaten);
+      for (const e of entwuerfe) {
+        const { schluessel, ...daten } = e;
+        const neu = await createPerson({ ...daten, vorgangId: vorgang.id });
+        neuePersonen.push(neu);
+        if (schluessel === 'P1') antragstellerId = neu.id;
       }
+    } else {
+      antragstellerId = vorhanden.find((p) => p.rolle === 'antragsteller')?.id;
     }
   }
 
-  // 4. Dokumente anlegen.
+  // 4. Dokumente anlegen — personenbezogene Nachweise der passenden Person zuordnen.
+  const personenImVorgang = await listPersonen(vorgang.id);
   const angelegt: Dokument[] = [];
   let antragDokumentId: string | undefined;
   const eingegangenAm = input.eingegangenAm || new Date().toISOString();
   for (const d of dokumente) {
     const ref = resolveStorageRef(d.storageRef);
+    const zuordnung = ordneNachweisZu(d.typ, d.identitaet, personenImVorgang);
     const dok = await createDokument({
       vorgangId: vorgang.id,
       typ: d.typ,
@@ -316,9 +314,17 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
       analyse: d.analyse,
       extraktion: d.extraktion,
       ...(d.profil ? { profil: d.profil } : {}),
+      ...(zuordnung.personId ? { personId: zuordnung.personId } : {}),
+      ...(zuordnung.grund === 'unklar' ? { flags: [flagPersonUnklar()] } : {}),
     });
     if (antragPreview && d === antragPreview) antragDokumentId = dok.id;
     angelegt.push(dok);
+  }
+
+  // 4a. Kindergeld-Merkmal (nur für neu angelegte Personen; Spec Haushalt §3.5).
+  if (neuePersonen.length) {
+    const empfaenger = kindergeldEmpfaenger(neuePersonen, angelegt, vorgang.antragsdatum ?? eingegangenAm.slice(0, 10));
+    if (empfaenger) await updatePerson(empfaenger, { erhaelt_kindergeld: true }, { force: true });
   }
 
   // 4b. Feld-Provenienz (WP3): extrahierte Antrags-Felder als KI-Vorschlag markieren.
@@ -330,12 +336,13 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
         confidence: confByPfad[feldPfad],
       });
     }
-    if (antragstellerNeu && antragstellerId) {
-      for (const feldPfad of feldStatusPersonPfade(stammdaten.antragsteller)) {
+    // Jede aus dem Antrag angelegte Person ist ein KI-Vorschlag (Name/Geburtsdatum unbestätigt).
+    for (const p of neuePersonen) {
+      for (const feldPfad of feldStatusPersonPfade(p)) {
         await setFeldStatus({
-          vorgangId: vorgang.id, zielTyp: 'person', zielId: antragstellerId,
+          vorgangId: vorgang.id, zielTyp: 'person', zielId: p.id,
           feldPfad, quelle: 'llm', bestaetigt: false, quellDokumentId: antragDokumentId,
-          confidence: confByPfad[feldPfad],
+          confidence: p.id === antragstellerId ? confByPfad[feldPfad] : undefined,
         });
       }
     }
@@ -399,6 +406,7 @@ posteingangRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) => {
   const userId = getCurrentUserId(c);
   const angelegt = [];
   let total = 0;
+  const personen = await listPersonen(vorgangId);
 
   for (const file of files) {
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -422,6 +430,10 @@ posteingangRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) => {
       extrahierterText: text.slice(0, 20000),
       analyse: ergebnis.analyse,
       extraktion: ergebnis.extraktion,
+      ...(() => {
+        const z = ordneNachweisZu(ergebnis.typ, ergebnis.identitaet, personen);
+        return { ...(z.personId ? { personId: z.personId } : {}), ...(z.grund === 'unklar' ? { flags: [flagPersonUnklar()] } : {}) };
+      })(),
     });
     angelegt.push(dok);
   }

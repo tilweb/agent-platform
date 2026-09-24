@@ -1,16 +1,18 @@
 /**
  * Golden-Dataset-Messung — Prüf-Zustände (VorgangSnapshot) für die App-Regeln.
  *
- * - `posteingangSnapshot`: Nachbau von `verteileDokumente` ohne DB. Vorgang aus den
- *   extrahierten Antrags-Stammdaten, nur die antragstellende Person, Dokumente ohne
- *   Personenbezug — genau der Stand, den die App nach „Zuordnen" automatisch prüft.
+ * - `posteingangSnapshot`: Nachbau von `verteileDokumente` ohne DB — mit DENSELBEN reinen
+ *   Funktionen wie die App (`apps/wohngeld/haushalt.ts`): Haushalt aus dem Antrag, Nachweise
+ *   per Identität den Personen zugeordnet, Kindergeld-Merkmal. Genau der Stand, den die App
+ *   nach „Zuordnen" automatisch prüft.
  * - `regelwerkSnapshot`: korrekt erfasster Fall (Personen wie aus dem Antrag erfasst,
  *   Dokumente mit Personenbezug und den ERWARTETEN Analysewerten) — misst die Regeln selbst.
  */
 import type {
   Dokument, DokumentAnalyse, DokumentTyp, Erwerbsstatus, Person, PersonRolle, Vorgang, VorgangSnapshot,
 } from '../../src/apps/wohngeld/types';
-import type { ExtrahierteStammdaten } from '../../src/apps/wohngeld/extraction';
+import type { ExtrahierteStammdaten, Identitaet } from '../../src/apps/wohngeld/extraction';
+import { kindergeldEmpfaenger, ordneNachweisZu, personenAusAntrag, type PersonZuordnung } from '../../src/apps/wohngeld/haushalt';
 
 const JETZT = '2026-09-24T00:00:00.000Z';
 const basis = { created_at: JETZT, updated_at: JETZT, version: 1 };
@@ -37,19 +39,19 @@ export interface ExtraktionKurz {
   typ: DokumentTyp;
   analyse?: DokumentAnalyse;
   stammdaten?: ExtrahierteStammdaten;
+  identitaet?: Identitaet;
 }
 
-export function posteingangSnapshot(dokumente: ExtraktionKurz[]): VorgangSnapshot {
+/** Posteingang-Stand plus die Zuordnung je Dokument (für die Messung). */
+export function posteingangSnapshot(dokumente: ExtraktionKurz[]): VorgangSnapshot & { zuordnungen: PersonZuordnung[] } {
   const antrag = dokumente.find((d) => d.typ === 'wohngeldantrag' && d.stammdaten);
   const s = antrag?.stammdaten;
-  const personen: Person[] = [];
-  if (s?.antragsteller && (s.antragsteller.vorname || s.antragsteller.nachname)) {
-    personen.push({
-      ...basis, id: 'P1', vorgangId: 'V', rolle: 'antragsteller',
-      vorname: s.antragsteller.vorname ?? '', nachname: s.antragsteller.nachname ?? '', geburtsdatum: s.antragsteller.geburtsdatum,
-    } as Person);
-  }
-  return { vorgang: vorgangAus(s), personen, dokumente: dokumente.map((d, i) => dokument(i, d.typ, d.analyse)) };
+  const personen: Person[] = personenAusAntrag(s).personen.map(({ schluessel, ...p }) => ({ ...basis, ...p, id: schluessel, vorgangId: 'V' } as Person));
+  const zuordnungen = dokumente.map((d) => ordneNachweisZu(d.typ, d.identitaet, personen));
+  const docs = dokumente.map((d, i) => dokument(i, d.typ, d.analyse, zuordnungen[i]!.personId));
+  const kg = kindergeldEmpfaenger(personen, docs, s?.antragsdatum ?? JETZT.slice(0, 10));
+  if (kg) personen.find((p) => p.id === kg)!.erhaelt_kindergeld = true;
+  return { vorgang: vorgangAus(s), personen, dokumente: docs, zuordnungen };
 }
 
 // ── Regelwerk: korrekt erfasster Fall ────────────────────────────────────────
@@ -72,12 +74,12 @@ export interface ErwartungKurz {
   dokumente: Array<{ typ: DokumentTyp; person?: string; erwartet?: { stammdaten?: Record<string, unknown>; analyse?: Record<string, unknown> } }>;
 }
 
-const ERWERB: Record<string, Erwerbsstatus> = {
+export const ERWERB: Record<string, Erwerbsstatus> = {
   Arbeitnehmer: 'angestellt', 'Selbständiger': 'selbststaendig', Azubi: 'ausbildung_studium', Rentner: 'rente_pension',
   Arbeitslos: 'arbeitslos', Nichterwerbsperson: 'ohne_erwerb',
 };
 
-function rolle(verhaeltnis: string | undefined, id: string): PersonRolle {
+export function rolle(verhaeltnis: string | undefined, id: string): PersonRolle {
   if (id === 'P1') return 'antragsteller';
   const v = (verhaeltnis ?? '').toLowerCase();
   if (/ehe/.test(v)) return 'ehegatte';
@@ -138,4 +140,13 @@ export function regelwerkSnapshot(fall: FallKurz, erwartung: ErwartungKurz): Vor
   const dokumente = erwartung.dokumente.map((d, i) =>
     dokument(i, d.typ, entfalte(d.erwartet?.analyse) as DokumentAnalyse, d.person));
   return { vorgang: vorgangAus(stamm), personen, dokumente };
+}
+
+/** Erwartete Personen eines Falls in App-Begriffen (für die Haushalts-Kennzahl). */
+export function erwartetePersonen(fall: FallKurz, artAbbildung: (art: string) => string | null) {
+  return fall.personen.map((p) => ({
+    id: p.id, vorname: p.vorname, nachname: p.nachname,
+    rolle: rolle(p.verhaeltnis, p.id), erwerbsstatus: ERWERB[p.erwerb] ?? 'sonstiges',
+    einkommensarten: p.einnahmen.map((e) => artAbbildung(e.art)).filter((x): x is string => !!x),
+  }));
 }

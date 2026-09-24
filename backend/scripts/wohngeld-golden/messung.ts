@@ -22,10 +22,11 @@ import { buildPartPdf } from '../../src/services/extraction/pdf-split';
 import { erzeugeBericht } from './bericht';
 import { erkenneDokumente, ladeProfil } from '../../src/apps/wohngeld/dp-erkennung';
 import { stableHash } from '../../src/extraction/learning/snapshot';
-import { posteingangSnapshot, regelwerkSnapshot, type ErwartungKurz, type ExtraktionKurz, type FallKurz } from './snapshot';
+import { erwartetePersonen, posteingangSnapshot, regelwerkSnapshot, type ErwartungKurz, type ExtraktionKurz, type FallKurz } from './snapshot';
+import { einkommensArtAusText, nachnameGleich, PERSONEN_TYPEN, vornameGleich } from '../../src/apps/wohngeld/haushalt';
 import {
-  ordneZu, splitMetrik, vergleicheFelder, werteBefundeAus,
-  type Bereich, type BefundAuswertung, type FeldErgebnis, type SplitMetrik,
+  haushaltMetrik, ordneZu, splitMetrik, vergleicheFelder, werteBefundeAus, zuordnungMetrik,
+  type Bereich, type BefundAuswertung, type FeldErgebnis, type HaushaltMetrik, type SplitMetrik, type ZuordnungMetrik,
 } from './vergleich';
 
 const TOOLS = join(import.meta.dir, '..', '..', '..', 'tools', 'wohngeld-golden');
@@ -77,6 +78,10 @@ export interface FallMessung {
   split?: { metrik: SplitMetrik; gefunden: Bereich[]; hinweis?: string; cache: boolean };
   dokumente?: DokumentMessung[];
   posteingang?: BefundAuswertung & { app: string[] };
+  /** Posteingang: aus dem Antrag angelegte Personen gegen den Fall. */
+  haushalt?: HaushaltMetrik;
+  /** Posteingang: Nachweise der richtigen Person zugeordnet? */
+  zuordnung?: ZuordnungMetrik;
   regelwerk?: BefundAuswertung & { app: string[] };
   dauerSek: number;
   fehler?: string;
@@ -140,12 +145,16 @@ for (const fall of auswahl) {
         };
       });
       if (stufen.has('posteingang')) {
-        const app = pruefeVorgang(posteingangSnapshot(wert.abschnitte.map((a) => ({ typ: a.typ, analyse: a.analyse, stammdaten: a.stammdaten })))).map((b) => b.regelId);
+        const snap = posteingangSnapshot(wert.abschnitte.map((a) => ({ typ: a.typ, analyse: a.analyse, stammdaten: a.stammdaten, identitaet: a.identitaet })));
+        const app = pruefeVorgang(snap).map((b) => b.regelId);
         m.posteingang = { app, ...werteBefundeAus(app, erw.pruefung) };
+        m.haushalt = haushaltMetrik(erwartetePersonen(fall, einkommensArtAusText), snap.personen,
+          (a, b) => vornameGleich(a.vorname, b.vorname) && nachnameGleich(a.nachname, b.nachname));
+        m.zuordnung = zuordnungMetrik(erw.dokumente, zuordnung, snap.zuordnungen.map((z) => z.personId), m.haushalt.abbildung, PERSONEN_TYPEN);
       }
       m.dauerSek = Math.round((performance.now() - t0) / 100) / 10;
       ergebnisse.push(m);
-      console.log(`${fall.id} ${variante.padEnd(7)} Profil: Split ${m.split.metrik.treffer}/${m.split.metrik.erwarteteSchnitte} Schnitte, ${m.split.metrik.fehlalarme} Fehlschnitte · ${m.dokumente.filter((x) => x.typErkannt === x.typErwartet).length}/${m.dokumente.length} Typ${m.posteingang ? ` · Posteingang verfehlt ${m.posteingang.verfehlt.length}` : ''} (${m.dauerSek}s${cache ? ', Cache' : ''})`);
+      console.log(`${fall.id} ${variante.padEnd(7)} Profil: Split ${m.split.metrik.treffer}/${m.split.metrik.erwarteteSchnitte} Schnitte, ${m.split.metrik.fehlalarme} Fehlschnitte · ${m.dokumente.filter((x) => x.typErkannt === x.typErwartet).length}/${m.dokumente.length} Typ${m.posteingang ? ` · Posteingang verfehlt ${m.posteingang.verfehlt.length}, Fehlalarm ${m.posteingang.fehlalarm.length}` : ''}${m.haushalt ? ` · Haushalt ${m.haushalt.gefunden}/${m.haushalt.erwartet}` : ''}${m.zuordnung ? ` · Zuordnung ${m.zuordnung.richtig}/${m.zuordnung.geprueft}` : ''} (${m.dauerSek}s${cache ? ', Cache' : ''})`);
       await Bun.write(join(ausgabe, 'ergebnis.json'), JSON.stringify({ lauf, modell: MODELL, promptStand: WOHNGELD_PROMPT_VERSION, endeZuEnde, erkennung, ergebnisse }, null, 2));
       continue;
     }

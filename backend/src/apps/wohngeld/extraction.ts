@@ -44,6 +44,34 @@ export interface ExtrahierteStammdaten {
     miete?: number;
     wohnflaeche_qm?: number;
   };
+  /** Haushalt laut Antrag (Fragen 1, 6, 10, 12, 15, 20) — Grundlage für das Anlegen der Personen. */
+  haushalt?: HaushaltAngaben;
+}
+
+/** Name einer Person, wie er in einem Antragsblock steht. */
+export interface AntragName {
+  nachname?: string;
+  vorname?: string;
+}
+
+/**
+ * Haushaltsangaben aus dem amtlichen Antrag, normalisiert (Texte getrimmt, Beträge als Zahl,
+ * Daten wie gelesen). Leere Blöcke sind entfernt. Spec:
+ * docs/wohngeld-posteingang-haushalt-zuordnung-spec-2026-09-24.md
+ */
+export interface HaushaltAngaben {
+  /** Frage 1: angekreuzter Erwerbsstatus der antragstellenden Person (Formulartext). */
+  antragstellerErwerbsstatus?: string;
+  /** Frage 6: weitere Haushaltsmitglieder (ohne antragstellende Person). */
+  mitglieder: Array<AntragName & { geburtsdatum?: string; verhaeltnis?: string; erwerbsstatus?: string }>;
+  /** Frage 12: je ausgefüllter Einnahme-Zeile ein Eintrag (auch „keine Einnahmen"). */
+  einnahmen: Array<AntragName & { art?: string; brutto?: number; turnus?: string }>;
+  /** Frage 15: Schwerbehinderung / Pflegegrad. */
+  behinderung: Array<AntragName & { gdb?: number; pflegegrad?: number; haeuslich?: boolean }>;
+  /** Frage 10: Transferleistungen. */
+  transfer: Array<AntragName & { leistung?: string; beantragt?: string; bewilligt?: string; weggefallen?: string; abgelehnt?: string }>;
+  /** Frage 20: Summe der Wertangaben (nur wenn angegeben). */
+  vermoegen?: number;
 }
 
 /**

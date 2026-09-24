@@ -32,12 +32,46 @@ test('Regelwerk-Zustand: Personen, Kindergeld, Schwerbehinderung, Personenbezug'
   expect(ids).not.toContain('verdienstbescheinigung');
 });
 
-test('Posteingang-Zustand: nur antragstellende Person, Dokumente ohne Personenbezug', () => {
+test('Posteingang-Zustand: Ein-Personen-Haushalt, Ausweis wird zugeordnet', () => {
   const s = posteingangSnapshot([
     { typ: 'wohngeldantrag', stammdaten: { antragsteller: { vorname: 'Anna', nachname: 'Muster' }, wohnung: { miete: 500 } }, analyse: {} },
     { typ: 'personalausweis', analyse: {} },
   ]);
   expect(s.personen).toHaveLength(1);
-  expect(s.dokumente.every((d) => !d.personId)).toBe(true);
-  expect(pruefeVorgang(s).map((b) => b.regelId)).toContain('identitaet-jede-person');
+  expect(s.dokumente[1]!.personId).toBe('P1');
+  expect(s.zuordnungen.map((z) => z.grund)).toEqual(['haushalt', 'einzige-person']);
+  expect(pruefeVorgang(s).map((b) => b.regelId)).not.toContain('identitaet-jede-person');
+});
+
+test('Posteingang-Zustand: Familie aus dem Antrag, Nachweise je Person, Kindergeld', () => {
+  const s = posteingangSnapshot([
+    {
+      typ: 'wohngeldantrag', analyse: {},
+      stammdaten: {
+        antragsdatum: '2026-09-01', antragsteller: { vorname: 'Andrej', nachname: 'Weber', geburtsdatum: '1986-03-19' }, wohnung: { miete: 500 },
+        haushalt: {
+          mitglieder: [
+            { vorname: 'Olga', nachname: 'Weber', geburtsdatum: '1988-11-27', verhaeltnis: 'Ehefrau', erwerbsstatus: 'Arbeitnehmer/in' },
+            { vorname: 'Sofia', nachname: 'Weber', geburtsdatum: '2016-09-02', verhaeltnis: 'Tochter' },
+          ],
+          einnahmen: [
+            { vorname: 'Andrej', nachname: 'Weber', art: 'Gehalt/Lohn', brutto: 2640 },
+            { vorname: 'Olga', nachname: 'Weber', art: 'Minijob', brutto: 480 },
+          ],
+          behinderung: [], transfer: [],
+        },
+      },
+    },
+    { typ: 'personalausweis', identitaet: { vorname: 'Andrej', nachname: 'Weber', geburtsdatum: '1986-03-19' } },
+    { typ: 'personalausweis', identitaet: { vorname: 'Olga', nachname: 'Weber', geburtsdatum: '1988-11-27' } },
+    { typ: 'gehaltsabrechnung', identitaet: { vorname: 'Andrej', nachname: 'Weber' }, analyse: { betrag: 2640 } },
+  ]);
+  expect(s.personen.map((p) => p.rolle)).toEqual(['antragsteller', 'ehegatte', 'kind']);
+  expect(s.dokumente.map((d) => d.personId)).toEqual([undefined, 'P1', 'P2', 'P1']);
+  expect(s.personen[0]!.erhaelt_kindergeld).toBe(true);
+  const ids = pruefeVorgang(s).map((b) => `${b.regelId}:${b.personId ?? ''}`);
+  expect(ids).toContain('verdienstbescheinigung:P2');      // Minijob ohne Abrechnung
+  expect(ids).toContain('kindergeld-nachweis:P1');         // Kind unter 18, kein Bescheid
+  expect(ids).not.toContain('identitaet-jede-person:P3');  // Kind: kein Ausweis verlangt
+  expect(ids).not.toContain('identitaet-jede-person:P1');
 });

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { listDokumente, getDokument, createDokument, updateDokument, deleteDokument, getVorgang } from '../storage';
+import { listDokumente, getDokument, createDokument, updateDokument, deleteDokument, getVorgang, getPerson } from '../storage';
 import { loescheLernbeispiele } from '../lernbeispiele';
 import { VersionConflictError } from '../concurrency';
 import { loadDokumentDatei } from '../filestore';
@@ -107,6 +107,11 @@ dokumenteRoutes.put('/dokumente/:id', async (c) => {
     const before = await getDokument(c.req.param('id'));
     const eingeschr = await denyIfVorgangEingeschraenkt(before?.vorgangId);
     if (eingeschr) return c.json(eingeschr, 403);
+    // Zuordnung nur zu einer Person desselben Vorgangs (null = Haushalt).
+    if (before && typeof (updates as { personId?: unknown }).personId === 'string') {
+      const person = await getPerson((updates as { personId: string }).personId);
+      if (!person || person.vorgangId !== before.vorgangId) return c.json({ error: 'Person gehört nicht zu diesem Vorgang' }, 400);
+    }
     const dokument = await updateDokument(c.req.param('id'), updates, { expectedVersion, force });
     if (!dokument) return c.json({ error: 'Dokument nicht gefunden' }, 404);
     await auditUpdate(c, {

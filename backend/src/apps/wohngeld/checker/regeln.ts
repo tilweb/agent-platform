@@ -10,7 +10,7 @@
  */
 import type { PruefKategorie, PruefTyp } from '../types';
 
-export const REGELKATALOG_STAND = '2026-09-24';
+export const REGELKATALOG_STAND = '2026-09-24b';
 
 export type RegelGruppe =
   | 'grundangaben' | 'wohnen' | 'identitaet_versicherung' | 'einkommen'
@@ -137,22 +137,22 @@ export const REGELKATALOG: RegelBeschreibung[] = [
   // ── Identität und Versicherung ──
   {
     id: 'identitaet-jede-person', titel: 'Personalausweis', kategorie: 'vollstaendigkeit', typ: 'anforderung', bezug: 'person', gruppe: 'identitaet_versicherung',
-    ausloeser: 'Für eine Person im Haushalt ist kein Ausweisdokument (Typ Personalausweis) zugeordnet.',
+    ausloeser: 'Für eine volljährige Person im Haushalt ist kein Ausweisdokument (Typ Personalausweis) zugeordnet. Stichtag ist das Antragsdatum; ohne Geburtsdatum gilt die Person als volljährig.',
     nachweis: 'Personalausweis, Reisepass oder Aufenthaltstitel',
     rechtsgrundlage: '§ 5 WoGG',
     erledigung: 'Vorhandenen Ausweis der Person zuordnen oder nachfordern.',
     hinweise: [
-      'Gezählt wird nur ein Ausweis, der der Person im Vorgang zugeordnet ist. Nach dem Posteingang sind Dokumente noch keiner Person zugeordnet — dann meldet die Regel auch bei beiliegendem Ausweis.',
-      'Die Regel gilt auch für Kinder; für sie genügt in der Praxis meist die Angabe im Antrag.',
+      'Gezählt wird nur ein Ausweis, der der Person im Vorgang zugeordnet ist. Der Posteingang ordnet Ausweise über Name und Geburtsdatum zu; ist die Zuordnung nicht eindeutig, trägt das Dokument den Hinweis „Person nicht eindeutig zuordenbar" und die Regel meldet, bis es zugeordnet ist.',
+      'Für Kinder unter 18 wird kein Ausweis verlangt — sie sind im Antrag erfasst.',
     ],
   },
   {
     id: 'krankenversicherung-nachweis', titel: 'Nachweis Kranken-/Pflegeversicherung', kategorie: 'vollstaendigkeit', typ: 'anforderung', bezug: 'person', gruppe: 'identitaet_versicherung',
-    ausloeser: 'Für eine Person im Haushalt ist kein Nachweis der Kranken- und Pflegeversicherung zugeordnet.',
+    ausloeser: 'Für eine volljährige Person im Haushalt ist kein Nachweis der Kranken- und Pflegeversicherung zugeordnet. Stichtag ist das Antragsdatum; ohne Geburtsdatum gilt die Person als volljährig.',
     nachweis: 'Versichertenkarte, Beitragsbescheinigung oder Mitgliedsbescheinigung',
     rechtsgrundlage: '§ 16 WoGG',
     erledigung: 'Prüfen, ob die Beiträge schon aus Gehaltsabrechnung oder Rentenbescheid hervorgehen; nur sonst nachfordern.',
-    hinweise: ['Die Regel verlangt den Nachweis für jede Person, auch für familienversicherte Kinder. Für Arbeitnehmer und Rentner ist er meist schon über Abrechnung bzw. Rentenbescheid belegt.'],
+    hinweise: ['Kinder unter 18 sind ausgenommen (in der Regel familienversichert).', 'Für Arbeitnehmer und Rentner ist der Nachweis meist schon über Abrechnung bzw. Rentenbescheid belegt; ob ein eigener Nachweis nur für Selbständige und privat Versicherte nötig ist, ist fachlich noch offen.'],
   },
 
   // ── Einkommen ──

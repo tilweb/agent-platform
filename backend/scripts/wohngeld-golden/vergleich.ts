@@ -168,3 +168,75 @@ export function werteBefundeAus(appRegelIds: string[], e: PruefErwartung): Befun
 }
 
 export const quote = (a: number, b: number) => (b ? Math.round((a / b) * 1000) / 10 : null);
+
+// ── Haushalt und Zuordnung (Posteingang-Stand) ───────────────────────────────
+
+/** Erwartete Person (aus dem Fallmodell, in App-Begriffen). */
+export interface ErwartetePerson {
+  id: string; vorname: string; nachname: string;
+  rolle: string; erwerbsstatus?: string; einkommensarten: string[];
+}
+/** Angelegte Person (Posteingang-Stand). */
+export interface AngelegtePerson {
+  id: string; vorname: string; nachname: string;
+  rolle: string; erwerbsstatus?: string; einkommen?: Array<{ art: string }>;
+}
+
+export interface HaushaltMetrik {
+  erwartet: number;
+  angelegt: number;
+  /** Erwartete Personen mit genau einer passenden angelegten Person. */
+  gefunden: number;
+  rolleRichtig: number;
+  erwerbRichtig: number;
+  einkommenRichtig: number;
+  /** angelegte ID → erwartete ID */
+  abbildung: Record<string, string>;
+}
+
+export function haushaltMetrik(
+  erwartet: ErwartetePerson[],
+  angelegt: AngelegtePerson[],
+  gleich: (a: { vorname?: string; nachname?: string }, b: { vorname?: string; nachname?: string }) => boolean,
+): HaushaltMetrik {
+  const m: HaushaltMetrik = { erwartet: erwartet.length, angelegt: angelegt.length, gefunden: 0, rolleRichtig: 0, erwerbRichtig: 0, einkommenRichtig: 0, abbildung: {} };
+  const set = (xs: string[]) => [...new Set(xs)].sort().join(',');
+  for (const e of erwartet) {
+    const treffer = angelegt.filter((a) => gleich(a, e));
+    if (treffer.length !== 1) continue;
+    const a = treffer[0]!;
+    m.gefunden++;
+    m.abbildung[a.id] = e.id;
+    if (a.rolle === e.rolle) m.rolleRichtig++;
+    if ((a.erwerbsstatus ?? '') === (e.erwerbsstatus ?? '')) m.erwerbRichtig++;
+    if (set((a.einkommen ?? []).map((x) => x.art)) === set(e.einkommensarten)) m.einkommenRichtig++;
+  }
+  return m;
+}
+
+export interface ZuordnungMetrik { geprueft: number; richtig: number; falsch: number; offen: number; beispiele: string[] }
+
+/**
+ * Nachweise mit erwarteter Person: richtig zugeordnet / falscher Person / ohne Person.
+ * `zuordnung[i]` = Index des gefundenen Teils für das erwartete Dokument i (−1 = keiner),
+ * `personJeTeil[j]` = angelegte Personen-ID des Teils j (undefined = keine).
+ */
+export function zuordnungMetrik(
+  erwartet: Array<{ nr: number; typ: string; person?: string }>,
+  zuordnung: number[],
+  personJeTeil: Array<string | undefined>,
+  abbildung: Record<string, string>,
+  personenTypen: ReadonlySet<string>,
+): ZuordnungMetrik {
+  const m: ZuordnungMetrik = { geprueft: 0, richtig: 0, falsch: 0, offen: 0, beispiele: [] };
+  erwartet.forEach((d, i) => {
+    if (!d.person || !personenTypen.has(d.typ) || zuordnung[i]! < 0) return;
+    m.geprueft++;
+    const ist = personJeTeil[zuordnung[i]!];
+    if (!ist) { m.offen++; return; }
+    if (abbildung[ist] === d.person) { m.richtig++; return; }
+    m.falsch++;
+    if (m.beispiele.length < 3) m.beispiele.push(`Dok. ${d.nr} (${d.typ}): ${d.person} ≠ ${abbildung[ist] ?? ist}`);
+  });
+  return m;
+}

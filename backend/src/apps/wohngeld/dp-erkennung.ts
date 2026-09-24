@@ -16,7 +16,8 @@ import { WOHNGELD_PROFIL_ID, WOHNGELD_PROFIL_VORLAGE_STAND, buildWohngeldEingang
 import type { PipelineRunResult } from '../../services/extraction';
 import { stableHash } from '../../extraction/learning/snapshot';
 import { baueExtraktionsUebersicht } from './extraction-schema';
-import type { ExtrahierteStammdaten, ExtraktionErgebnis, Identitaet } from './extraction';
+import { nachnameGleich, normName, vornameGleich } from './haushalt';
+import type { ExtrahierteStammdaten, ExtraktionErgebnis, HaushaltAngaben, Identitaet } from './extraction';
 import type { DokumentAnalyse, DokumentTyp } from './types';
 
 export { WOHNGELD_PROFIL_ID };
@@ -89,6 +90,51 @@ function identitaetAus(w: Record<string, unknown>): Identitaet | undefined {
   return id.nachname || id.vorname ? id : undefined;
 }
 
+const zeilen = (v: unknown): Record<string, unknown>[] =>
+  (Array.isArray(v) ? v : []).filter((z): z is Record<string, unknown> => !!z && typeof z === 'object' && !Array.isArray(z));
+const name = (z: Record<string, unknown>) => ({ nachname: text(z.nachname), vorname: text(z.vorname) });
+/** Entfernt undefined-Werte (kompakte, vergleichbare Objekte). */
+/** Gleiche Person nach Name (Vorname entscheidet, Nachname falls beidseitig vorhanden). */
+const gleichePerson = (a: { vorname?: string; nachname?: string }, b: { vorname?: string; nachname?: string }) =>
+  vornameGleich(a.vorname, b.vorname) && (!a.nachname || !b.nachname || nachnameGleich(a.nachname, b.nachname));
+const kompakt = <T extends Record<string, unknown>>(o: T): T =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
+
+/** Haushaltsangaben des Antrags aus den Profil-Rohwerten (Fragen 1, 6, 10, 12, 15, 20). */
+export function haushaltAusRohwerten(w: Record<string, unknown>): HaushaltAngaben | undefined {
+  // Die Extraktion liest den Antrag abschnittsweise; Namen aus anderen Formularteilen (Einnahmen, Frage 15)
+  // tauchen dann als fast leere Zusatzeinträge auf. Gleiche Person ⇒ zusammenführen (Felder ergänzen);
+  // die antragstellende Person gehört nicht in Frage 6.
+  const at = { vorname: text(w.antragsteller_vorname), nachname: text(w.antragsteller_nachname) };
+  const mitglieder: HaushaltAngaben['mitglieder'] = [];
+  for (const z of zeilen(w.haushaltsmitglieder)) {
+    const m = kompakt({ ...name(z), geburtsdatum: text(z.geburtsdatum), verhaeltnis: text(z.verhaeltnis), erwerbsstatus: text(z.erwerbsstatus) });
+    if (!m.nachname && !m.vorname) continue;
+    if (gleichePerson(m, at)) continue;
+    const vorhanden = mitglieder.find((x) => gleichePerson(x, m));
+    if (vorhanden) { for (const [k, v] of Object.entries(m)) if ((vorhanden as Record<string, unknown>)[k] === undefined) (vorhanden as Record<string, unknown>)[k] = v; continue; }
+    mitglieder.push(m);
+  }
+  const einnahmen: HaushaltAngaben['einnahmen'] = [];
+  for (const z of zeilen(w.einnahmen)) {
+    const e = kompakt({ ...name(z), art: text(z.art), brutto: zahl(z.brutto), turnus: text(z.turnus) });
+    if (!e.art && e.brutto === undefined) continue;
+    if (einnahmen.some((x) => gleichePerson(x, e) && normName(x.art) === normName(e.art) && x.brutto === e.brutto)) continue;
+    einnahmen.push(e);
+  }
+  const behinderung = zeilen(w.behinderung_pflege)
+    .map((z) => kompakt({ ...name(z), gdb: zahl(z.gdb), pflegegrad: zahl(z.pflegegrad), haeuslich: wahr(z.haeuslich_pflegebeduerftig) }))
+    .filter((b) => (b.nachname || b.vorname) && (b.gdb || b.pflegegrad || b.haeuslich));
+  const transfer = zeilen(w.transferleistungen)
+    .map((z) => kompakt({ ...name(z), leistung: text(z.leistung), beantragt: text(z.datum_beantragung), bewilligt: text(z.datum_bewilligung), weggefallen: text(z.datum_wegfall), abgelehnt: text(z.datum_ablehnung) }))
+    .filter((t) => (t.nachname || t.vorname) && t.leistung);
+  const summe = ['vermoegen_immobilien', 'vermoegen_geld', 'vermoegen_wertgegenstaende', 'vermoegen_sonstige']
+    .reduce((acc, k) => acc + (zahl(w[k]) ?? 0), 0);
+  const erwerb = text(w.antragsteller_erwerbsstatus);
+  if (!mitglieder.length && !einnahmen.length && !behinderung.length && !transfer.length && !summe && !erwerb) return undefined;
+  return kompakt({ antragstellerErwerbsstatus: erwerb, mitglieder, einnahmen, behinderung, transfer, vermoegen: summe > 0 ? rund(summe) : undefined });
+}
+
 /**
  * Bildet die Werte EINES Abschnitts auf Wohngeld-Strukturen ab. `conf` enthält
  * die Konfidenzen je Profilfeld (ohne Abschnitts-Präfix).
@@ -107,6 +153,8 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
       adresse: { strasse: text(w.strasse), hausnummer: text(w.hausnummer), plz: text(w.plz), ort: text(w.ort) },
       wohnung: { miete: bruttokalt(w), wohnflaeche_qm: zahl(w.wohnflaeche_qm) },
     };
+    const haushalt = haushaltAusRohwerten(w);
+    if (haushalt) stammdaten.haushalt = haushalt;
     setze('unterschrift_vorhanden', wahr(w.unterschrift_vorhanden));
     setze('datum_vorhanden', wahr(w.datum_vorhanden));
     const c = (f: string) => conf[f];

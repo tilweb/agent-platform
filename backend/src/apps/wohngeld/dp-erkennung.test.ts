@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { buildWohngeldEingangProject } from '../../extraction/templates/wohngeld-eingang';
-import { ABSCHNITT_ZU_TYP, abschnitteAusErgebnis, bruttokalt, mappeAbschnitt } from './dp-erkennung';
+import { ABSCHNITT_ZU_TYP, abschnitteAusErgebnis, bruttokalt, haushaltAusRohwerten, mappeAbschnitt } from './dp-erkennung';
 
 describe('Profil-Vorlage', () => {
   const p = buildWohngeldEingangProject();
@@ -74,4 +74,51 @@ test('Segmentergebnis → Abschnitte (wiederholbar, Leerseite, unbekannt)', () =
   expect(a[2]!.analyse.betrag).toBe(1100);
   expect(a[2]!.text).toBe('Juli');
   expect(a[3]!.titel).toBe('Nicht erkanntes Dokument');
+});
+
+describe('haushaltAusRohwerten', () => {
+  test('normalisiert Listen, verwirft leere Blöcke, summiert Vermögen', () => {
+    const h = haushaltAusRohwerten({
+      antragsteller_erwerbsstatus: 'Arbeitnehmer/in',
+      haushaltsmitglieder: [{ nachname: 'Weber', vorname: 'Olga', geburtsdatum: '1988-11-27', verhaeltnis: 'Ehefrau' }, { nachname: '', vorname: '' }],
+      einnahmen: [{ nachname: 'Weber', vorname: 'Andrej', art: 'Gehalt/Lohn', brutto: '2.640,00', turnus: 'monatlich' }, { nachname: 'Weber', vorname: 'Olga' }],
+      behinderung_pflege: [{ nachname: 'Weber', vorname: 'Olga', gdb: 50, pflegegrad: null }],
+      transferleistungen: [{ nachname: 'Weber', vorname: 'Olga', leistung: '' }],
+      vermoegen_geld: 40000, vermoegen_immobilien: '85.000,00',
+    });
+    expect(h).toEqual({
+      antragstellerErwerbsstatus: 'Arbeitnehmer/in',
+      mitglieder: [{ nachname: 'Weber', vorname: 'Olga', geburtsdatum: '1988-11-27', verhaeltnis: 'Ehefrau' }],
+      einnahmen: [{ nachname: 'Weber', vorname: 'Andrej', art: 'Gehalt/Lohn', brutto: 2640, turnus: 'monatlich' }],
+      behinderung: [{ nachname: 'Weber', vorname: 'Olga', gdb: 50 }],
+      transfer: [],
+      vermoegen: 125000,
+    });
+  });
+  test('ohne Haushaltsangaben undefined', () => {
+    expect(haushaltAusRohwerten({ antragsteller_nachname: 'X' })).toBeUndefined();
+  });
+  test('Antrag trägt den Haushalt in den Stammdaten', () => {
+    const e = mappeAbschnitt('wohngeldantrag', { antragsteller_nachname: 'Weber', antragsteller_vorname: 'Andrej', haushaltsmitglieder: [{ nachname: 'Weber', vorname: 'Olga' }] });
+    expect(e.stammdaten?.haushalt?.mitglieder).toEqual([{ nachname: 'Weber', vorname: 'Olga' }]);
+  });
+});
+
+describe('haushaltAusRohwerten — Dubletten aus der abschnittsweisen Extraktion', () => {
+  test('gleichnamige Mitglieder zusammengeführt, Antragsteller entfernt, doppelte Einnahmen entfernt', () => {
+    const h = haushaltAusRohwerten({
+      antragsteller_vorname: 'Andrej', antragsteller_nachname: 'Weber',
+      haushaltsmitglieder: [
+        { nachname: 'Weber', vorname: 'Sofia', geburtsdatum: '2016-09-02', verhaeltnis: 'Tochter' },
+        { nachname: 'Weber', vorname: 'Andrej' },
+        { nachname: 'Weber', vorname: 'Sofia', erwerbsstatus: 'Nichterwerbsperson' },
+      ],
+      einnahmen: [
+        { nachname: 'Weber', vorname: 'Andrej', art: 'Gehalt/Lohn', brutto: 2640 },
+        { nachname: 'Weber', vorname: 'Andrej', art: 'Gehalt/Lohn', brutto: 2640 },
+      ],
+    });
+    expect(h?.mitglieder).toEqual([{ nachname: 'Weber', vorname: 'Sofia', geburtsdatum: '2016-09-02', verhaeltnis: 'Tochter', erwerbsstatus: 'Nichterwerbsperson' }]);
+    expect(h?.einnahmen).toHaveLength(1);
+  });
 });
