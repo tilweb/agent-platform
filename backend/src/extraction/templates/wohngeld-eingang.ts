@@ -14,7 +14,7 @@ import type { ExtractionProject, ProjectField, SegmentTypeDef } from '../learnin
 
 export const WOHNGELD_PROFIL_ID = 'wohngeld-eingang';
 /** Bei fachlichen Änderungen der Vorlage hochzählen (steht in der Profilbeschreibung). */
-export const WOHNGELD_PROFIL_VORLAGE_STAND = '2026-09-24b';
+export const WOHNGELD_PROFIL_VORLAGE_STAND = '2026-09-24d';
 
 const txt = (label: string, description?: string): ProjectField => ({ type: 'text', required: false, label, ...(description ? { description } : {}) });
 const num = (label: string, description?: string): ProjectField => ({ type: 'number', required: false, label, ...(description ? { description } : {}) });
@@ -62,7 +62,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
   },
   vermieterbescheinigung: {
     label: 'Vermieterbescheinigung',
-    description: 'Formular „Angaben des/der Vermieters/in zum Wohnraum" (Vermieterbescheinigung, Auskunft nach § 23 Abs. 3 WoGG), 2 Seiten: Vorderseite mit Mietpartei, Beginn des Mietverhältnisses, Wohnfläche, Miete, Ankreuzfeldern zu Betriebskosten und Unterschrift/Stempel des Vermieters; RÜCKSEITE mit dem Text der Betriebskostenverordnung (§ 2 BetrKV, nummerierte Kostenarten 1–17). Die Rückseite ist eine Fortsetzung, KEIN neues Dokument.',
+    description: 'Formular „Angaben des/der Vermieters/in zum Wohnraum" (Vermieterbescheinigung, Auskunft nach § 23 Abs. 3 WoGG), 2 Seiten: Vorderseite mit Mietpartei, Beginn des Mietverhältnisses, Wohnfläche, Miete, Ankreuzfeldern zu Betriebskosten und Unterschrift/Stempel des Vermieters; RÜCKSEITE mit dem Text der Betriebskostenverordnung (§ 2 BetrKV, nummerierte Kostenarten 1–17). Die Rückseite ist eine Fortsetzung, KEIN neues Dokument. Jede Seite, die mit „Auszug aus der Verordnung über die Aufstellung von Betriebskosten (Betriebskostenverordnung – BetrKV)" bzw. „§ 2 Aufstellung der Betriebskosten" beginnt, ist IMMER „vermieterbescheinigung" (neustart = false) — nie „sonstiges".',
     fields: {
       ...PERSON,
       wohnflaeche_qm: num('Gesamtfläche der Wohnung in m²'),
@@ -116,7 +116,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
   },
   personalausweis: {
     label: 'Personalausweis',
-    description: 'Kopie eines deutschen Personalausweises oder Reisepasses (Vorder- und Rückseite meist auf einer Seite). Jede Person hat eine eigene Kopie — neue Person = neues Dokument.',
+    description: 'Kopie eines deutschen Personalausweises oder Reisepasses (Vorder- und Rückseite meist auf einer Seite). Jede Person hat eine eigene Kopie — neue Person = neues Dokument. NEUSTART: Jede Seite mit eigenem Ausweisbild (Foto/Name der Person) ist IMMER der Beginn eines neuen Dokuments (neustart = true) — auch wenn die vorige Seite vom selben Aussteller stammt und gleich aussieht.',
     repeatable: true,
     fields: { ...PERSON, geburtsdatum: dat('Geburtsdatum') },
   },
@@ -128,7 +128,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
   },
   gehaltsabrechnung: {
     label: 'Gehaltsabrechnung',
-    description: 'Monatliche Entgelt-/Verdienstabrechnung eines Arbeitgebers (auch Minijob/Aushilfe, Ausbildungsvergütung, Kurzarbeit) mit Brutto, Abzügen und Netto. JEDE Monatsabrechnung ist ein eigenes Dokument — anderer Abrechnungsmonat oder andere Person = Neustart.',
+    description: 'Monatliche Entgelt-/Verdienstabrechnung eines Arbeitgebers (auch Minijob/Aushilfe, Ausbildungsvergütung, Kurzarbeit) mit Brutto, Abzügen und Netto. JEDE Monatsabrechnung ist ein eigenes Dokument — anderer Abrechnungsmonat oder andere Person = Neustart. NEUSTART: Jede Seite mit eigenem Abrechnungskopf (Arbeitgeber, Titel „Verdienstabrechnung"/„Entgeltabrechnung", Abrechnungsmonat, Name/Personal-Nr.) ist IMMER der Beginn eines neuen Dokuments (neustart = true) — auch wenn die vorige Seite vom selben Aussteller stammt und gleich aussieht. Einseitige Monatsabrechnungen hintereinander sind also getrennte Dokumente.',
     repeatable: true,
     fields: {
       ...PERSON,
@@ -143,7 +143,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
   },
   lohnersatzbescheid: {
     label: 'Bescheid über Lohnersatz/Förderung',
-    description: 'Bewilligungsbescheid über Arbeitslosengeld (Agentur für Arbeit), Elterngeld (Elterngeldstelle), BAföG (Amt für Ausbildungsförderung) oder Krankengeld.',
+    description: 'Bewilligungsbescheid über Arbeitslosengeld (Agentur für Arbeit), Elterngeld (Elterngeldstelle), BAföG (Amt für Ausbildungsförderung) oder Krankengeld. NEUSTART: Jede Seite mit eigenem Briefkopf mit Adressfeld, Datum und Anrede ist IMMER der Beginn eines neuen Dokuments (neustart = true) — auch wenn die vorige Seite vom selben Aussteller stammt und gleich aussieht.',
     repeatable: true,
     fields: { ...PERSON, betrag: num('Monatsbetrag in EUR', EURO) },
   },
@@ -155,7 +155,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
   },
   rentenbescheid: {
     label: 'Rentenbescheid',
-    description: 'Rentenbescheid oder Rentenanpassungsmitteilung eines Rentenversicherungsträgers (auch Witwen-/Witwerrente) mit monatlicher Bruttorente.',
+    description: 'Rentenbescheid oder Rentenanpassungsmitteilung eines Rentenversicherungsträgers (auch Witwen-/Witwerrente) mit monatlicher Bruttorente. NEUSTART: Jede Seite mit eigenem Briefkopf mit Adressfeld (Herrn/Frau …), Versicherungsnummer, Datum und Anrede ist IMMER der Beginn eines neuen Dokuments (neustart = true) — auch wenn die vorige Seite vom selben Aussteller stammt und gleich aussieht. Zwei Bescheide für zwei Personen (z. B. Ehepaar) sind zwei Dokumente; Folgeseiten mit Berechnung/Hinweisen ohne Adressfeld sind Fortsetzung.',
     repeatable: true,
     fields: {
       ...PERSON,
@@ -166,7 +166,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
   },
   kontoauszug: {
     label: 'Kontoauszug',
-    description: 'Kontoauszug einer Bank/Sparkasse mit Buchungsliste und altem/neuem Kontostand. Jeder Auszug (Monat/Auszugsnummer) ist ein eigenes Dokument.',
+    description: 'Kontoauszug einer Bank/Sparkasse mit Buchungsliste und altem/neuem Kontostand. Jeder Auszug (Monat/Auszugsnummer) ist ein eigenes Dokument. NEUSTART: Jede Seite mit eigenem Auszugskopf (Bank, Auszugsnummer/Zeitraum, alter Kontostand) ist IMMER der Beginn eines neuen Dokuments (neustart = true) — auch wenn die vorige Seite vom selben Aussteller stammt und gleich aussieht.',
     repeatable: true,
     fields: {
       ...PERSON,
@@ -195,13 +195,13 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
   },
   kindergeldbescheid: {
     label: 'Kindergeldbescheid',
-    description: 'Bescheid der Familienkasse über die Festsetzung von Kindergeld.',
+    description: 'Bescheid der Familienkasse über die Festsetzung von Kindergeld. NEUSTART: Jede Seite mit eigenem Briefkopf mit Adressfeld, Datum und Anrede ist IMMER der Beginn eines neuen Dokuments (neustart = true) — auch wenn die vorige Seite vom selben Aussteller stammt und gleich aussieht.',
     repeatable: true,
     fields: { ...PERSON, betrag: num('Kindergeld insgesamt in EUR/Monat', EURO) },
   },
   unterhaltsnachweis: {
     label: 'Unterhaltsnachweis',
-    description: 'Nachweis zu Unterhalt: Bescheid über Unterhaltsvorschuss (Jugendamt/UVG), amtliche Anlage „Aufwendungen zur Erfüllung gesetzlicher Unterhaltsverpflichtungen" (2 Seiten, Rückseite mit Hinweisen ist Fortsetzung), Jugendamtsurkunde/Unterhaltstitel oder Zahlungsbelege für Unterhalt.',
+    description: 'Nachweis zu Unterhalt: Bescheid über Unterhaltsvorschuss (Jugendamt/UVG), amtliche Anlage „Aufwendungen zur Erfüllung gesetzlicher Unterhaltsverpflichtungen" (2 Seiten, Rückseite mit Hinweisen ist Fortsetzung), Jugendamtsurkunde/Unterhaltstitel oder Zahlungsbelege für Unterhalt. Die zweite Seite der amtlichen Anlage (Hinweise/Erläuterungen, ohne eigenen Briefkopf und ohne Adressfeld) ist Fortsetzung: neustart = false.',
     repeatable: true,
     fields: { ...PERSON, betrag: num('Unterhaltsbetrag in EUR/Monat', EURO) },
   },
@@ -219,7 +219,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
   },
   sonstiges: {
     label: 'Sonstiges Schreiben',
-    description: 'Sonstiges ohne eigenen Nachweistyp: Hinweisblatt zum Wohngeldantrag, Strom-/Energierechnung, Sterbeurkunde, Betreuerausweis/Bestellungsurkunde, Kita-Gebührenbescheid, Aufforderung des Jobcenters, Betreuungsvereinbarung getrennter Eltern, Abfindungs-/Aufhebungsvereinbarung, Erklärung von Angehörigen über Zuschüsse, Mitteilung über Sterbegeld.',
+    description: 'Sonstiges ohne eigenen Nachweistyp: Hinweisblatt zum Wohngeldantrag, Strom-/Energierechnung, Sterbeurkunde, Betreuerausweis/Bestellungsurkunde, Kita-Gebührenbescheid, Aufforderung des Jobcenters, Betreuungsvereinbarung getrennter Eltern, Abfindungs-/Aufhebungsvereinbarung, Erklärung von Angehörigen über Zuschüsse, Mitteilung über Sterbegeld. NICHT „sonstiges": Gesetzes-/Verordnungstext als Rückseite eines Formulars (z. B. Auszug aus der Betriebskostenverordnung = Rückseite der Vermieterbescheinigung) und Hinweis-Rückseiten von Anlagen — diese gehören zum Formular davor.',
     mode: 'classify-only',
     repeatable: true,
   },

@@ -2,6 +2,14 @@
 
 ## 2026-09-24
 
+### Wohngeld — Segmentprofil geschärft, Messung gegen das Golden Dataset
+Profilvorlage „Wohngeld-Eingang" auf Stand 2026-09-24d: wiederholbare Nachweise (Gehaltsabrechnung,
+Rentenbescheid, Kontoauszug, Bescheide, Ausweise) nennen das sichtbare Neustart-Signal (eigener Kopf/Adressfeld),
+Rückseiten (BetrKV-Auszug der Vermieterbescheinigung, Hinweisseite der Unterhaltsanlage) gelten ausdrücklich als
+Fortsetzung. Messung aller 30 Fälle digital+Scan: Schnitte 100 %, Dokumente exakt getrennt 98 % (vorher App-eigen
+75/77 %), Typ 99,7 % (Scan vorher 4 %), Felder 95 % (Scan vorher 38 %). Ergebnis und offene Hebel:
+`docs/wohngeld-dp-profil-messung-2026-09-24.md`.
+
 ### Wohngeld — Erkennung über das Document-Processing-Segmentprofil „Wohngeld-Eingang"
 Der Posteingang nutzt jetzt die Segmentierung des Document Processing statt eigener Grenzprüfung und rein
 textbasierter Klassifikation: Seiten werden per Bilderkennung (auch Scans) gegen Prosa-Beschreibungen von
