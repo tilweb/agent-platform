@@ -53,7 +53,8 @@ export function verfuegungToDocument(
   ].filter(Boolean).join(', ');
 
   const metadata: Record<string, string> = {
-    'Antrags-ID': vorgang.antragsId,
+    ...(vorgang.wohngeldnummer ? { 'Wohngeldnummer/Aktenzeichen': vorgang.wohngeldnummer } : {}),
+    'Vorgangsnummer': vorgang.antragsId,
     'Antragsteller': antragsteller,
     'Wohngeldart': WOHNGELDART_LABEL[vorgang.wohngeldart] ?? vorgang.wohngeldart,
     'Antragsart': ANTRAGSART_LABEL[vorgang.antragsart] ?? vorgang.antragsart,
@@ -153,7 +154,7 @@ export function verfuegungToDocument(
   });
 
   return {
-    title: `Verfügung – ${vorgang.antragsId}`,
+    title: `Verfügung – ${vorgang.wohngeldnummer || vorgang.antragsId}`,
     metadata,
     sections,
   };

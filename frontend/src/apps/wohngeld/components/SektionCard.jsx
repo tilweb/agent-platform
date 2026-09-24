@@ -38,13 +38,17 @@ const styles = {
  * offenCount = Anzahl offener zugehöriger Prüfschritte (0 = grün/ok).
  * Optional einklappbar (collapsible + defaultOpen) — Zustand lokal, Chevron im Titel.
  * `unbestaetigt` = true → pulsierender KI-Punkt neben dem Titel (≥1 offener KI-Vorschlag im Block).
+ * `ungeprueft` = true → der Vorgang wurde noch nie geprüft: neutrale Marke „nicht geprüft" statt
+ * Grün — ohne Prüflauf gibt es keine offenen Punkte, das heißt aber nicht „vollständig".
  */
-export default function SektionCard({ title, offenCount, onOffenClick, action, children, collapsible = false, defaultOpen = true, notizCount, onNotizClick, unbestaetigt = false }) {
+export default function SektionCard({ title, offenCount, onOffenClick, action, children, collapsible = false, defaultOpen = true, notizCount, onNotizClick, unbestaetigt = false, ungeprueft = false }) {
   const [open, setOpen] = useState(defaultOpen);
-  const hasOpen = offenCount > 0;
-  const ampelStyle = hasOpen
-    ? { backgroundColor: theme.colors.warningLight, color: theme.colors.warning }
-    : { backgroundColor: theme.colors.successLight, color: theme.colors.success };
+  const hasOpen = !ungeprueft && offenCount > 0;
+  const ampelStyle = ungeprueft
+    ? { backgroundColor: theme.colors.surfaceHover, color: theme.colors.textMuted }
+    : hasOpen
+      ? { backgroundColor: theme.colors.warningLight, color: theme.colors.warning }
+      : { backgroundColor: theme.colors.successLight, color: theme.colors.success };
   const showBody = !collapsible || open;
   return (
     <div style={styles.card}>
@@ -79,8 +83,8 @@ export default function SektionCard({ title, offenCount, onOffenClick, action, c
                 {offenCount} offen
               </button>
             ) : (
-              <span style={{ ...styles.ampel, ...ampelStyle }}>
-                {hasOpen ? `${offenCount} offen` : 'vollständig'}
+              <span style={{ ...styles.ampel, ...ampelStyle }} title={ungeprueft ? 'Für diesen Vorgang wurde noch keine Prüfung ausgeführt.' : undefined}>
+                {ungeprueft ? 'nicht geprüft' : hasOpen ? `${offenCount} offen` : 'vollständig'}
               </span>
             )
           )}

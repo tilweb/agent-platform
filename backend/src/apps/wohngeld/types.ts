@@ -154,15 +154,25 @@ export interface WohnungMiete {
 export interface Vorgang extends Timestamped, Versioned {
   id: string;
   akteId: string;
-  /** Fachliche Antrags-ID (Abrechnungseinheit lt. Ausschreibung). Eindeutig. */
+  /**
+   * Interne Vorgangsnummer (von der App erzeugt, eindeutig). NICHT die Wohngeldnummer der Behörde —
+   * die steht in `wohngeldnummer`. Feldname aus Kompatibilitätsgründen beibehalten.
+   */
   antragsId: string;
   wohngeldart: Wohngeldart;
   antragsart: Antragsart;
   status: VorgangStatus;
+  /** Anzeigename der zuständigen Sachbearbeitung. */
   sachbearbeiter?: string;
   prioritaet: Prioritaet;
   ownerId?: string;
   // Domänen-Details (im data-jsonb):
+  /** Nutzer-ID der zuständigen Sachbearbeitung (Workplace-Nutzer mit App-Bearbeitungsrecht). */
+  sachbearbeiterId?: string;
+  /** Wohngeldnummer/Aktenzeichen der Behörde (aus dem Fachverfahren oder dem Antrag). */
+  wohngeldnummer?: string;
+  /** Zeitpunkt des letzten Prüflaufs (ISO). Fehlt ⇒ „noch nicht geprüft". */
+  geprueftAm?: string;
   antragsdatum?: string;         // ISO
   bwz_start?: string;            // Legacy-Bewilligungszeitraum (weiter befüllt für Kompatibilität)
   bwz_ende?: string;

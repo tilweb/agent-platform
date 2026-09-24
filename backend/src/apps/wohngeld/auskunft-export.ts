@@ -163,7 +163,7 @@ export function auskunftToDocument(input: AuskunftInput): DocumentData {
     'Rolle im Haushalt': ROLLE_LABEL[p.rolle] ?? p.rolle,
     'Erstellt am': fmtDate(new Date().toISOString()),
   };
-  if (vorgang) metadata['Antrags-ID'] = vorgang.antragsId;
+  if (vorgang) metadata['Vorgangsnummer'] = vorgang.antragsId;
 
   const sections: DocumentSection[] = [];
 
@@ -315,7 +315,8 @@ export function auskunftToDocument(input: AuskunftInput): DocumentData {
     sections.push({
       title: 'Zugehöriger Vorgang', type: 'keyvalue',
       content: { items: [
-        { key: 'Antrags-ID', value: vorgang.antragsId },
+        { key: 'Vorgangsnummer', value: vorgang.antragsId },
+        ...(vorgang.wohngeldnummer ? [{ key: 'Wohngeldnummer/Aktenzeichen', value: vorgang.wohngeldnummer }] : []),
         { key: 'Wohngeldart', value: WOHNGELDART_LABEL[vorgang.wohngeldart] ?? vorgang.wohngeldart },
         { key: 'Antragsart', value: ANTRAGSART_LABEL[vorgang.antragsart] ?? vorgang.antragsart },
         { key: 'Status', value: STATUS_LABEL[vorgang.status] ?? vorgang.status },

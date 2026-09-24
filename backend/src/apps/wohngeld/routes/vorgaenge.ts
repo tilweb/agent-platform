@@ -23,6 +23,8 @@ import {
   denyIfNotAppEditor, denyIfNotAppOwner, vierAugenAktiv, darfEntscheiden, getAppRole,
   denyIfEingeschraenkt,
 } from './_shared';
+import { pruefeAutomatisch, pruefeUndSynchronisiere } from '../pruefung';
+import { ladeSachbearbeitung } from '../sachbearbeitung';
 
 const VERFUEGUNG_ENTSCHEIDUNGEN: VerfuegungEntscheidung[] = ['bewilligt', 'abgelehnt', 'teilweise', 'offen'];
 /** Finale Entscheidungen (unterliegen dem Vier-Augen-Prinzip); `offen` = Vorbereitung. */
@@ -163,7 +165,15 @@ vorgaengeRoutes.post('/vorgaenge', async (c) => {
   if (!body?.akteId) return c.json({ error: 'akteId ist erforderlich' }, 400);
   const akte = await getAkte(body.akteId);
   if (!akte) return c.json({ error: 'Akte nicht gefunden' }, 404);
-  const vorgang = await createVorgang({ ...body, akteId: body.akteId, ownerId: getCurrentUserId(c) });
+  // Manuell angelegt ⇒ der anlegenden Person zugewiesen (sofern sie Bearbeitungsrecht hat).
+  const ich = getCurrentUserId(c);
+  const zuweisung = body.sachbearbeiterId === undefined && ich
+    ? (await ladeSachbearbeitung()).find((n) => n.id === ich)
+    : undefined;
+  const vorgang = await createVorgang({
+    ...body, akteId: body.akteId, ownerId: ich,
+    ...(zuweisung ? { sachbearbeiterId: zuweisung.id, sachbearbeiter: zuweisung.name } : {}),
+  });
   await audit(c, { aktion: 'vorgang.erstellt', objektTyp: 'vorgang', objektId: vorgang.id, vorgangId: vorgang.id, detail: vorgang.antragsId });
   return c.json({ vorgang }, 201);
 });
@@ -179,6 +189,19 @@ vorgaengeRoutes.put('/vorgaenge/:id', async (c) => {
     // GOV-5: diese Flags nur über ihre eigenen (auditierten) Routen ändern.
     delete (updates as Record<string, unknown>).legalHold;
     delete (updates as Record<string, unknown>).eingeschraenkt;
+    // Prüfzeitpunkt setzt nur der Prüflauf selbst.
+    delete (updates as Record<string, unknown>).geprueftAm;
+    // Zuweisung: nur Nutzer mit Bearbeitungsrecht; Anzeigename kommt vom Server.
+    if ('sachbearbeiterId' in updates) {
+      const sid = updates.sachbearbeiterId;
+      if (sid === null || sid === '') {
+        Object.assign(updates, { sachbearbeiterId: undefined, sachbearbeiter: undefined });
+      } else {
+        const n = (await ladeSachbearbeitung()).find((x) => x.id === sid);
+        if (!n) return c.json({ error: 'Diese Person hat kein Bearbeitungsrecht für Wohngeld.' }, 400);
+        Object.assign(updates, { sachbearbeiter: n.name });
+      }
+    }
     const before = await getVorgang(c.req.param('id'));
     if (!before) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
     // Art. 18: bei eingeschränkter Verarbeitung keine fachlichen Änderungen.
@@ -191,9 +214,11 @@ vorgaengeRoutes.put('/vorgaenge/:id', async (c) => {
     await auditUpdate(c, {
       aktion: 'vorgang.geaendert', objektTyp: 'vorgang', objektId: vorgang.id, vorgangId: vorgang.id,
       before, after: vorgang,
-      felder: ['status', 'wohngeldart', 'antragsart', 'sachbearbeiter', 'prioritaet', 'wohnung', 'bwz', 'frist', 'wiedervorlage', 'aufbewahrungBis'],
+      felder: ['status', 'wohngeldart', 'antragsart', 'sachbearbeiter', 'sachbearbeiterId', 'wohngeldnummer', 'antragsdatum', 'prioritaet', 'wohnung', 'bwz', 'frist', 'wiedervorlage', 'aufbewahrungBis'],
     });
-    return c.json({ vorgang });
+    await pruefeAutomatisch(vorgang.id);
+    // Antwort mit aktuellem Prüfzeitpunkt (Version unverändert).
+    return c.json({ vorgang: (await getVorgang(vorgang.id)) ?? vorgang });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
     return c.json({ error: 'Update fehlgeschlagen' }, 500);
@@ -224,14 +249,14 @@ vorgaengeRoutes.post('/vorgaenge/:id/pruefen', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
   const id = c.req.param('id');
-  const snapshot = await getVorgangSnapshot(id);
-  if (!snapshot) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
-  const eingeschr = denyIfEingeschraenkt(snapshot.vorgang);
+  const vorgang = await getVorgang(id);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const eingeschr = denyIfEingeschraenkt(vorgang);
   if (eingeschr) return c.json(eingeschr, 403);
-  const befunde = pruefeVorgang(snapshot);
-  const pruefschritte = await syncPruefschritte(id, befunde);
-  await audit(c, { aktion: 'pruefung.ausgefuehrt', objektTyp: 'vorgang', objektId: id, vorgangId: id, detail: `${befunde.length} Befund(e)` });
-  return c.json({ pruefschritte, befundeCount: befunde.length });
+  const erg = await pruefeUndSynchronisiere(id);
+  if (!erg) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  await audit(c, { aktion: 'pruefung.ausgefuehrt', objektTyp: 'vorgang', objektId: id, vorgangId: id, detail: `${erg.befundeCount} Befund(e)` });
+  return c.json({ pruefschritte: erg.pruefschritte, befundeCount: erg.befundeCount, geprueftAm: erg.geprueftAm });
 });
 
 /**
@@ -256,7 +281,8 @@ vorgaengeRoutes.post('/vorgaenge/:id/bwz-vorschlag-uebernehmen', async (c) => {
       bwz_ende: vorschlag.ende,
     }, { expectedVersion: vorgang.version });
     await audit(c, { aktion: 'bwz.uebernommen', objektTyp: 'vorgang', objektId: id, vorgangId: id, detail: `${vorschlag.start} – ${vorschlag.ende}` });
-    return c.json({ vorgang: updated });
+    await pruefeAutomatisch(id);
+    return c.json({ vorgang: (await getVorgang(id)) ?? updated });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
     return c.json({ error: 'Übernahme fehlgeschlagen' }, 500);

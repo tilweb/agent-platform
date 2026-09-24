@@ -27,7 +27,7 @@ describe('verfuegungToDocument', () => {
   test('Titel + Kopf-Metadaten', () => {
     const doc = verfuegungToDocument(mkVorgang(), mkAkte(), personen, einkommen, []);
     expect(doc.title).toBe('Verfügung – WG-42');
-    expect(doc.metadata['Antrags-ID']).toBe('WG-42');
+    expect(doc.metadata['Vorgangsnummer']).toBe('WG-42');
     expect(doc.metadata['Antragsteller']).toBe('Max Mustermann');
     expect(doc.metadata['Wohngeldart']).toBe('Mietzuschuss');
   });

@@ -932,6 +932,17 @@ export async function deletePosteingang(id: string): Promise<boolean> {
   return r.length > 0;
 }
 
+/**
+ * Prüfzeitpunkt am Vorgang setzen — bewusst OHNE Versionssprung und ohne `updatedAt`,
+ * damit parallel offene Formulare (expectedVersion) nicht in einen Konflikt laufen.
+ */
+export async function setzeGeprueftAm(vorgangId: string, zeitpunkt: string = nowIso()): Promise<void> {
+  const db = getDb();
+  await db.update(wgVorgaenge)
+    .set({ data: rawSql`jsonb_set(coalesce(${wgVorgaenge.data}, '{}'::jsonb), '{geprueftAm}', to_jsonb(${zeitpunkt}::text))` as never })
+    .where(eq(wgVorgaenge.id, vorgangId));
+}
+
 // ── Snapshot (Input für die Regel-Engine) ──────────────────────────────────
 
 export async function getVorgangSnapshot(vorgangId: string): Promise<VorgangSnapshot | null> {

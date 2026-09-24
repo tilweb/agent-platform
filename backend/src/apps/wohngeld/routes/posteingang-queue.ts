@@ -12,10 +12,10 @@
 import { Hono } from 'hono';
 import { getCurrentUserId } from '../../../auth/middleware';
 import {
-  createPosteingang, getPosteingang, listPosteingang, updatePosteingang, deletePosteingang,
+  createPosteingang, getPosteingang, listPosteingang, updatePosteingang, deletePosteingang, getVorgang,
 } from '../storage';
 import { audit } from '../audit';
-import { denyIfNotAppEditor } from './_shared';
+import { denyIfNotAppEditor, denyIfEingeschraenkt } from './_shared';
 import { storeUpload, resolveStorageRef, loadDokumentDatei, removeStoredFile } from '../filestore';
 import { klassifiziereUndExtrahiere } from '../extraction';
 import {
@@ -535,4 +535,66 @@ posteingangQueueRoutes.delete('/posteingang/:id', async (c) => {
   const geloescht = await deletePosteingang(id);
   await audit(c, { aktion: 'posteingang.geloescht', objektTyp: 'posteingang', objektId: id, detail: `${eingang.dateien.length} Datei(en) entfernt` });
   return c.json({ ok: geloescht });
+});
+
+// ── Upload direkt am Vorgang ────────────────────────────────────────────────
+
+/**
+ * POST /vorgaenge/:vorgangId/dokumente/upload — Dokumente-Tab der Detailseite.
+ * Gleicher Weg wie der Posteingang (Spec Testrückmeldungen, Punkt 2): Erkennung über das
+ * DP-Segmentprofil (Sammel-PDFs werden getrennt), danach Verteilung an diesen Vorgang —
+ * Antragsdaten füllen leere Felder, Haushalt nur ohne vorhandene Personen, Nachweise werden
+ * Personen zugeordnet, anschließend Prüfung.
+ */
+posteingangQueueRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+
+  const vorgangId = c.req.param('vorgangId');
+  const vorgang = await getVorgang(vorgangId);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const eingeschr = denyIfEingeschraenkt(vorgang);
+  if (eingeschr) return c.json(eingeschr, 403);
+
+  const form = await c.req.formData();
+  const files = form.getAll('files').filter((e): e is File => e instanceof File);
+  const single = form.get('file');
+  if (single instanceof File) files.push(single);
+  if (!files.length) return c.json({ error: 'Keine Datei(en) im Feld "files" gefunden' }, 400);
+
+  const userId = getCurrentUserId(c);
+  const dateien: PosteingangDatei[] = [];
+  let total = 0;
+  for (const file of files) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    total += bytes.length;
+    if (total > MAX_TOTAL_BYTES) return c.json({ error: 'Upload zu groß (max. 50 MB gesamt)' }, 413);
+    const contentType = file.type || 'application/octet-stream';
+    const stored = await storeUpload(bytes, file.name, contentType);
+    const ref = resolveStorageRef(stored.storageRef);
+    dateien.push({ dateiname: stored.filename, s3Key: ref.s3Key, pfad: ref.pfad, contentType, groesse: bytes.length, hash: sha256Hex(bytes) });
+  }
+
+  // Erkennung wie im Posteingang: DP-Profil (Standard) oder bisheriger Weg.
+  const erkannt = erkennungPerProfil()
+    ? await erkenneMitProfil(dateien, userId)
+    : await (async () => {
+      const r = await trenneSammelPdfs(dateien, userId);
+      for (const d of r.dateien) await analysiereDatei(d, userId);
+      return r;
+    })();
+  for (const t of erkannt.protokoll) {
+    await audit(c, {
+      aktion: 'posteingang.getrennt', objektTyp: 'vorgang', objektId: vorgangId, vorgangId,
+      detail: `„${t.dateiname}" automatisch in ${t.bereiche?.length ?? 0} Dokumente getrennt (${bereicheText(t.bereiche)})${t.modell ? ` · Modell ${t.modell}` : ''}`,
+    });
+  }
+  const result = await verteileDokumente(c, {
+    vorgangId,
+    dokumente: erkannt.dateien.map(dateiZuPreview),
+    pruefen: true,
+    eingegangenAm: new Date().toISOString(),
+  });
+  if (!result.ok) return c.json({ error: result.error }, result.status);
+  return c.json({ dokumente: result.dokumente, dokument: result.dokumente[0], befundeCount: result.befundeCount }, 201);
 });

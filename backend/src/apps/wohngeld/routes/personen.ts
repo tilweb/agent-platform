@@ -8,6 +8,7 @@ import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt }
 import { audit, auditUpdate } from '../audit';
 import { auskunftToDocument, auskunftToJson } from '../auskunft-export';
 import { generateDocument, getMimeType, type DocumentFormat } from '../../../services/documentGenerator';
+import { pruefeAutomatisch } from '../pruefung';
 
 export const personenRoutes = new Hono();
 
@@ -84,6 +85,7 @@ personenRoutes.post('/vorgaenge/:vorgangId/personen', async (c) => {
     aktion: 'person.erstellt', objektTyp: 'person', objektId: person.id, vorgangId,
     detail: [person.vorname, person.nachname].filter(Boolean).join(' ') || undefined,
   });
+  await pruefeAutomatisch(vorgangId);
   return c.json({ person }, 201);
 });
 
@@ -103,6 +105,7 @@ personenRoutes.put('/personen/:id', async (c) => {
       aktion: 'person.geaendert', objektTyp: 'person', objektId: person.id, vorgangId: person.vorgangId,
       before, after: person, felder: ['rolle', 'nachname', 'vorname', 'geburtsdatum', 'erwerbsstatus'],
     });
+    await pruefeAutomatisch(person.vorgangId);
     return c.json({ person });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
@@ -122,5 +125,6 @@ personenRoutes.delete('/personen/:id', async (c) => {
     aktion: 'person.geloescht', objektTyp: 'person', objektId: id, vorgangId: before?.vorgangId,
     detail: before ? [before.vorname, before.nachname].filter(Boolean).join(' ') || undefined : undefined,
   });
+  if (ok) await pruefeAutomatisch(before?.vorgangId);
   return ok ? c.json({ ok: true }) : c.json({ error: 'Person nicht gefunden' }, 404);
 });

@@ -26,6 +26,8 @@ import { klassifiziereUndExtrahiere, type ExtraktionErgebnis, type ExtrahierteSt
 import { matchVorgaenge, type MatchIdent, type MatchKandidat, type ScoredKandidat } from '../matching';
 import { feldStatusVorgangPfade, feldStatusPersonPfade } from '../feldstatus-mapping';
 import { storeUpload, resolveStorageRef } from '../filestore';
+import { stammdatenUebernahme } from '../stammdaten-uebernahme';
+import { pruefeUndSynchronisiere } from '../pruefung';
 import { flagPersonUnklar, kindergeldEmpfaenger, ordneNachweisZu, personenAusAntrag } from '../haushalt';
 import { denyIfNotAppEditor } from './_shared';
 import type { WohnungMiete, Akte, Vorgang, Dokument, Person } from '../types';
@@ -116,6 +118,7 @@ export function buildIdent(stammdaten?: ExtrahierteStammdaten, identitaet?: Iden
     ort: ad?.ort,
     strasse: ad?.strasse,
     hausnummer: ad?.hausnummer,
+    ...(stammdaten?.wohngeldnummer ? { aktenzeichen: stammdaten.wohngeldnummer } : {}),
   };
 }
 
@@ -136,7 +139,8 @@ export async function ermittleMatchKandidaten(ident: MatchIdent): Promise<Scored
         : akte?.antragstellerName ?? akte?.name;
       return {
         vorgangId: v.id,
-        antragsId: v.antragsId,
+        // Im Dokument genannte Nummern sind Behörden-Nummern — gegen die Wohngeldnummer abgleichen.
+        antragsId: v.wohngeldnummer || v.antragsId,
         akteName: akte?.name,
         antragstellerName,
         nachname: at?.nachname || undefined,
@@ -169,17 +173,6 @@ posteingangRoutes.post('/posteingang/match', async (c) => {
   return c.json({ kandidaten: scored });
 });
 
-/** Stammdaten aus dem Wohngeldantrag in Vorgang (Wohnung) mergen. */
-function mergeWohnung(base: WohnungMiete | undefined, s: ExtrahierteStammdaten): WohnungMiete {
-  const w: WohnungMiete = { ...(base ?? {}) };
-  if (s.adresse?.strasse) w.strasse = s.adresse.strasse;
-  if (s.adresse?.hausnummer) w.hausnummer = s.adresse.hausnummer;
-  if (s.adresse?.plz) w.plz = s.adresse.plz;
-  if (s.adresse?.ort) w.ort = s.adresse.ort;
-  if (s.wohnung?.miete !== undefined) w.miete = s.wohnung.miete;
-  if (s.wohnung?.wohnflaeche_qm !== undefined) w.wohnflaeche_qm = s.wohnung.wohnflaeche_qm;
-  return w;
-}
 
 /** Eingabe der Verteilungs-Kernlogik. */
 export interface VerteilenInput {
@@ -268,14 +261,13 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
   // 3. Stammdaten übernehmen (Wohnung + Antragsteller-Person) — bei Antrag vorhanden.
   let antragstellerId: string | undefined;
   const neuePersonen: Person[] = [];
+  let uebernommenePfade: string[] = [];
   if (stammdaten) {
-    const updates: Record<string, unknown> = {};
-    if (stammdaten.antragsdatum && !vorgang.antragsdatum) updates.antragsdatum = stammdaten.antragsdatum;
-    if (stammdaten.wohngeldart) updates.wohngeldart = stammdaten.wohngeldart;
-    if (stammdaten.antragsart) updates.antragsart = stammdaten.antragsart;
-    if (stammdaten.adresse || stammdaten.wohnung) updates.wohnung = mergeWohnung(vorgang.wohnung, stammdaten);
-    if (Object.keys(updates).length) {
-      vorgang = await updateVorgang(vorgang.id, updates) ?? vorgang;
+    // Neuer Vorgang: alles übernehmen; bestehender Vorgang: nur leere Felder (Handeingaben bleiben).
+    const uebernahme = stammdatenUebernahme(vorgang, stammdaten, !istNeuerVorgang);
+    uebernommenePfade = uebernahme.pfade;
+    if (Object.keys(uebernahme.updates).length) {
+      vorgang = await updateVorgang(vorgang.id, uebernahme.updates) ?? vorgang;
     }
 
     // Haushalt anlegen — nur, wenn der Vorgang noch keine Personen hat (Spec Haushalt §3.2).
@@ -329,7 +321,7 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
 
   // 4b. Feld-Provenienz (WP3): extrahierte Antrags-Felder als KI-Vorschlag markieren.
   if (stammdaten) {
-    for (const feldPfad of feldStatusVorgangPfade(stammdaten)) {
+    for (const feldPfad of uebernommenePfade) {
       await setFeldStatus({
         vorgangId: vorgang.id, zielTyp: 'vorgang', zielId: vorgang.id,
         feldPfad, quelle: 'llm', bestaetigt: false, quellDokumentId: antragDokumentId,
@@ -361,12 +353,7 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
   // 5. Optional direkt prüfen.
   let befundeCount: number | undefined;
   if (input.pruefen !== false) {
-    const snapshot = await getVorgangSnapshot(vorgang.id);
-    if (snapshot) {
-      const befunde = pruefeVorgang(snapshot);
-      await syncPruefschritte(vorgang.id, befunde);
-      befundeCount = befunde.length;
-    }
+    befundeCount = (await pruefeUndSynchronisiere(vorgang.id))?.befundeCount;
   }
 
   return { ok: true, vorgang, akte, dokumente: angelegt, befundeCount, istNeuerVorgang };
@@ -388,68 +375,4 @@ posteingangRoutes.post('/posteingang/verteilen', async (c) => {
   return c.json({ vorgang: result.vorgang, akte: result.akte, dokumente: result.dokumente, befundeCount: result.befundeCount }, 201);
 });
 
-/** Direkt-Upload am Vorgang (Dokumente-Tab der Detailseite). */
-posteingangRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) => {
-  const denied = denyIfNotAppEditor(c);
-  if (denied) return c.json(denied, 403);
-
-  const vorgangId = c.req.param('vorgangId');
-  const vorgang = await getVorgang(vorgangId);
-  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
-
-  const form = await c.req.formData();
-  const files = form.getAll('files').filter((e): e is File => e instanceof File);
-  const single = form.get('file');
-  if (single instanceof File) files.push(single);
-  if (!files.length) return c.json({ error: 'Keine Datei(en) im Feld "files" gefunden' }, 400);
-
-  const userId = getCurrentUserId(c);
-  const angelegt = [];
-  let total = 0;
-  const personen = await listPersonen(vorgangId);
-
-  for (const file of files) {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    total += bytes.length;
-    if (total > MAX_TOTAL_BYTES) return c.json({ error: 'Upload zu groß (max. 50 MB gesamt)' }, 413);
-
-    const stored = await storeUpload(bytes, file.name, file.type || 'application/octet-stream');
-    const text = await extractText(file, bytes);
-    const ergebnis = await klassifiziereUndExtrahiere(bytes, file.type || 'application/octet-stream', { userId, filename: stored.filename, vorgangId });
-    const ref = resolveStorageRef(stored.storageRef);
-
-    const dok = await createDokument({
-      vorgangId,
-      typ: ergebnis.typ,
-      titel: ergebnis.titel,
-      quelle: stored.filename,
-      istOriginal: false,
-      s3Key: ref.s3Key,
-      pfad: ref.pfad,
-      eingegangenAm: new Date().toISOString(),
-      extrahierterText: text.slice(0, 20000),
-      analyse: ergebnis.analyse,
-      extraktion: ergebnis.extraktion,
-      ...(() => {
-        const z = ordneNachweisZu(ergebnis.typ, ergebnis.identitaet, personen);
-        return { ...(z.personId ? { personId: z.personId } : {}), ...(z.grund === 'unklar' ? { flags: [flagPersonUnklar()] } : {}) };
-      })(),
-    });
-    angelegt.push(dok);
-  }
-
-  await audit(c, {
-    aktion: 'dokument.hochgeladen', objektTyp: 'dokument', objektId: angelegt[0]?.id, vorgangId,
-    detail: `${angelegt.length} Dokument(e) hochgeladen und klassifiziert`,
-  });
-
-  let befundeCount: number | undefined;
-  const snapshot = await getVorgangSnapshot(vorgangId);
-  if (snapshot) {
-    const befunde = pruefeVorgang(snapshot);
-    await syncPruefschritte(vorgangId, befunde);
-    befundeCount = befunde.length;
-  }
-
-  return c.json({ dokumente: angelegt, dokument: angelegt[0], befundeCount }, 201);
-});
+// Direkt-Upload am Vorgang: siehe routes/posteingang-queue.ts (gleiche Erkennung wie der Posteingang).

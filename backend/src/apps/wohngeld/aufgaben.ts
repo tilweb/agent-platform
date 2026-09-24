@@ -16,6 +16,9 @@ export interface AufgabeTodo {
   antragsId: string;
   antragsteller: string;
   status: VorgangStatus;
+  /** Zuständige Sachbearbeitung (für „Meine Aufgaben"). */
+  sachbearbeiterId?: string;
+  sachbearbeiter?: string;
 }
 
 export interface AufgabeFrist {
@@ -24,6 +27,8 @@ export interface AufgabeFrist {
   antragsId: string;
   antragsteller: string;
   status: VorgangStatus;
+  sachbearbeiterId?: string;
+  sachbearbeiter?: string;
   wiedervorlage?: string;
   frist?: string;
   ueberfaellig: boolean;
@@ -47,16 +52,17 @@ export function aggregiereAufgaben(vorgaenge: Vorgang[], akten: Akte[], heute: s
 
   for (const v of vorgaenge) {
     const antragsteller = nameFuer(v);
+    const zustaendig = { ...(v.sachbearbeiterId ? { sachbearbeiterId: v.sachbearbeiterId } : {}), ...(v.sachbearbeiter ? { sachbearbeiter: v.sachbearbeiter } : {}) };
     for (const t of v.todos ?? []) {
       if (t.erledigt) continue;
       todos.push({
         art: 'todo', vorgangId: v.id, todoId: t.id, text: t.text,
-        antragsId: v.antragsId, antragsteller, status: v.status,
+        antragsId: v.antragsId, antragsteller, status: v.status, ...zustaendig,
       });
     }
     if (v.wiedervorlage) {
       fristen.push({
-        art: 'frist', vorgangId: v.id, antragsId: v.antragsId, antragsteller, status: v.status,
+        art: 'frist', vorgangId: v.id, antragsId: v.antragsId, antragsteller, status: v.status, ...zustaendig,
         wiedervorlage: v.wiedervorlage, frist: v.frist,
         ueberfaellig: istUeberfaellig(v.wiedervorlage, heute),
       });

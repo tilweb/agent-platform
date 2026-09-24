@@ -37,6 +37,7 @@ const styles = {
     border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none',
   },
   filterTabs: { display: 'flex', gap: theme.spacing.xs, flexWrap: 'wrap' },
+  zustaendigSelect: { padding: `6px ${theme.spacing.md}`, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
   filterTab: {
     padding: `6px ${theme.spacing.md}`, backgroundColor: 'transparent', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.full,
     fontSize: theme.typography.sizes.xs, fontWeight: theme.typography.weights.medium, color: theme.colors.textMuted, cursor: 'pointer',
@@ -94,6 +95,33 @@ function fmtDateTime(iso) {
   catch { return iso.slice(0, 16); }
 }
 
+/**
+ * Zuständigkeitsfilter: 'alle' | 'meine' | 'offen' (nicht zugewiesen) | Nutzer-ID.
+ * Gilt für Vorgänge und Aufgaben (beide tragen `sachbearbeiterId`).
+ */
+function passtZustaendigkeit(x, filter, ich) {
+  if (filter === 'alle') return true;
+  if (filter === 'offen') return !x.sachbearbeiterId;
+  if (filter === 'meine') return !!ich && x.sachbearbeiterId === ich;
+  return x.sachbearbeiterId === filter;
+}
+
+function ZustaendigFilter({ wert, onChange, sachbearbeitung }) {
+  const andere = sachbearbeitung.nutzer.filter((n) => n.id !== sachbearbeitung.ich);
+  return (
+    <select style={styles.zustaendigSelect} value={wert} onChange={(e) => onChange(e.target.value)} aria-label="Nach Sachbearbeitung filtern" title="Nach Sachbearbeitung filtern">
+      <option value="alle">Alle Sachbearbeiter/innen</option>
+      <option value="meine">Meine</option>
+      <option value="offen">Nicht zugewiesen</option>
+      {andere.length > 0 && (
+        <optgroup label="Kolleginnen und Kollegen">
+          {andere.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+        </optgroup>
+      )}
+    </select>
+  );
+}
+
 export default function WohngeldPage() {
   const navigate = useNavigate();
   const { role } = useAppPermission();
@@ -106,6 +134,10 @@ export default function WohngeldPage() {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('alle');
   const [query, setQuery] = useState('');
+  // Zuständigkeit: 'alle' | 'meine' | 'offen' (nicht zugewiesen) | <Nutzer-ID>
+  const [zustaendigFilter, setZustaendigFilter] = useState('alle');
+  const [aufgabenZustaendig, setAufgabenZustaendig] = useState('meine');
+  const [sachbearbeitung, setSachbearbeitung] = useState({ nutzer: [], ich: null });
 
   const [dialog, setDialog] = useState(null); // { name, wohngeldart, antragsart }
   const [saving, setSaving] = useState(false);
@@ -177,6 +209,18 @@ export default function WohngeldPage() {
     })();
     return () => { cancelled = true; };
   }, [viewMode, wvLoaded]);
+
+  // Auswahlliste der Sachbearbeitung (für Filter „Meine" und je Person).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const sb = await wohngeldApi.getSachbearbeitung();
+        if (!cancelled) setSachbearbeitung(sb);
+      } catch { /* Filter funktioniert dann nur mit „Alle" */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Aufgaben erst bei Bedarf laden (beim Wechsel in die Ansicht).
   useEffect(() => {
@@ -309,13 +353,14 @@ export default function WohngeldPage() {
     const q = query.trim().toLowerCase();
     return vorgaenge.filter((v) => {
       if (statusFilter !== 'alle' && v.status !== statusFilter) return false;
+      if (!passtZustaendigkeit(v, zustaendigFilter, sachbearbeitung.ich)) return false;
       if (!q) return true;
-      const hay = [v.antragsId, antragstellerName(v), v.sachbearbeiter, WOHNGELDART_LABEL[v.wohngeldart], ANTRAGSART_LABEL[v.antragsart]]
+      const hay = [v.antragsId, v.wohngeldnummer, antragstellerName(v), v.sachbearbeiter, WOHNGELDART_LABEL[v.wohngeldart], ANTRAGSART_LABEL[v.antragsart]]
         .filter(Boolean).join(' ').toLowerCase();
       return hay.includes(q);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vorgaenge, akten, statusFilter, query]);
+  }, [vorgaenge, akten, statusFilter, query, zustaendigFilter, sachbearbeitung.ich]);
 
   async function createVorgang() {
     if (!dialog?.name?.trim()) return;
@@ -383,7 +428,7 @@ export default function WohngeldPage() {
       <div style={styles.toolbar}>
         <input
           style={styles.search}
-          placeholder="Suche nach Antrags-ID, Antragsteller, Sachbearbeiter …"
+          placeholder="Suche nach Vorgangs- oder Wohngeldnummer, Antragsteller, Sachbearbeitung …"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -398,6 +443,7 @@ export default function WohngeldPage() {
             </button>
           ))}
         </div>
+        <ZustaendigFilter wert={zustaendigFilter} onChange={setZustaendigFilter} sachbearbeitung={sachbearbeitung} />
       </div>
 
       {loading ? (
@@ -413,12 +459,13 @@ export default function WohngeldPage() {
             <table style={styles.table}>
               <thead>
                 <tr>
-                  <th style={styles.th}>Antrags-ID</th>
+                  <th style={styles.th}>Vorgangsnr.</th>
+                  <th style={styles.th}>Wohngeldnr.</th>
                   <th style={styles.th}>Antragsteller</th>
                   <th style={styles.th}>Wohngeldart</th>
                   <th style={styles.th}>Antragsart</th>
                   <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Sachbearbeiter</th>
+                  <th style={styles.th}>Sachbearbeitung</th>
                   <th style={styles.th}>Letzte Änderung</th>
                 </tr>
               </thead>
@@ -432,11 +479,12 @@ export default function WohngeldPage() {
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                   >
                     <td style={{ ...styles.td, fontWeight: theme.typography.weights.medium }}>{v.antragsId}</td>
+                    <td style={styles.td}>{v.wohngeldnummer || '—'}</td>
                     <td style={styles.td}>{antragstellerName(v)}</td>
                     <td style={styles.td}>{WOHNGELDART_LABEL[v.wohngeldart] || v.wohngeldart}</td>
                     <td style={styles.td}>{ANTRAGSART_LABEL[v.antragsart] || v.antragsart}</td>
                     <td style={styles.td}><StatusBadge status={v.status} /></td>
-                    <td style={styles.td}>{v.sachbearbeiter || '—'}</td>
+                    <td style={styles.td}>{v.sachbearbeiter || <span style={{ color: theme.colors.textMuted }}>nicht zugewiesen</span>}</td>
                     <td style={{ ...styles.td, color: theme.colors.textMuted }}>{fmtDate(v.updated_at)}</td>
                   </tr>
                 ))}
@@ -459,7 +507,7 @@ export default function WohngeldPage() {
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>Antrags-ID</th>
+                    <th style={styles.th}>Vorgangsnr.</th>
                     <th style={styles.th}>Antragsteller</th>
                     <th style={styles.th}>Status</th>
                     <th style={styles.th}>Wiedervorlage</th>
@@ -512,7 +560,7 @@ export default function WohngeldPage() {
                   <table style={styles.table}>
                     <thead>
                       <tr>
-                        <th style={styles.th}>Antrags-ID</th>
+                        <th style={styles.th}>Vorgangsnr.</th>
                         <th style={styles.th}>Wohngeldart</th>
                         <th style={styles.th}>Antragsart</th>
                         <th style={styles.th}>Status</th>
@@ -582,10 +630,16 @@ export default function WohngeldPage() {
       {viewMode === 'regeln' && <RegelKatalog />}
 
       {viewMode === 'aufgaben' && (
-        aufgabenLoading ? (
+        <div style={{ ...styles.toolbar, justifyContent: 'flex-end' }}>
+          <ZustaendigFilter wert={aufgabenZustaendig} onChange={setAufgabenZustaendig} sachbearbeitung={sachbearbeitung} />
+        </div>
+      )}
+      {viewMode === 'aufgaben' && (() => {
+        const aufgabenGefiltert = aufgaben.filter((t) => passtZustaendigkeit(t, aufgabenZustaendig, sachbearbeitung.ich));
+        return aufgabenLoading ? (
           <div style={styles.empty}>Lädt…</div>
-        ) : aufgaben.length === 0 ? (
-          <div style={styles.empty}>Keine offenen Aufgaben oder Fristen.</div>
+        ) : aufgabenGefiltert.length === 0 ? (
+          <div style={styles.empty}>{aufgaben.length === 0 ? 'Keine offenen Aufgaben oder Fristen.' : 'Keine Aufgaben für diese Auswahl.'}</div>
         ) : (
           <div style={styles.tableWrap}>
             <div style={styles.tableScroll}>
@@ -593,14 +647,15 @@ export default function WohngeldPage() {
                 <thead>
                   <tr>
                     <th style={styles.th}>Art</th>
-                    <th style={styles.th}>Antrags-ID</th>
+                    <th style={styles.th}>Vorgangsnr.</th>
                     <th style={styles.th}>Antragsteller</th>
                     <th style={styles.th}>Aufgabe</th>
+                    <th style={styles.th}>Sachbearbeitung</th>
                     <th style={styles.th}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {aufgaben.map((t, i) => {
+                  {aufgabenGefiltert.map((t, i) => {
                     const ueberfaellig = t.art === 'frist' && t.ueberfaellig;
                     return (
                       <tr
@@ -617,6 +672,7 @@ export default function WohngeldPage() {
                           {t.art === 'todo' ? t.text : fmtDate(t.wiedervorlage)}
                           {ueberfaellig && <span style={styles.wvBadge}>überfällig</span>}
                         </td>
+                        <td style={styles.td}>{t.sachbearbeiter || <span style={{ color: theme.colors.textMuted }}>nicht zugewiesen</span>}</td>
                         <td style={styles.td}><StatusBadge status={t.status} /></td>
                       </tr>
                     );
@@ -625,8 +681,8 @@ export default function WohngeldPage() {
               </table>
             </div>
           </div>
-        )
-      )}
+        );
+      })()}
 
       {viewMode === 'protokoll' && isOwner && (
         <>
@@ -732,7 +788,7 @@ export default function WohngeldPage() {
                 <table style={styles.table}>
                   <thead>
                     <tr>
-                      <th style={styles.th}>Antrags-ID</th>
+                      <th style={styles.th}>Vorgangsnr.</th>
                       <th style={styles.th}>Antragsteller</th>
                       <th style={styles.th}>Status</th>
                       <th style={styles.th}>Aufbewahrung bis</th>
@@ -793,6 +849,11 @@ export default function WohngeldPage() {
         <div style={styles.overlay} onClick={() => !saving && setDialog(null)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalTitle}>Neuer Vorgang</div>
+            <p style={styles.hint}>
+              Für Fälle ohne Unterlagen, etwa nach einer Vorsprache. Liegt ein Antrag vor, genügt es, ihn danach im
+              Vorgang unter „Dokumente" hochzuladen oder über den Posteingang zu erfassen: Antragsdatum, Adresse, Miete
+              und Haushalt werden dann aus dem Antrag übernommen. Der Vorgang wird Ihnen zugewiesen.
+            </p>
 
             <label style={styles.label}>Name der antragstellenden Person</label>
             <input

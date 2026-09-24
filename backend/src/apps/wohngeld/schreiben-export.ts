@@ -65,7 +65,8 @@ export function bodyToSections(body: string): DocumentSection[] {
 
 export function schreibenToDocument(schreiben: Schreiben, vorgang: Vorgang | null, akte: Akte | null): DocumentData {
   const metadata: Record<string, string> = {};
-  if (vorgang?.antragsId) metadata['Antrags-ID'] = vorgang.antragsId;
+  if (vorgang?.wohngeldnummer) metadata['Wohngeldnummer/Aktenzeichen'] = vorgang.wohngeldnummer;
+  if (vorgang?.antragsId) metadata['Vorgangsnummer'] = vorgang.antragsId;
   const antragsteller = akte?.antragstellerName || akte?.name;
   if (antragsteller) metadata['Antragsteller'] = antragsteller;
   metadata['Art des Schreibens'] = ART_LABEL[schreiben.art] ?? schreiben.art;

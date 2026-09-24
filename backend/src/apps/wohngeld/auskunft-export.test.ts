@@ -44,7 +44,7 @@ describe('auskunftToDocument', () => {
     const doc = auskunftToDocument(input());
     expect(doc.title).toBe('Auskunft nach Art. 15 DSGVO – Erika Müller');
     expect(doc.metadata['Betroffene Person']).toBe('Erika Müller');
-    expect(doc.metadata['Antrags-ID']).toBe('WG-77');
+    expect(doc.metadata['Vorgangsnummer']).toBe('WG-77');
   });
 
   test('enthält alle Fachdaten-Sektionen', () => {

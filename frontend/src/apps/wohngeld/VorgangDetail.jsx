@@ -66,6 +66,9 @@ const styles = {
   btn: { padding: `${theme.spacing.sm} ${theme.spacing.lg}`, backgroundColor: ACCENT, color: '#fff', border: 'none', borderRadius: theme.borderRadius.lg, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, cursor: 'pointer' },
   btnGhost: { padding: `${theme.spacing.sm} ${theme.spacing.lg}`, backgroundColor: 'transparent', color: theme.colors.text, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.medium, cursor: 'pointer' },
   btnSmall: { padding: `4px ${theme.spacing.md}`, fontSize: theme.typography.sizes.xs, borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
+  pruefStand: { fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.md },
+  pruefHinweis: { fontSize: theme.typography.sizes.sm, color: theme.colors.text, backgroundColor: theme.colors.surfaceHover, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, padding: theme.spacing.md, marginBottom: theme.spacing.md },
+  zustaendigRow: { display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap', marginBottom: theme.spacing.sm },
   docPersonRow: { display: 'flex', alignItems: 'center', gap: theme.spacing.xs, marginTop: 4, flexWrap: 'wrap' },
   docPersonSelect: { padding: '2px 6px', fontSize: '0.75rem', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer', maxWidth: '100%' },
   select: { padding: `6px ${theme.spacing.md}`, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, backgroundColor: theme.colors.surface, color: theme.colors.text, cursor: 'pointer' },
@@ -246,7 +249,7 @@ export default function VorgangDetail() {
   const [einkommen, setEinkommen] = useState(null);
   const [herleitungOffen, setHerleitungOffen] = useState({}); // personId -> bool
 
-  // UX: Antrags-ID kopieren, Seitenleiste ein-/ausklappen, Dokument-Sprung
+  // UX: Nummer kopieren, Seitenleiste ein-/ausklappen, Dokument-Sprung
   const [copied, setCopied] = useState(false);
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const [highlightDocId, setHighlightDocId] = useState(null);
@@ -281,6 +284,7 @@ export default function VorgangDetail() {
   const [protokollOffen, setProtokollOffen] = useState({});
   // KI-Nutzung je Vorgang (GOV-3): Transparenz über eingesetzte KI-Assistenz
   const [kiNutzung, setKiNutzung] = useState([]);
+  const [sachbearbeitung, setSachbearbeitung] = useState({ nutzer: [], ich: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -303,6 +307,10 @@ export default function VorgangDetail() {
         const ki = await wohngeldApi.getKiNutzung(id);
         if (!cancelled) setKiNutzung(ki);
       } catch { /* KI-Nutzung optional — Übersicht funktioniert auch ohne */ }
+      try {
+        const sb = await wohngeldApi.getSachbearbeitung();
+        if (!cancelled) setSachbearbeitung(sb);
+      } catch { /* Auswahlliste optional — Anzeige funktioniert auch ohne */ }
     })();
     return () => { cancelled = true; };
   }, [id]);
@@ -321,6 +329,20 @@ export default function VorgangDetail() {
     if (!preview?.url) return undefined;
     return () => URL.revokeObjectURL(preview.url);
   }, [preview]);
+
+  // Sachbearbeitung zuweisen (leer = Zuweisung aufheben). Der Server setzt den Anzeigenamen.
+  async function zuweisen(sachbearbeiterId) {
+    await saveVorgangData({ sachbearbeiterId: sachbearbeiterId || null });
+  }
+
+  // Nach Änderungen prüft der Server automatisch neu (ohne Versionssprung am Vorgang).
+  // Nur Prüfschritte + Prüfzeitpunkt übernehmen — offene Formulare bleiben unberührt.
+  async function ladePruefstand() {
+    try {
+      const neu = await wohngeldApi.getVorgangDetail(id);
+      setDetail((d) => (d ? { ...d, pruefschritte: neu.pruefschritte, vorgang: { ...d.vorgang, geprueftAm: neu.vorgang.geprueftAm } } : d));
+    } catch { /* Anzeige best-effort */ }
+  }
 
   async function reload() {
     try { setDetail(await wohngeldApi.getVorgangDetail(id)); }
@@ -489,6 +511,7 @@ export default function VorgangDetail() {
       antragsdatum: vorgang.antragsdatum || '',
       wohngeldart: vorgang.wohngeldart,
       antragsart: vorgang.antragsart,
+      wohngeldnummer: vorgang.wohngeldnummer || '',
       bwz_start: vorgang.bwz_start || '',
       bwz_ende: vorgang.bwz_ende || '',
       iban: vorgang.iban || '',
@@ -501,7 +524,7 @@ export default function VorgangDetail() {
   // Frische Feld-Defaults eines Blocks (für Start und Verwerfen).
   function blockDefaults(block) {
     const f = fullForm();
-    if (block === 'allgemein') return { antragsdatum: f.antragsdatum, wohngeldart: f.wohngeldart, antragsart: f.antragsart };
+    if (block === 'allgemein') return { antragsdatum: f.antragsdatum, wohngeldart: f.wohngeldart, antragsart: f.antragsart, wohngeldnummer: f.wohngeldnummer };
     if (block === 'wohnung') return { wohnung: f.wohnung };
     if (block === 'bwz') return { bwz_start: f.bwz_start, bwz_ende: f.bwz_ende, iban: f.iban };
     return {};
@@ -524,6 +547,7 @@ export default function VorgangDetail() {
       antragsdatum: form.antragsdatum || undefined,
       wohngeldart: form.wohngeldart,
       antragsart: form.antragsart,
+      wohngeldnummer: (form.wohngeldnummer || '').trim() || null,
     };
     if (block === 'wohnung') return {
       wohnung: {
@@ -549,6 +573,7 @@ export default function VorgangDetail() {
     try {
       const updated = await wohngeldApi.updateVorgang(id, { ...blockPayload(block), expectedVersion: vorgang.version });
       setDetail((d) => ({ ...d, vorgang: updated }));
+      await ladePruefstand();
       const next = new Set(editBlocks); next.delete(block);
       setEditBlocks(next);
       if (next.size === 0) setForm(null);
@@ -764,6 +789,7 @@ export default function VorgangDetail() {
       const updated = await wohngeldApi.updatePerson(personId, { ...patch, expectedVersion: person.version });
       setDetail((d) => ({ ...d, personen: d.personen.map((x) => (x.id === updated.id ? updated : x)) }));
       try { setEinkommen(await wohngeldApi.getEinkommen(id)); } catch { /* ignore */ }
+      await ladePruefstand();
     } catch (e) {
       if (e.status === 409) { setError('Konflikt: Die Person wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); }
       else setError(e.message);
@@ -803,6 +829,7 @@ export default function VorgangDetail() {
     try {
       const updated = await wohngeldApi.updateVorgang(id, { ...patch, expectedVersion: vorgang.version });
       setDetail((d) => ({ ...d, vorgang: updated }));
+      await ladePruefstand();
     } catch (e) {
       if (e.status === 409) { setError('Konflikt: Der Vorgang wurde parallel geändert. Die Ansicht wird neu geladen.'); await reload(); }
       else setError(e.message);
@@ -834,7 +861,7 @@ export default function VorgangDetail() {
 
   // ── Sektionen der Übersicht ──
   // Unbestätigte KI-Vorschläge je Block → Headline-Punkt an der SektionCard.
-  const unbestAllgemein = ['antragsdatum', 'wohngeldart', 'antragsart'].some(vfsExists);
+  const unbestAllgemein = ['antragsdatum', 'wohngeldart', 'antragsart', 'wohngeldnummer'].some(vfsExists);
   const unbestWohnung = ['wohnung.strasse', 'wohnung.hausnummer', 'wohnung.plz', 'wohnung.ort', 'wohnung.wohnflaeche_qm', 'wohnung.miete', 'wohnung.heizkosten', 'wohnung.warmwasser'].some(vfsExists);
   const unbestBwz = ['iban', 'bwz_start', 'bwz_ende'].some(vfsExists);
   const unbestPersonen = Object.keys(feldStatusMap).some((k) => k.startsWith('person:'));
@@ -879,12 +906,14 @@ export default function VorgangDetail() {
         <div style={styles.headRow}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-              <h1 style={styles.title}>{vorgang.antragsId}</h1>
+              <h1 style={styles.title} title={vorgang.wohngeldnummer ? 'Wohngeldnummer / Aktenzeichen' : 'Vorgangsnummer (intern) — die Wohngeldnummer vergibt die Behörde'}>
+                {vorgang.wohngeldnummer || vorgang.antragsId}
+              </h1>
               <button
                 style={{ ...styles.iconBtn, position: 'relative' }}
-                onClick={() => copyAntragsId(vorgang.antragsId)}
-                title="Antrags-ID kopieren"
-                aria-label="Antrags-ID kopieren"
+                onClick={() => copyAntragsId(vorgang.wohngeldnummer || vorgang.antragsId)}
+                title="Nummer kopieren"
+                aria-label="Nummer kopieren"
               >
                 <CopyIcon size={16} color={theme.colors.textMuted} />
                 {copied && <span style={styles.copiedHint}>kopiert</span>}
@@ -892,6 +921,9 @@ export default function VorgangDetail() {
             </div>
             <div style={styles.subtitle}>
               <span>{antragstellerName}</span>
+              {vorgang.wohngeldnummer && (
+                <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>Vorgangsnr. {vorgang.antragsId}</span>
+              )}
               <StatusBadge status={vorgang.status} />
               <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
                 {WOHNGELDART_LABEL[vorgang.wohngeldart]} · {ANTRAGSART_LABEL[vorgang.antragsart]}
@@ -947,7 +979,7 @@ export default function VorgangDetail() {
               )}
               <SektionCard
                 title="Allgemein"
-                offenCount={countAllgemein} onOffenClick={zeigeOffene}
+                ungeprueft={!vorgang.geprueftAm} offenCount={countAllgemein} onOffenClick={zeigeOffene}
                 collapsible
                 unbestaetigt={unbestAllgemein}
                 notizCount={notizCount('sektion:allgemein')}
@@ -966,12 +998,16 @@ export default function VorgangDetail() {
                     <select style={styles.input} value={form.antragsart} onChange={(e) => setForm({ ...form, antragsart: e.target.value })}>
                       {Object.entries(ANTRAGSART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
+                    <span style={styles.editLabel}>Wohngeldnummer / Aktenzeichen</span>
+                    <input type="text" style={styles.input} value={form.wohngeldnummer} placeholder="von der Wohngeldbehörde vergeben" onChange={(e) => setForm({ ...form, wohngeldnummer: e.target.value })} />
                   </div>
                 ) : (
                   <FeldGrid felder={[
                     { label: 'Antragsdatum', value: fmtDate(vorgang.antragsdatum), dot: vfsDot('antragsdatum'), mark: vfsFreigabe('antragsdatum') },
                     { label: 'Wohngeldart', value: WOHNGELDART_LABEL[vorgang.wohngeldart], dot: vfsDot('wohngeldart'), mark: vfsFreigabe('wohngeldart') },
                     { label: 'Antragsart', value: ANTRAGSART_LABEL[vorgang.antragsart], dot: vfsDot('antragsart'), mark: vfsFreigabe('antragsart') },
+                    { label: 'Wohngeldnummer / Aktenzeichen', value: vorgang.wohngeldnummer || '—', dot: vfsDot('wohngeldnummer'), mark: vfsFreigabe('wohngeldnummer') },
+                    { label: 'Vorgangsnummer (intern)', value: vorgang.antragsId },
                     { label: 'Antragsteller', value: antragstellerName },
                   ]} />
                 )}
@@ -979,7 +1015,7 @@ export default function VorgangDetail() {
 
               <SektionCard
                 title="Personen"
-                offenCount={countPersonen} onOffenClick={zeigeOffene}
+                ungeprueft={!vorgang.geprueftAm} offenCount={countPersonen} onOffenClick={zeigeOffene}
                 collapsible
                 unbestaetigt={unbestPersonen}
                 notizCount={notizCount('sektion:personen')}
@@ -1005,7 +1041,7 @@ export default function VorgangDetail() {
 
               <SektionCard
                 title="Wohnung & Miete"
-                offenCount={countWohnung} onOffenClick={zeigeOffene}
+                ungeprueft={!vorgang.geprueftAm} offenCount={countWohnung} onOffenClick={zeigeOffene}
                 collapsible
                 unbestaetigt={unbestWohnung}
                 notizCount={notizCount('sektion:wohnung')}
@@ -1047,7 +1083,7 @@ export default function VorgangDetail() {
 
               <SektionCard
                 title="Einkommen & Abzugsbeträge"
-                offenCount={countEinkommen} onOffenClick={zeigeOffene}
+                ungeprueft={!vorgang.geprueftAm} offenCount={countEinkommen} onOffenClick={zeigeOffene}
                 collapsible
                 notizCount={notizCount('sektion:einkommen')}
                 onNotizClick={() => setNotizPanel({ anker: 'sektion:einkommen', label: 'Einkommen & Abzugsbeträge' })}
@@ -1152,7 +1188,7 @@ export default function VorgangDetail() {
 
               <SektionCard
                 title="Bewilligungszeitraum & Zahlung"
-                offenCount={countZahlung} onOffenClick={zeigeOffene}
+                ungeprueft={!vorgang.geprueftAm} offenCount={countZahlung} onOffenClick={zeigeOffene}
                 collapsible
                 unbestaetigt={unbestBwz}
                 action={blockAction('bwz', canEdit && bwzVorschlagOffen && !isBlockEdit('bwz') ? (
@@ -1471,8 +1507,32 @@ export default function VorgangDetail() {
             {sideTab === 'details' && (
               <div>
                 <PanelSection title="Allgemein">
+                  <div style={styles.zustaendigRow}>
+                    <span style={styles.fristLabel}>Sachbearbeitung</span>
+                    {canEdit ? (
+                      <>
+                        <select
+                          style={styles.fristInput}
+                          value={vorgang.sachbearbeiterId || ''}
+                          disabled={busy}
+                          onChange={(e) => zuweisen(e.target.value)}
+                          aria-label="Sachbearbeitung zuweisen"
+                        >
+                          <option value="">nicht zugewiesen</option>
+                          {sachbearbeitung.nutzer.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+                          {vorgang.sachbearbeiterId && !sachbearbeitung.nutzer.some((n) => n.id === vorgang.sachbearbeiterId) && (
+                            <option value={vorgang.sachbearbeiterId}>{vorgang.sachbearbeiter || 'unbekannt'} (ohne Berechtigung)</option>
+                          )}
+                        </select>
+                        {sachbearbeitung.ich && vorgang.sachbearbeiterId !== sachbearbeitung.ich && sachbearbeitung.nutzer.some((n) => n.id === sachbearbeitung.ich) && (
+                          <button style={styles.btnSmall} onClick={() => zuweisen(sachbearbeitung.ich)} disabled={busy}>Übernehmen</button>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.text }}>{vorgang.sachbearbeiter || 'nicht zugewiesen'}</span>
+                    )}
+                  </div>
                   <KvRows rows={[
-                    { label: 'Sachbearbeiter', value: vorgang.sachbearbeiter || '—' },
                     { label: 'Priorität', value: PRIORITAET_LABEL[vorgang.prioritaet] || vorgang.prioritaet },
                     { label: 'Letzte Änderung', value: fmtDateTime(vorgang.updated_at) },
                   ]} />
@@ -1637,8 +1697,15 @@ export default function VorgangDetail() {
                       <button key={f.id} style={{ ...styles.tab, ...(pruefFilter === f.id ? styles.tabActive : {}) }} onClick={() => setPruefFilter(f.id)}>{f.label}</button>
                     ))}
                   </div>
-                  {canEdit && <button style={styles.btnSmall} onClick={pruefen} disabled={busy}>{busy ? 'Prüft…' : 'Neu prüfen'}</button>}
+                  {canEdit && <button style={styles.btnSmall} onClick={pruefen} disabled={busy}>{busy ? 'Prüft…' : (vorgang.geprueftAm ? 'Neu prüfen' : 'Jetzt prüfen')}</button>}
                 </div>
+                {vorgang.geprueftAm ? (
+                  <div style={styles.pruefStand}>Zuletzt geprüft: {fmtDateTime(vorgang.geprueftAm)} · wird nach jeder Änderung automatisch aktualisiert</div>
+                ) : (
+                  <div style={styles.pruefHinweis}>
+                    Für diesen Vorgang wurde noch keine Prüfung ausgeführt. Ohne Prüfung ist nicht bekannt, ob Unterlagen oder Angaben fehlen.
+                  </div>
+                )}
 
                 {(() => {
                   const filtered = pruefschritte.filter((p) => pruefFilter === 'alle' || p.status === pruefFilter);

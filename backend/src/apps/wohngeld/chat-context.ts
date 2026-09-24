@@ -111,7 +111,8 @@ export function buildFallKontext(snapshot: VorgangSnapshot, pruefschritte: Pruef
 
   // ── Vorgang ──
   lines.push('## Vorgang');
-  lines.push(`- Antrags-ID: ${vorgang.antragsId}`);
+  lines.push(`- Vorgangsnummer (intern): ${vorgang.antragsId}`);
+  if (vorgang.wohngeldnummer) lines.push(`- Wohngeldnummer/Aktenzeichen: ${vorgang.wohngeldnummer}`);
   lines.push(`- Wohngeldart: ${WOHNGELDART_LABEL[vorgang.wohngeldart] ?? vorgang.wohngeldart}`);
   lines.push(`- Antragsart: ${ANTRAGSART_LABEL[vorgang.antragsart] ?? vorgang.antragsart}`);
   lines.push(`- Status: ${STATUS_LABEL[vorgang.status] ?? vorgang.status}`);

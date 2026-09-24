@@ -2,6 +2,22 @@
 
 ## 2026-09-24
 
+### Wohngeld — Rückmeldungen aus dem ersten Anwendungstest (Punkte 1–5)
+- **„Nicht geprüft" statt „vollständig":** Ohne Prüflauf zeigen die Sektionen „nicht geprüft" statt Grün; die
+  Prüfschritte-Leiste zeigt „Jetzt prüfen" bzw. „Zuletzt geprüft: …". Der Prüfzeitpunkt wird ohne Versionssprung
+  gespeichert (keine Konflikte in offenen Formularen).
+- **Automatische Neuprüfung:** nach Änderungen an Personen, Dokumenten (inkl. Personenzuordnung), Vorgangsfeldern,
+  verworfenen KI-Vorschlägen und BWZ-Übernahme — zentral in `pruefung.ts`.
+- **Upload am Vorgang wie Posteingang:** Profil-Erkennung inkl. Trennung von Sammel-PDFs, Übernahme der
+  Antragsdaten (bestehender Vorgang: nur leere Felder), Haushalt (nur ohne vorhandene Personen), Personenzuordnung.
+- **Sachbearbeitung zuweisen:** Auswahl aus Nutzern mit Bearbeitungsrecht (`GET /sachbearbeitung`), „Übernehmen";
+  manuell angelegte Vorgänge gehören der anlegenden Person. Filter „Meine / Nicht zugewiesen / je Person" in
+  Vorgangsliste und Aufgaben (Aufgaben starten mit „Meine").
+- **Vorgangsnummer ≠ Wohngeldnummer:** „Antrags-ID" heißt jetzt „Vorgangsnummer (intern)"; neues Feld
+  Wohngeldnummer/Aktenzeichen (aus dem Antrag übernommen, bearbeitbar, in Liste, Suche, Exporten). Der
+  Nachreichungs-Abgleich vergleicht im Dokument genannte Nummern mit der Wohngeldnummer.
+Spec: `docs/wohngeld-testrueckmeldungen-umsetzung-spec-2026-09-24.md`.
+
 ### Wohngeld — Haushalt aus dem Antrag, Nachweise den Personen zuordnen
 Der Posteingang legt beim neuen Vorgang den ganzen Haushalt aus dem Antrag an statt nur der antragstellenden
 Person: Haushaltsmitglieder (Frage 6) mit Rolle und Erwerbsstatus, Einnahmen je Person (Frage 12, als noch nicht

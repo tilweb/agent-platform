@@ -5,6 +5,7 @@ import { VersionConflictError } from '../concurrency';
 import { loadDokumentDatei } from '../filestore';
 import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit, auditUpdate } from '../audit';
+import { pruefeAutomatisch } from '../pruefung';
 
 export const dokumenteRoutes = new Hono();
 
@@ -94,6 +95,7 @@ dokumenteRoutes.post('/vorgaenge/:vorgangId/dokumente', async (c) => {
   const body = await c.req.json<Record<string, unknown>>();
   const dokument = await createDokument({ ...body, vorgangId });
   await audit(c, { aktion: 'dokument.erstellt', objektTyp: 'dokument', objektId: dokument.id, vorgangId, detail: dokument.titel });
+  await pruefeAutomatisch(vorgangId);
   return c.json({ dokument }, 201);
 });
 
@@ -118,6 +120,7 @@ dokumenteRoutes.put('/dokumente/:id', async (c) => {
       aktion: 'dokument.geaendert', objektTyp: 'dokument', objektId: dokument.id, vorgangId: dokument.vorgangId,
       before, after: dokument, felder: ['typ', 'titel', 'personId', 'istOriginal', 'abgelegt'],
     });
+    await pruefeAutomatisch(dokument.vorgangId);
     return c.json({ dokument });
   } catch (err) {
     if (err instanceof VersionConflictError) return c.json({ error: 'version_conflict', current: err.current }, 409);
@@ -135,5 +138,6 @@ dokumenteRoutes.delete('/dokumente/:id', async (c) => {
   if (before) await loescheLernbeispiele([before]); // DP-Lernbeispiel mitlöschen (Datenschutz)
   const ok = await deleteDokument(id);
   if (ok) await audit(c, { aktion: 'dokument.geloescht', objektTyp: 'dokument', objektId: id, vorgangId: before?.vorgangId, detail: before?.titel });
+  if (ok) await pruefeAutomatisch(before?.vorgangId);
   return ok ? c.json({ ok: true }) : c.json({ error: 'Dokument nicht gefunden' }, 404);
 });

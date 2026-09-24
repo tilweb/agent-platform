@@ -147,6 +147,7 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
   if (abschnitt === 'wohngeldantrag') {
     const stammdaten: ExtrahierteStammdaten = {
       antragsdatum: text(w.antragsdatum),
+      ...(text(w.wohngeldnummer) ? { wohngeldnummer: text(w.wohngeldnummer) } : {}),
       wohngeldart: text(w.wohngeldart)?.toLowerCase().includes('lasten') ? 'lastenzuschuss' : 'mietzuschuss',
       antragsart: text(w.antragsart)?.toLowerCase().includes('weiter') || text(w.wohngeldnummer) ? 'weiterleistungsantrag' : 'erstantrag',
       antragsteller: { vorname: text(w.antragsteller_vorname), nachname: text(w.antragsteller_nachname), geburtsdatum: text(w.antragsteller_geburtsdatum) },
@@ -160,7 +161,7 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
     const c = (f: string) => conf[f];
     const confidenceByPfad: Record<string, number> = {};
     const paar: Array<[string, number | undefined]> = [
-      ['antragsdatum', c('antragsdatum')], ['wohngeldart', c('wohngeldart')], ['antragsart', c('antragsart')],
+      ['antragsdatum', c('antragsdatum')], ['wohngeldart', c('wohngeldart')], ['antragsart', c('antragsart')], ['wohngeldnummer', c('wohngeldnummer')],
       ['wohnung.strasse', c('strasse')], ['wohnung.hausnummer', c('hausnummer')], ['wohnung.plz', c('plz')], ['wohnung.ort', c('ort')],
       ['wohnung.miete', c('gesamtmiete')], ['wohnung.wohnflaeche_qm', c('wohnflaeche_qm')],
       ['vorname', c('antragsteller_vorname')], ['nachname', c('antragsteller_nachname')], ['geburtsdatum', c('antragsteller_geburtsdatum')],

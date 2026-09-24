@@ -15,6 +15,7 @@ import { denyIfNotAppEditor, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit } from '../audit';
 import { vermerkeEntscheidungen } from '../lernbeispiele';
 import type { Vorgang } from '../types';
+import { pruefeAutomatisch } from '../pruefung';
 
 export const feldstatusRoutes = new Hono();
 
@@ -73,6 +74,7 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/verwerfen', async 
   await loescheFeldStatus(fs.id);
   await vermerkeEntscheidungen(fs.vorgangId, [fs], 'verworfen');
   await audit(c, { aktion: 'feld.verworfen', objektTyp: 'feldstatus', objektId: fs.id, vorgangId: fs.vorgangId, detail: fs.feldPfad });
+  await pruefeAutomatisch(fs.vorgangId); // verworfener Wert kann Befunde ändern
   return c.json({ ok: true });
 });
 

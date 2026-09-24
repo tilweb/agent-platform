@@ -27,6 +27,8 @@ import type { DokumentTyp, DokumentAnalyse, DokumentExtraktion, Wohngeldart, Ant
 /** Aus dem Wohngeldantrag extrahierte Stammdaten (befüllen Vorgang + Antragsteller). */
 export interface ExtrahierteStammdaten {
   antragsdatum?: string;
+  /** Wohngeldnummer/Aktenzeichen der Behörde (beim Weiterleistungsantrag im Antrag eingetragen). */
+  wohngeldnummer?: string;
   wohngeldart?: Wohngeldart;
   antragsart?: Antragsart;
   antragsteller?: {

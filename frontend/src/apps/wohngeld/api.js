@@ -70,6 +70,8 @@ export const wohngeldApi = {
   // Personen
   listPersonen: (vorgangId) => apiGet(`${base}/vorgaenge/${vorgangId}/personen`).then(json).then((d) => d.personen),
   createPerson: (vorgangId, payload) => apiPost(`${base}/vorgaenge/${vorgangId}/personen`, payload).then(json).then((d) => d.person),
+  /** Auswahlliste der Sachbearbeitung (Nutzer mit Bearbeitungsrecht) + eigene Nutzer-ID. */
+  getSachbearbeitung: () => apiGet(`${base}/sachbearbeitung`).then(json),
   updatePerson: (id, payload) => apiPut(`${base}/personen/${id}`, payload).then(json).then((d) => d.person),
   deletePerson: (id) => apiDelete(`${base}/personen/${id}`).then(json),
 
