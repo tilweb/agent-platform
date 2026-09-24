@@ -3,6 +3,7 @@ providers:
     name: Adacor AI
     api_mode: openai
     base_url: https://api.adacor.ai/chat/privateai/v1
+    billing: included
     api_key_env: ADACOR_AI_API_KEY
     enabled: true
     protected: true
@@ -52,6 +53,7 @@ providers:
     name: OpenAI
     api_mode: openai
     base_url: https://api.openai.com/v1
+    billing: premium
     api_key_env: OPENAI_API_KEY
     enabled: false
     company_region: world
@@ -90,6 +92,7 @@ providers:
     name: Anthropic
     api_mode: openai
     base_url: https://api.anthropic.com/v1
+    billing: premium
     api_key_env: ANTHROPIC_API_KEY
     enabled: false
     company_region: world
@@ -111,6 +114,7 @@ providers:
     name: Ollama (Local)
     api_mode: ollama
     base_url: http://localhost:11434
+    billing: included
     api_key_env: null
     enabled: false
     company_region: germany
@@ -147,6 +151,7 @@ providers:
     name: Nebius Token Factory
     api_mode: openai
     base_url: https://api.tokenfactory.nebius.com/v1/
+    billing: premium
     api_key_env: NEBIUS_API_KEY
     enabled: true
     company_region: eu
@@ -170,6 +175,7 @@ providers:
     name: Lyceum Technologies
     api_mode: openai
     base_url: https://api.lyceum.technology/openai/v1
+    billing: premium
     api_key_env: LYCEUM_API_KEY
     enabled: true
     company_region: eu
@@ -245,6 +251,7 @@ providers:
     name: Adacor AI Audio
     api_mode: openai
     base_url: https://api.adacor.ai/audio/whisper/v1/transcriptions
+    billing: included
     api_key_env: ADACOR_AI_API_KEY
     enabled: true
     company_region: germany
@@ -260,6 +267,7 @@ providers:
     name: Adacor AI Embeddings
     api_mode: openai
     base_url: https://api.adacor.ai/embeddings/privateai/v1
+    billing: included
     api_key_env: ADACOR_AI_API_KEY
     enabled: true
     company_region: germany
@@ -275,6 +283,7 @@ providers:
     name: Google Gemini Imagen
     api_mode: google_gemini
     base_url: https://generativelanguage.googleapis.com/v1beta
+    billing: premium
     api_key_env: GOOGLE_AI_API_KEY
     enabled: true
     company_region: world
@@ -298,6 +307,7 @@ providers:
     name: fal.ai
     api_mode: fal_ai
     base_url: https://fal.run
+    billing: premium
     api_key_env: FAL_AI_API_KEY
     enabled: true
     company_region: world
@@ -323,7 +333,7 @@ providers:
 active:
   chat:
     provider_id: adacor
-    model_id: qwen3-a3b-30b-256k
+    model_id: qwen3-5-a3b-35b-256k
   vision:
     provider_id: adacor
     model_id: mistral-3-24b-128k
@@ -339,12 +349,6 @@ active:
   image_to_image:
     provider_id: fal-ai
     model_id: fal-ai/nano-banana-pro
-  # Phase D / Heavy-Extraction-Pipeline. Wird von der Pipeline nicht
-  # automatisch resolved — Strategien lesen den Override aus dem Schema-Config
-  # (`extraction.model_override`). Dieser Block dokumentiert die Default-
-  # Empfehlung: Qwen-Thinking liefert hoehere Genauigkeit, kostet aber mehr.
-  # Wenn ein Schema `model_override: null` hat (Default), faellt es auf den
-  # `chat`-Provider zurueck.
   extraction_heavy:
     provider_id: adacor
     model_id: qwen3-a3bthinking-30b-256k

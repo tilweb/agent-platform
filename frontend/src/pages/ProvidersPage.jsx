@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { theme } from '../config/theme';
 import { useProviders } from '../hooks/useProviders';
 import ModelCatalog from '../components/ModelCatalog';
+import CountryFlag from '../components/CountryFlag';
 import {
   companyRegions,
   getRegionLabel,
@@ -950,12 +951,12 @@ function ProvidersPage({ embedded = false }) {
                       <span style={styles.locationBadges}>
                         {provider.company_region && (
                           <span style={styles.locationBadge} title={`Firmensitz: ${getRegionLabel(provider.company_region)?.label}`}>
-                            {getRegionLabel(provider.company_region)?.flag}
+                            <CountryFlag region={provider.company_region} size={16} title={getRegionLabel(provider.company_region)?.label} />
                           </span>
                         )}
                         {provider.datacenter_country && (
                           <span style={styles.locationBadge} title={`Rechenzentrum: ${getCountryByCode(provider.datacenter_country)?.name}`}>
-                            {getCountryByCode(provider.datacenter_country)?.flag}
+                            <CountryFlag code={provider.datacenter_country} size={16} title={getCountryByCode(provider.datacenter_country)?.name} />
                           </span>
                         )}
                       </span>
@@ -1020,7 +1021,7 @@ function ProvidersPage({ embedded = false }) {
                       <div style={styles.detailValue}>
                         {provider.company_region ? (
                           <>
-                            {getRegionLabel(provider.company_region)?.flag}{' '}
+                            <CountryFlag region={provider.company_region} size={16} title={getRegionLabel(provider.company_region)?.label} />{' '}
                             {getRegionLabel(provider.company_region)?.label}
                           </>
                         ) : '-'}
@@ -1031,7 +1032,7 @@ function ProvidersPage({ embedded = false }) {
                       <div style={styles.detailValue}>
                         {provider.datacenter_country ? (
                           <>
-                            {getCountryByCode(provider.datacenter_country)?.flag}{' '}
+                            <CountryFlag code={provider.datacenter_country} size={16} title={getCountryByCode(provider.datacenter_country)?.name} />{' '}
                             {getCountryByCode(provider.datacenter_country)?.name}
                           </>
                         ) : '-'}
@@ -1218,7 +1219,7 @@ function ProvidersPage({ embedded = false }) {
                     <option value="">-- Bitte wählen --</option>
                     {companyRegions.map((region) => (
                       <option key={region.value} value={region.value}>
-                        {region.flag} {region.label}
+                        {region.label}
                       </option>
                     ))}
                   </select>
@@ -1235,7 +1236,7 @@ function ProvidersPage({ embedded = false }) {
                     <optgroup label="Favoriten">
                       {favoriteCountries.map((country) => (
                         <option key={country.code} value={country.code}>
-                          {country.flag} {country.name}
+                          {country.name}
                         </option>
                       ))}
                     </optgroup>
@@ -1244,7 +1245,7 @@ function ProvidersPage({ embedded = false }) {
                         .filter(c => !favoriteCountries.some(f => f.code === c.code))
                         .map((country) => (
                           <option key={country.code} value={country.code}>
-                            {country.flag} {country.name}
+                            {country.name}
                           </option>
                         ))}
                     </optgroup>
@@ -1368,7 +1369,7 @@ function ProvidersPage({ embedded = false }) {
                     <optgroup label="Favoriten">
                       {favoriteCountries.map((country) => (
                         <option key={country.code} value={country.code}>
-                          {country.flag} {country.name}
+                          {country.name}
                         </option>
                       ))}
                     </optgroup>
@@ -1377,7 +1378,7 @@ function ProvidersPage({ embedded = false }) {
                         .filter(c => !favoriteCountries.some(f => f.code === c.code))
                         .map((country) => (
                           <option key={country.code} value={country.code}>
-                            {country.flag} {country.name}
+                            {country.name}
                           </option>
                         ))}
                     </optgroup>

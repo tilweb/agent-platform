@@ -100,6 +100,7 @@ export interface ModelConfig {
   context_length?: number;
   max_tokens?: number;
   datacenter_country?: string;  // Residency-Override je Modell (sonst gilt das Provider-Land)
+  billing?: 'premium' | 'included';  // Abrechnungs-Override je Modell (sonst gilt der Provider)
   // Image generation specific
   supported_sizes?: string[];      // ["1024x1024", "1792x1024"]
   supported_aspects?: string[];    // ["1:1", "16:9", "9:16"]
@@ -118,6 +119,7 @@ export interface ProviderConfig {
   protected?: boolean;  // System providers cannot be deleted
   company_region?: CompanyRegion;  // Company headquarters region
   datacenter_country?: string;  // ISO country code of datacenter location
+  billing?: 'premium' | 'included';  // 'premium' = externe Modelle mit Kosten pro Token; 'included' = Adacor-Standard (Default)
   models: ModelConfig[];
 }
 

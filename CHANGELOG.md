@@ -2,6 +2,20 @@
 
 ## 2026-09-24
 
+### KI-Modelle: Flaggen-Politik (DE/EU/CH/US/Welt) + DSGVO-Urteil aus der Chat-Pill entfernt
+Flaggen zeigen überall nur noch fünf Kategorien: Deutschland, EU, Schweiz, USA, Welt —
+zentral in CountryFlag gemappt (NL → EU-Flagge, JP → Welt), damit jede Render-Stelle
+automatisch konform ist; der RZ-Ort bleibt als Landesname im Text sichtbar (z. B.
+EU-Flagge + „Niederlande"). Vendored-Flaggen von 431 auf 6 SVGs reduziert. Der
+Modellkatalog hat eine eigene Schweiz-Sektion; die Sektionszuordnung folgt denselben
+fünf Kategorien (GB damit unter International). In der Chat-Modell-Pill ist das
+„DSGVO"/„Nicht DSGVO"-Urteil entfernt — eine rechtliche Konformitätsbewertung steht uns
+nicht zu; die Pill zeigt jetzt neutral die Verarbeitungsort-Flagge mit Detail-Ausklapp
+(Hersteller, Betreiber, Rechenzentrum als Land, sachliche Einordnung).
+`isModelGdprCompliant` ersatzlos entfernt.
+
+## 2026-09-24
+
 ### Fix: Dokumentvorschau auf den Instanzen (Posteingang und Vorgang)
 Die Vorschau bettete die Datei als Blob in einen Rahmen ein; die Content-Security-Policy der Instanzen erlaubt keine
 eingebetteten Rahmen (kein `frame-src`), daher zeigte Chrome nur ein Blockiert-Symbol (lokal unauffällig, weil der

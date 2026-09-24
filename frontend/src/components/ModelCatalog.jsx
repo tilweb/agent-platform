@@ -10,6 +10,7 @@
 
 import { useMemo, useState } from 'react';
 import { theme } from '../config/theme';
+import CountryFlag from './CountryFlag';
 import {
   getModelResidency,
   getModelManufacturer,
@@ -20,7 +21,6 @@ import {
   capabilityLabels,
   formatContextLength,
   EU_EEA_COUNTRIES,
-  EU_COUNTRIES,
 } from '../utils/providerMeta';
 
 const styles = {
@@ -320,18 +320,22 @@ const CAPABILITY_FILTERS = [
 // Data-Residency-Sektionen: Deutschland zuerst (Positionierung Datenschutz &
 // Souveränität), dann Europa, dann USA. Fallback "International" für alles
 // andere bzw. Modelle ohne hinterlegten Standort.
+// Sektionen entsprechen den fünf Flaggen-Kategorien (s. CountryFlag):
+// DE, EU/EWR, Schweiz, USA, Welt.
 const RESIDENCY_SECTIONS = [
-  { id: 'de', label: 'Deutschland', flag: '🇩🇪' },
-  { id: 'eu', label: 'Europa', flag: '🇪🇺' },
-  { id: 'us', label: 'USA', flag: '🇺🇸' },
-  { id: 'other', label: 'International', flag: '🌍' },
+  { id: 'de', label: 'Deutschland', code: 'de' },
+  { id: 'eu', label: 'Europa', code: 'eu' },
+  { id: 'ch', label: 'Schweiz', code: 'ch' },
+  { id: 'us', label: 'USA', code: 'us' },
+  { id: 'other', label: 'International', code: 'un' },
 ];
 
 function residencySectionId(model, provider) {
   const code = model.datacenter_country || provider.datacenter_country;
   if (code === 'DE') return 'de';
+  if (code === 'CH') return 'ch';
   if (code === 'US') return 'us';
-  if (code && EU_COUNTRIES.includes(code)) return 'eu';
+  if (code && EU_EEA_COUNTRIES.includes(code)) return 'eu';
   return 'other';
 }
 
@@ -408,10 +412,11 @@ function ModelDetailModal({ entry, onClose }) {
           <div style={styles.detailLabel}>Datenverarbeitung</div>
           <div style={styles.detailValue}>
             {residency
-              ? <>Rechenzentrum: {residency.flag} {residency.name}</>
+              ? <>Rechenzentrum: <CountryFlag code={residency.code} size={14} title={residency.name} /> {residency.name}</>
               : 'Rechenzentrum-Standort nicht hinterlegt'}
             <br />
-            Betreiber: {provider.name}{region ? ` · Firmensitz: ${region.flag} ${region.label}` : ''}
+            Betreiber: {provider.name}
+            {region && <> · Firmensitz: <CountryFlag region={provider.company_region} size={14} title={region.label} /> {region.label}</>}
             <br />
             {dataProtectionSummaries[effectiveTier]}
           </div>
@@ -534,7 +539,7 @@ function ModelCatalog({ providers, onToggleModel, onEditModel }) {
           return (
             <div key={section.id}>
               <div style={styles.residencySectionHeader}>
-                <span>{section.flag}</span>
+                <CountryFlag code={section.code} size={16} title={section.label} />
                 <span>Data Residency {section.label}</span>
                 <span style={styles.residencySectionCount}>({sectionEntries.length})</span>
               </div>
@@ -579,7 +584,9 @@ function ModelCatalog({ providers, onToggleModel, onEditModel }) {
                 style={styles.residencyCol}
                 title={residency ? `Datenverarbeitung: ${residency.name}` : 'Rechenzentrum-Standort nicht hinterlegt'}
               >
-                <span style={styles.residencyFlag}>{residency?.flag || '—'}</span>
+                <span style={styles.residencyFlag}>
+                  {residency ? <CountryFlag code={residency.code} size={16} title={residency.name} /> : '—'}
+                </span>
                 <span>{residency?.name || 'k.A.'}</span>
               </div>
               <div style={styles.actionsCol}>

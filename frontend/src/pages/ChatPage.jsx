@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useStreaming } from '../hooks/useStreaming';
 import { useChatHistory } from '../hooks/useChatHistory';
@@ -6,6 +6,15 @@ import { useChatFolders } from '../hooks/useChatFolders';
 import { useFavoriteAgents } from '../hooks/useFavoriteAgents';
 import { useAgentContext } from '../context/AgentContext';
 import { useProviders } from '../hooks/useProviders';
+import {
+  getModelBilling,
+  getModelResidency,
+  getModelManufacturer,
+  getRegionLabel,
+  formatContextLength,
+  dataProtectionSummaries,
+  calculateSecurityTier,
+} from '../utils/providerMeta';
 import ChatWindow from '../components/ChatWindow';
 import ChatSidebar from '../components/ChatSidebar';
 import { theme } from '../config/theme';
@@ -90,7 +99,7 @@ function ChatPage() {
     updateChatFolders,
   } = useChatFolders();
 
-  const { getActiveModelInfo } = useProviders();
+  const { getActiveModelInfo, providers } = useProviders();
   const activeChatModel = getActiveModelInfo('chat');
 
   const [activeFolder, setActiveFolder] = useState(null);
@@ -106,6 +115,31 @@ function ChatPage() {
 
   // Model selection state (from /model command)
   const [selectedModel, setSelectedModel] = useState(null);
+
+  // Metadaten des effektiven Modells (explizite /model-Wahl schlägt aktives
+  // Chat-Modell) für die Badges im Chat-Header: Billing + Residency.
+  const activeModelMeta = useMemo(() => {
+    let info = activeChatModel;
+    if (selectedModel?.modelId) {
+      const p = providers.find((pr) => pr.id === selectedModel.providerId);
+      const m = p?.models?.find((md) => md.id === selectedModel.modelId);
+      if (p && m) info = { provider: p, model: m };
+    }
+    if (!info) return null;
+    const { provider, model } = info;
+    const dc = model.datacenter_country || provider.datacenter_country;
+    return {
+      billing: getModelBilling(model, provider),
+      residency: getModelResidency(model, provider),
+      // Zusatzdaten fürs Detail-Ausklapp (vereinfachtes Modell-Detail):
+      modelName: model.name,
+      manufacturer: getModelManufacturer(model),
+      providerName: provider.name,
+      region: getRegionLabel(provider.company_region),
+      contextLabel: formatContextLength(model.context_length),
+      dpSummary: dataProtectionSummaries[calculateSecurityTier(provider.company_region, dc)],
+    };
+  }, [activeChatModel, selectedModel, providers]);
 
   // Materials state
   const [materials, setMaterials] = useState([]);
@@ -515,6 +549,7 @@ function ChatPage() {
           selectedModelId={selectedModel?.modelId}
           selectedModelName={selectedModel?.modelName}
           activeModelName={activeChatModel ? `${activeChatModel.provider.name} / ${activeChatModel.model.name}` : null}
+          activeModelMeta={activeModelMeta}
           onModelChanged={handleModelChanged}
           onRemoveModel={handleRemoveModel}
           // Table selection props

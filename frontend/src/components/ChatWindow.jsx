@@ -9,6 +9,7 @@ import { AgentGlyph, AgentAvatar } from './AgentAvatar';
 import { CommandPalette } from './CommandPalette';
 import { useCommands } from '../hooks/useCommands';
 import { LinkIcon, FolderIcon, MicrophoneIcon, StopIcon, PaperclipIcon, BookIcon, DocumentIcon, TimelineIcon } from './Icons';
+import ModelBadges from './ModelBadges';
 import AgentLogPanel from './AgentLogPanel';
 import { useAuth } from '../context/AuthContext';
 import AddToCollectionModal from './AddToCollectionModal';
@@ -3078,6 +3079,7 @@ function ChatWindow({
   onRemoveModel,
   onModelChanged,     // Callback when model is changed via /model command
   activeModelName,    // Default active model name (from providers config)
+  activeModelMeta,    // Billing/Residency-Badges für das effektive Modell
   selectedTable,
   onRemoveTable,
   onTableSelected,    // Callback when table is selected via /table command
@@ -3710,9 +3712,12 @@ function ChatWindow({
           <div style={chatStyles.headerTitle}>
             {chatTitle || 'KI-Assistent'}
           </div>
-          <div style={chatStyles.headerSubtitle}>
-            {getSelectedAgentName()}
-            {(selectedModelName || activeModelName) && ` · ${selectedModelName || activeModelName}`}
+          <div style={{ ...chatStyles.headerSubtitle, display: 'flex', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+            <span>
+              {getSelectedAgentName()}
+              {(selectedModelName || activeModelName) && ` · ${selectedModelName || activeModelName}`}
+            </span>
+            {activeModelMeta && <ModelBadges meta={activeModelMeta} />}
           </div>
         </div>
         {chatId && (

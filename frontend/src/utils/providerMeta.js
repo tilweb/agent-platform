@@ -180,6 +180,21 @@ export function getModelResidency(model, provider) {
   return country ? { code, name: country.name, flag: country.flag } : { code, name: code, flag: '' };
 }
 
+/**
+ * Abrechnungsart eines Modells: 'premium' (externe Modelle mit Kosten pro Token,
+ * z.B. Lyceum/Azure/OpenAI) vs. 'included' (Adacor-Standard, keine Token-Kosten).
+ * Quelle: explizites `billing`-Feld (Modell-Override vor Provider). Ohne Angabe
+ * gilt konservativ 'included' (kein fälschliches Premium-Signal).
+ */
+export function getModelBilling(model, provider) {
+  const billing = model?.billing || provider?.billing;
+  return billing === 'premium' ? 'premium' : 'included';
+}
+
+// Bewusst entfernt (2026-09-24): isModelGdprCompliant / „DSGVO ja/nein" in der
+// Chat-Pill — eine rechtliche Konformitätsbewertung steht uns nicht zu. Die UI
+// zeigt stattdessen Fakten (Verarbeitungsort, Betreiber, sachliche Einordnung).
+
 // Hersteller-Ableitung aus der Modell-ID (Namespace-Präfix) bzw. Heuristik.
 // Zeigt die Modell-Herkunft als sekundäre Info — Vertragspartner ist Adacor.
 const MANUFACTURERS = [
