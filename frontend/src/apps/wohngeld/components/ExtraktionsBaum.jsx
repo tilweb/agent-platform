@@ -4,7 +4,11 @@ import { PRUEF_STATUS_LABEL } from '../api';
 /**
  * Extraktions-Transparenz als Verzeichnisbaum: je Gruppe ein Knoten, darunter die
  * gezogenen Werte als Blätter (durchgehende vertikale Linie + horizontale Abzweigung
- * je Blatt). Rechts je Blatt dezente Konfidenz und optional die Seitenzahl.
+ * je Blatt). Rechts je Blatt die Seitenzahl und NUR echte Warnsignale in Klartext:
+ * „uneinheitlich gelesen" (Stellen im Dokument lieferten verschiedene Werte), „ohne Beleg",
+ * „nicht gefunden" (Pflichtangabe des Antrags fehlt) und offene Prüfhinweise am Feld.
+ * Keine Prozentwerte: Die Extraktion liefert ohne Modellbewertung nur eine Standardzahl
+ * (70 %), die für die Sachbearbeitung keine Information trägt.
  *
  * Quelle: `extraktion` (Dokument.extraktion) — sonst Fallback aus `analyseFallback`
  * (Dokument.analyse), damit auch Seed-/Bestandsdokumente Werte zeigen. Optionaler
@@ -76,8 +80,7 @@ const styles = {
   leafLabel: { color: theme.colors.textMuted, flexShrink: 0 },
   leafValue: { color: theme.colors.text, fontWeight: theme.typography.weights.medium, wordBreak: 'break-word' },
   leafMeta: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, flexShrink: 0 },
-  conf: { color: theme.colors.textMuted, fontVariantNumeric: 'tabular-nums' },
-  confPruef: { fontSize: '0.65rem', fontWeight: theme.typography.weights.semibold, padding: `0 ${theme.spacing.xs}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.warningLight, color: theme.colors.warning },
+  warn: { fontSize: '0.65rem', fontWeight: theme.typography.weights.semibold, padding: `0 ${theme.spacing.xs}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.warningLight, color: theme.colors.warning, whiteSpace: 'nowrap', cursor: 'help' },
   seite: { color: theme.colors.textMuted },
   hinweisTitle: { fontSize: '0.7rem', fontWeight: theme.typography.weights.semibold, color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: theme.spacing.sm, marginBottom: 2 },
   hinweisRow: { position: 'relative', paddingLeft: 14, paddingTop: 3, paddingBottom: 3, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: theme.spacing.sm },
@@ -92,19 +95,62 @@ function statusTone(status) {
   return { backgroundColor: theme.colors.warningLight, color: theme.colors.warning }; // offen
 }
 
-/** Konfidenz-Anzeige: fehlend/0 → „prüfen" (warning), sonst „NN %". */
-function KonfidenzMark({ confidence }) {
-  if (confidence == null || confidence === 0) {
-    return <span style={styles.confPruef}>prüfen</span>;
+/** Pflichtangaben des Antrags je Gruppe (Label wie im Extraktions-Baum). */
+const ANTRAG_PFLICHT = {
+  Antragsteller: ['Vorname', 'Nachname', 'Geburtsdatum'],
+  Adresse: ['Straße', 'Hausnummer', 'PLZ', 'Ort'],
+  Wohnung: ['Bruttokaltmiete', 'Wohnfläche'],
+  Antrag: ['Antragsdatum'],
+};
+
+/** Offene Prüfhinweise → betroffenes Feld (Label im Baum). */
+const REGEL_ZU_FELD = {
+  'plausi-miethoehe-abweichung': ['Miete laut Dokument', 'Bruttokaltmiete'],
+  'plausi-wohnflaeche-abweichung': ['Wohnfläche laut Dokument', 'Wohnfläche'],
+  'plausi-mietvertrag-unsigniert': ['Unterschrift'],
+  'plausi-antrag-ohne-unterschrift': ['Unterschrift'],
+  'plausi-antrag-ohne-datum': ['Datum'],
+  'plausi-mietzahlung-fehlt': ['Mietzahlung erkannt'],
+  'plausi-rentenart-fehlt': ['Rentenart'],
+};
+const regelBasis = (id) => String(id || '').split(':')[0];
+
+/**
+ * Warnsignal eines Feldes (oder nichts). Die Konfidenz der Extraktion ist ohne Modellbewertung
+ * eine Standardzahl — sie wird nur als Signal genutzt, wenn sie einen Widerspruch anzeigt.
+ */
+function WarnMark({ feld, hinweise }) {
+  const h = hinweise.find((x) => x.status === 'offen' && (REGEL_ZU_FELD[regelBasis(x.regelId)] || []).includes(feld.label));
+  if (h) return <span style={styles.warn} title={h.titel}>Prüfhinweis</span>;
+  if (feld.fehlt) return <span style={styles.warn} title="Diese Pflichtangabe wurde im Antrag nicht gefunden.">nicht gefunden</span>;
+  const c = feld.confidence;
+  if (c === 0) return <span style={styles.warn} title="Der Wert konnte keiner Stelle im Dokument zugeordnet werden — bitte mit der Vorschau abgleichen.">ohne Beleg</span>;
+  if (typeof c === 'number' && c < 0.65) {
+    return <span style={styles.warn} title="Verschiedene Stellen des Dokuments lieferten unterschiedliche Werte — bitte mit der Vorschau abgleichen.">uneinheitlich gelesen</span>;
   }
-  return <span style={styles.conf}>{Math.round(confidence * 100)} %</span>;
+  return null;
+}
+
+/** Beim Antrag fehlende Pflichtangaben als Blätter „—" ergänzen. */
+function mitFehlendenPflichtangaben(felder) {
+  const istAntrag = felder.some((f) => f.gruppe === 'Antragsteller' || f.gruppe === 'Adresse');
+  if (!istAntrag) return felder;
+  const out = [...felder];
+  for (const [gruppe, labels] of Object.entries(ANTRAG_PFLICHT)) {
+    for (const label of labels) {
+      if (!felder.some((f) => f.gruppe === gruppe && f.label === label)) out.push({ gruppe, label, wert: '—', fehlt: true });
+    }
+  }
+  // Gruppenreihenfolge der Pflichtangaben beibehalten.
+  const reihenfolge = [...Object.keys(ANTRAG_PFLICHT), ...new Set(felder.map((f) => f.gruppe || 'Werte'))];
+  return out.sort((a, b) => reihenfolge.indexOf(a.gruppe || 'Werte') - reihenfolge.indexOf(b.gruppe || 'Werte'));
 }
 
 export default function ExtraktionsBaum({ extraktion, analyseFallback, hinweise }) {
   const felder = (extraktion?.felder && extraktion.felder.length)
     ? extraktion.felder
     : felderAusAnalyse(analyseFallback);
-  const gruppen = gruppiere(felder);
+  const gruppen = gruppiere(mitFehlendenPflichtangaben(felder));
   const hinweisListe = Array.isArray(hinweise) ? hinweise : [];
 
   if (!gruppen.length && !hinweisListe.length) {
@@ -126,7 +172,7 @@ export default function ExtraktionsBaum({ extraktion, analyseFallback, hinweise 
                 </span>
                 <span style={styles.leafMeta}>
                   {f.seite != null && <span style={styles.seite}>S. {f.seite}</span>}
-                  <KonfidenzMark confidence={f.confidence} />
+                  <WarnMark feld={f} hinweise={hinweisListe} />
                 </span>
               </div>
             ))}

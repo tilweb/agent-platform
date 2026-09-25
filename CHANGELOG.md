@@ -2,6 +2,14 @@
 
 ## 2026-09-25
 
+### Wohngeld — „Aus diesem Dokument erkannt": Warnsignale statt Prozentwerten
+Die Prozentangaben je Feld (fast überall 70 %) waren keine gemessene Sicherheit, sondern ein Standardwert der
+Extraktion ohne Modellbewertung. Sie entfallen. Angezeigt werden nur noch echte Signale in Klartext:
+„uneinheitlich gelesen" (Stellen im Dokument lieferten verschiedene Werte), „ohne Beleg", „nicht gefunden"
+(fehlende Pflichtangaben des Antrags werden als Zeile „—" ergänzt) und „Prüfhinweis" am betroffenen Feld, wenn
+ein offener Plausibilitäts-Prüfschritt darauf verweist (z. B. Mietabweichung an der Miete). Felder ohne
+Auffälligkeit tragen keine Marke mehr (bisher pauschal „prüfen").
+
 ### Wohngeld — Alle KI-Vorschläge einheitlich mit Punkt und Bestätigen/Verwerfen
 Alles, was die KI aus dem Antrag in eine Person schreibt, ist jetzt als KI-Vorschlag markiert und einzeln prüfbar:
 Name, Geburtsdatum, Erwerbsstatus, Einkommen, Pflege/Behinderung, Ausschlüsse (§ 7), Vermögen sowie der abgeleitete
