@@ -26,8 +26,8 @@ export function FeldStatusDot({ fs }) {
   return (
     <span
       style={styles.dotLead}
-      title="KI-Vorschlag aus Dokument — bitte bestaetigen oder verwerfen"
-      aria-label="Unbestaetigter KI-Vorschlag"
+      title="KI-Vorschlag aus Dokument — bitte bestätigen oder verwerfen"
+      aria-label="Unbestätigter KI-Vorschlag"
     />
   );
 }
@@ -51,14 +51,14 @@ function hover(art) {
 export function FeldStatusFreigabe({ fs, canEdit = false, busy = false, onBestaetigen, onVerwerfen }) {
   if (!fs || !canEdit) return null;
   return (
-    <span style={styles.freigabe} title="KI-Vorschlag bestaetigen oder verwerfen">
+    <span style={styles.freigabe} title="KI-Vorschlag bestätigen oder verwerfen">
       <button
         type="button"
         style={styles.btn}
         disabled={busy}
         onClick={() => onBestaetigen?.(fs)}
-        title="Bestaetigen"
-        aria-label="KI-Vorschlag bestaetigen"
+        title="Bestätigen"
+        aria-label="KI-Vorschlag bestätigen"
         {...hover('ok')}
       >
         <CheckIcon size={12} color={theme.colors.success} />
@@ -87,7 +87,7 @@ export function FeldStatusFreigabe({ fs, canEdit = false, busy = false, onBestae
 export default function FeldStatusMark({ fs, canEdit = false, busy = false, onBestaetigen, onVerwerfen }) {
   if (!fs) return null;
   return (
-    <span style={styles.wrap} title="KI-Vorschlag aus Dokument — bitte bestaetigen oder verwerfen">
+    <span style={styles.wrap} title="KI-Vorschlag aus Dokument — bitte bestätigen oder verwerfen">
       <span style={styles.dotLead} />
       <FeldStatusFreigabe fs={fs} canEdit={canEdit} busy={busy} onBestaetigen={onBestaetigen} onVerwerfen={onVerwerfen} />
     </span>
