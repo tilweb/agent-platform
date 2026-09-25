@@ -292,10 +292,21 @@ interface VorlagenMarke { stand: string; hash: string }
  * Vorlage im Speicher (Messwerkzeug, Tests). Nie bearbeitete Profile werden auf
  * neue Vorlagenstände angehoben (Fingerabdruck in `learning.wohngeld_vorlage`).
  */
+/**
+ * Beispiele, die die Auswertung tatsächlich nutzt: ohne Testbestand (nur für die DP-Eval) und
+ * ohne gespeicherte Originaldateien. Sonst lädt jede Auswertung alle Test-PDFs (base64) in den
+ * Speicher — bei 60 Golden-Fällen mehrere hundert MB (Speicherabstürze auf kleinen Containern).
+ */
+export function fuerAuswertung(beispiele: TrainingExample[]): TrainingExample[] {
+  return beispiele
+    .filter((b) => b.dataset?.purpose !== 'test')
+    .map((b) => (b.dataset?.original ? { ...b, dataset: { ...b.dataset, original: undefined } } : b));
+}
+
 export async function ladeProfil(): Promise<{ profil: ExtractionProject; beispiele: TrainingExample[]; quelle: 'datenbank' | 'vorlage' }> {
   try {
     const { getProject, createProject, updateProject, mutateProject } = await import('../../extraction/learning/projects');
-    const { getExamples } = await import('../../extraction/learning/examples');
+    const { getExtractionExamples } = await import('../../extraction/learning/examples');
     const vorlage = buildWohngeldEingangProject();
     const marke: VorlagenMarke = { stand: WOHNGELD_PROFIL_VORLAGE_STAND, hash: vorlagenHash(vorlage) };
     const markieren = () => mutateProject(WOHNGELD_PROFIL_ID, (p) => ({ learning: { ...p.learning, wohngeld_vorlage: marke } as ExtractionProject['learning'] }));
@@ -321,7 +332,7 @@ export async function ladeProfil(): Promise<{ profil: ExtractionProject; beispie
         }
       }
     }
-    if (profil) return { profil, beispiele: await getExamples(WOHNGELD_PROFIL_ID), quelle: 'datenbank' };
+    if (profil) return { profil, beispiele: fuerAuswertung(await getExtractionExamples(WOHNGELD_PROFIL_ID)), quelle: 'datenbank' };
   } catch (err) {
     console.warn('[wohngeld] DP-Profil nicht aus der Datenbank ladbar — Vorlage im Speicher:', err instanceof Error ? err.message : err);
   }

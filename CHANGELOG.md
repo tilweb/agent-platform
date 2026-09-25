@@ -2,6 +2,13 @@
 
 ## 2026-09-25
 
+### Fix: Speicherbedarf der Dokumenten-Auswertung (Testbestand wurde jedes Mal geladen)
+Jede Auswertung im Posteingang lud alle Beispiele des DP-Profils — inklusive Testbestand mit Original-PDFs (lokal
+410 MB). Neue Plattform-Abfrage `getExtractionExamples()` (ohne Testbeispiele, Originaldateien per SQL entfernt);
+die Wohngeld-Erkennung nutzt sie. Messung: Speicher vor der Auswertung 814 → 85 MB, Spitze 882 → 219 MB (24 Seiten);
+Zuwachs je Auswertung ~130 MB. Hintergrund: Speicherabstürze auf workplace-demo (M-Container).
+Analyse: `docs/wohngeld-speicher-analyse-2026-09-25.md`.
+
 ### Wohngeld — „Aus diesem Dokument erkannt": Warnsignale statt Prozentwerten
 Die Prozentangaben je Feld (fast überall 70 %) waren keine gemessene Sicherheit, sondern ein Standardwert der
 Extraktion ohne Modellbewertung. Sie entfallen. Angezeigt werden nur noch echte Signale in Klartext:

@@ -7,7 +7,7 @@ import { getProject } from './projects';
  * nach Score, weil corrections-first + recency unkompliziert in JS sind).
  */
 
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, getTableColumns, sql as rawSql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { createHash } from 'crypto';
 import { extractionExamples, extractionProjects } from '../../db/schema/extraction';
@@ -44,6 +44,25 @@ export async function getExamples(projectId: string): Promise<TrainingExample[]>
     .where(eq(extractionExamples.projectId, projectId))
     .orderBy(desc(extractionExamples.createdAt));
   return rows.map(rowToExample);
+}
+
+/**
+ * Examples needed to RUN an extraction: excludes the test set (only used by the eval) and strips
+ * stored original files in SQL. Loading all examples incl. base64 originals per extraction costs
+ * hundreds of MB with a larger test set (memory crashes on small containers).
+ */
+export async function getExtractionExamples(projectId: string): Promise<TrainingExample[]> {
+  const db = getDb();
+  const rows = await db.select({
+    ...getTableColumns(extractionExamples),
+    dataset: rawSql<unknown>`${extractionExamples.dataset} - 'original'`,
+  }).from(extractionExamples)
+    .where(and(
+      eq(extractionExamples.projectId, projectId),
+      rawSql`coalesce(${extractionExamples.dataset}->>'purpose', 'train') <> 'test'`,
+    ))
+    .orderBy(desc(extractionExamples.createdAt));
+  return rows.map((r) => rowToExample(r as typeof extractionExamples.$inferSelect));
 }
 
 export async function saveExample(

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { buildWohngeldEingangProject } from '../../extraction/templates/wohngeld-eingang';
-import { ABSCHNITT_ZU_TYP, abschnitteAusErgebnis, bruttokalt, haushaltAusRohwerten, mappeAbschnitt } from './dp-erkennung';
+import { ABSCHNITT_ZU_TYP, abschnitteAusErgebnis, bruttokalt, fuerAuswertung, haushaltAusRohwerten, mappeAbschnitt } from './dp-erkennung';
 
 describe('Profil-Vorlage', () => {
   const p = buildWohngeldEingangProject();
@@ -121,5 +121,14 @@ describe('haushaltAusRohwerten — Dubletten aus der abschnittsweisen Extraktion
     });
     expect(h?.mitglieder).toEqual([{ nachname: 'Weber', vorname: 'Sofia', geburtsdatum: '2016-09-02', verhaeltnis: 'Tochter', erwerbsstatus: 'Nichterwerbsperson' }]);
     expect(h?.einnahmen).toHaveLength(1);
+  });
+});
+
+describe('fuerAuswertung', () => {
+  test('ohne Testbestand und ohne gespeicherte Originaldateien', () => {
+    const b = (id: string, purpose: 'train' | 'test', original?: object) => ({ id, dataset: { purpose, ...(original ? { original } : {}) } }) as never;
+    const r = fuerAuswertung([b('t1', 'test', { base64: 'AAAA' }), b('a1', 'train', { base64: 'BBBB' }), b('a2', 'train')]);
+    expect(r.map((x: { id: string }) => x.id)).toEqual(['a1', 'a2']);
+    expect((r[0] as { dataset: { original?: unknown } }).dataset.original).toBeUndefined();
   });
 });
