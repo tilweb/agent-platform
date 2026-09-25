@@ -24,7 +24,7 @@ import { pruefeVorgang } from '../checker';
 import { pdfToText } from '../extract';
 import { klassifiziereUndExtrahiere, type ExtraktionErgebnis, type ExtrahierteStammdaten, type Identitaet } from '../extraction';
 import { matchVorgaenge, type MatchIdent, type MatchKandidat, type ScoredKandidat } from '../matching';
-import { feldStatusVorgangPfade, feldStatusPersonPfade } from '../feldstatus-mapping';
+import { feldStatusHaushaltPfade } from '../feldstatus-mapping';
 import { storeUpload, resolveStorageRef } from '../filestore';
 import { stammdatenUebernahme } from '../stammdaten-uebernahme';
 import { pruefeUndSynchronisiere } from '../pruefung';
@@ -330,7 +330,7 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
     }
     // Jede aus dem Antrag angelegte Person ist ein KI-Vorschlag (Name/Geburtsdatum unbestätigt).
     for (const p of neuePersonen) {
-      for (const feldPfad of feldStatusPersonPfade(p)) {
+      for (const feldPfad of feldStatusHaushaltPfade(p)) {
         await setFeldStatus({
           vorgangId: vorgang.id, zielTyp: 'person', zielId: p.id,
           feldPfad, quelle: 'llm', bestaetigt: false, quellDokumentId: antragDokumentId,

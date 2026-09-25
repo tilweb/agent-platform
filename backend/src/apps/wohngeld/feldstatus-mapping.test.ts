@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test';
-import { feldStatusVorgangPfade, feldStatusPersonPfade } from './feldstatus-mapping';
+import { feldStatusVorgangPfade, feldStatusPersonPfade, feldStatusHaushaltPfade } from './feldstatus-mapping';
 import type { ExtrahierteStammdaten } from './extraction';
 
 describe('feldStatusVorgangPfade', () => {
@@ -47,4 +47,11 @@ describe('feldStatusPersonPfade', () => {
   test('undefined → keine Pfade', () => {
     expect(feldStatusPersonPfade(undefined)).toEqual([]);
   });
+});
+
+
+test('Haushaltsperson aus dem Antrag: Name, Geburtsdatum, Erwerbsstatus, Einkommensliste', () => {
+  expect(feldStatusHaushaltPfade({ vorname: 'Olga', nachname: 'Weber', geburtsdatum: '1988-11-27', erwerbsstatus: 'angestellt', einkommen: [{}] }))
+    .toEqual(['nachname', 'vorname', 'geburtsdatum', 'erwerbsstatus', 'einkommen']);
+  expect(feldStatusHaushaltPfade({ vorname: 'Sofia', nachname: 'Weber', einkommen: [] })).toEqual(['nachname', 'vorname']);
 });

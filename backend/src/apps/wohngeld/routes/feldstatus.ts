@@ -14,7 +14,7 @@ import {
 import { denyIfNotAppEditor, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit } from '../audit';
 import { vermerkeEntscheidungen } from '../lernbeispiele';
-import type { Vorgang } from '../types';
+import type { FeldStatus, Vorgang } from '../types';
 import { pruefeAutomatisch } from '../pruefung';
 
 export const feldstatusRoutes = new Hono();
@@ -40,6 +40,21 @@ function clearPersonUpdates(feldPfad: string): Record<string, unknown> {
   return { [feldPfad]: undefined };
 }
 
+/**
+ * Bestätigte Einkommensliste (KI-Vorschlag aus dem Antrag) ⇒ Positionen gelten als von der
+ * Sachbearbeitung berücksichtigt. Nicht fatal.
+ */
+async function uebernimmBestaetigung(fs: Pick<FeldStatus, 'zielTyp' | 'zielId' | 'feldPfad'>): Promise<void> {
+  if (fs.zielTyp !== 'person' || fs.feldPfad !== 'einkommen') return;
+  try {
+    const person = await getPerson(fs.zielId);
+    if (!person?.einkommen?.some((e) => !e.beruecksichtigt)) return;
+    await updatePerson(person.id, { einkommen: person.einkommen.map((e) => ({ ...e, beruecksichtigt: true })) }, { force: true });
+  } catch (err) {
+    console.warn('[wohngeld] Einkommen nicht als berücksichtigt markiert:', err instanceof Error ? err.message : err);
+  }
+}
+
 feldstatusRoutes.get('/vorgaenge/:vorgangId/feldstatus', async (c) => {
   return c.json({ feldStatus: await listFeldStatus(c.req.param('vorgangId')) });
 });
@@ -51,6 +66,7 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/bestaetigen', asyn
   if (eingeschr) return c.json(eingeschr, 403);
   const fs = await bestaetigeFeld(c.req.param('fsId'));
   if (!fs) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
+  await uebernimmBestaetigung(fs);
   await audit(c, { aktion: 'feld.bestaetigt', objektTyp: 'feldstatus', objektId: fs.id, vorgangId: fs.vorgangId, detail: fs.feldPfad });
   await vermerkeEntscheidungen(fs.vorgangId, [fs], 'bestaetigt');
   return c.json({ feldStatus: fs });
@@ -86,6 +102,7 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/alle-bestaetigen', async
   if (eingeschr) return c.json(eingeschr, 403);
   const offenVorher = (await listFeldStatus(vorgangId)).filter((f) => !f.bestaetigt);
   const feldStatus = await bestaetigeAlle(vorgangId);
+  for (const fs of offenVorher) await uebernimmBestaetigung(fs);
   await vermerkeEntscheidungen(vorgangId, offenVorher, 'bestaetigt');
   await audit(c, { aktion: 'feld.alle_bestaetigt', objektTyp: 'feldstatus', vorgangId, detail: 'Alle offenen KI-Vorschläge bestätigt' });
   return c.json({ feldStatus });

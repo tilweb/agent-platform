@@ -35,6 +35,8 @@ const styles = {
   input: { width: '100%', padding: `6px ${theme.spacing.sm}`, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none' },
   checkRow: { display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, marginTop: theme.spacing.xs },
   check: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm, fontSize: theme.typography.sizes.sm, color: theme.colors.text, cursor: 'pointer' },
+  einkArt: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs },
+  einkFreigabe: { display: 'flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.xs },
   einkTable: { width: '100%', borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm },
   th: { textAlign: 'left', padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, fontWeight: theme.typography.weights.medium, borderBottom: `1px solid ${theme.colors.borderLight}` },
   td: { padding: `${theme.spacing.xs} ${theme.spacing.sm}`, color: theme.colors.text, borderBottom: `1px solid ${theme.colors.borderLight}` },
@@ -579,6 +581,14 @@ export default function PersonCard({
             </div>
           ) : (
             einkommen.length > 0 ? (
+              <>
+              {fsFor('einkommen') && einkommen.length > 1 && canEdit && (
+                <div style={styles.einkFreigabe}>
+                  {dot('einkommen')}
+                  <span>KI-Vorschlag aus dem Antrag: alle {einkommen.length} Positionen</span>
+                  {freigabe('einkommen')}
+                </div>
+              )}
               <table style={styles.einkTable}>
                 <thead>
                   <tr>
@@ -591,7 +601,13 @@ export default function PersonCard({
                 <tbody>
                   {einkommen.map((e) => (
                     <tr key={e.id}>
-                      <td style={styles.td}>{e.bezeichnung || EINKOMMENSART_LABEL[e.art] || e.art}</td>
+                      <td style={styles.td}>
+                        <span style={styles.einkArt}>
+                          {dot('einkommen')}
+                          <span>{e.bezeichnung || EINKOMMENSART_LABEL[e.art] || e.art}</span>
+                          {einkommen.length === 1 && freigabe('einkommen')}
+                        </span>
+                      </td>
                       <td style={styles.td}>{eur(e.betrag_monatlich)}</td>
                       <td style={styles.td}>{eur(e.betrag_jaehrlich)}</td>
                       <td style={styles.td}>{e.beruecksichtigt ? 'ja' : 'nein'}</td>
@@ -599,6 +615,7 @@ export default function PersonCard({
                   ))}
                 </tbody>
               </table>
+              </>
             ) : <div style={styles.leEmpty}>Keine Einkommenspositionen erfasst.</div>
           )}
           </PanelSection>

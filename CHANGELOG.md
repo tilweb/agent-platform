@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-25
+
+### Wohngeld — KI-Vorschläge: Einkommen je Zeile markiert, Bestätigen/Verwerfen mit Hover-Farbe
+Einkommenszeilen zeigen den KI-Punkt, wenn die Einkommensliste ein offener KI-Vorschlag ist (wie Sektion und Person);
+Bestätigen/Verwerfen sitzt bei einer Position in der Zeile, bei mehreren einmal über der Tabelle. Bestätigen der
+Einkommensliste setzt alle Positionen auf „berücksichtigt" (auch bei „Alle bestätigen"). Aus dem Antrag angelegte
+Personen bekommen den KI-Vorschlag jetzt auch für Erwerbsstatus und Einkommen. Die kleinen ✓/✗-Buttons färben sich
+beim Überfahren bzw. Fokus hellgrün bzw. hellrot.
+
 ## 2026-09-24
 
 ### KI-Modelle: Flaggen-Politik (DE/EU/CH/US/Welt) + DSGVO-Urteil aus der Chat-Pill entfernt

@@ -12,6 +12,7 @@ const styles = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     width: 18, height: 18, padding: 0, borderRadius: theme.borderRadius.sm,
     border: `1px solid ${theme.colors.border}`, backgroundColor: theme.colors.surface, cursor: 'pointer',
+    transition: `background-color ${theme.transitions.fast}, border-color ${theme.transitions.fast}`,
   },
 };
 
@@ -31,6 +32,17 @@ export function FeldStatusDot({ fs }) {
   );
 }
 
+/** Hover-/Fokus-Hervorhebung: Bestätigen hellgrün, Verwerfen hellrot (kleine Buttons — gegen Verklicken). */
+const HOVER = {
+  ok: { backgroundColor: theme.colors.successLight, borderColor: theme.colors.success },
+  weg: { backgroundColor: theme.colors.errorLight, borderColor: theme.colors.error },
+};
+function hover(art) {
+  const an = (e) => { if (!e.currentTarget.disabled) Object.assign(e.currentTarget.style, HOVER[art]); };
+  const aus = (e) => Object.assign(e.currentTarget.style, { backgroundColor: styles.btn.backgroundColor, borderColor: theme.colors.border });
+  return { onMouseEnter: an, onMouseLeave: aus, onFocus: an, onBlur: aus };
+}
+
 /**
  * Freigabe-Buttons (✓ bestaetigen / ✗ verwerfen) am Wert — immer verfuegbar,
  * unabhaengig vom Bearbeiten-Modus (Bestaetigen ist kein Aendern).
@@ -47,6 +59,7 @@ export function FeldStatusFreigabe({ fs, canEdit = false, busy = false, onBestae
         onClick={() => onBestaetigen?.(fs)}
         title="Bestaetigen"
         aria-label="KI-Vorschlag bestaetigen"
+        {...hover('ok')}
       >
         <CheckIcon size={12} color={theme.colors.success} />
       </button>
@@ -57,6 +70,7 @@ export function FeldStatusFreigabe({ fs, canEdit = false, busy = false, onBestae
         onClick={() => onVerwerfen?.(fs)}
         title="Verwerfen (Feld leeren)"
         aria-label="KI-Vorschlag verwerfen"
+        {...hover('weg')}
       >
         <XIcon size={12} color={theme.colors.error} />
       </button>
