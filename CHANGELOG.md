@@ -2,6 +2,13 @@
 
 ## 2026-09-25
 
+### Konzept: Document Processing als eigenständiger, skalierbarer Dienst
+Diskussionsgrundlage für das Produktteam: DP als eigene App (Web + skalierbare Worker über die bestehende
+Postgres-Job-Warteschlange und Modell-Slots), API v1 (asynchron, idempotent, Webhooks), Mandanten- und
+Datenschutzmodell (zentral geteilt vs. dediziert je Kunde), Auflösung der Workplace-Abhängigkeiten (LLM,
+Nutzungsnachweis, Tabellen-Wertelisten, Oberfläche), Größenordnungen aus den Messungen und Umsetzung in Stufen
+(S1: Worker-Prozesstyp im heutigen Repo). `docs/konzept-document-processing-dienst-2026-09-25.md`.
+
 ### Fix: Speicherbedarf der Dokumenten-Auswertung (Testbestand wurde jedes Mal geladen)
 Jede Auswertung im Posteingang lud alle Beispiele des DP-Profils — inklusive Testbestand mit Original-PDFs (lokal
 410 MB). Neue Plattform-Abfrage `getExtractionExamples()` (ohne Testbeispiele, Originaldateien per SQL entfernt);
