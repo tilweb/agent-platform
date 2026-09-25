@@ -54,4 +54,6 @@ test('Haushaltsperson aus dem Antrag: Name, Geburtsdatum, Erwerbsstatus, Einkomm
   expect(feldStatusHaushaltPfade({ vorname: 'Olga', nachname: 'Weber', geburtsdatum: '1988-11-27', erwerbsstatus: 'angestellt', einkommen: [{}] }))
     .toEqual(['nachname', 'vorname', 'geburtsdatum', 'erwerbsstatus', 'einkommen']);
   expect(feldStatusHaushaltPfade({ vorname: 'Sofia', nachname: 'Weber', einkommen: [] })).toEqual(['nachname', 'vorname']);
+  expect(feldStatusHaushaltPfade({ vorname: 'Kai', pflege_behinderung: { pflegegrad: 3 }, ausschluesse: [{}], vermoegenPositionen: [{}] }))
+    .toEqual(['vorname', 'pflege_behinderung', 'ausschluesse', 'vermoegenPositionen']);
 });

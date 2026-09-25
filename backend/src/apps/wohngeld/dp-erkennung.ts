@@ -128,11 +128,17 @@ export function haushaltAusRohwerten(w: Record<string, unknown>): HaushaltAngabe
   const transfer = zeilen(w.transferleistungen)
     .map((z) => kompakt({ ...name(z), leistung: text(z.leistung), beantragt: text(z.datum_beantragung), bewilligt: text(z.datum_bewilligung), weggefallen: text(z.datum_wegfall), abgelehnt: text(z.datum_ablehnung) }))
     .filter((t) => (t.nachname || t.vorname) && t.leistung);
-  const summe = ['vermoegen_immobilien', 'vermoegen_geld', 'vermoegen_wertgegenstaende', 'vermoegen_sonstige']
-    .reduce((acc, k) => acc + (zahl(w[k]) ?? 0), 0);
+  const VERMOEGEN_ARTEN: Array<[string, string]> = [
+    ['vermoegen_immobilien', 'Immobilien, Grundbesitz'], ['vermoegen_geld', 'Geldvermögen, Forderungen'],
+    ['vermoegen_wertgegenstaende', 'Wertgegenstände'], ['vermoegen_sonstige', 'Sonstige Vermögenswerte'],
+  ];
+  const vermoegenArten = VERMOEGEN_ARTEN
+    .map(([k, art]) => ({ art, betrag: zahl(w[k]) ?? 0 }))
+    .filter((v) => v.betrag > 0);
+  const summe = vermoegenArten.reduce((acc, v) => acc + v.betrag, 0);
   const erwerb = text(w.antragsteller_erwerbsstatus);
   if (!mitglieder.length && !einnahmen.length && !behinderung.length && !transfer.length && !summe && !erwerb) return undefined;
-  return kompakt({ antragstellerErwerbsstatus: erwerb, mitglieder, einnahmen, behinderung, transfer, vermoegen: summe > 0 ? rund(summe) : undefined });
+  return kompakt({ antragstellerErwerbsstatus: erwerb, mitglieder, einnahmen, behinderung, transfer, vermoegen: summe > 0 ? rund(summe) : undefined, vermoegenArten: vermoegenArten.length ? vermoegenArten : undefined });
 }
 
 /**

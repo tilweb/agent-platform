@@ -34,12 +34,20 @@ export function feldStatusPersonPfade(at: ExtrahierteStammdaten['antragsteller']
 }
 
 /**
- * Feld-Status-Pfade einer aus dem Antrag angelegten Person: Name, Geburtsdatum, Erwerbsstatus und
- * die Einkommensliste (als Ganzes) — alles, wofür die Personenkarte Zeilenmarken hat.
+ * Feld-Status-Pfade einer aus dem Antrag angelegten Person — ALLES, was die KI aus dem Antrag in die
+ * Person schreibt, ist ein KI-Vorschlag: Name, Geburtsdatum, Erwerbsstatus, Einkommensliste,
+ * Pflege/Behinderung, Ausschlüsse (§ 7), Vermögenspositionen. Listen/Objekte als Ganzes.
+ * (Kindergeld-Bezug wird nach der Nachweis-Zuordnung abgeleitet und dort markiert.)
  */
-export function feldStatusHaushaltPfade(p: { vorname?: string; nachname?: string; geburtsdatum?: string; erwerbsstatus?: string; einkommen?: unknown[] }): string[] {
+export function feldStatusHaushaltPfade(p: {
+  vorname?: string; nachname?: string; geburtsdatum?: string; erwerbsstatus?: string;
+  einkommen?: unknown[]; pflege_behinderung?: object; ausschluesse?: unknown[]; vermoegenPositionen?: unknown[];
+}): string[] {
   const out = feldStatusPersonPfade(p);
   if (p.erwerbsstatus) out.push('erwerbsstatus');
   if (p.einkommen?.length) out.push('einkommen');
+  if (p.pflege_behinderung && Object.keys(p.pflege_behinderung).length) out.push('pflege_behinderung');
+  if (p.ausschluesse?.length) out.push('ausschluesse');
+  if (p.vermoegenPositionen?.length) out.push('vermoegenPositionen');
   return out;
 }

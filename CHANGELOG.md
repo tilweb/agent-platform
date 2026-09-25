@@ -2,6 +2,14 @@
 
 ## 2026-09-25
 
+### Wohngeld — Alle KI-Vorschläge einheitlich mit Punkt und Bestätigen/Verwerfen
+Alles, was die KI aus dem Antrag in eine Person schreibt, ist jetzt als KI-Vorschlag markiert und einzeln prüfbar:
+Name, Geburtsdatum, Erwerbsstatus, Einkommen, Pflege/Behinderung, Ausschlüsse (§ 7), Vermögen sowie der abgeleitete
+Kindergeld-Bezug. Jede betroffene Zeile zeigt den Punkt; Bestätigen/Verwerfen sitzt in der Zeile bzw. — wenn der
+Vorschlag mehrere Einträge umfasst — einmal als Sammelzeile darüber („alle N Einträge"). Gilt auch für die
+Listen Kinderbetreuung und Unterhalt. Vermögen aus Frage 20 wird als Vermögenspositionen je Art übernommen (statt
+Einzelwert); die Regel „Vermögensnachweise" zählt Positionen und Altwert.
+
 ### Wohngeld — KI-Vorschläge: Einkommen je Zeile markiert, Bestätigen/Verwerfen mit Hover-Farbe
 Einkommenszeilen zeigen den KI-Punkt, wenn die Einkommensliste ein offener KI-Vorschlag ist (wie Sektion und Person);
 Bestätigen/Verwerfen sitzt bei einer Position in der Zeile, bei mehreren einmal über der Tabelle. Bestätigen der

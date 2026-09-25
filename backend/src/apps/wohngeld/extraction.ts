@@ -74,6 +74,8 @@ export interface HaushaltAngaben {
   transfer: Array<AntragName & { leistung?: string; beantragt?: string; bewilligt?: string; weggefallen?: string; abgelehnt?: string }>;
   /** Frage 20: Summe der Wertangaben (nur wenn angegeben). */
   vermoegen?: number;
+  /** Frage 20: Wertangaben je Vermögensart (nur angegebene). */
+  vermoegenArten?: Array<{ art: string; betrag: number }>;
 }
 
 /**

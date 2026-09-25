@@ -5,6 +5,7 @@
  */
 import type { VorgangSnapshot, Person, Dokument, DokumentTyp, PruefBefund } from '../types';
 import { alterAm } from '../haushalt';
+import { vermoegenSummeFuer } from '../einkommen';
 
 function hasDocForPerson(dokumente: Dokument[], typ: DokumentTyp, personId: string): boolean {
   return dokumente.some(d => d.typ === typ && d.personId === personId);
@@ -131,7 +132,7 @@ export function pruefeNachweise(snapshot: VorgangSnapshot): PruefBefund[] {
     }
 
     // Vermögen
-    if ((p.vermoegen ?? 0) > 0) {
+    if (vermoegenSummeFuer(p) > 0) {
       if (!hasDocForPerson(dokumente, 'vermoegensnachweis', p.id)) {
         befunde.push({
           regelId: 'vermoegensnachweise', personId: p.id, kategorie: 'vollstaendigkeit', typ: 'anforderung',

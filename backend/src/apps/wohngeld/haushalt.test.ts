@@ -102,7 +102,7 @@ describe('personenAusAntrag', () => {
     });
     expect(personen[0]!.ausschluesse?.map((a) => a.grund)).toEqual(['sgb2_buergergeld']);
     expect(personen[1]!.ausschluesse).toBeUndefined();
-    expect(personen[0]!.vermoegen).toBe(95000);
+    expect(personen[0]!.vermoegenPositionen).toEqual([{ id: 'vm-P1-1', art: 'Vermögen laut Antrag', betrag: 95000 }]);
     expect(personen[0]!.einkommen?.[0]).toMatchObject({ art: 'kapitalertraege', betrag_jaehrlich: 1200 });
   });
 

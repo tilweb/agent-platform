@@ -316,7 +316,14 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
   // 4a. Kindergeld-Merkmal (nur für neu angelegte Personen; Spec Haushalt §3.5).
   if (neuePersonen.length) {
     const empfaenger = kindergeldEmpfaenger(neuePersonen, angelegt, vorgang.antragsdatum ?? eingegangenAm.slice(0, 10));
-    if (empfaenger) await updatePerson(empfaenger, { erhaelt_kindergeld: true }, { force: true });
+    if (empfaenger) {
+      await updatePerson(empfaenger, { erhaelt_kindergeld: true }, { force: true });
+      // Abgeleitet (Kinder unter 18 im Haushalt) ⇒ ebenfalls KI-Vorschlag.
+      await setFeldStatus({
+        vorgangId: vorgang.id, zielTyp: 'person', zielId: empfaenger,
+        feldPfad: 'erhaelt_kindergeld', quelle: 'llm', bestaetigt: false, quellDokumentId: antragDokumentId,
+      });
+    }
   }
 
   // 4b. Feld-Provenienz (WP3): extrahierte Antrags-Felder als KI-Vorschlag markieren.

@@ -186,7 +186,12 @@ export function personenAusAntrag(s: ExtrahierteStammdaten | undefined): { perso
     p.ausschluesse = [...(p.ausschluesse ?? []), a];
   });
 
-  if ((h.vermoegen ?? 0) > 0) personen[0]!.vermoegen = h.vermoegen;
+  // Vermögen (Frage 20) als Positionen an der antragstellenden Person (führende Darstellung der App).
+  if (h.vermoegenArten?.length) {
+    personen[0]!.vermoegenPositionen = h.vermoegenArten.map((v, i) => ({ id: `vm-P1-${i + 1}`, art: v.art, betrag: v.betrag }));
+  } else if ((h.vermoegen ?? 0) > 0) {
+    personen[0]!.vermoegenPositionen = [{ id: 'vm-P1-1', art: 'Vermögen laut Antrag', betrag: h.vermoegen! }];
+  }
   return { personen, nichtZugeordnet };
 }
 

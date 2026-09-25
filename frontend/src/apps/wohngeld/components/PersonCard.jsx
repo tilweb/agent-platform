@@ -35,8 +35,9 @@ const styles = {
   input: { width: '100%', padding: `6px ${theme.spacing.sm}`, fontSize: theme.typography.sizes.sm, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface, color: theme.colors.text, outline: 'none' },
   checkRow: { display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, marginTop: theme.spacing.xs },
   check: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.sm, fontSize: theme.typography.sizes.sm, color: theme.colors.text, cursor: 'pointer' },
+  kiSammel: { display: 'flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.xs, flexWrap: 'wrap' },
+  kiZeile: { display: 'flex', alignItems: 'center', gap: theme.spacing.xs },
   einkArt: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs },
-  einkFreigabe: { display: 'flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.xs },
   einkTable: { width: '100%', borderCollapse: 'collapse', fontSize: theme.typography.sizes.sm },
   th: { textAlign: 'left', padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, fontWeight: theme.typography.weights.medium, borderBottom: `1px solid ${theme.colors.borderLight}` },
   td: { padding: `${theme.spacing.xs} ${theme.spacing.sm}`, color: theme.colors.text, borderBottom: `1px solid ${theme.colors.borderLight}` },
@@ -98,7 +99,21 @@ function rowId() {
  *   summary: (item) => string  — Zusammenfassungszeile (read-only + Item-Kopf)
  *   note:    optionaler Knoten unter der Kopfzeile (z. B. Legacy-Hinweis)
  */
-function ListEditor({ title, itemLabel, items, fields, canEdit, busy, onSave, emptyText, summary, note = null, unbestaetigt = false }) {
+/**
+ * KI-Vorschlag für eine ganze Liste/Gruppe (z. B. alle Einkommenspositionen aus dem Antrag):
+ * Bestätigen/Verwerfen betrifft alle Einträge — daher einmal über den Zeilen, nicht in einer Zeile.
+ */
+function KiSammelzeile({ ki, anzahl }) {
+  return (
+    <div style={styles.kiSammel}>
+      {ki.dot}
+      <span>KI-Vorschlag aus dem Antrag: alle {anzahl} Einträge</span>
+      {ki.freigabe}
+    </div>
+  );
+}
+
+function ListEditor({ title, itemLabel, items, fields, canEdit, busy, onSave, emptyText, summary, note = null, unbestaetigt = false, ki = null }) {
   const initial = items || [];
   const [draft, setDraft] = useState(null);     // null = read-only
   const [openIdx, setOpenIdx] = useState({});   // aufgeklappte Items im Bearbeiten-Modus
@@ -152,7 +167,18 @@ function ListEditor({ title, itemLabel, items, fields, canEdit, busy, onSave, em
         // ── read-only Zusammenfassung ──
         initial.length === 0
           ? <div style={styles.leEmpty}>{emptyText}</div>
-          : initial.map((r) => <div key={r.id} style={styles.leSummaryRow}>{summary(r)}</div>)
+          : (
+            <>
+              {ki && initial.length > 1 && <KiSammelzeile ki={ki} anzahl={initial.length} />}
+              {initial.map((r) => (
+                <div key={r.id} style={{ ...styles.leSummaryRow, ...(ki ? styles.kiZeile : {}) }}>
+                  {ki?.dot}
+                  <span>{summary(r)}</span>
+                  {ki && initial.length === 1 && ki.freigabe}
+                </div>
+              ))}
+            </>
+          )
       ) : (
         // ── Bearbeiten-Modus: einklappbare Unter-Blöcke ──
         <>
@@ -274,6 +300,8 @@ export default function PersonCard({
   const freigabe = (feldPfad) => (
     <FeldStatusFreigabe fs={fsFor(feldPfad)} canEdit={canEdit} busy={busy} onBestaetigen={onBestaetigen} onVerwerfen={onVerwerfen} />
   );
+  // KI-Vorschlag für eine Liste/Gruppe: Punkt je Zeile + Freigabe (bei mehreren Einträgen als Sammelzeile).
+  const kiFuer = (feldPfad) => (fsFor(feldPfad) ? { dot: dot(feldPfad), freigabe: freigabe(feldPfad) } : null);
   // Head-Marke (Punkt + Freigabe) für Name — bleibt am Namen sichtbar.
   const mark = (feldPfad) => {
     const fs = fsFor(feldPfad);
@@ -355,7 +383,7 @@ export default function PersonCard({
   ].filter((f) => f.value != null && f.value !== '');
 
   const sonstigesRead = [
-    { label: 'Erhält Kindergeld', value: p.erhaelt_kindergeld == null ? null : (p.erhaelt_kindergeld ? 'Ja' : 'Nein') },
+    { label: 'Erhält Kindergeld', value: p.erhaelt_kindergeld == null ? null : (p.erhaelt_kindergeld ? 'Ja' : 'Nein'), dot: dot('erhaelt_kindergeld'), mark: freigabe('erhaelt_kindergeld') },
     { label: 'Werbungskosten', value: p.hat_werbungskosten == null ? null : (p.hat_werbungskosten ? 'Ja' : 'Nein') },
     { label: 'Aufforderung Wohngeld', value: p.aufforderung_wohngeld == null ? null : (p.aufforderung_wohngeld ? 'Ja' : 'Nein') },
     { label: 'EU/EWR', value: p.eu_ewr == null ? null : (p.eu_ewr ? 'Ja' : 'Nein') },
@@ -366,7 +394,8 @@ export default function PersonCard({
     { label: 'Behinderungsgrad (GdB)', value: pb.schwerbehinderungsgrad != null ? String(pb.schwerbehinderungsgrad) : null },
     { label: 'Pflegegrad', value: pb.pflegegrad != null ? String(pb.pflegegrad) : null },
     { label: 'Pflegebedürftig', value: pb.pflegebeduerftig == null ? null : (pb.pflegebeduerftig ? 'Ja' : 'Nein') },
-  ].filter((f) => f.value != null);
+  ].filter((f) => f.value != null)
+    .map((f, _i, alle) => ({ ...f, dot: dot('pflege_behinderung'), mark: alle.length === 1 ? freigabe('pflege_behinderung') : undefined }));
 
   const persoenlichEditing = editSec === 'persoenlich';
   const sonstigesEditing = editSec === 'sonstiges';
@@ -507,7 +536,12 @@ export default function PersonCard({
             </div>
           ) : (
             pflegeRead.length > 0
-              ? <FeldGrid felder={pflegeRead} />
+              ? (
+                <>
+                  {kiFuer('pflege_behinderung') && pflegeRead.length > 1 && <KiSammelzeile ki={kiFuer('pflege_behinderung')} anzahl={pflegeRead.length} />}
+                  <FeldGrid felder={pflegeRead} />
+                </>
+              )
               : <div style={styles.leEmpty}>Keine Angaben zu Pflege & Behinderung.</div>
           )}
           </PanelSection>
@@ -582,13 +616,7 @@ export default function PersonCard({
           ) : (
             einkommen.length > 0 ? (
               <>
-              {fsFor('einkommen') && einkommen.length > 1 && canEdit && (
-                <div style={styles.einkFreigabe}>
-                  {dot('einkommen')}
-                  <span>KI-Vorschlag aus dem Antrag: alle {einkommen.length} Positionen</span>
-                  {freigabe('einkommen')}
-                </div>
-              )}
+              {kiFuer('einkommen') && einkommen.length > 1 && <KiSammelzeile ki={kiFuer('einkommen')} anzahl={einkommen.length} />}
               <table style={styles.einkTable}>
                 <thead>
                   <tr>
@@ -625,6 +653,7 @@ export default function PersonCard({
             title="Vermögen"
             itemLabel="Vermögensposition"
             items={p.vermoegenPositionen}
+            ki={kiFuer('vermoegenPositionen')}
             canEdit={canEdit}
             busy={busy}
             emptyText="Keine Vermögenspositionen erfasst."
@@ -645,6 +674,7 @@ export default function PersonCard({
             title="Kinderbetreuungskosten"
             itemLabel="Kinderbetreuungskosten"
             items={p.kinderbetreuungskosten}
+            ki={kiFuer('kinderbetreuungskosten')}
             canEdit={canEdit}
             busy={busy}
             emptyText="Keine Kinderbetreuungskosten erfasst."
@@ -663,6 +693,7 @@ export default function PersonCard({
             title="Unterhaltsverpflichtungen (§18)"
             itemLabel="Unterhaltsverpflichtung"
             items={p.unterhaltsverpflichtungen}
+            ki={kiFuer('unterhaltsverpflichtungen')}
             canEdit={canEdit}
             busy={busy}
             emptyText="Keine Unterhaltsverpflichtungen erfasst."
@@ -690,6 +721,7 @@ export default function PersonCard({
             title="Unterhaltsansprüche"
             itemLabel="Unterhaltsanspruch"
             items={p.unterhaltsansprueche}
+            ki={kiFuer('unterhaltsansprueche')}
             canEdit={canEdit}
             busy={busy}
             emptyText="Keine Unterhaltsansprüche erfasst."
@@ -712,6 +744,7 @@ export default function PersonCard({
             title="Ausschlüsse (§7)"
             itemLabel="Ausschluss"
             items={p.ausschluesse}
+            ki={kiFuer('ausschluesse')}
             canEdit={canEdit}
             busy={busy}
             emptyText="Keine Ausschlüsse erfasst."

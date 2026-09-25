@@ -93,6 +93,7 @@ describe('haushaltAusRohwerten', () => {
       behinderung: [{ nachname: 'Weber', vorname: 'Olga', gdb: 50 }],
       transfer: [],
       vermoegen: 125000,
+      vermoegenArten: [{ art: 'Immobilien, Grundbesitz', betrag: 85000 }, { art: 'Geldvermögen, Forderungen', betrag: 40000 }],
     });
   });
   test('ohne Haushaltsangaben undefined', () => {
