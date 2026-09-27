@@ -2,6 +2,12 @@
 
 ## 2026-09-27
 
+### Wohngeld: Zuordnen aus dem Posteingang verliert keine erkannten Antragsdaten mehr
+Beim Zuordnen schickt das Posteingang-Formular seine (ggf. korrigierten) Stammdaten mit. Bisher ersetzten diese
+die erkannten Antragsdaten vollständig — dadurch gingen der aus dem Antrag erkannte Haushalt (Grundlage für das
+Anlegen der Personen) und die Wohngeldnummer verloren. Jetzt werden Formularwerte mit den erkannten Daten
+zusammengeführt; gesetzte Formularwerte gewinnen. Mit Test.
+
 ### Grundsicherung: neue Antragsprüfungs-App (Welle G1 — Fundament)
 Start der App „Grundsicherung" (Grundsicherung im Alter und bei Erwerbsminderung, SGB XII Kap. 4) nach dem Muster
 `docs/antragspruefung-muster.md` auf dem Antrag-Kern. G1: eigenes DB-Schema `grundsicherung` (Migration 0048),
@@ -14,6 +20,14 @@ Welle G2: Regelprüfung mit 53 Regeln (27 Vollständigkeit, 20 Plausibilität, 5
 Grundsicherung ohne Rechnung, 1 „außerhalb des Prüfumfangs"), Altersgrenze nach § 41 Abs. 2 SGB XII je Jahrgang,
 Regelkatalog mit Wächter-Test und Reiter-Schnittstelle `/regeln`, kommunal festzulegende Schwellen per
 `GRUNDSICHERUNG_*`. Abnahme über drei Goldfälle.
+Welle G3: Posteingang mit eigenem Dokumentprofil `grundsicherung-eingang` (21 Dokumenttypen), Zuordnung zu neuem
+oder bestehendem Vorgang (Personen der Einsatzgemeinschaft/des Haushalts aus dem Antrag, Nachweise je Person),
+Upload am Vorgang, Weiterleitung mit Ersteingangsdatum (§ 16 Abs. 2 SGB I), Nachforderungsschreiben nach § 60 SGB I
+mit Frist und Rechtsfolgenbelehrung (§ 66 SGB I, PDF/Word), Betroffenenauskunft Art. 15 je Person, Demo-Seed mit
+den drei Goldfällen. Alle KI-Aktionen werden im KI-Verbrauch gemessen.
+Welle G4: Oberfläche nach dem Muster — Einstieg (Vorgänge, Akten, Aufgaben, Prüfregeln, Protokoll, Löschfällig),
+Posteingang, Vorgangsseite (Übersicht mit Antrag & Anspruchsgrund, Einsatzgemeinschaft, Haushalt, Wohnung und
+Heizung, Vorrang & Verfahren; Schreiben; Protokoll; KI-Verbrauch; Prüfschritte; Dokumente).
 
 ### Wohngeld: Schreibschutz eingeschränkter Vorgänge (Art. 18) lückenlos
 KI-Vorschläge bestätigen/verwerfen prüft jetzt, dass der Eintrag zum Vorgang in der URL gehört. Vorher ließ sich

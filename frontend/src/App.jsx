@@ -46,6 +46,10 @@ const WohngeldPage = lazy(() => import('./apps/wohngeld/WohngeldPage'));
 const WohngeldVorgangDetail = lazy(() => import('./apps/wohngeld/VorgangDetail'));
 const WohngeldPosteingangPage = lazy(() => import('./apps/wohngeld/PosteingangPage'));
 const WohngeldPosteingangDetail = lazy(() => import('./apps/wohngeld/PosteingangDetail'));
+const GrundsicherungPage = lazy(() => import('./apps/grundsicherung/GrundsicherungPage'));
+const GrundsicherungVorgangDetail = lazy(() => import('./apps/grundsicherung/VorgangDetail'));
+const GrundsicherungPosteingangPage = lazy(() => import('./apps/grundsicherung/PosteingangPage'));
+const GrundsicherungPosteingangDetail = lazy(() => import('./apps/grundsicherung/PosteingangDetail'));
 const LieferantenPage = lazy(() => import('./apps/lieferantenmanagement/LieferantenPage'));
 const SupplierDetailPage = lazy(() => import('./apps/lieferantenmanagement/SupplierDetailPage'));
 const VsmPage = lazy(() => import('./apps/vsm/VsmPage'));
@@ -255,6 +259,10 @@ function AppRoutes() {
                   <Route path="/apps/wohngeld/posteingang" element={<RequireAppPermission appId="wohngeld"><WohngeldPosteingangPage /></RequireAppPermission>} />
                   <Route path="/apps/wohngeld/posteingang/:id" element={<RequireAppPermission appId="wohngeld"><WohngeldPosteingangDetail /></RequireAppPermission>} />
                   <Route path="/apps/wohngeld/vorgang/:id" element={<RequireAppPermission appId="wohngeld"><WohngeldVorgangDetail /></RequireAppPermission>} />
+                  <Route path="/apps/grundsicherung" element={<RequireAppPermission appId="grundsicherung"><GrundsicherungPage /></RequireAppPermission>} />
+                  <Route path="/apps/grundsicherung/posteingang" element={<RequireAppPermission appId="grundsicherung"><GrundsicherungPosteingangPage /></RequireAppPermission>} />
+                  <Route path="/apps/grundsicherung/posteingang/:id" element={<RequireAppPermission appId="grundsicherung"><GrundsicherungPosteingangDetail /></RequireAppPermission>} />
+                  <Route path="/apps/grundsicherung/vorgang/:id" element={<RequireAppPermission appId="grundsicherung"><GrundsicherungVorgangDetail /></RequireAppPermission>} />
                   <Route path="/apps/lieferantenmanagement" element={<RequireAppPermission appId="lieferantenmanagement"><LieferantenPage /></RequireAppPermission>} />
                   <Route path="/apps/lieferantenmanagement/:id" element={<RequireAppPermission appId="lieferantenmanagement"><SupplierDetailPage /></RequireAppPermission>} />
                   <Route path="/apps/vsm" element={<RequireAppPermission appId="vsm"><VsmPage /></RequireAppPermission>} />

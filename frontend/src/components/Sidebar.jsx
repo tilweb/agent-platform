@@ -4,6 +4,7 @@ import { theme } from '../config/theme';
 import { useAuth } from '../context/AuthContext';
 import { useApps } from '../hooks/useApps';
 import { useBranding } from '../hooks/useBranding';
+import { UserIcon } from './Icons';
 
 const sidebarStyles = {
   sidebar: {
@@ -246,6 +247,7 @@ const navIconColors = {
   briefcase: '#a16207',
   echoloop: '#452C71',
   wohngeld: '#2563EB',
+  grundsicherung: '#2563EB',
 };
 
 function Sidebar() {
@@ -851,6 +853,8 @@ function AppNavIcon({ iconId }) {
       return <EcholoopNavIcon color={navIconColors.echoloop} />;
     case 'wohngeld':
       return <WohngeldNavIcon color={navIconColors.wohngeld} />;
+    case 'grundsicherung':
+      return <UserIcon size={18} color={navIconColors.grundsicherung} />;
     default:
       return <AppsNavIcon color={navIconColors.apps} />;
   }
