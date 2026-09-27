@@ -9,6 +9,7 @@
  *   bun run scripts/ocr-pilot/stufe-a.ts --liste
  *   bun run scripts/ocr-pilot/stufe-a.ts --modell ollama:glm-ocr --modell ollama:deepseek-ocr:3b
  *   bun run scripts/ocr-pilot/stufe-a.ts --modell lmstudio:<id> --faelle F03,F09 --dpi 150
+ *   bun run scripts/ocr-pilot/stufe-a.ts --modell llamacpp:paddleocr-vl-1.6   (llama-server -m <gguf> --mmproj <mmproj> --port 8090)
  *   bun run scripts/ocr-pilot/stufe-a.ts --nur-auswertung            (nur Cache auswerten, kein Modellaufruf)
  * Optionen: --anweisung "<prompt>" überschreibt die Modellfamilien-Anweisung, --timeout <s> (Default 180),
  *           --max-seiten <n> begrenzt Seiten je Fall (Schnelltest).
@@ -22,6 +23,8 @@ const GOLDEN = resolve(import.meta.dir, '../../../tools/wohngeld-golden');
 const AUSGABE = join(GOLDEN, 'out/ocr-pilot');
 const OLLAMA = process.env.OLLAMA_URL ?? 'http://localhost:11434';
 const LMSTUDIO = process.env.LMSTUDIO_URL ?? 'http://localhost:1234';
+/** llama.cpp `llama-server` (OpenAI-kompatibel) — für GGUF-Modelle mit getrenntem Vision-Encoder (mmproj), die LM Studio nicht koppelt. */
+const LLAMACPP = process.env.LLAMACPP_URL ?? 'http://localhost:8090';
 
 /** Fälle mit handschriftlich ausgefülltem Antrag (tools/wohngeld-golden, Fall-Definition `antrag.handschrift`). */
 const HANDSCHRIFT = new Set(['F03', 'F09', 'F13', 'F19', 'F22', 'F26', 'F28']);
@@ -45,13 +48,13 @@ const anweisungOverride = opt('--anweisung');
 const nurAuswertung = flag('--nur-auswertung');
 
 // ---------- Modell-Endpunkte ----------
-type Anbieter = 'ollama' | 'lmstudio';
+type Anbieter = 'ollama' | 'lmstudio' | 'llamacpp';
 interface Modell { anbieter: Anbieter; id: string; schluessel: string }
 
 function parseModell(s: string): Modell {
   const i = s.indexOf(':');
   const anbieter = s.slice(0, i) as Anbieter;
-  if (i < 0 || (anbieter !== 'ollama' && anbieter !== 'lmstudio')) throw new Error(`--modell erwartet ollama:<name> oder lmstudio:<id>, nicht "${s}"`);
+  if (i < 0 || !['ollama', 'lmstudio', 'llamacpp'].includes(anbieter)) throw new Error(`--modell erwartet ollama:<name>, lmstudio:<id> oder llamacpp:<name>, nicht "${s}"`);
   const id = s.slice(i + 1);
   return { anbieter, id, schluessel: `${anbieter}__${id.replace(/[^a-zA-Z0-9._-]+/g, '_')}` };
 }
@@ -95,11 +98,11 @@ async function ocr(modell: Modell, png: Uint8Array, anweisung: string): Promise<
   }
   const inhalt: unknown[] = [{ type: 'image_url', image_url: { url: `data:image/png;base64,${b64}` } }];
   if (anweisung) inhalt.push({ type: 'text', text: anweisung });
-  const r = await fetch(`${LMSTUDIO}/v1/chat/completions`, {
+  const r = await fetch(`${modell.anbieter === 'llamacpp' ? LLAMACPP : LMSTUDIO}/v1/chat/completions`, {
     method: 'POST', signal, headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ model: modell.id, temperature: 0, max_tokens: 8192, messages: [{ role: 'user', content: inhalt }] }),
   });
-  if (!r.ok) throw new Error(`LM Studio ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  if (!r.ok) throw new Error(`${modell.anbieter} ${r.status}: ${(await r.text()).slice(0, 300)}`);
   return ((await r.json()) as { choices: { message: { content: string } }[] }).choices[0]?.message.content ?? '';
 }
 
