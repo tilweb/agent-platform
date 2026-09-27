@@ -20,6 +20,7 @@ import { audit } from '../audit';
 import { denyIfNotAppEditor, denyIfEingeschraenkt } from './_shared';
 import { ablage, storeUpload, resolveStorageRef, loadDokumentDatei } from '../filestore';
 import { klassifiziereUndExtrahiere } from '../extraction';
+import { korrigiereStammdaten } from '../stammdaten-uebernahme';
 import {
   verteileDokumente, ermittleMatchKandidaten, buildIdent, extractTextFromBytes,
   MAX_TOTAL_BYTES, type Preview,
@@ -204,11 +205,11 @@ async function zuordnen(c: Context, eingang: Posteingang, rohBody: Record<string
   };
 
   const dokumente = eingang.dateien.map(dateiZuPreview);
-  // Optionale Stammdaten-Korrektur aus dem Detail-Formular auf den Antrag anwenden
-  // (Erweiterung ggü. Spec-Body — verhindert verlorene manuelle Korrekturen).
+  // Optionale Stammdaten-Korrektur aus dem Detail-Formular mit den erkannten Antragsdaten
+  // zusammenführen (Formular zeigt nur einen Teil — Haushalt/Wohngeldnummer bleiben erhalten).
   if (body.stammdaten) {
     const antrag = dokumente.find((d) => d.typ === 'wohngeldantrag') ?? dokumente[0];
-    if (antrag) antrag.stammdaten = body.stammdaten;
+    if (antrag) antrag.stammdaten = korrigiereStammdaten(antrag.stammdaten, body.stammdaten);
   }
 
   const result = await verteileDokumente(c, {

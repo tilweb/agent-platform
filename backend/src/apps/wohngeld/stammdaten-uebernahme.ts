@@ -55,3 +55,29 @@ export function stammdatenUebernahme(
 
   return { updates, pfade };
 }
+
+/** Nur gesetzte Werte (JSON lässt `undefined` weg, leere Strings zählen als nicht gesetzt). */
+function gesetzte<T extends object>(o: T | undefined): Partial<T> {
+  const aus: Partial<T> = {};
+  for (const [k, v] of Object.entries(o ?? {})) if (v !== undefined && v !== null && v !== '') (aus as Record<string, unknown>)[k] = v;
+  return aus;
+}
+
+/**
+ * Führt die Korrektur aus dem Posteingang-Formular mit den erkannten Antragsdaten zusammen.
+ * Das Formular zeigt nur einen Teil der Felder — der erkannte Haushalt (Grundlage für das
+ * Anlegen der Personen) und die Wohngeldnummer dürfen beim Zuordnen nicht verloren gehen.
+ * Gesetzte Formularwerte gewinnen.
+ */
+export function korrigiereStammdaten(erkannt: ExtrahierteStammdaten | undefined, korrektur: ExtrahierteStammdaten): ExtrahierteStammdaten {
+  const basis = erkannt ?? {};
+  const oben = gesetzte(korrektur);
+  delete oben.antragsteller; delete oben.adresse; delete oben.wohnung; delete oben.haushalt;
+  return {
+    ...basis,
+    ...oben,
+    antragsteller: { ...(basis.antragsteller ?? {}), ...gesetzte(korrektur.antragsteller) },
+    adresse: { ...(basis.adresse ?? {}), ...gesetzte(korrektur.adresse) },
+    wohnung: { ...(basis.wohnung ?? {}), ...gesetzte(korrektur.wohnung) },
+  };
+}
