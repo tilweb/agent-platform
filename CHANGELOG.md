@@ -10,6 +10,11 @@ Es rendert Seiten der Scan-PDFs aus dem Wohngeld-Golden-Dataset (150 dpi) und sc
 Wort-Recall/-Präzision, Zahlen-Recall (Beträge, Daten, IBAN), Wiederholungsschleifen und Zeit pro Seite,
 getrennt nach Antrag maschinell, Antrag handschriftlich und Nachweisen. OCR-Ausgaben werden zwischengespeichert,
 `--nur-auswertung` wertet ohne Modellaufruf neu aus. Die Metriken liegen in `metriken.ts`, dazu Tests.
+Neben Ollama und LM Studio auch llama.cpp (`llamacpp:`) für GGUF-Modelle mit getrenntem Vision-Encoder; Schleifen-Erkennung
+gleicht gegen die Referenz ab (legitime Wiederholungen wie Kontoauszug-Buchungen zählen nicht, Block-Wiederholungen schon).
+Ergebnis über 92 Seiten: LightOnOCR-2-1B (Zahlen-Recall 98,3 %) und GLM-OCR (96,5 %) klar vorn, ohne Schleifen;
+DeepSeek-OCR-2 90,8 %, DeepSeek-OCR v1 und PaddleOCR-VL laufen im Ganzseiten-Modus auf jeder siebten Seite in Wiederholungen.
+Details: `docs/ocr-pilot-stufe-a-2026-09-27.md`.
 
 ## 2026-09-25
 
