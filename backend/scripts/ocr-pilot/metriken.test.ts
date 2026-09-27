@@ -32,5 +32,6 @@ test('hatSchleife erkennt Wiederholung, ignoriert kurze Symbolzeilen', () => {
   expect(hatSchleife(Array(18).fill('▶').join('\n') + '\nGeschlecht')).toBe(false);
   const buchungen = Array(12).fill('Kartenzahlung girocard Bremen').join('\n');
   expect(hatSchleife(buchungen, buchungen)).toBe(false);
+  expect(hatSchleife(Array(40).fill('Betrag EUR\n1.180,00\n208').join('\n'), 'Gehalt Betrag EUR 1.180,00 Personal-Nr. 208')).toBe(true);
   expect(hatSchleife(Array(30).fill('- [ ] DEUTSCH').join('\n'), 'Staatsangehörigkeit DEUTSCH')).toBe(true);
 });

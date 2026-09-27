@@ -75,7 +75,7 @@ export function summiere(m: SeitenMetrik[]): Summe {
 
 /**
  * Wiederholungsschleife (bekanntes Fehlerbild kleiner OCR-VLMs): eine Zeile (≥ 10 Zeichen, also keine Kästchen/Pfeile)
- * steht ≥ 8× in den letzten 60 Zeilen UND deutlich öfter als in der Referenz — legitime Wiederholungen
+ * steht ≥ 8× in den letzten 60 Zeilen UND deutlich öfter als in der Referenz — oder die Ausgabe ist mehr als doppelt so lang wie die Referenz — legitime Wiederholungen
  * (Kontoauszug-Buchungen, Formularzeilen „Betrag in EUR/Monat") zählen so nicht als Schleife.
  */
 export function hatSchleife(ocr: string, referenz?: string): boolean {
@@ -84,5 +84,7 @@ export function hatSchleife(ocr: string, referenz?: string): boolean {
   const n = new Map<string, number>();
   for (const z of zeilen) n.set(z, (n.get(z) ?? 0) + 1);
   const ref = referenz != null ? norm(referenz.replace(/\n/g, ' ')) : null;
-  return [...n].some(([z, c]) => c >= 8 && (ref == null || c > ref.split(z).length - 1 + 3));
+  if ([...n].some(([z, c]) => c >= 8 && (ref == null || c > ref.split(z).length - 1 + 3))) return true;
+  // Block-Schleife (mehrere kurze Zeilen wiederholt, z. B. „Betrag EUR / 1.180,00 / …"): Ausgabe mehr als doppelt so lang wie die Seite
+  return referenz != null && tokens(ocr).length > 2 * tokens(referenz).length + 50;
 }
