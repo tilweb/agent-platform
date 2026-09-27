@@ -10,11 +10,13 @@ import {
   DOKUMENT_TYP_LABEL, WOHNGELDART_LABEL, ANTRAGSART_LABEL,
   POSTEINGANG_STATUS_LABEL, POSTEINGANG_QUELLE_LABEL,
 } from './api';
-import AuswertungsFortschritt from './components/AuswertungsFortschritt';
-import ExtraktionsBaum from './components/ExtraktionsBaum';
-import SeitenVorschau from './components/SeitenVorschau';
-import { KiVerbrauchZeile } from './components/KiVerbrauch';
-import { istHaengend } from './fortschritt';
+import AuswertungsFortschritt from '../_antrag-kern/components/AuswertungsFortschritt';
+import ExtraktionsBaum from '../_antrag-kern/components/ExtraktionsBaum';
+import { EXTRAKTION_BAUM_PROPS } from './extraktionLabels';
+import SeitenVorschau from '../_antrag-kern/components/SeitenVorschau';
+import { KiVerbrauchZeile } from '../_antrag-kern/components/KiVerbrauch';
+import WohngeldKernProvider from './WohngeldKernProvider';
+import { istHaengend } from '../_antrag-kern/fortschritt';
 
 const LEVEL_LABEL = { hoch: 'Hohe Übereinstimmung', mittel: 'Mögliche Übereinstimmung', gering: 'Geringe Übereinstimmung' };
 const STATUS_LABEL = { gleich: 'Übereinstimmung', abweichung: 'Abweichung', fehlt: 'Fehlt' };
@@ -199,6 +201,10 @@ function stammToPayload(f) {
 }
 
 export default function PosteingangDetail() {
+  return <WohngeldKernProvider><PosteingangDetailSeite /></WohngeldKernProvider>;
+}
+
+function PosteingangDetailSeite() {
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -696,7 +702,7 @@ export default function PosteingangDetail() {
                         <ChevronDownIcon size={14} style={{ transform: werteOffen ? 'rotate(180deg)' : 'none' }} />
                         Aus diesem Dokument erkannt
                       </button>
-                      {werteOffen && <ExtraktionsBaum extraktion={selected.extraktion} analyseFallback={selected.analyse} />}
+                      {werteOffen && <ExtraktionsBaum {...EXTRAKTION_BAUM_PROPS} extraktion={selected.extraktion} analyseFallback={selected.analyse} />}
                     </div>
                   )}
                 </>

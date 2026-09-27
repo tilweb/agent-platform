@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { theme } from '../../../config/theme';
 import { CheckIcon, RefreshIcon, AlertTriangleIcon } from '../../../components/Icons';
-import { ACCENT, ACCENT_LIGHT } from '../api';
+import { ACCENT, ACCENT_LIGHT } from '../konstanten';
 import { FORTSCHRITT_PHASEN, anteil, fortschrittVon, istHaengend, laufzeit } from '../fortschritt';
 
 /** Sekundentakt für die Laufzeit-Anzeige. */

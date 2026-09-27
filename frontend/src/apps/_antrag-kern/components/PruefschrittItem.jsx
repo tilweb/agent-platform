@@ -2,7 +2,8 @@ import { useState } from 'react';
 import RegelDetails from './RegelDetails';
 import { theme } from '../../../config/theme';
 import { DocumentIcon, EyeIcon, HelpCircleIcon, CheckIcon, XIcon, RefreshIcon } from '../../../components/Icons';
-import { PRUEF_TYP_LABEL, PRUEF_KATEGORIE_LABEL, ACCENT, ACCENT_LIGHT, wohngeldApi } from '../api';
+import { PRUEF_TYP_LABEL, PRUEF_KATEGORIE_LABEL, ACCENT, ACCENT_LIGHT } from '../konstanten';
+import { useAntragKern } from '../AntragKernContext';
 
 const styles = {
   item: { padding: theme.spacing.md, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.background, marginBottom: theme.spacing.sm },
@@ -41,6 +42,7 @@ function statusBadgeStyle(status) {
  * dokumentLabel: Anzeigename des Beleg-Dokuments (optional, sonst generisch).
  */
 export default function PruefschrittItem({ pruefschritt: p, onStatus, canEdit, busy, onOpenDokument, dokumentLabel }) {
+  const { api } = useAntragKern();
   const [open, setOpen] = useState(false);
   const [warum, setWarum] = useState(false);
   const [regel, setRegel] = useState(null);
@@ -53,7 +55,7 @@ export default function PruefschrittItem({ pruefschritt: p, onStatus, canEdit, b
     setWarum(neu);
     if (neu && !regel && !regelFehler) {
       try {
-        const d = await wohngeldApi.getRegeln();
+        const d = await api.getRegeln();
         const r = d.regeln.find((x) => x.id === basisId);
         if (r) setRegel(r); else setRegelFehler('Zu diesem Prüfschritt gibt es keine Regelbeschreibung (manuell angelegt).');
       } catch (e) { setRegelFehler(e.message || 'Regelbeschreibung konnte nicht geladen werden'); }

@@ -1,6 +1,6 @@
 import { theme } from '../../../config/theme';
 import { CheckIcon, XIcon } from '../../../components/Icons';
-import { ACCENT } from '../api';
+import { ACCENT } from '../konstanten';
 
 const styles = {
   wrap: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, marginLeft: theme.spacing.xs, verticalAlign: 'middle' },

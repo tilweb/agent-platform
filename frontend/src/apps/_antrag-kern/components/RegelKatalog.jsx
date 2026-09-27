@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { theme } from '../../../config/theme';
 import SearchInput from '../../../components/overview/SearchInput';
 import { ChevronDownIcon } from '../../../components/Icons';
-import { wohngeldApi, ACCENT, ACCENT_LIGHT, PRUEF_KATEGORIE_LABEL, PRUEF_TYP_LABEL } from '../api';
+import { ACCENT, ACCENT_LIGHT, PRUEF_KATEGORIE_LABEL, PRUEF_TYP_LABEL } from '../konstanten';
+import { useAntragKern } from '../AntragKernContext';
 import RegelDetails from './RegelDetails';
 
 const styles = {
@@ -27,13 +28,15 @@ const typStil = (typ) => (typ === 'anforderung'
   ? { backgroundColor: theme.colors.warningLight, color: theme.colors.warning }
   : { backgroundColor: theme.colors.infoLight, color: theme.colors.info });
 
-const GRUPPEN_REIHENFOLGE = ['grundangaben', 'wohnen', 'identitaet_versicherung', 'einkommen', 'familie_pflege', 'vermoegen', 'ausschluss', 'verfahren'];
-
 /**
  * Aufrufbare Dokumentation aller Prüfregeln: nach Themen gruppiert, durchsuchbar,
  * filterbar nach Vollständigkeit/Plausibilität. Quelle: backend checker/regeln.ts.
+ *
+ * `gruppenReihenfolge` — Reihenfolge der Themengruppen (fachlich, von der App); ohne
+ * Angabe gilt die Reihenfolge aus `daten.gruppen`.
  */
-export default function RegelKatalog() {
+export default function RegelKatalog({ gruppenReihenfolge }) {
+  const { api } = useAntragKern();
   const [daten, setDaten] = useState(null);
   const [fehler, setFehler] = useState(null);
   const [suche, setSuche] = useState('');
@@ -42,21 +45,21 @@ export default function RegelKatalog() {
 
   useEffect(() => {
     let abgebrochen = false;
-    wohngeldApi.getRegeln()
+    api.getRegeln()
       .then((d) => { if (!abgebrochen) setDaten(d); })
       .catch((e) => { if (!abgebrochen) setFehler(e.message || 'Prüfregeln konnten nicht geladen werden'); });
     return () => { abgebrochen = true; };
-  }, []);
+  }, [api]);
 
   const gruppen = useMemo(() => {
     if (!daten) return [];
     const q = suche.trim().toLowerCase();
     const passt = (r) => (kategorie === 'alle' || r.kategorie === kategorie)
       && (!q || [r.titel, r.ausloeser, r.rechtsgrundlage, r.nachweis, r.erledigung, r.id].some((t) => (t || '').toLowerCase().includes(q)));
-    return GRUPPEN_REIHENFOLGE
+    return (gruppenReihenfolge || Object.keys(daten.gruppen || {}))
       .map((g) => ({ id: g, label: daten.gruppen[g] || g, regeln: daten.regeln.filter((r) => r.gruppe === g && passt(r)) }))
       .filter((g) => g.regeln.length);
-  }, [daten, suche, kategorie]);
+  }, [daten, suche, kategorie, gruppenReihenfolge]);
 
   const umschalten = (id) => setOffen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 

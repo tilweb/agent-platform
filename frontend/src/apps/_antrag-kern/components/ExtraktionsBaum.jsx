@@ -1,5 +1,5 @@
 import { theme } from '../../../config/theme';
-import { PRUEF_STATUS_LABEL } from '../api';
+import { PRUEF_STATUS_LABEL } from '../konstanten';
 
 /**
  * Extraktions-Transparenz als Verzeichnisbaum: je Gruppe ein Knoten, darunter die
@@ -15,42 +15,13 @@ import { PRUEF_STATUS_LABEL } from '../api';
  * zweiter Ast „Ausgelöste Hinweise" listet die referenzierenden Prüfschritte.
  */
 
-// ── Fallback-Formatierung (Analyse → Label/Wert) ────────────────────────────
-const ANALYSE_LABEL = {
-  miete: 'Miete laut Dokument',
-  wohnflaeche_qm: 'Wohnfläche laut Dokument',
-  unterschrift_vorhanden: 'Unterschrift',
-  datum_vorhanden: 'Datum',
-  rentenart_vorhanden: 'Rentenart',
-  grundrentenzeiten_vorhanden: 'Grundrentenzeiten',
-  mietzahlung_erkannt: 'Mietzahlung erkannt',
-  erkannte_einkuenfte: 'Erkannte Einkünfte',
-  betrag: 'Betrag',
-};
-const EINKUNFTSART_LABEL = { kapitalertraege: 'Kapitalerträge', v_und_v: 'Vermietung/Verpachtung' };
-const VORHANDEN_FELDER = new Set(['unterschrift_vorhanden', 'datum_vorhanden', 'rentenart_vorhanden', 'grundrentenzeiten_vorhanden']);
-const EURO_FELDER = new Set(['miete', 'betrag']);
-
-function fmtEuro(v) {
-  if (v == null || Number.isNaN(v)) return null;
-  return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
-}
-function analyseWert(feld, v) {
-  if (v == null) return null;
-  if (EURO_FELDER.has(feld)) return fmtEuro(v);
-  if (feld === 'wohnflaeche_qm') return `${v.toLocaleString('de-DE')} m²`;
-  if (feld === 'erkannte_einkuenfte') return Array.isArray(v) && v.length ? v.map((x) => EINKUNFTSART_LABEL[x] ?? x).join(', ') : null;
-  if (VORHANDEN_FELDER.has(feld)) return v === true ? 'vorhanden' : v === false ? 'fehlt' : null;
-  if (feld === 'mietzahlung_erkannt') return v === true ? 'ja' : v === false ? 'nein' : null;
-  return String(v);
-}
-
 /** Aus Dokument.analyse eine felder-Liste (Gruppe „Analyse") ableiten. */
-function felderAusAnalyse(analyse) {
+function felderAusAnalyse(analyse, analyseLabels, formatAnalyseWert) {
   if (!analyse) return [];
   const felder = [];
-  for (const [feld, label] of Object.entries(ANALYSE_LABEL)) {
-    const wert = analyseWert(feld, analyse[feld]);
+  for (const [feld, label] of Object.entries(analyseLabels)) {
+    const v = analyse[feld];
+    const wert = formatAnalyseWert ? formatAnalyseWert(feld, v) : (v == null ? null : String(v));
     if (wert != null && wert !== '') felder.push({ gruppe: 'Analyse', label, wert });
   }
   return felder;
@@ -95,32 +66,14 @@ function statusTone(status) {
   return { backgroundColor: theme.colors.warningLight, color: theme.colors.warning }; // offen
 }
 
-/** Pflichtangaben des Antrags je Gruppe (Label wie im Extraktions-Baum). */
-const ANTRAG_PFLICHT = {
-  Antragsteller: ['Vorname', 'Nachname', 'Geburtsdatum'],
-  Adresse: ['Straße', 'Hausnummer', 'PLZ', 'Ort'],
-  Wohnung: ['Bruttokaltmiete', 'Wohnfläche'],
-  Antrag: ['Antragsdatum'],
-};
-
-/** Offene Prüfhinweise → betroffenes Feld (Label im Baum). */
-const REGEL_ZU_FELD = {
-  'plausi-miethoehe-abweichung': ['Miete laut Dokument', 'Bruttokaltmiete'],
-  'plausi-wohnflaeche-abweichung': ['Wohnfläche laut Dokument', 'Wohnfläche'],
-  'plausi-mietvertrag-unsigniert': ['Unterschrift'],
-  'plausi-antrag-ohne-unterschrift': ['Unterschrift'],
-  'plausi-antrag-ohne-datum': ['Datum'],
-  'plausi-mietzahlung-fehlt': ['Mietzahlung erkannt'],
-  'plausi-rentenart-fehlt': ['Rentenart'],
-};
 const regelBasis = (id) => String(id || '').split(':')[0];
 
 /**
  * Warnsignal eines Feldes (oder nichts). Die Konfidenz der Extraktion ist ohne Modellbewertung
  * eine Standardzahl — sie wird nur als Signal genutzt, wenn sie einen Widerspruch anzeigt.
  */
-function WarnMark({ feld, hinweise }) {
-  const h = hinweise.find((x) => x.status === 'offen' && (REGEL_ZU_FELD[regelBasis(x.regelId)] || []).includes(feld.label));
+function WarnMark({ feld, hinweise, regelFelder }) {
+  const h = hinweise.find((x) => x.status === 'offen' && (regelFelder[regelBasis(x.regelId)] || []).includes(feld.label));
   if (h) return <span style={styles.warn} title={h.titel}>Prüfhinweis</span>;
   if (feld.fehlt) return <span style={styles.warn} title="Diese Pflichtangabe wurde im Antrag nicht gefunden.">nicht gefunden</span>;
   const c = feld.confidence;
@@ -132,25 +85,34 @@ function WarnMark({ feld, hinweise }) {
 }
 
 /** Beim Antrag fehlende Pflichtangaben als Blätter „—" ergänzen. */
-function mitFehlendenPflichtangaben(felder) {
-  const istAntrag = felder.some((f) => f.gruppe === 'Antragsteller' || f.gruppe === 'Adresse');
+function mitFehlendenPflichtangaben(felder, pflichtangaben) {
+  if (!pflichtangaben) return felder;
+  const istAntrag = felder.some((f) => pflichtangaben.erkennungsGruppen.includes(f.gruppe));
   if (!istAntrag) return felder;
   const out = [...felder];
-  for (const [gruppe, labels] of Object.entries(ANTRAG_PFLICHT)) {
+  for (const [gruppe, labels] of Object.entries(pflichtangaben.gruppen)) {
     for (const label of labels) {
       if (!felder.some((f) => f.gruppe === gruppe && f.label === label)) out.push({ gruppe, label, wert: '—', fehlt: true });
     }
   }
   // Gruppenreihenfolge der Pflichtangaben beibehalten.
-  const reihenfolge = [...Object.keys(ANTRAG_PFLICHT), ...new Set(felder.map((f) => f.gruppe || 'Werte'))];
+  const reihenfolge = [...Object.keys(pflichtangaben.gruppen), ...new Set(felder.map((f) => f.gruppe || 'Werte'))];
   return out.sort((a, b) => reihenfolge.indexOf(a.gruppe || 'Werte') - reihenfolge.indexOf(b.gruppe || 'Werte'));
 }
 
-export default function ExtraktionsBaum({ extraktion, analyseFallback, hinweise }) {
+/**
+ * Fachliche Angaben kommen als Props von der App:
+ * - `analyseLabels` — { feld: Label } für den Fallback aus `analyseFallback` (Reihenfolge = Anzeige).
+ * - `formatAnalyseWert(feld, wert)` — Anzeige-Wert (null/'' = ausblenden); ohne Angabe String(wert).
+ * - `pflichtangaben` — { gruppen: { Gruppe: [Label, …] }, erkennungsGruppen: [Gruppe, …] }:
+ *   Enthält das Dokument eine der Erkennungsgruppen, werden fehlende Pflichtangaben als „—" ergänzt.
+ * - `regelFelder` — { regelId: [Feld-Label, …] } für Prüfhinweise am Feld.
+ */
+export default function ExtraktionsBaum({ extraktion, analyseFallback, hinweise, analyseLabels = {}, formatAnalyseWert, pflichtangaben, regelFelder = {} }) {
   const felder = (extraktion?.felder && extraktion.felder.length)
     ? extraktion.felder
-    : felderAusAnalyse(analyseFallback);
-  const gruppen = gruppiere(mitFehlendenPflichtangaben(felder));
+    : felderAusAnalyse(analyseFallback, analyseLabels, formatAnalyseWert);
+  const gruppen = gruppiere(mitFehlendenPflichtangaben(felder, pflichtangaben));
   const hinweisListe = Array.isArray(hinweise) ? hinweise : [];
 
   if (!gruppen.length && !hinweisListe.length) {
@@ -172,7 +134,7 @@ export default function ExtraktionsBaum({ extraktion, analyseFallback, hinweise 
                 </span>
                 <span style={styles.leafMeta}>
                   {f.seite != null && <span style={styles.seite}>S. {f.seite}</span>}
-                  <WarnMark feld={f} hinweise={hinweisListe} />
+                  <WarnMark feld={f} hinweise={hinweisListe} regelFelder={regelFelder} />
                 </span>
               </div>
             ))}

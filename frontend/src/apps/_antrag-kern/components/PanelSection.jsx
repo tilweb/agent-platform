@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { theme } from '../../../config/theme';
 import { ChevronDownIcon } from '../../../components/Icons';
-import { ACCENT } from '../api';
+import { ACCENT } from '../konstanten';
 
 const styles = {
   section: {

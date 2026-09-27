@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { theme } from '../../../config/theme';
-import { wohngeldApi } from '../api';
+import { useAntragKern } from '../AntragKernContext';
 
 /**
  * KI-Verbrauch (Tokens) eines Vorgangs bzw. Posteingangs.
- * Spec: docs/wohngeld-token-verbrauch-spec-2026-09-27.md
  *
  * - `KiVerbrauchAnsicht` — voller Reiter: Kennzahlen, je Aktion, je Modell, Verlauf.
  * - `KiVerbrauchZeile`   — kompakte Summenzeile (Seitenleiste, Posteingang-Detail).
@@ -50,16 +49,17 @@ function fmtDauer(ms) {
 }
 
 function useKiVerbrauch({ vorgangId, posteingangId, reloadKey }) {
+  const { api } = useAntragKern();
   const [daten, setDaten] = useState(null);
   const [fehler, setFehler] = useState(null);
   useEffect(() => {
     let cancelled = false;
-    const laden = vorgangId ? wohngeldApi.getKiVerbrauch(vorgangId) : wohngeldApi.getPosteingangKiVerbrauch(posteingangId);
+    const laden = vorgangId ? api.getKiVerbrauch(vorgangId) : api.getPosteingangKiVerbrauch(posteingangId);
     laden
       .then((d) => { if (!cancelled) { setDaten(d); setFehler(null); } })
       .catch((e) => { if (!cancelled) setFehler(e.message || 'Laden fehlgeschlagen'); });
     return () => { cancelled = true; };
-  }, [vorgangId, posteingangId, reloadKey]);
+  }, [api, vorgangId, posteingangId, reloadKey]);
   return { daten, fehler };
 }
 

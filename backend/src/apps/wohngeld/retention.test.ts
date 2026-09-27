@@ -1,10 +1,10 @@
 /**
  * GOV-5 — Tests für die reinen Retention-Helfer (berechneAufbewahrungBis /
- * istLoeschfaellig / addJahre / istAbschlussStatus). Kein I/O, kein DB.
+ * istLoeschfaellig / istAbschlussStatus). Kein I/O, kein DB. addJahre: _antrag-kern/datum.test.ts.
  */
 import { test, expect, describe } from 'bun:test';
 import {
-  berechneAufbewahrungBis, istLoeschfaellig, addJahre, istAbschlussStatus,
+  berechneAufbewahrungBis, istLoeschfaellig, istAbschlussStatus,
 } from './retention';
 
 describe('istAbschlussStatus', () => {
@@ -16,19 +16,6 @@ describe('istAbschlussStatus', () => {
     expect(istAbschlussStatus('posteingang')).toBe(false);
     expect(istAbschlussStatus('sachbearbeitung')).toBe(false);
     expect(istAbschlussStatus(undefined)).toBe(false);
-  });
-});
-
-describe('addJahre', () => {
-  test('addiert Jahre auf ein Datum', () => {
-    expect(addJahre('2026-09-19', 10)).toBe('2036-09-19');
-    expect(addJahre('2026-09-19', 2)).toBe('2028-09-19');
-  });
-  test('29.02. wird in Nicht-Schaltjahren auf 28.02. gekappt', () => {
-    // 2024 ist Schaltjahr, 2034 nicht.
-    expect(addJahre('2024-02-29', 10)).toBe('2034-02-28');
-    // Zieljahr Schaltjahr → bleibt 29.02.
-    expect(addJahre('2024-02-29', 4)).toBe('2028-02-29');
   });
 });
 

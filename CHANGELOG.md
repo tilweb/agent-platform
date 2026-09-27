@@ -2,6 +2,20 @@
 
 ## 2026-09-27
 
+### Antrag-Kern: gemeinsame Bausteine für Antragsprüfungs-Apps (Welle K1 + K3)
+Vorbereitung für weitere Antrags-Apps nach Wohngeld (zuerst Grundsicherung). Fachfreie Bausteine liegen jetzt in
+`backend/src/apps/_antrag-kern/` und `frontend/src/apps/_antrag-kern/`; Wohngeld nutzt sie über dünne Adapter und
+verhält sich unverändert.
+Backend: Protokoll (Audit-Store, Routen, Diff/CSV-Helfer), KI-Verbrauch, Aufbewahrung, Rollen-Prüfungen, Datums-
+und Id-Helfer, Optimistic Locking. Tabellen entstehen über Fabriken im Schema der jeweiligen App (Daten bleiben je
+Stelle getrennt); für Wohngeld identische Tabellen, keine Migration.
+Frontend: Karten, Panels, Feldstatus-Markierung, Notizen, Seitenvorschau, Prüfschritt-/Regel-Anzeige,
+Auswertungsfortschritt, KI-Verbrauch und Extraktionsbaum; App-spezifische Schnittstellen kommen über einen Kontext,
+fachliche Beschriftungen über Props.
+Wächter-Tests stellen sicher, dass der Kern keine Wohngeld-Begriffe enthält und nichts aus der App importiert.
+Abnahme: 737 Tests grün, Lese-Schnappschuss aller Demo-Vorgänge vor/nach dem Umbau identisch.
+Spec: `docs/antrag-kern-spec-2026-09-27.md`, Konzept: `docs/antragspruefung-architektur-konzept-2026-09-27.md`.
+
 ### Wohngeld: Token-Verbrauch je Antrag
 Jeder Antrag zeigt jetzt, wie viele Tokens die KI-Assistenz verbraucht hat: initial (Ersterfassung im Posteingang)
 und im Verlauf (Nachreichungen, Fall-Chat, Gesetz nachschlagen), als Summe und aufgeschlüsselt nach Aktion, Modell

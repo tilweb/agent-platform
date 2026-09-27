@@ -11,17 +11,19 @@ import {
   ACCENT, ACCENT_LIGHT,
 } from './api';
 import StatusBadge from './components/StatusBadge';
-import SektionCard, { FeldGrid } from './components/SektionCard';
+import SektionCard, { FeldGrid } from '../_antrag-kern/components/SektionCard';
 import PersonCard from './components/PersonCard';
-import PruefschrittItem from './components/PruefschrittItem';
-import PanelSection from './components/PanelSection';
+import PruefschrittItem from '../_antrag-kern/components/PruefschrittItem';
+import PanelSection from '../_antrag-kern/components/PanelSection';
 import FallChat from './components/FallChat';
-import { FeldStatusDot, FeldStatusFreigabe } from './components/FeldStatusMark';
-import { buildFeldStatusMap, fsKey } from './feldStatusMap';
-import NotizPanel from './components/NotizPanel';
-import ExtraktionsBaum from './components/ExtraktionsBaum';
-import SeitenVorschau from './components/SeitenVorschau';
-import { KiVerbrauchAnsicht, KiVerbrauchZeile } from './components/KiVerbrauch';
+import { FeldStatusDot, FeldStatusFreigabe } from '../_antrag-kern/components/FeldStatusMark';
+import { buildFeldStatusMap, fsKey } from '../_antrag-kern/feldStatusMap';
+import NotizPanel from '../_antrag-kern/components/NotizPanel';
+import ExtraktionsBaum from '../_antrag-kern/components/ExtraktionsBaum';
+import { EXTRAKTION_BAUM_PROPS } from './extraktionLabels';
+import SeitenVorschau from '../_antrag-kern/components/SeitenVorschau';
+import { KiVerbrauchAnsicht, KiVerbrauchZeile } from '../_antrag-kern/components/KiVerbrauch';
+import WohngeldKernProvider from './WohngeldKernProvider';
 
 const MAIN_TABS = [
   { id: 'uebersicht', label: 'Übersicht' },
@@ -223,6 +225,10 @@ function KvRows({ rows }) {
 }
 
 export default function VorgangDetail() {
+  return <WohngeldKernProvider><VorgangDetailSeite /></WohngeldKernProvider>;
+}
+
+function VorgangDetailSeite() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useAppPermission();
@@ -1866,6 +1872,7 @@ export default function VorgangDetail() {
                             {offen && (
                               <div style={{ marginTop: theme.spacing.sm }}>
                                 <ExtraktionsBaum
+                                  {...EXTRAKTION_BAUM_PROPS}
                                   extraktion={d.extraktion}
                                   analyseFallback={d.analyse}
                                   hinweise={pruefschritte.filter((p) => p.quellDokumentId === d.id)}
@@ -1988,6 +1995,7 @@ export default function VorgangDetail() {
                 <div style={styles.previewPanel}>
                   <div style={styles.previewPanelTitle}>Aus dem Dokument extrahiert</div>
                   <ExtraktionsBaum
+                    {...EXTRAKTION_BAUM_PROPS}
                     extraktion={preview.dok.extraktion}
                     analyseFallback={preview.dok.analyse}
                     hinweise={pruefschritte.filter((p) => p.quellDokumentId === preview.dok.id)}

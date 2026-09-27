@@ -48,7 +48,7 @@ und Tests statt Laufzeit-Konfiguration.
 | Schicht | Inhalt | Form |
 |---|---|---|
 | **Plattform** (besteht) | DP-Profile, Extraction, LLM, Token-Messung, documentGenerator | unverändert |
-| **Antrags-Kern** (neu, klein) | Mechanik ohne Fachwissen: Audit-Log + Protokoll, Aufbewahrung/Legal-Hold/Art. 18, Auskunft-Export-Gerüst, KI-Verbrauch, Posteingang-Queue (Zustandsmaschine, Split, Fortschritt, Filestore, Feld für Antragsart/Ziel-App), Feldstatus-Mechanik (✓/✗), Notizen, Fristen/Wiedervorlage, Optimistic Locking; UI-Bausteine (PanelSection, SektionCard, FeldStatusMark, NotizPanel, SeitenVorschau, AuswertungsFortschritt, PruefschrittItem, ExtraktionsBaum, KiVerbrauch) | **Bibliothek**: Die Apps rufen Funktionen auf und rendern Komponenten. Keine Registry, kein konfigurationsgetriebenes Rendering. |
+| **Antrags-Kern** (neu, klein) | Mechanik ohne Fachwissen: Audit-Log + Protokoll, Aufbewahrung/Legal-Hold/Art. 18, Auskunft-Export-Gerüst, KI-Verbrauch, Posteingang-Queue (Zustandsmaschine, Split, Fortschritt, Filestore, aufrufbare Einlieferung je App), Feldstatus-Mechanik (✓/✗), Notizen, Fristen/Wiedervorlage, Optimistic Locking; UI-Bausteine (PanelSection, SektionCard, FeldStatusMark, NotizPanel, SeitenVorschau, AuswertungsFortschritt, PruefschrittItem, ExtraktionsBaum, KiVerbrauch) | **Bibliothek**: Die Apps rufen Funktionen auf und rendern Komponenten. Keine Registry, kein konfigurationsgetriebenes Rendering. |
 | **Fach-App je Antragsart** | Typen/Datenmodell, Prüfregeln (`checker/`), Einkommen/Bedarf, Extraktionsschemas + DP-Vorlage, Rechts-Korpus, Schreiben-/Bescheidtexte, Vorgangsseite mit Reitern, PersonCard, Demo-Seed | **eigener Code**, eigenes DB-Schema, eigene Tests. Wird mit Wohngeld als Vorlage angelegt und darf fachlich frei abweichen. |
 
 Grenzregel: In den Kern kommt nur, was (a) keine Fachbegriffe enthält und (b) aus Compliance-
@@ -85,9 +85,11 @@ Antrag verallgemeinern, wenn die Gemeinsamkeit belegt ist.
    Plausibilität der Unterlagen.** Die Leistungsberechnung findet im Fachverfahren statt; die
    Apps rechnen keinen Zahlbetrag.
 2. **Getrennter Posteingang je App.** Das passt zu zwei Stellen mit eigenen Zuständigkeiten und
-   Rechten. Die Posteingang-Warteschlange liegt aber im Kern und trägt **von Anfang an** ein Feld
-   für Antragsart bzw. Ziel-App. Ein gemeinsamer Eingang ist später nur eine vorgeschaltete
-   Weiterleitung, kein Umbau.
+   Rechten. Die Posteingang-Warteschlange liegt aber im Kern, und jede App bietet von Anfang an
+   eine **programmatisch aufrufbare Einlieferung** (`einliefern(dateien, meta)`). Ein gemeinsamer
+   Eingang ist später nur eine vorgeschaltete Weiterleitung an diese Funktion, kein Umbau.
+   Ein Feld „Antragsart" in der Tabelle brächte wenig, weil jede App ohnehin ihre eigene Tabelle
+   hat (präzisiert in `docs/antrag-kern-spec-2026-09-27.md`).
 3. **Vorrang-Einschätzung Wohngeld ODER Grundsicherung erst mit einer Pilotkommune**, zusammen
    mit Übergabe und Abgleich mit dem jeweils anderen Fachverfahren. Die Einschätzung ist immer
    nur ein Hinweis für die Sachbearbeitung, keine Entscheidung.
@@ -147,7 +149,7 @@ Grunddaten-Vertrag hängt und von beiden Apps genutzt wird.
 ## Vorgehen
 
 1. **Kern aus Wohngeld herauslösen, bevor kopiert wird**, einschließlich der Posteingang-
-   Warteschlange mit Feld für die Antragsart. Wer erst kopiert und später herauslöst, hat schon
+   Warteschlange mit aufrufbarer Einlieferung (Spec: `docs/antrag-kern-spec-2026-09-27.md`). Wer erst kopiert und später herauslöst, hat schon
    Drift. Ziel: `backend/src/apps/_antrag-kern/` bzw. `frontend/src/apps/_antrag-kern/`.
    Wohngeld nutzt den Kern danach; die Tests belegen, dass sich nichts ändert.
 2. **Muster-Dokument schreiben**, abgeleitet aus dem realen Wohngeld-Stand.

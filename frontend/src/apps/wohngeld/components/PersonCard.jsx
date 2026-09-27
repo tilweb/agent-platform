@@ -7,10 +7,10 @@ import {
   FREQUENZ_LABEL, VERWANDTSCHAFT_LABEL, AUSSCHLUSS_GRUND_LABEL,
   GDB_OPTIONS, PFLEGEGRAD_OPTIONS, ACCENT, wohngeldApi,
 } from '../api';
-import { FeldGrid } from './SektionCard';
-import PanelSection from './PanelSection';
-import FeldStatusMark, { FeldStatusDot, FeldStatusFreigabe } from './FeldStatusMark';
-import { fsKey } from '../feldStatusMap';
+import { FeldGrid } from '../../_antrag-kern/components/SektionCard';
+import PanelSection from '../../_antrag-kern/components/PanelSection';
+import FeldStatusMark, { FeldStatusDot, FeldStatusFreigabe } from '../../_antrag-kern/components/FeldStatusMark';
+import { fsKey } from '../../_antrag-kern/feldStatusMap';
 
 const styles = {
   card: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg, marginBottom: theme.spacing.sm, overflow: 'hidden' },

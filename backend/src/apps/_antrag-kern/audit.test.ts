@@ -3,8 +3,7 @@
  * Die DB-schreibende `audit()`-Funktion wird hier bewusst NICHT getestet (I/O).
  */
 import { test, expect, describe } from 'bun:test';
-import { diffFelder, diffToVorherNachher, hatAenderung, auditEintraegeToCsv } from './audit';
-import type { AuditEintrag } from './types';
+import { diffFelder, diffToVorherNachher, hatAenderung, auditEintraegeToCsv, type AuditEintrag } from './audit';
 
 describe('diffFelder', () => {
   test('liefert nur geänderte Felder', () => {

@@ -494,31 +494,12 @@ export interface Aktivitaet {
   created_at: string;
 }
 
-/** Geänderte Felder eines Updates: feldPfad → { alt, neu }. */
-export type FeldDiff = Record<string, { alt: unknown; neu: unknown }>;
-
 /**
- * GOV-1 — Audit-/Protokoll-Eintrag (append-only, revisionssicher).
- * Eine Zeile je fachlich relevanter Aktion — inkl. Lesezugriff (`vorgang.geoeffnet`)
- * und Downloads/Exporte. Akteur vollständig (id+name+rolle+ip); bei Änderungen
- * Vorher/Nachher als Diff der Kernfelder.
+ * GOV-1 — Diff-/Audit-Typen kommen aus dem Antrag-Kern (unverändert).
+ * AuditEintrag.objektTyp: vorgang | person | dokument | pruefschritt | schreiben | notiz |
+ * feldstatus | akte | verfuegung | chat | textbaustein | posteingang | protokoll.
  */
-export interface AuditEintrag {
-  id: string;
-  timestamp: string;
-  akteurId?: string;
-  akteurName?: string;
-  akteurRolle?: string;          // 'owner' | 'editor' | 'viewer' (wirksame Rolle zum Zeitpunkt)
-  aktion: string;                // Enum, z. B. 'vorgang.geaendert', 'dokument.hochgeladen'
-  objektTyp: string;             // vorgang | person | dokument | pruefschritt | schreiben | notiz | feldstatus | akte | verfuegung | chat | textbaustein
-  objektId?: string;
-  vorgangId?: string;            // Fallbezug (für Filter)
-  ergebnis: string;              // 'ok' | 'fehler'
-  vorher?: unknown;
-  nachher?: unknown;
-  detail?: string;
-  ip?: string;
-}
+export type { FeldDiff, AuditEintrag } from '../_antrag-kern/audit';
 
 /**
  * Ein KI-Nutzungseintrag eines Falls (GOV-3 / AI Act Art. 12) — abgeleitet aus

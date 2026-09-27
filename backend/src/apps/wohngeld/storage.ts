@@ -5,7 +5,7 @@
  * `version`/timestamps kommen aus den Spalten. `data: data as never` ist die
  * etablierte jsonb-Cast-Konvention.
  */
-import { eq, and, or, gte, lte, desc, inArray, count, sql as rawSql } from 'drizzle-orm';
+import { eq, and, or, desc, inArray, sql as rawSql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import {
   wgAkten, wgVorgaenge, wgPersonen, wgDokumente, wgPruefschritte, wgSchreiben, wgAktivitaeten, wgChatMessages,
@@ -15,16 +15,12 @@ import { usageLog } from '../../db/schema/audit';
 import type {
   Akte, Vorgang, Person, Dokument, Pruefschritt, Schreiben, Aktivitaet,
   VorgangSnapshot, PruefBefund, ChatMessage, ChatSource, FeldStatus, FeldStatusZielTyp, Notiz, Textbaustein,
-  AuditEintrag, KiNutzungEintrag, Posteingang, PosteingangDatei, PosteingangQuelle, PosteingangStatus,
+  KiNutzungEintrag, Posteingang, PosteingangDatei, PosteingangQuelle, PosteingangStatus,
 } from './types';
 import { VersionConflictError, checkVersion } from './concurrency';
+import { genId, nowIso } from '../_antrag-kern/ids';
+import { createAuditStore, type AuditGesamtFilter } from '../_antrag-kern/audit';
 
-function genId(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-function nowIso(): string {
-  return new Date().toISOString();
-}
 
 // ── Row ↔ Domain Mapper ─────────────────────────────────────────────────────
 // Jede Entität: strukturierte Spalten + { ...data } zusammenführen.
@@ -441,113 +437,20 @@ export async function addAktivitaet(input: { vorgangId: string; typ: string; akt
   return (await listAktivitaeten(input.vorgangId))[0]!;
 }
 
-// ── GOV-1 Audit-Log (append-only, revisionssicher) ─────────────────────────
+// ── GOV-1 Audit-Log (append-only, revisionssicher) — Antrag-Kern ──────────
 
-function rowToAudit(r: typeof wgAuditLog.$inferSelect): AuditEintrag {
-  return {
-    id: r.id,
-    timestamp: r.timestamp,
-    akteurId: r.akteurId ?? undefined,
-    akteurName: r.akteurName ?? undefined,
-    akteurRolle: r.akteurRolle ?? undefined,
-    aktion: r.aktion,
-    objektTyp: r.objektTyp,
-    objektId: r.objektId ?? undefined,
-    vorgangId: r.vorgangId ?? undefined,
-    ergebnis: r.ergebnis,
-    vorher: (r.vorher ?? undefined) as unknown,
-    nachher: (r.nachher ?? undefined) as unknown,
-    detail: r.detail ?? undefined,
-    ip: r.ip ?? undefined,
-  };
-}
+export type { AuditGesamtFilter };
+
+const auditStore = createAuditStore(wgAuditLog);
 
 /** Einen Audit-Eintrag anhängen (append-only — es gibt bewusst kein Update/Delete). */
-export async function addAuditEintrag(input: {
-  akteurId?: string | null;
-  akteurName?: string | null;
-  akteurRolle?: string | null;
-  aktion: string;
-  objektTyp: string;
-  objektId?: string | null;
-  vorgangId?: string | null;
-  ergebnis?: string;
-  vorher?: unknown;
-  nachher?: unknown;
-  detail?: string | null;
-  ip?: string | null;
-}): Promise<void> {
-  const db = getDb();
-  await db.insert(wgAuditLog).values({
-    id: genId('audit'),
-    akteurId: input.akteurId ?? null,
-    akteurName: input.akteurName ?? null,
-    akteurRolle: input.akteurRolle ?? null,
-    aktion: input.aktion,
-    objektTyp: input.objektTyp,
-    objektId: input.objektId ?? null,
-    vorgangId: input.vorgangId ?? null,
-    ergebnis: input.ergebnis ?? 'ok',
-    vorher: (input.vorher ?? null) as never,
-    nachher: (input.nachher ?? null) as never,
-    detail: input.detail ?? null,
-    ip: input.ip ?? null,
-    timestamp: nowIso(),
-  });
-}
-
+export const addAuditEintrag = auditStore.addAuditEintrag;
 /** Fall-Protokoll eines Vorgangs (neueste zuerst). */
-export async function listAuditEintraege(vorgangId: string): Promise<AuditEintrag[]> {
-  const db = getDb();
-  const rows = await db.select().from(wgAuditLog)
-    .where(eq(wgAuditLog.vorgangId, vorgangId))
-    .orderBy(desc(wgAuditLog.timestamp));
-  return rows.map(rowToAudit);
-}
-
-/** Filter für die Admin/DSB-Gesamt-Protokoll-Ansicht (GOV-4). */
-export interface AuditGesamtFilter {
-  aktion?: string;
-  akteurId?: string;
-  objektTyp?: string;
-  vorgangId?: string;
-  von?: string;   // ISO-Timestamp (inklusive Untergrenze)
-  bis?: string;   // ISO-Timestamp (inklusive Obergrenze)
-  limit?: number;
-}
-
-/** Baut die WHERE-Bedingungen für einen Audit-Filter (intern, wiederverwendet für Count). */
-function auditFilterConds(filter?: AuditGesamtFilter) {
-  const conds = [];
-  if (filter?.aktion) conds.push(eq(wgAuditLog.aktion, filter.aktion));
-  if (filter?.akteurId) conds.push(eq(wgAuditLog.akteurId, filter.akteurId));
-  if (filter?.objektTyp) conds.push(eq(wgAuditLog.objektTyp, filter.objektTyp));
-  if (filter?.vorgangId) conds.push(eq(wgAuditLog.vorgangId, filter.vorgangId));
-  if (filter?.von) conds.push(gte(wgAuditLog.timestamp, filter.von));
-  if (filter?.bis) conds.push(lte(wgAuditLog.timestamp, filter.bis));
-  return conds;
-}
-
-/**
- * Gesamt-Protokoll mit Filtern (GOV-4 Admin/DSB-Ansicht). Sortierung neueste
- * zuerst, sinnvolles Standard-Limit. Deckt auch Lesezugriffe/Exporte mit ab.
- */
-export async function listAuditEintraegeGesamt(filter?: AuditGesamtFilter): Promise<AuditEintrag[]> {
-  const db = getDb();
-  const conds = auditFilterConds(filter);
-  const limit = Math.min(Math.max(filter?.limit ?? 500, 1), 5000);
-  const q = db.select().from(wgAuditLog).where(conds.length ? and(...conds) : undefined);
-  const rows = await q.orderBy(desc(wgAuditLog.timestamp)).limit(limit);
-  return rows.map(rowToAudit);
-}
-
-/** Gesamtzahl der Audit-Einträge für einen Filter (ohne Limit) — für die Sicht. */
-export async function countAuditEintraegeGesamt(filter?: AuditGesamtFilter): Promise<number> {
-  const db = getDb();
-  const conds = auditFilterConds(filter);
-  const rows = await db.select({ n: count() }).from(wgAuditLog).where(conds.length ? and(...conds) : undefined);
-  return Number(rows[0]?.n ?? 0);
-}
+export const listAuditEintraege = auditStore.listAuditEintraege;
+/** Gesamt-Protokoll mit Filtern (GOV-4 Admin/DSB-Ansicht), neueste zuerst, gedeckelt. */
+export const listAuditEintraegeGesamt = auditStore.listAuditEintraegeGesamt;
+/** Gesamtzahl der Audit-Einträge für einen Filter (ohne Limit). */
+export const countAuditEintraegeGesamt = auditStore.countAuditEintraegeGesamt;
 
 // ── Fall-Chat (append-only) ────────────────────────────────────────────────
 

@@ -8,8 +8,9 @@ import {
   wohngeldApi, ACCENT, ACCENT_LIGHT,
   DOKUMENT_TYP_LABEL, POSTEINGANG_STATUS_LABEL, POSTEINGANG_STATUS_ORDER, POSTEINGANG_QUELLE_LABEL,
 } from './api';
-import { FortschrittKurz } from './components/AuswertungsFortschritt';
-import { istHaengend } from './fortschritt';
+import { FortschrittKurz } from '../_antrag-kern/components/AuswertungsFortschritt';
+import WohngeldKernProvider from './WohngeldKernProvider';
+import { istHaengend } from '../_antrag-kern/fortschritt';
 
 const LEVEL_LABEL = { hoch: 'Hohe Übereinstimmung', mittel: 'Mögliche Übereinstimmung', gering: 'Geringe Übereinstimmung' };
 
@@ -85,6 +86,10 @@ function erkannterTyp(eingang) {
 }
 
 export default function PosteingangPage() {
+  return <WohngeldKernProvider><PosteingangPageSeite /></WohngeldKernProvider>;
+}
+
+function PosteingangPageSeite() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 

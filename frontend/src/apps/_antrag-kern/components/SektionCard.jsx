@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { theme } from '../../../config/theme';
 import { ChevronDownIcon, CommentIcon } from '../../../components/Icons';
-import { ACCENT } from '../api';
+import { ACCENT } from '../konstanten';
 
 const styles = {
   card: {
@@ -134,4 +134,3 @@ export function FeldZeile({ label, value, mark, dot, last = false }) {
   );
 }
 
-export { ACCENT };

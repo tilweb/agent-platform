@@ -1,5 +1,5 @@
 import { theme } from '../../../config/theme';
-import { PRUEF_KATEGORIE_LABEL, PRUEF_TYP_LABEL } from '../api';
+import { PRUEF_KATEGORIE_LABEL, PRUEF_TYP_LABEL } from '../konstanten';
 
 const styles = {
   box: { fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, lineHeight: 1.55, display: 'grid', gridTemplateColumns: 'minmax(110px, max-content) 1fr', gap: `${theme.spacing.xs} ${theme.spacing.md}` },

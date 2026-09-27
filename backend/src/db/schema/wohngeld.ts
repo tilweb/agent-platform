@@ -8,6 +8,7 @@
  * Akte → Vorgang → { Personen, Dokumente, Prüfschritte, Schreiben, Aktivitäten }
  */
 import { pgSchema, text, integer, boolean, real, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
+import { auditLogTabelle, kiVerbrauchTabelle } from '../../apps/_antrag-kern/tabellen';
 
 export const wohngeldSchema = pgSchema('wohngeld');
 
@@ -216,25 +217,7 @@ export const wgPosteingang = wohngeldSchema.table('posteingang', {
  * KEINE Hash-Kette (Nicht-Ziel für GOV-1). Kein FK auf vorgang_id — der
  * Eintrag muss die Löschung des Vorgangs überdauern.
  */
-export const wgAuditLog = wohngeldSchema.table('audit_log', {
-  id: text('id').primaryKey(),
-  timestamp: timestamp('timestamp', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
-  akteurId: text('akteur_id'),
-  akteurName: text('akteur_name'),
-  akteurRolle: text('akteur_rolle'),
-  aktion: text('aktion').notNull(),
-  objektTyp: text('objekt_typ').notNull(),
-  objektId: text('objekt_id'),
-  vorgangId: text('vorgang_id'),
-  ergebnis: text('ergebnis').notNull().default('ok'),
-  vorher: jsonb('vorher'),
-  nachher: jsonb('nachher'),
-  detail: text('detail'),
-  ip: text('ip'),
-}, (t) => ({
-  vorgangIdx: index('wg_audit_vorgang_idx').on(t.vorgangId),
-  timestampIdx: index('wg_audit_timestamp_idx').on(t.timestamp),
-}));
+export const wgAuditLog = auditLogTabelle(wohngeldSchema, 'wg'); // Antrag-Kern-Fabrik (Tabelle + Indizes unverändert)
 
 /**
  * KI-Verbrauch (Tokens) je fachlicher Aktion — Spec docs/wohngeld-token-verbrauch-spec-2026-09-27.md.
@@ -242,22 +225,4 @@ export const wgAuditLog = wohngeldSchema.table('audit_log', {
  * aller darin ausgelösten LLM-Aufrufe. Posteingang-Datensätze erhalten `vorgang_id` erst bei
  * der Zuordnung. Kein FK (überdauert Löschung, wie audit_log); keine Inhalte, nur Zahlen.
  */
-export const wgKiVerbrauch = wohngeldSchema.table('ki_verbrauch', {
-  id: text('id').primaryKey(),
-  zeitpunkt: timestamp('zeitpunkt', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
-  vorgangId: text('vorgang_id'),
-  posteingangId: text('posteingang_id'),
-  aktion: text('aktion').notNull(),
-  phase: text('phase').notNull().default('bearbeitung'),
-  akteurId: text('akteur_id'),
-  aufrufe: integer('aufrufe').notNull().default(0),
-  promptTokens: integer('prompt_tokens').notNull().default(0),
-  completionTokens: integer('completion_tokens').notNull().default(0),
-  ohneAngabe: integer('ohne_angabe').notNull().default(0),
-  modelle: jsonb('modelle').notNull().default({}),
-  dauerMs: integer('dauer_ms'),
-  detail: text('detail'),
-}, (t) => ({
-  vorgangIdx: index('wg_ki_verbrauch_vorgang_idx').on(t.vorgangId),
-  posteingangIdx: index('wg_ki_verbrauch_posteingang_idx').on(t.posteingangId),
-}));
+export const wgKiVerbrauch = kiVerbrauchTabelle(wohngeldSchema, 'wg'); // Antrag-Kern-Fabrik (Tabelle + Indizes unverändert)

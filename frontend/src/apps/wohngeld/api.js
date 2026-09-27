@@ -490,22 +490,6 @@ export const GDB_OPTIONS = ['', '20', '30', '40', '50', '60', '70', '80', '90', 
 /** Pflegegrad — Auswahlwerte (leer = ohne). */
 export const PFLEGEGRAD_OPTIONS = ['', '1', '2', '3', '4', '5'];
 
-export const PRUEF_KATEGORIE_LABEL = {
-  vollstaendigkeit: 'Vollständigkeit',
-  plausibilitaet: 'Plausibilität',
-};
-
-export const PRUEF_TYP_LABEL = {
-  anforderung: 'Anforderung',
-  info: 'Info',
-};
-
-export const PRUEF_STATUS_LABEL = {
-  offen: 'Offen',
-  erledigt: 'Erledigt',
-  verworfen: 'Verworfen',
-};
-
 export const SCHREIBEN_ART_LABEL = {
   erstanforderung: 'Erstanforderung',
   erinnerung: 'Erinnerung',
@@ -678,6 +662,5 @@ export function kiZweckLabel(eintrag) {
   return KI_ZWECK_LABEL[eintrag?.operation] || KI_ZWECK_LABEL[eintrag?.source] || eintrag?.operation || eintrag?.source || 'KI-Nutzung';
 }
 
-/** App-Akzentfarbe (ruhiges Blau), konsistent über alle Wohngeld-Seiten. */
-export const ACCENT = '#2563EB';
-export const ACCENT_LIGHT = '#EFF4FE';
+/** App-Akzentfarbe und Prüfschritt-Labels kommen aus dem Antrags-Kern (Re-Export für bestehende Importeure). */
+export { ACCENT, ACCENT_LIGHT, PRUEF_KATEGORIE_LABEL, PRUEF_TYP_LABEL, PRUEF_STATUS_LABEL } from '../_antrag-kern/konstanten';

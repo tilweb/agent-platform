@@ -8,7 +8,9 @@ import {
 } from './api';
 import StatusBadge from './components/StatusBadge';
 import { ListIcon, ClockIcon, FolderIcon, ClipboardIcon, TimelineIcon, TrashIcon, MailIcon, ScaleIcon } from '../../components/Icons';
-import RegelKatalog from './components/RegelKatalog';
+import RegelKatalog from '../_antrag-kern/components/RegelKatalog';
+import { REGEL_GRUPPEN_REIHENFOLGE } from './extraktionLabels';
+import WohngeldKernProvider from './WohngeldKernProvider';
 
 const styles = {
   // Volle verfügbare Breite (keine 1100px-Deckelung) — breite Tabellen mit vielen Spalten
@@ -123,6 +125,10 @@ function ZustaendigFilter({ wert, onChange, sachbearbeitung }) {
 }
 
 export default function WohngeldPage() {
+  return <WohngeldKernProvider><WohngeldPageSeite /></WohngeldKernProvider>;
+}
+
+function WohngeldPageSeite() {
   const navigate = useNavigate();
   const { role } = useAppPermission();
   const canEdit = role === 'owner' || role === 'editor';
@@ -627,7 +633,7 @@ export default function WohngeldPage() {
         )
       )}
 
-      {viewMode === 'regeln' && <RegelKatalog />}
+      {viewMode === 'regeln' && <RegelKatalog gruppenReihenfolge={REGEL_GRUPPEN_REIHENFOLGE} />}
 
       {viewMode === 'aufgaben' && (
         <div style={{ ...styles.toolbar, justifyContent: 'flex-end' }}>

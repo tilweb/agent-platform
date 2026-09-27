@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { markdownZuText } from '../markdownText';
+import { markdownZuText } from '../../_antrag-kern/markdownText';
 import { theme } from '../../../config/theme';
 import {
   ChatIcon, SendIcon, XIcon, DocumentIcon, ScaleIcon,
