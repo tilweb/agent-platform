@@ -6,8 +6,12 @@ import { VersionConflictError } from '../concurrency';
 import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit } from '../audit';
 import { PRUEF_STATUS, type Pruefschritt } from '../types';
+import { REGELKATALOG, REGELKATALOG_STAND, REGEL_GRUPPE_LABEL } from '../checker/regeln';
 
 export const pruefschritteRoutes = new Hono();
+
+/** GET /regeln — Beschreibung aller Prüfregeln (aufrufbare Dokumentation, lesend; Form wie Wohngeld). */
+pruefschritteRoutes.get('/regeln', (c) => c.json({ stand: REGELKATALOG_STAND, gruppen: REGEL_GRUPPE_LABEL, regeln: REGELKATALOG }));
 
 pruefschritteRoutes.get('/vorgaenge/:vorgangId/pruefschritte', async (c) => {
   return c.json({ pruefschritte: await listPruefschritte(c.req.param('vorgangId')) });

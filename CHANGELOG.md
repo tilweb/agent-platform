@@ -10,6 +10,10 @@ Routen für Akten, Vorgänge, Personen, Dokumente, Prüfschritte, Textbausteine,
 Sachbearbeitung und Aufgaben — jeweils mit Rollen-, Einschränkungs- und Audit-Pflichten. Die App startet auf neuen
 Instanzen ausgeschaltet (Admin schaltet ein). Regelkatalog: `docs/grundsicherung-regelkatalog-2026-09-27.md`,
 Spec: `docs/grundsicherung-app-spec-2026-09-27.md`.
+Welle G2: Regelprüfung mit 53 Regeln (27 Vollständigkeit, 20 Plausibilität, 5 Vorrang-Hinweise Wohngeld ↔
+Grundsicherung ohne Rechnung, 1 „außerhalb des Prüfumfangs"), Altersgrenze nach § 41 Abs. 2 SGB XII je Jahrgang,
+Regelkatalog mit Wächter-Test und Reiter-Schnittstelle `/regeln`, kommunal festzulegende Schwellen per
+`GRUNDSICHERUNG_*`. Abnahme über drei Goldfälle.
 
 ### Wohngeld: Schreibschutz eingeschränkter Vorgänge (Art. 18) lückenlos
 KI-Vorschläge bestätigen/verwerfen prüft jetzt, dass der Eintrag zum Vorgang in der URL gehört. Vorher ließ sich

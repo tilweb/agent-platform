@@ -339,11 +339,283 @@ export interface DokumentFlag {
   hinweis: string;
 }
 
+// ── DokumentAnalyse-Vertrag (Regel-Engine G2 ↔ Extraktion G3) ───────────────
+//
+// Die Regel-Engine (`checker/`) liest AUSSCHLIESSLICH die unten je Dokumenttyp beschriebenen
+// Felder. Die Extraktion (Welle G3) bildet ihre Ergebnisse exakt auf diese Felder ab.
+//
+// Konventionen:
+// - Alle Felder sind optional. „Nicht erkannt" = Feld weglassen (NICHT `false`/`0` setzen):
+//   `false` bedeutet „geprüft und nicht vorhanden" und löst Befunde aus, fehlend löst keine aus.
+// - Datumsangaben als ISO-Datum `YYYY-MM-DD`, Beträge in Euro als Zahl (Punkt als Dezimaltrenner),
+//   Monatsbeträge sind Zahlbeträge (netto, nach Abzug KV/PV bei Renten).
+// - Personenbezug läuft über `Dokument.personId` (Zuordnung in G3), nicht über Felder hier.
+// - Typen ohne eigenen Eintrag (Betreuerausweis, Energieabrechnung, Transferleistungsbescheid,
+//   Sonstiges) werden von den Regeln nur über ihr VORHANDENSEIN ausgewertet.
+// Fachgrundlage: docs/grundsicherung-regelkatalog-2026-09-27.md Abschnitt 6.
+
+/** Antrag auf Grundsicherung (Erst-/Weiterbewilligungsantrag). */
+export interface AntragAnalyse {
+  /** Antrag unterschrieben (Antragsteller:in bzw. Vertretung). → antrag-vollstaendig-unterschrieben */
+  unterschrift_vorhanden?: boolean;
+  /** Datum bei der Unterschrift vorhanden. → plausi-antrag-ohne-datum */
+  datum_vorhanden?: boolean;
+  /** Im Antrag angegebene/übernommene Regelbedarfsstufe. → plausi-regelbedarfsstufe-inkonsistent */
+  regelbedarfsstufe?: 1 | 2 | 3;
+  /** Freitext „wovon wurde der Lebensunterhalt bisher bestritten". Vorhanden → kein-einkommen-erklaerung erfüllt. */
+  bisheriger_lebensunterhalt?: string;
+}
+
+/** Personalausweis / Reisepass. */
+export interface AusweisAnalyse {
+  /** → plausi-geburtsdatum-abweichung, Altersgrenze */
+  geburtsdatum?: string;
+  nachname?: string;
+  vorname?: string;
+}
+
+/** Rentenart laut Rentenbescheid. */
+export type Rentenart = 'altersrente' | 'volle_em' | 'teilweise_em' | 'hinterbliebene' | 'sonstige';
+
+/** Rentenbescheid der gesetzlichen Rentenversicherung. */
+export interface RentenbescheidAnalyse {
+  /** → plausi-em-rente-*, em-feststellung-rv */
+  rentenart?: Rentenart;
+  /** Befristung („Rente auf Zeit") bis. Gesetzt ⇒ befristet. → plausi-em-rente-befristet */
+  befristet_bis?: string;
+  /** Ausdrücklich unbefristet (`true`) bzw. ausdrücklich befristet ohne erkanntes Datum (`false`). */
+  unbefristet?: boolean;
+  /** Volle EM-Rente nur wegen verschlossenem Teilzeitarbeitsmarkt („Arbeitsmarktrente"). */
+  arbeitsmarktabhaengig?: boolean;
+  /** Monatlicher Zahlbetrag. → plausi-rente-abweichung, plausi-rentenanpassung-fehlt */
+  zahlbetrag?: number;
+  /** Ab wann der Zahlbetrag gilt. Liegt er am/nach dem Anpassungsstichtag, gilt der Bescheid als aktuell. */
+  zahlbetrag_ab?: string;
+  /** Datum des Bescheids. → rentenanpassungsmitteilung */
+  bescheiddatum?: string;
+  /** Im Bescheid genanntes Geburtsdatum. → plausi-geburtsdatum-abweichung */
+  geburtsdatum?: string;
+  /** Grundrentenzuschlag ausgewiesen (vorgesehen für spätere Regel plausi-grundrente-*; im ersten Wurf ungenutzt). */
+  grundrentenzuschlag?: boolean;
+}
+
+/** Rentenanpassungsmitteilung. */
+export interface RentenanpassungAnalyse {
+  /** Anpassungsstichtag, z. B. 2026-07-01. → rentenanpassungsmitteilung */
+  stichtag?: string;
+  /** Neuer monatlicher Zahlbetrag ab Stichtag. → plausi-rente-abweichung */
+  zahlbetrag_neu?: number;
+  zahlbetrag_alt?: number;
+}
+
+/** Feststellung des RV-Trägers zur Erwerbsminderung (Ersuchen § 45 SGB XII / § 109a SGB VI). */
+export interface EmFeststellungAnalyse {
+  /** Ergebnis: dauerhaft voll erwerbsgemindert ja/nein. → em-feststellung-rv, vorrang-sgb2-statt-sgb12 */
+  dauerhaft_voll_erwerbsgemindert?: boolean;
+  datum?: string;
+}
+
+/** Leistungsmitteilung Betriebsrente / Zusatzversorgung / Pension / private Rente. */
+export interface BetriebsrenteAnalyse {
+  traeger?: string;
+  betrag_monat?: number;
+}
+
+/** Art eines (gruppierten) Zahlungseingangs auf dem Kontoauszug. */
+export type EingangArt =
+  | 'rente' | 'betriebsrente' | 'wohngeld' | 'unterhalt' | 'erwerb' | 'kapitalertrag'
+  | 'miete_einnahme' | 'zuwendung' | 'sozialleistung' | 'erstattung' | 'sonstige';
+
+/** Gleichartige Eingänge eines Kontoauszugs, zusammengefasst (z. B. „3 × VBL à 112,00 €"). */
+export interface KontoEingang {
+  /** Einzelbetrag je Buchung. */
+  betrag?: number;
+  /** Auftraggeber/Verwendungszweck, wie auf dem Auszug (z. B. „VBL"). */
+  verwendungszweck?: string;
+  art?: EingangArt;
+  /** Regelmäßig wiederkehrend (mindestens zweimal im Zeitraum oder als Dauerzahlung erkennbar). */
+  wiederkehrend?: boolean;
+  /** Anzahl Buchungen im Auszugszeitraum. */
+  anzahl?: number;
+}
+
+/** Größere Abbuchung/Barabhebung ohne erkennbaren Zweck. Die Schwelle filtert der Checker. */
+export interface KontoAbgang {
+  betrag: number;
+  datum?: string;
+  verwendungszweck?: string;
+}
+
+/** Kontoauszug (Giro, Spar, Tagesgeld, Online). */
+export interface KontoauszugAnalyse {
+  iban?: string;
+  /** Zeitraum des Auszugs. → kontoauszuege (Abdeckung in Monaten) */
+  zeitraum_von?: string;
+  zeitraum_bis?: string;
+  /** Kontostand am Ende des Zeitraums. → plausi-kontostand-abweichung, plausi-vermoegen-ueber-schonbetrag */
+  endsaldo?: number;
+  /** → plausi-kontoauszug-unerklaerte-eingaenge, plausi-rente-abweichung, plausi-wohngeld-als-einkommen, betriebsrente-nachweis */
+  eingaenge?: KontoEingang[];
+  /** Mietzahlung erkennbar (`false` = Auszug geprüft, keine Miete gefunden). → plausi-miete-nicht-gezahlt */
+  mietzahlung_erkannt?: boolean;
+  /** Betrag der erkannten Mietzahlung. → plausi-miete-abweichung */
+  mietzahlung_betrag?: number;
+  /** → plausi-grosse-abgaenge */
+  grosse_abgaenge?: KontoAbgang[];
+}
+
+/** Mietvertrag / Untermietvertrag. */
+export interface MietvertragAnalyse {
+  /** Namen aller Mieter:innen („Vorname Nachname"). → plausi-partner-fehlt */
+  mieter?: string[];
+  /** Mietbeginn. → mietbescheinigung-aktuell, nebenkostenabrechnung */
+  beginn?: string;
+  /** Grundmiete (Kaltmiete). → plausi-miete-abweichung */
+  grundmiete?: number;
+  /** Vorauszahlung kalte Nebenkosten. */
+  nebenkosten_kalt?: number;
+  /** Vorauszahlung Heizkosten. */
+  heizkosten?: number;
+  /** Pauschal-/Inklusivmiete ohne Aufschlüsselung (Gesamtbetrag). → plausi-heizung-in-miete-unklar */
+  pauschalmiete?: number;
+  /** Heizkosten sind in der Miete enthalten (ohne eigenen Betrag). */
+  heizkosten_enthalten?: boolean;
+  /** Von beiden Seiten unterschrieben. → mietvertrag */
+  unterschrift_vorhanden?: boolean;
+}
+
+/** Vermieterbescheinigung / Mietbescheinigung / Mieterhöhung. */
+export interface VermieterbescheinigungAnalyse {
+  grundmiete?: number;
+  nebenkosten_kalt?: number;
+  heizkosten?: number;
+  gueltig_ab?: string;
+}
+
+/** Betriebs-/Heizkostenabrechnung des Vermieters. */
+export interface NebenkostenabrechnungAnalyse {
+  /** Heizkostenanteil in der Abrechnung ausgewiesen. → heizkosten-nachweis */
+  heizkosten_enthalten?: boolean;
+  abrechnungszeitraum_bis?: string;
+}
+
+/** Vermögensart eines Vermögensnachweises. */
+export type VermoegensnachweisArt =
+  | 'girokonto' | 'sparbuch' | 'tagesgeld' | 'depot' | 'bausparvertrag' | 'lebensversicherung' | 'riester' | 'sonstiges';
+
+/** Sparbuch, Depotauszug, Bausparvertrag, Rückkaufswert-Bescheinigung, Riester-Bescheinigung. */
+export interface VermoegensnachweisAnalyse {
+  art?: VermoegensnachweisArt;
+  /** Stand/Guthaben bzw. Kurswert. → plausi-vermoegen-ueber-schonbetrag */
+  stand?: number;
+  stichtag?: string;
+  /** Rückkaufswert (Lebens-/Kapitalversicherung). → lebensversicherung-rueckkaufswert */
+  rueckkaufswert?: number;
+}
+
+/** Schwerbehindertenausweis / Feststellungsbescheid. */
+export interface SchwerbehindertenausweisAnalyse {
+  gdb?: number;
+  /** z. B. ['G'], ['G', 'aG', 'B']. → schwerbehindertenausweis-g, plausi-merkzeichen-g-nicht-beantragt */
+  merkzeichen?: string[];
+  /** Gültig bis; unbefristete Ausweise ohne Feld. → plausi-ausweis-abgelaufen */
+  gueltig_bis?: string;
+}
+
+/** Ärztliche Bescheinigung. */
+export interface AerztlicheBescheinigungAnalyse {
+  /** Wofür die Bescheinigung ausgestellt ist. `em_befund` erfüllt NICHT den Ernährungsnachweis. */
+  zweck?: 'ernaehrung' | 'em_befund' | 'sonstiges';
+  datum?: string;
+}
+
+/** Wohngeld-/Lastenzuschussbescheid. */
+export interface WohngeldbescheidAnalyse {
+  betrag_monat?: number;
+  /** Bewilligungszeitraum. → vorrang-wohngeldbescheid-liegt-vor (Überschneidung mit dem Antragsmonat) */
+  bwz_von?: string;
+  bwz_bis?: string;
+  bescheiddatum?: string;
+}
+
+/** Nachweise für Kranken-/Pflegeversicherung, Eigentum, Bestattungsvorsorge: Vorhandensein genügt. */
+export interface VorhandenseinAnalyse {
+  /** Freie Kurzbeschreibung (nur Anzeige, von keiner Regel gelesen). */
+  art?: string;
+}
+
+/** Zuordnung Dokumenttyp → Analyse-Felder (der Vertrag, den G3 bedient). */
+export interface DokumentAnalyseJeTyp {
+  grundsicherungsantrag: AntragAnalyse;
+  personalausweis: AusweisAnalyse;
+  betreuerausweis: VorhandenseinAnalyse;
+  rentenbescheid: RentenbescheidAnalyse;
+  rentenanpassungsmitteilung: RentenanpassungAnalyse;
+  em_feststellung_rv: EmFeststellungAnalyse;
+  betriebsrente_mitteilung: BetriebsrenteAnalyse;
+  kontoauszug: KontoauszugAnalyse;
+  mietvertrag: MietvertragAnalyse;
+  vermieterbescheinigung: VermieterbescheinigungAnalyse;
+  nebenkostenabrechnung: NebenkostenabrechnungAnalyse;
+  energieabrechnung: VorhandenseinAnalyse;
+  eigentum_nachweis: VorhandenseinAnalyse;
+  vermoegensnachweis: VermoegensnachweisAnalyse;
+  bestattungsvorsorge: VorhandenseinAnalyse;
+  kv_pv_nachweis: VorhandenseinAnalyse;
+  schwerbehindertenausweis: SchwerbehindertenausweisAnalyse;
+  aerztliche_bescheinigung: AerztlicheBescheinigungAnalyse;
+  wohngeldbescheid: WohngeldbescheidAnalyse;
+  transferleistungsbescheid: VorhandenseinAnalyse;
+  sonstiges: VorhandenseinAnalyse;
+}
+
 /**
  * Strukturierte, aus dem Dokument gelesene Werte (Grundlage der Plausibilitätsvergleiche).
- * Die konkreten Felder legt die Extraktion (G3) fest; die Regel-Engine (G2) liest sie.
+ * Welche Felder gelten, bestimmt `Dokument.typ` (siehe {@link DokumentAnalyseJeTyp});
+ * typsicherer Zugriff über `analyseVon()`.
  */
-export type DokumentAnalyse = Record<string, unknown>;
+export type DokumentAnalyse = DokumentAnalyseJeTyp[DokumentTyp];
+
+/** Analyse eines Dokuments typsicher lesen — nur wenn der Typ passt, sonst `undefined`. */
+export function analyseVon<T extends DokumentTyp>(
+  dok: { typ: DokumentTyp; analyse?: DokumentAnalyse },
+  typ: T,
+): DokumentAnalyseJeTyp[T] | undefined {
+  return dok.typ === typ ? (dok.analyse as DokumentAnalyseJeTyp[T] | undefined) : undefined;
+}
+
+// ── Vokabular der Einkommens-/Vermögensarten (Person.einkommen[].art / .vermoegen[].art) ──
+
+/**
+ * Einkommensarten, die die Regel-Engine kennt. `Einkommensposition.art` bleibt `string`
+ * (erweiterbar), die Erfassung (G3/G4) soll aber diese Werte verwenden.
+ */
+export const EINKOMMENS_ARTEN = {
+  /** Gesetzliche Renten → rentenbescheid, rentenanpassungsmitteilung, plausi-rente-* */
+  gesetzlicheRente: ['altersrente', 'em_rente', 'hinterbliebenenrente', 'rente'],
+  /** Betriebs-/Zusatz-/Privatrenten, Pensionen → betriebsrente-nachweis */
+  betriebsrente: ['betriebsrente', 'zusatzversorgung', 'pension', 'private_rente'],
+  wohngeld: ['wohngeld'],
+  unterhalt: ['unterhalt'],
+  erwerb: ['erwerbseinkommen', 'minijob'],
+  kapitalertrag: ['kapitalertraege'],
+  vermietung: ['vermietung'],
+  zuwendung: ['zuwendung'],
+  sozialleistung: ['sozialleistung', 'krankengeld', 'arbeitslosengeld', 'grundsicherungsgeld'],
+  /** Lösen den Hinweis „außerhalb des Prüfumfangs" aus. */
+  selbstaendig: ['selbstaendig'],
+  wfbm: ['wfbm_entgelt'],
+} as const;
+
+/** Vermögensarten, die die Regel-Engine unterscheidet (`VermoegenPosition.art`). */
+export const VERMOEGENS_ARTEN = {
+  /** Konten — Vergleich mit Kontoauszug-Endsaldo. */
+  konto: ['girokonto', 'sparkonto', 'sparbuch', 'tagesgeld', 'festgeld'],
+  lebensversicherung: ['lebensversicherung', 'kapitalversicherung'],
+  bestattungsvorsorge: ['bestattungsvorsorge', 'sterbegeldversicherung'],
+  /** Nicht Barvermögen i. S. d. Barbetrags (eigene Angemessenheitsprüfung, nicht im ersten Wurf). */
+  keinBarvermoegen: ['eigenheim', 'immobilie', 'kfz', 'hausrat', 'bestattungsvorsorge', 'sterbegeldversicherung', 'riester'],
+} as const;
 
 /** Ein einzelner, aus dem Dokument gezogener Wert (Transparenz-Ansicht). */
 export interface DokumentExtraktionFeld {
