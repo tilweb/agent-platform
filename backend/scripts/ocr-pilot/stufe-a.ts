@@ -170,7 +170,7 @@ async function laufeModell(modell: Modell, seiten: Seite[]): Promise<Ergebnis[]>
     i++;
     const pfad = await cachePfad(modell.schluessel, s);
     let eintrag = (await Bun.file(pfad).exists()) ? await Bun.file(pfad).json() as { text?: string; sekunden: number | null; fehler?: string; anweisung: string } : null;
-    if (eintrag && eintrag.anweisung !== anweisung) eintrag = null; // anderer Prompt → neu erkennen
+    if (eintrag && (eintrag.anweisung !== anweisung || eintrag.fehler)) eintrag = null; // anderer Prompt oder Fehler → neu erkennen
     if (!eintrag && !nurAuswertung) {
       const png = await seitenBild(s);
       const t0 = performance.now();
