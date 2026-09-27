@@ -2,12 +2,30 @@
 
 ## 2026-09-25
 
+### Word-Designvorlagen: Dokumente aus dem Chat im Corporate Design
+Admins laden unter Einstellungen → System → „Dokumentvorlagen“ eine Word-Datei (.docx/.dotx) als
+Designvorlage hoch und setzen sie als Standard. Word-Exporte aus dem Chat (`export_document`) erscheinen dann
+mit Kopf-/Fußzeile, Logo, Schriften und Farben dieser Vorlage; der Inhalt landet an `{{INHALT}}` (sonst am
+Dokumentende), `{{TITEL}}`/`{{DATUM}}` werden auch in Kopf- und Fußzeile ersetzt. Das Modell liefert für Word
+nur noch Markdown (`content_markdown`) — Layout entscheidet die Vorlage. Formatvorlagen werden über ihren
+sprachneutralen Namen aufgelöst (deutsche Vorlagen: „berschrift1“), fehlende (Überschrift 2–4, Tabellenraster,
+Zitat …) passend zur Vorlage ergänzt; eigene Listen-Nummerierung ohne Kollision mit Listen der Vorlage;
+explizite Tabellenbreiten (Pages/LibreOffice). Ohne Designvorlage rendert Markdown in eine neutrale eingebaute
+Hülle. Upload prüft die Datei und zeigt Hinweise; „Testdokument“ erzeugt ein Beispiel. Keine neue Dependency
+(eigener ZIP-Leser/-Schreiber + `docx.patchDocument` für Inline-Felder). Neue Tabelle `documents.templates`
+(Migration 0046). Nebenbei behoben: Export-Downloads prüfen jetzt den Ersteller (fremde Nutzer: 404) und
+`export_document` parst JSON-String-Inhalte bei table/list/keyvalue (kamen bisher still leer an).
+Konzept, Spike und Messungen: `docs/word-vorlagen-2026-09-25.md`.
+
 ### Konzept: Document Processing als eigenständiger, skalierbarer Dienst
 Diskussionsgrundlage für das Produktteam: DP als eigene App (Web + skalierbare Worker über die bestehende
 Postgres-Job-Warteschlange und Modell-Slots), API v1 (asynchron, idempotent, Webhooks), Mandanten- und
 Datenschutzmodell (zentral geteilt vs. dediziert je Kunde), Auflösung der Workplace-Abhängigkeiten (LLM,
 Nutzungsnachweis, Tabellen-Wertelisten, Oberfläche), Größenordnungen aus den Messungen und Umsetzung in Stufen
 (S1: Worker-Prozesstyp im heutigen Repo). `docs/konzept-document-processing-dienst-2026-09-25.md`.
+Ergänzt (2026-09-27): §8a Profilhaltung (Snapshot-Cache per Hash, Profil und Lernbeispiele bleiben beim Kunden,
+Evaluation als Job ohne dauerhaften Testbestand) und §14 OCR-Sprachmodell als Erweiterung (jina-ocr-v1: Nutzen für
+Scans/Tabellen/Handschrift, Lizenz CC BY-NC 4.0 klären, Pilot gegen das Golden Dataset).
 
 ### Fix: Speicherbedarf der Dokumenten-Auswertung (Testbestand wurde jedes Mal geladen)
 Jede Auswertung im Posteingang lud alle Beispiele des DP-Profils — inklusive Testbestand mit Original-PDFs (lokal

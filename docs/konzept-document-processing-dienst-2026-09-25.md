@@ -88,7 +88,7 @@ flowchart LR
 | Bereich | Im DP-Dienst | Im Workplace |
 |---|---|---|
 | Erkennung, Segmentierung, Auslesen, Konfidenz, Prüfregeln des Profils | ✔ | — |
-| Profile (Felder, Segmente, Regeln), Beispiele, Evaluation | ✔ Speicherung und Ausführung | Pflege-Oberfläche (Variante A, §8) |
+| Profile (Felder, Segmente, Regeln), Beispiele, Evaluation | ✔ Ausführung; Snapshots nur befristet im Cache (§8a) | ✔ Quelle der Wahrheit und Pflege-Oberfläche (Variante A, §8) |
 | Batch, Posteingang-Trennung | ✔ | Auslösen, Ergebnisse übernehmen |
 | Fachliche Weiterverarbeitung (z. B. Wohngeld: Haushalt anlegen, Prüfregeln, Feld-Status) | — | ✔ bleibt in der jeweiligen App |
 | Nutzer, Gruppen, App-Rechte | — (nur Mandanten und API-Schlüssel) | ✔ |
@@ -118,7 +118,8 @@ Asynchron, idempotent, versioniert (`/v1`). Alle Ressourcen tragen die Mandanten
 | Aufruf | Zweck |
 |---|---|
 | `POST /v1/uploads` | Upload-Freigabe (vorab signierte URL in den Objektspeicher) für große Dateien; kleine Dateien direkt im Job |
-| `POST /v1/jobs` | Auftrag: `profil` (ID + Version **oder** vollständiger Snapshot), `dateien[]`, `modus` (`interaktiv`/`batch`), `callback_url`, `idempotency_key` → `202 { job_id }` |
+| `POST /v1/snapshots` | Profil-Snapshot hinterlegen (befristet, je Mandant) → `{ hash }`; bereits bekannte Hashes werden nicht erneut übertragen (§8a) |
+| `POST /v1/jobs` | Auftrag: `snapshot_hash` (bzw. vollständiger Snapshot), `dateien[]`, `modus` (`interaktiv`/`batch`), `callback_url`, `idempotency_key` → `202 { job_id }`; unbekannter Hash → `409 snapshot_unbekannt` |
 | `GET /v1/jobs/{id}` | Status + Fortschritt (Phase, „Seite 7 von 18", Abschnitte), Fehler |
 | `GET /v1/jobs/{id}/ergebnis` | Abschnitte mit Seitenbereichen, Werten, Belegen (Seite/Box), Befunden, Nutzung |
 | `GET /v1/jobs/{id}/seiten/{n}` | Seitenbild für die Vorschau (befristet verfügbar) |
@@ -136,6 +137,45 @@ Mandant, damit ein großer Batch eines Kunden die anderen nicht aushungert.
   (Profile pflegen, Beispiele, Evaluation, Batch-Übersicht). Vorteil: Nutzer, Rechte, Design bleiben, wo sie sind.
 - **Variante B:** eigene Admin-Oberfläche im Dienst für eine zentrale Profilpflege über Kunden hinweg (z. B. ein
   „Wohngeld-Eingang"-Profil, das alle Kommunen nutzen). Sinnvoll erst, wenn geteilte Profile wirklich gewünscht sind.
+
+## 8a. Wo liegt das Profil? Was muss der Dienst speichern, was kann im Aufruf mitkommen?
+
+**Was eine Auswertung zur Laufzeit braucht** (heute alles im „Snapshot", `captureSnapshot` + `stableHash`):
+
+| Bestandteil | Größe (Beispiel Wohngeld-Eingang) | enthält Personendaten? |
+|---|---|---|
+| Profildefinition: Felder, Abschnittstypen mit Beschreibungen, Regeln, Anweisungen, Extraktions-Einstellungen | wenige KB | nein |
+| Wertelisten (heute teils aus Workplace-Tabellen) | KB | selten |
+| Leitlinien (aus Korrekturen erzeugt) | KB | nein |
+| Lernbeispiele für Few-Shot (Dokumenttext + korrigierte Werte, ggf. Embedding) | ~10–50 KB je Beispiel | **ja** (echte Anträge) |
+| Visuelle Beispiele (max. 2 Bilder) | 100–500 KB | ggf. ja |
+| Testbestand mit Original-PDFs (nur für die Evaluation) | MB je Fall | **ja** |
+
+**Was der Dienst speichern muss** (unabhängig vom Profil): Job-Zustand, Ergebnisse bis zur Abholung, Originale und
+Seitenbilder befristet, Modell-Slots, Nutzung und Audit. **Das Profil selbst muss er nicht dauerhaft halten.**
+
+**Drei Varianten:**
+
+| Variante | Profil liegt | Aufruf enthält | Dienst hält | Bewertung |
+|---|---|---|---|---|
+| **1 Zustandslos** | beim Kunden (Workplace) | den vollständigen Snapshot bei **jedem** Job | nichts | maximale Datensparsamkeit, einfach; aber große Aufrufe (Lernbeispiele bei jedem Dokument) |
+| **2 Snapshot-Cache per Hash** *(empfohlen)* | beim Kunden | nur den Hash; ist er dem Dienst unbekannt, einmal den vollständigen Snapshot | Snapshots **befristet** (z. B. 24 h nach letzter Nutzung) im Cache, je Mandant | kleine Aufrufe, Profil bleibt Eigentum des Kunden, keine dauerhafte Speicherung von Lernbeispielen im Dienst |
+| **3 Profile im Dienst** | im Dienst | nur die Profil-ID/Version | alles dauerhaft | nötig für zentral gepflegte, geteilte Profile (Oberfläche Variante B) |
+
+Regeln unabhängig von der Variante:
+- Der Snapshot ist **unveränderlich** und über seinen Hash eindeutig (existiert heute) — jedes Ergebnis nennt den
+  Hash, damit nachvollziehbar bleibt, mit welchem Profilstand ausgewertet wurde.
+- **Wertelisten löst der Workplace auf** und schickt die Werte im Snapshot mit (keine Rückgriffe des Dienstes auf
+  Workplace-Tabellen).
+- **Lernbeispiele** entstehen beim Kunden (z. B. aus Bestätigungen der Sachbearbeitung) und bleiben dort; der Dienst
+  sieht sie nur als Teil eines Snapshots. Die Auswahl der passenden Few-Shot-Beispiele (ähnlichste zum Dokument)
+  kann nur der Dienst treffen, weil nur er das Dokument kennt — deshalb braucht er den Beispielpool im Snapshot.
+- **Evaluation** (Testbestand mit Originalen) läuft als eigener Job: Der Workplace schickt Testfälle und Snapshot,
+  der Dienst misst, gibt das Ergebnis zurück und **löscht die Originale danach**. Kein dauerhafter Testbestand im
+  Dienst.
+- **Leitlinien erzeugen/„trainieren"** ist ein Dienst-Aufruf, dessen Ergebnis der Workplace im Profil speichert.
+- Heute gefundener Fehler zur Größe: Die Auswertung lud den Testbestand mit Originalen mit (410 MB) — im Dienst
+  wird der Snapshot für Auswertungen daher grundsätzlich **ohne** Testbestand und Originale gebildet.
 
 ## 9. Mandanten- und Datenschutzmodell
 
@@ -190,9 +230,49 @@ S1 lohnt sich unabhängig von der Grundsatzentscheidung und ist die natürliche 
 4. Kapazität des Modell-Endpunkts für parallele Vision-Aufrufe; eigener Endpunkt für Batch?
 5. Verhältnis zur Produkt-Übergabe: übernimmt das Produkt DP als Dienst (dann entfallen Teile der §7-Nähte der
    Übergabe) oder als eingebautes Modul?
+6. Profilhaltung: Snapshot-Cache per Hash (Profil beim Kunden) oder zentral gepflegte Profile im Dienst (§8a)?
 
 ## 13. Nächste Schritte
 
 1. Gespräch mit dem Produktteam auf Basis dieses Papiers (S0).
 2. Bei „ja": S1 im Experiment-Repo umsetzen und auf workplace-demo messen (Worker getrennt, Web-Speicher im Leerlauf).
 3. API v1 (§7) als OpenAPI-Entwurf ausarbeiten und mit der Wohngeld-App als erstem Client prototypisch anbinden.
+4. Unabhängig davon: Lizenz von jina-ocr-v1 klären und OCR-Pilot gegen das Golden Dataset (§14).
+
+## 14. Erweiterung: Texterkennung mit einem OCR-Sprachmodell (z. B. jina-ocr-v1)
+
+**Heute:** Digitale PDFs liefern ihren Text über `pdftotext`; für Scans gibt es keinen brauchbaren Text, deshalb
+arbeitet die Erkennung dort seitenweise mit dem großen Bildmodell (Qwen 3.5 Vision). Tesseract liefert Wortpositionen
+für die Belege (Box je Wert).
+
+**jina-ocr-v1** (Hugging Face, Stand 2026-09): End-to-end-Dokumentleser auf Basis DeepSeek-OCR, 3,4 Mrd. Parameter
+(Mixture-of-Experts, ~570 Mio. aktiv je Token), Ausgabe Markdown mit HTML-Tabellen in Lesereihenfolge, liest laut
+Modellkarte auch Handschrift. Betrieb mit vLLM über eine OpenAI-kompatible Schnittstelle (passt zum bestehenden
+Adapter), Durchsatz laut Modellkarte 2,57 Seiten/s auf einer A100. Kennzahlen laut Anbieter: OmniDocBench 91,1,
+olmOCR-Bench 83,4 — in der Kategorie „alte Scans" aber nur 42,6.
+
+**Wo es helfen würde**
+1. **Scans wie digitale PDFs behandeln:** Ein sauberer Text für Scans würde den günstigeren Textweg (Auslesen aus Text,
+   Bild nur bei Unsicherheit) auch für Scans öffnen — weniger Aufrufe des großen Bildmodells, geringere Last und Kosten.
+2. **Tabellen** (Kontoauszüge, Gehaltsabrechnungen, Anlagen) als HTML-Struktur statt Fließtext.
+3. **Handschrift** in Formularen (im Golden Dataset 8 handschriftliche Fälle).
+4. **Seitenklassifikation und Posteingang-Trennung** könnten zusätzlich den Text nutzen.
+
+**Was es nicht ersetzt:** das Auslesen der Felder und die Klassifikation (bleiben beim Sprach-/Bildmodell) und die
+Wortpositionen für Belege (liefert jina-ocr-v1 laut Karte nicht; Tesseract bleibt dafür).
+
+**Voraussetzungen und Risiken**
+- **Lizenz: CC BY-NC 4.0 — kommerzielle Nutzung nur nach Absprache mit Jina.** Für Kundenprojekte zwingend vorher
+  klären.
+- **Betrieb:** eigener GPU-Server (z. B. beim Modellbetreiber Adacor AI neben den bestehenden vLLM-Modellen). Die
+  gehostete „Jina Reader"-API scheidet für Sozialdaten praktisch aus (Datenübermittlung an Dritte).
+- **Qualität auf unseren Dokumenten messen**, nicht auf Benchmarks: Die schwache Kategorie „alte Scans" betrifft genau
+  Behörden-Posteingänge. Das Golden Dataset (30 Fälle als Scan, exakte Wahrheit) erlaubt einen direkten Vergleich:
+  Texterkennung + Textweg gegen heutigen Bildweg — Felder richtig, Dauer, Modellaufrufe.
+- **Einbindung im Dienst:** als zusätzlicher „Texterkenner" hinter der bestehenden Naht (`services/extraction/ocr.ts`
+  bzw. Dokument-Konverter), pro Profil zuschaltbar; eigene Modell-Slots, damit OCR und Auslesen sich nicht
+  gegenseitig blockieren.
+
+**Empfehlung:** Lizenzfrage klären, dann ein Pilot gegen das Golden Dataset (Scan-Variante). Lohnt sich der Textweg
+für Scans, ist das ein großer Hebel für Durchsatz und Kosten des Dienstes. Alternativen mit freier Lizenz (z. B. die
+Basis DeepSeek-OCR oder andere offene OCR-Sprachmodelle) im selben Pilot mitmessen.
