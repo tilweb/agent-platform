@@ -16,11 +16,14 @@ import { putObject } from '../../storage/s3';
 import { s3Paths } from '../../storage/paths';
 import { getDb } from '../../db';
 import { exports as exportsTable } from '../../db/schema/generated';
+import { renderMarkdownDocx, sectionsToMarkdown, resolveDesignTemplate } from '../../services/docTemplates';
 
 interface ExportDocumentArgs {
   title: string;
   format: DocumentFormat;
-  sections: DocumentSection[];
+  sections?: DocumentSection[];
+  content_markdown?: string;
+  design_template_id?: string;
   metadata?: Record<string, string>;
 }
 
@@ -66,11 +69,17 @@ Nutze dieses Tool um:
 
 Das Tool gibt eine Download-URL zurueck, die dem Benutzer angezeigt werden kann.
 
-Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
-- text: Fliesstext oder formatierter Text
-- table: Tabellen mit headers und rows
-- list: Aufzaehlungen
-- keyvalue: Schluessel-Wert-Paare (z.B. fuer Metadaten)`,
+Word (docx): Schreibe den Inhalt als Markdown in content_markdown (## Ueberschriften,
+Absaetze, - Aufzaehlungen, 1. Nummerierungen, | Tabellen |, **fett**, *kursiv*, [Links](https://...)).
+Das Layout (Schriften, Farben, Logo, Kopf-/Fusszeile) kommt automatisch aus der
+Designvorlage der Organisation — gestalte NICHT selbst. Beispiel:
+{"title": "Projektstatus Q3", "format": "docx", "content_markdown": "## Zusammenfassung\nLaeuft nach Plan.\n\n## Risiken\n| Risiko | Massnahme |\n|---|---|\n| Verzug | Puffer |"}
+
+Excel (xlsx) und PDF: Strukturiere den Inhalt in sections mit verschiedenen Typen:
+- text: Fliesstext
+- table: Tabellen, content = {"headers": [...], "rows": [[...], ...]}
+- list: Aufzaehlungen, content = {"items": [...]}
+- keyvalue: Schluessel-Wert-Paare, content = {"items": [{"key": "...", "value": "..."}]}`,
         parameters: {
           type: 'object',
           properties: {
@@ -83,9 +92,17 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
               enum: ['xlsx', 'pdf', 'docx'],
               description: 'Ausgabeformat: xlsx (Excel), pdf (PDF), docx (Word)',
             },
+            content_markdown: {
+              type: 'string',
+              description: 'Nur Word (docx): gesamter Inhalt als Markdown. Bevorzugt fuer Word-Dokumente.',
+            },
+            design_template_id: {
+              type: 'string',
+              description: 'Optional, nur Word: ID einer bestimmten Designvorlage. Weglassen = Standard-Design der Organisation.',
+            },
             sections: {
               type: 'array',
-              description: 'Inhaltssektionen des Dokuments',
+              description: 'Inhaltssektionen des Dokuments (fuer xlsx/pdf; bei docx alternativ zu content_markdown)',
               items: {
                 type: 'object',
                 description: 'Eine Sektion des Dokuments',
@@ -101,7 +118,7 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
                   },
                   content: {
                     type: 'string',
-                    description: 'Inhalt der Sektion (abhaengig vom Typ — string fuer text, JSON-string fuer table/list/keyvalue)',
+                    description: 'Inhalt der Sektion: Text bei text; bei table/list/keyvalue das JSON-Objekt aus der Tool-Beschreibung',
                   },
                 },
                 required: ['title', 'type', 'content'],
@@ -115,7 +132,7 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
               },
             },
           },
-          required: ['title', 'format', 'sections'],
+          required: ['title', 'format'],
         },
       },
     };
@@ -124,6 +141,7 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
   async execute(args: ExportDocumentArgs, context?: ToolContext): Promise<string> {
     const { title, format, metadata = {} } = args;
     let sections: any = args.sections;
+    const markdown = typeof args.content_markdown === 'string' ? args.content_markdown.trim() : '';
 
     // Validate title
     if (!title || title.trim().length === 0) {
@@ -155,43 +173,69 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
       }
     }
 
-    // Validate sections
-    if (!sections || !Array.isArray(sections) || sections.length === 0) {
+    const hasSections = Array.isArray(sections) && sections.length > 0;
+    if (!hasSections && !(format === 'docx' && markdown)) {
       return JSON.stringify({
         success: false,
-        error: 'Mindestens eine Section ist erforderlich.',
+        error: format === 'docx'
+          ? 'Inhalt fehlt: bitte content_markdown (Markdown-Text) oder sections uebergeben.'
+          : 'Mindestens eine Section ist erforderlich (content_markdown gibt es nur fuer docx).',
       });
     }
 
-    // Validate section structure
-    for (const section of sections) {
-      if (!section.title || !section.type || section.content === undefined) {
-        return JSON.stringify({
-          success: false,
-          error: 'Jede Section benoetigt title, type und content.',
-        });
-      }
-
+    if (hasSections) {
       const validTypes = ['text', 'table', 'list', 'keyvalue'];
-      if (!validTypes.includes(section.type)) {
-        return JSON.stringify({
-          success: false,
-          error: `Ungueltiger Section-Typ "${section.type}". Erlaubt: ${validTypes.join(', ')}`,
-        });
+      for (const section of sections) {
+        if (!section.title || !section.type || section.content === undefined) {
+          return JSON.stringify({
+            success: false,
+            error: 'Jede Section benoetigt title, type und content.',
+          });
+        }
+        if (!validTypes.includes(section.type)) {
+          return JSON.stringify({
+            success: false,
+            error: `Ungueltiger Section-Typ "${section.type}". Erlaubt: ${validTypes.join(', ')}`,
+          });
+        }
+        // Frueheres Schema beschrieb content fuer table/list/keyvalue als JSON-String —
+        // ohne Parse kamen diese Sections still leer im Dokument an.
+        if (section.type !== 'text' && typeof section.content === 'string') {
+          try {
+            section.content = JSON.parse(section.content);
+          } catch {
+            return JSON.stringify({
+              success: false,
+              error: `Section "${section.title}": content fuer Typ ${section.type} muss ein Objekt sein (siehe Tool-Beschreibung).`,
+            });
+          }
+        }
       }
     }
 
     try {
-      const documentData: DocumentData = {
-        title: title.trim(),
-        metadata: {
-          Erstellt: new Date().toLocaleDateString('de-DE'),
-          ...metadata,
-        },
-        sections: sections as DocumentSection[],
-      };
+      let buffer: Buffer;
+      let designTemplate: string | null = null;
 
-      const buffer = await generateDocument(documentData, format);
+      // Word mit Markdown oder aktiver Designvorlage → Vorlagen-Renderer (CD der Organisation).
+      // Ohne beides bleibt es beim bisherigen eingebauten Word-Generator.
+      const design = format === 'docx' ? await resolveDesignTemplate(args.design_template_id) : null;
+      if (format === 'docx' && (markdown || design)) {
+        const body = markdown || sectionsToMarkdown(sections as DocumentSection[], metadata);
+        const result = await renderMarkdownDocx({ title: title.trim(), markdown: body, designTemplateId: design?.id });
+        buffer = Buffer.from(result.buffer);
+        designTemplate = result.templateName;
+      } else {
+        const documentData: DocumentData = {
+          title: title.trim(),
+          metadata: {
+            Erstellt: new Date().toLocaleDateString('de-DE'),
+            ...metadata,
+          },
+          sections: sections as DocumentSection[],
+        };
+        buffer = await generateDocument(documentData, format);
+      }
 
       const timestamp = Date.now();
       const slug = slugify(title) || 'dokument';
@@ -224,6 +268,7 @@ Wichtig: Strukturiere den Inhalt in Sections mit verschiedenen Typen:
         downloadUrl,
         filename,
         format,
+        ...(designTemplate ? { designTemplate } : {}),
       });
     } catch (error: any) {
       console.error('[ExportDocument] Error generating document:', error);

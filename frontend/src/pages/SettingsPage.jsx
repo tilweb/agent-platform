@@ -14,7 +14,8 @@ import ConnectionsPage from './ConnectionsPage';
 import AuditLogPage from './AuditLogPage';
 import UsagePage from './UsagePage';
 import ApiKeysPage from './ApiKeysPage';
-import { KeyIcon } from '../components/Icons';
+import DocTemplatesPage from './DocTemplatesPage';
+import { KeyIcon, DocumentIcon } from '../components/Icons';
 import { useApps } from '../hooks/useApps';
 import SchemaEditor from '../apps/vertragsmanagement/SchemaEditor';
 import AppPermissionsBox from '../components/AppPermissionsBox';
@@ -267,6 +268,7 @@ const TABS = [
   { id: 'connections', label: 'Connections', icon: ConnectionsIcon, adminOnly: true },
   { id: 'apps', label: 'Apps', icon: AppsIcon, adminOnly: true },
   { id: 'api-keys', label: 'API-Keys', icon: KeyIcon, adminOnly: true },
+  { id: 'doc-templates', label: 'Dokumentvorlagen', icon: DocumentIcon, adminOnly: true },
   // Admin section - Monitoring
   { id: 'divider-monitoring', type: 'divider', label: 'Monitoring', adminOnly: true },
   { id: 'usage', label: 'Nutzung', icon: UsageIcon, adminOnly: true },
@@ -575,6 +577,12 @@ function SettingsPage() {
         return (
           <div style={styles.embeddedPage}>
             <ApiKeysPage embedded />
+          </div>
+        );
+      case 'doc-templates':
+        return (
+          <div style={styles.embeddedPage}>
+            <DocTemplatesPage embedded />
           </div>
         );
       case 'usage':

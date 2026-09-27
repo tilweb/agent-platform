@@ -63,6 +63,10 @@ export const s3Paths = {
     assertSafeExt(ext);
     return `generated-images/${imageId}.${ext}`;
   },
+  docTemplate: (templateId: string) => {
+    assertSafeId(templateId, 'templateId');
+    return `doc-templates/${templateId}/original.docx`;
+  },
   exportFile: (exportId: string, ext: string) => {
     assertSafeId(exportId, 'exportId');
     assertSafeExt(ext);

@@ -43,6 +43,7 @@ import { registerProviders } from './connections/providers';
 import { syncBuiltInApps } from './apps/registry';
 import { publicApiRouter } from './public-api/router';
 import { brandingRoutes } from './routes/branding';
+import { docTemplateRoutes } from './routes/doc-templates';
 import { runMigrations } from './db/migrate';
 import { migrateAuftraegeToProjekteIfNeeded } from './apps/projektmanagement/projekt-service';
 import { seedContractSchemasFromYamlIfNeeded } from './apps/vertragsmanagement/seed-schemas';
@@ -359,6 +360,7 @@ app.route('/api/chat', chatRoutes);
 app.route('/api/chats', chatHistoryRoutes);
 app.route('/api/shared', sharedChatRoutes);  // Public shared chat access (no auth)
 app.route('/api/exports', exportRoutes);    // Document export downloads
+app.route('/api/doc-templates', docTemplateRoutes);  // Word-Design-/Strukturvorlagen
 app.route('/api/agents', agentRoutes);
 app.route('/api/skills', skillRoutes);
 // Custom tools must be registered before general tools (to avoid /:name matching "custom")

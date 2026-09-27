@@ -1,7 +1,7 @@
 ---
 id: chat-export
 name: Chat Export
-version: "1.0"
+version: "1.1"
 description: Exportiert Konversationen und Daten in verschiedene Dokumentformate
 triggers:
   keywords: [exportiere, export, speichere als, download als, als pdf, als excel, als word]
@@ -32,7 +32,13 @@ Analysiere die Anfrage des Benutzers:
 
 ### Schritt 2: Inhalt strukturieren
 
-Bereite den Inhalt als Sections auf:
+**Word (docx):** Schreibe den gesamten Inhalt als Markdown in `content_markdown`
+(## Ueberschriften, Absaetze, - Aufzaehlungen, 1. Nummerierungen, | Tabellen |,
+**fett**, *kursiv*, [Links](https://...)). Layout, Schriften, Farben, Logo und
+Kopf-/Fusszeile kommen automatisch aus der Designvorlage der Organisation —
+gestalte nichts selbst und schreibe den Titel nicht noch einmal als erste Zeile.
+
+**PDF und Excel:** Bereite den Inhalt als Sections auf:
 
 1. **text** - Fuer Fliesstext, Erklaerungen, Zusammenfassungen
 2. **table** - Fuer tabellarische Daten mit headers und rows
@@ -44,10 +50,21 @@ Bereite den Inhalt als Sections auf:
 Nutze das `export_document` Tool mit:
 - **title**: Aussagekraeftiger Titel des Dokuments
 - **format**: xlsx, pdf oder docx
-- **sections**: Array von strukturierten Inhalten
+- **content_markdown**: Inhalt als Markdown (nur docx)
+- **sections**: Array von strukturierten Inhalten (pdf, xlsx)
 - **metadata**: Optionale Zusatzinformationen (Autor, Datum, etc.)
 
 ## Beispiele
+
+### Bericht als Word-Dokument
+
+```json
+{
+  "title": "Projektstatus Q3",
+  "format": "docx",
+  "content_markdown": "## Zusammenfassung\nDas Projekt liegt im Zeitplan.\n\n## Meilensteine\n| Meilenstein | Termin | Status |\n|---|---|---|\n| Konzept | 01.08. | erledigt |\n| Go-Live | 30.10. | offen |\n\n## Naechste Schritte\n1. Tests abschliessen\n2. Schulung planen"
+}
+```
 
 ### Einfache Zusammenfassung als PDF
 

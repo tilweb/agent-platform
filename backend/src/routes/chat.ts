@@ -1133,6 +1133,12 @@ exportRoutes.get('/download/:filename', authMiddleware, async (c) => {
     if (row.expiresAt && new Date(row.expiresAt) < new Date()) {
       return c.json({ error: 'File not found or expired' }, 404);
     }
+    // Nur der Ersteller (oder ein Admin) darf den Export laden. Alt-Exporte ohne
+    // userId bleiben für alle angemeldeten Nutzer abrufbar (bisheriges Verhalten).
+    const requester = c.get('user');
+    if (row.userId && row.userId !== getCurrentUserId(c) && requester?.role !== 'admin') {
+      return c.json({ error: 'File not found or expired' }, 404);
+    }
     const buffer = await getObject(row.s3Key);
     const format = ext.slice(1) as DocumentFormat;
     return new Response(new Uint8Array(buffer), {

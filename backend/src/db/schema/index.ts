@@ -29,4 +29,5 @@ export * from './podcast-repurposing';
 export * from './echoloop';
 export * from './wohngeld';
 export * from './generated';
+export * from './documents';
 export * from './agents';
