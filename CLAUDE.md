@@ -81,8 +81,11 @@ Bun ist nicht im PATH. Verwende den vollstaendigen Pfad:
 
 ## Aktive LLM Provider
 
-- Chat: Adacor AI - Qwen3 30B (api_mode: openai)
-- Vision: Adacor AI - Mistral 3 24B
+Quelle: `active:` in `data/config/providers.yaml` (Seed für alle Instanzen) bzw. fest gebundene Feature-Modelle.
+
+- Chat: Adacor AI - Qwen 3.5 35B Instruct (`qwen3-5-a3b-35b-256k`)
+- Document Processing: fest Adacor Qwen 3.5 35B (`backend/src/extraction/model.ts`, ENV `EXTRACTION_LLM_*`) — unabhängig vom aktiven Chat-/Vision-Modell
+- Wohngeld-App (Extraktion, Fall-Chat): Qwen 3.5 35B (ENV `WOHNGELD_LLM_MODEL`/`WOHNGELD_CHAT_MODEL`)
+- Vision (allgemein): Adacor AI - Mistral 3 24B — nur generischer Extraktions-Endpoint (`extraction/service.ts`) und Multi-File-Import, NICHT DP/Wohngeld
 - STT: Adacor AI Audio - Whisper V3
-- Text-to-Image: fal.ai - Nano Banana Pro (Gemini 3 Pro Image)
-- Image-to-Image: Google Gemini 2.5 Flash
+- Text-to-Image / Image-to-Image: fal.ai - Nano Banana Pro
