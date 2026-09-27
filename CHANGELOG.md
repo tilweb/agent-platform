@@ -2,6 +2,18 @@
 
 ## 2026-09-27
 
+### Wohngeld: Token-Verbrauch je Antrag
+Jeder Antrag zeigt jetzt, wie viele Tokens die KI-Assistenz verbraucht hat: initial (Ersterfassung im Posteingang)
+und im Verlauf (Nachreichungen, Fall-Chat, Gesetz nachschlagen), als Summe und aufgeschlüsselt nach Aktion, Modell
+und Verlauf (neuer Reiter „KI-Verbrauch" am Vorgang, Summenzeile in der Seitenleiste und im Posteingang-Detail).
+Gemessen wird zentral an den LLM-Adaptern (`services/llm/token-meter.ts`, AsyncLocalStorage): Ein Messbereich um
+die fachliche Aktion erfasst auch alle verschachtelten Plattform-Aufrufe (DP-Profil, Extraction-Pipeline, Split).
+Im Stream wird `include_usage` nur bei offenem Messbereich angefordert, bestehende Verbraucher bleiben unberührt.
+Pro Aktion entsteht ein Datensatz in `wohngeld.ki_verbrauch` (Migration 0047); Posteingang-Verbrauch wird bei der
+Zuordnung dem Vorgang zugeschrieben. Aufrufe ohne Token-Angabe des Anbieters werden gezählt, nicht geschätzt.
+Live gemessen: Profil-Erkennung eines digitalen Golden-Antrags (F01) = 42 Aufrufe, ~213.000 Tokens.
+Spec: `docs/wohngeld-token-verbrauch-spec-2026-09-27.md`.
+
 ### OCR-Pilot Stufe A: offene OCR-Modelle lokal gegen den Golden Dataset messen
 Neues Messskript `backend/scripts/ocr-pilot/stufe-a.ts` für den Modellvergleich aus dem DP-Dienst-Konzept (§14a).
 Es rendert Seiten der Scan-PDFs aus dem Wohngeld-Golden-Dataset (150 dpi) und schickt sie an lokale Modelle

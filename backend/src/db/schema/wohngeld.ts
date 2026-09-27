@@ -235,3 +235,29 @@ export const wgAuditLog = wohngeldSchema.table('audit_log', {
   vorgangIdx: index('wg_audit_vorgang_idx').on(t.vorgangId),
   timestampIdx: index('wg_audit_timestamp_idx').on(t.timestamp),
 }));
+
+/**
+ * KI-Verbrauch (Tokens) je fachlicher Aktion — Spec docs/wohngeld-token-verbrauch-spec-2026-09-27.md.
+ * Ein Datensatz = eine Aktion (Posteingang-Auswertung, Upload, Fall-Chat …) mit der Summe
+ * aller darin ausgelösten LLM-Aufrufe. Posteingang-Datensätze erhalten `vorgang_id` erst bei
+ * der Zuordnung. Kein FK (überdauert Löschung, wie audit_log); keine Inhalte, nur Zahlen.
+ */
+export const wgKiVerbrauch = wohngeldSchema.table('ki_verbrauch', {
+  id: text('id').primaryKey(),
+  zeitpunkt: timestamp('zeitpunkt', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  vorgangId: text('vorgang_id'),
+  posteingangId: text('posteingang_id'),
+  aktion: text('aktion').notNull(),
+  phase: text('phase').notNull().default('bearbeitung'),
+  akteurId: text('akteur_id'),
+  aufrufe: integer('aufrufe').notNull().default(0),
+  promptTokens: integer('prompt_tokens').notNull().default(0),
+  completionTokens: integer('completion_tokens').notNull().default(0),
+  ohneAngabe: integer('ohne_angabe').notNull().default(0),
+  modelle: jsonb('modelle').notNull().default({}),
+  dauerMs: integer('dauer_ms'),
+  detail: text('detail'),
+}, (t) => ({
+  vorgangIdx: index('wg_ki_verbrauch_vorgang_idx').on(t.vorgangId),
+  posteingangIdx: index('wg_ki_verbrauch_posteingang_idx').on(t.posteingangId),
+}));

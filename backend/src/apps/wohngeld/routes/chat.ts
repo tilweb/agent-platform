@@ -23,6 +23,7 @@ import { audit } from '../audit';
 import { sucheRecht } from '../recht/retrieval';
 import { chunkLabel } from '../recht/corpus';
 import { wohngeldUsageMetadata } from '../ki-governance';
+import { messeKiVerbrauch } from '../ki-verbrauch';
 import type { ChatSource, ChatAction } from '../types';
 import { ergebnisZeile, ganzerParagraph, schlageNach, type ModellAufruf } from '../recht/nachschlagen';
 
@@ -237,24 +238,26 @@ chatRoutes.post('/vorgaenge/:id/chat', async (c) => {
     let raw = '';
     let emitted = 0;
     try {
-      for await (const chunk of llmService.streamChat(messages, undefined, {
-        source: 'chat',
-        operation: 'wohngeld_fall_chat',
-        resourceId: vorgangId,
-        userId,
-        triggeringUserId: userId,
-        metadata: wohngeldUsageMetadata({ providerId: CHAT_MODEL.providerId, modelId: CHAT_MODEL.modelId, vorgangId, mitRechtKorpus: true }),
-      }, { modelOverride: { providerId: CHAT_MODEL.providerId, modelId: CHAT_MODEL.modelId } })) {
-        const delta = chunk?.choices?.[0]?.delta?.content;
-        if (!delta) continue;
-        raw += delta;
-        const safeLen = safeEmitLength(raw);
-        if (safeLen > emitted) {
-          const piece = raw.slice(emitted, safeLen);
-          emitted = safeLen;
-          await stream.writeSSE({ event: 'delta', data: JSON.stringify({ content: piece }) });
+      await messeKiVerbrauch('fall_chat', { vorgangId, akteurId: userId }, async () => {
+        for await (const chunk of llmService.streamChat(messages, undefined, {
+          source: 'chat',
+          operation: 'wohngeld_fall_chat',
+          resourceId: vorgangId,
+          userId,
+          triggeringUserId: userId,
+          metadata: wohngeldUsageMetadata({ providerId: CHAT_MODEL.providerId, modelId: CHAT_MODEL.modelId, vorgangId, mitRechtKorpus: true }),
+        }, { modelOverride: { providerId: CHAT_MODEL.providerId, modelId: CHAT_MODEL.modelId } })) {
+          const delta = chunk?.choices?.[0]?.delta?.content;
+          if (!delta) continue;
+          raw += delta;
+          const safeLen = safeEmitLength(raw);
+          if (safeLen > emitted) {
+            const piece = raw.slice(emitted, safeLen);
+            emitted = safeLen;
+            await stream.writeSSE({ event: 'delta', data: JSON.stringify({ content: piece }) });
+          }
         }
-      }
+      });
 
       const { content, dokIds, rechtIds, actionIds } = parseAntwort(raw);
       const actions = resolveAktionen(actionIds);
@@ -326,7 +329,7 @@ chatRoutes.post('/vorgaenge/:id/chat/gesetz', async (c) => {
     return res.content ?? '';
   };
 
-  const ergebnis = await schlageNach(frage, modell);
+  const ergebnis = await messeKiVerbrauch('gesetz_nachschlagen', { vorgangId, akteurId: userId }, () => schlageNach(frage, modell));
   const antwort = await addChatMessage({
     vorgangId, rolle: 'assistant', modus: 'gesetz',
     content: ergebnisZeile(ergebnis),

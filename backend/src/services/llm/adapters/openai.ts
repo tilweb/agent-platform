@@ -1,4 +1,5 @@
 import { recordProviderAttempt, recordProviderUsage } from '../../extraction/telemetry';
+import { meldeTokenVerbrauch, tokenMessungAktiv } from '../token-meter';
 /**
  * OpenAI API Adapter
  * Handles chat completions for OpenAI-compatible APIs
@@ -120,6 +121,9 @@ export class OpenAIAdapter {
       messages: sanitizeMessages(normalisiereSystemNachrichten(messages)),
       stream: true,
     };
+    // Token-Messung (Wohngeld u. a.): Usage nur anfordern, wenn ein Messbereich offen ist.
+    const messen = tokenMessungAktiv();
+    if (messen) body.stream_options = { include_usage: true };
 
     if (tools && tools.length > 0) {
       body.tools = tools;
@@ -195,6 +199,14 @@ export class OpenAIAdapter {
 
     let loggedToolCall = false;
     let loggedContent = false;
+    let usageGemeldet = false;
+    const modelId = model || this.defaultModel;
+    // Usage-Schluss-Chunk (leere choices) verbrauchen statt weiterreichen — Verbraucher
+    // greifen teils ungeschützt auf choices[0] zu.
+    const nurUsage = (json: { usage?: { prompt_tokens?: number; completion_tokens?: number }; choices?: unknown[] }): boolean => {
+      if (json.usage && !usageGemeldet) { meldeTokenVerbrauch(modelId, json.usage); usageGemeldet = true; }
+      return !!json.usage && (!Array.isArray(json.choices) || json.choices.length === 0);
+    };
 
     while (true) {
       const { done, value } = await reader.read();
@@ -228,6 +240,7 @@ export class OpenAIAdapter {
               loggedContent = true;
             }
           }
+          if (nurUsage(json)) continue;
           yield json as StreamChunk;
         } catch {
           // Skip invalid JSON
@@ -245,12 +258,14 @@ export class OpenAIAdapter {
 
         try {
           const json = JSON.parse(trimmed.slice(6));
+          if (nurUsage(json)) continue;
           yield json as StreamChunk;
         } catch {
           // Skip invalid JSON
         }
       }
     }
+    if (messen && !usageGemeldet) meldeTokenVerbrauch(modelId, null);
   }
 
   /**
@@ -367,6 +382,7 @@ export class OpenAIAdapter {
     }
     const json = await response.json() as ChatResponse;
     recordProviderUsage(json.usage);
+    meldeTokenVerbrauch(model || this.defaultModel, json.usage);
     const choice = json.choices[0];
 
     if (!choice) {

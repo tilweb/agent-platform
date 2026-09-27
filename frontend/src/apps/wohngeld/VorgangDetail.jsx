@@ -21,6 +21,7 @@ import { buildFeldStatusMap, fsKey } from './feldStatusMap';
 import NotizPanel from './components/NotizPanel';
 import ExtraktionsBaum from './components/ExtraktionsBaum';
 import SeitenVorschau from './components/SeitenVorschau';
+import { KiVerbrauchAnsicht, KiVerbrauchZeile } from './components/KiVerbrauch';
 
 const MAIN_TABS = [
   { id: 'uebersicht', label: 'Übersicht' },
@@ -29,6 +30,7 @@ const MAIN_TABS = [
   { id: 'prognose', label: 'Einkommensprognose' },
   { id: 'verfuegung', label: 'Verfügung' },
   { id: 'protokoll', label: 'Protokoll' },
+  { id: 'ki_verbrauch', label: 'KI-Verbrauch' },
 ];
 const SIDE_TABS = [
   { id: 'details', label: 'Details' },
@@ -284,6 +286,8 @@ export default function VorgangDetail() {
   const [protokollOffen, setProtokollOffen] = useState({});
   // KI-Nutzung je Vorgang (GOV-3): Transparenz über eingesetzte KI-Assistenz
   const [kiNutzung, setKiNutzung] = useState([]);
+  // Token-Verbrauch: Zähler erzwingt Neuladen nach KI-Aktionen (Chat, Upload).
+  const [kiVerbrauchStand, setKiVerbrauchStand] = useState(0);
   const [sachbearbeitung, setSachbearbeitung] = useState({ nutzer: [], ich: null });
 
   useEffect(() => {
@@ -459,6 +463,7 @@ export default function VorgangDetail() {
       setError(e.message || 'Upload fehlgeschlagen');
     } finally {
       setBusy(false);
+      setKiVerbrauchStand((n) => n + 1); // auch bei Fehler: Auswertung kann Tokens verbraucht haben
     }
   }
 
@@ -1428,6 +1433,12 @@ export default function VorgangDetail() {
             );
           })()}
 
+          {mainTab === 'ki_verbrauch' && (
+            <SektionCard title="KI-Verbrauch (Tokens)">
+              <KiVerbrauchAnsicht vorgangId={vorgang.id} reloadKey={kiVerbrauchStand} />
+            </SektionCard>
+          )}
+
           {mainTab === 'protokoll' && (
             <SektionCard title={`Protokoll${protokoll.length ? ` (${protokoll.length})` : ''}`}>
               {protokoll.length === 0
@@ -1660,6 +1671,9 @@ export default function VorgangDetail() {
                 <PanelSection title="KI-Nutzung" count={kiNutzung.length > 0 ? kiNutzung.length : undefined}>
                   <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.sm, lineHeight: 1.5 }}>
                     KI wird nur assistierend eingesetzt (Prüfung/Aufbereitung). Die Entscheidung trifft ein Mensch.
+                  </div>
+                  <div style={{ marginBottom: theme.spacing.md }}>
+                    <KiVerbrauchZeile vorgangId={vorgang.id} reloadKey={kiVerbrauchStand} onDetails={() => setMainTab('ki_verbrauch')} />
                   </div>
                   {kiNutzung.length === 0
                     ? <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Für diesen Fall wurde noch keine KI-Assistenz genutzt.</div>
@@ -1916,6 +1930,7 @@ export default function VorgangDetail() {
           onOpenDokument={(docId) => { if (docId) jumpToDokument(docId); else { setSideCollapsed(false); setSideTab('dokumente'); } }}
           canEdit={canEdit}
           onDidMutate={reload}
+          onKiAufruf={() => setKiVerbrauchStand((n) => n + 1)}
         />
       )}
 

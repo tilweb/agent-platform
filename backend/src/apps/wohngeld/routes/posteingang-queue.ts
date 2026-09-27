@@ -37,6 +37,7 @@ import {
   ersetzeGruppe, alleSpeicherRefs, istPdf, baueTeile, defaultSplitDeps, type SeitenBereich,
 } from '../posteingang-split';
 import { erkenneDokumente, erkennungPerProfil, ladeProfil, type ErkannterAbschnitt } from '../dp-erkennung';
+import { messeKiVerbrauch, ordneKiVerbrauchZu, kiVerbrauchFuerPosteingang } from '../ki-verbrauch';
 import type { Posteingang, PosteingangDatei, PosteingangQuelle, DokumentTyp } from '../types';
 
 export const posteingangQueueRoutes = new Hono();
@@ -152,6 +153,13 @@ posteingangQueueRoutes.get('/posteingang/:id', async (c) => {
   const eingang = await getPosteingang(c.req.param('id'));
   if (!eingang) return c.json({ error: 'Eingang nicht gefunden' }, 404);
   return c.json({ posteingang: eingang });
+});
+
+/** GET /posteingang/:id/ki-verbrauch — Token-Verbrauch der Auswertungen dieses Eingangs. */
+posteingangQueueRoutes.get('/posteingang/:id/ki-verbrauch', async (c) => {
+  const id = c.req.param('id');
+  if (!(await getPosteingang(id))) return c.json({ error: 'Eingang nicht gefunden' }, 404);
+  return c.json(await kiVerbrauchFuerPosteingang(id));
 });
 
 /** Datei eines Eingangs laden (gemeinsam für Datei, Vorschau-Info und Seitenbild). */
@@ -381,17 +389,19 @@ async function werteImHintergrundAus(c: Context, ids: string[], userId: string |
     try {
       // Erkennung: DP-Segmentprofil (Standard) oder bisheriger Weg (Split + eigene Klassifikation).
       const profilWeg = erkennungPerProfil();
-      let split;
-      if (profilWeg) {
-        split = await erkenneMitProfil(eingang.dateien.map((d) => ({ ...d })), userId, melder);
-      } else {
+      // Token-Verbrauch der Auswertung dem Eingang zuschreiben (bei Zuordnung → Vorgang).
+      const split = await messeKiVerbrauch('posteingang_auswertung', {
+        posteingangId: id, akteurId: userId, detail: `${eingang.dateien.length} Datei(en)`,
+      }, async () => {
+        if (profilWeg) return erkenneMitProfil(eingang.dateien.map((d) => ({ ...d })), userId, melder);
         melder.setze({ phase: 'trennen', text: 'Dokumentgrenzen werden geprüft' });
-        split = await trenneSammelPdfs(eingang.dateien.map((d) => ({ ...d })), userId);
-        for (const [i, d] of split.dateien.entries()) {
-          melder.setze({ phase: 'auslesen', text: `Dokument ${i + 1} von ${split.dateien.length} wird ausgelesen`, fertig: i, gesamt: split.dateien.length });
+        const r = await trenneSammelPdfs(eingang.dateien.map((d) => ({ ...d })), userId);
+        for (const [i, d] of r.dateien.entries()) {
+          melder.setze({ phase: 'auslesen', text: `Dokument ${i + 1} von ${r.dateien.length} wird ausgelesen`, fertig: i, gesamt: r.dateien.length });
           await analysiereDatei(d, userId);
         }
-      }
+        return r;
+      });
       const dateien = split.dateien;
       for (const t of split.protokoll) {
         await audit(c, {
@@ -462,13 +472,17 @@ posteingangQueueRoutes.post('/posteingang/:id/trennung', async (c) => {
   let updates: Partial<Posteingang> = { dateien };
   if (eingang.status === 'analysiert' || eingang.status === 'fehler') {
     const neu = dateien.filter((d) => !d.typ && !d.analyseFehler);
-    if (erkennungPerProfil()) {
-      // Manuell gebildete Teile/Dateien nicht erneut trennen (brauchtGrenzpruefung = false).
-      const ergebnis = await erkenneMitProfil(neu, userId);
-      for (const d of neu) Object.assign(d, ergebnis.dateien.find((x) => x.hash === d.hash) ?? d);
-    } else {
-      for (const d of neu) await analysiereDatei(d, userId);
-    }
+    await messeKiVerbrauch('posteingang_trennung', {
+      posteingangId: id, akteurId: userId, detail: `${neu.length} Datei(en) neu ausgewertet`,
+    }, async () => {
+      if (erkennungPerProfil()) {
+        // Manuell gebildete Teile/Dateien nicht erneut trennen (brauchtGrenzpruefung = false).
+        const ergebnis = await erkenneMitProfil(neu, userId);
+        for (const d of neu) Object.assign(d, ergebnis.dateien.find((x) => x.hash === d.hash) ?? d);
+      } else {
+        for (const d of neu) await analysiereDatei(d, userId);
+      }
+    });
     const { kandidaten, betreff, status } = await umschlagAuswerten(dateien, eingang.betreff);
     updates = { dateien, matchVorschlag: kandidaten, betreff, status };
   }
@@ -521,6 +535,12 @@ posteingangQueueRoutes.post('/posteingang/:id/zuordnen', async (c) => {
     eingegangenAm: eingang.eingegangenAm,
   });
   if (!result.ok) return c.json({ error: result.error }, result.status);
+
+  try {
+    await ordneKiVerbrauchZu(id, result.vorgang.id, result.istNeuerVorgang);
+  } catch (err) {
+    console.error('[wohngeld] KI-Verbrauch nicht zugeordnet:', err);
+  }
 
   const updated = await updatePosteingang(id, {
     status: 'zugeordnet',
@@ -643,13 +663,14 @@ posteingangQueueRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) 
   }
 
   // Erkennung wie im Posteingang: DP-Profil (Standard) oder bisheriger Weg.
-  const erkannt = erkennungPerProfil()
-    ? await erkenneMitProfil(dateien, userId)
-    : await (async () => {
-      const r = await trenneSammelPdfs(dateien, userId);
-      for (const d of r.dateien) await analysiereDatei(d, userId);
-      return r;
-    })();
+  const erkannt = await messeKiVerbrauch('dokument_upload', {
+    vorgangId, phase: 'bearbeitung', akteurId: userId, detail: `${dateien.length} Datei(en)`,
+  }, async () => {
+    if (erkennungPerProfil()) return erkenneMitProfil(dateien, userId);
+    const r = await trenneSammelPdfs(dateien, userId);
+    for (const d of r.dateien) await analysiereDatei(d, userId);
+    return r;
+  });
   for (const t of erkannt.protokoll) {
     await audit(c, {
       aktion: 'posteingang.getrennt', objektTyp: 'vorgang', objektId: vorgangId, vorgangId,

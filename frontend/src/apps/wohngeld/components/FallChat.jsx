@@ -70,7 +70,7 @@ function Markdown({ text }) {
   return <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>{text || ''}</ReactMarkdown>;
 }
 
-export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = false, onDidMutate }) {
+export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = false, onDidMutate, onKiAufruf }) {
   const [minimized, setMinimized] = useState(false);
   // Modus wählt nur der Mensch: 'antrag' (Fall-Chat) oder 'gesetz' (Wortlaut nachschlagen).
   const [modus, setModus] = useState('antrag');
@@ -123,6 +123,7 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
         setError(e.message || 'Nachschlagen fehlgeschlagen');
       }
       setBusy(false);
+      onKiAufruf?.();
       return;
     }
     // Optimistisch die Nutzerfrage anzeigen.
@@ -138,6 +139,7 @@ export default function FallChat({ vorgang, onClose, onOpenDokument, canEdit = f
       onError: (msg) => { setError(msg || 'Antwort fehlgeschlagen'); setStreamingText(''); },
     });
     setBusy(false);
+    onKiAufruf?.(); // Token-Verbrauch neu laden
   }
 
   // Verlauf des aktuellen Modus zurücksetzen (nach Bestätigung).

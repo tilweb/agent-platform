@@ -5,6 +5,7 @@
  */
 
 import type { Message, ToolDefinition, StreamChunk } from '../../llm';
+import { meldeTokenVerbrauch } from '../token-meter';
 
 export interface OllamaAdapterOptions {
   baseUrl: string;
@@ -32,6 +33,12 @@ interface OllamaStreamChunk {
   prompt_eval_duration?: number;
   eval_count?: number;
   eval_duration?: number;
+}
+
+/** Ollama-Zähler → OpenAI-Usage-Form (null, wenn nichts gemeldet). */
+function ollamaUsage(j: { prompt_eval_count?: number; eval_count?: number }) {
+  if (typeof j.prompt_eval_count !== 'number' && typeof j.eval_count !== 'number') return null;
+  return { prompt_tokens: j.prompt_eval_count ?? 0, completion_tokens: j.eval_count ?? 0 };
 }
 
 export class OllamaAdapter {
@@ -135,6 +142,7 @@ export class OllamaAdapter {
 
         try {
           const json = JSON.parse(trimmed) as OllamaStreamChunk;
+          if (json.done) meldeTokenVerbrauch(json.model || model || this.defaultModel, ollamaUsage(json));
           yield this.convertChunk(json, chunkIndex++);
         } catch {
           // Skip invalid JSON
@@ -146,6 +154,7 @@ export class OllamaAdapter {
     if (buffer.trim()) {
       try {
         const json = JSON.parse(buffer.trim()) as OllamaStreamChunk;
+        if (json.done) meldeTokenVerbrauch(json.model || model || this.defaultModel, ollamaUsage(json));
         yield this.convertChunk(json, chunkIndex);
       } catch {
         // Skip invalid JSON
@@ -184,7 +193,8 @@ export class OllamaAdapter {
       throw new Error(`Ollama API error: ${response.status} - ${error}`);
     }
 
-    const json = await response.json() as { message?: { content?: string }; done_reason?: string };
+    const json = await response.json() as { message?: { content?: string }; done_reason?: string; prompt_eval_count?: number; eval_count?: number };
+    meldeTokenVerbrauch(model || this.defaultModel, ollamaUsage(json));
 
     return {
       content: json.message?.content || null,

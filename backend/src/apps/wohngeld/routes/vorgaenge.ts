@@ -25,6 +25,7 @@ import {
 } from './_shared';
 import { pruefeAutomatisch, pruefeUndSynchronisiere } from '../pruefung';
 import { ladeSachbearbeitung } from '../sachbearbeitung';
+import { kiVerbrauchFuerVorgang } from '../ki-verbrauch';
 
 const VERFUEGUNG_ENTSCHEIDUNGEN: VerfuegungEntscheidung[] = ['bewilligt', 'abgelehnt', 'teilweise', 'offen'];
 /** Finale Entscheidungen (unterliegen dem Vier-Augen-Prinzip); `offen` = Vorbereitung. */
@@ -142,6 +143,16 @@ vorgaengeRoutes.get('/vorgaenge/:id/ki-nutzung', async (c) => {
   if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
   const eintraege = await listKiNutzung(id);
   return c.json({ eintraege });
+});
+
+/**
+ * KI-Verbrauch (Tokens) des Falls — Summe, je Phase (Ersterfassung/Bearbeitung),
+ * je Aktion und je Modell plus Verlauf. Spec: docs/wohngeld-token-verbrauch-spec-2026-09-27.md
+ */
+vorgaengeRoutes.get('/vorgaenge/:id/ki-verbrauch', async (c) => {
+  const id = c.req.param('id');
+  if (!(await getVorgang(id))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  return c.json(await kiVerbrauchFuerVorgang(id));
 });
 
 /**

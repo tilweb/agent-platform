@@ -13,6 +13,7 @@ import {
 import AuswertungsFortschritt from './components/AuswertungsFortschritt';
 import ExtraktionsBaum from './components/ExtraktionsBaum';
 import SeitenVorschau from './components/SeitenVorschau';
+import { KiVerbrauchZeile } from './components/KiVerbrauch';
 import { istHaengend } from './fortschritt';
 
 const LEVEL_LABEL = { hoch: 'Hohe Übereinstimmung', mittel: 'Mögliche Übereinstimmung', gering: 'Geringe Übereinstimmung' };
@@ -452,6 +453,9 @@ export default function PosteingangDetail() {
           <div style={styles.pane}>
             <div style={styles.paneTitle}>Zugeordnet</div>
             <p style={styles.hint}>Dieser Eingang wurde einem Vorgang zugeordnet. Die Daten leben ab jetzt im Vorgang.</p>
+            <div style={{ marginTop: theme.spacing.md }}>
+              <KiVerbrauchZeile posteingangId={eingang.id} reloadKey={eingang.updated_at} />
+            </div>
             {eingang.zugeordneterVorgangId && (
               <div style={{ marginTop: theme.spacing.md }}>
                 <button style={styles.btnPrimary} onClick={() => navigate(`/apps/wohngeld/vorgang/${eingang.zugeordneterVorgangId}`)}>
@@ -610,6 +614,12 @@ export default function PosteingangDetail() {
                     )}
                   </div>
                 )}
+
+                {/* KI-Verbrauch der Auswertung(en) */}
+                <div style={styles.pane}>
+                  <div style={styles.paneTitle}>KI-Verbrauch</div>
+                  <KiVerbrauchZeile posteingangId={eingang.id} reloadKey={eingang.updated_at} leerText="Für diesen Eingang wurde kein KI-Verbrauch gemessen." />
+                </div>
 
                 {/* Verteilung (manuell) */}
                 {(showManual || !zeigeVorschlag) && (

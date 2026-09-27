@@ -64,6 +64,7 @@ export const wohngeldApi = {
   getEinkommen: (id) => apiGet(`${base}/vorgaenge/${id}/einkommen`).then(json).then((d) => d.einkommen),
   // KI-Nutzung je Vorgang (GOV-3 — Transparenz über eingesetzte KI-Assistenz)
   getKiNutzung: (id) => apiGet(`${base}/vorgaenge/${id}/ki-nutzung`).then(json).then((d) => d.eintraege),
+  getKiVerbrauch: (id) => apiGet(`${base}/vorgaenge/${id}/ki-verbrauch`).then(json),
   // Bewilligungszeitraum-Vorschlag übernehmen (12 Monate ab Antragsmonat, §22/§25).
   bwzVorschlagUebernehmen: (id) => apiPost(`${base}/vorgaenge/${id}/bwz-vorschlag-uebernehmen`, {}).then(json).then((d) => d.vorgang),
 
@@ -110,6 +111,7 @@ export const wohngeldApi = {
     return apiGet(`${base}/posteingang${qs ? `?${qs}` : ''}`).then(json).then((d) => d.posteingang);
   },
   getPosteingang: (id) => apiGet(`${base}/posteingang/${id}`).then(json).then((d) => d.posteingang),
+  getPosteingangKiVerbrauch: (id) => apiGet(`${base}/posteingang/${id}/ki-verbrauch`).then(json),
   /** Auswertung starten (einzeln oder Sammel) — läuft im Hintergrund → { gestartet, abgelehnt }. */
   analysierePosteingang: (ids) => apiPost(`${base}/posteingang/analysieren`, { ids }).then(json),
   /** Zuordnung: { akteId?|neueAkte?, vorgangId?, pruefen?, viaVorschlag?, matchLevel?, stammdaten? }. */
