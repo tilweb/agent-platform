@@ -52,9 +52,11 @@ Teilmengen Zahlen-Recall (Antrag maschinell / Antrag Handschrift / Nachweise):
 
 ## Nächster Schritt (Stufe B)
 
-LightOnOCR-2-1B und GLM-OCR als Text-Vorstufe in die Extraktion (`wohngeld-eingang`-Profil) einspeisen und mit der
-heutigen Vision-Extraktion (Mistral 3 24B) auf den Scan-Fassungen vergleichen: Feldgenauigkeit, Zuschnitte, Laufzeit.
-Offene Frage dabei: Welche der ~2–4 % fehlenden Zahlen sind extraktionsrelevant (Beträge, Daten) und welche Rauschen.
+Im Workplace-Document-Processing (Segmentprofil `wohngeld-eingang`, Modell Adacor Qwen 3.5 35B, `extraction/model.ts`)
+eine OCR-Vorstufe erproben: LightOnOCR-2-1B bzw. GLM-OCR liefern den Seitentext, Qwen 3.5 bekommt ihn zusätzlich zum
+bzw. statt des Seitenbilds. Vergleich auf den Scan-Fassungen gegen den heutigen Stand (Qwen 3.5 direkt auf dem Bild):
+Feldgenauigkeit, Zuschnitte, Laufzeit. Offene Frage dabei: Welche der ~2–4 % fehlenden Zahlen sind extraktionsrelevant
+(Beträge, Daten) und welche Rauschen.
 
 ## Reproduzieren
 
