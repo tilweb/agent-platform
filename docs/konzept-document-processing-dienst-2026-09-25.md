@@ -273,6 +273,34 @@ Wortpositionen für Belege (liefert jina-ocr-v1 laut Karte nicht; Tesseract blei
   bzw. Dokument-Konverter), pro Profil zuschaltbar; eigene Modell-Slots, damit OCR und Auslesen sich nicht
   gegenseitig blockieren.
 
-**Empfehlung:** Lizenzfrage klären, dann ein Pilot gegen das Golden Dataset (Scan-Variante). Lohnt sich der Textweg
-für Scans, ist das ein großer Hebel für Durchsatz und Kosten des Dienstes. Alternativen mit freier Lizenz (z. B. die
-Basis DeepSeek-OCR oder andere offene OCR-Sprachmodelle) im selben Pilot mitmessen.
+### 14a. Vergleich offener OCR-Sprachmodelle (Stand Hugging Face, 2026-09-27)
+
+Lizenz, Größe und Sprachen aus den Modell-Metadaten; Benchmarks sind **Selbstangaben der Hersteller** auf
+unterschiedlichen Benchmark-Versionen (OmniDocBench v1.5 bzw. v1.6) und daher nur grob vergleichbar. Deutsche
+Behördenformulare kommen in keinem Benchmark vor — maßgeblich ist der eigene Pilot.
+
+| Modell | Lizenz (Gewichte) | Größe | Stärken laut Modellkarte | Positionen (Boxen) | Einordnung |
+|---|---|---|---|---|---|
+| **PaddleOCR-VL-1.6** (Baidu/PaddlePaddle, 05/2026) | Apache 2.0 | 0,96 Mrd. | OmniDocBench v1.6 96,3 (Bestwert laut Hersteller), eigener Praxis-Benchmark mit Scans/Verzerrung | ja (Layout-Stufe) | **Favorit**: klein, sehr genau, frei |
+| **MinerU2.5-Pro** (OpenDataLab, 05/2026) | Apache 2.0 | 1,2 Mrd. | OmniDocBench v1.6 95,7, starke Tabellen | ja (Layout-Erkennung) | Favorit; Lizenz der Begleitsoftware separat prüfen |
+| **GLM-OCR** (Zhipu, 01/2026) | MIT | 1,3 Mrd. | OmniDocBench v1.5 94,6; Deutsch in den Sprachen gelistet | ja (Layout + Erkennung) | Favorit |
+| **LightOnOCR-2-1B** (LightOn, Frankreich, 01/2026) | Apache 2.0 | 1,0 Mrd. | Deutsch ausdrücklich gelistet, sehr schnell; europäischer Anbieter | Variante „-bbox" (Apache 2.0) | Favorit für Deutsch/EU |
+| **Qianfan-OCR** (Baidu, 03/2026) | Apache 2.0 | 4,7 Mrd. | v1.5 93,1, olmOCR-Bench 79,8; vereint Lesen, Layout und Dokumentverständnis | ja | interessant, größer |
+| **DeepSeek-OCR-2** (01/2026) / **DeepSeek-OCR** (10/2025) | Apache 2.0 / MIT | 3,4 / 3,3 Mrd. | Basis von jina-ocr-v1; v1.5 91,1 (laut Qianfan-Karte); Boxen per „grounding"-Anweisung | ja | solide Basis, frei |
+| **Unlimited-OCR** (Baidu, 06/2026) | MIT | 3,3 Mrd. | Weiterentwicklung von DeepSeek-OCR, liest **mehrseitige Dokumente in einem Durchgang** | ja (`<|det|>`-Boxen) | spannend für Sammel-PDFs |
+| **olmOCR-2** (Allen AI, 10/2025) | Apache 2.0 | 8,3 Mrd. (Qwen2.5-VL-7B) | Referenzsystem des olmOCR-Bench | nein | größer, langsamer |
+| FireRed-OCR (2,1 Mrd.), Falcon-OCR (0,27 Mrd.), Granite-Docling (0,26 Mrd.) | Apache 2.0 | klein | kompakt | teils | Nebenkandidaten |
+| jina-ocr-v1 (09/2026) | **CC BY-NC 4.0** | 3,4 Mrd. | olmOCR-Bench 83,4, v1.6 91,1 | nein | nur mit kommerzieller Lizenz von Jina |
+| chandra-ocr-2 / surya-ocr-2 (Datalab) | **modifizierte OpenRAIL-M** (frei nur bis 2 Mio. $ Umsatz/Finanzierung) | 5,3 / 0,7 Mrd. | Handschrift, Layout | ja (surya) | für uns nur mit Lizenz |
+| nemotron-ocr-v2 (NVIDIA) | NVIDIA Open Model License | — | Deutsch gelistet, laut Karte kommerziell nutzbar | ja | Lizenzbedingungen im Detail prüfen |
+| Nanonets-OCR2-3B | in der Modellkarte **nicht angegeben** | 3,8 Mrd. | Handschrift, semantische Markierungen | nein | Lizenz klären |
+
+**Empfehlung für den Pilot** (Golden Dataset, 30 Scans, exakte Wahrheit): **PaddleOCR-VL-1.6**, **LightOnOCR-2-1B**
+(inkl. Box-Variante) und **DeepSeek-OCR-2 bzw. Unlimited-OCR** — alle mit freier Lizenz, klein genug für einen
+gemeinsamen GPU-Server, vLLM-fähig, mit Positionsangaben (Chance, Tesseract für die Belege abzulösen). Gemessen wird
+nicht die OCR-Qualität an sich, sondern das Endergebnis: Felder richtig (nach dem Auslesen durch Qwen), Dauer,
+Modellaufrufe, Qualität der Belege.
+
+**Empfehlung:** Pilot mit den frei lizenzierten Favoriten aus 14a gegen das Golden Dataset (Scan-Variante);
+jina-ocr-v1 nur, wenn Jina eine kommerzielle Lizenz anbietet. Lohnt sich der Textweg für Scans, ist das ein großer
+Hebel für Durchsatz und Kosten des Dienstes.
