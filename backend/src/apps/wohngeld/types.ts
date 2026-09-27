@@ -14,6 +14,7 @@
 // obwohl extraction.ts/matching.ts ihrerseits aus dieser Datei Typen beziehen).
 import type { ExtrahierteStammdaten, Identitaet } from './extraction';
 import type { ScoredKandidat } from './matching';
+import type { Posteingang as KernPosteingang, PosteingangDateiBasis } from '../_antrag-kern/posteingang/typen';
 
 // ── gemeinsame Basis ────────────────────────────────────────────────────────
 
@@ -521,33 +522,25 @@ export interface KiNutzungEintrag {
 
 // ── Posteingang-Warteschlange (persistenter Umschlag/Batch) ─────────────────
 
-/** Kanal, über den ein Eingang eingeliefert wurde. */
-export type PosteingangQuelle = 'manuell' | 'scan' | 'email' | 'import';
-
-/** Zustand eines Eingangs im Zustandsautomaten (siehe Spec §4). */
-export type PosteingangStatus =
-  | 'eingegangen'
-  | 'in_analyse'
-  | 'analysiert'
-  | 'fehler'
-  | 'zugeordnet'
-  | 'verworfen';
+/**
+ * Fachfreie Posteingang-Typen aus dem Antrag-Kern (`apps/_antrag-kern/posteingang/typen.ts`):
+ * Kanal (`PosteingangQuelle`, inkl. 'weiterleitung' für einen späteren gemeinsamen Eingang —
+ * die Wohngeld-Einlieferung akzeptiert weiterhin nur manuell/scan/email/import),
+ * Zustand, Teil-Herkunft und Trennungsergebnis.
+ */
+export type {
+  PosteingangQuelle, PosteingangStatus, PosteingangTeilVon, PosteingangTrennung,
+} from '../_antrag-kern/posteingang/typen';
 
 /**
  * Eine Datei im Umschlag. Vor der Analyse nur Ablage-/Metadaten; nach der Analyse
  * zusätzlich Klassifikation + extrahierte Werte. Die Analyse-Felder (`stammdaten`,
  * `identitaet`, `extraktion`, `fieldConfidences`) werden gespeichert, damit die
  * Zuordnung verlustfrei aus den Refs rekonstruiert werden kann (kein Re-Upload).
+ * Fachfreie Felder (Ablage, Hash, `typ`, `analyseFehler`, `teilVon`, `trennung`) aus dem Kern.
  */
-export interface PosteingangDatei {
-  dateiname: string;
-  s3Key?: string;
-  pfad?: string;
-  contentType: string;
-  groesse: number;
-  hash: string;                 // Datei-Hash (SHA-256, hex) — Dedupe/Idempotenz
+export interface PosteingangDatei extends PosteingangDateiBasis<DokumentTyp> {
   // nach Analyse befüllt:
-  typ?: DokumentTyp;            // Klassifikation (überschreibbar)
   titel?: string;
   analyse?: DokumentAnalyse;
   stammdaten?: ExtrahierteStammdaten;  // nur beim Wohngeldantrag
@@ -555,11 +548,6 @@ export interface PosteingangDatei {
   extraktion?: DokumentExtraktion;
   fieldConfidences?: Record<string, number>;
   extrahierterTextGekuerzt?: string;
-  analyseFehler?: string;
-  /** Gesetzt an jedem Teil einer getrennten Sammel-PDF (Mehrdokument-Split). */
-  teilVon?: PosteingangTeilVon;
-  /** Ergebnis der Grenzprüfung an einer ungetrennten PDF. */
-  trennung?: PosteingangTrennung;
   /** Erkennung über das Document-Processing-Profil (Abschnitt + Rohwerte). */
   profil?: ProfilErkennung;
 }
@@ -580,50 +568,12 @@ export interface ProfilErkennung {
   lernbeispielId?: string;
 }
 
-/** Herkunft eines Teil-Dokuments: das Original + Seitenbereich. */
-export interface PosteingangTeilVon {
-  dateiname: string;
-  s3Key?: string;
-  pfad?: string;
-  hash: string;
-  contentType: string;
-  groesse: number;
-  seitenGesamt: number;
-  seiteVon: number;
-  seiteBis: number;
-  teilNr: number;
-  teileGesamt: number;
-  manuell?: boolean;
-}
-
-/** Ergebnis der Dokumentgrenzen-Prüfung einer (ungetrennten) PDF. */
-export interface PosteingangTrennung {
-  status: 'ein_dokument' | 'unsicher' | 'nicht_moeglich';
-  seitenGesamt?: number;
-  hinweis?: string;
-  manuell?: boolean;
-}
-
 /**
  * Eingang = Umschlag/Batch. Persistente Warteschlange (multi-antragsfähig).
  * `matchVorschlag` ist das Ergebnis der Umschlag-Match-Ermittlung auf
  * Umschlag-Ebene (Kandidaten inkl. Level + Vergleichstabelle).
  */
-export interface Posteingang extends Timestamped, Versioned {
-  id: string;
-  quelle: PosteingangQuelle;
-  eingegangenAm: string;          // ISO — fristauslösend (rechtlich relevant)
-  betreff?: string;
-  status: PosteingangStatus;
-  dateien: PosteingangDatei[];
-  matchVorschlag?: ScoredKandidat[];
-  zugeordneterVorgangId?: string;
-  zugeordneteAkteId?: string;
-  bearbeiterId?: string;
-  verworfenGrund?: string;
-  hash?: string;                  // Umschlag-Hash (Dedupe gegen Doppel-Scans)
-  data?: Record<string, unknown>; // Erweiterungen (z. B. demo:true, idempotencyKey)
-}
+export interface Posteingang extends KernPosteingang<PosteingangDatei, ScoredKandidat>, Timestamped, Versioned {}
 
 // ── Feld-Provenienz (Welle 2, WP3) ─────────────────────────────────────────
 

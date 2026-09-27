@@ -111,12 +111,16 @@ export const s3Paths = {
     assertSafeFilename(file);
     return `apps/echoloop/${prozessId}/${artefaktId}/${file}`;
   },
-  // Wohngeld (Phase 4): hochgeladene Antragsunterlagen/Nachweise je Upload-Segment.
-  wohngeldUpload: (segment: string, file: string) => {
+  // App-Uploads (Antrag-Kern-Dateiablage): hochgeladene Unterlagen je App und Upload-Segment.
+  appUpload: (appId: string, segment: string, file: string) => {
+    assertSafeId(appId, 'appId');
+    if (appId.includes('..')) throw new Error(`Invalid appId: "${appId}"`);
     assertSafeId(segment, 'segment');
     assertSafeFilename(file);
-    return `apps/wohngeld/uploads/${segment}/${file}`;
+    return `apps/${appId}/uploads/${segment}/${file}`;
   },
+  // Wohngeld (Phase 4): Alias auf appUpload — identischer Schlüssel `apps/wohngeld/uploads/…`.
+  wohngeldUpload: (segment: string, file: string): string => s3Paths.appUpload('wohngeld', segment, file),
   // Extraktions-Posteingang (Welle 4): Original + Teil-PDFs je Upload.
   inboxOriginal: (uploadId: string, ext: string) => {
     assertSafeId(uploadId, 'uploadId');

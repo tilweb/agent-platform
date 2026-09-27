@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { FortschrittMelder, ausErkennung, istHaengend, type PosteingangFortschritt } from './posteingang-fortschritt';
-import { meldeFortschritt, mitFortschritt, type FortschrittEreignis } from '../../extraction/fortschritt';
+import { FortschrittMelder, ausErkennung, istHaengend, type PosteingangFortschritt } from './fortschritt';
+import { meldeFortschritt, mitFortschritt, type FortschrittEreignis } from '../../../extraction/fortschritt';
 
 describe('Fortschritt der Erkennung', () => {
   test('Texte je Schritt', () => {

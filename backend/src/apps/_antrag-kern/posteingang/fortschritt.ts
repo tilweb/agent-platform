@@ -1,10 +1,10 @@
 /**
- * Wohngeld — Fortschritt der Posteingang-Auswertung (sichtbar in Liste und Detail).
+ * Antrag-Kern — Posteingang: Fortschritt der Auswertung (sichtbar in Liste und Detail).
  *
  * Die Auswertung läuft im Hintergrund; ihr Fortschritt steht im Eingang (`data.fortschritt`)
  * und wird von der Oberfläche abgefragt. Geschrieben wird gedrosselt und ohne Versionssprung.
  */
-import type { FortschrittEreignis } from '../../extraction/fortschritt';
+import type { FortschrittEreignis } from '../../../extraction/fortschritt';
 
 export type FortschrittPhase = 'wartet' | 'laden' | 'seiten' | 'trennen' | 'auslesen' | 'abschluss';
 

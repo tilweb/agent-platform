@@ -15,11 +15,12 @@ import { usageLog } from '../../db/schema/audit';
 import type {
   Akte, Vorgang, Person, Dokument, Pruefschritt, Schreiben, Aktivitaet,
   VorgangSnapshot, PruefBefund, ChatMessage, ChatSource, FeldStatus, FeldStatusZielTyp, Notiz, Textbaustein,
-  KiNutzungEintrag, Posteingang, PosteingangDatei, PosteingangQuelle, PosteingangStatus,
+  KiNutzungEintrag, Posteingang,
 } from './types';
 import { VersionConflictError, checkVersion } from './concurrency';
 import { genId, nowIso } from '../_antrag-kern/ids';
 import { createAuditStore, type AuditGesamtFilter } from '../_antrag-kern/audit';
+import { createPosteingangStore } from '../_antrag-kern/posteingang/store';
 
 
 // ── Row ↔ Domain Mapper ─────────────────────────────────────────────────────
@@ -764,115 +765,25 @@ export async function listKiNutzung(vorgangId: string): Promise<KiNutzungEintrag
   });
 }
 
-// ── Posteingang-Warteschlange (persistenter Umschlag/Batch) ─────────────────
+// ── Posteingang-Warteschlange (persistenter Umschlag/Batch) — Antrag-Kern ──
 
-function rowToPosteingang(r: typeof wgPosteingang.$inferSelect): Posteingang {
-  const data = (r.data ?? {}) as Record<string, unknown>;
-  return {
-    id: r.id,
-    quelle: r.quelle as PosteingangQuelle,
-    eingegangenAm: r.eingegangenAm,
-    betreff: r.betreff ?? undefined,
-    status: r.status as PosteingangStatus,
-    dateien: (r.dateien ?? []) as PosteingangDatei[],
-    matchVorschlag: (r.matchVorschlag ?? undefined) as Posteingang['matchVorschlag'],
-    zugeordneterVorgangId: r.zugeordneterVorgangId ?? undefined,
-    zugeordneteAkteId: r.zugeordneteAkteId ?? undefined,
-    bearbeiterId: r.bearbeiterId ?? undefined,
-    verworfenGrund: r.verworfenGrund ?? undefined,
-    hash: r.hash ?? undefined,
-    data,
-    version: r.version,
-    created_at: r.createdAt,
-    updated_at: r.updatedAt,
-  };
-}
+const posteingangStore = createPosteingangStore<Posteingang>(wgPosteingang);
 
-export async function listPosteingang(filter?: { status?: string; quelle?: string }): Promise<Posteingang[]> {
-  const db = getDb();
-  const conds = [];
-  if (filter?.status) conds.push(eq(wgPosteingang.status, filter.status));
-  if (filter?.quelle) conds.push(eq(wgPosteingang.quelle, filter.quelle));
-  const q = db.select().from(wgPosteingang).orderBy(desc(wgPosteingang.eingegangenAm));
-  const rows = conds.length ? await q.where(and(...conds)) : await q;
-  return rows.map(rowToPosteingang);
-}
-
-export async function getPosteingang(id: string): Promise<Posteingang | null> {
-  const db = getDb();
-  const rows = await db.select().from(wgPosteingang).where(eq(wgPosteingang.id, id)).limit(1);
-  return rows[0] ? rowToPosteingang(rows[0]) : null;
-}
-
-export async function createPosteingang(input: Partial<Posteingang> = {}): Promise<Posteingang> {
-  const db = getDb();
-  const now = nowIso();
-  const id = genId('pe');
-  await db.insert(wgPosteingang).values({
-    id,
-    quelle: input.quelle ?? 'manuell',
-    eingegangenAm: input.eingegangenAm ?? now,
-    betreff: input.betreff ?? null,
-    status: input.status ?? 'eingegangen',
-    dateien: (input.dateien ?? []) as never,
-    matchVorschlag: (input.matchVorschlag ?? null) as never,
-    zugeordneterVorgangId: input.zugeordneterVorgangId ?? null,
-    zugeordneteAkteId: input.zugeordneteAkteId ?? null,
-    bearbeiterId: input.bearbeiterId ?? null,
-    verworfenGrund: input.verworfenGrund ?? null,
-    hash: input.hash ?? null,
-    data: (input.data ?? {}) as never,
-    version: 1, createdAt: now, updatedAt: now,
-  });
-  return (await getPosteingang(id))!;
-}
-
+/** Queue (Filter status/quelle; Sortierung Eingangsdatum desc). */
+export const listPosteingang = posteingangStore.listPosteingang;
+export const getPosteingang = posteingangStore.getPosteingang;
+/** Neuester nicht verworfener Eingang mit diesem Umschlag-Hash (Dedupe). */
+export const findePosteingangNachHash = posteingangStore.findePosteingangNachHash;
+export const createPosteingang = posteingangStore.createPosteingang;
 /**
  * Fortschritt der Auswertung am Eingang setzen/entfernen — ohne Versionssprung und ohne
  * `updatedAt` (reine Anzeige, darf parallele Änderungen nicht in Konflikte treiben).
  */
-export async function setzePosteingangFortschritt(id: string, fortschritt: unknown | null): Promise<void> {
-  const db = getDb();
-  const data = fortschritt === null
-    ? rawSql`coalesce(${wgPosteingang.data}, '{}'::jsonb) - 'fortschritt'`
-    : rawSql`jsonb_set(coalesce(${wgPosteingang.data}, '{}'::jsonb), '{fortschritt}', ${JSON.stringify(fortschritt)}::jsonb)`;
-  await db.update(wgPosteingang).set({ data: data as never }).where(eq(wgPosteingang.id, id));
-}
-
-export async function updatePosteingang(id: string, updates: Partial<Posteingang>, opts: { expectedVersion?: number; force?: boolean } = {}): Promise<Posteingang | null> {
-  const db = getDb();
-  const existing = await getPosteingang(id);
-  if (!existing) return null;
-  checkVersion(existing, opts.expectedVersion, !!opts.force);
-  const merged = { ...existing, ...updates, id, version: (existing.version ?? 1) + 1, updated_at: nowIso() };
-  const {
-    quelle, eingegangenAm, betreff, status, dateien, matchVorschlag,
-    zugeordneterVorgangId, zugeordneteAkteId, bearbeiterId, verworfenGrund, hash, data, version, updated_at,
-  } = merged;
-  const res = await db.update(wgPosteingang)
-    .set({
-      quelle, eingegangenAm, betreff: betreff ?? null, status,
-      dateien: (dateien ?? []) as never,
-      matchVorschlag: (matchVorschlag ?? null) as never,
-      zugeordneterVorgangId: zugeordneterVorgangId ?? null,
-      zugeordneteAkteId: zugeordneteAkteId ?? null,
-      bearbeiterId: bearbeiterId ?? null,
-      verworfenGrund: verworfenGrund ?? null,
-      hash: hash ?? null,
-      data: (data ?? {}) as never,
-      updatedAt: updated_at, version,
-    })
-    .where(opts.force || opts.expectedVersion === undefined ? eq(wgPosteingang.id, id) : and(eq(wgPosteingang.id, id), eq(wgPosteingang.version, opts.expectedVersion)))
-    .returning({ id: wgPosteingang.id });
-  if (res.length === 0) throw new VersionConflictError(await getPosteingang(id));
-  return getPosteingang(id);
-}
-
-export async function deletePosteingang(id: string): Promise<boolean> {
-  const db = getDb();
-  const r = await db.delete(wgPosteingang).where(eq(wgPosteingang.id, id)).returning({ id: wgPosteingang.id });
-  return r.length > 0;
-}
+export const setzePosteingangFortschritt = posteingangStore.setzePosteingangFortschritt;
+export const updatePosteingang = posteingangStore.updatePosteingang;
+export const deletePosteingang = posteingangStore.deletePosteingang;
+/** Speicher-Instanz für die Kern-Routen des Posteingangs. */
+export { posteingangStore };
 
 /**
  * Prüfzeitpunkt am Vorgang setzen — bewusst OHNE Versionssprung und ohne `updatedAt`,

@@ -8,7 +8,7 @@
  * Akte → Vorgang → { Personen, Dokumente, Prüfschritte, Schreiben, Aktivitäten }
  */
 import { pgSchema, text, integer, boolean, real, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
-import { auditLogTabelle, kiVerbrauchTabelle } from '../../apps/_antrag-kern/tabellen';
+import { auditLogTabelle, kiVerbrauchTabelle, posteingangTabelle } from '../../apps/_antrag-kern/tabellen';
 
 export const wohngeldSchema = pgSchema('wohngeld');
 
@@ -187,27 +187,7 @@ export const wgAktivitaeten = wohngeldSchema.table('aktivitaeten', {
  * `zugeordneter_vorgang_id`/`zugeordnete_akte_id`: der Eingang muss die Löschung
  * des Vorgangs überdauern (wie audit_log).
  */
-export const wgPosteingang = wohngeldSchema.table('posteingang', {
-  id: text('id').primaryKey(),
-  quelle: text('quelle').notNull().default('manuell'),
-  eingegangenAm: timestamp('eingegangen_am', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
-  betreff: text('betreff'),
-  status: text('status').notNull().default('eingegangen'),
-  dateien: jsonb('dateien').notNull().default([]),
-  matchVorschlag: jsonb('match_vorschlag'),
-  zugeordneterVorgangId: text('zugeordneter_vorgang_id'),
-  zugeordneteAkteId: text('zugeordnete_akte_id'),
-  bearbeiterId: text('bearbeiter_id'),
-  verworfenGrund: text('verworfen_grund'),
-  hash: text('hash'),
-  data: jsonb('data').notNull().default({}),
-  version: integer('version').notNull().default(1),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
-}, (t) => ({
-  statusIdx: index('wg_posteingang_status_idx').on(t.status),
-  eingegangenIdx: index('wg_posteingang_eingegangen_idx').on(t.eingegangenAm),
-}));
+export const wgPosteingang = posteingangTabelle(wohngeldSchema, 'wg'); // Antrag-Kern-Fabrik (Tabelle + Indizes unverändert)
 
 /**
  * GOV-1 — Audit-/Protokoll-Log (append-only, revisionssicher).

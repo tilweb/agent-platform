@@ -8,8 +8,8 @@
 import { test, expect } from 'bun:test';
 import { is, SQL } from 'drizzle-orm';
 import { getTableConfig, pgSchema, type PgTable } from 'drizzle-orm/pg-core';
-import { wgAuditLog, wgKiVerbrauch } from '../../db/schema/wohngeld';
-import { auditLogTabelle, kiVerbrauchTabelle } from './tabellen';
+import { wgAuditLog, wgKiVerbrauch, wgPosteingang } from '../../db/schema/wohngeld';
+import { auditLogTabelle, kiVerbrauchTabelle, posteingangTabelle } from './tabellen';
 
 type Spalte = [name: string, typ: string, notNull: boolean, primaerschluessel: boolean, standard: unknown];
 
@@ -98,10 +98,42 @@ test('ki_verbrauch: identisch zum Stand vor dem Umbau', () => {
   });
 });
 
+test('posteingang: identisch zum Stand vor dem Umbau', () => {
+  expect(beschreibe(wgPosteingang)).toEqual({
+    schema: 'wohngeld',
+    name: 'posteingang',
+    spalten: [
+      ['id', 'text', true, true, null],
+      ['quelle', 'text', true, false, 'manuell'],
+      ['eingegangen_am', 'timestamp with time zone', true, false, NOW],
+      ['betreff', 'text', false, false, null],
+      ['status', 'text', true, false, 'eingegangen'],
+      ['dateien', 'jsonb', true, false, []],
+      ['match_vorschlag', 'jsonb', false, false, null],
+      ['zugeordneter_vorgang_id', 'text', false, false, null],
+      ['zugeordnete_akte_id', 'text', false, false, null],
+      ['bearbeiter_id', 'text', false, false, null],
+      ['verworfen_grund', 'text', false, false, null],
+      ['hash', 'text', false, false, null],
+      ['data', 'jsonb', true, false, {}],
+      ['version', 'integer', true, false, 1],
+      ['created_at', 'timestamp with time zone', true, false, NOW],
+      ['updated_at', 'timestamp with time zone', true, false, NOW],
+    ],
+    indizes: [
+      { name: 'wg_posteingang_status_idx', spalten: ['status'], unique: false },
+      { name: 'wg_posteingang_eingegangen_idx', spalten: ['eingegangen_am'], unique: false },
+    ],
+    fks: 0,
+  });
+});
+
 test('Fabriken: Schema und Index-Präfix kommen von der App', () => {
   const s = pgSchema('beispiel');
   const a = beschreibe(auditLogTabelle(s, 'bx'));
   expect([a.schema, a.name, a.indizes.map((i) => i.name)]).toEqual(['beispiel', 'audit_log', ['bx_audit_vorgang_idx', 'bx_audit_timestamp_idx']]);
   const k = beschreibe(kiVerbrauchTabelle(s, 'bx'));
   expect([k.schema, k.name, k.indizes.map((i) => i.name)]).toEqual(['beispiel', 'ki_verbrauch', ['bx_ki_verbrauch_vorgang_idx', 'bx_ki_verbrauch_posteingang_idx']]);
+  const p = beschreibe(posteingangTabelle(s, 'bx'));
+  expect([p.schema, p.name, p.indizes.map((i) => i.name)]).toEqual(['beispiel', 'posteingang', ['bx_posteingang_status_idx', 'bx_posteingang_eingegangen_idx']]);
 });

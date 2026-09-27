@@ -66,3 +66,36 @@ export function kiVerbrauchTabelle(schema: PgSchema<string>, praefix: string) {
 }
 
 export type KiVerbrauchTabelle = ReturnType<typeof kiVerbrauchTabelle>;
+
+/**
+ * Persistente Posteingang-Warteschlange — jeder Eintrag ist ein Umschlag/Batch
+ * (1..n Dateien), neuer Antrag ODER Nachreichung. `dateien` (jsonb) hält den
+ * Umschlag-Inhalt inkl. Analyseergebnissen; die rohen Bytes liegen in der
+ * Dateiablage (referenziert je Datei). KEIN FK auf `zugeordneter_vorgang_id`/
+ * `zugeordnete_akte_id`: der Eingang muss die Löschung des Vorgangs überdauern.
+ */
+export function posteingangTabelle(schema: PgSchema<string>, praefix: string) {
+  return schema.table('posteingang', {
+    id: text('id').primaryKey(),
+    quelle: text('quelle').notNull().default('manuell'),
+    eingegangenAm: timestamp('eingegangen_am', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+    betreff: text('betreff'),
+    status: text('status').notNull().default('eingegangen'),
+    dateien: jsonb('dateien').notNull().default([]),
+    matchVorschlag: jsonb('match_vorschlag'),
+    zugeordneterVorgangId: text('zugeordneter_vorgang_id'),
+    zugeordneteAkteId: text('zugeordnete_akte_id'),
+    bearbeiterId: text('bearbeiter_id'),
+    verworfenGrund: text('verworfen_grund'),
+    hash: text('hash'),
+    data: jsonb('data').notNull().default({}),
+    version: integer('version').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  }, (t) => ({
+    statusIdx: index(`${praefix}_posteingang_status_idx`).on(t.status),
+    eingegangenIdx: index(`${praefix}_posteingang_eingegangen_idx`).on(t.eingegangenAm),
+  }));
+}
+
+export type PosteingangTabelle = ReturnType<typeof posteingangTabelle>;
