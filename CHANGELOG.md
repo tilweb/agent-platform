@@ -2,6 +2,15 @@
 
 ## 2026-09-27
 
+### Grundsicherung: neue Antragsprüfungs-App (Welle G1 — Fundament)
+Start der App „Grundsicherung" (Grundsicherung im Alter und bei Erwerbsminderung, SGB XII Kap. 4) nach dem Muster
+`docs/antragspruefung-muster.md` auf dem Antrag-Kern. G1: eigenes DB-Schema `grundsicherung` (Migration 0048),
+Datenmodell mit Einsatzgemeinschaft, Anspruchsgrund Alter/Erwerbsminderung und getrennten Wohnkosten, Storage,
+Routen für Akten, Vorgänge, Personen, Dokumente, Prüfschritte, Textbausteine, Protokoll, Feldstatus, Notizen,
+Sachbearbeitung und Aufgaben — jeweils mit Rollen-, Einschränkungs- und Audit-Pflichten. Die App startet auf neuen
+Instanzen ausgeschaltet (Admin schaltet ein). Regelkatalog: `docs/grundsicherung-regelkatalog-2026-09-27.md`,
+Spec: `docs/grundsicherung-app-spec-2026-09-27.md`.
+
 ### Wohngeld: Schreibschutz eingeschränkter Vorgänge (Art. 18) lückenlos
 KI-Vorschläge bestätigen/verwerfen prüft jetzt, dass der Eintrag zum Vorgang in der URL gehört. Vorher ließ sich
 die Einschränkung eines Vorgangs über die URL eines anderen Vorgangs umgehen. Notizen anlegen/löschen sind bei

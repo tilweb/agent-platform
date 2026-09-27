@@ -12,8 +12,8 @@ import { join } from 'node:path';
 const DIR = import.meta.dir;
 const SELBST = 'fachfrei.test.ts';
 const BEGRIFFE_AUSNAHMEN = new Set([SELBST, 'tabellen.test.ts']);
-const VERBOTEN = /wohngeld|wogg|wohngeld_/i;
-const APP_IMPORT = /from\s+['"][^'"]*apps\/wohngeld[^'"]*['"]|from\s+['"]\.\.\/wohngeld[^'"]*['"]|import\(\s*['"][^'"]*wohngeld[^'"]*['"]\s*\)/;
+const VERBOTEN = /wohngeld|wogg|grundsicherung|sgb xii/i;
+const APP_IMPORT = /from\s+['"][^'"]*apps\/(?:wohngeld|grundsicherung)[^'"]*['"]|from\s+['"]\.\.\/(?:wohngeld|grundsicherung)[^'"]*['"]|import\(\s*['"][^'"]*wohngeld[^'"]*['"]\s*\)/;
 
 function tsDateien(dir: string, rel = ''): string[] {
   const out: string[] = [];

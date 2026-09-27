@@ -28,6 +28,7 @@ export * from './vorgangsmappe';
 export * from './podcast-repurposing';
 export * from './echoloop';
 export * from './wohngeld';
+export * from './grundsicherung';
 export * from './generated';
 export * from './documents';
 export * from './agents';

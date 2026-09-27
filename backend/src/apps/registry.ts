@@ -21,6 +21,7 @@ import { vorgangsmappeConfig } from './vorgangsmappe';
 import { podcastRepurposingConfig } from './podcast-repurposing';
 import { echoloopConfig } from './echoloop';
 import { wohngeldConfig } from './wohngeld';
+import { grundsicherungConfig } from './grundsicherung';
 
 /**
  * All built-in apps bundled with the backend. On server startup,
@@ -37,6 +38,7 @@ const BUILT_IN_APPS: AppConfig[] = [
   podcastRepurposingConfig,
   echoloopConfig,
   wohngeldConfig,
+  grundsicherungConfig,
 ];
 
 let registryCache: AppsRegistry | null = null;

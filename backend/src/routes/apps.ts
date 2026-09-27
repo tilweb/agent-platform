@@ -32,6 +32,7 @@ import { vorgangsmappeRoutes } from '../apps/vorgangsmappe/routes';
 import { podcastRepurposingRoutes } from '../apps/podcast-repurposing/routes';
 import { echoloopRoutes } from '../apps/echoloop/routes';
 import { wohngeldRoutes } from '../apps/wohngeld/routes';
+import { grundsicherungRoutes } from '../apps/grundsicherung/routes';
 
 const apps = new Hono();
 
@@ -337,5 +338,6 @@ apps.route('/vorgangsmappe', vorgangsmappeRoutes);
 apps.route('/podcast-repurposing', podcastRepurposingRoutes);
 apps.route('/echoloop', echoloopRoutes);
 apps.route('/wohngeld', wohngeldRoutes);
+apps.route('/grundsicherung', grundsicherungRoutes);
 
 export { apps as appsRoutes };
