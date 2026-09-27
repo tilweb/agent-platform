@@ -73,10 +73,16 @@ export function summiere(m: SeitenMetrik[]): Summe {
   return { recall, praezision, zahlenRecall: s.rz ? s.tz / s.rz : 0, f1: recall + praezision ? (2 * recall * praezision) / (recall + praezision) : 0 };
 }
 
-/** Wiederholungsschleife (bekanntes Fehlerbild kleiner OCR-VLMs): eine Zeile (≥ 10 Zeichen, also keine Kästchen/Pfeile) ≥ 8× in den letzten 60 Zeilen. */
-export function hatSchleife(ocr: string): boolean {
-  const zeilen = ocr.split('\n').map((z) => z.trim()).filter((z) => z.length >= 10).slice(-60);
+/**
+ * Wiederholungsschleife (bekanntes Fehlerbild kleiner OCR-VLMs): eine Zeile (≥ 10 Zeichen, also keine Kästchen/Pfeile)
+ * steht ≥ 8× in den letzten 60 Zeilen UND deutlich öfter als in der Referenz — legitime Wiederholungen
+ * (Kontoauszug-Buchungen, Formularzeilen „Betrag in EUR/Monat") zählen so nicht als Schleife.
+ */
+export function hatSchleife(ocr: string, referenz?: string): boolean {
+  const norm = (z: string) => entferneAuszeichnung(z).replace(/[☐☑☒▶►■□✓✔]/g, ' ').toLowerCase().replace(/\s+/g, ' ').trim();
+  const zeilen = ocr.split('\n').map(norm).filter((z) => z.length >= 10).slice(-60);
   const n = new Map<string, number>();
   for (const z of zeilen) n.set(z, (n.get(z) ?? 0) + 1);
-  return [...n.values()].some((c) => c >= 8);
+  const ref = referenz != null ? norm(referenz.replace(/\n/g, ' ')) : null;
+  return [...n].some(([z, c]) => c >= 8 && (ref == null || c > ref.split(z).length - 1 + 3));
 }

@@ -186,8 +186,9 @@ async function laufeModell(modell: Modell, seiten: Seite[]): Promise<Ergebnis[]>
       await Bun.write(pfad, JSON.stringify(eintrag, null, 2));
     }
     if (!eintrag) continue;
-    const metrik = eintrag.text != null ? vergleicheSeite(await referenz(s), eintrag.text) : undefined;
-    const r: Ergebnis = { ...s, sekunden: eintrag.sekunden, fehler: eintrag.fehler, schleife: eintrag.text != null && hatSchleife(eintrag.text), metrik };
+    const ref = eintrag.text != null ? await referenz(s) : '';
+    const metrik = eintrag.text != null ? vergleicheSeite(ref, eintrag.text) : undefined;
+    const r: Ergebnis = { ...s, sekunden: eintrag.sekunden, fehler: eintrag.fehler, schleife: eintrag.text != null && hatSchleife(eintrag.text, ref), metrik };
     erg.push(r);
     const kurz = metrik ? `Recall ${pz(metrik.treffer / (metrik.refWoerter || 1))} Zahlen ${pz(metrik.zahlenTreffer / (metrik.refZahlen || 1))}` : `FEHLER ${r.fehler}`;
     console.log(`  [${i}/${seiten.length}] ${s.fall} S.${s.seite} ${s.art}${s.handschrift ? ' (Handschrift)' : ''}: ${kurz}${r.sekunden != null ? ` · ${r.sekunden.toFixed(1)} s` : ''}${r.schleife ? ' · SCHLEIFE' : ''}`);

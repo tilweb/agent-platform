@@ -30,4 +30,7 @@ test('anweisungFuer wählt den Trainings-Prompt je Modellfamilie', () => {
 test('hatSchleife erkennt Wiederholung, ignoriert kurze Symbolzeilen', () => {
   expect(hatSchleife(Array(12).fill('- [ ] DEUTSCH').join('\n'))).toBe(true);
   expect(hatSchleife(Array(18).fill('▶').join('\n') + '\nGeschlecht')).toBe(false);
+  const buchungen = Array(12).fill('Kartenzahlung girocard Bremen').join('\n');
+  expect(hatSchleife(buchungen, buchungen)).toBe(false);
+  expect(hatSchleife(Array(30).fill('- [ ] DEUTSCH').join('\n'), 'Staatsangehörigkeit DEUTSCH')).toBe(true);
 });
