@@ -2,6 +2,11 @@
 
 ## 2026-09-27
 
+### Wohngeld: Schreibschutz eingeschränkter Vorgänge (Art. 18) lückenlos
+KI-Vorschläge bestätigen/verwerfen prüft jetzt, dass der Eintrag zum Vorgang in der URL gehört. Vorher ließ sich
+die Einschränkung eines Vorgangs über die URL eines anderen Vorgangs umgehen. Notizen anlegen/löschen sind bei
+eingeschränkten Vorgängen jetzt auch serverseitig gesperrt (bisher nur in der Oberfläche). Mit Tests.
+
 ### Antrag-Kern: gemeinsame Bausteine für Antragsprüfungs-Apps (Wellen K1–K4)
 Vorbereitung für weitere Antrags-Apps nach Wohngeld (zuerst Grundsicherung). Fachfreie Bausteine liegen jetzt in
 `backend/src/apps/_antrag-kern/` und `frontend/src/apps/_antrag-kern/`; Wohngeld nutzt sie über dünne Adapter und

@@ -214,7 +214,10 @@ export function createFeldstatusRoutes<TZiel extends string = string>(opts: Feld
     if (denied) return c.json(denied, 403);
     const eingeschr = await guards.denyIfVorgangEingeschraenkt(c.req.param('vorgangId'));
     if (eingeschr) return c.json(eingeschr, 403);
-    const fs = await store.bestaetigeFeld(c.req.param('fsId'));
+    // Der Eintrag muss zum Vorgang der URL gehören — sonst greift die Einschränkungs-Prüfung ins Leere.
+    const vorher = await store.getFeldStatus(c.req.param('fsId'));
+    if (!vorher || vorher.vorgangId !== c.req.param('vorgangId')) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
+    const fs = await store.bestaetigeFeld(vorher.id);
     if (!fs) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
     await opts.beiBestaetigt?.(fs);
     await audit(c, { aktion: 'feld.bestaetigt', objektTyp: 'feldstatus', objektId: fs.id, vorgangId: fs.vorgangId, detail: fs.feldPfad });
@@ -229,7 +232,7 @@ export function createFeldstatusRoutes<TZiel extends string = string>(opts: Feld
     const eingeschr = await guards.denyIfVorgangEingeschraenkt(c.req.param('vorgangId'));
     if (eingeschr) return c.json(eingeschr, 403);
     const fs = await store.getFeldStatus(c.req.param('fsId'));
-    if (!fs) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
+    if (!fs || fs.vorgangId !== c.req.param('vorgangId')) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
     await opts.beiVerwerfen?.(fs);
     await store.loescheFeldStatus(fs.id);
     await opts.beiEntscheidung?.(fs.vorgangId, [fs], 'verworfen');

@@ -190,6 +190,16 @@ describe('Gates', () => {
     expect((await a.app.request('/vorgaenge/v-1/feldstatus')).status).toBe(200);
   });
 
+  test('Eintrag eines anderen Vorgangs ⇒ 404, nichts verändert (Einschränkung nicht über fremde URL umgehbar)', async () => {
+    const a = aufbau('owner', { eingeschraenkt: ['v-2'] });
+    for (const pfad of ['/vorgaenge/v-1/feldstatus/fs-4/bestaetigen', '/vorgaenge/v-1/feldstatus/fs-4/verwerfen']) {
+      const res = await post(a.app, pfad);
+      expect(res.status).toBe(404);
+    }
+    expect(a.ablauf).toEqual([]);
+    expect(a.store.rows.get('fs-4')!.bestaetigt).toBe(false);
+  });
+
   test('Editor-Gate vor Einschränkungs-Gate', async () => {
     const a = aufbau('viewer', { eingeschraenkt: ['v-1'] });
     const res = await post(a.app, '/vorgaenge/v-1/feldstatus/fs-1/bestaetigen');

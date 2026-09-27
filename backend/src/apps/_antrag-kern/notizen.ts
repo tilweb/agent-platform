@@ -101,7 +101,11 @@ export interface NotizAuditEvent {
 export interface NotizenRoutenOptionen {
   store: NotizenStore;
   vorgangExistiert: (vorgangId: string) => Promise<boolean>;
-  guards: { denyIfNotAppEditor: (c: Context) => { error: string } | null };
+  guards: {
+    denyIfNotAppEditor: (c: Context) => { error: string } | null;
+    /** Art. 18: eingeschränkte Vorgänge sind schreibgeschützt (auch für Notizen). */
+    denyIfVorgangEingeschraenkt?: (vorgangId: string) => Promise<{ error: string } | null>;
+  };
   audit: (c: Context, e: NotizAuditEvent) => Promise<void>;
 }
 
@@ -125,6 +129,8 @@ export function createNotizenRoutes(opts: NotizenRoutenOptionen) {
     if (denied) return c.json(denied, 403);
     const vorgangId = c.req.param('vorgangId');
     if (!(await opts.vorgangExistiert(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+    const eingeschr = await guards.denyIfVorgangEingeschraenkt?.(vorgangId);
+    if (eingeschr) return c.json(eingeschr, 403);
     const body = await c.req.json<{ anker?: string; text?: string }>().catch(() => null);
     if (!body?.anker?.trim()) return c.json({ error: 'anker ist erforderlich' }, 400);
     if (!body?.text?.trim()) return c.json({ error: 'text ist erforderlich' }, 400);
@@ -140,6 +146,8 @@ export function createNotizenRoutes(opts: NotizenRoutenOptionen) {
     if (denied) return c.json(denied, 403);
     const id = c.req.param('id');
     const before = await store.getNotiz(id);
+    const eingeschr = before ? await guards.denyIfVorgangEingeschraenkt?.(before.vorgangId) : null;
+    if (eingeschr) return c.json(eingeschr, 403);
     const ok = await store.loescheNotiz(id);
     if (ok) await audit(c, { aktion: 'notiz.geloescht', objektTyp: 'notiz', objektId: id, vorgangId: before?.vorgangId, detail: before?.anker });
     return ok ? c.json({ ok: true }) : c.json({ error: 'Notiz nicht gefunden' }, 404);

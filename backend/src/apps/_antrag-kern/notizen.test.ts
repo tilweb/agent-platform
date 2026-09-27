@@ -25,13 +25,16 @@ function fakeStore(): NotizenStore & { rows: Map<string, Notiz> } {
   };
 }
 
-function aufbau(rolle: 'owner' | 'editor' | 'viewer' = 'editor') {
+function aufbau(rolle: 'owner' | 'editor' | 'viewer' = 'editor', eingeschraenkt: string[] = []) {
   const store = fakeStore();
   const audits: NotizAuditEvent[] = [];
   const routes = createNotizenRoutes({
     store,
     vorgangExistiert: async (id) => id === 'v-1',
-    guards: { denyIfNotAppEditor: (c) => (['owner', 'editor'].includes(c.get('appRole') as string) ? null : { error: 'kein Editor' }) },
+    guards: {
+      denyIfNotAppEditor: (c) => (['owner', 'editor'].includes(c.get('appRole') as string) ? null : { error: 'kein Editor' }),
+      denyIfVorgangEingeschraenkt: async (id) => (eingeschraenkt.includes(id) ? { error: 'eingeschränkt' } : null),
+    },
     audit: async (_c, e) => { audits.push(e); },
   });
   const app = new Hono();
@@ -86,6 +89,20 @@ describe('Liste', () => {
     const res = await a.app.request('/vorgaenge/v-1/notizen');
     expect(res.status).toBe(200);
     expect(((await res.json()) as { notizen: Notiz[] }).notizen.map((x) => x.text)).toEqual(['eins']);
+  });
+});
+
+describe('Einschränkung (Art. 18)', () => {
+  test('Anlegen und Löschen bei eingeschränktem Vorgang ⇒ 403, nichts verändert, kein Audit', async () => {
+    const a = aufbau('owner', ['v-1']);
+    const n = await a.store.addNotiz({ vorgangId: 'v-1', anker: 'a', text: 'x' });
+    const res = await anlegen(a.app, 'v-1', { anker: 'b', text: 'y' });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'eingeschränkt' });
+    expect((await a.app.request(`/notizen/${n.id}`, { method: 'DELETE' })).status).toBe(403);
+    expect(a.store.rows.size).toBe(1);
+    expect(a.audits).toEqual([]);
+    expect((await a.app.request('/vorgaenge/v-1/notizen')).status).toBe(200);
   });
 });
 

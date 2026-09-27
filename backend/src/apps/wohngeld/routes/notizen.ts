@@ -9,12 +9,12 @@
  */
 import { notizenStore, getVorgang } from '../storage';
 import { createNotizenRoutes } from '../../_antrag-kern/notizen';
-import { denyIfNotAppEditor } from './_shared';
+import { denyIfNotAppEditor, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit } from '../audit';
 
 export const notizenRoutes = createNotizenRoutes({
   store: notizenStore,
   vorgangExistiert: async (id) => !!(await getVorgang(id)),
-  guards: { denyIfNotAppEditor },
+  guards: { denyIfNotAppEditor, denyIfVorgangEingeschraenkt },
   audit,
 });
