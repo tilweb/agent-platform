@@ -13,6 +13,7 @@
  */
 import type { Posteingang as KernPosteingang, PosteingangDateiBasis } from '../_antrag-kern/posteingang/typen';
 import type { FeldStatus as KernFeldStatus } from '../_antrag-kern/feldstatus';
+import type { ScoredKandidat } from './matching';
 
 // ── gemeinsame Basis ────────────────────────────────────────────────────────
 
@@ -653,6 +654,8 @@ export interface Dokument extends Timestamped, Versioned {
   extraktion?: DokumentExtraktion;
   /** Ins Fachverfahren abgelegt (nur Status). */
   abgelegt?: boolean;
+  /** Erkennung über das DP-Segmentprofil „Grundsicherung-Eingang" (Provenienz, Lernsignal). */
+  profil?: ProfilErkennung;
 }
 
 /** Prüfschritt (Muster Abschnitt 3). */
@@ -719,14 +722,91 @@ export type {
   PosteingangQuelle, PosteingangStatus, PosteingangTeilVon, PosteingangTrennung,
 } from '../_antrag-kern/posteingang/typen';
 
-/** Datei im Umschlag. Fachliche Auswertungsfelder ergänzt G3. */
+/** Datei im Umschlag mit den fachlichen Auswertungsfeldern (nach der Auswertung befüllt). */
 export interface PosteingangDatei extends PosteingangDateiBasis<DokumentTyp> {
   titel?: string;
   analyse?: DokumentAnalyse;
+  /** Nur beim Antrag: Antragsdaten (Stammdaten, Personen, Wohnung …). */
+  stammdaten?: ExtrahierteStammdaten;
+  /** Match-/Zuordnungs-Signal aus Nachweisen (Name, Geburtsdatum). */
+  identitaet?: Identitaet;
   extraktion?: DokumentExtraktion;
+  /** Konfidenz je Feld-Status-Pfad (0..1). */
+  fieldConfidences?: Record<string, number>;
+  extrahierterTextGekuerzt?: string;
+  /** Erkennung über das DP-Segmentprofil (Abschnitt + Rohwerte). */
+  profil?: ProfilErkennung;
 }
 
-export interface Posteingang extends KernPosteingang<PosteingangDatei, unknown>, Timestamped, Versioned {}
+export interface Posteingang extends KernPosteingang<PosteingangDatei, ScoredKandidat>, Timestamped, Versioned {}
+
+// ── Erkennung (DP-Segmentprofil „Grundsicherung-Eingang") ───────────────────
+
+/** Herkunft einer Auswertung aus dem DP-Segmentprofil. */
+export interface ProfilErkennung {
+  /** Abschnittstyp des Profils (= Dokumenttyp der App). */
+  abschnitt: string;
+  /** Klassifikations-Konfidenz (0..1). */
+  konfidenz: number;
+  /** Rohwerte des Profils — Initialextraktion (Transparenz, spätere Lernbeispiele). */
+  rohwerte: Record<string, unknown>;
+  quelle: 'datenbank' | 'vorlage';
+  profilHash?: string;
+  /** Vorlagenstand der App zum Zeitpunkt der Erkennung (Governance). */
+  vorlageStand?: string;
+}
+
+/** Identitäts-Signal eines Dokuments (Match, Personenzuordnung). */
+export interface Identitaet {
+  nachname?: string;
+  vorname?: string;
+  geburtsdatum?: string;
+}
+
+/** Eine Person, wie sie aus dem Antrag gelesen wurde (Grundlage für das Anlegen der Personen). */
+export interface AntragPerson {
+  rolle: PersonRolle;
+  nachname?: string;
+  vorname?: string;
+  geburtsname?: string;
+  geburtsdatum?: string;
+  familienstand?: Familienstand;
+  staatsangehoerigkeit?: string;
+  /** Freitext „Verhältnis zur antragstellenden Person" (nur Haushaltsangehörige). */
+  verhaeltnis?: string;
+  betreuung?: Betreuung;
+  erwerbsminderung?: Erwerbsminderung;
+  schwerbehinderung?: Schwerbehinderung;
+  mehrbedarf_ernaehrung?: boolean;
+  krankenversicherung?: Krankenversicherung;
+  einkommen?: Array<Omit<Einkommensposition, 'id'>>;
+  /** `[]` = ausdrücklich kein Vermögen; fehlt = keine Angabe. */
+  vermoegen?: Array<Omit<VermoegenPosition, 'id'>>;
+  unterhalt_kinder_eltern?: UnterhaltKinderEltern;
+}
+
+/** Aus dem Antrag gelesene Stammdaten (nur beim Dokumenttyp `grundsicherungsantrag`). */
+export interface ExtrahierteStammdaten {
+  antragsart?: Antragsart;
+  antragsdatum?: string;
+  aktenzeichen?: string;
+  anspruchsgrund?: Anspruchsgrund;
+  /** Kurzform für Match/Betreff (= Person mit Rolle antragsteller). */
+  antragsteller?: Identitaet;
+  adresse?: { strasse?: string; hausnummer?: string; plz?: string; ort?: string };
+  wohnsituation?: Wohnsituation;
+  /** Wohnkosten getrennt (ohne Adresse). */
+  wohnung?: Omit<Wohnung, 'strasse' | 'hausnummer' | 'plz' | 'ort'>;
+  iban?: string;
+  vorbezug?: Vorbezug;
+  wohngeld_antrag_laeuft?: boolean;
+  /** Personen der Einsatzgemeinschaft und Haushaltsangehörige (Antragsteller:in zuerst). */
+  personen?: AntragPerson[];
+  /** Einkommenszeilen, die keiner Person zugeordnet werden konnten (Hinweis). */
+  nichtZugeordnet?: number;
+  /** Nur aus dem Posteingang-Formular: von Hand erfasster Ersteingang (§ 16 Abs. 2 SGB I). */
+  ersteingang?: Ersteingang;
+}
 
 // ── Feld-Provenienz / Notizen (Kern) ────────────────────────────────────────
 

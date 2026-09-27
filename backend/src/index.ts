@@ -56,6 +56,7 @@ import { seedProjectsFromDisk } from './projects';
 import { seedChatsFromDisk } from './services/chatStorage';
 import { seedKbFromDisk } from './services/kbStorage';
 import { seedWohngeldDemo } from './apps/wohngeld/seed-demo';
+import { seedGrundsicherungDemo } from './apps/grundsicherung/seed-demo';
 
 const app = new Hono();
 
@@ -194,6 +195,18 @@ async function initialize() {
       }
     } catch (error) {
       console.warn('[seed] Wohngeld demo seed skipped:', error instanceof Error ? error.message : error);
+    }
+
+    try {
+      // Grundsicherung: 3 Goldfaelle + Posteingang-Beispiele, create-if-absent wie Wohngeld.
+      const gs = await seedGrundsicherungDemo();
+      if (gs.skipped) {
+        console.log('[seed] Grundsicherung demo: skipped (Demo-Akten bereits vorhanden)');
+      } else {
+        console.log(`[seed] Grundsicherung demo: created ${gs.aktenCreated} Akten / ${gs.vorgaengeCreated} Vorgaenge`);
+      }
+    } catch (error) {
+      console.warn('[seed] Grundsicherung demo seed skipped:', error instanceof Error ? error.message : error);
     }
   } else if (process.env.SCALINGO_POSTGRES) {
     console.log('[seed] SEED_DEMO_DATA != "true" — skipping demo seeds (Customer-Mode)');

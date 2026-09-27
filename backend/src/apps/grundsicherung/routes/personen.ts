@@ -1,5 +1,9 @@
 import { Hono } from 'hono';
-import { listPersonen, getPerson, createPerson, updatePerson, deletePerson, getVorgang } from '../storage';
+import {
+  listPersonen, getPerson, createPerson, updatePerson, deletePerson, getVorgang, getAkte, listDokumente, listAuditEintraege,
+} from '../storage';
+import { auskunftToDocument, auskunftToJson } from '../auskunft-export';
+import { generateDocument, getMimeType, type DocumentFormat } from '../../../services/documentGenerator';
 import { VersionConflictError } from '../concurrency';
 import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit, auditUpdate } from '../audit';
@@ -31,9 +35,40 @@ personenRoutes.get('/personen/:id', async (c) => {
   return c.json({ person });
 });
 
-// TODO(G3): Betroffenenauskunft Art. 15/20 DSGVO — GET /personen/:id/auskunft/export (PDF/JSON,
-// Editor-Gate, auditiert `person.auskunft_exportiert`) nach Vorbild wohngeld/auskunft-export.ts,
-// mit den Grundsicherungs-Inhalten (Einkommen, Vermögen, KV, Schwerbehinderung, Unterhalt).
+/**
+ * Betroffenen-Auskunft (Art. 15/20 DSGVO) als PDF oder JSON (`?format=pdf|json`). Sammelt alle zu
+ * der Person gespeicherten Fachdaten + Kontext (Vorgang, Dokumentenliste ohne Datei-Bytes,
+ * Protokoll-Auszug). Editor-Gate; der Export wird protokolliert.
+ */
+personenRoutes.get('/personen/:id/auskunft/export', async (c) => {
+  const denied = denyIfNotAppEditor(c);
+  if (denied) return c.json(denied, 403);
+  const fmtParam = (c.req.query('format') ?? 'pdf').toLowerCase();
+  if (fmtParam !== 'pdf' && fmtParam !== 'json') return c.json({ error: 'format muss pdf oder json sein' }, 400);
+  const person = await getPerson(c.req.param('id'));
+  if (!person) return c.json({ error: 'Person nicht gefunden' }, 404);
+  const vorgang = await getVorgang(person.vorgangId);
+  const [akte, alleDokumente, protokoll] = await Promise.all([
+    vorgang ? getAkte(vorgang.akteId) : Promise.resolve(null),
+    listDokumente(person.vorgangId),
+    listAuditEintraege(person.vorgangId),
+  ]);
+  const input = { person, vorgang, akte, dokumente: alleDokumente.filter((d) => d.personId === person.id), protokoll };
+  const safeName = (person.nachname || 'Person').replace(/[^\p{L}\p{N}_-]+/gu, '_').replace(/^_+|_+$/g, '') || 'Person';
+
+  if (fmtParam === 'json') {
+    await audit(c, { aktion: 'person.auskunft_exportiert', objektTyp: 'person', objektId: person.id, vorgangId: person.vorgangId, detail: 'JSON' });
+    return new Response(JSON.stringify(auskunftToJson(input), null, 2), {
+      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': `attachment; filename="Auskunft-${safeName}.json"` },
+    });
+  }
+  const format: DocumentFormat = 'pdf';
+  const buffer = await generateDocument(auskunftToDocument(input), format);
+  await audit(c, { aktion: 'person.auskunft_exportiert', objektTyp: 'person', objektId: person.id, vorgangId: person.vorgangId, detail: 'PDF' });
+  return new Response(new Uint8Array(buffer), {
+    headers: { 'Content-Type': getMimeType(format), 'Content-Disposition': `attachment; filename="Auskunft-${safeName}.${format}"` },
+  });
+});
 
 personenRoutes.post('/vorgaenge/:vorgangId/personen', async (c) => {
   const denied = denyIfNotAppEditor(c);
