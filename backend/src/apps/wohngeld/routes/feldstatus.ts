@@ -1,23 +1,25 @@
 /**
- * Wohngeld — Feld-Provenienz (WP3): KI-Vorschlag-Bestätigung auf Feldebene.
+ * Wohngeld — Feld-Provenienz (WP3): KI-Vorschlag-Bestätigung auf Feldebene
+ * (Adapter auf den Antrag-Kern).
  *
  *  - GET    /vorgaenge/:id/feldstatus                     → { feldStatus }
  *  - POST   /vorgaenge/:id/feldstatus/:fsId/bestaetigen   → bestaetigt=true
  *  - POST   /vorgaenge/:id/feldstatus/:fsId/verwerfen     → Feldwert leeren + Status löschen
  *  - POST   /vorgaenge/:id/feldstatus/alle-bestaetigen    → alle offenen bestätigen
+ *
+ * Mechanik (Gates, Store, Audit, Reihenfolge) liegt in `apps/_antrag-kern/feldstatus.ts`.
+ * Hier bleiben die fachlichen Hooks: Feld leeren beim Verwerfen, Einkommen übernehmen,
+ * Lernbeispiele, automatische Prüfung.
  */
-import { Hono } from 'hono';
 import {
-  listFeldStatus, getFeldStatus, bestaetigeFeld, bestaetigeAlle, loescheFeldStatus,
-  getVorgang, updateVorgang, getPerson, updatePerson,
+  feldStatusStore, getVorgang, updateVorgang, getPerson, updatePerson,
 } from '../storage';
+import { createFeldstatusRoutes } from '../../_antrag-kern/feldstatus';
 import { denyIfNotAppEditor, denyIfVorgangEingeschraenkt } from './_shared';
 import { audit } from '../audit';
 import { vermerkeEntscheidungen } from '../lernbeispiele';
-import type { FeldStatus, Vorgang } from '../types';
+import type { FeldStatus, FeldStatusZielTyp, Vorgang } from '../types';
 import { pruefeAutomatisch } from '../pruefung';
-
-export const feldstatusRoutes = new Hono();
 
 /** Updates-Objekt zum Leeren eines Vorgang-Feldpfads (1–2 Ebenen). */
 function clearVorgangUpdates(vorgang: Vorgang, feldPfad: string): Record<string, unknown> {
@@ -55,31 +57,8 @@ async function uebernimmBestaetigung(fs: Pick<FeldStatus, 'zielTyp' | 'zielId' |
   }
 }
 
-feldstatusRoutes.get('/vorgaenge/:vorgangId/feldstatus', async (c) => {
-  return c.json({ feldStatus: await listFeldStatus(c.req.param('vorgangId')) });
-});
-
-feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/bestaetigen', async (c) => {
-  const denied = denyIfNotAppEditor(c);
-  if (denied) return c.json(denied, 403);
-  const eingeschr = await denyIfVorgangEingeschraenkt(c.req.param('vorgangId'));
-  if (eingeschr) return c.json(eingeschr, 403);
-  const fs = await bestaetigeFeld(c.req.param('fsId'));
-  if (!fs) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
-  await uebernimmBestaetigung(fs);
-  await audit(c, { aktion: 'feld.bestaetigt', objektTyp: 'feldstatus', objektId: fs.id, vorgangId: fs.vorgangId, detail: fs.feldPfad });
-  await vermerkeEntscheidungen(fs.vorgangId, [fs], 'bestaetigt');
-  return c.json({ feldStatus: fs });
-});
-
-feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/verwerfen', async (c) => {
-  const denied = denyIfNotAppEditor(c);
-  if (denied) return c.json(denied, 403);
-  const eingeschr = await denyIfVorgangEingeschraenkt(c.req.param('vorgangId'));
-  if (eingeschr) return c.json(eingeschr, 403);
-  const fs = await getFeldStatus(c.req.param('fsId'));
-  if (!fs) return c.json({ error: 'Feld-Status nicht gefunden' }, 404);
-
+/** Verwerfen: vorgeschlagenen Feldwert am Ziel leeren (bzw. auf Default zurücksetzen). */
+async function leereFeld(fs: FeldStatus): Promise<void> {
   if (fs.zielTyp === 'vorgang') {
     const vorgang = await getVorgang(fs.zielId);
     if (vorgang) await updateVorgang(fs.zielId, clearVorgangUpdates(vorgang, fs.feldPfad));
@@ -87,23 +66,17 @@ feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/:fsId/verwerfen', async 
     const person = await getPerson(fs.zielId);
     if (person) await updatePerson(fs.zielId, clearPersonUpdates(fs.feldPfad));
   }
-  await loescheFeldStatus(fs.id);
-  await vermerkeEntscheidungen(fs.vorgangId, [fs], 'verworfen');
-  await audit(c, { aktion: 'feld.verworfen', objektTyp: 'feldstatus', objektId: fs.id, vorgangId: fs.vorgangId, detail: fs.feldPfad });
-  await pruefeAutomatisch(fs.vorgangId); // verworfener Wert kann Befunde ändern
-  return c.json({ ok: true });
-});
+}
 
-feldstatusRoutes.post('/vorgaenge/:vorgangId/feldstatus/alle-bestaetigen', async (c) => {
-  const denied = denyIfNotAppEditor(c);
-  if (denied) return c.json(denied, 403);
-  const vorgangId = c.req.param('vorgangId');
-  const eingeschr = await denyIfVorgangEingeschraenkt(vorgangId);
-  if (eingeschr) return c.json(eingeschr, 403);
-  const offenVorher = (await listFeldStatus(vorgangId)).filter((f) => !f.bestaetigt);
-  const feldStatus = await bestaetigeAlle(vorgangId);
-  for (const fs of offenVorher) await uebernimmBestaetigung(fs);
-  await vermerkeEntscheidungen(vorgangId, offenVorher, 'bestaetigt');
-  await audit(c, { aktion: 'feld.alle_bestaetigt', objektTyp: 'feldstatus', vorgangId, detail: 'Alle offenen KI-Vorschläge bestätigt' });
-  return c.json({ feldStatus });
+export const feldstatusRoutes = createFeldstatusRoutes<FeldStatusZielTyp>({
+  store: feldStatusStore,
+  guards: { denyIfNotAppEditor, denyIfVorgangEingeschraenkt },
+  audit,
+  beiBestaetigt: uebernimmBestaetigung,
+  beiVerwerfen: leereFeld,
+  beiEntscheidung: vermerkeEntscheidungen,
+  // verworfener Wert kann Befunde ändern
+  nachAenderung: async (vorgangId, entscheidung) => {
+    if (entscheidung === 'verworfen') await pruefeAutomatisch(vorgangId);
+  },
 });

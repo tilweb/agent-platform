@@ -14,13 +14,15 @@ import {
 import { usageLog } from '../../db/schema/audit';
 import type {
   Akte, Vorgang, Person, Dokument, Pruefschritt, Schreiben, Aktivitaet,
-  VorgangSnapshot, PruefBefund, ChatMessage, ChatSource, FeldStatus, FeldStatusZielTyp, Notiz, Textbaustein,
+  VorgangSnapshot, PruefBefund, ChatMessage, ChatSource, FeldStatusZielTyp, Textbaustein,
   KiNutzungEintrag, Posteingang,
 } from './types';
 import { VersionConflictError, checkVersion } from './concurrency';
 import { genId, nowIso } from '../_antrag-kern/ids';
 import { createAuditStore, type AuditGesamtFilter } from '../_antrag-kern/audit';
 import { createPosteingangStore } from '../_antrag-kern/posteingang/store';
+import { createFeldStatusStore } from '../_antrag-kern/feldstatus';
+import { createNotizenStore } from '../_antrag-kern/notizen';
 
 
 // ── Row ↔ Domain Mapper ─────────────────────────────────────────────────────
@@ -539,142 +541,32 @@ async function getChatMessage(id: string): Promise<ChatMessage | null> {
   return rows[0] ? rowToChatMessage(rows[0]) : null;
 }
 
-// ── Feld-Status (WP3) ───────────────────────────────────────────────────────
+// ── Feld-Status (WP3) — Antrag-Kern ─────────────────────────────────────────
 
-function rowToFeldStatus(r: typeof wgFeldStatus.$inferSelect): FeldStatus {
-  return {
-    id: r.id,
-    vorgangId: r.vorgangId,
-    zielTyp: r.zielTyp as FeldStatusZielTyp,
-    zielId: r.zielId,
-    feldPfad: r.feldPfad,
-    quelle: r.quelle as FeldStatus['quelle'],
-    bestaetigt: r.bestaetigt,
-    quellDokumentId: r.quellDokumentId ?? undefined,
-    confidence: r.confidence ?? undefined,
-    created_at: r.createdAt,
-    updated_at: r.updatedAt,
-  };
-}
+const feldStatusStore = createFeldStatusStore<FeldStatusZielTyp>(wgFeldStatus);
 
-export async function listFeldStatus(vorgangId: string): Promise<FeldStatus[]> {
-  const db = getDb();
-  const rows = await db.select().from(wgFeldStatus)
-    .where(eq(wgFeldStatus.vorgangId, vorgangId))
-    .orderBy(wgFeldStatus.createdAt);
-  return rows.map(rowToFeldStatus);
-}
-
-export async function getFeldStatus(id: string): Promise<FeldStatus | null> {
-  const db = getDb();
-  const rows = await db.select().from(wgFeldStatus).where(eq(wgFeldStatus.id, id)).limit(1);
-  return rows[0] ? rowToFeldStatus(rows[0]) : null;
-}
-
+export const listFeldStatus = feldStatusStore.listFeldStatus;
+export const getFeldStatus = feldStatusStore.getFeldStatus;
 /** Upsert per (vorgangId, zielTyp, zielId, feldPfad). */
-export async function setFeldStatus(input: {
-  vorgangId: string;
-  zielTyp: FeldStatusZielTyp;
-  zielId: string;
-  feldPfad: string;
-  quelle: FeldStatus['quelle'];
-  bestaetigt?: boolean;
-  quellDokumentId?: string;
-  confidence?: number;
-}): Promise<FeldStatus> {
-  const db = getDb();
-  const now = nowIso();
-  const existing = await db.select().from(wgFeldStatus).where(and(
-    eq(wgFeldStatus.vorgangId, input.vorgangId),
-    eq(wgFeldStatus.zielTyp, input.zielTyp),
-    eq(wgFeldStatus.zielId, input.zielId),
-    eq(wgFeldStatus.feldPfad, input.feldPfad),
-  )).limit(1);
-  if (existing[0]) {
-    await db.update(wgFeldStatus).set({
-      quelle: input.quelle,
-      bestaetigt: input.bestaetigt ?? false,
-      quellDokumentId: input.quellDokumentId ?? null,
-      confidence: input.confidence ?? null,
-      updatedAt: now,
-    }).where(eq(wgFeldStatus.id, existing[0].id));
-    return (await getFeldStatus(existing[0].id))!;
-  }
-  const id = genId('fs');
-  await db.insert(wgFeldStatus).values({
-    id, vorgangId: input.vorgangId, zielTyp: input.zielTyp, zielId: input.zielId,
-    feldPfad: input.feldPfad, quelle: input.quelle, bestaetigt: input.bestaetigt ?? false,
-    quellDokumentId: input.quellDokumentId ?? null, confidence: input.confidence ?? null,
-    createdAt: now, updatedAt: now,
-  });
-  return (await getFeldStatus(id))!;
-}
-
+export const setFeldStatus = feldStatusStore.setFeldStatus;
 /** Einen Feld-Status bestätigen (bestaetigt=true). */
-export async function bestaetigeFeld(id: string): Promise<FeldStatus | null> {
-  const db = getDb();
-  const res = await db.update(wgFeldStatus)
-    .set({ bestaetigt: true, updatedAt: nowIso() })
-    .where(eq(wgFeldStatus.id, id))
-    .returning({ id: wgFeldStatus.id });
-  if (res.length === 0) return null;
-  return getFeldStatus(id);
-}
-
+export const bestaetigeFeld = feldStatusStore.bestaetigeFeld;
 /** Alle offenen (unbestätigten) Feld-Status eines Vorgangs bestätigen. */
-export async function bestaetigeAlle(vorgangId: string): Promise<FeldStatus[]> {
-  const db = getDb();
-  await db.update(wgFeldStatus)
-    .set({ bestaetigt: true, updatedAt: nowIso() })
-    .where(and(eq(wgFeldStatus.vorgangId, vorgangId), eq(wgFeldStatus.bestaetigt, false)));
-  return listFeldStatus(vorgangId);
-}
+export const bestaetigeAlle = feldStatusStore.bestaetigeAlle;
+export const loescheFeldStatus = feldStatusStore.loescheFeldStatus;
+/** Speicher-Instanz für die Kern-Routen der Feld-Provenienz. */
+export { feldStatusStore };
 
-export async function loescheFeldStatus(id: string): Promise<boolean> {
-  const db = getDb();
-  const r = await db.delete(wgFeldStatus).where(eq(wgFeldStatus.id, id)).returning({ id: wgFeldStatus.id });
-  return r.length > 0;
-}
+// ── Notizen (WP4, append-only) — Antrag-Kern ────────────────────────────────
 
-// ── Notizen (WP4, append-only) ──────────────────────────────────────────────
+const notizenStore = createNotizenStore(wgNotizen);
 
-function rowToNotiz(r: typeof wgNotizen.$inferSelect): Notiz {
-  return {
-    id: r.id, vorgangId: r.vorgangId, anker: r.anker,
-    autor: r.autor ?? undefined, text: r.text, created_at: r.createdAt,
-  };
-}
-
-export async function listNotizen(vorgangId: string): Promise<Notiz[]> {
-  const db = getDb();
-  const rows = await db.select().from(wgNotizen)
-    .where(eq(wgNotizen.vorgangId, vorgangId))
-    .orderBy(wgNotizen.createdAt);
-  return rows.map(rowToNotiz);
-}
-
-export async function addNotiz(input: { vorgangId: string; anker: string; autor?: string; text: string }): Promise<Notiz> {
-  const db = getDb();
-  const now = nowIso();
-  const id = genId('notiz');
-  await db.insert(wgNotizen).values({
-    id, vorgangId: input.vorgangId, anker: input.anker,
-    autor: input.autor ?? null, text: input.text, createdAt: now,
-  });
-  return (await getNotiz(id))!;
-}
-
-export async function getNotiz(id: string): Promise<Notiz | null> {
-  const db = getDb();
-  const rows = await db.select().from(wgNotizen).where(eq(wgNotizen.id, id)).limit(1);
-  return rows[0] ? rowToNotiz(rows[0]) : null;
-}
-
-export async function loescheNotiz(id: string): Promise<boolean> {
-  const db = getDb();
-  const r = await db.delete(wgNotizen).where(eq(wgNotizen.id, id)).returning({ id: wgNotizen.id });
-  return r.length > 0;
-}
+export const listNotizen = notizenStore.listNotizen;
+export const addNotiz = notizenStore.addNotiz;
+export const getNotiz = notizenStore.getNotiz;
+export const loescheNotiz = notizenStore.loescheNotiz;
+/** Speicher-Instanz für die Kern-Routen der Notizen. */
+export { notizenStore };
 
 // ── Textbausteine (WP6) ─────────────────────────────────────────────────────
 

@@ -8,7 +8,7 @@
  * unter `db/schema/` werden von drizzle-kit (Node) geladen und dürfen keine
  * Laufzeit-Abhängigkeiten (DB-Handle, Auth, Hono) mitziehen.
  */
-import { text, integer, jsonb, timestamp, index, type PgSchema } from 'drizzle-orm/pg-core';
+import { text, integer, boolean, real, jsonb, timestamp, index, type AnyPgColumn, type PgSchema } from 'drizzle-orm/pg-core';
 
 /**
  * Audit-/Protokoll-Log (append-only, revisionssicher). Kein FK auf vorgang_id —
@@ -99,3 +99,47 @@ export function posteingangTabelle(schema: PgSchema<string>, praefix: string) {
 }
 
 export type PosteingangTabelle = ReturnType<typeof posteingangTabelle>;
+
+/**
+ * Feld-Provenienz: markiert einen (z. B. KI-)extrahierten Feldwert als Vorschlag, den die
+ * Sachbearbeitung bestätigt/verwirft. `vorgangIdRef` ist ein Thunk auf die Vorgangs-ID-Spalte
+ * der App (`() => vorgaenge.id`): FK mit `onDelete: 'cascade'` — der Status stirbt mit dem Vorgang.
+ */
+export function feldStatusTabelle(schema: PgSchema<string>, praefix: string, vorgangIdRef: () => AnyPgColumn) {
+  return schema.table('feld_status', {
+    id: text('id').primaryKey(),
+    vorgangId: text('vorgang_id').notNull().references(vorgangIdRef, { onDelete: 'cascade' }),
+    zielTyp: text('ziel_typ').notNull().default('vorgang'), // von der App festgelegt, z. B. 'vorgang' | 'person'
+    zielId: text('ziel_id').notNull(),
+    feldPfad: text('feld_pfad').notNull(),                  // z. B. 'adresse.ort'
+    quelle: text('quelle').notNull().default('llm'),        // 'llm' | 'mensch'
+    bestaetigt: boolean('bestaetigt').notNull().default(false),
+    quellDokumentId: text('quell_dokument_id'),
+    confidence: real('confidence'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  }, (t) => ({
+    vorgangIdx: index(`${praefix}_feldstatus_vorgang_idx`).on(t.vorgangId),
+  }));
+}
+
+export type FeldStatusTabelle = ReturnType<typeof feldStatusTabelle>;
+
+/**
+ * Interne Notizen je Sektion/Person eines Vorgangs (append-only). FK auf die Vorgangs-ID
+ * mit `onDelete: 'cascade'` (siehe `feldStatusTabelle`).
+ */
+export function notizenTabelle(schema: PgSchema<string>, praefix: string, vorgangIdRef: () => AnyPgColumn) {
+  return schema.table('notizen', {
+    id: text('id').primaryKey(),
+    vorgangId: text('vorgang_id').notNull().references(vorgangIdRef, { onDelete: 'cascade' }),
+    anker: text('anker').notNull(), // z. B. 'sektion:allgemein' | 'person:<id>'
+    autor: text('autor'),
+    text: text('text').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  }, (t) => ({
+    vorgangIdx: index(`${praefix}_notizen_vorgang_idx`).on(t.vorgangId),
+  }));
+}
+
+export type NotizenTabelle = ReturnType<typeof notizenTabelle>;

@@ -15,6 +15,7 @@
 import type { ExtrahierteStammdaten, Identitaet } from './extraction';
 import type { ScoredKandidat } from './matching';
 import type { Posteingang as KernPosteingang, PosteingangDateiBasis } from '../_antrag-kern/posteingang/typen';
+import type { FeldStatus as KernFeldStatus } from '../_antrag-kern/feldstatus';
 
 // ── gemeinsame Basis ────────────────────────────────────────────────────────
 
@@ -580,38 +581,21 @@ export interface Posteingang extends KernPosteingang<PosteingangDatei, ScoredKan
 /** Ziel-Entität eines Feld-Status. */
 export type FeldStatusZielTyp = 'vorgang' | 'person';
 
-/** Herkunft eines Feldwerts. */
-export type FeldQuelle = 'llm' | 'mensch';
+/** Herkunft eines Feldwerts ('llm' | 'mensch') — aus dem Antrag-Kern. */
+export type { FeldQuelle } from '../_antrag-kern/feldstatus';
 
 /**
  * Feld-Provenienz: markiert einen extrahierten Feldwert als Vorschlag, den die
  * Sachbearbeitung bestätigt/verwirft. Generisch statt Umbau jedes Feldes.
+ * Form aus dem Antrag-Kern (`apps/_antrag-kern/feldstatus.ts`); `feldPfad` z. B.
+ * 'wohnung.miete' oder 'geburtsdatum'.
  */
-export interface FeldStatus {
-  id: string;
-  vorgangId: string;
-  zielTyp: FeldStatusZielTyp;
-  zielId: string;
-  feldPfad: string;             // z. B. 'wohnung.miete' oder 'geburtsdatum'
-  quelle: FeldQuelle;
-  bestaetigt: boolean;
-  quellDokumentId?: string;
-  confidence?: number;
-  created_at: string;
-  updated_at: string;
-}
+export interface FeldStatus extends KernFeldStatus<FeldStatusZielTyp> {}
 
 // ── Notizen je Sektion/Person (Welle 2, WP4) ────────────────────────────────
 
-/** Interne Notiz zu einer Sektion oder Person eines Vorgangs (append-only). */
-export interface Notiz {
-  id: string;
-  vorgangId: string;
-  anker: string;                // z. B. 'sektion:allgemein' | 'person:<id>'
-  autor?: string;
-  text: string;
-  created_at: string;
-}
+/** Interne Notiz zu einer Sektion oder Person eines Vorgangs (append-only) — aus dem Antrag-Kern. */
+export type { Notiz } from '../_antrag-kern/notizen';
 
 // ── Fall-Chat (grounded Fall-Q&A, Stufen C1 + C2) ──────────────────────────
 

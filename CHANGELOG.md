@@ -2,7 +2,7 @@
 
 ## 2026-09-27
 
-### Antrag-Kern: gemeinsame Bausteine für Antragsprüfungs-Apps (Wellen K1–K3)
+### Antrag-Kern: gemeinsame Bausteine für Antragsprüfungs-Apps (Wellen K1–K4)
 Vorbereitung für weitere Antrags-Apps nach Wohngeld (zuerst Grundsicherung). Fachfreie Bausteine liegen jetzt in
 `backend/src/apps/_antrag-kern/` und `frontend/src/apps/_antrag-kern/`; Wohngeld nutzt sie über dünne Adapter und
 verhält sich unverändert.
@@ -17,7 +17,10 @@ Welle K2: Posteingang-Mechanik im Kern (Zustandsmaschine, Hashes/Dedupe, Fortsch
 Store, Routen-Fabrik mit Hooks für die fachliche Erkennung/Zuordnung). Jede App bietet zusätzlich `einliefern()` als
 programmatische Einlieferung — Naht für einen später vorschaltbaren gemeinsamen Eingang. Die Posteingang-Routen haben
 jetzt erstmals Tests (23 Fälle mit In-Memory-Fakes).
-Abnahme: 763 Tests grün, Lese-Schnappschuss aller Demo-Vorgänge vor/nach dem Umbau identisch.
+Welle K4: Feldstatus (KI-Vorschläge auf Feldebene bestätigen/verwerfen) und Notizen im Kern, fachliche Folgen
+(Feld leeren, Einkommen übernehmen, Lernbeispiele, Auto-Prüfung) als Hooks der App; erstmals Routentests.
+Muster für alle Antrags-Apps: `docs/antragspruefung-muster.md`.
+Abnahme: 784 Tests grün, Lese-Schnappschuss aller Demo-Vorgänge vor/nach dem Umbau identisch.
 Spec: `docs/antrag-kern-spec-2026-09-27.md`, Konzept: `docs/antragspruefung-architektur-konzept-2026-09-27.md`.
 
 ### Wohngeld: Token-Verbrauch je Antrag

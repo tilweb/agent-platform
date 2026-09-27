@@ -7,9 +7,9 @@
  */
 import { test, expect } from 'bun:test';
 import { is, SQL } from 'drizzle-orm';
-import { getTableConfig, pgSchema, type PgTable } from 'drizzle-orm/pg-core';
-import { wgAuditLog, wgKiVerbrauch, wgPosteingang } from '../../db/schema/wohngeld';
-import { auditLogTabelle, kiVerbrauchTabelle, posteingangTabelle } from './tabellen';
+import { getTableConfig, pgSchema, text, type PgTable } from 'drizzle-orm/pg-core';
+import { wgAuditLog, wgKiVerbrauch, wgPosteingang, wgFeldStatus, wgNotizen } from '../../db/schema/wohngeld';
+import { auditLogTabelle, kiVerbrauchTabelle, posteingangTabelle, feldStatusTabelle, notizenTabelle } from './tabellen';
 
 type Spalte = [name: string, typ: string, notNull: boolean, primaerschluessel: boolean, standard: unknown];
 
@@ -36,7 +36,18 @@ function beschreibe(t: PgTable) {
       spalten: i.config.columns.map((x) => (x as { name: string }).name),
       unique: i.config.unique,
     })),
-    fks: c.foreignKeys.length,
+    fks: c.foreignKeys.map((f) => {
+      const r = f.reference();
+      const ziel = getTableConfig(r.foreignTable);
+      return {
+        name: f.getName(),
+        spalten: r.columns.map((x) => x.name),
+        ziel: `${ziel.schema}.${ziel.name}`,
+        zielSpalten: r.foreignColumns.map((x) => x.name),
+        onDelete: f.onDelete ?? null,
+        onUpdate: f.onUpdate ?? null,
+      };
+    }),
   };
 }
 
@@ -66,7 +77,7 @@ test('audit_log: identisch zum Stand vor dem Umbau', () => {
       { name: 'wg_audit_vorgang_idx', spalten: ['vorgang_id'], unique: false },
       { name: 'wg_audit_timestamp_idx', spalten: ['timestamp'], unique: false },
     ],
-    fks: 0,
+    fks: [],
   });
 });
 
@@ -94,7 +105,7 @@ test('ki_verbrauch: identisch zum Stand vor dem Umbau', () => {
       { name: 'wg_ki_verbrauch_vorgang_idx', spalten: ['vorgang_id'], unique: false },
       { name: 'wg_ki_verbrauch_posteingang_idx', spalten: ['posteingang_id'], unique: false },
     ],
-    fks: 0,
+    fks: [],
   });
 });
 
@@ -124,7 +135,64 @@ test('posteingang: identisch zum Stand vor dem Umbau', () => {
       { name: 'wg_posteingang_status_idx', spalten: ['status'], unique: false },
       { name: 'wg_posteingang_eingegangen_idx', spalten: ['eingegangen_am'], unique: false },
     ],
-    fks: 0,
+    fks: [],
+  });
+});
+
+test('feld_status: identisch zum Stand vor dem Umbau (inkl. FK/cascade)', () => {
+  expect(beschreibe(wgFeldStatus)).toEqual({
+    schema: 'wohngeld',
+    name: 'feld_status',
+    spalten: [
+      ['id', 'text', true, true, null],
+      ['vorgang_id', 'text', true, false, null],
+      ['ziel_typ', 'text', true, false, 'vorgang'],
+      ['ziel_id', 'text', true, false, null],
+      ['feld_pfad', 'text', true, false, null],
+      ['quelle', 'text', true, false, 'llm'],
+      ['bestaetigt', 'boolean', true, false, false],
+      ['quell_dokument_id', 'text', false, false, null],
+      ['confidence', 'real', false, false, null],
+      ['created_at', 'timestamp with time zone', true, false, NOW],
+      ['updated_at', 'timestamp with time zone', true, false, NOW],
+    ],
+    indizes: [
+      { name: 'wg_feldstatus_vorgang_idx', spalten: ['vorgang_id'], unique: false },
+    ],
+    fks: [{
+      name: 'feld_status_vorgang_id_vorgaenge_id_fk',
+      spalten: ['vorgang_id'],
+      ziel: 'wohngeld.vorgaenge',
+      zielSpalten: ['id'],
+      onDelete: 'cascade',
+      onUpdate: 'no action',
+    }],
+  });
+});
+
+test('notizen: identisch zum Stand vor dem Umbau (inkl. FK/cascade)', () => {
+  expect(beschreibe(wgNotizen)).toEqual({
+    schema: 'wohngeld',
+    name: 'notizen',
+    spalten: [
+      ['id', 'text', true, true, null],
+      ['vorgang_id', 'text', true, false, null],
+      ['anker', 'text', true, false, null],
+      ['autor', 'text', false, false, null],
+      ['text', 'text', true, false, ''],
+      ['created_at', 'timestamp with time zone', true, false, NOW],
+    ],
+    indizes: [
+      { name: 'wg_notizen_vorgang_idx', spalten: ['vorgang_id'], unique: false },
+    ],
+    fks: [{
+      name: 'notizen_vorgang_id_vorgaenge_id_fk',
+      spalten: ['vorgang_id'],
+      ziel: 'wohngeld.vorgaenge',
+      zielSpalten: ['id'],
+      onDelete: 'cascade',
+      onUpdate: 'no action',
+    }],
   });
 });
 
@@ -136,4 +204,11 @@ test('Fabriken: Schema und Index-Präfix kommen von der App', () => {
   expect([k.schema, k.name, k.indizes.map((i) => i.name)]).toEqual(['beispiel', 'ki_verbrauch', ['bx_ki_verbrauch_vorgang_idx', 'bx_ki_verbrauch_posteingang_idx']]);
   const p = beschreibe(posteingangTabelle(s, 'bx'));
   expect([p.schema, p.name, p.indizes.map((i) => i.name)]).toEqual(['beispiel', 'posteingang', ['bx_posteingang_status_idx', 'bx_posteingang_eingegangen_idx']]);
+  const vorgaenge = s.table('faelle', { id: text('id').primaryKey() });
+  const f = beschreibe(feldStatusTabelle(s, 'bx', () => vorgaenge.id));
+  expect([f.schema, f.name, f.indizes.map((i) => i.name), f.fks.map((x) => [x.ziel, x.onDelete])])
+    .toEqual(['beispiel', 'feld_status', ['bx_feldstatus_vorgang_idx'], [['beispiel.faelle', 'cascade']]]);
+  const n = beschreibe(notizenTabelle(s, 'bx', () => vorgaenge.id));
+  expect([n.schema, n.name, n.indizes.map((i) => i.name), n.fks.map((x) => [x.ziel, x.onDelete])])
+    .toEqual(['beispiel', 'notizen', ['bx_notizen_vorgang_idx'], [['beispiel.faelle', 'cascade']]]);
 });
