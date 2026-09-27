@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-27
+
+### OCR-Pilot Stufe A: offene OCR-Modelle lokal gegen den Golden Dataset messen
+Neues Messskript `backend/scripts/ocr-pilot/stufe-a.ts` für den Modellvergleich aus dem DP-Dienst-Konzept (§14a).
+Es rendert Seiten der Scan-PDFs aus dem Wohngeld-Golden-Dataset (150 dpi) und schickt sie an lokale Modelle
+(Ollama `ollama:<name>` oder LM Studio `lmstudio:<id>`) mit dem Trainings-Prompt der jeweiligen Modellfamilie
+(GLM-OCR, DeepSeek-OCR, PaddleOCR-VL …). Verglichen wird mit dem Textlayer derselben Seite der digitalen Fassung:
+Wort-Recall/-Präzision, Zahlen-Recall (Beträge, Daten, IBAN), Wiederholungsschleifen und Zeit pro Seite,
+getrennt nach Antrag maschinell, Antrag handschriftlich und Nachweisen. OCR-Ausgaben werden zwischengespeichert,
+`--nur-auswertung` wertet ohne Modellaufruf neu aus. Die Metriken liegen in `metriken.ts`, dazu Tests.
+
 ## 2026-09-25
 
 ### Word-Designvorlagen: Dokumente aus dem Chat im Corporate Design
