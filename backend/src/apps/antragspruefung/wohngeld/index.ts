@@ -12,7 +12,9 @@ export const wohngeldConfig: AppConfig = {
   description: 'Wohngeldanträge auf Vollständigkeit und Plausibilität prüfen und Nachforderungen erstellen',
   icon: 'wohngeld',
   version: '0.1.0',
-  enabled: true,
+  // Admin schaltet ein (gepflegtes `enabled` bleibt beim Registry-Abgleich erhalten) — so erscheint die
+  // App auf Instanzen ohne ENABLED_APPS-Whitelist nicht ungewollt beim nächsten Deployment.
+  enabled: false,
   routes: [
     { path: '/apps/wohngeld', component: 'WohngeldPage' },
     { path: '/apps/wohngeld/vorgang/:id', component: 'VorgangDetail' },

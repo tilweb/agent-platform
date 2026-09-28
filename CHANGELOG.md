@@ -2,6 +2,12 @@
 
 ## 2026-09-28
 
+### Wohngeld startet auf neuen Instanzen ausgeschaltet
+Die App Wohngeld ist jetzt wie Grundsicherung standardmäßig `enabled: false`. Instanzen, auf denen Wohngeld
+bereits registriert ist, behalten ihre gepflegte Einstellung (Registry-Abgleich). Auf Instanzen ohne
+`ENABLED_APPS`-Whitelist erscheint die App beim nächsten Deployment nicht mehr ungewollt; ein Admin schaltet
+sie bei Bedarf ein.
+
 ### Wohngeld/Grundsicherung: Fehlalarme deutlich gesenkt (Muster-Änderung)
 - Unterschrift im Mietvertrag: Die Erkennung liest Unterschriften unzuverlässig (35 von 60 unterschriebenen
   Verträgen als „unsigniert"). Jetzt standardmäßig Hinweis „Unterschrift bitte sichten" mit Seitenzahl;
