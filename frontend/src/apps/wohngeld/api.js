@@ -82,15 +82,6 @@ export const wohngeldApi = {
   updateDokument: (id, payload) => apiPut(`${base}/dokumente/${id}`, payload).then(json).then((d) => d.dokument),
   deleteDokument: (id) => apiDelete(`${base}/dokumente/${id}`).then(json),
 
-  // Posteingang (Upload + Klassifikation + Verteilung)
-  uploadPosteingang: (files) => {
-    const fd = new FormData();
-    Array.from(files).forEach((f) => fd.append('files', f));
-    return postForm('/posteingang/upload', fd).then(json).then((d) => d.previews);
-  },
-  verteilePosteingang: (payload) => apiPost(`${base}/posteingang/verteilen`, payload).then(json),
-  /** Zuordnungs-Vorschlag: identifizierende Daten gegen bestehende Vorgänge abgleichen → { kandidaten }. */
-  matchPosteingang: (payload) => apiPost(`${base}/posteingang/match`, payload).then(json).then((d) => d.kandidaten),
 
   // Posteingang-Warteschlange (persistent, multi-antragsfähig)
   /** Intake: 1..n Dateien nur speichern (kein Auto-Analyse). opts: { quelle, eingegangenAm, betreff }. */

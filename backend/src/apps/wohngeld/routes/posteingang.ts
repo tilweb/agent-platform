@@ -1,17 +1,11 @@
 /**
  * Wohngeld — Posteingang (Phase 4): Upload → pdftotext → Klassifikation/Extraktion.
  *
- *  - POST /posteingang/upload      : Datei(en) hochladen, extrahieren, Preview
- *                                    zurückgeben (noch KEINE Bindung an Vorgang).
- *  - POST /posteingang/match       : Zuordnungs-Vorschlag ermitteln.
- *  - POST /posteingang/verteilen   : Previews einer Akte/einem Vorgang zuordnen.
- *  - POST /vorgaenge/:id/dokumente/upload : Direkt-Upload am Vorgang (Detailseite).
- *
- * Die Kernlogik von `verteilen` ist als aufrufbare Funktion `verteileDokumente`
- * extrahiert; sowohl der alte Endpoint als auch die persistente Warteschlange
- * (`posteingang-queue.ts`, `zuordnen`) nutzen sie — kein Copy-Paste.
+ * Gemeinsame Helfer der Posteingang-Warteschlange (`posteingang-queue.ts`): Verteilung
+ * (`verteileDokumente`), Match (`buildIdent`, `ermittleMatchKandidaten`), Text aus Bytes.
+ * Die früheren Einzel-Endpunkte /posteingang/upload, /match und /verteilen sind entfernt
+ * (vom Frontend nicht mehr genutzt, ohne Protokoll und KI-Messung).
  */
-import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { getCurrentUserId } from '../../../auth/middleware';
 import {
@@ -22,17 +16,14 @@ import {
 import { audit } from '../audit';
 import { pruefeVorgang } from '../checker';
 import { pdfToText } from '../extract';
-import { klassifiziereUndExtrahiere, type ExtraktionErgebnis, type ExtrahierteStammdaten, type Identitaet } from '../extraction';
+import { type ExtraktionErgebnis, type ExtrahierteStammdaten, type Identitaet } from '../extraction';
 import { matchVorgaenge, type MatchIdent, type MatchKandidat, type ScoredKandidat } from '../matching';
 import { feldStatusHaushaltPfade } from '../feldstatus-mapping';
-import { storeUpload, resolveStorageRef } from '../filestore';
+import { resolveStorageRef } from '../filestore';
 import { stammdatenUebernahme } from '../stammdaten-uebernahme';
 import { pruefeUndSynchronisiere } from '../pruefung';
 import { flagPersonUnklar, kindergeldEmpfaenger, ordneNachweisZu, personenAusAntrag } from '../haushalt';
-import { denyIfNotAppEditor } from './_shared';
 import type { WohnungMiete, Akte, Vorgang, Dokument, Person } from '../types';
-
-export const posteingangRoutes = new Hono();
 
 export const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 
@@ -61,46 +52,7 @@ export async function extractTextFromBytes(bytes: Uint8Array, contentType: strin
   }
 }
 
-/** Text aus einer hochgeladenen Datei ziehen (Wrapper über extractTextFromBytes). */
-async function extractText(file: File, bytes: Uint8Array): Promise<string> {
-  return extractTextFromBytes(bytes, file.type, file.name);
-}
 
-/** Upload + Extraktion → Preview (ohne Persistenz eines Dokuments). */
-posteingangRoutes.post('/posteingang/upload', async (c) => {
-  const denied = denyIfNotAppEditor(c);
-  if (denied) return c.json(denied, 403);
-
-  const form = await c.req.formData();
-  const files = form.getAll('files').filter((e): e is File => e instanceof File);
-  // Fallback: Einzelfeld "file"
-  const single = form.get('file');
-  if (single instanceof File) files.push(single);
-  if (!files.length) return c.json({ error: 'Keine Datei(en) im Feld "files" gefunden' }, 400);
-
-  const userId = getCurrentUserId(c);
-  const previews: Preview[] = [];
-  let total = 0;
-
-  for (const file of files) {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    total += bytes.length;
-    if (total > MAX_TOTAL_BYTES) return c.json({ error: 'Upload zu groß (max. 50 MB gesamt)' }, 413);
-
-    const stored = await storeUpload(bytes, file.name, file.type || 'application/octet-stream');
-    const text = await extractText(file, bytes);
-    const ergebnis = await klassifiziereUndExtrahiere(bytes, file.type || 'application/octet-stream', { userId, filename: stored.filename });
-
-    previews.push({
-      ...ergebnis,
-      dateiname: stored.filename,
-      extrahierterTextGekuerzt: text.slice(0, 4000),
-      storageRef: stored.storageRef,
-    });
-  }
-
-  return c.json({ previews, preview: previews[0] });
-});
 
 /**
  * Baut das Identitäts-Signal (`MatchIdent`) aus den identifizierenden Daten eines
@@ -156,22 +108,6 @@ export async function ermittleMatchKandidaten(ident: MatchIdent): Promise<Scored
   return matchVorgaenge(ident, kandidaten);
 }
 
-/**
- * Zuordnungs-Vorschlag: gleicht die identifizierenden Daten eines Eingangs gegen
- * ALLE bestehenden Vorgänge ab. Reine Vorschlagsfunktion — es wird NICHTS zugeordnet.
- * Body `{ stammdaten?, identitaet? }` → `{ kandidaten: ScoredKandidat[] }`.
- */
-posteingangRoutes.post('/posteingang/match', async (c) => {
-  const denied = denyIfNotAppEditor(c);
-  if (denied) return c.json(denied, 403);
-
-  const body = await c.req.json<{ stammdaten?: ExtrahierteStammdaten; identitaet?: Identitaet }>().catch(() => null);
-  if (!body) return c.json({ error: 'Ungültiger Request-Body' }, 400);
-
-  const ident = buildIdent(body.stammdaten, body.identitaet);
-  const scored = await ermittleMatchKandidaten(ident);
-  return c.json({ kandidaten: scored });
-});
 
 
 /** Eingabe der Verteilungs-Kernlogik. */
@@ -366,20 +302,5 @@ export async function verteileDokumente(c: Context, input: VerteilenInput): Prom
   return { ok: true, vorgang, akte, dokumente: angelegt, befundeCount, istNeuerVorgang };
 }
 
-/**
- * Verteilung: Previews einer (ggf. neuen) Akte/einem (ggf. neuen) Vorgang zuordnen.
- * Body: { akteId?, neueAkte?, vorgangId?, neuerVorgang?, dokumente:[preview...], pruefen? }
- */
-posteingangRoutes.post('/posteingang/verteilen', async (c) => {
-  const denied = denyIfNotAppEditor(c);
-  if (denied) return c.json(denied, 403);
-
-  const body = await c.req.json<VerteilenInput>().catch(() => null);
-  if (!body) return c.json({ error: 'Ungültiger Request-Body' }, 400);
-
-  const result = await verteileDokumente(c, { ...body, dokumente: Array.isArray(body.dokumente) ? body.dokumente : [] });
-  if (!result.ok) return c.json({ error: result.error }, result.status);
-  return c.json({ vorgang: result.vorgang, akte: result.akte, dokumente: result.dokumente, befundeCount: result.befundeCount }, 201);
-});
 
 // Direkt-Upload am Vorgang: siehe routes/posteingang-queue.ts (gleiche Erkennung wie der Posteingang).

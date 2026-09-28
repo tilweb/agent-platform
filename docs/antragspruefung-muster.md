@@ -1,7 +1,8 @@
 # Muster: Antragsprüfungs-App
 
 Verbindliche Vorlage für jede App, die einen Sozialleistungsantrag prüft (Wohngeld, Grundsicherung,
-…). Referenz-Implementierung ist Wohngeld (`apps/wohngeld/`). Hintergrund und Entscheidungen:
+…). Referenz-Implementierungen sind Wohngeld (`apps/wohngeld/`) und Grundsicherung
+(`apps/grundsicherung/`, nach diesem Muster als zweite App gebaut). Hintergrund und Entscheidungen:
 `docs/antragspruefung-architektur-konzept-2026-09-27.md`; gemeinsamer Code: `apps/_antrag-kern/`
 (`docs/antrag-kern-spec-2026-09-27.md`).
 
@@ -58,7 +59,7 @@ Einheitliche Semantik in allen Apps:
   Regelkatalog der App; ein Wächter-Test stellt das sicher (Wohngeld: `checker/regeln.test.ts`).
   Bei Regeländerungen den Katalog-Stand hochzählen.
 - Auto-Prüfung nach jeder fachlichen Änderung; Zustand „nicht geprüft" sichtbar.
-- Vorrang-Hinweise zwischen Leistungen sind Prüfschritte vom Typ `info`.
+- Vorrang-Hinweise zwischen Leistungen sind Prüfschritte vom Typ `info` (Abschnitt 9).
 
 ## 4. Posteingang
 
@@ -73,6 +74,14 @@ Ablauf (Kern-Routen, fachliche Hooks je App):
 4. Trennung korrigieren jederzeit vor der Zuordnung.
 
 Upload direkt am Vorgang läuft durch dieselbe Erkennung.
+
+**Korrekturen beim Zuordnen zusammenführen, nie ersetzen.** Das Detail-Formular des Posteingangs
+zeigt nur einen Teil der erkannten Antragsdaten (Name, Anschrift, Aktenzeichen …). Schickt es
+Korrekturen mit (`stammdaten` im Zuordnen-Body), werden sie feldweise über die erkannten Daten
+gelegt (`korrigiereStammdaten(erkannt, korrektur)` in `stammdaten-uebernahme.ts`); was das Formular
+nicht zeigt (Haushalt/Personenliste, Wohngeldnummer, IBAN …), bleibt erhalten. Ein Ersetzen des
+ganzen Stammdaten-Objekts hat in beiden Apps Haushalt und Nummern verloren — die Fehlerklasse ist
+in jeder App mit einem Test abzusichern (beide Referenz-Apps: `stammdaten-korrektur.test.ts`).
 
 ## 5. Oberfläche
 
@@ -121,14 +130,56 @@ Akzentrahmen an Karten, Eingabefelder auf `theme.colors.surface`). UI-Texte ohne
   `PosteingangDetail`, `api.js`, `<App>KernProvider.jsx`.
 - Env-Variablen mit App-Präfix (`WOHNGELD_…`, `GRUNDSICHERUNG_…`).
 - Specs unter `docs/<app>-<thema>-spec-<datum>.md`, Changelog-Eintrag je Feature.
+- **DokumentAnalyse-Vertrag** in `types.ts`: je Dokumenttyp die Felder, die die Regel-Engine liest
+  (`DokumentAnalyseJeTyp`, Zugriff über `analyseVon(dok, typ)`). Er ist die Schnittstelle zwischen
+  Extraktion und Regeln — Regeln lesen nur diese Felder, die Extraktion bildet genau darauf ab.
+  Konvention: alle Felder optional; **nicht erkannt ⇒ Feld weglassen, nie raten** (`false`/`0`
+  heißt „geprüft und nicht vorhanden" und löst Befunde aus). Datumsangaben ISO `YYYY-MM-DD`,
+  Beträge als Zahl in Euro. Referenz: `apps/grundsicherung/types.ts`.
+- **Neue App startet `enabled: false`** (`index.ts`); der Admin schaltet sie frei, sobald sie
+  abnahmefähig ist. Das gepflegte `enabled` bleibt beim Registry-Abgleich erhalten.
+- **Apps importieren einander nicht.** Gemeinsames aller Antrags-Apps liegt im Kern (fachfrei),
+  Gemeinsames zwischen genau bestimmten Apps in einem eigenen Geschwister-Ordner (Abschnitt 9).
 - Kern bleibt fachfrei (Wächter-Test `_antrag-kern/fachfrei.test.ts`). Änderungen am Kern
   wirken in allen Apps. Eine UX-Änderung, die nur in einer App passiert, im Changelog als
   „Muster-Änderung" markieren und bewusst entscheiden: Kern, alle Apps nachziehen, oder
   fachliche Abweichung.
 
-## 8. Konformitätstests je App (Ziel)
+## 8. Konformitätstests je App
 
-- Jede Route mit Schreibzugriff ruft `audit` auf.
-- Jeder LLM-Aufruf der App läuft durch `messeKiVerbrauch`.
-- Jede Prüfregel hat eine Katalog-Beschreibung.
-- Goldfälle als Abnahmetest der Regel-Engine.
+Statisch über den Quelltext, ohne Laufzeit und Datenbank: Helfer in
+`_antrag-kern/konformitaet.ts`, je App `apps/<app>/konformitaet.test.ts` (Konfiguration + begründete
+Ausnahmen), Kern-Fabriken in `_antrag-kern/konformitaet.test.ts`.
+
+| Prüfung | Regel |
+|---|---|
+| Audit | Jede direkt in `routes/*.ts` registrierte Schreibroute (`post/put/patch/delete`) ruft `audit`/`auditUpdate` — direkt oder über eine Funktion derselben Datei, die das nachweislich tut. Routen aus Kern-Fabriken auditieren selbst (im Kern geprüft). |
+| KI-Verbrauch | Jede Route, die einen LLM-Einstieg erreicht (`llmService.chat/streamChat`, `runPipeline`, DP-`extract`, `judgeBoundaries`, `pruefeUndTrenne`, die deklarierten LLM-Funktionen der App und lokale Hüllen wie `erkenneMitProfil`), ruft im selben Handler `messeKiVerbrauch` (oder eine deklarierte Mess-Hülle). LLM-Einstiege außerhalb der Routen nur in deklarierten LLM-Modulen (`llmModule`); ein neues Modul muss bewusst eingetragen werden. Der Kern ruft die Hooks `analysiere`/`werteNeueDateienAus` nur innerhalb von `messeKiVerbrauch`. |
+| Regelkatalog | Jede Prüfregel hat eine Katalog-Beschreibung (`checker/regeln.test.ts`); Goldfälle als Abnahmetest der Regel-Engine (Wohngeld `checker/checker.test.ts`, Grundsicherung `checker/goldfaelle.test.ts`). |
+| Einschränkung | Jede vorgangsbezogene Schreibroute (`:vorgangId`, `/vorgaenge/:id…`, `/dokumente|personen|pruefschritte|schreiben|notizen/:id`) prüft `denyIfEingeschraenkt`/`denyIfVorgangEingeschraenkt`. Ausnahmen: die Einschränkung selbst, Legal Hold, Aufbewahrung (Owner/DSB). |
+| Abgrenzung | Die App importiert keine andere Fach-App. |
+
+Ausnahmen stehen mit Begründung in der Testdatei der App. Echte Abweichungen, die noch offen
+sind, stehen getrennt davon als `OFFENE_VERSTOESSE` — der Test schlägt an, sobald eine behoben ist
+(dann streichen) oder eine neue dazukommt. Eine neue App übernimmt die Testdatei einer
+Referenz-App und passt nur die Konfiguration an.
+
+## 9. Vorrang zwischen Leistungen
+
+Wohngeld und Grundsicherung schließen einander weitgehend aus; welche Leistung vorgeht, entscheidet
+die Sachbearbeitung. Die Apps liefern dafür nur Hinweise (Prüfschritte `info`), keine Berechnung.
+
+- **`apps/_vorrang/`** enthält die Fachlogik, die genau diese Apps teilen — nicht im Kern (der
+  bleibt fachfrei), nicht in einer der Apps (die importieren einander nicht):
+  - `grunddaten.ts` — **Grunddaten-Vertrag**: beide Apps liefern über
+    `grunddatenFuerVorrangpruefung(snapshot)` (je App `vorrang-grunddaten.ts`) dieselbe Datenform
+    (`VorrangGrunddaten`, Versionsstand `VORRANG_GRUNDDATEN_VERSION`), dazu `vollstaendigkeit()`.
+    Grundsatz „unbekannt statt geraten": fehlende Werte bleiben leer, nichts wird erschlossen.
+  - `arten.ts` — gemeinsame Arten-Listen (Einkommen, Vermögen, Transfer) und Abbildung aus dem
+    Vokabular beider Apps; Unbekanntes → `sonstiges`, Originalwert bleibt erhalten.
+  - `altersgrenze.ts` — Altersgrenze nach § 41 Abs. 2 SGB XII (Anspruchsgrund Alter in der
+    Grundsicherung, Vorrang-Hinweis in Wohngeld).
+- `vertrag.test.ts` prüft, dass beide Apps für einen vergleichbaren Fall dieselbe Form liefern —
+  der einzige Ort, an dem beide Apps gemeinsam importiert werden.
+- Eine spätere deterministische Vorrang-Einschätzung hängt nur am Vertrag, nicht an den
+  Fachmodellen. Formänderung ⇒ Version hochzählen und beide Apps nachziehen.

@@ -261,6 +261,9 @@ vorgaengeRoutes.delete('/vorgaenge/:id', async (c) => {
   if (before.legalHold) {
     return c.json({ error: 'Löschung gesperrt: Für diesen Vorgang besteht ein Legal Hold.' }, 409);
   }
+  // Art. 18: eingeschränkte Vorgänge sind auch vor dem Löschen geschützt.
+  const eingeschr = denyIfEingeschraenkt(before);
+  if (eingeschr) return c.json(eingeschr, 403);
   await loescheLernbeispieleVorgang(id); // DP-Lernbeispiele mitlöschen (Datenschutz)
   const ok = await deleteVorgang(id);
   if (ok) await audit(c, { aktion: 'vorgang.geloescht', objektTyp: 'vorgang', objektId: id, vorgangId: id, detail: before.antragsId });

@@ -2,6 +2,19 @@
 
 ## 2026-09-27
 
+### Antragsprüfungs-Apps: Konformitätstests + Art.-18-Lücken geschlossen (Muster-Änderung)
+Neue statische Konformitätstests je Antrags-App (`<app>/konformitaet.test.ts`, Helfer `_antrag-kern/konformitaet.ts`):
+jede Schreibroute protokolliert, prüft die Einschränkung (Art. 18) und jede KI-Aktion wird gemessen; Apps
+importieren einander nicht. Dabei gefunden und behoben:
+- Wohngeld-Fall-Chat (Frage, Gesetz nachschlagen, Verlauf zurücksetzen) lief auch bei eingeschränkten Vorgängen —
+  Daten wurden weiter an das Sprachmodell gegeben. Jetzt gesperrt (Lesen des Verlaufs bleibt möglich).
+- Nachreichung aus dem Posteingang an einen eingeschränkten Vorgang war möglich (beide Apps) — jetzt gesperrt.
+- Wohngeld: Vorgang löschen prüft die Einschränkung.
+- Alte Wohngeld-Endpunkte `/posteingang/upload`, `/match`, `/verteilen` (ohne Protokoll und KI-Messung, vom
+  Frontend nicht mehr genutzt) entfernt.
+Muster-Dokument um die Erkenntnisse aus der zweiten App ergänzt (Korrekturen zusammenführen statt ersetzen,
+DokumentAnalyse-Vertrag, Vorrang-Modul, Konformitätstests); Agenten-Wegweiser `backend/src/apps/CLAUDE.md`.
+
 ### Vorrang Wohngeld ↔ Grundsicherung: Grunddaten-Vertrag und gegenseitige Hinweise (Welle G5)
 Beide Apps liefern die Grunddaten eines Falls in derselben Form (`apps/_vorrang/grunddaten.ts`: Haushalt,
 Partnerschaft, Einkommen und Vermögen nach gemeinsamen Arten, Wohnkosten, Alter/Erwerbsminderung,

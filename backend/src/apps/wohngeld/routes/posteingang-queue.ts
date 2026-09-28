@@ -17,7 +17,7 @@ import { ausErkennung, type FortschrittMelder } from '../../_antrag-kern/postein
 import { sha256Hex } from '../../_antrag-kern/posteingang/zustand';
 import { createPosteingangRoutes, type TrennProtokoll, type ZuordnungErgebnis } from '../../_antrag-kern/posteingang/routen';
 import { audit } from '../audit';
-import { denyIfNotAppEditor, denyIfEingeschraenkt } from './_shared';
+import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { ablage, storeUpload, resolveStorageRef, loadDokumentDatei } from '../filestore';
 import { klassifiziereUndExtrahiere } from '../extraction';
 import { korrigiereStammdaten } from '../stammdaten-uebernahme';
@@ -235,7 +235,7 @@ const kern = createPosteingangRoutes<PosteingangDatei, ScoredKandidat, Posteinga
   split,
   audit,
   kiVerbrauch: { messeKiVerbrauch, ordneKiVerbrauchZu, kiVerbrauchFuerPosteingang },
-  guards: { denyIfNotAppEditor },
+  guards: { denyIfNotAppEditor, denyIfVorgangEingeschraenkt },
   vorschau: { info: vorschauInfo, seitenAntwort },
   analysiere,
   werteNeueDateienAus,

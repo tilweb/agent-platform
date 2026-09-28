@@ -101,7 +101,11 @@ export interface PosteingangRoutenOptionen<
     ordneKiVerbrauchZu: (posteingangId: string, vorgangId: string, istNeuerVorgang: boolean) => Promise<void>;
     kiVerbrauchFuerPosteingang: (posteingangId: string) => Promise<KiVerbrauchUebersicht>;
   };
-  guards: { denyIfNotAppEditor: (c: Context) => { error: string } | null };
+  guards: {
+    denyIfNotAppEditor: (c: Context) => { error: string } | null;
+    /** Art. 18: keine Nachreichung an einen eingeschränkten Vorgang (Body-Feld `vorgangId`). */
+    denyIfVorgangEingeschraenkt?: (vorgangId: string) => Promise<{ error: string } | null>;
+  };
   /** Seitenvorschau: Info (Art + Seitenzahl) und Seitenbild als HTTP-Antwort. */
   vorschau: {
     info: (bytes: Uint8Array, contentType?: string) => Promise<unknown>;
@@ -474,8 +478,12 @@ export function createPosteingangRoutes<
     if (istTerminal(eingang.status)) return c.json({ error: `Eingang ist bereits ${eingang.status}` }, 409);
     if (!darfZuordnen(eingang.status)) return c.json({ error: 'Eingang muss zuerst ausgewertet werden' }, 409);
 
-    const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>));
-    const result = await opts.zuordnen(c, eingang, body ?? {});
+    const body = (await c.req.json<Record<string, unknown>>().catch(() => null)) ?? {};
+    if (typeof body.vorgangId === 'string' && body.vorgangId) {
+      const eingeschr = await guards.denyIfVorgangEingeschraenkt?.(body.vorgangId);
+      if (eingeschr) return c.json(eingeschr, 403);
+    }
+    const result = await opts.zuordnen(c, eingang, body);
     if (!result.ok) return c.json({ error: result.error }, result.status);
 
     try {

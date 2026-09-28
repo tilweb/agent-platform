@@ -17,7 +17,7 @@ import {
   getVorgang, getVorgangSnapshot, listPruefschritte,
   listChatMessages, addChatMessage, loescheChatVerlauf,
 } from '../storage';
-import { denyIfNotAppEditor } from './_shared';
+import { denyIfNotAppEditor, denyIfEingeschraenkt } from './_shared';
 import { buildFallKontext } from '../chat-context';
 import { audit } from '../audit';
 import { sucheRecht } from '../recht/retrieval';
@@ -95,7 +95,11 @@ chatRoutes.delete('/vorgaenge/:id/chat', async (c) => {
   const denied = denyIfNotAppEditor(c);
   if (denied) return c.json(denied, 403);
   const vorgangId = c.req.param('id');
-  if (!(await getVorgang(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const vorgang = await getVorgang(vorgangId);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  // Art. 18 DSGVO: eingeschränkte Vorgänge nicht weiter verarbeiten (keine Sprachmodell-Anfragen, Verlauf unverändert).
+  const eingeschr = denyIfEingeschraenkt(vorgang);
+  if (eingeschr) return c.json(eingeschr, 403);
   const modus = c.req.query('modus') === 'gesetz' ? 'gesetz' : 'antrag';
   const geloescht = await loescheChatVerlauf(vorgangId, modus);
   await audit(c, {
@@ -174,7 +178,11 @@ export function resolveAktionen(actionIds: string[]): ChatAction[] {
 /** POST — Frage stellen, Antwort als SSE streamen. */
 chatRoutes.post('/vorgaenge/:id/chat', async (c) => {
   const vorgangId = c.req.param('id');
-  if (!(await getVorgang(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const vorgang = await getVorgang(vorgangId);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  // Art. 18 DSGVO: eingeschränkte Vorgänge nicht weiter verarbeiten (keine Sprachmodell-Anfragen, Verlauf unverändert).
+  const eingeschr = denyIfEingeschraenkt(vorgang);
+  if (eingeschr) return c.json(eingeschr, 403);
 
   const body = await c.req.json<{ message?: string }>().catch(() => ({} as { message?: string }));
   const frage = (body?.message ?? '').trim();
@@ -300,7 +308,11 @@ chatRoutes.post('/vorgaenge/:id/chat', async (c) => {
  */
 chatRoutes.post('/vorgaenge/:id/chat/gesetz', async (c) => {
   const vorgangId = c.req.param('id');
-  if (!(await getVorgang(vorgangId))) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  const vorgang = await getVorgang(vorgangId);
+  if (!vorgang) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  // Art. 18 DSGVO: eingeschränkte Vorgänge nicht weiter verarbeiten (keine Sprachmodell-Anfragen, Verlauf unverändert).
+  const eingeschr = denyIfEingeschraenkt(vorgang);
+  if (eingeschr) return c.json(eingeschr, 403);
   const body = await c.req.json<{ message?: string }>().catch(() => ({} as { message?: string }));
   const frage = (body?.message ?? '').trim();
   if (!frage) return c.json({ error: 'message ist erforderlich' }, 400);

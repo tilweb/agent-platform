@@ -127,6 +127,7 @@ function aufbau(rolle: 'owner' | 'editor' | 'viewer' = 'editor', over: Partial<P
     },
     guards: {
       denyIfNotAppEditor: (c) => (['owner', 'editor'].includes(c.get('appRole') as string) ? null : { error: 'kein Editor' }),
+      denyIfVorgangEingeschraenkt: async (id) => (id === 'v-gesperrt' ? { error: 'eingeschränkt' } : null),
     },
     vorschau: {
       info: async () => ({ art: 'pdf', seiten: 1 }),
@@ -330,6 +331,17 @@ describe('Auswertung im Hintergrund', () => {
 });
 
 describe('Zustands-Gates und Zuordnung', () => {
+  test('Nachreichung an eingeschränkten Vorgang ⇒ 403, Hook nicht aufgerufen, Eingang bleibt offen', async () => {
+    const a = aufbau();
+    const { body } = await ingest(a, [['a.pdf', 'A']]);
+    await auswerten(a, body.id);
+    const res = await post(a, `/posteingang/${body.id}/zuordnen`, { vorgangId: 'v-gesperrt' });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'eingeschränkt' });
+    expect(a.zuordnungen).toEqual([]);
+    expect((await a.store.getPosteingang(body.id))!.status).toBe('analysiert');
+  });
+
   test('zuordnen vor Auswertung ⇒ 409, danach ⇒ zugeordnet', async () => {
     const a = aufbau();
     const { body } = await ingest(a, [['a.pdf', 'A']]);

@@ -28,7 +28,7 @@ import type { KiBezug, KiVerbrauchUebersicht } from '../../_antrag-kern/ki-verbr
 import type { SeitenBereich, SplitDeps } from '../../_antrag-kern/posteingang/split';
 import { getVorgang, posteingangStore } from '../storage';
 import { audit, type AuditEvent } from '../audit';
-import { denyIfNotAppEditor, denyIfEingeschraenkt } from './_shared';
+import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { ablage } from '../filestore';
 import { vorschauInfo, seitenAntwort } from '../seitenvorschau';
 import { split, defaultSplitDeps, istPdf, brauchtGrenzpruefung, bereicheText } from '../posteingang-split';
@@ -210,7 +210,7 @@ export function createPosteingangQueue(d: PosteingangQueueDeps) {
       ordneKiVerbrauchZu: d.kiVerbrauch.ordneKiVerbrauchZu,
       kiVerbrauchFuerPosteingang: d.kiVerbrauch.kiVerbrauchFuerPosteingang,
     },
-    guards: { denyIfNotAppEditor },
+    guards: { denyIfNotAppEditor, denyIfVorgangEingeschraenkt },
     vorschau: d.vorschau,
     analysiere,
     werteNeueDateienAus,
