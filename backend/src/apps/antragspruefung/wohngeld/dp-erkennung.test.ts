@@ -53,6 +53,49 @@ describe('Abbildung je Abschnitt', () => {
   });
 });
 
+describe('Abbildung für den Abgleich Antrag ↔ Beleg', () => {
+  test('Mietvertrag: Bruttokalt aus Grundmiete + Nebenkosten, Heizung, Mieter, Beginn', () => {
+    const a = mappeAbschnitt('mietvertrag', {
+      grundmiete: 520, nebenkosten: 120, heizkosten: 70, warmwasser: 20, gesamtmiete: 640, mietbeginn: '01.08.2012',
+      mieter: [{ vorname: 'Günther', nachname: 'Schäfle', geburtsdatum: '1951-10-07' }, { vorname: '' }],
+    }).analyse;
+    expect(a.miete).toBe(640);
+    expect(a.heizkosten_warmwasser).toBe(90);
+    expect(a.miete_gueltig_ab).toBe('2012-08-01');
+    expect(a.mietdokument).toBe('mietvertrag');
+    expect(a.mieter).toEqual([{ vorname: 'Günther', nachname: 'Schäfle', geburtsdatum: '1951-10-07' }]);
+  });
+  test('Vermieterbescheinigung und Mieterhöhung: Art und „gültig ab"', () => {
+    const vb = mappeAbschnitt('vermieterbescheinigung', { gesamtmiete: 877, heizkosten: 78, warmwasser: 22, miete_seit: '2026-06-01' }).analyse;
+    expect(vb).toMatchObject({ miete: 777, heizkosten_warmwasser: 100, miete_gueltig_ab: '2026-06-01', mietdokument: 'vermieterbescheinigung' });
+    const mh = mappeAbschnitt('mieterhoehung', { neue_gesamtmiete: 877, heizung_warmwasser: 100, gueltig_ab: '01.06.2026' }).analyse;
+    expect(mh).toMatchObject({ miete: 777, mietdokument: 'mieterhoehung', miete_gueltig_ab: '2026-06-01' });
+  });
+  test('Rentenbescheid: Rentenart, Brutto, Zahlbetrag, gültig ab, Person', () => {
+    const a = mappeAbschnitt('rentenbescheid', { nachname: 'Kessler', vorname: 'Waltraud', geburtsdatum: '14.03.1952', rentenart: 'Regelaltersrente', betrag: 1184.2, zahlbetrag: '1.037,36', gueltig_ab: '2026-07-01' }).analyse;
+    expect(a).toMatchObject({ einkommensart: 'rente', rentenart: 'Regelaltersrente', betrag: 1184.2, zahlbetrag: 1037.36, betrag_gueltig_ab: '2026-07-01', person_nachname: 'Kessler', person_geburtsdatum: '1952-03-14' });
+  });
+  test('Gehaltsabrechnung und Lohnersatz: Einkommensart, Monat, Arbeitgeber', () => {
+    expect(mappeAbschnitt('gehaltsabrechnung', { brutto: 1380, abrechnungsmonat: '07/2026', arbeitgeber: 'Rheinufer Apotheken OHG' }).analyse)
+      .toMatchObject({ einkommensart: 'lohn_gehalt', betrag: 1380, abrechnungsmonat: '2026-07', arbeitgeber: 'Rheinufer Apotheken OHG' });
+    expect(mappeAbschnitt('lohnersatzbescheid', { leistungsart: 'Elterngeld', betrag: 780 }).analyse.einkommensart).toBe('elterngeld');
+    expect(mappeAbschnitt('lohnersatzbescheid', { betrag: 780 }).analyse.einkommensart).toBeUndefined();
+    expect(mappeAbschnitt('steuerunterlagen', { jahreseinkuenfte: 30000 }).analyse.einkommensart).toBeUndefined();
+  });
+  test('Kontoauszug: Saldo, IBAN, Mietzahlung, Eingänge (unbekannte Art → sonstige, leere Zeilen weg)', () => {
+    const a = mappeAbschnitt('kontoauszug', {
+      iban: 'DE12 3705 0211 0019 0447 36', zeitraum_bis: '31.07.2026', endsaldo: '-12,50', mietzahlung_betrag: -620,
+      eingaenge: [{ verwendungszweck: 'Gaststätte', betrag: 480, art: 'erwerb', wiederkehrend: 'true' }, { art: 'lotto' , verwendungszweck: 'X' }, {}],
+    }).analyse;
+    expect(a).toMatchObject({ iban: 'DE12370502110019044736', zeitraum_bis: '2026-07-31', endsaldo: -12.5, mietzahlung_betrag: 620 });
+    expect(a.eingaenge).toEqual([{ verwendungszweck: 'Gaststätte', betrag: 480, art: 'erwerb', wiederkehrend: true }, { verwendungszweck: 'X', art: 'sonstige' }]);
+  });
+  test('nicht erkannt ⇒ Felder fehlen', () => {
+    const a = mappeAbschnitt('kontoauszug', { mietzahlung_erkannt: true, zeitraum_bis: 'Juli' }).analyse;
+    expect(a).toEqual({ mietzahlung_erkannt: true });
+  });
+});
+
 test('Segmentergebnis → Abschnitte (wiederholbar, Leerseite, unbekannt)', () => {
   const profil = buildWohngeldEingangProject();
   const a = abschnitteAusErgebnis({

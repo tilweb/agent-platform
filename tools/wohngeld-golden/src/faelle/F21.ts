@@ -58,15 +58,15 @@ export const F21: Fall = {
     },
   ],
   erwartung: {
-    befunde: ['plausi-mietzahlung-fehlt'],
-    befundeOhneAppRegel: [
-      'Nicht angegebene Einnahme: regelmäßiger Eingang „Gaststätte Zum Mülheimer Hafen GmbH" (480 €/Monat, Minijob) auf den Kontoauszügen Juli und August — im Antrag ist nur die Teilzeitbeschäftigung angegeben; Nacherklärung und Minijob-Nachweise anfordern',
-    ],
+    // Nicht angegebener Minijob-Eingang (Gaststätte, 480 €/Monat, Juli + August): seit 2026-09-28 App-Regel
+    // plausi-kontoauszug-unerklaerte-eingaenge (Arbeitgeber ohne Nachweis; docs/wohngeld-antrag-beleg-abgleich-spec-2026-09-28.md).
+    befunde: ['plausi-mietzahlung-fehlt', 'plausi-kontoauszug-unerklaerte-eingaenge'],
+    befundeOhneAppRegel: [],
     hinweise: [
       'Antrag: nur Teilzeitgehalt 1.380 € brutto; Gehaltsabrechnungen Juni–August bestätigen das.',
       'Kontoauszüge Juli und August: je ein Eingang von 480 € „Verdienst" vom Gastronomiebetrieb (Minijob neben der Hauptbeschäftigung).',
       'Keine Mietüberweisung an den Vermieter; stattdessen Barabhebung 650 € am 2. des Monats (Gesamtmiete 620 €) — die App meldet plausi-mietzahlung-fehlt je Kontoauszug (2×).',
-      'Eine App-Regel für unerklärte Lohneingänge greift nicht: die Einkunftsart Lohn/Gehalt ist bereits angegeben.',
+      'Die Einkunftsarten-Regel greift nicht (Lohn/Gehalt ist angegeben); der Minijob-Eingang fällt über den Arbeitgeber-Abgleich auf (kein Nachweis dieses Arbeitgebers).',
     ],
   },
 };

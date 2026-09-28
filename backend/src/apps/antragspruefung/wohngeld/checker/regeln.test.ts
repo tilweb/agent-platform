@@ -8,7 +8,7 @@ import { REGELKATALOG, REGEL_GRUPPE_LABEL, regelBeschreibung } from './regeln';
 
 async function regelIdsImChecker(): Promise<Set<string>> {
   const ids = new Set<string>();
-  for (const datei of ['nachweise.ts', 'plausibilitaet.ts', 'vorrang.ts']) {
+  for (const datei of ['nachweise.ts', 'plausibilitaet.ts', 'abgleich.ts', 'vorrang.ts']) {
     const src = await Bun.file(join(import.meta.dir, datei)).text();
     for (const m of src.matchAll(/regelId:\s*'([^']+)'/g)) ids.add(m[1]!);
     for (const m of src.matchAll(/regelId:\s*`([^`$:]+)[:$]/g)) ids.add(m[1]!); // parametrisiert: `basis:${…}`

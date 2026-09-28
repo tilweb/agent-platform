@@ -62,10 +62,10 @@ export const F22: Fall = {
     },
   ],
   erwartung: {
-    befunde: ['plausi-vermoegen-ueber-freigrenze'],
-    befundeOhneAppRegel: [
-      'Widerspruch: Frage 20 (Vermögen über Freigrenze) mit „Nein" beantwortet, der beigelegte Depotauszug weist zum 31.08.2026 ein Vermögen von 140.216,84 € aus — Angabe berichtigen lassen, Zweckerklärung anfordern, Wohngeld nach § 21 Nr. 3 WoGG voraussichtlich ausgeschlossen',
-    ],
+    // Widerspruch Frage 20 „Nein" ↔ Depotauszug 140.216,84 € (zum 31.08.2026): seit 2026-09-28 App-Regel
+    // plausi-vermoegen-beleg-abweichung (docs/wohngeld-antrag-beleg-abgleich-spec-2026-09-28.md).
+    befunde: ['plausi-vermoegen-ueber-freigrenze', 'plausi-vermoegen-beleg-abweichung'],
+    befundeOhneAppRegel: [],
     hinweise: [
       'Freigrenze für 1 Haushaltsmitglied: 60.000 €; Depot/Tagesgeld/Festgeld zusammen 140.216,84 €.',
       'Die App liest das Personenvermögen nicht aus Dokumenten, sondern nur aus der erfassten Personenangabe (p.vermoegen / vermoegenPositionen). Weil Frage 20 „Nein" ist, meldet sie plausi-vermoegen-ueber-freigrenze voraussichtlich erst, nachdem die Sachbearbeitung den Depotwert erfasst hat.',

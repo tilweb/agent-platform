@@ -14,7 +14,7 @@ import type { ExtractionProject, ProjectField, ProjectItemField, SegmentTypeDef 
 
 export const WOHNGELD_PROFIL_ID = 'wohngeld-eingang';
 /** Bei fachlichen Änderungen der Vorlage hochzählen (steht in der Profilbeschreibung). */
-export const WOHNGELD_PROFIL_VORLAGE_STAND = '2026-09-24e';
+export const WOHNGELD_PROFIL_VORLAGE_STAND = '2026-09-28';
 
 const txt = (label: string, description?: string): ProjectField => ({ type: 'text', required: false, label, ...(description ? { description } : {}) });
 const num = (label: string, description?: string): ProjectField => ({ type: 'number', required: false, label, ...(description ? { description } : {}) });
@@ -106,6 +106,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
       gesamtmiete: num('Miete einschließlich Betriebskosten in EUR/Monat', EURO),
       heizkosten: num('Heizkosten in EUR/Monat', 'nur wenn „ja, in Höhe von" angekreuzt — ' + EURO),
       warmwasser: num('Warmwasserkosten in EUR/Monat', 'nur wenn „ja, in Höhe von" angekreuzt — ' + EURO),
+      miete_seit: dat('Miete in dieser Höhe seit', 'Datum, seit dem die angegebene Miete gezahlt wird (Feld „Datum Mietzahlung" bzw. „Miete in dieser Höhe seit"), NICHT der Beginn des Mietverhältnisses'),
       unterschrift_vorhanden: UNTERSCHRIFT('„Unterschrift/Stempel Vermieter/in bzw. Verwalter/in"'),
     },
   },
@@ -120,6 +121,11 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
       heizkosten: num('Vorauszahlung Heizkosten in EUR/Monat', EURO),
       warmwasser: num('Vorauszahlung Warmwasser in EUR/Monat', EURO),
       gesamtmiete: num('Gesamtmiete in EUR/Monat', EURO),
+      mietbeginn: dat('Beginn des Mietverhältnisses'),
+      mieter: liste('Mieter:innen', 'alle im Vertragskopf als „Mieter" genannten Personen, je Person GENAU EINE Zeile (Namen im Unterschriftenblock nicht erneut aufnehmen; Vermieter nie)', {
+        ...NAME_SPALTEN,
+        geburtsdatum: spalte('date', 'Geburtsdatum', 'nur wenn im Vertragskopf genannt'),
+      }),
       unterschrift_vorhanden: UNTERSCHRIFT('am Vertragsende — true nur, wenn Vermieter UND Mieter unterschrieben haben'),
     },
   },
@@ -149,6 +155,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
       ...PERSON,
       neue_gesamtmiete: num('Neue Gesamtmiete in EUR/Monat', EURO),
       heizung_warmwasser: num('Darin enthaltene Heiz-/Warmwasserkosten in EUR/Monat', EURO),
+      gueltig_ab: dat('Neue Miete gilt ab', 'Datum, ab dem die neue Miete zu zahlen ist'),
     },
   },
   personalausweis: {
@@ -170,19 +177,25 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
     fields: {
       ...PERSON,
       brutto: num('Gesamtbrutto des Monats in EUR', EURO),
+      abrechnungsmonat: txt('Abrechnungsmonat', 'als JJJJ-MM, z. B. „2026-07"'),
+      arbeitgeber: txt('Arbeitgeber', 'Firmenname wie im Abrechnungskopf'),
     },
   },
   verdienstbescheinigung: {
     label: 'Verdienstbescheinigung',
     description: 'Bescheinigung des Arbeitgebers über die Bruttoverdienste der letzten Monate (Monatstabelle), oft „zur Vorlage bei der Wohngeldstelle", mit Stempel/Unterschrift.',
     repeatable: true,
-    fields: { ...PERSON, monatsbrutto: num('Aktuelles Monatsbrutto in EUR', EURO) },
+    fields: { ...PERSON, monatsbrutto: num('Aktuelles Monatsbrutto in EUR', EURO), arbeitgeber: txt('Arbeitgeber', 'Firmenname des ausstellenden Arbeitgebers') },
   },
   lohnersatzbescheid: {
     label: 'Bescheid über Lohnersatz/Förderung',
     description: 'Bewilligungsbescheid über Arbeitslosengeld (Agentur für Arbeit), Elterngeld (Elterngeldstelle), BAföG (Amt für Ausbildungsförderung) oder Krankengeld. NEUSTART: Jede Seite mit eigenem Briefkopf mit Adressfeld, Datum und Anrede ist IMMER der Beginn eines neuen Dokuments (neustart = true) — auch wenn die vorige Seite vom selben Aussteller stammt und gleich aussieht.',
     repeatable: true,
-    fields: { ...PERSON, betrag: num('Monatsbetrag in EUR', EURO) },
+    fields: {
+      ...PERSON,
+      leistungsart: txt('Leistungsart', 'z. B. „Arbeitslosengeld", „Elterngeld", „Krankengeld", „BAföG" — wie im Bescheid genannt'),
+      betrag: num('Monatsbetrag in EUR', EURO),
+    },
   },
   steuerunterlagen: {
     label: 'Steuerbescheid/EÜR',
@@ -196,8 +209,11 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
     repeatable: true,
     fields: {
       ...PERSON,
+      geburtsdatum: dat('Geburtsdatum', 'nur wenn im Bescheid ausdrücklich genannt — nicht aus der Versicherungsnummer ableiten'),
       rentenart: txt('Rentenart', 'z. B. Regelaltersrente, Witwerrente — wie im Bescheid genannt'),
-      betrag: num('Monatliche Bruttorente in EUR', EURO),
+      betrag: num('Monatliche Bruttorente in EUR', 'der aktuelle bzw. NEUE Betrag (bei Anpassungsmitteilungen die Spalte „neu"), vor Abzug der Kranken-/Pflegeversicherung — ' + EURO),
+      zahlbetrag: num('Monatlicher Zahlbetrag in EUR', 'aktueller bzw. neuer Betrag nach Abzug der Kranken-/Pflegeversicherung — ' + EURO),
+      gueltig_ab: dat('Betrag gilt ab', 'z. B. „ab 01.07.2026" bei einer Rentenanpassung'),
       grundrentenzeiten_vorhanden: bool('Grundrentenzeiten ausgewiesen', 'true, wenn Grundrentenzeiten/Grundrentenzuschlag genannt sind; false, wenn der Bescheid sie nicht nennt'),
     },
   },
@@ -207,9 +223,20 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
     repeatable: true,
     fields: {
       ...PERSON,
+      iban: txt('IBAN', 'ohne Leerzeichen'),
+      zeitraum_bis: dat('Zeitraum bis', 'Datum des neuen Kontostands bzw. letztes Datum des Auszugszeitraums'),
+      endsaldo: num('Neuer Kontostand (Endsaldo) in EUR', 'negativ bei „Soll" — ' + EURO),
       mietzahlung_erkannt: bool('Mietzahlung erkennbar', 'true, wenn eine Überweisung/ein Dauerauftrag der Miete an Vermieter oder Hausverwaltung gebucht ist'),
+      mietzahlung_betrag: num('Betrag der Mietzahlung in EUR', 'Betrag der Überweisung an Vermieter/Hausverwaltung, positiv angeben — ' + EURO),
       kapitalertraege_erkannt: bool('Kapitalerträge erkennbar'),
       mieteinnahmen_erkannt: bool('Mieteinnahmen erkennbar'),
+      eingaenge: liste('Eingänge (Gutschriften)', 'Gutschriften (Haben-Buchungen, „+"), je Absender GENAU EINE Zeile (z. B. zwei Lohnzahlungen desselben Arbeitgebers = eine Zeile mit anzahl 2). Nicht aufnehmen: Umbuchungen zwischen eigenen Konten, Abbuchungen.', {
+        verwendungszweck: spalte('text', 'Absender/Verwendungszweck', 'kurz, wie auf dem Auszug — Absendername zuerst, z. B. „Rheinufer Apotheken OHG", „Deutsche Rentenversicherung", „Familienkasse"'),
+        betrag: spalte('number', 'Einzelbetrag je Buchung in EUR', EURO),
+        art: spalte('text', 'Art', 'eine von: erwerb (Lohn/Gehalt/Verdienst eines Arbeitgebers), rente (gesetzliche Rentenversicherung), betriebsrente, unterhalt (auch Unterhaltsvorschuss), kapitalertrag (Zinsen, Dividenden), miete_einnahme (Miete/Untermiete, die ein Mieter an den Kontoinhaber zahlt), zuwendung (regelmäßige Überweisungen von Angehörigen, auch „Zuschuss Miete"), sozialleistung (Arbeitsagentur, Jobcenter, Elterngeld, Krankengeld, BAföG), kindergeld (Familienkasse), wohngeld, erstattung, sonstige'),
+        wiederkehrend: spalte('boolean', 'Wiederkehrend', 'true, wenn die Zahlung erkennbar laufend ist (Lohn, Rente, Unterhalt, Dauerauftrag, Verwendungszweck mit Monat); false nur für erkennbar einmalige Gutschriften'),
+        anzahl: spalte('number', 'Anzahl Buchungen im Zeitraum'),
+      }),
     },
   },
   kv_nachweis: {

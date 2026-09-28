@@ -493,6 +493,18 @@ export function baueExtraktionsUebersicht(
     // erkannte_einkuenfte hat keinen direkten Pipeline-Confidence-Pfad (abgeleitet).
     add('Analyse', 'Erkannte Einkünfte', undefined, fmtEinkuenfte(a.erkannte_einkuenfte));
     add('Analyse', 'Betrag', 'analyse.betrag', fmtEuro(a.betrag));
+    // Abgleich Antrag ↔ Beleg (docs/wohngeld-antrag-beleg-abgleich-spec-2026-09-28.md)
+    add('Analyse', 'Miete gültig ab', undefined, fmtDatum(a.miete_gueltig_ab));
+    add('Analyse', 'Heiz-/Warmwasserkosten', undefined, fmtEuro(a.heizkosten_warmwasser));
+    add('Analyse', 'Mieter', undefined, a.mieter?.map((m) => [m.vorname, m.nachname].filter(Boolean).join(' ')).join(', '));
+    add('Analyse', 'Rentenart', undefined, a.rentenart);
+    add('Analyse', 'Zahlbetrag', undefined, fmtEuro(a.zahlbetrag));
+    add('Analyse', 'Betrag gilt ab', undefined, fmtDatum(a.betrag_gueltig_ab));
+    add('Analyse', 'Arbeitgeber', undefined, a.arbeitgeber);
+    add('Analyse', 'Abrechnungsmonat', undefined, a.abrechnungsmonat);
+    add('Analyse', 'Kontostand', undefined, fmtEuro(a.endsaldo));
+    add('Analyse', 'Mietzahlung', undefined, fmtEuro(a.mietzahlung_betrag));
+    a.eingaenge?.forEach((e) => add('Analyse', 'Eingang', undefined, [e.verwendungszweck, fmtEuro(e.betrag), e.art].filter(Boolean).join(', ')));
   }
 
   const uebersicht: DokumentExtraktion = { felder };

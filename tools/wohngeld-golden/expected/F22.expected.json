@@ -160,11 +160,10 @@
   ],
   "pruefung": {
     "befunde": [
-      "plausi-vermoegen-ueber-freigrenze"
+      "plausi-vermoegen-ueber-freigrenze",
+      "plausi-vermoegen-beleg-abweichung"
     ],
-    "befundeOhneAppRegel": [
-      "Widerspruch: Frage 20 (Vermögen über Freigrenze) mit „Nein\" beantwortet, der beigelegte Depotauszug weist zum 31.08.2026 ein Vermögen von 140.216,84 € aus — Angabe berichtigen lassen, Zweckerklärung anfordern, Wohngeld nach § 21 Nr. 3 WoGG voraussichtlich ausgeschlossen"
-    ],
+    "befundeOhneAppRegel": [],
     "standardbefunde": [
       "bwz-vorschlag-pruefen"
     ],

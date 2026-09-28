@@ -8,6 +8,7 @@
 import type { VorgangSnapshot, Dokument, Person, DokumentTyp, PruefBefund } from '../types';
 import { haushaltsVermoegen, vermoegensFreigrenze } from '../einkommen';
 import { berechneBwzVorschlag, fmtDe } from '../bwz';
+import { pruefeAbgleiche } from './abgleich';
 
 function docsOfType(dokumente: Dokument[], ...typen: DokumentTyp[]): Dokument[] {
   return dokumente.filter(d => typen.includes(d.typ));
@@ -42,7 +43,6 @@ const AUSSCHLUSS_GRUND_LABEL: Record<string, string> = {
 export function pruefePlausibilitaet(snapshot: VorgangSnapshot): PruefBefund[] {
   const { vorgang, personen, dokumente } = snapshot;
   const befunde: PruefBefund[] = [];
-  const wohnung = vorgang.wohnung ?? {};
 
   // ── Antrag: Unterschrift / Datum ─────────────────────────────────────
   const antragDok = docsOfType(dokumente, 'wohngeldantrag')[0];
@@ -65,35 +65,16 @@ export function pruefePlausibilitaet(snapshot: VorgangSnapshot): PruefBefund[] {
     }
   }
 
-  // ── Miethöhe / Wohnfläche / Unterschrift Mietvertrag ─────────────────
+  // ── Unterschrift Mietvertrag ─────────────────────────────────────────
+  // Miethöhe, Wohnfläche und Mietzahlung: Abgleich über alle Mietdokumente in abgleich.ts.
   const mietDok = docsOfType(dokumente, 'mietvertrag', 'mietbescheinigung')[0];
-  if (mietDok?.analyse) {
-    const a = mietDok.analyse;
-    if (typeof a.miete === 'number' && typeof wohnung.miete === 'number' && Math.abs(a.miete - wohnung.miete) >= 0.01) {
-      const diff = Math.abs(a.miete - wohnung.miete);
-      befunde.push({
-        regelId: 'plausi-miethoehe-abweichung', kategorie: 'plausibilitaet', typ: 'anforderung',
-        titel: 'Miethöhe klären',
-        belegtext: `Der Mietvertrag nennt eine Miete von ${euro(a.miete)}, im Antrag sind ${euro(wohnung.miete)} angegeben. Die Differenz von ${euro(diff)} ist zu klären.`,
-        quellDokumentId: mietDok.id,
-      });
-    }
-    if (typeof a.wohnflaeche_qm === 'number' && typeof wohnung.wohnflaeche_qm === 'number' && Math.abs(a.wohnflaeche_qm - wohnung.wohnflaeche_qm) >= 0.01) {
-      befunde.push({
-        regelId: 'plausi-wohnflaeche-abweichung', kategorie: 'plausibilitaet', typ: 'info',
-        titel: 'Wohnfläche prüfen',
-        belegtext: `Wohnfläche im Antrag (${wohnung.wohnflaeche_qm} m²) weicht vom Mietvertrag (${a.wohnflaeche_qm} m²) ab.`,
-        quellDokumentId: mietDok.id,
-      });
-    }
-    if (mietDok.typ === 'mietvertrag' && a.unterschrift_vorhanden === false) {
-      befunde.push({
-        regelId: 'plausi-mietvertrag-unsigniert', kategorie: 'plausibilitaet', typ: 'anforderung',
-        titel: 'Mietvertrag ohne Unterschrift',
-        belegtext: 'Der Mietvertrag ist nicht von beiden Parteien unterschrieben — als Nachweis nicht ausreichend.',
-        quellDokumentId: mietDok.id,
-      });
-    }
+  if (mietDok?.analyse && mietDok.typ === 'mietvertrag' && mietDok.analyse.unterschrift_vorhanden === false) {
+    befunde.push({
+      regelId: 'plausi-mietvertrag-unsigniert', kategorie: 'plausibilitaet', typ: 'anforderung',
+      titel: 'Mietvertrag ohne Unterschrift',
+      belegtext: 'Der Mietvertrag ist nicht von beiden Parteien unterschrieben — als Nachweis nicht ausreichend.',
+      quellDokumentId: mietDok.id,
+    });
   }
 
   // ── Mietzahlung auf Kontoauszug ──────────────────────────────────────
@@ -106,8 +87,9 @@ export function pruefePlausibilitaet(snapshot: VorgangSnapshot): PruefBefund[] {
         quellDokumentId: konto.id,
       });
     }
-    // Unerklärte Einkünfte (z. B. Dividenden) auf dem Kontoauszug
-    const erkannt = konto.analyse?.erkannte_einkuenfte ?? [];
+    // Unerklärte Einkünfte (z. B. Dividenden) auf dem Kontoauszug. Liegt die Eingangsliste vor,
+    // prüft stattdessen die genauere Regel plausi-kontoauszug-unerklaerte-eingaenge (abgleich.ts).
+    const erkannt = konto.analyse?.eingaenge?.length ? [] : konto.analyse?.erkannte_einkuenfte ?? [];
     const person = personById(personen, konto.personId);
     for (const art of erkannt) {
       const deklariert = (person?.einkommen ?? []).some(e => e.art === art);
@@ -187,6 +169,9 @@ export function pruefePlausibilitaet(snapshot: VorgangSnapshot): PruefBefund[] {
       });
     }
   }
+
+  // ── Abgleich Antrag ↔ Belege (Miete, Einkommen, Vermögen, Identität, Haushalt) ──
+  befunde.push(...pruefeAbgleiche(snapshot));
 
   return befunde;
 }

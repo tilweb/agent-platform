@@ -71,7 +71,7 @@ export interface FallKurz {
 }
 
 export interface ErwartungKurz {
-  dokumente: Array<{ typ: DokumentTyp; person?: string; erwartet?: { stammdaten?: Record<string, unknown>; analyse?: Record<string, unknown> } }>;
+  dokumente: Array<{ typ: DokumentTyp; person?: string; erwartet?: { stammdaten?: Record<string, unknown>; analyse?: Record<string, unknown>; identitaet?: Record<string, unknown> } }>;
 }
 
 export const ERWERB: Record<string, Erwerbsstatus> = {
@@ -137,8 +137,15 @@ export function regelwerkSnapshot(fall: FallKurz, erwartung: ErwartungKurz): Vor
     } as Person;
   });
 
-  const dokumente = erwartung.dokumente.map((d, i) =>
-    dokument(i, d.typ, entfalte(d.erwartet?.analyse) as DokumentAnalyse, d.person));
+  // Identität des Belegs liegt in der App im Analysevertrag (person_*) — für den Identitätsabgleich.
+  const dokumente = erwartung.dokumente.map((d, i) => {
+    const id = d.erwartet?.identitaet as { vorname?: string; nachname?: string; geburtsdatum?: string } | undefined;
+    const person = d.typ === 'wohngeldantrag' || !id ? {} : {
+      ...(id.vorname ? { person_vorname: id.vorname } : {}), ...(id.nachname ? { person_nachname: id.nachname } : {}),
+      ...(id.geburtsdatum ? { person_geburtsdatum: id.geburtsdatum } : {}),
+    };
+    return dokument(i, d.typ, { ...(entfalte(d.erwartet?.analyse) as DokumentAnalyse), ...person }, d.person);
+  });
   return { vorgang: vorgangAus(stamm), personen, dokumente };
 }
 

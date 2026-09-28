@@ -381,7 +381,67 @@ export interface DokumentAnalyse {
   mietzahlung_erkannt?: boolean;        // Kontoauszug zeigt Mietabgang
   /** Auf dem Kontoauszug erkannte, ggf. nicht deklarierte Einkunftsarten. */
   erkannte_einkuenfte?: string[];       // z. B. ['kapitalertraege']
-  betrag?: number;                      // generischer Betrag (z. B. Renten-/Gehaltshöhe)
+  /**
+   * Generischer Monatsbetrag je Typ: Gehaltsabrechnung = Gesamtbrutto des Monats,
+   * Verdienstbescheinigung = Monatsbrutto, Rentenbescheid = Bruttorente (neuer Betrag),
+   * Lohnersatz-/Kindergeld-/Unterhaltsbescheid = Monatsbetrag, Steuerunterlagen = Jahreseinkünfte,
+   * Vermögensnachweis = Gesamtwert.
+   */
+  betrag?: number;
+
+  // ── Abgleich Antrag ↔ Beleg (Spec docs/wohngeld-antrag-beleg-abgleich-spec-2026-09-28.md) ──
+  // Konvention: nicht erkannt ⇒ weglassen, nie raten. Datum ISO `YYYY-MM-DD`, Beträge in Euro.
+
+  /** Person, auf die sich der Beleg bezieht (Name/Geburtsdatum wie im Beleg). */
+  person_vorname?: string;
+  person_nachname?: string;
+  person_geburtsdatum?: string;
+
+  /** Art des Mietdokuments (alle als Typ `mietvertrag`/`mietbescheinigung` eingeordnet). */
+  mietdokument?: 'mietvertrag' | 'untermietvertrag' | 'heimvertrag' | 'mieterhoehung' | 'vermieterbescheinigung';
+  /** Seit/ab wann die Miete in dieser Höhe gilt (Mietbeginn, Mieterhöhung ab, „Miete seit"). */
+  miete_gueltig_ab?: string;
+  /** Heiz- und Warmwasserkosten laut Mietdokument (Summe, EUR/Monat). */
+  heizkosten_warmwasser?: number;
+  /** Im Mietvertrag genannte Mieter:innen. */
+  mieter?: Array<{ vorname?: string; nachname?: string; geburtsdatum?: string }>;
+
+  /** Einkommensart des Belegs in App-Begriffen (lohn_gehalt, rente, alg1, krankengeld, elterngeld …). */
+  einkommensart?: string;
+  /** Gehaltsabrechnung: Abrechnungsmonat `YYYY-MM`. */
+  abrechnungsmonat?: string;
+  /** Gehaltsabrechnung/Verdienstbescheinigung: Arbeitgeber. */
+  arbeitgeber?: string;
+  /** Rentenbescheid: Rentenart wie genannt (z. B. „Regelaltersrente"). */
+  rentenart?: string;
+  /** Rentenbescheid: monatlicher Zahlbetrag nach Abzug KV/PV. */
+  zahlbetrag?: number;
+  /** Bescheid: Datum, ab dem der Betrag gilt (z. B. Rentenanpassung zum 01.07.). */
+  betrag_gueltig_ab?: string;
+
+  /** Kontoauszug: IBAN (ohne Leerzeichen). */
+  iban?: string;
+  /** Kontoauszug: Ende des Auszugszeitraums. */
+  zeitraum_bis?: string;
+  /** Kontoauszug: neuer Kontostand (negativ bei Soll). */
+  endsaldo?: number;
+  /** Kontoauszug: Betrag der Mietzahlung. */
+  mietzahlung_betrag?: number;
+  /** Kontoauszug: Gutschriften je Absender (eine Zeile je Absender). */
+  eingaenge?: KontoEingang[];
+}
+
+/** Art einer Gutschrift auf dem Kontoauszug (Wohngeld-Profil). */
+export type KontoEingangArt =
+  | 'erwerb' | 'rente' | 'betriebsrente' | 'unterhalt' | 'kapitalertrag' | 'miete_einnahme'
+  | 'zuwendung' | 'sozialleistung' | 'kindergeld' | 'wohngeld' | 'erstattung' | 'sonstige';
+
+export interface KontoEingang {
+  verwendungszweck?: string;
+  betrag?: number;
+  art?: KontoEingangArt;
+  wiederkehrend?: boolean;
+  anzahl?: number;
 }
 
 /** Ein einzelner, aus dem Dokument gezogener Wert (für die Transparenz-Ansicht). */

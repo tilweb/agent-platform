@@ -2,6 +2,17 @@
 
 ## 2026-09-28
 
+### Wohngeld: Antragsangaben werden gegen die Belege abgeglichen (Muster-Änderung)
+Bisher prüfte Wohngeld überwiegend, ob Belege vorliegen; verglichen wurden nur Miete/Wohnfläche (erstes
+Mietdokument) und Einkunftsarten auf dem Kontoauszug. Jetzt wie in der Grundsicherung: Einkommen je Person
+(Lohnabrechnungen, Verdienstbescheinigung, Rentenbescheid brutto, ALG I/Krankengeld/Elterngeld; Jahresbeträge
+auf Monat), wiederkehrende Kontoeingänge ohne passende Angabe (mit Betrag und Monaten), Vermögen ↔ Nachweise und
+Kontostände, Geburtsdatum/Name ↔ Ausweis und weitere Belege der Person, Mieter im Mietvertrag ↔ Haushalt,
+Miete ↔ aktuellstes Mietdokument (Bruttokaltmiete, Heiz-/Warmwasseranteil berücksichtigt) und ↔ Abbuchung.
+Jeder Befund nennt beide Werte und den Beleg; eine Regel greift nur, wenn beide Seiten einen Wert haben.
+Toleranzen per `WOHNGELD_*` einstellbar. Golden-Datensatz: drei neue echte Treffer, keine neuen Fehlalarme
+(Live-Stichprobe 8 Fälle: Treffer 8 → 12, Fehlalarme 13 → 6). Spec: `docs/wohngeld-antrag-beleg-abgleich-spec-2026-09-28.md`.
+
 ### Antragsprüfungs-Apps als abgeschlossene Familie in einem Ordner (Muster-Änderung)
 Wohngeld, Grundsicherung und ihr geteilter Code liegen jetzt gemeinsam unter `backend/src/apps/antragspruefung/`
 (`kern/`, `vorrang/`, `wohngeld/`, `grundsicherung/`) bzw. `frontend/src/apps/antragspruefung/` (`kern/`, `wohngeld/`,

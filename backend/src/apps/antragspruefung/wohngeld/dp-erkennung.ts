@@ -16,9 +16,9 @@ import { WOHNGELD_PROFIL_ID, WOHNGELD_PROFIL_VORLAGE_STAND, buildWohngeldEingang
 import type { PipelineRunResult } from '../../../services/extraction';
 import { stableHash } from '../../../extraction/learning/snapshot';
 import { baueExtraktionsUebersicht } from './extraction-schema';
-import { nachnameGleich, normName, vornameGleich } from './haushalt';
+import { einkommensArtAusText, nachnameGleich, normName, vornameGleich } from './haushalt';
 import type { ExtrahierteStammdaten, ExtraktionErgebnis, HaushaltAngaben, Identitaet } from './extraction';
-import type { DokumentAnalyse, DokumentTyp } from './types';
+import type { DokumentAnalyse, DokumentTyp, KontoEingang, KontoEingangArt } from './types';
 
 export { WOHNGELD_PROFIL_ID };
 
@@ -77,6 +77,32 @@ const zahl = (v: unknown): number | undefined => {
 const text = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 const wahr = (v: unknown): boolean | undefined => (typeof v === 'boolean' ? v : v === 'true' ? true : v === 'false' ? false : undefined);
 const rund = (n: number) => Math.round(n * 100) / 100;
+/** Datum als ISO `YYYY-MM-DD` (auch aus „TT.MM.JJJJ"); sonst weglassen. */
+const datum = (v: unknown): string | undefined => {
+  const t = text(v);
+  if (!t) return undefined;
+  const iso = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) return `${iso[1]}-${iso[2]!.padStart(2, '0')}-${iso[3]!.padStart(2, '0')}`;
+  const de = t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  return de ? `${de[3]}-${de[2]!.padStart(2, '0')}-${de[1]!.padStart(2, '0')}` : undefined;
+};
+/** Monat als `YYYY-MM` (aus „2026-07", „2026-07-31", „07/2026", „07.2026"); sonst weglassen. */
+const monat = (v: unknown): string | undefined => {
+  const t = text(v);
+  if (!t) return undefined;
+  const iso = t.match(/^(\d{4})-(\d{1,2})/);
+  if (iso) return `${iso[1]}-${iso[2]!.padStart(2, '0')}`;
+  const de = t.match(/(\d{1,2})[./](\d{4})/);
+  return de ? `${de[2]}-${de[1]!.padStart(2, '0')}` : undefined;
+};
+const EINGANG_ARTEN: ReadonlySet<string> = new Set<KontoEingangArt>([
+  'erwerb', 'rente', 'betriebsrente', 'unterhalt', 'kapitalertrag', 'miete_einnahme', 'zuwendung',
+  'sozialleistung', 'kindergeld', 'wohngeld', 'erstattung', 'sonstige',
+]);
+const eingangArt = (v: unknown): KontoEingangArt | undefined => {
+  const t = text(v)?.toLowerCase();
+  return t && EINGANG_ARTEN.has(t) ? (t as KontoEingangArt) : t ? 'sonstige' : undefined;
+};
 
 /** Bruttokaltmiete = Gesamtmiete − Heizung − Warmwasser − Garage − Haushaltsenergie (§ 9 WoGG). */
 export function bruttokalt(w: { gesamtmiete?: unknown; heizkosten?: unknown; warmwasser?: unknown; garage?: unknown; haushaltsenergie?: unknown }): number | undefined {
@@ -181,33 +207,66 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
     };
   }
 
+  // Person, auf die sich der Beleg bezieht (Identitätsabgleich). Nie aus dem Antrag.
+  setze('person_vorname', text(w.vorname));
+  setze('person_nachname', text(w.nachname));
+  setze('person_geburtsdatum', datum(w.geburtsdatum));
+  const heizWw = (h: unknown, ww?: unknown) => (zahl(h) === undefined && zahl(ww) === undefined ? undefined : rund((zahl(h) ?? 0) + (zahl(ww) ?? 0)));
+
   switch (abschnitt) {
     case 'vermieterbescheinigung':
-    case 'mietvertrag':
-      setze('miete', abschnitt === 'mietvertrag' && zahl(w.gesamtmiete) === undefined && zahl(w.grundmiete) !== undefined
-        ? rund((zahl(w.grundmiete) ?? 0) + (zahl(w.nebenkosten) ?? 0))
-        : bruttokalt(w));
+      setze('mietdokument', 'vermieterbescheinigung');
+      setze('miete', bruttokalt(w));
+      setze('heizkosten_warmwasser', heizWw(w.heizkosten, w.warmwasser));
+      setze('miete_gueltig_ab', datum(w.miete_seit));
       setze('wohnflaeche_qm', zahl(w.wohnflaeche_qm));
       setze('unterschrift_vorhanden', wahr(w.unterschrift_vorhanden));
       break;
+    case 'mietvertrag': {
+      setze('mietdokument', 'mietvertrag');
+      // Bruttokalt eindeutig aus Grundmiete + kalten Nebenkosten; nur ohne diese aus der Gesamtmiete
+      // (die Gesamtmiete wird teils ohne, teils mit Heizung gelesen).
+      const grund = zahl(w.grundmiete), nk = zahl(w.nebenkosten);
+      setze('miete', grund !== undefined && (nk !== undefined || zahl(w.gesamtmiete) === undefined)
+        ? rund(grund + (nk ?? 0))
+        : bruttokalt(w));
+      setze('heizkosten_warmwasser', heizWw(w.heizkosten, w.warmwasser));
+      setze('miete_gueltig_ab', datum(w.mietbeginn));
+      setze('wohnflaeche_qm', zahl(w.wohnflaeche_qm));
+      setze('unterschrift_vorhanden', wahr(w.unterschrift_vorhanden));
+      const mieter = zeilen(w.mieter)
+        .map((z) => kompakt({ ...name(z), geburtsdatum: datum(z.geburtsdatum) }))
+        .filter((m) => m.vorname || m.nachname);
+      if (mieter.length) analyse.mieter = mieter;
+      break;
+    }
     case 'untermietvertrag':
+      setze('mietdokument', 'untermietvertrag');
       setze('miete', zahl(w.entgelt));
       setze('wohnflaeche_qm', zahl(w.zimmer_qm));
       setze('unterschrift_vorhanden', wahr(w.unterschrift_vorhanden));
       break;
     case 'heimvertrag':
+      setze('mietdokument', 'heimvertrag');
       setze('miete', zahl(w.unterkunft_gesamt));
       setze('unterschrift_vorhanden', wahr(w.unterschrift_vorhanden));
       break;
     case 'mieterhoehung': {
+      setze('mietdokument', 'mieterhoehung');
       const g = zahl(w.neue_gesamtmiete);
       setze('miete', g !== undefined ? rund(g - (zahl(w.heizung_warmwasser) ?? 0)) : undefined);
+      setze('heizkosten_warmwasser', zahl(w.heizung_warmwasser));
+      setze('miete_gueltig_ab', datum(w.gueltig_ab));
       break;
     }
     case 'rentenbescheid':
+      setze('einkommensart', 'rente');
       setze('rentenart_vorhanden', text(w.rentenart) ? true : w.rentenart === undefined ? undefined : false);
+      setze('rentenart', text(w.rentenart));
       setze('grundrentenzeiten_vorhanden', wahr(w.grundrentenzeiten_vorhanden));
       setze('betrag', zahl(w.betrag));
+      setze('zahlbetrag', zahl(w.zahlbetrag));
+      setze('betrag_gueltig_ab', datum(w.gueltig_ab));
       break;
     case 'kontoauszug': {
       setze('mietzahlung_erkannt', wahr(w.mietzahlung_erkannt));
@@ -215,11 +274,37 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
       if (wahr(w.kapitalertraege_erkannt)) einkuenfte.push('kapitalertraege');
       if (wahr(w.mieteinnahmen_erkannt)) einkuenfte.push('v_und_v');
       if (einkuenfte.length) analyse.erkannte_einkuenfte = einkuenfte;
+      setze('iban', text(w.iban)?.replace(/\s+/g, '').toUpperCase());
+      setze('zeitraum_bis', datum(w.zeitraum_bis));
+      setze('endsaldo', zahl(w.endsaldo));
+      const miete = zahl(w.mietzahlung_betrag);
+      setze('mietzahlung_betrag', miete !== undefined ? Math.abs(miete) : undefined);
+      const eingaenge: KontoEingang[] = zeilen(w.eingaenge)
+        .map((z) => kompakt({
+          verwendungszweck: text(z.verwendungszweck), betrag: zahl(z.betrag), art: eingangArt(z.art),
+          wiederkehrend: wahr(z.wiederkehrend), anzahl: zahl(z.anzahl),
+        }))
+        .filter((e) => e.verwendungszweck || e.betrag !== undefined);
+      if (eingaenge.length) analyse.eingaenge = eingaenge;
       break;
     }
-    case 'gehaltsabrechnung': setze('betrag', zahl(w.brutto)); break;
-    case 'verdienstbescheinigung': setze('betrag', zahl(w.monatsbrutto)); break;
-    case 'lohnersatzbescheid':
+    case 'gehaltsabrechnung':
+      setze('einkommensart', 'lohn_gehalt');
+      setze('betrag', zahl(w.brutto));
+      setze('abrechnungsmonat', monat(w.abrechnungsmonat));
+      setze('arbeitgeber', text(w.arbeitgeber));
+      break;
+    case 'verdienstbescheinigung':
+      setze('einkommensart', 'lohn_gehalt');
+      setze('betrag', zahl(w.monatsbrutto));
+      setze('arbeitgeber', text(w.arbeitgeber));
+      break;
+    case 'lohnersatzbescheid': {
+      const art = text(w.leistungsart) ? einkommensArtAusText(text(w.leistungsart)) : null;
+      if (art && art !== 'sonstiges') setze('einkommensart', art);
+      setze('betrag', zahl(w.betrag));
+      break;
+    }
     case 'kindergeldbescheid':
     case 'unterhaltsnachweis': setze('betrag', zahl(w.betrag)); break;
     case 'steuerunterlagen': setze('betrag', zahl(w.jahreseinkuenfte)); break;

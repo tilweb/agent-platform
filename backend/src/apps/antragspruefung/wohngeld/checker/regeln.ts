@@ -7,10 +7,11 @@
  * und REGELKATALOG_STAND hochzählen.
  *
  * Spec: docs/wohngeld-pruefregeln-doku-spec-2026-09-24.md
+ *       docs/wohngeld-antrag-beleg-abgleich-spec-2026-09-28.md (Abgleich Antrag ↔ Beleg)
  */
 import type { PruefKategorie, PruefTyp } from '../types';
 
-export const REGELKATALOG_STAND = '2026-09-27';
+export const REGELKATALOG_STAND = '2026-09-28';
 
 export type RegelGruppe =
   | 'grundangaben' | 'wohnen' | 'identitaet_versicherung' | 'einkommen'
@@ -106,20 +107,35 @@ export const REGELKATALOG: RegelBeschreibung[] = [
   },
   {
     id: 'plausi-miethoehe-abweichung', titel: 'Miethöhe klären', kategorie: 'plausibilitaet', typ: 'anforderung', bezug: 'dokument', gruppe: 'wohnen',
-    ausloeser: 'Die Miete im Antrag weicht von der Miete im Mietvertrag bzw. in der Vermieterbescheinigung ab (Differenz ab 1 Cent).',
+    ausloeser: 'Die Bruttokaltmiete im Antrag weicht vom maßgeblichen Mietdokument ab (mehr als 1 € Rundungstoleranz). Maßgeblich ist das aktuellste aller Mietdokumente: zuerst nach dem Datum, ab dem die Miete gilt (Mietbeginn, Mieterhöhung ab, „Miete seit"), sonst Vermieterbescheinigung vor Mieterhöhung vor Mietvertrag.',
     rechtsgrundlage: '§§ 9, 11 WoGG',
     erledigung: 'Aktuelle Miethöhe klären (z. B. Mieterhöhung), die maßgebliche Miete im Vorgang eintragen.',
     hinweise: [
-      'Verglichen wird nur mit dem ersten Mietdokument im Vorgang (Mietvertrag oder Vermieterbescheinigung). Nennt der ältere Mietvertrag noch die frühere Miete, bleibt eine Abweichung zur Vermieterbescheinigung unentdeckt.',
-      'Verglichen wird die Bruttokaltmiete (ohne Heiz- und Warmwasserkosten).',
+      'Ältere Mietverträge mit der früheren Miete gelten nicht als Widerspruch; der Belegtext nennt sie nur zur Information.',
+      'Verglichen wird die Bruttokaltmiete (ohne Heiz- und Warmwasserkosten). Entspricht die Differenz genau den Heiz-/Warmwasserkosten, wurde vermutlich die Gesamtmiete gelesen — dann kein Befund.',
+      'Ein Untermietvertrag zählt nur, wenn kein anderes Mietdokument vorliegt (sonst ist die antragstellende Person meist die Untervermieterin).',
+      'Toleranz per WOHNGELD_MIETE_TOLERANZ_EUR / _PROZENT einstellbar (kommunal festzulegen).',
     ],
   },
   {
     id: 'plausi-wohnflaeche-abweichung', titel: 'Wohnfläche prüfen', kategorie: 'plausibilitaet', typ: 'info', bezug: 'dokument', gruppe: 'wohnen',
-    ausloeser: 'Die Wohnfläche im Antrag weicht von der Wohnfläche im ersten Mietdokument ab.',
+    ausloeser: 'Die Wohnfläche im Antrag weicht von der Wohnfläche im maßgeblichen Mietdokument mit Flächenangabe ab (Auswahl wie bei der Miethöhe).',
     rechtsgrundlage: '§ 11 WoGG',
     erledigung: 'Richtige Wohnfläche feststellen und im Vorgang eintragen; relevant v. a. bei teilweiser Untervermietung.',
-    hinweise: ['Wie bei der Miethöhe wird nur das erste Mietdokument verglichen.'],
+  },
+  {
+    id: 'plausi-mietzahlung-abweichung', titel: 'Mietzahlung weicht von der Miete ab', kategorie: 'plausibilitaet', typ: 'info', bezug: 'dokument', gruppe: 'wohnen',
+    ausloeser: 'Die Mietabbuchung auf einem Kontoauszug passt weder zur Bruttokaltmiete laut Antrag noch zur Bruttokaltmiete zuzüglich der bekannten Heiz-/Warmwasserkosten (Antrag oder Mietdokument). Sind keine Heizkosten bekannt, meldet die Regel nur eine Zahlung unter der Bruttokaltmiete. Ein Befund je Vorgang, alle abweichenden Auszüge im Belegtext.',
+    rechtsgrundlage: '§ 9 WoGG',
+    erledigung: 'Klären, ob sich die Miete geändert hat, Teil- oder Nachzahlungen vorliegen oder weitere Kosten (Garage, Strom) mit abgebucht werden.',
+    hinweise: ['Nur ein Hinweis: die Abbuchung kann Nachzahlungen oder andere Kosten enthalten.', 'Entspricht die Zahlung dem maßgeblichen Mietdokument, meldet bereits „Miethöhe klären" — kein zweiter Befund.'],
+  },
+  {
+    id: 'plausi-mieter-nicht-im-haushalt', titel: 'Mieter:in nicht im Haushalt erfasst', kategorie: 'plausibilitaet', typ: 'info', bezug: 'dokument', gruppe: 'wohnen',
+    ausloeser: 'Ein Mietvertrag nennt eine Person als Mieter:in, die im Antrag nicht als Haushaltsmitglied erfasst ist (Abgleich über Name bzw. Geburtsdatum). Wohngeld-Pendant zu „Partner:in fehlt" der Grundsicherung.',
+    rechtsgrundlage: '§§ 5, 6 WoGG',
+    erledigung: 'Klären, ob die Person noch in der Wohnung lebt (dann Haushaltsmitglied mit Einkommen erfassen) oder ausgezogen bzw. verstorben ist (Nachweis anfordern).',
+    hinweise: ['Meldebescheinigungen werden noch nicht ausgewertet — es gibt dafür keinen eigenen Dokumenttyp.', 'Untermietverträge bleiben außen vor.'],
   },
   {
     id: 'plausi-mietvertrag-unsigniert', titel: 'Mietvertrag ohne Unterschrift', kategorie: 'plausibilitaet', typ: 'anforderung', bezug: 'dokument', gruppe: 'wohnen',
@@ -155,6 +171,21 @@ export const REGELKATALOG: RegelBeschreibung[] = [
     hinweise: ['Kinder unter 18 sind ausgenommen (in der Regel familienversichert).', 'Für Arbeitnehmer und Rentner ist der Nachweis meist schon über Abrechnung bzw. Rentenbescheid belegt; ob ein eigener Nachweis nur für Selbständige und privat Versicherte nötig ist, ist fachlich noch offen.'],
   },
 
+  {
+    id: 'plausi-geburtsdatum-abweichung', titel: 'Geburtsdatum weicht ab', kategorie: 'plausibilitaet', typ: 'anforderung', bezug: 'person', gruppe: 'identitaet_versicherung',
+    ausloeser: 'Das Geburtsdatum einer Person im Antrag weicht vom Geburtsdatum in einem ihr zugeordneten Beleg ab (Ausweis, Rentenbescheid, Mietvertrag u. a.).',
+    rechtsgrundlage: '§ 60 SGB I',
+    erledigung: 'Richtiges Geburtsdatum klären (Ausweis ist maßgeblich) und die Zuordnung des Belegs prüfen.',
+    hinweise: ['Der Posteingang ordnet Belege mit abweichendem Geburtsdatum nicht automatisch zu; der Befund entsteht deshalb meist nach manueller Zuordnung oder Korrektur.'],
+  },
+  {
+    id: 'plausi-name-abweichung', titel: 'Name im Beleg weicht ab', kategorie: 'plausibilitaet', typ: 'info', bezug: 'person', gruppe: 'identitaet_versicherung',
+    ausloeser: 'Vor- oder Nachname in einem der Person zugeordneten Ausweis, Renten-, Lohn-, Versicherungs-, Schwerbehinderten- oder Pflegenachweis passt nicht zum Namen (oder Geburtsnamen) im Antrag. Ein abweichender Buchstabe gilt als Schreib-/Lesefehler.',
+    rechtsgrundlage: '§ 60 SGB I',
+    erledigung: 'Prüfen, ob der Beleg zur Person gehört (Heirat, Geburtsname, Schreibweise); ggf. Zuordnung korrigieren.',
+    hinweise: ['Kontoauszüge und Bescheide an Dritte (Kindergeld, Unterhalt) werden nicht verglichen — dort steht oft der Name einer anderen Person.'],
+  },
+
   // ── Einkommen ──
   {
     id: 'verdienstbescheinigung', titel: 'Verdienstbescheinigung / Gehaltsabrechnungen', kategorie: 'vollstaendigkeit', typ: 'anforderung', bezug: 'person', gruppe: 'einkommen',
@@ -176,6 +207,45 @@ export const REGELKATALOG: RegelBeschreibung[] = [
     rechtsgrundlage: '§ 17 WoGG',
     erledigung: 'Für die Freibetragsprüfung einen Bescheid mit Rentenart/Grundrentenzeiten nachfordern.',
     hinweise: ['Greift nur, wenn ein Rentenbescheid vorliegt. Eine im Antrag fehlende Rentenart ohne Bescheid meldet stattdessen „Aktueller Rentenbescheid".'],
+  },
+  {
+    id: 'plausi-rente-abweichung', titel: 'Rentenbetrag weicht ab', kategorie: 'plausibilitaet', typ: 'anforderung', bezug: 'person', gruppe: 'einkommen',
+    ausloeser: 'Die im Antrag angegebene gesetzliche Rente einer Person (Monatswert, jährliche Angaben ÷ 12) weicht um mehr als 1 € von der Bruttorente im Rentenbescheid bzw. in der Rentenanpassungsmitteilung derselben Person ab. Je Rentenart (Alters-, Hinterbliebenen-, Waisen-, EM-Rente) zählt der neueste Bescheid.',
+    rechtsgrundlage: '§ 14 WoGG',
+    erledigung: 'Aktuelle Bruttorente klären (häufig: Rentenanpassung zum 01.07. nicht berücksichtigt) und die Angabe im Vorgang berichtigen.',
+    hinweise: [
+      'Betriebs-, Zusatz- und Privatrenten sowie Pensionen im Antrag bleiben außen vor — sie stehen nicht im Bescheid der Rentenversicherung.',
+      'Greift nur, wenn der Bescheid der Person zugeordnet ist und eine Bruttorente ausweist; nennt er nur den Zahlbetrag, meldet „Rentenhöhe prüfen (nur Zahlbetrag belegt)".',
+    ],
+  },
+  {
+    id: 'plausi-rente-zahlbetrag-pruefen', titel: 'Rentenhöhe prüfen (nur Zahlbetrag belegt)', kategorie: 'plausibilitaet', typ: 'info', bezug: 'person', gruppe: 'einkommen',
+    ausloeser: 'Der Rentenbescheid nennt nur den Zahlbetrag (nach Kranken-/Pflegeversicherung), und die Bruttoangabe im Antrag liegt unter dem Zahlbetrag oder mehr als 15 % darüber.',
+    rechtsgrundlage: '§ 14 WoGG',
+    erledigung: 'Bruttorente aus einem vollständigen Bescheid feststellen oder beim Antragsteller erfragen.',
+    hinweise: ['Wohngeld rechnet mit der Bruttorente; der Zahlbetrag ist nur ein Anhaltspunkt. Faktor per WOHNGELD_RENTE_BRUTTO_ZAHLBETRAG_FAKTOR einstellbar.'],
+  },
+  {
+    id: 'plausi-einkommen-abweichung', titel: 'Einkommen weicht vom Nachweis ab', kategorie: 'plausibilitaet', typ: 'anforderung', bezug: 'person', gruppe: 'einkommen',
+    ausloeser: 'Das im Antrag angegebene Brutto-Erwerbseinkommen einer Person (Monatswert, jährliche Angaben ÷ 12, ohne Einmal- und Sonderzahlungen) weicht vom Monatsdurchschnitt ihrer Gehaltsabrechnungen (je Monat über alle Arbeitgeber summiert) bzw. ihrer Verdienstbescheinigung ab; ebenso Arbeitslosen-, Kranken- und Elterngeld gegenüber dem jeweiligen Bescheid. Toleranz: 5 %, mindestens 10 €. Je Einkunftsart ein Befund.',
+    rechtsgrundlage: '§§ 14, 15 WoGG',
+    erledigung: 'Aktuelles Einkommen klären (Stundenänderung, Lohnerhöhung, Zuschläge) und für die Prognose maßgebliche Nachweise anfordern.',
+    hinweise: [
+      'Mehrere Beschäftigungen werden nur verglichen, wenn die Abrechnungsmonate lesbar sind (sonst ist die Monatssumme nicht bestimmbar).',
+      'Steuerunterlagen (Selbständige) werden nicht verglichen — Gewinn des Vorjahres und Prognose sind nicht gleichartig.',
+      'Toleranz per WOHNGELD_EINKOMMEN_TOLERANZ_EUR / _PROZENT einstellbar (kommunal festzulegen).',
+    ],
+  },
+  {
+    id: 'plausi-kontoauszug-unerklaerte-eingaenge', titel: 'Nicht angegebene Eingänge auf dem Konto', kategorie: 'plausibilitaet', typ: 'anforderung', bezug: 'person', gruppe: 'einkommen',
+    ausloeser: 'Auf den Kontoauszügen einer Person gehen wiederkehrende Zahlungen ein (als laufend erkannt oder auf mehreren Auszügen), die keine im Antrag angegebene Einkommensart erklärt — oder Erwerbseinkommen von einem Arbeitgeber, für den keine Gehaltsabrechnung/Verdienstbescheinigung vorliegt. Kapitalerträge zählen auch einmalig. Wurde derselbe Absender auf einem Auszug als erklärt oder ausgenommen gelesen, bleibt er insgesamt außen vor. Ein Befund je Person mit Absender, Betrag und Auszug.',
+    rechtsgrundlage: '§ 14 WoGG',
+    erledigung: 'Herkunft der Zahlungen klären, ggf. als Einkommen erfassen und Nachweise (z. B. Minijob-Abrechnungen) anfordern.',
+    hinweise: [
+      'Kindergeld, Wohngeld, Erstattungen, Zuschüsse Dritter (Antrag Frage 26 wird nicht ausgelesen) und nicht zuordenbare Eingänge bleiben außen vor; Untermieteinnahmen gelten mit vorliegendem Untermietvertrag als erklärt.',
+      'Der Arbeitgeber-Abgleich greift nur, wenn für jede Person mit angegebenem Erwerbseinkommen ein Lohnnachweis mit lesbarem Arbeitgeber vorliegt — fehlt ein Nachweis, meldet bereits „Verdienstbescheinigung / Gehaltsabrechnungen".',
+      'Liegt die Eingangsliste vor, ersetzt diese Regel „Einkünfte auf dem Kontoauszug nicht angegeben" für diesen Auszug.',
+    ],
   },
   {
     id: 'plausi-kontoauszug-unerklaerte-einkuenfte', titel: 'Einkünfte auf dem Kontoauszug nicht angegeben', kategorie: 'plausibilitaet', typ: 'anforderung', bezug: 'dokument', gruppe: 'einkommen',
@@ -222,7 +292,18 @@ export const REGELKATALOG: RegelBeschreibung[] = [
     ausloeser: 'Das erfasste Vermögen aller Haushaltsmitglieder übersteigt die Freigrenze (60.000 € plus 30.000 € je weiterem Mitglied).',
     rechtsgrundlage: '§ 21 Nr. 3 WoGG',
     erledigung: 'Vermögensnachweise und Zweckerklärung anfordern, dann im Einzelfall bewerten.',
-    hinweise: ['Rechnet nur mit dem im Vorgang erfassten Vermögen. Werte aus beiliegenden Depot- oder Kontoauszügen fließen erst ein, wenn sie erfasst sind.'],
+    hinweise: ['Rechnet nur mit dem im Vorgang erfassten Vermögen. Werte aus beiliegenden Depot- oder Kontoauszügen prüft „Vermögensangabe weicht von den Belegen ab".'],
+  },
+  {
+    id: 'plausi-vermoegen-beleg-abweichung', titel: 'Vermögensangabe weicht von den Belegen ab', kategorie: 'plausibilitaet', typ: 'anforderung', bezug: 'vorgang', gruppe: 'vermoegen',
+    ausloeser: 'Die Belege des Haushalts (Vermögensnachweise plus letzter positiver Kontostand je Konto) liegen deutlich über dem erfassten Vermögen (mehr als 10 %, mindestens 250 €). Ist kein Vermögen erfasst (Frage 20 „Nein"), meldet die Regel nur, wenn die Belege die Freigrenze übersteigen.',
+    rechtsgrundlage: '§ 21 Nr. 3 WoGG',
+    erledigung: 'Vermögensangabe berichtigen lassen, Vermögen im Vorgang erfassen und Zweckerklärung anfordern; danach prüft „Vermögen über Freigrenze" die Höhe.',
+    hinweise: [
+      'Weniger Guthaben als angegeben ist kein Widerspruch (Vermögen kann auf Konten ohne Auszug liegen).',
+      'Kontoauszüge ohne lesbare IBAN gelten als ein Konto, damit Monatsauszüge nicht doppelt zählen.',
+      'Wohngeld-Pendant zu „Kontostand weicht von der Vermögensangabe ab" der Grundsicherung, aber haushaltsweit und einschließlich Depot-/Sparnachweisen.',
+    ],
   },
 
   // ── Ausschlussgründe ──
