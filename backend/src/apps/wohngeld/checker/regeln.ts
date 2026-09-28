@@ -10,7 +10,7 @@
  */
 import type { PruefKategorie, PruefTyp } from '../types';
 
-export const REGELKATALOG_STAND = '2026-09-24b';
+export const REGELKATALOG_STAND = '2026-09-27';
 
 export type RegelGruppe =
   | 'grundangaben' | 'wohnen' | 'identitaet_versicherung' | 'einkommen'
@@ -231,7 +231,32 @@ export const REGELKATALOG: RegelBeschreibung[] = [
     ausloeser: 'Bei der Person ist ein Ausschlussgrund erfasst (z. B. Bürgergeld, Grundsicherung, BAföG) oder eine Transferleistung mit Unterkunftskosten.',
     rechtsgrundlage: '§ 7 WoGG; § 20 Abs. 2 WoGG (Ausbildungsförderung)',
     erledigung: 'Prüfen, ob die Person bei der Wohngeldberechnung außer Betracht bleibt oder der ganze Haushalt ausgeschlossen ist.',
-    hinweise: ['Greift nur bei erfasstem Ausschlussgrund; eine Transferleistung, die nur aus einem Bescheid hervorgeht, muss zuerst bei der Person eingetragen werden.'],
+    hinweise: [
+      'Greift nur bei erfasstem Ausschlussgrund; eine Transferleistung, die nur aus einem Bescheid hervorgeht, muss zuerst bei der Person eingetragen werden.',
+      'Bei Grundsicherung im Alter und bei Erwerbsminderung erscheint zusätzlich der Hinweis „Grundsicherungsbezug angegeben — Vorrang klären" für den Haushalt; diese Regel bleibt für die Frage zuständig, ob die Person außer Betracht bleibt.',
+    ],
+  },
+  {
+    id: 'vorrang-grundsicherungsbescheid-bei-wohngeld', titel: 'Grundsicherungsbezug angegeben — Vorrang klären', kategorie: 'plausibilitaet', typ: 'info', bezug: 'vorgang', gruppe: 'ausschluss',
+    ausloeser: 'Bei einer Person im Haushalt ist Grundsicherung im Alter und bei Erwerbsminderung als Ausschlussgrund oder Transferleistung erfasst, deren Bezug nicht vor dem Antragsdatum endet. Ein Befund je Vorgang.',
+    rechtsgrundlage: '§ 7 Abs. 1 Satz 1 Nr. 5 und Satz 3 WoGG; § 8 WoGG',
+    erledigung: 'Grundsicherungsbescheid anfordern oder mit der Grundsicherungsstelle klären, ob die Ausnahme nach § 7 Abs. 1 Satz 3 WoGG greift (Wohngeld vermeidet die Hilfebedürftigkeit, Grundsicherung noch nicht erbracht) oder ein Verzicht nach § 8 WoGG erklärt wird.',
+    hinweise: [
+      'Es gibt keinen eigenen Dokumenttyp für den Grundsicherungsbescheid; ein solcher Bescheid wird als „Transferleistungsbescheid" eingeordnet. Die Regel greift deshalb nur über die Angaben bei der Person, nicht über ein Dokument.',
+      'Keine Berechnung: ob Wohngeld die Hilfebedürftigkeit vermeidet, entscheidet die Sachbearbeitung in Abstimmung mit der Grundsicherungsstelle.',
+    ],
+  },
+  {
+    id: 'vorrang-grundsicherung-mitpruefen', titel: 'Grundsicherung mitprüfen', kategorie: 'plausibilitaet', typ: 'info', bezug: 'vorgang', gruppe: 'ausschluss',
+    ausloeser: 'Die antragstellende Person oder ihr Ehe-/Lebenspartner hat im Antragsmonat die Altersgrenze nach § 41 Abs. 2 SGB XII erreicht oder ist laut Rentenbescheid dauerhaft voll erwerbsgemindert, bei beiden sind keine Erwerbseinkünfte erfasst und ihr erfasstes Vermögen liegt unter 10.000 € je Person (oder ist nicht erfasst). Entfällt, wenn schon Grundsicherungsbezug angegeben ist.',
+    rechtsgrundlage: '§ 41 SGB XII; § 2 Abs. 1 SGB XII; § 7 Abs. 1 WoGG',
+    erledigung: 'Antragsteller auf die Grundsicherung im Alter und bei Erwerbsminderung hinweisen und die Vorrangfrage mit der Grundsicherungsstelle abstimmen. Den Hinweis verwerfen, wenn das Einkommen offensichtlich deutlich über dem Grundsicherungsniveau liegt.',
+    hinweise: [
+      'Geprüft wird nur das Vorliegen der Merkmale, nicht die Höhe von Einkommen oder Bedarf.',
+      'Stichtag ist das Antragsdatum; ohne Antragsdatum oder Geburtsdatum greift die Regel nicht.',
+      'Die Erwerbsminderung wird nur aus der Rentenart im Rentenbescheid gelesen und muss ausdrücklich unbefristet sein; eine befristete oder unklare Erwerbsminderungsrente löst den Hinweis nicht aus.',
+      'Ein eheähnlicher Partner ist im Wohngeld nicht als Partner erfasst; sein Einkommen und Vermögen bleiben hier unberücksichtigt.',
+    ],
   },
 
   // ── Verfahren ──

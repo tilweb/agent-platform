@@ -3,7 +3,7 @@
  * Dokument-Zugriff, abgeleitete Merkmale). Keine DB, kein LLM.
  */
 import { dayPart, toUtcDay } from '../../_antrag-kern/datum';
-import { altersgrenzeErreichtAm, altersgrenzeMonat } from '../altersgrenze';
+import { altersgrenzeErreichtAm, altersgrenzeMonat } from '../../_vorrang/altersgrenze';
 import { berechneBwzVorschlag } from '../bwz';
 import {
   analyseVon, EINKOMMENS_ARTEN, VERMOEGENS_ARTEN,

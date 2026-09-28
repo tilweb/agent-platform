@@ -26,6 +26,8 @@ import {
 import { pruefeAutomatisch, pruefeUndSynchronisiere } from '../pruefung';
 import { ladeSachbearbeitung } from '../sachbearbeitung';
 import { kiVerbrauchFuerVorgang } from '../ki-verbrauch';
+import { grunddatenFuerVorrangpruefung } from '../vorrang-grunddaten';
+import { vollstaendigkeit } from '../../_vorrang/grunddaten';
 
 const VERFUEGUNG_ENTSCHEIDUNGEN: VerfuegungEntscheidung[] = ['bewilligt', 'abgelehnt', 'teilweise', 'offen'];
 /** Finale Entscheidungen (unterliegen dem Vier-Augen-Prinzip); `offen` = Vorbereitung. */
@@ -167,6 +169,19 @@ vorgaengeRoutes.get('/vorgaenge/:id/einkommen', async (c) => {
   const unterhalt = unterhaltsabzuegeFuer(snapshot.personen);
   const einkommen = berechneVorgangEinkommen(snapshot.personen, snapshot.dokumente, unterhalt);
   return c.json({ einkommen });
+});
+
+/**
+ * Grunddaten für eine spätere Vorrang-Einschätzung Wohngeld ↔ Grundsicherung (nur lesen,
+ * keine Berechnung) plus die Liste fehlender Grunddaten. Lesezugriff wird protokolliert.
+ */
+vorgaengeRoutes.get('/vorgaenge/:id/vorrang-grunddaten', async (c) => {
+  const id = c.req.param('id');
+  const snapshot = await getVorgangSnapshot(id);
+  if (!snapshot) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+  await audit(c, { aktion: 'vorrang_grunddaten.gelesen', objektTyp: 'vorgang', objektId: id, vorgangId: id });
+  const grunddaten = grunddatenFuerVorrangpruefung(snapshot);
+  return c.json({ grunddaten, fehlend: vollstaendigkeit(grunddaten).fehlend });
 });
 
 vorgaengeRoutes.post('/vorgaenge', async (c) => {

@@ -7,7 +7,7 @@
  * Felder laut DokumentAnalyse-Vertrag in types.ts). Keine Berechnung von Bedarf/Zahlbetrag.
  */
 import { dayPart } from '../../_antrag-kern/datum';
-import { altersgrenzeFuerJahrgang, fmtAltersgrenze } from '../altersgrenze';
+import { altersgrenzeFuerJahrgang, fmtAltersgrenze } from '../../_vorrang/altersgrenze';
 import { EINKOMMENS_ARTEN, VERMOEGENS_ARTEN, type Dokument, type EingangArt, type Person, type PruefBefund } from '../types';
 import {
   alterAm, altersgrenzeErreicht, altersgrenzeErreichtAm, analysen, beziehtGesetzlicheRente, docs, docsFuer,

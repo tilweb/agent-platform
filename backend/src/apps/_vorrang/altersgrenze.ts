@@ -1,5 +1,8 @@
 /**
- * Grundsicherung — Altersgrenze nach § 41 Abs. 2 SGB XII (rein, DB-frei, testbar).
+ * Altersgrenze nach § 41 Abs. 2 SGB XII (rein, DB-frei, testbar).
+ *
+ * Gemeinsam genutzt von Grundsicherung (Anspruchsgrund Alter) und Wohngeld (Vorrang-Hinweis
+ * „Grundsicherung mitprüfen"). Liegt unter `_vorrang/`, weil die Apps einander nicht importieren.
  *
  * Gesetz (§ 41 Abs. 2 SGB XII): „Leistungsberechtigt wegen Alters nach Absatz 1 ist, wer die
  * Altersgrenze erreicht hat. Personen, die vor dem 1. Januar 1947 geboren sind, erreichen die

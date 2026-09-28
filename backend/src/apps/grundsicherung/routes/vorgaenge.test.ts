@@ -141,6 +141,21 @@ describe('Lesen und Owner-Routen', () => {
     expect(audits.map((a) => a.aktion)).toEqual(['vorgang.geoeffnet']);
   });
 
+  test('Vorrang-Grunddaten: nur lesen, Lesezugriff protokolliert, 404 ohne Vorgang', async () => {
+    const { app, audits, fake } = aufbau('viewer', [basisVorgang({ antragsdatum: '2026-08-01', wohnsituation: 'miete' })]);
+    fake.getVorgangSnapshot = async (id: string) => (id === 'v1'
+      ? { vorgang: basisVorgang({ antragsdatum: '2026-08-01', wohnsituation: 'miete' }), personen: [], dokumente: [] }
+      : null);
+    const res = await app.request('/vorgaenge/v1/vorrang-grunddaten');
+    expect(res.status).toBe(200);
+    const d = await res.json() as { grunddaten: { quelle: string; wohnkosten: { eigentum?: boolean } }; fehlend: string[] };
+    expect(d.grunddaten.quelle).toBe('grundsicherung');
+    expect(d.grunddaten.wohnkosten.eigentum).toBe(false);
+    expect(d.fehlend).toContain('haushalt.antragsteller');
+    expect(audits.map((a) => a.aktion)).toEqual(['vorrang_grunddaten.gelesen']);
+    expect((await app.request('/vorgaenge/gibt-es-nicht/vorrang-grunddaten')).status).toBe(404);
+  });
+
   test('Einschränkung aufheben nur Owner; Legal Hold sperrt Löschung', async () => {
     const e = aufbau('editor', [basisVorgang({ eingeschraenkt: true, legalHold: true })]);
     expect((await e.app.request('/vorgaenge/v1/einschraenkung', json('PUT', { eingeschraenkt: false }))).status).toBe(403);

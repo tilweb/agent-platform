@@ -33,6 +33,7 @@ const AKTION_LABEL: Record<string, string> = {
   'dokument.geloescht': 'Dokument gelöscht', 'dokument.heruntergeladen': 'Dokument heruntergeladen', 'dokument.vorschau': 'Dokument angesehen',
   'pruefung.ausgefuehrt': 'Prüfung ausgeführt', 'schreiben.generiert': 'Schreiben erzeugt', 'schreiben.versendet': 'Schreiben versendet',
   'schreiben.exportiert': 'Schreiben exportiert', 'person.auskunft_exportiert': 'Auskunft exportiert',
+  'vorrang_grunddaten.gelesen': 'Grunddaten zur Vorrangprüfung abgerufen',
 };
 
 function fmtDatum(iso?: string): string {

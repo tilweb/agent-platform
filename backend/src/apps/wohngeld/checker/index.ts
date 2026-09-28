@@ -6,12 +6,14 @@
 import type { VorgangSnapshot, PruefBefund } from '../types';
 import { pruefeNachweise } from './nachweise';
 import { pruefePlausibilitaet } from './plausibilitaet';
+import { pruefeVorrang } from './vorrang';
 
 export function pruefeVorgang(snapshot: VorgangSnapshot): PruefBefund[] {
   return [
     ...pruefeNachweise(snapshot),
     ...pruefePlausibilitaet(snapshot),
+    ...pruefeVorrang(snapshot),
   ];
 }
 
-export { pruefeNachweise, pruefePlausibilitaet };
+export { pruefeNachweise, pruefePlausibilitaet, pruefeVorrang };

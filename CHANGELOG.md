@@ -2,6 +2,15 @@
 
 ## 2026-09-27
 
+### Vorrang Wohngeld ↔ Grundsicherung: Grunddaten-Vertrag und gegenseitige Hinweise (Welle G5)
+Beide Apps liefern die Grunddaten eines Falls in derselben Form (`apps/_vorrang/grunddaten.ts`: Haushalt,
+Partnerschaft, Einkommen und Vermögen nach gemeinsamen Arten, Wohnkosten, Alter/Erwerbsminderung,
+Schwerbehinderung, Transferleistungen, Eingang) — Grundlage für die spätere Vorrang-Einschätzung mit einer
+Pilotkommune. Es wird nichts eingeschätzt oder berechnet; ein Vertrags-Test sichert die gleiche Form.
+Wohngeld erhält zwei Hinweise (ohne Rechnung): „Grundsicherungsbezug angegeben" und „Grundsicherung mitprüfen"
+(Altersgrenze erreicht oder dauerhaft voll erwerbsgemindert, nur Renteneinkommen, Vermögen unter Schonbetrag).
+Die Altersgrenzen-Tabelle (§ 41 Abs. 2 SGB XII) liegt jetzt gemeinsam in `apps/_vorrang/altersgrenze.ts`.
+
 ### Wohngeld: Zuordnen aus dem Posteingang verliert keine erkannten Antragsdaten mehr
 Beim Zuordnen schickt das Posteingang-Formular seine (ggf. korrigierten) Stammdaten mit. Bisher ersetzten diese
 die erkannten Antragsdaten vollständig — dadurch gingen der aus dem Antrag erkannte Haushalt (Grundlage für das

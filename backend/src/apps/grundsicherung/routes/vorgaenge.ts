@@ -11,7 +11,7 @@ import { getCurrentUserId } from '../../../auth/middleware';
 import {
   listVorgaenge, getVorgang, createVorgang, updateVorgang, deleteVorgang,
   getAkte, listAkten, listPersonen, listDokumente, listPruefschritte, listSchreiben, listAktivitaeten,
-  listFeldStatus, listNotizen, listAuditEintraege,
+  listFeldStatus, listNotizen, listAuditEintraege, getVorgangSnapshot,
 } from '../storage';
 import { VersionConflictError } from '../concurrency';
 import { audit, auditUpdate } from '../audit';
@@ -24,6 +24,8 @@ import {
 import { pruefeAutomatisch, pruefeUndSynchronisiere } from '../pruefung';
 import { ladeSachbearbeitung } from '../sachbearbeitung';
 import { kiVerbrauchFuerVorgang } from '../ki-verbrauch';
+import { grunddatenFuerVorrangpruefung } from '../vorrang-grunddaten';
+import { vollstaendigkeit } from '../../_vorrang/grunddaten';
 import {
   bereinigeVorgangUpdates, filtereVorgaenge, planeStatusWechsel, VORGANG_AUDIT_FELDER,
 } from '../vorgang-helfer';
@@ -32,7 +34,7 @@ import { ANSPRUCHSGRUENDE, ANTRAGSARTEN, type Vorgang } from '../types';
 const standardDeps = {
   listVorgaenge, getVorgang, createVorgang, updateVorgang, deleteVorgang,
   getAkte, listAkten, listPersonen, listDokumente, listPruefschritte, listSchreiben, listAktivitaeten,
-  listFeldStatus, listNotizen, listAuditEintraege,
+  listFeldStatus, listNotizen, listAuditEintraege, getVorgangSnapshot,
   audit, auditUpdate, pruefeAutomatisch, pruefeUndSynchronisiere, ladeSachbearbeitung, kiVerbrauchFuerVorgang,
   vierAugenAktiv,
 };
@@ -99,6 +101,19 @@ export function createVorgaengeRoutes(d: VorgaengeDeps) {
       d.listFeldStatus(id), d.listNotizen(id), d.listAuditEintraege(id),
     ]);
     return c.json({ vorgang, akte, personen, dokumente, pruefschritte, schreiben, aktivitaeten, feldStatus, notizen, protokoll, vierAugen: d.vierAugenAktiv() });
+  });
+
+  /**
+   * Grunddaten für eine spätere Vorrang-Einschätzung Wohngeld ↔ Grundsicherung (nur lesen,
+   * keine Berechnung) plus die Liste fehlender Grunddaten. Lesezugriff wird protokolliert.
+   */
+  r.get('/vorgaenge/:id/vorrang-grunddaten', async (c) => {
+    const id = c.req.param('id');
+    const snapshot = await d.getVorgangSnapshot(id);
+    if (!snapshot) return c.json({ error: 'Vorgang nicht gefunden' }, 404);
+    await d.audit(c, { aktion: 'vorrang_grunddaten.gelesen', objektTyp: 'vorgang', objektId: id, vorgangId: id });
+    const grunddaten = grunddatenFuerVorrangpruefung(snapshot);
+    return c.json({ grunddaten, fehlend: vollstaendigkeit(grunddaten).fehlend });
   });
 
   /** KI-Verbrauch (Tokens) des Falls — Summe, je Phase, je Aktion, je Modell plus Verlauf. */

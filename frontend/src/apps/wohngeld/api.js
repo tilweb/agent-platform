@@ -580,6 +580,7 @@ export const APP_ROLE_LABEL = {
  */
 export const AKTION_LABEL = {
   'vorgang.geoeffnet': 'Fall geöffnet',
+  'vorrang_grunddaten.gelesen': 'Grunddaten für die Vorrangprüfung abgerufen',
   'vorgang.erstellt': 'Vorgang erstellt',
   'vorgang.geaendert': 'Vorgang geändert',
   'vorgang.geloescht': 'Vorgang gelöscht',
