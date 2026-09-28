@@ -1,14 +1,31 @@
 # Muster: Antragsprüfungs-App
 
 Verbindliche Vorlage für jede App, die einen Sozialleistungsantrag prüft (Wohngeld, Grundsicherung,
-…). Referenz-Implementierungen sind Wohngeld (`apps/wohngeld/`) und Grundsicherung
-(`apps/grundsicherung/`, nach diesem Muster als zweite App gebaut). Hintergrund und Entscheidungen:
-`docs/antragspruefung-architektur-konzept-2026-09-27.md`; gemeinsamer Code: `apps/_antrag-kern/`
+…). Referenz-Implementierungen sind Wohngeld (`apps/antragspruefung/wohngeld/`) und Grundsicherung
+(`apps/antragspruefung/grundsicherung/`, nach diesem Muster als zweite App gebaut). Hintergrund und Entscheidungen:
+`docs/antragspruefung-architektur-konzept-2026-09-27.md`; gemeinsamer Code: `apps/antragspruefung/kern/`
 (`docs/antrag-kern-spec-2026-09-27.md`).
 
 **Grundsatz:** Einheitlichkeit entsteht über dieses Muster, den Kern und Konformitätstests, nicht
 über Konfiguration. Fachlichkeit (Recht, Regeln, Datenmodell, Texte) ist eigener Code je App und
 darf frei abweichen. Was hier steht, ist dagegen für alle Apps gleich.
+
+## 0. Ordnerstruktur
+
+Die Familie liegt in einem Ordner — Backend `backend/src/apps/antragspruefung/`, Frontend
+`frontend/src/apps/antragspruefung/`:
+
+```
+antragspruefung/
+  kern/            fachfreie Mechanik (Protokoll, KI-Verbrauch, Posteingang, Feldstatus, UI-Bausteine …)
+  vorrang/         Fachlogik, die genau diese Apps teilen (Grunddaten-Vertrag, Altersgrenze) — nur Backend
+  wohngeld/        Fach-App
+  grundsicherung/  Fach-App
+```
+
+Eine neue Antrags-App kommt als weiterer Unterordner dazu. Apps importieren einander nicht; der
+Kern importiert keine App. Zentral bleiben Schema/Migrationen, Registry, Routen-Einhängung,
+Dokumentprofil-Vorlagen.
 
 ## 1. Auftrag und Grenzen
 
@@ -102,7 +119,7 @@ erkannte Dokumente mit Seitenvorschau, Match-Vorschlag, Verteilung, KI-Verbrauch
   Feldebene mit Bestätigen/Verwerfen (`FeldStatusMark`), Notizen je Abschnitt.
 - Fall-Chat als schwebendes Panel (Modi „Frage zum Fall" und „Gesetz nachschlagen").
 
-**Gestaltung:** Bausteine aus `frontend/src/apps/_antrag-kern/components/`, App-API über
+**Gestaltung:** Bausteine aus `frontend/src/apps/antragspruefung/kern/components/`, App-API über
 `AntragKernProvider` (je App eine `<App>KernProvider`-Hülle um jede Seite), Inline-Styles mit
 `theme.js`, Akzentfarbe `ACCENT` aus dem Kern. Siehe `frontend/CLAUDE.md` (u. a. keine farbigen
 Akzentrahmen an Karten, Eingabefelder auf `theme.colors.surface`). UI-Texte ohne interne Verweise.
@@ -122,11 +139,11 @@ Akzentrahmen an Karten, Eingabefelder auf `theme.colors.surface`). UI-Texte ohne
 
 ## 7. Konventionen
 
-- Backend `backend/src/apps/<app>/`: `types.ts`, `storage.ts`, `routes/*`, `checker/`
+- Backend `backend/src/apps/antragspruefung/<app>/`: `types.ts`, `storage.ts`, `routes/*`, `checker/`
   (Regeln + `regeln.ts`-Katalog), `extraction-schema.ts`, `dp-erkennung.ts` (Adapter auf das
   DP-Profil `<app>-eingang`), `recht/` (Korpus), `ki-governance.ts`, `ki-verbrauch.ts`,
   `audit.ts` (Adapter), `seed-demo.ts`.
-- Frontend `frontend/src/apps/<app>/`: `<App>Page`, `VorgangDetail`, `PosteingangPage`,
+- Frontend `frontend/src/apps/antragspruefung/<app>/`: `<App>Page`, `VorgangDetail`, `PosteingangPage`,
   `PosteingangDetail`, `api.js`, `<App>KernProvider.jsx`.
 - Env-Variablen mit App-Präfix (`WOHNGELD_…`, `GRUNDSICHERUNG_…`).
 - Specs unter `docs/<app>-<thema>-spec-<datum>.md`, Changelog-Eintrag je Feature.
@@ -140,7 +157,7 @@ Akzentrahmen an Karten, Eingabefelder auf `theme.colors.surface`). UI-Texte ohne
   abnahmefähig ist. Das gepflegte `enabled` bleibt beim Registry-Abgleich erhalten.
 - **Apps importieren einander nicht.** Gemeinsames aller Antrags-Apps liegt im Kern (fachfrei),
   Gemeinsames zwischen genau bestimmten Apps in einem eigenen Geschwister-Ordner (Abschnitt 9).
-- Kern bleibt fachfrei (Wächter-Test `_antrag-kern/fachfrei.test.ts`). Änderungen am Kern
+- Kern bleibt fachfrei (Wächter-Test `kern/fachfrei.test.ts`). Änderungen am Kern
   wirken in allen Apps. Eine UX-Änderung, die nur in einer App passiert, im Changelog als
   „Muster-Änderung" markieren und bewusst entscheiden: Kern, alle Apps nachziehen, oder
   fachliche Abweichung.
@@ -148,8 +165,8 @@ Akzentrahmen an Karten, Eingabefelder auf `theme.colors.surface`). UI-Texte ohne
 ## 8. Konformitätstests je App
 
 Statisch über den Quelltext, ohne Laufzeit und Datenbank: Helfer in
-`_antrag-kern/konformitaet.ts`, je App `apps/<app>/konformitaet.test.ts` (Konfiguration + begründete
-Ausnahmen), Kern-Fabriken in `_antrag-kern/konformitaet.test.ts`.
+`kern/konformitaet.ts`, je App `apps/<app>/konformitaet.test.ts` (Konfiguration + begründete
+Ausnahmen), Kern-Fabriken in `kern/konformitaet.test.ts`.
 
 | Prüfung | Regel |
 |---|---|
@@ -169,7 +186,7 @@ Referenz-App und passt nur die Konfiguration an.
 Wohngeld und Grundsicherung schließen einander weitgehend aus; welche Leistung vorgeht, entscheidet
 die Sachbearbeitung. Die Apps liefern dafür nur Hinweise (Prüfschritte `info`), keine Berechnung.
 
-- **`apps/_vorrang/`** enthält die Fachlogik, die genau diese Apps teilen — nicht im Kern (der
+- **`apps/antragspruefung/vorrang/`** enthält die Fachlogik, die genau diese Apps teilen — nicht im Kern (der
   bleibt fachfrei), nicht in einer der Apps (die importieren einander nicht):
   - `grunddaten.ts` — **Grunddaten-Vertrag**: beide Apps liefern über
     `grunddatenFuerVorrangpruefung(snapshot)` (je App `vorrang-grunddaten.ts`) dieselbe Datenform

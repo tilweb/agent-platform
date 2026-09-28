@@ -10,9 +10,9 @@
  */
 import type {
   Dokument, DokumentAnalyse, DokumentTyp, Erwerbsstatus, Person, PersonRolle, Vorgang, VorgangSnapshot,
-} from '../../src/apps/wohngeld/types';
-import type { ExtrahierteStammdaten, Identitaet } from '../../src/apps/wohngeld/extraction';
-import { kindergeldEmpfaenger, ordneNachweisZu, personenAusAntrag, type PersonZuordnung } from '../../src/apps/wohngeld/haushalt';
+} from '../../src/apps/antragspruefung/wohngeld/types';
+import type { ExtrahierteStammdaten, Identitaet } from '../../src/apps/antragspruefung/wohngeld/extraction';
+import { kindergeldEmpfaenger, ordneNachweisZu, personenAusAntrag, type PersonZuordnung } from '../../src/apps/antragspruefung/wohngeld/haushalt';
 
 const JETZT = '2026-09-24T00:00:00.000Z';
 const basis = { created_at: JETZT, updated_at: JETZT, version: 1 };

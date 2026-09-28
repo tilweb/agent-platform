@@ -15,7 +15,7 @@
  *
  * WICHTIG: NICHT committen — reines Demo-/Dev-Werkzeug.
  */
-import { seedWohngeldDemo } from '../src/apps/wohngeld/seed-demo';
+import { seedWohngeldDemo } from '../src/apps/antragspruefung/wohngeld/seed-demo';
 import { closeSql } from '../src/db/client';
 
 if (!process.env.SCALINGO_POSTGRES) {

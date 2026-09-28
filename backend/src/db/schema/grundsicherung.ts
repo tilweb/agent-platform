@@ -12,7 +12,7 @@
 import { pgSchema, text, integer, boolean, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
 import {
   auditLogTabelle, kiVerbrauchTabelle, posteingangTabelle, feldStatusTabelle, notizenTabelle,
-} from '../../apps/_antrag-kern/tabellen';
+} from '../../apps/antragspruefung/kern/tabellen';
 
 export const grundsicherungSchema = pgSchema('grundsicherung');
 

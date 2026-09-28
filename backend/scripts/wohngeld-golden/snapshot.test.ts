@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { pruefeVorgang } from '../../src/apps/wohngeld/checker';
+import { pruefeVorgang } from '../../src/apps/antragspruefung/wohngeld/checker';
 import { posteingangSnapshot, regelwerkSnapshot, type FallKurz } from './snapshot';
 
 const fall: FallKurz = {

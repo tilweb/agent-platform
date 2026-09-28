@@ -16,7 +16,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { $ } from 'bun';
-import { mappeAbschnitt } from '../../src/apps/grundsicherung/dp-erkennung';
+import { mappeAbschnitt } from '../../src/apps/antragspruefung/grundsicherung/dp-erkennung';
 import { renderDokument } from './bausteine';
 import { alleFaelle } from './faelle';
 import { befundeFuer, gleich, holePfad, type AbschnittKurz } from './vergleich';

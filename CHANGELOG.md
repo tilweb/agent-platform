@@ -2,6 +2,14 @@
 
 ## 2026-09-28
 
+### Antragsprüfungs-Apps als abgeschlossene Familie in einem Ordner (Muster-Änderung)
+Wohngeld, Grundsicherung und ihr geteilter Code liegen jetzt gemeinsam unter `backend/src/apps/antragspruefung/`
+(`kern/`, `vorrang/`, `wohngeld/`, `grundsicherung/`) bzw. `frontend/src/apps/antragspruefung/` (`kern/`, `wohngeld/`,
+`grundsicherung/`) — statt getrennter Geschwister-Ordner `_antrag-kern`/`_vorrang`. Damit bleibt die Familie
+autark und als ein Ordner übergebbar. Reines Verschieben (Versionsgeschichte erhalten): App-IDs, URLs,
+Tabellen und Speicherpfade unverändert; 1383 Tests grün, Wohngeld-Lese-Schnappschuss identisch. Agenten-Hinweise
+in `backend/src/apps/antragspruefung/CLAUDE.md`, Muster-Dokument um die Ordnerstruktur ergänzt.
+
 ### Grundsicherung: Goldfälle als Test-PDFs und erste Live-Messung der Erkennung
 Generator `backend/scripts/grundsicherung-golden/erzeuge.ts` erzeugt die drei Goldfälle als synthetische
 Sammel-PDFs (20–28 Seiten, 8–13 Dokumente, als MUSTER gekennzeichnet; Ausgabe unter `tools/output/`, nicht im Repo),

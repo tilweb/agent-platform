@@ -55,8 +55,8 @@ import { seedCustomSkillsFromDisk } from './skills';
 import { seedProjectsFromDisk } from './projects';
 import { seedChatsFromDisk } from './services/chatStorage';
 import { seedKbFromDisk } from './services/kbStorage';
-import { seedWohngeldDemo } from './apps/wohngeld/seed-demo';
-import { seedGrundsicherungDemo } from './apps/grundsicherung/seed-demo';
+import { seedWohngeldDemo } from './apps/antragspruefung/wohngeld/seed-demo';
+import { seedGrundsicherungDemo } from './apps/antragspruefung/grundsicherung/seed-demo';
 
 const app = new Hono();
 

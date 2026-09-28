@@ -31,8 +31,8 @@ import { wzbarMatcherRoutes } from '../apps/wzbar-matcher/routes';
 import { vorgangsmappeRoutes } from '../apps/vorgangsmappe/routes';
 import { podcastRepurposingRoutes } from '../apps/podcast-repurposing/routes';
 import { echoloopRoutes } from '../apps/echoloop/routes';
-import { wohngeldRoutes } from '../apps/wohngeld/routes';
-import { grundsicherungRoutes } from '../apps/grundsicherung/routes';
+import { wohngeldRoutes } from '../apps/antragspruefung/wohngeld/routes';
+import { grundsicherungRoutes } from '../apps/antragspruefung/grundsicherung/routes';
 
 const apps = new Hono();
 

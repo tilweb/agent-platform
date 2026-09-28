@@ -21,7 +21,7 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   erkenneDokumente, ladeProfil, mappeAbschnitt, markiereWiederkehrendeEingaenge, vorlagenHash, type GeladenesProfil,
-} from '../../src/apps/grundsicherung/dp-erkennung';
+} from '../../src/apps/antragspruefung/grundsicherung/dp-erkennung';
 import { buildGrundsicherungEingangProject, GRUNDSICHERUNG_PROFIL_VORLAGE_STAND } from '../../src/extraction/templates/grundsicherung-eingang';
 import { extractionModelLabel } from '../../src/extraction/model';
 import { stableHash } from '../../src/extraction/learning/snapshot';

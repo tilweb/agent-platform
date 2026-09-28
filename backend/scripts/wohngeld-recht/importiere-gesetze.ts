@@ -13,7 +13,7 @@ import { $ } from 'bun';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseGesetzXml, type GesetzAbsatz, type GesetzQuelle, type ParseOptionen } from '../../src/apps/wohngeld/recht/gesetz-parser';
+import { parseGesetzXml, type GesetzAbsatz, type GesetzQuelle, type ParseOptionen } from '../../src/apps/antragspruefung/wohngeld/recht/gesetz-parser';
 
 const GESETZE: ParseOptionen[] = [
   { schluessel: 'wogg', pfad: 'wogg' },

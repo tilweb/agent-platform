@@ -13,17 +13,17 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pruefeVorgang } from '../../src/apps/wohngeld/checker';
-import { klassifiziereUndExtrahiere } from '../../src/apps/wohngeld/extraction';
-import { WOHNGELD_PROMPT_VERSION } from '../../src/apps/wohngeld/ki-governance';
-import { defaultSplitDeps, pruefeUndTrenne } from '../../src/apps/wohngeld/posteingang-split';
+import { pruefeVorgang } from '../../src/apps/antragspruefung/wohngeld/checker';
+import { klassifiziereUndExtrahiere } from '../../src/apps/antragspruefung/wohngeld/extraction';
+import { WOHNGELD_PROMPT_VERSION } from '../../src/apps/antragspruefung/wohngeld/ki-governance';
+import { defaultSplitDeps, pruefeUndTrenne } from '../../src/apps/antragspruefung/wohngeld/posteingang-split';
 import { extractionModelLabel } from '../../src/extraction/model';
 import { buildPartPdf } from '../../src/services/extraction/pdf-split';
 import { erzeugeBericht } from './bericht';
-import { erkenneDokumente, ladeProfil } from '../../src/apps/wohngeld/dp-erkennung';
+import { erkenneDokumente, ladeProfil } from '../../src/apps/antragspruefung/wohngeld/dp-erkennung';
 import { stableHash } from '../../src/extraction/learning/snapshot';
 import { erwartetePersonen, posteingangSnapshot, regelwerkSnapshot, type ErwartungKurz, type ExtraktionKurz, type FallKurz } from './snapshot';
-import { einkommensArtAusText, nachnameGleich, PERSONEN_TYPEN, vornameGleich } from '../../src/apps/wohngeld/haushalt';
+import { einkommensArtAusText, nachnameGleich, PERSONEN_TYPEN, vornameGleich } from '../../src/apps/antragspruefung/wohngeld/haushalt';
 import {
   haushaltMetrik, ordneZu, splitMetrik, vergleicheFelder, werteBefundeAus, zuordnungMetrik,
   type Bereich, type BefundAuswertung, type FeldErgebnis, type HaushaltMetrik, type SplitMetrik, type ZuordnungMetrik,

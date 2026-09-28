@@ -12,7 +12,7 @@
  */
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { ladeProfil, WOHNGELD_PROFIL_ID } from '../../src/apps/wohngeld/dp-erkennung';
+import { ladeProfil, WOHNGELD_PROFIL_ID } from '../../src/apps/antragspruefung/wohngeld/dp-erkennung';
 import { deleteExample, getExamples, saveExample } from '../../src/extraction/learning/examples';
 import { profilWahrheit, type ErwartungFuerWahrheit, type FallFuerWahrheit } from './profilwahrheit';
 

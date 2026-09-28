@@ -6,12 +6,12 @@
  *  - Abschnitts-Zuordnung (erwartet ↔ erkannt) und Split-Metrik.
  *  - Feldvergleich über Pfade wie `stammdaten.personen[rolle=antragsteller].einkommen[art=altersrente].betrag_monat`.
  */
-import { pruefeVorgang } from '../../src/apps/grundsicherung/checker';
-import { ordneNachweisZu, personenAusAntrag } from '../../src/apps/grundsicherung/haushalt';
-import { stammdatenUebernahme } from '../../src/apps/grundsicherung/stammdaten-uebernahme';
+import { pruefeVorgang } from '../../src/apps/antragspruefung/grundsicherung/checker';
+import { ordneNachweisZu, personenAusAntrag } from '../../src/apps/antragspruefung/grundsicherung/haushalt';
+import { stammdatenUebernahme } from '../../src/apps/antragspruefung/grundsicherung/stammdaten-uebernahme';
 import type {
   Dokument, DokumentAnalyse, DokumentTyp, ExtrahierteStammdaten, Identitaet, Person, Vorgang, VorgangSnapshot,
-} from '../../src/apps/grundsicherung/types';
+} from '../../src/apps/antragspruefung/grundsicherung/types';
 
 /** Ergebnis eines Abschnitts in App-Begriffen. */
 export interface AbschnittKurz {

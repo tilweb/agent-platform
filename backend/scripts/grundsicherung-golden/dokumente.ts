@@ -8,7 +8,7 @@
  * Alle Personen, Anschriften, Kontonummern und Institute sind erfunden bzw. als MUSTER markiert.
  */
 import type { Content } from 'pdfmake/interfaces';
-import type { EingangArt } from '../../src/apps/grundsicherung/types';
+import type { EingangArt } from '../../src/apps/antragspruefung/grundsicherung/types';
 import {
   abschnitt, absatz, ankreuz, ankreuzReihe, aufstellung, betreff, briefkopf, dt, eur, feldZeile, kasten, klein,
   rund, tabelle, ueberschrift, unterschrift, unterschriftsfeld, zwischen, GRAU, type DokumentRahmen,

@@ -1,0 +1,40 @@
+/**
+ * Wohngeld — Route-Aggregator. App-Access-Gate für ALLE Endpunkte.
+ */
+import { Hono } from 'hono';
+import { requireAppAccess } from '../../permissions-middleware';
+import { aktenRoutes } from './routes/akten';
+import { vorgaengeRoutes } from './routes/vorgaenge';
+import { personenRoutes } from './routes/personen';
+import { dokumenteRoutes } from './routes/dokumente';
+import { pruefschritteRoutes } from './routes/pruefschritte';
+import { schreibenRoutes } from './routes/schreiben';
+import { posteingangQueueRoutes } from './routes/posteingang-queue';
+import { chatRoutes } from './routes/chat';
+import { feldstatusRoutes } from './routes/feldstatus';
+import { notizenRoutes } from './routes/notizen';
+import { textbausteineRoutes } from './routes/textbausteine';
+import { aufgabenRoutes } from './routes/aufgaben';
+import { auditRoutes } from './routes/audit';
+import { sachbearbeitungRoutes } from './routes/sachbearbeitung';
+
+const wohngeld = new Hono();
+
+wohngeld.use('*', requireAppAccess('wohngeld'));
+
+wohngeld.route('/', aktenRoutes);
+wohngeld.route('/', vorgaengeRoutes);
+wohngeld.route('/', personenRoutes);
+wohngeld.route('/', dokumenteRoutes);
+wohngeld.route('/', pruefschritteRoutes);
+wohngeld.route('/', schreibenRoutes);
+wohngeld.route('/', posteingangQueueRoutes);
+wohngeld.route('/', chatRoutes);
+wohngeld.route('/', feldstatusRoutes);
+wohngeld.route('/', notizenRoutes);
+wohngeld.route('/', textbausteineRoutes);
+wohngeld.route('/', aufgabenRoutes);
+wohngeld.route('/', auditRoutes);
+wohngeld.route('/', sachbearbeitungRoutes);
+
+export { wohngeld as wohngeldRoutes };

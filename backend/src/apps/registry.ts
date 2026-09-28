@@ -20,8 +20,8 @@ import { wzbarMatcherConfig } from './wzbar-matcher';
 import { vorgangsmappeConfig } from './vorgangsmappe';
 import { podcastRepurposingConfig } from './podcast-repurposing';
 import { echoloopConfig } from './echoloop';
-import { wohngeldConfig } from './wohngeld';
-import { grundsicherungConfig } from './grundsicherung';
+import { wohngeldConfig } from './antragspruefung/wohngeld';
+import { grundsicherungConfig } from './antragspruefung/grundsicherung';
 
 /**
  * All built-in apps bundled with the backend. On server startup,

@@ -6,10 +6,10 @@
  * Document-Processing-Oberfläche pflegbar (nie bearbeitete Profile werden auf neue
  * Vorlagenstände angehoben).
  *
- * Segmenttypen = die 21 Dokumenttypen der App (1:1, `apps/grundsicherung/types.ts`). Die Felder
+ * Segmenttypen = die 21 Dokumenttypen der App (1:1, `apps/antragspruefung/grundsicherung/types.ts`). Die Felder
  * sind so gewählt, dass sie ohne Umdeutung auf den DokumentAnalyse-Vertrag der Regel-Engine und
  * die Antrags-Stammdaten (Personen, Anspruchsgrund, Wohnung, Einkommen/Vermögen je Person …)
- * abbildbar sind — Abbildung in `apps/grundsicherung/dp-erkennung.ts`.
+ * abbildbar sind — Abbildung in `apps/antragspruefung/grundsicherung/dp-erkennung.ts`.
  *
  * Beschreibungen sind bewusst konkret (Lehren aus dem Wohngeld-Profil): Formularfolgeseiten
  * sind KEIN neues Dokument; Monats-Kontoauszüge und Bescheide je Person sind je ein Dokument.
