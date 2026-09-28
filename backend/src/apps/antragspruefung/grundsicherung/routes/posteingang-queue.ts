@@ -127,6 +127,9 @@ export function createPosteingangQueue(d: PosteingangQueueDeps) {
         if (!trennen) {
           const groesster = [...r.abschnitte].sort((a, b) => (b.seiteBis - b.seiteVon) - (a.seiteBis - a.seiteVon))[0]!;
           uebernimmAbschnitt(x, groesster, r.quelle, r.profilHash);
+          // Ganze Datei bleibt ein Dokument: Seite des Unterschriftsbereichs auf die Datei beziehen.
+          const ua = x.analyse as { unterschrift_seite?: number } | undefined;
+          if (ua?.unterschrift_seite) x.analyse = { ...x.analyse, unterschrift_seite: ua.unterschrift_seite + groesster.seiteVon - 1 } as typeof x.analyse;
           if (istPdf(x) && !x.teilVon && !x.trennung) x.trennung = { status: 'ein_dokument', seitenGesamt: r.seiten };
           out.push(x);
           continue;

@@ -43,6 +43,27 @@ export function nachnameGleich(a?: string, b?: string): boolean {
   return tx.some((t) => t.length > 2 && ty.includes(t));
 }
 
+/** Tippfehler-/Lesetoleranz: höchstens ein abweichender Buchstabe bei Namen ab 5 Zeichen. */
+export function fastGleich(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.min(a.length, b.length) < 5 || Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, fehler = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++fehler > 1) return false;
+    if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; }
+  }
+  return fehler + (a.length - i) + (b.length - j) <= 1;
+}
+/** Vorname gleich oder höchstens ein Buchstabe abweichend (Lesefehler, z. B. „Günther/Günter"). */
+export function vornameAehnlich(a?: string, b?: string): boolean {
+  return vornameGleich(a, b) || (!!normName(a) && !!normName(b) && fastGleich(normName(a), normName(b)));
+}
+/** Nachname gleich oder höchstens ein Buchstabe abweichend (z. B. „Altmeyer/Altmayer"). */
+export function nachnameAehnlich(a?: string, b?: string): boolean {
+  return nachnameGleich(a, b) || (!!normName(a) && !!normName(b) && fastGleich(normName(a), normName(b)));
+}
+
 /** Alter in vollen Jahren zum Stichtag (ISO-Daten); undefined ohne gültiges Geburtsdatum. */
 export function alterAm(geburtsdatum: string | undefined, stichtag: string): number | undefined {
   const g = normDate(geburtsdatum), s = normDate(stichtag);
@@ -245,6 +266,14 @@ export function ordneNachweisZu(typ: DokumentTyp, identitaet: Identitaet | undef
   const voll = personen.filter((p) => vornameGleich(id.vorname, p.vorname) && nachnameGleich(id.nachname, p.nachname));
   if (voll.length === 1) return widerspruchGeb(voll[0]!) ? { grund: 'unklar' } : { personId: voll[0]!.id, grund: 'name' };
   if (voll.length > 1) return { grund: 'unklar' };
+
+  // Lesetoleranz wie beim Namensabgleich (abgleich.ts): je Namensteil höchstens ein abweichender
+  // Buchstabe (Ausweis in Großbuchstaben/OCR: „GÜNTER" ↔ „Günther", „ALTMAYER" ↔ „Altmeyer").
+  if (id.vorname && id.nachname) {
+    const aehnlich = personen.filter((p) => vornameAehnlich(id.vorname, p.vorname) && nachnameAehnlich(id.nachname, p.nachname));
+    if (aehnlich.length === 1 && !widerspruchGeb(aehnlich[0]!)) return { personId: aehnlich[0]!.id, grund: 'name' };
+    if (aehnlich.length > 1) return { grund: 'unklar' };
+  }
 
   // Nur ein Namensteil lesbar oder Nachname abweichend (z. B. Geburtsname): eindeutiger Vorname genügt.
   const nurVor = id.vorname ? personen.filter((p) => vornameGleich(id.vorname, p.vorname)) : [];

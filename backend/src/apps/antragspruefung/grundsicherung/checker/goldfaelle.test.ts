@@ -108,6 +108,7 @@ const POSITIV: Array<[string, (s: Snap) => void]> = [
   ['em-rentenbescheid-unbefristet', (s) => { emFall(s, {}); ohne(s, 'rentenbescheid'); }],
   ['em-feststellung-rv', (s) => emFall(s, { befristet_bis: '2027-12-31' })],
   ['mietvertrag', (s) => ohne(s, 'mietvertrag')],
+  ['plausi-mietvertrag-unsigniert', (s) => { analyse(s, 'mietvertrag').unterschrift_vorhanden = false; }],
   ['mietbescheinigung-aktuell', (s) => ohne(s, 'vermieterbescheinigung')],
   ['nebenkostenabrechnung', (s) => ohne(s, 'nebenkostenabrechnung')],
   ['heizkosten-nachweis', (s) => ohne(s, 'nebenkostenabrechnung', 'vermieterbescheinigung')],
@@ -176,6 +177,30 @@ describe('je Regel: Positivtest (Änderung löst die Regel aus) und Negativtest 
       expect(b.typ).toBe(REGELKATALOG.find((r) => r.id === regelId)!.typ);
     });
   }
+});
+
+describe('Unterschrift Mietvertrag: Hinweis statt Anforderung (Fehlalarm-Klasse, 2026-09-28)', () => {
+  test('ohne Konfidenz → Hinweis zum Sichten mit Seite, keine Nachforderung „mietvertrag"', () => {
+    const s = basis();
+    Object.assign(analyse(s, 'mietvertrag'), { unterschrift_vorhanden: false, unterschrift_seite: 3 });
+    const b = pruefe(s).find((x) => x.regelId === 'plausi-mietvertrag-unsigniert')!;
+    expect(b.typ).toBe('info');
+    expect(b.titel).toBe('Unterschrift im Mietvertrag bitte sichten');
+    expect(b.belegtext).toContain('(Seite 3)');
+    expect(ids(pruefe(s))).not.toContain('mietvertrag');
+  });
+  test('Konfidenz 0,7 (Pipeline-Deckel) bleibt Hinweis; ab Schwelle → Anforderung', () => {
+    const s = basis();
+    Object.assign(analyse(s, 'mietvertrag'), { unterschrift_vorhanden: false, unterschrift_konfidenz: 0.7 });
+    expect(pruefe(s).find((x) => x.regelId === 'plausi-mietvertrag-unsigniert')!.typ).toBe('info');
+    const k = { ...ladeKonstanten({}), UNTERSCHRIFT_LEER_MIN_KONFIDENZ: 0.7 };
+    const b = pruefeVorgang(s, { heute: HEUTE, konstanten: k }).find((x) => x.regelId === 'plausi-mietvertrag-unsigniert')!;
+    expect(b.typ).toBe('anforderung');
+    expect(b.titel).toBe('Mietvertrag ohne Unterschrift');
+  });
+  test('Env-Override GRUNDSICHERUNG_UNTERSCHRIFT_LEER_MIN_KONFIDENZ', () => {
+    expect(ladeKonstanten({ GRUNDSICHERUNG_UNTERSCHRIFT_LEER_MIN_KONFIDENZ: '0,65' }).UNTERSCHRIFT_LEER_MIN_KONFIDENZ).toBe(0.65);
+  });
 });
 
 describe('gezielte Negativtests (Abgrenzungen)', () => {

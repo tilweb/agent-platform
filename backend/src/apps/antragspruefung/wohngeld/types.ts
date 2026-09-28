@@ -375,6 +375,10 @@ export interface DokumentAnalyse {
   miete?: number;                       // z. B. aus Mietvertrag/Vermieterbescheinigung
   wohnflaeche_qm?: number;
   unterschrift_vorhanden?: boolean;
+  /** Konfidenz der Extraktion für `unterschrift_vorhanden` (0..1), sofern geliefert. */
+  unterschrift_konfidenz?: number;
+  /** Seite des Unterschriftsbereichs im Dokument (1-basiert; Fundstelle, sonst letzte Seite des Vertrags). */
+  unterschrift_seite?: number;
   datum_vorhanden?: boolean;
   rentenart_vorhanden?: boolean;        // Rentenbescheid nennt Rentenart
   grundrentenzeiten_vorhanden?: boolean;

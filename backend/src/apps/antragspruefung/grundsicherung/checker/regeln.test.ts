@@ -1,6 +1,6 @@
 /**
  * Wächter: Jede im Checker erzeugte Regel-ID ist beschrieben — und jede Beschreibung gehört zu
- * einer tatsächlich erzeugten Regel. Zusätzlich: Umfang laut Spec (27 · 20 · 5 · 1).
+ * einer tatsächlich erzeugten Regel. Zusätzlich: Umfang laut Spec (27 · 21 · 5 · 1).
  */
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
@@ -31,12 +31,13 @@ describe('Regelkatalog Grundsicherung', () => {
     expect(verwaist).toEqual([]);
   });
 
-  test('Umfang laut Spec: 27 Vollständigkeit · 20 Plausibilität · 5 Vorrang · 1 Prüfumfang', async () => {
+  // 2026-09-28: + plausi-mietvertrag-unsigniert (Unterschrift sichten, vorher Teil der Regel „mietvertrag").
+  test('Umfang laut Spec: 27 Vollständigkeit · 21 Plausibilität · 5 Vorrang · 1 Prüfumfang', async () => {
     expect((await regelIds('nachweise.ts')).size).toBe(27);
-    expect((await regelIds('plausibilitaet.ts')).size).toBe(20);
+    expect((await regelIds('plausibilitaet.ts')).size).toBe(21);
     expect((await regelIds('vorrang.ts')).size).toBe(5);
     expect((await regelIds('ausserhalb.ts')).size).toBe(1);
-    expect(REGELKATALOG.length).toBe(53);
+    expect(REGELKATALOG.length).toBe(54);
   });
 
   test('Vorrang und Prüfumfang sind nur Hinweise (info)', () => {

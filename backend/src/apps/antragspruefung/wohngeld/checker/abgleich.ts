@@ -11,10 +11,13 @@
  */
 import { dayPart } from '../../kern/datum';
 import { haushaltsVermoegen, vermoegensFreigrenze } from '../einkommen';
-import { nachnameGleich, normName, vornameGleich } from '../haushalt';
+import { fastGleich, nachnameGleich, normName, vornameGleich } from '../haushalt';
 import { normDate } from '../matching';
 import type { Dokument, DokumentAnalyse, DokumentTyp, Einkommensposition, KontoEingangArt, Person, PruefBefund, VorgangSnapshot } from '../types';
-import { KONSTANTEN, toleranz, type WohngeldKonstanten } from './konstanten';
+import {
+  ERSTATTUNG_STICHWOERTER, KEIN_EINKOMMEN_STICHWOERTER, KONSTANTEN, PFLEGEGELD_STICHWOERTER, toleranz, TRANSFER_STICHWOERTER,
+  UMBUCHUNG_STICHWOERTER, type WohngeldKonstanten,
+} from './konstanten';
 
 const P = 'plausibilitaet' as const;
 
@@ -361,10 +364,44 @@ const EINGANG_LABEL: Record<KontoEingangArt, string> = {
 /** Kapitalerträge zählen auch einmalig (wie die Einkunftsarten-Regel). */
 const AUCH_EINMALIG: ReadonlySet<KontoEingangArt> = new Set(['kapitalertrag']);
 
+const enthaeltStichwort = (text: string, liste: readonly string[]) => liste.some((w) => text.includes(w));
+/** Arten, bei denen ein Haushaltsmitglied als Absender eine interne Zahlung bedeutet (Mietanteil, Kostenbeteiligung). */
+const INTERN_MOEGLICH: ReadonlySet<KontoEingangArt> = new Set(['miete_einnahme', 'zuwendung', 'sonstige', 'erstattung']);
+
+/**
+ * Grund, aus dem ein Kontoeingang kein zu erklärendes Einkommen ist — oder undefined.
+ * Jede Ausnahme ist konkret (Stichwortlisten in konstanten.ts, eigene IBAN, Haushaltsmitglied) und
+ * wird im Belegtext genannt, wenn die Regel für die Person meldet. Keine Blanko-Unterdrückung.
+ */
+export function eingangAusnahme(
+  e: { art?: KontoEingangArt; verwendungszweck?: string },
+  ctx: { ibans: ReadonlySet<string>; personen: Person[]; arten: ReadonlySet<string> },
+): string | undefined {
+  const zweck = e.verwendungszweck ?? '';
+  const t = normName(zweck.replace(/[/.,;:]/g, ' '));
+  const kompakt = zweck.replace(/\s+/g, '').toUpperCase();
+  if (enthaeltStichwort(t, UMBUCHUNG_STICHWOERTER) || [...ctx.ibans].some((iban) => iban.length >= 15 && kompakt.includes(iban))) return 'Umbuchung zwischen eigenen Konten';
+  if (enthaeltStichwort(t, ERSTATTUNG_STICHWOERTER)) return 'Erstattung/Rückbuchung';
+  if (enthaeltStichwort(t, KEIN_EINKOMMEN_STICHWOERTER)) return 'Kindergeld/Wohngeld, kein Einkommen nach § 14 WoGG';
+  if (enthaeltStichwort(t, PFLEGEGELD_STICHWOERTER) && ctx.personen.some((p) => (p.pflege_behinderung?.pflegegrad ?? 0) > 0 || p.pflege_behinderung?.pflegebeduerftig)) return 'Pflegegeld bei erfasstem Pflegegrad';
+  if (!e.art || INTERN_MOEGLICH.has(e.art)) {
+    const woerter = new Set(t.split(/[\s-]+/));
+    const mitglied = ctx.personen.find((p) => {
+      const vn = normName(p.vorname).split(/[\s-]+/)[0], nn = normName(p.nachname).split(/[\s-]+/);
+      return !!vn && vn.length >= 2 && woerter.has(vn) && nn.some((n) => n.length >= 2 && woerter.has(n));
+    });
+    if (mitglied) return `Zahlung von ${personLabel(mitglied)} (Haushaltsmitglied)`;
+  }
+  if (enthaeltStichwort(t, TRANSFER_STICHWOERTER) && ['_transfer', 'alg1', 'sonstiges'].some((a) => ctx.arten.has(a))) return 'im Antrag angegebene Transferleistung';
+  return undefined;
+}
+
 function pruefeKontoEingaenge(snapshot: VorgangSnapshot): PruefBefund[] {
   const { personen, dokumente } = snapshot;
   const arten = new Set(personen.flatMap((p) => (p.einkommen ?? []).map((e) => e.art)));
   if (personen.some((p) => (p.ausschluesse?.length ?? 0) > 0 || (p.transferleistungenDetail?.length ?? 0) > 0)) arten.add('_transfer');
+  const ibans = new Set(mitAnalyse(dokumente, 'kontoauszug').map((d) => d.analyse.iban?.replace(/\s+/g, '').toUpperCase()).filter((x): x is string => !!x));
+  const ausnahme = (e: { art?: KontoEingangArt; verwendungszweck?: string }) => eingangAusnahme(e, { ibans, personen, arten });
   // Untervermietung ist mit dem Untermietvertrag belegt (Antrag Fragen 28/29, nicht Frage 12).
   if (dokumente.some((d) => d.analyse?.mietdokument === 'untermietvertrag')) arten.add('_untermietvertrag');
 
@@ -394,7 +431,18 @@ function pruefeKontoEingaenge(snapshot: VorgangSnapshot): PruefBefund[] {
     const unauffaellig = new Set<string>();
     const artVon = (e: { art?: KontoEingangArt; verwendungszweck?: string }): KontoEingangArt | undefined =>
       !e.art || !e.verwendungszweck ? undefined : /zuschuss/.test(normName(e.verwendungszweck)) ? 'zuwendung' : e.art;
+    // Ausnahmen (Umbuchung, Erstattung, Haushaltsmitglied …). Im Belegtext genannt werden die, die die
+    // Regel nach der gelesenen Art sonst gemeldet hätte — nachvollziehbar statt still verworfen.
+    const ausgenommen = new Map<string, string>();
+    const erwaehnen = new Map<string, string>();
     for (const d of docs) for (const e of d.analyse!.eingaenge!) {
+      const grund = ausnahme(e);
+      if (grund && e.verwendungszweck) {
+        ausgenommen.set(e.verwendungszweck, grund);
+        const a = artVon(e), erk = a ? ERKLAERT_DURCH[a] : null;
+        if (erk && !erk.some((x) => arten.has(x))) erwaehnen.set(e.verwendungszweck, grund);
+        continue;
+      }
       const art = artVon(e);
       if (!art) continue;
       const erk = ERKLAERT_DURCH[art];
@@ -406,7 +454,7 @@ function pruefeKontoEingaenge(snapshot: VorgangSnapshot): PruefBefund[] {
       for (const e of d.analyse!.eingaenge!) {
         // „Zuschuss" im Verwendungszweck ist ein Zuschuss Dritter (Frage 26), auch wenn als Miete gelesen.
         const art = artVon(e);
-        if (!art || !e.verwendungszweck) continue;
+        if (!art || !e.verwendungszweck || ausgenommen.has(e.verwendungszweck)) continue;
         const erklaerer = ERKLAERT_DURCH[art];
         if (erklaerer === null || (absenderKey(e.verwendungszweck) && unauffaellig.has(absenderKey(e.verwendungszweck)))) continue;
         let grund: string | undefined;
@@ -428,11 +476,13 @@ function pruefeKontoEingaenge(snapshot: VorgangSnapshot): PruefBefund[] {
       const betraege = [...new Set(g.betraege.map((b) => euro(b)))];
       return `„${g.zweck}"${betraege.length ? ` à ${betraege.join(' / ')}` : ''} (${g.docs.map(dokLabel).join(', ')}; ${EINGANG_LABEL[g.art]} — ${g.grund})`;
     });
+    const nichtGemeldet = [...erwaehnen.entries()].map(([zweck, grund]) => `„${zweck}" (${grund})`);
     out.push({
       regelId: 'plausi-kontoauszug-unerklaerte-eingaenge', ...(p ? { personId: p.id } : {}), kategorie: P, typ: 'anforderung',
       titel: 'Nicht angegebene Eingänge auf dem Konto',
       belegtext: `Auf dem Konto${p ? ` von ${personLabel(p)}` : ''} gehen Zahlungen ein, die im Antrag nicht als Einkommen erscheinen: ${teile.join('; ')}. `
-        + 'Herkunft klären, ggf. als Einkommen erfassen und Nachweise anfordern (§ 14 WoGG).',
+        + 'Herkunft klären, ggf. als Einkommen erfassen und Nachweise anfordern (§ 14 WoGG).'
+        + (nichtGemeldet.length ? ` Nicht als Einkommen gewertet: ${nichtGemeldet.join('; ')}.` : ''),
       quellDokumentId: treffer[0]!.docs[0]!.id,
     });
   }
@@ -441,8 +491,12 @@ function pruefeKontoEingaenge(snapshot: VorgangSnapshot): PruefBefund[] {
 
 // ── Vermögen ↔ Kontostand/Vermögensnachweise ───────────────────────────────
 
-function pruefeVermoegen(snapshot: VorgangSnapshot, k: WohngeldKonstanten): PruefBefund[] {
-  const { personen, dokumente } = snapshot;
+/**
+ * Durch Belege ausgewiesenes Vermögen: Vermögensnachweise (`betrag`) + letzter positiver Endsaldo je
+ * Konto (IBAN; Auszüge ohne IBAN gelten als ein Konto). Gemeinsame Quelle für
+ * `plausi-vermoegen-beleg-abweichung` und den Vorrang-Hinweis Grundsicherung.
+ */
+export function belegtesVermoegen(dokumente: Dokument[]): { summe: number; quellen: string[]; quellDok?: string } {
   const quellen: string[] = [];
   let belegt = 0;
   let quellDok: string | undefined;
@@ -468,8 +522,13 @@ function pruefeVermoegen(snapshot: VorgangSnapshot, k: WohngeldKonstanten): Prue
     quellen.push(`${dokLabel(d)}: Endsaldo ${euro(saldo)}`);
     quellDok ??= d.id;
   }
+  return { summe: Math.round(belegt * 100) / 100, quellen, quellDok };
+}
+
+function pruefeVermoegen(snapshot: VorgangSnapshot, k: WohngeldKonstanten): PruefBefund[] {
+  const { personen, dokumente } = snapshot;
+  const { summe: belegt, quellen, quellDok } = belegtesVermoegen(dokumente);
   if (belegt <= 0 || !personen.length) return [];
-  belegt = Math.round(belegt * 100) / 100;
   const angabe = haushaltsVermoegen(personen);
   const n = personen.length;
   const freigrenze = vermoegensFreigrenze(n);
@@ -491,18 +550,6 @@ function pruefeVermoegen(snapshot: VorgangSnapshot, k: WohngeldKonstanten): Prue
 
 // ── Identität ───────────────────────────────────────────────────────────────
 
-/** Tippfehler-/Lesetoleranz: höchstens ein abweichender Buchstabe bei Namen ab 5 Zeichen. */
-function fastGleich(a: string, b: string): boolean {
-  if (a === b) return true;
-  if (Math.min(a.length, b.length) < 5 || Math.abs(a.length - b.length) > 1) return false;
-  let i = 0, j = 0, fehler = 0;
-  while (i < a.length && j < b.length) {
-    if (a[i] === b[j]) { i++; j++; continue; }
-    if (++fehler > 1) return false;
-    if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; }
-  }
-  return fehler + (a.length - i) + (b.length - j) <= 1;
-}
 function nachnamePasst(beleg: string | undefined, p: Person): boolean {
   if (!beleg) return true;
   return [p.nachname, p.geburtsname].some((n) => !!n && (nachnameGleich(beleg, n) || fastGleich(normName(beleg), normName(n))));

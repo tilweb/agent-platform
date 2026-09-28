@@ -492,6 +492,7 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
           mieter: mieter.length ? mieter : undefined, beginn: datum(w.beginn), grundmiete: zahl(w.grundmiete),
           nebenkosten_kalt: zahl(w.nebenkosten_kalt), heizkosten: zahl(w.heizkosten), pauschalmiete: zahl(w.pauschalmiete),
           heizkosten_enthalten: wahr(w.heizkosten_enthalten), unterschrift_vorhanden: wahr(w.unterschrift_vorhanden),
+          unterschrift_konfidenz: wahr(w.unterschrift_vorhanden) !== undefined ? conf.unterschrift_vorhanden : undefined,
         }),
       };
     }
@@ -633,6 +634,8 @@ export interface ProfilErgebnis {
   segments?: SegmentInstance[];
   data: Record<string, unknown>;
   fieldConfidences?: Record<string, number>;
+  /** Fundstellen je Feld (Seite absolut im Gesamt-PDF), soweit die Pipeline sie liefert. */
+  boxes?: Record<string, { page: number }>;
   segmentContexts?: Record<string, string>;
 }
 
@@ -652,6 +655,13 @@ export function abschnitteAusErgebnis(r: ProfilErgebnis, profil: ExtractionProje
     for (const [pfad, v] of Object.entries(r.fieldConfidences ?? {})) if (pfad.startsWith(`${key}.`)) conf[pfad.slice(key.length + 1)] = v;
     const abschnitt = def ? seg.type : 'sonstiges';
     const e = mappeAbschnitt(abschnitt, werte, conf);
+    // Seite des Unterschriftsbereichs (relativ zum Abschnitt): Fundstelle, sonst letzte Seite des Vertrags.
+    const ua = e.analyse as { unterschrift_vorhanden?: boolean; unterschrift_seite?: number } | undefined;
+    if (ua && e.typ === 'mietvertrag' && ua.unterschrift_vorhanden !== undefined) {
+      const box = r.boxes?.[`${key}.unterschrift_vorhanden`];
+      const n = seg.pageTo - seg.pageFrom + 1, rel = box ? box.page - seg.pageFrom + 1 : 0;
+      ua.unterschrift_seite = rel >= 1 && rel <= n ? rel : n;
+    }
     out.push({
       ...e,
       titel: seg.type === 'unbekannt' ? 'Nicht erkanntes Dokument' : e.titel,

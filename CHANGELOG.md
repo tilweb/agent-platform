@@ -2,6 +2,20 @@
 
 ## 2026-09-28
 
+### Wohngeld/Grundsicherung: Fehlalarme deutlich gesenkt (Muster-Änderung)
+- Unterschrift im Mietvertrag: Die Erkennung liest Unterschriften unzuverlässig (35 von 60 unterschriebenen
+  Verträgen als „unsigniert"). Jetzt standardmäßig Hinweis „Unterschrift bitte sichten" mit Seitenzahl;
+  Nachforderung nur bei hoher Erkennungssicherheit (beide Apps).
+- „Grundsicherung mitprüfen" (Wohngeld): Vermögen auch aus Belegen, Heimfälle ausgenommen, einstellbarer
+  Einkommens-Orientierungswert (Standard 1.250 € je Person / 1.900 € je Paar, kommunal festzulegen).
+- Fehlender Ausweis: Weiterleistungsanträge ausgenommen; Mitbewohner und Verstorbene werden nicht mehr als
+  Haushaltsmitglieder gelesen (Profil-Vorlage 2026-09-28b).
+- Kontoeingänge: Umbuchungen, Erstattungen/Rückbuchungen, Kindergeld/Wohngeld, Pflegegeld, Zahlungen von
+  Haushaltsmitgliedern und angegebene Transferleistungen gelten nicht als unerklärte Einkünfte.
+- Neu-Prüfen gleicht offene automatische Prüfschritte an geänderte Regeln an (Typ/Titel) — beide Apps.
+Golden-Messung: Regelprüfung Fehlalarme 12 → 3, Posteingang 60 PDFs: falsche Nachforderungen 56 → 8,
+Live-Stichprobe 8 Fälle 6 → 0; kein Treffer verloren. Details: `docs/wohngeld-fehlalarme-2026-09-28.md`.
+
 ### Wohngeld: Antragsangaben werden gegen die Belege abgeglichen (Muster-Änderung)
 Bisher prüfte Wohngeld überwiegend, ob Belege vorliegen; verglichen wurden nur Miete/Wohnfläche (erstes
 Mietdokument) und Einkunftsarten auf dem Kontoauszug. Jetzt wie in der Grundsicherung: Einkommen je Person

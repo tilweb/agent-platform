@@ -10,7 +10,7 @@
 import type { PruefKategorie, PruefTyp } from '../types';
 import { STANDARD_KONSTANTEN as K } from './konstanten';
 
-export const REGELKATALOG_STAND = '2026-09-27a';
+export const REGELKATALOG_STAND = '2026-09-28';
 
 export type RegelGruppe =
   | 'antrag' | 'anspruch' | 'wohnen' | 'einkommen' | 'vermoegen'
@@ -152,10 +152,20 @@ export const REGELKATALOG: RegelBeschreibung[] = [
   // ── Wohnen ──
   {
     id: 'mietvertrag', titel: 'Mietvertrag', kategorie: 'vollstaendigkeit', typ: 'anforderung', bezug: 'vorgang', gruppe: 'wohnen',
-    ausloeser: 'Wohnsituation Miete oder Untermiete und kein Mietvertrag liegt vor, oder alle vorliegenden Mietverträge sind nicht unterschrieben.',
+    ausloeser: 'Wohnsituation Miete oder Untermiete und kein Mietvertrag liegt vor. (Ein Mietvertrag ohne erkannte Unterschrift meldet seit 2026-09-28 „Unterschrift im Mietvertrag bitte sichten".)',
     nachweis: 'Mietvertrag bzw. Untermietvertrag (alle Seiten, unterschrieben)',
     rechtsgrundlage: '§ 42 Nr. 4, § 42a Abs. 1, § 35 Abs. 1 SGB XII',
     erledigung: 'Mietvertrag anfordern oder vorhandenes Dokument als Mietvertrag einordnen.',
+  },
+  {
+    id: 'plausi-mietvertrag-unsigniert', titel: 'Unterschrift im Mietvertrag bitte sichten', kategorie: 'plausibilitaet', typ: 'info', bezug: 'dokument', gruppe: 'wohnen',
+    ausloeser: 'Mietwohnung und auf allen vorliegenden Mietverträgen hat die Auswertung keine Unterschrift erkannt. Standard ist ein Hinweis zum Sichten mit Seitenangabe (Unterschriftsbereich, sonst letzte Seite); als Anforderung „Mietvertrag ohne Unterschrift" nur, wenn die Extraktion das leere Feld mit einer Konfidenz ab UNTERSCHRIFT_LEER_MIN_KONFIDENZ meldet.',
+    rechtsgrundlage: '§ 35 Abs. 1 SGB XII',
+    erledigung: 'Unterschriftsbereich im Dokument ansehen. Ist der Vertrag unterschrieben, Hinweis verwerfen; sonst unterschriebenen Vertrag (alle Seiten) anfordern.',
+    hinweise: [
+      `Die Unterschriftserkennung ist unsicher (Golden-Messung: je Runde ein unterschriebener Vertrag als unsigniert gelesen). Die Pipeline deckelt Feld-Konfidenzen bei 0,7; mit dem Standard ${K.UNTERSCHRIFT_LEER_MIN_KONFIDENZ.toLocaleString('de-DE')} bleibt es beim Hinweis (Env GRUNDSICHERUNG_UNTERSCHRIFT_LEER_MIN_KONFIDENZ).`,
+      'Eine zusätzliche Bildprüfung des Unterschriftsbereichs ist als Option beschrieben (docs/wohngeld-fehlalarme-2026-09-28.md), nicht gebaut.',
+    ],
   },
   {
     id: 'mietbescheinigung-aktuell', titel: 'Aktuelle Mietbescheinigung', kategorie: 'vollstaendigkeit', typ: 'anforderung', bezug: 'vorgang', gruppe: 'wohnen',

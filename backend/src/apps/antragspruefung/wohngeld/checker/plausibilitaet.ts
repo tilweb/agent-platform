@@ -9,6 +9,7 @@ import type { VorgangSnapshot, Dokument, Person, DokumentTyp, PruefBefund } from
 import { haushaltsVermoegen, vermoegensFreigrenze } from '../einkommen';
 import { berechneBwzVorschlag, fmtDe } from '../bwz';
 import { pruefeAbgleiche } from './abgleich';
+import { KONSTANTEN } from './konstanten';
 
 function docsOfType(dokumente: Dokument[], ...typen: DokumentTyp[]): Dokument[] {
   return dokumente.filter(d => typen.includes(d.typ));
@@ -40,6 +41,20 @@ const AUSSCHLUSS_GRUND_LABEL: Record<string, string> = {
   sonstiger_grund: 'Sonstiger Grund',
 };
 
+/**
+ * Ist ein als „Mieteinnahme" erkannter Eingang ohne Einkommensangabe erklärbar? (nur die alte
+ * Ja/Nein-Erkennung ohne Eingangsliste — die Eingangsliste prüft genauer, abgleich.ts)
+ * - Untervermietung ist mit einem Untermietvertrag belegt (Fragen 28/29, nicht Frage 12);
+ * - ein anderes Haushaltsmitglied bezieht eine Transferleistung mit Unterkunftskosten (z. B. Bürgergeld)
+ *   und zahlt seinen Mietanteil (KdU-Anteil) — das ist keine Mieteinnahme, sondern Kostenbeteiligung im Haushalt.
+ */
+function mieteingangErklaert(snapshot: VorgangSnapshot, kontoinhaberId?: string): boolean {
+  if (snapshot.dokumente.some(d => d.analyse?.mietdokument === 'untermietvertrag')) return true;
+  return snapshot.personen.some(p => p.id !== kontoinhaberId
+    && ((p.ausschluesse ?? []).some(a => a.grund === 'sgb2_buergergeld' || a.grund === 'grundsicherung_alter_em' || a.grund === 'hilfe_lebensunterhalt_sgb12')
+      || (p.transferleistungenDetail ?? []).some(t => t.kduEnthalten)));
+}
+
 export function pruefePlausibilitaet(snapshot: VorgangSnapshot): PruefBefund[] {
   const { vorgang, personen, dokumente } = snapshot;
   const befunde: PruefBefund[] = [];
@@ -67,14 +82,29 @@ export function pruefePlausibilitaet(snapshot: VorgangSnapshot): PruefBefund[] {
 
   // ── Unterschrift Mietvertrag ─────────────────────────────────────────
   // Miethöhe, Wohnfläche und Mietzahlung: Abgleich über alle Mietdokumente in abgleich.ts.
+  // Die Erkennung „keine Unterschrift" ist unsicher (Golden-Messung: 35 von 60 unterschriebenen
+  // Verträgen als unsigniert gelesen). Deshalb standardmäßig nur ein Hinweis zum Sichten mit Seitenangabe;
+  // Anforderung erst, wenn die Extraktion das leere Feld mit hoher Konfidenz meldet.
   const mietDok = docsOfType(dokumente, 'mietvertrag', 'mietbescheinigung')[0];
   if (mietDok?.analyse && mietDok.typ === 'mietvertrag' && mietDok.analyse.unterschrift_vorhanden === false) {
-    befunde.push({
-      regelId: 'plausi-mietvertrag-unsigniert', kategorie: 'plausibilitaet', typ: 'anforderung',
-      titel: 'Mietvertrag ohne Unterschrift',
-      belegtext: 'Der Mietvertrag ist nicht von beiden Parteien unterschrieben — als Nachweis nicht ausreichend.',
-      quellDokumentId: mietDok.id,
-    });
+    const a = mietDok.analyse;
+    const sicher = typeof a.unterschrift_konfidenz === 'number' && a.unterschrift_konfidenz >= KONSTANTEN.UNTERSCHRIFT_LEER_MIN_KONFIDENZ;
+    const seite = typeof a.unterschrift_seite === 'number' ? ` (Seite ${a.unterschrift_seite})` : '';
+    befunde.push(sicher
+      ? {
+        regelId: 'plausi-mietvertrag-unsigniert', kategorie: 'plausibilitaet', typ: 'anforderung',
+        titel: 'Mietvertrag ohne Unterschrift',
+        belegtext: `Das Unterschriftsfeld des Mietvertrags${seite} ist leer — der Vertrag ist nicht von beiden Parteien unterschrieben und als Nachweis nicht ausreichend (§ 9 WoGG).`,
+        quellDokumentId: mietDok.id,
+      }
+      : {
+        regelId: 'plausi-mietvertrag-unsigniert', kategorie: 'plausibilitaet', typ: 'info',
+        titel: 'Unterschrift im Mietvertrag bitte sichten',
+        belegtext: `Die automatische Auswertung hat im Unterschriftsbereich des Mietvertrags${seite} keine Unterschrift erkannt. `
+          + 'Diese Erkennung ist unsicher — bitte im Dokument sichten. Fehlen die Unterschriften von Vermieter und Mieter tatsächlich, '
+          + 'unterschriebenen Vertrag nachfordern (§ 9 WoGG).',
+        quellDokumentId: mietDok.id,
+      });
   }
 
   // ── Mietzahlung auf Kontoauszug ──────────────────────────────────────
@@ -93,7 +123,7 @@ export function pruefePlausibilitaet(snapshot: VorgangSnapshot): PruefBefund[] {
     const person = personById(personen, konto.personId);
     for (const art of erkannt) {
       const deklariert = (person?.einkommen ?? []).some(e => e.art === art);
-      if (!deklariert) {
+      if (!deklariert && !(art === 'v_und_v' && mieteingangErklaert(snapshot, konto.personId))) {
         befunde.push({
           regelId: `plausi-kontoauszug-unerklaerte-einkuenfte:${art}`, personId: konto.personId,
           kategorie: 'plausibilitaet', typ: 'anforderung',

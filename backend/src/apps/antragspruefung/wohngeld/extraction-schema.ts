@@ -486,6 +486,12 @@ export function baueExtraktionsUebersicht(
     add('Analyse', 'Miete laut Dokument', 'analyse.miete', fmtEuro(a.miete));
     add('Analyse', 'Wohnfläche laut Dokument', 'analyse.wohnflaeche_qm', fmtQm(a.wohnflaeche_qm));
     add('Analyse', 'Unterschrift', 'analyse.unterschrift_vorhanden', fmtVorhanden(a.unterschrift_vorhanden));
+    // DP-Profil: Konfidenz und Seite des Unterschriftsbereichs stehen in der Analyse (Sprung zum Sichten).
+    const unterschriftFeld = felder.at(-1);
+    if (unterschriftFeld?.label === 'Unterschrift') {
+      if (typeof a.unterschrift_seite === 'number') unterschriftFeld.seite ??= a.unterschrift_seite;
+      if (typeof a.unterschrift_konfidenz === 'number') unterschriftFeld.confidence ??= a.unterschrift_konfidenz;
+    }
     add('Analyse', 'Datum', 'analyse.datum_vorhanden', fmtVorhanden(a.datum_vorhanden));
     add('Analyse', 'Rentenart', 'analyse.rentenart_vorhanden', fmtVorhanden(a.rentenart_vorhanden));
     add('Analyse', 'Grundrentenzeiten', 'analyse.grundrentenzeiten_vorhanden', fmtVorhanden(a.grundrentenzeiten_vorhanden));

@@ -481,8 +481,12 @@ export interface MietvertragAnalyse {
   pauschalmiete?: number;
   /** Heizkosten sind in der Miete enthalten (ohne eigenen Betrag). */
   heizkosten_enthalten?: boolean;
-  /** Von beiden Seiten unterschrieben. → mietvertrag */
+  /** Von beiden Seiten unterschrieben. → plausi-mietvertrag-unsigniert */
   unterschrift_vorhanden?: boolean;
+  /** Konfidenz der Extraktion für `unterschrift_vorhanden` (0..1), sofern geliefert. */
+  unterschrift_konfidenz?: number;
+  /** Seite des Unterschriftsbereichs im Dokument (1-basiert; Fundstelle, sonst letzte Seite). */
+  unterschrift_seite?: number;
 }
 
 /** Vermieterbescheinigung / Mietbescheinigung / Mieterhöhung. */

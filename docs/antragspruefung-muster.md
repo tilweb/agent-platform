@@ -72,6 +72,11 @@ Einheitliche Semantik in allen Apps:
 | `automatisch` | true/false | von der Regel-Engine vs. manuell ergänzt |
 
 - Neu-Prüfen ist idempotent: manuelle und erledigte Prüfschritte bleiben erhalten.
+  Offene automatische Schritte werden an geänderte Regeln angeglichen (Typ/Titel), damit z. B. eine zur
+  Hinweis-Regel herabgestufte Anforderung nicht stehen bleibt.
+- **Was die Erkennung nicht zuverlässig kann, ist keine harte Anforderung:** Unterschriften aus PDFs werden
+  als Hinweis „bitte sichten" (mit Seite) gemeldet, als Anforderung nur bei hoher Erkennungssicherheit.
+  Bei neuen Regeln vorab messen, ob die Datenbasis trägt (Golden-Datensatz).
 - Jede Regel hat eine Beschreibung (Auslöser, Nachweis, Rechtsgrundlage, Erledigung) im
   Regelkatalog der App; ein Wächter-Test stellt das sicher (Wohngeld: `checker/regeln.test.ts`).
   Bei Regeländerungen den Katalog-Stand hochzählen.

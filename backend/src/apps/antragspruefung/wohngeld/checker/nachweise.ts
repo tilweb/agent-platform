@@ -16,6 +16,10 @@ function hasDocHousehold(dokumente: Dokument[], ...typen: DokumentTyp[]): boolea
 function hasDocForPersonAny(dokumente: Dokument[], personId: string, ...typen: DokumentTyp[]): boolean {
   return dokumente.some(d => d.personId === personId && typen.includes(d.typ));
 }
+/** Heim-/Einrichtungsfall: ein Heimvertrag (Wohn- und Betreuungsvertrag) liegt vor. */
+export function istHeimfall(dokumente: Dokument[]): boolean {
+  return dokumente.some(d => d.analyse?.mietdokument === 'heimvertrag');
+}
 function incomeArten(person: Person): Set<string> {
   return new Set((person.einkommen ?? []).map(p => p.art));
 }
@@ -32,10 +36,14 @@ export function pruefeNachweise(snapshot: VorgangSnapshot): PruefBefund[] {
   const hatAntragstellerName = personen.some(p => `${p.vorname} ${p.nachname}`.trim().length > 0);
   const w = vorgang.wohnung ?? {};
   const hatAdresse = (!!w.plz && !!w.ort) || !!w.strasse;
-  const hatMiete = vorgang.wohngeldart !== 'mietzuschuss' || (w.miete ?? 0) > 0;
+  // Heimbewohner geben im Antrag keine Miete an — die Kosten stehen im Heimvertrag (Frage 23).
+  const heim = istHeimfall(dokumente);
+  const hatMiete = vorgang.wohngeldart !== 'mietzuschuss' || (w.miete ?? 0) > 0 || heim;
+  // Fehlt das Datum im Antragsformular, meldet das schon `plausi-antrag-ohne-datum` (keine Doppelmeldung).
+  const antragOhneDatum = dokumente.some(d => d.typ === 'wohngeldantrag' && d.analyse?.datum_vorhanden === false);
   const fehlend: string[] = [];
   if (!hatAntragstellerName) fehlend.push('Name des Antragstellers');
-  if (!vorgang.antragsdatum) fehlend.push('Antragsdatum');
+  if (!vorgang.antragsdatum && !antragOhneDatum) fehlend.push('Antragsdatum');
   if (!hatAdresse) fehlend.push('Adresse (PLZ/Ort oder Straße)');
   if (!hatMiete) fehlend.push('Miethöhe (Mietzuschuss)');
   if (personen.length === 0) fehlend.push('mindestens eine Person im Haushalt');
@@ -57,15 +65,19 @@ export function pruefeNachweise(snapshot: VorgangSnapshot): PruefBefund[] {
   }
 
   // ── Mietzuschuss-spezifische Wohnraumnachweise ───────────────────────
+  // Weiterleistungsantrag: der Mietvertrag liegt aus dem Vorverfahren vor; eine aktuelle
+  // Vermieterbescheinigung genügt als Nachweis der Miete.
+  const weiterleistung = vorgang.antragsart === 'weiterleistungsantrag';
   if (vorgang.wohngeldart === 'mietzuschuss') {
-    if (!hasDocHousehold(dokumente, 'mietvertrag')) {
+    if (!hasDocHousehold(dokumente, 'mietvertrag') && !(weiterleistung && hasDocHousehold(dokumente, 'mietbescheinigung'))) {
       befunde.push({
         regelId: 'mietvertrag', kategorie: 'vollstaendigkeit', typ: 'anforderung',
         titel: 'Aktueller Mietvertrag',
         belegtext: 'Für den Mietzuschuss ist ein aktueller Mietvertrag erforderlich (§ 3 Abs. 1 WoGG).',
       });
     }
-    if (!hasDocHousehold(dokumente, 'mietbescheinigung')) {
+    // Heimbewohner: der Heimvertrag ersetzt die Vermieterbescheinigung.
+    if (!hasDocHousehold(dokumente, 'mietbescheinigung') && !heim) {
       befunde.push({
         regelId: 'vermieterbescheinigung', kategorie: 'vollstaendigkeit', typ: 'anforderung',
         titel: 'Vermieterbescheinigung',
@@ -91,8 +103,8 @@ export function pruefeNachweise(snapshot: VorgangSnapshot): PruefBefund[] {
     // Ohne Geburtsdatum wird weiter verlangt (Alter unbekannt).
     const minderjaehrig = (alterAm(p.geburtsdatum, stichtag) ?? 99) < 18;
 
-    // Identität — je volljähriger Person
-    if (!minderjaehrig && !hasDocForPerson(dokumente, 'personalausweis', p.id)) {
+    // Identität — je volljähriger Person; beim Weiterleistungsantrag ist sie aus dem Vorverfahren belegt.
+    if (!minderjaehrig && !weiterleistung && !hasDocForPerson(dokumente, 'personalausweis', p.id)) {
       befunde.push({
         regelId: 'identitaet-jede-person', personId: p.id, kategorie: 'vollstaendigkeit', typ: 'anforderung',
         titel: 'Personalausweis',

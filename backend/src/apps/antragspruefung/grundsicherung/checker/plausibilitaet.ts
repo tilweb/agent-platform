@@ -430,5 +430,30 @@ export function pruefePlausibilitaet(ctx: PruefKontext): PruefBefund[] {
     }
   }
 
+  // ── Unterschrift Mietvertrag ─────────────────────────────────────────
+  // Die Erkennung „keine Unterschrift" ist unsicher (Golden-Messung 2026-09-28: je Runde ein unterschriebener
+  // Vertrag als unsigniert gelesen). Standard: Hinweis zum Sichten mit Seitenangabe; Anforderung nur, wenn
+  // die Extraktion das leere Feld mit hoher Konfidenz meldet (UNTERSCHRIFT_LEER_MIN_KONFIDENZ).
+  const mietvertraege = analysen(docs(ctx, 'mietvertrag'), 'mietvertrag');
+  if (istMietwohnung(vorgang) && mietvertraege.length > 0 && mietvertraege.every(({ a }) => a.unterschrift_vorhanden === false)) {
+    const { dok, a } = mietvertraege[0]!;
+    const sicher = mietvertraege.every(({ a: x }) => typeof x.unterschrift_konfidenz === 'number' && x.unterschrift_konfidenz >= ctx.k.UNTERSCHRIFT_LEER_MIN_KONFIDENZ);
+    const seite = typeof a.unterschrift_seite === 'number' ? ` (Seite ${a.unterschrift_seite})` : '';
+    befunde.push(sicher
+      ? {
+        regelId: 'plausi-mietvertrag-unsigniert', kategorie: P, typ: 'anforderung',
+        titel: 'Mietvertrag ohne Unterschrift',
+        belegtext: `Das Unterschriftsfeld des Mietvertrags${seite} ist leer. Unterschriebenen Vertrag (alle Seiten) anfordern (§ 35 Abs. 1 SGB XII).`,
+        quellDokumentId: dok.id,
+      }
+      : {
+        regelId: 'plausi-mietvertrag-unsigniert', kategorie: P, typ: 'info',
+        titel: 'Unterschrift im Mietvertrag bitte sichten',
+        belegtext: `Die automatische Auswertung hat im Unterschriftsbereich des Mietvertrags${seite} keine Unterschrift erkannt. `
+          + 'Diese Erkennung ist unsicher — bitte im Dokument sichten. Fehlen die Unterschriften tatsächlich, unterschriebenen Vertrag (alle Seiten) anfordern (§ 35 Abs. 1 SGB XII).',
+        quellDokumentId: dok.id,
+      });
+  }
+
   return befunde;
 }

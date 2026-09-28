@@ -34,6 +34,12 @@ export interface GrundsicherungKonstanten {
   WOHNGELD_FREIGRENZE_WEITERE_PERSON: number;
   /** Mietvertrag älter als so viele Monate → aktuelle Mietbescheinigung nötig. */
   MIETVERTRAG_AKTUELL_MONATE: number;
+  /**
+   * Mindest-Konfidenz der Extraktion für „Unterschriftsfeld leer", ab der `plausi-mietvertrag-unsigniert`
+   * als Anforderung (statt als Hinweis zum Sichten) gemeldet wird. Die Pipeline deckelt Feld-Konfidenzen
+   * derzeit bei 0,7 — mit dem Standard 0,9 bleibt es bewusst beim Hinweis (docs/wohngeld-fehlalarme-2026-09-28.md).
+   */
+  UNTERSCHRIFT_LEER_MIN_KONFIDENZ: number;
 }
 
 export const STANDARD_KONSTANTEN: Readonly<GrundsicherungKonstanten> = Object.freeze({
@@ -50,6 +56,7 @@ export const STANDARD_KONSTANTEN: Readonly<GrundsicherungKonstanten> = Object.fr
   WOHNGELD_FREIGRENZE_ERSTE_PERSON: 60000,
   WOHNGELD_FREIGRENZE_WEITERE_PERSON: 30000,
   MIETVERTRAG_AKTUELL_MONATE: 12,
+  UNTERSCHRIFT_LEER_MIN_KONFIDENZ: 0.9,
 });
 
 /** Größen, die die Kommune festlegt (für Regelkatalog und Oberfläche). */

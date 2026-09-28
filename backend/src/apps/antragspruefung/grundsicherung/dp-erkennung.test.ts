@@ -292,3 +292,22 @@ describe('Kontoeingänge und Mieter (Befunde Golden-Messung 2026-09-28)', () => 
     for (const x of a) expect((x.analyse as { eingaenge: Array<{ wiederkehrend?: boolean }> }).eingaenge[0]!.wiederkehrend).toBe(true);
   });
 });
+
+describe('Mietvertrag: Unterschrift mit Konfidenz und Seite (Hinweis zum Sichten)', () => {
+  const erg = (boxes?: Record<string, { page: number }>) => abschnitteAusErgebnis({
+    segments: [{ type: 'mietvertrag', instance: 1, pageFrom: 5, pageTo: 7, confidence: 0.9 }],
+    data: { mietvertrag: { unterschrift_vorhanden: false, grundmiete: 400 } },
+    fieldConfidences: { 'mietvertrag.unterschrift_vorhanden': 0.7 },
+    ...(boxes ? { boxes } : {}),
+  }, profil)[0]!.analyse as { unterschrift_konfidenz?: number; unterschrift_seite?: number };
+  test('ohne Fundstelle: letzte Seite des Vertrags (relativ zum Abschnitt)', () => {
+    expect(erg()).toMatchObject({ unterschrift_konfidenz: 0.7, unterschrift_seite: 3 });
+  });
+  test('mit Fundstelle: deren Seite, relativ zum Abschnitt', () => {
+    expect(erg({ 'mietvertrag.unterschrift_vorhanden': { page: 6 } }).unterschrift_seite).toBe(2);
+  });
+  test('ohne gelesene Unterschrift keine Konfidenz/Seite', () => {
+    const a = mappeAbschnitt('mietvertrag', { grundmiete: 400 }, { unterschrift_vorhanden: 0.7 }).analyse as Record<string, unknown>;
+    expect(a.unterschrift_konfidenz).toBeUndefined();
+  });
+});

@@ -17,6 +17,9 @@ import {
 } from '../../vorrang/grunddaten';
 import type { Person, PruefBefund, VorgangSnapshot } from '../types';
 import { grunddatenFuerVorrangpruefung } from '../vorrang-grunddaten';
+import { belegtesVermoegen } from './abgleich';
+import { KONSTANTEN, type WohngeldKonstanten } from './konstanten';
+import { istHeimfall } from './nachweise';
 
 const P = 'plausibilitaet' as const;
 
@@ -42,7 +45,13 @@ function grundsicherungsbezug(g: VorrangGrunddaten) {
     && !(t.bis && g.stichtag && t.bis < g.stichtag));
 }
 
-export function pruefeVorrang(snapshot: VorgangSnapshot): PruefBefund[] {
+export interface VorrangOptionen {
+  /** Abweichende Schwellen (Tests, Konfiguration). */
+  konstanten?: Partial<WohngeldKonstanten>;
+}
+
+export function pruefeVorrang(snapshot: VorgangSnapshot, optionen: VorrangOptionen = {}): PruefBefund[] {
+  const k: WohngeldKonstanten = { ...KONSTANTEN, ...(optionen.konstanten ?? {}) };
   const g = grunddatenFuerVorrangpruefung(snapshot);
   const personById = new Map(snapshot.personen.map((p) => [p.id, p]));
   const personZu = (idx?: number) => (idx === undefined ? undefined : personById.get(g.haushalt[idx]?.personId ?? ''));
@@ -67,7 +76,9 @@ export function pruefeVorrang(snapshot: VorgangSnapshot): PruefBefund[] {
   }
 
   // ── Grundsicherung mitprüfen ────────────────────────────────────────
-  if (bezug.length === 0) {
+  // Heim-/Einrichtungsfälle ausgenommen: dort stellt sich die Frage nach Hilfe zur Pflege bzw.
+  // Grundsicherung in der Einrichtung beim Sozialhilfeträger gesondert (Heimvertrag liegt vor).
+  if (bezug.length === 0 && !istHeimfall(snapshot.dokumente)) {
     const eg = einsatzgemeinschaft(g);
     const anlass = eg.flatMap((i) => {
       const a = g.alter_em[i];
@@ -83,15 +94,28 @@ export function pruefeVorrang(snapshot: VorgangSnapshot): PruefBefund[] {
     const grenze = erwachsene * BARBETRAG_JE_PERSON;
     const verm = g.vermoegen.filter((v) => eg.includes(v.person) && v.schonvermoegen !== true && typeof v.betrag === 'number');
     const summe = verm.reduce((s, v) => s + (v.betrag ?? 0), 0);
-    const vermoegenUnbekannt = verm.length === 0 && eg.some((i) => g.haushalt[i]?.vermoegen_angegeben !== true);
+    // Vermögen auch aus den Belegen (Vermögensnachweise, letzte Kontostände) — dieselbe Quelle wie
+    // plausi-vermoegen-beleg-abweichung; nur Belege der Einsatzgemeinschaft oder ohne Personenbezug.
+    const egIds = new Set(eg.map((i) => g.haushalt[i]?.personId).filter(Boolean));
+    const belegt = belegtesVermoegen(snapshot.dokumente.filter((d) => !d.personId || egIds.has(d.personId)));
+    const vermoegenUnbekannt = verm.length === 0 && belegt.summe <= 0 && eg.some((i) => g.haushalt[i]?.vermoegen_angegeben !== true);
+    // Grober Einkommens-Orientierungswert (kommunal festzulegen) — keine Bedarfsberechnung. Nur wenn
+    // für jede Einkommensposition der Einsatzgemeinschaft ein Monatsbetrag erfasst ist.
+    const orientierung = eg.length >= 2 ? k.GRUNDSICHERUNG_ORIENTIERUNG_PAAR_EUR : k.GRUNDSICHERUNG_ORIENTIERUNG_PERSON_EUR;
+    const einkommenBekannt = egEinkommen.length > 0 && egEinkommen.every((e) => typeof e.betrag_monat === 'number');
+    const einkommenSumme = Math.round(egEinkommen.reduce((s, e) => s + (e.betrag_monat ?? 0), 0) * 100) / 100;
+    const ueberOrientierung = einkommenBekannt && einkommenSumme > orientierung;
 
-    if (anlass.length > 0 && !erwerb && summe < grenze) {
-      const einkommenText = rente
+    if (anlass.length > 0 && !erwerb && summe < grenze && belegt.summe < grenze && !ueberOrientierung) {
+      const einkommenText = (rente
         ? 'Als Einkommen ist nur Rente erfasst, keine Erwerbseinkünfte'
-        : egEinkommen.length === 0 ? 'Einkommen ist nicht erfasst' : 'Erwerbseinkünfte sind nicht erfasst';
+        : egEinkommen.length === 0 ? 'Einkommen ist nicht erfasst' : 'Erwerbseinkünfte sind nicht erfasst')
+        + (einkommenBekannt
+          ? ` (zusammen ${euro(einkommenSumme)} brutto im Monat, Orientierungswert ${euro(orientierung)}${eg.length >= 2 ? ' für zwei Partner' : ''})`
+          : egEinkommen.length > 0 ? ' (Höhe nicht vollständig erfasst)' : '');
       const vermoegenText = vermoegenUnbekannt
         ? 'Vermögen ist nicht erfasst'
-        : `das erfasste Vermögen (${euro(summe)}) liegt unter ${euro(BARBETRAG_JE_PERSON)} je erwachsener Person`;
+        : `das ${verm.length ? 'erfasste' : 'belegte'} Vermögen (${euro(Math.max(summe, belegt.summe))}) liegt unter ${euro(BARBETRAG_JE_PERSON)} je erwachsener Person`;
       befunde.push({
         regelId: 'vorrang-grundsicherung-mitpruefen', kategorie: P, typ: 'info',
         titel: 'Grundsicherung mitprüfen',

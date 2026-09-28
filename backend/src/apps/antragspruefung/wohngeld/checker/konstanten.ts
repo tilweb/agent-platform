@@ -25,6 +25,22 @@ export interface WohngeldKonstanten {
   VERMOEGEN_TOLERANZ_PROZENT: number;
   /** Obergrenze Bruttorente ÷ Zahlbetrag (KVdR + PV ≈ 12 %) — nur für den Hinweis ohne Bruttoangabe. */
   RENTE_BRUTTO_ZAHLBETRAG_FAKTOR: number;
+  /**
+   * Mindest-Konfidenz der Extraktion für „Unterschriftsfeld leer", ab der `plausi-mietvertrag-unsigniert`
+   * als Anforderung (statt als Hinweis zum Sichten) gemeldet wird. Die Pipeline deckelt Feld-Konfidenzen
+   * derzeit bei 0,7 (LLM-Selbsteinschätzung, kein Bildbefund) — mit dem Standard 0,9 bleibt es deshalb
+   * bewusst beim Hinweis. Spec: docs/wohngeld-fehlalarme-2026-09-28.md.
+   */
+  UNTERSCHRIFT_LEER_MIN_KONFIDENZ: number;
+  /**
+   * Grober Einkommens-Orientierungswert (Brutto, EUR/Monat) für `vorrang-grundsicherung-mitpruefen`:
+   * liegt das Einkommen der alleinstehenden Person darüber, entfällt der Hinweis. KEINE
+   * Bedarfsberechnung — nur eine Schwelle; kommunal festzulegen (Regelbedarf + örtlich angemessene
+   * Unterkunftskosten). Env: `WOHNGELD_GRUNDSICHERUNG_ORIENTIERUNG_PERSON_EUR`.
+   */
+  GRUNDSICHERUNG_ORIENTIERUNG_PERSON_EUR: number;
+  /** Wie oben für Ehe-/Lebenspartner zusammen (Summe beider Einkommen) — kommunal festzulegen. */
+  GRUNDSICHERUNG_ORIENTIERUNG_PAAR_EUR: number;
 }
 
 export const STANDARD_KONSTANTEN: Readonly<WohngeldKonstanten> = Object.freeze({
@@ -36,7 +52,48 @@ export const STANDARD_KONSTANTEN: Readonly<WohngeldKonstanten> = Object.freeze({
   VERMOEGEN_TOLERANZ_EUR: 250,
   VERMOEGEN_TOLERANZ_PROZENT: 0.1,
   RENTE_BRUTTO_ZAHLBETRAG_FAKTOR: 1.15,
+  UNTERSCHRIFT_LEER_MIN_KONFIDENZ: 0.9,
+  // Herleitung (Stand 2026, nur Orientierung): Regelbedarfsstufe 1 563 € + örtlich angemessene
+  // Bruttowarmmiete ≈ 550 € ≈ 1.113 € netto; Renten brutto ≈ netto + 11 % KVdR/PV ⇒ ≈ 1.250 €.
+  // Paar: 2 × 506 € + ≈ 650 € ≈ 1.662 € netto ⇒ ≈ 1.900 € brutto. Bewusst eher hoch angesetzt
+  // (Hinweis lieber einmal zu viel als zu wenig).
+  GRUNDSICHERUNG_ORIENTIERUNG_PERSON_EUR: 1250,
+  GRUNDSICHERUNG_ORIENTIERUNG_PAAR_EUR: 1900,
 });
+
+/** Größen, die die Kommune festlegt (Verwaltungspraxis, kein Gesetzeswert) — für Regelkatalog und Doku. */
+export const KOMMUNAL_FESTZULEGEN: ReadonlyArray<keyof WohngeldKonstanten> = [
+  'GRUNDSICHERUNG_ORIENTIERUNG_PERSON_EUR', 'GRUNDSICHERUNG_ORIENTIERUNG_PAAR_EUR',
+];
+
+// ── Kontoeingänge, die kein Einkommen sind (plausi-kontoauszug-unerklaerte-eingaenge) ──
+// Stichwörter werden normalisiert verglichen (klein, Umlaute umgeschrieben: ü → ue, ß → ss).
+// Nachvollziehbarkeit: ein so ausgenommener Eingang wird nicht stillschweigend verworfen, sondern
+// die Regel begründet ihn (Tests in abgleich.test.ts); die Liste ist bewusst kurz und konkret.
+
+/** Umbuchung zwischen eigenen Konten (Verwendungszweck/Absender). */
+export const UMBUCHUNG_STICHWOERTER: readonly string[] = ['umbuchung', 'uebertrag', 'eigenuebertrag', 'kontouebertrag'];
+
+/**
+ * Rückbuchungen und Erstattungen — kein laufendes Einkommen (Krankenkasse, Finanzamt, Versicherung,
+ * Nebenkosten-/Betriebskostenguthaben, Rücklastschrift). Eine Leistung der Krankenkasse (Krankengeld)
+ * ist KEINE Erstattung — deshalb „krankenkasse" nur zusammen mit „erstatt…".
+ */
+export const ERSTATTUNG_STICHWOERTER: readonly string[] = [
+  'erstattung', 'rueckerstattung', 'steuererstattung', 'finanzamt', 'rueckbuchung', 'ruecklastschrift', 'storno',
+  'rueckzahlung', 'gutschrift nebenkosten', 'nebenkostenguthaben', 'betriebskostenguthaben', 'guthaben nebenkosten',
+  'guthaben betriebskosten', 'nebenkostenabrechnung', 'betriebskostenabrechnung', 'heizkostenabrechnung',
+  'versicherungsleistung', 'schadenregulierung',
+];
+
+/** Leistungen, die kein Einkommen im Sinne des § 14 WoGG sind bzw. im Antrag gesondert stehen. */
+export const KEIN_EINKOMMEN_STICHWOERTER: readonly string[] = ['kindergeld', 'familienkasse', 'wohngeld'];
+
+/** Pflegegeld der Pflegekasse — erklärt, wenn im Haushalt ein Pflegegrad erfasst ist. */
+export const PFLEGEGELD_STICHWOERTER: readonly string[] = ['pflegegeld', 'pflegekasse'];
+
+/** Transferleistungen — erklärt, wenn im Antrag eine Transferleistung/ein Ausschluss angegeben ist. */
+export const TRANSFER_STICHWOERTER: readonly string[] = ['jobcenter', 'buergergeld', 'grundsicherung', 'sozialamt', 'bafoeg', 'studierendenwerk', 'agentur fuer arbeit', 'arbeitslosengeld'];
 
 /** Konstanten laden; `WOHNGELD_<NAME>` überschreibt den Standard (ungültige Werte werden ignoriert). */
 export function ladeKonstanten(env: Record<string, string | undefined> = process.env): WohngeldKonstanten {

@@ -84,14 +84,8 @@ export function pruefeNachweise(ctx: PruefKontext): PruefBefund[] {
         titel: vorgang.wohnsituation === 'untermiete' ? 'Untermietvertrag' : 'Mietvertrag',
         belegtext: `Für die ${vorgang.wohnsituation === 'untermiete' ? 'Untermiet' : 'Miet'}wohnung liegt kein Mietvertrag vor (alle Seiten, unterschrieben; § 42a Abs. 1, § 35 Abs. 1 SGB XII).`,
       });
-    } else if (mietvertraege.length > 0 && mietvertraege.every(({ a }) => a.unterschrift_vorhanden === false)) {
-      befunde.push({
-        regelId: 'mietvertrag', kategorie: V, typ: 'anforderung',
-        titel: 'Mietvertrag ohne Unterschrift',
-        belegtext: 'Der vorliegende Mietvertrag ist nicht unterschrieben. Unterschriebenen Vertrag (alle Seiten) anfordern (§ 35 Abs. 1 SGB XII).',
-        quellDokumentId: mietvertraege[0]!.dok.id,
-      });
     }
+    // Mietvertrag ohne erkannte Unterschrift: plausi-mietvertrag-unsigniert (plausibilitaet.ts).
 
     const mv = mietvertraege[0];
     if (mv && vermieterBesch.length === 0) {

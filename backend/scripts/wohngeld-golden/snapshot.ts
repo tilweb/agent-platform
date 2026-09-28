@@ -71,7 +71,7 @@ export interface FallKurz {
 }
 
 export interface ErwartungKurz {
-  dokumente: Array<{ typ: DokumentTyp; person?: string; erwartet?: { stammdaten?: Record<string, unknown>; analyse?: Record<string, unknown>; identitaet?: Record<string, unknown> } }>;
+  dokumente: Array<{ typ: DokumentTyp; art?: string; person?: string; erwartet?: { stammdaten?: Record<string, unknown>; analyse?: Record<string, unknown>; identitaet?: Record<string, unknown> } }>;
 }
 
 export const ERWERB: Record<string, Erwerbsstatus> = {
@@ -110,6 +110,8 @@ function entfalte(flach: Record<string, unknown> | undefined): Record<string, un
   return out;
 }
 
+const MIET_ARTEN: ReadonlySet<string> = new Set(['mietvertrag', 'untermietvertrag', 'heimvertrag', 'mieterhoehung', 'vermieterbescheinigung']);
+
 export function regelwerkSnapshot(fall: FallKurz, erwartung: ErwartungKurz): VorgangSnapshot {
   const antragDok = erwartung.dokumente.find((d) => d.typ === 'wohngeldantrag' && d.erwartet?.stammdaten);
   const stamm = entfalte(antragDok?.erwartet?.stammdaten) as ExtrahierteStammdaten;
@@ -144,7 +146,9 @@ export function regelwerkSnapshot(fall: FallKurz, erwartung: ErwartungKurz): Vor
       ...(id.vorname ? { person_vorname: id.vorname } : {}), ...(id.nachname ? { person_nachname: id.nachname } : {}),
       ...(id.geburtsdatum ? { person_geburtsdatum: id.geburtsdatum } : {}),
     };
-    return dokument(i, d.typ, { ...(entfalte(d.erwartet?.analyse) as DokumentAnalyse), ...person }, d.person);
+    // Art des Mietdokuments setzt die App aus dem erkannten Abschnitt (dp-erkennung) — hier aus der Dokumentart.
+    const mietdokument = (d.typ === 'mietvertrag' || d.typ === 'mietbescheinigung') && d.art && MIET_ARTEN.has(d.art) ? { mietdokument: d.art as DokumentAnalyse['mietdokument'] } : {};
+    return dokument(i, d.typ, { ...mietdokument, ...(entfalte(d.erwartet?.analyse) as DokumentAnalyse), ...person }, d.person);
   });
   return { vorgang: vorgangAus(stamm), personen, dokumente };
 }

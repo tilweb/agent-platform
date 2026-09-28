@@ -14,7 +14,7 @@ import type { ExtractionProject, ProjectField, ProjectItemField, SegmentTypeDef 
 
 export const WOHNGELD_PROFIL_ID = 'wohngeld-eingang';
 /** Bei fachlichen Änderungen der Vorlage hochzählen (steht in der Profilbeschreibung). */
-export const WOHNGELD_PROFIL_VORLAGE_STAND = '2026-09-28';
+export const WOHNGELD_PROFIL_VORLAGE_STAND = '2026-09-28b';
 
 const txt = (label: string, description?: string): ProjectField => ({ type: 'text', required: false, label, ...(description ? { description } : {}) });
 const num = (label: string, description?: string): ProjectField => ({ type: 'number', required: false, label, ...(description ? { description } : {}) });
@@ -48,11 +48,17 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
       antragsteller_vorname: txt('Vorname(n) der antragstellenden Person', 'Frage 1'),
       antragsteller_geburtsdatum: dat('Geburtsdatum der antragstellenden Person', 'Frage 1'),
       antragsteller_erwerbsstatus: txt('Erwerbsstatus der antragstellenden Person', 'Frage 1, das angekreuzte Kästchen unter „Erwerbsstatus" als Formulartext, z. B. „Arbeitnehmer/in", „Rentner/in oder Pensionär/in", „sonstige Nichterwerbsperson"'),
-      haushaltsmitglieder: liste('Haushaltsmitglieder', 'Frage 6 („Angaben für das 1.–4. Haushaltsmitglied"): je ausgefülltem Block eine Zeile, leere Blöcke weglassen. Die antragstellende Person (Frage 1) gehört NICHT dazu.', {
+      haushaltsmitglieder: liste('Haushaltsmitglieder', 'Frage 6 („Angaben für das 1.–4. Haushaltsmitglied"): je ausgefülltem Block eine Zeile, leere Blöcke weglassen. Die antragstellende Person (Frage 1) gehört NICHT dazu, ebenso wenig Personen aus Frage 7 (weitere Personen in der Wohnung, die nicht zum Haushalt gehören, z. B. Mitbewohner) und Frage 8 (verstorbenes Haushaltsmitglied).', {
         ...NAME_SPALTEN,
         geburtsdatum: spalte('date', 'Geburtsdatum'),
         verhaeltnis: spalte('text', 'Verhältnis zu Ihnen', 'wie eingetragen, z. B. „Ehefrau", „Sohn", „Lebensgefährte"'),
         erwerbsstatus: spalte('text', 'Erwerbsstatus', 'wie eingetragen, z. B. „Arbeitnehmer/in", „Nichterwerbsperson"'),
+      }),
+      weitere_personen: liste('Weitere Personen in der Wohnung (nicht Haushalt)', 'Frage 7 (weitere Personen, die in der Wohnung leben, aber nicht zum Haushalt gehören), nur wenn „Ja": je eingetragener Person eine Zeile.', {
+        ...NAME_SPALTEN,
+      }),
+      verstorbene: liste('Verstorbenes Haushaltsmitglied', 'Frage 8 (Haushaltsmitglied in den letzten 12 Monaten verstorben), nur wenn „Ja": Name der verstorbenen Person.', {
+        ...NAME_SPALTEN,
       }),
       einnahmen: liste('Einnahmen je Person', 'Frage 12 („Einnahmen der antragstellenden Person", „Einnahmen des 1.–4. Haushaltsmitgliedes"): je ausgefüllter Zeile „Art der Einnahme" eine Zeile mit dem Namen aus dem Block-Kopf. Steht dort „keine Einnahmen", eine Zeile mit art „keine Einnahmen". Leere Zeilen weglassen.', {
         ...NAME_SPALTEN,
@@ -126,7 +132,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
         ...NAME_SPALTEN,
         geburtsdatum: spalte('date', 'Geburtsdatum', 'nur wenn im Vertragskopf genannt'),
       }),
-      unterschrift_vorhanden: UNTERSCHRIFT('am Vertragsende — true nur, wenn Vermieter UND Mieter unterschrieben haben'),
+      unterschrift_vorhanden: UNTERSCHRIFT('im Unterschriftenblock am Vertragsende (meist letzte Seite, über den Beschriftungen „Vermieter" und „Mieter") — true, wenn dort über den Linien gezeichnete Unterschriften von Vermieter UND Mieter zu sehen sind; ein gedrucktes Ort/Datum allein ist keine Unterschrift —'),
     },
   },
   untermietvertrag: {

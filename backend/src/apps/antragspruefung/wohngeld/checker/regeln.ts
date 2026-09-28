@@ -8,10 +8,14 @@
  *
  * Spec: docs/wohngeld-pruefregeln-doku-spec-2026-09-24.md
  *       docs/wohngeld-antrag-beleg-abgleich-spec-2026-09-28.md (Abgleich Antrag ↔ Beleg)
+ *       docs/wohngeld-fehlalarme-2026-09-28.md (Fehlalarme der Golden-Messung, Stand 2026-09-28a)
  */
 import type { PruefKategorie, PruefTyp } from '../types';
+import { STANDARD_KONSTANTEN as K } from './konstanten';
 
-export const REGELKATALOG_STAND = '2026-09-28';
+const eur = (n: number) => `${n.toLocaleString('de-DE')} €`;
+
+export const REGELKATALOG_STAND = '2026-09-28a';
 
 export type RegelGruppe =
   | 'grundangaben' | 'wohnen' | 'identitaet_versicherung' | 'einkommen'
@@ -55,8 +59,8 @@ export const REGELKATALOG: RegelBeschreibung[] = [
     rechtsgrundlage: '§ 22 WoGG; § 60 SGB I',
     erledigung: 'Fehlende Angaben im Hauptformular erfassen — meist aus dem Antrag ablesbar. Fehlen sie auch dort, beim Antragsteller nachfordern.',
     hinweise: [
-      'Ohne Datum im Formular gilt fachlich der Eingang bei der Behörde als Antragsdatum; dann das Eingangsdatum eintragen.',
-      'Bei Heimbewohnern wird im Antrag keine Miete angegeben; die Regel meldet dann trotzdem eine fehlende Miethöhe.',
+      'Ohne Datum im Formular gilt fachlich der Eingang bei der Behörde als Antragsdatum; dann das Eingangsdatum eintragen. Ist das Formular ohne Datum eingegangen, meldet das „Antrag ohne Datum" — das Antragsdatum wird dann hier nicht zusätzlich aufgeführt.',
+      'Bei Heimbewohnern (Heimvertrag liegt vor) wird im Antrag keine Miete angegeben — die Miethöhe gilt dann nicht als fehlend.',
     ],
   },
   {
@@ -84,19 +88,19 @@ export const REGELKATALOG: RegelBeschreibung[] = [
   // ── Wohnung und Miete ──
   {
     id: 'mietvertrag', titel: 'Aktueller Mietvertrag', kategorie: 'vollstaendigkeit', typ: 'anforderung', bezug: 'vorgang', gruppe: 'wohnen',
-    ausloeser: 'Mietzuschuss und im Vorgang liegt kein Dokument vom Typ Mietvertrag vor.',
+    ausloeser: 'Mietzuschuss und im Vorgang liegt kein Dokument vom Typ Mietvertrag vor. Beim Weiterleistungsantrag nur, wenn auch keine Vermieterbescheinigung vorliegt.',
     nachweis: 'Mietvertrag (bei Heimbewohnern Heimvertrag, bei Untermiete Untermietvertrag)',
     rechtsgrundlage: '§ 3 Abs. 1 WoGG',
     erledigung: 'Mietvertrag nachfordern oder vorhandenen Vertrag als Mietvertrag einordnen.',
-    hinweise: ['Die Regel unterscheidet nicht nach Antragsart: bei einem Weiterleistungsantrag liegt der Mietvertrag meist schon in der Akte — dann verwerfen.'],
+    hinweise: ['Weiterleistungsantrag: der Mietvertrag liegt aus dem Vorverfahren in der Akte; die aktuelle Vermieterbescheinigung genügt. Bei Umzug oder neuem Vertrag den Prüfschritt manuell anlegen.'],
   },
   {
     id: 'vermieterbescheinigung', titel: 'Vermieterbescheinigung', kategorie: 'vollstaendigkeit', typ: 'anforderung', bezug: 'vorgang', gruppe: 'wohnen',
-    ausloeser: 'Mietzuschuss und im Vorgang liegt keine Vermieterbescheinigung (Typ Mietbescheinigung) vor.',
+    ausloeser: 'Mietzuschuss und im Vorgang liegt keine Vermieterbescheinigung (Typ Mietbescheinigung) vor. Entfällt, wenn ein Heimvertrag vorliegt.',
     nachweis: 'Vermieterbescheinigung mit Miethöhe, Wohnfläche und Beginn des Mietverhältnisses',
     rechtsgrundlage: '§§ 9, 11 WoGG; § 23 Abs. 3 WoGG (Auskunftspflicht des Vermieters)',
     erledigung: 'Vermieterbescheinigung beim Antragsteller anfordern oder direkt beim Vermieter erfragen.',
-    hinweise: ['Bei Heimbewohnern ersetzt der Heimvertrag die Vermieterbescheinigung — dann verwerfen.'],
+    hinweise: ['Bei Heimbewohnern ersetzt der Heimvertrag die Vermieterbescheinigung; erkannt wird das am Dokument „Heimvertrag". Liegt er nicht vor, meldet die Regel weiter.'],
   },
   {
     id: 'mietzahlungsnachweis', titel: 'Nachweis der Mietzahlung', kategorie: 'vollstaendigkeit', typ: 'anforderung', bezug: 'vorgang', gruppe: 'wohnen',
@@ -138,10 +142,15 @@ export const REGELKATALOG: RegelBeschreibung[] = [
     hinweise: ['Meldebescheinigungen werden noch nicht ausgewertet — es gibt dafür keinen eigenen Dokumenttyp.', 'Untermietverträge bleiben außen vor.'],
   },
   {
-    id: 'plausi-mietvertrag-unsigniert', titel: 'Mietvertrag ohne Unterschrift', kategorie: 'plausibilitaet', typ: 'anforderung', bezug: 'dokument', gruppe: 'wohnen',
-    ausloeser: 'Die Auswertung des Mietvertrags hat keine Unterschriften beider Parteien erkannt.',
+    id: 'plausi-mietvertrag-unsigniert', titel: 'Unterschrift im Mietvertrag bitte sichten', kategorie: 'plausibilitaet', typ: 'info', bezug: 'dokument', gruppe: 'wohnen',
+    ausloeser: 'Die Auswertung des (ersten) Mietvertrags hat keine Unterschriften beider Parteien erkannt. Standard ist ein Hinweis zum Sichten mit Seitenangabe (Fundstelle, sonst letzte Seite des Vertrags). Als Anforderung „Mietvertrag ohne Unterschrift" nur, wenn die Extraktion das leere Feld mit einer Konfidenz ab UNTERSCHRIFT_LEER_MIN_KONFIDENZ meldet.',
     rechtsgrundlage: '§ 9 WoGG',
-    erledigung: 'Unterschriften im Dokument prüfen; fehlen sie, unterschriebenen Vertrag nachfordern.',
+    erledigung: 'Unterschriftsbereich im Dokument ansehen. Ist der Vertrag unterschrieben, Hinweis verwerfen; sonst unterschriebenen Vertrag nachfordern.',
+    hinweise: [
+      'Die Unterschriftserkennung ist unsicher: in der Golden-Messung wurden 35 von 60 unterschriebenen Mietverträgen als unsigniert gelesen.',
+      `Die Pipeline deckelt Feld-Konfidenzen derzeit bei 0,7 (Selbsteinschätzung des Modells, kein Bildbefund). Mit dem Standard ${K.UNTERSCHRIFT_LEER_MIN_KONFIDENZ.toLocaleString('de-DE')} bleibt es deshalb beim Hinweis; Env WOHNGELD_UNTERSCHRIFT_LEER_MIN_KONFIDENZ.`,
+      'Eine zusätzliche Bildprüfung des Unterschriftsbereichs ist als Option beschrieben (docs/wohngeld-fehlalarme-2026-09-28.md), nicht gebaut.',
+    ],
   },
   {
     id: 'plausi-mietzahlung-fehlt', titel: 'Mietzahlung nicht belegt', kategorie: 'plausibilitaet', typ: 'anforderung', bezug: 'dokument', gruppe: 'wohnen',
@@ -153,12 +162,14 @@ export const REGELKATALOG: RegelBeschreibung[] = [
   // ── Identität und Versicherung ──
   {
     id: 'identitaet-jede-person', titel: 'Personalausweis', kategorie: 'vollstaendigkeit', typ: 'anforderung', bezug: 'person', gruppe: 'identitaet_versicherung',
-    ausloeser: 'Für eine volljährige Person im Haushalt ist kein Ausweisdokument (Typ Personalausweis) zugeordnet. Stichtag ist das Antragsdatum; ohne Geburtsdatum gilt die Person als volljährig.',
+    ausloeser: 'Für eine volljährige Person im Haushalt ist kein Ausweisdokument (Typ Personalausweis) zugeordnet. Stichtag ist das Antragsdatum; ohne Geburtsdatum gilt die Person als volljährig. Nicht beim Weiterleistungsantrag (Identität aus dem Vorverfahren belegt).',
     nachweis: 'Personalausweis, Reisepass oder Aufenthaltstitel',
     rechtsgrundlage: '§ 5 WoGG',
     erledigung: 'Vorhandenen Ausweis der Person zuordnen oder nachfordern.',
     hinweise: [
-      'Gezählt wird nur ein Ausweis, der der Person im Vorgang zugeordnet ist. Der Posteingang ordnet Ausweise über Name und Geburtsdatum zu; ist die Zuordnung nicht eindeutig, trägt das Dokument den Hinweis „Person nicht eindeutig zuordenbar" und die Regel meldet, bis es zugeordnet ist.',
+      'Gezählt wird nur ein Ausweis, der der Person im Vorgang zugeordnet ist. Der Posteingang ordnet Ausweise über Geburtsdatum und Name zu (ein abweichender Buchstabe je Namensteil gilt als Lesefehler, z. B. „GÜNTER"/„Günther"); ist die Zuordnung nicht eindeutig, trägt das Dokument den Hinweis „Person nicht eindeutig zuordenbar" und die Regel meldet, bis es zugeordnet ist.',
+      'Weiterleistungsantrag: kommt ein Haushaltsmitglied neu hinzu, den Ausweis manuell anfordern — die Regel erkennt neue Mitglieder nicht.',
+      'Mitbewohner (Antrag Frage 7) und verstorbene Mitglieder (Frage 8) legt der Posteingang nicht als Haushaltsmitglieder an; für sie wird kein Ausweis verlangt.',
       'Für Kinder unter 18 wird kein Ausweis verlangt — sie sind im Antrag erfasst.',
     ],
   },
@@ -243,6 +254,7 @@ export const REGELKATALOG: RegelBeschreibung[] = [
     erledigung: 'Herkunft der Zahlungen klären, ggf. als Einkommen erfassen und Nachweise (z. B. Minijob-Abrechnungen) anfordern.',
     hinweise: [
       'Kindergeld, Wohngeld, Erstattungen, Zuschüsse Dritter (Antrag Frage 26 wird nicht ausgelesen) und nicht zuordenbare Eingänge bleiben außen vor; Untermieteinnahmen gelten mit vorliegendem Untermietvertrag als erklärt.',
+      'Kein Einkommen sind außerdem (konkrete Kriterien, Stichwortlisten in konstanten.ts): Umbuchungen zwischen eigenen Konten („Umbuchung", „Übertrag" oder die IBAN eines anderen Kontoauszugs im Haushalt), Erstattungen und Rückbuchungen (Finanzamt, Krankenkassen-/Versicherungserstattung, Nebenkosten-/Betriebskostenguthaben, Rücklastschrift — Krankengeld dagegen schon), Kindergeld/Familienkasse und Wohngeld, Pflegegeld bei erfasstem Pflegegrad, Zahlungen eines Haushaltsmitglieds (Vor- und Nachname im Verwendungszweck; nicht bei Erwerbs-, Renten- oder Unterhaltseingängen) sowie Transferleistungen (Jobcenter, BAföG …), wenn im Antrag eine angegeben ist. Gemeldet die Regel für die Person trotzdem, nennt der Befund die so ausgenommenen Eingänge.',
       'Der Arbeitgeber-Abgleich greift nur, wenn für jede Person mit angegebenem Erwerbseinkommen ein Lohnnachweis mit lesbarem Arbeitgeber vorliegt — fehlt ein Nachweis, meldet bereits „Verdienstbescheinigung / Gehaltsabrechnungen".',
       'Liegt die Eingangsliste vor, ersetzt diese Regel „Einkünfte auf dem Kontoauszug nicht angegeben" für diesen Auszug.',
     ],
@@ -252,7 +264,10 @@ export const REGELKATALOG: RegelBeschreibung[] = [
     ausloeser: 'Auf einem Kontoauszug wurden Einkünfte erkannt (z. B. Kapitalerträge, Mieteinnahmen, Lohn, Rente), die bei der zugeordneten Person nicht als Einkommen erfasst sind. Je Einkunftsart ein Befund.',
     rechtsgrundlage: '§ 14 WoGG',
     erledigung: 'Herkunft der Zahlungen beim Antragsteller erfragen und ggf. als Einkommen erfassen.',
-    hinweise: ['Setzt voraus, dass der Kontoauszug einer Person zugeordnet ist und deren Einkommen erfasst wurde.'],
+    hinweise: [
+      'Setzt voraus, dass der Kontoauszug einer Person zugeordnet ist und deren Einkommen erfasst wurde.',
+      'Als Mieteinnahme erkannte Eingänge gelten als erklärt, wenn ein Untermietvertrag vorliegt oder ein anderes Haushaltsmitglied Bürgergeld/Grundsicherung/Hilfe zum Lebensunterhalt bezieht (Mietanteil aus den Unterkunftskosten, keine Mieteinnahme).',
+    ],
   },
 
   // ── Familie, Behinderung, Pflege ──
@@ -329,11 +344,13 @@ export const REGELKATALOG: RegelBeschreibung[] = [
   },
   {
     id: 'vorrang-grundsicherung-mitpruefen', titel: 'Grundsicherung mitprüfen', kategorie: 'plausibilitaet', typ: 'info', bezug: 'vorgang', gruppe: 'ausschluss',
-    ausloeser: 'Die antragstellende Person oder ihr Ehe-/Lebenspartner hat im Antragsmonat die Altersgrenze nach § 41 Abs. 2 SGB XII erreicht oder ist laut Rentenbescheid dauerhaft voll erwerbsgemindert, bei beiden sind keine Erwerbseinkünfte erfasst und ihr erfasstes Vermögen liegt unter 10.000 € je Person (oder ist nicht erfasst). Entfällt, wenn schon Grundsicherungsbezug angegeben ist.',
+    ausloeser: `Die antragstellende Person oder ihr Ehe-/Lebenspartner hat im Antragsmonat die Altersgrenze nach § 41 Abs. 2 SGB XII erreicht oder ist laut Rentenbescheid dauerhaft voll erwerbsgemindert, bei beiden sind keine Erwerbseinkünfte erfasst, ihr Vermögen liegt unter 10.000 € je Person — erfasst oder durch Belege (Vermögensnachweise, letzte Kontostände) — und das erfasste Monatseinkommen (brutto) liegt nicht über dem Orientierungswert von ${eur(K.GRUNDSICHERUNG_ORIENTIERUNG_PERSON_EUR)} (Alleinstehende) bzw. ${eur(K.GRUNDSICHERUNG_ORIENTIERUNG_PAAR_EUR)} (Paar, Summe). Entfällt, wenn schon Grundsicherungsbezug angegeben ist oder ein Heimvertrag vorliegt.`,
     rechtsgrundlage: '§ 41 SGB XII; § 2 Abs. 1 SGB XII; § 7 Abs. 1 WoGG',
     erledigung: 'Antragsteller auf die Grundsicherung im Alter und bei Erwerbsminderung hinweisen und die Vorrangfrage mit der Grundsicherungsstelle abstimmen. Den Hinweis verwerfen, wenn das Einkommen offensichtlich deutlich über dem Grundsicherungsniveau liegt.',
     hinweise: [
-      'Geprüft wird nur das Vorliegen der Merkmale, nicht die Höhe von Einkommen oder Bedarf.',
+      'Keine Bedarfsberechnung: das Einkommen wird nur mit einem groben Orientierungswert verglichen. Die Orientierungswerte sind kommunal festzulegen (Regelbedarf + örtlich angemessene Unterkunftskosten; Env WOHNGELD_GRUNDSICHERUNG_ORIENTIERUNG_PERSON_EUR / _PAAR_EUR). Der Standard ist bewusst eher hoch angesetzt (Hinweis lieber einmal zu viel).',
+      'Ist die Höhe einer Einkommensposition nicht erfasst, bleibt der Hinweis (Einkommen unbekannt).',
+      'Heim-/Einrichtungsfälle (Heimvertrag liegt vor) sind ausgenommen — dort klärt der Sozialhilfeträger Hilfe zur Pflege bzw. Grundsicherung in der Einrichtung gesondert.',
       'Stichtag ist das Antragsdatum; ohne Antragsdatum oder Geburtsdatum greift die Regel nicht.',
       'Die Erwerbsminderung wird nur aus der Rentenart im Rentenbescheid gelesen und muss ausdrücklich unbefristet sein; eine befristete oder unklare Erwerbsminderungsrente löst den Hinweis nicht aus.',
       'Ein eheähnlicher Partner ist im Wohngeld nicht als Partner erfasst; sein Einkommen und Vermögen bleiben hier unberücksichtigt.',

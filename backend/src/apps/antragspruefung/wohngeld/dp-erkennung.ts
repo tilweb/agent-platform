@@ -132,11 +132,15 @@ export function haushaltAusRohwerten(w: Record<string, unknown>): HaushaltAngabe
   // tauchen dann als fast leere Zusatzeinträge auf. Gleiche Person ⇒ zusammenführen (Felder ergänzen);
   // die antragstellende Person gehört nicht in Frage 6.
   const at = { vorname: text(w.antragsteller_vorname), nachname: text(w.antragsteller_nachname) };
+  // Frage 7 (Mitbewohner, nicht Haushalt) und Frage 8 (verstorben): diese Personen gehören nicht in den
+  // Haushalt, auch wenn die Extraktion sie zusätzlich unter Frage 6 liest (Golden F24, F27).
+  const nichtImHaushalt = [...zeilen(w.weitere_personen), ...zeilen(w.verstorbene)].map(name).filter((n) => n.vorname || n.nachname);
   const mitglieder: HaushaltAngaben['mitglieder'] = [];
   for (const z of zeilen(w.haushaltsmitglieder)) {
     const m = kompakt({ ...name(z), geburtsdatum: text(z.geburtsdatum), verhaeltnis: text(z.verhaeltnis), erwerbsstatus: text(z.erwerbsstatus) });
     if (!m.nachname && !m.vorname) continue;
     if (gleichePerson(m, at)) continue;
+    if (nichtImHaushalt.some((x) => !!x.vorname && !!m.vorname && gleichePerson(m, x))) continue;
     const vorhanden = mitglieder.find((x) => gleichePerson(x, m));
     if (vorhanden) { for (const [k, v] of Object.entries(m)) if ((vorhanden as Record<string, unknown>)[k] === undefined) (vorhanden as Record<string, unknown>)[k] = v; continue; }
     mitglieder.push(m);
@@ -234,6 +238,7 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
       setze('miete_gueltig_ab', datum(w.mietbeginn));
       setze('wohnflaeche_qm', zahl(w.wohnflaeche_qm));
       setze('unterschrift_vorhanden', wahr(w.unterschrift_vorhanden));
+      if (analyse.unterschrift_vorhanden !== undefined) setze('unterschrift_konfidenz', conf.unterschrift_vorhanden);
       const mieter = zeilen(w.mieter)
         .map((z) => kompakt({ ...name(z), geburtsdatum: datum(z.geburtsdatum) }))
         .filter((m) => m.vorname || m.nachname);
@@ -245,11 +250,13 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
       setze('miete', zahl(w.entgelt));
       setze('wohnflaeche_qm', zahl(w.zimmer_qm));
       setze('unterschrift_vorhanden', wahr(w.unterschrift_vorhanden));
+      if (analyse.unterschrift_vorhanden !== undefined) setze('unterschrift_konfidenz', conf.unterschrift_vorhanden);
       break;
     case 'heimvertrag':
       setze('mietdokument', 'heimvertrag');
       setze('miete', zahl(w.unterkunft_gesamt));
       setze('unterschrift_vorhanden', wahr(w.unterschrift_vorhanden));
+      if (analyse.unterschrift_vorhanden !== undefined) setze('unterschrift_konfidenz', conf.unterschrift_vorhanden);
       break;
     case 'mieterhoehung': {
       setze('mietdokument', 'mieterhoehung');
@@ -320,7 +327,18 @@ export interface ProfilErgebnis {
   segments?: SegmentInstance[];
   data: Record<string, unknown>;
   fieldConfidences?: Record<string, number>;
+  /** Fundstellen je Feld (Seite absolut im Gesamt-PDF), soweit die Pipeline sie liefert. */
+  boxes?: Record<string, { page: number }>;
   segmentContexts?: Record<string, string>;
+}
+
+/**
+ * Seite des Unterschriftsbereichs im Abschnitt (1-basiert, relativ zum Abschnitt = zur getrennten
+ * Datei): Fundstelle der Extraktion, sonst die letzte Seite (Unterschriftenblock am Vertragsende).
+ */
+export function unterschriftSeite(box: { page: number } | undefined, seiteVon: number, seiteBis: number): number {
+  const rel = box && Number.isFinite(box.page) ? box.page - seiteVon + 1 : undefined;
+  return rel !== undefined && rel >= 1 && rel <= seiteBis - seiteVon + 1 ? rel : seiteBis - seiteVon + 1;
 }
 
 /**
@@ -342,6 +360,9 @@ export function abschnitteAusErgebnis(r: ProfilErgebnis, profil: ExtractionProje
     for (const [pfad, v] of Object.entries(r.fieldConfidences ?? {})) if (pfad.startsWith(`${key}.`)) conf[pfad.slice(key.length + 1)] = v;
     const abschnitt = def ? seg.type : 'sonstiges';
     const e = mappeAbschnitt(abschnitt, werte, conf);
+    if (e.analyse && e.typ === 'mietvertrag' && e.analyse.unterschrift_vorhanden !== undefined) {
+      e.analyse.unterschrift_seite = unterschriftSeite(r.boxes?.[`${key}.unterschrift_vorhanden`], seg.pageFrom, seg.pageTo);
+    }
     const uebersichtConf: Record<string, number> = {};
     if (e.stammdaten) {
       for (const [pfad, v] of Object.entries(e.confidenceByPfad ?? {})) {

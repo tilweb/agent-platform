@@ -123,6 +123,8 @@ async function erkenneMitProfil(dateien: PosteingangDatei[], userId: string | nu
         // Ganze Datei als ein Dokument: größter Abschnitt bestimmt Typ und Felder.
         const groesster = [...r.abschnitte].sort((x, y) => (y.seiteBis - y.seiteVon) - (x.seiteBis - x.seiteVon))[0]!;
         uebernimmAbschnitt(d, groesster, r.quelle, r.profilHash);
+        // Ganze Datei bleibt ein Dokument: Seitenangaben des Abschnitts auf die Datei beziehen.
+        if (d.analyse?.unterschrift_seite) d.analyse = { ...d.analyse, unterschrift_seite: d.analyse.unterschrift_seite + groesster.seiteVon - 1 };
         if (!d.teilVon && !d.trennung) d.trennung = { status: 'ein_dokument', seitenGesamt: r.seiten };
         out.push(d);
         continue;

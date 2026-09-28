@@ -355,6 +355,20 @@ export async function syncPruefschritte(vorgangId: string, befunde: PruefBefund[
   if (plan.entfernen.length) {
     await db.delete(gsPruefschritte).where(inArray(gsPruefschritte.id, plan.entfernen));
   }
+  if (plan.angleichen.length) {
+    const bestand = new Map((await listPruefschritte(vorgangId)).map((p) => [p.id, p]));
+    for (const { id, befund: b } of plan.angleichen) {
+      const p = bestand.get(id);
+      if (!p) continue;
+      const { id: _id, vorgangId: _v, personId: _p, regelId: _r, kategorie: _k, typ: _t, status: _s, titel: _ti, version: _ve, created_at: _c, updated_at: _u, ...daten } = p;
+      void _id; void _v; void _p; void _r; void _k; void _t; void _s; void _ti; void _ve; void _c; void _u;
+      await db.update(gsPruefschritte).set({
+        typ: b.typ, titel: b.titel,
+        data: { ...daten, automatisch: true, belegtext: b.belegtext, quellDokumentId: b.quellDokumentId } as never,
+        version: (p.version ?? 1) + 1, updatedAt: now,
+      }).where(eq(gsPruefschritte.id, id));
+    }
+  }
   return listPruefschritte(vorgangId);
 }
 

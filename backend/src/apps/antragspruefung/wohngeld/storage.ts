@@ -367,6 +367,23 @@ export async function syncPruefschritte(vorgangId: string, befunde: PruefBefund[
     })));
   }
 
+  // Offene automatische Schritte an geänderte Befunde angleichen (z. B. Typ Anforderung → Hinweis,
+  // docs/wohngeld-fehlalarme-2026-09-28.md) — sonst bliebe der alte Stand bis zum Erledigen stehen.
+  const befundByKey = new Map(befunde.map(b => [keyOf(b.regelId, b.personId), b]));
+  for (const p of existingByKey.values()) {
+    if (p.status !== 'offen') continue;
+    const b = befundByKey.get(keyOf(p.regelId, p.personId));
+    // Nur bei geändertem Typ/Titel (Regeländerung) — nicht bei jedem neuen Belegtext, sonst liefen parallele
+    // Bearbeitungen des Schritts ständig in Versionskonflikte.
+    if (!b || (b.typ === p.typ && b.titel === p.titel)) continue;
+    const { id: _id, vorgangId: _v, personId: _p, regelId: _r, kategorie: _k, typ: _t, status: _s, titel: _ti, version: _ve, created_at: _c, updated_at: _u, ...daten } = p;
+    await db.update(wgPruefschritte).set({
+      typ: b.typ, titel: b.titel,
+      data: { ...daten, automatisch: true, belegtext: b.belegtext, quellDokumentId: b.quellDokumentId } as never,
+      version: (p.version ?? 1) + 1, updatedAt: now,
+    }).where(eq(wgPruefschritte.id, p.id));
+  }
+
   // Verschwundene, automatische & noch offene Schritte entfernen (Widerspruch aufgelöst)
   const staleIds = existing
     .filter(p => p.automatisch && p.status === 'offen' && !befundKeys.has(keyOf(p.regelId, p.personId)))

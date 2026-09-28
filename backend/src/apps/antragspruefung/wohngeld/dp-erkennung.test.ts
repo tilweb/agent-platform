@@ -175,3 +175,44 @@ describe('fuerAuswertung', () => {
     expect((r[0] as { dataset: { original?: unknown } }).dataset.original).toBeUndefined();
   });
 });
+
+describe('Mietvertrag: Unterschrift mit Konfidenz und Seite (Hinweis zum Sichten)', () => {
+  const p = buildWohngeldEingangProject();
+  const erg = (boxes?: Record<string, { page: number }>) => abschnitteAusErgebnis({
+    segments: [{ type: 'mietvertrag', instance: 1, pageFrom: 16, pageTo: 19, confidence: 0.9 }],
+    data: { mietvertrag: { unterschrift_vorhanden: false, grundmiete: 400 } },
+    fieldConfidences: { 'mietvertrag.unterschrift_vorhanden': 0.7 },
+    ...(boxes ? { boxes } : {}),
+  }, p)[0]!;
+  test('ohne Fundstelle: letzte Seite des Vertrags, Konfidenz aus der Extraktion', () => {
+    const a = erg();
+    expect(a.analyse).toMatchObject({ unterschrift_vorhanden: false, unterschrift_konfidenz: 0.7, unterschrift_seite: 4 });
+    const feld = a.extraktion!.felder.find((f) => f.label === 'Unterschrift')!;
+    expect(feld).toMatchObject({ wert: 'fehlt', seite: 4, confidence: 0.7 });
+  });
+  test('mit Fundstelle: deren Seite, relativ zum Abschnitt; unplausible Fundstelle → letzte Seite', () => {
+    expect(erg({ 'mietvertrag.unterschrift_vorhanden': { page: 18 } }).analyse!.unterschrift_seite).toBe(3);
+    expect(erg({ 'mietvertrag.unterschrift_vorhanden': { page: 30 } }).analyse!.unterschrift_seite).toBe(4);
+  });
+});
+
+describe('Haushalt: Frage 7 (Mitbewohner) und Frage 8 (verstorben) gehören nicht zu Frage 6', () => {
+  test('als Haushaltsmitglied mitgelesene Mitbewohner/Verstorbene werden entfernt (Golden F24, F27)', () => {
+    const h = haushaltAusRohwerten({
+      antragsteller_vorname: 'Zofia', antragsteller_nachname: 'Kowalczyk',
+      haushaltsmitglieder: [{ vorname: 'Jannik', nachname: 'Brüggemann' }, { vorname: 'Selin', nachname: 'Aydin' }, { vorname: 'Christa', nachname: 'Pöllmann' }],
+      weitere_personen: [{ vorname: 'Jannik', nachname: 'Brüggemann' }, { vorname: 'Selin', nachname: 'Aydın' }],
+      verstorbene: [{ vorname: 'Christa', nachname: 'Pöllmann' }],
+      einnahmen: [{ vorname: 'Zofia', nachname: 'Kowalczyk', art: 'BAföG', brutto: 812 }],
+    })!;
+    expect(h.mitglieder).toEqual([]);
+  });
+  test('echte Haushaltsmitglieder bleiben (Namensgleichheit nur mit Vorname)', () => {
+    const h = haushaltAusRohwerten({
+      antragsteller_vorname: 'Josef', antragsteller_nachname: 'Pöllmann',
+      haushaltsmitglieder: [{ vorname: 'Anna', nachname: 'Pöllmann', geburtsdatum: '2001-01-01', verhaeltnis: 'Tochter' }],
+      verstorbene: [{ vorname: 'Christa', nachname: 'Pöllmann' }],
+    })!;
+    expect(h.mitglieder.map((m) => m.vorname)).toEqual(['Anna']);
+  });
+});
