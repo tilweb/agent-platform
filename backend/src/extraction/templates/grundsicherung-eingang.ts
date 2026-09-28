@@ -21,7 +21,7 @@ import type { ExtractionProject, ProjectField, ProjectItemField, SegmentTypeDef 
 
 export const GRUNDSICHERUNG_PROFIL_ID = 'grundsicherung-eingang';
 /** Bei fachlichen Änderungen der Vorlage hochzählen (steht in der Profilbeschreibung). */
-export const GRUNDSICHERUNG_PROFIL_VORLAGE_STAND = '2026-09-27a';
+export const GRUNDSICHERUNG_PROFIL_VORLAGE_STAND = '2026-09-28a';
 
 const txt = (label: string, description?: string): ProjectField => ({ type: 'text', required: false, label, ...(description ? { description } : {}) });
 const num = (label: string, description?: string): ProjectField => ({ type: 'number', required: false, label, ...(description ? { description } : {}) });
@@ -205,7 +205,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
   },
   kontoauszug: {
     label: 'Kontoauszug',
-    description: 'Kontoauszug einer Bank/Sparkasse (Giro-, Spar-, Tagesgeldkonto, auch Online-Umsatzliste) mit Buchungsliste und altem/neuem Kontostand. Jeder Auszug (Monat/Auszugsnummer, anderes Konto) ist ein eigenes Dokument. NEUSTART: Jede Seite mit eigenem Auszugskopf (Bank, Auszugsnummer/Zeitraum, alter Kontostand) ist IMMER der Beginn eines neuen Dokuments (neustart = true) — auch wenn die vorige Seite vom selben Kreditinstitut stammt. Folgeseiten mit „Übertrag" sind Fortsetzung.',
+    description: 'Kontoauszug einer Bank/Sparkasse (Giro-, Spar-, Tagesgeldkonto, auch Online-Umsatzliste) mit Buchungsliste und altem/neuem Kontostand. Jeder Auszug (Monat/Auszugsnummer, anderes Konto) ist ein eigenes Dokument. NEUSTART: Jede Seite mit eigenem Auszugskopf (Bank, Auszugsnummer/Zeitraum, „Alter Kontostand", „Blatt 1 von …") ist IMMER der Beginn eines neuen Dokuments (neustart = true) — auch wenn die vorige Seite vom selben Kreditinstitut stammt und gleich aussieht; eine andere Auszugsnummer (Nr. 3 → Nr. 4) oder ein anderer Monat ist immer ein neues Dokument. Fortsetzung (neustart = false) ist nur eine Seite, die OBEN mit „Übertrag von Blatt …" beginnt bzw. „Blatt 2 von 2" zeigt. Ein „Übertrag auf Blatt 2" am SEITENENDE macht die Seite NICHT zur Fortsetzung — sie ist Blatt 1 des neuen Auszugs.',
     repeatable: true,
     fields: {
       ...PERSON,
@@ -213,11 +213,11 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
       zeitraum_von: dat('Zeitraum von', 'erstes Buchungs-/Auszugsdatum'),
       zeitraum_bis: dat('Zeitraum bis', 'letztes Buchungs-/Auszugsdatum'),
       endsaldo: num('Neuer Kontostand (Endsaldo) in EUR', 'negativ bei „Soll" — ' + EURO),
-      eingaenge: liste('Wiederkehrende und auffällige Eingänge', 'Gutschriften, zusammengefasst nach Absender/Verwendungszweck (z. B. drei Rentenzahlungen = eine Zeile mit anzahl 3). Nicht aufnehmen: Umbuchungen zwischen eigenen Konten.', {
+      eingaenge: liste('Wiederkehrende und auffällige Eingänge', 'Gutschriften (Haben-Buchungen), je Absender GENAU EINE Zeile (z. B. drei Rentenzahlungen = eine Zeile mit anzahl 3; bei mehrseitigen Auszügen dieselbe Buchung nicht doppelt aufnehmen). Nicht aufnehmen: Umbuchungen zwischen eigenen Konten.', {
         betrag: spalte('number', 'Einzelbetrag je Buchung in EUR', EURO),
         verwendungszweck: spalte('text', 'Absender/Verwendungszweck', 'kurz, wie auf dem Auszug, z. B. „Deutsche Rentenversicherung", „VBL", „Wohngeld Stadt"'),
-        art: spalte('text', 'Art', 'eine von: rente, betriebsrente, wohngeld, unterhalt, erwerb, kapitalertrag, miete_einnahme, zuwendung, sozialleistung, erstattung, sonstige'),
-        wiederkehrend: spalte('boolean', 'Wiederkehrend', 'true, wenn mindestens zweimal im Zeitraum oder erkennbar als Dauerzahlung'),
+        art: spalte('text', 'Art', 'eine von: rente (gesetzliche Rentenversicherung), betriebsrente (Betriebsrente, VBL/ZVK, Pensionskasse), wohngeld, unterhalt, erwerb (Lohn/Gehalt), kapitalertrag, miete_einnahme, zuwendung (regelmäßige Überweisungen von Angehörigen/Partner:in, z. B. „Haushaltsgeld"), sozialleistung (Jobcenter, Sozialamt, Krankengeld), erstattung, sonstige'),
+        wiederkehrend: spalte('boolean', 'Wiederkehrend', 'true, wenn die Zahlung erkennbar laufend ist — auch wenn sie im Monatsauszug nur EINMAL vorkommt: Renten und Betriebsrenten (Verwendungszweck mit Monat, z. B. „RENTE 05/26", „BETRIEBSRENTE 03/2026"), Wohngeld, Unterhalt, Lohn, Dauerauftrag, regelmäßiges Haushaltsgeld. false nur für erkennbar einmalige Gutschriften (Erstattung, Rückzahlung, Geschenk)'),
         anzahl: spalte('number', 'Anzahl Buchungen im Zeitraum'),
       }),
       mietzahlung_erkannt: bool('Mietzahlung erkennbar', 'true, wenn eine Überweisung/ein Dauerauftrag der Miete an Vermieter oder Hausverwaltung gebucht ist; false, wenn der Auszug geprüft ist und keine Miete enthält'),
@@ -233,7 +233,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
     label: 'Mietvertrag',
     description: 'Wohnraum-Mietvertrag oder Untermietvertrag zwischen Vermieter und Mieter:in(nen): mehrere Seiten mit §-Gliederung (Mietsache, Mietzeit, Miete und Nebenkosten, Kaution …) und Unterschriftenblock am Ende. Folgeseiten mit weiteren Paragrafen und Anlagen (Hausordnung, Übergabeprotokoll) sind Fortsetzung.',
     fields: {
-      mieter: liste('Mieter:innen', 'alle im Vertrag als Mieter genannten Personen, je Person eine Zeile', { ...NAME_SPALTEN }),
+      mieter: liste('Mieter:innen', 'alle im Vertragskopf als Mieter genannten Personen, je Person GENAU EINE Zeile (Namen im Unterschriftenblock nicht erneut aufnehmen)', { ...NAME_SPALTEN }),
       beginn: dat('Mietbeginn'),
       wohnflaeche_qm: num('Wohnfläche in m²'),
       grundmiete: num('Grundmiete (Nettokaltmiete) in EUR/Monat', EURO),
@@ -241,7 +241,7 @@ const SEGMENTE: Record<string, SegmentTypeDef> = {
       heizkosten: num('Vorauszahlung Heizkosten in EUR/Monat', EURO),
       pauschalmiete: num('Pauschal-/Inklusivmiete in EUR/Monat', 'nur wenn der Vertrag einen Gesamtbetrag ohne Aufschlüsselung nennt — ' + EURO),
       heizkosten_enthalten: bool('Heizkosten in der Miete enthalten', 'true, wenn Heizkosten ausdrücklich in der (Pauschal-)Miete enthalten sind, ohne eigenen Betrag; sonst leer'),
-      unterschrift_vorhanden: UNTERSCHRIFT('am Vertragsende — true nur, wenn Vermieter UND Mieter unterschrieben haben —'),
+      unterschrift_vorhanden: UNTERSCHRIFT('im Unterschriftenblock am Vertragsende (meist letzte Seite, über den Beschriftungen „Vermieter" und „Mieter") — true, wenn dort über den Linien gezeichnete Unterschriften von Vermieter UND Mieter zu sehen sind; ein gedrucktes Ort/Datum allein ist keine Unterschrift —'),
     },
   },
   vermieterbescheinigung: {

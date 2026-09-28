@@ -457,10 +457,10 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
     case 'betriebsrente_mitteilung':
       return { typ, titel, identitaet: identitaetAus(w), analyse: a({ traeger: text(w.traeger), betrag_monat: zahl(w.betrag_monat) }) };
     case 'kontoauszug': {
-      const eingaenge: KontoEingang[] = zeilen(w.eingaenge).map((z) => kompakt({
+      const eingaenge = fasseEingaengeZusammen(zeilen(w.eingaenge).map((z) => kompakt({
         betrag: zahl(z.betrag), verwendungszweck: text(z.verwendungszweck), art: eingangArtAus(z.art, z.verwendungszweck),
         wiederkehrend: wahr(z.wiederkehrend), anzahl: zahl(z.anzahl),
-      })).filter((e) => e.betrag !== undefined || e.verwendungszweck);
+      })).filter((e) => e.betrag !== undefined || e.verwendungszweck));
       const abgaenge: KontoAbgang[] = zeilen(w.grosse_abgaenge).flatMap((z) => {
         const betrag = zahl(z.betrag);
         return betrag === undefined ? [] : [kompakt({ betrag: Math.abs(betrag), datum: datum(z.datum), verwendungszweck: text(z.verwendungszweck) })];
@@ -476,7 +476,16 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
       };
     }
     case 'mietvertrag': {
-      const mieter = zeilen(w.mieter).map((z) => [text(z.vorname), text(z.nachname)].filter(Boolean).join(' ')).filter(Boolean);
+      // Mehrseitige Verträge liefern die Mieter:innen oft doppelt (Vertragskopf + Unterschriftenblock).
+      const gesehen = new Set<string>();
+      const mieter = zeilen(w.mieter)
+        .map((z) => [text(z.vorname), text(z.nachname)].filter(Boolean).join(' '))
+        .filter((n) => {
+          const k = klein(n).replace(/\s+/g, ' ');
+          if (!n || gesehen.has(k)) return false;
+          gesehen.add(k);
+          return true;
+        });
       return {
         typ, titel,
         analyse: a({
@@ -516,6 +525,65 @@ export function mappeAbschnitt(abschnitt: string, w: Record<string, unknown>, co
     default:
       return { typ: 'sonstiges', titel: DOKUMENT_TYP_LABEL.sonstiges, analyse: {} };
   }
+}
+
+// ── Kontoeingänge: Duplikate und Wiederkehr (rein) ──────────────────────────
+
+/**
+ * Absender-Schlüssel eines Kontoeingangs: die ersten zwei Wörter des Verwendungszwecks ohne
+ * Ziffern/Satzzeichen (z. B. „VBL VERSORGUNGSANSTALT … 03/2026" → „vbl versorgungsanstalt"). Die
+ * Art bleibt bewusst außen vor — das Modell benennt denselben Absender je Auszug unterschiedlich.
+ */
+export function eingangSchluessel(e: Pick<KontoEingang, 'verwendungszweck' | 'art'>): string {
+  const woerter = klein(e.verwendungszweck).replace(/[^a-z\s]/g, ' ').split(/\s+/).filter((x) => x.length > 1);
+  return woerter.length ? woerter.slice(0, 2).join(' ') : `art:${e.art ?? 'sonstige'}`;
+}
+
+/**
+ * Fasst doppelt gelesene Zeilen desselben Absenders in EINEM Auszug zusammen (Anzahl addiert).
+ * Zwei oder mehr Buchungen desselben Absenders im Zeitraum sind wiederkehrend.
+ */
+export function fasseEingaengeZusammen(eingaenge: KontoEingang[]): KontoEingang[] {
+  const nachSchluessel = new Map<string, KontoEingang>();
+  for (const e of eingaenge) {
+    const k = eingangSchluessel(e);
+    const bisher = nachSchluessel.get(k);
+    if (!bisher) { nachSchluessel.set(k, { ...e }); continue; }
+    bisher.anzahl = (bisher.anzahl ?? 1) + (e.anzahl ?? 1);
+    bisher.wiederkehrend = true;
+    if (bisher.betrag === undefined) bisher.betrag = e.betrag;
+  }
+  return [...nachSchluessel.values()].map((e) => (e.anzahl !== undefined && e.anzahl >= 2 ? { ...e, wiederkehrend: true } : e));
+}
+
+/**
+ * Wiederkehr über mehrere Kontoauszüge derselben Sendung: Ein Monatsauszug zeigt eine Rente oder
+ * Betriebsrente nur EINMAL — erst der Vergleich der Auszüge (gleiches Konto bzw. ohne IBAN) zeigt
+ * die laufende Zahlung. Eingänge, deren Absender in mindestens zwei Auszügen vorkommt, werden als
+ * wiederkehrend markiert (die Regel `plausi-kontoauszug-unerklaerte-eingaenge` wertet nur diese aus).
+ */
+export function markiereWiederkehrendeEingaenge<T extends { typ: DokumentTyp; analyse: DokumentAnalyse }>(abschnitte: T[]): T[] {
+  const auszuege = abschnitte.filter((a) => a.typ === 'kontoauszug');
+  if (auszuege.length < 2) return abschnitte;
+  const konto = (a: T) => (a.analyse as { iban?: string }).iban ?? '';
+  const vorkommen = new Map<string, number>();
+  for (const a of auszuege) {
+    const eingaenge = (a.analyse as { eingaenge?: KontoEingang[] }).eingaenge ?? [];
+    for (const k of new Set(eingaenge.map(eingangSchluessel))) vorkommen.set(`${konto(a)}|${k}`, (vorkommen.get(`${konto(a)}|${k}`) ?? 0) + 1);
+  }
+  // Auszüge ohne erkannte IBAN zählen zu jedem Konto (eine Sendung = meist ein Konto).
+  const ohneIban = (k: string) => vorkommen.get(`|${k}`) ?? 0;
+  return abschnitte.map((a) => {
+    if (a.typ !== 'kontoauszug') return a;
+    const an = a.analyse as { eingaenge?: KontoEingang[] };
+    if (!an.eingaenge?.length) return a;
+    const eingaenge = an.eingaenge.map((e) => {
+      const k = eingangSchluessel(e);
+      const n = konto(a) ? (vorkommen.get(`${konto(a)}|${k}`) ?? 0) + ohneIban(k) : [...vorkommen.entries()].filter(([s]) => s.endsWith(`|${k}`)).reduce((s, [, v]) => s + v, 0);
+      return n >= 2 && e.wiederkehrend !== true ? { ...e, wiederkehrend: true } : e;
+    });
+    return { ...a, analyse: { ...an, eingaenge } as DokumentAnalyse };
+  });
 }
 
 // ── Transparenz: gelesene Werte je Abschnitt ────────────────────────────────
@@ -593,7 +661,7 @@ export function abschnitteAusErgebnis(r: ProfilErgebnis, profil: ExtractionProje
       rohwerte: werte,
     });
   }
-  return out;
+  return markiereWiederkehrendeEingaenge(out);
 }
 
 // ── Profil laden / anlegen / anheben (IO) ───────────────────────────────────

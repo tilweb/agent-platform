@@ -6,6 +6,7 @@ import { describe, expect, test } from 'bun:test';
 import { buildGrundsicherungEingangProject, GRUNDSICHERUNG_PROFIL_ID } from '../../extraction/templates/grundsicherung-eingang';
 import {
   abschnitteAusErgebnis, antragAusRohwerten, baueExtraktion, BEKANNTE_EINKOMMENS_ARTEN, einkommensArtAus, eingangArtAus,
+  eingangSchluessel, fasseEingaengeZusammen, markiereWiederkehrendeEingaenge,
   mappeAbschnitt, merkzeichenAus, rentenartAus, typVonAbschnitt, vermoegensArtAus, vorlagenHash, zahl,
 } from './dp-erkennung';
 import { DOKUMENT_TYPEN, VERMOEGENS_ARTEN } from './types';
@@ -236,5 +237,58 @@ describe('Segmentergebnis → Abschnitte', () => {
     const x = baueExtraktion(profil.segments!.grundsicherungsantrag, { einkommen: [{ vorname: 'Erika', art: 'Altersrente', betrag_monat: 780 }], unterschrift_vorhanden: true });
     expect(x.felder).toContainEqual({ gruppe: 'Einkommen je Person', label: '1.', wert: 'Erika, Altersrente, 780,00 €' });
     expect(x.felder).toContainEqual({ gruppe: 'Antrag auf Grundsicherung', label: 'Unterschrift vorhanden', wert: 'Ja' });
+  });
+});
+
+describe('Kontoeingänge und Mieter (Befunde Golden-Messung 2026-09-28)', () => {
+  test('Mieter:innen doppelt gelesen (Vertragskopf + Unterschriftenblock) → je Person einmal', () => {
+    const a = mappeAbschnitt('mietvertrag', { mieter: [{ vorname: 'Klaus', nachname: 'Berger' }, { vorname: 'Sabine', nachname: 'Berger' }, { vorname: 'Klaus', nachname: 'BERGER' }] });
+    expect((a.analyse as { mieter?: string[] }).mieter).toEqual(['Klaus Berger', 'Sabine Berger']);
+  });
+  test('Absender-Schlüssel ohne Monat/Nummern', () => {
+    expect(eingangSchluessel({ verwendungszweck: 'VBL VERSORGUNGSANSTALT D. BUNDES BETRIEBSRENTE 03/2026' })).toBe('vbl versorgungsanstalt');
+    expect(eingangSchluessel({ verwendungszweck: 'DEUTSCHE RENTENVERSICHERUNG HESSEN RENTE 04/26' })).toBe('deutsche rentenversicherung');
+    expect(eingangSchluessel({ art: 'rente' })).toBe('art:rente');
+  });
+  test('doppelt gelesene Zeile im selben Auszug → eine Zeile, wiederkehrend', () => {
+    const e = fasseEingaengeZusammen([
+      { betrag: 112, verwendungszweck: 'VBL VERSORGUNGSANSTALT', art: 'betriebsrente', wiederkehrend: false, anzahl: 1 },
+      { betrag: 780, verwendungszweck: 'DEUTSCHE RENTENVERSICHERUNG', art: 'rente', wiederkehrend: false, anzahl: 1 },
+      { betrag: 112, verwendungszweck: 'VBL VERSORGUNGSANSTALT', art: 'betriebsrente', wiederkehrend: false, anzahl: 1 },
+    ]);
+    expect(e).toEqual([
+      { betrag: 112, verwendungszweck: 'VBL VERSORGUNGSANSTALT', art: 'betriebsrente', wiederkehrend: true, anzahl: 2 },
+      { betrag: 780, verwendungszweck: 'DEUTSCHE RENTENVERSICHERUNG', art: 'rente', wiederkehrend: false, anzahl: 1 },
+    ]);
+  });
+  test('Monatsauszüge: derselbe Absender in zwei Auszügen → wiederkehrend; einmaliger Eingang bleibt', () => {
+    const k = (iban: string | undefined, eingaenge: unknown[]) => ({ typ: 'kontoauszug' as const, analyse: { ...(iban ? { iban } : {}), eingaenge } as never });
+    const vbl = (m: string) => ({ betrag: 112, verwendungszweck: `VBL VERSORGUNGSANSTALT BETRIEBSRENTE ${m}/2026`, art: 'betriebsrente', wiederkehrend: false, anzahl: 1 });
+    const erst = { betrag: 38.2, verwendungszweck: 'STADTWERKE ERSTATTUNG', art: 'erstattung', wiederkehrend: false };
+    const out = markiereWiederkehrendeEingaenge([
+      { typ: 'grundsicherungsantrag' as const, analyse: {} },
+      k('DE1', [vbl('03'), erst]), k('DE1', [vbl('04')]), k(undefined, [vbl('05')]), k('DE2', [{ betrag: 50, verwendungszweck: 'VBL VERSORGUNGSANSTALT X', wiederkehrend: false }]),
+    ]);
+    const e = (i: number) => (out[i]!.analyse as { eingaenge: Array<{ wiederkehrend?: boolean }> }).eingaenge;
+    expect(e(1)[0]!.wiederkehrend).toBe(true);
+    expect(e(1)[1]!.wiederkehrend).toBe(false);
+    expect(e(2)[0]!.wiederkehrend).toBe(true);
+    expect(e(3)[0]!.wiederkehrend).toBe(true);   // ohne IBAN: zählt zu jedem Konto
+    expect(e(4)[0]!.wiederkehrend).toBe(true);   // anderes Konto, aber Auszug ohne IBAN trägt denselben Absender
+  });
+  test('einzelner Auszug: nichts wird markiert; Segmentergebnis wendet die Wiederkehr an', () => {
+    const einer = [{ typ: 'kontoauszug' as const, analyse: { eingaenge: [{ verwendungszweck: 'VBL', wiederkehrend: false }] } as never }];
+    expect(markiereWiederkehrendeEingaenge(einer)).toBe(einer);
+    const a = abschnitteAusErgebnis({
+      segments: [
+        { type: 'kontoauszug', instance: 1, pageFrom: 1, pageTo: 1, confidence: 0.9 },
+        { type: 'kontoauszug', instance: 2, pageFrom: 2, pageTo: 2, confidence: 0.9 },
+      ],
+      data: { kontoauszug: [
+        { eingaenge: [{ betrag: 780, verwendungszweck: 'DEUTSCHE RENTENVERSICHERUNG RENTE 03/26', art: 'rente', wiederkehrend: false }] },
+        { eingaenge: [{ betrag: 780, verwendungszweck: 'DEUTSCHE RENTENVERSICHERUNG RENTE 04/26', art: 'rente', wiederkehrend: false }] },
+      ] },
+    }, profil);
+    for (const x of a) expect((x.analyse as { eingaenge: Array<{ wiederkehrend?: boolean }> }).eingaenge[0]!.wiederkehrend).toBe(true);
   });
 });

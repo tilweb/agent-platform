@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-28
+
+### Grundsicherung: Goldfälle als Test-PDFs und erste Live-Messung der Erkennung
+Generator `backend/scripts/grundsicherung-golden/erzeuge.ts` erzeugt die drei Goldfälle als synthetische
+Sammel-PDFs (20–28 Seiten, 8–13 Dokumente, als MUSTER gekennzeichnet; Ausgabe unter `tools/output/`, nicht im Repo),
+`messung.ts` misst das Dokumentprofil gegen das echte Modell (Abschnitte, Kernfelder, erwartete Befunde, Tokens).
+Nach zwei Verbesserungsrunden: 29/29 Dokumente, 196/197 Kernfelder, 12/12 erwartete Befunde (≈ 225–305 k Tokens
+je Fall). Verbessert: wiederkehrende Kontoeingänge über mehrere Auszüge erkennen, Monatsauszüge mit
+„Übertrag auf Blatt 2" nicht zusammenziehen, Mieter nicht doppelt lesen. Offen: Unterschrift auf dem Mietvertrag
+wird unzuverlässig erkannt (wie bei Wohngeld). Ergebnis: `docs/grundsicherung-golden-messung-2026-09-28.md`.
+
 ## 2026-09-27
 
 ### Antragsprüfungs-Apps: Konformitätstests + Art.-18-Lücken geschlossen (Muster-Änderung)
