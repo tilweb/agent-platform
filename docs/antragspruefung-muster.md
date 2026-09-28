@@ -77,6 +77,10 @@ Einheitliche Semantik in allen Apps:
   Bei Regeländerungen den Katalog-Stand hochzählen.
 - Auto-Prüfung nach jeder fachlichen Änderung; Zustand „nicht geprüft" sichtbar.
 - Vorrang-Hinweise zwischen Leistungen sind Prüfschritte vom Typ `info` (Abschnitt 9).
+- **Abgleich Antrag ↔ Belege** gehört zum Standard jeder App (nicht nur „Beleg liegt vor"): Einkommen je
+  Person, Kontoeingänge, Vermögen/Kontostände, Identität (Name, Geburtsdatum), Personen im Haushalt ↔
+  Mietvertrag, Wohnkosten ↔ aktuellstes Wohnkostendokument und Abbuchung. Befund nennt beide Werte und den
+  Beleg; Regel greift nur, wenn beide Seiten einen Wert haben; Toleranzen als Konstanten mit Env-Override.
 
 ## 4. Posteingang
 
