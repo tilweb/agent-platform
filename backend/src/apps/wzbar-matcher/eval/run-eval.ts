@@ -21,6 +21,7 @@ import { splitActivities } from '../splitter';
 import { aggregate, isHit, judgeCode, pool, recallHit } from './harness';
 import type { Aggregate, CaseResult, EvalCase, EvalSource } from './harness';
 import { parseStichwoerter, sampleEvalCases } from './destatis';
+import { STICHWOERTER_PATH } from '../paths';
 
 function flag(name: string, fallback: string): string {
   const idx = process.argv.indexOf(`--${name}`);
@@ -49,7 +50,7 @@ if (only !== 'destatis') {
 }
 
 if (only !== 'curated') {
-  const csv = await Bun.file(new URL('../../../../../docs/WZ2025-Stichwoerter.csv', import.meta.url)).text();
+  const csv = await Bun.file(STICHWOERTER_PATH).text();
   const all = parseStichwoerter(csv);
   const sample = sampleEvalCases(all, sampleN, seed);
   for (const c of sample) cases.push({ ...c, source: 'destatis' });

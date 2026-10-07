@@ -19,8 +19,8 @@
  * Variant kann das Ergebnis daher nie schlechter machen als ohne Expansion.
  */
 
-import { llmService, type Message, type ToolDefinition } from '../../services/llm';
-import { appsModelOverride, MATCHER_LLM_BUDGET } from './classifier';
+import { callTool, type ChatMessage, type ToolSchema } from './platform';
+import { MATCHER_LLM_CALL } from './classifier';
 
 const MAX_ACTIVITIES = 3;
 const MAX_VARIANTS = 2;
@@ -58,7 +58,7 @@ Zusätzlich lieferst du pro Tätigkeit 0–${MAX_VARIANTS} **Suchvarianten** (se
 - Wenn die Tätigkeit bereits fachsprachlich formuliert ist, lasse searchVariants leer.
 - Bei verdichteten langen Beschreibungen sind 1-2 searchVariants Pflicht.`;
 
-const SCHEMA: ToolDefinition = {
+const SCHEMA: ToolSchema = {
   type: 'function',
   function: {
     name: 'split_activities',
@@ -95,22 +95,17 @@ export async function splitActivities(inputText: string): Promise<SplitActivity[
   const trimmed = inputText.trim();
   if (!trimmed) return [];
 
-  const messages: Message[] = [
+  const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: `Tätigkeitsbeschreibung:\n"""\n${trimmed}\n"""\n\nLiefere 1–${MAX_ACTIVITIES} distinkte Tätigkeiten mit Suchvarianten.` },
   ];
 
   let activities: SplitActivity[] = [];
   try {
-    const response = await llmService.chat(
-      messages,
-      [SCHEMA],
-      { source: 'wzbar-matcher', userId: 'user_default' },
-      { toolChoice: { type: 'function', function: { name: 'split_activities' } }, temperature: 0, ...MATCHER_LLM_BUDGET, ...(await appsModelOverride()) },
-    );
+    const response = await callTool(messages, SCHEMA, MATCHER_LLM_CALL);
 
-    if (response.tool_calls && response.tool_calls.length > 0) {
-      const args = response.tool_calls[0]!.function.arguments;
+    if (response.toolArguments !== null) {
+      const args = response.toolArguments;
       const parsed = JSON.parse(args) as { activities?: unknown };
       if (Array.isArray(parsed.activities)) {
         activities = parsed.activities
@@ -154,7 +149,7 @@ export async function splitActivities(inputText: string): Promise<SplitActivity[
   return Promise.all(unique.map(a => (a.text.length <= MAX_ACTIVITY_CHARS ? a : condenseActivity(a.text))));
 }
 
-const CONDENSE_SCHEMA: ToolDefinition = {
+const CONDENSE_SCHEMA: ToolSchema = {
   type: 'function',
   function: {
     name: 'condense_activity',
@@ -182,7 +177,7 @@ const CONDENSE_SCHEMA: ToolDefinition = {
  * Handelsregister-Gegenstaenden traegt der erste Satz fast immer den Kern.
  */
 async function condenseActivity(longText: string): Promise<SplitActivity> {
-  const messages: Message[] = [
+  const messages: ChatMessage[] = [
     {
       role: 'system',
       content: `Du verdichtest ausführliche Tätigkeitsbeschreibungen aus dem deutschen Handelsregister auf ihren Kern.
@@ -195,14 +190,9 @@ Regeln:
   ];
 
   try {
-    const response = await llmService.chat(
-      messages,
-      [CONDENSE_SCHEMA],
-      { source: 'wzbar-matcher', userId: 'user_default' },
-      { toolChoice: { type: 'function', function: { name: 'condense_activity' } }, temperature: 0, ...MATCHER_LLM_BUDGET, ...(await appsModelOverride()) },
-    );
-    if (response.tool_calls && response.tool_calls.length > 0) {
-      const parsed = JSON.parse(response.tool_calls[0]!.function.arguments) as { text?: unknown; searchVariants?: unknown };
+    const response = await callTool(messages, CONDENSE_SCHEMA, MATCHER_LLM_CALL);
+    if (response.toolArguments !== null) {
+      const parsed = JSON.parse(response.toolArguments) as { text?: unknown; searchVariants?: unknown };
       const text = String(parsed.text ?? '').trim();
       if (text.length >= 3) {
         return {

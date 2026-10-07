@@ -1,9 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { theme } from '../../config/theme';
-import { apiGet, apiPost } from '../../utils/apiFetch';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-import { ClassifierIcon } from '../../components/Icons';
+import { apiGet, apiPost, ClassifierIcon, theme } from './platform';
 import MatchCard from './components/MatchCard';
 import HistoryList from './components/HistoryList';
 
@@ -229,12 +225,7 @@ export default function MatcherPage() {
   // fertig ist, während die Codes noch rechnen. Wirft bei Server-Fehlern
   // (Event `error`) mit err.serverError=true — dann KEIN Fallback-Rerun.
   const doMatchStream = async (text, force) => {
-    const res = await fetch(`${API_URL}/apps/wzbar-matcher/match/stream`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inputText: text, force }),
-    });
+    const res = await apiPost('/apps/wzbar-matcher/match/stream', { inputText: text, force });
     if (!res.ok || !res.body) throw new Error(`Stream nicht verfügbar (${res.status})`);
 
     const reader = res.body.getReader();

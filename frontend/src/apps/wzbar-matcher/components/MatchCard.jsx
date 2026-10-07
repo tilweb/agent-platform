@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { theme } from '../../../config/theme';
-import { CopyIcon, ListIcon } from '../../../components/Icons';
+import { CopyIcon, ListIcon, theme } from '../platform';
 import NeighborhoodModal from './NeighborhoodModal';
 
 const styles = {

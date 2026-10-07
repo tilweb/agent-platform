@@ -1,4 +1,4 @@
-import { theme } from '../../../config/theme';
+import { theme } from '../platform';
 
 const styles = {
   container: {

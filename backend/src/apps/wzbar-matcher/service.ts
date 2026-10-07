@@ -22,9 +22,7 @@ import type {
   MultiMatchResult,
   RetrievalHit,
 } from './types';
-import { llmService } from '../../services/llm';
-import { getPlatformModel } from '../../config/platformModels';
-import { getSystemDefaultModel } from '../../services/providers';
+import { chatModelLabel, embed, embeddingModelId } from './platform';
 
 const TOP_K = 20;
 
@@ -64,6 +62,12 @@ export async function buildMatchDeps(): Promise<MatchDeps> {
   if (aliases && !usableAliases) {
     console.error(`[wzbar-matcher] Alias-Index-Modell (${aliases.model}) passt nicht zum Embedding-Index (${index.model}) — ignoriere Aliase.`);
   }
+  // Abfragen werden mit dem konfigurierten Modell embedded — weicht es vom
+  // Modell der Asset-Vektoren ab, sind alle Similarities wertlos.
+  const queryModel = await embeddingModelId().catch(() => null);
+  if (queryModel && queryModel !== index.model) {
+    console.error(`[wzbar-matcher] Embedding-Modell (${queryModel}) passt nicht zu den Asset-Vektoren (${index.model}) — Treffer sind unbrauchbar, Assets neu bauen (catalog-builder.ts, alias-builder.ts).`);
+  }
   return { byCode, index, aliases: usableAliases, liftTo: buildLiftMap(catalog) };
 }
 
@@ -89,7 +93,7 @@ export async function retrieveCandidates(
     activity,
     ...searchVariants.filter(v => v.trim() && v.trim().toLowerCase() !== activityKey),
   ];
-  const vectors = await Promise.all(queries.map(q => llmService.embed(q)));
+  const vectors = await Promise.all(queries.map(q => embed(q)));
   const hitsPerQuery = vectors.map(vec => topKWithAliases(vec, deps.index.entries, deps.aliases, TOP_K));
   const hits = hitsPerQuery.length === 1 ? hitsPerQuery[0]! : aggregateRetrievalHits(hitsPerQuery);
 
@@ -170,7 +174,7 @@ export async function match(
     activities.map(activity => matchActivity(activity.text, deps, activity.searchVariants, trimmed)),
   );
 
-  const llmModel = await resolveChatModelLabel();
+  const llmModel = await chatModelLabel();
   const multiResult: MultiMatchResult = { activities: activityMatches };
 
   // Aggregierte topK fuer das Audit-Log: union der Hits ueber alle Activities,
@@ -201,26 +205,6 @@ export async function history(limit = 50): Promise<MatchRecord[]> {
 
 export async function detail(id: string): Promise<MatchRecord | null> {
   return getMatch(id);
-}
-
-async function resolveChatModelLabel(): Promise<string> {
-  // Muss dieselbe Aufloesung nutzen wie die tatsaechlichen LLM-Calls
-  // (appsModelOverride im Classifier/Splitter): Platform-Apps-Modell wenn
-  // gepinnt, sonst der System-Chat-Default — nie ein Modell anzeigen, das
-  // nicht auch wirklich verwendet wird.
-  try {
-    const m = await getPlatformModel('apps');
-    if (m) return `${m.provider.id}/${m.model.id}`;
-  } catch {
-    /* ignore */
-  }
-  try {
-    const fallback = await getSystemDefaultModel('chat');
-    if (fallback) return `${fallback.provider.id}/${fallback.model.id}`;
-  } catch {
-    /* ignore */
-  }
-  return 'default-chat';
 }
 
 function aggregateRetrievalHits(hitsList: RetrievalHit[][]): RetrievalHit[] {

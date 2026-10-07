@@ -2,30 +2,17 @@
  * LLM Re-Ranking for WZ industry codes via forced function calling.
  */
 
-import { llmService, type Message, type ToolDefinition } from '../../services/llm';
-import { getPlatformModel } from '../../config/platformModels';
+import { callTool, type ChatMessage, type ToolSchema } from './platform';
 import type { CatalogEntry, MatchResult } from './types';
 
-// Modell-Override fuer alle Matcher-LLM-Calls: das per ENV gepinnte
-// Platform-Apps-Modell (PLATFORM_APPS_*), NICHT der globale Chat-Default.
-// Sonst zeigt das Audit-Log das Apps-Modell an, waehrend die Calls tatsaechlich
-// ueber active.chat laufen — Anzeige und Realitaet muessen identisch sein.
 /**
  * Fail-fast-Budget fuer alle interaktiven Matcher-Calls: 30s-Timeout, max.
  * 1 Retry (Worst Case ~61s statt ~480s mit den Adapter-Defaults 120s x 3
  * Retries). Ein Sachbearbeiter wartet nicht 8 Minuten auf eine Stoerung.
+ * temperature 0: deterministisches Decoding — bei Beinahe-Gleichstand der
+ * Kandidaten soll dieselbe Eingabe nicht mal so, mal so klassifiziert werden.
  */
-export const MATCHER_LLM_BUDGET = { timeoutMs: 30_000, maxRetries: 1 } as const;
-
-export async function appsModelOverride(): Promise<{ modelOverride: { providerId: string; modelId: string } } | Record<string, never>> {
-  try {
-    const m = await getPlatformModel('apps');
-    if (m) return { modelOverride: { providerId: m.provider.id, modelId: m.model.id } };
-  } catch {
-    /* ignore — Fallback auf Chat-Default */
-  }
-  return {};
-}
+export const MATCHER_LLM_CALL = { temperature: 0, timeoutMs: 30_000, maxRetries: 1 } as const;
 
 const SYSTEM_PROMPT = `Du bist ein Experte für die deutsche Wirtschaftszweigklassifikation WZ 2025.
 Deine Aufgabe: Aus einer freitextlichen Tätigkeitsbeschreibung (aus dem Handelsregister) wählst du den passendsten WZ-Schlüssel aus einer vorgegebenen Kandidatenliste aus und benennst bis zu 3 sinnvolle Alternativen.
@@ -51,7 +38,7 @@ Beispiele für die Ebenen-Wahl:
 - "Abbrucharbeiten" → 43110 (Unterklasse deckt die Tätigkeit ab), NICHT 431101 "Entkernung von Gebäuden" (Spezialfall, den die Beschreibung nicht nennt).
 - "Reifendienst" → 953131 (die Beschreibung benennt exakt diesen Spezialfall).`;
 
-const SCHEMA: ToolDefinition = {
+const SCHEMA: ToolSchema = {
   type: 'function',
   function: {
     name: 'classify_wz_branche',
@@ -132,22 +119,15 @@ export async function classify(inputText: string, candidates: CatalogEntry[], se
     throw new Error('Keine Kandidaten für das LLM-Re-Ranking vorhanden.');
   }
 
-  const messages: Message[] = [
+  const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: buildUserPrompt(inputText, candidates, searchVariants, originalContext) },
   ];
 
-  const response = await llmService.chat(
-    messages,
-    [SCHEMA],
-    { source: 'wzbar-matcher', userId: 'user_default' },
-    // temperature 0: deterministisches Decoding — bei Beinahe-Gleichstand der
-    // Kandidaten soll dieselbe Eingabe nicht mal so, mal so klassifiziert werden.
-    { toolChoice: { type: 'function', function: { name: 'classify_wz_branche' } }, temperature: 0, ...MATCHER_LLM_BUDGET, ...(await appsModelOverride()) },
-  );
+  const response = await callTool(messages, SCHEMA, MATCHER_LLM_CALL);
 
-  if (response.tool_calls && response.tool_calls.length > 0) {
-    const args = response.tool_calls[0]!.function.arguments;
+  if (response.toolArguments !== null) {
+    const args = response.toolArguments;
     try {
       return JSON.parse(args) as MatchResult;
     } catch {
@@ -156,7 +136,7 @@ export async function classify(inputText: string, candidates: CatalogEntry[], se
   }
 
   // Fallback: JSON aus Content extrahieren
-  if (typeof response.content === 'string') {
+  if (response.content !== null) {
     const match = response.content.match(/\{[\s\S]*\}/);
     if (match) {
       try {

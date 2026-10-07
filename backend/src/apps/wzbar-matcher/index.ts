@@ -2,11 +2,11 @@
  * WZ-Branchen-Matcher App Configuration
  */
 
-import type { AppConfig } from '../types';
+import { APP_ID, type AppConfig } from './platform';
 import { classifyPublicFunction, getNeighborhoodPublicFunction } from './public-functions';
 
 export const wzbarMatcherConfig: AppConfig = {
-  id: 'wzbar-matcher',
+  id: APP_ID,
   name: 'WZ-Branchen-Matcher',
   description: 'Tätigkeitsbeschreibung → passender WZ-2025-Schlüssel für EMMA',
   icon: 'classifier',

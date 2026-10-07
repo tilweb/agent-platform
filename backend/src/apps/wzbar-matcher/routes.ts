@@ -7,12 +7,12 @@ import { streamSSE } from 'hono/streaming';
 import { match, history, detail } from './service';
 import { isIndexReady, loadEmbeddings, loadCatalog } from './storage';
 import { getNeighborhood } from './neighborhood';
-import { requireAppAccess } from '../permissions-middleware';
+import { appAccessGuard, currentUserId } from './platform';
 
 const wzbar = new Hono();
 
 // Berechtigungs-Pruefung
-wzbar.use('*', requireAppAccess('wzbar-matcher'));
+wzbar.use('*', appAccessGuard());
 
 /**
  * POST /api/apps/wzbar-matcher/match
@@ -25,8 +25,7 @@ wzbar.post('/match', async (c) => {
     if (!inputText) {
       return c.json({ error: 'inputText fehlt' }, 400);
     }
-    const userId = 'user_default';
-    const record = await match(inputText, userId, undefined, body?.force === true);
+    const record = await match(inputText, currentUserId(c), undefined, body?.force === true);
     return c.json({ record }, 201);
   } catch (error) {
     console.error('[wzbar-matcher] match error:', error);
@@ -54,7 +53,7 @@ wzbar.post('/match/stream', async (c) => {
       return;
     }
     try {
-      const record = await match(inputText, 'user_default', (activities) => {
+      const record = await match(inputText, currentUserId(c), (activities) => {
         // fire-and-forget: writeSSE ist async, aber der Match soll nicht warten
         void stream.writeSSE({
           event: 'activities',

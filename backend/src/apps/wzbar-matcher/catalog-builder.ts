@@ -1,7 +1,7 @@
 /**
  * WZ-Branchen-Matcher: Katalog- und Embeddings-Builder (WZ 2025).
  *
- * Liest docs/WZ2025-Schluesseltabelle.csv (Latin-1 / cp1252, ';'-getrennt,
+ * Liest assets/quellen/WZ2025-Schluesseltabelle.csv (Latin-1 / cp1252, ';'-getrennt,
  * Spalten KEYTAB_KEY;KEYTAB_KURZTEXT;KEYTAB_LANGTEXT_1;KEYTAB_LANGTEXT_2),
  * filtert auf gültige 4- bis 7-stellige Codes (Klasse / Unterklasse /
  * Detail-Unterklasse / nationale Feingliederung), schreibt catalog.json und
@@ -18,13 +18,10 @@
  */
 
 import { createHash } from 'node:crypto';
-import { llmService } from '../../services/llm';
-import { getPlatformModel } from '../../config/platformModels';
+import { embed, embeddingModelId } from './platform';
+import { CATALOG_PATH, EMBEDDINGS_PATH, SCHLUESSELTABELLE_PATH as CSV_PATH } from './paths';
 import type { CatalogEntry, EmbeddingsIndex } from './types';
 
-const CSV_PATH = '../docs/WZ2025-Schluesseltabelle.csv';
-const CATALOG_PATH = './src/apps/wzbar-matcher/assets/catalog.json';
-const EMBEDDINGS_PATH = './src/apps/wzbar-matcher/assets/embeddings.json';
 const CONCURRENCY = 8;
 const VALID_FROM = '2025-01-01'; // WZ 2025 gültig ab
 
@@ -149,7 +146,7 @@ async function buildEmbeddings(
   let done = 0;
   const started = Date.now();
   await pLimit(toEmbed, CONCURRENCY, async ({ idx, entry }) => {
-    const vector = await llmService.embed(embedText(entry));
+    const vector = await embed(embedText(entry));
     entries[idx] = { code: entry.code, vector };
     done++;
     if (done % 25 === 0 || done === toEmbed.length) {
@@ -170,8 +167,8 @@ async function buildEmbeddings(
 
 async function main(): Promise<void> {
   // Embedding-Modell zuerst aufloesen — bestimmt, ob Vektoren wiederverwendbar sind.
-  const resolved = catalogOnly ? null : await getPlatformModel('embeddings');
-  const modelId = resolved?.model.id ?? '';
+  const resolvedModelId = catalogOnly ? null : await embeddingModelId();
+  const modelId = resolvedModelId ?? '';
   const reuseByText = catalogOnly ? new Map<string, number[]>() : await loadReusableVectors(modelId);
 
   // Catalog bauen (danach ist catalog.json überschrieben — Reuse-Map ist schon geladen).
@@ -183,7 +180,7 @@ async function main(): Promise<void> {
     console.log('[catalog-builder] --catalog-only: Embeddings übersprungen.');
     return;
   }
-  if (!resolved) throw new Error('Kein Embedding-Modell konfiguriert.');
+  if (!resolvedModelId) throw new Error('Kein Embedding-Modell konfiguriert.');
 
   // Skip nur wenn Hash + Anzahl exakt passen (nichts geändert).
   const existing = Bun.file(EMBEDDINGS_PATH);

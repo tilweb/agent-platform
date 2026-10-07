@@ -6,15 +6,9 @@
  */
 
 import { and, eq, desc } from 'drizzle-orm';
-import { getDb } from '../../db';
-import { wzbarMatches } from '../../db/schema/wzbar';
+import { getDb, wzbarMatches } from './platform';
+import { ALIAS_BIN_PATH, ALIAS_META_PATH, CATALOG_PATH, EMBEDDINGS_PATH } from './paths';
 import type { AliasIndex, AliasMeta, CatalogEntry, EmbeddingsIndex, MatchRecord, MultiMatchResult, RetrievalHit } from './types';
-
-const ASSETS_PATH = './src/apps/wzbar-matcher/assets';
-const CATALOG_PATH = `${ASSETS_PATH}/catalog.json`;
-const EMBEDDINGS_PATH = `${ASSETS_PATH}/embeddings.json`;
-export const ALIAS_META_PATH = `${ASSETS_PATH}/alias-embeddings.meta.json`;
-export const ALIAS_BIN_PATH = `${ASSETS_PATH}/alias-embeddings.bin`;
 
 let catalogCache: CatalogEntry[] | null = null;
 let embeddingsCache: EmbeddingsIndex | null = null;

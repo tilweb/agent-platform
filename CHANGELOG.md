@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-07
+
+### WZ-Branchen-Matcher: Plattform-Anschlüsse gebündelt (Vorbereitung Produkt-Übergabe)
+Der Matcher soll als Code + UI ins Produktiv-Workplace übernommen werden. Damit das Dev-Team nur noch
+an einer Stelle anpassen muss, importiert die App Plattform-Code jetzt ausschließlich über je eine Datei:
+`backend/src/apps/wzbar-matcher/platform.ts` (LLM-Tool-Call, Embedding, Modell-Auflösung, DB, Zugriffs-Guard,
+User-ID, App-/Public-API-Typen) und `frontend/src/apps/wzbar-matcher/platform.js` (apiGet/apiPost, theme, Icons).
+- Asset- und Quellpfade zentral in `paths.ts`, relativ zum Modul statt zum Arbeitsverzeichnis; die amtlichen
+  Destatis-Quellen (`WZ2025-Schluesseltabelle.csv`, `WZ2025-Stichwoerter.csv`) liegen jetzt unter
+  `assets/quellen/` in der App statt in `docs/`.
+- Neue Warnung, wenn das konfigurierte Embedding-Modell nicht zu den Asset-Vektoren passt.
+- Das Match-Audit-Log speichert jetzt den eingeloggten User statt pauschal `user_default`.
+- Verhalten unverändert (`PIPELINE_VERSION` bleibt `2026-09-17.1`): Retrieval-Eval alt/neu identisch
+  (Destatis n=150, Recall@20 95,3 %), kuratierte Fälle alt/neu identisch.
+
 ## 2026-09-28
 
 ### Wohngeld startet auf neuen Instanzen ausgeschaltet

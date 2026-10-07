@@ -1,5 +1,5 @@
 /**
- * Destatis-Stichwoerter als Gold-Quelle (docs/WZ2025-Stichwoerter.csv,
+ * Destatis-Stichwoerter als Gold-Quelle (assets/quellen/WZ2025-Stichwoerter.csv,
  * Export des Klassifikationsservers: ~36k Paare `Stichwort → 5-stelliger
  * WZ-2025-Code`).
  *

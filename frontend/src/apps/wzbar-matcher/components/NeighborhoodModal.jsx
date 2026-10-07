@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { theme } from '../../../config/theme';
-import { apiGet } from '../../../utils/apiFetch';
-import { CopyIcon, XIcon } from '../../../components/Icons';
+import { apiGet, CopyIcon, theme, XIcon } from '../platform';
 
 const styles = {
   overlay: {

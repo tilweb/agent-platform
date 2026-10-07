@@ -3,7 +3,7 @@
  * docs/wzbar-matcher-ihk-feedback-massnahmen-2026-09-15.md).
  *
  * Baut zusaetzliche Embedding-Vektoren pro Code aus der enrich-Haelfte der
- * amtlichen Destatis-Stichwoerter (docs/WZ2025-Stichwoerter.csv). Das
+ * amtlichen Destatis-Stichwoerter (assets/quellen/WZ2025-Stichwoerter.csv). Das
  * Retrieval nimmt pro Code die beste Similarity ueber Katalogtext + alle
  * Alias-Vektoren — damit finden produktspezifische Umschreibungen
  * ("Rheumadecken, Herstellung") ihre Sammel-Codes.
@@ -22,14 +22,11 @@
  *   /Users/andreasbachmann/.bun/bin/bun run src/apps/wzbar-matcher/alias-builder.ts --force
  */
 
-import { llmService } from '../../services/llm';
-import { getPlatformModel } from '../../config/platformModels';
+import { embed, embeddingModelId } from './platform';
 import { parseStichwoerter, splitOf, type StichwortCase } from './eval/destatis';
-import { ALIAS_BIN_PATH, ALIAS_META_PATH } from './storage';
+import { ALIAS_BIN_PATH, ALIAS_META_PATH, CATALOG_PATH, STICHWOERTER_PATH } from './paths';
 import type { AliasMeta, CatalogEntry } from './types';
 
-const STICHWOERTER_PATH = '../docs/WZ2025-Stichwoerter.csv';
-const CATALOG_PATH = './src/apps/wzbar-matcher/assets/catalog.json';
 const CONCURRENCY = 8;
 
 const force = process.argv.includes('--force');
@@ -81,9 +78,8 @@ async function pLimit<T>(items: T[], concurrency: number, worker: (item: T, idx:
 }
 
 async function main(): Promise<void> {
-  const resolved = await getPlatformModel('embeddings');
-  if (!resolved) throw new Error('Kein Embedding-Modell konfiguriert.');
-  const modelId = resolved.model.id;
+  const modelId = await embeddingModelId();
+  if (!modelId) throw new Error('Kein Embedding-Modell konfiguriert.');
 
   const catalog = JSON.parse(await Bun.file(CATALOG_PATH).text()) as CatalogEntry[];
   const catalogCodes = new Set(catalog.map(e => e.code));
@@ -111,7 +107,7 @@ async function main(): Promise<void> {
   let done = 0;
   const started = Date.now();
   await pLimit(toEmbed, CONCURRENCY, async (idx) => {
-    const vector = await llmService.embed(entries[idx]!.text);
+    const vector = await embed(entries[idx]!.text);
     vectorsByIdx[idx] = Float32Array.from(vector);
     done++;
     if (done % 200 === 0 || done === toEmbed.length) {
@@ -129,7 +125,7 @@ async function main(): Promise<void> {
     model: modelId,
     dimensions,
     builtAt: new Date().toISOString(),
-    sourceFile: 'docs/WZ2025-Stichwoerter.csv',
+    sourceFile: 'assets/quellen/WZ2025-Stichwoerter.csv',
     entries,
   };
   await Bun.write(ALIAS_META_PATH, JSON.stringify(meta));

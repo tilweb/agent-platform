@@ -6,7 +6,7 @@
  * public-api router.
  */
 
-import type { JsonSchema, PublicFunction } from '../../public-api/types';
+import type { JsonSchema, PublicFunction } from './platform';
 import { match } from './service';
 import { getNeighborhood, type NeighborhoodNode } from './neighborhood';
 import type { MatchCandidate } from './types';
