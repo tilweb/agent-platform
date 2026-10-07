@@ -13,10 +13,11 @@ import {
   isAppEnvAllowed,
 } from '../apps/registry';
 import {
-  getUserAppPermission,
   listAppPermissions,
   replaceAppPermissions,
+  resolveAppAccess,
 } from '../apps/permissions';
+import type { AppConfig, AppRole } from '../apps/types';
 import { getCurrentUserId, getCurrentUser } from '../auth/middleware';
 import { authMiddleware, adminMiddleware } from '../auth/middleware';
 import { audit, AuditCategory, AuditAction } from '../services/auditLog';
@@ -51,6 +52,34 @@ function clientIp(c: Context): string | undefined {
   return c.req.header('x-real-ip') || undefined;
 }
 
+function isAdmin(c: Context): boolean {
+  return getCurrentUser(c)?.role === 'admin';
+}
+
+/**
+ * Sicht eines Nicht-Admins auf eine App: Stammdaten + eigene Rolle, ohne
+ * Gruppen-Berechtigungen und Public-Function-Schemata.
+ */
+function toUserView(app: AppConfig, myRole: AppRole) {
+  const { id, name, description, icon, version, enabled, routes } = app;
+  return { id, name, description, icon, version, enabled, routes, myRole };
+}
+
+/**
+ * Apps, die der eingeloggte Nicht-Admin tatsaechlich nutzen darf
+ * (freigeschaltet + Rolle) — Grundlage fuer Navigation und Launcher.
+ */
+async function appsForUser(c: Context): Promise<ReturnType<typeof toUserView>[]> {
+  const userId = getCurrentUserId(c);
+  if (!userId) return [];
+  const result: ReturnType<typeof toUserView>[] = [];
+  for (const app of await getEnabledApps()) {
+    const access = await resolveAppAccess(userId, app.id);
+    if (access.allowed) result.push(toUserView(app, access.role));
+  }
+  return result;
+}
+
 /**
  * Protokolliert eine Admin-Änderung an der App-Verwaltung (Enable/Disable/
  * Permissions) im zentralen Audit-Log. Fehler schlucken — Audit darf die
@@ -81,11 +110,14 @@ async function auditAppAdmin(
 
 /**
  * GET /api/apps
- * List all apps (for admin) or enabled apps (for users)
+ * Admins: alle Apps inkl. Berechtigungen und envBlocked-Hinweis (Verwaltung).
+ * Alle anderen: nur Apps, die sie nutzen duerfen — ohne Berechtigungs-Details.
  */
 apps.get('/', async (c) => {
   try {
-    // For now, return all apps - could filter by user role later
+    if (!isAdmin(c)) {
+      return c.json({ apps: await appsForUser(c) });
+    }
     const allApps = await getApps();
     // Augment with envBlocked flag so the admin UI can render the
     // "via ENV deaktiviert" hint and disable the toggle.
@@ -99,10 +131,13 @@ apps.get('/', async (c) => {
 
 /**
  * GET /api/apps/enabled
- * List only enabled apps (for sidebar)
+ * Freigeschaltete Apps — fuer Nicht-Admins nur die mit eigener Rolle.
  */
 apps.get('/enabled', async (c) => {
   try {
+    if (!isAdmin(c)) {
+      return c.json({ apps: await appsForUser(c) });
+    }
     const enabledApps = await getEnabledApps();
     return c.json({ apps: enabledApps });
   } catch (error) {
@@ -128,6 +163,13 @@ apps.get('/:appId', async (c) => {
 
     if (!app) {
       return c.json({ error: 'App not found' }, 404);
+    }
+
+    if (!isAdmin(c)) {
+      const userId = getCurrentUserId(c);
+      const access = userId ? await resolveAppAccess(userId, appId) : null;
+      if (!access?.allowed) return c.json({ error: 'App not found' }, 404);
+      return c.json({ app: toUserView(app, access.role) });
     }
 
     return c.json({ app });
@@ -191,7 +233,7 @@ apps.put('/:appId/disable', adminMiddleware, async (c) => {
  * GET /api/apps/:appId/permissions
  * Liste aller Gruppen-Permissions auf einer App. Admin-Endpunkt fuer Settings.
  */
-apps.get('/:appId/permissions', async (c) => {
+apps.get('/:appId/permissions', adminMiddleware, async (c) => {
   try {
     const appId = c.req.param('appId');
     const app = await getApp(appId);
@@ -248,6 +290,12 @@ apps.get('/:appId/eligible-principals', async (c) => {
     if (!app) {
       return c.json({ error: 'App not found' }, 404);
     }
+    // Personenliste nur fuer App-Nutzer (Berechtigungs-Dialoge in der App) und Admins.
+    if (!isAdmin(c)) {
+      const userId = getCurrentUserId(c);
+      const access = userId ? await resolveAppAccess(userId, appId) : null;
+      if (!access?.allowed) return c.json({ error: 'Keine Berechtigung fuer diese App' }, 403);
+    }
     const groupPermissions = app.permissions?.groups ?? [];
     if (groupPermissions.length === 0) {
       return c.json({ groups: [], users: [] });
@@ -302,13 +350,13 @@ apps.get('/:appId/my-permission', async (c) => {
     if (!app) {
       return c.json({ error: 'App not found' }, 404);
     }
-    const role = await getUserAppPermission(userId, appId);
-    const groupPermissionsCount = (app.permissions?.groups ?? []).length;
+    const access = await resolveAppAccess(userId, appId);
     return c.json({
-      role,
-      // Damit das Frontend zwischen "konfiguriert aber kein Zugriff" und
-      // "noch nicht konfiguriert" unterscheiden kann.
-      configured: groupPermissionsCount > 0,
+      role: access.allowed ? access.role : null,
+      // Damit das Frontend zwischen "nicht freigeschaltet", "konfiguriert aber
+      // kein Zugriff" und "noch nicht konfiguriert" unterscheiden kann.
+      enabled: app.enabled,
+      configured: (app.permissions?.groups ?? []).length > 0,
     });
   } catch (error) {
     console.error('Error getting my-permission:', error);

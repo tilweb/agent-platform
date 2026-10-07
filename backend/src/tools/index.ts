@@ -177,7 +177,9 @@ export async function setupTools(): Promise<void> {
 }
 
 /**
- * Register each publicFunction of every enabled app as an agent tool.
+ * Register each publicFunction of every registered app as an agent tool —
+ * auch abgeschaltete: AppFunctionTool prueft Freischaltung und Recht bei
+ * jedem Aufruf, damit ein Toggle ohne Neustart wirkt.
  * Idempotent: re-registering overwrites previous handler instance.
  */
 async function registerAppPublicFunctions(): Promise<void> {
@@ -185,7 +187,7 @@ async function registerAppPublicFunctions(): Promise<void> {
     const apps = await getApps();
     let count = 0;
     for (const app of apps) {
-      if (!app.enabled || !Array.isArray(app.publicFunctions)) continue;
+      if (!Array.isArray(app.publicFunctions)) continue;
       for (const fn of app.publicFunctions as PublicFunction[]) {
         toolRegistry.register(new AppFunctionTool(app.id, fn));
         count++;

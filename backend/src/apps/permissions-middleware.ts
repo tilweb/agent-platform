@@ -7,7 +7,8 @@
  * Verhalten:
  * - Wenn kein User eingeloggt → 401 (sollte aber nicht passieren — authMiddleware
  *   sollte vorher schon greifen)
- * - Wenn User keine Berechtigung hat (= getUserAppPermission liefert null) → 403
+ * - Wenn die App nicht freigeschaltet ist (Admin-Schalter oder ENABLED_APPS) → 403
+ * - Wenn User keine Berechtigung hat → 403
  * - Sonst: setzt `c.set('appRole', role)` damit Phase-2-Code die Rolle verwenden kann
  *
  * Phase 1 prueft nur "Zugriff ja/nein" — die Rolle wird trotzdem im Context
@@ -16,7 +17,7 @@
 
 import type { Context, Next } from 'hono';
 import { getCurrentUserId } from '../auth/middleware';
-import { getUserAppPermission } from './permissions';
+import { resolveAppAccess } from './permissions';
 
 export function requireAppAccess(appId: string) {
   return async (c: Context, next: Next) => {
@@ -24,11 +25,14 @@ export function requireAppAccess(appId: string) {
     if (!userId) {
       return c.json({ error: 'Nicht eingeloggt' }, 401);
     }
-    const role = await getUserAppPermission(userId, appId);
-    if (!role) {
-      return c.json({ error: 'Keine Berechtigung fuer diese App' }, 403);
+    const access = await resolveAppAccess(userId, appId);
+    if (!access.allowed) {
+      if (access.reason === 'not_found' || access.reason === 'disabled') {
+        return c.json({ error: 'App ist nicht freigeschaltet', code: 'app_disabled' }, 403);
+      }
+      return c.json({ error: 'Keine Berechtigung fuer diese App', code: 'no_permission' }, 403);
     }
-    c.set('appRole', role);
+    c.set('appRole', access.role);
     await next();
   };
 }

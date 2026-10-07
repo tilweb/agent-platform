@@ -2,6 +2,16 @@
 
 ## 2026-10-07
 
+### Apps: Zugriffsprüfung in allen Kanälen (Rechte- und Sichtbarkeitslücken geschlossen)
+Eine zentrale Prüfung (`resolveAppAccess`: App freigeschaltet inkl. `ENABLED_APPS` + Gruppenrecht) gilt jetzt für
+App-Routen, Agenten-Werkzeuge und App-Listen.
+- Agenten-Werkzeuge aus App-Funktionen laufen nur noch für Nutzer mit App-Recht (vorher pauschales Vollrecht);
+  Freischalten/Abschalten wirkt sofort statt erst nach Neustart.
+- Abgeschaltete Apps sind auch per direkter URL/API gesperrt; eigene Seite „App nicht freigeschaltet".
+- Navigation und App-Übersicht zeigen Nutzern nur Apps mit eigener Rolle; Gruppenrechte und Personenlisten nur
+  noch für Admins bzw. App-Nutzer.
+Details und Verifikation: `docs/apps-rahmen-rechteluecken-2026-10-07.md`.
+
 ### WZ-Branchen-Matcher: Plattform-Anschlüsse gebündelt (Vorbereitung Produkt-Übergabe)
 Der Matcher soll als Code + UI ins Produktiv-Workplace übernommen werden. Damit das Dev-Team nur noch
 an einer Stelle anpassen muss, importiert die App Plattform-Code jetzt ausschließlich über je eine Datei:

@@ -14,7 +14,7 @@
  * damit Phase 2 (rollen-spezifische In-App-Logik) ohne weiteren Refactor moeglich ist.
  */
 
-import { loadRegistry, saveRegistry } from './registry';
+import { getApp, loadRegistry, saveRegistry } from './registry';
 import { getUserGroups } from '../auth/groups';
 import { isAppRole } from './types';
 import type { AppRole, AppGroupPermission } from './types';
@@ -57,6 +57,31 @@ export async function getUserAppPermission(
     }
   }
   return effectiveRole;
+}
+
+/**
+ * Warum ein Zugriff verweigert wird — steuert die Antwort (HTTP-Status,
+ * Frontend-Seite, Werkzeug-Meldung).
+ */
+export type AppAccessDenial = 'not_found' | 'disabled' | 'unconfigured' | 'no_permission';
+
+export type AppAccess =
+  | { allowed: true; role: AppRole }
+  | { allowed: false; reason: AppAccessDenial };
+
+/**
+ * Zentrale Zugriffspruefung fuer alle Kanaele (App-Routen, Agenten-Werkzeuge,
+ * App-Listen): App existiert, ist freigeschaltet (Admin-Schalter UND
+ * ENABLED_APPS-Whitelist, beides ueber getApp) und der User hat eine Rolle.
+ * Die Public-API prueft Freischaltung + Schluessel-Scope selbst.
+ */
+export async function resolveAppAccess(userId: string, appId: string): Promise<AppAccess> {
+  const app = await getApp(appId);
+  if (!app) return { allowed: false, reason: 'not_found' };
+  if (!app.enabled) return { allowed: false, reason: 'disabled' };
+  if ((app.permissions?.groups ?? []).length === 0) return { allowed: false, reason: 'unconfigured' };
+  const role = await getUserAppPermission(userId, appId);
+  return role ? { allowed: true, role } : { allowed: false, reason: 'no_permission' };
 }
 
 /**

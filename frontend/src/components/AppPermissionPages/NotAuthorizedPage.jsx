@@ -66,18 +66,23 @@ const styles = {
   },
 };
 
-export default function NotAuthorizedPage({ appId }) {
+/**
+ * @param reason 'no_permission' (Standard) oder 'disabled' — App ist auf
+ *   dieser Instanz abgeschaltet, unabhaengig von Gruppenrechten.
+ */
+export default function NotAuthorizedPage({ appId, reason = 'no_permission' }) {
+  const disabled = reason === 'disabled';
   return (
     <div style={styles.container}>
       <div style={styles.card}>
         <div style={styles.iconWrap}>
           <LockIcon />
         </div>
-        <h1 style={styles.title}>Keine Berechtigung</h1>
+        <h1 style={styles.title}>{disabled ? 'App nicht freigeschaltet' : 'Keine Berechtigung'}</h1>
         <p style={styles.body}>
-          Sie haben aktuell keinen Zugriff auf diese App. Wenden Sie sich an Ihre/n
-          Administrator/in, wenn Sie Zugriff benötigen — Berechtigungen werden ueber
-          Benutzergruppen vergeben.
+          {disabled
+            ? 'Diese App ist derzeit nicht freigeschaltet. Wenden Sie sich an Ihre/n Administrator/in, wenn Sie sie nutzen möchten.'
+            : 'Sie haben aktuell keinen Zugriff auf diese App. Wenden Sie sich an Ihre/n Administrator/in, wenn Sie Zugriff benötigen — Berechtigungen werden über Benutzergruppen vergeben.'}
         </p>
         <p style={styles.hint}>App-ID: <code>{appId}</code></p>
         <Link to="/apps" style={styles.backButton}>

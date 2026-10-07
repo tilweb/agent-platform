@@ -3,14 +3,17 @@
  *
  * Jede in AppConfig.publicFunctions deklarierte Function wird beim Startup
  * automatisch als Tool im ToolRegistry angemeldet. Damit kann ein Agent sie
- * direkt aufrufen — OHNE HTTP-Round-Trip, OHNE API-Key. Agents sind innerhalb
- * der Plattform vertraut; der Scope-Check der Public-API greift hier nicht.
+ * direkt aufrufen — OHNE HTTP-Round-Trip, OHNE API-Key. Statt des Schluessel-
+ * Scopes der Public-API gilt hier die App-Zugriffspruefung fuer den User, in
+ * dessen Auftrag der Agent laeuft (freigeschaltet + Gruppenrecht) — bei jedem
+ * Aufruf, damit Freischalten/Abschalten sofort wirkt.
  *
  * Tool-Name-Konvention: `<appId>__<functionId>` (OpenAI-safe: a-zA-Z0-9_-).
  */
 
 import type { Tool, ToolContext, ToolDefinition, ToolMetadata, ToolParameters } from '../types';
 import type { PublicFunction, PublicFunctionContext } from '../../public-api/types';
+import { resolveAppAccess } from '../../apps/permissions';
 
 export class AppFunctionTool implements Tool {
   readonly name: string;
@@ -37,10 +40,20 @@ export class AppFunctionTool implements Tool {
   }
 
   async execute(args: Record<string, unknown>, context?: ToolContext): Promise<string> {
+    const userId = context?.userId;
+    if (!userId) {
+      return `${this.name} ist nur im Auftrag eines angemeldeten Nutzers verfügbar.`;
+    }
+    const access = await resolveAppAccess(userId, this.appId);
+    if (!access.allowed) {
+      return access.reason === 'not_found' || access.reason === 'disabled'
+        ? `Die App „${this.appId}" ist nicht freigeschaltet — ${this.name} ist nicht verfügbar.`
+        : `Keine Berechtigung für die App „${this.appId}" — ${this.name} ist für diesen Nutzer nicht verfügbar.`;
+    }
     const pfCtx: PublicFunctionContext = {
       apiKeyId: context?.agentId ? `agent:${context.agentId}` : 'agent:internal',
-      scope: { type: 'user', userId: context?.userId ?? 'agent' },
-      permissions: ['app:*:*'],
+      scope: { type: 'user', userId },
+      permissions: [`app:${this.appId}:${this.fn.id}`],
       requestId: `agent_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
     };
     try {

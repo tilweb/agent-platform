@@ -3,11 +3,12 @@
  *
  * Beim Mount: GET /api/apps/:appId/my-permission.
  * - role !== null               → Children rendern, AppPermissionContext stellt Rolle bereit
+ * - enabled === false           → "App nicht freigeschaltet"-Page
  * - role === null + configured  → "Keine Berechtigung"-Page
  * - role === null + !configured → "Wartet auf Konfiguration"-Page (Admin sieht Direkt-Link zu Settings)
  *
- * Globale Admins bekommen serverseitig automatisch role='owner' — sehen also
- * jede App.
+ * Globale Admins haben KEINEN automatischen App-Zugriff (Plattform-Admin ist
+ * kein Daten-Auditor) — sie brauchen wie alle eine berechtigte Gruppe.
  */
 
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -49,7 +50,9 @@ export default function RequireAppPermission({ appId, children }) {
         }
         const data = await res.json();
         setState({
-          status: data.role ? 'allowed' : (data.configured ? 'denied' : 'unconfigured'),
+          status: data.role
+            ? 'allowed'
+            : data.enabled === false ? 'disabled' : (data.configured ? 'denied' : 'unconfigured'),
           role: data.role,
           configured: !!data.configured,
         });
@@ -65,6 +68,9 @@ export default function RequireAppPermission({ appId, children }) {
   }
   if (state.status === 'unconfigured') {
     return <WaitingForConfigurationPage appId={appId} />;
+  }
+  if (state.status === 'disabled') {
+    return <NotAuthorizedPage appId={appId} reason="disabled" />;
   }
   if (state.status === 'denied') {
     return <NotAuthorizedPage appId={appId} />;

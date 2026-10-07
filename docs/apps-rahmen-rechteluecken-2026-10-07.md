@@ -1,13 +1,13 @@
 # Apps-Rahmen: bekannte Rechte- und Sichtbarkeitslücken im Pilot
 
 **Datum:** 2026-10-07
-**Status:** dokumentiert, **bewusst nicht behoben** (Entscheidung Andreas, 2026-10-07 — Fixes hießen Deploys auf
-Kunden-Instanzen; Risiko gering)
+**Status:** **behoben** (2026-10-07, siehe „Behebung" am Ende). Zunächst nur dokumentiert, am selben Tag auf
+Wunsch von Andreas umgesetzt. Wirksam auf einer Instanz erst nach deren Deploy.
 **Anlass:** Bestandsaufnahme des Apps-Rahmens für das Konzept an das Produkt-Team
 (`adacor/wp-app-wz-matcher`, `docs/konzept-apps-rahmen-2026-10-07.md`, dort §2 „Was gestört hat").
 
-Diese Liste ist für den Pilot gedacht: Wer am Apps-Rahmen arbeitet oder eine App mit Public-Funktionen baut, sollte
-sie kennen. Das Produkt-Konzept sieht für alle vier Punkte die Lösung vor (zentrale Zugriffsprüfung in allen Kanälen).
+Die Befunde unten beschreiben den Stand **vor** der Behebung; sie bleiben als Begründung stehen. Das Produkt-Konzept
+sieht für alle Punkte dieselbe Lösung vor (zentrale Zugriffsprüfung in allen Kanälen).
 
 ---
 
@@ -74,8 +74,31 @@ User-Endpoint lösen).
 
 ---
 
-## Wann neu bewerten
+## Behebung (2026-10-07)
 
-- sobald eine weitere App Public-Funktionen bekommt (L1), insbesondere schreibende oder mit Personenbezug
-- sobald ein Agent auf einer Instanz mit einem App-Werkzeug ausgestattet wird (L1)
-- wenn „App abschalten" als Sperre zugesagt wird, etwa beim Ende eines Piloten (L2)
+**Eine zentrale Prüfung für alle Kanäle:** `resolveAppAccess(userId, appId)` in `backend/src/apps/permissions.ts`
+liefert die Rolle oder den Ablehnungsgrund (`not_found` / `disabled` / `unconfigured` / `no_permission`). „Freigeschaltet"
+heißt Admin-Schalter **und** `ENABLED_APPS`-Whitelist (über `getApp`). Die Public-API prüft wie bisher selbst
+(Freischaltung + Schlüssel-Scope).
+
+| Lücke | Änderung |
+|---|---|
+| L1 | `AppFunctionTool.execute` prüft bei jedem Aufruf `resolveAppAccess` für den User des Agenten; ohne User keine Ausführung; Kontext mit echtem User und Scope `app:<app>:<funktion>` statt `app:*:*`. Werkzeuge werden für alle Apps registriert, die Prüfung zur Laufzeit macht Freischalten/Abschalten sofort wirksam. |
+| L2 | `requireAppAccess` nutzt `resolveAppAccess` → 403 `app_disabled` bei abgeschalteter App. `my-permission` liefert zusätzlich `enabled`; die Oberfläche zeigt dann „App nicht freigeschaltet". |
+| L3 | `GET /api/apps` und `/enabled` liefern Nicht-Admins nur Apps mit eigener Rolle (`myRole`). Navigation und Launcher zeigen damit nur nutzbare Apps. Admins sehen weiter alle (Verwaltung, „Wartet auf Konfiguration"). |
+| L4 | Nicht-Admins bekommen keine `permissions` mehr (auch nicht über `GET /api/apps/:id`, dort 404 ohne Zugriff). |
+| L5 (neu gefunden) | `GET /api/apps/:id/permissions` war ohne Admin-Schutz → jetzt `adminMiddleware`. `eligible-principals` (Personen-/Gruppenliste) nur noch für App-Nutzer und Admins. |
+
+Nebenbei korrigiert: Der Kommentar in `RequireAppPermission.jsx` behauptete, Admins bekämen automatisch `owner` —
+tatsächlich (und gewollt) brauchen auch Admins eine berechtigte Gruppe.
+
+**Verhaltensänderungen, die Nutzer bemerken können:**
+- Nutzer sehen in Navigation und App-Übersicht nur noch Apps, für die sie eine Rolle haben.
+- Abgeschaltete Apps sind auch per direkter URL/API nicht mehr nutzbar (vorher für Berechtigte schon).
+- Ein Agent mit App-Werkzeug funktioniert nur noch für Nutzer mit App-Recht.
+
+**Verifikation:** `apps/permissions.test.ts` (5 Fälle: unbekannt, abgeschaltet, unkonfiguriert, keine Gruppe,
+höchste Rolle); volle Suite 1.462 Tests grün; Typecheck ohne neue Fehler; Durchgangstest gegen die lokale Registry
+(echte Routen, echte Gruppen, simulierte Anmeldung): Listen gefiltert, `/permissions` 403/200, `eligible-principals`
+403/200, App-Route 200/403, Werkzeug verweigert ohne Recht/ohne User und arbeitet mit Recht; mit `ENABLED_APPS`-Sperre
+App-Route 403 `app_disabled`, `my-permission` `enabled:false`, Werkzeug verweigert. Frontend-Build grün.
