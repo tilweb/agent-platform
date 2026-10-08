@@ -1,6 +1,6 @@
 # Konzept: Vertragsextraktion im Document Processing (Entwurf, 2026-10-08)
 
-Status: Konzept- und Diskussionsstand, **nicht umgesetzt**. Grundlage: Analyse von 10 echten Verträgen aus der
+Status: Konzept- und Diskussionsstand, **nicht umgesetzt**; Grundsatzentscheidungen in §9. Grundlage: Analyse von 10 echten Verträgen aus der
 Ladeinfrastruktur (Elektro Ehinger / EMobility Netzwerk Deutschland GmbH, „END"), freigegeben zur Nutzung.
 Kunden sind hier anonymisiert; die Originale liegen nicht im Repo.
 
@@ -204,16 +204,32 @@ Erweiterungsfelder und eine annotierte Liste der Fristen/Pflichten. Kennzahlen: 
 Inventar-Vollständigkeit je Eintragstyp, berechnete Termine richtig, Befunde gefunden (fehlende Anlagen,
 fehlende Gegenzeichnung, Widersprüche). Erweiterung um weitere Verträge je Profil (5–10 je Typ).
 
-## 9. Offene Fragen
+## 9. Entscheidungen (2026-10-08)
 
-1. Wofür vorrangig: **Fristenkalender** (Kündigungs-/Mitteilungstermine) oder **Vertragsprüfung** (Risiken,
-   Abweichungen von der Vorlage)? Bestimmt Reihenfolge und Katalogumfang.
-2. Vertragsfamilien: Soll DP Verträge untereinander verknüpfen (Rahmen ↔ Einzelvertrag ↔ Zusatz), oder liefert DP
-   je Dokument und die Verknüpfung macht die Vertragsmanagement-App?
-3. Vorlagenabgleich für eigene Vorlagen (END) als erster Schritt — höchster Nutzen bei geringstem Risiko?
-4. Umgang mit fehlenden Anlagen und Gegenzeichnungen: nur Befund, oder Workflow (Nachforderung)?
-5. Wo lebt das: als neue DP-Strategie + Profiltyp (Katalog/Bausteine), genutzt von der Vertragsmanagement-App —
-   oder zunächst als eigene App wie Wohngeld?
+| Frage | Entscheidung | Folge für das Konzept |
+|---|---|---|
+| Wofür? | **Beides.** Nutzer des Ergebnisses sind drei Anwendungen der Vertrags-App: **„Ask the contract"** (Fragen an den Vertrag), **„Fristenradar"** und **„Pflichten, Risiken, Abweichungen/Sonderfälle"** | DP liefert nicht nur Felder, sondern den **Klausel-Strukturbaum als eigenes Ergebnis** (Grundlage für „Ask the contract": Antworten zitieren Klausel-IDs), das Klausel-Inventar und die Befunde. |
+| Vertragsfamilien verknüpfen | **Aufgabe der Vertrags-App** | DP liefert je Dokument nur die **Verknüpfungsschlüssel** (Vertragsnr., Kundennr., „Rahmenvertrag vom …", „Zusatzvereinbarung zum …") und den Wertstatus „geerbt/delegiert (Ziel: …)" — es löst sie nicht auf. |
+| Fehlende Anlagen, Gegenzeichnung u. ä. | **Als Befund markieren, kein Workflow** — Nachforderung ist Sache der Vertrags-App | Befundtypen mit Fundstelle; keine Aktionen in DP. |
+| Wo lebt es? | **Neue DP-Strategie** (Arbeitsname `contract-structured`) samt Profiltyp „Vertrag" (Katalog + Bausteine) | Nutzt vorhandene Segmentierung (L0), Modell-Slots, Job-Warteschlange, Profilpflege und Evaluation. |
+| Vorlagen | **Liegen nicht vor** — nur ausgefüllte Exemplare (Betreibervertrag 3×, Endkundenvertrag 2 Versionen, Wartungsvertrag 2×) | Leere END-Vorlagen in allen genutzten Versionen anfragen (möglichst Word). Rekonstruktion aus Exemplaren nur als Notlösung (Gemeinsamkeiten ≠ Vorlage, Handänderungen mischen sich ein). Vorlagen sind die Referenz für „Abweichungen/Sonderfälle". |
+
+**Schnitt Fristenradar ↔ DP:** Fristen rollen mit der Zeit weiter (jährliche Verlängerung, Quartalsfenster).
+DP liefert deshalb je Frist die **strukturierte Regel** (Bezugspunkt, Dauer, Richtung, Verlängerungsschritt,
+Kalender/Werktagsdefinition, Annahmen, Fundstelle) und zur Anzeige den zum Auswertungszeitpunkt berechneten
+nächsten Termin. Das Weiterrechnen übernimmt das Fristenradar mit **derselben Rechenbibliothek** — eine Logik,
+zwei Aufrufer, damit DP-Ergebnis und Radar nie auseinanderlaufen.
+
+**Ergebnisvertrag der Strategie (Entwurf):** `struktur` (Klauselbaum mit IDs, Titelpfad, Seiten, Text) ·
+`gueltigkeit` (verworfene Optionen/Streichungen/Nachträge) · `katalog` (Elemente mit Wert, Status, Klausel-IDs) ·
+`erweiterung` (Profilfelder) · `inventar` (Pflichten/Rechte/Fristen) · `fristregeln` · `verknuepfungen` ·
+`befunde` · `dokumentrollen`.
+
+**Nächste Schritte (noch nicht beauftragt):**
+1. Leere Vorlagen bei END anfragen.
+2. Golden Set aus den 10 Verträgen annotieren (Katalog mit Status, Erweiterung, Inventar, Fristregeln, Befunde).
+3. Rechenbibliothek für Fristregeln spezifizieren (gemeinsam für DP und Fristenradar).
+4. Strategie `contract-structured` spezifizieren: Transkription → Strukturbaum → Gültigkeit → Extraktion je Klausel → Konsolidierung.
 
 ## Anhang: Durchgerechnetes Beispiel V1 (Wartungsvertrag)
 
