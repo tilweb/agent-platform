@@ -94,6 +94,8 @@ export function vergleiche(v: VertragsAuswertung, data: Record<string, unknown>,
   if (e.gestrichen_min !== undefined) add('gueltigkeit', `≥ ${e.gestrichen_min} Streichungen`, v.gueltigkeit.filter((g) => g.art === 'gestrichen').length >= e.gestrichen_min, v.gueltigkeit.length);
   const inventarText = klein([v.inventar.map((i) => [i.inhalt, i.frist?.wortlaut, i.ausloeser, i.bedingung])]);
   const gesamt = `${inventarText} ${klein(v.katalog)}`;
-  for (const wort of e.kern ?? []) add('inventar', `Kern „${wort}"`, inventarText.includes(wort.toLowerCase()) || gesamt.includes(wort.toLowerCase()));
+  // Zahlen stehen im Katalog als JSON-Zahl („0.38"), im Vertrag mit Komma („0,38") — beide Schreibweisen zaehlen.
+  const varianten = (w: string) => [w.toLowerCase(), w.toLowerCase().replace(/(\d),(\d)/g, '$1.$2')];
+  for (const wort of e.kern ?? []) add('inventar', `Kern „${wort}"`, varianten(wort).some((x) => inventarText.includes(x) || gesamt.includes(x)));
   return p;
 }

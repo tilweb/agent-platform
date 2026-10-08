@@ -125,7 +125,7 @@ Regeln:
 - Nur angeben, was im Vertrag steht. Nichts ergänzen, nichts aus allgemeinem Recht ableiten.
 - Durchgestrichener Text (~~…~~) und nicht angekreuzte Optionen ([ ]) gelten NICHT. Angekreuzte Optionen ([x]) gelten.
 - {{hs: …}} ist handschriftlich eingetragen, {{stempel: …}} ein Stempel. {{unterschrift: …}} bedeutet: eine Unterschrift IST vorhanden (auch wenn kein Name erkennbar ist). {{keine unterschrift}} bedeutet: das Unterschriftsfeld ist leer. {{digitale signatur: …}} ist eine elektronische PDF-Signatur — sie zählt als Unterschrift; ordne sie der Partei zu, deren Ort/Datum im Unterschriftsbereich dazu passt. Hat eine Partei im Unterschriftsbereich keine {{unterschrift: …}}-Markierung, ist ihre Unterschrift nicht vorhanden.
-- Formularbeschriftungen wie "Ort, Datum", "Unterschrift und Firmenstempel", "Name in Druckbuchstaben" sind Beschriftungen, keine Platzhalter.
+- Formularbeschriftungen wie "Ort, Datum", "Unterschrift + Stempel", "Unterschrift und Firmenstempel", "Name in Druckbuchstaben" sind Beschriftungen, keine Platzhalter — und weder Unterschrift noch Stempel.
 - Datumsangaben als YYYY-MM-DD, wenn eindeutig; sonst wie im Vertrag. Beträge als Zahl ohne Währungszeichen.
 - Fristen NICHT in Kalenderdaten umrechnen — nur beschreiben (Dauer, Einheit, Richtung, Bezugspunkt, "zum …", Wortlaut).
 - Parteien mit ihrer Rolle im Vertrag bezeichnen (z. B. "Auftraggeber", "Auftragnehmer", "Kunde", "Mieter").`;

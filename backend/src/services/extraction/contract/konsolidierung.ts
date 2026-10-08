@@ -75,7 +75,7 @@ export function normalisiereId(roh: string, a: Aufloeser): string | undefined {
   if (a.ids.has(kompakt)) return kompakt;
   let m = /^(?:§|Ziffer|Ziff\.|Z|Art\.?|Artikel)\s*(\d+[a-z]?)(?:\s*(?:Abs(?:atz|\.)?|\.)\s*(\d+))?$/i.exec(r);
   if (m) return a.unterpunkt(m[1]!, m[2]);
-  m = /^(\d+(?:\.\d+)+)$/.exec(r);
+  m = /^(?:§|Ziffer|Ziff\.|Nr\.)?\s*(\d+(?:\.\d+)+)\.?$/.exec(r);
   if (m) return a.unterpunkt(m[1]!);
   m = /^(?:Anlage|Anhang|Anl\.?)\s*([A-Z0-9]{1,3})$/i.exec(r);
   if (m) return a.anlage(m[1]!);
@@ -245,6 +245,16 @@ export function konsolidiere(seiten: SeitenTranskript[], klauseln: Klausel[], aw
   if (Array.isArray(unterschriften)) {
     for (const u of unterschriften as Array<{ partei?: string; vorhanden?: boolean }>) {
       if (u.vorhanden === false) befunde.push({ typ: 'unterschrift_fehlt', text: `Unterschrift fehlt: ${u.partei ?? 'unbekannte Partei'}.`, klauseln: katalog.unterschriften!.klauseln });
+    }
+  }
+
+  // Plausibilitaet: mehr Parteien „unterschrieben" als Unterschriftsmarkierungen im bindenden Text → pruefen lassen.
+  if (Array.isArray(unterschriften)) {
+    const bindendText = klauseln.filter((k) => !NICHT_BINDEND.has(k.rolle)).map((k) => k.text).join('\n');
+    const markierungen = (bindendText.match(/\{\{(?:unterschrift|digitale signatur):/g) ?? []).length;
+    const behauptet = (unterschriften as Array<{ vorhanden?: boolean }>).filter((u) => u.vorhanden !== false).length;
+    if (behauptet > markierungen) {
+      befunde.push({ typ: 'unterschrift_fehlt', text: `Unterschriften prüfen: ${behauptet} Partei(en) als unterschrieben erkannt, im Dokument aber nur ${markierungen} Unterschrift(en) gefunden.`, klauseln: katalog.unterschriften!.klauseln });
     }
   }
 

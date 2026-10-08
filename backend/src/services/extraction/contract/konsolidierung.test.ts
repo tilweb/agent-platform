@@ -56,6 +56,15 @@ test('normalisiereId: „§2.1" trifft Dezimal-ID 2.1', () => {
   expect(normalisiereId('Ziffer 2.2', a)).toBe('2.2');
 });
 
+test('Unterschriften-Plausibilitaet: mehr Parteien unterschrieben als Markierungen → Befund', () => {
+  const k = baueStruktur([seite(1, '## § 1 Gegenstand\nText.'), seite(2, 'Ort, Datum {{hs: FFM, 4.5.23}}\n{{unterschrift: vorhanden}}\nMieter\n\nUnterschrift + Stempel\nEND', 'unterschriften')]);
+  const aw = { katalog: { unterschriften: { status: 'gefunden', wert: [{ partei: 'Mieter', vorhanden: true }, { partei: 'END', vorhanden: true }], klauseln: ['unterschriften'] } }, verknuepfungen: [], auffaelligkeiten: [], inventar: [], erweiterung: { data: {}, fundstellen: {} }, aufrufe: 1, probleme: [] } as unknown as AuswertungsErgebnis;
+  const { vertrag } = konsolidiere([], k, aw);
+  expect(vertrag.befunde.find((b) => b.typ === 'unterschrift_fehlt')!.text).toContain('2 Partei(en) als unterschrieben erkannt, im Dokument aber nur 1');
+  const a = baueAufloeser(baueStruktur([seite(1, '## § 8 Entgelt\n8.2 Vergütung\n8.2.1 Pauschale.')]));
+  expect(normalisiereId('§8.2.1', a)).toBe('8.2.1');
+});
+
 test('dedupliziereInventar fasst gleiche Eintraege zusammen', () => {
   const e = { typ: 'pflicht' as const, partei: 'END', inhalt: 'Wartung jährlich durchführen.', modalitaet: 'muss' as const, klauseln: ['§3.1'] };
   expect(dedupliziereInventar([e, { ...e, inhalt: 'Wartung jährlich durchführen' }, { ...e, klauseln: ['§3.2'] }])).toHaveLength(2);

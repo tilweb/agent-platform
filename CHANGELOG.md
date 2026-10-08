@@ -16,6 +16,11 @@ geliefert — die Berechnung macht das Fristenradar. Ergebnis als `vertrag` in `
 Katalog, Pflichten und Fristen"); der Prüfdialog zeigt Überblick, Pflichten & Fristen, Klauseln (mit Suche) und Befunde,
 jede Fundstelle öffnet den Wortlaut und springt zur Seite. Messskript `backend/scripts/vertrag-pilot/messung.ts` mit
 Abgleich gegen Erwartungswerte und Ende-zu-Ende-Prüfung `e2e.ts` (Verträge und Erwartungswerte lokal, nicht im Repo).
+Messung auf 10 echten Ladeinfrastruktur-Verträgen (146 Seiten, überwiegend Scans): 185/185 Prüfungen richtig nach
+Nachschärfung (Lauf 1: 93 %) — u. a. kleinere Inventar-Gruppen mit Halbierung bei abgeschnittener Antwort,
+Katalog als Freitext-JSON (erzwungenes JSON entgleist bei großen Schemata), digitale PDF-Signaturen,
+Unterschriften-Plausibilität, gescheiterte Auswertungsschritte erzwingen „Zu prüfen". Details:
+`docs/vertragsextraktion-messung-2026-10-08.md`.
 
 ### Konzept Vertragsextraktion im Document Processing (Entwurf, nicht umgesetzt)
 `docs/konzept-vertragsextraktion-2026-10-08.md`: Analyse von 10 echten Ladeinfrastruktur-Verträgen (146 Seiten,

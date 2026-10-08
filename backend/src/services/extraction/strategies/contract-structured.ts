@@ -129,8 +129,12 @@ export const contractStructuredStrategy: ExtractionStrategy = {
       fieldConfidences,
       provenance,
       pageImages,
-      warnings: vertrag.befunde.filter((b) => b.typ === 'verarbeitung').map((b) => b.text),
-      processingIssues: lesefehler.map((s) => ({ severity: 'error' as const, message: `Seite ${s.seite}: nicht lesbar (${s.fehler}) — Inhalte dieser Seite fehlen.` })),
+      warnings: vertrag.befunde.filter((b) => b.typ === 'verarbeitung' && !aw.probleme.includes(b.text)).map((b) => b.text),
+      // Lesefehler und gescheiterte Auswertungsschritte erzwingen „Zu pruefen" — ein lueckenhaftes Ergebnis darf nicht unauffaellig wirken.
+      processingIssues: [
+        ...lesefehler.map((s) => ({ severity: 'error' as const, message: `Seite ${s.seite}: nicht lesbar (${s.fehler}) — Inhalte dieser Seite fehlen.` })),
+        ...aw.probleme.map((p) => ({ severity: 'error' as const, message: `Vertragsauswertung unvollständig — ${p}` })),
+      ],
       llmCalls: bilder.length + aw.aufrufe,
       strategyUsed: 'contract-structured',
       contract: vertrag,
