@@ -16,6 +16,8 @@ import {
   processInboxUpload,
   routePart,
   sweepStaleUploads,
+  eingangsModus,
+  ladeUmschlag,
 } from '../extraction/inbox';
 import { getProject } from '../extraction/learning';
 
@@ -37,11 +39,14 @@ extractionInboxRoutes.post('/inbox', async (c) => {
     return c.json({ error: 'multipart/form-data mit Dateien erforderlich' }, 400);
   }
   const formData = await c.req.formData();
-  // `split=false` behandelt jede Datei als EIN Dokument (keine Trennung an
-  // vermuteten Dokumentgrenzen) — fuer Quellen, die ohnehin je Vorgang eine
-  // Datei liefern. Default bleibt das bisherige Verhalten.
-  const splitRaw = formData.get('split');
-  const split = !(typeof splitRaw === 'string' && ['false', '0', 'nein'].includes(splitRaw.toLowerCase()));
+  // Eingangsmodus (Konzept DP-Produktmodell §3): `vorgang` (Standard) = eine Datei ist EIN Geschaeftsvorfall,
+  // keine Trennung; `stapel` = Trennen + Zuordnen je Teil. `split` bleibt rueckwaertskompatibel.
+  const modus = eingangsModus(formData.get('modus'), formData.get('split'));
+  const profilRaw = formData.get('profil_id');
+  const profilId = typeof profilRaw === 'string' && profilRaw.trim() ? profilRaw.trim() : null;
+  if (profilId && !(await getProject(profilId))) {
+    return c.json({ error: `Profil „${profilId}" nicht gefunden` }, 400);
+  }
   const uploads = formData.getAll('files').filter((f): f is File => f instanceof File);
   if (uploads.length === 0) {
     return c.json({ error: 'Keine Dateien hochgeladen' }, 400);
@@ -59,14 +64,21 @@ extractionInboxRoutes.post('/inbox', async (c) => {
     const file = uploads[i]!;
     const tempPath = `${tmpDir}/${i}_${file.name.replace(/[^\w.\-]+/g, '_')}`;
     await Bun.write(tempPath, await file.arrayBuffer());
-    const upload = await createUpload({ filename: file.name, mimeType: file.type || undefined });
+    const upload = await createUpload({ filename: file.name, mimeType: file.type || undefined, modus, profilId, quelle: 'oberflaeche' });
     created.push({ id: upload.id, filename: upload.filename });
     // Fire-and-forget — die Pipeline räumt tempPath selbst auf.
-    void processInboxUpload(upload.id, tempPath, { filename: file.name, mimeType: file.type || undefined }, undefined, { split })
+    void processInboxUpload(upload.id, tempPath, { filename: file.name, mimeType: file.type || undefined }, undefined, { modus, profilId })
       .catch((err) => console.error('[inbox] processInboxUpload error:', err instanceof Error ? err.message : err));
   }
 
   return c.json({ uploads: created }, 201);
+});
+
+/** GET /inbox/:id/umschlag — Ergebnis-Umschlag des Uploads (wie `inbox.get` der öffentlichen API). */
+extractionInboxRoutes.get('/inbox/:id/umschlag', async (c) => {
+  const umschlag = await ladeUmschlag(c.req.param('id'));
+  if (!umschlag) return c.json({ error: 'Upload nicht gefunden' }, 404);
+  return c.json(umschlag);
 });
 
 /** GET /inbox — Liste aller Uploads inkl. Teilen (Polling-fähig). */

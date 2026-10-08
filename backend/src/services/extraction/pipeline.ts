@@ -51,6 +51,7 @@ const ESCALATION_PATH: Record<StrategyId, StrategyId | null> = {
   'template-labelmap': null,
   // Vertragsauswertung transkribiert seitenweise und gruppiert selbst — keine Eskalation.
   'contract-structured': null,
+  'general-document': null,
 };
 
 const noopEmit: ProgressEmit = () => undefined;
@@ -99,7 +100,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineRunR
       let extraCalls = 0;
       // Auch nicht bei `contract-structured`: Feldwerte stammen aus dem Klauseltext mit Fundstellen;
       // ein Text-Repair ueber `PreparedFile.text` (leer, Konverter uebersprungen) wuerde sie verwerfen.
-      if (input.schema.config.validation_repair && result.strategyUsed !== 'vision-per-page' && result.strategyUsed !== 'contract-structured') {
+      if (input.schema.config.validation_repair && result.strategyUsed !== 'vision-per-page' && result.strategyUsed !== 'contract-structured' && result.strategyUsed !== 'general-document') {
         const documentText = input.files.map((f) => f.text).filter((t) => t && t.trim()).join('\n\n');
         const chatOptions: ChatOptions = { userId: input.userId };
         const override = input.modelOverride
@@ -135,6 +136,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineRunR
         strategyOriginal: escalatedFrom ?? (initialStrategyId !== result.strategyUsed ? initialStrategyId : undefined),
         durationMs: Date.now() - startedAt,
         ...(result.contract ? { contract: result.contract } : {}),
+        ...(result.volltext ? { volltext: result.volltext } : {}),
       };
     } catch (err) {
       if (err instanceof ContextOverflowError) {

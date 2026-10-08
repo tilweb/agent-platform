@@ -30,22 +30,36 @@ import {
   getPartPdf,
   getOriginal,
   safeExt,
+  type EingangsModus,
   type InboxPart,
   type NewInboxPart,
 } from './store';
+import { BASISPROFIL_ID, istBasisprofil, stelleBasisprofilSicher, zuordnungsKandidaten } from '../basisprofil';
+import { umschlagAbschliessen } from './umschlag';
 
 const AUTO_ROUTE_THRESHOLD = parseFloat(process.env.INBOX_AUTO_ROUTE_THRESHOLD || '0.8');
 const MAX_PAGES = parseInt(process.env.INBOX_MAX_PAGES || '60', 10);
 
-/** Optionen je Upload. */
+/**
+ * Optionen je Upload. Massgeblich sind `modus`/`profilId` am Upload-Datensatz
+ * (beim Anlegen gesetzt); die Optionen hier sind nur Rueckfall fuer Aufrufer,
+ * die den Datensatz ohne diese Felder angelegt haben.
+ */
 export interface InboxProcessOptions {
-  /**
-   * Mehrseitige PDFs an vermuteten Dokumentgrenzen trennen. Default `true`.
-   * `false` behandelt den Upload als EIN Dokument — kein Seitenpaar-Urteil,
-   * kein Zerschneiden; die Klassifikation laeuft auf Seite 1.
-   */
+  modus?: EingangsModus;
+  profilId?: string | null;
+  /** Veraltet: `false` = Vorgang, `true` = Stapel. */
   split?: boolean;
 }
+
+/** Eingangsmodus aus Formular-/API-Angaben (Konzept DP-Produktmodell §3; Standard: Vorgang). */
+export function eingangsModus(modus: unknown, split: unknown): EingangsModus {
+  if (modus === 'vorgang' || modus === 'stapel') return modus;
+  if (typeof split === 'string') return ['false', '0', 'nein'].includes(split.toLowerCase()) ? 'vorgang' : 'stapel';
+  if (typeof split === 'boolean') return split ? 'stapel' : 'vorgang';
+  return 'vorgang';
+}
+
 /** processing-Uploads aelter als das gelten als abgebrochen (Server-Restart). */
 const STALE_PROCESSING_MS = 30 * 60 * 1000;
 
@@ -77,6 +91,22 @@ async function routePartsToProject(
 }
 
 /**
+ * Teile-Plan (rein, testbar). Vorgang: immer EIN Teil ueber alle Seiten.
+ * Stapel: Schnitte aus den Grenzurteilen; ein nicht beantwortetes Urteil (`null`)
+ * gilt als „kein Schnitt" und wird als offene Grenze gemeldet — statt den ganzen
+ * Upload abzubrechen (Konzept §6 Punkt 5).
+ */
+export function planeTeile(
+  modus: EingangsModus,
+  pageCount: number,
+  boundaries: Array<boolean | null> = [],
+): { ranges: Array<{ from: number; to: number }>; offeneGrenzen: number[] } {
+  if (modus === 'vorgang' || pageCount <= 1) return { ranges: [{ from: 1, to: Math.max(1, pageCount) }], offeneGrenzen: [] };
+  const offeneGrenzen = boundaries.map((b, i) => (b === null ? i + 1 : 0)).filter((n) => n > 0);
+  return { ranges: rangesFromBoundaries(pageCount, boundaries.map((b) => b === true)), offeneGrenzen };
+}
+
+/**
  * Verarbeitet einen frisch hochgeladenen Posteingang-Eintrag (fire-and-forget).
  * Fehlerbehandlung komplett intern; raeumt tempPath am Ende auf.
  */
@@ -92,33 +122,28 @@ export async function processInboxUpload(
     const ext = safeExt(meta.filename);
     await saveOriginal(uploadId, buffer, ext);
 
+    const datensatz = await getUpload(uploadId);
+    const modus: EingangsModus = datensatz?.modus ?? eingangsModus(options.modus, options.split);
+    const profilId = datensatz?.profilId ?? options.profilId ?? null;
+    if (profilId && !(await getProject(profilId))) throw new Error(`Profil „${profilId}" nicht gefunden`);
+
     const isPdf = ext === 'pdf' || meta.mimeType === 'application/pdf';
     const isImage = IMAGE_EXTS.has(ext);
-
-    const projects = await getAllProjects();
+    const kandidaten = zuordnungsKandidaten(await getAllProjects());
+    const vorgegeben: PartClassification | null = profilId ? { project_id: profilId, confidence: 1, alternatives: [] } : null;
 
     // ---------- Nicht-PDF ----------
     if (!isPdf) {
-      let classification: PartClassification | null = null;
-      let preview: string | null = null;
-      if (isImage) {
+      let classification: PartClassification | null = vorgegeben;
+      if (!classification && isImage) {
         const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
-        const dataUri = `data:${mime};base64,${buffer.toString('base64')}`;
         try {
-          classification = await classifyPart(dataUri, projects, userId);
+          classification = await classifyPart(`data:${mime};base64,${buffer.toString('base64')}`, kandidaten, userId);
         } catch (err) {
           console.warn('[inbox] Klassifikation fehlgeschlagen:', err instanceof Error ? err.message : err);
         }
-        preview = null; // Original kann gross sein — kein Thumbnail ohne Renderer (v1)
       }
-      const [part] = await createParts(uploadId, [{
-        index: 0,
-        pageFrom: 1,
-        pageTo: 1,
-        filename: meta.filename,
-        classification,
-        previewDataUri: preview,
-      }]);
+      const [part] = await createParts(uploadId, [{ index: 0, pageFrom: 1, pageTo: 1, filename: meta.filename, classification, previewDataUri: null }]);
       await autoRoute(uploadId, [{ part: part!, buffer }], userId);
       await updateUpload(uploadId, { status: 'ready', pageCount: 1 });
       return;
@@ -130,110 +155,81 @@ export async function processInboxUpload(
       pageCount = await countPdfPages(buffer);
     } catch { /* unten behandelt */ }
     if (!pageCount || pageCount < 1) {
-      await updateUpload(uploadId, {
-        status: 'failed',
-        error: 'PDF konnte nicht gelesen werden (beschädigt oder kein PDF?)',
-      });
+      await updateUpload(uploadId, { status: 'failed', error: 'PDF konnte nicht gelesen werden (beschädigt oder kein PDF?)' });
       return;
     }
     await updateUpload(uploadId, { pageCount });
 
-    // Seiten-Cap: nicht splitten, aber klassifizieren.
-    if (pageCount > MAX_PAGES && options.split !== false) {
-      throw new Error(`${pageCount} Seiten: Dokumentgrenzen können nur bis ${MAX_PAGES} Seiten geprüft werden. Bitte in kleinere Stapel aufteilen.`);
-    }
-    if (pageCount > MAX_PAGES) {
-      const firstPage = await renderPdfToImages(buffer, { dpi: 150, pageSelection: [1] });
-      const preview = await renderPreview(buffer, 1);
-      const classification = await tryClassify(firstPage[0], projects, userId);
+    // Vorgang oder vorgegebene Pipeline: EIN Teil, Zuordnung (falls noetig) ueber Seite 1 — keine Trennung, kein Seitenlimit.
+    if (modus === 'vorgang' || profilId) {
+      const classification = vorgegeben ?? await tryClassify((await renderPdfToImages(buffer, { dpi: 150, pageSelection: [1] }))[0], kandidaten, userId);
       const [part] = await createParts(uploadId, [{
         index: 0, pageFrom: 1, pageTo: pageCount, filename: meta.filename,
-        classification, previewDataUri: preview,
+        classification, previewDataUri: await renderPreview(buffer, 1),
       }]);
       await autoRoute(uploadId, [{ part: part!, buffer }], userId);
-      await updateUpload(uploadId, {
-        status: 'ready',
-        note: `${pageCount} Seiten (> ${MAX_PAGES}) — nicht auf Dokumentgrenzen geprüft`,
-      });
+      await updateUpload(uploadId, { status: 'ready' });
       return;
     }
 
-    // Rendern + Grenzen beurteilen. Ohne Split (`split: false`) wird der Beleg
-    // als EIN Dokument behandelt — sinnvoll, wenn die Quelle ohnehin je Vorgang
-    // eine Datei liefert (z.B. ein RPA-Roboter, der einen Lieferschein scannt).
-    // Dann entfaellt auch das Seitenpaar-Urteil, also ein LLM-Call je Uebergang.
-    const splitEnabled = options.split !== false;
-    const pages = await renderPdfToImages(buffer, { dpi: 150, ...(splitEnabled ? {} : { maxPages: 1 }) });
-    const boundaries = splitEnabled && pages.length > 1 ? await judgeBoundaries(pages, userId) : [];
-    if (boundaries.some(b => b === null)) throw new Error('Dokumentgrenzen nicht sicher prüfbar. Keine automatische Zuordnung; bitte erneut verarbeiten.');
-    let ranges = splitEnabled
-      ? rangesFromBoundaries(pages.length, boundaries)
-      : [{ from: 1, to: pageCount }];
+    // ---------- Stapel: Trennen + Zuordnen je Teil ----------
+    if (pageCount > MAX_PAGES) {
+      throw new Error(`${pageCount} Seiten: Dokumentgrenzen können nur bis ${MAX_PAGES} Seiten geprüft werden. Bitte in kleinere Stapel aufteilen oder als Vorgang verarbeiten.`);
+    }
+    const pages = await renderPdfToImages(buffer, { dpi: 150 });
+    const boundaries = pages.length > 1 ? await judgeBoundaries(pages, userId) : [];
+    const { ranges, offeneGrenzen } = planeTeile('stapel', pages.length, boundaries);
+    const note = offeneGrenzen.length
+      ? `Grenze nach Seite ${offeneGrenzen.join(', ')} nicht geprüft (keine Modellantwort) — dort nicht getrennt.`
+      : undefined;
 
-    // Teil-PDFs bauen (bei >1 Teil). Fallback auf 1 Teil, wenn der Splitter
-    // fehlt oder scheitert (z.B. verschluesseltes PDF) — kein Hard-Fail.
-    let note: string | undefined;
+    // Teil-PDFs bauen (bei >1 Teil).
     const partBuffers: Buffer[] = [];
     if (ranges.length > 1) {
       if (!(await isPdfSplitterAvailable())) {
         throw new Error('Dokumenttrennung erforderlich, aber PDF-Splitter nicht verfügbar.');
-      } else {
-        const tmpPdf = `${tempPath}.split-src.pdf`;
-        await Bun.write(tmpPdf, buffer);
-        try {
-          for (const range of ranges) {
-            partBuffers.push(await buildPartPdf(tmpPdf, range.from, range.to));
-          }
-        } catch (err) {
-          const msg = err instanceof PdfSplitError ? err.message : String(err);
-          console.warn(`[inbox] Teil-PDF-Bau fehlgeschlagen (${uploadId}):`, msg);
-          throw new Error('Dokument konnte nicht getrennt werden — keine automatische Weiterverarbeitung.');
-        } finally {
-          await rm(tmpPdf, { force: true }).catch(() => {});
-        }
       }
-    }
-    if (ranges.length === 1) {
-      partBuffers.length = 0;
+      const tmpPdf = `${tempPath}.split-src.pdf`;
+      await Bun.write(tmpPdf, buffer);
+      try {
+        for (const range of ranges) partBuffers.push(await buildPartPdf(tmpPdf, range.from, range.to));
+      } catch (err) {
+        const msg = err instanceof PdfSplitError ? err.message : String(err);
+        console.warn(`[inbox] Teil-PDF-Bau fehlgeschlagen (${uploadId}):`, msg);
+        throw new Error('Dokument konnte nicht getrennt werden — keine automatische Weiterverarbeitung.');
+      } finally {
+        await rm(tmpPdf, { force: true }).catch(() => {});
+      }
+    } else {
       partBuffers.push(buffer); // Ein Teil = Originaldokument
     }
 
-    // Teile anlegen: Klassifikation (Erste Seite des Ranges, bereits gerendert)
-    // + kleines Preview.
+    // Teile anlegen: Zuordnung je Teil (erste Seite des Bereichs) + kleines Preview.
     const newParts: NewInboxPart[] = [];
     for (let i = 0; i < ranges.length; i += 1) {
       const range = ranges[i]!;
-      const firstPage = pages[range.from - 1];
-      const classification = await tryClassify(firstPage, projects, userId);
-      const preview = await renderPreview(partBuffers[i]!, 1);
       newParts.push({
         index: i,
         pageFrom: range.from,
         pageTo: range.to,
         filename: ranges.length === 1 ? meta.filename : partFilename(meta.filename, i + 1),
-        classification,
-        previewDataUri: preview,
+        classification: await tryClassify(pages[range.from - 1], kandidaten, userId),
+        previewDataUri: await renderPreview(partBuffers[i]!, 1),
       });
     }
     const parts = await createParts(uploadId, newParts);
-
-    // Teil-PDFs persistieren (nur echte Teile — Ein-Teil-Uploads nutzen das Original).
     if (ranges.length > 1) {
-      for (let i = 0; i < parts.length; i += 1) {
-        await savePartPdf(uploadId, parts[i]!.id, partBuffers[i]!);
-      }
+      for (let i = 0; i < parts.length; i += 1) await savePartPdf(uploadId, parts[i]!.id, partBuffers[i]!);
     }
 
-    await autoRoute(
-      uploadId,
-      parts.map((part, i) => ({ part, buffer: partBuffers[i]! })),
-      userId,
-    );
+    await autoRoute(uploadId, parts.map((part, i) => ({ part, buffer: partBuffers[i]! })), userId);
     await updateUpload(uploadId, { status: 'ready', ...(note ? { note } : {}) });
   } catch (err) {
     const msg = err instanceof PdfRenderError || err instanceof Error ? err.message : String(err);
     console.error(`[inbox] Verarbeitung fehlgeschlagen (${uploadId}):`, msg);
     await updateUpload(uploadId, { status: 'failed', error: msg }).catch(() => {});
+    // Auch ein gescheiterter Upload ist abgeschlossen — Umschlag-Webhook informiert den Aufrufer.
+    await umschlagAbschliessen(uploadId).catch(() => {});
   } finally {
     await rm(tempPath, { force: true }).catch(() => {});
   }
@@ -267,38 +263,32 @@ async function renderPreview(pdfBuffer: Buffer, page: number): Promise<string | 
 }
 
 /**
- * Auto-Routing: Teile mit sicherer Klassifikation (>= Schwelle) nach Projekt
- * gruppieren und je Projekt EINEN Batch-Lauf starten.
+ * Auto-Routing: Teile mit sicherer Zuordnung (>= Schwelle) je Pipeline in EINEN
+ * Batch-Lauf; alle anderen an das Basisprofil „Allgemein" (Status `kein_profil`,
+ * manuell umleitbar) — nie Zwangszuordnung zur wahrscheinlichsten Pipeline.
  */
 async function autoRoute(
   uploadId: string,
   parts: Array<{ part: InboxPart; buffer: Buffer }>,
   userId?: string,
 ): Promise<void> {
-  const eligible = parts.filter(
-    ({ part }) =>
-      part.classification?.project_id &&
-      part.classification.confidence >= AUTO_ROUTE_THRESHOLD,
-  );
-  if (eligible.length === 0) return;
-
   const byProject = new Map<string, Array<{ part: InboxPart; buffer: Buffer }>>();
-  for (const entry of eligible) {
-    const pid = entry.part.classification!.project_id!;
+  for (const entry of parts) {
+    const c = entry.part.classification;
+    const sicher = !!c?.project_id && c.confidence >= AUTO_ROUTE_THRESHOLD && !!(await getProject(c.project_id));
+    const pid = sicher ? c!.project_id! : BASISPROFIL_ID;
+    if (pid === BASISPROFIL_ID) await stelleBasisprofilSicher();
     const list = byProject.get(pid) ?? [];
     list.push(entry);
     byProject.set(pid, list);
   }
 
   for (const [projectId, group] of byProject) {
-    // Projekt koennte inzwischen geloescht sein → Teile bleiben unassigned.
-    const project = await getProject(projectId);
-    if (!project) continue;
     try {
       const runId = await routePartsToProject(projectId, group, userId);
       for (const { part } of group) {
         await updatePart(uploadId, part.id, {
-          status: 'auto_routed',
+          status: istBasisprofil(projectId) ? 'kein_profil' : 'auto_routed',
           targetProjectId: projectId,
           batchRunId: runId,
         });
@@ -310,7 +300,7 @@ async function autoRoute(
   }
 }
 
-/** Manuelle Zuordnung eines Teils zu einem Projekt. */
+/** Manuelle Zuordnung eines Teils zu einem Projekt (auch Umleitung aus dem Basisprofil). */
 export async function routePart(
   uploadId: string,
   partId: string,
@@ -321,7 +311,7 @@ export async function routePart(
   if (!upload) throw new Error('Upload nicht gefunden');
   const part = upload.parts.find((p) => p.id === partId);
   if (!part) throw new Error('Teil nicht gefunden');
-  if (part.status !== 'unassigned') throw new Error('Teil ist bereits zugeordnet');
+  if (part.status !== 'unassigned' && part.status !== 'kein_profil') throw new Error('Teil ist bereits zugeordnet');
   const project = await getProject(projectId);
   if (!project) throw new Error(`Profil "${projectId}" nicht gefunden`);
 

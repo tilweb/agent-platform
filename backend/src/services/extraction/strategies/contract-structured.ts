@@ -12,19 +12,13 @@
  */
 
 import { isArrayGroup, type ArrayGroupDefinition, type FieldDefinition } from '../../../extraction/types';
-import { extractionVisionDpi } from '../defaults';
-import { renderPdfToImages, pdfToLayoutText } from '../pdf';
-import { baueStruktur } from '../contract/struktur';
-import { textlayerJeSeite, transkribiere, type SeitenBild } from '../contract/transkription';
 import { werteAus, type ErweiterungsFeld } from '../contract/auswertung';
 import { konsolidiere } from '../contract/konsolidierung';
-import { ergaenzeDigitaleSignaturen, findeDigitaleSignaturen } from '../contract/signatur';
+import { leseDokument } from '../contract/lesen';
 import {
   StrategyExecutionError,
-  type CostEstimate, type ExtractionStrategy, type FieldProvenance, type PageImage, type ProgressEmit, type StrategyInput, type StrategyResult,
+  type CostEstimate, type ExtractionStrategy, type FieldProvenance, type ProgressEmit, type StrategyInput, type StrategyResult,
 } from '../types';
-
-const VERTRAGS_DPI_MIN = 200;
 
 /** Profilfelder (Gruppe `felder` + Listengruppen) → Erweiterungsfelder. */
 export function erweiterungsFelder(profileFields: StrategyInput['schema']['profile']['fields']): { felder: Record<string, ErweiterungsFeld>; gruppeVon: Record<string, string | null> } {
@@ -49,6 +43,27 @@ export function erweiterungsFelder(profileFields: StrategyInput['schema']['profi
   return { felder, gruppeVon };
 }
 
+/** Feldwerte + Fundstellen → Profilform (Gruppe `felder` + Listengruppen), Konfidenz und Provenienz. */
+export function inProfilform(
+  erweiterung: { data: Record<string, unknown>; fundstellen: Record<string, string[]> },
+  gruppeVon: Record<string, string | null>,
+): { extracted: Record<string, unknown>; fieldConfidences: Record<string, number>; provenance: FieldProvenance[] } {
+  const extracted: Record<string, unknown> = {};
+  const fieldConfidences: Record<string, number> = {};
+  const provenance: FieldProvenance[] = [];
+  for (const [id, wert] of Object.entries(erweiterung.data)) {
+    const gruppe = gruppeVon[id];
+    const pfad = gruppe ? `${gruppe}.${id}` : id;
+    if (gruppe) extracted[gruppe] = { ...(extracted[gruppe] as Record<string, unknown> ?? {}), [id]: wert };
+    else extracted[id] = wert;
+    const belegt = (erweiterung.fundstellen[id] ?? []).length > 0;
+    const leer = wert === null || wert === undefined || (Array.isArray(wert) && !wert.length);
+    fieldConfidences[pfad] = leer ? 0 : belegt ? 0.85 : 0.6;
+    if (!leer) provenance.push({ field: pfad, value: wert, source: `k:${(erweiterung.fundstellen[id] ?? []).join('+') || '?'}`, confidence: fieldConfidences[pfad] });
+  }
+  return { extracted, fieldConfidences, provenance };
+}
+
 export const contractStructuredStrategy: ExtractionStrategy = {
   id: 'contract-structured',
 
@@ -71,35 +86,15 @@ export const contractStructuredStrategy: ExtractionStrategy = {
     const kontext = { userId: input.userId, modelOverride: override };
     const parallel = Math.max(1, input.schema.config.max_concurrent);
 
-    // P1 Seiten
-    await emit({ phase: 'preparing', message: 'Seiten werden gerendert' });
-    let bilder: SeitenBild[];
-    if (datei.mimeType === 'application/pdf') {
-      const pages = await renderPdfToImages(datei.rawBuffer, { dpi: Math.max(VERTRAGS_DPI_MIN, extractionVisionDpi()), maxPages: input.schema.config.max_pages });
-      let layout: string[] = [];
-      try { layout = textlayerJeSeite(await pdfToLayoutText(datei.rawBuffer)); } catch { /* kein Textlayer */ }
-      bilder = pages.map((p) => ({ seite: p.pageNumber, png: p.pngBuffer, hilfstext: layout[p.pageNumber - 1] }));
-    } else {
-      bilder = [{ seite: 1, png: datei.rawBuffer }];
-    }
-    const pageImages: PageImage[] = bilder.map((b) => {
-      const { width, height } = { width: b.png.readUInt32BE(16), height: b.png.readUInt32BE(20) };
-      return { page: b.seite, dataUri: `data:image/png;base64,${b.png.toString('base64')}`, width, height };
+    // P1 Seiten, P2 Transkription (+ digitale Signaturen), P3 Strukturbaum — gemeinsamer Lesekern
+    const { bilder, pageImages, seiten, klauseln } = await leseDokument(kontext, { rawBuffer: datei.rawBuffer, mimeType: datei.mimeType }, {
+      maxSeiten: input.schema.config.max_pages, parallel, emit,
     });
-
-    // P2 Transkription
-    const gelesen = await transkribiere(kontext, bilder, {
-      parallel,
-      beiSeite: (fertig, gesamt) => emit({ phase: 'extracting', chunkIndex: fertig - 1, chunkTotal: gesamt, pageIndex: fertig, pageTotal: gesamt }),
-    });
-    // Elektronische PDF-Signaturen stehen nicht im Seitenbild → als Marker an die Unterschriftsseite.
-    const seiten = datei.mimeType === 'application/pdf' ? ergaenzeDigitaleSignaturen(gelesen, findeDigitaleSignaturen(datei.rawBuffer)) : gelesen;
     if (seiten.every((s) => s.fehler)) {
       throw new StrategyExecutionError(`Keine Seite konnte gelesen werden (${seiten[0]?.fehler ?? 'unbekannt'}).`);
     }
 
-    // P3 Struktur, P4 Auswertung, P5 Konsolidierung
-    const klauseln = baueStruktur(seiten);
+    // P4 Auswertung, P5 Konsolidierung
     const { felder, gruppeVon } = erweiterungsFelder(input.schema.profile.fields);
     const aw = await werteAus(kontext, klauseln, {
       felder, parallel, anweisungen: input.schema.profile.guidelines,
@@ -108,20 +103,7 @@ export const contractStructuredStrategy: ExtractionStrategy = {
     await emit({ phase: 'validating', warningCount: 0 });
     const { vertrag, erweiterung } = konsolidiere(seiten, klauseln, aw);
 
-    // Erweiterung in die Profilform zurueck (Gruppe `felder` + Listengruppen)
-    const extracted: Record<string, unknown> = {};
-    const fieldConfidences: Record<string, number> = {};
-    const provenance: FieldProvenance[] = [];
-    for (const [id, wert] of Object.entries(erweiterung.data)) {
-      const gruppe = gruppeVon[id];
-      const pfad = gruppe ? `${gruppe}.${id}` : id;
-      if (gruppe) extracted[gruppe] = { ...(extracted[gruppe] as Record<string, unknown> ?? {}), [id]: wert };
-      else extracted[id] = wert;
-      const belegt = (erweiterung.fundstellen[id] ?? []).length > 0;
-      const leer = wert === null || wert === undefined || (Array.isArray(wert) && !wert.length);
-      fieldConfidences[pfad] = leer ? 0 : belegt ? 0.85 : 0.6;
-      if (!leer) provenance.push({ field: pfad, value: wert, source: `k:${(erweiterung.fundstellen[id] ?? []).join('+') || '?'}`, confidence: fieldConfidences[pfad] });
-    }
+    const { extracted, fieldConfidences, provenance } = inProfilform(erweiterung, gruppeVon);
 
     const lesefehler = seiten.filter((s) => s.fehler);
     return {

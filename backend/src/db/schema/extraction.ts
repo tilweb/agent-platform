@@ -89,6 +89,13 @@ export const extractionInboxUploads = extractionSchema.table('inbox_uploads', {
   status: text('status').notNull().default('processing'),  // processing|ready|failed
   error: text('error'),
   note: text('note'),                                      // z.B. ">60 Seiten — nicht geprueft"
+  modus: text('modus').notNull().default('stapel'),         // vorgang|stapel (Konzept DP-Produktmodell §3)
+  profilId: text('profil_id'),                             // vorgegebene Pipeline (dann keine Zuordnung)
+  quelle: text('quelle').notNull().default('oberflaeche'), // oberflaeche|api
+  callbackUrl: text('callback_url'),                       // Umschlag-Webhook je Upload
+  webhookStatus: text('webhook_status'),                   // NULL|wird_zugestellt|zugestellt|fehlgeschlagen
+  webhookError: text('webhook_error'),
+  abrechnung: jsonb('abrechnung'),                         // AbrechnungsPosten[] beim Abschluss
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 });

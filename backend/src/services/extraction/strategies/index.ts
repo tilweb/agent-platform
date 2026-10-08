@@ -12,6 +12,7 @@ import { visionPerPageStrategy } from './vision-per-page';
 import { hybridStrategy } from './hybrid';
 import { templateLabelmapStrategy } from './template-labelmap';
 import { contractStructuredStrategy } from './contract-structured';
+import { generalDocumentStrategy } from './general-document';
 
 const REGISTRY: Map<StrategyId, ExtractionStrategy> = new Map();
 
@@ -25,6 +26,7 @@ register(visionPerPageStrategy);
 register(hybridStrategy);
 register(templateLabelmapStrategy);
 register(contractStructuredStrategy);
+register(generalDocumentStrategy);
 
 export function getStrategy(id: StrategyId): ExtractionStrategy | undefined {
   return REGISTRY.get(id);

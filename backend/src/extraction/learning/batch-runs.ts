@@ -11,7 +11,7 @@
  * nutzen nur die hier exportierten Signaturen.
  */
 
-import type { VertragsAuswertung } from '../../services/extraction/contract/types';
+import type { VertragsAuswertung, Volltext } from '../../services/extraction/contract/types';
 import { eq, and, desc, inArray, isNull, sql } from 'drizzle-orm';
 import { jobFence, fencedWrite } from './job-context';
 import { getDb } from '../../db';
@@ -53,6 +53,10 @@ export interface FileAudit {
   guideline_version: number;
   model: string;
   strategy?: string;
+  /** Token-Verbrauch der Auswertung (alle Modellaufrufe, Token-Messbereich). */
+  verbrauch?: import('../../services/llm/token-meter').TokenMessung;
+  /** Abrechnungsposten (Seiten × Produkt, Konzept DP-Produktmodell §5). */
+  abrechnung?: import('../produkte').AbrechnungsPosten;
 }
 
 export interface BatchFileSummary {
@@ -87,6 +91,7 @@ export interface BatchFileDetail extends BatchFileSummary {
   /** Dokumenttext (Welle 3) — Grundlage fuer "Uebernehmen & lernen"; nur im Detail. */
   documentText: string | null;
   vertrag?: VertragsAuswertung;
+  volltext?: Volltext;
 }
 
 export interface FileResultPayload {
@@ -108,6 +113,8 @@ export interface FileResultPayload {
   segments?: SegmentInstance[];
   /** Vertragsauswertung (`contract-structured`) — liegt in `detail`, keine Migration. */
   vertrag?: VertragsAuswertung;
+  /** Volltext (`general-document`) — liegt in `detail`. */
+  volltext?: Volltext;
 }
 
 function generateRunId(): string {
@@ -259,9 +266,10 @@ export async function upsertFileResult(
   const storedPages = jobFence(_runId) ? payload.pageImages : await savePageImages(_runId, fileId, payload.pageImages);
   // Updating evidence must preserve already stored page images (review has no new pixels).
   let detail: Record<string, unknown> | undefined;
-  if (payload.boxes !== undefined || storedPages || payload.original || payload.snapshot || payload.segmentContexts || payload.reviewDraft !== undefined || payload.vertrag) {
+  if (payload.boxes !== undefined || storedPages || payload.original || payload.snapshot || payload.segmentContexts || payload.reviewDraft !== undefined || payload.vertrag || payload.volltext) {
     detail = {
       ...(payload.vertrag ? { vertrag: payload.vertrag } : {}),
+      ...(payload.volltext ? { volltext: payload.volltext } : {}),
       ...(payload.reviewDraft !== undefined ? { reviewDraft: payload.reviewDraft } : {}),
       ...(payload.segmentContexts ? { segmentContexts: payload.segmentContexts } : {}),
       ...(payload.original ? { original: payload.original } : {}),
@@ -397,7 +405,7 @@ export async function getBatchRunFileDetail(
     .where(and(eq(extractionBatchRunFiles.id, fileId), eq(extractionBatchRunFiles.batchRunId, runId)));
   const r = rows[0];
   if (!r) return null;
-  const detail = (r.detail as { boxes?: Record<string, FieldBox>; pageImages?: StoredPageImage[]; original?: OriginalDocument; snapshot?: ExtractionSnapshot; segmentContexts?: Record<string, string>; reviewDraft?: Record<string, unknown>; vertrag?: VertragsAuswertung } | null) ?? null;
+  const detail = (r.detail as { boxes?: Record<string, FieldBox>; pageImages?: StoredPageImage[]; original?: OriginalDocument; snapshot?: ExtractionSnapshot; segmentContexts?: Record<string, string>; reviewDraft?: Record<string, unknown>; vertrag?: VertragsAuswertung; volltext?: Volltext } | null) ?? null;
   return {
     id: r.id,
     filename: r.filename,
@@ -417,6 +425,7 @@ export async function getBatchRunFileDetail(
     pageImages: detail?.pageImages ?? null,
     documentText: r.documentText ?? null,
     ...(detail?.vertrag ? { vertrag: detail.vertrag } : {}),
+    ...(detail?.volltext ? { volltext: detail.volltext } : {}),
   };
 }
 

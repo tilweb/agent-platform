@@ -236,6 +236,7 @@ export const extractFunction: PublicFunction<
         validations: result.validations ?? [],
         ...(result.segments ? { segments: result.segments } : {}),
         ...(result.vertrag ? { vertrag: result.vertrag } : {}),
+        ...(result.volltext ? { volltext: result.volltext } : {}),
         strategy: result.strategyUsed,
         document_text: result.document_text,
       };
@@ -356,9 +357,12 @@ export const batchGetFunction: PublicFunction<{ project_id: string; run_id: stri
       needs_review: result.files.filter((f) => f.reviewStatus === 'needs_review').length,
       files: await Promise.all(result.files.map(async (f) => {
         // Vertragsauswertung liegt im Datei-Detail (jsonb) — nur fuer Vertragsdateien nachladen.
-        const vertrag = f.strategy === 'contract-structured'
-          ? (await getBatchRunFileDetail(input.project_id, input.run_id, f.id))?.vertrag
-          : undefined;
+        // Vertragsauswertung/Volltext liegen im Datei-Detail (jsonb) — nur fuer diese Strategien nachladen.
+        const detail = f.strategy === 'contract-structured' || f.strategy === 'general-document'
+          ? await getBatchRunFileDetail(input.project_id, input.run_id, f.id)
+          : null;
+        const vertrag = detail?.vertrag;
+        const volltext = detail?.volltext;
         return {
           filename: f.filename,
           status: f.status,
@@ -368,6 +372,7 @@ export const batchGetFunction: PublicFunction<{ project_id: string; run_id: stri
           validations: f.validations ?? [],
           ...(f.segments ? { segments: f.segments } : {}),
           ...(vertrag ? { vertrag } : {}),
+          ...(volltext ? { volltext } : {}),
           error: f.error,
         };
       })),
@@ -440,10 +445,114 @@ export const batchExportFunction: PublicFunction<
   },
 };
 
+// ============== Eingang mit Umschlag (Konzept DP-Produktmodell §3) ==============
+
+const UMSCHLAG_SCHEMA: JsonSchema = {
+  type: 'object',
+  description: 'Umschlag je Upload: eine ID, ein Ergebnis, eine Abrechnung — auch wenn intern mehrere Pipelines laufen.',
+  properties: {
+    upload_id: { type: 'string' },
+    modus: { type: 'string', description: 'vorgang | stapel' },
+    status: { type: 'string', description: 'verarbeitung | fertig | fehler' },
+    seiten_gesamt: { type: 'integer' },
+    teile: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          teil_id: { type: 'string' },
+          seiten: { type: 'string', description: 'Seitenbereich, z. B. "1–7"' },
+          profil: { type: 'string', description: 'Pipeline (Profil-ID); "allgemein" = Basisprofil' },
+          zuordnung: { type: 'object', description: '{ sicherheit, kandidaten[], vorgegeben }' },
+          status: { type: 'string', description: 'in_arbeit | fertig | zu_pruefen | kein_profil | fehler | nicht_zugeordnet' },
+          ergebnis: { type: 'object', description: '{ data, field_confidences, review_status, validations, strategy, vertrag?, volltext? }' },
+        },
+        required: ['teil_id', 'seiten', 'status'],
+      },
+    },
+    abrechnung: { type: 'array', items: { type: 'object', description: '{ produkt, seiten, kostenfaktor }' } },
+    verbrauch: { type: 'object', description: '{ aufrufe, prompt_tokens, completion_tokens, ohne_angabe }' },
+  },
+  required: ['upload_id', 'status', 'teile'],
+};
+
+export const inboxCreateFunction: PublicFunction<
+  { document: DocumentInput; project_id?: string; modus?: 'vorgang' | 'stapel'; callback_url?: string },
+  unknown
+> = {
+  id: 'inbox.create',
+  description:
+    'Nimmt ein Dokument entgegen und antwortet SOFORT mit der upload_id. Mit project_id wird es direkt in dieser Pipeline ausgewertet; ohne project_id wird die passende Pipeline ermittelt. Modus "vorgang" (Standard): das Dokument ist EIN Geschäftsvorfall und wird nicht getrennt; "stapel": Trennen in unabhängige Dokumente und Zuordnung je Teil. Ohne passende Pipeline wertet das Basisprofil "allgemein" aus (Volltext + Kernwerte). Ergebnis per inbox.get oder als Webhook (callback_url) mit dem Umschlag.',
+  input: {
+    type: 'object',
+    properties: {
+      document: DOCUMENT_SCHEMA,
+      project_id: { type: 'string', description: 'Optionale Pipeline; dann keine Zuordnung und keine Trennung.' },
+      modus: { type: 'string', description: 'vorgang (Standard) | stapel' },
+      callback_url: { type: 'string', description: 'Optionale http(s)-URL; der Umschlag wird nach Abschluss aller Teile einmal zugestellt (Ereignis inbox.completed).' },
+    },
+    required: ['document'],
+  },
+  output: {
+    type: 'object',
+    properties: { upload_id: { type: 'string' }, status: { type: 'string' } },
+    required: ['upload_id', 'status'],
+  },
+  defaultRateLimit: { requests: 30, windowSec: 60 },
+  async handler(input, ctx) {
+    if (!input.document) throw new PublicFunctionError('document erforderlich');
+    if (input.modus !== undefined && input.modus !== 'vorgang' && input.modus !== 'stapel') {
+      throw new PublicFunctionError('modus muss "vorgang" oder "stapel" sein');
+    }
+    if (input.project_id && !(await getProject(input.project_id))) {
+      throw new PublicFunctionError(`Projekt "${input.project_id}" nicht gefunden`, 404, 'not_found');
+    }
+    if (input.callback_url && !isDeliverableUrl(input.callback_url)) {
+      throw new PublicFunctionError('callback_url muss eine http(s)-URL sein');
+    }
+    const buffer = decodeDocument(input.document, 0);
+    const { createUpload, processInboxUpload } = await import('./inbox');
+    const tmpDir = `/tmp/extraction-inbox-api/${Date.now().toString(36)}_${ctx.requestId}`;
+    await mkdir(tmpDir, { recursive: true });
+    const tempPath = `${tmpDir}/${safeName(input.document.filename)}`;
+    await Bun.write(tempPath, buffer);
+    const modus = input.modus ?? 'vorgang';
+    const upload = await createUpload({
+      filename: input.document.filename,
+      mimeType: input.document.filename.toLowerCase().endsWith('.pdf') ? 'application/pdf' : undefined,
+      modus, profilId: input.project_id ?? null, quelle: 'api', callbackUrl: input.callback_url ?? null,
+    });
+    // Hintergrund — die Pipeline raeumt tempPath selbst auf.
+    void processInboxUpload(upload.id, tempPath, { filename: input.document.filename }, undefined, { modus, profilId: input.project_id ?? null })
+      .catch((err) => console.error('[inbox.create] Verarbeitung:', err instanceof Error ? err.message : err));
+    return { upload_id: upload.id, status: 'verarbeitung' };
+  },
+};
+
+export const inboxGetFunction: PublicFunction<{ upload_id: string }, unknown> = {
+  id: 'inbox.get',
+  description: 'Liefert den Umschlag eines Uploads: Status, Teile mit Pipeline, Zuordnung und Ergebnis, Abrechnung (Seiten je Produkt) und Verbrauch.',
+  input: {
+    type: 'object',
+    properties: { upload_id: { type: 'string', minLength: 1 } },
+    required: ['upload_id'],
+  },
+  output: UMSCHLAG_SCHEMA,
+  defaultRateLimit: { requests: 120, windowSec: 60 },
+  async handler(input) {
+    const { ladeUmschlag } = await import('./inbox');
+    const umschlag = await ladeUmschlag(input.upload_id);
+    if (!umschlag) throw new PublicFunctionError(`Upload "${input.upload_id}" nicht gefunden`, 404, 'not_found');
+    return umschlag;
+  },
+};
+
 export const extractionPublicFunctions = [
   projectsListFunction,
   extractFunction,
   batchCreateFunction,
   batchGetFunction,
   batchExportFunction,
+  inboxCreateFunction,
+  inboxGetFunction,
 ];

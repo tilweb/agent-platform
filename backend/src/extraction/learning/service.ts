@@ -1,3 +1,5 @@
+import { mitTokenMessung } from '../../services/llm/token-meter';
+import { abrechnungsPosten } from '../produkte';
 import { extractionVisionDpi } from '../../services/extraction/defaults';
 import { withDocumentRuntime, modelWork } from '../../services/extraction/runtime';
 import { ruleFields, ruleData } from './rule-scope';
@@ -369,13 +371,16 @@ async function extractInternal(
   pageImages?: { page: number; dataUri: string; width: number; height: number }[];
   strategyUsed?: string;
   /** Audit-Metadaten: mit welchem Regel-Stand/Modell/Strategie extrahiert wurde. */
-  audit?: { performance?: import("../../services/extraction/runtime").RuntimeMetrics; guideline_version: number; model: string; strategy?: string; profile_hash?: string; snapshot_hash?: string };
+  audit?: { performance?: import("../../services/extraction/runtime").RuntimeMetrics; guideline_version: number; model: string; strategy?: string; profile_hash?: string; snapshot_hash?: string;
+    verbrauch?: import('../../services/llm/token-meter').TokenMessung; abrechnung?: import('../produkte').AbrechnungsPosten };
   /** Befunde der fachlichen Pruefregeln (Welle 5); leer, wenn keine Regeln definiert. */
   validations?: RuleIssue[];
   /** Segment-Instanzen (Welle 10) — nur bei Profilen mit `segments`. */
   segments?: SegmentInstance[];
   /** Vertragsauswertung — nur Strategie `contract-structured`. */
   vertrag?: import('../../services/extraction/contract/types').VertragsAuswertung;
+  /** Volltext je Seite + Gliederung — nur Strategie `general-document` (Basisprofil „Allgemein"). */
+  volltext?: import('../../services/extraction/contract/types').Volltext;
   error?: string;
 }> {
   try {
@@ -398,7 +403,8 @@ async function extractInternal(
     // Konverter-HTTP-Call daher ueberspringen und document_text unten guenstig
     // aus `pdftotext` fuellen.
     // Auch `contract-structured` transkribiert selbst ueber das Seitenbild.
-    const skipPdfConvert = project.extraction?.strategy === 'template-labelmap' || project.extraction?.strategy === 'contract-structured';
+    const liestUeberBild = project.extraction?.strategy === 'contract-structured' || project.extraction?.strategy === 'general-document';
+    const skipPdfConvert = project.extraction?.strategy === 'template-labelmap' || liestUeberBild;
     console.log(`[Extraction] Ingesting document for project ${projectId}...`);
     const warmPixels = source.type === 'file' && source.filename.toLowerCase().endsWith('.pdf') && project.extraction?.strategy === 'vision-per-page'
       ? readFile(source.path).then(bytes => renderPdfToImages(bytes, { dpi: extractionVisionDpi(), maxPages: project.extraction?.max_pages ?? 500 })).catch(() => undefined) : undefined;
@@ -416,7 +422,7 @@ async function extractInternal(
       // gerenderten Seiten.
       // Konverter uebersprungen (born-digital, template-labelmap): document_text
       // guenstig aus dem Textlayer (~10 ms via pdftotext) statt aus Markitdown.
-      if (skipPdfConvert && project.extraction?.strategy === 'contract-structured') {
+      if (liestUeberBild) {
         documentText = ''; // wird unten aus der Transkription gefuellt
       } else if (skipPdfConvert && !ingested.text && ingested.rawMimeType === 'application/pdf') {
         try {
@@ -561,6 +567,7 @@ async function extractInternal(
       }
       documentText = result.contract.klauseln.map((k) => `[${k.id}] ${k.titelpfad.join(' › ')}\n${k.text}`).join('\n\n');
     }
+    if (result.volltext) documentText = result.volltext.seiten.map((s) => s.text).join('\n\n');
     return {
       success: true, original, snapshot: frozen,
       data,
@@ -570,6 +577,7 @@ async function extractInternal(
       pageImages: result.pageImages,
       strategyUsed: result.strategyUsed,
       ...(result.contract ? { vertrag: result.contract } : {}),
+      ...(result.volltext ? { volltext: result.volltext } : {}),
       validations,
       audit: {
         profile_hash: profileHash(project), snapshot_hash: frozen!.hash,
@@ -951,8 +959,12 @@ async function correctSegmentationInternal(snapshot: ExtractionSnapshot, origina
 }
 
 export async function extract(...args: Parameters<typeof extractInternal>): Promise<Awaited<ReturnType<typeof extractInternal>>> {
-  const { value, metrics } = await withDocumentRuntime(() => extractInternal(...args));
-  if (value.audit) value.audit = { ...value.audit, performance: metrics };
+  // Token-Messbereich um die ganze Auswertung (auch verschachtelte Pipeline-Aufrufe) → Verbrauch + Abrechnung je Dokument.
+  const { ergebnis: { value, metrics }, messung } = await mitTokenMessung(() => withDocumentRuntime(() => extractInternal(...args)));
+  if (value.audit) {
+    const seiten = value.pageImages?.length || value.segments?.reduce((max, s) => Math.max(max, s.pageTo), 0) || 1;
+    value.audit = { ...value.audit, performance: metrics, verbrauch: messung, abrechnung: abrechnungsPosten(value.strategyUsed, seiten) };
+  }
   return value;
 }
 

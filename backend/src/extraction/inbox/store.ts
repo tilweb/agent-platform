@@ -11,15 +11,19 @@
  * Routen/Frontend nutzen nur die hier exportierten Signaturen.
  */
 
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, isNull } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { extractionInboxUploads, extractionInboxParts } from '../../db/schema/extraction';
 import { putObject, getObject, deleteObject, listObjectsByPrefix } from '../../storage/s3';
 import { s3Paths } from '../../storage/paths';
 import type { PartClassification } from './classify';
+import type { AbrechnungsPosten } from '../produkte';
 
 export type InboxUploadStatus = 'processing' | 'ready' | 'failed';
-export type InboxPartStatus = 'unassigned' | 'auto_routed' | 'routed';
+/** `kein_profil`: Sicherheit unter Schwelle → automatisch an das Basisprofil „Allgemein" (manuell umleitbar). */
+export type InboxPartStatus = 'unassigned' | 'auto_routed' | 'routed' | 'kein_profil';
+export type EingangsModus = 'vorgang' | 'stapel';
+export type WebhookStatus = 'wird_zugestellt' | 'zugestellt' | 'fehlgeschlagen';
 
 export interface InboxUpload {
   id: string;
@@ -29,6 +33,13 @@ export interface InboxUpload {
   status: InboxUploadStatus;
   error: string | null;
   note: string | null;
+  modus: EingangsModus;
+  profilId: string | null;
+  quelle: 'oberflaeche' | 'api';
+  callbackUrl: string | null;
+  webhookStatus: WebhookStatus | null;
+  webhookError: string | null;
+  abrechnung: AbrechnungsPosten[] | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -96,12 +107,22 @@ function mapUpload(r: typeof extractionInboxUploads.$inferSelect): InboxUpload {
     status: r.status as InboxUploadStatus,
     error: r.error,
     note: r.note,
+    modus: (r.modus === 'vorgang' ? 'vorgang' : 'stapel') as EingangsModus,
+    profilId: r.profilId ?? null,
+    quelle: (r.quelle === 'api' ? 'api' : 'oberflaeche'),
+    callbackUrl: r.callbackUrl ?? null,
+    webhookStatus: (r.webhookStatus as WebhookStatus | null) ?? null,
+    webhookError: r.webhookError ?? null,
+    abrechnung: (r.abrechnung as AbrechnungsPosten[] | null) ?? null,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   };
 }
 
-export async function createUpload(meta: { filename: string; mimeType?: string }): Promise<InboxUpload> {
+export async function createUpload(meta: {
+  filename: string; mimeType?: string;
+  modus?: EingangsModus; profilId?: string | null; quelle?: 'oberflaeche' | 'api'; callbackUrl?: string | null;
+}): Promise<InboxUpload> {
   const db = getDb();
   const now = new Date().toISOString();
   const row = {
@@ -112,19 +133,29 @@ export async function createUpload(meta: { filename: string; mimeType?: string }
     status: 'processing' as InboxUploadStatus,
     error: null,
     note: null,
+    modus: meta.modus ?? 'vorgang',
+    profilId: meta.profilId ?? null,
+    quelle: meta.quelle ?? 'oberflaeche',
+    callbackUrl: meta.callbackUrl ?? null,
+    webhookStatus: null,
+    webhookError: null,
+    abrechnung: null,
     createdAt: now,
     updatedAt: now,
   };
-  await db.insert(extractionInboxUploads).values(row);
+  await db.insert(extractionInboxUploads).values(row as never);
   return mapUpload(row as typeof extractionInboxUploads.$inferSelect);
 }
 
 export async function updateUpload(
   id: string,
-  patch: Partial<Pick<InboxUpload, 'status' | 'error' | 'note' | 'pageCount' | 'mimeType'>>,
+  patch: Partial<Pick<InboxUpload, 'status' | 'error' | 'note' | 'pageCount' | 'mimeType' | 'webhookStatus' | 'webhookError' | 'abrechnung'>>,
 ): Promise<void> {
   const db = getDb();
   const set: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+  if (patch.webhookStatus !== undefined) set.webhookStatus = patch.webhookStatus;
+  if (patch.webhookError !== undefined) set.webhookError = patch.webhookError;
+  if (patch.abrechnung !== undefined) set.abrechnung = patch.abrechnung as never;
   if (patch.status !== undefined) set.status = patch.status;
   if (patch.error !== undefined) set.error = patch.error;
   if (patch.note !== undefined) set.note = patch.note;
@@ -198,6 +229,27 @@ export async function getUpload(id: string): Promise<InboxUploadWithParts | null
   const parts = await db.select().from(extractionInboxParts)
     .where(eq(extractionInboxParts.uploadId, id));
   return { ...mapUpload(u), parts: parts.map(mapPart).sort((a, b) => a.index - b.index) };
+}
+
+/** Teile, die in einen bestimmten Batch-Lauf geroutet wurden (Umschlag-Abschluss je Lauf). */
+export async function findPartsByRunId(runId: string): Promise<Array<{ uploadId: string; partId: string }>> {
+  const db = getDb();
+  const rows = await db.select({ uploadId: extractionInboxParts.uploadId, partId: extractionInboxParts.id })
+    .from(extractionInboxParts).where(eq(extractionInboxParts.batchRunId, runId));
+  return rows;
+}
+
+/**
+ * Umschlag-Zustellung genau einmal beanspruchen: setzt `webhook_status` nur von
+ * NULL auf `wird_zugestellt` — enden zwei Laeufe gleichzeitig, gewinnt einer.
+ */
+export async function claimUmschlagZustellung(uploadId: string): Promise<boolean> {
+  const db = getDb();
+  const res = await db.update(extractionInboxUploads)
+    .set({ webhookStatus: 'wird_zugestellt', updatedAt: new Date().toISOString() })
+    .where(and(eq(extractionInboxUploads.id, uploadId), isNull(extractionInboxUploads.webhookStatus)))
+    .returning({ id: extractionInboxUploads.id });
+  return res.length > 0;
 }
 
 // ============== PDF-Bytes (S3) ==============

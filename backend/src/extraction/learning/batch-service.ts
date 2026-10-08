@@ -150,6 +150,7 @@ export async function runBatchExtraction(
           validations: result.validations,
           segments: result.segments,
           ...(result.vertrag ? { vertrag: result.vertrag } : {}),
+          ...(result.volltext ? { volltext: result.volltext } : {}),
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -160,9 +161,12 @@ export async function runBatchExtraction(
 
     await setRunStatus(projectId, runId, 'completed');
     await notifyWebhook(projectId, runId, loaded);
+    // Lauf aus dem Posteingang/inbox.create → Umschlag je Upload abschliessen (Webhook genau einmal).
+    await import('../inbox/umschlag').then((m) => m.umschlagNachLauf(runId)).catch(() => {});
   } catch (err) {
     console.error(`[batch-extract] Lauf ${runId} abgebrochen:`, err instanceof Error ? err.message : err);
     await setRunStatus(projectId, runId, 'failed').catch(() => {});
+    await import('../inbox/umschlag').then((m) => m.umschlagNachLauf(runId)).catch(() => {});
     throw err;
   } finally {
     // Temp-Dateien aufräumen (Best-Effort).

@@ -39,10 +39,17 @@ describe('safeName', () => {
 });
 
 describe('Function-Vertraege', () => {
-  test('alle fuenf Functions sind registriert und eindeutig', () => {
+  test('alle sieben Functions sind registriert und eindeutig', () => {
     const ids = extractionPublicFunctions.map((f) => f.id);
-    expect(ids).toEqual(['projects.list', 'extract', 'batch.create', 'batch.get', 'batch.export']);
+    expect(ids).toEqual(['projects.list', 'extract', 'batch.create', 'batch.get', 'batch.export', 'inbox.create', 'inbox.get']);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test('inbox.create: Dokument Pflicht, Profil und Modus optional', () => {
+    const fn = extractionPublicFunctions.find((f) => f.id === 'inbox.create')!;
+    expect(validate({ document: { filename: 'a.pdf', content_base64: 'JVBERi0=' } }, fn.input)).toEqual([]);
+    expect(validate({ document: { filename: 'a.pdf', content_base64: 'JVBERi0=' }, project_id: 'vertrag', modus: 'vorgang' }, fn.input)).toEqual([]);
+    expect(validate({ modus: 'stapel' }, fn.input)).not.toEqual([]);
   });
 
   test('Input-Schemas akzeptieren gueltige und lehnen ungueltige Anfragen ab', () => {
@@ -79,7 +86,7 @@ describe('virtuelle App', () => {
     expect(apps[0]!.enabled).toBe(true);
     // Keine Routen -> kein toter Sidebar-Link
     expect(apps[0]!.routes).toEqual([]);
-    expect(apps[0]!.publicFunctions).toHaveLength(5);
+    expect(apps[0]!.publicFunctions).toHaveLength(7);
   });
 
   test('Scopes greifen wie bei Registry-Apps', () => {

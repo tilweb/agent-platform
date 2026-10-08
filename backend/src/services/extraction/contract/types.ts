@@ -147,3 +147,9 @@ export interface VertragsAuswertung {
   verweise: Querverweis[];
   befunde: VertragsBefund[];
 }
+
+/** Volltext eines Dokuments (Basisprofil „Allgemein"; Ersatz fuer Docling/Markitdown, auch bei Scans). */
+export interface Volltext {
+  seiten: Array<{ seite: number; rolle: SeitenRolle; text: string; fehler?: string }>;
+  gliederung: Klausel[];
+}

@@ -360,35 +360,51 @@ export async function werteAus(
 
   const felder = opts.felder ?? {};
   const erweiterungAufruf = (async () => {
-    const data: Record<string, unknown> = {};
-    const fundstellen: Record<string, string[]> = {};
-    if (!Object.keys(felder).length) return { data, fundstellen };
-    const beschreibung = Object.entries(felder).map(([id, f]) => {
-      const spalten = f.type === 'list' ? ` Spalten: ${Object.entries(f.item_fields ?? {}).map(([iid, it]) => `${iid} (${it.label}${it.description ? `: ${it.description}` : ''})`).join(', ')}` : '';
-      return `- ${id} (${f.type}): ${f.label}${f.description ? ` — ${f.description}` : ''}${spalten}`;
-    }).join('\n');
-    try {
-      aufrufe += 1;
-      const a = await rufeModell(kontext, {
-        messages: [
-          { role: 'system', content: `${ERWEITERUNG_ANWEISUNG}\n\nFelder:\n${beschreibung}${zusatz}` },
-          { role: 'user', content: `Vertrag:\n\n${vertragsText}` },
-        ] as Message[],
-        schema: erweiterungSchema(felder), name: 'profilfelder', operation: 'contract_fields', timeoutMs: 240_000, maxTokens: 8192, label: 'contract-structured Erweiterung',
-      });
-      const f = (a.json?.felder ?? null) as Record<string, Record<string, unknown>> | null;
-      if (!f) probleme.push('Erweiterung: Modellantwort nicht lesbar');
-      for (const [id, def] of Object.entries(felder)) {
-        const e = f?.[id];
-        data[id] = def.type === 'list' ? (Array.isArray(e?.zeilen) ? e!.zeilen : []) : (e?.wert ?? null);
-        fundstellen[id] = idsAus(e?.klauseln);
-      }
-    } catch (err) {
-      probleme.push(`Erweiterung: ${err instanceof Error ? err.message : String(err)}`);
-    }
-    return { data, fundstellen };
+    if (!Object.keys(felder).length) return { data: {}, fundstellen: {} };
+    aufrufe += 1;
+    const r = await werteFelderAus(kontext, vertragsText, felder, { zusatz });
+    probleme.push(...r.probleme);
+    return { data: r.data, fundstellen: r.fundstellen };
   })();
 
   const [inventarListen, erweiterung] = await Promise.all([inventarTeile, erweiterungAufruf]);
   return { katalog, verknuepfungen, auffaelligkeiten, inventar: inventarListen.flat(), erweiterung, aufrufe, probleme };
+}
+
+/**
+ * Profilfelder aus einem gegliederten Dokumenttext auslesen (ein Aufruf).
+ * Genutzt fuer die Vertrags-Erweiterung und das Basisprofil „Allgemein".
+ */
+export async function werteFelderAus(
+  kontext: ModellKontext,
+  dokumentText: string,
+  felder: Record<string, ErweiterungsFeld>,
+  opts: { zusatz?: string; anweisung?: string } = {},
+): Promise<{ data: Record<string, unknown>; fundstellen: Record<string, string[]>; probleme: string[] }> {
+  const data: Record<string, unknown> = {};
+  const fundstellen: Record<string, string[]> = {};
+  const probleme: string[] = [];
+  const beschreibung = Object.entries(felder).map(([id, f]) => {
+    const spalten = f.type === 'list' ? ` Spalten: ${Object.entries(f.item_fields ?? {}).map(([iid, it]) => `${iid} (${it.label}${it.description ? `: ${it.description}` : ''})`).join(', ')}` : '';
+    return `- ${id} (${f.type}): ${f.label}${f.description ? ` — ${f.description}` : ''}${spalten}`;
+  }).join('\n');
+  try {
+    const a = await rufeModell(kontext, {
+      messages: [
+        { role: 'system', content: `${opts.anweisung ?? ERWEITERUNG_ANWEISUNG}\n\nFelder:\n${beschreibung}${opts.zusatz ?? ''}` },
+        { role: 'user', content: `Dokument:\n\n${dokumentText}` },
+      ] as Message[],
+      schema: erweiterungSchema(felder), name: 'profilfelder', operation: 'contract_fields', timeoutMs: 240_000, maxTokens: 8192, label: 'Profilfelder',
+    });
+    const f = (a.json?.felder ?? null) as Record<string, Record<string, unknown>> | null;
+    if (!f) probleme.push('Profilfelder: Modellantwort nicht lesbar');
+    for (const [id, def] of Object.entries(felder)) {
+      const e = f?.[id];
+      data[id] = def.type === 'list' ? (Array.isArray(e?.zeilen) ? e!.zeilen : []) : (e?.wert ?? null);
+      fundstellen[id] = idsAus(e?.klauseln);
+    }
+  } catch (err) {
+    probleme.push(`Profilfelder: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return { data, fundstellen, probleme };
 }

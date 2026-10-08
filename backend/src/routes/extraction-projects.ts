@@ -1,3 +1,4 @@
+import { istBasisprofil } from '../extraction/basisprofil';
 import { enqueueBatch, cancelBatch, retryBatch } from '../extraction/learning/jobs';
 import { ruleFields } from '../extraction/learning/rule-scope';
 import { getRunSnapshot } from '../extraction/learning/batch-runs';
@@ -198,6 +199,9 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
  * DELETE /projects/:id — Delete project with all examples
  */
 extractionProjectRoutes.delete('/projects/:id', async (c) => {
+  if (istBasisprofil(c.req.param('id'))) {
+    return c.json({ error: 'Das Basisprofil „Allgemein" ist eingebaut und kann nicht gelöscht werden.' }, 400);
+  }
   const deleted = await deleteProject(c.req.param('id'));
   if (!deleted) {
     return c.json({ error: 'Profil nicht gefunden' }, 404);
