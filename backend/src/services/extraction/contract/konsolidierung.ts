@@ -56,7 +56,9 @@ export function baueAufloeser(klauseln: Klausel[]): Aufloeser {
       const sec = abschnitte.get(n);
       if (!sec) return undefined;
       if (!abs) return sec;
-      return ids.has(`${sec}.${abs}`) ? `${sec}.${abs}` : undefined;
+      if (ids.has(`${sec}.${abs}`)) return `${sec}.${abs}`;
+      // „§ 2 Abs. 1" bzw. „§2.1" in einem Vertrag mit Dezimalgliederung (2.1, 2.2 …)
+      return ids.has(`${n}.${abs}`) ? `${n}.${abs}` : undefined;
     },
     anlage: (x) => {
       const id = `Anl${x.toUpperCase()}`;

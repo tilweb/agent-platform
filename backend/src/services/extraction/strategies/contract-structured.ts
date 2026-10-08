@@ -18,6 +18,7 @@ import { baueStruktur } from '../contract/struktur';
 import { textlayerJeSeite, transkribiere, type SeitenBild } from '../contract/transkription';
 import { werteAus, type ErweiterungsFeld } from '../contract/auswertung';
 import { konsolidiere } from '../contract/konsolidierung';
+import { ergaenzeDigitaleSignaturen, findeDigitaleSignaturen } from '../contract/signatur';
 import {
   StrategyExecutionError,
   type CostEstimate, type ExtractionStrategy, type FieldProvenance, type PageImage, type ProgressEmit, type StrategyInput, type StrategyResult,
@@ -87,10 +88,12 @@ export const contractStructuredStrategy: ExtractionStrategy = {
     });
 
     // P2 Transkription
-    const seiten = await transkribiere(kontext, bilder, {
+    const gelesen = await transkribiere(kontext, bilder, {
       parallel,
       beiSeite: (fertig, gesamt) => emit({ phase: 'extracting', chunkIndex: fertig - 1, chunkTotal: gesamt, pageIndex: fertig, pageTotal: gesamt }),
     });
+    // Elektronische PDF-Signaturen stehen nicht im Seitenbild → als Marker an die Unterschriftsseite.
+    const seiten = datei.mimeType === 'application/pdf' ? ergaenzeDigitaleSignaturen(gelesen, findeDigitaleSignaturen(datei.rawBuffer)) : gelesen;
     if (seiten.every((s) => s.fehler)) {
       throw new StrategyExecutionError(`Keine Seite konnte gelesen werden (${seiten[0]?.fehler ?? 'unbekannt'}).`);
     }

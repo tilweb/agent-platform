@@ -124,7 +124,7 @@ Regeln:
 - Fundstellen ("klauseln") sind IMMER IDs aus der Liste (z. B. "§6.3", "Z7.2", "2.5.3", "Anl1", "rubrum", "unterschriften"). Keine IDs erfinden.
 - Nur angeben, was im Vertrag steht. Nichts ergänzen, nichts aus allgemeinem Recht ableiten.
 - Durchgestrichener Text (~~…~~) und nicht angekreuzte Optionen ([ ]) gelten NICHT. Angekreuzte Optionen ([x]) gelten.
-- {{hs: …}} ist handschriftlich eingetragen, {{stempel: …}} ein Stempel. {{unterschrift: …}} bedeutet: eine Unterschrift IST vorhanden (auch wenn kein Name erkennbar ist). {{keine unterschrift}} bedeutet: das Unterschriftsfeld ist leer. Hat eine Partei im Unterschriftsbereich keine {{unterschrift: …}}-Markierung, ist ihre Unterschrift nicht vorhanden.
+- {{hs: …}} ist handschriftlich eingetragen, {{stempel: …}} ein Stempel. {{unterschrift: …}} bedeutet: eine Unterschrift IST vorhanden (auch wenn kein Name erkennbar ist). {{keine unterschrift}} bedeutet: das Unterschriftsfeld ist leer. {{digitale signatur: …}} ist eine elektronische PDF-Signatur — sie zählt als Unterschrift; ordne sie der Partei zu, deren Ort/Datum im Unterschriftsbereich dazu passt. Hat eine Partei im Unterschriftsbereich keine {{unterschrift: …}}-Markierung, ist ihre Unterschrift nicht vorhanden.
 - Formularbeschriftungen wie "Ort, Datum", "Unterschrift und Firmenstempel", "Name in Druckbuchstaben" sind Beschriftungen, keine Platzhalter.
 - Datumsangaben als YYYY-MM-DD, wenn eindeutig; sonst wie im Vertrag. Beträge als Zahl ohne Währungszeichen.
 - Fristen NICHT in Kalenderdaten umrechnen — nur beschreiben (Dauer, Einheit, Richtung, Bezugspunkt, "zum …", Wortlaut).
@@ -142,6 +142,7 @@ Fülle den Katalog. Status je Element:
 Hinweise:
 - "klauseln" je Element nur die maßgeblichen Fundstellen (in der Regel 1–4), nicht alle Klauseln des Vertrags.
 - "bedingung" und "verweis" nur bei den Status "bedingt" bzw. "anlage_fehlt"/"delegiert"/"geerbt" füllen, sonst null.
+- Ist Laufzeit oder Kündigung an einen anderen Vertrag gekoppelt (z. B. „gilt für die Dauer des Wartungsvertrags", „endet mit dessen Kündigung"), ist der Status "geerbt" (verweis = welcher Vertrag), nicht "gefunden".
 - vertragsart aus dem INHALT bestimmen; weicht der Titel ab, beides nennen.
 - unterschriften: je Partei ein Eintrag; vorhanden=false, wenn das Unterschriftsfeld leer ist.
 - anlagen: alle im Vertrag genannten Anlagen/Anhänge; vorhanden=true nur, wenn die Anlage im Dokument enthalten ist (eigene Klausel "Anl…").
@@ -178,7 +179,11 @@ export interface AuswertungsErgebnis {
   probleme: string[];
 }
 
-const ZEICHEN_JE_GRUPPE = 20_000;
+/**
+ * ~7.000 Zeichen je Gruppe: die Antwort (ein Eintrag je Pflicht/Frist) muss unter dem Tokenlimit bleiben —
+ * bei 16.000 Zeichen (ganzer Betreibervertrag) lief sie ueber 8.192 Token und brach ab.
+ */
+const ZEICHEN_JE_GRUPPE = 7_000;
 
 /** Bindende Klauseln in Gruppen ≤ Budget, Abschnitte bleiben zusammen (zu grosse werden an Absaetzen geteilt). */
 export function inventarGruppen(klauseln: Klausel[], budget = ZEICHEN_JE_GRUPPE): Klausel[][] {
@@ -311,37 +316,47 @@ export async function werteAus(
   const ktx = kontextText(klauseln, katalog);
   const gruppen = inventarGruppen(klauseln);
   await opts.beiSchritt?.(`inventar:${gruppen.length}`);
-  const inventarTeile = parallelBegrenzt(gruppen, opts.parallel, async (g, i) => {
+  /** Eine Gruppe auswerten; unlesbare Antwort (meist Tokenlimit) → Gruppe halbieren und einzeln auswerten. */
+  const werteGruppeAus = async (g: Klausel[], label: string, tiefe = 0): Promise<InventarEintrag[] | null> => {
+    aufrufe += 1;
+    let eintraege: Array<Record<string, unknown>> | null = null;
     try {
-      aufrufe += 1;
       const a = await rufeModell(kontext, {
         messages: [
           { role: 'system', content: INVENTAR_ANWEISUNG + zusatz },
           { role: 'user', content: `Kontext:\n${ktx}\n\nAuszuwertende Klauseln:\n\n${klauselnAlsText(g)}` },
         ] as Message[],
-        schema: inventarSchema(), name: 'klauselinventar', operation: 'contract_inventory', timeoutMs: 240_000, maxTokens: 8192, label: `contract-structured Inventar ${i + 1}/${gruppen.length}`,
+        schema: inventarSchema(), name: 'klauselinventar', operation: 'contract_inventory', timeoutMs: 300_000, maxTokens: 12_000, label,
       });
-      const eintraege = Array.isArray(a.json?.eintraege) ? a.json!.eintraege as Array<Record<string, unknown>> : null;
-      if (!eintraege) { probleme.push(`Inventar-Gruppe ${i + 1}: Modellantwort nicht lesbar`); return []; }
-      return eintraege.filter((e) => typeof e.inhalt === 'string' && e.inhalt.trim()).map((e): InventarEintrag => {
-        const frist = bereinigeFrist(e.frist);
-        return {
-          typ: (INVENTAR_TYPEN as string[]).includes(e.typ as string) ? e.typ as InventarTyp : 'sonstiges',
-          partei: typeof e.partei === 'string' ? e.partei : '',
-          ...(typeof e.gegenueber === 'string' && e.gegenueber.trim() ? { gegenueber: e.gegenueber } : {}),
-          inhalt: String(e.inhalt),
-          modalitaet: (MODALITAETEN as string[]).includes(e.modalitaet as string) ? e.modalitaet as Modalitaet : 'muss',
-          ...(typeof e.ausloeser === 'string' && e.ausloeser.trim() ? { ausloeser: e.ausloeser } : {}),
-          ...(typeof e.bedingung === 'string' && e.bedingung.trim() ? { bedingung: e.bedingung } : {}),
-          ...(frist ? { frist } : {}),
-          klauseln: idsAus(e.klauseln),
-        };
-      });
+      eintraege = Array.isArray(a.json?.eintraege) ? a.json!.eintraege as Array<Record<string, unknown>> : null;
     } catch (err) {
-      probleme.push(`Inventar-Gruppe ${i + 1}: ${err instanceof Error ? err.message : String(err)}`);
-      return [];
+      if (g.length < 2 || tiefe >= 2) { probleme.push(`${label}: ${err instanceof Error ? err.message : String(err)}`); return null; }
     }
-  });
+    if (!eintraege) {
+      if (g.length >= 2 && tiefe < 2) {
+        const mitte = Math.ceil(g.length / 2);
+        const teile = await Promise.all([werteGruppeAus(g.slice(0, mitte), `${label}a`, tiefe + 1), werteGruppeAus(g.slice(mitte), `${label}b`, tiefe + 1)]);
+        return teile.flatMap((t) => t ?? []);
+      }
+      probleme.push(`${label}: Modellantwort nicht lesbar`);
+      return null;
+    }
+    return eintraege.filter((e) => typeof e.inhalt === 'string' && e.inhalt.trim()).map((e): InventarEintrag => {
+      const frist = bereinigeFrist(e.frist);
+      return {
+        typ: (INVENTAR_TYPEN as string[]).includes(e.typ as string) ? e.typ as InventarTyp : 'sonstiges',
+        partei: typeof e.partei === 'string' ? e.partei : '',
+        ...(typeof e.gegenueber === 'string' && e.gegenueber.trim() ? { gegenueber: e.gegenueber } : {}),
+        inhalt: String(e.inhalt),
+        modalitaet: (MODALITAETEN as string[]).includes(e.modalitaet as string) ? e.modalitaet as Modalitaet : 'muss',
+        ...(typeof e.ausloeser === 'string' && e.ausloeser.trim() ? { ausloeser: e.ausloeser } : {}),
+        ...(typeof e.bedingung === 'string' && e.bedingung.trim() ? { bedingung: e.bedingung } : {}),
+        ...(frist ? { frist } : {}),
+        klauseln: idsAus(e.klauseln),
+      };
+    });
+  };
+  const inventarTeile = parallelBegrenzt(gruppen, opts.parallel, async (g, i) => (await werteGruppeAus(g, `Inventar-Gruppe ${i + 1}/${gruppen.length}`)) ?? []);
 
   const felder = opts.felder ?? {};
   const erweiterungAufruf = (async () => {

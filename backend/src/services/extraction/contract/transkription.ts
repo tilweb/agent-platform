@@ -21,7 +21,7 @@ Regeln für "text" (Markdown, Lesereihenfolge; gedrehte Seiten richtig herum les
 - Die Nummer einer Überschrift GENAU so wie im Dokument übernehmen: "3. Stromversorgung" bleibt "## 3. Stromversorgung" (kein "§" ergänzen), "§ 6" bleibt "## § 6".
 - Nur Überschriften auszeichnen, die auf DIESER Seite stehen. Beginnt die Seite mit fortgesetztem Text eines vorherigen Abschnitts, KEINE Überschrift dafür erfinden oder wiederholen.
 - Nummerierungen von Absätzen exakt übernehmen ("1.", "(2)", "2.5.3", "a)"). Jeder nummerierte Absatz beginnt auf einer neuen Zeile. Zwischen unnummerierten Absätzen eine Leerzeile.
-- Durchgestrichenen Text (gedruckt oder von Hand) als ~~Text~~ markieren.
+- Durchgestrichenen Text als ~~Text~~ markieren — auch dünne gedruckte Durchstreichungen in Listen, Preistabellen und Optionen sowie Streichungen von Hand. Jede Zeile einzeln prüfen: Ist der Text von einer Linie durchzogen?
 - Ankreuzfelder als [x] (angekreuzt) oder [ ] (leer).
 - Handschriftliche Einträge als {{hs: Text}}.
 - Jede vorhandene Unterschrift (Handzeichen/Paraphe, digitale Signatur) als {{unterschrift: erkennbarer Name, sonst "vorhanden"}}. Ein LEERES Unterschriftsfeld (keine Unterschrift geleistet) als {{keine unterschrift}}. Stempel als {{stempel: lesbarer Text}}.

@@ -62,6 +62,13 @@ describe('baueStruktur', () => {
     expect(k.find((x) => x.id === '2.6')!.text).toBe('Baukostenzuschuss\nPremier zahlt einen Zuschuss.');
   });
 
+  test('Als Ueberschrift markierte Dezimal-Unterpunkte bleiben Unterpunkte des Paragraphen', () => {
+    const k = baueStruktur([seite(1, '## § 2 Leistungen END\n2.3. END prüft den Standort.\n## 2.4. Für jeden Hotelstandort steht Premier Inn ein Wahlrecht zu.\n## 2.5. Erfolgt keine Ausübung des Wahlrechts, baut END aus.\n2.5.1. END wählt die Ladepunkte aus.')]);
+    expect(k.map((x) => x.id)).toEqual(['§2', '2.3', '2.4', '2.5', '2.5.1']);
+    expect(k.find((x) => x.id === '2.4')!.text).toBe('Für jeden Hotelstandort steht Premier Inn ein Wahlrecht zu.');
+    expect(k.find((x) => x.id === '2.5.1')!.eltern).toBe('2.5');
+  });
+
   test('Muster/Vorlage/Datenblatt-Seiten ohne Kopf werden eigene Wurzeln mit ihrer Rolle', () => {
     const k = baueStruktur([
       seite(1, '## § 1 Gegenstand\nEND betreibt die Ladeinfrastruktur.'),

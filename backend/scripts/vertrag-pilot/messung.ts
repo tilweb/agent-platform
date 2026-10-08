@@ -26,6 +26,7 @@ import { extractionModelOverride } from '../../src/extraction/model';
 import { baueStruktur } from '../../src/services/extraction/contract/struktur';
 import { TRANSKRIPTION_SYSTEM, textlayerJeSeite, transkribiereSeite, type SeitenBild } from '../../src/services/extraction/contract/transkription';
 import { parallelBegrenzt, type ModellKontext } from '../../src/services/extraction/contract/modell';
+import { ergaenzeDigitaleSignaturen, findeDigitaleSignaturen } from '../../src/services/extraction/contract/signatur';
 import { werteAus, type ErweiterungsFeld } from '../../src/services/extraction/contract/auswertung';
 import { konsolidiere } from '../../src/services/extraction/contract/konsolidierung';
 import type { Klausel, SeitenTranskript, VertragsAuswertung } from '../../src/services/extraction/contract/types';
@@ -83,7 +84,8 @@ export async function strukturFuer(id: string, datei: string): Promise<StrukturE
     return r.t;
   });
   process.stdout.write('\n');
-  return { id, seiten: bilder.length, transkripte, klauseln: baueStruktur(transkripte), sekundenTranskription: (performance.now() - t0) / 1000, ausCache };
+  const mitSignaturen = ergaenzeDigitaleSignaturen(transkripte, findeDigitaleSignaturen(bytes));
+  return { id, seiten: bilder.length, transkripte: mitSignaturen, klauseln: baueStruktur(mitSignaturen), sekundenTranskription: (performance.now() - t0) / 1000, ausCache };
 }
 
 function strukturBericht(e: StrukturErgebnis): string {

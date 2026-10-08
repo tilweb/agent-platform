@@ -68,3 +68,20 @@ test('skelett: Platzhalter aus Schema fuer Freitext-JSON', async () => {
   expect(skelett({ type: 'object', properties: { a: { type: ['string', 'null'] }, b: { type: 'array', items: { type: 'object', properties: { s: { type: 'string', enum: ['muss', 'kann'] } } } } } }))
     .toEqual({ a: 'string|null', b: [{ s: 'muss|kann' }] });
 });
+
+test('Inventar: unlesbare Antwort einer Gruppe → Gruppe wird halbiert und einzeln ausgewertet', async () => {
+  const chat = (async (messages: Array<{ role: string; content: unknown }>) => {
+    const system = String(messages[0]!.content);
+    const user = String(messages[messages.length - 1]!.content);
+    if (system.includes('Fülle den Katalog')) return { content: '{"katalog":{}}', finish_reason: 'stop' };
+    if (!system.includes('VOLLSTÄNDIG')) return { content: '{"felder":{}}', finish_reason: 'stop' };
+    // Beide Abschnitte in einer Anfrage → abgeschnittene Antwort (wie am Tokenlimit)
+    if (user.includes('[§1]') && user.includes('[§2]')) return { content: '{"eintraege":[{"typ":"pflicht",', finish_reason: 'length' };
+    const id = user.includes('[§1]') ? '§1.1' : '§2.1';
+    return { content: JSON.stringify({ eintraege: [{ typ: 'pflicht', partei: 'END', gegenueber: null, inhalt: `Pflicht aus ${id}`, modalitaet: 'muss', ausloeser: null, bedingung: null, frist: { dauer: null, einheit: null, richtung: null, bezug: null, zum: null, wortlaut: null }, klauseln: [id] }] }), finish_reason: 'stop' };
+  }) as unknown as ChatFn;
+  const k = baueStruktur([seite(1, '## § 1 A\n1. Erste Pflicht.\n\n## § 2 B\n1. Zweite Pflicht.')]);
+  const r = await werteAus({ userId: 't', chat }, k, { parallel: 2 });
+  expect(r.inventar.map((e) => e.inhalt).sort()).toEqual(['Pflicht aus §1.1', 'Pflicht aus §2.1']);
+  expect(r.probleme).toEqual([]);
+});

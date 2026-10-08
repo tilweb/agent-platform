@@ -48,6 +48,9 @@ function ohneAuszeichnung(zeile: string): { text: string; markiert: boolean } {
 export function erkenneKopf(rohzeile: string, kontext: { rolle?: SeitenRolle; seitenstart?: boolean } = {}): Kopf | null {
   const { text, markiert } = ohneAuszeichnung(rohzeile);
   if (!text) return null;
+  // „## 2.4. Für jeden Hotelstandort …": das Modell markiert Dezimal-Unterpunkte gelegentlich als Ueberschrift —
+  // das ist ein Unterpunkt (Absatz) im laufenden Paragraphen, kein neuer Abschnitt.
+  if (/^\d+(?:\.\d+)+\.?\s/.test(text)) return null;
   const kurz = text.length <= 90 && !/[.;]$/.test(text.replace(/\s*\(.*\)$/, ''));
 
   let m = /^§\s*(\d+[a-z]?)\.?\s*(.*)$/i.exec(text);
@@ -77,7 +80,7 @@ export function erkenneKopf(rohzeile: string, kontext: { rolle?: SeitenRolle; se
 
 /** Absatz-/Unterpunkt-Nummer am Zeilenanfang. */
 function erkenneAbsatz(zeile: string): { nummer: string; dezimal: boolean; rest: string } | null {
-  const t = zeile.replace(/^\*\*/, '').trim();
+  const t = zeile.replace(/^\s*#{1,6}\s+/, '').replace(/^\*\*/, '').trim();
   let m = /^(\d+(?:\.\d+)+)\.?\s+(.*)$/.exec(t);
   if (m) return { nummer: m[1]!, dezimal: true, rest: m[2]! };
   m = /^\((\d+)\)\s*(.*)$/.exec(t);
@@ -296,7 +299,7 @@ export function baueStruktur(seiten: SeitenTranskript[]): Klausel[] {
       klauseln.push({
         id: kid, ebene, nummer: t.nummer, ...(t.implizit ? { implizit: true } : {}),
         titelpfad: [...elternLabel, eigenerTitel],
-        text: blockText(t.zeilen).replace(/^\(?\d+(?:\.\d+)*[.)]?\s+/, ''),
+        text: blockText(t.zeilen).replace(/^#{1,6}\s+/, '').replace(/^\(?\d+(?:\.\d+)*[.)]?\s+/, ''),
         seiten: seitenVon(t.zeilen, erstSeite), rolle: t.zeilen.find((z) => z.text.trim())?.rolle ?? a.rolle, eltern,
       });
     }

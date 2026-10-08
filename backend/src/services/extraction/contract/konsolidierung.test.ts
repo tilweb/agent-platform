@@ -49,6 +49,13 @@ describe('Aufloeser und Verweise', () => {
   });
 });
 
+test('normalisiereId: „§2.1" trifft Dezimal-ID 2.1', () => {
+  const a = baueAufloeser(baueStruktur([seite(1, '## § 2 Leistungen\n2.1. END baut.\n2.2. END betreibt.')]));
+  expect(normalisiereId('§2.1', a)).toBe('2.1');
+  expect(normalisiereId('§ 2 Abs. 2', a)).toBe('2.2');
+  expect(normalisiereId('Ziffer 2.2', a)).toBe('2.2');
+});
+
 test('dedupliziereInventar fasst gleiche Eintraege zusammen', () => {
   const e = { typ: 'pflicht' as const, partei: 'END', inhalt: 'Wartung jährlich durchführen.', modalitaet: 'muss' as const, klauseln: ['§3.1'] };
   expect(dedupliziereInventar([e, { ...e, inhalt: 'Wartung jährlich durchführen' }, { ...e, klauseln: ['§3.2'] }])).toHaveLength(2);

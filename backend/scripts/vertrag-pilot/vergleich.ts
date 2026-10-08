@@ -67,8 +67,10 @@ export function vergleiche(v: VertragsAuswertung, data: Record<string, unknown>,
     add('katalog', 'Kündigungsfrist', f?.dauer === e.kuendigung.dauer && f?.einheit === e.kuendigung.einheit, f);
   }
   const us = (k.unterschriften?.wert ?? []) as Array<{ partei?: string; vorhanden?: boolean }>;
+  // Schluessel mit Alternativen („Auftragnehmer|END|EMobility") — Rolle oder Name der Partei.
+  const passt = (text: string | undefined, schluessel: string) => schluessel.split('|').some((s) => (text ?? '').toLowerCase().includes(s.toLowerCase()));
   for (const [partei, soll] of Object.entries(e.unterschriften ?? {})) {
-    const u = us.find((x) => (x.partei ?? '').toLowerCase().includes(partei.toLowerCase()));
+    const u = us.find((x) => passt(x.partei, partei));
     add('unterschriften', `Unterschrift ${partei} ${soll ? 'vorhanden' : 'fehlt'}`, !!u && (u.vorhanden !== false) === soll, us);
   }
   for (const el of e.geregelt ?? []) add('status', `${el} geregelt`, !!k[el as keyof typeof k] && k[el as keyof typeof k]!.status !== 'nicht_geregelt', k[el as keyof typeof k]?.status);
