@@ -214,21 +214,22 @@ fehlende Gegenzeichnung, Widersprüche). Erweiterung um weitere Verträge je Pro
 | Wo lebt es? | **Neue DP-Strategie** (Arbeitsname `contract-structured`) samt Profiltyp „Vertrag" (Katalog + Bausteine) | Nutzt vorhandene Segmentierung (L0), Modell-Slots, Job-Warteschlange, Profilpflege und Evaluation. |
 | Vorlagen | **Liegen nicht vor** — nur ausgefüllte Exemplare (Betreibervertrag 3×, Endkundenvertrag 2 Versionen, Wartungsvertrag 2×) | Leere END-Vorlagen in allen genutzten Versionen anfragen (möglichst Word). Rekonstruktion aus Exemplaren nur als Notlösung (Gemeinsamkeiten ≠ Vorlage, Handänderungen mischen sich ein). Vorlagen sind die Referenz für „Abweichungen/Sonderfälle". |
 
-**Schnitt Fristenradar ↔ DP:** Fristen rollen mit der Zeit weiter (jährliche Verlängerung, Quartalsfenster).
-DP liefert deshalb je Frist die **strukturierte Regel** (Bezugspunkt, Dauer, Richtung, Verlängerungsschritt,
-Kalender/Werktagsdefinition, Annahmen, Fundstelle) und zur Anzeige den zum Auswertungszeitpunkt berechneten
-nächsten Termin. Das Weiterrechnen übernimmt das Fristenradar mit **derselben Rechenbibliothek** — eine Logik,
-zwei Aufrufer, damit DP-Ergebnis und Radar nie auseinanderlaufen.
+**Schnitt Fristenradar ↔ DP (entschieden):** DP liefert **nur die Fristinformation** als strukturierte Regel
+(Bezugspunkt, Dauer, Richtung, Verlängerungsschritt, Form, Annahmen-relevante Bedingungen, Fundstelle) —
+**keine Datumsberechnung**. Das Berechnen und Weiterrollen macht ausschließlich das Fristenradar.
+
+**Vorlagen (Stand 2026-10-08):** END hat noch keine echten Vorlagen, sie werden erst erstellt. Der Vorlagenabgleich
+ist damit zurückgestellt; die Strategie extrahiert zunächst vollständig.
 
 **Ergebnisvertrag der Strategie (Entwurf):** `struktur` (Klauselbaum mit IDs, Titelpfad, Seiten, Text) ·
 `gueltigkeit` (verworfene Optionen/Streichungen/Nachträge) · `katalog` (Elemente mit Wert, Status, Klausel-IDs) ·
 `erweiterung` (Profilfelder) · `inventar` (Pflichten/Rechte/Fristen) · `fristregeln` · `verknuepfungen` ·
 `befunde` · `dokumentrollen`.
 
-**Nächste Schritte (noch nicht beauftragt):**
-1. Leere Vorlagen bei END anfragen.
+**Nächste Schritte:** Umsetzung beauftragt am 2026-10-08 — Spezifikation `docs/vertragsextraktion-strategie-spec-2026-10-08.md`.
+1. ~~Leere Vorlagen bei END anfragen~~ — END erstellt sie erst.
 2. Golden Set aus den 10 Verträgen annotieren (Katalog mit Status, Erweiterung, Inventar, Fristregeln, Befunde).
-3. Rechenbibliothek für Fristregeln spezifizieren (gemeinsam für DP und Fristenradar).
+3. ~~Rechenbibliothek~~ — entfällt für DP (Berechnung nur im Fristenradar).
 4. Strategie `contract-structured` spezifizieren: Transkription → Strukturbaum → Gültigkeit → Extraktion je Klausel → Konsolidierung.
 
 ## Anhang: Durchgerechnetes Beispiel V1 (Wartungsvertrag)
