@@ -1,4 +1,15 @@
 import { istBasisprofil } from '../extraction/basisprofil';
+import { pruefeSegmentVerweise } from '../extraction/segmentation/verweise';
+
+/** Segment-Verweise auf Pipelines pruefen (Existenz, kein Selbstverweis, Ziel ohne eigene Segmente). */
+async function pruefeVerweise(profilId: string | null, segments: Parameters<typeof pruefeSegmentVerweise>[1]): Promise<string | null> {
+  const ids = [...new Set(Object.values(segments ?? {}).map((d) => d.profil).filter((x): x is string => !!x))];
+  if (!ids.length) return null;
+  const { getProject } = await import('../extraction/learning/projects');
+  const ziele = new Map<string, Awaited<ReturnType<typeof getProject>>>();
+  for (const id of ids) ziele.set(id, await getProject(id));
+  return pruefeSegmentVerweise(profilId, segments, (id) => ziele.get(id));
+}
 import { enqueueBatch, cancelBatch, retryBatch } from '../extraction/learning/jobs';
 import { ruleFields } from '../extraction/learning/rule-scope';
 import { getRunSnapshot } from '../extraction/learning/batch-runs';
@@ -106,7 +117,7 @@ extractionProjectRoutes.post('/projects', async (c) => {
     return c.json({ error: ruleError }, 400);
   }
 
-  const segmentError = validateProjectSegments(body.segments);
+  const segmentError = validateProjectSegments(body.segments) ?? await pruefeVerweise(null, body.segments);
   if (segmentError) {
     return c.json({ error: segmentError }, 400);
   }
@@ -139,7 +150,8 @@ extractionProjectRoutes.put('/projects/:id', async (c) => {
   }
 
   if (body.segments !== undefined) {
-    const segmentError = validateProjectSegments(body.segments === null ? undefined : body.segments);
+    const segmentError = validateProjectSegments(body.segments === null ? undefined : body.segments)
+      ?? await pruefeVerweise(c.req.param('id'), body.segments === null ? undefined : body.segments);
     if (segmentError) {
       return c.json({ error: segmentError }, 400);
     }

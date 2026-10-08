@@ -144,7 +144,7 @@ export async function extractWithSegments(
           fields: def.fields,
           segments: undefined,
           guidelines: project.guidelines,
-          instructions: `${project.instructions ?? ''}\nEs wird ausschließlich Abschnitt ${seg.type} (${def.label}) ausgelesen. Andere Abschnittstypen und ihre Regeln ignorieren.`,
+          instructions: `${project.instructions ?? ''}${def.hinweise ? `\n${def.hinweise}` : ''}\nEs wird ausschließlich Abschnitt ${seg.type} (${def.label}) ausgelesen. Andere Abschnittstypen und ihre Regeln ignorieren.`,
           learning: { ...project.learning, total_examples: 0 },
         },
         segmentExamples(project, seg.type, examples),

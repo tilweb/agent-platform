@@ -1,3 +1,4 @@
+import { loeseSegmentVerweiseAuf } from '../segmentation/verweise';
 import { mitTokenMessung } from '../../services/llm/token-meter';
 import { abrechnungsPosten } from '../produkte';
 import { extractionVisionDpi } from '../../services/extraction/defaults';
@@ -275,6 +276,13 @@ const resolveCatalogValues: ResolveCatalog = async (catalog) => {
 };
 
 export async function captureSnapshot(project: ExtractionProject, examples: TrainingExample[]): Promise<ExtractionSnapshot> {
+  // Segmenttypen mit Verweis auf eine Pipeline: Felder/Anweisungen jetzt einfrieren (reproduzierbarer Lauf).
+  const verwiesen = [...new Set(Object.values(project.segments ?? {}).map((d) => d.profil).filter((x): x is string => !!x))];
+  if (verwiesen.length) {
+    const ziele = new Map<string, ExtractionProject>();
+    for (const id of verwiesen) { const z = await getProject(id); if (z) ziele.set(id, z); }
+    project = loeseSegmentVerweiseAuf(project, (id) => ziele.get(id));
+  }
   const snapshot = createSnapshot(project, examples);
   const references: NonNullable<ExtractionSnapshot['references']> = {};
   const refs: Array<[string, string]> = [];

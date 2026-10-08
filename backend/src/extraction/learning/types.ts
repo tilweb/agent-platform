@@ -262,6 +262,14 @@ export interface SegmentTypeDef {
   /** Feldsatz des Segments — gleiche Form wie `project.fields`. Nur bei mode 'extract'. */
   fields?: Record<string, ProjectField>;
   /**
+   * Verweis auf eine bestehende Pipeline (Profil-ID): Felder und Anweisungen kommen aus
+   * diesem Profil statt aus `fields` — Pipelines einmal pflegen, als Bausteine kombinieren.
+   * Aufgeloest beim Einfrieren des Profils (Snapshot), damit Laeufe reproduzierbar bleiben.
+   */
+  profil?: string;
+  /** Aufgeloeste Anweisungen der verwiesenen Pipeline (nur im Snapshot gesetzt). */
+  hinweise?: string;
+  /**
    * 'extract' (Default) | 'classify-only': ein Nachweis wird erkannt und belegt
    * (Typ + Seiten + Kurzbeschreibung), aber nicht feld-extrahiert.
    */

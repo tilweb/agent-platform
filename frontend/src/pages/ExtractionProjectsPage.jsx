@@ -6,6 +6,7 @@ import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../uti
 import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon, FolderOpenIcon } from '../components/Icons';
 import ExportDropdown from '../components/ExportDropdown';
 import VertragPane from '../components/VertragPane';
+import VolltextPane from '../components/VolltextPane';
 import { useProviders } from '../hooks/useProviders';
 
 // ============== Styles ==============
@@ -426,6 +427,7 @@ const EXTRACTION_STRATEGIES = [
   { value: 'vision-per-page', label: 'Vision-per-Page — Scans, Fotos, Handschrift' },
   { value: 'template-labelmap', label: 'Template — feste Formulare (born-digital), ohne KI, sehr schnell' },
   { value: 'contract-structured', label: 'Vertrag — Klauselstruktur, Katalog, Pflichten und Fristen' },
+  { value: 'general-document', label: 'Allgemein — Volltext je Seite und Kernwerte (auch Scans)' },
 ];
 
 // ============== Main Component ==============
@@ -1225,8 +1227,10 @@ function InboxStatusBadge({ status }) {
  * und (bei sicherer Zuordnung) in die Profile routen; Rest manuell zuordnen.
  */
 function InboxView({ projects, onBack, onOpenProject }) {
-  // Trennung von Sammel-Scans; aus, wenn je Vorgang eine Datei kommt.
-  const [splitDocuments, setSplitDocuments] = useState(true);
+  // Eingangsmodus: Vorgang (Standard, eine Datei = ein Geschäftsvorfall) oder Stapel (Trennen + Zuordnen je Teil).
+  const [modus, setModus] = useState('vorgang');
+  // Optional vorgegebene Pipeline — dann keine Zuordnung und keine Trennung.
+  const [zielProfil, setZielProfil] = useState('');
   const [uploads, setUploads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dragActive, setDragActive] = useState(false);
@@ -1266,8 +1270,8 @@ function InboxView({ projects, onBack, onOpenProject }) {
     try {
       const formData = new FormData();
       for (const f of list) formData.append('files', f);
-      // Ohne Trennung wird jede Datei als EIN Dokument behandelt.
-      if (!splitDocuments) formData.append('split', 'false');
+      formData.append('modus', modus);
+      if (zielProfil) formData.append('profil_id', zielProfil);
       const res = await apiPostForm('/extraction/inbox', formData);
       if (res.ok) {
         await loadUploads();
@@ -1340,8 +1344,8 @@ function InboxView({ projects, onBack, onOpenProject }) {
           </button>
           <h1 style={styles.title}>Posteingang</h1>
           <p style={styles.subtitle}>
-            Gemischte Scans hochladen — Dokumente werden automatisch getrennt, klassifiziert und
-            bei sicherer Zuordnung direkt verarbeitet
+            Dokumente ohne vorgegebenes Profil verarbeiten — das passende Profil wird erkannt; passt keines,
+            liest das Basisprofil „Allgemein" den Volltext und die Kernwerte
           </p>
         </div>
       </div>
@@ -1373,27 +1377,32 @@ function InboxView({ projects, onBack, onOpenProject }) {
               {uploading ? 'Lade hoch…' : 'Dateien hierher ziehen oder klicken (PDF, Bilder — auch Sammel-Scans)'}
             </div>
             <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-              {splitDocuments
-                ? 'Mehrseitige PDFs werden auf Dokumentgrenzen geprüft und getrennt · max. 50 MB je Datei'
-                : 'Jede Datei gilt als EIN Dokument — keine Trennung, keine Grenzprüfung · max. 50 MB je Datei'}
+              {zielProfil
+                ? `Jede Datei wird vollständig mit „${projectName(zielProfil)}" ausgewertet · max. 50 MB je Datei`
+                : modus === 'vorgang'
+                  ? 'Jede Datei ist ein Geschäftsvorfall (z. B. Vertrag mit Anlagen) — keine Trennung, Profil wird erkannt · max. 50 MB je Datei'
+                  : 'Mehrseitige PDFs werden in unabhängige Dokumente getrennt, jedes bekommt sein Profil · max. 50 MB je Datei'}
             </div>
           </div>
 
-          {/* Wer je Vorgang eine Datei liefert (z.B. ein Scan-Roboter), will keine
-              Trennung — sie kostet je Seitenübergang einen KI-Aufruf und kann einen
-              mehrseitigen Beleg fälschlich zerschneiden. */}
-          <label
-            onClick={e => e.stopPropagation()}
-            style={{ display: 'flex', alignItems: 'center', marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary, cursor: 'pointer' }}
-          >
-            <input
-              type="checkbox"
-              style={styles.checkbox}
-              checked={splitDocuments}
-              onChange={e => setSplitDocuments(e.target.checked)}
-            />
-            Sammel-Scans an Dokumentgrenzen trennen
-          </label>
+          {/* Vorgang ist der Normalfall (Konzept DP-Produktmodell): ein Vertrag mit Anlage und Mandat darf nicht
+              in Einzeldokumente zerfallen. Stapel nur für Poststapel mit unabhängigen Dokumenten. */}
+          <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap', alignItems: 'center', marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+              Eingang
+              <select style={{ ...styles.select, minWidth: 260 }} value={modus} disabled={!!zielProfil} onChange={e => setModus(e.target.value)}>
+                <option value="vorgang">Vorgang — eine Datei ist ein Geschäftsvorfall</option>
+                <option value="stapel">Stapel — mehrere unabhängige Dokumente je Datei</option>
+              </select>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+              Profil
+              <select style={{ ...styles.select, minWidth: 220 }} value={zielProfil} onChange={e => setZielProfil(e.target.value)}>
+                <option value="">Automatisch erkennen</option>
+                {projects.filter(p => p.id !== 'allgemein').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </label>
+          </div>
           {statusMsg && (
             <div style={{ marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm, color: theme.colors.error }}>{statusMsg}</div>
           )}
@@ -1408,14 +1417,16 @@ function InboxView({ projects, onBack, onOpenProject }) {
             <div style={{ color: theme.colors.textMuted, fontSize: theme.typography.sizes.sm, lineHeight: 1.6 }}>
               Noch keine Eingänge. Lade oben Dokumente hoch.
               <br />
-              So funktioniert's: 1. Scan hochladen → 2. wird in einzelne <strong>Teil-Dokumente</strong> zerlegt →
-              3. jedes Teil-Dokument wird bei sicherer Zuordnung automatisch einem Profil zugeordnet und verarbeitet.
-              Unsichere bleiben als <strong>„zuzuordnen"</strong> stehen und wählst du selbst.
+              So funktioniert's: Im Modus <strong>Vorgang</strong> wird jede Datei als Ganzes dem passenden Profil
+              zugeordnet und ausgewertet. Im Modus <strong>Stapel</strong> wird sie zuerst in unabhängige
+              Dokumente getrennt. Passt kein Profil sicher, wertet das Basisprofil <strong>„Allgemein"</strong> aus —
+              du kannst das Dokument danach selbst einem Profil zuordnen.
             </div>
           ) : (
             uploads.map(u => {
               const open = expandedId === u.id;
               const unassigned = (u.parts || []).filter(p => p.status === 'unassigned').length;
+              const ohneProfil = (u.parts || []).filter(p => p.status === 'kein_profil').length;
               return (
                 <div key={u.id} style={{
                   border: `1px solid ${theme.colors.border}`,
@@ -1436,9 +1447,11 @@ function InboxView({ projects, onBack, onOpenProject }) {
                         {u.filename}
                       </span>
                       <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, whiteSpace: 'nowrap' }}>
-                        {u.pageCount ? `${u.pageCount} Seite(n)` : ''}
+                        {u.modus === 'stapel' ? 'Stapel' : 'Vorgang'}
+                        {u.pageCount ? ` · ${u.pageCount} Seite(n)` : ''}
                         {u.parts?.length > 1 ? ` · ${u.parts.length} Dokumente erkannt` : ''}
                         {unassigned > 0 ? ` · ${unassigned} zuzuordnen` : ''}
+                        {ohneProfil > 0 ? ` · ${ohneProfil} ohne passendes Profil` : ''}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
@@ -1496,7 +1509,12 @@ function InboxView({ projects, onBack, onOpenProject }) {
                               {classificationLine(part)}
                             </div>
                             <div style={{ marginTop: theme.spacing.sm }}>
-                              {part.status === 'unassigned' ? (
+                              {part.status === 'kein_profil' && (
+                                <button onClick={() => onOpenProject(part.targetProjectId)} style={{ ...styles.backLink, marginBottom: theme.spacing.sm }}>
+                                  Kein passendes Profil → {projectName(part.targetProjectId)} (Volltext und Kernwerte)
+                                </button>
+                              )}
+                              {part.status === 'unassigned' || part.status === 'kein_profil' ? (
                                 <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center', flexWrap: 'wrap' }}>
                                   <select
                                     style={{ ...styles.select, minWidth: 220 }}
@@ -1504,7 +1522,7 @@ function InboxView({ projects, onBack, onOpenProject }) {
                                     onChange={e => setPartTargets(prev => ({ ...prev, [part.id]: e.target.value }))}
                                   >
                                     <option value="">Profil wählen…</option>
-                                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                    {projects.filter(p => p.id !== 'allgemein').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                   </select>
                                   <button
                                     style={styles.primaryBtn}
@@ -1512,7 +1530,7 @@ function InboxView({ projects, onBack, onOpenProject }) {
                                     onClick={() => handleRoute(u.id, part, partTargets[part.id] || part.classification?.project_id)}
                                   >
                                     {routing[part.id] ? <Spinner size={14} /> : null}
-                                    Zuordnen & verarbeiten
+                                    {part.status === 'kein_profil' ? 'Umleiten & verarbeiten' : 'Zuordnen & verarbeiten'}
                                   </button>
                                 </div>
                               ) : (
@@ -3213,6 +3231,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
               )}
               <ValidationIssues issues={detail.validations} />
               {detail.vertrag && <VertragPane vertrag={detail.vertrag} onJumpToPage={(page) => setActivePage(page)} />}
+              {detail.volltext && <VolltextPane volltext={detail.volltext} onJumpToPage={(page) => setActivePage(page)} />}
 
               {segments && detail.hasOriginal && onSegments && <details style={{ marginBottom: theme.spacing.lg }}>
                 <summary>Seiten und Abschnittstypen korrigieren</summary>
@@ -4522,7 +4541,18 @@ function FieldsEditor({ fields, onChange, title = 'Felder', addLabel = '+ Feld' 
  * Editor-State: Array von { id, label, description, mode, repeatable, required, fields[] };
  * Umwandlung ins API-Objekt macht der Aufrufer per segmentsArrayToObject().
  */
-function SegmentsEditor({ segments, onChange }) {
+function SegmentsEditor({ segments, onChange, ownProjectId }) {
+  // Pipelines als Bausteine: ein Segmenttyp kann Felder und Anweisungen eines bestehenden (einfachen) Profils übernehmen.
+  const [bausteine, setBausteine] = useState([]);
+  useEffect(() => {
+    let aktiv = true;
+    apiGet('/extraction/projects').then(r => (r.ok ? r.json() : [])).then(list => {
+      if (!aktiv) return;
+      const projekte = Array.isArray(list) ? list : (list.projects || []);
+      setBausteine(projekte.filter(p => p.id !== ownProjectId && !(p.segments && Object.keys(p.segments).length)));
+    }).catch(() => {});
+    return () => { aktiv = false; };
+  }, [ownProjectId]);
   function addSegment() {
     onChange([...segments, { id: '', label: '', description: '', mode: 'extract', repeatable: false, required: false, fields: [] }]);
   }
@@ -4604,8 +4634,24 @@ function SegmentsEditor({ segments, onChange }) {
           </div>
           {seg.mode === 'extract' && (
             <div style={{ marginTop: theme.spacing.lg, paddingTop: theme.spacing.md, borderTop: `1px solid ${theme.colors.border}` }}>
-              <FieldsEditor title="Felder des Segments" fields={seg.fields} onChange={f => updateSegment(idx, { fields: f })} />
-              <RulesEditor rules={seg.rules ?? []} fields={seg.fields} onChange={rules => updateSegment(idx, { rules })} />
+              <div style={{ marginBottom: theme.spacing.md, maxWidth: 420 }}>
+                <label style={styles.label}>Felder</label>
+                <select style={{ ...styles.select, width: '100%' }} value={seg.profil || ''} onChange={e => updateSegment(idx, { profil: e.target.value || undefined })}>
+                  <option value="">Eigene Felder für dieses Segment</option>
+                  {bausteine.map(p => <option key={p.id} value={p.id}>Aus Profil übernehmen: {p.name}</option>)}
+                </select>
+              </div>
+              {seg.profil ? (
+                <div style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
+                  Felder und Anweisungen kommen aus dem Profil „{bausteine.find(p => p.id === seg.profil)?.name || seg.profil}" —
+                  Änderungen dort wirken beim nächsten Lauf auch hier.
+                </div>
+              ) : (
+                <>
+                  <FieldsEditor title="Felder des Segments" fields={seg.fields} onChange={f => updateSegment(idx, { fields: f })} />
+                  <RulesEditor rules={seg.rules ?? []} fields={seg.fields} onChange={rules => updateSegment(idx, { rules })} />
+                </>
+              )}
             </div>
           )}
         </div>
@@ -4628,7 +4674,8 @@ function segmentsArrayToObject(segments) {
       ...(s.mode === 'classify-only' ? { mode: 'classify-only' } : {}),
       ...(s.repeatable ? { repeatable: true } : {}),
       ...(s.required ? { required: true } : {}),
-      ...(s.mode !== 'classify-only' ? { fields: fieldsArrayToObject(s.fields), ...(s.rules ? { rules: s.rules } : {}) } : {}),
+      ...(s.mode !== 'classify-only' && !s.profil ? { fields: fieldsArrayToObject(s.fields), ...(s.rules ? { rules: s.rules } : {}) } : {}),
+      ...(s.mode !== 'classify-only' && s.profil ? { profil: s.profil } : { profil: undefined }),
     };
   }
   return obj;
@@ -4646,7 +4693,7 @@ function validateSegmentsClient(segments) {
     seen.add(id);
     if (!s.label.trim()) return `Segment „${id}": Bezeichnung fehlt.`;
     if (s.description.trim().length < 20) return `Segment „${id}": Beschreibung mind. 20 Zeichen (sie trägt die Seiten-Zuordnung).`;
-    if (s.mode === 'extract') {
+    if (s.mode === 'extract' && !s.profil) {
       const error = validateEditorFields(s.fields);
       if (error) return `Segment „${id}“: ${error}`;
       const badList = (s.fields || []).filter(f => f.label.trim()).find(f => f.type === 'list' && Object.keys(itemFieldsToObject(f.item_fields)).length === 0);
@@ -4878,7 +4925,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
 
       {/* Segmente (Welle 10 — Editor in der Maske) */}
       <div style={styles.section}>
-        <SegmentsEditor segments={segments} onChange={setSegments} />
+        <SegmentsEditor segments={segments} onChange={setSegments} ownProjectId={project.id} />
       </div>
 
       {/* Integration / Webhook (Welle 5) */}
