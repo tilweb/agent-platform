@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-09
+
+### Konzept: Document Processing als Produkt (Eingangsmodell, Pipelines, Abrechnung)
+`docs/konzept-dp-produktmodell-2026-10-09.md`: Vorgang als Standard-Eingang (ein Upload = ein Geschäftsvorfall,
+keine Trennung), Stapel nur ausdrücklich; Antwort als Umschlag je Upload; eingebautes Basisprofil „Allgemein" für
+Dokumente ohne passende Pipeline (Volltext über das Bild + Kernwerte + Kandidaten); Produktkatalog mit Seitenzählung
+und Preis je Seite je Produkt, Aufwandsmultiplikator nur als interner Kostenfaktor; Änderungsliste für Code und
+Entscheidungen. Anlass: Posteingang zerlegte einen 7-seitigen Vertrag in 5 Einzelauswertungen.
+
 ## 2026-10-08
 
 ### Document Processing: neue Strategie `contract-structured` (Vertragsauswertung)
