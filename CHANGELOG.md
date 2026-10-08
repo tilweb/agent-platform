@@ -2,6 +2,14 @@
 
 ## 2026-10-08
 
+### Konzept Vertragsextraktion im Document Processing (Entwurf, nicht umgesetzt)
+`docs/konzept-vertragsextraktion-2026-10-08.md`: Analyse von 10 echten Ladeinfrastruktur-Verträgen (146 Seiten,
+überwiegend Scans) und daraus ein Schichtenmodell — Dokumentrollen, seitenübergreifender Klausel-Strukturbaum,
+Gültigkeit (Kreuze, Streichungen, Nachträge), fester Katalog mit Wertstatus, im Profil gepflegte Erweiterung aus
+typisierten Bausteinen, Klausel-Inventar (Pflichten/Fristen mit Modalität und Fundstelle), deterministische
+Konsolidierung (Querverweise, Fristberechnung, Wirksamkeit, Befunde). Mit Abgleich gegen das heutige DP und
+durchgerechnetem Beispiel.
+
 ### Konzept DP-Dienst: Abgleich mit dem Code und OCR-Entscheidung festgehalten (zurückgestellt)
 `docs/konzept-document-processing-dienst-2026-09-25.md` um §14b (Ergebnis OCR-Pilot, Entscheidung: keine OCR-Vorstufe,
 wo ein OCR-Modell im DP überhaupt helfen könnte) und §15 (Abgleich mit dem Code: schmale Hauptnaht `extract` mit Snapshot,
