@@ -5,6 +5,7 @@ import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
 import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon, FolderOpenIcon } from '../components/Icons';
 import ExportDropdown from '../components/ExportDropdown';
+import VertragPane from '../components/VertragPane';
 import { useProviders } from '../hooks/useProviders';
 
 // ============== Styles ==============
@@ -424,6 +425,7 @@ const EXTRACTION_STRATEGIES = [
   { value: 'long-text-chunked', label: 'Long-Text — Chunking fuer lange Dokumente' },
   { value: 'vision-per-page', label: 'Vision-per-Page — Scans, Fotos, Handschrift' },
   { value: 'template-labelmap', label: 'Template — feste Formulare (born-digital), ohne KI, sehr schnell' },
+  { value: 'contract-structured', label: 'Vertrag — Klauselstruktur, Katalog, Pflichten und Fristen' },
 ];
 
 // ============== Main Component ==============
@@ -3210,6 +3212,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
                 </div>
               )}
               <ValidationIssues issues={detail.validations} />
+              {detail.vertrag && <VertragPane vertrag={detail.vertrag} onJumpToPage={(page) => setActivePage(page)} />}
 
               {segments && detail.hasOriginal && onSegments && <details style={{ marginBottom: theme.spacing.lg }}>
                 <summary>Seiten und Abschnittstypen korrigieren</summary>

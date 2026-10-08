@@ -10,6 +10,7 @@
  *   bun run scripts/vertrag-pilot/messung.ts --vertraege V1,V4   # Auswahl
  *   bun run scripts/vertrag-pilot/messung.ts --stufe struktur     # nur Transkription + Strukturbaum
  *   bun run scripts/vertrag-pilot/messung.ts --ohne-cache         # Transkription neu
+ *   bun run scripts/vertrag-pilot/messung.ts --nur-vergleich      # gespeicherte Ergebnisse gegen erwartet/ prüfen
  * Optionen: --ordner <pfad> (Default ~/Downloads/Vertragsbeispiele-Ehinger-END), --parallel <n> (Default 4).
  *
  * Transkriptionen werden je Seite (Bild-Hash + Prompt-Hash) unter
@@ -28,6 +29,7 @@ import { parallelBegrenzt, type ModellKontext } from '../../src/services/extract
 import { werteAus, type ErweiterungsFeld } from '../../src/services/extraction/contract/auswertung';
 import { konsolidiere } from '../../src/services/extraction/contract/konsolidierung';
 import type { Klausel, SeitenTranskript, VertragsAuswertung } from '../../src/services/extraction/contract/types';
+import { vergleiche, type Erwartung, type Pruefung } from './vergleich';
 
 const GOLDEN = join(import.meta.dir, '..', '..', '..', 'tools', 'vertrag-golden');
 const CACHE = join(GOLDEN, 'out', 'cache');
@@ -140,11 +142,36 @@ function auswertungsBericht(id: string, v: VertragsAuswertung, sek: number, aufr
   ].join('\n');
 }
 
+async function vergleichsBericht(ids: string[]) {
+  const alle: Array<Pruefung & { id: string }> = [];
+  for (const id of ids) {
+    const erw = Bun.file(join(GOLDEN, 'erwartet', `${id}.json`));
+    const erg = Bun.file(join(ERGEBNIS, `${id}-vertrag.json`));
+    if (!(await erw.exists()) || !(await erg.exists())) continue;
+    const { vertrag, erweiterung } = await erg.json() as { vertrag: VertragsAuswertung; erweiterung: { data: Record<string, unknown> } };
+    const p = vergleiche(vertrag, erweiterung.data, await erw.json() as Erwartung);
+    alle.push(...p.map((x) => ({ ...x, id })));
+    const fehler = p.filter((x) => !x.ok);
+    console.log(`${id}: ${p.length - fehler.length}/${p.length} richtig${fehler.length ? '' : ' ✓'}`);
+    for (const f of fehler) console.log(`    ✗ ${f.was}${f.ist ? ` — ist ${f.ist}` : ''}`);
+  }
+  const kategorien = [...new Set(alle.map((x) => x.kategorie))];
+  console.log('\n| Kategorie | richtig | Anteil |\n|---|---|---|');
+  for (const kat of kategorien) {
+    const xs = alle.filter((x) => x.kategorie === kat);
+    const ok = xs.filter((x) => x.ok).length;
+    console.log(`| ${kat} | ${ok}/${xs.length} | ${((ok / xs.length) * 100).toFixed(0)} % |`);
+  }
+  const ok = alle.filter((x) => x.ok).length;
+  console.log(`| **gesamt** | ${ok}/${alle.length} | ${((ok / Math.max(1, alle.length)) * 100).toFixed(0)} % |`);
+}
+
 async function main() {
   await mkdir(CACHE, { recursive: true });
   await mkdir(ERGEBNIS, { recursive: true });
   const zuordnung = await Bun.file(join(GOLDEN, 'erwartet', 'zuordnung.json')).json() as Record<string, string>;
   const ids = Object.keys(zuordnung).filter((id) => !auswahl || auswahl.includes(id));
+  if (flag('nur-vergleich')) return vergleichsBericht(ids);
   console.log(`Verträge: ${ids.join(', ')} · Modell ${kontext.modelOverride?.providerId}/${kontext.modelOverride?.modelId} · ${extractionVisionDpi()} dpi · parallel ${parallel}`);
   for (const id of ids) {
     const e = await strukturFuer(id, zuordnung[id]!);
@@ -157,6 +184,10 @@ async function main() {
     const sek = (performance.now() - t0) / 1000;
     await Bun.write(join(ERGEBNIS, `${id}-vertrag.json`), JSON.stringify({ vertrag, erweiterung, sekunden: sek, aufrufe: aw.aufrufe }, null, 2));
     console.log(auswertungsBericht(id, vertrag, sek, aw.aufrufe, erweiterung.data));
+  }
+  if (stufe !== 'struktur') {
+    console.log('\n== Vergleich mit Erwartungswerten');
+    await vergleichsBericht(ids);
   }
 }
 

@@ -12,8 +12,10 @@ Wertstatus und Fundstellen), das **Klausel-Inventar** (Pflichten, Rechte, Friste
 Auslöser) und die **Profilfelder** aus. Die Konsolidierung prüft Fundstellen, löst Querverweise auf und markiert Befunde
 (fehlende Anlage, fehlende Unterschrift, Verweis ins Leere, Platzhalter, Widersprüche). Fristen werden nur als Information
 geliefert — die Berechnung macht das Fristenradar. Ergebnis als `vertrag` in `extract()`, im Batch-Detail und in der
-öffentlichen API (`extract`, `batch.get`). Messskript `backend/scripts/vertrag-pilot/messung.ts` (Verträge und
-Erwartungswerte lokal, nicht im Repo).
+öffentlichen API (`extract`, `batch.get`). In der DP-Oberfläche ist die Strategie wählbar („Vertrag — Klauselstruktur,
+Katalog, Pflichten und Fristen"); der Prüfdialog zeigt Überblick, Pflichten & Fristen, Klauseln (mit Suche) und Befunde,
+jede Fundstelle öffnet den Wortlaut und springt zur Seite. Messskript `backend/scripts/vertrag-pilot/messung.ts` mit
+Abgleich gegen Erwartungswerte und Ende-zu-Ende-Prüfung `e2e.ts` (Verträge und Erwartungswerte lokal, nicht im Repo).
 
 ### Konzept Vertragsextraktion im Document Processing (Entwurf, nicht umgesetzt)
 `docs/konzept-vertragsextraktion-2026-10-08.md`: Analyse von 10 echten Ladeinfrastruktur-Verträgen (146 Seiten,
