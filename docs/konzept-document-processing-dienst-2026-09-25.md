@@ -1,6 +1,6 @@
 # Konzept: Document Processing als eigenständiger, skalierbarer Dienst (2026-09-25)
 
-Status: Diskussionsgrundlage für das Produktteam. Ergänzt die Übergabe
+Status: Diskussionsgrundlage für das Produktteam. **Zurückgestellt am 2026-10-08** — Stand der Prüfung gegen den Code in §15, Ergebnis des OCR-Pilots in §14b. Ergänzt die Übergabe
 `docs/document-processing-uebergabe-simon-2026-09-04.md` (dort: Einbau ins Produkt-Workplace, §7
 „Integrationsnähte") um die Variante „eigener Dienst, per API von allen Workplaces genutzt".
 
@@ -237,7 +237,7 @@ S1 lohnt sich unabhängig von der Grundsatzentscheidung und ist die natürliche 
 1. Gespräch mit dem Produktteam auf Basis dieses Papiers (S0).
 2. Bei „ja": S1 im Experiment-Repo umsetzen und auf workplace-demo messen (Worker getrennt, Web-Speicher im Leerlauf).
 3. API v1 (§7) als OpenAPI-Entwurf ausarbeiten und mit der Wohngeld-App als erstem Client prototypisch anbinden.
-4. Unabhängig davon: Lizenz von jina-ocr-v1 klären und OCR-Pilot gegen das Golden Dataset (§14).
+4. ~~Unabhängig davon: Lizenz von jina-ocr-v1 klären und OCR-Pilot gegen das Golden Dataset (§14).~~ Erledigt, Ergebnis §14b.
 
 ## 14. Erweiterung: Texterkennung mit einem OCR-Sprachmodell (z. B. jina-ocr-v1)
 
@@ -304,3 +304,60 @@ Modellaufrufe, Qualität der Belege.
 **Empfehlung:** Pilot mit den frei lizenzierten Favoriten aus 14a gegen das Golden Dataset (Scan-Variante);
 jina-ocr-v1 nur, wenn Jina eine kommerzielle Lizenz anbietet. Lohnt sich der Textweg für Scans, ist das ein großer
 Hebel für Durchsatz und Kosten des Dienstes.
+
+### 14b. Ergebnis des OCR-Pilots und Entscheidung (2026-09-27 / 2026-10-06)
+
+Pilot Stufe A (`docs/ocr-pilot-stufe-a-2026-09-27.md`): 92 Scan-Seiten aus 8 Golden-Fällen, Text gegen den Textlayer der
+digitalen Fassung. **LightOnOCR-2-1B** (Zahlen-Recall 98,3 %) und **GLM-OCR** (96,5 %) klar vorn, ohne Wiederholungsschleifen;
+DeepSeek-OCR-2 90,8 %; DeepSeek-OCR v1 und PaddleOCR-VL laufen im Ganzseiten-Modus auf jeder siebten Seite in Schleifen.
+
+**Entscheidung: keine OCR-Vorstufe, alles bleibt wie es ist.** Begründung:
+- Qwen 3.5 liest die (synthetischen) Scans bereits so gut wie digitale PDFs (Profil-Stand d: Felder 95,3 % in beiden
+  Varianten). Die restlichen Fehler sind Zuordnungs-, keine Lesefehler — eine OCR-Stufe behebt sie nicht und bringt
+  eigene Lesefehler (2–4 % Zahlen) mit.
+- Wo ein OCR-Modell im DP eine echte Lücke füllen könnte, ist offen bzw. ohne Kundenfall:
+  1. `template-labelmap` (regelbasiert, ohne LLM) auch für **gescannte Massenformulare** — braucht OCR mit Wortpositionen;
+     nur sinnvoll mit einem echten Kundenfall „gescanntes Gegenstück zu Grundsteuer".
+  2. **Lange Scans** über `long-text-chunked` statt einem Bildaufruf je Seite — Nutzen hängt am Token-Verhältnis
+     Seitenbild vs. OCR-Text bei Qwen 3.5 (nicht gemessen).
+  3. **Tesseract ersetzen** (Belege/Boxen, Zahl-nicht-gefunden-Befunde) bei Handschrift und schlechten Scans — weniger
+     Fehlalarme im Review, keine bessere Extraktion.
+- Unabhängig von OCR sinnvoll und billig: Textstrategien (`single-pass`, `long-text-chunked`) laufen auf Scans heute
+  stumm ins Leere (Markitdown-Text unbrauchbar). Automatisches Routing „kein Textlayer → `vision-per-page`/`hybrid`"
+  über das vorhandene `pdfHasTextLayer()` würde das abfangen.
+- Wieder aufnehmen, wenn **echte** schlechte Scans (Handyfotos, Faxe) vorliegen: dann zuerst den heutigen DP-Weg darauf
+  messen; nur bei deutlichem Abfall lohnt Stufe B (OCR-Text in die Extraktion).
+
+## 15. Abgleich mit dem Code (Stand 2026-10-06) und offene Fragen — zurückgestellt
+
+**Was das Konzept trägt:**
+- Die Hauptnaht der Antrags-Apps ist bereits schmal: Wohngeld ruft DP über **einen** Aufruf
+  `extract(profileId, datei, userId, snapshot)` (`apps/antragspruefung/wohngeld/dp-erkennung.ts`). Das entspricht fast
+  1:1 `POST /v1/jobs` mit Snapshot (§7). Vorlagen-Anhebung, Lernbeispiele und das Weglassen des Testbestands passieren
+  vorher in der App — das bliebe im Workplace (§8a Variante 2 passt).
+- **Neu seit dem Konzept: Grundsicherung ist ein zweiter Client** derselben Art (Profil `grundsicherung-eingang`,
+  gemeinsamer Posteingang-Kern unter `apps/antragspruefung/kern`). Das spricht für einen stabilen Vertrag — jede
+  DP-Änderung trifft jetzt zwei Fach-Apps.
+
+**Wo Konzept und Code noch nicht zusammenpassen:**
+1. **Die Apps greifen auch an DP-Interna vorbei an `extract`:** die gemeinsame Posteingang-Trennung
+   (`kern/posteingang/split.ts`: `judgeBoundaries`, `renderPdfToImages`, `buildPartPdf`), die Seitenvorschau
+   (`kern/seitenvorschau.ts` über DP-`pdf.ts`) und der Wohngeld-Altweg (`runPipeline`, `WOHNGELD_ERKENNUNG=legacy`).
+   Das Konzept muss festlegen, was Dienst-Aufruf wird und was lokales Werkzeug bleibt. Vorschlag: Seitenvorschau
+   lokal rendern (schnell, poppler ist ohnehin im Workplace), Trennung in den Dienst, Altweg entfernen.
+2. **Die Posteingang-Auswertung der Apps ist kein Job:** Sie läuft als Hintergrundaufgabe im Web-Prozess, ist nicht
+   fortsetzbar und nicht auf Worker verteilbar; nur Batch-Läufe nutzen die Job-Warteschlange (`extraction/learning/jobs.ts`).
+   Genau das war die Ursache der Speicherabstürze. S1 muss das zuerst ändern, sonst hilft ein getrennter Worker nicht.
+3. **S1 ist nicht begonnen:** `Procfile` enthält nur `web`.
+4. **Lernschleife über die Grenze:** Bestätigungen der Sachbearbeitung → Lernbeispiele im Workplace → nur im Snapshot
+   beim Dienst — konsistent. Das Segment-Review-Lernen braucht aber das Originaldokument am Lauf (Übergabe-Dok §10
+   offen); mit Löschfristen für Originale im Dienst wird das schwieriger und muss entschieden werden.
+
+**Offene Grundsatzfragen (vor jeder Umsetzung zu klären):**
+1. Was heißt „teilweise herauslösen": nur die schwere Ausführung (Schnitt aus §5) — oder mehr, z. B. zentrale
+   Profilpflege über Kunden hinweg (§8a Variante 3, Oberfläche Variante B)?
+2. Haupttreiber: Stabilität/Speicher im Workplace (dafür reicht S1), ein Dienst für mehrere Workplaces (S2/S3) oder
+   DP als eigenständiges Produkt per API ohne Workplace?
+3. Stand beim Produktteam: DP ging am 2026-09-04 als einzubauendes Modul an das Produktteam (Übergabe-Dok). Baut das
+   Produkt es gerade so ein, muss die Ausgliederung dort entschieden werden (S0) — sonst entstehen zwei Architekturen.
+

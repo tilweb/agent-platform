@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-08
+
+### Konzept DP-Dienst: Abgleich mit dem Code und OCR-Entscheidung festgehalten (zurückgestellt)
+`docs/konzept-document-processing-dienst-2026-09-25.md` um §14b (Ergebnis OCR-Pilot, Entscheidung: keine OCR-Vorstufe,
+wo ein OCR-Modell im DP überhaupt helfen könnte) und §15 (Abgleich mit dem Code: schmale Hauptnaht `extract` mit Snapshot,
+Grundsicherung als zweiter Client, Zugriffe der Apps auf DP-Interna, Posteingang-Auswertung noch kein Job, offene
+Grundsatzfragen) ergänzt. Thema ist bis auf Weiteres zurückgestellt.
+
 ## 2026-10-07
 
 ### Apps: Zugriffsprüfung in allen Kanälen (Rechte- und Sichtbarkeitslücken geschlossen)
