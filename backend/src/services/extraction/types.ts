@@ -16,6 +16,7 @@
  */
 
 import type { ExtractionProfile } from '../../extraction/types';
+import type { VertragsAuswertung } from './contract/types';
 
 // ============== Strategy-Konfiguration (aus Schema-YAML) ==============
 
@@ -24,7 +25,8 @@ export type StrategyId =
   | 'long-text-chunked'
   | 'vision-per-page'
   | 'hybrid'
-  | 'template-labelmap';
+  | 'template-labelmap'
+  | 'contract-structured';
 
 export type MergeStrategyId =
   | 'first-non-null'
@@ -218,6 +220,8 @@ export interface StrategyResult {
   strategyOriginal?: StrategyId;
   /** Optional: kompakter Trace fuer Debug-UI. */
   raw_responses?: LLMResponseLog[];
+  /** Nur `contract-structured`: Strukturbaum, Katalog, Inventar, Fristinformation, Befunde. */
+  contract?: VertragsAuswertung;
 }
 
 export interface LLMResponseLog {
@@ -287,6 +291,8 @@ export interface PipelineRunResult {
   strategyUsed: StrategyId;
   strategyOriginal?: StrategyId;
   durationMs: number;
+  /** Nur `contract-structured`. */
+  contract?: VertragsAuswertung;
 }
 
 // ============== Job-Events (Async-Job-Backend, deferred) ==============

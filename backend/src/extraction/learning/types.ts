@@ -211,7 +211,7 @@ export interface RuleIssue {
   /** Execution outcome; a missing required check cannot release a document. */
   status?: 'passed' | 'failed' | 'not_evaluated';
   rule_id: string;
-  type: ExtractionRule['type'] | 'catalog' | 'ocr' | 'processing' | 'segment';
+  type: ExtractionRule['type'] | 'catalog' | 'ocr' | 'processing' | 'segment' | 'contract';
   severity: RuleSeverity;
   /** Klartext fuer die UI (deutsch, mit den beteiligten Werten). */
   message: string;

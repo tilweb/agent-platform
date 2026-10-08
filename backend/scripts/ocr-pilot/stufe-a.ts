@@ -36,7 +36,7 @@ const ANTRAG_SEITEN = [1, 2, 5, 10];
 // ---------- CLI ----------
 const argv = process.argv.slice(2);
 const opt = (name: string) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
-const alle = (name: string) => argv.flatMap((a, i) => (a === name && argv[i + 1] ? [argv[i + 1]] : []));
+const alle = (name: string): string[] => argv.flatMap((a, i) => (a === name && argv[i + 1] ? [argv[i + 1]!] : []));
 const flag = (name: string) => argv.includes(name);
 
 const modelle = alle('--modell');
@@ -203,7 +203,7 @@ function zeile(name: string, e: Ergebnis[]): string[] {
   const ok = e.filter((x) => x.metrik);
   const s = summiere(ok.map((x) => x.metrik!));
   const zeiten = ok.map((x) => x.sekunden!).filter((x) => x != null).sort((a, b) => a - b);
-  const median = zeiten.length ? zeiten[Math.floor(zeiten.length / 2)] : 0;
+  const median = zeiten[Math.floor(zeiten.length / 2)] ?? 0;
   return [`| ${name} | ${ok.length}/${e.length} | ${pz(s.recall)} | ${pz(s.praezision)} | ${pz(s.zahlenRecall)} | ${e.filter((x) => x.schleife).length} | ${median.toFixed(1)} s |`];
 }
 

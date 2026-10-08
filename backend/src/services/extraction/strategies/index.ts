@@ -11,6 +11,7 @@ import { longTextChunkedStrategy } from './long-text-chunked';
 import { visionPerPageStrategy } from './vision-per-page';
 import { hybridStrategy } from './hybrid';
 import { templateLabelmapStrategy } from './template-labelmap';
+import { contractStructuredStrategy } from './contract-structured';
 
 const REGISTRY: Map<StrategyId, ExtractionStrategy> = new Map();
 
@@ -23,6 +24,7 @@ register(longTextChunkedStrategy);
 register(visionPerPageStrategy);
 register(hybridStrategy);
 register(templateLabelmapStrategy);
+register(contractStructuredStrategy);
 
 export function getStrategy(id: StrategyId): ExtractionStrategy | undefined {
   return REGISTRY.get(id);

@@ -1,5 +1,5 @@
 import { enqueueBatch } from './learning/jobs';
-import { getRunSnapshot } from './learning/batch-runs';
+import { getBatchRunFileDetail, getRunSnapshot } from './learning/batch-runs';
 import { isReleased } from './learning/result-validation';
 /**
  * Public-API-Functions der Dokumenten-Extraktion (Welle 5).
@@ -235,6 +235,7 @@ export const extractFunction: PublicFunction<
         review_status: computeReviewStatus(project, result.data, result.fieldConfidences, result.validations),
         validations: result.validations ?? [],
         ...(result.segments ? { segments: result.segments } : {}),
+        ...(result.vertrag ? { vertrag: result.vertrag } : {}),
         strategy: result.strategyUsed,
         document_text: result.document_text,
       };
@@ -353,15 +354,22 @@ export const batchGetFunction: PublicFunction<{ project_id: string; run_id: stri
       completed: result.run.completedCount,
       failed: result.run.failedCount,
       needs_review: result.files.filter((f) => f.reviewStatus === 'needs_review').length,
-      files: result.files.map((f) => ({
-        filename: f.filename,
-        status: f.status,
-        data: f.data,
-        field_confidences: f.fieldConfidences,
-        review_status: f.reviewStatus,
-        validations: f.validations ?? [],
-        ...(f.segments ? { segments: f.segments } : {}),
-        error: f.error,
+      files: await Promise.all(result.files.map(async (f) => {
+        // Vertragsauswertung liegt im Datei-Detail (jsonb) — nur fuer Vertragsdateien nachladen.
+        const vertrag = f.strategy === 'contract-structured'
+          ? (await getBatchRunFileDetail(input.project_id, input.run_id, f.id))?.vertrag
+          : undefined;
+        return {
+          filename: f.filename,
+          status: f.status,
+          data: f.data,
+          field_confidences: f.fieldConfidences,
+          review_status: f.reviewStatus,
+          validations: f.validations ?? [],
+          ...(f.segments ? { segments: f.segments } : {}),
+          ...(vertrag ? { vertrag } : {}),
+          error: f.error,
+        };
       })),
     };
   },

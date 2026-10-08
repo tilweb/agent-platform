@@ -374,6 +374,8 @@ async function extractInternal(
   validations?: RuleIssue[];
   /** Segment-Instanzen (Welle 10) — nur bei Profilen mit `segments`. */
   segments?: SegmentInstance[];
+  /** Vertragsauswertung — nur Strategie `contract-structured`. */
+  vertrag?: import('../../services/extraction/contract/types').VertragsAuswertung;
   error?: string;
 }> {
   try {
@@ -395,7 +397,8 @@ async function extractInternal(
     // nutzen `PreparedFile.text` (Markitdown) nicht — den ~sekundenlangen
     // Konverter-HTTP-Call daher ueberspringen und document_text unten guenstig
     // aus `pdftotext` fuellen.
-    const skipPdfConvert = project.extraction?.strategy === 'template-labelmap';
+    // Auch `contract-structured` transkribiert selbst ueber das Seitenbild.
+    const skipPdfConvert = project.extraction?.strategy === 'template-labelmap' || project.extraction?.strategy === 'contract-structured';
     console.log(`[Extraction] Ingesting document for project ${projectId}...`);
     const warmPixels = source.type === 'file' && source.filename.toLowerCase().endsWith('.pdf') && project.extraction?.strategy === 'vision-per-page'
       ? readFile(source.path).then(bytes => renderPdfToImages(bytes, { dpi: extractionVisionDpi(), maxPages: project.extraction?.max_pages ?? 500 })).catch(() => undefined) : undefined;
@@ -413,7 +416,9 @@ async function extractInternal(
       // gerenderten Seiten.
       // Konverter uebersprungen (born-digital, template-labelmap): document_text
       // guenstig aus dem Textlayer (~10 ms via pdftotext) statt aus Markitdown.
-      if (skipPdfConvert && !ingested.text && ingested.rawMimeType === 'application/pdf') {
+      if (skipPdfConvert && project.extraction?.strategy === 'contract-structured') {
+        documentText = ''; // wird unten aus der Transkription gefuellt
+      } else if (skipPdfConvert && !ingested.text && ingested.rawMimeType === 'application/pdf') {
         try {
           documentText = await pdfToLayoutText(ingested.rawBuffer);
         } catch {
@@ -548,6 +553,14 @@ async function extractInternal(
     }
 
     console.log(`[Extraction] Done for ${projectId} via ${result.strategyUsed} (${result.llmCalls} calls, ${result.warnings.length} warnings)`);
+    // Vertragsauswertung: Befunde in die Review-Triage, Transkription als Dokumenttext (Suche, Lern-Loop).
+    if (result.contract) {
+      for (const b of result.contract.befunde) {
+        if (b.typ === 'verarbeitung') continue; // schon als processingIssue/Warnung erfasst
+        validations.push({ rule_id: `vertrag-${b.typ}`, type: 'contract', severity: 'warn', message: b.text, fields: [] });
+      }
+      documentText = result.contract.klauseln.map((k) => `[${k.id}] ${k.titelpfad.join(' › ')}\n${k.text}`).join('\n\n');
+    }
     return {
       success: true, original, snapshot: frozen,
       data,
@@ -556,6 +569,7 @@ async function extractInternal(
       boxes,
       pageImages: result.pageImages,
       strategyUsed: result.strategyUsed,
+      ...(result.contract ? { vertrag: result.contract } : {}),
       validations,
       audit: {
         profile_hash: profileHash(project), snapshot_hash: frozen!.hash,

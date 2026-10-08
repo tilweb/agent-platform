@@ -2,6 +2,19 @@
 
 ## 2026-10-08
 
+### Document Processing: neue Strategie `contract-structured` (Vertragsauswertung)
+Neue DP-Strategie für Verträge (Spezifikation `docs/vertragsextraktion-strategie-spec-2026-10-08.md`): jede Seite wird
+über das Bild transkribiert (auch Scans, gedrehte Anlagen, Handschrift, Streichungen, Ankreuzfelder, Unterschriften;
+Briefbogen-Fußzeilen getrennt), daraus entsteht deterministisch ein seitenübergreifender **Klausel-Strukturbaum** mit
+stabilen IDs (§/Ziffer/Artikel/Dezimal/Anlage, implizite Absatznummern). Darauf wertet Qwen 3.5 einen festen
+**Katalog** (Parteien, Laufzeit, Kündigung, Entgelte, Haftung, Gerichtsstand, Unterschriften, Anlagen … je mit
+Wertstatus und Fundstellen), das **Klausel-Inventar** (Pflichten, Rechte, Fristen, Ausschlüsse mit Partei, Modalität,
+Auslöser) und die **Profilfelder** aus. Die Konsolidierung prüft Fundstellen, löst Querverweise auf und markiert Befunde
+(fehlende Anlage, fehlende Unterschrift, Verweis ins Leere, Platzhalter, Widersprüche). Fristen werden nur als Information
+geliefert — die Berechnung macht das Fristenradar. Ergebnis als `vertrag` in `extract()`, im Batch-Detail und in der
+öffentlichen API (`extract`, `batch.get`). Messskript `backend/scripts/vertrag-pilot/messung.ts` (Verträge und
+Erwartungswerte lokal, nicht im Repo).
+
 ### Konzept Vertragsextraktion im Document Processing (Entwurf, nicht umgesetzt)
 `docs/konzept-vertragsextraktion-2026-10-08.md`: Analyse von 10 echten Ladeinfrastruktur-Verträgen (146 Seiten,
 überwiegend Scans) und daraus ein Schichtenmodell — Dokumentrollen, seitenübergreifender Klausel-Strukturbaum,

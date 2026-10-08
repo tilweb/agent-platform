@@ -149,6 +149,7 @@ export async function runBatchExtraction(
           reviewStatus,
           validations: result.validations,
           segments: result.segments,
+          ...(result.vertrag ? { vertrag: result.vertrag } : {}),
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
