@@ -1,6 +1,6 @@
 # Konzept: Document Processing als Produkt — Eingangsmodell, Dokumenten-Pipelines, Abrechnung (2026-10-09)
 
-Status: Konzept, Grundsatzentscheidungen getroffen (§7), **nicht umgesetzt**.
+Status: Grundsatzentscheidungen getroffen (§7); **§6 Punkte 1–6 umgesetzt am 2026-10-09** (Spezifikation `docs/dp-produktmodell-umsetzung-spec-2026-10-09.md`).
 Bezug: Strategien und Funktionen im Code (Stand 2026-10-08), Vertragsextraktion
 (`docs/vertragsextraktion-messung-2026-10-08.md`), DP-Dienst-Konzept (`docs/konzept-document-processing-dienst-2026-09-25.md`).
 
@@ -118,3 +118,16 @@ Produkt Tokens auf den Golden Datasets messen (Wohngeld, Verträge, Grundsteuer)
 - EUR-Preise je Produkt (nach Tokenmessung).
 - Grundgebühr mit Inklusivseiten oder reine Nutzung; Abrechnung je Mandant/Instanz oder je Pipeline.
 - Schwelle für die Zuordnung ohne Pipeline (heute 0,8) und Verhalten knapp darunter („zu_pruefen" vs. „Allgemein").
+
+## 9. Erste Verbrauchsmessung (2026-10-09, E2E)
+
+| Fall | Produkt | Seiten | Aufrufe | Prompt-Tokens | Completion-Tokens | je Seite (Prompt / Completion) |
+|---|---|---|---|---|---|---|
+| Wartungsvertrag | Vertrag | 7 | 12 | 51.334 | 15.499 | 7.300 / 2.200 |
+| Zusatzvereinbarung | Vertrag | 2 | 6 | 18.564 | 6.044 | 9.300 / 3.000 |
+| Bieterfragen (kein Profil) | Standard (Allgemein) | 3 | 4 | 19.418 | 3.578 | 6.500 / 1.200 |
+
+Erster Befund: Vertrag liegt je Seite nur rund 1,4–1,9× über „Allgemein" (bei Completion-Tokens ×4 gewichtet), nicht
+3×. Der geschätzte Kostenfaktor 3,0 ist vermutlich zu hoch. Vor der Preisfestlegung je Produkt auf den Golden Datasets
+messen — die Messung liegt jetzt in jedem `audit.verbrauch`.
+

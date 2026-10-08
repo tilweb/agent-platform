@@ -2,6 +2,24 @@
 
 ## 2026-10-09
 
+### Document Processing: Eingangsmodell, Umschlag, Basisprofil „Allgemein", Abrechnung (Produktmodell Punkte 1–6)
+Umsetzung von `docs/konzept-dp-produktmodell-2026-10-09.md` §6 (Spezifikation `docs/dp-produktmodell-umsetzung-spec-2026-10-09.md`):
+- **Eingangsmodus** statt „Trennen"-Häkchen: **Vorgang** (Standard — eine Datei ist ein Geschäftsvorfall, keine Trennung,
+  Zuordnung über Seite 1) oder **Stapel** (Trennen + Zuordnen je Teil); optional vorgegebenes Profil. Ein 7-seitiger
+  Vertrag mit Unterschriftsseite, Anlage und SEPA-Mandat bleibt jetzt ein Dokument (vorher 5 Einzelauswertungen).
+- **Umschlag je Upload**: neue API-Funktionen `inbox.create` / `inbox.get`, Webhook `inbox.completed` genau einmal nach
+  Abschluss aller Teile; `GET /extraction/inbox/:id/umschlag`.
+- **Basisprofil „Allgemein"** (eingebaut, nicht löschbar) mit neuer Strategie `general-document`: Volltext je Seite über
+  das Bild (auch Scans) + Kernwerte (Dokumentart, Absender, Empfänger, Datum, Betreff, Referenznummern, Kurzinhalt);
+  fängt alles unter der Zuordnungsschwelle auf (Status `kein_profil`, im Posteingang umleitbar).
+- **Verbrauch und Abrechnung je Auswertung**: Token-Messung um jedes `extract()` (`audit.verbrauch`), Abrechnungsposten
+  Seiten × Produkt (`audit.abrechnung`), im Umschlag summiert und am Upload gespeichert. Migration `0049_eingang_umschlag`.
+- **Robuste Stapel-Trennung**: ein unbeantwortetes Grenzurteil bricht den Upload nicht mehr ab (Grenze ungeteilt + Hinweis).
+- **Segmenttypen mit Verweis auf eine bestehende Pipeline** (Felder/Anweisungen beim Einfrieren übernommen); im
+  Segment-Editor „Aus Profil übernehmen".
+- Oberfläche: Posteingang mit Eingang/Profil-Auswahl, Volltext-Ansicht im Prüfdialog. E2E `backend/scripts/dp-eingang/e2e.ts`
+  (3 Fälle, 32/32 Prüfungen).
+
 ### Konzept: Document Processing als Produkt (Eingangsmodell, Pipelines, Abrechnung)
 `docs/konzept-dp-produktmodell-2026-10-09.md`: Vorgang als Standard-Eingang (ein Upload = ein Geschäftsvorfall,
 keine Trennung), Stapel nur ausdrücklich; Antwort als Umschlag je Upload; eingebautes Basisprofil „Allgemein" für
