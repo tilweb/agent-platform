@@ -2,6 +2,17 @@
 
 ## 2026-10-09
 
+### DP-Qualitätssuite (Golden-Suite mit Baseline-Vergleich)
+Spezifikation `docs/dp-qualitaetssuite-spec-2026-10-09.md`. Korpus lokal außerhalb des Repos (`DP_KORPUS`, Standard
+`~/Documents/Development/AgentWork/dp-qualitaet-korpus`): je Set eingefrorenes Profil + Fälle (Original, Erwartung im
+Profilformat, Abschnitte, Vertragsprüfungen; Split dev/test, Datenschutzklasse). `backend/scripts/dp-qualitaet/lauf.ts`
+wertet über den echten `extract()`-Pfad aus und misst Felder (je Abschnitts-Instanz und Feld), kritische Felder,
+Struktur (Schnitte, Abschnitte, Typ), Vertragsprüfungen, Kalibrierung („sicher aber falsch") und Betrieb (Zeit,
+Aufrufe, Tokens je Seite); Vergleich mit Baseline inkl. Rauschband, harte Schwelle (Rückgang, gekippte kritische
+Felder, Ausfälle → Exit-Code 1) vor Kunden-Deploys, Smoke-Umfang für Demo-Pushes. `export.ts` übernimmt Testbeispiele
+aus der Prüfoberfläche (Annotation im Produkt), `import-vertraege.ts` die 10 END-Verträge; Wohngeld (60 Fälle inkl.
+Abschnittsgrenzen), Verträge (10) und Sanitätshaus-Rezepte (2) sind übernommen.
+
 ### Konzept DP-Produktmodell: Preisvorschlag (§11)
 Listenpreise je 1.000 Seiten (Formular 4 €, Text 8 €, Allgemein 8 €, Standard 15 €, Vorgang 25 €, Vertrag 50 €,
 Stapel-Trennung 10 €), Batch −30 %, Volumenstaffel, Inklusivvolumen bzw. Plattformgebühr, Einmalleistungen; mit Margen
