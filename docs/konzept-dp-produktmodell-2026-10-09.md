@@ -189,3 +189,47 @@ Fünf Preisstufen (0,1 / 0,5 / 1,0 / 1,5 / 2,0) decken den Katalog ab. Interne K
 wenn der Adacor-Tokenpreis feststeht — Tokens je Seite stehen jetzt in jedem `audit.verbrauch`
 (Vertrag ~7.300 Prompt / ~2.200 Completion je Seite).
 
+### 10a. Erweiterter Marktvergleich: Azure Document Intelligence und Mistral OCR (2026-10-09)
+
+USD je 1.000 Seiten, Standardpreise ohne Commitment-Rabatte. **Azure-Werte aus Microsoft-Q&A-Antworten** (die
+offizielle Preisseite lädt die Preise dynamisch und war automatisiert nicht lesbar) — vor Verwendung im Azure-
+Preisrechner prüfen. Unser Modellaufwand zum eigenen API-Preis Qwen 3.5 (0,21 € In / 0,85 € Out je 1 Mio. Tokens),
+ohne Compute.
+
+| Funktion | Reducto | Azure Document Intelligence | Mistral | Unser Modellaufwand (€/1.000 S.) |
+|---|---|---|---|---|
+| OCR / Volltext | Parse 10 | Read 1,50; Layout (Tabellen, Kästchen) 10 | OCR 4: 4 (Batch 2); OCR 3: 2 (Batch 1) | Allgemein 2,40 (inkl. Kernwerte, gemessen) |
+| Fertige Feldauslese (Rechnung, Ausweis …) | Extract 20 | Prebuilt 10 | Document AI 5 | Standard ~1,50 (geschätzt) |
+| Eigene Felder (eigenes Schema) | Extract 20 / Deep 40 | Custom Extraction 30 (braucht Trainingsdokumente) | Document AI 5 (JSON-Schema, ohne Training) | Standard ~1,50 (geschätzt) |
+| Klassifikation / Zuordnung | Classify 7,50 (erste 5 Seiten) | Custom Classification (Preis nicht verifiziert) | – | inklusive |
+| Stapel trennen | Split 20 / Deep 40 | über den Klassifikator | – | ~1,10 (geschätzt) |
+| Vertrag | Deep Extract 40 | Prebuilt „Contract" 10 (Parteien, Daten, Gerichtsstand — keine Pflichten) | Document AI 5 (nur Schema) | 3,40–4,50 (gemessen) |
+| Batch-Rabatt | −20 % | eigene Batch-Preise | −50 % | – |
+
+**Einordnung**
+1. **Drei Preisbänder**: Commodity-OCR 1,50–4 $ (Azure Read, Mistral OCR) · Extraktion mit Schema 5–30 $ (Mistral
+   Document AI unten, Azure Prebuilt/Custom Mitte, Reducto Extract oben) · Premium/„Deep" ~40 $ (Reducto).
+2. **Mistral setzt die Untergrenze** — OCR + eigenes JSON-Schema für 5 $ liegt nahe am Modellpreis. Unser Modellaufwand
+   für Standard/Allgemein (1,50–2,40 €) liegt im selben Band: Als reine **Bausteine** (Volltext, einfache Felder) sind
+   kaum mehr als 5–10 $ durchsetzbar.
+3. **Azure verlangt für Anpassung das Dreifache** (Prebuilt 10 → Custom 30 $) und braucht dafür Trainingsdokumente; wir
+   decken das mit Profilen und Lern-Loop ohne Training ab — Argument für uns.
+4. **Azure „Contract" ist der direkteste Vergleich zum Vertragskatalog** — aber nur Stammdaten. Pflichten, Fristen mit
+   Fundstelle, Gültigkeit und Befunde bieten weder Azure noch Mistral; preislich nah ist nur Reducto Deep (40 $).
+5. **Positionierung**: Bausteine (Volltext, Standardfelder, Trennen) müssen gegen Mistral/Azure (5–20 $) bestehen —
+   Vorteile Datensouveränität (Adacor, EU, keine Weitergabe an Dritte), deutsche Dokumente, Prüfoberfläche. Pipelines
+   mit fachlicher Substanz (Vertrag, Vorgänge wie Wohngeld) haben keinen direkten Funktions-Wettbewerber; Bezugspunkt
+   Reducto Deep (40 $) oder darüber. Marge in beiden Fällen groß (Modellaufwand 1,10–4,50 €/1.000 Seiten).
+6. **Batch-Rabatt** ist Marktstandard (Mistral −50 %, Reducto −20 %) und passt zur Warteschlange.
+
+Die Benennung der Produkte bleibt bewusst breit (kein Eingrenzen auf Branchen); konkrete Anwendungsbeispiele gehören ins
+Marketing. Die Preisbänder sind Einordnung, keine Entscheidung.
+
+**Quellen**: reducto.ai/pricing · azure.microsoft.com/en-us/pricing/details/document-intelligence/ · Microsoft-Q&A-Antworten
+zu Document-Intelligence-Preisen (learn.microsoft.com/en-us/answers/…) · mistral.ai/news/ocr-4/ · mistral.ai/news/mistral-ocr-3/ ·
+mistral.ai/pricing/api/ (abgerufen 2026-10-09).
+
+**Korrektur zu §9**: Der Vergleich „Vertrag ~1,4–1,9×" bezog sich auf „Allgemein", nicht auf „Standard". In Euro
+(Out-Tokens 4× teurer) liegt Vertrag bei ~2,3–3,0× Standard, „Allgemein" bei ~1,6× — der Kostenfaktor 3,0 für Vertrag
+ist damit plausibel.
+

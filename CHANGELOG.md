@@ -2,6 +2,11 @@
 
 ## 2026-10-09
 
+### Konzept DP-Produktmodell: Marktvergleich Azure Document Intelligence und Mistral OCR
+`docs/konzept-dp-produktmodell-2026-10-09.md` §10a: Preisbänder (Commodity-OCR 1,50–4 $, Extraktion mit Schema 5–30 $,
+Premium ~40 $ je 1.000 Seiten) gegen unseren Modellaufwand zum eigenen Qwen-3.5-API-Preis (1,10–4,50 €/1.000 Seiten);
+Positionierung Bausteine vs. Pipelines; Korrektur: Kostenfaktor Vertrag 3,0 ist plausibel (~2,3–3,0× Standard).
+
 ### Konzept DP-Produktmodell: Marktvergleich Reducto und Preisrelationen
 `docs/konzept-dp-produktmodell-2026-10-09.md` §10: Reducto-Preise (Parse 0,5 / Extract 1,0 / Deep 2,0 / Split 1,0 /
 Classify je Dokument / Batch −20 %) gegen unsere Kostenfaktoren; Vorschlag fünf Preisstufen (0,1 / 0,5 / 1,0 / 1,5 / 2,0),
