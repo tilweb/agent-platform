@@ -2,6 +2,11 @@
 
 ## 2026-10-09
 
+### Konzept DP-Produktmodell: Marktvergleich Reducto und Preisrelationen
+`docs/konzept-dp-produktmodell-2026-10-09.md` §10: Reducto-Preise (Parse 0,5 / Extract 1,0 / Deep 2,0 / Split 1,0 /
+Classify je Dokument / Batch −20 %) gegen unsere Kostenfaktoren; Vorschlag fünf Preisstufen (0,1 / 0,5 / 1,0 / 1,5 / 2,0),
+Basisprofil „Allgemein" auf 0,5, Vertrag auf 2,0; Kostenfaktor und Preisrelation getrennt halten.
+
 ### Document Processing: Eingangsmodell, Umschlag, Basisprofil „Allgemein", Abrechnung (Produktmodell Punkte 1–6)
 Umsetzung von `docs/konzept-dp-produktmodell-2026-10-09.md` §6 (Spezifikation `docs/dp-produktmodell-umsetzung-spec-2026-10-09.md`):
 - **Eingangsmodus** statt „Trennen"-Häkchen: **Vorgang** (Standard — eine Datei ist ein Geschäftsvorfall, keine Trennung,

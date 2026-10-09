@@ -115,6 +115,7 @@ Produkt Tokens auf den Golden Datasets messen (Wohngeld, Verträge, Grundsteuer)
 
 ## 8. Offen
 
+- Preisrelationen je Produkt — Vorschlag aus dem Marktvergleich in §10.
 - EUR-Preise je Produkt (nach Tokenmessung).
 - Grundgebühr mit Inklusivseiten oder reine Nutzung; Abrechnung je Mandant/Instanz oder je Pipeline.
 - Schwelle für die Zuordnung ohne Pipeline (heute 0,8) und Verhalten knapp darunter („zu_pruefen" vs. „Allgemein").
@@ -130,4 +131,61 @@ Produkt Tokens auf den Golden Datasets messen (Wohngeld, Verträge, Grundsteuer)
 Erster Befund: Vertrag liegt je Seite nur rund 1,4–1,9× über „Allgemein" (bei Completion-Tokens ×4 gewichtet), nicht
 3×. Der geschätzte Kostenfaktor 3,0 ist vermutlich zu hoch. Vor der Preisfestlegung je Produkt auf den Golden Datasets
 messen — die Messung liegt jetzt in jedem `audit.verbrauch`.
+
+## 10. Marktvergleich Reducto und vorgeschlagene Preisrelationen (2026-10-09)
+
+Quelle: öffentliche Preisseite reducto.ai/pricing (Stand 2026-10-09, Tarif „Standard", USD je 1.000 Seiten). Normiert auf
+„Extract = 1,0" (entspricht unserem „Standard").
+
+| Reducto-Leistung | $ / 1.000 S. | relativ |
+|---|---|---|
+| Parse (Text + Layout) | 10 | 0,5 |
+| Extract (Felder, Parse inklusive) | 20 | 1,0 |
+| Deep Extract | 40 | 2,0 |
+| Split (Parse inklusive) / Deep Split | 20 / 40 | 1,0 / 2,0 |
+| Classify (nur die ersten 5 Seiten zählen) | 7,50 | 0,375 je Seite, faktisch je Dokument |
+| Edit (Formulare ausfüllen) / vorbefüllt | 60 / 15 | 3,0 / 0,75 |
+| Add-ons: OCR-Daten / eigene Regionen | 2 / 5 | 0,1 / 0,25 |
+| Batch-Verarbeitung | −20 % auf Parse und Extract | |
+
+| Unser Produkt | Kostenfaktor (intern) | Reducto-Pendant | Reducto-Relation | Einordnung |
+|---|---|---|---|---|
+| Formular (digital, ohne KI) | 0,1 | – (Parse 0,5 als Untergrenze) | – | günstiger als alles bei Reducto — Alleinstellung |
+| Text (digitale PDFs) | 0,3 | Extract (keine Unterscheidung digital/Scan) | 1,0 | wir geben den Kostenvorteil weiter |
+| Standard (Scan, Bildauslese) | 1,0 | Extract | 1,0 | deckungsgleich |
+| Basisprofil „Allgemein" | 1,0 (abgerechnet) | Parse | 0,5 | wir wären doppelt so teuer |
+| Vorgang (Segmente) | 1,5 | Classify + Extract ≈ 1,4 bzw. Split + Extract = 2,0 | 1,4–2,0 | passt |
+| Vertrag | 3,0 (gemessen ~1,5–1,9) | Deep Extract | 2,0 | Schätzung zu hoch |
+| Stapel-Trennung | 1,0 | Split | 1,0 | deckungsgleich |
+| Zuordnung im Vorgangsmodus | inklusive | Classify (je Dokument) | 0,375 | wir schließen sie ein |
+
+**Erkenntnisse**
+1. Reducto bepreist **Funktionen** (Parse/Extract/Split/Classify) mit einer Aufpreis-Stufe („Deep" = ×2); wir bepreisen
+   **Pipelines** (fachliche Ergebnisse). Beides ist verständlich, solange es wenige Stufen gibt.
+2. **Kostenfaktor ≠ Preisrelation**: Reducto verlangt für Extract das Doppelte von Parse, obwohl der Rechenaufwand kaum
+   abweicht — der Preis folgt dem Nutzen. Unsere internen Faktoren bleiben Kosten; die Kundenpreise orientieren sich, wo
+   sinnvoll, am Markt.
+3. **Classify je Dokument** (erste 5 Seiten) ist ein sinnvolles Modell, falls die Zuordnung einmal berechnet werden soll.
+4. **Batch-Rabatt** (−20 % für asynchrone Verarbeitung) passt zu unserem Modell — Batch und Posteingang laufen in der
+   Warteschlange und sind lastarm planbar.
+
+**Vorgeschlagene Preisrelationen (Kundensicht, Standard = 1,0)** — Entscheidung offen:
+
+| Produkt | Preisrelation | bisher |
+|---|---|---|
+| Formular (digital) | 0,1–0,25 | 0,1 |
+| Text (digital) | 0,5 | 0,3 |
+| Basisprofil „Allgemein" | **0,5** | 1,0 |
+| Standard | 1,0 | 1,0 |
+| Vorgang (mehrteilig) | 1,5 | 1,5 |
+| Vertrag | **2,0** | 3,0 |
+| Stapel-Trennung | 1,0 | 1,0 |
+| Batch/asynchron | optional −20 % | – |
+
+Fünf Preisstufen (0,1 / 0,5 / 1,0 / 1,5 / 2,0) decken den Katalog ab. Interne Kostenfaktoren unverändert, außer
+„Vertrag": auf den gemessenen Bereich (~1,5–1,9) senken, sobald weitere Verträge gemessen sind.
+
+**Vorbehalte**: Preisseite automatisiert gelesen; Absolutpreise (Reducto Extract 0,02 $/Seite) erst vergleichbar,
+wenn der Adacor-Tokenpreis feststeht — Tokens je Seite stehen jetzt in jedem `audit.verbrauch`
+(Vertrag ~7.300 Prompt / ~2.200 Completion je Seite).
 
