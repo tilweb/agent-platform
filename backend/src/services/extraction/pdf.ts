@@ -34,27 +34,28 @@ export class PdfRenderError extends Error {
   }
 }
 
-let pdftocairoChecked = false;
-let pdftocairoAvailable = false;
+// Promise statt Flag: parallele Erstaufrufe warten auf dieselbe Pruefung, statt vor deren
+// Abschluss „nicht verfuegbar" zu lesen.
+let pdftocairoCheck: Promise<boolean> | null = null;
 
 /**
  * Einmaliger Health-Check: ist `pdftocairo` im PATH? Cached, da sich das zur
  * Laufzeit nicht aendert.
  */
 export async function isPdfRendererAvailable(): Promise<boolean> {
-  if (pdftocairoChecked) return pdftocairoAvailable;
-  pdftocairoChecked = true;
-  try {
-    const proc = spawnPdf(['pdftocairo', '-v'], {
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
-    await proc.exited;
-    pdftocairoAvailable = true;
-  } catch {
-    pdftocairoAvailable = false;
-  }
-  return pdftocairoAvailable;
+  pdftocairoCheck ??= (async () => {
+    try {
+      const proc = spawnPdf(['pdftocairo', '-v'], {
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+      await proc.exited;
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+  return pdftocairoCheck;
 }
 
 export interface PdfPageImage {

@@ -7,6 +7,13 @@ Seiten, die wegen 503/Timeout nicht gelesen wurden (Verarbeitungsfehler im Ergeb
 Falls statt als falsche Felder. Das Rauschband wird nur aus ausfallfreien Wiederholungen gebildet, und ein Set mit
 Ausfällen wird nicht als Baseline übernommen. Anlass: Bei der ersten Baseline fiel der Adacor-Endpunkt während der
 dritten Wiederholung aus, was das Vertrags-Rauschband auf 37–50 pp verfälschte.
+Als Ausfall gilt nur die Regel `verarbeitung` (Modell nicht erreichbar). `quellenpruefung` und `verarbeitung-<code>`
+bleiben inhaltliche Hinweise.
+
+### Fix: PDF-Renderer-Prüfung bei parallelen Erstaufrufen
+`isPdfRendererAvailable()` setzte das Prüf-Flag, bevor die Prüfung fertig war. Parallele erste Renders nach einem
+Neustart lasen deshalb „nicht verfügbar" und scheiterten mit „`pdftocairo` ist nicht im PATH". Jetzt warten alle
+Aufrufe auf dieselbe Prüfung (gecachtes Promise).
 
 ### DP-Qualitätssuite (Golden-Suite mit Baseline-Vergleich)
 Spezifikation `docs/dp-qualitaetssuite-spec-2026-10-09.md`. Korpus lokal außerhalb des Repos (`DP_KORPUS`, Standard

@@ -65,7 +65,9 @@ async function werteAus(set: GeladenesSet, faelle: GeladenerFall[], wdh: number)
         seiten: r.pageImages?.length || r.segments?.reduce((m, s) => Math.max(m, s.pageTo), 0) || 1,
         sekunden: (performance.now() - t0) / 1000,
         verbrauch: r.audit?.verbrauch,
-        verarbeitungsfehler: (r.validations ?? []).filter((v) => v.type === 'processing' && v.severity === 'error').map((v) => v.message),
+        // Nur 'verarbeitung' = Modell nicht erreichbar/keine Antwort (wie eval.ts); 'quellenpruefung' und
+        // 'verarbeitung-<code>' sind inhaltliche Hinweise und gehoeren zur Qualitaet.
+        verarbeitungsfehler: (r.validations ?? []).filter((v) => v.rule_id === 'verarbeitung' && v.severity === 'error').map((v) => v.message),
       };
       await Bun.write(join(zielDir, `${sicher(fall.id)}${wdh > 1 ? `.${wdh}` : ''}.json`), JSON.stringify({
         fall: fall.id, strategy: r.strategyUsed, data: r.data, fieldConfidences: r.fieldConfidences, segments: r.segments,
