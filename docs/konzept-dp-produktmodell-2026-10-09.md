@@ -115,7 +115,7 @@ Produkt Tokens auf den Golden Datasets messen (Wohngeld, Verträge, Grundsteuer)
 
 ## 8. Offen
 
-- Preisrelationen je Produkt — Vorschlag aus dem Marktvergleich in §10.
+- Preise je Produkt — Vorschlag mit Rabatten, Grundgebühr und Einmalleistungen in §11 (Grundlage §10/§10a).
 - EUR-Preise je Produkt (nach Tokenmessung).
 - Grundgebühr mit Inklusivseiten oder reine Nutzung; Abrechnung je Mandant/Instanz oder je Pipeline.
 - Schwelle für die Zuordnung ohne Pipeline (heute 0,8) und Verhalten knapp darunter („zu_pruefen" vs. „Allgemein").
@@ -232,4 +232,54 @@ mistral.ai/pricing/api/ (abgerufen 2026-10-09).
 **Korrektur zu §9**: Der Vergleich „Vertrag ~1,4–1,9×" bezog sich auf „Allgemein", nicht auf „Standard". In Euro
 (Out-Tokens 4× teurer) liegt Vertrag bei ~2,3–3,0× Standard, „Allgemein" bei ~1,6× — der Kostenfaktor 3,0 für Vertrag
 ist damit plausibel.
+
+## 11. Preisvorschlag (Vorschlag, nicht entschieden — 2026-10-09)
+
+Listenpreise in Euro netto je 1.000 Seiten, interaktive Verarbeitung. Verankert an den Marktbändern (§10/§10a), mit
+Sicherheitsabstand zum gemessenen bzw. geschätzten Modellaufwand (eigener API-Preis Qwen 3.5), fünf bis sechs Stufen.
+
+| Produkt | € / 1.000 S. | € je Seite | Marktvergleich | Modellaufwand € / 1.000 S. | Marge vor Compute |
+|---|---|---|---|---|---|
+| Formular (digital) | **4** | 0,004 | Azure Read 1,50 $ (nur Text, keine Felder) | ~0 | ~95 % |
+| Text (digitale PDFs) | **8** | 0,008 | Mistral Document AI 5 $, Azure Prebuilt 10 $ | ~0,50 (geschätzt) | ~90 % |
+| Allgemein (Volltext + Kernwerte) | **8** | 0,008 | Mistral OCR 4 $, Azure Layout / Reducto Parse 10 $ | 2,40 (gemessen) | ~70 % |
+| Standard (Scans, eigene Felder) | **15** | 0,015 | Azure Prebuilt 10 $ – Custom 30 $, Reducto 20 $ | ~1,50 (geschätzt) | ~90 % |
+| Vorgang (mehrteilig) | **25** | 0,025 | Reducto Classify + Extract ~27,50 $ | ~2,40 (geschätzt) | ~90 % |
+| Vertrag | **50** | 0,05 | Reducto Deep Extract 40 $ (ohne vergleichbare Ausgabe) | 3,40–4,50 (gemessen) | ~91 % |
+| Stapel-Trennung (Zusatz) | **10** | 0,01 | Reducto Split 20 $ | ~1,10 (geschätzt) | ~89 % |
+| Zuordnung im Vorgangsmodus | inklusive | – | Reducto Classify 7,50 $ | gering | – |
+
+Relationen zu Standard: 0,27 / 0,53 / 0,53 / 1 / 1,67 / 3,33 / 0,67.
+
+**Begründung**
+- **Bausteine** (Allgemein, Text, Standard) liegen auf oder knapp unter etablierten Angeboten — hier werden wir verglichen;
+  das Argument ist Datensouveränität (Adacor, EU, keine Weitergabe an Dritte), nicht der Preis.
+- **Vertrag** mit 50 € leicht über Reducto Deep, weil Pflichten, Fristen mit Fundstelle und Befunde mehr liefern. Je
+  Vertrag bleibt das sehr wenig (7 Seiten ≈ 0,35 €, 89 Seiten ≈ 4,45 €) — hier ist am ehesten Spielraum nach oben; mit
+  Pilotkunden testen statt festlegen.
+- **Allgemein** hat die kleinste Marge (Volltext erzeugt viel Ausgabe); 8 € deckt Compute, nicht niedriger ansetzen.
+
+**Rabatte**
+- **Batch / asynchron** (`batch.create`, `inbox.create`, Posteingang): **−30 %** (zwischen Reducto −20 % und Mistral −50 %).
+- **Volumenstaffel je Monat** (Seiten über alle Produkte): bis 100.000 Listenpreis · 100.000–1 Mio. −20 % · über 1 Mio.
+  individuell.
+
+**Grundgebühr und Einmalleistungen**
+- **Workplace-Kunden**: DP in der Workplace-Lizenz mit Inklusivvolumen, z. B. 1.000 Standard-Seiten je Monat.
+- **Reine API-Kunden**: Plattformgebühr, z. B. 49 €/Monat inkl. 2.000 Standard-Seiten (Profilpflege, Prüfoberfläche,
+  Speicherung, Schlüssel, Webhooks).
+- **Profilentwurf aus Beispieldokument**: kostenlos (1–2 Modellaufrufe; Vertriebseinstieg).
+- **Qualitätsmessung (Evaluation)**: 50 % des Seitenpreises.
+- **Profileinrichtung mit Begleitung**: Pauschale je Pipeline, z. B. 1.500–3.000 € je nach Komplexität (Vertrag und
+  mehrteilige Vorgänge oben), alternativ Tagessatz.
+
+**Zählregeln** unverändert (§5): jede Seite zählt, mindestens 1 Seite je Dokument; Leerseiten nur für Trennen/
+Klassifizieren; Wiederholungen wegen unserer Fehler kostenfrei, vom Kunden ausgelöste Neuverarbeitung zählt erneut.
+
+**Vor der Festlegung zu prüfen**
+1. Tokens je Produkt auf den Golden Datasets messen — Standard, Vorgang und Text sind noch geschätzt (Messung liegt in
+   `audit.verbrauch`, je Produkt ein Lauf genügt).
+2. Compute je Seite auf der Demo-Instanz messen (Erwartung deutlich unter 1 € je 1.000 Seiten, ungemessen).
+3. Vertragspreis mit 2–3 Pilotkunden testen (50 € als Anker, Spielraum nach oben).
+4. Marktpreise im endgültigen Preisblatt zum aktuellen Wechselkurs umrechnen (Vergleich hier grob 1 € ≈ 1 $).
 

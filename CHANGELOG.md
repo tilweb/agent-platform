@@ -2,6 +2,11 @@
 
 ## 2026-10-09
 
+### Konzept DP-Produktmodell: Preisvorschlag (§11)
+Listenpreise je 1.000 Seiten (Formular 4 €, Text 8 €, Allgemein 8 €, Standard 15 €, Vorgang 25 €, Vertrag 50 €,
+Stapel-Trennung 10 €), Batch −30 %, Volumenstaffel, Inklusivvolumen bzw. Plattformgebühr, Einmalleistungen; mit Margen
+gegen den Modellaufwand und offenen Prüfpunkten — als Vorschlag, nicht entschieden.
+
 ### Konzept DP-Produktmodell: Marktvergleich Azure Document Intelligence und Mistral OCR
 `docs/konzept-dp-produktmodell-2026-10-09.md` §10a: Preisbänder (Commodity-OCR 1,50–4 $, Extraktion mit Schema 5–30 $,
 Premium ~40 $ je 1.000 Seiten) gegen unseren Modellaufwand zum eigenen Qwen-3.5-API-Preis (1,10–4,50 €/1.000 Seiten);
