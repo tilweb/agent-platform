@@ -65,6 +65,7 @@ async function werteAus(set: GeladenesSet, faelle: GeladenerFall[], wdh: number)
         seiten: r.pageImages?.length || r.segments?.reduce((m, s) => Math.max(m, s.pageTo), 0) || 1,
         sekunden: (performance.now() - t0) / 1000,
         verbrauch: r.audit?.verbrauch,
+        verarbeitungsfehler: (r.validations ?? []).filter((v) => v.type === 'processing' && v.severity === 'error').map((v) => v.message),
       };
       await Bun.write(join(zielDir, `${sicher(fall.id)}${wdh > 1 ? `.${wdh}` : ''}.json`), JSON.stringify({
         fall: fall.id, strategy: r.strategyUsed, data: r.data, fieldConfidences: r.fieldConfidences, segments: r.segments,
@@ -99,9 +100,14 @@ async function main() {
       if (w < wiederholungen) process.stdout.write(' | ');
     }
     const { bewertungen, metriken } = laeufe[0]!;
+    // Rauschband nur aus ausfallfreien Wiederholungen — ein Endpunkt-Ausfall ist kein Modellrauschen.
+    const sauber = laeufe.filter((l) => l.metriken.ausfaelle === 0);
+    if (wiederholungen > 1 && sauber.length < laeufe.length) {
+      console.warn(`\n${id}: ${laeufe.length - sauber.length} von ${laeufe.length} Wiederholungen mit Ausfällen (${laeufe.map((l) => l.metriken.ausfaelle).join('/')}) — fürs Rauschband verworfen`);
+    }
     const basis = baseline?.sets[id];
     const urteil = beurteile(id, metriken, bewertungen, alsBaseline ? undefined : basis, set.def.schwellen);
-    ergebnisse.push({ id, name: set.def.name, metriken, bewertungen, urteil, basis: alsBaseline ? undefined : basis, ...(wiederholungen > 1 ? { rauschband: rauschbandAus(laeufe.map((l) => l.metriken)) } : {}) });
+    ergebnisse.push({ id, name: set.def.name, metriken, bewertungen, urteil, basis: alsBaseline ? undefined : basis, ...(sauber.length > 1 ? { rauschband: rauschbandAus(sauber.map((l) => l.metriken)) } : {}) });
   }
   process.stdout.write('\n\n');
 
@@ -115,7 +121,10 @@ async function main() {
   if (alsBaseline) {
     if (umfang !== 'voll' || split !== 'alle' || fallFilter) console.warn('Hinweis: Baseline aus Teilauswahl — für die Deploy-Schwelle besser „voll" über alle Fälle.');
     const neu: Baseline = { erstellt: new Date().toISOString(), lauf: laufId, commit, modell, sets: { ...(baseline?.sets ?? {}) } };
-    for (const e of ergebnisse) neu.sets[e.id] = { metriken: e.metriken, rauschband: e.rauschband ?? baseline?.sets[e.id]?.rauschband ?? {}, kritischRichtig: kritischRichtigJeFall(e.bewertungen) };
+    for (const e of ergebnisse) {
+      if (e.metriken.ausfaelle > 0) { console.warn(`${e.id}: ${e.metriken.ausfaelle} Ausfall/Ausfälle — Baseline dieses Sets NICHT übernommen (Lauf wiederholen)`); continue; }
+      neu.sets[e.id] = { metriken: e.metriken, rauschband: e.rauschband ?? baseline?.sets[e.id]?.rauschband ?? {}, kritischRichtig: kritischRichtigJeFall(e.bewertungen) };
+    }
     await Bun.write(join(KORPUS, 'baseline.json'), JSON.stringify(neu, null, 2));
     console.log(`Baseline geschrieben: ${join(KORPUS, 'baseline.json')}`);
   }

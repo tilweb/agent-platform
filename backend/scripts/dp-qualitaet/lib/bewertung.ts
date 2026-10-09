@@ -42,6 +42,8 @@ export interface FallErgebnis {
   vertrag?: VertragsAuswertung;
   seiten: number; sekunden: number;
   verbrauch?: TokenMessung;
+  /** Verarbeitungsfehler (Endpunkt/Timeout) einzelner Schritte — Infrastruktur, nicht Qualitaet. */
+  verarbeitungsfehler?: string[];
 }
 
 const TEXT: ProjectField = { type: 'text', required: false, label: '' };
@@ -112,6 +114,11 @@ export function bewerteFall(profil: ExtractionProject, fall: FallDef, e: FallErg
     promptTokens: e.verbrauch?.promptTokens ?? 0, completionTokens: e.verbrauch?.completionTokens ?? 0, ohneAngabe: e.verbrauch?.ohneAngabe ?? 0,
   };
   if (!e.success) return { id: fall.id, split: fall.split, gruppe: fall.gruppe, fehler: e.error ?? 'Auswertung fehlgeschlagen', felder: [], betrieb };
+  // Teilausfall (z. B. Seite wegen 503 nicht gelesen): als Ausfall werten, sonst erscheint ein
+  // Infrastrukturproblem als Qualitaetsrueckgang und verzerrt Baseline und Rauschband.
+  if (e.verarbeitungsfehler?.length) {
+    return { id: fall.id, split: fall.split, gruppe: fall.gruppe, fehler: `Teilausfall (${e.verarbeitungsfehler.length}×): ${e.verarbeitungsfehler[0]!.slice(0, 120)}`, felder: [], betrieb };
+  }
   const { felder, zusaetzlicheInstanzen } = fall.erwartet.daten
     ? bewerteFelder(profil, fall.erwartet.daten, e.data, e.fieldConfidences ?? {}, opts)
     : { felder: [], zusaetzlicheInstanzen: 0 };

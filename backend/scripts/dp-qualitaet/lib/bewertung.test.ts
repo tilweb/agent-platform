@@ -72,6 +72,11 @@ test('aggregiere + beurteile: Rueckgang, gekipptes kritisches Feld, Ausfall, Kos
 
   const ausfall = [fall('a', 10), bewerteFall(flach, { id: 'b', split: 'test', erwartet: {} }, { success: false, error: 'Timeout', data: {}, seiten: 1, sekunden: 1 }, { kritische: [], sicherAb: 0.8 })];
   expect(beurteile('rechnung', aggregiere(ausfall), ausfall, basis).harte[0]).toContain('Ausfall');
+
+  const teil = bewerteFall(flach, { id: 'c', split: 'test', erwartet: { daten: { nummer: 'R' } } },
+    { success: true, data: {}, seiten: 4, sekunden: 1, verarbeitungsfehler: ['Seite 3: nicht lesbar (503)'] }, { kritische: [], sicherAb: 0.8 });
+  expect(teil.fehler).toContain('Teilausfall (1×)');
+  expect(aggregiere([teil]).ausfaelle).toBe(1);
   expect(beurteile('neu', aggregiere(basisFaelle), basisFaelle, undefined).warnungen[0]).toContain('keine Baseline');
 });
 

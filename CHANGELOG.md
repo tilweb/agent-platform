@@ -2,6 +2,12 @@
 
 ## 2026-10-09
 
+### DP-Qualitätssuite: Endpunkt-Ausfälle sauber von Qualität trennen
+Seiten, die wegen 503/Timeout nicht gelesen wurden (Verarbeitungsfehler im Ergebnis), zählen jetzt als Teilausfall des
+Falls statt als falsche Felder. Das Rauschband wird nur aus ausfallfreien Wiederholungen gebildet, und ein Set mit
+Ausfällen wird nicht als Baseline übernommen. Anlass: Bei der ersten Baseline fiel der Adacor-Endpunkt während der
+dritten Wiederholung aus, was das Vertrags-Rauschband auf 37–50 pp verfälschte.
+
 ### DP-Qualitätssuite (Golden-Suite mit Baseline-Vergleich)
 Spezifikation `docs/dp-qualitaetssuite-spec-2026-10-09.md`. Korpus lokal außerhalb des Repos (`DP_KORPUS`, Standard
 `~/Documents/Development/AgentWork/dp-qualitaet-korpus`): je Set eingefrorenes Profil + Fälle (Original, Erwartung im
