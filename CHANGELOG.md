@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-10
+
+### Fix: DP-Warteschlange führte Modellaufrufe im fremden Kontext aus (Token-Abrechnung, Job-Fencing)
+`WorkQueue` (`services/extraction/runtime.ts`) startete wartende Jobs aus dem `finally` des vorigen Jobs. Ein Aufruf lief
+damit im Async-Kontext der Extraktion, die gerade fertig wurde. Folgen bei parallelen Extraktionen: Tokens wurden der
+falschen Extraktion zugebucht (`audit.verbrauch`, Grundlage der Abrechnung; im Vertragsset hatten einzelne Verträge
+0 Aufrufe, andere doppelt so viele), und `fencedWrite` prüfte die `runId` eines fremden Jobs. Jobs laufen jetzt im
+Kontext ihres Einreichers (`AsyncResource.bind`). Token- und Abrechnungswerte aus parallelen Läufen vor diesem Fix sind
+zu niedrig: Aufrufe, die im Kontext einer schon beendeten Extraktion liefen, fielen ganz aus der Messung. Im Vertragsset
+wurden statt rund 10,7k nur 2,9k Tokens je Seite gemessen.
+
+### DP-Qualitätssuite: Dokumentation
+- DP-Qualitätssuite: README im Skriptordner (`backend/scripts/dp-qualitaet/README.md`). Die Korpus-README beschreibt
+  jetzt auch Bericht, Schwelle und Umgang mit Ausfällen.
+
 ## 2026-10-09
 
 ### DP-Qualitätssuite: Endpunkt-Ausfälle sauber von Qualität trennen

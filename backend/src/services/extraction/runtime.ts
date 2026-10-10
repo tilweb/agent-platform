@@ -1,7 +1,7 @@
 import { providerMetrics, type ProviderMetrics } from './telemetry';
 import { jobContext, fencedWrite } from '../../extraction/learning/job-context';
 import { withModelSlot } from './model-slots';
-import { AsyncLocalStorage } from 'node:async_hooks';
+import { AsyncLocalStorage, AsyncResource } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
 import { llmService } from '../llm';
 import { extractionModelOverride } from '../../extraction/model';
@@ -20,6 +20,9 @@ export class WorkQueue {
   private pending: Array<{ priority: number; at: number; start: () => void }> = [];
   constructor(readonly limit: number) { if (!Number.isInteger(limit) || limit < 1) throw new Error('Invalid queue limit'); }
   run<T>(fn: () => Promise<T>, priority: WorkPriority = 'interactive'): Promise<T> {
+    // Im Kontext des Einreichers ausfuehren: gestartet wird aus pump() — oft im finally des VORIGEN Jobs.
+    // Ungebunden liefen Token-Messung (Abrechnung) und jobContext (fencedWrite) im fremden Kontext.
+    fn = AsyncResource.bind(fn);
     return new Promise<T>((resolve, reject) => {
       this.pending.push({ priority: { interactive: 0, batch: 1, evaluation: 2 }[priority], at: Date.now(), start: () => {
         this.active++;

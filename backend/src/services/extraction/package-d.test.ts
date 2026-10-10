@@ -1,6 +1,7 @@
 import { test, expect, spyOn } from 'bun:test';
 import { WorkQueue, prepared, withDocumentRuntime, positiveLimit } from './runtime';
 import { withTimeoutRetry } from './extract-call';
+import { AsyncLocalStorage } from 'node:async_hooks';
 const pause=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 
 test('shared queue bounds concurrency across independent document producers and recovers after errors', async()=> {
@@ -10,6 +11,15 @@ test('shared queue bounds concurrency across independent document producers and 
     if(i===3) throw new Error('provider failed'); return i;
   })));
   expect(peak).toBe(2); expect(finished).toBe(20); expect(results.filter(r=>r.status==='rejected')).toHaveLength(1);
+});
+test('queued work runs in the async context of its submitter, not of the job that frees the slot', async()=>{
+  const queue=new WorkQueue(1), store=new AsyncLocalStorage<string>(), seen:string[]=[];
+  let release!:()=>void;
+  const first=store.run('A',()=>queue.run(()=>new Promise<void>(resolve=>{release=resolve;})));
+  await pause(0);
+  const second=store.run('B',()=>queue.run(async()=>{seen.push(store.getStore() ?? '-');}));
+  release(); await Promise.all([first,second]);
+  expect(seen).toEqual(['B']);
 });
 test('interactive work takes the next available slot ahead of pending evaluation',async()=>{
   const queue=new WorkQueue(1),order:string[]=[];
