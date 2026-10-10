@@ -87,8 +87,8 @@ export const contractStructuredStrategy: ExtractionStrategy = {
     const parallel = Math.max(1, input.schema.config.max_concurrent);
 
     // P1 Seiten, P2 Transkription (+ digitale Signaturen), P3 Strukturbaum — gemeinsamer Lesekern
-    const { bilder, pageImages, seiten, klauseln } = await leseDokument(kontext, { rawBuffer: datei.rawBuffer, mimeType: datei.mimeType }, {
-      maxSeiten: input.schema.config.max_pages, parallel, emit,
+    const { bilder, pageImages, seiten, klauseln, pruefAufrufe } = await leseDokument(kontext, { rawBuffer: datei.rawBuffer, mimeType: datei.mimeType }, {
+      maxSeiten: input.schema.config.max_pages, parallel, emit, unterschriftenPruefen: true,
     });
     if (seiten.every((s) => s.fehler)) {
       throw new StrategyExecutionError(`Keine Seite konnte gelesen werden (${seiten[0]?.fehler ?? 'unbekannt'}).`);
@@ -117,7 +117,7 @@ export const contractStructuredStrategy: ExtractionStrategy = {
         ...lesefehler.map((s) => ({ severity: 'error' as const, message: `Seite ${s.seite}: nicht lesbar (${s.fehler}) — Inhalte dieser Seite fehlen.` })),
         ...aw.probleme.map((p) => ({ severity: 'error' as const, message: `Vertragsauswertung unvollständig — ${p}` })),
       ],
-      llmCalls: bilder.length + aw.aufrufe,
+      llmCalls: bilder.length + pruefAufrufe + aw.aufrufe,
       strategyUsed: 'contract-structured',
       contract: vertrag,
     };

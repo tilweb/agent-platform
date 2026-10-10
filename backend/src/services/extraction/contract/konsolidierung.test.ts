@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { baueStruktur } from './struktur';
-import { baueAufloeser, dedupliziereInventar, findeGueltigkeit, findePlatzhalter, findeVerweise, konsolidiere, normalisiereId } from './konsolidierung';
+import { baueAufloeser, dedupliziereInventar, gleicheUnterschriftenAb, unterzeichnungBeilagen, beilagenZuordnung, unterschriftsMarken, findeGueltigkeit, findePlatzhalter, findeVerweise, konsolidiere, normalisiereId } from './konsolidierung';
 import type { AuswertungsErgebnis } from './auswertung';
 import type { SeitenTranskript } from './types';
 
@@ -63,6 +63,54 @@ test('Unterschriften-Plausibilitaet: mehr Parteien unterschrieben als Markierung
   expect(vertrag.befunde.find((b) => b.typ === 'unterschrift_fehlt')!.text).toContain('2 Partei(en) als unterschrieben erkannt, im Dokument aber nur 1');
   const a = baueAufloeser(baueStruktur([seite(1, '## § 8 Entgelt\n8.2 Vergütung\n8.2.1 Pauschale.')]));
   expect(normalisiereId('§8.2.1', a)).toBe('8.2.1');
+});
+
+test('Unterschriften: parteigebundene Markierung korrigiert Spaltenverwechslung, Widerspruch bleibt unangetastet', () => {
+  const k = baueStruktur([seite(1, '## § 1 Gegenstand\nText.'), seite(2, 'Ort, Datum\n{{keine unterschrift | Kunde}}\n{{unterschrift: s. Ibrahim | EMobility Netzwerk Deutschland GmbH}}\nKunde EMobility Netzwerk Deutschland GmbH', 'unterschriften')]);
+  expect(unterschriftsMarken(k.map((x) => x.text).join('\n'))).toEqual([{ partei: 'Kunde', vorhanden: false }, { partei: 'EMobility Netzwerk Deutschland GmbH', vorhanden: true }]);
+  const aw = { katalog: { unterschriften: { status: 'gefunden', wert: [{ partei: 'Kunde', vorhanden: true }, { partei: 'EMobility Netzwerk Deutschland GmbH', vorhanden: true }], klauseln: ['unterschriften'] } }, verknuepfungen: [], auffaelligkeiten: [], inventar: [], erweiterung: { data: {}, fundstellen: {} }, aufrufe: 1, probleme: [] } as unknown as AuswertungsErgebnis;
+  const { vertrag } = konsolidiere([], k, aw);
+  expect((vertrag.katalog.unterschriften!.wert as Array<{ vorhanden: boolean }>).map((u) => u.vorhanden)).toEqual([false, true]);
+  expect(vertrag.befunde.some((b) => b.text === 'Unterschrift fehlt: Kunde.')).toBe(true);
+
+  const gemischt = [{ partei: 'Premier Inn GmbH und Premier Inn Hotel GmbH', vorhanden: true }];
+  const kl = baueStruktur([seite(1, '{{unterschrift: A. Müller | Premier Inn GmbH und Premier Inn Hotel GmbH}}', 'unterschriften'), seite(2, '{{keine unterschrift | Premier Inn Hotel GmbH}}', 'unterschriften')]);
+  expect(gleicheUnterschriftenAb(gemischt, kl)).toBe(0);
+  expect(gemischt[0]!.vorhanden).toBe(true);
+});
+
+test('Beilagen: leerer Unterschriftsbereich eines beigefuegten Vertrags → eigener Befund, keine Partei des Hauptvertrags', () => {
+  const s = (n: number, text: string, rolle: SeitenTranskript['rolle']) => ({ seite: n, rolle, text, fusszeile: '' }) as SeitenTranskript;
+  const seiten = [
+    s(1, '## § 1 Gegenstand\nText.', 'vertragstext'),
+    s(2, '{{unterschrift: A. Müller | Premier Inn GmbH}}\n{{unterschrift: E. Friemuth | END}}', 'unterschriften'),
+    s(3, 'Anlage Vorlage\nUnterschrift\n[GESELLSCHAFT NAME]', 'unterschriften'),
+    s(4, 'Standortvertrag zwischen Premier Inn Hotel GmbH und END', 'deckblatt'),
+    s(5, '## 1. Gegenstand\nStandort Messe.', 'vertragstext'),
+    s(6, '8.4 Anlagen gelten.\n{{keine unterschrift | Premier Inn Hotel GmbH}}\n{{keine unterschrift | END}}', 'unterschriften'),
+    s(7, 'Unterschrift\nPremier Inn Hotel GmbH', 'unterschriften'),
+  ];
+  const k = baueStruktur(seiten);
+  const befunde = unterzeichnungBeilagen(beilagenZuordnung(seiten, k), k);
+  expect(befunde).toHaveLength(1);
+  expect(befunde[0]!.text).toBe('Beigefügtes Dokument (ab S. 4, Unterschriftsbereich S. 6) ist nicht unterzeichnet.');
+  const aw = { katalog: { unterschriften: { status: 'gefunden', wert: [
+    { partei: 'Premier Inn GmbH', vorhanden: true, klausel: 'unterschriften' }, { partei: 'END', vorhanden: true, klausel: 'unterschriften' },
+    { partei: 'Standortvertrag (Premier Inn Hotel GmbH)', vorhanden: false, klausel: befunde[0]!.klauseln[0] },
+  ], klauseln: ['unterschriften'] } }, verknuepfungen: [], auffaelligkeiten: [], inventar: [], erweiterung: { data: {}, fundstellen: {} }, aufrufe: 1, probleme: [] } as unknown as AuswertungsErgebnis;
+  const { vertrag } = konsolidiere(seiten, k, aw);
+  // Kuerzel ohne Feldbezug (Paraphen) und woertliche Platzhalter machen die Beilage nicht „unterschrieben".
+  const mitParaphen = baueStruktur([...seiten.slice(0, 4), s(5, '## 1. Gegenstand\nStandort Messe.\n{{unterschrift: sA}}', 'vertragstext'),
+    s(6, '8.4 Anlagen gelten.\n{{keine unterschrift | Partei}}\n{{keine unterschrift | Partei}}', 'vertragstext'), s(7, 'Unterschrift\n{{unterschrift: Kürzel}}', 'unterschriften')]);
+  expect(unterzeichnungBeilagen(beilagenZuordnung(seiten, mitParaphen), mitParaphen)).toHaveLength(1);
+  // Blanko-Vorlage mit Platzhaltern im Anlagenteil des Hauptvertrags → kein Befund.
+  const vorlage = baueStruktur([seite(1, '## § 1 Gegenstand\nText.'), seite(2, '{{unterschrift: A | Kunde}}', 'unterschriften'),
+    seite(3, '## Anlage 2 Beitritt\nText.'), seite(4, '{{keine unterschrift | [GESELLSCHAFT NAME]}}\nUnterschrift\n[GESELLSCHAFT NAME]', 'unterschriften')]);
+  expect(unterzeichnungBeilagen(beilagenZuordnung([], vorlage), vorlage)).toHaveLength(0);
+  expect(unterschriftsMarken('{{keine unterschrift | Partei links}} {{unterschrift: x | Kunde}}')).toEqual([{ partei: 'Kunde', vorhanden: true }]);
+  expect((vertrag.katalog.unterschriften!.wert as unknown[]).length).toBe(2);
+  expect(vertrag.befunde.some((b) => b.typ === 'unterschrift_fehlt')).toBe(false);
+  expect(vertrag.befunde.filter((b) => b.typ === 'beilage_nicht_unterzeichnet')).toHaveLength(1);
 });
 
 test('dedupliziereInventar fasst gleiche Eintraege zusammen', () => {

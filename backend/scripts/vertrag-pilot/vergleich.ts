@@ -80,8 +80,10 @@ export function vergleiche(v: VertragsAuswertung, data: Record<string, unknown>,
   const befunde = v.befunde.filter((b) => b.typ !== 'verarbeitung');
   for (const anl of e.anlagen_fehlen ?? []) add('befunde', `Anlage ${anl} fehlt`, befunde.some((b) => b.typ === 'anlage_fehlt' && new RegExp(`(Anlage|Anhang)\\s+${anl}\\b`, 'i').test(b.text)), befunde.filter((b) => b.typ === 'anlage_fehlt').map((b) => b.text));
   if (e.anlagen_fehlen && !e.anlagen_fehlen.length) add('befunde', 'keine fehlende Anlage gemeldet', !befunde.some((b) => b.typ === 'anlage_fehlt'), befunde.filter((b) => b.typ === 'anlage_fehlt').map((b) => b.text));
-  for (const typ of e.befunde_erwartet ?? []) add('befunde', `Befund ${typ}`, befunde.some((b) => b.typ === typ), befunde.map((b) => b.typ));
-  if (e.unterschriften && Object.values(e.unterschriften).every(Boolean)) add('befunde', 'kein falscher Befund „Unterschrift fehlt"', !befunde.some((b) => b.typ === 'unterschrift_fehlt'));
+  // „Unterschrift prüfen" ist bei einer fehlenden Unterschrift eine richtige (vorsichtige) Antwort.
+  const erfuellt = (typ: string, b: { typ: string }) => b.typ === typ || (typ === 'unterschrift_fehlt' && b.typ === 'unterschrift_pruefen');
+  for (const typ of e.befunde_erwartet ?? []) add('befunde', `Befund ${typ}`, befunde.some((b) => erfuellt(typ, b)), befunde.map((b) => b.typ));
+  if (e.unterschriften && Object.values(e.unterschriften).every(Boolean)) add('befunde', 'kein falscher Befund „Unterschrift fehlt"', !befunde.some((b) => b.typ === 'unterschrift_fehlt' || b.typ === 'unterschrift_pruefen'));
   if (e.verknuepfung) add('katalog', `Verknüpfung ${e.verknuepfung}`, v.verknuepfungen.some((x) => x.wert.includes(e.verknuepfung!)), v.verknuepfungen);
 
   if (e.ladepunkte_anzahl !== undefined) {

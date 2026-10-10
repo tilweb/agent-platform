@@ -11,6 +11,7 @@ import type { PageImage, ProgressEmit } from '../types';
 import { baueStruktur } from './struktur';
 import { textlayerJeSeite, transkribiere, type SeitenBild } from './transkription';
 import { ergaenzeDigitaleSignaturen, findeDigitaleSignaturen } from './signatur';
+import { pruefeUnterschriften } from './unterschriftspruefung';
 import type { ModellKontext } from './modell';
 import type { Klausel, SeitenTranskript, Volltext } from './types';
 
@@ -22,12 +23,14 @@ export interface GelesenesDokument {
   pageImages: PageImage[];
   seiten: SeitenTranskript[];
   klauseln: Klausel[];
+  /** Zusaetzliche Modellaufrufe der Unterschriftspruefung (nur mit `unterschriftenPruefen`). */
+  pruefAufrufe: number;
 }
 
 export async function leseDokument(
   kontext: ModellKontext,
   datei: { rawBuffer: Buffer; mimeType: string },
-  opts: { maxSeiten: number; parallel: number; emit?: ProgressEmit },
+  opts: { maxSeiten: number; parallel: number; emit?: ProgressEmit; unterschriftenPruefen?: boolean },
 ): Promise<GelesenesDokument> {
   const istPdf = datei.mimeType === 'application/pdf';
   await opts.emit?.({ phase: 'preparing', message: 'Seiten werden gerendert' });
@@ -51,8 +54,15 @@ export async function leseDokument(
     beiSeite: (fertig, gesamt) => opts.emit?.({ phase: 'extracting', chunkIndex: fertig - 1, chunkTotal: gesamt, pageIndex: fertig, pageTotal: gesamt }),
   });
   // Elektronische PDF-Signaturen stehen nicht im Seitenbild → als Marker an die Unterschriftsseite.
-  const seiten = istPdf ? ergaenzeDigitaleSignaturen(gelesen, findeDigitaleSignaturen(datei.rawBuffer)) : gelesen;
-  return { bilder, pageImages, seiten, klauseln: baueStruktur(seiten) };
+  let seiten = istPdf ? ergaenzeDigitaleSignaturen(gelesen, findeDigitaleSignaturen(datei.rawBuffer)) : gelesen;
+  let pruefAufrufe = 0;
+  if (opts.unterschriftenPruefen) {
+    await opts.emit?.({ phase: 'preparing', message: 'Unterschriften werden geprüft' });
+    const p = await pruefeUnterschriften(kontext, bilder, seiten, opts.parallel);
+    seiten = p.seiten;
+    pruefAufrufe = p.aufrufe;
+  }
+  return { bilder, pageImages, seiten, klauseln: baueStruktur(seiten), pruefAufrufe };
 }
 
 /** Volltext fuer das Ergebnis: Transkript je Seite + Gliederung. */

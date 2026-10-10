@@ -109,7 +109,7 @@ export interface InventarEintrag {
 }
 
 export type BefundTyp =
-  | 'anlage_fehlt' | 'unterschrift_fehlt' | 'verweis_ins_leere' | 'platzhalter' | 'widerspruch' | 'verarbeitung';
+  | 'anlage_fehlt' | 'unterschrift_fehlt' | 'unterschrift_pruefen' | 'beilage_nicht_unterzeichnet' | 'verweis_ins_leere' | 'platzhalter' | 'widerspruch' | 'verarbeitung';
 
 export interface VertragsBefund {
   typ: BefundTyp;

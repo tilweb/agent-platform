@@ -150,6 +150,90 @@ export function dedupliziereInventar(eintraege: InventarEintrag[]): InventarEint
   return [...gesehen.values()];
 }
 
+/** Unterschriftsmarkierungen mit Parteibezug: {{unterschrift: Name | Partei}}, {{keine unterschrift | Partei}}. */
+export function unterschriftsMarken(text: string): Array<{ partei: string; vorhanden: boolean; unklar?: true }> {
+  return [...text.matchAll(/\{\{\s*(keine unterschrift\s*|unterschrift unklar\s*|unterschrift:[^|}]*)\|\s*([^}]+?)\s*\}\}/gi)]
+    .map((m) => /^unterschrift unklar/i.test(m[1]!)
+      ? { partei: m[2]!, vorhanden: false, unklar: true as const }
+      : { partei: m[2]!, vorhanden: !/^keine/i.test(m[1]!) })
+    // Vom Modell woertlich uebernommene Platzhalter tragen keinen Parteibezug.
+    .filter((m) => !/^(?:partei(?:\s+(?:links|rechts))?|name|kürzel)$/i.test(m.partei));
+}
+
+const PARTEI_FUELLWORT = new Set(['gmbh', 'mbh', 'und', 'der', 'die', 'das', 'ohg', 'unterschrift']);
+const parteiWoerter = (s: string) => s.toLowerCase().split(/[^a-zäöüß0-9]+/).filter((t) => t.length >= 3 && !PARTEI_FUELLWORT.has(t));
+export const gleichePartei = (a: string, b: string) => { const wb = new Set(parteiWoerter(b)); return parteiWoerter(a).some((t) => wb.has(t)); };
+
+/**
+ * Beilagen: eigenstaendige Dokumente im Paket (beginnen mit eigenem Deckblatt NACH dem ersten
+ * Unterschriftsbereich des Hauptvertrags) sowie spaetere Unterschriftsbereiche (unterschriften#n,
+ * z. B. Formulare in Anlagen). Liefert je Klausel-ID den Schluessel ihrer Beilage.
+ */
+export function beilagenZuordnung(seiten: SeitenTranskript[], klauseln: Klausel[]): Map<string, string> {
+  const ersteUnterschrift = Math.min(...klauseln.filter((k) => k.rolle === 'unterschriften').map((k) => k.seiten[0]));
+  const starts = seiten.filter((s) => s.rolle === 'deckblatt' && s.seite > ersteUnterschrift).map((s) => s.seite).sort((x, y) => x - y);
+  const out = new Map<string, string>();
+  for (const k of klauseln) {
+    const start = starts.filter((p) => p <= k.seiten[0]).pop();
+    if (start) out.set(k.id, `S${start}`);
+    else if (/^unterschriften#\d+$/.test(k.id)) out.set(k.id, k.id);
+  }
+  return out;
+}
+
+const seitenText = (von: number, bis: number) => (von === bis ? `S. ${von}` : `S. ${von}–${bis}`);
+
+/**
+ * Beilagen, deren Unterschriftsbereich leer ist ({{keine unterschrift}} ohne jede Unterschrift) — eigener,
+ * schwaecherer Befund statt „Unterschrift fehlt" beim Hauptvertrag. Blanko-Vorlagen tragen keine Markierung.
+ */
+export function unterzeichnungBeilagen(beilagen: Map<string, string>, klauseln: Klausel[]): VertragsBefund[] {
+  const gruppen = new Map<string, Klausel[]>();
+  for (const k of klauseln) {
+    const g = beilagen.get(k.id);
+    if (g) gruppen.set(g, [...(gruppen.get(g) ?? []), k]);
+  }
+  const out: VertragsBefund[] = [];
+  for (const [g, ks] of gruppen) {
+    // Unterschrieben = digitale Signatur oder Unterschrift an einem beschrifteten Feld; Kuerzel ohne Feldbezug
+    // sind meist Paraphen und zaehlen nicht.
+    const text = ks.map((k) => k.text).join('\n');
+    // Blanko-Vorlagen („[GESELLSCHAFT NAME]", Vorlage/Muster) sind nicht zur Unterschrift bestimmt.
+    if (ks.some((k) => k.rolle === 'vorlage' || k.rolle === 'muster') || /\[[A-ZÄÖÜ][A-ZÄÖÜ .\-]{3,}\]/.test(text)) continue;
+    const leer = ks.filter((k) => /\{\{\s*keine unterschrift/i.test(k.text));
+    const unterschrieben = /\{\{\s*digitale signatur:/i.test(text) || unterschriftsMarken(text).some((m) => m.vorhanden);
+    if (!leer.length || unterschrieben) continue;
+    const von = Math.min(...leer.map((k) => k.seiten[0])), bis = Math.max(...leer.map((k) => k.seiten[1]));
+    const ort = /^S\d+$/.test(g) ? `ab S. ${g.slice(1)}, Unterschriftsbereich ${seitenText(von, bis)}` : `Unterschriftsbereich ${seitenText(von, bis)}`;
+    out.push({ typ: 'beilage_nicht_unterzeichnet', text: `Beigefügtes Dokument (${ort}) ist nicht unterzeichnet.`, klauseln: leer.map((k) => k.id) });
+  }
+  return out;
+}
+
+/**
+ * Gleicht die Unterschriften des Katalogs mit den parteigebundenen Markierungen der Transkription ab:
+ * Sagen ALLE Markierungen einer Partei dasselbe, gilt das (das Modell ordnet Spalten sonst gelegentlich
+ * falsch zu — V5: END-Unterschrift dem leeren Kundenfeld zugeschlagen). Widersprechen sie sich, bleibt
+ * der Modellwert. Markierungen aus Beilagen zaehlen nicht.
+ */
+export function gleicheUnterschriftenAb(eintraege: Array<{ partei?: string; vorhanden?: boolean; eindeutig?: boolean }>, klauseln: Klausel[], beilagen = new Map<string, string>()): number {
+  const marken = klauseln.filter((k) => !beilagen.has(k.id)).flatMap((k) => unterschriftsMarken(k.text));
+  let korrigiert = 0;
+  for (const u of eintraege) {
+    if (!u.partei) continue;
+    const passend = marken.filter((m) => gleichePartei(m.partei, u.partei!));
+    // Transkription und Unterschriftspruefung widersprechen sich → nicht als unterschrieben werten, pruefen lassen.
+    if (passend.some((m) => m.unklar)) {
+      if (u.vorhanden !== false) korrigiert++;
+      u.vorhanden = false; u.eindeutig = false;
+      continue;
+    }
+    if (!passend.length || passend.some((m) => m.vorhanden !== passend[0]!.vorhanden)) continue;
+    if (u.vorhanden !== passend[0]!.vorhanden) { u.vorhanden = passend[0]!.vorhanden; korrigiert++; }
+  }
+  return korrigiert;
+}
+
 function fundstellenPruefen(ids: string[], a: Aufloeser, verworfen: Set<string>): string[] {
   const out: string[] = [];
   for (const roh of ids) {
@@ -241,10 +325,18 @@ export function konsolidiere(seiten: SeitenTranskript[], klauseln: Klausel[], aw
   }
 
   // Unterschriften
+  // Unterschriften des Hauptvertrags; Eintraege aus Beilagen-Bereichen fliegen raus (eigener Befund unten).
+  const beilagen = beilagenZuordnung(seiten, klauseln);
+  if (Array.isArray(katalog.unterschriften?.wert)) {
+    katalog.unterschriften = { ...katalog.unterschriften!, wert: (katalog.unterschriften!.wert as Array<{ klausel?: string }>).filter((u) => !u.klausel || !beilagen.has(u.klausel)) };
+  }
   const unterschriften = katalog.unterschriften?.wert;
+  befunde.push(...unterzeichnungBeilagen(beilagen, klauseln));
   if (Array.isArray(unterschriften)) {
-    for (const u of unterschriften as Array<{ partei?: string; vorhanden?: boolean }>) {
-      if (u.vorhanden === false) befunde.push({ typ: 'unterschrift_fehlt', text: `Unterschrift fehlt: ${u.partei ?? 'unbekannte Partei'}.`, klauseln: katalog.unterschriften!.klauseln });
+    gleicheUnterschriftenAb(unterschriften as Array<{ partei?: string; vorhanden?: boolean }>, klauseln, beilagen);
+    for (const u of unterschriften as Array<{ partei?: string; vorhanden?: boolean; eindeutig?: boolean }>) {
+      if (u.eindeutig === false) befunde.push({ typ: 'unterschrift_pruefen', text: `Unterschrift ${u.partei ?? 'unbekannte Partei'}: nicht eindeutig erkennbar — bitte im Original prüfen.`, klauseln: katalog.unterschriften!.klauseln });
+      else if (u.vorhanden === false) befunde.push({ typ: 'unterschrift_fehlt', text: `Unterschrift fehlt: ${u.partei ?? 'unbekannte Partei'}.`, klauseln: katalog.unterschriften!.klauseln });
     }
   }
 

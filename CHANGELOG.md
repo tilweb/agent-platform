@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-10-11
+
+### Vertragsextraktion: Unterschriften parteigebunden, Beilagen getrennt
+- Die Transkription bindet jede Unterschriftsmarkierung an die Partei unter dem Feld (`{{unterschrift: Name | Partei}}`,
+  `{{keine unterschrift | Partei}}`). Die Konsolidierung übernimmt den Wert, wenn alle Markierungen einer Partei
+  übereinstimmen. Anlass: Bei V5 ordnete das Modell die END-Unterschrift dem leeren Kundenfeld zu, und der Befund
+  „Unterschrift fehlt" entfiel. Der Prompt gibt konkrete Beispiele statt Platzhalterwörtern (Qwen übernahm „Partei"
+  wörtlich), verbietet Namen aus Briefkopf/Fußzeile und markiert Seitenkürzel als `{{paraphe: …}}` statt als Unterschrift.
+- Unterschriftsprüfung (`contract/unterschriftspruefung.ts`): Unterschriftsseiten bekommen einen zweiten, gezielten
+  Bildaufruf, der Feld für Feld Partei und „Tinte auf der Linie ja/nein" beantwortet (meist 1–2 Aufrufe je Vertrag). Widerspricht er
+  der Transkription, wird die Unterschrift nicht als vorhanden gewertet, und es entsteht der Befund
+  `unterschrift_pruefen` („Unterschrift X: nicht eindeutig erkennbar — bitte im Original prüfen.") statt einer sicheren
+  Aussage. Anlass: Bei V3 las die Transkription in einem von drei Läufen die leere END-Linie als unterschrieben.
+- Unterschriftsbereiche beigefügter eigenständiger Dokumente (z. B. ein Standortvertrag im Rahmenvertrags-Paket) zählen
+  nicht mehr als Parteien des Hauptvertrags. Sind sie leer, entsteht der neue, schwächere Befund
+  `beilage_nicht_unterzeichnet` („Beigefügtes Dokument (ab S. 77, Unterschriftsbereich S. 83–84) ist nicht
+  unterzeichnet.") statt „Unterschrift fehlt" mit erfundener Partei. Eine Beilage wird an ihrem eigenen Deckblatt
+  nach dem Unterschriftsbereich des Hauptvertrags erkannt. Blanko-Vorlagen (Platzhalter wie „[GESELLSCHAFT NAME]",
+  Vorlage-/Musterseiten) bleiben unbefundet.
+- Messung (10 END-Verträge, je 3 Wiederholungen): Unterschriften 100 %, Befunde 100 %, Vertrag gesamt 99,5 %. Über 30 Läufe
+  keine falsch bestätigte Unterschrift; dreimal „Unterschrift prüfen" (V3, V8, V9), jeweils bei tatsächlich fehlender
+  Unterschrift, kein Fehlalarm bei unterschriebenen Verträgen. Neue Vertrags-Baseline in der Qualitätssuite.
+
 ## 2026-10-10
 
 ### Fix: DP-Warteschlange führte Modellaufrufe im fremden Kontext aus (Token-Abrechnung, Job-Fencing)

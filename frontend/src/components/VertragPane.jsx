@@ -26,7 +26,7 @@ const STATUS = {
 };
 
 const BEFUND_LABEL = {
-  anlage_fehlt: 'Anlage fehlt', unterschrift_fehlt: 'Unterschrift fehlt', verweis_ins_leere: 'Verweis ins Leere',
+  anlage_fehlt: 'Anlage fehlt', unterschrift_fehlt: 'Unterschrift fehlt', unterschrift_pruefen: 'Unterschrift prüfen', beilage_nicht_unterzeichnet: 'Beilage nicht unterzeichnet', verweis_ins_leere: 'Verweis ins Leere',
   platzhalter: 'Platzhalter', widerspruch: 'Auffälligkeit', verarbeitung: 'Verarbeitung',
 };
 

@@ -24,7 +24,12 @@ Regeln für "text" (Markdown, Lesereihenfolge; gedrehte Seiten richtig herum les
 - Durchgestrichenen Text als ~~Text~~ markieren — auch dünne gedruckte Durchstreichungen in Listen, Preistabellen und Optionen sowie Streichungen von Hand. Jede Zeile einzeln prüfen: Ist der Text von einer Linie durchzogen?
 - Ankreuzfelder als [x] (angekreuzt) oder [ ] (leer).
 - Handschriftliche Einträge als {{hs: Text}}.
-- Jede vorhandene Unterschrift (Handzeichen/Paraphe, digitale Signatur) als {{unterschrift: erkennbarer Name, sonst "vorhanden"}}. Ein LEERES Unterschriftsfeld (keine Unterschrift geleistet) als {{keine unterschrift}}. Stempel als {{stempel: lesbarer Text}}.
+- Unterschriftsfelder: für JEDES Feld genau eine Markierung; hinter "|" steht die gedruckte Beschriftung unter oder neben genau diesem Feld. Beispiele:
+  {{unterschrift: M. Müller | Kunde}} — auf der Linie ist eine Unterschrift in Tinte oder eine digitale Signatur. Den Namen nur angeben, wenn er in der Unterschrift lesbar ist (nie aus Briefkopf oder Fußzeile), sonst {{unterschrift: vorhanden | Kunde}}.
+  {{keine unterschrift | EMobility Netzwerk Deutschland GmbH}} — die Linie ist leer, auch wenn Ort und Datum ausgefüllt sind.
+  Ohne gedruckte Beschriftung am Feld: {{unterschrift: vorhanden}} bzw. {{keine unterschrift}}. Stehen Felder nebeneinander, jedes Feld seiner Spalte zuordnen.
+- Paraphen (kurze Kürzel am Seitenrand oder -fuß, außerhalb von Unterschriftsfeldern) als {{paraphe: SA}} — sie sind keine Unterschrift.
+- Stempel als {{stempel: lesbarer Text}}.
 - Nicht lesbare Stellen als {{unleserlich}}.
 - Tabellen als Markdown-Tabelle, alle Zeilen und Spalten.
 - Wiederkehrender Briefkopf/Logo und Fußzeile (Registergericht, Bankverbindung, Geschäftsführer, Kontaktdaten des Briefbogens) NICHT in "text", sondern einmal in "fusszeile".

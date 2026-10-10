@@ -39,7 +39,7 @@ export const KATALOG_WERTE: Record<KatalogElement, Record<string, unknown>> = {
   vertragsart: obj({ bezeichnung: str, kategorie: str }),
   parteien: arr(obj({ rolle: str, name: str, anschrift: str, aliasse: strListe })),
   vertragsnummern: arr(obj({ art: str, wert: str })),
-  unterschriften: arr(obj({ partei: str, vorhanden: bool, datum: str, ort: str, stempel: bool, vertretung: str, handschriftlich: bool })),
+  unterschriften: arr(obj({ partei: str, vorhanden: bool, klausel: str, datum: str, ort: str, stempel: bool, vertretung: str, handschriftlich: bool })),
   datum_abschluss: obj({ datum: str, regel: str }),
   beginn: obj({ datum: str, regel: str }),
   laufzeit: obj({ art: nEnum(['befristet', 'unbefristet', 'mindestlaufzeit']), dauer: str, ende: str }),
@@ -124,7 +124,7 @@ Regeln:
 - Fundstellen ("klauseln") sind IMMER IDs aus der Liste (z. B. "§6.3", "Z7.2", "2.5.3", "Anl1", "rubrum", "unterschriften"). Keine IDs erfinden.
 - Nur angeben, was im Vertrag steht. Nichts ergänzen, nichts aus allgemeinem Recht ableiten.
 - Durchgestrichener Text (~~…~~) und nicht angekreuzte Optionen ([ ]) gelten NICHT. Angekreuzte Optionen ([x]) gelten.
-- {{hs: …}} ist handschriftlich eingetragen, {{stempel: …}} ein Stempel. {{unterschrift: …}} bedeutet: eine Unterschrift IST vorhanden (auch wenn kein Name erkennbar ist). {{keine unterschrift}} bedeutet: das Unterschriftsfeld ist leer. {{digitale signatur: …}} ist eine elektronische PDF-Signatur — sie zählt als Unterschrift; ordne sie der Partei zu, deren Ort/Datum im Unterschriftsbereich dazu passt. Hat eine Partei im Unterschriftsbereich keine {{unterschrift: …}}-Markierung, ist ihre Unterschrift nicht vorhanden.
+- {{hs: …}} ist handschriftlich eingetragen, {{stempel: …}} ein Stempel. {{unterschrift: …}} bedeutet: eine Unterschrift IST vorhanden (auch wenn kein Name erkennbar ist). {{keine unterschrift}} bedeutet: das Unterschriftsfeld ist leer. Steht nach "|" eine Partei ({{unterschrift: Name | Partei}}, {{keine unterschrift | Partei}}), gehört die Markierung zu GENAU dieser Partei. {{unterschrift unklar | Partei}} heißt: nicht eindeutig erkennbar — vorhanden=false. {{paraphe: …}} ist ein Seitenkürzel, keine Unterschrift. {{digitale signatur: …}} ist eine elektronische PDF-Signatur — sie zählt als Unterschrift; ordne sie der Partei zu, deren Ort/Datum im Unterschriftsbereich dazu passt. Hat eine Partei im Unterschriftsbereich keine {{unterschrift: …}}-Markierung, ist ihre Unterschrift nicht vorhanden.
 - Formularbeschriftungen wie "Ort, Datum", "Unterschrift + Stempel", "Unterschrift und Firmenstempel", "Name in Druckbuchstaben" sind Beschriftungen, keine Platzhalter — und weder Unterschrift noch Stempel.
 - Datumsangaben als YYYY-MM-DD, wenn eindeutig; sonst wie im Vertrag. Beträge als Zahl ohne Währungszeichen.
 - Fristen NICHT in Kalenderdaten umrechnen — nur beschreiben (Dauer, Einheit, Richtung, Bezugspunkt, "zum …", Wortlaut).
@@ -144,7 +144,7 @@ Hinweise:
 - "bedingung" und "verweis" nur bei den Status "bedingt" bzw. "anlage_fehlt"/"delegiert"/"geerbt" füllen, sonst null.
 - Ist Laufzeit oder Kündigung an einen anderen Vertrag gekoppelt (z. B. „gilt für die Dauer des Wartungsvertrags", „endet mit dessen Kündigung"), ist der Status "geerbt" (verweis = welcher Vertrag), nicht "gefunden".
 - vertragsart aus dem INHALT bestimmen; weicht der Titel ab, beides nennen.
-- unterschriften: je Partei ein Eintrag; vorhanden=false, wenn das Unterschriftsfeld leer ist.
+- unterschriften: je Partei des HAUPTVERTRAGS ein Eintrag (klausel = ID des Unterschriftsbereichs, in der Regel "unterschriften"); vorhanden=false, wenn das Unterschriftsfeld leer ist. Unterschriftsbereiche beigefügter eigenständiger Verträge oder Formulare (z. B. ein beigelegter Einzel-/Standortvertrag, "unterschriften#2" …) gehören NICHT dazu — dafür keine eigenen Parteien anlegen.
 - anlagen: alle im Vertrag genannten Anlagen/Anhänge; vorhanden=true nur, wenn die Anlage im Dokument enthalten ist (eigene Klausel "Anl…").
 - verfuegbarkeit_sla.modalitaet: "muss" bei fester Zusage, "bemueht" bei "bemüht sich", "in der Regel", "ist bestrebt".
 - verknuepfungen: Vertrags-/Kundennummern, Bezüge auf andere Verträge ("Rahmenvertrag vom …", "Zusatzvereinbarung zum …", "ersetzt den Vertrag von …").
