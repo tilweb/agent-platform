@@ -1,5 +1,5 @@
 import { enqueueBatch } from './learning/jobs';
-import { getBatchRunFileDetail, getRunSnapshot } from './learning/batch-runs';
+import { getBatchRunFileDetail, getRunSnapshot, hatTextDetail } from './learning/batch-runs';
 import { isReleased } from './learning/result-validation';
 /**
  * Public-API-Functions der Dokumenten-Extraktion (Welle 5).
@@ -336,6 +336,8 @@ export const batchGetFunction: PublicFunction<{ project_id: string; run_id: stri
             field_confidences: { type: 'object' },
             review_status: { type: 'string' },
             validations: { type: 'array', items: VALIDATION_SCHEMA },
+            document_text: { type: 'string', description: 'Dokumenttext. Vollständiges Seitentranskript bei Vertrag, „Allgemein" oder Profil-Schalter „Transkript liefern", sonst Text des Konverters (bei Scans ggf. leer).' },
+            volltext: { type: 'object', description: '{ seiten: [{ seite, rolle, text }], gliederung } — Basisprofil „Allgemein" oder Profil-Schalter „Transkript liefern" (Verträge: `vertrag`)' },
             error: { type: 'string' },
           },
           required: ['filename', 'status'],
@@ -346,7 +348,7 @@ export const batchGetFunction: PublicFunction<{ project_id: string; run_id: stri
   },
   defaultRateLimit: { requests: 120, windowSec: 60 },
   async handler(input) {
-    const result = await getBatchRun(input.project_id, input.run_id);
+    const result = await getBatchRun(input.project_id, input.run_id, { mitText: true });
     if (!result) throw new PublicFunctionError(`Lauf "${input.run_id}" nicht gefunden`, 404, 'not_found');
     return {
       run_id: result.run.id,
@@ -356,11 +358,8 @@ export const batchGetFunction: PublicFunction<{ project_id: string; run_id: stri
       failed: result.run.failedCount,
       needs_review: result.files.filter((f) => f.reviewStatus === 'needs_review').length,
       files: await Promise.all(result.files.map(async (f) => {
-        // Vertragsauswertung liegt im Datei-Detail (jsonb) — nur fuer Vertragsdateien nachladen.
-        // Vertragsauswertung/Volltext liegen im Datei-Detail (jsonb) — nur fuer diese Strategien nachladen.
-        const detail = f.strategy === 'contract-structured' || f.strategy === 'general-document'
-          ? await getBatchRunFileDetail(input.project_id, input.run_id, f.id)
-          : null;
+        // Vertragsauswertung/Volltext liegen im Datei-Detail (jsonb) — nur fuer diese Dateien nachladen.
+        const detail = hatTextDetail(f) ? await getBatchRunFileDetail(input.project_id, input.run_id, f.id) : null;
         const vertrag = detail?.vertrag;
         const volltext = detail?.volltext;
         return {
@@ -373,6 +372,7 @@ export const batchGetFunction: PublicFunction<{ project_id: string; run_id: stri
           ...(f.segments ? { segments: f.segments } : {}),
           ...(vertrag ? { vertrag } : {}),
           ...(volltext ? { volltext } : {}),
+          ...(f.documentText ? { document_text: f.documentText } : {}),
           error: f.error,
         };
       })),

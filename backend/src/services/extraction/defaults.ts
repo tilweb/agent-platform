@@ -77,5 +77,6 @@ export function applyExtractionDefaults(
     validation_repair: config.validation_repair ?? EXTRACTION_DEFAULTS.validation_repair,
     llm_confidence: config.llm_confidence ?? EXTRACTION_DEFAULTS.llm_confidence,
     model_override: config.model_override ?? EXTRACTION_DEFAULTS.model_override,
+    ...(config.transkript ? { transkript: true as const } : {}),
   };
 }

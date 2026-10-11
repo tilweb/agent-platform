@@ -77,6 +77,7 @@ Preisfindung — er wird dem Kunden nicht als Einheit gezeigt.
 | Vorgang (mehrteilig) | Bestandteile erkennen und je Bestandteil auslesen | Segmentprofil | 1,5 |
 | Vertrag | Klauselstruktur, Katalog, Pflichten & Fristen, Befunde | `contract-structured` | 3,0 |
 | Stapel-Trennung (Zusatz) | nur im Modus „Stapel": Trennen + Zuordnen je Teil | Posteingang | 1,0 |
+| Transkript (Zusatz) | vollständiger Seitentext zu einem anderen Produkt (Profil-Schalter, §12) | Lesekern `contract/lesen.ts` | 1,0 |
 
 - Die Zuordnung ohne Pipeline im Vorgangsmodus (ein Aufruf auf die ersten Seiten) ist im Preis enthalten.
 - **Ohne Berechnung**: Profilpflege, Prüfoberfläche, Korrekturen übernehmen, Exporte, Status-Abfragen, Webhooks,
@@ -247,9 +248,10 @@ Sicherheitsabstand zum gemessenen bzw. geschätzten Modellaufwand (eigener API-P
 | Vorgang (mehrteilig) | **25** | 0,025 | Reducto Classify + Extract ~27,50 $ | ~2,40 (geschätzt) | ~90 % |
 | Vertrag | **50** | 0,05 | Reducto Deep Extract 40 $ (ohne vergleichbare Ausgabe) | 3,40–4,50 (gemessen) | ~91 % |
 | Stapel-Trennung (Zusatz) | **10** | 0,01 | Reducto Split 20 $ | ~1,10 (geschätzt) | ~89 % |
+| Transkript (Zusatz, §12) | **6** | 0,006 | Mistral OCR 4 $, Azure Read 1,50 $ (nur Text) | ~2 (geschätzt, Transkriptionsanteil von „Allgemein") | ~65 % |
 | Zuordnung im Vorgangsmodus | inklusive | – | Reducto Classify 7,50 $ | gering | – |
 
-Relationen zu Standard: 0,27 / 0,53 / 0,53 / 1 / 1,67 / 3,33 / 0,67.
+Relationen zu Standard: 0,27 / 0,53 / 0,53 / 1 / 1,67 / 3,33 / 0,67 / 0,4.
 
 **Begründung**
 - **Bausteine** (Allgemein, Text, Standard) liegen auf oder knapp unter etablierten Angeboten — hier werden wir verglichen;
@@ -282,4 +284,25 @@ Klassifizieren; Wiederholungen wegen unserer Fehler kostenfrei, vom Kunden ausge
 2. Compute je Seite auf der Demo-Instanz messen (Erwartung deutlich unter 1 € je 1.000 Seiten, ungemessen).
 3. Vertragspreis mit 2–3 Pilotkunden testen (50 € als Anker, Spielraum nach oben).
 4. Marktpreise im endgültigen Preisblatt zum aktuellen Wechselkurs umrechnen (Vergleich hier grob 1 € ≈ 1 $).
+
+## 12. Transkript als Zusatz (2026-10-11)
+
+**Ausgangslage:** Ein vollständiges Seitentranskript lieferten nur „Vertrag" und „Allgemein", denn beide lesen über das
+Seitenbild. Die übrigen Strategien ziehen Felder direkt aus dem Bild und schreiben den Text nicht mit. Ihr
+`document_text` stammt aus dem Konverter und ist bei Scans leer oder unbrauchbar. Über den asynchronen Weg
+(`batch.get`, `inbox.get`, Webhook) kam zudem gar kein `document_text`.
+
+**Entscheidung (User, 2026-10-11):**
+1. `document_text` wird auch asynchron ausgeliefert (`batch.get` je Datei, Umschlag je Teil unter `ergebnis`).
+2. Neuer Profil-Schalter **„Transkript liefern"** (`extraction.transkript`): transkribiert parallel zur Extraktion mit dem
+   Lesekern der Vertragsauswertung (ein Bildaufruf je Seite) und liefert `volltext` (Seiten + Gliederung) sowie ein
+   vollständiges `document_text`. Gilt für alle Strategien und Segmentprofile. Bei „Vertrag" und „Allgemein" entfällt
+   der Schalter, weil sie ohnehin transkribieren.
+
+**Abrechnung:** Zusatzposten `transkript` je Seite, zusätzlich zum Produkt der Auswertung (`audit.zusatz`, im Umschlag
+unter `abrechnung`). Kostenfaktor 1,0 (ein Bildaufruf je Seite wie bei Standard). Preisvorschlag 6 € je 1.000 Seiten
+(§11), also unter „Allgemein" (8 €), das Transkript und Kernwerte zusammen liefert. Noch nicht gemessen.
+
+**Fehlerverhalten:** Scheitert das Transkript ganz oder für einzelne Seiten, bleibt die Extraktion gültig. Es entsteht
+der Hinweis `transkript` (warn), zum Beispiel „Transkript unvollständig — Seite 3 nicht lesbar".
 

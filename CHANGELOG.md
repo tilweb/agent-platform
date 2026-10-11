@@ -2,6 +2,16 @@
 
 ## 2026-10-11
 
+### DP: Transkript per Profil-Schalter, Dokumenttext auch asynchron
+- Neuer Profil-Schalter „Transkript liefern" (`extraction.transkript`, Profil-Einstellungen). Er transkribiert jede Seite
+  parallel zur Extraktion über das Seitenbild (Lesekern der Vertragsauswertung) und liefert `volltext` sowie ein
+  vollständiges `document_text`, auch bei Scans und Handschrift. Gilt für alle Strategien und Segmentprofile.
+  Abgerechnet als Zusatzposten `transkript` je Seite (`audit.zusatz`, Umschlag-`abrechnung`). Vorher lieferten nur
+  Vertrag und „Allgemein" ein echtes Transkript; sonst kam Konvertertext, der bei Scans leer oder unbrauchbar war.
+- `batch.get` und der Eingangs-Umschlag (`inbox.get`, Webhook) liefern jetzt `document_text` je Datei bzw. Teil, dazu
+  `volltext`, wenn vorhanden. Bisher kam über den asynchronen Weg gar kein Dokumenttext.
+- Konzept: `docs/konzept-dp-produktmodell-2026-10-09.md` §12 (Preisvorschlag 6 € je 1.000 Seiten, Vorschlag).
+
 ### Doku: Wohngeld-Befunde aus der DP-Qualitätssuite
 `docs/wohngeld-dp-befunde-2026-10-11.md`: schwache Felder mit Beispielen und vermuteter Ursache (meist mehrdeutige
 Feldbeschreibungen oder zu strenger Namensvergleich, nicht die bewusst eingebauten Antragsfehler), Fehlschnitte, zu

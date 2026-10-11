@@ -33,6 +33,7 @@ export interface UmschlagTeil {
     strategy: string | null;
     vertrag?: VertragsAuswertung;
     volltext?: Volltext;
+    document_text?: string;
   };
   fehler?: string;
 }
@@ -52,7 +53,7 @@ export interface Umschlag {
 
 /** Ergebnis je Teil — Batch-Datei-Zusammenfassung plus (optional) Detailfelder. */
 export interface TeilErgebnis {
-  datei: Pick<BatchFileSummary, 'status' | 'data' | 'fieldConfidences' | 'reviewStatus' | 'validations' | 'strategy' | 'error' | 'audit'>;
+  datei: Pick<BatchFileSummary, 'status' | 'data' | 'fieldConfidences' | 'reviewStatus' | 'validations' | 'strategy' | 'error' | 'audit' | 'documentText'>;
   vertrag?: VertragsAuswertung;
   volltext?: Volltext;
   /** Der ganze Batch-Lauf ist abgebrochen — offene Dateien werden nie fertig. */
@@ -96,6 +97,7 @@ export function baueUmschlag(upload: InboxUploadWithParts, ergebnisse: Record<st
           strategy: e.datei.strategy,
           ...(e.vertrag ? { vertrag: e.vertrag } : {}),
           ...(e.volltext ? { volltext: e.volltext } : {}),
+          ...(e.datei.documentText ? { document_text: e.datei.documentText } : {}),
         },
       } : {}),
       ...(e?.datei.error ? { fehler: e.datei.error } : status === 'fehler' ? { fehler: 'Verarbeitungslauf abgebrochen' } : {}),
@@ -110,6 +112,7 @@ export function baueUmschlag(upload: InboxUploadWithParts, ergebnisse: Record<st
     if (!e || e.datei.status !== 'completed') continue;
     const a = e.datei.audit?.abrechnung;
     posten.push(a ? { ...a, seiten: seitenAnzahl(t) } : abrechnungsPosten(e.datei.strategy ?? undefined, seitenAnzahl(t)));
+    for (const z of e.datei.audit?.zusatz ?? []) posten.push({ ...z, seiten: seitenAnzahl(t) });
   }
   if (upload.modus === 'stapel' && !upload.profilId && (upload.pageCount ?? 0) > 1) {
     posten.push({ produkt: 'stapel-trennung', seiten: upload.pageCount!, kostenfaktor: PRODUKTE['stapel-trennung'].kostenfaktor });
@@ -141,18 +144,18 @@ export function baueUmschlag(upload: InboxUploadWithParts, ergebnisse: Record<st
 export async function ladeUmschlag(uploadId: string, mitDetail = true): Promise<Umschlag | null> {
   const upload = await getUpload(uploadId);
   if (!upload) return null;
-  const { getBatchRun, getBatchRunFileDetail } = await import('../learning/batch-runs');
+  const { getBatchRun, getBatchRunFileDetail, hatTextDetail } = await import('../learning/batch-runs');
   const ergebnisse: Record<string, TeilErgebnis | undefined> = {};
   const laeufe = new Map<string, Awaited<ReturnType<typeof getBatchRun>>>();
   for (const t of upload.parts) {
     if (!t.batchRunId || !t.targetProjectId) continue;
     const key = `${t.targetProjectId}|${t.batchRunId}`;
-    if (!laeufe.has(key)) laeufe.set(key, await getBatchRun(t.targetProjectId, t.batchRunId));
+    if (!laeufe.has(key)) laeufe.set(key, await getBatchRun(t.targetProjectId, t.batchRunId, { mitText: mitDetail }));
     const lauf = laeufe.get(key);
     const datei = lauf?.files.find((f) => f.filename === t.filename);
     if (!datei) continue;
     const e: TeilErgebnis = { datei, ...(lauf?.run.status === 'failed' ? { laufAbgebrochen: true } : {}) };
-    if (mitDetail && datei.status === 'completed' && (datei.strategy === 'contract-structured' || datei.strategy === 'general-document')) {
+    if (mitDetail && datei.status === 'completed' && hatTextDetail(datei)) {
       const d = await getBatchRunFileDetail(t.targetProjectId, t.batchRunId, datei.id);
       if (d?.vertrag) e.vertrag = d.vertrag;
       if (d?.volltext) e.volltext = d.volltext;

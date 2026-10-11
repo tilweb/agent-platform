@@ -69,6 +69,12 @@ export interface ExtractionConfig {
    * Fallback ist confidence_threshold.
    */
   review_threshold?: number;
+  /**
+   * Konsumenten-Feld: zusaetzlich ein vollstaendiges Seitentranskript (`volltext`) aus dem Seitenbild liefern —
+   * fuer Strategien, die selbst keines erzeugen. Ein Bildaufruf je Seite, abgerechnet als Zusatz „Transkript".
+   * Von der Engine IGNORIERT.
+   */
+  transkript?: boolean;
   model_override?: {
     provider_id: string;
     model_id: string;
@@ -93,6 +99,8 @@ export interface ResolvedExtractionConfig {
   validation_repair: boolean;
   llm_confidence: boolean;
   model_override: { provider_id: string; model_id: string } | null;
+  /** Konsumenten-Feld „Transkript liefern" — nur gesetzt, wenn eingeschaltet (aendert sonst keinen Snapshot-Hash). */
+  transkript?: true;
 }
 
 // ============== Schema (Wrapper um ExtractionProfile + Config) ==============

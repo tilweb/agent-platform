@@ -4708,6 +4708,7 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   const [description, setDescription] = useState(project.description);
   const [strategy, setStrategy] = useState(project.extraction?.strategy || 'hybrid');
   const [modelOverride, setModelOverride] = useState(project.extraction?.model_override || null);
+  const [transkript, setTranskript] = useState(!!project.extraction?.transkript);
   const [reviewThreshold, setReviewThreshold] = useState(
     project.extraction?.review_threshold != null ? String(project.extraction.review_threshold) : ''
   );
@@ -4820,6 +4821,8 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
           ...(project.extraction || {}),
           strategy,
           model_override: modelOverride,
+          // undefined entfernt den Key — Standard ist aus
+          transkript: transkript || undefined,
           // leer = Standard (confidence_threshold bzw. 0.6); undefined entfernt den Key im JSON
           review_threshold: reviewThreshold === '' ? undefined : Math.min(1, Math.max(0, parseFloat(reviewThreshold))),
         },
@@ -4882,6 +4885,19 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
             Textdokumente. <strong>Single-Pass</strong> für kurze, einfache Dokumente.
           </div>
         </div>
+        {strategy !== 'contract-structured' && strategy !== 'general-document' && (
+          <div style={{ marginBottom: theme.spacing.lg }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, fontSize: theme.typography.sizes.sm, color: theme.colors.text }}>
+              <input type="checkbox" style={styles.checkbox} checked={transkript} onChange={e => setTranskript(e.target.checked)} />
+              Transkript liefern
+            </label>
+            <div style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+              Liefert zusätzlich den vollständigen Text jeder Seite, auch bei Scans und Handschrift (in der Prüfansicht und
+              per API als <code>volltext</code> und <code>document_text</code>). Kostet einen zusätzlichen KI-Aufruf je Seite und
+              wird als Zusatz „Transkript" je Seite abgerechnet. Vertrag und Allgemein liefern das Transkript ohnehin.
+            </div>
+          </div>
+        )}
         <div style={{ marginBottom: theme.spacing.lg }}>
           <label style={styles.label}>KI-Modell (optional)</label>
           <ModelOverrideSelect value={modelOverride} onChange={setModelOverride} />

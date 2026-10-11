@@ -1,6 +1,8 @@
 import { loeseSegmentVerweiseAuf } from '../segmentation/verweise';
 import { mitTokenMessung } from '../../services/llm/token-meter';
-import { abrechnungsPosten } from '../produkte';
+import { abrechnungsPosten, transkriptPosten } from '../produkte';
+import { alsVolltext, leseDokument } from '../../services/extraction/contract/lesen';
+import type { Volltext } from '../../services/extraction/contract/types';
 import { extractionVisionDpi } from '../../services/extraction/defaults';
 import { withDocumentRuntime, modelWork } from '../../services/extraction/runtime';
 import { ruleFields, ruleData } from './rule-scope';
@@ -306,6 +308,42 @@ export async function captureSnapshot(project: ExtractionProject, examples: Trai
   return snapshot;
 }
 
+type TranskriptLauf = Promise<{ volltext?: Volltext; fehler?: string }> | null;
+
+/**
+ * Profil-Schalter „Transkript liefern" (`extraction.transkript`): vollstaendiges Seitentranskript ueber den
+ * Lesekern der Vertragsauswertung, parallel zur eigentlichen Extraktion. Nur fuer PDF und Bilder — Textquellen
+ * haben ihren Text ohnehin. Fehler brechen die Extraktion nicht ab.
+ */
+function starteTranskript(project: ExtractionProject, quelle: { rawBuffer: Buffer; mimeType: string } | null, userId: string | undefined): TranskriptLauf {
+  if (!quelle || !(quelle.mimeType === 'application/pdf' || quelle.mimeType.startsWith('image/'))) return null;
+  const m = project.extraction?.model_override;
+  return leseDokument(
+    { userId: userId ?? '', modelOverride: m ? { providerId: m.provider_id, modelId: m.model_id } : null },
+    quelle,
+    { maxSeiten: project.extraction?.max_pages ?? 500, parallel: Math.max(1, project.extraction?.max_concurrent ?? 4) },
+  ).then((d) => ({ volltext: alsVolltext(d) }), (err) => ({ fehler: err instanceof Error ? err.message : String(err) }));
+}
+
+/** Transkript an das Ergebnis haengen: Volltext, Dokumenttext, Zusatzposten, Hinweis bei Lesefehlern. */
+type ExtraktionsErgebnis = Awaited<ReturnType<typeof extractInternal>>;
+
+async function mitTranskript(r: ExtraktionsErgebnis, lauf: TranskriptLauf): Promise<ExtraktionsErgebnis> {
+  if (!lauf) return r;
+  const t = await lauf;
+  const hinweis = (message: string): RuleIssue => ({ rule_id: 'transkript', type: 'processing', severity: 'warn', message, fields: [] });
+  if (!t.volltext) {
+    r.validations = [...(r.validations ?? []), hinweis(`Transkript konnte nicht erstellt werden (${t.fehler ?? 'unbekannt'}).`)];
+    return r;
+  }
+  r.volltext = t.volltext;
+  r.document_text = t.volltext.seiten.map((s) => s.text).join('\n\n');
+  if (r.audit) r.audit.zusatz = [transkriptPosten(t.volltext.seiten.length)];
+  const fehlend = t.volltext.seiten.filter((s) => s.fehler).map((s) => s.seite);
+  if (fehlend.length) r.validations = [...(r.validations ?? []), hinweis(`Transkript unvollständig — Seite ${fehlend.join(', ')} nicht lesbar.`)];
+  return r;
+}
+
 function snapshotResolvers(snapshot?: ExtractionSnapshot): { catalog: ResolveCatalog; lookup: LoadAllowedValues } {
   const read = (table: string, column: string) => snapshot?.references?.[JSON.stringify([table, column])] ?? { error: 'Referenzwerte fehlen im gespeicherten Profilstand' };
   return !snapshot ? { catalog: resolveCatalogValues, lookup: loadTableColumnValues } : {
@@ -380,14 +418,14 @@ async function extractInternal(
   strategyUsed?: string;
   /** Audit-Metadaten: mit welchem Regel-Stand/Modell/Strategie extrahiert wurde. */
   audit?: { performance?: import("../../services/extraction/runtime").RuntimeMetrics; guideline_version: number; model: string; strategy?: string; profile_hash?: string; snapshot_hash?: string;
-    verbrauch?: import('../../services/llm/token-meter').TokenMessung; abrechnung?: import('../produkte').AbrechnungsPosten };
+    verbrauch?: import('../../services/llm/token-meter').TokenMessung; abrechnung?: import('../produkte').AbrechnungsPosten; zusatz?: import('../produkte').AbrechnungsPosten[] };
   /** Befunde der fachlichen Pruefregeln (Welle 5); leer, wenn keine Regeln definiert. */
   validations?: RuleIssue[];
   /** Segment-Instanzen (Welle 10) — nur bei Profilen mit `segments`. */
   segments?: SegmentInstance[];
   /** Vertragsauswertung — nur Strategie `contract-structured`. */
   vertrag?: import('../../services/extraction/contract/types').VertragsAuswertung;
-  /** Volltext je Seite + Gliederung — nur Strategie `general-document` (Basisprofil „Allgemein"). */
+  /** Volltext je Seite + Gliederung — Strategie `general-document` (Basisprofil „Allgemein") oder Profil-Schalter `extraction.transkript`. */
   volltext?: import('../../services/extraction/contract/types').Volltext;
   error?: string;
 }> {
@@ -467,13 +505,20 @@ async function extractInternal(
       throw new Error('Kein Dokumenttext oder Bild vorhanden');
     }
 
+    // Profil-Schalter „Transkript liefern" — laeuft parallel; Strategien mit eigenem Bild-Transkript brauchen ihn nicht.
+    const transkriptLauf = project.extraction?.transkript && !liestUeberBild
+      ? starteTranskript(project, ingested.rawBuffer && ingested.rawMimeType
+        ? { rawBuffer: ingested.rawBuffer, mimeType: ingested.rawMimeType }
+        : ingested.imageBase64 && ingested.imageMimeType ? { rawBuffer: Buffer.from(ingested.imageBase64, 'base64'), mimeType: ingested.imageMimeType } : null, userId)
+      : null;
+
     // Segment-Profil (Welle 10): eigener Pfad — Seiten klassifizieren, je
     // Segment gescopte Extraktion ueber die bestehende Pipeline. Nur fuer
     // visuelle Quellen (PDF); alles andere laeuft wie bisher monolithisch.
     if (project.segments && Object.keys(project.segments).length > 0 && ingested.rawBuffer && ingested.rawMimeType === 'application/pdf') {
       const segResult = await extractWithSegments(project, ingested.rawBuffer, userId ?? '', resolvers.catalog, frozen!.examples);
       console.log(`[Extraction] ${projectId}: ${segResult.segments.length} Segment(e), ${segResult.llmCalls} LLM-Calls, ${segResult.validations.length} Befund(e)`);
-      return {
+      return await mitTranskript({
         success: true, original, snapshot: frozen, segmentContexts: segResult.segmentContexts,
         data: segResult.data,
         document_text: documentText,
@@ -489,7 +534,7 @@ async function extractInternal(
           model: evalModelLabel(project),
           strategy: 'segmented',
         },
-      };
+      }, transkriptLauf);
     }
 
     // Few-Shot + Schema fuer die Heavy-Pipeline
@@ -576,7 +621,7 @@ async function extractInternal(
       documentText = result.contract.klauseln.map((k) => `[${k.id}] ${k.titelpfad.join(' › ')}\n${k.text}`).join('\n\n');
     }
     if (result.volltext) documentText = result.volltext.seiten.map((s) => s.text).join('\n\n');
-    return {
+    return await mitTranskript({
       success: true, original, snapshot: frozen,
       data,
       document_text: documentText,
@@ -593,7 +638,7 @@ async function extractInternal(
         model: evalModelLabel(project),
         strategy: result.strategyUsed,
       },
-    };
+    }, transkriptLauf);
   } catch (error: any) {
     console.error(`[Extraction] Error for project ${projectId}:`, error.message);
     return { success: false, data: {}, document_text: '', error: error.message };

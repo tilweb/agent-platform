@@ -6,7 +6,7 @@
  * dient der Preisfindung — er ist keine Kundeneinheit.
  */
 
-export type ProduktId = 'formular' | 'text' | 'standard' | 'vorgang' | 'vertrag' | 'stapel-trennung';
+export type ProduktId = 'formular' | 'text' | 'standard' | 'vorgang' | 'vertrag' | 'stapel-trennung' | 'transkript';
 
 export interface Produkt { id: ProduktId; label: string; kostenfaktor: number }
 
@@ -17,6 +17,8 @@ export const PRODUKTE: Record<ProduktId, Produkt> = {
   vorgang: { id: 'vorgang', label: 'Vorgang (mehrteilig)', kostenfaktor: 1.5 },
   vertrag: { id: 'vertrag', label: 'Vertrag', kostenfaktor: 3.0 },
   'stapel-trennung': { id: 'stapel-trennung', label: 'Stapel-Trennung', kostenfaktor: 1.0 },
+  // Zusatz zu einem anderen Produkt: vollstaendiges Seitentranskript (ein Bildaufruf je Seite).
+  transkript: { id: 'transkript', label: 'Transkript (Zusatz)', kostenfaktor: 1.0 },
 };
 
 /** Produkt einer Auswertung aus der genutzten Strategie (`segmented` = Segmentprofil). */
@@ -36,6 +38,11 @@ export interface AbrechnungsPosten { produkt: ProduktId; seiten: number; kostenf
 export function abrechnungsPosten(strategie: string | undefined, seiten: number): AbrechnungsPosten {
   const p = produktFuerStrategie(strategie);
   return { produkt: p.id, seiten: Math.max(1, seiten), kostenfaktor: p.kostenfaktor };
+}
+
+/** Zusatzposten „Transkript" (Profil-Schalter `extraction.transkript`). */
+export function transkriptPosten(seiten: number): AbrechnungsPosten {
+  return { produkt: 'transkript', seiten: Math.max(1, seiten), kostenfaktor: PRODUKTE.transkript.kostenfaktor };
 }
 
 /** Posten gleichen Produkts zusammenfassen (Seiten addieren). */

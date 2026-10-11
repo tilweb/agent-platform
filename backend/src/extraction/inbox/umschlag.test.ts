@@ -25,6 +25,15 @@ describe('baueUmschlag', () => {
     expect(u.verbrauch).toEqual({ aufrufe: 12, prompt_tokens: 50000, completion_tokens: 9000, ohne_angabe: 0 });
   });
 
+  test('Profil-Schalter Transkript: Zusatzposten je Teil, Dokumenttext im Ergebnis', () => {
+    const u = baueUmschlag(upload([{}]), { t1: datei({
+      strategy: 'hybrid', documentText: 'Seite 1 …',
+      audit: { guideline_version: 1, model: 'm', abrechnung: { produkt: 'standard', seiten: 7, kostenfaktor: 1 }, zusatz: [{ produkt: 'transkript', seiten: 7, kostenfaktor: 1 }] },
+    }) });
+    expect(u.abrechnung).toEqual([{ produkt: 'standard', seiten: 7, kostenfaktor: 1 }, { produkt: 'transkript', seiten: 7, kostenfaktor: 1 }]);
+    expect(u.teile[0]!.ergebnis?.document_text).toBe('Seite 1 …');
+  });
+
   test('in Arbeit, solange ein Teil laeuft; abgebrochener Lauf ist Fehler', () => {
     expect(baueUmschlag(upload([{}]), { t1: datei({ status: 'processing' }) }).status).toBe('verarbeitung');
     const u = baueUmschlag(upload([{}]), { t1: { ...datei({ status: 'pending' }), laufAbgebrochen: true } });

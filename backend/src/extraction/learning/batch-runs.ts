@@ -57,6 +57,8 @@ export interface FileAudit {
   verbrauch?: import('../../services/llm/token-meter').TokenMessung;
   /** Abrechnungsposten (Seiten × Produkt, Konzept DP-Produktmodell §5). */
   abrechnung?: import('../produkte').AbrechnungsPosten;
+  /** Zusatzposten (z. B. Transkript) — werden zum Hauptposten addiert. */
+  zusatz?: import('../produkte').AbrechnungsPosten[];
 }
 
 export interface BatchFileSummary {
@@ -74,6 +76,13 @@ export interface BatchFileSummary {
   validations: RuleIssue[] | null;
   /** Segment-Instanzen (Welle 10); null bei segmentlosen Profilen/alten Laeufen. */
   segments: SegmentInstance[] | null;
+  /** Dokumenttext — nur mit `getBatchRun(…, { mitText: true })` (API), sonst nicht geladen. */
+  documentText?: string | null;
+}
+
+/** Datei hat Vertragsauswertung oder Volltext im Detail (Strategie oder Profil-Schalter „Transkript"). */
+export function hatTextDetail(f: Pick<BatchFileSummary, 'strategy' | 'audit'>): boolean {
+  return f.strategy === 'contract-structured' || f.strategy === 'general-document' || !!f.audit?.zusatz?.some((z) => z.produkt === 'transkript');
 }
 
 export interface BatchFileDetail extends BatchFileSummary {
@@ -335,6 +344,7 @@ export async function listBatchRuns(projectId: string): Promise<BatchRunSummary[
 export async function getBatchRun(
   projectId: string,
   runId: string,
+  opts: { mitText?: boolean } = {},
 ): Promise<{ run: BatchRunSummary; files: BatchFileSummary[] } | null> {
   const db = getDb();
   const runs = await db.select().from(extractionBatchRuns)
@@ -354,6 +364,7 @@ export async function getBatchRun(
     reviewStatus: extractionBatchRunFiles.reviewStatus,
     validations: extractionBatchRunFiles.validations,
     segments: extractionBatchRunFiles.segments,
+    ...(opts.mitText ? { documentText: extractionBatchRunFiles.documentText } : {}),
   }).from(extractionBatchRunFiles)
     .where(eq(extractionBatchRunFiles.batchRunId, runId))
     .orderBy(extractionBatchRunFiles.createdAt);
@@ -370,6 +381,7 @@ export async function getBatchRun(
     reviewStatus: (r.reviewStatus as ReviewStatus | null) ?? null,
     validations: (r.validations as RuleIssue[] | null) ?? null,
     segments: (r.segments as SegmentInstance[] | null) ?? null,
+    ...(opts.mitText ? { documentText: (r as { documentText?: string | null }).documentText ?? null } : {}),
   }));
 
   let completedCount = 0, failedCount = 0;
