@@ -2,6 +2,11 @@
 
 ## 2026-10-11
 
+### Doku: Wohngeld-Befunde aus der DP-Qualitätssuite
+`docs/wohngeld-dp-befunde-2026-10-11.md`: schwache Felder mit Beispielen und vermuteter Ursache (meist mehrdeutige
+Feldbeschreibungen oder zu strenger Namensvergleich, nicht die bewusst eingebauten Antragsfehler), Fehlschnitte, zu
+niedrige Token-Werte der Wohngeld-Baseline. Zur späteren Bearbeitung.
+
 ### Vertragsextraktion: Unterschriften parteigebunden, Beilagen getrennt
 - Die Transkription bindet jede Unterschriftsmarkierung an die Partei unter dem Feld (`{{unterschrift: Name | Partei}}`,
   `{{keine unterschrift | Partei}}`). Die Konsolidierung übernimmt den Wert, wenn alle Markierungen einer Partei
