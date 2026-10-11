@@ -78,5 +78,7 @@ export function applyExtractionDefaults(
     llm_confidence: config.llm_confidence ?? EXTRACTION_DEFAULTS.llm_confidence,
     model_override: config.model_override ?? EXTRACTION_DEFAULTS.model_override,
     ...(config.transkript ? { transkript: true as const } : {}),
+    // Snapshots laufen hier durch — ohne diese Zeile ignorierte die Batch-Triage die Profil-Schwelle.
+    ...(typeof config.review_threshold === 'number' ? { review_threshold: config.review_threshold } : {}),
   };
 }

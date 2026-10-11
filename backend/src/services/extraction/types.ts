@@ -101,6 +101,8 @@ export interface ResolvedExtractionConfig {
   model_override: { provider_id: string; model_id: string } | null;
   /** Konsumenten-Feld „Transkript liefern" — nur gesetzt, wenn eingeschaltet (aendert sonst keinen Snapshot-Hash). */
   transkript?: true;
+  /** Konsumenten-Feld Review-Schwelle — nur gesetzt, wenn im Profil eingestellt (sonst confidence_threshold). */
+  review_threshold?: number;
 }
 
 // ============== Schema (Wrapper um ExtractionProfile + Config) ==============

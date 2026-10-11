@@ -157,3 +157,16 @@ test('emptyCalibration hat 5 leere Buckets', () => {
   expect(s.buckets).toHaveLength(5);
   expect(s.samples).toBe(0);
 });
+
+test('Snapshot behaelt Review-Schwelle und Transkript-Schalter (Batch-Triage nutzt den Snapshot)', async () => {
+  const { createSnapshot } = await import('./snapshot');
+  const p = makeProject({ a: { type: 'text', required: true, label: 'A' } as ProjectField }, { strategy: 'hybrid', review_threshold: 0.9, transkript: true });
+  const snap = createSnapshot(p, []);
+  expect(resolveReviewThreshold(snap.project)).toBe(0.9);
+  expect(snap.project.extraction?.transkript).toBe(true);
+  // Ohne eigene Schwelle bleibt es bei der Pipeline-Schwelle, ohne Schalter kommt kein Schluessel hinzu.
+  const ohne = createSnapshot(makeProject({ a: { type: 'text', required: true, label: 'A' } as ProjectField }, { strategy: 'hybrid' }), []);
+  expect(resolveReviewThreshold(ohne.project)).toBe(0.6);
+  expect('transkript' in (ohne.project.extraction ?? {})).toBe(false);
+  expect('review_threshold' in (ohne.project.extraction ?? {})).toBe(false);
+});

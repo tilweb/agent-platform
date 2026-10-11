@@ -2,6 +2,13 @@
 
 ## 2026-10-11
 
+### Fix: Batch-Triage ignorierte die Review-Schwelle des Profils
+Batch-Läufe arbeiten mit einem Snapshot des Profils, und `applyExtractionDefaults` übernahm dabei nur eine feste Liste
+von Einstellungen. `review_threshold` fehlte darin. Die Einstufung „Zu prüfen"/„automatisch ok" lief im Batch deshalb
+immer mit 0,6 statt mit dem im Profil eingestellten Wert. Jetzt bleibt die Schwelle erhalten, ebenso der neue Schalter
+`transkript`. Profile ohne eigene Schwelle sind unverändert. Bei Profilen mit eigener Schwelle landen im Batch jetzt so
+viele Dokumente auf „Zu prüfen", wie die Einstellung vorsieht.
+
 ### DP: Transkript per Profil-Schalter, Dokumenttext auch asynchron
 - Neuer Profil-Schalter „Transkript liefern" (`extraction.transkript`, Profil-Einstellungen). Er transkribiert jede Seite
   parallel zur Extraktion über das Seitenbild (Lesekern der Vertragsauswertung) und liefert `volltext` sowie ein
