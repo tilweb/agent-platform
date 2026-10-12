@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { istKatalogFeld, katalogFelder, katalogWerte, mitKatalogFeldern, ohneKatalogFelder } from './vertragskatalog';
+import { istKatalogFeld, katalogFelder, katalogWerte, mitKatalogFeldern, ohneKatalogFelder, TEIL_LABEL } from './vertragskatalog';
+import { KATALOG_WERTE } from '../services/extraction/contract/auswertung';
 import { erweiterungsFelder, katalogInProfilform } from '../services/extraction/strategies/contract-structured';
 import { extractionProjectToExtractionSchema } from './learning/pipeline-adapter';
 import type { ExtractionProject } from './learning/types';
@@ -80,4 +81,17 @@ test('Katalogdatum im deutschen Format: nach der Angleichung in der Strategie ke
   const r = finalizeResult({ extracted: ziel.extracted, fieldConfidences: ziel.fieldConfidences, provenance: [], warnings: [], llmCalls: 0, strategyUsed: 'contract-structured' } as never, vorher, profil);
   expect((r.processingIssues ?? []).some((i) => i.code === 'changed')).toBe(false);
   expect(r.fieldConfidences['felder.katalog_beginn_datum']).toBe(0.85);
+});
+
+test('Jedes Teilfeld des Katalogs hat eine Bezeichnung (sonst erscheint der interne Schluessel in der Oberflaeche)', () => {
+  const schluessel = new Set<string>();
+  const sammle = (s: { properties?: Record<string, unknown>; items?: unknown }) => {
+    if (s.items) sammle(s.items as never);
+    for (const [k, v] of Object.entries(s.properties ?? {})) { schluessel.add(k); sammle(v as never); }
+  };
+  for (const s of Object.values(KATALOG_WERTE)) sammle(s as never);
+  schluessel.delete('text'); // Elemente aus nur einem Text heissen wie das Element
+  expect([...schluessel].filter((k) => !TEIL_LABEL[k])).toEqual([]);
+  expect(Object.values(TEIL_LABEL).every((l) => l[0] === l[0]!.toUpperCase())).toBe(true);
+  expect(katalogFelder().katalog_gerichtsstand_bedingung!.label).toBe('Gerichtsstand: Gilt nur, wenn');
 });

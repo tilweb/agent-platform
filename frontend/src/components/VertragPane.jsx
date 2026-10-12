@@ -31,7 +31,7 @@ const BEFUND_LABEL = {
 
 const TEIL_LABEL = {
   bezeichnung: 'Bezeichnung', kategorie: 'Kategorie', beschraenkung: 'Beschränkung', hoechstbetrag: 'Höchstbetrag', ausnahmen: 'Ausnahmen',
-  zahlungsziel: 'Zahlungsziel', verfahren: 'Verfahren', zusage: 'Zusage', modalitaet: 'Verbindlichkeit', ort: 'Ort', bedingung: 'Bedingung',
+  zahlungsziel: 'Zahlungsziel', verfahren: 'Verfahren', zusage: 'Zusage', modalitaet: 'Verbindlichkeit', ort: 'Ort', bedingung: 'Gilt nur, wenn',
   art: 'Art', dauer: 'Dauer', ende: 'Ende', datum: 'Datum', regel: 'Regel', form: 'Form', ausserordentlich: 'außerordentlich', schritt: 'Schritt',
 };
 
@@ -303,7 +303,7 @@ export default function VertragPane({
           </div>
         )}
         {(k?.bedingung || k?.verweis) && (
-          <div style={{ ...styles.hinweis, marginTop: theme.spacing.sm }}>{k.bedingung ? `Bedingung: ${k.bedingung}` : `Verweis: ${k.verweis}`}</div>
+          <div style={{ ...styles.hinweis, marginTop: theme.spacing.sm }}>{k.bedingung ? `Gilt nur, wenn: ${k.bedingung}` : `Verweis: ${k.verweis}`}</div>
         )}
         {fundstellenListe(fundstellen(el), el)}
         {offenEdit && (

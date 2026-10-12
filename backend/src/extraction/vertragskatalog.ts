@@ -27,14 +27,16 @@ export const KATALOG_LABEL: Record<KatalogElement, string> = {
 
 const STATUS_BESCHREIBUNG = 'gefunden = geregelt · nicht_geregelt · anlage_fehlt = in nicht beigefügter Anlage geregelt · delegiert = in anderem Vertrag geregelt · geerbt = gilt wie im Hauptvertrag · bedingt = gilt nur unter einer Bedingung';
 
-const TEIL_LABEL: Record<string, string> = {
+export const TEIL_LABEL: Record<string, string> = {
   bezeichnung: 'Bezeichnung', kategorie: 'Kategorie', rolle: 'Rolle', name: 'Name', anschrift: 'Anschrift', aliasse: 'Kurzbezeichnungen',
-  art: 'Art', wert: 'Wert', partei: 'Partei', vorhanden: 'vorhanden', klausel: 'Fundstelle', datum: 'Datum', ort: 'Ort', stempel: 'Stempel',
-  vertretung: 'vertreten durch', handschriftlich: 'handschriftlich', regel: 'Regel', dauer: 'Dauer', ende: 'Ende', automatisch: 'automatisch',
-  schritt: 'Verlängerungsschritt', frist: 'Frist', einheit: 'Einheit', richtung: 'Richtung', bezug: 'Bezugspunkt', zum: 'zum', wortlaut: 'Wortlaut',
-  form: 'Form', ausserordentlich: 'außerordentlich', betrag: 'Betrag', formel: 'Formel', bezugsgroesse: 'Bezugsgröße', rhythmus: 'Rhythmus',
-  netto_brutto: 'netto/brutto', zahlungsziel: 'Zahlungsziel', verfahren: 'Verfahren', wer: 'wer', ausloeser: 'Auslöser', wirksam_ab: 'wirksam ab',
+  art: 'Art', wert: 'Wert', partei: 'Partei', vorhanden: 'Vorhanden', klausel: 'Fundstelle', datum: 'Datum', ort: 'Ort', stempel: 'Stempel',
+  vertretung: 'Vertreten durch', handschriftlich: 'Handschriftlich', regel: 'Regel', dauer: 'Dauer', ende: 'Ende', automatisch: 'Automatisch',
+  schritt: 'Verlängerungsschritt', frist: 'Frist', einheit: 'Einheit', richtung: 'Richtung', bezug: 'Bezugspunkt', zum: 'Zum (Termin)', wortlaut: 'Wortlaut',
+  form: 'Form', ausserordentlich: 'Außerordentlich', betrag: 'Betrag', formel: 'Formel', bezugsgroesse: 'Bezugsgröße', rhythmus: 'Rhythmus',
+  netto_brutto: 'Netto/Brutto', zahlungsziel: 'Zahlungsziel', verfahren: 'Verfahren', wer: 'Wer', ausloeser: 'Auslöser', wirksam_ab: 'Wirksam ab',
   beschraenkung: 'Beschränkung', hoechstbetrag: 'Höchstbetrag', ausnahmen: 'Ausnahmen', zusage: 'Zusage', modalitaet: 'Verbindlichkeit',
+  // Einschränkung, unter der die Regel gilt (z. B. Gerichtsstand „sofern der Kunde Kaufmann ist").
+  bedingung: 'Gilt nur, wenn',
 };
 
 interface Schema { type?: string | string[]; properties?: Record<string, Schema>; items?: Schema; enum?: unknown[] }
