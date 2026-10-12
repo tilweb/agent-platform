@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Fragment } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
 import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon, FolderOpenIcon, InfoIcon } from '../components/Icons';
-import { pruefElemente } from '../utils/vertragKatalog';
+import { pruefElemente, ZUSATZ_SCHLUESSEL } from '../utils/vertragKatalog';
 import ExportDropdown from '../components/ExportDropdown';
 import VertragPane from '../components/VertragPane';
 import VolltextPane from '../components/VolltextPane';
@@ -370,6 +370,10 @@ const styles = {
     cursor: 'pointer',
     flexShrink: 0,
     lineHeight: 0,
+  },
+  feldKarte: {
+    border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.sm, backgroundColor: theme.colors.surface,
   },
   vorschauLeiste: {
     display: 'flex', alignItems: 'center', gap: theme.spacing.xs, flexShrink: 0,
@@ -3124,7 +3128,9 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
   // Vertrag: Katalogfelder bearbeitet die Vertragsansicht; Prüffortschritt steuert die Freigabe.
   const istVertrag = !!detail?.vertrag;
   const katalogFelder = Object.fromEntries(katalogEntries);
-  const pflichtElemente = istVertrag ? pruefElemente(detail.vertrag, katalogFelder, values) : [];
+  const pflichtElemente = istVertrag
+    ? [...pruefElemente(detail.vertrag, katalogFelder, values), ...(entries.length && pruefElemente(detail.vertrag, katalogFelder, values).length ? [ZUSATZ_SCHLUESSEL] : [])]
+    : [];
   const offeneElemente = pflichtElemente.filter(k => !geprueft[k]).length;
   const freigabeGesperrt = canReview && !isReviewed && offeneElemente > 0;
   const brauchtQuellenpruefung = (detail?.validations || []).some(i => i.rule_id === 'quellenpruefung');
@@ -3137,6 +3143,27 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
       : zoom * 100;
   const zoomStufe = typeof zoom === 'number' ? zoom : 1;
 
+  /** Eigene Profilfelder: unsichere zuerst, Skalare in einer Karte, jede Liste als eigene Karte. */
+  function renderEigeneFelder() {
+    return (
+      <>
+        {uncertain.length > 0 && (
+          <>
+            <div style={{ ...styles.groupLabel, color: theme.colors.warning, marginTop: 0 }}>Unsicher — zuerst prüfen ({uncertain.length})</div>
+            <div style={styles.feldKarte}>{uncertain.map(renderField)}</div>
+          </>
+        )}
+        {certain.length > 0 && (
+          <>
+            {uncertain.length > 0 && <div style={styles.groupLabel}>Übrige Felder</div>}
+            <div style={styles.feldKarte}>{certain.map(renderField)}</div>
+          </>
+        )}
+        {lists.map(renderList)}
+      </>
+    );
+  }
+
   function renderEingabe(fid, f) {
     const onChange = val => setEdited(prev => ({ ...(prev || {}), [fid]: val }));
     if (f.type === 'list') return <ListItemsEditor value={values[fid]} itemFields={f.item_fields} onChange={onChange} readOnly={!canReview || isReviewed} />;
@@ -3146,9 +3173,9 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
 
   function renderList([fid, f]) {
     return (
-      <div key={fid} style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm }}>
-        <div style={{ marginBottom: theme.spacing.xs, color: theme.colors.textMuted }}>
-          {f.label || fid} ({Array.isArray(values[fid]) ? values[fid].length : 0} Positionen)
+      <div key={fid} style={{ ...styles.feldKarte, marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm }}>
+        <div style={{ marginBottom: theme.spacing.sm, color: theme.colors.text, fontWeight: theme.typography.weights.medium }}>
+          {f.label || fid} <span style={{ color: theme.colors.textMuted, fontWeight: theme.typography.weights.normal }}>({Array.isArray(values[fid]) ? values[fid].length : 0} Positionen)</span>
         </div>
         <ListItemsEditor
           value={values[fid]}
@@ -3171,8 +3198,9 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
         onMouseEnter={() => setHoverField(fid)}
         onMouseLeave={() => setHoverField(null)}
         style={{
-          display: 'flex', gap: theme.spacing.md, alignItems: 'center',
-          padding: `${theme.spacing.sm} ${theme.spacing.sm}`,
+          // Festes Raster: Beschriftung | Wert | Sicherheit — alles steht untereinander.
+          display: 'grid', gridTemplateColumns: 'minmax(140px, 220px) minmax(0, 1fr) 48px', gap: theme.spacing.md, alignItems: 'center',
+          padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
           borderRadius: theme.borderRadius.md,
           backgroundColor: hoverField === fid ? theme.colors.surfaceHover : 'transparent',
           fontSize: theme.typography.sizes.sm,
@@ -3180,40 +3208,34 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
       >
         <span
           onClick={() => jumpToBox(fid)}
-          title={hasBox ? 'Fundstelle im Dokument zeigen' : undefined}
+          title={hasBox ? 'Fundstelle im Dokument zeigen' : f.label || fid}
           style={{
-            minWidth: 190,
-            cursor: hasBox ? 'pointer' : 'default',
+            cursor: hasBox ? 'pointer' : 'default', minWidth: 0,
             // Blau = von dir geändert (nicht mit der orangen Unsicher-Markierung verwechseln).
             color: isChanged ? theme.colors.info : theme.colors.textMuted,
           }}
         >
           {f.label || fid}
-          {typeof conf === 'number' && (
-            <span title="Erkennungssicherheit der KI für dieses Feld. Orange = unter der Prüfschwelle, bitte kontrollieren." style={{
-              marginLeft: theme.spacing.xs,
-              fontSize: theme.typography.sizes.xs,
-              color: conf < threshold ? theme.colors.warning : theme.colors.textMuted,
-            }}>
-              {Math.round(conf * 100)}%
-            </span>
-          )}
-          {isChanged && <span title="Von dir geändert" style={{ fontSize: theme.typography.sizes.xs, marginLeft: theme.spacing.xs, color: theme.colors.info }}>(korrigiert)</span>}
+          {isChanged && <span title="Von dir geändert" style={{ display: 'block', fontSize: theme.typography.sizes.xs, color: theme.colors.info }}>korrigiert</span>}
         </span>
         {canReview && !isReviewed ? (
-          <div style={{ flex: 1, maxWidth: 460 }}>
-            <FieldInputControl
-              field={f}
-              value={values[fid]}
-              onChange={val => setEdited(prev => ({ ...(prev || {}), [fid]: val }))}
-              isChanged={!!isChanged}
-            />
-          </div>
+          <FieldInputControl
+            field={f}
+            value={values[fid]}
+            onChange={val => setEdited(prev => ({ ...(prev || {}), [fid]: val }))}
+            isChanged={!!isChanged}
+          />
         ) : (
-          <span style={{ color: values[fid] != null ? theme.colors.text : theme.colors.textMuted }}>
+          <span style={{ color: values[fid] != null ? theme.colors.text : theme.colors.textMuted, minWidth: 0 }}>
             {fmtValue(values[fid]) || '—'}
           </span>
         )}
+        <span title="Erkennungssicherheit der KI für dieses Feld. Orange = unter der Prüfschwelle, bitte kontrollieren." style={{
+          fontSize: theme.typography.sizes.xs, textAlign: 'right',
+          color: typeof conf === 'number' && conf < threshold ? theme.colors.warning : theme.colors.textMuted,
+        }}>
+          {typeof conf === 'number' ? `${Math.round(conf * 100)}%` : ''}
+        </span>
       </div>
     );
   }
@@ -3351,6 +3373,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
                   original={detail.data || {}}
                   renderEingabe={renderEingabe}
                   pruefModus={canReview && !isReviewed}
+                  zusatz={entries.length ? { anzahl: entries.length, unsicher: uncertain.length, render: renderEigeneFelder, schluessel: ZUSATZ_SCHLUESSEL } : null}
                   geprueft={geprueft}
                   onGeprueft={(el, an) => setGeprueft(prev => ({ ...prev, [el]: an }))}
                 />
@@ -3388,18 +3411,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
                 />
               )}
 
-              {!segments && uncertain.length > 0 && (
-                <>
-                  <div style={{ ...styles.groupLabel, color: theme.colors.warning, marginTop: 0 }}>
-                    Unsicher — zuerst prüfen ({uncertain.length})
-                  </div>
-                  {uncertain.map(renderField)}
-                  <div style={styles.groupLabel}>Übrige Felder</div>
-                </>
-              )}
-              {!segments && certain.map(renderField)}
-
-              {!segments && lists.map(renderList)}
+              {!segments && !istVertrag && renderEigeneFelder()}
 
             </div>
           </div>

@@ -160,7 +160,7 @@ function wertZeilenAusKatalog(el, wert) {
 
 export default function VertragPane({
   vertrag, volltext, onJumpToPage, felder = {}, values = {}, original = {}, renderEingabe,
-  pruefModus = false, geprueft = {}, onGeprueft,
+  pruefModus = false, geprueft = {}, onGeprueft, zusatz = null,
 }) {
   const [tab, setTab] = useState('ueberblick');
   const [offen, setOffen] = useState(null);         // `${ort}|${klausel}` mit sichtbarem Wortlaut
@@ -206,6 +206,7 @@ export default function VertragPane({
   const befunde = (vertrag.befunde ?? []).filter((b) => b.typ !== 'verarbeitung');
   const tabs = [
     ['ueberblick', 'Überblick'],
+    ...(zusatz ? [['zusatz', `Zusatzfelder (${zusatz.anzahl})`]] : []),
     ['pflichten', `Pflichten & Fristen (${vertrag.inventar?.length ?? 0})`],
     ['klauseln', `Klauseln (${vertrag.klauseln?.length ?? 0})`],
     ...(volltext?.seiten?.length ? [['volltext', 'Volltext']] : []),
@@ -224,7 +225,9 @@ export default function VertragPane({
   const geregelt = REIHENFOLGE.filter((el) => status(el) === 'gefunden');
   const nichtGeregelt = REIHENFOLGE.filter((el) => status(el) === 'nicht_geregelt');
   const zaehler = Object.entries(REIHENFOLGE.reduce((acc, el) => ({ ...acc, [status(el)]: (acc[status(el)] ?? 0) + 1 }), {}));
-  const pflicht = pruefElemente(vertrag, felder, values);
+  const katalogPflicht = pruefElemente(vertrag, felder, values);
+  // Wie im Prüfdialog: Zusatzfelder zählen mit, sobald es Katalogfelder gibt.
+  const pflicht = katalogPflicht.length && zusatz ? [...katalogPflicht, zusatz.schluessel] : katalogPflicht;
   const erledigt = pflicht.filter((k) => geprueft[k]).length;
   const bearbeitbar = mitFeldern && pruefModus && !!renderEingabe;
 
@@ -300,7 +303,7 @@ export default function VertragPane({
 
       <div style={styles.tabs}>
         {tabs.map(([id, label]) => {
-          const warn = id === 'befunde' && befunde.length > 0;
+          const warn = (id === 'befunde' && befunde.length > 0) || (id === 'zusatz' && zusatz?.unsicher > 0);
           const aktiv = tab === id;
           return (
             <button key={id} type="button"
@@ -406,6 +409,21 @@ export default function VertragPane({
                 {offen === `k|${k.id}` && <div style={styles.wortlaut}>{k.text || '(ohne Text)'}</div>}
               </div>
             ))}
+        </div>
+      )}
+
+      {tab === 'zusatz' && zusatz && (
+        <div>
+          <div style={{ ...styles.zusammenfassung, justifyContent: 'space-between' }}>
+            <span style={styles.hinweis}>Eigene Felder dieses Profils{zusatz.unsicher > 0 ? ` · ${zusatz.unsicher} unsicher` : ''}</span>
+            {pruefModus && (
+              <label style={styles.check}>
+                <input type="checkbox" checked={!!geprueft[zusatz.schluessel]} onChange={(e) => onGeprueft?.(zusatz.schluessel, e.target.checked)} />
+                Zusatzfelder am Original geprüft
+              </label>
+            )}
+          </div>
+          {zusatz.render()}
         </div>
       )}
 

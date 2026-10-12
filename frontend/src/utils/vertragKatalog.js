@@ -20,6 +20,8 @@ export const REIHENFOLGE = [
 ];
 
 export const NICHT_GEREGELT_SCHLUESSEL = '__nicht_geregelt';
+/** Sammelhaken für die eigenen Profilfelder (Reiter „Zusatzfelder"). */
+export const ZUSATZ_SCHLUESSEL = '__zusatzfelder';
 
 /**
  * Elemente, die vor der Freigabe abgehakt sein müssen: alle geregelten bzw. abweichenden Elemente plus ein

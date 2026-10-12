@@ -27,6 +27,10 @@
   „Befunde" ist bei Befunden farbig hervorgehoben. Anlagen zeigen „liegt bei"/„fehlt".
 - Technische Angaben (Auswertung, Modell, Regelstand) hinter einem Info-Symbol im Kopf. Einleitungssatz für Verträge
   eigens formuliert. Volltext bei Verträgen als Reiter statt als zweite Liste.
+- Eigene Profilfelder stehen bei Verträgen im Reiter „Zusatzfelder" statt unter jedem Reiter. Unsichere Felder färben
+  den Reiter orange. Der Haken „Zusatzfelder am Original geprüft" zählt zum Prüffortschritt.
+- Felder in allen Prüfansichten in festem Raster (Beschriftung | Wert | Sicherheit), Skalare und jede Liste in einer
+  eigenen Karte.
 - Abstände vereinheitlicht: Reiter, Karten, Fundstellen, Hinweisboxen, Fußzeile. Der Hilfetext unter „Geprüftes
   Beispiel speichern" erscheint nur noch bei Lern- oder Testbeispiel.
 
