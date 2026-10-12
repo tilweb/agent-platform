@@ -368,6 +368,7 @@ export function konsolidiere(seiten: SeitenTranskript[], klauseln: Klausel[], aw
       verknuepfungen: verknuepfungenAus(aw.verknuepfungen, klauseln),
       verweise,
       befunde,
+      feld_fundstellen: Object.fromEntries(Object.entries(erweiterung.fundstellen).filter(([, ids]) => ids.length)),
     },
     erweiterung,
   };

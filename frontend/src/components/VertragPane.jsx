@@ -423,7 +423,10 @@ export default function VertragPane({
               </label>
             )}
           </div>
-          {zusatz.render()}
+          {zusatz.render({
+            // Leere Liste → nichts anzeigen; sonst Chips wie im Überblick.
+            fundstellenFuer: (fid) => fundstellenListe(vertrag.feld_fundstellen?.[fid] ?? [], `z-${fid}`),
+          })}
         </div>
       )}
 

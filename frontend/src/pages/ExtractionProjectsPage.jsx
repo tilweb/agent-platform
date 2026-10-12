@@ -3144,22 +3144,22 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
   const zoomStufe = typeof zoom === 'number' ? zoom : 1;
 
   /** Eigene Profilfelder: unsichere zuerst, Skalare in einer Karte, jede Liste als eigene Karte. */
-  function renderEigeneFelder() {
+  function renderEigeneFelder(opts = {}) {
     return (
       <>
         {uncertain.length > 0 && (
           <>
             <div style={{ ...styles.groupLabel, color: theme.colors.warning, marginTop: 0 }}>Unsicher — zuerst prüfen ({uncertain.length})</div>
-            <div style={styles.feldKarte}>{uncertain.map(renderField)}</div>
+            <div style={styles.feldKarte}>{uncertain.map(e => renderField(e, opts))}</div>
           </>
         )}
         {certain.length > 0 && (
           <>
             {uncertain.length > 0 && <div style={styles.groupLabel}>Übrige Felder</div>}
-            <div style={styles.feldKarte}>{certain.map(renderField)}</div>
+            <div style={styles.feldKarte}>{certain.map(e => renderField(e, opts))}</div>
           </>
         )}
-        {lists.map(renderList)}
+        {lists.map(e => renderList(e, opts))}
       </>
     );
   }
@@ -3171,7 +3171,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
     return <FieldInputControl field={f} value={values[fid]} onChange={onChange} isChanged={!!isChanged} />;
   }
 
-  function renderList([fid, f]) {
+  function renderList([fid, f], opts = {}) {
     return (
       <div key={fid} style={{ ...styles.feldKarte, marginTop: theme.spacing.md, fontSize: theme.typography.sizes.sm }}>
         <div style={{ marginBottom: theme.spacing.sm, color: theme.colors.text, fontWeight: theme.typography.weights.medium }}>
@@ -3183,11 +3183,12 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
           onChange={arr => setEdited(prev => ({ ...(prev || {}), [fid]: arr }))}
           readOnly={!canReview || isReviewed}
         />
+        {opts.fundstellenFuer?.(fid)}
       </div>
     );
   }
 
-  function renderField([fid, f]) {
+  function renderField([fid, f], opts = {}) {
     const conf = detail?.fieldConfidences?.[fid];
     const isChanged = edited && JSON.stringify(values[fid]) !== JSON.stringify(detail?.data?.[fid]);
     const hasBox = !!detail?.boxes?.[fid];
@@ -3236,6 +3237,8 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
         }}>
           {typeof conf === 'number' ? `${Math.round(conf * 100)}%` : ''}
         </span>
+        {/* Vertrag: Fundstellen des Felds (Klauseln) — Klick zeigt den Wortlaut und öffnet die Seite. */}
+        {opts.fundstellenFuer && <div style={{ gridColumn: '2 / 4', minWidth: 0 }}>{opts.fundstellenFuer(fid)}</div>}
       </div>
     );
   }

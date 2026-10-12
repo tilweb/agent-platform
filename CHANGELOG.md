@@ -29,6 +29,9 @@
   eigens formuliert. Volltext bei Verträgen als Reiter statt als zweite Liste.
 - Eigene Profilfelder stehen bei Verträgen im Reiter „Zusatzfelder" statt unter jedem Reiter. Unsichere Felder färben
   den Reiter orange. Der Haken „Zusatzfelder am Original geprüft" zählt zum Prüffortschritt.
+- Zusatzfelder mit Fundstellen: Jedes eigene Feld zeigt seine Klauseln als Chips („§4.2 · S. 2"), ein Klick zeigt
+  den Wortlaut und öffnet die Seite. Dafür liefert `vertrag` neu `feld_fundstellen` (Feld-ID → Klausel-IDs; kompatible
+  Ergänzung, Schema-Version 1). Gilt für ab jetzt verarbeitete Verträge.
 - Felder in allen Prüfansichten in festem Raster (Beschriftung | Wert | Sicherheit), Skalare und jede Liste in einer
   eigenen Karte.
 - Abstände vereinheitlicht: Reiter, Karten, Fundstellen, Hinweisboxen, Fußzeile. Der Hilfetext unter „Geprüftes

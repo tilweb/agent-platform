@@ -70,7 +70,8 @@ vertrag: {
   fristen:       [FristRegel],
   verknuepfungen:[{ art, wert, klausel? }],
   verweise:      [{ von, text, ziel? }],
-  befunde:       [{ typ, text, klauseln: [id] }]
+  befunde:       [{ typ, text, klauseln: [id] }],
+  feld_fundstellen: { <feld-id>: [id] }   // Fundstellen der eigenen Profilfelder (seit 2026-10-12, optional)
 }
 ```
 

@@ -149,6 +149,8 @@ export interface VertragsAuswertung {
   verknuepfungen: Verknuepfung[];
   verweise: Querverweis[];
   befunde: VertragsBefund[];
+  /** Fundstellen der eigenen Profilfelder (Feld-ID → Klausel-IDs); nur belegte Felder. */
+  feld_fundstellen?: Record<string, string[]>;
 }
 
 /** Volltext eines Dokuments (Basisprofil „Allgemein"; Ersatz fuer Docling/Markitdown, auch bei Scans). */
