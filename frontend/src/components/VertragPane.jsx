@@ -13,13 +13,14 @@ import { KATALOG_LABEL, NICHT_GEREGELT_SCHLUESSEL, REIHENFOLGE, pruefElemente } 
  * Katalogfelder werden lesend aus `vertrag.katalog` angezeigt.
  */
 
+/** label = Badge, option = Auswahl beim Bearbeiten, tip = Erklärung (Tooltip). */
 const STATUS = {
-  gefunden: { label: 'geregelt', bg: theme.colors.successLight, fg: theme.colors.success },
-  nicht_geregelt: { label: 'nicht geregelt', bg: theme.colors.surfaceHover, fg: theme.colors.textMuted },
-  anlage_fehlt: { label: 'Anlage fehlt', bg: theme.colors.warningLight, fg: theme.colors.warning },
-  delegiert: { label: 'anderer Vertrag', bg: theme.colors.infoLight, fg: theme.colors.info },
-  geerbt: { label: 'geerbt', bg: theme.colors.infoLight, fg: theme.colors.info },
-  bedingt: { label: 'bedingt', bg: theme.colors.warningLight, fg: theme.colors.warning },
+  gefunden: { label: 'geregelt', option: 'Im Vertrag geregelt', tip: 'Der Vertrag enthält dazu eine Bestimmung — Wert und Fundstelle stehen in der Karte.', bg: theme.colors.successLight, fg: theme.colors.success },
+  nicht_geregelt: { label: 'nicht geregelt', option: 'Nicht geregelt', tip: 'Der Vertrag sagt dazu nichts. Dann gilt in der Regel das Gesetz bzw. nichts Besonderes.', bg: theme.colors.surfaceHover, fg: theme.colors.textMuted },
+  anlage_fehlt: { label: 'Anlage fehlt', option: 'In einer fehlenden Anlage', tip: 'Der Vertrag verweist dafür auf eine Anlage, die nicht im Dokument liegt (z. B. „Preise gemäß Anlage 2").', bg: theme.colors.warningLight, fg: theme.colors.warning },
+  delegiert: { label: 'anderer Vertrag', option: 'In einem anderen Vertrag', tip: 'Die Regelung steht in einem anderen Vertrag (z. B. „gemäß Rahmenvertrag").', bg: theme.colors.infoLight, fg: theme.colors.info },
+  geerbt: { label: 'geerbt', option: 'Wie im Hauptvertrag', tip: 'Es gilt, was im Hauptvertrag steht — typisch bei Zusatzvereinbarungen („Laufzeit wie Wartungsvertrag").', bg: theme.colors.infoLight, fg: theme.colors.info },
+  bedingt: { label: 'bedingt', option: 'Nur unter einer Bedingung', tip: 'Gilt nur unter einer Bedingung (z. B. „nur wenn der Kunde Kaufmann ist").', bg: theme.colors.warningLight, fg: theme.colors.warning },
 };
 const ABWEICHEND = new Set(['anlage_fehlt', 'bedingt', 'geerbt', 'delegiert']);
 
@@ -91,10 +92,30 @@ const styles = {
   check: { display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, cursor: 'pointer', whiteSpace: 'nowrap' },
   bearbeiten: { display: 'flex', flexDirection: 'column', gap: theme.spacing.sm, marginTop: theme.spacing.md, paddingTop: theme.spacing.md, borderTop: `1px solid ${theme.colors.border}` },
   eingabeZeile: { display: 'flex', flexDirection: 'column', gap: theme.spacing.xs },
+  statusWahl: { display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs },
+  statusOption: {
+    padding: `${theme.spacing.xs} ${theme.spacing.md}`, borderRadius: theme.borderRadius.full, border: `1px solid ${theme.colors.border}`,
+    backgroundColor: theme.colors.surface, color: theme.colors.textSecondary, fontSize: theme.typography.sizes.xs, cursor: 'pointer',
+  },
+  entfernen: { border: 'none', background: 'transparent', color: theme.colors.textMuted, cursor: 'pointer', padding: 0, fontSize: theme.typography.sizes.sm, lineHeight: 1 },
+  fundAuswahl: {
+    padding: `2px ${theme.spacing.sm}`, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.surface, color: theme.colors.textSecondary, fontSize: theme.typography.sizes.xs, maxWidth: 280,
+  },
 };
 
-function Badge({ bg, fg, children }) {
-  return <span style={{ ...styles.badge, backgroundColor: bg, color: fg }}>{children}</span>;
+function Badge({ bg, fg, title, children }) {
+  return <span title={title} style={{ ...styles.badge, backgroundColor: bg, color: fg, ...(title ? { cursor: 'help' } : {}) }}>{children}</span>;
+}
+
+/** Für „korrigiert": leere Texte, leere Listen und Zeilen ohne Inhalt gelten als gleich leer. */
+function normiert(v) {
+  if (v === '' || v == null) return null;
+  if (Array.isArray(v)) {
+    const zeilen = v.filter((z) => (z && typeof z === 'object' ? Object.values(z).some((x) => !leer(x)) : !leer(z)));
+    return zeilen.length ? zeilen : null;
+  }
+  return v;
 }
 
 const leer = (v) => v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
@@ -160,7 +181,7 @@ function wertZeilenAusKatalog(el, wert) {
 
 export default function VertragPane({
   vertrag, volltext, onJumpToPage, felder = {}, values = {}, original = {}, renderEingabe,
-  pruefModus = false, geprueft = {}, onGeprueft, zusatz = null,
+  pruefModus = false, geprueft = {}, onGeprueft, zusatz = null, onFeldAendern,
 }) {
   const [tab, setTab] = useState('ueberblick');
   const [offen, setOffen] = useState(null);         // `${ort}|${klausel}` mit sichtbarem Wortlaut
@@ -220,16 +241,26 @@ export default function VertragPane({
     ? String(values[`katalog_${el}_fundstellen`] ?? '').split(/,\s*/).filter(Boolean)
     : vertrag.katalog?.[el]?.klauseln ?? []);
   const geaendert = (el) => mitFeldern && [`katalog_${el}_status`, `katalog_${el}_fundstellen`, ...elementFelder(el, felder)]
-    .some((id) => JSON.stringify(values[id] ?? null) !== JSON.stringify(original[id] ?? null));
+    .some((id) => JSON.stringify(normiert(values[id])) !== JSON.stringify(normiert(original[id])));
+  const setze = (id, wert) => onFeldAendern?.(id, wert);
+  /** Status ändern; „nicht geregelt" leert Werte und Fundstellen des Elements (sonst widersprüchlich). */
+  const setzeStatus = (el, neu) => {
+    setze(`katalog_${el}_status`, neu);
+    if (neu === 'nicht_geregelt') {
+      for (const id of elementFelder(el, felder)) setze(id, felder[id]?.type === 'list' ? [] : null);
+      setze(`katalog_${el}_fundstellen`, null);
+    }
+  };
+  const setzeFundstellen = (el, ids) => setze(`katalog_${el}_fundstellen`, ids.length ? ids.join(', ') : null);
   const abweichend = REIHENFOLGE.filter((el) => ABWEICHEND.has(status(el)));
   const geregelt = REIHENFOLGE.filter((el) => status(el) === 'gefunden');
   const nichtGeregelt = REIHENFOLGE.filter((el) => status(el) === 'nicht_geregelt');
-  const zaehler = Object.entries(REIHENFOLGE.reduce((acc, el) => ({ ...acc, [status(el)]: (acc[status(el)] ?? 0) + 1 }), {}));
   const katalogPflicht = pruefElemente(vertrag, felder, values);
   // Wie im Prüfdialog: Zusatzfelder zählen mit, sobald es Katalogfelder gibt.
   const pflicht = katalogPflicht.length && zusatz ? [...katalogPflicht, zusatz.schluessel] : katalogPflicht;
   const erledigt = pflicht.filter((k) => geprueft[k]).length;
-  const bearbeitbar = mitFeldern && pruefModus && !!renderEingabe;
+  const bearbeitbar = mitFeldern && pruefModus && !!renderEingabe && !!onFeldAendern;
+  const klauselAuswahl = (vertrag.klauseln ?? []).map((k) => ({ id: k.id, text: `${k.id} — ${k.titelpfad?.[k.titelpfad.length - 1] ?? ''}${seitenText(k.id) ? ` (${seitenText(k.id)})` : ''}` }));
 
   // Als Funktion aufgerufen, nicht als eigene Komponente: sonst baut React die Eingaben bei jedem Tastendruck neu auf.
   function karte(el) {
@@ -249,7 +280,7 @@ export default function VertragPane({
             {KATALOG_LABEL[el] ?? el}
             {geaendert(el) && <span style={{ ...styles.hinweis, color: theme.colors.info, marginLeft: theme.spacing.sm }}>korrigiert</span>}
           </span>
-          <Badge bg={STATUS[s]?.bg} fg={STATUS[s]?.fg}>{STATUS[s]?.label ?? s}</Badge>
+          <Badge bg={STATUS[s]?.bg} fg={STATUS[s]?.fg} title={STATUS[s]?.tip}>{STATUS[s]?.label ?? s}</Badge>
           {bearbeitbar && (
             <button type="button" style={styles.kleinBtn} title="Werte, Status und Fundstellen korrigieren"
               onClick={() => { if (offenEdit) onGeprueft?.(el, true); setInBearbeitung(offenEdit ? null : el); }}>
@@ -277,12 +308,46 @@ export default function VertragPane({
         {fundstellenListe(fundstellen(el), el)}
         {offenEdit && (
           <div style={styles.bearbeiten}>
-            {[`katalog_${el}_status`, ...elementFelder(el, felder), `katalog_${el}_fundstellen`].filter((id) => felder[id]).map((id) => (
-              <div key={id} style={styles.eingabeZeile}>
-                <span style={styles.wertLabel}>{felder[id].label.replace(`${KATALOG_LABEL[el]}: `, '')}</span>
-                {renderEingabe(id, felder[id])}
+            <div style={styles.eingabeZeile}>
+              <span style={styles.wertLabel}>Regelt der Vertrag „{KATALOG_LABEL[el]}"?</span>
+              <div style={styles.statusWahl} role="radiogroup">
+                {Object.entries(STATUS).map(([id, st]) => (
+                  <button key={id} type="button" role="radio" aria-checked={s === id} title={st.tip}
+                    style={{ ...styles.statusOption, ...(s === id ? { backgroundColor: st.bg, color: st.fg, borderColor: st.bg } : {}) }}
+                    onClick={() => setzeStatus(el, id)}>{st.option}</button>
+                ))}
               </div>
-            ))}
+            </div>
+            {s === 'nicht_geregelt' ? (
+              <div style={styles.hinweis}>
+                Nichts einzutragen. Steht doch etwas dazu im Vertrag, oben „Im Vertrag geregelt" wählen — dann erscheinen die Felder.
+              </div>
+            ) : (
+              <>
+                {elementFelder(el, felder).filter((id) => felder[id]).map((id) => (
+                  <div key={id} style={styles.eingabeZeile}>
+                    <span style={styles.wertLabel}>{felder[id].label === KATALOG_LABEL[el] ? 'Einträge' : felder[id].label.replace(`${KATALOG_LABEL[el]}: `, '')}</span>
+                    {renderEingabe(id, felder[id])}
+                  </div>
+                ))}
+                <div style={styles.eingabeZeile}>
+                  <span style={styles.wertLabel}>Fundstellen im Vertrag</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs, alignItems: 'center' }}>
+                    {fundstellen(el).map((id) => (
+                      <span key={id} style={{ ...styles.fund, cursor: 'default', display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs }}>
+                        {id}{seitenText(id) ? ` · ${seitenText(id)}` : ''}
+                        <button type="button" title="Fundstelle entfernen" style={styles.entfernen}
+                          onClick={() => setzeFundstellen(el, fundstellen(el).filter((x) => x !== id))}>×</button>
+                      </span>
+                    ))}
+                    <select value="" style={styles.fundAuswahl} onChange={(e) => e.target.value && setzeFundstellen(el, [...fundstellen(el), e.target.value])}>
+                      <option value="">+ Fundstelle hinzufügen …</option>
+                      {klauselAuswahl.filter((k) => !fundstellen(el).includes(k.id)).map((k) => <option key={k.id} value={k.id}>{k.text}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -318,26 +383,28 @@ export default function VertragPane({
       {tab === 'ueberblick' && (
         <div>
           <div style={styles.zusammenfassung}>
-            {zaehler.sort(([a], [b]) => Object.keys(STATUS).indexOf(a) - Object.keys(STATUS).indexOf(b)).map(([s, n]) => (
-              <Badge key={s} bg={STATUS[s]?.bg} fg={STATUS[s]?.fg}>{n} {STATUS[s]?.label ?? s}</Badge>
-            ))}
+            <span style={{ flex: 1, minWidth: 0, color: theme.colors.textSecondary, fontSize: theme.typography.sizes.sm, lineHeight: 1.5 }}>
+              Geprüft werden die {REIHENFOLGE.length} Standardelemente eines Vertrags (Parteien, Laufzeit, Kündigung, Entgelte …).
+              Davon sind <strong>{geregelt.length + abweichend.length} im Vertrag geregelt</strong>
+              {abweichend.length > 0 && <> ({abweichend.length} mit Besonderheit)</>} und <strong>{nichtGeregelt.length} nicht geregelt</strong>.
+            </span>
             {pruefModus && pflicht.length > 0 && (
-              <span style={{ ...styles.hinweis, marginLeft: 'auto', color: erledigt === pflicht.length ? theme.colors.success : theme.colors.textMuted }}>
+              <span style={{ ...styles.hinweis, whiteSpace: 'nowrap', color: erledigt === pflicht.length ? theme.colors.success : theme.colors.textMuted }}>
                 {erledigt} von {pflicht.length} geprüft
               </span>
             )}
           </div>
 
-          {abweichend.length > 0 && <div style={{ ...styles.zwischenTitel, marginTop: 0 }}>Abweichungen</div>}
+          {abweichend.length > 0 && <div style={{ ...styles.zwischenTitel, marginTop: 0 }}>Im Vertrag geregelt — mit Besonderheit</div>}
           {abweichend.map(karte)}
 
-          {geregelt.length > 0 && <div style={{ ...styles.zwischenTitel, ...(abweichend.length ? {} : { marginTop: 0 }) }}>Geregelt</div>}
+          {geregelt.length > 0 && <div style={{ ...styles.zwischenTitel, ...(abweichend.length ? {} : { marginTop: 0 }) }}>Im Vertrag geregelt</div>}
           {geregelt.map(karte)}
 
           {nichtGeregelt.length > 0 && (
             <>
               <div style={{ ...styles.zwischenTitel, display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-                <span style={{ flex: 1 }}>Nicht geregelt ({nichtGeregelt.length})</span>
+                <span style={{ flex: 1 }}>Im Vertrag nicht geregelt ({nichtGeregelt.length})</span>
                 {pruefModus && mitFeldern && (
                   <label style={{ ...styles.check, textTransform: 'none', letterSpacing: 0, fontWeight: theme.typography.weights.normal }}>
                     <input type="checkbox" checked={!!geprueft[NICHT_GEREGELT_SCHLUESSEL]} onChange={(e) => onGeprueft?.(NICHT_GEREGELT_SCHLUESSEL, e.target.checked)} />
@@ -350,7 +417,7 @@ export default function VertragPane({
                   {nichtGeregelt.map((el) => KATALOG_LABEL[el] ?? el).join(', ')}
                 </summary>
                 <div style={{ marginTop: theme.spacing.md }}>
-                  <div style={{ ...styles.hinweis, marginBottom: theme.spacing.sm }}>Ist eines davon doch geregelt, den Status in der Karte korrigieren.</div>
+                  <div style={{ ...styles.hinweis, marginBottom: theme.spacing.sm }}>Ist eines davon doch geregelt: „Bearbeiten" in der Karte und „Im Vertrag geregelt" wählen.</div>
                   {nichtGeregelt.map(karte)}
                 </div>
               </details>

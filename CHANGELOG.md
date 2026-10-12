@@ -2,6 +2,18 @@
 
 ## 2026-10-12
 
+### Prüfansicht Verträge: verständlicher Katalog, Status als Auswahl, Fundstellen auswählen
+- Überblick: Statt der Status-Pills steht ein Satz („Geprüft werden die 23 Standardelemente eines Vertrags … Davon
+  sind 16 im Vertrag geregelt und 7 nicht geregelt"). Überschriften „Im Vertrag geregelt", „… mit Besonderheit",
+  „Im Vertrag nicht geregelt". Jedes Status-Badge erklärt sich per Tooltip.
+- Bearbeiten: Der Status ist eine Auswahl mit verständlichen Begriffen („Im Vertrag geregelt", „In einer fehlenden
+  Anlage", „Wie im Hauptvertrag" …) statt eines Freitextfelds mit Codes wie `nicht_geregelt`. Bei „Nicht geregelt"
+  gibt es keine Eingabefelder, nur einen Hinweis; ein Wechsel dorthin leert Werte und Fundstellen. Fundstellen werden
+  aus den Klauseln des Vertrags ausgewählt (mit Titel und Seite) und per × entfernt statt als Text eingetippt.
+- „korrigiert" erscheint nur bei echten Änderungen (leere Zeilen oder leere Texte zählen nicht).
+- Alle Prüfansichten: Leere Felder ohne Treffer zeigen „nicht gefunden" statt „0 %" und stehen nicht mehr unter
+  „Unsicher — zuerst prüfen" (außer Pflichtfeldern). Das entspricht der Prüf-Einstufung im Backend.
+
 ### Fix: Verträge zeigten „Prüfregel verletzt: Nach Validierung/Reparatur veränderte Werte erneut prüfen"
 Die automatische Formatangleichung (z. B. Datum „01.11.2022" → „2022-11-01") lief bei den Katalogfeldern erst im
 Abschluss-Schritt der Pipeline. Der hielt sie für eine nachträgliche Änderung: Er meldete einen Fehler, erzwang

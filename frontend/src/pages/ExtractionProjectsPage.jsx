@@ -3192,9 +3192,12 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
   const katalogEntries = Object.entries(fields).filter(([, f]) => f.group === KATALOG_GRUPPE);
   const scalars = entries.filter(([, f]) => f.type !== 'list');
   const lists = entries.filter(([, f]) => f.type === 'list');
-  const isUncertain = ([fid]) => {
+  // Unsicher = Wert vorhanden (oder Pflichtfeld) und Sicherheit unter der Schwelle. Ein leeres Feld mit 0 % heißt
+  // „nichts gefunden" — das gehört nicht in „zuerst prüfen".
+  const istLeer = v => v == null || v === '' || (Array.isArray(v) && v.length === 0);
+  const isUncertain = ([fid, f]) => {
     const c = detail?.fieldConfidences?.[fid];
-    return typeof c === 'number' && c < threshold;
+    return typeof c === 'number' && c < threshold && (!istLeer(detail?.data?.[fid]) || !!f.required);
   };
   const uncertain = scalars.filter(isUncertain);
   const certain = scalars.filter(e => !isUncertain(e));
@@ -3274,7 +3277,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
         onMouseLeave={() => setHoverField(null)}
         style={{
           // Festes Raster: Beschriftung | Wert | Sicherheit — alles steht untereinander.
-          display: 'grid', gridTemplateColumns: 'minmax(140px, 220px) minmax(0, 1fr) 48px', gap: theme.spacing.md, alignItems: 'center',
+          display: 'grid', gridTemplateColumns: 'minmax(140px, 220px) minmax(0, 1fr) 84px', gap: theme.spacing.md, alignItems: 'center',
           padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
           borderRadius: theme.borderRadius.md,
           backgroundColor: hoverField === fid ? theme.colors.surfaceHover : 'transparent',
@@ -3305,12 +3308,18 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
             {fmtValue(values[fid]) || '—'}
           </span>
         )}
-        <span title="Erkennungssicherheit der KI für dieses Feld. Orange = unter der Prüfschwelle, bitte kontrollieren." style={{
-          fontSize: theme.typography.sizes.xs, textAlign: 'right',
-          color: typeof conf === 'number' && conf < threshold ? theme.colors.warning : theme.colors.textMuted,
-        }}>
-          {typeof conf === 'number' ? `${Math.round(conf * 100)}%` : ''}
-        </span>
+        {istLeer(detail?.data?.[fid]) && !f.required ? (
+          <span title="Die KI hat im Dokument keinen passenden Wert gefunden. Steht doch etwas da, einfach eintragen." style={{ fontSize: theme.typography.sizes.xs, textAlign: 'right', color: theme.colors.textMuted }}>
+            nicht gefunden
+          </span>
+        ) : (
+          <span title="Erkennungssicherheit der KI für dieses Feld. Orange = unter der Prüfschwelle, bitte kontrollieren." style={{
+            fontSize: theme.typography.sizes.xs, textAlign: 'right',
+            color: typeof conf === 'number' && conf < threshold ? theme.colors.warning : theme.colors.textMuted,
+          }}>
+            {typeof conf === 'number' ? `${Math.round(conf * 100)}%` : ''}
+          </span>
+        )}
         {/* Vertrag: Fundstellen des Felds (Klauseln) — Klick zeigt den Wortlaut und öffnet die Seite. */}
         {opts.fundstellenFuer && <div style={{ gridColumn: '2 / 4', minWidth: 0 }}>{opts.fundstellenFuer(fid)}</div>}
       </div>
@@ -3449,6 +3458,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
                   values={values}
                   original={detail.data || {}}
                   renderEingabe={renderEingabe}
+                  onFeldAendern={(fid, val) => setEdited(prev => ({ ...(prev || detail.data || {}), [fid]: val }))}
                   pruefModus={canReview && !isReviewed}
                   zusatz={entries.length ? { anzahl: entries.length, unsicher: uncertain.length, render: renderEigeneFelder, schluessel: ZUSATZ_SCHLUESSEL } : null}
                   geprueft={geprueft}
