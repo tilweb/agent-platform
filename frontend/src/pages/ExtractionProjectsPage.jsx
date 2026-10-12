@@ -3,7 +3,7 @@ import { isExtractionReleased } from '../utils/extractionRelease';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
-import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon, FolderOpenIcon, InfoIcon } from '../components/Icons';
+import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon, FolderOpenIcon, InfoIcon, PlusIcon } from '../components/Icons';
 import { pruefElemente, ZUSATZ_SCHLUESSEL } from '../utils/vertragKatalog';
 import ExportDropdown from '../components/ExportDropdown';
 import VertragPane from '../components/VertragPane';
@@ -371,6 +371,12 @@ const styles = {
     flexShrink: 0,
     lineHeight: 0,
   },
+  laufKennzahlen: {
+    display: 'flex', flexWrap: 'wrap', gap: `${theme.spacing.xs} ${theme.spacing.lg}`,
+    fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted,
+  },
+  kennzahlTh: { textAlign: 'right', padding: `${theme.spacing.xs} ${theme.spacing.sm}`, borderBottom: `1px solid ${theme.colors.border}`, fontWeight: theme.typography.weights.medium },
+  kennzahlTd: { textAlign: 'right', padding: `${theme.spacing.xs} ${theme.spacing.sm}`, borderBottom: `1px solid ${theme.colors.border}`, color: theme.colors.text, whiteSpace: 'nowrap' },
   feldKarte: {
     border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.sm, backgroundColor: theme.colors.surface,
@@ -2486,6 +2492,22 @@ function BatchTab({ project, onProjectUpdated, onSetup }) {
 
   const measuredDurations = (activeRun?.files || []).map(file => file.audit?.performance?.durationMs).filter(value => Number.isFinite(value)).sort((a, b) => a - b);
   const durationQuantile = fraction => (measuredDurations[Math.ceil(measuredDurations.length * fraction) - 1] / 1000).toFixed(1);
+  // Kennzahlen des angezeigten Laufs aus dem Audit je Datei (Seiten, Tokens, Modellaufrufe).
+  const runFiles = activeRun?.files || [];
+  const zahl = n => n.toLocaleString('de-DE');
+  const dateiKennzahl = f => ({
+    seiten: f.audit?.abrechnung?.seiten ?? null,
+    aufrufe: f.audit?.verbrauch?.aufrufe ?? null,
+    rein: f.audit?.verbrauch?.promptTokens ?? null,
+    raus: f.audit?.verbrauch?.completionTokens ?? null,
+    ohneAngabe: f.audit?.verbrauch?.ohneAngabe ?? 0,
+    dauer: f.audit?.performance?.durationMs ?? null,
+  });
+  const kennzahlen = runFiles.map(dateiKennzahl);
+  const summe = key => kennzahlen.reduce((a, k) => a + (k[key] ?? 0), 0);
+  const tokensGemessen = kennzahlen.some(k => k.rein != null);
+  // Vor dem Warteschlangen-Fix (10.10.2026) fehlten bei parallelen Läufen Aufrufe in der Messung.
+  const tokensUnsicher = activeRun && new Date(activeRun.run.createdAt) < new Date('2026-10-11T15:00:00Z');
   const doneCount = activeRun ? (activeRun.run.completedCount + activeRun.run.failedCount) : 0;
 
   // Das Vollbild-Review blaettert durch die GEFILTERTE Liste — wer auf
@@ -2518,7 +2540,7 @@ function BatchTab({ project, onProjectUpdated, onSetup }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
           {runs.length > 0 && (
             <>
-              <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Lauf</span>
+              <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>Lauf anzeigen</span>
               <select
                 value={activeRun?.run?.id || ''}
                 onChange={e => e.target.value && openRun(e.target.value)}
@@ -2529,9 +2551,6 @@ function BatchTab({ project, onProjectUpdated, onSetup }) {
               </select>
             </>
           )}
-          <button style={styles.secondaryBtn} onClick={() => setShowUpload(v => !v)}>
-            <DocumentIcon size={14} /> Dokumente hinzufügen
-          </button>
           {activeRun && (isActive || activeRun.run.failedCount > 0) && (
             <button style={styles.secondaryBtn} onClick={async () => {
               const action = isActive ? 'cancel' : 'retry';
@@ -2556,16 +2575,77 @@ function BatchTab({ project, onProjectUpdated, onSetup }) {
               <Spinner size={14} /> {doneCount}/{activeRun.run.fileCount} verarbeitet
             </span>
           )}
+          {runs.length > 0 && (
+            <button
+              style={{ ...(showUpload ? styles.secondaryBtn : styles.primaryBtn), marginLeft: 'auto' }}
+              onClick={() => setShowUpload(v => !v)}
+              title="Neue Dokumente als eigenen Lauf verarbeiten — bestehende Läufe bleiben unverändert"
+            >
+              {showUpload ? 'Abbrechen' : <><PlusIcon size={14} /> Neuer Lauf</>}
+            </button>
+          )}
         </div>
 
-        {measuredDurations.length > 0 && <details style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizes.sm }}>
-          <summary>Verarbeitungszeiten ({measuredDurations.length} Dateien)</summary>
-          <p>Median: {durationQuantile(0.5)} s · 95. Perzentil: {durationQuantile(0.95)} s. Gemessen ab Start der Datei einschließlich Aufbereitung und Modellwarteschlange; Wartezeit des Stapels vor dem Start ist nicht enthalten.</p>
-        </details>}
+        {/* Kennzahlen des angezeigten Laufs */}
+        {activeRun && runFiles.length > 0 && !showUpload && (
+          <div style={{ marginTop: theme.spacing.md }}>
+            <div style={styles.laufKennzahlen}>
+              <span><strong>{zahl(runFiles.length)}</strong> {runFiles.length === 1 ? 'Dokument' : 'Dokumente'}</span>
+              {summe('seiten') > 0 && <span><strong>{zahl(summe('seiten'))}</strong> Seiten</span>}
+              {measuredDurations.length > 0 && (
+                <span title="Gemessen ab Start der Datei einschließlich Aufbereitung und Modellwarteschlange; Wartezeit des Stapels vor dem Start ist nicht enthalten.">
+                  Dauer je Dokument <strong>{durationQuantile(0.5)} s</strong> (Median){measuredDurations.length > 1 && <> · {durationQuantile(0.95)} s (95 %)</>}
+                </span>
+              )}
+              {tokensGemessen ? (
+                <span title={`Alle Modellaufrufe des Laufs. ${tokensUnsicher ? 'Läufe vor dem 11.10.2026 können zu niedrige Werte zeigen (Messfehler bei paralleler Verarbeitung, behoben).' : ''}`}>
+                  <strong>{zahl(summe('rein') + summe('raus'))}</strong> Tokens ({zahl(summe('rein'))} rein · {zahl(summe('raus'))} raus)
+                  {tokensUnsicher && <span style={{ color: theme.colors.warning }}> *</span>}
+                </span>
+              ) : (
+                <span>Tokens nicht gemessen</span>
+              )}
+              {tokensGemessen && <span><strong>{zahl(summe('aufrufe'))}</strong> Modellaufrufe{summe('ohneAngabe') > 0 ? ` (${zahl(summe('ohneAngabe'))} ohne Tokenangabe)` : ''}</span>}
+            </div>
+            {runFiles.length > 1 && (
+              <details style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+                <summary style={{ cursor: 'pointer' }}>Je Dokument</summary>
+                <div style={{ overflowX: 'auto', marginTop: theme.spacing.sm }}>
+                  <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                    <thead>
+                      <tr>{['Datei', 'Seiten', 'Dauer', 'Aufrufe', 'Tokens rein', 'Tokens raus'].map(h => <th key={h} style={styles.kennzahlTh}>{h}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {runFiles.map((f, i) => {
+                        const k = kennzahlen[i];
+                        return (
+                          <tr key={f.id}>
+                            <td style={{ ...styles.kennzahlTd, textAlign: 'left' }}>{f.filename}</td>
+                            <td style={styles.kennzahlTd}>{k.seiten ?? '—'}</td>
+                            <td style={styles.kennzahlTd}>{k.dauer != null ? `${(k.dauer / 1000).toFixed(1)} s` : '—'}</td>
+                            <td style={styles.kennzahlTd}>{k.aufrufe != null ? zahl(k.aufrufe) : '—'}</td>
+                            <td style={styles.kennzahlTd}>{k.rein != null ? zahl(k.rein) : '—'}</td>
+                            <td style={styles.kennzahlTd}>{k.raus != null ? zahl(k.raus) : '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            )}
+          </div>
+        )}
 
         {/* Ablage nur bei Bedarf — beim ersten Mal offen, danach auf Knopfdruck. */}
         {(showUpload || runs.length === 0) && (
           <>
+            {runs.length > 0 && (
+              <div style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm, color: theme.colors.textSecondary }}>
+                <strong style={{ color: theme.colors.text }}>Neuer Lauf</strong> — die Dokumente werden als eigener Lauf verarbeitet.
+                Bestehende Läufe bleiben unverändert.
+              </div>
+            )}
             {runs.length === 0 && (
               <InfoBox style={{ marginTop: theme.spacing.lg }}>
                 Lade mehrere Dokumente hoch und lass sie mit diesem Profil auslesen. Der Lauf wird
@@ -2610,7 +2690,7 @@ function BatchTab({ project, onProjectUpdated, onSetup }) {
             <div style={{ display: 'flex', gap: theme.spacing.md, marginTop: theme.spacing.lg, alignItems: 'center' }}>
               <button style={styles.primaryBtn} onClick={startBatch} disabled={starting}>
                 {starting ? <Spinner size={14} /> : <SparklesIcon size={14} />}
-                {starting ? 'Starte…' : `Auslesen starten (${queue.length})`}
+                {starting ? 'Starte…' : `Lauf starten (${queue.length} ${queue.length === 1 ? 'Dokument' : 'Dokumente'})`}
               </button>
               <button style={styles.secondaryBtn} onClick={() => setQueue([])} disabled={starting}>Liste leeren</button>
             </div>

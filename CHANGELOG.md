@@ -2,6 +2,15 @@
 
 ## 2026-10-12
 
+### Verarbeiten: „Neuer Lauf" statt „Dokumente hinzufügen", Kennzahlen je Lauf mit Tokens
+- „Dokumente hinzufügen" stand neben der Lauf-Auswahl und wirkte, als würde es an den gewählten Lauf anhängen.
+  Tatsächlich legt es immer einen neuen Lauf an. Jetzt heißt es „Lauf anzeigen" (Auswahl) und „Neuer Lauf" (rechts).
+  Der Upload-Bereich sagt, dass bestehende Läufe unverändert bleiben; der Start-Button heißt „Lauf starten
+  (n Dokumente)".
+- Kennzahlen des angezeigten Laufs stehen sichtbar statt eingeklappt: Dokumente, Seiten, Dauer je Dokument (Median,
+  95 %), Tokens (rein/raus) und Modellaufrufe. Aufklappbar „Je Dokument". Läufe vor dem Warteschlangen-Fix sind mit
+  * markiert (Tokens können zu niedrig sein).
+
 ### Profilseite: Hinweis „Neues Profil" nur vor dem ersten Lauf, Felderzahl ohne Katalog, Tabelle ohne Katalogspalten
 - Der Hinweis „Neues Profil — Schritt für Schritt einrichten" erschien bei jedem Profil ohne gespeicherte Lern- oder
   Testbeispiele, auch bei produktiv genutzten. Jetzt erscheint er nur, solange im Profil noch kein Lauf existiert.
