@@ -1,4 +1,5 @@
 import { istBasisprofil } from '../extraction/basisprofil';
+import { istVertragsprofil, ohneKatalogFelder } from '../extraction/vertragskatalog';
 import { pruefeSegmentVerweise } from '../extraction/segmentation/verweise';
 
 /** Segment-Verweise auf Pipelines pruefen (Existenz, kein Selbstverweis, Ziel ohne eigene Segmente). */
@@ -79,7 +80,9 @@ extractionProjectRoutes.get('/projects', async (c) => {
     id: p.id,
     name: p.name,
     description: p.description,
-    field_count: Object.keys(p.fields).length,
+    // Eigene Felder; der feste Vertragskatalog zaehlt nicht mit (vertragskatalog: true).
+    field_count: Object.keys(ohneKatalogFelder(p.fields)).length,
+    vertragskatalog: istVertragsprofil(p),
     created: p.created,
     updated: p.updated,
     learning: p.learning,

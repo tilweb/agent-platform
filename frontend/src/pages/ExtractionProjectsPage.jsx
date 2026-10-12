@@ -612,7 +612,7 @@ export default function ExtractionProjectsPage() {
                 <div style={styles.cardName}>{p.name}</div>
                 <div style={styles.cardDesc}>{p.description || 'Keine Beschreibung'}</div>
                 <div style={styles.cardMeta}>
-                  <span>{p.field_count} Felder</span>
+                  <span>{p.field_count} Felder{p.vertragskatalog ? ' + Vertragskatalog' : ''}</span>
                   <span>{p.learning?.total_examples || 0} Beispiele</span>
                   {p.learning?.accuracy_estimate > 0 && (
                     <span style={{
@@ -1987,7 +1987,10 @@ function ProjectDetailView({ projectId, onBack }) {
           <p style={styles.subtitle}>{project.description}</p>
         </div>
         <div style={styles.cardMeta}>
-          <span>{Object.keys(project.fields).length} Felder</span>
+          <span>
+            {Object.values(project.fields).filter(f => f.group !== KATALOG_GRUPPE).length} Felder
+            {Object.values(project.fields).some(f => f.group === KATALOG_GRUPPE) && ' + Vertragskatalog'}
+          </span>
           <span>{project.learning?.total_examples || 0} Beispiele</span>
           {project.learning?.accuracy_estimate > 0 && (
             <span>{project.learning.accuracy_estimate}% Lernbeispiele ohne Korrektur</span>
@@ -2025,12 +2028,11 @@ function ProjectDetailView({ projectId, onBack }) {
 
           <div style={styles.navContent}>
             {activeTab === 'setup' && <SetupGuide project={project} onNavigate={setActiveTab} />}
-            {activeTab === 'batch' && !project.learning?.total_examples && <InfoBox>Neues Profil: <button style={styles.secondaryBtn} onClick={() => setActiveTab('setup')}>Schritt für Schritt einrichten</button></InfoBox>}
             {activeTab === 'training' && (
               <TrainingTab project={project} onProjectUpdated={loadProject} />
             )}
             {activeTab === 'batch' && (
-              <BatchTab project={project} onProjectUpdated={loadProject} />
+              <BatchTab project={project} onProjectUpdated={loadProject} onSetup={() => setActiveTab('setup')} />
             )}
             {activeTab === 'rules' && (
               <RulesTab project={project} onProjectUpdated={loadProject} onNavigate={setActiveTab} />
@@ -2241,7 +2243,7 @@ function csvCell(value) {
   return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function BatchTab({ project, onProjectUpdated }) {
+function BatchTab({ project, onProjectUpdated, onSetup }) {
   const [diagnosticExport, setDiagnosticExport] = useState(false);
   const [reviewFilter, setReviewFilter] = useState('all'); // all | needs_review | auto_ok | reviewed
 
@@ -2251,8 +2253,11 @@ function BatchTab({ project, onProjectUpdated }) {
   const [statusMsg, setStatusMsg] = useState('');
 
   const [runs, setRuns] = useState([]);            // Lauf-Historie
+  const [runsLoaded, setRunsLoaded] = useState(false);
   const [activeRun, setActiveRun] = useState(null); // { run, files }
   const fieldEntries = Object.entries(activeRun?.run?.profile?.fields ?? project.fields);
+  // Tabelle zeigt nur die eigenen Felder; der Vertragskatalog steht in der Prüfansicht und im Export.
+  const tableEntries = fieldEntries.filter(([, f]) => f.group !== KATALOG_GRUPPE);
   const [showUpload, setShowUpload] = useState(false);
   const [reviewFileId, setReviewFileId] = useState(null); // offenes Vollbild-Review
   const [details, setDetails] = useState({});       // fileId -> detail
@@ -2296,6 +2301,7 @@ function BatchTab({ project, onProjectUpdated }) {
       const res = await apiGet(base);
       if (!res.ok) return;
       setRuns(await res.json());
+      setRunsLoaded(true);
     } catch { /* ignore */ }
   }
 
@@ -2493,6 +2499,14 @@ function BatchTab({ project, onProjectUpdated }) {
 
   return (
     <div>
+      {runsLoaded && runs.length === 0 && onSetup && (
+        <InfoBox style={{ alignItems: 'center', marginBottom: theme.spacing.lg }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+            <span>Neues Profil — hier wurde noch nichts verarbeitet. Die Einrichtung führt dich durch Felder, Beispiele und Qualitätsprüfung.</span>
+            <button style={styles.secondaryBtn} onClick={onSetup}>Schritt für Schritt einrichten</button>
+          </div>
+        </InfoBox>
+      )}
       {/* Kopfleiste: Lauf-Auswahl + Upload in EINER Zeile. Vorher zwei volle
           Sektionen — der Kopf wuchs mit jedem Lauf und schob die Ergebnisse
           aus dem Bild. */}
@@ -2688,7 +2702,7 @@ function BatchTab({ project, onProjectUpdated }) {
                   <th style={batchTh}>Status</th>
                   <th style={batchTh} title="Auto-OK = KI sicher, kein Handlungsbedarf · Zu prüfen = bitte kontrollieren · Geprüft = von dir bestätigt">Prüfung</th>
                   {project.segments && <th style={batchTh}>Segmente</th>}
-                  {fieldEntries.map(([fid, f]) => <th key={fid} style={batchTh}>{f.label || fid}</th>)}
+                  {tableEntries.map(([fid, f]) => <th key={fid} style={batchTh}>{f.label || fid}</th>)}
                   <th style={batchTh} title="Durchschnittliche Erkennungssicherheit der KI über alle Felder (0–100 %). Niedrige Werte bitte prüfen.">Ø</th>
                 </tr>
               </thead>
@@ -2712,7 +2726,7 @@ function BatchTab({ project, onProjectUpdated }) {
                               : '—'}
                           </td>
                         )}
-                        {fieldEntries.map(([fid, f]) => {
+                        {tableEntries.map(([fid, f]) => {
                           const raw = file.data?.[fid];
                           // Listen kompakt als Zähler — die Positionen zeigt die Detailansicht.
                           const val = f.type === 'list'

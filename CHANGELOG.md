@@ -2,6 +2,14 @@
 
 ## 2026-10-12
 
+### Profilseite: Hinweis „Neues Profil" nur vor dem ersten Lauf, Felderzahl ohne Katalog, Tabelle ohne Katalogspalten
+- Der Hinweis „Neues Profil — Schritt für Schritt einrichten" erschien bei jedem Profil ohne gespeicherte Lern- oder
+  Testbeispiele, auch bei produktiv genutzten. Jetzt erscheint er nur, solange im Profil noch kein Lauf existiert.
+  Text und Button stehen in einer Zeile, darunter der übliche Abstand zur nächsten Karte (vorher keiner).
+- Profilkopf und Profilliste zählen nur die eigenen Felder („6 Felder + Vertragskatalog" statt „93 Felder").
+- Die Ergebnistabelle im Verarbeiten-Reiter zeigt nur die eigenen Felder als Spalten. Der Vertragskatalog steht in der
+  Prüfansicht, im Export und in der API.
+
 ### Prüfansicht Verträge: Katalogkarten, Abhaken, Zoom, aufgeräumte Hinweise
 - Der Überblick zeigt den Vertragskatalog als Karten mit lesbaren, beschrifteten Werten statt Rohfeldnamen (z. B.
   „Höchstbetrag: 2.557.000 €"). Jede Karte ist über „Bearbeiten" korrigierbar (Status, Werte, Fundstellen). Der
