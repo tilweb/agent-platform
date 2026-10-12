@@ -3,7 +3,8 @@ import { isExtractionReleased } from '../utils/extractionRelease';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
-import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon, FolderOpenIcon } from '../components/Icons';
+import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon, FolderOpenIcon, InfoIcon } from '../components/Icons';
+import { pruefElemente } from '../utils/vertragKatalog';
 import ExportDropdown from '../components/ExportDropdown';
 import VertragPane from '../components/VertragPane';
 import VolltextPane from '../components/VolltextPane';
@@ -369,6 +370,19 @@ const styles = {
     cursor: 'pointer',
     flexShrink: 0,
     lineHeight: 0,
+  },
+  vorschauLeiste: {
+    display: 'flex', alignItems: 'center', gap: theme.spacing.xs, flexShrink: 0,
+    fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted,
+  },
+  vorschauBtn: {
+    padding: `2px ${theme.spacing.sm}`, minWidth: 28, backgroundColor: 'transparent', color: theme.colors.textMuted,
+    border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, fontSize: theme.typography.sizes.xs, cursor: 'pointer',
+  },
+  vorschauBtnAktiv: { backgroundColor: theme.colors.primaryLight, color: theme.colors.primary, borderColor: theme.colors.primaryLight },
+  vorschauFund: {
+    padding: `2px ${theme.spacing.sm}`, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.primaryLight,
+    color: theme.colors.primary, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   },
   groupLabel: {
     fontSize: theme.typography.sizes.xs,
@@ -1175,7 +1189,7 @@ const INBOX_STATUS = {
 function ValidationIssues({ issues, style = {} }) {
   if (!issues || issues.length === 0) return null;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, ...style }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm, ...style }}>
       {issues.map((issue, idx) => {
         // Die reguläre Quellenprüfung benötigt eine Bestätigung, ist aber kein Regelfehler.
         const isSourceReview = issue.rule_id === 'quellenpruefung';
@@ -2943,6 +2957,20 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
   const [hoverField, setHoverField] = useState(null);
   const [scrollToField, setScrollToField] = useState(null);
   const fieldRefs = useRef({});
+  // Vertragsprüfung: abgehakte Katalogelemente (je Dokument neu), Fundstellen-Hinweis über der Vorschau.
+  const [geprueft, setGeprueft] = useState({});
+  const [fundHinweis, setFundHinweis] = useState(null);
+  // Vorschau: 'breite' (an Breite anpassen), 'seite' (ganze Seite) oder Zoomfaktor.
+  const [zoom, setZoom] = useState('breite');
+  const vorschauRef = useRef(null);
+  const [vorschauMass, setVorschauMass] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = vorschauRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([e]) => setVorschauMass({ w: e.contentRect.width, h: e.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [detail?.id]);
 
   // Bei Datei-/Statuswechsel den Korrektur-State neu aufsetzen (tiefe Kopie!).
   useEffect(() => {
@@ -2955,6 +2983,8 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
     // Nicht hart auf 1: die Seitenliste kann bei Teil-Dokumenten anders beginnen.
     setActivePage(detail?.pageImages?.[0]?.page ?? 1);
     setScrollToField(null);
+    setGeprueft({});
+    setFundHinweis(null);
   }, [detail?.id, detail?.reviewStatus, detail?.segments]);
 
   useEffect(() => {
@@ -3077,6 +3107,29 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
   const uncertain = scalars.filter(isUncertain);
   const certain = scalars.filter(e => !isUncertain(e));
 
+  // Vertrag: Katalogfelder bearbeitet die Vertragsansicht; Prüffortschritt steuert die Freigabe.
+  const istVertrag = !!detail?.vertrag;
+  const katalogFelder = Object.fromEntries(katalogEntries);
+  const pflichtElemente = istVertrag ? pruefElemente(detail.vertrag, katalogFelder, values) : [];
+  const offeneElemente = pflichtElemente.filter(k => !geprueft[k]).length;
+  const freigabeGesperrt = canReview && !isReviewed && offeneElemente > 0;
+  const brauchtQuellenpruefung = (detail?.validations || []).some(i => i.rule_id === 'quellenpruefung');
+  // Oben nur, was nicht schon anders sichtbar ist: Quellenprüfung steht am Freigabe-Button, Vertragsbefunde in der Vertragsansicht.
+  const obenHinweise = (detail?.validations || []).filter(i => i.rule_id !== 'quellenpruefung' && !(istVertrag && String(i.rule_id || '').startsWith('vertrag-')));
+  const seitenBild = pages.find(p => p.page === activePage);
+  const seitenVerhaeltnis = seitenBild?.width && seitenBild?.height ? seitenBild.height / seitenBild.width : 1.414;
+  const vorschauBreite = zoom === 'breite' ? 100
+    : zoom === 'seite' ? (vorschauMass.w && vorschauMass.h ? Math.min(100, (vorschauMass.h / (vorschauMass.w * seitenVerhaeltnis)) * 100) : 100)
+      : zoom * 100;
+  const zoomStufe = typeof zoom === 'number' ? zoom : 1;
+
+  function renderEingabe(fid, f) {
+    const onChange = val => setEdited(prev => ({ ...(prev || {}), [fid]: val }));
+    if (f.type === 'list') return <ListItemsEditor value={values[fid]} itemFields={f.item_fields} onChange={onChange} readOnly={!canReview || isReviewed} />;
+    const isChanged = edited && JSON.stringify(values[fid]) !== JSON.stringify(detail?.data?.[fid]);
+    return <FieldInputControl field={f} value={values[fid]} onChange={onChange} isChanged={!!isChanged} />;
+  }
+
   function renderList([fid, f]) {
     return (
       <div key={fid} style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm }}>
@@ -3157,6 +3210,14 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
         <div style={styles.modalHeader}>
           <span style={{ fontWeight: theme.typography.weights.semibold, color: theme.colors.text }}>{filename}</span>
           <ReviewBadge status={reviewStatus} />
+          {detail?.audit && (
+            <span
+              title={`Technische Angaben — Auswertung ${detail.audit.strategy || detail.strategy || '—'} · Modell ${detail.audit.model} · Regeln v${detail.audit.guideline_version}`}
+              style={{ display: 'inline-flex', color: theme.colors.textMuted, cursor: 'help' }}
+            >
+              <InfoIcon size={14} />
+            </span>
+          )}
           <span style={{ flex: 1 }} />
           <span style={{ fontSize: theme.typography.sizes.sm, color: theme.colors.textMuted }}>
             Dokument {position.index}/{position.total}
@@ -3179,9 +3240,14 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
         ) : (
           <>
           {hasBoxes && (
-            <div style={{ padding: `${theme.spacing.sm} ${theme.spacing.xl} 0`, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
-              Links das Original, rechts die ausgelesenen Werte. Prüfe zuerst die <span style={{ color: theme.colors.warning }}>orange</span> markierten
-              (unsicheren) Felder, korrigiere bei Bedarf und bestätige unten.
+            <div style={{ padding: `${theme.spacing.md} ${theme.spacing.xl} 0`, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+              {istVertrag ? (
+                <>Links das Original, rechts die Vertragsauswertung. Prüfe jedes Element am Original und hake es ab, korrigiere
+                  bei Bedarf über „Bearbeiten“ und gib den Vertrag dann frei. Ein Klick auf eine Fundstelle öffnet die Seite.</>
+              ) : (
+                <>Links das Original, rechts die ausgelesenen Werte. Prüfe zuerst die <span style={{ color: theme.colors.warning }}>orange</span> markierten
+                  (unsicheren) Felder, korrigiere bei Bedarf und bestätige unten.</>
+              )}
             </div>
           )}
           <div style={{
@@ -3196,8 +3262,22 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
               <pre style={{ ...styles.modalPane, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{detail.documentText}</pre>
             )}
             {hasBoxes && (
-              <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                <div style={{ ...styles.modalPane, flex: 1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, gap: theme.spacing.sm }}>
+                <div style={styles.vorschauLeiste}>
+                  {[['breite', 'Breite'], ['seite', 'Ganze Seite']].map(([z, label]) => (
+                    <button key={z} type="button" onClick={() => setZoom(z)} style={{ ...styles.vorschauBtn, ...(zoom === z ? styles.vorschauBtnAktiv : {}) }}>{label}</button>
+                  ))}
+                  <button type="button" title="Verkleinern" onClick={() => setZoom(Math.max(1, Math.round((zoomStufe - 0.25) * 100) / 100))} style={styles.vorschauBtn}>−</button>
+                  <span style={{ minWidth: 40, textAlign: 'center' }}>{Math.round(vorschauBreite)}%</span>
+                  <button type="button" title="Vergrößern" onClick={() => setZoom(Math.min(3, Math.round((zoomStufe + 0.25) * 100) / 100))} style={styles.vorschauBtn}>+</button>
+                  <span style={{ flex: 1 }} />
+                  {fundHinweis && fundHinweis.seite === activePage && (
+                    <span style={{ ...styles.vorschauFund }} title="Die Fundstelle steht auf dieser Seite">{fundHinweis.text}</span>
+                  )}
+                  <span>Seite {activePage}{pages.length > 1 ? ` von ${pages.length}` : ''}</span>
+                </div>
+                <div ref={vorschauRef} style={{ ...styles.modalPane, flex: 1 }}>
+                  <div style={{ width: `${vorschauBreite}%`, margin: '0 auto' }}>
                   <BoxOverlay
                     pageImages={pages.filter(p => p.page === activePage)}
                     boxes={detail.boxes || {}}
@@ -3208,9 +3288,10 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
                     onBoxClick={jumpToField}
                     scrollToField={scrollToField}
                   />
+                  </div>
                 </div>
                 {pages.length > 1 && (
-                  <div style={{ display: 'flex', gap: theme.spacing.sm, overflowX: 'auto', paddingTop: theme.spacing.md, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: theme.spacing.sm, overflowX: 'auto', paddingBottom: theme.spacing.xs, flexShrink: 0 }}>
                     {pages.map(p => {
                       const seg = segmentOfPage(p.page);
                       const segLabel = seg ? (segmentDefs?.[seg.type]?.label ?? seg.type) : null;
@@ -3245,14 +3326,22 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
             )}
 
             <div style={styles.modalPane}>
-              {detail.audit && (
-                <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, marginBottom: theme.spacing.md }}>
-                  Strategie {detail.audit.strategy || detail.strategy || '—'} · Modell {detail.audit.model} · Regeln v{detail.audit.guideline_version}
-                </div>
+              <ValidationIssues issues={obenHinweise} style={{ marginBottom: theme.spacing.lg }} />
+              {detail.vertrag && (
+                <VertragPane
+                  vertrag={detail.vertrag}
+                  volltext={detail.volltext}
+                  onJumpToPage={(page, text) => { setActivePage(page); setFundHinweis(text ? { seite: page, text } : null); }}
+                  felder={katalogFelder}
+                  values={values}
+                  original={detail.data || {}}
+                  renderEingabe={renderEingabe}
+                  pruefModus={canReview && !isReviewed}
+                  geprueft={geprueft}
+                  onGeprueft={(el, an) => setGeprueft(prev => ({ ...prev, [el]: an }))}
+                />
               )}
-              <ValidationIssues issues={detail.validations} />
-              {detail.vertrag && <VertragPane vertrag={detail.vertrag} onJumpToPage={(page) => setActivePage(page)} />}
-              {detail.volltext && <VolltextPane volltext={detail.volltext} onJumpToPage={(page) => setActivePage(page)} />}
+              {detail.volltext && !detail.vertrag && <VolltextPane volltext={detail.volltext} onJumpToPage={(page) => setActivePage(page)} />}
 
               {segments && detail.hasOriginal && onSegments && <details style={{ marginBottom: theme.spacing.lg }}>
                 <summary>Seiten und Abschnittstypen korrigieren</summary>
@@ -3298,15 +3387,6 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
 
               {!segments && lists.map(renderList)}
 
-              {!segments && katalogEntries.length > 0 && (
-                <details open style={{ marginTop: theme.spacing.lg }}>
-                  <summary style={{ ...styles.groupLabel, cursor: 'pointer' }}>Vertragskatalog</summary>
-                  <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, margin: `${theme.spacing.xs} 0 ${theme.spacing.sm}` }}>
-                    Feste Elemente jedes Vertrags. Korrekturen hier gehen wie bei allen Feldern ins Ergebnis und in die API.
-                  </div>
-                  {katalogEntries.map(e => (e[1].type === 'list' ? renderList(e) : renderField(e)))}
-                </details>
-              )}
             </div>
           </div>
           </>
@@ -3337,14 +3417,14 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
                     <option value="test" disabled={!detail?.hasOriginal}>Als unabhängiges Testbeispiel speichern</option>
                   </select>
                 </label>
-                <div id="review-learning-help" style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary }}>
-                  {examplePurpose === 'test'
-                    ? 'Prüft künftig die Qualität am Original. Wird niemals zum Lernen verwendet. Wähle ein neues, repräsentatives Dokument.'
-                    : examplePurpose === 'train'
-                      ? 'Wird als Lernkandidat gespeichert – auch ohne Korrekturen. Aktivierung erst nach erfolgreicher Prüfung am unabhängigen Testbestand.'
-                      : 'Gibt dieses Dokument frei. Es wird kein Lern- oder Testbeispiel gespeichert.'}
-                  {!detail?.hasOriginal && ' Für Testbeispiele bitte neu verarbeiten, damit das Original gespeichert wird.'}
-                </div>
+                {examplePurpose !== 'none' && (
+                  <div id="review-learning-help" style={{ marginTop: theme.spacing.xs, fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary }}>
+                    {examplePurpose === 'test'
+                      ? 'Prüft künftig die Qualität am Original. Wird niemals zum Lernen verwendet. Wähle ein neues, repräsentatives Dokument.'
+                      : 'Wird als Lernkandidat gespeichert – auch ohne Korrekturen. Aktivierung erst nach erfolgreicher Prüfung am unabhängigen Testbestand.'}
+                    {!detail?.hasOriginal && ' Für Testbeispiele bitte neu verarbeiten, damit das Original gespeichert wird.'}
+                  </div>
+                )}
                 {examplePurpose === 'test' && <label style={{ fontSize: theme.typography.sizes.xs }}>
                   Dokumentvariante (optional)
                   <input style={styles.input} value={exampleGroup} maxLength={100} placeholder="z. B. Scan, Handschrift, Lieferant A" onChange={e => setExampleGroup(e.target.value)} />
@@ -3354,15 +3434,26 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
             {isReviewed ? (
               <ReviewBadge status="reviewed" />
             ) : canReview ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: theme.spacing.xs }}>
               <button
-                style={styles.primaryBtn}
+                style={{ ...styles.primaryBtn, ...(freigabeGesperrt ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }}
                 onClick={handleLearn}
-                disabled={saving}
-                title='Prüft Pflichtangaben und Regeln und gibt das Dokument frei. Ein Lernbeispiel wird nur gespeichert, wenn du die optionale Auswahl aktivierst.'
+                disabled={saving || freigabeGesperrt}
+                title={freigabeGesperrt
+                  ? `Erst alle Elemente am Original prüfen und abhaken (noch ${offeneElemente}).`
+                  : 'Prüft Pflichtangaben und Regeln und gibt das Dokument frei. Ein Lernbeispiel wird nur gespeichert, wenn du die optionale Auswahl aktivierst.'}
               >
                 {saving ? <Spinner size={14} /> : <SparklesIcon size={14} />}
                 {hasChanges ? 'Korrektur prüfen & freigeben' : 'Als korrekt bestätigen & freigeben'}
               </button>
+              {(freigabeGesperrt || brauchtQuellenpruefung) && (
+                <span style={{ fontSize: theme.typography.sizes.xs, color: freigabeGesperrt ? theme.colors.warning : theme.colors.textMuted }}>
+                  {freigabeGesperrt
+                    ? `Noch ${offeneElemente} ${offeneElemente === 1 ? 'Element' : 'Elemente'} am Original prüfen und abhaken`
+                    : 'Vor dem Freigeben alle Werte mit dem Original abgleichen'}
+                </span>
+              )}
+              </div>
             ) : detail?.status === 'completed' ? (
               <span style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
                 Älterer Lauf ohne gespeicherten Dokumenttext — zum Lernen bitte neu verarbeiten.

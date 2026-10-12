@@ -2,6 +2,26 @@
 
 ## 2026-10-12
 
+### Prüfansicht Verträge: Katalogkarten, Abhaken, Zoom, aufgeräumte Hinweise
+- Der Überblick zeigt den Vertragskatalog als Karten mit lesbaren, beschrifteten Werten statt Rohfeldnamen (z. B.
+  „Höchstbetrag: 2.557.000 €"). Jede Karte ist über „Bearbeiten" korrigierbar (Status, Werte, Fundstellen). Der
+  separate Feldblock „Vertragskatalog" entfällt, der Katalog steht nur noch einmal da.
+- Sortierung: Abweichungen (Anlage fehlt, bedingt, geerbt, anderer Vertrag) zuerst, dann die geregelten Elemente in
+  fachlicher Reihenfolge (Parteien → Laufzeit → Kündigung → Entgelte → Haftung …), die nicht geregelten eingeklappt.
+  Darüber eine Zusammenfassung je Status.
+- Prüffortschritt: Jedes Element wird am Original abgehakt („12 von 20 geprüft"). Freigeben geht erst, wenn alle
+  geregelten Elemente und der Sammelhaken „nicht geregelt" gesetzt sind; „Fertig" nach dem Bearbeiten hakt das
+  Element ab. Ältere Ergebnisse ohne Katalogfelder bleiben lesend und ohne Sperre.
+- Fundstellen zeigen die Seite („§6.1 · S. 3"). Ein Klick öffnet die Seite, über der Vorschau steht die Klausel.
+- Vorschau mit Zoom („Breite", „Ganze Seite", −/+) und Seitenanzeige.
+- Hinweise: „Bestätigung am Original" steht als kurze Zeile am Freigabe-Button statt als Kasten (alle Profile).
+  Vertragsbefunde stehen nur noch in der Vertragsansicht, mit einer Hinweisleiste „2 Befunde: … ansehen". Der Reiter
+  „Befunde" ist bei Befunden farbig hervorgehoben. Anlagen zeigen „liegt bei"/„fehlt".
+- Technische Angaben (Auswertung, Modell, Regelstand) hinter einem Info-Symbol im Kopf. Einleitungssatz für Verträge
+  eigens formuliert. Volltext bei Verträgen als Reiter statt als zweite Liste.
+- Abstände vereinheitlicht: Reiter, Karten, Fundstellen, Hinweisboxen, Fußzeile. Der Hilfetext unter „Geprüftes
+  Beispiel speichern" erscheint nur noch bei Lern- oder Testbeispiel.
+
 ### DP: Vertragskatalog als normale Felder, `projects.list` mit Strategie, `vertrag`-Schema dokumentiert
 - Vertragsprofile (`contract-structured`) haben die 23 Elemente des festen Vertragskatalogs jetzt als normale Felder
   (`katalog_*`, Gruppe „Vertragskatalog"; je Element Status, Werte, Fundstellen; 87 Felder). Die Felder werden aus der
