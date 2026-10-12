@@ -135,8 +135,11 @@ export interface GueltigkeitsAngabe {
   klausel: string;
 }
 
+/** Schema-Version des `vertrag`-Objekts (API, docs/dp-api-vertrag-schema-2026-10-12.md). Bei inkompatiblen Aenderungen erhoehen. */
+export const VERTRAG_SCHEMA_VERSION = 1;
+
 export interface VertragsAuswertung {
-  version: 1;
+  version: typeof VERTRAG_SCHEMA_VERSION;
   seiten: Array<{ seite: number; rolle: SeitenRolle }>;
   klauseln: Klausel[];
   gueltigkeit: GueltigkeitsAngabe[];

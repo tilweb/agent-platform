@@ -1,5 +1,6 @@
 import { enqueueBatch } from './learning/jobs';
 import { getBatchRunFileDetail, getRunSnapshot, hatTextDetail } from './learning/batch-runs';
+import { VERTRAG_SCHEMA_VERSION } from '../services/extraction/contract/types';
 import { isReleased } from './learning/result-validation';
 /**
  * Public-API-Functions der Dokumenten-Extraktion (Welle 5).
@@ -96,7 +97,7 @@ export function safeName(filename: string): string {
 export const projectsListFunction: PublicFunction<Record<string, never>, unknown> = {
   id: 'projects.list',
   description:
-    'Listet die verfuegbaren Extraktionsprojekte mit ihren Feldern. Damit findet ein Integrator die project_id und weiss, welche Felder er im Ergebnis erwarten kann.',
+    'Listet die verfuegbaren Extraktionsprojekte mit ihren Feldern. Damit findet ein Integrator die project_id und weiss, welche Felder er im Ergebnis erwarten kann. Bei Vertragsprojekten (strategy contract-structured) gehoeren die Felder des festen Vertragskatalogs (group „Vertragskatalog", IDs katalog_*) dazu.',
   input: { type: 'object', properties: {} },
   output: {
     type: 'object',
@@ -109,6 +110,12 @@ export const projectsListFunction: PublicFunction<Record<string, never>, unknown
             id: { type: 'string' },
             name: { type: 'string' },
             description: { type: 'string' },
+            strategy: { type: 'string', description: 'Auswertungsstrategie, z. B. hybrid, vision-per-page, contract-structured (Vertrag), general-document (Allgemein)' },
+            ergebnis: {
+              type: 'object',
+              description: 'Was ein Ergebnis zusaetzlich zu data enthaelt: vertrag = Vertragsauswertung (Schema-Version), volltext = Seitentranskript, segments = Abschnitte',
+              properties: { vertrag: { type: 'integer' }, volltext: { type: 'boolean' }, segments: { type: 'boolean' } },
+            },
             fields: {
               type: 'array',
               items: {
@@ -118,6 +125,8 @@ export const projectsListFunction: PublicFunction<Record<string, never>, unknown
                   label: { type: 'string' },
                   type: { type: 'string', description: 'text | number | date | boolean | list' },
                   required: { type: 'boolean' },
+                  description: { type: 'string' },
+                  group: { type: 'string', description: 'Feldgruppe, z. B. „Vertragskatalog" (systemseitig, nicht im Profil pflegbar)' },
                 },
                 required: ['id', 'label', 'type'],
               },
@@ -137,11 +146,19 @@ export const projectsListFunction: PublicFunction<Record<string, never>, unknown
         id: p.id,
         name: p.name,
         description: p.description,
+        strategy: p.extraction?.strategy ?? 'hybrid',
+        ergebnis: {
+          ...(p.extraction?.strategy === 'contract-structured' ? { vertrag: VERTRAG_SCHEMA_VERSION } : {}),
+          volltext: p.extraction?.strategy === 'contract-structured' || p.extraction?.strategy === 'general-document' || !!p.extraction?.transkript,
+          segments: !!p.segments && Object.keys(p.segments).length > 0,
+        },
         fields: Object.entries(p.fields).map(([id, f]) => ({
           id,
           label: f.label,
           type: f.type,
           required: !!f.required,
+          ...(f.description ? { description: f.description } : {}),
+          ...(f.group ? { group: f.group } : {}),
           // Kontrollierte Werteliste (Welle 6): der Integrator soll wissen,
           // welche Werte erlaubt sind. Tabellen-Kataloge werden nicht
           // ausgerollt (koennen sehr gross sein) — nur die Quelle benannt.

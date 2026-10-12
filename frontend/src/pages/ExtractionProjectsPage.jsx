@@ -420,6 +420,9 @@ function slugifySegmentId(label) {
 const fieldsArrayToObject = fieldsToObject;
 
 // Heavy-Extraction-Pipeline-Strategien (siehe backend/src/services/extraction/).
+/** Feldgruppe der systemseitigen Vertragskatalog-Felder (Backend: extraction/vertragskatalog.ts). */
+const KATALOG_GRUPPE = 'Vertragskatalog';
+
 const EXTRACTION_STRATEGIES = [
   { value: 'hybrid', label: 'Hybrid — Text + Vision-Fallback (empfohlen)' },
   { value: 'single-pass', label: 'Single-Pass — ein Durchlauf, kurze Dokumente' },
@@ -3062,7 +3065,9 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
 
   // Unsichere Felder zuerst: geprueft wird dort, wo das Risiko sitzt — nicht
   // stur bei Feld 1. Listen bleiben unten, sie brauchen die volle Breite.
-  const entries = Object.entries(fields);
+  // Vertragskatalog (systemseitige Felder bei Vertragsprofilen) als eigener Block unter den Profilfeldern.
+  const entries = Object.entries(fields).filter(([, f]) => f.group !== KATALOG_GRUPPE);
+  const katalogEntries = Object.entries(fields).filter(([, f]) => f.group === KATALOG_GRUPPE);
   const scalars = entries.filter(([, f]) => f.type !== 'list');
   const lists = entries.filter(([, f]) => f.type === 'list');
   const isUncertain = ([fid]) => {
@@ -3071,6 +3076,22 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
   };
   const uncertain = scalars.filter(isUncertain);
   const certain = scalars.filter(e => !isUncertain(e));
+
+  function renderList([fid, f]) {
+    return (
+      <div key={fid} style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm }}>
+        <div style={{ marginBottom: theme.spacing.xs, color: theme.colors.textMuted }}>
+          {f.label || fid} ({Array.isArray(values[fid]) ? values[fid].length : 0} Positionen)
+        </div>
+        <ListItemsEditor
+          value={values[fid]}
+          itemFields={f.item_fields}
+          onChange={arr => setEdited(prev => ({ ...(prev || {}), [fid]: arr }))}
+          readOnly={!canReview || isReviewed}
+        />
+      </div>
+    );
+  }
 
   function renderField([fid, f]) {
     const conf = detail?.fieldConfidences?.[fid];
@@ -3275,19 +3296,17 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
               )}
               {!segments && certain.map(renderField)}
 
-              {!segments && lists.map(([fid, f]) => (
-                <div key={fid} style={{ marginTop: theme.spacing.lg, fontSize: theme.typography.sizes.sm }}>
-                  <div style={{ marginBottom: theme.spacing.xs, color: theme.colors.textMuted }}>
-                    {f.label || fid} ({Array.isArray(values[fid]) ? values[fid].length : 0} Positionen)
+              {!segments && lists.map(renderList)}
+
+              {!segments && katalogEntries.length > 0 && (
+                <details open style={{ marginTop: theme.spacing.lg }}>
+                  <summary style={{ ...styles.groupLabel, cursor: 'pointer' }}>Vertragskatalog</summary>
+                  <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted, margin: `${theme.spacing.xs} 0 ${theme.spacing.sm}` }}>
+                    Feste Elemente jedes Vertrags. Korrekturen hier gehen wie bei allen Feldern ins Ergebnis und in die API.
                   </div>
-                  <ListItemsEditor
-                    value={values[fid]}
-                    itemFields={f.item_fields}
-                    onChange={arr => setEdited(prev => ({ ...(prev || {}), [fid]: arr }))}
-                    readOnly={!canReview || isReviewed}
-                  />
-                </div>
-              ))}
+                  {katalogEntries.map(e => (e[1].type === 'list' ? renderList(e) : renderField(e)))}
+                </details>
+              )}
             </div>
           </div>
           </>
@@ -4714,7 +4733,8 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
   );
   const [instructions, setInstructions] = useState(project.instructions || '');
   const [fields, setFields] = useState(
-    Object.entries(project.fields).map(([id, f]) => ({
+    // Katalogfelder (Vertragsprofile) kommen aus dem System und sind nicht pflegbar.
+    Object.entries(project.fields).filter(([, f]) => f.group !== KATALOG_GRUPPE).map(([id, f]) => ({
         ...f,
       id,
       label: f.label,
@@ -4937,6 +4957,13 @@ function SettingsTab({ project, onProjectUpdated, onDeleted }) {
       {/* Fields */}
       <div style={styles.section}>
         <FieldsEditor fields={fields} onChange={setFields} />
+        {strategy === 'contract-structured' && (
+          <div style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>
+            Zusätzlich enthält jedes Ergebnis die Felder des festen <strong>Vertragskatalogs</strong> (Parteien, Laufzeit,
+            Kündigung, Entgelte, Haftung … je mit Status und Fundstellen). Sie sind fest vorgegeben und erscheinen in
+            der Prüfansicht und in der API als eigene Gruppe. Hier pflegst du nur die zusätzlichen Felder.
+          </div>
+        )}
       </div>
 
       {/* Segmente (Welle 10 — Editor in der Maske) */}

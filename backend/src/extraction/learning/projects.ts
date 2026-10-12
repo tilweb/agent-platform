@@ -11,6 +11,7 @@ import { eq, desc } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { extractionProjects } from '../../db/schema/extraction';
 import type { ExtractionProject } from './types';
+import { mitKatalogFeldern, ohneKatalogFelder } from '../vertragskatalog';
 
 function rowToProject(row: typeof extractionProjects.$inferSelect): ExtractionProject {
   const project: ExtractionProject = {
@@ -28,6 +29,8 @@ function rowToProject(row: typeof extractionProjects.$inferSelect): ExtractionPr
     webhook: (row.webhook as ExtractionProject['webhook']) ?? undefined,
     segments: (row.segments as ExtractionProject['segments']) ?? undefined,
   };
+  // Vertragsprofile: Katalogfelder kommen immer aus dem Code (nie gespeichert).
+  Object.assign(project, mitKatalogFeldern(project));
   const champion = project.learning.eval?.champion;
   if (champion) champion.stale = champion.profile_hash !== profileHash(project)
     || champion.dataset_version !== (project.learning.dataset_version ?? 0);
@@ -69,7 +72,7 @@ export async function createProject(data: {
     description: data.description || '',
     created: now,
     updated: now,
-    fields: data.fields,
+    fields: ohneKatalogFelder(data.fields),
     instructions: data.instructions,
     guidelines: '',
     learning: {
@@ -100,7 +103,7 @@ export async function createProject(data: {
     updatedAt: now,
   });
   console.log(`[Extraction] Created project: ${id}`);
-  return project;
+  return mitKatalogFeldern(project);
 }
 
 export async function updateProject(
@@ -108,6 +111,7 @@ export async function updateProject(
   updates: Partial<Pick<ExtractionProject, 'name' | 'description' | 'fields' | 'instructions' | 'guidelines' | 'learning' | 'extraction' | 'rules' | 'webhook' | 'segments'>>,
 ): Promise<ExtractionProject | null> {
   const defined = Object.fromEntries(Object.entries(updates).filter(([, value]) => value !== undefined));
+  if (defined.fields) defined.fields = ohneKatalogFelder(defined.fields as ExtractionProject['fields']);
   const rows = await getDb().update(extractionProjects).set({ ...defined, updatedAt: new Date().toISOString() } as never)
     .where(eq(extractionProjects.id, id)).returning();
   return rows[0] ? rowToProject(rows[0]) : null;

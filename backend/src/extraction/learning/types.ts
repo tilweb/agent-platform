@@ -37,6 +37,8 @@ export interface ProjectField {
   catalog?: FieldCatalog;
   /** Anker-Aliasse fuer deterministische Strategien (template-labelmap). */
   aliases?: string[];
+  /** Feldgruppe fuer Anzeige/API (z. B. „Vertragskatalog" — systemseitige Felder, nicht im Profil gespeichert). */
+  group?: string;
 }
 
 // ============== Kontrollierte Wertelisten (Welle 6) ==============

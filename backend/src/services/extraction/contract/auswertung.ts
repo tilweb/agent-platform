@@ -29,7 +29,7 @@ const EINHEITEN = ['tage', 'werktage', 'wochen', 'monate', 'jahre'];
 const RICHTUNGEN = ['vor', 'nach', 'bis', 'innerhalb'];
 const fristSchema = obj({ dauer: num, einheit: nEnum(EINHEITEN), richtung: nEnum(RICHTUNGEN), bezug: str, zum: str, wortlaut: str });
 
-const KATALOG_STATUS: KatalogStatus[] = ['gefunden', 'nicht_geregelt', 'anlage_fehlt', 'delegiert', 'geerbt', 'bedingt'];
+export const KATALOG_STATUS: KatalogStatus[] = ['gefunden', 'nicht_geregelt', 'anlage_fehlt', 'delegiert', 'geerbt', 'bedingt'];
 const MODALITAETEN: Modalitaet[] = ['muss', 'soll', 'bemueht', 'kann', 'darf_nicht'];
 const INVENTAR_TYPEN: InventarTyp[] = ['pflicht', 'recht', 'frist', 'ausschluss', 'haftung', 'zahlung', 'sonstiges'];
 

@@ -2,6 +2,19 @@
 
 ## 2026-10-12
 
+### DP: Vertragskatalog als normale Felder, `projects.list` mit Strategie, `vertrag`-Schema dokumentiert
+- Vertragsprofile (`contract-structured`) haben die 23 Elemente des festen Vertragskatalogs jetzt als normale Felder
+  (`katalog_*`, Gruppe „Vertragskatalog"; je Element Status, Werte, Fundstellen; 87 Felder). Die Felder werden aus der
+  Katalogdefinition erzeugt, beim Laden des Profils angehängt und nie gespeichert. In der Profilpflege sind sie
+  ausgeblendet und nicht änderbar. Die Strategie füllt sie aus `vertrag.katalog`. Damit sind Katalogwerte in der
+  Prüfansicht korrigierbar (eigener Block „Vertragskatalog") und landen in `data`, Exporten, Evaluation und API.
+  Anlass: Integratoren (Orbit) sahen bei Verträgen nur die Profilfelder.
+- `projects.list` liefert je Projekt `strategy`, `ergebnis` (`vertrag`-Schema-Version, `volltext`, `segments`) und je
+  Feld `description` und `group`.
+- `docs/dp-api-vertrag-schema-2026-10-12.md`: API-Doku für Vertragsergebnisse. Sie beschreibt Katalogfelder,
+  `vertrag`-Objekt Version 1 (`VERTRAG_SCHEMA_VERSION`) und Versionierungsregel. Pflichten, Fristen und Befunde bleiben
+  in `vertrag`.
+
 ### DP: Vertrag liefert immer auch den Volltext
 `contract-structured` gibt zusätzlich zu `vertrag` immer `volltext` (Seitentranskript + Gliederung) aus, wie
 „Allgemein" und Profile mit dem Schalter „Transkript liefern". Das gilt für die synchrone API, `batch.get`, den

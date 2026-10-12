@@ -10,7 +10,7 @@
 
 import type { AuswertungsErgebnis } from './auswertung';
 import {
-  NICHT_BINDEND,
+  NICHT_BINDEND, VERTRAG_SCHEMA_VERSION,
   type FristRegel, type GueltigkeitsAngabe, type InventarEintrag, type Klausel, type KatalogElement, type KatalogWert, type Querverweis,
   type SeitenTranskript, type VertragsAuswertung, type VertragsBefund, type Verknuepfung,
 } from './types';
@@ -358,7 +358,7 @@ export function konsolidiere(seiten: SeitenTranskript[], klauseln: Klausel[], aw
 
   return {
     vertrag: {
-      version: 1,
+      version: VERTRAG_SCHEMA_VERSION,
       seiten: seiten.map((s) => ({ seite: s.seite, rolle: s.rolle })),
       klauseln,
       gueltigkeit: findeGueltigkeit(klauseln),

@@ -12,6 +12,7 @@
  */
 
 import { isArrayGroup, type ArrayGroupDefinition, type FieldDefinition } from '../../../extraction/types';
+import { istKatalogFeld, katalogWerte } from '../../../extraction/vertragskatalog';
 import { werteAus, type ErweiterungsFeld } from '../contract/auswertung';
 import { konsolidiere } from '../contract/konsolidierung';
 import { alsVolltext, leseDokument } from '../contract/lesen';
@@ -26,6 +27,8 @@ export function erweiterungsFelder(profileFields: StrategyInput['schema']['profi
   const gruppeVon: Record<string, string | null> = {};
   const typ = (f: FieldDefinition) => f.type;
   for (const [gruppe, def] of Object.entries(profileFields)) {
+    // Katalogfelder fuellt die Strategie aus dem festen Katalog — nicht noch einmal vom Modell erfragen.
+    if (istKatalogFeld(gruppe)) continue;
     if (isArrayGroup(def)) {
       const g = def as ArrayGroupDefinition;
       felder[gruppe] = {
@@ -36,11 +39,41 @@ export function erweiterungsFelder(profileFields: StrategyInput['schema']['profi
       continue;
     }
     for (const [id, f] of Object.entries(def as Record<string, FieldDefinition>)) {
+      if (istKatalogFeld(id)) continue;
       felder[id] = { type: typ(f), label: f.label ?? id, ...(f.hint ? { description: f.hint } : {}) };
       gruppeVon[id] = gruppe;
     }
   }
   return { felder, gruppeVon };
+}
+
+/**
+ * Katalogwerte in die Profilform legen — nur fuer Katalogfelder, die das Profil fuehrt (beim Laden angehaengt;
+ * eingefrorene Profile ohne sie bleiben unveraendert).
+ */
+export function katalogInProfilform(
+  katalog: Parameters<typeof katalogWerte>[0],
+  profileFields: StrategyInput['schema']['profile']['fields'],
+  ziel: { extracted: Record<string, unknown>; fieldConfidences: Record<string, number> },
+): void {
+  const { werte, konfidenz } = katalogWerte(katalog);
+  for (const [gruppe, def] of Object.entries(profileFields)) {
+    if (isArrayGroup(def)) {
+      if (!(gruppe in werte)) continue;
+      ziel.extracted[gruppe] = werte[gruppe];
+      ziel.fieldConfidences[gruppe] = konfidenz[gruppe] ?? 0;
+      // Zellen erben die Konfidenz der Liste (die Triage prueft je Zelle).
+      for (const [i, zeile] of ((werte[gruppe] as Record<string, unknown>[]) ?? []).entries()) {
+        for (const spalte of Object.keys(zeile)) ziel.fieldConfidences[`${gruppe}[${i}].${spalte}`] = konfidenz[gruppe] ?? 0;
+      }
+      continue;
+    }
+    for (const id of Object.keys(def as Record<string, FieldDefinition>)) {
+      if (!(id in werte)) continue;
+      ziel.extracted[gruppe] = { ...(ziel.extracted[gruppe] as Record<string, unknown> ?? {}), [id]: werte[id] };
+      ziel.fieldConfidences[`${gruppe}.${id}`] = konfidenz[id] ?? 0;
+    }
+  }
 }
 
 /** Feldwerte + Fundstellen → Profilform (Gruppe `felder` + Listengruppen), Konfidenz und Provenienz. */
@@ -104,6 +137,7 @@ export const contractStructuredStrategy: ExtractionStrategy = {
     const { vertrag, erweiterung } = konsolidiere(seiten, klauseln, aw);
 
     const { extracted, fieldConfidences, provenance } = inProfilform(erweiterung, gruppeVon);
+    katalogInProfilform(vertrag.katalog, input.schema.profile.fields, { extracted, fieldConfidences });
 
     const lesefehler = seiten.filter((s) => s.fehler);
     return {
