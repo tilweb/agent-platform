@@ -63,3 +63,21 @@ test('Strategie: Katalogfelder nicht ans Modell (Erweiterung), Werte landen in d
   expect(ziel.fieldConfidences['felder.katalog_beginn_datum']).toBe(0.85);
   expect(ziel.fieldConfidences['katalog_parteien[0].name']).toBe(0.85);
 });
+
+test('Katalogdatum im deutschen Format: nach der Angleichung in der Strategie kein „erneut pruefen" im Abschluss-Schritt', async () => {
+  const { finalizeResult } = await import('../services/extraction/finalize');
+  const { validateExtraction } = await import('./validator');
+  const project = mitKatalogFeldern({
+    id: 'v', name: 'V', description: '', created: '', updated: '', guidelines: '',
+    learning: { total_examples: 0, accuracy_estimate: 0, guideline_version: 0 },
+    fields: {}, extraction: { strategy: 'contract-structured' },
+  } as ExtractionProject);
+  const profil = extractionProjectToExtractionSchema(project).profile;
+  const ziel = { extracted: {} as Record<string, unknown>, fieldConfidences: {} as Record<string, number> };
+  katalogInProfilform({ beginn: { status: 'gefunden', wert: { datum: '01.11.2022', regel: null }, klauseln: ['§6.1'] } } as never, profil.fields, ziel);
+  validateExtraction(ziel.extracted, profil); // wie in der Strategie
+  const vorher = structuredClone(ziel.extracted);
+  const r = finalizeResult({ extracted: ziel.extracted, fieldConfidences: ziel.fieldConfidences, provenance: [], warnings: [], llmCalls: 0, strategyUsed: 'contract-structured' } as never, vorher, profil);
+  expect((r.processingIssues ?? []).some((i) => i.code === 'changed')).toBe(false);
+  expect(r.fieldConfidences['felder.katalog_beginn_datum']).toBe(0.85);
+});

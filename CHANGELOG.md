@@ -2,6 +2,12 @@
 
 ## 2026-10-12
 
+### Fix: Verträge zeigten „Prüfregel verletzt: Nach Validierung/Reparatur veränderte Werte erneut prüfen"
+Die automatische Formatangleichung (z. B. Datum „01.11.2022" → „2022-11-01") lief bei den Katalogfeldern erst im
+Abschluss-Schritt der Pipeline. Der hielt sie für eine nachträgliche Änderung: Er meldete einen Fehler, erzwang
+„Zu prüfen" und setzte die Sicherheit der Felder auf 0. Vertrag und „Allgemein" gleichen Formate jetzt wie die übrigen
+Strategien selbst an. Prüfansicht: Abstand zwischen Inhalt und Scrollleiste.
+
 ### Verarbeiten: ein Menü „Export" statt drei Bedienelementen
 „In Tabelle schreiben", „Diagnoseexport (alle)" und „Download" sind jetzt ein Menü „Export". Jeder Punkt hat eine
 Erklärzeile: Excel (Blatt je Liste), Excel breit (Listen als nummerierte Spalten), Excel flach (eine Zeile je

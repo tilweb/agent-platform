@@ -13,6 +13,7 @@
 
 import { isArrayGroup, type ArrayGroupDefinition, type FieldDefinition } from '../../../extraction/types';
 import { istKatalogFeld, katalogWerte } from '../../../extraction/vertragskatalog';
+import { validateExtraction } from '../../../extraction/validator';
 import { werteAus, type ErweiterungsFeld } from '../contract/auswertung';
 import { konsolidiere } from '../contract/konsolidierung';
 import { alsVolltext, leseDokument } from '../contract/lesen';
@@ -138,6 +139,9 @@ export const contractStructuredStrategy: ExtractionStrategy = {
 
     const { extracted, fieldConfidences, provenance } = inProfilform(erweiterung, gruppeVon);
     katalogInProfilform(vertrag.katalog, input.schema.profile.fields, { extracted, fieldConfidences });
+    // Formate (Datum, Zahl …) hier angleichen wie die anderen Strategien — sonst haelt der Abschluss-Schritt der
+    // Pipeline die Angleichung fuer eine nachtraegliche Aenderung („erneut pruefen", Konfidenz 0).
+    validateExtraction(extracted, input.schema.profile);
 
     const lesefehler = seiten.filter((s) => s.fehler);
     return {

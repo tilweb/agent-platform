@@ -7,6 +7,7 @@
  * Datum, Betreff). Ersatz fuer Docling/Markitdown.
  */
 
+import { validateExtraction } from '../../../extraction/validator';
 import { leseDokument, alsVolltext } from '../contract/lesen';
 import { werteFelderAus } from '../contract/auswertung';
 import { klauselnAlsText } from '../contract/struktur';
@@ -51,6 +52,8 @@ export const generalDocumentStrategy: ExtractionStrategy = {
       ? await werteFelderAus(kontext, klauselnAlsText(gelesen.klauseln), felder, { anweisung: ALLGEMEIN_ANWEISUNG })
       : { data: {}, fundstellen: {}, probleme: [] as string[] };
     const { extracted, fieldConfidences, provenance } = inProfilform(r, gruppeVon);
+    // Formate angleichen wie die anderen Strategien (siehe contract-structured).
+    validateExtraction(extracted, input.schema.profile);
 
     const lesefehler = gelesen.seiten.filter((s) => s.fehler);
     return {

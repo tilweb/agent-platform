@@ -3389,7 +3389,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
                   )}
                   <span>Seite {activePage}{pages.length > 1 ? ` von ${pages.length}` : ''}</span>
                 </div>
-                <div ref={vorschauRef} style={{ ...styles.modalPane, flex: 1 }}>
+                <div ref={vorschauRef} style={{ ...styles.modalPane, flex: 1, paddingRight: theme.spacing.sm }}>
                   <div style={{ width: `${vorschauBreite}%`, margin: '0 auto' }}>
                   <BoxOverlay
                     pageImages={pages.filter(p => p.page === activePage)}
@@ -3438,7 +3438,7 @@ function ReviewModal({ detail, filename, reviewStatus, fields, segmentDefs, thre
               </div>
             )}
 
-            <div style={styles.modalPane}>
+            <div style={{ ...styles.modalPane, paddingRight: theme.spacing.md }}>
               <ValidationIssues issues={obenHinweise} style={{ marginBottom: theme.spacing.lg }} />
               {detail.vertrag && (
                 <VertragPane
