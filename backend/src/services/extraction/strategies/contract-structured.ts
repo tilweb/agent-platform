@@ -14,7 +14,7 @@
 import { isArrayGroup, type ArrayGroupDefinition, type FieldDefinition } from '../../../extraction/types';
 import { werteAus, type ErweiterungsFeld } from '../contract/auswertung';
 import { konsolidiere } from '../contract/konsolidierung';
-import { leseDokument } from '../contract/lesen';
+import { alsVolltext, leseDokument } from '../contract/lesen';
 import {
   StrategyExecutionError,
   type CostEstimate, type ExtractionStrategy, type FieldProvenance, type ProgressEmit, type StrategyInput, type StrategyResult,
@@ -120,6 +120,8 @@ export const contractStructuredStrategy: ExtractionStrategy = {
       llmCalls: bilder.length + pruefAufrufe + aw.aufrufe,
       strategyUsed: 'contract-structured',
       contract: vertrag,
+      // Wie „Allgemein" und der Profil-Schalter: Seitentranskript + Gliederung immer mitliefern (einheitliche API).
+      volltext: alsVolltext({ seiten, klauseln }),
     };
   },
 };

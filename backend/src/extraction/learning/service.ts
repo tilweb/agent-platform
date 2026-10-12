@@ -425,7 +425,7 @@ async function extractInternal(
   segments?: SegmentInstance[];
   /** Vertragsauswertung — nur Strategie `contract-structured`. */
   vertrag?: import('../../services/extraction/contract/types').VertragsAuswertung;
-  /** Volltext je Seite + Gliederung — Strategie `general-document` (Basisprofil „Allgemein") oder Profil-Schalter `extraction.transkript`. */
+  /** Volltext je Seite + Gliederung — Strategien `contract-structured`/`general-document` oder Profil-Schalter `extraction.transkript`. */
   volltext?: import('../../services/extraction/contract/types').Volltext;
   error?: string;
 }> {

@@ -306,3 +306,7 @@ unter `abrechnung`). Kostenfaktor 1,0 (ein Bildaufruf je Seite wie bei Standard)
 **Fehlerverhalten:** Scheitert das Transkript ganz oder für einzelne Seiten, bleibt die Extraktion gültig. Es entsteht
 der Hinweis `transkript` (warn), zum Beispiel „Transkript unvollständig — Seite 3 nicht lesbar".
 
+**Nachtrag (2026-10-12):** „Vertrag" liefert jetzt ebenfalls immer `volltext` (Seiten + Gliederung), zusätzlich zu
+`vertrag`. Damit liefern Vertrag, „Allgemein" und jedes Profil mit Schalter dieselbe Struktur. `document_text` ist dort
+überall der Seitentext. Die Klauseln mit IDs stehen weiter unter `vertrag.klauseln`.
+

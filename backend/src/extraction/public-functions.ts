@@ -337,7 +337,7 @@ export const batchGetFunction: PublicFunction<{ project_id: string; run_id: stri
             review_status: { type: 'string' },
             validations: { type: 'array', items: VALIDATION_SCHEMA },
             document_text: { type: 'string', description: 'Dokumenttext. Vollständiges Seitentranskript bei Vertrag, „Allgemein" oder Profil-Schalter „Transkript liefern", sonst Text des Konverters (bei Scans ggf. leer).' },
-            volltext: { type: 'object', description: '{ seiten: [{ seite, rolle, text }], gliederung } — Basisprofil „Allgemein" oder Profil-Schalter „Transkript liefern" (Verträge: `vertrag`)' },
+            volltext: { type: 'object', description: '{ seiten: [{ seite, rolle, text }], gliederung } — bei Vertrag, Basisprofil „Allgemein" oder Profil-Schalter „Transkript liefern"' },
             error: { type: 'string' },
           },
           required: ['filename', 'status'],

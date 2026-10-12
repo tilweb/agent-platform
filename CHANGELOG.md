@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-12
+
+### DP: Vertrag liefert immer auch den Volltext
+`contract-structured` gibt zusätzlich zu `vertrag` immer `volltext` (Seitentranskript + Gliederung) aus, wie
+„Allgemein" und Profile mit dem Schalter „Transkript liefern". Das gilt für die synchrone API, `batch.get`, den
+Eingangs-Umschlag und die Prüfansicht. `document_text` ist bei Verträgen jetzt der Seitentext (bisher Klauseltext mit
+IDs; die Klauseln stehen weiter unter `vertrag.klauseln`). Kein zusätzlicher Modellaufruf, das Transkript entsteht
+ohnehin.
+
 ## 2026-10-11
 
 ### Fix: Batch-Triage ignorierte die Review-Schwelle des Profils
