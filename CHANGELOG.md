@@ -13,6 +13,10 @@
 - Bezeichnungen der Katalog-Teilfelder vollständig und großgeschrieben. Vorher erschien beim Gerichtsstand der interne
   Schlüssel „bedingung"; jetzt heißt das Feld „Gilt nur, wenn" (z. B. „der Kunde Kaufmann ist"). Ein Test sichert,
   dass jedes Teilfeld eine Bezeichnung hat.
+- Statuswechsel mit Abschnittswechsel (z. B. geregelt → nicht geregelt): Die Ansicht springt zur Karte und hebt sie
+  kurz hervor; „Im Vertrag nicht geregelt" klappt dafür auf.
+- Pflichten & Fristen: Stichwortsuche über Inhalt, Partei, Gegenüber, Frist, Auslöser, Bedingung, Typ und Fundstellen
+  (alle Wörter müssen vorkommen), mit Trefferzahl.
 - „korrigiert" erscheint nur bei echten Änderungen (leere Zeilen oder leere Texte zählen nicht).
 - Alle Prüfansichten: Leere Felder ohne Treffer zeigen „nicht gefunden" statt „0 %" und stehen nicht mehr unter
   „Unsicher — zuerst prüfen" (außer Pflichtfeldern). Das entspricht der Prüf-Einstufung im Backend.

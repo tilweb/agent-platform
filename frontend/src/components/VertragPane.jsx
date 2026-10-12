@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { theme } from '../config/theme';
 import { AlertTriangleIcon, CheckCircleIcon, PenIcon } from './Icons';
 import VolltextPane from './VolltextPane';
@@ -187,6 +187,18 @@ export default function VertragPane({
   const [offen, setOffen] = useState(null);         // `${ort}|${klausel}` mit sichtbarem Wortlaut
   const [inBearbeitung, setInBearbeitung] = useState(null);
   const [suche, setSuche] = useState('');
+  const [pflichtSuche, setPflichtSuche] = useState('');
+  // Nach einem Statuswechsel wandert die Karte in einen anderen Abschnitt — hinscrollen und kurz hervorheben.
+  const kartenRefs = useRef({});
+  const springeZu = useRef(null);            // Karte, zu der nach dem nächsten Rendern gescrollt wird
+  const [hervorgehoben, setHervorgehoben] = useState(null);
+  const [nichtGeregeltOffen, setNichtGeregeltOffen] = useState(false);
+  // Nach jedem Rendern: ausstehenden Sprung ausführen (die Karte steht dann schon im neuen Abschnitt).
+  useEffect(() => {
+    if (!springeZu.current) return;
+    kartenRefs.current[springeZu.current]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    springeZu.current = null;
+  });
   if (!vertrag) return null;
 
   const klausel = Object.fromEntries((vertrag.klauseln ?? []).map((k) => [k.id, k]));
@@ -245,7 +257,16 @@ export default function VertragPane({
   const setze = (id, wert) => onFeldAendern?.(id, wert);
   /** Status ändern; „nicht geregelt" leert Werte und Fundstellen des Elements (sonst widersprüchlich). */
   const setzeStatus = (el, neu) => {
+    const vorher = status(el);
     setze(`katalog_${el}_status`, neu);
+    // Abschnittswechsel (geregelt ↔ nicht geregelt ↔ Besonderheit): mitspringen.
+    const abschnitt = (x) => (x === 'nicht_geregelt' ? 'n' : ABWEICHEND.has(x) ? 'b' : 'g');
+    if (abschnitt(vorher) !== abschnitt(neu)) {
+      if (neu === 'nicht_geregelt') setNichtGeregeltOffen(true);
+      springeZu.current = el;
+      setHervorgehoben(el);
+      setTimeout(() => setHervorgehoben((h) => (h === el ? null : h)), 1600);
+    }
     if (neu === 'nicht_geregelt') {
       for (const id of elementFelder(el, felder)) setze(id, felder[id]?.type === 'list' ? [] : null);
       setze(`katalog_${el}_fundstellen`, null);
@@ -258,6 +279,14 @@ export default function VertragPane({
   const katalogPflicht = pruefElemente(vertrag, felder, values);
   // Wie im Prüfdialog: Zusatzfelder zählen mit, sobald es Katalogfelder gibt.
   const pflicht = katalogPflicht.length && zusatz ? [...katalogPflicht, zusatz.schluessel] : katalogPflicht;
+  // Stichwortsuche in Pflichten & Fristen: alle Wörter müssen vorkommen (Inhalt, Partei, Frist, Auslöser, Typ …).
+  const pflichtWoerter = pflichtSuche.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const pflichtTreffer = (vertrag.inventar ?? []).map((e, i) => ({ e, i })).filter(({ e }) => {
+    if (!pflichtWoerter.length) return true;
+    const t = [e.inhalt, e.partei, e.gegenueber, e.ausloeser, e.bedingung, e.frist?.wortlaut, e.frist?.bezug, TYP_LABEL[e.typ], MODAL_LABEL[e.modalitaet], ...(e.klauseln ?? [])]
+      .filter(Boolean).join(' ').toLowerCase();
+    return pflichtWoerter.every((w) => t.includes(w));
+  });
   const erledigt = pflicht.filter((k) => geprueft[k]).length;
   const bearbeitbar = mitFeldern && pruefModus && !!renderEingabe && !!onFeldAendern;
   const klauselAuswahl = (vertrag.klauseln ?? []).map((k) => ({ id: k.id, text: `${k.id} — ${k.titelpfad?.[k.titelpfad.length - 1] ?? ''}${seitenText(k.id) ? ` (${seitenText(k.id)})` : ''}` }));
@@ -269,7 +298,8 @@ export default function VertragPane({
     const zeilen = mitFeldern ? wertZeilen(el, felder, values) : wertZeilenAusKatalog(el, k?.wert);
     const offenEdit = inBearbeitung === el;
     return (
-      <div key={el} style={styles.karte}>
+      <div key={el} ref={(n) => { kartenRefs.current[el] = n; }}
+        style={{ ...styles.karte, transition: `background-color ${theme.transitions.fast}`, ...(hervorgehoben === el ? { backgroundColor: theme.colors.primaryLight } : {}) }}>
         <div style={styles.kartenKopf}>
           {pruefModus && mitFeldern && (
             <label style={styles.check} title="Am Original geprüft">
@@ -412,7 +442,7 @@ export default function VertragPane({
                   </label>
                 )}
               </div>
-              <details style={styles.karte}>
+              <details style={styles.karte} open={nichtGeregeltOffen} onToggle={(e) => setNichtGeregeltOffen(e.currentTarget.open)}>
                 <summary style={{ cursor: 'pointer', color: theme.colors.textMuted }}>
                   {nichtGeregelt.map((el) => KATALOG_LABEL[el] ?? el).join(', ')}
                 </summary>
@@ -440,7 +470,14 @@ export default function VertragPane({
       {tab === 'pflichten' && (
         <div>
           <div style={{ ...styles.hinweis, marginBottom: theme.spacing.sm }}>Fristen sind als Regel angegeben — die Berechnung konkreter Termine übernimmt das Fristenradar.</div>
-          {(vertrag.inventar ?? []).map((e, i) => (
+          <input style={styles.suche} placeholder="Pflichten und Fristen durchsuchen … (z. B. Wartung, Kündigung, END)" value={pflichtSuche} onChange={(e) => setPflichtSuche(e.target.value)} />
+          {pflichtSuche.trim() && (
+            <div style={{ ...styles.hinweis, marginBottom: theme.spacing.sm }}>
+              {pflichtTreffer.length} von {vertrag.inventar?.length ?? 0} Einträgen
+            </div>
+          )}
+          {pflichtWoerter.length > 0 && pflichtTreffer.length === 0 && <div style={styles.hinweis}>Kein Treffer.</div>}
+          {pflichtTreffer.map(({ e, i }) => (
             <div key={i} style={styles.zeile}>
               <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap', alignItems: 'baseline' }}>
                 <Badge bg={theme.colors.surfaceHover} fg={theme.colors.text}>{TYP_LABEL[e.typ] ?? e.typ}</Badge>
