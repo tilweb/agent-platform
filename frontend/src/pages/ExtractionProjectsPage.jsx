@@ -3,9 +3,9 @@ import { isExtractionReleased } from '../utils/extractionRelease';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { theme } from '../config/theme';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostForm, API_URL } from '../utils/apiFetch';
-import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, TableIcon, BarChartIcon, FolderOpenIcon, InfoIcon, PlusIcon } from '../components/Icons';
+import { DocumentIcon, TrashIcon, RefreshIcon, ArrowLeftIcon, SparklesIcon, HelpCircleIcon, BarChartIcon, FolderOpenIcon, InfoIcon, PlusIcon } from '../components/Icons';
 import { pruefElemente, ZUSATZ_SCHLUESSEL } from '../utils/vertragKatalog';
-import ExportDropdown from '../components/ExportDropdown';
+import LaufExportMenu from '../components/LaufExportMenu';
 import VertragPane from '../components/VertragPane';
 import VolltextPane from '../components/VolltextPane';
 import { useProviders } from '../hooks/useProviders';
@@ -2720,20 +2720,14 @@ function BatchTab({ project, onProjectUpdated, onSetup }) {
                 </span>
               )}
             </div>
-            <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center' }}>
-              <button style={styles.secondaryBtn} onClick={writeToTable} disabled={tableMsg?.loading}>
-                <TableIcon size={14} /> In Tabelle schreiben
-              </button>
-              <label style={{ fontSize: theme.typography.sizes.sm }} title="Standardexport: nur freigegebene Ergebnisse. Diagnose enthält auch ungeprüfte Daten.">
-                <input type="checkbox" checked={diagnosticExport} onChange={e => setDiagnosticExport(e.target.checked)} /> Diagnoseexport (alle)
-              </label>
-              <ExportDropdown
-                formats={['xlsx', 'xlsx_wide', 'xlsx_flat', 'csv_wide', 'csv', 'json']}
-                onExport={handleExport}
-                isLoading={!!loadingFormat}
-                loadingFormat={loadingFormat}
-              />
-            </div>
+            <LaufExportMenu
+              onExport={handleExport}
+              onTabelle={writeToTable}
+              diagnose={diagnosticExport}
+              onDiagnose={setDiagnosticExport}
+              ladeFormat={loadingFormat}
+              tabelleLaedt={!!tableMsg?.loading}
+            />
           </div>
 
           {tableMsg && !tableMsg.loading && (

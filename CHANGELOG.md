@@ -2,6 +2,12 @@
 
 ## 2026-10-12
 
+### Verarbeiten: ein Menü „Export" statt drei Bedienelementen
+„In Tabelle schreiben", „Diagnoseexport (alle)" und „Download" sind jetzt ein Menü „Export". Jeder Punkt hat eine
+Erklärzeile: Excel (Blatt je Liste), Excel breit (Listen als nummerierte Spalten), Excel flach (eine Zeile je
+Position), CSV breit, CSV einfach, JSON und „In Tabelle schreiben" (neue Tabelle unter „Tabellen" im Workplace, nur
+freigegebene Dokumente). Der Diagnose-Schalter steht oben im Menü und erklärt, dass er nur für Dateien gilt.
+
 ### Verarbeiten: „Neuer Lauf" statt „Dokumente hinzufügen", Kennzahlen je Lauf mit Tokens
 - „Dokumente hinzufügen" stand neben der Lauf-Auswahl und wirkte, als würde es an den gewählten Lauf anhängen.
   Tatsächlich legt es immer einen neuen Lauf an. Jetzt heißt es „Lauf anzeigen" (Auswahl) und „Neuer Lauf" (rechts).
