@@ -87,8 +87,10 @@ falsch" 0.
 
 ## Offen / Ausblick
 
-- **Scalingo:** Der Stack bringt ein älteres poppler (Ubuntu 22.04, ~22.02) mit. Nach dem ersten Deploy die Ausgabe von
-  `pdfsig` auf der Instanz prüfen. Der Parser ist tolerant, fehlende Zeilen bleiben leer.
+- **Scalingo:** Alle Workplace-Instanzen laufen auf `scalingo-24` (Ubuntu 24.04, poppler 24.02) oder `scalingo-26`
+  (Ubuntu 26.04), geprüft 2026-10-16 mit `scalingo apps-info`. Das entspricht der lokal getesteten Version (24.04) oder
+  ist neuer. Eine Aktualisierung ist nicht nötig. Nach dem ersten Deploy trotzdem einmal eine signierte PDF durchlaufen
+  lassen.
 - **Position der Signatur:** Der Marker hängt weiter an der letzten Unterschriftsseite. Die Seite des Signaturfelds
   liefert `pdfsig` nicht.
 - **Stufe 3 (Validierung)** nur auf Kundenwunsch, über EU-DSS als eigenen Dienst. Dann Prüfbericht anhängen statt
