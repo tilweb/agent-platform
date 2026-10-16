@@ -26,7 +26,8 @@ import { extractionModelOverride } from '../../src/extraction/model';
 import { baueStruktur } from '../../src/services/extraction/contract/struktur';
 import { TRANSKRIPTION_SYSTEM, textlayerJeSeite, transkribiereSeite, type SeitenBild } from '../../src/services/extraction/contract/transkription';
 import { parallelBegrenzt, type ModellKontext } from '../../src/services/extraction/contract/modell';
-import { ergaenzeDigitaleSignaturen, findeDigitaleSignaturen } from '../../src/services/extraction/contract/signatur';
+import { ergaenzeDigitaleSignaturen, type PdfSignatur } from '../../src/services/extraction/contract/signatur';
+import { leseSignaturen } from '../../src/services/extraction/contract/signatur-deckung';
 import { werteAus, type ErweiterungsFeld } from '../../src/services/extraction/contract/auswertung';
 import { konsolidiere } from '../../src/services/extraction/contract/konsolidierung';
 import type { Klausel, SeitenTranskript, VertragsAuswertung } from '../../src/services/extraction/contract/types';
@@ -66,6 +67,7 @@ export interface StrukturErgebnis {
   seiten: number;
   transkripte: SeitenTranskript[];
   klauseln: Klausel[];
+  signaturen: PdfSignatur[];
   sekundenTranskription: number;
   ausCache: number;
 }
@@ -84,8 +86,9 @@ export async function strukturFuer(id: string, datei: string): Promise<StrukturE
     return r.t;
   });
   process.stdout.write('\n');
-  const mitSignaturen = ergaenzeDigitaleSignaturen(transkripte, findeDigitaleSignaturen(bytes));
-  return { id, seiten: bilder.length, transkripte: mitSignaturen, klauseln: baueStruktur(mitSignaturen), sekundenTranskription: (performance.now() - t0) / 1000, ausCache };
+  const signaturen = await leseSignaturen(bytes);
+  const mitSignaturen = ergaenzeDigitaleSignaturen(transkripte, signaturen);
+  return { id, seiten: bilder.length, transkripte: mitSignaturen, klauseln: baueStruktur(mitSignaturen), signaturen, sekundenTranskription: (performance.now() - t0) / 1000, ausCache };
 }
 
 function strukturBericht(e: StrukturErgebnis): string {
@@ -182,7 +185,7 @@ async function main() {
     if (stufe === 'struktur') continue;
     const t0 = performance.now();
     const aw = await werteAus(kontext, e.klauseln, { felder: LADE_FELDER, parallel });
-    const { vertrag, erweiterung } = konsolidiere(e.transkripte, e.klauseln, aw);
+    const { vertrag, erweiterung } = konsolidiere(e.transkripte, e.klauseln, aw, e.signaturen);
     const sek = (performance.now() - t0) / 1000;
     await Bun.write(join(ERGEBNIS, `${id}-vertrag.json`), JSON.stringify({ vertrag, erweiterung, sekunden: sek, aufrufe: aw.aufrufe }, null, 2));
     console.log(auswertungsBericht(id, vertrag, sek, aw.aufrufe, erweiterung.data));

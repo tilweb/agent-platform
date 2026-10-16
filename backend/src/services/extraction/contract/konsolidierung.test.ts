@@ -151,3 +151,14 @@ test('konsolidiere: Befunde, Fundstellen, Fristen, Verknuepfungen', () => {
   expect(vertrag.verknuepfungen).toContainEqual({ art: 'vertragsnummer', wert: '683867', klausel: 'rubrum' });
   expect(vertrag.seiten.map((s) => s.rolle)).toEqual(['deckblatt', 'vertragstext', 'vertragstext', 'anlage']);
 });
+
+test('Signaturen: Aenderung nach der Signatur → Befund am Unterschriftsbereich, digitale Signatur mit Namen zaehlt als Markierung', () => {
+  const k = baueStruktur([seite(1, '## § 1 Gegenstand\nText.'), seite(2, 'Kunde\n\n{{digitale signatur: im PDF elektronisch signiert von Erika Mustermann am 25.07.2024 15:18}}', 'unterschriften')]);
+  const aw = { katalog: { unterschriften: { status: 'gefunden', wert: [{ partei: 'Kunde', vorhanden: true }], klauseln: ['unterschriften'] } }, verknuepfungen: [], auffaelligkeiten: [], inventar: [], erweiterung: { data: {}, fundstellen: {} }, aufrufe: 1, probleme: [] } as unknown as AuswertungsErgebnis;
+  const sig = { feld: 'Sig', zeit: '25.07.2024 15:18', unterzeichner: 'Erika Mustermann', art: 'pkcs7' as const, integritaet: 'unbekannt' as const, bereich_ende: 100, deckung: 'geaendert' as const, aenderung: { seiten: [1], art: ['text' as const], hinzu: 'Anlage 2' } };
+  const { vertrag } = konsolidiere([], k, aw, [sig]);
+  expect(vertrag.signaturen).toEqual([sig]);
+  expect(vertrag.befunde.find((b) => b.typ === 'nach_signatur_geaendert')).toMatchObject({ klauseln: ['unterschriften'] });
+  expect(vertrag.befunde.some((b) => b.typ === 'unterschrift_fehlt')).toBe(false);
+  expect(konsolidiere([], k, aw).vertrag.signaturen).toBeUndefined();
+});

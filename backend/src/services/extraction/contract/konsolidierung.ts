@@ -9,6 +9,7 @@
  */
 
 import type { AuswertungsErgebnis } from './auswertung';
+import { signaturBefunde, type PdfSignatur } from './signatur';
 import {
   NICHT_BINDEND, VERTRAG_SCHEMA_VERSION,
   type FristRegel, type GueltigkeitsAngabe, type InventarEintrag, type Klausel, type KatalogElement, type KatalogWert, type Querverweis,
@@ -275,7 +276,7 @@ function verknuepfungenAus(modell: Verknuepfung[], klauseln: Klausel[]): Verknue
   return out;
 }
 
-export function konsolidiere(seiten: SeitenTranskript[], klauseln: Klausel[], aw: AuswertungsErgebnis): {
+export function konsolidiere(seiten: SeitenTranskript[], klauseln: Klausel[], aw: AuswertungsErgebnis, signaturen: PdfSignatur[] = []): {
   vertrag: VertragsAuswertung; erweiterung: AuswertungsErgebnis['erweiterung'];
 } {
   const a = baueAufloeser(klauseln);
@@ -350,6 +351,10 @@ export function konsolidiere(seiten: SeitenTranskript[], klauseln: Klausel[], aw
     }
   }
 
+  // Elektronische Signaturen: Aenderung nach der Signatur / beschaedigte Signatur (deterministisch, ohne Modell).
+  const sigFundstelle = klauseln.some((k) => k.id === 'unterschriften') ? ['unterschriften'] : [];
+  for (const b of signaturBefunde(signaturen)) befunde.push({ ...b, klauseln: sigFundstelle });
+
   befunde.push(...findePlatzhalter(klauseln));
   for (const x of aw.auffaelligkeiten) befunde.push({ typ: 'widerspruch', text: x.text, klauseln: fundstellenPruefen(x.klauseln, a, verworfen) });
   for (const p of aw.probleme) befunde.push({ typ: 'verarbeitung', text: p, klauseln: [] });
@@ -369,6 +374,7 @@ export function konsolidiere(seiten: SeitenTranskript[], klauseln: Klausel[], aw
       verweise,
       befunde,
       feld_fundstellen: Object.fromEntries(Object.entries(erweiterung.fundstellen).filter(([, ids]) => ids.length)),
+      ...(signaturen.length ? { signaturen } : {}),
     },
     erweiterung,
   };

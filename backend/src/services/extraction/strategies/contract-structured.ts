@@ -121,7 +121,7 @@ export const contractStructuredStrategy: ExtractionStrategy = {
     const parallel = Math.max(1, input.schema.config.max_concurrent);
 
     // P1 Seiten, P2 Transkription (+ digitale Signaturen), P3 Strukturbaum — gemeinsamer Lesekern
-    const { bilder, pageImages, seiten, klauseln, pruefAufrufe } = await leseDokument(kontext, { rawBuffer: datei.rawBuffer, mimeType: datei.mimeType }, {
+    const { bilder, pageImages, seiten, klauseln, pruefAufrufe, signaturen } = await leseDokument(kontext, { rawBuffer: datei.rawBuffer, mimeType: datei.mimeType }, {
       maxSeiten: input.schema.config.max_pages, parallel, emit, unterschriftenPruefen: true,
     });
     if (seiten.every((s) => s.fehler)) {
@@ -135,7 +135,7 @@ export const contractStructuredStrategy: ExtractionStrategy = {
       beiSchritt: (schritt) => emit({ phase: 'preparing', message: schritt === 'katalog' ? 'Vertragskatalog wird ausgewertet' : `Pflichten und Fristen werden erfasst (${schritt.split(':')[1]} Abschnittsgruppen)` }),
     });
     await emit({ phase: 'validating', warningCount: 0 });
-    const { vertrag, erweiterung } = konsolidiere(seiten, klauseln, aw);
+    const { vertrag, erweiterung } = konsolidiere(seiten, klauseln, aw, signaturen);
 
     const { extracted, fieldConfidences, provenance } = inProfilform(erweiterung, gruppeVon);
     katalogInProfilform(vertrag.katalog, input.schema.profile.fields, { extracted, fieldConfidences });
@@ -159,7 +159,7 @@ export const contractStructuredStrategy: ExtractionStrategy = {
       strategyUsed: 'contract-structured',
       contract: vertrag,
       // Wie „Allgemein" und der Profil-Schalter: Seitentranskript + Gliederung immer mitliefern (einheitliche API).
-      volltext: alsVolltext({ seiten, klauseln }),
+      volltext: alsVolltext({ seiten, klauseln, signaturen }),
     };
   },
 };

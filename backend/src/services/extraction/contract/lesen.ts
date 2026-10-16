@@ -1,7 +1,8 @@
 /**
  * Gemeinsamer Lesekern fuer `contract-structured` und `general-document`:
  * Seiten rendern → je Seite ueber das Bild transkribieren → digitale
- * PDF-Signaturen ergaenzen → Strukturbaum. Ein vorhandener Textlayer geht als
+ * PDF-Signaturen auslesen (parallel, mit Deckungspruefung) und als Marker
+ * ergaenzen → Strukturbaum. Ein vorhandener Textlayer geht als
  * Hilfstext in die Transkription.
  */
 
@@ -10,7 +11,8 @@ import { renderPdfToImages, pdfToLayoutText } from '../pdf';
 import type { PageImage, ProgressEmit } from '../types';
 import { baueStruktur } from './struktur';
 import { textlayerJeSeite, transkribiere, type SeitenBild } from './transkription';
-import { ergaenzeDigitaleSignaturen, findeDigitaleSignaturen } from './signatur';
+import { ergaenzeDigitaleSignaturen, type PdfSignatur } from './signatur';
+import { leseSignaturen } from './signatur-deckung';
 import { pruefeUnterschriften } from './unterschriftspruefung';
 import type { ModellKontext } from './modell';
 import type { Klausel, SeitenTranskript, Volltext } from './types';
@@ -25,6 +27,8 @@ export interface GelesenesDokument {
   klauseln: Klausel[];
   /** Zusaetzliche Modellaufrufe der Unterschriftspruefung (nur mit `unterschriftenPruefen`). */
   pruefAufrufe: number;
+  /** Elektronische PDF-Signaturen mit Deckung (leer ohne Signatur). */
+  signaturen: PdfSignatur[];
 }
 
 export async function leseDokument(
@@ -49,12 +53,15 @@ export async function leseDokument(
     width: b.png.length >= 24 ? b.png.readUInt32BE(16) : 0,
     height: b.png.length >= 24 ? b.png.readUInt32BE(20) : 0,
   }));
+  // Signaturen sind reine Dateiarbeit (pdfsig/pdftotext) — parallel zur Transkription.
+  const signaturenP = istPdf ? leseSignaturen(datei.rawBuffer).catch(() => [] as PdfSignatur[]) : Promise.resolve([] as PdfSignatur[]);
   const gelesen = await transkribiere(kontext, bilder, {
     parallel: opts.parallel,
     beiSeite: (fertig, gesamt) => opts.emit?.({ phase: 'extracting', chunkIndex: fertig - 1, chunkTotal: gesamt, pageIndex: fertig, pageTotal: gesamt }),
   });
   // Elektronische PDF-Signaturen stehen nicht im Seitenbild → als Marker an die Unterschriftsseite.
-  let seiten = istPdf ? ergaenzeDigitaleSignaturen(gelesen, findeDigitaleSignaturen(datei.rawBuffer)) : gelesen;
+  const signaturen = await signaturenP;
+  let seiten = ergaenzeDigitaleSignaturen(gelesen, signaturen);
   let pruefAufrufe = 0;
   if (opts.unterschriftenPruefen) {
     await opts.emit?.({ phase: 'preparing', message: 'Unterschriften werden geprüft' });
@@ -62,13 +69,14 @@ export async function leseDokument(
     seiten = p.seiten;
     pruefAufrufe = p.aufrufe;
   }
-  return { bilder, pageImages, seiten, klauseln: baueStruktur(seiten), pruefAufrufe };
+  return { bilder, pageImages, seiten, klauseln: baueStruktur(seiten), pruefAufrufe, signaturen };
 }
 
 /** Volltext fuer das Ergebnis: Transkript je Seite + Gliederung. */
-export function alsVolltext(d: Pick<GelesenesDokument, 'seiten' | 'klauseln'>): Volltext {
+export function alsVolltext(d: Pick<GelesenesDokument, 'seiten' | 'klauseln'> & { signaturen?: PdfSignatur[] }): Volltext {
   return {
     seiten: d.seiten.map((s) => ({ seite: s.seite, rolle: s.rolle, text: s.text, ...(s.fehler ? { fehler: s.fehler } : {}) })),
     gliederung: d.klauseln,
+    ...(d.signaturen?.length ? { signaturen: d.signaturen } : {}),
   };
 }

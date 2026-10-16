@@ -7,6 +7,8 @@
  * docs/vertragsextraktion-strategie-spec-2026-10-08.md
  */
 
+import type { PdfSignatur } from './signatur';
+
 export type SeitenRolle =
   | 'vertragstext'
   | 'deckblatt'
@@ -109,7 +111,8 @@ export interface InventarEintrag {
 }
 
 export type BefundTyp =
-  | 'anlage_fehlt' | 'unterschrift_fehlt' | 'unterschrift_pruefen' | 'beilage_nicht_unterzeichnet' | 'verweis_ins_leere' | 'platzhalter' | 'widerspruch' | 'verarbeitung';
+  | 'anlage_fehlt' | 'unterschrift_fehlt' | 'unterschrift_pruefen' | 'beilage_nicht_unterzeichnet' | 'verweis_ins_leere' | 'platzhalter' | 'widerspruch' | 'verarbeitung'
+  | 'nach_signatur_geaendert' | 'signatur_beschaedigt';
 
 export interface VertragsBefund {
   typ: BefundTyp;
@@ -151,10 +154,14 @@ export interface VertragsAuswertung {
   befunde: VertragsBefund[];
   /** Fundstellen der eigenen Profilfelder (Feld-ID → Klausel-IDs); nur belegte Felder. */
   feld_fundstellen?: Record<string, string[]>;
+  /** Elektronische PDF-Signaturen (ausgelesen, Gueltigkeit NICHT geprueft); nur wenn vorhanden. */
+  signaturen?: PdfSignatur[];
 }
 
 /** Volltext eines Dokuments (Basisprofil „Allgemein"; Ersatz fuer Docling/Markitdown, auch bei Scans). */
 export interface Volltext {
   seiten: Array<{ seite: number; rolle: SeitenRolle; text: string; fehler?: string }>;
   gliederung: Klausel[];
+  /** Elektronische PDF-Signaturen (wie `VertragsAuswertung.signaturen`); nur wenn vorhanden. */
+  signaturen?: PdfSignatur[];
 }

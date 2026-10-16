@@ -616,7 +616,9 @@ async function extractInternal(
     if (result.contract) {
       for (const b of result.contract.befunde) {
         if (b.typ === 'verarbeitung') continue; // schon als processingIssue/Warnung erfasst
-        validations.push({ rule_id: `vertrag-${b.typ}`, type: 'contract', severity: 'warn', message: b.text, fields: [] });
+        // Aenderung nach der elektronischen Signatur / beschaedigte Signatur erzwingt „Zu pruefen".
+        const severity = b.typ === 'nach_signatur_geaendert' || b.typ === 'signatur_beschaedigt' ? 'error' : 'warn';
+        validations.push({ rule_id: `vertrag-${b.typ}`, type: 'contract', severity, message: b.text, fields: [] });
       }
       documentText = result.contract.klauseln.map((k) => `[${k.id}] ${k.titelpfad.join(' › ')}\n${k.text}`).join('\n\n');
     }

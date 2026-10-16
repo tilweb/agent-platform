@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-10-16
+
+### Elektronische PDF-Signaturen: Unterzeichner, Art und Änderungen nach der Signatur
+- DP liest Signaturen jetzt mit `pdfsig` (poppler, keine neue Abhängigkeit) statt nur per Byte-Suche: Signaturfeld,
+  Unterzeichner aus dem Zertifikat (technische Kennungen wie GUIDs werden nicht als Name ausgegeben), Zeitpunkt,
+  Art (PDF-Signatur, PAdES, Zeitstempel), Kennzeichnung „qualifiziert" (Hinweis) und ob die Signatur zum signierten
+  Inhalt passt. Ohne Zertifikats- oder Online-Prüfung — die rechtliche Gültigkeit prüft DP nicht.
+- Neu: **Deckung**. DP rekonstruiert die signierte Fassung und vergleicht sie mit der späteren Datei (Seitenzahl, Text
+  je Seite, nach der letzten Signatur auch das Seitenbild). Nacheinander signierende Parteien gelten nicht als
+  Änderung. Wird nach der Signatur etwas geändert, entsteht der Befund **„Nach Signatur geändert"** mit Seite und
+  Beispiel („hinzugekommen „Anlage 2""); eine beschädigte Signatur ergibt **„Signatur beschädigt"**. Beide setzen das
+  Dokument auf „Zu prüfen" — bei Verträgen und im Basisprofil „Allgemein".
+- Der Marker im Transkript nennt den Unterzeichner („im PDF elektronisch signiert von … am …"); die Vertragsauswertung
+  ordnet die Signatur damit der Partei zu, für die diese Person unterzeichnet.
+- Prüfansicht Verträge: Die Karte „Unterschriften" zeigt jede elektronische Signatur mit Zeit, Unterzeichner, Art und
+  Deckung, Hinweis „Gültigkeit der Signatur nicht geprüft".
+- API: `vertrag.signaturen` bzw. `volltext.signaturen` (optional, Schema-Version unverändert), neue Befundtypen
+  `nach_signatur_geaendert`, `signatur_beschaedigt` (`docs/dp-api-vertrag-schema-2026-10-12.md`).
+
+### Konzept E-Rechnungen (XRechnung, ZUGFeRD/Factur-X)
+`docs/konzept-e-rechnung-2026-10-16.md`: Heute würde DP eine XRechnung per Sprachmodell aus dem XML nachraten und bei
+ZUGFeRD das eingebettete, rechtlich führende XML übersehen. Vorschlag: eigene Strategie ohne Sprachmodell, ein
+einheitliches Schema „Rechnung" für alle Eingangswege, Mehrwert im Abgleich mit Bestellung, Lieferschein und Vertrag.
+Nicht entschieden.
+
 ## 2026-10-12
 
 ### Prüfansicht Verträge: verständlicher Katalog, Status als Auswahl, Fundstellen auswählen

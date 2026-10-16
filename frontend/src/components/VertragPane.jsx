@@ -27,7 +27,32 @@ const ABWEICHEND = new Set(['anlage_fehlt', 'bedingt', 'geerbt', 'delegiert']);
 const BEFUND_LABEL = {
   anlage_fehlt: 'Anlage fehlt', unterschrift_fehlt: 'Unterschrift fehlt', unterschrift_pruefen: 'Unterschrift prüfen', beilage_nicht_unterzeichnet: 'Beilage nicht unterzeichnet', verweis_ins_leere: 'Verweis ins Leere',
   platzhalter: 'Platzhalter', widerspruch: 'Auffälligkeit', verarbeitung: 'Verarbeitung',
+  nach_signatur_geaendert: 'Nach Signatur geändert', signatur_beschaedigt: 'Signatur beschädigt',
 };
+
+const SIGNATUR_ART = { pkcs7: 'PDF-Signatur', pades: 'PAdES', zeitstempel: null, sonstige: null };
+const SIGNATUR_DECKUNG = {
+  vollstaendig: 'deckt das Dokument ab',
+  spaetere_signatur: 'danach nur weitere Signaturen',
+  nachtrag_ohne_aenderung: 'danach nur technische Nachträge, Inhalt unverändert',
+  geaendert: 'danach verändert',
+};
+
+/** Zeile einer elektronischen PDF-Signatur (ausgelesen, Gültigkeit nicht geprüft). */
+function signaturZeile(sig) {
+  const kritisch = sig.deckung === 'geaendert' || sig.integritaet === 'verletzt';
+  return {
+    label: sig.art === 'zeitstempel' ? 'Zeitstempel' : 'Elektronisch signiert',
+    wert: [
+      sig.zeit,
+      sig.unterzeichner || (sig.unterzeichner_technisch ? 'Unterzeichner im Zertifikat nicht als Name lesbar' : null),
+      SIGNATUR_ART[sig.art],
+      sig.qualifiziert_gekennzeichnet ? 'Zertifikat als qualifiziert gekennzeichnet' : null,
+      sig.integritaet === 'verletzt' ? 'passt nicht zum signierten Inhalt' : SIGNATUR_DECKUNG[sig.deckung],
+    ].filter((x) => !leer(x)).join(' · '),
+    ton: kritisch ? 'fehlt' : null,
+  };
+}
 
 const TEIL_LABEL = {
   bezeichnung: 'Bezeichnung', kategorie: 'Kategorie', beschraenkung: 'Beschränkung', hoechstbetrag: 'Höchstbetrag', ausnahmen: 'Ausnahmen',
@@ -330,6 +355,17 @@ export default function VertragPane({
                 </span>
               </div>
             ))}
+          </div>
+        )}
+        {el === 'unterschriften' && (vertrag.signaturen ?? []).length > 0 && (
+          <div style={{ ...styles.zeilen, marginTop: theme.spacing.sm }} title="Ausgelesen aus der PDF-Datei — die rechtliche Gültigkeit der Signatur (Zertifikat, Vertrauensliste) wird nicht geprüft.">
+            {vertrag.signaturen.map(signaturZeile).map((z, i) => (
+              <div key={i} style={styles.wertZeile}>
+                <span style={styles.wertLabel}>{z.label}</span>
+                <span style={{ color: z.ton === 'fehlt' ? theme.colors.warning : theme.colors.text, minWidth: 0 }}>{z.wert}</span>
+              </div>
+            ))}
+            <div style={styles.hinweis}>Gültigkeit der Signatur nicht geprüft.</div>
           </div>
         )}
         {(k?.bedingung || k?.verweis) && (

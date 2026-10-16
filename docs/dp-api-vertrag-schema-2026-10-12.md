@@ -72,6 +72,7 @@ vertrag: {
   verweise:      [{ von, text, ziel? }],
   befunde:       [{ typ, text, klauseln: [id] }],
   feld_fundstellen: { <feld-id>: [id] }   // Fundstellen der eigenen Profilfelder (seit 2026-10-12, optional)
+  signaturen:    [PdfSignatur]            // elektronische PDF-Signaturen (seit 2026-10-16, optional, nur wenn vorhanden)
 }
 ```
 
@@ -82,7 +83,8 @@ Vertragsinhalt.
 **Klausel:** `id` (stabil: `§6`, `§6.3`, `Z7.2`, `2.5.3`, `Anl1`, `rubrum`, `praeambel`, `unterschriften`, mit
 `#2` … bei Wiederholung), `ebene` (1 = Abschnitt), `nummer?`, `titel?`, `titelpfad`, `text` (Markdown mit
 Auszeichnung: `~~gestrichen~~`, `[x]`/`[ ]`, `{{hs: …}}` handschriftlich, `{{unterschrift: Name | Partei}}`,
-`{{keine unterschrift | Partei}}`, `{{paraphe: …}}`, `{{stempel: …}}`), `seiten: [von, bis]`, `rolle`, `eltern?`.
+`{{keine unterschrift | Partei}}`, `{{paraphe: …}}`, `{{stempel: …}}`, `{{digitale signatur: im PDF elektronisch
+signiert [von Name] am TT.MM.JJJJ HH:MM}}`), `seiten: [von, bis]`, `rolle`, `eltern?`.
 
 **InventarEintrag** (Pflichten, Rechte, Fristen …): `typ` (`pflicht`, `recht`, `frist`, `ausschluss`, `haftung`,
 `zahlung`, `sonstiges`), `partei`, `gegenueber?`, `inhalt`, `modalitaet` (`muss`, `soll`, `bemueht`, `kann`,
@@ -97,7 +99,27 @@ Verträge verknüpft die Vertrags-App, DP liefert nur die Schlüssel.
 
 **Befunde** (nur markiert, kein Workflow): `anlage_fehlt`, `unterschrift_fehlt`, `unterschrift_pruefen`
 (Unterschrift nicht eindeutig erkennbar), `beilage_nicht_unterzeichnet` (beigefügtes eigenständiges Dokument ohne
-Unterschrift), `verweis_ins_leere`, `platzhalter`, `widerspruch` (Auffälligkeit), `verarbeitung`.
+Unterschrift), `verweis_ins_leere`, `platzhalter`, `widerspruch` (Auffälligkeit), `verarbeitung`,
+`nach_signatur_geaendert` (nach einer elektronischen Signatur wurde Inhalt geändert), `signatur_beschaedigt` (Signatur
+passt nicht zum signierten Inhalt). Die beiden Signatur-Befunde setzen das Dokument auf „Zu prüfen".
+
+**PdfSignatur** (ausgelesen mit `pdfsig`, **Gültigkeit nicht geprüft**: kein Zertifikats-, Vertrauenslisten- oder
+Sperrabgleich):
+
+| Feld | Bedeutung |
+|---|---|
+| `feld` | Name des Signaturfelds |
+| `zeit` | Signaturzeitpunkt „TT.MM.JJJJ HH:MM" (Europe/Berlin) |
+| `unterzeichner?` | Name (CN) aus dem Zertifikat, nur wenn lesbar |
+| `unterzeichner_technisch?` | `true`, wenn der CN eine technische Kennung ist (GUID, Gerätekennung …) |
+| `art` | `pkcs7`, `pades`, `zeitstempel` (keine Unterschrift), `sonstige` |
+| `qualifiziert_gekennzeichnet?` | Zertifikat trägt die ETSI-Kennzeichnung „qualifiziert" — Hinweis, nicht geprüft |
+| `integritaet` | `intakt` (Signatur passt zu den signierten Bytes), `verletzt`, `unbekannt` |
+| `bereich_ende` | letztes signiertes Byte (Ende der signierten Fassung) |
+| `deckung` | `vollstaendig`, `spaetere_signatur` (danach nur weitere Signaturen), `nachtrag_ohne_aenderung` (Bytes angehängt, Inhalt unverändert), `geaendert`, `unbekannt` |
+| `aenderung?` | bei `geaendert`: `{ seiten: [n], seitenzahl?: [vorher, nachher], art: ["text" \| "sichtbar" \| "seiten"], hinzu?, entfernt? }` |
+
+Beim Basisprofil „Allgemein" steht dasselbe Feld unter `volltext.signaturen`.
 
 ## 5. Versionierung
 

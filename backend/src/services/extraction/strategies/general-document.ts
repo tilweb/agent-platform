@@ -9,6 +9,7 @@
 
 import { validateExtraction } from '../../../extraction/validator';
 import { leseDokument, alsVolltext } from '../contract/lesen';
+import { signaturBefunde } from '../contract/signatur';
 import { werteFelderAus } from '../contract/auswertung';
 import { klauselnAlsText } from '../contract/struktur';
 import { erweiterungsFelder, inProfilform } from './contract-structured';
@@ -65,6 +66,8 @@ export const generalDocumentStrategy: ExtractionStrategy = {
       processingIssues: [
         ...lesefehler.map((s) => ({ severity: 'error' as const, message: `Seite ${s.seite}: nicht lesbar (${s.fehler}) — Inhalte dieser Seite fehlen.` })),
         ...r.probleme.map((p) => ({ severity: 'error' as const, message: `Auswertung unvollständig — ${p}` })),
+        // Aenderung nach elektronischer Signatur / beschaedigte Signatur → „Zu pruefen".
+        ...signaturBefunde(gelesen.signaturen).map((b) => ({ severity: 'error' as const, message: b.text })),
       ],
       llmCalls: gelesen.bilder.length + (Object.keys(felder).length ? 1 : 0),
       strategyUsed: 'general-document',
