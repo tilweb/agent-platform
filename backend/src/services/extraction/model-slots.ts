@@ -1,5 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { getSql } from '../../db/client';
+import { istWorkerProzess } from '../../extraction/queue/modus';
+
+/**
+ * Der Worker-Prozess laesst die ersten Slots frei, damit interaktive Aufrufe im Web (Testlauf, Einzel-`extract`)
+ * nicht hinter Batch und Posteingang warten. `EXTRACTION_WORKER_SLOT_RESERVE` (Standard 1).
+ */
+export function ersterSlot(limit: number, worker = istWorkerProzess()): number {
+  if (!worker) return 0;
+  const reserve = Math.max(0, Number(process.env.EXTRACTION_WORKER_SLOT_RESERVE ?? 1) || 0);
+  return Math.min(reserve, limit - 1);
+}
 
 /** Cross-replica admission. Expiry exceeds the bounded provider call; heartbeat retains long calls. */
 export async function withModelSlot<T>(model: string, limit: number, fn: () => Promise<T>): Promise<T> {
@@ -7,7 +18,7 @@ export async function withModelSlot<T>(model: string, limit: number, fn: () => P
   const db=getSql(), token=randomUUID();
   let slot: number | undefined;
   while(slot===undefined) {
-    for(let candidate=0;candidate<limit;candidate++) {
+    for(let candidate=ersterSlot(limit);candidate<limit;candidate++) {
       const rows=await db`INSERT INTO extraction.model_slots(model_key,slot,token,lease_until)
         VALUES(${model},${candidate},${token},now()+interval '10 minutes')
         ON CONFLICT(model_key,slot) DO UPDATE SET token=excluded.token,lease_until=excluded.lease_until

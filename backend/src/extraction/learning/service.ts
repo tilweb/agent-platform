@@ -40,6 +40,7 @@ import { EXTRACTION_SAMPLING } from '../../services/extraction/extract-call';
 import { extractWithSegments } from '../segmentation/segment-extract';
 import { convertDocument } from '../../services/documentConverter';
 import { pdfToLayoutText, renderPdfToImages, countPdfPages } from '../../services/extraction/pdf';
+import { PRIORITAET, hatOffenenJob, registriereJobArt, stelleEin } from '../queue/hintergrund';
 
 
 // ============== Document Ingestion (reused from existing pipeline) ==============
@@ -664,8 +665,8 @@ async function measureEvaluation(project: ExtractionProject, guidelines: string,
 
 
 /**
- * In-Memory-Lock: pro Projekt hoechstens ein Guideline-/Eval-Lauf gleichzeitig
- * (Backend ist single-process). Der persistierte `learning.eval.status` ist nur
+ * In-Memory-Lock: pro Projekt hoechstens ein Guideline-/Eval-Lauf gleichzeitig in diesem Prozess. Die Voll-Eval
+ * laeuft als Job (ggf. im Worker-Prozess); prozessuebergreifend schuetzt der offene Job `eval:<projectId>`. Der persistierte `learning.eval.status` ist nur
  * Anzeige fuers UI; nach einem Crash bleibt er ggf. auf 'running' — der naechste
  * Lauf ueberschreibt ihn einfach (UI ignoriert running mit altem started_at).
  */
@@ -699,7 +700,8 @@ async function persistEvalState(
  * uebernehmen. Bei Eval-Fehlern bleibt der Champion unveraendert (sicherer Default).
  */
 export async function runGuidelineUpdate(projectId: string, userId?: string): Promise<void> {
-  if (evalLocks.has(projectId)) return;
+  // Voll-Eval laeuft ggf. als Job in einem anderen Prozess (Worker) — nicht parallel auf demselben Projekt.
+  if (evalLocks.has(projectId) || await hatOffenenJob(`eval:${projectId}`).catch(() => false)) return;
   evalLocks.add(projectId);
   try {
     const project = await getProject(projectId);
@@ -852,66 +854,90 @@ async function finishWithError(projectId: string, total: number, failures: numbe
   }));
 }
 
+/** Job-Art der Voll-Evaluation (Stufe S1 — laeuft im Worker oder im Web-Prozess). */
+export const EVAL_JOB = 'dp-evaluation';
+
 /**
- * Voll-Eval (Hintergrund): misst NUR die aktuellen Guidelines (Champion) neu —
- * kein Kandidat, keine Uebernahme-Entscheidung.
+ * Voll-Eval (Hintergrund-Job): misst NUR die aktuellen Guidelines (Champion) neu —
+ * kein Kandidat, keine Uebernahme-Entscheidung. Hoechstens ein offener Job je Projekt.
  */
 export async function runFullEval(projectId: string, userId?: string): Promise<{ started: boolean }> {
-  if (evalLocks.has(projectId)) return { started: false };
+  if (evalLocks.has(projectId) || await hatOffenenJob(`eval:${projectId}`)) return { started: false };
   const project = await getProject(projectId);
   if (!project) throw new Error(`Projekt "${projectId}" nicht gefunden`);
   const examples = await getExamples(projectId);
+  if (!examples.some(e => e.dataset?.purpose === 'test')) throw new Error('Mindestens ein unabhängiges Testbeispiel mit Original benötigt. Beim Prüfen eines neuen Dokuments als Testbeispiel speichern.');
+
+  const { neu } = await stelleEin(EVAL_JOB, { projectId, userId: userId ?? null }, {
+    schluessel: `eval:${projectId}`, userId: userId ?? null, prioritaet: PRIORITAET.evaluation,
+  });
+  if (neu) {
+    await persistEvalState(projectId, (_p, s) => ({ ...s, status: 'running', started_at: new Date().toISOString() }));
+  }
+  return { started: neu };
+}
+
+registriereJobArt<{ projectId: string; userId: string | null }>(EVAL_JOB, {
+  ausfuehren: (n) => fuehreVollEvalAus(n.projectId, n.userId ?? undefined),
+  async beiAbbruch(n, fehler) {
+    await persistEvalState(n.projectId, (_p, s) => ({
+      ...s, status: 'idle', last_run: { at: new Date().toISOString(), action: 'error', message: fehler },
+    }));
+  },
+});
+
+/** Ausfuehrung der Voll-Eval (im Job). Wiederholbar: misst neu und ueberschreibt den Stand. */
+async function fuehreVollEvalAus(projectId: string, userId?: string): Promise<void> {
+  const project = await getProject(projectId);
+  if (!project) return;
+  const examples = await getExamples(projectId);
   const trainingSet = examples.filter(e => e.dataset?.purpose !== 'test');
   const tests = examples.filter(e => e.dataset?.purpose === 'test');
-  if (!tests.length) throw new Error('Mindestens ein unabhängiges Testbeispiel mit Original benötigt. Beim Prüfen eines neuen Dokuments als Testbeispiel speichern.');
-
-  if (evalLocks.has(projectId)) return { started: false };
+  if (!tests.length) throw new Error('Keine unabhängigen Testbeispiele mehr vorhanden.');
   evalLocks.add(projectId);
-  void (async () => {
-    try {
-      const evalSet = tests;
-      const evaluationSnapshot = await captureSnapshot(project, trainingSet);
-      const model = evalModelLabel(project);
-      const setHash = stableHash({ set: evalSet, training: trainingSet, profile: profileHash(project), references: evaluationSnapshot.references });
-      await persistEvalState(projectId, (_p, s) => ({
-        ...s,
-        status: 'running',
-        started_at: new Date().toISOString(),
-      }));
-      const measured = await measureEvaluation(project, project.guidelines, evalSet, userId, trainingSet, evaluationSnapshot);
-      const now = new Date().toISOString();
-      await persistEvalState(projectId, (p, s) => ({
-        status: 'idle',
-        champion: {
-          ...measured,
-          eval_set_hash: setHash,
-          guideline_version: project.learning.guideline_version,
-          model,
-          at: now,
-        },
-        last_run: { at: now, action: 'measured', evaluation_id: measured.evaluation_id, champion_overall: measured.overall, examples: measured.examples },
-        history: pushHistory(s, {
-          at: now,
-          action: 'measured',
-          evaluation_id: measured.evaluation_id,
-          champion: measured.overall,
-          examples: measured.examples,
-          version: p.learning.guideline_version,
-        }),
-      }));
-    } catch (error: any) {
-      console.error(`[Extraction] Voll-Eval fehlgeschlagen (${projectId}):`, error.message);
-      await persistEvalState(projectId, (_p, s) => ({
-        ...s,
-        status: 'idle',
-        last_run: { at: new Date().toISOString(), action: 'error', message: error.message },
-      })).catch(() => {});
-    } finally {
-      evalLocks.delete(projectId);
-    }
-  })();
-
-  return { started: true };
+  try {
+    const evalSet = tests;
+    const evaluationSnapshot = await captureSnapshot(project, trainingSet);
+    const model = evalModelLabel(project);
+    const setHash = stableHash({ set: evalSet, training: trainingSet, profile: profileHash(project), references: evaluationSnapshot.references });
+    await persistEvalState(projectId, (_p, s) => ({
+      ...s,
+      status: 'running',
+      started_at: new Date().toISOString(),
+    }));
+    const measured = await measureEvaluation(project, project.guidelines, evalSet, userId, trainingSet, evaluationSnapshot);
+    const now = new Date().toISOString();
+    await persistEvalState(projectId, (p, s) => ({
+      status: 'idle',
+      champion: {
+        ...measured,
+        eval_set_hash: setHash,
+        guideline_version: project.learning.guideline_version,
+        model,
+        at: now,
+      },
+      last_run: { at: now, action: 'measured', evaluation_id: measured.evaluation_id, champion_overall: measured.overall, examples: measured.examples },
+      history: pushHistory(s, {
+        at: now,
+        action: 'measured',
+        evaluation_id: measured.evaluation_id,
+        champion: measured.overall,
+        examples: measured.examples,
+        version: p.learning.guideline_version,
+      }),
+    }));
+  } catch (error: any) {
+    // Lease verloren: ein anderer Worker misst weiter — Stand nicht anfassen.
+    if (error?.message === 'Job-Lease nicht mehr gültig') throw error;
+    console.error(`[Extraction] Voll-Eval fehlgeschlagen (${projectId}):`, error.message);
+    await persistEvalState(projectId, (_p, s) => ({
+      ...s,
+      status: 'idle',
+      last_run: { at: new Date().toISOString(), action: 'error', message: error.message },
+    })).catch(() => {});
+  } finally {
+    evalLocks.delete(projectId);
+  }
 }
 
 /**

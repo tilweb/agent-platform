@@ -24,6 +24,7 @@ import {
   createPosteingangRoutes, type PosteingangKiAktion, type PosteingangRoutenOptionen,
   type TrennProtokoll, type ZuordnungErgebnis,
 } from '../../kern/posteingang/routen';
+import { createVorgangUploadJob, type VorgangUploadErgebnis } from '../../kern/vorgang-upload';
 import type { KiBezug, KiVerbrauchUebersicht } from '../../kern/ki-verbrauch';
 import type { SeitenBereich, SplitDeps } from '../../kern/posteingang/split';
 import { getVorgang, posteingangStore } from '../storage';
@@ -67,6 +68,11 @@ export interface PosteingangQueueDeps {
   verteile: (c: Context, input: VerteilenInput) => Promise<VerteilenResult>;
   ermittleMatchKandidaten: (ident: MatchIdent) => Promise<ScoredKandidat[]>;
   getVorgang: (id: string) => Promise<Vorgang | null>;
+  /**
+   * Präfix der Job-Arten (Posteingang-Auswertung, Upload am Vorgang) in der Hintergrund-Warteschlange.
+   * Ohne: Verarbeitung im Prozess bzw. synchron im Request (Tests mit Fakes).
+   */
+  jobPraefix?: string;
 }
 
 /** Rekonstruiert die Verteil-Vorlage aus einer gespeicherten Datei (Zuordnung ohne Re-Upload). */
@@ -222,9 +228,42 @@ export function createPosteingangQueue(d: PosteingangQueueDeps) {
     quellen: POSTEINGANG_QUELLEN_GS,
     maxGesamtBytes: MAX_TOTAL_BYTES,
     logPraefix: '[grundsicherung]',
+    jobArt: d.jobPraefix ? `${d.jobPraefix}-posteingang` : undefined,
   });
 
   const routes = kern.routes;
+
+  /** Upload am Vorgang: Erkennung über das DP-Profil, Verteilung an diesen Vorgang, Prüfung. */
+  async function verarbeiteVorgangUpload(
+    c: Context,
+    e: { vorgangId: string; dateien: PosteingangDatei[]; userId: string | null; melde: (text: string) => Promise<void> },
+  ): Promise<VorgangUploadErgebnis> {
+    const { vorgangId, dateien } = e;
+    const userId = e.userId ?? undefined;
+    await e.melde('Dokumente werden erkannt');
+    const erkannt = await messe('dokument_upload', {
+      vorgangId, phase: 'bearbeitung', akteurId: userId, detail: `${dateien.length} Datei(en)`,
+    }, () => erkenneMitProfil(dateien, userId));
+    for (const t of erkannt.protokoll) {
+      await d.audit(c, {
+        aktion: 'posteingang.getrennt', objektTyp: 'vorgang', objektId: vorgangId, vorgangId,
+        detail: `„${t.dateiname}" automatisch in ${t.bereiche?.length ?? 0} Dokumente getrennt (${bereicheText(t.bereiche)})${t.modell ? ` · ${t.modell}` : ''}`,
+      });
+    }
+    await e.melde('Dokumente werden dem Vorgang zugeordnet und geprüft');
+    const result = await d.verteile(c, {
+      vorgangId,
+      dokumente: erkannt.dateien.map(dateiZuVorlage),
+      pruefen: true,
+      eingegangenAm: new Date().toISOString(),
+    });
+    if (!result.ok) return { ok: false, error: result.error, status: result.status };
+    return { ok: true, antwort: { dokumente: result.dokumente, dokument: result.dokumente[0], befundeCount: result.befundeCount } };
+  }
+
+  const vorgangUpload = d.jobPraefix
+    ? createVorgangUploadJob<PosteingangDatei>({ jobArt: `${d.jobPraefix}-vorgang-upload`, verarbeite: verarbeiteVorgangUpload })
+    : null;
 
   /**
    * POST /vorgaenge/:vorgangId/dokumente/upload — Upload am Vorgang, gleicher Weg wie der
@@ -260,23 +299,25 @@ export function createPosteingangQueue(d: PosteingangQueueDeps) {
       dateien.push({ dateiname: stored.filename, s3Key: ref.s3Key, pfad: ref.pfad, contentType, groesse: bytes.length, hash: sha256Hex(bytes) });
     }
 
-    const erkannt = await messe('dokument_upload', {
-      vorgangId, phase: 'bearbeitung', akteurId: userId, detail: `${dateien.length} Datei(en)`,
-    }, () => erkenneMitProfil(dateien, userId));
-    for (const t of erkannt.protokoll) {
+    // Mit Warteschlange: fortsetzbarer Job (Worker oder Web), die Oberfläche fragt den Status ab.
+    if (vorgangUpload) {
+      const jobId = await vorgangUpload.stelleUploadEin(c, vorgangId, dateien);
       await d.audit(c, {
-        aktion: 'posteingang.getrennt', objektTyp: 'vorgang', objektId: vorgangId, vorgangId,
-        detail: `„${t.dateiname}" automatisch in ${t.bereiche?.length ?? 0} Dokumente getrennt (${bereicheText(t.bereiche)})${t.modell ? ` · ${t.modell}` : ''}`,
+        aktion: 'vorgang.dokumente_hochgeladen', objektTyp: 'vorgang', objektId: vorgangId, vorgangId,
+        detail: `${dateien.length} Datei(en) hochgeladen, Auswertung im Hintergrund`,
       });
+      return c.json({ job: jobId }, 202);
     }
-    const result = await d.verteile(c, {
-      vorgangId,
-      dokumente: erkannt.dateien.map(dateiZuVorlage),
-      pruefen: true,
-      eingegangenAm: new Date().toISOString(),
-    });
-    if (!result.ok) return c.json({ error: result.error }, result.status);
-    return c.json({ dokumente: result.dokumente, dokument: result.dokumente[0], befundeCount: result.befundeCount }, 201);
+    const r = await verarbeiteVorgangUpload(c, { vorgangId, dateien, userId: userId ?? null, melde: async () => {} });
+    if (!r.ok) return c.json({ error: r.error }, (r.status ?? 400) as 400);
+    return c.json(r.antwort, 201);
+  });
+
+  /** GET /vorgaenge/:vorgangId/dokumente/upload/:jobId — Status des Uploads (am Ende Antwort wie früher). */
+  routes.get('/vorgaenge/:vorgangId/dokumente/upload/:jobId', async (c) => {
+    const status = vorgangUpload ? await vorgangUpload.uploadStatus(c.req.param('vorgangId'), c.req.param('jobId')) : null;
+    if (!status) return c.json({ error: 'Upload nicht gefunden' }, 404);
+    return c.json(status);
   });
 
   return { routes, einliefern: kern.einliefern, hintergrund: kern.hintergrund, analysiere, werteUmschlagAus, zuordnen };
@@ -294,6 +335,7 @@ const standard = createPosteingangQueue({
   verteile: standardVerteilung.verteileDokumente,
   ermittleMatchKandidaten: standardVerteilung.ermittleMatchKandidaten,
   getVorgang,
+  jobPraefix: 'grundsicherung',
 });
 
 /** Programmatische Einlieferung in den Grundsicherungs-Posteingang (Naht für einen gemeinsamen Eingang). */

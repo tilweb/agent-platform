@@ -101,6 +101,15 @@ Ablauf (Kern-Routen, fachliche Hooks je App):
 
 Upload direkt am Vorgang läuft durch dieselbe Erkennung.
 
+**Auswertung und Upload am Vorgang laufen als fortsetzbare Jobs** (DP-Warteschlange, Stufe S1, seit 2026-10-20):
+Die Route speichert die Dateien, protokolliert die Annahme und stellt einen Job ein. Ausgeführt wird im
+Web-Prozess oder im Prozesstyp `worker` (`DP_WORKER_MODUS`). Nach einem Neustart läuft der Job weiter, statt
+hängen zu bleiben. Verdrahtung je App: Option `jobArt` an `createPosteingangRoutes` (Auswertung) und
+`createVorgangUploadJob` aus `kern/vorgang-upload.ts` (Upload am Vorgang, Statusroute
+`GET /vorgaenge/:vorgangId/dokumente/upload/:jobId`, Oberfläche über `kern/uploadJob.js`). Der Akteur reist im Job
+mit (`kern/akteur.ts`), Audit und KI-Verbrauch nennen weiter die auslösende Person. Jobs tragen nur Referenzen, die
+Dateien liegen vorher dauerhaft in der Dateiablage.
+
 **Korrekturen beim Zuordnen zusammenführen, nie ersetzen.** Das Detail-Formular des Posteingangs
 zeigt nur einen Teil der erkannten Antragsdaten (Name, Anschrift, Aktenzeichen …). Schickt es
 Korrekturen mit (`stammdaten` im Zuordnen-Body), werden sie feldweise über die erkannten Daten
@@ -184,6 +193,7 @@ Ausnahmen), Kern-Fabriken in `kern/konformitaet.test.ts`.
 | Regelkatalog | Jede Prüfregel hat eine Katalog-Beschreibung (`checker/regeln.test.ts`); Goldfälle als Abnahmetest der Regel-Engine (Wohngeld `checker/checker.test.ts`, Grundsicherung `checker/goldfaelle.test.ts`). |
 | Einschränkung | Jede vorgangsbezogene Schreibroute (`:vorgangId`, `/vorgaenge/:id…`, `/dokumente|personen|pruefschritte|schreiben|notizen/:id`) prüft `denyIfEingeschraenkt`/`denyIfVorgangEingeschraenkt`. Ausnahmen: die Einschränkung selbst, Legal Hold, Aufbewahrung (Owner/DSB). |
 | Abgrenzung | Die App importiert keine andere Fach-App. |
+| Jobs | Funktionen, die als Hintergrund-Job laufen (`jobFunktionen`, z. B. `verarbeiteVorgangUpload`), werden wie Schreibrouten geprüft (Audit, KI-Messung) unter dem Schlüssel `JOB <name>`. Die einstellende Route auditiert die Annahme. |
 
 Ausnahmen stehen mit Begründung in der Testdatei der App. Echte Abweichungen, die noch offen
 sind, stehen getrennt davon als `OFFENE_VERSTOESSE` — der Test schlägt an, sobald eine behoben ist

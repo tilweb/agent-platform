@@ -30,6 +30,8 @@ const AUSNAHMEN = {
 
 const KONFIG: KonformitaetsKonfig = {
   appDir: import.meta.dir,
+  // Upload am Vorgang läuft als Hintergrund-Job (Stufe S1): dort passieren Erkennung, Messung und Audit.
+  jobFunktionen: ['verarbeiteVorgangUpload'],
   llmModule: {
     'dp-erkennung.ts': ['erkenneDokumente'],
   },
@@ -54,7 +56,7 @@ describe('Konformität Grundsicherung', () => {
 
   test('b) KI-Verbrauch: jede LLM-Route misst', () => {
     const e = pruefeKiVerbrauch(KONFIG);
-    expect(e.geprueft).toContain('POST /vorgaenge/:vorgangId/dokumente/upload');
+    expect(e.geprueft).toContain('JOB verarbeiteVorgangUpload');
     expect(e.verstoesse).toEqual([]);
     expect(e.ungenutzteAusnahmen).toEqual([]);
   });

@@ -34,6 +34,8 @@ const OFFENE_VERSTOESSE = { audit: {}, ki: {}, einschraenkung: {} };
 
 const KONFIG: KonformitaetsKonfig = {
   appDir: import.meta.dir,
+  // Upload am Vorgang läuft als Hintergrund-Job (Stufe S1): dort passieren Erkennung, Messung und Audit.
+  jobFunktionen: ['verarbeiteVorgangUpload'],
   llmModule: {
     'extraction.ts': ['klassifiziereUndExtrahiere'],
     'dp-erkennung.ts': ['erkenneDokumente'],
@@ -60,7 +62,7 @@ describe('Konformität Wohngeld', () => {
   test('b) KI-Verbrauch: jede LLM-Route misst', () => {
     const e = pruefeKiVerbrauch(KONFIG);
     expect(e.geprueft).toEqual(expect.arrayContaining([
-      'POST /vorgaenge/:id/chat', 'POST /vorgaenge/:id/chat/gesetz', 'POST /vorgaenge/:vorgangId/dokumente/upload',
+      'POST /vorgaenge/:id/chat', 'POST /vorgaenge/:id/chat/gesetz', 'JOB verarbeiteVorgangUpload',
     ]));
     erwarte(e, OFFENE_VERSTOESSE.ki);
   });

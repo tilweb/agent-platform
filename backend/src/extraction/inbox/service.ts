@@ -1,6 +1,6 @@
 import { enqueueBatch } from '../learning/jobs';
 /**
- * Posteingang (Welle 4) — Verarbeitungs-Pipeline (fire-and-forget).
+ * Posteingang (Welle 4) — Verarbeitungs-Pipeline (Job `dp-posteingang` in der Hintergrund-Warteschlange).
  *
  * Je Upload: PDF rendern → Dokumentgrenzen beurteilen (Vision) → Teil-PDFs
  * bauen (pdfseparate/pdfunite) → je Teil klassifizieren (Vision, Erste Seite)
@@ -12,8 +12,10 @@ import { enqueueBatch } from '../learning/jobs';
  * beiden Worktrees.
  */
 
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { PRIORITAET, hatOffenenJob, registriereJobArt, stelleEin } from '../queue/hintergrund';
 import { renderPdfToImages, countPdfPages, PdfRenderError, type PdfPageImage } from '../../services/extraction/pdf';
 import { buildPartPdf, isPdfSplitterAvailable, PdfSplitError } from '../../services/extraction/pdf-split';
 import { getAllProjects, getProject } from '../learning/projects';
@@ -29,6 +31,7 @@ import {
   savePartPdf,
   getPartPdf,
   getOriginal,
+  deletePartsOfUpload,
   safeExt,
   type EingangsModus,
   type InboxPart,
@@ -106,8 +109,86 @@ export function planeTeile(
   return { ranges: rangesFromBoundaries(pageCount, boundaries.map((b) => b === true)), offeneGrenzen };
 }
 
+/** Job-Art: Verarbeitung eines Posteingang-Uploads (Stufe S1 — laeuft im Worker oder im Web-Prozess). */
+export const INBOX_JOB = 'dp-posteingang';
+
+interface InboxJobNutzlast {
+  uploadId: string;
+  modus?: EingangsModus;
+  profilId?: string | null;
+  split?: boolean;
+}
+
 /**
- * Verarbeitet einen frisch hochgeladenen Posteingang-Eintrag (fire-and-forget).
+ * Annahme eines Uploads (Web-Prozess): Original dauerhaft nach S3, dann Job einstellen. Die Verarbeitung laeuft
+ * fortsetzbar in der Warteschlange — kein /tmp-Dateipfad ueber Prozessgrenzen.
+ */
+export async function nehmeInboxUploadAn(
+  uploadId: string,
+  buffer: Buffer,
+  meta: { filename: string },
+  userId?: string,
+  options: InboxProcessOptions = {},
+): Promise<void> {
+  try {
+    await saveOriginal(uploadId, buffer, safeExt(meta.filename));
+  } catch (err) {
+    const msg = `Original konnte nicht gespeichert werden: ${err instanceof Error ? err.message : String(err)}`;
+    await updateUpload(uploadId, { status: 'failed', error: msg }).catch(() => {});
+    await umschlagAbschliessen(uploadId).catch(() => {});
+    throw new Error(msg);
+  }
+  await stelleEin<InboxJobNutzlast>(INBOX_JOB, { uploadId, modus: options.modus, profilId: options.profilId ?? null, split: options.split }, {
+    schluessel: `inbox:${uploadId}`, userId: userId ?? null, prioritaet: PRIORITAET.eingang,
+  });
+}
+
+registriereJobArt<InboxJobNutzlast>(INBOX_JOB, {
+  async ausfuehren(n, k) {
+    await verarbeiteInboxUpload(n.uploadId, k.userId, { modus: n.modus, profilId: n.profilId, split: n.split });
+  },
+  async beiAbbruch(n, fehler) {
+    await updateUpload(n.uploadId, { status: 'failed', error: fehler });
+    await umschlagAbschliessen(n.uploadId);
+  },
+});
+
+/**
+ * Job-Ausfuehrung: Original aus S3 laden und verarbeiten. Wiederholbar — nach einer Uebernahme werden schon
+ * angelegte Teile nicht doppelt geroutet.
+ */
+export async function verarbeiteInboxUpload(uploadId: string, userId?: string, options: InboxProcessOptions = {}): Promise<void> {
+  const upload = await getUpload(uploadId);
+  if (!upload || upload.status !== 'processing') return; // geloescht oder schon abgeschlossen
+  const meta = { filename: upload.filename, mimeType: upload.mimeType ?? undefined };
+  const buffer = await getOriginal(uploadId, safeExt(upload.filename));
+  if (!buffer) throw new Error('Original des Uploads nicht gefunden (Speicher)');
+
+  // Wiederaufnahme: Teile aus einem vorigen Versuch.
+  if (upload.parts.length) {
+    const offen = upload.parts.filter((p) => !p.batchRunId);
+    if (!offen.length) {
+      await updateUpload(uploadId, { status: 'ready' });
+      return;
+    }
+    if (offen.length < upload.parts.length) {
+      // Teilweise geroutet: nur die offenen Teile nachholen (Bytes aus S3 bzw. Original bei einem Teil).
+      const mitBytes = await Promise.all(offen.map(async (part) => ({
+        part, buffer: upload.parts.length === 1 ? buffer : await getPartPdf(uploadId, part.id),
+      })));
+      if (mitBytes.some((x) => !x.buffer)) throw new Error('Teil-PDF eines vorigen Versuchs fehlt — bitte erneut hochladen.');
+      await autoRoute(uploadId, mitBytes as Array<{ part: InboxPart; buffer: Buffer }>, userId);
+      await updateUpload(uploadId, { status: 'ready' });
+      return;
+    }
+    // Nichts geroutet: Teile verwerfen und neu beginnen.
+    await deletePartsOfUpload(uploadId);
+  }
+  await verarbeiteUploadPuffer(uploadId, buffer, meta, userId, options);
+}
+
+/**
+ * Verarbeitet einen hochgeladenen Posteingang-Eintrag direkt (ohne Warteschlange; Altweg fuer Skripte/Tests).
  * Fehlerbehandlung komplett intern; raeumt tempPath am Ende auf.
  */
 export async function processInboxUpload(
@@ -119,8 +200,27 @@ export async function processInboxUpload(
 ): Promise<void> {
   try {
     const buffer = Buffer.from(await readFile(tempPath));
+    await saveOriginal(uploadId, buffer, safeExt(meta.filename));
+    await verarbeiteUploadPuffer(uploadId, buffer, meta, userId, options);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await updateUpload(uploadId, { status: 'failed', error: msg }).catch(() => {});
+    await umschlagAbschliessen(uploadId).catch(() => {});
+  } finally {
+    await rm(tempPath, { force: true }).catch(() => {});
+  }
+}
+
+/** Kern der Verarbeitung (Original liegt schon im Speicher). Fehlerbehandlung intern. */
+async function verarbeiteUploadPuffer(
+  uploadId: string,
+  buffer: Buffer,
+  meta: { filename: string; mimeType?: string },
+  userId?: string,
+  options: InboxProcessOptions = {},
+): Promise<void> {
+  try {
     const ext = safeExt(meta.filename);
-    await saveOriginal(uploadId, buffer, ext);
 
     const datensatz = await getUpload(uploadId);
     const modus: EingangsModus = datensatz?.modus ?? eingangsModus(options.modus, options.split);
@@ -189,7 +289,8 @@ export async function processInboxUpload(
       if (!(await isPdfSplitterAvailable())) {
         throw new Error('Dokumenttrennung erforderlich, aber PDF-Splitter nicht verfügbar.');
       }
-      const tmpPdf = `${tempPath}.split-src.pdf`;
+      const tmpDir = await mkdtemp(join(tmpdir(), 'extraction-inbox-split-'));
+      const tmpPdf = join(tmpDir, 'quelle.pdf');
       await Bun.write(tmpPdf, buffer);
       try {
         for (const range of ranges) partBuffers.push(await buildPartPdf(tmpPdf, range.from, range.to));
@@ -198,7 +299,7 @@ export async function processInboxUpload(
         console.warn(`[inbox] Teil-PDF-Bau fehlgeschlagen (${uploadId}):`, msg);
         throw new Error('Dokument konnte nicht getrennt werden — keine automatische Weiterverarbeitung.');
       } finally {
-        await rm(tmpPdf, { force: true }).catch(() => {});
+        await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
       }
     } else {
       partBuffers.push(buffer); // Ein Teil = Originaldokument
@@ -230,8 +331,6 @@ export async function processInboxUpload(
     await updateUpload(uploadId, { status: 'failed', error: msg }).catch(() => {});
     // Auch ein gescheiterter Upload ist abgeschlossen — Umschlag-Webhook informiert den Aufrufer.
     await umschlagAbschliessen(uploadId).catch(() => {});
-  } finally {
-    await rm(tempPath, { force: true }).catch(() => {});
   }
 }
 
@@ -337,7 +436,8 @@ export async function sweepStaleUploads(): Promise<void> {
   const uploads = await listUploads();
   const cutoff = Date.now() - STALE_PROCESSING_MS;
   for (const u of uploads) {
-    if (u.status === 'processing' && new Date(u.updatedAt).getTime() < cutoff) {
+    // Uploads mit offenem Job (wartet auf den Worker, laeuft) sind nicht abgebrochen.
+    if (u.status === 'processing' && new Date(u.updatedAt).getTime() < cutoff && !(await hatOffenenJob(`inbox:${u.id}`))) {
       await updateUpload(u.id, {
         status: 'failed',
         error: 'Verarbeitung unterbrochen (Server-Neustart) — bitte erneut hochladen',

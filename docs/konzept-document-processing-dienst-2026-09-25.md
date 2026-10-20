@@ -222,6 +222,10 @@ einmal rendern, Seitenbilder nicht doppelt halten, eine Auswertung je Worker-Slo
 
 S1 lohnt sich unabhängig von der Grundsatzentscheidung und ist die natürliche Vorstufe.
 
+> **Stand 2026-10-20: S1 umgesetzt** (`docs/dp-worker-s1-2026-10-20.md`): Prozesstyp `worker`, Schalter
+> `DP_WORKER_MODUS=intern|extern` je Instanz (Standard intern), Posteingang, Vorgang-Upload und Evaluation als
+> fortsetzbare Jobs, Modell-Slots mit Reserve für interaktive Aufrufe. Punkte 2 und 3 aus §15 sind damit erledigt.
+
 ## 12. Offene Entscheidungen
 
 1. Betriebsform: zentral geteilt, dediziert je Kunde oder hybrid — und nach welchem Kriterium je Kunde?

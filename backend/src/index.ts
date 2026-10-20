@@ -1,4 +1,6 @@
 import { startExtractionWorker } from './extraction/learning/jobs';
+import { starteHintergrundWorker, verarbeitungsStatus } from './extraction/queue/hintergrund';
+import { workerModus } from './extraction/queue/modus';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
@@ -283,7 +285,10 @@ async function initialize() {
   // ein vorheriger Prozess-Crash/Neustart mitten in 'processing' zurückließ).
   try {
     const stale = await recoverStaleRuns();
+    // DP_WORKER_MODUS=intern (Standard): Jobs hier abarbeiten; =extern: macht der Prozesstyp `worker`.
     startExtractionWorker();
+    starteHintergrundWorker();
+    console.log(`[dp] Verarbeitung: ${workerModus() === 'extern' ? 'extern (Prozesstyp worker)' : 'im Web-Prozess'}`);
     if (stale > 0) console.log(`Recovered ${stale} stale extraction batch run(s)`);
   } catch (error) {
     console.error('Failed to recover stale extraction runs:', error);
@@ -354,7 +359,11 @@ app.use('/api/*', csrfProtection({
 }));
 
 // Health check (no rate limit, no CSRF)
-app.get('/health', (c) => c.json({ status: 'ok' }));
+app.get('/health', async (c) => {
+  // Verarbeitung (DP-Warteschlange): Modus, offene Jobs, im Modus „extern" ob ein Worker lebt.
+  const verarbeitung = process.env.SCALINGO_POSTGRES ? await verarbeitungsStatus().catch(() => null) : null;
+  return c.json({ status: 'ok', ...(verarbeitung ? { verarbeitung } : {}) });
+});
 
 // Public API (API-key-authenticated, versioned) — own rate-limit layer per key
 app.route('/api/public/v1', publicApiRouter);

@@ -328,6 +328,11 @@ export interface KonformitaetsKonfig {
   kiMesser?: string[];
   /** Funktionen aus anderen Dateien, die nachweislich auditieren (z. B. `d.verteile`). */
   auditHelfer?: string[];
+  /**
+   * Funktionen in den Routen-Dateien, die als Hintergrund-Job laufen (die Route stellt nur ein). Sie werden wie
+   * Schreibrouten geprüft (Audit, KI-Messung) unter dem Schlüssel `JOB <name>`.
+   */
+  jobFunktionen?: string[];
   /** Regex für vorgangsbezogene Pfade (Default `VORGANGS_PFAD`). */
   vorgangsPfad?: RegExp;
   /** Begründete Ausnahmen: Schlüssel `METHODE /pfad` → Begründung. */
@@ -351,7 +356,16 @@ function routenQuellen(k: KonformitaetsKonfig): Quelle[] {
 }
 
 function routenDerApp(k: KonformitaetsKonfig): RoutenHandler[] {
-  return routenQuellen(k).flatMap((q) => findeRouten(q.src, q.datei, q.code));
+  const routen = routenQuellen(k).flatMap((q) => findeRouten(q.src, q.datei, q.code));
+  // Hintergrund-Jobs zählen wie Schreibrouten: Die Arbeit (LLM, Schreiben) passiert dort, nicht in der Route.
+  const jobs: RoutenHandler[] = [];
+  for (const name of k.jobFunktionen ?? []) {
+    for (const q of routenQuellen(k)) {
+      const f = findeFunktionen(q.src, q.code).find((x) => x.name === name);
+      if (f) jobs.push({ datei: q.datei, methode: 'POST', pfad: '', schluessel: `JOB ${name}`, zeile: f.zeile, code: f.code });
+    }
+  }
+  return [...routen, ...jobs];
 }
 
 function funktionenJeDatei(k: KonformitaetsKonfig): Map<string, Funktion[]> {

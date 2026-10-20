@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-10-20
+
+### Document Processing: Verarbeitung in eigenem Worker-Prozess möglich (Stufe S1)
+- Neuer Prozesstyp `worker` (`bun run src/worker.ts`, Procfile). Er arbeitet die DP-Warteschlangen ab, ohne
+  HTTP-Server, Seeds oder Agent-Executor. Schalter je Instanz: `DP_WORKER_MODUS=intern` (Standard, Web-Prozess
+  verarbeitet wie bisher) oder `extern` (Web nimmt nur an, der Worker-Container rechnet). Ohne Umschalten ändert sich
+  am Betrieb nichts.
+- Neue generische Hintergrund-Warteschlange (`extraction.hintergrund_jobs`, Migrationen 0050/0051) mit derselben
+  Lease-/Heartbeat-Logik wie die Batch-Läufe. **Jetzt fortsetzbare Jobs statt Hintergrundaufgaben im Web-Prozess:**
+  - DP-Posteingang (Oberfläche und API `inbox.create`): Original zuerst nach S3, dann Job. Nach einem Absturz läuft
+    der Upload weiter, schon geroutete Teile werden nicht doppelt verarbeitet. Kein Abbruch mehr nach 30 min, solange
+    der Job wartet.
+  - Posteingang-Auswertung Wohngeld/Grundsicherung (**Muster-Änderung**, Kern `posteingang/routen.ts`, Option
+    `jobArt`). Hängende Einträge nach einem Neustart gibt es nicht mehr. Audit und KI-Verbrauch tragen weiter die
+    Person, die die Auswertung gestartet hat.
+  - Upload am Vorgang Wohngeld/Grundsicherung (**Muster-Änderung**, Kern `vorgang-upload.ts`): Die Route antwortet
+    sofort, die Oberfläche zeigt den Fortschritt („Dokumente werden erkannt", „… zugeordnet und geprüft") und lädt
+    danach neu. Vorher hing der Request 65–150 s.
+  - Voll-Evaluation eines Profils (ersetzt die prozessinterne Sperre durch einen Job je Profil).
+- Modell-Slots: Der Worker lässt standardmäßig einen Slot für interaktive Aufrufe im Web frei
+  (`EXTRACTION_WORKER_SLOT_RESERVE`).
+- Lebenszeichen des Workers (`extraction.worker_status`), Stand unter `/health` (`verarbeitung`) und
+  `GET /api/extraction/verarbeitung`. Im Modus `extern` ohne laufenden Worker zeigen die Posteingang-Ansichten einen
+  Hinweis, dass Aufträge warten.
+- Konformitätstests der Antrags-Apps prüfen jetzt auch Job-Funktionen (`jobFunktionen`): Audit und KI-Messung
+  geschehen im Job, die Route protokolliert die Annahme (`vorgang.dokumente_hochgeladen`).
+- Doku: `docs/dp-worker-s1-2026-10-20.md`.
+
 ## 2026-10-16
 
 ### Elektronische PDF-Signaturen: Unterzeichner, Art und Änderungen nach der Signatur

@@ -16,6 +16,7 @@ import { vorschauInfo } from '../seitenvorschau';
 import { ausErkennung, type FortschrittMelder } from '../../kern/posteingang/fortschritt';
 import { sha256Hex } from '../../kern/posteingang/zustand';
 import { createPosteingangRoutes, type TrennProtokoll, type ZuordnungErgebnis } from '../../kern/posteingang/routen';
+import { createVorgangUploadJob, type VorgangUploadErgebnis } from '../../kern/vorgang-upload';
 import { audit } from '../audit';
 import { denyIfNotAppEditor, denyIfEingeschraenkt, denyIfVorgangEingeschraenkt } from './_shared';
 import { ablage, storeUpload, resolveStorageRef, loadDokumentDatei } from '../filestore';
@@ -246,6 +247,7 @@ const kern = createPosteingangRoutes<PosteingangDatei, ScoredKandidat, Posteinga
   quellen: ['manuell', 'scan', 'email', 'import'],
   maxGesamtBytes: MAX_TOTAL_BYTES,
   logPraefix: '[wohngeld]',
+  jobArt: 'wohngeld-posteingang',
 });
 
 /** Programmatische Einlieferung in den Wohngeld-Posteingang (Naht für einen gemeinsamen Eingang). */
@@ -278,7 +280,6 @@ posteingangQueueRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) 
   if (single instanceof File) files.push(single);
   if (!files.length) return c.json({ error: 'Keine Datei(en) im Feld "files" gefunden' }, 400);
 
-  const userId = getCurrentUserId(c);
   const dateien: PosteingangDatei[] = [];
   let total = 0;
   for (const file of files) {
@@ -291,7 +292,30 @@ posteingangQueueRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) 
     dateien.push({ dateiname: stored.filename, s3Key: ref.s3Key, pfad: ref.pfad, contentType, groesse: bytes.length, hash: sha256Hex(bytes) });
   }
 
-  // Erkennung wie im Posteingang: DP-Profil (Standard) oder bisheriger Weg.
+  // Erkennung, Verteilung und Prüfung laufen als fortsetzbarer Job (Worker oder Web); die Oberfläche fragt ab.
+  const jobId = await vorgangUpload.stelleUploadEin(c, vorgangId, dateien);
+  await audit(c, {
+    aktion: 'vorgang.dokumente_hochgeladen', objektTyp: 'vorgang', objektId: vorgangId, vorgangId,
+    detail: `${dateien.length} Datei(en) hochgeladen, Auswertung im Hintergrund`,
+  });
+  return c.json({ job: jobId }, 202);
+});
+
+/** GET /vorgaenge/:vorgangId/dokumente/upload/:jobId — Status des Uploads (am Ende Antwort wie früher). */
+posteingangQueueRoutes.get('/vorgaenge/:vorgangId/dokumente/upload/:jobId', async (c) => {
+  const status = await vorgangUpload.uploadStatus(c.req.param('vorgangId'), c.req.param('jobId'));
+  if (!status) return c.json({ error: 'Upload nicht gefunden' }, 404);
+  return c.json(status);
+});
+
+/** Upload am Vorgang: Erkennung wie im Posteingang (DP-Profil oder bisheriger Weg), Verteilung, Prüfung. */
+async function verarbeiteVorgangUpload(
+  c: Context,
+  e: { vorgangId: string; dateien: PosteingangDatei[]; userId: string | null; melde: (text: string) => Promise<void> },
+): Promise<VorgangUploadErgebnis> {
+  const { vorgangId, dateien } = e;
+  const userId = e.userId ?? undefined;
+  await e.melde('Dokumente werden erkannt');
   const erkannt = await messeKiVerbrauch('dokument_upload', {
     vorgangId, phase: 'bearbeitung', akteurId: userId, detail: `${dateien.length} Datei(en)`,
   }, async () => {
@@ -306,12 +330,15 @@ posteingangQueueRoutes.post('/vorgaenge/:vorgangId/dokumente/upload', async (c) 
       detail: `„${t.dateiname}" automatisch in ${t.bereiche?.length ?? 0} Dokumente getrennt (${bereicheText(t.bereiche)})${t.modell ? ` · Modell ${t.modell}` : ''}`,
     });
   }
+  await e.melde('Dokumente werden dem Vorgang zugeordnet und geprüft');
   const result = await verteileDokumente(c, {
     vorgangId,
     dokumente: erkannt.dateien.map(dateiZuPreview),
     pruefen: true,
     eingegangenAm: new Date().toISOString(),
   });
-  if (!result.ok) return c.json({ error: result.error }, result.status);
-  return c.json({ dokumente: result.dokumente, dokument: result.dokumente[0], befundeCount: result.befundeCount }, 201);
-});
+  if (!result.ok) return { ok: false, error: result.error, status: result.status };
+  return { ok: true, antwort: { dokumente: result.dokumente, dokument: result.dokumente[0], befundeCount: result.befundeCount } };
+}
+
+const vorgangUpload = createVorgangUploadJob<PosteingangDatei>({ jobArt: 'wohngeld-vorgang-upload', verarbeite: verarbeiteVorgangUpload });

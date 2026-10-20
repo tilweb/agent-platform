@@ -4,6 +4,7 @@
  * Alter und bei Erwerbsminderung (SGB XII, 4. Kapitel). Pfade/Formen wie die Wohngeld-App.
  */
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, API_URL } from '../../../utils/apiFetch';
+import { warteAufUploadJob } from '../kern/uploadJob';
 
 const base = '/apps/grundsicherung';
 
@@ -102,11 +103,18 @@ export const grundsicherungApi = {
   /** Dokument „ins Fachverfahren abgelegt" markieren (Metadaten-Patch, Editor-Gate). */
   ablegenDokument: (id, expectedVersion) => apiPut(`${base}/dokumente/${id}`, { abgelegt: true, expectedVersion }).then(json).then((d) => d.dokument),
   /** Nachreichung direkt am Vorgang — läuft durch dieselbe Erkennung wie der Posteingang. */
-  uploadVorgangDokument: (vorgangId, file) => {
+  uploadVorgangDokument: async (vorgangId, file, { onFortschritt } = {}) => {
     const fd = new FormData();
     const list = Array.isArray(file) || file instanceof FileList ? Array.from(file) : [file];
     list.forEach((f) => fd.append('files', f));
-    return postForm(`/vorgaenge/${vorgangId}/dokumente/upload`, fd).then(json).then((d) => d.dokumente);
+    const d = await postForm(`/vorgaenge/${vorgangId}/dokumente/upload`, fd).then(json);
+    if (!d.job) return d.dokumente;
+    // Auswertung läuft als Hintergrund-Job: Status abfragen bis zum Ergebnis.
+    const ergebnis = await warteAufUploadJob(
+      () => apiGet(`${base}/vorgaenge/${vorgangId}/dokumente/upload/${d.job}`).then(json),
+      { onFortschritt },
+    );
+    return ergebnis?.dokumente;
   },
   dokumentVorschau: (id) => apiGet(`${base}/dokumente/${id}/vorschau`).then(json),
   dokumentSeiteUrl: (id, n) => `${API_URL}${base}/dokumente/${id}/seite/${n}`,

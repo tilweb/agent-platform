@@ -351,6 +351,20 @@
       "when": 1790700000000,
       "tag": "0049_eingang_umschlag",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1790800000000,
+      "tag": "0050_hintergrund_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1790800100000,
+      "tag": "0051_hintergrund_jobs_ergebnis",
+      "breakpoints": true
     }
   ]
 }

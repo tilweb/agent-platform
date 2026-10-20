@@ -9,6 +9,7 @@ import LaufExportMenu from '../components/LaufExportMenu';
 import VertragPane from '../components/VertragPane';
 import VolltextPane from '../components/VolltextPane';
 import { useProviders } from '../hooks/useProviders';
+import VerarbeitungsHinweis from '../components/VerarbeitungsHinweis';
 
 // ============== Styles ==============
 
@@ -1377,6 +1378,7 @@ function InboxView({ projects, onBack, onOpenProject }) {
         </div>
       </div>
       <div style={styles.content}>
+        <VerarbeitungsHinweis />
         {/* Upload */}
         <div style={styles.section}>
           <div

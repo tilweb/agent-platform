@@ -11,6 +11,7 @@ import {
 import { FortschrittKurz } from '../kern/components/AuswertungsFortschritt';
 import GrundsicherungKernProvider from './GrundsicherungKernProvider';
 import { istHaengend } from '../kern/fortschritt';
+import VerarbeitungsHinweis from '../../../components/VerarbeitungsHinweis';
 
 const LEVEL_LABEL = { hoch: 'Hohe Übereinstimmung', mittel: 'Mögliche Übereinstimmung', gering: 'Geringe Übereinstimmung' };
 
@@ -188,6 +189,7 @@ function PosteingangPageSeite() {
       </div>
 
       <div style={styles.body}>
+        <VerarbeitungsHinweis />
         {error && <div style={styles.error}>{error}</div>}
 
         {/* Hinzufügen (ingest — keine Auto-Auswertung) */}

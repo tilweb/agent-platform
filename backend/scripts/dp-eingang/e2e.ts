@@ -1,14 +1,14 @@
 /**
  * Ende-zu-Ende-Pruefung Eingangsmodell (Konzept DP-Produktmodell): Upload anlegen →
- * processInboxUpload → Batch-Lauf (Worker des laufenden Backends) → Umschlag.
+ * nehmeInboxUploadAn (Original nach S3, Job `dp-posteingang`) → Verarbeitung und Batch-Lauf in der Warteschlange
+ * (laufendes Backend im Modus „intern" oder Prozesstyp `worker`) → Umschlag.
+ * Mit `DP_WORKER_MODUS=extern` verarbeitet dieses Skript selbst nichts.
  * Echte Modellaufrufe. Fälle als JSON-Liste: [{ name, datei, modus?, profil?, erwartet }].
  *
  *   bun run scripts/dp-eingang/e2e.ts <faelle.json>
  */
 
-import { copyFile, mkdir } from 'node:fs/promises';
-import { basename, join } from 'node:path';
-import { createUpload, processInboxUpload, ladeUmschlag } from '../../src/extraction/inbox';
+import { createUpload, nehmeInboxUploadAn, ladeUmschlag } from '../../src/extraction/inbox';
 import { claimUmschlagZustellung, getUpload } from '../../src/extraction/inbox/store';
 
 interface Fall {
@@ -23,13 +23,9 @@ const pruefe = (fall: string, was: string, b: boolean, ist?: unknown) => {
 };
 
 const laufend = await Promise.all(faelle.map(async (f) => {
-  const dir = `/tmp/dp-eingang-e2e/${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-  await mkdir(dir, { recursive: true });
-  const tmp = join(dir, basename(f.datei));
-  await copyFile(f.datei, tmp);
   const modus = f.modus ?? 'vorgang';
   const u = await createUpload({ filename: `E2E ${f.name}.pdf`, mimeType: 'application/pdf', modus, profilId: f.profil ?? null, quelle: 'api' });
-  await processInboxUpload(u.id, tmp, { filename: `E2E ${f.name}.pdf`, mimeType: 'application/pdf' }, undefined, { modus, profilId: f.profil ?? null });
+  await nehmeInboxUploadAn(u.id, Buffer.from(await Bun.file(f.datei).arrayBuffer()), { filename: `E2E ${f.name}.pdf` }, undefined, { modus, profilId: f.profil ?? null });
   return { f, id: u.id };
 }));
 

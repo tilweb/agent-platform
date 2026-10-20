@@ -7,13 +7,13 @@
 
 import { Hono } from 'hono';
 import { authMiddleware } from '../auth/middleware';
-import { mkdir } from 'node:fs/promises';
+import { verarbeitungsStatus } from '../extraction/queue/hintergrund';
 import {
   createUpload,
   listUploads,
   getUpload,
   deleteUpload,
-  processInboxUpload,
+  nehmeInboxUploadAn,
   routePart,
   sweepStaleUploads,
   eingangsModus,
@@ -56,19 +56,12 @@ extractionInboxRoutes.post('/inbox', async (c) => {
     return c.json({ error: `Datei "${tooBig.name}" ist zu groß (max. 50 MB)` }, 413);
   }
 
-  const tmpDir = `/tmp/extraction-inbox-upload/${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
-  await mkdir(tmpDir, { recursive: true });
-
   const created: { id: string; filename: string }[] = [];
-  for (let i = 0; i < uploads.length; i += 1) {
-    const file = uploads[i]!;
-    const tempPath = `${tmpDir}/${i}_${file.name.replace(/[^\w.\-]+/g, '_')}`;
-    await Bun.write(tempPath, await file.arrayBuffer());
+  for (const file of uploads) {
     const upload = await createUpload({ filename: file.name, mimeType: file.type || undefined, modus, profilId, quelle: 'oberflaeche' });
     created.push({ id: upload.id, filename: upload.filename });
-    // Fire-and-forget — die Pipeline räumt tempPath selbst auf.
-    void processInboxUpload(upload.id, tempPath, { filename: file.name, mimeType: file.type || undefined }, undefined, { modus, profilId })
-      .catch((err) => console.error('[inbox] processInboxUpload error:', err instanceof Error ? err.message : err));
+    // Original dauerhaft speichern + Job einstellen; verarbeitet wird in der Warteschlange (Worker oder Web).
+    await nehmeInboxUploadAn(upload.id, Buffer.from(await file.arrayBuffer()), { filename: file.name }, undefined, { modus, profilId });
   }
 
   return c.json({ uploads: created }, 201);
@@ -79,6 +72,18 @@ extractionInboxRoutes.get('/inbox/:id/umschlag', async (c) => {
   const umschlag = await ladeUmschlag(c.req.param('id'));
   if (!umschlag) return c.json({ error: 'Upload nicht gefunden' }, 404);
   return c.json(umschlag);
+});
+
+/**
+ * GET /verarbeitung — Stand der Verarbeitung (Modus, offene Jobs, im Modus „extern": lebt ein Worker?).
+ * Für den Hinweis in Posteingang-Ansichten, wenn Aufträge auf einen fehlenden Worker warten.
+ */
+extractionInboxRoutes.get('/verarbeitung', async (c) => {
+  try {
+    return c.json(await verarbeitungsStatus());
+  } catch {
+    return c.json({ modus: 'intern', workerAktiv: null, offeneJobs: 0 });
+  }
 });
 
 /** GET /inbox — Liste aller Uploads inkl. Teilen (Polling-fähig). */

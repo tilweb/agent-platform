@@ -162,6 +162,25 @@ export const extractionJobs = extractionSchema.table('jobs', {
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 });
 
+/** Generische Hintergrund-Jobs (S1): Posteingang, Vorgang-Upload, Evaluation. Gleiche Lease-Semantik wie `jobs`. */
+export const extractionHintergrundJobs = extractionSchema.table('hintergrund_jobs', {
+  id: text('id').primaryKey(), art: text('art').notNull(), schluessel: text('schluessel').notNull(),
+  nutzlast: jsonb('nutzlast').notNull().default({}), state: text('state').notNull().default('pending'),
+  prioritaet: integer('prioritaet').notNull().default(1), userId: text('user_id'), token: text('token'),
+  leaseUntil: timestamp('lease_until', { withTimezone: true, mode: 'string' }),
+  attempts: integer('attempts').notNull().default(0), error: text('error'),
+  ergebnis: jsonb('ergebnis'), fortschritt: jsonb('fortschritt'), bearbeiter: text('bearbeiter'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+});
+
+/** Lebenszeichen der Verarbeitungs-Prozesse (Worker schreibt alle 20 s). */
+export const extractionWorkerStatus = extractionSchema.table('worker_status', {
+  prozess: text('prozess').primaryKey(),
+  zuletzt: timestamp('zuletzt', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  info: jsonb('info').notNull().default({}),
+});
+
 export const extractionModelSlots = extractionSchema.table('model_slots', {
   modelKey: text('model_key').notNull(), slot: integer('slot').notNull(), token: text('token').notNull(),
   leaseUntil: timestamp('lease_until', { withTimezone: true, mode: 'string' }).notNull(),

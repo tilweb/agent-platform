@@ -528,20 +528,15 @@ export const inboxCreateFunction: PublicFunction<
       throw new PublicFunctionError('callback_url muss eine http(s)-URL sein');
     }
     const buffer = decodeDocument(input.document, 0);
-    const { createUpload, processInboxUpload } = await import('./inbox');
-    const tmpDir = `/tmp/extraction-inbox-api/${Date.now().toString(36)}_${ctx.requestId}`;
-    await mkdir(tmpDir, { recursive: true });
-    const tempPath = `${tmpDir}/${safeName(input.document.filename)}`;
-    await Bun.write(tempPath, buffer);
+    const { createUpload, nehmeInboxUploadAn } = await import('./inbox');
     const modus = input.modus ?? 'vorgang';
     const upload = await createUpload({
       filename: input.document.filename,
       mimeType: input.document.filename.toLowerCase().endsWith('.pdf') ? 'application/pdf' : undefined,
       modus, profilId: input.project_id ?? null, quelle: 'api', callbackUrl: input.callback_url ?? null,
     });
-    // Hintergrund — die Pipeline raeumt tempPath selbst auf.
-    void processInboxUpload(upload.id, tempPath, { filename: input.document.filename }, undefined, { modus, profilId: input.project_id ?? null })
-      .catch((err) => console.error('[inbox.create] Verarbeitung:', err instanceof Error ? err.message : err));
+    // Original dauerhaft speichern + Job einstellen (Warteschlange, fortsetzbar).
+    await nehmeInboxUploadAn(upload.id, buffer, { filename: input.document.filename }, undefined, { modus, profilId: input.project_id ?? null });
     return { upload_id: upload.id, status: 'verarbeitung' };
   },
 };

@@ -10,6 +10,7 @@ import { captureSnapshot } from './service';
 import { runBatchExtraction } from './batch-service';
 import { jobContext } from './job-context';
 import { withPriority } from '../../services/extraction/runtime';
+import { verarbeitetHier } from '../queue/modus';
 
 export async function enqueueBatch(projectId: string, files: Array<{ filename: string; tempPath: string }>, userId?: string, webhookUrl?: string) {
   try {
@@ -80,7 +81,8 @@ export async function processOneJob(runner: typeof runBatchExtraction = runBatch
 }
 let started=false, busy=false;
 export function startExtractionWorker() {
-  if(started || process.env.EXTRACTION_WORKER_DISABLED === '1') return; started=true;
+  // DP_WORKER_MODUS=extern: Batch-Laeufe arbeitet der Prozesstyp `worker` ab, nicht der Web-Prozess.
+  if(started || !verarbeitetHier()) return; started=true;
   const tick=async()=>{ if(busy) return; busy=true; try { for(let i=0;i<10 && await processOneJob();i++); } catch(error) { console.error('[extraction-worker]', error instanceof Error?error.message:error); } finally { busy=false; } };
   const timer=setInterval(()=>void tick(),2000); timer.unref(); void tick();
 }

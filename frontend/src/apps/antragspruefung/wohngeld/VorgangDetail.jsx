@@ -241,6 +241,8 @@ function VorgangDetailSeite() {
   const [sideTab, setSideTab] = useState('details');
   const [chatOpen, setChatOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Fortschritt des Uploads am Vorgang (Hintergrund-Job: Erkennung, Zuordnung, Prüfung).
+  const [uploadText, setUploadText] = useState(null);
   const dokUploadRef = useRef(null);
 
   // Dateivorschau (WP10): { url, contentType, name, dok } — objectURL wird beim Wechsel/Unmount freigegeben
@@ -463,12 +465,13 @@ function VorgangDetailSeite() {
     setBusy(true);
     setError(null);
     try {
-      await wohngeldApi.uploadVorgangDokument(id, files);
+      await wohngeldApi.uploadVorgangDokument(id, files, { onFortschritt: setUploadText });
       await reload();
     } catch (e) {
       setError(e.message || 'Upload fehlgeschlagen');
     } finally {
       setBusy(false);
+      setUploadText(null);
       setKiVerbrauchStand((n) => n + 1); // auch bei Fehler: Auswertung kann Tokens verbraucht haben
     }
   }
@@ -1759,6 +1762,9 @@ function VorgangDetailSeite() {
                     <button style={{ ...styles.btnSmall, display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs }} onClick={() => dokUploadRef.current?.click()} disabled={busy}>
                       <UploadIcon size={14} /> {busy ? 'Lädt…' : 'Dokument hochladen'}
                     </button>
+                    {uploadText && (
+                      <span style={{ marginLeft: theme.spacing.sm, fontSize: theme.typography.sizes.xs, color: theme.colors.textMuted }}>{uploadText} …</span>
+                    )}
                     <input
                       ref={dokUploadRef} type="file" multiple accept="application/pdf"
                       style={{ display: 'none' }}

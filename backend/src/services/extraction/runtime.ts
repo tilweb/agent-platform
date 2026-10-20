@@ -1,6 +1,7 @@
 import { providerMetrics, type ProviderMetrics } from './telemetry';
 import { jobContext, fencedWrite } from '../../extraction/learning/job-context';
 import { withModelSlot } from './model-slots';
+import { pruefeHintergrundLease } from '../../extraction/queue/hintergrund';
 import { AsyncLocalStorage, AsyncResource } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
 import { llmService } from '../llm';
@@ -48,6 +49,8 @@ export async function modelWork<T>(key: string, fn: () => Promise<T>): Promise<T
   return queue.run(() => withModelSlot(key, queue!.limit, async () => {
     const owner=jobContext.getStore();
     if(owner) await fencedWrite(owner.runId, async()=>undefined);
+    // Hintergrund-Job (Posteingang, Vorgang-Upload …): von einem anderen Worker uebernommen → nicht weiterrechnen.
+    await pruefeHintergrundLease();
     const start = Date.now();
     if (ctx) { ctx.metrics.queueMs += start-queued; ctx.metrics.modelCalls++; }
     try { return await fn(); } catch (error) { if (ctx) ctx.metrics.modelFailures++; throw error; }

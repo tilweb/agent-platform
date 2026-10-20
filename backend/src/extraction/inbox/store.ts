@@ -186,6 +186,11 @@ export async function createParts(uploadId: string, parts: NewInboxPart[]): Prom
   return rows.map((r) => mapPart(r as typeof extractionInboxParts.$inferSelect));
 }
 
+/** Teile eines Uploads verwerfen (Wiederaufnahme nach abgebrochenem Versuch, noch nichts geroutet). */
+export async function deletePartsOfUpload(uploadId: string): Promise<void> {
+  await getDb().delete(extractionInboxParts).where(eq(extractionInboxParts.uploadId, uploadId));
+}
+
 export async function updatePart(
   uploadId: string,
   partId: string,

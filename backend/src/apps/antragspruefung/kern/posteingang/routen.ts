@@ -27,6 +27,8 @@ import {
 import type { PosteingangStore } from './store';
 import type { Posteingang, PosteingangDateiBasis, PosteingangQuelle } from './typen';
 import { POSTEINGANG_QUELLEN } from './typen';
+import { akteurAusKontext, kontextFuerAkteur, type Akteur } from '../akteur';
+import { PRIORITAET, registriereJobArt, stelleEin } from '../../../../extraction/queue/hintergrund';
 import { darfAuswerten, darfZuordnen, envelopeHash, istTerminal, sha256Hex, sha256HexString } from './zustand';
 
 /** Audit-Ereignis des Posteingangs (Objekttyp immer `posteingang`). */
@@ -125,11 +127,22 @@ export interface PosteingangRoutenOptionen<
   /** Obergrenze je Einlieferung (Summe aller Dateien). */
   maxGesamtBytes: number;
   logPraefix: string;
+  /**
+   * Job-Art der Auswertung in der Hintergrund-Warteschlange (z. B. „<app>-posteingang"). Gesetzt: Auswertung
+   * fortsetzbar über die Warteschlange (Worker-Prozess oder Web, Stufe S1). Ohne: im Prozess (Tests mit Fakes).
+   */
+  jobArt?: string;
 }
 
 /** Sanitisierter Dateiname für Content-Disposition. */
 function safeDispositionName(name: string): string {
   return (name || 'datei').replace(/[^a-zA-Z0-9_.\- ]/g, '_').slice(0, 200) || 'datei';
+}
+
+/** Nutzlast des Auswertungs-Jobs: nur die ID und der Akteur (Dateien liegen im Speicher des Eingangs). */
+interface AuswertungsJob {
+  id: string;
+  akteur: Akteur;
 }
 
 export function createPosteingangRoutes<
@@ -353,9 +366,17 @@ export function createPosteingangRoutes<
       gestartet.push(id);
     }
 
-    const arbeit = werteImHintergrundAus(c, gestartet, userId);
-    laufend.add(arbeit);
-    void arbeit.finally(() => laufend.delete(arbeit));
+    if (opts.jobArt) {
+      // Fortsetzbar über die Warteschlange; der Akteur reist für Audit und KI-Verbrauch mit.
+      const akteur = akteurAusKontext(c);
+      for (const id of gestartet) {
+        await stelleEin<AuswertungsJob>(opts.jobArt, { id, akteur }, { schluessel: `${opts.jobArt}:${id}`, userId, prioritaet: PRIORITAET.eingang });
+      }
+    } else {
+      const arbeit = werteImHintergrundAus(c, gestartet, userId);
+      laufend.add(arbeit);
+      void arbeit.finally(() => laufend.delete(arbeit));
+    }
     return c.json({ gestartet, abgelehnt }, 202);
   });
 
@@ -368,43 +389,63 @@ export function createPosteingangRoutes<
 
   /** Wertet angenommene Eingänge nacheinander aus; Fehler je Eingang isoliert. */
   async function werteImHintergrundAus(c: Context, ids: string[], userId: string | null | undefined): Promise<void> {
-    for (const id of ids) {
-      const eingang = await store.getPosteingang(id);
-      if (!eingang) continue;
-      const melder = new FortschrittMelder(id, store.setzePosteingangFortschritt);
-      try {
-        // Token-Verbrauch der Auswertung dem Eingang zuschreiben (bei Zuordnung → Vorgang).
-        const split = await kiVerbrauch.messeKiVerbrauch('posteingang_auswertung', {
-          posteingangId: id, akteurId: userId, detail: `${eingang.dateien.length} Datei(en)`,
-        }, () => opts.analysiere(eingang.dateien.map((d) => ({ ...d })), { userId, melder }));
-        const dateien = split.dateien;
-        for (const t of split.protokoll) {
-          await audit(c, {
-            aktion: 'posteingang.getrennt', objektTyp: 'posteingang', objektId: id,
-            detail: `„${t.dateiname}" automatisch in ${t.bereiche?.length ?? 0} Dokumente getrennt (${bereicheText(t.bereiche)})${t.modell ? ` · Modell ${t.modell}` : ''}`,
-          });
-        }
+    for (const id of ids) await werteEinenAus(c, id, userId);
+  }
 
-        melder.setze({ phase: 'abschluss', text: 'Zuordnung zu bestehenden Vorgängen wird geprüft' });
-        const { matchVorschlag, betreff, alleFehler, status } = await umschlagAuswerten(dateien, eingang.betreff);
-        await store.updatePosteingang(id, { dateien, matchVorschlag, betreff, status } as Partial<TEingang>);
-
+  /**
+   * Wertet einen angenommenen Eingang aus. Wiederholbar: Das Ergebnis wird erst am Ende geschrieben — ein
+   * abgebrochener Versuch hinterlässt nur den Status „in_analyse", der nächste beginnt mit den Original-Dateien.
+   */
+  async function werteEinenAus(c: Context, id: string, userId: string | null | undefined): Promise<void> {
+    const eingang = await store.getPosteingang(id);
+    if (!eingang || eingang.status !== 'in_analyse') return; // gelöscht oder schon abgeschlossen
+    const melder = new FortschrittMelder(id, store.setzePosteingangFortschritt);
+    try {
+      // Token-Verbrauch der Auswertung dem Eingang zuschreiben (bei Zuordnung → Vorgang).
+      const split = await kiVerbrauch.messeKiVerbrauch('posteingang_auswertung', {
+        posteingangId: id, akteurId: userId, detail: `${eingang.dateien.length} Datei(en)`,
+      }, () => opts.analysiere(eingang.dateien.map((d) => ({ ...d })), { userId, melder }));
+      const dateien = split.dateien;
+      for (const t of split.protokoll) {
         await audit(c, {
-          aktion: alleFehler ? 'posteingang.analyse_fehler' : 'posteingang.analysiert',
-          objektTyp: 'posteingang', objektId: id, ergebnis: alleFehler ? 'fehler' : 'ok',
-          detail: `${dateien.length} Datei(en) ausgewertet${matchVorschlag.length ? `, ${matchVorschlag.length} Vorschlag/Vorschläge` : ''}`,
+          aktion: 'posteingang.getrennt', objektTyp: 'posteingang', objektId: id,
+          detail: `„${t.dateiname}" automatisch in ${t.bereiche?.length ?? 0} Dokumente getrennt (${bereicheText(t.bereiche)})${t.modell ? ` · Modell ${t.modell}` : ''}`,
         });
-      } catch (err) {
-        console.warn(`${opts.logPraefix} Auswertung fehlgeschlagen:`, id, err instanceof Error ? err.message : err);
-        await store.updatePosteingang(id, { status: 'fehler' } as Partial<TEingang>).catch(() => null);
-        await audit(c, {
-          aktion: 'posteingang.analyse_fehler', objektTyp: 'posteingang', objektId: id, ergebnis: 'fehler',
-          detail: err instanceof Error ? err.message : String(err),
-        }).catch(() => {});
-      } finally {
-        await melder.ende();
       }
+
+      melder.setze({ phase: 'abschluss', text: 'Zuordnung zu bestehenden Vorgängen wird geprüft' });
+      const { matchVorschlag, betreff, alleFehler, status } = await umschlagAuswerten(dateien, eingang.betreff);
+      await store.updatePosteingang(id, { dateien, matchVorschlag, betreff, status } as Partial<TEingang>);
+
+      await audit(c, {
+        aktion: alleFehler ? 'posteingang.analyse_fehler' : 'posteingang.analysiert',
+        objektTyp: 'posteingang', objektId: id, ergebnis: alleFehler ? 'fehler' : 'ok',
+        detail: `${dateien.length} Datei(en) ausgewertet${matchVorschlag.length ? `, ${matchVorschlag.length} Vorschlag/Vorschläge` : ''}`,
+      });
+    } catch (err) {
+      // Job-Lease verloren: ein anderer Worker hat übernommen — Status nicht anfassen.
+      if (err instanceof Error && err.message === 'Job-Lease nicht mehr gültig') throw err;
+      console.warn(`${opts.logPraefix} Auswertung fehlgeschlagen:`, id, err instanceof Error ? err.message : err);
+      await store.updatePosteingang(id, { status: 'fehler' } as Partial<TEingang>).catch(() => null);
+      await audit(c, {
+        aktion: 'posteingang.analyse_fehler', objektTyp: 'posteingang', objektId: id, ergebnis: 'fehler',
+        detail: err instanceof Error ? err.message : String(err),
+      }).catch(() => {});
+    } finally {
+      await melder.ende();
     }
+  }
+
+  if (opts.jobArt) {
+    registriereJobArt<AuswertungsJob>(opts.jobArt, {
+      ausfuehren: (n) => werteEinenAus(kontextFuerAkteur(n.akteur), n.id, n.akteur.userId),
+      async beiAbbruch(n, fehler) {
+        await store.updatePosteingang(n.id, { status: 'fehler' } as Partial<TEingang>);
+        await audit(kontextFuerAkteur(n.akteur), {
+          aktion: 'posteingang.analyse_fehler', objektTyp: 'posteingang', objektId: n.id, ergebnis: 'fehler', detail: fehler,
+        });
+      },
+    });
   }
 
   /**
