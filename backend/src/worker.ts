@@ -24,18 +24,23 @@ import './apps/antragspruefung/grundsicherung/routes/posteingang-queue';
 
 alsWorkerProzess();
 
-/** Migrationen fuehrt der Web-Prozess aus; der Worker wartet, bis die Datenbank auf dem Stand des Codes ist. */
+/**
+ * Migrationen fuehrt der Web-Prozess aus; der Worker wartet, bis die Datenbank auf dem Stand des Codes ist.
+ * Gleiche Regel wie der Drizzle-Migrator: Stand erreicht, wenn die zuletzt angewendete Migration (`created_at`)
+ * mindestens so neu ist wie der juengste Journal-Eintrag (`when`). Die Anzahl der Zeilen taugt nicht — sie weicht je
+ * Datenbank vom Journal ab.
+ */
 async function warteAufMigrationen(timeoutMs = 5 * 60_000): Promise<void> {
   const ordner = [resolve(process.cwd(), 'drizzle'), resolve(process.cwd(), 'backend/drizzle')].find(existsSync);
   if (!ordner) return;
-  const journal = JSON.parse(await readFile(resolve(ordner, 'meta/_journal.json'), 'utf8')) as { entries: unknown[] };
-  const erwartet = journal.entries.length;
+  const journal = JSON.parse(await readFile(resolve(ordner, 'meta/_journal.json'), 'utf8')) as { entries: Array<{ when: number; tag: string }> };
+  const juengste = journal.entries.reduce((a, b) => (b.when > a.when ? b : a));
   const ende = Date.now() + timeoutMs;
   while (Date.now() < ende) {
     try {
-      const [r] = await getSql()`SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
-      if (Number(r?.n) >= erwartet) return;
-      console.log(`[worker] warte auf Migrationen (${r?.n}/${erwartet}) …`);
+      const [r] = await getSql()`SELECT max(created_at)::bigint AS zuletzt FROM drizzle.__drizzle_migrations`;
+      if (Number(r?.zuletzt ?? 0) >= juengste.when) return;
+      console.log(`[worker] warte auf Migration ${juengste.tag} …`);
     } catch {
       console.log('[worker] warte auf Datenbank …');
     }
