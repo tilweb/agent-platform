@@ -69,8 +69,11 @@ export async function ladeSet(id: string): Promise<GeladenesSet> {
   return { def, profil, verzeichnis, faelle };
 }
 
+/** Set-Ordner mit `set.json` — Fremddateien wie `.DS_Store` (Finder) zaehlen nicht als Set. */
 export async function alleSetIds(): Promise<string[]> {
-  return (await readdir(join(KORPUS, 'sets')).catch(() => [] as string[])).sort();
+  const namen = (await readdir(join(KORPUS, 'sets')).catch(() => [] as string[])).sort();
+  const mitDef = await Promise.all(namen.map(async (n) => (await Bun.file(join(KORPUS, 'sets', n, 'set.json')).exists()) ? n : null));
+  return mitDef.filter((n): n is string => !!n);
 }
 
 /** Sichere Verzeichnis-/Dateinamen fuer Fall-IDs. */
