@@ -21,3 +21,10 @@ PATH=/opt/homebrew/bin:$PATH /Users/andreasbachmann/.bun/bin/bun run scripts/dp-
 PATH=/opt/homebrew/bin:$PATH /Users/andreasbachmann/.bun/bin/bun run scripts/dp-qualitaet/lauf.ts                  # voll
 PATH=/opt/homebrew/bin:$PATH /Users/andreasbachmann/.bun/bin/bun run scripts/dp-qualitaet/lauf.ts --als-baseline --wiederholungen 3
 ```
+
+**Teilauswahl (Smoke, `--faelle`, `--split`):** Verglichen wird mit **denselben Fällen** aus dem Lauf, aus dem die
+Set-Baseline stammt. Deren Einzelergebnisse werden mit der aktuellen Bewertungslogik neu bewertet, das Rauschband kommt
+aus ihren Wiederholungen. Der Vergleich gegen den Schnitt aller Fälle wäre schief: Drei schwere Wohngeld-Fälle sehen
+gegen 60 sonst wie ein Rückgang aus. Betriebskennzahlen (Sekunden und Tokens je Seite) bleiben gegen die
+Gesamt-Baseline. Neue Baselines speichern ihren Lauf je Set (`lauf`); bei älteren wird der Quell-Lauf über identische
+Kennzahlen gefunden (`lib/teilbasis.ts`).

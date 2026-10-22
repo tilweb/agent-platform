@@ -11,6 +11,8 @@ export interface SetBaseline {
   rauschband: Record<string, number>;
   /** Je Fall die kritischen Feldpfade, die in der Baseline richtig waren. */
   kritischRichtig: Record<string, string[]>;
+  /** Lauf, aus dem diese Set-Baseline stammt (Einzelergebnisse fuer Teilauswahl-Vergleiche). Fehlt bei aelteren Baselines. */
+  lauf?: string;
 }
 
 export interface Baseline { erstellt: string; lauf: string; commit: string; modell: string; sets: Record<string, SetBaseline> }
@@ -72,6 +74,8 @@ const fmt = (x: number | null | undefined) => (typeof x === 'number' ? `${x.toFi
 
 export function berichtMarkdown(kopf: { lauf: string; commit: string; modell: string; umfang: string; split: string }, sets: Array<{
   id: string; name: string; metriken: SetMetriken; basis?: SetBaseline; urteil: Urteil; bewertungen: FallBewertung[];
+  /** Hinweis, wogegen verglichen wurde (Teilauswahl). */
+  vergleich?: string;
 }>): string {
   const zeilen: string[] = [
     `# DP-Qualitätssuite — Lauf ${kopf.lauf}`,
@@ -84,6 +88,7 @@ export function berichtMarkdown(kopf: { lauf: string; commit: string; modell: st
   for (const s of sets) {
     const m = s.metriken;
     zeilen.push(`## ${s.name} (${s.id}) — ${m.faelle} Fälle${m.ausfaelle ? `, ${m.ausfaelle} Ausfall/Ausfälle` : ''}`, '');
+    if (s.vergleich) zeilen.push(s.vergleich, '');
     zeilen.push('| Metrik | aktuell | Baseline | Δ | Rauschband |', '|---|---|---|---|---|');
     for (const [k, v] of Object.entries(m.quoten)) {
       if (v === null) continue;

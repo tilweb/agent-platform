@@ -21,6 +21,7 @@ import { parallelBegrenzt } from '../../src/services/extraction/contract/modell'
 import { alleSetIds, KORPUS, ladeSet, sicher, type GeladenerFall, type GeladenesSet } from './lib/korpus';
 import { aggregiere, bewerteFall, type FallBewertung, type FallErgebnis, type SetMetriken } from './lib/bewertung';
 import { beurteile, berichtMarkdown, kritischRichtigJeFall, rauschbandAus, type Baseline } from './lib/bericht';
+import { ladeTeilbasis } from './lib/teilbasis';
 
 const argv = process.argv.slice(2);
 const opt = (n: string) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i + 1] : undefined; };
@@ -89,7 +90,7 @@ async function main() {
   const baseline: Baseline | null = (await baselineDatei.exists()) ? await baselineDatei.json() : null;
   console.log(`DP-Qualitätssuite · Lauf ${laufId} · Modell ${modell} · ${umfang} · Split ${split} · ${wiederholungen}× · Korpus ${KORPUS}`);
 
-  const ergebnisse: Array<{ id: string; name: string; metriken: SetMetriken; bewertungen: FallBewertung[]; urteil: ReturnType<typeof beurteile>; basis?: Baseline['sets'][string]; rauschband?: Record<string, number> }> = [];
+  const ergebnisse: Array<{ id: string; name: string; metriken: SetMetriken; bewertungen: FallBewertung[]; urteil: ReturnType<typeof beurteile>; basis?: Baseline['sets'][string]; vergleich?: string; rauschband?: Record<string, number> }> = [];
   for (const id of ids) {
     const set = await ladeSet(id);
     const faelle = auswahl(set);
@@ -107,9 +108,25 @@ async function main() {
     if (wiederholungen > 1 && sauber.length < laeufe.length) {
       console.warn(`\n${id}: ${laeufe.length - sauber.length} von ${laeufe.length} Wiederholungen mit Ausfällen (${laeufe.map((l) => l.metriken.ausfaelle).join('/')}) — fürs Rauschband verworfen`);
     }
-    const basis = baseline?.sets[id];
+    let basis = baseline?.sets[id];
+    let vergleich: string | undefined;
+    const zusatzWarnungen: string[] = [];
+    // Teilauswahl (Smoke, --faelle, --split): gegen DIESELBEN Faelle aus dem Baseline-Lauf vergleichen, nicht gegen
+    // den Schnitt aller Faelle (lib/teilbasis.ts).
+    if (!alsBaseline && basis && baseline && faelle.length < set.faelle.length) {
+      const sicherAb = set.profil.extraction?.review_threshold ?? set.profil.extraction?.confidence_threshold ?? 0.8;
+      const teil = await ladeTeilbasis(set, faelle, basis, baseline.lauf, sicherAb);
+      if (teil) {
+        basis = teil.basis;
+        vergleich = `Vergleich mit denselben ${teil.faelle} Fällen aus dem Baseline-Lauf ${teil.lauf} (${teil.wiederholungen} Wiederholung${teil.wiederholungen === 1 ? '' : 'en'}); Betrieb gegen die Gesamt-Baseline.`;
+        if (teil.fehlend.length) zusatzWarnungen.push(`${id}: ohne Baseline-Ergebnis (nur aktuell gemessen): ${teil.fehlend.join(', ')}`);
+      } else {
+        zusatzWarnungen.push(`${id}: Teilauswahl gegen den Schnitt aller Fälle verglichen (Baseline-Lauf ohne Einzelergebnisse) — nur bedingt aussagekräftig`);
+      }
+    }
     const urteil = beurteile(id, metriken, bewertungen, alsBaseline ? undefined : basis, set.def.schwellen);
-    ergebnisse.push({ id, name: set.def.name, metriken, bewertungen, urteil, basis: alsBaseline ? undefined : basis, ...(sauber.length > 1 ? { rauschband: rauschbandAus(sauber.map((l) => l.metriken)) } : {}) });
+    urteil.warnungen.push(...zusatzWarnungen);
+    ergebnisse.push({ id, name: set.def.name, metriken, bewertungen, urteil, basis: alsBaseline ? undefined : basis, vergleich, ...(sauber.length > 1 ? { rauschband: rauschbandAus(sauber.map((l) => l.metriken)) } : {}) });
   }
   process.stdout.write('\n\n');
 
@@ -125,7 +142,7 @@ async function main() {
     const neu: Baseline = { erstellt: new Date().toISOString(), lauf: laufId, commit, modell, sets: { ...(baseline?.sets ?? {}) } };
     for (const e of ergebnisse) {
       if (e.metriken.ausfaelle > 0) { console.warn(`${e.id}: ${e.metriken.ausfaelle} Ausfall/Ausfälle — Baseline dieses Sets NICHT übernommen (Lauf wiederholen)`); continue; }
-      neu.sets[e.id] = { metriken: e.metriken, rauschband: e.rauschband ?? baseline?.sets[e.id]?.rauschband ?? {}, kritischRichtig: kritischRichtigJeFall(e.bewertungen) };
+      neu.sets[e.id] = { metriken: e.metriken, rauschband: e.rauschband ?? baseline?.sets[e.id]?.rauschband ?? {}, kritischRichtig: kritischRichtigJeFall(e.bewertungen), lauf: laufId };
     }
     await Bun.write(join(KORPUS, 'baseline.json'), JSON.stringify(neu, null, 2));
     console.log(`Baseline geschrieben: ${join(KORPUS, 'baseline.json')}`);
