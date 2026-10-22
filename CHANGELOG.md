@@ -2,6 +2,10 @@
 
 ## 2026-10-22
 
+### workplace-end auf Containergröße L
+- `workplace-end` von M (512 MB) auf L (1 GB) angehoben, vorsorglich wegen der Out-of-Memory-Abstürze durch Document
+  Processing auf `workplace-yneo` in der Nacht zum 22.10. (`memory quota exceeded`).
+
 ### Fix: Speicherabstürze bei großen Verträgen (yneo, 21./22.10., 11× „memory quota exceeded")
 - Ursache: Innerhalb eines Batch-Jobs wurden die Seitenbilder nicht nach S3 ausgelagert, sondern als base64 in den
   Ergebnis-Datensatz geschrieben. Ein 89-seitiger Rahmenvertrag (Vertragsauswertung, 200 dpi) ergab ~52 MB base64,
@@ -41,6 +45,15 @@
 - Doku: `docs/dp-worker-s1-2026-10-20.md`.
 
 ## 2026-10-16
+
+### Neue Kunden-Instanz workplace-end (Scalingo)
+- `workplace-end` aufgesetzt (osc-fr1, Projekt workplace-pilots, Postgres Starter 512M): Customer-Modus, nur App
+  „Projektmanagement" (`ENABLED_APPS=projektmanagement`), Branding Default „Workplace", keine Connections. Erreichbar
+  vorerst unter der Scalingo-URL, eine Custom-Domain folgt bei Bedarf.
+- Eigene Secrets und eigener Flow.swiss-Account mit Bucket `workplace-end` (Hash-Vergleich mit Demo/Cofermin: verschieden).
+  Geteilte Werte (LLM, Tools, Model-Routing, SSRF) aus `workplace-demo` über eine Positivliste übernommen.
+- GitHub-Integration ohne Auto-Deploy, erster Build von `647d7000` erfolgreich, Health 200, Migrationen angewendet.
+- Runbook §3.6: Integration standardmäßig mit `--no-auto-deploy` (alle Instanzen deployen manuell).
 
 ### Elektronische PDF-Signaturen: Unterzeichner, Art und Änderungen nach der Signatur
 - DP liest Signaturen jetzt mit `pdfsig` (poppler, keine neue Abhängigkeit) statt nur per Byte-Suche: Signaturfeld,

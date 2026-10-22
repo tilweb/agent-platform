@@ -178,7 +178,7 @@ scalingo --app $APP env-unset CONTAINER_FILE BUILDPACK_URL >/dev/null 2>&1 || tr
 **GitHub-Deploy geht vollständig per CLI** (die SCM-Integration ist bereits am Account) —
 keine Console nötig:
 ```sh
-scalingo --app $APP integration-link-create --branch main --auto-deploy \
+scalingo --app $APP integration-link-create --branch main --no-auto-deploy \
   https://github.com/tilweb/agent-platform
 scalingo --app $APP integration-link-manual-deploy main   # ersten Build triggern
 ```
@@ -259,6 +259,6 @@ scalingo --app $APP logs --lines 200 | grep -E '\[s3\]|migrations|Server startin
 - [ ] ⚪ Vault-Keys (LLM, Tools, Model-Routing, Infra)
 - [ ] 🔵 aktivierte Connections + Redirect-URIs registriert
 - [ ] `env-unset CONTAINER_FILE BUILDPACK_URL`
-- [ ] GitHub-Integration + Auto-Deploy `main`
+- [ ] GitHub-Integration `main` (ohne Auto-Deploy, Deploys manuell)
 - [ ] Health 200 + S3-Boot-Log + erster Admin-Login
 - [ ] (später) DNS-CNAME → `domains-add` → URLs auf Custom-Domain umstellen → Cert geprüft
