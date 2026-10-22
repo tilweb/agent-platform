@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-22
+
+### Fix: Speicherabstürze bei großen Verträgen (yneo, 21./22.10., 11× „memory quota exceeded")
+- Ursache: Innerhalb eines Batch-Jobs wurden die Seitenbilder nicht nach S3 ausgelagert, sondern als base64 in den
+  Ergebnis-Datensatz geschrieben. Ein 89-seitiger Rahmenvertrag (Vertragsauswertung, 200 dpi) ergab ~52 MB base64,
+  beim Speichern mehrfach kopiert. Der unterbrochene Job lief nach jedem Neustart wieder an und stürzte erneut ab.
+- Seitenbilder werden jetzt auch im Job nach S3 ausgelagert, vor der gesperrten Datenbank-Transaktion. Im Datensatz
+  steht nur noch die Referenz (wie außerhalb von Jobs seit Welle 5). Gilt für alle Strategien.
+- Vertragsauswertung und Basisprofil „Allgemein": Die Vorschaubilder im Ergebnis werden separat mit 100 dpi gerendert
+  (`EXTRACTION_VORSCHAU_DPI`), die Transkription liest weiter mit 200 dpi. Beim Rahmenvertrag ~23 statt ~51 MB.
+- yneo: `EXTRACTION_BATCH_CONCURRENCY=1` gesetzt (eine Datei je Batch gleichzeitig), Instanz neu gestartet.
+
 ## 2026-10-20
 
 ### Document Processing: Verarbeitung in eigenem Worker-Prozess möglich (Stufe S1)

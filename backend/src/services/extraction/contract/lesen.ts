@@ -19,6 +19,11 @@ import type { Klausel, SeitenTranskript, Volltext } from './types';
 
 /** Mindestaufloesung fuer die Transkription (Kleingedrucktes in Vertraegen/Briefen). */
 const LESE_DPI_MIN = 200;
+/**
+ * Aufloesung der Seitenbilder im Ergebnis (Pruefansicht). Bewusst niedriger als die Transkription: 200-dpi-Bilder
+ * eines 89-seitigen Vertrags ergaben ~52 MB base64 und sprengten beim Speichern den Container (yneo, 2026-10-21).
+ */
+const VORSCHAU_DPI = Math.max(50, Number(process.env.EXTRACTION_VORSCHAU_DPI) || 100);
 
 export interface GelesenesDokument {
   bilder: SeitenBild[];
@@ -47,7 +52,15 @@ export async function leseDokument(
   } else {
     bilder = [{ seite: 1, png: datei.rawBuffer }];
   }
-  const pageImages: PageImage[] = bilder.map((b) => ({
+  // Vorschau separat in niedriger Aufloesung (PDF); Bilder-Uploads und Rueckfall: die Lesebilder selbst.
+  let vorschau: Array<{ seite: number; png: Buffer }> = bilder;
+  if (istPdf) {
+    try {
+      const klein = await renderPdfToImages(datei.rawBuffer, { dpi: VORSCHAU_DPI, maxPages: opts.maxSeiten });
+      if (klein.length === bilder.length) vorschau = klein.map((p) => ({ seite: p.pageNumber, png: p.pngBuffer }));
+    } catch { /* Rueckfall auf die Lesebilder */ }
+  }
+  const pageImages: PageImage[] = vorschau.map((b) => ({
     page: b.seite,
     dataUri: `data:${datei.mimeType.startsWith('image/') ? datei.mimeType : 'image/png'};base64,${b.png.toString('base64')}`,
     width: b.png.length >= 24 ? b.png.readUInt32BE(16) : 0,

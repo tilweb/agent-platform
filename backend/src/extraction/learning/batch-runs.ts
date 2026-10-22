@@ -270,9 +270,12 @@ export async function upsertFileResult(
   fileId: string,
   payload: FileResultPayload,
 ): Promise<void> {
+  // Seitenbilder aus der Zeile auslagern (Welle 5) — in `detail` bleibt nur die Referenz. Auch im Job, aber VOR der
+  // gesperrten Transaktion (kein S3-Upload unter Zeilensperre). Inline im JSON sprengte das den Speicher: 89 Seiten
+  // Vertrag à 200 dpi ≈ 52 MB base64, mehrfach kopiert beim Serialisieren (yneo, 2026-10-21, memory quota exceeded).
+  // Schluessel sind deterministisch (Lauf/Datei/Seite); ein abgeloester Worker schreibt hoechstens dieselben Bilder.
+  const storedPages = await savePageImages(_runId, fileId, payload.pageImages);
   return fencedWrite(_runId, async db => {
-  // Seitenbilder aus der Zeile auslagern (Welle 5) — in `detail` bleibt nur die Referenz.
-  const storedPages = jobFence(_runId) ? payload.pageImages : await savePageImages(_runId, fileId, payload.pageImages);
   // Updating evidence must preserve already stored page images (review has no new pixels).
   let detail: Record<string, unknown> | undefined;
   if (payload.boxes !== undefined || storedPages || payload.original || payload.snapshot || payload.segmentContexts || payload.reviewDraft !== undefined || payload.vertrag || payload.volltext) {
